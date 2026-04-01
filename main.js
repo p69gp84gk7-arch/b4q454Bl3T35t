@@ -591,10 +591,14 @@ function updateProjectUI() {
     projectStore.forEach(p => {
         let featuresHtml = '';
         p.features.forEach(f => {
-            // ICI : On affiche "Profil" pour les lignes, et "Vue 3D" pour les polygones
-            const actionButton = f.type === 'line' 
-                ? `<button onclick="generateProfileFromProject(${p.id}, ${f.id})" style="width:100%; margin-top:5px; font-size:0.75em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:3px; border-radius:3px;">📈 Voir profil</button>` 
-                : `<button onclick="generate3DViewFromProject(${p.id}, ${f.id})" style="width:100%; margin-top:5px; font-size:0.75em; cursor:pointer; background:#34495e; color:white; border:1px solid #555; padding:3px; border-radius:3px;">👁️ Contrôle Vue 3D</button>`;
+            
+            // On s'assure de mettre le bon bouton selon la forme (Ligne ou Surface)
+            let actionButton = '';
+            if (f.type === 'line') {
+                actionButton = `<button onclick="generateProfileFromProject(${p.id}, ${f.id})" style="width:100%; margin-top:5px; font-size:0.75em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:3px; border-radius:3px;">📈 Voir profil</button>`;
+            } else if (f.type === 'area') {
+                actionButton = `<button onclick="generate3DViewFromProject(${p.id}, ${f.id})" style="width:100%; margin-top:5px; font-size:0.75em; cursor:pointer; background:#34495e; color:white; border:1px solid #555; padding:3px; border-radius:3px;">👁️ Contrôle Vue 3D</button>`;
+            }
 
             featuresHtml += `
                 <div style="margin-left: 10px; border-left: 3px solid ${f.color}; padding-left: 8px; margin-top: 8px; background: #1a1a1a; padding-bottom: 5px;">
@@ -610,6 +614,23 @@ function updateProjectUI() {
                 </div>
             `;
         });
+
+        list.innerHTML += `
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <input type="checkbox" ${p.visible ? 'checked' : ''} onchange="toggleProject(${p.id})">
+                    <strong style="color:var(--accent); font-size:1.1em;">📁 ${p.name}</strong>
+                </div>
+                <button class="btn-del" onclick="deleteProject(${p.id})">✕</button>
+            </div>
+            <details style="margin-top: 8px; cursor: pointer;">
+                <summary style="font-size: 0.85em; color: #aaa;">Voir le contenu (${p.features.length} calques)</summary>
+                ${featuresHtml}
+            </details>
+        </div>`;
+    });
+}
 
         list.innerHTML += `
         <div class="card">
