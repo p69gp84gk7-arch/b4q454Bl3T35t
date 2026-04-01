@@ -293,7 +293,7 @@ function isPointInPolygon(point, vs) {
     for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) { let xi = vs[i][0], yi = vs[i][1], xj = vs[j][0], yj = vs[j][1]; let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi); if (intersect) inside = !inside; } return inside;
 }
 
-// --- GÉNÉRATION DE LA VUE 3D ---
+// --- GÉNÉRATION DE LA VUE 3D (AVEC SUIVI SOURIS) ---
 window.generate3DView = (id) => {
     const d = drawStore.find(x => x.id === id);
     if (!d || d.type !== 'area') return;
@@ -336,11 +336,36 @@ window.generate3DView = (id) => {
         const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain Naturel', colorscale: 'Earth', showscale: false };
         const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: 'Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6 };
 
-        const layout = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' } };
-        Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout);
+        const layout = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest' };
+        
+        // On dessine le graphique PUIS on ajoute le tracker de souris
+        Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout).then(() => {
+            const plotDiv = document.getElementById('plot-3d');
+            
+            // Quand la souris bouge sur la 3D
+            plotDiv.on('plotly_hover', (data) => {
+                if (data.points.length > 0) {
+                    const pt = data.points[0];
+                    const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]); // Conversion L93 vers GPS
+                    if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
+                    else cursorMarker.setLatLng([gps[1], gps[0]]);
+                }
+            });
+
+            // Quand la souris quitte le graphique 3D
+            plotDiv.addEventListener('mouseleave', () => {
+                if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
+            });
+        });
+        
     }, 100);
 };
 
+// Fixer le bouton de fermeture 3D pour qu'il efface aussi le point rouge
+document.querySelector('#header-3d button').onclick = () => {
+    document.getElementById('window-3d').style.display = 'none';
+    if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
+};
 // Drag & Drop Vue 3D
 const win3d = document.getElementById('window-3d'), header3d = document.getElementById('header-3d');
 let isDragging3D = false, offset3DX = 0, offset3DY = 0;
@@ -663,22 +688,27 @@ window.changeProjectFeatureColor = (pid, fid, color) => { const p = projectStore
 window.deleteProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); map.removeLayer(f.layer); p.features = p.features.filter(x => x.id !== fid); updateProjectUI(); };
 window.generateProfileFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); generateProfile(f); };
 
-// Vue 3D depuis un projet
+// Vue 3D depuis un projet (AVEC SUIVI SOURIS)
 window.generate3DViewFromProject = (pid, fid) => {
     const p = projectStore.find(x => x.id === pid); if (!p) return;
     const f = p.features.find(x => x.id === fid); if (!f || f.type !== 'area') return;
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
+    
     document.getElementById('window-3d').style.display = 'block';
     document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul de la 3D en cours... ⏳</h3>';
+    
     setTimeout(() => {
         const l93Pts = f.ptsGPS.map(pt => proj4("EPSG:4326", "EPSG:2154", [pt.lng, pt.lat]));
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         l93Pts.forEach(pt => { if (pt[0] < minX) minX = pt[0]; if (pt[0] > maxX) maxX = pt[0]; if (pt[1] < minY) minY = pt[1]; if (pt[1] > maxY) maxY = pt[1]; });
+        
         let borderPtsWithZ = [];
         l93Pts.forEach(pt => { let z = getZ(pt); if (z !== null) borderPtsWithZ.push({ x: pt[0], y: pt[1], z: z }); });
+        
         const maxPts = 40; const step = Math.max(1, (maxX - minX) / maxPts, (maxY - minY) / maxPts);
         let xVals = [], yVals = [], zTerrain = [], zRefPlane = [];
         for (let x = minX; x <= maxX; x += step) xVals.push(x);
+        
         for (let y = minY; y <= maxY; y += step) {
             let rowTerrain = [], rowRef = []; yVals.push(y);
             for (let x = minX; x <= maxX; x += step) {
@@ -691,10 +721,29 @@ window.generate3DViewFromProject = (pid, fid) => {
             }
             zTerrain.push(rowTerrain); zRefPlane.push(rowRef);
         }
-        Plotly.newPlot('plot-3d', [
-            { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain Naturel', colorscale: 'Earth', showscale: false },
-            { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: 'Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6 }
-        ], { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' } });
+        
+        const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain Naturel', colorscale: 'Earth', showscale: false };
+        const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: 'Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6 };
+
+        const layout = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest' };
+        
+        Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout).then(() => {
+            const plotDiv = document.getElementById('plot-3d');
+            
+            plotDiv.on('plotly_hover', (data) => {
+                if (data.points.length > 0) {
+                    const pt = data.points[0];
+                    const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]);
+                    if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
+                    else cursorMarker.setLatLng([gps[1], gps[0]]);
+                }
+            });
+
+            plotDiv.addEventListener('mouseleave', () => {
+                if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
+            });
+        });
+        
     }, 100);
 };
 window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); }); updateProjectUI(); };
