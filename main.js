@@ -522,7 +522,7 @@ window.addEventListener('load', () => {
 // ==========================================
 // 11. SAUVEGARDE ET CHARGEMENT CLOUD (GOOGLE SHEETS)
 // ==========================================
-const SCRIPT_URL = "VOTRE_URL_WEB_APP_ICI"; // <--- REMETTEZ VOTRE LIEN GOOGLE SCRIPT ICI !!!
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBDML2povAnb6LYbycTRxl8WLzsSPJPDC-FTAARpEa7gaUQMRJW49J4zFuf30qyEcKxQ/exec"; // <--- REMETTEZ VOTRE LIEN GOOGLE SCRIPT ICI !!!
 
 window.saveProject = async () => {
     const projectName = document.getElementById('project-name').value.trim();
