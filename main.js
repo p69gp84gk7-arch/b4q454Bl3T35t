@@ -166,17 +166,27 @@ window.finalizeDraw = () => {
     if (!currentTool || currentPoints.length < 2) { alert("Veuillez placer au moins 2 points."); return; }
     try {
         const type = currentTool; const color = type === 'area' ? '#e67e22' : '#3498db';
-        const layer = type === 'area' ? L.polygon(currentPoints, { color, weight: 3, fillOpacity: 0.3 }).addTo(map) : L.polyline(currentPoints, { color, weight: 4 }).addTo(map);
+        const weight = type === 'area' ? 3 : 4; // Épaisseur par défaut
+        
+        const layer = type === 'area' ? L.polygon(currentPoints, { color, weight, fillOpacity: 0.3 }).addTo(map) : L.polyline(currentPoints, { color, weight }).addTo(map);
         if (tempLayer) map.removeLayer(tempLayer); tempLayer = null;
         
         const defaultName = type === 'line' ? 'Mon Parcours' : 'Ma Surface';
-        const drawObj = { id: Date.now(), type, name: defaultName, layer, ptsGPS: [...currentPoints], visible: true, color, editGroup: L.layerGroup().addTo(map) };
-        drawStore.push(drawObj); recalculateStats(drawObj); makeEditable(drawObj);
+        const drawObj = { 
+            id: Date.now(), type, name: defaultName, layer, ptsGPS: [...currentPoints], 
+            visible: true, color, weight, isEditing: false, editGroup: L.layerGroup().addTo(map) 
+        };
+        
+        drawStore.push(drawObj); 
+        recalculateStats(drawObj); 
+        // Note : On ne lance plus makeEditable(drawObj) ici !
         
         if (type === 'line') { currentProfileDrawId = drawObj.id; generateProfile(drawObj); } 
         currentTool = null; currentPoints = [];
         document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
         document.getElementById('btn-finish').style.display = 'none';
+        
+        updateDrawUI(); // Met à jour le menu de droite
     } catch (e) { console.error(e); }
 };
 
@@ -196,7 +206,7 @@ function recalculateStats(d) {
         for (let i = 0; i < l93.length; i++) { let j = (i+1) % l93.length; area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; }
         d.statsHtml = `Surface: <b>${(Math.abs(area)/2).toFixed(1)} m²</b>`;
     }
-    const statsDiv = document.getElementById(`stats-${d.id}`); if (statsDiv) statsDiv.innerHTML = d.statsHtml; else updateDrawUI();
+    const statsDiv = document.getElementById(`stats-${d.id}`); if (statsDiv) statsDiv.innerHTML = d.statsHtml;
 }
 
 function updateDrawUI() {
@@ -206,25 +216,76 @@ function updateDrawUI() {
         if (d.type === 'line') {
             actionButtons = `<button onclick="generateProfileById(${d.id})" style="width:100%; margin-top:8px; font-size:0.8em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:5px; border-radius:3px;">📈 Afficher le profil</button>`;
         } else {
-            // LES 4 BOUTONS POUR LES SURFACES SONT ICI
             actionButtons = `
             <div style="display:flex; gap:5px; margin-top:8px; flex-wrap:wrap;">
-                <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.7em; cursor:pointer; background:#2980b9; color:white; border:none; padding:4px; border-radius:3px;" title="Base horizontale (Lac)">💧 Creux</button>
-                <button id="btn-vol-mound-${d.id}" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.7em; cursor:pointer; background:#e67e22; color:white; border:none; padding:4px; border-radius:3px;" title="Base horizontale (Tas sur sol plat)">⛰️ Tas</button>
-                <button id="btn-vol-slope-${d.id}" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; font-size:0.75em; cursor:pointer; background:#8e44ad; color:white; border:none; padding:4px; border-radius:3px;" title="Calcul sur pente auto">📐 Pente (Auto)</button>
+                <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.7em; cursor:pointer; background:#2980b9; color:white; border:none; padding:4px; border-radius:3px;">💧 Creux</button>
+                <button id="btn-vol-mound-${d.id}" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.7em; cursor:pointer; background:#e67e22; color:white; border:none; padding:4px; border-radius:3px;">⛰️ Tas</button>
+                <button id="btn-vol-slope-${d.id}" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; font-size:0.75em; cursor:pointer; background:#8e44ad; color:white; border:none; padding:4px; border-radius:3px;">📐 Pente (Auto)</button>
                 <button onclick="generate3DView(${d.id})" style="flex:1; min-width:100%; font-size:0.75em; cursor:pointer; background:#34495e; color:white; border:1px solid #555; padding:5px; border-radius:3px; margin-top:2px;">👁️ Contrôle Vue 3D</button>
             </div>`;
         }
 
-        list.innerHTML += `<div class="card" style="border-left-color: ${d.color}"><div class="card-header"><div><input type="checkbox" ${d.visible ? 'checked' : ''} onchange="toggleDraw(${d.id})"> <input type="color" class="color-picker" value="${d.color}" onchange="changeColor(${d.id}, this.value)"> <strong style="cursor:pointer;" onclick="renameDraw(${d.id})" title="Cliquez pour renommer">${d.name}</strong></div><button class="btn-del" onclick="deleteDraw(${d.id})">✕</button></div><div id="stats-${d.id}" style="margin-top:5px; font-size:1.1em;">${d.statsHtml}</div>${actionButtons}</div>`;
+        const editBtnText = d.isEditing ? '✅ Fin édition' : '✏️ Éditer';
+        const editControls = d.isEditing ? `<div style="margin-top:5px; font-size:0.85em; background:#222; padding:5px; border-radius:3px; display:flex; align-items:center; gap:5px;">Épaisseur: <input type="range" min="1" max="10" value="${d.weight}" onchange="changeFeatureWeight(${d.id}, this.value, false)"></div>` : '';
+
+        list.innerHTML += `
+        <div class="card" style="border-left-color: ${d.color}">
+            <div class="card-header">
+                <div style="display:flex; align-items:center;">
+                    <input type="checkbox" ${d.visible ? 'checked' : ''} onchange="toggleDraw(${d.id})"> 
+                    <input type="color" class="color-picker" value="${d.color}" onchange="changeColor(${d.id}, this.value)"> 
+                    <strong style="cursor:pointer;" onclick="renameDraw(${d.id})" title="Cliquez pour renommer">${d.name}</strong>
+                    <button onclick="toggleEditMode(${d.id}, false)" style="background:${d.isEditing?'#27ae60':'#7f8c8d'}; color:white; border:none; border-radius:3px; padding:2px 5px; cursor:pointer; font-size:0.7em; margin-left:5px;">${editBtnText}</button>
+                </div>
+                <button class="btn-del" onclick="deleteDraw(${d.id})">✕</button>
+            </div>
+            ${editControls}
+            <div id="stats-${d.id}" style="margin-top:5px; font-size:1.1em;">${d.statsHtml}</div>
+            ${actionButtons}
+        </div>`;
+    });
+}
+
+// --- NOUVEAU : GESTION DE L'ÉDITION ---
+window.toggleEditMode = (id, isProject = false, projectId = null) => {
+    let d = isProject ? projectStore.find(p => p.id === projectId)?.features.find(f => f.id === id) : drawStore.find(x => x.id === id);
+    if (!d) return;
+
+    d.isEditing = !d.isEditing;
+    if (!d.editGroup) d.editGroup = L.layerGroup().addTo(map);
+
+    if (d.isEditing && d.visible) { makeEditable(d, isProject, projectId); } 
+    else { d.editGroup.clearLayers(); }
+
+    if (isProject) updateProjectUI(); else updateDrawUI();
+};
+
+window.changeFeatureWeight = (id, weight, isProject = false, projectId = null) => {
+    let d = isProject ? projectStore.find(p => p.id === projectId)?.features.find(f => f.id === id) : drawStore.find(x => x.id === id);
+    if (!d) return;
+    d.weight = parseInt(weight);
+    d.layer.setStyle({ weight: d.weight });
+};
+
+function makeEditable(d, isProject = false, projectId = null) {
+    if(d.editGroup) d.editGroup.clearLayers(); 
+    if (!d.visible || !d.isEditing) return;
+    const icon = L.divIcon({ className: 'edit-handle', iconSize: [12, 12] });
+    d.ptsGPS.forEach((pt, idx) => {
+        const marker = L.marker(pt, { icon, draggable: true }).addTo(d.editGroup);
+        marker.on('drag', (e) => { 
+            d.ptsGPS[idx] = e.latlng; d.layer.setLatLngs(d.ptsGPS); 
+            recalculateStats(d); 
+            if (d.type === 'line') generateProfile(d); 
+        });
+        marker.on('dragend', () => { if (isProject) updateProjectUI(); else updateDrawUI(); });
     });
 }
 
 window.renameDraw = (id) => { const d = drawStore.find(x => x.id === id); if (!d) return; const newName = prompt("Nouveau nom :", d.name); if (newName && newName.trim() !== "") { d.name = newName.trim(); updateDrawUI(); } };
-function makeEditable(d) { d.editGroup.clearLayers(); if (!d.visible) return; const icon = L.divIcon({ className: 'edit-handle', iconSize: [12, 12] }); d.ptsGPS.forEach((pt, idx) => { const marker = L.marker(pt, { icon, draggable: true }).addTo(d.editGroup); marker.on('drag', (e) => { d.ptsGPS[idx] = e.latlng; d.layer.setLatLngs(d.ptsGPS); recalculateStats(d); if (d.type === 'line') generateProfile(d); }); }); }
-window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visible = !d.visible; if (d.visible) { d.layer.addTo(map); makeEditable(d); } else { map.removeLayer(d.layer); d.editGroup.clearLayers(); } };
+window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visible = !d.visible; if (d.visible) { d.layer.addTo(map); if(d.isEditing) makeEditable(d); } else { map.removeLayer(d.layer); if(d.editGroup) d.editGroup.clearLayers(); } updateDrawUI(); };
 window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id); if (!d) return; d.color = color; d.layer.setStyle({ color: color }); updateDrawUI(); if (chartInstance && currentProfileDrawId === id) { chartInstance.data.datasets[0].borderColor = color; chartInstance.data.datasets[0].backgroundColor = color + '33'; chartInstance.update(); } };
-window.deleteDraw = (id) => { const d = drawStore.find(x => x.id === id); map.removeLayer(d.layer); map.removeLayer(d.editGroup); drawStore = drawStore.filter(x => x.id !== id); updateDrawUI(); if(currentProfileDrawId === id) { document.getElementById('profile-window').style.display = 'none'; currentProfileDrawId = null; } };
+window.deleteDraw = (id) => { const d = drawStore.find(x => x.id === id); map.removeLayer(d.layer); if(d.editGroup) map.removeLayer(d.editGroup); drawStore = drawStore.filter(x => x.id !== id); updateDrawUI(); if(currentProfileDrawId === id) { document.getElementById('profile-window').style.display = 'none'; currentProfileDrawId = null; } };
 
 // --- CALCUL DE VOLUME ---
 window.calculateVolume = (id, type) => {
@@ -338,40 +399,33 @@ window.generate3DView = (id) => {
 
         const layout = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest' };
         
-        // On dessine le graphique PUIS on ajoute le tracker de souris
         Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout).then(() => {
             const plotDiv = document.getElementById('plot-3d');
-            
-            // Quand la souris bouge sur la 3D
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
-                    const pt = data.points[0];
-                    const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]); // Conversion L93 vers GPS
+                    const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]);
                     if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
                     else cursorMarker.setLatLng([gps[1], gps[0]]);
                 }
             });
-
-            // Quand la souris quitte le graphique 3D
-            plotDiv.addEventListener('mouseleave', () => {
-                if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
-            });
+            plotDiv.addEventListener('mouseleave', () => { if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } });
         });
-        
     }, 100);
 };
 
-// Fixer le bouton de fermeture 3D pour qu'il efface aussi le point rouge
+// Fixer le bouton de fermeture 3D
 document.querySelector('#header-3d button').onclick = () => {
     document.getElementById('window-3d').style.display = 'none';
     if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
 };
+
 // Drag & Drop Vue 3D
 const win3d = document.getElementById('window-3d'), header3d = document.getElementById('header-3d');
 let isDragging3D = false, offset3DX = 0, offset3DY = 0;
 header3d.addEventListener('mousedown', (e) => { if (e.target.tagName === 'BUTTON') return; isDragging3D = true; const rect = win3d.getBoundingClientRect(); offset3DX = e.clientX - rect.left; offset3DY = e.clientY - rect.top; });
 document.addEventListener('mousemove', (e) => { if (!isDragging3D) return; win3d.style.left = Math.max(0, e.clientX - offset3DX) + 'px'; win3d.style.top = Math.max(0, e.clientY - offset3DY) + 'px'; });
 document.addEventListener('mouseup', () => { isDragging3D = false; });
+
 // ==========================================
 // 6. PROFIL ALTIMÉTRIQUE HAUTE PRÉCISION
 // ==========================================
@@ -554,17 +608,18 @@ window.saveProject = async () => {
     if (!projectName) return alert("Veuillez taper un nom de projet pour sauvegarder.");
     if (drawStore.length === 0) return alert("Aucune mesure à sauvegarder dans le panneau de droite !");
 
-    // NOUVEAU : On inclut "statsHtml" pour sauvegarder les distances, surfaces et VOLUMES !
-    const exportData = drawStore.map(d => ({ id: d.id, type: d.type, name: d.name, color: d.color, ptsGPS: d.ptsGPS, totalDist: d.totalDist, statsHtml: d.statsHtml }));
+    // On sauvegarde l'épaisseur ("weight") et on désactive l'édition avant de sauver
+    const exportData = drawStore.map(d => ({ 
+        id: d.id, type: d.type, name: d.name, color: d.color, weight: d.weight, 
+        ptsGPS: d.ptsGPS, totalDist: d.totalDist, statsHtml: d.statsHtml 
+    }));
 
     const btn = document.querySelector('button[onclick="saveProject()"]');
-    const oldText = btn.innerText;
-    btn.innerText = "⏳"; btn.disabled = true;
+    const oldText = btn.innerText; btn.innerText = "⏳"; btn.disabled = true;
 
     try {
         const response = await fetch(SCRIPT_URL, {
-            method: "POST",
-            redirect: "follow",
+            method: "POST", redirect: "follow",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify({ projectName: projectName, projectData: JSON.stringify(exportData) })
         });
@@ -573,19 +628,16 @@ window.saveProject = async () => {
         
         if (result.status === "success") {
             const newProject = { id: Date.now(), name: projectName, visible: true, features: [...drawStore] };
-            newProject.features.forEach(f => { if (f.editGroup) map.removeLayer(f.editGroup); });
+            newProject.features.forEach(f => { f.isEditing = false; if (f.editGroup) map.removeLayer(f.editGroup); });
             projectStore.push(newProject);
             
             drawStore = [];
             if (currentProfileDrawId) { document.getElementById('profile-window').style.display = 'none'; currentProfileDrawId = null; }
-            updateDrawUI();
-            updateProjectUI();
-            
+            updateDrawUI(); updateProjectUI();
             alert("✅ Projet sauvegardé et déplacé dans vos calques à gauche !");
         }
     } catch (e) {
-        console.error("Erreur de sauvegarde :", e); 
-        alert("Erreur de sauvegarde. Vérifiez que votre lien Google Script est bien inséré dans le code.");
+        console.error(e); alert("Erreur de sauvegarde. Vérifiez votre lien Google Script.");
     } finally {
         btn.innerText = oldText; btn.disabled = false;
     }
@@ -596,44 +648,38 @@ window.loadProject = async () => {
     if (!projectName) return alert("Veuillez taper le nom du projet à charger.");
 
     const btn = document.querySelector('button[onclick="loadProject()"]');
-    const oldText = btn.innerText;
-    btn.innerText = "⏳"; btn.disabled = true;
+    const oldText = btn.innerText; btn.innerText = "⏳"; btn.disabled = true;
 
     try {
         const response = await fetch(`${SCRIPT_URL}?projectName=${encodeURIComponent(projectName)}`);
         const result = await response.json();
-
         if (result.status === "error") return alert("❌ Projet introuvable ! Vérifiez le nom.");
 
         const loadedData = JSON.parse(result.data);
         const newProject = { id: Date.now(), name: projectName, visible: true, features: [] };
 
         loadedData.forEach(d => {
-            const layer = d.type === 'area' ? L.polygon(d.ptsGPS, { color: d.color, weight: 3, fillOpacity: 0.3 }).addTo(map) : L.polyline(d.ptsGPS, { color: d.color, weight: 4 }).addTo(map);
-            // NOUVEAU : On récupère les stats sauvegardées
-            newProject.features.push({ id: d.id, type: d.type, name: d.name, layer: layer, ptsGPS: d.ptsGPS, visible: true, color: d.color, totalDist: d.totalDist, statsHtml: d.statsHtml });
+            const weight = d.weight || (d.type === 'area' ? 3 : 4);
+            const layer = d.type === 'area' ? L.polygon(d.ptsGPS, { color: d.color, weight: weight, fillOpacity: 0.3 }).addTo(map) : L.polyline(d.ptsGPS, { color: d.color, weight: weight }).addTo(map);
+            newProject.features.push({ 
+                id: d.id, type: d.type, name: d.name, layer: layer, ptsGPS: d.ptsGPS, visible: true, color: d.color, 
+                weight: weight, isEditing: false, editGroup: L.layerGroup().addTo(map), 
+                totalDist: d.totalDist, statsHtml: d.statsHtml 
+            });
         });
 
-        projectStore.push(newProject);
-        updateProjectUI();
-        
-        const group = L.featureGroup(newProject.features.map(f => f.layer));
-        map.fitBounds(group.getBounds());
-        
+        projectStore.push(newProject); updateProjectUI();
+        const group = L.featureGroup(newProject.features.map(f => f.layer)); map.fitBounds(group.getBounds());
         alert("✅ Projet chargé dans vos calques à gauche !");
     } catch (e) {
-        console.error("Erreur de chargement :", e); 
-        alert("Erreur de chargement. Vérifiez votre lien Google Script.");
+        console.error(e); alert("Erreur de chargement. Vérifiez votre lien Google Script.");
     } finally {
         btn.innerText = oldText; btn.disabled = false;
     }
 };
 
 function updateProjectUI() {
-    const list = document.getElementById('project-list');
-    if (!list) return;
-    list.innerHTML = '';
-    
+    const list = document.getElementById('project-list'); if (!list) return; list.innerHTML = '';
     projectStore.forEach(p => {
         let featuresHtml = '';
         p.features.forEach(f => {
@@ -644,7 +690,9 @@ function updateProjectUI() {
                 actionButton = `<button onclick="generate3DViewFromProject(${p.id}, ${f.id})" style="width:100%; margin-top:5px; font-size:0.75em; cursor:pointer; background:#34495e; color:white; border:1px solid #555; padding:3px; border-radius:3px;">👁️ Contrôle Vue 3D</button>`;
             }
 
-            // NOUVEAU : On affiche les stats (f.statsHtml) juste en dessous du nom
+            const editBtnText = f.isEditing ? '✅ Fin édition' : '✏️ Éditer';
+            const editControls = f.isEditing ? `<div style="margin-top:5px; font-size:0.85em; background:#333; padding:5px; border-radius:3px; display:flex; align-items:center; gap:5px;">Épaisseur: <input type="range" min="1" max="10" value="${f.weight}" onchange="changeFeatureWeight(${f.id}, this.value, true, ${p.id})"></div>` : '';
+
             featuresHtml += `
                 <div style="margin-left: 10px; border-left: 3px solid ${f.color}; padding-left: 8px; margin-top: 8px; background: #1a1a1a; padding-bottom: 5px;">
                     <div style="display:flex; justify-content: space-between; align-items:center;">
@@ -652,43 +700,30 @@ function updateProjectUI() {
                             <input type="checkbox" ${f.visible ? 'checked' : ''} onchange="toggleProjectFeature(${p.id}, ${f.id})">
                             <input type="color" class="color-picker" value="${f.color}" onchange="changeProjectFeatureColor(${p.id}, ${f.id}, this.value)">
                             <span style="font-size:0.9em; font-weight:bold;">${f.name}</span>
+                            <button onclick="toggleEditMode(${f.id}, true, ${p.id})" style="background:${f.isEditing?'#27ae60':'#7f8c8d'}; color:white; border:none; border-radius:3px; padding:2px 5px; cursor:pointer; font-size:0.7em; margin-left:5px;">${editBtnText}</button>
                         </div>
                         <button class="btn-del" onclick="deleteProjectFeature(${p.id}, ${f.id})" style="font-size:0.9em;">✕</button>
                     </div>
-                    <div style="font-size:0.85em; color:#ddd; margin: 5px 0;">
-                        ${f.statsHtml || '<i>Stats non disponibles</i>'}
-                    </div>
+                    ${editControls}
+                    <div style="font-size:0.85em; color:#ddd; margin: 5px 0;">${f.statsHtml || '<i>Stats non disponibles</i>'}</div>
                     ${actionButton}
                 </div>
             `;
         });
 
-        list.innerHTML += `
-        <div class="card">
-            <div class="card-header">
-                <div>
-                    <input type="checkbox" ${p.visible ? 'checked' : ''} onchange="toggleProject(${p.id})">
-                    <strong style="color:var(--accent); font-size:1.1em;">📁 ${p.name}</strong>
-                </div>
-                <button class="btn-del" onclick="deleteProject(${p.id})">✕</button>
-            </div>
-            <details style="margin-top: 8px; cursor: pointer;">
-                <summary style="font-size: 0.85em; color: #aaa;">Voir le contenu (${p.features.length} calques)</summary>
-                ${featuresHtml}
-            </details>
-        </div>`;
+        list.innerHTML += `<div class="card"><div class="card-header"><div><input type="checkbox" ${p.visible ? 'checked' : ''} onchange="toggleProject(${p.id})"><strong style="color:var(--accent); font-size:1.1em;">📁 ${p.name}</strong></div><button class="btn-del" onclick="deleteProject(${p.id})">✕</button></div><details style="margin-top: 8px; cursor: pointer;"><summary style="font-size: 0.85em; color: #aaa;">Voir le contenu (${p.features.length} calques)</summary>${featuresHtml}</details></div>`;
     });
 }
 
 // Actions sur les projets sauvegardés
-window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); }); updateProjectUI(); };
-window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => map.removeLayer(f.layer)); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
-window.toggleProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.visible = !f.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); updateProjectUI(); };
+window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } }); updateProjectUI(); };
+window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); }); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
+window.toggleProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.visible = !f.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } updateProjectUI(); };
 window.changeProjectFeatureColor = (pid, fid, color) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.color = color; f.layer.setStyle({color: color}); updateProjectUI(); };
-window.deleteProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); map.removeLayer(f.layer); p.features = p.features.filter(x => x.id !== fid); updateProjectUI(); };
+window.deleteProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); p.features = p.features.filter(x => x.id !== fid); updateProjectUI(); };
 window.generateProfileFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); generateProfile(f); };
 
-// Vue 3D depuis un projet (AVEC SUIVI SOURIS)
+// Vue 3D depuis un projet
 window.generate3DViewFromProject = (pid, fid) => {
     const p = projectStore.find(x => x.id === pid); if (!p) return;
     const f = p.features.find(x => x.id === fid); if (!f || f.type !== 'area') return;
@@ -729,19 +764,14 @@ window.generate3DViewFromProject = (pid, fid) => {
         
         Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout).then(() => {
             const plotDiv = document.getElementById('plot-3d');
-            
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
-                    const pt = data.points[0];
-                    const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]);
+                    const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]);
                     if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
                     else cursorMarker.setLatLng([gps[1], gps[0]]);
                 }
             });
-
-            plotDiv.addEventListener('mouseleave', () => {
-                if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
-            });
+            plotDiv.addEventListener('mouseleave', () => { if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } });
         });
         
     }, 100);
