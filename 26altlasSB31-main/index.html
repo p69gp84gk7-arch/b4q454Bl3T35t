@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>TopoProfiler - Édition, KMZ & Mesures</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/geotiff@2.0.5/dist-browser/geotiff.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://unpkg.com/leaflet-kmz@2.0.0/dist/leaflet-kmz.js"></script>
+
+    <style>
+        :root { --accent: #00d1b2; --bg: #1a1a1a; --panel: #252525; }
+        body { margin: 0; display: flex; height: 100vh; background: var(--bg); color: white; font-family: sans-serif; overflow: hidden; }
+        
+        #left-panel { width: 280px; background: var(--panel); padding: 15px; border-right: 1px solid #444; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; }
+        #map { flex-grow: 1; background: #000; cursor: crosshair; position: relative; }
+        #right-panel { width: 300px; background: var(--panel); padding: 15px; border-left: 1px solid #444; display: flex; flex-direction: column; z-index: 10; }
+
+        h3 { color: var(--accent); margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .subtitle { font-size: 0.8em; color: #888; text-transform: uppercase; margin-bottom: 10px; margin-top: 15px; font-weight: bold; }
+
+        .btn-tool { width: 100%; padding: 10px; margin-bottom: 8px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; opacity: 0.8; }
+        .btn-tool:hover { opacity: 1; }
+        .btn-tool.active { box-shadow: 0 0 0 3px white; opacity: 1; }
+        
+        #btn-line { background: #3498db; color: white; }
+        #btn-area { background: #e67e22; color: white; }
+        #btn-finish { display: none; background: #e74c3c; color: white; width: 100%; padding: 15px; font-size: 1.1em; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+
+        .card { background: #111; padding: 10px; margin-bottom: 10px; border-radius: 4px; border-left: 4px solid var(--accent); position: relative; font-size: 0.85em; line-height: 1.4; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+        .btn-del { color: #ff4757; background: none; border: none; cursor: pointer; font-weight: bold; font-size: 1.1em; }
+        .color-picker { border: none; width: 20px; height: 20px; cursor: pointer; padding: 0; background: none; }
+        .slider-width { width: 60px; vertical-align: middle; }
+
+        .coords { background: #000; padding: 10px; border-radius: 4px; font-family: monospace; margin-top: auto; border: 1px solid #333; }
+        .edit-handle { background: white; border: 2px solid #e74c3c; border-radius: 50%; cursor: move; box-shadow: 0 0 3px rgba(0,0,0,0.5); }
+
+        #profile-window {
+            position: absolute; bottom: 20px; left: 300px; 
+            width: 600px; height: 320px; min-width: 450px; min-height: 250px; 
+            background: white; border-radius: 8px; z-index: 3000; display: none; 
+            box-shadow: 0 5px 25px rgba(0,0,0,0.5); border: 1px solid #ccc;
+            resize: both !important; overflow: hidden !important; box-sizing: border-box;
+            padding-bottom: 15px; padding-right: 15px;
+        }
+        #profile-header {
+            height: 40px; background: #f8f9fa; padding: 0 10px; cursor: move; 
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #ddd; color: #333; font-weight: bold; user-select: none; 
+            border-top-left-radius: 7px; border-top-right-radius: 7px;
+        }
+        #profile-controls { background: #f1f2f6; padding: 8px 15px; font-size: 0.8em; border-bottom: 1px solid #ddd; color: #333; display: flex; flex-direction: column; gap: 6px; }
+        #profile-body { height: calc(100% - 95px); width: 100%; position: relative; padding: 10px; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+    <div id="left-panel">
+        <h3>TopoProfiler</h3>
+      <div class="subtitle">1. Altitudes MNT (Serveur)</div>
+        
+        <select id="mnt-select" style="width: 100%; padding: 5px; margin-bottom: 5px; font-size: 0.8em; background: #333; color: white; border: 1px solid #555; border-radius: 3px;">
+            <option value="">-- Choisir un secteur MNT --</option>
+            <option value="https://raw.githubusercontent.com/p69gp84gk7-arch/26altlasSB31/main/tif/MNT_2019_100_498_6188_L93.tif">MNT Secteur 498-6188</option>
+            <option value="https://raw.githubusercontent.com/p69gp84gk7-arch/26altlasSB31/main/tif/MNT_2019_100_498_6189_L93.tif">MNT Secteur 498-6189</option>
+            <option value="https://raw.githubusercontent.com/p69gp84gk7-arch/26altlasSB31/main/tif/MNT_2019_100_498_6190_L93.tif">MNT Secteur 498_6190</option>
+            <option value="https://raw.githubusercontent.com/p69gp84gk7-arch/26altlasSB31/main/tif/MNT_2019_100_499_6188_L93.tif">MNT Secteur 499_6188</option>
+            <option value="https://raw.githubusercontent.com/p69gp84gk7-arch/26altlasSB31/main/tif/MNT_2019_100_499_6189_L93.tif">MNT Secteur 499_6189</option>
+            <option value="https://raw.githubusercontent.com/p69gp84gk7-arch/26altlasSB31/main/tif/MNT_2019_100_499_6190_L93.tif">MNT Secteur 499_6190</option>
+            <option value="https://raw.githubusercontent.com/p69gp84gk7-arch/26altlasSB31/main/tif/MNT_2019_100_500_6188_L93.tif">MNT Secteur 500_6188</option>
+            <option value="https://raw.githubusercontent.com/p69gp84gk7-arch/26altlasSB31/main/tif/MNT_2019_100_500_6189_L93.tif">MNT Secteur 500_6189</option>
+            <option value="https://raw.githubusercontent.com/p69gp84gk7-arch/26altlasSB31/main/tif/MNT_2019_100_500_6190_L93.tif">MNT Secteur 500_6190</option>
+            <option value="https://raw.githubusercontent.com/p69gp84gk7-arch/26altlasSB31/main/tif/MNT_2019_100_501_6188_L93.tif">MNT Secteur 501_6188</option>
+            <option value="https://raw.githubusercontent.com/p69gp84gk7-arch/26altlasSB31/main/tif/MNT_2019_100_501_6189_L93.tif">MNT Secteur 501_6189</option>
+            
+        </select>
+        
+        <button onclick="loadRemoteMNT()" style="width: 100%; padding: 6px; margin-bottom: 10px; font-size: 0.85em; cursor: pointer; background: #00d1b2; color: #111; border: none; border-radius: 3px; font-weight: bold;">☁️ Télécharger et Afficher</button>
+        
+        <div style="font-size: 0.7em; color: #888; text-align: center; margin-bottom: 5px;">Ou importer un fichier local :</div>
+        <input type="file" id="mnt-input" multiple style="font-size:0.7em; margin-bottom:10px; width:100%;">
+        
+        <div id="mnt-list"></div>
+
+        <div class="subtitle">2. Calques & Pistes</div>
+        <div id="kmz-list"></div>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="right-panel">
+        <div class="subtitle">Outils (Clic pour tracer)</div>
+        <button id="btn-line" class="btn-tool" onclick="startTool('line')">📈 Ligne (Profil + Pente)</button>
+        <button id="btn-area" class="btn-tool" onclick="startTool('area')">📐 Surface (Polygone)</button>
+        <button id="btn-finish" onclick="finalizeDraw()">✅ TERMINER LE TRACÉ</button>
+        
+        <div class="subtitle" style="margin-top: 15px;">Mesures Éditables</div>
+        <div id="measure-list" style="flex-grow:1; overflow-y:auto;"></div>
+
+        <div class="coords">
+            X : <span id="cur-x">0.00</span><br>
+            Y : <span id="cur-y">0.00</span><br>
+            Z : <span id="cur-z" style="color:var(--accent); font-weight:bold; font-size:1.1em;">---</span> m
+        </div>
+    </div>
+
+    <div id="profile-window">
+        <div id="profile-header">
+            <span>📈 Profil Altimétrique</span>
+            <div>
+                <button onclick="exportChartCSV()" style="background:#2ecc71; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size: 0.85em;">💾 CSV</button>
+                <button onclick="exportChartPNG()" style="background:#3498db; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; margin-right: 10px; font-size: 0.85em;">🖼️ PNG</button>
+                <button onclick="document.getElementById('profile-window').style.display='none'" style="cursor:pointer; background:#e74c3c; color:white; border:none; padding:4px 8px; border-radius:4px; font-size: 0.85em;">✕</button>
+            </div>
+        </div>
+        
+        <div id="profile-controls">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <strong style="width: 50px;">Axe X :</strong>
+                <span style="font-size:0.9em; color:#666;">Min</span> <input type="range" id="x-min" oninput="updateScalesLive()" style="flex-grow: 1; cursor:pointer;">
+                <span style="font-size:0.9em; color:#666;">Max</span> <input type="range" id="x-max" oninput="updateScalesLive()" style="flex-grow: 1; cursor:pointer;">
+                <span id="x-vals" style="width: 90px; text-align: right; font-family: monospace; font-weight: bold; color: #2980b9;">0m - 0m</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <strong style="width: 50px;">Axe Z :</strong>
+                <span style="font-size:0.9em; color:#666;">Min</span> <input type="range" id="y-min" oninput="updateScalesLive()" style="flex-grow: 1; cursor:pointer;">
+                <span style="font-size:0.9em; color:#666;">Max</span> <input type="range" id="y-max" oninput="updateScalesLive()" style="flex-grow: 1; cursor:pointer;">
+                <span id="y-vals" style="width: 90px; text-align: right; font-family: monospace; font-weight: bold; color: #e67e22;">0m - 0m</span>
+            </div>
+        </div>
+
+        <div id="profile-body">
+            <canvas id="profileChart"></canvas>
+        </div>
+    </div>
+
+    <script src="pistes.js"></script>
+    <script src="canon.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
