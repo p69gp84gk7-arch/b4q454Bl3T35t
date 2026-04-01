@@ -102,6 +102,11 @@
         <button id="btn-finish" onclick="finalizeDraw()">✅ TERMINER LE TRACÉ</button>
         
         <div class="subtitle" style="margin-top: 15px;">Mesures Éditables</div>
+        <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <input type="text" id="project-name" placeholder="Nom du projet..." style="flex-grow: 1; padding: 5px; background: #333; color: white; border: 1px solid #555; border-radius: 3px;">
+            <button onclick="saveProject()" style="background:#2ecc71; color:white; border:none; border-radius:3px; cursor:pointer; padding: 0 10px; font-weight:bold;">Sauver</button>
+            <button onclick="loadProject()" style="background:#f39c12; color:white; border:none; border-radius:3px; cursor:pointer; padding: 0 10px; font-weight:bold;">Charger</button>
+        </div>
         <div id="measure-list" style="flex-grow:1; overflow-y:auto;"></div>
 
         <div class="coords">
