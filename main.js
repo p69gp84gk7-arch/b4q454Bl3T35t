@@ -144,18 +144,38 @@ function applyKmzStyle(id) {
 // ==========================================
 // 4. OUTILS DE TRACÉ
 // ==========================================
+let circleCenter = null;
+
 window.startTool = (tool) => {
-    currentTool = tool; currentPoints = [];
-    if (tempLayer) map.removeLayer(tempLayer);
+    currentTool = tool; currentPoints = []; circleCenter = null;
+    if (tempLayer) map.removeLayer(tempLayer); tempLayer = null;
     document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
     document.getElementById('btn-' + tool).classList.add('active');
+    
     const finishBtn = document.getElementById('btn-finish'); 
     document.getElementById('btn-' + tool).insertAdjacentElement('afterend', finishBtn);
-    finishBtn.style.display = 'block';
+    // Le cercle se ferme tout seul au 2ème clic
+    finishBtn.style.display = tool === 'circle' ? 'none' : 'block';
 };
 
 map.on('click', (e) => {
-    if (!currentTool) return; currentPoints.push(e.latlng);
+    if (!currentTool) return; 
+
+    // Outil CERCLE : 1er clic = Centre, 2ème clic = Rayon
+    if (currentTool === 'circle') {
+        if (!circleCenter) {
+            circleCenter = e.latlng;
+            tempLayer = L.circle(circleCenter, {radius: 0, color: '#9b59b6', weight: 3, fillOpacity: 0.3}).addTo(map);
+        } else {
+            const radius = map.distance(circleCenter, e.latlng);
+            finalizeCircle(circleCenter, radius);
+            circleCenter = null;
+        }
+        return;
+    }
+
+    // Outils Ligne et Surface
+    currentPoints.push(e.latlng);
     if (tempLayer) map.removeLayer(tempLayer);
     const color = currentTool === 'area' ? '#e67e22' : '#3498db';
     if (currentTool === 'area') tempLayer = L.polygon(currentPoints, { color, weight: 3, fillOpacity: 0.3 }).addTo(map);
@@ -166,45 +186,72 @@ window.finalizeDraw = () => {
     if (!currentTool || currentPoints.length < 2) { alert("Veuillez placer au moins 2 points."); return; }
     try {
         const type = currentTool; const color = type === 'area' ? '#e67e22' : '#3498db';
-        const weight = type === 'area' ? 3 : 4; // Épaisseur par défaut
+        const weight = type === 'area' ? 3 : 4;
         
         const layer = type === 'area' ? L.polygon(currentPoints, { color, weight, fillOpacity: 0.3 }).addTo(map) : L.polyline(currentPoints, { color, weight }).addTo(map);
         if (tempLayer) map.removeLayer(tempLayer); tempLayer = null;
         
         const defaultName = type === 'line' ? 'Mon Parcours' : 'Ma Surface';
-        const drawObj = { 
-            id: Date.now(), type, name: defaultName, layer, ptsGPS: [...currentPoints], 
-            visible: true, color, weight, isEditing: false, editGroup: L.layerGroup().addTo(map) 
-        };
-        
-        drawStore.push(drawObj); 
-        recalculateStats(drawObj); 
-        // Note : On ne lance plus makeEditable(drawObj) ici !
+        const drawObj = { id: Date.now(), type, name: defaultName, layer, ptsGPS: [...currentPoints], visible: true, color, weight, isEditing: false, editGroup: L.layerGroup().addTo(map) };
+        drawStore.push(drawObj); recalculateStats(drawObj); 
         
         if (type === 'line') { currentProfileDrawId = drawObj.id; generateProfile(drawObj); } 
         currentTool = null; currentPoints = [];
         document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
         document.getElementById('btn-finish').style.display = 'none';
-        
-        updateDrawUI(); // Met à jour le menu de droite
+        updateDrawUI();
     } catch (e) { console.error(e); }
 };
 
+window.finalizeCircle = (center, radius) => {
+    const color = '#9b59b6'; const weight = 3;
+    const layer = L.circle(center, {radius, color, weight, fillOpacity: 0.3}).addTo(map);
+    if (tempLayer) map.removeLayer(tempLayer); tempLayer = null;
+
+    // Le secret : on crée 64 points invisibles sur le contour pour tromper le moteur 3D !
+    const ptsGPS = generateCirclePoints(center, radius);
+
+    const drawObj = { 
+        id: Date.now(), type: 'circle', name: 'Mon Cercle', layer, 
+        ptsGPS, center, radius, // Nouvelles variables pour retenir la géométrie parfaite
+        visible: true, color, weight, isEditing: false, editGroup: L.layerGroup().addTo(map) 
+    };
+    drawStore.push(drawObj); recalculateStats(drawObj);
+    currentTool = null; document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
+    updateDrawUI();
+};
+
+window.generateCirclePoints = (center, radius) => {
+    const pts = [];
+    const centerL93 = proj4("EPSG:4326", "EPSG:2154", [center.lng, center.lat]);
+    for (let i=0; i<64; i++) {
+        const angle = (i * 2 * Math.PI) / 64;
+        const x = centerL93[0] + radius * Math.cos(angle);
+        const y = centerL93[1] + radius * Math.sin(angle);
+        const gps = proj4("EPSG:2154", "EPSG:4326", [x, y]);
+        pts.push({lat: gps[1], lng: gps[0]});
+    }
+    return pts;
+};
 // ==========================================
 // 5. CALCULS, ÉDITION LIVE ET VOLUMES 3D
 // ==========================================
 function recalculateStats(d) {
-    const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
-    if (d.type === 'line') {
-        let dist = 0;
-        for (let i = 1; i < l93.length; i++) dist += Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
-        const z1 = getZ(l93[0]) || 0; const z2 = getZ(l93[l93.length-1]) || 0;
-        const dz = Math.abs(z2 - z1); const pente = dist > 0 ? (dz / dist * 100).toFixed(1) : 0;
-        d.totalDist = dist; d.statsHtml = `Dist: <b>${dist.toFixed(1)} m</b> | ΔZ: <b>${dz.toFixed(1)} m</b> | Pente: <b>${pente}%</b>`;
+    if (d.type === 'circle') {
+        const area = Math.PI * d.radius * d.radius;
+        const perimeter = 2 * Math.PI * d.radius;
+        const diameter = 2 * d.radius;
+        d.statsHtml = `Diam: <b>${diameter.toFixed(1)} m</b> | Périm: <b>${perimeter.toFixed(1)} m</b><br>Surface: <b>${area.toFixed(1)} m²</b>`;
     } else {
-        let area = 0;
-        for (let i = 0; i < l93.length; i++) { let j = (i+1) % l93.length; area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; }
-        d.statsHtml = `Surface: <b>${(Math.abs(area)/2).toFixed(1)} m²</b>`;
+        const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+        if (d.type === 'line') {
+            let dist = 0; for (let i = 1; i < l93.length; i++) dist += Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
+            const z1 = getZ(l93[0]) || 0; const z2 = getZ(l93[l93.length-1]) || 0; const dz = Math.abs(z2 - z1); const pente = dist > 0 ? (dz / dist * 100).toFixed(1) : 0;
+            d.totalDist = dist; d.statsHtml = `Dist: <b>${dist.toFixed(1)} m</b> | ΔZ: <b>${dz.toFixed(1)} m</b> | Pente: <b>${pente}%</b>`;
+        } else {
+            let area = 0; for (let i = 0; i < l93.length; i++) { let j = (i+1) % l93.length; area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; }
+            d.statsHtml = `Surface: <b>${(Math.abs(area)/2).toFixed(1)} m²</b>`;
+        }
     }
     const statsDiv = document.getElementById(`stats-${d.id}`); if (statsDiv) statsDiv.innerHTML = d.statsHtml;
 }
@@ -215,7 +262,8 @@ function updateDrawUI() {
         let actionButtons = '';
         if (d.type === 'line') {
             actionButtons = `<button onclick="generateProfileById(${d.id})" style="width:100%; margin-top:8px; font-size:0.8em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:5px; border-radius:3px;">📈 Afficher le profil</button>`;
-        } else {
+        } else if (d.type === 'area' || d.type === 'circle') {
+            // Boutons Volumes et 3D partagés pour Polygones ET Cercles
             actionButtons = `
             <div style="display:flex; gap:5px; margin-top:8px; flex-wrap:wrap;">
                 <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.7em; cursor:pointer; background:#2980b9; color:white; border:none; padding:4px; border-radius:3px;">💧 Creux</button>
@@ -228,58 +276,60 @@ function updateDrawUI() {
         const editBtnText = d.isEditing ? '✅ Fin édition' : '✏️ Éditer';
         const editControls = d.isEditing ? `<div style="margin-top:5px; font-size:0.85em; background:#222; padding:5px; border-radius:3px; display:flex; align-items:center; gap:5px;">Épaisseur: <input type="range" min="1" max="10" value="${d.weight}" onchange="changeFeatureWeight(${d.id}, this.value, false)"></div>` : '';
 
-        list.innerHTML += `
-        <div class="card" style="border-left-color: ${d.color}">
-            <div class="card-header">
-                <div style="display:flex; align-items:center;">
-                    <input type="checkbox" ${d.visible ? 'checked' : ''} onchange="toggleDraw(${d.id})"> 
-                    <input type="color" class="color-picker" value="${d.color}" onchange="changeColor(${d.id}, this.value)"> 
-                    <strong style="cursor:pointer;" onclick="renameDraw(${d.id})" title="Cliquez pour renommer">${d.name}</strong>
-                    <button onclick="toggleEditMode(${d.id}, false)" style="background:${d.isEditing?'#27ae60':'#7f8c8d'}; color:white; border:none; border-radius:3px; padding:2px 5px; cursor:pointer; font-size:0.7em; margin-left:5px;">${editBtnText}</button>
-                </div>
-                <button class="btn-del" onclick="deleteDraw(${d.id})">✕</button>
-            </div>
-            ${editControls}
-            <div id="stats-${d.id}" style="margin-top:5px; font-size:1.1em;">${d.statsHtml}</div>
-            ${actionButtons}
-        </div>`;
+        list.innerHTML += `<div class="card" style="border-left-color: ${d.color}"><div class="card-header"><div style="display:flex; align-items:center;"><input type="checkbox" ${d.visible ? 'checked' : ''} onchange="toggleDraw(${d.id})"> <input type="color" class="color-picker" value="${d.color}" onchange="changeColor(${d.id}, this.value)"> <strong style="cursor:pointer;" onclick="renameDraw(${d.id})" title="Cliquez pour renommer">${d.name}</strong><button onclick="toggleEditMode(${d.id}, false)" style="background:${d.isEditing?'#27ae60':'#7f8c8d'}; color:white; border:none; border-radius:3px; padding:2px 5px; cursor:pointer; font-size:0.7em; margin-left:5px;">${editBtnText}</button></div><button class="btn-del" onclick="deleteDraw(${d.id})">✕</button></div>${editControls}<div id="stats-${d.id}" style="margin-top:5px; font-size:1.1em;">${d.statsHtml}</div>${actionButtons}</div>`;
     });
 }
 
-// --- NOUVEAU : GESTION DE L'ÉDITION ---
 window.toggleEditMode = (id, isProject = false, projectId = null) => {
     let d = isProject ? projectStore.find(p => p.id === projectId)?.features.find(f => f.id === id) : drawStore.find(x => x.id === id);
     if (!d) return;
-
     d.isEditing = !d.isEditing;
     if (!d.editGroup) d.editGroup = L.layerGroup().addTo(map);
-
-    if (d.isEditing && d.visible) { makeEditable(d, isProject, projectId); } 
-    else { d.editGroup.clearLayers(); }
-
+    if (d.isEditing && d.visible) { makeEditable(d, isProject, projectId); } else { d.editGroup.clearLayers(); }
     if (isProject) updateProjectUI(); else updateDrawUI();
 };
 
 window.changeFeatureWeight = (id, weight, isProject = false, projectId = null) => {
     let d = isProject ? projectStore.find(p => p.id === projectId)?.features.find(f => f.id === id) : drawStore.find(x => x.id === id);
-    if (!d) return;
-    d.weight = parseInt(weight);
-    d.layer.setStyle({ weight: d.weight });
+    if (!d) return; d.weight = parseInt(weight); d.layer.setStyle({ weight: d.weight });
 };
 
 function makeEditable(d, isProject = false, projectId = null) {
     if(d.editGroup) d.editGroup.clearLayers(); 
     if (!d.visible || !d.isEditing) return;
     const icon = L.divIcon({ className: 'edit-handle', iconSize: [12, 12] });
-    d.ptsGPS.forEach((pt, idx) => {
-        const marker = L.marker(pt, { icon, draggable: true }).addTo(d.editGroup);
-        marker.on('drag', (e) => { 
-            d.ptsGPS[idx] = e.latlng; d.layer.setLatLngs(d.ptsGPS); 
-            recalculateStats(d); 
-            if (d.type === 'line') generateProfile(d); 
+    
+    // Si c'est un cercle, on crée 2 points d'édition magiques : un au centre, un sur le bord
+    if (d.type === 'circle') {
+        const centerMarker = L.marker(d.center, { icon, draggable: true }).addTo(d.editGroup);
+        
+        const cL93 = proj4("EPSG:4326", "EPSG:2154", [d.center.lng, d.center.lat]);
+        const edgeGPS = proj4("EPSG:2154", "EPSG:4326", [cL93[0] + d.radius, cL93[1]]);
+        const edgeMarker = L.marker([edgeGPS[1], edgeGPS[0]], { icon, draggable: true }).addTo(d.editGroup);
+
+        centerMarker.on('drag', (e) => {
+            d.center = e.latlng; d.layer.setLatLng(d.center); d.ptsGPS = generateCirclePoints(d.center, d.radius);
+            const nL93 = proj4("EPSG:4326", "EPSG:2154", [d.center.lng, d.center.lat]);
+            const nGPS = proj4("EPSG:2154", "EPSG:4326", [nL93[0] + d.radius, nL93[1]]);
+            edgeMarker.setLatLng([nGPS[1], nGPS[0]]);
+            recalculateStats(d);
         });
-        marker.on('dragend', () => { if (isProject) updateProjectUI(); else updateDrawUI(); });
-    });
+        centerMarker.on('dragend', () => { if (isProject) updateProjectUI(); else updateDrawUI(); });
+
+        edgeMarker.on('drag', (e) => {
+            d.radius = map.distance(d.center, e.latlng); d.layer.setRadius(d.radius); d.ptsGPS = generateCirclePoints(d.center, d.radius);
+            recalculateStats(d);
+        });
+        edgeMarker.on('dragend', () => { if (isProject) updateProjectUI(); else updateDrawUI(); });
+    } 
+    // Si c'est une ligne ou surface normale
+    else {
+        d.ptsGPS.forEach((pt, idx) => {
+            const marker = L.marker(pt, { icon, draggable: true }).addTo(d.editGroup);
+            marker.on('drag', (e) => { d.ptsGPS[idx] = e.latlng; d.layer.setLatLngs(d.ptsGPS); recalculateStats(d); if (d.type === 'line') generateProfile(d); });
+            marker.on('dragend', () => { if (isProject) updateProjectUI(); else updateDrawUI(); });
+        });
+    }
 }
 
 window.renameDraw = (id) => { const d = drawStore.find(x => x.id === id); if (!d) return; const newName = prompt("Nouveau nom :", d.name); if (newName && newName.trim() !== "") { d.name = newName.trim(); updateDrawUI(); } };
@@ -287,10 +337,9 @@ window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visi
 window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id); if (!d) return; d.color = color; d.layer.setStyle({ color: color }); updateDrawUI(); if (chartInstance && currentProfileDrawId === id) { chartInstance.data.datasets[0].borderColor = color; chartInstance.data.datasets[0].backgroundColor = color + '33'; chartInstance.update(); } };
 window.deleteDraw = (id) => { const d = drawStore.find(x => x.id === id); map.removeLayer(d.layer); if(d.editGroup) map.removeLayer(d.editGroup); drawStore = drawStore.filter(x => x.id !== id); updateDrawUI(); if(currentProfileDrawId === id) { document.getElementById('profile-window').style.display = 'none'; currentProfileDrawId = null; } };
 
-// --- CALCUL DE VOLUME ---
 window.calculateVolume = (id, type) => {
     const d = drawStore.find(x => x.id === id);
-    if (!d || d.type !== 'area') return;
+    if (!d || (d.type !== 'area' && d.type !== 'circle')) return;
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
@@ -354,10 +403,9 @@ function isPointInPolygon(point, vs) {
     for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) { let xi = vs[i][0], yi = vs[i][1], xj = vs[j][0], yj = vs[j][1]; let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi); if (intersect) inside = !inside; } return inside;
 }
 
-// --- GÉNÉRATION DE LA VUE 3D (AVEC SUIVI SOURIS) ---
 window.generate3DView = (id) => {
     const d = drawStore.find(x => x.id === id);
-    if (!d || d.type !== 'area') return;
+    if (!d || (d.type !== 'area' && d.type !== 'circle')) return;
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
@@ -378,17 +426,13 @@ window.generate3DView = (id) => {
         for (let x = minX; x <= maxX; x += step) xVals.push(x);
 
         for (let y = minY; y <= maxY; y += step) {
-            let rowTerrain = [], rowRef = [];
-            yVals.push(y);
+            let rowTerrain = [], rowRef = []; yVals.push(y);
             for (let x = minX; x <= maxX; x += step) {
                 if (isPointInPolygon([x, y], l93Pts)) {
-                    let zMNT = getZ([x, y]);
-                    rowTerrain.push(zMNT !== null ? zMNT : null);
-
+                    let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
                     let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
                     for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
-                    if (!exactMatch) zBase = sumZ / sumW;
-                    rowRef.push(zBase);
+                    if (!exactMatch) zBase = sumZ / sumW; rowRef.push(zBase);
                 } else { rowTerrain.push(null); rowRef.push(null); }
             }
             zTerrain.push(rowTerrain); zRefPlane.push(rowRef);
@@ -413,13 +457,7 @@ window.generate3DView = (id) => {
     }, 100);
 };
 
-// Fixer le bouton de fermeture 3D
-document.querySelector('#header-3d button').onclick = () => {
-    document.getElementById('window-3d').style.display = 'none';
-    if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
-};
-
-// Drag & Drop Vue 3D
+document.querySelector('#header-3d button').onclick = () => { document.getElementById('window-3d').style.display = 'none'; if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } };
 const win3d = document.getElementById('window-3d'), header3d = document.getElementById('header-3d');
 let isDragging3D = false, offset3DX = 0, offset3DY = 0;
 header3d.addEventListener('mousedown', (e) => { if (e.target.tagName === 'BUTTON') return; isDragging3D = true; const rect = win3d.getBoundingClientRect(); offset3DX = e.clientX - rect.left; offset3DY = e.clientY - rect.top; });
@@ -523,17 +561,22 @@ window.updateScalesLive = () => {
 };
 
 // ==========================================
-// 8. SUIVI SOURIS COORDONNÉES
+// 8. SUIVI SOURIS COORDONNÉES ET PREVIEW
 // ==========================================
 map.on('mousemove', (e) => {
     try {
-        if (!e.latlng) return; const l93 = proj4("EPSG:4326", "EPSG:2154", [e.latlng.lng, e.latlng.lat]);
+        if (!e.latlng) return; 
+        const l93 = proj4("EPSG:4326", "EPSG:2154", [e.latlng.lng, e.latlng.lat]);
         const elX = document.getElementById('cur-x'), elY = document.getElementById('cur-y'), elZ = document.getElementById('cur-z');
         if (elX) elX.innerText = l93[0].toFixed(1); if (elY) elY.innerText = l93[1].toFixed(1);
         if (elZ) { let z = null; try { z = getZ(l93); } catch (err) {} elZ.innerText = (z !== null && !isNaN(z)) ? z.toFixed(2) : "---"; }
+        
+        // Animation du cercle qui grandit en direct quand on bouge la souris !
+        if (typeof currentTool !== 'undefined' && currentTool === 'circle' && typeof circleCenter !== 'undefined' && circleCenter && tempLayer) {
+            tempLayer.setRadius(map.distance(circleCenter, e.latlng));
+        }
     } catch (error) {}
 });
-
 // ==========================================
 // 9. FENÊTRE FLOTTANTE (DRAG & DROP)
 // ==========================================
@@ -608,10 +651,10 @@ window.saveProject = async () => {
     if (!projectName) return alert("Veuillez taper un nom de projet pour sauvegarder.");
     if (drawStore.length === 0) return alert("Aucune mesure à sauvegarder dans le panneau de droite !");
 
-    // On sauvegarde l'épaisseur ("weight") et on désactive l'édition avant de sauver
+    // On sauvegarde aussi center et radius pour les cercles
     const exportData = drawStore.map(d => ({ 
         id: d.id, type: d.type, name: d.name, color: d.color, weight: d.weight, 
-        ptsGPS: d.ptsGPS, totalDist: d.totalDist, statsHtml: d.statsHtml 
+        ptsGPS: d.ptsGPS, totalDist: d.totalDist, statsHtml: d.statsHtml, center: d.center, radius: d.radius 
     }));
 
     const btn = document.querySelector('button[onclick="saveProject()"]');
@@ -623,7 +666,6 @@ window.saveProject = async () => {
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify({ projectName: projectName, projectData: JSON.stringify(exportData) })
         });
-        
         const result = await response.json();
         
         if (result.status === "success") {
@@ -636,11 +678,7 @@ window.saveProject = async () => {
             updateDrawUI(); updateProjectUI();
             alert("✅ Projet sauvegardé et déplacé dans vos calques à gauche !");
         }
-    } catch (e) {
-        console.error(e); alert("Erreur de sauvegarde. Vérifiez votre lien Google Script.");
-    } finally {
-        btn.innerText = oldText; btn.disabled = false;
-    }
+    } catch (e) { alert("Erreur de sauvegarde."); } finally { btn.innerText = oldText; btn.disabled = false; }
 };
 
 window.loadProject = async () => {
@@ -653,29 +691,29 @@ window.loadProject = async () => {
     try {
         const response = await fetch(`${SCRIPT_URL}?projectName=${encodeURIComponent(projectName)}`);
         const result = await response.json();
-        if (result.status === "error") return alert("❌ Projet introuvable ! Vérifiez le nom.");
+        if (result.status === "error") return alert("❌ Projet introuvable !");
 
         const loadedData = JSON.parse(result.data);
         const newProject = { id: Date.now(), name: projectName, visible: true, features: [] };
 
         loadedData.forEach(d => {
-            const weight = d.weight || (d.type === 'area' ? 3 : 4);
-            const layer = d.type === 'area' ? L.polygon(d.ptsGPS, { color: d.color, weight: weight, fillOpacity: 0.3 }).addTo(map) : L.polyline(d.ptsGPS, { color: d.color, weight: weight }).addTo(map);
+            const weight = d.weight || (d.type === 'area' ? 3 : (d.type === 'circle' ? 3 : 4));
+            let layer;
+            if (d.type === 'circle') layer = L.circle(d.center, { radius: d.radius, color: d.color, weight: weight, fillOpacity: 0.3 }).addTo(map);
+            else if (d.type === 'area') layer = L.polygon(d.ptsGPS, { color: d.color, weight: weight, fillOpacity: 0.3 }).addTo(map);
+            else layer = L.polyline(d.ptsGPS, { color: d.color, weight: weight }).addTo(map);
+
             newProject.features.push({ 
                 id: d.id, type: d.type, name: d.name, layer: layer, ptsGPS: d.ptsGPS, visible: true, color: d.color, 
                 weight: weight, isEditing: false, editGroup: L.layerGroup().addTo(map), 
-                totalDist: d.totalDist, statsHtml: d.statsHtml 
+                totalDist: d.totalDist, statsHtml: d.statsHtml, center: d.center, radius: d.radius 
             });
         });
 
         projectStore.push(newProject); updateProjectUI();
         const group = L.featureGroup(newProject.features.map(f => f.layer)); map.fitBounds(group.getBounds());
-        alert("✅ Projet chargé dans vos calques à gauche !");
-    } catch (e) {
-        console.error(e); alert("Erreur de chargement. Vérifiez votre lien Google Script.");
-    } finally {
-        btn.innerText = oldText; btn.disabled = false;
-    }
+        alert("✅ Projet chargé !");
+    } catch (e) { alert("Erreur de chargement."); } finally { btn.innerText = oldText; btn.disabled = false; }
 };
 
 function updateProjectUI() {
@@ -684,11 +722,8 @@ function updateProjectUI() {
         let featuresHtml = '';
         p.features.forEach(f => {
             let actionButton = '';
-            if (f.type === 'line') {
-                actionButton = `<button onclick="generateProfileFromProject(${p.id}, ${f.id})" style="width:100%; margin-top:5px; font-size:0.75em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:3px; border-radius:3px;">📈 Voir profil</button>`;
-            } else if (f.type === 'area') {
-                actionButton = `<button onclick="generate3DViewFromProject(${p.id}, ${f.id})" style="width:100%; margin-top:5px; font-size:0.75em; cursor:pointer; background:#34495e; color:white; border:1px solid #555; padding:3px; border-radius:3px;">👁️ Contrôle Vue 3D</button>`;
-            }
+            if (f.type === 'line') actionButton = `<button onclick="generateProfileFromProject(${p.id}, ${f.id})" style="width:100%; margin-top:5px; font-size:0.75em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:3px; border-radius:3px;">📈 Voir profil</button>`;
+            else if (f.type === 'area' || f.type === 'circle') actionButton = `<button onclick="generate3DViewFromProject(${p.id}, ${f.id})" style="width:100%; margin-top:5px; font-size:0.75em; cursor:pointer; background:#34495e; color:white; border:1px solid #555; padding:3px; border-radius:3px;">👁️ Contrôle Vue 3D</button>`;
 
             const editBtnText = f.isEditing ? '✅ Fin édition' : '✏️ Éditer';
             const editControls = f.isEditing ? `<div style="margin-top:5px; font-size:0.85em; background:#333; padding:5px; border-radius:3px; display:flex; align-items:center; gap:5px;">Épaisseur: <input type="range" min="1" max="10" value="${f.weight}" onchange="changeFeatureWeight(${f.id}, this.value, true, ${p.id})"></div>` : '';
@@ -705,17 +740,15 @@ function updateProjectUI() {
                         <button class="btn-del" onclick="deleteProjectFeature(${p.id}, ${f.id})" style="font-size:0.9em;">✕</button>
                     </div>
                     ${editControls}
-                    <div style="font-size:0.85em; color:#ddd; margin: 5px 0;">${f.statsHtml || '<i>Stats non disponibles</i>'}</div>
+                    <div style="font-size:0.85em; color:#ddd; margin: 5px 0;">${f.statsHtml || ''}</div>
                     ${actionButton}
-                </div>
-            `;
+                </div>`;
         });
 
         list.innerHTML += `<div class="card"><div class="card-header"><div><input type="checkbox" ${p.visible ? 'checked' : ''} onchange="toggleProject(${p.id})"><strong style="color:var(--accent); font-size:1.1em;">📁 ${p.name}</strong></div><button class="btn-del" onclick="deleteProject(${p.id})">✕</button></div><details style="margin-top: 8px; cursor: pointer;"><summary style="font-size: 0.85em; color: #aaa;">Voir le contenu (${p.features.length} calques)</summary>${featuresHtml}</details></div>`;
     });
 }
 
-// Actions sur les projets sauvegardés
 window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } }); updateProjectUI(); };
 window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); }); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
 window.toggleProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.visible = !f.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } updateProjectUI(); };
@@ -723,10 +756,9 @@ window.changeProjectFeatureColor = (pid, fid, color) => { const p = projectStore
 window.deleteProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); p.features = p.features.filter(x => x.id !== fid); updateProjectUI(); };
 window.generateProfileFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); generateProfile(f); };
 
-// Vue 3D depuis un projet
 window.generate3DViewFromProject = (pid, fid) => {
     const p = projectStore.find(x => x.id === pid); if (!p) return;
-    const f = p.features.find(x => x.id === fid); if (!f || f.type !== 'area') return;
+    const f = p.features.find(x => x.id === fid); if (!f || (f.type !== 'area' && f.type !== 'circle')) return;
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
     
     document.getElementById('window-3d').style.display = 'block';
