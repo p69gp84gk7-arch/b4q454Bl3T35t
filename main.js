@@ -504,7 +504,7 @@ window.addEventListener('load', () => {
 // ==========================================
 // 11. SAUVEGARDE ET CHARGEMENT CLOUD (GOOGLE SHEETS)
 // ==========================================
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBDML2povAnb6LYbycTRxl8WLzsSPJPDC-FTAARpEa7gaUQMRJW49J4zFuf30qyEcKxQ/exec"; // <--- REMETTEZ VOTRE LIEN GOOGLE SCRIPT ICI !!!
+const SCRIPT_URL = "VOTRE_URL_WEB_APP_ICI"; // <--- REMETTEZ VOTRE LIEN GOOGLE SCRIPT ICI !!!
 
 window.saveProject = async () => {
     const projectName = document.getElementById('project-name').value.trim();
@@ -591,6 +591,11 @@ function updateProjectUI() {
     projectStore.forEach(p => {
         let featuresHtml = '';
         p.features.forEach(f => {
+            // ICI : On affiche "Profil" pour les lignes, et "Vue 3D" pour les polygones
+            const actionButton = f.type === 'line' 
+                ? `<button onclick="generateProfileFromProject(${p.id}, ${f.id})" style="width:100%; margin-top:5px; font-size:0.75em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:3px; border-radius:3px;">📈 Voir profil</button>` 
+                : `<button onclick="generate3DViewFromProject(${p.id}, ${f.id})" style="width:100%; margin-top:5px; font-size:0.75em; cursor:pointer; background:#34495e; color:white; border:1px solid #555; padding:3px; border-radius:3px;">👁️ Contrôle Vue 3D</button>`;
+
             featuresHtml += `
                 <div style="margin-left: 10px; border-left: 3px solid ${f.color}; padding-left: 8px; margin-top: 8px; background: #1a1a1a; padding-bottom: 5px;">
                     <div style="display:flex; justify-content: space-between; align-items:center;">
@@ -601,7 +606,7 @@ function updateProjectUI() {
                         </div>
                         <button class="btn-del" onclick="deleteProjectFeature(${p.id}, ${f.id})" style="font-size:0.9em;">✕</button>
                     </div>
-                    ${f.type === 'line' ? `<button onclick="generateProfileFromProject(${p.id}, ${f.id})" style="width:100%; margin-top:5px; font-size:0.75em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:3px; border-radius:3px;">📈 Voir profil</button>` : ''}
+                    ${actionButton}
                 </div>
             `;
         });
@@ -623,6 +628,63 @@ function updateProjectUI() {
     });
 }
 
+window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); }); updateProjectUI(); };
+window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => map.removeLayer(f.layer)); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
+window.toggleProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.visible = !f.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); updateProjectUI(); };
+window.changeProjectFeatureColor = (pid, fid, color) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.color = color; f.layer.setStyle({color: color}); updateProjectUI(); };
+window.deleteProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); map.removeLayer(f.layer); p.features = p.features.filter(x => x.id !== fid); updateProjectUI(); };
+window.generateProfileFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); generateProfile(f); };
+
+// NOUVEAU : Fonction pour générer la vue 3D depuis un projet sauvegardé (panneau gauche)
+window.generate3DViewFromProject = (pid, fid) => {
+    const p = projectStore.find(x => x.id === pid);
+    if (!p) return;
+    const f = p.features.find(x => x.id === fid);
+    if (!f || f.type !== 'area') return;
+    
+    if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
+
+    document.getElementById('window-3d').style.display = 'block';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul de la 3D en cours... ⏳</h3>';
+
+    setTimeout(() => {
+        const l93Pts = f.ptsGPS.map(pt => proj4("EPSG:4326", "EPSG:2154", [pt.lng, pt.lat]));
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        l93Pts.forEach(pt => { if (pt[0] < minX) minX = pt[0]; if (pt[0] > maxX) maxX = pt[0]; if (pt[1] < minY) minY = pt[1]; if (pt[1] > maxY) maxY = pt[1]; });
+
+        let borderPtsWithZ = [];
+        l93Pts.forEach(pt => { let z = getZ(pt); if (z !== null) borderPtsWithZ.push({ x: pt[0], y: pt[1], z: z }); });
+
+        const maxPts = 40;
+        const step = Math.max(1, (maxX - minX) / maxPts, (maxY - minY) / maxPts);
+
+        let xVals = [], yVals = [], zTerrain = [], zRefPlane = [];
+        for (let x = minX; x <= maxX; x += step) xVals.push(x);
+
+        for (let y = minY; y <= maxY; y += step) {
+            let rowTerrain = [], rowRef = [];
+            yVals.push(y);
+            for (let x = minX; x <= maxX; x += step) {
+                if (isPointInPolygon([x, y], l93Pts)) {
+                    let zMNT = getZ([x, y]);
+                    rowTerrain.push(zMNT !== null ? zMNT : null);
+
+                    let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
+                    for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
+                    if (!exactMatch) zBase = sumZ / sumW;
+                    rowRef.push(zBase);
+                } else { rowTerrain.push(null); rowRef.push(null); }
+            }
+            zTerrain.push(rowTerrain); zRefPlane.push(rowRef);
+        }
+
+        const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain Naturel', colorscale: 'Earth', showscale: false };
+        const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: 'Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6 };
+
+        const layout = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' } };
+        Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout);
+    }, 100);
+};
 window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); }); updateProjectUI(); };
 window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => map.removeLayer(f.layer)); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
 window.toggleProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.visible = !f.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); updateProjectUI(); };
