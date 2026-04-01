@@ -181,7 +181,7 @@ window.finalizeDraw = () => {
 };
 
 // ==========================================
-// 5. CALCULS, ÉDITION LIVE ET VOLUMES
+// 5. CALCULS, ÉDITION LIVE ET VOLUMES 3D
 // ==========================================
 function recalculateStats(d) {
     const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
@@ -203,14 +203,15 @@ function updateDrawUI() {
     const list = document.getElementById('measure-list'); if (!list) return; list.innerHTML = '';
     drawStore.forEach(d => {
         let actionButtons = '';
-       if (d.type === 'line') {
+        if (d.type === 'line') {
             actionButtons = `<button onclick="generateProfileById(${d.id})" style="width:100%; margin-top:8px; font-size:0.8em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:5px; border-radius:3px;">📈 Afficher le profil</button>`;
         } else {
+            // LES 4 BOUTONS POUR LES SURFACES SONT ICI
             actionButtons = `
             <div style="display:flex; gap:5px; margin-top:8px; flex-wrap:wrap;">
-                <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.7em; cursor:pointer; background:#2980b9; color:white; border:none; padding:4px; border-radius:3px;">💧 Creux</button>
-                <button id="btn-vol-mound-${d.id}" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.7em; cursor:pointer; background:#e67e22; color:white; border:none; padding:4px; border-radius:3px;">⛰️ Tas</button>
-                <button id="btn-vol-slope-${d.id}" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; font-size:0.75em; cursor:pointer; background:#8e44ad; color:white; border:none; padding:4px; border-radius:3px;">📐 Pente (Auto)</button>
+                <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.7em; cursor:pointer; background:#2980b9; color:white; border:none; padding:4px; border-radius:3px;" title="Base horizontale (Lac)">💧 Creux</button>
+                <button id="btn-vol-mound-${d.id}" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.7em; cursor:pointer; background:#e67e22; color:white; border:none; padding:4px; border-radius:3px;" title="Base horizontale (Tas sur sol plat)">⛰️ Tas</button>
+                <button id="btn-vol-slope-${d.id}" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; font-size:0.75em; cursor:pointer; background:#8e44ad; color:white; border:none; padding:4px; border-radius:3px;" title="Calcul sur pente auto">📐 Pente (Auto)</button>
                 <button onclick="generate3DView(${d.id})" style="flex:1; min-width:100%; font-size:0.75em; cursor:pointer; background:#34495e; color:white; border:1px solid #555; padding:5px; border-radius:3px; margin-top:2px;">👁️ Contrôle Vue 3D</button>
             </div>`;
         }
@@ -219,143 +220,79 @@ function updateDrawUI() {
     });
 }
 
-window.renameDraw = (id) => { const d = drawStore.find(x => x.id === id); if (!d) return; const newName = prompt("Nouveau nom pour ce tracé :", d.name); if (newName && newName.trim() !== "") { d.name = newName.trim(); updateDrawUI(); } };
-
-function makeEditable(d) {
-    d.editGroup.clearLayers(); if (!d.visible) return;
-    const icon = L.divIcon({ className: 'edit-handle', iconSize: [12, 12] });
-    d.ptsGPS.forEach((pt, idx) => {
-        const marker = L.marker(pt, { icon, draggable: true }).addTo(d.editGroup);
-        marker.on('drag', (e) => { d.ptsGPS[idx] = e.latlng; d.layer.setLatLngs(d.ptsGPS); recalculateStats(d); if (d.type === 'line') generateProfile(d); });
-    });
-}
-
+window.renameDraw = (id) => { const d = drawStore.find(x => x.id === id); if (!d) return; const newName = prompt("Nouveau nom :", d.name); if (newName && newName.trim() !== "") { d.name = newName.trim(); updateDrawUI(); } };
+function makeEditable(d) { d.editGroup.clearLayers(); if (!d.visible) return; const icon = L.divIcon({ className: 'edit-handle', iconSize: [12, 12] }); d.ptsGPS.forEach((pt, idx) => { const marker = L.marker(pt, { icon, draggable: true }).addTo(d.editGroup); marker.on('drag', (e) => { d.ptsGPS[idx] = e.latlng; d.layer.setLatLngs(d.ptsGPS); recalculateStats(d); if (d.type === 'line') generateProfile(d); }); }); }
 window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visible = !d.visible; if (d.visible) { d.layer.addTo(map); makeEditable(d); } else { map.removeLayer(d.layer); d.editGroup.clearLayers(); } };
 window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id); if (!d) return; d.color = color; d.layer.setStyle({ color: color }); updateDrawUI(); if (chartInstance && currentProfileDrawId === id) { chartInstance.data.datasets[0].borderColor = color; chartInstance.data.datasets[0].backgroundColor = color + '33'; chartInstance.update(); } };
 window.deleteDraw = (id) => { const d = drawStore.find(x => x.id === id); map.removeLayer(d.layer); map.removeLayer(d.editGroup); drawStore = drawStore.filter(x => x.id !== id); updateDrawUI(); if(currentProfileDrawId === id) { document.getElementById('profile-window').style.display = 'none'; currentProfileDrawId = null; } };
 
-// --- CALCUL DE VOLUME (CUBATURE INTELLIGENTE) ---
+// --- CALCUL DE VOLUME ---
 window.calculateVolume = (id, type) => {
     const d = drawStore.find(x => x.id === id);
     if (!d || d.type !== 'area') return;
-
-    if (mntStore.filter(m => m.visible).length === 0) {
-        return alert("Veuillez activer au moins un calque MNT à gauche pour calculer un volume.");
-    }
+    if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    l93Pts.forEach(p => {
-        if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
-        if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
-    });
+    l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
 
-    let refZ = 0;
-    let borderPtsWithZ = [];
-
-    // Mode "Pente Automatique" : On capture le Z de chaque sommet du dessin
+    let refZ = 0, borderPtsWithZ = [];
     if (type === 'slope') {
-        l93Pts.forEach(p => {
-            let z = getZ(p);
-            if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z });
-        });
-        if (borderPtsWithZ.length < 3) return alert("Pas assez de données d'altitude sur les bords pour créer un plan de référence.");
-    } 
-    // Mode "Plat Manuel" : On demande une seule altitude
-    else {
-        let sampleZ = getZ(l93Pts[0]);
-        let defaultZ = sampleZ ? Math.round(sampleZ) : 0;
-        let promptText = type === 'hollow' 
-            ? `Niveau de l'eau (Z) en mètres ?\n(Alt. lue sur le bord : ${defaultZ}m)`
-            : `Altitude du sol plat (Z) en mètres ?\n(Alt. lue sur le bord : ${defaultZ}m)`;
-
-        let refZPrompt = prompt(promptText, defaultZ);
-        if (!refZPrompt) return;
-        refZ = parseFloat(refZPrompt.replace(',', '.'));
-        if (isNaN(refZ)) return alert("Altitude invalide.");
+        l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
+        if (borderPtsWithZ.length < 3) return alert("Pas assez de données sur les bords.");
+    } else {
+        let sampleZ = getZ(l93Pts[0]), defaultZ = sampleZ ? Math.round(sampleZ) : 0;
+        let refZPrompt = prompt("Altitude de référence (Z) en mètres ?", defaultZ);
+        if (!refZPrompt) return; refZ = parseFloat(refZPrompt.replace(',', '.')); if (isNaN(refZ)) return alert("Altitude invalide.");
     }
 
     const btn = document.getElementById(`btn-vol-${type}-${id}`);
-    const oldText = btn.innerText;
-    btn.innerText = "⏳ Scan..."; btn.disabled = true;
+    const oldText = btn.innerText; btn.innerText = "⏳ Scan..."; btn.disabled = true;
 
     setTimeout(() => {
-        let totalVolumeTas = 0;
-        let totalVolumeCreux = 0;
-        let step = 1; // Grille de 1m x 1m
-        let pixelArea = step * step;
-        let pointsCount = 0;
-
+        let totalVolumeTas = 0, totalVolumeCreux = 0, step = 1, pixelArea = step * step, pointsCount = 0;
         for (let x = minX; x <= maxX; x += step) {
             for (let y = minY; y <= maxY; y += step) {
                 if (isPointInPolygon([x, y], l93Pts)) {
                     let zMNT = getZ([x, y]);
                     if (zMNT !== null) {
                         pointsCount++;
-                        
                         if (type === 'slope') {
-                            // Algorithme (IDW) : Calcule l'altitude du "sol théorique" sous ce pixel précis
                             let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
-                            for (let pt of borderPtsWithZ) {
-                                let d2 = (x - pt.x)**2 + (y - pt.y)**2;
-                                if (d2 === 0) { zBase = pt.z; exactMatch = true; break; }
-                                let w = 1 / d2; sumZ += pt.z * w; sumW += w;
-                            }
+                            for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
                             if (!exactMatch) zBase = sumZ / sumW;
-
-                            if (zMNT > zBase) totalVolumeTas += (zMNT - zBase) * pixelArea;
-                            else if (zMNT < zBase) totalVolumeCreux += (zBase - zMNT) * pixelArea;
-                        } 
-                        else {
-                            if (type === 'hollow' && zMNT < refZ) totalVolumeCreux += (refZ - zMNT) * pixelArea;
-                            else if (type === 'mound' && zMNT > refZ) totalVolumeTas += (zMNT - refZ) * pixelArea;
+                            if (zMNT > zBase) totalVolumeTas += (zMNT - zBase) * pixelArea; else if (zMNT < zBase) totalVolumeCreux += (zBase - zMNT) * pixelArea;
+                        } else {
+                            if (type === 'hollow' && zMNT < refZ) totalVolumeCreux += (refZ - zMNT) * pixelArea; else if (type === 'mound' && zMNT > refZ) totalVolumeTas += (zMNT - refZ) * pixelArea;
                         }
                     }
                 }
             }
         }
-
         btn.innerText = oldText; btn.disabled = false;
-
-        if (pointsCount === 0) {
-            alert("Aucune donnée MNT trouvée dans cette zone.");
-        } else {
-            let msg = "";
-            let resultHtml = "";
-            
+        if (pointsCount === 0) alert("Aucune donnée MNT dans cette zone.");
+        else {
+            let msg = "", resultHtml = "";
             if (type === 'slope') {
-                const tasStr = totalVolumeTas.toLocaleString('fr-FR', {maximumFractionDigits:1});
-                const creuxStr = totalVolumeCreux.toLocaleString('fr-FR', {maximumFractionDigits:1});
-                msg = `📐 Bilan par rapport au terrain naturel (pente):\n\n⛰️ Volume de Tas (au-dessus) : ${tasStr} m³\n💧 Volume de Creux (en-dessous) : ${creuxStr} m³`;
+                const tasStr = totalVolumeTas.toLocaleString('fr-FR', {maximumFractionDigits:1}), creuxStr = totalVolumeCreux.toLocaleString('fr-FR', {maximumFractionDigits:1});
+                msg = `📐 Bilan sur pente:\n\n⛰️ Tas : ${tasStr} m³\n💧 Creux : ${creuxStr} m³`;
                 resultHtml = `<br><span style="color:#8e44ad; font-size:0.9em; display:block; margin-top:3px;">Tas (Pente): <b>${tasStr} m³</b> | Creux: <b>${creuxStr} m³</b></span>`;
             } else {
-                let vol = type === 'hollow' ? totalVolumeCreux : totalVolumeTas;
-                const volStr = vol.toLocaleString('fr-FR', {maximumFractionDigits:1});
-                msg = type === 'hollow' ? `💧 Volume creux (sous ${refZ}m) : ${volStr} m³` : `⛰️ Volume tas (sur ${refZ}m) : ${volStr} m³`;
-                const colorVol = type === 'hollow' ? '#2980b9' : '#e67e22';
-                const labelVol = type === 'hollow' ? 'Vol. Creux' : 'Vol. Tas';
-                resultHtml = `<br><span style="color:${colorVol}; font-size:0.9em; display:block; margin-top:3px;">${labelVol} (réf: ${refZ}m): <b>${volStr} m³</b></span>`;
+                let vol = type === 'hollow' ? totalVolumeCreux : totalVolumeTas, volStr = vol.toLocaleString('fr-FR', {maximumFractionDigits:1});
+                msg = type === 'hollow' ? `💧 Creux (sous ${refZ}m) : ${volStr} m³` : `⛰️ Tas (sur ${refZ}m) : ${volStr} m³`;
+                resultHtml = `<br><span style="color:${type==='hollow'?'#2980b9':'#e67e22'}; font-size:0.9em; display:block; margin-top:3px;">${type==='hollow'?'Vol. Creux':'Vol. Tas'} (${refZ}m): <b>${volStr} m³</b></span>`;
             }
-            
-            alert(msg);
-            d.statsHtml += resultHtml;
-            const statsDiv = document.getElementById(`stats-${d.id}`); 
-            if (statsDiv) statsDiv.innerHTML = d.statsHtml;
+            alert(msg); d.statsHtml += resultHtml;
+            const statsDiv = document.getElementById(`stats-${d.id}`); if (statsDiv) statsDiv.innerHTML = d.statsHtml;
         }
     }, 50);
 };
 
 function isPointInPolygon(point, vs) {
-    let x = point[0], y = point[1];
-    let inside = false;
-    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-        let xi = vs[i][0], yi = vs[i][1];
-        let xj = vs[j][0], yj = vs[j][1];
-        let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-        if (intersect) inside = !inside;
-    }
-    return inside;
+    let x = point[0], y = point[1], inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) { let xi = vs[i][0], yi = vs[i][1], xj = vs[j][0], yj = vs[j][1]; let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi); if (intersect) inside = !inside; } return inside;
 }
+
 // --- GÉNÉRATION DE LA VUE 3D ---
 window.generate3DView = (id) => {
     const d = drawStore.find(x => x.id === id);
@@ -368,15 +305,11 @@ window.generate3DView = (id) => {
     setTimeout(() => {
         const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        l93Pts.forEach(p => {
-            if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
-            if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
-        });
+        l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
 
         let borderPtsWithZ = [];
         l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
-        // On limite la grille à 40x40 pour éviter que le navigateur plante sur un trop grand dessin
         const maxPts = 40;
         const step = Math.max(1, (maxX - minX) / maxPts, (maxY - minY) / maxPts);
 
@@ -391,18 +324,11 @@ window.generate3DView = (id) => {
                     let zMNT = getZ([x, y]);
                     rowTerrain.push(zMNT !== null ? zMNT : null);
 
-                    // Calcul de la base théorique (même algorithme que pour le volume)
                     let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
-                    for (let pt of borderPtsWithZ) {
-                        let d2 = (x - pt.x)**2 + (y - pt.y)**2;
-                        if (d2 === 0) { zBase = pt.z; exactMatch = true; break; }
-                        let w = 1 / d2; sumZ += pt.z * w; sumW += w;
-                    }
+                    for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
                     if (!exactMatch) zBase = sumZ / sumW;
                     rowRef.push(zBase);
-                } else {
-                    rowTerrain.push(null); rowRef.push(null);
-                }
+                } else { rowTerrain.push(null); rowRef.push(null); }
             }
             zTerrain.push(rowTerrain); zRefPlane.push(rowRef);
         }
@@ -410,27 +336,16 @@ window.generate3DView = (id) => {
         const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain Naturel', colorscale: 'Earth', showscale: false };
         const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: 'Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6 };
 
-        const layout = {
-            margin: { l: 0, r: 0, b: 0, t: 0 },
-            scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } },
-            paper_bgcolor: '#222', font: { color: 'white' }
-        };
-
+        const layout = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' } };
         Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout);
     }, 100);
 };
 
-// Activer le Drag & Drop pour la fenêtre 3D
+// Drag & Drop Vue 3D
 const win3d = document.getElementById('window-3d'), header3d = document.getElementById('header-3d');
 let isDragging3D = false, offset3DX = 0, offset3DY = 0;
-header3d.addEventListener('mousedown', (e) => {
-    if (e.target.tagName === 'BUTTON') return; isDragging3D = true;
-    const rect = win3d.getBoundingClientRect(); offset3DX = e.clientX - rect.left; offset3DY = e.clientY - rect.top;
-});
-document.addEventListener('mousemove', (e) => {
-    if (!isDragging3D) return;
-    win3d.style.left = Math.max(0, e.clientX - offset3DX) + 'px'; win3d.style.top = Math.max(0, e.clientY - offset3DY) + 'px';
-});
+header3d.addEventListener('mousedown', (e) => { if (e.target.tagName === 'BUTTON') return; isDragging3D = true; const rect = win3d.getBoundingClientRect(); offset3DX = e.clientX - rect.left; offset3DY = e.clientY - rect.top; });
+document.addEventListener('mousemove', (e) => { if (!isDragging3D) return; win3d.style.left = Math.max(0, e.clientX - offset3DX) + 'px'; win3d.style.top = Math.max(0, e.clientY - offset3DY) + 'px'; });
 document.addEventListener('mouseup', () => { isDragging3D = false; });
 // ==========================================
 // 6. PROFIL ALTIMÉTRIQUE HAUTE PRÉCISION
