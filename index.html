@@ -145,6 +145,13 @@
     </div>
 
     <div id="profile-window">
+        <div id="window-3d" style="display:none; position:absolute; top:80px; left:80px; width:650px; height:550px; background:#222; border:1px solid #555; z-index:9999; box-shadow: 0 5px 15px rgba(0,0,0,0.5); border-radius:5px;">
+        <div id="header-3d" style="background:#333; padding:10px; cursor:move; display:flex; justify-content:space-between; align-items:center; border-radius:5px 5px 0 0;">
+            <b style="color:white;">👁️ Vue 3D : Terrain (Plein) vs Base calculée (Transparent)</b>
+            <button onclick="document.getElementById('window-3d').style.display='none'" style="background:#e74c3c; color:white; border:none; border-radius:3px; cursor:pointer; padding:2px 8px;">✕</button>
+        </div>
+        <div id="plot-3d" style="width:100%; height:calc(100% - 40px);"></div>
+    </div>
         <div id="profile-header">
             <span>📈 Profil Altimétrique</span>
             <div>
@@ -174,8 +181,11 @@
         </div>
     </div>
 
+    <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+    
     <script src="pistes.js"></script>
     <script src="canon.js"></script>
     <script src="main.js"></script>
+</body>
 </body>
 </html>
