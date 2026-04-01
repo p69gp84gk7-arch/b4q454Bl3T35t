@@ -177,14 +177,9 @@
     </div>
      <div id="window-3d" style="display:none; position:absolute; top:80px; left:80px; width:800px; height:600px; background:#222; border:1px solid #555; z-index:9999; box-shadow: 0 5px 15px rgba(0,0,0,0.5); border-radius:5px;">
         <div id="header-3d" style="background:#333; padding:10px; cursor:move; display:flex; justify-content:space-between; align-items:center; border-radius:5px 5px 0 0;">
-            <div style="display:flex; align-items:center; gap:8px;">
-                <b style="color:white; margin-right:10px;">👁️ Vue 3D</b>
-                <button id="tool-3d-hover" onclick="set3DTool('hover')" style="background:#2980b9; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-size:0.8em; font-weight:bold;">📍 Altitude</button>
-                <button id="tool-3d-dist3d" onclick="set3DTool('dist3d')" style="background:#7f8c8d; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-size:0.8em;">📏 Dist. 3D</button>
-                <button id="tool-3d-dist2d" onclick="set3DTool('dist2d')" style="background:#7f8c8d; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-size:0.8em;">📏 Dist. au sol</button>
-            </div>
+            <b style="color:white;">👁️ Vue 3D</b>
             <div style="display:flex; align-items:center;">
-                <span id="measure-3d-result" style="color:#f1c40f; font-size:0.95em; font-weight:bold; margin-right:15px; min-width: 200px; text-align:right;"></span>
+                <span id="hover-3d-result" style="color:#f1c40f; font-size:0.95em; font-weight:bold; margin-right:15px;">Survolez le relief...</span>
                 <button onclick="close3DWindow()" style="background:#e74c3c; color:white; border:none; border-radius:3px; cursor:pointer; padding:4px 10px; font-weight:bold;">✕</button>
             </div>
         </div>
