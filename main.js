@@ -206,11 +206,12 @@ function updateDrawUI() {
         if (d.type === 'line') {
             actionButtons = `<button onclick="generateProfileById(${d.id})" style="width:100%; margin-top:8px; font-size:0.8em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:5px; border-radius:3px;">📈 Afficher le profil</button>`;
         } else {
-            // C'est ICI que les boutons de volume sont ajoutés pour les polygones !
+            // Ajout des 3 boutons de volumes
             actionButtons = `
-            <div style="display:flex; gap:5px; margin-top:8px;">
-                <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.75em; cursor:pointer; background:#2980b9; color:white; border:none; padding:5px; border-radius:3px;" title="Calculer le volume d'un creux / lac">💧 Vol. Creux</button>
-                <button id="btn-vol-mound-${d.id}" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.75em; cursor:pointer; background:#e67e22; color:white; border:none; padding:5px; border-radius:3px;" title="Calculer le volume d'un tas / bosse">⛰️ Vol. Tas</button>
+            <div style="display:flex; gap:5px; margin-top:8px; flex-wrap:wrap;">
+                <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.7em; cursor:pointer; background:#2980b9; color:white; border:none; padding:4px; border-radius:3px;" title="Base horizontale (Lac)">💧 Creux</button>
+                <button id="btn-vol-mound-${d.id}" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.7em; cursor:pointer; background:#e67e22; color:white; border:none; padding:4px; border-radius:3px;" title="Base horizontale (Tas sur sol plat)">⛰️ Tas</button>
+                <button id="btn-vol-slope-${d.id}" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; min-width:100%; font-size:0.75em; cursor:pointer; background:#8e44ad; color:white; border:none; padding:5px; border-radius:3px; margin-top:2px;" title="Calcul par rapport au terrain naturel (Bords du polygone)">📐 Vol. sur Pente (Auto)</button>
             </div>`;
         }
 
@@ -233,7 +234,7 @@ window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visi
 window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id); if (!d) return; d.color = color; d.layer.setStyle({ color: color }); updateDrawUI(); if (chartInstance && currentProfileDrawId === id) { chartInstance.data.datasets[0].borderColor = color; chartInstance.data.datasets[0].backgroundColor = color + '33'; chartInstance.update(); } };
 window.deleteDraw = (id) => { const d = drawStore.find(x => x.id === id); map.removeLayer(d.layer); map.removeLayer(d.editGroup); drawStore = drawStore.filter(x => x.id !== id); updateDrawUI(); if(currentProfileDrawId === id) { document.getElementById('profile-window').style.display = 'none'; currentProfileDrawId = null; } };
 
-// --- CALCUL DE VOLUME (CUBATURE) ---
+// --- CALCUL DE VOLUME (CUBATURE INTELLIGENTE) ---
 window.calculateVolume = (id, type) => {
     const d = drawStore.find(x => x.id === id);
     if (!d || d.type !== 'area') return;
@@ -249,61 +250,95 @@ window.calculateVolume = (id, type) => {
         if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
     });
 
-    let defaultZ = 0;
-    let sampleZ = getZ(l93Pts[0]);
-    if (sampleZ) defaultZ = Math.round(sampleZ);
+    let refZ = 0;
+    let borderPtsWithZ = [];
 
-    let promptText = type === 'hollow' 
-        ? `Niveau de l'eau (Z) en mètres ?\n(Altitude lue sur le bord : ${defaultZ}m)`
-        : `Altitude de la base du tas (Z) en mètres ?\n(Altitude lue sur le bord : ${defaultZ}m)`;
+    // Mode "Pente Automatique" : On capture le Z de chaque sommet du dessin
+    if (type === 'slope') {
+        l93Pts.forEach(p => {
+            let z = getZ(p);
+            if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z });
+        });
+        if (borderPtsWithZ.length < 3) return alert("Pas assez de données d'altitude sur les bords pour créer un plan de référence.");
+    } 
+    // Mode "Plat Manuel" : On demande une seule altitude
+    else {
+        let sampleZ = getZ(l93Pts[0]);
+        let defaultZ = sampleZ ? Math.round(sampleZ) : 0;
+        let promptText = type === 'hollow' 
+            ? `Niveau de l'eau (Z) en mètres ?\n(Alt. lue sur le bord : ${defaultZ}m)`
+            : `Altitude du sol plat (Z) en mètres ?\n(Alt. lue sur le bord : ${defaultZ}m)`;
 
-    let refZPrompt = prompt(promptText, defaultZ);
-    if (!refZPrompt) return;
-    let refZ = parseFloat(refZPrompt.replace(',', '.'));
-    if (isNaN(refZ)) return alert("Altitude invalide.");
+        let refZPrompt = prompt(promptText, defaultZ);
+        if (!refZPrompt) return;
+        refZ = parseFloat(refZPrompt.replace(',', '.'));
+        if (isNaN(refZ)) return alert("Altitude invalide.");
+    }
 
     const btn = document.getElementById(`btn-vol-${type}-${id}`);
     const oldText = btn.innerText;
-    btn.innerText = "⏳ Scan...";
-    btn.disabled = true;
+    btn.innerText = "⏳ Scan..."; btn.disabled = true;
 
     setTimeout(() => {
-        let totalVolume = 0;
-        let step = 1; 
+        let totalVolumeTas = 0;
+        let totalVolumeCreux = 0;
+        let step = 1; // Grille de 1m x 1m
         let pixelArea = step * step;
         let pointsCount = 0;
 
         for (let x = minX; x <= maxX; x += step) {
             for (let y = minY; y <= maxY; y += step) {
                 if (isPointInPolygon([x, y], l93Pts)) {
-                    let z = getZ([x, y]);
-                    if (z !== null) {
+                    let zMNT = getZ([x, y]);
+                    if (zMNT !== null) {
                         pointsCount++;
-                        if (type === 'hollow' && z < refZ) {
-                            totalVolume += (refZ - z) * pixelArea;
-                        } else if (type === 'mound' && z > refZ) {
-                            totalVolume += (z - refZ) * pixelArea;
+                        
+                        if (type === 'slope') {
+                            // Algorithme (IDW) : Calcule l'altitude du "sol théorique" sous ce pixel précis
+                            let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
+                            for (let pt of borderPtsWithZ) {
+                                let d2 = (x - pt.x)**2 + (y - pt.y)**2;
+                                if (d2 === 0) { zBase = pt.z; exactMatch = true; break; }
+                                let w = 1 / d2; sumZ += pt.z * w; sumW += w;
+                            }
+                            if (!exactMatch) zBase = sumZ / sumW;
+
+                            if (zMNT > zBase) totalVolumeTas += (zMNT - zBase) * pixelArea;
+                            else if (zMNT < zBase) totalVolumeCreux += (zBase - zMNT) * pixelArea;
+                        } 
+                        else {
+                            if (type === 'hollow' && zMNT < refZ) totalVolumeCreux += (refZ - zMNT) * pixelArea;
+                            else if (type === 'mound' && zMNT > refZ) totalVolumeTas += (zMNT - refZ) * pixelArea;
                         }
                     }
                 }
             }
         }
 
-        btn.innerText = oldText;
-        btn.disabled = false;
+        btn.innerText = oldText; btn.disabled = false;
 
         if (pointsCount === 0) {
             alert("Aucune donnée MNT trouvée dans cette zone.");
         } else {
-            const volStr = totalVolume.toLocaleString('fr-FR', {maximumFractionDigits:1});
-            let msg = type === 'hollow' 
-                ? `💧 Volume d'eau/creux estimé (sous ${refZ}m) :\n\n${volStr} m³`
-                : `⛰️ Volume du tas/bosse estimé (au-dessus de ${refZ}m) :\n\n${volStr} m³`;
-            alert(msg);
+            let msg = "";
+            let resultHtml = "";
             
-            const colorVol = type === 'hollow' ? '#2980b9' : '#e67e22';
-            const labelVol = type === 'hollow' ? 'Vol. Creux' : 'Vol. Tas';
-            d.statsHtml += `<br><span style="color:${colorVol}; font-size:0.9em; display:block; margin-top:3px;">${labelVol} (réf: ${refZ}m): <b>${volStr} m³</b></span>`;
+            if (type === 'slope') {
+                const tasStr = totalVolumeTas.toLocaleString('fr-FR', {maximumFractionDigits:1});
+                const creuxStr = totalVolumeCreux.toLocaleString('fr-FR', {maximumFractionDigits:1});
+                msg = `📐 Bilan par rapport au terrain naturel (pente):\n\n⛰️ Volume de Tas (au-dessus) : ${tasStr} m³\n💧 Volume de Creux (en-dessous) : ${creuxStr} m³`;
+                resultHtml = `<br><span style="color:#8e44ad; font-size:0.9em; display:block; margin-top:3px;">Tas (Pente): <b>${tasStr} m³</b> | Creux: <b>${creuxStr} m³</b></span>`;
+            } else {
+                let vol = type === 'hollow' ? totalVolumeCreux : totalVolumeTas;
+                const volStr = vol.toLocaleString('fr-FR', {maximumFractionDigits:1});
+                msg = type === 'hollow' ? `💧 Volume creux (sous ${refZ}m) : ${volStr} m³` : `⛰️ Volume tas (sur ${refZ}m) : ${volStr} m³`;
+                const colorVol = type === 'hollow' ? '#2980b9' : '#e67e22';
+                const labelVol = type === 'hollow' ? 'Vol. Creux' : 'Vol. Tas';
+                resultHtml = `<br><span style="color:${colorVol}; font-size:0.9em; display:block; margin-top:3px;">${labelVol} (réf: ${refZ}m): <b>${volStr} m³</b></span>`;
+            }
+            
+            alert(msg);
+            d.statsHtml += resultHtml;
             const statsDiv = document.getElementById(`stats-${d.id}`); 
             if (statsDiv) statsDiv.innerHTML = d.statsHtml;
         }
