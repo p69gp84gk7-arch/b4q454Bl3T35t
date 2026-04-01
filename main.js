@@ -202,8 +202,119 @@ function recalculateStats(d) {
 function updateDrawUI() {
     const list = document.getElementById('measure-list'); if (!list) return; list.innerHTML = '';
     drawStore.forEach(d => {
-        list.innerHTML += `<div class="card" style="border-left-color: ${d.color}"><div class="card-header"><div><input type="checkbox" ${d.visible ? 'checked' : ''} onchange="toggleDraw(${d.id})"> <input type="color" class="color-picker" value="${d.color}" onchange="changeColor(${d.id}, this.value)"> <strong style="cursor:pointer;" onclick="renameDraw(${d.id})" title="Cliquez pour renommer">${d.name}</strong></div><button class="btn-del" onclick="deleteDraw(${d.id})">✕</button></div><div id="stats-${d.id}" style="margin-top:5px; font-size:1.1em;">${d.statsHtml}</div>${d.type === 'line' ? `<button onclick="generateProfileById(${d.id})" style="width:100%; margin-top:8px; font-size:0.8em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:5px; border-radius:3px;">Afficher le profil</button>` : ''}</div>`;
+        // Les boutons qui s'afficheront en fonction du type de tracé (Ligne ou Polygone)
+        let actionButtons = '';
+        if (d.type === 'line') {
+            actionButtons = `<button onclick="generateProfileById(${d.id})" style="width:100%; margin-top:8px; font-size:0.8em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:5px; border-radius:3px;">📈 Afficher le profil</button>`;
+        } else {
+            actionButtons = `
+            <div style="display:flex; gap:5px; margin-top:8px;">
+                <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.75em; cursor:pointer; background:#2980b9; color:white; border:none; padding:5px; border-radius:3px;" title="Calculer le volume sous une altitude (Lac, Retenue)">💧 Vol. Creux</button>
+                <button id="btn-vol-mound-${d.id}" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.75em; cursor:pointer; background:#e67e22; color:white; border:none; padding:5px; border-radius:3px;" title="Calculer le volume au-dessus d'une altitude (Tas de neige, Bâtiment)">⛰️ Vol. Tas</button>
+            </div>`;
+        }
+
+        list.innerHTML += `<div class="card" style="border-left-color: ${d.color}"><div class="card-header"><div><input type="checkbox" ${d.visible ? 'checked' : ''} onchange="toggleDraw(${d.id})"> <input type="color" class="color-picker" value="${d.color}" onchange="changeColor(${d.id}, this.value)"> <strong style="cursor:pointer;" onclick="renameDraw(${d.id})" title="Cliquez pour renommer">${d.name}</strong></div><button class="btn-del" onclick="deleteDraw(${d.id})">✕</button></div><div id="stats-${d.id}" style="margin-top:5px; font-size:1.1em;">${d.statsHtml}</div>${actionButtons}</div>`;
     });
+}
+// --- CALCUL DE VOLUME (CUBATURE) ---
+window.calculateVolume = (id, type) => {
+    const d = drawStore.find(x => x.id === id);
+    if (!d || d.type !== 'area') return;
+
+    if (mntStore.filter(m => m.visible).length === 0) {
+        return alert("Veuillez activer au moins un calque MNT à gauche pour calculer un volume.");
+    }
+
+    // 1. Convertir les points du polygone en coordonnées projetées (L93 en mètres)
+    const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+
+    // 2. Trouver les limites de la boîte (Bounding Box)
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    l93Pts.forEach(p => {
+        if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
+    });
+
+    // 3. Déterminer une altitude de référence par défaut (en sondant le premier point du bord)
+    let defaultZ = 0;
+    let sampleZ = getZ(l93Pts[0]);
+    if (sampleZ) defaultZ = Math.round(sampleZ);
+
+    let promptText = type === 'hollow' 
+        ? `Niveau de l'eau (Z) en mètres ?\n(Altitude lue sur le bord : ${defaultZ}m)`
+        : `Altitude de la base du tas (Z) en mètres ?\n(Altitude lue sur le bord : ${defaultZ}m)`;
+
+    let refZPrompt = prompt(promptText, defaultZ);
+    if (!refZPrompt) return;
+    let refZ = parseFloat(refZPrompt.replace(',', '.'));
+    if (isNaN(refZ)) return alert("Altitude invalide.");
+
+    // On prévient l'utilisateur que ça calcule
+    const btn = document.getElementById(`btn-vol-${type}-${id}`);
+    const oldText = btn.innerText;
+    btn.innerText = "⏳ Scan du MNT...";
+    btn.disabled = true;
+
+    // 4. On lance le calcul avec un petit décalage pour ne pas figer l'écran
+    setTimeout(() => {
+        let totalVolume = 0;
+        let step = 1; // Grille de scan de 1m x 1m (1 pixel = 1m²)
+        let pixelArea = step * step;
+        let pointsCount = 0;
+
+        // Le scanner passe sur chaque mètre carré de la boîte
+        for (let x = minX; x <= maxX; x += step) {
+            for (let y = minY; y <= maxY; y += step) {
+                // Si le carré de 1m² est bien à l'intérieur du polygone dessiné
+                if (isPointInPolygon([x, y], l93Pts)) {
+                    let z = getZ([x, y]);
+                    if (z !== null) {
+                        pointsCount++;
+                        if (type === 'hollow' && z < refZ) {
+                            totalVolume += (refZ - z) * pixelArea; // Volume du trou
+                        } else if (type === 'mound' && z > refZ) {
+                            totalVolume += (z - refZ) * pixelArea; // Volume de la bosse
+                        }
+                    }
+                }
+            }
+        }
+
+        // On remet le bouton normal
+        btn.innerText = oldText;
+        btn.disabled = false;
+
+        // 5. Affichage du Résultat
+        if (pointsCount === 0) {
+            alert("Aucune donnée MNT trouvée dans cette zone.");
+        } else {
+            const volStr = totalVolume.toLocaleString('fr-FR', {maximumFractionDigits:1});
+            let msg = type === 'hollow' 
+                ? `💧 Volume d'eau/creux estimé (sous ${refZ}m) :\n\n${volStr} m³`
+                : `⛰️ Volume du tas/bosse estimé (au-dessus de ${refZ}m) :\n\n${volStr} m³`;
+            alert(msg);
+            
+            // On ajoute le résultat directement dans les statistiques du panneau de droite !
+            const colorVol = type === 'hollow' ? '#2980b9' : '#e67e22';
+            const labelVol = type === 'hollow' ? 'Vol. Creux' : 'Vol. Tas';
+            d.statsHtml += `<br><span style="color:${colorVol}; font-size:0.9em; display:block; margin-top:3px;">${labelVol} (réf: ${refZ}m): <b>${volStr} m³</b></span>`;
+            updateDrawUI();
+        }
+    }, 50); // Le léger délai permet au texte du bouton de se mettre à jour
+};
+
+// Algorithme mathématique "Ray-Casting" pour vérifier si un point est dans un polygone
+function isPointInPolygon(point, vs) {
+    let x = point[0], y = point[1];
+    let inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        let xi = vs[i][0], yi = vs[i][1];
+        let xj = vs[j][0], yj = vs[j][1];
+        let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
 }
 
 window.renameDraw = (id) => { const d = drawStore.find(x => x.id === id); if (!d) return; const newName = prompt("Nouveau nom pour ce tracé :", d.name); if (newName && newName.trim() !== "") { d.name = newName.trim(); updateDrawUI(); } };
