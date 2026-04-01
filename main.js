@@ -809,35 +809,13 @@ window.generate3DViewFromProject = (pid, fid) => {
     }, 100);
 };
 // ==========================================
-// MOTEUR DE RENDU 3D ET BARRE D'OUTILS
+// MOTEUR DE RENDU 3D ÉPURÉ
 // ==========================================
-let measurePts3D = []; 
-let current3DTool = 'hover'; 
-
-window.set3DTool = (tool) => {
-    current3DTool = tool;
-    measurePts3D = [];
-    
-    // Mise en surbrillance du bouton actif
-    document.getElementById('tool-3d-hover').style.background = tool === 'hover' ? '#2980b9' : '#7f8c8d';
-    document.getElementById('tool-3d-dist3d').style.background = tool === 'dist3d' ? '#2980b9' : '#7f8c8d';
-    document.getElementById('tool-3d-dist2d').style.background = tool === 'dist2d' ? '#2980b9' : '#7f8c8d';
-    
-    // Réinitialisation du texte et des traits rouges
-    const res = document.getElementById('measure-3d-result');
-    if (tool === 'hover') res.innerText = "Survolez le relief...";
-    else res.innerText = "📍 Cliquez un 1er point...";
-    
-    const plotDiv = document.getElementById('plot-3d');
-    if (plotDiv && plotDiv.data) {
-        while(plotDiv.data.length > 2) { Plotly.deleteTraces('plot-3d', -1); }
-    }
-};
 
 function render3DPlot(l93Pts, borderPtsWithZ) {
     document.getElementById('window-3d').style.display = 'block';
     document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul de la 3D en cours... ⏳</h3>';
-    set3DTool('hover'); // Outil par défaut
+    document.getElementById('hover-3d-result').innerText = "Survolez le relief...";
 
     setTimeout(() => {
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -864,9 +842,8 @@ function render3DPlot(l93Pts, borderPtsWithZ) {
         const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: '⛰️ Terrain Naturel', colorscale: 'Earth', showscale: false, showlegend: true };
         const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: '🟦 Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6, showlegend: true };
 
-        // Légende optimisée : Horizontale, en bas, centrée.
         const layout = { 
-            margin: { l: 0, r: 0, b: 40, t: 30 }, 
+            margin: { l: 0, r: 0, b: 40, t: 10 }, 
             scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, 
             paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest',
             legend: { orientation: 'h', x: 0.5, y: -0.05, xanchor: 'center', yanchor: 'top', bgcolor: 'rgba(0,0,0,0)' }
@@ -875,50 +852,21 @@ function render3DPlot(l93Pts, borderPtsWithZ) {
         Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout, { displayModeBar: true, displaylogo: false }).then(() => {
             const plotDiv = document.getElementById('plot-3d');
             
-            // Événement : Survol de la souris
+            // Animation du point sur la carte et affichage Z
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
                     const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]);
                     if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
                     else cursorMarker.setLatLng([gps[1], gps[0]]);
                     
-                    if (current3DTool === 'hover') {
-                        document.getElementById('measure-3d-result').innerHTML = `📍 Altitude Z : <span style="color:white;">${pt.z.toFixed(2)} m</span>`;
-                    }
+                    document.getElementById('hover-3d-result').innerHTML = `📍 Altitude Z : <span style="color:white;">${pt.z.toFixed(2)} m</span>`;
                 }
             });
             
+            // Nettoyage quand on quitte la zone 3D
             plotDiv.addEventListener('mouseleave', () => { 
                 if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } 
-                if (current3DTool === 'hover') document.getElementById('measure-3d-result').innerText = "Survolez le relief...";
-            });
-
-            // Événement : Clic (pour les mesures)
-            plotDiv.on('plotly_click', (data) => {
-                if (current3DTool === 'hover' || data.points.length === 0) return;
-                
-                const pt = data.points[0];
-                measurePts3D.push({x: pt.x, y: pt.y, z: pt.z});
-
-                if (measurePts3D.length === 1) {
-                    while(plotDiv.data.length > 2) { Plotly.deleteTraces('plot-3d', -1); }
-                    document.getElementById('measure-3d-result').innerText = "📍 1er point placé. Cliquez le 2ème...";
-                    Plotly.addTraces('plot-3d', {x:[pt.x], y:[pt.y], z:[pt.z], type:'scatter3d', mode:'markers', marker:{color:'#e74c3c', size:6}, name:'Pt 1', showlegend:false});
-                } else if (measurePts3D.length === 2) {
-                    const p1 = measurePts3D[0], p2 = measurePts3D[1];
-                    let distText = "";
-                    if (current3DTool === 'dist3d') {
-                        const dist = Math.sqrt((p2.x-p1.x)**2 + (p2.y-p1.y)**2 + (p2.z-p1.z)**2);
-                        distText = `📏 Dist. 3D : ${dist.toFixed(2)} m`;
-                    } else {
-                        const dist = Math.sqrt((p2.x-p1.x)**2 + (p2.y-p1.y)**2);
-                        distText = `📏 Dist. au sol : ${dist.toFixed(2)} m`;
-                    }
-                    document.getElementById('measure-3d-result').innerText = distText;
-                    Plotly.addTraces('plot-3d', {x:[p1.x, p2.x], y:[p1.y, p2.y], z:[p1.z, p2.z], type:'scatter3d', mode:'markers+lines', line:{color:'#f1c40f', width:5}, marker:{color:'#e74c3c', size:6}, name:'Dist', showlegend:false});
-                    // On vide le tableau pour que le prochain clic relance une nouvelle mesure
-                    measurePts3D = [];
-                }
+                document.getElementById('hover-3d-result').innerText = "Survolez le relief...";
             });
         });
     }, 100);
