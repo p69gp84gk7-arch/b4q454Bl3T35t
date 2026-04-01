@@ -478,29 +478,47 @@ document.addEventListener('mouseup', () => { isDragging = false; });
 // ==========================================
 window.addEventListener('load', () => {
     try {
+        // --- 1. CHARGEMENT DES PISTES ---
         let pistesGeo = null;
-        if (typeof pistesData !== 'undefined') pistesGeo = pistesData; else if (typeof pistesGeoJSON !== 'undefined') pistesGeo = pistesGeoJSON;
+        if (typeof pistesData !== 'undefined') pistesGeo = pistesData; 
+        else if (typeof pistesGeoJSON !== 'undefined') pistesGeo = pistesGeoJSON;
 
         if (pistesGeo && pistesGeo.features) {
             const idPistes = Date.now(); 
-            const pistesLayer = L.geoJSON(pistesGeo, { style: function (feature) { return { color: '#ffffff', weight: 1, opacity: 1, fillOpacity: 0.2 }; } }).addTo(map);
+            const pistesLayer = L.geoJSON(pistesGeo, { 
+                style: function (feature) { 
+                    return { color: '#ffffff', weight: 1, opacity: 1, fillOpacity: 0.2 }; 
+                } 
+            }).addTo(map);
+            
             kmzStore.push({ id: idPistes, name: "Mes Pistes", layer: pistesLayer, visible: true, color: '#ffffff', weight: 1 });
             map.fitBounds(pistesLayer.getBounds());
         }
 
+        // --- 2. CHARGEMENT DES CANONS ---
         if (typeof canonData !== 'undefined' && canonData.features) {
             const idCanons = Date.now() + 1000; 
             const canonLayer = L.geoJSON(canonData, {
                 pointToLayer: function (feature, latlng) {
-                    return L.circleMarker(latlng, { radius: 5, fillColor: '#3498db', color: '#ffffff', weight: 1, opacity: 1, fillOpacity: 0.8 });
+                    return L.circleMarker(latlng, { 
+                        radius: 5, 
+                        fillColor: '#3498db', 
+                        color: '#ffffff', 
+                        weight: 1, 
+                        opacity: 1, 
+                        fillOpacity: 0.8 
+                    });
                 }
             }).addTo(map);
+            
             kmzStore.push({ id: idCanons, name: "Mes Canons", layer: canonLayer, visible: true, color: '#3498db', weight: 1 });
         }
+        
         updateKmzUI();
-    } catch (e) { console.error("Erreur données statiques :", e); }
+    } catch (e) { 
+        console.error("Erreur de chargement des données statiques :", e); 
+    }
 });
-
 // ==========================================
 // 11. SAUVEGARDE ET CHARGEMENT CLOUD (GOOGLE SHEETS)
 // ==========================================
