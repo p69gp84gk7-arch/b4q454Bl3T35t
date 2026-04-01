@@ -203,15 +203,15 @@ function updateDrawUI() {
     const list = document.getElementById('measure-list'); if (!list) return; list.innerHTML = '';
     drawStore.forEach(d => {
         let actionButtons = '';
-        if (d.type === 'line') {
+       if (d.type === 'line') {
             actionButtons = `<button onclick="generateProfileById(${d.id})" style="width:100%; margin-top:8px; font-size:0.8em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:5px; border-radius:3px;">📈 Afficher le profil</button>`;
         } else {
-            // Ajout des 3 boutons de volumes
             actionButtons = `
             <div style="display:flex; gap:5px; margin-top:8px; flex-wrap:wrap;">
-                <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.7em; cursor:pointer; background:#2980b9; color:white; border:none; padding:4px; border-radius:3px;" title="Base horizontale (Lac)">💧 Creux</button>
-                <button id="btn-vol-mound-${d.id}" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.7em; cursor:pointer; background:#e67e22; color:white; border:none; padding:4px; border-radius:3px;" title="Base horizontale (Tas sur sol plat)">⛰️ Tas</button>
-                <button id="btn-vol-slope-${d.id}" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; min-width:100%; font-size:0.75em; cursor:pointer; background:#8e44ad; color:white; border:none; padding:5px; border-radius:3px; margin-top:2px;" title="Calcul par rapport au terrain naturel (Bords du polygone)">📐 Vol. sur Pente (Auto)</button>
+                <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.7em; cursor:pointer; background:#2980b9; color:white; border:none; padding:4px; border-radius:3px;">💧 Creux</button>
+                <button id="btn-vol-mound-${d.id}" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.7em; cursor:pointer; background:#e67e22; color:white; border:none; padding:4px; border-radius:3px;">⛰️ Tas</button>
+                <button id="btn-vol-slope-${d.id}" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; font-size:0.75em; cursor:pointer; background:#8e44ad; color:white; border:none; padding:4px; border-radius:3px;">📐 Pente (Auto)</button>
+                <button onclick="generate3DView(${d.id})" style="flex:1; min-width:100%; font-size:0.75em; cursor:pointer; background:#34495e; color:white; border:1px solid #555; padding:5px; border-radius:3px; margin-top:2px;">👁️ Contrôle Vue 3D</button>
             </div>`;
         }
 
@@ -356,6 +356,82 @@ function isPointInPolygon(point, vs) {
     }
     return inside;
 }
+// --- GÉNÉRATION DE LA VUE 3D ---
+window.generate3DView = (id) => {
+    const d = drawStore.find(x => x.id === id);
+    if (!d || d.type !== 'area') return;
+    if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
+
+    document.getElementById('window-3d').style.display = 'block';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul de la 3D en cours... ⏳</h3>';
+
+    setTimeout(() => {
+        const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        l93Pts.forEach(p => {
+            if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
+            if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
+        });
+
+        let borderPtsWithZ = [];
+        l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
+
+        // On limite la grille à 40x40 pour éviter que le navigateur plante sur un trop grand dessin
+        const maxPts = 40;
+        const step = Math.max(1, (maxX - minX) / maxPts, (maxY - minY) / maxPts);
+
+        let xVals = [], yVals = [], zTerrain = [], zRefPlane = [];
+        for (let x = minX; x <= maxX; x += step) xVals.push(x);
+
+        for (let y = minY; y <= maxY; y += step) {
+            let rowTerrain = [], rowRef = [];
+            yVals.push(y);
+            for (let x = minX; x <= maxX; x += step) {
+                if (isPointInPolygon([x, y], l93Pts)) {
+                    let zMNT = getZ([x, y]);
+                    rowTerrain.push(zMNT !== null ? zMNT : null);
+
+                    // Calcul de la base théorique (même algorithme que pour le volume)
+                    let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
+                    for (let pt of borderPtsWithZ) {
+                        let d2 = (x - pt.x)**2 + (y - pt.y)**2;
+                        if (d2 === 0) { zBase = pt.z; exactMatch = true; break; }
+                        let w = 1 / d2; sumZ += pt.z * w; sumW += w;
+                    }
+                    if (!exactMatch) zBase = sumZ / sumW;
+                    rowRef.push(zBase);
+                } else {
+                    rowTerrain.push(null); rowRef.push(null);
+                }
+            }
+            zTerrain.push(rowTerrain); zRefPlane.push(rowRef);
+        }
+
+        const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain Naturel', colorscale: 'Earth', showscale: false };
+        const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: 'Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6 };
+
+        const layout = {
+            margin: { l: 0, r: 0, b: 0, t: 0 },
+            scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } },
+            paper_bgcolor: '#222', font: { color: 'white' }
+        };
+
+        Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout);
+    }, 100);
+};
+
+// Activer le Drag & Drop pour la fenêtre 3D
+const win3d = document.getElementById('window-3d'), header3d = document.getElementById('header-3d');
+let isDragging3D = false, offset3DX = 0, offset3DY = 0;
+header3d.addEventListener('mousedown', (e) => {
+    if (e.target.tagName === 'BUTTON') return; isDragging3D = true;
+    const rect = win3d.getBoundingClientRect(); offset3DX = e.clientX - rect.left; offset3DY = e.clientY - rect.top;
+});
+document.addEventListener('mousemove', (e) => {
+    if (!isDragging3D) return;
+    win3d.style.left = Math.max(0, e.clientX - offset3DX) + 'px'; win3d.style.top = Math.max(0, e.clientY - offset3DY) + 'px';
+});
+document.addEventListener('mouseup', () => { isDragging3D = false; });
 // ==========================================
 // 6. PROFIL ALTIMÉTRIQUE HAUTE PRÉCISION
 // ==========================================
