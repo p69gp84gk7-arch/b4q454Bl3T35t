@@ -515,7 +515,7 @@ window.saveProject = async () => {
     if (!projectName) return alert("Veuillez taper un nom de projet pour sauvegarder.");
     if (drawStore.length === 0) return alert("Aucune mesure à sauvegarder dans le panneau de droite !");
 
-    // On prépare les données (on garde "totalDist" pour que les profils marchent plus tard)
+    // On prépare les données
     const exportData = drawStore.map(d => ({
         id: d.id, type: d.type, name: d.name, color: d.color, ptsGPS: d.ptsGPS, totalDist: d.totalDist
     }));
@@ -525,27 +525,33 @@ window.saveProject = async () => {
     btn.innerText = "⏳"; btn.disabled = true;
 
     try {
+        // La requête avec la correction anti-blocage Google (CORS)
         const response = await fetch(SCRIPT_URL, {
             method: "POST",
+            redirect: "follow",
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8",
+            },
             body: JSON.stringify({ projectName: projectName, projectData: JSON.stringify(exportData) })
         });
+        
         const result = await response.json();
         
         if (result.status === "success") {
-            // 1. On bascule les dessins de droite vers un nouveau Projet à gauche
+            // 1. On crée le projet à gauche
             const newProject = {
                 id: Date.now(),
                 name: projectName,
                 visible: true,
-                features: [...drawStore] // On copie les calques
+                features: [...drawStore] // On transfère les calques
             };
             
-            // On enlève les petits points d'édition car le tracé est maintenant "figé"
+            // On enlève les poignées d'édition (le tracé est figé)
             newProject.features.forEach(f => { if (f.editGroup) map.removeLayer(f.editGroup); });
             
             projectStore.push(newProject);
             
-            // 2. On vide le panneau de droite
+            // 2. On vide le panneau de droite (le brouillon)
             drawStore = [];
             if (currentProfileDrawId) { document.getElementById('profile-window').style.display = 'none'; currentProfileDrawId = null; }
             updateDrawUI();
@@ -555,7 +561,8 @@ window.saveProject = async () => {
             alert("✅ Projet sauvegardé et déplacé dans vos calques à gauche !");
         }
     } catch (e) {
-        console.error(e); alert("Erreur lors de la sauvegarde.");
+        console.error("Erreur de sauvegarde :", e); 
+        alert("Erreur lors de la sauvegarde. Vérifiez la console (F12).");
     } finally {
         btn.innerText = oldText; btn.disabled = false;
     }
@@ -580,6 +587,7 @@ window.loadProject = async () => {
         // On crée le projet directement à gauche
         const newProject = { id: Date.now(), name: projectName, visible: true, features: [] };
 
+        // On reconstruit les dessins sur la carte
         loadedData.forEach(d => {
             const layer = d.type === 'area' ? L.polygon(d.ptsGPS, { color: d.color, weight: 3, fillOpacity: 0.3 }).addTo(map) : L.polyline(d.ptsGPS, { color: d.color, weight: 4 }).addTo(map);
             newProject.features.push({
@@ -597,7 +605,8 @@ window.loadProject = async () => {
         alert("✅ Projet chargé dans vos calques à gauche !");
 
     } catch (e) {
-        console.error(e); alert("Erreur lors du chargement.");
+        console.error("Erreur de chargement :", e); 
+        alert("Erreur lors du chargement.");
     } finally {
         btn.innerText = oldText; btn.disabled = false;
     }
@@ -628,6 +637,7 @@ function updateProjectUI() {
             `;
         });
 
+        // La carte principale du projet (le dossier)
         list.innerHTML += `
         <div class="card">
             <div class="card-header">
@@ -645,14 +655,51 @@ function updateProjectUI() {
     });
 }
 
-// Actions sur les projets entiers
-window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); }); updateProjectUI(); };
-window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => map.removeLayer(f.layer)); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
+// --- ACTIONS SUR LES PROJETS ENTIERS ---
+window.toggleProject = (pid) => { 
+    const p = projectStore.find(x => x.id === pid); 
+    p.visible = !p.visible; 
+    p.features.forEach(f => { 
+        f.visible = p.visible; 
+        if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); 
+    }); 
+    updateProjectUI(); 
+};
 
-// Actions sur un élément spécifique à l'intérieur d'un projet
-window.toggleProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.visible = !f.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); updateProjectUI(); };
-window.changeProjectFeatureColor = (pid, fid, color) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.color = color; f.layer.setStyle({color: color}); updateProjectUI(); };
-window.deleteProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); map.removeLayer(f.layer); p.features = p.features.filter(x => x.id !== fid); updateProjectUI(); };
+window.deleteProject = (pid) => { 
+    const p = projectStore.find(x => x.id === pid); 
+    p.features.forEach(f => map.removeLayer(f.layer)); 
+    projectStore = projectStore.filter(x => x.id !== pid); 
+    updateProjectUI(); 
+};
 
-// Permet d'afficher le profil d'une ligne sauvegardée
-window.generateProfileFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); generateProfile(f); };
+// --- ACTIONS SUR UN ÉLÉMENT SPÉCIFIQUE (SOUS-MENU) ---
+window.toggleProjectFeature = (pid, fid) => { 
+    const p = projectStore.find(x => x.id === pid); 
+    const f = p.features.find(x => x.id === fid); 
+    f.visible = !f.visible; 
+    if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); 
+    updateProjectUI(); 
+};
+
+window.changeProjectFeatureColor = (pid, fid, color) => { 
+    const p = projectStore.find(x => x.id === pid); 
+    const f = p.features.find(x => x.id === fid); 
+    f.color = color; 
+    f.layer.setStyle({color: color}); 
+    updateProjectUI(); 
+};
+
+window.deleteProjectFeature = (pid, fid) => { 
+    const p = projectStore.find(x => x.id === pid); 
+    const f = p.features.find(x => x.id === fid); 
+    map.removeLayer(f.layer); 
+    p.features = p.features.filter(x => x.id !== fid); 
+    updateProjectUI(); 
+};
+
+window.generateProfileFromProject = (pid, fid) => { 
+    const p = projectStore.find(x => x.id === pid); 
+    const f = p.features.find(x => x.id === fid); 
+    generateProfile(f); 
+};
