@@ -504,4 +504,77 @@ window.addEventListener('load', () => {
     } catch (e) {
         console.error("Erreur de chargement des données :", e);
     }
+    // ==========================================
+// 11. SAUVEGARDE ET CHARGEMENT CLOUD (GOOGLE SHEETS)
+// ==========================================
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBDML2povAnb6LYbycTRxl8WLzsSPJPDC-FTAARpEa7gaUQMRJW49J4zFuf30qyEcKxQ/exec"; // <--- COLLER L'URL GOOGLE SCRIPT ICI
+
+window.saveProject = async () => {
+    const projectName = document.getElementById('project-name').value.trim();
+    if (!projectName) return alert("Veuillez taper un nom de projet pour sauvegarder.");
+
+    // On prépare les données (on ne sauvegarde que la data, pas les objets graphiques complexes)
+    const exportData = drawStore.map(d => ({
+        id: d.id, type: d.type, name: d.name, color: d.color, ptsGPS: d.ptsGPS
+    }));
+
+    const btn = document.querySelector('button[onclick="saveProject()"]');
+    const oldText = btn.innerText;
+    btn.innerText = "⏳"; btn.disabled = true;
+
+    try {
+        const response = await fetch(SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify({ projectName: projectName, projectData: JSON.stringify(exportData) })
+        });
+        const result = await response.json();
+        if (result.status === "success") alert("✅ Projet sauvegardé avec succès dans le Cloud !");
+    } catch (e) {
+        console.error(e); alert("Erreur lors de la sauvegarde.");
+    } finally {
+        btn.innerText = oldText; btn.disabled = false;
+    }
+};
+
+window.loadProject = async () => {
+    const projectName = document.getElementById('project-name').value.trim();
+    if (!projectName) return alert("Veuillez taper le nom du projet à charger.");
+
+    const btn = document.querySelector('button[onclick="loadProject()"]');
+    const oldText = btn.innerText;
+    btn.innerText = "⏳"; btn.disabled = true;
+
+    try {
+        const response = await fetch(`${SCRIPT_URL}?projectName=${encodeURIComponent(projectName)}`);
+        const result = await response.json();
+
+        if (result.status === "error") return alert("❌ Projet introuvable ! Vérifiez le nom.");
+
+        const loadedData = JSON.parse(result.data);
+
+        // 1. Nettoyer les tracés actuels sur la carte
+        drawStore.forEach(d => { map.removeLayer(d.layer); map.removeLayer(d.editGroup); });
+        drawStore = [];
+        if (currentProfileDrawId) { document.getElementById('profile-window').style.display = 'none'; currentProfileDrawId = null; }
+
+        // 2. Reconstruire les tracés téléchargés
+        loadedData.forEach(d => {
+            const color = d.color;
+            const layer = d.type === 'area' ? L.polygon(d.ptsGPS, { color, weight: 3, fillOpacity: 0.3 }).addTo(map) : L.polyline(d.ptsGPS, { color, weight: 4 }).addTo(map);
+            
+            const drawObj = { id: d.id, type: d.type, name: d.name, layer: layer, ptsGPS: d.ptsGPS, visible: true, color: color, editGroup: L.layerGroup().addTo(map) };
+            drawStore.push(drawObj);
+            recalculateStats(drawObj);
+            makeEditable(drawObj);
+        });
+
+        updateDrawUI();
+        alert("✅ Projet chargé !");
+
+    } catch (e) {
+        console.error(e); alert("Erreur lors du chargement.");
+    } finally {
+        btn.innerText = oldText; btn.disabled = false;
+    }
+};
 });
