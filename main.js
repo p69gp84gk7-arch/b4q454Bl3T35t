@@ -371,18 +371,23 @@ window.calculateVolume = (id, type) => {
 };
 
 // ==========================================
-// 7. VUE 3D PARFAITE (LIGNES + SUIVI SOURIS)
+// 7. VUE 3D PARFAITE (SURFACES + SUIVI SOURIS)
 // ==========================================
+
+// --- CORRECTIF BLINDÉ POUR LA FERMETURE ---
 window.close3DView = () => {
     document.getElementById('window-3d').style.display = 'none';
     if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
 };
 
-// On s'assure que le bouton "X" de la fenêtre 3D ferme bien la fenêtre
-setTimeout(() => {
-    const closeBtn = document.querySelector('#header-3d button');
-    if (closeBtn) closeBtn.onclick = window.close3DView;
-}, 500);
+// On écoute absolument tous les clics dans le document. 
+// Si ça clique sur un bouton dans le header 3D, on ferme !
+document.addEventListener('click', (e) => {
+    if (e.target && e.target.closest('#header-3d button')) {
+        window.close3DView();
+    }
+});
+// ------------------------------------------
 
 window.generate3DView = (id) => {
     const d = drawStore.find(x => x.id === id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id);
@@ -390,7 +395,7 @@ window.generate3DView = (id) => {
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul strict de la 3D en cours... ⏳</h3>';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul des surfaces 3D en cours... ⏳</h3>';
 
     setTimeout(() => {
         const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
@@ -400,41 +405,55 @@ window.generate3DView = (id) => {
         let borderPtsWithZ = [];
         l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
-        let step = ((maxX - minX) * (maxY - minY) > 500000) ? 2 : 1; 
+        // Pour les surfaces, on crée une grille. 
+        // Math.max garantit qu'on ne plante pas le PC avec trop de points.
+        const maxResolution = 50; 
+        const step = Math.max(1, (maxX - minX) / maxResolution, (maxY - minY) / maxResolution);
 
-        let xValsTerrain = [], yValsTerrain = [], zValsTerrain = [];
-        let xValsRef = [], yValsRef = [], zValsRef = [];
+        let xVals = [], yVals = [], zTerrain = [], zRefPlane = [];
 
-        for (let x = minX; x <= maxX; x += step) {
-            for (let y = minY; y <= maxY; y += step) {
+        // Création de l'axe X
+        for (let x = minX; x <= maxX; x += step) xVals.push(x);
+
+        // Création de la matrice (Axe Y puis X)
+        for (let y = minY; y <= maxY; y += step) {
+            yVals.push(y);
+            let rowTerrain = [], rowRef = [];
+            
+            for (let x = minX; x <= maxX; x += step) {
+                // Si on est dans le polygone, on calcule le Z. Sinon on met "null" (surface invisible)
                 if (isPointInPolygon([x, y], l93Pts)) {
                     let zMNT = getZ([x, y]);
-                    if (zMNT !== null) {
-                        xValsTerrain.push(x); yValsTerrain.push(y); zValsTerrain.push(zMNT);
-                        
-                        let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
-                        for (let pt of borderPtsWithZ) { 
-                            let d2 = (x - pt.x)**2 + (y - pt.y)**2; 
-                            if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } 
-                            let w = 1 / d2; sumZ += pt.z * w; sumW += w; 
-                        }
-                        if (!exactMatch) zBase = sumZ / sumW;
-                        
-                        xValsRef.push(x); yValsRef.push(y); zValsRef.push(zBase);
+                    rowTerrain.push(zMNT !== null ? zMNT : null);
+
+                    let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
+                    for (let pt of borderPtsWithZ) { 
+                        let d2 = (x - pt.x)**2 + (y - pt.y)**2; 
+                        if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } 
+                        let w = 1 / d2; sumZ += pt.z * w; sumW += w; 
                     }
+                    if (!exactMatch) zBase = sumZ / sumW;
+                    rowRef.push(zBase);
+                } else {
+                    rowTerrain.push(null);
+                    rowRef.push(null);
                 }
             }
+            zTerrain.push(rowTerrain);
+            zRefPlane.push(rowRef);
         }
 
+        // Contour strict en ligne rouge pour bien délimiter
         let xBound = [], yBound = [], zBound = [];
         borderPtsWithZ.forEach(pt => { xBound.push(pt.x); yBound.push(pt.y); zBound.push(pt.z); });
         if (borderPtsWithZ.length > 0) {
             xBound.push(borderPtsWithZ[0].x); yBound.push(borderPtsWithZ[0].y); zBound.push(borderPtsWithZ[0].z);
         }
 
-        const traceTerrain = { x: xValsTerrain, y: yValsTerrain, z: zValsTerrain, mode: 'markers', marker: { size: 3, color: zValsTerrain, colorscale: 'Earth', opacity: 0.8 }, type: 'scatter3d', name: 'Terrain (Points)' };
-        const traceRef = { x: xValsRef, y: yValsRef, z: zValsRef, mode: 'markers', marker: { size: 3, color: '#3498db', opacity: 0.6 }, type: 'scatter3d', name: 'Base Volume' };
-        const traceContour = { x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: 'red', width: 6 }, type: 'scatter3d', name: 'Contour Strict' };
+        // Configuration des traces en 'surface' (couches pleines)
+        const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain Naturel', colorscale: 'Earth', showscale: false };
+        const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: 'Base Volume', colorscale: 'Blues', showscale: false, opacity: 0.6 };
+        const traceContour = { x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: 'red', width: 6 }, type: 'scatter3d', name: 'Contour' };
 
         const layout = { 
             margin: { l: 0, r: 0, b: 0, t: 30 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest',
