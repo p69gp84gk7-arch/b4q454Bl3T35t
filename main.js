@@ -341,22 +341,54 @@ window.calculateVolume = (id, type) => {
             <b style="color:${color};">${lbl} :</b> ${resTxt}
         </div>`;
         
-        recalculateStats(d); 
-        if (drawStore.find(x => x.id === id)) updateDrawUI(); else updateProjectUI();
-    }, 50);
+       function recalculateStats(d) {
+    const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+    if (d.type === 'line') {
+        let dist = 0;
+        for (let i = 1; i < l93.length; i++) dist += Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
+        const z1 = getZ(l93[0]) || 0; const z2 = getZ(l93[l93.length-1]) || 0;
+        const dz = Math.abs(z2 - z1); const pente = dist > 0 ? (dz / dist * 100).toFixed(1) : 0;
+        d.totalDist = dist; 
+        d.statsHtml = `Dist: <b>${dist.toFixed(1)} m</b> | ΔZ: <b>${dz.toFixed(1)} m</b> | Pente: <b>${pente}%</b>`;
+    } else {
+        // --- CALCULS POUR LA SURFACE ---
+        let area = 0;
+        for (let i = 0; i < l93.length; i++) { let j = (i+1) % l93.length; area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; }
+        area = Math.abs(area) / 2;
+        
+        // Recherche des Zmin, Zmax et Dénivelé sur le polygone
+        let zMin = Infinity, zMax = -Infinity;
+        for (let i = 0; i < l93.length; i++) {
+            let z = getZ(l93[i]);
+            if (z !== null) {
+                if (z < zMin) zMin = z;
+                if (z > zMax) zMax = z;
+            }
+        }
+        
+        let extraStats = "";
+        if (zMin !== Infinity && zMax !== -Infinity) {
+            const dz = zMax - zMin;
+            extraStats = `<br>Zmin: <b>${zMin.toFixed(1)}m</b> | Zmax: <b>${zMax.toFixed(1)}m</b> | ΔZ: <b>${dz.toFixed(1)}m</b>`;
+        }
+
+        d.statsHtml = `Surface: <b>${area.toFixed(1)} m²</b>${extraStats}`;
+    }
+    const statsDiv = document.getElementById(`stats-${d.id}`); 
+    if (statsDiv) statsDiv.innerHTML = d.statsHtml;
+}
 };
 
 // ==========================================
 // 7. VUE 3D PARFAITE (LIGNES + SUIVI SOURIS)
 // ==========================================
-// --- GÉNÉRATION DE LA VUE 3D (AVEC SUIVI SOURIS) ---
 window.generate3DView = (id) => {
     const d = drawStore.find(x => x.id === id);
     if (!d || d.type !== 'area') return;
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul de la 3D en cours... ⏳</h3>';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul strict de la 3D en cours... ⏳</h3>';
 
     setTimeout(() => {
         const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
@@ -366,104 +398,58 @@ window.generate3DView = (id) => {
         let borderPtsWithZ = [];
         l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
-        const maxPts = 40;
-        const step = Math.max(1, (maxX - minX) / maxPts, (maxY - minY) / maxPts);
+        // Step strict de 1 mètre (ou 2 mètres si la surface est gigantesque pour éviter de planter le PC)
+        let step = ((maxX - minX) * (maxY - minY) > 500000) ? 2 : 1; 
 
         let xValsTerrain = [], yValsTerrain = [], zValsTerrain = [];
         let xValsRef = [], yValsRef = [], zValsRef = [];
 
         for (let x = minX; x <= maxX; x += step) {
             for (let y = minY; y <= maxY; y += step) {
+                // Filtre STRICT : on ne garde que ce qui est exactement dans le polygone
                 if (isPointInPolygon([x, y], l93Pts)) {
-                    // Terrain
                     let zMNT = getZ([x, y]);
                     if (zMNT !== null) {
-                        xValsTerrain.push(x);
-                        yValsTerrain.push(y);
-                        zValsTerrain.push(zMNT);
+                        xValsTerrain.push(x); yValsTerrain.push(y); zValsTerrain.push(zMNT);
+                        
+                        let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
+                        for (let pt of borderPtsWithZ) { 
+                            let d2 = (x - pt.x)**2 + (y - pt.y)**2; 
+                            if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } 
+                            let w = 1 / d2; sumZ += pt.z * w; sumW += w; 
+                        }
+                        if (!exactMatch) zBase = sumZ / sumW;
+                        
+                        xValsRef.push(x); yValsRef.push(y); zValsRef.push(zBase);
                     }
-
-                    // Référence (Base Calculée)
-                    let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
-                    for (let pt of borderPtsWithZ) { 
-                        let d2 = (x - pt.x)**2 + (y - pt.y)**2; 
-                        if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } 
-                        let w = 1 / d2; sumZ += pt.z * w; sumW += w; 
-                    }
-                    if (!exactMatch) zBase = sumZ / sumW;
-                    
-                    xValsRef.push(x);
-                    yValsRef.push(y);
-                    zValsRef.push(zBase);
                 }
             }
         }
 
-        // Trace pour le Terrain Naturel (Points)
-        const traceTerrain = { 
-            x: xValsTerrain, 
-            y: yValsTerrain, 
-            z: zValsTerrain, 
-            mode: 'markers',
-            marker: {
-                size: 3,
-                color: zValsTerrain,
-                colorscale: 'Earth',
-                opacity: 0.8
-            },
-            type: 'scatter3d', 
-            name: 'Terrain Naturel' 
-        };
-        
-        // Trace pour la Base Calculée (Points)
-        const traceRef = { 
-            x: xValsRef, 
-            y: yValsRef, 
-            z: zValsRef, 
-            mode: 'markers',
-            marker: {
-                size: 3,
-                color: '#3498db', // Bleu pour la base
-                opacity: 0.6
-            },
-            type: 'scatter3d', 
-            name: 'Base Calculée'
-        };
+        // Trace du contour strict en rouge
+        let xBound = [], yBound = [], zBound = [];
+        borderPtsWithZ.forEach(pt => { xBound.push(pt.x); yBound.push(pt.y); zBound.push(pt.z); });
+        if (borderPtsWithZ.length > 0) { // On ferme la boucle du tracé
+            xBound.push(borderPtsWithZ[0].x); yBound.push(borderPtsWithZ[0].y); zBound.push(borderPtsWithZ[0].z);
+        }
+
+        const traceTerrain = { x: xValsTerrain, y: yValsTerrain, z: zValsTerrain, mode: 'markers', marker: { size: 3, color: zValsTerrain, colorscale: 'Earth', opacity: 0.8 }, type: 'scatter3d', name: 'Terrain (Points)' };
+        const traceRef = { x: xValsRef, y: yValsRef, z: zValsRef, mode: 'markers', marker: { size: 3, color: '#3498db', opacity: 0.6 }, type: 'scatter3d', name: 'Base Volume' };
+        const traceContour = { x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: 'red', width: 6 }, type: 'scatter3d', name: 'Contour Strict' };
 
         const layout = { 
-            margin: { l: 0, r: 0, b: 0, t: 30 }, // Un peu d'espace en haut pour le bouton
-            scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, 
-            paper_bgcolor: '#222', 
-            font: { color: 'white' }, 
-            hovermode: 'closest',
-            // --- AJOUT DU BOUTON POUR MASQUER/AFFICHER ---
+            margin: { l: 0, r: 0, b: 0, t: 30 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest',
             updatemenus: [{
-                type: 'buttons',
-                direction: 'right',
-                x: 0,
-                y: 1.1,
-                showactive: true,
+                type: 'buttons', direction: 'right', x: 0, y: 1.1, showactive: true,
                 buttons: [
-                    {
-                        label: 'Tout afficher',
-                        method: 'update',
-                        args: [{'visible': [true, true]}]
-                    },
-                    {
-                        label: 'Masquer Base',
-                        method: 'update',
-                        args: [{'visible': [true, false]}]
-                    },
-                    {
-                        label: 'Masquer Terrain',
-                        method: 'update',
-                        args: [{'visible': [false, true]}]
-                    }
+                    { label: 'Tout Afficher', method: 'update', args: [{'visible': [true, true, true]}] },
+                    { label: 'Masquer Base', method: 'update', args: [{'visible': [true, false, true]}] },
+                    { label: 'Masquer Terrain', method: 'update', args: [{'visible': [false, true, true]}] }
                 ]
             }]
         };
         
-        Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout).then(() => {
+        Plotly.newPlot('plot-3d', [traceTerrain, traceRef, traceContour], layout).then(() => {
             const plotDiv = document.getElementById('plot-3d');
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
@@ -660,42 +646,7 @@ window.loadProject = async () => {
         alert("✅ Projet chargé dans le menu de gauche !");
     } catch(e) { alert("Erreur chargement"); } finally { btn.innerText = "Charger"; btn.disabled = false; }
 };
-
-//function updateProjectUI() {
-//    const list = document.getElementById('project-list'); if(!list) return; list.innerHTML = '';
-//    projectStore.forEach(p => {
-//        let fHtml = ''; 
-//        p.features.forEach(f => {
-//            const btns = f.type==='line' ? 
-//                `<button type="button" onclick="generateProfileById(${f.id})" style="width:100%; margin-top:5px; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer;">📈 Afficher Profil Altimétrique</button>` : 
-//                `<div style="display:flex; gap:3px; margin-top:5px; flex-wrap:wrap;">
-//                    <button type="button" onclick="calculateVolume(${f.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#2980b9; color:#fff; border:none; cursor:pointer; padding:5px;">📉 Déblai</button>
-//                    <button type="button" onclick="calculateVolume(${f.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px;">📈 Remblai</button>
-//                    <button type="button" onclick="calculateVolume(${f.id}, 'slope')" style="flex:1; font-size:0.75em; background:#8e44ad; color:#fff; border:none; cursor:pointer; padding:5px;">📐 Vol. Courbe</button>
-//                    <button type="button" onclick="calculateVolume(${f.id}, 'plane')" style="flex:1; font-size:0.75em; background:#9b59b6; color:#fff; border:none; cursor:pointer; padding:5px;">📏 Vol. Plan</button>
-//                    <button type="button" onclick="generate3DView(${f.id})" style="flex:1; min-width:100%; font-size:0.8em; font-weight:bold; background:#34495e; color:#fff; border:1px solid #555; cursor:pointer; padding:5px; margin-top:2px;">👁️ Lancer Vue 3D</button>
-//                </div>`;
-//                
-//            fHtml += `<div style="margin-left:5px; border-left:3px solid ${f.color}; padding:5px; background:#1a1a1a; margin-top:5px;">
-//                <div style="display:flex; align-items:center; justify-content:space-between;">
-//                    <div><input type="checkbox" checked onchange="toggleProjectFeature(${p.id}, ${f.id})"> <strong style="margin-left:5px;">${f.name}</strong></div>
-//                    <button type="button" onclick="deleteProjectFeature(${p.id}, ${f.id})" style="background:transparent; color:#e74c3c; border:none; cursor:pointer;">✕</button>
-//                </div>
-//                <div id="stats-proj-${f.id}" style="font-size:11px; margin:5px 0; color:#ddd; background:#222; padding:4px;">${f.statsHtml || ''}</div>
-//                <button type="button" onclick="toggleEditMode(${f.id}, true, ${p.id})" style="width:100%; background:${f.isEditing?'#27ae60':'#7f8c8d'}; color:#fff; border:none; padding:4px; cursor:pointer; margin-bottom:5px;">${f.isEditing?'✅ Fin édition':'✏️ Modifier les points'}</button>
-//                ${generateEditorTable(f, true, p.id)}
-//                ${btns}
- //           </div>`;
-//        });
-//        list.innerHTML += `<div class="card">
-//            <div class="card-header">
-//                <div><input type="checkbox" ${p.visible ? 'checked' : ''} onchange="toggleProject(${p.id})"><strong style="color:#3498db; font-size:1.1em;">📁 ${p.name}</strong></div>
-//                <button type="button" class="btn-del" onclick="deleteProject(${p.id})">✕</button>
-//            </div>
-//            <details open style="margin-top: 8px;"><summary style="font-size: 0.85em; color: #aaa; cursor:pointer;">Ouvrir/Fermer les calques</summary>${fHtml}</details>
-//        </div>`;
-//    });
-//}
+   
 window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } }); updateProjectUI(); };
 window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); }); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
 window.toggleProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.visible = !f.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } updateProjectUI(); };
