@@ -11,8 +11,9 @@ L.control.layers({ "🌍 Satellite": satellite, "🗺️ Plan": planOSM }).addTo
 let mntStore = [], drawStore = [], kmzStore = [], projectStore = [];
 let currentPoints = [], tempLayer = null, currentTool = null, circleCenter = null;
 let chartInstance = null, cursorMarker = null, currentProfileDrawId = null;
-window.current3DData = null;
+window.currentEditingFeature = null; window.current3DData = null;
 
+// Le point rouge qui suit votre souris
 function updateCursor(lat, lng) {
     if (!cursorMarker) {
         cursorMarker = L.circleMarker([lat, lng], { radius: 7, color: '#e74c3c', fillColor: '#fff', fillOpacity: 1, weight: 3, zIndexOffset: 1000 }).addTo(map);
@@ -60,16 +61,16 @@ window.deleteMNT = (id) => { const m = mntStore.find(x => x.id === id); map.remo
 window.addEventListener('load', () => {
     try {
         if (typeof pistesData !== 'undefined' && pistesData.features) {
-            const l = L.geoJSON(pistesData, { style: { color: '#ffffff', weight: 2, opacity: 0.8 } }).addTo(map);
-            kmzStore.push({ id: "pistes", name: "Pistes", layer: l, visible: true, color: '#ffffff' });
+            const l = L.geoJSON(pistesData, { style: { color: '#ffffff', weight: 2, opacity: 0.8, dashArray: '5, 5' } }).addTo(map);
+            kmzStore.push({ id: "pistes", name: "Pistes de ski", layer: l, visible: true, color: '#ffffff' });
             if (mntStore.length === 0) map.fitBounds(l.getBounds());
         }
         if (typeof canonData !== 'undefined' && canonData.features) {
             const c = L.geoJSON(canonData, { pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 5, fillColor: '#3498db', color: '#fff', weight: 1, fillOpacity: 0.9 }) }).addTo(map);
-            kmzStore.push({ id: "canons", name: "Canons", layer: c, visible: true, color: '#3498db' });
+            kmzStore.push({ id: "canons", name: "Canons à neige", layer: c, visible: true, color: '#3498db' });
         }
         updateKmzUI();
-    } catch (e) {}
+    } catch (e) { console.error(e); }
 });
 
 function updateKmzUI() {
@@ -82,15 +83,17 @@ window.toggleKMZ = (id) => { const k = kmzStore.find(x => x.id === id); if (!k) 
 // 4. OUTILS DE DESSIN
 // ==========================================
 window.startTool = (tool) => { 
-    currentTool = tool; currentPoints = []; circleCenter = null; if (tempLayer) map.removeLayer(tempLayer); tempLayer = null;
-    document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active')); document.getElementById('btn-'+tool).classList.add('active');
+    currentTool = tool; currentPoints = []; circleCenter = null;
+    if (tempLayer) map.removeLayer(tempLayer); tempLayer = null;
+    document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active')); 
+    document.getElementById('btn-'+tool).classList.add('active');
     document.getElementById('btn-finish').style.display = tool === 'circle' ? 'none' : 'block';
 };
 
 map.on('click', (e) => {
     if (!currentTool) return;
     if (currentTool === 'circle') {
-        if (!circleCenter) { circleCenter = e.latlng; tempLayer = L.circle(circleCenter, {radius: 0, color: '#9b59b6', weight: 3, fillOpacity: 0.3}).addTo(map); }
+        if (!circleCenter) { circleCenter = e.latlng; tempLayer = L.circle(circleCenter, {radius: 0, color: '#9b59b6', weight: 3, fillOpacity: 0.3}).addTo(map); } 
         else { finalizeCircle(circleCenter, map.distance(circleCenter, e.latlng)); circleCenter = null; }
         return;
     }
@@ -102,8 +105,8 @@ map.on('click', (e) => {
 
 window.finalizeDraw = () => {
     if (currentPoints.length < 2) return;
-    const type = currentTool; const color = type==='area'?'#e67e22':'#3498db';
-    const drawObj = { id: Date.now(), type, name: type==='area'?'Surface':'Tracé Ligne', ptsGPS: [...currentPoints], visible: true, color, weight: 4, isEditing: false, editGroup: L.layerGroup().addTo(map), volumeHtml: "" };
+    const type = currentTool; const color = type==='area' ? '#e67e22' : '#3498db';
+    const drawObj = { id: Date.now(), type, name: type==='area' ? 'Surface' : 'Tracé', ptsGPS: [...currentPoints], visible: true, color, weight: 4, isEditing: false, editGroup: L.layerGroup().addTo(map) };
     drawObj.layer = type === 'area' ? L.polygon(currentPoints, {color, weight: 3, fillOpacity: 0.3}).addTo(map) : L.polyline(currentPoints, {color, weight: 4}).addTo(map);
     drawStore.unshift(drawObj); recalculateStats(drawObj); updateDrawUI();
     if(type === 'line') generateProfile(drawObj);
@@ -112,7 +115,7 @@ window.finalizeDraw = () => {
 };
 
 window.finalizeCircle = (center, radius) => {
-    const drawObj = { id: Date.now(), type: 'circle', name: 'Cercle/Rayon', center, radius, visible: true, color: '#9b59b6', weight: 3, isEditing: false, editGroup: L.layerGroup().addTo(map), volumeHtml: "" };
+    const drawObj = { id: Date.now(), type: 'circle', name: 'Cercle', center, radius, visible: true, color: '#9b59b6', weight: 3, isEditing: false, editGroup: L.layerGroup().addTo(map) };
     drawObj.layer = L.circle(center, {radius, color: '#9b59b6', weight: 3, fillOpacity: 0.3}).addTo(map);
     const pts = []; const cL93 = proj4("EPSG:4326", "EPSG:2154", [center.lng, center.lat]);
     for (let i=0; i<64; i++) { const a = (i*2*Math.PI)/64; const g = proj4("EPSG:2154", "EPSG:4326", [cL93[0]+radius*Math.cos(a), cL93[1]+radius*Math.sin(a)]); pts.push({lat: g[1], lng: g[0]}); }
@@ -124,8 +127,10 @@ window.finalizeCircle = (center, radius) => {
 // 5. STATS, ÉDITION INTÉGRÉE & CUMULS DANS L'ÉTIQUETTE
 // ==========================================
 function recalculateStats(d) {
-    if (!d) return; const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+    if (!d) return;
+    const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
     let h = "";
+    
     if (d.type === 'circle') {
         const area = Math.PI * d.radius * d.radius; const perim = 2 * Math.PI * d.radius;
         h = `Rayon: <b>${d.radius.toFixed(1)} m</b> | Diam: <b>${(2*d.radius).toFixed(1)} m</b><br>Périmètre: <b>${perim.toFixed(1)} m</b> | Surface: <b>${area.toFixed(1)} m²</b>`;
@@ -137,16 +142,19 @@ function recalculateStats(d) {
         h = `Longueur: <b>${dist.toFixed(1)} m</b> | Dénivelé: <b>${dz.toFixed(2)} m</b><br>Pente moy: <b>${pente.toFixed(1)} %</b>`;
     } else {
         let area = 0; let perim = 0;
-        for (let i = 0; i < l93.length; i++) { let j = (i+1) % l93.length; area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; perim += Math.hypot(l93[j][0] - l93[i][0], l93[j][1] - l93[i][1]); }
+        for (let i = 0; i < l93.length; i++) { 
+            let j = (i+1) % l93.length; 
+            area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; 
+            perim += Math.hypot(l93[j][0] - l93[i][0], l93[j][1] - l93[i][1]);
+        }
         h = `Périmètre: <b>${perim.toFixed(1)} m</b><br>Surface au sol: <b>${(Math.abs(area)/2).toFixed(1)} m²</b>`;
     }
 
-    // Ajout de l'historique des volumes (Cumul dans l'étiquette)
     if (d.volumeHtml && d.volumeHtml !== "") {
         h += `<div style="margin-top:5px; padding-top:5px; border-top:1px dashed #555;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
-                    <b style="color:#f1c40f;">Mesures de Volumes :</b>
-                    <button type="button" onclick="clearVolumes(${d.id})" style="background:none; border:none; color:#e74c3c; cursor:pointer;" title="Effacer les volumes">🗑️</button>
+                    <b style="color:#f1c40f;">Mesures Volumes :</b>
+                    <button type="button" onclick="clearVolumes(${d.id})" style="background:none; border:none; color:#e74c3c; cursor:pointer;" title="Effacer l'historique">🗑️</button>
                 </div>
                 ${d.volumeHtml}
               </div>`;
@@ -165,12 +173,13 @@ window.clearVolumes = (id) => {
 window.toggleEditMode = (id, isProj = false, pid = null) => {
     let d = isProj ? projectStore.find(p=>p.id===pid)?.features.find(f=>f.id===id) : drawStore.find(x=>x.id===id); if(!d) return; 
     d.isEditing = !d.isEditing; if(!d.editGroup) d.editGroup = L.layerGroup().addTo(map);
-    if(d.isEditing) { makeEditable(d, isProj, pid); } else { d.editGroup.clearLayers(); }
+    if(d.isEditing) { makeEditable(d, isProj, pid); } else { d.editGroup.clearLayers(); window.currentEditingFeature = null; }
     isProj ? updateProjectUI() : updateDrawUI();
 };
 
 function makeEditable(d, isProj, pid) {
     d.editGroup.clearLayers(); if (d.type === 'circle') return; 
+    window.currentEditingFeature = { d, isProj, pid };
     d.ptsGPS.forEach((pt, idx) => {
         const icon = L.divIcon({ className: 'numbered-handle', html: `<div style="background:#e74c3c; color:white; border-radius:50%; width:20px; height:20px; text-align:center; line-height:20px; font-size:11px; font-weight:bold; border:2px solid white; box-shadow:0 0 3px rgba(0,0,0,0.5);">${idx + 1}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] });
         const m = L.marker(pt, { icon, draggable: true }).addTo(d.editGroup);
@@ -197,7 +206,7 @@ function makeEditable(d, isProj, pid) {
 }
 
 window.applyPointEdits = (id, isProj = false, pid = null) => {
-    let d = isProj ? projectStore.find(p=>p.id===pid)?.features.find(f=>f.id===id) : drawStore.find(x=>x.id===id); if(!d) return;
+    let d = isProj ? window.currentEditingFeature.d : drawStore.find(x=>x.id===id); if(!d) return;
     d.ptsGPS.forEach((pt, i) => {
         const x = parseFloat(document.getElementById(`edit-x-${id}-${i}`).value), y = parseFloat(document.getElementById(`edit-y-${id}-${i}`).value), z = document.getElementById(`edit-z-${id}-${i}`).value;
         if(!isNaN(x) && !isNaN(y)) { const g = proj4("EPSG:2154", "EPSG:4326", [x, y]); pt.lat = g[1]; pt.lng = g[0]; }
@@ -207,7 +216,6 @@ window.applyPointEdits = (id, isProj = false, pid = null) => {
     recalculateStats(d); if(d.isEditing) makeEditable(d, isProj, pid); if(d.type==='line') generateProfile(d);
 };
 
-// Tableau XYZ intégré
 function generateEditorTable(d, isProj, pid=null) {
     if(!d.isEditing || d.type === 'circle') return '';
     let html = `<div style="background:#111; padding:5px; margin-top:5px; border-radius:3px; font-size:11px;">
@@ -217,12 +225,11 @@ function generateEditorTable(d, isProj, pid=null) {
         let zAct = pt.customZ !== undefined ? pt.customZ : getZ(l);
         let zVal = pt.customZ !== undefined ? pt.customZ.toFixed(2) : '';
         let zPlc = zAct !== null ? zAct.toFixed(2) : 'Auto';
-        
         html += `<tr>
             <td style="color:#e74c3c; font-weight:bold;">${i+1}</td>
-            <td><input id="edit-x-${d.id}-${i}" value="${l[0].toFixed(2)}" oninput="applyPointEdits(${d.id}, ${isProj}, ${pid})" style="width:65px; background:#222; color:#fff; border:1px solid #555;"></td>
-            <td><input id="edit-y-${d.id}-${i}" value="${l[1].toFixed(2)}" oninput="applyPointEdits(${d.id}, ${isProj}, ${pid})" style="width:65px; background:#222; color:#fff; border:1px solid #555;"></td>
-            <td><input id="edit-z-${d.id}-${i}" value="${zVal}" placeholder="${zPlc}" onchange="applyPointEdits(${d.id}, ${isProj}, ${pid})" style="width:45px; background:#2980b9; color:#fff; border:1px solid #555;"></td>
+            <td><input id="edit-x-${d.id}-${i}" value="${l[0].toFixed(2)}" oninput="applyPointEdits(${d.id}, ${isProj}, ${pid})" style="width:65px; background:#222; color:#fff; border:1px solid #555; text-align:center;"></td>
+            <td><input id="edit-y-${d.id}-${i}" value="${l[1].toFixed(2)}" oninput="applyPointEdits(${d.id}, ${isProj}, ${pid})" style="width:65px; background:#222; color:#fff; border:1px solid #555; text-align:center;"></td>
+            <td><input id="edit-z-${d.id}-${i}" value="${zVal}" placeholder="${zPlc}" onchange="applyPointEdits(${d.id}, ${isProj}, ${pid})" style="width:45px; background:#2980b9; color:#fff; border:1px solid #555; text-align:center;"></td>
         </tr>`;
     });
     return html + `</table></div>`;
@@ -235,8 +242,8 @@ function updateDrawUI() {
         let btns = d.type === 'line' ? 
             `<button type="button" onclick="generateProfileById(${d.id})" style="width:100%; margin-top:5px; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil altimétrique</button>` : 
             `<div style="display:flex; gap:3px; margin-top:5px; flex-wrap:wrap;">
-                <button type="button" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#2980b9; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📉 Déblai</button>
-                <button type="button" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📈 Remblai</button>
+                <button type="button" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#2980b9; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📉 Calcul Déblai</button>
+                <button type="button" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📈 Calcul Remblai</button>
                 <button type="button" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; font-size:0.75em; background:#8e44ad; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📐 Vol. Courbe</button>
                 <button type="button" onclick="calculateVolume(${d.id}, 'plane')" style="flex:1; font-size:0.75em; background:#9b59b6; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📏 Vol. Plan</button>
                 <button type="button" onclick="generate3DView(${d.id})" style="flex:1; min-width:100%; font-size:0.8em; font-weight:bold; background:#34495e; color:#fff; border:1px solid #555; cursor:pointer; padding:5px; margin-top:2px; border-radius:3px;">👁️ Lancer Vue 3D</button>
@@ -255,7 +262,7 @@ function updateDrawUI() {
             <div id="stats-${d.id}" style="font-size:12px; margin:5px 0; color:#eee; background:#222; padding:6px; border-radius:3px;">${d.statsHtml || ''}</div>
             
             <button type="button" onclick="toggleEditMode(${d.id})" style="width:100%; background:${d.isEditing?'#27ae60':'#7f8c8d'}; color:#fff; border:none; padding:5px; cursor:pointer; border-radius:3px; font-weight:bold;">
-                ${d.isEditing ? '✅ Fin édition' : '✏️ Éditer les points'}
+                ${d.isEditing ? '✅ Fermer & Valider Édition' : '✏️ Modifier les points (XYZ)'}
             </button>
             
             ${generateEditorTable(d, false)}
@@ -270,12 +277,11 @@ window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visi
 window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id); d.color = color; d.layer.setStyle({color}); updateDrawUI(); };
 
 // ==========================================
-// 6. CALCULS DE VOLUMES (CUMULATIF)
+// 6. CALCULS DE VOLUMES
 // ==========================================
 window.calculateVolume = (id, type) => {
     const d = drawStore.find(x => x.id === id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id); 
-    if (!d) return;
-    if (mntStore.filter(m=>m.visible).length === 0) return alert("Veuillez activer un MNT dans la liste à gauche.");
+    if (mntStore.filter(m=>m.visible).length === 0) return alert("Veuillez activer un MNT.");
     
     const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
     let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
@@ -287,7 +293,7 @@ window.calculateVolume = (id, type) => {
         if(z !== null) border.push({x:p[0], y:p[1], z}); 
     });
     
-    if((type==='slope'||type==='plane') && border.length < 3) return alert("Pas assez de points avec altitude pour calculer ce type de plan.");
+    if((type==='slope'||type==='plane') && border.length < 3) return alert("Pas assez de points avec altitude.");
 
     let refZ = 0;
     if(type==='hollow'||type==='mound') {
@@ -298,6 +304,7 @@ window.calculateVolume = (id, type) => {
 
     setTimeout(() => {
         let tTas = 0, tCreux = 0, step = 1; let aR=0, bR=0, cR=0;
+        
         if (type==='plane') {
             let sX=0, sY=0, sZ=0; border.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
             const n=border.length, cX=sX/n, cY=sY/n, cZ=sZ/n;
@@ -323,17 +330,16 @@ window.calculateVolume = (id, type) => {
             }
         }
         
-        const lbl = type==='plane' ? 'Base Plan' : (type==='slope' ? 'Base Courbe' : `Base ${refZ}m`);
-        // ON AJOUTE AU VOLUME EXISTANT (CUMUL DANS L'ÉTIQUETTE)
+        const lbl = type==='plane' ? 'Plan' : (type==='slope' ? 'Courbe' : `${refZ}m`);
         if (!d.volumeHtml) d.volumeHtml = "";
-        d.volumeHtml += `<div style="font-size:11px; margin-top:2px;">[${lbl}] 📉 <b style="color:#3498db">${tCreux.toFixed(1)}m³</b> | 📈 <b style="color:#e67e22">${tTas.toFixed(1)}m³</b></div>`;
+        d.volumeHtml += `<div style="font-size:11px; margin-top:3px; background:#1a1a1a; padding:3px; border-radius:2px;">[${lbl}] 📉 Déblai: <b style="color:#3498db">${tCreux.toFixed(1)}m³</b> | 📈 Remblai: <b style="color:#e67e22">${tTas.toFixed(1)}m³</b></div>`;
         
         recalculateStats(d); updateDrawUI(); updateProjectUI();
     }, 50);
 };
 
 // ==========================================
-// 7. VUE 3D PARFAITE (LIGNES + SUIVI)
+// 7. VUE 3D PARFAITE (LIGNES + SUIVI SOURIS)
 // ==========================================
 window.generate3DView = (id) => {
     const d = drawStore.find(x => x.id === id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id); 
@@ -346,16 +352,17 @@ window.generate3DView = (id) => {
     if(border.length === 0) return alert("Zone hors MNT.");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération de la grille 3D... ⏳</h3>';
-    
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération de la matrice 3D... ⏳</h3>';
+    document.getElementById('hover-3d-result').innerHTML = "Survolez le modèle...";
+
     setTimeout(() => {
         try {
             let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
             l93.forEach(p=>{minX=Math.min(minX,p[0]); maxX=Math.max(maxX,p[0]); minY=Math.min(minY,p[1]); maxY=Math.max(maxY,p[1]);});
             
-            // Sécurité anti-crash si la surface est une ligne droite
-            if(maxX - minX < 1) { maxX += 5; minX -= 5; }
-            if(maxY - minY < 1) { maxY += 5; minY -= 5; }
+            // Protection anti-plantage si la surface est trop petite
+            if(maxX - minX < 5) { maxX += 10; minX -= 10; }
+            if(maxY - minY < 5) { maxY += 10; minY -= 10; }
 
             const step = Math.max(0.5, Math.max((maxX - minX)/40, (maxY - minY)/40));
 
@@ -366,17 +373,20 @@ window.generate3DView = (id) => {
             const D = sXX*sYY - sXY*sXY; let aR=0, bR=0; if(D!==0){aR=(sXZ*sYY-sYZ*sXY)/D; bR=(sYZ*sXX-sXZ*sXY)/D;} 
             const cR = cZ - aR*cX - bR*cY;
 
-            let xV = []; for (let x = minX; x <= maxX + step; x += step) xV.push(x);
-            let yV = []; for (let y = minY; y <= maxY + step; y += step) yV.push(y);
+            let xV = []; for (let x = minX; x <= maxX + step/2; x += step) xV.push(x);
+            let yV = []; for (let y = minY; y <= maxY + step/2; y += step) yV.push(y);
 
             let zT=[], zB=[]; 
             for (let j = 0; j < yV.length; j++) {
                 let rT=[], rB=[]; let y = yV[j];
                 for (let i = 0; i < xV.length; i++) {
                     let x = xV[i];
-                    if (isPointInPolygon([x, y], l93)) { rT.push(getZ([x, y])); rB.push(aR*x + bR*y + cR); } 
-                    else { rT.push(null); rB.push(null); }
-                } zT.push(rT); zB.push(rB);
+                    // On remplit le carré du Terrain entier pour éviter l'erreur Plotly
+                    rT.push(getZ([x, y])); 
+                    if (isPointInPolygon([x, y], l93)) { rB.push(aR*x + bR*y + cR); } 
+                    else { rB.push(null); }
+                } 
+                zT.push(rT); zB.push(rB);
             }
             window.current3DData = {x: xV, y: yV, zTop: zT};
 
@@ -388,19 +398,19 @@ window.generate3DView = (id) => {
             const tracePoints = {
                 x: bX, y: bY, z: bZ, mode: 'lines+markers+text', type: 'scatter3d', name: 'Polygone',
                 text: [...border.map(p=>p.i), ''], textposition: 'top center',
-                line: { color: '#f1c40f', width: 5 }, marker: { color: '#e74c3c', size: 6 }
+                line: { color: '#f1c40f', width: 5 }, marker: { color: '#e74c3c', size: 6 }, showlegend: true
             };
             
             Plotly.newPlot('plot-3d', [
-                {z:zT, x:xV, y:yV, type:'surface', name:'Terrain Nat.', colorscale:'Earth', showlegend:true},
-                {z:zB, x:xV, y:yV, type:'surface', name:'Plan Parfait', colorscale:'Purples', opacity:0.7, showlegend:true, visible: 'legendonly'},
+                {z:zT, x:xV, y:yV, type:'surface', name:'Terrain Nat.', colorscale:'Earth', showlegend:true, showscale:false},
+                {z:zB, x:xV, y:yV, type:'surface', name:'Plan Parfait', colorscale:'Purples', opacity:0.7, showlegend:true, visible: 'legendonly', showscale:false},
                 tracePoints
             ], {
                 margin:{l:0,r:0,b:0,t:0}, scene:{aspectmode:'data'}, paper_bgcolor:'#222', font:{color:'#fff'}, 
                 legend:{orientation:'h', x:0.5, y:0.05, xanchor:'center', bgcolor:'rgba(0,0,0,0)'}
             }, {displayModeBar:false}).then(() => {
                 
-                // Suivi Souris 3D
+                // Suivi Souris 3D vers 2D
                 document.getElementById('plot-3d').on('plotly_hover', (data) => {
                     if(data.points && data.points.length > 0){
                         const p = data.points[0]; const g = proj4("EPSG:2154","EPSG:4326",[p.x,p.y]);
@@ -411,13 +421,13 @@ window.generate3DView = (id) => {
                 });
                 
                 document.getElementById('plot-3d').addEventListener('mouseleave', () => { 
-                    if(cursorMarker) map.removeLayer(cursorMarker); cursorMarker = null;
+                    if(cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
                     const hr = document.getElementById('hover-3d-result'); if (hr) hr.innerText = "Survolez le relief...";
                 });
                 
             }).catch(e => { document.getElementById('plot-3d').innerHTML = `<h3 style="color:#e74c3c; text-align:center; margin-top:20%;">Erreur d'affichage 3D</h3>`; });
             
-        } catch (err) { document.getElementById('plot-3d').innerHTML = `<h3 style="color:#e74c3c; text-align:center; margin-top:20%;">Erreur Math 3D</h3>`; }
+        } catch (err) { document.getElementById('plot-3d').innerHTML = `<h3 style="color:#e74c3c; text-align:center; margin-top:20%;">Erreur Mathématique 3D</h3>`; }
     }, 100);
 };
 
@@ -436,28 +446,35 @@ window.exportSTL = () => {
 window.close3DWindow = () => { document.getElementById('window-3d').style.display='none'; if(cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } };
 
 // ==========================================
-// 8. PROFIL ALTIMÉTRIQUE AVEC CURSEURS AUTO
+// 8. PROFIL ALTIMÉTRIQUE AVEC SUIVI
 // ==========================================
 window.generateProfileById = (id) => { currentProfileDrawId = id; generateProfile(drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id)); };
 
 function generateProfile(d) {
-    if(!d) return; 
-    document.getElementById('profile-window').style.display='block';
+    if(!d) return; document.getElementById('profile-window').style.display='block';
     const ctx = document.getElementById('profileChart').getContext('2d');
     const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
     
     let data=[], geo=[], dist=0;
+    
     let zStart = d.ptsGPS[0].customZ !== undefined ? d.ptsGPS[0].customZ : (getZ(l93[0])||0);
-    data.push({x: 0, y: parseFloat(zStart.toFixed(2))}); geo.push(d.ptsGPS[0]);
+    data.push({x: 0, y: parseFloat(zStart.toFixed(2))}); 
+    geo.push({lat: d.ptsGPS[0].lat, lng: d.ptsGPS[0].lng}); // Coordonnées parfaites
     
     for(let i=1; i<l93.length; i++) {
         const dSeg = Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
         for(let j=1; j<dSeg; j+=1) {
-            const t = j/dSeg; const x = l93[i-1][0]+(l93[i][0]-l93[i-1][0])*t, y = l93[i-1][1]+(l93[i][1]-l93[i-1][1])*t;
-            data.push({x: Math.round(dist+j), y: parseFloat((getZ([x,y])||0).toFixed(2))}); geo.push(proj4("EPSG:2154","EPSG:4326",[x,y]));
+            const t = j/dSeg; 
+            const x = l93[i-1][0]+(l93[i][0]-l93[i-1][0])*t;
+            const y = l93[i-1][1]+(l93[i][1]-l93[i-1][1])*t;
+            data.push({x: Math.round(dist+j), y: parseFloat((getZ([x,y])||0).toFixed(2))}); 
+            const g = proj4("EPSG:2154","EPSG:4326",[x,y]);
+            geo.push({lat: g[1], lng: g[0]});
         }
-        dist += dSeg; let zEnd = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : (getZ(l93[i])||0);
-        data.push({x: Math.round(dist), y: parseFloat(zEnd.toFixed(2))}); geo.push(d.ptsGPS[i]);
+        dist += dSeg; 
+        let zEnd = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : (getZ(l93[i])||0);
+        data.push({x: Math.round(dist), y: parseFloat(zEnd.toFixed(2))}); 
+        geo.push({lat: d.ptsGPS[i].lat, lng: d.ptsGPS[i].lng});
     }
     
     if(chartInstance) chartInstance.destroy();
@@ -515,8 +532,7 @@ map.on('mousemove', (e)=>{
 
 function dragElement(winId, headerId) {
     const win = document.getElementById(winId), header = document.getElementById(headerId);
-    let isDragging = false, offsetX = 0, offsetY = 0;
-    if(!header) return;
+    let isDragging = false, offsetX = 0, offsetY = 0; if(!header) return;
     header.onmousedown = (e) => { if(e.target.tagName==='BUTTON')return; isDragging=true; const rect=win.getBoundingClientRect(); offsetX=e.clientX-rect.left; offsetY=e.clientY-rect.top; };
     document.addEventListener('mousemove', (e) => { if(isDragging) { win.style.left=Math.max(0, e.clientX-offsetX)+'px'; win.style.top=Math.max(0, e.clientY-offsetY)+'px'; }});
     document.addEventListener('mouseup', () => isDragging=false);
