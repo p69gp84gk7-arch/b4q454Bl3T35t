@@ -241,9 +241,10 @@ function updateDrawUI() {
         } else if (d.type === 'area' || d.type === 'circle') {
             actionButtons = `
             <div style="display:flex; gap:5px; margin-top:8px; flex-wrap:wrap;">
-                <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.7em; cursor:pointer; background:#2980b9; color:white; border:none; padding:4px; border-radius:3px;">💧 Creux</button>
-                <button id="btn-vol-mound-${d.id}" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.7em; cursor:pointer; background:#e67e22; color:white; border:none; padding:4px; border-radius:3px;">⛰️ Tas</button>
-                <button id="btn-vol-slope-${d.id}" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; font-size:0.75em; cursor:pointer; background:#8e44ad; color:white; border:none; padding:4px; border-radius:3px;">📐 Pente (Auto)</button>
+                <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.7em; cursor:pointer; background:#2980b9; color:white; border:none; padding:4px; border-radius:3px;">💧 Creux (Horiz)</button>
+                <button id="btn-vol-mound-${d.id}" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.7em; cursor:pointer; background:#e67e22; color:white; border:none; padding:4px; border-radius:3px;">⛰️ Tas (Horiz)</button>
+                <button id="btn-vol-slope-${d.id}" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; font-size:0.7em; cursor:pointer; background:#8e44ad; color:white; border:none; padding:4px; border-radius:3px;">📐 Pente (Courbe)</button>
+                <button id="btn-vol-plane-${d.id}" onclick="calculateVolume(${d.id}, 'plane')" style="flex:1; font-size:0.7em; cursor:pointer; background:#9b59b6; color:white; border:none; padding:4px; border-radius:3px;" title="Régression linéaire plane">📏 Plan Parfait</button>
                 <button onclick="generate3DView(${d.id})" style="flex:1; min-width:100%; font-size:0.75em; cursor:pointer; background:#34495e; color:white; border:1px solid #555; padding:5px; border-radius:3px; margin-top:2px;">👁️ Contrôle Vue 3D</button>
             </div>`;
         }
@@ -307,7 +308,7 @@ window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id)
 window.deleteDraw = (id) => { const d = drawStore.find(x => x.id === id); map.removeLayer(d.layer); if(d.editGroup) map.removeLayer(d.editGroup); drawStore = drawStore.filter(x => x.id !== id); updateDrawUI(); if(currentProfileDrawId === id) { document.getElementById('profile-window').style.display = 'none'; currentProfileDrawId = null; } };
 
 // ==========================================
-// 6. CALCUL DES VOLUMES 
+// 6. CALCUL DES VOLUMES AVEC RÉGRESSION PLANAIRE
 // ==========================================
 window.calculateVolume = (id, type) => {
     const d = drawStore.find(x => x.id === id);
@@ -319,7 +320,7 @@ window.calculateVolume = (id, type) => {
     l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
 
     let refZ = 0, borderPtsWithZ = [];
-    if (type === 'slope') {
+    if (type === 'slope' || type === 'plane') {
         l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
         if (borderPtsWithZ.length < 3) return alert("Pas assez de données sur les bords.");
     } else {
@@ -333,16 +334,40 @@ window.calculateVolume = (id, type) => {
 
     setTimeout(() => {
         let totalVolumeTas = 0, totalVolumeCreux = 0, step = 1, pixelArea = step * step, pointsCount = 0;
+        
+        // Algorithme des moindres carrés pour le "Plan Parfait"
+        let aReg = 0, bReg = 0, cReg = 0;
+        if (type === 'plane') {
+            let sumX = 0, sumY = 0, sumZ = 0;
+            borderPtsWithZ.forEach(p => { sumX += p.x; sumY += p.y; sumZ += p.z; });
+            const nPts = borderPtsWithZ.length;
+            const cX = sumX / nPts, cY = sumY / nPts, cZ = sumZ / nPts;
+            let Sxx = 0, Syy = 0, Sxy = 0, Sxz = 0, Syz = 0;
+            borderPtsWithZ.forEach(p => {
+                const dx = p.x - cX, dy = p.y - cY, dz = p.z - cZ;
+                Sxx += dx * dx; Syy += dy * dy; Sxy += dx * dy; Sxz += dx * dz; Syz += dy * dz;
+            });
+            const D = Sxx * Syy - Sxy * Sxy;
+            if (D !== 0) { aReg = (Sxz * Syy - Syz * Sxy) / D; bReg = (Syz * Sxx - Sxz * Sxy) / D; }
+            cReg = cZ - aReg * cX - bReg * cY;
+        }
+
         for (let x = minX; x <= maxX; x += step) {
             for (let y = minY; y <= maxY; y += step) {
                 if (isPointInPolygon([x, y], l93Pts)) {
                     let zMNT = getZ([x, y]);
                     if (zMNT !== null) {
                         pointsCount++;
-                        if (type === 'slope') {
-                            let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
-                            for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
-                            if (!exactMatch) zBase = sumZ / sumW;
+                        if (type === 'slope' || type === 'plane') {
+                            let zBase = 0;
+                            if (type === 'slope') {
+                                let sumZ = 0, sumW = 0, exactMatch = false;
+                                for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
+                                if (!exactMatch) zBase = sumZ / sumW;
+                            } else {
+                                zBase = aReg * x + bReg * y + cReg;
+                            }
+                            
                             if (zMNT > zBase) totalVolumeTas += (zMNT - zBase) * pixelArea; else if (zMNT < zBase) totalVolumeCreux += (zBase - zMNT) * pixelArea;
                         } else {
                             if (type === 'hollow' && zMNT < refZ) totalVolumeCreux += (refZ - zMNT) * pixelArea; else if (type === 'mound' && zMNT > refZ) totalVolumeTas += (zMNT - refZ) * pixelArea;
@@ -355,10 +380,12 @@ window.calculateVolume = (id, type) => {
         if (pointsCount === 0) alert("Aucune donnée MNT dans cette zone.");
         else {
             let msg = "", resultHtml = "";
-            if (type === 'slope') {
+            if (type === 'slope' || type === 'plane') {
+                const title = type === 'slope' ? 'Pente (Courbe)' : 'Plan Parfait';
+                const color = type === 'slope' ? '#8e44ad' : '#9b59b6';
                 const tasStr = totalVolumeTas.toLocaleString('fr-FR', {maximumFractionDigits:1}), creuxStr = totalVolumeCreux.toLocaleString('fr-FR', {maximumFractionDigits:1});
-                msg = `📐 Bilan sur pente:\n\n⛰️ Tas : ${tasStr} m³\n💧 Creux : ${creuxStr} m³`;
-                resultHtml = `<br><span style="color:#8e44ad; font-size:0.9em; display:block; margin-top:3px;">Tas (Pente): <b>${tasStr} m³</b> | Creux: <b>${creuxStr} m³</b></span>`;
+                msg = `📐 Bilan sur ${title}:\n\n⛰️ Tas : ${tasStr} m³\n💧 Creux : ${creuxStr} m³`;
+                resultHtml = `<br><span style="color:${color}; font-size:0.9em; display:block; margin-top:3px;">Tas (${title}): <b>${tasStr} m³</b> | Creux: <b>${creuxStr} m³</b></span>`;
             } else {
                 let vol = type === 'hollow' ? totalVolumeCreux : totalVolumeTas, volStr = vol.toLocaleString('fr-FR', {maximumFractionDigits:1});
                 msg = type === 'hollow' ? `💧 Creux (sous ${refZ}m) : ${volStr} m³` : `⛰️ Tas (sur ${refZ}m) : ${volStr} m³`;
@@ -390,27 +417,47 @@ function render3DPlot(l93Pts, borderPtsWithZ) {
         l93Pts.forEach(pt => { if (pt[0] < minX) minX = pt[0]; if (pt[0] > maxX) maxX = pt[0]; if (pt[1] < minY) minY = pt[1]; if (pt[1] > maxY) maxY = pt[1]; });
         
         const maxPts = 40; const step = Math.max(1, (maxX - minX) / maxPts, (maxY - minY) / maxPts);
-        let xVals = [], yVals = [], zTerrain = [], zRefPlane = [];
+        let xVals = [], yVals = [], zTerrain = [], zRefCurve = [], zRefPlane = [];
         
+        // Calcul du "Plan Parfait" pour la 3D
+        let sumX = 0, sumY = 0, sumZ = 0;
+        borderPtsWithZ.forEach(p => { sumX += p.x; sumY += p.y; sumZ += p.z; });
+        const nPts = borderPtsWithZ.length;
+        const cX = sumX / nPts, cY = sumY / nPts, cZ = sumZ / nPts;
+        let Sxx = 0, Syy = 0, Sxy = 0, Sxz = 0, Syz = 0;
+        borderPtsWithZ.forEach(p => {
+            const dx = p.x - cX, dy = p.y - cY, dz = p.z - cZ;
+            Sxx += dx * dx; Syy += dy * dy; Sxy += dx * dy; Sxz += dx * dz; Syz += dy * dz;
+        });
+        const D = Sxx * Syy - Sxy * Sxy;
+        let aReg = 0, bReg = 0, cReg = cZ;
+        if (D !== 0) { aReg = (Sxz * Syy - Syz * Sxy) / D; bReg = (Syz * Sxx - Sxz * Sxy) / D; cReg = cZ - aReg * cX - bReg * cY; }
+
         for (let x = minX; x <= maxX; x += step) xVals.push(x);
         
         for (let y = minY; y <= maxY; y += step) {
-            let rowTerrain = [], rowRef = []; yVals.push(y);
+            let rowTerrain = [], rowCurve = [], rowPlane = []; yVals.push(y);
             for (let x = minX; x <= maxX; x += step) {
                 if (isPointInPolygon([x, y], l93Pts)) {
                     let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
-                    let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
-                    for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
-                    if (!exactMatch) zBase = sumZ / sumW; rowRef.push(zBase);
-                } else { rowTerrain.push(null); rowRef.push(null); }
+                    
+                    // Pente IDW (Courbe)
+                    let sumZC = 0, sumW = 0, exactMatch = false, zBaseC = 0;
+                    for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zBaseC = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZC += pt.z * w; sumW += w; }
+                    if (!exactMatch) zBaseC = sumZC / sumW; rowCurve.push(zBaseC);
+
+                    // Plan Parfait (Régression)
+                    rowPlane.push(aReg * x + bReg * y + cReg);
+                } else { rowTerrain.push(null); rowCurve.push(null); rowPlane.push(null); }
             }
-            zTerrain.push(rowTerrain); zRefPlane.push(rowRef);
+            zTerrain.push(rowTerrain); zRefCurve.push(rowCurve); zRefPlane.push(rowPlane);
         }
         
         window.current3DData = { x: xVals, y: yVals, zTop: zTerrain };
 
         const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: '⛰️ Terrain Naturel', colorscale: 'Earth', showscale: false, showlegend: true };
-        const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: '🟦 Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6, showlegend: true };
+        const traceCurve = { z: zRefCurve, x: xVals, y: yVals, type: 'surface', name: '🟦 Base Courbe', colorscale: 'Blues', showscale: false, opacity: 0.5, showlegend: true, visible: 'legendonly' }; // Caché par défaut
+        const tracePlane = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: '🟪 Plan Parfait', colorscale: 'Purples', showscale: false, opacity: 0.7, showlegend: true };
 
         const layout = { 
             margin: { l: 0, r: 0, b: 40, t: 10 }, 
@@ -419,7 +466,7 @@ function render3DPlot(l93Pts, borderPtsWithZ) {
             legend: { orientation: 'h', x: 0.5, y: -0.05, xanchor: 'center', yanchor: 'top', bgcolor: 'rgba(0,0,0,0)' }
         };
         
-        Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout, { displayModeBar: true, displaylogo: false }).then(() => {
+        Plotly.newPlot('plot-3d', [traceTerrain, traceCurve, tracePlane], layout, { displayModeBar: true, displaylogo: false }).then(() => {
             const plotDiv = document.getElementById('plot-3d');
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
@@ -492,7 +539,6 @@ let isDragging3D = false, offset3DX = 0, offset3DY = 0;
 header3d.addEventListener('mousedown', (e) => { if (e.target.tagName === 'BUTTON') return; isDragging3D = true; const rect = win3d.getBoundingClientRect(); offset3DX = e.clientX - rect.left; offset3DY = e.clientY - rect.top; });
 document.addEventListener('mousemove', (e) => { if (!isDragging3D) return; win3d.style.left = Math.max(0, e.clientX - offset3DX) + 'px'; win3d.style.top = Math.max(0, e.clientY - offset3DY) + 'px'; });
 document.addEventListener('mouseup', () => { isDragging3D = false; });
-
 // ==========================================
 // 8. PROFIL ALTIMÉTRIQUE HAUTE PRÉCISION
 // ==========================================
