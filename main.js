@@ -400,7 +400,7 @@ dragElement('window-3d', 'header-3d'); dragElement('profile-window', 'profile-he
 // ==========================================
 // 10. SAUVEGARDE ET PROJETS (GOOGLE SHEETS)
 // ==========================================
-const SCRIPT_URL = "VOTRE_URL_GOOGLE_SCRIPT_ICI"; // <--- ⚠️ À REMPLIR
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZ-m9rVPuATkiYjccicrtBSrAieSSA_TTqmYpA61SoK4eTj11qesIEpItyys6Vu2GVXQ/exec"; // <--- ⚠️ À REMPLIR
 
 window.saveProject = async () => {
     const name = document.getElementById('project-name').value.trim(); if (!name || drawStore.length===0) return alert("Nom de projet et tracés requis.");
