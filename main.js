@@ -13,26 +13,16 @@ satellite.addTo(map);
 L.control.layers({ "🌍 Satellite": satellite, "🗺️ Plan": planOSM, "⛰️ Topographie": topoMap }).addTo(map);
 
 // Variables globales
-let mntStore = [];
-let drawStore = [];
-let kmzStore = []; 
-let projectStore = []; // <-- Variable ajoutée pour les projets sauvegardés
-let currentPoints = [];
-let tempLayer = null;
-let currentTool = null;
-let chartInstance = null;
-let cursorMarker = null;
-let currentProfileExportData = [];
-let currentProfileDrawId = null;
+let mntStore = [], drawStore = [], kmzStore = [], projectStore = [];
+let currentPoints = [], tempLayer = null, currentTool = null, circleCenter = null;
+let chartInstance = null, cursorMarker = null, currentProfileExportData = [], currentProfileDrawId = null;
 
 // ==========================================
 // 2. IMPORTATION MNT (LOCAL ET SERVEUR)
 // ==========================================
 window.loadRemoteMNT = async () => {
     const select = document.getElementById('mnt-select');
-    const url = select.value;
-    const name = select.options[select.selectedIndex].text;
-
+    const url = select.value; const name = select.options[select.selectedIndex].text;
     if (!url) return alert("Veuillez sélectionner un MNT dans la liste déroulante.");
 
     const btn = document.querySelector('button[onclick="loadRemoteMNT()"]');
@@ -43,7 +33,6 @@ window.loadRemoteMNT = async () => {
         const response = await fetch(url);
         if (!response.ok) throw new Error("Erreur réseau");
         const buffer = await response.arrayBuffer();
-
         const tiff = await GeoTIFF.fromArrayBuffer(buffer);
         const image = await tiff.getImage();
         const bbox = image.getBoundingBox();
@@ -51,18 +40,13 @@ window.loadRemoteMNT = async () => {
         
         const sw = proj4("EPSG:2154", "EPSG:4326", [bbox[0], bbox[1]]);
         const ne = proj4("EPSG:2154", "EPSG:4326", [bbox[2], bbox[3]]);
-        
         const visual = L.rectangle([[sw[1], sw[0]], [ne[1], ne[0]]], { color: "#00d1b2", weight: 2, fillOpacity: 0.15 }).addTo(map);
 
         mntStore.push({ id: Date.now()+Math.random(), name: name, bbox, width: image.getWidth(), height: image.getHeight(), data: raster[0], visual, visible: true, color: "#00d1b2", weight: 2 });
-        
         map.fitBounds(visual.getBounds());
         updateMntUI();
-    } catch(err) { 
-        console.error(err); alert("Impossible de charger le MNT. Vérifiez le lien GitHub.");
-    } finally {
-        btn.innerText = oldText; btn.style.background = "#00d1b2"; btn.disabled = false;
-    }
+    } catch(err) { console.error(err); alert("Impossible de charger le MNT."); } 
+    finally { btn.innerText = oldText; btn.style.background = "#00d1b2"; btn.disabled = false; }
 };
 
 document.getElementById('mnt-input').onchange = async (e) => {
@@ -77,7 +61,6 @@ document.getElementById('mnt-input').onchange = async (e) => {
             
             const sw = proj4("EPSG:2154", "EPSG:4326", [bbox[0], bbox[1]]);
             const ne = proj4("EPSG:2154", "EPSG:4326", [bbox[2], bbox[3]]);
-            
             const visual = L.rectangle([[sw[1], sw[0]], [ne[1], ne[0]]], { color: "#00d1b2", weight: 2, fillOpacity: 0.15 }).addTo(map);
 
             mntStore.push({ id: Date.now()+Math.random(), name: file.name, bbox, width: image.getWidth(), height: image.getHeight(), data: raster[0], visual, visible: true, color: "#00d1b2", weight: 2 });
@@ -118,7 +101,7 @@ function getZ(l93) {
 }
 
 // ==========================================
-// 3. GESTION DE L'INTERFACE DES CALQUES
+// 3. GESTION DE L'INTERFACE DES CALQUES KMZ
 // ==========================================
 function updateKmzUI() {
     const list = document.getElementById('kmz-list'); if (!list) return; list.innerHTML = '';
@@ -142,10 +125,8 @@ function applyKmzStyle(id) {
 }
 
 // ==========================================
-// 4. OUTILS DE TRACÉ
+// 4. OUTILS DE TRACÉ (Ligne, Surface, Cercle)
 // ==========================================
-let circleCenter = null;
-
 window.startTool = (tool) => {
     currentTool = tool; currentPoints = []; circleCenter = null;
     if (tempLayer) map.removeLayer(tempLayer); tempLayer = null;
@@ -154,14 +135,12 @@ window.startTool = (tool) => {
     
     const finishBtn = document.getElementById('btn-finish'); 
     document.getElementById('btn-' + tool).insertAdjacentElement('afterend', finishBtn);
-    // Le cercle se ferme tout seul au 2ème clic
     finishBtn.style.display = tool === 'circle' ? 'none' : 'block';
 };
 
 map.on('click', (e) => {
     if (!currentTool) return; 
 
-    // Outil CERCLE : 1er clic = Centre, 2ème clic = Rayon
     if (currentTool === 'circle') {
         if (!circleCenter) {
             circleCenter = e.latlng;
@@ -174,7 +153,6 @@ map.on('click', (e) => {
         return;
     }
 
-    // Outils Ligne et Surface
     currentPoints.push(e.latlng);
     if (tempLayer) map.removeLayer(tempLayer);
     const color = currentTool === 'area' ? '#e67e22' : '#3498db';
@@ -208,13 +186,10 @@ window.finalizeCircle = (center, radius) => {
     const layer = L.circle(center, {radius, color, weight, fillOpacity: 0.3}).addTo(map);
     if (tempLayer) map.removeLayer(tempLayer); tempLayer = null;
 
-    // Le secret : on crée 64 points invisibles sur le contour pour tromper le moteur 3D !
     const ptsGPS = generateCirclePoints(center, radius);
-
     const drawObj = { 
         id: Date.now(), type: 'circle', name: 'Mon Cercle', layer, 
-        ptsGPS, center, radius, // Nouvelles variables pour retenir la géométrie parfaite
-        visible: true, color, weight, isEditing: false, editGroup: L.layerGroup().addTo(map) 
+        ptsGPS, center, radius, visible: true, color, weight, isEditing: false, editGroup: L.layerGroup().addTo(map) 
     };
     drawStore.push(drawObj); recalculateStats(drawObj);
     currentTool = null; document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
@@ -233,8 +208,9 @@ window.generateCirclePoints = (center, radius) => {
     }
     return pts;
 };
+
 // ==========================================
-// 5. CALCULS, ÉDITION LIVE ET VOLUMES 3D
+// 5. STATISTIQUES, ÉDITION LIVE ET UI
 // ==========================================
 function recalculateStats(d) {
     if (d.type === 'circle') {
@@ -263,7 +239,6 @@ function updateDrawUI() {
         if (d.type === 'line') {
             actionButtons = `<button onclick="generateProfileById(${d.id})" style="width:100%; margin-top:8px; font-size:0.8em; cursor:pointer; background:#333; color:white; border:1px solid #555; padding:5px; border-radius:3px;">📈 Afficher le profil</button>`;
         } else if (d.type === 'area' || d.type === 'circle') {
-            // Boutons Volumes et 3D partagés pour Polygones ET Cercles
             actionButtons = `
             <div style="display:flex; gap:5px; margin-top:8px; flex-wrap:wrap;">
                 <button id="btn-vol-hollow-${d.id}" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.7em; cursor:pointer; background:#2980b9; color:white; border:none; padding:4px; border-radius:3px;">💧 Creux</button>
@@ -282,8 +257,7 @@ function updateDrawUI() {
 
 window.toggleEditMode = (id, isProject = false, projectId = null) => {
     let d = isProject ? projectStore.find(p => p.id === projectId)?.features.find(f => f.id === id) : drawStore.find(x => x.id === id);
-    if (!d) return;
-    d.isEditing = !d.isEditing;
+    if (!d) return; d.isEditing = !d.isEditing;
     if (!d.editGroup) d.editGroup = L.layerGroup().addTo(map);
     if (d.isEditing && d.visible) { makeEditable(d, isProject, projectId); } else { d.editGroup.clearLayers(); }
     if (isProject) updateProjectUI(); else updateDrawUI();
@@ -299,10 +273,8 @@ function makeEditable(d, isProject = false, projectId = null) {
     if (!d.visible || !d.isEditing) return;
     const icon = L.divIcon({ className: 'edit-handle', iconSize: [12, 12] });
     
-    // Si c'est un cercle, on crée 2 points d'édition magiques : un au centre, un sur le bord
     if (d.type === 'circle') {
         const centerMarker = L.marker(d.center, { icon, draggable: true }).addTo(d.editGroup);
-        
         const cL93 = proj4("EPSG:4326", "EPSG:2154", [d.center.lng, d.center.lat]);
         const edgeGPS = proj4("EPSG:2154", "EPSG:4326", [cL93[0] + d.radius, cL93[1]]);
         const edgeMarker = L.marker([edgeGPS[1], edgeGPS[0]], { icon, draggable: true }).addTo(d.editGroup);
@@ -311,8 +283,7 @@ function makeEditable(d, isProject = false, projectId = null) {
             d.center = e.latlng; d.layer.setLatLng(d.center); d.ptsGPS = generateCirclePoints(d.center, d.radius);
             const nL93 = proj4("EPSG:4326", "EPSG:2154", [d.center.lng, d.center.lat]);
             const nGPS = proj4("EPSG:2154", "EPSG:4326", [nL93[0] + d.radius, nL93[1]]);
-            edgeMarker.setLatLng([nGPS[1], nGPS[0]]);
-            recalculateStats(d);
+            edgeMarker.setLatLng([nGPS[1], nGPS[0]]); recalculateStats(d);
         });
         centerMarker.on('dragend', () => { if (isProject) updateProjectUI(); else updateDrawUI(); });
 
@@ -321,9 +292,7 @@ function makeEditable(d, isProject = false, projectId = null) {
             recalculateStats(d);
         });
         edgeMarker.on('dragend', () => { if (isProject) updateProjectUI(); else updateDrawUI(); });
-    } 
-    // Si c'est une ligne ou surface normale
-    else {
+    } else {
         d.ptsGPS.forEach((pt, idx) => {
             const marker = L.marker(pt, { icon, draggable: true }).addTo(d.editGroup);
             marker.on('drag', (e) => { d.ptsGPS[idx] = e.latlng; d.layer.setLatLngs(d.ptsGPS); recalculateStats(d); if (d.type === 'line') generateProfile(d); });
@@ -337,6 +306,9 @@ window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visi
 window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id); if (!d) return; d.color = color; d.layer.setStyle({ color: color }); updateDrawUI(); if (chartInstance && currentProfileDrawId === id) { chartInstance.data.datasets[0].borderColor = color; chartInstance.data.datasets[0].backgroundColor = color + '33'; chartInstance.update(); } };
 window.deleteDraw = (id) => { const d = drawStore.find(x => x.id === id); map.removeLayer(d.layer); if(d.editGroup) map.removeLayer(d.editGroup); drawStore = drawStore.filter(x => x.id !== id); updateDrawUI(); if(currentProfileDrawId === id) { document.getElementById('profile-window').style.display = 'none'; currentProfileDrawId = null; } };
 
+// ==========================================
+// 6. CALCUL DES VOLUMES 
+// ==========================================
 window.calculateVolume = (id, type) => {
     const d = drawStore.find(x => x.id === id);
     if (!d || (d.type !== 'area' && d.type !== 'circle')) return;
@@ -403,28 +375,25 @@ function isPointInPolygon(point, vs) {
     for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) { let xi = vs[i][0], yi = vs[i][1], xj = vs[j][0], yj = vs[j][1]; let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi); if (intersect) inside = !inside; } return inside;
 }
 
-window.generate3DView = (id) => {
-    const d = drawStore.find(x => x.id === id);
-    if (!d || (d.type !== 'area' && d.type !== 'circle')) return;
-    if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
+// ==========================================
+// 7. MOTEUR DE RENDU 3D ET EXPORT STL
+// ==========================================
+window.current3DData = null; 
 
+function render3DPlot(l93Pts, borderPtsWithZ) {
     document.getElementById('window-3d').style.display = 'block';
     document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul de la 3D en cours... ⏳</h3>';
+    document.getElementById('hover-3d-result').innerText = "Survolez le relief...";
 
     setTimeout(() => {
-        const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
-
-        let borderPtsWithZ = [];
-        l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
-
-        const maxPts = 40;
-        const step = Math.max(1, (maxX - minX) / maxPts, (maxY - minY) / maxPts);
-
+        l93Pts.forEach(pt => { if (pt[0] < minX) minX = pt[0]; if (pt[0] > maxX) maxX = pt[0]; if (pt[1] < minY) minY = pt[1]; if (pt[1] > maxY) maxY = pt[1]; });
+        
+        const maxPts = 40; const step = Math.max(1, (maxX - minX) / maxPts, (maxY - minY) / maxPts);
         let xVals = [], yVals = [], zTerrain = [], zRefPlane = [];
+        
         for (let x = minX; x <= maxX; x += step) xVals.push(x);
-
+        
         for (let y = minY; y <= maxY; y += step) {
             let rowTerrain = [], rowRef = []; yVals.push(y);
             for (let x = minX; x <= maxX; x += step) {
@@ -437,27 +406,87 @@ window.generate3DView = (id) => {
             }
             zTerrain.push(rowTerrain); zRefPlane.push(rowRef);
         }
-
-        const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain Naturel', colorscale: 'Earth', showscale: false };
-        const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: 'Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6 };
-
-        const layout = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest' };
         
-        Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout).then(() => {
+        window.current3DData = { x: xVals, y: yVals, zTop: zTerrain };
+
+        const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: '⛰️ Terrain Naturel', colorscale: 'Earth', showscale: false, showlegend: true };
+        const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: '🟦 Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6, showlegend: true };
+
+        const layout = { 
+            margin: { l: 0, r: 0, b: 40, t: 10 }, 
+            scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, 
+            paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest',
+            legend: { orientation: 'h', x: 0.5, y: -0.05, xanchor: 'center', yanchor: 'top', bgcolor: 'rgba(0,0,0,0)' }
+        };
+        
+        Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout, { displayModeBar: true, displaylogo: false }).then(() => {
             const plotDiv = document.getElementById('plot-3d');
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
                     const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]);
                     if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
                     else cursorMarker.setLatLng([gps[1], gps[0]]);
+                    document.getElementById('hover-3d-result').innerHTML = `📍 Altitude Z : <span style="color:white;">${pt.z.toFixed(2)} m</span>`;
                 }
             });
-            plotDiv.addEventListener('mouseleave', () => { if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } });
+            plotDiv.addEventListener('mouseleave', () => { 
+                if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } 
+                document.getElementById('hover-3d-result').innerText = "Survolez le relief...";
+            });
         });
+    }, 100);
+}
+
+window.exportSTL = () => {
+    if (!window.current3DData || !window.current3DData.zTop) return alert("Calculez d'abord une vue 3D complète.");
+    const btn = document.querySelector('button[onclick="exportSTL()"]');
+    if (btn) { btn.innerText = "⏳ Génération..."; btn.disabled = true; }
+
+    setTimeout(() => {
+        try {
+            const {x, y, zTop} = window.current3DData;
+            let minX = Infinity, minY = Infinity, minZ = Infinity;
+            
+            for (let i = 0; i < y.length; i++) {
+                for (let j = 0; j < x.length; j++) {
+                    let z = zTop[i][j];
+                    if (z !== null) { if (x[j] < minX) minX = x[j]; if (y[i] < minY) minY = y[i]; if (z < minZ) minZ = z; }
+                }
+            }
+
+            let stl = "solid terrain\n";
+            const addFacet = (v1, v2, v3) => {
+                stl += `facet normal 0 0 0\n  outer loop\n    vertex ${(v1[0]-minX).toFixed(3)} ${(v1[1]-minY).toFixed(3)} ${(v1[2]-minZ).toFixed(3)}\n    vertex ${(v2[0]-minX).toFixed(3)} ${(v2[1]-minY).toFixed(3)} ${(v2[2]-minZ).toFixed(3)}\n    vertex ${(v3[0]-minX).toFixed(3)} ${(v3[1]-minY).toFixed(3)} ${(v3[2]-minZ).toFixed(3)}\n  endloop\nendfacet\n`;
+            };
+
+            for (let i = 0; i < y.length - 1; i++) {
+                for (let j = 0; j < x.length - 1; j++) {
+                    const z1 = zTop[i][j], z2 = zTop[i][j+1], z3 = zTop[i+1][j], z4 = zTop[i+1][j+1];
+                    if (z1 !== null && z2 !== null && z3 !== null && z4 !== null) {
+                        addFacet([x[j], y[i], z1], [x[j+1], y[i], z2], [x[j], y[i+1], z3]); 
+                        addFacet([x[j+1], y[i], z2], [x[j+1], y[i+1], z4], [x[j], y[i+1], z3]); 
+                    }
+                }
+            }
+            stl += "endsolid terrain\n";
+
+            const blob = new Blob([stl], {type: 'text/plain;charset=utf-8'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none'; a.href = url; a.download = 'terrain_topographie.stl';
+            document.body.appendChild(a); a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+
+        } catch (err) { console.error("Erreur STL:", err); alert("Erreur lors de la création du fichier."); } 
+        finally { if (btn) { btn.innerText = "📥 Exporter STL"; btn.disabled = false; } }
     }, 100);
 };
 
-document.querySelector('#header-3d button').onclick = () => { document.getElementById('window-3d').style.display = 'none'; if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } };
+window.close3DWindow = () => { document.getElementById('window-3d').style.display = 'none'; if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } };
+window.generate3DView = (id) => { const d = drawStore.find(x => x.id === id); if (!d || (d.type !== 'area' && d.type !== 'circle')) return; if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !"); const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat])); let borderPtsWithZ = []; l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); }); render3DPlot(l93Pts, borderPtsWithZ); };
+window.generate3DViewFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); if (!p) return; const f = p.features.find(x => x.id === fid); if (!f || (f.type !== 'area' && f.type !== 'circle')) return; if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !"); const l93Pts = f.ptsGPS.map(pt => proj4("EPSG:4326", "EPSG:2154", [pt.lng, pt.lat])); let borderPtsWithZ = []; l93Pts.forEach(pt => { let z = getZ(pt); if (z !== null) borderPtsWithZ.push({ x: pt[0], y: pt[1], z: z }); }); render3DPlot(l93Pts, borderPtsWithZ); };
+
+// Drag & Drop Vue 3D
 const win3d = document.getElementById('window-3d'), header3d = document.getElementById('header-3d');
 let isDragging3D = false, offset3DX = 0, offset3DY = 0;
 header3d.addEventListener('mousedown', (e) => { if (e.target.tagName === 'BUTTON') return; isDragging3D = true; const rect = win3d.getBoundingClientRect(); offset3DX = e.clientX - rect.left; offset3DY = e.clientY - rect.top; });
@@ -465,7 +494,7 @@ document.addEventListener('mousemove', (e) => { if (!isDragging3D) return; win3d
 document.addEventListener('mouseup', () => { isDragging3D = false; });
 
 // ==========================================
-// 6. PROFIL ALTIMÉTRIQUE HAUTE PRÉCISION
+// 8. PROFIL ALTIMÉTRIQUE HAUTE PRÉCISION
 // ==========================================
 window.generateProfileById = (id) => { currentProfileDrawId = id; const d = drawStore.find(x => x.id === id); generateProfile(d); };
 
@@ -545,9 +574,6 @@ window.exportChartCSV = () => {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'export_profil_1m.csv'; a.click();
 };
 
-// ==========================================
-// 7. GESTION DES CURSEURS LIVE (SCALES)
-// ==========================================
 window.updateScalesLive = () => {
     if (!chartInstance) return;
     let xMin = parseFloat(document.getElementById('x-min').value), xMax = parseFloat(document.getElementById('x-max').value);
@@ -561,7 +587,7 @@ window.updateScalesLive = () => {
 };
 
 // ==========================================
-// 8. SUIVI SOURIS COORDONNÉES ET PREVIEW
+// 9. SOURIS ET FENÊTRE PROFIL
 // ==========================================
 map.on('mousemove', (e) => {
     try {
@@ -571,87 +597,55 @@ map.on('mousemove', (e) => {
         if (elX) elX.innerText = l93[0].toFixed(1); if (elY) elY.innerText = l93[1].toFixed(1);
         if (elZ) { let z = null; try { z = getZ(l93); } catch (err) {} elZ.innerText = (z !== null && !isNaN(z)) ? z.toFixed(2) : "---"; }
         
-        // Animation du cercle qui grandit en direct quand on bouge la souris !
         if (typeof currentTool !== 'undefined' && currentTool === 'circle' && typeof circleCenter !== 'undefined' && circleCenter && tempLayer) {
             tempLayer.setRadius(map.distance(circleCenter, e.latlng));
         }
     } catch (error) {}
 });
-// ==========================================
-// 9. FENÊTRE FLOTTANTE (DRAG & DROP)
-// ==========================================
+
 const profileWin = document.getElementById('profile-window'), profileHeader = document.getElementById('profile-header');
-let isDragging = false, dragOffsetX = 0, dragOffsetY = 0;
-
-profileHeader.addEventListener('mousedown', (e) => {
-    if (e.target.tagName === 'BUTTON') return; isDragging = true;
-    const rect = profileWin.getBoundingClientRect(); dragOffsetX = e.clientX - rect.left; dragOffsetY = e.clientY - rect.top;
-});
-
-document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return; let newX = e.clientX - dragOffsetX, newY = e.clientY - dragOffsetY;
-    if (newX < 0) newX = 0; if (newY < 0) newY = 0;
-    profileWin.style.bottom = 'auto'; profileWin.style.right = 'auto'; profileWin.style.left = newX + 'px'; profileWin.style.top = newY + 'px';
-});
-document.addEventListener('mouseup', () => { isDragging = false; });
+let isDraggingProf = false, dragOffsetXProf = 0, dragOffsetYProf = 0;
+profileHeader.addEventListener('mousedown', (e) => { if (e.target.tagName === 'BUTTON') return; isDraggingProf = true; const rect = profileWin.getBoundingClientRect(); dragOffsetXProf = e.clientX - rect.left; dragOffsetYProf = e.clientY - rect.top; });
+document.addEventListener('mousemove', (e) => { if (!isDraggingProf) return; let newX = e.clientX - dragOffsetXProf, newY = e.clientY - dragOffsetYProf; if (newX < 0) newX = 0; if (newY < 0) newY = 0; profileWin.style.bottom = 'auto'; profileWin.style.right = 'auto'; profileWin.style.left = newX + 'px'; profileWin.style.top = newY + 'px'; });
+document.addEventListener('mouseup', () => { isDraggingProf = false; });
 
 // ==========================================
 // 10. CHARGEMENT DU TRACÉ (PISTES ET CANONS)
 // ==========================================
 window.addEventListener('load', () => {
     try {
-        // --- 1. CHARGEMENT DES PISTES ---
         let pistesGeo = null;
         if (typeof pistesData !== 'undefined') pistesGeo = pistesData; 
         else if (typeof pistesGeoJSON !== 'undefined') pistesGeo = pistesGeoJSON;
 
         if (pistesGeo && pistesGeo.features) {
             const idPistes = Date.now(); 
-            const pistesLayer = L.geoJSON(pistesGeo, { 
-                style: function (feature) { 
-                    return { color: '#ffffff', weight: 1, opacity: 1, fillOpacity: 0.2 }; 
-                } 
-            }).addTo(map);
-            
+            const pistesLayer = L.geoJSON(pistesGeo, { style: function (feature) { return { color: '#ffffff', weight: 1, opacity: 1, fillOpacity: 0.2 }; } }).addTo(map);
             kmzStore.push({ id: idPistes, name: "Mes Pistes", layer: pistesLayer, visible: true, color: '#ffffff', weight: 1 });
             map.fitBounds(pistesLayer.getBounds());
         }
 
-        // --- 2. CHARGEMENT DES CANONS ---
         if (typeof canonData !== 'undefined' && canonData.features) {
             const idCanons = Date.now() + 1000; 
             const canonLayer = L.geoJSON(canonData, {
-                pointToLayer: function (feature, latlng) {
-                    return L.circleMarker(latlng, { 
-                        radius: 5, 
-                        fillColor: '#3498db', 
-                        color: '#ffffff', 
-                        weight: 1, 
-                        opacity: 1, 
-                        fillOpacity: 0.8 
-                    });
-                }
+                pointToLayer: function (feature, latlng) { return L.circleMarker(latlng, { radius: 5, fillColor: '#3498db', color: '#ffffff', weight: 1, opacity: 1, fillOpacity: 0.8 }); }
             }).addTo(map);
-            
             kmzStore.push({ id: idCanons, name: "Mes Canons", layer: canonLayer, visible: true, color: '#3498db', weight: 1 });
         }
-        
         updateKmzUI();
-    } catch (e) { 
-        console.error("Erreur de chargement des données statiques :", e); 
-    }
+    } catch (e) { console.error("Erreur de chargement des données statiques :", e); }
 });
+
 // ==========================================
 // 11. SAUVEGARDE ET CHARGEMENT CLOUD (GOOGLE SHEETS)
 // ==========================================
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZ-m9rVPuATkiYjccicrtBSrAieSSA_TTqmYpA61SoK4eTj11qesIEpItyys6Vu2GVXQ/exec"; // <--- REMETTEZ VOTRE LIEN GOOGLE SCRIPT ICI !!!
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZ-m9rVPuATkiYjccicrtBSrAieSSA_TTqmYpA61SoK4eTj11qesIEpItyys6Vu2GVXQ/exec"; // <--- LIEN GOOGLE SCRIPT
 
 window.saveProject = async () => {
     const projectName = document.getElementById('project-name').value.trim();
     if (!projectName) return alert("Veuillez taper un nom de projet pour sauvegarder.");
     if (drawStore.length === 0) return alert("Aucune mesure à sauvegarder dans le panneau de droite !");
 
-    // On sauvegarde aussi center et radius pour les cercles
     const exportData = drawStore.map(d => ({ 
         id: d.id, type: d.type, name: d.name, color: d.color, weight: d.weight, 
         ptsGPS: d.ptsGPS, totalDist: d.totalDist, statsHtml: d.statsHtml, center: d.center, radius: d.radius 
@@ -754,202 +748,4 @@ window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid)
 window.toggleProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.visible = !f.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } updateProjectUI(); };
 window.changeProjectFeatureColor = (pid, fid, color) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.color = color; f.layer.setStyle({color: color}); updateProjectUI(); };
 window.deleteProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); p.features = p.features.filter(x => x.id !== fid); updateProjectUI(); };
-window.generateProfileFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); generateProfile(f); };
-
-window.generate3DViewFromProject = (pid, fid) => {
-    const p = projectStore.find(x => x.id === pid); if (!p) return;
-    const f = p.features.find(x => x.id === fid); if (!f || (f.type !== 'area' && f.type !== 'circle')) return;
-    if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
-    
-    document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul de la 3D en cours... ⏳</h3>';
-    
-    setTimeout(() => {
-        const l93Pts = f.ptsGPS.map(pt => proj4("EPSG:4326", "EPSG:2154", [pt.lng, pt.lat]));
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        l93Pts.forEach(pt => { if (pt[0] < minX) minX = pt[0]; if (pt[0] > maxX) maxX = pt[0]; if (pt[1] < minY) minY = pt[1]; if (pt[1] > maxY) maxY = pt[1]; });
-        
-        let borderPtsWithZ = [];
-        l93Pts.forEach(pt => { let z = getZ(pt); if (z !== null) borderPtsWithZ.push({ x: pt[0], y: pt[1], z: z }); });
-        
-        const maxPts = 40; const step = Math.max(1, (maxX - minX) / maxPts, (maxY - minY) / maxPts);
-        let xVals = [], yVals = [], zTerrain = [], zRefPlane = [];
-        for (let x = minX; x <= maxX; x += step) xVals.push(x);
-        
-        for (let y = minY; y <= maxY; y += step) {
-            let rowTerrain = [], rowRef = []; yVals.push(y);
-            for (let x = minX; x <= maxX; x += step) {
-                if (isPointInPolygon([x, y], l93Pts)) {
-                    let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
-                    let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
-                    for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
-                    if (!exactMatch) zBase = sumZ / sumW; rowRef.push(zBase);
-                } else { rowTerrain.push(null); rowRef.push(null); }
-            }
-            zTerrain.push(rowTerrain); zRefPlane.push(rowRef);
-        }
-        
-        const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain Naturel', colorscale: 'Earth', showscale: false };
-        const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: 'Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6 };
-
-        const layout = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest' };
-        
-        Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout).then(() => {
-            const plotDiv = document.getElementById('plot-3d');
-            plotDiv.on('plotly_hover', (data) => {
-                if (data.points.length > 0) {
-                    const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]);
-                    if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
-                    else cursorMarker.setLatLng([gps[1], gps[0]]);
-                }
-            });
-            plotDiv.addEventListener('mouseleave', () => { if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } });
-        });
-        
-    }, 100);
-};
-// ==========================================
-// MOTEUR DE RENDU 3D ET EXPORT STL
-// ==========================================
-window.current3DData = null; // Stockage global pour l'export STL
-
-function render3DPlot(l93Pts, borderPtsWithZ) {
-    document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul de la 3D en cours... ⏳</h3>';
-    document.getElementById('hover-3d-result').innerText = "Survolez le relief...";
-
-    setTimeout(() => {
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        l93Pts.forEach(pt => { if (pt[0] < minX) minX = pt[0]; if (pt[0] > maxX) maxX = pt[0]; if (pt[1] < minY) minY = pt[1]; if (pt[1] > maxY) maxY = pt[1]; });
-        
-        const maxPts = 40; const step = Math.max(1, (maxX - minX) / maxPts, (maxY - minY) / maxPts);
-        let xVals = [], yVals = [], zTerrain = [], zRefPlane = [];
-        
-        for (let x = minX; x <= maxX; x += step) xVals.push(x);
-        
-        for (let y = minY; y <= maxY; y += step) {
-            let rowTerrain = [], rowRef = []; yVals.push(y);
-            for (let x = minX; x <= maxX; x += step) {
-                if (isPointInPolygon([x, y], l93Pts)) {
-                    let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
-                    let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
-                    for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
-                    if (!exactMatch) zBase = sumZ / sumW; rowRef.push(zBase);
-                } else { rowTerrain.push(null); rowRef.push(null); }
-            }
-            zTerrain.push(rowTerrain); zRefPlane.push(rowRef);
-        }
-        
-        // Sauvegarde des données en mémoire pour l'export STL
-        window.current3DData = { x: xVals, y: yVals, zTop: zTerrain };
-
-        const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: '⛰️ Terrain Naturel', colorscale: 'Earth', showscale: false, showlegend: true };
-        const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: '🟦 Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6, showlegend: true };
-
-        const layout = { 
-            margin: { l: 0, r: 0, b: 40, t: 10 }, 
-            scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, 
-            paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest',
-            legend: { orientation: 'h', x: 0.5, y: -0.05, xanchor: 'center', yanchor: 'top', bgcolor: 'rgba(0,0,0,0)' }
-        };
-        
-        Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout, { displayModeBar: true, displaylogo: false }).then(() => {
-            const plotDiv = document.getElementById('plot-3d');
-            plotDiv.on('plotly_hover', (data) => {
-                if (data.points.length > 0) {
-                    const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]);
-                    if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
-                    else cursorMarker.setLatLng([gps[1], gps[0]]);
-                    document.getElementById('hover-3d-result').innerHTML = `📍 Altitude Z : <span style="color:white;">${pt.z.toFixed(2)} m</span>`;
-                }
-            });
-            plotDiv.addEventListener('mouseleave', () => { 
-                if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } 
-                document.getElementById('hover-3d-result').innerText = "Survolez le relief...";
-            });
-        });
-    }, 100);
-}
-
-// --- FONCTION D'EXPORT STL FORCÉ ---
-window.exportSTL = () => {
-    if (!window.current3DData || !window.current3DData.zTop) return alert("Calculez d'abord une vue 3D complète.");
-    
-    const btn = document.querySelector('button[onclick="exportSTL()"]');
-    if (btn) { btn.innerText = "⏳ Génération..."; btn.disabled = true; }
-
-    setTimeout(() => {
-        try {
-            const {x, y, zTop} = window.current3DData;
-            let minX = Infinity, minY = Infinity, minZ = Infinity;
-            
-            for (let i = 0; i < y.length; i++) {
-                for (let j = 0; j < x.length; j++) {
-                    let z = zTop[i][j];
-                    if (z !== null) {
-                        if (x[j] < minX) minX = x[j];
-                        if (y[i] < minY) minY = y[i];
-                        if (z < minZ) minZ = z;
-                    }
-                }
-            }
-
-            let stl = "solid terrain\n";
-            const addFacet = (v1, v2, v3) => {
-                stl += `facet normal 0 0 0\n  outer loop\n    vertex ${(v1[0]-minX).toFixed(3)} ${(v1[1]-minY).toFixed(3)} ${(v1[2]-minZ).toFixed(3)}\n    vertex ${(v2[0]-minX).toFixed(3)} ${(v2[1]-minY).toFixed(3)} ${(v2[2]-minZ).toFixed(3)}\n    vertex ${(v3[0]-minX).toFixed(3)} ${(v3[1]-minY).toFixed(3)} ${(v3[2]-minZ).toFixed(3)}\n  endloop\nendfacet\n`;
-            };
-
-            for (let i = 0; i < y.length - 1; i++) {
-                for (let j = 0; j < x.length - 1; j++) {
-                    const z1 = zTop[i][j], z2 = zTop[i][j+1], z3 = zTop[i+1][j], z4 = zTop[i+1][j+1];
-                    if (z1 !== null && z2 !== null && z3 !== null && z4 !== null) {
-                        addFacet([x[j], y[i], z1], [x[j+1], y[i], z2], [x[j], y[i+1], z3]); 
-                        addFacet([x[j+1], y[i], z2], [x[j+1], y[i+1], z4], [x[j], y[i+1], z3]); 
-                    }
-                }
-            }
-            stl += "endsolid terrain\n";
-
-            // Forçage de téléchargement sécurisé
-            const blob = new Blob([stl], {type: 'text/plain;charset=utf-8'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = 'terrain_topographie.stl';
-            document.body.appendChild(a);
-            a.click();
-            
-            setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 100);
-
-        } catch (err) {
-            console.error("Erreur STL:", err);
-            alert("Erreur lors de la création du fichier.");
-        } finally {
-            if (btn) { btn.innerText = "📥 Exporter STL"; btn.disabled = false; }
-        }
-    }, 100);
-};
-
-window.close3DWindow = () => { document.getElementById('window-3d').style.display = 'none'; if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } };
-window.generate3DView = (id) => { const d = drawStore.find(x => x.id === id); if (!d || (d.type !== 'area' && d.type !== 'circle')) return; if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !"); const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat])); let borderPtsWithZ = []; l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); }); render3DPlot(l93Pts, borderPtsWithZ); };
-window.generate3DViewFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); if (!p) return; const f = p.features.find(x => x.id === fid); if (!f || (f.type !== 'area' && f.type !== 'circle')) return; if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !"); const l93Pts = f.ptsGPS.map(pt => proj4("EPSG:4326", "EPSG:2154", [pt.lng, pt.lat])); let borderPtsWithZ = []; l93Pts.forEach(pt => { let z = getZ(pt); if (z !== null) borderPtsWithZ.push({ x: pt[0], y: pt[1], z: z }); }); render3DPlot(l93Pts, borderPtsWithZ); };
-
-// Drag & Drop Vue 3D
-const win3d = document.getElementById('window-3d'), header3d = document.getElementById('header-3d');
-let isDragging3D = false, offset3DX = 0, offset3DY = 0;
-header3d.addEventListener('mousedown', (e) => { if (e.target.tagName === 'BUTTON') return; isDragging3D = true; const rect = win3d.getBoundingClientRect(); offset3DX = e.clientX - rect.left; offset3DY = e.clientY - rect.top; });
-document.addEventListener('mousemove', (e) => { if (!isDragging3D) return; win3d.style.left = Math.max(0, e.clientX - offset3DX) + 'px'; win3d.style.top = Math.max(0, e.clientY - offset3DY) + 'px'; });
-document.addEventListener('mouseup', () => { isDragging3D = false; });
-window.close3DWindow = () => { document.getElementById('window-3d').style.display = 'none'; if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } };
-window.generate3DView = (id) => { const d = drawStore.find(x => x.id === id); if (!d || (d.type !== 'area' && d.type !== 'circle')) return; if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !"); const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat])); let borderPtsWithZ = []; l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); }); render3DPlot(l93Pts, borderPtsWithZ); };
-window.generate3DViewFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); if (!p) return; const f = p.features.find(x => x.id === fid); if (!f || (f.type !== 'area' && f.type !== 'circle')) return; if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !"); const l93Pts = f.ptsGPS.map(pt => proj4("EPSG:4326", "EPSG:2154", [pt.lng, pt.lat])); let borderPtsWithZ = []; l93Pts.forEach(pt => { let z = getZ(pt); if (z !== null) borderPtsWithZ.push({ x: pt[0], y: pt[1], z: z }); }); render3DPlot(l93Pts, borderPtsWithZ); };
-window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); }); updateProjectUI(); };
-window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => map.removeLayer(f.layer)); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
-window.toggleProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.visible = !f.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); updateProjectUI(); };
-window.changeProjectFeatureColor = (pid, fid, color) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.color = color; f.layer.setStyle({color: color}); updateProjectUI(); };
-window.deleteProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); map.removeLayer(f.layer); p.features = p.features.filter(x => x.id !== fid); updateProjectUI(); };
 window.generateProfileFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); generateProfile(f); };
