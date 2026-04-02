@@ -220,71 +220,97 @@ window.applyPointEdits = (closeWindow = true) => {
 };
 
 // ==========================================
-// 7. CALCUL DES VOLUMES 
+// 7. MOTEUR 3D ET EXPORT STL
 // ==========================================
-window.calculateVolume = (id, type) => {
-    const d = drawStore.find(x => x.id === id); if (!d || d.type === 'line') return;
-    if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
-    const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
+window.current3DData = null; 
 
-    let refZ = 0, borderPtsWithZ = [];
-    if (type === 'slope' || type === 'plane') {
-        l93Pts.forEach((p, idx) => { let z = d.ptsGPS[idx].customZ !== undefined ? d.ptsGPS[idx].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
-    } else {
-        let sampleZ = d.ptsGPS[0].customZ !== undefined ? d.ptsGPS[0].customZ : getZ(l93Pts[0]);
-        let refZPrompt = prompt("Altitude de référence (Z) en mètres ?", sampleZ ? Math.round(sampleZ) : 0);
-        if (!refZPrompt) return; refZ = parseFloat(refZPrompt.replace(',', '.')); if (isNaN(refZ)) return;
-    }
+function render3DPlot(l93Pts, borderPtsWithZ) {
+    if (borderPtsWithZ.length === 0) return alert("Erreur : Aucun point d'altitude trouvé. Vérifiez que votre MNT est actif et couvre la zone.");
+
+    document.getElementById('window-3d').style.display = 'block'; 
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul de la 3D en cours... ⏳</h3>'; 
+    const hoverRes = document.getElementById('hover-3d-result');
+    if (hoverRes) hoverRes.innerText = "Survolez le relief...";
 
     setTimeout(() => {
-        let totalVolumeTas = 0, totalVolumeCreux = 0, step = 1, pixelArea = 1, pointsCount = 0;
-        let aReg = 0, bReg = 0, cReg = 0;
-        if (type === 'plane') {
+        try {
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity; 
+            l93Pts.forEach(pt => { if (pt[0] < minX) minX = pt[0]; if (pt[0] > maxX) maxX = pt[0]; if (pt[1] < minY) minY = pt[1]; if (pt[1] > maxY) maxY = pt[1]; });
+            const maxPts = 40; const step = Math.max(1, (maxX - minX) / maxPts, (maxY - minY) / maxPts);
+            let xVals = [], yVals = [], zTerrain = [], zRefCurve = [], zRefPlane = [];
+            
             let sumX = 0, sumY = 0, sumZ = 0; borderPtsWithZ.forEach(p => { sumX += p.x; sumY += p.y; sumZ += p.z; });
             const nPts = borderPtsWithZ.length; const cX = sumX / nPts, cY = sumY / nPts, cZ = sumZ / nPts;
             let Sxx = 0, Syy = 0, Sxy = 0, Sxz = 0, Syz = 0; borderPtsWithZ.forEach(p => { const dx = p.x-cX, dy = p.y-cY, dz = p.z-cZ; Sxx+=dx*dx; Syy+=dy*dy; Sxy+=dx*dy; Sxz+=dx*dz; Syz+=dy*dz; });
-            const D = Sxx * Syy - Sxy * Sxy; if (D !== 0) { aReg = (Sxz*Syy - Syz*Sxy)/D; bReg = (Syz*Sxx - Sxz*Sxy)/D; }
-            cReg = cZ - aReg * cX - bReg * cY;
-        }
+            const D = Sxx * Syy - Sxy * Sxy; let aReg = 0, bReg = 0, cReg = cZ; if (D !== 0) { aReg = (Sxz*Syy - Syz*Sxy)/D; bReg = (Syz*Sxx - Sxz*Sxy)/D; cReg = cZ - aReg*cX - bReg*cY; }
 
-        for (let x = minX; x <= maxX; x += step) {
+            for (let x = minX; x <= maxX; x += step) xVals.push(x);
             for (let y = minY; y <= maxY; y += step) {
-                if (isPointInPolygon([x, y], l93Pts)) {
-                    let zMNT = getZ([x, y]);
-                    if (zMNT !== null) {
-                        pointsCount++;
-                        if (type === 'slope' || type === 'plane') {
-                            let zBase = 0;
-                            if (type === 'slope') {
-                                let sumZ = 0, sumW = 0, exactMatch = false;
-                                for (let pt of borderPtsWithZ) { let d2 = (x-pt.x)**2 + (y-pt.y)**2; if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } let w = 1/d2; sumZ += pt.z*w; sumW += w; }
-                                if (!exactMatch) zBase = sumZ / sumW;
-                            } else zBase = aReg * x + bReg * y + cReg;
-                            if (zMNT > zBase) totalVolumeTas += (zMNT - zBase) * pixelArea; else if (zMNT < zBase) totalVolumeCreux += (zBase - zMNT) * pixelArea;
-                        } else {
-                            if (type === 'hollow' && zMNT < refZ) totalVolumeCreux += (refZ - zMNT) * pixelArea; else if (type === 'mound' && zMNT > refZ) totalVolumeTas += (zMNT - refZ) * pixelArea;
-                        }
-                    }
-                }
+                let rowTerrain = [], rowCurve = [], rowPlane = []; yVals.push(y);
+                for (let x = minX; x <= maxX; x += step) {
+                    if (isPointInPolygon([x, y], l93Pts)) {
+                        let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
+                        let sumZC = 0, sumW = 0, exactMatch = false, zBaseC = 0;
+                        for (let pt of borderPtsWithZ) { let d2 = (x-pt.x)**2 + (y-pt.y)**2; if (d2 === 0) { zBaseC = pt.z; exactMatch = true; break; } let w = 1/d2; sumZC += pt.z*w; sumW += w; }
+                        if (!exactMatch) zBaseC = sumZC / sumW; rowCurve.push(zBaseC);
+                        rowPlane.push(aReg * x + bReg * y + cReg);
+                    } else { rowTerrain.push(null); rowCurve.push(null); rowPlane.push(null); }
+                } zTerrain.push(rowTerrain); zRefCurve.push(rowCurve); zRefPlane.push(rowPlane);
             }
+            
+            window.current3DData = { x: xVals, y: yVals, zTop: zTerrain };
+            
+            Plotly.newPlot('plot-3d', [
+                { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: '⛰️ Terrain Naturel', colorscale: 'Earth', showscale: false },
+                { z: zRefCurve, x: xVals, y: yVals, type: 'surface', name: '🟦 Base Courbe', colorscale: 'Blues', showscale: false, opacity: 0.5, visible: 'legendonly' },
+                { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: '🟪 Plan Parfait', colorscale: 'Purples', showscale: false, opacity: 0.7 }
+            ], { margin: { l: 0, r: 0, b: 40, t: 10 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest', legend: { orientation: 'h', x: 0.5, y: -0.05, xanchor: 'center', yanchor: 'top', bgcolor: 'rgba(0,0,0,0)' } }, { displayModeBar: true, displaylogo: false }).then(() => {
+                const pDiv = document.getElementById('plot-3d');
+                pDiv.on('plotly_hover', (data) => { if (data.points.length > 0) { const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]); if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map); else cursorMarker.setLatLng([gps[1], gps[0]]); const hr = document.getElementById('hover-3d-result'); if (hr) hr.innerHTML = `📍 Altitude Z : <span style="color:white;">${pt.z.toFixed(2)} m</span>`; } });
+                pDiv.addEventListener('mouseleave', () => { if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } const hr = document.getElementById('hover-3d-result'); if (hr) hr.innerText = "Survolez le relief..."; });
+            }).catch(e => {
+                document.getElementById('plot-3d').innerHTML = '<h3 style="color:#e74c3c; text-align:center; margin-top:20%;">Erreur du moteur graphique 3D</h3>';
+            });
+        } catch(e) {
+            console.error(e);
+            document.getElementById('plot-3d').innerHTML = '<h3 style="color:#e74c3c; text-align:center; margin-top:20%;">Erreur de calcul 3D</h3>';
         }
-        if (pointsCount === 0) return alert("Aucune donnée MNT.");
-        let msg = "", resultHtml = "";
-        if (type === 'slope' || type === 'plane') {
-            const title = type === 'slope' ? 'Pente (Courbe)' : 'Plan Parfait';
-            const tasStr = totalVolumeTas.toLocaleString('fr-FR', {maximumFractionDigits:1}), creuxStr = totalVolumeCreux.toLocaleString('fr-FR', {maximumFractionDigits:1});
-            msg = `📐 Bilan sur ${title}:\n⛰️ Tas : ${tasStr} m³\n💧 Creux : ${creuxStr} m³`;
-            resultHtml = `<br><span style="color:${type==='slope'?'#8e44ad':'#9b59b6'}; font-size:0.9em; display:block; margin-top:3px;">Tas (${title}): <b>${tasStr} m³</b> | Creux: <b>${creuxStr} m³</b></span>`;
-        } else {
-            let vol = type === 'hollow' ? totalVolumeCreux : totalVolumeTas, volStr = vol.toLocaleString('fr-FR', {maximumFractionDigits:1});
-            msg = type === 'hollow' ? `💧 Creux (sous ${refZ}m) : ${volStr} m³` : `⛰️ Tas (sur ${refZ}m) : ${volStr} m³`;
-            resultHtml = `<br><span style="color:${type==='hollow'?'#2980b9':'#e67e22'}; font-size:0.9em; display:block; margin-top:3px;">${type==='hollow'?'Vol. Creux':'Vol. Tas'} (${refZ}m): <b>${volStr} m³</b></span>`;
-        }
-        alert(msg); d.statsHtml += resultHtml; const statsDiv = document.getElementById(`stats-${d.id}`); if (statsDiv) statsDiv.innerHTML = d.statsHtml;
-    }, 50);
+    }, 100);
+}
+
+window.exportSTL = () => {
+    if (!window.current3DData || !window.current3DData.zTop) return alert("Calculez d'abord une vue 3D complète.");
+    let stl = "solid terrain\n"; const {x, y, zTop} = window.current3DData; let minX = Infinity, minY = Infinity, minZ = Infinity;
+    for (let i=0; i<y.length; i++) for (let j=0; j<x.length; j++) if (zTop[i][j] !== null) { if (x[j]<minX) minX=x[j]; if (y[i]<minY) minY=y[i]; if (zTop[i][j]<minZ) minZ=zTop[i][j]; }
+    const addF = (v1, v2, v3) => { stl += `facet normal 0 0 0\n outer loop\n vertex ${(v1[0]-minX).toFixed(3)} ${(v1[1]-minY).toFixed(3)} ${(v1[2]-minZ).toFixed(3)}\n vertex ${(v2[0]-minX).toFixed(3)} ${(v2[1]-minY).toFixed(3)} ${(v2[2]-minZ).toFixed(3)}\n vertex ${(v3[0]-minX).toFixed(3)} ${(v3[1]-minY).toFixed(3)} ${(v3[2]-minZ).toFixed(3)}\n endloop\nendfacet\n`; };
+    for (let i=0; i<y.length-1; i++) for (let j=0; j<x.length-1; j++) if (zTop[i][j] !== null && zTop[i][j+1] !== null && zTop[i+1][j] !== null && zTop[i+1][j+1] !== null) { addF([x[j], y[i], zTop[i][j]], [x[j+1], y[i], zTop[i][j+1]], [x[j], y[i+1], zTop[i+1][j]]); addF([x[j+1], y[i], zTop[i][j+1]], [x[j+1], y[i+1], zTop[i+1][j+1]], [x[j], y[i+1], zTop[i+1][j]]); }
+    stl += "endsolid terrain\n";
+    const a = document.createElement('a'); a.style.display = 'none'; a.href = URL.createObjectURL(new Blob([stl], {type: 'text/plain;charset=utf-8'})); a.download = 'terrain.stl'; document.body.appendChild(a); a.click(); setTimeout(() => document.body.removeChild(a), 100);
 };
+
+window.close3DWindow = () => { document.getElementById('window-3d').style.display = 'none'; if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } };
+
+window.generate3DView = (id) => { 
+    const d = drawStore.find(x => x.id === id); if (!d || d.type === 'line') return; 
+    if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
+    const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat])); 
+    let borderPtsWithZ = []; 
+    l93Pts.forEach((p, idx) => { let z = d.ptsGPS[idx].customZ !== undefined ? d.ptsGPS[idx].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); }); 
+    render3DPlot(l93Pts, borderPtsWithZ); 
+};
+
+window.generate3DViewFromProject = (pid, fid) => { 
+    const p = projectStore.find(x => x.id === pid); if(!p)return; 
+    const f = p.features.find(x => x.id === fid); if (!f || f.type === 'line') return; 
+    if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
+    const l93Pts = f.ptsGPS.map(pt => proj4("EPSG:4326", "EPSG:2154", [pt.lng, pt.lat])); 
+    let borderPtsWithZ = []; 
+    l93Pts.forEach((pt, idx) => { let z = f.ptsGPS[idx].customZ !== undefined ? f.ptsGPS[idx].customZ : getZ(pt); if (z !== null) borderPtsWithZ.push({ x: pt[0], y: pt[1], z: z }); }); 
+    render3DPlot(l93Pts, borderPtsWithZ); 
+};
+
+const win3d = document.getElementById('window-3d'), header3d = document.getElementById('header-3d'); let isDragging3D = false, offset3DX = 0, offset3DY = 0; header3d.addEventListener('mousedown', (e) => { if (e.target.tagName === 'BUTTON') return; isDragging3D = true; const rect = win3d.getBoundingClientRect(); offset3DX = e.clientX - rect.left; offset3DY = e.clientY - rect.top; }); document.addEventListener('mousemove', (e) => { if (!isDragging3D) return; win3d.style.left = Math.max(0, e.clientX - offset3DX) + 'px'; win3d.style.top = Math.max(0, e.clientY - offset3DY) + 'px'; }); document.addEventListener('mouseup', () => { isDragging3D = false; });
+const ptWin = document.getElementById('point-editor-window'), ptHeader = document.getElementById('header-point-editor'); let isDraggingPt = false, offsetPtX = 0, offsetPtY = 0; ptHeader.addEventListener('mousedown', (e) => { if (e.target.tagName === 'BUTTON') return; isDraggingPt = true; const rect = ptWin.getBoundingClientRect(); offsetPtX = e.clientX - rect.left; offsetPtY = e.clientY - rect.top; }); document.addEventListener('mousemove', (e) => { if (!isDraggingPt) return; ptWin.style.left = Math.max(0, e.clientX - offsetPtX) + 'px'; ptWin.style.top = Math.max(0, e.clientY - offsetPtY) + 'px'; }); document.addEventListener('mouseup', () => { isDraggingPt = false; });
 
 // ==========================================
 // 8. MOTEUR 3D ET EXPORT STL
