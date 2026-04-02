@@ -840,7 +840,7 @@ function render3DPlot(l93Pts, borderPtsWithZ) {
             zTerrain.push(rowTerrain); zRefPlane.push(rowRef);
         }
         
-        // Sauvegarde des données pour l'export STL
+        // Sauvegarde des données en mémoire pour l'export STL
         window.current3DData = { x: xVals, y: yVals, zTop: zTerrain };
 
         const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: '⛰️ Terrain Naturel', colorscale: 'Earth', showscale: false, showlegend: true };
@@ -871,9 +871,10 @@ function render3DPlot(l93Pts, borderPtsWithZ) {
     }, 100);
 }
 
-// --- FONCTION D'EXPORT STL (Corrigée pour le téléchargement) ---
+// --- FONCTION D'EXPORT STL FORCÉ ---
 window.exportSTL = () => {
-    if (!window.current3DData || !window.current3DData.zTop) return alert("Calculez d'abord une vue 3D.");
+    if (!window.current3DData || !window.current3DData.zTop) return alert("Calculez d'abord une vue 3D complète.");
+    
     const btn = document.querySelector('button[onclick="exportSTL()"]');
     if (btn) { btn.innerText = "⏳ Génération..."; btn.disabled = true; }
 
@@ -882,7 +883,6 @@ window.exportSTL = () => {
             const {x, y, zTop} = window.current3DData;
             let minX = Infinity, minY = Infinity, minZ = Infinity;
             
-            // Trouver les minimums pour centrer la pièce 3D sur l'imprimante
             for (let i = 0; i < y.length; i++) {
                 for (let j = 0; j < x.length; j++) {
                     let z = zTop[i][j];
@@ -899,43 +899,51 @@ window.exportSTL = () => {
                 stl += `facet normal 0 0 0\n  outer loop\n    vertex ${(v1[0]-minX).toFixed(3)} ${(v1[1]-minY).toFixed(3)} ${(v1[2]-minZ).toFixed(3)}\n    vertex ${(v2[0]-minX).toFixed(3)} ${(v2[1]-minY).toFixed(3)} ${(v2[2]-minZ).toFixed(3)}\n    vertex ${(v3[0]-minX).toFixed(3)} ${(v3[1]-minY).toFixed(3)} ${(v3[2]-minZ).toFixed(3)}\n  endloop\nendfacet\n`;
             };
 
-            // Génération des triangles de la surface
             for (let i = 0; i < y.length - 1; i++) {
                 for (let j = 0; j < x.length - 1; j++) {
                     const z1 = zTop[i][j], z2 = zTop[i][j+1], z3 = zTop[i+1][j], z4 = zTop[i+1][j+1];
                     if (z1 !== null && z2 !== null && z3 !== null && z4 !== null) {
-                        const p1 = [x[j], y[i], z1]; const p2 = [x[j+1], y[i], z2];
-                        const p3 = [x[j], y[i+1], z3]; const p4 = [x[j+1], y[i+1], z4];
-                        addFacet(p1, p2, p3); // Triangle 1
-                        addFacet(p2, p4, p3); // Triangle 2
+                        addFacet([x[j], y[i], z1], [x[j+1], y[i], z2], [x[j], y[i+1], z3]); 
+                        addFacet([x[j+1], y[i], z2], [x[j+1], y[i+1], z4], [x[j], y[i+1], z3]); 
                     }
                 }
             }
             stl += "endsolid terrain\n";
 
-            // L'astuce pour forcer le navigateur à télécharger
-            const blob = new Blob([stl], {type: 'text/plain'});
+            // Forçage de téléchargement sécurisé
+            const blob = new Blob([stl], {type: 'text/plain;charset=utf-8'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
             a.download = 'terrain_topographie.stl';
-            
-            // On attache le lien, on clique, on nettoie
             document.body.appendChild(a);
             a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url); // Libère la mémoire
+            
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
 
         } catch (err) {
-            console.error("Erreur de génération STL :", err);
-            alert("Erreur lors de la génération du fichier 3D.");
+            console.error("Erreur STL:", err);
+            alert("Erreur lors de la création du fichier.");
         } finally {
             if (btn) { btn.innerText = "📥 Exporter STL"; btn.disabled = false; }
         }
-    }, 50);
+    }, 100);
 };
 
+window.close3DWindow = () => { document.getElementById('window-3d').style.display = 'none'; if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } };
+window.generate3DView = (id) => { const d = drawStore.find(x => x.id === id); if (!d || (d.type !== 'area' && d.type !== 'circle')) return; if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !"); const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat])); let borderPtsWithZ = []; l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); }); render3DPlot(l93Pts, borderPtsWithZ); };
+window.generate3DViewFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); if (!p) return; const f = p.features.find(x => x.id === fid); if (!f || (f.type !== 'area' && f.type !== 'circle')) return; if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !"); const l93Pts = f.ptsGPS.map(pt => proj4("EPSG:4326", "EPSG:2154", [pt.lng, pt.lat])); let borderPtsWithZ = []; l93Pts.forEach(pt => { let z = getZ(pt); if (z !== null) borderPtsWithZ.push({ x: pt[0], y: pt[1], z: z }); }); render3DPlot(l93Pts, borderPtsWithZ); };
+
+// Drag & Drop Vue 3D
+const win3d = document.getElementById('window-3d'), header3d = document.getElementById('header-3d');
+let isDragging3D = false, offset3DX = 0, offset3DY = 0;
+header3d.addEventListener('mousedown', (e) => { if (e.target.tagName === 'BUTTON') return; isDragging3D = true; const rect = win3d.getBoundingClientRect(); offset3DX = e.clientX - rect.left; offset3DY = e.clientY - rect.top; });
+document.addEventListener('mousemove', (e) => { if (!isDragging3D) return; win3d.style.left = Math.max(0, e.clientX - offset3DX) + 'px'; win3d.style.top = Math.max(0, e.clientY - offset3DY) + 'px'; });
+document.addEventListener('mouseup', () => { isDragging3D = false; });
 window.close3DWindow = () => { document.getElementById('window-3d').style.display = 'none'; if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } };
 window.generate3DView = (id) => { const d = drawStore.find(x => x.id === id); if (!d || (d.type !== 'area' && d.type !== 'circle')) return; if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !"); const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat])); let borderPtsWithZ = []; l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); }); render3DPlot(l93Pts, borderPtsWithZ); };
 window.generate3DViewFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); if (!p) return; const f = p.features.find(x => x.id === fid); if (!f || (f.type !== 'area' && f.type !== 'circle')) return; if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !"); const l93Pts = f.ptsGPS.map(pt => proj4("EPSG:4326", "EPSG:2154", [pt.lng, pt.lat])); let borderPtsWithZ = []; l93Pts.forEach(pt => { let z = getZ(pt); if (z !== null) borderPtsWithZ.push({ x: pt[0], y: pt[1], z: z }); }); render3DPlot(l93Pts, borderPtsWithZ); };
