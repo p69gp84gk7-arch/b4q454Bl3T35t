@@ -375,16 +375,15 @@ window.calculateVolume = (id, type) => {
 // ==========================================
 
 // --- CORRECTIF BLINDÉ POUR LA FERMETURE ---
-window.close3DView = () => {
+window.close3DWindow = () => {  // <-- On utilise le nom exact de ton HTML
     document.getElementById('window-3d').style.display = 'none';
     if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
 };
 
-// On écoute absolument tous les clics dans le document. 
-// Si ça clique sur un bouton dans le header 3D, on ferme !
+// Sécurité supplémentaire au cas où
 document.addEventListener('click', (e) => {
-    if (e.target && e.target.closest('#header-3d button')) {
-        window.close3DView();
+    if (e.target && e.target.closest('button[onclick="close3DWindow()"]')) {
+        window.close3DWindow();
     }
 });
 // ------------------------------------------
