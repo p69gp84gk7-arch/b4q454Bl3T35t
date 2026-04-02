@@ -871,55 +871,68 @@ function render3DPlot(l93Pts, borderPtsWithZ) {
     }, 100);
 }
 
-// --- FONCTION D'EXPORT STL ---
+// --- FONCTION D'EXPORT STL (Corrigée pour le téléchargement) ---
 window.exportSTL = () => {
     if (!window.current3DData || !window.current3DData.zTop) return alert("Calculez d'abord une vue 3D.");
     const btn = document.querySelector('button[onclick="exportSTL()"]');
-    btn.innerText = "⏳ Génération..."; btn.disabled = true;
+    if (btn) { btn.innerText = "⏳ Génération..."; btn.disabled = true; }
 
     setTimeout(() => {
-        const {x, y, zTop} = window.current3DData;
-        let minX = Infinity, minY = Infinity, minZ = Infinity;
-        
-        // Trouver les minimums pour centrer la pièce 3D sur l'imprimante
-        for (let i = 0; i < y.length; i++) {
-            for (let j = 0; j < x.length; j++) {
-                let z = zTop[i][j];
-                if (z !== null) {
-                    if (x[j] < minX) minX = x[j];
-                    if (y[i] < minY) minY = y[i];
-                    if (z < minZ) minZ = z;
+        try {
+            const {x, y, zTop} = window.current3DData;
+            let minX = Infinity, minY = Infinity, minZ = Infinity;
+            
+            // Trouver les minimums pour centrer la pièce 3D sur l'imprimante
+            for (let i = 0; i < y.length; i++) {
+                for (let j = 0; j < x.length; j++) {
+                    let z = zTop[i][j];
+                    if (z !== null) {
+                        if (x[j] < minX) minX = x[j];
+                        if (y[i] < minY) minY = y[i];
+                        if (z < minZ) minZ = z;
+                    }
                 }
             }
-        }
 
-        let stl = "solid terrain\n";
-        const addFacet = (v1, v2, v3) => {
-            stl += `facet normal 0 0 0\n  outer loop\n    vertex ${(v1[0]-minX).toFixed(3)} ${(v1[1]-minY).toFixed(3)} ${(v1[2]-minZ).toFixed(3)}\n    vertex ${(v2[0]-minX).toFixed(3)} ${(v2[1]-minY).toFixed(3)} ${(v2[2]-minZ).toFixed(3)}\n    vertex ${(v3[0]-minX).toFixed(3)} ${(v3[1]-minY).toFixed(3)} ${(v3[2]-minZ).toFixed(3)}\n  endloop\nendfacet\n`;
-        };
+            let stl = "solid terrain\n";
+            const addFacet = (v1, v2, v3) => {
+                stl += `facet normal 0 0 0\n  outer loop\n    vertex ${(v1[0]-minX).toFixed(3)} ${(v1[1]-minY).toFixed(3)} ${(v1[2]-minZ).toFixed(3)}\n    vertex ${(v2[0]-minX).toFixed(3)} ${(v2[1]-minY).toFixed(3)} ${(v2[2]-minZ).toFixed(3)}\n    vertex ${(v3[0]-minX).toFixed(3)} ${(v3[1]-minY).toFixed(3)} ${(v3[2]-minZ).toFixed(3)}\n  endloop\nendfacet\n`;
+            };
 
-        // Génération des triangles de la surface
-        for (let i = 0; i < y.length - 1; i++) {
-            for (let j = 0; j < x.length - 1; j++) {
-                const z1 = zTop[i][j], z2 = zTop[i][j+1], z3 = zTop[i+1][j], z4 = zTop[i+1][j+1];
-                if (z1 !== null && z2 !== null && z3 !== null && z4 !== null) {
-                    const p1 = [x[j], y[i], z1]; const p2 = [x[j+1], y[i], z2];
-                    const p3 = [x[j], y[i+1], z3]; const p4 = [x[j+1], y[i+1], z4];
-                    addFacet(p1, p2, p3); // Triangle 1
-                    addFacet(p2, p4, p3); // Triangle 2
+            // Génération des triangles de la surface
+            for (let i = 0; i < y.length - 1; i++) {
+                for (let j = 0; j < x.length - 1; j++) {
+                    const z1 = zTop[i][j], z2 = zTop[i][j+1], z3 = zTop[i+1][j], z4 = zTop[i+1][j+1];
+                    if (z1 !== null && z2 !== null && z3 !== null && z4 !== null) {
+                        const p1 = [x[j], y[i], z1]; const p2 = [x[j+1], y[i], z2];
+                        const p3 = [x[j], y[i+1], z3]; const p4 = [x[j+1], y[i+1], z4];
+                        addFacet(p1, p2, p3); // Triangle 1
+                        addFacet(p2, p4, p3); // Triangle 2
+                    }
                 }
             }
-        }
-        stl += "endsolid terrain\n";
+            stl += "endsolid terrain\n";
 
-        // Téléchargement
-        const blob = new Blob([stl], {type: 'text/plain'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'terrain_topographie.stl';
-        a.click();
-        
-        btn.innerText = "📥 Exporter STL"; btn.disabled = false;
+            // L'astuce pour forcer le navigateur à télécharger
+            const blob = new Blob([stl], {type: 'text/plain'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'terrain_topographie.stl';
+            
+            // On attache le lien, on clique, on nettoie
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url); // Libère la mémoire
+
+        } catch (err) {
+            console.error("Erreur de génération STL :", err);
+            alert("Erreur lors de la génération du fichier 3D.");
+        } finally {
+            if (btn) { btn.innerText = "📥 Exporter STL"; btn.disabled = false; }
+        }
     }, 50);
 };
 
