@@ -242,10 +242,10 @@ function updateDrawUI() {
         let btns = d.type === 'line' ? 
             `<button type="button" onclick="generateProfileById(${d.id})" style="width:100%; margin-top:5px; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil altimétrique</button>` : 
             `<div style="display:flex; gap:3px; margin-top:5px; flex-wrap:wrap;">
-                <button type="button" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#2980b9; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📉 Calcul Déblai</button>
-                <button type="button" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📈 Calcul Remblai</button>
-                <button type="button" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; font-size:0.75em; background:#8e44ad; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📐 Vol. Courbe</button>
-                <button type="button" onclick="calculateVolume(${d.id}, 'plane')" style="flex:1; font-size:0.75em; background:#9b59b6; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📏 Vol. Plan</button>
+                <button type="button" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#3498db; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📉 Déblai</button>
+                <button type="button" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📈 Remblai</button>
+                <button type="button" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; font-size:0.75em; background:#9b59b6; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📐 Courbe</button>
+                <button type="button" onclick="calculateVolume(${d.id}, 'plane')" style="flex:1; font-size:0.75em; background:#1abc9c; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📏 Plan</button>
                 <button type="button" onclick="generate3DView(${d.id})" style="flex:1; min-width:100%; font-size:0.8em; font-weight:bold; background:#34495e; color:#fff; border:1px solid #555; cursor:pointer; padding:5px; margin-top:2px; border-radius:3px;">👁️ Lancer Vue 3D</button>
             </div>`;
         
@@ -262,7 +262,7 @@ function updateDrawUI() {
             <div id="stats-${d.id}" style="font-size:12px; margin:5px 0; color:#eee; background:#222; padding:6px; border-radius:3px;">${d.statsHtml || ''}</div>
             
             <button type="button" onclick="toggleEditMode(${d.id})" style="width:100%; background:${d.isEditing?'#27ae60':'#7f8c8d'}; color:#fff; border:none; padding:5px; cursor:pointer; border-radius:3px; font-weight:bold;">
-                ${d.isEditing ? '✅ Fermer & Valider Édition' : '✏️ Modifier les points (XYZ)'}
+                ${d.isEditing ? '✅ Fin édition' : '✏️ Éditer les points'}
             </button>
             
             ${generateEditorTable(d, false)}
@@ -281,7 +281,7 @@ window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id)
 // ==========================================
 window.calculateVolume = (id, type) => {
     const d = drawStore.find(x => x.id === id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id); 
-    if (mntStore.filter(m=>m.visible).length === 0) return alert("Veuillez activer un MNT.");
+    if (mntStore.filter(m=>m.visible).length === 0) return alert("Veuillez activer un MNT dans la liste à gauche.");
     
     const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
     let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
@@ -293,7 +293,7 @@ window.calculateVolume = (id, type) => {
         if(z !== null) border.push({x:p[0], y:p[1], z}); 
     });
     
-    if((type==='slope'||type==='plane') && border.length < 3) return alert("Pas assez de points avec altitude.");
+    if((type==='slope'||type==='plane') && border.length < 3) return alert("Pas assez de points avec altitude pour calculer ce type de plan.");
 
     let refZ = 0;
     if(type==='hollow'||type==='mound') {
@@ -330,11 +330,19 @@ window.calculateVolume = (id, type) => {
             }
         }
         
-        const lbl = type==='plane' ? 'Plan' : (type==='slope' ? 'Courbe' : `${refZ}m`);
+        let color = '#fff', lbl = ''; let resTxt = '';
+        if(type === 'hollow') { color = '#3498db'; lbl = `Déblai (${refZ}m)`; resTxt = `${tCreux.toFixed(1)} m³`; }
+        if(type === 'mound') { color = '#e67e22'; lbl = `Remblai (${refZ}m)`; resTxt = `${tTas.toFixed(1)} m³`; }
+        if(type === 'slope') { color = '#9b59b6'; lbl = `Vol. Courbe`; resTxt = `📉 ${tCreux.toFixed(1)}m³ | 📈 ${tTas.toFixed(1)}m³`; }
+        if(type === 'plane') { color = '#1abc9c'; lbl = `Vol. Plan`; resTxt = `📉 ${tCreux.toFixed(1)}m³ | 📈 ${tTas.toFixed(1)}m³`; }
+
         if (!d.volumeHtml) d.volumeHtml = "";
-        d.volumeHtml += `<div style="font-size:11px; margin-top:3px; background:#1a1a1a; padding:3px; border-radius:2px;">[${lbl}] 📉 Déblai: <b style="color:#3498db">${tCreux.toFixed(1)}m³</b> | 📈 Remblai: <b style="color:#e67e22">${tTas.toFixed(1)}m³</b></div>`;
+        d.volumeHtml += `<div style="font-size:12px; margin-top:4px; background:#1a1a1a; padding:4px; border-radius:3px; border-left:3px solid ${color};">
+            <b style="color:${color};">${lbl} :</b> ${resTxt}
+        </div>`;
         
-        recalculateStats(d); updateDrawUI(); updateProjectUI();
+        recalculateStats(d); 
+        if (drawStore.find(x => x.id === id)) updateDrawUI(); else updateProjectUI();
     }, 50);
 };
 
@@ -352,71 +360,62 @@ window.generate3DView = (id) => {
     if(border.length === 0) return alert("Zone hors MNT.");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération de la matrice 3D... ⏳</h3>';
-    document.getElementById('hover-3d-result').innerHTML = "Survolez le modèle...";
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération de la 3D... ⏳</h3>';
 
     setTimeout(() => {
         try {
             let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
             l93.forEach(p=>{minX=Math.min(minX,p[0]); maxX=Math.max(maxX,p[0]); minY=Math.min(minY,p[1]); maxY=Math.max(maxY,p[1]);});
             
-            // Protection anti-plantage si la surface est trop petite
-            if(maxX - minX < 5) { maxX += 10; minX -= 10; }
-            if(maxY - minY < 5) { maxY += 10; minY -= 10; }
+            minX -= 15; maxX += 15; minY -= 15; maxY += 15; // On élargit un peu pour voir le terrain autour
+            const step = Math.max(1, Math.max((maxX - minX)/40, (maxY - minY)/40));
 
-            const step = Math.max(0.5, Math.max((maxX - minX)/40, (maxY - minY)/40));
+            let xV = []; for (let x = minX; x <= maxX + step; x += step) xV.push(x);
+            let yV = []; for (let y = minY; y <= maxY + step; y += step) yV.push(y);
 
-            let sX=0, sY=0, sZ=0; border.forEach(p=>{sX+=p.x;sY+=p.y;sZ+=p.z;}); 
-            const n=border.length, cX=sX/n, cY=sY/n, cZ=sZ/n;
-            let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0; 
-            border.forEach(p=>{const dx=p.x-cX, dy=p.y-cY, dz=p.z-cZ; sXX+=dx*dx; sYY+=dy*dy; sXY+=dx*dy; sXZ+=dx*dz; sYZ+=dy*dz;});
-            const D = sXX*sYY - sXY*sXY; let aR=0, bR=0; if(D!==0){aR=(sXZ*sYY-sYZ*sXY)/D; bR=(sYZ*sXX-sXZ*sXY)/D;} 
-            const cR = cZ - aR*cX - bR*cY;
-
-            let xV = []; for (let x = minX; x <= maxX + step/2; x += step) xV.push(x);
-            let yV = []; for (let y = minY; y <= maxY + step/2; y += step) yV.push(y);
-
-            let zT=[], zB=[]; 
+            let zT=[]; 
             for (let j = 0; j < yV.length; j++) {
-                let rT=[], rB=[]; let y = yV[j];
-                for (let i = 0; i < xV.length; i++) {
-                    let x = xV[i];
-                    // On remplit le carré du Terrain entier pour éviter l'erreur Plotly
-                    rT.push(getZ([x, y])); 
-                    if (isPointInPolygon([x, y], l93)) { rB.push(aR*x + bR*y + cR); } 
-                    else { rB.push(null); }
-                } 
-                zT.push(rT); zB.push(rB);
+                let rT=[]; let y = yV[j];
+                for (let i = 0; i < xV.length; i++) { rT.push(getZ([xV[i], y])); } 
+                zT.push(rT);
             }
+            
             window.current3DData = {x: xV, y: yV, zTop: zT};
 
-            // Ligne jaune continue autour du polygone
+            // Remplissage du polygone (Nouvelle méthode robuste)
             let bX = [...border.map(p=>p.x)]; if(border.length > 2) bX.push(border[0].x);
             let bY = [...border.map(p=>p.y)]; if(border.length > 2) bY.push(border[0].y);
             let bZ = [...border.map(p=>p.z)]; if(border.length > 2) bZ.push(border[0].z);
 
             const tracePoints = {
-                x: bX, y: bY, z: bZ, mode: 'lines+markers+text', type: 'scatter3d', name: 'Polygone',
+                x: bX, y: bY, z: bZ, 
+                mode: 'lines+markers+text', type: 'scatter3d', name: 'Polygone',
                 text: [...border.map(p=>p.i), ''], textposition: 'top center',
-                line: { color: '#f1c40f', width: 5 }, marker: { color: '#e74c3c', size: 6 }, showlegend: true
+                line: { color: '#f1c40f', width: 5 }, 
+                marker: { color: '#e74c3c', size: 6 },
+                surfaceaxis: 2, // Magie : Remplit l'intérieur du polygone sur l'axe Z !
+                surfacecolor: 'rgba(52, 152, 219, 0.4)', // Bleu transparent
+                showlegend: true
             };
             
             Plotly.newPlot('plot-3d', [
                 {z:zT, x:xV, y:yV, type:'surface', name:'Terrain Nat.', colorscale:'Earth', showlegend:true, showscale:false},
-                {z:zB, x:xV, y:yV, type:'surface', name:'Plan Parfait', colorscale:'Purples', opacity:0.7, showlegend:true, visible: 'legendonly', showscale:false},
                 tracePoints
             ], {
                 margin:{l:0,r:0,b:0,t:0}, scene:{aspectmode:'data'}, paper_bgcolor:'#222', font:{color:'#fff'}, 
                 legend:{orientation:'h', x:0.5, y:0.05, xanchor:'center', bgcolor:'rgba(0,0,0,0)'}
-            }, {displayModeBar:false}).then(() => {
+            }, {displayModeBar:true}).then(() => {
                 
-                // Suivi Souris 3D vers 2D
+                // Suivi Souris
                 document.getElementById('plot-3d').on('plotly_hover', (data) => {
                     if(data.points && data.points.length > 0){
-                        const p = data.points[0]; const g = proj4("EPSG:2154","EPSG:4326",[p.x,p.y]);
-                        updateCursor(g[1], g[0]);
-                        const hr = document.getElementById('hover-3d-result');
-                        if (hr) hr.innerHTML = `📍 Z: <span style="color:#fff">${p.z.toFixed(2)}m</span>`;
+                        const p = data.points[0]; 
+                        if(p.x !== undefined && p.y !== undefined) {
+                            const g = proj4("EPSG:2154","EPSG:4326",[p.x, p.y]);
+                            updateCursor(g[1], g[0]);
+                            const hr = document.getElementById('hover-3d-result');
+                            if (hr) hr.innerHTML = `📍 Z: <span style="color:#fff">${(p.z||0).toFixed(2)}m</span>`;
+                        }
                     }
                 });
                 
@@ -425,26 +424,13 @@ window.generate3DView = (id) => {
                     const hr = document.getElementById('hover-3d-result'); if (hr) hr.innerText = "Survolez le relief...";
                 });
                 
-            }).catch(e => { document.getElementById('plot-3d').innerHTML = `<h3 style="color:#e74c3c; text-align:center; margin-top:20%;">Erreur d'affichage 3D</h3>`; });
+            });
             
-        } catch (err) { document.getElementById('plot-3d').innerHTML = `<h3 style="color:#e74c3c; text-align:center; margin-top:20%;">Erreur Mathématique 3D</h3>`; }
+        } catch (err) { 
+            document.getElementById('plot-3d').innerHTML = `<h3 style="color:#e74c3c; text-align:center; margin-top:20%;">Erreur Mathématique 3D</h3>`; 
+        }
     }, 100);
 };
-
-window.exportSTL = () => {
-    if (!window.current3DData) return alert("Affichez la 3D d'abord.");
-    let stl = "solid terrain\n"; const {x, y, zTop} = window.current3DData;
-    let minX=Infinity, minY=Infinity, minZ=Infinity;
-    for(let i=0; i<y.length; i++) for(let j=0; j<x.length; j++) { let z=zTop[i][j]; if(z!==null){ minX=Math.min(minX,x[j]); minY=Math.min(minY,y[i]); minZ=Math.min(minZ,z); } }
-    const addF = (v1, v2, v3) => { stl += `facet normal 0 0 0\n outer loop\n vertex ${(v1[0]-minX).toFixed(3)} ${(v1[1]-minY).toFixed(3)} ${(v1[2]-minZ).toFixed(3)}\n vertex ${(v2[0]-minX).toFixed(3)} ${(v2[1]-minY).toFixed(3)} ${(v2[2]-minZ).toFixed(3)}\n vertex ${(v3[0]-minX).toFixed(3)} ${(v3[1]-minY).toFixed(3)} ${(v3[2]-minZ).toFixed(3)}\n endloop\nendfacet\n`; };
-    for (let i=0; i<y.length-1; i++) for (let j=0; j<x.length-1; j++) {
-        const z1=zTop[i][j], z2=zTop[i][j+1], z3=zTop[i+1][j], z4=zTop[i+1][j+1];
-        if(z1!==null&&z2!==null&&z3!==null&&z4!==null) { addF([x[j],y[i],z1], [x[j+1],y[i],z2], [x[j],y[i+1],z3]); addF([x[j+1],y[i],z2], [x[j+1],y[i+1],z4], [x[j],y[i+1],z3]); }
-    } stl += "endsolid terrain\n";
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([stl], {type:'text/plain'})); a.download='terrain.stl'; a.style.display='none'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-};
-window.close3DWindow = () => { document.getElementById('window-3d').style.display='none'; if(cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } };
-
 // ==========================================
 // 8. PROFIL ALTIMÉTRIQUE AVEC SUIVI
 // ==========================================
@@ -517,8 +503,49 @@ window.updateScalesLive = () => {
 };
 
 window.exportChartPNG = () => { const a = document.createElement('a'); a.href = document.getElementById('profileChart').toDataURL('image/png'); a.download = 'profil.png'; a.click(); };
-window.exportChartCSV = () => { let csv = "\ufeffDistance (m)\tAltitude Z (m)\n"; chartInstance.data.datasets[0].data.forEach(r => { csv += `${r.x}\t${r.y.toString().replace('.', ',')}\n`; }); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = 'profil.csv'; a.click(); };
+window.exportChartCSV = () => { 
+    let csv = "\ufeffDistance (m)\tAltitude Z (m)\n"; 
+    chartInstance.data.datasets[0].data.forEach(r => { 
+        csv += `${r.x}\t${r.y.toFixed(2).replace('.', ',')}\n`; 
+    }); 
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = 'profil.csv'; a.click(); 
+};
 
+function updateProjectUI() {
+    const list = document.getElementById('project-list'); if(!list) return; list.innerHTML = '';
+    projectStore.forEach(p => {
+        let fHtml = ''; 
+        p.features.forEach(f => {
+            const btns = f.type==='line' ? 
+                `<button type="button" onclick="generateProfileById(${f.id})" style="width:100%; margin-top:5px; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil altimétrique</button>` : 
+                `<div style="display:flex; gap:3px; margin-top:5px; flex-wrap:wrap;">
+                    <button type="button" onclick="calculateVolume(${f.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#3498db; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📉 Déblai</button>
+                    <button type="button" onclick="calculateVolume(${f.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📈 Remblai</button>
+                    <button type="button" onclick="calculateVolume(${f.id}, 'slope')" style="flex:1; font-size:0.75em; background:#9b59b6; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📐 Courbe</button>
+                    <button type="button" onclick="calculateVolume(${f.id}, 'plane')" style="flex:1; font-size:0.75em; background:#1abc9c; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📏 Plan</button>
+                    <button type="button" onclick="generate3DView(${f.id})" style="flex:1; min-width:100%; font-size:0.8em; font-weight:bold; background:#34495e; color:#fff; border:1px solid #555; cursor:pointer; padding:5px; margin-top:2px; border-radius:3px;">👁️ Lancer Vue 3D</button>
+                </div>`;
+                
+            fHtml += `<div style="margin-left:5px; border-left:3px solid ${f.color}; padding:5px; background:#1a1a1a; margin-top:5px; border-radius:3px;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div><input type="checkbox" checked onchange="toggleProjectFeature(${p.id}, ${f.id})"> <strong style="margin-left:5px; font-size:1.1em;">${f.name}</strong></div>
+                    <button type="button" onclick="deleteProjectFeature(${p.id}, ${f.id})" style="background:transparent; color:#e74c3c; border:none; cursor:pointer;">✕</button>
+                </div>
+                <div id="stats-proj-${f.id}" style="font-size:12px; margin:5px 0; color:#ddd; background:#222; padding:6px; border-radius:3px;">${f.statsHtml || ''}</div>
+                <button type="button" onclick="toggleEditMode(${f.id}, true, ${p.id})" style="width:100%; background:${f.isEditing?'#27ae60':'#7f8c8d'}; color:#fff; border:none; padding:5px; cursor:pointer; margin-bottom:5px; font-weight:bold; border-radius:3px;">${f.isEditing?'✅ Fin édition':'✏️ Éditer les points'}</button>
+                ${generateEditorTable(f, true, p.id)}
+                ${btns}
+            </div>`;
+        });
+        list.innerHTML += `<div class="card">
+            <div class="card-header">
+                <div><input type="checkbox" ${p.visible ? 'checked' : ''} onchange="toggleProject(${p.id})"><strong style="color:#3498db; font-size:1.1em;">📁 ${p.name}</strong></div>
+                <button type="button" class="btn-del" onclick="deleteProject(${p.id})">✕</button>
+            </div>
+            <details open style="margin-top: 8px;"><summary style="font-size: 0.85em; color: #aaa; cursor:pointer;">Ouvrir/Fermer les calques</summary>${fHtml}</details>
+        </div>`;
+    });
+}
 // ==========================================
 // 9. SOURIS LIVE ET DRAG FENÊTRES
 // ==========================================
@@ -589,41 +616,41 @@ window.loadProject = async () => {
     } catch(e) { alert("Erreur chargement"); } finally { btn.innerText = "Charger"; btn.disabled = false; }
 };
 
-function updateProjectUI() {
-    const list = document.getElementById('project-list'); if(!list) return; list.innerHTML = '';
-    projectStore.forEach(p => {
-        let fHtml = ''; 
-        p.features.forEach(f => {
-            const btns = f.type==='line' ? 
-                `<button type="button" onclick="generateProfileById(${f.id})" style="width:100%; margin-top:5px; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer;">📈 Afficher Profil Altimétrique</button>` : 
-                `<div style="display:flex; gap:3px; margin-top:5px; flex-wrap:wrap;">
-                    <button type="button" onclick="calculateVolume(${f.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#2980b9; color:#fff; border:none; cursor:pointer; padding:5px;">📉 Déblai</button>
-                    <button type="button" onclick="calculateVolume(${f.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px;">📈 Remblai</button>
-                    <button type="button" onclick="calculateVolume(${f.id}, 'slope')" style="flex:1; font-size:0.75em; background:#8e44ad; color:#fff; border:none; cursor:pointer; padding:5px;">📐 Vol. Courbe</button>
-                    <button type="button" onclick="calculateVolume(${f.id}, 'plane')" style="flex:1; font-size:0.75em; background:#9b59b6; color:#fff; border:none; cursor:pointer; padding:5px;">📏 Vol. Plan</button>
-                    <button type="button" onclick="generate3DView(${f.id})" style="flex:1; min-width:100%; font-size:0.8em; font-weight:bold; background:#34495e; color:#fff; border:1px solid #555; cursor:pointer; padding:5px; margin-top:2px;">👁️ Lancer Vue 3D</button>
-                </div>`;
-                
-            fHtml += `<div style="margin-left:5px; border-left:3px solid ${f.color}; padding:5px; background:#1a1a1a; margin-top:5px;">
-                <div style="display:flex; align-items:center; justify-content:space-between;">
-                    <div><input type="checkbox" checked onchange="toggleProjectFeature(${p.id}, ${f.id})"> <strong style="margin-left:5px;">${f.name}</strong></div>
-                    <button type="button" onclick="deleteProjectFeature(${p.id}, ${f.id})" style="background:transparent; color:#e74c3c; border:none; cursor:pointer;">✕</button>
-                </div>
-                <div id="stats-proj-${f.id}" style="font-size:11px; margin:5px 0; color:#ddd; background:#222; padding:4px;">${f.statsHtml || ''}</div>
-                <button type="button" onclick="toggleEditMode(${f.id}, true, ${p.id})" style="width:100%; background:${f.isEditing?'#27ae60':'#7f8c8d'}; color:#fff; border:none; padding:4px; cursor:pointer; margin-bottom:5px;">${f.isEditing?'✅ Fin édition':'✏️ Modifier les points'}</button>
-                ${generateEditorTable(f, true, p.id)}
-                ${btns}
-            </div>`;
-        });
-        list.innerHTML += `<div class="card">
-            <div class="card-header">
-                <div><input type="checkbox" ${p.visible ? 'checked' : ''} onchange="toggleProject(${p.id})"><strong style="color:#3498db; font-size:1.1em;">📁 ${p.name}</strong></div>
-                <button type="button" class="btn-del" onclick="deleteProject(${p.id})">✕</button>
-            </div>
-            <details open style="margin-top: 8px;"><summary style="font-size: 0.85em; color: #aaa; cursor:pointer;">Ouvrir/Fermer les calques</summary>${fHtml}</details>
-        </div>`;
-    });
-}
+//function updateProjectUI() {
+//    const list = document.getElementById('project-list'); if(!list) return; list.innerHTML = '';
+//    projectStore.forEach(p => {
+//        let fHtml = ''; 
+//        p.features.forEach(f => {
+//            const btns = f.type==='line' ? 
+//                `<button type="button" onclick="generateProfileById(${f.id})" style="width:100%; margin-top:5px; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer;">📈 Afficher Profil Altimétrique</button>` : 
+//                `<div style="display:flex; gap:3px; margin-top:5px; flex-wrap:wrap;">
+//                    <button type="button" onclick="calculateVolume(${f.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#2980b9; color:#fff; border:none; cursor:pointer; padding:5px;">📉 Déblai</button>
+//                    <button type="button" onclick="calculateVolume(${f.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px;">📈 Remblai</button>
+//                    <button type="button" onclick="calculateVolume(${f.id}, 'slope')" style="flex:1; font-size:0.75em; background:#8e44ad; color:#fff; border:none; cursor:pointer; padding:5px;">📐 Vol. Courbe</button>
+//                    <button type="button" onclick="calculateVolume(${f.id}, 'plane')" style="flex:1; font-size:0.75em; background:#9b59b6; color:#fff; border:none; cursor:pointer; padding:5px;">📏 Vol. Plan</button>
+//                    <button type="button" onclick="generate3DView(${f.id})" style="flex:1; min-width:100%; font-size:0.8em; font-weight:bold; background:#34495e; color:#fff; border:1px solid #555; cursor:pointer; padding:5px; margin-top:2px;">👁️ Lancer Vue 3D</button>
+//                </div>`;
+//                
+//            fHtml += `<div style="margin-left:5px; border-left:3px solid ${f.color}; padding:5px; background:#1a1a1a; margin-top:5px;">
+//                <div style="display:flex; align-items:center; justify-content:space-between;">
+//                    <div><input type="checkbox" checked onchange="toggleProjectFeature(${p.id}, ${f.id})"> <strong style="margin-left:5px;">${f.name}</strong></div>
+//                    <button type="button" onclick="deleteProjectFeature(${p.id}, ${f.id})" style="background:transparent; color:#e74c3c; border:none; cursor:pointer;">✕</button>
+//                </div>
+//                <div id="stats-proj-${f.id}" style="font-size:11px; margin:5px 0; color:#ddd; background:#222; padding:4px;">${f.statsHtml || ''}</div>
+//                <button type="button" onclick="toggleEditMode(${f.id}, true, ${p.id})" style="width:100%; background:${f.isEditing?'#27ae60':'#7f8c8d'}; color:#fff; border:none; padding:4px; cursor:pointer; margin-bottom:5px;">${f.isEditing?'✅ Fin édition':'✏️ Modifier les points'}</button>
+//                ${generateEditorTable(f, true, p.id)}
+//                ${btns}
+ //           </div>`;
+//        });
+//        list.innerHTML += `<div class="card">
+//            <div class="card-header">
+//                <div><input type="checkbox" ${p.visible ? 'checked' : ''} onchange="toggleProject(${p.id})"><strong style="color:#3498db; font-size:1.1em;">📁 ${p.name}</strong></div>
+//                <button type="button" class="btn-del" onclick="deleteProject(${p.id})">✕</button>
+//            </div>
+//            <details open style="margin-top: 8px;"><summary style="font-size: 0.85em; color: #aaa; cursor:pointer;">Ouvrir/Fermer les calques</summary>${fHtml}</details>
+//        </div>`;
+//    });
+//}
 window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } }); updateProjectUI(); };
 window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); }); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
 window.toggleProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.visible = !f.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } updateProjectUI(); };
