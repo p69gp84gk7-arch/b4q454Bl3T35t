@@ -355,3 +355,108 @@ window.exportSTL = () => {
 
 window.close3DWindow = () => { document.getElementById('window-3d').style.display='none'; if(cursorMarker) map.removeLayer(cursorMarker); };
 window.updateScalesLive = () => chartInstance.update();
+// ==========================================
+// 11. CHARGEMENT DES DONNÉES MÉTIER (KMZ/GEOJSON)
+// ==========================================
+window.addEventListener('load', () => {
+    try {
+        // --- 1. CHARGEMENT DES PISTES ---
+        // On vérifie si la variable existe (chargée via un <script> dans l'index.html)
+        if (typeof pistesData !== 'undefined' && pistesData.features) {
+            const pistesLayer = L.geoJSON(pistesData, { 
+                style: { 
+                    color: '#ffffff', 
+                    weight: 2, 
+                    opacity: 0.8, 
+                    dashArray: '5, 5' // Optionnel : ligne pointillée pour les pistes
+                },
+                onEachFeature: (feature, layer) => {
+                    if (feature.properties && feature.properties.name) {
+                        layer.bindPopup("Piste : " + feature.properties.name);
+                    }
+                }
+            }).addTo(map);
+            
+            kmzStore.push({ id: "pistes", name: "Domaine Skiable", layer: pistesLayer, visible: true, color: '#ffffff' });
+            
+            // Ajuster la vue si c'est le premier élément chargé
+            if (mntStore.length === 0) map.fitBounds(pistesLayer.getBounds());
+        }
+
+        // --- 2. CHARGEMENT DES CANONS ---
+        if (typeof canonData !== 'undefined' && canonData.features) {
+            const canonLayer = L.geoJSON(canonData, { 
+                pointToLayer: (feature, latlng) => {
+                    return L.circleMarker(latlng, { 
+                        radius: 5, 
+                        fillColor: '#3498db', 
+                        color: '#fff', 
+                        weight: 1, 
+                        fillOpacity: 0.9 
+                    });
+                },
+                onEachFeature: (feature, layer) => {
+                    if (feature.properties && feature.properties.name) {
+                        layer.bindPopup("Enneigeur : " + feature.properties.name);
+                    }
+                }
+            }).addTo(map);
+            
+            kmzStore.push({ id: "canons", name: "Réseau Neige", layer: canonLayer, visible: true, color: '#3498db' });
+        }
+
+        updateKmzUI();
+    } catch (e) {
+        console.error("Erreur lors du chargement des calques métier :", e);
+    }
+});
+
+// --- Interface de gestion des KMZ ---
+function updateKmzUI() {
+    const list = document.getElementById('kmz-list');
+    if (!list) return;
+    list.innerHTML = '';
+    
+    kmzStore.forEach(k => {
+        list.innerHTML += `
+        <div class="card" style="border-left: 4px solid ${k.color}; margin-bottom: 5px; padding: 8px; background: #2c3e50;">
+            <div style="display:flex; justify-content: space-between; align-items: center;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" ${k.visible ? 'checked' : ''} onchange="toggleKMZ('${k.id}')">
+                    <span style="color:white; font-size:0.9em;">${k.name}</span>
+                </label>
+                <div style="font-size: 0.7em; color: #bdc3c7;">KMZ</div>
+            </div>
+        </div>`;
+    });
+}
+
+window.toggleKMZ = (id) => {
+    const k = kmzStore.find(x => x.id === id);
+    if (!k) return;
+    k.visible = !k.visible;
+    if (k.visible) k.layer.addTo(map);
+    else map.removeLayer(k.layer);
+    updateKmzUI();
+};
+
+// ==========================================
+// 12. SAUVEGARDE GOOGLE (Remettez votre URL)
+// ==========================================
+const SCRIPT_URL = "VOTRE_URL_GOOGLE_SCRIPT_ICI"; // <--- ⚠️ À REMPLIR
+
+window.saveProject = async () => {
+    const name = document.getElementById('project-name').value;
+    if(!name) return alert("Nom de projet requis");
+    const data = drawStore.map(d => ({ type: d.type, name: d.name, ptsGPS: d.ptsGPS, color: d.color, radius: d.radius, center: d.center }));
+    try { 
+        const res = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ projectName: name, projectData: JSON.stringify(data) }) });
+        const json = await res.json();
+        if(json.status === "success") alert("Projet sauvegardé dans le Cloud !");
+    } catch(e) { alert("Erreur de connexion Google Sheets"); }
+};
+
+window.close3DWindow = () => { 
+    document.getElementById('window-3d').style.display = 'none'; 
+    if(cursorMarker) map.removeLayer(cursorMarker); 
+};
