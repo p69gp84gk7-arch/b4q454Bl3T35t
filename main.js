@@ -454,7 +454,7 @@ window.addEventListener('load', () => {
 // ==========================================
 // 12. GOOGLE SHEETS ET SAUVEGARDE
 // ==========================================
-const SCRIPT_URL = "VOTRE_URL_WEB_APP_ICI"; // <--- ⚠️ REMETTEZ VOTRE LIEN GOOGLE SCRIPT ICI !!!
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZ-m9rVPuATkiYjccicrtBSrAieSSA_TTqmYpA61SoK4eTj11qesIEpItyys6Vu2GVXQ/exec"; // <--- ⚠️ REMETTEZ VOTRE LIEN GOOGLE SCRIPT ICI !!!
 
 window.saveProject = async () => {
     const projectName = document.getElementById('project-name').value.trim(); if (!projectName || drawStore.length === 0) return;
