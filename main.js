@@ -809,8 +809,9 @@ window.generate3DViewFromProject = (pid, fid) => {
     }, 100);
 };
 // ==========================================
-// MOTEUR DE RENDU 3D ÉPURÉ
+// MOTEUR DE RENDU 3D ET EXPORT STL
 // ==========================================
+window.current3DData = null; // Stockage global pour l'export STL
 
 function render3DPlot(l93Pts, borderPtsWithZ) {
     document.getElementById('window-3d').style.display = 'block';
@@ -839,6 +840,9 @@ function render3DPlot(l93Pts, borderPtsWithZ) {
             zTerrain.push(rowTerrain); zRefPlane.push(rowRef);
         }
         
+        // Sauvegarde des données pour l'export STL
+        window.current3DData = { x: xVals, y: yVals, zTop: zTerrain };
+
         const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: '⛰️ Terrain Naturel', colorscale: 'Earth', showscale: false, showlegend: true };
         const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: '🟦 Base Calculée', colorscale: 'Blues', showscale: false, opacity: 0.6, showlegend: true };
 
@@ -851,19 +855,14 @@ function render3DPlot(l93Pts, borderPtsWithZ) {
         
         Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout, { displayModeBar: true, displaylogo: false }).then(() => {
             const plotDiv = document.getElementById('plot-3d');
-            
-            // Animation du point sur la carte et affichage Z
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
                     const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]);
                     if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
                     else cursorMarker.setLatLng([gps[1], gps[0]]);
-                    
                     document.getElementById('hover-3d-result').innerHTML = `📍 Altitude Z : <span style="color:white;">${pt.z.toFixed(2)} m</span>`;
                 }
             });
-            
-            // Nettoyage quand on quitte la zone 3D
             plotDiv.addEventListener('mouseleave', () => { 
                 if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } 
                 document.getElementById('hover-3d-result').innerText = "Survolez le relief...";
@@ -872,27 +871,61 @@ function render3DPlot(l93Pts, borderPtsWithZ) {
     }, 100);
 }
 
-window.close3DWindow = () => {
-    document.getElementById('window-3d').style.display = 'none';
-    if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
+// --- FONCTION D'EXPORT STL ---
+window.exportSTL = () => {
+    if (!window.current3DData || !window.current3DData.zTop) return alert("Calculez d'abord une vue 3D.");
+    const btn = document.querySelector('button[onclick="exportSTL()"]');
+    btn.innerText = "⏳ Génération..."; btn.disabled = true;
+
+    setTimeout(() => {
+        const {x, y, zTop} = window.current3DData;
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        
+        // Trouver les minimums pour centrer la pièce 3D sur l'imprimante
+        for (let i = 0; i < y.length; i++) {
+            for (let j = 0; j < x.length; j++) {
+                let z = zTop[i][j];
+                if (z !== null) {
+                    if (x[j] < minX) minX = x[j];
+                    if (y[i] < minY) minY = y[i];
+                    if (z < minZ) minZ = z;
+                }
+            }
+        }
+
+        let stl = "solid terrain\n";
+        const addFacet = (v1, v2, v3) => {
+            stl += `facet normal 0 0 0\n  outer loop\n    vertex ${(v1[0]-minX).toFixed(3)} ${(v1[1]-minY).toFixed(3)} ${(v1[2]-minZ).toFixed(3)}\n    vertex ${(v2[0]-minX).toFixed(3)} ${(v2[1]-minY).toFixed(3)} ${(v2[2]-minZ).toFixed(3)}\n    vertex ${(v3[0]-minX).toFixed(3)} ${(v3[1]-minY).toFixed(3)} ${(v3[2]-minZ).toFixed(3)}\n  endloop\nendfacet\n`;
+        };
+
+        // Génération des triangles de la surface
+        for (let i = 0; i < y.length - 1; i++) {
+            for (let j = 0; j < x.length - 1; j++) {
+                const z1 = zTop[i][j], z2 = zTop[i][j+1], z3 = zTop[i+1][j], z4 = zTop[i+1][j+1];
+                if (z1 !== null && z2 !== null && z3 !== null && z4 !== null) {
+                    const p1 = [x[j], y[i], z1]; const p2 = [x[j+1], y[i], z2];
+                    const p3 = [x[j], y[i+1], z3]; const p4 = [x[j+1], y[i+1], z4];
+                    addFacet(p1, p2, p3); // Triangle 1
+                    addFacet(p2, p4, p3); // Triangle 2
+                }
+            }
+        }
+        stl += "endsolid terrain\n";
+
+        // Téléchargement
+        const blob = new Blob([stl], {type: 'text/plain'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'terrain_topographie.stl';
+        a.click();
+        
+        btn.innerText = "📥 Exporter STL"; btn.disabled = false;
+    }, 50);
 };
 
-window.generate3DView = (id) => {
-    const d = drawStore.find(x => x.id === id); if (!d || (d.type !== 'area' && d.type !== 'circle')) return;
-    if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
-    const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
-    let borderPtsWithZ = []; l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
-    render3DPlot(l93Pts, borderPtsWithZ);
-};
-
-window.generate3DViewFromProject = (pid, fid) => {
-    const p = projectStore.find(x => x.id === pid); if (!p) return;
-    const f = p.features.find(x => x.id === fid); if (!f || (f.type !== 'area' && f.type !== 'circle')) return;
-    if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
-    const l93Pts = f.ptsGPS.map(pt => proj4("EPSG:4326", "EPSG:2154", [pt.lng, pt.lat]));
-    let borderPtsWithZ = []; l93Pts.forEach(pt => { let z = getZ(pt); if (z !== null) borderPtsWithZ.push({ x: pt[0], y: pt[1], z: z }); });
-    render3DPlot(l93Pts, borderPtsWithZ);
-};
+window.close3DWindow = () => { document.getElementById('window-3d').style.display = 'none'; if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } };
+window.generate3DView = (id) => { const d = drawStore.find(x => x.id === id); if (!d || (d.type !== 'area' && d.type !== 'circle')) return; if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !"); const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat])); let borderPtsWithZ = []; l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); }); render3DPlot(l93Pts, borderPtsWithZ); };
+window.generate3DViewFromProject = (pid, fid) => { const p = projectStore.find(x => x.id === pid); if (!p) return; const f = p.features.find(x => x.id === fid); if (!f || (f.type !== 'area' && f.type !== 'circle')) return; if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !"); const l93Pts = f.ptsGPS.map(pt => proj4("EPSG:4326", "EPSG:2154", [pt.lng, pt.lat])); let borderPtsWithZ = []; l93Pts.forEach(pt => { let z = getZ(pt); if (z !== null) borderPtsWithZ.push({ x: pt[0], y: pt[1], z: z }); }); render3DPlot(l93Pts, borderPtsWithZ); };
 window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); }); updateProjectUI(); };
 window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => map.removeLayer(f.layer)); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
 window.toggleProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.visible = !f.visible; if (f.visible) f.layer.addTo(map); else map.removeLayer(f.layer); updateProjectUI(); };
