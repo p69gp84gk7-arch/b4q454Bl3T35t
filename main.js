@@ -349,86 +349,131 @@ window.calculateVolume = (id, type) => {
 // ==========================================
 // 7. VUE 3D PARFAITE (LIGNES + SUIVI SOURIS)
 // ==========================================
+// --- GÉNÉRATION DE LA VUE 3D (AVEC SUIVI SOURIS) ---
 window.generate3DView = (id) => {
-    const d = drawStore.find(x => x.id === id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id); 
-    if(!d || d.type === 'line') return alert("Dessinez une surface pour la 3D.");
-    if (mntStore.filter(m=>m.visible).length === 0) return alert("Activez un MNT !");
-    
-    const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
-    let border = []; 
-    l93.forEach((p, idx) => { let z = d.ptsGPS[idx].customZ !== undefined ? d.ptsGPS[idx].customZ : getZ(p); if (z !== null) border.push({ x: p[0], y: p[1], z: z, i: idx+1 }); });
-    if(border.length === 0) return alert("Zone hors MNT.");
+    const d = drawStore.find(x => x.id === id);
+    if (!d || d.type !== 'area') return;
+    if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération de la 3D... ⏳</h3>';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul de la 3D en cours... ⏳</h3>';
 
     setTimeout(() => {
-        try {
-            let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
-            l93.forEach(p=>{minX=Math.min(minX,p[0]); maxX=Math.max(maxX,p[0]); minY=Math.min(minY,p[1]); maxY=Math.max(maxY,p[1]);});
-            
-            minX -= 15; maxX += 15; minY -= 15; maxY += 15; // On élargit un peu pour voir le terrain autour
-            const step = Math.max(1, Math.max((maxX - minX)/40, (maxY - minY)/40));
+        const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
 
-            let xV = []; for (let x = minX; x <= maxX + step; x += step) xV.push(x);
-            let yV = []; for (let y = minY; y <= maxY + step; y += step) yV.push(y);
+        let borderPtsWithZ = [];
+        l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
-            let zT=[]; 
-            for (let j = 0; j < yV.length; j++) {
-                let rT=[]; let y = yV[j];
-                for (let i = 0; i < xV.length; i++) { rT.push(getZ([xV[i], y])); } 
-                zT.push(rT);
-            }
-            
-            window.current3DData = {x: xV, y: yV, zTop: zT};
+        const maxPts = 40;
+        const step = Math.max(1, (maxX - minX) / maxPts, (maxY - minY) / maxPts);
 
-            // Remplissage du polygone (Nouvelle méthode robuste)
-            let bX = [...border.map(p=>p.x)]; if(border.length > 2) bX.push(border[0].x);
-            let bY = [...border.map(p=>p.y)]; if(border.length > 2) bY.push(border[0].y);
-            let bZ = [...border.map(p=>p.z)]; if(border.length > 2) bZ.push(border[0].z);
+        let xValsTerrain = [], yValsTerrain = [], zValsTerrain = [];
+        let xValsRef = [], yValsRef = [], zValsRef = [];
 
-            const tracePoints = {
-                x: bX, y: bY, z: bZ, 
-                mode: 'lines+markers+text', type: 'scatter3d', name: 'Polygone',
-                text: [...border.map(p=>p.i), ''], textposition: 'top center',
-                line: { color: '#f1c40f', width: 5 }, 
-                marker: { color: '#e74c3c', size: 6 },
-                surfaceaxis: 2, // Magie : Remplit l'intérieur du polygone sur l'axe Z !
-                surfacecolor: 'rgba(52, 152, 219, 0.4)', // Bleu transparent
-                showlegend: true
-            };
-            
-            Plotly.newPlot('plot-3d', [
-                {z:zT, x:xV, y:yV, type:'surface', name:'Terrain Nat.', colorscale:'Earth', showlegend:true, showscale:false},
-                tracePoints
-            ], {
-                margin:{l:0,r:0,b:0,t:0}, scene:{aspectmode:'data'}, paper_bgcolor:'#222', font:{color:'#fff'}, 
-                legend:{orientation:'h', x:0.5, y:0.05, xanchor:'center', bgcolor:'rgba(0,0,0,0)'}
-            }, {displayModeBar:true}).then(() => {
-                
-                // Suivi Souris
-                document.getElementById('plot-3d').on('plotly_hover', (data) => {
-                    if(data.points && data.points.length > 0){
-                        const p = data.points[0]; 
-                        if(p.x !== undefined && p.y !== undefined) {
-                            const g = proj4("EPSG:2154","EPSG:4326",[p.x, p.y]);
-                            updateCursor(g[1], g[0]);
-                            const hr = document.getElementById('hover-3d-result');
-                            if (hr) hr.innerHTML = `📍 Z: <span style="color:#fff">${(p.z||0).toFixed(2)}m</span>`;
-                        }
+        for (let x = minX; x <= maxX; x += step) {
+            for (let y = minY; y <= maxY; y += step) {
+                if (isPointInPolygon([x, y], l93Pts)) {
+                    // Terrain
+                    let zMNT = getZ([x, y]);
+                    if (zMNT !== null) {
+                        xValsTerrain.push(x);
+                        yValsTerrain.push(y);
+                        zValsTerrain.push(zMNT);
                     }
-                });
-                
-                document.getElementById('plot-3d').addEventListener('mouseleave', () => { 
-                    if(cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
-                    const hr = document.getElementById('hover-3d-result'); if (hr) hr.innerText = "Survolez le relief...";
-                });
-                
-            });
-            
-        } catch (err) { 
-            document.getElementById('plot-3d').innerHTML = `<h3 style="color:#e74c3c; text-align:center; margin-top:20%;">Erreur Mathématique 3D</h3>`; 
+
+                    // Référence (Base Calculée)
+                    let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
+                    for (let pt of borderPtsWithZ) { 
+                        let d2 = (x - pt.x)**2 + (y - pt.y)**2; 
+                        if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } 
+                        let w = 1 / d2; sumZ += pt.z * w; sumW += w; 
+                    }
+                    if (!exactMatch) zBase = sumZ / sumW;
+                    
+                    xValsRef.push(x);
+                    yValsRef.push(y);
+                    zValsRef.push(zBase);
+                }
+            }
         }
+
+        // Trace pour le Terrain Naturel (Points)
+        const traceTerrain = { 
+            x: xValsTerrain, 
+            y: yValsTerrain, 
+            z: zValsTerrain, 
+            mode: 'markers',
+            marker: {
+                size: 3,
+                color: zValsTerrain,
+                colorscale: 'Earth',
+                opacity: 0.8
+            },
+            type: 'scatter3d', 
+            name: 'Terrain Naturel' 
+        };
+        
+        // Trace pour la Base Calculée (Points)
+        const traceRef = { 
+            x: xValsRef, 
+            y: yValsRef, 
+            z: zValsRef, 
+            mode: 'markers',
+            marker: {
+                size: 3,
+                color: '#3498db', // Bleu pour la base
+                opacity: 0.6
+            },
+            type: 'scatter3d', 
+            name: 'Base Calculée'
+        };
+
+        const layout = { 
+            margin: { l: 0, r: 0, b: 0, t: 30 }, // Un peu d'espace en haut pour le bouton
+            scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, 
+            paper_bgcolor: '#222', 
+            font: { color: 'white' }, 
+            hovermode: 'closest',
+            // --- AJOUT DU BOUTON POUR MASQUER/AFFICHER ---
+            updatemenus: [{
+                type: 'buttons',
+                direction: 'right',
+                x: 0,
+                y: 1.1,
+                showactive: true,
+                buttons: [
+                    {
+                        label: 'Tout afficher',
+                        method: 'update',
+                        args: [{'visible': [true, true]}]
+                    },
+                    {
+                        label: 'Masquer Base',
+                        method: 'update',
+                        args: [{'visible': [true, false]}]
+                    },
+                    {
+                        label: 'Masquer Terrain',
+                        method: 'update',
+                        args: [{'visible': [false, true]}]
+                    }
+                ]
+            }]
+        };
+        
+        Plotly.newPlot('plot-3d', [traceTerrain, traceRef], layout).then(() => {
+            const plotDiv = document.getElementById('plot-3d');
+            plotDiv.on('plotly_hover', (data) => {
+                if (data.points.length > 0) {
+                    const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]);
+                    if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
+                    else cursorMarker.setLatLng([gps[1], gps[0]]);
+                }
+            });
+            plotDiv.addEventListener('mouseleave', () => { if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; } });
+        });
     }, 100);
 };
 // ==========================================
