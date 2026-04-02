@@ -147,7 +147,22 @@ function recalculateStats(d) {
             area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; 
             perim += Math.hypot(l93[j][0] - l93[i][0], l93[j][1] - l93[i][1]);
         }
-        h = `Périmètre: <b>${perim.toFixed(1)} m</b><br>Surface au sol: <b>${(Math.abs(area)/2).toFixed(1)} m²</b>`;
+        
+        // --- NOUVEAU : Recherche Zmin, Zmax et Dénivelé sur la surface ---
+        let zMin = Infinity, zMax = -Infinity;
+        for (let i = 0; i < l93.length; i++) {
+            let z = getZ(l93[i]);
+            if (z !== null) {
+                if (z < zMin) zMin = z;
+                if (z > zMax) zMax = z;
+            }
+        }
+        let extraStats = "";
+        if (zMin !== Infinity && zMax !== -Infinity) {
+            extraStats = `<br>Zmin: <b>${zMin.toFixed(1)}m</b> | Zmax: <b>${zMax.toFixed(1)}m</b> | ΔZ: <b>${(zMax-zMin).toFixed(1)}m</b>`;
+        }
+
+        h = `Périmètre: <b>${perim.toFixed(1)} m</b><br>Surface au sol: <b>${(Math.abs(area)/2).toFixed(1)} m²</b>${extraStats}`;
     }
 
     if (d.volumeHtml && d.volumeHtml !== "") {
@@ -275,12 +290,22 @@ window.deleteDraw = (id) => { const d = drawStore.find(x => x.id === id); map.re
 window.renameDraw = (id) => { const d = drawStore.find(x => x.id === id); const n = prompt("Nom :", d.name); if(n){d.name=n; updateDrawUI();} };
 window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visible = !d.visible; if(d.visible) { d.layer.addTo(map); if(d.isEditing) makeEditable(d); } else { map.removeLayer(d.layer); if(d.editGroup) d.editGroup.clearLayers(); } };
 window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id); d.color = color; d.layer.setStyle({color}); updateDrawUI(); };
+// ==========================================
+// 6. CALCULS DE VOLUMES ET UTILITAIRES
+// ==========================================
+function isPointInPolygon(point, vs) {
+    let x = point[0], y = point[1], inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        let xi = vs[i][0], yi = vs[i][1], xj = vs[j][0], yj = vs[j][1];
+        let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
 
-// ==========================================
-// 6. CALCULS DE VOLUMES
-// ==========================================
 window.calculateVolume = (id, type) => {
     const d = drawStore.find(x => x.id === id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id); 
+    if (!d) return;
     if (mntStore.filter(m=>m.visible).length === 0) return alert("Veuillez activer un MNT dans la liste à gauche.");
     
     const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
@@ -341,49 +366,26 @@ window.calculateVolume = (id, type) => {
             <b style="color:${color};">${lbl} :</b> ${resTxt}
         </div>`;
         
-       function recalculateStats(d) {
-    const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
-    if (d.type === 'line') {
-        let dist = 0;
-        for (let i = 1; i < l93.length; i++) dist += Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
-        const z1 = getZ(l93[0]) || 0; const z2 = getZ(l93[l93.length-1]) || 0;
-        const dz = Math.abs(z2 - z1); const pente = dist > 0 ? (dz / dist * 100).toFixed(1) : 0;
-        d.totalDist = dist; 
-        d.statsHtml = `Dist: <b>${dist.toFixed(1)} m</b> | ΔZ: <b>${dz.toFixed(1)} m</b> | Pente: <b>${pente}%</b>`;
-    } else {
-        // --- CALCULS POUR LA SURFACE ---
-        let area = 0;
-        for (let i = 0; i < l93.length; i++) { let j = (i+1) % l93.length; area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; }
-        area = Math.abs(area) / 2;
-        
-        // Recherche des Zmin, Zmax et Dénivelé sur le polygone
-        let zMin = Infinity, zMax = -Infinity;
-        for (let i = 0; i < l93.length; i++) {
-            let z = getZ(l93[i]);
-            if (z !== null) {
-                if (z < zMin) zMin = z;
-                if (z > zMax) zMax = z;
-            }
-        }
-        
-        let extraStats = "";
-        if (zMin !== Infinity && zMax !== -Infinity) {
-            const dz = zMax - zMin;
-            extraStats = `<br>Zmin: <b>${zMin.toFixed(1)}m</b> | Zmax: <b>${zMax.toFixed(1)}m</b> | ΔZ: <b>${dz.toFixed(1)}m</b>`;
-        }
-
-        d.statsHtml = `Surface: <b>${area.toFixed(1)} m²</b>${extraStats}`;
-    }
-    const statsDiv = document.getElementById(`stats-${d.id}`); 
-    if (statsDiv) statsDiv.innerHTML = d.statsHtml;
-}
+        recalculateStats(d);
+    }, 50);
 };
 
 // ==========================================
 // 7. VUE 3D PARFAITE (LIGNES + SUIVI SOURIS)
 // ==========================================
+window.close3DView = () => {
+    document.getElementById('window-3d').style.display = 'none';
+    if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
+};
+
+// On s'assure que le bouton "X" de la fenêtre 3D ferme bien la fenêtre
+setTimeout(() => {
+    const closeBtn = document.querySelector('#header-3d button');
+    if (closeBtn) closeBtn.onclick = window.close3DView;
+}, 500);
+
 window.generate3DView = (id) => {
-    const d = drawStore.find(x => x.id === id);
+    const d = drawStore.find(x => x.id === id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id);
     if (!d || d.type !== 'area') return;
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
@@ -398,7 +400,6 @@ window.generate3DView = (id) => {
         let borderPtsWithZ = [];
         l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
-        // Step strict de 1 mètre (ou 2 mètres si la surface est gigantesque pour éviter de planter le PC)
         let step = ((maxX - minX) * (maxY - minY) > 500000) ? 2 : 1; 
 
         let xValsTerrain = [], yValsTerrain = [], zValsTerrain = [];
@@ -406,7 +407,6 @@ window.generate3DView = (id) => {
 
         for (let x = minX; x <= maxX; x += step) {
             for (let y = minY; y <= maxY; y += step) {
-                // Filtre STRICT : on ne garde que ce qui est exactement dans le polygone
                 if (isPointInPolygon([x, y], l93Pts)) {
                     let zMNT = getZ([x, y]);
                     if (zMNT !== null) {
@@ -426,10 +426,9 @@ window.generate3DView = (id) => {
             }
         }
 
-        // Trace du contour strict en rouge
         let xBound = [], yBound = [], zBound = [];
         borderPtsWithZ.forEach(pt => { xBound.push(pt.x); yBound.push(pt.y); zBound.push(pt.z); });
-        if (borderPtsWithZ.length > 0) { // On ferme la boucle du tracé
+        if (borderPtsWithZ.length > 0) {
             xBound.push(borderPtsWithZ[0].x); yBound.push(borderPtsWithZ[0].y); zBound.push(borderPtsWithZ[0].z);
         }
 
