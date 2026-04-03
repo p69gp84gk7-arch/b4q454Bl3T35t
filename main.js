@@ -783,8 +783,9 @@ function updateProjectUI() {
     });
 }
 // ==========================================
-// 9. SOURIS LIVE ET DRAG FENÊTRES
+// 9. SOURIS LIVE, DRAG ET REDIMENSIONNEMENT FENÊTRES
 // ==========================================
+
 map.on('mousemove', (e)=>{
     if (!e.latlng) return; const l = proj4("EPSG:4326","EPSG:2154",[e.latlng.lng, e.latlng.lat]);
     const elX=document.getElementById('cur-x'), elY=document.getElementById('cur-y'), elZ=document.getElementById('cur-z');
@@ -793,14 +794,59 @@ map.on('mousemove', (e)=>{
     if(currentTool==='circle' && circleCenter && tempLayer) tempLayer.setRadius(map.distance(circleCenter, e.latlng));
 });
 
+// --- GESTION DU DÉPLACEMENT (DRAG & DROP) ---
 function dragElement(winId, headerId) {
     const win = document.getElementById(winId), header = document.getElementById(headerId);
     let isDragging = false, offsetX = 0, offsetY = 0; if(!header) return;
-    header.onmousedown = (e) => { if(e.target.tagName==='BUTTON')return; isDragging=true; const rect=win.getBoundingClientRect(); offsetX=e.clientX-rect.left; offsetY=e.clientY-rect.top; };
-    document.addEventListener('mousemove', (e) => { if(isDragging) { win.style.left=Math.max(0, e.clientX-offsetX)+'px'; win.style.top=Math.max(0, e.clientY-offsetY)+'px'; }});
-    document.addEventListener('mouseup', () => isDragging=false);
+    
+    header.onmousedown = (e) => { 
+        if(e.target.tagName==='BUTTON') return; 
+        isDragging=true; 
+        const rect=win.getBoundingClientRect(); 
+        offsetX=e.clientX-rect.left; 
+        offsetY=e.clientY-rect.top; 
+    };
+    
+    document.addEventListener('mousemove', (e) => { 
+        if(isDragging) { 
+            win.style.left = Math.max(0, e.clientX-offsetX) + 'px'; 
+            win.style.top = Math.max(0, e.clientY-offsetY) + 'px'; 
+        }
+    });
+    
+    document.addEventListener('mouseup', () => isDragging = false);
 }
-dragElement('window-3d', 'header-3d'); dragElement('profile-window', 'profile-header');
+
+dragElement('window-3d', 'header-3d'); 
+dragElement('profile-window', 'profile-header');
+
+// --- NOUVEAU : REDIMENSIONNEMENT DE LA VUE 3D ---
+window.addEventListener('load', () => {
+    const win3d = document.getElementById('window-3d');
+    const plot3d = document.getElementById('plot-3d');
+
+    if (win3d && plot3d) {
+        // 1. On injecte les styles CSS pour permettre de redimensionner la fenêtre
+        win3d.style.resize = 'both';
+        win3d.style.overflow = 'hidden';
+        win3d.style.minWidth = '400px';
+        win3d.style.minHeight = '300px';
+        
+        // 2. On s'assure que le canvas 3D prend toute la place disponible (moins la barre de titre)
+        plot3d.style.width = '100%';
+        plot3d.style.height = 'calc(100% - 40px)'; 
+
+        // 3. On observe les changements de taille de la fenêtre en temps réel
+        const resizeObserver = new ResizeObserver(() => {
+            // Si le graphique Plotly est bien chargé, on le force à s'adapter à la nouvelle taille
+            if (plot3d.data) {
+                Plotly.Plots.resize('plot-3d');
+            }
+        });
+        
+        resizeObserver.observe(win3d);
+    }
+});
 
 // ==========================================
 // 10. SAUVEGARDE ET PROJETS (GAUCHE)
