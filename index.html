@@ -73,18 +73,62 @@
     </div>
 </div>
 
-<div id="help-window" style="display:none; position:absolute; top:70px; left:50%; transform:translateX(-50%); width:600px; max-height:80vh; overflow-y:auto; background:#222; border:1px solid #555; border-radius:5px; z-index:10001; color:white; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
-    <div id="help-header" style="background:#333; padding:12px; cursor:move; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #8e44ad;">
-        <b style="font-size:1.1em;">ℹ️ Guide d'utilisation - Topo Profiler</b>
-        <button onclick="document.getElementById('help-window').style.display='none'" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-weight:bold;">✕</button>
+<div id="help-window" style="display:none; position:absolute; top:70px; left:50%; transform:translateX(-50%); width:700px; max-height:80vh; overflow-y:auto; background:#222; border:1px solid #555; border-radius:5px; z-index:10001; color:white; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+    
+    <div id="help-header" style="background:#333; padding:15px; cursor:move; display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #8e44ad; position: sticky; top: 0; z-index: 10;">
+        <b style="font-size:1.2em;">ℹ️ Manuel Utilisateur - Topo Profiler Pro</b>
+        <button onclick="document.getElementById('help-window').style.display='none'" style="background:#e74c3c; color:white; border:none; padding:5px 12px; border-radius:3px; cursor:pointer; font-weight:bold; font-size:1.1em;">✕</button>
     </div>
-    <div style="padding:20px; font-size:14px; line-height:1.6;">
-        <h3 style="color:#3498db; margin-top:0;">📏 Outils de tracé</h3>
-        <ul style="padding-left:20px; color:#ddd;"><li><b>Ligne :</b> Tracez un parcours pour obtenir distance, dénivelé et profil altimétrique.</li><li><b>Surface :</b> Polygon fermé. Idéal pour volumes et génération 3D (Triangulation Delaunay).</li><li><b>Cercle :</b> Géré comme une surface parfaite de 64 points.</li></ul>
-        <h3 style="color:#27ae60;">🎛️ Édition et Altitudes (Z)</h3>
-        <p style="color:#ddd; margin-top:5px;">Cliquez sur <b>"✏️ Éditer les points"</b>. Sans Z forcé, l'altitude est lue depuis le MNT (Terrain naturel).</p>
-        <h3 style="color:#e67e22;">📦 Calculs de Volumes</h3>
-        <ul style="padding-left:20px; color:#ddd;"><li><b>Déblai/Remblai :</b> Calcul fixe par rapport à un niveau constant.</li><li><b>Plan (Facettes) :</b> Calcul maillé point à point exact.</li><li><b>Courbe :</b> Calcul lissé entre les points.</li></ul>
+
+    <div style="padding:25px; font-size:14px; line-height:1.6;">
+        
+        <p style="font-size: 1.1em; color: #aaa; margin-top: 0;">Bienvenue dans Topo Profiler Pro, votre outil complet d'analyse topographique, de calcul de cubatures et de modélisation 3D.</p>
+
+        <h3 style="color:#3498db; border-bottom: 1px solid #444; padding-bottom: 5px;">🌍 1. MNT et Gestion des Projets (Gauche)</h3>
+        <ul style="padding-left:20px; color:#ddd;">
+            <li><b>MNT (Modèle Numérique de Terrain) :</b> La base de tout calcul. Vous devez cocher une couche MNT pour que le logiciel puisse lire les altitudes naturelles du sol. Sans MNT, la 3D et les volumes ne peuvent pas s'appuyer sur le terrain.</li>
+            <li><b>Sauvegarder / Charger :</b> Sauvegardez tous les tracés de votre espace de travail de droite dans le cloud (Google Sheets) sous un nom de projet.</li>
+            <li><b>📥 Copier vers l'espace de travail :</b> Permet de cloner un projet chargé pour le modifier à droite sans altérer votre sauvegarde d'origine.</li>
+        </ul>
+
+        <h3 style="color:#27ae60; border-bottom: 1px solid #444; padding-bottom: 5px;">📏 2. Outils de Tracé (Droite)</h3>
+        <ul style="padding-left:20px; color:#ddd;">
+            <li><b>Ligne (Tracé ouvert) :</b> Utile pour les routes ou les fossés. Calcule la distance, le dénivelé et génère un <b>Profil Altimétrique (2D)</b>.</li>
+            <li><b>Surface (Polygone fermé) :</b> L'outil principal pour délimiter une plateforme. Calcule l'aire, le périmètre, les volumes et permet la <b>génération 3D</b>.</li>
+            <li><b>Cercle :</b> Cliquez au centre et étirez. Géré mathématiquement comme un polygone parfait de 64 points (compatible 3D et Volumes).</li>
+        </ul>
+
+        <h3 style="color:#f1c40f; border-bottom: 1px solid #444; padding-bottom: 5px;">🎛️ 3. Édition et Forçage d'Altitude (Z)</h3>
+        <p style="color:#ddd; margin-top:5px;">Chaque tracé possède un bouton <b>"✏️ Éditer les points"</b>. En l'activant :</p>
+        <ul style="padding-left:20px; color:#ddd;">
+            <li>Des poignées numérotées apparaissent sur la carte. Glissez-les pour ajuster la géométrie en temps réel (distances et pentes s'affichent au-dessus du point).</li>
+            <li>Un tableau apparaît : vous pouvez modifier manuellement les coordonnées X/Y, mais surtout le <b>Z Forcé</b>.</li>
+            <li><i>Astuce :</i> Si la case Z est vide, l'outil utilise l'altitude du sol naturel (MNT). Si vous entrez une valeur (ex: 150), l'outil "forcera" le terrain à cette altitude précise pour simuler des terrassements.</li>
+        </ul>
+
+        <h3 style="color:#e67e22; border-bottom: 1px solid #444; padding-bottom: 5px;">📦 4. Calculs de Volumes (Cubatures)</h3>
+        <ul style="padding-left:20px; color:#ddd;">
+            <li><b>📉 Déblai (Hollow) :</b> Volume de terre à excaver. Vous demande une altitude cible (Z plat).</li>
+            <li><b>📈 Remblai (Mound) :</b> Volume de terre à apporter. Vous demande une altitude cible (Z plat).</li>
+            <li><b>📏 Plan (Facettes Rigides) :</b> Calcule les volumes de déblai/remblai en créant un plan parfait (Triangulation de Delaunay) reliant directement tous les points de votre tracé (idéal pour les plateformes, toitures, ou pentes droites).</li>
+            <li><b>📐 Courbe (Lissé Tendu) :</b> Calcule les volumes en créant une surface souple qui épouse vos points (idéal pour simuler un talutage naturel, un bassin ou un terrain bosselé).</li>
+        </ul>
+
+        <h3 style="color:#9b59b6; border-bottom: 1px solid #444; padding-bottom: 5px;">👁️ 5. Modélisation 3D Hautes Performances</h3>
+        <ul style="padding-left:20px; color:#ddd;">
+            <li><b>Vue 3D Simple :</b> Calcule une grille topographique ultra-précise (0.25m). Un panneau flottant permet d'afficher/masquer le terrain naturel, le projet "Plan" (facettes) ou le projet "Courbe" (lissé).</li>
+            <li><b>Multivue 3D :</b> Bouton situé en haut de la liste. Cochez plusieurs surfaces (même depuis vos projets sauvegardés) pour les superposer dans la même scène 3D.</li>
+            <li><b>↗️ Nouvel Onglet :</b> Dans la vue 3D, ce bouton exporte votre scène en plein écran complet sur un autre onglet pour un confort optimal.</li>
+            <li><b>📥 Exporter STL :</b> Génère un fichier 3D solide de votre MNT pour impression 3D ou import dans un logiciel CAO (AutoCAD, Blender).</li>
+        </ul>
+
+        <h3 style="color:#c0392b; border-bottom: 1px solid #444; padding-bottom: 5px;">📄 6. Exportation et Rapports</h3>
+        <p style="color:#ddd; margin-top:5px;">Le bouton rouge <b>"Générer Rapport PDF"</b> situé dans le bandeau supérieur permet de compiler instantanément tout votre travail. Le logiciel va capturer :</p>
+        <ul style="padding-left:20px; color:#ddd; margin-bottom:0;">
+            <li>Une vue cadrée de la carte avec vos tracés.</li>
+            <li>L'historique complet de vos mesures et volumes mis en page sur fond blanc.</li>
+            <li><i>Le mode intelligent :</i> Si vos profils altimétriques et vues 3D sont ouverts à l'écran, ils seront automatiquement photographiés en haute définition et insérés à la fin de votre rapport !</li>
+        </ul>
     </div>
 </div>
     <div id="left-panel">
