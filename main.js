@@ -668,6 +668,74 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     }, 100);
 };
 // ==========================================
+// OUVRIR LA VUE 3D DANS UN NOUVEL ONGLET
+// ==========================================
+window.open3DInNewTab = () => {
+    const plotDiv = document.getElementById('plot-3d');
+    
+    // On vérifie qu'il y a bien une 3D générée en cours
+    if (!plotDiv || !plotDiv.data) {
+        return alert("Veuillez d'abord générer une vue 3D avant de l'ouvrir dans un nouvel onglet.");
+    }
+
+    // Ouvre un nouvel onglet vierge
+    const newTab = window.open('', '_blank');
+    
+    // On écrit le code HTML complet de la nouvelle page
+    newTab.document.write(`
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+            <meta charset="UTF-8">
+            <title>Vue 3D - Plein Écran</title>
+            <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+            <style>
+                body { margin: 0; padding: 0; background-color: #222; overflow: hidden; color: white; font-family: sans-serif; }
+                #plot-fullscreen { width: 100vw; height: 100vh; }
+                #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5em; }
+            </style>
+        </head>
+        <body>
+            <div id="loading">Clonage de la 3D en cours... ⏳</div>
+            <div id="plot-fullscreen"></div>
+            
+            <script>
+                // Quand le nouvel onglet est prêt
+                window.onload = () => {
+                    // On va chercher les données directement dans la fenêtre parente (ton application)
+                    const parentWindow = window.opener;
+                    const parentPlot = parentWindow.document.getElementById('plot-3d');
+                    
+                    if (parentPlot && parentPlot.data) {
+                        // On clone les données et le design (layout)
+                        const data = JSON.parse(JSON.stringify(parentPlot.data));
+                        const layout = JSON.parse(JSON.stringify(parentPlot.layout));
+                        
+                        // On supprime les marges pour que ça prenne 100% de l'écran
+                        layout.margin = { l: 0, r: 0, b: 0, t: 0 };
+                        // On enlève le menu flottant qui n'est plus pertinent en plein écran pur
+                        if (layout.updatemenus) delete layout.updatemenus;
+                        
+                        document.getElementById('loading').style.display = 'none';
+                        
+                        // Génération du graphique !
+                        Plotly.newPlot('plot-fullscreen', data, layout);
+                    } else {
+                        document.getElementById('loading').innerText = "Erreur de chargement des données.";
+                    }
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    
+    // Clôture du flux d'écriture pour forcer le rendu
+    newTab.document.close();
+    
+    // (Optionnel) Ferme la petite fenêtre flottante sur la carte d'origine
+    window.close3DWindow();
+};
+// ==========================================
 // 8. PROFIL ALTIMÉTRIQUE AVEC SUIVI
 // ==========================================
 window.generateProfileById = (id) => { currentProfileDrawId = id; generateProfile(drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id)); };
