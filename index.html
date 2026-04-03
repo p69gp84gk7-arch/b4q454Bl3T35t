@@ -11,6 +11,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/leaflet-kmz@2.0.0/dist/leaflet-kmz.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         :root { --accent: #00d1b2; --bg: #1a1a1a; --panel: #252525; }
@@ -120,6 +122,38 @@
         <div class="subtitle">3. Mes Projets (Sauvegardes)</div>
         <div id="project-list"></div>
     </div>
+    <div style="position:absolute; top:10px; left:50px; z-index:1000; display:flex; gap:10px;">
+    <button onclick="document.getElementById('help-window').style.display='block'" style="background:#8e44ad; color:white; border:none; padding:8px 15px; border-radius:3px; cursor:pointer; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.3);">ℹ️ Manuel & Aide</button>
+    <button onclick="generatePDFReport()" style="background:#c0392b; color:white; border:none; padding:8px 15px; border-radius:3px; cursor:pointer; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.3);">📄 Générer Rapport PDF</button>
+</div>
+
+<div id="help-window" style="display:none; position:absolute; top:10%; left:50%; transform:translateX(-50%); width:600px; max-height:80vh; overflow-y:auto; background:#222; border:1px solid #555; border-radius:5px; z-index:9999; color:white; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+    <div id="help-header" style="background:#333; padding:12px; cursor:move; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #8e44ad;">
+        <b style="font-size:1.1em;">ℹ️ Guide d'utilisation - Topo Profiler</b>
+        <button onclick="document.getElementById('help-window').style.display='none'" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-weight:bold;">✕</button>
+    </div>
+    <div style="padding:20px; font-size:14px; line-height:1.6;">
+        <h3 style="color:#3498db; margin-top:0;">📏 Outils de tracé</h3>
+        <ul style="padding-left:20px; color:#ddd;">
+            <li><b>Ligne :</b> Tracez un parcours pour obtenir sa distance, son dénivelé et générer un Profil Altimétrique.</li>
+            <li><b>Surface :</b> Tracez un polygone fermé. Idéal pour les calculs de volumes (déblai/remblai) et la génération 3D.</li>
+            <li><b>Cercle :</b> Cliquez pour le centre et étirez. Géré comme une surface parfaite de 64 points.</li>
+        </ul>
+
+        <h3 style="color:#27ae60;">🎛️ Édition et Altitudes (Z)</h3>
+        <p style="color:#ddd; margin-top:5px;">Cliquez sur <b>"✏️ Éditer les points"</b> sous un tracé. Vous pouvez déplacer les points sur la carte, ou entrer une valeur exacte de <b>Z Forcé</b> dans le tableau. Sans Z forcé, l'altitude est lue depuis le MNT (Terrain naturel).</p>
+
+        <h3 style="color:#e67e22;">📦 Calculs de Volumes</h3>
+        <ul style="padding-left:20px; color:#ddd;">
+            <li><b>Déblai/Remblai :</b> Calcule le volume de terre à retirer ou ajouter par rapport à une altitude fixe (Z constant).</li>
+            <li><b>Plan (Facettes) :</b> Calcule le volume par rapport à un plan incliné parfait reliant vos points de bordure (Triangulation de Delaunay).</li>
+            <li><b>Courbe :</b> Calcule le volume par rapport à une surface souple et tendue qui épouse vos points.</li>
+        </ul>
+
+        <h3 style="color:#9b59b6;">👁️ Vues 3D & Multivue</h3>
+        <p style="color:#ddd; margin-top:5px;">Lancez la vue 3D pour visualiser le terrain naturel superposé à vos plans de référence. Utilisez le bouton <b>"Comparer surfaces en 3D"</b> en haut de la liste de droite pour superposer plusieurs projets en même temps.</p>
+    </div>
+</div>
 
     <div id="map"></div>
 
