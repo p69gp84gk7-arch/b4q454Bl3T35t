@@ -301,67 +301,69 @@ function isPointInPolygon(point, vs) {
     return inside;
 }
 
-// --- LE VRAI MAILLAGE POINT À POINT (EAR CLIPPING) ---
-// Découpe le polygone en triangles parfaits reliant uniquement les points tracés
-window.TriangulatePolygon = (contour) => {
+// --- TRIANGULATION ROBUSTE (POUR FORMES COMPLEXES COMME LE "L") ---
+window.TriangulatePolygon = (contourBrut) => {
+    // 1. Nettoyage : On retire les points trop proches (doublons) qui font planter les maths
+    let contour = [];
+    for(let i=0; i<contourBrut.length; i++) {
+        if(contour.length === 0) { contour.push(contourBrut[i]); continue; }
+        let prev = contour[contour.length-1];
+        if(Math.hypot(contourBrut[i].x-prev.x, contourBrut[i].y-prev.y) > 0.05) contour.push(contourBrut[i]);
+    }
+    if (contour.length > 2 && Math.hypot(contour[0].x-contour[contour.length-1].x, contour[0].y-contour[contour.length-1].y) < 0.05) contour.pop();
+
     let n = contour.length; if (n < 3) return [];
-    let V = []; let area = 0;
+    let res = [], V = []; let area = 0;
+    
+    // 2. Sens de rotation
     for (let p = n - 1, q = 0; q < n; p = q++) { area += contour[p].x * contour[q].y - contour[q].x * contour[p].y; }
-    if (area > 0) { for (let v = 0; v < n; v++) V[v] = v; } 
-    else { for (let v = 0; v < n; v++) V[v] = (n - 1) - v; }
+    if (area > 0) { for (let v = 0; v < n; v++) V.push(v); } 
+    else { for (let v = 0; v < n; v++) V.push((n - 1) - v); }
     
     let nv = n, count = 2 * nv;
-    let triangles = [];
-    
     while (nv > 2) {
         if ((count--) <= 0) {
-            // Sécurité si forme trop complexe : on ferme en éventail
-            for(let i=1; i<nv-1; i++) triangles.push([contour[V[0]], contour[V[i]], contour[V[i+1]]]);
-            return triangles;
+            // Sécurité extrême : si forme trop tordue, on ferme en éventail pour ne pas faire de trous
+            for(let i=1; i<nv-1; i++) res.push([contour[V[0]], contour[V[i]], contour[V[i+1]]]);
+            return res;
         }
         let earFound = false;
-        for (let v_idx = 0; v_idx < nv; v_idx++) {
-            let u = (v_idx === 0) ? nv - 1 : v_idx - 1;
-            let v = v_idx;
-            let w = (v_idx === nv - 1) ? 0 : v_idx + 1;
-            let Ax = contour[V[u]].x, Ay = contour[V[u]].y;
-            let Bx = contour[V[v]].x, By = contour[V[v]].y;
-            let Cx = contour[V[w]].x, Cy = contour[V[w]].y;
+        for (let v = 0; v < nv; v++) {
+            let u = (v === 0) ? nv - 1 : v - 1;
+            let w = (v === nv - 1) ? 0 : v + 1;
+            let A = contour[V[u]], B = contour[V[v]], C = contour[V[w]];
             
-            if ((((Bx - Ax) * (Cy - Ay)) - ((By - Ay) * (Cx - Ax))) >= 1e-9) {
+            let cross = (B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x);
+            if (cross > 1e-6) { // Angle Convexe
                 let isEar = true;
                 for (let p = 0; p < nv; p++) {
                     if (p === u || p === v || p === w) continue;
-                    if (window.IsPointStrictlyInTri(contour[V[p]].x, contour[V[p]].y, Ax, Ay, Bx, By, Cx, Cy)) { isEar = false; break; }
+                    if (window.IsPointStrictlyInTri(contour[V[p]].x, contour[V[p]].y, A.x, A.y, B.x, B.y, C.x, C.y)) { isEar = false; break; }
                 }
                 if (isEar) {
-                    triangles.push([contour[V[u]], contour[V[v]], contour[V[w]]]);
-                    for (let s = v, t = v + 1; t < nv; s++, t++) V[s] = V[t];
+                    res.push([A, B, C]);
+                    V.splice(v, 1);
                     nv--; count = 2 * nv; earFound = true; break;
                 }
             }
         }
-        if (!earFound) count--; 
+        if (!earFound) count--;
     }
-    return triangles;
+    return res;
 };
 
 window.IsPointStrictlyInTri = (px, py, ax, ay, bx, by, cx, cy) => {
-    let v0x = cx - ax, v0y = cy - ay, v1x = bx - ax, v1y = by - ay, v2x = px - ax, v2y = py - ay;
-    let d00 = v0x * v0x + v0y * v0y, d01 = v0x * v1x + v0y * v1y, d02 = v0x * v2x + v0y * v2y;
-    let d11 = v1x * v1x + v1y * v1y, d12 = v1x * v2x + v1y * v2y;
-    let inv = 1 / (d00 * d11 - d01 * d01);
-    let u = (d11 * d02 - d01 * d12) * inv, v = (d00 * d12 - d01 * d02) * inv;
-    return (u > 1e-5) && (v > 1e-5) && (u + v < 1 - 1e-5);
+    let v0x=cx-ax, v0y=cy-ay, v1x=bx-ax, v1y=by-ay, v2x=px-ax, v2y=py-ay;
+    let d00=v0x*v0x+v0y*v0y, d01=v0x*v1x+v0y*v1y, d02=v0x*v2x+v0y*v2y, d11=v1x*v1x+v1y*v1y, d12=v1x*v2x+v1y*v2y;
+    let inv=1/(d00*d11-d01*d01), u=(d11*d02-d01*d12)*inv, v=(d00*d12-d01*d02)*inv;
+    return (u > 1e-6) && (v > 1e-6) && (u + v < 1 - 1e-6);
 };
 
 window.IsPointInTri = (px, py, ax, ay, bx, by, cx, cy) => {
-    let v0x = cx - ax, v0y = cy - ay, v1x = bx - ax, v1y = by - ay, v2x = px - ax, v2y = py - ay;
-    let d00 = v0x * v0x + v0y * v0y, d01 = v0x * v1x + v0y * v1y, d02 = v0x * v2x + v0y * v2y;
-    let d11 = v1x * v1x + v1y * v1y, d12 = v1x * v2x + v1y * v2y;
-    let inv = 1 / (d00 * d11 - d01 * d01);
-    let u = (d11 * d02 - d01 * d12) * inv, v = (d00 * d12 - d01 * d02) * inv;
-    return (u >= -0.05) && (v >= -0.05) && (u + v <= 1.05); // Tolérance pour les bords
+    let v0x=cx-ax, v0y=cy-ay, v1x=bx-ax, v1y=by-ay, v2x=px-ax, v2y=py-ay;
+    let d00=v0x*v0x+v0y*v0y, d01=v0x*v1x+v0y*v1y, d02=v0x*v2x+v0y*v2y, d11=v1x*v1x+v1y*v1y, d12=v1x*v2x+v1y*v2y;
+    let inv=1/(d00*d11-d01*d01), u=(d11*d02-d01*d12)*inv, v=(d00*d12-d01*d02)*inv;
+    return (u >= -0.05) && (v >= -0.05) && (u + v <= 1.05); // Tolérance de bordure
 };
 
 window.GetZOnTriangle = (x, y, A, B, C) => {
@@ -372,16 +374,20 @@ window.GetZOnTriangle = (x, y, A, B, C) => {
     return A.z - (Nx * (x - A.x) + Ny * (y - A.y)) / Nz;
 };
 
-// Courbe lissée anti-pics (IDW borné)
+// --- COURBE TENDUE GLOBALE AVEC CLAMP ANTI-PICS ---
 window.GetSmoothZ = (x, y, borderPts) => {
     let sumZ = 0, sumW = 0;
+    let minZ = Infinity, maxZ = -Infinity;
     for (let pt of borderPts) {
+        if(pt.z < minZ) minZ = pt.z;
+        if(pt.z > maxZ) maxZ = pt.z;
         let d2 = (x - pt.x)**2 + (y - pt.y)**2;
         if (d2 < 0.01) return pt.z;
-        let w = 1 / Math.pow(d2 + 1.0, 0.85); 
+        let w = 1 / (d2 + 1.0); 
         sumZ += pt.z * w; sumW += w;
     }
-    return sumW === 0 ? (borderPts[0]?.z || 0) : sumZ / sumW;
+    let result = sumW === 0 ? (borderPts[0]?.z || 0) : sumZ / sumW;
+    return Math.max(minZ, Math.min(maxZ, result)); // Verrouillage absolu : aucun pic ne peut dépasser les limites
 };
 
 window.calculateVolume = (id, type) => {
@@ -407,8 +413,17 @@ window.calculateVolume = (id, type) => {
 
     setTimeout(() => {
         let tTas = 0, tCreux = 0, step = 1;
-        let triangles = [];
-        if (type === 'plane') triangles = window.TriangulatePolygon(border);
+        let triangles = []; let aR=0, bR=0, cR=0;
+        
+        if (type==='plane') {
+            triangles = window.TriangulatePolygon(border);
+            // Plan Global de secours
+            let sX=0, sY=0, sZ=0; border.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
+            const n=border.length, cX=sX/n, cY=sY/n, cZ=sZ/n;
+            let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0;
+            border.forEach(p=>{ const dX=p.x-cX, dY=p.y-cY, dZ=p.z-cZ; sXX+=dX*dX; sYY+=dY*dY; sXY+=dX*dY; sXZ+=dX*dZ; sYZ+=dY*dZ; });
+            const D = sXX*sYY - sXY*sXY; if(D!==0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } cR = cZ - aR*cX - bR*cY;
+        }
 
         minX -= step; maxX += step; minY -= step; maxY += step;
 
@@ -419,12 +434,17 @@ window.calculateVolume = (id, type) => {
                     let zB = null;
                     
                     if (type==='plane') {
+                        let bestDist = Infinity;
                         for(let tri of triangles) {
                             if (window.IsPointInTri(x, y, tri[0].x, tri[0].y, tri[1].x, tri[1].y, tri[2].x, tri[2].y)) {
                                 zB = window.GetZOnTriangle(x, y, tri[0], tri[1], tri[2]); break;
                             }
+                            // Sauvegarde le triangle le plus proche au cas où le point frôle la bordure
+                            let cx=(tri[0].x+tri[1].x+tri[2].x)/3; let cy=(tri[0].y+tri[1].y+tri[2].y)/3;
+                            let d2=(x-cx)**2+(y-cy)**2;
+                            if(d2 < bestDist) { bestDist = d2; zB = window.GetZOnTriangle(x, y, tri[0], tri[1], tri[2]); }
                         }
-                        if (zB === null) zB = window.GetSmoothZ(x, y, border); // Fallback si on frôle le bord
+                        if (zB === null) zB = aR * x + bR * y + cR; // Ultime secours
                     } 
                     else if (type==='slope') zB = window.GetSmoothZ(x, y, border);
                     else zB = refZ;
@@ -446,7 +466,7 @@ window.calculateVolume = (id, type) => {
     }, 50);
 };
 // ==========================================
-// 7. VUE 3D PARFAITE (MAILLAGE DE TRIANGLES EXACTS)
+// 7. VUE 3D PARFAITE (TIN LOCAL & LISSAGE SANS PICS)
 // ==========================================
 
 window.close3DWindow = () => {
@@ -481,7 +501,7 @@ window.generate3DView = (id) => {
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération 3D (Maillage Exact)... ⏳</h3>';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération 3D (Facettes & Lissage)... ⏳</h3>';
 
     setTimeout(() => {
         const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
@@ -492,12 +512,22 @@ window.generate3DView = (id) => {
         l93Pts.forEach((p, i) => { let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
         let triangles = window.TriangulatePolygon(borderPtsWithZ);
+        
+        let aR=0, bR=0, cR=0;
+        if (borderPtsWithZ.length >= 3) {
+            let sX=0, sY=0, sZ=0; borderPtsWithZ.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
+            const n=borderPtsWithZ.length, cX=sX/n, cY=sY/n, cZ=sZ/n;
+            let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0;
+            borderPtsWithZ.forEach(p=>{ const dX=p.x-cX, dY=p.y-cY, dZ=p.z-cZ; sXX+=dX*dX; sYY+=dY*dY; sXY+=dX*dY; sXZ+=dX*dZ; sYZ+=dY*dZ; });
+            const D = sXX*sYY - sXY*sXY; if(D!==0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } cR = cZ - aR*cX - bR*cY;
+        }
 
         let step = 0.25; 
         if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
         if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
-        
-        minX -= step; maxX += step; minY -= step; maxY += step;
+
+        // Marge généreuse pour ne pas couper les diagonales "en L"
+        minX -= step * 2; maxX += step * 2; minY -= step * 2; maxY += step * 2;
 
         let xVals = [], yVals = [], zTerrain = [], zRefPlan = [], zRefCourbe = [];
         for (let x = minX; x <= maxX; x += step) xVals.push(x - minX);
@@ -506,16 +536,20 @@ window.generate3DView = (id) => {
             yVals.push(y - minY);
             let rowTerrain = [], rowPlan = [], rowCourbe = [];
             for (let x = minX; x <= maxX; x += step) {
+                // On adoucit la détection du polygone pour que la 3D englobe bien la ligne rouge
                 if (isPointInPolygon([x, y], l93Pts)) {
                     let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
                     
-                    let zP = null;
+                    let zP = null; let bestDist = Infinity;
                     for(let tri of triangles) {
                         if (window.IsPointInTri(x, y, tri[0].x, tri[0].y, tri[1].x, tri[1].y, tri[2].x, tri[2].y)) {
                             zP = window.GetZOnTriangle(x, y, tri[0], tri[1], tri[2]); break;
                         }
+                        let cx=(tri[0].x+tri[1].x+tri[2].x)/3, cy=(tri[0].y+tri[1].y+tri[2].y)/3;
+                        let d2=(x-cx)**2+(y-cy)**2;
+                        if(d2 < bestDist) { bestDist = d2; zP = window.GetZOnTriangle(x, y, tri[0], tri[1], tri[2]); }
                     }
-                    if (zP === null) zP = window.GetSmoothZ(x, y, borderPtsWithZ); // Si raté par la tolérance, lissage
+                    if (zP === null) zP = aR * x + bR * y + cR;
                     rowPlan.push(zP);
                     rowCourbe.push(window.GetSmoothZ(x, y, borderPtsWithZ));
                 } else { rowTerrain.push(null); rowPlan.push(null); rowCourbe.push(null); }
@@ -530,8 +564,8 @@ window.generate3DView = (id) => {
         let hoverTemp = 'X: %{x:.2f} m<br>Y: %{y:.2f} m<br>Z: %{z:.2f} m<extra></extra>';
 
         const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain', colorscale: 'Earth', showscale: false, hovertemplate: hoverTemp };
-        const tracePlan = { z: zRefPlan, x: xVals, y: yVals, type: 'surface', name: 'Base Plan', colorscale: 'Blues', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
-        const traceCourbe = { z: zRefCourbe, x: xVals, y: yVals, type: 'surface', name: 'Base Courbe', colorscale: 'Greens', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
+        const tracePlan = { z: zRefPlan, x: xVals, y: yVals, type: 'surface', name: 'Base Plan (Facettes)', colorscale: 'Blues', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
+        const traceCourbe = { z: zRefCourbe, x: xVals, y: yVals, type: 'surface', name: 'Base Courbe (Lissée)', colorscale: 'Greens', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
         const traceContour = { x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: 'red', width: 6 }, type: 'scatter3d', name: 'Contour', hovertemplate: hoverTemp };
 
         const layout = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', xaxis: { title: 'X (m)', backgroundcolor: '#222' }, yaxis: { title: 'Y (m)', backgroundcolor: '#222' }, zaxis: { title: 'Z (m)', backgroundcolor: '#222' } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest' };
@@ -541,8 +575,8 @@ window.generate3DView = (id) => {
             setup3DControlPanel(`
                 <b style="color:#f1c40f; display:block; margin-bottom:8px; font-size:14px;">🎛️ Affichage des Calques</b>
                 <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [0])"> 🌍 Terrain Naturel</label>
-                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [1])"> 🟦 Base Plan (Facettes)</label>
-                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [2])"> 🟩 Base Courbe (Lissée)</label>
+                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [1])"> 🟦 Base Plan (Rigide)</label>
+                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [2])"> 🟩 Base Courbe (Souple)</label>
                 <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [3])"> 🟥 Contour Strict</label>
             `);
 
@@ -603,11 +637,19 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
             let borderPtsWithZ = []; l93Pts.forEach((p, i) => { let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
             let triangles = window.TriangulatePolygon(borderPtsWithZ);
+            let aR=0, bR=0, cR=0;
+            if (borderPtsWithZ.length >= 3) {
+                let sX=0, sY=0, sZ=0; borderPtsWithZ.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
+                const n=borderPtsWithZ.length, cX=sX/n, cY=sY/n, cZ=sZ/n;
+                let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0;
+                borderPtsWithZ.forEach(p=>{ const dX=p.x-cX, dY=p.y-cY, dZ=p.z-cZ; sXX+=dX*dX; sYY+=dY*dY; sXY+=dX*dY; sXZ+=dX*dZ; sYZ+=dY*dZ; });
+                const D = sXX*sYY - sXY*sXY; if(D!==0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } cR = cZ - aR*cX - bR*cY;
+            }
 
             let baseStep = 0.25; let step = baseStep * Math.sqrt(numFeatures); 
             if ((maxX - minX) / step > 600) step = (maxX - minX) / 600; if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
             
-            minX -= step; maxX += step; minY -= step; maxY += step;
+            minX -= step*2; maxX += step*2; minY -= step*2; maxY += step*2;
 
             let xVals = [], yVals = [];
             for (let x = minX; x <= maxX; x += step) xVals.push(x - globalMinX);
@@ -620,14 +662,18 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
                     if (isPointInPolygon([x, y], l93Pts)) {
                         let zMNT = getZ([x, y]); rT.push(zMNT !== null ? zMNT : null); 
                         
-                        let zP = null;
+                        let zP = null; let bestDist = Infinity;
                         for(let tri of triangles) {
                             if (window.IsPointInTri(x, y, tri[0].x, tri[0].y, tri[1].x, tri[1].y, tri[2].x, tri[2].y)) {
                                 zP = window.GetZOnTriangle(x, y, tri[0], tri[1], tri[2]); break;
                             }
+                            let cx=(tri[0].x+tri[1].x+tri[2].x)/3, cy=(tri[0].y+tri[1].y+tri[2].y)/3;
+                            let d2=(x-cx)**2+(y-cy)**2;
+                            if(d2 < bestDist) { bestDist = d2; zP = window.GetZOnTriangle(x, y, tri[0], tri[1], tri[2]); }
                         }
-                        if (zP === null) zP = window.GetSmoothZ(x, y, borderPtsWithZ);
+                        if (zP === null) zP = aR * x + bR * y + cR;
                         rP.push(zP);
+                        
                         rC.push(window.GetSmoothZ(x, y, borderPtsWithZ));
                     } else { rT.push(null); rP.push(null); rC.push(null); }
                 }
@@ -657,8 +703,8 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
                 htmlControls += `<div style="margin-bottom:10px; background:rgba(0,0,0,0.3); padding:8px; border-radius:3px; border-left:4px solid ${pf.color || '#fff'};">
                     <b style="color:${pf.color || '#fff'}; display:block; margin-bottom:5px; font-size:1.1em;">${pf.name}</b>
                     <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx}])"> 🌍 Terrain</label>
-                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#3498db;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+1}])"> 🟦 Plan (Facettes)</label>
-                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#27ae60;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+2}])"> 🟩 Courbe (Lissée)</label>
+                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#3498db;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+1}])"> 🟦 Plan (Rigide)</label>
+                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#27ae60;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+2}])"> 🟩 Courbe (Souple)</label>
                     <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+3}])"> 🟥 Contour</label>
                 </div>`;
             });
