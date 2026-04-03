@@ -288,8 +288,9 @@ window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visi
 window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id); d.color = color; d.layer.setStyle({color}); updateDrawUI(); };
 
 // ==========================================
-// 6. CALCULS DE VOLUMES ET UTILITAIRES
+// 6. GÉOMÉTRIE AVANCÉE ET CALCULS DE VOLUMES
 // ==========================================
+
 function isPointInPolygon(point, vs) {
     let x = point[0], y = point[1], inside = false;
     for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
@@ -299,6 +300,51 @@ function isPointInPolygon(point, vs) {
     }
     return inside;
 }
+
+// --- MOTEUR DE TRIANGULATION (TIN) POUR FACETTES EXACTES ---
+window.TriangulatePolygon = (vertices) => {
+    let indices = []; let V = []; let n = vertices.length;
+    if (n < 3) return indices;
+    for (let i = 0; i < n; i++) V.push(i);
+    let area = 0;
+    for (let p = n - 1, q = 0; q < n; p = q++) area += vertices[V[p]].x * vertices[V[q]].y - vertices[V[q]].x * vertices[V[p]].y;
+    if (area > 0) V.reverse();
+    let count = 2 * n;
+    for (let m = n, v = m - 1; n > 2;) {
+        if ((count--) <= 0) break;
+        let u = v; if (m <= u) u = 0; v = u + 1; if (m <= v) v = 0; let w = v + 1; if (m <= w) w = 0;
+        let Ax = vertices[V[u]].x, Ay = vertices[V[u]].y, Bx = vertices[V[v]].x, By = vertices[V[v]].y, Cx = vertices[V[w]].x, Cy = vertices[V[w]].y;
+        let snip = true;
+        if (0.0000000001 > (((Bx - Ax) * (Cy - Ay)) - ((By - Ay) * (Cx - Ax)))) snip = false;
+        else {
+            for (let p = 0; p < m; p++) {
+                if (p === u || p === v || p === w) continue;
+                let Px = vertices[V[p]].x, Py = vertices[V[p]].y;
+                let v0x=Cx-Ax, v0y=Cy-Ay, v1x=Bx-Ax, v1y=By-Ay, v2x=Px-Ax, v2y=Py-Ay;
+                let d00=v0x*v0x+v0y*v0y, d01=v0x*v1x+v0y*v1y, d02=v0x*v2x+v0y*v2y, d11=v1x*v1x+v1y*v1y, d12=v1x*v2x+v1y*v2y;
+                let inv=1/(d00*d11-d01*d01), uP=(d11*d02-d01*d12)*inv, vP=(d00*d12-d01*d02)*inv;
+                if (uP >= -0.0001 && vP >= -0.0001 && (uP + vP <= 1.0001)) { snip = false; break; }
+            }
+        }
+        if (snip) { indices.push([V[u], V[v], V[w]]); V.splice(v, 1); m--; count = 2 * m; }
+    }
+    return indices;
+};
+
+window.IsPointInTri = (px, py, ax, ay, bx, by, cx, cy) => {
+    let v0x=cx-ax, v0y=cy-ay, v1x=bx-ax, v1y=by-ay, v2x=px-ax, v2y=py-ay;
+    let d00=v0x*v0x+v0y*v0y, d01=v0x*v1x+v0y*v1y, d02=v0x*v2x+v0y*v2y, d11=v1x*v1x+v1y*v1y, d12=v1x*v2x+v1y*v2y;
+    let inv=1/(d00*d11-d01*d01), u=(d11*d02-d01*d12)*inv, v=(d00*d12-d01*d02)*inv;
+    return (u >= -0.01) && (v >= -0.01) && (u + v <= 1.01);
+};
+
+window.GetZOnTriangle = (x, y, A, B, C) => {
+    let Nx = (B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y);
+    let Ny = (B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z);
+    let Nz = (B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x);
+    if (Nz === 0) return A.z;
+    return A.z - (Nx * (x - A.x) + Ny * (y - A.y)) / Nz;
+};
 
 window.calculateVolume = (id, type) => {
     const d = drawStore.find(x => x.id === id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id); 
@@ -315,7 +361,7 @@ window.calculateVolume = (id, type) => {
         if(z !== null) border.push({x:p[0], y:p[1], z}); 
     });
     
-    if((type==='slope'||type==='plane') && border.length < 3) return alert("Pas assez de points avec altitude pour calculer ce type de plan.");
+    if((type==='slope'||type==='plane') && border.length < 3) return alert("Pas assez de points pour calculer ce type de plan.");
 
     let refZ = 0;
     if(type==='hollow'||type==='mound') {
@@ -326,14 +372,20 @@ window.calculateVolume = (id, type) => {
 
     setTimeout(() => {
         let tTas = 0, tCreux = 0, step = 1; let aR=0, bR=0, cR=0;
+        let triangles = []; let smoothingEpsilon = 1;
         
-        if (type==='plane') {
+        // Pré-calculs pour Plan (Triangulation) ou Courbe (Lissage)
+        if (type==='plane' || type==='slope') {
+            // Régression linéaire (plan global de secours si un point est hors triangulation)
             let sX=0, sY=0, sZ=0; border.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
             const n=border.length, cX=sX/n, cY=sY/n, cZ=sZ/n;
             let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0;
             border.forEach(p=>{ const dX=p.x-cX, dY=p.y-cY, dZ=p.z-cZ; sXX+=dX*dX; sYY+=dY*dY; sXY+=dX*dY; sXZ+=dX*dZ; sYZ+=dY*dZ; });
             const D = sXX*sYY - sXY*sXY; if(D!==0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } 
             cR = cZ - aR*cX - bR*cY;
+            
+            if (type==='plane') triangles = window.TriangulatePolygon(border);
+            if (type==='slope') smoothingEpsilon = Math.max(0.5, ((maxX - minX) * (maxY - minY)) / 1000);
         }
 
         for (let x = minX; x <= maxX; x += step) {
@@ -341,11 +393,24 @@ window.calculateVolume = (id, type) => {
                 if (isPointInPolygon([x, y], l93)) {
                     let zM = getZ([x, y]); if(zM === null) continue;
                     let zB = 0;
-                    if (type==='slope') {
+                    
+                    if (type==='plane') {
+                        zB = aR * x + bR * y + cR; // Fallback
+                        for(let tri of triangles) {
+                            let A = border[tri[0]], B = border[tri[1]], C = border[tri[2]];
+                            if (window.IsPointInTri(x, y, A.x, A.y, B.x, B.y, C.x, C.y)) {
+                                zB = window.GetZOnTriangle(x, y, A, B, C); break;
+                            }
+                        }
+                    } else if (type==='slope') {
                         let sZ=0, sW=0, ex=false;
-                        for(let b of border) { let d2=(x-b.x)**2+(y-b.y)**2; if(d2===0) { zB=b.z; ex=true; break; } let w=1/d2; sZ+=b.z*w; sW+=w; }
+                        for(let b of border) { 
+                            let d2=(x-b.x)**2+(y-b.y)**2; if(d2===0) { zB=b.z; ex=true; break; } 
+                            let w=1/(d2 + smoothingEpsilon); // Courbe LISSÉE !
+                            sZ+=b.z*w; sW+=w; 
+                        }
                         if(!ex) zB = sZ/sW;
-                    } else if(type==='plane') { zB = aR*x + bR*y + cR; } else { zB = refZ; }
+                    } else { zB = refZ; }
                     
                     if(zM > zB) tTas += (zM - zB); else if(zM < zB) tCreux += (zB - zM);
                 }
@@ -355,8 +420,8 @@ window.calculateVolume = (id, type) => {
         let color = '#fff', lbl = ''; let resTxt = '';
         if(type === 'hollow') { color = '#3498db'; lbl = `Déblai (${refZ.toFixed(2)}m)`; resTxt = `${tCreux.toFixed(2)} m³`; }
         if(type === 'mound') { color = '#e67e22'; lbl = `Remblai (${refZ.toFixed(2)}m)`; resTxt = `${tTas.toFixed(2)} m³`; }
-        if(type === 'slope') { color = '#9b59b6'; lbl = `Vol. Courbe`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
-        if(type === 'plane') { color = '#1abc9c'; lbl = `Vol. Plan`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
+        if(type === 'slope') { color = '#9b59b6'; lbl = `Vol. Courbe (Lissé)`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
+        if(type === 'plane') { color = '#1abc9c'; lbl = `Vol. Plan (Triangulé)`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
 
         if (!d.volumeHtml) d.volumeHtml = "";
         d.volumeHtml += `<div style="font-size:12px; margin-top:4px; background:#1a1a1a; padding:4px; border-radius:3px; border-left:3px solid ${color};">
@@ -368,7 +433,7 @@ window.calculateVolume = (id, type) => {
 };
 
 // ==========================================
-// 7. VUE 3D PARFAITE (CERCLES AUTORISÉS, 0.25m)
+// 7. VUE 3D PARFAITE (TRIANGULATION EXACTE + COURBE LISSÉE)
 // ==========================================
 
 window.close3DWindow = () => {
@@ -394,12 +459,11 @@ const colorScalesPool = [
 
 window.generate3DView = (id) => {
     const d = drawStore.find(x => x.id === id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id);
-    // NOUVEAU : On autorise le 'circle' (qui a été converti en 64 points) en plus des 'area' !
     if (!d || (d.type !== 'area' && d.type !== 'circle')) return;
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération 3D Haute Précision (0.25m)... ⏳</h3>';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération 3D (Triangulation Exacte)... ⏳</h3>';
 
     setTimeout(() => {
         const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
@@ -409,18 +473,23 @@ window.generate3DView = (id) => {
         let borderPtsWithZ = [];
         l93Pts.forEach((p, i) => { let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
-        let aR = 0, bR = 0, cR = 0;
+        // Calculs Plan Global et Triangulation
+        let aR = 0, bR = 0, cR = 0; let triangles = [];
         if (borderPtsWithZ.length >= 3) {
             let sX = 0, sY = 0, sZ = 0; borderPtsWithZ.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
             const n = borderPtsWithZ.length, cX = sX/n, cY = sY/n, cZ = sZ/n;
             let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0;
             borderPtsWithZ.forEach(p=>{ const dX=p.x-cX, dY=p.y-cY, dZ=p.z-cZ; sXX+=dX*dX; sYY+=dY*dY; sXY+=dX*dY; sXZ+=dX*dZ; sYZ+=dY*dZ; });
             const D = sXX*sYY - sXY*sXY; if(D !== 0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } cR = cZ - aR*cX - bR*cY;
+            
+            triangles = window.TriangulatePolygon(borderPtsWithZ);
         }
 
         let step = 0.25; 
         if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
         if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
+        
+        let smoothingEpsilon = Math.max(0.5, ((maxX - minX) * (maxY - minY)) / 1000);
 
         let xVals = [], yVals = [], zTerrain = [], zRefPlan = [], zRefCourbe = [];
         for (let x = minX; x <= maxX; x += step) xVals.push(x - minX);
@@ -430,10 +499,24 @@ window.generate3DView = (id) => {
             let rowTerrain = [], rowPlan = [], rowCourbe = [];
             for (let x = minX; x <= maxX; x += step) {
                 if (isPointInPolygon([x, y], l93Pts)) {
+                    // Terrain
                     let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
-                    rowPlan.push(aR * x + bR * y + cR);
+                    
+                    // Plan (Triangulation Exacte !)
+                    let zP = aR * x + bR * y + cR;
+                    for(let tri of triangles) {
+                        let A = borderPtsWithZ[tri[0]], B = borderPtsWithZ[tri[1]], C = borderPtsWithZ[tri[2]];
+                        if (window.IsPointInTri(x, y, A.x, A.y, B.x, B.y, C.x, C.y)) { zP = window.GetZOnTriangle(x, y, A, B, C); break; }
+                    }
+                    rowPlan.push(zP);
+                    
+                    // Courbe (Lissée)
                     let sumZ = 0, sumW = 0, exactMatch = false, zC = 0;
-                    for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zC = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
+                    for (let pt of borderPtsWithZ) { 
+                        let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zC = pt.z; exactMatch = true; break; } 
+                        let w = 1 / (d2 + smoothingEpsilon); 
+                        sumZ += pt.z * w; sumW += w; 
+                    }
                     if (!exactMatch) zC = sumZ / sumW; rowCourbe.push(zC);
                 } else { rowTerrain.push(null); rowPlan.push(null); rowCourbe.push(null); }
             }
@@ -447,24 +530,19 @@ window.generate3DView = (id) => {
         let hoverTemp = 'X: %{x:.2f} m<br>Y: %{y:.2f} m<br>Z: %{z:.2f} m<extra></extra>';
 
         const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain', colorscale: 'Earth', showscale: false, hovertemplate: hoverTemp };
-        const tracePlan = { z: zRefPlan, x: xVals, y: yVals, type: 'surface', name: 'Base Plan', colorscale: 'Blues', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
-        const traceCourbe = { z: zRefCourbe, x: xVals, y: yVals, type: 'surface', name: 'Base Courbe', colorscale: 'Greens', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
+        const tracePlan = { z: zRefPlan, x: xVals, y: yVals, type: 'surface', name: 'Base Plan (Triangulé)', colorscale: 'Blues', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
+        const traceCourbe = { z: zRefCourbe, x: xVals, y: yVals, type: 'surface', name: 'Base Courbe (Lissée)', colorscale: 'Greens', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
         const traceContour = { x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: 'red', width: 6 }, type: 'scatter3d', name: 'Contour', hovertemplate: hoverTemp };
 
-        const layout = { 
-            margin: { l: 0, r: 0, b: 0, t: 0 }, 
-            scene: { aspectmode: 'data', xaxis: { title: 'X (m)', backgroundcolor: '#222' }, yaxis: { title: 'Y (m)', backgroundcolor: '#222' }, zaxis: { title: 'Z (m)', backgroundcolor: '#222' } }, 
-            paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest'
-        };
+        const layout = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', xaxis: { title: 'X (m)', backgroundcolor: '#222' }, yaxis: { title: 'Y (m)', backgroundcolor: '#222' }, zaxis: { title: 'Z (m)', backgroundcolor: '#222' } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest' };
         
         Plotly.newPlot('plot-3d', [traceTerrain, tracePlan, traceCourbe, traceContour], layout).then(() => {
             const plotDiv = document.getElementById('plot-3d');
-            
             setup3DControlPanel(`
                 <b style="color:#f1c40f; display:block; margin-bottom:8px; font-size:14px;">🎛️ Affichage des Calques</b>
                 <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [0])"> 🌍 Terrain Naturel</label>
-                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [1])"> 🟦 Base Plan</label>
-                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [2])"> 🟩 Base Courbe</label>
+                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [1])"> 🟦 Base Plan (Facettes)</label>
+                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [2])"> 🟩 Base Courbe (Lissée)</label>
                 <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [3])"> 🟥 Contour Strict</label>
             `);
 
@@ -484,7 +562,6 @@ window.multi3DAreas = [];
 
 window.showMulti3DSelector = () => {
     window.multi3DAreas = [];
-    // On autorise la sélection des cercles aussi dans la multivue
     drawStore.forEach(d => { if(d.type==='area' || d.type==='circle') window.multi3DAreas.push({ name: d.name, ref: d }); });
     projectStore.forEach(p => p.features.forEach(f => { if(f.type==='area' || f.type==='circle') window.multi3DAreas.push({ name: `${p.name} - ${f.name}`, ref: f }); }));
 
@@ -492,7 +569,7 @@ window.showMulti3DSelector = () => {
 
     let html = `<div id="multi-3d-modal" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#222; padding:20px; border:1px solid #555; z-index:10000; border-radius:5px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color:white; min-width:300px; max-width:90%;">
         <h3 style="margin-top:0;">Superposition de surfaces</h3>
-        <p style="font-size:0.9em; color:#aaa;">Cochez les surfaces à superposer en 3D :<br><small style="color:#e74c3c">⚠️ Plus il y a de surfaces, plus la précision diminuera pour protéger votre PC.</small></p>
+        <p style="font-size:0.9em; color:#aaa;">Cochez les surfaces à superposer en 3D :</p>
         <div style="max-height:300px; overflow-y:auto; margin-bottom:15px; background:#111; padding:10px; border-radius:3px;">`;
 
     window.multi3DAreas.forEach((a, idx) => { html += `<div style="margin-bottom:5px;"><input type="checkbox" class="multi-3d-checkbox" value="${idx}" id="cb-idx-${idx}"> <label for="cb-idx-${idx}" style="cursor:pointer;">${a.name}</label></div>`; });
@@ -525,17 +602,19 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
 
             let borderPtsWithZ = []; l93Pts.forEach((p, i) => { let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
-            let aR = 0, bR = 0, cR = 0;
+            let aR = 0, bR = 0, cR = 0; let triangles = [];
             if (borderPtsWithZ.length >= 3) {
                 let sX = 0, sY = 0, sZ = 0; borderPtsWithZ.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
                 const n = borderPtsWithZ.length, cX = sX/n, cY = sY/n, cZ = sZ/n;
                 let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0;
                 borderPtsWithZ.forEach(p=>{ const dX=p.x-cX, dY=p.y-cY, dZ=p.z-cZ; sXX+=dX*dX; sYY+=dY*dY; sXY+=dX*dY; sXZ+=dX*dZ; sYZ+=dY*dZ; });
                 const D = sXX*sYY - sXY*sXY; if(D !== 0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } cR = cZ - aR*cX - bR*cY;
+                triangles = window.TriangulatePolygon(borderPtsWithZ);
             }
 
             let baseStep = 0.25; let step = baseStep * Math.sqrt(numFeatures); 
             if ((maxX - minX) / step > 600) step = (maxX - minX) / 600; if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
+            let smoothingEpsilon = Math.max(0.5, ((maxX - minX) * (maxY - minY)) / 1000);
 
             let xVals = [], yVals = [];
             for (let x = minX; x <= maxX; x += step) xVals.push(x - globalMinX);
@@ -546,9 +625,14 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
                 let rT = [], rP = [], rC = [];
                 for (let x = minX; x <= maxX; x += step) {
                     if (isPointInPolygon([x, y], l93Pts)) {
-                        let zMNT = getZ([x, y]); rT.push(zMNT !== null ? zMNT : null); rP.push(aR * x + bR * y + cR);
+                        let zMNT = getZ([x, y]); rT.push(zMNT !== null ? zMNT : null); 
+                        
+                        let zP = aR * x + bR * y + cR;
+                        for(let tri of triangles) { let A = borderPtsWithZ[tri[0]], B = borderPtsWithZ[tri[1]], C = borderPtsWithZ[tri[2]]; if (window.IsPointInTri(x, y, A.x, A.y, B.x, B.y, C.x, C.y)) { zP = window.GetZOnTriangle(x, y, A, B, C); break; } }
+                        rP.push(zP);
+
                         let sumZ = 0, sumW = 0, exactMatch = false, zC = 0;
-                        for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zC = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
+                        for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zC = pt.z; exactMatch = true; break; } let w = 1 / (d2 + smoothingEpsilon); sumZ += pt.z * w; sumW += w; }
                         if (!exactMatch) zC = sumZ / sumW; rC.push(zC);
                     } else { rT.push(null); rP.push(null); rC.push(null); }
                 }
@@ -578,8 +662,8 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
                 htmlControls += `<div style="margin-bottom:10px; background:rgba(0,0,0,0.3); padding:8px; border-radius:3px; border-left:4px solid ${pf.color || '#fff'};">
                     <b style="color:${pf.color || '#fff'}; display:block; margin-bottom:5px; font-size:1.1em;">${pf.name}</b>
                     <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx}])"> 🌍 Terrain</label>
-                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#3498db;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+1}])"> 🟦 Plan (Echelle ${colors.p})</label>
-                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#27ae60;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+2}])"> 🟩 Courbe (Echelle ${colors.c})</label>
+                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#3498db;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+1}])"> 🟦 Plan (Facettes)</label>
+                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#27ae60;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+2}])"> 🟩 Courbe (Lissée)</label>
                     <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+3}])"> 🟥 Contour</label>
                 </div>`;
             });
