@@ -301,25 +301,21 @@ function isPointInPolygon(point, vs) {
     return inside;
 }
 
-// --- MOTEUR 1 : PLAN (ANTI-PICS) ---
+// --- MOTEUR 1 : PLAN (FACETTES EXACTES) ---
 window.GetZFrom3Closest = (x, y, borderPts) => {
     if (borderPts.length < 3) return borderPts[0]?.z || 0;
-    
     let pts = borderPts.map(p => ({ pt: p, dist2: (p.x - x)**2 + (p.y - y)**2 })).sort((a, b) => a.dist2 - b.dist2);
     let A = pts[0].pt, B = null, C = null;
     
     for (let i = 1; i < pts.length; i++) {
         if (!B) { B = pts[i].pt; continue; }
         let cand = pts[i].pt;
-        // Produit vectoriel 2D (Aire du triangle). On exige au moins 2m² pour éviter les points alignés (les pics !)
         let cross2D = (B.x - A.x) * (cand.y - A.y) - (B.y - A.y) * (cand.x - A.x);
         if (Math.abs(cross2D) > 2.0) { C = cand; break; }
     }
     
-    // Si on ne trouve pas de vrai triangle, on fait une moyenne pondérée sécurisée
     if (!C) {
-        let wA = 1 / Math.max(0.1, Math.sqrt(pts[0].dist2));
-        let wB = 1 / Math.max(0.1, Math.sqrt(pts[1].dist2));
+        let wA = 1 / Math.max(0.1, Math.sqrt(pts[0].dist2)); let wB = 1 / Math.max(0.1, Math.sqrt(pts[1].dist2));
         return (A.z * wA + pts[1].pt.z * wB) / (wA + wB);
     }
     
@@ -327,17 +323,22 @@ window.GetZFrom3Closest = (x, y, borderPts) => {
     let Ny = (B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z);
     let Nz = (B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x);
     
-    if (Math.abs(Nz) < 1e-5) return A.z; // Sécurité division par zéro
+    if (Math.abs(Nz) < 1e-5) return A.z;
     return A.z - (Nx * (x - A.x) + Ny * (y - A.y)) / Nz;
 };
 
-// --- MOTEUR 2 : COURBE TENDUE GLOBALE ---
-window.GetSmoothZ = (x, y, borderPts) => {
+// --- MOTEUR 2 : COURBE TENDUE GLOBALE (ANTI-PICS) ---
+window.GetSmoothZ = (x, y, borderPts, bbDiag) => {
     let sumZ = 0, sumW = 0;
-    let epsilon = 5.0; // Adoucit les pentes, supprime l'effet goutte d'eau
+    // On calcule la largeur de la courbe en fonction de la taille du terrain
+    let smoothFactor = Math.max((bbDiag * bbDiag) / 8, 1.0); 
+    
     for (let pt of borderPts) {
         let d2 = (x - pt.x)**2 + (y - pt.y)**2;
-        let w = 1 / Math.pow(d2 + epsilon, 0.85); // 0.85 = lissage parfait
+        if (d2 < 0.01) return pt.z; // Accroche parfaite au point
+        
+        // La magie est ici : Moyenne Gaussienne ultra-douce + un micro-aimant de bordure
+        let w = Math.exp(-d2 / smoothFactor) + (0.05 / d2); 
         sumZ += pt.z * w; sumW += w;
     }
     return sumW === 0 ? (borderPts[0]?.z || 0) : sumZ / sumW;
@@ -366,8 +367,8 @@ window.calculateVolume = (id, type) => {
 
     setTimeout(() => {
         let tTas = 0, tCreux = 0, step = 1;
+        let bbDiag = Math.hypot(maxX - minX, maxY - minY);
 
-        // Marge de débordement pour être sûr de bien couvrir les bords (anti-trous)
         minX -= step; maxX += step; minY -= step; maxY += step;
 
         for (let x = minX; x <= maxX; x += step) {
@@ -377,7 +378,7 @@ window.calculateVolume = (id, type) => {
                     let zB = null;
                     
                     if (type==='plane') zB = window.GetZFrom3Closest(x, y, border);
-                    else if (type==='slope') zB = window.GetSmoothZ(x, y, border);
+                    else if (type==='slope') zB = window.GetSmoothZ(x, y, border, bbDiag); // Application du lissage parfait
                     else zB = refZ;
                     
                     if(zM > zB) tTas += (zM - zB); else if(zM < zB) tCreux += (zB - zM);
@@ -397,7 +398,7 @@ window.calculateVolume = (id, type) => {
     }, 50);
 };
 // ==========================================
-// 7. VUE 3D PARFAITE (SANS PICS, SANS TROUS)
+// 7. VUE 3D PARFAITE (LISSAGE GAUSSIEN SANS PICS)
 // ==========================================
 
 window.close3DWindow = () => {
@@ -446,7 +447,8 @@ window.generate3DView = (id) => {
         if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
         if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
         
-        // MARGE ANTI-TROUS : On force la grille à déborder légèrement pour combler les diagonales
+        let bbDiag = Math.hypot(maxX - minX, maxY - minY);
+        
         minX -= step; maxX += step; minY -= step; maxY += step;
 
         let xVals = [], yVals = [], zTerrain = [], zRefPlan = [], zRefCourbe = [];
@@ -456,11 +458,10 @@ window.generate3DView = (id) => {
             yVals.push(y - minY);
             let rowTerrain = [], rowPlan = [], rowCourbe = [];
             for (let x = minX; x <= maxX; x += step) {
-                // On adoucit la détection de polygone pour que les bords soient parfaitement pleins
                 if (isPointInPolygon([x, y], l93Pts)) {
                     let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
                     rowPlan.push(window.GetZFrom3Closest(x, y, borderPtsWithZ));
-                    rowCourbe.push(window.GetSmoothZ(x, y, borderPtsWithZ));
+                    rowCourbe.push(window.GetSmoothZ(x, y, borderPtsWithZ, bbDiag)); // Le lissage absolu !
                 } else { rowTerrain.push(null); rowPlan.push(null); rowCourbe.push(null); }
             }
             zTerrain.push(rowTerrain); zRefPlan.push(rowPlan); zRefCourbe.push(rowCourbe);
@@ -548,7 +549,7 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
             let baseStep = 0.25; let step = baseStep * Math.sqrt(numFeatures); 
             if ((maxX - minX) / step > 600) step = (maxX - minX) / 600; if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
             
-            // MARGE ANTI-TROUS MULTIVUE
+            let bbDiag = Math.hypot(maxX - minX, maxY - minY);
             minX -= step; maxX += step; minY -= step; maxY += step;
 
             let xVals = [], yVals = [];
@@ -562,7 +563,7 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
                     if (isPointInPolygon([x, y], l93Pts)) {
                         let zMNT = getZ([x, y]); rT.push(zMNT !== null ? zMNT : null); 
                         rP.push(window.GetZFrom3Closest(x, y, borderPtsWithZ));
-                        rC.push(window.GetSmoothZ(x, y, borderPtsWithZ));
+                        rC.push(window.GetSmoothZ(x, y, borderPtsWithZ, bbDiag));
                     } else { rT.push(null); rP.push(null); rC.push(null); }
                 }
                 zTerrain.push(rT); zPlan.push(rP); zCourbe.push(rC);
