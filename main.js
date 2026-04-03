@@ -1036,11 +1036,45 @@ window.copyProjectToWorkspace = (pid) => {
     alert(`✅ Projet "${p.name}" copié avec succès dans l'espace de travail à droite !`);
 };
 // ==========================================
-// 11. AIDE ET EXPORT RAPPORT PDF COMPLET
+// 11. AIDE, CAPTURES 3D ET EXPORT RAPPORT PDF COMPLET
 // ==========================================
 
+// Rendre la fenêtre d'aide déplaçable au démarrage
 setTimeout(() => { if(typeof dragElement === 'function') dragElement('help-window', 'help-header'); }, 1000);
 
+// --- SYSTÈME DE CAPTURE 3D MANUELLE ---
+window.pdf3DCaptures = []; // Mémoire pour stocker les photos 3D
+
+window.capture3DForPDF = async () => {
+    if (window.pdf3DCaptures.length >= 3) return alert("Vous avez déjà atteint le maximum de 3 captures 3D pour ce rapport.");
+    
+    const plot3D = document.getElementById('plot-3d');
+    if (!plot3D || !plot3D.data) return alert("Aucune vue 3D à capturer.");
+    
+    const btn = document.getElementById('btn-capture-3d');
+    btn.innerText = "📸..."; // Feedback visuel pendant la capture
+    
+    try {
+        // Prend une photo parfaite de l'angle de vue actuel de la 3D
+        let imgUrl = await Plotly.toImage(plot3D, {format: 'png', width: 800, height: 600});
+        window.pdf3DCaptures.push(imgUrl);
+        btn.innerText = `📸 Capturer (${window.pdf3DCaptures.length}/3)`;
+    } catch(e) { 
+        console.error("Erreur capture 3D :", e); 
+        btn.innerText = `📸 Erreur`;
+    }
+};
+
+// Modification de la fermeture de la 3D pour réinitialiser les photos
+const originalClose3D = window.close3DWindow;
+window.close3DWindow = () => {
+    window.pdf3DCaptures = [];
+    const btn = document.getElementById('btn-capture-3d');
+    if(btn) btn.innerText = "📸 Capturer (0/3)";
+    if(originalClose3D) originalClose3D();
+};
+
+// --- MOTEUR DE GÉNÉRATION DU RAPPORT PDF ---
 window.generatePDFReport = async () => {
     let allFeatures = [...drawStore, ...projectStore.flatMap(p => p.features.filter(f => f.visible))];
     if (allFeatures.length === 0) return alert("Veuillez tracer ou charger au moins un élément avant de générer un rapport.");
@@ -1061,70 +1095,130 @@ window.generatePDFReport = async () => {
         yPos += 10;
         doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(100, 100, 100);
         doc.text(`Généré le : ${new Date().toLocaleString('fr-FR')}`, pageWidth / 2, yPos, { align: "center" });
-        yPos += 20;
+        yPos += 15;
 
-        // --- 1. CARTE CENTRÉE ---
+        // --- 1. CARTE CENTRÉE (Anti-bug SVG) ---
         doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(0, 0, 0);
         doc.text("1. Vue Planimétrique (Carte)", 15, yPos);
         yPos += 8;
 
-        // Centrage de la carte
         let allLayers = allFeatures.map(d => d.layer);
         if (allLayers.length > 0) {
             const group = L.featureGroup(allLayers);
-            map.fitBounds(group.getBounds(), { padding: [20, 20] });
-            await new Promise(r => setTimeout(r, 1200)); // Attente du chargement des tuiles
+            await new Promise(resolve => {
+                map.once('moveend', () => setTimeout(resolve, 800)); // Laisse le temps au SVG de se dessiner
+                map.fitBounds(group.getBounds(), { padding: [30, 30] });
+            });
         }
 
         const mapDiv = document.getElementById('map');
-        const canvasMap = await html2canvas(mapDiv, { useCORS: true, ignoreElements: (el) => el.classList.contains('leaflet-control-container') });
+        const canvasMap = await html2canvas(mapDiv, { 
+            useCORS: true, 
+            logging: false,
+            ignoreElements: (el) => el.classList.contains('leaflet-control-container') // Cache les boutons de la carte
+        });
         const mapHeight = (canvasMap.height * (pageWidth - 30)) / canvasMap.width;
-        let finalMapHeight = mapHeight > 110 ? 110 : mapHeight; // Limite la hauteur
-        doc.addImage(canvasMap.toDataURL("image/png"), 'PNG', 15, yPos, pageWidth - 30, finalMapHeight);
+        let finalMapHeight = mapHeight > 100 ? 100 : mapHeight; 
+        doc.addImage(canvasMap.toDataURL("image/jpeg", 0.8), 'JPEG', 15, yPos, pageWidth - 30, finalMapHeight);
         yPos += finalMapHeight + 15;
 
-        // --- 2. STATISTIQUES ET VOLUMES (Conversion Dark -> Light) ---
+        // --- 2. TABLEAU RÉCAPITULATIF (Façon CSV) ---
         if (yPos > 240) { doc.addPage(); yPos = 20; }
-        doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text("2. Synthèse des Mesures", 15, yPos);
-        yPos += 10;
+        doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text("2. Récapitulatif des tracés", 15, yPos);
+        yPos += 8;
 
         const tempDiv = document.createElement('div');
-        tempDiv.style.cssText = 'width:800px; padding:20px; background:white; color:black; position:absolute; left:-9999px;';
+        tempDiv.style.cssText = 'width:800px; padding:20px; background:white; color:black; position:absolute; left:-9999px; font-family:sans-serif;';
+        
+        let tableHtml = `
+            <table style="width:100%; border-collapse:collapse; text-align:center; font-size:14px; margin-bottom:20px;">
+                <thead>
+                    <tr style="background-color:#2980b9; color:white;">
+                        <th style="padding:8px; border:1px solid #ccc;">Nom</th>
+                        <th style="padding:8px; border:1px solid #ccc;">Type</th>
+                        <th style="padding:8px; border:1px solid #ccc;">Périm. / Long.</th>
+                        <th style="padding:8px; border:1px solid #ccc;">Surface</th>
+                        <th style="padding:8px; border:1px solid #ccc;">Z Min</th>
+                        <th style="padding:8px; border:1px solid #ccc;">Z Max</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
         
         allFeatures.forEach(d => {
-            // Remplacement des couleurs HTML pour impression PDF
+            const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+            let zMin = Infinity, zMax = -Infinity, perim = 0, area = 0;
+            
+            l93.forEach((p, i) => {
+                let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p);
+                if(z !== null) { if(z < zMin) zMin = z; if(z > zMax) zMax = z; }
+            });
+            
+            if (d.type === 'circle') {
+                perim = 2 * Math.PI * d.radius; area = Math.PI * d.radius * d.radius;
+            } else if (d.type === 'line') {
+                for (let i = 1; i < l93.length; i++) perim += Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
+                area = 0;
+            } else {
+                for (let i = 0; i < l93.length; i++) { 
+                    let j = (i+1) % l93.length; 
+                    area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; 
+                    perim += Math.hypot(l93[j][0] - l93[i][0], l93[j][1] - l93[i][1]);
+                }
+                area = Math.abs(area)/2;
+            }
+            
+            let typeTrad = d.type === 'area' ? 'Surface' : (d.type === 'circle' ? 'Cercle' : 'Ligne');
+            
+            tableHtml += `
+                <tr>
+                    <td style="padding:6px; border:1px solid #ccc; font-weight:bold; color:${d.color};">${d.name}</td>
+                    <td style="padding:6px; border:1px solid #ccc;">${typeTrad}</td>
+                    <td style="padding:6px; border:1px solid #ccc;">${perim.toFixed(2)} m</td>
+                    <td style="padding:6px; border:1px solid #ccc;">${area > 0 ? area.toFixed(2)+' m²' : '-'}</td>
+                    <td style="padding:6px; border:1px solid #ccc;">${zMin !== Infinity ? zMin.toFixed(2)+' m' : '-'}</td>
+                    <td style="padding:6px; border:1px solid #ccc;">${zMax !== -Infinity ? zMax.toFixed(2)+' m' : '-'}</td>
+                </tr>
+            `;
+        });
+        tableHtml += `</tbody></table>`;
+        tempDiv.innerHTML += tableHtml;
+
+        // --- 3. ÉTIQUETTES DE MESURES ET VOLUMES ---
+        tempDiv.innerHTML += `<h3 style="color:#2c3e50; border-bottom:2px solid #ccc; padding-bottom:5px;">Détail des Volumes et Mesures</h3>`;
+        allFeatures.forEach(d => {
             let cleanStats = (d.statsHtml || "Aucune donnée")
-                .replace(/color:#f1c40f/g, 'color:#d35400') // Jaune devient Orange foncé
-                .replace(/color:#eee/g, 'color:#333') 
-                .replace(/color:#ddd/g, 'color:#333')
-                .replace(/color:#fff/g, 'color:#111')
-                .replace(/color:white/g, 'color:#111')
+                .replace(/color:#f1c40f/g, 'color:#d35400') 
+                .replace(/color:#eee/g, 'color:#333') .replace(/color:#ddd/g, 'color:#333')
+                .replace(/color:#fff/g, 'color:#111') .replace(/color:white/g, 'color:#111')
                 .replace(/background:#222/g, 'background:#f9f9f9; border:1px solid #ccc')
                 .replace(/background:#1a1a1a/g, 'background:#f0f0f0; border:1px solid #ccc');
                 
-            tempDiv.innerHTML += `<div style="border-left: 6px solid ${d.color}; padding-left: 15px; margin-bottom: 20px; font-family: sans-serif;"><h3 style="margin: 0 0 5px 0; color:#2c3e50; font-size:22px;">${d.name}</h3><div style="font-size: 16px; color:#333; line-height:1.5;">${cleanStats}</div></div>`;
+            tempDiv.innerHTML += `<div style="border-left: 6px solid ${d.color}; padding-left: 15px; margin-bottom: 20px;"><b style="color:#2c3e50; font-size:18px;">${d.name}</b><div style="font-size: 15px; color:#333; line-height:1.5; margin-top:5px;">${cleanStats}</div></div>`;
         });
+
         document.body.appendChild(tempDiv);
-        const canvasStats = await html2canvas(tempDiv, { scale: 2 });
-        const imgStats = canvasStats.toDataURL("image/png");
+        const canvasTableStats = await html2canvas(tempDiv, { scale: 2 });
+        const imgTableStats = canvasTableStats.toDataURL("image/png");
         document.body.removeChild(tempDiv);
 
-        const statsHeight = (canvasStats.height * (pageWidth - 30)) / canvasStats.width;
-        if(yPos + statsHeight > 280) { doc.addPage(); yPos = 20; }
-        doc.addImage(imgStats, 'PNG', 15, yPos, pageWidth - 30, statsHeight);
-        yPos += statsHeight + 15;
+        const tableStatsHeight = (canvasTableStats.height * (pageWidth - 30)) / canvasTableStats.width;
+        if(yPos + tableStatsHeight > 280) { doc.addPage(); yPos = 20; }
+        doc.addImage(imgTableStats, 'PNG', 15, yPos, pageWidth - 30, tableStatsHeight);
+        yPos += tableStatsHeight + 20;
 
-        // --- 3. PROFILS ALTIMÉTRIQUES (Génération Silencieuse) ---
+        // --- 4. PROFILS ALTIMÉTRIQUES (Uniquement les lignes) ---
         let lines = allFeatures.filter(d => d.type === 'line');
         if (lines.length > 0) {
             if (yPos > 240) { doc.addPage(); yPos = 20; }
-            doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text("3. Profils Altimétriques", 15, yPos);
+            doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text("3. Profils Altimétriques (Coupes)", 15, yPos);
             yPos += 10;
 
             for (let line of lines) {
                 let dists = [0], zVals = [], totalDist = 0;
                 const l93 = line.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
                 zVals.push(line.ptsGPS[0].customZ !== undefined ? line.ptsGPS[0].customZ : (getZ(l93[0])||0));
+                
                 for (let i = 1; i < l93.length; i++) {
                     totalDist += Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
                     dists.push(totalDist);
@@ -1132,77 +1226,30 @@ window.generatePDFReport = async () => {
                 }
                 
                 let trace = { x: dists, y: zVals, mode: 'lines+markers', fill: 'tozeroy', type: 'scatter', marker: {color: line.color}, name: line.name };
-                let layout = { title: { text: `Profil : ${line.name}`, font: {size: 14} }, xaxis: {title: 'Distance (m)'}, yaxis: {title: 'Altitude (m)'}, margin: {t:40, b:40, l:40, r:20}, plot_bgcolor: '#fff', paper_bgcolor: '#fff' };
+                let layout = { title: { text: `Profil : ${line.name}`, font: {size: 14, color:'black'} }, xaxis: {title: 'Distance (m)', color:'black'}, yaxis: {title: 'Altitude (m)', color:'black'}, margin: {t:40, b:40, l:40, r:20}, plot_bgcolor: '#fff', paper_bgcolor: '#fff' };
                 
                 let imgUrl = await Plotly.toImage({data: [trace], layout: layout}, {format: 'png', width: 800, height: 350});
                 
-                if (yPos + 75 > 280) { doc.addPage(); yPos = 20; }
+                if (yPos + 80 > 280) { doc.addPage(); yPos = 20; }
                 doc.addImage(imgUrl, 'PNG', 15, yPos, pageWidth - 30, 75);
-                yPos += 80;
+                yPos += 85;
             }
         }
 
-        // --- 4. RENDU 3D MULTIVUE (Génération Silencieuse) ---
-        let areas = allFeatures.filter(d => d.type === 'area' || d.type === 'circle');
-        if (areas.length > 0 && mntStore.filter(m => m.visible).length > 0) {
+        // --- 5. INTÉGRATION DES CAPTURES 3D MANUELLES ---
+        if (window.pdf3DCaptures && window.pdf3DCaptures.length > 0) {
             if (yPos > 180) { doc.addPage(); yPos = 20; }
-            doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text("4. Modélisation 3D (TIN & Lissage)", 15, yPos);
+            doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text("4. Vues 3D (Captures Manuelles)", 15, yPos);
             yPos += 10;
 
-            // On utilise la mécanique de ta Section 7 pour construire silencieusement les traces
-            let allTraces = [];
-            let globalMinX = Infinity, globalMinY = Infinity;
-            areas.forEach(d => { d.ptsGPS.forEach(p => { const l93 = proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]); if (l93[0] < globalMinX) globalMinX = l93[0]; if (l93[1] < globalMinY) globalMinY = l93[1]; }); });
-
-            areas.forEach((d, index) => {
-                const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
-                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-                l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
-                let borderPtsWithZ = []; l93Pts.forEach((p, i) => { let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
-
-                let triangles = window.TriangulateDelaunay ? window.TriangulateDelaunay(borderPtsWithZ, l93Pts) : [];
-                let step = 0.5; // On calcule à 0.5m pour la photo PDF pour éviter de saturer la RAM
-                if ((maxX - minX) / step > 300) step = (maxX - minX) / 300; 
-                minX -= step*2; maxX += step*2; minY -= step*2; maxY += step*2;
-
-                let xVals = [], yVals = [], zTerrain = [], zPlan = [];
-                for (let x = minX; x <= maxX; x += step) xVals.push(x - globalMinX);
-                for (let y = minY; y <= maxY; y += step) {
-                    yVals.push(y - globalMinY); let rT = [], rP = [];
-                    for (let x = minX; x <= maxX; x += step) {
-                        if (isPointInPolygon([x, y], l93Pts)) {
-                            rT.push(getZ([x, y]) || null);
-                            let zP = null, bestDist = Infinity, bestTri = null;
-                            for(let tri of triangles) {
-                                if (window.IsPointInTri && window.IsPointInTri(x, y, tri[0].x, tri[0].y, tri[1].x, tri[1].y, tri[2].x, tri[2].y)) { zP = window.GetZOnTriangle(x, y, tri[0], tri[1], tri[2]); break; }
-                                let cx=(tri[0].x+tri[1].x+tri[2].x)/3, cy=(tri[0].y+tri[1].y+tri[2].y)/3, d2=(x-cx)**2+(y-cy)**2;
-                                if(d2 < bestDist) { bestDist = d2; bestTri = tri; }
-                            }
-                            if (zP === null && bestTri && window.GetZOnTriangle) zP = window.GetZOnTriangle(x, y, bestTri[0], bestTri[1], bestTri[2]);
-                            rP.push(zP);
-                        } else { rT.push(null); rP.push(null); }
-                    }
-                    zTerrain.push(rT); zPlan.push(rP);
-                }
-                
-                let xBound = [], yBound = [], zBound = [];
-                borderPtsWithZ.forEach(pt => { xBound.push(pt.x - globalMinX); yBound.push(pt.y - globalMinY); zBound.push(pt.z); });
-                if (borderPtsWithZ.length > 0) { xBound.push(borderPtsWithZ[0].x - globalMinX); yBound.push(borderPtsWithZ[0].y - globalMinY); zBound.push(borderPtsWithZ[0].z); }
-
-                let colors = colorScalesPool[index % colorScalesPool.length];
-                allTraces.push({ z: zTerrain, x: xVals, y: yVals, type: 'surface', name: `Terrain (${d.name})`, colorscale: 'Earth', showscale: false });
-                allTraces.push({ z: zPlan, x: xVals, y: yVals, type: 'surface', name: `Plan (${d.name})`, colorscale: colors.p, showscale: false, opacity: 0.8 });
-                allTraces.push({ x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: 'red', width: 6 }, type: 'scatter3d', name: `Contour (${d.name})` });
-            });
-
-            // Scène 3D fond blanc pour l'impression
-            const layout3D = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', xaxis: { title: 'X', backgroundcolor: '#fff', gridcolor:'#ccc' }, yaxis: { title: 'Y', backgroundcolor: '#fff', gridcolor:'#ccc' }, zaxis: { title: 'Z', backgroundcolor: '#fff', gridcolor:'#ccc' } }, paper_bgcolor: '#fff', font: { color: 'black' } };
-            
-            let img3DUrl = await Plotly.toImage({data: allTraces, layout: layout3D}, {format: 'png', width: 800, height: 600});
-            doc.addImage(img3DUrl, 'PNG', 15, yPos, pageWidth - 30, 130);
+            for (let i = 0; i < window.pdf3DCaptures.length; i++) {
+                if (yPos + 110 > 280) { doc.addPage(); yPos = 20; }
+                doc.addImage(window.pdf3DCaptures[i], 'PNG', 15, yPos, pageWidth - 30, 105);
+                yPos += 115;
+            }
         }
 
-        // --- ENREGISTREMENT ---
+        // --- ENREGISTREMENT DU FICHIER ---
         doc.save(`TopoProfiler_Rapport_${Date.now()}.pdf`);
         
     } catch (error) {
