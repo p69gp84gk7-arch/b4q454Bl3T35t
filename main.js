@@ -301,16 +301,12 @@ function isPointInPolygon(point, vs) {
     return inside;
 }
 
-// --- NOUVEAU MOTEUR : TRIANGULATION LOCALE (3 POINTS LES PLUS PROCHES) ---
+// --- MOTEUR 1 : FACETTES EXACTES (3 POINTS LES PLUS PROCHES) ---
 window.GetZFrom3Closest = (x, y, borderPts) => {
     if (borderPts.length < 3) return borderPts[0]?.z || 0;
-    
-    // On trie tous les points du bord du plus proche au plus éloigné de notre pixel
     let pts = borderPts.map(p => ({ pt: p, dist2: (p.x - x)**2 + (p.y - y)**2 })).sort((a, b) => a.dist2 - b.dist2);
-    
     let A = pts[0].pt, B = null, C = null;
     
-    // On cherche les 2 points suivants qui forment un vrai triangle avec A (non alignés)
     for (let i = 1; i < pts.length; i++) {
         if (!B) { B = pts[i].pt; continue; }
         let cand = pts[i].pt;
@@ -318,20 +314,28 @@ window.GetZFrom3Closest = (x, y, borderPts) => {
         if (Math.abs(cross) > 0.01) { C = cand; break; }
     }
     
-    // Si tout est en ligne droite parfaite, moyenne simple
     if (!C) {
-        let dA = Math.max(0.001, Math.sqrt(pts[0].dist2));
-        let dB = Math.max(0.001, Math.sqrt(pts[1].dist2));
+        let dA = Math.max(0.001, Math.sqrt(pts[0].dist2)); let dB = Math.max(0.001, Math.sqrt(pts[1].dist2));
         return (A.z / dA + pts[1].pt.z / dB) / (1/dA + 1/dB);
     }
     
-    // Calcul de l'altitude Z exacte sur la facette 3D formée par ces 3 points
     let Nx = (B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y);
     let Ny = (B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z);
     let Nz = (B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x);
-    
     if (Math.abs(Nz) < 1e-9) return A.z; 
     return A.z - (Nx * (x - A.x) + Ny * (y - A.y)) / Nz;
+};
+
+// --- MOTEUR 2 : COURBE LISSÉE GLOBALE (SANS PICS) ---
+window.GetSmoothZ = (x, y, borderPts) => {
+    let sumZ = 0, sumW = 0;
+    for (let pt of borderPts) {
+        let d = Math.hypot(x - pt.x, y - pt.y);
+        // Puissance 1.5 : Lissage parfait type "voile tendu", max(0.05) empêche le pic mathématique au centre
+        let w = 1 / Math.pow(Math.max(d, 0.05), 1.5); 
+        sumZ += pt.z * w; sumW += w;
+    }
+    return sumW === 0 ? (borderPts[0]?.z || 0) : sumZ / sumW;
 };
 
 window.calculateVolume = (id, type) => {
@@ -357,7 +361,6 @@ window.calculateVolume = (id, type) => {
 
     setTimeout(() => {
         let tTas = 0, tCreux = 0, step = 1;
-        let smoothingEpsilon = Math.max(0.5, ((maxX - minX) * (maxY - minY)) / 1000);
 
         for (let x = minX; x <= maxX; x += step) {
             for (let y = minY; y <= maxY; y += step) {
@@ -366,11 +369,9 @@ window.calculateVolume = (id, type) => {
                     let zB = null;
                     
                     if (type==='plane') {
-                        zB = window.GetZFrom3Closest(x, y, border); // Utilisation du nouveau moteur !
+                        zB = window.GetZFrom3Closest(x, y, border);
                     } else if (type==='slope') {
-                        let sZ=0, sW=0, ex=false;
-                        for(let b of border) { let d2=(x-b.x)**2+(y-b.y)**2; if(d2<0.01) { zB=b.z; ex=true; break; } let w=1/Math.sqrt(d2 + smoothingEpsilon); sZ+=b.z*w; sW+=w; }
-                        if(!ex) zB = sZ/sW;
+                        zB = window.GetSmoothZ(x, y, border);
                     } else { zB = refZ; }
                     
                     if(zM > zB) tTas += (zM - zB); else if(zM < zB) tCreux += (zB - zM);
@@ -381,8 +382,8 @@ window.calculateVolume = (id, type) => {
         let color = '#fff', lbl = ''; let resTxt = '';
         if(type === 'hollow') { color = '#3498db'; lbl = `Déblai (${refZ.toFixed(2)}m)`; resTxt = `${tCreux.toFixed(2)} m³`; }
         if(type === 'mound') { color = '#e67e22'; lbl = `Remblai (${refZ.toFixed(2)}m)`; resTxt = `${tTas.toFixed(2)} m³`; }
-        if(type === 'slope') { color = '#9b59b6'; lbl = `Vol. Courbe (Lissé)`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
-        if(type === 'plane') { color = '#1abc9c'; lbl = `Vol. Plan (Facettes locales)`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
+        if(type === 'slope') { color = '#9b59b6'; lbl = `Vol. Courbe (Lissé Tendu)`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
+        if(type === 'plane') { color = '#1abc9c'; lbl = `Vol. Plan (Facettes Locales)`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
 
         if (!d.volumeHtml) d.volumeHtml = "";
         d.volumeHtml += `<div style="font-size:12px; margin-top:4px; background:#1a1a1a; padding:4px; border-radius:3px; border-left:3px solid ${color};"><b style="color:${color};">${lbl} :</b> ${resTxt}</div>`;
@@ -390,7 +391,7 @@ window.calculateVolume = (id, type) => {
     }, 50);
 };
 // ==========================================
-// 7. VUE 3D PARFAITE (TIN LOCAL : 3 POINTS LES PLUS PROCHES)
+// 7. VUE 3D PARFAITE (TIN LOCAL & LISSAGE SANS PICS)
 // ==========================================
 
 window.close3DWindow = () => {
@@ -425,7 +426,7 @@ window.generate3DView = (id) => {
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération 3D (Facettes exactes)... ⏳</h3>';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération 3D (Facettes & Lissage)... ⏳</h3>';
 
     setTimeout(() => {
         const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
@@ -438,8 +439,6 @@ window.generate3DView = (id) => {
         let step = 0.25; 
         if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
         if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
-        
-        let smoothingEpsilon = Math.max(0.5, ((maxX - minX) * (maxY - minY)) / 1000);
 
         let xVals = [], yVals = [], zTerrain = [], zRefPlan = [], zRefCourbe = [];
         for (let x = minX; x <= maxX; x += step) xVals.push(x - minX);
@@ -450,17 +449,8 @@ window.generate3DView = (id) => {
             for (let x = minX; x <= maxX; x += step) {
                 if (isPointInPolygon([x, y], l93Pts)) {
                     let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
-                    
-                    // Le plan devient parfait grâce au calcul local des 3 points les plus proches
                     rowPlan.push(window.GetZFrom3Closest(x, y, borderPtsWithZ));
-                    
-                    // Courbe (Lissée)
-                    let sumZ = 0, sumW = 0, exactMatch = false, zC = 0;
-                    for (let pt of borderPtsWithZ) { 
-                        let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 < 0.01) { zC = pt.z; exactMatch = true; break; } 
-                        let w = 1 / Math.sqrt(d2 + smoothingEpsilon); sumZ += pt.z * w; sumW += w; 
-                    }
-                    if (!exactMatch) zC = sumZ / sumW; rowCourbe.push(zC);
+                    rowCourbe.push(window.GetSmoothZ(x, y, borderPtsWithZ));
                 } else { rowTerrain.push(null); rowPlan.push(null); rowCourbe.push(null); }
             }
             zTerrain.push(rowTerrain); zRefPlan.push(rowPlan); zRefCourbe.push(rowCourbe);
@@ -547,7 +537,6 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
 
             let baseStep = 0.25; let step = baseStep * Math.sqrt(numFeatures); 
             if ((maxX - minX) / step > 600) step = (maxX - minX) / 600; if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
-            let smoothingEpsilon = Math.max(0.5, ((maxX - minX) * (maxY - minY)) / 1000);
 
             let xVals = [], yVals = [];
             for (let x = minX; x <= maxX; x += step) xVals.push(x - globalMinX);
@@ -559,12 +548,8 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
                 for (let x = minX; x <= maxX; x += step) {
                     if (isPointInPolygon([x, y], l93Pts)) {
                         let zMNT = getZ([x, y]); rT.push(zMNT !== null ? zMNT : null); 
-                        
                         rP.push(window.GetZFrom3Closest(x, y, borderPtsWithZ));
-
-                        let sumZ = 0, sumW = 0, exactMatch = false, zC = 0;
-                        for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 < 0.01) { zC = pt.z; exactMatch = true; break; } let w = 1 / Math.sqrt(d2 + smoothingEpsilon); sumZ += pt.z * w; sumW += w; }
-                        if (!exactMatch) zC = sumZ / sumW; rC.push(zC);
+                        rC.push(window.GetSmoothZ(x, y, borderPtsWithZ));
                     } else { rT.push(null); rP.push(null); rC.push(null); }
                 }
                 zTerrain.push(rT); zPlan.push(rP); zCourbe.push(rC);
