@@ -994,6 +994,120 @@ window.copyProjectToWorkspace = (pid) => {
     updateDrawUI();
     alert(`✅ Projet "${p.name}" copié avec succès dans l'espace de travail à droite !`);
 };
+// ==========================================
+// 11. AIDE ET EXPORT RAPPORT PDF
+// ==========================================
+
+// Rendre la fenêtre d'aide déplaçable (utilise la fonction dragElement existante)
+setTimeout(() => { if(typeof dragElement === 'function') dragElement('help-window', 'help-header'); }, 1000);
+
+window.generatePDFReport = async () => {
+    // Vérification qu'il y a des données à exporter
+    if (drawStore.length === 0) return alert("Veuillez tracer au moins un élément avant de générer un rapport.");
+    
+    const btn = document.querySelector('button[onclick="generatePDFReport()"]');
+    const originalText = btn.innerText;
+    btn.innerText = "⏳ Création du PDF..."; btn.disabled = true;
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4'); // Format A4 portrait
+        const pageWidth = doc.internal.pageSize.getWidth();
+        let yPos = 20;
+
+        // --- EN-TÊTE DU RAPPORT ---
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(22);
+        doc.setTextColor(41, 128, 185); // Bleu
+        doc.text("RAPPORT TOPOGRAPHIQUE", pageWidth / 2, yPos, { align: "center" });
+        
+        yPos += 10;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.setTextColor(100, 100, 100);
+        const date = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        doc.text(`Généré le : ${date}`, pageWidth / 2, yPos, { align: "center" });
+        yPos += 20;
+
+        // --- 1. CAPTURE DES STATISTIQUES (Étiquettes) ---
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        doc.text("1. Synthèse des mesures et volumes", 15, yPos);
+        yPos += 10;
+
+        // On crée une div temporaire invisible pour mettre au propre les stats en HTML et les photographier
+        const tempDiv = document.createElement('div');
+        tempDiv.style.width = '800px'; 
+        tempDiv.style.padding = '20px';
+        tempDiv.style.background = 'white';
+        tempDiv.style.color = 'black';
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        
+        drawStore.forEach(d => {
+            let cleanStats = d.statsHtml.replace(/color:#f1c40f;/g, 'color:#2980b9;'); // Adapte les couleurs sombres pour l'impression blanche
+            tempDiv.innerHTML += `
+                <div style="border-left: 4px solid ${d.color}; padding-left: 10px; margin-bottom: 15px; font-family: sans-serif;">
+                    <h3 style="margin: 0 0 5px 0;">${d.name}</h3>
+                    <div style="font-size: 14px;">${cleanStats}</div>
+                </div>
+            `;
+        });
+        document.body.appendChild(tempDiv);
+
+        // Capture des stats en image
+        const canvasStats = await html2canvas(tempDiv, { scale: 2, useCORS: true });
+        const imgStats = canvasStats.toDataURL("image/png");
+        document.body.removeChild(tempDiv);
+
+        const statsHeight = (canvasStats.height * (pageWidth - 30)) / canvasStats.width;
+        doc.addImage(imgStats, 'PNG', 15, yPos, pageWidth - 30, statsHeight);
+        yPos += statsHeight + 20;
+
+        // Gestion des sauts de page
+        if (yPos > 250) { doc.addPage(); yPos = 20; }
+
+        // --- 2. CAPTURE DE LA VUE 3D (Si ouverte) ---
+        const plot3D = document.getElementById('plot-3d');
+        if (document.getElementById('window-3d').style.display !== 'none' && plot3D && plot3D.data) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.text("2. Rendu 3D Altimétrique", 15, yPos);
+            yPos += 10;
+
+            // Plotly permet d'exporter directement son graphique en image très proprement !
+            const img3DUrl = await Plotly.toImage(plot3D, {format: 'png', width: 800, height: 600});
+            doc.addImage(img3DUrl, 'PNG', 15, yPos, pageWidth - 30, 130);
+            yPos += 140;
+        }
+
+        if (yPos > 200) { doc.addPage(); yPos = 20; }
+
+        // --- 3. CAPTURE DU PROFIL ALTIMÉTRIQUE (Si ouvert) ---
+        const profileWin = document.getElementById('profile-window');
+        const profileChart = document.getElementById('profile-chart');
+        if (profileWin && profileWin.style.display !== 'none' && profileChart && profileChart.data) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.text("3. Profil Altimétrique", 15, yPos);
+            yPos += 10;
+
+            const imgProfileUrl = await Plotly.toImage(profileChart, {format: 'png', width: 800, height: 400});
+            doc.addImage(imgProfileUrl, 'PNG', 15, yPos, pageWidth - 30, 100);
+        }
+
+        // --- SAUVEGARDE DU FICHIER ---
+        doc.save(`Rapport_Topo_${Date.now()}.pdf`);
+        
+    } catch (error) {
+        console.error("Erreur lors de l'export PDF :", error);
+        alert("Une erreur est survenue lors de la génération du PDF.");
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+};
 
 // --- ACTIONS SUR LES PROJETS (AFFICHAGE / SUPPRESSION) ---
 window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } }); updateProjectUI(); };
