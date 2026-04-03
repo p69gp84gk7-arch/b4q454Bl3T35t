@@ -371,7 +371,7 @@ window.calculateVolume = (id, type) => {
 };
 
 // ==========================================
-// 7. VUE 3D PARFAITE (SURFACES + SUIVI SOURIS)
+// 7. VUE 3D PARFAITE (PLAN + COURBE + MENU GAUCHE)
 // ==========================================
 
 window.close3DWindow = () => {
@@ -391,7 +391,7 @@ window.generate3DView = (id) => {
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul des surfaces 3D en cours... ⏳</h3>';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul des volumes 3D en cours... ⏳</h3>';
 
     setTimeout(() => {
         const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
@@ -399,14 +399,12 @@ window.generate3DView = (id) => {
         l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
 
         let borderPtsWithZ = [];
-        
-        // CORRECTION 1 : On prend en compte le Z édité (customZ) s'il existe !
         l93Pts.forEach((p, i) => { 
             let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); 
             if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); 
         });
 
-        // CORRECTION 2 : Calcul strict de l'équation du plan (base plate, pas de courbe)
+        // 1. Calcul de l'équation du "Plan" strict
         let aR = 0, bR = 0, cR = 0;
         if (borderPtsWithZ.length >= 3) {
             let sX = 0, sY = 0, sZ = 0; borderPtsWithZ.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
@@ -421,30 +419,38 @@ window.generate3DView = (id) => {
         const maxResolution = 50; 
         const step = Math.max(1, (maxX - minX) / maxResolution, (maxY - minY) / maxResolution);
 
-        let xVals = [], yVals = [], zTerrain = [], zRefPlane = [];
+        let xVals = [], yVals = [], zTerrain = [], zRefPlan = [], zRefCourbe = [];
 
-        // CORRECTION 3 : Axes en mètres relatifs (on soustrait le minX / minY de départ)
         for (let x = minX; x <= maxX; x += step) xVals.push(x - minX);
 
         for (let y = minY; y <= maxY; y += step) {
             yVals.push(y - minY);
-            let rowTerrain = [], rowRef = [];
+            let rowTerrain = [], rowPlan = [], rowCourbe = [];
             
             for (let x = minX; x <= maxX; x += step) {
                 if (isPointInPolygon([x, y], l93Pts)) {
+                    // A. Terrain
                     let zMNT = getZ([x, y]);
                     rowTerrain.push(zMNT !== null ? zMNT : null);
 
-                    // On applique l'équation de notre base parfaitement plate
-                    let zBase = aR * x + bR * y + cR;
-                    rowRef.push(zBase);
+                    // B. Plan Strict (Pour volume "Plan")
+                    rowPlan.push(aR * x + bR * y + cR);
+
+                    // C. Courbe pondérée (Pour volume "Courbe")
+                    let sumZ = 0, sumW = 0, exactMatch = false, zC = 0;
+                    for (let pt of borderPtsWithZ) { 
+                        let d2 = (x - pt.x)**2 + (y - pt.y)**2; 
+                        if (d2 === 0) { zC = pt.z; exactMatch = true; break; } 
+                        let w = 1 / d2; sumZ += pt.z * w; sumW += w; 
+                    }
+                    if (!exactMatch) zC = sumZ / sumW;
+                    rowCourbe.push(zC);
+
                 } else {
-                    rowTerrain.push(null);
-                    rowRef.push(null);
+                    rowTerrain.push(null); rowPlan.push(null); rowCourbe.push(null);
                 }
             }
-            zTerrain.push(rowTerrain);
-            zRefPlane.push(rowRef);
+            zTerrain.push(rowTerrain); zRefPlan.push(rowPlan); zRefCourbe.push(rowCourbe);
         }
 
         let xBound = [], yBound = [], zBound = [];
@@ -453,18 +459,18 @@ window.generate3DView = (id) => {
             xBound.push(borderPtsWithZ[0].x - minX); yBound.push(borderPtsWithZ[0].y - minY); zBound.push(borderPtsWithZ[0].z);
         }
 
-        // CORRECTION 4 : Ergonomie, template de survol propre
         let hoverTemp = 'X: %{x:.1f} m<br>Y: %{y:.1f} m<br>Z: %{z:.1f} m<extra></extra>';
 
+        // Création des 4 traces
         const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain', colorscale: 'Earth', showscale: false, hovertemplate: hoverTemp };
-        const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: 'Plan Calculé', colorscale: 'Blues', showscale: false, opacity: 0.6, hovertemplate: hoverTemp };
+        const tracePlan = { z: zRefPlan, x: xVals, y: yVals, type: 'surface', name: 'Base Plan', colorscale: 'Blues', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false }; // Masqué par défaut
+        const traceCourbe = { z: zRefCourbe, x: xVals, y: yVals, type: 'surface', name: 'Base Courbe', colorscale: 'Greens', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false }; // Masqué par défaut
         const traceContour = { x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: 'red', width: 6 }, type: 'scatter3d', name: 'Contour', hovertemplate: hoverTemp };
 
         const layout = { 
-            margin: { l: 0, r: 0, b: 0, t: 40 }, // Marge pour que les boutons ne chevauchent pas le graph
+            margin: { l: 0, r: 0, b: 0, t: 0 }, 
             scene: { 
-                aspectmode: 'manual', 
-                aspectratio: {x: 1, y: 1, z: 0.5}, // Tasse légèrement le Z pour mieux apprécier la surface
+                aspectmode: 'data', // L'échelle est maintenant strictement 1:1:1 avec la réalité !
                 xaxis: { title: 'Largeur (m)', tickformat: '.0f', backgroundcolor: '#222', gridcolor: '#444' },
                 yaxis: { title: 'Longueur (m)', tickformat: '.0f', backgroundcolor: '#222', gridcolor: '#444' },
                 zaxis: { title: 'Altitude (m)', tickformat: '.1f', backgroundcolor: '#222', gridcolor: '#444' }
@@ -472,22 +478,35 @@ window.generate3DView = (id) => {
             paper_bgcolor: '#222', 
             font: { color: 'white' }, 
             hovermode: 'closest',
+            // Menu positionné à gauche et en colonne
             updatemenus: [{
-                type: 'buttons', direction: 'right', x: 0.05, y: 1.05, showactive: true,
+                type: 'buttons',
+                direction: 'down', // Empilement vertical
+                x: 0.02, // Totalement à gauche
+                y: 0.95, // En haut
+                xanchor: 'left',
+                yanchor: 'top',
+                bgcolor: 'rgba(30, 30, 30, 0.8)', // Fond semi-transparent pour bien lire
+                bordercolor: '#555',
+                font: { color: 'white', size: 11 },
+                showactive: true,
                 buttons: [
-                    { label: 'Tout Afficher', method: 'update', args: [{'visible': [true, true, true]}] },
-                    { label: 'Masquer Plan', method: 'update', args: [{'visible': [true, false, true]}] },
-                    { label: 'Masquer Terrain', method: 'update', args: [{'visible': [false, true, true]}] }
+                    { label: 'Terrain Seul', method: 'update', args: [{'visible': [true, false, false, true]}] },
+                    { label: 'Terrain + Plan', method: 'update', args: [{'visible': [true, true, false, true]}] },
+                    { label: 'Terrain + Courbe', method: 'update', args: [{'visible': [true, false, true, true]}] },
+                    { label: 'Plan Seul', method: 'update', args: [{'visible': [false, true, false, true]}] },
+                    { label: 'Courbe Seule', method: 'update', args: [{'visible': [false, false, true, true]}] },
+                    { label: 'Tout Superposer', method: 'update', args: [{'visible': [true, true, true, true]}] }
                 ]
             }]
         };
         
-        Plotly.newPlot('plot-3d', [traceTerrain, traceRef, traceContour], layout).then(() => {
+        // On envoie les 4 traces au graphique
+        Plotly.newPlot('plot-3d', [traceTerrain, tracePlan, traceCourbe, traceContour], layout).then(() => {
             const plotDiv = document.getElementById('plot-3d');
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
                     const pt = data.points[0]; 
-                    // On rajoute minX et minY pour que le point rouge sur la carte 2D se place au bon endroit
                     const realX = pt.x + minX;
                     const realY = pt.y + minY;
                     const gps = proj4("EPSG:2154", "EPSG:4326", [realX, realY]);
