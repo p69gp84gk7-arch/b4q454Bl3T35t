@@ -467,9 +467,50 @@ window.close3DWindow = () => {
 
 window.open3DInNewTab = () => {
     const plotDiv = document.getElementById('plot-3d');
+    const controlsDiv = document.getElementById('custom-3d-controls');
     if (!plotDiv || !plotDiv.data) return alert("Veuillez d'abord générer une vue 3D.");
+    
     const newTab = window.open('', '_blank');
-    newTab.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Vue 3D - Plein Écran</title><script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script><style>body { margin: 0; padding: 0; background-color: #222; overflow: hidden; color: white; font-family: sans-serif; } #plot-fullscreen { width: 100vw; height: 100vh; } #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5em; }</style></head><body><div id="loading">Génération de la 3D... ⏳</div><div id="plot-fullscreen"></div><script>window.onload = () => { const parentPlot = window.opener.document.getElementById('plot-3d'); if (parentPlot && parentPlot.data) { const data = JSON.parse(JSON.stringify(parentPlot.data)); const layout = JSON.parse(JSON.stringify(parentPlot.layout)); layout.margin = { l: 0, r: 0, b: 0, t: 0 }; if (layout.updatemenus) delete layout.updatemenus; document.getElementById('loading').style.display = 'none'; Plotly.newPlot('plot-fullscreen', data, layout); } else { document.getElementById('loading').innerText = "Erreur."; } };</script></body></html>`);
+    
+    // On copie le HTML du panneau de contrôle, mais on redirige les clics vers 'plot-fullscreen' au lieu de 'plot-3d'
+    let controlsHtml = controlsDiv ? controlsDiv.innerHTML.replace(/'plot-3d'/g, "'plot-fullscreen'") : '';
+    
+    newTab.document.write(`
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+            <meta charset="UTF-8">
+            <title>Vue 3D - Plein Écran</title>
+            <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+            <style>
+                body { margin: 0; padding: 0; background-color: #222; overflow: hidden; color: white; font-family: sans-serif; } 
+                #plot-fullscreen { width: 100vw; height: 100vh; } 
+                #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5em; }
+                #custom-3d-controls { position:absolute; top:20px; left:20px; z-index:1000; background:rgba(20,20,20,0.85); padding:12px; border:1px solid #555; border-radius:5px; font-size:13px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); backdrop-filter: blur(3px); max-height:80%; overflow-y:auto; }
+            </style>
+        </head>
+        <body>
+            <div id="loading">Transfert de la 3D en cours... ⏳</div>
+            <div id="custom-3d-controls">${controlsHtml}</div>
+            <div id="plot-fullscreen"></div>
+            <script>
+                window.onload = () => { 
+                    const parentPlot = window.opener.document.getElementById('plot-3d'); 
+                    if (parentPlot && parentPlot.data) { 
+                        const data = JSON.parse(JSON.stringify(parentPlot.data)); 
+                        const layout = JSON.parse(JSON.stringify(parentPlot.layout)); 
+                        layout.margin = { l: 0, r: 0, b: 0, t: 0 }; 
+                        if (layout.updatemenus) delete layout.updatemenus; 
+                        document.getElementById('loading').style.display = 'none'; 
+                        Plotly.newPlot('plot-fullscreen', data, layout); 
+                    } else { 
+                        document.getElementById('loading').innerText = "Erreur."; 
+                    } 
+                };
+            </script>
+        </body>
+        </html>
+    `);
     newTab.document.close();
     window.close3DWindow();
 };
@@ -995,120 +1036,183 @@ window.copyProjectToWorkspace = (pid) => {
     alert(`✅ Projet "${p.name}" copié avec succès dans l'espace de travail à droite !`);
 };
 // ==========================================
-// 11. AIDE ET EXPORT RAPPORT PDF
+// 11. AIDE ET EXPORT RAPPORT PDF COMPLET
 // ==========================================
 
-// Rendre la fenêtre d'aide déplaçable (utilise la fonction dragElement existante)
 setTimeout(() => { if(typeof dragElement === 'function') dragElement('help-window', 'help-header'); }, 1000);
 
 window.generatePDFReport = async () => {
-    // Vérification qu'il y a des données à exporter
-    if (drawStore.length === 0) return alert("Veuillez tracer au moins un élément avant de générer un rapport.");
+    let allFeatures = [...drawStore, ...projectStore.flatMap(p => p.features.filter(f => f.visible))];
+    if (allFeatures.length === 0) return alert("Veuillez tracer ou charger au moins un élément avant de générer un rapport.");
     
     const btn = document.querySelector('button[onclick="generatePDFReport()"]');
     const originalText = btn.innerText;
-    btn.innerText = "⏳ Création du PDF..."; btn.disabled = true;
+    btn.innerText = "⏳ Génération PDF en cours..."; btn.disabled = true;
 
     try {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4'); // Format A4 portrait
+        const doc = new jsPDF('p', 'mm', 'a4');
         const pageWidth = doc.internal.pageSize.getWidth();
         let yPos = 20;
 
-        // --- EN-TÊTE DU RAPPORT ---
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(22);
-        doc.setTextColor(41, 128, 185); // Bleu
+        // --- EN-TÊTE ---
+        doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(41, 128, 185);
         doc.text("RAPPORT TOPOGRAPHIQUE", pageWidth / 2, yPos, { align: "center" });
-        
         yPos += 10;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        doc.setTextColor(100, 100, 100);
-        const date = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-        doc.text(`Généré le : ${date}`, pageWidth / 2, yPos, { align: "center" });
+        doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(100, 100, 100);
+        doc.text(`Généré le : ${new Date().toLocaleString('fr-FR')}`, pageWidth / 2, yPos, { align: "center" });
         yPos += 20;
 
-        // --- 1. CAPTURE DES STATISTIQUES (Étiquettes) ---
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
-        doc.setTextColor(0, 0, 0);
-        doc.text("1. Synthèse des mesures et volumes", 15, yPos);
+        // --- 1. CARTE CENTRÉE ---
+        doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(0, 0, 0);
+        doc.text("1. Vue Planimétrique (Carte)", 15, yPos);
+        yPos += 8;
+
+        // Centrage de la carte
+        let allLayers = allFeatures.map(d => d.layer);
+        if (allLayers.length > 0) {
+            const group = L.featureGroup(allLayers);
+            map.fitBounds(group.getBounds(), { padding: [20, 20] });
+            await new Promise(r => setTimeout(r, 1200)); // Attente du chargement des tuiles
+        }
+
+        const mapDiv = document.getElementById('map');
+        const canvasMap = await html2canvas(mapDiv, { useCORS: true, ignoreElements: (el) => el.classList.contains('leaflet-control-container') });
+        const mapHeight = (canvasMap.height * (pageWidth - 30)) / canvasMap.width;
+        let finalMapHeight = mapHeight > 110 ? 110 : mapHeight; // Limite la hauteur
+        doc.addImage(canvasMap.toDataURL("image/png"), 'PNG', 15, yPos, pageWidth - 30, finalMapHeight);
+        yPos += finalMapHeight + 15;
+
+        // --- 2. STATISTIQUES ET VOLUMES (Conversion Dark -> Light) ---
+        if (yPos > 240) { doc.addPage(); yPos = 20; }
+        doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text("2. Synthèse des Mesures", 15, yPos);
         yPos += 10;
 
-        // On crée une div temporaire invisible pour mettre au propre les stats en HTML et les photographier
         const tempDiv = document.createElement('div');
-        tempDiv.style.width = '800px'; 
-        tempDiv.style.padding = '20px';
-        tempDiv.style.background = 'white';
-        tempDiv.style.color = 'black';
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '-9999px';
+        tempDiv.style.cssText = 'width:800px; padding:20px; background:white; color:black; position:absolute; left:-9999px;';
         
-        drawStore.forEach(d => {
-            let cleanStats = d.statsHtml.replace(/color:#f1c40f;/g, 'color:#2980b9;'); // Adapte les couleurs sombres pour l'impression blanche
-            tempDiv.innerHTML += `
-                <div style="border-left: 4px solid ${d.color}; padding-left: 10px; margin-bottom: 15px; font-family: sans-serif;">
-                    <h3 style="margin: 0 0 5px 0;">${d.name}</h3>
-                    <div style="font-size: 14px;">${cleanStats}</div>
-                </div>
-            `;
+        allFeatures.forEach(d => {
+            // Remplacement des couleurs HTML pour impression PDF
+            let cleanStats = (d.statsHtml || "Aucune donnée")
+                .replace(/color:#f1c40f/g, 'color:#d35400') // Jaune devient Orange foncé
+                .replace(/color:#eee/g, 'color:#333') 
+                .replace(/color:#ddd/g, 'color:#333')
+                .replace(/color:#fff/g, 'color:#111')
+                .replace(/color:white/g, 'color:#111')
+                .replace(/background:#222/g, 'background:#f9f9f9; border:1px solid #ccc')
+                .replace(/background:#1a1a1a/g, 'background:#f0f0f0; border:1px solid #ccc');
+                
+            tempDiv.innerHTML += `<div style="border-left: 6px solid ${d.color}; padding-left: 15px; margin-bottom: 20px; font-family: sans-serif;"><h3 style="margin: 0 0 5px 0; color:#2c3e50; font-size:22px;">${d.name}</h3><div style="font-size: 16px; color:#333; line-height:1.5;">${cleanStats}</div></div>`;
         });
         document.body.appendChild(tempDiv);
-
-        // Capture des stats en image
-        const canvasStats = await html2canvas(tempDiv, { scale: 2, useCORS: true });
+        const canvasStats = await html2canvas(tempDiv, { scale: 2 });
         const imgStats = canvasStats.toDataURL("image/png");
         document.body.removeChild(tempDiv);
 
         const statsHeight = (canvasStats.height * (pageWidth - 30)) / canvasStats.width;
+        if(yPos + statsHeight > 280) { doc.addPage(); yPos = 20; }
         doc.addImage(imgStats, 'PNG', 15, yPos, pageWidth - 30, statsHeight);
-        yPos += statsHeight + 20;
+        yPos += statsHeight + 15;
 
-        // Gestion des sauts de page
-        if (yPos > 250) { doc.addPage(); yPos = 20; }
-
-        // --- 2. CAPTURE DE LA VUE 3D (Si ouverte) ---
-        const plot3D = document.getElementById('plot-3d');
-        if (document.getElementById('window-3d').style.display !== 'none' && plot3D && plot3D.data) {
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(14);
-            doc.text("2. Rendu 3D Altimétrique", 15, yPos);
+        // --- 3. PROFILS ALTIMÉTRIQUES (Génération Silencieuse) ---
+        let lines = allFeatures.filter(d => d.type === 'line');
+        if (lines.length > 0) {
+            if (yPos > 240) { doc.addPage(); yPos = 20; }
+            doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text("3. Profils Altimétriques", 15, yPos);
             yPos += 10;
 
-            // Plotly permet d'exporter directement son graphique en image très proprement !
-            const img3DUrl = await Plotly.toImage(plot3D, {format: 'png', width: 800, height: 600});
+            for (let line of lines) {
+                let dists = [0], zVals = [], totalDist = 0;
+                const l93 = line.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+                zVals.push(line.ptsGPS[0].customZ !== undefined ? line.ptsGPS[0].customZ : (getZ(l93[0])||0));
+                for (let i = 1; i < l93.length; i++) {
+                    totalDist += Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
+                    dists.push(totalDist);
+                    zVals.push(line.ptsGPS[i].customZ !== undefined ? line.ptsGPS[i].customZ : (getZ(l93[i])||0));
+                }
+                
+                let trace = { x: dists, y: zVals, mode: 'lines+markers', fill: 'tozeroy', type: 'scatter', marker: {color: line.color}, name: line.name };
+                let layout = { title: { text: `Profil : ${line.name}`, font: {size: 14} }, xaxis: {title: 'Distance (m)'}, yaxis: {title: 'Altitude (m)'}, margin: {t:40, b:40, l:40, r:20}, plot_bgcolor: '#fff', paper_bgcolor: '#fff' };
+                
+                let imgUrl = await Plotly.toImage({data: [trace], layout: layout}, {format: 'png', width: 800, height: 350});
+                
+                if (yPos + 75 > 280) { doc.addPage(); yPos = 20; }
+                doc.addImage(imgUrl, 'PNG', 15, yPos, pageWidth - 30, 75);
+                yPos += 80;
+            }
+        }
+
+        // --- 4. RENDU 3D MULTIVUE (Génération Silencieuse) ---
+        let areas = allFeatures.filter(d => d.type === 'area' || d.type === 'circle');
+        if (areas.length > 0 && mntStore.filter(m => m.visible).length > 0) {
+            if (yPos > 180) { doc.addPage(); yPos = 20; }
+            doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text("4. Modélisation 3D (TIN & Lissage)", 15, yPos);
+            yPos += 10;
+
+            // On utilise la mécanique de ta Section 7 pour construire silencieusement les traces
+            let allTraces = [];
+            let globalMinX = Infinity, globalMinY = Infinity;
+            areas.forEach(d => { d.ptsGPS.forEach(p => { const l93 = proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]); if (l93[0] < globalMinX) globalMinX = l93[0]; if (l93[1] < globalMinY) globalMinY = l93[1]; }); });
+
+            areas.forEach((d, index) => {
+                const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
+                let borderPtsWithZ = []; l93Pts.forEach((p, i) => { let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
+
+                let triangles = window.TriangulateDelaunay ? window.TriangulateDelaunay(borderPtsWithZ, l93Pts) : [];
+                let step = 0.5; // On calcule à 0.5m pour la photo PDF pour éviter de saturer la RAM
+                if ((maxX - minX) / step > 300) step = (maxX - minX) / 300; 
+                minX -= step*2; maxX += step*2; minY -= step*2; maxY += step*2;
+
+                let xVals = [], yVals = [], zTerrain = [], zPlan = [];
+                for (let x = minX; x <= maxX; x += step) xVals.push(x - globalMinX);
+                for (let y = minY; y <= maxY; y += step) {
+                    yVals.push(y - globalMinY); let rT = [], rP = [];
+                    for (let x = minX; x <= maxX; x += step) {
+                        if (isPointInPolygon([x, y], l93Pts)) {
+                            rT.push(getZ([x, y]) || null);
+                            let zP = null, bestDist = Infinity, bestTri = null;
+                            for(let tri of triangles) {
+                                if (window.IsPointInTri && window.IsPointInTri(x, y, tri[0].x, tri[0].y, tri[1].x, tri[1].y, tri[2].x, tri[2].y)) { zP = window.GetZOnTriangle(x, y, tri[0], tri[1], tri[2]); break; }
+                                let cx=(tri[0].x+tri[1].x+tri[2].x)/3, cy=(tri[0].y+tri[1].y+tri[2].y)/3, d2=(x-cx)**2+(y-cy)**2;
+                                if(d2 < bestDist) { bestDist = d2; bestTri = tri; }
+                            }
+                            if (zP === null && bestTri && window.GetZOnTriangle) zP = window.GetZOnTriangle(x, y, bestTri[0], bestTri[1], bestTri[2]);
+                            rP.push(zP);
+                        } else { rT.push(null); rP.push(null); }
+                    }
+                    zTerrain.push(rT); zPlan.push(rP);
+                }
+                
+                let xBound = [], yBound = [], zBound = [];
+                borderPtsWithZ.forEach(pt => { xBound.push(pt.x - globalMinX); yBound.push(pt.y - globalMinY); zBound.push(pt.z); });
+                if (borderPtsWithZ.length > 0) { xBound.push(borderPtsWithZ[0].x - globalMinX); yBound.push(borderPtsWithZ[0].y - globalMinY); zBound.push(borderPtsWithZ[0].z); }
+
+                let colors = colorScalesPool[index % colorScalesPool.length];
+                allTraces.push({ z: zTerrain, x: xVals, y: yVals, type: 'surface', name: `Terrain (${d.name})`, colorscale: 'Earth', showscale: false });
+                allTraces.push({ z: zPlan, x: xVals, y: yVals, type: 'surface', name: `Plan (${d.name})`, colorscale: colors.p, showscale: false, opacity: 0.8 });
+                allTraces.push({ x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: 'red', width: 6 }, type: 'scatter3d', name: `Contour (${d.name})` });
+            });
+
+            // Scène 3D fond blanc pour l'impression
+            const layout3D = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', xaxis: { title: 'X', backgroundcolor: '#fff', gridcolor:'#ccc' }, yaxis: { title: 'Y', backgroundcolor: '#fff', gridcolor:'#ccc' }, zaxis: { title: 'Z', backgroundcolor: '#fff', gridcolor:'#ccc' } }, paper_bgcolor: '#fff', font: { color: 'black' } };
+            
+            let img3DUrl = await Plotly.toImage({data: allTraces, layout: layout3D}, {format: 'png', width: 800, height: 600});
             doc.addImage(img3DUrl, 'PNG', 15, yPos, pageWidth - 30, 130);
-            yPos += 140;
         }
 
-        if (yPos > 200) { doc.addPage(); yPos = 20; }
-
-        // --- 3. CAPTURE DU PROFIL ALTIMÉTRIQUE (Si ouvert) ---
-        const profileWin = document.getElementById('profile-window');
-        const profileChart = document.getElementById('profile-chart');
-        if (profileWin && profileWin.style.display !== 'none' && profileChart && profileChart.data) {
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(14);
-            doc.text("3. Profil Altimétrique", 15, yPos);
-            yPos += 10;
-
-            const imgProfileUrl = await Plotly.toImage(profileChart, {format: 'png', width: 800, height: 400});
-            doc.addImage(imgProfileUrl, 'PNG', 15, yPos, pageWidth - 30, 100);
-        }
-
-        // --- SAUVEGARDE DU FICHIER ---
-        doc.save(`Rapport_Topo_${Date.now()}.pdf`);
+        // --- ENREGISTREMENT ---
+        doc.save(`TopoProfiler_Rapport_${Date.now()}.pdf`);
         
     } catch (error) {
-        console.error("Erreur lors de l'export PDF :", error);
-        alert("Une erreur est survenue lors de la génération du PDF.");
+        console.error(error);
+        alert("Erreur lors de la génération du PDF.");
     } finally {
         btn.innerText = originalText;
         btn.disabled = false;
     }
 };
-
 // --- ACTIONS SUR LES PROJETS (AFFICHAGE / SUPPRESSION) ---
 window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } }); updateProjectUI(); };
 window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); }); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
