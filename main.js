@@ -1269,6 +1269,37 @@ window.generatePDFReport = async () => {
         btn.disabled = false;
     }
 };
+// ==========================================
+// 12. LANCEMENT DE LA VUE 3D GLOBALE (SCÈNE COMPLÈTE)
+// ==========================================
+
+window.generateGlobal3DView = () => {
+    // 1. On récupère TOUS les tracés (ceux en cours + ceux des projets chargés qui sont visibles)
+    let allFeatures = [
+        ...drawStore, 
+        ...projectStore.flatMap(p => p.features.filter(f => f.visible))
+    ];
+
+    // 2. La 3D ne fonctionne que sur les surfaces et les cercles, on filtre donc les lignes
+    let areasToPlot = allFeatures.filter(d => d.type === 'area' || d.type === 'circle');
+
+    // 3. Sécurités
+    if (mntStore.filter(m => m.visible).length === 0) {
+        return alert("Veuillez d'abord activer un MNT dans la liste à gauche !");
+    }
+    if (areasToPlot.length === 0) {
+        return alert("Veuillez tracer ou afficher au moins une surface pour générer la 3D Globale.");
+    }
+
+    // 4. Si on n'a qu'une seule surface, on lance la vue 3D classique plus rapide
+    if (areasToPlot.length === 1) {
+        window.generate3DView(areasToPlot[0].id);
+    } 
+    // 5. Si on a plusieurs surfaces, on lance notre moteur Multivue de la Section 7 !
+    else {
+        window.generateMulti3DViewAdaptive(areasToPlot);
+    }
+};
 // --- ACTIONS SUR LES PROJETS (AFFICHAGE / SUPPRESSION) ---
 window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } }); updateProjectUI(); };
 window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); }); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
