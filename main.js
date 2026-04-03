@@ -371,7 +371,7 @@ window.calculateVolume = (id, type) => {
 };
 
 // ==========================================
-// 7. VUE 3D PARFAITE (PLAN + COURBE + MENU GAUCHE)
+// 7. VUE 3D PARFAITE (0.25m + MULTI-SURFACES)
 // ==========================================
 
 window.close3DWindow = () => {
@@ -385,13 +385,14 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// --- VUE 3D CLASSIQUE (1 SURFACE) ---
 window.generate3DView = (id) => {
     const d = drawStore.find(x => x.id === id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id);
     if (!d || d.type !== 'area') return;
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul des volumes 3D en cours... ⏳</h3>';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération 3D Haute Précision (0.25m)... ⏳</h3>';
 
     setTimeout(() => {
         const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
@@ -404,7 +405,6 @@ window.generate3DView = (id) => {
             if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); 
         });
 
-        // 1. Calcul de l'équation du "Plan" strict
         let aR = 0, bR = 0, cR = 0;
         if (borderPtsWithZ.length >= 3) {
             let sX = 0, sY = 0, sZ = 0; borderPtsWithZ.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
@@ -416,27 +416,22 @@ window.generate3DView = (id) => {
             cR = cZ - aR*cX - bR*cY;
         }
 
-        const maxResolution = 50; 
-        const step = Math.max(1, (maxX - minX) / maxResolution, (maxY - minY) / maxResolution);
+        // PRÉCISION EXTRÊME : 0.25m
+        let step = 0.25; 
+        // Sécurité anti-crash RAM : si la zone fait plus de 150m, on augmente le pas
+        if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
+        if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
 
         let xVals = [], yVals = [], zTerrain = [], zRefPlan = [], zRefCourbe = [];
-
         for (let x = minX; x <= maxX; x += step) xVals.push(x - minX);
 
         for (let y = minY; y <= maxY; y += step) {
             yVals.push(y - minY);
             let rowTerrain = [], rowPlan = [], rowCourbe = [];
-            
             for (let x = minX; x <= maxX; x += step) {
                 if (isPointInPolygon([x, y], l93Pts)) {
-                    // A. Terrain
-                    let zMNT = getZ([x, y]);
-                    rowTerrain.push(zMNT !== null ? zMNT : null);
-
-                    // B. Plan Strict (Pour volume "Plan")
+                    let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
                     rowPlan.push(aR * x + bR * y + cR);
-
-                    // C. Courbe pondérée (Pour volume "Courbe")
                     let sumZ = 0, sumW = 0, exactMatch = false, zC = 0;
                     for (let pt of borderPtsWithZ) { 
                         let d2 = (x - pt.x)**2 + (y - pt.y)**2; 
@@ -445,7 +440,6 @@ window.generate3DView = (id) => {
                     }
                     if (!exactMatch) zC = sumZ / sumW;
                     rowCourbe.push(zC);
-
                 } else {
                     rowTerrain.push(null); rowPlan.push(null); rowCourbe.push(null);
                 }
@@ -455,61 +449,35 @@ window.generate3DView = (id) => {
 
         let xBound = [], yBound = [], zBound = [];
         borderPtsWithZ.forEach(pt => { xBound.push(pt.x - minX); yBound.push(pt.y - minY); zBound.push(pt.z); });
-        if (borderPtsWithZ.length > 0) {
-            xBound.push(borderPtsWithZ[0].x - minX); yBound.push(borderPtsWithZ[0].y - minY); zBound.push(borderPtsWithZ[0].z);
-        }
+        if (borderPtsWithZ.length > 0) { xBound.push(borderPtsWithZ[0].x - minX); yBound.push(borderPtsWithZ[0].y - minY); zBound.push(borderPtsWithZ[0].z); }
 
-        let hoverTemp = 'X: %{x:.1f} m<br>Y: %{y:.1f} m<br>Z: %{z:.1f} m<extra></extra>';
+        let hoverTemp = 'X: %{x:.2f} m<br>Y: %{y:.2f} m<br>Z: %{z:.2f} m<extra></extra>';
 
-        // Création des 4 traces
         const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain', colorscale: 'Earth', showscale: false, hovertemplate: hoverTemp };
-        const tracePlan = { z: zRefPlan, x: xVals, y: yVals, type: 'surface', name: 'Base Plan', colorscale: 'Blues', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false }; // Masqué par défaut
-        const traceCourbe = { z: zRefCourbe, x: xVals, y: yVals, type: 'surface', name: 'Base Courbe', colorscale: 'Greens', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false }; // Masqué par défaut
+        const tracePlan = { z: zRefPlan, x: xVals, y: yVals, type: 'surface', name: 'Base Plan', colorscale: 'Blues', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
+        const traceCourbe = { z: zRefCourbe, x: xVals, y: yVals, type: 'surface', name: 'Base Courbe', colorscale: 'Greens', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
         const traceContour = { x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: 'red', width: 6 }, type: 'scatter3d', name: 'Contour', hovertemplate: hoverTemp };
 
         const layout = { 
             margin: { l: 0, r: 0, b: 0, t: 0 }, 
-            scene: { 
-                aspectmode: 'data', // L'échelle est maintenant strictement 1:1:1 avec la réalité !
-                xaxis: { title: 'Largeur (m)', tickformat: '.0f', backgroundcolor: '#222', gridcolor: '#444' },
-                yaxis: { title: 'Longueur (m)', tickformat: '.0f', backgroundcolor: '#222', gridcolor: '#444' },
-                zaxis: { title: 'Altitude (m)', tickformat: '.1f', backgroundcolor: '#222', gridcolor: '#444' }
-            }, 
-            paper_bgcolor: '#222', 
-            font: { color: 'white' }, 
-            hovermode: 'closest',
-            // Menu positionné à gauche et en colonne
+            scene: { aspectmode: 'data', xaxis: { title: 'X (m)', backgroundcolor: '#222' }, yaxis: { title: 'Y (m)', backgroundcolor: '#222' }, zaxis: { title: 'Z (m)', backgroundcolor: '#222' } }, 
+            paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest',
             updatemenus: [{
-                type: 'buttons',
-                direction: 'down', // Empilement vertical
-                x: 0.02, // Totalement à gauche
-                y: 0.95, // En haut
-                xanchor: 'left',
-                yanchor: 'top',
-                bgcolor: 'rgba(30, 30, 30, 0.8)', // Fond semi-transparent pour bien lire
-                bordercolor: '#555',
-                font: { color: 'white', size: 11 },
-                showactive: true,
+                type: 'buttons', direction: 'down', x: 0.02, y: 0.95, xanchor: 'left', yanchor: 'top', bgcolor: 'rgba(30, 30, 30, 0.8)', bordercolor: '#555', font: { color: 'white', size: 11 }, showactive: true,
                 buttons: [
                     { label: 'Terrain Seul', method: 'update', args: [{'visible': [true, false, false, true]}] },
                     { label: 'Terrain + Plan', method: 'update', args: [{'visible': [true, true, false, true]}] },
                     { label: 'Terrain + Courbe', method: 'update', args: [{'visible': [true, false, true, true]}] },
-                    { label: 'Plan Seul', method: 'update', args: [{'visible': [false, true, false, true]}] },
-                    { label: 'Courbe Seule', method: 'update', args: [{'visible': [false, false, true, true]}] },
                     { label: 'Tout Superposer', method: 'update', args: [{'visible': [true, true, true, true]}] }
                 ]
             }]
         };
         
-        // On envoie les 4 traces au graphique
         Plotly.newPlot('plot-3d', [traceTerrain, tracePlan, traceCourbe, traceContour], layout).then(() => {
             const plotDiv = document.getElementById('plot-3d');
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
-                    const pt = data.points[0]; 
-                    const realX = pt.x + minX;
-                    const realY = pt.y + minY;
-                    const gps = proj4("EPSG:2154", "EPSG:4326", [realX, realY]);
+                    const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x + minX, pt.y + minY]);
                     if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
                     else cursorMarker.setLatLng([gps[1], gps[0]]);
                 }
@@ -518,147 +486,119 @@ window.generate3DView = (id) => {
         });
     }, 100);
 };
+
+// --- VUE 3D MULTIPLE (MAX 2 SURFACES) ---
 window.generateMulti3DView = () => {
-    // 1. Récupération des surfaces actuellement visibles (max 2)
     let visibleAreas = [];
     drawStore.forEach(d => { if (d.visible && d.type === 'area') visibleAreas.push(d); });
     projectStore.forEach(p => { if (p.visible) p.features.forEach(f => { if (f.visible && f.type === 'area') visibleAreas.push(f); }); });
 
-    if (visibleAreas.length === 0) return alert("Veuillez cocher/afficher au moins une surface dans le menu.");
-    if (visibleAreas.length > 2) alert("Seules les 2 premières surfaces visibles seront superposées dans la 3D.");
+    if (visibleAreas.length === 0) return alert("Cochez au moins une surface.");
+    if (visibleAreas.length > 2) alert("Seules les 2 premières surfaces seront superposées en 3D.");
 
     const featuresToPlot = visibleAreas.slice(0, 2);
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul de la 3D multiple en cours... ⏳</h3>';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul 3D Multiple (0.25m)... ⏳</h3>';
 
     setTimeout(() => {
-        let globalMinX = Infinity, globalMaxX = -Infinity, globalMinY = Infinity, globalMaxY = -Infinity;
-        let processedFeatures = [];
-
-        // 2. Calcul de la boîte englobante pour les 2 surfaces réunies
+        // Définir un point d'origine global pour aligner les tracés dans l'espace Plotly
+        let globalMinX = Infinity, globalMinY = Infinity;
         featuresToPlot.forEach(d => {
+            d.ptsGPS.forEach(p => {
+                const l93 = proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]);
+                if (l93[0] < globalMinX) globalMinX = l93[0];
+                if (l93[1] < globalMinY) globalMinY = l93[1];
+            });
+        });
+
+        let allTraces = [];
+
+        // On calcule les grilles INDÉPENDAMMENT pour éviter de saturer la RAM avec le vide entre elles
+        featuresToPlot.forEach((d, index) => {
             const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
+
             let borderPtsWithZ = [];
-            l93Pts.forEach((p, i) => { 
-                let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); 
-                if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); 
-            });
+            l93Pts.forEach((p, i) => { let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
-            l93Pts.forEach(p => { 
-                if (p[0] < globalMinX) globalMinX = p[0]; if (p[0] > globalMaxX) globalMaxX = p[0]; 
-                if (p[1] < globalMinY) globalMinY = p[1]; if (p[1] > globalMaxY) globalMaxY = p[1]; 
-            });
-
-            // Calcul du plan strict pour cette surface
             let aR = 0, bR = 0, cR = 0;
             if (borderPtsWithZ.length >= 3) {
                 let sX = 0, sY = 0, sZ = 0; borderPtsWithZ.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
                 const n = borderPtsWithZ.length, cX = sX/n, cY = sY/n, cZ = sZ/n;
                 let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0;
                 borderPtsWithZ.forEach(p=>{ const dX=p.x-cX, dY=p.y-cY, dZ=p.z-cZ; sXX+=dX*dX; sYY+=dY*dY; sXY+=dX*dY; sXZ+=dX*dZ; sYZ+=dY*dZ; });
-                const D = sXX*sYY - sXY*sXY; 
-                if(D !== 0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } 
-                cR = cZ - aR*cX - bR*cY;
+                const D = sXX*sYY - sXY*sXY; if(D !== 0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } cR = cZ - aR*cX - bR*cY;
             }
-            processedFeatures.push({ d, l93Pts, borderPtsWithZ, aR, bR, cR });
-        });
 
-        // 3. Génération de la grille commune
-        const maxResolution = 60; // Grille un peu plus fine pour couvrir 2 zones
-        const step = Math.max(1, (globalMaxX - globalMinX) / maxResolution, (globalMaxY - globalMinY) / maxResolution);
+            // Précision 0.25m, avec filet de sécurité
+            let step = 0.25; 
+            if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
+            if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
 
-        let xVals = [], yVals = [];
-        for (let x = globalMinX; x <= globalMaxX; x += step) xVals.push(x - globalMinX);
-        for (let y = globalMinY; y <= globalMaxY; y += step) yVals.push(y - globalMinY);
+            let xVals = [], yVals = [];
+            for (let x = minX; x <= maxX; x += step) xVals.push(x - globalMinX);
+            for (let y = minY; y <= maxY; y += step) yVals.push(y - globalMinY);
 
-        // Terrain
-        let zTerrain = [];
-        for (let y = globalMinY; y <= globalMaxY; y += step) {
-            let rowT = [];
-            for (let x = globalMinX; x <= globalMaxX; x += step) {
-                let inAny = false;
-                for (let pf of processedFeatures) { if (isPointInPolygon([x, y], pf.l93Pts)) { inAny = true; break; } }
-                if (inAny) {
-                    let zMNT = getZ([x, y]); rowT.push(zMNT !== null ? zMNT : null);
-                } else { rowT.push(null); }
-            }
-            zTerrain.push(rowT);
-        }
-
-        let hoverTemp = 'X: %{x:.1f} m<br>Y: %{y:.1f} m<br>Z: %{z:.1f} m<extra></extra>';
-        let traces = [];
-        
-        // On pousse le terrain commun en premier (Indice 0)
-        traces.push({ z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain', colorscale: 'Earth', showscale: false, hovertemplate: hoverTemp });
-
-        // On pousse les sous-couches pour chaque surface
-        processedFeatures.forEach((pf, i) => {
-            let zPlan = [], zCourbe = [];
-            for (let y = globalMinY; y <= globalMaxY; y += step) {
-                let rowP = [], rowC = [];
-                for (let x = globalMinX; x <= globalMaxX; x += step) {
-                    if (isPointInPolygon([x, y], pf.l93Pts)) {
-                        rowP.push(pf.aR * x + pf.bR * y + pf.cR);
+            let zTerrain = [], zPlan = [], zCourbe = [];
+            for (let y = minY; y <= maxY; y += step) {
+                let rT = [], rP = [], rC = [];
+                for (let x = minX; x <= maxX; x += step) {
+                    if (isPointInPolygon([x, y], l93Pts)) {
+                        let zMNT = getZ([x, y]); rT.push(zMNT !== null ? zMNT : null);
+                        rP.push(aR * x + bR * y + cR);
                         let sumZ = 0, sumW = 0, exactMatch = false, zC = 0;
-                        for (let pt of pf.borderPtsWithZ) { 
-                            let d2 = (x - pt.x)**2 + (y - pt.y)**2; 
-                            if (d2 === 0) { zC = pt.z; exactMatch = true; break; } 
-                            let w = 1 / d2; sumZ += pt.z * w; sumW += w; 
-                        }
+                        for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zC = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
                         if (!exactMatch) zC = sumZ / sumW;
-                        rowC.push(zC);
-                    } else { rowP.push(null); rowC.push(null); }
+                        rC.push(zC);
+                    } else { rT.push(null); rP.push(null); rC.push(null); }
                 }
-                zPlan.push(rowP); zCourbe.push(rowC);
+                zTerrain.push(rT); zPlan.push(rP); zCourbe.push(rC);
             }
 
             let xBound = [], yBound = [], zBound = [];
-            pf.borderPtsWithZ.forEach(pt => { xBound.push(pt.x - globalMinX); yBound.push(pt.y - globalMinY); zBound.push(pt.z); });
-            if (pf.borderPtsWithZ.length > 0) {
-                xBound.push(pf.borderPtsWithZ[0].x - globalMinX); yBound.push(pf.borderPtsWithZ[0].y - globalMinY); zBound.push(pf.borderPtsWithZ[0].z);
-            }
+            borderPtsWithZ.forEach(pt => { xBound.push(pt.x - globalMinX); yBound.push(pt.y - globalMinY); zBound.push(pt.z); });
+            if (borderPtsWithZ.length > 0) { xBound.push(borderPtsWithZ[0].x - globalMinX); yBound.push(borderPtsWithZ[0].y - globalMinY); zBound.push(borderPtsWithZ[0].z); }
 
-            // Surface 1 : Plan Bleu, Courbe Vert. / Surface 2 : Plan Rouge, Courbe Orange
-            traces.push({ z: zPlan, x: xVals, y: yVals, type: 'surface', name: `Plan (${pf.d.name})`, colorscale: i===0?'Blues':'Reds', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false });
-            traces.push({ z: zCourbe, x: xVals, y: yVals, type: 'surface', name: `Courbe (${pf.d.name})`, colorscale: i===0?'Greens':'Oranges', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false });
-            traces.push({ x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: pf.d.color, width: 6 }, type: 'scatter3d', name: `Contour (${pf.d.name})`, hovertemplate: hoverTemp });
+            let hoverTemp = 'X: %{x:.2f} m<br>Y: %{y:.2f} m<br>Z: %{z:.2f} m<extra></extra>';
+            
+            allTraces.push({ z: zTerrain, x: xVals, y: yVals, type: 'surface', name: `Terrain (${d.name})`, colorscale: 'Earth', showscale: false, hovertemplate: hoverTemp });
+            allTraces.push({ z: zPlan, x: xVals, y: yVals, type: 'surface', name: `Plan (${d.name})`, colorscale: index===0?'Blues':'Reds', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false });
+            allTraces.push({ z: zCourbe, x: xVals, y: yVals, type: 'surface', name: `Courbe (${d.name})`, colorscale: index===0?'Greens':'Oranges', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false });
+            allTraces.push({ x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: d.color, width: 6 }, type: 'scatter3d', name: `Contour (${d.name})`, hovertemplate: hoverTemp });
         });
 
-        // Gestion dynamique des menus en fonction du nombre de traces affichées
-        let showTerrainOnly = traces.map((t, i) => i === 0 || t.name.startsWith('Contour'));
-        let showTerrainAndPlans = traces.map((t, i) => i === 0 || t.name.startsWith('Contour') || t.name.startsWith('Plan'));
-        let showTerrainAndCourbes = traces.map((t, i) => i === 0 || t.name.startsWith('Contour') || t.name.startsWith('Courbe'));
-        let showAll = traces.map(() => true);
+        // Génération automatique des masques pour les boutons (4 traces par surface)
+        let showT = [], showP = [], showC = [], showAll = [];
+        for (let i = 0; i < allTraces.length; i++) {
+            showT.push(i % 4 === 0 || i % 4 === 3); // Terrain + Contour
+            showP.push(i % 4 === 0 || i % 4 === 1 || i % 4 === 3); // Terrain + Plan + Contour
+            showC.push(i % 4 === 0 || i % 4 === 2 || i % 4 === 3); // Terrain + Courbe + Contour
+            showAll.push(true);
+        }
 
         const layout = { 
             margin: { l: 0, r: 0, b: 0, t: 0 }, 
-            scene: { 
-                aspectmode: 'data', 
-                xaxis: { title: 'X (m)', tickformat: '.0f', backgroundcolor: '#222', gridcolor: '#444' },
-                yaxis: { title: 'Y (m)', tickformat: '.0f', backgroundcolor: '#222', gridcolor: '#444' },
-                zaxis: { title: 'Z (m)', tickformat: '.1f', backgroundcolor: '#222', gridcolor: '#444' }
-            }, 
+            scene: { aspectmode: 'data', xaxis: { title: 'X (m)', backgroundcolor: '#222' }, yaxis: { title: 'Y (m)', backgroundcolor: '#222' }, zaxis: { title: 'Z (m)', backgroundcolor: '#222' } }, 
             paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest',
             updatemenus: [{
-                type: 'buttons', direction: 'down', x: 0.02, y: 0.95, xanchor: 'left', yanchor: 'top',
-                bgcolor: 'rgba(30, 30, 30, 0.8)', bordercolor: '#555', font: { color: 'white', size: 11 }, showactive: true,
+                type: 'buttons', direction: 'down', x: 0.02, y: 0.95, xanchor: 'left', yanchor: 'top', bgcolor: 'rgba(30, 30, 30, 0.8)', bordercolor: '#555', font: { color: 'white', size: 11 }, showactive: true,
                 buttons: [
-                    { label: 'Terrain Seul', method: 'update', args: [{'visible': showTerrainOnly}] },
-                    { label: 'Terrain + Plans', method: 'update', args: [{'visible': showTerrainAndPlans}] },
-                    { label: 'Terrain + Courbes', method: 'update', args: [{'visible': showTerrainAndCourbes}] },
+                    { label: 'Terrains Seuls', method: 'update', args: [{'visible': showT}] },
+                    { label: 'Terrains + Plans', method: 'update', args: [{'visible': showP}] },
+                    { label: 'Terrains + Courbes', method: 'update', args: [{'visible': showC}] },
                     { label: 'Tout Superposer', method: 'update', args: [{'visible': showAll}] }
                 ]
             }]
         };
         
-        Plotly.newPlot('plot-3d', traces, layout).then(() => {
+        Plotly.newPlot('plot-3d', allTraces, layout).then(() => {
             const plotDiv = document.getElementById('plot-3d');
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
-                    const pt = data.points[0]; 
-                    const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x + globalMinX, pt.y + globalMinY]);
+                    const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x + globalMinX, pt.y + globalMinY]);
                     if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
                     else cursorMarker.setLatLng([gps[1], gps[0]]);
                 }
