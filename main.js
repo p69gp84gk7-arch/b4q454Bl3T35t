@@ -370,7 +370,7 @@ window.calculateVolume = (id, type) => {
 };
 
 // ==========================================
-// 7. VUE 3D PARFAITE (0.25m + PANNEAU DE CONTRÔLE FLOTTANT)
+// 7. VUE 3D PARFAITE (MOTEUR N-SURFACES ADAPTATIF)
 // ==========================================
 
 window.close3DWindow = () => {
@@ -384,17 +384,27 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// --- FONCTION UTILITAIRE POUR LE PANNEAU FLOTTANT ---
+// --- UTILITAIRES : PANNEAU & COULEURS ---
 function setup3DControlPanel(htmlContent) {
     let panel = document.getElementById('custom-3d-controls');
     if (!panel) {
         panel = document.createElement('div');
         panel.id = 'custom-3d-controls';
-        panel.style.cssText = 'position:absolute; top:55px; left:15px; z-index:1000; background:rgba(20,20,20,0.85); padding:12px; border:1px solid #555; border-radius:5px; color:white; font-size:13px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); backdrop-filter: blur(3px);';
+        panel.style.cssText = 'position:absolute; top:55px; left:15px; z-index:1000; background:rgba(20,20,20,0.85); padding:12px; border:1px solid #555; border-radius:5px; color:white; font-size:13px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); backdrop-filter: blur(3px); max-height:80%; overflow-y:auto;';
         document.getElementById('window-3d').appendChild(panel);
     }
     panel.innerHTML = htmlContent;
 }
+
+// Pool de couleurs pour distinguer N surfaces (Plan, Courbe)
+const colorScalesPool = [
+    {p: 'Blues', c: 'Greens'},    // Surface 1
+    {p: 'Reds', c: 'Oranges'},     // Surface 2
+    {p: 'Purples', c: 'YlOrRd'},  // Surface 3
+    {p: 'Cividis', c: 'Magenta'}, // Surface 4
+    {p: 'Electric', c: 'Mint'},   // Surface 5
+    {p: 'Hot', c: 'YlGnBu'}       // Surface 6 ... boucle ensuite
+];
 
 // --- VUE 3D CLASSIQUE (1 SURFACE) ---
 window.generate3DView = (id) => {
@@ -427,7 +437,7 @@ window.generate3DView = (id) => {
             cR = cZ - aR*cX - bR*cY;
         }
 
-        let step = 0.25; 
+        let step = 0.25; // Précision cible
         if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
         if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
 
@@ -471,12 +481,11 @@ window.generate3DView = (id) => {
             margin: { l: 0, r: 0, b: 0, t: 0 }, 
             scene: { aspectmode: 'data', xaxis: { title: 'X (m)', backgroundcolor: '#222' }, yaxis: { title: 'Y (m)', backgroundcolor: '#222' }, zaxis: { title: 'Z (m)', backgroundcolor: '#222' } }, 
             paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest'
-        }; // Plus de updatemenus de Plotly !
+        };
         
         Plotly.newPlot('plot-3d', [traceTerrain, tracePlan, traceCourbe, traceContour], layout).then(() => {
             const plotDiv = document.getElementById('plot-3d');
             
-            // Injection du panneau de contrôle
             setup3DControlPanel(`
                 <b style="color:#f1c40f; display:block; margin-bottom:8px; font-size:14px;">🎛️ Affichage des Calques</b>
                 <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [0])"> 🌍 Terrain Naturel</label>
@@ -497,7 +506,7 @@ window.generate3DView = (id) => {
     }, 100);
 };
 
-// --- SÉLECTION ET VUE 3D MULTIPLE (MAX 2 SURFACES) ---
+// --- SÉLECTION ET VUE 3D N-SURFACES (ADAPTATIF) ---
 window.multi3DAreas = [];
 
 window.showMulti3DSelector = () => {
@@ -507,10 +516,10 @@ window.showMulti3DSelector = () => {
 
     if (window.multi3DAreas.length < 2) return alert("Il vous faut au moins 2 surfaces tracées/chargées pour faire une comparaison.");
 
-    let html = `<div id="multi-3d-modal" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#222; padding:20px; border:1px solid #555; z-index:10000; border-radius:5px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color:white; min-width:300px;">
-        <h3 style="margin-top:0;">Comparer 2 surfaces</h3>
-        <p style="font-size:0.9em; color:#aaa;">Cochez exactement 2 surfaces à superposer :</p>
-        <div style="max-height:200px; overflow-y:auto; margin-bottom:15px; background:#111; padding:10px; border-radius:3px;">`;
+    let html = `<div id="multi-3d-modal" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#222; padding:20px; border:1px solid #555; z-index:10000; border-radius:5px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color:white; min-width:300px; max-width:90%;">
+        <h3 style="margin-top:0;">Superposition de surfaces</h3>
+        <p style="font-size:0.9em; color:#aaa;">Cochez les surfaces à superposer en 3D :<br><small style="color:#e74c3c">⚠️ Plus il y a de surfaces, plus la précision diminuera pour protéger votre PC.</small></p>
+        <div style="max-height:300px; overflow-y:auto; margin-bottom:15px; background:#111; padding:10px; border-radius:3px;">`;
 
     window.multi3DAreas.forEach((a, idx) => {
         html += `<div style="margin-bottom:5px;"><input type="checkbox" class="multi-3d-checkbox" value="${idx}" id="cb-idx-${idx}"> <label for="cb-idx-${idx}" style="cursor:pointer;">${a.name}</label></div>`;
@@ -529,24 +538,22 @@ window.showMulti3DSelector = () => {
 
 window.launchSelectedMulti3D = () => {
     const checkboxes = document.querySelectorAll('.multi-3d-checkbox:checked');
-    if (checkboxes.length !== 2) return alert("Veuillez cocher EXACTEMENT 2 surfaces dans la liste.");
+    if (checkboxes.length < 2) return alert("Veuillez cocher au moins 2 surfaces.");
     
-    const idx1 = parseInt(checkboxes[0].value);
-    const idx2 = parseInt(checkboxes[1].value);
-    
-    const f1 = window.multi3DAreas[idx1].ref;
-    const f2 = window.multi3DAreas[idx2].ref;
+    // Récupération des références choisies
+    let chosenFeatures = [];
+    checkboxes.forEach(cb => {chosenFeatures.push(window.multi3DAreas[parseInt(cb.value)].ref);});
 
     document.body.removeChild(document.getElementById('multi-3d-modal'));
-    generateMulti3DView(f1, f2); 
+    generateMulti3DViewAdaptive(chosenFeatures); // Nouveau moteur adaptive
 };
 
-window.generateMulti3DView = (f1, f2) => {
-    const featuresToPlot = [f1, f2];
+window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
+    const numFeatures = featuresToPlot.length;
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Calcul 3D Multiple (0.25m)... ⏳</h3>';
+    document.getElementById('plot-3d').innerHTML = `<h3 style="color:white; text-align:center; margin-top:20%;">Calcul Adaptive de ${numFeatures} surfaces en cours... ⏳</h3>`;
 
     setTimeout(() => {
         let globalMinX = Infinity, globalMinY = Infinity;
@@ -576,7 +583,14 @@ window.generateMulti3DView = (f1, f2) => {
                 const D = sXX*sYY - sXY*sXY; if(D !== 0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } cR = cZ - aR*cX - bR*cY;
             }
 
-            let step = 0.25; 
+            // --- MOTEUR ADAPTATIF DE PRÉCISION ---
+            // Base : 0.25m
+            // On pénalise la précision en fonction du nombre de surfaces (Racine carrée pour ne pas trop dégrader vite)
+            let baseStep = 0.25;
+            let adaptiveStep = baseStep * Math.sqrt(numFeatures); 
+
+            // Sécurité anti-crash RAM par surface (max 600 points par axe)
+            let step = adaptiveStep;
             if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
             if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
 
@@ -605,10 +619,12 @@ window.generateMulti3DView = (f1, f2) => {
 
             let hoverTemp = 'X: %{x:.2f} m<br>Y: %{y:.2f} m<br>Z: %{z:.2f} m<extra></extra>';
             
-            // Index logic: Terrain(0), Plan(1), Courbe(2), Contour(3) pour la 1ère surface. Et 4, 5, 6, 7 pour la 2ème.
+            // Récupération des couleurs dans le pool
+            let colors = colorScalesPool[index % colorScalesPool.length];
+
             allTraces.push({ z: zTerrain, x: xVals, y: yVals, type: 'surface', name: `Terrain (${d.name})`, colorscale: 'Earth', showscale: false, hovertemplate: hoverTemp });
-            allTraces.push({ z: zPlan, x: xVals, y: yVals, type: 'surface', name: `Plan (${d.name})`, colorscale: index===0?'Blues':'Reds', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false });
-            allTraces.push({ z: zCourbe, x: xVals, y: yVals, type: 'surface', name: `Courbe (${d.name})`, colorscale: index===0?'Greens':'Oranges', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false });
+            allTraces.push({ z: zPlan, x: xVals, y: yVals, type: 'surface', name: `Plan (${d.name})`, colorscale: colors.p, showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false });
+            allTraces.push({ z: zCourbe, x: xVals, y: yVals, type: 'surface', name: `Courbe (${d.name})`, colorscale: colors.c, showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false });
             allTraces.push({ x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: d.color, width: 6 }, type: 'scatter3d', name: `Contour (${d.name})`, hovertemplate: hoverTemp });
         });
 
@@ -622,14 +638,19 @@ window.generateMulti3DView = (f1, f2) => {
             const plotDiv = document.getElementById('plot-3d');
             
             // Création dynamique du panneau de contrôle Multivue
-            let htmlControls = `<b style="color:#f1c40f; display:block; margin-bottom:8px; font-size:14px;">🎛️ Multivue 3D</b>`;
+            let htmlControls = `<b style="color:#f1c40f; display:block; margin-bottom:8px; font-size:14px;">🎛️ Multivue (${numFeatures} surf.)</b>`;
             featuresToPlot.forEach((pf, i) => {
-                let baseIdx = i * 4; // L'offset pour chaque groupe de traces (Terrain=0, Plan=1, Courbe=2, Contour=3)
-                htmlControls += `<div style="margin-bottom:10px; background:rgba(0,0,0,0.3); padding:8px; border-radius:3px; border-left:3px solid ${pf.color || '#fff'};">
-                    <b style="color:${pf.color || '#fff'}; display:block; margin-bottom:5px;">${pf.name}</b>
+                let baseIdx = i * 4; 
+                let colors = colorScalesPool[i % colorScalesPool.length];
+                
+                // Petite astuce CSS pour simuler l'échelle de couleur dans le panel
+                let gradientP = `linear-gradient(to right, #000, ${pf.color || '#3498db'})`;
+                
+                htmlControls += `<div style="margin-bottom:10px; background:rgba(0,0,0,0.3); padding:8px; border-radius:3px; border-left:4px solid ${pf.color || '#fff'};">
+                    <b style="color:${pf.color || '#fff'}; display:block; margin-bottom:5px; font-size:1.1em;">${pf.name}</b>
                     <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx}])"> 🌍 Terrain</label>
-                    <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+1}])"> 🟦 Base Plan</label>
-                    <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+2}])"> 🟩 Base Courbe</label>
+                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#3498db;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+1}])"> 🟦 Plan (Echelle ${colors.p})</label>
+                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#27ae60;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+2}])"> 🟩 Courbe (Echelle ${colors.c})</label>
                     <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+3}])"> 🟥 Contour</label>
                 </div>`;
             });
