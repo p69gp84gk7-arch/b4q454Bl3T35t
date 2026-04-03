@@ -63,7 +63,30 @@
     </style>
 </head>
 <body>
+<div style="position: absolute; top: 0; left: 0; width: 100%; height: 50px; background: #1a1a1a; border-bottom: 2px solid #8e44ad; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 10000; box-sizing: border-box; box-shadow: 0 2px 10px rgba(0,0,0,0.5);">
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <b style="color: white; font-size: 1.2em; margin-right: 20px;">⛰️ Topo Profiler Pro</b>
+        <button onclick="document.getElementById('help-window').style.display='block'" style="background:#8e44ad; color:white; border:none; padding:6px 12px; border-radius:3px; cursor:pointer; font-weight:bold;">ℹ️ Guide & Aide</button>
+    </div>
+    <div>
+        <button onclick="generatePDFReport()" style="background:#c0392b; color:white; border:none; padding:6px 15px; border-radius:3px; cursor:pointer; font-weight:bold; font-size: 1.1em; box-shadow: 0 0 10px rgba(192, 57, 43, 0.5);">📄 Générer Rapport PDF Complet</button>
+    </div>
+</div>
 
+<div id="help-window" style="display:none; position:absolute; top:70px; left:50%; transform:translateX(-50%); width:600px; max-height:80vh; overflow-y:auto; background:#222; border:1px solid #555; border-radius:5px; z-index:10001; color:white; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+    <div id="help-header" style="background:#333; padding:12px; cursor:move; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #8e44ad;">
+        <b style="font-size:1.1em;">ℹ️ Guide d'utilisation - Topo Profiler</b>
+        <button onclick="document.getElementById('help-window').style.display='none'" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-weight:bold;">✕</button>
+    </div>
+    <div style="padding:20px; font-size:14px; line-height:1.6;">
+        <h3 style="color:#3498db; margin-top:0;">📏 Outils de tracé</h3>
+        <ul style="padding-left:20px; color:#ddd;"><li><b>Ligne :</b> Tracez un parcours pour obtenir distance, dénivelé et profil altimétrique.</li><li><b>Surface :</b> Polygon fermé. Idéal pour volumes et génération 3D (Triangulation Delaunay).</li><li><b>Cercle :</b> Géré comme une surface parfaite de 64 points.</li></ul>
+        <h3 style="color:#27ae60;">🎛️ Édition et Altitudes (Z)</h3>
+        <p style="color:#ddd; margin-top:5px;">Cliquez sur <b>"✏️ Éditer les points"</b>. Sans Z forcé, l'altitude est lue depuis le MNT (Terrain naturel).</p>
+        <h3 style="color:#e67e22;">📦 Calculs de Volumes</h3>
+        <ul style="padding-left:20px; color:#ddd;"><li><b>Déblai/Remblai :</b> Calcul fixe par rapport à un niveau constant.</li><li><b>Plan (Facettes) :</b> Calcul maillé point à point exact.</li><li><b>Courbe :</b> Calcul lissé entre les points.</li></ul>
+    </div>
+</div>
     <div id="left-panel">
         <h3>TopoProfiler</h3>
       <div class="subtitle">1. Altitudes MNT (Serveur)</div>
