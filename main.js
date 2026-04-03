@@ -301,18 +301,25 @@ function isPointInPolygon(point, vs) {
     return inside;
 }
 
-// Outils pour la géométrie en "Toile de Tente"
-window.IsPointInTri = (px, py, ax, ay, bx, by, cx, cy) => {
-    let v0x = cx - ax, v0y = cy - ay, v1x = bx - ax, v1y = by - ay, v2x = px - ax, v2y = py - ay;
-    let d00 = v0x * v0x + v0y * v0y, d01 = v0x * v1x + v0y * v1y, d02 = v0x * v2x + v0y * v2y;
-    let d11 = v1x * v1x + v1y * v1y, d12 = v1x * v2x + v1y * v2y;
-    let inv = 1 / (d00 * d11 - d01 * d01);
-    let u = (d11 * d02 - d01 * d12) * inv, v = (d00 * d12 - d01 * d02) * inv;
-    // On donne une petite tolérance (0.05) pour être sûr de capter les bords
-    return (u >= -0.05) && (v >= -0.05) && (u + v <= 1.05);
-};
-
-window.GetZOnTriangle = (x, y, A, B, C) => {
+// --- NOUVEL ALGORITHME : LES 3 POINTS LES PLUS PROCHES ---
+window.GetZFrom3Closest = (x, y, borderPts) => {
+    if (borderPts.length < 3) return borderPts[0]?.z || 0;
+    
+    // On calcule la distance de notre pixel avec TOUS les points de bordure, et on trie du plus proche au plus loin
+    let pts = borderPts.map(p => ({ pt: p, dist2: (p.x - x)**2 + (p.y - y)**2 })).sort((a, b) => a.dist2 - b.dist2);
+    
+    let A = pts[0].pt, B = null, C = null;
+    
+    // On s'assure de prendre 3 points qui forment un VRAI triangle (qui ne sont pas en ligne droite parfaite)
+    for (let i = 1; i < pts.length; i++) {
+        if (!B) { B = pts[i].pt; continue; }
+        let cand = pts[i].pt;
+        let cross = (B.x - A.x) * (cand.y - A.y) - (B.y - A.y) * (cand.x - A.x);
+        if (Math.abs(cross) > 0.01) { C = cand; break; }
+    }
+    if (!C) return A.z; // Sécurité si tout est parfaitement aligné
+    
+    // On calcule l'altitude (Z) exacte sur le plan formé par ces 3 points
     let Nx = (B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y);
     let Ny = (B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z);
     let Nz = (B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x);
@@ -345,21 +352,8 @@ window.calculateVolume = (id, type) => {
     }
 
     setTimeout(() => {
-        let tTas = 0, tCreux = 0, step = 1; let aR=0, bR=0, cR=0;
-        let CenterNode = null; let smoothingEpsilon = 1;
-        
-        if (type==='plane' || type==='slope') {
-            let sX=0, sY=0, sZ=0; border.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
-            const n=border.length, cX=sX/n, cY=sY/n, cZ=sZ/n;
-            CenterNode = { x: cX, y: cY, z: cZ }; // Le "Mât" de notre tente
-            
-            let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0;
-            border.forEach(p=>{ const dX=p.x-cX, dY=p.y-cY, dZ=p.z-cZ; sXX+=dX*dX; sYY+=dY*dY; sXY+=dX*dY; sXZ+=dX*dZ; sYZ+=dY*dZ; });
-            const D = sXX*sYY - sXY*sXY; if(D!==0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } 
-            cR = cZ - aR*cX - bR*cY; // Plan de secours
-            
-            smoothingEpsilon = Math.max(0.5, ((maxX - minX) * (maxY - minY)) / 1000);
-        }
+        let tTas = 0, tCreux = 0, step = 1;
+        let smoothingEpsilon = Math.max(0.5, ((maxX - minX) * (maxY - minY)) / 1000);
 
         for (let x = minX; x <= maxX; x += step) {
             for (let y = minY; y <= maxY; y += step) {
@@ -368,16 +362,8 @@ window.calculateVolume = (id, type) => {
                     let zB = 0;
                     
                     if (type==='plane') {
-                        zB = null;
-                        // On teste chaque facette de la tente
-                        for(let i=0; i<border.length; i++) {
-                            let A = border[i], B = border[(i+1)%border.length];
-                            if (window.IsPointInTri(x, y, A.x, A.y, B.x, B.y, CenterNode.x, CenterNode.y)) {
-                                zB = window.GetZOnTriangle(x, y, A, B, CenterNode); break;
-                            }
-                        }
-                        if (zB === null) zB = aR * x + bR * y + cR; // Sécurité si on tombe hors des triangles
-                        
+                        // Utilisation du nouvel algorithme !
+                        zB = window.GetZFrom3Closest(x, y, border);
                     } else if (type==='slope') {
                         let sZ=0, sW=0, ex=false;
                         for(let b of border) { 
@@ -408,7 +394,7 @@ window.calculateVolume = (id, type) => {
 };
 
 // ==========================================
-// 7. VUE 3D PARFAITE (TOILE DE TENTE EXACTE + COURBE LISSÉE)
+// 7. VUE 3D PARFAITE (FACETTES SUR 3 POINTS LES PLUS PROCHES)
 // ==========================================
 
 window.close3DWindow = () => {
@@ -438,7 +424,7 @@ window.generate3DView = (id) => {
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération 3D (Facettes Exactes)... ⏳</h3>';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération 3D (Facettes Proximité)... ⏳</h3>';
 
     setTimeout(() => {
         const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
@@ -447,18 +433,6 @@ window.generate3DView = (id) => {
 
         let borderPtsWithZ = [];
         l93Pts.forEach((p, i) => { let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
-
-        // Calcul du Mât Central (CenterNode)
-        let aR = 0, bR = 0, cR = 0; let CenterNode = null;
-        if (borderPtsWithZ.length >= 3) {
-            let sX = 0, sY = 0, sZ = 0; borderPtsWithZ.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
-            const n = borderPtsWithZ.length, cX = sX/n, cY = sY/n, cZ = sZ/n;
-            CenterNode = { x: cX, y: cY, z: cZ };
-            
-            let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0;
-            borderPtsWithZ.forEach(p=>{ const dX=p.x-cX, dY=p.y-cY, dZ=p.z-cZ; sXX+=dX*dX; sYY+=dY*dY; sXY+=dX*dY; sXZ+=dX*dZ; sYZ+=dY*dZ; });
-            const D = sXX*sYY - sXY*sXY; if(D !== 0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } cR = cZ - aR*cX - bR*cY;
-        }
 
         let step = 0.25; 
         if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
@@ -477,18 +451,10 @@ window.generate3DView = (id) => {
                     // Terrain
                     let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
                     
-                    // Plan (Toile de Tente)
-                    let zP = null;
-                    if (CenterNode) {
-                        for(let i=0; i<borderPtsWithZ.length; i++) {
-                            let A = borderPtsWithZ[i], B = borderPtsWithZ[(i+1)%borderPtsWithZ.length];
-                            if (window.IsPointInTri(x, y, A.x, A.y, B.x, B.y, CenterNode.x, CenterNode.y)) { zP = window.GetZOnTriangle(x, y, A, B, CenterNode); break; }
-                        }
-                    }
-                    if (zP === null) zP = aR * x + bR * y + cR; // Sécurité anti-trous
-                    rowPlan.push(zP);
+                    // Plan : L'algorithme magique des 3 points les plus proches
+                    rowPlan.push(window.GetZFrom3Closest(x, y, borderPtsWithZ));
                     
-                    // Courbe (Lissée)
+                    // Courbe (Lissée IDW)
                     let sumZ = 0, sumW = 0, exactMatch = false, zC = 0;
                     for (let pt of borderPtsWithZ) { 
                         let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zC = pt.z; exactMatch = true; break; } 
@@ -579,17 +545,6 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
 
             let borderPtsWithZ = []; l93Pts.forEach((p, i) => { let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
-            let aR = 0, bR = 0, cR = 0; let CenterNode = null;
-            if (borderPtsWithZ.length >= 3) {
-                let sX = 0, sY = 0, sZ = 0; borderPtsWithZ.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
-                const n = borderPtsWithZ.length, cX = sX/n, cY = sY/n, cZ = sZ/n;
-                CenterNode = { x: cX, y: cY, z: cZ };
-                
-                let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0;
-                borderPtsWithZ.forEach(p=>{ const dX=p.x-cX, dY=p.y-cY, dZ=p.z-cZ; sXX+=dX*dX; sYY+=dY*dY; sXY+=dX*dY; sXZ+=dX*dZ; sYZ+=dY*dZ; });
-                const D = sXX*sYY - sXY*sXY; if(D !== 0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } cR = cZ - aR*cX - bR*cY;
-            }
-
             let baseStep = 0.25; let step = baseStep * Math.sqrt(numFeatures); 
             if ((maxX - minX) / step > 600) step = (maxX - minX) / 600; if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
             let smoothingEpsilon = Math.max(0.5, ((maxX - minX) * (maxY - minY)) / 1000);
@@ -605,10 +560,7 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
                     if (isPointInPolygon([x, y], l93Pts)) {
                         let zMNT = getZ([x, y]); rT.push(zMNT !== null ? zMNT : null); 
                         
-                        let zP = null;
-                        if (CenterNode) { for(let i=0; i<borderPtsWithZ.length; i++) { let A = borderPtsWithZ[i], B = borderPtsWithZ[(i+1)%borderPtsWithZ.length]; if (window.IsPointInTri(x, y, A.x, A.y, B.x, B.y, CenterNode.x, CenterNode.y)) { zP = window.GetZOnTriangle(x, y, A, B, CenterNode); break; } } }
-                        if (zP === null) zP = aR * x + bR * y + cR;
-                        rP.push(zP);
+                        rP.push(window.GetZFrom3Closest(x, y, borderPtsWithZ));
 
                         let sumZ = 0, sumW = 0, exactMatch = false, zC = 0;
                         for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zC = pt.z; exactMatch = true; break; } let w = 1 / (d2 + smoothingEpsilon); sumZ += pt.z * w; sumW += w; }
