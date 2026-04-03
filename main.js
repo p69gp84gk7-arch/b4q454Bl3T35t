@@ -374,19 +374,16 @@ window.calculateVolume = (id, type) => {
 // 7. VUE 3D PARFAITE (SURFACES + SUIVI SOURIS)
 // ==========================================
 
-// --- CORRECTIF BLINDÉ POUR LA FERMETURE ---
-window.close3DWindow = () => {  // <-- On utilise le nom exact de ton HTML
+window.close3DWindow = () => {
     document.getElementById('window-3d').style.display = 'none';
     if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
 };
 
-// Sécurité supplémentaire au cas où
 document.addEventListener('click', (e) => {
     if (e.target && e.target.closest('button[onclick="close3DWindow()"]')) {
         window.close3DWindow();
     }
 });
-// ------------------------------------------
 
 window.generate3DView = (id) => {
     const d = drawStore.find(x => x.id === id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id);
@@ -402,36 +399,44 @@ window.generate3DView = (id) => {
         l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
 
         let borderPtsWithZ = [];
-        l93Pts.forEach(p => { let z = getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
+        
+        // CORRECTION 1 : On prend en compte le Z édité (customZ) s'il existe !
+        l93Pts.forEach((p, i) => { 
+            let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); 
+            if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); 
+        });
 
-        // Pour les surfaces, on crée une grille. 
-        // Math.max garantit qu'on ne plante pas le PC avec trop de points.
+        // CORRECTION 2 : Calcul strict de l'équation du plan (base plate, pas de courbe)
+        let aR = 0, bR = 0, cR = 0;
+        if (borderPtsWithZ.length >= 3) {
+            let sX = 0, sY = 0, sZ = 0; borderPtsWithZ.forEach(p=>{sX+=p.x; sY+=p.y; sZ+=p.z;});
+            const n = borderPtsWithZ.length, cX = sX/n, cY = sY/n, cZ = sZ/n;
+            let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0;
+            borderPtsWithZ.forEach(p=>{ const dX=p.x-cX, dY=p.y-cY, dZ=p.z-cZ; sXX+=dX*dX; sYY+=dY*dY; sXY+=dX*dY; sXZ+=dX*dZ; sYZ+=dY*dZ; });
+            const D = sXX*sYY - sXY*sXY; 
+            if(D !== 0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } 
+            cR = cZ - aR*cX - bR*cY;
+        }
+
         const maxResolution = 50; 
         const step = Math.max(1, (maxX - minX) / maxResolution, (maxY - minY) / maxResolution);
 
         let xVals = [], yVals = [], zTerrain = [], zRefPlane = [];
 
-        // Création de l'axe X
-        for (let x = minX; x <= maxX; x += step) xVals.push(x);
+        // CORRECTION 3 : Axes en mètres relatifs (on soustrait le minX / minY de départ)
+        for (let x = minX; x <= maxX; x += step) xVals.push(x - minX);
 
-        // Création de la matrice (Axe Y puis X)
         for (let y = minY; y <= maxY; y += step) {
-            yVals.push(y);
+            yVals.push(y - minY);
             let rowTerrain = [], rowRef = [];
             
             for (let x = minX; x <= maxX; x += step) {
-                // Si on est dans le polygone, on calcule le Z. Sinon on met "null" (surface invisible)
                 if (isPointInPolygon([x, y], l93Pts)) {
                     let zMNT = getZ([x, y]);
                     rowTerrain.push(zMNT !== null ? zMNT : null);
 
-                    let sumZ = 0, sumW = 0, exactMatch = false, zBase = 0;
-                    for (let pt of borderPtsWithZ) { 
-                        let d2 = (x - pt.x)**2 + (y - pt.y)**2; 
-                        if (d2 === 0) { zBase = pt.z; exactMatch = true; break; } 
-                        let w = 1 / d2; sumZ += pt.z * w; sumW += w; 
-                    }
-                    if (!exactMatch) zBase = sumZ / sumW;
+                    // On applique l'équation de notre base parfaitement plate
+                    let zBase = aR * x + bR * y + cR;
                     rowRef.push(zBase);
                 } else {
                     rowTerrain.push(null);
@@ -442,25 +447,36 @@ window.generate3DView = (id) => {
             zRefPlane.push(rowRef);
         }
 
-        // Contour strict en ligne rouge pour bien délimiter
         let xBound = [], yBound = [], zBound = [];
-        borderPtsWithZ.forEach(pt => { xBound.push(pt.x); yBound.push(pt.y); zBound.push(pt.z); });
+        borderPtsWithZ.forEach(pt => { xBound.push(pt.x - minX); yBound.push(pt.y - minY); zBound.push(pt.z); });
         if (borderPtsWithZ.length > 0) {
-            xBound.push(borderPtsWithZ[0].x); yBound.push(borderPtsWithZ[0].y); zBound.push(borderPtsWithZ[0].z);
+            xBound.push(borderPtsWithZ[0].x - minX); yBound.push(borderPtsWithZ[0].y - minY); zBound.push(borderPtsWithZ[0].z);
         }
 
-        // Configuration des traces en 'surface' (couches pleines)
-        const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain Naturel', colorscale: 'Earth', showscale: false };
-        const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: 'Base Volume', colorscale: 'Blues', showscale: false, opacity: 0.6 };
-        const traceContour = { x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: 'red', width: 6 }, type: 'scatter3d', name: 'Contour' };
+        // CORRECTION 4 : Ergonomie, template de survol propre
+        let hoverTemp = 'X: %{x:.1f} m<br>Y: %{y:.1f} m<br>Z: %{z:.1f} m<extra></extra>';
+
+        const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain', colorscale: 'Earth', showscale: false, hovertemplate: hoverTemp };
+        const traceRef = { z: zRefPlane, x: xVals, y: yVals, type: 'surface', name: 'Plan Calculé', colorscale: 'Blues', showscale: false, opacity: 0.6, hovertemplate: hoverTemp };
+        const traceContour = { x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: 'red', width: 6 }, type: 'scatter3d', name: 'Contour', hovertemplate: hoverTemp };
 
         const layout = { 
-            margin: { l: 0, r: 0, b: 0, t: 30 }, scene: { aspectmode: 'data', camera: { eye: {x: -1.2, y: -1.2, z: 1.2} } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest',
+            margin: { l: 0, r: 0, b: 0, t: 40 }, // Marge pour que les boutons ne chevauchent pas le graph
+            scene: { 
+                aspectmode: 'manual', 
+                aspectratio: {x: 1, y: 1, z: 0.5}, // Tasse légèrement le Z pour mieux apprécier la surface
+                xaxis: { title: 'Largeur (m)', tickformat: '.0f', backgroundcolor: '#222', gridcolor: '#444' },
+                yaxis: { title: 'Longueur (m)', tickformat: '.0f', backgroundcolor: '#222', gridcolor: '#444' },
+                zaxis: { title: 'Altitude (m)', tickformat: '.1f', backgroundcolor: '#222', gridcolor: '#444' }
+            }, 
+            paper_bgcolor: '#222', 
+            font: { color: 'white' }, 
+            hovermode: 'closest',
             updatemenus: [{
-                type: 'buttons', direction: 'right', x: 0, y: 1.1, showactive: true,
+                type: 'buttons', direction: 'right', x: 0.05, y: 1.05, showactive: true,
                 buttons: [
                     { label: 'Tout Afficher', method: 'update', args: [{'visible': [true, true, true]}] },
-                    { label: 'Masquer Base', method: 'update', args: [{'visible': [true, false, true]}] },
+                    { label: 'Masquer Plan', method: 'update', args: [{'visible': [true, false, true]}] },
                     { label: 'Masquer Terrain', method: 'update', args: [{'visible': [false, true, true]}] }
                 ]
             }]
@@ -470,7 +486,11 @@ window.generate3DView = (id) => {
             const plotDiv = document.getElementById('plot-3d');
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
-                    const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x, pt.y]);
+                    const pt = data.points[0]; 
+                    // On rajoute minX et minY pour que le point rouge sur la carte 2D se place au bon endroit
+                    const realX = pt.x + minX;
+                    const realY = pt.y + minY;
+                    const gps = proj4("EPSG:2154", "EPSG:4326", [realX, realY]);
                     if (!cursorMarker) cursorMarker = L.circleMarker([gps[1], gps[0]], { radius: 6, color: 'red', fillColor: '#fff', fillOpacity: 1 }).addTo(map);
                     else cursorMarker.setLatLng([gps[1], gps[0]]);
                 }
