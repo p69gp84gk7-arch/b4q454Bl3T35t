@@ -370,7 +370,7 @@ window.calculateVolume = (id, type) => {
 };
 
 // ==========================================
-// 7. VUE 3D PARFAITE (0.25m + MULTI-SURFACES + SANS TERRAIN)
+// 7. VUE 3D PARFAITE (0.25m + PANNEAU DE CONTRÔLE FLOTTANT)
 // ==========================================
 
 window.close3DWindow = () => {
@@ -383,6 +383,18 @@ document.addEventListener('click', (e) => {
         window.close3DWindow();
     }
 });
+
+// --- FONCTION UTILITAIRE POUR LE PANNEAU FLOTTANT ---
+function setup3DControlPanel(htmlContent) {
+    let panel = document.getElementById('custom-3d-controls');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'custom-3d-controls';
+        panel.style.cssText = 'position:absolute; top:55px; left:15px; z-index:1000; background:rgba(20,20,20,0.85); padding:12px; border:1px solid #555; border-radius:5px; color:white; font-size:13px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); backdrop-filter: blur(3px);';
+        document.getElementById('window-3d').appendChild(panel);
+    }
+    panel.innerHTML = htmlContent;
+}
 
 // --- VUE 3D CLASSIQUE (1 SURFACE) ---
 window.generate3DView = (id) => {
@@ -458,23 +470,21 @@ window.generate3DView = (id) => {
         const layout = { 
             margin: { l: 0, r: 0, b: 0, t: 0 }, 
             scene: { aspectmode: 'data', xaxis: { title: 'X (m)', backgroundcolor: '#222' }, yaxis: { title: 'Y (m)', backgroundcolor: '#222' }, zaxis: { title: 'Z (m)', backgroundcolor: '#222' } }, 
-            paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest',
-            updatemenus: [{
-                type: 'buttons', direction: 'down', x: 0.02, y: 0.95, xanchor: 'left', yanchor: 'top', bgcolor: 'rgba(30, 30, 30, 0.8)', bordercolor: '#555', font: { color: 'white', size: 11 }, showactive: true,
-                buttons: [
-                    { label: 'Terrain Seul', method: 'update', args: [{'visible': [true, false, false, true]}] },
-                    { label: 'Terrain + Plan', method: 'update', args: [{'visible': [true, true, false, true]}] },
-                    { label: 'Terrain + Courbe', method: 'update', args: [{'visible': [true, false, true, true]}] },
-                    // --- NOUVEAUX BOUTONS SANS TERRAIN ---
-                    { label: 'Plan Seul (Sans Terrain)', method: 'update', args: [{'visible': [false, true, false, true]}] },
-                    { label: 'Courbe Seule (Sans Terrain)', method: 'update', args: [{'visible': [false, false, true, true]}] },
-                    { label: 'Tout Superposer', method: 'update', args: [{'visible': [true, true, true, true]}] }
-                ]
-            }]
-        };
+            paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest'
+        }; // Plus de updatemenus de Plotly !
         
         Plotly.newPlot('plot-3d', [traceTerrain, tracePlan, traceCourbe, traceContour], layout).then(() => {
             const plotDiv = document.getElementById('plot-3d');
+            
+            // Injection du panneau de contrôle
+            setup3DControlPanel(`
+                <b style="color:#f1c40f; display:block; margin-bottom:8px; font-size:14px;">🎛️ Affichage des Calques</b>
+                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [0])"> 🌍 Terrain Naturel</label>
+                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [1])"> 🟦 Base Plan</label>
+                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [2])"> 🟩 Base Courbe</label>
+                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [3])"> 🟥 Contour Strict</label>
+            `);
+
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
                     const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x + minX, pt.y + minY]);
@@ -488,7 +498,7 @@ window.generate3DView = (id) => {
 };
 
 // --- SÉLECTION ET VUE 3D MULTIPLE (MAX 2 SURFACES) ---
-window.multi3DAreas = []; // Variable globale pour stocker proprement les références
+window.multi3DAreas = [];
 
 window.showMulti3DSelector = () => {
     window.multi3DAreas = [];
@@ -502,7 +512,6 @@ window.showMulti3DSelector = () => {
         <p style="font-size:0.9em; color:#aaa;">Cochez exactement 2 surfaces à superposer :</p>
         <div style="max-height:200px; overflow-y:auto; margin-bottom:15px; background:#111; padding:10px; border-radius:3px;">`;
 
-    // On utilise l'INDEX au lieu de l'ID pour éviter les bugs de précision avec les projets chargés
     window.multi3DAreas.forEach((a, idx) => {
         html += `<div style="margin-bottom:5px;"><input type="checkbox" class="multi-3d-checkbox" value="${idx}" id="cb-idx-${idx}"> <label for="cb-idx-${idx}" style="cursor:pointer;">${a.name}</label></div>`;
     });
@@ -596,47 +605,36 @@ window.generateMulti3DView = (f1, f2) => {
 
             let hoverTemp = 'X: %{x:.2f} m<br>Y: %{y:.2f} m<br>Z: %{z:.2f} m<extra></extra>';
             
+            // Index logic: Terrain(0), Plan(1), Courbe(2), Contour(3) pour la 1ère surface. Et 4, 5, 6, 7 pour la 2ème.
             allTraces.push({ z: zTerrain, x: xVals, y: yVals, type: 'surface', name: `Terrain (${d.name})`, colorscale: 'Earth', showscale: false, hovertemplate: hoverTemp });
             allTraces.push({ z: zPlan, x: xVals, y: yVals, type: 'surface', name: `Plan (${d.name})`, colorscale: index===0?'Blues':'Reds', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false });
             allTraces.push({ z: zCourbe, x: xVals, y: yVals, type: 'surface', name: `Courbe (${d.name})`, colorscale: index===0?'Greens':'Oranges', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false });
             allTraces.push({ x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: d.color, width: 6 }, type: 'scatter3d', name: `Contour (${d.name})`, hovertemplate: hoverTemp });
         });
 
-        // NOUVEAUX MASQUES POUR MASQUER LE TERRAIN AUSSI EN MULTIVUE
-        let showT = [], showP = [], showC = [], showAll = [];
-        let showP_NoT = [], showC_NoT = [];
-
-        for (let i = 0; i < allTraces.length; i++) {
-            // Structure: 0=Terrain, 1=Plan, 2=Courbe, 3=Contour (modulo 4)
-            showT.push(i % 4 === 0 || i % 4 === 3); 
-            showP.push(i % 4 === 0 || i % 4 === 1 || i % 4 === 3); 
-            showC.push(i % 4 === 0 || i % 4 === 2 || i % 4 === 3); 
-            showAll.push(true);
-            
-            // Masques sans terrain
-            showP_NoT.push(i % 4 === 1 || i % 4 === 3); // Plan + Contour
-            showC_NoT.push(i % 4 === 2 || i % 4 === 3); // Courbe + Contour
-        }
-
         const layout = { 
             margin: { l: 0, r: 0, b: 0, t: 0 }, 
             scene: { aspectmode: 'data', xaxis: { title: 'X (m)', backgroundcolor: '#222' }, yaxis: { title: 'Y (m)', backgroundcolor: '#222' }, zaxis: { title: 'Z (m)', backgroundcolor: '#222' } }, 
-            paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest',
-            updatemenus: [{
-                type: 'buttons', direction: 'down', x: 0.02, y: 0.95, xanchor: 'left', yanchor: 'top', bgcolor: 'rgba(30, 30, 30, 0.8)', bordercolor: '#555', font: { color: 'white', size: 11 }, showactive: true,
-                buttons: [
-                    { label: 'Terrains Seuls', method: 'update', args: [{'visible': showT}] },
-                    { label: 'Terrains + Plans', method: 'update', args: [{'visible': showP}] },
-                    { label: 'Terrains + Courbes', method: 'update', args: [{'visible': showC}] },
-                    { label: 'Plans Seuls (Sans Terrain)', method: 'update', args: [{'visible': showP_NoT}] },
-                    { label: 'Courbes Seules (Sans Terrain)', method: 'update', args: [{'visible': showC_NoT}] },
-                    { label: 'Tout Superposer', method: 'update', args: [{'visible': showAll}] }
-                ]
-            }]
+            paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest'
         };
         
         Plotly.newPlot('plot-3d', allTraces, layout).then(() => {
             const plotDiv = document.getElementById('plot-3d');
+            
+            // Création dynamique du panneau de contrôle Multivue
+            let htmlControls = `<b style="color:#f1c40f; display:block; margin-bottom:8px; font-size:14px;">🎛️ Multivue 3D</b>`;
+            featuresToPlot.forEach((pf, i) => {
+                let baseIdx = i * 4; // L'offset pour chaque groupe de traces (Terrain=0, Plan=1, Courbe=2, Contour=3)
+                htmlControls += `<div style="margin-bottom:10px; background:rgba(0,0,0,0.3); padding:8px; border-radius:3px; border-left:3px solid ${pf.color || '#fff'};">
+                    <b style="color:${pf.color || '#fff'}; display:block; margin-bottom:5px;">${pf.name}</b>
+                    <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx}])"> 🌍 Terrain</label>
+                    <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+1}])"> 🟦 Base Plan</label>
+                    <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+2}])"> 🟩 Base Courbe</label>
+                    <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+3}])"> 🟥 Contour</label>
+                </div>`;
+            });
+            setup3DControlPanel(htmlControls);
+
             plotDiv.on('plotly_hover', (data) => {
                 if (data.points.length > 0) {
                     const pt = data.points[0]; const gps = proj4("EPSG:2154", "EPSG:4326", [pt.x + globalMinX, pt.y + globalMinY]);
