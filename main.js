@@ -131,15 +131,31 @@ function recalculateStats(d) {
     const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
     let h = "";
     
+    // NOUVEAU : Calcul Zmin et Zmax pour TOUS les tracés
+    let zMin = Infinity, zMax = -Infinity;
+    for (let i = 0; i < l93.length; i++) {
+        let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(l93[i]);
+        if (z !== null) {
+            if (z < zMin) zMin = z;
+            if (z > zMax) zMax = z;
+        }
+    }
+    
+    let extraStats = "";
+    if (zMin !== Infinity && zMax !== -Infinity) {
+        // Z au cm près (.toFixed(2))
+        extraStats = `<br>Zmin: <b>${zMin.toFixed(2)} m</b> | Zmax: <b>${zMax.toFixed(2)} m</b> | ΔZ: <b>${(zMax-zMin).toFixed(2)} m</b>`;
+    }
+
     if (d.type === 'circle') {
         const area = Math.PI * d.radius * d.radius; const perim = 2 * Math.PI * d.radius;
-        h = `Rayon: <b>${d.radius.toFixed(1)} m</b> | Diam: <b>${(2*d.radius).toFixed(1)} m</b><br>Périmètre: <b>${perim.toFixed(1)} m</b> | Surface: <b>${area.toFixed(1)} m²</b>`;
+        h = `Rayon: <b>${d.radius.toFixed(2)} m</b> | Diam: <b>${(2*d.radius).toFixed(2)} m</b><br>Périmètre: <b>${perim.toFixed(2)} m</b> | Surface: <b>${area.toFixed(2)} m²</b>${extraStats}`;
     } else if (d.type === 'line') {
         let dist = 0; for (let i = 1; i < l93.length; i++) dist += Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
         const z1 = d.ptsGPS[0].customZ !== undefined ? d.ptsGPS[0].customZ : (getZ(l93[0])||0); 
         const z2 = d.ptsGPS[l93.length-1].customZ !== undefined ? d.ptsGPS[l93.length-1].customZ : (getZ(l93[l93.length-1])||0); 
         const dz = Math.abs(z2 - z1); const pente = dist > 0 ? (dz / dist * 100) : 0;
-        h = `Longueur: <b>${dist.toFixed(1)} m</b> | Dénivelé: <b>${dz.toFixed(2)} m</b><br>Pente moy: <b>${pente.toFixed(1)} %</b>`;
+        h = `Longueur: <b>${dist.toFixed(2)} m</b> | Dénivelé: <b>${dz.toFixed(2)} m</b><br>Pente moy: <b>${pente.toFixed(2)} %</b>${extraStats}`;
     } else {
         let area = 0; let perim = 0;
         for (let i = 0; i < l93.length; i++) { 
@@ -147,22 +163,7 @@ function recalculateStats(d) {
             area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; 
             perim += Math.hypot(l93[j][0] - l93[i][0], l93[j][1] - l93[i][1]);
         }
-        
-        // --- NOUVEAU : Recherche Zmin, Zmax et Dénivelé sur la surface ---
-        let zMin = Infinity, zMax = -Infinity;
-        for (let i = 0; i < l93.length; i++) {
-            let z = getZ(l93[i]);
-            if (z !== null) {
-                if (z < zMin) zMin = z;
-                if (z > zMax) zMax = z;
-            }
-        }
-        let extraStats = "";
-        if (zMin !== Infinity && zMax !== -Infinity) {
-            extraStats = `<br>Zmin: <b>${zMin.toFixed(1)}m</b> | Zmax: <b>${zMax.toFixed(1)}m</b> | ΔZ: <b>${(zMax-zMin).toFixed(1)}m</b>`;
-        }
-
-        h = `Périmètre: <b>${perim.toFixed(1)} m</b><br>Surface au sol: <b>${(Math.abs(area)/2).toFixed(1)} m²</b>${extraStats}`;
+        h = `Périmètre: <b>${perim.toFixed(2)} m</b><br>Surface au sol: <b>${(Math.abs(area)/2).toFixed(2)} m²</b>${extraStats}`;
     }
 
     if (d.volumeHtml && d.volumeHtml !== "") {
@@ -180,10 +181,7 @@ function recalculateStats(d) {
     const stG = document.getElementById(`stats-proj-${d.id}`); if (stG) stG.innerHTML = h;
 }
 
-window.clearVolumes = (id) => {
-    let d = drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id);
-    if(d) { d.volumeHtml = ""; recalculateStats(d); }
-};
+window.clearVolumes = (id) => { let d = drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id); if(d) { d.volumeHtml = ""; recalculateStats(d); } };
 
 window.toggleEditMode = (id, isProj = false, pid = null) => {
     let d = isProj ? projectStore.find(p=>p.id===pid)?.features.find(f=>f.id===id) : drawStore.find(x=>x.id===id); if(!d) return; 
@@ -193,7 +191,7 @@ window.toggleEditMode = (id, isProj = false, pid = null) => {
 };
 
 function makeEditable(d, isProj, pid) {
-    d.editGroup.clearLayers(); if (d.type === 'circle') return; 
+    d.editGroup.clearLayers(); if (d.type === 'circle') return; // On n'édite pas les 64 points d'un cercle à la main
     window.currentEditingFeature = { d, isProj, pid };
     d.ptsGPS.forEach((pt, idx) => {
         const icon = L.divIcon({ className: 'numbered-handle', html: `<div style="background:#e74c3c; color:white; border-radius:50%; width:20px; height:20px; text-align:center; line-height:20px; font-size:11px; font-weight:bold; border:2px solid white; box-shadow:0 0 3px rgba(0,0,0,0.5);">${idx + 1}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] });
@@ -201,11 +199,10 @@ function makeEditable(d, isProj, pid) {
         
         m.on('drag', (e) => {
             d.ptsGPS[idx].lat = e.latlng.lat; d.ptsGPS[idx].lng = e.latlng.lng; d.layer.setLatLngs(d.ptsGPS); 
-            
             let distMsg = "";
-            if (idx > 0) distMsg += `← ${map.distance(d.ptsGPS[idx-1], e.latlng).toFixed(1)}m `;
-            if (idx < d.ptsGPS.length - 1) distMsg += `→ ${map.distance(e.latlng, d.ptsGPS[idx+1]).toFixed(1)}m`;
-            if (d.type === 'area' && (idx === 0 || idx === d.ptsGPS.length - 1)) { distMsg += ` (Ferm.: ${map.distance(d.ptsGPS[0], d.ptsGPS[d.ptsGPS.length-1]).toFixed(1)}m)`; }
+            if (idx > 0) distMsg += `← ${map.distance(d.ptsGPS[idx-1], e.latlng).toFixed(2)}m `;
+            if (idx < d.ptsGPS.length - 1) distMsg += `→ ${map.distance(e.latlng, d.ptsGPS[idx+1]).toFixed(2)}m`;
+            if (d.type === 'area' && (idx === 0 || idx === d.ptsGPS.length - 1)) { distMsg += ` (Ferm.: ${map.distance(d.ptsGPS[0], d.ptsGPS[d.ptsGPS.length-1]).toFixed(2)}m)`; }
             if (distMsg !== "") m.bindTooltip(distMsg, {permanent: true, direction: 'top', offset: [0, -10]}).openTooltip();
 
             recalculateStats(d); if(d.type==='line') generateProfile(d);
@@ -253,8 +250,7 @@ function generateEditorTable(d, isProj, pid=null) {
 function updateDrawUI() {
     const list = document.getElementById('measure-list'); if(!list) return; list.innerHTML = '';
     
-    // --- NOUVEAU : BOUTON CHOIX COMPARATIF 3D ---
-    list.innerHTML = `<button type="button" onclick="showMulti3DSelector()" style="width:100%; margin-bottom:10px; background:#8e44ad; color:#fff; border:none; padding:8px; cursor:pointer; font-weight:bold; border-radius:3px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">👁️ Comparer 2 surfaces en 3D</button>`;
+    list.innerHTML = `<button type="button" onclick="showMulti3DSelector()" style="width:100%; margin-bottom:10px; background:#8e44ad; color:#fff; border:none; padding:8px; cursor:pointer; font-weight:bold; border-radius:3px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">👁️ Comparer surfaces en 3D</button>`;
     
     drawStore.forEach(d => {
         let btns = d.type === 'line' ? 
@@ -277,7 +273,7 @@ function updateDrawUI() {
                 <button type="button" class="btn-del" onclick="deleteDraw(${d.id})">✕</button>
             </div>
             <div id="stats-${d.id}" style="font-size:12px; margin:5px 0; color:#eee; background:#222; padding:6px; border-radius:3px;">${d.statsHtml || ''}</div>
-            <button type="button" onclick="toggleEditMode(${d.id})" style="width:100%; background:${d.isEditing?'#27ae60':'#7f8c8d'}; color:#fff; border:none; padding:5px; cursor:pointer; border-radius:3px; font-weight:bold;">
+            <button type="button" onclick="toggleEditMode(${d.id})" style="width:100%; background:${d.isEditing?'#27ae60':'#7f8c8d'}; color:#fff; border:none; padding:5px; cursor:pointer; border-radius:3px; font-weight:bold; display:${d.type==='circle'?'none':'block'}">
                 ${d.isEditing ? '✅ Fin édition' : '✏️ Éditer les points'}
             </button>
             ${generateEditorTable(d, false)}
@@ -285,10 +281,12 @@ function updateDrawUI() {
         </div>`;
     });
 }
+
 window.deleteDraw = (id) => { const d = drawStore.find(x => x.id === id); map.removeLayer(d.layer); if(d.editGroup) map.removeLayer(d.editGroup); drawStore = drawStore.filter(x => x.id !== id); updateDrawUI(); };
 window.renameDraw = (id) => { const d = drawStore.find(x => x.id === id); const n = prompt("Nom :", d.name); if(n){d.name=n; updateDrawUI();} };
 window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visible = !d.visible; if(d.visible) { d.layer.addTo(map); if(d.isEditing) makeEditable(d); } else { map.removeLayer(d.layer); if(d.editGroup) d.editGroup.clearLayers(); } };
 window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id); d.color = color; d.layer.setStyle({color}); updateDrawUI(); };
+
 // ==========================================
 // 6. CALCULS DE VOLUMES ET UTILITAIRES
 // ==========================================
@@ -355,10 +353,10 @@ window.calculateVolume = (id, type) => {
         }
         
         let color = '#fff', lbl = ''; let resTxt = '';
-        if(type === 'hollow') { color = '#3498db'; lbl = `Déblai (${refZ}m)`; resTxt = `${tCreux.toFixed(1)} m³`; }
-        if(type === 'mound') { color = '#e67e22'; lbl = `Remblai (${refZ}m)`; resTxt = `${tTas.toFixed(1)} m³`; }
-        if(type === 'slope') { color = '#9b59b6'; lbl = `Vol. Courbe`; resTxt = `📉 ${tCreux.toFixed(1)}m³ | 📈 ${tTas.toFixed(1)}m³`; }
-        if(type === 'plane') { color = '#1abc9c'; lbl = `Vol. Plan`; resTxt = `📉 ${tCreux.toFixed(1)}m³ | 📈 ${tTas.toFixed(1)}m³`; }
+        if(type === 'hollow') { color = '#3498db'; lbl = `Déblai (${refZ.toFixed(2)}m)`; resTxt = `${tCreux.toFixed(2)} m³`; }
+        if(type === 'mound') { color = '#e67e22'; lbl = `Remblai (${refZ.toFixed(2)}m)`; resTxt = `${tTas.toFixed(2)} m³`; }
+        if(type === 'slope') { color = '#9b59b6'; lbl = `Vol. Courbe`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
+        if(type === 'plane') { color = '#1abc9c'; lbl = `Vol. Plan`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
 
         if (!d.volumeHtml) d.volumeHtml = "";
         d.volumeHtml += `<div style="font-size:12px; margin-top:4px; background:#1a1a1a; padding:4px; border-radius:3px; border-left:3px solid ${color};">
@@ -370,7 +368,7 @@ window.calculateVolume = (id, type) => {
 };
 
 // ==========================================
-// 7. VUE 3D PARFAITE (MOTEUR N-SURFACES ADAPTATIF)
+// 7. VUE 3D PARFAITE (CERCLES AUTORISÉS, 0.25m)
 // ==========================================
 
 window.close3DWindow = () => {
@@ -378,13 +376,6 @@ window.close3DWindow = () => {
     if (cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
 };
 
-document.addEventListener('click', (e) => {
-    if (e.target && e.target.closest('button[onclick="close3DWindow()"]')) {
-        window.close3DWindow();
-    }
-});
-
-// --- UTILITAIRES : PANNEAU & COULEURS ---
 function setup3DControlPanel(htmlContent) {
     let panel = document.getElementById('custom-3d-controls');
     if (!panel) {
@@ -396,20 +387,15 @@ function setup3DControlPanel(htmlContent) {
     panel.innerHTML = htmlContent;
 }
 
-// Pool de couleurs pour distinguer N surfaces (Plan, Courbe)
 const colorScalesPool = [
-    {p: 'Blues', c: 'Greens'},    // Surface 1
-    {p: 'Reds', c: 'Oranges'},     // Surface 2
-    {p: 'Purples', c: 'YlOrRd'},  // Surface 3
-    {p: 'Cividis', c: 'Magenta'}, // Surface 4
-    {p: 'Electric', c: 'Mint'},   // Surface 5
-    {p: 'Hot', c: 'YlGnBu'}       // Surface 6 ... boucle ensuite
+    {p: 'Blues', c: 'Greens'}, {p: 'Reds', c: 'Oranges'}, {p: 'Purples', c: 'YlOrRd'}, 
+    {p: 'Cividis', c: 'Magenta'}, {p: 'Electric', c: 'Mint'}, {p: 'Hot', c: 'YlGnBu'}
 ];
 
-// --- VUE 3D CLASSIQUE (1 SURFACE) ---
 window.generate3DView = (id) => {
     const d = drawStore.find(x => x.id === id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id);
-    if (!d || d.type !== 'area') return;
+    // NOUVEAU : On autorise le 'circle' (qui a été converti en 64 points) en plus des 'area' !
+    if (!d || (d.type !== 'area' && d.type !== 'circle')) return;
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
@@ -421,10 +407,7 @@ window.generate3DView = (id) => {
         l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
 
         let borderPtsWithZ = [];
-        l93Pts.forEach((p, i) => { 
-            let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); 
-            if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); 
-        });
+        l93Pts.forEach((p, i) => { let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
         let aR = 0, bR = 0, cR = 0;
         if (borderPtsWithZ.length >= 3) {
@@ -432,12 +415,10 @@ window.generate3DView = (id) => {
             const n = borderPtsWithZ.length, cX = sX/n, cY = sY/n, cZ = sZ/n;
             let sXX=0, sYY=0, sXY=0, sXZ=0, sYZ=0;
             borderPtsWithZ.forEach(p=>{ const dX=p.x-cX, dY=p.y-cY, dZ=p.z-cZ; sXX+=dX*dX; sYY+=dY*dY; sXY+=dX*dY; sXZ+=dX*dZ; sYZ+=dY*dZ; });
-            const D = sXX*sYY - sXY*sXY; 
-            if(D !== 0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } 
-            cR = cZ - aR*cX - bR*cY;
+            const D = sXX*sYY - sXY*sXY; if(D !== 0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } cR = cZ - aR*cX - bR*cY;
         }
 
-        let step = 0.25; // Précision cible
+        let step = 0.25; 
         if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
         if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
 
@@ -452,16 +433,9 @@ window.generate3DView = (id) => {
                     let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
                     rowPlan.push(aR * x + bR * y + cR);
                     let sumZ = 0, sumW = 0, exactMatch = false, zC = 0;
-                    for (let pt of borderPtsWithZ) { 
-                        let d2 = (x - pt.x)**2 + (y - pt.y)**2; 
-                        if (d2 === 0) { zC = pt.z; exactMatch = true; break; } 
-                        let w = 1 / d2; sumZ += pt.z * w; sumW += w; 
-                    }
-                    if (!exactMatch) zC = sumZ / sumW;
-                    rowCourbe.push(zC);
-                } else {
-                    rowTerrain.push(null); rowPlan.push(null); rowCourbe.push(null);
-                }
+                    for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zC = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
+                    if (!exactMatch) zC = sumZ / sumW; rowCourbe.push(zC);
+                } else { rowTerrain.push(null); rowPlan.push(null); rowCourbe.push(null); }
             }
             zTerrain.push(rowTerrain); zRefPlan.push(rowPlan); zRefCourbe.push(rowCourbe);
         }
@@ -506,13 +480,13 @@ window.generate3DView = (id) => {
     }, 100);
 };
 
-// --- SÉLECTION ET VUE 3D N-SURFACES (ADAPTATIF) ---
 window.multi3DAreas = [];
 
 window.showMulti3DSelector = () => {
     window.multi3DAreas = [];
-    drawStore.forEach(d => { if(d.type==='area') window.multi3DAreas.push({ name: d.name, ref: d }); });
-    projectStore.forEach(p => p.features.forEach(f => { if(f.type==='area') window.multi3DAreas.push({ name: `${p.name} - ${f.name}`, ref: f }); }));
+    // On autorise la sélection des cercles aussi dans la multivue
+    drawStore.forEach(d => { if(d.type==='area' || d.type==='circle') window.multi3DAreas.push({ name: d.name, ref: d }); });
+    projectStore.forEach(p => p.features.forEach(f => { if(f.type==='area' || f.type==='circle') window.multi3DAreas.push({ name: `${p.name} - ${f.name}`, ref: f }); }));
 
     if (window.multi3DAreas.length < 2) return alert("Il vous faut au moins 2 surfaces tracées/chargées pour faire une comparaison.");
 
@@ -521,58 +495,35 @@ window.showMulti3DSelector = () => {
         <p style="font-size:0.9em; color:#aaa;">Cochez les surfaces à superposer en 3D :<br><small style="color:#e74c3c">⚠️ Plus il y a de surfaces, plus la précision diminuera pour protéger votre PC.</small></p>
         <div style="max-height:300px; overflow-y:auto; margin-bottom:15px; background:#111; padding:10px; border-radius:3px;">`;
 
-    window.multi3DAreas.forEach((a, idx) => {
-        html += `<div style="margin-bottom:5px;"><input type="checkbox" class="multi-3d-checkbox" value="${idx}" id="cb-idx-${idx}"> <label for="cb-idx-${idx}" style="cursor:pointer;">${a.name}</label></div>`;
-    });
+    window.multi3DAreas.forEach((a, idx) => { html += `<div style="margin-bottom:5px;"><input type="checkbox" class="multi-3d-checkbox" value="${idx}" id="cb-idx-${idx}"> <label for="cb-idx-${idx}" style="cursor:pointer;">${a.name}</label></div>`; });
 
-    html += `</div>
-        <div style="display:flex; justify-content:space-between;">
-            <button onclick="document.body.removeChild(document.getElementById('multi-3d-modal'))" style="background:#e74c3c; color:white; border:none; padding:6px 12px; border-radius:3px; cursor:pointer;">Annuler</button>
-            <button onclick="launchSelectedMulti3D()" style="background:#27ae60; color:white; border:none; padding:6px 12px; border-radius:3px; font-weight:bold; cursor:pointer;">🚀 Lancer la 3D</button>
-        </div>
-    </div>`;
-    
-    const div = document.createElement('div'); div.innerHTML = html;
-    document.body.appendChild(div.firstElementChild);
+    html += `</div><div style="display:flex; justify-content:space-between;"><button onclick="document.body.removeChild(document.getElementById('multi-3d-modal'))" style="background:#e74c3c; color:white; border:none; padding:6px 12px; border-radius:3px; cursor:pointer;">Annuler</button><button onclick="launchSelectedMulti3D()" style="background:#27ae60; color:white; border:none; padding:6px 12px; border-radius:3px; font-weight:bold; cursor:pointer;">🚀 Lancer la 3D</button></div></div>`;
+    const div = document.createElement('div'); div.innerHTML = html; document.body.appendChild(div.firstElementChild);
 };
 
 window.launchSelectedMulti3D = () => {
     const checkboxes = document.querySelectorAll('.multi-3d-checkbox:checked');
     if (checkboxes.length < 2) return alert("Veuillez cocher au moins 2 surfaces.");
-    
-    // Récupération des références choisies
-    let chosenFeatures = [];
-    checkboxes.forEach(cb => {chosenFeatures.push(window.multi3DAreas[parseInt(cb.value)].ref);});
-
-    document.body.removeChild(document.getElementById('multi-3d-modal'));
-    generateMulti3DViewAdaptive(chosenFeatures); // Nouveau moteur adaptive
+    let chosenFeatures = []; checkboxes.forEach(cb => {chosenFeatures.push(window.multi3DAreas[parseInt(cb.value)].ref);});
+    document.body.removeChild(document.getElementById('multi-3d-modal')); generateMulti3DViewAdaptive(chosenFeatures); 
 };
 
 window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
-
     const numFeatures = featuresToPlot.length;
-    document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = `<h3 style="color:white; text-align:center; margin-top:20%;">Calcul Adaptive de ${numFeatures} surfaces en cours... ⏳</h3>`;
+    document.getElementById('window-3d').style.display = 'block'; document.getElementById('plot-3d').innerHTML = `<h3 style="color:white; text-align:center; margin-top:20%;">Calcul Adaptive de ${numFeatures} surfaces en cours... ⏳</h3>`;
 
     setTimeout(() => {
         let globalMinX = Infinity, globalMinY = Infinity;
-        featuresToPlot.forEach(d => {
-            d.ptsGPS.forEach(p => {
-                const l93 = proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]);
-                if (l93[0] < globalMinX) globalMinX = l93[0]; if (l93[1] < globalMinY) globalMinY = l93[1];
-            });
-        });
+        featuresToPlot.forEach(d => { d.ptsGPS.forEach(p => { const l93 = proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]); if (l93[0] < globalMinX) globalMinX = l93[0]; if (l93[1] < globalMinY) globalMinY = l93[1]; }); });
 
         let allTraces = [];
-
         featuresToPlot.forEach((d, index) => {
             const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
             l93Pts.forEach(p => { if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
 
-            let borderPtsWithZ = [];
-            l93Pts.forEach((p, i) => { let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
+            let borderPtsWithZ = []; l93Pts.forEach((p, i) => { let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p); if (z !== null) borderPtsWithZ.push({ x: p[0], y: p[1], z: z }); });
 
             let aR = 0, bR = 0, cR = 0;
             if (borderPtsWithZ.length >= 3) {
@@ -583,16 +534,8 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
                 const D = sXX*sYY - sXY*sXY; if(D !== 0) { aR=(sXZ*sYY - sYZ*sXY)/D; bR=(sYZ*sXX - sXZ*sXY)/D; } cR = cZ - aR*cX - bR*cY;
             }
 
-            // --- MOTEUR ADAPTATIF DE PRÉCISION ---
-            // Base : 0.25m
-            // On pénalise la précision en fonction du nombre de surfaces (Racine carrée pour ne pas trop dégrader vite)
-            let baseStep = 0.25;
-            let adaptiveStep = baseStep * Math.sqrt(numFeatures); 
-
-            // Sécurité anti-crash RAM par surface (max 600 points par axe)
-            let step = adaptiveStep;
-            if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
-            if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
+            let baseStep = 0.25; let step = baseStep * Math.sqrt(numFeatures); 
+            if ((maxX - minX) / step > 600) step = (maxX - minX) / 600; if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
 
             let xVals = [], yVals = [];
             for (let x = minX; x <= maxX; x += step) xVals.push(x - globalMinX);
@@ -603,8 +546,7 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
                 let rT = [], rP = [], rC = [];
                 for (let x = minX; x <= maxX; x += step) {
                     if (isPointInPolygon([x, y], l93Pts)) {
-                        let zMNT = getZ([x, y]); rT.push(zMNT !== null ? zMNT : null);
-                        rP.push(aR * x + bR * y + cR);
+                        let zMNT = getZ([x, y]); rT.push(zMNT !== null ? zMNT : null); rP.push(aR * x + bR * y + cR);
                         let sumZ = 0, sumW = 0, exactMatch = false, zC = 0;
                         for (let pt of borderPtsWithZ) { let d2 = (x - pt.x)**2 + (y - pt.y)**2; if (d2 === 0) { zC = pt.z; exactMatch = true; break; } let w = 1 / d2; sumZ += pt.z * w; sumW += w; }
                         if (!exactMatch) zC = sumZ / sumW; rC.push(zC);
@@ -618,8 +560,6 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
             if (borderPtsWithZ.length > 0) { xBound.push(borderPtsWithZ[0].x - globalMinX); yBound.push(borderPtsWithZ[0].y - globalMinY); zBound.push(borderPtsWithZ[0].z); }
 
             let hoverTemp = 'X: %{x:.2f} m<br>Y: %{y:.2f} m<br>Z: %{z:.2f} m<extra></extra>';
-            
-            // Récupération des couleurs dans le pool
             let colors = colorScalesPool[index % colorScalesPool.length];
 
             allTraces.push({ z: zTerrain, x: xVals, y: yVals, type: 'surface', name: `Terrain (${d.name})`, colorscale: 'Earth', showscale: false, hovertemplate: hoverTemp });
@@ -628,24 +568,13 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
             allTraces.push({ x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: d.color, width: 6 }, type: 'scatter3d', name: `Contour (${d.name})`, hovertemplate: hoverTemp });
         });
 
-        const layout = { 
-            margin: { l: 0, r: 0, b: 0, t: 0 }, 
-            scene: { aspectmode: 'data', xaxis: { title: 'X (m)', backgroundcolor: '#222' }, yaxis: { title: 'Y (m)', backgroundcolor: '#222' }, zaxis: { title: 'Z (m)', backgroundcolor: '#222' } }, 
-            paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest'
-        };
+        const layout = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', xaxis: { title: 'X (m)', backgroundcolor: '#222' }, yaxis: { title: 'Y (m)', backgroundcolor: '#222' }, zaxis: { title: 'Z (m)', backgroundcolor: '#222' } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest' };
         
         Plotly.newPlot('plot-3d', allTraces, layout).then(() => {
             const plotDiv = document.getElementById('plot-3d');
-            
-            // Création dynamique du panneau de contrôle Multivue
             let htmlControls = `<b style="color:#f1c40f; display:block; margin-bottom:8px; font-size:14px;">🎛️ Multivue (${numFeatures} surf.)</b>`;
             featuresToPlot.forEach((pf, i) => {
-                let baseIdx = i * 4; 
-                let colors = colorScalesPool[i % colorScalesPool.length];
-                
-                // Petite astuce CSS pour simuler l'échelle de couleur dans le panel
-                let gradientP = `linear-gradient(to right, #000, ${pf.color || '#3498db'})`;
-                
+                let baseIdx = i * 4; let colors = colorScalesPool[i % colorScalesPool.length];
                 htmlControls += `<div style="margin-bottom:10px; background:rgba(0,0,0,0.3); padding:8px; border-radius:3px; border-left:4px solid ${pf.color || '#fff'};">
                     <b style="color:${pf.color || '#fff'}; display:block; margin-bottom:5px; font-size:1.1em;">${pf.name}</b>
                     <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx}])"> 🌍 Terrain</label>
