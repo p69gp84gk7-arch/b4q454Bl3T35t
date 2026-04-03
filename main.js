@@ -370,7 +370,7 @@ window.calculateVolume = (id, type) => {
 };
 
 // ==========================================
-// 7. VUE 3D PARFAITE (0.25m + MULTI-SURFACES)
+// 7. VUE 3D PARFAITE (0.25m + MULTI-SURFACES + SANS TERRAIN)
 // ==========================================
 
 window.close3DWindow = () => {
@@ -415,9 +415,7 @@ window.generate3DView = (id) => {
             cR = cZ - aR*cX - bR*cY;
         }
 
-        // PRÉCISION EXTRÊME : 0.25m
         let step = 0.25; 
-        // Sécurité anti-crash RAM : si la zone fait plus de 150m, on augmente le pas
         if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
         if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
 
@@ -467,6 +465,9 @@ window.generate3DView = (id) => {
                     { label: 'Terrain Seul', method: 'update', args: [{'visible': [true, false, false, true]}] },
                     { label: 'Terrain + Plan', method: 'update', args: [{'visible': [true, true, false, true]}] },
                     { label: 'Terrain + Courbe', method: 'update', args: [{'visible': [true, false, true, true]}] },
+                    // --- NOUVEAUX BOUTONS SANS TERRAIN ---
+                    { label: 'Plan Seul (Sans Terrain)', method: 'update', args: [{'visible': [false, true, false, true]}] },
+                    { label: 'Courbe Seule (Sans Terrain)', method: 'update', args: [{'visible': [false, false, true, true]}] },
                     { label: 'Tout Superposer', method: 'update', args: [{'visible': [true, true, true, true]}] }
                 ]
             }]
@@ -487,20 +488,23 @@ window.generate3DView = (id) => {
 };
 
 // --- SÉLECTION ET VUE 3D MULTIPLE (MAX 2 SURFACES) ---
-window.showMulti3DSelector = () => {
-    let allAreas = [];
-    drawStore.forEach(d => { if(d.type==='area') allAreas.push({id: d.id, name: d.name, ref: d}); });
-    projectStore.forEach(p => p.features.forEach(f => { if(f.type==='area') allAreas.push({id: f.id, name: `${p.name} - ${f.name}`, ref: f}); }));
+window.multi3DAreas = []; // Variable globale pour stocker proprement les références
 
-    if (allAreas.length < 2) return alert("Il vous faut au moins 2 surfaces tracées/chargées pour faire une comparaison.");
+window.showMulti3DSelector = () => {
+    window.multi3DAreas = [];
+    drawStore.forEach(d => { if(d.type==='area') window.multi3DAreas.push({ name: d.name, ref: d }); });
+    projectStore.forEach(p => p.features.forEach(f => { if(f.type==='area') window.multi3DAreas.push({ name: `${p.name} - ${f.name}`, ref: f }); }));
+
+    if (window.multi3DAreas.length < 2) return alert("Il vous faut au moins 2 surfaces tracées/chargées pour faire une comparaison.");
 
     let html = `<div id="multi-3d-modal" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#222; padding:20px; border:1px solid #555; z-index:10000; border-radius:5px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color:white; min-width:300px;">
         <h3 style="margin-top:0;">Comparer 2 surfaces</h3>
         <p style="font-size:0.9em; color:#aaa;">Cochez exactement 2 surfaces à superposer :</p>
         <div style="max-height:200px; overflow-y:auto; margin-bottom:15px; background:#111; padding:10px; border-radius:3px;">`;
 
-    allAreas.forEach(a => {
-        html += `<div style="margin-bottom:5px;"><input type="checkbox" class="multi-3d-checkbox" value="${a.id}" id="cb-${a.id}"> <label for="cb-${a.id}" style="cursor:pointer;">${a.name}</label></div>`;
+    // On utilise l'INDEX au lieu de l'ID pour éviter les bugs de précision avec les projets chargés
+    window.multi3DAreas.forEach((a, idx) => {
+        html += `<div style="margin-bottom:5px;"><input type="checkbox" class="multi-3d-checkbox" value="${idx}" id="cb-idx-${idx}"> <label for="cb-idx-${idx}" style="cursor:pointer;">${a.name}</label></div>`;
     });
 
     html += `</div>
@@ -518,12 +522,14 @@ window.launchSelectedMulti3D = () => {
     const checkboxes = document.querySelectorAll('.multi-3d-checkbox:checked');
     if (checkboxes.length !== 2) return alert("Veuillez cocher EXACTEMENT 2 surfaces dans la liste.");
     
-    const id1 = parseFloat(checkboxes[0].value); const id2 = parseFloat(checkboxes[1].value);
-    let f1 = drawStore.find(x=>x.id===id1) || projectStore.flatMap(p=>p.features).find(f=>f.id===id1);
-    let f2 = drawStore.find(x=>x.id===id2) || projectStore.flatMap(p=>p.features).find(f=>f.id===id2);
+    const idx1 = parseInt(checkboxes[0].value);
+    const idx2 = parseInt(checkboxes[1].value);
+    
+    const f1 = window.multi3DAreas[idx1].ref;
+    const f2 = window.multi3DAreas[idx2].ref;
 
     document.body.removeChild(document.getElementById('multi-3d-modal'));
-    generateMulti3DView(f1, f2); // Lancement avec les 2 tracés choisis
+    generateMulti3DView(f1, f2); 
 };
 
 window.generateMulti3DView = (f1, f2) => {
@@ -596,12 +602,20 @@ window.generateMulti3DView = (f1, f2) => {
             allTraces.push({ x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: d.color, width: 6 }, type: 'scatter3d', name: `Contour (${d.name})`, hovertemplate: hoverTemp });
         });
 
+        // NOUVEAUX MASQUES POUR MASQUER LE TERRAIN AUSSI EN MULTIVUE
         let showT = [], showP = [], showC = [], showAll = [];
+        let showP_NoT = [], showC_NoT = [];
+
         for (let i = 0; i < allTraces.length; i++) {
+            // Structure: 0=Terrain, 1=Plan, 2=Courbe, 3=Contour (modulo 4)
             showT.push(i % 4 === 0 || i % 4 === 3); 
             showP.push(i % 4 === 0 || i % 4 === 1 || i % 4 === 3); 
             showC.push(i % 4 === 0 || i % 4 === 2 || i % 4 === 3); 
             showAll.push(true);
+            
+            // Masques sans terrain
+            showP_NoT.push(i % 4 === 1 || i % 4 === 3); // Plan + Contour
+            showC_NoT.push(i % 4 === 2 || i % 4 === 3); // Courbe + Contour
         }
 
         const layout = { 
@@ -614,6 +628,8 @@ window.generateMulti3DView = (f1, f2) => {
                     { label: 'Terrains Seuls', method: 'update', args: [{'visible': showT}] },
                     { label: 'Terrains + Plans', method: 'update', args: [{'visible': showP}] },
                     { label: 'Terrains + Courbes', method: 'update', args: [{'visible': showC}] },
+                    { label: 'Plans Seuls (Sans Terrain)', method: 'update', args: [{'visible': showP_NoT}] },
+                    { label: 'Courbes Seules (Sans Terrain)', method: 'update', args: [{'visible': showC_NoT}] },
                     { label: 'Tout Superposer', method: 'update', args: [{'visible': showAll}] }
                 ]
             }]
