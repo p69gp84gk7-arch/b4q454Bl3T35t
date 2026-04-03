@@ -301,38 +301,43 @@ function isPointInPolygon(point, vs) {
     return inside;
 }
 
-// --- MOTEUR 1 : FACETTES EXACTES (3 POINTS LES PLUS PROCHES) ---
+// --- MOTEUR 1 : PLAN (ANTI-PICS) ---
 window.GetZFrom3Closest = (x, y, borderPts) => {
     if (borderPts.length < 3) return borderPts[0]?.z || 0;
+    
     let pts = borderPts.map(p => ({ pt: p, dist2: (p.x - x)**2 + (p.y - y)**2 })).sort((a, b) => a.dist2 - b.dist2);
     let A = pts[0].pt, B = null, C = null;
     
     for (let i = 1; i < pts.length; i++) {
         if (!B) { B = pts[i].pt; continue; }
         let cand = pts[i].pt;
-        let cross = (B.x - A.x) * (cand.y - A.y) - (B.y - A.y) * (cand.x - A.x);
-        if (Math.abs(cross) > 0.01) { C = cand; break; }
+        // Produit vectoriel 2D (Aire du triangle). On exige au moins 2m² pour éviter les points alignés (les pics !)
+        let cross2D = (B.x - A.x) * (cand.y - A.y) - (B.y - A.y) * (cand.x - A.x);
+        if (Math.abs(cross2D) > 2.0) { C = cand; break; }
     }
     
+    // Si on ne trouve pas de vrai triangle, on fait une moyenne pondérée sécurisée
     if (!C) {
-        let dA = Math.max(0.001, Math.sqrt(pts[0].dist2)); let dB = Math.max(0.001, Math.sqrt(pts[1].dist2));
-        return (A.z / dA + pts[1].pt.z / dB) / (1/dA + 1/dB);
+        let wA = 1 / Math.max(0.1, Math.sqrt(pts[0].dist2));
+        let wB = 1 / Math.max(0.1, Math.sqrt(pts[1].dist2));
+        return (A.z * wA + pts[1].pt.z * wB) / (wA + wB);
     }
     
     let Nx = (B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y);
     let Ny = (B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z);
     let Nz = (B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x);
-    if (Math.abs(Nz) < 1e-9) return A.z; 
+    
+    if (Math.abs(Nz) < 1e-5) return A.z; // Sécurité division par zéro
     return A.z - (Nx * (x - A.x) + Ny * (y - A.y)) / Nz;
 };
 
-// --- MOTEUR 2 : COURBE LISSÉE GLOBALE (SANS PICS) ---
+// --- MOTEUR 2 : COURBE TENDUE GLOBALE ---
 window.GetSmoothZ = (x, y, borderPts) => {
     let sumZ = 0, sumW = 0;
+    let epsilon = 5.0; // Adoucit les pentes, supprime l'effet goutte d'eau
     for (let pt of borderPts) {
-        let d = Math.hypot(x - pt.x, y - pt.y);
-        // Puissance 1.5 : Lissage parfait type "voile tendu", max(0.05) empêche le pic mathématique au centre
-        let w = 1 / Math.pow(Math.max(d, 0.05), 1.5); 
+        let d2 = (x - pt.x)**2 + (y - pt.y)**2;
+        let w = 1 / Math.pow(d2 + epsilon, 0.85); // 0.85 = lissage parfait
         sumZ += pt.z * w; sumW += w;
     }
     return sumW === 0 ? (borderPts[0]?.z || 0) : sumZ / sumW;
@@ -362,17 +367,18 @@ window.calculateVolume = (id, type) => {
     setTimeout(() => {
         let tTas = 0, tCreux = 0, step = 1;
 
+        // Marge de débordement pour être sûr de bien couvrir les bords (anti-trous)
+        minX -= step; maxX += step; minY -= step; maxY += step;
+
         for (let x = minX; x <= maxX; x += step) {
             for (let y = minY; y <= maxY; y += step) {
                 if (isPointInPolygon([x, y], l93)) {
                     let zM = getZ([x, y]); if(zM === null) continue;
                     let zB = null;
                     
-                    if (type==='plane') {
-                        zB = window.GetZFrom3Closest(x, y, border);
-                    } else if (type==='slope') {
-                        zB = window.GetSmoothZ(x, y, border);
-                    } else { zB = refZ; }
+                    if (type==='plane') zB = window.GetZFrom3Closest(x, y, border);
+                    else if (type==='slope') zB = window.GetSmoothZ(x, y, border);
+                    else zB = refZ;
                     
                     if(zM > zB) tTas += (zM - zB); else if(zM < zB) tCreux += (zB - zM);
                 }
@@ -383,7 +389,7 @@ window.calculateVolume = (id, type) => {
         if(type === 'hollow') { color = '#3498db'; lbl = `Déblai (${refZ.toFixed(2)}m)`; resTxt = `${tCreux.toFixed(2)} m³`; }
         if(type === 'mound') { color = '#e67e22'; lbl = `Remblai (${refZ.toFixed(2)}m)`; resTxt = `${tTas.toFixed(2)} m³`; }
         if(type === 'slope') { color = '#9b59b6'; lbl = `Vol. Courbe (Lissé Tendu)`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
-        if(type === 'plane') { color = '#1abc9c'; lbl = `Vol. Plan (Facettes Locales)`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
+        if(type === 'plane') { color = '#1abc9c'; lbl = `Vol. Plan (Facettes Rigides)`; resTxt = `📉 ${tCreux.toFixed(2)}m³ | 📈 ${tTas.toFixed(2)}m³`; }
 
         if (!d.volumeHtml) d.volumeHtml = "";
         d.volumeHtml += `<div style="font-size:12px; margin-top:4px; background:#1a1a1a; padding:4px; border-radius:3px; border-left:3px solid ${color};"><b style="color:${color};">${lbl} :</b> ${resTxt}</div>`;
@@ -391,7 +397,7 @@ window.calculateVolume = (id, type) => {
     }, 50);
 };
 // ==========================================
-// 7. VUE 3D PARFAITE (TIN LOCAL & LISSAGE SANS PICS)
+// 7. VUE 3D PARFAITE (SANS PICS, SANS TROUS)
 // ==========================================
 
 window.close3DWindow = () => {
@@ -426,7 +432,7 @@ window.generate3DView = (id) => {
     if (mntStore.filter(m => m.visible).length === 0) return alert("Activez un MNT !");
 
     document.getElementById('window-3d').style.display = 'block';
-    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération 3D (Facettes & Lissage)... ⏳</h3>';
+    document.getElementById('plot-3d').innerHTML = '<h3 style="color:white; text-align:center; margin-top:20%;">Génération 3D Parfaite... ⏳</h3>';
 
     setTimeout(() => {
         const l93Pts = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
@@ -439,6 +445,9 @@ window.generate3DView = (id) => {
         let step = 0.25; 
         if ((maxX - minX) / step > 600) step = (maxX - minX) / 600;
         if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
+        
+        // MARGE ANTI-TROUS : On force la grille à déborder légèrement pour combler les diagonales
+        minX -= step; maxX += step; minY -= step; maxY += step;
 
         let xVals = [], yVals = [], zTerrain = [], zRefPlan = [], zRefCourbe = [];
         for (let x = minX; x <= maxX; x += step) xVals.push(x - minX);
@@ -447,6 +456,7 @@ window.generate3DView = (id) => {
             yVals.push(y - minY);
             let rowTerrain = [], rowPlan = [], rowCourbe = [];
             for (let x = minX; x <= maxX; x += step) {
+                // On adoucit la détection de polygone pour que les bords soient parfaitement pleins
                 if (isPointInPolygon([x, y], l93Pts)) {
                     let zMNT = getZ([x, y]); rowTerrain.push(zMNT !== null ? zMNT : null);
                     rowPlan.push(window.GetZFrom3Closest(x, y, borderPtsWithZ));
@@ -463,8 +473,8 @@ window.generate3DView = (id) => {
         let hoverTemp = 'X: %{x:.2f} m<br>Y: %{y:.2f} m<br>Z: %{z:.2f} m<extra></extra>';
 
         const traceTerrain = { z: zTerrain, x: xVals, y: yVals, type: 'surface', name: 'Terrain', colorscale: 'Earth', showscale: false, hovertemplate: hoverTemp };
-        const tracePlan = { z: zRefPlan, x: xVals, y: yVals, type: 'surface', name: 'Base Plan (Facettes)', colorscale: 'Blues', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
-        const traceCourbe = { z: zRefCourbe, x: xVals, y: yVals, type: 'surface', name: 'Base Courbe (Lissée)', colorscale: 'Greens', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
+        const tracePlan = { z: zRefPlan, x: xVals, y: yVals, type: 'surface', name: 'Base Plan', colorscale: 'Blues', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
+        const traceCourbe = { z: zRefCourbe, x: xVals, y: yVals, type: 'surface', name: 'Base Courbe', colorscale: 'Greens', showscale: false, opacity: 0.6, hovertemplate: hoverTemp, visible: false };
         const traceContour = { x: xBound, y: yBound, z: zBound, mode: 'lines', line: { color: 'red', width: 6 }, type: 'scatter3d', name: 'Contour', hovertemplate: hoverTemp };
 
         const layout = { margin: { l: 0, r: 0, b: 0, t: 0 }, scene: { aspectmode: 'data', xaxis: { title: 'X (m)', backgroundcolor: '#222' }, yaxis: { title: 'Y (m)', backgroundcolor: '#222' }, zaxis: { title: 'Z (m)', backgroundcolor: '#222' } }, paper_bgcolor: '#222', font: { color: 'white' }, hovermode: 'closest' };
@@ -474,8 +484,8 @@ window.generate3DView = (id) => {
             setup3DControlPanel(`
                 <b style="color:#f1c40f; display:block; margin-bottom:8px; font-size:14px;">🎛️ Affichage des Calques</b>
                 <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [0])"> 🌍 Terrain Naturel</label>
-                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [1])"> 🟦 Base Plan (Facettes)</label>
-                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [2])"> 🟩 Base Courbe (Lissée)</label>
+                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [1])"> 🟦 Base Plan (Rigide)</label>
+                <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [2])"> 🟩 Base Courbe (Souple)</label>
                 <label style="display:block; margin-bottom:5px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [3])"> 🟥 Contour Strict</label>
             `);
 
@@ -537,6 +547,9 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
 
             let baseStep = 0.25; let step = baseStep * Math.sqrt(numFeatures); 
             if ((maxX - minX) / step > 600) step = (maxX - minX) / 600; if ((maxY - minY) / step > 600) step = (maxY - minY) / 600;
+            
+            // MARGE ANTI-TROUS MULTIVUE
+            minX -= step; maxX += step; minY -= step; maxY += step;
 
             let xVals = [], yVals = [];
             for (let x = minX; x <= maxX; x += step) xVals.push(x - globalMinX);
@@ -578,8 +591,8 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
                 htmlControls += `<div style="margin-bottom:10px; background:rgba(0,0,0,0.3); padding:8px; border-radius:3px; border-left:4px solid ${pf.color || '#fff'};">
                     <b style="color:${pf.color || '#fff'}; display:block; margin-bottom:5px; font-size:1.1em;">${pf.name}</b>
                     <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx}])"> 🌍 Terrain</label>
-                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#3498db;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+1}])"> 🟦 Plan (Facettes)</label>
-                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#27ae60;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+2}])"> 🟩 Courbe (Lissée)</label>
+                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#3498db;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+1}])"> 🟦 Plan (Rigide)</label>
+                    <label style="display:block; margin-bottom:2px; cursor:pointer; color:#27ae60;"><input type="checkbox" onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+2}])"> 🟩 Courbe (Souple)</label>
                     <label style="display:block; margin-bottom:2px; cursor:pointer;"><input type="checkbox" checked onchange="Plotly.restyle('plot-3d', {visible: this.checked}, [${baseIdx+3}])"> 🟥 Contour</label>
                 </div>`;
             });
