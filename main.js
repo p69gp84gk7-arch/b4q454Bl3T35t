@@ -29,7 +29,7 @@ function updateCursor(lat, lng) {
 }
 
 // ==========================================
-// 2. MOTEUR ALTIMÉTRIQUE (MNT HAUTE PRÉCISION)
+// 2. MOTEUR ALTIMÉTRIQUE (VALEURS BRUTES EXACTES)
 // ==========================================
 window.loadRemoteMNT = async () => {
     const sel = document.getElementById('mnt-select'); const url = sel.value; if (!url) return alert("Sélectionnez un MNT.");
@@ -44,44 +44,19 @@ window.loadRemoteMNT = async () => {
     } catch(e) { alert("Erreur MNT"); } finally { btn.innerText = oldText; btn.disabled = false; }
 };
 
-// MOTEUR D'INTERPOLATION BILINÉAIRE (Précision centimétrique)
+// Lecture BRUTE : On tape dans la case exacte du pixel du fichier, sans aucune moyenne.
 function getZ(l93) {
     for (let m of mntStore) {
         if (!m.visible) continue;
         if (l93[0] >= m.bbox[0] && l93[0] <= m.bbox[2] && l93[1] >= m.bbox[1] && l93[1] <= m.bbox[3]) {
-            // Position exacte (décimale) dans la grille de pixels
             const px = ((l93[0] - m.bbox[0]) / (m.bbox[2] - m.bbox[0])) * m.width;
             const py = ((m.bbox[3] - l93[1]) / (m.bbox[3] - m.bbox[1])) * m.height;
-
-            // Identification des 4 pixels autour du point
             const x1 = Math.floor(px);
             const y1 = Math.floor(py);
-            const x2 = Math.min(x1 + 1, m.width - 1);
-            const y2 = Math.min(y1 + 1, m.height - 1);
-
-            // Pourcentages de distance entre les pixels (ex: 0.25 = 25% de distance)
-            const dx = px - x1;
-            const dy = py - y1;
-
-            // Lecture des 4 altitudes (Haut/Bas, Gauche/Droite)
-            const q11 = m.data[y1 * m.width + x1]; 
-            const q21 = m.data[y1 * m.width + x2]; 
-            const q12 = m.data[y2 * m.width + x1]; 
-            const q22 = m.data[y2 * m.width + x2]; 
-
-            // Sécurité : si on tape sur le bord ou un "trou" (NoData < -500)
-            if (q11 < -500 || q21 < -500 || q12 < -500 || q22 < -500) {
-                const rx = Math.round(px), ry = Math.round(py);
-                const safeQ = m.data[ry * m.width + rx];
-                return safeQ < -500 ? null : safeQ;
+            if (x1 >= 0 && x1 < m.width && y1 >= 0 && y1 < m.height) {
+                const q = m.data[y1 * m.width + x1];
+                return q < -500 ? null : q;
             }
-
-            // Calcul de la pente interpolée en X puis en Y
-            const top = q11 * (1 - dx) + q21 * dx;
-            const bottom = q12 * (1 - dx) + q22 * dx;
-            const zExact = top * (1 - dy) + bottom * dy;
-
-            return zExact;
         }
     } 
     return null;
@@ -769,7 +744,7 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     }, 100);
 };
 // ==========================================
-// 8. PROFIL ALTIMÉTRIQUE AVEC SUIVI ET INVERSION
+// 8. PROFIL ALTIMÉTRIQUE HAUTE PRÉCISION (SANS ARRONDIS)
 // ==========================================
 window.generateProfileById = (id) => { currentProfileDrawId = id; generateProfile(drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id)); };
 
@@ -781,22 +756,35 @@ function generateProfile(d) {
     let data=[], geo=[], dist=0;
     
     let zStart = d.ptsGPS[0].customZ !== undefined ? d.ptsGPS[0].customZ : (getZ(l93[0])||0);
-    data.push({x: 0, y: parseFloat(zStart.toFixed(2))}); 
+    data.push({x: 0.00, y: parseFloat(zStart.toFixed(2))}); 
     geo.push({lat: d.ptsGPS[0].lat, lng: d.ptsGPS[0].lng}); 
     
     for(let i=1; i<l93.length; i++) {
         const dSeg = Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
-        for(let j=1; j<dSeg; j+=1) {
+        
+        // Échantillonnage topographique fin tous les 0.5m au lieu de 1m, et SANS arrondi sur X !
+        const step = 0.5;
+        for(let j=step; j<dSeg; j+=step) {
             const t = j/dSeg; 
             const x = l93[i-1][0]+(l93[i][0]-l93[i-1][0])*t;
             const y = l93[i-1][1]+(l93[i][1]-l93[i-1][1])*t;
-            data.push({x: Math.round(dist+j), y: parseFloat((getZ([x,y])||0).toFixed(2))}); 
+            
+            let curZ;
+            // Si on a forcé les Z, on calcule la pente droite mathématique
+            if (d.ptsGPS[i-1].customZ !== undefined && d.ptsGPS[i].customZ !== undefined) {
+                curZ = d.ptsGPS[i-1].customZ + t * (d.ptsGPS[i].customZ - d.ptsGPS[i-1].customZ);
+            } else {
+                curZ = getZ([x,y]) || 0;
+            }
+
+            // On garde les décimales exactes pour le X et le Y
+            data.push({x: parseFloat((dist+j).toFixed(2)), y: parseFloat(curZ.toFixed(2))}); 
             const g = proj4("EPSG:2154","EPSG:4326",[x,y]);
             geo.push({lat: g[1], lng: g[0]});
         }
         dist += dSeg; 
         let zEnd = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : (getZ(l93[i])||0);
-        data.push({x: Math.round(dist), y: parseFloat(zEnd.toFixed(2))}); 
+        data.push({x: parseFloat(dist.toFixed(2)), y: parseFloat(zEnd.toFixed(2))}); 
         geo.push({lat: d.ptsGPS[i].lat, lng: d.ptsGPS[i].lng});
     }
     
@@ -806,7 +794,7 @@ function generateProfile(d) {
         data:{datasets:[{label:'Altitude Z (m)', data, borderColor:d.color, backgroundColor:d.color+'33', fill:true, pointRadius:0, tension:0.1}]},
         options:{ 
             responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
-            plugins: { tooltip: { callbacks: { title: (c) => `Dist: ${c[0].parsed.x} m`, label: (c) => `Z: ${c.parsed.y.toFixed(2)} m` } } },
+            plugins: { tooltip: { callbacks: { title: (c) => `Dist: ${c[0].parsed.x.toFixed(2)} m`, label: (c) => `Z: ${c.parsed.y.toFixed(2)} m` } } },
             scales: { x: { type: 'linear', title: {display:true, text:'Distance (m)'} } },
             onHover:(e,el)=>{
                 if(el && el.length > 0){ 
@@ -842,12 +830,11 @@ window.exportChartPNG = () => { const a = document.createElement('a'); a.href = 
 window.exportChartCSV = () => { 
     let csv = "\ufeffDistance (m)\tAltitude Z (m)\n"; 
     chartInstance.data.datasets[0].data.forEach(r => { 
-        csv += `${r.x}\t${r.y.toFixed(2).replace('.', ',')}\n`; 
+        csv += `${r.x.toFixed(2).replace('.', ',')}\t${r.y.toFixed(2).replace('.', ',')}\n`; 
     }); 
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = 'profil.csv'; a.click(); 
 };
 
-// --- FONCTION POUR INVERSER LE SENS D'UNE LIGNE ---
 window.reverseLine = (id) => {
     let d = drawStore.find(x => x.id === id);
     let isProj = false, pid = null;
@@ -858,7 +845,6 @@ window.reverseLine = (id) => {
             isProj = true; pid = proj.id;
         }
     }
-    
     if (!d || d.type !== 'line') return;
     d.ptsGPS.reverse();
     d.layer.setLatLngs(d.ptsGPS);
@@ -1063,7 +1049,6 @@ window.deleteProjectFeature = (pid, fid) => { const p = projectStore.find(x => x
 
 setTimeout(() => { if(typeof dragElement === 'function') dragElement('help-window', 'help-header'); }, 1000);
 
-// --- SYSTÈME DE CAPTURE 3D MANUELLE ---
 window.pdf3DCaptures = []; 
 
 window.capture3DForPDF = async () => {
@@ -1090,7 +1075,6 @@ window.close3DWindow = () => {
     if(originalClose3D) originalClose3D();
 };
 
-// --- MOTEUR DE GÉNÉRATION DU RAPPORT PDF ---
 window.generatePDFReport = async () => {
     let allFeatures = [...drawStore, ...projectStore.flatMap(p => p.features.filter(f => f.visible))];
     if (allFeatures.length === 0) return alert("Veuillez tracer ou charger au moins un élément avant de générer un rapport.");
@@ -1113,7 +1097,7 @@ window.generatePDFReport = async () => {
         doc.text(`Généré le : ${new Date().toLocaleString('fr-FR')}`, pageWidth / 2, yPos, { align: "center" });
         yPos += 15;
 
-        // --- 1. CARTE CENTRÉE (Maintenant avec les tracés visibles grâce à preferCanvas) ---
+        // --- 1. CARTE ---
         doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(0, 0, 0);
         doc.text("1. Vue Planimétrique (Carte)", 15, yPos);
         yPos += 8;
@@ -1138,7 +1122,7 @@ window.generatePDFReport = async () => {
         doc.addImage(canvasMap.toDataURL("image/jpeg", 0.8), 'JPEG', 15, yPos, pageWidth - 30, finalMapHeight);
         yPos += finalMapHeight + 15;
 
-        // --- 2. TABLEAU RÉCAPITULATIF ---
+        // --- 2. TABLEAU ---
         if (yPos > 240) { doc.addPage(); yPos = 20; }
         doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text("2. Récapitulatif des tracés", 15, yPos);
         yPos += 8;
@@ -1164,21 +1148,15 @@ window.generatePDFReport = async () => {
         allFeatures.forEach(d => {
             const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
             let zMin = Infinity, zMax = -Infinity, perim = 0, area = 0;
-            
             l93.forEach((p, i) => {
                 let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p);
                 if(z !== null) { if(z < zMin) zMin = z; if(z > zMax) zMax = z; }
             });
-            
-            if (d.type === 'circle') {
-                perim = 2 * Math.PI * d.radius; area = Math.PI * d.radius * d.radius;
-            } else if (d.type === 'line') {
-                for (let i = 1; i < l93.length; i++) perim += Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
-                area = 0;
-            } else {
+            if (d.type === 'circle') { perim = 2 * Math.PI * d.radius; area = Math.PI * d.radius * d.radius; } 
+            else if (d.type === 'line') { for (let i = 1; i < l93.length; i++) perim += Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]); area = 0; } 
+            else {
                 for (let i = 0; i < l93.length; i++) { 
-                    let j = (i+1) % l93.length; 
-                    area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; 
+                    let j = (i+1) % l93.length; area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; 
                     perim += Math.hypot(l93[j][0] - l93[i][0], l93[j][1] - l93[i][1]);
                 }
                 area = Math.abs(area)/2;
@@ -1219,7 +1197,7 @@ window.generatePDFReport = async () => {
         doc.addImage(imgTableStats, 'PNG', 15, yPos, pageWidth - 30, tableStatsHeight);
         yPos += tableStatsHeight + 20;
 
-        // --- 4. PROFILS ALTIMÉTRIQUES SCANNÉS À HAUTE RÉSOLUTION ---
+        // --- 4. PROFILS ALTIMÉTRIQUES DE HAUTE PRÉCISION ---
         let lines = allFeatures.filter(d => d.type === 'line');
         if (lines.length > 0) {
             if (yPos > 240) { doc.addPage(); yPos = 20; }
@@ -1230,30 +1208,31 @@ window.generatePDFReport = async () => {
                 let dists = [], zVals = [], totalDist = 0;
                 const l93 = line.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
                 
-                // Le scan magique tous les 1 mètre
+                // Maintien de l'arrondi décimal pour coller avec la fonction d'affichage
+                dists.push(0.00); 
+                zVals.push(parseFloat((line.ptsGPS[0].customZ !== undefined ? line.ptsGPS[0].customZ : (getZ(l93[0])||0)).toFixed(2)));
+
                 for (let i = 1; i < l93.length; i++) {
                     let p1 = l93[i-1], p2 = l93[i];
                     let segmentDist = Math.hypot(p2[0]-p1[0], p2[1]-p1[1]);
-                    let steps = Math.max(2, Math.floor(segmentDist)); // Au moins 1 point par mètre
                     
-                    let z1 = line.ptsGPS[i-1].customZ !== undefined ? line.ptsGPS[i-1].customZ : getZ(p1);
-                    let z2 = line.ptsGPS[i].customZ !== undefined ? line.ptsGPS[i].customZ : getZ(p2);
-
-                    for (let j = 0; j <= steps; j++) {
-                        if (i > 1 && j === 0) continue; // Évite le doublon aux angles
-                        let t = j / steps;
+                    const step = 0.5;
+                    for(let j=step; j<segmentDist; j+=step) {
+                        let t = j/segmentDist;
                         let curX = p1[0] + t * (p2[0]-p1[0]), curY = p1[1] + t * (p2[1]-p1[1]);
                         
                         let curZ;
                         if (line.ptsGPS[i-1].customZ !== undefined && line.ptsGPS[i].customZ !== undefined) {
-                            curZ = z1 + t * (z2 - z1); // Pente droite parfaite si on force le Z
+                            curZ = line.ptsGPS[i-1].customZ + t * (line.ptsGPS[i].customZ - line.ptsGPS[i-1].customZ);
                         } else {
-                            curZ = getZ([curX, curY]); // On lit le terrain naturel !
-                            if (curZ === null) curZ = (z1 !== null && z2 !== null) ? z1 + t * (z2 - z1) : 0;
+                            curZ = getZ([curX, curY]) || 0; 
                         }
-                        dists.push(totalDist + (t * segmentDist)); zVals.push(curZ);
+                        dists.push(parseFloat((totalDist + j).toFixed(2))); 
+                        zVals.push(parseFloat(curZ.toFixed(2)));
                     }
                     totalDist += segmentDist;
+                    dists.push(parseFloat(totalDist.toFixed(2)));
+                    zVals.push(parseFloat((line.ptsGPS[i].customZ !== undefined ? line.ptsGPS[i].customZ : (getZ(l93[i])||0)).toFixed(2)));
                 }
                 
                 let trace = { x: dists, y: zVals, mode: 'lines', fill: 'tozeroy', type: 'scatter', line: {color: line.color, width: 2}, name: line.name };
