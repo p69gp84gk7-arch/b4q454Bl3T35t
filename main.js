@@ -776,7 +776,7 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     }, 100);
 };
 // ==========================================
-// 8. PROFIL ALTIMÉTRIQUE (COUPE SIMPLE ET STRICTE)
+// 8. PROFIL ALTIMÉTRIQUE (COUPE SIMPLE ET STRICTE À 1M)
 // ==========================================
 window.generateProfileById = (id) => { currentProfileDrawId = id; generateProfile(drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id)); };
 
@@ -796,7 +796,7 @@ function generateProfile(d) {
     for(let i=1; i<l93.length; i++) {
         const dSeg = Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
         
-        const step = 0.5; // Scan ultra-précis tous les 50cm
+        const step = 1; // <-- RETOUR À 1 MÈTRE ICI
         for(let j=step; j<dSeg; j+=step) {
             const t = j/dSeg; 
             const x = l93[i-1][0]+(l93[i][0]-l93[i-1][0])*t;
@@ -1224,7 +1224,7 @@ window.generatePDFReport = async () => {
                     let p1 = l93[i-1], p2 = l93[i];
                     let segmentDist = Math.hypot(p2[0]-p1[0], p2[1]-p1[1]);
                     
-                    const step = 0.5;
+                    const step = 1; // <-- RETOUR À 1 MÈTRE ICI AUSSI
                     for(let j=step; j<segmentDist; j+=step) {
                         let t = j/segmentDist;
                         let curX = p1[0] + t * (p2[0]-p1[0]), curY = p1[1] + t * (p2[1]-p1[1]);
@@ -1252,7 +1252,6 @@ window.generatePDFReport = async () => {
                 doc.addImage(imgUrl, 'PNG', 15, yPos, pageWidth - 30, 75);
                 yPos += 85;
             }
-
         // --- 5. INTÉGRATION DES CAPTURES 3D MANUELLES ---
         if (window.pdf3DCaptures && window.pdf3DCaptures.length > 0) {
             if (yPos > 180) { doc.addPage(); yPos = 20; }
