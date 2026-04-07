@@ -29,7 +29,7 @@ function updateCursor(lat, lng) {
 }
 
 // ==========================================
-// 2. MOTEUR ALTIMÉTRIQUE (INTERPOLATION BILINÉAIRE EXACTE)
+// 2. MOTEUR ALTIMÉTRIQUE (INTERPOLATION BILINÉAIRE STRICTE L93)
 // ==========================================
 window.loadRemoteMNT = async () => {
     const sel = document.getElementById('mnt-select'); const url = sel.value; if (!url) return alert("Sélectionnez un MNT.");
@@ -49,34 +49,43 @@ function getZ(l93) {
         if (!m.visible) continue;
         if (l93[0] >= m.bbox[0] && l93[0] <= m.bbox[2] && l93[1] >= m.bbox[1] && l93[1] <= m.bbox[3]) {
             
-            // Calcul de la taille d'un pixel en mètres
+            // Taille exacte d'un pixel en mètres
             const pixelWidth = (m.bbox[2] - m.bbox[0]) / m.width;
             const pixelHeight = (m.bbox[3] - m.bbox[1]) / m.height;
             
-            // L'ASTUCE DE PRÉCISION ABSOLUE : -0.5 pour cibler le CENTRE mathématique du pixel
+            // Calcul de la position continue. 
+            // On retire 0.5 pour cibler le centre géométrique exact du pixel dans le GeoTIFF.
             let px = ((l93[0] - m.bbox[0]) / pixelWidth) - 0.5;
             let py = ((m.bbox[3] - l93[1]) / pixelHeight) - 0.5;
-            
-            px = Math.max(0, Math.min(px, m.width - 1));
-            py = Math.max(0, Math.min(py, m.height - 1));
 
-            // Les 4 pixels adjacents pour l'interpolation
+            // Détermination des 4 pixels qui entourent la coordonnée
             const x1 = Math.floor(px); const y1 = Math.floor(py);
-            const x2 = Math.min(x1 + 1, m.width - 1); const y2 = Math.min(y1 + 1, m.height - 1);
+            const x2 = x1 + 1; const y2 = y1 + 1;
 
+            // Sécurité pour ne pas sortir de la grille aux bordures
+            const cx1 = Math.max(0, Math.min(x1, m.width - 1));
+            const cy1 = Math.max(0, Math.min(y1, m.height - 1));
+            const cx2 = Math.max(0, Math.min(x2, m.width - 1));
+            const cy2 = Math.max(0, Math.min(y2, m.height - 1));
+
+            // Distances relatives (pourcentages) pour pondérer la pente
             const dx = px - x1; const dy = py - y1;
 
-            const q11 = m.data[y1 * m.width + x1]; const q21 = m.data[y1 * m.width + x2];
-            const q12 = m.data[y2 * m.width + x1]; const q22 = m.data[y2 * m.width + x2];
+            // Altitudes des 4 pixels
+            const q11 = m.data[cy1 * m.width + cx1]; 
+            const q21 = m.data[cy1 * m.width + cx2];
+            const q12 = m.data[cy2 * m.width + cx1]; 
+            const q22 = m.data[cy2 * m.width + cx2];
 
-            // Sécurité bords de carte
+            // Sécurité NoData (zones vides du MNT)
             if (q11 < -500 || q21 < -500 || q12 < -500 || q22 < -500) {
-                const rx = Math.round(px), ry = Math.round(py);
+                const rx = Math.max(0, Math.min(Math.round(px), m.width - 1));
+                const ry = Math.max(0, Math.min(Math.round(py), m.height - 1));
                 const safeQ = m.data[ry * m.width + rx];
                 return safeQ < -500 ? null : safeQ;
             }
 
-            // Interpolation Bilinéaire (Précision au millimètre)
+            // Calcul mathématique Bilinéaire absolu
             const top = q11 * (1 - dx) + q21 * dx;
             const bottom = q12 * (1 - dx) + q22 * dx;
             return top * (1 - dy) + bottom * dy;
@@ -767,7 +776,7 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     }, 100);
 };
 // ==========================================
-// 8. PROFIL ALTIMÉTRIQUE (ANTI-MIROIR & SANS ARRONDIS)
+// 8. PROFIL ALTIMÉTRIQUE (COUPE SIMPLE ET STRICTE)
 // ==========================================
 window.generateProfileById = (id) => { currentProfileDrawId = id; generateProfile(drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id)); };
 
@@ -775,35 +784,27 @@ function generateProfile(d) {
     if(!d) return; document.getElementById('profile-window').style.display='block';
     const ctx = document.getElementById('profileChart').getContext('2d');
     
-    // Copie de sécurité pour ne pas casser le dessin sur la carte
-    let pts = d.ptsGPS.map(p => ({...p})); 
-    let l93 = pts.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
-    
-    // ANTI-MIROIR : Si la ligne va de la Droite vers la Gauche, on inverse le tableau de calcul
-    // Ainsi le profil graphique sera TOUJOURS orienté de la Gauche vers la Droite.
-    if (l93.length > 1 && l93[0][0] > l93[l93.length - 1][0]) {
-        pts.reverse();
-        l93.reverse();
-    }
+    // On conserve l'ordre strict de création de la ligne (A -> B)
+    const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
     
     let data=[], geo=[], dist=0;
     
-    let zStart = pts[0].customZ !== undefined ? pts[0].customZ : (getZ(l93[0])||0);
+    let zStart = d.ptsGPS[0].customZ !== undefined ? d.ptsGPS[0].customZ : (getZ(l93[0])||0);
     data.push({x: 0.00, y: parseFloat(zStart.toFixed(2))}); 
-    geo.push({lat: pts[0].lat, lng: pts[0].lng}); 
+    geo.push({lat: d.ptsGPS[0].lat, lng: d.ptsGPS[0].lng}); 
     
     for(let i=1; i<l93.length; i++) {
         const dSeg = Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
         
-        const step = 0.5; // Scan du terrain tous les 50cm
+        const step = 0.5; // Scan ultra-précis tous les 50cm
         for(let j=step; j<dSeg; j+=step) {
             const t = j/dSeg; 
             const x = l93[i-1][0]+(l93[i][0]-l93[i-1][0])*t;
             const y = l93[i-1][1]+(l93[i][1]-l93[i-1][1])*t;
             
             let curZ;
-            if (pts[i-1].customZ !== undefined && pts[i].customZ !== undefined) {
-                curZ = pts[i-1].customZ + t * (pts[i].customZ - pts[i-1].customZ);
+            if (d.ptsGPS[i-1].customZ !== undefined && d.ptsGPS[i].customZ !== undefined) {
+                curZ = d.ptsGPS[i-1].customZ + t * (d.ptsGPS[i].customZ - d.ptsGPS[i-1].customZ);
             } else {
                 curZ = getZ([x,y]) || 0;
             }
@@ -813,9 +814,9 @@ function generateProfile(d) {
             geo.push({lat: g[1], lng: g[0]});
         }
         dist += dSeg; 
-        let zEnd = pts[i].customZ !== undefined ? pts[i].customZ : (getZ(l93[i])||0);
+        let zEnd = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : (getZ(l93[i])||0);
         data.push({x: parseFloat(dist.toFixed(2)), y: parseFloat(zEnd.toFixed(2))}); 
-        geo.push({lat: pts[i].lat, lng: pts[i].lng});
+        geo.push({lat: d.ptsGPS[i].lat, lng: d.ptsGPS[i].lng});
     }
     
     if(chartInstance) chartInstance.destroy();
@@ -825,7 +826,7 @@ function generateProfile(d) {
         options:{ 
             responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
             plugins: { tooltip: { callbacks: { title: (c) => `Dist: ${c[0].parsed.x.toFixed(2)} m`, label: (c) => `Z: ${c.parsed.y.toFixed(2)} m` } } },
-            scales: { x: { type: 'linear', title: {display:true, text:'Distance (m)'} } },
+            scales: { x: { type: 'linear', title: {display:true, text:'Distance géométrique exacte (m)'} } },
             onHover:(e,el)=>{
                 if(el && el.length > 0){ 
                     const p = geo[el[0].index]; 
@@ -1213,17 +1214,11 @@ window.generatePDFReport = async () => {
         for (let line of lines) {
                 let dists = [], zVals = [], totalDist = 0;
                 
-                // MÊME CORRECTION ANTI-MIROIR POUR LE PDF
-                let pts = line.ptsGPS.map(p => ({...p})); 
-                let l93 = pts.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
-                
-                if (l93.length > 1 && l93[0][0] > l93[l93.length - 1][0]) {
-                    pts.reverse();
-                    l93.reverse();
-                }
+                // Maintien strict de l'ordre géométrique
+                const l93 = line.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
 
                 dists.push(0.00); 
-                zVals.push(parseFloat((pts[0].customZ !== undefined ? pts[0].customZ : (getZ(l93[0])||0)).toFixed(2)));
+                zVals.push(parseFloat((line.ptsGPS[0].customZ !== undefined ? line.ptsGPS[0].customZ : (getZ(l93[0])||0)).toFixed(2)));
 
                 for (let i = 1; i < l93.length; i++) {
                     let p1 = l93[i-1], p2 = l93[i];
@@ -1235,8 +1230,8 @@ window.generatePDFReport = async () => {
                         let curX = p1[0] + t * (p2[0]-p1[0]), curY = p1[1] + t * (p2[1]-p1[1]);
                         
                         let curZ;
-                        if (pts[i-1].customZ !== undefined && pts[i].customZ !== undefined) {
-                            curZ = pts[i-1].customZ + t * (pts[i].customZ - pts[i-1].customZ);
+                        if (line.ptsGPS[i-1].customZ !== undefined && line.ptsGPS[i].customZ !== undefined) {
+                            curZ = line.ptsGPS[i-1].customZ + t * (line.ptsGPS[i].customZ - line.ptsGPS[i-1].customZ);
                         } else {
                             curZ = getZ([curX, curY]) || 0; 
                         }
@@ -1245,7 +1240,7 @@ window.generatePDFReport = async () => {
                     }
                     totalDist += segmentDist;
                     dists.push(parseFloat(totalDist.toFixed(2)));
-                    zVals.push(parseFloat((pts[i].customZ !== undefined ? pts[i].customZ : (getZ(l93[i])||0)).toFixed(2)));
+                    zVals.push(parseFloat((line.ptsGPS[i].customZ !== undefined ? line.ptsGPS[i].customZ : (getZ(l93[i])||0)).toFixed(2)));
                 }
                 
                 let trace = { x: dists, y: zVals, mode: 'lines', fill: 'tozeroy', type: 'scatter', line: {color: line.color, width: 2}, name: line.name };
