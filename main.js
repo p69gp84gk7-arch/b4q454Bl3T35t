@@ -1,10 +1,15 @@
+
 // ==========================================
 // 1. CONFIGURATION CARTE ET L93
 // ==========================================
 proj4.defs("EPSG:2154","+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +units=m +no_defs");
 
-const map = L.map('map', { doubleClickZoom: false }).setView([42.7645, 0.5833], 15);
-preferCanvas: true
+// CORRECTION : preferCanvas doit être À L'INTÉRIEUR des accolades {} !
+const map = L.map('map', { 
+    doubleClickZoom: false,
+    preferCanvas: true 
+}).setView([42.7645, 0.5833], 15);
+
 const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
 const planOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
 L.control.layers({ "🌍 Satellite": satellite, "🗺️ Plan": planOSM }).addTo(map);
@@ -24,7 +29,7 @@ function updateCursor(lat, lng) {
 }
 
 // ==========================================
-// 2. MOTEUR ALTIMÉTRIQUE (MNT)
+// 2. MOTEUR ALTIMÉTRIQUE (MNT HAUTE PRÉCISION)
 // ==========================================
 window.loadRemoteMNT = async () => {
     const sel = document.getElementById('mnt-select'); const url = sel.value; if (!url) return alert("Sélectionnez un MNT.");
@@ -39,14 +44,47 @@ window.loadRemoteMNT = async () => {
     } catch(e) { alert("Erreur MNT"); } finally { btn.innerText = oldText; btn.disabled = false; }
 };
 
+// MOTEUR D'INTERPOLATION BILINÉAIRE (Précision centimétrique)
 function getZ(l93) {
     for (let m of mntStore) {
         if (!m.visible) continue;
         if (l93[0] >= m.bbox[0] && l93[0] <= m.bbox[2] && l93[1] >= m.bbox[1] && l93[1] <= m.bbox[3]) {
-            const px = ((l93[0] - m.bbox[0]) / (m.bbox[2] - m.bbox[0])) * m.width, py = ((m.bbox[3] - l93[1]) / (m.bbox[3] - m.bbox[1])) * m.height;
-            const x1 = Math.floor(px), y1 = Math.floor(py); const q = m.data[y1 * m.width + x1]; return q < -500 ? null : q;
+            // Position exacte (décimale) dans la grille de pixels
+            const px = ((l93[0] - m.bbox[0]) / (m.bbox[2] - m.bbox[0])) * m.width;
+            const py = ((m.bbox[3] - l93[1]) / (m.bbox[3] - m.bbox[1])) * m.height;
+
+            // Identification des 4 pixels autour du point
+            const x1 = Math.floor(px);
+            const y1 = Math.floor(py);
+            const x2 = Math.min(x1 + 1, m.width - 1);
+            const y2 = Math.min(y1 + 1, m.height - 1);
+
+            // Pourcentages de distance entre les pixels (ex: 0.25 = 25% de distance)
+            const dx = px - x1;
+            const dy = py - y1;
+
+            // Lecture des 4 altitudes (Haut/Bas, Gauche/Droite)
+            const q11 = m.data[y1 * m.width + x1]; 
+            const q21 = m.data[y1 * m.width + x2]; 
+            const q12 = m.data[y2 * m.width + x1]; 
+            const q22 = m.data[y2 * m.width + x2]; 
+
+            // Sécurité : si on tape sur le bord ou un "trou" (NoData < -500)
+            if (q11 < -500 || q21 < -500 || q12 < -500 || q22 < -500) {
+                const rx = Math.round(px), ry = Math.round(py);
+                const safeQ = m.data[ry * m.width + rx];
+                return safeQ < -500 ? null : safeQ;
+            }
+
+            // Calcul de la pente interpolée en X puis en Y
+            const top = q11 * (1 - dx) + q21 * dx;
+            const bottom = q12 * (1 - dx) + q22 * dx;
+            const zExact = top * (1 - dy) + bottom * dy;
+
+            return zExact;
         }
-    } return null;
+    } 
+    return null;
 }
 
 function updateMntUI() {
@@ -55,7 +93,6 @@ function updateMntUI() {
 }
 window.toggleMNT = (id) => { const m = mntStore.find(x => x.id === id); m.visible = !m.visible; if (m.visible) m.visual.addTo(map); else map.removeLayer(m.visual); };
 window.deleteMNT = (id) => { const m = mntStore.find(x => x.id === id); map.removeLayer(m.visual); mntStore = mntStore.filter(x => x.id !== id); updateMntUI(); };
-
 // ==========================================
 // 3. CHARGEMENT DES KMZ (STATIC)
 // ==========================================
