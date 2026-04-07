@@ -773,17 +773,59 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     }, 100);
 };
 // ==========================================
-// 8. PROFIL ALTIMÉTRIQUE (COUPE SIMPLE ET STRICTE À 1M)
+// 8. PROFIL ALTIMÉTRIQUE (AVEC DESSIN INTERACTIF DE PROJET)
 // ==========================================
+window.currentProfileDrawId = null;
+window.isDrawingOnProfile = false;
+
 window.generateProfileById = (id) => { currentProfileDrawId = id; generateProfile(drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id)); };
+
+// Activation/Désactivation du mode dessin sur le graphique
+window.toggleProfileDraw = () => {
+    window.isDrawingOnProfile = !window.isDrawingOnProfile;
+    const btn = document.getElementById('btn-prof-draw');
+    if(btn) {
+        btn.style.background = window.isDrawingOnProfile ? '#e74c3c' : '#27ae60';
+        btn.innerText = window.isDrawingOnProfile ? '🛑 Stop Dessin' : '✏️ Dessiner Projet';
+        document.getElementById('profileChart').style.cursor = window.isDrawingOnProfile ? 'crosshair' : 'default';
+    }
+};
+
+// Effacer la ligne de projet
+window.clearProfileDraw = () => {
+    let d = drawStore.find(x=>x.id===window.currentProfileDrawId) || projectStore.flatMap(p=>p.features).find(f=>f.id===window.currentProfileDrawId);
+    if(d) {
+        d.customProfilePts = [];
+        if(chartInstance && chartInstance.data.datasets[1]) {
+            chartInstance.data.datasets[1].data = [];
+            chartInstance.update('none');
+        }
+    }
+};
 
 function generateProfile(d) {
     if(!d) return; document.getElementById('profile-window').style.display='block';
     const ctx = document.getElementById('profileChart').getContext('2d');
     
-    // On conserve l'ordre strict de création de la ligne (A -> B)
+    // 1. Injection des boutons de dessin au-dessus du graphique s'ils n'existent pas
+    let toolsDiv = document.getElementById('profile-custom-tools');
+    if(!toolsDiv) {
+        const canvasParent = document.getElementById('profileChart').parentNode;
+        toolsDiv = document.createElement('div');
+        toolsDiv.id = 'profile-custom-tools';
+        toolsDiv.style.cssText = "position:absolute; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:10px; z-index:1000;";
+        toolsDiv.innerHTML = `
+            <button id="btn-prof-draw" onclick="toggleProfileDraw()" style="background:#27ae60; color:white; border:none; padding:6px 12px; border-radius:3px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">✏️ Dessiner Projet</button>
+            <button onclick="clearProfileDraw()" style="background:#c0392b; color:white; border:none; padding:6px 12px; border-radius:3px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">🗑️ Effacer</button>
+        `;
+        canvasParent.insertBefore(toolsDiv, document.getElementById('profileChart'));
+    }
+
+    // 2. Initialisation de la mémoire du trait de projet pour cette ligne
+    if(!d.customProfilePts) d.customProfilePts = [];
+
+    // 3. Calcul du terrain naturel (MNT)
     const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
-    
     let data=[], geo=[], dist=0;
     
     let zStart = d.ptsGPS[0].customZ !== undefined ? d.ptsGPS[0].customZ : (getZ(l93[0])||0);
@@ -792,19 +834,15 @@ function generateProfile(d) {
     
     for(let i=1; i<l93.length; i++) {
         const dSeg = Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
-        
-        const step = 1; // Scan tous les 1m pour de meilleures performances
+        const step = 1; 
         for(let j=step; j<dSeg; j+=step) {
             const t = j/dSeg; 
             const x = l93[i-1][0]+(l93[i][0]-l93[i-1][0])*t;
             const y = l93[i-1][1]+(l93[i][1]-l93[i-1][1])*t;
             
-            let curZ;
-            if (d.ptsGPS[i-1].customZ !== undefined && d.ptsGPS[i].customZ !== undefined) {
-                curZ = d.ptsGPS[i-1].customZ + t * (d.ptsGPS[i].customZ - d.ptsGPS[i-1].customZ);
-            } else {
-                curZ = getZ([x,y]) || 0;
-            }
+            let curZ = (d.ptsGPS[i-1].customZ !== undefined && d.ptsGPS[i].customZ !== undefined) 
+                ? d.ptsGPS[i-1].customZ + t * (d.ptsGPS[i].customZ - d.ptsGPS[i-1].customZ) 
+                : (getZ([x,y]) || 0);
 
             data.push({x: parseFloat((dist+j).toFixed(2)), y: parseFloat(curZ.toFixed(2))}); 
             const g = proj4("EPSG:2154","EPSG:4326",[x,y]);
@@ -816,18 +854,45 @@ function generateProfile(d) {
         geo.push({lat: d.ptsGPS[i].lat, lng: d.ptsGPS[i].lng});
     }
     
+    // 4. Création du graphique avec DEUX calques (Terrain + Projet)
     if(chartInstance) chartInstance.destroy();
     chartInstance = new Chart(ctx, {
         type:'line', 
-        data:{datasets:[{label:'Altitude Z (m)', data, borderColor:d.color, backgroundColor:d.color+'33', fill:true, pointRadius:0, tension:0.1}]},
+        data: {
+            datasets:[
+                {label:'Terrain Naturel (Z)', data, borderColor:d.color, backgroundColor:d.color+'33', fill:true, pointRadius:0, tension:0.1, order: 2},
+                {label:'Ligne de Projet', data: d.customProfilePts, borderColor:'#f1c40f', backgroundColor:'transparent', fill:false, pointRadius:5, pointHoverRadius:7, pointBackgroundColor:'#f1c40f', showLine:true, tension:0, order: 1}
+            ]
+        },
         options:{ 
             responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
-            plugins: { tooltip: { callbacks: { title: (c) => `Dist: ${c[0].parsed.x.toFixed(2)} m`, label: (c) => `Z: ${c.parsed.y.toFixed(2)} m` } } },
+            
+            // ÉVÈNEMENT MAGIQUE : Le clic sur le graphique
+            onClick: (e) => {
+                if(!window.isDrawingOnProfile) return;
+                
+                // Conversion des pixels cliqués en valeurs mathématiques X et Y
+                const xValue = chartInstance.scales.x.getValueForPixel(e.x);
+                const yValue = chartInstance.scales.y.getValueForPixel(e.y);
+                
+                if(xValue !== undefined && yValue !== undefined) {
+                    // Ajout du point cliqué
+                    d.customProfilePts.push({x: parseFloat(xValue.toFixed(2)), y: parseFloat(yValue.toFixed(2))});
+                    
+                    // Tri obligatoire par distance X (pour éviter que la ligne ne reparte en arrière)
+                    d.customProfilePts.sort((a,b) => a.x - b.x);
+                    
+                    // Mise à jour visuelle instantanée
+                    chartInstance.update('none');
+                }
+            },
+            
+            plugins: { tooltip: { callbacks: { title: (c) => `Dist: ${c[0].parsed.x.toFixed(2)} m`, label: (c) => `${c.dataset.label}: ${c.parsed.y.toFixed(2)} m` } } },
             scales: { x: { type: 'linear', title: {display:true, text:'Distance géométrique exacte (m)'} } },
             onHover:(e,el)=>{
-                if(el && el.length > 0){ 
+                if(el && el.length > 0 && el[0].datasetIndex === 0){ 
                     const p = geo[el[0].index]; 
-                    updateCursor(p.lat, p.lng);
+                    if(p) updateCursor(p.lat, p.lng);
                 }
             }
         }
@@ -856,11 +921,27 @@ window.updateScalesLive = () => {
 
 window.exportChartPNG = () => { const a = document.createElement('a'); a.href = document.getElementById('profileChart').toDataURL('image/png'); a.download = 'profil.png'; a.click(); };
 window.exportChartCSV = () => { 
-    let csv = "\ufeffDistance (m)\tAltitude Z (m)\n"; 
-    chartInstance.data.datasets[0].data.forEach(r => { 
-        csv += `${r.x.toFixed(2).replace('.', ',')}\t${r.y.toFixed(2).replace('.', ',')}\n`; 
+    let csv = "\ufeffDistance (m)\tTerrain Z (m)\tProjet Z (m)\n"; 
+    
+    // Export des deux lignes si le projet est dessiné
+    const terrainData = chartInstance.data.datasets[0].data;
+    const projetData = chartInstance.data.datasets[1].data;
+    
+    terrainData.forEach(r => { 
+        // Cherche s'il y a un point de projet à cette distance exacte (peu probable, mais on gère)
+        let projPt = projetData.find(p => p.x === r.x);
+        let pZ = projPt ? projPt.y.toFixed(2).replace('.', ',') : "";
+        csv += `${r.x.toFixed(2).replace('.', ',')}\t${r.y.toFixed(2).replace('.', ',')}\t${pZ}\n`; 
     }); 
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = 'profil.csv'; a.click(); 
+    
+    // Ajout des points de projets spécifiques
+    projetData.forEach(r => {
+        if(!terrainData.find(t => t.x === r.x)) {
+             csv += `${r.x.toFixed(2).replace('.', ',')}\t\t${r.y.toFixed(2).replace('.', ',')}\n`; 
+        }
+    });
+
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = 'profil_et_projet.csv'; a.click(); 
 };
 // ==========================================
 // 9. SOURIS LIVE, DRAG ET REDIMENSIONNEMENT FENÊTRES
