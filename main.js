@@ -297,10 +297,7 @@ function updateDrawUI() {
     
     drawStore.forEach(d => {
         let btns = d.type === 'line' ? 
-            `<div style="display:flex; gap:3px; margin-top:5px;">
-                <button type="button" onclick="generateProfileById(${d.id})" style="flex:3; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil</button>
-                <button type="button" onclick="reverseLine(${d.id})" style="flex:1; background:#f39c12; color:#fff; border:none; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;" title="Inverser le sens de lecture">↔️ Inverser</button>
-            </div>` : 
+            `<button type="button" onclick="generateProfileById(${d.id})" style="width:100%; margin-top:5px; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil altimétrique</button>` : 
             `<div style="display:flex; gap:3px; margin-top:5px; flex-wrap:wrap;">
                 <button type="button" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#3498db; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📉 Déblai</button>
                 <button type="button" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📈 Remblai</button>
@@ -796,7 +793,7 @@ function generateProfile(d) {
     for(let i=1; i<l93.length; i++) {
         const dSeg = Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
         
-        const step = 1; // <-- RETOUR À 1 MÈTRE ICI
+        const step = 1; // Scan tous les 1m pour de meilleures performances
         for(let j=step; j<dSeg; j+=step) {
             const t = j/dSeg; 
             const x = l93[i-1][0]+(l93[i][0]-l93[i-1][0])*t;
@@ -988,10 +985,7 @@ function updateProjectUI() {
         let fHtml = ''; 
         p.features.forEach(f => {
             const btns = f.type==='line' ? 
-                `<div style="display:flex; gap:3px; margin-top:5px;">
-                    <button type="button" onclick="generateProfileById(${f.id})" style="flex:3; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil</button>
-                    <button type="button" onclick="reverseLine(${f.id})" style="flex:1; background:#f39c12; color:#fff; border:none; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;" title="Inverser le sens de lecture">↔️ Inverser</button>
-                </div>` : 
+                `<button type="button" onclick="generateProfileById(${f.id})" style="width:100%; margin-top:5px; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil altimétrique</button>` : 
                 `<div style="display:flex; gap:3px; margin-top:5px; flex-wrap:wrap;">
                     <button type="button" onclick="calculateVolume(${f.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#3498db; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📉 Déblai</button>
                     <button type="button" onclick="calculateVolume(${f.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📈 Remblai</button>
