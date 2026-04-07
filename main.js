@@ -29,7 +29,7 @@ function updateCursor(lat, lng) {
 }
 
 // ==========================================
-// 2. MOTEUR ALTIMÉTRIQUE (VALEURS BRUTES EXACTES)
+// 2. MOTEUR ALTIMÉTRIQUE (INTERPOLATION BILINÉAIRE EXACTE)
 // ==========================================
 window.loadRemoteMNT = async () => {
     const sel = document.getElementById('mnt-select'); const url = sel.value; if (!url) return alert("Sélectionnez un MNT.");
@@ -44,19 +44,42 @@ window.loadRemoteMNT = async () => {
     } catch(e) { alert("Erreur MNT"); } finally { btn.innerText = oldText; btn.disabled = false; }
 };
 
-// Lecture BRUTE : On tape dans la case exacte du pixel du fichier, sans aucune moyenne.
 function getZ(l93) {
     for (let m of mntStore) {
         if (!m.visible) continue;
         if (l93[0] >= m.bbox[0] && l93[0] <= m.bbox[2] && l93[1] >= m.bbox[1] && l93[1] <= m.bbox[3]) {
-            const px = ((l93[0] - m.bbox[0]) / (m.bbox[2] - m.bbox[0])) * m.width;
-            const py = ((m.bbox[3] - l93[1]) / (m.bbox[3] - m.bbox[1])) * m.height;
-            const x1 = Math.floor(px);
-            const y1 = Math.floor(py);
-            if (x1 >= 0 && x1 < m.width && y1 >= 0 && y1 < m.height) {
-                const q = m.data[y1 * m.width + x1];
-                return q < -500 ? null : q;
+            
+            // Calcul de la taille d'un pixel en mètres
+            const pixelWidth = (m.bbox[2] - m.bbox[0]) / m.width;
+            const pixelHeight = (m.bbox[3] - m.bbox[1]) / m.height;
+            
+            // L'ASTUCE DE PRÉCISION ABSOLUE : -0.5 pour cibler le CENTRE mathématique du pixel
+            let px = ((l93[0] - m.bbox[0]) / pixelWidth) - 0.5;
+            let py = ((m.bbox[3] - l93[1]) / pixelHeight) - 0.5;
+            
+            px = Math.max(0, Math.min(px, m.width - 1));
+            py = Math.max(0, Math.min(py, m.height - 1));
+
+            // Les 4 pixels adjacents pour l'interpolation
+            const x1 = Math.floor(px); const y1 = Math.floor(py);
+            const x2 = Math.min(x1 + 1, m.width - 1); const y2 = Math.min(y1 + 1, m.height - 1);
+
+            const dx = px - x1; const dy = py - y1;
+
+            const q11 = m.data[y1 * m.width + x1]; const q21 = m.data[y1 * m.width + x2];
+            const q12 = m.data[y2 * m.width + x1]; const q22 = m.data[y2 * m.width + x2];
+
+            // Sécurité bords de carte
+            if (q11 < -500 || q21 < -500 || q12 < -500 || q22 < -500) {
+                const rx = Math.round(px), ry = Math.round(py);
+                const safeQ = m.data[ry * m.width + rx];
+                return safeQ < -500 ? null : safeQ;
             }
+
+            // Interpolation Bilinéaire (Précision au millimètre)
+            const top = q11 * (1 - dx) + q21 * dx;
+            const bottom = q12 * (1 - dx) + q22 * dx;
+            return top * (1 - dy) + bottom * dy;
         }
     } 
     return null;
@@ -744,48 +767,55 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     }, 100);
 };
 // ==========================================
-// 8. PROFIL ALTIMÉTRIQUE HAUTE PRÉCISION (SANS ARRONDIS)
+// 8. PROFIL ALTIMÉTRIQUE (ANTI-MIROIR & SANS ARRONDIS)
 // ==========================================
 window.generateProfileById = (id) => { currentProfileDrawId = id; generateProfile(drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id)); };
 
 function generateProfile(d) {
     if(!d) return; document.getElementById('profile-window').style.display='block';
     const ctx = document.getElementById('profileChart').getContext('2d');
-    const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+    
+    // Copie de sécurité pour ne pas casser le dessin sur la carte
+    let pts = d.ptsGPS.map(p => ({...p})); 
+    let l93 = pts.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+    
+    // ANTI-MIROIR : Si la ligne va de la Droite vers la Gauche, on inverse le tableau de calcul
+    // Ainsi le profil graphique sera TOUJOURS orienté de la Gauche vers la Droite.
+    if (l93.length > 1 && l93[0][0] > l93[l93.length - 1][0]) {
+        pts.reverse();
+        l93.reverse();
+    }
     
     let data=[], geo=[], dist=0;
     
-    let zStart = d.ptsGPS[0].customZ !== undefined ? d.ptsGPS[0].customZ : (getZ(l93[0])||0);
+    let zStart = pts[0].customZ !== undefined ? pts[0].customZ : (getZ(l93[0])||0);
     data.push({x: 0.00, y: parseFloat(zStart.toFixed(2))}); 
-    geo.push({lat: d.ptsGPS[0].lat, lng: d.ptsGPS[0].lng}); 
+    geo.push({lat: pts[0].lat, lng: pts[0].lng}); 
     
     for(let i=1; i<l93.length; i++) {
         const dSeg = Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
         
-        // Échantillonnage topographique fin tous les 0.5m au lieu de 1m, et SANS arrondi sur X !
-        const step = 0.5;
+        const step = 0.5; // Scan du terrain tous les 50cm
         for(let j=step; j<dSeg; j+=step) {
             const t = j/dSeg; 
             const x = l93[i-1][0]+(l93[i][0]-l93[i-1][0])*t;
             const y = l93[i-1][1]+(l93[i][1]-l93[i-1][1])*t;
             
             let curZ;
-            // Si on a forcé les Z, on calcule la pente droite mathématique
-            if (d.ptsGPS[i-1].customZ !== undefined && d.ptsGPS[i].customZ !== undefined) {
-                curZ = d.ptsGPS[i-1].customZ + t * (d.ptsGPS[i].customZ - d.ptsGPS[i-1].customZ);
+            if (pts[i-1].customZ !== undefined && pts[i].customZ !== undefined) {
+                curZ = pts[i-1].customZ + t * (pts[i].customZ - pts[i-1].customZ);
             } else {
                 curZ = getZ([x,y]) || 0;
             }
 
-            // On garde les décimales exactes pour le X et le Y
             data.push({x: parseFloat((dist+j).toFixed(2)), y: parseFloat(curZ.toFixed(2))}); 
             const g = proj4("EPSG:2154","EPSG:4326",[x,y]);
             geo.push({lat: g[1], lng: g[0]});
         }
         dist += dSeg; 
-        let zEnd = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : (getZ(l93[i])||0);
+        let zEnd = pts[i].customZ !== undefined ? pts[i].customZ : (getZ(l93[i])||0);
         data.push({x: parseFloat(dist.toFixed(2)), y: parseFloat(zEnd.toFixed(2))}); 
-        geo.push({lat: d.ptsGPS[i].lat, lng: d.ptsGPS[i].lng});
+        geo.push({lat: pts[i].lat, lng: pts[i].lng});
     }
     
     if(chartInstance) chartInstance.destroy();
@@ -833,23 +863,6 @@ window.exportChartCSV = () => {
         csv += `${r.x.toFixed(2).replace('.', ',')}\t${r.y.toFixed(2).replace('.', ',')}\n`; 
     }); 
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = 'profil.csv'; a.click(); 
-};
-
-window.reverseLine = (id) => {
-    let d = drawStore.find(x => x.id === id);
-    let isProj = false, pid = null;
-    if (!d) {
-        let proj = projectStore.find(p => p.features.some(f => f.id === id));
-        if (proj) {
-            d = proj.features.find(f => f.id === id);
-            isProj = true; pid = proj.id;
-        }
-    }
-    if (!d || d.type !== 'line') return;
-    d.ptsGPS.reverse();
-    d.layer.setLatLngs(d.ptsGPS);
-    if (d.isEditing) makeEditable(d, isProj, pid);
-    if (currentProfileDrawId === d.id) generateProfile(d);
 };
 // ==========================================
 // 9. SOURIS LIVE, DRAG ET REDIMENSIONNEMENT FENÊTRES
@@ -1197,20 +1210,20 @@ window.generatePDFReport = async () => {
         doc.addImage(imgTableStats, 'PNG', 15, yPos, pageWidth - 30, tableStatsHeight);
         yPos += tableStatsHeight + 20;
 
-        // --- 4. PROFILS ALTIMÉTRIQUES DE HAUTE PRÉCISION ---
-        let lines = allFeatures.filter(d => d.type === 'line');
-        if (lines.length > 0) {
-            if (yPos > 240) { doc.addPage(); yPos = 20; }
-            doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text("3. Profils Altimétriques (Coupes)", 15, yPos);
-            yPos += 10;
-
-            for (let line of lines) {
+        for (let line of lines) {
                 let dists = [], zVals = [], totalDist = 0;
-                const l93 = line.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
                 
-                // Maintien de l'arrondi décimal pour coller avec la fonction d'affichage
+                // MÊME CORRECTION ANTI-MIROIR POUR LE PDF
+                let pts = line.ptsGPS.map(p => ({...p})); 
+                let l93 = pts.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+                
+                if (l93.length > 1 && l93[0][0] > l93[l93.length - 1][0]) {
+                    pts.reverse();
+                    l93.reverse();
+                }
+
                 dists.push(0.00); 
-                zVals.push(parseFloat((line.ptsGPS[0].customZ !== undefined ? line.ptsGPS[0].customZ : (getZ(l93[0])||0)).toFixed(2)));
+                zVals.push(parseFloat((pts[0].customZ !== undefined ? pts[0].customZ : (getZ(l93[0])||0)).toFixed(2)));
 
                 for (let i = 1; i < l93.length; i++) {
                     let p1 = l93[i-1], p2 = l93[i];
@@ -1222,8 +1235,8 @@ window.generatePDFReport = async () => {
                         let curX = p1[0] + t * (p2[0]-p1[0]), curY = p1[1] + t * (p2[1]-p1[1]);
                         
                         let curZ;
-                        if (line.ptsGPS[i-1].customZ !== undefined && line.ptsGPS[i].customZ !== undefined) {
-                            curZ = line.ptsGPS[i-1].customZ + t * (line.ptsGPS[i].customZ - line.ptsGPS[i-1].customZ);
+                        if (pts[i-1].customZ !== undefined && pts[i].customZ !== undefined) {
+                            curZ = pts[i-1].customZ + t * (pts[i].customZ - pts[i-1].customZ);
                         } else {
                             curZ = getZ([curX, curY]) || 0; 
                         }
@@ -1232,7 +1245,7 @@ window.generatePDFReport = async () => {
                     }
                     totalDist += segmentDist;
                     dists.push(parseFloat(totalDist.toFixed(2)));
-                    zVals.push(parseFloat((line.ptsGPS[i].customZ !== undefined ? line.ptsGPS[i].customZ : (getZ(l93[i])||0)).toFixed(2)));
+                    zVals.push(parseFloat((pts[i].customZ !== undefined ? pts[i].customZ : (getZ(l93[i])||0)).toFixed(2)));
                 }
                 
                 let trace = { x: dists, y: zVals, mode: 'lines', fill: 'tozeroy', type: 'scatter', line: {color: line.color, width: 2}, name: line.name };
@@ -1244,7 +1257,6 @@ window.generatePDFReport = async () => {
                 doc.addImage(imgUrl, 'PNG', 15, yPos, pageWidth - 30, 75);
                 yPos += 85;
             }
-        }
 
         // --- 5. INTÉGRATION DES CAPTURES 3D MANUELLES ---
         if (window.pdf3DCaptures && window.pdf3DCaptures.length > 0) {
