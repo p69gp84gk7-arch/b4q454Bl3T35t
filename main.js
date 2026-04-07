@@ -773,7 +773,7 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     }, 100);
 };
 // ==========================================
-// 8. PROFIL ALTIMÉTRIQUE (AVEC DESSIN INTERACTIF DE PROJET)
+// 8. PROFIL ALTIMÉTRIQUE (AVEC DESSIN INTERACTIF DISCRET)
 // ==========================================
 window.currentProfileDrawId = null;
 window.isDrawingOnProfile = false;
@@ -786,7 +786,7 @@ window.toggleProfileDraw = () => {
     const btn = document.getElementById('btn-prof-draw');
     if(btn) {
         btn.style.background = window.isDrawingOnProfile ? '#e74c3c' : '#27ae60';
-        btn.innerText = window.isDrawingOnProfile ? '🛑 Stop Dessin' : '✏️ Dessiner Projet';
+        btn.innerText = window.isDrawingOnProfile ? '🛑 Stop' : '✏️ Dessiner';
         document.getElementById('profileChart').style.cursor = window.isDrawingOnProfile ? 'crosshair' : 'default';
     }
 };
@@ -807,24 +807,33 @@ function generateProfile(d) {
     if(!d) return; document.getElementById('profile-window').style.display='block';
     const ctx = document.getElementById('profileChart').getContext('2d');
     
-    // 1. Injection des boutons de dessin au-dessus du graphique s'ils n'existent pas
+    // 1. Injection des petits boutons en haut à droite
     let toolsDiv = document.getElementById('profile-custom-tools');
+    const canvasParent = document.getElementById('profileChart').parentNode;
+    canvasParent.style.position = 'relative'; // Crucial pour que les boutons s'alignent bien sur la droite du cadre
+    
     if(!toolsDiv) {
-        const canvasParent = document.getElementById('profileChart').parentNode;
         toolsDiv = document.createElement('div');
         toolsDiv.id = 'profile-custom-tools';
-        toolsDiv.style.cssText = "position:absolute; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:10px; z-index:1000;";
+        // Taille réduite (font-size 11px, padding 4px) et positionné à droite
+        toolsDiv.style.cssText = "position:absolute; top:10px; right:20px; display:flex; gap:5px; z-index:1000;";
         toolsDiv.innerHTML = `
-            <button id="btn-prof-draw" onclick="toggleProfileDraw()" style="background:#27ae60; color:white; border:none; padding:6px 12px; border-radius:3px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">✏️ Dessiner Projet</button>
-            <button onclick="clearProfileDraw()" style="background:#c0392b; color:white; border:none; padding:6px 12px; border-radius:3px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">🗑️ Effacer</button>
+            <button id="btn-prof-draw" onclick="toggleProfileDraw()" style="background:#27ae60; color:white; border:none; padding:4px 8px; font-size:11px; border-radius:3px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">✏️ Dessiner</button>
+            <button onclick="clearProfileDraw()" style="background:#c0392b; color:white; border:none; padding:4px 8px; font-size:11px; border-radius:3px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">🗑️ Effacer</button>
         `;
         canvasParent.insertBefore(toolsDiv, document.getElementById('profileChart'));
+    } else {
+        // Sécurité : si la fenêtre était fermée en mode dessin, on réinitialise le bouton
+        window.isDrawingOnProfile = false;
+        const btn = document.getElementById('btn-prof-draw');
+        if(btn) { btn.style.background = '#27ae60'; btn.innerText = '✏️ Dessiner'; }
+        document.getElementById('profileChart').style.cursor = 'default';
     }
 
     // 2. Initialisation de la mémoire du trait de projet pour cette ligne
     if(!d.customProfilePts) d.customProfilePts = [];
 
-    // 3. Calcul du terrain naturel (MNT)
+    // 3. Calcul du terrain naturel (MNT) avec un pas de 1 mètre
     const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
     let data=[], geo=[], dist=0;
     
@@ -861,28 +870,20 @@ function generateProfile(d) {
         data: {
             datasets:[
                 {label:'Terrain Naturel (Z)', data, borderColor:d.color, backgroundColor:d.color+'33', fill:true, pointRadius:0, tension:0.1, order: 2},
-                {label:'Ligne de Projet', data: d.customProfilePts, borderColor:'#f1c40f', backgroundColor:'transparent', fill:false, pointRadius:5, pointHoverRadius:7, pointBackgroundColor:'#f1c40f', showLine:true, tension:0, order: 1}
+                {label:'Ligne de Projet', data: d.customProfilePts, borderColor:'#f1c40f', backgroundColor:'transparent', fill:false, pointRadius:4, pointHoverRadius:6, pointBackgroundColor:'#f1c40f', showLine:true, tension:0, order: 1}
             ]
         },
         options:{ 
             responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
             
-            // ÉVÈNEMENT MAGIQUE : Le clic sur le graphique
             onClick: (e) => {
                 if(!window.isDrawingOnProfile) return;
-                
-                // Conversion des pixels cliqués en valeurs mathématiques X et Y
                 const xValue = chartInstance.scales.x.getValueForPixel(e.x);
                 const yValue = chartInstance.scales.y.getValueForPixel(e.y);
                 
                 if(xValue !== undefined && yValue !== undefined) {
-                    // Ajout du point cliqué
                     d.customProfilePts.push({x: parseFloat(xValue.toFixed(2)), y: parseFloat(yValue.toFixed(2))});
-                    
-                    // Tri obligatoire par distance X (pour éviter que la ligne ne reparte en arrière)
-                    d.customProfilePts.sort((a,b) => a.x - b.x);
-                    
-                    // Mise à jour visuelle instantanée
+                    d.customProfilePts.sort((a,b) => a.x - b.x); // Tri de gauche à droite
                     chartInstance.update('none');
                 }
             },
@@ -923,18 +924,15 @@ window.exportChartPNG = () => { const a = document.createElement('a'); a.href = 
 window.exportChartCSV = () => { 
     let csv = "\ufeffDistance (m)\tTerrain Z (m)\tProjet Z (m)\n"; 
     
-    // Export des deux lignes si le projet est dessiné
     const terrainData = chartInstance.data.datasets[0].data;
     const projetData = chartInstance.data.datasets[1].data;
     
     terrainData.forEach(r => { 
-        // Cherche s'il y a un point de projet à cette distance exacte (peu probable, mais on gère)
         let projPt = projetData.find(p => p.x === r.x);
         let pZ = projPt ? projPt.y.toFixed(2).replace('.', ',') : "";
         csv += `${r.x.toFixed(2).replace('.', ',')}\t${r.y.toFixed(2).replace('.', ',')}\t${pZ}\n`; 
     }); 
     
-    // Ajout des points de projets spécifiques
     projetData.forEach(r => {
         if(!terrainData.find(t => t.x === r.x)) {
              csv += `${r.x.toFixed(2).replace('.', ',')}\t\t${r.y.toFixed(2).replace('.', ',')}\n`; 
