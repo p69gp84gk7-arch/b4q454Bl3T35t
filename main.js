@@ -169,7 +169,6 @@ function recalculateStats(d) {
     const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
     let h = "";
     
-    // NOUVEAU : Calcul Zmin et Zmax pour TOUS les tracés
     let zMin = Infinity, zMax = -Infinity;
     for (let i = 0; i < l93.length; i++) {
         let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(l93[i]);
@@ -181,7 +180,6 @@ function recalculateStats(d) {
     
     let extraStats = "";
     if (zMin !== Infinity && zMax !== -Infinity) {
-        // Z au cm près (.toFixed(2))
         extraStats = `<br>Zmin: <b>${zMin.toFixed(2)} m</b> | Zmax: <b>${zMax.toFixed(2)} m</b> | ΔZ: <b>${(zMax-zMin).toFixed(2)} m</b>`;
     }
 
@@ -229,7 +227,7 @@ window.toggleEditMode = (id, isProj = false, pid = null) => {
 };
 
 function makeEditable(d, isProj, pid) {
-    d.editGroup.clearLayers(); if (d.type === 'circle') return; // On n'édite pas les 64 points d'un cercle à la main
+    d.editGroup.clearLayers(); if (d.type === 'circle') return; 
     window.currentEditingFeature = { d, isProj, pid };
     d.ptsGPS.forEach((pt, idx) => {
         const icon = L.divIcon({ className: 'numbered-handle', html: `<div style="background:#e74c3c; color:white; border-radius:50%; width:20px; height:20px; text-align:center; line-height:20px; font-size:11px; font-weight:bold; border:2px solid white; box-shadow:0 0 3px rgba(0,0,0,0.5);">${idx + 1}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] });
@@ -292,7 +290,10 @@ function updateDrawUI() {
     
     drawStore.forEach(d => {
         let btns = d.type === 'line' ? 
-            `<button type="button" onclick="generateProfileById(${d.id})" style="width:100%; margin-top:5px; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil altimétrique</button>` : 
+            `<div style="display:flex; gap:3px; margin-top:5px;">
+                <button type="button" onclick="generateProfileById(${d.id})" style="flex:3; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil</button>
+                <button type="button" onclick="reverseLine(${d.id})" style="flex:1; background:#f39c12; color:#fff; border:none; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;" title="Inverser le sens de lecture">↔️ Inverser</button>
+            </div>` : 
             `<div style="display:flex; gap:3px; margin-top:5px; flex-wrap:wrap;">
                 <button type="button" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#3498db; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📉 Déblai</button>
                 <button type="button" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📈 Remblai</button>
@@ -319,12 +320,6 @@ function updateDrawUI() {
         </div>`;
     });
 }
-
-window.deleteDraw = (id) => { const d = drawStore.find(x => x.id === id); map.removeLayer(d.layer); if(d.editGroup) map.removeLayer(d.editGroup); drawStore = drawStore.filter(x => x.id !== id); updateDrawUI(); };
-window.renameDraw = (id) => { const d = drawStore.find(x => x.id === id); const n = prompt("Nom :", d.name); if(n){d.name=n; updateDrawUI();} };
-window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visible = !d.visible; if(d.visible) { d.layer.addTo(map); if(d.isEditing) makeEditable(d); } else { map.removeLayer(d.layer); if(d.editGroup) d.editGroup.clearLayers(); } };
-window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id); d.color = color; d.layer.setStyle({color}); updateDrawUI(); };
-
 // ==========================================
 // 6. GÉOMÉTRIE AVANCÉE ET CALCULS DE VOLUMES
 // ==========================================
@@ -774,7 +769,7 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     }, 100);
 };
 // ==========================================
-// 8. PROFIL ALTIMÉTRIQUE AVEC SUIVI
+// 8. PROFIL ALTIMÉTRIQUE AVEC SUIVI ET INVERSION
 // ==========================================
 window.generateProfileById = (id) => { currentProfileDrawId = id; generateProfile(drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id)); };
 
@@ -787,7 +782,7 @@ function generateProfile(d) {
     
     let zStart = d.ptsGPS[0].customZ !== undefined ? d.ptsGPS[0].customZ : (getZ(l93[0])||0);
     data.push({x: 0, y: parseFloat(zStart.toFixed(2))}); 
-    geo.push({lat: d.ptsGPS[0].lat, lng: d.ptsGPS[0].lng}); // Coordonnées parfaites
+    geo.push({lat: d.ptsGPS[0].lat, lng: d.ptsGPS[0].lng}); 
     
     for(let i=1; i<l93.length; i++) {
         const dSeg = Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
@@ -822,7 +817,6 @@ function generateProfile(d) {
         }
     });
     
-    // Auto-réglage des curseurs
     const minZ = Math.min(...data.map(pt=>pt.y)), maxZ = Math.max(...data.map(pt=>pt.y)), maxD = data[data.length-1].x;
     const sXMin=document.getElementById('x-min'), sXMax=document.getElementById('x-max'), sYMin=document.getElementById('y-min'), sYMax=document.getElementById('y-max');
     if(sXMin) { sXMin.max=maxD; sXMax.max=maxD; sXMin.value=0; sXMax.value=maxD; }
@@ -853,41 +847,24 @@ window.exportChartCSV = () => {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = 'profil.csv'; a.click(); 
 };
 
-function updateProjectUI() {
-    const list = document.getElementById('project-list'); if(!list) return; list.innerHTML = '';
-    projectStore.forEach(p => {
-        let fHtml = ''; 
-        p.features.forEach(f => {
-            const btns = f.type==='line' ? 
-                `<button type="button" onclick="generateProfileById(${f.id})" style="width:100%; margin-top:5px; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil altimétrique</button>` : 
-                `<div style="display:flex; gap:3px; margin-top:5px; flex-wrap:wrap;">
-                    <button type="button" onclick="calculateVolume(${f.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#3498db; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📉 Déblai</button>
-                    <button type="button" onclick="calculateVolume(${f.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📈 Remblai</button>
-                    <button type="button" onclick="calculateVolume(${f.id}, 'slope')" style="flex:1; font-size:0.75em; background:#9b59b6; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📐 Courbe</button>
-                    <button type="button" onclick="calculateVolume(${f.id}, 'plane')" style="flex:1; font-size:0.75em; background:#1abc9c; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📏 Plan</button>
-                    <button type="button" onclick="generate3DView(${f.id})" style="flex:1; min-width:100%; font-size:0.8em; font-weight:bold; background:#34495e; color:#fff; border:1px solid #555; cursor:pointer; padding:5px; margin-top:2px; border-radius:3px;">👁️ Lancer Vue 3D</button>
-                </div>`;
-                
-            fHtml += `<div style="margin-left:5px; border-left:3px solid ${f.color}; padding:5px; background:#1a1a1a; margin-top:5px; border-radius:3px;">
-                <div style="display:flex; align-items:center; justify-content:space-between;">
-                    <div><input type="checkbox" checked onchange="toggleProjectFeature(${p.id}, ${f.id})"> <strong style="margin-left:5px; font-size:1.1em;">${f.name}</strong></div>
-                    <button type="button" onclick="deleteProjectFeature(${p.id}, ${f.id})" style="background:transparent; color:#e74c3c; border:none; cursor:pointer;">✕</button>
-                </div>
-                <div id="stats-proj-${f.id}" style="font-size:12px; margin:5px 0; color:#ddd; background:#222; padding:6px; border-radius:3px;">${f.statsHtml || ''}</div>
-                <button type="button" onclick="toggleEditMode(${f.id}, true, ${p.id})" style="width:100%; background:${f.isEditing?'#27ae60':'#7f8c8d'}; color:#fff; border:none; padding:5px; cursor:pointer; margin-bottom:5px; font-weight:bold; border-radius:3px;">${f.isEditing?'✅ Fin édition':'✏️ Éditer les points'}</button>
-                ${generateEditorTable(f, true, p.id)}
-                ${btns}
-            </div>`;
-        });
-        list.innerHTML += `<div class="card">
-            <div class="card-header">
-                <div><input type="checkbox" ${p.visible ? 'checked' : ''} onchange="toggleProject(${p.id})"><strong style="color:#3498db; font-size:1.1em;">📁 ${p.name}</strong></div>
-                <button type="button" class="btn-del" onclick="deleteProject(${p.id})">✕</button>
-            </div>
-            <details open style="margin-top: 8px;"><summary style="font-size: 0.85em; color: #aaa; cursor:pointer;">Ouvrir/Fermer les calques</summary>${fHtml}</details>
-        </div>`;
-    });
-}
+// --- FONCTION POUR INVERSER LE SENS D'UNE LIGNE ---
+window.reverseLine = (id) => {
+    let d = drawStore.find(x => x.id === id);
+    let isProj = false, pid = null;
+    if (!d) {
+        let proj = projectStore.find(p => p.features.some(f => f.id === id));
+        if (proj) {
+            d = proj.features.find(f => f.id === id);
+            isProj = true; pid = proj.id;
+        }
+    }
+    
+    if (!d || d.type !== 'line') return;
+    d.ptsGPS.reverse();
+    d.layer.setLatLngs(d.ptsGPS);
+    if (d.isEditing) makeEditable(d, isProj, pid);
+    if (currentProfileDrawId === d.id) generateProfile(d);
+};
 // ==========================================
 // 9. SOURIS LIVE, DRAG ET REDIMENSIONNEMENT FENÊTRES
 // ==========================================
@@ -957,7 +934,7 @@ window.addEventListener('load', () => {
 // ==========================================
 // 10. SAUVEGARDE ET PROJETS (GAUCHE)
 // ==========================================
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZ-m9rVPuATkiYjccicrtBSrAieSSA_TTqmYpA61SoK4eTj11qesIEpItyys6Vu2GVXQ/exec"; // <--- ⚠️ À REMPLIR
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZ-m9rVPuATkiYjccicrtBSrAieSSA_TTqmYpA61SoK4eTj11qesIEpItyys6Vu2GVXQ/exec";
 
 window.saveProject = async () => {
     const name = document.getElementById('project-name').value.trim(); 
@@ -1011,7 +988,10 @@ function updateProjectUI() {
         let fHtml = ''; 
         p.features.forEach(f => {
             const btns = f.type==='line' ? 
-                `<button type="button" onclick="generateProfileById(${f.id})" style="width:100%; margin-top:5px; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil altimétrique</button>` : 
+                `<div style="display:flex; gap:3px; margin-top:5px;">
+                    <button type="button" onclick="generateProfileById(${f.id})" style="flex:3; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil</button>
+                    <button type="button" onclick="reverseLine(${f.id})" style="flex:1; background:#f39c12; color:#fff; border:none; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;" title="Inverser le sens de lecture">↔️ Inverser</button>
+                </div>` : 
                 `<div style="display:flex; gap:3px; margin-top:5px; flex-wrap:wrap;">
                     <button type="button" onclick="calculateVolume(${f.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#3498db; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📉 Déblai</button>
                     <button type="button" onclick="calculateVolume(${f.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📈 Remblai</button>
@@ -1045,7 +1025,6 @@ function updateProjectUI() {
     });
 }
 
-// --- FONCTION POUR COPIER UN PROJET VERS LA DROITE ---
 window.copyProjectToWorkspace = (pid) => {
     const p = projectStore.find(x => x.id === pid);
     if (!p) return;
@@ -1073,6 +1052,11 @@ window.copyProjectToWorkspace = (pid) => {
     updateDrawUI();
     alert(`✅ Projet "${p.name}" copié avec succès dans l'espace de travail à droite !`);
 };
+
+window.toggleProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.visible = !p.visible; p.features.forEach(f => { f.visible = p.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } }); updateProjectUI(); };
+window.deleteProject = (pid) => { const p = projectStore.find(x => x.id === pid); p.features.forEach(f => { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); }); projectStore = projectStore.filter(x => x.id !== pid); updateProjectUI(); };
+window.toggleProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); f.visible = !f.visible; if (f.visible) { f.layer.addTo(map); if(f.isEditing) makeEditable(f, true, p.id); } else { map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); } updateProjectUI(); };
+window.deleteProjectFeature = (pid, fid) => { const p = projectStore.find(x => x.id === pid); const f = p.features.find(x => x.id === fid); map.removeLayer(f.layer); if(f.editGroup) f.editGroup.clearLayers(); p.features = p.features.filter(x => x.id !== fid); updateProjectUI(); };
 // ==========================================
 // 11. AIDE, CAPTURES 3D ET EXPORT RAPPORT PDF COMPLET
 // ==========================================
