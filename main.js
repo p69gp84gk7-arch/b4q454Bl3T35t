@@ -10,8 +10,8 @@ const map = L.map('map', {
     preferCanvas: true 
 }).setView([42.7645, 0.5833], 15);
 
-const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
-const planOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, crossOrigin: true }).addTo(map);
+const planOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, crossOrigin: true });
 L.control.layers({ "🌍 Satellite": satellite, "🗺️ Plan": planOSM }).addTo(map);
 
 let mntStore = [], drawStore = [], kmzStore = [], projectStore = [];
@@ -324,6 +324,10 @@ function updateDrawUI() {
         </div>`;
     });
 }
+window.deleteDraw = (id) => { const d = drawStore.find(x => x.id === id); map.removeLayer(d.layer); if(d.editGroup) map.removeLayer(d.editGroup); drawStore = drawStore.filter(x => x.id !== id); updateDrawUI(); };
+window.renameDraw = (id) => { const d = drawStore.find(x => x.id === id); const n = prompt("Nouveau nom :", d.name); if(n){d.name=n; updateDrawUI();} };
+window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visible = !d.visible; if(d.visible) { d.layer.addTo(map); if(d.isEditing) makeEditable(d); } else { map.removeLayer(d.layer); if(d.editGroup) d.editGroup.clearLayers(); } };
+window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id); d.color = color; d.layer.setStyle({color}); updateDrawUI(); };
 // ==========================================
 // 6. GÉOMÉTRIE AVANCÉE ET CALCULS DE VOLUMES
 // ==========================================
@@ -1355,7 +1359,15 @@ window.generatePDFReport = async () => {
         doc.addImage(imgTableStats, 'PNG', 15, yPos, pageWidth - 30, tableStatsHeight);
         yPos += tableStatsHeight + 20;
 
-        for (let line of lines) {
+        // --- 4. PROFILS ALTIMÉTRIQUES SCANNÉS À HAUTE RÉSOLUTION ---
+        let lines = allFeatures.filter(d => d.type === 'line'); // <-- LA LIGNE MANQUANTE ÉTAIT ICI
+        
+        if (lines.length > 0) {
+            if (yPos > 240) { doc.addPage(); yPos = 20; }
+            doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text("3. Profils Altimétriques (Coupes)", 15, yPos);
+            yPos += 10;
+
+            for (let line of lines) {
                 let dists = [], zVals = [], totalDist = 0;
                 
                 // Maintien strict de l'ordre géométrique
@@ -1368,7 +1380,7 @@ window.generatePDFReport = async () => {
                     let p1 = l93[i-1], p2 = l93[i];
                     let segmentDist = Math.hypot(p2[0]-p1[0], p2[1]-p1[1]);
                     
-                    const step = 1; // <-- RETOUR À 1 MÈTRE ICI AUSSI
+                    const step = 1; // Scan à 1 mètre
                     for(let j=step; j<segmentDist; j+=step) {
                         let t = j/segmentDist;
                         let curX = p1[0] + t * (p2[0]-p1[0]), curY = p1[1] + t * (p2[1]-p1[1]);
@@ -1396,6 +1408,7 @@ window.generatePDFReport = async () => {
                 doc.addImage(imgUrl, 'PNG', 15, yPos, pageWidth - 30, 75);
                 yPos += 85;
             }
+        }
         // --- 5. INTÉGRATION DES CAPTURES 3D MANUELLES ---
         if (window.pdf3DCaptures && window.pdf3DCaptures.length > 0) {
             if (yPos > 180) { doc.addPage(); yPos = 20; }
