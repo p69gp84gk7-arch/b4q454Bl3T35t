@@ -815,6 +815,75 @@ function updateProfileUI(d, terrainData) {
     info.innerHTML = area > 0 ? `Aire de coupe : ${area.toFixed(2)} m²` : "";
     d.lastProfileArea = area; // Sauvegarde pour l'export
 }
+window.exportChartPNG = () => { 
+    const a = document.createElement('a'); 
+    a.href = document.getElementById('profileChart').toDataURL('image/png'); 
+    a.download = 'profil.png'; 
+    a.click(); 
+};
+
+window.exportChartCSV = () => { 
+    if (!chartInstance) return;
+
+    let csv = "\ufeffDistance (m)\tTerrain Z (m)\tProjet Z (m)\n"; 
+    
+    const terrainData = chartInstance.data.datasets[0].data;
+    // Sécurité au cas où le calque projet n'existe pas encore
+    const projetData = chartInstance.data.datasets[1] ? chartInstance.data.datasets[1].data : [];
+    
+    // On exporte chaque point du terrain, et on vérifie si un point de projet tombe exactement dessus
+    terrainData.forEach(r => { 
+        let projPt = projetData.find(p => p.x === r.x);
+        let pZ = projPt ? projPt.y.toFixed(2).replace('.', ',') : "";
+        csv += `${r.x.toFixed(2).replace('.', ',')}\t${r.y.toFixed(2).replace('.', ',')}\t${pZ}\n`; 
+    }); 
+    
+    // On ajoute à la fin du fichier les points de projets créés manuellement "entre" les mètres ronds
+    projetData.forEach(r => {
+        if(!terrainData.find(t => t.x === r.x)) {
+             csv += `${r.x.toFixed(2).replace('.', ',')}\t\t${r.y.toFixed(2).replace('.', ',')}\n`; 
+        }
+    });
+
+    const a = document.createElement('a'); 
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); 
+    a.download = 'profil_et_projet.csv'; 
+    a.click(); 
+};window.exportChartPNG = () => { 
+    const a = document.createElement('a'); 
+    a.href = document.getElementById('profileChart').toDataURL('image/png'); 
+    a.download = 'profil.png'; 
+    a.click(); 
+};
+
+window.exportChartCSV = () => { 
+    if (!chartInstance) return;
+
+    let csv = "\ufeffDistance (m)\tTerrain Z (m)\tProjet Z (m)\n"; 
+    
+    const terrainData = chartInstance.data.datasets[0].data;
+    // Sécurité au cas où le calque projet n'existe pas encore
+    const projetData = chartInstance.data.datasets[1] ? chartInstance.data.datasets[1].data : [];
+    
+    // On exporte chaque point du terrain, et on vérifie si un point de projet tombe exactement dessus
+    terrainData.forEach(r => { 
+        let projPt = projetData.find(p => p.x === r.x);
+        let pZ = projPt ? projPt.y.toFixed(2).replace('.', ',') : "";
+        csv += `${r.x.toFixed(2).replace('.', ',')}\t${r.y.toFixed(2).replace('.', ',')}\t${pZ}\n`; 
+    }); 
+    
+    // On ajoute à la fin du fichier les points de projets créés manuellement "entre" les mètres ronds
+    projetData.forEach(r => {
+        if(!terrainData.find(t => t.x === r.x)) {
+             csv += `${r.x.toFixed(2).replace('.', ',')}\t\t${r.y.toFixed(2).replace('.', ',')}\n`; 
+        }
+    });
+
+    const a = document.createElement('a'); 
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); 
+    a.download = 'profil_et_projet.csv'; 
+    a.click(); 
+};
 // ==========================================
 // 9. SOURIS LIVE, DRAG ET REDIMENSIONNEMENT FENÊTRES
 // ==========================================
