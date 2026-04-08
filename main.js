@@ -169,165 +169,108 @@ window.finalizeCircle = (center, radius) => {
 };
 
 // ==========================================
-// 5. STATS, ÉDITION INTÉGRÉE & CUMULS DANS L'ÉTIQUETTE
+// 5. STATS, ÉDITION AVANCÉE & AJOUT DE POINTS
 // ==========================================
+window.isAddingPointMode = false;
+window.handlesVisible = true;
+
 function recalculateStats(d) {
     if (!d) return;
     const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
     let h = "";
-    
     let zMin = Infinity, zMax = -Infinity;
-    for (let i = 0; i < l93.length; i++) {
-        let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(l93[i]);
-        if (z !== null) {
-            if (z < zMin) zMin = z;
-            if (z > zMax) zMax = z;
-        }
-    }
-    
-    let extraStats = "";
-    if (zMin !== Infinity && zMax !== -Infinity) {
-        extraStats = `<br>Zmin: <b>${zMin.toFixed(2)} m</b> | Zmax: <b>${zMax.toFixed(2)} m</b> | ΔZ: <b>${(zMax-zMin).toFixed(2)} m</b>`;
-    }
+    l93.forEach((p, i) => {
+        let z = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : getZ(p);
+        if (z !== null) { zMin = Math.min(zMin, z); zMax = Math.max(zMax, z); }
+    });
+    let extraZ = (zMin !== Infinity) ? `<br>Zmin: <b>${zMin.toFixed(2)}m</b> | Zmax: <b>${zMax.toFixed(2)}m</b>` : "";
 
     if (d.type === 'circle') {
-        const area = Math.PI * d.radius * d.radius; const perim = 2 * Math.PI * d.radius;
-        h = `Rayon: <b>${d.radius.toFixed(2)} m</b> | Diam: <b>${(2*d.radius).toFixed(2)} m</b><br>Périmètre: <b>${perim.toFixed(2)} m</b> | Surface: <b>${area.toFixed(2)} m²</b>${extraStats}`;
+        h = `Rayon: <b>${d.radius.toFixed(2)}m</b> | Surface: <b>${(Math.PI * d.radius**2).toFixed(2)}m²</b>${extraZ}`;
     } else if (d.type === 'line') {
         let dist = 0; for (let i = 1; i < l93.length; i++) dist += Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
-        const z1 = d.ptsGPS[0].customZ !== undefined ? d.ptsGPS[0].customZ : (getZ(l93[0])||0); 
-        const z2 = d.ptsGPS[l93.length-1].customZ !== undefined ? d.ptsGPS[l93.length-1].customZ : (getZ(l93[l93.length-1])||0); 
-        const dz = Math.abs(z2 - z1); const pente = dist > 0 ? (dz / dist * 100) : 0;
-        h = `Longueur: <b>${dist.toFixed(2)} m</b> | Dénivelé: <b>${dz.toFixed(2)} m</b><br>Pente moy: <b>${pente.toFixed(2)} %</b>${extraStats}`;
+        h = `Longueur: <b>${dist.toFixed(2)}m</b>${extraZ}`;
     } else {
-        let area = 0; let perim = 0;
-        for (let i = 0; i < l93.length; i++) { 
-            let j = (i+1) % l93.length; 
-            area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; 
-            perim += Math.hypot(l93[j][0] - l93[i][0], l93[j][1] - l93[i][1]);
-        }
-        h = `Périmètre: <b>${perim.toFixed(2)} m</b><br>Surface au sol: <b>${(Math.abs(area)/2).toFixed(2)} m²</b>${extraStats}`;
+        let area = 0; for (let i = 0; i < l93.length; i++) { let j = (i+1)%l93.length; area += l93[i][0]*l93[j][1] - l93[j][0]*l93[i][1]; }
+        h = `Surface: <b>${Math.abs(area/2).toFixed(2)}m²</b>${extraZ}`;
     }
-
-    if (d.volumeHtml && d.volumeHtml !== "") {
-        h += `<div style="margin-top:5px; padding-top:5px; border-top:1px dashed #555;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
-                    <b style="color:#f1c40f;">Mesures Volumes :</b>
-                    <button type="button" onclick="clearVolumes(${d.id})" style="background:none; border:none; color:#e74c3c; cursor:pointer;" title="Effacer l'historique">🗑️</button>
-                </div>
-                ${d.volumeHtml}
-              </div>`;
-    }
-    
-    d.statsHtml = h; 
-    const stD = document.getElementById(`stats-${d.id}`); if (stD) stD.innerHTML = h;
-    const stG = document.getElementById(`stats-proj-${d.id}`); if (stG) stG.innerHTML = h;
+    d.statsHtml = h;
+    const el = document.getElementById(`stats-${d.id}`) || document.getElementById(`stats-proj-${d.id}`);
+    if (el) el.innerHTML = h;
 }
 
-window.clearVolumes = (id) => { let d = drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id); if(d) { d.volumeHtml = ""; recalculateStats(d); } };
-
 window.toggleEditMode = (id, isProj = false, pid = null) => {
-    let d = isProj ? projectStore.find(p=>p.id===pid)?.features.find(f=>f.id===id) : drawStore.find(x=>x.id===id); if(!d) return; 
-    d.isEditing = !d.isEditing; if(!d.editGroup) d.editGroup = L.layerGroup().addTo(map);
-    if(d.isEditing) { makeEditable(d, isProj, pid); } else { d.editGroup.clearLayers(); window.currentEditingFeature = null; }
+    let d = isProj ? projectStore.find(p=>p.id===pid)?.features.find(f=>f.id===id) : drawStore.find(x=>x.id===id);
+    if(!d) return;
+    d.isEditing = !d.isEditing;
+    window.handlesVisible = true;
+    if(!d.editGroup) d.editGroup = L.layerGroup().addTo(map);
+    if(d.isEditing) { makeEditable(d, isProj, pid); } else { d.editGroup.clearLayers(); window.isAddingPointMode = false; }
     isProj ? updateProjectUI() : updateDrawUI();
 };
 
-function makeEditable(d, isProj, pid) {
-    d.editGroup.clearLayers(); if (d.type === 'circle') return; 
-    window.currentEditingFeature = { d, isProj, pid };
-    d.ptsGPS.forEach((pt, idx) => {
-        const icon = L.divIcon({ className: 'numbered-handle', html: `<div style="background:#e74c3c; color:white; border-radius:50%; width:20px; height:20px; text-align:center; line-height:20px; font-size:11px; font-weight:bold; border:2px solid white; box-shadow:0 0 3px rgba(0,0,0,0.5);">${idx + 1}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] });
-        const m = L.marker(pt, { icon, draggable: true }).addTo(d.editGroup);
-        
-        m.on('drag', (e) => {
-            d.ptsGPS[idx].lat = e.latlng.lat; d.ptsGPS[idx].lng = e.latlng.lng; d.layer.setLatLngs(d.ptsGPS); 
-            let distMsg = "";
-            if (idx > 0) distMsg += `← ${map.distance(d.ptsGPS[idx-1], e.latlng).toFixed(2)}m `;
-            if (idx < d.ptsGPS.length - 1) distMsg += `→ ${map.distance(e.latlng, d.ptsGPS[idx+1]).toFixed(2)}m`;
-            if (d.type === 'area' && (idx === 0 || idx === d.ptsGPS.length - 1)) { distMsg += ` (Ferm.: ${map.distance(d.ptsGPS[0], d.ptsGPS[d.ptsGPS.length-1]).toFixed(2)}m)`; }
-            if (distMsg !== "") m.bindTooltip(distMsg, {permanent: true, direction: 'top', offset: [0, -10]}).openTooltip();
-
-            recalculateStats(d); if(d.type==='line') generateProfile(d);
-            
-            const l93 = proj4("EPSG:4326", "EPSG:2154", [e.latlng.lng, e.latlng.lat]);
-            const elX = document.getElementById(`edit-x-${d.id}-${idx}`); if(elX) elX.value = l93[0].toFixed(2);
-            const elY = document.getElementById(`edit-y-${d.id}-${idx}`); if(elY) elY.value = l93[1].toFixed(2);
-            const elZ = document.getElementById(`edit-z-${d.id}-${idx}`);
-            if(elZ && d.ptsGPS[idx].customZ === undefined) { const z = getZ(l93); if(z!==null) elZ.placeholder = z.toFixed(2); }
-        });
-        m.on('dragend', () => { m.unbindTooltip(); });
-    });
-}
-
-window.applyPointEdits = (id, isProj = false, pid = null) => {
-    let d = isProj ? window.currentEditingFeature.d : drawStore.find(x=>x.id===id); if(!d) return;
-    d.ptsGPS.forEach((pt, i) => {
-        const x = parseFloat(document.getElementById(`edit-x-${id}-${i}`).value), y = parseFloat(document.getElementById(`edit-y-${id}-${i}`).value), z = document.getElementById(`edit-z-${id}-${i}`).value;
-        if(!isNaN(x) && !isNaN(y)) { const g = proj4("EPSG:2154", "EPSG:4326", [x, y]); pt.lat = g[1]; pt.lng = g[0]; }
-        if(z.trim() !== '') pt.customZ = parseFloat(z); else delete pt.customZ;
-    });
-    if(d.type !== 'circle') d.layer.setLatLngs(d.ptsGPS);
-    recalculateStats(d); if(d.isEditing) makeEditable(d, isProj, pid); if(d.type==='line') generateProfile(d);
+window.toggleHandles = () => {
+    window.handlesVisible = !window.handlesVisible;
+    const handles = document.querySelectorAll('.numbered-handle');
+    handles.forEach(h => h.style.display = window.handlesVisible ? 'block' : 'none');
 };
 
-function generateEditorTable(d, isProj, pid=null) {
-    if(!d.isEditing || d.type === 'circle') return '';
-    let html = `<div style="background:#111; padding:5px; margin-top:5px; border-radius:3px; font-size:11px;">
-        <table style="width:100%; color:white; text-align:center;"><tr><th>Pt</th><th>X</th><th>Y</th><th>Z Forcé</th></tr>`;
-    d.ptsGPS.forEach((pt, i) => {
-        const l = proj4("EPSG:4326", "EPSG:2154", [pt.lng, pt.lat]);
-        let zAct = pt.customZ !== undefined ? pt.customZ : getZ(l);
-        let zVal = pt.customZ !== undefined ? pt.customZ.toFixed(2) : '';
-        let zPlc = zAct !== null ? zAct.toFixed(2) : 'Auto';
-        html += `<tr>
-            <td style="color:#e74c3c; font-weight:bold;">${i+1}</td>
-            <td><input id="edit-x-${d.id}-${i}" value="${l[0].toFixed(2)}" oninput="applyPointEdits(${d.id}, ${isProj}, ${pid})" style="width:65px; background:#222; color:#fff; border:1px solid #555; text-align:center;"></td>
-            <td><input id="edit-y-${d.id}-${i}" value="${l[1].toFixed(2)}" oninput="applyPointEdits(${d.id}, ${isProj}, ${pid})" style="width:65px; background:#222; color:#fff; border:1px solid #555; text-align:center;"></td>
-            <td><input id="edit-z-${d.id}-${i}" value="${zVal}" placeholder="${zPlc}" onchange="applyPointEdits(${d.id}, ${isProj}, ${pid})" style="width:45px; background:#222; color:#fff; border:1px solid #555; text-align:center;"></td>
-        </tr>`;
+window.activateAddPoint = () => {
+    window.isAddingPointMode = true;
+    alert("Cliquez sur la carte pour ajouter un point à la fin du tracé sélectionné.");
+};
+
+// Correction de la suppression du cercle et des tracés
+window.deleteDraw = (id) => {
+    const idx = drawStore.findIndex(x => x.id === id);
+    if(idx > -1) {
+        const d = drawStore[idx];
+        if(d.layer) map.removeLayer(d.layer);
+        if(d.editGroup) map.removeLayer(d.editGroup);
+        drawStore.splice(idx, 1);
+        updateDrawUI();
+    }
+};
+
+function makeEditable(d, isProj, pid) {
+    d.editGroup.clearLayers();
+    if (d.type === 'circle') return;
+    d.ptsGPS.forEach((pt, idx) => {
+        const icon = L.divIcon({ 
+            className: 'numbered-handle', 
+            html: `<div style="background:#e74c3c; color:white; border-radius:50%; width:20px; height:20px; text-align:center; line-height:20px; font-size:11px; font-weight:bold; border:2px solid white; display:${window.handlesVisible?'block':'none'};">${idx + 1}</div>`, 
+            iconSize: [24, 24], iconAnchor: [12, 12] 
+        });
+        const m = L.marker(pt, { icon, draggable: true }).addTo(d.editGroup);
+        m.on('drag', (e) => {
+            d.ptsGPS[idx].lat = e.latlng.lat; d.ptsGPS[idx].lng = e.latlng.lng;
+            d.layer.setLatLngs(d.ptsGPS);
+            recalculateStats(d);
+            if(d.type==='line') generateProfile(d);
+            updateEditorTableInline(d, idx, e.latlng);
+        });
     });
-    return html + `</table></div>`;
 }
 
-function updateDrawUI() {
-    const list = document.getElementById('measure-list'); if(!list) return; list.innerHTML = '';
-    
-    list.innerHTML = `<button type="button" onclick="showMulti3DSelector()" style="width:100%; margin-bottom:10px; background:#8e44ad; color:#fff; border:none; padding:8px; cursor:pointer; font-weight:bold; border-radius:3px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">👁️ Comparer surfaces en 3D</button>`;
-    
-    drawStore.forEach(d => {
-        let btns = d.type === 'line' ? 
-            `<button type="button" onclick="generateProfileById(${d.id})" style="width:100%; margin-top:5px; background:#333; color:#fff; border:1px solid #555; padding:5px; cursor:pointer; font-weight:bold; border-radius:3px;">📈 Afficher le profil altimétrique</button>` : 
-            `<div style="display:flex; gap:3px; margin-top:5px; flex-wrap:wrap;">
-                <button type="button" onclick="calculateVolume(${d.id}, 'hollow')" style="flex:1; font-size:0.75em; background:#3498db; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📉 Déblai</button>
-                <button type="button" onclick="calculateVolume(${d.id}, 'mound')" style="flex:1; font-size:0.75em; background:#e67e22; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📈 Remblai</button>
-                <button type="button" onclick="calculateVolume(${d.id}, 'slope')" style="flex:1; font-size:0.75em; background:#9b59b6; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📐 Courbe</button>
-                <button type="button" onclick="calculateVolume(${d.id}, 'plane')" style="flex:1; font-size:0.75em; background:#1abc9c; color:#fff; border:none; cursor:pointer; padding:5px; border-radius:3px;">📏 Plan</button>
-                <button type="button" onclick="generate3DView(${d.id})" style="flex:1; min-width:100%; font-size:0.8em; font-weight:bold; background:#34495e; color:#fff; border:1px solid #555; cursor:pointer; padding:5px; margin-top:2px; border-radius:3px;">👁️ Lancer Vue 3D</button>
-            </div>`;
-        
-        list.innerHTML += `<div class="card" style="border-left:4px solid ${d.color}; margin-bottom:8px;">
-            <div class="card-header">
-                <div style="display:flex; align-items:center;">
-                    <input type="checkbox" ${d.visible?'checked':''} onchange="toggleDraw(${d.id})"> 
-                    <input type="color" class="color-picker" value="${d.color}" onchange="changeColor(${d.id}, this.value)"> 
-                    <strong style="cursor:pointer; font-size:1.1em;" onclick="renameDraw(${d.id})">${d.name}</strong>
-                </div>
-                <button type="button" class="btn-del" onclick="deleteDraw(${d.id})">✕</button>
-            </div>
-            <div id="stats-${d.id}" style="font-size:12px; margin:5px 0; color:#eee; background:#222; padding:6px; border-radius:3px;">${d.statsHtml || ''}</div>
-            <button type="button" onclick="toggleEditMode(${d.id})" style="width:100%; background:${d.isEditing?'#27ae60':'#7f8c8d'}; color:#fff; border:none; padding:5px; cursor:pointer; border-radius:3px; font-weight:bold; display:${d.type==='circle'?'none':'block'}">
-                ${d.isEditing ? '✅ Fin édition' : '✏️ Éditer les points'}
-            </button>
-            ${generateEditorTable(d, false)}
-            ${btns}
-        </div>`;
-    });
+function updateEditorTableInline(d, idx, latlng) {
+    const l93 = proj4("EPSG:4326", "EPSG:2154", [latlng.lng, latlng.lat]);
+    const ex = document.getElementById(`edit-x-${d.id}-${idx}`); if(ex) ex.value = l93[0].toFixed(2);
+    const ey = document.getElementById(`edit-y-${d.id}-${idx}`); if(ey) ey.value = l93[1].toFixed(2);
 }
-window.deleteDraw = (id) => { const d = drawStore.find(x => x.id === id); map.removeLayer(d.layer); if(d.editGroup) map.removeLayer(d.editGroup); drawStore = drawStore.filter(x => x.id !== id); updateDrawUI(); };
-window.renameDraw = (id) => { const d = drawStore.find(x => x.id === id); const n = prompt("Nouveau nom :", d.name); if(n){d.name=n; updateDrawUI();} };
-window.toggleDraw = (id) => { const d = drawStore.find(x => x.id === id); d.visible = !d.visible; if(d.visible) { d.layer.addTo(map); if(d.isEditing) makeEditable(d); } else { map.removeLayer(d.layer); if(d.editGroup) d.editGroup.clearLayers(); } };
-window.changeColor = (id, color) => { const d = drawStore.find(x => x.id === id); d.color = color; d.layer.setStyle({color}); updateDrawUI(); };
+
+// Gestion de l'ajout de point par clic sur carte
+map.on('click', (e) => {
+    if (window.isAddingPointMode && window.currentEditingFeature) {
+        const d = window.currentEditingFeature.d;
+        d.ptsGPS.push({lat: e.latlng.lat, lng: e.latlng.lng});
+        d.layer.setLatLngs(d.ptsGPS);
+        makeEditable(d, window.currentEditingFeature.isProj, window.currentEditingFeature.pid);
+        recalculateStats(d);
+        if(d.type==='line') generateProfile(d);
+        window.isAddingPointMode = false;
+        updateDrawUI();
+    }
+});
 // ==========================================
 // 6. GÉOMÉTRIE AVANCÉE ET CALCULS DE VOLUMES
 // ==========================================
@@ -777,245 +720,101 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     }, 100);
 };
 // ==========================================
-// 8. PROFIL ALTIMÉTRIQUE (AVEC DESSIN CAO ET DRAG & DROP)
+// 8. PROFIL ALTIMÉTRIQUE (DISTANCES RONDES & CALCUL AIRE)
 // ==========================================
-window.currentProfileDrawId = null;
-window.isDrawingOnProfile = false;
-window.activeDragIndex = null;
-
-window.generateProfileById = (id) => { currentProfileDrawId = id; generateProfile(drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id)); };
-
-// Activation/Désactivation et Validation du mode dessin
-window.toggleProfileDraw = () => {
-    window.isDrawingOnProfile = !window.isDrawingOnProfile;
-    const btnDraw = document.getElementById('btn-prof-draw');
-    const btnClear = document.getElementById('btn-prof-clear');
-    
-    if (window.isDrawingOnProfile) {
-        btnDraw.style.background = '#2980b9'; // Bleu validation
-        btnDraw.innerText = '✅ Valider';
-        btnClear.style.display = 'block';
-        document.getElementById('profileChart').style.cursor = 'crosshair';
-    } else {
-        btnDraw.style.background = '#27ae60'; // Vert dessin
-        btnDraw.innerText = '✏️ Éditer Projet';
-        btnClear.style.display = 'none';
-        document.getElementById('profileChart').style.cursor = 'default';
-        window.activeDragIndex = null; // Sécurité
+function calculateProfileArea(terrainData, projectData) {
+    if (!projectData || projectData.length < 2) return 0;
+    let area = 0;
+    // On calcule l'aire par la méthode des trapèzes entre les deux courbes
+    for (let i = 0; i < projectData.length - 1; i++) {
+        let x1 = projectData[i].x, x2 = projectData[i+1].x;
+        let p1 = projectData[i].y, p2 = projectData[i+1].y;
+        // On trouve l'altitude du terrain aux mêmes X (interpolation linéaire)
+        let t1 = getTerrainZAt(terrainData, x1), t2 = getTerrainZAt(terrainData, x2);
+        let h = x2 - x1;
+        area += Math.abs(((t1 - p1) + (t2 - p2)) / 2 * h);
     }
-};
+    return area;
+}
 
-// Effacer totalement la ligne de projet
-window.clearProfileDraw = () => {
-    let d = drawStore.find(x=>x.id===window.currentProfileDrawId) || projectStore.flatMap(p=>p.features).find(f=>f.id===window.currentProfileDrawId);
-    if(d && confirm("Effacer toute la ligne de projet ?")) {
-        d.customProfilePts = [];
-        if(chartInstance && chartInstance.data.datasets[1]) {
-            chartInstance.update('none');
+function getTerrainZAt(data, x) {
+    let pt = data.find(p => p.x === x); if (pt) return pt.y;
+    for (let i = 0; i < data.length - 1; i++) {
+        if (x >= data[i].x && x <= data[i+1].x) {
+            let t = (x - data[i].x) / (data[i+1].x - data[i].x);
+            return data[i].y + t * (data[i+1].y - data[i].y);
         }
     }
-};
+    return 0;
+}
 
 function generateProfile(d) {
     if(!d) return; document.getElementById('profile-window').style.display='block';
     const canvas = document.getElementById('profileChart');
     const ctx = canvas.getContext('2d');
     
-    // 1. Injection de l'interface dynamique
-    let toolsDiv = document.getElementById('profile-custom-tools');
-    const canvasParent = canvas.parentNode;
-    canvasParent.style.position = 'relative'; 
-    
-    if(!toolsDiv) {
-        toolsDiv = document.createElement('div');
-        toolsDiv.id = 'profile-custom-tools';
-        toolsDiv.style.cssText = "position:absolute; top:10px; right:20px; display:flex; gap:5px; z-index:1000;";
-        toolsDiv.innerHTML = `
-            <button id="btn-prof-draw" onclick="toggleProfileDraw()" style="background:#27ae60; color:white; border:none; padding:4px 8px; font-size:11px; border-radius:3px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">✏️ Dessiner Projet</button>
-            <button id="btn-prof-clear" onclick="clearProfileDraw()" style="display:none; background:#c0392b; color:white; border:none; padding:4px 8px; font-size:11px; border-radius:3px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">🗑️ Effacer</button>
-        `;
-        canvasParent.insertBefore(toolsDiv, canvas);
-    } else {
-        // Reset visuel à l'ouverture d'un nouveau profil
-        window.isDrawingOnProfile = false;
-        document.getElementById('btn-prof-draw').style.background = '#27ae60';
-        document.getElementById('btn-prof-draw').innerText = d.customProfilePts && d.customProfilePts.length > 0 ? '✏️ Éditer Projet' : '✏️ Dessiner Projet';
-        document.getElementById('btn-prof-clear').style.display = 'none';
-        canvas.style.cursor = 'default';
-    }
-
-    if(!d.customProfilePts) d.customProfilePts = [];
-
-    // 2. Calcul du terrain naturel (MNT)
     const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
-    let data=[], geo=[], dist=0;
-    let zStart = d.ptsGPS[0].customZ !== undefined ? d.ptsGPS[0].customZ : (getZ(l93[0])||0);
-    data.push({x: 0.00, y: parseFloat(zStart.toFixed(2))}); geo.push({lat: d.ptsGPS[0].lat, lng: d.ptsGPS[0].lng}); 
+    let data=[], dist=0;
+    
+    // Premier point
+    data.push({x: 0, y: parseFloat((d.ptsGPS[0].customZ || getZ(l93[0]) || 0).toFixed(2))});
     
     for(let i=1; i<l93.length; i++) {
         const dSeg = Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
-        const step = 1; 
-        for(let j=step; j<dSeg; j+=step) {
-            const t = j/dSeg; 
-            const x = l93[i-1][0]+(l93[i][0]-l93[i-1][0])*t; const y = l93[i-1][1]+(l93[i][1]-l93[i-1][1])*t;
-            let curZ = (d.ptsGPS[i-1].customZ !== undefined && d.ptsGPS[i].customZ !== undefined) 
-                ? d.ptsGPS[i-1].customZ + t * (d.ptsGPS[i].customZ - d.ptsGPS[i-1].customZ) : (getZ([x,y]) || 0);
-            data.push({x: parseFloat((dist+j).toFixed(2)), y: parseFloat(curZ.toFixed(2))}); 
-            geo.push({lat: proj4("EPSG:2154","EPSG:4326",[x,y])[1], lng: proj4("EPSG:2154","EPSG:4326",[x,y])[0]});
+        const startDist = dist;
+        // Scan à distance fixe (1.00m)
+        for(let j = 1; j < dSeg; j++) {
+            let totalX = Math.floor(startDist + j);
+            let t = j / dSeg;
+            let xL = l93[i-1][0] + (l93[i][0]-l93[i-1][0])*t;
+            let yL = l93[i-1][1] + (l93[i][1]-l93[i-1][1])*t;
+            data.push({x: totalX, y: parseFloat((getZ([xL,yL]) || 0).toFixed(2))});
         }
-        dist += dSeg; 
-        let zEnd = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : (getZ(l93[i])||0);
-        data.push({x: parseFloat(dist.toFixed(2)), y: parseFloat(zEnd.toFixed(2))}); 
-        geo.push({lat: d.ptsGPS[i].lat, lng: d.ptsGPS[i].lng});
+        dist += dSeg;
     }
-    
-    // 3. Création du graphique
+    // Dernier point (exact)
+    data.push({x: parseFloat(dist.toFixed(2)), y: parseFloat((d.ptsGPS[d.ptsGPS.length-1].customZ || getZ(l93[l93.length-1]) || 0).toFixed(2))});
+    data.sort((a,b) => a.x - b.x);
+
+    if(!d.customProfilePts) d.customProfilePts = [];
+
     if(chartInstance) chartInstance.destroy();
     chartInstance = new Chart(ctx, {
-        type:'line', 
+        type:'line',
         data: {
             datasets:[
-                {label:'Terrain Naturel', data, borderColor:d.color, backgroundColor:d.color+'33', fill:true, pointRadius:0, tension:0.1, order: 2},
-                {label:'Projet', data: d.customProfilePts, borderColor:'#f1c40f', backgroundColor:'transparent', fill:false, pointRadius:5, pointHoverRadius:7, pointBackgroundColor:'#f1c40f', showLine:true, tension:0, order: 1}
+                {label:'Terrain', data, borderColor:d.color, fill:true, pointRadius:0, tension:0.1},
+                {label:'Projet', data: d.customProfilePts, borderColor:'#f1c40f', pointRadius:5, showLine:true, tension:0}
             ]
         },
-        options:{ 
-            responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
-            animation: false, // Désactive l'animation pour un Drag&Drop ultra fluide
-            plugins: { tooltip: { callbacks: { title: (c) => `Dist: ${c[0].parsed.x.toFixed(2)} m`, label: (c) => `${c.dataset.label}: ${c.parsed.y.toFixed(2)} m` } } },
-            scales: { x: { type: 'linear', title: {display:true, text:'Distance géométrique exacte (m)'} } },
-            onHover:(e,el)=>{
-                if(!window.isDrawingOnProfile && el && el.length > 0 && el[0].datasetIndex === 0){ 
-                    const p = geo[el[0].index]; if(p) updateCursor(p.lat, p.lng);
-                }
-            }
+        options:{
+            responsive:true, maintainAspectRatio:false,
+            onClick: (e) => {
+                if(!window.isDrawingOnProfile) return;
+                const x = chartInstance.scales.x.getValueForPixel(e.x);
+                const y = chartInstance.scales.y.getValueForPixel(e.y);
+                d.customProfilePts.push({x: parseFloat(x.toFixed(2)), y: parseFloat(y.toFixed(2))});
+                d.customProfilePts.sort((a,b) => a.x - b.x);
+                updateProfileUI(d, data);
+            },
+            scales: { x: { type: 'linear', title: {display:true, text:'Distance (m)'} } }
         }
     });
-    
-    // --- GESTION DES ÉVÈNEMENTS SOURIS POUR LE DESSIN (DRAG & DROP) ---
-    
-    canvas.onmousedown = (e) => {
-        if(!window.isDrawingOnProfile) return;
-        const rect = canvas.getBoundingClientRect();
-        const xPixel = e.clientX - rect.left; const yPixel = e.clientY - rect.top;
-        
-        let closestIdx = -1; let minDist = 15; // Rayon de tolérance pour attraper un point (15px)
-        
-        d.customProfilePts.forEach((pt, idx) => {
-            const ptX = chartInstance.scales.x.getPixelForValue(pt.x);
-            const ptY = chartInstance.scales.y.getPixelForValue(pt.y);
-            const dist = Math.hypot(ptX - xPixel, ptY - yPixel);
-            if (dist < minDist) { minDist = dist; closestIdx = idx; }
-        });
-
-        if (closestIdx > -1) {
-            // On a attrapé un point existant, on lance le drag
-            window.activeDragIndex = closestIdx;
-            canvas.style.cursor = 'grabbing';
-        } else {
-            // On a cliqué dans le vide, on crée un nouveau point
-            const xVal = chartInstance.scales.x.getValueForPixel(xPixel);
-            const yVal = chartInstance.scales.y.getValueForPixel(yPixel);
-            if(xVal !== undefined && yVal !== undefined) {
-                d.customProfilePts.push({x: parseFloat(xVal.toFixed(2)), y: parseFloat(yVal.toFixed(2))});
-                d.customProfilePts.sort((a,b) => a.x - b.x); // Tri de gauche à droite
-                chartInstance.update('none');
-            }
-        }
-    };
-
-    canvas.onmousemove = (e) => {
-        if(window.activeDragIndex !== null && window.isDrawingOnProfile) {
-            const rect = canvas.getBoundingClientRect();
-            const xVal = chartInstance.scales.x.getValueForPixel(e.clientX - rect.left);
-            const yVal = chartInstance.scales.y.getValueForPixel(e.clientY - rect.top);
-            
-            if(xVal !== undefined && yVal !== undefined) {
-                d.customProfilePts[window.activeDragIndex] = {x: parseFloat(xVal.toFixed(2)), y: parseFloat(yVal.toFixed(2))};
-                chartInstance.update('none'); // Mise à jour instantanée du trait
-            }
-        }
-    };
-
-    canvas.onmouseup = () => {
-        if(window.activeDragIndex !== null && window.isDrawingOnProfile) {
-            d.customProfilePts.sort((a,b) => a.x - b.x); // On re-trie le tableau en cas de croisement
-            chartInstance.update('none');
-            window.activeDragIndex = null;
-            canvas.style.cursor = 'crosshair';
-        }
-    };
-
-    canvas.ondblclick = (e) => {
-        if(!window.isDrawingOnProfile) return;
-        const rect = canvas.getBoundingClientRect();
-        const xPixel = e.clientX - rect.left; const yPixel = e.clientY - rect.top;
-        
-        let closestIdx = -1; let minDist = 15;
-        d.customProfilePts.forEach((pt, idx) => {
-            const ptX = chartInstance.scales.x.getPixelForValue(pt.x);
-            const ptY = chartInstance.scales.y.getPixelForValue(pt.y);
-            if (Math.hypot(ptX - xPixel, ptY - yPixel) < minDist) { minDist = Math.hypot(ptX - xPixel, ptY - yPixel); closestIdx = idx; }
-        });
-
-        if(closestIdx > -1) {
-            d.customProfilePts.splice(closestIdx, 1); // Supprime le point
-            chartInstance.update('none');
-        }
-    };
-
-    canvas.onmouseleave = () => {
-        if(cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
-        if(window.activeDragIndex !== null) {
-            d.customProfilePts.sort((a,b) => a.x - b.x);
-            chartInstance.update('none');
-            window.activeDragIndex = null;
-        }
-    };
-
-    // 4. Ajustement des axes du graphique
-    const minZ = Math.min(...data.map(pt=>pt.y)), maxZ = Math.max(...data.map(pt=>pt.y)), maxD = data[data.length-1].x;
-    const sXMin=document.getElementById('x-min'), sXMax=document.getElementById('x-max'), sYMin=document.getElementById('y-min'), sYMax=document.getElementById('y-max');
-    if(sXMin) { sXMin.max=maxD; sXMax.max=maxD; sXMin.value=0; sXMax.value=maxD; }
-    if(sYMin) { sYMin.min=minZ-10; sYMin.max=maxZ+10; sYMax.min=minZ-10; sYMax.max=maxZ+10; sYMin.value=minZ-1; sYMax.value=maxZ+1; }
-    window.updateScalesLive();
+    updateProfileUI(d, data);
 }
 
-window.updateScalesLive = () => {
-    if (!chartInstance) return;
-    const sXMin=document.getElementById('x-min'), sXMax=document.getElementById('x-max'), sYMin=document.getElementById('y-min'), sYMax=document.getElementById('y-max');
-    if(!sXMin) return;
-    const xMin = parseFloat(sXMin.value), xMax = parseFloat(sXMax.value), yMin = parseFloat(sYMin.value), yMax = parseFloat(sYMax.value);
-    const vx = document.getElementById('x-vals'); if (vx) vx.innerText = `${xMin}m - ${xMax}m`; 
-    const vy = document.getElementById('y-vals'); if (vy) vy.innerText = `${yMin}m - ${yMax}m`;
-    chartInstance.options.scales.x.min = xMin; chartInstance.options.scales.x.max = xMax;
-    chartInstance.options.scales.y.min = yMin; chartInstance.options.scales.y.max = yMax;
+function updateProfileUI(d, terrainData) {
     chartInstance.update('none');
-};
-
-window.exportChartPNG = () => { const a = document.createElement('a'); a.href = document.getElementById('profileChart').toDataURL('image/png'); a.download = 'profil.png'; a.click(); };
-window.exportChartCSV = () => { 
-    let csv = "\ufeffDistance (m)\tTerrain Z (m)\tProjet Z (m)\n"; 
-    
-    const terrainData = chartInstance.data.datasets[0].data;
-    const projetData = chartInstance.data.datasets[1].data;
-    
-    // On exporte chaque point du terrain, et on vérifie si un point de projet tombe exactement dessus
-    terrainData.forEach(r => { 
-        let projPt = projetData.find(p => p.x === r.x);
-        let pZ = projPt ? projPt.y.toFixed(2).replace('.', ',') : "";
-        csv += `${r.x.toFixed(2).replace('.', ',')}\t${r.y.toFixed(2).replace('.', ',')}\t${pZ}\n`; 
-    }); 
-    
-    // On ajoute à la fin du fichier les points de projets créés "entre" les mètres ronds
-    projetData.forEach(r => {
-        if(!terrainData.find(t => t.x === r.x)) {
-             csv += `${r.x.toFixed(2).replace('.', ',')}\t\t${r.y.toFixed(2).replace('.', ',')}\n`; 
-        }
-    });
-
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = 'profil_et_projet.csv'; a.click(); 
-};
+    const area = calculateProfileArea(terrainData, d.customProfilePts);
+    let info = document.getElementById('profile-info-area');
+    if(!info) {
+        info = document.createElement('div'); info.id = 'profile-info-area';
+        info.style.cssText = "position:absolute; bottom:50px; right:20px; background:rgba(0,0,0,0.7); padding:5px 10px; color:#f1c40f; font-weight:bold; border-radius:3px; font-size:12px;";
+        document.getElementById('profile-window').appendChild(info);
+    }
+    info.innerHTML = area > 0 ? `Aire de coupe : ${area.toFixed(2)} m²` : "";
+    d.lastProfileArea = area; // Sauvegarde pour l'export
+}
 // ==========================================
 // 9. SOURIS LIVE, DRAG ET REDIMENSIONNEMENT FENÊTRES
 // ==========================================
