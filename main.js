@@ -914,16 +914,55 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     }, 100);
 };
 // ==========================================
-// 8. PROFIL ALTIMÉTRIQUE (DISTANCES RONDES & CALCUL AIRE)
+// 8. PROFIL ALTIMÉTRIQUE (DESSIN CAO, CALCUL D'AIRE & EXPORT CSV)
 // ==========================================
+window.currentProfileDrawId = null;
+window.isDrawingOnProfile = false;
+window.activeDragIndex = null;
+
+// 1. Point d'entrée appelé par le bouton de droite
+window.generateProfileById = (id) => { 
+    currentProfileDrawId = id; 
+    generateProfile(drawStore.find(x=>x.id===id) || projectStore.flatMap(p=>p.features).find(f=>f.id===id)); 
+};
+
+// 2. Gestion de l'interface de dessin
+window.toggleProfileDraw = () => {
+    window.isDrawingOnProfile = !window.isDrawingOnProfile;
+    const btnDraw = document.getElementById('btn-prof-draw');
+    const btnClear = document.getElementById('btn-prof-clear');
+    
+    if (window.isDrawingOnProfile) {
+        btnDraw.style.background = '#2980b9'; // Bleu pour mode validation
+        btnDraw.innerText = '✅ Valider';
+        btnClear.style.display = 'block';
+        document.getElementById('profileChart').style.cursor = 'crosshair';
+    } else {
+        btnDraw.style.background = '#27ae60'; // Vert par défaut
+        btnDraw.innerText = '✏️ Éditer Projet';
+        btnClear.style.display = 'none';
+        document.getElementById('profileChart').style.cursor = 'default';
+        window.activeDragIndex = null; 
+    }
+};
+
+window.clearProfileDraw = () => {
+    let d = drawStore.find(x=>x.id===window.currentProfileDrawId) || projectStore.flatMap(p=>p.features).find(f=>f.id===window.currentProfileDrawId);
+    if(d && confirm("Effacer toute la ligne de projet ?")) {
+        d.customProfilePts = [];
+        if(chartInstance && chartInstance.data.datasets[1]) {
+            updateProfileUI(d, chartInstance.data.datasets[0].data);
+        }
+    }
+};
+
+// 3. Outils Mathématiques
 function calculateProfileArea(terrainData, projectData) {
     if (!projectData || projectData.length < 2) return 0;
     let area = 0;
-    // On calcule l'aire par la méthode des trapèzes entre les deux courbes
     for (let i = 0; i < projectData.length - 1; i++) {
         let x1 = projectData[i].x, x2 = projectData[i+1].x;
         let p1 = projectData[i].y, p2 = projectData[i+1].y;
-        // On trouve l'altitude du terrain aux mêmes X (interpolation linéaire)
         let t1 = getTerrainZAt(terrainData, x1), t2 = getTerrainZAt(terrainData, x2);
         let h = x2 - x1;
         area += Math.abs(((t1 - p1) + (t2 - p2)) / 2 * h);
@@ -942,113 +981,196 @@ function getTerrainZAt(data, x) {
     return 0;
 }
 
-function generateProfile(d) {
-    if(!d) return; document.getElementById('profile-window').style.display='block';
-    const canvas = document.getElementById('profileChart');
-    const ctx = canvas.getContext('2d');
-    
-    const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
-    let data=[], dist=0;
-    
-    // Premier point
-    data.push({x: 0, y: parseFloat((d.ptsGPS[0].customZ || getZ(l93[0]) || 0).toFixed(2))});
-    
-    for(let i=1; i<l93.length; i++) {
-        const dSeg = Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
-        const startDist = dist;
-        // Scan à distance fixe (1.00m)
-        for(let j = 1; j < dSeg; j++) {
-            let totalX = Math.floor(startDist + j);
-            let t = j / dSeg;
-            let xL = l93[i-1][0] + (l93[i][0]-l93[i-1][0])*t;
-            let yL = l93[i-1][1] + (l93[i][1]-l93[i-1][1])*t;
-            data.push({x: totalX, y: parseFloat((getZ([xL,yL]) || 0).toFixed(2))});
-        }
-        dist += dSeg;
-    }
-    // Dernier point (exact)
-    data.push({x: parseFloat(dist.toFixed(2)), y: parseFloat((d.ptsGPS[d.ptsGPS.length-1].customZ || getZ(l93[l93.length-1]) || 0).toFixed(2))});
-    data.sort((a,b) => a.x - b.x);
-
-    if(!d.customProfilePts) d.customProfilePts = [];
-
-    if(chartInstance) chartInstance.destroy();
-    chartInstance = new Chart(ctx, {
-        type:'line',
-        data: {
-            datasets:[
-                {label:'Terrain', data, borderColor:d.color, fill:true, pointRadius:0, tension:0.1},
-                {label:'Projet', data: d.customProfilePts, borderColor:'#f1c40f', pointRadius:5, showLine:true, tension:0}
-            ]
-        },
-        options:{
-            responsive:true, maintainAspectRatio:false,
-            onClick: (e) => {
-                if(!window.isDrawingOnProfile) return;
-                const x = chartInstance.scales.x.getValueForPixel(e.x);
-                const y = chartInstance.scales.y.getValueForPixel(e.y);
-                d.customProfilePts.push({x: parseFloat(x.toFixed(2)), y: parseFloat(y.toFixed(2))});
-                d.customProfilePts.sort((a,b) => a.x - b.x);
-                updateProfileUI(d, data);
-            },
-            scales: { x: { type: 'linear', title: {display:true, text:'Distance (m)'} } }
-        }
-    });
-    updateProfileUI(d, data);
-}
-
 function updateProfileUI(d, terrainData) {
+    if(!chartInstance) return;
     chartInstance.update('none');
     const area = calculateProfileArea(terrainData, d.customProfilePts);
     let info = document.getElementById('profile-info-area');
     if(!info) {
         info = document.createElement('div'); info.id = 'profile-info-area';
-        info.style.cssText = "position:absolute; bottom:50px; right:20px; background:rgba(0,0,0,0.7); padding:5px 10px; color:#f1c40f; font-weight:bold; border-radius:3px; font-size:12px;";
+        info.style.cssText = "position:absolute; bottom:50px; right:20px; background:rgba(0,0,0,0.7); padding:5px 10px; color:#f1c40f; font-weight:bold; border-radius:3px; font-size:12px; z-index:1000;";
         document.getElementById('profile-window').appendChild(info);
     }
     info.innerHTML = area > 0 ? `Aire de coupe : ${area.toFixed(2)} m²` : "";
-    d.lastProfileArea = area; // Sauvegarde pour l'export
+    d.lastProfileArea = area; 
 }
-window.exportChartPNG = () => { 
-    const a = document.createElement('a'); 
-    a.href = document.getElementById('profileChart').toDataURL('image/png'); 
-    a.download = 'profil.png'; 
-    a.click(); 
-};
 
-window.exportChartCSV = () => { 
-    if (!chartInstance) return;
+// 4. Le Moteur de Génération
+function generateProfile(d) {
+    if(!d) return; document.getElementById('profile-window').style.display='block';
+    const canvas = document.getElementById('profileChart');
+    const ctx = canvas.getContext('2d');
+    
+    // --- Injection des boutons UI ---
+    let toolsDiv = document.getElementById('profile-custom-tools');
+    const canvasParent = canvas.parentNode;
+    canvasParent.style.position = 'relative'; 
+    
+    if(!toolsDiv) {
+        toolsDiv = document.createElement('div');
+        toolsDiv.id = 'profile-custom-tools';
+        toolsDiv.style.cssText = "position:absolute; top:10px; right:20px; display:flex; gap:5px; z-index:1000;";
+        toolsDiv.innerHTML = `
+            <button id="btn-prof-draw" onclick="toggleProfileDraw()" style="background:#27ae60; color:white; border:none; padding:4px 8px; font-size:11px; border-radius:3px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">✏️ Dessiner Projet</button>
+            <button id="btn-prof-clear" onclick="clearProfileDraw()" style="display:none; background:#c0392b; color:white; border:none; padding:4px 8px; font-size:11px; border-radius:3px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">🗑️ Effacer</button>
+        `;
+        canvasParent.insertBefore(toolsDiv, canvas);
+    } else {
+        window.isDrawingOnProfile = false;
+        document.getElementById('btn-prof-draw').style.background = '#27ae60';
+        document.getElementById('btn-prof-draw').innerText = d.customProfilePts && d.customProfilePts.length > 0 ? '✏️ Éditer Projet' : '✏️ Dessiner Projet';
+        document.getElementById('btn-prof-clear').style.display = 'none';
+        canvas.style.cursor = 'default';
+    }
 
-    let csv = "\ufeffDistance (m)\tTerrain Z (m)\tProjet Z (m)\n"; 
+    if(!d.customProfilePts) d.customProfilePts = [];
+
+    // --- Calcul du MNT ---
+    const l93 = d.ptsGPS.map(p => proj4("EPSG:4326", "EPSG:2154", [p.lng, p.lat]));
+    let data=[], geo=[], dist=0;
     
-    const terrainData = chartInstance.data.datasets[0].data;
-    // Sécurité au cas où le calque projet n'existe pas encore
-    const projetData = chartInstance.data.datasets[1] ? chartInstance.data.datasets[1].data : [];
+    let zStart = d.ptsGPS[0].customZ !== undefined ? d.ptsGPS[0].customZ : (getZ(l93[0])||0);
+    data.push({x: 0.00, y: parseFloat(zStart.toFixed(2))}); geo.push({lat: d.ptsGPS[0].lat, lng: d.ptsGPS[0].lng}); 
     
-    // On exporte chaque point du terrain, et on vérifie si un point de projet tombe exactement dessus
-    terrainData.forEach(r => { 
-        let projPt = projetData.find(p => p.x === r.x);
-        let pZ = projPt ? projPt.y.toFixed(2).replace('.', ',') : "";
-        csv += `${r.x.toFixed(2).replace('.', ',')}\t${r.y.toFixed(2).replace('.', ',')}\t${pZ}\n`; 
-    }); 
+    for(let i=1; i<l93.length; i++) {
+        const dSeg = Math.hypot(l93[i][0]-l93[i-1][0], l93[i][1]-l93[i-1][1]);
+        const step = 1; // Pas de 1 mètre
+        for(let j=step; j<dSeg; j+=step) {
+            const t = j/dSeg; 
+            const x = l93[i-1][0]+(l93[i][0]-l93[i-1][0])*t; const y = l93[i-1][1]+(l93[i][1]-l93[i-1][1])*t;
+            let curZ = (d.ptsGPS[i-1].customZ !== undefined && d.ptsGPS[i].customZ !== undefined) 
+                ? d.ptsGPS[i-1].customZ + t * (d.ptsGPS[i].customZ - d.ptsGPS[i-1].customZ) : (getZ([x,y]) || 0);
+            data.push({x: parseFloat((dist+j).toFixed(2)), y: parseFloat(curZ.toFixed(2))}); 
+            geo.push({lat: proj4("EPSG:2154","EPSG:4326",[x,y])[1], lng: proj4("EPSG:2154","EPSG:4326",[x,y])[0]});
+        }
+        dist += dSeg; 
+        let zEnd = d.ptsGPS[i].customZ !== undefined ? d.ptsGPS[i].customZ : (getZ(l93[i])||0);
+        data.push({x: parseFloat(dist.toFixed(2)), y: parseFloat(zEnd.toFixed(2))}); 
+        geo.push({lat: d.ptsGPS[i].lat, lng: d.ptsGPS[i].lng});
+    }
     
-    // On ajoute à la fin du fichier les points de projets créés manuellement "entre" les mètres ronds
-    projetData.forEach(r => {
-        if(!terrainData.find(t => t.x === r.x)) {
-             csv += `${r.x.toFixed(2).replace('.', ',')}\t\t${r.y.toFixed(2).replace('.', ',')}\n`; 
+    // --- Création du Graphique ---
+    if(chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+        type:'line', 
+        data: {
+            datasets:[
+                {label:'Terrain Naturel', data, borderColor:d.color, backgroundColor:d.color+'33', fill:true, pointRadius:0, tension:0.1, order: 2},
+                {label:'Projet', data: d.customProfilePts, borderColor:'#f1c40f', backgroundColor:'transparent', fill:false, pointRadius:5, pointHoverRadius:7, pointBackgroundColor:'#f1c40f', showLine:true, tension:0, order: 1}
+            ]
+        },
+        options:{ 
+            responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+            animation: false, // Fluidité du Drag & Drop
+            plugins: { tooltip: { callbacks: { title: (c) => `Dist: ${c[0].parsed.x.toFixed(2)} m`, label: (c) => `${c.dataset.label}: ${c.parsed.y.toFixed(2)} m` } } },
+            scales: { x: { type: 'linear', title: {display:true, text:'Distance géométrique exacte (m)'} } },
+            onHover:(e,el)=>{
+                if(!window.isDrawingOnProfile && el && el.length > 0 && el[0].datasetIndex === 0){ 
+                    const p = geo[el[0].index]; if(p) updateCursor(p.lat, p.lng);
+                }
+            }
         }
     });
+    
+    // --- Interactions Souris ---
+    canvas.onmousedown = (e) => {
+        if(!window.isDrawingOnProfile) return;
+        const rect = canvas.getBoundingClientRect();
+        const xPixel = e.clientX - rect.left; const yPixel = e.clientY - rect.top;
+        
+        let closestIdx = -1; let minDist = 15; 
+        d.customProfilePts.forEach((pt, idx) => {
+            const ptX = chartInstance.scales.x.getPixelForValue(pt.x);
+            const ptY = chartInstance.scales.y.getPixelForValue(pt.y);
+            const dist = Math.hypot(ptX - xPixel, ptY - yPixel);
+            if (dist < minDist) { minDist = dist; closestIdx = idx; }
+        });
 
-    const a = document.createElement('a'); 
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); 
-    a.download = 'profil_et_projet.csv'; 
-    a.click(); 
-};window.exportChartPNG = () => { 
-    const a = document.createElement('a'); 
-    a.href = document.getElementById('profileChart').toDataURL('image/png'); 
-    a.download = 'profil.png'; 
-    a.click(); 
+        if (closestIdx > -1) {
+            window.activeDragIndex = closestIdx;
+            canvas.style.cursor = 'grabbing';
+        } else {
+            const xVal = chartInstance.scales.x.getValueForPixel(xPixel);
+            const yVal = chartInstance.scales.y.getValueForPixel(yPixel);
+            if(xVal !== undefined && yVal !== undefined) {
+                d.customProfilePts.push({x: parseFloat(xVal.toFixed(2)), y: parseFloat(yVal.toFixed(2))});
+                d.customProfilePts.sort((a,b) => a.x - b.x); 
+                updateProfileUI(d, data);
+            }
+        }
+    };
+
+    canvas.onmousemove = (e) => {
+        if(window.activeDragIndex !== null && window.isDrawingOnProfile) {
+            const rect = canvas.getBoundingClientRect();
+            const xVal = chartInstance.scales.x.getValueForPixel(e.clientX - rect.left);
+            const yVal = chartInstance.scales.y.getValueForPixel(e.clientY - rect.top);
+            if(xVal !== undefined && yVal !== undefined) {
+                d.customProfilePts[window.activeDragIndex] = {x: parseFloat(xVal.toFixed(2)), y: parseFloat(yVal.toFixed(2))};
+                updateProfileUI(d, data);
+            }
+        }
+    };
+
+    canvas.onmouseup = () => {
+        if(window.activeDragIndex !== null && window.isDrawingOnProfile) {
+            d.customProfilePts.sort((a,b) => a.x - b.x); 
+            updateProfileUI(d, data);
+            window.activeDragIndex = null;
+            canvas.style.cursor = 'crosshair';
+        }
+    };
+
+    canvas.ondblclick = (e) => {
+        if(!window.isDrawingOnProfile) return;
+        const rect = canvas.getBoundingClientRect();
+        const xPixel = e.clientX - rect.left; const yPixel = e.clientY - rect.top;
+        
+        let closestIdx = -1; let minDist = 15;
+        d.customProfilePts.forEach((pt, idx) => {
+            const ptX = chartInstance.scales.x.getPixelForValue(pt.x);
+            const ptY = chartInstance.scales.y.getPixelForValue(pt.y);
+            if (Math.hypot(ptX - xPixel, ptY - yPixel) < minDist) { minDist = Math.hypot(ptX - xPixel, ptY - yPixel); closestIdx = idx; }
+        });
+
+        if(closestIdx > -1) {
+            d.customProfilePts.splice(closestIdx, 1);
+            updateProfileUI(d, data);
+        }
+    };
+
+    canvas.onmouseleave = () => {
+        if(cursorMarker) { map.removeLayer(cursorMarker); cursorMarker = null; }
+        if(window.activeDragIndex !== null) {
+            d.customProfilePts.sort((a,b) => a.x - b.x);
+            updateProfileUI(d, data);
+            window.activeDragIndex = null;
+        }
+    };
+
+    // --- Contrôles UI du Graphique ---
+    updateProfileUI(d, data);
+    const minZ = Math.min(...data.map(pt=>pt.y)), maxZ = Math.max(...data.map(pt=>pt.y)), maxD = data[data.length-1].x;
+    const sXMin=document.getElementById('x-min'), sXMax=document.getElementById('x-max'), sYMin=document.getElementById('y-min'), sYMax=document.getElementById('y-max');
+    if(sXMin) { sXMin.max=maxD; sXMax.max=maxD; sXMin.value=0; sXMax.value=maxD; }
+    if(sYMin) { sYMin.min=minZ-10; sYMin.max=maxZ+10; sYMax.min=minZ-10; sYMax.max=maxZ+10; sYMin.value=minZ-1; sYMax.value=maxZ+1; }
+    window.updateScalesLive();
+}
+
+window.updateScalesLive = () => {
+    if (!chartInstance) return;
+    const sXMin=document.getElementById('x-min'), sXMax=document.getElementById('x-max'), sYMin=document.getElementById('y-min'), sYMax=document.getElementById('y-max');
+    if(!sXMin) return;
+    const xMin = parseFloat(sXMin.value), xMax = parseFloat(sXMax.value), yMin = parseFloat(sYMin.value), yMax = parseFloat(sYMax.value);
+    const vx = document.getElementById('x-vals'); if (vx) vx.innerText = `${xMin}m - ${xMax}m`; 
+    const vy = document.getElementById('y-vals'); if (vy) vy.innerText = `${yMin}m - ${yMax}m`;
+    chartInstance.options.scales.x.min = xMin; chartInstance.options.scales.x.max = xMax;
+    chartInstance.options.scales.y.min = yMin; chartInstance.options.scales.y.max = yMax;
+    chartInstance.update('none');
 };
+
+// 5. Exporter
+window.exportChartPNG = () => { const a = document.createElement('a'); a.href = document.getElementById('profileChart').toDataURL('image/png'); a.download = 'profil.png'; a.click(); };
 
 window.exportChartCSV = () => { 
     if (!chartInstance) return;
@@ -1056,21 +1178,21 @@ window.exportChartCSV = () => {
     let csv = "\ufeffDistance (m)\tTerrain Z (m)\tProjet Z (m)\n"; 
     
     const terrainData = chartInstance.data.datasets[0].data;
-    // Sécurité au cas où le calque projet n'existe pas encore
     const projetData = chartInstance.data.datasets[1] ? chartInstance.data.datasets[1].data : [];
     
-    // On exporte chaque point du terrain, et on vérifie si un point de projet tombe exactement dessus
-    terrainData.forEach(r => { 
-        let projPt = projetData.find(p => p.x === r.x);
-        let pZ = projPt ? projPt.y.toFixed(2).replace('.', ',') : "";
-        csv += `${r.x.toFixed(2).replace('.', ',')}\t${r.y.toFixed(2).replace('.', ',')}\t${pZ}\n`; 
-    }); 
-    
-    // On ajoute à la fin du fichier les points de projets créés manuellement "entre" les mètres ronds
-    projetData.forEach(r => {
-        if(!terrainData.find(t => t.x === r.x)) {
-             csv += `${r.x.toFixed(2).replace('.', ',')}\t\t${r.y.toFixed(2).replace('.', ',')}\n`; 
-        }
+    // Création d'une liste unique et triée de toutes les distances X (Terrain + Projet)
+    let allXs = new Set([...terrainData.map(p=>p.x), ...projetData.map(p=>p.x)]);
+    let sortedXs = Array.from(allXs).sort((a,b) => a - b);
+
+    // Remplissage du CSV
+    sortedXs.forEach(x => {
+        let tPt = terrainData.find(p => p.x === x);
+        let pPt = projetData.find(p => p.x === x);
+        
+        let tZ = tPt ? tPt.y.toFixed(2).replace('.', ',') : "";
+        let pZ = pPt ? pPt.y.toFixed(2).replace('.', ',') : "";
+        
+        csv += `${x.toFixed(2).replace('.', ',')}\t${tZ}\t${pZ}\n`; 
     });
 
     const a = document.createElement('a'); 
