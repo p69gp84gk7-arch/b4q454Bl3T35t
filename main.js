@@ -914,7 +914,7 @@ window.generateMulti3DViewAdaptive = (featuresToPlot) => {
     }, 100);
 };
 // ==========================================
-// 8. PROFIL ALTIMÉTRIQUE (DESSIN CAO, CALCUL D'AIRE & EXPORT CSV)
+// 8. PROFIL ALTIMÉTRIQUE (DESSIN CAO, CALCUL DÉBLAI/REMBLAI & EXPORT CSV)
 // ==========================================
 window.currentProfileDrawId = null;
 window.isDrawingOnProfile = false;
@@ -956,18 +956,49 @@ window.clearProfileDraw = () => {
     }
 };
 
-// 3. Outils Mathématiques
+// 3. Outils Mathématiques (Le Moteur Topographique Déblai/Remblai)
 function calculateProfileArea(terrainData, projectData) {
-    if (!projectData || projectData.length < 2) return 0;
-    let area = 0;
+    if (!projectData || projectData.length < 2) return { cut: 0, fill: 0 };
+    let cutArea = 0;  // Déblai (Terrain > Projet)
+    let fillArea = 0; // Remblai (Projet > Terrain)
+
     for (let i = 0; i < projectData.length - 1; i++) {
         let x1 = projectData[i].x, x2 = projectData[i+1].x;
         let p1 = projectData[i].y, p2 = projectData[i+1].y;
         let t1 = getTerrainZAt(terrainData, x1), t2 = getTerrainZAt(terrainData, x2);
+        
         let h = x2 - x1;
-        area += Math.abs(((t1 - p1) + (t2 - p2)) / 2 * h);
+        if (h <= 0) continue;
+
+        let diff1 = t1 - p1; // Positif si terrain au-dessus du projet (Déblai)
+        let diff2 = t2 - p2;
+
+        // Cas 1 : Tout le segment est en Déblai
+        if (diff1 >= 0 && diff2 >= 0) {
+            cutArea += ((diff1 + diff2) / 2) * h;
+        } 
+        // Cas 2 : Tout le segment est en Remblai
+        else if (diff1 <= 0 && diff2 <= 0) {
+            fillArea += ((Math.abs(diff1) + Math.abs(diff2)) / 2) * h;
+        } 
+        // Cas 3 : Les courbes se croisent (Intersection exacte)
+        else {
+            let k = Math.abs(diff1) / (Math.abs(diff1) + Math.abs(diff2));
+            let h1 = k * h;
+            let h2 = (1 - k) * h;
+            
+            if (diff1 > 0) { 
+                // Passe de Déblai à Remblai
+                cutArea += (diff1 / 2) * h1;
+                fillArea += (Math.abs(diff2) / 2) * h2;
+            } else { 
+                // Passe de Remblai à Déblai
+                fillArea += (Math.abs(diff1) / 2) * h1;
+                cutArea += (diff2 / 2) * h2;
+            }
+        }
     }
-    return area;
+    return { cut: cutArea, fill: fillArea };
 }
 
 function getTerrainZAt(data, x) {
@@ -984,15 +1015,27 @@ function getTerrainZAt(data, x) {
 function updateProfileUI(d, terrainData) {
     if(!chartInstance) return;
     chartInstance.update('none');
-    const area = calculateProfileArea(terrainData, d.customProfilePts);
+    const areas = calculateProfileArea(terrainData, d.customProfilePts);
     let info = document.getElementById('profile-info-area');
+    
     if(!info) {
         info = document.createElement('div'); info.id = 'profile-info-area';
-        info.style.cssText = "position:absolute; bottom:50px; right:20px; background:rgba(0,0,0,0.7); padding:5px 10px; color:#f1c40f; font-weight:bold; border-radius:3px; font-size:12px; z-index:1000;";
+        info.style.cssText = "position:absolute; bottom:40px; right:20px; background:rgba(20,20,20,0.85); padding:10px 15px; border:1px solid #555; border-radius:5px; font-size:13px; z-index:1000; display:flex; flex-direction:column; gap:5px; box-shadow:0 4px 10px rgba(0,0,0,0.5);";
         document.getElementById('profile-window').appendChild(info);
     }
-    info.innerHTML = area > 0 ? `Aire de coupe : ${area.toFixed(2)} m²` : "";
-    d.lastProfileArea = area; 
+    
+    if (areas.cut > 0 || areas.fill > 0) {
+        info.innerHTML = `
+            <span style="color:#3498db;">📉 Déblai : <b>${areas.cut.toFixed(2)} m²</b></span>
+            <span style="color:#e67e22;">📈 Remblai : <b>${areas.fill.toFixed(2)} m²</b></span>
+            <hr style="margin:4px 0; border:0; border-top:1px solid #777;">
+            <span style="color:#f1c40f;">⚖️ Bilan : <b>${Math.abs(areas.cut - areas.fill).toFixed(2)} m²</b> ${(areas.cut > areas.fill) ? '(Excédent)' : '(Manque)'}</span>
+        `;
+        info.style.display = 'flex';
+    } else {
+        info.style.display = 'none';
+    }
+    d.lastProfileArea = areas; 
 }
 
 // 4. Le Moteur de Génération
@@ -1072,7 +1115,7 @@ function generateProfile(d) {
         }
     });
     
-    // --- Interactions Souris ---
+    // --- Interactions Souris (CAO) ---
     canvas.onmousedown = (e) => {
         if(!window.isDrawingOnProfile) return;
         const rect = canvas.getBoundingClientRect();
