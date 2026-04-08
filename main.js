@@ -125,49 +125,134 @@ function updateKmzUI() {
 window.toggleKMZ = (id) => { const k = kmzStore.find(x => x.id === id); if (!k) return; k.visible = !k.visible; if (k.visible) k.layer.addTo(map); else map.removeLayer(k.layer); updateKmzUI(); };
 
 // ==========================================
-// 4. OUTILS DE DESSIN
+// 4. OUTILS DE DESSIN ET GESTION DES CLICS
 // ==========================================
+
 window.startTool = (tool) => { 
-    currentTool = tool; currentPoints = []; circleCenter = null;
-    if (tempLayer) map.removeLayer(tempLayer); tempLayer = null;
+    // 1. Réinitialisation des variables de dessin
+    currentTool = tool; 
+    currentPoints = []; 
+    circleCenter = null;
+    
+    // 2. Nettoyage d'un éventuel tracé inachevé
+    if (tempLayer) { map.removeLayer(tempLayer); tempLayer = null; }
+    
+    // 3. Mise à jour visuelle des boutons d'outils
     document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active')); 
-    document.getElementById('btn-'+tool).classList.add('active');
-    document.getElementById('btn-finish').style.display = tool === 'circle' ? 'none' : 'block';
+    const activeBtn = document.getElementById('btn-'+tool);
+    if (activeBtn) activeBtn.classList.add('active');
+    
+    // 4. Gestion du bouton "Terminer" (Caché pour le cercle, affiché pour Ligne/Surface)
+    const finishBtn = document.getElementById('btn-finish');
+    if (finishBtn) {
+        finishBtn.style.display = (tool === 'circle') ? 'none' : 'block';
+    }
 };
 
 map.on('click', (e) => {
-    if (!currentTool) return;
+    // Si on n'a pas d'outil sélectionné ou si on est en train d'ajouter un point d'édition, on ignore.
+    if (!currentTool || window.isAddingPointMode) return;
+    
+    // --- GESTION DU CERCLE ---
     if (currentTool === 'circle') {
-        if (!circleCenter) { circleCenter = e.latlng; tempLayer = L.circle(circleCenter, {radius: 0, color: '#9b59b6', weight: 3, fillOpacity: 0.3}).addTo(map); } 
-        else { finalizeCircle(circleCenter, map.distance(circleCenter, e.latlng)); circleCenter = null; }
+        if (!circleCenter) { 
+            // 1er Clic : Définition du centre
+            circleCenter = e.latlng; 
+            tempLayer = L.circle(circleCenter, {radius: 0, color: '#9b59b6', weight: 3, fillOpacity: 0.3}).addTo(map); 
+        } 
+        else { 
+            // 2e Clic : Validation et fin du tracé
+            finalizeCircle(circleCenter, map.distance(circleCenter, e.latlng)); 
+        }
         return;
     }
+    
+    // --- GESTION DES LIGNES ET SURFACES ---
     currentPoints.push({lat: e.latlng.lat, lng: e.latlng.lng}); 
+    
+    // On efface le tracé temporaire précédent
     if (tempLayer) map.removeLayer(tempLayer);
+    
+    // On redessine le tracé temporaire avec le nouveau point
     const color = currentTool === 'area' ? '#e67e22' : '#3498db';
-    tempLayer = currentTool === 'area' ? L.polygon(currentPoints, { color, weight: 3, fillOpacity: 0.3 }).addTo(map) : L.polyline(currentPoints, { color, weight: 4 }).addTo(map);
+    tempLayer = currentTool === 'area' 
+        ? L.polygon(currentPoints, { color, weight: 3, fillOpacity: 0.3 }).addTo(map) 
+        : L.polyline(currentPoints, { color, weight: 4 }).addTo(map);
 });
 
+// Fonction déclenchée par le bouton "Terminer"
 window.finalizeDraw = () => {
-    if (currentPoints.length < 2) return;
-    const type = currentTool; const color = type==='area' ? '#e67e22' : '#3498db';
-    const drawObj = { id: Date.now(), type, name: type==='area' ? 'Surface' : 'Tracé', ptsGPS: [...currentPoints], visible: true, color, weight: 4, isEditing: false, editGroup: L.layerGroup().addTo(map) };
-    drawObj.layer = type === 'area' ? L.polygon(currentPoints, {color, weight: 3, fillOpacity: 0.3}).addTo(map) : L.polyline(currentPoints, {color, weight: 4}).addTo(map);
-    drawStore.unshift(drawObj); recalculateStats(drawObj); updateDrawUI();
+    // Sécurité : il faut un outil actif et au moins 2 points pour faire une ligne/surface
+    if (!currentTool || currentPoints.length < 2) return; 
+    
+    const type = currentTool; 
+    const color = type === 'area' ? '#e67e22' : '#3498db';
+    
+    // Création de l'objet de données
+    const drawObj = { 
+        id: Date.now(), 
+        type: type, 
+        name: type === 'area' ? 'Surface' : 'Ligne', 
+        ptsGPS: [...currentPoints], 
+        visible: true, 
+        color: color, 
+        weight: 4, 
+        isEditing: false, 
+        editGroup: L.layerGroup().addTo(map) 
+    };
+    
+    // Création du calque Leaflet définitif
+    drawObj.layer = type === 'area' 
+        ? L.polygon(currentPoints, {color, weight: 3, fillOpacity: 0.3}).addTo(map) 
+        : L.polyline(currentPoints, {color, weight: 4}).addTo(map);
+        
+    drawStore.unshift(drawObj); 
+    
+    // --- LE NETTOYAGE CRUCIAL (Évite le bug des doubles surfaces) ---
+    if (tempLayer) { map.removeLayer(tempLayer); tempLayer = null; }
+    currentTool = null; 
+    currentPoints = [];
+    
+    document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active')); 
+    const finishBtn = document.getElementById('btn-finish');
+    if (finishBtn) finishBtn.style.display = 'none';
+
+    // --- MISE À JOUR DE L'INTERFACE ---
+    recalculateStats(drawObj); 
+    updateDrawUI();
     if(type === 'line') generateProfile(drawObj);
-    currentTool = null; currentPoints = []; if(tempLayer) map.removeLayer(tempLayer);
-    document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active')); document.getElementById('btn-finish').style.display = 'none';
 };
 
 window.finalizeCircle = (center, radius) => {
-    const drawObj = { id: Date.now(), type: 'circle', name: 'Cercle', center, radius, visible: true, color: '#9b59b6', weight: 3, isEditing: false, editGroup: L.layerGroup().addTo(map) };
+    const drawObj = { 
+        id: Date.now(), type: 'circle', name: 'Cercle', center, radius, 
+        visible: true, color: '#9b59b6', weight: 3, isEditing: false, 
+        editGroup: L.layerGroup().addTo(map) 
+    };
+    
     drawObj.layer = L.circle(center, {radius, color: '#9b59b6', weight: 3, fillOpacity: 0.3}).addTo(map);
+    
+    // Calcul mathématique des 64 points de la bordure du cercle pour la 3D et le CSV
     const pts = []; const cL93 = proj4("EPSG:4326", "EPSG:2154", [center.lng, center.lat]);
-    for (let i=0; i<64; i++) { const a = (i*2*Math.PI)/64; const g = proj4("EPSG:2154", "EPSG:4326", [cL93[0]+radius*Math.cos(a), cL93[1]+radius*Math.sin(a)]); pts.push({lat: g[1], lng: g[0]}); }
-    drawObj.ptsGPS = pts; drawStore.unshift(drawObj); recalculateStats(drawObj); updateDrawUI(); currentTool = null;
+    for (let i=0; i<64; i++) { 
+        const a = (i*2*Math.PI)/64; 
+        const g = proj4("EPSG:2154", "EPSG:4326", [cL93[0]+radius*Math.cos(a), cL93[1]+radius*Math.sin(a)]); 
+        pts.push({lat: g[1], lng: g[0]}); 
+    }
+    drawObj.ptsGPS = pts; 
+    drawStore.unshift(drawObj); 
+    
+    // --- LE NETTOYAGE CRUCIAL ---
+    if (tempLayer) { map.removeLayer(tempLayer); tempLayer = null; }
+    currentTool = null; 
+    circleCenter = null;
+    
     document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
+    
+    // --- MISE À JOUR DE L'INTERFACE ---
+    recalculateStats(drawObj); 
+    updateDrawUI(); 
 };
-
 // ==========================================
 // 5. STATS, ÉDITION AVANCÉE & AJOUT DE POINTS
 // ==========================================
