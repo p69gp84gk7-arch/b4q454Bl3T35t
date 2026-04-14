@@ -27,11 +27,42 @@
 
     <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;">
         <a-camera gps-projected-camera rotation-reader></a-camera>
-        </a-scene>
+    </a-scene>
 
     <script>
         const statusEl = document.getElementById('status-message');
         const sceneEl = document.querySelector('a-scene');
+
+        // --- BLOC 6 : DIAGNOSTIC DU SERVICE DE LOCALISATION ---
+        function verifierGPS() {
+            if (!("geolocation" in navigator)) {
+                statusEl.innerText = "❌ GPS non supporté par ce navigateur.";
+                return;
+            }
+
+            statusEl.innerText = "⏳ Vérification du capteur GPS...";
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    statusEl.innerText = "📍 GPS Actif. Vous pouvez charger un fichier.";
+                    statusEl.style.color = "#4ade80"; 
+                },
+                (error) => {
+                    statusEl.style.color = "#ff4d4f"; 
+                    if (error.code === error.PERMISSION_DENIED) {
+                        statusEl.innerText = "❌ ERREUR : Activez la localisation dans les réglages de l'iPhone !";
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        statusEl.innerText = "❌ ERREUR : Signal GPS introuvable (êtes-vous en intérieur ?).";
+                    } else {
+                        statusEl.innerText = "❌ ERREUR GPS : Délai d'attente dépassé.";
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        }
+
+        // Déclencher la vérification dès l'ouverture de l'application
+        window.addEventListener('load', verifierGPS);
 
         // Écouteur d'événement sur le bouton d'upload
         document.getElementById('file-input').addEventListener('change', async function(event) {
@@ -39,6 +70,7 @@
             if (!file) return;
 
             statusEl.innerText = "Traitement du fichier...";
+            statusEl.style.color = "white"; // Réinitialise la couleur en cas d'erreur précédente
 
             try {
                 let kmlText = "";
@@ -49,7 +81,6 @@
                     const zip = new JSZip();
                     const contents = await zip.loadAsync(file);
                     
-                    // On cherche le fichier .kml à l'intérieur du zip
                     const kmlFilename = Object.keys(contents.files).find(name => name.toLowerCase().endsWith('.kml'));
                     if (!kmlFilename) throw new Error("Aucun fichier KML trouvé dans l'archive KMZ.");
                     
@@ -70,95 +101,93 @@
             }
         });
 
-       // Fonctionnalité : Extraction des coordonnées et création des objets AR
-function processKMLData(kmlString) {
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(kmlString, "text/xml");
-    const coordinatesTags = xmlDoc.getElementsByTagName("coordinates");
-    
-    if (coordinatesTags.length === 0) {
-        statusEl.innerText = "Erreur : Aucune coordonnée trouvée.";
-        return;
-    }
+        // Fonctionnalité : Extraction des coordonnées et création des objets AR
+        function processKMLData(kmlString) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(kmlString, "text/xml");
+            const coordinatesTags = xmlDoc.getElementsByTagName("coordinates");
+            
+            if (coordinatesTags.length === 0) {
+                statusEl.innerText = "Erreur : Aucune coordonnée trouvée.";
+                return;
+            }
 
-    let pointsCount = 0;
-    let firstPointLat = null;
-    let firstPointLon = null;
+            let pointsCount = 0;
+            let firstPointLat = null;
+            let firstPointLon = null;
 
-    // Extraction des points
-    for (let i = 0; i < coordinatesTags.length; i++) {
-        const text = coordinatesTags[i].textContent.trim();
-        const points = text.split(/\s+/);
-        const step = Math.max(1, Math.floor(points.length / 100)); 
+            // Extraction des points
+            for (let i = 0; i < coordinatesTags.length; i++) {
+                const text = coordinatesTags[i].textContent.trim();
+                const points = text.split(/\s+/);
+                const step = Math.max(1, Math.floor(points.length / 100)); 
 
-        for (let j = 0; j < points.length; j += step) {
-            const coords = points[j].split(',');
-            if (coords.length >= 2) {
-                const lon = parseFloat(coords[0]);
-                const lat = parseFloat(coords[1]);
+                for (let j = 0; j < points.length; j += step) {
+                    const coords = points[j].split(',');
+                    if (coords.length >= 2) {
+                        const lon = parseFloat(coords[0]);
+                        const lat = parseFloat(coords[1]);
 
-                // Capturer le tout premier point de la trace pour le test
-                if (firstPointLat === null) {
-                    firstPointLat = lat;
-                    firstPointLon = lon;
+                        // Capturer le tout premier point de la trace pour le test
+                        if (firstPointLat === null) {
+                            firstPointLat = lat;
+                            firstPointLon = lon;
+                        }
+
+                        const jalon = document.createElement('a-sphere');
+                        jalon.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
+                        jalon.setAttribute('radius', '3'); 
+                        jalon.setAttribute('color', '#FF3B30'); 
+                        jalon.setAttribute('opacity', '0.8');
+                        sceneEl.appendChild(jalon);
+                        pointsCount++;
+                    }
                 }
+            }
+            
+            // Vérification de votre position GPS par rapport à la trace
+            if (navigator.geolocation && firstPointLat !== null) {
+                statusEl.innerText = `Trace de ${pointsCount} points. Calcul de votre distance...`;
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLat = position.coords.latitude;
+                        const userLon = position.coords.longitude;
+                        const distanceMetres = calculateDistance(userLat, userLon, firstPointLat, firstPointLon);
+                        
+                        let distanceTexte = distanceMetres > 1000 
+                            ? (distanceMetres / 1000).toFixed(2) + " km" 
+                            : Math.round(distanceMetres) + " m";
 
-                const jalon = document.createElement('a-sphere');
-                jalon.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
-                jalon.setAttribute('radius', '3'); 
-                jalon.setAttribute('color', '#FF3B30'); 
-                jalon.setAttribute('opacity', '0.8');
-                sceneEl.appendChild(jalon);
-                pointsCount++;
+                        statusEl.innerText = `Trace chargée. Début à ${distanceTexte} de vous.`;
+                        
+                        // Si la trace est à plus de 5km, on avertit l'utilisateur
+                        if (distanceMetres > 5000) {
+                            statusEl.style.color = "#FFcc00"; 
+                            statusEl.innerText += " (Trop loin pour être visible !)";
+                        }
+                    },
+                    (error) => {
+                        statusEl.innerText = `Trace de ${pointsCount} points. (Erreur GPS: ${error.message})`;
+                    },
+                    { enableHighAccuracy: true } 
+                );
+            } else {
+                statusEl.innerText = `Trace chargée (${pointsCount} jalons affichés)`;
             }
         }
-    }
-    
-    // Vérification de votre position GPS par rapport à la trace
-    if (navigator.geolocation && firstPointLat !== null) {
-        statusEl.innerText = `Trace de ${pointsCount} points. Calcul de votre distance...`;
-        
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const userLat = position.coords.latitude;
-                const userLon = position.coords.longitude;
-                const distanceMetres = calculateDistance(userLat, userLon, firstPointLat, firstPointLon);
-                
-                let distanceTexte = distanceMetres > 1000 
-                    ? (distanceMetres / 1000).toFixed(2) + " km" 
-                    : Math.round(distanceMetres) + " m";
 
-                statusEl.innerText = `Trace chargée. Début à ${distanceTexte} de vous.`;
-                
-                // Si la trace est à plus de 5km, on avertit l'utilisateur
-                if (distanceMetres > 5000) {
-                    statusEl.style.color = "#FFcc00"; // Passe en jaune/orange
-                    statusEl.innerText += " (Trop loin pour être visible !)";
-                }
-            },
-            (error) => {
-                statusEl.innerText = `Trace de ${pointsCount} points. (Erreur GPS: ${error.message})`;
-            },
-            { enableHighAccuracy: true } // Force le GPS du téléphone à être précis
-        );
-    } else {
-        statusEl.innerText = `Trace chargée (${pointsCount} jalons affichés)`;
-    }
-}
-            
-            statusEl.innerText = `Trace chargée (${pointsCount} jalons affichés)`;
-        }
         // --- BLOC 5 : OUTIL DE DISTANCE (Formule de Haversine) ---
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // Rayon de la Terre en mètres
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c; // Retourne la distance en mètres
-}
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; 
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; 
+        }
     </script>
 </body>
 </html>
