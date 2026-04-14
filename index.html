@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trace AR iPhone - Topographie 3D</title>
+    <title>Trace AR iPhone - Topographie & Rayon X</title>
     
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; background-color: #000; }
+        /* --- STYLES DE L'INTERFACE --- */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; background-color: #000; }
         #ui-layer { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: center; z-index: 1000; }
         .upload-btn { background-color: rgba(255, 255, 255, 0.9); color: #007aff; padding: 12px 24px; border-radius: 20px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; }
         #file-input { display: none; }
@@ -20,6 +21,7 @@
     <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
     <script>
+        // --- COMPOSANT SURFACES 3D ---
         AFRAME.registerComponent('kml-polygon', {
             schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#3498db'}, opacity: {type: 'number', default: 0.4}, relativeAlt: {type: 'number', default: -1.5} },
             init: function() {
@@ -58,6 +60,7 @@
             }
         });
 
+        // --- OUTILS MATHÉMATIQUES GLOBAUX ---
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3; 
             const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
@@ -75,7 +78,8 @@
 <body>
 
     <div id="status-message">📍 Autorisez la caméra, puis chargez un fichier</div>
-    <div id="altitude-debug">Alt. iPhone : Recherche...</div>
+    <div id="altitude-debug">Alt. iPhone : Recherche du signal...</div>
+    
     <div id="ui-layer">
         <label for="file-input" class="upload-btn">Ouvrir KML/KMZ</label>
         <input type="file" id="file-input" accept=".kml,.kmz">
@@ -92,24 +96,22 @@
 
         let playerLat = null;
         let playerLon = null;
-        let playerAlt = 0; // L'altitude vitale de l'utilisateur
+        let playerAlt = 0; 
 
-        // Mise à jour de la position et de l'altitude en continu
+        // 1. Initialisation et suivi GPS en direct
         window.addEventListener('load', () => {
             if (!("geolocation" in navigator)) { statusEl.innerText = "❌ GPS non supporté."; return; }
             
-            // On utilise watchPosition pour avoir l'altitude la plus fraîche possible en montagne
             navigator.geolocation.watchPosition(
                 (pos) => { 
                     playerLat = pos.coords.latitude;
                     playerLon = pos.coords.longitude;
                     
-                    // Récupération de l'altitude (avec fallback à 0 si le capteur ne la donne pas encore)
                     if (pos.coords.altitude !== null) {
                         playerAlt = pos.coords.altitude;
                         altDebugEl.innerText = `Alt. iPhone : ${Math.round(playerAlt)} m (Précision: ±${Math.round(pos.coords.altitudeAccuracy || 0)}m)`;
                     } else {
-                        altDebugEl.innerText = "Alt. iPhone : En attente du signal 3D...";
+                        altDebugEl.innerText = "Alt. iPhone : 0 m (Signal 3D introuvable)";
                     }
 
                     if(statusEl.innerText.includes("Autorisez")) {
@@ -122,11 +124,12 @@
             );
         });
 
+        // 2. Écouteur d'Upload (Fichier KML/KMZ)
         document.getElementById('file-input').addEventListener('change', async function(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            statusEl.innerText = "Génération 3D (Topographie)...";
+            statusEl.innerText = "Analyse Topographique...";
             statusEl.style.color = "white"; 
             document.querySelectorAll('.kml-element').forEach(el => el.parentNode.removeChild(el));
 
@@ -141,34 +144,27 @@
                 } else {
                     kmlText = await file.text();
                 }
-                
                 processKMLData(kmlText);
-
             } catch (error) {
                 statusEl.style.color = "#ff4d4f";
                 statusEl.innerText = "🚨 ERREUR : " + error.message;
             }
         });
 
-        // --- CALCUL DE L'ALTITUDE INDIVIDUELLE ---
+        // 3. Moteurs de calcul d'altitude relative
         function getIndividualRelativeAltitude(coordsArray) {
-            // Si le point KML possède 3 coordonnées (Lon, Lat, Alt)
             if (coordsArray.length >= 3) {
                 const pointAlt = parseFloat(coordsArray[2]);
                 if (!isNaN(pointAlt)) {
-                    // C'est ici que la magie opère : Altitude du point - Altitude de l'iPhone - 1.5m (hauteur des yeux)
-                    return (pointAlt - playerAlt) - 1.5; 
+                    return pointAlt - playerAlt; 
                 }
             }
-            // Si le fichier KML est mal fait et n'a pas d'altitude pour ce point, on le met au niveau du sol
-            return -1.5; 
+            return 0; 
         }
 
-        // --- CALCUL DE L'ALTITUDE MOYENNE (POUR LES SURFACES) ---
         function getAverageRelativeAltitude(pointsString) {
             const pointsArr = pointsString.trim().split(/\s+/);
-            let totalAlt = 0;
-            let count = 0;
+            let totalAlt = 0; let count = 0;
             for(let i = 0; i < pointsArr.length; i++) {
                 const pt = pointsArr[i].split(',');
                 if (pt.length >= 3) {
@@ -176,13 +172,11 @@
                     if (!isNaN(alt)) { totalAlt += alt; count++; }
                 }
             }
-            if (count > 0) {
-                const avgAlt = totalAlt / count;
-                return (avgAlt - playerAlt) - 1.5;
-            }
-            return -1.5;
+            if (count > 0) return (totalAlt / count) - playerAlt;
+            return 0;
         }
 
+        // 4. Générateur 3D
         function processKMLData(kmlString) {
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(kmlString, "text/xml");
@@ -190,7 +184,7 @@
             let firstLat = null, firstLon = null;
             let stats = { canons: 0, jalons: 0, surfaces: 0 };
 
-            // 1. SURFACES
+            // -- A. SURFACES --
             const polygons = xmlDoc.getElementsByTagName("Polygon");
             for (let i = 0; i < polygons.length; i++) {
                 const coordsTags = polygons[i].getElementsByTagName("coordinates");
@@ -202,7 +196,6 @@
                         if(isNaN(lon) || isNaN(lat)) continue; 
                         if (firstLat === null) { firstLat = lat; firstLon = lon; }
 
-                        // On calcule l'altitude moyenne de la surface
                         const relAlt = getAverageRelativeAltitude(text);
 
                         const surfaceEl = document.createElement('a-entity');
@@ -215,7 +208,7 @@
                 }
             }
 
-            // 2. TRACES (Jalons)
+            // -- B. TRACES (Jalons rouges) --
             const lines = xmlDoc.getElementsByTagName("LineString");
             for (let i = 0; i < lines.length; i++) {
                 const coordsTags = lines[i].getElementsByTagName("coordinates");
@@ -230,7 +223,6 @@
                             if(isNaN(lon) || isNaN(lat)) continue; 
                             if (firstLat === null) { firstLat = lat; firstLon = lon; }
 
-                            // Chaque point de la trace est calculé par rapport à sa propre altitude
                             const relAlt = getIndividualRelativeAltitude(coords);
 
                             const anchor = document.createElement('a-entity');
@@ -251,7 +243,7 @@
                 }
             }
 
-            // 3. CANONS (Points)
+            // -- C. CANONS (Sphères jaunes + Diagnostic Rayon X) --
             const points = xmlDoc.getElementsByTagName("Point");
             for (let i = 0; i < points.length; i++) {
                 const coordsTags = points[i].getElementsByTagName("coordinates");
@@ -262,8 +254,14 @@
                         if(isNaN(lon) || isNaN(lat)) continue; 
                         if (firstLat === null) { firstLat = lat; firstLon = lon; }
 
-                        // Le canon monte ou descend selon sa VRAIE altitude KML par rapport à la vôtre
                         const relAlt = getIndividualRelativeAltitude(coords);
+                        
+                        // Lecture pure pour l'affichage de diagnostic
+                        let rawKmlAlt = "Manquante";
+                        if (coords.length >= 3 && !isNaN(parseFloat(coords[2]))) {
+                            rawKmlAlt = Math.round(parseFloat(coords[2])) + "m";
+                        }
+
                         stats.canons++;
 
                         const pointGroup = document.createElement('a-entity');
@@ -278,23 +276,27 @@
                         sphere.setAttribute('color', '#FFCC00'); 
                         heightContainer.appendChild(sphere);
 
+                        // Étiquette de diagnostic
                         const etiquette = document.createElement('a-text');
-                        etiquette.setAttribute('value', `Canon ${stats.canons}`);
+                        const texteAffiche = `Canon ${stats.canons}\nKML: ${rawKmlAlt}\niPhone: ${Math.round(playerAlt)}m\nCalcul: ${Math.round(relAlt)}m`;
+                        
+                        etiquette.setAttribute('value', texteAffiche);
                         etiquette.setAttribute('look-at', '[gps-camera]'); 
                         etiquette.setAttribute('scale', '10 10 10'); 
-                        etiquette.setAttribute('position', '0 5 0'); 
+                        etiquette.setAttribute('position', '0 6 0'); 
                         etiquette.setAttribute('align', 'center');
                         etiquette.setAttribute('color', '#FFFFFF');
                         etiquette.setAttribute('geometry', 'primitive: plane; height: auto; width: auto');
-                        etiquette.setAttribute('material', 'color: #000000; opacity: 0.6');
+                        etiquette.setAttribute('material', 'color: #000000; opacity: 0.7');
+                        
                         heightContainer.appendChild(etiquette);
-
                         pointGroup.appendChild(heightContainer);
                         sceneEl.appendChild(pointGroup);
                     }
                 }
             }
 
+            // 5. Bilan final
             if (firstLat !== null && playerLat !== null) {
                 const dist = calculateDistance(playerLat, playerLon, firstLat, firstLon);
                 const distTxt = dist > 1000 ? (dist/1000).toFixed(1) + " km" : Math.round(dist) + " m";
