@@ -3,82 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Visualiseur KML/KMZ en AR</title>
+    <title>Trace AR iPhone</title>
     
     <style>
-        /* Réinitialisation de base */
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #000; /* Fond noir en attendant la caméra */
-        }
-
-        /* L'interface utilisateur superposée à la caméra */
-        #ui-layer {
-            position: absolute;
-            bottom: 30px;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            z-index: 1000; /* Toujours au-dessus de la 3D/Caméra */
-        }
-
-        /* Style du bouton d'upload façon iOS */
-        .upload-btn {
-            background-color: rgba(255, 255, 255, 0.9);
-            color: #007aff;
-            padding: 12px 24px;
-            border-radius: 20px;
-            font-size: 16px;
-            font-weight: 600;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            text-align: center;
-            backdrop-filter: blur(5px);
-        }
-
-        /* Cacher l'input fichier natif très moche */
-        #file-input {
-            display: none;
-        }
-
-        #status-message {
-            position: absolute;
-            top: 20px;
-            width: 100%;
-            text-align: center;
-            color: white;
-            text-shadow: 1px 1px 2px black;
-            font-weight: bold;
-            z-index: 1000;
-        }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; }
+        #ui-layer { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: center; z-index: 1000; }
+        .upload-btn { background-color: rgba(255, 255, 255, 0.9); color: #007aff; padding: 12px 24px; border-radius: 20px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        #file-input { display: none; }
+        #status-message { position: absolute; top: 20px; width: 100%; text-align: center; color: white; text-shadow: 1px 1px 3px black; font-weight: bold; z-index: 1000; font-size: 18px; }
     </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 </head>
 <body>
 
-    <div id="status-message">En attente d'un fichier...</div>
-
+    <div id="status-message">📍 Autorisez la caméra, puis chargez un fichier</div>
     <div id="ui-layer">
-        <label for="file-input" class="upload-btn">
-            Charger une trace (KML/KMZ)
-        </label>
+        <label for="file-input" class="upload-btn">Ouvrir KML/KMZ</label>
         <input type="file" id="file-input" accept=".kml,.kmz">
     </div>
 
+    <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;">
+        <a-camera gps-projected-camera rotation-reader></a-camera>
+        </a-scene>
+
     <script>
-        // Logique de base pour écouter l'upload
-        document.getElementById('file-input').addEventListener('change', function(event) {
+        const statusEl = document.getElementById('status-message');
+        const sceneEl = document.querySelector('a-scene');
+
+        // Écouteur d'événement sur le bouton d'upload
+        document.getElementById('file-input').addEventListener('change', async function(event) {
             const file = event.target.files[0];
-            if (file) {
-                document.getElementById('status-message').innerText = "Fichier sélectionné : " + file.name;
-                // C'est ici que nous intégrerons la logique du Bloc 3 plus tard
-                console.log("Fichier prêt à être traité :", file);
+            if (!file) return;
+
+            statusEl.innerText = "Traitement du fichier...";
+
+            try {
+                let kmlText = "";
+
+                // --- BLOC 3 : DÉCOMPRESSION ET LECTURE ---
+                if (file.name.toLowerCase().endsWith('.kmz')) {
+                    statusEl.innerText = "Décompression du KMZ...";
+                    const zip = new JSZip();
+                    const contents = await zip.loadAsync(file);
+                    
+                    // On cherche le fichier .kml à l'intérieur du zip
+                    const kmlFilename = Object.keys(contents.files).find(name => name.toLowerCase().endsWith('.kml'));
+                    if (!kmlFilename) throw new Error("Aucun fichier KML trouvé dans l'archive KMZ.");
+                    
+                    kmlText = await contents.files[kmlFilename].async("text");
+                } else if (file.name.toLowerCase().endsWith('.kml')) {
+                    kmlText = await file.text();
+                } else {
+                    throw new Error("Format non supporté.");
+                }
+
+                // --- BLOC 4 : PARSING ET GÉNÉRATION 3D ---
+                statusEl.innerText = "Génération de la trace AR...";
+                processKMLData(kmlText);
+
+            } catch (error) {
+                console.error(error);
+                statusEl.innerText = "Erreur: " + error.message;
             }
         });
+
+        // Fonctionnalité : Extraction des coordonnées et création des objets AR
+        function processKMLData(kmlString) {
+            // Analyser le texte XML
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(kmlString, "text/xml");
+            
+            // Trouver toutes les balises de coordonnées
+            const coordinatesTags = xmlDoc.getElementsByTagName("coordinates");
+            if (coordinatesTags.length === 0) {
+                statusEl.innerText = "Aucune coordonnée trouvée.";
+                return;
+            }
+
+            let pointsCount = 0;
+
+            // Parcourir les blocs de coordonnées
+            for (let i = 0; i < coordinatesTags.length; i++) {
+                const text = coordinatesTags[i].textContent.trim();
+                const points = text.split(/\s+/); // Séparer par les espaces
+
+                // Pour ne pas faire planter l'iPhone, on affiche un jalon tous les X points
+                // Si la trace a 5000 points, on n'en prend qu'un sur 10.
+                const step = Math.max(1, Math.floor(points.length / 100)); 
+
+                for (let j = 0; j < points.length; j += step) {
+                    const coords = points[j].split(',');
+                    if (coords.length >= 2) {
+                        const lon = parseFloat(coords[0]);
+                        const lat = parseFloat(coords[1]);
+
+                        // Création d'une sphère (jalon) dans la scène A-Frame
+                        const jalon = document.createElement('a-sphere');
+                        jalon.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
+                        jalon.setAttribute('radius', '3'); // Taille de la sphère (en mètres virtuels)
+                        jalon.setAttribute('color', '#FF3B30'); // Rouge type iOS
+                        jalon.setAttribute('opacity', '0.8');
+                        
+                        sceneEl.appendChild(jalon);
+                        pointsCount++;
+                    }
+                }
+            }
+            
+            statusEl.innerText = `Trace chargée (${pointsCount} jalons affichés)`;
+        }
     </script>
 </body>
 </html>
