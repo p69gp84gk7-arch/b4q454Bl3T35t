@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trace & Surfaces AR iPhone (Avec Altitude)</title>
+    <title>Trace AR iPhone - Altitude Corrigée</title>
     
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; background-color: #000; }
@@ -19,9 +19,8 @@
     <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
     <script>
-        // Composant Surface mis à jour pour accepter une altitude de base
         AFRAME.registerComponent('kml-polygon', {
-            schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#3498db'}, opacity: {type: 'number', default: 0.4}, relativeAlt: {type: 'number', default: 0} },
+            schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#3498db'}, opacity: {type: 'number', default: 0.4}, relativeAlt: {type: 'number', default: -1.5} },
             init: function() {
                 const pointsArr = this.data.points.trim().split(/\s+/);
                 if (pointsArr.length < 3) return;
@@ -53,8 +52,8 @@
                 const material = new THREE.MeshBasicMaterial({ color: this.data.color, transparent: true, opacity: this.data.opacity, side: THREE.DoubleSide, depthWrite: false });
                 const mesh = new THREE.Mesh(geometry, material);
                 
-                // On applique l'altitude relative de la surface (avec -1.5m pour simuler qu'elle est au sol par rapport à nos yeux)
-                mesh.position.y = this.data.relativeAlt - 1.5; 
+                // Position Y définie par notre nouveau système intelligent
+                mesh.position.y = this.data.relativeAlt; 
                 this.el.setObject3D('mesh', mesh);
             }
         });
@@ -89,10 +88,9 @@
         const statusEl = document.getElementById('status-message');
         const sceneEl = document.querySelector('a-scene');
 
-        // Variables globales pour stocker la position du joueur
         let playerLat = null;
         let playerLon = null;
-        let playerAlt = null; // Altitude de l'iPhone
+        let firstKmlAlt = null; // NOUVEAU : Mémoire de l'altitude du premier point
 
         window.addEventListener('load', () => {
             if (!("geolocation" in navigator)) { statusEl.innerText = "❌ GPS non supporté."; return; }
@@ -100,10 +98,7 @@
                 (pos) => { 
                     playerLat = pos.coords.latitude;
                     playerLon = pos.coords.longitude;
-                    // L'altitude peut être null si le capteur ne la trouve pas
-                    playerAlt = pos.coords.altitude || 0; 
-                    
-                    statusEl.innerText = `📍 GPS Actif (Alt: ${Math.round(playerAlt)}m). Chargez un fichier.`; 
+                    statusEl.innerText = `📍 GPS Actif. Chargez un fichier.`; 
                     statusEl.style.color = "#4ade80"; 
                 },
                 (e) => { statusEl.style.color = "#ff4d4f"; statusEl.innerText = "❌ ERREUR GPS : Activez la localisation !"; },
@@ -111,7 +106,6 @@
             );
         });
 
-        // --- NOUVEAU FLUX D'UPLOAD ---
         document.getElementById('file-input').addEventListener('change', async function(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -119,6 +113,8 @@
             statusEl.innerText = "Extraction du fichier...";
             statusEl.style.color = "white"; 
             document.querySelectorAll('.kml-element').forEach(el => el.parentNode.removeChild(el));
+            
+            firstKmlAlt = null; // On réinitialise l'altitude repère à chaque nouveau fichier
 
             try {
                 let kmlText = "";
@@ -132,19 +128,14 @@
                     kmlText = await file.text();
                 }
                 
-                // BLOC 10 : Si on a le fichier, on refait un point GPS précis pour avoir l'altitude la plus fraîche avant de dessiner
-                statusEl.innerText = "Recalibrage de l'altitude...";
+                // On met à jour la position X/Z, mais on ne s'occupe plus de l'altitude du téléphone
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
                         playerLat = pos.coords.latitude;
                         playerLon = pos.coords.longitude;
-                        playerAlt = pos.coords.altitude || 0;
                         processKMLData(kmlText);
                     },
-                    (err) => {
-                        // Si le GPS échoue à l'instant T, on utilise les anciennes valeurs et on dessine quand même
-                        processKMLData(kmlText);
-                    },
+                    (err) => { processKMLData(kmlText); },
                     { enableHighAccuracy: true }
                 );
 
@@ -154,19 +145,23 @@
             }
         });
 
-        // Fonctionnalité utilitaire pour calculer le décalage de hauteur (Bloc 10)
+        // --- LE NOUVEAU CERVEAU DE L'ALTITUDE ---
         function getRelativeAltitude(coordsArray) {
-            if (coordsArray.length >= 3 && playerAlt !== null) {
+            if (coordsArray.length >= 3) {
                 const pointAlt = parseFloat(coordsArray[2]);
                 if (!isNaN(pointAlt)) {
-                    // Limite de sécurité : si la différence est de plus de 1000m, c'est sûrement un bug GPS, on limite.
-                    let delta = pointAlt - playerAlt;
-                    if (delta > 1000) delta = 1000;
-                    if (delta < -1000) delta = -1000;
-                    return delta;
+                    // Si c'est le tout premier point qu'on lit, on mémorise son altitude
+                    if (firstKmlAlt === null) {
+                        firstKmlAlt = pointAlt; 
+                    }
+                    // On calcule la différence entre ce point et le point de départ
+                    let delta = pointAlt - firstKmlAlt; 
+                    // On retourne ce delta, décalé de -1.5m pour que ce soit au niveau du sol
+                    return delta - 1.5; 
                 }
             }
-            return 0; // Si pas d'altitude dans le KML, on met au niveau des yeux
+            // S'il n'y a pas du tout de données d'altitude, on met tout au niveau du sol
+            return -1.5; 
         }
 
         function processKMLData(kmlString) {
@@ -193,7 +188,6 @@
                         const surfaceEl = document.createElement('a-entity');
                         surfaceEl.setAttribute('class', 'kml-element');
                         surfaceEl.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
-                        // On passe la nouvelle altitude relative au composant
                         surfaceEl.setAttribute('kml-polygon', `points: ${text}; color: #3498db; opacity: 0.5; relativeAlt: ${relAlt}`);
                         sceneEl.appendChild(surfaceEl);
                         stats.surfaces++;
@@ -218,12 +212,10 @@
 
                             const relAlt = getRelativeAltitude(coords);
 
-                            // L'ancre GPS (X, Z)
                             const anchor = document.createElement('a-entity');
                             anchor.setAttribute('class', 'kml-element');
                             anchor.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
 
-                            // Le jalon en lui-même (décalé en Y)
                             const jalon = document.createElement('a-sphere');
                             jalon.setAttribute('position', `0 ${relAlt} 0`);
                             jalon.setAttribute('radius', '1.5'); 
@@ -252,12 +244,10 @@
                         const relAlt = getRelativeAltitude(coords);
                         stats.canons++;
 
-                        // L'ancre GPS
                         const pointGroup = document.createElement('a-entity');
                         pointGroup.setAttribute('class', 'kml-element');
                         pointGroup.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
 
-                        // Le conteneur de hauteur (Altitude)
                         const heightContainer = document.createElement('a-entity');
                         heightContainer.setAttribute('position', `0 ${relAlt} 0`);
 
@@ -270,6 +260,7 @@
                         etiquette.setAttribute('value', `Canon ${stats.canons}`);
                         etiquette.setAttribute('look-at', '[gps-camera]'); 
                         etiquette.setAttribute('scale', '10 10 10'); 
+                        // L'étiquette flotte à 5m au-dessus de la sphère
                         etiquette.setAttribute('position', '0 5 0'); 
                         etiquette.setAttribute('align', 'center');
                         etiquette.setAttribute('color', '#FFFFFF');
@@ -277,7 +268,6 @@
                         etiquette.setAttribute('material', 'color: #000000; opacity: 0.6');
                         heightContainer.appendChild(etiquette);
 
-                        // On assemble les blocs
                         pointGroup.appendChild(heightContainer);
                         sceneEl.appendChild(pointGroup);
                     }
@@ -287,7 +277,7 @@
             if (firstLat !== null && playerLat !== null) {
                 const dist = calculateDistance(playerLat, playerLon, firstLat, firstLon);
                 const distTxt = dist > 1000 ? (dist/1000).toFixed(1) + " km" : Math.round(dist) + " m";
-                statusEl.innerText = `${stats.canons} Canons. À ${distTxt} de vous. (Alt KML prise en compte)`;
+                statusEl.innerText = `${stats.canons} Canons. À ${distTxt} de vous. (Alt Normalisée)`;
             } else {
                 statusEl.innerText = `Éléments : ${stats.canons} canons, ${stats.surfaces} surfaces.`;
             }
