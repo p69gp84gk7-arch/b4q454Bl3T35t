@@ -70,51 +70,95 @@
             }
         });
 
-        // Fonctionnalité : Extraction des coordonnées et création des objets AR
-        function processKMLData(kmlString) {
-            // Analyser le texte XML
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(kmlString, "text/xml");
-            
-            // Trouver toutes les balises de coordonnées
-            const coordinatesTags = xmlDoc.getElementsByTagName("coordinates");
-            if (coordinatesTags.length === 0) {
-                statusEl.innerText = "Aucune coordonnée trouvée.";
-                return;
-            }
+       // Fonctionnalité : Extraction des coordonnées et création des objets AR
+function processKMLData(kmlString) {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(kmlString, "text/xml");
+    const coordinatesTags = xmlDoc.getElementsByTagName("coordinates");
+    
+    if (coordinatesTags.length === 0) {
+        statusEl.innerText = "Erreur : Aucune coordonnée trouvée.";
+        return;
+    }
 
-            let pointsCount = 0;
+    let pointsCount = 0;
+    let firstPointLat = null;
+    let firstPointLon = null;
 
-            // Parcourir les blocs de coordonnées
-            for (let i = 0; i < coordinatesTags.length; i++) {
-                const text = coordinatesTags[i].textContent.trim();
-                const points = text.split(/\s+/); // Séparer par les espaces
+    // Extraction des points
+    for (let i = 0; i < coordinatesTags.length; i++) {
+        const text = coordinatesTags[i].textContent.trim();
+        const points = text.split(/\s+/);
+        const step = Math.max(1, Math.floor(points.length / 100)); 
 
-                // Pour ne pas faire planter l'iPhone, on affiche un jalon tous les X points
-                // Si la trace a 5000 points, on n'en prend qu'un sur 10.
-                const step = Math.max(1, Math.floor(points.length / 100)); 
+        for (let j = 0; j < points.length; j += step) {
+            const coords = points[j].split(',');
+            if (coords.length >= 2) {
+                const lon = parseFloat(coords[0]);
+                const lat = parseFloat(coords[1]);
 
-                for (let j = 0; j < points.length; j += step) {
-                    const coords = points[j].split(',');
-                    if (coords.length >= 2) {
-                        const lon = parseFloat(coords[0]);
-                        const lat = parseFloat(coords[1]);
-
-                        // Création d'une sphère (jalon) dans la scène A-Frame
-                        const jalon = document.createElement('a-sphere');
-                        jalon.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
-                        jalon.setAttribute('radius', '3'); // Taille de la sphère (en mètres virtuels)
-                        jalon.setAttribute('color', '#FF3B30'); // Rouge type iOS
-                        jalon.setAttribute('opacity', '0.8');
-                        
-                        sceneEl.appendChild(jalon);
-                        pointsCount++;
-                    }
+                // Capturer le tout premier point de la trace pour le test
+                if (firstPointLat === null) {
+                    firstPointLat = lat;
+                    firstPointLon = lon;
                 }
+
+                const jalon = document.createElement('a-sphere');
+                jalon.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
+                jalon.setAttribute('radius', '3'); 
+                jalon.setAttribute('color', '#FF3B30'); 
+                jalon.setAttribute('opacity', '0.8');
+                sceneEl.appendChild(jalon);
+                pointsCount++;
             }
+        }
+    }
+    
+    // Vérification de votre position GPS par rapport à la trace
+    if (navigator.geolocation && firstPointLat !== null) {
+        statusEl.innerText = `Trace de ${pointsCount} points. Calcul de votre distance...`;
+        
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const userLat = position.coords.latitude;
+                const userLon = position.coords.longitude;
+                const distanceMetres = calculateDistance(userLat, userLon, firstPointLat, firstPointLon);
+                
+                let distanceTexte = distanceMetres > 1000 
+                    ? (distanceMetres / 1000).toFixed(2) + " km" 
+                    : Math.round(distanceMetres) + " m";
+
+                statusEl.innerText = `Trace chargée. Début à ${distanceTexte} de vous.`;
+                
+                // Si la trace est à plus de 5km, on avertit l'utilisateur
+                if (distanceMetres > 5000) {
+                    statusEl.style.color = "#FFcc00"; // Passe en jaune/orange
+                    statusEl.innerText += " (Trop loin pour être visible !)";
+                }
+            },
+            (error) => {
+                statusEl.innerText = `Trace de ${pointsCount} points. (Erreur GPS: ${error.message})`;
+            },
+            { enableHighAccuracy: true } // Force le GPS du téléphone à être précis
+        );
+    } else {
+        statusEl.innerText = `Trace chargée (${pointsCount} jalons affichés)`;
+    }
+}
             
             statusEl.innerText = `Trace chargée (${pointsCount} jalons affichés)`;
         }
+        // --- BLOC 5 : OUTIL DE DISTANCE (Formule de Haversine) ---
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Rayon de la Terre en mètres
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Retourne la distance en mètres
+}
     </script>
 </body>
 </html>
