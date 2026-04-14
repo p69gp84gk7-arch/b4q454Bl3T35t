@@ -64,43 +64,67 @@
         // Déclencher la vérification dès l'ouverture de l'application
         window.addEventListener('load', verifierGPS);
 
-        // Écouteur d'événement sur le bouton d'upload
+      // Écouteur d'événement sur le bouton d'upload
         document.getElementById('file-input').addEventListener('change', async function(event) {
             const file = event.target.files[0];
-            if (!file) return;
+            if (!file) {
+                statusEl.innerText = "❌ Aucun fichier sélectionné.";
+                return;
+            }
 
-            statusEl.innerText = "Traitement du fichier...";
-            statusEl.style.color = "white"; // Réinitialise la couleur en cas d'erreur précédente
+            // On affiche des infos de base sur le fichier
+            statusEl.innerText = `🔍 Fichier capté : ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            statusEl.style.color = "white"; 
 
             try {
                 let kmlText = "";
+                const fileNameLower = file.name.toLowerCase();
 
                 // --- BLOC 3 : DÉCOMPRESSION ET LECTURE ---
-                if (file.name.toLowerCase().endsWith('.kmz')) {
-                    statusEl.innerText = "Décompression du KMZ...";
+                if (fileNameLower.endsWith('.kmz')) {
+                    statusEl.innerText = "📦 Étape 1 : Fichier KMZ détecté. Décompression...";
+                    
                     const zip = new JSZip();
+                    // On attend que JSZip lise le fichier
                     const contents = await zip.loadAsync(file);
                     
-                    const kmlFilename = Object.keys(contents.files).find(name => name.toLowerCase().endsWith('.kml'));
-                    if (!kmlFilename) throw new Error("Aucun fichier KML trouvé dans l'archive KMZ.");
+                    statusEl.innerText = "📂 Étape 2 : Archive ouverte. Recherche du KML...";
                     
+                    // On liste tous les fichiers dans le ZIP pour voir ce qu'il contient
+                    const fileNames = Object.keys(contents.files);
+                    console.log("Fichiers dans le KMZ :", fileNames);
+                    
+                    const kmlFilename = fileNames.find(name => name.toLowerCase().endsWith('.kml'));
+                    
+                    if (!kmlFilename) {
+                        throw new Error("Aucun fichier .kml trouvé dans ce KMZ. Contenu : " + fileNames.join(", "));
+                    }
+                    
+                    statusEl.innerText = `📄 Étape 3 : KML trouvé (${kmlFilename}). Extraction du texte...`;
                     kmlText = await contents.files[kmlFilename].async("text");
-                } else if (file.name.toLowerCase().endsWith('.kml')) {
+
+                } else if (fileNameLower.endsWith('.kml')) {
+                    statusEl.innerText = "📄 Étape 1 : Fichier KML détecté. Lecture direct...";
                     kmlText = await file.text();
                 } else {
-                    throw new Error("Format non supporté.");
+                    throw new Error("L'extension du fichier n'est ni .kml ni .kmz");
                 }
 
-                // --- BLOC 4 : PARSING ET GÉNÉRATION 3D ---
-                statusEl.innerText = "Génération de la trace AR...";
-                processKMLData(kmlText);
+                // Si on arrive ici, on a le texte brut
+                statusEl.innerText = `✅ Étape 4 : Texte extrait (${kmlText.length} caractères). Parsing 3D...`;
+                
+                // On attend une demi-seconde pour laisser le temps à l'utilisateur de lire le message
+                setTimeout(() => {
+                    processKMLData(kmlText);
+                }, 500);
 
             } catch (error) {
+                // On capture n'importe quelle erreur et on l'affiche en rouge foncé
                 console.error(error);
-                statusEl.innerText = "Erreur: " + error.message;
+                statusEl.style.color = "#ff4d4f";
+                statusEl.innerText = "🚨 ERREUR : " + error.message;
             }
         });
-
         // Fonctionnalité : Extraction des coordonnées et création des objets AR
         function processKMLData(kmlString) {
             const parser = new DOMParser();
