@@ -7,9 +7,7 @@
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
 
     <style>
@@ -22,6 +20,7 @@
         
         .file-box { background: #34495e; padding: 15px; border-radius: 8px; border: 1px dashed #7f8c8d; transition: 0.3s; }
         .file-box.active { border-color: #4ade80; background: #27ae60; }
+        .file-box.error { border-color: #e74c3c; background: #c0392b; }
         .file-box label { display: block; margin-bottom: 10px; font-weight: bold; font-size: 14px; cursor: pointer;}
         input[type="file"] { width: 100%; color: #bdc3c7; font-size: 12px; }
         
@@ -53,28 +52,34 @@
         const logPanel = document.getElementById('log-panel');
         function log(msg) { logPanel.innerText += `\n> ${msg}`; logPanel.scrollTop = logPanel.scrollHeight; }
 
-        const map = L.map('map').setView([42.79, 0.59], 13); // Centré vers les Pyrénées par défaut
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri' }).addTo(map);
+        const map = L.map('map').setView([42.79, 0.59], 10); 
+        
+        // Ajout d'une limite de zoom (maxZoom: 19) pour éviter que les tuiles satellites disparaissent
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { 
+            attribution: 'Tiles &copy; Esri',
+            maxZoom: 19 
+        }).addTo(map);
 
         const kmlLayerGroup = L.featureGroup().addTo(map);
-        let mntBoundsLayer = null; // Pour afficher le contour du TIF
+        let mntBoundsLayer = null; 
 
-        // --- VARIABLES GLOBALES DU MNT ---
-        let mntData = null; // Les altitudes pures
+        // Variables Globales MNT
+        let mntData = null; 
         let mntWidth = 0;
         let mntHeight = 0;
-        let mntBbox = null; // [minLon, minLat, maxLon, maxLat]
+        let mntBbox = null; 
 
-        // --- BLOC 2 : LECTURE DU MNT (.tif) ---
+        // --- LECTURE DU MNT (.tif) AVEC SÉCURITÉ ---
         document.getElementById('tif-input').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
             log(`Analyse du MNT : ${file.name}...`);
-            document.getElementById('box-tif').classList.add('active');
+            const boxTif = document.getElementById('box-tif');
+            boxTif.classList.remove('error');
+            boxTif.classList.add('active');
 
             try {
-                // Lecture du fichier via GeoTIFF.js
                 const arrayBuffer = await file.arrayBuffer();
                 const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
                 const image = await tiff.getImage();
@@ -83,37 +88,166 @@
                 mntWidth = image.getWidth();
                 mntHeight = image.getHeight();
                 
-                log(`Dimensions : ${mntWidth} x ${mntHeight} pixels`);
-                log(`Emprise (Bbox) : Long [${mntBbox[0].toFixed(3)}, ${mntBbox[2].toFixed(3)}], Lat [${mntBbox[1].toFixed(3)}, ${mntBbox[3].toFixed(3)}]`);
+                log(`Dimensions : ${mntWidth} x ${mntHeight} px`);
+                log(`Emprise brute : [${mntBbox[0].toFixed(2)}, ${mntBbox[1].toFixed(2)}] à [${mntBbox[2].toFixed(2)}, ${mntBbox[3].toFixed(2)}]`);
 
-                // Extraction des données d'altitude (Bande 1)
+                // LE BOUCLIER ANTI-TROU NOIR
+                // On vérifie si les coordonnées sont aberrantes pour du GPS (qui doit être entre -180 et 180)
+                if (Math.abs(mntBbox[0]) > 180 || Math.abs(mntBbox[1]) > 90 || Math.abs(mntBbox[2]) > 180 || Math.abs(mntBbox[3]) > 90) {
+                    throw new Error("PROJECTION INVALIDE. Le .tif n'est pas en degrés GPS (WGS84). Il semble être en mètres (ex: Lambert). Re-projetez-le avec QGIS.");
+                }
+
                 const rasters = await image.readRasters();
                 mntData = rasters[0]; 
 
-                log(`✅ MNT chargé en mémoire. Cliquez sur la carte pour tester l'altitude !`);
+                log(`✅ MNT valide. Cliquez sur la carte pour tester !`);
 
-                // Dessin de l'emprise du TIF sur la carte (Rectangle rouge translucide)
                 if (mntBoundsLayer) map.removeLayer(mntBoundsLayer);
                 const bounds = [[mntBbox[1], mntBbox[0]], [mntBbox[3], mntBbox[2]]];
                 mntBoundsLayer = L.rectangle(bounds, {color: "#ff4d4f", weight: 2, fillOpacity: 0.1, dashArray: '5, 5'}).addTo(map);
                 
-                // On recentre la caméra sur le MNT
-                map.fitBounds(bounds, { padding: [20, 20] });
+                map.fitBounds(bounds, { padding: [20, 20], maxZoom: 16 }); // Limite du zoom auto
 
             } catch (error) {
-                log(`❌ ERREUR MNT: ${error.message}`);
-                document.getElementById('box-tif').classList.remove('active');
+                log(`❌ ${error.message}`);
+                boxTif.classList.remove('active');
+                boxTif.classList.add('error');
+                mntData = null; // On annule pour ne pas corrompre le reste
             }
         });
 
-        // --- FONCTION DE CALCUL D'ALTITUDE (Croisement Lat/Lon -> Pixel TIF) ---
+        // --- CALCUL D'ALTITUDE (Clic sur la carte) ---
         function getElevationAt(lat, lon) {
             if (!mntData || !mntBbox) return null;
-
             const minLon = mntBbox[0], minLat = mntBbox[1], maxLon = mntBbox[2], maxLat = mntBbox[3];
 
-            // Vérification si le point est en dehors du MNT
             if (lon < minLon || lon > maxLon || lat < minLat || lat > maxLat) return null;
 
-            // Conversion des coordonnées GPS en coordonnées Pixel (X, Y) sur l'image TIF
-            const x = Math.floor(((lon - min
+            const x = Math.floor(((lon - minLon) / (maxLon - minLon)) * mntWidth);
+            const y = Math.floor(((maxLat - lat) / (maxLat - minLat)) * mntHeight);
+
+            if (x < 0 || x >= mntWidth || y < 0 || y >= mntHeight) return null;
+
+            const index = y * mntWidth + x;
+            const elevation = mntData[index];
+
+            if (elevation < -500 || elevation > 8000) return null; 
+            return elevation;
+        }
+
+        map.on('click', function(e) {
+            if (!mntData) return; 
+            const lat = e.latlng.lat;
+            const lon = e.latlng.lng;
+            const alt = getElevationAt(lat, lon);
+            
+            if (alt !== null) {
+                log(`📍 Clic: ${lat.toFixed(4)}, ${lon.toFixed(4)} => Altitude : ${alt.toFixed(2)} m`);
+                const marker = L.circleMarker([lat, lon], {radius: 4, color: '#fff', fillColor: '#4ade80', fillOpacity: 1}).addTo(map);
+                setTimeout(() => map.removeLayer(marker), 2000); 
+            }
+        });
+
+        // --- LECTURE DU KMZ ---
+        document.getElementById('kmz-input').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            log(`Chargement KML/KMZ : ${file.name}...`);
+            document.getElementById('box-kmz').classList.add('active');
+            kmlLayerGroup.clearLayers();
+
+            try {
+                let kmlText = "";
+                if (file.name.toLowerCase().endsWith('.kmz')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const zip = await JSZip.loadAsync(arrayBuffer);
+                    const kmlFilename = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
+                    if (!kmlFilename) throw new Error("Aucun KML trouvé.");
+                    kmlText = await zip.files[kmlFilename].async("text");
+                } else {
+                    kmlText = await file.text();
+                }
+
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(kmlText, "text/xml");
+                let stats = { points: 0, lines: 0, polygons: 0 };
+                const bounds = L.latLngBounds();
+
+                // Polygons
+                const polygons = xmlDoc.getElementsByTagName("Polygon");
+                for (let p of polygons) {
+                    const coordsNode = p.getElementsByTagName("coordinates")[0];
+                    if (coordsNode) {
+                        const coords = coordsNode.textContent.trim().replace(/\n/g, ' ').split(/\s+/);
+                        const latLngs = [];
+                        coords.forEach(c => {
+                            const pts = c.split(',');
+                            if (pts.length >= 2) { 
+                                const lat = parseFloat(pts[1]), lon = parseFloat(pts[0]);
+                                if(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) { // Sécurité coordonnées
+                                    latLngs.push([lat, lon]); 
+                                    bounds.extend([lat, lon]); 
+                                }
+                            }
+                        });
+                        if (latLngs.length > 0) { L.polygon(latLngs, {color: '#3498db', weight: 2, fillOpacity: 0.4}).addTo(kmlLayerGroup); stats.polygons++; }
+                    }
+                }
+
+                // Lines
+                const lines = xmlDoc.getElementsByTagName("LineString");
+                for (let l of lines) {
+                    const coordsNode = l.getElementsByTagName("coordinates")[0];
+                    if (coordsNode) {
+                        const coords = coordsNode.textContent.trim().replace(/\n/g, ' ').split(/\s+/);
+                        const latLngs = [];
+                        coords.forEach(c => {
+                            const pts = c.split(',');
+                            if (pts.length >= 2) { 
+                                const lat = parseFloat(pts[1]), lon = parseFloat(pts[0]);
+                                if(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+                                    latLngs.push([lat, lon]); 
+                                    bounds.extend([lat, lon]); 
+                                }
+                            }
+                        });
+                        if (latLngs.length > 0) { L.polyline(latLngs, {color: '#FF3B30', weight: 4}).addTo(kmlLayerGroup); stats.lines++; }
+                    }
+                }
+
+                // Points
+                const placemarks = xmlDoc.getElementsByTagName("Placemark");
+                for (let pm of placemarks) {
+                    const ptNode = pm.getElementsByTagName("Point")[0];
+                    if (ptNode) {
+                        const coordsNode = ptNode.getElementsByTagName("coordinates")[0];
+                        if (coordsNode) {
+                            const pts = coordsNode.textContent.trim().split(',');
+                            if (pts.length >= 2) {
+                                const lat = parseFloat(pts[1]), lon = parseFloat(pts[0]);
+                                if(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+                                    L.circleMarker([lat, lon], { radius: 6, fillColor: '#FFCC00', color: '#000', weight: 1, fillOpacity: 1 }).addTo(kmlLayerGroup);
+                                    bounds.extend([lat, lon]);
+                                    stats.points++;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                log(`Trace chargée : ${stats.points} Pts, ${stats.lines} Lignes, ${stats.polygons} Zones.`);
+                
+                // On recentre uniquement si on a trouvé des coordonnées valides
+                if (bounds.isValid() && !mntData) {
+                    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 }); 
+                }
+
+            } catch (error) {
+                log(`❌ ERREUR KMZ: ${error.message}`);
+                document.getElementById('box-kmz').classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>
