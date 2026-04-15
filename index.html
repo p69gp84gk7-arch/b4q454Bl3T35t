@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trace AR iPhone - Topographie Intégrale 3D</title>
+    <title>Trace AR iPhone - Fidélité KML & Sol</title>
     
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; background-color: #000; }
@@ -17,17 +17,6 @@
         #calibration-panel { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: none; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
         .cal-btn { padding: 12px 20px; border-radius: 20px; background: rgba(255,255,255,0.9); font-size: 14px; font-weight: bold; cursor: pointer; user-select: none; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; border: 2px solid transparent;}
         #btn-reset { background: rgba(200,200,200,0.7); color: black; padding: 8px 15px; font-size: 12px;}
-
-        /* Écran de chargement API */
-        #loading-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
-            z-index: 2000; display: none; flex-direction: column; justify-content: center; align-items: center;
-        }
-        #loading-text { color: white; font-size: 18px; font-weight: bold; margin-bottom: 20px; text-align: center; padding: 0 20px; }
-        progress { width: 80%; height: 20px; border-radius: 10px; overflow: hidden; appearance: none; }
-        progress::-webkit-progress-bar { background-color: #333; border-radius: 10px; }
-        progress::-webkit-progress-value { background-color: #4ade80; border-radius: 10px; transition: width 0.3s ease; }
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -36,31 +25,30 @@
     <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
     <script>
-        // Variables globales pour le moteur Topographique
+        // Variables globales pour l'altitude du joueur
         window.playerAlt = 0;
-        window.altitudeMap = {}; // Dictionnaire des altitudes API
 
-        // BDD TSV Canons
+        // BDD TSV Canons (Base de vérité absolue)
         const baseAltitudesCanons = { "1": 1479.13, "3": 1483.37, "4": 1488.34, "5": 1499.34, "6": 1514.64, "7": 1525.86, "8": 1536.38, "9": 1545.48, "10": 1556.86, "11": 1565.4, "12": 1574.41, "13": 1584.13, "14": 1597.25, "15": 1611.2, "16": 1627.85, "17": 1641.34, "19": 1658.16, "21": 1669.33, "22": 1678.93, "23": 1693.59, "24": 1705.7, "25": 1713.46, "26": 1719.52, "27": 1723.04, "28": 1725.49, "29": 1735.08, "30": 1748.74, "31": 1765, "34": 1677.82, "36": 1703.71, "37": 1717.1, "38": 1732.29, "39": 1744.22, "40": 1753.8, "41": 1765.66, "42": 1779.46, "43": 1791.08, "44": 1801.31, "45": 1809.83, "48": 1813.67, "49": 1812.99, "51": 1789.55, "52": 1781.06, "53": 1771.95, "54": 1758.97, "55": 1745.04, "58": 1788.26, "59": 1770.3, "60": 1754.44, "61": 1740.98, "62": 1728.93, "63": 1712.57, "65": 1488.31, "66": 1493.06, "67": 1493.18, "68": 1499.88, "69": 1515.76, "70": 1530.27, "71": 1543.46, "72": 1555.18, "73": 1568.21, "74": 1587.09, "75": 1612.13, "76": 1636.5, "77": 1651.28, "78": 1664.79, "79": 1677.99, "80": 1687.71, "81": 1705.46, "82": 1722.01, "83": 1739.94, "84": 1758.63, "85": 1778.63, "86": 1803.76, "87": 1838.55, "88": 1867.06, "89": 1860.79, "90": 1858.55, "91": 1870.2, "98": 1525.45, "99": 1534.99, "100": 1546.05, "101": 1558.28, "102": 1575.15, "103": 1596.41, "104": 1620.98, "105": 1644.17, "106": 1663.53, "107": 1721.87, "108": 1741.33, "109": 1754.19, "110": 1771.06, "111": 1792.36, "112": 1800.18, "113": 1784.89, "114": 1782.91, "115": 1787.99, "116": 1787.98, "117": 1787.16, "118": 1785.05, "119": 1769.23, "120": 1801.0, "122": 1776.82, "123": 1785.01, "124": 1783.12, "125": 1782.45, "126": 1774.85, "127": 1762.09, "128": 1752.72, "129": 1741.53, "130": 1728.95, "131": 1714.71, "132": 1699.1, "133": 1686.8, "134": 1672.52, "135": 1662.24, "136": 1653.57, "137": 1640.89, "138": 1629.7, "139": 1617.42, "140": 1778.67, "141": 1772.81, "142": 1754.69, "143": 1729.63, "144": 1702.74, "145": 1680.28, "146": 1653.04, "147": 1636.31, "148": 1618.2, "149": 1598.74, "150": 1577.45, "151": 1539.16, "152": 1517.41, "153": 1481.02, "154": 1456.12, "155": 1777.79, "156": 1766.49, "157": 1750.37, "158": 1726.82, "159": 1711.02, "160": 1697.38, "161": 1678.32, "162": 1759.33, "163": 1752.89, "164": 1744.7, "165": 1737.05, "166": 1726.81, "167": 1713.02, "168": 1705.04, "169": 1701.77, "170": 1695.92, "171": 1687.84, "172": 1680.38, "173": 1675.61, "174": 1669.49, "175": 1665.9, "176": 1661.9, "177": 1658.78, "178": 1654.03, "180": 1756.79, "181": 1762.92, "201": 1884.55, "202": 1903.76, "203": 1915.59, "204": 1947.38, "205": 1966.3, "206": 1967.57, "207": 1973.03, "208": 1983.24, "209": 1979.48, "210": 1990.25, "211": 2019.23, "212": 2027.2, "213": 2039.91, "214": 2046.6, "215": 2070.89, "216": 2075.74, "217": 2086.42, "218": 2110.66, "219": 2117.4, "220": 2124.82, "221": 2122.38, "305": 2077.67, "318": 1850.47, "319": 1842.64, "320": 1823.12, "321": 1809.41, "322": 1785.21, "323": 1752.69, "324": 1727.47, "325": 1708.36, "326": 1683.33, "327": 1663.18, "328": 1638.28, "329": 1613.8, "330": 1588.49, "331": 1573.48, "333": 1551.71, "1002": 1478.87, "1032": 1783.9, "1033": 1796.03, "1047": 1815.98, "1050": 1794.16, "1057": 1795.54, "1092": 1883.14, "1179": 1654.04, "10089": 1499.55 };
 
-        // Fonction Globale pour lire l'altitude (API -> KML -> Pieds)
-        window.getPointAlt = function(lonStr, latStr, rawKmlAlt) {
-            const key = `${parseFloat(lonStr)},${parseFloat(latStr)}`;
-            if (window.altitudeMap[key] !== undefined && window.altitudeMap[key] !== null) {
-                return window.altitudeMap[key] - window.playerAlt;
+        // NOUVEAU MOTEUR DE LECTURE D'ALTITUDE (Fidèle à 100% au KML et au Sol)
+        window.getKmlRelativeAltitude = function(rawKmlAlt) {
+            if (rawKmlAlt !== undefined && rawKmlAlt !== null) {
+                const alt = parseFloat(rawKmlAlt);
+                // Si l'altitude existe dans le KML (le point n'est pas à 0 par défaut)
+                if (!isNaN(alt) && alt !== 0) {
+                    // On calcule la différence avec l'iPhone, ET ON ENLÈVE 1.5m POUR ÊTRE AU NIVEAU DES PIEDS !
+                    return (alt - window.playerAlt) - 1.5;
+                }
             }
-            if (!isNaN(parseFloat(rawKmlAlt))) {
-                return parseFloat(rawKmlAlt) - window.playerAlt;
-            }
-            return -1.5; // Sol par défaut
+            return -1.5; // Si aucune info n'est trouvée, on met au niveau du sol par défaut
         };
 
-        // --- COMPOSANTS 3D VÉRITABLES (Chaque point a son altitude) ---
-
-        // 1. TUBE 3D (Traces de pistes qui épousent le relief)
+        // --- 1. TUBE 3D (Traces fidèles au KMZ) ---
         AFRAME.registerComponent('kml-tube', {
             schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#FF3B30'}, opacity: {type: 'number', default: 0.8} },
             init: function() {
+                // Remplacement strict des retours à la ligne pour lire chaque coordonnée
                 const pointsArr = this.data.points.trim().replace(/\n/g, ' ').split(/\s+/);
                 if (pointsArr.length < 2) return;
 
@@ -81,12 +69,13 @@
                             const x = dist * Math.sin(bearing);
                             const z = -dist * Math.cos(bearing);
 
-                            // L'altitude est calculée individuellement pour CE point de la courbe !
-                            const relAlt = window.getPointAlt(pt[0], pt[1], pt[2]);
+                            // ON LIT STRICTEMENT LE 3ÈME PARAMÈTRE DU FICHIER KMZ (pt[2])
+                            const relAlt = window.getKmlRelativeAltitude(pt[2]);
 
-                            // Évite les points doublons qui font planter la géométrie
+                            // Sécurité pour la géométrie du tube
                             if (lastX !== null && Math.abs(x - lastX) < 0.1 && Math.abs(z - lastZ) < 0.1) continue;
 
+                            // Chaque point du tube est accroché à la VRAIE altitude du KML
                             pathPoints.push(new THREE.Vector3(x, relAlt, z));
                             lastX = x; lastZ = z;
                         }
@@ -96,17 +85,17 @@
                 if (pathPoints.length < 2) return;
                 try {
                     const curve = new THREE.CatmullRomCurve3(pathPoints);
+                    // Ligne épaisse de 1.5m
                     const geometry = new THREE.TubeGeometry(curve, pathPoints.length, 1.5, 6, false);
                     const material = new THREE.MeshBasicMaterial({color: this.data.color, transparent: true, opacity: this.data.opacity});
                     const mesh = new THREE.Mesh(geometry, material);
                     
-                    // La position Y globale reste à 0 car chaque vertex possède déjà sa hauteur exacte
                     this.el.setObject3D('mesh', mesh);
                 } catch (e) {}
             }
         });
 
-        // 2. SURFACES 3D (Polygones qui épousent la pente)
+        // --- 2. SURFACES 3D (Polygones fidèles au KMZ) ---
         AFRAME.registerComponent('kml-polygon', {
             schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#3498db'}, opacity: {type: 'number', default: 0.4} },
             init: function() {
@@ -120,7 +109,6 @@
                 const shape = new THREE.Shape();
                 shape.moveTo(0, 0);
                 
-                // On garde en mémoire la vraie hauteur 3D de chaque sommet du polygone
                 const original3DPoints = [];
 
                 for(let i = 0; i < pointsArr.length; i++) {
@@ -134,9 +122,9 @@
                         const x = dist * Math.sin(bearing);
                         const z = -dist * Math.cos(bearing); 
                         
-                        const relAlt = window.getPointAlt(pt[0], pt[1], pt[2]);
+                        // Lecture stricte de l'altitude KMZ
+                        const relAlt = window.getKmlRelativeAltitude(pt[2]);
                         
-                        // On enregistre la position 3D exacte
                         original3DPoints.push({x: x, y: relAlt, z: z});
 
                         if (i === 0) shape.moveTo(x, z);
@@ -144,17 +132,15 @@
                     }
                 }
 
-                // Génération de la surface à plat
                 const geometry = new THREE.ShapeGeometry(shape);
-                geometry.rotateX(-Math.PI / 2); // On la couche (X, Z)
+                geometry.rotateX(-Math.PI / 2); 
                 
-                // LA MAGIE TOPOGRAPHIQUE : On tord la surface pour qu'elle rejoigne les vraies altitudes
+                // Déformation de la surface pour l'adapter aux vraies altitudes du KMZ
                 const posAttribute = geometry.attributes.position;
                 for (let i = 0; i < posAttribute.count; i++) {
                     const vx = posAttribute.getX(i);
                     const vz = posAttribute.getZ(i);
                     
-                    // On cherche le point d'origine le plus proche pour lui emprunter son altitude
                     let closestAlt = -1.5; 
                     let minDist = Infinity;
                     for(let j=0; j<original3DPoints.length; j++) {
@@ -188,11 +174,6 @@
 </head>
 <body>
 
-    <div id="loading-overlay">
-        <div id="loading-text">Extraction de la topographie...</div>
-        <progress id="loading-bar" value="0" max="100"></progress>
-    </div>
-
     <div id="ui-layer">
         <label for="file-input" class="upload-btn">Charger KML/KMZ</label>
         <input type="file" id="file-input" accept=".kml,.kmz">
@@ -217,10 +198,6 @@
         const containerEl = document.getElementById('kml-container');
         const calibPanel = document.getElementById('calibration-panel');
         const btnToggleMode = document.getElementById('btn-toggle-mode');
-        
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const loadingText = document.getElementById('loading-text');
-        const loadingBar = document.getElementById('loading-bar');
 
         // --- GESTION DU JOYSTICK TACTILE GLOBAL ---
         window.dragMode = 'Y';
@@ -290,25 +267,23 @@
             );
         });
 
-        // --- CHARGEMENT KML ET APPEL API ---
+        // --- CHARGEMENT KML (Immédiat) ---
         document.getElementById('file-input').addEventListener('change', async function(event) {
             const file = event.target.files[0];
             if (!file) return;
 
             while (containerEl.firstChild) { containerEl.removeChild(containerEl.firstChild); }
             calibPanel.style.display = "none"; 
-            loadingOverlay.style.display = "flex";
-            loadingBar.value = 0;
 
             offsetCompass = 0; offsetAlt = 0; offsetDepth = 0;
             containerEl.setAttribute('rotation', '0 0 0');
             containerEl.setAttribute('position', '0 0 0');
-            window.altitudeMap = {}; 
 
+            statusEl.innerText = "Génération de la 3D KML...";
+            
             try {
                 let kmlText = "";
                 if (file.name.toLowerCase().endsWith('.kmz')) {
-                    loadingText.innerText = "Décompression du KMZ...";
                     const zip = await JSZip.loadAsync(file);
                     const kmlFilename = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
                     if (!kmlFilename) throw new Error("Aucun KML dans le KMZ.");
@@ -317,64 +292,16 @@
                     kmlText = await file.text();
                 }
                 
-                loadingText.innerText = "Extraction des coordonnées...";
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(kmlText, "text/xml");
                 
-                const uniqueCoords = new Set();
-                const coordsTags = xmlDoc.getElementsByTagName("coordinates");
-                for(let i=0; i<coordsTags.length; i++) {
-                    const points = coordsTags[i].textContent.trim().replace(/\n/g, ' ').split(/\s+/);
-                    points.forEach(pt => {
-                        const parts = pt.split(',');
-                        if(parts.length >= 2 && !isNaN(parseFloat(parts[0])) && !isNaN(parseFloat(parts[1]))) {
-                            uniqueCoords.add(`${parseFloat(parts[0])},${parseFloat(parts[1])}`);
-                        }
-                    });
-                }
-                
-                const coordsArray = Array.from(uniqueCoords);
-                
-                // Appel API OpenTopoData par blocs de 100 points
-                const chunkSize = 100;
-                for(let i = 0; i < coordsArray.length; i += chunkSize) {
-                    const chunk = coordsArray.slice(i, i + chunkSize);
-                    const locationsStr = chunk.map(str => {
-                        const parts = str.split(','); return `${parts[1]},${parts[0]}`; // Lat,Lon pour l'API
-                    }).join('|');
-
-                    loadingText.innerText = `Calcul du relief (${Math.min(i + chunkSize, coordsArray.length)}/${coordsArray.length} points)...`;
-                    loadingBar.value = (i / coordsArray.length) * 100;
-
-                    try {
-                        const res = await fetch(`https://api.opentopodata.org/v1/mapzen?locations=${locationsStr}`);
-                        const data = await res.json();
-                        if(data && data.results) {
-                            for(let j=0; j<chunk.length; j++) {
-                                window.altitudeMap[chunk[j]] = data.results[j].elevation;
-                            }
-                        }
-                    } catch(err) { console.warn("Erreur API Topo", err); }
-
-                    if (i + chunkSize < coordsArray.length) {
-                        await new Promise(resolve => setTimeout(resolve, 1100)); // Limite de 1 requête/seconde
-                    }
-                }
-
-                loadingBar.value = 100;
-                loadingText.innerText = "Génération de la 3D intégrale...";
-
                 setTimeout(() => {
-                    try { 
-                        processKMLData(xmlDoc); 
-                        loadingOverlay.style.display = "none";
-                    } catch(e) { 
-                        loadingText.innerText = "🚨 Erreur : " + e.message; 
-                    }
-                }, 500);
+                    try { processKMLData(xmlDoc); } 
+                    catch(e) { statusEl.innerText = "🚨 Erreur : " + e.message; }
+                }, 100);
 
             } catch (error) {
-                loadingText.innerText = "🚨 Erreur : " + error.message;
+                statusEl.innerText = "🚨 Erreur : " + error.message;
             }
         });
 
@@ -397,7 +324,6 @@
                         
                         const surfaceEl = document.createElement('a-entity');
                         surfaceEl.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
-                        // Le composant s'occupe de tordre les points selon l'altitude
                         surfaceEl.setAttribute('kml-polygon', `points: ${text}; color: #3498db; opacity: 0.5;`);
                         containerEl.appendChild(surfaceEl);
                         stats.surfaces++;
@@ -419,7 +345,6 @@
                         
                         const lineEl = document.createElement('a-entity');
                         lineEl.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
-                        // Le composant s'occupe de donner la hauteur à chaque tronçon de tube
                         lineEl.setAttribute('kml-tube', `points: ${text}; color: #FF3B30; opacity: 0.8;`);
                         containerEl.appendChild(lineEl);
                         stats.traces++;
@@ -443,17 +368,19 @@
                             const nameNode = placemarks[i].getElementsByTagName("name")[0];
                             const canonId = nameNode ? nameNode.textContent.trim() : null;
 
-                            let vraieAltitude = null; let sourceAlt = "Manquante";
+                            let vraieAltitude = null; let sourceAlt = "0m";
                             
+                            // BDD TSV Prioritaire, sinon KML direct
                             if (canonId && baseAltitudesCanons[canonId]) {
                                 vraieAltitude = baseAltitudesCanons[canonId];
-                                sourceAlt = vraieAltitude + "m (BDD)";
-                            } else {
-                                vraieAltitude = window.getPointAlt(lon, lat, coords[2]) + window.playerAlt;
-                                sourceAlt = Math.round(vraieAltitude) + "m (API)";
+                                sourceAlt = vraieAltitude + "m (TSV)";
+                            } else if (coords.length >= 3 && !isNaN(parseFloat(coords[2])) && parseFloat(coords[2]) !== 0) {
+                                vraieAltitude = parseFloat(coords[2]);
+                                sourceAlt = vraieAltitude + "m (KML)";
                             }
 
-                            let relAlt = vraieAltitude !== null ? vraieAltitude - window.playerAlt : -1.5;
+                            // Application de la déduction de 1.5m (Hauteur des yeux)
+                            let relAlt = vraieAltitude !== null ? (vraieAltitude - window.playerAlt) - 1.5 : -1.5;
                             stats.canons++;
 
                             const pointGroup = document.createElement('a-entity');
@@ -488,7 +415,7 @@
                 }
             }
 
-            statusEl.innerText = `${stats.canons} Canons, ${stats.traces} Traces en 3D.`;
+            statusEl.innerText = `${stats.canons} Canons, ${stats.traces} Traces. Topo KML stricte.`;
             calibPanel.style.display = "flex"; 
         }
     </script>
