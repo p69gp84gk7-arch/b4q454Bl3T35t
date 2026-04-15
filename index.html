@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trace AR iPhone - Drag & Drop</title>
+    <title>Trace AR iPhone - Drag X/Y (Altitude)</title>
     
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; background-color: #000; }
@@ -14,15 +14,12 @@
         #status-message { position: absolute; top: 70px; width: 100%; text-align: center; color: white; text-shadow: 1px 1px 3px black; font-weight: bold; z-index: 1000; font-size: 14px; padding: 0 10px; box-sizing: border-box; pointer-events: none; }
         #altitude-debug { position: absolute; top: 90px; width: 100%; text-align: center; color: #4ade80; font-size: 12px; text-shadow: 1px 1px 2px black; z-index: 1000; font-weight: bold; pointer-events: none;}
         
-        /* Panneau d'altitude (beaucoup plus discret) */
+        /* Bouton de réinitialisation unique et discret */
         #calibration-panel {
             position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: none; 
-            background: rgba(0,0,0,0.5); padding: 10px; border-radius: 15px; backdrop-filter: blur(5px);
         }
-        .alt-grid { display: grid; grid-template-columns: repeat(3, 60px); gap: 5px; }
-        .cal-btn { height: 40px; background: rgba(255,255,255,0.8); border-radius: 8px; font-size: 16px; display: flex; justify-content: center; align-items: center; font-weight: bold; cursor: pointer; user-select: none; }
-        .cal-btn:active { background: #007aff; color: white; }
-        .cal-title { color: white; font-size: 12px; text-align: center; margin-bottom: 5px; font-weight: bold; }
+        .cal-btn { height: 50px; width: 50px; border-radius: 25px; background: rgba(255,255,255,0.8); font-size: 14px; display: flex; justify-content: center; align-items: center; font-weight: bold; cursor: pointer; user-select: none; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .cal-btn:active { background: #ff4d4f; color: white; }
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -66,7 +63,7 @@
             }
         });
 
-        // --- BLOC 16 : LE NOUVEAU COMPOSANT DE GLISSER-DÉPOSER ---
+        // --- NOUVEAU BLOC : LE GLISSER-DÉPOSER X/Y (Altitude) ---
         AFRAME.registerComponent('ar-drag-pan', {
             init: function () {
                 this.container = document.getElementById('kml-container');
@@ -74,30 +71,25 @@
                 this.lastX = 0;
                 this.lastY = 0;
 
-                // 1. Quand l'utilisateur touche ce point 3D
                 this.el.addEventListener('mousedown', (evt) => {
                     this.isDragging = true;
                     const mouseEvt = evt.detail.mouseEvent || evt;
                     this.lastX = mouseEvt.clientX || (mouseEvt.touches ? mouseEvt.touches[0].clientX : 0);
                     this.lastY = mouseEvt.clientY || (mouseEvt.touches ? mouseEvt.touches[0].clientY : 0);
                     
-                    document.getElementById('status-message').innerText = "Déplacement en cours...";
+                    document.getElementById('status-message').innerText = "Calibrage Manuel en cours...";
                     document.getElementById('status-message').style.color = "#FFCC00";
                 });
 
-                // 2. Quand il relâche (n'importe où sur l'écran)
                 window.addEventListener('mouseup', () => { this.isDragging = false; document.getElementById('status-message').style.color = "white"; });
                 window.addEventListener('touchend', () => { this.isDragging = false; document.getElementById('status-message').style.color = "white"; });
 
-                // 3. Quand il glisse le doigt
                 window.addEventListener('mousemove', this.onDrag.bind(this));
                 window.addEventListener('touchmove', this.onDrag.bind(this), {passive: false});
             },
             onDrag: function (evt) {
                 if (!this.isDragging) return;
-                
-                // Empêcher le comportement natif (zoom/scroll) de Safari
-                evt.preventDefault(); 
+                evt.preventDefault(); // Bloque le scroll natif d'iOS pendant qu'on manipule la 3D
                 
                 const currentX = evt.clientX || (evt.touches ? evt.touches[0].clientX : 0);
                 const currentY = evt.clientY || (evt.touches ? evt.touches[0].clientY : 0);
@@ -108,22 +100,20 @@
                 this.lastX = currentX;
                 this.lastY = currentY;
 
-                // Vitesse du déplacement (1 pixel écran = 5 centimètres en AR)
+                // Vitesse de déplacement du doigt. 0.05 = 5 centimètres par pixel d'écran glissé.
                 const speed = 0.05; 
 
-                // On modifie la position de tout le groupe
                 const pos = this.container.getAttribute('position');
                 this.container.setAttribute('position', {
-                    x: pos.x + (deltaX * speed),
-                    y: pos.y, 
-                    z: pos.z + (deltaY * speed)
+                    x: pos.x + (deltaX * speed),   // L'axe X contrôle la gauche et la droite
+                    y: pos.y - (deltaY * speed),   // L'axe Y contrôle l'ALTITUDE. On soustrait car glisser vers le haut de l'écran = delta négatif
+                    z: pos.z                       // L'axe Z (la profondeur) ne bouge plus !
                 });
                 
-                document.getElementById('status-message').innerText = `Calibrage X: ${pos.x.toFixed(1)}m | Z: ${pos.z.toFixed(1)}m`;
+                document.getElementById('status-message').innerText = `X: ${pos.x.toFixed(1)}m | Altitude(Y): ${pos.y.toFixed(1)}m`;
             }
         });
 
-        // Utilitaires mathématiques
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3; const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
@@ -147,12 +137,7 @@
     <div id="altitude-debug">Alt. iPhone : Recherche...</div>
 
     <div id="calibration-panel">
-        <div class="cal-title">Ajustement Altitude</div>
-        <div class="alt-grid">
-            <div class="cal-btn" id="btn-alt-up">↑ +1m</div>
-            <div class="cal-btn" id="btn-reset">O</div>
-            <div class="cal-btn" id="btn-alt-down">↓ -1m</div>
-        </div>
+        <div class="cal-btn" id="btn-reset">Reset</div>
     </div>
 
     <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
@@ -167,11 +152,9 @@
         const calibPanel = document.getElementById('calibration-panel');
 
         let playerLat = null, playerLon = null, playerAlt = 0; 
-        
-        // Logique de l'altitude
-        document.getElementById('btn-alt-up').onclick = () => { const p = containerEl.getAttribute('position'); containerEl.setAttribute('position', {x: p.x, y: p.y + 1, z: p.z}); statusEl.innerText = `Hauteur +${p.y+1}m`; };
-        document.getElementById('btn-alt-down').onclick = () => { const p = containerEl.getAttribute('position'); containerEl.setAttribute('position', {x: p.x, y: p.y - 1, z: p.z}); statusEl.innerText = `Hauteur ${p.y-1}m`; };
-        document.getElementById('btn-reset').onclick = () => { containerEl.setAttribute('position', {x: 0, y: 0, z: 0}); statusEl.innerText = `Position réinitialisée`; };
+
+        // Reset
+        document.getElementById('btn-reset').onclick = () => { containerEl.setAttribute('position', {x: 0, y: 0, z: 0}); statusEl.innerText = `Calibrage annulé`; };
 
         // GPS EN DIRECT
         window.addEventListener('load', () => {
@@ -190,12 +173,12 @@
             );
         });
 
-        // GESTIONNAIRE DE FICHIER SÉCURISÉ (Contre le blocage d'Analyse)
+        // CHARGEMENT FICHIER
         document.getElementById('file-input').addEventListener('change', async function(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            statusEl.innerText = "Analyse Topographique en cours...";
+            statusEl.innerText = "Analyse Topographique...";
             statusEl.style.color = "white"; 
             
             while (containerEl.firstChild) { containerEl.removeChild(containerEl.firstChild); }
@@ -212,18 +195,13 @@
                     kmlText = await file.text();
                 }
                 
-                // Le fameux "SetTimeout" qui empêche le blocage de l'écran pendant les calculs
                 setTimeout(() => {
-                    try {
-                        processKMLData(kmlText);
-                    } catch(e) {
-                        statusEl.style.color = "#ff4d4f"; statusEl.innerText = "🚨 Erreur de rendu 3D : " + e.message;
-                    }
+                    try { processKMLData(kmlText); } 
+                    catch(e) { statusEl.style.color = "#ff4d4f"; statusEl.innerText = "🚨 Erreur : " + e.message; }
                 }, 100);
 
             } catch (error) {
-                statusEl.style.color = "#ff4d4f";
-                statusEl.innerText = "🚨 Erreur de fichier : " + error.message;
+                statusEl.style.color = "#ff4d4f"; statusEl.innerText = "🚨 Erreur : " + error.message;
             }
         });
 
@@ -249,7 +227,7 @@
             let firstLat = null, firstLon = null;
             let stats = { canons: 0, jalons: 0, surfaces: 0 };
 
-            // 1. SURFACES
+            // SURFACES
             const polygons = xmlDoc.getElementsByTagName("Polygon");
             for (let i = 0; i < polygons.length; i++) {
                 const coordsTags = polygons[i].getElementsByTagName("coordinates");
@@ -271,7 +249,7 @@
                 }
             }
 
-            // 2. TRACES
+            // TRACES
             const lines = xmlDoc.getElementsByTagName("LineString");
             for (let i = 0; i < lines.length; i++) {
                 const coordsTags = lines[i].getElementsByTagName("coordinates");
@@ -295,7 +273,7 @@
                             jalon.setAttribute('radius', '1.5'); 
                             jalon.setAttribute('color', '#FF3B30'); 
                             jalon.setAttribute('opacity', '0.7');
-                            // On rend les jalons de piste "attrapables" aussi
+                            // Attrapable
                             jalon.setAttribute('class', 'clickable'); 
                             jalon.setAttribute('ar-drag-pan', '');
                             
@@ -307,7 +285,7 @@
                 }
             }
 
-            // 3. CANONS
+            // CANONS
             const placemarks = xmlDoc.getElementsByTagName("Placemark");
             for (let i = 0; i < placemarks.length; i++) {
                 const pointNode = placemarks[i].getElementsByTagName("Point")[0];
@@ -326,10 +304,10 @@
                             let vraieAltitude = null; let sourceAlt = "0m";
                             if (canonId && baseAltitudesCanons[canonId]) {
                                 vraieAltitude = baseAltitudesCanons[canonId];
-                                sourceAlt = vraieAltitude + "m (BDD)";
+                                sourceAlt = vraieAltitude + "m";
                             } else if (coords.length >= 3 && !isNaN(parseFloat(coords[2]))) {
                                 vraieAltitude = parseFloat(coords[2]);
-                                sourceAlt = vraieAltitude + "m (KML)";
+                                sourceAlt = vraieAltitude + "m";
                             }
 
                             let relAlt = vraieAltitude !== null ? vraieAltitude - playerAlt : -1.5;
@@ -342,16 +320,16 @@
                             heightContainer.setAttribute('position', `0 ${relAlt} 0`);
 
                             const sphere = document.createElement('a-sphere');
-                            sphere.setAttribute('radius', '3.5'); // J'ai grossi un peu la sphère pour qu'elle soit plus facile à toucher
+                            sphere.setAttribute('radius', '3.5');
                             sphere.setAttribute('color', '#FFCC00'); 
-                            // C'est ICI qu'on rend la sphère "attrapable" pour le drag & drop
+                            // Attrapable
                             sphere.setAttribute('class', 'clickable');
                             sphere.setAttribute('ar-drag-pan', '');
                             heightContainer.appendChild(sphere);
 
                             const etiquette = document.createElement('a-text');
                             const nomAffichage = canonId ? canonId : `Inc_${stats.canons}`;
-                            const texteAffiche = `C-${nomAffichage}\nAlt: ${sourceAlt}\niPh: ${Math.round(playerAlt)}m`;
+                            const texteAffiche = `C-${nomAffichage}\nAlt: ${sourceAlt}\nDif: ${Math.round(relAlt)}m`;
                             
                             etiquette.setAttribute('value', texteAffiche);
                             etiquette.setAttribute('look-at', '[gps-camera]'); 
@@ -371,7 +349,7 @@
             }
 
             if (firstLat !== null && playerLat !== null) {
-                statusEl.innerText = `${stats.canons} Canons. Touchez et glissez un point pour calibrer !`;
+                statusEl.innerText = `${stats.canons} Canons. Touchez et glissez un point !`;
                 calibPanel.style.display = "block"; 
             }
         }
