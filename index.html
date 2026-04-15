@@ -2,437 +2,203 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trace AR iPhone - KMZ Sécurisé & Progression</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Éditeur Topographique KML / MNT</title>
     
-    <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; background-color: #000; }
-        #ui-layer { position: absolute; top: 20px; left: 0; width: 100%; display: flex; justify-content: center; z-index: 1000; }
-        .upload-btn { background-color: rgba(255, 255, 255, 0.9); color: #007aff; padding: 12px 24px; border-radius: 20px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; }
-        #file-input { display: none; }
-        
-        #status-message { position: absolute; top: 70px; width: 100%; text-align: center; color: white; text-shadow: 1px 1px 3px black; font-weight: bold; z-index: 1000; font-size: 14px; padding: 0 10px; box-sizing: border-box; pointer-events: none; }
-        #altitude-debug { position: absolute; top: 90px; width: 100%; text-align: center; color: #4ade80; font-size: 12px; text-shadow: 1px 1px 2px black; z-index: 1000; font-weight: bold; pointer-events: none;}
-        
-        #calibration-panel { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: none; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
-        .cal-btn { padding: 12px 20px; border-radius: 20px; background: rgba(255,255,255,0.9); font-size: 14px; font-weight: bold; cursor: pointer; user-select: none; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; border: 2px solid transparent;}
-        #btn-reset { background: rgba(200,200,200,0.7); color: black; padding: 8px 15px; font-size: 12px;}
-
-        /* --- BLOC 22 : STYLES BARRE DE PROGRESSION --- */
-        #loading-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
-            z-index: 2000; display: none; flex-direction: column; justify-content: center; align-items: center;
-        }
-        #loading-text { color: white; font-size: 18px; font-weight: bold; margin-bottom: 20px; text-align: center; padding: 0 20px; }
-        progress { width: 80%; height: 20px; border-radius: 10px; overflow: hidden; appearance: none; }
-        progress::-webkit-progress-bar { background-color: #333; border-radius: 10px; }
-        progress::-webkit-progress-value { background-color: #4ade80; border-radius: 10px; transition: width 0.3s ease; }
-    </style>
-
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
-    <script>
-        window.playerAlt = 0;
-
-        // BDD TSV Canons
-        const baseAltitudesCanons = { "1": 1479.13, "3": 1483.37, "4": 1488.34, "5": 1499.34, "6": 1514.64, "7": 1525.86, "8": 1536.38, "9": 1545.48, "10": 1556.86, "11": 1565.4, "12": 1574.41, "13": 1584.13, "14": 1597.25, "15": 1611.2, "16": 1627.85, "17": 1641.34, "19": 1658.16, "21": 1669.33, "22": 1678.93, "23": 1693.59, "24": 1705.7, "25": 1713.46, "26": 1719.52, "27": 1723.04, "28": 1725.49, "29": 1735.08, "30": 1748.74, "31": 1765, "34": 1677.82, "36": 1703.71, "37": 1717.1, "38": 1732.29, "39": 1744.22, "40": 1753.8, "41": 1765.66, "42": 1779.46, "43": 1791.08, "44": 1801.31, "45": 1809.83, "48": 1813.67, "49": 1812.99, "51": 1789.55, "52": 1781.06, "53": 1771.95, "54": 1758.97, "55": 1745.04, "58": 1788.26, "59": 1770.3, "60": 1754.44, "61": 1740.98, "62": 1728.93, "63": 1712.57, "65": 1488.31, "66": 1493.06, "67": 1493.18, "68": 1499.88, "69": 1515.76, "70": 1530.27, "71": 1543.46, "72": 1555.18, "73": 1568.21, "74": 1587.09, "75": 1612.13, "76": 1636.5, "77": 1651.28, "78": 1664.79, "79": 1677.99, "80": 1687.71, "81": 1705.46, "82": 1722.01, "83": 1739.94, "84": 1758.63, "85": 1778.63, "86": 1803.76, "87": 1838.55, "88": 1867.06, "89": 1860.79, "90": 1858.55, "91": 1870.2, "98": 1525.45, "99": 1534.99, "100": 1546.05, "101": 1558.28, "102": 1575.15, "103": 1596.41, "104": 1620.98, "105": 1644.17, "106": 1663.53, "107": 1721.87, "108": 1741.33, "109": 1754.19, "110": 1771.06, "111": 1792.36, "112": 1800.18, "113": 1784.89, "114": 1782.91, "115": 1787.99, "116": 1787.98, "117": 1787.16, "118": 1785.05, "119": 1769.23, "120": 1801.0, "122": 1776.82, "123": 1785.01, "124": 1783.12, "125": 1782.45, "126": 1774.85, "127": 1762.09, "128": 1752.72, "129": 1741.53, "130": 1728.95, "131": 1714.71, "132": 1699.1, "133": 1686.8, "134": 1672.52, "135": 1662.24, "136": 1653.57, "137": 1640.89, "138": 1629.7, "139": 1617.42, "140": 1778.67, "141": 1772.81, "142": 1754.69, "143": 1729.63, "144": 1702.74, "145": 1680.28, "146": 1653.04, "147": 1636.31, "148": 1618.2, "149": 1598.74, "150": 1577.45, "151": 1539.16, "152": 1517.41, "153": 1481.02, "154": 1456.12, "155": 1777.79, "156": 1766.49, "157": 1750.37, "158": 1726.82, "159": 1711.02, "160": 1697.38, "161": 1678.32, "162": 1759.33, "163": 1752.89, "164": 1744.7, "165": 1737.05, "166": 1726.81, "167": 1713.02, "168": 1705.04, "169": 1701.77, "170": 1695.92, "171": 1687.84, "172": 1680.38, "173": 1675.61, "174": 1669.49, "175": 1665.9, "176": 1661.9, "177": 1658.78, "178": 1654.03, "180": 1756.79, "181": 1762.92, "201": 1884.55, "202": 1903.76, "203": 1915.59, "204": 1947.38, "205": 1966.3, "206": 1967.57, "207": 1973.03, "208": 1983.24, "209": 1979.48, "210": 1990.25, "211": 2019.23, "212": 2027.2, "213": 2039.91, "214": 2046.6, "215": 2070.89, "216": 2075.74, "217": 2086.42, "218": 2110.66, "219": 2117.4, "220": 2124.82, "221": 2122.38, "305": 2077.67, "318": 1850.47, "319": 1842.64, "320": 1823.12, "321": 1809.41, "322": 1785.21, "323": 1752.69, "324": 1727.47, "325": 1708.36, "326": 1683.33, "327": 1663.18, "328": 1638.28, "329": 1613.8, "330": 1588.49, "331": 1573.48, "333": 1551.71, "1002": 1478.87, "1032": 1783.9, "1033": 1796.03, "1047": 1815.98, "1050": 1794.16, "1057": 1795.54, "1092": 1883.14, "1179": 1654.04, "10089": 1499.55 };
-
-        window.getKmlRelativeAltitude = function(rawKmlAlt) {
-            if (rawKmlAlt !== undefined && rawKmlAlt !== null) {
-                const alt = parseFloat(rawKmlAlt);
-                if (!isNaN(alt) && alt !== 0) {
-                    return (alt - window.playerAlt) - 1.5;
-                }
-            }
-            return -1.5; 
-        };
-
-        AFRAME.registerComponent('kml-tube', {
-            schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#FF3B30'}, opacity: {type: 'number', default: 0.8} },
-            init: function() {
-                const pointsArr = this.data.points.trim().replace(/\n/g, ' ').split(/\s+/);
-                if (pointsArr.length < 2) return;
-
-                const pt0 = pointsArr[0].split(',');
-                const lon0 = parseFloat(pt0[0]), lat0 = parseFloat(pt0[1]);
-                if(isNaN(lon0) || isNaN(lat0)) return; 
-
-                const pathPoints = [];
-                let lastX = null, lastZ = null;
-
-                for(let i=0; i < pointsArr.length; i++) {
-                    const pt = pointsArr[i].split(',');
-                    if (pt.length >= 2) {
-                        const lon = parseFloat(pt[0]), lat = parseFloat(pt[1]);
-                        if(!isNaN(lon) && !isNaN(lat)){
-                            const dist = calculateDistance(lat0, lon0, lat, lon);
-                            const bearing = calculateBearing(lat0, lon0, lat, lon);
-                            const x = dist * Math.sin(bearing);
-                            const z = -dist * Math.cos(bearing);
-                            const relAlt = window.getKmlRelativeAltitude(pt[2]);
-
-                            if (lastX !== null && Math.abs(x - lastX) < 0.1 && Math.abs(z - lastZ) < 0.1) continue;
-
-                            pathPoints.push(new THREE.Vector3(x, relAlt, z));
-                            lastX = x; lastZ = z;
-                        }
-                    }
-                }
-
-                if (pathPoints.length < 2) return;
-                try {
-                    const curve = new THREE.CatmullRomCurve3(pathPoints);
-                    const geometry = new THREE.TubeGeometry(curve, pathPoints.length, 1.5, 6, false);
-                    const material = new THREE.MeshBasicMaterial({color: this.data.color, transparent: true, opacity: this.data.opacity});
-                    const mesh = new THREE.Mesh(geometry, material);
-                    this.el.setObject3D('mesh', mesh);
-                } catch (e) {}
-            }
-        });
-
-        AFRAME.registerComponent('kml-polygon', {
-            schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#3498db'}, opacity: {type: 'number', default: 0.4} },
-            init: function() {
-                const pointsArr = this.data.points.trim().replace(/\n/g, ' ').split(/\s+/);
-                if (pointsArr.length < 3) return;
-                
-                const pt0 = pointsArr[0].split(',');
-                const lon0 = parseFloat(pt0[0]), lat0 = parseFloat(pt0[1]);
-                if(isNaN(lon0) || isNaN(lat0)) return; 
-                
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                const original3DPoints = [];
-
-                for(let i = 0; i < pointsArr.length; i++) {
-                    const pt = pointsArr[i].split(',');
-                    if (pt.length >= 2) {
-                        const lon = parseFloat(pt[0]), lat = parseFloat(pt[1]);
-                        if(isNaN(lon) || isNaN(lat)) continue; 
-                        
-                        const dist = calculateDistance(lat0, lon0, lat, lon);
-                        const bearing = calculateBearing(lat0, lon0, lat, lon);
-                        const x = dist * Math.sin(bearing);
-                        const z = -dist * Math.cos(bearing); 
-                        const relAlt = window.getKmlRelativeAltitude(pt[2]);
-                        
-                        original3DPoints.push({x: x, y: relAlt, z: z});
-
-                        if (i === 0) shape.moveTo(x, z);
-                        else shape.lineTo(x, z);
-                    }
-                }
-
-                const geometry = new THREE.ShapeGeometry(shape);
-                geometry.rotateX(-Math.PI / 2); 
-                
-                const posAttribute = geometry.attributes.position;
-                for (let i = 0; i < posAttribute.count; i++) {
-                    const vx = posAttribute.getX(i);
-                    const vz = posAttribute.getZ(i);
-                    let closestAlt = -1.5; 
-                    let minDist = Infinity;
-                    for(let j=0; j<original3DPoints.length; j++) {
-                        const distSq = Math.pow(original3DPoints[j].x - vx, 2) + Math.pow(original3DPoints[j].z - vz, 2);
-                        if(distSq < minDist) { minDist = distSq; closestAlt = original3DPoints[j].y; }
-                    }
-                    posAttribute.setY(i, closestAlt);
-                }
-                
-                geometry.computeVertexNormals();
-                const material = new THREE.MeshBasicMaterial({ color: this.data.color, transparent: true, opacity: this.data.opacity, side: THREE.DoubleSide, depthWrite: false });
-                const mesh = new THREE.Mesh(geometry, material);
-                
-                this.el.setObject3D('mesh', mesh);
-            }
-        });
-
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; font-family: -apple-system, sans-serif; }
+        
+        /* Panneau de contrôle latéral */
+        #sidebar {
+            width: 350px;
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5);
         }
-        function calculateBearing(lat1, lon1, lat2, lon2) {
-            const toRad = Math.PI / 180, phi1 = lat1 * toRad, phi2 = lat2 * toRad, lam1 = lon1 * toRad, lam2 = lon2 * toRad;
-            const y = Math.sin(lam2 - lam1) * Math.cos(phi2), x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(lam2 - lam1);
-            return Math.atan2(y, x); 
+        
+        /* La zone de la carte */
+        #map { flex-grow: 1; height: 100%; background: #000; }
+        
+        h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #34495e; padding-bottom: 10px; }
+        
+        .file-box {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px dashed #7f8c8d;
         }
-    </script>
+        .file-box label { display: block; margin-bottom: 10px; font-weight: bold; font-size: 14px; }
+        input[type="file"] { width: 100%; color: #bdc3c7; font-size: 12px; }
+        
+        #log-panel {
+            background: #1a252f;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #4ade80;
+            flex-grow: 1;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
 </head>
 <body>
 
-    <div id="loading-overlay">
-        <div id="loading-text">Préparation...</div>
-        <progress id="loading-bar" value="0" max="100"></progress>
+    <div id="sidebar">
+        <h2>Atelier Topographique</h2>
+        
+        <div class="file-box">
+            <label for="kmz-input">1. Charger la trace (KML/KMZ)</label>
+            <input type="file" id="kmz-input" accept=".kml,.kmz">
+        </div>
+        
+        <div class="file-box" style="opacity: 0.5;">
+            <label>2. Charger le MNT (.tif)</label>
+            <div style="font-size: 11px; color:#bdc3c7;">(Fonctionnalité du Bloc 2)</div>
+        </div>
+
+        <div id="log-panel">En attente de fichiers...</div>
     </div>
 
-    <div id="ui-layer">
-        <label for="file-input" class="upload-btn">Charger KML/KMZ</label>
-        <input type="file" id="file-input" accept=".kml,.kmz">
-    </div>
-
-    <div id="status-message">📍 Autorisez la caméra</div>
-    <div id="altitude-debug">Alt. iPhone : Recherche...</div>
-
-    <div id="calibration-panel">
-        <div class="cal-btn" id="btn-toggle-mode" style="border-color: #007aff; color: #007aff;">Glisser : ALTITUDE (Y)</div>
-        <div class="cal-btn" id="btn-reset">Reset Position</div>
-    </div>
-
-    <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;">
-        <a-camera gps-camera="minDistance: 1; maxDistance: 10000;" rotation-reader></a-camera>
-        <a-entity id="kml-container" position="0 0 0"></a-entity>
-    </a-scene>
+    <div id="map"></div>
 
     <script>
-        const statusEl = document.getElementById('status-message');
-        const altDebugEl = document.getElementById('altitude-debug');
-        const containerEl = document.getElementById('kml-container');
-        const calibPanel = document.getElementById('calibration-panel');
-        const btnToggleMode = document.getElementById('btn-toggle-mode');
-        
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const loadingText = document.getElementById('loading-text');
-        const loadingBar = document.getElementById('loading-bar');
+        const logPanel = document.getElementById('log-panel');
+        function log(msg) { logPanel.innerText += `\n> ${msg}`; logPanel.scrollTop = logPanel.scrollHeight; }
 
-        // GESTION DU JOYSTICK TACTILE
-        window.dragMode = 'Y';
-        btnToggleMode.onclick = () => {
-            if (window.dragMode === 'Y') {
-                window.dragMode = 'Z';
-                btnToggleMode.innerText = "Glisser : PROFONDEUR (Z)";
-                btnToggleMode.style.borderColor = "#ff4d4f";
-                btnToggleMode.style.color = "#ff4d4f";
-            } else {
-                window.dragMode = 'Y';
-                btnToggleMode.innerText = "Glisser : ALTITUDE (Y)";
-                btnToggleMode.style.borderColor = "#007aff";
-                btnToggleMode.style.color = "#007aff";
-            }
-        };
+        // --- INITIALISATION DE LA CARTE 2D (Leaflet) ---
+        // On centre par défaut sur la France, mais la carte s'ajustera au KMZ
+        const map = L.map('map').setView([46.603354, 1.888334], 6);
 
-        let isCalibrating = false;
-        let lastTouchX = 0, lastTouchY = 0;
-        let offsetCompass = 0, offsetAlt = 0, offsetDepth = 0;
+        // Ajout d'un fond de carte Satellite (Esri)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri'
+        }).addTo(map);
 
-        document.addEventListener('touchstart', (e) => {
-            if (e.target.closest('#ui-layer') || e.target.closest('#calibration-panel')) return; 
-            isCalibrating = true;
-            lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY;
-            statusEl.style.color = "#FFCC00";
-        });
+        // Groupe pour stocker les dessins du KML
+        const kmlLayerGroup = L.featureGroup().addTo(map);
 
-        document.addEventListener('touchmove', (e) => {
-            if (!isCalibrating) return;
-            e.preventDefault(); 
-            const deltaX = e.touches[0].clientX - lastTouchX;
-            const deltaY = e.touches[0].clientY - lastTouchY;
-            lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY;
-
-            offsetCompass += deltaX * 0.2; 
-            if (window.dragMode === 'Y') offsetAlt -= deltaY * 0.05; 
-            else offsetDepth += deltaY * 0.1; 
-
-            containerEl.setAttribute('rotation', `0 ${offsetCompass} 0`);
-            containerEl.setAttribute('position', `0 ${offsetAlt} ${offsetDepth}`);
-            statusEl.innerText = `Boussole: ${offsetCompass.toFixed(0)}° | Alt: ${offsetAlt.toFixed(1)}m | Prof: ${offsetDepth.toFixed(1)}m`;
-        }, {passive: false});
-
-        document.addEventListener('touchend', () => { isCalibrating = false; statusEl.style.color = "white"; });
-
-        document.getElementById('btn-reset').onclick = () => { 
-            offsetCompass = 0; offsetAlt = 0; offsetDepth = 0;
-            containerEl.setAttribute('rotation', '0 0 0');
-            containerEl.setAttribute('position', '0 0 0');
-        };
-
-        // GPS EN DIRECT
-        window.addEventListener('load', () => {
-            if (!("geolocation" in navigator)) { statusEl.innerText = "❌ GPS non supporté."; return; }
-            navigator.geolocation.watchPosition(
-                (pos) => { 
-                    window.playerAlt = pos.coords.altitude !== null ? pos.coords.altitude : 0;
-                    altDebugEl.innerText = `Alt. iPhone : ${Math.round(window.playerAlt)} m`;
-                    if(statusEl.innerText.includes("Autorisez")) statusEl.innerText = `📍 Prêt. Chargez un fichier.`;
-                },
-                (e) => { statusEl.style.color = "#ff4d4f"; statusEl.innerText = "❌ ERREUR GPS."; },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
-        });
-
-        // --- BLOC 23 : CHARGEMENT KMZ ROBUSTE (ArrayBuffer) ---
-        document.getElementById('file-input').addEventListener('change', async function(event) {
-            const file = event.target.files[0];
+        // --- BLOC 1 : LECTURE DU KMZ VERS LA CARTE 2D ---
+        document.getElementById('kmz-input').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
             if (!file) return;
 
-            // Affichage UI Chargement
-            while (containerEl.firstChild) { containerEl.removeChild(containerEl.firstChild); }
-            calibPanel.style.display = "none"; 
-            loadingOverlay.style.display = "flex";
-            loadingBar.value = 10;
-
-            offsetCompass = 0; offsetAlt = 0; offsetDepth = 0;
-            containerEl.setAttribute('rotation', '0 0 0');
-            containerEl.setAttribute('position', '0 0 0');
+            log(`Chargement de ${file.name}...`);
+            kmlLayerGroup.clearLayers();
 
             try {
                 let kmlText = "";
-                
                 if (file.name.toLowerCase().endsWith('.kmz')) {
-                    loadingText.innerText = "Lecture de l'archive KMZ...";
-                    loadingBar.value = 30;
-                    
-                    // La méthode ArrayBuffer est beaucoup plus stable sur iPhone/Safari
-                    const arrayBuffer = await file.arrayBuffer(); 
-                    
-                    loadingText.innerText = "Décompression en cours...";
-                    loadingBar.value = 50;
+                    log("Décompression du KMZ...");
+                    const arrayBuffer = await file.arrayBuffer();
                     const zip = await JSZip.loadAsync(arrayBuffer);
-                    
                     const kmlFilename = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
-                    if (!kmlFilename) throw new Error("Aucun KML dans le KMZ.");
-                    
-                    loadingText.innerText = "Extraction du tracé...";
-                    loadingBar.value = 70;
+                    if (!kmlFilename) throw new Error("Aucun KML trouvé.");
                     kmlText = await zip.files[kmlFilename].async("text");
                 } else {
-                    loadingText.innerText = "Lecture du KML...";
-                    loadingBar.value = 70;
                     kmlText = await file.text();
                 }
-                
-                loadingText.innerText = "Analyse Topographique...";
-                loadingBar.value = 85;
 
+                log("Analyse géométrique...");
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(kmlText, "text/xml");
                 
-                setTimeout(() => {
-                    try { 
-                        processKMLData(xmlDoc); 
-                        loadingBar.value = 100;
-                        setTimeout(() => { loadingOverlay.style.display = "none"; }, 400);
-                    } catch(e) { 
-                        loadingText.innerText = "🚨 Erreur : " + e.message; 
-                    }
-                }, 150);
+                let stats = { points: 0, lines: 0, polygons: 0 };
+                const bounds = L.latLngBounds(); // Pour recentrer la caméra à la fin
 
-            } catch (error) {
-                loadingText.innerText = "🚨 Erreur : " + error.message;
-            }
-        });
-
-        // --- GÉNÉRATEUR FINAL ---
-        function processKMLData(xmlDoc) {
-            let stats = { canons: 0, traces: 0, surfaces: 0 };
-
-            // 1. SURFACES
-            const polygons = xmlDoc.getElementsByTagName("Polygon");
-            for (let i = 0; i < polygons.length; i++) {
-                const coordsTags = polygons[i].getElementsByTagName("coordinates");
-                if (coordsTags.length > 0) {
-                    const text = coordsTags[0].textContent.trim();
-                    const firstPt = text.split(/\s+/)[0].split(',');
-                    if (firstPt.length >= 2) {
-                        const lon = parseFloat(firstPt[0]), lat = parseFloat(firstPt[1]);
-                        if(isNaN(lon) || isNaN(lat)) continue; 
-                        
-                        const surfaceEl = document.createElement('a-entity');
-                        surfaceEl.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
-                        surfaceEl.setAttribute('kml-polygon', `points: ${text}; color: #3498db; opacity: 0.5;`);
-                        containerEl.appendChild(surfaceEl);
-                        stats.surfaces++;
-                    }
-                }
-            }
-
-            // 2. TRACES
-            const lines = xmlDoc.getElementsByTagName("LineString");
-            for (let i = 0; i < lines.length; i++) {
-                const coordsTags = lines[i].getElementsByTagName("coordinates");
-                if (coordsTags.length > 0) {
-                    const text = coordsTags[0].textContent.trim();
-                    const firstPt = text.split(/\s+/)[0].split(',');
-                    if (firstPt.length >= 2) {
-                        const lon = parseFloat(firstPt[0]), lat = parseFloat(firstPt[1]);
-                        if(isNaN(lon) || isNaN(lat)) continue; 
-                        
-                        const lineEl = document.createElement('a-entity');
-                        lineEl.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
-                        lineEl.setAttribute('kml-tube', `points: ${text}; color: #FF3B30; opacity: 0.8;`);
-                        containerEl.appendChild(lineEl);
-                        stats.traces++;
-                    }
-                }
-            }
-
-            // 3. CANONS
-            const placemarks = xmlDoc.getElementsByTagName("Placemark");
-            for (let i = 0; i < placemarks.length; i++) {
-                const pointNode = placemarks[i].getElementsByTagName("Point")[0];
-                if (pointNode) {
-                    const coordsTags = pointNode.getElementsByTagName("coordinates");
-                    if (coordsTags.length > 0) {
-                        const coords = coordsTags[0].textContent.trim().split(',');
-                        if (coords.length >= 2) {
-                            const lon = parseFloat(coords[0]), lat = parseFloat(coords[1]);
-                            if(isNaN(lon) || isNaN(lat)) continue; 
-
-                            const nameNode = placemarks[i].getElementsByTagName("name")[0];
-                            const canonId = nameNode ? nameNode.textContent.trim() : null;
-
-                            let vraieAltitude = null; let sourceAlt = "Manquante";
-                            
-                            if (canonId && baseAltitudesCanons[canonId]) {
-                                vraieAltitude = baseAltitudesCanons[canonId];
-                                sourceAlt = vraieAltitude + "m (TSV)";
-                            } else if (coords.length >= 3 && !isNaN(parseFloat(coords[2])) && parseFloat(coords[2]) !== 0) {
-                                vraieAltitude = parseFloat(coords[2]);
-                                sourceAlt = vraieAltitude + "m (KML)";
+                // 1. Dessiner les Surfaces (Polygons)
+                const polygons = xmlDoc.getElementsByTagName("Polygon");
+                for (let p of polygons) {
+                    const coordsNode = p.getElementsByTagName("coordinates")[0];
+                    if (coordsNode) {
+                        const coords = coordsNode.textContent.trim().replace(/\n/g, ' ').split(/\s+/);
+                        const latLngs = [];
+                        coords.forEach(c => {
+                            const pts = c.split(',');
+                            if (pts.length >= 2) {
+                                const latLng = [parseFloat(pts[1]), parseFloat(pts[0])]; // Leaflet utilise [Lat, Lon]
+                                latLngs.push(latLng);
+                                bounds.extend(latLng);
                             }
-
-                            let relAlt = vraieAltitude !== null ? (vraieAltitude - window.playerAlt) - 1.5 : -1.5;
-                            stats.canons++;
-
-                            const pointGroup = document.createElement('a-entity');
-                            pointGroup.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
-
-                            const heightContainer = document.createElement('a-entity');
-                            heightContainer.setAttribute('position', `0 ${relAlt} 0`);
-
-                            const sphere = document.createElement('a-sphere');
-                            sphere.setAttribute('radius', '3.5');
-                            sphere.setAttribute('color', '#FFCC00'); 
-                            heightContainer.appendChild(sphere);
-
-                            const etiquette = document.createElement('a-text');
-                            const nomAffichage = canonId ? canonId : `Inc_${stats.canons}`;
-                            const texteAffiche = `C-${nomAffichage}\nAlt: ${sourceAlt}\nDif: ${Math.round(relAlt)}m`;
-                            
-                            etiquette.setAttribute('value', texteAffiche);
-                            etiquette.setAttribute('look-at', '[gps-camera]'); 
-                            etiquette.setAttribute('scale', '10 10 10'); 
-                            etiquette.setAttribute('position', '0 6 0'); 
-                            etiquette.setAttribute('align', 'center');
-                            etiquette.setAttribute('color', '#FFFFFF');
-                            etiquette.setAttribute('geometry', 'primitive: plane; height: auto; width: auto');
-                            etiquette.setAttribute('material', 'color: #000000; opacity: 0.7');
-                            
-                            heightContainer.appendChild(etiquette);
-                            pointGroup.appendChild(heightContainer);
-                            containerEl.appendChild(pointGroup); 
+                        });
+                        if (latLngs.length > 0) {
+                            L.polygon(latLngs, {color: '#3498db', weight: 2, fillOpacity: 0.4}).addTo(kmlLayerGroup);
+                            stats.polygons++;
                         }
                     }
                 }
-            }
 
-            statusEl.innerText = `${stats.canons} Canons, ${stats.traces} Traces. KML strict chargé.`;
-            calibPanel.style.display = "flex"; 
-        }
+                // 2. Dessiner les Lignes (LineString)
+                const lines = xmlDoc.getElementsByTagName("LineString");
+                for (let l of lines) {
+                    const coordsNode = l.getElementsByTagName("coordinates")[0];
+                    if (coordsNode) {
+                        const coords = coordsNode.textContent.trim().replace(/\n/g, ' ').split(/\s+/);
+                        const latLngs = [];
+                        coords.forEach(c => {
+                            const pts = c.split(',');
+                            if (pts.length >= 2) {
+                                const latLng = [parseFloat(pts[1]), parseFloat(pts[0])];
+                                latLngs.push(latLng);
+                                bounds.extend(latLng);
+                            }
+                        });
+                        if (latLngs.length > 0) {
+                            L.polyline(latLngs, {color: '#FF3B30', weight: 4}).addTo(kmlLayerGroup);
+                            stats.lines++;
+                        }
+                    }
+                }
+
+                // 3. Dessiner les Points (Canons)
+                const placemarks = xmlDoc.getElementsByTagName("Placemark");
+                for (let pm of placemarks) {
+                    const ptNode = pm.getElementsByTagName("Point")[0];
+                    if (ptNode) {
+                        const coordsNode = ptNode.getElementsByTagName("coordinates")[0];
+                        if (coordsNode) {
+                            const pts = coordsNode.textContent.trim().split(',');
+                            if (pts.length >= 2) {
+                                const nameNode = pm.getElementsByTagName("name")[0];
+                                const name = nameNode ? nameNode.textContent.trim() : "Point";
+                                const latLng = [parseFloat(pts[1]), parseFloat(pts[0])];
+                                
+                                L.circleMarker(latLng, {
+                                    radius: 6, fillColor: '#FFCC00', color: '#000', weight: 1, fillOpacity: 1
+                                }).bindPopup(`<b>${name}</b>`).addTo(kmlLayerGroup);
+                                
+                                bounds.extend(latLng);
+                                stats.points++;
+                            }
+                        }
+                    }
+                }
+
+                log(`Succès: ${stats.points} Points, ${stats.lines} Traces, ${stats.polygons} Zones.`);
+                
+                // Zoomer automatiquement sur la zone chargée
+                if (stats.points > 0 || stats.lines > 0 || stats.polygons > 0) {
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+
+            } catch (error) {
+                log(`ERREUR: ${error.message}`);
+            }
+        });
     </script>
 </body>
 </html>
+
