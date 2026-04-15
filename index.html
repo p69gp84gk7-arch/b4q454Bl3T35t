@@ -3,23 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trace AR iPhone - Drag X/Y (Altitude)</title>
+    <title>Trace AR iPhone - Calibration Tactile Complète</title>
     
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; background-color: #000; }
+        
+        /* Boutons d'interface protégés du glissement */
         #ui-layer { position: absolute; top: 20px; left: 0; width: 100%; display: flex; justify-content: center; z-index: 1000; }
         .upload-btn { background-color: rgba(255, 255, 255, 0.9); color: #007aff; padding: 12px 24px; border-radius: 20px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; }
         #file-input { display: none; }
         
-        #status-message { position: absolute; top: 70px; width: 100%; text-align: center; color: white; text-shadow: 1px 1px 3px black; font-weight: bold; z-index: 1000; font-size: 14px; padding: 0 10px; box-sizing: border-box; pointer-events: none; }
-        #altitude-debug { position: absolute; top: 90px; width: 100%; text-align: center; color: #4ade80; font-size: 12px; text-shadow: 1px 1px 2px black; z-index: 1000; font-weight: bold; pointer-events: none;}
-        
-        /* Bouton de réinitialisation unique et discret */
-        #calibration-panel {
-            position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: none; 
-        }
-        .cal-btn { height: 50px; width: 50px; border-radius: 25px; background: rgba(255,255,255,0.8); font-size: 14px; display: flex; justify-content: center; align-items: center; font-weight: bold; cursor: pointer; user-select: none; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        #calibration-panel { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: none; }
+        .cal-btn { height: 40px; padding: 0 15px; border-radius: 20px; background: rgba(255,255,255,0.8); font-size: 14px; display: flex; justify-content: center; align-items: center; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); color: #ff4d4f;}
         .cal-btn:active { background: #ff4d4f; color: white; }
+
+        /* Affichage des données au centre */
+        #status-message { position: absolute; top: 70px; width: 100%; text-align: center; color: white; text-shadow: 1px 1px 3px black; font-weight: bold; z-index: 1000; font-size: 16px; padding: 0 10px; box-sizing: border-box; pointer-events: none; }
+        #altitude-debug { position: absolute; top: 95px; width: 100%; text-align: center; color: #4ade80; font-size: 12px; text-shadow: 1px 1px 2px black; z-index: 1000; font-weight: bold; pointer-events: none;}
+        
+        /* Indication visuelle pour l'utilisateur */
+        #tuto-text { position: absolute; bottom: 40px; width: 100%; text-align: center; color: rgba(255,255,255,0.7); font-size: 14px; font-weight: bold; pointer-events: none; display: none; }
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -63,57 +66,7 @@
             }
         });
 
-        // --- NOUVEAU BLOC : LE GLISSER-DÉPOSER X/Y (Altitude) ---
-        AFRAME.registerComponent('ar-drag-pan', {
-            init: function () {
-                this.container = document.getElementById('kml-container');
-                this.isDragging = false;
-                this.lastX = 0;
-                this.lastY = 0;
-
-                this.el.addEventListener('mousedown', (evt) => {
-                    this.isDragging = true;
-                    const mouseEvt = evt.detail.mouseEvent || evt;
-                    this.lastX = mouseEvt.clientX || (mouseEvt.touches ? mouseEvt.touches[0].clientX : 0);
-                    this.lastY = mouseEvt.clientY || (mouseEvt.touches ? mouseEvt.touches[0].clientY : 0);
-                    
-                    document.getElementById('status-message').innerText = "Calibrage Manuel en cours...";
-                    document.getElementById('status-message').style.color = "#FFCC00";
-                });
-
-                window.addEventListener('mouseup', () => { this.isDragging = false; document.getElementById('status-message').style.color = "white"; });
-                window.addEventListener('touchend', () => { this.isDragging = false; document.getElementById('status-message').style.color = "white"; });
-
-                window.addEventListener('mousemove', this.onDrag.bind(this));
-                window.addEventListener('touchmove', this.onDrag.bind(this), {passive: false});
-            },
-            onDrag: function (evt) {
-                if (!this.isDragging) return;
-                evt.preventDefault(); // Bloque le scroll natif d'iOS pendant qu'on manipule la 3D
-                
-                const currentX = evt.clientX || (evt.touches ? evt.touches[0].clientX : 0);
-                const currentY = evt.clientY || (evt.touches ? evt.touches[0].clientY : 0);
-                
-                const deltaX = currentX - this.lastX;
-                const deltaY = currentY - this.lastY;
-                
-                this.lastX = currentX;
-                this.lastY = currentY;
-
-                // Vitesse de déplacement du doigt. 0.05 = 5 centimètres par pixel d'écran glissé.
-                const speed = 0.05; 
-
-                const pos = this.container.getAttribute('position');
-                this.container.setAttribute('position', {
-                    x: pos.x + (deltaX * speed),   // L'axe X contrôle la gauche et la droite
-                    y: pos.y - (deltaY * speed),   // L'axe Y contrôle l'ALTITUDE. On soustrait car glisser vers le haut de l'écran = delta négatif
-                    z: pos.z                       // L'axe Z (la profondeur) ne bouge plus !
-                });
-                
-                document.getElementById('status-message').innerText = `X: ${pos.x.toFixed(1)}m | Altitude(Y): ${pos.y.toFixed(1)}m`;
-            }
-        });
-
+        // Outils GPS
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3; const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
@@ -135,14 +88,16 @@
 
     <div id="status-message">📍 Autorisez la caméra</div>
     <div id="altitude-debug">Alt. iPhone : Recherche...</div>
+    <div id="tuto-text">👆 Glissez sur l'écran pour calibrer la vue</div>
 
     <div id="calibration-panel">
-        <div class="cal-btn" id="btn-reset">Reset</div>
+        <div class="cal-btn" id="btn-reset">Réinitialiser</div>
     </div>
 
-    <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
+    <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;">
         <a-camera gps-camera="minDistance: 1; maxDistance: 10000;" rotation-reader></a-camera>
-        <a-entity id="kml-container" position="0 0 0"></a-entity>
+        
+        <a-entity id="kml-container" position="0 0 0" rotation="0 0 0"></a-entity>
     </a-scene>
 
     <script>
@@ -150,13 +105,71 @@
         const altDebugEl = document.getElementById('altitude-debug');
         const containerEl = document.getElementById('kml-container');
         const calibPanel = document.getElementById('calibration-panel');
+        const tutoText = document.getElementById('tuto-text');
 
         let playerLat = null, playerLon = null, playerAlt = 0; 
 
-        // Reset
-        document.getElementById('btn-reset').onclick = () => { containerEl.setAttribute('position', {x: 0, y: 0, z: 0}); statusEl.innerText = `Calibrage annulé`; };
+        // --- GESTION DU GLISSER-DÉPOSER GLOBAL (VRAIE FLUIDITÉ) ---
+        let isCalibrating = false;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+        let offsetCompass = 0; // Tourne la boussole (axe X écran)
+        let offsetAlt = 0;     // Modifie l'altitude (axe Y écran)
 
-        // GPS EN DIRECT
+        function startDrag(x, y) {
+            isCalibrating = true;
+            lastTouchX = x;
+            lastTouchY = y;
+            statusEl.style.color = "#FFCC00";
+            tutoText.style.display = "none"; // Cache le tuto quand on l'utilise
+        }
+
+        function doDrag(x, y) {
+            if (!isCalibrating) return;
+            
+            const deltaX = x - lastTouchX;
+            const deltaY = y - lastTouchY;
+            lastTouchX = x;
+            lastTouchY = y;
+
+            // Sensibilité (à ajuster selon vos goûts sur le terrain)
+            offsetCompass += deltaX * 0.2; // 1 pixel glissé = 0.2° de rotation de la boussole
+            offsetAlt -= deltaY * 0.05;    // 1 pixel glissé = 5 cm d'altitude (inversé pour que haut = monte)
+
+            // On applique les réglages au conteneur principal
+            containerEl.setAttribute('rotation', `0 ${offsetCompass} 0`);
+            containerEl.setAttribute('position', `0 ${offsetAlt} 0`);
+            
+            statusEl.innerText = `Boussole ajustée : ${offsetCompass.toFixed(1)}° | Altitude ajustée : ${offsetAlt.toFixed(1)}m`;
+        }
+
+        function endDrag() {
+            if (isCalibrating) {
+                isCalibrating = false;
+                statusEl.style.color = "white";
+            }
+        }
+
+        // Événements iPhone (Tactile)
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.closest('#ui-layer') || e.target.closest('#calibration-panel')) return; 
+            startDrag(e.touches[0].clientX, e.touches[0].clientY);
+        });
+        document.addEventListener('touchmove', (e) => {
+            if (isCalibrating) e.preventDefault(); // Empêche l'iPhone de "scroller" la page web
+            doDrag(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive: false});
+        document.addEventListener('touchend', endDrag);
+
+        // Bouton Reset
+        document.getElementById('btn-reset').onclick = () => { 
+            offsetCompass = 0; offsetAlt = 0;
+            containerEl.setAttribute('rotation', '0 0 0');
+            containerEl.setAttribute('position', '0 0 0');
+            statusEl.innerText = `Calibrage annulé (Valeurs GPS brutes)`; 
+        };
+
+        // --- GPS EN DIRECT ---
         window.addEventListener('load', () => {
             if (!("geolocation" in navigator)) { statusEl.innerText = "❌ GPS non supporté."; return; }
             navigator.geolocation.watchPosition(
@@ -173,16 +186,22 @@
             );
         });
 
-        // CHARGEMENT FICHIER
+        // --- LECTURE DU FICHIER ---
         document.getElementById('file-input').addEventListener('change', async function(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            statusEl.innerText = "Analyse Topographique...";
+            statusEl.innerText = "Génération de la 3D...";
             statusEl.style.color = "white"; 
             
             while (containerEl.firstChild) { containerEl.removeChild(containerEl.firstChild); }
             calibPanel.style.display = "none"; 
+            tutoText.style.display = "none";
+
+            // Reset des variables d'offset pour le nouveau fichier
+            offsetCompass = 0; offsetAlt = 0;
+            containerEl.setAttribute('rotation', '0 0 0');
+            containerEl.setAttribute('position', '0 0 0');
 
             try {
                 let kmlText = "";
@@ -195,6 +214,7 @@
                     kmlText = await file.text();
                 }
                 
+                // SetTimeout laisse respirer l'iPhone et empêche le freeze
                 setTimeout(() => {
                     try { processKMLData(kmlText); } 
                     catch(e) { statusEl.style.color = "#ff4d4f"; statusEl.innerText = "🚨 Erreur : " + e.message; }
@@ -219,7 +239,7 @@
             return 0;
         }
 
-        // GÉNÉRATEUR 3D
+        // --- GÉNÉRATEUR DES ÉLÉMENTS 3D ---
         function processKMLData(kmlString) {
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(kmlString, "text/xml");
@@ -227,7 +247,7 @@
             let firstLat = null, firstLon = null;
             let stats = { canons: 0, jalons: 0, surfaces: 0 };
 
-            // SURFACES
+            // 1. SURFACES
             const polygons = xmlDoc.getElementsByTagName("Polygon");
             for (let i = 0; i < polygons.length; i++) {
                 const coordsTags = polygons[i].getElementsByTagName("coordinates");
@@ -238,6 +258,7 @@
                         const lon = parseFloat(firstPt[0]), lat = parseFloat(firstPt[1]);
                         if(isNaN(lon) || isNaN(lat)) continue; 
                         if (firstLat === null) { firstLat = lat; firstLon = lon; }
+                        
                         const relAlt = getAverageRelativeAltitude(text);
 
                         const surfaceEl = document.createElement('a-entity');
@@ -249,7 +270,7 @@
                 }
             }
 
-            // TRACES
+            // 2. TRACES
             const lines = xmlDoc.getElementsByTagName("LineString");
             for (let i = 0; i < lines.length; i++) {
                 const coordsTags = lines[i].getElementsByTagName("coordinates");
@@ -263,6 +284,7 @@
                             const lon = parseFloat(coords[0]), lat = parseFloat(coords[1]);
                             if(isNaN(lon) || isNaN(lat)) continue; 
                             if (firstLat === null) { firstLat = lat; firstLon = lon; }
+                            
                             const relAlt = (coords.length >= 3 && !isNaN(parseFloat(coords[2]))) ? parseFloat(coords[2]) - playerAlt : -1.5;
 
                             const anchor = document.createElement('a-entity');
@@ -273,9 +295,6 @@
                             jalon.setAttribute('radius', '1.5'); 
                             jalon.setAttribute('color', '#FF3B30'); 
                             jalon.setAttribute('opacity', '0.7');
-                            // Attrapable
-                            jalon.setAttribute('class', 'clickable'); 
-                            jalon.setAttribute('ar-drag-pan', '');
                             
                             anchor.appendChild(jalon);
                             containerEl.appendChild(anchor);
@@ -285,7 +304,7 @@
                 }
             }
 
-            // CANONS
+            // 3. CANONS
             const placemarks = xmlDoc.getElementsByTagName("Placemark");
             for (let i = 0; i < placemarks.length; i++) {
                 const pointNode = placemarks[i].getElementsByTagName("Point")[0];
@@ -322,9 +341,6 @@
                             const sphere = document.createElement('a-sphere');
                             sphere.setAttribute('radius', '3.5');
                             sphere.setAttribute('color', '#FFCC00'); 
-                            // Attrapable
-                            sphere.setAttribute('class', 'clickable');
-                            sphere.setAttribute('ar-drag-pan', '');
                             heightContainer.appendChild(sphere);
 
                             const etiquette = document.createElement('a-text');
@@ -349,8 +365,9 @@
             }
 
             if (firstLat !== null && playerLat !== null) {
-                statusEl.innerText = `${stats.canons} Canons. Touchez et glissez un point !`;
+                statusEl.innerText = `${stats.canons} Canons chargés. Prêt.`;
                 calibPanel.style.display = "block"; 
+                tutoText.style.display = "block";
             }
         }
     </script>
