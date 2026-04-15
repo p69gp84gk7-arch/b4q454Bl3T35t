@@ -9,50 +9,23 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
 
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; font-family: -apple-system, sans-serif; }
         
-        /* Panneau de contrôle latéral */
-        #sidebar {
-            width: 350px;
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            overflow-y: auto;
-            z-index: 1000;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.5);
-        }
-        
-        /* La zone de la carte */
-        #map { flex-grow: 1; height: 100%; background: #000; }
+        #sidebar { width: 350px; background: #2c3e50; color: white; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; z-index: 1000; box-shadow: 2px 0 5px rgba(0,0,0,0.5); }
+        #map { flex-grow: 1; height: 100%; background: #000; cursor: crosshair; }
         
         h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #34495e; padding-bottom: 10px; }
         
-        .file-box {
-            background: #34495e;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px dashed #7f8c8d;
-        }
-        .file-box label { display: block; margin-bottom: 10px; font-weight: bold; font-size: 14px; }
+        .file-box { background: #34495e; padding: 15px; border-radius: 8px; border: 1px dashed #7f8c8d; transition: 0.3s; }
+        .file-box.active { border-color: #4ade80; background: #27ae60; }
+        .file-box label { display: block; margin-bottom: 10px; font-weight: bold; font-size: 14px; cursor: pointer;}
         input[type="file"] { width: 100%; color: #bdc3c7; font-size: 12px; }
         
-        #log-panel {
-            background: #1a252f;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-            color: #4ade80;
-            flex-grow: 1;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
+        #log-panel { background: #1a252f; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; color: #4ade80; flex-grow: 1; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;}
     </style>
 </head>
 <body>
@@ -60,17 +33,18 @@
     <div id="sidebar">
         <h2>Atelier Topographique</h2>
         
-        <div class="file-box">
+        <div class="file-box" id="box-kmz">
             <label for="kmz-input">1. Charger la trace (KML/KMZ)</label>
             <input type="file" id="kmz-input" accept=".kml,.kmz">
         </div>
         
-        <div class="file-box" style="opacity: 0.5;">
-            <label>2. Charger le MNT (.tif)</label>
-            <div style="font-size: 11px; color:#bdc3c7;">(Fonctionnalité du Bloc 2)</div>
+        <div class="file-box" id="box-tif">
+            <label for="tif-input">2. Charger le MNT (.tif)</label>
+            <input type="file" id="tif-input" accept=".tif,.tiff">
+            <div style="font-size: 11px; margin-top:5px;">(Format requis : EPSG:4326 / WGS84)</div>
         </div>
 
-        <div id="log-panel">En attente de fichiers...</div>
+        <div id="log-panel">Prêt. En attente de fichiers...</div>
     </div>
 
     <div id="map"></div>
@@ -79,126 +53,67 @@
         const logPanel = document.getElementById('log-panel');
         function log(msg) { logPanel.innerText += `\n> ${msg}`; logPanel.scrollTop = logPanel.scrollHeight; }
 
-        // --- INITIALISATION DE LA CARTE 2D (Leaflet) ---
-        // On centre par défaut sur la France, mais la carte s'ajustera au KMZ
-        const map = L.map('map').setView([46.603354, 1.888334], 6);
+        const map = L.map('map').setView([42.79, 0.59], 13); // Centré vers les Pyrénées par défaut
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri' }).addTo(map);
 
-        // Ajout d'un fond de carte Satellite (Esri)
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri'
-        }).addTo(map);
-
-        // Groupe pour stocker les dessins du KML
         const kmlLayerGroup = L.featureGroup().addTo(map);
+        let mntBoundsLayer = null; // Pour afficher le contour du TIF
 
-        // --- BLOC 1 : LECTURE DU KMZ VERS LA CARTE 2D ---
-        document.getElementById('kmz-input').addEventListener('change', async function(e) {
+        // --- VARIABLES GLOBALES DU MNT ---
+        let mntData = null; // Les altitudes pures
+        let mntWidth = 0;
+        let mntHeight = 0;
+        let mntBbox = null; // [minLon, minLat, maxLon, maxLat]
+
+        // --- BLOC 2 : LECTURE DU MNT (.tif) ---
+        document.getElementById('tif-input').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
-            log(`Chargement de ${file.name}...`);
-            kmlLayerGroup.clearLayers();
+            log(`Analyse du MNT : ${file.name}...`);
+            document.getElementById('box-tif').classList.add('active');
 
             try {
-                let kmlText = "";
-                if (file.name.toLowerCase().endsWith('.kmz')) {
-                    log("Décompression du KMZ...");
-                    const arrayBuffer = await file.arrayBuffer();
-                    const zip = await JSZip.loadAsync(arrayBuffer);
-                    const kmlFilename = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
-                    if (!kmlFilename) throw new Error("Aucun KML trouvé.");
-                    kmlText = await zip.files[kmlFilename].async("text");
-                } else {
-                    kmlText = await file.text();
-                }
-
-                log("Analyse géométrique...");
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(kmlText, "text/xml");
+                // Lecture du fichier via GeoTIFF.js
+                const arrayBuffer = await file.arrayBuffer();
+                const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
+                const image = await tiff.getImage();
                 
-                let stats = { points: 0, lines: 0, polygons: 0 };
-                const bounds = L.latLngBounds(); // Pour recentrer la caméra à la fin
-
-                // 1. Dessiner les Surfaces (Polygons)
-                const polygons = xmlDoc.getElementsByTagName("Polygon");
-                for (let p of polygons) {
-                    const coordsNode = p.getElementsByTagName("coordinates")[0];
-                    if (coordsNode) {
-                        const coords = coordsNode.textContent.trim().replace(/\n/g, ' ').split(/\s+/);
-                        const latLngs = [];
-                        coords.forEach(c => {
-                            const pts = c.split(',');
-                            if (pts.length >= 2) {
-                                const latLng = [parseFloat(pts[1]), parseFloat(pts[0])]; // Leaflet utilise [Lat, Lon]
-                                latLngs.push(latLng);
-                                bounds.extend(latLng);
-                            }
-                        });
-                        if (latLngs.length > 0) {
-                            L.polygon(latLngs, {color: '#3498db', weight: 2, fillOpacity: 0.4}).addTo(kmlLayerGroup);
-                            stats.polygons++;
-                        }
-                    }
-                }
-
-                // 2. Dessiner les Lignes (LineString)
-                const lines = xmlDoc.getElementsByTagName("LineString");
-                for (let l of lines) {
-                    const coordsNode = l.getElementsByTagName("coordinates")[0];
-                    if (coordsNode) {
-                        const coords = coordsNode.textContent.trim().replace(/\n/g, ' ').split(/\s+/);
-                        const latLngs = [];
-                        coords.forEach(c => {
-                            const pts = c.split(',');
-                            if (pts.length >= 2) {
-                                const latLng = [parseFloat(pts[1]), parseFloat(pts[0])];
-                                latLngs.push(latLng);
-                                bounds.extend(latLng);
-                            }
-                        });
-                        if (latLngs.length > 0) {
-                            L.polyline(latLngs, {color: '#FF3B30', weight: 4}).addTo(kmlLayerGroup);
-                            stats.lines++;
-                        }
-                    }
-                }
-
-                // 3. Dessiner les Points (Canons)
-                const placemarks = xmlDoc.getElementsByTagName("Placemark");
-                for (let pm of placemarks) {
-                    const ptNode = pm.getElementsByTagName("Point")[0];
-                    if (ptNode) {
-                        const coordsNode = ptNode.getElementsByTagName("coordinates")[0];
-                        if (coordsNode) {
-                            const pts = coordsNode.textContent.trim().split(',');
-                            if (pts.length >= 2) {
-                                const nameNode = pm.getElementsByTagName("name")[0];
-                                const name = nameNode ? nameNode.textContent.trim() : "Point";
-                                const latLng = [parseFloat(pts[1]), parseFloat(pts[0])];
-                                
-                                L.circleMarker(latLng, {
-                                    radius: 6, fillColor: '#FFCC00', color: '#000', weight: 1, fillOpacity: 1
-                                }).bindPopup(`<b>${name}</b>`).addTo(kmlLayerGroup);
-                                
-                                bounds.extend(latLng);
-                                stats.points++;
-                            }
-                        }
-                    }
-                }
-
-                log(`Succès: ${stats.points} Points, ${stats.lines} Traces, ${stats.polygons} Zones.`);
+                mntBbox = image.getBoundingBox();
+                mntWidth = image.getWidth();
+                mntHeight = image.getHeight();
                 
-                // Zoomer automatiquement sur la zone chargée
-                if (stats.points > 0 || stats.lines > 0 || stats.polygons > 0) {
-                    map.fitBounds(bounds, { padding: [50, 50] });
-                }
+                log(`Dimensions : ${mntWidth} x ${mntHeight} pixels`);
+                log(`Emprise (Bbox) : Long [${mntBbox[0].toFixed(3)}, ${mntBbox[2].toFixed(3)}], Lat [${mntBbox[1].toFixed(3)}, ${mntBbox[3].toFixed(3)}]`);
+
+                // Extraction des données d'altitude (Bande 1)
+                const rasters = await image.readRasters();
+                mntData = rasters[0]; 
+
+                log(`✅ MNT chargé en mémoire. Cliquez sur la carte pour tester l'altitude !`);
+
+                // Dessin de l'emprise du TIF sur la carte (Rectangle rouge translucide)
+                if (mntBoundsLayer) map.removeLayer(mntBoundsLayer);
+                const bounds = [[mntBbox[1], mntBbox[0]], [mntBbox[3], mntBbox[2]]];
+                mntBoundsLayer = L.rectangle(bounds, {color: "#ff4d4f", weight: 2, fillOpacity: 0.1, dashArray: '5, 5'}).addTo(map);
+                
+                // On recentre la caméra sur le MNT
+                map.fitBounds(bounds, { padding: [20, 20] });
 
             } catch (error) {
-                log(`ERREUR: ${error.message}`);
+                log(`❌ ERREUR MNT: ${error.message}`);
+                document.getElementById('box-tif').classList.remove('active');
             }
         });
-    </script>
-</body>
-</html>
 
+        // --- FONCTION DE CALCUL D'ALTITUDE (Croisement Lat/Lon -> Pixel TIF) ---
+        function getElevationAt(lat, lon) {
+            if (!mntData || !mntBbox) return null;
+
+            const minLon = mntBbox[0], minLat = mntBbox[1], maxLon = mntBbox[2], maxLat = mntBbox[3];
+
+            // Vérification si le point est en dehors du MNT
+            if (lon < minLon || lon > maxLon || lat < minLat || lat > maxLat) return null;
+
+            // Conversion des coordonnées GPS en coordonnées Pixel (X, Y) sur l'image TIF
+            const x = Math.floor(((lon - min
