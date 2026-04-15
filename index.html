@@ -3,26 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trace AR iPhone - Calibration Tactile Complète</title>
+    <title>Trace AR iPhone - Tubes & Calibration XYZ</title>
     
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; background-color: #000; }
-        
-        /* Boutons d'interface protégés du glissement */
         #ui-layer { position: absolute; top: 20px; left: 0; width: 100%; display: flex; justify-content: center; z-index: 1000; }
         .upload-btn { background-color: rgba(255, 255, 255, 0.9); color: #007aff; padding: 12px 24px; border-radius: 20px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; }
         #file-input { display: none; }
         
-        #calibration-panel { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: none; }
-        .cal-btn { height: 40px; padding: 0 15px; border-radius: 20px; background: rgba(255,255,255,0.8); font-size: 14px; display: flex; justify-content: center; align-items: center; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); color: #ff4d4f;}
-        .cal-btn:active { background: #ff4d4f; color: white; }
-
-        /* Affichage des données au centre */
-        #status-message { position: absolute; top: 70px; width: 100%; text-align: center; color: white; text-shadow: 1px 1px 3px black; font-weight: bold; z-index: 1000; font-size: 16px; padding: 0 10px; box-sizing: border-box; pointer-events: none; }
-        #altitude-debug { position: absolute; top: 95px; width: 100%; text-align: center; color: #4ade80; font-size: 12px; text-shadow: 1px 1px 2px black; z-index: 1000; font-weight: bold; pointer-events: none;}
+        #status-message { position: absolute; top: 70px; width: 100%; text-align: center; color: white; text-shadow: 1px 1px 3px black; font-weight: bold; z-index: 1000; font-size: 14px; padding: 0 10px; box-sizing: border-box; pointer-events: none; }
+        #altitude-debug { position: absolute; top: 90px; width: 100%; text-align: center; color: #4ade80; font-size: 12px; text-shadow: 1px 1px 2px black; z-index: 1000; font-weight: bold; pointer-events: none;}
         
-        /* Indication visuelle pour l'utilisateur */
-        #tuto-text { position: absolute; bottom: 40px; width: 100%; text-align: center; color: rgba(255,255,255,0.7); font-size: 14px; font-weight: bold; pointer-events: none; display: none; }
+        /* Panneau de calibration amélioré */
+        #calibration-panel {
+            position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: none; 
+            display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+        }
+        .cal-btn { padding: 12px 20px; border-radius: 20px; background: rgba(255,255,255,0.9); font-size: 14px; font-weight: bold; cursor: pointer; user-select: none; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; border: 2px solid transparent;}
+        .cal-btn:active { opacity: 0.7; }
+        
+        /* Bouton spécifique pour réinitialiser */
+        #btn-reset { background: rgba(200,200,200,0.7); color: black; padding: 8px 15px; font-size: 12px;}
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -31,8 +32,58 @@
     <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
     <script>
-        // La Base de Données Altitudes TSV
+        // --- BASE DE DONNÉES TSV ---
         const baseAltitudesCanons = { "1": 1479.13, "3": 1483.37, "4": 1488.34, "5": 1499.34, "6": 1514.64, "7": 1525.86, "8": 1536.38, "9": 1545.48, "10": 1556.86, "11": 1565.4, "12": 1574.41, "13": 1584.13, "14": 1597.25, "15": 1611.2, "16": 1627.85, "17": 1641.34, "19": 1658.16, "21": 1669.33, "22": 1678.93, "23": 1693.59, "24": 1705.7, "25": 1713.46, "26": 1719.52, "27": 1723.04, "28": 1725.49, "29": 1735.08, "30": 1748.74, "31": 1765, "34": 1677.82, "36": 1703.71, "37": 1717.1, "38": 1732.29, "39": 1744.22, "40": 1753.8, "41": 1765.66, "42": 1779.46, "43": 1791.08, "44": 1801.31, "45": 1809.83, "48": 1813.67, "49": 1812.99, "51": 1789.55, "52": 1781.06, "53": 1771.95, "54": 1758.97, "55": 1745.04, "58": 1788.26, "59": 1770.3, "60": 1754.44, "61": 1740.98, "62": 1728.93, "63": 1712.57, "65": 1488.31, "66": 1493.06, "67": 1493.18, "68": 1499.88, "69": 1515.76, "70": 1530.27, "71": 1543.46, "72": 1555.18, "73": 1568.21, "74": 1587.09, "75": 1612.13, "76": 1636.5, "77": 1651.28, "78": 1664.79, "79": 1677.99, "80": 1687.71, "81": 1705.46, "82": 1722.01, "83": 1739.94, "84": 1758.63, "85": 1778.63, "86": 1803.76, "87": 1838.55, "88": 1867.06, "89": 1860.79, "90": 1858.55, "91": 1870.2, "98": 1525.45, "99": 1534.99, "100": 1546.05, "101": 1558.28, "102": 1575.15, "103": 1596.41, "104": 1620.98, "105": 1644.17, "106": 1663.53, "107": 1721.87, "108": 1741.33, "109": 1754.19, "110": 1771.06, "111": 1792.36, "112": 1800.18, "113": 1784.89, "114": 1782.91, "115": 1787.99, "116": 1787.98, "117": 1787.16, "118": 1785.05, "119": 1769.23, "120": 1801.0, "122": 1776.82, "123": 1785.01, "124": 1783.12, "125": 1782.45, "126": 1774.85, "127": 1762.09, "128": 1752.72, "129": 1741.53, "130": 1728.95, "131": 1714.71, "132": 1699.1, "133": 1686.8, "134": 1672.52, "135": 1662.24, "136": 1653.57, "137": 1640.89, "138": 1629.7, "139": 1617.42, "140": 1778.67, "141": 1772.81, "142": 1754.69, "143": 1729.63, "144": 1702.74, "145": 1680.28, "146": 1653.04, "147": 1636.31, "148": 1618.2, "149": 1598.74, "150": 1577.45, "151": 1539.16, "152": 1517.41, "153": 1481.02, "154": 1456.12, "155": 1777.79, "156": 1766.49, "157": 1750.37, "158": 1726.82, "159": 1711.02, "160": 1697.38, "161": 1678.32, "162": 1759.33, "163": 1752.89, "164": 1744.7, "165": 1737.05, "166": 1726.81, "167": 1713.02, "168": 1705.04, "169": 1701.77, "170": 1695.92, "171": 1687.84, "172": 1680.38, "173": 1675.61, "174": 1669.49, "175": 1665.9, "176": 1661.9, "177": 1658.78, "178": 1654.03, "180": 1756.79, "181": 1762.92, "201": 1884.55, "202": 1903.76, "203": 1915.59, "204": 1947.38, "205": 1966.3, "206": 1967.57, "207": 1973.03, "208": 1983.24, "209": 1979.48, "210": 1990.25, "211": 2019.23, "212": 2027.2, "213": 2039.91, "214": 2046.6, "215": 2070.89, "216": 2075.74, "217": 2086.42, "218": 2110.66, "219": 2117.4, "220": 2124.82, "221": 2122.38, "305": 2077.67, "318": 1850.47, "319": 1842.64, "320": 1823.12, "321": 1809.41, "322": 1785.21, "323": 1752.69, "324": 1727.47, "325": 1708.36, "326": 1683.33, "327": 1663.18, "328": 1638.28, "329": 1613.8, "330": 1588.49, "331": 1573.48, "333": 1551.71, "1002": 1478.87, "1032": 1783.9, "1033": 1796.03, "1047": 1815.98, "1050": 1794.16, "1057": 1795.54, "1092": 1883.14, "1179": 1654.04, "10089": 1499.55 };
+
+        // --- NOUVEAU COMPOSANT : TUBE 3D (Pour les Traces) ---
+        AFRAME.registerComponent('kml-tube', {
+            schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#FF3B30'}, opacity: {type: 'number', default: 0.8}, relativeAlt: {type: 'number', default: 0} },
+            init: function() {
+                const pointsArr = this.data.points.trim().replace(/\n/g, ' ').split(/\s+/);
+                if (pointsArr.length < 2) return;
+
+                const pt0 = pointsArr[0].split(',');
+                const lon0 = parseFloat(pt0[0]), lat0 = parseFloat(pt0[1]);
+                if(isNaN(lon0) || isNaN(lat0)) return; 
+
+                const pathPoints = [];
+                let lastX = null, lastZ = null;
+
+                for(let i=0; i < pointsArr.length; i++) {
+                    const pt = pointsArr[i].split(',');
+                    if (pt.length >= 2) {
+                        const lon = parseFloat(pt[0]), lat = parseFloat(pt[1]);
+                        if(!isNaN(lon) && !isNaN(lat)){
+                            const dist = calculateDistance(lat0, lon0, lat, lon);
+                            const bearing = calculateBearing(lat0, lon0, lat, lon);
+                            const x = dist * Math.sin(bearing);
+                            const z = -dist * Math.cos(bearing);
+
+                            // Sécurité : On évite de créer des points empilés qui font planter le générateur de tube
+                            if (lastX !== null && Math.abs(x - lastX) < 0.1 && Math.abs(z - lastZ) < 0.1) continue;
+
+                            pathPoints.push(new THREE.Vector3(x, 0, z));
+                            lastX = x; lastZ = z;
+                        }
+                    }
+                }
+
+                if (pathPoints.length < 2) return;
+
+                try {
+                    const curve = new THREE.CatmullRomCurve3(pathPoints);
+                    // Génération d'un tube 3D : Rayon de 1.5 mètre (bien visible en montagne)
+                    const geometry = new THREE.TubeGeometry(curve, pathPoints.length, 1.5, 6, false);
+                    const material = new THREE.MeshBasicMaterial({color: this.data.color, transparent: true, opacity: this.data.opacity});
+                    const mesh = new THREE.Mesh(geometry, material);
+
+                    mesh.position.y = this.data.relativeAlt;
+                    this.el.setObject3D('mesh', mesh);
+                } catch (e) {
+                    console.warn("Ligne ignorée : Topologie complexe", e);
+                }
+            }
+        });
 
         // Composant Surfaces
         AFRAME.registerComponent('kml-polygon', {
@@ -66,7 +117,58 @@
             }
         });
 
-        // Outils GPS
+        // --- COMPOSANT GLISSER-DÉPOSER INTELLIGENT (X, Y et Z) ---
+        AFRAME.registerComponent('ar-drag-pan', {
+            init: function () {
+                this.container = document.getElementById('kml-container');
+                this.isDragging = false;
+                this.lastX = 0;
+                this.lastY = 0;
+
+                this.el.addEventListener('mousedown', (evt) => {
+                    this.isDragging = true;
+                    const mouseEvt = evt.detail.mouseEvent || evt;
+                    this.lastX = mouseEvt.clientX || (mouseEvt.touches ? mouseEvt.touches[0].clientX : 0);
+                    this.lastY = mouseEvt.clientY || (mouseEvt.touches ? mouseEvt.touches[0].clientY : 0);
+                    document.getElementById('status-message').style.color = "#FFCC00";
+                });
+
+                window.addEventListener('mouseup', () => { this.isDragging = false; document.getElementById('status-message').style.color = "white"; });
+                window.addEventListener('touchend', () => { this.isDragging = false; document.getElementById('status-message').style.color = "white"; });
+
+                window.addEventListener('mousemove', this.onDrag.bind(this));
+                window.addEventListener('touchmove', this.onDrag.bind(this), {passive: false});
+            },
+            onDrag: function (evt) {
+                if (!this.isDragging) return;
+                evt.preventDefault(); 
+                
+                const currentX = evt.clientX || (evt.touches ? evt.touches[0].clientX : 0);
+                const currentY = evt.clientY || (evt.touches ? evt.touches[0].clientY : 0);
+                
+                const deltaX = currentX - this.lastX;
+                const deltaY = currentY - this.lastY;
+                
+                this.lastX = currentX;
+                this.lastY = currentY;
+
+                const speed = 0.05; 
+                const pos = this.container.getAttribute('position');
+                const mode = window.dragMode || 'Y'; // On lit le mode choisi par l'utilisateur
+
+                if (mode === 'Y') {
+                    // Mode Altitude : Haut/Bas écran modifie le Y
+                    this.container.setAttribute('position', { x: pos.x + (deltaX * speed), y: pos.y - (deltaY * speed), z: pos.z });
+                    document.getElementById('status-message').innerText = `X: ${pos.x.toFixed(1)}m | Altitude(Y): ${(pos.y - (deltaY * speed)).toFixed(1)}m`;
+                } else {
+                    // Mode Profondeur : Haut/Bas écran modifie le Z (Avancer/Reculer)
+                    this.container.setAttribute('position', { x: pos.x + (deltaX * speed), y: pos.y, z: pos.z - (deltaY * speed) });
+                    document.getElementById('status-message').innerText = `X: ${pos.x.toFixed(1)}m | Profondeur(Z): ${(pos.z - (deltaY * speed)).toFixed(1)}m`;
+                }
+            }
+        });
+
+        // Utilitaires mathématiques
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3; const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
@@ -88,16 +190,15 @@
 
     <div id="status-message">📍 Autorisez la caméra</div>
     <div id="altitude-debug">Alt. iPhone : Recherche...</div>
-    <div id="tuto-text">👆 Glissez sur l'écran pour calibrer la vue</div>
 
     <div id="calibration-panel">
-        <div class="cal-btn" id="btn-reset">Réinitialiser</div>
+        <div class="cal-btn" id="btn-toggle-mode" style="border-color: #007aff; color: #007aff;">Glisser : ALTITUDE (Y)</div>
+        <div class="cal-btn" id="btn-reset">Reset Position</div>
     </div>
 
-    <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;">
+    <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
         <a-camera gps-camera="minDistance: 1; maxDistance: 10000;" rotation-reader></a-camera>
-        
-        <a-entity id="kml-container" position="0 0 0" rotation="0 0 0"></a-entity>
+        <a-entity id="kml-container" position="0 0 0"></a-entity>
     </a-scene>
 
     <script>
@@ -105,71 +206,30 @@
         const altDebugEl = document.getElementById('altitude-debug');
         const containerEl = document.getElementById('kml-container');
         const calibPanel = document.getElementById('calibration-panel');
-        const tutoText = document.getElementById('tuto-text');
+        const btnToggleMode = document.getElementById('btn-toggle-mode');
 
         let playerLat = null, playerLon = null, playerAlt = 0; 
-
-        // --- GESTION DU GLISSER-DÉPOSER GLOBAL (VRAIE FLUIDITÉ) ---
-        let isCalibrating = false;
-        let lastTouchX = 0;
-        let lastTouchY = 0;
-        let offsetCompass = 0; // Tourne la boussole (axe X écran)
-        let offsetAlt = 0;     // Modifie l'altitude (axe Y écran)
-
-        function startDrag(x, y) {
-            isCalibrating = true;
-            lastTouchX = x;
-            lastTouchY = y;
-            statusEl.style.color = "#FFCC00";
-            tutoText.style.display = "none"; // Cache le tuto quand on l'utilise
-        }
-
-        function doDrag(x, y) {
-            if (!isCalibrating) return;
-            
-            const deltaX = x - lastTouchX;
-            const deltaY = y - lastTouchY;
-            lastTouchX = x;
-            lastTouchY = y;
-
-            // Sensibilité (à ajuster selon vos goûts sur le terrain)
-            offsetCompass += deltaX * 0.2; // 1 pixel glissé = 0.2° de rotation de la boussole
-            offsetAlt -= deltaY * 0.05;    // 1 pixel glissé = 5 cm d'altitude (inversé pour que haut = monte)
-
-            // On applique les réglages au conteneur principal
-            containerEl.setAttribute('rotation', `0 ${offsetCompass} 0`);
-            containerEl.setAttribute('position', `0 ${offsetAlt} 0`);
-            
-            statusEl.innerText = `Boussole ajustée : ${offsetCompass.toFixed(1)}° | Altitude ajustée : ${offsetAlt.toFixed(1)}m`;
-        }
-
-        function endDrag() {
-            if (isCalibrating) {
-                isCalibrating = false;
-                statusEl.style.color = "white";
+        
+        // --- GESTION DU BOUTON DE MODE (Y vs Z) ---
+        window.dragMode = 'Y'; // Par défaut, on règle l'altitude
+        btnToggleMode.onclick = () => {
+            if (window.dragMode === 'Y') {
+                window.dragMode = 'Z';
+                btnToggleMode.innerText = "Glisser : PROFONDEUR (Z)";
+                btnToggleMode.style.borderColor = "#ff4d4f";
+                btnToggleMode.style.color = "#ff4d4f";
+            } else {
+                window.dragMode = 'Y';
+                btnToggleMode.innerText = "Glisser : ALTITUDE (Y)";
+                btnToggleMode.style.borderColor = "#007aff";
+                btnToggleMode.style.color = "#007aff";
             }
-        }
-
-        // Événements iPhone (Tactile)
-        document.addEventListener('touchstart', (e) => {
-            if (e.target.closest('#ui-layer') || e.target.closest('#calibration-panel')) return; 
-            startDrag(e.touches[0].clientX, e.touches[0].clientY);
-        });
-        document.addEventListener('touchmove', (e) => {
-            if (isCalibrating) e.preventDefault(); // Empêche l'iPhone de "scroller" la page web
-            doDrag(e.touches[0].clientX, e.touches[0].clientY);
-        }, {passive: false});
-        document.addEventListener('touchend', endDrag);
-
-        // Bouton Reset
-        document.getElementById('btn-reset').onclick = () => { 
-            offsetCompass = 0; offsetAlt = 0;
-            containerEl.setAttribute('rotation', '0 0 0');
-            containerEl.setAttribute('position', '0 0 0');
-            statusEl.innerText = `Calibrage annulé (Valeurs GPS brutes)`; 
         };
 
-        // --- GPS EN DIRECT ---
+        // Reset
+        document.getElementById('btn-reset').onclick = () => { containerEl.setAttribute('position', {x: 0, y: 0, z: 0}); statusEl.innerText = `Calibrage annulé`; };
+
+        // GPS EN DIRECT
         window.addEventListener('load', () => {
             if (!("geolocation" in navigator)) { statusEl.innerText = "❌ GPS non supporté."; return; }
             navigator.geolocation.watchPosition(
@@ -186,22 +246,16 @@
             );
         });
 
-        // --- LECTURE DU FICHIER ---
+        // CHARGEMENT FICHIER
         document.getElementById('file-input').addEventListener('change', async function(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            statusEl.innerText = "Génération de la 3D...";
+            statusEl.innerText = "Analyse Topographique...";
             statusEl.style.color = "white"; 
             
             while (containerEl.firstChild) { containerEl.removeChild(containerEl.firstChild); }
             calibPanel.style.display = "none"; 
-            tutoText.style.display = "none";
-
-            // Reset des variables d'offset pour le nouveau fichier
-            offsetCompass = 0; offsetAlt = 0;
-            containerEl.setAttribute('rotation', '0 0 0');
-            containerEl.setAttribute('position', '0 0 0');
 
             try {
                 let kmlText = "";
@@ -214,7 +268,6 @@
                     kmlText = await file.text();
                 }
                 
-                // SetTimeout laisse respirer l'iPhone et empêche le freeze
                 setTimeout(() => {
                     try { processKMLData(kmlText); } 
                     catch(e) { statusEl.style.color = "#ff4d4f"; statusEl.innerText = "🚨 Erreur : " + e.message; }
@@ -239,13 +292,13 @@
             return 0;
         }
 
-        // --- GÉNÉRATEUR DES ÉLÉMENTS 3D ---
+        // GÉNÉRATEUR 3D
         function processKMLData(kmlString) {
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(kmlString, "text/xml");
             
             let firstLat = null, firstLon = null;
-            let stats = { canons: 0, jalons: 0, surfaces: 0 };
+            let stats = { canons: 0, traces: 0, surfaces: 0 };
 
             // 1. SURFACES
             const polygons = xmlDoc.getElementsByTagName("Polygon");
@@ -258,7 +311,6 @@
                         const lon = parseFloat(firstPt[0]), lat = parseFloat(firstPt[1]);
                         if(isNaN(lon) || isNaN(lat)) continue; 
                         if (firstLat === null) { firstLat = lat; firstLon = lon; }
-                        
                         const relAlt = getAverageRelativeAltitude(text);
 
                         const surfaceEl = document.createElement('a-entity');
@@ -270,36 +322,30 @@
                 }
             }
 
-            // 2. TRACES
+            // 2. TRACES (Génération en Tubes 3D continus)
             const lines = xmlDoc.getElementsByTagName("LineString");
             for (let i = 0; i < lines.length; i++) {
                 const coordsTags = lines[i].getElementsByTagName("coordinates");
                 if (coordsTags.length > 0) {
-                    const points = coordsTags[0].textContent.trim().replace(/\n/g, ' ').split(/\s+/);
-                    const step = Math.max(1, Math.floor(points.length / 100)); 
-                    
-                    for (let j = 0; j < points.length; j += step) {
-                        const coords = points[j].split(',');
-                        if (coords.length >= 2) {
-                            const lon = parseFloat(coords[0]), lat = parseFloat(coords[1]);
-                            if(isNaN(lon) || isNaN(lat)) continue; 
-                            if (firstLat === null) { firstLat = lat; firstLon = lon; }
-                            
-                            const relAlt = (coords.length >= 3 && !isNaN(parseFloat(coords[2]))) ? parseFloat(coords[2]) - playerAlt : -1.5;
+                    const text = coordsTags[0].textContent.trim();
+                    const firstPt = text.split(/\s+/)[0].split(',');
+                    if (firstPt.length >= 2) {
+                        const lon = parseFloat(firstPt[0]), lat = parseFloat(firstPt[1]);
+                        if(isNaN(lon) || isNaN(lat)) continue; 
+                        if (firstLat === null) { firstLat = lat; firstLon = lon; }
+                        
+                        const relAlt = getAverageRelativeAltitude(text);
 
-                            const anchor = document.createElement('a-entity');
-                            anchor.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
-
-                            const jalon = document.createElement('a-sphere');
-                            jalon.setAttribute('position', `0 ${relAlt} 0`);
-                            jalon.setAttribute('radius', '1.5'); 
-                            jalon.setAttribute('color', '#FF3B30'); 
-                            jalon.setAttribute('opacity', '0.7');
-                            
-                            anchor.appendChild(jalon);
-                            containerEl.appendChild(anchor);
-                            stats.jalons++;
-                        }
+                        const lineEl = document.createElement('a-entity');
+                        lineEl.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
+                        lineEl.setAttribute('kml-tube', `points: ${text}; color: #FF3B30; opacity: 0.8; relativeAlt: ${relAlt}`);
+                        
+                        // On rend les tubes attrapables pour le glisser-déposer
+                        lineEl.setAttribute('class', 'clickable'); 
+                        lineEl.setAttribute('ar-drag-pan', '');
+                        
+                        containerEl.appendChild(lineEl);
+                        stats.traces++;
                     }
                 }
             }
@@ -341,6 +387,9 @@
                             const sphere = document.createElement('a-sphere');
                             sphere.setAttribute('radius', '3.5');
                             sphere.setAttribute('color', '#FFCC00'); 
+                            // Attrapable
+                            sphere.setAttribute('class', 'clickable');
+                            sphere.setAttribute('ar-drag-pan', '');
                             heightContainer.appendChild(sphere);
 
                             const etiquette = document.createElement('a-text');
@@ -365,9 +414,8 @@
             }
 
             if (firstLat !== null && playerLat !== null) {
-                statusEl.innerText = `${stats.canons} Canons chargés. Prêt.`;
-                calibPanel.style.display = "block"; 
-                tutoText.style.display = "block";
+                statusEl.innerText = `${stats.canons} Canons, ${stats.traces} Traces. Touchez et glissez un élément !`;
+                calibPanel.style.display = "flex"; 
             }
         }
     </script>
