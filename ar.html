@@ -11,30 +11,70 @@
     <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
     <style>
-        /* ⚠️ LE FIX EST ICI : background: transparent !important */
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent !important; font-family: -apple-system, sans-serif; }
+        /* ⚠️ CORRECTION DU FOND NOIR : On force la transparence absolue */
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; background-color: transparent !important; 
+            font-family: -apple-system, sans-serif; 
+        }
         
-        #ar-ui { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
-        
-        #ar-header { background: rgba(0,0,0,0.6); color: white; padding: 15px; text-align: center; font-size: 14px; pointer-events: auto; backdrop-filter: blur(5px);}
-        #ar-toggle-mode { background: transparent; border: 1px solid #4ade80; color: #4ade80; padding: 8px 15px; border-radius: 20px; font-size: 12px; margin-top: 10px; cursor: pointer; }
+        /* On force le canvas 3D à être transparent */
+        .a-canvas {
+            background-color: transparent !important;
+        }
 
-        #btn-back { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; font-weight: bold; border: none; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer; pointer-events: auto; }
+        /* On s'assure que la vidéo de la caméra prend tout l'écran en arrière-plan */
+        #arjs-video {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            min-width: 100vw !important;
+            min-height: 100vh !important;
+            object-fit: cover !important;
+            z-index: -10 !important; /* Bien derrière le reste */
+        }
         
-        #loading-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; }
+        /* Interface superposée */
+        #ar-ui { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            z-index: 9999; display: flex; flex-direction: column; 
+            justify-content: space-between; pointer-events: none; 
+        }
+        
+        #ar-header { 
+            background: rgba(0,0,0,0.6); color: white; padding: 15px; 
+            text-align: center; font-size: 14px; pointer-events: auto; backdrop-filter: blur(5px);
+        }
+        #ar-toggle-mode { 
+            background: transparent; border: 1px solid #4ade80; color: #4ade80; 
+            padding: 8px 15px; border-radius: 20px; font-size: 12px; margin-top: 10px; cursor: pointer; 
+        }
+
+        #btn-back { 
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
+            background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; 
+            font-weight: bold; border: none; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
+            cursor: pointer; pointer-events: auto; 
+        }
+        
+        #loading-screen { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #111; z-index: 10000; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; color: white; 
+        }
     </style>
 </head>
 <body>
 
     <div id="loading-screen">
         <h3>Initialisation AR...</h3>
-        <p id="loading-text">Veuillez autoriser la caméra et le GPS</p>
+        <p id="loading-text">Autorisez l'appareil photo si demandé.</p>
     </div>
 
     <div id="ar-ui">
         <div id="ar-header">
             <strong>Calibrage Tactile</strong><br>
-            Glissez pour aligner.<br>
+            Glissez pour aligner les pistes.<br>
             <button id="ar-toggle-mode">Actuel : BOUSSOLE</button>
         </div>
         <button id="btn-back">Retour à la Carte</button>
@@ -42,10 +82,12 @@
 
     <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; debugUIEnabled: false;">
         <a-camera gps-camera="minDistance: 1; maxDistance: 20000;" rotation-reader></a-camera>
+        
         <a-entity id="ar-kml-container" position="0 0 0" rotation="0 0 0"></a-entity>
     </a-scene>
 
     <script>
+        // --- Outils Mathématiques ---
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3; const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
@@ -68,6 +110,7 @@
             }).filter(p => p !== null);
         }
 
+        // --- Créateurs de Géométrie 3D pour AR ---
         AFRAME.registerComponent('kml-tube', {
             schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#FF3B30'}, playerAlt: {type: 'number', default: 0} },
             init: function() {
@@ -84,7 +127,7 @@
                     lastX = x; lastZ = z;
                 }
                 if (pathPoints.length > 1) {
-                    const geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pathPoints), pathPoints.length, 0.3, 4, false); 
+                    const geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pathPoints), Math.max(2, pathPoints.length), 0.5, 4, false); 
                     this.el.setObject3D('mesh', new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color: this.data.color, transparent: true, opacity: 0.9})));
                 }
             }
@@ -119,17 +162,18 @@
             }
         });
 
+        // --- Lancement de la scène AR ---
         window.addEventListener('load', () => {
             const kmlText = localStorage.getItem('kmlForAR');
             if (!kmlText) {
-                document.getElementById('loading-text').innerHTML = "Aucune trace en mémoire.<br>Générez un KML depuis l'Atelier.";
+                document.getElementById('loading-text').innerHTML = "Aucune trace trouvée.<br>Retournez à l'atelier et chargez un KMZ.";
                 return;
             }
 
-            document.getElementById('loading-text').innerText = "Attente du GPS (Sortez à l'extérieur si besoin)...";
+            document.getElementById('loading-text').innerText = "Attente du signal GPS...";
 
             navigator.geolocation.getCurrentPosition(pos => {
-                document.getElementById('loading-text').innerText = "Construction 3D...";
+                document.getElementById('loading-text').innerText = "Génération des tracés...";
                 
                 const playerLat = pos.coords.latitude;
                 const playerLon = pos.coords.longitude;
@@ -140,6 +184,7 @@
                 const arContainer = document.getElementById('ar-kml-container');
                 let nbVisibles = 0;
 
+                // 1. SURFACES
                 for (let p of kmlXmlDoc.getElementsByTagName("Polygon")) {
                     const coords = p.getElementsByTagName("coordinates")[0]?.textContent;
                     const pts = parseCoords(coords);
@@ -151,6 +196,7 @@
                     }
                 }
 
+                // 2. LIGNES
                 for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
                     const coords = l.getElementsByTagName("coordinates")[0]?.textContent;
                     const pts = parseCoords(coords);
@@ -162,6 +208,7 @@
                     }
                 }
 
+                // 3. POINTS
                 for (let pm of kmlXmlDoc.getElementsByTagName("Placemark")) {
                     const p = pm.getElementsByTagName("Point")[0];
                     if (p) {
@@ -174,24 +221,25 @@
                             const el = document.createElement('a-entity');
                             el.setAttribute('gps-entity-place', `latitude: ${pts[0].lat}; longitude: ${pts[0].lon};`);
                             el.innerHTML = `
-                                <a-sphere radius="0.5" color="#FFCC00" position="0 ${relAlt} 0" opacity="0.9"></a-sphere>
-                                <a-text value="${name}\nAlt: ${Math.round(pts[0].alt)}m" position="0 ${relAlt + 2} 0" look-at="[gps-camera]" scale="5 5 5" align="center" color="#FFFFFF"></a-text>
+                                <a-sphere radius="1" color="#FFCC00" position="0 ${relAlt} 0" opacity="0.9"></a-sphere>
+                                <a-text value="${name}\nAlt: ${Math.round(pts[0].alt)}m" position="0 ${relAlt + 3} 0" look-at="[gps-camera]" scale="6 6 6" align="center" color="#FFFFFF"></a-text>
                             `;
                             arContainer.appendChild(el); nbVisibles++;
                         }
                     }
                 }
 
+                // Disparition de l'écran de chargement
                 document.getElementById('loading-screen').style.display = 'none';
 
-                if (nbVisibles === 0) alert("⚠️ RADAR GPS : La trace est à plus de 15 km. Rien n'apparaîtra à l'écran.");
+                if (nbVisibles === 0) alert("⚠️ RADAR GPS : La piste la plus proche est à plus de 15 km de votre téléphone. Regardez bien à l'horizon !");
 
             }, err => {
-                document.getElementById('loading-text').innerText = "❌ Échec GPS. Autorisez la localisation.";
+                document.getElementById('loading-text').innerText = "❌ Échec GPS. La Réalité Augmentée exige la géolocalisation pour fonctionner.";
             }, {enableHighAccuracy: true});
         });
 
-        // Joystick
+        // --- GESTION DU JOYSTICK TACTILE ---
         let arDragMode = 'compass'; let isArDragging = false; let lastArX = 0, lastArY = 0; let arOffsetCompass = 0, arOffsetAlt = 0;
         document.getElementById('ar-toggle-mode').onclick = () => {
             const btn = document.getElementById('ar-toggle-mode');
@@ -214,8 +262,10 @@
                 else { arOffsetAlt -= deltaY * 0.1; arContainer.setAttribute('position', `0 ${arOffsetAlt} 0`); }
             }
         }, {passive: false});
+        
         document.addEventListener('touchend', () => { isArDragging = false; });
 
+        // RETOUR À LA CARTE
         document.getElementById('btn-back').addEventListener('click', () => {
             window.location.href = 'index.html';
         });
