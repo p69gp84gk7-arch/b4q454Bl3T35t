@@ -43,6 +43,7 @@
         .btn-calc { background: #3498db; color: white; }
         .btn-3d { background: #9b59b6; color: white; }
         .btn-ar { background: #e67e22; color: white; }
+        .download-btn { background: #e67e22; color: white;}
         
         #log-panel { background: #1a252f; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 11px; color: #4ade80; overflow-y: auto; white-space: pre-wrap; flex-grow: 1; min-height: 50px;}
         .disabled-step { opacity: 0.4; pointer-events: none; }
@@ -59,36 +60,23 @@
         /* SÉCURITÉ AR MODE */
         body.ar-mode #app-container { display: none !important; }
         body.ar-mode { background: transparent !important; margin: 0; padding: 0;}
-        
         #ar-view { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; display: none; }
         body.ar-mode #ar-view { display: block; }
-
-        /* INTERFACE AR */
-        #ar-ui {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999998;
-            display: none; flex-direction: column; justify-content: space-between; pointer-events: none;
-        }
-        body.ar-mode #ar-ui { display: flex; }
         
+        #ar-ui { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999998; display: none; flex-direction: column; justify-content: space-between; pointer-events: none; }
+        body.ar-mode #ar-ui { display: flex; }
         #ar-header { background: rgba(0,0,0,0.6); color: white; padding: 15px; text-align: center; font-size: 14px; pointer-events: auto; backdrop-filter: blur(5px);}
         #ar-toggle-mode { background: transparent; border: 1px solid #4ade80; color: #4ade80; padding: 8px 15px; border-radius: 20px; font-size: 12px; margin-top: 10px; cursor: pointer; font-weight: bold;}
 
-        #exit-ar-btn { 
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
-            z-index: 999999; display: block; background: #e74c3c; color: white; padding: 15px 30px; 
-            border-radius: 30px; font-weight: bold; border: none; font-size: 16px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer; pointer-events: auto;
-        }
+        #exit-ar-btn { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 999999; display: block; background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; font-weight: bold; border: none; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer; pointer-events: auto; }
     </style>
 </head>
 <body>
 
     <div id="ar-view"></div>
-    
     <div id="ar-ui">
         <div id="ar-header">
-            <strong>Si la piste vole ou est décalée :</strong><br>
-            Glissez sur l'écran pour la plaquer au sol.<br>
+            <strong>Calibrage AR Manuel</strong><br> Glissez sur l'écran pour réajuster.<br>
             <button id="ar-toggle-mode">Ajustement : BOUSSOLE (Gauche/Droite)</button>
         </div>
         <button id="exit-ar-btn">Quitter la Caméra</button>
@@ -97,22 +85,23 @@
     <div id="app-container">
         <div id="map"></div>
         <div id="sidebar">
-            <h2>SIG Montagne</h2>
-            <div class="file-box" id="box-kmz"><label>1. Trace KML/KMZ</label><input type="file" id="kmz-input" accept=".kml,.kmz"></div>
-            <div class="file-box" id="box-tif"><label>2. Terrain (.tif Lambert 93)</label><input type="file" id="tif-input" accept=".tif,.tiff"></div>
+            <h2>SIG Montagne (Multi-Fichiers)</h2>
+            <div class="file-box" id="box-kmz"><label>1. Traces (KML/KMZ)</label><input type="file" id="kmz-input" accept=".kml,.kmz" multiple></div>
+            <div class="file-box" id="box-tif"><label>2. Terrains (.tif Lambert 93)</label><input type="file" id="tif-input" accept=".tif,.tiff" multiple></div>
+            
             <div class="file-box disabled-step" id="box-process"><button id="btn-process" class="action-btn btn-calc">3. Aligner sur Terrain</button></div>
             <div style="display: flex; gap: 10px;">
                 <div class="file-box disabled-step" id="box-preview" style="flex: 1; padding: 8px;"><button id="btn-preview" class="action-btn btn-3d">👁️ Vue 3D</button></div>
                 <div class="file-box disabled-step" id="box-ar" style="flex: 1; padding: 8px;"><button id="btn-ar" class="action-btn btn-ar">📱 Vue AR</button></div>
             </div>
-            <div class="file-box disabled-step" id="box-export"><button id="btn-export" class="action-btn download-btn">💾 Télécharger KML</button></div>
+            <div class="file-box disabled-step" id="box-export"><button id="btn-export" class="action-btn download-btn">💾 Télécharger (ZIP/KML)</button></div>
             <div id="log-panel">En attente...</div>
         </div>
     </div>
 
     <div id="modal-3d">
         <div id="header-3d">
-            <span style="font-size: 12px;">🌍 Double-clic pour centrer</span>
+            <span style="font-size: 12px;">🌍 Double-clic pour centrer la caméra</span>
             <button id="close-3d">Fermer</button>
         </div>
         <div id="canvas-container">
@@ -134,245 +123,199 @@
 
         proj4.defs("EPSG:2154", "+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
 
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-        }
-        function calculateBearing(lat1, lon1, lat2, lon2) {
-            const toRad = Math.PI / 180, phi1 = lat1 * toRad, phi2 = lat2 * toRad, lam1 = lon1 * toRad, lam2 = lon2 * toRad;
-            const y = Math.sin(lam2 - lam1) * Math.cos(phi2), x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(lam2 - lam1);
-            return Math.atan2(y, x); 
-        }
+        // === GLOBALES MULTI-FICHIERS ===
+        let kmlFilesData = []; // [{ name: "pistes.kml", xml: DOMDocument }]
+        let mntFilesData = []; // [{ data: FloatArray, width, height, bbox, isLambert93 }]
+        
+        let mapBoundsWgs84 = L.latLngBounds(); // Limites globales pour la 2D et 3D
+        let isKmzLoaded = false; let isMntLoaded = false;
 
-        // === COMPOSANTS A-FRAME ===
-        AFRAME.registerComponent('kml-tube', {
-            schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#FF3B30'}, referenceAlt: {type: 'number', default: 0} },
-            init: function() {
-                const pointsArr = this.data.points.trim().replace(/\n/g, ' ').split(/\s+/);
-                if (pointsArr.length < 2) return;
-                const pt0 = pointsArr[0].split(',');
-                const lon0 = parseFloat(pt0[0]), lat0 = parseFloat(pt0[1]);
-                if(isNaN(lon0) || isNaN(lat0)) return; 
-                const pathPoints = []; let lastX = null, lastZ = null;
-
-                for(let i=0; i < pointsArr.length; i++) {
-                    const pt = pointsArr[i].split(',');
-                    if (pt.length >= 2) {
-                        const lon = parseFloat(pt[0]), lat = parseFloat(pt[1]), alt = parseFloat(pt[2]) || 0;
-                        if(!isNaN(lon) && !isNaN(lat)){
-                            const dist = calculateDistance(lat0, lon0, lat, lon);
-                            const bearing = calculateBearing(lat0, lon0, lat, lon);
-                            const x = dist * Math.sin(bearing);
-                            const z = -dist * Math.cos(bearing);
-                            const relAlt = (alt - this.data.referenceAlt) - 1.5;
-                            if (lastX !== null && Math.abs(x - lastX) < 0.1 && Math.abs(z - lastZ) < 0.1) continue;
-                            pathPoints.push(new THREE.Vector3(x, relAlt, z));
-                            lastX = x; lastZ = z;
-                        }
-                    }
-                }
-                if (pathPoints.length < 2) return;
-                try {
-                    const curve = new THREE.CatmullRomCurve3(pathPoints);
-                    const geometry = new THREE.TubeGeometry(curve, pathPoints.length, 0.1, 4, false); 
-                    const material = new THREE.MeshBasicMaterial({color: this.data.color, transparent: true, opacity: 0.9});
-                    this.el.setObject3D('mesh', new THREE.Mesh(geometry, material));
-                } catch (e) {}
-            }
-        });
-
-        AFRAME.registerComponent('kml-polygon', {
-            schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#3498db'}, referenceAlt: {type: 'number', default: 0} },
-            init: function() {
-                const pointsArr = this.data.points.trim().replace(/\n/g, ' ').split(/\s+/);
-                if (pointsArr.length < 3) return;
-                const pt0 = pointsArr[0].split(',');
-                const lon0 = parseFloat(pt0[0]), lat0 = parseFloat(pt0[1]);
-                if(isNaN(lon0) || isNaN(lat0)) return; 
-                
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                const original3DPoints = [];
-
-                for(let i = 0; i < pointsArr.length; i++) {
-                    const pt = pointsArr[i].split(',');
-                    if (pt.length >= 2) {
-                        const lon = parseFloat(pt[0]), lat = parseFloat(pt[1]), alt = parseFloat(pt[2]) || 0;
-                        if(isNaN(lon) || isNaN(lat)) continue; 
-                        const dist = calculateDistance(lat0, lon0, lat, lon);
-                        const bearing = calculateBearing(lat0, lon0, lat, lon);
-                        const x = dist * Math.sin(bearing);
-                        const z = -dist * Math.cos(bearing); 
-                        const relAlt = (alt - this.data.referenceAlt) - 1.5;
-                        
-                        original3DPoints.push({x: x, y: relAlt, z: z});
-                        if (i === 0) shape.moveTo(x, z); else shape.lineTo(x, z);
-                    }
-                }
-
-                const geometry = new THREE.ShapeGeometry(shape);
-                geometry.rotateX(-Math.PI / 2); 
-                const posAttribute = geometry.attributes.position;
-                for (let i = 0; i < posAttribute.count; i++) {
-                    const vx = posAttribute.getX(i), vz = posAttribute.getZ(i);
-                    let closestAlt = -1.5, minDist = Infinity;
-                    for(let j=0; j<original3DPoints.length; j++) {
-                        const distSq = Math.pow(original3DPoints[j].x - vx, 2) + Math.pow(original3DPoints[j].z - vz, 2);
-                        if(distSq < minDist) { minDist = distSq; closestAlt = original3DPoints[j].y; }
-                    }
-                    posAttribute.setY(i, closestAlt);
-                }
-                geometry.computeVertexNormals();
-                const material = new THREE.MeshBasicMaterial({ color: this.data.color, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false });
-                this.el.setObject3D('mesh', new THREE.Mesh(geometry, material));
-            }
-        });
-
-        // === LOGIQUE GLOBALE ===
         const map = L.map('map', {zoomControl: false}).setView([46.6, 2.2], 6);
         L.control.zoom({position: 'topleft'}).addTo(map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
         const kmlLayerGroup = L.featureGroup().addTo(map);
-        let mntBoundsLayer = null; 
+        const mntLayerGroup = L.featureGroup().addTo(map);
 
-        let kmlXmlDoc = null; let mntData = null; let mntWidth = 0, mntHeight = 0, mntBbox = null; let isLambert93 = false; let boundsWgs84Global = null;
-        let isKmzLoaded = false; let isMntLoaded = false;
-        let kmlFileName = "trace_export.kml";
-        
         function checkReady() { if(isKmzLoaded && isMntLoaded) document.getElementById('box-process').classList.remove('disabled-step'); }
 
+        // === 1. CHARGEMENT KML (MULTI) ===
         document.getElementById('kmz-input').addEventListener('change', async function(e) {
-            const file = e.target.files[0]; if(!file) return;
-            showLoad("Analyse KML...");
+            const files = e.target.files; if(files.length === 0) return;
+            showLoad("Analyse des KML...");
             kmlLayerGroup.clearLayers();
-            kmlFileName = file.name.toLowerCase().replace('.kmz', '').replace('.kml', '') + "_AR.kml";
+            kmlFilesData = [];
 
-            try {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                let baseName = file.name.toLowerCase().replace('.kmz', '').replace('.kml', '');
                 let text = "";
-                if(file.name.toLowerCase().endsWith('.kmz')) {
-                    const zip = await JSZip.loadAsync(await file.arrayBuffer());
-                    text = await zip.files[Object.keys(zip.files).find(n=>n.endsWith('.kml'))].async("text");
-                } else text = await file.text();
+                try {
+                    if(file.name.toLowerCase().endsWith('.kmz')) {
+                        const zip = await JSZip.loadAsync(await file.arrayBuffer());
+                        text = await zip.files[Object.keys(zip.files).find(n=>n.endsWith('.kml'))].async("text");
+                    } else text = await file.text();
 
-                kmlXmlDoc = new DOMParser().parseFromString(text, "text/xml");
-                const b = L.latLngBounds();
-                
-                for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
-                    const coords = l.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
-                    if(coords) {
-                        const pts = coords.map(c => [parseFloat(c.split(',')[1]), parseFloat(c.split(',')[0])]).filter(c=>!isNaN(c[0]));
-                        if(pts.length) { L.polyline(pts, {color: '#FF3B30', weight: 3}).addTo(kmlLayerGroup); pts.forEach(p=>b.extend(p)); }
+                    const xmlDoc = new DOMParser().parseFromString(text, "text/xml");
+                    kmlFilesData.push({ name: baseName, xml: xmlDoc });
+
+                    // Dessin 2D Rapide
+                    for (let l of xmlDoc.getElementsByTagName("LineString")) {
+                        const coords = l.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
+                        if(coords) {
+                            const pts = coords.map(c => [parseFloat(c.split(',')[1]), parseFloat(c.split(',')[0])]).filter(c=>!isNaN(c[0]));
+                            if(pts.length) { L.polyline(pts, {color: '#FF3B30', weight: 3}).addTo(kmlLayerGroup); pts.forEach(p=>mapBoundsWgs84.extend(p)); }
+                        }
                     }
-                }
-                for (let p of kmlXmlDoc.getElementsByTagName("Polygon")) {
-                    const coords = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
-                    if(coords) {
-                        const pts = coords.map(c => [parseFloat(c.split(',')[1]), parseFloat(c.split(',')[0])]).filter(c=>!isNaN(c[0]));
-                        if(pts.length) { L.polygon(pts, {color: '#3498db', weight: 2, fillOpacity:0.4}).addTo(kmlLayerGroup); pts.forEach(p=>b.extend(p)); }
+                    for (let p of xmlDoc.getElementsByTagName("Polygon")) {
+                        const coords = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
+                        if(coords) {
+                            const pts = coords.map(c => [parseFloat(c.split(',')[1]), parseFloat(c.split(',')[0])]).filter(c=>!isNaN(c[0]));
+                            if(pts.length) { L.polygon(pts, {color: '#3498db', weight: 2, fillOpacity:0.4}).addTo(kmlLayerGroup); pts.forEach(p=>mapBoundsWgs84.extend(p)); }
+                        }
                     }
-                }
-                for (let p of kmlXmlDoc.getElementsByTagName("Point")) {
-                    const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
-                    if(c && c.length>=2) { L.circleMarker([parseFloat(c[1]), parseFloat(c[0])], {radius:5, fillColor:'#FFCC00', color:'#000'}).addTo(kmlLayerGroup); b.extend([parseFloat(c[1]), parseFloat(c[0])]); }
-                }
-                if(b.isValid() && !mntData) map.fitBounds(b, {padding:[30,30]});
-                
-                document.getElementById('box-kmz').classList.add('active');
-                isKmzLoaded = true; 
-                document.getElementById('box-ar').classList.remove('disabled-step');
-                document.getElementById('box-export').classList.remove('disabled-step');
-                checkReady(); log("✅ Trace chargée.");
-            } catch(err) { log("❌ Erreur KML"); }
+                    for (let p of xmlDoc.getElementsByTagName("Point")) {
+                        const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
+                        if(c && c.length>=2) { L.circleMarker([parseFloat(c[1]), parseFloat(c[0])], {radius:5, fillColor:'#FFCC00', color:'#000'}).addTo(kmlLayerGroup); mapBoundsWgs84.extend([parseFloat(c[1]), parseFloat(c[0])]); }
+                    }
+                } catch(err) { log(`❌ Erreur KML sur ${file.name}`); }
+            }
+
+            if(mapBoundsWgs84.isValid() && mntFilesData.length === 0) map.fitBounds(mapBoundsWgs84, {padding:[30,30]});
+            
+            document.getElementById('box-kmz').classList.add('active');
+            isKmzLoaded = true; 
+            document.getElementById('box-ar').classList.remove('disabled-step');
+            document.getElementById('box-export').classList.remove('disabled-step');
+            checkReady(); log(`✅ ${kmlFilesData.length} traces KML chargées.`);
             hideLoad();
         });
 
+        // === 2. CHARGEMENT MNT (MULTI) ===
         document.getElementById('tif-input').addEventListener('change', async function(e) {
-            const file = e.target.files[0]; if(!file) return;
-            showLoad("Analyse MNT...");
-            try {
-                const img = await (await GeoTIFF.fromArrayBuffer(await file.arrayBuffer())).getImage();
-                mntBbox = img.getBoundingBox(); mntWidth = img.getWidth(); mntHeight = img.getHeight();
-                
-                if(Math.abs(mntBbox[0]) > 180) {
-                    isLambert93 = true;
-                    const sw = proj4("EPSG:2154", "EPSG:4326", [mntBbox[0], mntBbox[1]]);
-                    const ne = proj4("EPSG:2154", "EPSG:4326", [mntBbox[2], mntBbox[3]]);
-                    boundsWgs84Global = [[sw[1], sw[0]], [ne[1], ne[0]]]; 
-                } else {
-                    isLambert93 = false; boundsWgs84Global = [[mntBbox[1], mntBbox[0]], [mntBbox[3], mntBbox[2]]];
-                }
+            const files = e.target.files; if(files.length === 0) return;
+            showLoad("Analyse des MNT...");
+            mntLayerGroup.clearLayers();
+            mntFilesData = [];
 
-                mntData = (await img.readRasters())[0];
-                if(mntBoundsLayer) map.removeLayer(mntBoundsLayer);
-                mntBoundsLayer = L.rectangle(boundsWgs84Global, {color:"#ff4d4f", weight:2, fillOpacity:0.1}).addTo(map);
-                map.fitBounds(boundsWgs84Global);
-                document.getElementById('box-tif').classList.add('active');
-                isMntLoaded = true; checkReady(); log("✅ Terrain MNT chargé.");
-            } catch(err) { log("❌ Erreur MNT"); }
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                try {
+                    const img = await (await GeoTIFF.fromArrayBuffer(await file.arrayBuffer())).getImage();
+                    const bbox = img.getBoundingBox(); const w = img.getWidth(); const h = img.getHeight();
+                    let isL93 = false; let boundsWgs84 = [];
+                    
+                    if(Math.abs(bbox[0]) > 180) {
+                        isL93 = true;
+                        const sw = proj4("EPSG:2154", "EPSG:4326", [bbox[0], bbox[1]]);
+                        const ne = proj4("EPSG:2154", "EPSG:4326", [bbox[2], bbox[3]]);
+                        boundsWgs84 = [[sw[1], sw[0]], [ne[1], ne[0]]]; 
+                    } else {
+                        isL93 = false; boundsWgs84 = [[bbox[1], bbox[0]], [bbox[3], bbox[2]]];
+                    }
+
+                    const data = (await img.readRasters())[0];
+                    mntFilesData.push({ data: data, width: w, height: h, bbox: bbox, isLambert93: isL93 });
+                    
+                    L.rectangle(boundsWgs84, {color:"#ff4d4f", weight:2, fillOpacity:0.1}).addTo(mntLayerGroup);
+                    mapBoundsWgs84.extend(boundsWgs84[0]); mapBoundsWgs84.extend(boundsWgs84[1]);
+
+                } catch(err) { log(`❌ Erreur MNT sur ${file.name}`); }
+            }
+
+            if(mapBoundsWgs84.isValid()) map.fitBounds(mapBoundsWgs84, {padding:[30,30]});
+            document.getElementById('box-tif').classList.add('active');
+            isMntLoaded = true; checkReady(); log(`✅ ${mntFilesData.length} terrains chargés.`);
             hideLoad();
         });
 
+        // Fonction d'altitude qui interroge TOUS les MNT chargés
         function getElev(lat, lon) {
-            if(!mntData) return null;
-            let x = lon, y = lat;
-            if(isLambert93) { const c = proj4("EPSG:4326", "EPSG:2154", [lon, lat]); x = c[0]; y = c[1]; }
-            const px = Math.floor(((x - mntBbox[0]) / (mntBbox[2] - mntBbox[0])) * mntWidth);
-            const py = Math.floor(((mntBbox[3] - y) / (mntBbox[3] - mntBbox[1])) * mntHeight);
-            if(px<0 || px>=mntWidth || py<0 || py>=mntHeight) return null;
-            const a = mntData[py * mntWidth + px]; return (a>-500 && a<8000) ? a : null;
+            if(mntFilesData.length === 0) return null;
+            
+            for (let mnt of mntFilesData) {
+                let x = lon, y = lat;
+                if(mnt.isLambert93) { const c = proj4("EPSG:4326", "EPSG:2154", [lon, lat]); x = c[0]; y = c[1]; }
+                
+                // Si le point est dans ce MNT
+                if (x >= mnt.bbox[0] && x <= mnt.bbox[2] && y >= mnt.bbox[1] && y <= mnt.bbox[3]) {
+                    const px = Math.floor(((x - mnt.bbox[0]) / (mnt.bbox[2] - mnt.bbox[0])) * mnt.width);
+                    const py = Math.floor(((mnt.bbox[3] - y) / (mnt.bbox[3] - mnt.bbox[1])) * mnt.height);
+                    if(px>=0 && px<mnt.width && py>=0 && py<mnt.height) {
+                        const a = mnt.data[py * mnt.width + px]; 
+                        if (a > -500 && a < 8000) return a;
+                    }
+                }
+            }
+            return null;
         }
 
+        // === 3. FUSION MULTI-KML ===
         document.getElementById('btn-process').addEventListener('click', () => {
             showLoad("Croisement des données...");
             setTimeout(() => {
-                const coords = kmlXmlDoc.getElementsByTagName("coordinates");
-                for(let n of coords) {
-                    const pts = n.textContent.trim().split(/\s+/);
-                    const newPts = pts.map(pt => {
-                        const c = pt.split(',');
-                        if(c.length >= 2) {
-                            const alt = getElev(parseFloat(c[1]), parseFloat(c[0]));
-                            return `${c[0]},${c[1]},${alt !== null ? alt.toFixed(2) : (c[2]||0)}`;
-                        }
-                        return pt;
-                    });
-                    n.textContent = newPts.join(' ');
+                let ptsCorriges = 0;
+                for (let kml of kmlFilesData) {
+                    const coords = kml.xml.getElementsByTagName("coordinates");
+                    for(let n of coords) {
+                        const pts = n.textContent.trim().split(/\s+/);
+                        const newPts = pts.map(pt => {
+                            const c = pt.split(',');
+                            if(c.length >= 2) {
+                                const alt = getElev(parseFloat(c[1]), parseFloat(c[0]));
+                                if (alt !== null) ptsCorriges++;
+                                return `${c[0]},${c[1]},${alt !== null ? alt.toFixed(2) : (c[2]||0)}`;
+                            }
+                            return pt;
+                        });
+                        n.textContent = newPts.join(' ');
+                    }
                 }
                 document.getElementById('box-process').classList.add('active');
                 document.getElementById('box-preview').classList.remove('disabled-step');
-                hideLoad(); log("✅ Altitudes corrigées avec précision !");
+                hideLoad(); log(`✅ ${ptsCorriges} altitudes corrigées sur tous les KML !`);
             }, 100);
         });
 
-        document.getElementById('btn-export').addEventListener('click', function() {
-            if (!kmlXmlDoc) return;
-            const xmlString = new XMLSerializer().serializeToString(kmlXmlDoc);
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([xmlString], { type: 'application/vnd.google-earth.kml+xml' }));
-            a.download = kmlFileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        // === EXPORT (Génération ZIP si plusieurs fichiers) ===
+        document.getElementById('btn-export').addEventListener('click', async function() {
+            if (kmlFilesData.length === 0) return;
+            
+            if (kmlFilesData.length === 1) {
+                // Export simple
+                const xmlString = new XMLSerializer().serializeToString(kmlFilesData[0].xml);
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([xmlString], { type: 'application/vnd.google-earth.kml+xml' }));
+                a.download = kmlFilesData[0].name + "_3D.kml"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            } else {
+                // Export ZIP
+                showLoad("Génération de l'archive...");
+                const zip = new JSZip();
+                for (let kml of kmlFilesData) {
+                    const xmlString = new XMLSerializer().serializeToString(kml.xml);
+                    zip.file(kml.name + "_3D.kml", xmlString);
+                }
+                const content = await zip.generateAsync({type:"blob"});
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(content);
+                a.download = "Traces_3D_Multiples.zip"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                hideLoad();
+            }
         });
 
-        // === MOTEUR 3D SÉCURISÉ ===
+        // ==========================================
+        // --- 4. MOTEUR 3D HYPSOMÉTRIQUE ---
+        // ==========================================
         let scene, camera, renderer, controls;
         let groupTerrain, groupTraces, groupCanons;
 
         document.getElementById('close-3d').onclick = () => { document.getElementById('modal-3d').style.display="none"; };
-        
-        document.getElementById('btn-preview').onclick = () => { 
-            document.getElementById('modal-3d').style.display="flex"; 
-            if(!scene) { setTimeout(init3D, 100); }
-            else { 
-                const container = document.getElementById('canvas-container');
-                camera.aspect = container.clientWidth/container.clientHeight; 
-                camera.updateProjectionMatrix(); 
-                renderer.setSize(container.clientWidth, container.clientHeight); 
-            }
-        };
+        document.getElementById('btn-preview').onclick = () => { document.getElementById('modal-3d').style.display="flex"; if(!scene) setTimeout(init3D, 100); };
 
         function init3D() {
             const container = document.getElementById('canvas-container');
-            scene = new THREE.Scene(); scene.background = new THREE.Color(0x1e272e);
+            scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); // Ciel bleu
+            scene.fog = new THREE.Fog(0x87CEEB, 1000, 30000);
+            
             const light = new THREE.DirectionalLight(0xffffff, 1.2); light.position.set(5000, 10000, 5000); scene.add(light);
             scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 
@@ -380,14 +323,15 @@
             groupTraces = new THREE.Group(); scene.add(groupTraces);
             groupCanons = new THREE.Group(); scene.add(groupCanons);
 
-            const minLat = boundsWgs84Global[0][0], maxLat = boundsWgs84Global[1][0];
-            const minLon = boundsWgs84Global[0][1], maxLon = boundsWgs84Global[1][1];
+            const minLat = mapBoundsWgs84.getSouth(), maxLat = mapBoundsWgs84.getNorth();
+            const minLon = mapBoundsWgs84.getWest(), maxLon = mapBoundsWgs84.getEast();
             const wMeters = map.distance([minLat, minLon], [minLat, maxLon]);
             const hMeters = map.distance([minLat, minLon], [maxLat, minLon]);
 
             function toV3(lat, lon, alt) { return new THREE.Vector3( ((lon-minLon)/(maxLon-minLon))*wMeters - wMeters/2, alt, -(((lat-minLat)/(maxLat-minLat))*hMeters - hMeters/2) ); }
 
-            const segs = 150;
+            // MAILLAGE 3D GLOBAL
+            const segs = 200; // Plus de finesse
             const geo = new THREE.PlaneGeometry(wMeters, hMeters, segs, segs);
             geo.rotateX(-Math.PI/2);
             
@@ -395,72 +339,81 @@
             const colors = new Float32Array(pos.length);
             
             let minA = Infinity, maxA = -Infinity;
+            // 1. Déformation Topographique
             for(let i=0; i<=segs; i++) {
                 for(let j=0; j<=segs; j++) {
-                    const a = getElev(maxLat - (i/segs)*(maxLat-minLat), minLon + (j/segs)*(maxLon-minLon)) || 0;
+                    const lat = maxLat - (i/segs)*(maxLat-minLat);
+                    const lon = minLon + (j/segs)*(maxLon-minLon);
+                    const a = getElev(lat, lon) || 0;
                     if(a < minA) minA = a; if(a > maxA) maxA = a;
                     pos[(i*(segs+1)+j)*3 + 1] = a;
                 }
             }
 
-            const colorBas = new THREE.Color(0x27ae60); const colorMid = new THREE.Color(0xf1c40f); const colorHaut = new THREE.Color(0xffffff); const tmpColor = new THREE.Color();
+            // 2. Palette Hypsométrique (4 couleurs)
+            const cForet = new THREE.Color(0x2d5a27);   // Vert Sombre
+            const cPrairie = new THREE.Color(0x8d9c57); // Vert Clair/Herbe
+            const cRoche = new THREE.Color(0x7f8c8d);   // Gris Rocheux
+            const cNeige = new THREE.Color(0xffffff);   // Blanc
+            const tmpColor = new THREE.Color();
+
             for(let i=0; i<pos.length; i+=3) {
                 const a = pos[i+1];
                 let ratio = (a - minA) / (maxA - minA || 1);
-                if(ratio < 0.5) tmpColor.lerpColors(colorBas, colorMid, ratio * 2); else tmpColor.lerpColors(colorMid, colorHaut, (ratio - 0.5) * 2);
+                
+                if (ratio < 0.3) tmpColor.lerpColors(cForet, cPrairie, ratio / 0.3);
+                else if (ratio < 0.6) tmpColor.lerpColors(cPrairie, cRoche, (ratio - 0.3) / 0.3);
+                else tmpColor.lerpColors(cRoche, cNeige, (ratio - 0.6) / 0.4);
+                
                 colors[i] = tmpColor.r; colors[i+1] = tmpColor.g; colors[i+2] = tmpColor.b;
             }
 
             geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); geo.computeVertexNormals();
-            groupTerrain.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true })));
+            groupTerrain.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: false })));
 
-            // GÉOMÉTRIES ROBUSTES (Filtre les vides)
+            // TRACES MULTI-KML
             const lineMat = new THREE.LineBasicMaterial({ color: 0xFF3B30, linewidth: 3 });
-            for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
-                const rawCoords = l.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
-                if (rawCoords) {
-                    const pts = [];
-                    for (let c of rawCoords) {
-                        const p = c.split(',');
-                        if (p.length >= 2) {
-                            const lon = parseFloat(p[0]), lat = parseFloat(p[1]), alt = parseFloat(p[2]) || 0;
-                            if (!isNaN(lon) && !isNaN(lat)) pts.push(toV3(lat, lon, alt + 3)); 
-                        }
-                    }
-                    if (pts.length > 1) groupTraces.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat));
-                }
-            }
-            
-            for (let l of kmlXmlDoc.getElementsByTagName("Polygon")) {
-                const rawCoords = l.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
-                if (rawCoords) {
-                    const pts = [];
-                    for (let c of rawCoords) {
-                        const p = c.split(',');
-                        if (p.length >= 2) {
-                            const lon = parseFloat(p[0]), lat = parseFloat(p[1]), alt = parseFloat(p[2]) || 0;
-                            if (!isNaN(lon) && !isNaN(lat)) pts.push(toV3(lat, lon, alt + 3)); 
-                        }
-                    }
-                    if (pts.length > 1) groupTraces.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x3498db, linewidth: 2 })));
-                }
-            }
-
+            const polyMat = new THREE.LineBasicMaterial({ color: 0x3498db, linewidth: 2 });
             const sphereMat = new THREE.MeshBasicMaterial({ color: 0xFFCC00 });
-            for (let p of kmlXmlDoc.getElementsByTagName("Point")) {
-                const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
-                if(c && c.length>=2) {
-                    const lon = parseFloat(c[0]), lat = parseFloat(c[1]), alt = parseFloat(c[2]) || 0;
-                    if (!isNaN(lon) && !isNaN(lat)) {
+
+            for (let kml of kmlFilesData) {
+                // Lignes
+                for (let l of kml.xml.getElementsByTagName("LineString")) {
+                    const c = l.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
+                    if(c) {
+                        const pts = [];
+                        for(let pt of c) {
+                            const p = pt.split(',');
+                            if(p.length>=2 && !isNaN(p[0]) && !isNaN(p[1])) pts.push(toV3(parseFloat(p[1]), parseFloat(p[0]), parseFloat(p[2]||0)+3));
+                        }
+                        if(pts.length>1) groupTraces.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat));
+                    }
+                }
+                // Surfaces
+                for (let p of kml.xml.getElementsByTagName("Polygon")) {
+                    const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
+                    if(c) {
+                        const pts = [];
+                        for(let pt of c) {
+                            const p = pt.split(',');
+                            if(p.length>=2 && !isNaN(p[0]) && !isNaN(p[1])) pts.push(toV3(parseFloat(p[1]), parseFloat(p[0]), parseFloat(p[2]||0)+3));
+                        }
+                        if(pts.length>1) groupTraces.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), polyMat));
+                    }
+                }
+                // Canons
+                for (let p of kml.xml.getElementsByTagName("Point")) {
+                    const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
+                    if(c && c.length>=2 && !isNaN(c[0]) && !isNaN(c[1])) {
                         const mesh = new THREE.Mesh(new THREE.SphereGeometry(15, 8, 8), sphereMat);
-                        mesh.position.copy(toV3(lat, lon, alt + 10));
+                        mesh.position.copy(toV3(parseFloat(c[1]), parseFloat(c[0]), parseFloat(c[2]||0)+10));
                         groupCanons.add(mesh);
                     }
                 }
             }
 
             camera = new THREE.PerspectiveCamera(60, container.clientWidth/container.clientHeight, 1, 30000);
-            camera.position.set(0, maxA + 2000, hMeters/1.5);
+            camera.position.set(0, maxA + 3000, hMeters/1.2);
             renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
             controls = new THREE.OrbitControls(camera, renderer.domElement); controls.target.set(0, (minA+maxA)/2, 0);
@@ -482,21 +435,15 @@
         document.getElementById('t-traces').onchange = (e) => { if(groupTraces) groupTraces.visible = e.target.checked; };
         document.getElementById('t-canons').onchange = (e) => { if(groupCanons) groupCanons.visible = e.target.checked; };
 
-        // === MOTEUR TACTILE AR ===
-        let arDragMode = 'compass'; 
-        let isArDragging = false; let lastArX = 0, lastArY = 0; let arOffsetCompass = 0, arOffsetAlt = 0;
+        // ==========================================
+        // --- 5. MOTEUR TACTILE AR ---
+        // ==========================================
+        let arDragMode = 'compass'; let isArDragging = false; let lastArX = 0, lastArY = 0; let arOffsetCompass = 0, arOffsetAlt = 0;
 
         document.getElementById('ar-toggle-mode').onclick = () => {
             const btn = document.getElementById('ar-toggle-mode');
-            if (arDragMode === 'compass') {
-                arDragMode = 'altitude';
-                btn.innerText = "Ajustement : ALTITUDE (Haut/Bas)";
-                btn.style.color = "#ff4d4f"; btn.style.borderColor = "#ff4d4f";
-            } else {
-                arDragMode = 'compass';
-                btn.innerText = "Ajustement : BOUSSOLE (Gauche/Droite)";
-                btn.style.color = "#4ade80"; btn.style.borderColor = "#4ade80";
-            }
+            if (arDragMode === 'compass') { arDragMode = 'altitude'; btn.innerText = "Ajustement : ALTITUDE"; btn.style.color = "#ff4d4f"; btn.style.borderColor = "#ff4d4f"; } 
+            else { arDragMode = 'compass'; btn.innerText = "Ajustement : BOUSSOLE"; btn.style.color = "#4ade80"; btn.style.borderColor = "#4ade80"; }
         };
 
         document.addEventListener('touchstart', (e) => {
@@ -513,84 +460,80 @@
 
             const arContainer = document.getElementById('ar-kml-container');
             if(arContainer) {
-                if (arDragMode === 'compass') {
-                    arOffsetCompass += deltaX * 0.3; 
-                    arContainer.setAttribute('rotation', `0 ${arOffsetCompass} 0`);
-                } else {
-                    arOffsetAlt -= deltaY * 0.1; // 10px glissés = 1m d'altitude modifiée
-                    arContainer.setAttribute('position', `0 ${arOffsetAlt} 0`);
-                }
+                if (arDragMode === 'compass') { arOffsetCompass += deltaX * 0.3; arContainer.setAttribute('rotation', `0 ${arOffsetCompass} 0`); } 
+                else { arOffsetAlt -= deltaY * 0.1; arContainer.setAttribute('position', `0 ${arOffsetAlt} 0`); }
             }
         }, {passive: false});
 
         document.addEventListener('touchend', () => { isArDragging = false; });
 
-        // === LANCEMENT MOTEUR AR (VERROUILLAGE OPTIQUE) ===
+        // === LANCEMENT AR ===
         document.getElementById('btn-ar').onclick = () => {
-            log("🚀 Lancement AR...");
-            showLoad("Ancrage au sol...");
+            log("🚀 Lancement AR..."); showLoad("Ancrage au sol...");
 
             navigator.geolocation.getCurrentPosition(pos => {
                 const playerLat = pos.coords.latitude, playerLon = pos.coords.longitude;
-
-                // Calibrage Sol : Le MNT dicte votre altitude réelle, sinon GPS
                 const localMntAlt = getElev(playerLat, playerLon);
                 const referenceAlt = (localMntAlt !== null) ? localMntAlt : (pos.coords.altitude || 0);
                 
-                document.body.classList.add('ar-mode');
-                arOffsetCompass = 0; arOffsetAlt = 0; 
+                document.body.classList.add('ar-mode'); arOffsetCompass = 0; arOffsetAlt = 0; 
                 
-                // L'ajout de videoTexture: true force l'image à ne pas s'étirer et règle le bug d'inclinaison
                 let arHtml = `
                     <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;">
                         <a-camera gps-camera="minDistance: 1; maxDistance: 20000;" position="0 1.5 0" rotation-reader></a-camera>
                         <a-entity id="ar-kml-container" position="0 0 0" rotation="0 0 0">
                 `;
 
-                for (let p of kmlXmlDoc.getElementsByTagName("Polygon")) {
-                    const coords = p.getElementsByTagName("coordinates")[0]?.textContent.trim();
-                    if(coords) {
-                        const firstPt = coords.split(/\s+/)[0].split(',');
-                        if (firstPt.length >= 2) {
-                            const lat = parseFloat(firstPt[1]), lon = parseFloat(firstPt[0]);
-                            if (!isNaN(lat) && !isNaN(lon) && map.distance([playerLat, playerLon], [lat, lon]) < 15000) {
-                                arHtml += `<a-entity gps-entity-place="latitude: ${lat}; longitude: ${lon};" kml-polygon="points: ${coords}; color: #3498db; referenceAlt: ${referenceAlt}"></a-entity>`;
+                // Injection Multi-KML dans l'AR
+                for(let kml of kmlFilesData) {
+                    for (let p of kml.xml.getElementsByTagName("Polygon")) {
+                        const coords = p.getElementsByTagName("coordinates")[0]?.textContent.trim();
+                        if(coords) {
+                            const firstPt = coords.split(/\s+/)[0].split(',');
+                            if (firstPt.length >= 2) {
+                                const lat = parseFloat(firstPt[1]), lon = parseFloat(firstPt[0]);
+                                if (!isNaN(lat) && !isNaN(lon) && map.distance([playerLat, playerLon], [lat, lon]) < 15000) {
+                                    arHtml += `<a-entity gps-entity-place="latitude: ${lat}; longitude: ${lon};" kml-polygon="points: ${coords}; color: #3498db; referenceAlt: ${referenceAlt}"></a-entity>`;
+                                }
                             }
                         }
                     }
-                }
 
-                for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
-                    const coords = l.getElementsByTagName("coordinates")[0]?.textContent.trim();
-                    if(coords) {
-                        const firstPt = coords.split(/\s+/)[0].split(',');
-                        if (firstPt.length >= 2) {
-                            const lat = parseFloat(firstPt[1]), lon = parseFloat(firstPt[0]);
-                            if (!isNaN(lat) && !isNaN(lon) && map.distance([playerLat, playerLon], [lat, lon]) < 15000) {
-                                arHtml += `<a-entity gps-entity-place="latitude: ${lat}; longitude: ${lon};" kml-tube="points: ${coords}; color: #FF3B30; referenceAlt: ${referenceAlt}"></a-entity>`;
+                    for (let l of kml.xml.getElementsByTagName("LineString")) {
+                        const coords = l.getElementsByTagName("coordinates")[0]?.textContent.trim();
+                        if(coords) {
+                            const firstPt = coords.split(/\s+/)[0].split(',');
+                            if (firstPt.length >= 2) {
+                                const lat = parseFloat(firstPt[1]), lon = parseFloat(firstPt[0]);
+                                if (!isNaN(lat) && !isNaN(lon) && map.distance([playerLat, playerLon], [lat, lon]) < 15000) {
+                                    // Utilisation du composant natif A-Frame pour des lignes fines
+                                    arHtml += `
+                                        <a-entity gps-entity-place="latitude: ${lat}; longitude: ${lon};">
+                                            <a-entity meshline="path: ${coords}; color: #FF3B30; lineWidth: 5;"></a-entity>
+                                        </a-entity>`;
+                                }
                             }
                         }
                     }
-                }
 
-                const placemarks = kmlXmlDoc.getElementsByTagName("Placemark");
-                for (let pm of placemarks) {
-                    const p = pm.getElementsByTagName("Point")[0];
-                    if (p) {
-                        const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
-                        const nameNode = pm.getElementsByTagName("name")[0];
-                        const name = nameNode ? nameNode.textContent.trim() : "";
-
-                        if(c && c.length >= 2) {
-                            const lat = parseFloat(c[1]), lon = parseFloat(c[0]), alt = parseFloat(c[2]) || 0;
-                            if (!isNaN(lat) && !isNaN(lon) && map.distance([playerLat, playerLon], [lat, lon]) < 15000) {
-                                const relAlt = (alt - referenceAlt);
-                                arHtml += `
-                                    <a-entity gps-entity-place="latitude: ${lat}; longitude: ${lon};">
-                                        <a-sphere radius="0.5" color="#FFCC00" position="0 ${relAlt} 0" opacity="0.9"></a-sphere>
-                                        <a-text value="${name}\\nAlt: ${Math.round(alt)}m" position="0 ${relAlt + 1.5} 0" look-at="[gps-camera]" scale="6 6 6" align="center" color="#FFFFFF"></a-text>
-                                    </a-entity>
-                                `;
+                    const placemarks = kml.xml.getElementsByTagName("Placemark");
+                    for (let pm of placemarks) {
+                        const p = pm.getElementsByTagName("Point")[0];
+                        if (p) {
+                            const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
+                            const nameNode = pm.getElementsByTagName("name")[0];
+                            const name = nameNode ? nameNode.textContent.trim() : "";
+                            if(c && c.length >= 2) {
+                                const lat = parseFloat(c[1]), lon = parseFloat(c[0]), alt = parseFloat(c[2]) || 0;
+                                if (!isNaN(lat) && !isNaN(lon) && map.distance([playerLat, playerLon], [lat, lon]) < 15000) {
+                                    const relAlt = (alt - referenceAlt);
+                                    arHtml += `
+                                        <a-entity gps-entity-place="latitude: ${lat}; longitude: ${lon};">
+                                            <a-sphere radius="0.5" color="#FFCC00" position="0 ${relAlt} 0" opacity="0.9"></a-sphere>
+                                            <a-text value="${name}\\nAlt: ${Math.round(alt)}m" position="0 ${relAlt + 1.5} 0" look-at="[gps-camera]" scale="6 6 6" align="center" color="#FFFFFF"></a-text>
+                                        </a-entity>
+                                    `;
+                                }
                             }
                         }
                     }
@@ -603,11 +546,9 @@
             }, err => { hideLoad(); log("❌ GPS requis pour l'AR."); }, {enableHighAccuracy: true});
         };
 
-        // QUITTER AR
         document.getElementById('exit-ar-btn').addEventListener('click', () => {
             document.querySelectorAll('video').forEach(v => { if(v.srcObject) v.srcObject.getTracks().forEach(t => t.stop()); v.remove(); });
-            document.getElementById('ar-view').innerHTML = '';
-            document.body.classList.remove('ar-mode');
+            document.getElementById('ar-view').innerHTML = ''; document.body.classList.remove('ar-mode');
             document.body.style.cssText = ""; document.documentElement.style.cssText = "";
             setTimeout(() => { map.invalidateSize(); }, 100);
         });
