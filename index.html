@@ -19,24 +19,21 @@
     <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
     <style>
-        /* --- DESIGN RESPONSIVE STRICT (Fix pour Safari) --- */
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, sans-serif; }
+        /* --- DESIGN RESPONSIVE --- */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; font-family: -apple-system, sans-serif; overflow: hidden; background: #000; }
         
-        /* App Container en position absolue pour éviter les bugs de scroll Safari */
-        #app-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; z-index: 10; background: #111; }
-        
-        #map { flex-grow: 1; position: relative; width: 100%; }
+        #app-container { display: flex; flex-direction: column; width: 100%; height: 100%; position: relative; z-index: 10; background: #111;}
+        #map { flex-grow: 1; width: 100%; background: #111; }
         
         #sidebar { 
-            height: 45%; background: #2c3e50; color: white; padding: 15px; box-sizing: border-box; 
+            width: 100%; height: 45vh; background: #2c3e50; color: white; padding: 15px; box-sizing: border-box; 
             display: flex; flex-direction: column; gap: 10px; overflow-y: auto; border-top: 2px solid #34495e;
         }
 
-        /* PC / Tablette (Écran horizontal) */
         @media (min-width: 768px) {
             #app-container { flex-direction: row; }
-            #sidebar { width: 350px; height: 100%; border-top: none; border-right: 2px solid #34495e; order: -1; }
-            #map { height: 100%; }
+            #sidebar { width: 350px; height: 100vh; border-top: none; border-right: 2px solid #34495e; order: -1; }
+            #map { height: 100vh; }
         }
         
         h2 { margin: 0 0 5px 0; font-size: 16px; border-bottom: 1px solid #34495e; padding-bottom: 5px; }
@@ -65,9 +62,23 @@
 
         #loading-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 4000; display: none; flex-direction: column; justify-content: center; align-items: center; color: white;}
 
-        /* --- AR MODE STRICTEMENT ISOLÉ --- */
-        #ar-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; visibility: hidden; }
-        #exit-ar-btn { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 5000; background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; font-weight: bold; border: none; display: none; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.5);}
+        /* --- SÉCURITÉ AR MODE --- */
+        /* Le mode AR désactive tout l'affichage standard de la page */
+        body.ar-mode #app-container { display: none !important; }
+        body.ar-mode { background: transparent !important; margin: 0; padding: 0;}
+        
+        #ar-view { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; display: none; }
+        body.ar-mode #ar-view { display: block; }
+
+        /* Le bouton quitter doit être un char d'assaut absolu pour passer par dessus la vidéo de la caméra */
+        #exit-ar-btn { 
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); 
+            z-index: 999999; /* Indestructible */
+            display: none; background: #e74c3c; color: white; padding: 15px 30px; 
+            border-radius: 30px; font-weight: bold; border: none; font-size: 16px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer; 
+        }
+        body.ar-mode #exit-ar-btn { display: block; }
     </style>
 </head>
 <body>
@@ -105,6 +116,10 @@
                 </div>
             </div>
 
+            <div class="file-box disabled-step" id="box-export">
+                <button id="btn-export" class="action-btn download-btn">💾 Télécharger KML</button>
+            </div>
+
             <div id="log-panel">En attente...</div>
         </div>
 
@@ -134,26 +149,33 @@
 
         proj4.defs("EPSG:2154", "+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
 
-        // --- MAP 2D ---
         const map = L.map('map', {zoomControl: false}).setView([46.6, 2.2], 6);
         L.control.zoom({position: 'topleft'}).addTo(map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
         const kmlLayerGroup = L.featureGroup().addTo(map);
         let mntBoundsLayer = null; 
 
-        // --- GLOBALES ---
+        // Globales
         let kmlXmlDoc = null; let mntData = null; let mntWidth = 0, mntHeight = 0, mntBbox = null; let isLambert93 = false; let boundsWgs84Global = null;
         let isKmzLoaded = false; let isMntLoaded = false;
-        // BDD Canons prioritaire (exemple)
+        let kmlFileName = "trace_export.kml";
+        
+        // BDD Canons prioritaire
         const baseAltitudesCanons = { "33": 1798, "1": 1477 }; 
 
-        function checkReady() { if(isKmzLoaded && isMntLoaded) document.getElementById('box-process').classList.remove('disabled-step'); }
+        function checkReady() { 
+            if(isKmzLoaded && isMntLoaded) document.getElementById('box-process').classList.remove('disabled-step'); 
+        }
 
-        // --- 1. CHARGEMENT KML ---
+        // --- 1. CHARGEMENT KML (Débloque l'AR immédiatement) ---
         document.getElementById('kmz-input').addEventListener('change', async function(e) {
             const file = e.target.files[0]; if(!file) return;
             showLoad("Analyse KML...");
             kmlLayerGroup.clearLayers();
+            
+            let baseName = file.name.toLowerCase().replace('.kmz', '').replace('.kml', '');
+            kmlFileName = baseName + "_AR.kml";
+
             try {
                 let text = "";
                 if(file.name.toLowerCase().endsWith('.kmz')) {
@@ -176,8 +198,15 @@
                     if(c && c.length>=2) { L.circleMarker([parseFloat(c[1]), parseFloat(c[0])], {radius:5, fillColor:'#FFCC00', color:'#000'}).addTo(kmlLayerGroup); b.extend([parseFloat(c[1]), parseFloat(c[0])]); }
                 }
                 if(b.isValid() && !mntData) map.fitBounds(b, {padding:[30,30]});
+                
                 document.getElementById('box-kmz').classList.add('active');
-                isKmzLoaded = true; checkReady(); log("KML OK.");
+                isKmzLoaded = true; 
+                
+                // DÉBLOCAGE IMMÉDIAT DE L'AR (Même sans MNT)
+                document.getElementById('box-ar').classList.remove('disabled-step');
+                document.getElementById('box-export').classList.remove('disabled-step');
+                
+                checkReady(); log("✅ Trace chargée. Bouton AR activé.");
             } catch(err) { log("❌ Erreur KML"); }
             hideLoad();
         });
@@ -204,7 +233,7 @@
                 mntBoundsLayer = L.rectangle(boundsWgs84Global, {color:"#ff4d4f", weight:2, fillOpacity:0.1}).addTo(map);
                 map.fitBounds(boundsWgs84Global);
                 document.getElementById('box-tif').classList.add('active');
-                isMntLoaded = true; checkReady(); log("MNT OK.");
+                isMntLoaded = true; checkReady(); log("✅ Terrain MNT chargé.");
             } catch(err) { log("❌ Erreur MNT"); }
             hideLoad();
         });
@@ -238,10 +267,19 @@
                 }
                 document.getElementById('box-process').classList.add('active');
                 document.getElementById('box-preview').classList.remove('disabled-step');
-                document.getElementById('box-ar').classList.remove('disabled-step');
-                hideLoad(); log("✅ Altitudes corrigées.");
+                hideLoad(); log("✅ Altitudes corrigées avec précision !");
             }, 100);
         });
+
+        // --- EXPORT KML ---
+        document.getElementById('btn-export').addEventListener('click', function() {
+            if (!kmlXmlDoc) return;
+            const xmlString = new XMLSerializer().serializeToString(kmlXmlDoc);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([xmlString], { type: 'application/vnd.google-earth.kml+xml' }));
+            a.download = kmlFileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        });
+
 
         // ==========================================
         // --- 4. MOTEUR 3D ---
@@ -272,9 +310,7 @@
             const wMeters = map.distance([minLat, minLon], [minLat, maxLon]);
             const hMeters = map.distance([minLat, minLon], [maxLat, minLon]);
 
-            function toV3(lat, lon, alt) {
-                return new THREE.Vector3( ((lon-minLon)/(maxLon-minLon))*wMeters - wMeters/2, alt, -(((lat-minLat)/(maxLat-minLat))*hMeters - hMeters/2) );
-            }
+            function toV3(lat, lon, alt) { return new THREE.Vector3( ((lon-minLon)/(maxLon-minLon))*wMeters - wMeters/2, alt, -(((lat-minLat)/(maxLat-minLat))*hMeters - hMeters/2) ); }
 
             const segs = 150;
             const geo = new THREE.PlaneGeometry(wMeters, hMeters, segs, segs);
@@ -292,97 +328,73 @@
                 }
             }
 
-            const colorBas = new THREE.Color(0x27ae60); 
-            const colorMid = new THREE.Color(0xf1c40f); 
-            const colorHaut = new THREE.Color(0xffffff); 
-            const tmpColor = new THREE.Color();
+            const colorBas = new THREE.Color(0x27ae60); const colorMid = new THREE.Color(0xf1c40f); const colorHaut = new THREE.Color(0xffffff); const tmpColor = new THREE.Color();
 
             for(let i=0; i<pos.length; i+=3) {
                 const a = pos[i+1];
                 let ratio = (a - minA) / (maxA - minA || 1);
-                if(ratio < 0.5) tmpColor.lerpColors(colorBas, colorMid, ratio * 2);
-                else tmpColor.lerpColors(colorMid, colorHaut, (ratio - 0.5) * 2);
+                if(ratio < 0.5) tmpColor.lerpColors(colorBas, colorMid, ratio * 2); else tmpColor.lerpColors(colorMid, colorHaut, (ratio - 0.5) * 2);
                 colors[i] = tmpColor.r; colors[i+1] = tmpColor.g; colors[i+2] = tmpColor.b;
             }
 
-            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-            geo.computeVertexNormals();
-
-            const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true });
-            groupTerrain.add(new THREE.Mesh(geo, mat));
+            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); geo.computeVertexNormals();
+            groupTerrain.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true })));
 
             const lineMat = new THREE.LineBasicMaterial({ color: 0xFF3B30, linewidth: 3 });
             for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
                 const c = l.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
                 if(c) {
-                    const pts = c.map(pt => toV3(parseFloat(pt.split(',')[1]), parseFloat(pt.split(',')[0]), parseFloat(pt.split(',')[2])+3));
+                    const pts = c.map(pt => toV3(parseFloat(pt.split(',')[1]), parseFloat(pt.split(',')[0]), parseFloat(pt.split(',')[2]||0)+3));
                     groupTraces.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat));
                 }
             }
 
             const sphereMat = new THREE.MeshBasicMaterial({ color: 0xFFCC00 });
-            const sphereGeo = new THREE.SphereGeometry(15, 8, 8);
             for (let p of kmlXmlDoc.getElementsByTagName("Point")) {
                 const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
                 if(c) {
-                    const mesh = new THREE.Mesh(sphereGeo, sphereMat);
-                    mesh.position.copy(toV3(parseFloat(c[1]), parseFloat(c[0]), parseFloat(c[2])+10));
+                    const mesh = new THREE.Mesh(new THREE.SphereGeometry(15, 8, 8), sphereMat);
+                    mesh.position.copy(toV3(parseFloat(c[1]), parseFloat(c[0]), parseFloat(c[2]||0)+10));
                     groupCanons.add(mesh);
                 }
             }
 
             camera = new THREE.PerspectiveCamera(60, container.clientWidth/container.clientHeight, 1, 30000);
             camera.position.set(0, maxA + 2000, hMeters/1.5);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
 
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.target.set(0, (minA+maxA)/2, 0);
+            controls = new THREE.OrbitControls(camera, renderer.domElement); controls.target.set(0, (minA+maxA)/2, 0);
 
-            const raycaster = new THREE.Raycaster();
-            const mouse = new THREE.Vector2();
+            const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
             renderer.domElement.addEventListener('dblclick', (e) => {
                 const rect = renderer.domElement.getBoundingClientRect();
-                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1; mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObjects([groupTerrain.children[0]]);
                 if(intersects.length > 0) controls.target.copy(intersects[0].point);
             });
 
-            function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
-            animate();
-            
-            window.addEventListener('resize', () => {
-                if(modal3d.style.display === "flex" && camera) {
-                    camera.aspect = container.clientWidth/container.clientHeight;
-                    camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight);
-                }
-            });
+            function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); } animate();
+            window.addEventListener('resize', () => { if(modal3d.style.display === "flex" && camera) { camera.aspect = container.clientWidth/container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); } });
         }
 
         document.getElementById('t-terrain').onchange = (e) => { if(groupTerrain) groupTerrain.visible = e.target.checked; };
         document.getElementById('t-traces').onchange = (e) => { if(groupTraces) groupTraces.visible = e.target.checked; };
         document.getElementById('t-canons').onchange = (e) => { if(groupCanons) groupCanons.visible = e.target.checked; };
 
-
         // ==========================================
-        // --- 5. MOTEUR AR (A-FRAME ISOLE) ---
+        // --- 5. MOTEUR AR SÉCURISÉ ---
         // ==========================================
         
         document.getElementById('btn-ar').onclick = () => {
-            log("🚀 Lancement de la Réalité Augmentée...");
+            log("🚀 Lancement de l'appareil photo AR...");
             
-            // 1. Cacher l'app classique et afficher la couche AR
-            document.getElementById('app-container').style.display = "none";
-            const arView = document.getElementById('ar-view');
-            arView.style.visibility = "visible";
-            arView.style.zIndex = "9999";
-            document.getElementById('exit-ar-btn').style.display = "block";
+            // 1. On active le mode CSS spécifique AR
+            document.body.classList.add('ar-mode');
 
-            // 2. INJECTION DYNAMIQUE de la scène A-Frame (Active la caméra)
+            // 2. Injection propre du code A-Frame 
+            const arView = document.getElementById('ar-view');
             arView.innerHTML = `
                 <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; debugUIEnabled: false;">
                     <a-camera gps-camera="minDistance: 1; maxDistance: 10000;" rotation-reader></a-camera>
@@ -390,7 +402,7 @@
                 </a-scene>
             `;
 
-            // 3. Remplir la scène avec le KML
+            // 3. Dessin des éléments
             setTimeout(() => {
                 const arContainer = document.getElementById('ar-container');
                 navigator.geolocation.getCurrentPosition(pos => {
@@ -405,43 +417,40 @@
                             const sphere = document.createElement('a-sphere');
                             sphere.setAttribute('radius', '3');
                             sphere.setAttribute('color', '#FFCC00');
-                            sphere.setAttribute('position', `0 ${(parseFloat(c[2]) - playerAlt) - 1.5} 0`); 
                             
-                            entity.appendChild(sphere);
-                            arContainer.appendChild(entity);
+                            const pointAlt = parseFloat(c[2]) || 0;
+                            sphere.setAttribute('position', `0 ${(pointAlt - playerAlt) - 1.5} 0`); 
+                            
+                            entity.appendChild(sphere); arContainer.appendChild(entity);
                         }
                     }
-                });
-            }, 500); // Laisse le temps à A-Frame de démarrer
+                }, err => log("Localisation requise pour AR."), {enableHighAccuracy: true});
+            }, 500); 
         };
 
-        // QUITTER LA AR ET COUPER LA CAMÉRA
-        document.getElementById('exit-ar-btn').onclick = () => {
-            log("🛑 Arrêt de la Réalité Augmentée.");
+        // --- DESTRUCTION TOTALE DU MODE AR ---
+        document.getElementById('exit-ar-btn').addEventListener('click', () => {
+            log("🛑 Arrêt du flux caméra...");
             
-            // 1. Trouver le flux vidéo et l'éteindre physiquement
-            const videoElements = document.querySelectorAll('video');
-            videoElements.forEach(vid => {
-                if (vid.srcObject) {
-                    vid.srcObject.getTracks().forEach(track => track.stop());
-                }
-                vid.remove(); // Retire la vidéo du fond d'écran
+            // On trouve la vidéo d'AR.js (qui est balancée dans le <body>) et on tue le flux
+            const videos = document.querySelectorAll('video');
+            videos.forEach(v => {
+                if(v.srcObject) v.srcObject.getTracks().forEach(track => track.stop());
+                v.remove();
             });
 
-            // 2. Détruire la scène 3D
-            const arView = document.getElementById('ar-view');
-            arView.innerHTML = '';
-            arView.style.visibility = "hidden";
-            arView.style.zIndex = "-1";
-            document.getElementById('exit-ar-btn').style.display = "none";
+            // On efface la scène
+            document.getElementById('ar-view').innerHTML = '';
             
-            // 3. Réparer le CSS que AR.js a modifié
-            document.body.style.margin = "0";
-            document.body.style.overflow = "hidden";
+            // On restaure le CSS classique
+            document.body.classList.remove('ar-mode');
             
-            // 4. Réafficher l'App 2D
-            document.getElementById('app-container').style.display = "flex";
-        };
+            // Nettoyage brut du CSS ajouté par AR.js sur html et body
+            document.body.style = "";
+            document.documentElement.style = "";
+            
+            log("✅ Retour au SIG 2D.");
+        });
 
     </script>
 </body>
