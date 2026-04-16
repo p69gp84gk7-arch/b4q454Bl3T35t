@@ -197,7 +197,6 @@
                 document.getElementById('box-kmz').classList.add('active');
                 isKmzLoaded = true; 
                 
-                // Active l'AR dès que le KML est là
                 document.getElementById('box-ar').classList.remove('disabled-step');
                 document.getElementById('box-export').classList.remove('disabled-step');
                 
@@ -276,7 +275,7 @@
         });
 
         // ==========================================
-        // --- 4. MOTEUR 3D ---
+        // --- 4. MOTEUR 3D (Couleurs corrigées) ---
         // ==========================================
         let scene, camera, renderer, controls;
         let groupTerrain, groupTraces, groupCanons;
@@ -295,10 +294,7 @@
         function init3D() {
             try {
                 const container = document.getElementById('canvas-container');
-                
-                if (container.clientWidth === 0 || container.clientHeight === 0) {
-                    setTimeout(init3D, 200); return;
-                }
+                if (container.clientWidth === 0 || container.clientHeight === 0) { setTimeout(init3D, 200); return; }
 
                 if(scene) { 
                     document.getElementById('loading-3d-text').style.display="none";
@@ -307,8 +303,9 @@
                 }
 
                 scene = new THREE.Scene(); scene.background = new THREE.Color(0x1e272e);
-                const light = new THREE.DirectionalLight(0xffffff, 1.2); light.position.set(5000, 10000, 5000); scene.add(light);
-                scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+                // Lumière adoucie pour mieux voir les couleurs du sol
+                const light = new THREE.DirectionalLight(0xffffff, 0.8); light.position.set(5000, 10000, 5000); scene.add(light);
+                scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
                 groupTerrain = new THREE.Group(); scene.add(groupTerrain);
                 groupTraces = new THREE.Group(); scene.add(groupTraces);
@@ -326,38 +323,65 @@
                 const segs = 150;
                 const geo = new THREE.PlaneGeometry(wMeters, hMeters, segs, segs);
                 geo.rotateX(-Math.PI/2);
-                
                 const pos = geo.attributes.position.array;
-                const colors = new Float32Array(pos.length);
                 
+                // 1er passage : Trouver la VRAIE altitude minimale et maximale
                 let minA = Infinity, maxA = -Infinity;
                 for(let i=0; i<=segs; i++) {
                     for(let j=0; j<=segs; j++) {
-                        const a = getElev(maxLat - (i/segs)*(maxLat-minLat), minLon + (j/segs)*(maxLon-minLon)) || 0;
-                        if(a < minA) minA = a; if(a > maxA) maxA = a;
+                        const a = getElev(maxLat - (i/segs)*(maxLat-minLat), minLon + (j/segs)*(maxLon-minLon));
+                        if(a !== null) {
+                            if(a < minA) minA = a;
+                            if(a > maxA) maxA = a;
+                        }
+                    }
+                }
+
+                // Sécurité
+                if (minA === Infinity) minA = 0; if (maxA === -Infinity) maxA = 1000;
+
+                // 2ème passage : Appliquer les altitudes
+                for(let i=0; i<=segs; i++) {
+                    for(let j=0; j<=segs; j++) {
+                        let a = getElev(maxLat - (i/segs)*(maxLat-minLat), minLon + (j/segs)*(maxLon-minLon));
+                        // Si le point est hors de la zone TIF, on l'aligne sur le point le plus bas du domaine
+                        if (a === null) a = minA - 5; 
                         pos[(i*(segs+1)+j)*3 + 1] = a;
                     }
                 }
 
-                if (minA === Infinity) minA = 0; if (maxA === -Infinity) maxA = 1000;
-
-                const colorBas = new THREE.Color(0x27ae60); const colorMid = new THREE.Color(0xf1c40f); const colorHaut = new THREE.Color(0xffffff); const tmpColor = new THREE.Color();
+                // 3ème passage : Calculer les couleurs
+                const colors = new Float32Array(pos.length);
+                const colorBas = new THREE.Color(0x27ae60); // Vert bas
+                const colorMid = new THREE.Color(0xf1c40f); // Jaune/Roche milieu
+                const colorHaut = new THREE.Color(0xffffff); // Blanc sommet
+                const tmpColor = new THREE.Color();
 
                 for(let i=0; i<pos.length; i+=3) {
                     const a = pos[i+1];
+                    // Le ratio permet de savoir si on est en bas (0) ou au sommet (1) de la montagne visible
                     let ratio = (a - minA) / (maxA - minA || 1);
-                    if(ratio < 0.5) tmpColor.lerpColors(colorBas, colorMid, ratio * 2); else tmpColor.lerpColors(colorMid, colorHaut, (ratio - 0.5) * 2);
+                    // Sécurité mathématique pour contraindre la valeur entre 0 et 1
+                    ratio = Math.max(0, Math.min(1, ratio));
+
+                    if(ratio < 0.5) tmpColor.lerpColors(colorBas, colorMid, ratio * 2); 
+                    else tmpColor.lerpColors(colorMid, colorHaut, (ratio - 0.5) * 2);
+                    
                     colors[i] = tmpColor.r; colors[i+1] = tmpColor.g; colors[i+2] = tmpColor.b;
                 }
 
-                geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); geo.computeVertexNormals();
-                groupTerrain.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true })));
+                geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); 
+                geo.computeVertexNormals();
+                
+                // Le Material est défini en blanc avec vertexColors activé pour la restitution parfaite du dégradé
+                const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.9, flatShading: true });
+                groupTerrain.add(new THREE.Mesh(geo, mat));
 
                 const lineMat = new THREE.LineBasicMaterial({ color: 0xFF3B30, linewidth: 3 });
                 for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
                     const c = l.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
                     if(c) {
-                        const pts = c.map(pt => toV3(parseFloat(pt.split(',')[1]), parseFloat(pt.split(',')[0]), parseFloat(pt.split(',')[2]||0)+3));
+                        const pts = c.map(pt => toV3(parseFloat(pt.split(',')[1]), parseFloat(pt.split(',')[0]), parseFloat(pt.split(',')[2]||minA)+3));
                         groupTraces.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat));
                     }
                 }
@@ -367,7 +391,7 @@
                     const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
                     if(c) {
                         const mesh = new THREE.Mesh(new THREE.SphereGeometry(15, 8, 8), sphereMat);
-                        mesh.position.copy(toV3(parseFloat(c[1]), parseFloat(c[0]), parseFloat(c[2]||0)+10));
+                        mesh.position.copy(toV3(parseFloat(c[1]), parseFloat(c[0]), parseFloat(c[2]||minA)+10));
                         groupCanons.add(mesh);
                     }
                 }
