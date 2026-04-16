@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scanner AR - Topo SIG</title>
+    
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
+
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, sans-serif; }
+        
+        #ar-ui { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+        
+        #ar-header { background: rgba(0,0,0,0.6); color: white; padding: 15px; text-align: center; font-size: 14px; pointer-events: auto; backdrop-filter: blur(5px);}
+        #ar-toggle-mode { background: transparent; border: 1px solid #4ade80; color: #4ade80; padding: 8px 15px; border-radius: 20px; font-size: 12px; margin-top: 10px; cursor: pointer; }
+
+        #btn-back { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; font-weight: bold; border: none; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer; pointer-events: auto; }
+        
+        #loading-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <h3>Initialisation AR...</h3>
+        <p id="loading-text">Recherche du signal GPS</p>
+    </div>
+
+    <div id="ar-ui">
+        <div id="ar-header">
+            <strong>Calibrage Tactile</strong><br>
+            Glissez de gauche à droite pour aligner les pistes.<br>
+            <button id="ar-toggle-mode">Actuel : BOUSSOLE</button>
+        </div>
+        <button id="btn-back">Retour à la Carte</button>
+    </div>
+
+    <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+        <a-camera gps-camera="minDistance: 1; maxDistance: 20000;" rotation-reader></a-camera>
+        <a-entity id="ar-kml-container" position="0 0 0" rotation="0 0 0"></a-entity>
+    </a-scene>
+
+    <script>
+        // Outils Mathématiques
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+        }
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const toRad = Math.PI / 180, phi1 = lat1 * toRad, phi2 = lat2 * toRad, lam1 = lon1 * toRad, lam2 = lon2 * toRad;
+            const y = Math.sin(lam2 - lam1) * Math.cos(phi2), x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(lam2 - lam1);
+            return Math.atan2(y, x); 
+        }
+        function parseCoords(text) {
+            if (!text) return [];
+            return text.trim().split(/\s+/).map(pair => {
+                const parts = pair.split(',');
+                if (parts.length >= 2) {
+                    const lon = parseFloat(parts[0]), lat = parseFloat(parts[1]), alt = parseFloat(parts[2]);
+                    if (!isNaN(lon) && !isNaN(lat)) return { lon, lat, alt: isNaN(alt) ? 0 : alt };
+                }
+                return null;
+            }).filter(p => p !== null);
+        }
+
+        // Composants Traces A-Frame
+        AFRAME.registerComponent('kml-tube', {
+            schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#FF3B30'}, playerAlt: {type: 'number', default: 0} },
+            init: function() {
+                const pts = parseCoords(this.data.points);
+                if (pts.length < 2) return;
+                const pathPoints = []; let lastX = null, lastZ = null;
+                for(let p of pts) {
+                    const dist = calculateDistance(pts[0].lat, pts[0].lon, p.lat, p.lon);
+                    const bearing = calculateBearing(pts[0].lat, pts[0].lon, p.lat, p.lon);
+                    const x = dist * Math.sin(bearing); const z = -dist * Math.cos(bearing);
+                    const relAlt = (p.alt - this.data.playerAlt) - 1.5;
+                    if (lastX !== null && Math.abs(x - lastX) < 0.1 && Math.abs(z - lastZ) < 0.1) continue;
+                    pathPoints.push(new THREE.Vector3(x, relAlt, z));
+                    lastX = x; lastZ = z;
+                }
+                if (pathPoints.length > 1) {
+                    const geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pathPoints), pathPoints.length, 0.3, 4, false); 
+                    this.el.setObject3D('mesh', new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color: this.data.color, transparent: true, opacity: 0.9})));
+                }
+            }
+        });
+
+        AFRAME.registerComponent('kml-polygon', {
+            schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#3498db'}, playerAlt: {type: 'number', default: 0} },
+            init: function() {
+                const pts = parseCoords(this.data.points);
+                if (pts.length < 3) return;
+                const shape = new THREE.Shape(); shape.moveTo(0, 0);
+                const oPts = [];
+                for(let i=0; i<pts.length; i++) {
+                    const dist = calculateDistance(pts[0].lat, pts[0].lon, pts[i].lat, pts[i].lon);
+                    const bearing = calculateBearing(pts[0].lat, pts[0].lon, pts[i].lat, pts[i].lon);
+                    const x = dist * Math.sin(bearing), z = -dist * Math.cos(bearing), relAlt = (pts[i].alt - this.data.playerAlt) - 1.5;
+                    oPts.push({x, y: relAlt, z});
+                    if (i === 0) shape.moveTo(x, z); else shape.lineTo(x, z);
+                }
+                const geo = new THREE.ShapeGeometry(shape); geo.rotateX(-Math.PI / 2); 
+                const pos = geo.attributes.position;
+                for (let i = 0; i < pos.count; i++) {
+                    const vx = pos.getX(i), vz = pos.getZ(i); let cAlt = -1.5, mD = Infinity;
+                    for(let j=0; j<oPts.length; j++) {
+                        const dSq = Math.pow(oPts[j].x - vx, 2) + Math.pow(oPts[j].z - vz, 2);
+                        if(dSq < mD) { mD = dSq; cAlt = oPts[j].y; }
+                    }
+                    pos.setY(i, cAlt);
+                }
+                geo.computeVertexNormals();
+                this.el.setObject3D('mesh', new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: this.data.color, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false })));
+            }
+        });
+
+        // === DÉMARRAGE AR ===
+        window.addEventListener('load', () => {
+            const kmlText = localStorage.getItem('kmlForAR');
+            if (!kmlText) {
+                document.getElementById('loading-text').innerHTML = "Aucune trace en mémoire.<br>Veuillez d'abord générer un KML depuis l'Atelier.";
+                return;
+            }
+
+            document.getElementById('loading-text').innerText = "Recherche du signal GPS...";
+
+            navigator.geolocation.getCurrentPosition(pos => {
+                document.getElementById('loading-text').innerText = "Génération du monde 3D...";
+                
+                const playerLat = pos.coords.latitude;
+                const playerLon = pos.coords.longitude;
+                const playerAlt = pos.coords.altitude || 0;
+                
+                const parser = new DOMParser();
+                const kmlXmlDoc = parser.parseFromString(kmlText, "text/xml");
+                const arContainer = document.getElementById('ar-kml-container');
+                let nbVisibles = 0;
+
+                // Génération des éléments à injecter
+                for (let p of kmlXmlDoc.getElementsByTagName("Polygon")) {
+                    const coords = p.getElementsByTagName("coordinates")[0]?.textContent;
+                    const pts = parseCoords(coords);
+                    if(pts.length > 0 && calculateDistance(playerLat, playerLon, pts[0].lat, pts[0].lon) < 15000) {
+                        const el = document.createElement('a-entity');
+                        el.setAttribute('gps-entity-place', `latitude: ${pts[0].lat}; longitude: ${pts[0].lon};`);
+                        el.setAttribute('kml-polygon', `points: ${coords}; color: #3498db; playerAlt: ${playerAlt}`);
+                        arContainer.appendChild(el); nbVisibles++;
+                    }
+                }
+
+                for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
+                    const coords = l.getElementsByTagName("coordinates")[0]?.textContent;
+                    const pts = parseCoords(coords);
+                    if(pts.length > 0 && calculateDistance(playerLat, playerLon, pts[0].lat, pts[0].lon) < 15000) {
+                        const el = document.createElement('a-entity');
+                        el.setAttribute('gps-entity-place', `latitude: ${pts[0].lat}; longitude: ${pts[0].lon};`);
+                        el.setAttribute('kml-tube', `points: ${coords}; color: #FF3B30; playerAlt: ${playerAlt}`);
+                        arContainer.appendChild(el); nbVisibles++;
+                    }
+                }
+
+                for (let pm of kmlXmlDoc.getElementsByTagName("Placemark")) {
+                    const p = pm.getElementsByTagName("Point")[0];
+                    if (p) {
+                        const pts = parseCoords(p.getElementsByTagName("coordinates")[0]?.textContent);
+                        const nameNode = pm.getElementsByTagName("name")[0];
+                        const name = nameNode ? nameNode.textContent.trim() : "";
+
+                        if(pts.length > 0 && calculateDistance(playerLat, playerLon, pts[0].lat, pts[0].lon) < 15000) {
+                            const relAlt = (pts[0].alt - playerAlt) - 1.5;
+                            const el = document.createElement('a-entity');
+                            el.setAttribute('gps-entity-place', `latitude: ${pts[0].lat}; longitude: ${pts[0].lon};`);
+                            el.innerHTML = `
+                                <a-sphere radius="0.8" color="#FFCC00" position="0 ${relAlt} 0" opacity="0.9"></a-sphere>
+                                <a-text value="${name}\nAlt: ${Math.round(pts[0].alt)}m" position="0 ${relAlt + 2} 0" look-at="[gps-camera]" scale="5 5 5" align="center" color="#FFFFFF"></a-text>
+                            `;
+                            arContainer.appendChild(el); nbVisibles++;
+                        }
+                    }
+                }
+
+                document.getElementById('loading-screen').style.display = 'none';
+
+                if (nbVisibles === 0) alert("⚠️ RADAR GPS : La piste la plus proche est à plus de 15 km. Rien ne s'affichera à l'écran.");
+
+            }, err => {
+                document.getElementById('loading-text').innerText = "❌ Échec GPS. La RA nécessite la géolocalisation.";
+            }, {enableHighAccuracy: true});
+        });
+
+        // --- GESTION DU JOYSTICK AR ---
+        let arDragMode = 'compass'; let isArDragging = false; let lastArX = 0, lastArY = 0; let arOffsetCompass = 0, arOffsetAlt = 0;
+        document.getElementById('ar-toggle-mode').onclick = () => {
+            const btn = document.getElementById('ar-toggle-mode');
+            if (arDragMode === 'compass') { arDragMode = 'altitude'; btn.innerText = "Actuel : ALTITUDE"; btn.style.color = "#ff4d4f"; btn.style.borderColor = "#ff4d4f"; } 
+            else { arDragMode = 'compass'; btn.innerText = "Actuel : BOUSSOLE"; btn.style.color = "#4ade80"; btn.style.borderColor = "#4ade80"; }
+        };
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.closest('#ar-header') || e.target.closest('#btn-back')) return;
+            isArDragging = true; lastArX = e.touches[0].clientX; lastArY = e.touches[0].clientY;
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isArDragging) return;
+            const deltaX = e.touches[0].clientX - lastArX; const deltaY = e.touches[0].clientY - lastArY;
+            lastArX = e.touches[0].clientX; lastArY = e.touches[0].clientY;
+            const arContainer = document.getElementById('ar-kml-container');
+            if(arContainer) {
+                if (arDragMode === 'compass') { arOffsetCompass += deltaX * 0.3; arContainer.setAttribute('rotation', `0 ${arOffsetCompass} 0`); } 
+                else { arOffsetAlt -= deltaY * 0.1; arContainer.setAttribute('position', `0 ${arOffsetAlt} 0`); }
+            }
+        }, {passive: false});
+        document.addEventListener('touchend', () => { isArDragging = false; });
+
+        // RETOUR À LA CARTE (Changement de page, libère 100% de la mémoire et coupe la caméra nativement)
+        document.getElementById('btn-back').addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+    </script>
+</body>
+</html>
