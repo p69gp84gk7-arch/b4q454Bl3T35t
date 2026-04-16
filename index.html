@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Éditeur Topographique KML / MNT (Fusion)</title>
+    <title>Éditeur Topographique KML / MNT (Export)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -28,6 +28,10 @@
         .action-btn { width: 100%; background: #3498db; color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px;}
         .action-btn:hover { background: #2980b9; }
         .action-btn:active { transform: scale(0.98); }
+        
+        /* Style spécifique pour le bouton de téléchargement final */
+        .download-btn { background: #e67e22; }
+        .download-btn:hover { background: #d35400; }
 
         #log-panel { background: #1a252f; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; color: #4ade80; flex-grow: 1; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;}
         
@@ -53,7 +57,13 @@
         <div class="file-box disabled-step" id="box-process">
             <label>3. Traitement Mathématique</label>
             <button id="btn-process" class="action-btn">Mettre à jour les Altitudes</button>
-            <div style="font-size: 11px; margin-top:5px; color:#bdc3c7;">Injecte le relief du MNT dans le KMZ</div>
+            <div style="font-size: 11px; margin-top:5px; color:#bdc3c7;">Croise le KMZ avec le MNT</div>
+        </div>
+
+        <div class="file-box disabled-step" id="box-export">
+            <label>4. Sauvegarde</label>
+            <button id="btn-export" class="action-btn download-btn">Télécharger le KML 3D</button>
+            <div style="font-size: 11px; margin-top:5px; color:#bdc3c7;">Fichier prêt pour la Réalité Augmentée</div>
         </div>
 
         <div id="log-panel">Système initialisé. Attente des données...</div>
@@ -76,15 +86,14 @@
         // --- ÉTATS GLOBAUX ---
         let isKmzLoaded = false;
         let isMntLoaded = false;
-        let kmlXmlDoc = null; // Stocke le document XML original pour pouvoir le modifier
-        let kmlFileName = "trace_modifiee.kml"; // Nom d'export par défaut
+        let kmlXmlDoc = null; 
+        let kmlFileName = "trace_modifiee.kml"; 
 
         let mntData = null; 
         let mntWidth = 0, mntHeight = 0;
         let mntBbox = null; 
         let isLambert93 = false;
 
-        // Fonction pour débloquer l'étape 3
         function checkReadyStatus() {
             if (isKmzLoaded && isMntLoaded) {
                 document.getElementById('box-process').classList.remove('disabled-step');
@@ -103,8 +112,11 @@
             boxKmz.classList.add('active');
             kmlLayerGroup.clearLayers();
 
-            // On mémorise le nom pour le futur export
-            kmlFileName = file.name.replace('.kmz', '').replace('.kml', '') + "_3D.kml";
+            // On mémorise le nom pour le futur export, en forçant l'extension .kml
+            let baseName = file.name;
+            if (baseName.toLowerCase().endsWith('.kmz')) baseName = baseName.slice(0, -4);
+            if (baseName.toLowerCase().endsWith('.kml')) baseName = baseName.slice(0, -4);
+            kmlFileName = baseName + "_Relief_3D.kml";
 
             try {
                 let kmlText = "";
@@ -119,12 +131,12 @@
                 }
 
                 const parser = new DOMParser();
-                kmlXmlDoc = parser.parseFromString(kmlText, "text/xml"); // On le garde en Global
+                kmlXmlDoc = parser.parseFromString(kmlText, "text/xml"); 
                 
                 let stats = { points: 0, lines: 0, polygons: 0 };
                 const bounds = L.latLngBounds();
 
-                // Dessin visuel sur la carte (pour confirmation)
+                // Dessin visuel sur la carte 2D
                 const polygons = kmlXmlDoc.getElementsByTagName("Polygon");
                 for (let p of polygons) {
                     const coordsNode = p.getElementsByTagName("coordinates")[0];
@@ -273,18 +285,15 @@
         document.getElementById('btn-process').addEventListener('click', function() {
             if (!kmlXmlDoc || !mntData) return;
 
-            log("🔄 Lancement du traitement topographique...");
+            log("🔄 Traitement topographique en cours...");
             const startTime = performance.now();
             
-            // On récupère TOUTES les balises <coordinates> du fichier (Lignes, Surfaces, Points)
             const coordsNodes = kmlXmlDoc.getElementsByTagName("coordinates");
             let pointsModifies = 0;
             let pointsHorsZone = 0;
 
-            // On boucle sur chaque balise
             for (let i = 0; i < coordsNodes.length; i++) {
                 const node = coordsNodes[i];
-                // On récupère le texte brut et on le découpe point par point
                 const rawText = node.textContent.trim().replace(/\n/g, ' ');
                 const pointsArray = rawText.split(/\s+/);
                 
@@ -298,36 +307,64 @@
                         const ancienneAlt = coords.length === 3 ? parseFloat(coords[2]) : 0;
 
                         if (!isNaN(lon) && !isNaN(lat)) {
-                            // On demande la vraie altitude au MNT local
                             const vraieAlt = getElevationAt(lat, lon);
                             
                             if (vraieAlt !== null) {
-                                // On réécrit la coordonnée avec sa nouvelle altitude (arrondie à 2 décimales)
                                 newPointsArray.push(`${lon},${lat},${vraieAlt.toFixed(2)}`);
                                 pointsModifies++;
                             } else {
-                                // Si le point déborde de la zone du MNT, on garde l'ancienne altitude
                                 newPointsArray.push(`${lon},${lat},${ancienneAlt}`);
                                 pointsHorsZone++;
                             }
                         }
                     }
                 }
-                
-                // On remplace le texte dans le document XML en mémoire par notre nouveau tableau propre
                 node.textContent = newPointsArray.join(' ');
             }
 
             const endTime = performance.now();
-            const timeTaken = (endTime - startTime).toFixed(1);
-
+            
             document.getElementById('box-process').classList.add('active');
             
-            log(`✅ Opération réussie en ${timeTaken} ms !`);
-            log(`🏔️ ${pointsModifies} altitudes corrigées avec précision.`);
-            if (pointsHorsZone > 0) log(`⚠️ ${pointsHorsZone} points étaient en dehors de la zone du fichier .tif.`);
+            log(`✅ Succès en ${(endTime - startTime).toFixed(1)} ms !`);
+            log(`🏔️ ${pointsModifies} altitudes corrigées avec le MNT.`);
             
-            log(`\n(L'étape suivante sera de télécharger ce nouveau fichier KML)`);
+            // Débloque l'étape finale d'exportation
+            document.getElementById('box-export').classList.remove('disabled-step');
+            log("💾 Vous pouvez maintenant télécharger le fichier corrigé.");
+        });
+
+        // --- ÉTAPE 4 : LE MOTEUR D'EXPORTATION ---
+        document.getElementById('btn-export').addEventListener('click', function() {
+            if (!kmlXmlDoc) return;
+
+            log(`📥 Préparation du téléchargement de ${kmlFileName}...`);
+
+            try {
+                // 1. On sérialise l'objet XML en texte brut (Format KML)
+                const serializer = new XMLSerializer();
+                const xmlString = serializer.serializeToString(kmlXmlDoc);
+
+                // 2. Création d'un Blob (Fichier virtuel)
+                const blob = new Blob([xmlString], { type: 'application/vnd.google-earth.kml+xml' });
+                const url = URL.createObjectURL(blob);
+
+                // 3. Création d'un lien HTML invisible qu'on "clique" automatiquement
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = kmlFileName;
+                document.body.appendChild(a);
+                a.click();
+                
+                // 4. Nettoyage de la mémoire
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                document.getElementById('box-export').classList.add('active');
+                log("🎉 Téléchargement réussi ! Fichier prêt pour votre appli AR.");
+            } catch (error) {
+                log(`❌ Erreur lors de l'exportation : ${error.message}`);
+            }
         });
 
     </script>
