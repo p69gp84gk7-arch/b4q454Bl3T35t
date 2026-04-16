@@ -3,24 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Éditeur Topographique KML / MNT (Lambert 93)</title>
+    <title>Éditeur Topographique KML / MNT (Fusion)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; font-family: -apple-system, sans-serif; }
         
-        #sidebar { width: 350px; background: #2c3e50; color: white; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; z-index: 1000; box-shadow: 2px 0 5px rgba(0,0,0,0.5); }
+        #sidebar { width: 350px; background: #2c3e50; color: white; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 15px; z-index: 1000; box-shadow: 2px 0 5px rgba(0,0,0,0.5); }
         #map { flex-grow: 1; height: 100%; background: #000; cursor: crosshair; }
         
-        h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #34495e; padding-bottom: 10px; }
+        h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #34495e; padding-bottom: 10px; margin-bottom: 5px;}
         
         .file-box { background: #34495e; padding: 15px; border-radius: 8px; border: 1px dashed #7f8c8d; transition: 0.3s; }
         .file-box.active { border-color: #4ade80; background: #27ae60; }
@@ -28,7 +25,13 @@
         .file-box label { display: block; margin-bottom: 10px; font-weight: bold; font-size: 14px; cursor: pointer;}
         input[type="file"] { width: 100%; color: #bdc3c7; font-size: 12px; }
         
+        .action-btn { width: 100%; background: #3498db; color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px;}
+        .action-btn:hover { background: #2980b9; }
+        .action-btn:active { transform: scale(0.98); }
+
         #log-panel { background: #1a252f; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; color: #4ade80; flex-grow: 1; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;}
+        
+        .disabled-step { opacity: 0.4; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -44,7 +47,13 @@
         <div class="file-box" id="box-tif">
             <label for="tif-input">2. Charger le MNT (.tif)</label>
             <input type="file" id="tif-input" accept=".tif,.tiff">
-            <div style="font-size: 11px; margin-top:5px; color:#bdc3c7;">(Supporte Lambert 93 et WGS84)</div>
+            <div style="font-size: 11px; margin-top:5px; color:#bdc3c7;">(Supporte Lambert 93)</div>
+        </div>
+
+        <div class="file-box disabled-step" id="box-process">
+            <label>3. Traitement Mathématique</label>
+            <button id="btn-process" class="action-btn">Mettre à jour les Altitudes</button>
+            <div style="font-size: 11px; margin-top:5px; color:#bdc3c7;">Injecte le relief du MNT dans le KMZ</div>
         </div>
 
         <div id="log-panel">Système initialisé. Attente des données...</div>
@@ -56,139 +65,46 @@
         const logPanel = document.getElementById('log-panel');
         function log(msg) { logPanel.innerText += `\n> ${msg}`; logPanel.scrollTop = logPanel.scrollHeight; }
 
-        // --- DÉFINITION DU LAMBERT 93 POUR LE TRADUCTEUR ---
-        // C'est la formule mathématique officielle de la projection française EPSG:2154
         proj4.defs("EPSG:2154", "+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
 
-        const map = L.map('map').setView([46.6, 2.2], 6); // France par défaut
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { 
-            attribution: 'Tiles &copy; Esri',
-            maxZoom: 19 
-        }).addTo(map);
+        const map = L.map('map').setView([46.6, 2.2], 6);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
 
         const kmlLayerGroup = L.featureGroup().addTo(map);
         let mntBoundsLayer = null; 
 
-        // Variables Globales MNT
+        // --- ÉTATS GLOBAUX ---
+        let isKmzLoaded = false;
+        let isMntLoaded = false;
+        let kmlXmlDoc = null; // Stocke le document XML original pour pouvoir le modifier
+        let kmlFileName = "trace_modifiee.kml"; // Nom d'export par défaut
+
         let mntData = null; 
-        let mntWidth = 0;
-        let mntHeight = 0;
+        let mntWidth = 0, mntHeight = 0;
         let mntBbox = null; 
-        let isLambert93 = false; // Détecteur de projection
+        let isLambert93 = false;
 
-        // --- LECTURE DU MNT (.tif) ---
-        document.getElementById('tif-input').addEventListener('change', async function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            log(`Analyse du MNT : ${file.name}...`);
-            const boxTif = document.getElementById('box-tif');
-            boxTif.classList.remove('error');
-            boxTif.classList.add('active');
-
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
-                const image = await tiff.getImage();
-                
-                mntBbox = image.getBoundingBox();
-                mntWidth = image.getWidth();
-                mntHeight = image.getHeight();
-                
-                log(`Dimensions : ${mntWidth} x ${mntHeight} px`);
-
-                // --- LE CERVEAU DE DÉTECTION ---
-                // Si les coordonnées dépassent 180 degrés, c'est que l'on travaille en mètres (Lambert 93)
-                if (Math.abs(mntBbox[0]) > 180) {
-                    isLambert93 = true;
-                    log("Projection métrique détectée (Lambert 93). Traducteur activé.");
-                    
-                    // On convertit la Bounding Box Lambert 93 en coordonnées GPS pour la carte Leaflet
-                    const swWgs84 = proj4("EPSG:2154", "EPSG:4326", [mntBbox[0], mntBbox[1]]);
-                    const neWgs84 = proj4("EPSG:2154", "EPSG:4326", [mntBbox[2], mntBbox[3]]);
-                    
-                    var boundsWgs84 = [[swWgs84[1], swWgs84[0]], [neWgs84[1], neWgs84[0]]]; // Leaflet utilise [Lat, Lon]
-                } else {
-                    isLambert93 = false;
-                    log("Projection GPS détectée (WGS84).");
-                    var boundsWgs84 = [[mntBbox[1], mntBbox[0]], [mntBbox[3], mntBbox[2]]];
-                }
-
-                const rasters = await image.readRasters();
-                mntData = rasters[0]; 
-
-                log(`✅ MNT prêt en mémoire.`);
-
-                // Dessin du rectangle de couverture sur la carte
-                if (mntBoundsLayer) map.removeLayer(mntBoundsLayer);
-                mntBoundsLayer = L.rectangle(boundsWgs84, {color: "#ff4d4f", weight: 2, fillOpacity: 0.1, dashArray: '5, 5'}).addTo(map);
-                
-                map.fitBounds(boundsWgs84, { padding: [20, 20], maxZoom: 16 });
-
-            } catch (error) {
-                log(`❌ Erreur MNT: ${error.message}`);
-                boxTif.classList.remove('active');
-                boxTif.classList.add('error');
-                mntData = null; 
+        // Fonction pour débloquer l'étape 3
+        function checkReadyStatus() {
+            if (isKmzLoaded && isMntLoaded) {
+                document.getElementById('box-process').classList.remove('disabled-step');
+                log("🟢 Prêt pour la fusion 3D ! Cliquez sur l'étape 3.");
             }
-        });
-
-        // --- CALCUL D'ALTITUDE CROISÉ (GPS -> Lambert 93 -> Pixel) ---
-        function getElevationAt(lat, lon) {
-            if (!mntData || !mntBbox) return null;
-            
-            let xTarget, yTarget;
-
-            if (isLambert93) {
-                // On traduit le clic GPS de la carte en mètres Lambert 93
-                const coordsL93 = proj4("EPSG:4326", "EPSG:2154", [lon, lat]);
-                xTarget = coordsL93[0];
-                yTarget = coordsL93[1];
-            } else {
-                xTarget = lon;
-                yTarget = lat;
-            }
-
-            const minX = mntBbox[0], minY = mntBbox[1], maxX = mntBbox[2], maxY = mntBbox[3];
-
-            // Vérification si on clique en dehors du carré
-            if (xTarget < minX || xTarget > maxX || yTarget < minY || yTarget > maxY) return null;
-
-            // Règle de 3 pour trouver le pixel exact dans l'image
-            const pixelX = Math.floor(((xTarget - minX) / (maxX - minX)) * mntWidth);
-            const pixelY = Math.floor(((maxY - yTarget) / (maxY - minY)) * mntHeight);
-
-            if (pixelX < 0 || pixelX >= mntWidth || pixelY < 0 || pixelY >= mntHeight) return null;
-
-            const index = pixelY * mntWidth + pixelX;
-            const elevation = mntData[index];
-
-            if (elevation < -500 || elevation > 8000) return null; // Filtre les données "vides" du TIF
-            return elevation;
         }
 
-        // --- OUTIL DE TEST : CLIC SUR LA CARTE ---
-        map.on('click', function(e) {
-            if (!mntData) return; 
-            const lat = e.latlng.lat;
-            const lon = e.latlng.lng;
-            const alt = getElevationAt(lat, lon);
-            
-            if (alt !== null) {
-                log(`📍 Clic => Altitude MNT : ${alt.toFixed(2)} m`);
-                const marker = L.circleMarker([lat, lon], {radius: 4, color: '#fff', fillColor: '#4ade80', fillOpacity: 1}).addTo(map);
-                setTimeout(() => map.removeLayer(marker), 2000); 
-            }
-        });
-
-        // --- LECTURE DU KMZ (Inchangée) ---
+        // --- ÉTAPE 1 : LECTURE DU KMZ ---
         document.getElementById('kmz-input').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
             log(`Chargement KML/KMZ : ${file.name}...`);
-            document.getElementById('box-kmz').classList.add('active');
+            const boxKmz = document.getElementById('box-kmz');
+            boxKmz.classList.remove('error');
+            boxKmz.classList.add('active');
             kmlLayerGroup.clearLayers();
+
+            // On mémorise le nom pour le futur export
+            kmlFileName = file.name.replace('.kmz', '').replace('.kml', '') + "_3D.kml";
 
             try {
                 let kmlText = "";
@@ -203,12 +119,13 @@
                 }
 
                 const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(kmlText, "text/xml");
+                kmlXmlDoc = parser.parseFromString(kmlText, "text/xml"); // On le garde en Global
+                
                 let stats = { points: 0, lines: 0, polygons: 0 };
                 const bounds = L.latLngBounds();
 
-                // Polygons
-                const polygons = xmlDoc.getElementsByTagName("Polygon");
+                // Dessin visuel sur la carte (pour confirmation)
+                const polygons = kmlXmlDoc.getElementsByTagName("Polygon");
                 for (let p of polygons) {
                     const coordsNode = p.getElementsByTagName("coordinates")[0];
                     if (coordsNode) {
@@ -218,17 +135,14 @@
                             const pts = c.split(',');
                             if (pts.length >= 2) { 
                                 const lat = parseFloat(pts[1]), lon = parseFloat(pts[0]);
-                                if(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-                                    latLngs.push([lat, lon]); bounds.extend([lat, lon]); 
-                                }
+                                if(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) { latLngs.push([lat, lon]); bounds.extend([lat, lon]); }
                             }
                         });
                         if (latLngs.length > 0) { L.polygon(latLngs, {color: '#3498db', weight: 2, fillOpacity: 0.4}).addTo(kmlLayerGroup); stats.polygons++; }
                     }
                 }
 
-                // Lines
-                const lines = xmlDoc.getElementsByTagName("LineString");
+                const lines = kmlXmlDoc.getElementsByTagName("LineString");
                 for (let l of lines) {
                     const coordsNode = l.getElementsByTagName("coordinates")[0];
                     if (coordsNode) {
@@ -238,17 +152,14 @@
                             const pts = c.split(',');
                             if (pts.length >= 2) { 
                                 const lat = parseFloat(pts[1]), lon = parseFloat(pts[0]);
-                                if(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-                                    latLngs.push([lat, lon]); bounds.extend([lat, lon]); 
-                                }
+                                if(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) { latLngs.push([lat, lon]); bounds.extend([lat, lon]); }
                             }
                         });
                         if (latLngs.length > 0) { L.polyline(latLngs, {color: '#FF3B30', weight: 4}).addTo(kmlLayerGroup); stats.lines++; }
                     }
                 }
 
-                // Points
-                const placemarks = xmlDoc.getElementsByTagName("Placemark");
+                const placemarks = kmlXmlDoc.getElementsByTagName("Placemark");
                 for (let pm of placemarks) {
                     const ptNode = pm.getElementsByTagName("Point")[0];
                     if (ptNode) {
@@ -270,11 +181,155 @@
                 log(`Trace chargée : ${stats.points} Pts, ${stats.lines} Lignes, ${stats.polygons} Zones.`);
                 if (bounds.isValid() && !mntData) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 }); 
 
+                isKmzLoaded = true;
+                checkReadyStatus();
+
             } catch (error) {
                 log(`❌ ERREUR KMZ: ${error.message}`);
-                document.getElementById('box-kmz').classList.remove('active');
+                boxKmz.classList.remove('active');
+                boxKmz.classList.add('error');
+                isKmzLoaded = false;
             }
         });
+
+        // --- ÉTAPE 2 : LECTURE DU MNT ---
+        document.getElementById('tif-input').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            log(`Analyse du MNT : ${file.name}...`);
+            const boxTif = document.getElementById('box-tif');
+            boxTif.classList.remove('error');
+            boxTif.classList.add('active');
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
+                const image = await tiff.getImage();
+                
+                mntBbox = image.getBoundingBox();
+                mntWidth = image.getWidth();
+                mntHeight = image.getHeight();
+                
+                if (Math.abs(mntBbox[0]) > 180) {
+                    isLambert93 = true;
+                    const swWgs84 = proj4("EPSG:2154", "EPSG:4326", [mntBbox[0], mntBbox[1]]);
+                    const neWgs84 = proj4("EPSG:2154", "EPSG:4326", [mntBbox[2], mntBbox[3]]);
+                    var boundsWgs84 = [[swWgs84[1], swWgs84[0]], [neWgs84[1], neWgs84[0]]]; 
+                } else {
+                    isLambert93 = false;
+                    var boundsWgs84 = [[mntBbox[1], mntBbox[0]], [mntBbox[3], mntBbox[2]]];
+                }
+
+                const rasters = await image.readRasters();
+                mntData = rasters[0]; 
+
+                log(`✅ MNT prêt en mémoire.`);
+
+                if (mntBoundsLayer) map.removeLayer(mntBoundsLayer);
+                mntBoundsLayer = L.rectangle(boundsWgs84, {color: "#ff4d4f", weight: 2, fillOpacity: 0.1, dashArray: '5, 5'}).addTo(map);
+                map.fitBounds(boundsWgs84, { padding: [20, 20], maxZoom: 16 });
+
+                isMntLoaded = true;
+                checkReadyStatus();
+
+            } catch (error) {
+                log(`❌ Erreur MNT: ${error.message}`);
+                boxTif.classList.remove('active');
+                boxTif.classList.add('error');
+                mntData = null; 
+                isMntLoaded = false;
+            }
+        });
+
+        // Fonction mathématique pour lire l'altitude
+        function getElevationAt(lat, lon) {
+            if (!mntData || !mntBbox) return null;
+            let xTarget, yTarget;
+
+            if (isLambert93) {
+                const coordsL93 = proj4("EPSG:4326", "EPSG:2154", [lon, lat]);
+                xTarget = coordsL93[0]; yTarget = coordsL93[1];
+            } else {
+                xTarget = lon; yTarget = lat;
+            }
+
+            const minX = mntBbox[0], minY = mntBbox[1], maxX = mntBbox[2], maxY = mntBbox[3];
+            if (xTarget < minX || xTarget > maxX || yTarget < minY || yTarget > maxY) return null;
+
+            const pixelX = Math.floor(((xTarget - minX) / (maxX - minX)) * mntWidth);
+            const pixelY = Math.floor(((maxY - yTarget) / (maxY - minY)) * mntHeight);
+
+            if (pixelX < 0 || pixelX >= mntWidth || pixelY < 0 || pixelY >= mntHeight) return null;
+
+            const index = pixelY * mntWidth + pixelX;
+            const elevation = mntData[index];
+
+            if (elevation < -500 || elevation > 8000) return null; 
+            return elevation;
+        }
+
+        // --- ÉTAPE 3 : LE MOTEUR DE FUSION ---
+        document.getElementById('btn-process').addEventListener('click', function() {
+            if (!kmlXmlDoc || !mntData) return;
+
+            log("🔄 Lancement du traitement topographique...");
+            const startTime = performance.now();
+            
+            // On récupère TOUTES les balises <coordinates> du fichier (Lignes, Surfaces, Points)
+            const coordsNodes = kmlXmlDoc.getElementsByTagName("coordinates");
+            let pointsModifies = 0;
+            let pointsHorsZone = 0;
+
+            // On boucle sur chaque balise
+            for (let i = 0; i < coordsNodes.length; i++) {
+                const node = coordsNodes[i];
+                // On récupère le texte brut et on le découpe point par point
+                const rawText = node.textContent.trim().replace(/\n/g, ' ');
+                const pointsArray = rawText.split(/\s+/);
+                
+                const newPointsArray = [];
+
+                for (let pt of pointsArray) {
+                    const coords = pt.split(',');
+                    if (coords.length >= 2) {
+                        const lon = parseFloat(coords[0]);
+                        const lat = parseFloat(coords[1]);
+                        const ancienneAlt = coords.length === 3 ? parseFloat(coords[2]) : 0;
+
+                        if (!isNaN(lon) && !isNaN(lat)) {
+                            // On demande la vraie altitude au MNT local
+                            const vraieAlt = getElevationAt(lat, lon);
+                            
+                            if (vraieAlt !== null) {
+                                // On réécrit la coordonnée avec sa nouvelle altitude (arrondie à 2 décimales)
+                                newPointsArray.push(`${lon},${lat},${vraieAlt.toFixed(2)}`);
+                                pointsModifies++;
+                            } else {
+                                // Si le point déborde de la zone du MNT, on garde l'ancienne altitude
+                                newPointsArray.push(`${lon},${lat},${ancienneAlt}`);
+                                pointsHorsZone++;
+                            }
+                        }
+                    }
+                }
+                
+                // On remplace le texte dans le document XML en mémoire par notre nouveau tableau propre
+                node.textContent = newPointsArray.join(' ');
+            }
+
+            const endTime = performance.now();
+            const timeTaken = (endTime - startTime).toFixed(1);
+
+            document.getElementById('box-process').classList.add('active');
+            
+            log(`✅ Opération réussie en ${timeTaken} ms !`);
+            log(`🏔️ ${pointsModifies} altitudes corrigées avec précision.`);
+            if (pointsHorsZone > 0) log(`⚠️ ${pointsHorsZone} points étaient en dehors de la zone du fichier .tif.`);
+            
+            log(`\n(L'étape suivante sera de télécharger ce nouveau fichier KML)`);
+        });
+
     </script>
 </body>
 </html>
