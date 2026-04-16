@@ -55,7 +55,6 @@
 
         proj4.defs("EPSG:2154", "+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
 
-        // --- NOUVEAU PARSEUR KML ULTRA-STRICT (Évite les crashs 3D) ---
         function parseCoords(text) {
             if (!text) return [];
             return text.trim().split(/\s+/).map(pair => {
@@ -96,7 +95,6 @@
                 kmlXmlDoc = new DOMParser().parseFromString(text, "text/xml");
                 const b = L.latLngBounds();
                 
-                // Dessin 2D propre via le nouveau parseur
                 for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
                     const pts = parseCoords(l.getElementsByTagName("coordinates")[0]?.textContent);
                     if(pts.length) { L.polyline(pts.map(p => [p.lat, p.lon]), {color: '#FF3B30', weight: 3}).addTo(kmlLayerGroup); pts.forEach(p=>b.extend([p.lat, p.lon])); }
@@ -121,7 +119,7 @@
             hideLoad();
         });
 
-        // MNT (Inchangé)
+        // MNT
         document.getElementById('tif-input').addEventListener('change', async function(e) {
             const file = e.target.files[0]; if(!file) return;
             showLoad("Analyse MNT...");
@@ -164,7 +162,7 @@
             setTimeout(() => {
                 const coords = kmlXmlDoc.getElementsByTagName("coordinates");
                 for(let n of coords) {
-                    const pts = parseCoords(n.textContent); // Utilisation du parseur strict
+                    const pts = parseCoords(n.textContent); 
                     const newPts = pts.map(pt => {
                         const alt = getElev(pt.lat, pt.lon);
                         return `${pt.lon},${pt.lat},${alt !== null ? alt.toFixed(2) : pt.alt}`;
@@ -186,18 +184,16 @@
             a.download = kmlFileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
 
-        // --- ENVOI VERS AR.HTML ---
+        // AR LINK
         document.getElementById('btn-ar').addEventListener('click', () => {
             if (!kmlXmlDoc) return;
-            log("💾 Sauvegarde en mémoire...");
+            log("💾 Envoi vers la page AR...");
             const xmlString = new XMLSerializer().serializeToString(kmlXmlDoc);
-            // On sauvegarde le KML dans la mémoire locale du téléphone
             localStorage.setItem('kmlForAR', xmlString);
-            // On navigue vers la page AR dédiée
             window.location.href = 'ar.html';
         });
 
-        // === MOTEUR 3D (Réparé grâce au parseur strict) ===
+        // === MOTEUR 3D AVEC TOPOGRAPHIE COLORÉE ===
         let scene, camera, renderer, controls;
         let groupTerrain, groupTraces, groupCanons;
 
@@ -207,7 +203,7 @@
         function init3D() {
             try {
                 const container = document.getElementById('canvas-container');
-                scene = new THREE.Scene(); scene.background = new THREE.Color(0x1e272e);
+                scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); // Ciel bleu naturel
                 const light = new THREE.DirectionalLight(0xffffff, 1.2); light.position.set(5000, 10000, 5000); scene.add(light);
                 scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 
@@ -235,17 +231,39 @@
                     }
                 }
 
-                const colorBas = new THREE.Color(0x27ae60); const colorMid = new THREE.Color(0xf1c40f); const colorHaut = new THREE.Color(0xffffff); const tmpColor = new THREE.Color();
+                // PALETTE TOPOGRAPHIQUE PROFESSIONNELLE (6 Couleurs)
+                const palette = [
+                    new THREE.Color(0x2d5e2e), // Vert sombre (Vallées)
+                    new THREE.Color(0x8bc34a), // Vert clair
+                    new THREE.Color(0xf1c40f), // Jaune (Alpages)
+                    new THREE.Color(0xe67e22), // Orange/Terre
+                    new THREE.Color(0x8d6e63), // Roche/Marron
+                    new THREE.Color(0xffffff)  // Neige
+                ];
+                const tmpColor = new THREE.Color();
+
                 for(let i=0; i<pos.length; i+=3) {
-                    const a = pos[i+1]; let ratio = (maxA - minA) === 0 ? 0 : (a - minA) / (maxA - minA);
-                    if(ratio < 0.5) tmpColor.lerpColors(colorBas, colorMid, ratio * 2); else tmpColor.lerpColors(colorMid, colorHaut, (ratio - 0.5) * 2);
+                    const a = pos[i+1];
+                    let ratio = (maxA - minA) === 0 ? 0 : (a - minA) / (maxA - minA);
+                    ratio = Math.max(0, Math.min(1, ratio)); // Sécurité
+                    
+                    const scaled = ratio * (palette.length - 1);
+                    const index = Math.floor(scaled);
+                    const lerpFactor = scaled - index;
+
+                    if (index >= palette.length - 1) {
+                        tmpColor.copy(palette[palette.length - 1]);
+                    } else {
+                        tmpColor.lerpColors(palette[index], palette[index + 1], lerpFactor);
+                    }
+
                     colors[i] = tmpColor.r; colors[i+1] = tmpColor.g; colors[i+2] = tmpColor.b;
                 }
 
                 geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); geo.computeVertexNormals();
-                groupTerrain.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true })));
+                groupTerrain.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, flatShading: true })));
 
-                const lineMat = new THREE.LineBasicMaterial({ color: 0xFF3B30, linewidth: 3 });
+                const lineMat = new THREE.LineBasicMaterial({ color: 0xFF3B30, linewidth: 4 });
                 for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
                     const pts = parseCoords(l.getElementsByTagName("coordinates")[0]?.textContent);
                     if(pts.length > 1) {
