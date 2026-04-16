@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Scanner AR - Topo SIG</title>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, sans-serif; }
+        /* ⚠️ LE FIX EST ICI : background: transparent !important */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent !important; font-family: -apple-system, sans-serif; }
         
         #ar-ui { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
         
@@ -26,13 +28,13 @@
 
     <div id="loading-screen">
         <h3>Initialisation AR...</h3>
-        <p id="loading-text">Recherche du signal GPS</p>
+        <p id="loading-text">Veuillez autoriser la caméra et le GPS</p>
     </div>
 
     <div id="ar-ui">
         <div id="ar-header">
             <strong>Calibrage Tactile</strong><br>
-            Glissez de gauche à droite pour aligner les pistes.<br>
+            Glissez pour aligner.<br>
             <button id="ar-toggle-mode">Actuel : BOUSSOLE</button>
         </div>
         <button id="btn-back">Retour à la Carte</button>
@@ -44,7 +46,6 @@
     </a-scene>
 
     <script>
-        // Outils Mathématiques
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3; const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
@@ -67,7 +68,6 @@
             }).filter(p => p !== null);
         }
 
-        // Composants Traces A-Frame
         AFRAME.registerComponent('kml-tube', {
             schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#FF3B30'}, playerAlt: {type: 'number', default: 0} },
             init: function() {
@@ -119,18 +119,17 @@
             }
         });
 
-        // === DÉMARRAGE AR ===
         window.addEventListener('load', () => {
             const kmlText = localStorage.getItem('kmlForAR');
             if (!kmlText) {
-                document.getElementById('loading-text').innerHTML = "Aucune trace en mémoire.<br>Veuillez d'abord générer un KML depuis l'Atelier.";
+                document.getElementById('loading-text').innerHTML = "Aucune trace en mémoire.<br>Générez un KML depuis l'Atelier.";
                 return;
             }
 
-            document.getElementById('loading-text').innerText = "Recherche du signal GPS...";
+            document.getElementById('loading-text').innerText = "Attente du GPS (Sortez à l'extérieur si besoin)...";
 
             navigator.geolocation.getCurrentPosition(pos => {
-                document.getElementById('loading-text').innerText = "Génération du monde 3D...";
+                document.getElementById('loading-text').innerText = "Construction 3D...";
                 
                 const playerLat = pos.coords.latitude;
                 const playerLon = pos.coords.longitude;
@@ -141,7 +140,6 @@
                 const arContainer = document.getElementById('ar-kml-container');
                 let nbVisibles = 0;
 
-                // Génération des éléments à injecter
                 for (let p of kmlXmlDoc.getElementsByTagName("Polygon")) {
                     const coords = p.getElementsByTagName("coordinates")[0]?.textContent;
                     const pts = parseCoords(coords);
@@ -176,7 +174,7 @@
                             const el = document.createElement('a-entity');
                             el.setAttribute('gps-entity-place', `latitude: ${pts[0].lat}; longitude: ${pts[0].lon};`);
                             el.innerHTML = `
-                                <a-sphere radius="0.8" color="#FFCC00" position="0 ${relAlt} 0" opacity="0.9"></a-sphere>
+                                <a-sphere radius="0.5" color="#FFCC00" position="0 ${relAlt} 0" opacity="0.9"></a-sphere>
                                 <a-text value="${name}\nAlt: ${Math.round(pts[0].alt)}m" position="0 ${relAlt + 2} 0" look-at="[gps-camera]" scale="5 5 5" align="center" color="#FFFFFF"></a-text>
                             `;
                             arContainer.appendChild(el); nbVisibles++;
@@ -186,14 +184,14 @@
 
                 document.getElementById('loading-screen').style.display = 'none';
 
-                if (nbVisibles === 0) alert("⚠️ RADAR GPS : La piste la plus proche est à plus de 15 km. Rien ne s'affichera à l'écran.");
+                if (nbVisibles === 0) alert("⚠️ RADAR GPS : La trace est à plus de 15 km. Rien n'apparaîtra à l'écran.");
 
             }, err => {
-                document.getElementById('loading-text').innerText = "❌ Échec GPS. La RA nécessite la géolocalisation.";
+                document.getElementById('loading-text').innerText = "❌ Échec GPS. Autorisez la localisation.";
             }, {enableHighAccuracy: true});
         });
 
-        // --- GESTION DU JOYSTICK AR ---
+        // Joystick
         let arDragMode = 'compass'; let isArDragging = false; let lastArX = 0, lastArY = 0; let arOffsetCompass = 0, arOffsetAlt = 0;
         document.getElementById('ar-toggle-mode').onclick = () => {
             const btn = document.getElementById('ar-toggle-mode');
@@ -218,7 +216,6 @@
         }, {passive: false});
         document.addEventListener('touchend', () => { isArDragging = false; });
 
-        // RETOUR À LA CARTE (Changement de page, libère 100% de la mémoire et coupe la caméra nativement)
         document.getElementById('btn-back').addEventListener('click', () => {
             window.location.href = 'index.html';
         });
