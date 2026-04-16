@@ -436,44 +436,94 @@
         document.getElementById('t-traces').onchange = (e) => { if(groupTraces) groupTraces.visible = e.target.checked; };
         document.getElementById('t-canons').onchange = (e) => { if(groupCanons) groupCanons.visible = e.target.checked; };
 
-        // ==========================================
-        // --- 5. MOTEUR AR ---
+      // ==========================================
+        // --- 5. MOTEUR AR "CONFINÉ" & SURBOOSTÉ ---
         // ==========================================
         
         document.getElementById('btn-ar').onclick = () => {
-            log("🚀 Lancement de l'appareil photo AR...");
+            log("🚀 Préparation de la Réalité Augmentée...");
             showLoad("Calibrage GPS...");
 
             navigator.geolocation.getCurrentPosition(pos => {
-                const playerLat = pos.coords.latitude;
-                const playerLon = pos.coords.longitude;
-                const playerAlt = pos.coords.altitude || 0;
+                let playerLat = pos.coords.latitude;
+                let playerLon = pos.coords.longitude;
+                let playerAlt = pos.coords.altitude || 0;
                 
-                log(`📍 Vous êtes à Alt: ${Math.round(playerAlt)}m`);
+                log(`📍 GPS local : Alt ${Math.round(playerAlt)}m`);
+                
+                let isSimulation = false;
+
+                // 1. VÉRIFICATION DE LA DISTANCE & MODE SIMULATION
+                if (kmlXmlDoc) {
+                    const firstPt = kmlXmlDoc.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
+                    if (firstPt) {
+                        const targetLon = parseFloat(firstPt[0]);
+                        const targetLat = parseFloat(firstPt[1]);
+                        const targetAlt = parseFloat(firstPt[2]) || 1500;
+                        
+                        const dist = map.distance([playerLat, playerLon], [targetLat, targetLon]);
+                        
+                        // Si l'utilisateur est à plus de 2 kilomètres de la piste
+                        if (dist > 2000) { 
+                            const wantSim = confirm(`⚠️ La trace est à ${Math.round(dist/1000)} km de vous !\n\nVous ne verrez rien d'ici. Voulez-vous activer le MODE SIMULATION pour téléporter votre caméra sur les pistes et tester l'affichage ?`);
+                            
+                            if (wantSim) {
+                                // On triche sur la position du joueur pour le placer 100m au sud du premier point
+                                playerLat = targetLat - 0.001; 
+                                playerLon = targetLon;
+                                playerAlt = targetAlt;
+                                isSimulation = true;
+                                log("⚠️ MODE SIMULATION ACTIVÉ. Caméra téléportée.");
+                            } else {
+                                log(`⚠️ Maintien de la position réelle. Éléments potentiellement invisibles.`);
+                            }
+                        }
+                    }
+                }
+
                 document.body.classList.add('ar-mode');
                 
+                // 2. CONFIGURATION DE LA CAMÉRA (Réelle ou Simulée)
+                let cameraConfig = `gps-camera="minDistance: 1; maxDistance: 30000;"`; // Visibilité jusqu'à 30km
+                if (isSimulation) {
+                    cameraConfig = `gps-camera="simulateLatitude: ${playerLat}; simulateLongitude: ${playerLon}; simulateAltitude: ${playerAlt}; minDistance: 1; maxDistance: 30000;"`;
+                }
+
                 let arHtml = `
                     <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-                        <a-camera gps-camera="minDistance: 1; maxDistance: 100000;" rotation-reader></a-camera>
+                        <a-camera ${cameraConfig} rotation-reader></a-camera>
                 `;
 
+                // 3. GÉNÉRATION DES BALISES (Piliers Visibles de loin)
+                let pointCount = 0;
                 for (let p of kmlXmlDoc.getElementsByTagName("Point")) {
+                    // On limite à 60 points affichés simultanément pour ne pas faire crasher Safari
+                    if (pointCount >= 60) break; 
+
                     const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
                     if(c) {
                         const lat = parseFloat(c[1]);
                         const lon = parseFloat(c[0]);
                         const alt = parseFloat(c[2]) || 0;
-                        const relAlt = (alt - playerAlt) - 1.5;
+                        
+                        // Si on est en simulation, l'altitude relative est calculée sur la fausse position
+                        const relAlt = (alt - playerAlt);
                         
                         arHtml += `
                             <a-entity gps-entity-place="latitude: ${lat}; longitude: ${lon};">
-                                <a-sphere radius="10" color="#FFCC00" position="0 ${relAlt} 0"></a-sphere>
+                                <a-circle radius="5" color="#3498db" rotation="-90 0 0" position="0 ${relAlt} 0"></a-circle>
+                                
+                                <a-cylinder radius="2" height="50" color="#FF3B30" opacity="0.6" position="0 ${relAlt + 25} 0"></a-cylinder>
+                                
+                                <a-sphere radius="8" color="#FFCC00" position="0 ${relAlt + 55} 0"></a-sphere>
                             </a-entity>
                         `;
+                        pointCount++;
                     }
                 }
 
                 arHtml += `</a-scene>`;
+
                 document.getElementById('ar-view').innerHTML = arHtml;
                 hideLoad();
 
@@ -484,6 +534,7 @@
             }, {enableHighAccuracy: true});
         };
 
+        // --- DESTRUCTION TOTALE DU MODE AR ---
         document.getElementById('exit-ar-btn').addEventListener('click', () => {
             log("🛑 Arrêt du flux caméra...");
             
@@ -504,9 +555,8 @@
             document.getElementById('app-container').style.setProperty('display', 'flex', 'important');
             
             setTimeout(() => { map.invalidateSize(); }, 300);
-            log("✅ Retour au SIG.");
+            log("✅ Retour au SIG. Nettoyage terminé.");
         });
-
     </script>
 </body>
 </html>
