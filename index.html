@@ -63,18 +63,15 @@
         #loading-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 4000; display: none; flex-direction: column; justify-content: center; align-items: center; color: white;}
 
         /* --- SÉCURITÉ AR MODE --- */
-        /* Le mode AR désactive tout l'affichage standard de la page */
         body.ar-mode #app-container { display: none !important; }
         body.ar-mode { background: transparent !important; margin: 0; padding: 0;}
         
         #ar-view { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; display: none; }
         body.ar-mode #ar-view { display: block; }
 
-        /* Le bouton quitter doit être un char d'assaut absolu pour passer par dessus la vidéo de la caméra */
         #exit-ar-btn { 
             position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); 
-            z-index: 999999; /* Indestructible */
-            display: none; background: #e74c3c; color: white; padding: 15px 30px; 
+            z-index: 999999; display: none; background: #e74c3c; color: white; padding: 15px 30px; 
             border-radius: 30px; font-weight: bold; border: none; font-size: 16px; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer; 
         }
@@ -155,19 +152,15 @@
         const kmlLayerGroup = L.featureGroup().addTo(map);
         let mntBoundsLayer = null; 
 
-        // Globales
         let kmlXmlDoc = null; let mntData = null; let mntWidth = 0, mntHeight = 0, mntBbox = null; let isLambert93 = false; let boundsWgs84Global = null;
         let isKmzLoaded = false; let isMntLoaded = false;
         let kmlFileName = "trace_export.kml";
         
-        // BDD Canons prioritaire
-        const baseAltitudesCanons = { "33": 1798, "1": 1477 }; 
-
         function checkReady() { 
             if(isKmzLoaded && isMntLoaded) document.getElementById('box-process').classList.remove('disabled-step'); 
         }
 
-        // --- 1. CHARGEMENT KML (Débloque l'AR immédiatement) ---
+        // --- 1. CHARGEMENT KML ---
         document.getElementById('kmz-input').addEventListener('change', async function(e) {
             const file = e.target.files[0]; if(!file) return;
             showLoad("Analyse KML...");
@@ -202,7 +195,6 @@
                 document.getElementById('box-kmz').classList.add('active');
                 isKmzLoaded = true; 
                 
-                // DÉBLOCAGE IMMÉDIAT DE L'AR (Même sans MNT)
                 document.getElementById('box-ar').classList.remove('disabled-step');
                 document.getElementById('box-export').classList.remove('disabled-step');
                 
@@ -279,7 +271,6 @@
             a.href = URL.createObjectURL(new Blob([xmlString], { type: 'application/vnd.google-earth.kml+xml' }));
             a.download = kmlFileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
-
 
         // ==========================================
         // --- 4. MOTEUR 3D ---
@@ -383,73 +374,81 @@
         document.getElementById('t-traces').onchange = (e) => { if(groupTraces) groupTraces.visible = e.target.checked; };
         document.getElementById('t-canons').onchange = (e) => { if(groupCanons) groupCanons.visible = e.target.checked; };
 
+
         // ==========================================
-        // --- 5. MOTEUR AR SÉCURISÉ ---
+        // --- 5. MOTEUR AR "ONE-SHOT" SÉCURISÉ ---
         // ==========================================
         
         document.getElementById('btn-ar').onclick = () => {
             log("🚀 Lancement de l'appareil photo AR...");
-            
-            // 1. On active le mode CSS spécifique AR
-            document.body.classList.add('ar-mode');
+            showLoad("Calibrage GPS...");
 
-            // 2. Injection propre du code A-Frame 
-            const arView = document.getElementById('ar-view');
-            arView.innerHTML = `
-                <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-                    <a-camera gps-camera="minDistance: 1; maxDistance: 10000;" rotation-reader></a-camera>
-                    <a-entity id="ar-container"></a-entity>
-                </a-scene>
-            `;
+            navigator.geolocation.getCurrentPosition(pos => {
+                const playerAlt = pos.coords.altitude || 0;
+                
+                document.body.classList.add('ar-mode');
+                
+                // On construit TOUT le code HTML d'un coup en mémoire
+                let arHtml = `
+                    <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+                        <a-camera gps-camera="minDistance: 1; maxDistance: 10000;" rotation-reader></a-camera>
+                `;
 
-            // 3. Dessin des éléments
-            setTimeout(() => {
-                const arContainer = document.getElementById('ar-container');
-                navigator.geolocation.getCurrentPosition(pos => {
-                    const playerAlt = pos.coords.altitude || 0;
-                    
-                    for (let p of kmlXmlDoc.getElementsByTagName("Point")) {
-                        const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
-                        if(c) {
-                            const entity = document.createElement('a-entity');
-                            entity.setAttribute('gps-entity-place', `latitude: ${c[1]}; longitude: ${c[0]};`);
-                            
-                            const sphere = document.createElement('a-sphere');
-                            sphere.setAttribute('radius', '3');
-                            sphere.setAttribute('color', '#FFCC00');
-                            
-                            const pointAlt = parseFloat(c[2]) || 0;
-                            sphere.setAttribute('position', `0 ${(pointAlt - playerAlt) - 1.5} 0`); 
-                            
-                            entity.appendChild(sphere); arContainer.appendChild(entity);
-                        }
+                // Injection des canons (Points)
+                for (let p of kmlXmlDoc.getElementsByTagName("Point")) {
+                    const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
+                    if(c) {
+                        const lat = parseFloat(c[1]);
+                        const lon = parseFloat(c[0]);
+                        const alt = parseFloat(c[2]) || 0;
+                        const relAlt = (alt - playerAlt) - 1.5;
+                        
+                        arHtml += `
+                            <a-entity gps-entity-place="latitude: ${lat}; longitude: ${lon};">
+                                <a-sphere radius="3" color="#FFCC00" position="0 ${relAlt} 0"></a-sphere>
+                            </a-entity>
+                        `;
                     }
-                }, err => log("Localisation requise pour AR."), {enableHighAccuracy: true});
-            }, 500); 
+                }
+
+                arHtml += `</a-scene>`;
+
+                // On injecte le bloc complet dans la page
+                document.getElementById('ar-view').innerHTML = arHtml;
+                hideLoad();
+
+            }, err => {
+                hideLoad();
+                log("❌ Impossible d'activer la AR sans accès au GPS de l'appareil.");
+                alert("Vous devez autoriser la géolocalisation pour utiliser la Réalité Augmentée.");
+            }, {enableHighAccuracy: true});
         };
 
         // --- DESTRUCTION TOTALE DU MODE AR ---
         document.getElementById('exit-ar-btn').addEventListener('click', () => {
             log("🛑 Arrêt du flux caméra...");
             
-            // On trouve la vidéo d'AR.js (qui est balancée dans le <body>) et on tue le flux
+            // 1. Couper les caméras physiquement
             const videos = document.querySelectorAll('video');
             videos.forEach(v => {
                 if(v.srcObject) v.srcObject.getTracks().forEach(track => track.stop());
                 v.remove();
             });
 
-            // On efface la scène
+            // 2. Détruire le HTML de la scène A-Frame
             document.getElementById('ar-view').innerHTML = '';
             
-            // On restaure le CSS classique
+            // 3. Enlever le mode AR
             document.body.classList.remove('ar-mode');
             
-            // Nettoyage brut du CSS ajouté par AR.js sur html et body
-            document.body.style = "";
-            document.documentElement.style = "";
+            // 4. Nettoyer les styles que AR.js a forcé sur la balise html et body
+            document.body.style.cssText = "";
+            document.documentElement.style.cssText = "";
             
-            log("✅ Retour au SIG 2D.");
+            // 5. Réveiller la carte Leaflet (qui s'était figée car cachée)
+            setTimeout(() => { map.invalidateSize(); }, 100);
+
+            log("✅ Retour au SIG.");
         });
 
     </script>
