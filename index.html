@@ -2,394 +2,441 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Éditeur Topographique KML / MNT (Version Finale 3D)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Topo AR - SIG Mobile</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
-
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
+
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; font-family: -apple-system, sans-serif; overflow: hidden; }
+        /* --- DESIGN RESPONSIVE --- */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; font-family: -apple-system, sans-serif; overflow: hidden; background: #000; }
         
-        #sidebar { width: 350px; background: #2c3e50; color: white; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; z-index: 1000; box-shadow: 2px 0 5px rgba(0,0,0,0.5); overflow-y: auto;}
-        #map { flex-grow: 1; height: 100%; background: #000; cursor: crosshair; }
+        /* Mobile First (Écran vertical) */
+        #app-container { display: flex; flex-direction: column; width: 100%; height: 100%; position: relative; z-index: 10; }
+        #map { flex-grow: 1; width: 100%; background: #111; }
         
-        h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #34495e; padding-bottom: 5px; margin-bottom: 0;}
+        #sidebar { 
+            width: 100%; height: 45vh; background: #2c3e50; color: white; padding: 15px; box-sizing: border-box; 
+            display: flex; flex-direction: column; gap: 10px; overflow-y: auto; border-top: 2px solid #34495e;
+        }
+
+        /* PC / Tablette (Écran horizontal) */
+        @media (min-width: 768px) {
+            #app-container { flex-direction: row; }
+            #sidebar { width: 350px; height: 100vh; border-top: none; border-right: 2px solid #34495e; order: -1; }
+            #map { height: 100vh; }
+        }
         
-        .file-box { background: #34495e; padding: 12px; border-radius: 8px; border: 1px dashed #7f8c8d; transition: 0.3s; }
+        h2 { margin: 0 0 5px 0; font-size: 16px; border-bottom: 1px solid #34495e; padding-bottom: 5px; }
+        
+        .file-box { background: #34495e; padding: 10px; border-radius: 8px; border: 1px dashed #7f8c8d; transition: 0.3s; }
         .file-box.active { border-color: #4ade80; background: #27ae60; }
-        .file-box.error { border-color: #e74c3c; background: #c0392b; }
-        .file-box label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px; cursor: pointer;}
+        .file-box label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px; }
         input[type="file"] { width: 100%; color: #bdc3c7; font-size: 12px; }
         
-        .action-btn { width: 100%; background: #3498db; color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 13px;}
-        .action-btn:hover { background: #2980b9; }
+        .action-btn { width: 100%; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; margin-top: 5px; }
         .action-btn:active { transform: scale(0.98); }
+        .btn-calc { background: #3498db; color: white; }
+        .btn-3d { background: #9b59b6; color: white; }
+        .btn-ar { background: #e67e22; color: white; }
         
-        .download-btn { background: #e67e22; } .download-btn:hover { background: #d35400; }
-        .preview-btn { background: #9b59b6; } .preview-btn:hover { background: #8e44ad; }
-
-        #log-panel { background: #1a252f; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 11px; color: #4ade80; flex-grow: 1; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;}
+        #log-panel { background: #1a252f; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 11px; color: #4ade80; overflow-y: auto; white-space: pre-wrap; flex-grow: 1; min-height: 50px;}
         .disabled-step { opacity: 0.4; pointer-events: none; }
 
-        /* --- NOUVEAU : FENÊTRE 3D --- */
-        #modal-3d {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #111; z-index: 3000; display: none; flex-direction: column;
-        }
-        #header-3d { height: 50px; background: #2c3e50; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; color: white; font-weight: bold; }
-        #close-3d { background: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        #canvas-container { flex-grow: 1; width: 100%; height: 100%; position: relative; }
-        #loading-3d { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 20px; font-weight: bold; pointer-events: none; text-shadow: 0 2px 4px black;}
+        /* --- FENÊTRE 3D AVEC COUCHES --- */
+        #modal-3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 3000; display: none; flex-direction: column; }
+        #header-3d { background: #2c3e50; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; color: white; font-size: 14px;}
+        #close-3d { background: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; }
+        #canvas-container { flex-grow: 1; position: relative; }
+        
+        /* Panneau de couches 3D */
+        #layers-3d { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px; color: white; font-size: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .layer-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+
+        #loading-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 4000; display: none; flex-direction: column; justify-content: center; align-items: center; color: white;}
+
+        /* --- AR MODE HIDING --- */
+        #ar-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; visibility: hidden; }
+        #exit-ar-btn { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 5000; background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; font-weight: bold; border: none; display: none; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.5);}
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <h2>Atelier Topographique</h2>
-        
-        <div class="file-box" id="box-kmz">
-            <label for="kmz-input">1. Trace (KML/KMZ)</label>
-            <input type="file" id="kmz-input" accept=".kml,.kmz">
-        </div>
-        
-        <div class="file-box" id="box-tif">
-            <label for="tif-input">2. Terrain (.tif)</label>
-            <input type="file" id="tif-input" accept=".tif,.tiff">
-        </div>
-
-        <div class="file-box disabled-step" id="box-process">
-            <button id="btn-process" class="action-btn">3. Calculer les Altitudes</button>
-        </div>
-
-        <div class="file-box disabled-step" id="box-preview">
-            <button id="btn-preview" class="action-btn preview-btn">👁️ 4. Prévisualiser en 3D</button>
-        </div>
-
-        <div class="file-box disabled-step" id="box-export">
-            <button id="btn-export" class="action-btn download-btn">💾 5. Télécharger le KML 3D</button>
-        </div>
-
-        <div id="log-panel">En attente de fichiers...</div>
+    <div id="ar-view">
+        <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+            <a-camera gps-camera="minDistance: 1; maxDistance: 10000;" rotation-reader></a-camera>
+            <a-entity id="ar-container"></a-entity>
+        </a-scene>
     </div>
+    <button id="exit-ar-btn">Quitter la Réalité Augmentée</button>
 
-    <div id="map"></div>
+    <div id="app-container">
+        
+        <div id="map"></div>
+
+        <div id="sidebar">
+            <h2>SIG Montagne</h2>
+            
+            <div class="file-box" id="box-kmz">
+                <label>1. Trace KML/KMZ</label>
+                <input type="file" id="kmz-input" accept=".kml,.kmz">
+            </div>
+            
+            <div class="file-box" id="box-tif">
+                <label>2. Terrain (.tif Lambert 93)</label>
+                <input type="file" id="tif-input" accept=".tif,.tiff">
+            </div>
+
+            <div class="file-box disabled-step" id="box-process">
+                <button id="btn-process" class="action-btn btn-calc">3. Aligner sur Terrain</button>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <div class="file-box disabled-step" id="box-preview" style="flex: 1; padding: 8px;">
+                    <button id="btn-preview" class="action-btn btn-3d">👁️ Vue 3D</button>
+                </div>
+                <div class="file-box disabled-step" id="box-ar" style="flex: 1; padding: 8px;">
+                    <button id="btn-ar" class="action-btn btn-ar">📱 Vue AR</button>
+                </div>
+            </div>
+
+            <div id="log-panel">En attente...</div>
+        </div>
+
+    </div>
 
     <div id="modal-3d">
         <div id="header-3d">
-            <span>🌍 Inspecteur Topographique 3D (Molette pour zoomer, Clic gauche pour tourner, Clic droit pour glisser)</span>
-            <button id="close-3d">Fermer la vue 3D</button>
+            <span style="font-size: 12px;">🌍 Double-clic pour centrer la rotation</span>
+            <button id="close-3d">Fermer</button>
         </div>
         <div id="canvas-container">
-            <div id="loading-3d">Génération du maillage 3D en cours...</div>
+            <div id="layers-3d">
+                <label class="layer-toggle"><input type="checkbox" id="t-terrain" checked> Montagne</label>
+                <label class="layer-toggle"><input type="checkbox" id="t-traces" checked> Traces Pistes</label>
+                <label class="layer-toggle"><input type="checkbox" id="t-canons" checked> Canons</label>
+            </div>
         </div>
     </div>
+
+    <div id="loading-overlay"><h3 id="loading-text">Chargement...</h3></div>
 
     <script>
         const logPanel = document.getElementById('log-panel');
         function log(msg) { logPanel.innerText += `\n> ${msg}`; logPanel.scrollTop = logPanel.scrollHeight; }
+        function showLoad(msg) { document.getElementById('loading-overlay').style.display = 'flex'; document.getElementById('loading-text').innerText = msg; }
+        function hideLoad() { document.getElementById('loading-overlay').style.display = 'none'; }
 
         proj4.defs("EPSG:2154", "+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
 
-        const map = L.map('map').setView([46.6, 2.2], 6);
+        // --- MAP 2D ---
+        const map = L.map('map', {zoomControl: false}).setView([46.6, 2.2], 6);
+        L.control.zoom({position: 'topleft'}).addTo(map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
-
         const kmlLayerGroup = L.featureGroup().addTo(map);
         let mntBoundsLayer = null; 
 
-        // États
+        // --- GLOBALES ---
+        let kmlXmlDoc = null; let mntData = null; let mntWidth = 0, mntHeight = 0, mntBbox = null; let isLambert93 = false; let boundsWgs84Global = null;
         let isKmzLoaded = false; let isMntLoaded = false;
-        let kmlXmlDoc = null; let kmlFileName = "trace_3D.kml"; 
-        let mntData = null; let mntWidth = 0, mntHeight = 0; let mntBbox = null; 
-        let isLambert93 = false;
-        let boundsWgs84Global = null; // Pour centrer la 3D plus tard
+        const baseAltitudesCanons = { "33": 1798, "1": 1477 }; // Vos données TSV simplifiées ici pour l'exemple
 
-        function checkReadyStatus() {
-            if (isKmzLoaded && isMntLoaded) document.getElementById('box-process').classList.remove('disabled-step');
-        }
+        function checkReady() { if(isKmzLoaded && isMntLoaded) document.getElementById('box-process').classList.remove('disabled-step'); }
 
-        // --- ÉTAPE 1 : KML ---
+        // --- 1. CHARGEMENT KML ---
         document.getElementById('kmz-input').addEventListener('change', async function(e) {
-            const file = e.target.files[0]; if (!file) return;
-            log(`Lectue KML...`);
-            document.getElementById('box-kmz').classList.add('active');
+            const file = e.target.files[0]; if(!file) return;
+            showLoad("Analyse KML...");
             kmlLayerGroup.clearLayers();
-            kmlFileName = file.name.replace('.kmz', '').replace('.kml', '') + "_Relief_3D.kml";
-
             try {
-                let kmlText = "";
-                if (file.name.toLowerCase().endsWith('.kmz')) {
+                let text = "";
+                if(file.name.endsWith('.kmz')) {
                     const zip = await JSZip.loadAsync(await file.arrayBuffer());
-                    kmlText = await zip.files[Object.keys(zip.files).find(n => n.endsWith('.kml'))].async("text");
-                } else kmlText = await file.text();
+                    text = await zip.files[Object.keys(zip.files).find(n=>n.endsWith('.kml'))].async("text");
+                } else text = await file.text();
 
-                kmlXmlDoc = new DOMParser().parseFromString(kmlText, "text/xml"); 
-                const bounds = L.latLngBounds();
-
-                // Dessin 2D Rapide
-                const lines = kmlXmlDoc.getElementsByTagName("LineString");
-                for (let l of lines) {
-                    const coords = l.getElementsByTagName("coordinates")[0]?.textContent.trim().replace(/\n/g, ' ').split(/\s+/);
-                    if (coords) {
-                        const latLngs = coords.map(c => [parseFloat(c.split(',')[1]), parseFloat(c.split(',')[0])]).filter(c => !isNaN(c[0]));
-                        if (latLngs.length) { L.polyline(latLngs, {color: '#FF3B30', weight: 3}).addTo(kmlLayerGroup); latLngs.forEach(c => bounds.extend(c)); }
+                kmlXmlDoc = new DOMParser().parseFromString(text, "text/xml");
+                const b = L.latLngBounds();
+                
+                // Dessin 2D
+                for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
+                    const coords = l.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
+                    if(coords) {
+                        const pts = coords.map(c => [parseFloat(c.split(',')[1]), parseFloat(c.split(',')[0])]).filter(c=>!isNaN(c[0]));
+                        if(pts.length) { L.polyline(pts, {color: '#FF3B30', weight: 3}).addTo(kmlLayerGroup); pts.forEach(p=>b.extend(p)); }
                     }
                 }
-                const points = kmlXmlDoc.getElementsByTagName("Point");
-                for (let p of points) {
+                for (let p of kmlXmlDoc.getElementsByTagName("Point")) {
                     const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
-                    if (c && c.length>=2) { L.circleMarker([parseFloat(c[1]), parseFloat(c[0])], {radius:4, fillColor:'#FFCC00', color:'#000', weight:1, fillOpacity:1}).addTo(kmlLayerGroup); bounds.extend([parseFloat(c[1]), parseFloat(c[0])]); }
+                    if(c && c.length>=2) { L.circleMarker([parseFloat(c[1]), parseFloat(c[0])], {radius:5, fillColor:'#FFCC00', color:'#000'}).addTo(kmlLayerGroup); b.extend([parseFloat(c[1]), parseFloat(c[0])]); }
                 }
-
-                if (bounds.isValid() && !mntData) map.fitBounds(bounds, { padding: [50, 50] }); 
-                isKmzLoaded = true; checkReadyStatus();
-            } catch (error) { log(`❌ ERREUR KMZ`); }
+                if(b.isValid() && !mntData) map.fitBounds(b, {padding:[30,30]});
+                document.getElementById('box-kmz').classList.add('active');
+                isKmzLoaded = true; checkReady(); log("KML OK.");
+            } catch(err) { log("❌ Erreur KML"); }
+            hideLoad();
         });
 
-        // --- ÉTAPE 2 : MNT ---
+        // --- 2. CHARGEMENT MNT ---
         document.getElementById('tif-input').addEventListener('change', async function(e) {
-            const file = e.target.files[0]; if (!file) return;
-            log(`Lecture MNT...`);
-            document.getElementById('box-tif').classList.add('active');
-
+            const file = e.target.files[0]; if(!file) return;
+            showLoad("Analyse MNT...");
             try {
-                const image = await (await GeoTIFF.fromArrayBuffer(await file.arrayBuffer())).getImage();
-                mntBbox = image.getBoundingBox(); mntWidth = image.getWidth(); mntHeight = image.getHeight();
+                const img = await (await GeoTIFF.fromArrayBuffer(await file.arrayBuffer())).getImage();
+                mntBbox = img.getBoundingBox(); mntWidth = img.getWidth(); mntHeight = img.getHeight();
                 
-                if (Math.abs(mntBbox[0]) > 180) {
+                if(Math.abs(mntBbox[0]) > 180) {
                     isLambert93 = true;
                     const sw = proj4("EPSG:2154", "EPSG:4326", [mntBbox[0], mntBbox[1]]);
                     const ne = proj4("EPSG:2154", "EPSG:4326", [mntBbox[2], mntBbox[3]]);
                     boundsWgs84Global = [[sw[1], sw[0]], [ne[1], ne[0]]]; 
                 } else {
-                    isLambert93 = false;
-                    boundsWgs84Global = [[mntBbox[1], mntBbox[0]], [mntBbox[3], mntBbox[2]]];
+                    isLambert93 = false; boundsWgs84Global = [[mntBbox[1], mntBbox[0]], [mntBbox[3], mntBbox[2]]];
                 }
 
-                mntData = (await image.readRasters())[0]; 
-                if (mntBoundsLayer) map.removeLayer(mntBoundsLayer);
-                mntBoundsLayer = L.rectangle(boundsWgs84Global, {color: "#ff4d4f", weight: 2, fillOpacity: 0.1, dashArray: '5, 5'}).addTo(map);
-                map.fitBounds(boundsWgs84Global, { padding: [20, 20] });
-                isMntLoaded = true; checkReadyStatus();
-            } catch (error) { log(`❌ Erreur MNT`); }
+                mntData = (await img.readRasters())[0];
+                if(mntBoundsLayer) map.removeLayer(mntBoundsLayer);
+                mntBoundsLayer = L.rectangle(boundsWgs84Global, {color:"#ff4d4f", weight:2, fillOpacity:0.1}).addTo(map);
+                map.fitBounds(boundsWgs84Global);
+                document.getElementById('box-tif').classList.add('active');
+                isMntLoaded = true; checkReady(); log("MNT OK.");
+            } catch(err) { log("❌ Erreur MNT"); }
+            hideLoad();
         });
 
-        function getElevationAt(lat, lon) {
-            if (!mntData) return null;
-            let xT = lon, yT = lat;
-            if (isLambert93) { const c = proj4("EPSG:4326", "EPSG:2154", [lon, lat]); xT = c[0]; yT = c[1]; }
-            const px = Math.floor(((xT - mntBbox[0]) / (mntBbox[2] - mntBbox[0])) * mntWidth);
-            const py = Math.floor(((mntBbox[3] - yT) / (mntBbox[3] - mntBbox[1])) * mntHeight);
-            if (px < 0 || px >= mntWidth || py < 0 || py >= mntHeight) return null;
-            const alt = mntData[py * mntWidth + px];
-            return (alt > -500 && alt < 8000) ? alt : null;
+        function getElev(lat, lon) {
+            if(!mntData) return null;
+            let x = lon, y = lat;
+            if(isLambert93) { const c = proj4("EPSG:4326", "EPSG:2154", [lon, lat]); x = c[0]; y = c[1]; }
+            const px = Math.floor(((x - mntBbox[0]) / (mntBbox[2] - mntBbox[0])) * mntWidth);
+            const py = Math.floor(((mntBbox[3] - y) / (mntBbox[3] - mntBbox[1])) * mntHeight);
+            if(px<0 || px>=mntWidth || py<0 || py>=mntHeight) return null;
+            const a = mntData[py * mntWidth + px]; return (a>-500 && a<8000) ? a : null;
         }
 
-        // --- ÉTAPE 3 : FUSION ---
-        document.getElementById('btn-process').addEventListener('click', function() {
-            if (!kmlXmlDoc || !mntData) return;
-            log("🔄 Fusion en cours...");
-            
-            const coordsNodes = kmlXmlDoc.getElementsByTagName("coordinates");
-            for (let i = 0; i < coordsNodes.length; i++) {
-                const node = coordsNodes[i];
-                const pointsArray = node.textContent.trim().replace(/\n/g, ' ').split(/\s+/);
-                const newPointsArray = [];
-                for (let pt of pointsArray) {
-                    const coords = pt.split(',');
-                    if (coords.length >= 2) {
-                        const lon = parseFloat(coords[0]), lat = parseFloat(coords[1]);
-                        if (!isNaN(lon) && !isNaN(lat)) {
-                            const alt = getElevationAt(lat, lon);
-                            newPointsArray.push(`${lon},${lat},${alt !== null ? alt.toFixed(2) : (coords[2]||0)}`);
+        // --- 3. FUSION ALTIMÉTRIQUE ---
+        document.getElementById('btn-process').addEventListener('click', () => {
+            showLoad("Croisement des données...");
+            setTimeout(() => {
+                const coords = kmlXmlDoc.getElementsByTagName("coordinates");
+                for(let n of coords) {
+                    const pts = n.textContent.trim().split(/\s+/);
+                    const newPts = pts.map(pt => {
+                        const c = pt.split(',');
+                        if(c.length >= 2) {
+                            const alt = getElev(parseFloat(c[1]), parseFloat(c[0]));
+                            return `${c[0]},${c[1]},${alt !== null ? alt.toFixed(2) : (c[2]||0)}`;
                         }
-                    }
+                        return pt;
+                    });
+                    n.textContent = newPts.join(' ');
                 }
-                node.textContent = newPointsArray.join(' ');
-            }
-            
-            document.getElementById('box-process').classList.add('active');
-            document.getElementById('box-export').classList.remove('disabled-step');
-            document.getElementById('box-preview').classList.remove('disabled-step'); // Débloque la 3D
-            log(`✅ Fusion terminée ! Prêt pour la vue 3D ou l'export.`);
-        });
-
-        // --- ÉTAPE 5 : EXPORTATION ---
-        document.getElementById('btn-export').addEventListener('click', function() {
-            const xmlString = new XMLSerializer().serializeToString(kmlXmlDoc);
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([xmlString], { type: 'application/vnd.google-earth.kml+xml' }));
-            a.download = kmlFileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            document.getElementById('box-export').classList.add('active');
+                document.getElementById('box-process').classList.add('active');
+                document.getElementById('box-preview').classList.remove('disabled-step');
+                document.getElementById('box-ar').classList.remove('disabled-step');
+                hideLoad(); log("✅ Altitudes corrigées.");
+            }, 100);
         });
 
         // ==========================================
-        // --- BLOC 5 : MOTEUR DE RENDU THREE.JS ---
+        // --- 4. MOTEUR 3D (Couleurs, Touches, Couches) ---
         // ==========================================
-        
-        const modal3d = document.getElementById('modal-3d');
-        const canvasContainer = document.getElementById('canvas-container');
         let scene, camera, renderer, controls;
+        let groupTerrain, groupTraces, groupCanons;
 
-        document.getElementById('close-3d').addEventListener('click', () => {
-            modal3d.style.display = "none";
-            // Nettoyage de la mémoire pour éviter les ralentissements
-            if(renderer) { renderer.dispose(); canvasContainer.innerHTML = '<div id="loading-3d">Génération du maillage 3D en cours...</div>'; }
-        });
+        document.getElementById('close-3d').onclick = () => { document.getElementById('modal-3d').style.display="none"; };
+        
+        // Clic sur "Vue 3D"
+        document.getElementById('btn-preview').onclick = () => {
+            document.getElementById('modal-3d').style.display="flex";
+            if(!scene) setTimeout(init3D, 100); 
+        };
 
-        document.getElementById('btn-preview').addEventListener('click', function() {
-            modal3d.style.display = "flex";
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene(); scene.background = new THREE.Color(0x1e272e);
             
-            // On laisse 100ms au navigateur pour afficher la fenêtre noire avant de figer avec le calcul 3D
-            setTimeout(init3DScene, 100); 
-        });
+            const light = new THREE.DirectionalLight(0xffffff, 1.2); light.position.set(5000, 10000, 5000); scene.add(light);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 
-        function init3DScene() {
-            // 1. Initialisation de l'espace 3D
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87CEEB); // Ciel bleu
-            scene.fog = new THREE.Fog(0x87CEEB, 1000, 15000); // Brouillard pour cacher l'horizon
+            groupTerrain = new THREE.Group(); scene.add(groupTerrain);
+            groupTraces = new THREE.Group(); scene.add(groupTraces);
+            groupCanons = new THREE.Group(); scene.add(groupCanons);
 
-            // Lumières
-            const light = new THREE.DirectionalLight(0xffffff, 1);
-            light.position.set(5000, 10000, 5000);
-            scene.add(light);
-            scene.add(new THREE.AmbientLight(0x404040, 1.5));
-
-            // 2. Mathématiques de l'emprise (Pour centrer la carte en 0,0,0)
             const minLat = boundsWgs84Global[0][0], maxLat = boundsWgs84Global[1][0];
             const minLon = boundsWgs84Global[0][1], maxLon = boundsWgs84Global[1][1];
+            const wMeters = map.distance([minLat, minLon], [minLat, maxLon]);
+            const hMeters = map.distance([minLat, minLon], [maxLat, minLon]);
+
+            function toV3(lat, lon, alt) {
+                return new THREE.Vector3( ((lon-minLon)/(maxLon-minLon))*wMeters - wMeters/2, alt, -(((lat-minLat)/(maxLat-minLat))*hMeters - hMeters/2) );
+            }
+
+            // Génération Relief avec Couleurs par Altitude
+            const segs = 150;
+            const geo = new THREE.PlaneGeometry(wMeters, hMeters, segs, segs);
+            geo.rotateX(-Math.PI/2);
             
-            // Calcul des distances réelles en mètres (Largeur et Hauteur de la zone)
-            const widthMeters = map.distance([minLat, minLon], [minLat, maxLon]);
-            const heightMeters = map.distance([minLat, minLon], [maxLat, minLon]);
-
-            // Fonction pour convertir un Lat/Lon GPS en X/Z dans notre monde 3D
-            function latLonToVector3(lat, lon, alt) {
-                // X = gauche/droite (Longitude)
-                const x = ((lon - minLon) / (maxLon - minLon)) * widthMeters - (widthMeters / 2);
-                // Z = profondeur (Latitude). Inversé car le Z négatif est "loin devant"
-                const z = -(((lat - minLat) / (maxLat - minLat)) * heightMeters - (heightMeters / 2));
-                // Y = Altitude réelle (On peut la multiplier par 1.2 si on veut exagérer le relief)
-                return new THREE.Vector3(x, alt, z);
-            }
-
-            // 3. GÉNÉRATION DU TERRAIN 3D (Le fameux Maillage)
-            // On ne crée pas 4000x4000 cases, on limite à 150x150 pour la fluidité
-            const segmentsX = 150, segmentsY = 150;
-            const terrainGeo = new THREE.PlaneGeometry(widthMeters, heightMeters, segmentsX, segmentsY);
-            terrainGeo.rotateX(-Math.PI / 2); // On couche le plan à l'horizontale
-
-            const vertices = terrainGeo.attributes.position.array;
-            let minAlt = Infinity;
-
-            for (let i = 0; i <= segmentsY; i++) {
-                for (let j = 0; j <= segmentsX; j++) {
-                    // Pour chaque nœud du filet, on calcule sa vraie coordonnée GPS
-                    const lon = minLon + (j / segmentsX) * (maxLon - minLon);
-                    const lat = maxLat - (i / segmentsY) * (maxLat - minLat); // maxLat car on part du haut
-                    
-                    const alt = getElevationAt(lat, lon) || 0;
-                    if (alt < minAlt) minAlt = alt;
-
-                    // On modifie l'axe Y (index 1, 4, 7...) du vertex
-                    const index = (i * (segmentsX + 1) + j) * 3;
-                    vertices[index + 1] = alt; 
+            const pos = geo.attributes.position.array;
+            const colors = new Float32Array(pos.length);
+            
+            // 1er passage : trouver min/max pour le dégradé
+            let minA = Infinity, maxA = -Infinity;
+            for(let i=0; i<=segs; i++) {
+                for(let j=0; j<=segs; j++) {
+                    const a = getElev(maxLat - (i/segs)*(maxLat-minLat), minLon + (j/segs)*(maxLon-minLon)) || 0;
+                    if(a < minA) minA = a; if(a > maxA) maxA = a;
+                    pos[(i*(segs+1)+j)*3 + 1] = a;
                 }
             }
 
-            terrainGeo.computeVertexNormals(); // Calcule les ombres du relief
+            // 2ème passage : appliquer la couleur
+            const colorBas = new THREE.Color(0x27ae60); // Vert Forêt
+            const colorMid = new THREE.Color(0xf1c40f); // Jaune/Herbe sèche
+            const colorHaut = new THREE.Color(0xffffff); // Blanc Neige
+            const tmpColor = new THREE.Color();
 
-            // Matériel du terrain (Vert avec un effet fil de fer "Tron")
-            const terrainMat = new THREE.MeshStandardMaterial({ 
-                color: 0x2ecc71, 
-                wireframe: false, 
-                roughness: 0.8 
-            });
-            const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
-            scene.add(terrainMesh);
+            for(let i=0; i<pos.length; i+=3) {
+                const a = pos[i+1];
+                let ratio = (a - minA) / (maxA - minA || 1);
+                if(ratio < 0.5) tmpColor.lerpColors(colorBas, colorMid, ratio * 2);
+                else tmpColor.lerpColors(colorMid, colorHaut, (ratio - 0.5) * 2);
+                colors[i] = tmpColor.r; colors[i+1] = tmpColor.g; colors[i+2] = tmpColor.b;
+            }
 
-            // Pour voir la grille de relief par-dessus
-            const wireframeMat = new THREE.MeshBasicMaterial({ color: 0x27ae60, wireframe: true, transparent: true, opacity: 0.2 });
-            const wireframeMesh = new THREE.Mesh(terrainGeo, wireframeMat);
-            scene.add(wireframeMesh);
+            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geo.computeVertexNormals();
 
-            // 4. GÉNÉRATION DES LIGNES (Traces KML modifiées)
-            const lineMat = new THREE.LineBasicMaterial({ color: 0xFF0000, linewidth: 3 });
-            const lines = kmlXmlDoc.getElementsByTagName("LineString");
-            for (let l of lines) {
-                const coords = l.getElementsByTagName("coordinates")[0]?.textContent.trim().replace(/\n/g, ' ').split(/\s+/);
-                if (coords) {
-                    const points = [];
-                    coords.forEach(c => {
-                        const pts = c.split(',');
-                        if (pts.length >= 3) {
-                            const lon = parseFloat(pts[0]), lat = parseFloat(pts[1]), alt = parseFloat(pts[2]);
-                            // On ajoute +5 mètres à l'altitude pour que la ligne ne s'enfonce pas dans le sol 3D
-                            points.push(latLonToVector3(lat, lon, alt + 5)); 
-                        }
-                    });
-                    if (points.length > 1) {
-                        const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-                        const lineMesh = new THREE.Line(lineGeo, lineMat);
-                        scene.add(lineMesh);
-                    }
+            // Material utilisant les couleurs calculées
+            const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true });
+            groupTerrain.add(new THREE.Mesh(geo, mat));
+
+            // Traces
+            const lineMat = new THREE.LineBasicMaterial({ color: 0xFF3B30, linewidth: 3 });
+            for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
+                const c = l.getElementsByTagName("coordinates")[0]?.textContent.trim().split(/\s+/);
+                if(c) {
+                    const pts = c.map(pt => toV3(parseFloat(pt.split(',')[1]), parseFloat(pt.split(',')[0]), parseFloat(pt.split(',')[2])+3));
+                    groupTraces.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat));
                 }
             }
 
-            // 5. GÉNÉRATION DES CANONS (Sphères)
-            const sphereGeo = new THREE.SphereGeometry(20, 16, 16); // Rayon de 20 mètres pour être visible de loin
+            // Canons
             const sphereMat = new THREE.MeshBasicMaterial({ color: 0xFFCC00 });
-            const points = kmlXmlDoc.getElementsByTagName("Point");
-            for (let p of points) {
+            const sphereGeo = new THREE.SphereGeometry(15, 8, 8);
+            for (let p of kmlXmlDoc.getElementsByTagName("Point")) {
                 const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
-                if (c && c.length >= 3) {
-                    const lon = parseFloat(c[0]), lat = parseFloat(c[1]), alt = parseFloat(c[2]);
-                    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
-                    const pos = latLonToVector3(lat, lon, alt + 10);
-                    sphere.position.copy(pos);
-                    scene.add(sphere);
+                if(c) {
+                    const mesh = new THREE.Mesh(sphereGeo, sphereMat);
+                    mesh.position.copy(toV3(parseFloat(c[1]), parseFloat(c[0]), parseFloat(c[2])+10));
+                    groupCanons.add(mesh);
                 }
             }
 
-            // 6. CAMÉRA ET RENDU
-            camera = new THREE.PerspectiveCamera(60, canvasContainer.clientWidth / canvasContainer.clientHeight, 1, 30000);
-            // On place la caméra au sud du domaine, en hauteur
-            camera.position.set(0, minAlt + 3000, heightMeters); 
+            // Rendu
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth/container.clientHeight, 1, 30000);
+            camera.position.set(0, maxA + 2000, hMeters/1.5);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
-            document.getElementById('loading-3d').style.display = "none";
-            canvasContainer.appendChild(renderer.domElement);
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
 
-            // Contrôles de vol
             controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.target.set(0, minAlt, 0); // On regarde le centre de la montagne
-            controls.maxPolarAngle = Math.PI / 2 - 0.1; // Empêche de passer sous le sol
-            controls.update();
+            controls.target.set(0, (minA+maxA)/2, 0);
 
-            // Boucle d'animation
-            function animate() {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
-            }
+            // Double clic pour pivoter autour d'un point
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            renderer.domElement.addEventListener('dblclick', (e) => {
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects([groupTerrain.children[0]]);
+                if(intersects.length > 0) {
+                    // Animation douce vers le nouveau centre
+                    const target = intersects[0].point;
+                    controls.target.copy(target);
+                }
+            });
+
+            function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
             animate();
             
-            // Gestion du redimensionnement
+            // Redimensionnement fluide
             window.addEventListener('resize', () => {
-                if(!camera || !renderer) return;
-                camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+                if(modal3d.style.display === "flex" && camera) {
+                    camera.aspect = container.clientWidth/container.clientHeight;
+                    camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight);
+                }
             });
         }
+
+        // Gestionnaires de couches 3D
+        document.getElementById('t-terrain').onchange = (e) => { if(groupTerrain) groupTerrain.visible = e.target.checked; };
+        document.getElementById('t-traces').onchange = (e) => { if(groupTraces) groupTraces.visible = e.target.checked; };
+        document.getElementById('t-canons').onchange = (e) => { if(groupCanons) groupCanons.visible = e.target.checked; };
+
+        // ==========================================
+        // --- 5. MOTEUR AR (A-FRAME) ---
+        // ==========================================
+        
+        document.getElementById('btn-ar').onclick = () => {
+            // Cacher l'interface 2D classique
+            document.getElementById('app-container').style.display = "none";
+            // Afficher la couche AR
+            document.getElementById('ar-view').style.visibility = "visible";
+            document.getElementById('ar-view').style.zIndex = "9999";
+            document.getElementById('exit-ar-btn').style.display = "block";
+
+            // Injecter le KML calculé dans A-Frame
+            const arContainer = document.getElementById('ar-container');
+            arContainer.innerHTML = ''; // Reset
+
+            // Sécurité : Obtenir l'altitude du joueur pour ne pas faire flotter les éléments
+            navigator.geolocation.getCurrentPosition(pos => {
+                const playerAlt = pos.coords.altitude || 0;
+                
+                // Canons
+                for (let p of kmlXmlDoc.getElementsByTagName("Point")) {
+                    const c = p.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
+                    if(c) {
+                        const entity = document.createElement('a-entity');
+                        entity.setAttribute('gps-entity-place', `latitude: ${c[1]}; longitude: ${c[0]};`);
+                        
+                        const sphere = document.createElement('a-sphere');
+                        sphere.setAttribute('radius', '3');
+                        sphere.setAttribute('color', '#FFCC00');
+                        // Différence d'altitude
+                        sphere.setAttribute('position', `0 ${(parseFloat(c[2]) - playerAlt) - 1.5} 0`); 
+                        
+                        entity.appendChild(sphere);
+                        arContainer.appendChild(entity);
+                    }
+                }
+                log("🚀 Vue AR lancée avec succès.");
+            });
+        };
+
+        // Quitter l'AR
+        document.getElementById('exit-ar-btn').onclick = () => {
+            document.getElementById('ar-view').style.visibility = "hidden";
+            document.getElementById('ar-view').style.zIndex = "1";
+            document.getElementById('exit-ar-btn').style.display = "none";
+            document.getElementById('app-container').style.display = "flex";
+        };
+
     </script>
 </body>
 </html>
