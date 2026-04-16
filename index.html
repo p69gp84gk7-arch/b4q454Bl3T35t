@@ -3,12 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Éditeur Topographique KML / MNT</title>
+    <title>Éditeur Topographique KML / MNT (Lambert 93)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; font-family: -apple-system, sans-serif; }
@@ -40,10 +44,10 @@
         <div class="file-box" id="box-tif">
             <label for="tif-input">2. Charger le MNT (.tif)</label>
             <input type="file" id="tif-input" accept=".tif,.tiff">
-            <div style="font-size: 11px; margin-top:5px;">(Format requis : EPSG:4326 / WGS84)</div>
+            <div style="font-size: 11px; margin-top:5px; color:#bdc3c7;">(Supporte Lambert 93 et WGS84)</div>
         </div>
 
-        <div id="log-panel">Prêt. En attente de fichiers...</div>
+        <div id="log-panel">Système initialisé. Attente des données...</div>
     </div>
 
     <div id="map"></div>
@@ -52,9 +56,11 @@
         const logPanel = document.getElementById('log-panel');
         function log(msg) { logPanel.innerText += `\n> ${msg}`; logPanel.scrollTop = logPanel.scrollHeight; }
 
-        const map = L.map('map').setView([42.79, 0.59], 10); 
-        
-        // Ajout d'une limite de zoom (maxZoom: 19) pour éviter que les tuiles satellites disparaissent
+        // --- DÉFINITION DU LAMBERT 93 POUR LE TRADUCTEUR ---
+        // C'est la formule mathématique officielle de la projection française EPSG:2154
+        proj4.defs("EPSG:2154", "+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
+
+        const map = L.map('map').setView([46.6, 2.2], 6); // France par défaut
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { 
             attribution: 'Tiles &copy; Esri',
             maxZoom: 19 
@@ -68,8 +74,9 @@
         let mntWidth = 0;
         let mntHeight = 0;
         let mntBbox = null; 
+        let isLambert93 = false; // Détecteur de projection
 
-        // --- LECTURE DU MNT (.tif) AVEC SÉCURITÉ ---
+        // --- LECTURE DU MNT (.tif) ---
         document.getElementById('tif-input').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -89,52 +96,78 @@
                 mntHeight = image.getHeight();
                 
                 log(`Dimensions : ${mntWidth} x ${mntHeight} px`);
-                log(`Emprise brute : [${mntBbox[0].toFixed(2)}, ${mntBbox[1].toFixed(2)}] à [${mntBbox[2].toFixed(2)}, ${mntBbox[3].toFixed(2)}]`);
 
-                // LE BOUCLIER ANTI-TROU NOIR
-                // On vérifie si les coordonnées sont aberrantes pour du GPS (qui doit être entre -180 et 180)
-                if (Math.abs(mntBbox[0]) > 180 || Math.abs(mntBbox[1]) > 90 || Math.abs(mntBbox[2]) > 180 || Math.abs(mntBbox[3]) > 90) {
-                    throw new Error("PROJECTION INVALIDE. Le .tif n'est pas en degrés GPS (WGS84). Il semble être en mètres (ex: Lambert). Re-projetez-le avec QGIS.");
+                // --- LE CERVEAU DE DÉTECTION ---
+                // Si les coordonnées dépassent 180 degrés, c'est que l'on travaille en mètres (Lambert 93)
+                if (Math.abs(mntBbox[0]) > 180) {
+                    isLambert93 = true;
+                    log("Projection métrique détectée (Lambert 93). Traducteur activé.");
+                    
+                    // On convertit la Bounding Box Lambert 93 en coordonnées GPS pour la carte Leaflet
+                    const swWgs84 = proj4("EPSG:2154", "EPSG:4326", [mntBbox[0], mntBbox[1]]);
+                    const neWgs84 = proj4("EPSG:2154", "EPSG:4326", [mntBbox[2], mntBbox[3]]);
+                    
+                    var boundsWgs84 = [[swWgs84[1], swWgs84[0]], [neWgs84[1], neWgs84[0]]]; // Leaflet utilise [Lat, Lon]
+                } else {
+                    isLambert93 = false;
+                    log("Projection GPS détectée (WGS84).");
+                    var boundsWgs84 = [[mntBbox[1], mntBbox[0]], [mntBbox[3], mntBbox[2]]];
                 }
 
                 const rasters = await image.readRasters();
                 mntData = rasters[0]; 
 
-                log(`✅ MNT valide. Cliquez sur la carte pour tester !`);
+                log(`✅ MNT prêt en mémoire.`);
 
+                // Dessin du rectangle de couverture sur la carte
                 if (mntBoundsLayer) map.removeLayer(mntBoundsLayer);
-                const bounds = [[mntBbox[1], mntBbox[0]], [mntBbox[3], mntBbox[2]]];
-                mntBoundsLayer = L.rectangle(bounds, {color: "#ff4d4f", weight: 2, fillOpacity: 0.1, dashArray: '5, 5'}).addTo(map);
+                mntBoundsLayer = L.rectangle(boundsWgs84, {color: "#ff4d4f", weight: 2, fillOpacity: 0.1, dashArray: '5, 5'}).addTo(map);
                 
-                map.fitBounds(bounds, { padding: [20, 20], maxZoom: 16 }); // Limite du zoom auto
+                map.fitBounds(boundsWgs84, { padding: [20, 20], maxZoom: 16 });
 
             } catch (error) {
-                log(`❌ ${error.message}`);
+                log(`❌ Erreur MNT: ${error.message}`);
                 boxTif.classList.remove('active');
                 boxTif.classList.add('error');
-                mntData = null; // On annule pour ne pas corrompre le reste
+                mntData = null; 
             }
         });
 
-        // --- CALCUL D'ALTITUDE (Clic sur la carte) ---
+        // --- CALCUL D'ALTITUDE CROISÉ (GPS -> Lambert 93 -> Pixel) ---
         function getElevationAt(lat, lon) {
             if (!mntData || !mntBbox) return null;
-            const minLon = mntBbox[0], minLat = mntBbox[1], maxLon = mntBbox[2], maxLat = mntBbox[3];
+            
+            let xTarget, yTarget;
 
-            if (lon < minLon || lon > maxLon || lat < minLat || lat > maxLat) return null;
+            if (isLambert93) {
+                // On traduit le clic GPS de la carte en mètres Lambert 93
+                const coordsL93 = proj4("EPSG:4326", "EPSG:2154", [lon, lat]);
+                xTarget = coordsL93[0];
+                yTarget = coordsL93[1];
+            } else {
+                xTarget = lon;
+                yTarget = lat;
+            }
 
-            const x = Math.floor(((lon - minLon) / (maxLon - minLon)) * mntWidth);
-            const y = Math.floor(((maxLat - lat) / (maxLat - minLat)) * mntHeight);
+            const minX = mntBbox[0], minY = mntBbox[1], maxX = mntBbox[2], maxY = mntBbox[3];
 
-            if (x < 0 || x >= mntWidth || y < 0 || y >= mntHeight) return null;
+            // Vérification si on clique en dehors du carré
+            if (xTarget < minX || xTarget > maxX || yTarget < minY || yTarget > maxY) return null;
 
-            const index = y * mntWidth + x;
+            // Règle de 3 pour trouver le pixel exact dans l'image
+            const pixelX = Math.floor(((xTarget - minX) / (maxX - minX)) * mntWidth);
+            const pixelY = Math.floor(((maxY - yTarget) / (maxY - minY)) * mntHeight);
+
+            if (pixelX < 0 || pixelX >= mntWidth || pixelY < 0 || pixelY >= mntHeight) return null;
+
+            const index = pixelY * mntWidth + pixelX;
             const elevation = mntData[index];
 
-            if (elevation < -500 || elevation > 8000) return null; 
+            if (elevation < -500 || elevation > 8000) return null; // Filtre les données "vides" du TIF
             return elevation;
         }
 
+        // --- OUTIL DE TEST : CLIC SUR LA CARTE ---
         map.on('click', function(e) {
             if (!mntData) return; 
             const lat = e.latlng.lat;
@@ -142,13 +175,13 @@
             const alt = getElevationAt(lat, lon);
             
             if (alt !== null) {
-                log(`📍 Clic: ${lat.toFixed(4)}, ${lon.toFixed(4)} => Altitude : ${alt.toFixed(2)} m`);
+                log(`📍 Clic => Altitude MNT : ${alt.toFixed(2)} m`);
                 const marker = L.circleMarker([lat, lon], {radius: 4, color: '#fff', fillColor: '#4ade80', fillOpacity: 1}).addTo(map);
                 setTimeout(() => map.removeLayer(marker), 2000); 
             }
         });
 
-        // --- LECTURE DU KMZ ---
+        // --- LECTURE DU KMZ (Inchangée) ---
         document.getElementById('kmz-input').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -185,9 +218,8 @@
                             const pts = c.split(',');
                             if (pts.length >= 2) { 
                                 const lat = parseFloat(pts[1]), lon = parseFloat(pts[0]);
-                                if(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) { // Sécurité coordonnées
-                                    latLngs.push([lat, lon]); 
-                                    bounds.extend([lat, lon]); 
+                                if(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+                                    latLngs.push([lat, lon]); bounds.extend([lat, lon]); 
                                 }
                             }
                         });
@@ -207,8 +239,7 @@
                             if (pts.length >= 2) { 
                                 const lat = parseFloat(pts[1]), lon = parseFloat(pts[0]);
                                 if(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-                                    latLngs.push([lat, lon]); 
-                                    bounds.extend([lat, lon]); 
+                                    latLngs.push([lat, lon]); bounds.extend([lat, lon]); 
                                 }
                             }
                         });
@@ -237,11 +268,7 @@
                 }
 
                 log(`Trace chargée : ${stats.points} Pts, ${stats.lines} Lignes, ${stats.polygons} Zones.`);
-                
-                // On recentre uniquement si on a trouvé des coordonnées valides
-                if (bounds.isValid() && !mntData) {
-                    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 }); 
-                }
+                if (bounds.isValid() && !mntData) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 }); 
 
             } catch (error) {
                 log(`❌ ERREUR KMZ: ${error.message}`);
