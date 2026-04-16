@@ -19,7 +19,6 @@
     <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
     <style>
-        /* --- DESIGN RESPONSIVE --- */
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; font-family: -apple-system, sans-serif; overflow: hidden; background: #000; }
         
         #app-container { display: flex; flex-direction: column; width: 100%; height: 100%; position: relative; z-index: 10; background: #111;}
@@ -49,8 +48,8 @@
         #log-panel { background: #1a252f; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 11px; color: #4ade80; overflow-y: auto; white-space: pre-wrap; flex-grow: 1; min-height: 50px;}
         .disabled-step { opacity: 0.4; pointer-events: none; }
 
-        /* FENÊTRE 3D */
-        #modal-3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 3000; display: none; flex-direction: column; }
+        /* FENÊTRE 3D CORRIGÉE */
+        #modal-3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #1e272e; z-index: 3000; display: none; flex-direction: column; }
         #header-3d { background: #2c3e50; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; color: white; font-size: 14px;}
         #close-3d { background: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer;}
         #canvas-container { flex-grow: 1; position: relative; width: 100%; height: 100%; display: block;}
@@ -141,24 +140,20 @@
             return Math.atan2(y, x); 
         }
 
-        // === COMPOSANTS A-FRAME (Lignes très fines pour AR) ===
+        // === COMPOSANTS A-FRAME ===
         AFRAME.registerComponent('kml-line', {
             schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#FF3B30'}, playerAlt: {type: 'number', default: 0} },
             init: function() {
                 const pointsArr = this.data.points.trim().replace(/\n/g, ' ').split(/\s+/);
                 if (pointsArr.length < 2) return;
-                const pt0 = pointsArr[0].split(',');
-                const lon0 = parseFloat(pt0[0]), lat0 = parseFloat(pt0[1]);
-                if(isNaN(lon0) || isNaN(lat0)) return; 
                 const pathPoints = []; 
-
                 for(let i=0; i < pointsArr.length; i++) {
                     const pt = pointsArr[i].split(',');
                     if (pt.length >= 2) {
                         const lon = parseFloat(pt[0]), lat = parseFloat(pt[1]), alt = parseFloat(pt[2]) || 0;
                         if(!isNaN(lon) && !isNaN(lat)){
-                            const dist = calculateDistance(lat0, lon0, lat, lon);
-                            const bearing = calculateBearing(lat0, lon0, lat, lon);
+                            const dist = calculateDistance(pointsArr[0].split(',')[1], pointsArr[0].split(',')[0], lat, lon);
+                            const bearing = calculateBearing(pointsArr[0].split(',')[1], pointsArr[0].split(',')[0], lat, lon);
                             const x = dist * Math.sin(bearing);
                             const z = -dist * Math.cos(bearing);
                             const relAlt = (alt - this.data.playerAlt) - 1.5;
@@ -178,10 +173,6 @@
             init: function() {
                 const pointsArr = this.data.points.trim().replace(/\n/g, ' ').split(/\s+/);
                 if (pointsArr.length < 3) return;
-                const pt0 = pointsArr[0].split(',');
-                const lon0 = parseFloat(pt0[0]), lat0 = parseFloat(pt0[1]);
-                if(isNaN(lon0) || isNaN(lat0)) return; 
-                
                 const shape = new THREE.Shape();
                 shape.moveTo(0, 0);
                 const original3DPoints = [];
@@ -191,8 +182,8 @@
                     if (pt.length >= 2) {
                         const lon = parseFloat(pt[0]), lat = parseFloat(pt[1]), alt = parseFloat(pt[2]) || 0;
                         if(isNaN(lon) || isNaN(lat)) continue; 
-                        const dist = calculateDistance(lat0, lon0, lat, lon);
-                        const bearing = calculateBearing(lat0, lon0, lat, lon);
+                        const dist = calculateDistance(pointsArr[0].split(',')[1], pointsArr[0].split(',')[0], lat, lon);
+                        const bearing = calculateBearing(pointsArr[0].split(',')[1], pointsArr[0].split(',')[0], lat, lon);
                         const x = dist * Math.sin(bearing);
                         const z = -dist * Math.cos(bearing); 
                         const relAlt = (alt - this.data.playerAlt) - 1.5;
@@ -220,7 +211,7 @@
             }
         });
 
-        // === LOGIQUE DE L'APP 2D ===
+        // === LOGIQUE APP ===
         const map = L.map('map', {zoomControl: false}).setView([46.6, 2.2], 6);
         L.control.zoom({position: 'topleft'}).addTo(map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
@@ -230,47 +221,34 @@
         let kmlXmlDoc = null; let mntData = null; let mntWidth = 0, mntHeight = 0, mntBbox = null; let isLambert93 = false; let boundsWgs84Global = null;
         let isKmzLoaded = false; let isMntLoaded = false;
         
-        // --- VARIABLES DE SÉLECTION 3D ---
-        let custom3DBounds = null;
-        let selectionMode = false;
-        let selectionCorner1 = null;
-        let selectionBoxLayer = null;
+        let custom3DBounds = null; let selectionMode = false; let selectionCorner1 = null; let selectionBoxLayer = null;
 
         function checkReady() { if(isKmzLoaded && isMntLoaded) document.getElementById('box-process').classList.remove('disabled-step'); }
 
-        // --- OUTIL DE SÉLECTION 2 CLICS ---
+        // OUTIL DE SÉLECTION
         document.getElementById('btn-select-zone').addEventListener('click', function() {
             selectionMode = !selectionMode;
             if (selectionMode) {
-                this.style.background = "#e74c3c";
-                this.innerText = "Annuler la Sélection";
+                this.style.background = "#e74c3c"; this.innerText = "Annuler la Sélection";
                 document.getElementById('map').style.cursor = 'crosshair';
                 selectionCorner1 = null;
                 if (selectionBoxLayer) map.removeLayer(selectionBoxLayer);
                 custom3DBounds = null;
-                log("📐 MODE SÉLECTION : Cliquez un 1er coin de la zone sur la carte.");
+                log("📐 MODE SÉLECTION : Cliquez 1er coin.");
             } else {
-                this.style.background = "#8e44ad";
-                this.innerText = "📐 Cadrer Zone";
+                this.style.background = "#8e44ad"; this.innerText = "📐 Cadrer Zone";
                 document.getElementById('map').style.cursor = '';
-                log("📐 Mode sélection annulé.");
             }
         });
 
         map.on('click', function(e) {
             if (!selectionMode) return;
-            
             if (!selectionCorner1) {
-                selectionCorner1 = e.latlng;
-                log("📍 1er point validé. Cliquez le coin opposé pour fermer la zone.");
+                selectionCorner1 = e.latlng; log("📍 1er point validé. Cliquez coin opposé.");
             } else {
-                const corner2 = e.latlng;
-                custom3DBounds = L.latLngBounds(selectionCorner1, corner2);
-                
+                custom3DBounds = L.latLngBounds(selectionCorner1, e.latlng);
                 selectionBoxLayer = L.rectangle(custom3DBounds, {color: "#9b59b6", weight: 3, fillOpacity: 0.2, dashArray: '5, 5'}).addTo(map);
-                log("✅ Zone 3D restreinte ! La prochaine 'Vue 3D' sera en Haute Définition sur ce cadre.");
-                
-                // Fin du mode
+                log("✅ Zone 3D restreinte.");
                 selectionMode = false;
                 document.getElementById('btn-select-zone').style.background = "#8e44ad";
                 document.getElementById('btn-select-zone').innerText = "📐 Re-Cadrer";
@@ -279,13 +257,11 @@
             }
         });
 
-
         // CHARGEMENT KML
         document.getElementById('kmz-input').addEventListener('change', async function(e) {
             const file = e.target.files[0]; if(!file) return;
             showLoad("Analyse KML...");
             kmlLayerGroup.clearLayers();
-
             try {
                 let text = "";
                 if(file.name.toLowerCase().endsWith('.kmz')) {
@@ -319,6 +295,7 @@
                 document.getElementById('box-kmz').classList.add('active');
                 isKmzLoaded = true; 
                 document.getElementById('box-preview').classList.remove('disabled-step');
+                document.getElementById('box-ar').classList.remove('disabled-step');
                 document.getElementById('box-export').classList.remove('disabled-step');
                 checkReady(); log("✅ Trace prête.");
             } catch(err) { log("❌ Erreur KML"); }
@@ -382,8 +359,17 @@
             }, 100);
         });
 
+        // EXPORT
+        document.getElementById('btn-export').addEventListener('click', function() {
+            if (!kmlXmlDoc) return;
+            const xmlString = new XMLSerializer().serializeToString(kmlXmlDoc);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([xmlString], { type: 'application/vnd.google-earth.kml+xml' }));
+            a.download = "trace_3D.kml"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        });
 
-        // === MOTEUR 3D (AVEC SUPPORT DU RECADRAGE HD) ===
+
+        // === MOTEUR 3D (PATCH DOUBLE FACE ET SÉCURITÉ DE TAILLE) ===
         let scene, camera, renderer, controls;
         let groupTerrain, groupTraces, groupCanons;
 
@@ -392,12 +378,12 @@
         document.getElementById('btn-preview').onclick = () => {
             const modal = document.getElementById('modal-3d');
             const container = document.getElementById('canvas-container');
-            modal.style.display="flex";
-            container.offsetHeight; 
+            modal.style.display = "flex";
+            
+            // Force le navigateur à calculer la taille physique de la fenêtre
+            void container.offsetWidth;
 
-            // Si on demande une vue, on force le recalcul de la scène pour prendre en compte le nouveau recadrage
             if(scene) {
-                // Nettoyage brutal de la RAM pour refaire la montagne fraîche
                 renderer.dispose();
                 container.innerHTML = `<div id="layers-3d">
                     <label class="layer-toggle"><input type="checkbox" id="t-terrain" checked> Montagne</label>
@@ -406,16 +392,19 @@
                 </div>`;
                 scene = null;
             }
-            setTimeout(init3D, 50); 
+            
+            setTimeout(init3D, 100); 
         };
 
         function init3D() {
             const container = document.getElementById('canvas-container');
-            
+            const width = container.clientWidth || window.innerWidth;
+            const height = container.clientHeight || window.innerHeight;
+
             scene = new THREE.Scene(); 
             scene.background = new THREE.Color(0x1e272e);
             const light = new THREE.DirectionalLight(0xffffff, 1.5); light.position.set(5000, 10000, 5000); scene.add(light);
-            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8)); // Lumière ambiante très forte pour éviter le noir
 
             groupTerrain = new THREE.Group(); scene.add(groupTerrain);
             groupTraces = new THREE.Group(); scene.add(groupTraces);
@@ -423,7 +412,6 @@
 
             let minLat, maxLat, minLon, maxLon;
 
-            // --- L'INTELLIGENCE DU RECADRAGE EST ICI ---
             if (custom3DBounds) {
                 minLat = custom3DBounds.getSouth(); maxLat = custom3DBounds.getNorth();
                 minLon = custom3DBounds.getWest(); maxLon = custom3DBounds.getEast();
@@ -449,16 +437,16 @@
 
             function toV3(lat, lon, alt) { return new THREE.Vector3( ((lon-minLon)/(maxLon-minLon))*wMeters - wMeters/2, alt, -(((lat-minLat)/(maxLat-minLat))*hMeters - hMeters/2) ); }
 
-            let maxA = 0; let minA = 0;
+            let maxA = 100; let minA = 0;
 
             if (mntData || custom3DBounds) {
-                // Le maillage reste de 150x150, mais appliqué sur une toute petite surface, la définition explose !
                 const segs = 150;
                 const geo = new THREE.PlaneGeometry(wMeters, hMeters, segs, segs);
                 geo.rotateX(-Math.PI/2);
                 const pos = geo.attributes.position.array;
                 const colors = new Float32Array(pos.length);
                 minA = Infinity; maxA = -Infinity;
+                
                 for(let i=0; i<=segs; i++) {
                     for(let j=0; j<=segs; j++) {
                         const a = getElev(maxLat - (i/segs)*(maxLat-minLat), minLon + (j/segs)*(maxLon-minLon)) || 0;
@@ -468,16 +456,22 @@
                 }
                 
                 if (minA === Infinity) minA = 0; if (maxA === -Infinity) maxA = 100;
+                
+                let amplitude = maxA - minA;
+                if (amplitude === 0) amplitude = 1; // Évite la division par zéro si terrain plat
 
                 const colorBas = new THREE.Color(0x27ae60); const colorMid = new THREE.Color(0xf1c40f); const colorHaut = new THREE.Color(0xffffff); const tmpColor = new THREE.Color();
                 for(let i=0; i<pos.length; i+=3) {
                     const a = pos[i+1];
-                    let ratio = (a - minA) / (maxA - minA || 1);
+                    let ratio = (a - minA) / amplitude;
                     if(ratio < 0.5) tmpColor.lerpColors(colorBas, colorMid, ratio * 2); else tmpColor.lerpColors(colorMid, colorHaut, (ratio - 0.5) * 2);
                     colors[i] = tmpColor.r; colors[i+1] = tmpColor.g; colors[i+2] = tmpColor.b;
                 }
                 geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); geo.computeVertexNormals();
-                groupTerrain.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true })));
+                
+                // LE PATCH ANTI-ÉCRAN NOIR : side: THREE.DoubleSide garantit que la montagne est visible même si le TIF a inversé le Nord/Sud
+                const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true, side: THREE.DoubleSide });
+                groupTerrain.add(new THREE.Mesh(geo, terrainMat));
             }
 
             const lineMat = new THREE.LineBasicMaterial({ color: 0xFF3B30, linewidth: 2 });
@@ -501,16 +495,21 @@
                 }
             }
 
-            camera = new THREE.PerspectiveCamera(60, container.clientWidth/container.clientHeight, 1, 30000);
-            // On rapproche la caméra dynamiquement selon la taille de la zone
+            camera = new THREE.PerspectiveCamera(60, width/height, 1, 30000);
             camera.position.set(0, maxA + (hMeters/2), hMeters/1.2);
             
+            // Failsafe caméra
+            if (isNaN(camera.position.y)) camera.position.set(0, 1000, 1000);
+            
             renderer = new THREE.WebGLRenderer({ antialias: true }); 
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setSize(width, height);
             container.appendChild(renderer.domElement);
             
             controls = new THREE.OrbitControls(camera, renderer.domElement); 
             controls.target.set(0, (minA+maxA)/2, 0);
+            if (isNaN(controls.target.y)) controls.target.set(0,0,0);
+            
+            camera.lookAt(controls.target);
 
             const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
             renderer.domElement.addEventListener('dblclick', (e) => {
@@ -521,17 +520,25 @@
                 if(intersects.length > 0) controls.target.copy(intersects[0].point);
             });
 
-            // Reactivation des boutons de layers après reconstruction
             document.getElementById('t-terrain').onchange = (e) => { if(groupTerrain) groupTerrain.visible = e.target.checked; };
             document.getElementById('t-traces').onchange = (e) => { if(groupTraces) groupTraces.visible = e.target.checked; };
             document.getElementById('t-canons').onchange = (e) => { if(groupCanons) groupCanons.visible = e.target.checked; };
 
             function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); } animate();
-            window.addEventListener('resize', () => { if(document.getElementById('modal-3d').style.display === "flex" && camera) { camera.aspect = container.clientWidth/container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); } });
+            
+            window.addEventListener('resize', () => { 
+                if(document.getElementById('modal-3d').style.display === "flex" && camera) { 
+                    const w = container.clientWidth || window.innerWidth;
+                    const h = container.clientHeight || window.innerHeight;
+                    camera.aspect = w/h; 
+                    camera.updateProjectionMatrix(); 
+                    renderer.setSize(w, h); 
+                } 
+            });
         }
 
 
-        // === MOTEUR AR (CALIBRATEUR 4 AXES + LIGNES FINES) ===
+        // === MOTEUR AR (ÉTIQUETTES GÉANTES) ===
         
         let arModeSetting = 'mode1'; 
         let isArDragging = false;
@@ -639,7 +646,7 @@
                                 arHtml += `
                                     <a-entity gps-entity-place="latitude: ${lat}; longitude: ${lon};">
                                         <a-sphere radius="0.5" color="#FFCC00" position="0 ${relAlt} 0"></a-sphere>
-                                        <a-text value="${name}\\nAlt: ${Math.round(alt)}m" position="0 ${relAlt + 2} 0" look-at="[gps-camera]" scale="4 4 4" align="center" color="#FFFFFF"></a-text>
+                                        <a-text value="${name}\\nAlt: ${Math.round(alt)}m" position="0 ${relAlt + 5} 0" look-at="[gps-camera]" scale="15 15 15" align="center" color="#FFFFFF"></a-text>
                                     </a-entity>
                                 `;
                             }
@@ -654,6 +661,7 @@
             }, err => { hideLoad(); log("❌ GPS requis."); }, {enableHighAccuracy: true});
         };
 
+        // QUITTER AR
         document.getElementById('exit-ar-btn').addEventListener('click', () => {
             document.querySelectorAll('video').forEach(v => { if(v.srcObject) v.srcObject.getTracks().forEach(t => t.stop()); v.remove(); });
             document.getElementById('ar-view').innerHTML = '';
