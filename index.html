@@ -11,10 +11,10 @@
     <script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    
+    <script src="https://unpkg.com/three@0.137.0/examples/js/controls/OrbitControls.js"></script>
+
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
@@ -22,7 +22,6 @@
         /* --- DESIGN RESPONSIVE STRICT --- */
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; font-family: -apple-system, sans-serif; overflow: hidden; background: #000; }
         
-        /* Conteneur principal forcé en FLEX */
         #app-container { display: flex !important; flex-direction: column; width: 100%; height: 100%; position: relative; z-index: 10; background: #111;}
         #map { flex-grow: 1; width: 100%; background: #111; }
         
@@ -202,7 +201,7 @@
                 document.getElementById('box-ar').classList.remove('disabled-step');
                 document.getElementById('box-export').classList.remove('disabled-step');
                 
-                checkReady(); log("✅ Trace chargée.");
+                checkReady(); log("✅ Trace chargée. Bouton AR activé.");
             } catch(err) { log("❌ Erreur KML"); }
             hideLoad();
         });
@@ -229,7 +228,7 @@
                 mntBoundsLayer = L.rectangle(boundsWgs84Global, {color:"#ff4d4f", weight:2, fillOpacity:0.1}).addTo(map);
                 map.fitBounds(boundsWgs84Global);
                 document.getElementById('box-tif').classList.add('active');
-                isMntLoaded = true; checkReady(); log("✅ MNT chargé.");
+                isMntLoaded = true; checkReady(); log("✅ Terrain MNT chargé.");
             } catch(err) { log("❌ Erreur MNT"); }
             hideLoad();
         });
@@ -263,7 +262,7 @@
                 }
                 document.getElementById('box-process').classList.add('active');
                 document.getElementById('box-preview').classList.remove('disabled-step');
-                hideLoad(); log("✅ Altitudes corrigées !");
+                hideLoad(); log("✅ Altitudes corrigées avec précision !");
             }, 100);
         });
 
@@ -277,7 +276,7 @@
         });
 
         // ==========================================
-        // --- 4. MOTEUR 3D (AVEC SÉCURITÉ ANTI-CRASH) ---
+        // --- 4. MOTEUR 3D ---
         // ==========================================
         let scene, camera, renderer, controls;
         let groupTerrain, groupTraces, groupCanons;
@@ -290,7 +289,6 @@
             document.getElementById('modal-3d').style.display="flex";
             document.getElementById('loading-3d-text').style.display="block";
             document.getElementById('layers-3d').style.display="none";
-            // On laisse 300ms au DOM pour donner une vraie taille au canvas
             setTimeout(init3D, 300); 
         };
 
@@ -298,14 +296,11 @@
             try {
                 const container = document.getElementById('canvas-container');
                 
-                // SÉCURITÉ 1 : Attendre que le conteneur ait une taille
                 if (container.clientWidth === 0 || container.clientHeight === 0) {
-                    log("⏳ Attente de l'ouverture de la fenêtre 3D...");
-                    setTimeout(init3D, 200);
-                    return;
+                    setTimeout(init3D, 200); return;
                 }
 
-                if(scene) { // Si la scène existe déjà, on la ré-affiche juste
+                if(scene) { 
                     document.getElementById('loading-3d-text').style.display="none";
                     document.getElementById('layers-3d').style.display="flex";
                     return;
@@ -324,8 +319,7 @@
                 const wMeters = map.distance([minLat, minLon], [minLat, maxLon]);
                 const hMeters = map.distance([minLat, minLon], [maxLat, minLon]);
 
-                // SÉCURITÉ 2 : Emprise invalide
-                if (isNaN(wMeters) || isNaN(hMeters)) throw new Error("Les dimensions de la montagne sont invalides.");
+                if (isNaN(wMeters) || isNaN(hMeters)) throw new Error("Dimensions montagne invalides.");
 
                 function toV3(lat, lon, alt) { return new THREE.Vector3( ((lon-minLon)/(maxLon-minLon))*wMeters - wMeters/2, alt, -(((lat-minLat)/(maxLat-minLat))*hMeters - hMeters/2) ); }
 
@@ -345,9 +339,7 @@
                     }
                 }
 
-                // SÉCURITÉ 3 : Altimétrie extrême
-                if (minA === Infinity) minA = 0;
-                if (maxA === -Infinity) maxA = 1000;
+                if (minA === Infinity) minA = 0; if (maxA === -Infinity) maxA = 1000;
 
                 const colorBas = new THREE.Color(0x27ae60); const colorMid = new THREE.Color(0xf1c40f); const colorHaut = new THREE.Color(0xffffff); const tmpColor = new THREE.Color();
 
@@ -402,12 +394,10 @@
                 window.addEventListener('resize', () => { 
                     if(modal3d.style.display === "flex" && camera && renderer) { 
                         camera.aspect = container.clientWidth/container.clientHeight; 
-                        camera.updateProjectionMatrix(); 
-                        renderer.setSize(container.clientWidth, container.clientHeight); 
+                        camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); 
                     } 
                 });
 
-                // Révèle l'interface 3D
                 document.getElementById('loading-3d-text').style.display="none";
                 document.getElementById('layers-3d').style.display="flex";
                 log("✅ Maillage 3D généré.");
@@ -423,7 +413,7 @@
         document.getElementById('t-canons').onchange = (e) => { if(groupCanons) groupCanons.visible = e.target.checked; };
 
         // ==========================================
-        // --- 5. MOTEUR AR "CONFINÉ" & NETTOYEUR ---
+        // --- 5. MOTEUR AR ---
         // ==========================================
         
         document.getElementById('btn-ar').onclick = () => {
@@ -436,21 +426,8 @@
                 const playerAlt = pos.coords.altitude || 0;
                 
                 log(`📍 Vous êtes à Alt: ${Math.round(playerAlt)}m`);
-                
-                // Avertissement de distance
-                if (kmlXmlDoc) {
-                    const firstPt = kmlXmlDoc.getElementsByTagName("coordinates")[0]?.textContent.trim().split(',');
-                    if (firstPt) {
-                        const dist = map.distance([playerLat, playerLon], [parseFloat(firstPt[1]), parseFloat(firstPt[0])]);
-                        if (dist > 10000) { // Si + de 10km
-                            log(`⚠️ ATTENTION : La trace KML est à ${Math.round(dist/1000)} km de vous ! Vous ne verrez rien à l'écran.`);
-                        }
-                    }
-                }
-
                 document.body.classList.add('ar-mode');
                 
-                // INJECTION A-FRAME MASSIVE
                 let arHtml = `
                     <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; debugUIEnabled: false;">
                         <a-camera gps-camera="minDistance: 1; maxDistance: 100000;" rotation-reader></a-camera>
@@ -464,7 +441,6 @@
                         const alt = parseFloat(c[2]) || 0;
                         const relAlt = (alt - playerAlt) - 1.5;
                         
-                        // Sphères agrandies à radius=10 pour être visibles de plus loin
                         arHtml += `
                             <a-entity gps-entity-place="latitude: ${lat}; longitude: ${lon};">
                                 <a-sphere radius="10" color="#FFCC00" position="0 ${relAlt} 0"></a-sphere>
@@ -474,7 +450,6 @@
                 }
 
                 arHtml += `</a-scene>`;
-
                 document.getElementById('ar-view').innerHTML = arHtml;
                 hideLoad();
 
@@ -485,38 +460,27 @@
             }, {enableHighAccuracy: true});
         };
 
-        // LE NETTOYEUR ULTIME DE FIN DE MODE AR
         document.getElementById('exit-ar-btn').addEventListener('click', () => {
             log("🛑 Arrêt du flux caméra...");
             
-            // 1. On tue le flux vidéo matériel de l'iPhone/Mac
             const videos = document.querySelectorAll('video');
             videos.forEach(v => {
-                if(v.srcObject) {
-                    v.srcObject.getTracks().forEach(track => track.stop());
-                }
+                if(v.srcObject) v.srcObject.getTracks().forEach(track => track.stop());
                 v.remove();
             });
 
-            // 2. On désintègre la scène 3D de AR.js
             document.getElementById('ar-view').innerHTML = '';
-            
-            // 3. On enlève notre mode d'affichage AR
             document.body.classList.remove('ar-mode');
             
-            // 4. NETTOYAGE CSS AGRESSIF (AR.js modifie les balises racines)
             document.documentElement.classList.remove('a-fullscreen');
             document.body.classList.remove('a-fullscreen', 'a-hidden');
             document.documentElement.style.cssText = "";
             document.body.style.cssText = "margin: 0; padding: 0; width: 100%; height: 100%; display: flex; font-family: -apple-system, sans-serif; overflow: hidden; background: #000;";
             
-            // 5. On force l'affichage du conteneur de l'application
             document.getElementById('app-container').style.setProperty('display', 'flex', 'important');
             
-            // 6. On réveille la carte 2D (Leaflet devient gris s'il a été caché)
             setTimeout(() => { map.invalidateSize(); }, 300);
-
-            log("✅ Retour au SIG. Nettoyage terminé.");
+            log("✅ Retour au SIG.");
         });
 
     </script>
