@@ -3,101 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scanner AR - Topo SIG</title>
+    <title>Topo SIG - Atelier 2D/3D</title>
     
+    <link rel="stylesheet" href="style.css"> <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
-
-    <style>
-        /* ⚠️ CORRECTION DU FOND NOIR : On force la transparence absolue */
-        body, html { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; background-color: transparent !important; 
-            font-family: -apple-system, sans-serif; 
-        }
-        
-        /* On force le canvas 3D à être transparent */
-        .a-canvas {
-            background-color: transparent !important;
-        }
-
-        /* On s'assure que la vidéo de la caméra prend tout l'écran en arrière-plan */
-        #arjs-video {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            min-width: 100vw !important;
-            min-height: 100vh !important;
-            object-fit: cover !important;
-            z-index: -10 !important; /* Bien derrière le reste */
-        }
-        
-        /* Interface superposée */
-        #ar-ui { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            z-index: 9999; display: flex; flex-direction: column; 
-            justify-content: space-between; pointer-events: none; 
-        }
-        
-        #ar-header { 
-            background: rgba(0,0,0,0.6); color: white; padding: 15px; 
-            text-align: center; font-size: 14px; pointer-events: auto; backdrop-filter: blur(5px);
-        }
-        #ar-toggle-mode { 
-            background: transparent; border: 1px solid #4ade80; color: #4ade80; 
-            padding: 8px 15px; border-radius: 20px; font-size: 12px; margin-top: 10px; cursor: pointer; 
-        }
-
-        #btn-back { 
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
-            background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; 
-            font-weight: bold; border: none; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
-            cursor: pointer; pointer-events: auto; 
-        }
-        
-        #loading-screen { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #111; z-index: 10000; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; color: white; 
-        }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
-    <div id="loading-screen">
-        <h3>Initialisation AR...</h3>
-        <p id="loading-text">Autorisez l'appareil photo si demandé.</p>
-    </div>
-
-    <div id="ar-ui">
-        <div id="ar-header">
-            <strong>Calibrage Tactile</strong><br>
-            Glissez pour aligner les pistes.<br>
-            <button id="ar-toggle-mode">Actuel : BOUSSOLE</button>
+    <div id="app-container">
+        <div id="map"></div>
+        <div id="sidebar">
+            <h2>SIG Montagne (Atelier)</h2>
+            <div class="file-box" id="box-kmz"><label>1. Trace KML/KMZ</label><input type="file" id="kmz-input" accept=".kml,.kmz"></div>
+            <div class="file-box" id="box-tif"><label>2. Terrain (.tif Lambert 93)</label><input type="file" id="tif-input" accept=".tif,.tiff"></div>
+            <div class="file-box disabled-step" id="box-process"><button id="btn-process" class="action-btn btn-calc">3. Aligner sur Terrain</button></div>
+            <div style="display: flex; gap: 10px;">
+                <div class="file-box disabled-step" id="box-preview" style="flex: 1; padding: 8px;"><button id="btn-preview" class="action-btn btn-3d">👁️ Vue 3D</button></div>
+                <div class="file-box disabled-step" id="box-ar" style="flex: 1; padding: 8px;"><button id="btn-ar" class="action-btn btn-ar">📱 Vue AR</button></div>
+            </div>
+            <div class="file-box disabled-step" id="box-export"><button id="btn-export" class="action-btn download-btn">💾 Télécharger KML</button></div>
+            <div id="log-panel">En attente...</div>
         </div>
-        <button id="btn-back">Retour à la Carte</button>
     </div>
 
-    <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-        <a-camera gps-camera="minDistance: 1; maxDistance: 20000;" rotation-reader></a-camera>
-        
-        <a-entity id="ar-kml-container" position="0 0 0" rotation="0 0 0"></a-entity>
-    </a-scene>
+    <div id="modal-3d">
+        <div id="header-3d">
+            <span style="font-size: 12px;">🌍 Double-clic pour centrer</span>
+            <button id="close-3d">Fermer</button>
+        </div>
+        <div id="canvas-container">
+            <div id="layers-3d">
+                <label class="layer-toggle"><input type="checkbox" id="t-terrain" checked> Montagne</label>
+                <label class="layer-toggle"><input type="checkbox" id="t-traces" checked> Traces</label>
+                <label class="layer-toggle"><input type="checkbox" id="t-canons" checked> Canons</label>
+            </div>
+        </div>
+    </div>
+    <div id="loading-overlay"><h3 id="loading-text">Chargement...</h3></div>
 
     <script>
-        // --- Outils Mathématiques ---
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-        }
-        function calculateBearing(lat1, lon1, lat2, lon2) {
-            const toRad = Math.PI / 180, phi1 = lat1 * toRad, phi2 = lat2 * toRad, lam1 = lon1 * toRad, lam2 = lon2 * toRad;
-            const y = Math.sin(lam2 - lam1) * Math.cos(phi2), x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(lam2 - lam1);
-            return Math.atan2(y, x); 
-        }
+        const logPanel = document.getElementById('log-panel');
+        function log(msg) { logPanel.innerText += `\n> ${msg}`; logPanel.scrollTop = logPanel.scrollHeight; }
+        function showLoad(msg) { document.getElementById('loading-overlay').style.display = 'flex'; document.getElementById('loading-text').innerText = msg; }
+        function hideLoad() { document.getElementById('loading-overlay').style.display = 'none'; }
+
+        proj4.defs("EPSG:2154", "+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
+
         function parseCoords(text) {
             if (!text) return [];
             return text.trim().split(/\s+/).map(pair => {
@@ -110,165 +67,252 @@
             }).filter(p => p !== null);
         }
 
-        // --- Créateurs de Géométrie 3D pour AR ---
-        AFRAME.registerComponent('kml-tube', {
-            schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#FF3B30'}, playerAlt: {type: 'number', default: 0} },
-            init: function() {
-                const pts = parseCoords(this.data.points);
-                if (pts.length < 2) return;
-                const pathPoints = []; let lastX = null, lastZ = null;
-                for(let p of pts) {
-                    const dist = calculateDistance(pts[0].lat, pts[0].lon, p.lat, p.lon);
-                    const bearing = calculateBearing(pts[0].lat, pts[0].lon, p.lat, p.lon);
-                    const x = dist * Math.sin(bearing); const z = -dist * Math.cos(bearing);
-                    const relAlt = (p.alt - this.data.playerAlt) - 1.5;
-                    if (lastX !== null && Math.abs(x - lastX) < 0.1 && Math.abs(z - lastZ) < 0.1) continue;
-                    pathPoints.push(new THREE.Vector3(x, relAlt, z));
-                    lastX = x; lastZ = z;
-                }
-                if (pathPoints.length > 1) {
-                    const geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pathPoints), Math.max(2, pathPoints.length), 0.5, 4, false); 
-                    this.el.setObject3D('mesh', new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color: this.data.color, transparent: true, opacity: 0.9})));
-                }
-            }
-        });
+        const map = L.map('map', {zoomControl: false}).setView([46.6, 2.2], 6);
+        L.control.zoom({position: 'topleft'}).addTo(map);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
+        const kmlLayerGroup = L.featureGroup().addTo(map);
+        let mntBoundsLayer = null; 
 
-        AFRAME.registerComponent('kml-polygon', {
-            schema: { points: {type: 'string', default: ''}, color: {type: 'color', default: '#3498db'}, playerAlt: {type: 'number', default: 0} },
-            init: function() {
-                const pts = parseCoords(this.data.points);
-                if (pts.length < 3) return;
-                const shape = new THREE.Shape(); shape.moveTo(0, 0);
-                const oPts = [];
-                for(let i=0; i<pts.length; i++) {
-                    const dist = calculateDistance(pts[0].lat, pts[0].lon, pts[i].lat, pts[i].lon);
-                    const bearing = calculateBearing(pts[0].lat, pts[0].lon, pts[i].lat, pts[i].lon);
-                    const x = dist * Math.sin(bearing), z = -dist * Math.cos(bearing), relAlt = (pts[i].alt - this.data.playerAlt) - 1.5;
-                    oPts.push({x, y: relAlt, z});
-                    if (i === 0) shape.moveTo(x, z); else shape.lineTo(x, z);
-                }
-                const geo = new THREE.ShapeGeometry(shape); geo.rotateX(-Math.PI / 2); 
-                const pos = geo.attributes.position;
-                for (let i = 0; i < pos.count; i++) {
-                    const vx = pos.getX(i), vz = pos.getZ(i); let cAlt = -1.5, mD = Infinity;
-                    for(let j=0; j<oPts.length; j++) {
-                        const dSq = Math.pow(oPts[j].x - vx, 2) + Math.pow(oPts[j].z - vz, 2);
-                        if(dSq < mD) { mD = dSq; cAlt = oPts[j].y; }
-                    }
-                    pos.setY(i, cAlt);
-                }
-                geo.computeVertexNormals();
-                this.el.setObject3D('mesh', new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: this.data.color, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false })));
-            }
-        });
-
-        // --- Lancement de la scène AR ---
-        window.addEventListener('load', () => {
-            const kmlText = localStorage.getItem('kmlForAR');
-            if (!kmlText) {
-                document.getElementById('loading-text').innerHTML = "Aucune trace trouvée.<br>Retournez à l'atelier et chargez un KMZ.";
-                return;
-            }
-
-            document.getElementById('loading-text').innerText = "Attente du signal GPS...";
-
-            navigator.geolocation.getCurrentPosition(pos => {
-                document.getElementById('loading-text').innerText = "Génération des tracés...";
-                
-                const playerLat = pos.coords.latitude;
-                const playerLon = pos.coords.longitude;
-                const playerAlt = pos.coords.altitude || 0;
-                
-                const parser = new DOMParser();
-                const kmlXmlDoc = parser.parseFromString(kmlText, "text/xml");
-                const arContainer = document.getElementById('ar-kml-container');
-                let nbVisibles = 0;
-
-                // 1. SURFACES
-                for (let p of kmlXmlDoc.getElementsByTagName("Polygon")) {
-                    const coords = p.getElementsByTagName("coordinates")[0]?.textContent;
-                    const pts = parseCoords(coords);
-                    if(pts.length > 0 && calculateDistance(playerLat, playerLon, pts[0].lat, pts[0].lon) < 15000) {
-                        const el = document.createElement('a-entity');
-                        el.setAttribute('gps-entity-place', `latitude: ${pts[0].lat}; longitude: ${pts[0].lon};`);
-                        el.setAttribute('kml-polygon', `points: ${coords}; color: #3498db; playerAlt: ${playerAlt}`);
-                        arContainer.appendChild(el); nbVisibles++;
-                    }
-                }
-
-                // 2. LIGNES
-                for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
-                    const coords = l.getElementsByTagName("coordinates")[0]?.textContent;
-                    const pts = parseCoords(coords);
-                    if(pts.length > 0 && calculateDistance(playerLat, playerLon, pts[0].lat, pts[0].lon) < 15000) {
-                        const el = document.createElement('a-entity');
-                        el.setAttribute('gps-entity-place', `latitude: ${pts[0].lat}; longitude: ${pts[0].lon};`);
-                        el.setAttribute('kml-tube', `points: ${coords}; color: #FF3B30; playerAlt: ${playerAlt}`);
-                        arContainer.appendChild(el); nbVisibles++;
-                    }
-                }
-
-                // 3. POINTS
-                for (let pm of kmlXmlDoc.getElementsByTagName("Placemark")) {
-                    const p = pm.getElementsByTagName("Point")[0];
-                    if (p) {
-                        const pts = parseCoords(p.getElementsByTagName("coordinates")[0]?.textContent);
-                        const nameNode = pm.getElementsByTagName("name")[0];
-                        const name = nameNode ? nameNode.textContent.trim() : "";
-
-                        if(pts.length > 0 && calculateDistance(playerLat, playerLon, pts[0].lat, pts[0].lon) < 15000) {
-                            const relAlt = (pts[0].alt - playerAlt) - 1.5;
-                            const el = document.createElement('a-entity');
-                            el.setAttribute('gps-entity-place', `latitude: ${pts[0].lat}; longitude: ${pts[0].lon};`);
-                            el.innerHTML = `
-                                <a-sphere radius="1" color="#FFCC00" position="0 ${relAlt} 0" opacity="0.9"></a-sphere>
-                                <a-text value="${name}\nAlt: ${Math.round(pts[0].alt)}m" position="0 ${relAlt + 3} 0" look-at="[gps-camera]" scale="6 6 6" align="center" color="#FFFFFF"></a-text>
-                            `;
-                            arContainer.appendChild(el); nbVisibles++;
-                        }
-                    }
-                }
-
-                // Disparition de l'écran de chargement
-                document.getElementById('loading-screen').style.display = 'none';
-
-                if (nbVisibles === 0) alert("⚠️ RADAR GPS : La piste la plus proche est à plus de 15 km de votre téléphone. Regardez bien à l'horizon !");
-
-            }, err => {
-                document.getElementById('loading-text').innerText = "❌ Échec GPS. La Réalité Augmentée exige la géolocalisation pour fonctionner.";
-            }, {enableHighAccuracy: true});
-        });
-
-        // --- GESTION DU JOYSTICK TACTILE ---
-        let arDragMode = 'compass'; let isArDragging = false; let lastArX = 0, lastArY = 0; let arOffsetCompass = 0, arOffsetAlt = 0;
-        document.getElementById('ar-toggle-mode').onclick = () => {
-            const btn = document.getElementById('ar-toggle-mode');
-            if (arDragMode === 'compass') { arDragMode = 'altitude'; btn.innerText = "Actuel : ALTITUDE"; btn.style.color = "#ff4d4f"; btn.style.borderColor = "#ff4d4f"; } 
-            else { arDragMode = 'compass'; btn.innerText = "Actuel : BOUSSOLE"; btn.style.color = "#4ade80"; btn.style.borderColor = "#4ade80"; }
-        };
-
-        document.addEventListener('touchstart', (e) => {
-            if (e.target.closest('#ar-header') || e.target.closest('#btn-back')) return;
-            isArDragging = true; lastArX = e.touches[0].clientX; lastArY = e.touches[0].clientY;
-        });
-
-        document.addEventListener('touchmove', (e) => {
-            if (!isArDragging) return;
-            const deltaX = e.touches[0].clientX - lastArX; const deltaY = e.touches[0].clientY - lastArY;
-            lastArX = e.touches[0].clientX; lastArY = e.touches[0].clientY;
-            const arContainer = document.getElementById('ar-kml-container');
-            if(arContainer) {
-                if (arDragMode === 'compass') { arOffsetCompass += deltaX * 0.3; arContainer.setAttribute('rotation', `0 ${arOffsetCompass} 0`); } 
-                else { arOffsetAlt -= deltaY * 0.1; arContainer.setAttribute('position', `0 ${arOffsetAlt} 0`); }
-            }
-        }, {passive: false});
+        let kmlXmlDoc = null; let mntData = null; let mntWidth = 0, mntHeight = 0, mntBbox = null; let isLambert93 = false; let boundsWgs84Global = null;
+        let isKmzLoaded = false; let isMntLoaded = false; let kmlFileName = "trace_export.kml";
         
-        document.addEventListener('touchend', () => { isArDragging = false; });
+        function checkReady() { if(isKmzLoaded && isMntLoaded) document.getElementById('box-process').classList.remove('disabled-step'); }
 
-        // RETOUR À LA CARTE
-        document.getElementById('btn-back').addEventListener('click', () => {
-            window.location.href = 'index.html';
+        // KML
+        document.getElementById('kmz-input').addEventListener('change', async function(e) {
+            const file = e.target.files[0]; if(!file) return;
+            showLoad("Analyse KML...");
+            kmlLayerGroup.clearLayers();
+            kmlFileName = file.name.toLowerCase().replace('.kmz', '').replace('.kml', '') + "_AR.kml";
+
+            try {
+                let text = "";
+                if(file.name.toLowerCase().endsWith('.kmz')) {
+                    const zip = await JSZip.loadAsync(await file.arrayBuffer());
+                    text = await zip.files[Object.keys(zip.files).find(n=>n.endsWith('.kml'))].async("text");
+                } else text = await file.text();
+
+                kmlXmlDoc = new DOMParser().parseFromString(text, "text/xml");
+                const b = L.latLngBounds();
+                
+                for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
+                    const pts = parseCoords(l.getElementsByTagName("coordinates")[0]?.textContent);
+                    if(pts.length) { L.polyline(pts.map(p => [p.lat, p.lon]), {color: '#FF3B30', weight: 3}).addTo(kmlLayerGroup); pts.forEach(p=>b.extend([p.lat, p.lon])); }
+                }
+                for (let p of kmlXmlDoc.getElementsByTagName("Polygon")) {
+                    const pts = parseCoords(p.getElementsByTagName("coordinates")[0]?.textContent);
+                    if(pts.length) { L.polygon(pts.map(p => [p.lat, p.lon]), {color: '#3498db', weight: 2, fillOpacity:0.4}).addTo(kmlLayerGroup); pts.forEach(p=>b.extend([p.lat, p.lon])); }
+                }
+                for (let p of kmlXmlDoc.getElementsByTagName("Point")) {
+                    const pts = parseCoords(p.getElementsByTagName("coordinates")[0]?.textContent);
+                    if(pts.length) { L.circleMarker([pts[0].lat, pts[0].lon], {radius:5, fillColor:'#FFCC00', color:'#000'}).addTo(kmlLayerGroup); b.extend([pts[0].lat, pts[0].lon]); }
+                }
+                
+                if(b.isValid() && !mntData) map.fitBounds(b, {padding:[30,30]});
+                
+                document.getElementById('box-kmz').classList.add('active');
+                isKmzLoaded = true; 
+                document.getElementById('box-ar').classList.remove('disabled-step');
+                document.getElementById('box-export').classList.remove('disabled-step');
+                checkReady(); log("✅ Trace chargée.");
+            } catch(err) { log("❌ Erreur KML"); }
+            hideLoad();
         });
+
+        // MNT
+        document.getElementById('tif-input').addEventListener('change', async function(e) {
+            const file = e.target.files[0]; if(!file) return;
+            showLoad("Analyse MNT...");
+            try {
+                const img = await (await GeoTIFF.fromArrayBuffer(await file.arrayBuffer())).getImage();
+                mntBbox = img.getBoundingBox(); mntWidth = img.getWidth(); mntHeight = img.getHeight();
+                
+                if(Math.abs(mntBbox[0]) > 180) {
+                    isLambert93 = true;
+                    const sw = proj4("EPSG:2154", "EPSG:4326", [mntBbox[0], mntBbox[1]]);
+                    const ne = proj4("EPSG:2154", "EPSG:4326", [mntBbox[2], mntBbox[3]]);
+                    boundsWgs84Global = [[sw[1], sw[0]], [ne[1], ne[0]]]; 
+                } else {
+                    isLambert93 = false; boundsWgs84Global = [[mntBbox[1], mntBbox[0]], [mntBbox[3], mntBbox[2]]];
+                }
+
+                mntData = (await img.readRasters())[0];
+                if(mntBoundsLayer) map.removeLayer(mntBoundsLayer);
+                mntBoundsLayer = L.rectangle(boundsWgs84Global, {color:"#ff4d4f", weight:2, fillOpacity:0.1}).addTo(map);
+                map.fitBounds(boundsWgs84Global);
+                document.getElementById('box-tif').classList.add('active');
+                isMntLoaded = true; checkReady(); log("✅ Terrain MNT chargé.");
+            } catch(err) { log("❌ Erreur MNT"); }
+            hideLoad();
+        });
+
+        function getElev(lat, lon) {
+            if(!mntData) return null;
+            let x = lon, y = lat;
+            if(isLambert93) { const c = proj4("EPSG:4326", "EPSG:2154", [lon, lat]); x = c[0]; y = c[1]; }
+            const px = Math.floor(((x - mntBbox[0]) / (mntBbox[2] - mntBbox[0])) * mntWidth);
+            const py = Math.floor(((mntBbox[3] - y) / (mntBbox[3] - mntBbox[1])) * mntHeight);
+            if(px<0 || px>=mntWidth || py<0 || py>=mntHeight) return null;
+            const a = mntData[py * mntWidth + px]; return (a>-500 && a<8000) ? a : null;
+        }
+
+        // FUSION
+        document.getElementById('btn-process').addEventListener('click', () => {
+            showLoad("Croisement des données...");
+            setTimeout(() => {
+                const coords = kmlXmlDoc.getElementsByTagName("coordinates");
+                for(let n of coords) {
+                    const pts = parseCoords(n.textContent); 
+                    const newPts = pts.map(pt => {
+                        const alt = getElev(pt.lat, pt.lon);
+                        return `${pt.lon},${pt.lat},${alt !== null ? alt.toFixed(2) : pt.alt}`;
+                    });
+                    n.textContent = newPts.join(' ');
+                }
+                document.getElementById('box-process').classList.add('active');
+                document.getElementById('box-preview').classList.remove('disabled-step');
+                hideLoad(); log("✅ Altitudes corrigées !");
+            }, 100);
+        });
+
+        // EXPORT
+        document.getElementById('btn-export').addEventListener('click', function() {
+            if (!kmlXmlDoc) return;
+            const xmlString = new XMLSerializer().serializeToString(kmlXmlDoc);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([xmlString], { type: 'application/vnd.google-earth.kml+xml' }));
+            a.download = kmlFileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        });
+
+        // AR LINK
+        document.getElementById('btn-ar').addEventListener('click', () => {
+            if (!kmlXmlDoc) return;
+            log("💾 Envoi vers la page AR...");
+            const xmlString = new XMLSerializer().serializeToString(kmlXmlDoc);
+            localStorage.setItem('kmlForAR', xmlString);
+            window.location.href = 'ar.html';
+        });
+
+        // === MOTEUR 3D AVEC TOPOGRAPHIE COLORÉE ===
+        let scene, camera, renderer, controls;
+        let groupTerrain, groupTraces, groupCanons;
+
+        document.getElementById('close-3d').onclick = () => { document.getElementById('modal-3d').style.display="none"; };
+        document.getElementById('btn-preview').onclick = () => { document.getElementById('modal-3d').style.display="flex"; if(!scene) setTimeout(init3D, 100); };
+
+        function init3D() {
+            try {
+                const container = document.getElementById('canvas-container');
+                scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); // Ciel bleu naturel
+                const light = new THREE.DirectionalLight(0xffffff, 1.2); light.position.set(5000, 10000, 5000); scene.add(light);
+                scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+
+                groupTerrain = new THREE.Group(); scene.add(groupTerrain);
+                groupTraces = new THREE.Group(); scene.add(groupTraces);
+                groupCanons = new THREE.Group(); scene.add(groupCanons);
+
+                const minLat = boundsWgs84Global[0][0], maxLat = boundsWgs84Global[1][0];
+                const minLon = boundsWgs84Global[0][1], maxLon = boundsWgs84Global[1][1];
+                const wMeters = map.distance([minLat, minLon], [minLat, maxLon]);
+                const hMeters = map.distance([minLat, minLon], [maxLat, minLon]);
+
+                function toV3(lat, lon, alt) { return new THREE.Vector3( ((lon-minLon)/(maxLon-minLon))*wMeters - wMeters/2, alt, -(((lat-minLat)/(maxLat-minLat))*hMeters - hMeters/2) ); }
+
+                const segs = 150;
+                const geo = new THREE.PlaneGeometry(wMeters, hMeters, segs, segs); geo.rotateX(-Math.PI/2);
+                const pos = geo.attributes.position.array; const colors = new Float32Array(pos.length);
+                let minA = Infinity, maxA = -Infinity;
+                
+                for(let i=0; i<=segs; i++) {
+                    for(let j=0; j<=segs; j++) {
+                        const a = getElev(maxLat - (i/segs)*(maxLat-minLat), minLon + (j/segs)*(maxLon-minLon)) || 0;
+                        if(a < minA) minA = a; if(a > maxA) maxA = a;
+                        pos[(i*(segs+1)+j)*3 + 1] = a;
+                    }
+                }
+
+                // PALETTE TOPOGRAPHIQUE PROFESSIONNELLE (6 Couleurs)
+                const palette = [
+                    new THREE.Color(0x2d5e2e), // Vert sombre (Vallées)
+                    new THREE.Color(0x8bc34a), // Vert clair
+                    new THREE.Color(0xf1c40f), // Jaune (Alpages)
+                    new THREE.Color(0xe67e22), // Orange/Terre
+                    new THREE.Color(0x8d6e63), // Roche/Marron
+                    new THREE.Color(0xffffff)  // Neige
+                ];
+                const tmpColor = new THREE.Color();
+
+                for(let i=0; i<pos.length; i+=3) {
+                    const a = pos[i+1];
+                    let ratio = (maxA - minA) === 0 ? 0 : (a - minA) / (maxA - minA);
+                    ratio = Math.max(0, Math.min(1, ratio)); // Sécurité
+                    
+                    const scaled = ratio * (palette.length - 1);
+                    const index = Math.floor(scaled);
+                    const lerpFactor = scaled - index;
+
+                    if (index >= palette.length - 1) {
+                        tmpColor.copy(palette[palette.length - 1]);
+                    } else {
+                        tmpColor.lerpColors(palette[index], palette[index + 1], lerpFactor);
+                    }
+
+                    colors[i] = tmpColor.r; colors[i+1] = tmpColor.g; colors[i+2] = tmpColor.b;
+                }
+
+                geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); geo.computeVertexNormals();
+                groupTerrain.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, flatShading: true })));
+
+                const lineMat = new THREE.LineBasicMaterial({ color: 0xFF3B30, linewidth: 4 });
+                for (let l of kmlXmlDoc.getElementsByTagName("LineString")) {
+                    const pts = parseCoords(l.getElementsByTagName("coordinates")[0]?.textContent);
+                    if(pts.length > 1) {
+                        const v3s = pts.map(p => toV3(p.lat, p.lon, p.alt + 3));
+                        groupTraces.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(v3s), lineMat));
+                    }
+                }
+
+                for (let l of kmlXmlDoc.getElementsByTagName("Polygon")) {
+                    const pts = parseCoords(l.getElementsByTagName("coordinates")[0]?.textContent);
+                    if(pts.length > 2) {
+                        const v3s = pts.map(p => toV3(p.lat, p.lon, p.alt + 3));
+                        groupTraces.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(v3s), new THREE.LineBasicMaterial({ color: 0x3498db, linewidth: 2 })));
+                    }
+                }
+
+                const sphereMat = new THREE.MeshBasicMaterial({ color: 0xFFCC00 });
+                for (let p of kmlXmlDoc.getElementsByTagName("Point")) {
+                    const pts = parseCoords(p.getElementsByTagName("coordinates")[0]?.textContent);
+                    if(pts.length >= 1) {
+                        const mesh = new THREE.Mesh(new THREE.SphereGeometry(15, 8, 8), sphereMat);
+                        mesh.position.copy(toV3(pts[0].lat, pts[0].lon, pts[0].alt + 10));
+                        groupCanons.add(mesh);
+                    }
+                }
+
+                camera = new THREE.PerspectiveCamera(60, container.clientWidth/container.clientHeight, 1, 30000);
+                camera.position.set(0, maxA + 2000, hMeters/1.5);
+                renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(container.clientWidth, container.clientHeight);
+                container.appendChild(renderer.domElement);
+                controls = new THREE.OrbitControls(camera, renderer.domElement); controls.target.set(0, (minA+maxA)/2, 0);
+
+                const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
+                renderer.domElement.addEventListener('dblclick', (e) => {
+                    const rect = renderer.domElement.getBoundingClientRect();
+                    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1; mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                    raycaster.setFromCamera(mouse, camera);
+                    const intersects = raycaster.intersectObjects([groupTerrain.children[0]]);
+                    if(intersects.length > 0) controls.target.copy(intersects[0].point);
+                });
+
+                function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); } animate();
+                window.addEventListener('resize', () => { if(modal3d.style.display === "flex" && camera) { camera.aspect = container.clientWidth/container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); } });
+            } catch (err) { log("❌ Erreur 3D : " + err.message); }
+        }
+
+        document.getElementById('t-terrain').onchange = (e) => { if(groupTerrain) groupTerrain.visible = e.target.checked; };
+        document.getElementById('t-traces').onchange = (e) => { if(groupTraces) groupTraces.visible = e.target.checked; };
+        document.getElementById('t-canons').onchange = (e) => { if(groupCanons) groupCanons.visible = e.target.checked; };
 
     </script>
 </body>
