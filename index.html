@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GMAO Snow Expert</title>
+    <script>
+        window.showCrash = function(msg, line) { let o = document.getElementById('loading-overlay'); if (o) { o.style.display='flex'; document.getElementById('loading-spinner').style.display='none'; document.getElementById('loading-title').innerText="🛑 ERREUR SYSTEME"; if(document.getElementById('error-box')) { document.getElementById('error-box').style.display='block'; document.getElementById('error-msg').innerHTML="<b>Détail:</b> "+msg+(line?"<br><b>Ligne:</b> "+line:""); } } else alert("🛑 CRASH : "+msg); };
+        window.onerror = function(msg, src, ln) { if (msg.indexOf('Script error') > -1) return false; window.showCrash(msg, ln); return true; };
+        window.addEventListener('unhandledrejection', function(e) { window.showCrash(e.reason ? e.reason.message : "Erreur réseau", "Réseau"); });
+    </script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
+    <style>
+        body,html{margin:0;padding:0;height:100%;width:100%;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f4f6f8;overflow:hidden;}
+        #topbar{position:fixed;top:0;left:0;right:0;height:50px;background:#2c3e50;z-index:4000;display:flex;justify-content:space-between;align-items:center;padding:0 15px;box-shadow:0 2px 5px rgba(0,0,0,0.3);}
+        .topbar-btn{background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.2);padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;transition:0.2s;margin-left:5px;}
+        .topbar-btn:hover{background:rgba(255,255,255,0.2);}
+        #app-container{display:flex;height:100%;width:100%;position:relative;padding-top:50px;box-sizing:border-box;}
+        #loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.95);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;}
+        .spinner{border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin-bottom:20px;}
+        @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+        #error-box{display:none;background:#fdf0ed;border:2px solid #e74c3c;padding:20px;border-radius:8px;max-width:600px;color:#c0392b;margin-top:20px;}
+        #sidebar{width:360px;flex-shrink:0;background:#fff;display:flex;flex-direction:column;z-index:2500;overflow-y:auto;box-shadow:2px 0 15px rgba(0,0,0,0.08);transition:transform 0.3s;position:absolute;height:calc(100% - 50px);left:0;top:50px;}
+        #sidebar.collapsed{transform:translateX(-100%);}
+        .sidebar-header-bg{background:#f8f9fa;padding:10px 20px;border-bottom:1px solid #eee;font-weight:bold;color:#2c3e50;font-size:14px;text-transform:uppercase;}
+        .panel-section{border-bottom:1px solid #f0f0f0;margin:0;}
+        .panel-section summary{background:#fff;padding:15px 20px;font-size:13px;font-weight:600;color:#34495e;cursor:pointer;list-style:none;text-transform:uppercase;display:flex;justify-content:space-between;}
+        .panel-section summary:hover{background:#f8f9fa;color:#3498db;}
+        .panel-section summary::-webkit-details-marker{display:none;}
+        .panel-section summary::after{content:'+';font-size:16px;color:#bdc3c7;}
+        details[open].panel-section summary::after{content:'−';color:#3498db;}
+        .section-content{padding:15px 20px;background:#fafbfc;}
+        .theme-block{margin-bottom:8px;}
+        .radio-card{display:flex;align-items:center;gap:10px;background:#fff;padding:12px;border:1px solid #e1e8ed;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold;}
+        .theme-details{background:#fdfdfe;padding:12px 15px;border:1px solid #e1e8ed;border-top:none;border-radius:0 0 6px 6px;margin-top:-2px;}
+        .theme-details-hist{background:#eafaf1;border-color:#a2d9ce;border-top:none;padding:15px;border-radius:0 0 6px 6px;}
+        .slider-container{margin-top:10px;}
+        .slider-label{display:flex;justify-content:space-between;font-size:12px;font-weight:bold;margin-bottom:5px;color:#555;}
+        input[type=range]{width:100%;margin:0;accent-color:#3498db;cursor:pointer;}
+        .val-badge{color:#e74c3c;font-weight:bold;}
+        .dynamic-filter-slot{background:#fff;border:1px solid #e1e8ed;border-radius:6px;padding:10px;margin-bottom:10px;}
+        .filter-select{width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:8px;outline:none;}
+        .checkbox-list{max-height:140px;overflow-y:auto;padding:5px;font-size:12px;}
+        .checkbox-list label{display:block;margin-bottom:6px;cursor:pointer;}
+        .legend-item{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;font-weight:600;cursor:pointer;padding:4px;border-radius:4px;}
+        .color-box{width:14px;height:14px;border-radius:3px;border:1px solid #ccc;}
+        .gradient-bar{height:10px;border-radius:3px;margin:10px 0 5px 0;}
+        .legend-labels{display:flex;justify-content:space-between;font-size:11px;font-weight:bold;}
+        #map-container{flex-grow:1;position:relative;height:100%;background:#222;}
+        #map{position:absolute;top:0;bottom:0;left:0;right:0;width:100%;height:100%;z-index:1;}
+        .custom-cannon-icon{background:none;border:none;}
+        .cannon-circle{border-radius:50%;color:white;font-weight:bold;text-align:center;text-shadow:1px 1px 2px rgba(0,0,0,0.8);box-sizing:border-box;box-shadow:0 3px 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
+        .cannon-circle:hover{transform:scale(1.2);z-index:1000 !important;cursor:pointer;}
+        .camera-icon{font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,0.8);text-align:center;line-height:24px;cursor:pointer;}
+        
+        /* PANNEAU DROIT ELARGI A 680PX + REDIMENSIONNEMENT */
+        #right-sidebar{position:absolute;top:50px;right:0;bottom:0;width:680px;min-width:300px;max-width:90vw;background:#fff;z-index:2001;transform:translateX(100%);transition:transform 0.3s;box-shadow:-5px 0 25px rgba(0,0,0,0.1);display:flex;flex-direction:column;}
+        #right-sidebar.open{transform:translateX(0);}
+        .resizer { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; cursor: ew-resize; background: rgba(0,0,0,0.05); z-index: 3000; border-left: 1px solid #ddd; transition: background 0.2s; }
+        .resizer:hover, .resizer.active { background: #3498db; }
+        
+        .right-header{background:#fff;border-bottom:1px solid #eee;padding:20px;font-size:16px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;color:#2c3e50;}
+        .right-content{padding:20px;overflow-y:auto;flex-grow:1;background:#f9fbfc;}
+        .sel-details{background:#fff;margin-bottom:20px;border:1px solid #e1e8ed;border-radius:8px;overflow:hidden;}
+        .sel-details-header{padding:15px;font-weight:bold;font-size:15px;background:#fdfdfe;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;}
+        .sel-details-body{padding:15px;font-size:13px;color:#444;line-height:1.5;}
+        .badge{display:inline-block;background:#f0f3f5;padding:5px 10px;border-radius:4px;font-size:11px;margin:0 4px 6px 0;border:1px solid #e1e8ed;}
+        .ticket-card{background:#fff;border:1px solid #eee;border-left:4px solid #e74c3c;padding:12px;margin-bottom:10px;border-radius:4px;}
+        .piste-chart-container{background:#fff;border:1px solid #eee;padding:15px;border-radius:6px;margin-top:15px;}
+        .btn-action-primary{background:#3498db;color:white;border:none;padding:12px;border-radius:6px;cursor:pointer;font-size:13px;margin-top:15px;width:100%;font-weight:bold;transition:0.2s;}
+        .btn-action-primary:hover{background:#2980b9;}
+        .edit-input{width:100%;box-sizing:border-box;padding:10px;margin-top:4px;margin-bottom:12px;border:1px solid #ccc;border-radius:4px;font-size:13px;outline:none;}
+        .edit-label{font-size:11px;font-weight:bold;color:#555;text-transform:uppercase;}
+        
+        #compare-modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:800px;max-width:95%;background:white;z-index:9999;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,0.5);border:1px solid #ccc;flex-direction:column;overflow:hidden;}
+        .comp-header{background:#2c3e50;color:white;padding:15px 20px;display:flex;justify-content:space-between;font-size:16px;font-weight:bold;}
+        .comp-body{padding:20px;max-height:80vh;overflow-y:auto;background:#f4f6f8;}
+        .comp-controls{display:flex;gap:15px;background:#fff;padding:15px;border-radius:6px;margin-bottom:15px;border:1px solid #ddd;}
+        .comp-chart-box{background:#fff;padding:15px;border-radius:6px;border:1px solid #ddd;margin-bottom:15px;height:250px;position:relative;}
+        .kml-layer-item{display:flex;align-items:center;background:#fff;padding:8px;border:1px solid #ddd;border-radius:4px;margin-bottom:8px;font-size:12px;font-weight:bold;}
+        .layer-color-picker{width:24px;height:24px;padding:0;border:none;}
+        .layer-weight-picker{width:35px;height:22px;padding:2px;border:1px solid #ccc;text-align:center;margin-left:5px;}
+        
+        /* TABLEAU DE BORD BI METEO */
+        #bi-meteo-modal {display:none;position:fixed;top:50px;left:0;right:0;bottom:0;background:#f4f6f8;z-index:8000;flex-direction:column;}
+        .bi-header {background:#2c3e50;color:white;padding:15px 20px;font-size:18px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;}
+        .bi-container {display:flex;flex:1;overflow:hidden;}
+        .bi-sidebar {width:400px;background:#fff;border-right:1px solid #ddd;padding:20px;overflow-y:auto;box-shadow:2px 0 10px rgba(0,0,0,0.05);}
+        .bi-content {flex:1;padding:20px;display:flex;flex-direction:column;}
+        .bi-canvas-box {background:#fff;border-radius:8px;border:1px solid #ddd;padding:20px;flex:1;position:relative;box-shadow:0 4px 15px rgba(0,0,0,0.05);}
+        
+        @media(max-width:768px){#sidebar,#right-sidebar{width:100%;}#compare-modal{width:95%;} .bi-container{flex-direction:column;} .bi-sidebar{width:100%;border-right:none;border-bottom:1px solid #ddd;height:40%;} .bi-content{height:60%;}}
+    </style>
+</head>
+<body>
+    <div id="datalists-container"></div> 
+    <div id="loading-overlay"><div class="spinner" id="loading-spinner"></div><h2 style="color:#3498db; margin:0;" id="loading-title">Démarrage...</h2><p style="color:#888; font-size:12px;" id="loading-step"></p><div id="error-box"><p id="error-msg"></p></div></div>
+
+    <div id="topbar">
+        <div style="display:flex; align-items:center;">
+            <button class="topbar-btn" style="margin-left:0;" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">☰ Menu</button>
+            <button class="topbar-btn" onclick="window.toggleRightSidebar()">📊 Tableau de Bord</button>
+        </div>
+        <div style="display:flex; align-items:center;">
+            <button class="topbar-btn" onclick="window.openGlobalCompareModal(true)" style="background:#d35400; border-color:#e67e22;">📊 Comparer Saisons</button>
+            <button class="topbar-btn" onclick="window.openBiMeteo()" style="background:#8e44ad; border-color:#9b59b6;">❄️ Centre Expert BI</button>
+            <button class="topbar-btn" onclick="window.openMeteoWidget()">⛅ Météo Live</button>
+            <button class="topbar-btn" onclick="window.openWebcamGrid()">📷 Webcams</button>
+            <button id="btn-multi-toggle" class="topbar-btn" onclick="window.toggleMultiSelect()">🔲 Sélec. Multiple : OFF</button>
+        </div>
+    </div>
+
+    <div id="bi-meteo-modal">
+        <div class="bi-header"><span>❄️ PowerBI Neige (Analyse & Graphiques Avancés)</span><button onclick="document.getElementById('bi-meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:28px;cursor:pointer;">&times;</button></div>
+        <div class="bi-container">
+            <div class="bi-sidebar">
+                <div class="edit-label">1. Source des données</div>
+                <select id="bi-source" class="edit-input" onchange="window.biLoadSource()">
+                    <optgroup label="Données Brutes (Google Sheets)"><option value="raw_gen">Tableau Général Canons</option><option value="raw_hist">Historique Enneigeurs</option><option value="raw_tick">Maintenance Neige (Tickets)</option><option value="hist">Météo : Historique</option><option value="froid">Météo : Heures de Froid</option></optgroup>
+                    <optgroup label="Données Calculées (Temps Réel)"><option value="conso">Production : Volumes par Saison</option><option value="defauts">Maintenance : Pannes par Mois</option><option value="types">Parc : Types de Canons</option></optgroup>
+                </select>
+                <div class="edit-label">2. Format Global</div>
+                <select id="bi-type" class="edit-input" onchange="window.biUpdateUI()"><option value="bar">📊 Barres</option><option value="line">📈 Courbes</option><option value="combo">📉 Combiné (Personnalisé)</option><option value="pie">🥧 Camembert</option><option value="doughnut">🍩 Anneau</option><option value="polarArea">🎯 Zone Polaire</option></select>
+                <div class="edit-label">3. Axe Horizontal (Abscisses)</div>
+                <select id="bi-x" class="edit-input" onchange="window.biDrawChart()"></select>
+                <div class="edit-label">4. Axes Verticaux (Cochez pour ajouter)</div>
+                <div id="bi-y-container" style="background:#fdfdfd; border:1px solid #ccc; border-radius:4px; padding:10px; max-height:280px; overflow-y:auto; margin-bottom:12px; font-size:12px;"></div>
+                <div class="edit-label">🔍 Filtrer les données (Optionnel)</div>
+                <div style="display:flex; gap:5px; margin-bottom:12px;"><select id="bi-filter-col" class="edit-input" style="margin:0; flex:1;" onchange="window.biDrawChart()"></select><input type="text" id="bi-filter-val" class="edit-input" style="margin:0; flex:1;" placeholder="Ex: Fait, >10..." onkeyup="window.biDrawChart()"></div>
+                <div class="edit-label">Options Graphiques</div>
+                <label style="display:flex; align-items:center; gap:5px; margin-bottom:10px; font-size:12px; cursor:pointer;"><input type="checkbox" id="bi-points" checked onchange="window.biDrawChart()"> Afficher les points sur les courbes</label>
+                <div class="edit-label">🎨 Palette Globale</div>
+                <select id="bi-palette" class="edit-input" onchange="window.biDrawChart()"><option value="default">Standard (Bleu, Rouge, Vert...)</option><option value="cold">Froid (Nuances de Bleu/Cyan)</option><option value="warm">Chaud (Jaune, Orange, Rouge)</option><option value="mono">Monochrome (Bleu nuit)</option></select>
+                <button class="btn-action-primary" style="background:#27ae60; margin-top:5px; padding:12px;" onclick="window.biDrawChart()">🔄 Actualiser le Graphique</button>
+                <button class="btn-action-primary" style="background:#8e44ad; margin-top:10px; padding:12px;" onclick="window.exportBiChart()">💾 Télécharger l'Image (PNG)</button>
+            </div>
+            <div class="bi-content"><div class="bi-canvas-box"><canvas id="bi-canvas"></canvas></div></div>
+        </div>
+    </div>
+
+    <div id="compare-modal">
+        <div class="comp-header"><span>📊 Comparaison Globale</span><button onclick="window.openGlobalCompareModal(false)" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;">&times;</button></div>
+        <div class="comp-body">
+            <div class="comp-controls">
+                <div style="flex:1;"><div class="edit-label">Piste</div><select id="comp-piste" class="edit-input" style="margin:0;"><option value="all">Toutes</option></select></div>
+                <div style="flex:1;"><div class="edit-label">Donnée</div><select id="comp-metric" class="edit-input" style="margin:0;"><option value="eau">Eau (m³)</option><option value="air">Air</option><option value="temps">Temps (h)</option></select></div>
+                <div style="flex:1;"><div class="edit-label">Saison A</div><select id="comp-s1" class="edit-input" style="margin:0;"></select></div>
+                <div style="flex:1;"><div class="edit-label">Saison B</div><select id="comp-s2" class="edit-input" style="margin:0;"></select></div>
+                <button class="btn-action-primary" style="margin:0; width:auto; padding:10px 20px;" onclick="window.renderGlobalComparison()">Comparer</button>
+            </div>
+            <div class="comp-chart-box"><div style="position:absolute; top:5px; left:15px; font-weight:bold; font-size:12px; color:#555;" id="comp-title-1">Saison A</div><canvas id="comp-canvas-1"></canvas></div>
+            <div class="comp-chart-box"><div style="position:absolute; top:5px; left:15px; font-weight:bold; font-size:12px; color:#555;" id="comp-title-2">Saison B</div><canvas id="comp-canvas-2"></canvas></div>
+        </div>
+    </div>
+
+    <div id="app-container">
+        <div id="sidebar" class="open">
+            <div class="sidebar-header-bg">Outils d'Analyse</div>
+            <details class="panel-section" open><summary>Thème & Légende</summary>
+                <div class="section-content" style="padding-top: 10px;">
+                    <div class="theme-block">
+                        <label class="radio-card" id="lbl-suivi_entretien" style="border-radius: 6px; margin-bottom: 8px; border-color: #e1e8ed;">
+                            <input type="radio" name="main_theme" value="suivi_entretien"> 🛠️ Suivi Entretien
+                        </label>
+                        <div class="theme-details" id="details-suivi_entretien" style="display: none; border-color: #27ae60;">
+                            <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Gérez l'entretien et les vannes</div>
+                            <div id="legend-suivi_entretien"></div>
+                        </div>
+                    </div>
+                    <div class="theme-block">
+                        <label class="radio-card" id="lbl-defauts" style="border-radius: 6px 6px 0 0; margin-bottom: 0; border-color: #3498db;"><input type="radio" name="main_theme" value="defauts" checked> 🚨 Tickets & Pannes</label>
+                        <div class="theme-details" id="details-defauts" style="display: block; border-color: #3498db;"><div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Survolez pour cibler</div><div id="legend-defauts"></div></div>
+                    </div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-type"><input type="radio" name="main_theme" value="type"> ⚙️ Type de canon (Édition)</label><div class="theme-details" id="details-type" style="display: none; border-color: #3498db;"><div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Survolez pour cibler</div><div id="legend-type"></div></div></div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-repeteur"><input type="radio" name="main_theme" value="repeteur"> 📡 Répéteurs</label><div class="theme-details" id="details-repeteur" style="display: none; border-color: #3498db;"><div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Survolez pour cibler</div><div id="legend-repeteur"></div></div></div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-transfo"><input type="radio" name="main_theme" value="transfo"> ⚡ Transformateurs</label><div class="theme-details" id="details-transfo" style="display: none; border-color: #3498db;"><div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Survolez pour cibler</div><div id="legend-transfo"></div></div></div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-historique"><input type="radio" name="main_theme" value="historique"> 📊 Historique Volumes</label><div class="theme-details-hist" id="details-historique" style="display: none;">
+                        <div style="font-weight:bold; font-size:12px; color:#27ae60; margin-bottom:10px;">DONNÉE À AFFICHER :</div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:12px; font-weight:bold; color:#333;"><label><input type="radio" name="hist_metric" value="eau" checked> 💧 Eau</label><label><input type="radio" name="hist_metric" value="air"> 💨 Air</label><label><input type="radio" name="hist_metric" value="temps"> ⏱️ Heures</label></div>
+                        <div class="slider-container"><div class="slider-label">Voyage temporel : <span id="season-display" style="color:#27ae60; font-size:14px;">-</span></div><input type="range" id="season-slider" min="0" max="0" value="0"></div>
+                        <div id="legend-historique" style="margin-top:15px; margin-bottom:5px;"></div>
+                        <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #bdc3c7;"><div class="slider-label">Cacher en dessous de : <span id="val-min" class="val-badge">0</span></div><input type="range" id="slider-min" min="0" max="100" value="0"><div class="slider-label" style="margin-top:12px;">Cacher au dessus de : <span id="val-max" class="val-badge" style="color:#2980b9;">100</span></div><input type="range" id="slider-max" min="0" max="100" value="100"></div>
+                    </div>
+                </div>
+            </details>
+            <details class="panel-section" open><summary>Filtres Rapides</summary><div class="section-content" style="padding-top: 5px;">
+                <b style="font-size:12px;">Pistes :</b><div class="checkbox-list"><label><input type="checkbox" id="check-all-pistes" checked> <b>Toutes</b></label><div id="individual-pistes"></div></div>
+                <b style="font-size:12px;">Type Canon :</b><div class="checkbox-list"><label><input type="checkbox" id="check-all-types" checked> <b>Tous</b></label><div id="individual-types"></div></div>
+                <hr style="margin:10px 0; border-top:1px dashed #ccc;">
+                <b style="font-size:12px;">Filtre Personnalisé :</b><div id="dynamic-filters-container"></div>
+            </div></details>
+            <details class="panel-section" open><summary>Calques & Tracés (KMZ)</summary><div class="section-content" style="padding-top: 5px;"><p style="font-size:11px; color:#666; margin-bottom:10px;"><b>1. Cloud (Depuis Sheets) :</b></p><div id="cloud-layers-container"></div><hr style="margin:15px 0; border-top:1px dashed #ccc;"><p style="font-size:11px; color:#666; margin-bottom:10px;"><b>2. Import PC :</b></p><input type="file" id="kml-upload" accept=".kml,.kmz" style="display:none;" onchange="window.handleKMLUpload(event)"><button class="btn-action-primary" style="margin-top:0; background:#8e44ad;" onclick="document.getElementById('kml-upload').click()">📂 Importer...</button><div id="custom-layers-list" style="margin-top:15px;"></div></div></details>
+        </div>
+
+        <div id="map-container"><div id="map"></div></div>
+
+        <div id="right-sidebar">
+            <div class="right-header" id="right-header"><span id="right-title">📌 Analyse Détaillée</span><button onclick="window.closeRightSidebar()" style="background:none; border:none; color:#bdc3c7; font-size:28px; cursor:pointer;">&times;</button></div>
+            <div class="right-content">
+                <div id="view-selection">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;" id="multi-tools"><span style="font-size:13px; color:#555;"><b id="sel-count">0</b> canon(s) ciblé(s)</span><button onclick="window.clearSelection()" style="background:#bdc3c7; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:11px;">Tout vider ✕</button></div>
+                    <div id="selected-list"></div>
+                </div>
+                <div id="view-edit" style="display:none;">
+                    <div style="background:#fff3cd; padding:12px; border-radius:6px; margin-bottom:15px; border:1px solid #ffeeba;"><label style="color:#856404; font-size:12px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:8px;"><input type="checkbox" id="allow-move-chk"> Autoriser le déplacement GPS</label></div>
+                    <h3 style="margin-top:0; color:#3498db; border-bottom:2px solid #eee; padding-bottom:10px;">Édition Canon <span id="edit-id-display"></span></h3>
+                    <input type="hidden" id="edit-id">
+                    <div style="display:flex; gap:10px; margin-bottom: 15px;"><div style="flex:1;"><div class="edit-label">Latitude</div><input type="number" step="0.0000001" id="edit-lat" class="edit-input" style="background:#fdfdfd;"></div><div style="flex:1;"><div class="edit-label">Longitude</div><input type="number" step="0.0000001" id="edit-lng" class="edit-input" style="background:#fdfdfd;"></div></div>
+                    <div id="dynamic-edit-fields"></div>
+                    <div style="display:flex; gap:10px; margin-top:20px;"><button onclick="window.cancelEdit()" style="flex:1; background:#ecf0f1; color:#333; padding:12px; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-weight:bold;">Annuler</button><button id="btn-save-edit" onclick="window.saveEditData()" style="flex:2; background:#27ae60; color:white; padding:12px; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">✅ Sauvegarder</button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ VOTRE LIEN GOOGLE APPS SCRIPT ⚠️
+        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbxXWPGusI2o66WGBut-urJXxeB00ltFti2KltPXb-mafmmfleavph8wRGNWPydHw0YY1g/exec";
+
+        window.map=null; window.satLayer=null; window.geojsonLayer=null; window.webcamLayerGroup=null;
+        window.snowCannons={"type":"FeatureCollection","features":[]}; window.rawGeneral=[]; window.rawHistorique=[]; window.rawTicketsSheet=[]; window.meteoHistData=[]; window.meteoFroidData=[]; window.rawTickets=[]; window.saisonsList=[]; window.cloudKmzLayers=[]; window.webcamsData=[]; window.isMultiSelect=false; window.columnValuesSets={}; window.availableColumns=[]; window.mainTheme='defauts'; window.histMetric='eau'; window.histSeasonIdx=0; window.absoluteMaxes={eau:0,air:0,temps:0}; window.currentMaxThreshold={eau:100,air:100,temps:100}; window.currentMinThreshold={eau:0,air:0,temps:0}; window.activeFilters=[{key:"",vals:[]}]; window.currentPistes=['all']; window.currentTypes=['all']; window.chartInstances={}; window.selectedCannonsMap=new Map(); window.currentlyEditingId=null; window.technoColors={}; window.repColors={}; window.transfoColors={}; window.externalLayers={}; window.defaultColors=['#e74c3c','#3498db','#f1c40f','#2ecc71','#9b59b6','#e67e22','#1abc9c','#34495e']; window.keyPiste=""; window.keyType=""; window.keyRep=""; window.keyTransfo=""; window.localDB=null; window.bootAttempt=0; window.tempTicketPayloads={}; window.suiviEntretienData = [];
+
+        window.getV = function(p,k){if(!k||!p||!p.fullData)return "N/A";let o=p.fullData.find(x=>x.k===k);return o?o.v.toString().trim():"N/A";}; window.getTicketsForCanon = function(id){return window.rawTickets.filter(t=>t.idCanon===id);}; window.getActiveTickets = function(id){return window.getTicketsForCanon(id).filter(t=>t.statut.includes('faire')||t.statut.includes('cours'));}; window.getHistoryTickets = function(id){return window.getTicketsForCanon(id).filter(t=>t.statut.includes('fait')||t.statut==='').sort((a,b)=>new Date(b.date)-new Date(a.date));};
+
+        /* ================== STUDIO EXPERT BI ================== */
+        window.biCurrentData=[]; window.openBiMeteo=function(){document.getElementById('bi-meteo-modal').style.display='flex';window.biLoadSource();};
+        window.biLoadSource=function(){let src=document.getElementById('bi-source').value;let data=[];if(src==='hist')data=window.meteoHistData||[];else if(src==='froid')data=window.meteoFroidData||[];else if(src==='raw_gen')data=window.rawGeneral||[];else if(src==='raw_hist')data=window.rawHistorique||[];else if(src==='raw_tick')data=window.rawTicketsSheet||[];else if(src==='conso'){data.push(["Saison","Eau (m³)","Air","Heures"]);window.saisonsList.forEach(s=>{let e=0,a=0,t=0;window.snowCannons.features.forEach(f=>{let h=f.properties.historique[s];if(h){e+=h.eau||0;a+=h.air||0;t+=h.temps||0;}});data.push([s,Math.round(e),Math.round(a),Math.round(t)]);});}else if(src==='defauts'){data.push(["Mois","Nombre de Pannes"]);let counts={};window.rawTickets.forEach(t=>{if(!t.date)return;let d=new Date(t.date);if(isNaN(d.getTime()))return;let m=(d.getMonth()+1).toString().padStart(2,'0')+"/"+d.getFullYear();counts[m]=(counts[m]||0)+1;});Object.keys(counts).sort((a,b)=>{let pa=a.split('/');let pb=b.split('/');return new Date(pa[1],pa[0]-1)-new Date(pb[1],pb[0]-1);}).forEach(k=>data.push([k,counts[k]]));if(data.length===1)data.push(["Aucun ticket",0]);}else if(src==='types'){data.push(["Modèle de Canon","Quantité"]);let counts={};window.snowCannons.features.forEach(f=>{let t=window.getV(f.properties,window.keyType);if(t!=="N/A")counts[t]=(counts[t]||0)+1;});Object.keys(counts).sort().forEach(k=>data.push([k,counts[k]]));}window.biCurrentData=data;let selX=document.getElementById('bi-x');let containerY=document.getElementById('bi-y-container');let selFilt=document.getElementById('bi-filter-col');if(selX)selX.innerHTML="";if(containerY)containerY.innerHTML="";if(selFilt)selFilt.innerHTML="<option value=''>-- Aucun --</option>";if(!data||data.length<2){if(containerY)containerY.innerHTML="<i>Aucune donnée disponible.</i>";return;}let headers=data[0];const colors=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#34495e'];headers.forEach((h,i)=>{if(h.toString().trim()==="")return;if(selX)selX.innerHTML+=`<option value="${i}">${h}</option>`;if(selFilt)selFilt.innerHTML+=`<option value="${i}">${h}</option>`;let checked=(i===1)?'checked':'';let color=colors[i%colors.length];if(containerY){containerY.innerHTML+=`<div style="border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;"><label style="font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" class="bi-y-cbx" value="${i}" ${checked} onchange="window.biUpdateUI()"> <span style="color:#2c3e50;">${h}</span></label><div id="bi-opts-${i}" style="display:${checked?'flex':'none'}; gap:5px; margin-top:5px; flex-wrap:wrap; align-items:center;"><select class="bi-y-agg" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc;" onchange="window.biDrawChart()"><option value="sum">Somme</option><option value="count">Comptage</option></select><select class="bi-y-type combo-only" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc; display:none;" onchange="window.biDrawChart()"><option value="bar">Barre</option><option value="line">Courbe</option></select><select class="bi-y-axis" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc;" onchange="window.biDrawChart()"><option value="y">Axe Gauche</option><option value="y1">Axe Droit</option></select><input type="color" class="bi-y-color" data-idx="${i}" value="${color}" style="width:22px; height:22px; padding:0; border:none; cursor:pointer; border-radius:3px;" onchange="window.biDrawChart()"></div></div>`;}});if(selX)selX.selectedIndex=0;window.biUpdateUI();};
+        window.biUpdateUI=function(){let gType=document.getElementById('bi-type').value;let isCombo=(gType==='combo');let isPie=(gType==='pie'||gType==='doughnut'||gType==='polarArea');document.querySelectorAll('.bi-y-cbx').forEach(cb=>{let opts=document.getElementById(`bi-opts-${cb.value}`);if(opts){opts.style.display=cb.checked?'flex':'none';let ts=opts.querySelector('.bi-y-type');if(ts)ts.style.display=isCombo?'block':'none';let as=opts.querySelector('.bi-y-axis');if(as)as.style.display=isPie?'none':'block';}});window.biDrawChart();};
+        window.biDrawChart=function(){let data=window.biCurrentData;if(!data||data.length<2)return;let gType=document.getElementById('bi-type').value;let isCombo=(gType==='combo');let isPie=(gType==='pie'||gType==='doughnut'||gType==='polarArea');let isRadar=(gType==='radar');let elPts=document.getElementById('bi-points');let sPts=elPts?elPts.checked:true;let elX=document.getElementById('bi-x');let idxX=elX?parseInt(elX.value):0;let elFCol=document.getElementById('bi-filter-col');let elFVal=document.getElementById('bi-filter-val');let fCol=elFCol?elFCol.value:"";let fVal=elFVal?elFVal.value.trim().toLowerCase():"";let yCbx=document.querySelectorAll('.bi-y-cbx:checked');if(yCbx.length===0)return;let yCfgs=Array.from(yCbx).map(cb=>{let i=cb.value;let p=document.getElementById(`bi-opts-${i}`);return{idx:parseInt(i),label:data[0][i],agg:p.querySelector('.bi-y-agg').value,type:isCombo?p.querySelector('.bi-y-type').value:gType,axis:isPie||isRadar?'y':p.querySelector('.bi-y-axis').value,color:p.querySelector('.bi-y-color').value,uVals:new Set()};});let grouped={};for(let r=1;r<data.length;r++){let row=data[r];let rawX=row[idxX];if(rawX==null||rawX==="")continue;if(fCol!==""&&fVal!==""){let cVal=(row[fCol]||"").toString().toLowerCase();if(fVal.startsWith('>')){if(parseFloat(cVal)<=parseFloat(fVal.substring(1)))continue;}else if(fVal.startsWith('<')){if(parseFloat(cVal)>=parseFloat(fVal.substring(1)))continue;}else if(fVal.startsWith('=')){if(cVal!==fVal.substring(1).trim())continue;}else{if(!cVal.includes(fVal))continue;}}let strX=rawX.toString().trim();if(strX.length>=10&&!isNaN(Date.parse(strX)))strX=new Date(strX).toLocaleDateString('fr-FR');if(!grouped[strX])grouped[strX]={};yCfgs.forEach(cfg=>{let val=row[cfg.idx];if(cfg.agg==='count'){let tVal=(val!=null&&val.toString().trim()!=="")?val.toString().trim():"Non spécifié";if(!grouped[strX][cfg.idx])grouped[strX][cfg.idx]={};grouped[strX][cfg.idx][tVal]=(grouped[strX][cfg.idx][tVal]||0)+1;cfg.uVals.add(tVal);}else{let num=parseFloat(val)||0;grouped[strX][cfg.idx]=(grouped[strX][cfg.idx]||0)+num;}});}let labels=Object.keys(grouped).sort(function(a,b){let na=parseFloat(a),nb=parseFloat(b);if(!isNaN(na)&&!isNaN(nb))return na-nb;return a.localeCompare(b);});let pal=document.getElementById('bi-palette');let pChoice=pal?pal.value:'default';let pDef=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#34495e'];let pCold=['#81D4FA','#26C6DA','#00BCD4','#00ACC1','#0097A7','#00838F','#006064'];let pWarm=['#FFD54F','#FFCA28','#FFC107','#FFB300','#FFA000','#FF8F00','#E65100'];let pMono=['#1A252C','#2C3E50','#34495E','#5D6D7E','#7F8C8D','#95A5A6','#BDC3C7'];let colors=pChoice==='cold'?pCold:(pChoice==='warm'?pWarm:(pChoice==='mono'?pMono:pDef));let datasets=[];let cIdx=0;yCfgs.forEach((cfg)=>{let fType=isCombo?cfg.type:(isRadar?'radar':gType);let isL=(fType==='line'||fType==='radar');if(cfg.agg==='count'&&cfg.uVals.size>0){let sCats=Array.from(cfg.uVals).sort();sCats.forEach(cat=>{if(cat==="Non spécifié"&&sCats.length>1)return;let dData=labels.map(k=>(grouped[k][cfg.idx]&&grouped[k][cfg.idx][cat])?grouped[k][cfg.idx][cat]:0);let color=colors[cIdx%colors.length];let bgs=labels.map((_,i)=>colors[(cIdx+i)%colors.length]);datasets.push({label:`${cfg.label}:${cat}`,type:fType==='combo'?'bar':fType,data:dData,backgroundColor:isPie?bgs:(isL?color+'33':color),borderColor:isPie?'#fff':color,borderWidth:(fType==='bar'&&!isPie)?0:2,fill:isL,yAxisID:cfg.axis,tension:0.3,pointRadius:sPts?4:0,pointHoverRadius:6,borderRadius:fType==='bar'?4:0});cIdx++;});}else{let dData=labels.map(k=>grouped[k][cfg.idx]||0);let color=cfg.color;let bgs=labels.map((_,i)=>colors[(cIdx+i)%colors.length]);datasets.push({label:cfg.label,type:fType==='combo'?'bar':fType,data:dData,backgroundColor:isPie?bgs:(isL?color+'33':color),borderColor:isPie?'#fff':color,borderWidth:(fType==='bar'&&!isPie)?0:2,fill:isL,yAxisID:cfg.axis,tension:0.3,pointRadius:sPts?4:0,pointHoverRadius:6,borderRadius:fType==='bar'?4:0});cIdx++;}});if(isPie&&datasets.length>1)datasets=[datasets[0]];let ctx=document.getElementById('bi-canvas');if(!ctx)return;if(window.chartInstances['bi-chart'])window.chartInstances['bi-chart'].destroy();const customBg={id:'customBg',beforeDraw:(chart)=>{const c=chart.ctx;c.save();c.globalCompositeOperation='destination-over';c.fillStyle='#ffffff';c.fillRect(0,0,chart.width,chart.height);c.restore();}};let hasR=datasets.some(d=>d.yAxisID==='y1');let fMType=isCombo?'bar':(isPie?gType:(isRadar?'radar':gType));let isStk=datasets.length>1&&gType==='bar';window.chartInstances['bi-chart']=new Chart(ctx.getContext('2d'),{type:fMType,data:{labels:labels,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,position:isPie||isRadar?'right':'top'},title:{display:true,text:'GMAO BI - '+data[0][idxX],font:{size:16}},zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},scales:(isPie||isRadar)?{}:{x:{stacked:isStk,ticks:{maxRotation:45,minRotation:45},grid:{display:false}},y:{stacked:isStk,type:'linear',display:true,position:'left'},y1:{type:'linear',display:hasR,position:'right',grid:{drawOnChartArea:false}}}},plugins:[customBg]});};
+        window.exportBiChart=function(){let cvs=document.getElementById('bi-canvas');if(!cvs)return;let a=document.createElement('a');a.href=cvs.toDataURL('image/png');a.download='GMAO_Expert_BI.png';document.body.appendChild(a);a.click();document.body.removeChild(a);};
+
+        /* ================== METEO & WEBCAMS ================== */
+        window.openMeteoWidget=function(){let sb=document.getElementById('right-sidebar');let rt=document.getElementById('right-title');let sl=document.getElementById('selected-list');if(!sb||!sl)return;if(rt)rt.innerText="⛅ Météo Live";document.getElementById('multi-tools').style.display='none';document.getElementById('view-edit').style.display='none';document.getElementById('view-selection').style.display='block';window.switchMeteoTab=function(p){let c=document.getElementById('meteo-content');if(!c)return;document.querySelectorAll('.meteo-tab-btn').forEach(b=>b.style.opacity='0.5');document.getElementById('btn-meteo-'+p).style.opacity='1';if(p==='meteoblue')c.innerHTML=`<iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe>`;else if(p==='windy')c.innerHTML=`<iframe src="https://embed.windy.com/embed2.html?lat=42.767&lon=0.582&zoom=12&overlay=wind&product=ecmwf" frameborder="0" style="width:100%;height:100%;"></iframe>`;else if(p==='ventusky')c.innerHTML=`<iframe src="https://www.ventusky.com/?p=42.767;0.582;12&l=snow" frameborder="0" style="width:100%;height:100%;"></iframe>`;};sl.innerHTML=`<div style="display:flex;gap:5px;margin-bottom:15px;"><button id="btn-meteo-meteoblue" class="meteo-tab-btn" onclick="window.switchMeteoTab('meteoblue')" style="flex:1;background:#3498db;color:white;border:none;padding:10px;border-radius:4px;cursor:pointer;opacity:1;">Meteoblue</button><button id="btn-meteo-windy" class="meteo-tab-btn" onclick="window.switchMeteoTab('windy')" style="flex:1;background:#e67e22;color:white;border:none;padding:10px;border-radius:4px;cursor:pointer;opacity:0.5;">Windy</button><button id="btn-meteo-ventusky" class="meteo-tab-btn" onclick="window.switchMeteoTab('ventusky')" style="flex:1;background:#2c3e50;color:white;border:none;padding:10px;border-radius:4px;cursor:pointer;opacity:0.5;">Ventusky</button></div><div id="meteo-content" style="background:#fff;border-radius:6px;border:1px solid #eee;padding:10px;height:calc(100vh - 200px);"><iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe></div>`;sb.classList.add('open');};
+        window.openWebcamGrid=function(){let sb=document.getElementById('right-sidebar');let sl=document.getElementById('selected-list');if(!sb||!sl)return;document.getElementById('right-title').innerText="📷 Webcams";document.getElementById('multi-tools').style.display='none';document.getElementById('view-edit').style.display='none';document.getElementById('view-selection').style.display='block';let html="<div style='display:flex;flex-direction:column;gap:15px;'>";if(window.webcamsData.length===0)html+="<p>Aucune caméra.</p>";else window.webcamsData.forEach(w=>{let isImg=w.url.toLowerCase().match(/\.(jpeg|jpg|png|gif)$/)!=null;let mHtml=isImg?`<img src="${w.url}" style="width:100%;border-radius:4px;"/>`:`<div style="width:100%;height:300px;border-radius:4px;overflow:hidden;"><iframe src="${w.url}" style="width:100%;height:100%;border:none;"></iframe></div>`;html+=`<div style="background:#f8f9fa;padding:15px;border-radius:6px;border:1px solid #ddd;"><b>${w.icon} ${w.nom}</b><br><br>${mHtml}<br><button onclick="window.enableWebcamEdit('${w.nom.replace(/'/g,"\\'")}')" style="width:100%;background:#f39c12;color:white;border:none;padding:8px;border-radius:4px;">✏️ Éditer</button></div>`;});html+="</div>";sl.innerHTML=html;sb.classList.add('open');};
+        window.openSingleWebcam=function(nom){let wc=window.webcamsData.find(w=>w.nom===nom);if(!wc)return;let sb=document.getElementById('right-sidebar');let sl=document.getElementById('selected-list');document.getElementById('right-title').innerText=`${wc.icon} ${wc.nom}`;document.getElementById('multi-tools').style.display='none';document.getElementById('view-edit').style.display='none';document.getElementById('view-selection').style.display='block';let isImg=wc.url.toLowerCase().match(/\.(jpeg|jpg|png|gif)$/)!=null;let mHtml=isImg?`<img src="${wc.url}" style="width:100%;border-radius:4px;"/>`:`<div style="width:100%;height:300px;border-radius:4px;overflow:hidden;"><iframe src="${wc.url}" style="width:100%;height:100%;border:none;"></iframe></div>`;sl.innerHTML=`<div style="background:#f8f9fa;padding:15px;border-radius:6px;">${mHtml}<button onclick="window.enableWebcamEdit('${wc.nom.replace(/'/g,"\\'")}')" style="margin-top:15px;width:100%;background:#f39c12;color:white;border:none;padding:10px;border-radius:4px;">✏️ Éditer position</button></div>`;sb.classList.add('open');};
+        window.enableWebcamEdit=function(nom){window.webcamLayerGroup.eachLayer(m=>{if(m.wcData.nom===nom){m.dragging.enable();let sl=document.getElementById('selected-list');sl.innerHTML=`<div style="padding:15px;background:#fff3cd;border:1px solid #ffeeba;border-radius:6px;"><b>Mode Édition: ${nom}</b><br>1. Glissez sur la carte<br>2. Emoji:<br><input type="text" id="edit-wc-icon" value="${m.wcData.icon}" style="width:50px;text-align:center;"><br><br><div style="display:flex;gap:10px;"><button onclick="window.openSingleWebcam('${nom.replace(/'/g,"\\'")}')" style="flex:1;padding:8px;">Annuler</button><button onclick="window.saveWebcamEdit('${nom.replace(/'/g,"\\'")}',this)" style="flex:2;background:#27ae60;color:white;border:none;">✅ Sauver</button></div></div>`;}});};
+        window.saveWebcamEdit=async function(nom,btn){btn.innerText="⏳...";btn.disabled=true;let mSave=null;window.webcamLayerGroup.eachLayer(m=>{if(m.wcData.nom===nom)mSave=m;});if(!mSave)return;let nLat=mSave.getLatLng().lat.toFixed(7);let nLng=mSave.getLatLng().lng.toFixed(7);let inp=document.getElementById('edit-wc-icon');let nIco=inp?inp.value:mSave.wcData.icon;try{let res=await fetch(GOOGLE_API_URL,{method:'POST',body:JSON.stringify({action:"update_webcam",nom:nom,lat:parseFloat(nLat),lng:parseFloat(nLng),icon:nIco})});let r=await res.json();if(r.status==="success"){mSave.dragging.disable();mSave.wcData.lat=parseFloat(nLat);mSave.wcData.lng=parseFloat(nLng);mSave.wcData.icon=nIco;mSave.setIcon(L.divIcon({className:'custom-cannon-icon',html:`<div class="camera-icon">${nIco}</div>`,iconSize:[24,24],iconAnchor:[12,12]}));window.openSingleWebcam(nom);}else{alert("Erreur");btn.innerText="✅ Sauver";btn.disabled=false;}}catch(e){alert("Échec");btn.disabled=false;}};
+
+        /* ================== UI GLOBALE ================== */
+        window.toggleRightSidebar=function(){let sb=document.getElementById('right-sidebar');if(!sb)return;if(sb.classList.contains('open'))sb.classList.remove('open');else{sb.classList.add('open');if(window.selectedCannonsMap.size===0&&!window.currentlyEditingId)window.triggerGlobalFilterChart();else window.renderSelectionPanel();}};
+        window.toggleMultiSelect=function(){window.isMultiSelect=!window.isMultiSelect;let btn=document.getElementById('btn-multi-toggle');if(window.isMultiSelect){btn.innerText="🔲 Sélec. Multiple : ON";btn.style.background="#3498db";}else{btn.innerText="🔲 Sélec. Multiple : OFF";btn.style.background="rgba(255,255,255,0.1)";}window.renderSelectionPanel();};
+        
+        // CORRECTION FERMETURE BANDEAU : Vide la sélection
+        window.closeRightSidebar=function(){
+            document.getElementById('right-sidebar').classList.remove('open');
+            window.clearSelection();
+            if(window.webcamLayerGroup)window.webcamLayerGroup.eachLayer(m=>m.dragging.disable());
+        };
+        
+        window.clearSelection=function(){window.selectedCannonsMap.clear();window.updateMap();window.renderSelectionPanel();window.triggerGlobalFilterChart();};
+        window.cancelEdit=function(){window.currentlyEditingId=null;document.getElementById('view-selection').style.display='block';document.getElementById('view-edit').style.display='none';document.getElementById('right-title').innerText="📌 Fiche Canon";window.updateMap();window.renderSelectionPanel();};
+        window.saveEditData=async function(){if(!window.currentlyEditingId)return;let btn=document.getElementById('btn-save-edit');btn.innerText="⏳ Envoi...";btn.disabled=true;let fields={};document.querySelectorAll('.dyn-field').forEach(i=>fields[i.getAttribute('data-key')]=i.value);let pl={id:document.getElementById('edit-id').value,lat:parseFloat(document.getElementById('edit-lat').value),lng:parseFloat(document.getElementById('edit-lng').value),fields:fields};try{let res=await fetch(GOOGLE_API_URL,{method:'POST',body:JSON.stringify(pl)});let r=await res.json();if(r.status==="success"){let l=window.selectedCannonsMap.get(window.currentlyEditingId);let p=l.feature.properties;p.fullData.forEach(item=>{if(fields[item.k]!==undefined)item.v=fields[item.k];});let tLower=window.getV(p,window.keyType).toLowerCase().trim();if(["demak lenko","demac lenko"].includes(tLower))p.couleur_defaut="#0000FF";else if(["sufag","street","taurus","taurax","peak"].includes(tLower))p.couleur_defaut="#008000";else p.couleur_defaut=window.technoColors[tLower]||"#FFD700";l.feature.geometry.coordinates=[pl.lng,pl.lat];l.setLatLng([pl.lat,pl.lng]);window.cancelEdit();}else alert("Erreur Google");}catch(err){alert("Échec réseau");}btn.innerText="✅ Sauvegarder";btn.disabled=false;};
+        window.startEdit=function(id){window.currentlyEditingId=id;let l=window.selectedCannonsMap.get(id);let p=l.feature.properties;document.getElementById('edit-id-display').innerText=p.id;document.getElementById('edit-id').value=p.id;document.getElementById('edit-lat').value=l.getLatLng().lat.toFixed(7);document.getElementById('edit-lng').value=l.getLatLng().lng.toFixed(7);let fc=document.getElementById('dynamic-edit-fields');fc.innerHTML="";p.fullData.forEach(i=>{if(i.k.toLowerCase().match(/(regard|xy|gps)/))return;fc.innerHTML+=`<div style="margin-bottom:10px;"><div class="edit-label">${i.k}</div><input type="text" class="edit-input dyn-field" data-key="${i.k}" value="${i.v}"></div>`;});document.getElementById('view-selection').style.display='none';document.getElementById('view-edit').style.display='block';document.getElementById('right-title').innerText="✏️ Édition";window.updateMap();};
+        
+        window.focusCannon=function(id){
+            window.geojsonLayer.eachLayer(l=>{
+                if(l.feature.properties.id===id){
+                    if(!window.isMultiSelect && window.mainTheme !== 'suivi_entretien') window.selectedCannonsMap.clear();
+                    window.selectedCannonsMap.set(id,l);
+                    window.map.setView(l.getLatLng(),17);
+                    window.updateMap(); window.renderSelectionPanel();
+                    document.getElementById('right-sidebar').classList.add('open');
+                }
+            });
+        };
+        
+        window.initSidebarResizer=function(){let sb=document.getElementById('right-sidebar');if(!sb)return;let rs=document.createElement('div');rs.className='resizer';sb.appendChild(rs);let isR=false;rs.addEventListener('mousedown',()=>{isR=true;rs.classList.add('active');document.body.style.cursor='ew-resize';if(window.map)window.map.dragging.disable();});document.addEventListener('mousemove',(e)=>{if(!isR)return;let nw=document.body.clientWidth-e.clientX;if(nw<350)nw=350;if(nw>document.body.clientWidth*0.9)nw=document.body.clientWidth*0.9;sb.style.width=nw+'px';});document.addEventListener('mouseup',()=>{if(isR){isR=false;rs.classList.remove('active');document.body.style.cursor='default';if(window.map)window.map.dragging.enable();}});}; setTimeout(window.initSidebarResizer,1000);
+
+        /* ================== COULEURS ET LÉGENDES ================== */
+        window.getColorByFilter=function(ratio,p){const inter=(c1,c2,f)=>{let r=c1.slice();for(let i=0;i<3;i++)r[i]=Math.round(r[i]+f*(c2[i]-c1[i]));return `rgb(${r[0]},${r[1]},${r[2]})`;};if(window.mainTheme==='defauts'){let act=window.getActiveTickets(p.id);if(act.length===0)return '#bdc3c7';if(act.some(t=>t.statut.includes('faire')))return '#e74c3c';return '#f39c12';}if(window.mainTheme==='historique'){if(window.histMetric==='eau')return inter([173,216,230],[41,128,185],ratio);if(window.histMetric==='air')return inter([250,219,94],[211,84,0],ratio);if(window.histMetric==='temps')return inter([171,235,198],[39,174,96],ratio);}if(window.mainTheme==='repeteur')return window.repColors[window.getV(p,window.keyRep)]||'#7f8c8d';if(window.mainTheme==='transfo')return window.transfoColors[window.getV(p,window.keyTransfo)]||'#7f8c8d';let tv=window.getV(p,window.keyType).toLowerCase();if(["demak lenko","demac lenko"].includes(tv))return "#0000FF";if(["sufag","street","taurus","taurax","peak"].includes(tv))return "#008000";return window.technoColors[tv]||"#FFD700";};
+       window.updateLegend = function() {
+            let elDef = document.getElementById('legend-defauts');
+            let elSuivi = document.getElementById('legend-suivi_entretien');
+            if (window.mainTheme === 'suivi_entretien') {
+                if(elSuivi) elSuivi.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e74c3c;"></div> Défaut en cours</div><div class="legend-item"><div class="color-box" style="background:#9b59b6;"></div> Préventif Usine</div><div class="legend-item"><div class="color-box" style="background:#27ae60;"></div> Déconnecté</div><div class="legend-item"><div class="color-box" style="background:#f1c40f;"></div> Connecté (⚡)</div><div class="legend-item"><div style="background:#e67e22; color:white; width:14px; height:14px; border-radius:50%; font-size:10px; font-weight:bold; text-align:center; line-height:14px; border:1px solid #ccc;">!</div> Remarque présente</div><div class="legend-item" style="font-size:10px; color:#7f8c8d; margin-top:5px;"><i>Mélange de couleurs si multi-statuts.</i></div>`;
+            } else if (window.mainTheme === 'defauts' && elDef) {
+                elDef.innerHTML = `<div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'urgent')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #e74c3c;"></div> Urgent (À faire)</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'encours')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #f39c12;"></div> En cours</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'ras')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #bdc3c7;"></div> RAS</div>`;
+            } else if (window.mainTheme === 'type') {
+                let elTy = document.getElementById('legend-type');
+                if(elTy) elTy.innerHTML = `<div class="legend-item" onmouseenter="window.highlightLegend('type', 'demac')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #0000FF;"></div> Demac Lenko</div><div class="legend-item" onmouseenter="window.highlightLegend('type', 'sufag')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #008000;"></div> Sufag / Peak</div><div class="legend-item" onmouseenter="window.highlightLegend('type', 'techno')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: linear-gradient(to right, #f1c40f, #e67e22);"></div> Technoalpin</div>`;
+            } else if (window.mainTheme === 'repeteur') {
+                let h=''; Object.keys(window.repColors).sort().forEach(k => { h += `<div class="legend-item" onmouseenter="window.highlightLegend('repeteur', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${window.repColors[k]};"></div> Répéteur ${k}</div>`; }); let elRep = document.getElementById('legend-repeteur'); if(elRep) elRep.innerHTML = h;
+            } else if (window.mainTheme === 'transfo') {
+                let h=''; Object.keys(window.transfoColors).sort().forEach(k => { h += `<div class="legend-item" onmouseenter="window.highlightLegend('transfo', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${window.transfoColors[k]};"></div> Transfo ${k}</div>`; }); let elTr = document.getElementById('legend-transfo'); if(elTr) elTr.innerHTML = h;
+            } else if (window.mainTheme === 'historique') {
+                let hL = document.getElementById('legend-historique'); if(!hL) return;
+                if (window.histMetric === 'eau') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #add8e6, #2980b9);"></div><div class="legend-labels"><span>0 m³</span><span>Max</span></div>`;
+                else if (window.histMetric === 'air') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #fadb5e, #d35400);"></div><div class="legend-labels"><span>0</span><span>Max</span></div>`;
+                else if (window.histMetric === 'temps') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #abebc6, #27ae60);"></div><div class="legend-labels"><span>0 h</span><span>Max</span></div>`;
+            }
+        };
+
+        window.highlightLegend = function(theme, val) {
+            if (theme === 'historique' || theme === 'suivi_entretien') return; if(!window.geojsonLayer) return;
+            window.geojsonLayer.eachLayer(function(layer) {
+                if(!layer.feature.properties._isVisible) return;
+                let p = layer.feature.properties; let match = false;
+                if (theme === 'defauts') { let act = window.getActiveTickets(p.id); if (val === 'urgent' && act.some(t => t.statut.includes('faire'))) match = true; else if (val === 'encours' && act.some(t => t.statut.includes('cours'))) match = true; else if (val === 'ras' && act.length === 0) match = true; } 
+                else if (theme === 'type') { let tLower = window.getV(p, window.keyType).toLowerCase(); if (val === 'demac' && ["demak lenko", "demac lenko"].includes(tLower)) match = true; else if (val === 'sufag' && ["sufag", "street", "taurus", "taurax", "peak"].includes(tLower)) match = true; else if (val === 'techno' && !["demak lenko", "demac lenko", "sufag", "street", "taurus", "taurax", "peak"].includes(tLower) && tLower !== "n/a") match = true; } 
+                else if (theme === 'repeteur') { if (window.getV(p, window.keyRep) === val) match = true; } 
+                else if (theme === 'transfo') { if (window.getV(p, window.keyTransfo) === val) match = true; }
+                if (match) { layer.setOpacity(1); layer.setZIndexOffset(2000); if(layer._icon) { layer._icon.style.opacity = "1"; if(!layer._icon.style.transform.includes('scale(1.3)')) layer._icon.style.transform += ' scale(1.3)'; } } else { layer.setOpacity(0.2); layer.setZIndexOffset(0); if(layer._icon) { layer._icon.style.opacity = "0.2"; layer._icon.style.transform = layer._icon.style.transform.replace(' scale(1.3)', ''); } }
+            });
+        };
+
+        window.resetHighlight = function() { if(!window.geojsonLayer) return; window.geojsonLayer.eachLayer(function(layer) { layer.setOpacity(1); if(layer._icon) { layer._icon.style.opacity = "1"; layer._icon.style.transform = layer._icon.style.transform.replace(' scale(1.3)', ''); } }); window.updateMap(); };
+        
+        window.updateMap = function() {
+            if(!window.geojsonLayer) return;
+            let s = window.saisonsList[window.histSeasonIdx];
+            window.geojsonLayer.eachLayer(function(layer) {
+                const p = layer.feature.properties; let vis = true;
+                if (window.currentPistes && !window.currentPistes.includes('all')) { if (!window.currentPistes.includes(window.getV(p, window.keyPiste))) vis = false; }
+                if (window.currentTypes && !window.currentTypes.includes('all')) { if (!window.currentTypes.includes(window.getV(p, window.keyType).toLowerCase())) vis = false; }
+                window.activeFilters.forEach(filt => { if(filt.key && filt.vals.length > 0 && !filt.vals.includes('all')) { let val = window.getV(p, filt.key); if(!filt.vals.includes(val)) vis = false; } });
+                
+                let val = 0;
+                if (window.mainTheme === 'historique') {
+                    val = p.historique[s] ? parseFloat(p.historique[s][window.histMetric]) : 0;
+                    if (isNaN(val)) val = 0;
+                    let minT = parseFloat(window.currentMinThreshold[window.histMetric]) || 0;
+                    let maxT = parseFloat(window.currentMaxThreshold[window.histMetric]) || Infinity;
+                    if (val < minT || val > maxT) vis = false;
+                }
+
+                if (!vis) {
+                    p._isVisible = false; if (window.map.hasLayer(layer)) window.map.removeLayer(layer);
+                } else {
+                    p._isVisible = true; if (!window.map.hasLayer(layer)) window.map.addLayer(layer);
+                    let rad = 12; let ratio = 0; let bgStr = ""; let iconChar = p.id; let lh = '24px';
+                    let remarkBadge = ""; 
+                    
+                    if (window.mainTheme === 'historique') { 
+                        let maxVal = window.absoluteMaxes[window.histMetric] || 1; ratio = val / maxVal; rad = 10 + (15 * ratio); 
+                        bgStr = window.getColorByFilter(ratio, p);
+                    } else if (window.mainTheme === 'suivi_entretien') {
+                        let acts = window.getActiveTickets(p.id); let hasFault = acts.length > 0;
+                        let suivi = window.suiviEntretienData.find(row => row[0] == p.id) || ["", "", "non", "non", "", "", ""];
+                        let dec = suivi[2] && suivi[2].toString().toLowerCase().trim() === "oui";
+                        let prev = suivi[3] && suivi[3].toString().toLowerCase().trim() === "oui";
+                        let rem = suivi[5] || ""; 
+
+                        let colors = [];
+                        if(hasFault) colors.push('#e74c3c'); 
+                        if(prev) colors.push('#9b59b6');     
+                        if(dec) colors.push('#27ae60');      
+
+                        bgStr = '#f1c40f'; 
+                        if(colors.length === 3) bgStr = `conic-gradient(${colors[0]} 0 33%, ${colors[1]} 33% 66%, ${colors[2]} 66% 100%)`;
+                        else if(colors.length === 2) bgStr = `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)`;
+                        else if(colors.length === 1) bgStr = colors[0];
+
+                        if (!dec) {
+                            iconChar = `⚡<br><span style="font-size:8px;">${p.id}</span>`;
+                            lh = '12px';
+                        }
+                        
+                        // BULLE DE COMMENTAIRE (!)
+                        if (rem.toString().trim() !== "") {
+                            remarkBadge = `<div title="${rem.replace(/"/g, '&quot;')}" style="position:absolute; top:-6px; right:-6px; background:#e67e22; color:white; width:16px; height:16px; border-radius:50%; font-size:12px; font-weight:bold; text-align:center; line-height:16px; border:1px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,0.5); z-index:10; pointer-events:auto; cursor:help;">!</div>`;
+                        }
+
+                    } else {
+                        bgStr = window.getColorByFilter(0, p);
+                    }
+
+                    let bord = window.selectedCannonsMap.has(p.id) ? "#2c3e50" : (window.currentlyEditingId === p.id ? "#e74c3c" : "white");
+                    let bw = window.selectedCannonsMap.has(p.id) ? "3px" : (window.currentlyEditingId === p.id ? "4px" : "1.5px");
+                    let fsz = Math.max(9, rad - 4) + "px"; 
+                    let zIdx = window.currentlyEditingId === p.id ? 2000 : (window.selectedCannonsMap.has(p.id) ? 1000 : 0);
+                    layer.setZIndexOffset(zIdx);
+
+                    let actClass = (window.mainTheme !== 'suivi_entretien' && window.mainTheme === 'defauts' && window.getActiveTickets(p.id).some(t => t.statut.includes('faire'))) ? "alert-urgent" : "";
+                    
+                    layer.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: `<div class="cannon-circle ${actClass}" style="background:${bgStr}; width:${rad*2}px; height:${rad*2}px; line-height:${lh}; border:${bw} solid ${bord}; font-size:${fsz}; position:relative;">${iconChar}${remarkBadge}</div>`, iconSize: [rad*2, rad*2], iconAnchor: [rad, rad] }));
+                    layer.setOpacity(1); if(layer._icon) { layer._icon.style.opacity = '1'; layer._icon.style.transform = layer._icon.style.transform.replace(' scale(1.3)', ''); }
+                }
+            });
+        };
+
+        /* ================== SAUVEGARDE GLOBALE DE LA LISTE ================== */
+        window.saveMultiSuivi = async function(btn, explicitPiste) {
+            let payloads = [];
+            // Scanne toutes les cases de la liste actuellement affichée
+            let containers = document.querySelectorAll('[id^="chk-dec-"]');
+            containers.forEach(chk => {
+                let id = chk.id.replace('chk-dec-single-', '').replace('chk-dec-', '');
+                let chkPrev = document.getElementById(`chk-prev-single-${id}`) || document.getElementById(`chk-prev-${id}`);
+                let txtRem = document.getElementById(`rem-single-${id}`) || document.getElementById(`rem-${id}`);
+                if (!chkPrev) return;
+
+                let piste = explicitPiste;
+                if (!piste) {
+                    let pLayer = window.selectedCannonsMap.get(id);
+                    if (pLayer) piste = window.getV(pLayer.feature.properties, window.keyPiste);
+                    else piste = "Inconnue";
+                }
+
+                payloads.push({
+                    idCanon: id,
+                    piste: piste,
+                    deconnexion: chk.checked,
+                    preventif: chkPrev.checked,
+                    vanneCorrectif: window.getActiveTickets(id).map(t => t.defaut).join(" | "),
+                    remarque: txtRem ? txtRem.value : ""
+                });
+            });
+
+            if (payloads.length === 0) return;
+
+            let oldText = btn.innerText; btn.innerText = "⏳ Sauvegarde de toute la liste..."; btn.disabled = true;
+            try {
+                const response = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_suivi_multi", payloads: payloads }) });
+                const result = await response.json();
+                if (result.status === "success") {
+                    payloads.forEach(payload => {
+                        let existingRow = window.suiviEntretienData.find(row => row[0] == payload.idCanon);
+                        if (existingRow) { existingRow[2] = payload.deconnexion ? "oui" : "non"; existingRow[3] = payload.preventif ? "oui" : "non"; existingRow[5] = payload.remarque; } 
+                        else { window.suiviEntretienData.push([payload.idCanon, payload.piste, payload.deconnexion ? "oui" : "non", payload.preventif ? "oui" : "non", payload.vanneCorrectif, payload.remarque, ""]); }
+                    });
+                    btn.innerText = "✅ Succès !"; 
+                    window.updateMap();
+                    if (!explicitPiste) window.triggerGlobalFilterChart(); // Refresh dashboard if in Selection view
+                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; }, 2000);
+                } else { alert("Erreur Google"); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Échec réseau."); btn.innerText = oldText; btn.disabled = false; }
+        };
+
+        window.renderSuiviList = function(pisteName) {
+            let container = document.getElementById('suivi-canons-container'); if(!container) return;
+            if(!pisteName) { container.innerHTML = ""; return; }
+            
+            let canons = window.snowCannons.features.filter(f => window.getV(f.properties, window.keyPiste) === pisteName).sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id));
+            let html = `<button onclick="window.saveMultiSuivi(this, '${pisteName.replace(/'/g,"\\'")}')" style="width:100%; background:#27ae60; color:white; border:none; padding:12px; border-radius:6px; cursor:pointer; font-weight:bold; margin-bottom:15px; font-size:14px; box-shadow:0 2px 5px rgba(0,0,0,0.2);">💾 Sauvegarder toute la piste</button>`;
+            let cDef = 0, cDec = 0, cPrev = 0, cOk = 0;
+
+            canons.forEach(c => {
+                let id = c.properties.id;
+                let activeFaults = window.getActiveTickets(id).map(t => t.defaut).join(" | ");
+                let hasFault = activeFaults.length > 0;
+                let suiviInfo = window.suiviEntretienData.find(row => row[0] == id) || ["", "", "non", "non", "", "", ""];
+                let dec = suiviInfo[2].toString().toLowerCase().trim() === "oui";
+                let prev = suiviInfo[3].toString().toLowerCase().trim() === "oui";
+                let rem = suiviInfo[5] || "";
+
+                if (hasFault) cDef++; else if (prev) cPrev++; else if (dec) cDec++; else cOk++;
+
+                html += `
+                    <div style="background:#fff; border-left:4px solid ${hasFault ? '#e74c3c' : '#3498db'}; padding:12px; margin-bottom:10px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <b style="font-size:14px;">Canon ${id}</b>
+                            <button onclick="window.focusCannon('${id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:2px 6px; cursor:pointer; font-size:10px;">Cibler 📍</button>
+                        </div>
+                        <div style="display:flex; gap:10px; font-size:12px; margin-bottom:8px;">
+                            <label style="cursor:pointer;"><input type="checkbox" id="chk-dec-${id}" ${dec?'checked':''}> Déconnexion</label>
+                            <label style="cursor:pointer;"><input type="checkbox" id="chk-prev-${id}" ${prev?'checked':''}> Préventif Usine</label>
+                        </div>
+                        <input type="text" id="rem-${id}" value="${rem}" placeholder="Remarque..." style="width:100%; box-sizing:border-box; padding:6px; font-size:11px; border:1px solid #ccc; border-radius:4px;">
+                    </div>
+                `;
+            });
+
+            let pieHtml = `
+                <div style="background:#fff; border:1px solid #e1e8ed; border-radius:6px; padding:10px; margin-bottom:15px; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                    <div style="text-align:center; font-weight:bold; font-size:12px; margin-bottom:10px;">État de la piste : ${pisteName}</div>
+                    <div style="position:relative; height:160px; width:100%;"><canvas id="pie-piste-local"></canvas></div>
+                </div>
+            `;
+
+            container.innerHTML = pieHtml + html;
+
+            setTimeout(() => {
+                if(window.chartInstances['pie-piste-local']) window.chartInstances['pie-piste-local'].destroy();
+                let ctxPie = document.getElementById('pie-piste-local');
+                if(ctxPie) {
+                    window.chartInstances['pie-piste-local'] = new Chart(ctxPie.getContext('2d'), {
+                        type: 'doughnut',
+                        data: { labels: ['En Défaut', 'Préventif Usine', 'Déconnecté', 'Connecté (⚡)'], datasets: [{ data: [cDef, cPrev, cDec, cOk], backgroundColor: ['#e74c3c', '#9b59b6', '#27ae60', '#f1c40f'] }] },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: {size: 10} } } } }
+                    });
+                }
+            }, 100);
+        };
+
+        /* ================== AFFICHAGE FICHE CANON ================== */
+        window.renderSelectionPanel = function() {
+            if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
+            document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
+            document.getElementById('sel-count').innerText = window.selectedCannonsMap.size; let listDiv = document.getElementById('selected-list'); if(!listDiv) return; 
+            
+            // BOUTON DE SAUVEGARDE GLOBALE SI ON EST DANS SUIVI
+            listDiv.innerHTML = "";
+            if (window.mainTheme === 'suivi_entretien') {
+                listDiv.innerHTML = `<button onclick="window.saveMultiSuivi(this)" style="width:100%; background:#27ae60; color:white; border:none; padding:12px; border-radius:6px; cursor:pointer; font-weight:bold; margin-bottom:15px; font-size:14px; box-shadow:0 2px 5px rgba(0,0,0,0.2);">💾 Sauvegarder la sélection</button>`;
+            }
+
+            document.getElementById('right-title').innerText = "📌 Fiche Canon";
+            window.selectedCannonsMap.forEach((layer, id) => {
+                const p = layer.feature.properties; let active = window.getActiveTickets(p.id); let history = window.getHistoryTickets(p.id); let mainContent = ""; let histHtml = ""; let prodHtml = "";
+                if (history.length > 0) {
+                    histHtml = `<details class="ticket-history" style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;">📁 Historique d'interventions (${history.length})</summary><ul style="padding-left:15px; margin-top:10px;">`;
+                    history.forEach(t => { let dateStr = isNaN(new Date(t.date).getTime()) ? (t.date || "Inconnue") : new Date(t.date).toLocaleDateString('fr-FR'); let cause = t.fullData.find(x => x.k.toLowerCase().includes('cause') || x.k.toLowerCase().includes('intervention') || x.k.toLowerCase().includes('commentaire')); histHtml += `<li style="margin-bottom:8px; font-size:11.5px; border-bottom:1px solid #eee; padding-bottom:5px;"><b>${dateStr}</b> - <span style="color:#e74c3c;">${t.defaut}</span> <br><span style="color:#666;">Intervention : ${cause ? cause.v : "Non précisée"}</span></li>`; });
+                    histHtml += `</ul></details>`;
+                }
+                if (window.saisonsList && window.saisonsList.length > 0) {
+                    prodHtml = `<div style="margin-top:15px; font-size:12px; font-weight:bold; color:#2c3e50; border-bottom:2px solid #eee; padding-bottom:5px;">📊 Évolution de la production</div>
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <div style="flex:1; background:#fff; border:1px solid #eee; border-radius:4px; padding:5px; display:flex; flex-direction:column;"><div style="font-size:10px; font-weight:bold; color:#3498db; text-align:center; margin-bottom:5px;">Eau (m³)</div><div style="position:relative; height:90px; width:100%;"><canvas id="he-${p.id}"></canvas></div></div>
+                        <div style="flex:1; background:#fff; border:1px solid #eee; border-radius:4px; padding:5px; display:flex; flex-direction:column;"><div style="font-size:10px; font-weight:bold; color:#e67e22; text-align:center; margin-bottom:5px;">Air</div><div style="position:relative; height:90px; width:100%;"><canvas id="ha-${p.id}"></canvas></div></div>
+                        <div style="flex:1; background:#fff; border:1px solid #eee; border-radius:4px; padding:5px; display:flex; flex-direction:column;"><div style="font-size:10px; font-weight:bold; color:#27ae60; text-align:center; margin-bottom:5px;">Heures</div><div style="position:relative; height:90px; width:100%;"><canvas id="ht-${p.id}"></canvas></div></div>
+                    </div>`;
+                }
+
+                if (window.mainTheme === 'suivi_entretien') {
+                    let s = window.suiviEntretienData.find(row => row[0] == id) || ["", "", "non", "non", "", "", ""];
+                    let isDec = s[2].toString().toLowerCase().trim() === "oui";
+                    let isPrev = s[3].toString().toLowerCase().trim() === "oui";
+                    let rem = s[5] || "";
+                    
+                    let bY = window.getV(p, "année de buse") || window.getV(p, "annee buse") || "Inconnue";
+                    let vAdY = window.getV(p, "année vanne ad") || window.getV(p, "annee vanne ad") || "Inconnue";
+                    let vY = window.getV(p, "année vanne") || window.getV(p, "annee vanne") || "Inconnue";
+                    
+                    mainContent = `
+                        <div style="background:#eafaf1; padding:10px; border-radius:6px; border:1px solid #2ecc71; margin-bottom:10px; font-size:12px;">
+                            <h4 style="margin:0 0 8px 0; color:#27ae60;">🛠️ Suivi Entretien</h4>
+                            <div style="display:flex; gap:10px; margin-bottom:8px;">
+                                <label style="cursor:pointer;"><input type="checkbox" id="chk-dec-single-${p.id}" ${isDec?'checked':''}> Déconnexion</label>
+                                <label style="cursor:pointer;"><input type="checkbox" id="chk-prev-single-${p.id}" ${isPrev?'checked':''}> Préventif Usine</label>
+                            </div>
+                            <input type="text" id="rem-single-${p.id}" value="${rem}" placeholder="Remarque..." style="width:100%; box-sizing:border-box; padding:6px; border:1px solid #ccc; border-radius:4px;">
+                        </div>
+                        <div style="background:#fdfdfe; padding:10px; border-radius:6px; border:1px solid #ccc; font-size:12px;">
+                            <h4 style="margin:0 0 8px 0; color:#2c3e50;">📊 Données Techniques</h4>
+                            <b>Modèle :</b> ${window.getV(p, window.keyType)}<br><b>Année Buse :</b> ${bY}<br><b>Année Vanne AD :</b> ${vAdY}<br><b>Année Vanne :</b> ${vY}
+                        </div>
+                        ${histHtml}`;
+                } else if (window.mainTheme === 'historique') {
+                    let s = window.saisonsList[window.histSeasonIdx]; let hd = p.historique[s] || {eau:0, air:0, temps:0};
+                    mainContent = `<div class="hist-card"><div style="font-size:14px; color:#555; margin-bottom:10px; text-transform:uppercase;">Saison <b>${s}</b></div><div style="display:flex; justify-content: space-around;"><div><div style="font-size:24px; font-weight:bold; color:#2980b9;">${hd.eau}</div><div style="font-size:11px; color:#7f8c8d; text-transform:uppercase;">m³ Eau</div></div><div><div style="font-size:24px; font-weight:bold; color:#e67e22;">${hd.air}</div><div style="font-size:11px; color:#7f8c8d; text-transform:uppercase;">Air</div></div><div><div style="font-size:24px; font-weight:bold; color:#27ae60;">${hd.temps}</div><div style="font-size:11px; color:#7f8c8d; text-transform:uppercase;">Heures</div></div></div></div>
+                    <div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; color:#34495e; text-align:center; margin-bottom:10px;">Comparatif sur la piste (${window.getV(p, window.keyPiste)})</div><div style="position:relative; height:160px; width:100%;"><canvas id="chart-${p.id}"></canvas></div></div>
+                    <div class="piste-chart-container" style="background:#fafbfc;"><div style="font-size:11px; font-weight:bold; color:#555; text-align:center; margin-bottom:10px;">➕ Comparer avec une autre saison : <select onchange="window.drawSecondPisteChart('${p.id}', this.value)" style="padding:4px; border-radius:4px; border:1px solid #ccc; outline:none;"><option value="">-- Choisir --</option>${window.saisonsList.filter(x => x !== s).map(x => `<option value="${x}">${x}</option>`).join('')}</select></div><div style="position:relative; height:160px; width:100%;"><canvas id="chart2-${p.id}"></canvas></div></div>
+                    ${histHtml}${prodHtml}`;
+                } else if (window.mainTheme === 'defauts') {
+                    if (active.length === 0) { mainContent = `<div style="background:#eafaf1; color:#27ae60; padding:15px; border-radius:6px; text-align:center; font-weight:bold; border:1px solid #d5f5e3; margin-bottom:15px;">✅ Aucun défaut en cours</div>${histHtml}`; } 
+                    else {
+                        mainContent = active.map(t => {
+                            let borderCol = t.statut.includes('faire') ? '#e74c3c' : '#f39c12'; let safeDef = t.defaut.replace(/'/g, "\\'"); let safeId = p.id.replace(/'/g, "\\'"); let idDiv = `ticket-edit-${safeId}-${t.defaut.replace(/[^a-zA-Z0-9]/g, "")}`;
+                            return `<div class="ticket-card" style="border-left-color:${borderCol};"><div style="font-weight:bold; font-size:14px; color:#333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start;"><span style="flex-grow:1; margin-right:10px;">${t.defaut}</span><button onclick="window.editFullTicket('${safeId}', '${safeDef}')" style="background:none; border:1px solid #ddd; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; flex-shrink:0;">Éditer ✏️</button></div><div id="${idDiv}"><span style="font-size:10px; padding:3px 8px; border-radius:12px; background:${borderCol}20; color:${borderCol}; font-weight:bold; display:inline-block; margin-bottom:8px;">STATUT : ${t.statut.toUpperCase()}</span></div></div>`;
+                        }).join('') + histHtml;
+                    }
+                } else {
+                    let badges = `<span class="badge"><b>Modèle:</b> ${window.getV(p, window.keyType)}</span> <span class="badge"><b>Rép:</b> ${window.getV(p, window.keyRep)}</span> <span class="badge"><b>Trans:</b> ${window.getV(p, window.keyTransfo)}</span>`;
+                    let fullDataHTML = `<details style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;">➕ Caractéristiques Complètes</summary><div style="margin-top:12px; display:grid; grid-template-columns: 1fr; gap:8px;">`;
+                    p.fullData.forEach(item => { if(!item.k.toLowerCase().includes('xy') && !item.k.toLowerCase().includes('gps')) { fullDataHTML += `<div style="border-bottom:1px solid #f0f0f0; padding-bottom:4px;"><span style="color:#7f8c8d;">${item.k} :</span> <b style="color:#2c3e50; float:right;">${item.v}</b></div>`; } }); fullDataHTML += `</div></details>`; 
+                    mainContent = `<div style="margin-bottom:10px;">${badges}</div>${fullDataHTML}`;
+                    if (active.length > 0) mainContent += `<div style="margin-top:15px; padding:10px; background:#fdf0ed; border-radius:6px; font-size:12px; color:#e74c3c; font-weight:bold; border:1px solid #fadbd8;">⚠️ Ce canon a ${active.length} défaut(s) en cours.</div>`; mainContent += histHtml + prodHtml;
+                }
+
+                let editBtn = '';
+                if (!window.isMultiSelect) {
+                    if (window.mainTheme === 'type') editBtn = `<button class="btn-action-primary" onclick="window.startEdit('${p.id}')">✏️ Éditer ce canon</button>`;
+                    else if (window.mainTheme === 'suivi_entretien') editBtn = `<button class="btn-action-primary" style="background:#f39c12; margin-top:10px;" onclick="window.startEdit('${p.id}')">⚙️ Éditer les Données Techniques</button>`;
+                }
+
+                listDiv.innerHTML += `<div class="sel-details"><div class="sel-details-header"><span>📍 Canon <b>${p.id}</b></span><span style="font-weight:normal; font-size:12px; background:#e0e6ed; padding:4px 10px; border-radius:12px; color:#34495e;">${window.getV(p, window.keyPiste)}</span></div><div class="sel-details-body">${mainContent}${editBtn}</div></div>`;
+                    
+                setTimeout(() => {
+                    if(window.mainTheme === 'historique' && !window.isMultiSelect) window.drawPisteCompareChart(p);
+                    if((window.mainTheme === 'type' || window.mainTheme === 'historique' || window.mainTheme === 'repeteur' || window.mainTheme === 'transfo' || window.mainTheme === 'suivi_entretien') && window.saisonsList.length > 0) {
+                        let labels = window.saisonsList.map(s => s.substring(0,5)); let dEau = window.saisonsList.map(s => p.historique[s] ? p.historique[s].eau : 0); let dAir = window.saisonsList.map(s => p.historique[s] ? p.historique[s].air : 0); let dTemps = window.saisonsList.map(s => p.historique[s] ? p.historique[s].temps : 0);
+                        const drawMiniChart = (id, data, color) => {
+                            let canvas = document.getElementById(id); if(!canvas) return;
+                            if(window.chartInstances[id]) window.chartInstances[id].destroy();
+                            window.chartInstances[id] = new Chart(canvas.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [{ data: data, backgroundColor: color, borderRadius: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: {titleFont: {size: 10}, bodyFont: {size: 10}} }, scales: { x: { ticks: {font:{size:8}, maxRotation:45, minRotation:45}, grid: {display:false} }, y: { ticks: {font:{size:8}, maxTicksLimit: 4} } } } });
+                        };
+                        drawMiniChart(`he-${p.id}`, dEau, '#3498db'); drawMiniChart(`ha-${p.id}`, dAir, '#e67e22'); drawMiniChart(`ht-${p.id}`, dTemps, '#27ae60');
+                    }
+                }, 100);
+            });
+        };
+
+        /* ================== GLOBALS CHARTS & FILTRES ================== */
+        window.triggerGlobalFilterChart = function() {
+            if (window.selectedCannonsMap.size > 0 || window.currentlyEditingId) return;
+            let visibleCannons = window.snowCannons.features.filter(f => f.properties._isVisible);
+            let html = `<div style="background:#eafaf1; padding:15px; border-radius:6px; text-align:center; margin-bottom:15px; border:1px solid #d5f5e3;"><span style="font-size:24px; font-weight:bold; color:#27ae60;">${visibleCannons.length}</span><br><span style="font-size:12px; color:#555; text-transform:uppercase;">Canons affichés</span></div>`;
+
+            let chartLabels = []; let chartData = []; let chartColors = []; let chartType = 'bar';
+            let chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+
+            const centerTextPlugin = {
+                id: 'centerText',
+                beforeDraw: function(chart) {
+                    if (chart.config.type !== 'doughnut') return;
+                    let width = chart.width, height = chart.height, ctx = chart.ctx; ctx.restore();
+                    let fontSize = (height / 100).toFixed(2); ctx.font = "bold " + fontSize + "em sans-serif"; ctx.textBaseline = "middle"; ctx.fillStyle = "#e74c3c";
+                    let text = chart.config.options.plugins.centerText ? chart.config.options.plugins.centerText.text : "";
+                    let textX = Math.round((width - ctx.measureText(text).width) / 2), textY = height / 2;
+                    ctx.fillText(text, textX, textY); ctx.save();
+                }
+            };
+            let chartPlugins = [centerTextPlugin];
+
+            if (window.mainTheme === 'defauts') {
+                let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Analyse : Défauts";
+                let activeList = []; let cUrgent = 0, cEnCours = 0, cRas = 0;
+                visibleCannons.forEach(f => {
+                    let p = f.properties; let acts = window.getActiveTickets(p.id);
+                    if(acts.length === 0) { cRas++; } else { acts.forEach(t => { if(t.statut.includes('faire')) cUrgent++; else cEnCours++; activeList.push({id: p.id, piste: window.getV(p, window.keyPiste), ticket: t}); }); }
+                });
+
+                chartLabels = ['À faire', 'En cours', 'RAS']; chartData = [cUrgent, cEnCours, cRas]; chartColors = ['#e74c3c', '#f39c12', '#bdc3c7']; chartType = 'doughnut';
+                let total = cUrgent + cEnCours + cRas; let faultPerc = total > 0 ? (((cUrgent + cEnCours) / total) * 100).toFixed(1) : 0;
+                chartOptions.plugins.legend = { position: 'right', labels: { boxWidth: 12, font: {size: 11} } };
+                chartOptions.plugins.centerText = { text: faultPerc + "%" };
+
+                html += `<div class="piste-chart-container"><div style="text-align:center; font-size:14px; font-weight:bold; color:#34495e; margin-bottom:5px;">Taux de pannes global</div><div style="height:180px;position:relative;"><canvas id="global-filter-chart"></canvas></div></div>`;
+                
+                let pCounts = {}; activeList.forEach(item => { pCounts[item.piste] = (pCounts[item.piste] || 0) + 1; });
+                let pLabels = Object.keys(pCounts).sort((a,b)=>pCounts[b]-pCounts[a]); let pData = pLabels.map(k=>pCounts[k]);
+                if(pLabels.length > 0) { html += `<div class="piste-chart-container" style="margin-top:15px;"><div style="text-align:center;font-weight:bold;font-size:12px;color:#34495e;margin-bottom:5px;">Pannes par Piste</div><div style="position:relative;height:160px;width:100%;"><canvas id="gfc-piste"></canvas></div></div>`; }
+
+                html += `<div style="font-size:13px; font-weight:bold; margin-top:15px; border-bottom:2px solid #eee; padding-bottom:5px;">Liste détaillée des défauts :</div>`;
+                if (activeList.length === 0) { html += `<div style="font-size:12px; color:#7f8c8d; text-align:center; padding:10px;">Aucun défaut sur les canons affichés.</div>`; } 
+                else {
+                    activeList.sort((a,b) => { let wA = a.ticket.statut.includes('faire') ? 1 : 0; let wB = b.ticket.statut.includes('faire') ? 1 : 0; return wB - wA; });
+                    let listHtml = activeList.map(item => {
+                        let color = item.ticket.statut.includes('faire') ? '#e74c3c' : '#f39c12';
+                        return `<div style="border-left:3px solid ${color}; background:#fff; padding:8px; margin-top:8px; border-radius:4px; box-shadow:0 1px 2px rgba(0,0,0,0.05); font-size:12px; display:flex; justify-content:space-between; align-items:center;"><div><b style="color:#2c3e50;">Canon ${item.id}</b> <span style="color:#7f8c8d; font-size:10px;">(${item.piste})</span><br><span style="color:${color}; font-weight:bold;">${item.ticket.defaut}</span></div><button onclick="window.focusCannon('${item.id}');" style="background:none; border:1px solid #ddd; border-radius:4px; cursor:pointer; font-size:10px; padding:4px 8px;">Cibler 📍</button></div>`; 
+                    }).join('');
+                    html += `<div style="max-height: 40vh; overflow-y: auto; padding-right:5px;">${listHtml}</div>`;
+                }
+
+                setTimeout(() => {
+                    let cPiste = document.getElementById('gfc-piste');
+                    if(cPiste){
+                        if(window.chartInstances['gfc-piste']) window.chartInstances['gfc-piste'].destroy();
+                        window.chartInstances['gfc-piste'] = new Chart(cPiste.getContext('2d'), { type: 'bar', data: { labels: pLabels, datasets: [{ data: pData, backgroundColor: '#e74c3c', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: {font:{size:9}} } } } });
+                    }
+                }, 100);
+
+            } 
+            else if (window.mainTheme === 'type' || window.mainTheme === 'repeteur' || window.mainTheme === 'transfo') {
+                let key = window.mainTheme === 'type' ? window.keyType : (window.mainTheme === 'repeteur' ? window.keyRep : window.keyTransfo);
+                let title = window.mainTheme === 'type' ? 'Types de canon' : (window.mainTheme === 'repeteur' ? 'Répéteurs' : 'Transformateurs');
+                let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Analyse : " + title;
+                
+                let counts = {}; visibleCannons.forEach(f => { let v = window.getV(f.properties, key); counts[v] = (counts[v] || 0) + 1; });
+                chartLabels = Object.keys(counts).sort(); chartData = chartLabels.map(k => counts[k]);
+                
+                if (window.mainTheme === 'type') { chartColors = chartLabels.map(k => { let kL = k.toLowerCase(); if(["demak lenko", "demac lenko"].includes(kL)) return '#0000FF'; if(["sufag", "street", "taurus", "taurax", "peak"].includes(kL)) return '#008000'; return window.technoColors[kL] || '#FFD700'; }); } 
+                else if (window.mainTheme === 'repeteur') { chartColors = chartLabels.map(k => window.repColors[k] || '#3498db'); } 
+                else { chartColors = chartLabels.map(k => window.transfoColors[k] || '#3498db'); }
+
+                html += `<div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Répartition par ${title}</div><div style="position:relative;height:200px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
+            } 
+            else if (window.mainTheme === 'historique') {
+                let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Analyse : Historique";
+                let s = window.saisonsList[window.histSeasonIdx]; let metricName = window.histMetric === 'eau' ? 'Eau (m³)' : (window.histMetric === 'air' ? 'Air' : 'Temps (h)');
+                let isSinglePiste = (window.currentPistes.length === 1 && window.currentPistes[0] !== 'all');
+                
+                if (isSinglePiste || visibleCannons.length <= 40) {
+                    let sorted = [...visibleCannons].sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id));
+                    chartLabels = sorted.map(c => c.properties.id); chartData = sorted.map(c => c.properties.historique[s] ? c.properties.historique[s][window.histMetric] : 0); chartColors = '#3498db'; let pisteName = isSinglePiste ? window.currentPistes[0] : "Canons";
+                    html += `<div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Détail par canon (${metricName}) - ${pisteName}</div><div style="position:relative;height:250px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
+                } else {
+                    let pisteTotals = {}; visibleCannons.forEach(f => { let p = window.getV(f.properties, window.keyPiste); let val = f.properties.historique[s] ? f.properties.historique[s][window.histMetric] : 0; pisteTotals[p] = (pisteTotals[p] || 0) + val; });
+                    chartLabels = Object.keys(pisteTotals).sort(); chartData = chartLabels.map(k => pisteTotals[k]); chartColors = '#2980b9';
+                    html += `<div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Total ${metricName} par Piste (Saison ${s})</div><div style="position:relative;height:250px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
+                }
+            }
+            else if (window.mainTheme === 'suivi_entretien') {
+                let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Dashboard Maintenance";
+                let bYearCounts = {}; let vYearCounts = {}; let cDef = 0, cDec = 0, cPrev = 0, cOk = 0;
+                
+                visibleCannons.forEach(f => {
+                    let p = f.properties; let s = window.suiviEntretienData.find(row => row[0] == p.id) || [];
+                    let hasFault = window.getActiveTickets(p.id).length > 0;
+                    let isDec = s[2] && s[2].toString().toLowerCase().trim() === "oui";
+                    let isPrev = s[3] && s[3].toString().toLowerCase().trim() === "oui";
+                    
+                    if(hasFault) cDef++; else if(isPrev) cPrev++; else if(isDec) cDec++; else cOk++;
+
+                    let bY = window.getV(p, "année de buse") || window.getV(p, "annee buse");
+                    let vY = window.getV(p, "année vanne") || window.getV(p, "annee vanne");
+                    if(bY && bY !== "N/A") bYearCounts[bY] = (bYearCounts[bY]||0)+1;
+                    if(vY && vY !== "N/A") vYearCounts[vY] = (vYearCounts[vY]||0)+1;
+                });
+                
+                let topBuse = Object.entries(bYearCounts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} <span style="color:#7f8c8d">(${x[1]})</span>`).join('<br>');
+                let topVanne = Object.entries(vYearCounts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} <span style="color:#7f8c8d">(${x[1]})</span>`).join('<br>');
+
+                html += `<div style="display:flex; gap:10px; text-align:center; margin-bottom:15px;">
+                            <div style="flex:1; background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px;"><b style="font-size:20px; color:#27ae60;">${cDec}</b><br><span style="font-size:10px;">Déconnectés</span></div>
+                            <div style="flex:1; background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px;"><b style="font-size:20px; color:#9b59b6;">${cPrev}</b><br><span style="font-size:10px;">Préventifs</span></div>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-bottom:15px; font-size:11px;">
+                            <div style="flex:1; background:#fdfdfe; border:1px solid #e1e8ed; padding:10px; border-radius:6px;"><h4 style="margin:0 0 5px 0; color:#3498db;">Top Années Buse</h4>${topBuse || "Aucune info"}</div>
+                            <div style="flex:1; background:#fdfdfe; border:1px solid #e1e8ed; padding:10px; border-radius:6px;"><h4 style="margin:0 0 5px 0; color:#e67e22;">Top Années Vanne</h4>${topVanne || "Aucune info"}</div>
+                        </div>
+                        <div class="piste-chart-container"><div style="text-align:center; font-weight:bold; font-size:12px; margin-bottom:10px;">Statuts Principaux (Priorité Haute)</div><div style="position:relative; height:180px; width:100%;"><canvas id="suivi-pie-global"></canvas></div></div>`;
+
+                // LE SELECTEUR DE PISTE EN BAS DU DASHBOARD
+                let pistes = Array.from(window.columnValuesSets[window.keyPiste] || []).sort();
+                let selectHtml = `
+                    <div style="background:#f8f9fa; padding:15px; border-radius:6px; border:1px solid #ddd; margin-top:15px;">
+                        <div class="edit-label">Sélectionner une piste pour l'entretien :</div>
+                        <select class="edit-input" style="margin-bottom:0;" onchange="window.renderSuiviList(this.value)">
+                            <option value="">-- Choisir une piste --</option>
+                            ${pistes.map(p => `<option value="${p}">${p}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div id="suivi-canons-container"></div>
+                `;
+                
+                document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html + selectHtml; 
+                setTimeout(() => {
+                    if(window.chartInstances['suivi-pie-global']) window.chartInstances['suivi-pie-global'].destroy();
+                    let canvas = document.getElementById('suivi-pie-global');
+                    if (canvas) window.chartInstances['suivi-pie-global'] = new Chart(canvas.getContext('2d'), { type: 'doughnut', data: { labels: ['En Défaut', 'Préventif Usine', 'Déconnecté', 'Connecté (⚡)'], datasets: [{ data: [cDef, cPrev, cDec, cOk], backgroundColor: ['#e74c3c', '#9b59b6', '#27ae60', '#f1c40f'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels:{boxWidth:10, font:{size:10}} } } } });
+                }, 100);
+                return; 
+            }
+
+            document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html; 
+
+            setTimeout(() => {
+                let ctx = document.getElementById('global-filter-chart'); if(!ctx) return;
+                if(window.chartInstances['global-filter-chart']) window.chartInstances['global-filter-chart'].destroy();
+                window.chartInstances['global-filter-chart'] = new Chart(ctx.getContext('2d'), { type: chartType, data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderRadius: chartType==='bar'?4:0 }] }, options: chartOptions, plugins: chartPlugins });
+            }, 50);
+        };
+
+        /* ================== EDITION TICKETS ================== */
+        window.editFullTicket = function(canonId, defaut) {
+            let safeDef = defaut.replace(/[^a-zA-Z0-9]/g, ""); 
+            let idDiv = `ticket-edit-${canonId}-${safeDef}`; let el = document.getElementById(idDiv); 
+            if(!el) { idDiv = `t-${canonId}-${safeDef}`; el = document.getElementById(idDiv); }
+            if(!el) { alert("Erreur : Panneau introuvable."); return; }
+            let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut); 
+            if(!ticket) { alert("Ticket introuvable."); return; }
+            
+            let html = '<div style="background:#fdfdfe; padding:12px; border-radius:6px; border:2px solid #3498db; margin-top:10px; box-shadow:0 4px 10px rgba(0,0,0,0.05);">';
+            ticket.fullData.forEach(d => {
+                let kLow = d.k.toLowerCase(); let valStr = d.v.toString();
+                if (kLow.includes('regard') || kLow === 'id' || kLow.includes('n°')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}" readonly style="background:#e1e8ed; color:#7f8c8d; margin-bottom:0; cursor:not-allowed;"></div>`; } 
+                else if (kLow.includes('etat') || kLow.includes('état') || kLow === 'statut') { let statuts = ['à faire', 'en cours', 'fait']; let options = statuts.map(s => `<option value="${s}" ${valStr.toLowerCase().includes(s) ? 'selected' : ''}>${s.toUpperCase()}</option>`).join(''); html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><select class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" style="margin-bottom:0;">${options}</select></div>`; } 
+                else if (valStr.length > 40 || kLow.includes('cause') || kLow.includes('intervention') || kLow.includes('commentaire') || kLow.includes('action')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><textarea class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" style="margin-bottom:0;" rows="2">${valStr}</textarea></div>`; } 
+                else { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}" style="margin-bottom:0;"></div>`; }
+            });
+            html += `<div style="display:flex; gap:10px; margin-top:15px;"><button onclick="window.renderSelectionPanel()" style="flex:1; padding:10px; background:#bdc3c7; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Annuler</button><button onclick="window.prepareTicketSave('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" style="flex:2; padding:10px; background:#2ecc71; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Suivant ➔</button></div></div>`; 
+            el.innerHTML = html;
+        };
+
+        window.prepareTicketSave = function(canonId, defaut, idDiv) {
+            let fieldsObj = {}; let newStatutForLocal = "";
+            document.querySelectorAll(`.tick-dyn-field-${idDiv}`).forEach(inp => { let k = inp.getAttribute('data-key'); let v = inp.value; if(!k.toLowerCase().includes('regard') && k.toLowerCase() !== 'id') { fieldsObj[k] = v; } if(k.toLowerCase().includes('etat') || k.toLowerCase().includes('état') || k.toLowerCase() === 'statut') { newStatutForLocal = v; } });
+            let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut); if(!ticket) return;
+            let diffHtml = ""; let hasChanges = false;
+            ticket.fullData.forEach(d => { let oldValRaw = d.v.toString().trim(); let newValRaw = (fieldsObj[d.k] !== undefined) ? fieldsObj[d.k].trim() : oldValRaw; if (fieldsObj[d.k] !== undefined && newValRaw !== oldValRaw) { hasChanges = true; let oldDisplay = oldValRaw === "" ? "<i>(vide)</i>" : oldValRaw; let newDisplay = newValRaw === "" ? "<i>(vide)</i>" : newValRaw; diffHtml += `<div style="margin-bottom:5px; font-size:12px; border-bottom:1px dotted #ccc; padding-bottom:3px; display:flex; justify-content:space-between; align-items:center;"><span style="color:#555; font-weight:bold;">${d.k} :</span> <span style="text-align:right; flex-grow:1; margin-left:10px;"><span style="color:#e74c3c; text-decoration:line-through; font-size:11px;">${oldDisplay}</span><br>➔ <span style="color:#27ae60; font-weight:bold;">${newDisplay}</span></span></div>`; } });
+            if (!hasChanges) { alert("Aucune modification."); window.renderSelectionPanel(); return; }
+            window.tempTicketPayloads[idDiv] = { payload: { action: "update_ticket", idCanon: canonId, defaut: defaut, fields: fieldsObj }, newStatut: newStatutForLocal };
+            let el = document.getElementById(idDiv);
+            if(el) { el.innerHTML = `<div style="background:#fff3cd; padding:15px; border-radius:6px; border:2px solid #f39c12; margin-top:10px;"><div style="font-size:14px; font-weight:bold; color:#d35400; margin-bottom:15px; text-transform:uppercase;">⚠️ Vérification :</div>${diffHtml}<div style="display:flex; gap:10px; margin-top:20px;"><button onclick="window.renderSelectionPanel()" style="flex:1; padding:10px; background:#bdc3c7; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Annuler</button><button onclick="window.confirmSaveTicket('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" style="flex:2; padding:10px; background:#27ae60; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Envoyer 🚀</button></div></div>`; }
+        };
+
+        window.confirmSaveTicket = async function(canonId, defaut, idDiv) {
+            let temp = window.tempTicketPayloads[idDiv]; if(!temp) return; let el = document.getElementById(idDiv); if(el) el.innerHTML = `<div style="text-align:center; padding:20px; font-weight:bold; color:#3498db; font-size:14px;">Enregistrement Google... ⏳</div>`;
+            try {
+                const response = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(temp.payload) }); const result = await response.json();
+                if(result.status === "success") {
+                    let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut);
+                    if(ticket) { ticket.fullData.forEach(d => { if(temp.payload.fields[d.k] !== undefined) d.v = temp.payload.fields[d.k]; }); if(temp.newStatut) ticket.statut = temp.newStatut.toLowerCase(); let defField = ticket.fullData.find(x => x.k.toLowerCase().includes('defaut') || x.k.toLowerCase().includes('défaut') || x.k.toLowerCase().includes('panne')); if (defField && temp.payload.fields[defField.k]) ticket.defaut = temp.payload.fields[defField.k].toString().trim(); }
+                    window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); delete window.tempTicketPayloads[idDiv];
+                } else { alert("Erreur Google"); window.renderSelectionPanel(); }
+            } catch(e) { alert("Échec réseau."); window.renderSelectionPanel(); }
+        };
+
+        /* ================== COMPARAISONS GLOBALES ================== */
+        window.openGlobalCompareModal = function(show) {
+            let m = document.getElementById('compare-modal'); if(!m) return; if(!show) { m.style.display = 'none'; return; }
+            let s1 = document.getElementById('comp-s1'); let s2 = document.getElementById('comp-s2'); let pList = document.getElementById('comp-piste');
+            if(s1) s1.innerHTML = ""; if(s2) s2.innerHTML = ""; window.saisonsList.forEach((s, i) => { if(s1) s1.innerHTML += `<option value="${s}" ${i===0?'selected':''}>${s}</option>`; if(s2) s2.innerHTML += `<option value="${s}" ${i===1?'selected':''}>${s}</option>`; });
+            if(pList) { pList.innerHTML = `<option value="all">Toutes les pistes</option>`; Array.from(window.columnValuesSets[window.keyPiste] || []).sort().forEach(p => { pList.innerHTML += `<option value="${p}">${p}</option>`; }); }
+            m.style.display = 'flex'; window.renderGlobalComparison();
+        };
+
+        window.renderGlobalComparison = function() {
+            let s1 = document.getElementById('comp-s1').value; let s2 = document.getElementById('comp-s2').value; let metric = document.getElementById('comp-metric').value; let targetPiste = document.getElementById('comp-piste').value;
+            let labels = []; let d1 = []; let d2 = [];
+            if (targetPiste === 'all') {
+                let t1 = document.getElementById('comp-title-1'); if(t1) t1.innerText = `Saison ${s1} - ${metric.toUpperCase()} (Toutes pistes)`; let t2 = document.getElementById('comp-title-2'); if(t2) t2.innerText = `Saison ${s2} - ${metric.toUpperCase()} (Toutes pistes)`;
+                labels = Array.from(window.columnValuesSets[window.keyPiste] || []).sort(); labels.forEach(p => { let sum1 = 0; let sum2 = 0; window.snowCannons.features.forEach(f => { if (window.getV(f.properties, window.keyPiste) === p) { if(f.properties.historique[s1]) sum1 += f.properties.historique[s1][metric]; if(f.properties.historique[s2]) sum2 += f.properties.historique[s2][metric]; } }); d1.push(sum1); d2.push(sum2); });
+            } else {
+                let t1 = document.getElementById('comp-title-1'); if(t1) t1.innerText = `Saison ${s1} - ${metric.toUpperCase()} (Piste: ${targetPiste})`; let t2 = document.getElementById('comp-title-2'); if(t2) t2.innerText = `Saison ${s2} - ${metric.toUpperCase()} (Piste: ${targetPiste})`;
+                let canons = window.snowCannons.features.filter(f => window.getV(f.properties, window.keyPiste) === targetPiste).sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id)); labels = canons.map(c => c.properties.id); canons.forEach(c => { d1.push(c.properties.historique[s1] ? c.properties.historique[s1][metric] : 0); d2.push(c.properties.historique[s2] ? c.properties.historique[s2][metric] : 0); });
+            }
+            if(window.chartInstances['c1']) window.chartInstances['c1'].destroy(); let c1Ctx = document.getElementById('comp-canvas-1'); if(c1Ctx) window.chartInstances['c1'] = new Chart(c1Ctx.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [{ data: d1, backgroundColor: '#3498db' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+            if(window.chartInstances['c2']) window.chartInstances['c2'].destroy(); let c2Ctx = document.getElementById('comp-canvas-2'); if(c2Ctx) window.chartInstances['c2'] = new Chart(c2Ctx.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [{ data: d2, backgroundColor: '#e67e22' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+        };
+
+        window.drawPisteCompareChart = function(targetCannon) {
+            let canvasId = `chart-${targetCannon.id}`; let ctx = document.getElementById(canvasId); if(!ctx) return;
+            if(window.chartInstances[canvasId]) window.chartInstances[canvasId].destroy();
+            let s = window.saisonsList[window.histSeasonIdx]; let pName = window.getV(targetCannon, window.keyPiste);
+            let pisteCannons = window.snowCannons.features.filter(f => window.getV(f.properties, window.keyPiste) === pName && f.properties.historique[s]); pisteCannons.sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id)); let bgColors = pisteCannons.map(f => f.properties.id === targetCannon.id ? '#e74c3c' : '#3498db');
+            window.chartInstances[canvasId] = new Chart(ctx.getContext('2d'), { type: 'bar', data: { labels: pisteCannons.map(f => f.properties.id), datasets: [{ data: pisteCannons.map(f => f.properties.historique[s][window.histMetric]), backgroundColor: bgColors, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: true, ticks: {font:{size:10}} } } } });
+        };
+
+        window.drawSecondPisteChart = function(targetId, seasonStr) {
+            let canvasId = `chart2-${targetId}`; let ctx = document.getElementById(canvasId); if(!ctx) return;
+            if(window.chartInstances[canvasId]) window.chartInstances[canvasId].destroy(); if(!seasonStr) return;
+            let targetCannon = window.snowCannons.features.find(f => f.properties.id === targetId).properties; let pName = window.getV(targetCannon, window.keyPiste);
+            let pisteCannons = window.snowCannons.features.filter(f => window.getV(f.properties, window.keyPiste) === pName && f.properties.historique[seasonStr]); pisteCannons.sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id)); let bgColors = pisteCannons.map(f => f.properties.id === targetId ? '#e74c3c' : '#9b59b6');
+            window.chartInstances[canvasId] = new Chart(ctx.getContext('2d'), { type: 'bar', data: { labels: pisteCannons.map(f => f.properties.id), datasets: [{ data: pisteCannons.map(f => f.properties.historique[seasonStr][window.histMetric]), backgroundColor: bgColors, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: true, ticks: {font:{size:10}} } } } });
+        };
+
+        /* ================== DB LOCALE ET KMZ ================== */
+        window.initLocalDB = function() { try { if (!window.indexedDB) return; const request = window.indexedDB.open("GMAONeigeDB", 2); request.onupgradeneeded = function(event) { window.localDB = event.target.result; if (!window.localDB.objectStoreNames.contains("kmz_layers")) window.localDB.createObjectStore("kmz_layers", { keyPath: "id" }); }; request.onsuccess = function(event) { window.localDB = event.target.result; window.loadSavedLayersFromDB(); }; } catch(e) {} };
+        window.saveLayerToDB = function(id, name, geojson, color, weight) { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readwrite"); tx.objectStore("kmz_layers").put({ id: id, name: name, geojson: geojson, isVisible: true, color: color, weight: weight }); };
+        window.deleteLayerFromDB = function(id) { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readwrite"); tx.objectStore("kmz_layers").delete(id); };
+        window.updateLayerDataInDB = function(id, updates) { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readwrite"); const store = tx.objectStore("kmz_layers"); const req = store.get(id); req.onsuccess = function() { let data = req.result; if(data) { Object.assign(data, updates); store.put(data); } }; };
+        window.loadSavedLayersFromDB = function() { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readonly"); const req = tx.objectStore("kmz_layers").getAll(); req.onsuccess = function() { req.result.forEach(item => { window.addGeoJsonToMap(item.id, item.name, item.geojson, item.isVisible, item.color || '#e67e22', item.weight || 4); }); }; };
+        window.buildGeoJsonStyle = function(hexColor, weight) { let finalWeight = weight ? parseInt(weight) : 4; return { style: function (feature) { return { color: hexColor, weight: finalWeight, opacity: 0.8, fillColor: hexColor }; }, pointToLayer: function(feature, latlng) { return L.circleMarker(latlng, {radius: 6, color: hexColor, fillColor: hexColor, fillOpacity: 0.8, weight: 1}); }, onEachFeature: function (feature, layer) { if (feature.properties && feature.properties.name) { layer.bindPopup(`<b style='color:${hexColor}'>` + feature.properties.name + "</b><br>" + (feature.properties.description || "")); } } }; };
+        window.fetchGitHubKMZ = async function(url) { const response = await window.fetchWithTimeout(url); if (!response.ok) throw new Error("GitHub refuse l'accès."); let kmlString = ""; if (url.toLowerCase().endsWith('.kmz')) { const blob = await response.blob(); const arrayBuffer = await blob.arrayBuffer(); const zip = await JSZip.loadAsync(arrayBuffer); const kmlFile = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.kml')); if (!kmlFile) throw new Error("Aucun fichier KML trouvé."); kmlString = await kmlFile.async("string"); } else { kmlString = await response.text(); } const parser = new DOMParser(); const xmlDoc = parser.parseFromString(kmlString, "text/xml"); return toGeoJSON.kml(xmlDoc); };
+        window.renderCloudLayersList = function() { const container = document.getElementById('cloud-layers-container'); if(!container) return; container.innerHTML = ""; if (window.cloudKmzLayers.length === 0) { container.innerHTML = `<p style="font-size:11px; color:#888; font-style:italic;">Aucun calque configuré.</p>`; return; } window.cloudKmzLayers.forEach((layer, idx) => { container.innerHTML += `<div class="kml-layer-item" style="border-color:#e1e8ed; background:#fafbfc; display:flex; flex-wrap:wrap; gap:5px; align-items:center;"><input type="checkbox" id="cloud-cbx-${idx}" ${layer.isVisible ? 'checked' : ''} onchange="window.toggleCloudLayer(${idx})" style="margin:0 5px 0 0;"><input type="color" class="layer-color-picker" value="${layer.color}" onchange="window.changeCloudLayerStyle(${idx}, this.value, null)" title="Couleur"><input type="number" class="layer-weight-picker" value="${layer.weight || 4}" min="1" max="15" onchange="window.changeCloudLayerStyle(${idx}, null, this.value)" title="Épaisseur"><label style="cursor:pointer; display:flex; flex-direction:column; flex-grow:1; margin-left:8px; min-width:120px;" for="cloud-cbx-${idx}"><span style="color:#2c3e50; font-size:12px;">${layer.nom}</span><span style="font-size:10px; color:#7f8c8d; font-weight:normal;">${layer.commentaire}</span></label><span id="cloud-status-${idx}" style="min-width:20px; text-align:right;"></span></div>`; }); };
+        window.toggleCloudLayer = async function(idx) { let layerObj = window.cloudKmzLayers[idx]; let cbx = document.getElementById('cloud-cbx-' + idx); let statusSpan = document.getElementById('cloud-status-' + idx); if (!cbx || !statusSpan) return; if (!cbx.checked) { if(layerObj.leafletLayer) window.map.removeLayer(layerObj.leafletLayer); layerObj.isVisible = false; statusSpan.innerText = ""; return; } if (layerObj.leafletLayer) { window.map.addLayer(layerObj.leafletLayer); layerObj.isVisible = true; return; } statusSpan.innerText = " ⏳"; cbx.disabled = true; try { const geojson = await window.fetchGitHubKMZ(layerObj.url); layerObj.leafletLayer = L.geoJSON(geojson, window.buildGeoJsonStyle(layerObj.color, layerObj.weight)).addTo(window.map); layerObj.isVisible = true; if(layerObj.leafletLayer.getBounds().isValid()) { window.map.fitBounds(layerObj.leafletLayer.getBounds()); } statusSpan.innerText = " ✅"; } catch(err) { statusSpan.innerText = " ❌"; alert("Erreur calque : " + err.message); cbx.checked = false; } cbx.disabled = false; };
+        window.changeCloudLayerStyle = function(idx, newColor, newWeight) { let layerObj = window.cloudKmzLayers[idx]; if (newColor !== null) layerObj.color = newColor; if (newWeight !== null) layerObj.weight = parseInt(newWeight); fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: 'update_kmz', nom: layerObj.nom, color: layerObj.color, weight: layerObj.weight }) }); if(layerObj.leafletLayer) { layerObj.leafletLayer.setStyle({ color: layerObj.color, fillColor: layerObj.color, weight: layerObj.weight }); layerObj.leafletLayer.eachLayer(function (layer) { if (layer instanceof L.CircleMarker) { layer.setStyle({ color: layerObj.color, fillColor: layerObj.color }); } }); } };
+        window.handleKMLUpload = async function(event) { const file = event.target.files[0]; if(!file) return; let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'flex'; let sp = document.getElementById('loading-spinner'); if(sp) sp.style.display = 'block'; let ti = document.getElementById('loading-title'); if(ti) ti.innerText = "Importation locale..."; let de = document.getElementById('loading-desc'); if(de) de.innerText = "Analyse de " + file.name; setTimeout(async () => { try { const fileName = file.name; const layerId = 'layer_' + Date.now(); let kmlString = ""; let defaultColor = '#e67e22'; let defaultWeight = 4; if (fileName.toLowerCase().endsWith('.kmz')) { const arrayBuffer = await file.arrayBuffer(); const zip = await JSZip.loadAsync(arrayBuffer); const kmlFile = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.kml')); if (!kmlFile) throw new Error("Aucun fichier KML trouvé."); kmlString = await kmlFile.async("string"); } else if (fileName.toLowerCase().endsWith('.kml')) { kmlString = await file.text(); } else { throw new Error("Format non supporté."); } const parser = new DOMParser(); const xmlDoc = parser.parseFromString(kmlString, "text/xml"); const geojson = toGeoJSON.kml(xmlDoc); window.saveLayerToDB(layerId, fileName, geojson, defaultColor, defaultWeight); window.addGeoJsonToMap(layerId, fileName, geojson, true, defaultColor, defaultWeight); if(ov) ov.style.display = 'none'; } catch (err) { if(ov) ov.style.display = 'none'; alert("Erreur d'import : " + err.message); } event.target.value = ""; }, 100); };
+        window.addGeoJsonToMap = function(id, name, geojson, isVisible, hexColor, weight) { let finalWeight = weight || 4; const layer = L.geoJSON(geojson, window.buildGeoJsonStyle(hexColor, finalWeight)); if(isVisible) layer.addTo(window.map); window.externalLayers[id] = { name: name, layer: layer, isVisible: isVisible, color: hexColor, weight: finalWeight }; window.renderCustomLayersList(); if(isVisible && layer.getBounds && typeof layer.getBounds === 'function') { let b = layer.getBounds(); if(b.isValid()) window.map.fitBounds(b); } };
+        window.renderCustomLayersList = function() { const container = document.getElementById('custom-layers-list'); if(!container) return; container.innerHTML = ""; for (let id in window.externalLayers) { const ext = window.externalLayers[id]; container.innerHTML += `<div class="kml-layer-item"><input type="checkbox" id="loc-cbx-${id}" ${ext.isVisible ? 'checked' : ''} onchange="window.toggleExtLayer('${id}')" style="margin:0 5px 0 0;"><input type="color" class="layer-color-picker" value="${ext.color}" onchange="window.changeExtLayerStyle('${id}', this.value, null)" title="Couleur"><input type="number" class="layer-weight-picker" value="${ext.weight || 4}" min="1" max="15" onchange="window.changeExtLayerStyle('${id}', null, this.value)" title="Épaisseur"><label for="loc-cbx-${id}" style="cursor:pointer; flex-grow:1; margin-left:8px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#34495e;">${ext.name}</label><button onclick="window.deleteExtLayer('${id}')" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:16px;">🗑️</button></div>`; } };
+        window.toggleExtLayer = function(id) { const ext = window.externalLayers[id]; ext.isVisible = !ext.isVisible; if(ext.isVisible) { window.map.addLayer(ext.layer); } else { window.map.removeLayer(ext.layer); } window.updateLayerDataInDB(id, { isVisible: ext.isVisible }); window.renderCustomLayersList(); };
+        window.changeExtLayerStyle = function(id, newColor, newWeight) { if(window.externalLayers[id]) { if (newColor !== null) window.externalLayers[id].color = newColor; if (newWeight !== null) window.externalLayers[id].weight = parseInt(newWeight); let col = window.externalLayers[id].color; let w = window.externalLayers[id].weight; if(window.externalLayers[id].layer) { window.externalLayers[id].layer.setStyle({color: col, fillColor: col, weight: w}); window.externalLayers[id].layer.eachLayer(function (layer) { if (layer instanceof L.CircleMarker) { layer.setStyle({ color: col, fillColor: col }); } }); } window.updateLayerDataInDB(id, { color: col, weight: w }); } };
+        window.deleteExtLayer = function(id) { window.map.removeLayer(window.externalLayers[id].layer); delete window.externalLayers[id]; window.deleteLayerFromDB(id); window.renderCustomLayersList(); };
+
+        /* ================== BOOT & FETCH ================== */
+        window.setStep = function(step, desc) { let elStep = document.getElementById('loading-step'); let elDesc = document.getElementById('loading-desc'); if (elStep) elStep.innerText = "Étape " + step + "/5"; if (elDesc) elDesc.innerText = desc; };
+        window.fetchWithTimeout = async function(resource, options = {}) { let finalUrl = resource; if(!resource.includes('raw.githubusercontent')) { finalUrl += (resource.includes('?') ? '&' : '?') + 't=' + new Date().getTime(); } const controller = window.AbortController ? new AbortController() : null; if (controller) options.signal = controller.signal; const timeoutPromise = new Promise((_, reject) => { setTimeout(() => { if (controller) controller.abort(); reject(new Error("Délai d'attente dépassé (15s).")); }, 15000); }); return Promise.race([fetch(finalUrl, options), timeoutPromise]); };
+
+        window.fetchGoogleSheetsData = async function() {
+            window.setStep(1, "Connexion au serveur Google...");
+            const response = await window.fetchWithTimeout(GOOGLE_API_URL);
+            if (!response.ok) throw new Error("Accès refusé. Vérifiez l'URL.");
+            let textData = await response.text(); let data;
+            try { data = JSON.parse(textData); } catch(e) { throw new Error("Format invalide."); }
+            
+            window.rawGeneral = data.general || []; window.rawHistorique = data.historique || []; window.rawTicketsSheet = data.tickets || [];
+            window.meteoHistData = data.meteo_hist || []; window.meteoFroidData = data.meteo_froid || []; window.suiviEntretienData = data.suivi || [];
+
+            window.setStep(2, "Analyse du Tableau Général...");
+            if (!data.general || data.general.length < 2) throw new Error(`L'onglet principal est introuvable ou vide.`);
+            const genHeaders = data.general[0].map(h => (h||"").toString().toLowerCase().trim());
+            const originalHeaders = data.general[0].map(h => (h||"").toString().trim()); 
+            const findCol = (keywords) => { let idx = genHeaders.findIndex(h => keywords.some(k => h.includes(k))); return idx !== -1 ? originalHeaders[idx] : null; };
+
+            const idxId = 2; const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps'));
+            if (idxXY === -1) throw new Error("La colonne 'xy' est introuvable.");
+
+            window.keyPiste = findCol(['pistes', 'piste']); window.keyType = findCol(['type canon', 'type']);
+            window.keyRep = findCol(['répéteur', 'repeteur', 'épéteur', 'epeteur', 'peteur']); window.keyTransfo = findCol(['transfo']);
+
+            originalHeaders.forEach(h => { let hl = h.toLowerCase(); if(!hl.includes('xy') && !hl.includes('gps') && !hl.includes('photo')) { window.availableColumns.push(h); window.columnValuesSets[h] = new Set(); } });
+
+            let dictGeneral = {}; let validPointsCount = 0;
+            data.general.slice(1).forEach(row => {
+                let idRaw = row[idxId]; if (idRaw == null || idRaw === "") return;
+                let id = idRaw.toString().replace(/^YA\s*/i, '').trim(); if (!id) return;
+                let lat = 0, lng = 0;
+                if (row[idxXY]) {
+                    let txt = String(row[idxXY]).replace(/,/g, '.'); let matches = txt.match(/-?\d+(?:\.\d+)?/g);
+                    if (matches && matches.length >= 2) { lat = parseFloat(matches[0]); lng = parseFloat(matches[1]); if (lat < 20 && lng > 30) { let temp = lat; lat = lng; lng = temp; } }
+                }
+                let fullData = [];
+                originalHeaders.forEach((head, i) => { if(head.trim() !== "") { let val = (i < row.length && row[i] != null) ? row[i].toString() : ""; fullData.push({k: head, v: val}); if(val !== "" && window.columnValuesSets[head]) window.columnValuesSets[head].add(val.trim()); } });
+                if (!isNaN(lat) && !isNaN(lng) && lat !== 0) validPointsCount++;
+                dictGeneral[id] = { id: id, lat: lat, lng: lng, fullData: fullData, historique: {} };
+            });
+            if (validPointsCount === 0) throw new Error("Aucun point GPS valide détecté.");
+
+            window.setStep(3, "Analyse de l'Historique...");
+            if (data.historique && data.historique.length > 1) {
+                const histHeaders = data.historique[0].map(h => (h||"").toString().toLowerCase().trim()); const idxCanons = 1; let colsEau = {}, colsAir = {}, colsTemps = {}; let saisonsSet = new Set();
+                histHeaders.forEach((h, i) => { let match = h.match(/(eau|air|marche).*?(\d{2}\/\d{2})/i); if (match) { let t = match[1].toLowerCase(); let s = match[2]; saisonsSet.add(s); if (t.includes('eau')) colsEau[s] = i; if (t.includes('air')) colsAir[s] = i; if (t.includes('marche')) colsTemps[s] = i; } });
+                window.saisonsList = Array.from(saisonsSet).sort((a,b) => parseInt(a.split('/')[0]) - parseInt(b.split('/')[0])); window.histSeasonIdx = window.saisonsList.length > 0 ? window.saisonsList.length - 1 : 0;
+                data.historique.slice(1).forEach(row => {
+                    let rawId = row[idxCanons];
+                    if (rawId != null && rawId !== "") { let id = rawId.toString().replace(/^YA\s*/i, '').trim(); if (id && dictGeneral[id]) { window.saisonsList.forEach(s => { dictGeneral[id].historique[s] = { eau: colsEau[s]?parseFloat(row[colsEau[s]])||0:0, air: colsAir[s]?parseFloat(row[colsAir[s]])||0:0, temps: colsTemps[s]?parseFloat(row[colsTemps[s]])||0:0 }; }); } }
+                });
+            }
+
+            window.setStep(4, "Préparation des Pannes...");
+            if (data.tickets && data.tickets.length > 1) {
+                const tHeaders = data.tickets[0].map(h => (h||"").toString().toLowerCase().trim()); const originalTHeaders = data.tickets[0].map(h => (h||"").toString().trim());
+                const idxTEtat = tHeaders.findIndex(h => h.includes('état') || h.includes('etat')); const idxTDate = tHeaders.findIndex(h => h.includes('date')); const idxTRegard = tHeaders.findIndex(h => h.includes('n°regard') || h.includes('regard') || h.includes('canon')); const idxTDefaut = tHeaders.findIndex(h => h.includes('defaut') || h.includes('défaut') || h.includes('panne'));
+                if(idxTRegard > -1) {
+                    window.rawTickets = data.tickets.slice(1).map(row => {
+                        let fullTData = []; originalTHeaders.forEach((h, i) => { if(h.trim() !== "") { let val = (i < row.length && row[i] != null) ? row[i].toString() : ""; fullTData.push({k: h, v: val}); } });
+                        return { statut: (idxTEtat>-1 && row[idxTEtat] != null ? row[idxTEtat].toString().toLowerCase().trim() : ""), date: (idxTDate>-1 && row[idxTDate] != null ? row[idxTDate] : ""), idCanon: (row[idxTRegard] != null ? row[idxTRegard].toString().replace(/^YA\s*/i, '').trim() : ""), defaut: (idxTDefaut>-1 && row[idxTDefaut] ? row[idxTDefaut].toString() : "Défaut non spécifié"), fullData: fullTData };
+                    });
+                }
+            }
+
+            if (data.kmz && data.kmz.length > 1) {
+                const kHead = data.kmz[0].map(h => (h||"").toString().toLowerCase().trim());
+                const iNom = kHead.findIndex(h => h.includes("nom") || h.includes("calque"));
+                const iUrl = kHead.findIndex(h => h.includes("url") || h.includes("lien"));
+                const iCol = kHead.findIndex(h => h.includes("couleur"));
+                const iWei = kHead.findIndex(h => h.includes("epaisseur") || h.includes("taille"));
+                
+                if(iNom > -1 && iUrl > -1) {
+                    window.cloudKmzLayers = [];
+                    data.kmz.slice(1).forEach((row, index) => {
+                        let nom = row[iNom]; let url = row[iUrl];
+                        if(nom && url) {
+                            let col = (iCol > -1 && row[iCol]) ? row[iCol].toString().trim() : window.defaultColors[index % window.defaultColors.length];
+                            let wei = (iWei > -1 && row[iWei]) ? parseInt(row[iWei]) : 4;
+                            window.cloudKmzLayers.push({ nom: nom, url: url, isVisible: false, leafletLayer: null, color: col, weight: wei, commentaire: "" });
+                        }
+                    });
+                }
+            }
+
+            window.setStep(5, "Analyse des Webcams...");
+            if (data.webcams && data.webcams.length > 1) {
+                const wHead = data.webcams[0].map(h => (h||"").toString().toLowerCase().trim());
+                const iNom = wHead.findIndex(h => h.includes("nom")); const iLL = wHead.findIndex(h => h.match(/(gps|xy|lat)/)); const iUrl = wHead.findIndex(h => h.match(/(url|lien)/)); const iIcon = wHead.findIndex(h => h.match(/(icone|logo)/));
+                if(iNom > -1 && iLL > -1 && iUrl > -1) {
+                    data.webcams.slice(1).forEach(row => {
+                        let nom = row[iNom]; let llStr = row[iLL] ? row[iLL].toString() : ""; let url = row[iUrl]; let icon = (iIcon > -1 && row[iIcon]) ? row[iIcon].toString().trim() : "📷"; if(!icon) icon = "📷";
+                        if(nom && llStr && url) {
+                            let matches = llStr.replace(/,/g, '.').match(/-?\d+(?:\.\d+)?/g);
+                            if(matches && matches.length >= 2) { let lat = parseFloat(matches[0]); let lng = parseFloat(matches[1]); if (lat < 20 && lng > 30) { let t = lat; lat = lng; lng = t; } window.webcamsData.push({ nom: nom, lat: lat, lng: lng, url: url, icon: icon }); }
+                        }
+                    });
+                }
+            }
+
+            Object.values(dictGeneral).forEach(canon => { if (canon.lat !== 0 && !isNaN(canon.lat)) { window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); } });
+
+            let ls = document.getElementById('loading-spinner'); if(ls) ls.style.display = 'none';
+            let lt = document.getElementById('loading-title'); if(lt) { lt.innerText = "✅ Chargement Réussi !"; lt.style.color = "#27ae60"; }
+            let lst = document.getElementById('loading-step'); if(lst) lst.style.display = 'none';
+            let ld = document.getElementById('loading-desc'); if(ld) ld.innerHTML = `${window.snowCannons.features.length} canons placés.`;
+            setTimeout(() => { window.initAppUI(); let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; }, 800);
+        };
+
+        window.initAppUI = function() {
+            let ts=new Set(),rs=new Set(),trs=new Set(),ps=new Set();
+            window.snowCannons.features.forEach(f=>{let p=f.properties;let t=window.getV(p,window.keyType);if(t!=="N/A")ts.add(t.toLowerCase());let r=window.getV(p,window.keyRep);if(r!=="N/A")rs.add(r);let tr=window.getV(p,window.keyTransfo);if(tr!=="N/A")trs.add(tr);let pi=window.getV(p,window.keyPiste);if(pi!=="N/A")ps.add(pi);});
+            
+            let tc=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6']; Array.from(ts).sort().forEach((t,i)=>window.technoColors[t]=tc[i%tc.length]);
+            let rc=['#1abc9c','#16a085','#f39c12','#d35400','#8e44ad']; Array.from(rs).sort().forEach((r,i)=>window.repColors[r]=rc[i%rc.length]);
+            let neonColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#00FFFF', '#FF8C00', '#FF1493', '#39FF14']; Array.from(trs).sort().forEach((t,i)=>window.transfoColors[t]=neonColors[i%neonColors.length]);
+            
+            window.snowCannons.features.forEach(f=>{let t=window.getV(f.properties,window.keyType).toLowerCase();f.properties.couleur_defaut=(["demak lenko","demac lenko"].includes(t))?"#0000FF":(["sufag","street","taurus","taurax","peak"].includes(t))?"#008000":window.technoColors[t]||"#FFD700";});
+            
+            let dlContainer = document.getElementById('datalists-container');
+            if (dlContainer) { let dlHtml = ""; for(let header in window.columnValuesSets) { let safeId = "dl-" + header.replace(/[^a-zA-Z0-9]/g, '-'); dlHtml += `<datalist id="${safeId}">${Array.from(window.columnValuesSets[header]).sort().map(v=>`<option value="${v}">`).join('')}</datalist>`; } dlContainer.innerHTML = dlHtml; }
+
+            let sld = document.getElementById('season-slider');
+            if (window.saisonsList.length > 0 && sld) { sld.max = window.saisonsList.length - 1; sld.value = window.histSeasonIdx; let sdisp = document.getElementById('season-display'); if(sdisp) sdisp.innerText = window.saisonsList[window.histSeasonIdx]; }
+
+            function buildCbs(id, set, cls) { const c = document.getElementById(id); if(!c) return; c.innerHTML = ''; [...set].sort().forEach(v => { let l=document.createElement('label'); let cb=document.createElement('input'); cb.type='checkbox'; cb.className=cls; cb.value=v; l.appendChild(cb); l.appendChild(document.createTextNode(' '+v)); c.appendChild(l); }); }
+            buildCbs('individual-pistes', ps, 'piste-cb'); buildCbs('individual-types', ts, 'type-cb');
+
+            function setupCbs(allId, cls, cbk) { 
+                const aBtn = document.getElementById(allId); if(!aBtn) return;
+                const cbs = document.querySelectorAll('.'+cls); const getVals = () => aBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); 
+                aBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); cbk(getVals()); }); 
+                cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(aBtn) aBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(aBtn) aBtn.checked=true; } cbk(getVals()); })); 
+            }
+            setupCbs('check-all-pistes', 'piste-cb', vals => { window.currentPistes = vals; window.updateMap(); window.triggerGlobalFilterChart(); }); 
+            setupCbs('check-all-types', 'type-cb', vals => { window.currentTypes = vals; window.updateMap(); window.triggerGlobalFilterChart(); });
+
+            window.generateDynamicFiltersUI = function() { let container = document.getElementById('dynamic-filters-container'); if(!container) return; container.innerHTML = ""; let optionsHTML = `<option value="">-- Choisir un critère --</option>` + window.availableColumns.map(c => `<option value="${c}">${c.toUpperCase()}</option>`).join(''); container.innerHTML = `<div class="dynamic-filter-slot" style="margin-bottom:0; border:none; padding:0;"><select class="filter-select" id="filter-sel-0" data-idx="0">${optionsHTML}</select><div class="checkbox-list" id="filter-cbx-0" style="display:none;"></div></div>`; };
+            window.renderCheckboxesForFilter = function(idx, colName) { let cbxContainer = document.getElementById(`filter-cbx-${idx}`); if(!cbxContainer) return; if(!colName) { cbxContainer.style.display = 'none'; window.activeFilters[idx] = {key:"", vals:[]}; window.updateMap(); window.triggerGlobalFilterChart(); return; } cbxContainer.style.display = 'block'; let vals = Array.from(window.columnValuesSets[colName] || []).sort(); let html = `<label><input type="checkbox" class="cb-all-${idx}" checked> <b>Tout sélectionner</b></label><hr style="margin:4px 0; border-top:1px solid #eee;">`; vals.forEach(v => html += `<label><input type="checkbox" class="cb-val-${idx}" value="${v}"> ${v}</label>`); cbxContainer.innerHTML = html; window.activeFilters[idx] = {key: colName, vals: ['all']}; let allBtn = cbxContainer.querySelector(`.cb-all-${idx}`); let cbs = cbxContainer.querySelectorAll(`.cb-val-${idx}`); const updateLogic = () => { window.activeFilters[idx].vals = allBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); window.updateMap(); window.triggerGlobalFilterChart(); }; if(allBtn) allBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); updateLogic(); }); cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(allBtn) allBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(allBtn) allBtn.checked=true; } updateLogic(); })); };
+
+            window.generateDynamicFiltersUI(); window.renderCloudLayersList(); window.calculateMaxes();
+
+            window.geojsonLayer = L.geoJSON(window.snowCannons, {
+                pointToLayer: function (feature, latlng) { return L.marker(latlng, { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div></div>` }) }); },
+                onEachFeature: function (feature, layer) {
+                    layer.on('click', function(e) {
+                        L.DomEvent.stopPropagation(e);
+                        if (window.currentlyEditingId) return; 
+                        const id = feature.properties.id;
+                        
+                        if (window.selectedCannonsMap.has(id)) {
+                            window.selectedCannonsMap.delete(id); 
+                        } else {
+                            window.selectedCannonsMap.set(id, layer);
+                        }
+                        
+                        if(window.map) window.map.setView(layer.getLatLng(), 17, {animate: true});
+                        window.updateMap(); window.renderSelectionPanel();
+                        let sb = document.getElementById('right-sidebar'); if (window.selectedCannonsMap.size > 0 && sb) sb.classList.add('open');
+                    });
+                }
+            }).addTo(window.map);
+
+            if (window.snowCannons.features.length > 0) { let bounds = window.geojsonLayer.getBounds(); if(bounds.isValid() && window.map) window.map.fitBounds(bounds, { padding: [30, 30] }); }
+
+            window.webcamLayerGroup = L.layerGroup();
+            window.webcamsData.forEach(wc => {
+                let marker = L.marker([wc.lat, wc.lng], { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div class="camera-icon">${wc.icon}</div>`, iconSize: [24,24], iconAnchor: [12,12] }), draggable: false });
+                marker.on('click', function(e) { 
+                    L.DomEvent.stopPropagation(e); 
+                    if(marker.dragging && marker.dragging.enabled()) return; 
+                    if(window.map) window.map.setView([wc.lat, wc.lng], 17, {animate: true});
+                    window.openSingleWebcam(wc.nom); 
+                });
+                marker.wcData = wc; window.webcamLayerGroup.addLayer(marker);
+            });
+            window.webcamLayerGroup.addTo(window.map);
+            
+            document.querySelectorAll('input[name="main_theme"]').forEach(r => {
+                r.addEventListener('change', e => {
+                    window.mainTheme = e.target.value;
+                    document.querySelectorAll('.theme-details, .theme-details-hist').forEach(el => el.style.display = 'none');
+                    document.querySelectorAll('.radio-card').forEach(el => { el.style.borderBottomLeftRadius = '6px'; el.style.borderBottomRightRadius = '6px'; el.style.marginBottom = '8px'; el.style.borderColor = '#e1e8ed'; el.style.borderTop = '1px solid #e1e8ed'; });
+                    
+                    let activeDetails = document.getElementById('details-' + window.mainTheme); 
+                    let activeLabel = document.getElementById('lbl-' + window.mainTheme);
+                    
+                    if (activeDetails && activeLabel) { 
+                        activeDetails.style.display = 'block'; 
+                        activeLabel.style.borderBottomLeftRadius = '0'; 
+                        activeLabel.style.borderBottomRightRadius = '0'; 
+                        activeLabel.style.marginBottom = '0'; 
+                        if(window.mainTheme === 'historique') activeLabel.style.borderColor = '#2ecc71'; 
+                        else if(window.mainTheme === 'suivi_entretien') activeLabel.style.borderColor = '#27ae60'; 
+                        else activeLabel.style.borderColor = '#3498db'; 
+                    }
+                    
+                    if(window.mainTheme === 'historique') window.calculateMaxes(); 
+                    window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
+                    
+                    if(window.mainTheme === 'suivi_entretien') document.getElementById('right-sidebar').classList.add('open');
+                });
+            });
+
+            document.querySelectorAll('input[name="hist_metric"]').forEach(r => { r.addEventListener('change', e => { window.histMetric = e.target.value; window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); }); });
+            let ssl = document.getElementById('season-slider'); if(ssl) ssl.addEventListener('input', e => { window.histSeasonIdx = parseInt(e.target.value); let sd = document.getElementById('season-display'); if(sd) sd.innerText = window.saisonsList[window.histSeasonIdx]; window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); });
+            let dfc = document.getElementById('dynamic-filters-container'); if(dfc) dfc.addEventListener('change', e => { if(e.target.classList.contains('filter-select')) window.renderCheckboxesForFilter(e.target.getAttribute('data-idx'), e.target.value); });
+            
+            if(window.map) {
+                window.map.on('click', function(e) {
+                    let amc = document.getElementById('allow-move-chk');
+                    if (window.currentlyEditingId && amc && amc.checked) { 
+                        let elat = document.getElementById('edit-lat'); if(elat) elat.value = e.latlng.lat.toFixed(7); 
+                        let elng = document.getElementById('edit-lng'); if(elng) elng.value = e.latlng.lng.toFixed(7); 
+                        let layer = window.selectedCannonsMap.get(window.currentlyEditingId);
+                        if(layer) { layer.setLatLng(e.latlng); layer.feature.geometry.coordinates = [e.latlng.lng, e.latlng.lat]; }
+                    } else { window.closeRightSidebar(); }
+                });
+            }
+
+            window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
+        };
+
+        window.calculateMaxes = function() {
+            if(!window.saisonsList[window.histSeasonIdx]) return;
+            let s = window.saisonsList[window.histSeasonIdx]; window.absoluteMaxes = { eau: 0, air: 0, temps: 0 };
+            window.snowCannons.features.forEach(f => {
+                if (f.properties.historique[s]) {
+                    window.absoluteMaxes.eau = Math.max(window.absoluteMaxes.eau, f.properties.historique[s].eau);
+                    window.absoluteMaxes.air = Math.max(window.absoluteMaxes.air, f.properties.historique[s].air);
+                    window.absoluteMaxes.temps = Math.max(window.absoluteMaxes.temps, f.properties.historique[s].temps);
+                }
+            });
+            window.currentMaxThreshold = { ...window.absoluteMaxes }; window.currentMinThreshold = { eau:0, air:0, temps:0 };
+            
+            let slmin = document.getElementById('slider-min'); 
+            let slmax = document.getElementById('slider-max');
+            
+            if(slmin) { 
+                slmin.max = window.absoluteMaxes[window.histMetric] || 1; 
+                slmin.value = 0; 
+                slmin.step = "any";
+                slmin.oninput = function(e) {
+                    let val = parseFloat(e.target.value) || 0;
+                    if (val > window.currentMaxThreshold[window.histMetric]) { val = window.currentMaxThreshold[window.histMetric]; e.target.value = val; }
+                    window.currentMinThreshold[window.histMetric] = val;
+                    let vm = document.getElementById('val-min'); if(vm) vm.innerText = Math.round(val);
+                    window.updateMap(); window.triggerGlobalFilterChart();
+                };
+            }
+            if(slmax) { 
+                slmax.max = window.absoluteMaxes[window.histMetric] || 1; 
+                slmax.value = window.absoluteMaxes[window.histMetric] || 1; 
+                slmax.step = "any";
+                slmax.oninput = function(e) {
+                    let val = parseFloat(e.target.value) || 0;
+                    if (val < window.currentMinThreshold[window.histMetric]) { val = window.currentMinThreshold[window.histMetric]; e.target.value = val; }
+                    window.currentMaxThreshold[window.histMetric] = val;
+                    let vmx = document.getElementById('val-max'); if(vmx) vmx.innerText = Math.round(val);
+                    window.updateMap(); window.triggerGlobalFilterChart();
+                };
+            }
+            let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; 
+            let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
+        };
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            if(window.bootAttempt > 0) return;
+            window.bootAttempt = 1;
+            try {
+                window.setStep(0, "Initialisation de la carte...");
+                let retries = 0;
+                while ((typeof L === 'undefined' || typeof JSZip === 'undefined' || typeof Chart === 'undefined') && retries < 50) { await new Promise(r => setTimeout(r, 100)); retries++; }
+                if (typeof L === 'undefined') throw new Error("Impossible de charger la carte (Leaflet). Vérifiez votre pare-feu.");
+                window.satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 18 });
+                window.map = L.map('map', {zoomControl: false, layers: [window.satLayer]}).setView([42.766, 0.564], 14);
+                L.control.zoom({ position: 'bottomright' }).addTo(window.map);
+                window.initLocalDB();
+                await window.fetchGoogleSheetsData();
+            } catch (err) { window.showCrash(err.message, "Boot Principal"); }
+        });
+        
+        setTimeout(() => { if(window.bootAttempt === 0) { window.document.dispatchEvent(new Event("DOMContentLoaded")); } }, 2000);
+    </script>
+</body>
+</html>
