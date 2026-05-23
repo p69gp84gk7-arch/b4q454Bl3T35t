@@ -282,3 +282,171 @@ window.fetchGoogleSheetsData = async function() {
         if(ov) ov.style.display = 'none'; 
     }, 800);
 };
+// ---------------------------------------------------------
+// 3. SAUVEGARDES VERS GOOGLE SHEETS (Requêtes POST)
+// ---------------------------------------------------------
+
+/**
+ * Sauvegarde l'édition des coordonnées ou de l'icône d'une webcam
+ */
+window.saveWebcamEdit = async function(nom, btn) {
+    btn.innerText = "⏳..."; 
+    btn.disabled = true; 
+    
+    let mSave = null;
+    // Recherche de la webcam ciblée sur la carte
+    window.webcamLayerGroup.eachLayer(m => { if(m.wcData.nom === nom) mSave = m; });
+    if(!mSave) return;
+    
+    let nLat = mSave.getLatLng().lat.toFixed(7);
+    let nLng = mSave.getLatLng().lng.toFixed(7);
+    let inp = document.getElementById('edit-wc-icon');
+    let nIco = inp ? inp.value : mSave.wcData.icon;
+    
+    try {
+        let res = await fetch(GOOGLE_API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "update_webcam", nom: nom, lat: parseFloat(nLat), lng: parseFloat(nLng), icon: nIco })
+        });
+        let r = await res.json();
+        
+        if (r.status === "success") {
+            // Mise à jour locale si succès
+            mSave.dragging.disable();
+            mSave.wcData.lat = parseFloat(nLat); mSave.wcData.lng = parseFloat(nLng); mSave.wcData.icon = nIco;
+            mSave.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: `<div class="camera-icon">${nIco}</div>`, iconSize: [24,24], iconAnchor: [12,12] }));
+            window.openSingleWebcam(nom);
+        } else {
+            alert("Erreur"); btn.innerText = "✅ Sauver"; btn.disabled = false;
+        }
+    } catch(e) {
+        alert("Échec de la connexion réseau"); btn.disabled = false;
+    }
+};
+
+/**
+ * Sauvegarde les données techniques d'un canon édité
+ */
+window.saveEditData = async function() {
+    if (!window.currentlyEditingId) return;
+    let btn = document.getElementById('btn-save-edit');
+    btn.innerText = "⏳ Envoi..."; btn.disabled = true;
+    
+    let fields = {};
+    // Récupération de toutes les valeurs des champs dynamiques
+    document.querySelectorAll('.dyn-field').forEach(i => fields[i.getAttribute('data-key')] = i.value);
+    
+    let pl = {
+        id: document.getElementById('edit-id').value,
+        lat: parseFloat(document.getElementById('edit-lat').value),
+        lng: parseFloat(document.getElementById('edit-lng').value),
+        fields: fields
+    };
+    
+    try {
+        let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(pl) });
+        let r = await res.json();
+        
+        if (r.status === "success") {
+            // Mise à jour locale en direct
+            let l = window.selectedCannonsMap.get(window.currentlyEditingId);
+            let p = l.feature.properties;
+            p.fullData.forEach(item => { if (fields[item.k] !== undefined) item.v = fields[item.k]; });
+            
+            // Mise à jour de la couleur si le type a changé
+            let tLower = window.getV(p, window.keyType).toLowerCase().trim();
+            if (["demak lenko", "demac lenko"].includes(tLower)) p.couleur_defaut = "#0000FF";
+            else if (["sufag", "street", "taurus", "taurax", "peak"].includes(tLower)) p.couleur_defaut = "#008000";
+            else p.couleur_defaut = window.technoColors[tLower] || "#FFD700";
+            
+            l.feature.geometry.coordinates = [pl.lng, pl.lat];
+            l.setLatLng([pl.lat, pl.lng]);
+            window.cancelEdit();
+        } else { alert("Erreur Google"); }
+    } catch(err) { alert("Échec réseau"); }
+    
+    btn.innerText = "✅ Sauvegarder"; btn.disabled = false;
+};
+
+/**
+ * Sauvegarde en masse le statut de suivi d'entretien (toute la piste ou sélection)
+ */
+window.saveMultiSuivi = async function(btn, explicitPiste) {
+    let payloads = [];
+    let containers = document.querySelectorAll('[id^="chk-dec-"]');
+    
+    // Construction du tableau de données à envoyer
+    containers.forEach(chk => {
+        let id = chk.id.replace('chk-dec-single-', '').replace('chk-dec-', '');
+        let chkPrev = document.getElementById(`chk-prev-single-${id}`) || document.getElementById(`chk-prev-${id}`);
+        let txtRem = document.getElementById(`rem-single-${id}`) || document.getElementById(`rem-${id}`);
+        if (!chkPrev) return;
+
+        let piste = explicitPiste;
+        if (!piste) {
+            let pLayer = window.selectedCannonsMap.get(id);
+            if (pLayer) piste = window.getV(pLayer.feature.properties, window.keyPiste);
+            else piste = "Inconnue";
+        }
+
+        payloads.push({
+            idCanon: id, piste: piste, deconnexion: chk.checked, preventif: chkPrev.checked,
+            vanneCorrectif: window.getActiveTickets(id).map(t => t.defaut).join(" | "), remarque: txtRem ? txtRem.value : ""
+        });
+    });
+
+    if (payloads.length === 0) return;
+
+    let oldText = btn.innerText; btn.innerText = "⏳ Sauvegarde en cours..."; btn.disabled = true;
+    try {
+        const response = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_suivi_multi", payloads: payloads }) });
+        const result = await response.json();
+        if (result.status === "success") {
+            // Application des modifications en local
+            payloads.forEach(payload => {
+                let existingRow = window.suiviEntretienData.find(row => row[0] == payload.idCanon);
+                if (existingRow) { 
+                    existingRow[2] = payload.deconnexion ? "oui" : "non"; 
+                    existingRow[3] = payload.preventif ? "oui" : "non"; 
+                    existingRow[5] = payload.remarque; 
+                } else { 
+                    window.suiviEntretienData.push([payload.idCanon, payload.piste, payload.deconnexion ? "oui" : "non", payload.preventif ? "oui" : "non", payload.vanneCorrectif, payload.remarque, ""]); 
+                }
+            });
+            btn.innerText = "✅ Succès !"; 
+            window.updateMap();
+            if (!explicitPiste && window.triggerGlobalFilterChart) window.triggerGlobalFilterChart(); 
+            setTimeout(() => { btn.innerText = oldText; btn.disabled = false; }, 2000);
+        } else { alert("Erreur Google"); btn.innerText = oldText; btn.disabled = false; }
+    } catch(e) { alert("Échec réseau."); btn.innerText = oldText; btn.disabled = false; }
+};
+
+/**
+ * Confirme et envoie la modification d'un ticket de panne
+ */
+window.confirmSaveTicket = async function(canonId, defaut, idDiv) {
+    let temp = window.tempTicketPayloads[idDiv]; 
+    if(!temp) return; 
+    
+    let el = document.getElementById(idDiv); 
+    if(el) el.innerHTML = `<div style="text-align:center; padding:20px; font-weight:bold; color:#3498db; font-size:14px;">Enregistrement Google... ⏳</div>`;
+    
+    try {
+        const response = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(temp.payload) }); 
+        const result = await response.json();
+        
+        if(result.status === "success") {
+            let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut);
+            if(ticket) { 
+                ticket.fullData.forEach(d => { if(temp.payload.fields[d.k] !== undefined) d.v = temp.payload.fields[d.k]; }); 
+                if(temp.newStatut) ticket.statut = temp.newStatut.toLowerCase(); 
+                let defField = ticket.fullData.find(x => x.k.toLowerCase().includes('defaut') || x.k.toLowerCase().includes('défaut') || x.k.toLowerCase().includes('panne')); 
+                if (defField && temp.payload.fields[defField.k]) ticket.defaut = temp.payload.fields[defField.k].toString().trim(); 
+            }
+            if(window.renderSelectionPanel) window.renderSelectionPanel(); 
+            window.updateMap(); 
+            if(window.triggerGlobalFilterChart) window.triggerGlobalFilterChart(); 
+            delete window.tempTicketPayloads[idDiv];
+        } else { alert("Erreur Google"); if(window.renderSelectionPanel) window.renderSelectionPanel(); }
+    } catch(e) { alert("Échec réseau."); if(window.renderSelectionPanel) window.renderSelectionPanel(); }
+};
