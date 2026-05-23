@@ -649,58 +649,31 @@ window.drawSecondPisteChart=function(targetId,seasonStr){let canvasId=`chart2-${
 // ---------------------------------------------------------
 
 window.toggleBiMeteo = function() {
-    let biModal = document.getElementById('bi-meteo-modal');
-    let compModal = document.getElementById('compare-modal');
-    let btnBi = document.getElementById('btn-nav-bi');
-    let btnComp = document.getElementById('btn-nav-compare');
-
-    if (biModal.style.display === 'flex') {
-        biModal.style.display = 'none';
-        if(btnBi) btnBi.style.opacity = '1';
+    let sb = document.getElementById('right-sidebar');
+    let sl = document.getElementById('selected-list');
+    
+    // Si c'est déjà le BI qui est affiché dans le panneau, on ferme
+    if (sb.classList.contains('open') && document.getElementById('bi-canvas')) {
+        sb.classList.remove('open');
     } else {
-        biModal.style.display = 'flex';
-        compModal.style.display = 'none';
-        
-        if(btnBi) btnBi.style.opacity = '1';
-        if(btnComp) btnComp.style.opacity = '0.5'; 
-        
+        // Sinon, on ouvre le panneau et on injecte le contenu BI
+        document.getElementById('right-title').innerText = "❄️ Centre Expert BI";
+        sl.innerHTML = document.getElementById('bi-meteo-modal').querySelector('.bi-container').innerHTML;
+        sb.classList.add('open');
         window.biLoadSource();
     }
 };
 
 window.toggleCompareModal = function() {
-    let biModal = document.getElementById('bi-meteo-modal');
-    let compModal = document.getElementById('compare-modal');
-    let btnBi = document.getElementById('btn-nav-bi');
-    let btnComp = document.getElementById('btn-nav-compare');
+    let sb = document.getElementById('right-sidebar');
+    let sl = document.getElementById('selected-list');
 
-    if (compModal.style.display === 'flex') {
-        compModal.style.display = 'none';
-        if(btnComp) btnComp.style.opacity = '1';
+    if (sb.classList.contains('open') && document.getElementById('comp-canvas-1')) {
+        sb.classList.remove('open');
     } else {
-        compModal.style.display = 'flex';
-        biModal.style.display = 'none';
-        
-        if(btnComp) btnComp.style.opacity = '1';
-        if(btnBi) btnBi.style.opacity = '0.5'; 
-
-        let s1 = document.getElementById('comp-s1'); 
-        let s2 = document.getElementById('comp-s2'); 
-        let pList = document.getElementById('comp-piste');
-        
-        if (s1 && s1.innerHTML === "") {
-            window.saisonsList.forEach((s, i) => { 
-                if(s1) s1.innerHTML += `<option value="${s}" ${i===0?'selected':''}>${s}</option>`; 
-                if(s2) s2.innerHTML += `<option value="${s}" ${i===1?'selected':''}>${s}</option>`; 
-            });
-        }
-        if (pList && pList.innerHTML.indexOf("Toutes") === -1) { 
-            pList.innerHTML = `<option value="all">Toutes les pistes</option>`; 
-            Array.from(window.columnValuesSets[window.keyPiste] || []).sort().forEach(p => { 
-                pList.innerHTML += `<option value="${p}">${p}</option>`; 
-            }); 
-        }
-        
-        window.renderGlobalComparison();
+        document.getElementById('right-title').innerText = "📊 Comparer Saisons";
+        sl.innerHTML = document.getElementById('compare-modal').querySelector('.comp-body').innerHTML;
+        sb.classList.add('open');
+        // Rappel : il faudra peut-être ré-attacher les événements des sélecteurs ici
     }
 };
