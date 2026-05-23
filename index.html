@@ -13,7 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
 
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="datalists-container"></div> 
@@ -31,8 +31,8 @@
             <button class="topbar-btn" onclick="window.toggleRightSidebar()">📊 Tableau de Bord</button>
         </div>
         <div style="display:flex; align-items:center;">
-            <button class="topbar-btn" onclick="window.openGlobalCompareModal(true)" style="background:#d35400; border-color:#e67e22;">📊 Comparer Saisons</button>
-            <button class="topbar-btn" onclick="window.openBiMeteo()" style="background:#8e44ad; border-color:#9b59b6;">❄️ Centre Expert BI</button>
+            <button id="btn-nav-compare" class="topbar-btn" onclick="window.toggleCompareModal()" style="background:#d35400; border-color:#e67e22;">📊 Comparer Saisons</button>
+            <button id="btn-nav-bi" class="topbar-btn" onclick="window.toggleBiMeteo()" style="background:#8e44ad; border-color:#9b59b6;">❄️ Centre Expert BI</button>
             <button class="topbar-btn" onclick="window.openMeteoWidget()">⛅ Météo Live</button>
             <button class="topbar-btn" onclick="window.openWebcamGrid()">📷 Webcams</button>
             <button id="btn-multi-toggle" class="topbar-btn" onclick="window.toggleMultiSelect()">🔲 Sélec. Multiple : OFF</button>
@@ -42,7 +42,6 @@
     <div id="bi-meteo-modal">
         <div class="bi-header">
             <span>❄️ PowerBI Neige (Analyse & Graphiques Avancés)</span>
-            <button onclick="document.getElementById('bi-meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:28px;cursor:pointer;">&times;</button>
         </div>
         <div class="bi-container">
             <div class="bi-sidebar">
@@ -61,6 +60,7 @@
                         <option value="types">Parc : Types de Canons</option>
                     </optgroup>
                 </select>
+                
                 <div class="edit-label">2. Format Global</div>
                 <select id="bi-type" class="edit-input" onchange="window.biUpdateUI()">
                     <option value="bar">📊 Barres</option><option value="line">📈 Courbes</option><option value="combo">📉 Combiné (Personnalisé)</option>
@@ -101,8 +101,7 @@
 
     <div id="compare-modal">
         <div class="comp-header">
-            <span>📊 Comparaison Globale</span>
-            <button onclick="window.openGlobalCompareModal(false)" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;">&times;</button>
+            <span>📊 Comparaison Globale des Saisons</span>
         </div>
         <div class="comp-body">
             <div class="comp-controls">
@@ -262,13 +261,11 @@
             </div>
         </div>
     </div>
-<link rel="stylesheet" href="style.css">
-<script src="config.js"></script>
-<script src="api.js"></script>
-<script src="map.js"></script>
-<script src="ui.js"></script>
-<script src="main.js"></script>
-</body>
-</html>
+
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="map.js"></script>
+    <script src="ui.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>
