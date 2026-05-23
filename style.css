@@ -372,3 +372,12 @@ input[type=range] { width: 100%; margin: 0; accent-color: #3498db; cursor: point
     .bi-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #ddd; height: 40%; }
     .bi-content { height: 60%; }
 }
+/* Forcer la fermeture des panneaux au démarrage */
+#sidebar { transform: translateX(-100%); } /* Menu gauche fermé */
+#right-sidebar { transform: translateX(100%); } /* Panneau droite fermé */
+
+/* Optionnel : Ajuster la hauteur des panneaux BI/Comparaison pour qu'ils ne soient pas tronqués */
+#bi-meteo-modal, #compare-modal {
+    top: 50px; /* Colle sous la topbar */
+    height: calc(100% - 50px); /* Prend toute la hauteur disponible */
+}
