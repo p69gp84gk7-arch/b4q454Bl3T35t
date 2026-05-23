@@ -336,28 +336,38 @@ input[type=range] { width: 100%; margin: 0; accent-color: #3498db; cursor: point
 .edit-input { width: 100%; box-sizing: border-box; padding: 10px; margin-top: 4px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; outline: none; }
 .edit-label { font-size: 11px; font-weight: bold; color: #555; text-transform: uppercase; }
 
-/* ================= MODALE COMPARAISON ================= */
-.comp-header { background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; }
-.comp-body { padding: 20px; max-height: 80vh; overflow-y: auto; background: #f4f6f8; }
+/* ================= MODALES (ESPACES DE TRAVAIL) ================= */
+#bi-meteo-modal, #compare-modal {
+    display: none;
+    position: fixed;
+    top: 50px; /* S'accroche sous la barre du haut */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #f4f6f8;
+    z-index: 3500; /* Au-dessus de la carte et des panneaux latéraux, sous la topbar */
+    flex-direction: column;
+}
+
+.comp-header, .bi-header { background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; align-items: center; }
+.comp-body { padding: 20px; overflow-y: auto; background: #f4f6f8; flex: 1; }
 .comp-controls { display: flex; gap: 15px; background: #fff; padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #ddd; }
-.comp-chart-box { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px; height: 250px; position: relative; }
+.comp-chart-box { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px; height: 300px; position: relative; }
+
+.bi-container { display: flex; flex: 1; overflow: hidden; }
+.bi-sidebar { width: 400px; background: #fff; border-right: 1px solid #ddd; padding: 20px; overflow-y: auto; box-shadow: 2px 0 10px rgba(0,0,0,0.05); }
+.bi-content { flex: 1; padding: 20px; display: flex; flex-direction: column; }
+.bi-canvas-box { background: #fff; border-radius: 8px; border: 1px solid #ddd; padding: 20px; flex: 1; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
 
 /* ================= KMZ LAYERS ================= */
 .kml-layer-item { display: flex; align-items: center; background: #fff; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px; font-size: 12px; font-weight: bold; }
 .layer-color-picker { width: 24px; height: 24px; padding: 0; border: none; }
 .layer-weight-picker { width: 35px; height: 22px; padding: 2px; border: 1px solid #ccc; text-align: center; margin-left: 5px; }
 
-/* ================= TABLEAU DE BORD BI ================= */
-.bi-header { background: #2c3e50; color: white; padding: 15px 20px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-.bi-container { display: flex; flex: 1; overflow: hidden; }
-.bi-sidebar { width: 400px; background: #fff; border-right: 1px solid #ddd; padding: 20px; overflow-y: auto; box-shadow: 2px 0 10px rgba(0,0,0,0.05); }
-.bi-content { flex: 1; padding: 20px; display: flex; flex-direction: column; }
-.bi-canvas-box { background: #fff; border-radius: 8px; border: 1px solid #ddd; padding: 20px; flex: 1; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-
 /* ================= RESPONSIVE (POUR LE MOBILE) ================= */
 @media(max-width: 768px) {
     #sidebar, #right-sidebar { width: 100%; }
-    #compare-modal { width: 95%; }
+    .comp-controls { flex-direction: column; gap: 5px; }
     .bi-container { flex-direction: column; }
     .bi-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #ddd; height: 40%; }
     .bi-content { height: 60%; }
