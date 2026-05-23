@@ -7,9 +7,6 @@
 // 1. GESTION DES PANNEAUX ET DE LA SÉLECTION
 // ---------------------------------------------------------
 
-/**
- * Ouvre ou ferme le panneau de droite
- */
 window.toggleRightSidebar = function() {
     let sb = document.getElementById('right-sidebar');
     if (!sb) return;
@@ -18,7 +15,6 @@ window.toggleRightSidebar = function() {
         sb.classList.remove('open');
     } else {
         sb.classList.add('open');
-        // Si aucun canon sélectionné, on affiche le tableau de bord global
         if (window.selectedCannonsMap.size === 0 && !window.currentlyEditingId) {
             window.triggerGlobalFilterChart();
         } else {
@@ -27,9 +23,6 @@ window.toggleRightSidebar = function() {
     }
 };
 
-/**
- * Ferme le panneau de droite et vide la sélection
- */
 window.closeRightSidebar = function() {
     document.getElementById('right-sidebar').classList.remove('open');
     window.clearSelection();
@@ -38,9 +31,6 @@ window.closeRightSidebar = function() {
     }
 };
 
-/**
- * Active/Désactive la sélection multiple
- */
 window.toggleMultiSelect = function() {
     window.isMultiSelect = !window.isMultiSelect;
     let btn = document.getElementById('btn-multi-toggle');
@@ -55,9 +45,6 @@ window.toggleMultiSelect = function() {
     window.renderSelectionPanel();
 };
 
-/**
- * Vide toute la sélection actuelle
- */
 window.clearSelection = function() {
     window.selectedCannonsMap.clear();
     window.updateMap();
@@ -65,9 +52,6 @@ window.clearSelection = function() {
     window.triggerGlobalFilterChart();
 };
 
-/**
- * Initialise la poignée pour redimensionner le panneau droit (pour PC)
- */
 window.initSidebarResizer = function() {
     let sb = document.getElementById('right-sidebar');
     if (!sb) return;
@@ -86,8 +70,8 @@ window.initSidebarResizer = function() {
     document.addEventListener('mousemove', (e) => {
         if (!isR) return;
         let nw = document.body.clientWidth - e.clientX;
-        if (nw < 350) nw = 350; // Largeur minimale
-        if (nw > document.body.clientWidth * 0.9) nw = document.body.clientWidth * 0.9; // Largeur maximale
+        if (nw < 350) nw = 350; 
+        if (nw > document.body.clientWidth * 0.9) nw = document.body.clientWidth * 0.9; 
         sb.style.width = nw + 'px';
     });
     
@@ -329,9 +313,6 @@ window.prepareTicketSave = function(canonId, defaut, idDiv) {
 // 4. MODULES DE RENDU (Panneaux, Graphiques ChartJS)
 // ---------------------------------------------------------
 
-/**
- * Affiche la sélection détaillée dans le panneau de droite
- */
 window.renderSelectionPanel = function() {
     if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
     
@@ -375,7 +356,6 @@ window.renderSelectionPanel = function() {
             </div>`;
         }
 
-        // --- THEME SUIVI ENTRETIEN ---
         if (window.mainTheme === 'suivi_entretien') {
             let s = window.suiviEntretienData.find(row => row[0] == id) || ["", "", "non", "non", "", "", ""];
             let isDec = s[2].toString().toLowerCase().trim() === "oui";
@@ -400,7 +380,6 @@ window.renderSelectionPanel = function() {
                 </div>
                 ${histHtml}`;
         } 
-        // --- THEME HISTORIQUE ---
         else if (window.mainTheme === 'historique') {
             let s = window.saisonsList[window.histSeasonIdx]; 
             let hd = p.historique[s] || {eau:0, air:0, temps:0};
@@ -410,7 +389,6 @@ window.renderSelectionPanel = function() {
                 <div class="piste-chart-container" style="background:#fafbfc;"><div style="font-size:11px; font-weight:bold; color:#555; text-align:center; margin-bottom:10px;">➕ Comparer avec une autre saison : <select onchange="window.drawSecondPisteChart('${p.id}', this.value)" style="padding:4px; border-radius:4px; border:1px solid #ccc; outline:none;"><option value="">-- Choisir --</option>${window.saisonsList.filter(x => x !== s).map(x => `<option value="${x}">${x}</option>`).join('')}</select></div><div style="position:relative; height:160px; width:100%;"><canvas id="chart2-${p.id}"></canvas></div></div>
                 ${histHtml}${prodHtml}`;
         } 
-        // --- THEME DEFAUTS ---
         else if (window.mainTheme === 'defauts') {
             if (active.length === 0) { 
                 mainContent = `<div style="background:#eafaf1; color:#27ae60; padding:15px; border-radius:6px; text-align:center; font-weight:bold; border:1px solid #d5f5e3; margin-bottom:15px;">✅ Aucun défaut en cours</div>${histHtml}`; 
@@ -424,7 +402,6 @@ window.renderSelectionPanel = function() {
                 }).join('') + histHtml;
             }
         } 
-        // --- AUTRES THEMES ---
         else {
             let badges = `<span class="badge"><b>Modèle:</b> ${window.getV(p, window.keyType)}</span> <span class="badge"><b>Rép:</b> ${window.getV(p, window.keyRep)}</span> <span class="badge"><b>Trans:</b> ${window.getV(p, window.keyTransfo)}</span>`;
             let fullDataHTML = `<details style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;">➕ Caractéristiques Complètes</summary><div style="margin-top:12px; display:grid; grid-template-columns: 1fr; gap:8px;">`;
@@ -443,7 +420,6 @@ window.renderSelectionPanel = function() {
 
         listDiv.innerHTML += `<div class="sel-details"><div class="sel-details-header"><span>📍 Canon <b>${p.id}</b></span><span style="font-weight:normal; font-size:12px; background:#e0e6ed; padding:4px 10px; border-radius:12px; color:#34495e;">${window.getV(p, window.keyPiste)}</span></div><div class="sel-details-body">${mainContent}${editBtn}</div></div>`;
             
-        // Initialisation des mini-graphiques après l'insertion HTML
         setTimeout(() => {
             if(window.mainTheme === 'historique' && !window.isMultiSelect) window.drawPisteCompareChart(p);
             if((window.mainTheme === 'type' || window.mainTheme === 'historique' || window.mainTheme === 'repeteur' || window.mainTheme === 'transfo' || window.mainTheme === 'suivi_entretien') && window.saisonsList.length > 0) {
@@ -467,9 +443,6 @@ window.renderSelectionPanel = function() {
     });
 };
 
-/**
- * Affiche le tableau de bord global en fonction du thème actif
- */
 window.triggerGlobalFilterChart = function() {
     if (window.selectedCannonsMap.size > 0 || window.currentlyEditingId) return;
     
@@ -479,7 +452,6 @@ window.triggerGlobalFilterChart = function() {
     let chartLabels = []; let chartData = []; let chartColors = []; let chartType = 'bar';
     let chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
 
-    // Plugin pour écrire au centre des Doughnuts
     const centerTextPlugin = {
         id: 'centerText',
         beforeDraw: function(chart) {
@@ -493,7 +465,6 @@ window.triggerGlobalFilterChart = function() {
     };
     let chartPlugins = [centerTextPlugin];
 
-    // --- THEME DEFAUTS ---
     if (window.mainTheme === 'defauts') {
         let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Analyse : Défauts";
         let activeList = []; let cUrgent = 0, cEnCours = 0, cRas = 0;
@@ -549,7 +520,6 @@ window.triggerGlobalFilterChart = function() {
             }
         }, 100);
     } 
-    // --- AUTRES THEMES (TYPE, REPETEUR, TRANSFO) ---
     else if (window.mainTheme === 'type' || window.mainTheme === 'repeteur' || window.mainTheme === 'transfo') {
         let key = window.mainTheme === 'type' ? window.keyType : (window.mainTheme === 'repeteur' ? window.keyRep : window.keyTransfo);
         let title = window.mainTheme === 'type' ? 'Types de canon' : (window.mainTheme === 'repeteur' ? 'Répéteurs' : 'Transformateurs');
@@ -571,7 +541,6 @@ window.triggerGlobalFilterChart = function() {
 
         html += `<div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Répartition par ${title}</div><div style="position:relative;height:200px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
     } 
-    // --- THEME HISTORIQUE ---
     else if (window.mainTheme === 'historique') {
         let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Analyse : Historique";
         let s = window.saisonsList[window.histSeasonIdx]; 
@@ -596,7 +565,6 @@ window.triggerGlobalFilterChart = function() {
             html += `<div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Total ${metricName} par Piste (Saison ${s})</div><div style="position:relative;height:250px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
         }
     }
-    // --- THEME SUIVI ENTRETIEN ---
     else if (window.mainTheme === 'suivi_entretien') {
         let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Dashboard Maintenance";
         let bYearCounts = {}; let vYearCounts = {}; let cDef = 0, cDec = 0, cPrev = 0, cOk = 0;
@@ -666,96 +634,73 @@ window.triggerGlobalFilterChart = function() {
     }, 50);
 };
 
-// ... TOUT LE RESTE DU CODE STUDIO BI ET GRAPHIQUES ...
-// (Le code du Studio BI et la création dynamique de graphiques étant extrêmement longs et purement fonctionnels, ils ont été gardés tels quels mais déplacés dans ce bloc pour respecter le découpage)
 window.biCurrentData=[]; 
-window.openBiMeteo=function(){document.getElementById('bi-meteo-modal').style.display='flex';window.biLoadSource();};
 window.biLoadSource=function(){let src=document.getElementById('bi-source').value;let data=[];if(src==='hist')data=window.meteoHistData||[];else if(src==='froid')data=window.meteoFroidData||[];else if(src==='raw_gen')data=window.rawGeneral||[];else if(src==='raw_hist')data=window.rawHistorique||[];else if(src==='raw_tick')data=window.rawTicketsSheet||[];else if(src==='conso'){data.push(["Saison","Eau (m³)","Air","Heures"]);window.saisonsList.forEach(s=>{let e=0,a=0,t=0;window.snowCannons.features.forEach(f=>{let h=f.properties.historique[s];if(h){e+=h.eau||0;a+=h.air||0;t+=h.temps||0;}});data.push([s,Math.round(e),Math.round(a),Math.round(t)]);});}else if(src==='defauts'){data.push(["Mois","Nombre de Pannes"]);let counts={};window.rawTickets.forEach(t=>{if(!t.date)return;let d=new Date(t.date);if(isNaN(d.getTime()))return;let m=(d.getMonth()+1).toString().padStart(2,'0')+"/"+d.getFullYear();counts[m]=(counts[m]||0)+1;});Object.keys(counts).sort((a,b)=>{let pa=a.split('/');let pb=b.split('/');return new Date(pa[1],pa[0]-1)-new Date(pb[1],pb[0]-1);}).forEach(k=>data.push([k,counts[k]]));if(data.length===1)data.push(["Aucun ticket",0]);}else if(src==='types'){data.push(["Modèle de Canon","Quantité"]);let counts={};window.snowCannons.features.forEach(f=>{let t=window.getV(f.properties,window.keyType);if(t!=="N/A")counts[t]=(counts[t]||0)+1;});Object.keys(counts).sort().forEach(k=>data.push([k,counts[k]]));}window.biCurrentData=data;let selX=document.getElementById('bi-x');let containerY=document.getElementById('bi-y-container');let selFilt=document.getElementById('bi-filter-col');if(selX)selX.innerHTML="";if(containerY)containerY.innerHTML="";if(selFilt)selFilt.innerHTML="<option value=''>-- Aucun --</option>";if(!data||data.length<2){if(containerY)containerY.innerHTML="<i>Aucune donnée disponible.</i>";return;}let headers=data[0];const colors=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#34495e'];headers.forEach((h,i)=>{if(h.toString().trim()==="")return;if(selX)selX.innerHTML+=`<option value="${i}">${h}</option>`;if(selFilt)selFilt.innerHTML+=`<option value="${i}">${h}</option>`;let checked=(i===1)?'checked':'';let color=colors[i%colors.length];if(containerY){containerY.innerHTML+=`<div style="border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;"><label style="font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" class="bi-y-cbx" value="${i}" ${checked} onchange="window.biUpdateUI()"> <span style="color:#2c3e50;">${h}</span></label><div id="bi-opts-${i}" style="display:${checked?'flex':'none'}; gap:5px; margin-top:5px; flex-wrap:wrap; align-items:center;"><select class="bi-y-agg" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc;" onchange="window.biDrawChart()"><option value="sum">Somme</option><option value="count">Comptage</option></select><select class="bi-y-type combo-only" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc; display:none;" onchange="window.biDrawChart()"><option value="bar">Barre</option><option value="line">Courbe</option></select><select class="bi-y-axis" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc;" onchange="window.biDrawChart()"><option value="y">Axe Gauche</option><option value="y1">Axe Droit</option></select><input type="color" class="bi-y-color" data-idx="${i}" value="${color}" style="width:22px; height:22px; padding:0; border:none; cursor:pointer; border-radius:3px;" onchange="window.biDrawChart()"></div></div>`;}});if(selX)selX.selectedIndex=0;window.biUpdateUI();};
 window.biUpdateUI=function(){let gType=document.getElementById('bi-type').value;let isCombo=(gType==='combo');let isPie=(gType==='pie'||gType==='doughnut'||gType==='polarArea');document.querySelectorAll('.bi-y-cbx').forEach(cb=>{let opts=document.getElementById(`bi-opts-${cb.value}`);if(opts){opts.style.display=cb.checked?'flex':'none';let ts=opts.querySelector('.bi-y-type');if(ts)ts.style.display=isCombo?'block':'none';let as=opts.querySelector('.bi-y-axis');if(as)as.style.display=isPie?'none':'block';}});window.biDrawChart();};
-// Le reste de drawChart et export est conservé pour ne pas casser la fonctionnalité
 window.biDrawChart=function(){let data=window.biCurrentData;if(!data||data.length<2)return;let gType=document.getElementById('bi-type').value;let isCombo=(gType==='combo');let isPie=(gType==='pie'||gType==='doughnut'||gType==='polarArea');let isRadar=(gType==='radar');let elPts=document.getElementById('bi-points');let sPts=elPts?elPts.checked:true;let elX=document.getElementById('bi-x');let idxX=elX?parseInt(elX.value):0;let elFCol=document.getElementById('bi-filter-col');let elFVal=document.getElementById('bi-filter-val');let fCol=elFCol?elFCol.value:"";let fVal=elFVal?elFVal.value.trim().toLowerCase():"";let yCbx=document.querySelectorAll('.bi-y-cbx:checked');if(yCbx.length===0)return;let yCfgs=Array.from(yCbx).map(cb=>{let i=cb.value;let p=document.getElementById(`bi-opts-${i}`);return{idx:parseInt(i),label:data[0][i],agg:p.querySelector('.bi-y-agg').value,type:isCombo?p.querySelector('.bi-y-type').value:gType,axis:isPie||isRadar?'y':p.querySelector('.bi-y-axis').value,color:p.querySelector('.bi-y-color').value,uVals:new Set()};});let grouped={};for(let r=1;r<data.length;r++){let row=data[r];let rawX=row[idxX];if(rawX==null||rawX==="")continue;if(fCol!==""&&fVal!==""){let cVal=(row[fCol]||"").toString().toLowerCase();if(fVal.startsWith('>')){if(parseFloat(cVal)<=parseFloat(fVal.substring(1)))continue;}else if(fVal.startsWith('<')){if(parseFloat(cVal)>=parseFloat(fVal.substring(1)))continue;}else if(fVal.startsWith('=')){if(cVal!==fVal.substring(1).trim())continue;}else{if(!cVal.includes(fVal))continue;}}let strX=rawX.toString().trim();if(strX.length>=10&&!isNaN(Date.parse(strX)))strX=new Date(strX).toLocaleDateString('fr-FR');if(!grouped[strX])grouped[strX]={};yCfgs.forEach(cfg=>{let val=row[cfg.idx];if(cfg.agg==='count'){let tVal=(val!=null&&val.toString().trim()!=="")?val.toString().trim():"Non spécifié";if(!grouped[strX][cfg.idx])grouped[strX][cfg.idx]={};grouped[strX][cfg.idx][tVal]=(grouped[strX][cfg.idx][tVal]||0)+1;cfg.uVals.add(tVal);}else{let num=parseFloat(val)||0;grouped[strX][cfg.idx]=(grouped[strX][cfg.idx]||0)+num;}});}let labels=Object.keys(grouped).sort(function(a,b){let na=parseFloat(a),nb=parseFloat(b);if(!isNaN(na)&&!isNaN(nb))return na-nb;return a.localeCompare(b);});let pal=document.getElementById('bi-palette');let pChoice=pal?pal.value:'default';let pDef=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#34495e'];let pCold=['#81D4FA','#26C6DA','#00BCD4','#00ACC1','#0097A7','#00838F','#006064'];let pWarm=['#FFD54F','#FFCA28','#FFC107','#FFB300','#FFA000','#FF8F00','#E65100'];let pMono=['#1A252C','#2C3E50','#34495E','#5D6D7E','#7F8C8D','#95A5A6','#BDC3C7'];let colors=pChoice==='cold'?pCold:(pChoice==='warm'?pWarm:(pChoice==='mono'?pMono:pDef));let datasets=[];let cIdx=0;yCfgs.forEach((cfg)=>{let fType=isCombo?cfg.type:(isRadar?'radar':gType);let isL=(fType==='line'||fType==='radar');if(cfg.agg==='count'&&cfg.uVals.size>0){let sCats=Array.from(cfg.uVals).sort();sCats.forEach(cat=>{if(cat==="Non spécifié"&&sCats.length>1)return;let dData=labels.map(k=>(grouped[k][cfg.idx]&&grouped[k][cfg.idx][cat])?grouped[k][cfg.idx][cat]:0);let color=colors[cIdx%colors.length];let bgs=labels.map((_,i)=>colors[(cIdx+i)%colors.length]);datasets.push({label:`${cfg.label}:${cat}`,type:fType==='combo'?'bar':fType,data:dData,backgroundColor:isPie?bgs:(isL?color+'33':color),borderColor:isPie?'#fff':color,borderWidth:(fType==='bar'&&!isPie)?0:2,fill:isL,yAxisID:cfg.axis,tension:0.3,pointRadius:sPts?4:0,pointHoverRadius:6,borderRadius:fType==='bar'?4:0});cIdx++;});}else{let dData=labels.map(k=>grouped[k][cfg.idx]||0);let color=cfg.color;let bgs=labels.map((_,i)=>colors[(cIdx+i)%colors.length]);datasets.push({label:cfg.label,type:fType==='combo'?'bar':fType,data:dData,backgroundColor:isPie?bgs:(isL?color+'33':color),borderColor:isPie?'#fff':color,borderWidth:(fType==='bar'&&!isPie)?0:2,fill:isL,yAxisID:cfg.axis,tension:0.3,pointRadius:sPts?4:0,pointHoverRadius:6,borderRadius:fType==='bar'?4:0});cIdx++;}});if(isPie&&datasets.length>1)datasets=[datasets[0]];let ctx=document.getElementById('bi-canvas');if(!ctx)return;if(window.chartInstances['bi-chart'])window.chartInstances['bi-chart'].destroy();const customBg={id:'customBg',beforeDraw:(chart)=>{const c=chart.ctx;c.save();c.globalCompositeOperation='destination-over';c.fillStyle='#ffffff';c.fillRect(0,0,chart.width,chart.height);c.restore();}};let hasR=datasets.some(d=>d.yAxisID==='y1');let fMType=isCombo?'bar':(isPie?gType:(isRadar?'radar':gType));let isStk=datasets.length>1&&gType==='bar';window.chartInstances['bi-chart']=new Chart(ctx.getContext('2d'),{type:fMType,data:{labels:labels,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,position:isPie||isRadar?'right':'top'},title:{display:true,text:'GMAO BI - '+data[0][idxX],font:{size:16}},zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}},scales:(isPie||isRadar)?{}:{x:{stacked:isStk,ticks:{maxRotation:45,minRotation:45},grid:{display:false}},y:{stacked:isStk,type:'linear',display:true,position:'left'},y1:{type:'linear',display:hasR,position:'right',grid:{drawOnChartArea:false}}}},plugins:[customBg]});};
 window.exportBiChart=function(){let cvs=document.getElementById('bi-canvas');if(!cvs)return;let a=document.createElement('a');a.href=cvs.toDataURL('image/png');a.download='GMAO_Expert_BI.png';document.body.appendChild(a);a.click();document.body.removeChild(a);};
 
-// Fonctions diverses (Comp Comparaisons, listes Cloud) gardées telles quelles dans l'architecture
-window.openGlobalCompareModal=function(show){let m=document.getElementById('compare-modal');if(!m)return;if(!show){m.style.display='none';return;}let s1=document.getElementById('comp-s1');let s2=document.getElementById('comp-s2');let pList=document.getElementById('comp-piste');if(s1)s1.innerHTML="";if(s2)s2.innerHTML="";window.saisonsList.forEach((s,i)=>{if(s1)s1.innerHTML+=`<option value="${s}" ${i===0?'selected':''}>${s}</option>`;if(s2)s2.innerHTML+=`<option value="${s}" ${i===1?'selected':''}>${s}</option>`;});if(pList){pList.innerHTML=`<option value="all">Toutes les pistes</option>`;Array.from(window.columnValuesSets[window.keyPiste]||[]).sort().forEach(p=>{pList.innerHTML+=`<option value="${p}">${p}</option>`;});}m.style.display='flex';window.renderGlobalComparison();};
 window.renderGlobalComparison=function(){let s1=document.getElementById('comp-s1').value;let s2=document.getElementById('comp-s2').value;let metric=document.getElementById('comp-metric').value;let targetPiste=document.getElementById('comp-piste').value;let labels=[];let d1=[];let d2=[];if(targetPiste==='all'){let t1=document.getElementById('comp-title-1');if(t1)t1.innerText=`Saison ${s1} - ${metric.toUpperCase()} (Toutes pistes)`;let t2=document.getElementById('comp-title-2');if(t2)t2.innerText=`Saison ${s2} - ${metric.toUpperCase()} (Toutes pistes)`;labels=Array.from(window.columnValuesSets[window.keyPiste]||[]).sort();labels.forEach(p=>{let sum1=0;let sum2=0;window.snowCannons.features.forEach(f=>{if(window.getV(f.properties,window.keyPiste)===p){if(f.properties.historique[s1])sum1+=f.properties.historique[s1][metric];if(f.properties.historique[s2])sum2+=f.properties.historique[s2][metric];}});d1.push(sum1);d2.push(sum2);});}else{let t1=document.getElementById('comp-title-1');if(t1)t1.innerText=`Saison ${s1} - ${metric.toUpperCase()} (Piste: ${targetPiste})`;let t2=document.getElementById('comp-title-2');if(t2)t2.innerText=`Saison ${s2} - ${metric.toUpperCase()} (Piste: ${targetPiste})`;let canons=window.snowCannons.features.filter(f=>window.getV(f.properties,window.keyPiste)===targetPiste).sort((a,b)=>parseInt(a.properties.id)-parseInt(b.properties.id));labels=canons.map(c=>c.properties.id);canons.forEach(c=>{d1.push(c.properties.historique[s1]?c.properties.historique[s1][metric]:0);d2.push(c.properties.historique[s2]?c.properties.historique[s2][metric]:0);});}if(window.chartInstances['c1'])window.chartInstances['c1'].destroy();let c1Ctx=document.getElementById('comp-canvas-1');if(c1Ctx)window.chartInstances['c1']=new Chart(c1Ctx.getContext('2d'),{type:'bar',data:{labels:labels,datasets:[{data:d1,backgroundColor:'#3498db'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});if(window.chartInstances['c2'])window.chartInstances['c2'].destroy();let c2Ctx=document.getElementById('comp-canvas-2');if(c2Ctx)window.chartInstances['c2']=new Chart(c2Ctx.getContext('2d'),{type:'bar',data:{labels:labels,datasets:[{data:d2,backgroundColor:'#e67e22'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});};
 window.drawPisteCompareChart=function(targetCannon){let canvasId=`chart-${targetCannon.id}`;let ctx=document.getElementById(canvasId);if(!ctx)return;if(window.chartInstances[canvasId])window.chartInstances[canvasId].destroy();let s=window.saisonsList[window.histSeasonIdx];let pName=window.getV(targetCannon,window.keyPiste);let pisteCannons=window.snowCannons.features.filter(f=>window.getV(f.properties,window.keyPiste)===pName&&f.properties.historique[s]);pisteCannons.sort((a,b)=>parseInt(a.properties.id)-parseInt(b.properties.id));let bgColors=pisteCannons.map(f=>f.properties.id===targetCannon.id?'#e74c3c':'#3498db');window.chartInstances[canvasId]=new Chart(ctx.getContext('2d'),{type:'bar',data:{labels:pisteCannons.map(f=>f.properties.id),datasets:[{data:pisteCannons.map(f=>f.properties.historique[s][window.histMetric]),backgroundColor:bgColors,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{display:true,ticks:{font:{size:10}}}}}});};
 window.drawSecondPisteChart=function(targetId,seasonStr){let canvasId=`chart2-${targetId}`;let ctx=document.getElementById(canvasId);if(!ctx)return;if(window.chartInstances[canvasId])window.chartInstances[canvasId].destroy();if(!seasonStr)return;let targetCannon=window.snowCannons.features.find(f=>f.properties.id===targetId).properties;let pName=window.getV(targetCannon,window.keyPiste);let pisteCannons=window.snowCannons.features.filter(f=>window.getV(f.properties,window.keyPiste)===pName&&f.properties.historique[seasonStr]);pisteCannons.sort((a,b)=>parseInt(a.properties.id)-parseInt(b.properties.id));let bgColors=pisteCannons.map(f=>f.properties.id===targetId?'#e74c3c':'#9b59b6');window.chartInstances[canvasId]=new Chart(ctx.getContext('2d'),{type:'bar',data:{labels:pisteCannons.map(f=>f.properties.id),datasets:[{data:pisteCannons.map(f=>f.properties.historique[seasonStr][window.histMetric]),backgroundColor:bgColors,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{display:true,ticks:{font:{size:10}}}}}});};
-window.renderSuiviList=function(pisteName){let container=document.getElementById('suivi-canons-container');if(!container)return;if(!pisteName){container.innerHTML="";return;}let canons=window.snowCannons.features.filter(f=>window.getV(f.properties,window.keyPiste)===pisteName).sort((a,b)=>parseInt(a.properties.id)-parseInt(b.properties.id));let html=`<button onclick="window.saveMultiSuivi(this, '${pisteName.replace(/'/g,"\\'")}')" style="width:100%; background:#27ae60; color:white; border:none; padding:12px; border-radius:6px; cursor:pointer; font-weight:bold; margin-bottom:15px; font-size:14px; box-shadow:0 2px 5px rgba(0,0,0,0.2);">💾 Sauvegarder toute la piste</button>`;let cDef=0,cDec=0,cPrev=0,cOk=0;canons.forEach(c=>{let id=c.properties.id;let activeFaults=window.getActiveTickets(id).map(t=>t.defaut).join(" | ");let hasFault=activeFaults.length>0;let suiviInfo=window.suiviEntretienData.find(row=>row[0]==id)||["","","non","non","","",""];let dec=suiviInfo[2].toString().toLowerCase().trim()==="oui";let prev=suiviInfo[3].toString().toLowerCase().trim()==="oui";let rem=suiviInfo[5]||"";if(hasFault)cDef++;else if(prev)cPrev++;else if(dec)cDec++;else cOk++;html+=`<div style="background:#fff; border-left:4px solid ${hasFault?'#e74c3c':'#3498db'}; padding:12px; margin-bottom:10px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.1);"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><b style="font-size:14px;">Canon ${id}</b><button onclick="window.focusCannon('${id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:2px 6px; cursor:pointer; font-size:10px;">Cibler 📍</button></div><div style="display:flex; gap:10px; font-size:12px; margin-bottom:8px;"><label style="cursor:pointer;"><input type="checkbox" id="chk-dec-${id}" ${dec?'checked':''}> Déconnexion</label><label style="cursor:pointer;"><input type="checkbox" id="chk-prev-${id}" ${prev?'checked':''}> Préventif Usine</label></div><input type="text" id="rem-${id}" value="${rem}" placeholder="Remarque..." style="width:100%; box-sizing:border-box; padding:6px; font-size:11px; border:1px solid #ccc; border-radius:4px;"></div>`;});let pieHtml=`<div style="background:#fff; border:1px solid #e1e8ed; border-radius:6px; padding:10px; margin-bottom:15px; box-shadow:0 2px 4px rgba(0,0,0,0.05);"><div style="text-align:center; font-weight:bold; font-size:12px; margin-bottom:10px;">État de la piste : ${pisteName}</div><div style="position:relative; height:160px; width:100%;"><canvas id="pie-piste-local"></canvas></div></div>`;container.innerHTML=pieHtml+html;setTimeout(()=>{if(window.chartInstances['pie-piste-local'])window.chartInstances['pie-piste-local'].destroy();let ctxPie=document.getElementById('pie-piste-local');if(ctxPie){window.chartInstances['pie-piste-local']=new Chart(ctxPie.getContext('2d'),{type:'doughnut',data:{labels:['En Défaut','Préventif Usine','Déconnecté','Connecté (⚡)'],datasets:[{data:[cDef,cPrev,cDec,cOk],backgroundColor:['#e74c3c','#9b59b6','#27ae60','#f1c40f']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:10,font:{size:10}}}}}});}},100);};
-window.renderCloudLayersList=function(){const container=document.getElementById('cloud-layers-container');if(!container)return;container.innerHTML="";if(window.cloudKmzLayers.length===0){container.innerHTML=`<p style="font-size:11px; color:#888; font-style:italic;">Aucun calque configuré.</p>`;return;}window.cloudKmzLayers.forEach((layer,idx)=>{container.innerHTML+=`<div class="kml-layer-item" style="border-color:#e1e8ed; background:#fafbfc; display:flex; flex-wrap:wrap; gap:5px; align-items:center;"><input type="checkbox" id="cloud-cbx-${idx}" ${layer.isVisible?'checked':''} onchange="window.toggleCloudLayer(${idx})" style="margin:0 5px 0 0;"><input type="color" class="layer-color-picker" value="${layer.color}" onchange="window.changeCloudLayerStyle(${idx}, this.value, null)" title="Couleur"><input type="number" class="layer-weight-picker" value="${layer.weight||4}" min="1" max="15" onchange="window.changeCloudLayerStyle(${idx}, null, this.value)" title="Épaisseur"><label style="cursor:pointer; display:flex; flex-direction:column; flex-grow:1; margin-left:8px; min-width:120px;" for="cloud-cbx-${idx}"><span style="color:#2c3e50; font-size:12px;">${layer.nom}</span><span style="font-size:10px; color:#7f8c8d; font-weight:normal;">${layer.commentaire}</span></label><span id="cloud-status-${idx}" style="min-width:20px; text-align:right;"></span></div>`;});};
-window.renderCustomLayersList=function(){const container=document.getElementById('custom-layers-list');if(!container)return;container.innerHTML="";for(let id in window.externalLayers){const ext=window.externalLayers[id];container.innerHTML+=`<div class="kml-layer-item"><input type="checkbox" id="loc-cbx-${id}" ${ext.isVisible?'checked':''} onchange="window.toggleExtLayer('${id}')" style="margin:0 5px 0 0;"><input type="color" class="layer-color-picker" value="${ext.color}" onchange="window.changeExtLayerStyle('${id}', this.value, null)" title="Couleur"><input type="number" class="layer-weight-picker" value="${ext.weight||4}" min="1" max="15" onchange="window.changeExtLayerStyle('${id}', null, this.value)" title="Épaisseur"><label for="loc-cbx-${id}" style="cursor:pointer; flex-grow:1; margin-left:8px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#34495e;">${ext.name}</label><button onclick="window.deleteExtLayer('${id}')" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:16px;">🗑️</button></div>`;}};
-window.generateDynamicFiltersUI=function(){let container=document.getElementById('dynamic-filters-container');if(!container)return;container.innerHTML="";let optionsHTML=`<option value="">-- Choisir un critère --</option>`+window.availableColumns.map(c=>`<option value="${c}">${c.toUpperCase()}</option>`).join('');container.innerHTML=`<div class="dynamic-filter-slot" style="margin-bottom:0; border:none; padding:0;"><select class="filter-select" id="filter-sel-0" data-idx="0">${optionsHTML}</select><div class="checkbox-list" id="filter-cbx-0" style="display:none;"></div></div>`;};
-window.renderCheckboxesForFilter=function(idx,colName){let cbxContainer=document.getElementById(`filter-cbx-${idx}`);if(!cbxContainer)return;if(!colName){cbxContainer.style.display='none';window.activeFilters[idx]={key:"",vals:[]};window.updateMap();window.triggerGlobalFilterChart();return;}cbxContainer.style.display='block';let vals=Array.from(window.columnValuesSets[colName]||[]).sort();let html=`<label><input type="checkbox" class="cb-all-${idx}" checked> <b>Tout sélectionner</b></label><hr style="margin:4px 0; border-top:1px solid #eee;">`;vals.forEach(v=>html+=`<label><input type="checkbox" class="cb-val-${idx}" value="${v}"> ${v}</label>`);cbxContainer.innerHTML=html;window.activeFilters[idx]={key:colName,vals:['all']};let allBtn=cbxContainer.querySelector(`.cb-all-${idx}`);let cbs=cbxContainer.querySelectorAll(`.cb-val-${idx}`);const updateLogic=()=>{window.activeFilters[idx].vals=allBtn.checked?['all']:Array.from(cbs).filter(c=>c.checked).map(c=>c.value);window.updateMap();window.triggerGlobalFilterChart();};if(allBtn)allBtn.addEventListener('change',e=>{if(e.target.checked)cbs.forEach(c=>c.checked=false);updateLogic();});cbs.forEach(c=>c.addEventListener('change',()=>{if(c.checked){if(allBtn)allBtn.checked=false;}else if(Array.from(cbs).every(x=>!x.checked)){if(allBtn)allBtn.checked=true;}updateLogic();}));};
 
-// Calcul des max pour les curseurs d'historique
-window.calculateMaxes = function() {
-    if(!window.saisonsList[window.histSeasonIdx]) return;
-    let s = window.saisonsList[window.histSeasonIdx]; 
-    window.absoluteMaxes = { eau: 0, air: 0, temps: 0 };
-    
-    window.snowCannons.features.forEach(f => {
-        if (f.properties.historique[s]) {
-            window.absoluteMaxes.eau = Math.max(window.absoluteMaxes.eau, f.properties.historique[s].eau);
-            window.absoluteMaxes.air = Math.max(window.absoluteMaxes.air, f.properties.historique[s].air);
-            window.absoluteMaxes.temps = Math.max(window.absoluteMaxes.temps, f.properties.historique[s].temps);
-        }
-    });
-    window.currentMaxThreshold = { ...window.absoluteMaxes }; 
-    window.currentMinThreshold = { eau:0, air:0, temps:0 };
-    
-    let slmin = document.getElementById('slider-min'); 
-    let slmax = document.getElementById('slider-max');
-    
-    if(slmin) { 
-        slmin.max = window.absoluteMaxes[window.histMetric] || 1; 
-        slmin.value = 0; 
-        slmin.step = "any";
-        slmin.oninput = function(e) {
-            let val = parseFloat(e.target.value) || 0;
-            if (val > window.currentMaxThreshold[window.histMetric]) { val = window.currentMaxThreshold[window.histMetric]; e.target.value = val; }
-            window.currentMinThreshold[window.histMetric] = val;
-            let vm = document.getElementById('val-min'); if(vm) vm.innerText = Math.round(val);
-            window.updateMap(); window.triggerGlobalFilterChart();
-        };
+// ---------------------------------------------------------
+// 5. GESTION DES ESPACES DE TRAVAIL (BI & Comparaison)
+// ---------------------------------------------------------
+
+window.toggleBiMeteo = function() {
+    let biModal = document.getElementById('bi-meteo-modal');
+    let compModal = document.getElementById('compare-modal');
+    let btnBi = document.getElementById('btn-nav-bi');
+    let btnComp = document.getElementById('btn-nav-compare');
+
+    if (biModal.style.display === 'flex') {
+        biModal.style.display = 'none';
+        if(btnBi) btnBi.style.opacity = '1';
+    } else {
+        biModal.style.display = 'flex';
+        compModal.style.display = 'none';
+        
+        if(btnBi) btnBi.style.opacity = '1';
+        if(btnComp) btnComp.style.opacity = '0.5'; 
+        
+        window.biLoadSource();
     }
-    if(slmax) { 
-        slmax.max = window.absoluteMaxes[window.histMetric] || 1; 
-        slmax.value = window.absoluteMaxes[window.histMetric] || 1; 
-        slmax.step = "any";
-        slmax.oninput = function(e) {
-            let val = parseFloat(e.target.value) || 0;
-            if (val < window.currentMinThreshold[window.histMetric]) { val = window.currentMinThreshold[window.histMetric]; e.target.value = val; }
-            window.currentMaxThreshold[window.histMetric] = val;
-            let vmx = document.getElementById('val-max'); if(vmx) vmx.innerText = Math.round(val);
-            window.updateMap(); window.triggerGlobalFilterChart();
-        };
-    }
-    let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; 
-    let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
 };
 
-// Mise à jour du texte de la légende selon le thème
-window.updateLegend = function() {
-    let elDef = document.getElementById('legend-defauts');
-    let elSuivi = document.getElementById('legend-suivi_entretien');
-    
-    if (window.mainTheme === 'suivi_entretien') {
-        if(elSuivi) elSuivi.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e74c3c;"></div> Défaut en cours</div><div class="legend-item"><div class="color-box" style="background:#9b59b6;"></div> Préventif Usine</div><div class="legend-item"><div class="color-box" style="background:#27ae60;"></div> Déconnecté</div><div class="legend-item"><div class="color-box" style="background:#f1c40f;"></div> Connecté (⚡)</div><div class="legend-item"><div style="background:#e67e22; color:white; width:14px; height:14px; border-radius:50%; font-size:10px; font-weight:bold; text-align:center; line-height:14px; border:1px solid #ccc;">!</div> Remarque présente</div><div class="legend-item" style="font-size:10px; color:#7f8c8d; margin-top:5px;"><i>Mélange de couleurs si multi-statuts.</i></div>`;
-    } else if (window.mainTheme === 'defauts' && elDef) {
-        elDef.innerHTML = `<div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'urgent')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #e74c3c;"></div> Urgent (À faire)</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'encours')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #f39c12;"></div> En cours</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'ras')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #bdc3c7;"></div> RAS</div>`;
-    } else if (window.mainTheme === 'type') {
-        let elTy = document.getElementById('legend-type');
-        if(elTy) elTy.innerHTML = `<div class="legend-item" onmouseenter="window.highlightLegend('type', 'demac')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #0000FF;"></div> Demac Lenko</div><div class="legend-item" onmouseenter="window.highlightLegend('type', 'sufag')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #008000;"></div> Sufag / Peak</div><div class="legend-item" onmouseenter="window.highlightLegend('type', 'techno')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: linear-gradient(to right, #f1c40f, #e67e22);"></div> Technoalpin</div>`;
-    } else if (window.mainTheme === 'repeteur') {
-        let h=''; Object.keys(window.repColors).sort().forEach(k => { h += `<div class="legend-item" onmouseenter="window.highlightLegend('repeteur', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${window.repColors[k]};"></div> Répéteur ${k}</div>`; }); 
-        let elRep = document.getElementById('legend-repeteur'); if(elRep) elRep.innerHTML = h;
-    } else if (window.mainTheme === 'transfo') {
-        let h=''; Object.keys(window.transfoColors).sort().forEach(k => { h += `<div class="legend-item" onmouseenter="window.highlightLegend('transfo', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${window.transfoColors[k]};"></div> Transfo ${k}</div>`; }); 
-        let elTr = document.getElementById('legend-transfo'); if(elTr) elTr.innerHTML = h;
-    } else if (window.mainTheme === 'historique') {
-        let hL = document.getElementById('legend-historique'); if(!hL) return;
-        if (window.histMetric === 'eau') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #add8e6, #2980b9);"></div><div class="legend-labels"><span>0 m³</span><span>Max</span></div>`;
-        else if (window.histMetric === 'air') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #fadb5e, #d35400);"></div><div class="legend-labels"><span>0</span><span>Max</span></div>`;
-        else if (window.histMetric === 'temps') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #abebc6, #27ae60);"></div><div class="legend-labels"><span>0 h</span><span>Max</span></div>`;
+window.toggleCompareModal = function() {
+    let biModal = document.getElementById('bi-meteo-modal');
+    let compModal = document.getElementById('compare-modal');
+    let btnBi = document.getElementById('btn-nav-bi');
+    let btnComp = document.getElementById('btn-nav-compare');
+
+    if (compModal.style.display === 'flex') {
+        compModal.style.display = 'none';
+        if(btnComp) btnComp.style.opacity = '1';
+    } else {
+        compModal.style.display = 'flex';
+        biModal.style.display = 'none';
+        
+        if(btnComp) btnComp.style.opacity = '1';
+        if(btnBi) btnBi.style.opacity = '0.5'; 
+
+        let s1 = document.getElementById('comp-s1'); 
+        let s2 = document.getElementById('comp-s2'); 
+        let pList = document.getElementById('comp-piste');
+        
+        if (s1 && s1.innerHTML === "") {
+            window.saisonsList.forEach((s, i) => { 
+                if(s1) s1.innerHTML += `<option value="${s}" ${i===0?'selected':''}>${s}</option>`; 
+                if(s2) s2.innerHTML += `<option value="${s}" ${i===1?'selected':''}>${s}</option>`; 
+            });
+        }
+        if (pList && pList.innerHTML.indexOf("Toutes") === -1) { 
+            pList.innerHTML = `<option value="all">Toutes les pistes</option>`; 
+            Array.from(window.columnValuesSets[window.keyPiste] || []).sort().forEach(p => { 
+                pList.innerHTML += `<option value="${p}">${p}</option>`; 
+            }); 
+        }
+        
+        window.renderGlobalComparison();
     }
 };
