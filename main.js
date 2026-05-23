@@ -7,8 +7,19 @@
 // 1. INITIALISATION DE L'INTERFACE APRÈS LE CHARGEMENT DES DONNÉES
 // ---------------------------------------------------------
 window.initAppUI = function() {
-    let ts=new Set(), rs=new Set(), trs=new Set(), ps=new Set();
-    
+    //let ts=new Set(), rs=new Set(), trs=new Set(), ps=new Set();
+   // window.initAppUI = function() {
+    // ... (garde tout ton code de calcul de couleurs, filtres, etc.)
+
+    // --- MODIFICATION ICI ---
+    // On force la fermeture au démarrage
+    document.getElementById('sidebar').classList.add('collapsed');
+    document.getElementById('right-sidebar').classList.remove('open');
+    document.getElementById('bi-meteo-modal').style.display = 'none';
+    document.getElementById('compare-modal').style.display = 'none';
+
+    // ... (le reste de ta fonction initAppUI)
+};
     // Extraction des filtres uniques
     window.snowCannons.features.forEach(f => {
         let p=f.properties;
