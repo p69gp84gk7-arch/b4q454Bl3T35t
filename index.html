@@ -165,15 +165,18 @@
             <div class="sidebar-header-bg">Outils d'Analyse</div>
             <details class="panel-section" open><summary>Thème & Légende</summary>
                 <div class="section-content" style="padding-top: 10px;">
-                    <div class="theme-block">
-                        <label class="radio-card" id="lbl-suivi_entretien" style="border-radius: 6px; margin-bottom: 8px; border-color: #e1e8ed;">
-                            <input type="radio" name="main_theme" value="suivi_entretien"> 🛠️ Suivi Entretien
+                     <div class="theme-block">
+                        <label class="radio-card" id="lbl-atelier" style="border-radius: 6px; margin-bottom: 8px; border-color: #e1e8ed;">
+                            <input type="radio" name="main_theme" value="atelier"> 🧰 Atelier (Banc d'essais)
                         </label>
-                        <div class="theme-details" id="details-suivi_entretien" style="display: none; border-color: #27ae60;">
-                            <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Gérez l'entretien et les vannes</div>
-                            <div id="legend-suivi_entretien"></div>
+                        <div class="theme-details" id="details-atelier" style="display: none; border-color: #8e44ad;">
+                            <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Canons en préventif usine</div>
+                            <div id="legend-atelier">
+                                <div class="legend-item"><div class="color-box" style="background:#8e44ad;"></div> À tester au banc</div>
+                            </div>
                         </div>
                     </div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-suivi_entretien" style="border-radius: 6px; margin-bottom: 8px; border-color: #e1e8ed;"><input type="radio" name="main_theme" value="suivi_entretien"> 🛠️ Suivi Entretien</label><div class="theme-details" id="details-suivi_entretien" style="display: none; border-color: #27ae60;"> <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Gérez l'entretien et les vannes</div> <div id="legend-suivi_entretien"></div></div></div>
                     <div class="theme-block">
                         <label class="radio-card" id="lbl-defauts" style="border-radius: 6px 6px 0 0; margin-bottom: 0; border-color: #3498db;"><input type="radio" name="main_theme" value="defauts" checked> 🚨 Tickets & Pannes</label>
                         <div class="theme-details" id="details-defauts" style="display: block; border-color: #3498db;"><div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Survolez pour cibler</div><div id="legend-defauts"></div></div>
