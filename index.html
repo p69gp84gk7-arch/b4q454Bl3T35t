@@ -283,11 +283,7 @@
             let elSuivi = document.getElementById('legend-suivi_entretien');
             if (window.mainTheme === 'suivi_entretien') {
                 if(elSuivi) elSuivi.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e74c3c;"></div> Défaut en cours</div><div class="legend-item"><div class="color-box" style="background:#9b59b6;"></div> Préventif Usine</div><div class="legend-item"><div class="color-box" style="background:#27ae60;"></div> Déconnecté</div><div class="legend-item"><div class="color-box" style="background:#f1c40f;"></div> Connecté (⚡)</div><div class="legend-item"><div style="background:#e67e22; color:white; width:14px; height:14px; border-radius:50%; font-size:10px; font-weight:bold; text-align:center; line-height:14px; border:1px solid #ccc;">!</div> Remarque présente</div><div class="legend-item" style="font-size:10px; color:#7f8c8d; margin-top:5px;"><i>Mélange de couleurs si multi-statuts.</i></div>`;
-            }                    if(window.mainTheme === 'atelier') {
-                        window.showView('view-selection', '🧰 Gestion Atelier', '680px');
-                        window.renderAtelierPanel();
-                    } 
-            else if (window.mainTheme === 'defauts' && elDef) {
+            } else if (window.mainTheme === 'defauts' && elDef) {
                 elDef.innerHTML = `<div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'urgent')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #e74c3c;"></div> Urgent (À faire)</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'encours')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #f39c12;"></div> En cours</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'ras')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #bdc3c7;"></div> RAS</div>`;
             } else if (window.mainTheme === 'type') {
                 let elTy = document.getElementById('legend-type');
@@ -1213,10 +1209,26 @@
                         else activeLabel.style.borderColor = '#3498db'; 
                     }
                     
-                    if(window.mainTheme === 'historique') window.calculateMaxes(); 
-                    window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
+                                       if(window.mainTheme === 'historique') window.calculateMaxes(); 
+                    window.updateLegend(); window.updateMap(); 
                     
-                    if(window.mainTheme === 'suivi_entretien') document.getElementById('right-sidebar').classList.add('open');
+                    // Si on n'est PAS dans Atelier, on affiche le tableau de bord normal
+                    if(window.mainTheme !== 'atelier') {
+                        window.triggerGlobalFilterChart();
+                    }
+                    
+                    // Si on est dans Suivi Entretien, on ouvre le panneau droit
+                    if(window.mainTheme === 'suivi_entretien') {
+                        document.getElementById('right-sidebar').classList.add('open');
+                    }
+                    
+                    // NOUVEAU : Si on est dans l'Atelier, on ouvre le panneau et on charge ta fonction
+                    if(window.mainTheme === 'atelier') {
+                        document.getElementById('right-sidebar').classList.add('open');
+                        document.getElementById('view-edit').style.display = 'none';
+                        document.getElementById('view-selection').style.display = 'block';
+                        window.renderAtelierPanel();
+                    }
                 });
             });
 
