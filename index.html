@@ -827,112 +827,77 @@
             window.chartInstances[canvasId] = new Chart(ctx.getContext('2d'), { type: 'bar', data: { labels: pisteCannons.map(f => f.properties.id), datasets: [{ data: pisteCannons.map(f => f.properties.historique[seasonStr][window.histMetric]), backgroundColor: bgColors, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: true, ticks: {font:{size:10}} } } } });
         };
         /* ================== MODULE ATELIER (BANC D'ESSAIS) ================== */
-        window.renderAtelierPanel = function() {
-            document.getElementById('right-title').innerText = "🧰 Gestion Atelier";
+                window.renderAtelierPanel = function() {
+            document.getElementById('right-title').innerText = "🧰 Fiche Technique Atelier";
             let listDiv = document.getElementById('selected-list');
             listDiv.innerHTML = "";
 
-            // 1. Trouver les canons marqués "oui" en "préventif à l'usine" dans le Suivi Entretien
-            let canonsEnAtelier = [];
-            window.suiviEntretienData.forEach(row => {
-                if(row[3] && row[3].toString().toLowerCase().trim() === "oui") {
-                    canonsEnAtelier.push(row[0].toString()); // N° de canon
-                }
-            });
+            let canonsEnAtelier = window.suiviEntretienData.filter(row => row[3] && row[3].toString().toLowerCase().trim() === "oui").map(r => r[0].toString());
 
             if (canonsEnAtelier.length === 0) {
-                listDiv.innerHTML = `<div style="padding:20px; text-align:center; color:#7f8c8d; background:#fff; border-radius:6px;">✅ Aucun canon n'est actuellement marqué en "Préventif Usine".</div>`;
+                listDiv.innerHTML = `<div style="padding:20px; text-align:center;">✅ Aucun canon en préventif usine.</div>`;
                 return;
             }
 
-            let html = `<div style="margin-bottom:15px; font-size:13px; color:#555; background:#f4f6f8; padding:10px; border-radius:4px;"><b>${canonsEnAtelier.length}</b> canon(s) identifié(s) en atelier.</div>`;
-
-            // 2. Boucle sur chaque canon pour construire la fiche et le formulaire
             canonsEnAtelier.forEach(idCanon => {
                 let canonData = window.snowCannons.features.find(f => f.properties.id == idCanon);
                 if(!canonData) return;
                 
-                let p = canonData.properties;
-                let piste = window.getV(p, window.keyPiste);
-                let typeVanne = window.getV(p, "type") || ""; // Ex: YA
-                let vanneAd = window.getV(p, "vanne additionnelle") || window.getV(p, "vanne ad") || ""; 
-                let typeVanneAd = window.getV(p, "type vanne ad 1") || window.getV(p, "type vanne ad") || ""; 
+                // 1. Récupération des headers du tableau général pour créer les champs dynamiques
+                let headers = window.rawGeneral[0] || []; 
+                let values = canonData.properties;
 
-                // 3. Récupération de l'historique Atelier pour CE canon
-                let histHtml = "";
-                let canonHist = window.rawAtelier.filter(r => r[0] == idCanon || r[1] == idCanon); // id ou N° vanne
-                if(canonHist.length > 0) { // Si des archives existent
-                    histHtml = `<details style="margin-top:10px; font-size:11px; background:#f4f6f8; padding:8px; border-radius:4px; border:1px solid #ddd;"><summary style="cursor:pointer;font-weight:bold;color:#2c3e50;">🕒 Historique Banc d'essais (${canonHist.length})</summary><ul style="padding-left:15px;margin:5px 0 0 0;">`;
-                    canonHist.forEach(r => {
-                        let d = r[2] ? r[2].toString() : "Date inconnue"; // Colonne Année/Date
-                        let maint = r[14] ? r[14].toString() : "Maintenance non précisée"; // Colonne maintenance effectué
-                        histHtml += `<li style="margin-bottom:4px;"><b>${d}</b> : <span style="color:#555;">${maint}</span></li>`;
-                    });
-                    histHtml += `</ul></details>`;
-                } else {
-                    histHtml = `<div style="margin-top:10px; font-size:11px; color:#888; font-style:italic;">Aucun historique au banc pour ce canon.</div>`;
-                }
-
-                // 4. Construction du Formulaire Dynamique
-                let safeId = idCanon.toString().replace(/[^a-zA-Z0-9]/g, "");
-                let formHtml = `<div style="margin-top:10px; padding:15px; background:#f9fbfc; border:2px solid #8e44ad; border-radius:6px;">`;
-                
-                // Champs de base (Communs)
-                formHtml += `<div style="display:flex; gap:10px; margin-bottom:10px;">
-                    <div style="flex:1;"><div class="edit-label">Test Pression Eau 1</div><input type="text" class="edit-input at-field-${safeId}" data-col="test pression eau 1" style="margin-bottom:0;padding:6px;"></div>
-                    <div style="flex:1;"><div class="edit-label">Test Pression Air 1</div><input type="text" class="edit-input at-field-${safeId}" data-col="test pression air 1" style="margin-bottom:0;padding:6px;"></div>
-                </div>`;
-                formHtml += `<div style="margin-bottom:10px;"><div class="edit-label">Maintenance Effectuée</div><input type="text" class="edit-input at-field-${safeId}" data-col="maintenance effectué" style="margin-bottom:0;padding:6px;"></div>`;
-                formHtml += `<div style="margin-bottom:10px;"><div class="edit-label">Pièces Utilisées</div><textarea class="edit-input at-field-${safeId}" data-col="pièces utilisés" style="margin-bottom:0;padding:6px;" rows="2"></textarea></div>`;
-                formHtml += `<div style="display:flex; gap:10px; margin-bottom:10px;">
-                    <div style="flex:1;"><div class="edit-label">Test Pression Eau 2</div><input type="text" class="edit-input at-field-${safeId}" data-col="test pression eau 2" style="margin-bottom:0;padding:6px;"></div>
-                    <div style="flex:1;"><div class="edit-label">Test Pression Air 2</div><input type="text" class="edit-input at-field-${safeId}" data-col="test pression air 2" style="margin-bottom:0;padding:6px;"></div>
-                </div>`;
-                formHtml += `<div style="margin-bottom:15px; background:#e8f8f5; padding:8px; border-radius:4px;"><label style="font-size:12px; font-weight:bold; cursor:pointer; color:#27ae60;"><input type="checkbox" class="at-cbx-${safeId}" data-col="prête"> Vanne Principale Prête ✅</label></div>`;
-
-                let tVAdLower = typeVanneAd.toString().toLowerCase();
-
-                // Conditionnel V2000
-                if(tVAdLower.includes("v2000")) {
-                    formHtml += `<div style="margin-top:15px; padding:10px; background:#e8f4f8; border-left:4px solid #3498db; border-radius:4px;">
-                        <h4 style="margin:0 0 10px 0; color:#2980b9;">⚙️ Formulaire V2000 (Vanne Add.)</h4>
-                        <div style="display:flex; gap:10px; margin-bottom:10px;">
-                            <div style="flex:1;"><div class="edit-label">Pression Eau C2</div><input type="text" class="edit-input at-field-${safeId}" data-col="test pression eau v2000 c2" style="margin-bottom:0;padding:6px;"></div>
-                            <div style="flex:1;"><div class="edit-label">Pression Eau C3</div><input type="text" class="edit-input at-field-${safeId}" data-col="test pression eau v2000 c3" style="margin-bottom:0;padding:6px;"></div>
-                        </div>
-                        <div style="margin-bottom:10px;"><div class="edit-label">Pièces V2000 Utilisées</div><input type="text" class="edit-input at-field-${safeId}" data-col="pièces v2000 utilisés" style="margin-bottom:0;padding:6px;"></div>
-                        <div style="margin-bottom:10px;"><label style="font-size:12px; font-weight:bold; cursor:pointer; color:#2980b9;"><input type="checkbox" class="at-cbx-${safeId}" data-col="V2000 prête"> V2000 Prête ✅</label></div>
+                // 2. Construction de la fiche éditable
+                let fieldsHtml = "";
+                headers.forEach((h, idx) => {
+                    if(idx === 0) return; // On ignore l'ID qui est fixe
+                    let val = values[h] || "";
+                    fieldsHtml += `<div style="margin-bottom:8px;">
+                        <label style="font-size:10px; font-weight:bold; color:#7f8c8d;">${h}</label>
+                        <input type="text" class="edit-input at-field-${idCanon}" data-col="${h}" value="${val}" style="width:100%; padding:5px; border:1px solid #ccc; border-radius:4px;">
                     </div>`;
-                }
+                });
 
-                // Conditionnel VAR
-                if(tVAdLower.includes("var")) {
-                    formHtml += `<div style="margin-top:15px; padding:10px; background:#f9ebea; border-left:4px solid #e74c3c; border-radius:4px;">
-                        <h4 style="margin:0 0 10px 0; color:#c0392b;">⚙️ Formulaire VAR (Vanne Add.)</h4>
-                        <div style="display:flex; gap:10px; margin-bottom:10px;">
-                            <div style="flex:1;"><div class="edit-label">Pression 1 VAR</div><input type="text" class="edit-input at-field-${safeId}" data-col="test pression 1 var" style="margin-bottom:0;padding:6px;"></div>
-                            <div style="flex:1;"><div class="edit-label">Pression 2 VAR</div><input type="text" class="edit-input at-field-${safeId}" data-col="test pression 2 var" style="margin-bottom:0;padding:6px;"></div>
-                        </div>
-                        <div style="margin-bottom:10px;"><div class="edit-label">Pièces VAR Utilisées</div><input type="text" class="edit-input at-field-${safeId}" data-col="pièces var utilisés" style="margin-bottom:0;padding:6px;"></div>
-                        <div style="margin-bottom:10px;"><label style="font-size:12px; font-weight:bold; cursor:pointer; color:#c0392b;"><input type="checkbox" class="at-cbx-${safeId}" data-col="VAR (1) prête"> VAR Prête ✅</label></div>
-                    </div>`;
-                }
-
-                formHtml += `<button onclick="window.saveAtelierForm('${idCanon}', '${safeId}', this)" style="width:100%; margin-top:15px; background:#8e44ad; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:14px; box-shadow:0 2px 5px rgba(0,0,0,0.2);">💾 Enregistrer la Fiche Atelier</button>`;
-                formHtml += `</div>`;
-
-                html += `<div class="sel-details" style="border-left:4px solid #8e44ad;"><div class="sel-details-header"><span>🧰 Canon <b>${idCanon}</b></span><span class="badge" style="margin:0;">${piste}</span></div>
-                <div class="sel-details-body">
-                    <div style="background:#fdfdfe; padding:10px; border:1px solid #eee; border-radius:4px; font-size:12px;">
-                        <b>Type principal :</b> ${typeVanne}<br>
-                        <b>Vanne Additionnelle :</b> <span style="color:#e67e22; font-weight:bold;">${vanneAd} ${typeVanneAd ? '('+typeVanneAd+')' : ''}</span>
+                // 3. Historique (comme dans Tickets/Panne)
+                let canonHist = window.rawAtelier.filter(r => r[0] == idCanon);
+                let histHtml = `<div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+                    <h4 style="font-size:12px; margin-bottom:5px;">🕒 Historique des interventions</h4>
+                    <div style="max-height:150px; overflow-y:auto; font-size:11px;">
+                        ${canonHist.map(r => `<div style="padding:4px; border-bottom:1px solid #f0f0f0;"><b>${r[2]}</b>: ${r[14]}</div>`).join('')}
                     </div>
+                </div>`;
+
+                // 4. Bloc final
+                listDiv.innerHTML += `
+                <div style="background:#fff; padding:15px; border-radius:8px; border:1px solid #ddd; margin-bottom:15px;">
+                    <h3 style="margin:0 0 10px 0;">Canon ${idCanon}</h3>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">${fieldsHtml}</div>
                     ${histHtml}
-                    <details style="margin-top:15px;"><summary style="cursor:pointer; font-weight:bold; color:#8e44ad; padding:10px; background:#f4ebf9; border-radius:4px; border:1px solid #d7bde2;">📝 Dérouler le formulaire banc d'essais</summary>${formHtml}</details>
-                </div></div>`;
+                    <button onclick="window.saveAtelierFull('${idCanon}')" style="margin-top:15px; width:100%; padding:10px; background:#2c3e50; color:#fff; border:none; border-radius:4px; cursor:pointer;">💾 Enregistrer les modifs</button>
+                </div>`;
+            });
+        };
+                window.saveAtelierFull = async function(idCanon) {
+            let fieldsObj = { id: idCanon };
+            document.querySelectorAll(`.at-field-${idCanon}`).forEach(inp => {
+                fieldsObj[inp.getAttribute('data-col')] = inp.value;
+            });
+            // On ajoute la date auto côté serveur
+            fieldsObj["année"] = "AUTO"; 
+
+            let btn = event.target;
+            btn.innerText = "Enregistrement...";
+            
+            let res = await fetch(GOOGLE_API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "save_atelier", fields: fieldsObj })
             });
             
-            listDiv.innerHTML += html;
+            let r = await res.json();
+            if(r.status === "success") {
+                btn.innerText = "✅ Sauvegardé";
+                setTimeout(() => btn.innerText = "💾 Enregistrer les modifs", 2000);
+            }
         };
 
         window.saveAtelierForm = async function(idCanon, safeId, btn) {
