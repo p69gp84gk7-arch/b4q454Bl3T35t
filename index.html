@@ -26,7 +26,7 @@
         @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
         #error-box{display:none;background:#fdf0ed;border:2px solid #e74c3c;padding:20px;border-radius:8px;max-width:600px;color:#c0392b;margin-top:20px;}
         
-        /* SIDEBAR GAUCHE - FERMÉE PAR DEFAUT (-100%) */
+        /* FERMÉ PAR DÉFAUT (-100%) */
         #sidebar{width:360px;flex-shrink:0;background:#fff;display:flex;flex-direction:column;z-index:2500;overflow-y:auto;box-shadow:2px 0 15px rgba(0,0,0,0.08);transition:transform 0.3s;position:absolute;height:calc(100% - 50px);left:0;top:50px; transform:translateX(-100%);}
         #sidebar.open{transform:translateX(0);}
         
@@ -376,7 +376,7 @@
 
         /* ================== COULEURS ET LÉGENDES ================== */
         window.getColorByFilter=function(ratio,p){const inter=(c1,c2,f)=>{let r=c1.slice();for(let i=0;i<3;i++)r[i]=Math.round(r[i]+f*(c2[i]-c1[i]));return `rgb(${r[0]},${r[1]},${r[2]})`;};if(window.mainTheme==='defauts'){let act=window.getActiveTickets(p.id);if(act.length===0)return '#bdc3c7';if(act.some(t=>t.statut.includes('faire')))return '#e74c3c';return '#f39c12';}if(window.mainTheme==='historique'){if(window.histMetric==='eau')return inter([173,216,230],[41,128,185],ratio);if(window.histMetric==='air')return inter([250,219,94],[211,84,0],ratio);if(window.histMetric==='temps')return inter([171,235,198],[39,174,96],ratio);}if(window.mainTheme==='repeteur')return window.repColors[window.getV(p,window.keyRep)]||'#7f8c8d';if(window.mainTheme==='transfo')return window.transfoColors[window.getV(p,window.keyTransfo)]||'#7f8c8d';let tv=window.getV(p,window.keyType).toLowerCase();if(["demak lenko","demac lenko"].includes(tv))return "#0000FF";if(["sufag","street","taurus","taurax","peak"].includes(tv))return "#008000";return window.technoColors[tv]||"#FFD700";};
-       window.updateLegend = function() {
+        window.updateLegend = function() {
             let elDef = document.getElementById('legend-defauts');
             let elSuivi = document.getElementById('legend-suivi_entretien');
             if (window.mainTheme === 'suivi_entretien') {
@@ -884,7 +884,7 @@
             } catch(e) { alert("Échec réseau."); window.renderSelectionPanel(); }
         };
 
-                /* ================== DB LOCALE ET KMZ ================== */
+        /* ================== DB LOCALE ET KMZ ================== */
         window.initLocalDB = function() { try { if (!window.indexedDB) return; const request = window.indexedDB.open("GMAONeigeDB", 2); request.onupgradeneeded = function(event) { window.localDB = event.target.result; if (!window.localDB.objectStoreNames.contains("kmz_layers")) window.localDB.createObjectStore("kmz_layers", { keyPath: "id" }); }; request.onsuccess = function(event) { window.localDB = event.target.result; window.loadSavedLayersFromDB(); }; } catch(e) {} };
         window.saveLayerToDB = function(id, name, geojson, color, weight) { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readwrite"); tx.objectStore("kmz_layers").put({ id: id, name: name, geojson: geojson, isVisible: true, color: color, weight: weight }); };
         window.deleteLayerFromDB = function(id) { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readwrite"); tx.objectStore("kmz_layers").delete(id); };
@@ -893,7 +893,6 @@
         window.buildGeoJsonStyle = function(hexColor, weight) { let finalWeight = weight ? parseInt(weight) : 4; return { style: function (feature) { return { color: hexColor, weight: finalWeight, opacity: 0.8, fillColor: hexColor }; }, pointToLayer: function(feature, latlng) { return L.circleMarker(latlng, {radius: 6, color: hexColor, fillColor: hexColor, fillOpacity: 0.8, weight: 1}); }, onEachFeature: function (feature, layer) { if (feature.properties && feature.properties.name) { layer.bindPopup(`<b style='color:${hexColor}'>` + feature.properties.name + "</b><br>" + (feature.properties.description || "")); } } }; };
         window.fetchGitHubKMZ = async function(url) { const response = await window.fetchWithTimeout(url); if (!response.ok) throw new Error("GitHub refuse l'accès."); let kmlString = ""; if (url.toLowerCase().endsWith('.kmz')) { const blob = await response.blob(); const arrayBuffer = await blob.arrayBuffer(); const zip = await JSZip.loadAsync(arrayBuffer); const kmlFile = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.kml')); if (!kmlFile) throw new Error("Aucun fichier KML trouvé."); kmlString = await kmlFile.async("string"); } else { kmlString = await response.text(); } const parser = new DOMParser(); const xmlDoc = parser.parseFromString(kmlString, "text/xml"); return toGeoJSON.kml(xmlDoc); };
         
-        // Les 2 fonctions manquantes qui faisaient planter :
         window.renderCloudLayersList=function(){const container=document.getElementById('cloud-layers-container');if(!container)return;container.innerHTML="";if(window.cloudKmzLayers.length===0){container.innerHTML=`<p style="font-size:11px; color:#888; font-style:italic;">Aucun calque configuré.</p>`;return;}window.cloudKmzLayers.forEach((layer,idx)=>{container.innerHTML+=`<div class="kml-layer-item" style="border-color:#e1e8ed; background:#fafbfc; display:flex; flex-wrap:wrap; gap:5px; align-items:center;"><input type="checkbox" id="cloud-cbx-${idx}" ${layer.isVisible?'checked':''} onchange="window.toggleCloudLayer(${idx})" style="margin:0 5px 0 0;"><input type="color" class="layer-color-picker" value="${layer.color}" onchange="window.changeCloudLayerStyle(${idx}, this.value, null)" title="Couleur"><input type="number" class="layer-weight-picker" value="${layer.weight||4}" min="1" max="15" onchange="window.changeCloudLayerStyle(${idx}, null, this.value)" title="Épaisseur"><label style="cursor:pointer; display:flex; flex-direction:column; flex-grow:1; margin-left:8px; min-width:120px;" for="cloud-cbx-${idx}"><span style="color:#2c3e50; font-size:12px;">${layer.nom}</span><span style="font-size:10px; color:#7f8c8d; font-weight:normal;">${layer.commentaire}</span></label><span id="cloud-status-${idx}" style="min-width:20px; text-align:right;"></span></div>`;});};
         window.renderCustomLayersList=function(){const container=document.getElementById('custom-layers-list');if(!container)return;container.innerHTML="";for(let id in window.externalLayers){const ext=window.externalLayers[id];container.innerHTML+=`<div class="kml-layer-item"><input type="checkbox" id="loc-cbx-${id}" ${ext.isVisible?'checked':''} onchange="window.toggleExtLayer('${id}')" style="margin:0 5px 0 0;"><input type="color" class="layer-color-picker" value="${ext.color}" onchange="window.changeExtLayerStyle('${id}', this.value, null)" title="Couleur"><input type="number" class="layer-weight-picker" value="${ext.weight||4}" min="1" max="15" onchange="window.changeExtLayerStyle('${id}', null, this.value)" title="Épaisseur"><label for="loc-cbx-${id}" style="cursor:pointer; flex-grow:1; margin-left:8px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#34495e;">${ext.name}</label><button onclick="window.deleteExtLayer('${id}')" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:16px;">🗑️</button></div>`;}};
 
@@ -904,7 +903,25 @@
         window.toggleExtLayer = function(id) { const ext = window.externalLayers[id]; ext.isVisible = !ext.isVisible; if(ext.isVisible) { window.map.addLayer(ext.layer); } else { window.map.removeLayer(ext.layer); } window.updateLayerDataInDB(id, { isVisible: ext.isVisible }); window.renderCustomLayersList(); };
         window.changeExtLayerStyle = function(id, newColor, newWeight) { if(window.externalLayers[id]) { if (newColor !== null) window.externalLayers[id].color = newColor; if (newWeight !== null) window.externalLayers[id].weight = parseInt(newWeight); let col = window.externalLayers[id].color; let w = window.externalLayers[id].weight; if(window.externalLayers[id].layer) { window.externalLayers[id].layer.setStyle({color: col, fillColor: col, weight: w}); window.externalLayers[id].layer.eachLayer(function (layer) { if (layer instanceof L.CircleMarker) { layer.setStyle({ color: col, fillColor: col }); } }); } window.updateLayerDataInDB(id, { color: col, weight: w }); } };
         window.deleteExtLayer = function(id) { window.map.removeLayer(window.externalLayers[id].layer); delete window.externalLayers[id]; window.deleteLayerFromDB(id); window.renderCustomLayersList(); };
-        
+
+        /* ================== CALCUL DES MAX ================== */
+        window.calculateMaxes = function() {
+            if(!window.saisonsList[window.histSeasonIdx]) return;
+            let s = window.saisonsList[window.histSeasonIdx]; window.absoluteMaxes = { eau: 0, air: 0, temps: 0 };
+            window.snowCannons.features.forEach(f => {
+                if (f.properties.historique[s]) {
+                    window.absoluteMaxes.eau = Math.max(window.absoluteMaxes.eau, f.properties.historique[s].eau);
+                    window.absoluteMaxes.air = Math.max(window.absoluteMaxes.air, f.properties.historique[s].air);
+                    window.absoluteMaxes.temps = Math.max(window.absoluteMaxes.temps, f.properties.historique[s].temps);
+                }
+            });
+            window.currentMaxThreshold = { ...window.absoluteMaxes }; window.currentMinThreshold = { eau:0, air:0, temps:0 };
+            let slmin = document.getElementById('slider-min'); let slmax = document.getElementById('slider-max');
+            if(slmin) { slmin.max = window.absoluteMaxes[window.histMetric] || 1; slmin.value = 0; slmin.step = "any"; slmin.oninput = function(e) { let val = parseFloat(e.target.value) || 0; if (val > window.currentMaxThreshold[window.histMetric]) { val = window.currentMaxThreshold[window.histMetric]; e.target.value = val; } window.currentMinThreshold[window.histMetric] = val; let vm = document.getElementById('val-min'); if(vm) vm.innerText = Math.round(val); window.updateMap(); window.triggerGlobalFilterChart(); }; }
+            if(slmax) { slmax.max = window.absoluteMaxes[window.histMetric] || 1; slmax.value = window.absoluteMaxes[window.histMetric] || 1; slmax.step = "any"; slmax.oninput = function(e) { let val = parseFloat(e.target.value) || 0; if (val < window.currentMinThreshold[window.histMetric]) { val = window.currentMinThreshold[window.histMetric]; e.target.value = val; } window.currentMaxThreshold[window.histMetric] = val; let vmx = document.getElementById('val-max'); if(vmx) vmx.innerText = Math.round(val); window.updateMap(); window.triggerGlobalFilterChart(); }; }
+            let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
+        };
+
         /* ================== BOOT & FETCH ================== */
         window.setStep = function(step, desc) { let elStep = document.getElementById('loading-step'); let elDesc = document.getElementById('loading-desc'); if (elStep) elStep.innerText = "Étape " + step + "/5"; if (elDesc) elDesc.innerText = desc; };
         window.fetchWithTimeout = async function(resource, options = {}) { let finalUrl = resource; if(!resource.includes('raw.githubusercontent')) { finalUrl += (resource.includes('?') ? '&' : '?') + 't=' + new Date().getTime(); } const controller = window.AbortController ? new AbortController() : null; if (controller) options.signal = controller.signal; const timeoutPromise = new Promise((_, reject) => { setTimeout(() => { if (controller) controller.abort(); reject(new Error("Délai d'attente dépassé (15s).")); }, 15000); }); return Promise.race([fetch(finalUrl, options), timeoutPromise]); };
@@ -1110,7 +1127,9 @@
                     if(window.mainTheme === 'historique') window.calculateMaxes(); 
                     window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
                     
-                    if(window.mainTheme === 'suivi_entretien') document.getElementById('right-sidebar').classList.add('open');
+                    if(window.mainTheme === 'suivi_entretien') {
+                        window.showView('view-selection', '📊 Dashboard Maintenance', '680px');
+                    }
                 });
             });
 
