@@ -1084,7 +1084,7 @@
             window.keyPiste = findCol(['pistes', 'piste']); window.keyType = findCol(['type canon', 'type de canon', 'type']);
             window.keyRep = findCol(['répéteur', 'repeteur', 'épéteur', 'epeteur', 'peteur']); window.keyTransfo = findCol(['transfo']);
 
-            const idxId = 2; const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps'));
+            
             if (idxXY === -1) throw new Error("La colonne 'xy' est introuvable.");
 
             window.keyPiste = findCol(['pistes', 'piste']); window.keyType = findCol(['type canon', 'type']);
