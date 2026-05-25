@@ -1070,11 +1070,6 @@
             const genHeaders = data.general[0].map(h => (h||"").toString().toLowerCase().trim());
             const originalHeaders = data.general[0].map(h => (h||"").toString().trim()); 
                       // CORRECTION : Recherche EXACTE d'abord pour éviter de cibler la mauvaise colonne
-                        const findCol = (keywords) => { 
-                let idx = genHeaders.findIndex(h => keywords.some(k => h === k)); 
-                if (idx === -1) idx = genHeaders.findIndex(h => keywords.some(k => h.includes(k))); 
-                return idx !== -1 ? originalHeaders[idx] : null; 
-            };
 
                         const findCol = (keywords) => { 
                 let idx = genHeaders.findIndex(h => keywords.some(k => h === k)); 
