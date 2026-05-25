@@ -1281,8 +1281,7 @@
         
         setTimeout(() => { if(window.bootAttempt === 0) { window.document.dispatchEvent(new Event("DOMContentLoaded")); } }, 2000);
 
-               /* ================== MODULE ATELIER ================== */
-        // Variable globale pour stocker l'historique Atelier récupéré du sheet
+                /* ================== MODULE ATELIER ================== */
         window.rawAtelier = [];
 
         window.renderAtelierWorkspace = function() {
@@ -1326,6 +1325,14 @@
                 histHtml += `</div>`;
 
                 // --- ACCORDÉON 3 : LE FORMULAIRE BANC D'ESSAIS COMPLET ---
+                
+                // Détection automatique du type de vanne additionnelle pour pré-sélectionner le bon menu
+                let isAbrisDouble = (window.getV(p, "abris double") || "").toString().toLowerCase() === "oui";
+                let strAd = ((window.getV(p, "vanne additionnelle") || "") + " " + (window.getV(p, "type vanne ad 1") || "")).toLowerCase();
+                let defaultVanne = "none";
+                if (strAd.includes("v2000")) defaultVanne = "v2000";
+                else if (strAd.includes("var")) defaultVanne = isAbrisDouble ? "var_double" : "var";
+
                 let formHtml = `
                     <div style="padding:15px; background:#fdfdfe;">
                         <h4 style="margin:0 0 10px 0; color:#2c3e50;">1. Tests de la Vanne Principale</h4>
@@ -1348,36 +1355,67 @@
                             <div style="flex:1;"><span class="edit-label">test pression air 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 2" style="padding:6px; margin-bottom:8px;"></div>
                         </div>
                         <div style="display:flex; gap:10px; width:100%;">
-                            <div style="flex:1;"><span class="edit-label">test elec vanne </span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne " style="padding:6px; margin-bottom:8px;"></div>
+                            <div style="flex:1;"><span class="edit-label">test elec vanne (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" style="padding:6px; margin-bottom:8px;"></div>
                             <div style="flex:1;"><span class="edit-label">manu 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 2" style="padding:6px; margin-bottom:8px;"></div>
                             <div style="flex:1;"><span class="edit-label">capteur 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 2" style="padding:6px; margin-bottom:8px;"></div>
                         </div>
-                        <div><span class="edit-label">prête </span><input type="text" class="edit-input b-field-${safeId}" data-col="prête " value="OUI" style="padding:6px; margin-bottom:8px;"></div>
+                        <div><span class="edit-label">prête </span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="OUI" style="padding:6px; margin-bottom:8px;"></div>
 
                         <hr style="border:0; border-top:2px dashed #eee; margin:15px 0;">
                         
                         <h4 style="margin:0 0 10px 0; color:#e67e22;">2. Tests Vanne Additionnelle (Optionnel)</h4>
                         <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:15px; border-color:#e67e22; font-weight:bold;">
-                            <option value="none">-- Aucune vanne additionnelle à tester --</option>
-                            <option value="var">Afficher le test VAR (Simple)</option>
-                            <option value="v2000">Afficher le test V2000 (Double C2/C3)</option>
+                            <option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune vanne additionnelle à tester --</option>
+                            <option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>Afficher le test VAR (Simple)</option>
+                            <option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>Afficher le test VAR Double (Perche 1 & 2)</option>
+                            <option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>Afficher le test V2000 (Double C2/C3)</option>
                         </select>
 
-                        <div id="bloc-var-${safeId}" style="display:none; background:#fdf2e9; padding:15px; border-radius:6px; border:1px solid #f8c471; margin-bottom:15px;">
-                            <b style="color:#d35400; font-size:12px; margin-bottom:8px; display:block;">Tests VAR</b>
+                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; background:#fdf2e9; padding:15px; border-radius:6px; border:1px solid #f8c471; margin-bottom:15px;">
+                            <b style="color:#d35400; font-size:12px; margin-bottom:8px; display:block;">Tests VAR Simple</b>
                             <div style="display:flex; gap:10px;">
                                 <div style="flex:1;"><span class="edit-label">test elec VAR (1)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="padding:4px; margin-bottom:8px;"></div>
                                 <div style="flex:1;"><span class="edit-label">test pression 1 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="padding:4px; margin-bottom:8px;"></div>
                             </div>
                             <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">test elec VAR (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2)" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test elec VAR (1) bis</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" style="padding:4px; margin-bottom:8px;"></div>
                                 <div style="flex:1;"><span class="edit-label">test pression 2 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="padding:4px; margin-bottom:8px;"></div>
                             </div>
                             <div><span class="edit-label">pièces var utilisés</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés" style="padding:4px; margin-bottom:8px;"></div>
                             <div><span class="edit-label">VAR (1) prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (1) prête" value="OUI" style="padding:4px; margin-bottom:8px;"></div>
                         </div>
 
-                        <div id="bloc-v2000-${safeId}" style="display:none; background:#eaf2f8; padding:15px; border-radius:6px; border:1px solid #85c1e9; margin-bottom:15px;">
+                        <div id="bloc-var-double-${safeId}" style="display:${defaultVanne === 'var_double' ? 'block' : 'none'}; background:#fef5e7; padding:15px; border-radius:6px; border:1px solid #eb984e; margin-bottom:15px;">
+                            <b style="color:#ba4a00; font-size:12px; margin-bottom:8px; display:block;">Tests VAR Double (Abris Double)</b>
+                            
+                            <div style="font-weight:bold; font-size:11px; color:#ba4a00; margin-bottom:5px; text-transform:uppercase;">• VAR Perche 1</div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test elec VAR (1)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test pression 1 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test elec VAR (1) bis</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test pression 2 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div><span class="edit-label">pièces var utilisés</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés" style="padding:4px; margin-bottom:12px;"></div>
+                            <div><span class="edit-label">VAR (1) prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (1) prête" value="OUI" style="padding:4px; margin-bottom:12px;"></div>
+
+                            <hr style="border:0; border-top:1px dashed #f5cba7; margin:10px 0;">
+
+                            <div style="font-weight:bold; font-size:11px; color:#ba4a00; margin-bottom:5px; text-transform:uppercase;">• VAR Perche 2</div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test elec VAR (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2)" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test pression 1 var (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var (2)" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test elec VAR (2) bis</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2) bis" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test pression 2 var (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var (2)" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div><span class="edit-label">pièces var utilisés bis</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés bis" style="padding:4px; margin-bottom:8px;"></div>
+                            <div><span class="edit-label">VAR (2) prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (2) prête" value="OUI" style="padding:4px; margin-bottom:8px;"></div>
+                        </div>
+
+                        <div id="bloc-v2000-${safeId}" style="display:${defaultVanne === 'v2000' ? 'block' : 'none'}; background:#eaf2f8; padding:15px; border-radius:6px; border:1px solid #85c1e9; margin-bottom:15px;">
                             <b style="color:#2980b9; font-size:12px; margin-bottom:8px; display:block;">Tests V2000 (Voie C2 & C3)</b>
                             <div style="display:flex; gap:10px;">
                                 <div style="flex:1;"><span class="edit-label">test 1 elec V2000 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" style="padding:4px; margin-bottom:8px;"></div>
@@ -1402,7 +1440,7 @@
                         </div>
 
                         <hr style="border:0; border-top:2px dashed #eee; margin:15px 0;">
-                        <div><span class="edit-label">Commentaire Final</span><input type="text" class="edit-input b-field-${safeId}" data-col="Commentaire" style="padding:6px; margin-bottom:0;"></div>
+                        <div><span class="edit-label">Commentaire Final</span><input type="text" class="edit-input b-field-${safeId}" data-col="Commentaire" placeholder="Remarques éventuelles sur le passage au banc..." style="padding:6px; margin-bottom:0;"></div>
                         
                         <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" style="width:100%; margin-top:15px; background:#8e44ad; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer;">🚀 Archiver ce rapport de Banc d'Essais</button>
                     </div>
@@ -1413,20 +1451,28 @@
                 card.className = "atelier-card";
                 card.innerHTML = `
                     <h3>📍 Canon N° ${idCanon} <span style="font-size:12px; font-weight:normal; color:#888; float:right;">Piste: ${piste}</span></h3>
-                    <details class="atelier-sub-details"><summary>⚙️ Consulter & Éditer les Données Techniques</summary>
+                    
+                    <details class="atelier-sub-details"><summary>⚙️ 1. Consulter & Éditer les Données Techniques (Tableau Général)</summary>
                         <div class="atelier-form-grid">${techHtml}</div>
-                        <div style="padding:15px;"><button onclick="window.saveAtelierTechRow('${idCanon}','${safeId}',this)" style="width:100%; background:#2c3e50; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Enregistrer les modifs techniques</button></div>
+                        <div style="padding:0 15px 15px 15px;"><button onclick="window.saveAtelierTechRow('${idCanon}','${safeId}',this)" style="width:100%; background:#2c3e50; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Enregistrer les modifications techniques</button></div>
                     </details>
-                    <details class="atelier-sub-details"><summary>🕒 Historique des pannes terrain</summary>${histHtml}</details>
-                    <details class="atelier-sub-details"><summary>📝 Formulaire de passage au Banc d'Essais</summary>${formHtml}</details>
+                    
+                    <details class="atelier-sub-details"><summary>🕒 2. Historique des défauts & pannes sur la ligne (Tickets)</summary>
+                        ${histHtml}
+                    </details>
+                    
+                    <details class="atelier-sub-details"><summary>📝 3. Enregistrer un nouveau passage au Banc d'Essais (Atelier)</summary>
+                        ${formHtml}
+                    </details>
                 `;
                 ws.appendChild(card);
             });
         };
 
-        // Gère l'affichage VAR ou V2000
+        // Gère l'affichage dynamique VAR Simple / VAR Double / V2000
         window.handleSelectVanne = function(safeId, val) {
             document.getElementById(`bloc-var-${safeId}`).style.display = (val === 'var') ? 'block' : 'none';
+            document.getElementById(`bloc-var-double-${safeId}`).style.display = (val === 'var_double') ? 'block' : 'none';
             document.getElementById(`bloc-v2000-${safeId}`).style.display = (val === 'v2000') ? 'block' : 'none';
         };
 
@@ -1450,17 +1496,18 @@
             let canonData = window.snowCannons.features.find(f => f.properties.id == idCanon);
             let p = canonData ? canonData.properties : null;
             
-            // Auto-remplissage avec les noms de colonnes exacts de ton tableau
             fieldsObj["id"] = idCanon;
-            fieldsObj["N° de vanne "] = p ? window.getV(p, "N° de vanne") : ""; // Note: espace conservé
+            fieldsObj["N° de vanne"] = p ? window.getV(p, "N° de vanne") : ""; 
             fieldsObj["piste"] = p ? window.getV(p, window.keyPiste) : "";
-            fieldsObj["abris double "] = p ? window.getV(p, "abris double") : ""; // Espace conservé
+            fieldsObj["abris double"] = p ? window.getV(p, "abris double") : ""; 
             fieldsObj["type"] = p ? window.getV(p, "type") : "";
             fieldsObj["vanne additionnelle"] = p ? window.getV(p, "vanne additionnelle") : "";
             fieldsObj["type vanne AD 1"] = p ? window.getV(p, "type vanne ad 1") : "";
 
-            // Récupération des inputs
+            // Récupération des inputs saisis
             document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => {
+                // On ne stocke que les champs qui sont actuellement affichés
+                if (inp.closest('div[id^="bloc-"]') && inp.closest('div[id^="bloc-"]').style.display === 'none') return;
                 fieldsObj[inp.getAttribute('data-col')] = inp.value;
             });
 
