@@ -390,6 +390,7 @@
                 }
             });
         };
+        window.resetHighlight = function() { if(!window.geojsonLayer) return; window.geojsonLayer.eachLayer(function(layer) { layer.setOpacity(1); if(layer._icon) { layer._icon.style.opacity = "1"; layer._icon.style.transform = layer._icon.style.transform.replace(' scale(1.3)', ''); } }); window.updateMap(); };
         window.updateMap = function() {
             if(!window.geojsonLayer) return;
             let s = window.saisonsList[window.histSeasonIdx];
@@ -1084,7 +1085,8 @@
             window.keyPiste = findCol(['pistes', 'piste']); window.keyType = findCol(['type canon', 'type de canon', 'type']);
             window.keyRep = findCol(['répéteur', 'repeteur', 'épéteur', 'epeteur', 'peteur']); window.keyTransfo = findCol(['transfo']);
 
-            
+            let idxId = genHeaders.findIndex(h => h.includes('n° de vanne') || h.includes('n°'));
+if(idxId === -1) idxId = 1; // Index 1 correspond à ta 2ème colonne (N° de vanne)
             if (idxXY === -1) throw new Error("La colonne 'xy' est introuvable.");
 
             window.keyPiste = findCol(['pistes', 'piste']); window.keyType = findCol(['type canon', 'type']);
