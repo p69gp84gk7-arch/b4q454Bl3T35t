@@ -95,6 +95,16 @@
         .bi-sidebar {width:400px;background:#fff;border-right:1px solid #ddd;padding:20px;overflow-y:auto;box-shadow:2px 0 10px rgba(0,0,0,0.05);}
         .bi-content {flex:1;padding:20px;display:flex;flex-direction:column;}
         .bi-canvas-box {background:#fff;border-radius:8px;border:1px solid #ddd;padding:20px;flex:1;position:relative;box-shadow:0 4px 15px rgba(0,0,0,0.05);}
+
+        /* ================= STYLE CHAPITRE ATELIER ================= */
+        .atelier-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .atelier-card h3 { margin: 0 0 10px 0; color: #2c3e50; border-bottom: 2px solid #8e44ad; padding-bottom: 5px; }
+        .atelier-sub-details { margin-top: 8px; border: 1px solid #e1e8ed; border-radius: 6px; background: #fff; overflow: hidden; }
+        .atelier-sub-details summary { background: #f8f9fa; padding: 10px 15px; font-size: 13px; font-weight: bold; color: #34495e; cursor: pointer; border-bottom: 1px solid #e1e8ed; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+        .atelier-sub-details summary::-webkit-details-marker { display: none; }
+        .atelier-sub-details summary::after { content: '▼'; font-size: 10px; color: #bdc3c7; }
+        .atelier-sub-details[open] summary::after { content: '▲'; color: #8e44ad; }
+        .atelier-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; padding: 15px; background: #fdfdfe; }
         
         @media(max-width:768px){#sidebar,#right-sidebar{width:100%;}#compare-modal{width:95%;} .bi-container{flex-direction:column;} .bi-sidebar{width:100%;border-right:none;border-bottom:1px solid #ddd;height:40%;} .bi-content{height:60%;}}
     </style>
@@ -1156,7 +1166,7 @@
             window.webcamLayerGroup.addTo(window.map);
             
             document.querySelectorAll('input[name="main_theme"]').forEach(r => {
-                r.addEventListener('change', e => {
+                                r.addEventListener('change', e => {
                     window.mainTheme = e.target.value;
                     document.querySelectorAll('.theme-details, .theme-details-hist').forEach(el => el.style.display = 'none');
                     document.querySelectorAll('.radio-card').forEach(el => { el.style.borderBottomLeftRadius = '6px'; el.style.borderBottomRightRadius = '6px'; el.style.marginBottom = '8px'; el.style.borderColor = '#e1e8ed'; el.style.borderTop = '1px solid #e1e8ed'; });
@@ -1171,28 +1181,22 @@
                         activeLabel.style.marginBottom = '0'; 
                         if(window.mainTheme === 'historique') activeLabel.style.borderColor = '#2ecc71'; 
                         else if(window.mainTheme === 'suivi_entretien') activeLabel.style.borderColor = '#27ae60'; 
+                        else if(window.mainTheme === 'atelier') activeLabel.style.borderColor = '#8e44ad';
                         else activeLabel.style.borderColor = '#3498db'; 
                     }
                     
-                                       if(window.mainTheme === 'historique') window.calculateMaxes(); 
-                    window.updateLegend(); window.updateMap(); 
-                    
-                    // Si on n'est PAS dans Atelier, on affiche le tableau de bord normal
-                    if(window.mainTheme !== 'atelier') {
-                        window.triggerGlobalFilterChart();
-                    }
-                    
-                    // Si on est dans Suivi Entretien, on ouvre le panneau droit
-                    if(window.mainTheme === 'suivi_entretien') {
-                        document.getElementById('right-sidebar').classList.add('open');
-                    }
-                    
-                    // NOUVEAU : Si on est dans l'Atelier, on ouvre le panneau et on charge ta fonction
-                    if(window.mainTheme === 'atelier') {
-                        document.getElementById('right-sidebar').classList.add('open');
-                        document.getElementById('view-edit').style.display = 'none';
-                        document.getElementById('view-selection').style.display = 'block';
-                        window.renderAtelierPanel();
+                    // GESTION DE L'AFFICHAGE CARTE VS WORKSPACE ATELIER
+                    if (window.mainTheme === 'atelier') {
+                        document.getElementById('map').style.display = 'none';
+                        document.getElementById('atelier-workspace').style.display = 'block';
+                        window.closeRightSidebar(); // Ferme le bandeau droit inutile ici
+                        window.renderAtelierWorkspace(); // Lance le rendu
+                    } else {
+                        document.getElementById('map').style.display = 'block';
+                        document.getElementById('atelier-workspace').style.display = 'none';
+                        if(window.mainTheme === 'historique') window.calculateMaxes(); 
+                        window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
+                        if(window.mainTheme === 'suivi_entretien') document.getElementById('right-sidebar').classList.add('open');
                     }
                 });
             });
@@ -1276,6 +1280,210 @@
         });
         
         setTimeout(() => { if(window.bootAttempt === 0) { window.document.dispatchEvent(new Event("DOMContentLoaded")); } }, 2000);
+
+        /* =========================================================
+           CHAPITRE JS : MOTEUR ET SAUVEGARDE ATELIER
+           ========================================================= */
+
+        window.renderAtelierWorkspace = function() {
+            let workspace = document.getElementById('atelier-workspace');
+            if(!workspace) return;
+            workspace.innerHTML = `<h2 style="color:#2c3e50; margin-top:0;">🧰 Banc d'Essais & Maintenance Atelier</h2>`;
+
+            // 1. Identification des canons en "Préventif usine" = "oui"
+            let canonsEnAtelier = [];
+            window.suiviEntretienData.forEach(row => {
+                if(row[3] && row[3].toString().toLowerCase().trim() === "oui") {
+                    canonsEnAtelier.push(row[0].toString());
+                }
+            });
+
+            if(canonsEnAtelier.length === 0) {
+                workspace.innerHTML += `<div style="padding:3px; background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; color:#7f8c8d;">✅ Aucun enneigeur n'est actuellement marqué "Préventif Usine" dans le suivi entretien.</div>`;
+                return;
+            }
+
+            // 2. Génération des fiches individuelles par canon
+            canonsEnAtelier.forEach(idCanon => {
+                let feature = window.snowCannons.features.find(f => f.properties.id == idCanon);
+                if(!feature) return;
+
+                let p = feature.properties;
+                let piste = window.getV(p, window.keyPiste);
+                let typeVanne = window.getV(p, "type") || window.getV(p, "TYPE") || "";
+                let vanneAd = window.getV(p, "vanne additionnelle") || window.getV(p, "vanne ad") || "";
+                let typeVanneAd = window.getV(p, "type vanne ad 1") || "";
+
+                let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, "");
+
+                // --- ACCORDION 1 : CARACTÉRISTIQUES TECHNIQUES ÉDITABLES ---
+                let headersGen = window.rawGeneral[0] || [];
+                let techFieldsHtml = "";
+                headersGen.forEach(h => {
+                    if(h.toLowerCase().includes('xy') || h.toLowerCase().includes('gps') || h.toLowerCase() === 'id') return;
+                    let currentVal = window.getV(p, h);
+                    techFieldsHtml += `<div style="margin-bottom:8px;"><span class="edit-label">${h}</span><input type="text" class="edit-input tech-field-${safeId}" data-head="${h}" value="${currentVal}" style="margin-bottom:0; padding:6px;"></div>`;
+                });
+
+                // --- ACCORDION 2 : HISTORIQUE DES DEFFAUTS (TICKETS) ---
+                let activeTickets = window.getActiveTickets(idCanon);
+                let historyTickets = window.getHistoryTickets(idCanon);
+                let ticketsHtml = `<div style="padding:15px; background:#fff;"><b style="color:#c0392b;">Défauts actifs :</b>`;
+                if(activeTickets.length === 0) ticketsHtml += `<span style="color:#27ae60; font-size:12px;"> Aucun</span>`;
+                else activeTickets.forEach(t => { ticketsHtml += `<div style="font-size:12px; margin-top:5px; color:#e74c3c;">• <b>${t.defaut}</b> (${t.statut})</div>`; });
+                
+                ticketsHtml += `<br><b style="color:#2c3e50; margin-top:10px; display:block;">Historique archivé :</b>`;
+                if(historyTickets.length === 0) ticketsHtml += `<span style="color:#7f8c8d; font-size:12px; font-style:italic;"> Aucun antécédent trouvé</span>`;
+                else historyTickets.forEach(t => { ticketsHtml += `<div style="font-size:11px; border-bottom:1px solid #eee; padding:4px 0;"><b>${t.date}</b> : ${t.defaut}</div>`; });
+                ticketsHtml += `</div>`;
+
+                // --- ACCORDION 3 : FORMULAIRE DU BANC D'ESSAIS CONDITIONNEL ---
+                let formFieldsHtml = `
+                    <div style="display:flex; gap:10px; width:100%;">
+                        <div style="flex:1;"><span class="edit-label">test pression eau 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" style="margin-bottom:0; padding:6px;"></div>
+                        <div style="flex:1;"><span class="edit-label">test pression air 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" style="margin-bottom:0; padding:6px;"></div>
+                    </div>
+                    <div style="display:flex; gap:10px; width:100%; margin-top:8px;">
+                        <div style="flex:1;"><span class="edit-label">test elec Vanne</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" style="margin-bottom:0; padding:6px;"></div>
+                        <div style="flex:1;"><span class="edit-label">manu 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 1" style="margin-bottom:0; padding:6px;"></div>
+                        <div style="flex:1;"><span class="edit-label">capteur 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 1" style="margin-bottom:0; padding:6px;"></div>
+                    </div>
+                    <div style="margin-top:8px;"><span class="edit-label">maintenance effectué</span><input type="text" class="edit-input b-field-${safeId}" data-col="maintenance effectué" style="margin-bottom:0; padding:6px;"></div>
+                    <div style="margin-top:8px;"><span class="edit-label">pièces utilisés</span><textarea class="edit-input b-field-${safeId}" data-col="pièces utilisés" style="margin-bottom:0; padding:6px;" rows="2"></textarea></div>
+                    
+                    <div style="display:flex; gap:10px; width:100%; margin-top:8px;">
+                        <div style="flex:1;"><span class="edit-label">test pression eau 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" style="margin-bottom:0; padding:6px;"></div>
+                        <div style="flex:1;"><span class="edit-label">test pression air 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 2" style="margin-bottom:0; padding:6px;"></div>
+                    </div>
+                    <div style="display:flex; gap:10px; width:100%; margin-top:8px;">
+                        <div style="flex:1;"><span class="edit-label">test elec vanne (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" style="margin-bottom:0; padding:6px;"></div>
+                        <div style="flex:1;"><span class="edit-label">manu 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 2" style="margin-bottom:0; padding:6px;"></div>
+                        <div style="flex:1;"><span class="edit-label">capteur 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 2" style="margin-bottom:0; padding:6px;"></div>
+                    </div>
+                    <div style="margin-top:8px;"><span class="edit-label">prête (OUI/NON)</span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="OUI" style="margin-bottom:0; padding:6px;"></div>
+                `;
+
+                // Affichage optionnel bloc V2000
+                if(vanneAd.toLowerCase().includes('v2000') || typeVanneAd.toLowerCase().includes('v2000')) {
+                    formFieldsHtml += `
+                    <div style="margin-top:12px; padding:10px; background:#eaf2f8; border-left:3px solid #2980b9; border-radius:4px;">
+                        <b style="color:#2980b9; font-size:12px; display:block; margin-bottom:5px;">Bloc Optionnel V2000</b>
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;"><span class="edit-label">test 1 elec V2000 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" style="padding:4px;"></div>
+                            <div style="flex:1;"><span class="edit-label">test 1 elec V2000 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c3" style="padding:4px;"></div>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:5px;">
+                            <div style="flex:1;"><span class="edit-label">test pression eau v2000 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c2" style="padding:4px;"></div>
+                            <div style="flex:1;"><span class="edit-label">test pression eau v2000 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c3" style="padding:4px;"></div>
+                        </div>
+                        <div style="margin-top:5px;"><span class="edit-label">pièces v2000 utilisés</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces v2000 utilisés" style="padding:4px;"></div>
+                        <div style="margin-top:5px;"><span class="edit-label">V2000 prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="V2000 prête" value="OUI" style="padding:4px;"></div>
+                    </div>`;
+                }
+
+                // Affichage optionnel bloc VAR
+                if(vanneAd.toLowerCase().includes('var') || typeVanneAd.toLowerCase().includes('var')) {
+                    formFieldsHtml += `
+                    <div style="margin-top:12px; padding:10px; background:#fdf2e9; border-left:3px solid #e67e22; border-radius:4px;">
+                        <b style="color:#e67e22; font-size:12px; display:block; margin-bottom:5px;">Bloc Optionnel VAR</b>
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;"><span class="edit-label">test elec VAR (1)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="padding:4px;"></div>
+                            <div style="flex:1;"><span class="edit-label">test pression 1 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="padding:4px;"></div>
+                        </div>
+                        <div style="margin-top:5px;"><span class="edit-label">pièces var utilisés</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés" style="padding:4px;"></div>
+                        <div style="margin-top:5px;"><span class="edit-label">VAR (1) prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (1) prête" value="OUI" style="padding:4px;"></div>
+                    </div>`;
+                }
+
+                // Bloc joints spécifiques à la fin du banc d'essai
+                formFieldsHtml += `
+                    <div style="margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:5px; background:#f4f6f8; padding:8px; border-radius:4px;">
+                        <div><span class="edit-label">joint R18 NITRILE</span><input type="number" class="edit-input b-field-${safeId}" data-col="joint R18 NITRILE" value="0" style="padding:4px;"></div>
+                        <div><span class="edit-label">joint R18 ptfe</span><input type="number" class="edit-input b-field-${safeId}" data-col="joint R18 ptfe" value="0" style="padding:4px;"></div>
+                        <div><span class="edit-label">joint PTFE r3</span><input type="number" class="edit-input b-field-${safeId}" data-col="joint PTFE r3" value="0" style="padding:4px;"></div>
+                        <div><span class="edit-label">joint R11 NITRILE</span><input type="number" class="edit-input b-field-${safeId}" data-col="joint R11 NITRILE" value="0" style="padding:4px;"></div>
+                    </div>
+                `;
+
+                // Injection finale de la carte enneigeur dans l'espace central
+                let card = document.createElement('div');
+                card.className = "atelier-card";
+                card.innerHTML = `
+                    <h3>📍 Enneigeur Canon N° ${idCanon} (Piste: ${piste})</h3>
+                    <div style="font-size:12px; margin-bottom:10px; color:#555;">Configuration détectée : Principal = <b>${typeVanne}</b> | Add. = <b>${vanneAd || 'Aucune'}</b></div>
+                    
+                    <details class="atelier-sub-details"><summary>⚙️ 1. Consulter & Éditer les Données Techniques</summary>
+                        <div class="atelier-form-grid">${techFieldsHtml}</div>
+                        <div style="padding:0 15px 15px 15px;"><button onclick="window.saveAtelierTechRow('${idCanon}','${safeId}',this)" style="width:100%; background:#2c3e50; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Enregistrer les modifications techniques</button></div>
+                    </details>
+                    
+                    <details class="atelier-sub-details"><summary>🕒 2. Historique des défauts & pannes sur la ligne</summary>
+                        ${ticketsHtml}
+                    </details>
+                    
+                    <details class="atelier-sub-details"><summary>📝 3. Enregistrer un nouveau passage au Banc d'Essais</summary>
+                        <div style="padding:15px; background:#fff;">
+                            ${formFieldsHtml}
+                            <button onclick="window.saveAtelierBancTestRow('${idCanon}','${safeId}',this)" style="width:100%; margin-top:15px; background:#8e44ad; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer;">🚀 Envoyer au Banc d'Essais (Historisation)</button>
+                        </div>
+                    </details>
+                `;
+                workspace.appendChild(card);
+            });
+        };
+
+        // ENREGISTREMENT 1 : Sauvegarde modifications fiche technique (Tableau Général)
+        window.saveAtelierTechRow = async function(idCanon, safeId, btn) {
+            let fields = {};
+            document.querySelectorAll(`.tech-field-${safeId}`).forEach(inp => {
+                fields[inp.getAttribute('data-head')] = inp.value;
+            });
+            let pl = { id: idCanon, lat: 0, lng: 0, fields: fields }; // Conserve le format natif attendu par ton Apps Script
+
+            let oldText = btn.innerText; btn.innerText = "⏳ Envoi..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(pl) });
+                let r = await res.json();
+                if(r.status === "success") {
+                    btn.innerText = "✅ Données Enneigeur mises à jour !"; btn.style.background = "#27ae60";
+                    let feat = window.snowCannons.features.find(f => f.properties.id == idCanon);
+                    if(feat) { feat.properties.fullData.forEach(item => { if(fields[item.k] !== undefined) item.v = fields[item.k]; }); }
+                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#2c3e50"; }, 2000);
+                } else { alert("Erreur Google Sheet"); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
+        };
+
+        // ENREGISTREMENT 2 : Ajout d'une ligne d'archivage banc d'essais (Atelier)
+        window.saveAtelierBancTestRow = async function(idCanon, safeId, btn) {
+            let fieldsObj = {};
+            let canonData = window.snowCannons.features.find(f => f.properties.id == idCanon);
+            let p = canonData ? canonData.properties : null;
+            
+            // Auto-remplissage hérité du Tableau Général
+            fieldsObj["id"] = idCanon;
+            fieldsObj["piste"] = p ? window.getV(p, window.keyPiste) : "";
+            fieldsObj["type"] = p ? (window.getV(p, "type") || window.getV(p, "TYPE")) : "";
+            fieldsObj["vanne additionnelle"] = p ? (window.getV(p, "vanne additionnelle") || window.getV(p, "vanne ad")) : "";
+            fieldsObj["type vanne AD 1"] = p ? window.getV(p, "type vanne ad 1") : "";
+            fieldsObj["N° de vanne"] = p ? window.getV(p, "N° de vanne") : "";
+            fieldsObj["abris double"] = p ? window.getV(p, "abris double") : "";
+
+            // Récupération de la saisie utilisateur
+            document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => {
+                fieldsObj[inp.getAttribute('data-col')] = inp.value;
+            });
+
+            let oldText = btn.innerText; btn.innerText = "⏳ Archivage au banc..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_atelier", fields: fieldsObj }) });
+                let r = await res.json();
+                if(r.status === "success") {
+                    btn.innerText = "✅ Validé et Archivé !"; btn.style.background = "#27ae60";
+                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#8e44ad"; window.renderAtelierWorkspace(); }, 2000);
+                } else { alert("Erreur Apps Script"); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
+        };
+        
     </script>
 </body>
 </html>
