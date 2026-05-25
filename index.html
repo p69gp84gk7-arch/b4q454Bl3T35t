@@ -1468,7 +1468,228 @@
             fieldsObj["N° de vanne"] = p ? window.getV(p, "N° de vanne") : "";
             fieldsObj["abris double"] = p ? window.getV(p, "abris double") : "";
 
-            // Récupération de la saisie utilisateur
+            // Récupération de la saisie utilisateur        /* =========================================================================
+           CHAPITRE JS : MOTEUR, FORMULAIRES CONDITIONNELS ET SAUVEGARDE ATELIER
+           ========================================================================= */
+
+        // 1. FONCTION DE RENDU PRINCIPALE DU WORKSPACE ATELIER (Prend la place de la carte)
+        window.renderAtelierWorkspace = function() {
+            let workspace = document.getElementById('atelier-workspace');
+            if(!workspace) return;
+            workspace.innerHTML = `<h2 style="color:#2c3e50; margin-top:0; border-bottom:3px solid #8e44ad; padding-bottom:10px;">🧰 Banc d'Essais & Maintenance Atelier</h2>`;
+
+            // Filtrer les canons dont le "Préventif usine" est coché à "oui" dans le suivi entretien
+            let canonsEnAtelier = [];
+            window.suiviEntretienData.forEach(row => {
+                if(row[3] && row[3].toString().toLowerCase().trim() === "oui") {
+                    canonsEnAtelier.push(row[0].toString());
+                }
+            });
+
+            // Si aucun canon n'est à l'usine
+            if(canonsEnAtelier.length === 0) {
+                workspace.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; color:#7f8c8d; font-weight:bold;">✅ Aucun enneigeur n'est actuellement marqué "Préventif Usine" dans le suivi entretien.</div>`;
+                return;
+            }
+
+            workspace.innerHTML += `<div style="margin-bottom:15px; font-size:13px; color:#555; background:#eaf2f8; padding:10px; border-radius:4px; border-left:4px solid #3498db;"><b>${canonsEnAtelier.length}</b> canon(s) en attente ou en cours de révision à l'atelier.</div>`;
+
+            // Boucle sur chaque canon identifié pour générer sa fiche et ses accordéons
+            canonsEnAtelier.forEach(idCanon => {
+                let feature = window.snowCannons.features.find(f => f.properties.id == idCanon);
+                if(!feature) return;
+
+                let p = feature.properties;
+                let piste = window.getV(p, window.keyPiste);
+                let typeVanne = window.getV(p, "type") || window.getV(p, "TYPE") || "Inconnu";
+                let vanneAd = window.getV(p, "vanne additionnelle") || window.getV(p, "vanne ad") || "Aucune";
+                let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, "");
+
+                // --- ACCORDÉON 1 : CARACTÉRISTIQUES TECHNIQUES ÉDITABLES ---
+                let headersGen = window.rawGeneral[0] || [];
+                let techFieldsHtml = "";
+                headersGen.forEach(h => {
+                    if(h.toLowerCase().includes('xy') || h.toLowerCase().includes('gps') || h.toLowerCase() === 'id') return;
+                    let currentVal = window.getV(p, h);
+                    techFieldsHtml += `<div style="margin-bottom:8px;"><span class="edit-label">${h}</span><input type="text" class="edit-input tech-field-${safeId}" data-head="${h}" value="${currentVal}" style="margin-bottom:0; padding:6px;"></div>`;
+                });
+
+                // --- ACCORDÉON 2 : HISTORIQUE DES TICKETS ET PANNES ---
+                let activeTickets = window.getActiveTickets(idCanon);
+                let historyTickets = window.getHistoryTickets(idCanon);
+                let ticketsHtml = `<div style="padding:15px; background:#fff;"><b style="color:#c0392b;">🚨 Défauts actifs sur le terrain :</b>`;
+                if(activeTickets.length === 0) ticketsHtml += `<span style="color:#27ae60; font-size:12px;"> Aucun (RAS)</span>`;
+                else activeTickets.forEach(t => { ticketsHtml += `<div style="font-size:12px; margin-top:5px; color:#e74c3c;">• <b>${t.defaut}</b> (${t.statut})</div>`; });
+                
+                ticketsHtml += `<br><b style="color:#2c3e50; margin-top:10px; display:block;">📜 Historique des interventions archivées :</b>`;
+                if(historyTickets.length === 0) ticketsHtml += `<span style="color:#7f8c8d; font-size:12px; font-style:italic;"> Aucun antécédent trouvé</span>`;
+                else historyTickets.forEach(t => { ticketsHtml += `<div style="font-size:11px; border-bottom:1px solid #eee; padding:4px 0;"><b>${t.date}</b> : ${t.defaut}</div>`; });
+                ticketsHtml += `</div>`;
+
+                // --- ACCORDÉON 3 : FORMULAIRE DU BANC D'ESSAIS PRINCIPAL ---
+                let formFieldsHtml = `
+                    <div style="display:flex; gap:10px; width:100%;">
+                        <div style="flex:1;"><span class="edit-label">test pression eau 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" style="margin-bottom:0; padding:6px;"></div>
+                        <div style="flex:1;"><span class="edit-label">test pression air 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" style="margin-bottom:0; padding:6px;"></div>
+                    </div>
+                    <div style="display:flex; gap:10px; width:100%; margin-top:8px;">
+                        <div style="flex:1;"><span class="edit-label">test elec Vanne</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" style="margin-bottom:0; padding:6px;"></div>
+                        <div style="flex:1;"><span class="edit-label">manu 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 1" style="margin-bottom:0; padding:6px;"></div>
+                        <div style="flex:1;"><span class="edit-label">capteur 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 1" style="margin-bottom:0; padding:6px;"></div>
+                    </div>
+                    <div style="margin-top:8px;"><span class="edit-label">maintenance effectué</span><input type="text" class="edit-input b-field-${safeId}" data-col="maintenance effectué" style="margin-bottom:0; padding:6px;"></div>
+                    <div style="margin-top:8px;"><span class="edit-label">pièces utilisés</span><textarea class="edit-input b-field-${safeId}" data-col="pièces utilisés" style="margin-bottom:0; padding:6px;" rows="2"></textarea></div>
+                    
+                    <div style="display:flex; gap:10px; width:100%; margin-top:8px;">
+                        <div style="flex:1;"><span class="edit-label">test pression eau 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" style="margin-bottom:0; padding:6px;"></div>
+                        <div style="flex:1;"><span class="edit-label">test pression air 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 2" style="margin-bottom:0; padding:6px;"></div>
+                    </div>
+                    <div style="display:flex; gap:10px; width:100%; margin-top:8px;">
+                        <div style="flex:1;"><span class="edit-label">test elec vanne (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" style="margin-bottom:0; padding:6px;"></div>
+                        <div style="flex:1;"><span class="edit-label">manu 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 2" style="margin-bottom:0; padding:6px;"></div>
+                        <div style="flex:1;"><span class="edit-label">capteur 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 2" style="margin-bottom:0; padding:6px;"></div>
+                    </div>
+                    <div style="margin-top:8px;"><span class="edit-label">Vanne principale prête (OUI/NON)</span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="OUI" style="margin-bottom:0; padding:6px;"></div>
+                    
+                    <div style="margin-top:15px; padding:10px; background:#f4f6f8; border-radius:6px; border:1px solid #ddd;">
+                        <span class="edit-label" style="color:#2c3e50; font-weight:bold;">🔧 Sélectionner le sous-formulaire de test (Vanne Additionnelle) :</span>
+                        <select class="edit-input" id="at-select-vanne-${safeId}" onchange="window.handleAtelierSelectVanne('${safeId}')" style="margin-top:5px; background:#fff; border-color:#8e44ad;">
+                            <option value="none">-- Pas de vanne additionnelle à tester --</option>
+                            <option value="var">Vanne Additionnelle : VAR (Simple bloc test 1 & 2)</option>
+                            <option value="v2000">Vanne Additionnelle : V2000 (Double bloc de test combiné)</option>
+                        </select>
+                    </div>
+
+                    <div id="at-subform-var-${safeId}" style="display:none; margin-top:12px; padding:15px; background:#fdf2e9; border-left:4px solid #e67e22; border-radius:4px;">
+                        <h4 style="margin:0 0 10px 0; color:#b05500;">🎛️ Tests d'essais Vanne Additionnelle VAR</h4>
+                        <div style="display:flex; gap:10px; width:100%;">
+                            <div style="flex:1;"><span class="edit-label">test elec VAR (1)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="padding:4px;"></div>
+                            <div style="flex:1;"><span class="edit-label">test pression 1 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="padding:4px;"></div>
+                        </div>
+                        <div style="display:flex; gap:10px; width:100%; margin-top:8px;">
+                            <div style="flex:1;"><span class="edit-label">test pression 2 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="padding:4px;"></div>
+                            <div style="flex:1;"><span class="edit-label">VAR (1) prête (OUI/NON)</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (1) prête" value="OUI" style="padding:4px;"></div>
+                        </div>
+                        <div style="margin-top:8px;"><span class="edit-label">pièces var utilisés</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés" style="padding:4px;"></div>
+                    </div>
+
+                    <div id="at-subform-v2000-${safeId}" style="display:none; margin-top:12px; padding:15px; background:#eaf2f8; border-left:4px solid #2980b9; border-radius:4px;">
+                        <h4 style="margin:0 0 10px 0; color:#1a5276;">🎛️ Tests d'essais Vanne Double V2000 (Combinaison de 2 vannes)</h4>
+                        
+                        <div style="font-weight:bold; font-size:11px; color:#2980b9; margin-bottom:5px; text-transform:uppercase;">• Bloc d'essais 1 (Voie C2)</div>
+                        <div style="display:flex; gap:10px; width:100%;">
+                            <div style="flex:1;"><span class="edit-label">test 1 elec V2000 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" style="padding:4px;"></div>
+                            <div style="flex:1;"><span class="edit-label">test pression eau v2000 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c2" style="padding:4px;"></div>
+                        </div>
+                        <div style="display:flex; gap:10px; width:100%; margin-top:5px;">
+                            <div style="flex:1;"><span class="edit-label">test 2 elec v2000 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 elec v2000 c2" style="padding:4px;"></div>
+                            <div style="flex:1;"><span class="edit-label">test 2 pression eau v2000 2 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 pression eau v2000 2 c2" style="padding:4px;"></div>
+                        </div>
+
+                        <div style="font-weight:bold; font-size:11px; color:#2980b9; margin:12px 0 5px 0; border-top:1px dashed #ced4da; padding-top:8px; text-transform:uppercase;">• Bloc d'essais 2 (Voie C3 - Doublage de Sécurité)</div>
+                        <div style="display:flex; gap:10px; width:100%;">
+                            <div style="flex:1;"><span class="edit-label">test 1 elec V2000 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c3" style="padding:4px;"></div>
+                            <div style="flex:1;"><span class="edit-label">test pression eau v2000 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c3" style="padding:4px;"></div>
+                        </div>
+                        <div style="display:flex; gap:10px; width:100%; margin-top:5px;">
+                            <div style="flex:1;"><span class="edit-label">test 2 elec v2000 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 elec v2000 c3" style="padding:4px;"></div>
+                            <div style="flex:1;"><span class="edit-label">test 2 pression eau v2000 2 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 pression eau v2000 2 c3" style="padding:4px;"></div>
+                        </div>
+
+                        <div style="font-weight:bold; font-size:11px; color:#2c3e50; margin-top:12px; border-top:1px dashed #ced4da; padding-top:8px; text-transform:uppercase;">• Gestion des pièces & validation V2000</div>
+                        <div style="margin-top:5px;"><span class="edit-label">pièces v2000 utilisés</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces v2000 utilisés" style="padding:4px;"></div>
+                        <div style="margin-top:5px;"><span class="edit-label">commentaire v2000</span><input type="text" class="edit-input b-field-${safeId}" data-col="commentaire v2000" style="padding:4px;"></div>
+                        <div style="margin-top:5px;"><span class="edit-label">V2000 prête (OUI/NON)</span><input type="text" class="edit-input b-field-${safeId}" data-col="V2000 prête" value="OUI" style="padding:4px;"></div>
+                    </div>
+
+                    <div style="margin-top:10px;"><span class="edit-label">Commentaire général de l'intervention</span><input type="text" class="edit-input b-field-${safeId}" data-col="Commentaire" placeholder="Remarques éventuelles sur le passage au banc..." style="padding:6px;"></div>
+                `;
+
+                // Création physique de la carte de l'enneigeur
+                let card = document.createElement('div');
+                card.className = "atelier-card";
+                card.innerHTML = `
+                    <h3>📍 Enneigeur Canon N° ${idCanon} — Piste: <span style="color:#8e44ad;">${piste}</span></h3>
+                    <div style="font-size:12px; margin-bottom:12px; color:#666; background:#fafbfc; padding:6px; border-radius:4px; border:1px solid #e1e8ed;">Configuration d'origine (Lecture Sheet) : Vanne principale = <b>${typeVanne}</b> | Optionnelle = <b>${vanneAd}</b></div>
+                    
+                    <details class="atelier-sub-details"><summary>⚙️ 1. Consulter & Éditer les Données Techniques (Tableau Général)</summary>
+                        <div class="atelier-form-grid">${techFieldsHtml}</div>
+                        <div style="padding:0 15px 15px 15px;"><button onclick="window.saveAtelierTechRow('${idCanon}','${safeId}',this)" style="width:100%; background:#2c3e50; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Enregistrer les modifications techniques</button></div>
+                    </details>
+                    
+                    <details class="atelier-sub-details"><summary>🕒 2. Historique des défauts & pannes sur la ligne (Tickets)</summary>
+                        ${ticketsHtml}
+                    </details>
+                    
+                    <details class="atelier-sub-details"><summary>📝 3. Enregistrer un nouveau passage au Banc d'Essais (Atelier)</summary>
+                        <div style="padding:15px; background:#fff;">
+                            ${formFieldsHtml}
+                            <button onclick="window.saveAtelierBancTestRow('${idCanon}','${safeId}',this)" style="width:100%; margin-top:15px; background:#8e44ad; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:14px; box-shadow:0 2px 5px rgba(0,0,0,0.2);">🚀 Valider le passage au banc & Archiver</button>
+                        </div>
+                    </details>
+                `;
+                workspace.appendChild(card);
+            });
+        };
+
+        // 2. LOGIQUE D'AFFICHAGE DU SOUS-FORMULAIRE VIA SÉLECTEUR MANUEL
+        window.handleAtelierSelectVanne = function(safeId) {
+            let val = document.getElementById(`at-select-vanne-${safeId}`).value;
+            document.getElementById(`at-subform-var-${safeId}`).style.display = (val === 'var') ? 'block' : 'none';
+            document.getElementById(`at-subform-v2000-${safeId}`).style.display = (val === 'v2000') ? 'block' : 'none';
+        };
+
+        // 3. EXPÉDITION 1 : Envoi des mises à jour des caractéristiques (Vers Tableau Général)
+        window.saveAtelierTechRow = async function(idCanon, safeId, btn) {
+            let fields = {};
+            document.querySelectorAll(`.tech-field-${safeId}`).forEach(inp => {
+                fields[inp.getAttribute('data-head')] = inp.value;
+            });
+            let pl = { id: idCanon, lat: 0, lng: 0, fields: fields }; 
+
+            let oldText = btn.innerText; btn.innerText = "⏳ Enregistrement Google..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(pl) });
+                let r = await res.json();
+                if(r.status === "success") {
+                    btn.innerText = "✅ Spécifications de l'enneigeur mises à jour !"; btn.style.background = "#27ae60";
+                    let feat = window.snowCannons.features.find(f => f.properties.id == idCanon);
+                    if(feat) { feat.properties.fullData.forEach(item => { if(fields[item.k] !== undefined) item.v = fields[item.k]; }); }
+                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#2c3e50"; }, 2500);
+                } else { alert("Erreur serveur Sheets"); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
+        };
+
+        // 4. EXPÉDITION 2 : Envoi du rapport de test d'essais (Vers onglet Atelier - Date automatique ajoutée par l'Apps Script)
+        window.saveAtelierBancTestRow = async function(idCanon, safeId, btn) {
+            let fieldsObj = {};
+            let canonData = window.snowCannons.features.find(f => f.properties.id == idCanon);
+            let p = canonData ? canonData.properties : null;
+            
+            // Collecte des valeurs fixes héritées du Tableau Général pour alimenter les colonnes de base
+            fieldsObj["id"] = idCanon;
+            fieldsObj["piste"] = p ? window.getV(p, window.keyPiste) : "";
+            fieldsObj["type"] = p ? (window.getV(p, "type") || window.getV(p, "TYPE")) : "";
+            fieldsObj["vanne additionnelle"] = p ? (window.getV(p, "vanne additionnelle") || window.getV(p, "vanne ad")) : "";
+            fieldsObj["type vanne AD 1"] = p ? window.getV(p, "type vanne ad 1") : "";
+            fieldsObj["N° de vanne"] = p ? window.getV(p, "N° de vanne") : "";
+            fieldsObj["abris double"] = p ? window.getV(p, "abris double") : "";
+
+            // Collecte automatique de tous les inputs saisis dans l'onglet Banc d'essais
+            document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => {
+                fieldsObj[inp.getAttribute('data-col')] = inp.value;
+            });
+
+            let oldText = btn.innerText; btn.innerText = "⏳ Transmission et archivage du test..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_atelier", fields: fieldsObj }) });
+                let r = await res.json();
+                if(r.status === "success") {
+                    btn.innerText = "🚀 Rapport envoyé avec succès !"; btn.style.background = "#27ae60";
+                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#8e44ad"; window.renderAtelierWorkspace(); }, 2500);
+                } else { alert("Erreur d'écriture Apps Script"); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Erreur réseau de communication"); btn.innerText = oldText; btn.disabled = false; }
+        };
             document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => {
                 fieldsObj[inp.getAttribute('data-col')] = inp.value;
             });
