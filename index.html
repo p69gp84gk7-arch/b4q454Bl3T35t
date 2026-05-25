@@ -107,6 +107,25 @@
         .atelier-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; padding: 15px; background: #fdfdfe; }
         
         @media(max-width:768px){#sidebar,#right-sidebar{width:100%;}#compare-modal{width:95%;} .bi-container{flex-direction:column;} .bi-sidebar{width:100%;border-right:none;border-bottom:1px solid #ddd;height:40%;} .bi-content{height:60%;}}
+        /* =========================================================
+   CHAPITRE : ADAPTATION MOBILE (Responsive)
+   ========================================================= */
+@media(max-width: 768px) {
+    /* Le menu de gauche prend tout l'écran en mobile */
+    #sidebar { width: 100% !important; }
+    
+    /* Le panneau de droite devient plein écran */
+    #right-sidebar { width: 100% !important; max-width: 100% !important; }
+    
+    /* La grille du formulaire atelier s'adapte à une seule colonne */
+    .atelier-form-grid { grid-template-columns: 1fr !important; }
+
+    /* On agrandit les champs de saisie pour que les doigts puissent cliquer facilement */
+    .edit-input, .topbar-btn { padding: 12px !important; font-size: 16px !important; }
+    
+    /* On cache les détails inutiles sur mobile si besoin */
+    .badge { font-size: 10px; }
+}
     </style>
 </head>
 <body>
@@ -1521,7 +1540,19 @@
                 } else { alert("Erreur Apps Script"); btn.disabled = false; btn.innerText = oldText; }
             } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
         };
-        
+        // Détection mobile simple
+window.isMobile = function() {
+    return window.innerWidth <= 768;
+};
+
+// Adaptation automatique au chargement
+window.addEventListener('load', () => {
+    if (window.isMobile()) {
+        console.log("Mode mobile activé");
+        // Optionnel : tu pourrais ici forcer le menu à rester fermé
+        // ou désactiver certains effets de survol trop lourds
+    }
+});
     </script>
 </body>
 </html>
