@@ -305,8 +305,21 @@
         
         window.initSidebarResizer=function(){let sb=document.getElementById('right-sidebar');if(!sb)return;let rs=document.createElement('div');rs.className='resizer';sb.appendChild(rs);let isR=false;rs.addEventListener('mousedown',()=>{isR=true;rs.classList.add('active');document.body.style.cursor='ew-resize';if(window.map)window.map.dragging.disable();});document.addEventListener('mousemove',(e)=>{if(!isR)return;let nw=document.body.clientWidth-e.clientX;if(nw<350)nw=350;if(nw>document.body.clientWidth*0.9)nw=document.body.clientWidth*0.9;sb.style.width=nw+'px';});document.addEventListener('mouseup',()=>{if(isR){isR=false;rs.classList.remove('active');document.body.style.cursor='default';if(window.map)window.map.dragging.enable();}});}; setTimeout(window.initSidebarResizer,1000);
 
-        /* ================== COULEURS ET LÉGENDES ================== */
-        window.getColorByFilter=function(ratio,p){const inter=(c1,c2,f)=>{let r=c1.slice();for(let i=0;i<3;i++)r[i]=Math.round(r[i]+f*(c2[i]-c1[i]));return `rgb(${r[0]},${r[1]},${r[2]})`;};if(window.mainTheme==='defauts'){let act=window.getActiveTickets(p.id);if(act.length===0)return '#bdc3c7';if(act.some(t=>t.statut.includes('faire')))return '#e74c3c';return '#f39c12';}if(window.mainTheme==='historique'){if(window.histMetric==='eau')return inter([173,216,230],[41,128,185],ratio);if(window.histMetric==='air')return inter([250,219,94],[211,84,0],ratio);if(window.histMetric==='temps')return inter([171,235,198],[39,174,96],ratio);}if(window.mainTheme==='repeteur')return window.repColors[window.getV(p,window.keyRep)]||'#7f8c8d';if(window.mainTheme==='transfo')return window.transfoColors[window.getV(p,window.keyTransfo)]||'#7f8c8d';let tv=window.getV(p,window.keyType).toLowerCase();if(["demak lenko","demac lenko"].includes(tv))return "#0000FF";if(["sufag","street","taurus","taurax","peak"].includes(tv))return "#008000";return window.technoColors[tv]||"#FFD700";};
+              /* ================== COULEURS ET LÉGENDES ================== */
+        window.getColorByFilter=function(ratio,p){
+            const inter=(c1,c2,f)=>{let r=c1.slice();for(let i=0;i<3;i++)r[i]=Math.round(r[i]+f*(c2[i]-c1[i]));return `rgb(${r[0]},${r[1]},${r[2]})`;};
+            if(window.mainTheme==='defauts'){let act=window.getActiveTickets(p.id);if(act.length===0)return '#bdc3c7';if(act.some(t=>t.statut.includes('faire')))return '#e74c3c';return '#f39c12';}
+            if(window.mainTheme==='historique'){if(window.histMetric==='eau')return inter([173,216,230],[41,128,185],ratio);if(window.histMetric==='air')return inter([250,219,94],[211,84,0],ratio);if(window.histMetric==='temps')return inter([171,235,198],[39,174,96],ratio);}
+            if(window.mainTheme==='repeteur')return window.repColors[window.getV(p,window.keyRep)]||'#7f8c8d';
+            if(window.mainTheme==='transfo')return window.transfoColors[window.getV(p,window.keyTransfo)]||'#7f8c8d';
+            
+            // CORRECTION TYPE DE CANON
+            let tv=window.getV(p,window.keyType).toLowerCase();
+            if(["demak lenko","demac lenko"].includes(tv))return "#0000FF";
+            if(["sufag","street","taurus","taurax","peak"].includes(tv))return "#008000";
+            return window.technoColors[tv]||"#FFD700";
+        };
+
        window.updateLegend = function() {
             let elDef = document.getElementById('legend-defauts');
             let elSuivi = document.getElementById('legend-suivi_entretien');
@@ -315,8 +328,17 @@
             } else if (window.mainTheme === 'defauts' && elDef) {
                 elDef.innerHTML = `<div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'urgent')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #e74c3c;"></div> Urgent (À faire)</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'encours')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #f39c12;"></div> En cours</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'ras')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #bdc3c7;"></div> RAS</div>`;
             } else if (window.mainTheme === 'type') {
+                // CORRECTION : LÉGENDE TOTALEMENT DYNAMIQUE POUR LE TYPE DE CANON
                 let elTy = document.getElementById('legend-type');
-                if(elTy) elTy.innerHTML = `<div class="legend-item" onmouseenter="window.highlightLegend('type', 'demac')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #0000FF;"></div> Demac Lenko</div><div class="legend-item" onmouseenter="window.highlightLegend('type', 'sufag')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #008000;"></div> Sufag / Peak</div><div class="legend-item" onmouseenter="window.highlightLegend('type', 'techno')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: linear-gradient(to right, #f1c40f, #e67e22);"></div> Technoalpin</div>`;
+                let h = '';
+                Object.keys(window.technoColors).sort().forEach(k => { 
+                    let color = window.technoColors[k];
+                    if(["demak lenko","demac lenko"].includes(k)) color = "#0000FF";
+                    else if(["sufag","street","taurus","taurax","peak"].includes(k)) color = "#008000";
+                    if(k === "n/a" || k === "") return;
+                    h += `<div class="legend-item" onmouseenter="window.highlightLegend('type', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${color};"></div> ${k.toUpperCase()}</div>`; 
+                }); 
+                if(elTy) elTy.innerHTML = h;
             } else if (window.mainTheme === 'repeteur') {
                 let h=''; Object.keys(window.repColors).sort().forEach(k => { h += `<div class="legend-item" onmouseenter="window.highlightLegend('repeteur', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${window.repColors[k]};"></div> Répéteur ${k}</div>`; }); let elRep = document.getElementById('legend-repeteur'); if(elRep) elRep.innerHTML = h;
             } else if (window.mainTheme === 'transfo') {
@@ -334,16 +356,35 @@
             window.geojsonLayer.eachLayer(function(layer) {
                 if(!layer.feature.properties._isVisible) return;
                 let p = layer.feature.properties; let match = false;
-                if (theme === 'defauts') { let act = window.getActiveTickets(p.id); if (val === 'urgent' && act.some(t => t.statut.includes('faire'))) match = true; else if (val === 'encours' && act.some(t => t.statut.includes('cours'))) match = true; else if (val === 'ras' && act.length === 0) match = true; } 
-                else if (theme === 'type') { let tLower = window.getV(p, window.keyType).toLowerCase(); if (val === 'demac' && ["demak lenko", "demac lenko"].includes(tLower)) match = true; else if (val === 'sufag' && ["sufag", "street", "taurus", "taurax", "peak"].includes(tLower)) match = true; else if (val === 'techno' && !["demak lenko", "demac lenko", "sufag", "street", "taurus", "taurax", "peak"].includes(tLower) && tLower !== "n/a") match = true; } 
+                if (theme === 'defauts') { 
+                    let act = window.getActiveTickets(p.id); 
+                    if (val === 'urgent' && act.some(t => t.statut.includes('faire'))) match = true; 
+                    else if (val === 'encours' && act.some(t => t.statut.includes('cours'))) match = true; 
+                    else if (val === 'ras' && act.length === 0) match = true; 
+                } 
+                else if (theme === 'type') { 
+                    // CORRECTION HIGHLIGHT : Égalité stricte au lieu de conditions multiples
+                    let tLower = window.getV(p, window.keyType).toLowerCase(); 
+                    if (tLower === val) match = true; 
+                } 
                 else if (theme === 'repeteur') { if (window.getV(p, window.keyRep) === val) match = true; } 
                 else if (theme === 'transfo') { if (window.getV(p, window.keyTransfo) === val) match = true; }
-                if (match) { layer.setOpacity(1); layer.setZIndexOffset(2000); if(layer._icon) { layer._icon.style.opacity = "1"; if(!layer._icon.style.transform.includes('scale(1.3)')) layer._icon.style.transform += ' scale(1.3)'; } } else { layer.setOpacity(0.2); layer.setZIndexOffset(0); if(layer._icon) { layer._icon.style.opacity = "0.2"; layer._icon.style.transform = layer._icon.style.transform.replace(' scale(1.3)', ''); } }
+                
+                if (match) { 
+                    layer.setOpacity(1); layer.setZIndexOffset(2000); 
+                    if(layer._icon) { 
+                        layer._icon.style.opacity = "1"; 
+                        if(!layer._icon.style.transform.includes('scale(1.3)')) layer._icon.style.transform += ' scale(1.3)'; 
+                    } 
+                } else { 
+                    layer.setOpacity(0.2); layer.setZIndexOffset(0); 
+                    if(layer._icon) { 
+                        layer._icon.style.opacity = "0.2"; 
+                        layer._icon.style.transform = layer._icon.style.transform.replace(' scale(1.3)', ''); 
+                    } 
+                }
             });
         };
-
-        window.resetHighlight = function() { if(!window.geojsonLayer) return; window.geojsonLayer.eachLayer(function(layer) { layer.setOpacity(1); if(layer._icon) { layer._icon.style.opacity = "1"; layer._icon.style.transform = layer._icon.style.transform.replace(' scale(1.3)', ''); } }); window.updateMap(); };
-        
         window.updateMap = function() {
             if(!window.geojsonLayer) return;
             let s = window.saisonsList[window.histSeasonIdx];
@@ -1022,7 +1063,24 @@
             if (!data.general || data.general.length < 2) throw new Error(`L'onglet principal est introuvable ou vide.`);
             const genHeaders = data.general[0].map(h => (h||"").toString().toLowerCase().trim());
             const originalHeaders = data.general[0].map(h => (h||"").toString().trim()); 
-            const findCol = (keywords) => { let idx = genHeaders.findIndex(h => keywords.some(k => h.includes(k))); return idx !== -1 ? originalHeaders[idx] : null; };
+                      // CORRECTION : Recherche EXACTE d'abord pour éviter de cibler la mauvaise colonne
+            const findCol = (keywords) => { 
+                let idx = genHeaders.findIndex(h => keywords.some(k => h === k)); 
+                if (idx === -1) idx = genHeaders.findIndex(h => keywords.some(k => h.includes(k))); 
+                return idx !== -1 ? originalHeaders[idx] : null; 
+            };
+
+            const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps'));
+            if (idxXY === -1) throw new Error("La colonne 'xy' est introuvable.");
+            
+            // CORRECTION : Sécurisation absolue de l'ID du canon
+            let idxId = genHeaders.findIndex(h => h === 'n° de vanne' || h === 'id' || h.includes('canon'));
+            if(idxId === -1) idxId = 2; // Sécurité
+
+            window.keyPiste = findCol(['piste', 'pistes']); 
+            window.keyType = findCol(['type canon', 'type de canon', 'type']);
+            window.keyRep = findCol(['répéteur', 'repeteur', 'épéteur', 'epeteur', 'peteur']); 
+            window.keyTransfo = findCol(['transfo']);
 
             const idxId = 2; const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps'));
             if (idxXY === -1) throw new Error("La colonne 'xy' est introuvable.");
