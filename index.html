@@ -1076,21 +1076,22 @@
                 return idx !== -1 ? originalHeaders[idx] : null; 
             };
 
-            let idxId = genHeaders.findIndex(h => h === 'n° de vanne' || h === 'id' || h.includes('canon'));
-            if(idxId === -1) idxId = 2; 
+                        const findCol = (keywords) => { 
+                let idx = genHeaders.findIndex(h => keywords.some(k => h === k)); 
+                if (idx === -1) idx = genHeaders.findIndex(h => keywords.some(k => h.includes(k))); 
+                return idx !== -1 ? originalHeaders[idx] : null; 
+            };
+
+            let idxId = genHeaders.findIndex(h => h.includes('n° de vanne') || h.includes('n°'));
+            if(idxId === -1) idxId = 1; 
 
             const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps'));
             if (idxXY === -1) throw new Error("La colonne 'xy' est introuvable.");
 
-            window.keyPiste = findCol(['pistes', 'piste']); window.keyType = findCol(['type canon', 'type de canon', 'type']);
-            window.keyRep = findCol(['répéteur', 'repeteur', 'épéteur', 'epeteur', 'peteur']); window.keyTransfo = findCol(['transfo']);
-
-            let idxId = genHeaders.findIndex(h => h.includes('n° de vanne') || h.includes('n°'));
-if(idxId === -1) idxId = 1; // Index 1 correspond à ta 2ème colonne (N° de vanne)
-            if (idxXY === -1) throw new Error("La colonne 'xy' est introuvable.");
-
-            window.keyPiste = findCol(['pistes', 'piste']); window.keyType = findCol(['type canon', 'type']);
-            window.keyRep = findCol(['répéteur', 'repeteur', 'épéteur', 'epeteur', 'peteur']); window.keyTransfo = findCol(['transfo']);
+            window.keyPiste = findCol(['piste', 'pistes']); 
+            window.keyType = findCol(['type canon', 'type de canon', 'type']);
+            window.keyRep = findCol(['répéteur', 'repeteur', 'épéteur', 'epeteur', 'peteur']); 
+            window.keyTransfo = findCol(['transfo']);
 
             originalHeaders.forEach(h => { let hl = h.toLowerCase(); if(!hl.includes('xy') && !hl.includes('gps') && !hl.includes('photo')) { window.availableColumns.push(h); window.columnValuesSets[h] = new Set(); } });
 
