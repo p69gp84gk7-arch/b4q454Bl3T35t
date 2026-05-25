@@ -306,18 +306,23 @@
         window.initSidebarResizer=function(){let sb=document.getElementById('right-sidebar');if(!sb)return;let rs=document.createElement('div');rs.className='resizer';sb.appendChild(rs);let isR=false;rs.addEventListener('mousedown',()=>{isR=true;rs.classList.add('active');document.body.style.cursor='ew-resize';if(window.map)window.map.dragging.disable();});document.addEventListener('mousemove',(e)=>{if(!isR)return;let nw=document.body.clientWidth-e.clientX;if(nw<350)nw=350;if(nw>document.body.clientWidth*0.9)nw=document.body.clientWidth*0.9;sb.style.width=nw+'px';});document.addEventListener('mouseup',()=>{if(isR){isR=false;rs.classList.remove('active');document.body.style.cursor='default';if(window.map)window.map.dragging.enable();}});}; setTimeout(window.initSidebarResizer,1000);
 
               /* ================== COULEURS ET LÉGENDES ================== */
-        window.getColorByFilter=function(ratio,p){
+                window.getColorByFilter=function(ratio,p){
             const inter=(c1,c2,f)=>{let r=c1.slice();for(let i=0;i<3;i++)r[i]=Math.round(r[i]+f*(c2[i]-c1[i]));return `rgb(${r[0]},${r[1]},${r[2]})`;};
             if(window.mainTheme==='defauts'){let act=window.getActiveTickets(p.id);if(act.length===0)return '#bdc3c7';if(act.some(t=>t.statut.includes('faire')))return '#e74c3c';return '#f39c12';}
             if(window.mainTheme==='historique'){if(window.histMetric==='eau')return inter([173,216,230],[41,128,185],ratio);if(window.histMetric==='air')return inter([250,219,94],[211,84,0],ratio);if(window.histMetric==='temps')return inter([171,235,198],[39,174,96],ratio);}
             if(window.mainTheme==='repeteur')return window.repColors[window.getV(p,window.keyRep)]||'#7f8c8d';
             if(window.mainTheme==='transfo')return window.transfoColors[window.getV(p,window.keyTransfo)]||'#7f8c8d';
             
-            // CORRECTION TYPE DE CANON
-            let tv=window.getV(p,window.keyType).toLowerCase();
-            if(["demak lenko","demac lenko"].includes(tv))return "#0000FF";
-            if(["sufag","street","taurus","taurax","peak"].includes(tv))return "#008000";
-            return window.technoColors[tv]||"#FFD700";
+            // AFFICHAGE EXCLUSIF POUR LE THÈME "TYPE DE CANON"
+            if(window.mainTheme === 'type') {
+                let tv=window.getV(p,window.keyType).toLowerCase();
+                if(["demak lenko","demac lenko"].includes(tv))return "#0000FF";
+                if(["sufag","street","taurus","taurax","peak"].includes(tv))return "#008000";
+                return window.technoColors[tv]||"#FFD700";
+            }
+            
+            // Couleur par défaut neutre pour les autres modes
+            return '#34495e'; 
         };
 
        window.updateLegend = function() {
@@ -1064,23 +1069,20 @@
             const genHeaders = data.general[0].map(h => (h||"").toString().toLowerCase().trim());
             const originalHeaders = data.general[0].map(h => (h||"").toString().trim()); 
                       // CORRECTION : Recherche EXACTE d'abord pour éviter de cibler la mauvaise colonne
-            const findCol = (keywords) => { 
+                        const findCol = (keywords) => { 
                 let idx = genHeaders.findIndex(h => keywords.some(k => h === k)); 
                 if (idx === -1) idx = genHeaders.findIndex(h => keywords.some(k => h.includes(k))); 
                 return idx !== -1 ? originalHeaders[idx] : null; 
             };
 
+            let idxId = genHeaders.findIndex(h => h === 'n° de vanne' || h === 'id' || h.includes('canon'));
+            if(idxId === -1) idxId = 2; 
+
             const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps'));
             if (idxXY === -1) throw new Error("La colonne 'xy' est introuvable.");
-            
-            // CORRECTION : Sécurisation absolue de l'ID du canon
-            let idxId = genHeaders.findIndex(h => h === 'n° de vanne' || h === 'id' || h.includes('canon'));
-            if(idxId === -1) idxId = 2; // Sécurité
 
-            window.keyPiste = findCol(['piste', 'pistes']); 
-            window.keyType = findCol(['type canon', 'type de canon', 'type']);
-            window.keyRep = findCol(['répéteur', 'repeteur', 'épéteur', 'epeteur', 'peteur']); 
-            window.keyTransfo = findCol(['transfo']);
+            window.keyPiste = findCol(['pistes', 'piste']); window.keyType = findCol(['type canon', 'type de canon', 'type']);
+            window.keyRep = findCol(['répéteur', 'repeteur', 'épéteur', 'epeteur', 'peteur']); window.keyTransfo = findCol(['transfo']);
 
             const idxId = 2; const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps'));
             if (idxXY === -1) throw new Error("La colonne 'xy' est introuvable.");
