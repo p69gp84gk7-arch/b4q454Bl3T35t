@@ -165,15 +165,12 @@
             <div class="sidebar-header-bg">Outils d'Analyse</div>
             <details class="panel-section" open><summary>Thème & Légende</summary>
                 <div class="section-content" style="padding-top: 10px;">
-                     <div class="theme-block">
+                                         <div class="theme-block">
                         <label class="radio-card" id="lbl-atelier" style="border-radius: 6px; margin-bottom: 8px; border-color: #e1e8ed;">
-                            <input type="radio" name="main_theme" value="atelier"> 🧰 Atelier (Banc d'essais)
+                            <input type="radio" name="main_theme" value="atelier"> 🧰 Workspace Atelier
                         </label>
                         <div class="theme-details" id="details-atelier" style="display: none; border-color: #8e44ad;">
-                            <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Canons en préventif usine</div>
-                            <div id="legend-atelier">
-                                <div class="legend-item"><div class="color-box" style="background:#8e44ad;"></div> À tester au banc</div>
-                            </div>
+                            <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Suivi du banc d'essais usine</div>
                         </div>
                     </div>
                     <div class="theme-block"><label class="radio-card" id="lbl-suivi_entretien" style="border-radius: 6px; margin-bottom: 8px; border-color: #e1e8ed;"><input type="radio" name="main_theme" value="suivi_entretien"> 🛠️ Suivi Entretien</label><div class="theme-details" id="details-suivi_entretien" style="display: none; border-color: #27ae60;"> <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Gérez l'entretien et les vannes</div> <div id="legend-suivi_entretien"></div></div></div>
@@ -202,7 +199,10 @@
             <details class="panel-section" open><summary>Calques & Tracés (KMZ)</summary><div class="section-content" style="padding-top: 5px;"><p style="font-size:11px; color:#666; margin-bottom:10px;"><b>1. Cloud (Depuis Sheets) :</b></p><div id="cloud-layers-container"></div><hr style="margin:15px 0; border-top:1px dashed #ccc;"><p style="font-size:11px; color:#666; margin-bottom:10px;"><b>2. Import PC :</b></p><input type="file" id="kml-upload" accept=".kml,.kmz" style="display:none;" onchange="window.handleKMLUpload(event)"><button class="btn-action-primary" style="margin-top:0; background:#8e44ad;" onclick="document.getElementById('kml-upload').click()">📂 Importer...</button><div id="custom-layers-list" style="margin-top:15px;"></div></div></details>
         </div>
 
-        <div id="map-container"><div id="map"></div></div>
+               <div id="map-container">
+            <div id="map"></div>
+            <div id="atelier-workspace" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; background:#f4f6f8; overflow-y:auto; padding:20px; box-sizing:border-box;"></div>
+        </div>
 
         <div id="right-sidebar">
             <div class="right-header" id="right-header"><span id="right-title">📌 Analyse Détaillée</span><button onclick="window.closeRightSidebar()" style="background:none; border:none; color:#bdc3c7; font-size:28px; cursor:pointer;">&times;</button></div>
