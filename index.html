@@ -584,7 +584,7 @@
             }, 100);
         };
 
-        /* ================== AFFICHAGE FICHE CANON ================== */
+              /* ================== AFFICHAGE FICHE CANON ================== */
         window.renderSelectionPanel = function() {
             if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
@@ -638,7 +638,7 @@
                         </div>
                         ${histHtml}`;
                 } 
-                                    } else if (window.mainTheme === 'entretien_tete') {
+                else if (window.mainTheme === 'entretien_tete') {
                     let bVal = window.getV(p, "Buses");
                     let isFait = (bVal.toLowerCase().trim() === "oui" || bVal.toLowerCase().trim() === "ok" || bVal.toLowerCase().trim() === "true" || bVal.toLowerCase().trim() === "x");
                     let anneeVal = window.getV(p, "Année");
@@ -681,7 +681,8 @@
                                 <button onclick="window.addNouveauTicket('${id}', this)" style="width:100%; background:#c0392b; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">➕ Ajouter ce ticket aux Pannes</button>
                             </div>
                         </details>
-                    `;  }
+                    `;
+                }
                 else if (window.mainTheme === 'historique') {
                     let s = window.saisonsList[window.histSeasonIdx]; let hd = p.historique[s] || {eau:0, air:0, temps:0};
                     mainContent = `<div class="hist-card"><div style="font-size:14px; color:#555; margin-bottom:10px; text-transform:uppercase;">Saison <b>${s}</b></div><div style="display:flex; justify-content: space-around;"><div><div style="font-size:24px; font-weight:bold; color:#2980b9;">${hd.eau}</div><div style="font-size:11px; color:#7f8c8d; text-transform:uppercase;">m³ Eau</div></div><div><div style="font-size:24px; font-weight:bold; color:#e67e22;">${hd.air}</div><div style="font-size:11px; color:#7f8c8d; text-transform:uppercase;">Air</div></div><div><div style="font-size:24px; font-weight:bold; color:#27ae60;">${hd.temps}</div><div style="font-size:11px; color:#7f8c8d; text-transform:uppercase;">Heures</div></div></div></div>
