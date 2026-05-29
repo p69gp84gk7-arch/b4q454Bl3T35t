@@ -638,6 +638,50 @@
                         </div>
                         ${histHtml}`;
                 } 
+                                    } else if (window.mainTheme === 'entretien_tete') {
+                    let bVal = window.getV(p, "Buses");
+                    let isFait = (bVal.toLowerCase().trim() === "oui" || bVal.toLowerCase().trim() === "ok" || bVal.toLowerCase().trim() === "true" || bVal.toLowerCase().trim() === "x");
+                    let anneeVal = window.getV(p, "Année");
+                    let currentYear = new Date().getFullYear();
+                    
+                    mainContent = `
+                        <div style="background:#fdfdfe; padding:10px; border-radius:6px; border:1px solid #ccc; font-size:12px; margin-bottom:10px;">
+                            <h4 style="margin:0 0 8px 0; color:#2c3e50;">📊 Données Techniques</h4>
+                            <b>N° de regard :</b> ${id}<br>
+                            <b>Piste :</b> ${window.getV(p, window.keyPiste)}<br>
+                            <b>Modèle :</b> ${window.getV(p, window.keyType)}
+                        </div>
+                        
+                        <div style="background:#fef5e7; padding:12px; border-radius:6px; border:1px solid #f8c471; margin-bottom:10px; font-size:12px;">
+                            <h4 style="margin:0 0 8px 0; color:#d35400;">🚿 Entretien des Buses</h4>
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                                <label style="cursor:pointer; font-weight:bold; color:#d35400;">
+                                    <input type="checkbox" id="chk-buses-${id}" ${isFait?'checked':''} style="transform:scale(1.2); margin-right:5px;"> Buses changées / vérifiées
+                                </label>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span class="edit-label">Année validée</span>
+                                <input type="text" id="annee-buses-${id}" value="${isFait && anneeVal !== "N/A" ? anneeVal : currentYear}" class="edit-input" style="width:100px; padding:4px; margin:0;" readonly>
+                            </div>
+                            <button onclick="window.saveEntretienTete('${id}', this)" style="width:100%; margin-top:10px; background:#e67e22; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Valider l'entretien des buses</button>
+                        </div>
+                        
+                        <details style="background:#fdf0ed; padding:10px; border-radius:6px; border:1px solid #fadbd8; font-size:12px;">
+                            <summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;">🚨 Signaler un défaut (Créer un ticket)</summary>
+                            <div style="margin-top:10px;">
+                                <span class="edit-label">Défaut / Panne constatée</span>
+                                <input type="text" id="new-ticket-defaut-${id}" class="edit-input" placeholder="Ex: Fuite couronne..." style="padding:6px; margin-bottom:8px;">
+                                <span class="edit-label">Commentaire / Cause (Optionnel)</span>
+                                <textarea id="new-ticket-cause-${id}" class="edit-input" rows="2" placeholder="Détails de la panne..." style="padding:6px; margin-bottom:8px;"></textarea>
+                                <span class="edit-label">Priorité / État</span>
+                                <select id="new-ticket-etat-${id}" class="edit-input" style="padding:6px; margin-bottom:10px;">
+                                    <option value="À faire">À faire (Urgent)</option>
+                                    <option value="En cours">En cours</option>
+                                </select>
+                                <button onclick="window.addNouveauTicket('${id}', this)" style="width:100%; background:#c0392b; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">➕ Ajouter ce ticket aux Pannes</button>
+                            </div>
+                        </details>
+                    `;
                 else if (window.mainTheme === 'historique') {
                     let s = window.saisonsList[window.histSeasonIdx]; let hd = p.historique[s] || {eau:0, air:0, temps:0};
                     mainContent = `<div class="hist-card"><div style="font-size:14px; color:#555; margin-bottom:10px; text-transform:uppercase;">Saison <b>${s}</b></div><div style="display:flex; justify-content: space-around;"><div><div style="font-size:24px; font-weight:bold; color:#2980b9;">${hd.eau}</div><div style="font-size:11px; color:#7f8c8d; text-transform:uppercase;">m³ Eau</div></div><div><div style="font-size:24px; font-weight:bold; color:#e67e22;">${hd.air}</div><div style="font-size:11px; color:#7f8c8d; text-transform:uppercase;">Air</div></div><div><div style="font-size:24px; font-weight:bold; color:#27ae60;">${hd.temps}</div><div style="font-size:11px; color:#7f8c8d; text-transform:uppercase;">Heures</div></div></div></div>
@@ -1044,7 +1088,74 @@
                 alert("Échec réseau."); btn.innerText = oldText; btn.disabled = false;
             }
         };
+        // SAUVEGARDE ENTRETIEN BUSES (Vers Tableau Général)
+        window.saveEntretienTete = async function(idCanon, btn) {
+            let isChecked = document.getElementById(`chk-buses-${idCanon}`).checked;
+            let anneeInput = document.getElementById(`annee-buses-${idCanon}`);
+            let valBuses = isChecked ? "OUI" : "";
+            let currentYear = new Date().getFullYear();
+            
+            // Si on coche, on met l'année en cours, sinon on efface
+            if(isChecked) anneeInput.value = currentYear;
+            else anneeInput.value = "";
 
+            let fieldsObj = {
+                "Buses": valBuses,
+                "Année": isChecked ? currentYear.toString() : ""
+            };
+
+            let oldText = btn.innerText; btn.innerText = "⏳ Validation..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: idCanon, fields: fieldsObj }) });
+                let r = await res.json();
+                if(r.status === "success") {
+                    btn.innerText = "✅ Entretien Validé !"; btn.style.background = "#27ae60";
+                    // Mise à jour visuelle instantanée de la carte
+                    let feat = window.snowCannons.features.find(f => f.properties.id == idCanon);
+                    if(feat) {
+                        let objB = feat.properties.fullData.find(x => x.k === "Buses"); if(objB) objB.v = valBuses; else feat.properties.fullData.push({k: "Buses", v: valBuses});
+                        let objA = feat.properties.fullData.find(x => x.k === "Année"); if(objA) objA.v = fieldsObj["Année"]; else feat.properties.fullData.push({k: "Année", v: fieldsObj["Année"]});
+                    }
+                    window.updateMap(); // Le point passe en orange tout de suite !
+                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#e67e22"; }, 2000);
+                } else { alert("Erreur Serveur Sheets"); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Erreur Réseau"); btn.innerText = oldText; btn.disabled = false; }
+        };
+
+        // AJOUT D'UN NOUVEAU TICKET (Vers Analyse défaut saison)
+        window.addNouveauTicket = async function(idCanon, btn) {
+            let defaut = document.getElementById(`new-ticket-defaut-${idCanon}`).value;
+            let cause = document.getElementById(`new-ticket-cause-${idCanon}`).value;
+            let etat = document.getElementById(`new-ticket-etat-${idCanon}`).value;
+            
+            if(!defaut.trim()) { alert("Veuillez entrer un nom de défaut/panne."); return; }
+
+            let today = new Date();
+            let dateStr = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
+
+            // Remplissage avec des noms de colonnes classiques de ton onglet Tickets. 
+            // Si tes colonnes s'appellent un peu différemment (ex: N°regard au lieu de N° de regard), l'Apps Script le trouvera grâce à sa logique flexible !
+            let fieldsObj = {
+                "N° de regard": idCanon,
+                "Défaut": defaut,
+                "Cause": cause,
+                "État": etat,
+                "Date": dateStr
+            };
+
+            let oldText = btn.innerText; btn.innerText = "⏳ Création du ticket..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_ticket", fields: fieldsObj }) });
+                let r = await res.json();
+                if(r.status === "success") {
+                    btn.innerText = "✅ Ticket Créé !"; btn.style.background = "#27ae60";
+                    // On vide les champs
+                    document.getElementById(`new-ticket-defaut-${idCanon}`).value = "";
+                    document.getElementById(`new-ticket-cause-${idCanon}`).value = "";
+                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; }, 2500);
+                } else { alert("Erreur Serveur Sheets"); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Erreur Réseau"); btn.innerText = oldText; btn.disabled = false; }
+        };
         // --- ENFIN, ON CONNECTE LE BOUTON RADIO DU MENU GAUCHE AU CLIC ---
         // ATTENTION : Cherche la fonction document.querySelectorAll('input[name="main_theme"]').forEach(r => { ... }) 
         // vers la fin du code (dans initAppUI) et ajoute ce bloc juste avant la fin de l'événement 'change' :
