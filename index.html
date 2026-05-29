@@ -268,7 +268,12 @@
         window.map=null; window.satLayer=null; window.geojsonLayer=null; window.webcamLayerGroup=null;
         window.snowCannons={"type":"FeatureCollection","features":[]}; window.rawGeneral=[]; window.rawHistorique=[]; window.rawTicketsSheet=[]; window.meteoHistData=[]; window.meteoFroidData=[]; window.rawTickets=[]; window.saisonsList=[]; window.cloudKmzLayers=[]; window.webcamsData=[]; window.isMultiSelect=false; window.columnValuesSets={}; window.availableColumns=[]; window.mainTheme='defauts'; window.histMetric='eau'; window.histSeasonIdx=0; window.absoluteMaxes={eau:0,air:0,temps:0}; window.currentMaxThreshold={eau:100,air:100,temps:100}; window.currentMinThreshold={eau:0,air:0,temps:0}; window.activeFilters=[{key:"",vals:[]}]; window.currentPistes=['all']; window.currentTypes=['all']; window.chartInstances={}; window.selectedCannonsMap=new Map(); window.currentlyEditingId=null; window.technoColors={}; window.repColors={}; window.transfoColors={}; window.externalLayers={}; window.defaultColors=['#e74c3c','#3498db','#f1c40f','#2ecc71','#9b59b6','#e67e22','#1abc9c','#34495e']; window.keyPiste=""; window.keyType=""; window.keyRep=""; window.keyTransfo=""; window.localDB=null; window.bootAttempt=0; window.tempTicketPayloads={}; window.suiviEntretienData = [];window.rawAtelier = [];
 
-        window.getV = function(p,k){if(!k||!p||!p.fullData)return "N/A";let o=p.fullData.find(x=>x.k===k);return o?o.v.toString().trim():"N/A";}; window.getTicketsForCanon = function(id){return window.rawTickets.filter(t=>t.idCanon===id);}; window.getActiveTickets = function(id){return window.getTicketsForCanon(id).filter(t=>t.statut.includes('faire')||t.statut.includes('cours'));}; window.getHistoryTickets = function(id){return window.getTicketsForCanon(id).filter(t=>t.statut.includes('fait')||t.statut==='').sort((a,b)=>new Date(b.date)-new Date(a.date));};
+               window.getV = function(p,k){
+            if(!k||!p||!p.fullData)return "N/A";
+            let normK = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            let o = p.fullData.find(x => x.k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === normK);
+            return o ? o.v.toString().trim() : "N/A";
+        }; window.getTicketsForCanon = function(id){return window.rawTickets.filter(t=>t.idCanon===id);}; window.getActiveTickets = function(id){return window.getTicketsForCanon(id).filter(t=>t.statut.includes('faire')||t.statut.includes('cours'));}; window.getHistoryTickets = function(id){return window.getTicketsForCanon(id).filter(t=>t.statut.includes('fait')||t.statut==='').sort((a,b)=>new Date(b.date)-new Date(a.date));};
 
         /* ================== STUDIO EXPERT BI ================== */
         window.biCurrentData=[]; window.openBiMeteo=function(){document.getElementById('bi-meteo-modal').style.display='flex';window.biLoadSource();};
@@ -583,14 +588,12 @@
                 }
             }, 100);
         };
-
-              /* ================== AFFICHAGE FICHE CANON ================== */
+        /* ================== AFFICHAGE FICHE CANON ================== */
         window.renderSelectionPanel = function() {
             if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
             document.getElementById('sel-count').innerText = window.selectedCannonsMap.size; let listDiv = document.getElementById('selected-list'); if(!listDiv) return; 
             
-            // BOUTON DE SAUVEGARDE GLOBALE SI ON EST DANS SUIVI
             listDiv.innerHTML = "";
             if (window.mainTheme === 'suivi_entretien') {
                 listDiv.innerHTML = `<button onclick="window.saveMultiSuivi(this)" style="width:100%; background:#27ae60; color:white; border:none; padding:12px; border-radius:6px; cursor:pointer; font-weight:bold; margin-bottom:15px; font-size:14px; box-shadow:0 2px 5px rgba(0,0,0,0.2);">💾 Sauvegarder la sélection</button>`;
@@ -613,12 +616,53 @@
                     </div>`;
                 }
 
+                // GABARIT DU NOUVEAU FORMULAIRE DE PANNE SIGNALÉE COMPLET
+                let formulairePanneCompletHtml = `
+                    <details style="background:#fdf0ed; padding:10px; border-radius:6px; border:1px solid #fadbd8; font-size:12px; margin-top:12px;">
+                        <summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;">🚨 Signaler un défaut (Ticket complet)</summary>
+                        <div style="margin-top:10px;">
+                            <div style="display:flex; gap:5px;">
+                                <div style="flex:1;"><span class="edit-label">État</span>
+                                    <select id="nt-etat-${p.id}" class="edit-input" style="padding:6px;"><option value="à faire">À faire</option><option value="en cours">En cours</option></select>
+                                </div>
+                                <div style="flex:1;"><span class="edit-label">Période</span>
+                                    <input type="text" id="nt-periode-${p.id}" class="edit-input" value="${window.saisonsList[window.histSeasonIdx] || ''}" style="padding:6px;">
+                                </div>
+                            </div>
+                            
+                            <span class="edit-label">Nom du défaut / Panne</span>
+                            <input type="text" id="nt-defaut-${p.id}" class="edit-input" placeholder="Ex: Fuite Couronne" style="padding:6px;">
+                            
+                            <span class="edit-label">Défaut Sonde</span>
+                            <input type="text" id="nt-sonde-${p.id}" class="edit-input" placeholder="Ex: Sonde T°" style="padding:6px;">
+                            
+                            <span class="edit-label">Cause de la panne</span>
+                            <textarea id="nt-cause-${p.id}" class="edit-input" rows="1" placeholder="Origine du problème..." style="padding:6px;"></textarea>
+                            
+                            <div style="display:flex; gap:5px;">
+                                <div style="flex:1;"><span class="edit-label">Date d'inter</span><input type="text" id="nt-dateinter-${p.id}" class="edit-input" placeholder="JJ/MM/AAAA" style="padding:6px;"></div>
+                                <div style="flex:1;"><span class="edit-label">Photos (Lien)</span><input type="text" id="nt-photos-${p.id}" class="edit-input" placeholder="Lien drive..." style="padding:6px;"></div>
+                            </div>
+
+                            <span class="edit-label">Intervention effectuée</span>
+                            <textarea id="nt-interv-${p.id}" class="edit-input" rows="1" placeholder="Travaux réalisés..." style="padding:6px;"></textarea>
+                            
+                            <span class="edit-label">Pièces utilisées</span>
+                            <textarea id="nt-pieces-${p.id}" class="edit-input" rows="1" placeholder="Ex: Joint torique R18..." style="padding:6px;"></textarea>
+                            
+                            <span class="edit-label">Remarque terrain</span>
+                            <textarea id="nt-remarque-${p.id}" class="edit-input" rows="1" placeholder="Notes additionnelles..." style="padding:6px;"></textarea>
+                            
+                            <button onclick="window.addNouveauTicket('${p.id}', this)" style="width:100%; background:#c0392b; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer; margin-top:5px;">🚀 Envoyer le ticket de Panne</button>
+                        </div>
+                    </details>
+                `;
+
                 if (window.mainTheme === 'suivi_entretien') {
                     let s = window.suiviEntretienData.find(row => row[0] == id) || ["", "", "non", "non", "", "", ""];
                     let isDec = s[2].toString().toLowerCase().trim() === "oui";
                     let isPrev = s[3].toString().toLowerCase().trim() === "oui";
                     let rem = s[5] || "";
-                    
                     let bY = window.getV(p, "année de buse") || window.getV(p, "annee buse") || "Inconnue";
                     let vAdY = window.getV(p, "année vanne ad") || window.getV(p, "annee vanne ad") || "Inconnue";
                     let vY = window.getV(p, "année vanne") || window.getV(p, "annee vanne") || "Inconnue";
@@ -665,22 +709,7 @@
                             </div>
                             <button onclick="window.saveEntretienTete('${id}', this)" style="width:100%; margin-top:10px; background:#e67e22; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Valider l'entretien des buses</button>
                         </div>
-                        
-                        <details style="background:#fdf0ed; padding:10px; border-radius:6px; border:1px solid #fadbd8; font-size:12px;">
-                            <summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;">🚨 Signaler un défaut (Créer un ticket)</summary>
-                            <div style="margin-top:10px;">
-                                <span class="edit-label">Défaut / Panne constatée</span>
-                                <input type="text" id="new-ticket-defaut-${id}" class="edit-input" placeholder="Ex: Fuite couronne..." style="padding:6px; margin-bottom:8px;">
-                                <span class="edit-label">Commentaire / Cause (Optionnel)</span>
-                                <textarea id="new-ticket-cause-${id}" class="edit-input" rows="2" placeholder="Détails de la panne..." style="padding:6px; margin-bottom:8px;"></textarea>
-                                <span class="edit-label">Priorité / État</span>
-                                <select id="new-ticket-etat-${id}" class="edit-input" style="padding:6px; margin-bottom:10px;">
-                                    <option value="À faire">À faire (Urgent)</option>
-                                    <option value="En cours">En cours</option>
-                                </select>
-                                <button onclick="window.addNouveauTicket('${id}', this)" style="width:100%; background:#c0392b; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">➕ Ajouter ce ticket aux Pannes</button>
-                            </div>
-                        </details>
+                        ${formio=formulairePanneCompletHtml}
                     `;
                 }
                 else if (window.mainTheme === 'historique') {
@@ -690,13 +719,16 @@
                     <div class="piste-chart-container" style="background:#fafbfc;"><div style="font-size:11px; font-weight:bold; color:#555; text-align:center; margin-bottom:10px;">➕ Comparer avec une autre saison : <select onchange="window.drawSecondPisteChart('${p.id}', this.value)" style="padding:4px; border-radius:4px; border:1px solid #ccc; outline:none;"><option value="">-- Choisir --</option>${window.saisonsList.filter(x => x !== s).map(x => `<option value="${x}">${x}</option>`).join('')}</select></div><div style="position:relative; height:160px; width:100%;"><canvas id="chart2-${p.id}"></canvas></div></div>
                     ${histHtml}${prodHtml}`;
                 } else if (window.mainTheme === 'defauts') {
-                    if (active.length === 0) { mainContent = `<div style="background:#eafaf1; color:#27ae60; padding:15px; border-radius:6px; text-align:center; font-weight:bold; border:1px solid #d5f5e3; margin-bottom:15px;">✅ Aucun défaut en cours</div>${histHtml}`; } 
-                    else {
-                        mainContent = active.map(t => {
+                    let topTicketsList = "";
+                    if (active.length === 0) { 
+                        topTicketsList = `<div style="background:#eafaf1; color:#27ae60; padding:15px; border-radius:6px; text-align:center; font-weight:bold; border:1px solid #d5f5e3; margin-bottom:15px;">✅ Aucun défaut en cours</div>`; 
+                    } else {
+                        topTicketsList = active.map(t => {
                             let borderCol = t.statut.includes('faire') ? '#e74c3c' : '#f39c12'; let safeDef = t.defaut.replace(/'/g, "\\'"); let safeId = p.id.replace(/'/g, "\\'"); let idDiv = `ticket-edit-${safeId}-${t.defaut.replace(/[^a-zA-Z0-9]/g, "")}`;
                             return `<div class="ticket-card" style="border-left-color:${borderCol};"><div style="font-weight:bold; font-size:14px; color:#333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start;"><span style="flex-grow:1; margin-right:10px;">${t.defaut}</span><button onclick="window.editFullTicket('${safeId}', '${safeDef}')" style="background:none; border:1px solid #ddd; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; flex-shrink:0;">Éditer ✏️</button></div><div id="${idDiv}"><span style="font-size:10px; padding:3px 8px; border-radius:12px; background:${borderCol}20; color:${borderCol}; font-weight:bold; display:inline-block; margin-bottom:8px;">STATUT : ${t.statut.toUpperCase()}</span></div></div>`;
-                        }).join('') + histHtml;
+                        }).join('');
                     }
+                    mainContent = topTicketsList + histHtml + formulairePanneCompletHtml;
                 } else {
                     let badges = `<span class="badge"><b>Modèle:</b> ${window.getV(p, window.keyType)}</span> <span class="badge"><b>Rép:</b> ${window.getV(p, window.keyRep)}</span> <span class="badge"><b>Trans:</b> ${window.getV(p, window.keyTransfo)}</span>`;
                     let fullDataHTML = `<details style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;">➕ Caractéristiques Complètes</summary><div style="margin-top:12px; display:grid; grid-template-columns: 1fr; gap:8px;">`;
