@@ -588,7 +588,7 @@
                 }
             }, 100);
         };
-        /* ================== AFFICHAGE FICHE CANON ================== */
+               /* ================== AFFICHAGE FICHE CANON ================== */
         window.renderSelectionPanel = function() {
             if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
@@ -598,6 +598,11 @@
             if (window.mainTheme === 'suivi_entretien') {
                 listDiv.innerHTML = `<button onclick="window.saveMultiSuivi(this)" style="width:100%; background:#27ae60; color:white; border:none; padding:12px; border-radius:6px; cursor:pointer; font-weight:bold; margin-bottom:15px; font-size:14px; box-shadow:0 2px 5px rgba(0,0,0,0.2);">💾 Sauvegarder la sélection</button>`;
             }
+
+            // Génération de la liste d'auto-complétion (Datalist) pour les pannes existantes
+            let defautsSet = new Set();
+            window.rawTickets.forEach(t => { if(t.defaut) defautsSet.add(t.defaut.trim()); });
+            let datalistHtml = `<datalist id="dl-defauts-list">${Array.from(defautsSet).sort().map(d => `<option value="${d}">`).join('')}</datalist>`;
 
             document.getElementById('right-title').innerText = "📌 Fiche Canon";
             window.selectedCannonsMap.forEach((layer, id) => {
@@ -618,40 +623,47 @@
 
                 // GABARIT DU NOUVEAU FORMULAIRE DE PANNE SIGNALÉE COMPLET
                 let formulairePanneCompletHtml = `
+                    ${datalistHtml}
                     <details style="background:#fdf0ed; padding:10px; border-radius:6px; border:1px solid #fadbd8; font-size:12px; margin-top:12px;">
                         <summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;">🚨 Signaler un défaut (Ticket complet)</summary>
                         <div style="margin-top:10px;">
                             <div style="display:flex; gap:5px;">
                                 <div style="flex:1;"><span class="edit-label">État</span>
-                                    <select id="nt-etat-${p.id}" class="edit-input" style="padding:6px;"><option value="à faire">À faire</option><option value="en cours">En cours</option></select>
+                                    <select id="nt-etat-${p.id}" class="edit-input" style="padding:6px; margin-bottom:8px;"><option value="à faire">À faire</option><option value="en cours">En cours</option></select>
                                 </div>
-                                <div style="flex:1;"><span class="edit-label">Période</span>
-                                    <input type="text" id="nt-periode-${p.id}" class="edit-input" value="${window.saisonsList[window.histSeasonIdx] || ''}" style="padding:6px;">
+                                <div style="flex:1;"><span class="edit-label">Priorité</span>
+                                    <select id="nt-priorite-${p.id}" class="edit-input" style="padding:6px; margin-bottom:8px;">
+                                        <option value="P1 (urgent et bloquant)">P1 (urgent et bloquant)</option>
+                                        <option value="P2 (non bloquant mais urgent)">P2 (non bloquant mais urgent)</option>
+                                        <option value="P3 (non bloquant)">P3 (non bloquant)</option>
+                                    </select>
                                 </div>
                             </div>
                             
                             <span class="edit-label">Nom du défaut / Panne</span>
-                            <input type="text" id="nt-defaut-${p.id}" class="edit-input" placeholder="Ex: Fuite Couronne" style="padding:6px;">
+                            <input type="text" id="nt-defaut-${p.id}" class="edit-input" list="dl-defauts-list" placeholder="Choisir dans la liste ou créer..." style="padding:6px; margin-bottom:8px;">
                             
                             <span class="edit-label">Défaut Sonde</span>
-                            <input type="text" id="nt-sonde-${p.id}" class="edit-input" placeholder="Ex: Sonde T°" style="padding:6px;">
+                            <input type="text" id="nt-sonde-${p.id}" class="edit-input" placeholder="Ex: Sonde T°" style="padding:6px; margin-bottom:8px;">
                             
                             <span class="edit-label">Cause de la panne</span>
-                            <textarea id="nt-cause-${p.id}" class="edit-input" rows="1" placeholder="Origine du problème..." style="padding:6px;"></textarea>
+                            <textarea id="nt-cause-${p.id}" class="edit-input" rows="1" placeholder="Origine du problème..." style="padding:6px; margin-bottom:8px;"></textarea>
                             
                             <div style="display:flex; gap:5px;">
-                                <div style="flex:1;"><span class="edit-label">Date d'inter</span><input type="text" id="nt-dateinter-${p.id}" class="edit-input" placeholder="JJ/MM/AAAA" style="padding:6px;"></div>
-                                <div style="flex:1;"><span class="edit-label">Photos (Lien)</span><input type="text" id="nt-photos-${p.id}" class="edit-input" placeholder="Lien drive..." style="padding:6px;"></div>
+                                <div style="flex:1;"><span class="edit-label">Période</span><input type="text" id="nt-periode-${p.id}" class="edit-input" value="${window.saisonsList[window.histSeasonIdx] || ''}" style="padding:6px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">Date d'inter</span><input type="text" id="nt-dateinter-${p.id}" class="edit-input" placeholder="JJ/MM/AAAA" style="padding:6px; margin-bottom:8px;"></div>
                             </div>
 
                             <span class="edit-label">Intervention effectuée</span>
-                            <textarea id="nt-interv-${p.id}" class="edit-input" rows="1" placeholder="Travaux réalisés..." style="padding:6px;"></textarea>
+                            <textarea id="nt-interv-${p.id}" class="edit-input" rows="1" placeholder="Travaux réalisés..." style="padding:6px; margin-bottom:8px;"></textarea>
                             
-                            <span class="edit-label">Pièces utilisées</span>
-                            <textarea id="nt-pieces-${p.id}" class="edit-input" rows="1" placeholder="Ex: Joint torique R18..." style="padding:6px;"></textarea>
+                            <div style="display:flex; gap:5px;">
+                                <div style="flex:1;"><span class="edit-label">Pièces utilisées</span><input type="text" id="nt-pieces-${p.id}" class="edit-input" placeholder="Ex: Joint R18..." style="padding:6px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">Photos (Lien)</span><input type="text" id="nt-photos-${p.id}" class="edit-input" placeholder="Lien drive..." style="padding:6px; margin-bottom:8px;"></div>
+                            </div>
                             
                             <span class="edit-label">Remarque terrain</span>
-                            <textarea id="nt-remarque-${p.id}" class="edit-input" rows="1" placeholder="Notes additionnelles..." style="padding:6px;"></textarea>
+                            <textarea id="nt-remarque-${p.id}" class="edit-input" rows="1" placeholder="Notes additionnelles..." style="padding:6px; margin-bottom:8px;"></textarea>
                             
                             <button onclick="window.addNouveauTicket('${p.id}', this)" style="width:100%; background:#c0392b; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer; margin-top:5px;">🚀 Envoyer le ticket de Panne</button>
                         </div>
@@ -709,7 +721,7 @@
                             </div>
                             <button onclick="window.saveEntretienTete('${id}', this)" style="width:100%; margin-top:10px; background:#e67e22; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Valider l'entretien des buses</button>
                         </div>
-                        ${formio=formulairePanneCompletHtml}
+                        ${formulairePanneCompletHtml}
                     `;
                 }
                 else if (window.mainTheme === 'historique') {
@@ -1156,12 +1168,15 @@
         };
 
         // AJOUT D'UN NOUVEAU TICKET (Vers Analyse défaut saison)
-               // ENREGISTREMENT ET ENVOI DU TICKET DE PANNE COMPLET
+           // ENREGISTREMENT ET ENVOI DU TICKET DE PANNE COMPLET
         window.addNouveauTicket = async function(idCanon, btn) {
             let defaut = document.getElementById(`nt-defaut-${idCanon}`).value;
             if(!defaut.trim()) { alert("Veuillez renseigner au moins le champ 'Défaut'."); return; }
             
             let etat = document.getElementById(`nt-etat-${idCanon}`).value;
+            let prioriteInput = document.getElementById(`nt-priorite-${idCanon}`);
+            let priorite = prioriteInput ? prioriteInput.value : "";
+            
             let periode = document.getElementById(`nt-periode-${idCanon}`).value;
             let sonde = document.getElementById(`nt-sonde-${idCanon}`).value;
             let cause = document.getElementById(`nt-cause-${idCanon}`).value;
@@ -1182,6 +1197,7 @@
             // Mapping exact avec les colonnes de ton tableur "Analyse défauts saison"
             let fieldsObj = {
                 "état": etat,
+                "Priorité": priorite,
                 "date": dateStr,
                 "n°regard": idCanon,
                 "piste": piste,
@@ -1212,6 +1228,14 @@
                         defaut: defaut,
                         fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]}))
                     });
+
+                    setTimeout(() => { 
+                        btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; 
+                        window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart();
+                    }, 2000);
+                } else { alert("Erreur serveur Sheets : " + (r.msg || "Inconnue")); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
+        };
 
                     setTimeout(() => { 
                         btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; 
