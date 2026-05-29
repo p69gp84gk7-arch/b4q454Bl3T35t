@@ -467,7 +467,7 @@
             }, 100);
         };
 
-        /* ================== AFFICHAGE FICHE CANON ================== */
+                /* ================== AFFICHAGE FICHE CANON ================== */
         window.renderSelectionPanel = function() {
             if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
@@ -486,6 +486,8 @@
             document.getElementById('right-title').innerText = "📌 Fiche Canon";
             window.selectedCannonsMap.forEach((layer, id) => {
                 const p = layer.feature.properties; let active = window.getActiveTickets(p.id); let history = window.getHistoryTickets(p.id); let mainContent = ""; let histHtml = ""; let prodHtml = "";
+                let overrideItemHtml = null; // Ajout pour la vue simplifiée (Entretien Tête)
+
                 if (history.length > 0) {
                     histHtml = `<details class="ticket-history" style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;">📁 Historique d'interventions (${history.length})</summary><ul style="padding-left:15px; margin-top:10px;">`;
                     history.forEach(t => { let dateStr = isNaN(new Date(t.date).getTime()) ? (t.date || "Inconnue") : new Date(t.date).toLocaleDateString('fr-FR'); let cause = t.fullData.find(x => x.k.toLowerCase().includes('cause') || x.k.toLowerCase().includes('intervention') || x.k.toLowerCase().includes('commentaire')); histHtml += `<li style="margin-bottom:8px; font-size:11.5px; border-bottom:1px solid #eee; padding-bottom:5px;"><b>${dateStr}</b> - <span style="color:#e74c3c;">${t.defaut}</span> <br><span style="color:#666;">Intervention : ${cause ? cause.v : "Non précisée"}</span></li>`; });
@@ -560,23 +562,28 @@
                 else if (window.mainTheme === 'entretien_tete') {
                     let bVal = window.getV(p, "Buses");
                     let isFait = (bVal.toLowerCase().trim() === "oui" || bVal.toLowerCase().trim() === "ok" || bVal.toLowerCase().trim() === "true" || bVal.toLowerCase().trim() === "x");
-                    let anneeVal = window.getV(p, "Année");
+                    let anneeVal = window.getV(p, "années buses") || window.getV(p, "Année") || "N/A";
                     let currentYear = new Date().getFullYear();
-                    mainContent = `
-                        <div style="background:#fdfdfe; padding:10px; border-radius:6px; border:1px solid #ccc; font-size:12px; margin-bottom:10px;">
-                            <h4 style="margin:0 0 8px 0; color:#2c3e50;">📊 Données Techniques</h4><b>N° de regard :</b> ${id}<br><b>Piste :</b> ${window.getV(p, window.keyPiste)}<br><b>Modèle :</b> ${window.getV(p, window.keyType)}
-                        </div>
-                        <div style="background:#fef5e7; padding:12px; border-radius:6px; border:1px solid #f8c471; margin-bottom:10px; font-size:12px;">
-                            <h4 style="margin:0 0 8px 0; color:#d35400;">🚿 Entretien des Buses</h4>
-                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-                                <label style="cursor:pointer; font-weight:bold; color:#d35400;"><input type="checkbox" id="chk-buses-${id}" ${isFait?'checked':''} style="transform:scale(1.2); margin-right:5px;"> Buses changées / vérifiées</label>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span class="edit-label">Année validée</span><input type="text" id="annee-buses-${id}" value="${isFait && anneeVal !== "N/A" ? anneeVal : currentYear}" class="edit-input" style="width:100px; padding:4px; margin:0;" readonly>
-                            </div>
-                            <button onclick="window.saveEntretienTete('${id}', this)" style="width:100%; margin-top:10px; background:#e67e22; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Valider l'entretien des buses</button>
-                        </div>
-                        ${formulairePanneCompletHtml}
+                    
+                    // NOUVEAU DESIGN : Ligne compacte avec accordéon intégré
+                    overrideItemHtml = `
+                        <details class="entretien-detail-row" style="margin-bottom:10px; border-radius:6px; box-shadow:0 2px 5px rgba(0,0,0,0.05); background:#fff; border:1px solid #e1e8ed; overflow:hidden;">
+                            <summary style="display:flex; align-items:center; gap:10px; background:#fef5e7; padding:10px 15px; cursor:pointer; list-style:none; outline:none; border-bottom:1px solid #f8c471;">
+                                <b style="color:#d35400; font-size:14px; min-width:65px;">📍 N° ${p.id}</b>
+                                <input type="checkbox" id="chk-buses-${id}" ${isFait?'checked':''} style="transform:scale(1.5); cursor:pointer; margin:0;" onclick="event.stopPropagation();" title="Buses changées">
+                                <input type="hidden" id="annee-buses-${id}" value="${isFait && anneeVal !== "N/A" ? anneeVal : currentYear}">
+                                <button onclick="event.stopPropagation(); window.saveEntretienTete('${id}', this)" style="flex-grow:1; background:#e67e22; color:white; border:none; padding:8px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px; transition:0.2s;">💾 Valider</button>
+                                <span style="color:#e67e22; font-size:12px; font-weight:bold; padding-left:5px;">▼</span>
+                            </summary>
+                            <div style="padding:15px; background:#fff;">
+                                <div style="background:#fdfdfe; padding:10px; border-radius:4px; border:1px solid #e1e8ed; font-size:12px; margin-bottom:10px;">
+                                    <b style="color:#2c3e50;">Piste :</b> ${window.getV(p, window.keyPiste)}<br>
+                                    <b style="color:#2c3e50;">Modèle :</b> ${window.getV(p, window.keyType)}<br>
+                                    <b style="color:#2c3e50;">Année validée :</b> ${isFait && anneeVal !== "N/A" ? anneeVal : currentYear}
+                                </div>
+                                ${formulairePanneCompletHtml}
+                                </div>
+                        </details>
                     `;
                 }
                 else if (window.mainTheme === 'historique') {
@@ -608,7 +615,12 @@
                     else if (window.mainTheme === 'suivi_entretien') editBtn = `<button class="btn-action-primary" style="background:#f39c12; margin-top:10px;" onclick="window.startEdit('${p.id}')">⚙️ Éditer les Données Techniques</button>`;
                 }
 
-                listDiv.innerHTML += `<div class="sel-details"><div class="sel-details-header"><span>📍 Canon <b>${p.id}</b></span><span style="font-weight:normal; font-size:12px; background:#e0e6ed; padding:4px 10px; border-radius:12px; color:#34495e;">${window.getV(p, window.keyPiste)}</span></div><div class="sel-details-body">${mainContent}${editBtn}</div></div>`;
+                // INJECTION HTML CONDITIONNELLE
+                if (overrideItemHtml) {
+                    listDiv.innerHTML += overrideItemHtml.replace('', editBtn);
+                } else {
+                    listDiv.innerHTML += `<div class="sel-details"><div class="sel-details-header"><span>📍 Canon <b>${p.id}</b></span><span style="font-weight:normal; font-size:12px; background:#e0e6ed; padding:4px 10px; border-radius:12px; color:#34495e;">${window.getV(p, window.keyPiste)}</span></div><div class="sel-details-body">${mainContent}${editBtn}</div></div>`;
+                }
                     
                 setTimeout(() => {
                     if(window.mainTheme === 'historique' && !window.isMultiSelect) window.drawPisteCompareChart(p);
