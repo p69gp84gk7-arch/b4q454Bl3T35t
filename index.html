@@ -588,7 +588,7 @@
                 }
             }, 100);
         };
-               /* ================== AFFICHAGE FICHE CANON ================== */
+                     /* ================== AFFICHAGE FICHE CANON ================== */
         window.renderSelectionPanel = function() {
             if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
@@ -771,7 +771,6 @@
                 }, 100);
             });
         };
-
         /* ================== GLOBALS CHARTS & FILTRES ================== */
         window.triggerGlobalFilterChart = function() {
             if (window.selectedCannonsMap.size > 0 || window.currentlyEditingId) return;
@@ -1133,42 +1132,39 @@
                 alert("Échec réseau."); btn.innerText = oldText; btn.disabled = false;
             }
         };
-        // SAUVEGARDE ENTRETIEN BUSES (Vers Tableau Général)
+                // ==========================================
+        // SAUVEGARDE ENTRETIEN BUSES
+        // ==========================================
         window.saveEntretienTete = async function(idCanon, btn) {
             let isChecked = document.getElementById(`chk-buses-${idCanon}`).checked;
             let anneeInput = document.getElementById(`annee-buses-${idCanon}`);
             let valBuses = isChecked ? "OUI" : "";
             let currentYear = new Date().getFullYear();
             
-            // Si on coche, on met l'année en cours, sinon on efface
             if(isChecked) anneeInput.value = currentYear;
             else anneeInput.value = "";
 
-            let fieldsObj = {
-                "Buses": valBuses,
-                "Année": isChecked ? currentYear.toString() : ""
-            };
-
+            let fieldsObj = { "Buses": valBuses, "Année": isChecked ? currentYear.toString() : "" };
             let oldText = btn.innerText; btn.innerText = "⏳ Validation..."; btn.disabled = true;
             try {
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: idCanon, fields: fieldsObj }) });
                 let r = await res.json();
                 if(r.status === "success") {
                     btn.innerText = "✅ Entretien Validé !"; btn.style.background = "#27ae60";
-                    // Mise à jour visuelle instantanée de la carte
                     let feat = window.snowCannons.features.find(f => f.properties.id == idCanon);
                     if(feat) {
                         let objB = feat.properties.fullData.find(x => x.k === "Buses"); if(objB) objB.v = valBuses; else feat.properties.fullData.push({k: "Buses", v: valBuses});
                         let objA = feat.properties.fullData.find(x => x.k === "Année"); if(objA) objA.v = fieldsObj["Année"]; else feat.properties.fullData.push({k: "Année", v: fieldsObj["Année"]});
                     }
-                    window.updateMap(); // Le point passe en orange tout de suite !
+                    window.updateMap();
                     setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#e67e22"; }, 2000);
                 } else { alert("Erreur Serveur Sheets"); btn.innerText = oldText; btn.disabled = false; }
             } catch(e) { alert("Erreur Réseau"); btn.innerText = oldText; btn.disabled = false; }
         };
 
-        // AJOUT D'UN NOUVEAU TICKET (Vers Analyse défaut saison)
-           // ENREGISTREMENT ET ENVOI DU TICKET DE PANNE COMPLET
+        // ==========================================
+        // ENREGISTREMENT ET ENVOI DU TICKET DE PANNE
+        // ==========================================
         window.addNouveauTicket = async function(idCanon, btn) {
             let defaut = document.getElementById(`nt-defaut-${idCanon}`).value;
             if(!defaut.trim()) { alert("Veuillez renseigner au moins le champ 'Défaut'."); return; }
@@ -1194,7 +1190,6 @@
             let piste = p ? window.getV(p, window.keyPiste) : "Inconnue";
             let latlong = layer ? (layer.getLatLng().lat.toFixed(7) + "," + layer.getLatLng().lng.toFixed(7)) : "";
 
-            // Mapping exact avec les colonnes de ton tableur "Analyse défauts saison"
             let fieldsObj = {
                 "état": etat,
                 "Priorité": priorite,
@@ -1219,8 +1214,6 @@
                 let r = await res.json();
                 if(r.status === "success") {
                     btn.innerText = "🚀 Ticket Archivé !"; btn.style.background = "#27ae60";
-                    
-                    // Injection dynamique dans la base de données locale pour mise à jour cartographique en temps réel
                     window.rawTickets.push({
                         statut: etat.toLowerCase(),
                         date: dateStr,
@@ -1228,20 +1221,11 @@
                         defaut: defaut,
                         fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]}))
                     });
-
                     setTimeout(() => { 
                         btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; 
                         window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart();
                     }, 2000);
                 } else { alert("Erreur serveur Sheets : " + (r.msg || "Inconnue")); btn.innerText = oldText; btn.disabled = false; }
-            } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
-        };
-
-                    setTimeout(() => { 
-                        btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; 
-                        window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart();
-                    }, 2000);
-                } else { alert("Erreur serveur Sheets : " + r.msg); btn.innerText = oldText; btn.disabled = false; }
             } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
         };
 
