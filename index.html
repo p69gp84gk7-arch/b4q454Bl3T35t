@@ -193,17 +193,8 @@
                         </label>
                         <div class="theme-details" id="details-entretien_tete" style="display: none; border-color: #e67e22;">
                             <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Suivi du changement des buses</div>
-                                                <div class="theme-block">
-                        <label class="radio-card" id="lbl-entretien_tete" style="border-radius: 6px; margin-bottom: 8px; border-color: #e1e8ed;">
-                            <input type="radio" name="main_theme" value="entretien_tete"> 🚿 Entretien Tête Canon
-                        </label>
-                        <div class="theme-details" id="details-entretien_tete" style="display: none; border-color: #e67e22;">
-                            <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Suivi du changement des buses</div>
                             <div id="legend-entretien_tete"></div>
                             <button onclick="window.resetEntretienBuses()" style="width:100%; margin-top:10px; background:#c0392b; color:white; border:none; padding:8px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">🔄 Remise à zéro annuelle</button>
-                        </div>
-                    </div>
-                            <div id="legend-entretien_tete"></div>
                         </div>
                     </div>
                     <div class="theme-block"><label class="radio-card" id="lbl-suivi_entretien" style="border-radius: 6px; margin-bottom: 8px; border-color: #e1e8ed;"><input type="radio" name="main_theme" value="suivi_entretien"> 🛠️ Suivi Entretien</label><div class="theme-details" id="details-suivi_entretien" style="display: none; border-color: #27ae60;"> <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Gérez l'entretien et les vannes</div> <div id="legend-suivi_entretien"></div></div></div>                   
@@ -236,8 +227,7 @@
             <div id="map"></div>
             <div id="atelier-workspace" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; background:#f4f6f8; overflow-y:auto; padding:20px; box-sizing:border-box;"></div>
         </div>
-
-        <div id="right-sidebar">
+                <div id="right-sidebar">
             <div class="right-header" id="right-header"><span id="right-title">📌 Analyse Détaillée</span><button onclick="window.closeRightSidebar()" style="background:none; border:none; color:#bdc3c7; font-size:28px; cursor:pointer;">&times;</button></div>
             <div class="right-content">
                 <div id="view-selection">
@@ -309,41 +299,21 @@
             if(window.mainTheme === 'type') { let tv=window.getV(p,window.keyType).toLowerCase(); if(["demak lenko","demac lenko"].includes(tv))return "#0000FF"; if(["sufag","street","taurus","taurax","peak"].includes(tv))return "#008000"; return window.technoColors[tv]||"#FFD700"; }
             return '#34495e'; 
         };
-
-        window.updateLegend = function() {
+                window.updateLegend = function() {
             let elDef = document.getElementById('legend-defauts');
             let elSuivi = document.getElementById('legend-suivi_entretien');
             if (window.mainTheme === 'suivi_entretien') {
                 if(elSuivi) elSuivi.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e74c3c;"></div> Défaut en cours</div><div class="legend-item"><div class="color-box" style="background:#9b59b6;"></div> Préventif Usine</div><div class="legend-item"><div class="color-box" style="background:#27ae60;"></div> Déconnecté</div><div class="legend-item"><div class="color-box" style="background:#f1c40f;"></div> Connecté (⚡)</div><div class="legend-item"><div style="background:#e67e22; color:white; width:14px; height:14px; border-radius:50%; font-size:10px; font-weight:bold; text-align:center; line-height:14px; border:1px solid #ccc;">!</div> Remarque présente</div><div class="legend-item" style="font-size:10px; color:#7f8c8d; margin-top:5px;"><i>Mélange de couleurs si multi-statuts.</i></div>`;
-            } else if (window.mainTheme === 'entretien_tete') {
-                            else if (window.mainTheme === 'entretien_tete') {
-                    let bVal = window.getV(p, "Buses");
-                    let isFait = (bVal.toLowerCase().trim() === "oui" || bVal.toLowerCase().trim() === "ok" || bVal.toLowerCase().trim() === "true" || bVal.toLowerCase().trim() === "x");
-                    // Remplacement de "Année" par "années buses"
-                    let anneeVal = window.getV(p, "années buses") || window.getV(p, "annees buses");
-                    
-                    mainContent = `
-                        <div style="background:#fef5e7; padding:12px; border-radius:6px; border:1px solid #f8c471; margin-bottom:10px; font-size:12px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <b style="color:#d35400; font-size:14px; margin:0;">📍 Canon ${id}</b>
-                                <label style="cursor:pointer; font-weight:bold; color:#d35400;"><input type="checkbox" id="chk-buses-${id}" ${isFait?'checked':''} style="transform:scale(1.2); margin-right:5px;"> Fait</label>
-                                <button onclick="window.saveEntretienTete('${id}', this)" style="background:#e67e22; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Valider</button>
-                            </div>
-                            
-                            <details style="margin-top:12px; border-top:1px dashed #f8c471; padding-top:10px;">
-                                <summary style="cursor:pointer; font-weight:bold; color:#e67e22; outline:none;">⬇️ Dérouler pour plus d'infos et Tickets</summary>
-                                <div style="margin-top:10px;">
-                                    <div style="background:#fdfdfe; padding:10px; border-radius:4px; border:1px solid #ccc; margin-bottom:10px;">
-                                        <b>Piste :</b> ${window.getV(p, window.keyPiste)}<br>
-                                        <b>Modèle :</b> ${window.getV(p, window.keyType)}<br>
-                                        <b>Année validée :</b> ${anneeVal !== "N/A" ? anneeVal : "Aucune"}
-                                    </div>
-                                    ${formulairePanneCompletHtml}
-                                </div>
-                            </details>
-                        </div>
+            }
+            else if (window.mainTheme === 'entretien_tete') {
+                let elEntretien = document.getElementById('legend-entretien_tete');
+                if (elEntretien) {
+                    elEntretien.innerHTML = `
+                        <div class="legend-item"><div class="color-box" style="background:#e67e22;"></div> Buses changées / OK</div>
+                        <div class="legend-item"><div class="color-box" style="background:#bdc3c7;"></div> À faire</div>
                     `;
-                } else if (window.mainTheme === 'defauts' && elDef) {
+                }
+            } else if (window.mainTheme === 'defauts' && elDef) {
                 elDef.innerHTML = `<div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'urgent')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #e74c3c;"></div> Urgent (À faire)</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'encours')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #f39c12;"></div> En cours</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'ras')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #bdc3c7;"></div> RAS</div>`;
             } else if (window.mainTheme === 'type') {
                 let elTy = document.getElementById('legend-type'); let h = '';
@@ -654,8 +624,7 @@
                 }, 100);
             });
         };
-
-        /* ================== GLOBALS CHARTS & FILTRES ================== */
+                /* ================== GLOBALS CHARTS & FILTRES ================== */
         window.triggerGlobalFilterChart = function() {
             if (window.selectedCannonsMap.size > 0 || window.currentlyEditingId) return;
             let visibleCannons = window.snowCannons.features.filter(f => f.properties._isVisible);
@@ -1107,7 +1076,7 @@
             } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
         };
 
-                // ==========================================
+        // ==========================================
         // SAUVEGARDE ENTRETIEN BUSES
         // ==========================================
         window.saveEntretienTete = async function(idCanon, btn) {
