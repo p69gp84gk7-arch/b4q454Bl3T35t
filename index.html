@@ -1156,12 +1156,70 @@
         };
 
         // AJOUT D'UN NOUVEAU TICKET (Vers Analyse défaut saison)
+               // ENREGISTREMENT ET ENVOI DU TICKET DE PANNE COMPLET
         window.addNouveauTicket = async function(idCanon, btn) {
-            let defaut = document.getElementById(`new-ticket-defaut-${idCanon}`).value;
-            let cause = document.getElementById(`new-ticket-cause-${idCanon}`).value;
-            let etat = document.getElementById(`new-ticket-etat-${idCanon}`).value;
+            let defaut = document.getElementById(`nt-defaut-${idCanon}`).value;
+            if(!defaut.trim()) { alert("Veuillez renseigner au moins le champ 'Défaut'."); return; }
             
-            if(!defaut.trim()) { alert("Veuillez entrer un nom de défaut/panne."); return; }
+            let etat = document.getElementById(`nt-etat-${idCanon}`).value;
+            let periode = document.getElementById(`nt-periode-${idCanon}`).value;
+            let sonde = document.getElementById(`nt-sonde-${idCanon}`).value;
+            let cause = document.getElementById(`nt-cause-${idCanon}`).value;
+            let dateinter = document.getElementById(`nt-dateinter-${idCanon}`).value;
+            let photos = document.getElementById(`nt-photos-${idCanon}`).value;
+            let interv = document.getElementById(`nt-interv-${idCanon}`).value;
+            let pieces = document.getElementById(`nt-pieces-${idCanon}`).value;
+            let remarque = document.getElementById(`nt-remarque-${idCanon}`).value;
+
+            let today = new Date();
+            let dateStr = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
+
+            let layer = window.selectedCannonsMap.get(idCanon);
+            let p = layer ? layer.feature.properties : null;
+            let piste = p ? window.getV(p, window.keyPiste) : "Inconnue";
+            let latlong = layer ? (layer.getLatLng().lat.toFixed(7) + "," + layer.getLatLng().lng.toFixed(7)) : "";
+
+            // Mapping exact avec les colonnes de ton tableur "Analyse défauts saison"
+            let fieldsObj = {
+                "état": etat,
+                "date": dateStr,
+                "n°regard": idCanon,
+                "piste": piste,
+                "defaut": defaut,
+                "Défaut sonde": sonde,
+                "cause": cause,
+                "date d'inter": dateinter,
+                "intervention": interv,
+                "Remarque": remarque,
+                "periode": periode,
+                "photos": photos,
+                "latlong": latlong,
+                "pièces utilisés": pieces
+            };
+
+            let oldText = btn.innerText; btn.innerText = "⏳ Transmission..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_ticket", fields: fieldsObj }) });
+                let r = await res.json();
+                if(r.status === "success") {
+                    btn.innerText = "🚀 Ticket Archivé !"; btn.style.background = "#27ae60";
+                    
+                    // Injection dynamique dans la base de données locale pour mise à jour cartographique en temps réel
+                    window.rawTickets.push({
+                        statut: etat.toLowerCase(),
+                        date: dateStr,
+                        idCanon: idCanon,
+                        defaut: defaut,
+                        fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]}))
+                    });
+
+                    setTimeout(() => { 
+                        btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; 
+                        window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart();
+                    }, 2000);
+                } else { alert("Erreur serveur Sheets : " + r.msg); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
+        };
 
             let today = new Date();
             let dateStr = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
