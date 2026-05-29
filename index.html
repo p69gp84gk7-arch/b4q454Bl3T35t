@@ -193,6 +193,16 @@
                         </label>
                         <div class="theme-details" id="details-entretien_tete" style="display: none; border-color: #e67e22;">
                             <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Suivi du changement des buses</div>
+                                                <div class="theme-block">
+                        <label class="radio-card" id="lbl-entretien_tete" style="border-radius: 6px; margin-bottom: 8px; border-color: #e1e8ed;">
+                            <input type="radio" name="main_theme" value="entretien_tete"> 🚿 Entretien Tête Canon
+                        </label>
+                        <div class="theme-details" id="details-entretien_tete" style="display: none; border-color: #e67e22;">
+                            <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Suivi du changement des buses</div>
+                            <div id="legend-entretien_tete"></div>
+                            <button onclick="window.resetEntretienBuses()" style="width:100%; margin-top:10px; background:#c0392b; color:white; border:none; padding:8px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">🔄 Remise à zéro annuelle</button>
+                        </div>
+                    </div>
                             <div id="legend-entretien_tete"></div>
                         </div>
                     </div>
@@ -306,9 +316,34 @@
             if (window.mainTheme === 'suivi_entretien') {
                 if(elSuivi) elSuivi.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e74c3c;"></div> Défaut en cours</div><div class="legend-item"><div class="color-box" style="background:#9b59b6;"></div> Préventif Usine</div><div class="legend-item"><div class="color-box" style="background:#27ae60;"></div> Déconnecté</div><div class="legend-item"><div class="color-box" style="background:#f1c40f;"></div> Connecté (⚡)</div><div class="legend-item"><div style="background:#e67e22; color:white; width:14px; height:14px; border-radius:50%; font-size:10px; font-weight:bold; text-align:center; line-height:14px; border:1px solid #ccc;">!</div> Remarque présente</div><div class="legend-item" style="font-size:10px; color:#7f8c8d; margin-top:5px;"><i>Mélange de couleurs si multi-statuts.</i></div>`;
             } else if (window.mainTheme === 'entretien_tete') {
-                let elTete = document.getElementById('legend-entretien_tete');
-                if(elTete) elTete.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e67e22;"></div> Entretien Buses Fait</div><div class="legend-item"><div class="color-box" style="background:#bdc3c7;"></div> À faire</div>`;
-            } else if (window.mainTheme === 'defauts' && elDef) {
+                            else if (window.mainTheme === 'entretien_tete') {
+                    let bVal = window.getV(p, "Buses");
+                    let isFait = (bVal.toLowerCase().trim() === "oui" || bVal.toLowerCase().trim() === "ok" || bVal.toLowerCase().trim() === "true" || bVal.toLowerCase().trim() === "x");
+                    // Remplacement de "Année" par "années buses"
+                    let anneeVal = window.getV(p, "années buses") || window.getV(p, "annees buses");
+                    
+                    mainContent = `
+                        <div style="background:#fef5e7; padding:12px; border-radius:6px; border:1px solid #f8c471; margin-bottom:10px; font-size:12px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <b style="color:#d35400; font-size:14px; margin:0;">📍 Canon ${id}</b>
+                                <label style="cursor:pointer; font-weight:bold; color:#d35400;"><input type="checkbox" id="chk-buses-${id}" ${isFait?'checked':''} style="transform:scale(1.2); margin-right:5px;"> Fait</label>
+                                <button onclick="window.saveEntretienTete('${id}', this)" style="background:#e67e22; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Valider</button>
+                            </div>
+                            
+                            <details style="margin-top:12px; border-top:1px dashed #f8c471; padding-top:10px;">
+                                <summary style="cursor:pointer; font-weight:bold; color:#e67e22; outline:none;">⬇️ Dérouler pour plus d'infos et Tickets</summary>
+                                <div style="margin-top:10px;">
+                                    <div style="background:#fdfdfe; padding:10px; border-radius:4px; border:1px solid #ccc; margin-bottom:10px;">
+                                        <b>Piste :</b> ${window.getV(p, window.keyPiste)}<br>
+                                        <b>Modèle :</b> ${window.getV(p, window.keyType)}<br>
+                                        <b>Année validée :</b> ${anneeVal !== "N/A" ? anneeVal : "Aucune"}
+                                    </div>
+                                    ${formulairePanneCompletHtml}
+                                </div>
+                            </details>
+                        </div>
+                    `;
+                } else if (window.mainTheme === 'defauts' && elDef) {
                 elDef.innerHTML = `<div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'urgent')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #e74c3c;"></div> Urgent (À faire)</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'encours')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #f39c12;"></div> En cours</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'ras')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #bdc3c7;"></div> RAS</div>`;
             } else if (window.mainTheme === 'type') {
                 let elTy = document.getElementById('legend-type'); let h = '';
@@ -761,7 +796,11 @@
                 }, 100);
                 return; 
             }
-
+            else if (window.mainTheme === 'entretien_tete') {
+                let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Dashboard Entretien Buses";
+                window.renderEntretienDashboard('all');
+                return; 
+            }
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html; 
 
             setTimeout(() => {
@@ -1068,40 +1107,83 @@
             } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
         };
 
-        // ==========================================
+                // ==========================================
         // SAUVEGARDE ENTRETIEN BUSES
         // ==========================================
         window.saveEntretienTete = async function(idCanon, btn) {
             let chk = document.getElementById(`chk-buses-${idCanon}`);
-            let anneeInput = document.getElementById(`annee-buses-${idCanon}`);
-            if(!chk || !anneeInput) return;
+            if(!chk) return;
             
             let isChecked = chk.checked;
             let valBuses = isChecked ? "OUI" : "";
             let currentYear = new Date().getFullYear();
             
-            if(isChecked) anneeInput.value = currentYear;
-            else anneeInput.value = "";
-
-            let fieldsObj = { "Buses": valBuses, "Année": isChecked ? currentYear.toString() : "" };
-            let oldText = btn.innerText; btn.innerText = "⏳ Validation..."; btn.disabled = true;
+            // Mise à jour de la colonne pour utiliser "années buses"
+            let fieldsObj = { "Buses": valBuses, "années buses": isChecked ? currentYear.toString() : "" };
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
             
             try {
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: idCanon, fields: fieldsObj }) });
                 let r = await res.json();
                 if(r.status === "success") {
-                    btn.innerText = "✅ Entretien Validé !"; btn.style.background = "#27ae60";
+                    btn.innerText = "✅ Validé !"; btn.style.background = "#27ae60";
                     let feat = window.snowCannons.features.find(f => f.properties.id == idCanon);
                     if(feat) {
-                        let objB = feat.properties.fullData.find(x => x.k === "Buses"); if(objB) objB.v = valBuses; else feat.properties.fullData.push({k: "Buses", v: valBuses});
-                        let objA = feat.properties.fullData.find(x => x.k === "Année"); if(objA) objA.v = fieldsObj["Année"]; else feat.properties.fullData.push({k: "Année", v: fieldsObj["Année"]});
+                        let objB = feat.properties.fullData.find(x => x.k.toLowerCase() === "buses"); if(objB) objB.v = valBuses; else feat.properties.fullData.push({k: "Buses", v: valBuses});
+                        let objA = feat.properties.fullData.find(x => x.k.toLowerCase() === "années buses"); if(objA) objA.v = fieldsObj["années buses"]; else feat.properties.fullData.push({k: "années buses", v: fieldsObj["années buses"]});
                     }
                     window.updateMap();
-                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#e67e22"; }, 2000);
+                    if(window.mainTheme === 'entretien_tete' && window.selectedCannonsMap.size === 0) window.triggerGlobalFilterChart();
+                    setTimeout(() => { btn.innerText = "💾 Valider"; btn.disabled = false; btn.style.background = "#e67e22"; }, 2000);
                 } else { alert("Erreur Serveur Sheets : " + (r.msg || "Inconnue")); btn.innerText = oldText; btn.disabled = false; }
             } catch(e) { alert("Erreur Réseau"); btn.innerText = oldText; btn.disabled = false; }
         };
 
+        // ==========================================
+        // REMISE A ZERO ENTRETIEN BUSES
+        // ==========================================
+        window.resetEntretienBuses = async function() {
+            if(!confirm("es-tu sur de vouloir remettre a zéro l’entretien des tête d’enneigeurs ?")) return;
+            
+            let btn = event.target;
+            let oldText = btn.innerText;
+            btn.innerText = "⏳ Remise à zéro en cours...";
+            btn.disabled = true;
+
+            let cannonsToReset = window.snowCannons.features.filter(f => {
+                let bVal = window.getV(f.properties, "Buses").toLowerCase().trim();
+                return (bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x");
+            });
+
+            if(cannonsToReset.length === 0) {
+                alert("Tous les canons sont déjà à zéro.");
+                btn.innerText = oldText; btn.disabled = false;
+                return;
+            }
+
+            let successCount = 0;
+            // Mise à jour séquentielle pour éviter de surcharger le script côté Google
+            for(let i = 0; i < cannonsToReset.length; i++) {
+                let id = cannonsToReset[i].properties.id;
+                let fieldsObj = { "Buses": "", "années buses": "" };
+                try {
+                    let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: id, fields: fieldsObj }) });
+                    let r = await res.json();
+                    if(r.status === "success") {
+                        successCount++;
+                        let objB = cannonsToReset[i].properties.fullData.find(x => x.k.toLowerCase() === "buses"); if(objB) objB.v = "";
+                        let objA = cannonsToReset[i].properties.fullData.find(x => x.k.toLowerCase() === "années buses"); if(objA) objA.v = "";
+                    }
+                } catch(e) { console.error("Erreur sur canon " + id); }
+            }
+            
+            window.updateMap();
+            if(window.mainTheme === 'entretien_tete') window.triggerGlobalFilterChart();
+            
+            btn.innerText = "✅ Terminé";
+            setTimeout(() => { btn.innerText = oldText; btn.disabled = false; }, 3000);
+            alert(successCount + " canons ont été remis à zéro.");
+        };
         // ==========================================
         // ENREGISTREMENT ET ENVOI DU TICKET DE PANNE
         // ==========================================
@@ -1169,7 +1251,56 @@
                 } else { alert("Erreur serveur Sheets : " + (r.msg || "Inconnue")); btn.innerText = oldText; btn.disabled = false; }
             } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
         };
-
+        window.renderEntretienDashboard = function(pisteFilter) {
+            let visibleCannons = window.snowCannons.features;
+            if(pisteFilter !== 'all') {
+                visibleCannons = visibleCannons.filter(f => window.getV(f.properties, window.keyPiste) === pisteFilter);
+            }
+            
+            let total = visibleCannons.length;
+            let fait = 0;
+            visibleCannons.forEach(f => {
+                let bVal = window.getV(f.properties, "Buses").toLowerCase().trim();
+                if(bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x") fait++;
+            });
+            
+            let percent = total === 0 ? 0 : Math.round((fait / total) * 100);
+            let pistes = Array.from(window.columnValuesSets[window.keyPiste] || []).sort();
+            
+            let selectHtml = `<div class="edit-label">Filtrer par piste :</div><select class="edit-input" style="margin-bottom:0;" onchange="window.renderEntretienDashboard(this.value)"><option value="all">Toutes les pistes (Global)</option>${pistes.map(p => `<option value="${p}" ${p === pisteFilter ? 'selected':''}>${p}</option>`).join('')}</select>`;
+            
+            let html = `
+            <div style="background:#f8f9fa; padding:15px; border-radius:6px; border:1px solid #ddd; margin-bottom:15px;">
+                ${selectHtml}
+                <div style="text-align:center; margin-top:15px;">
+                    <b style="font-size:28px; color:#e67e22;">${percent}%</b><br>
+                    <span style="font-size:12px; color:#7f8c8d; font-weight:bold; text-transform:uppercase;">Avancement (${fait}/${total} canons)</span>
+                    <div style="width:100%; background:#ecf0f1; border-radius:8px; height:12px; margin-top:10px; overflow:hidden; border:1px solid #ddd;">
+                        <div style="width:${percent}%; background:#e67e22; height:100%; transition: width 0.5s;"></div>
+                    </div>
+                </div>
+            </div>`;
+            
+            html += `<div style="max-height: 45vh; overflow-y: auto; padding-right:5px;">`;
+            if(visibleCannons.length === 0) html += `<div style="text-align:center; color:#7f8c8d; padding:10px;">Aucun canon sur cette sélection.</div>`;
+            visibleCannons.forEach(f => {
+                 let id = f.properties.id;
+                 let bVal = window.getV(f.properties, "Buses").toLowerCase().trim();
+                 let isF = (bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x");
+                 let color = isF ? '#e67e22' : '#bdc3c7';
+                 let bgColor = isF ? '#fdf5e6' : '#f8f9fa';
+                 html += `<div style="border-left:4px solid ${color}; background:${bgColor}; padding:10px; margin-bottom:8px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;">
+                    <div><b style="color:#2c3e50;">Canon ${id}</b> <br><span style="font-size:10px; color:${color}; font-weight:bold;">${isF ? '✅ ENTRETIEN FAIT' : '⏳ À FAIRE'}</span></div>
+                    <button onclick="window.focusCannon('${id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; font-size:10px; cursor:pointer;">Cibler 📍</button>
+                 </div>`;
+            });
+            html += `</div>`;
+            
+            document.getElementById('multi-tools').style.display = 'flex'; 
+            document.getElementById('view-selection').style.display = 'block'; 
+            document.getElementById('view-edit').style.display = 'none'; 
+            document.getElementById('selected-list').innerHTML = html;
+        };
         /* ================== DB LOCALE ET KMZ ================== */
         window.initLocalDB = function() { try { if (!window.indexedDB) return; const request = window.indexedDB.open("GMAONeigeDB", 2); request.onupgradeneeded = function(event) { window.localDB = event.target.result; if (!window.localDB.objectStoreNames.contains("kmz_layers")) window.localDB.createObjectStore("kmz_layers", { keyPath: "id" }); }; request.onsuccess = function(event) { window.localDB = event.target.result; window.loadSavedLayersFromDB(); }; } catch(e) {} };
         window.saveLayerToDB = function(id, name, geojson, color, weight) { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readwrite"); tx.objectStore("kmz_layers").put({ id: id, name: name, geojson: geojson, isVisible: true, color: color, weight: weight }); };
