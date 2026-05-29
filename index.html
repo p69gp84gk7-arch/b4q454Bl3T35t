@@ -588,7 +588,7 @@
                 }
             }, 100);
         };
-                     /* ================== AFFICHAGE FICHE CANON ================== */
+                 /* ================== AFFICHAGE FICHE CANON ================== */
         window.renderSelectionPanel = function() {
             if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
@@ -602,7 +602,8 @@
             // Génération de la liste d'auto-complétion (Datalist) pour les pannes existantes
             let defautsSet = new Set();
             window.rawTickets.forEach(t => { if(t.defaut) defautsSet.add(t.defaut.trim()); });
-            let datalistHtml = `<datalist id="dl-defauts-list">${Array.from(defautsSet).sort().map(d => `<option value="${d}">`).join('')}</datalist>`;
+            let datalistHtml = `<datalist id="dl-defauts-list">${Array.from(defautsSet).sort().map(d => `<option value="${d.replace(/"/g, '&quot;')}"></option>`).join('')}</datalist>`;
+            listDiv.innerHTML += datalistHtml;
 
             document.getElementById('right-title').innerText = "📌 Fiche Canon";
             window.selectedCannonsMap.forEach((layer, id) => {
@@ -623,7 +624,6 @@
 
                 // GABARIT DU NOUVEAU FORMULAIRE DE PANNE SIGNALÉE COMPLET
                 let formulairePanneCompletHtml = `
-                    ${datalistHtml}
                     <details style="background:#fdf0ed; padding:10px; border-radius:6px; border:1px solid #fadbd8; font-size:12px; margin-top:12px;">
                         <summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;">🚨 Signaler un défaut (Ticket complet)</summary>
                         <div style="margin-top:10px;">
@@ -771,6 +771,7 @@
                 }, 100);
             });
         };
+
         /* ================== GLOBALS CHARTS & FILTRES ================== */
         window.triggerGlobalFilterChart = function() {
             if (window.selectedCannonsMap.size > 0 || window.currentlyEditingId) return;
@@ -892,7 +893,6 @@
                         </div>
                         <div class="piste-chart-container"><div style="text-align:center; font-weight:bold; font-size:12px; margin-bottom:10px;">Statuts Principaux (Priorité Haute)</div><div style="position:relative; height:180px; width:100%;"><canvas id="suivi-pie-global"></canvas></div></div>`;
 
-                // LE SELECTEUR DE PISTE EN BAS DU DASHBOARD
                 let pistes = Array.from(window.columnValuesSets[window.keyPiste] || []).sort();
                 let selectHtml = `
                     <div style="background:#f8f9fa; padding:15px; border-radius:6px; border:1px solid #ddd; margin-top:15px;">
@@ -937,6 +937,11 @@
                 let kLow = d.k.toLowerCase(); let valStr = d.v.toString();
                 if (kLow.includes('regard') || kLow === 'id' || kLow.includes('n°')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}" readonly style="background:#e1e8ed; color:#7f8c8d; margin-bottom:0; cursor:not-allowed;"></div>`; } 
                 else if (kLow.includes('etat') || kLow.includes('état') || kLow === 'statut') { let statuts = ['à faire', 'en cours', 'fait']; let options = statuts.map(s => `<option value="${s}" ${valStr.toLowerCase().includes(s) ? 'selected' : ''}>${s.toUpperCase()}</option>`).join(''); html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><select class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" style="margin-bottom:0;">${options}</select></div>`; } 
+                else if (kLow.includes('priorité') || kLow.includes('priorite')) {
+                    let priors = ['P1 (urgent et bloquant)', 'P2 (non bloquant mais urgent)', 'P3 (non bloquant)'];
+                    let popts = priors.map(p => `<option value="${p}" ${valStr.toLowerCase().includes(p.substring(0,2).toLowerCase()) ? 'selected' : ''}>${p}</option>`).join('');
+                    html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><select class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" style="margin-bottom:0;"><option value="">-- Sans priorité --</option>${popts}</select></div>`;
+                }
                 else if (valStr.length > 40 || kLow.includes('cause') || kLow.includes('intervention') || kLow.includes('commentaire') || kLow.includes('action')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><textarea class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" style="margin-bottom:0;" rows="2">${valStr}</textarea></div>`; } 
                 else { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}" style="margin-bottom:0;"></div>`; }
             });
@@ -1006,138 +1011,224 @@
             let pisteCannons = window.snowCannons.features.filter(f => window.getV(f.properties, window.keyPiste) === pName && f.properties.historique[seasonStr]); pisteCannons.sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id)); let bgColors = pisteCannons.map(f => f.properties.id === targetId ? '#e74c3c' : '#9b59b6');
             window.chartInstances[canvasId] = new Chart(ctx.getContext('2d'), { type: 'bar', data: { labels: pisteCannons.map(f => f.properties.id), datasets: [{ data: pisteCannons.map(f => f.properties.historique[seasonStr][window.histMetric]), backgroundColor: bgColors, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: true, ticks: {font:{size:10}} } } } });
         };
-        /* ================== MODULE ATELIER (BANC D'ESSAIS) ================== */
-                window.renderAtelierPanel = function() {
-            document.getElementById('right-title').innerText = "🧰 Fiche Technique Atelier";
-            let listDiv = document.getElementById('selected-list');
-            listDiv.innerHTML = "";
+
+        /* ================== MODULE ATELIER ================== */
+        window.rawAtelier = [];
+
+        window.renderAtelierWorkspace = function() {
+            let ws = document.getElementById('atelier-workspace');
+            if(!ws) return;
+            ws.innerHTML = `<h2 style="color:#2c3e50; margin-top:0; padding-bottom:10px; border-bottom:2px solid #8e44ad;">🧰 Banc d'Essais & Maintenance Atelier</h2>`;
 
             let canonsEnAtelier = window.suiviEntretienData.filter(row => row[3] && row[3].toString().toLowerCase().trim() === "oui").map(r => r[0].toString());
 
-            if (canonsEnAtelier.length === 0) {
-                listDiv.innerHTML = `<div style="padding:20px; text-align:center;">✅ Aucun canon en préventif usine.</div>`;
+            if(canonsEnAtelier.length === 0) {
+                ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; color:#7f8c8d; font-weight:bold;">✅ Aucun enneigeur n'est actuellement marqué "Préventif Usine".</div>`;
                 return;
             }
 
-            canonsEnAtelier.forEach(idCanon => {
-                let canonData = window.snowCannons.features.find(f => f.properties.id == idCanon);
-                if(!canonData) return;
-                
-                // 1. Récupération des headers du tableau général pour créer les champs dynamiques
-                let headers = window.rawGeneral[0] || []; 
-                let values = canonData.properties;
+            ws.innerHTML += `<div style="margin-bottom:15px; font-size:13px; color:#555; background:#eaf2f8; padding:10px; border-radius:4px; border-left:4px solid #3498db;"><b>${canonsEnAtelier.length}</b> canon(s) à réviser.</div>`;
 
-                // 2. Construction de la fiche éditable
-                let fieldsHtml = "";
-                headers.forEach((h, idx) => {
-                    if(idx === 0) return; // On ignore l'ID qui est fixe
-                    let val = values[h] || "";
-                    fieldsHtml += `<div style="margin-bottom:8px;">
-                        <label style="font-size:10px; font-weight:bold; color:#7f8c8d;">${h}</label>
-                        <input type="text" class="edit-input at-field-${idCanon}" data-col="${h}" value="${val}" style="width:100%; padding:5px; border:1px solid #ccc; border-radius:4px;">
-                    </div>`;
+            canonsEnAtelier.forEach(idCanon => {
+                let feature = window.snowCannons.features.find(f => f.properties.id == idCanon);
+                if(!feature) return;
+
+                let p = feature.properties;
+                let piste = window.getV(p, window.keyPiste);
+                let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, "");
+
+                let headersGen = window.rawGeneral[0] || [];
+                let techHtml = "";
+                headersGen.forEach(h => {
+                    if(h.toLowerCase().includes('xy') || h.toLowerCase().includes('gps') || h.toLowerCase() === 'id') return;
+                    let val = window.getV(p, h);
+                    techHtml += `<div><span class="edit-label">${h}</span><input type="text" class="edit-input tech-field-${safeId}" data-head="${h}" value="${val}" style="margin-bottom:0; padding:6px;"></div>`;
                 });
 
-                // 3. Historique (comme dans Tickets/Panne)
-                let canonHist = window.rawAtelier.filter(r => r[0] == idCanon);
-                let histHtml = `<div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
-                    <h4 style="font-size:12px; margin-bottom:5px;">🕒 Historique des interventions</h4>
-                    <div style="max-height:150px; overflow-y:auto; font-size:11px;">
-                        ${canonHist.map(r => `<div style="padding:4px; border-bottom:1px solid #f0f0f0;"><b>${r[2]}</b>: ${r[14]}</div>`).join('')}
+                let hist = window.getHistoryTickets(idCanon);
+                let histHtml = `<div style="padding:15px; background:#fff; font-size:12px;">`;
+                if(hist.length === 0) histHtml += `<span style="color:#7f8c8d; font-style:italic;">Aucun historique de panne trouvé pour ce canon.</span>`;
+                else hist.forEach(t => { histHtml += `<div style="padding:5px 0; border-bottom:1px solid #eee;"><b>${t.date}</b> : <span style="color:#e74c3c;">${t.defaut}</span></div>`; });
+                histHtml += `</div>`;
+
+                let isAbrisDouble = (window.getV(p, "abris double") || "").toString().toLowerCase() === "oui";
+                let strAd = ((window.getV(p, "vanne additionnelle") || "") + " " + (window.getV(p, "type vanne ad 1") || "")).toLowerCase();
+                let defaultVanne = "none";
+                if (strAd.includes("v2000")) defaultVanne = "v2000";
+                else if (strAd.includes("var")) defaultVanne = isAbrisDouble ? "var_double" : "var";
+
+                let formHtml = `
+                    <div style="padding:15px; background:#fdfdfe;">
+                        <h4 style="margin:0 0 10px 0; color:#2c3e50;">1. Tests de la Vanne Principale</h4>
+                        <div style="display:flex; gap:10px; width:100%;">
+                            <div style="flex:1;"><span class="edit-label">test pression eau 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" style="padding:6px; margin-bottom:8px;"></div>
+                            <div style="flex:1;"><span class="edit-label">test pression air 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" style="padding:6px; margin-bottom:8px;"></div>
+                        </div>
+                        <div style="display:flex; gap:10px; width:100%;">
+                            <div style="flex:1;"><span class="edit-label">test elec Vanne</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" style="padding:6px; margin-bottom:8px;"></div>
+                            <div style="flex:1;"><span class="edit-label">manu 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 1" style="padding:6px; margin-bottom:8px;"></div>
+                            <div style="flex:1;"><span class="edit-label">capteur 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 1" style="padding:6px; margin-bottom:8px;"></div>
+                        </div>
+                        <div><span class="edit-label">maintenance effectué</span><input type="text" class="edit-input b-field-${safeId}" data-col="maintenance effectué" style="padding:6px; margin-bottom:8px;"></div>
+                        <div><span class="edit-label">pièces utilisés</span><textarea class="edit-input b-field-${safeId}" data-col="pièces utilisés" style="padding:6px; margin-bottom:8px;" rows="2"></textarea></div>
+                        <div style="display:flex; gap:10px; width:100%; margin-top:5px;">
+                            <div style="flex:1;"><span class="edit-label">test pression eau 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" style="padding:6px; margin-bottom:8px;"></div>
+                            <div style="flex:1;"><span class="edit-label">test pression air 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 2" style="padding:6px; margin-bottom:8px;"></div>
+                        </div>
+                        <div style="display:flex; gap:10px; width:100%;">
+                            <div style="flex:1;"><span class="edit-label">test elec vanne (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" style="padding:6px; margin-bottom:8px;"></div>
+                            <div style="flex:1;"><span class="edit-label">manu 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 2" style="padding:6px; margin-bottom:8px;"></div>
+                            <div style="flex:1;"><span class="edit-label">capteur 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 2" style="padding:6px; margin-bottom:8px;"></div>
+                        </div>
+                        <div><span class="edit-label">prête </span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="OUI" style="padding:6px; margin-bottom:8px;"></div>
+                        <hr style="border:0; border-top:2px dashed #eee; margin:15px 0;">
+                        <h4 style="margin:0 0 10px 0; color:#e67e22;">2. Tests Vanne Additionnelle (Optionnel)</h4>
+                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:15px; border-color:#e67e22; font-weight:bold;">
+                            <option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune vanne additionnelle à tester --</option>
+                            <option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>Afficher le test VAR (Simple)</option>
+                            <option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>Afficher le test VAR Double (Perche 1 & 2)</option>
+                            <option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>Afficher le test V2000 (Double C2/C3)</option>
+                        </select>
+                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; background:#fdf2e9; padding:15px; border-radius:6px; border:1px solid #f8c471; margin-bottom:15px;">
+                            <b style="color:#d35400; font-size:12px; margin-bottom:8px; display:block;">Tests VAR Simple</b>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test elec VAR (1)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test pression 1 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test elec VAR (1) bis</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test pression 2 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div><span class="edit-label">pièces var utilisés</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés" style="padding:4px; margin-bottom:8px;"></div>
+                            <div><span class="edit-label">VAR (1) prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (1) prête" value="OUI" style="padding:4px; margin-bottom:8px;"></div>
+                        </div>
+                        <div id="bloc-var-double-${safeId}" style="display:${defaultVanne === 'var_double' ? 'block' : 'none'}; background:#fef5e7; padding:15px; border-radius:6px; border:1px solid #eb984e; margin-bottom:15px;">
+                            <b style="color:#ba4a00; font-size:12px; margin-bottom:8px; display:block;">Tests VAR Double (Abris Double)</b>
+                            <div style="font-weight:bold; font-size:11px; color:#ba4a00; margin-bottom:5px; text-transform:uppercase;">• VAR Perche 1</div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test elec VAR (1)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test pression 1 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test elec VAR (1) bis</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test pression 2 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div><span class="edit-label">pièces var utilisés</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés" style="padding:4px; margin-bottom:12px;"></div>
+                            <div><span class="edit-label">VAR (1) prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (1) prête" value="OUI" style="padding:4px; margin-bottom:12px;"></div>
+                            <hr style="border:0; border-top:1px dashed #f5cba7; margin:10px 0;">
+                            <div style="font-weight:bold; font-size:11px; color:#ba4a00; margin-bottom:5px; text-transform:uppercase;">• VAR Perche 2</div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test elec VAR (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2)" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test pression 1 var (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var (2)" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test elec VAR (2) bis</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2) bis" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test pression 2 var (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var (2)" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div><span class="edit-label">pièces var utilisés bis</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés bis" style="padding:4px; margin-bottom:8px;"></div>
+                            <div><span class="edit-label">VAR (2) prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (2) prête" value="OUI" style="padding:4px; margin-bottom:8px;"></div>
+                        </div>
+                        <div id="bloc-v2000-${safeId}" style="display:${defaultVanne === 'v2000' ? 'block' : 'none'}; background:#eaf2f8; padding:15px; border-radius:6px; border:1px solid #85c1e9; margin-bottom:15px;">
+                            <b style="color:#2980b9; font-size:12px; margin-bottom:8px; display:block;">Tests V2000 (Voie C2 & C3)</b>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test 1 elec V2000 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test 1 elec V2000 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c3" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test pression eau v2000 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c2" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test pression eau v2000 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c3" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <hr style="border:0; border-top:1px dashed #b5d4e6; margin:10px 0;">
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test 2 elec v2000 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 elec v2000 c2" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test 2 elec v2000 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 elec v2000 c3" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">test 2 pression eau v2000 2 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 pression eau v2000 2 c2" style="padding:4px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">test 2 pression eau v2000 2 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 pression eau v2000 2 c3" style="padding:4px; margin-bottom:8px;"></div>
+                            </div>
+                            <div><span class="edit-label">pièces v2000 utilisés</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces v2000 utilisés" style="padding:4px; margin-bottom:8px;"></div>
+                            <div><span class="edit-label">commentaire v2000</span><input type="text" class="edit-input b-field-${safeId}" data-col="commentaire v2000" style="padding:4px; margin-bottom:8px;"></div>
+                            <div><span class="edit-label">V2000 prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="V2000 prête" value="OUI" style="padding:4px; margin-bottom:8px;"></div>
+                        </div>
+                        <hr style="border:0; border-top:2px dashed #eee; margin:15px 0;">
+                        <div><span class="edit-label">Commentaire Final</span><input type="text" class="edit-input b-field-${safeId}" data-col="Commentaire" placeholder="Remarques éventuelles sur le passage au banc..." style="padding:6px; margin-bottom:0;"></div>
+                        <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" style="width:100%; margin-top:15px; background:#8e44ad; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer;">🚀 Archiver ce rapport de Banc d'Essais</button>
                     </div>
-                </div>`;
+                `;
 
-                // 4. Bloc final
-                listDiv.innerHTML += `
-                <div style="background:#fff; padding:15px; border-radius:8px; border:1px solid #ddd; margin-bottom:15px;">
-                    <h3 style="margin:0 0 10px 0;">Canon ${idCanon}</h3>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">${fieldsHtml}</div>
-                    ${histHtml}
-                    <button onclick="window.saveAtelierFull('${idCanon}')" style="margin-top:15px; width:100%; padding:10px; background:#2c3e50; color:#fff; border:none; border-radius:4px; cursor:pointer;">💾 Enregistrer les modifs</button>
-                </div>`;
+                let card = document.createElement('div');
+                card.className = "atelier-card";
+                card.innerHTML = `
+                    <h3>📍 Canon N° ${idCanon} <span style="font-size:12px; font-weight:normal; color:#888; float:right;">Piste: ${piste}</span></h3>
+                    <details class="atelier-sub-details"><summary>⚙️ 1. Consulter & Éditer les Données Techniques (Tableau Général)</summary>
+                        <div class="atelier-form-grid">${techHtml}</div>
+                        <div style="padding:0 15px 15px 15px;"><button onclick="window.saveAtelierTechRow('${idCanon}','${safeId}',this)" style="width:100%; background:#2c3e50; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Enregistrer les modifications techniques</button></div>
+                    </details>
+                    <details class="atelier-sub-details"><summary>🕒 2. Historique des défauts & pannes sur la ligne (Tickets)</summary>${histHtml}</details>
+                    <details class="atelier-sub-details"><summary>📝 3. Enregistrer un nouveau passage au Banc d'Essais (Atelier)</summary>${formHtml}</details>
+                `;
+                ws.appendChild(card);
             });
         };
-                window.saveAtelierFull = async function(idCanon) {
-            let fieldsObj = { id: idCanon };
-            document.querySelectorAll(`.at-field-${idCanon}`).forEach(inp => {
-                fieldsObj[inp.getAttribute('data-col')] = inp.value;
-            });
-            // On ajoute la date auto côté serveur
-            fieldsObj["année"] = "AUTO"; 
 
-            let btn = event.target;
-            btn.innerText = "Enregistrement...";
-            
-            let res = await fetch(GOOGLE_API_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: "save_atelier", fields: fieldsObj })
-            });
-            
-            let r = await res.json();
-            if(r.status === "success") {
-                btn.innerText = "✅ Sauvegardé";
-                setTimeout(() => btn.innerText = "💾 Enregistrer les modifs", 2000);
-            }
+        window.handleSelectVanne = function(safeId, val) {
+            document.getElementById(`bloc-var-${safeId}`).style.display = (val === 'var') ? 'block' : 'none';
+            document.getElementById(`bloc-var-double-${safeId}`).style.display = (val === 'var_double') ? 'block' : 'none';
+            document.getElementById(`bloc-v2000-${safeId}`).style.display = (val === 'v2000') ? 'block' : 'none';
         };
 
-        window.saveAtelierForm = async function(idCanon, safeId, btn) {
+        window.saveAtelierTechRow = async function(idCanon, safeId, btn) {
+            let fields = {};
+            document.querySelectorAll(`.tech-field-${safeId}`).forEach(inp => { fields[inp.getAttribute('data-head')] = inp.value; });
+            let pl = { id: idCanon, lat: 0, lng: 0, fields: fields }; 
+            let oldText = btn.innerText; btn.innerText = "⏳ Enregistrement..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(pl) });
+                let r = await res.json();
+                if(r.status === "success") { btn.innerText = "✅ Succès !"; setTimeout(() => { btn.innerText = oldText; btn.disabled = false; }, 2000); }
+                else { alert("Erreur serveur"); btn.disabled = false; btn.innerText = oldText; }
+            } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
+        };
+
+        window.saveAtelierBancRow = async function(idCanon, safeId, btn) {
             let fieldsObj = {};
             let canonData = window.snowCannons.features.find(f => f.properties.id == idCanon);
             let p = canonData ? canonData.properties : null;
             
-            // Auto-remplissage invisible depuis Tableau Général
             fieldsObj["id"] = idCanon;
+            fieldsObj["N° de vanne"] = p ? window.getV(p, "N° de vanne") : ""; 
             fieldsObj["piste"] = p ? window.getV(p, window.keyPiste) : "";
+            fieldsObj["abris double"] = p ? window.getV(p, "abris double") : ""; 
             fieldsObj["type"] = p ? window.getV(p, "type") : "";
-            fieldsObj["vanne additionnelle"] = p ? (window.getV(p, "vanne additionnelle") || window.getV(p, "vanne ad")) : "";
-            fieldsObj["type vanne AD 1"] = p ? (window.getV(p, "type vanne ad 1") || window.getV(p, "type vanne ad")) : "";
+            fieldsObj["vanne additionnelle"] = p ? window.getV(p, "vanne additionnelle") : "";
+            fieldsObj["type vanne AD 1"] = p ? window.getV(p, "type vanne ad 1") : "";
 
-            // Récupération de ce qu'a tapé l'utilisateur
-            document.querySelectorAll(`.at-field-${safeId}`).forEach(inp => {
+            document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => {
+                if (inp.closest('div[id^="bloc-"]') && inp.closest('div[id^="bloc-"]').style.display === 'none') return;
                 fieldsObj[inp.getAttribute('data-col')] = inp.value;
             });
-            document.querySelectorAll(`.at-cbx-${safeId}`).forEach(cbx => {
-                fieldsObj[cbx.getAttribute('data-col')] = cbx.checked ? "OUI" : "NON";
-            });
 
-            let oldText = btn.innerText;
-            btn.innerText = "⏳ Enregistrement dans Google Sheets..."; 
-            btn.disabled = true;
-
+            let oldText = btn.innerText; btn.innerText = "⏳ Envoi du rapport..."; btn.disabled = true;
             try {
-                let res = await fetch(GOOGLE_API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: "save_atelier", fields: fieldsObj })
-                });
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_atelier", fields: fieldsObj }) });
                 let r = await res.json();
-                
                 if(r.status === "success") {
-                    btn.innerText = "✅ Succès !";
-                    btn.style.background = "#27ae60";
-                    
-                    // Ajout virtuel à l'historique local pour le voir tout de suite sans recharger la page
-                    let today = new Date();
-                    let dateStr = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
-                    window.rawAtelier.push([idCanon, "", dateStr, fieldsObj["piste"], "", fieldsObj["type"], fieldsObj["vanne additionnelle"], fieldsObj["type vanne AD 1"], "", "", "", "", "", "", fieldsObj["maintenance effectué"]]);
-                    
-                    setTimeout(() => { 
-                        btn.innerText = "💾 Mettre à jour la Fiche"; 
-                        btn.disabled = false; 
-                        btn.style.background = "#8e44ad"; 
-                    }, 3000);
-                } else {
-                    alert("Erreur serveur : " + r.msg); btn.innerText = oldText; btn.disabled = false;
-                }
-            } catch(e) {
-                alert("Échec réseau."); btn.innerText = oldText; btn.disabled = false;
-            }
+                    btn.innerText = "🚀 Rapport Archivé !"; btn.style.background = "#27ae60";
+                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#8e44ad"; }, 3000);
+                } else { alert("Erreur Apps Script"); btn.disabled = false; btn.innerText = oldText; }
+            } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
         };
-                // ==========================================
+
+        // ==========================================
         // SAUVEGARDE ENTRETIEN BUSES
         // ==========================================
         window.saveEntretienTete = async function(idCanon, btn) {
-            let isChecked = document.getElementById(`chk-buses-${idCanon}`).checked;
+            let chk = document.getElementById(`chk-buses-${idCanon}`);
             let anneeInput = document.getElementById(`annee-buses-${idCanon}`);
+            if(!chk || !anneeInput) return;
+            
+            let isChecked = chk.checked;
             let valBuses = isChecked ? "OUI" : "";
             let currentYear = new Date().getFullYear();
             
@@ -1146,6 +1237,7 @@
 
             let fieldsObj = { "Buses": valBuses, "Année": isChecked ? currentYear.toString() : "" };
             let oldText = btn.innerText; btn.innerText = "⏳ Validation..."; btn.disabled = true;
+            
             try {
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: idCanon, fields: fieldsObj }) });
                 let r = await res.json();
@@ -1158,7 +1250,7 @@
                     }
                     window.updateMap();
                     setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#e67e22"; }, 2000);
-                } else { alert("Erreur Serveur Sheets"); btn.innerText = oldText; btn.disabled = false; }
+                } else { alert("Erreur Serveur Sheets : " + (r.msg || "Inconnue")); btn.innerText = oldText; btn.disabled = false; }
             } catch(e) { alert("Erreur Réseau"); btn.innerText = oldText; btn.disabled = false; }
         };
 
@@ -1166,9 +1258,10 @@
         // ENREGISTREMENT ET ENVOI DU TICKET DE PANNE
         // ==========================================
         window.addNouveauTicket = async function(idCanon, btn) {
-            let defaut = document.getElementById(`nt-defaut-${idCanon}`).value;
-            if(!defaut.trim()) { alert("Veuillez renseigner au moins le champ 'Défaut'."); return; }
+            let elDef = document.getElementById(`nt-defaut-${idCanon}`);
+            if(!elDef || !elDef.value.trim()) { alert("Veuillez renseigner au moins le champ 'Défaut'."); return; }
             
+            let defaut = elDef.value;
             let etat = document.getElementById(`nt-etat-${idCanon}`).value;
             let prioriteInput = document.getElementById(`nt-priorite-${idCanon}`);
             let priorite = prioriteInput ? prioriteInput.value : "";
@@ -1228,616 +1321,9 @@
                 } else { alert("Erreur serveur Sheets : " + (r.msg || "Inconnue")); btn.innerText = oldText; btn.disabled = false; }
             } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
         };
-
-            let today = new Date();
-            let dateStr = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
-
-            // Remplissage avec des noms de colonnes classiques de ton onglet Tickets. 
-            // Si tes colonnes s'appellent un peu différemment (ex: N°regard au lieu de N° de regard), l'Apps Script le trouvera grâce à sa logique flexible !
-            let fieldsObj = {
-                "N° de regard": idCanon,
-                "Défaut": defaut,
-                "Cause": cause,
-                "État": etat,
-                "Date": dateStr
-            };
-
-            let oldText = btn.innerText; btn.innerText = "⏳ Création du ticket..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_ticket", fields: fieldsObj }) });
-                let r = await res.json();
-                if(r.status === "success") {
-                    btn.innerText = "✅ Ticket Créé !"; btn.style.background = "#27ae60";
-                    // On vide les champs
-                    document.getElementById(`new-ticket-defaut-${idCanon}`).value = "";
-                    document.getElementById(`new-ticket-cause-${idCanon}`).value = "";
-                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; }, 2500);
-                } else { alert("Erreur Serveur Sheets"); btn.innerText = oldText; btn.disabled = false; }
-            } catch(e) { alert("Erreur Réseau"); btn.innerText = oldText; btn.disabled = false; }
-        };
-        // --- ENFIN, ON CONNECTE LE BOUTON RADIO DU MENU GAUCHE AU CLIC ---
-        // ATTENTION : Cherche la fonction document.querySelectorAll('input[name="main_theme"]').forEach(r => { ... }) 
-        // vers la fin du code (dans initAppUI) et ajoute ce bloc juste avant la fin de l'événement 'change' :
-        // if(window.mainTheme === 'atelier') { window.showView('view-selection', '🧰 Gestion Atelier', '680px'); window.renderAtelierPanel(); }
-        /* ================== DB LOCALE ET KMZ ================== */
-        window.initLocalDB = function() { try { if (!window.indexedDB) return; const request = window.indexedDB.open("GMAONeigeDB", 2); request.onupgradeneeded = function(event) { window.localDB = event.target.result; if (!window.localDB.objectStoreNames.contains("kmz_layers")) window.localDB.createObjectStore("kmz_layers", { keyPath: "id" }); }; request.onsuccess = function(event) { window.localDB = event.target.result; window.loadSavedLayersFromDB(); }; } catch(e) {} };
-        window.saveLayerToDB = function(id, name, geojson, color, weight) { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readwrite"); tx.objectStore("kmz_layers").put({ id: id, name: name, geojson: geojson, isVisible: true, color: color, weight: weight }); };
-        window.deleteLayerFromDB = function(id) { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readwrite"); tx.objectStore("kmz_layers").delete(id); };
-        window.updateLayerDataInDB = function(id, updates) { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readwrite"); const store = tx.objectStore("kmz_layers"); const req = store.get(id); req.onsuccess = function() { let data = req.result; if(data) { Object.assign(data, updates); store.put(data); } }; };
-        window.loadSavedLayersFromDB = function() { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readonly"); const req = tx.objectStore("kmz_layers").getAll(); req.onsuccess = function() { req.result.forEach(item => { window.addGeoJsonToMap(item.id, item.name, item.geojson, item.isVisible, item.color || '#e67e22', item.weight || 4); }); }; };
-        window.buildGeoJsonStyle = function(hexColor, weight) { let finalWeight = weight ? parseInt(weight) : 4; return { style: function (feature) { return { color: hexColor, weight: finalWeight, opacity: 0.8, fillColor: hexColor }; }, pointToLayer: function(feature, latlng) { return L.circleMarker(latlng, {radius: 6, color: hexColor, fillColor: hexColor, fillOpacity: 0.8, weight: 1}); }, onEachFeature: function (feature, layer) { if (feature.properties && feature.properties.name) { layer.bindPopup(`<b style='color:${hexColor}'>` + feature.properties.name + "</b><br>" + (feature.properties.description || "")); } } }; };
-        window.fetchGitHubKMZ = async function(url) { const response = await window.fetchWithTimeout(url); if (!response.ok) throw new Error("GitHub refuse l'accès."); let kmlString = ""; if (url.toLowerCase().endsWith('.kmz')) { const blob = await response.blob(); const arrayBuffer = await blob.arrayBuffer(); const zip = await JSZip.loadAsync(arrayBuffer); const kmlFile = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.kml')); if (!kmlFile) throw new Error("Aucun fichier KML trouvé."); kmlString = await kmlFile.async("string"); } else { kmlString = await response.text(); } const parser = new DOMParser(); const xmlDoc = parser.parseFromString(kmlString, "text/xml"); return toGeoJSON.kml(xmlDoc); };
-        window.renderCloudLayersList = function() { const container = document.getElementById('cloud-layers-container'); if(!container) return; container.innerHTML = ""; if (window.cloudKmzLayers.length === 0) { container.innerHTML = `<p style="font-size:11px; color:#888; font-style:italic;">Aucun calque configuré.</p>`; return; } window.cloudKmzLayers.forEach((layer, idx) => { container.innerHTML += `<div class="kml-layer-item" style="border-color:#e1e8ed; background:#fafbfc; display:flex; flex-wrap:wrap; gap:5px; align-items:center;"><input type="checkbox" id="cloud-cbx-${idx}" ${layer.isVisible ? 'checked' : ''} onchange="window.toggleCloudLayer(${idx})" style="margin:0 5px 0 0;"><input type="color" class="layer-color-picker" value="${layer.color}" onchange="window.changeCloudLayerStyle(${idx}, this.value, null)" title="Couleur"><input type="number" class="layer-weight-picker" value="${layer.weight || 4}" min="1" max="15" onchange="window.changeCloudLayerStyle(${idx}, null, this.value)" title="Épaisseur"><label style="cursor:pointer; display:flex; flex-direction:column; flex-grow:1; margin-left:8px; min-width:120px;" for="cloud-cbx-${idx}"><span style="color:#2c3e50; font-size:12px;">${layer.nom}</span><span style="font-size:10px; color:#7f8c8d; font-weight:normal;">${layer.commentaire}</span></label><span id="cloud-status-${idx}" style="min-width:20px; text-align:right;"></span></div>`; }); };
-        window.toggleCloudLayer = async function(idx) { let layerObj = window.cloudKmzLayers[idx]; let cbx = document.getElementById('cloud-cbx-' + idx); let statusSpan = document.getElementById('cloud-status-' + idx); if (!cbx || !statusSpan) return; if (!cbx.checked) { if(layerObj.leafletLayer) window.map.removeLayer(layerObj.leafletLayer); layerObj.isVisible = false; statusSpan.innerText = ""; return; } if (layerObj.leafletLayer) { window.map.addLayer(layerObj.leafletLayer); layerObj.isVisible = true; return; } statusSpan.innerText = " ⏳"; cbx.disabled = true; try { const geojson = await window.fetchGitHubKMZ(layerObj.url); layerObj.leafletLayer = L.geoJSON(geojson, window.buildGeoJsonStyle(layerObj.color, layerObj.weight)).addTo(window.map); layerObj.isVisible = true; if(layerObj.leafletLayer.getBounds().isValid()) { window.map.fitBounds(layerObj.leafletLayer.getBounds()); } statusSpan.innerText = " ✅"; } catch(err) { statusSpan.innerText = " ❌"; alert("Erreur calque : " + err.message); cbx.checked = false; } cbx.disabled = false; };
-        window.changeCloudLayerStyle = function(idx, newColor, newWeight) { let layerObj = window.cloudKmzLayers[idx]; if (newColor !== null) layerObj.color = newColor; if (newWeight !== null) layerObj.weight = parseInt(newWeight); fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: 'update_kmz', nom: layerObj.nom, color: layerObj.color, weight: layerObj.weight }) }); if(layerObj.leafletLayer) { layerObj.leafletLayer.setStyle({ color: layerObj.color, fillColor: layerObj.color, weight: layerObj.weight }); layerObj.leafletLayer.eachLayer(function (layer) { if (layer instanceof L.CircleMarker) { layer.setStyle({ color: layerObj.color, fillColor: layerObj.color }); } }); } };
-        window.handleKMLUpload = async function(event) { const file = event.target.files[0]; if(!file) return; let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'flex'; let sp = document.getElementById('loading-spinner'); if(sp) sp.style.display = 'block'; let ti = document.getElementById('loading-title'); if(ti) ti.innerText = "Importation locale..."; let de = document.getElementById('loading-desc'); if(de) de.innerText = "Analyse de " + file.name; setTimeout(async () => { try { const fileName = file.name; const layerId = 'layer_' + Date.now(); let kmlString = ""; let defaultColor = '#e67e22'; let defaultWeight = 4; if (fileName.toLowerCase().endsWith('.kmz')) { const arrayBuffer = await file.arrayBuffer(); const zip = await JSZip.loadAsync(arrayBuffer); const kmlFile = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.kml')); if (!kmlFile) throw new Error("Aucun fichier KML trouvé."); kmlString = await kmlFile.async("string"); } else if (fileName.toLowerCase().endsWith('.kml')) { kmlString = await file.text(); } else { throw new Error("Format non supporté."); } const parser = new DOMParser(); const xmlDoc = parser.parseFromString(kmlString, "text/xml"); const geojson = toGeoJSON.kml(xmlDoc); window.saveLayerToDB(layerId, fileName, geojson, defaultColor, defaultWeight); window.addGeoJsonToMap(layerId, fileName, geojson, true, defaultColor, defaultWeight); if(ov) ov.style.display = 'none'; } catch (err) { if(ov) ov.style.display = 'none'; alert("Erreur d'import : " + err.message); } event.target.value = ""; }, 100); };
-        window.addGeoJsonToMap = function(id, name, geojson, isVisible, hexColor, weight) { let finalWeight = weight || 4; const layer = L.geoJSON(geojson, window.buildGeoJsonStyle(hexColor, finalWeight)); if(isVisible) layer.addTo(window.map); window.externalLayers[id] = { name: name, layer: layer, isVisible: isVisible, color: hexColor, weight: finalWeight }; window.renderCustomLayersList(); if(isVisible && layer.getBounds && typeof layer.getBounds === 'function') { let b = layer.getBounds(); if(b.isValid()) window.map.fitBounds(b); } };
-        window.renderCustomLayersList = function() { const container = document.getElementById('custom-layers-list'); if(!container) return; container.innerHTML = ""; for (let id in window.externalLayers) { const ext = window.externalLayers[id]; container.innerHTML += `<div class="kml-layer-item"><input type="checkbox" id="loc-cbx-${id}" ${ext.isVisible ? 'checked' : ''} onchange="window.toggleExtLayer('${id}')" style="margin:0 5px 0 0;"><input type="color" class="layer-color-picker" value="${ext.color}" onchange="window.changeExtLayerStyle('${id}', this.value, null)" title="Couleur"><input type="number" class="layer-weight-picker" value="${ext.weight || 4}" min="1" max="15" onchange="window.changeExtLayerStyle('${id}', null, this.value)" title="Épaisseur"><label for="loc-cbx-${id}" style="cursor:pointer; flex-grow:1; margin-left:8px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#34495e;">${ext.name}</label><button onclick="window.deleteExtLayer('${id}')" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:16px;">🗑️</button></div>`; } };
-        window.toggleExtLayer = function(id) { const ext = window.externalLayers[id]; ext.isVisible = !ext.isVisible; if(ext.isVisible) { window.map.addLayer(ext.layer); } else { window.map.removeLayer(ext.layer); } window.updateLayerDataInDB(id, { isVisible: ext.isVisible }); window.renderCustomLayersList(); };
-        window.changeExtLayerStyle = function(id, newColor, newWeight) { if(window.externalLayers[id]) { if (newColor !== null) window.externalLayers[id].color = newColor; if (newWeight !== null) window.externalLayers[id].weight = parseInt(newWeight); let col = window.externalLayers[id].color; let w = window.externalLayers[id].weight; if(window.externalLayers[id].layer) { window.externalLayers[id].layer.setStyle({color: col, fillColor: col, weight: w}); window.externalLayers[id].layer.eachLayer(function (layer) { if (layer instanceof L.CircleMarker) { layer.setStyle({ color: col, fillColor: col }); } }); } window.updateLayerDataInDB(id, { color: col, weight: w }); } };
-        window.deleteExtLayer = function(id) { window.map.removeLayer(window.externalLayers[id].layer); delete window.externalLayers[id]; window.deleteLayerFromDB(id); window.renderCustomLayersList(); };
-
-        /* ================== BOOT & FETCH ================== */
-        window.setStep = function(step, desc) { let elStep = document.getElementById('loading-step'); let elDesc = document.getElementById('loading-desc'); if (elStep) elStep.innerText = "Étape " + step + "/5"; if (elDesc) elDesc.innerText = desc; };
-        window.fetchWithTimeout = async function(resource, options = {}) { let finalUrl = resource; if(!resource.includes('raw.githubusercontent')) { finalUrl += (resource.includes('?') ? '&' : '?') + 't=' + new Date().getTime(); } const controller = window.AbortController ? new AbortController() : null; if (controller) options.signal = controller.signal; const timeoutPromise = new Promise((_, reject) => { setTimeout(() => { if (controller) controller.abort(); reject(new Error("Délai d'attente dépassé (15s).")); }, 15000); }); return Promise.race([fetch(finalUrl, options), timeoutPromise]); };
-
-        window.fetchGoogleSheetsData = async function() {
-            window.setStep(1, "Connexion au serveur Google...");
-            const response = await window.fetchWithTimeout(GOOGLE_API_URL);
-            if (!response.ok) throw new Error("Accès refusé. Vérifiez l'URL.");
-            let textData = await response.text(); let data;
-            try { data = JSON.parse(textData); } catch(e) { throw new Error("Format invalide."); }
-            
-            window.rawGeneral = data.general || []; window.rawHistorique = data.historique || []; window.rawTicketsSheet = data.tickets || [];
-            window.meteoHistData = data.meteo_hist || []; window.meteoFroidData = data.meteo_froid || []; window.suiviEntretienData = data.suivi || [];window.rawAtelier = data.atelier || [];
-
-            window.setStep(2, "Analyse du Tableau Général...");
-            if (!data.general || data.general.length < 2) throw new Error(`L'onglet principal est introuvable ou vide.`);
-            const genHeaders = data.general[0].map(h => (h||"").toString().toLowerCase().trim());
-            const originalHeaders = data.general[0].map(h => (h||"").toString().trim()); 
-                      // CORRECTION : Recherche EXACTE d'abord pour éviter de cibler la mauvaise colonne
-
-                        const findCol = (keywords) => { 
-                let idx = genHeaders.findIndex(h => keywords.some(k => h === k)); 
-                if (idx === -1) idx = genHeaders.findIndex(h => keywords.some(k => h.includes(k))); 
-                return idx !== -1 ? originalHeaders[idx] : null; 
-            };
-
-            let idxId = genHeaders.findIndex(h => h.includes('n° de vanne') || h.includes('n°'));
-            if(idxId === -1) idxId = 1; 
-
-            const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps'));
-            if (idxXY === -1) throw new Error("La colonne 'xy' est introuvable.");
-
-            window.keyPiste = findCol(['piste', 'pistes']); 
-            window.keyType = findCol(['type canon', 'type de canon', 'type']);
-            window.keyRep = findCol(['répéteur', 'repeteur', 'épéteur', 'epeteur', 'peteur']); 
-            window.keyTransfo = findCol(['transfo']);
-
-            originalHeaders.forEach(h => { let hl = h.toLowerCase(); if(!hl.includes('xy') && !hl.includes('gps') && !hl.includes('photo')) { window.availableColumns.push(h); window.columnValuesSets[h] = new Set(); } });
-
-            let dictGeneral = {}; let validPointsCount = 0;
-            data.general.slice(1).forEach(row => {
-                let idRaw = row[idxId]; if (idRaw == null || idRaw === "") return;
-                let id = idRaw.toString().replace(/^YA\s*/i, '').trim(); if (!id) return;
-                let lat = 0, lng = 0;
-                if (row[idxXY]) {
-                    let txt = String(row[idxXY]).replace(/,/g, '.'); let matches = txt.match(/-?\d+(?:\.\d+)?/g);
-                    if (matches && matches.length >= 2) { lat = parseFloat(matches[0]); lng = parseFloat(matches[1]); if (lat < 20 && lng > 30) { let temp = lat; lat = lng; lng = temp; } }
-                }
-                let fullData = [];
-                originalHeaders.forEach((head, i) => { if(head.trim() !== "") { let val = (i < row.length && row[i] != null) ? row[i].toString() : ""; fullData.push({k: head, v: val}); if(val !== "" && window.columnValuesSets[head]) window.columnValuesSets[head].add(val.trim()); } });
-                if (!isNaN(lat) && !isNaN(lng) && lat !== 0) validPointsCount++;
-                dictGeneral[id] = { id: id, lat: lat, lng: lng, fullData: fullData, historique: {} };
-            });
-            if (validPointsCount === 0) throw new Error("Aucun point GPS valide détecté.");
-
-            window.setStep(3, "Analyse de l'Historique...");
-            if (data.historique && data.historique.length > 1) {
-                const histHeaders = data.historique[0].map(h => (h||"").toString().toLowerCase().trim()); const idxCanons = 1; let colsEau = {}, colsAir = {}, colsTemps = {}; let saisonsSet = new Set();
-                histHeaders.forEach((h, i) => { let match = h.match(/(eau|air|marche).*?(\d{2}\/\d{2})/i); if (match) { let t = match[1].toLowerCase(); let s = match[2]; saisonsSet.add(s); if (t.includes('eau')) colsEau[s] = i; if (t.includes('air')) colsAir[s] = i; if (t.includes('marche')) colsTemps[s] = i; } });
-                window.saisonsList = Array.from(saisonsSet).sort((a,b) => parseInt(a.split('/')[0]) - parseInt(b.split('/')[0])); window.histSeasonIdx = window.saisonsList.length > 0 ? window.saisonsList.length - 1 : 0;
-                data.historique.slice(1).forEach(row => {
-                    let rawId = row[idxCanons];
-                    if (rawId != null && rawId !== "") { let id = rawId.toString().replace(/^YA\s*/i, '').trim(); if (id && dictGeneral[id]) { window.saisonsList.forEach(s => { dictGeneral[id].historique[s] = { eau: colsEau[s]?parseFloat(row[colsEau[s]])||0:0, air: colsAir[s]?parseFloat(row[colsAir[s]])||0:0, temps: colsTemps[s]?parseFloat(row[colsTemps[s]])||0:0 }; }); } }
-                });
-            }
-
-            window.setStep(4, "Préparation des Pannes...");
-            if (data.tickets && data.tickets.length > 1) {
-                const tHeaders = data.tickets[0].map(h => (h||"").toString().toLowerCase().trim()); const originalTHeaders = data.tickets[0].map(h => (h||"").toString().trim());
-                const idxTEtat = tHeaders.findIndex(h => h.includes('état') || h.includes('etat')); const idxTDate = tHeaders.findIndex(h => h.includes('date')); const idxTRegard = tHeaders.findIndex(h => h.includes('n°regard') || h.includes('regard') || h.includes('canon')); const idxTDefaut = tHeaders.findIndex(h => h.includes('defaut') || h.includes('défaut') || h.includes('panne'));
-                if(idxTRegard > -1) {
-                    window.rawTickets = data.tickets.slice(1).map(row => {
-                        let fullTData = []; originalTHeaders.forEach((h, i) => { if(h.trim() !== "") { let val = (i < row.length && row[i] != null) ? row[i].toString() : ""; fullTData.push({k: h, v: val}); } });
-                        return { statut: (idxTEtat>-1 && row[idxTEtat] != null ? row[idxTEtat].toString().toLowerCase().trim() : ""), date: (idxTDate>-1 && row[idxTDate] != null ? row[idxTDate] : ""), idCanon: (row[idxTRegard] != null ? row[idxTRegard].toString().replace(/^YA\s*/i, '').trim() : ""), defaut: (idxTDefaut>-1 && row[idxTDefaut] ? row[idxTDefaut].toString() : "Défaut non spécifié"), fullData: fullTData };
-                    });
-                }
-            }
-
-            if (data.kmz && data.kmz.length > 1) {
-                const kHead = data.kmz[0].map(h => (h||"").toString().toLowerCase().trim());
-                const iNom = kHead.findIndex(h => h.includes("nom") || h.includes("calque"));
-                const iUrl = kHead.findIndex(h => h.includes("url") || h.includes("lien"));
-                const iCol = kHead.findIndex(h => h.includes("couleur"));
-                const iWei = kHead.findIndex(h => h.includes("epaisseur") || h.includes("taille"));
-                
-                if(iNom > -1 && iUrl > -1) {
-                    window.cloudKmzLayers = [];
-                    data.kmz.slice(1).forEach((row, index) => {
-                        let nom = row[iNom]; let url = row[iUrl];
-                        if(nom && url) {
-                            let col = (iCol > -1 && row[iCol]) ? row[iCol].toString().trim() : window.defaultColors[index % window.defaultColors.length];
-                            let wei = (iWei > -1 && row[iWei]) ? parseInt(row[iWei]) : 4;
-                            window.cloudKmzLayers.push({ nom: nom, url: url, isVisible: false, leafletLayer: null, color: col, weight: wei, commentaire: "" });
-                        }
-                    });
-                }
-            }
-
-            window.setStep(5, "Analyse des Webcams...");
-            if (data.webcams && data.webcams.length > 1) {
-                const wHead = data.webcams[0].map(h => (h||"").toString().toLowerCase().trim());
-                const iNom = wHead.findIndex(h => h.includes("nom")); const iLL = wHead.findIndex(h => h.match(/(gps|xy|lat)/)); const iUrl = wHead.findIndex(h => h.match(/(url|lien)/)); const iIcon = wHead.findIndex(h => h.match(/(icone|logo)/));
-                if(iNom > -1 && iLL > -1 && iUrl > -1) {
-                    data.webcams.slice(1).forEach(row => {
-                        let nom = row[iNom]; let llStr = row[iLL] ? row[iLL].toString() : ""; let url = row[iUrl]; let icon = (iIcon > -1 && row[iIcon]) ? row[iIcon].toString().trim() : "📷"; if(!icon) icon = "📷";
-                        if(nom && llStr && url) {
-                            let matches = llStr.replace(/,/g, '.').match(/-?\d+(?:\.\d+)?/g);
-                            if(matches && matches.length >= 2) { let lat = parseFloat(matches[0]); let lng = parseFloat(matches[1]); if (lat < 20 && lng > 30) { let t = lat; lat = lng; lng = t; } window.webcamsData.push({ nom: nom, lat: lat, lng: lng, url: url, icon: icon }); }
-                        }
-                    });
-                }
-            }
-
-            Object.values(dictGeneral).forEach(canon => { if (canon.lat !== 0 && !isNaN(canon.lat)) { window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); } });
-
-            let ls = document.getElementById('loading-spinner'); if(ls) ls.style.display = 'none';
-            let lt = document.getElementById('loading-title'); if(lt) { lt.innerText = "✅ Chargement Réussi !"; lt.style.color = "#27ae60"; }
-            let lst = document.getElementById('loading-step'); if(lst) lst.style.display = 'none';
-            let ld = document.getElementById('loading-desc'); if(ld) ld.innerHTML = `${window.snowCannons.features.length} canons placés.`;
-            setTimeout(() => { window.initAppUI(); let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; }, 800);
-        };
-
-        window.initAppUI = function() {
-            let ts=new Set(),rs=new Set(),trs=new Set(),ps=new Set();
-            window.snowCannons.features.forEach(f=>{let p=f.properties;let t=window.getV(p,window.keyType);if(t!=="N/A")ts.add(t.toLowerCase());let r=window.getV(p,window.keyRep);if(r!=="N/A")rs.add(r);let tr=window.getV(p,window.keyTransfo);if(tr!=="N/A")trs.add(tr);let pi=window.getV(p,window.keyPiste);if(pi!=="N/A")ps.add(pi);});
-            
-            let tc=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6']; Array.from(ts).sort().forEach((t,i)=>window.technoColors[t]=tc[i%tc.length]);
-            let rc=['#1abc9c','#16a085','#f39c12','#d35400','#8e44ad']; Array.from(rs).sort().forEach((r,i)=>window.repColors[r]=rc[i%rc.length]);
-            let neonColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#00FFFF', '#FF8C00', '#FF1493', '#39FF14']; Array.from(trs).sort().forEach((t,i)=>window.transfoColors[t]=neonColors[i%neonColors.length]);
-            
-            window.snowCannons.features.forEach(f=>{let t=window.getV(f.properties,window.keyType).toLowerCase();f.properties.couleur_defaut=(["demak lenko","demac lenko"].includes(t))?"#0000FF":(["sufag","street","taurus","taurax","peak"].includes(t))?"#008000":window.technoColors[t]||"#FFD700";});
-            
-            let dlContainer = document.getElementById('datalists-container');
-            if (dlContainer) { let dlHtml = ""; for(let header in window.columnValuesSets) { let safeId = "dl-" + header.replace(/[^a-zA-Z0-9]/g, '-'); dlHtml += `<datalist id="${safeId}">${Array.from(window.columnValuesSets[header]).sort().map(v=>`<option value="${v}">`).join('')}</datalist>`; } dlContainer.innerHTML = dlHtml; }
-
-            let sld = document.getElementById('season-slider');
-            if (window.saisonsList.length > 0 && sld) { sld.max = window.saisonsList.length - 1; sld.value = window.histSeasonIdx; let sdisp = document.getElementById('season-display'); if(sdisp) sdisp.innerText = window.saisonsList[window.histSeasonIdx]; }
-
-            function buildCbs(id, set, cls) { const c = document.getElementById(id); if(!c) return; c.innerHTML = ''; [...set].sort().forEach(v => { let l=document.createElement('label'); let cb=document.createElement('input'); cb.type='checkbox'; cb.className=cls; cb.value=v; l.appendChild(cb); l.appendChild(document.createTextNode(' '+v)); c.appendChild(l); }); }
-            buildCbs('individual-pistes', ps, 'piste-cb'); buildCbs('individual-types', ts, 'type-cb');
-
-            function setupCbs(allId, cls, cbk) { 
-                const aBtn = document.getElementById(allId); if(!aBtn) return;
-                const cbs = document.querySelectorAll('.'+cls); const getVals = () => aBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); 
-                aBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); cbk(getVals()); }); 
-                cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(aBtn) aBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(aBtn) aBtn.checked=true; } cbk(getVals()); })); 
-            }
-            setupCbs('check-all-pistes', 'piste-cb', vals => { window.currentPistes = vals; window.updateMap(); window.triggerGlobalFilterChart(); }); 
-            setupCbs('check-all-types', 'type-cb', vals => { window.currentTypes = vals; window.updateMap(); window.triggerGlobalFilterChart(); });
-
-            window.generateDynamicFiltersUI = function() { let container = document.getElementById('dynamic-filters-container'); if(!container) return; container.innerHTML = ""; let optionsHTML = `<option value="">-- Choisir un critère --</option>` + window.availableColumns.map(c => `<option value="${c}">${c.toUpperCase()}</option>`).join(''); container.innerHTML = `<div class="dynamic-filter-slot" style="margin-bottom:0; border:none; padding:0;"><select class="filter-select" id="filter-sel-0" data-idx="0">${optionsHTML}</select><div class="checkbox-list" id="filter-cbx-0" style="display:none;"></div></div>`; };
-            window.renderCheckboxesForFilter = function(idx, colName) { let cbxContainer = document.getElementById(`filter-cbx-${idx}`); if(!cbxContainer) return; if(!colName) { cbxContainer.style.display = 'none'; window.activeFilters[idx] = {key:"", vals:[]}; window.updateMap(); window.triggerGlobalFilterChart(); return; } cbxContainer.style.display = 'block'; let vals = Array.from(window.columnValuesSets[colName] || []).sort(); let html = `<label><input type="checkbox" class="cb-all-${idx}" checked> <b>Tout sélectionner</b></label><hr style="margin:4px 0; border-top:1px solid #eee;">`; vals.forEach(v => html += `<label><input type="checkbox" class="cb-val-${idx}" value="${v}"> ${v}</label>`); cbxContainer.innerHTML = html; window.activeFilters[idx] = {key: colName, vals: ['all']}; let allBtn = cbxContainer.querySelector(`.cb-all-${idx}`); let cbs = cbxContainer.querySelectorAll(`.cb-val-${idx}`); const updateLogic = () => { window.activeFilters[idx].vals = allBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); window.updateMap(); window.triggerGlobalFilterChart(); }; if(allBtn) allBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); updateLogic(); }); cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(allBtn) allBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(allBtn) allBtn.checked=true; } updateLogic(); })); };
-
-            window.generateDynamicFiltersUI(); window.renderCloudLayersList(); window.calculateMaxes();
-
-            window.geojsonLayer = L.geoJSON(window.snowCannons, {
-                pointToLayer: function (feature, latlng) { return L.marker(latlng, { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div></div>` }) }); },
-                onEachFeature: function (feature, layer) {
-                    layer.on('click', function(e) {
-                        L.DomEvent.stopPropagation(e);
-                        if (window.currentlyEditingId) return; 
-                        const id = feature.properties.id;
-                        
-                        if (window.selectedCannonsMap.has(id)) {
-                            window.selectedCannonsMap.delete(id); 
-                        } else {
-                            window.selectedCannonsMap.set(id, layer);
-                        }
-                        
-                        if(window.map) window.map.setView(layer.getLatLng(), 17, {animate: true});
-                        window.updateMap(); window.renderSelectionPanel();
-                        let sb = document.getElementById('right-sidebar'); if (window.selectedCannonsMap.size > 0 && sb) sb.classList.add('open');
-                    });
-                }
-            }).addTo(window.map);
-
-            if (window.snowCannons.features.length > 0) { let bounds = window.geojsonLayer.getBounds(); if(bounds.isValid() && window.map) window.map.fitBounds(bounds, { padding: [30, 30] }); }
-
-            window.webcamLayerGroup = L.layerGroup();
-            window.webcamsData.forEach(wc => {
-                let marker = L.marker([wc.lat, wc.lng], { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div class="camera-icon">${wc.icon}</div>`, iconSize: [24,24], iconAnchor: [12,12] }), draggable: false });
-                marker.on('click', function(e) { 
-                    L.DomEvent.stopPropagation(e); 
-                    if(marker.dragging && marker.dragging.enabled()) return; 
-                    if(window.map) window.map.setView([wc.lat, wc.lng], 17, {animate: true});
-                    window.openSingleWebcam(wc.nom); 
-                });
-                marker.wcData = wc; window.webcamLayerGroup.addLayer(marker);
-            });
-            window.webcamLayerGroup.addTo(window.map);
-            
-                        document.querySelectorAll('input[name="main_theme"]').forEach(r => {
-                r.addEventListener('change', e => {
-                    window.mainTheme = e.target.value;
-                    document.querySelectorAll('.theme-details, .theme-details-hist').forEach(el => el.style.display = 'none');
-                    document.querySelectorAll('.radio-card').forEach(el => { el.style.borderBottomLeftRadius = '6px'; el.style.borderBottomRightRadius = '6px'; el.style.marginBottom = '8px'; el.style.borderColor = '#e1e8ed'; el.style.borderTop = '1px solid #e1e8ed'; });
-                    
-                    let activeDetails = document.getElementById('details-' + window.mainTheme); 
-                    let activeLabel = document.getElementById('lbl-' + window.mainTheme);
-                    
-                    if (activeDetails && activeLabel) { 
-                        activeDetails.style.display = 'block'; 
-                        activeLabel.style.borderBottomLeftRadius = '0'; 
-                        activeLabel.style.borderBottomRightRadius = '0'; 
-                        activeLabel.style.marginBottom = '0'; 
-                        if(window.mainTheme === 'historique') activeLabel.style.borderColor = '#2ecc71'; 
-                        else if(window.mainTheme === 'suivi_entretien') activeLabel.style.borderColor = '#27ae60'; 
-                        else if(window.mainTheme === 'entretien_tete') activeLabel.style.borderColor = '#e67e22'; 
-                        else if(window.mainTheme === 'atelier') activeLabel.style.borderColor = '#8e44ad'; 
-                        else activeLabel.style.borderColor = '#3498db'; 
-                    }
-                    
-                    // BASCULE CARTE VS ATELIER
-                    if(window.mainTheme === 'atelier') {
-                        document.getElementById('map').style.display = 'none';
-                        document.getElementById('atelier-workspace').style.display = 'block';
-                        window.closeRightSidebar(); // On ferme le panneau droit car on utilise le centre
-                        if(window.renderAtelierWorkspace) window.renderAtelierWorkspace();
-                    } else {
-                        document.getElementById('map').style.display = 'block';
-                        document.getElementById('atelier-workspace').style.display = 'none';
-                        if(window.mainTheme === 'historique') window.calculateMaxes(); 
-                        window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
-                        if(window.mainTheme === 'suivi_entretien') document.getElementById('right-sidebar').classList.add('open');
-                    }
-                });
-            });
-
-            document.querySelectorAll('input[name="hist_metric"]').forEach(r => { r.addEventListener('change', e => { window.histMetric = e.target.value; window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); }); });
-            let ssl = document.getElementById('season-slider'); if(ssl) ssl.addEventListener('input', e => { window.histSeasonIdx = parseInt(e.target.value); let sd = document.getElementById('season-display'); if(sd) sd.innerText = window.saisonsList[window.histSeasonIdx]; window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); });
-            let dfc = document.getElementById('dynamic-filters-container'); if(dfc) dfc.addEventListener('change', e => { if(e.target.classList.contains('filter-select')) window.renderCheckboxesForFilter(e.target.getAttribute('data-idx'), e.target.value); });
-            
-            if(window.map) {
-                window.map.on('click', function(e) {
-                    let amc = document.getElementById('allow-move-chk');
-                    if (window.currentlyEditingId && amc && amc.checked) { 
-                        let elat = document.getElementById('edit-lat'); if(elat) elat.value = e.latlng.lat.toFixed(7); 
-                        let elng = document.getElementById('edit-lng'); if(elng) elng.value = e.latlng.lng.toFixed(7); 
-                        let layer = window.selectedCannonsMap.get(window.currentlyEditingId);
-                        if(layer) { layer.setLatLng(e.latlng); layer.feature.geometry.coordinates = [e.latlng.lng, e.latlng.lat]; }
-                    } else { window.closeRightSidebar(); }
-                });
-            }
-
-            window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
-        };
-
-        window.calculateMaxes = function() {
-            if(!window.saisonsList[window.histSeasonIdx]) return;
-            let s = window.saisonsList[window.histSeasonIdx]; window.absoluteMaxes = { eau: 0, air: 0, temps: 0 };
-            window.snowCannons.features.forEach(f => {
-                if (f.properties.historique[s]) {
-                    window.absoluteMaxes.eau = Math.max(window.absoluteMaxes.eau, f.properties.historique[s].eau);
-                    window.absoluteMaxes.air = Math.max(window.absoluteMaxes.air, f.properties.historique[s].air);
-                    window.absoluteMaxes.temps = Math.max(window.absoluteMaxes.temps, f.properties.historique[s].temps);
-                }
-            });
-            window.currentMaxThreshold = { ...window.absoluteMaxes }; window.currentMinThreshold = { eau:0, air:0, temps:0 };
-            
-            let slmin = document.getElementById('slider-min'); 
-            let slmax = document.getElementById('slider-max');
-            
-            if(slmin) { 
-                slmin.max = window.absoluteMaxes[window.histMetric] || 1; 
-                slmin.value = 0; 
-                slmin.step = "any";
-                slmin.oninput = function(e) {
-                    let val = parseFloat(e.target.value) || 0;
-                    if (val > window.currentMaxThreshold[window.histMetric]) { val = window.currentMaxThreshold[window.histMetric]; e.target.value = val; }
-                    window.currentMinThreshold[window.histMetric] = val;
-                    let vm = document.getElementById('val-min'); if(vm) vm.innerText = Math.round(val);
-                    window.updateMap(); window.triggerGlobalFilterChart();
-                };
-            }
-            if(slmax) { 
-                slmax.max = window.absoluteMaxes[window.histMetric] || 1; 
-                slmax.value = window.absoluteMaxes[window.histMetric] || 1; 
-                slmax.step = "any";
-                slmax.oninput = function(e) {
-                    let val = parseFloat(e.target.value) || 0;
-                    if (val < window.currentMinThreshold[window.histMetric]) { val = window.currentMinThreshold[window.histMetric]; e.target.value = val; }
-                    window.currentMaxThreshold[window.histMetric] = val;
-                    let vmx = document.getElementById('val-max'); if(vmx) vmx.innerText = Math.round(val);
-                    window.updateMap(); window.triggerGlobalFilterChart();
-                };
-            }
-            let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; 
-            let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
-        };
-
-        window.addEventListener('DOMContentLoaded', async () => {
-            if(window.bootAttempt > 0) return;
-            window.bootAttempt = 1;
-            try {
-                window.setStep(0, "Initialisation de la carte...");
-                let retries = 0;
-                while ((typeof L === 'undefined' || typeof JSZip === 'undefined' || typeof Chart === 'undefined') && retries < 50) { await new Promise(r => setTimeout(r, 100)); retries++; }
-                if (typeof L === 'undefined') throw new Error("Impossible de charger la carte (Leaflet). Vérifiez votre pare-feu.");
-                window.satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 18 });
-                window.map = L.map('map', {zoomControl: false, layers: [window.satLayer]}).setView([42.766, 0.564], 14);
-                L.control.zoom({ position: 'bottomright' }).addTo(window.map);
-                window.initLocalDB();
-                await window.fetchGoogleSheetsData();
-            } catch (err) { window.showCrash(err.message, "Boot Principal"); }
-        });
         
-        setTimeout(() => { if(window.bootAttempt === 0) { window.document.dispatchEvent(new Event("DOMContentLoaded")); } }, 2000);
-
-                /* ================== MODULE ATELIER ================== */
-        window.rawAtelier = [];
-
-        window.renderAtelierWorkspace = function() {
-            let ws = document.getElementById('atelier-workspace');
-            if(!ws) return;
-            ws.innerHTML = `<h2 style="color:#2c3e50; margin-top:0; padding-bottom:10px; border-bottom:2px solid #8e44ad;">🧰 Banc d'Essais & Maintenance Atelier</h2>`;
-
-            // 1. Filtrer les canons en "préventif usine" = "oui"
-            let canonsEnAtelier = window.suiviEntretienData.filter(row => row[3] && row[3].toString().toLowerCase().trim() === "oui").map(r => r[0].toString());
-
-            if(canonsEnAtelier.length === 0) {
-                ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; color:#7f8c8d; font-weight:bold;">✅ Aucun enneigeur n'est actuellement marqué "Préventif Usine".</div>`;
-                return;
-            }
-
-            ws.innerHTML += `<div style="margin-bottom:15px; font-size:13px; color:#555; background:#eaf2f8; padding:10px; border-radius:4px; border-left:4px solid #3498db;"><b>${canonsEnAtelier.length}</b> canon(s) à réviser.</div>`;
-
-            // 2. Création des fiches pour chaque canon
-            canonsEnAtelier.forEach(idCanon => {
-                let feature = window.snowCannons.features.find(f => f.properties.id == idCanon);
-                if(!feature) return;
-
-                let p = feature.properties;
-                let piste = window.getV(p, window.keyPiste);
-                let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, "");
-
-                // --- ACCORDÉON 1 : DONNÉES TECHNIQUES (Tableau Général) ---
-                let headersGen = window.rawGeneral[0] || [];
-                let techHtml = "";
-                headersGen.forEach(h => {
-                    if(h.toLowerCase().includes('xy') || h.toLowerCase().includes('gps') || h.toLowerCase() === 'id') return;
-                    let val = window.getV(p, h);
-                    techHtml += `<div><span class="edit-label">${h}</span><input type="text" class="edit-input tech-field-${safeId}" data-head="${h}" value="${val}" style="margin-bottom:0; padding:6px;"></div>`;
-                });
-
-                // --- ACCORDÉON 2 : HISTORIQUE DES INTERVENTIONS (Panne/Ticket) ---
-                let hist = window.getHistoryTickets(idCanon);
-                let histHtml = `<div style="padding:15px; background:#fff; font-size:12px;">`;
-                if(hist.length === 0) histHtml += `<span style="color:#7f8c8d; font-style:italic;">Aucun historique de panne trouvé pour ce canon.</span>`;
-                else hist.forEach(t => { histHtml += `<div style="padding:5px 0; border-bottom:1px solid #eee;"><b>${t.date}</b> : <span style="color:#e74c3c;">${t.defaut}</span></div>`; });
-                histHtml += `</div>`;
-
-                // --- ACCORDÉON 3 : LE FORMULAIRE BANC D'ESSAIS COMPLET ---
-                
-                // Détection automatique du type de vanne additionnelle pour pré-sélectionner le bon menu
-                let isAbrisDouble = (window.getV(p, "abris double") || "").toString().toLowerCase() === "oui";
-                let strAd = ((window.getV(p, "vanne additionnelle") || "") + " " + (window.getV(p, "type vanne ad 1") || "")).toLowerCase();
-                let defaultVanne = "none";
-                if (strAd.includes("v2000")) defaultVanne = "v2000";
-                else if (strAd.includes("var")) defaultVanne = isAbrisDouble ? "var_double" : "var";
-
-                let formHtml = `
-                    <div style="padding:15px; background:#fdfdfe;">
-                        <h4 style="margin:0 0 10px 0; color:#2c3e50;">1. Tests de la Vanne Principale</h4>
-                        
-                        <div style="display:flex; gap:10px; width:100%;">
-                            <div style="flex:1;"><span class="edit-label">test pression eau 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" style="padding:6px; margin-bottom:8px;"></div>
-                            <div style="flex:1;"><span class="edit-label">test pression air 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" style="padding:6px; margin-bottom:8px;"></div>
-                        </div>
-                        <div style="display:flex; gap:10px; width:100%;">
-                            <div style="flex:1;"><span class="edit-label">test elec Vanne</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" style="padding:6px; margin-bottom:8px;"></div>
-                            <div style="flex:1;"><span class="edit-label">manu 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 1" style="padding:6px; margin-bottom:8px;"></div>
-                            <div style="flex:1;"><span class="edit-label">capteur 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 1" style="padding:6px; margin-bottom:8px;"></div>
-                        </div>
-                        
-                        <div><span class="edit-label">maintenance effectué</span><input type="text" class="edit-input b-field-${safeId}" data-col="maintenance effectué" style="padding:6px; margin-bottom:8px;"></div>
-                        <div><span class="edit-label">pièces utilisés</span><textarea class="edit-input b-field-${safeId}" data-col="pièces utilisés" style="padding:6px; margin-bottom:8px;" rows="2"></textarea></div>
-                        
-                        <div style="display:flex; gap:10px; width:100%; margin-top:5px;">
-                            <div style="flex:1;"><span class="edit-label">test pression eau 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" style="padding:6px; margin-bottom:8px;"></div>
-                            <div style="flex:1;"><span class="edit-label">test pression air 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 2" style="padding:6px; margin-bottom:8px;"></div>
-                        </div>
-                        <div style="display:flex; gap:10px; width:100%;">
-                            <div style="flex:1;"><span class="edit-label">test elec vanne (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" style="padding:6px; margin-bottom:8px;"></div>
-                            <div style="flex:1;"><span class="edit-label">manu 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 2" style="padding:6px; margin-bottom:8px;"></div>
-                            <div style="flex:1;"><span class="edit-label">capteur 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 2" style="padding:6px; margin-bottom:8px;"></div>
-                        </div>
-                        <div><span class="edit-label">prête </span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="OUI" style="padding:6px; margin-bottom:8px;"></div>
-
-                        <hr style="border:0; border-top:2px dashed #eee; margin:15px 0;">
-                        
-                        <h4 style="margin:0 0 10px 0; color:#e67e22;">2. Tests Vanne Additionnelle (Optionnel)</h4>
-                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:15px; border-color:#e67e22; font-weight:bold;">
-                            <option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune vanne additionnelle à tester --</option>
-                            <option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>Afficher le test VAR (Simple)</option>
-                            <option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>Afficher le test VAR Double (Perche 1 & 2)</option>
-                            <option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>Afficher le test V2000 (Double C2/C3)</option>
-                        </select>
-
-                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; background:#fdf2e9; padding:15px; border-radius:6px; border:1px solid #f8c471; margin-bottom:15px;">
-                            <b style="color:#d35400; font-size:12px; margin-bottom:8px; display:block;">Tests VAR Simple</b>
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">test elec VAR (1)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="padding:4px; margin-bottom:8px;"></div>
-                                <div style="flex:1;"><span class="edit-label">test pression 1 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="padding:4px; margin-bottom:8px;"></div>
-                            </div>
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">test elec VAR (1) bis</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" style="padding:4px; margin-bottom:8px;"></div>
-                                <div style="flex:1;"><span class="edit-label">test pression 2 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="padding:4px; margin-bottom:8px;"></div>
-                            </div>
-                            <div><span class="edit-label">pièces var utilisés</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés" style="padding:4px; margin-bottom:8px;"></div>
-                            <div><span class="edit-label">VAR (1) prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (1) prête" value="OUI" style="padding:4px; margin-bottom:8px;"></div>
-                        </div>
-
-                        <div id="bloc-var-double-${safeId}" style="display:${defaultVanne === 'var_double' ? 'block' : 'none'}; background:#fef5e7; padding:15px; border-radius:6px; border:1px solid #eb984e; margin-bottom:15px;">
-                            <b style="color:#ba4a00; font-size:12px; margin-bottom:8px; display:block;">Tests VAR Double (Abris Double)</b>
-                            
-                            <div style="font-weight:bold; font-size:11px; color:#ba4a00; margin-bottom:5px; text-transform:uppercase;">• VAR Perche 1</div>
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">test elec VAR (1)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="padding:4px; margin-bottom:8px;"></div>
-                                <div style="flex:1;"><span class="edit-label">test pression 1 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="padding:4px; margin-bottom:8px;"></div>
-                            </div>
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">test elec VAR (1) bis</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" style="padding:4px; margin-bottom:8px;"></div>
-                                <div style="flex:1;"><span class="edit-label">test pression 2 var</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="padding:4px; margin-bottom:8px;"></div>
-                            </div>
-                            <div><span class="edit-label">pièces var utilisés</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés" style="padding:4px; margin-bottom:12px;"></div>
-                            <div><span class="edit-label">VAR (1) prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (1) prête" value="OUI" style="padding:4px; margin-bottom:12px;"></div>
-
-                            <hr style="border:0; border-top:1px dashed #f5cba7; margin:10px 0;">
-
-                            <div style="font-weight:bold; font-size:11px; color:#ba4a00; margin-bottom:5px; text-transform:uppercase;">• VAR Perche 2</div>
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">test elec VAR (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2)" style="padding:4px; margin-bottom:8px;"></div>
-                                <div style="flex:1;"><span class="edit-label">test pression 1 var (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var (2)" style="padding:4px; margin-bottom:8px;"></div>
-                            </div>
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">test elec VAR (2) bis</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2) bis" style="padding:4px; margin-bottom:8px;"></div>
-                                <div style="flex:1;"><span class="edit-label">test pression 2 var (2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var (2)" style="padding:4px; margin-bottom:8px;"></div>
-                            </div>
-                            <div><span class="edit-label">pièces var utilisés bis</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés bis" style="padding:4px; margin-bottom:8px;"></div>
-                            <div><span class="edit-label">VAR (2) prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (2) prête" value="OUI" style="padding:4px; margin-bottom:8px;"></div>
-                        </div>
-
-                        <div id="bloc-v2000-${safeId}" style="display:${defaultVanne === 'v2000' ? 'block' : 'none'}; background:#eaf2f8; padding:15px; border-radius:6px; border:1px solid #85c1e9; margin-bottom:15px;">
-                            <b style="color:#2980b9; font-size:12px; margin-bottom:8px; display:block;">Tests V2000 (Voie C2 & C3)</b>
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">test 1 elec V2000 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" style="padding:4px; margin-bottom:8px;"></div>
-                                <div style="flex:1;"><span class="edit-label">test 1 elec V2000 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c3" style="padding:4px; margin-bottom:8px;"></div>
-                            </div>
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">test pression eau v2000 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c2" style="padding:4px; margin-bottom:8px;"></div>
-                                <div style="flex:1;"><span class="edit-label">test pression eau v2000 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c3" style="padding:4px; margin-bottom:8px;"></div>
-                            </div>
-                            <hr style="border:0; border-top:1px dashed #b5d4e6; margin:10px 0;">
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">test 2 elec v2000 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 elec v2000 c2" style="padding:4px; margin-bottom:8px;"></div>
-                                <div style="flex:1;"><span class="edit-label">test 2 elec v2000 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 elec v2000 c3" style="padding:4px; margin-bottom:8px;"></div>
-                            </div>
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">test 2 pression eau v2000 2 c2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 pression eau v2000 2 c2" style="padding:4px; margin-bottom:8px;"></div>
-                                <div style="flex:1;"><span class="edit-label">test 2 pression eau v2000 2 c3</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 pression eau v2000 2 c3" style="padding:4px; margin-bottom:8px;"></div>
-                            </div>
-                            <div><span class="edit-label">pièces v2000 utilisés</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces v2000 utilisés" style="padding:4px; margin-bottom:8px;"></div>
-                            <div><span class="edit-label">commentaire v2000</span><input type="text" class="edit-input b-field-${safeId}" data-col="commentaire v2000" style="padding:4px; margin-bottom:8px;"></div>
-                            <div><span class="edit-label">V2000 prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="V2000 prête" value="OUI" style="padding:4px; margin-bottom:8px;"></div>
-                        </div>
-
-                        <hr style="border:0; border-top:2px dashed #eee; margin:15px 0;">
-                        <div><span class="edit-label">Commentaire Final</span><input type="text" class="edit-input b-field-${safeId}" data-col="Commentaire" placeholder="Remarques éventuelles sur le passage au banc..." style="padding:6px; margin-bottom:0;"></div>
-                        
-                        <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" style="width:100%; margin-top:15px; background:#8e44ad; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer;">🚀 Archiver ce rapport de Banc d'Essais</button>
-                    </div>
-                `;
-
-                // --- ASSEMBLAGE FINAL DE LA CARTE ---
-                let card = document.createElement('div');
-                card.className = "atelier-card";
-                card.innerHTML = `
-                    <h3>📍 Canon N° ${idCanon} <span style="font-size:12px; font-weight:normal; color:#888; float:right;">Piste: ${piste}</span></h3>
-                    
-                    <details class="atelier-sub-details"><summary>⚙️ 1. Consulter & Éditer les Données Techniques (Tableau Général)</summary>
-                        <div class="atelier-form-grid">${techHtml}</div>
-                        <div style="padding:0 15px 15px 15px;"><button onclick="window.saveAtelierTechRow('${idCanon}','${safeId}',this)" style="width:100%; background:#2c3e50; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Enregistrer les modifications techniques</button></div>
-                    </details>
-                    
-                    <details class="atelier-sub-details"><summary>🕒 2. Historique des défauts & pannes sur la ligne (Tickets)</summary>
-                        ${histHtml}
-                    </details>
-                    
-                    <details class="atelier-sub-details"><summary>📝 3. Enregistrer un nouveau passage au Banc d'Essais (Atelier)</summary>
-                        ${formHtml}
-                    </details>
-                `;
-                ws.appendChild(card);
-            });
-        };
-
-        // Gère l'affichage dynamique VAR Simple / VAR Double / V2000
-        window.handleSelectVanne = function(safeId, val) {
-            document.getElementById(`bloc-var-${safeId}`).style.display = (val === 'var') ? 'block' : 'none';
-            document.getElementById(`bloc-var-double-${safeId}`).style.display = (val === 'var_double') ? 'block' : 'none';
-            document.getElementById(`bloc-v2000-${safeId}`).style.display = (val === 'v2000') ? 'block' : 'none';
-        };
-
-        // SAUVEGARDE 1 : Fiche Technique
-        window.saveAtelierTechRow = async function(idCanon, safeId, btn) {
-            let fields = {};
-            document.querySelectorAll(`.tech-field-${safeId}`).forEach(inp => { fields[inp.getAttribute('data-head')] = inp.value; });
-            let pl = { id: idCanon, lat: 0, lng: 0, fields: fields }; 
-            let oldText = btn.innerText; btn.innerText = "⏳ Enregistrement..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(pl) });
-                let r = await res.json();
-                if(r.status === "success") { btn.innerText = "✅ Succès !"; setTimeout(() => { btn.innerText = oldText; btn.disabled = false; }, 2000); }
-                else { alert("Erreur serveur"); btn.disabled = false; btn.innerText = oldText; }
-            } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
-        };
-
-        // SAUVEGARDE 2 : Banc d'essais
-        window.saveAtelierBancRow = async function(idCanon, safeId, btn) {
-            let fieldsObj = {};
-            let canonData = window.snowCannons.features.find(f => f.properties.id == idCanon);
-            let p = canonData ? canonData.properties : null;
-            
-            fieldsObj["id"] = idCanon;
-            fieldsObj["N° de vanne"] = p ? window.getV(p, "N° de vanne") : ""; 
-            fieldsObj["piste"] = p ? window.getV(p, window.keyPiste) : "";
-            fieldsObj["abris double"] = p ? window.getV(p, "abris double") : ""; 
-            fieldsObj["type"] = p ? window.getV(p, "type") : "";
-            fieldsObj["vanne additionnelle"] = p ? window.getV(p, "vanne additionnelle") : "";
-            fieldsObj["type vanne AD 1"] = p ? window.getV(p, "type vanne ad 1") : "";
-
-            // Récupération des inputs saisis
-            document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => {
-                // On ne stocke que les champs qui sont actuellement affichés
-                if (inp.closest('div[id^="bloc-"]') && inp.closest('div[id^="bloc-"]').style.display === 'none') return;
-                fieldsObj[inp.getAttribute('data-col')] = inp.value;
-            });
-
-            let oldText = btn.innerText; btn.innerText = "⏳ Envoi du rapport..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_atelier", fields: fieldsObj }) });
-                let r = await res.json();
-                if(r.status === "success") {
-                    btn.innerText = "🚀 Rapport Archivé !"; btn.style.background = "#27ae60";
-                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#8e44ad"; }, 3000);
-                } else { alert("Erreur Apps Script"); btn.disabled = false; btn.innerText = oldText; }
-            } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
-        };
-        // Détection mobile simple
-window.isMobile = function() {
-    return window.innerWidth <= 768;
-};
-
-// Adaptation automatique au chargement
-window.addEventListener('load', () => {
-    if (window.isMobile()) {
-        console.log("Mode mobile activé");
-        // Optionnel : tu pourrais ici forcer le menu à rester fermé
-        // ou désactiver certains effets de survol trop lourds
-    }
-});
+        window.isMobile = function() { return window.innerWidth <= 768; };
+        window.addEventListener('load', () => { if (window.isMobile()) { console.log("Mode mobile activé"); } });
     </script>
 </body>
 </html>
