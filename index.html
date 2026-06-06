@@ -1533,8 +1533,8 @@
             let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; 
             let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
         };
-        // =========================================================================
-        // CHAPITRE 14 : GESTION ET GRAPHIQUES DE L'HISTORIQUE MÉTÉO
+                // =========================================================================
+        // CHAPITRE 14 : GESTION ET GRAPHIQUES DE L'HISTORIQUE MÉTÉO (CORRIGÉ)
         // =========================================================================
         
         window.openMeteoHistoryModal = function(show) {
@@ -1549,25 +1549,21 @@
                 let data = window.meteoHistData;
                 if(data && data.length > 0) {
                     let headers = data[0];
-                    selectMetric.innerHTML = "";
+                    let optionsHTML = "";
                     
                     // On ne garde que les colonnes liées à la Température Max et l'Humidité
-                    let optionsHTML = "";
                     headers.forEach((h, i) => {
-                        // Nettoyage de la chaîne (minuscules, sans accents) pour la recherche
+                        // Nettoyage pour éviter les problèmes d'accents ou de majuscules
                         let cleanH = h.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
                         
-                        // Tolérance d'orthographe (température max, temp max, t max, humidité)
                         if (cleanH.includes("temperature max") || cleanH.includes("temp max") || cleanH.includes("t max") || cleanH.includes("humidite") || cleanH === "hygrometrie") {
                             optionsHTML += `<option value="${i}">${h}</option>`;
                         }
                     });
                     
-                    // Sécurité au cas où les noms de colonnes auraient été changés dans Sheets
                     if (optionsHTML === "") {
                         optionsHTML = `<option value="">-- Colonnes Temp. Max / Humidité introuvables --</option>`;
                     }
-                    
                     selectMetric.innerHTML = optionsHTML;
                 }
             }
@@ -1593,47 +1589,62 @@
             if(!canvas) return;
             
             let metricIdx = parseInt(document.getElementById('meteo-metric').value);
-            if(isNaN(metricIdx)) return; // On stoppe tout si aucune colonne valide n'est sélectionnée
+            if(isNaN(metricIdx)) return; // Stoppe si la colonne n'est pas valide
             
             let chartType = document.getElementById('meteo-chart-type').value || 'line';
             let metricLabel = data[0][metricIdx];
             
+            // --- 1. RECHERCHE DYNAMIQUE DE LA COLONNE DATE ---
+            // On cherche la colonne qui contient le mot "date" pour éviter le bug de l'année 1970
+            let headersList = data[0].map(h => h.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim());
+            let dateIdx = headersList.findIndex(h => h === 'date' || h.includes('date') || h.includes('heure'));
+            if (dateIdx === -1) dateIdx = 0; // Sécurité si non trouvé
+            
             let labels = [];
             let values = [];
             
+            // --- 2. TRAITEMENT DES DONNÉES ET FORMATAGE ---
             for(let i = 1; i < data.length; i++) {
-                let rawDate = data[i][0];
+                let rawDate = data[i][dateIdx];
                 let rawVal = data[i][metricIdx];
+                
                 if(rawDate == null || rawDate === "") continue;
                 
                 let rawStr = String(rawDate).trim();
-                let parsedDate = null;
+                let displayLabel = rawStr; 
                 
-                // --- CORRECTIF DE PARSAGE DES DATES (Support du format Français JJ/MM/AAAA HH:MM) ---
-                // Le système va chercher les chiffres et reconstruire une "vraie" date valide
-                let frDateMatch = rawStr.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})(?:\s+(\d{2})[:hH](\d{2})(?::(\d{2}))?)?/);
-                if (frDateMatch) {
-                    let year = parseInt(frDateMatch[3], 10);
-                    let month = parseInt(frDateMatch[2], 10) - 1; // Attention: En JS, Janvier = 0, Février = 1...
-                    let day = parseInt(frDateMatch[1], 10);
-                    let hours = frDateMatch[4] ? parseInt(frDateMatch[4], 10) : 0;
-                    let minutes = frDateMatch[5] ? parseInt(frDateMatch[5], 10) : 0;
-                    let seconds = frDateMatch[6] ? parseInt(frDateMatch[6], 10) : 0;
-                    parsedDate = new Date(year, month, day, hours, minutes, seconds);
+                // Décodeur ciblé pour forcer le format français : jj/mm/aaaa (avec ou sans heure)
+                let matchFr = rawStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2})[:hH](\d{1,2})(?::(\d{1,2}))?)?/);
+                
+                if (matchFr) {
+                    let day = parseInt(matchFr[1], 10);
+                    let month = parseInt(matchFr[2], 10); 
+                    let year = parseInt(matchFr[3], 10);
+                    let hr = matchFr[4] ? parseInt(matchFr[4], 10) : null;
+                    let min = matchFr[5] ? parseInt(matchFr[5], 10) : null;
+                    
+                    let formattedDate = String(day).padStart(2, '0') + '/' + String(month).padStart(2, '0') + '/' + year;
+                    
+                    // S'il y a une heure détectée, on coupe la date et l'heure sur 2 lignes pour le graphique
+                    if (hr !== null && min !== null) {
+                        let formattedTime = String(hr).padStart(2, '0') + ':' + String(min).padStart(2, '0');
+                        displayLabel = [formattedDate, formattedTime]; 
+                    } else {
+                        displayLabel = formattedDate;
+                    }
                 } else {
-                    // Repli sur le parsing natif si la date est déjà au format ISO Google standard
-                    parsedDate = new Date(rawDate);
+                    // Si ce n'est pas le format manuel, on teste le format Google natif
+                    let parsedDate = new Date(rawDate);
+                    // On rejette les bugs de 1970 (qui arrivent si Google envoie un identifiant au lieu d'une date)
+                    if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1970) {
+                        let d = parsedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year:'numeric' });
+                        let t = parsedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' });
+                        if(t === "00:00") displayLabel = d;
+                        else displayLabel = [d, t];
+                    }
                 }
                 
-                // Formatage final sur 2 lignes pour le graphique
-                if (parsedDate && !isNaN(parsedDate.getTime())) {
-                    let d = parsedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year:'2-digit' });
-                    let t = parsedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' });
-                    labels.push([d, t]); // En envoyant un tableau, Chart.js fait un saut de ligne automatique
-                } else {
-                    labels.push([rawStr, ""]); // En cas d'échec absolu, affiche le texte brut sans faire planter l'app
-                }
-                
+                labels.push(displayLabel);
                 values.push(parseFloat(rawVal) || 0);
             }
             
@@ -1641,7 +1652,7 @@
                 window.chartInstances['meteo-hist-chart'].destroy();
             }
             
-            // 6. Création du graphique interactif
+            // --- 3. DESSIN DU GRAPHIQUE ---
             window.chartInstances['meteo-hist-chart'] = new Chart(canvas.getContext('2d'), {
                 type: chartType,
                 data: {
@@ -1654,7 +1665,7 @@
                         borderWidth: 2,
                         fill: chartType === 'line',
                         tension: 0.2,
-                        pointRadius: labels.length > 80 ? 0 : 3, // Masque les points ronds si la courbe est trop chargée
+                        pointRadius: labels.length > 80 ? 0 : 3, // Masque les points si trop de données
                         pointHoverRadius: 6
                     }]
                 },
