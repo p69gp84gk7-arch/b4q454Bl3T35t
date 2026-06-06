@@ -1533,57 +1533,57 @@
             let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; 
             let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
         };
-        // =========================================================================
+        /        // =========================================================================
         // CHAPITRE 14 : GESTION ET GRAPHIQUES DE L'HISTORIQUE MÉTÉO
         // =========================================================================
         
-        // Ouvre ou ferme la fenêtre modale de l'historique météo
         window.openMeteoHistoryModal = function(show) {
             let m = document.getElementById('meteo-history-modal');
             if(!m) return;
             
-            if(!show) {
-                m.style.display = 'none';
-                return;
-            }
-            
+            if(!show) { m.style.display = 'none'; return; }
             m.style.display = 'flex';
             
-            // Remplissage dynamique des choix du sélecteur basé sur la ligne d'en-tête Google Sheet
             let selectMetric = document.getElementById('meteo-metric');
-            if(selectMetric && selectMetric.options.length === 0) {
+            if(selectMetric) {
                 let data = window.meteoHistData;
                 if(data && data.length > 0) {
                     let headers = data[0];
                     selectMetric.innerHTML = "";
                     
+                    // On ne garde que les colonnes liées à la Température Max et l'Humidité
+                    let optionsHTML = "";
                     headers.forEach((h, i) => {
-                        // On ignore la première colonne qui correspond à la Date / Heure
-                        if(i === 0 || h.toString().trim() === "") return;
-                        selectMetric.innerHTML += `<option value="${i}">${h}</option>`;
+                        // Nettoyage de la chaîne (minuscules, sans accents) pour la recherche
+                        let cleanH = h.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                        
+                        // Tolérance d'orthographe (température max, temp max, t max, humidité)
+                        if (cleanH.includes("temperature max") || cleanH.includes("temp max") || cleanH.includes("t max") || cleanH.includes("humidite") || cleanH === "hygrometrie") {
+                            optionsHTML += `<option value="${i}">${h}</option>`;
+                        }
                     });
+                    
+                    // Sécurité au cas où les noms de colonnes auraient été changés dans Sheets
+                    if (optionsHTML === "") {
+                        optionsHTML = `<option value="">-- Colonnes Temp. Max / Humidité introuvables --</option>`;
+                    }
+                    
+                    selectMetric.innerHTML = optionsHTML;
                 }
             }
             
-            // Déclenchement automatique du premier rendu graphique
             window.renderMeteoHistoryChart();
         };
 
-        // Extrait les valeurs du tableur et génère l'analyse interactive Chart.js
-               // =========================================================================
-        // RENDU GRAPHIQUE DE L'HISTORIQUE MÉTÉO (AVEC DATE ET HEURE SUR 2 LIGNES)
-        // =========================================================================
         window.renderMeteoHistoryChart = function() {
             let data = window.meteoHistData;
             
-            // 1. Vérification de la présence de données
             if(!data || data.length < 2) {
                 let canvasBox = document.getElementById('meteo-history-canvas');
                 if(canvasBox) {
                     let ctx = canvasBox.getContext('2d');
                     ctx.clearRect(0, 0, canvasBox.width, canvasBox.height);
-                    ctx.font = "14px sans-serif";
-                    ctx.fillStyle = "#7f8c8d";
+                    ctx.font = "14px sans-serif"; ctx.fillStyle = "#7f8c8d";
                     ctx.fillText("Aucune donnée d'historique météo disponible dans le Google Sheet.", 20, 50);
                 }
                 return;
@@ -1592,43 +1592,56 @@
             let canvas = document.getElementById('meteo-history-canvas');
             if(!canvas) return;
             
-            // 2. Récupération des choix de l'utilisateur (sélecteurs)
-            let metricIdx = parseInt(document.getElementById('meteo-metric').value) || 1;
+            let metricIdx = parseInt(document.getElementById('meteo-metric').value);
+            if(isNaN(metricIdx)) return; // On stoppe tout si aucune colonne valide n'est sélectionnée
+            
             let chartType = document.getElementById('meteo-chart-type').value || 'line';
             let metricLabel = data[0][metricIdx];
             
             let labels = [];
             let values = [];
             
-            // 3. Parcours et extraction des données brutes
             for(let i = 1; i < data.length; i++) {
                 let rawDate = data[i][0];
                 let rawVal = data[i][metricIdx];
                 if(rawDate == null || rawDate === "") continue;
                 
-                // 4. Conversion et formatage de la date + heure
-                let parsedDate = new Date(rawDate);
+                let rawStr = String(rawDate).trim();
+                let parsedDate = null;
                 
-                // Si la donnée est bien identifiée comme une vraie date valide
-                if(!isNaN(parsedDate.getTime())) {
-                    let d = parsedDate.toLocaleDateString('fr-FR');
-                    let t = parsedDate.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'});
-                    // En envoyant un Array de deux strings, Chart.js fait un saut de ligne
-                    labels.push([d, t]); 
+                // --- CORRECTIF DE PARSAGE DES DATES (Support du format Français JJ/MM/AAAA HH:MM) ---
+                // Le système va chercher les chiffres et reconstruire une "vraie" date valide
+                let frDateMatch = rawStr.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})(?:\s+(\d{2})[:hH](\d{2})(?::(\d{2}))?)?/);
+                if (frDateMatch) {
+                    let year = parseInt(frDateMatch[3], 10);
+                    let month = parseInt(frDateMatch[2], 10) - 1; // Attention: En JS, Janvier = 0, Février = 1...
+                    let day = parseInt(frDateMatch[1], 10);
+                    let hours = frDateMatch[4] ? parseInt(frDateMatch[4], 10) : 0;
+                    let minutes = frDateMatch[5] ? parseInt(frDateMatch[5], 10) : 0;
+                    let seconds = frDateMatch[6] ? parseInt(frDateMatch[6], 10) : 0;
+                    parsedDate = new Date(year, month, day, hours, minutes, seconds);
                 } else {
-                    // Fallback de sécurité si le format n'est pas reconnu (texte brut)
-                    labels.push(rawDate.toString().trim());
+                    // Repli sur le parsing natif si la date est déjà au format ISO Google standard
+                    parsedDate = new Date(rawDate);
+                }
+                
+                // Formatage final sur 2 lignes pour le graphique
+                if (parsedDate && !isNaN(parsedDate.getTime())) {
+                    let d = parsedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year:'2-digit' });
+                    let t = parsedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' });
+                    labels.push([d, t]); // En envoyant un tableau, Chart.js fait un saut de ligne automatique
+                } else {
+                    labels.push([rawStr, ""]); // En cas d'échec absolu, affiche le texte brut sans faire planter l'app
                 }
                 
                 values.push(parseFloat(rawVal) || 0);
             }
             
-            // 5. Nettoyage de l'ancien graphique pour éviter les superpositions
             if(window.chartInstances['meteo-hist-chart']) {
                 window.chartInstances['meteo-hist-chart'].destroy();
             }
             
-            // 6. Création du nouveau graphique interactif
+            // 6. Création du graphique interactif
             window.chartInstances['meteo-hist-chart'] = new Chart(canvas.getContext('2d'), {
                 type: chartType,
                 data: {
@@ -1641,7 +1654,7 @@
                         borderWidth: 2,
                         fill: chartType === 'line',
                         tension: 0.2,
-                        pointRadius: labels.length > 80 ? 0 : 3, // Masque les points s'il y a trop de données
+                        pointRadius: labels.length > 80 ? 0 : 3, // Masque les points ronds si la courbe est trop chargée
                         pointHoverRadius: 6
                     }]
                 },
@@ -1651,12 +1664,7 @@
                     interaction: { mode: 'index', intersect: false },
                     scales: {
                         x: { 
-                            ticks: { 
-                                font: { size: 10 }, 
-                                // Retrait de la rotation pour garder les 2 lignes droites et lisibles
-                                maxRotation: 0, 
-                                autoSkip: true // Chart.js masquera de lui-même certaines dates si l'axe est surchargé
-                            }, 
+                            ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true }, 
                             grid: { display: false } 
                         },
                         y: { 
