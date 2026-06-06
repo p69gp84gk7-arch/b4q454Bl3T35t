@@ -129,6 +129,7 @@
             <button class="topbar-btn" onclick="window.openBiMeteo()" style="background:#8e44ad; border-color:#9b59b6;">❄️ Centre Expert BI</button>
             <button class="topbar-btn" onclick="window.openMeteoWidget()">⛅ Météo Live</button>
             <button class="topbar-btn" onclick="window.openWebcamGrid()">📷 Webcams</button>
+            <button class="topbar-btn" onclick="window.openMeteoHistoryModal(true)" style="background:#16a085; border-color:#1abc9c;">📊 Hist. Météo</button>
             <button id="btn-multi-toggle" class="topbar-btn" onclick="window.toggleMultiSelect()">🔲 Sélec. Multiple : OFF</button>
         </div>
     </div>
@@ -175,7 +176,32 @@
             <div class="comp-chart-box"><div style="position:absolute; top:5px; left:15px; font-weight:bold; font-size:12px; color:#555;" id="comp-title-2">Saison B</div><canvas id="comp-canvas-2"></canvas></div>
         </div>
     </div>
-
+   
+    <div id="meteo-history-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:900px; max-width:95%; background:white; z-index:9999; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,0.5); border:1px solid #ccc; flex-direction:column; overflow:hidden;">
+        <div class="comp-header" style="background:#16a085;">
+            <span>📈 Historique Météo Avancé (OpenWeatherMap)</span>
+            <button onclick="window.openMeteoHistoryModal(false)" style="background:none; border:none; color:white; cursor:pointer; font-size:24px;">&times;</button>
+        </div>
+        <div class="comp-body">
+            <div class="comp-controls" style="display:flex; gap:15px; background:#fff; padding:15px; border-radius:6px; border:1px solid #ddd; margin-bottom:15px;">
+                <div style="flex:1;">
+                    <div class="edit-label">Donnée météo à analyser</div>
+                    <select id="meteo-metric" class="edit-input" style="margin:0;" onchange="window.renderMeteoHistoryChart()"></select>
+                </div>
+                <div style="flex:1;">
+                    <div class="edit-label">Type de graphique</div>
+                    <select id="meteo-chart-type" class="edit-input" style="margin:0;" onchange="window.renderMeteoHistoryChart()">
+                        <option value="line">📈 Courbe temporelle</option>
+                        <option value="bar">📊 Histogramme vertical</option>
+                    </select>
+                </div>
+            </div>
+            <div class="comp-chart-box" style="height:380px; position:relative; background:#fff; padding:10px;">
+                <canvas id="meteo-history-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+  
     <div id="app-container">
         <div id="sidebar" class="open">
             <div class="sidebar-header-bg">Outils d'Analyse</div>
@@ -1507,7 +1533,131 @@
             let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; 
             let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
         };
+        // =========================================================================
+        // CHAPITRE 14 : GESTION ET GRAPHIQUES DE L'HISTORIQUE MÉTÉO
+        // =========================================================================
+        
+        // Ouvre ou ferme la fenêtre modale de l'historique météo
+        window.openMeteoHistoryModal = function(show) {
+            let m = document.getElementById('meteo-history-modal');
+            if(!m) return;
+            
+            if(!show) {
+                m.style.display = 'none';
+                return;
+            }
+            
+            m.style.display = 'flex';
+            
+            // Remplissage dynamique des choix du sélecteur basé sur la ligne d'en-tête Google Sheet
+            let selectMetric = document.getElementById('meteo-metric');
+            if(selectMetric && selectMetric.options.length === 0) {
+                let data = window.meteoHistData;
+                if(data && data.length > 0) {
+                    let headers = data[0];
+                    selectMetric.innerHTML = "";
+                    
+                    headers.forEach((h, i) => {
+                        // On ignore la première colonne qui correspond à la Date / Heure
+                        if(i === 0 || h.toString().trim() === "") return;
+                        selectMetric.innerHTML += `<option value="${i}">${h}</option>`;
+                    });
+                }
+            }
+            
+            // Déclenchement automatique du premier rendu graphique
+            window.renderMeteoHistoryChart();
+        };
 
+        // Extrait les valeurs du tableur et génère l'analyse interactive Chart.js
+        window.renderMeteoHistoryChart = function() {
+            let data = window.meteoHistData;
+            if(!data || data.length < 2) {
+                let canvasBox = document.getElementById('meteo-history-canvas');
+                if(canvasBox) {
+                    let ctx = canvasBox.getContext('2d');
+                    ctx.clearRect(0, 0, canvasBox.width, canvasBox.height);
+                    ctx.font = "14px sans-serif";
+                    ctx.fillStyle = "#7f8c8d";
+                    ctx.fillText("Aucune donnée d'historique météo disponible dans le Google Sheet.", 20, 50);
+                }
+                return;
+            }
+            
+            let canvas = document.getElementById('meteo-history-canvas');
+            if(!canvas) return;
+            
+            let metricIdx = parseInt(document.getElementById('meteo-metric').value) || 1;
+            let chartType = document.getElementById('meteo-chart-type').value || 'line';
+            let metricLabel = data[0][metricIdx];
+            
+            let labels = [];
+            let values = [];
+            
+            // Parcours des lignes du tableur de données brutes
+            for(let i = 1; i < data.length; i++) {
+                let rawDate = data[i][0];
+                let rawVal = data[i][metricIdx];
+                if(rawDate == null || rawDate === "") continue;
+                
+                // Formatage propre de la date si elle est détectée comme une chaîne temporelle valide
+                let dateStr = rawDate.toString().trim();
+                if(dateStr.length >= 10 && !isNaN(Date.parse(dateStr))) {
+                    let d = new Date(dateStr);
+                    dateStr = d.toLocaleDateString('fr-FR') + " " + d.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'});
+                }
+                
+                labels.push(dateStr);
+                values.push(parseFloat(rawVal) || 0);
+            }
+            
+            // Destruction sécurisée du graphique précédent pour éviter la superposition de tracés
+            if(window.chartInstances['meteo-hist-chart']) {
+                window.chartInstances['meteo-hist-chart'].destroy();
+            }
+            
+            // Génération de la nouvelle instance Chart.js avec gestion du Zoom et Pan existants
+            window.chartInstances['meteo-hist-chart'] = new Chart(canvas.getContext('2d'), {
+                type: chartType,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: metricLabel,
+                        data: values,
+                        backgroundColor: chartType === 'line' ? 'rgba(22, 160, 133, 0.15)' : '#1abc9c',
+                        borderColor: '#16a085',
+                        borderWidth: 2,
+                        fill: chartType === 'line',
+                        tension: 0.2,
+                        pointRadius: labels.length > 80 ? 0 : 3,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { 
+                            ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 45 }, 
+                            grid: { display: false } 
+                        },
+                        y: { 
+                            type: 'linear', 
+                            display: true,
+                            ticks: { font: { size: 10 } }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { size: 11, weight: 'bold' } } },
+                        zoom: {
+                            pan: { enabled: true, mode: 'x' },
+                            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+                        }
+                    }
+                }
+            });
+        };
         window.addEventListener('DOMContentLoaded', async () => {
             if(window.bootAttempt > 0) return; window.bootAttempt = 1;
             try {
