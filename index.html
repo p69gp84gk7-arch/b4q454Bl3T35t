@@ -1127,6 +1127,38 @@
             if (bVarDbl) bVarDbl.style.display = (val === 'var_double') ? 'block' : 'none';
             if (bV2000) bV2000.style.display = (val === 'v2000') ? 'block' : 'none';
         };
+                // ==========================================
+        // SAUVEGARDE DES DONNÉES TECHNIQUES (GÉNÉRAL)
+        // ==========================================
+        window.saveAtelierTechRow = async function(idCanon, safeId, btn) {
+            let fields = {};
+            document.querySelectorAll(`.tech-field-${safeId}`).forEach(inp => { 
+                fields[inp.getAttribute('data-head')] = inp.value; 
+            });
+            
+            let pl = { id: idCanon, lat: 0, lng: 0, fields: fields }; 
+            let oldText = btn.innerText; 
+            btn.innerText = "⏳ Enregistrement..."; 
+            btn.disabled = true;
+            
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(pl) });
+                let r = await res.json();
+                if(r.status === "success") { 
+                    btn.innerText = "✅ Succès !"; 
+                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; }, 2000); 
+                }
+                else { 
+                    alert("Erreur serveur"); 
+                    btn.disabled = false; 
+                    btn.innerText = oldText; 
+                }
+            } catch(e) { 
+                alert("Erreur réseau"); 
+                btn.disabled = false; 
+                btn.innerText = oldText; 
+            }
+        };
         window.saveAtelierBancRow = async function(idCanon, safeId, btn) {
             let fieldsObj = {};
             let canonData = window.snowCannons.features.find(f => f.properties.id == idCanon);
