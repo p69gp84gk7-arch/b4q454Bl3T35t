@@ -1082,7 +1082,19 @@
                 ws.appendChild(card);
             });
         };
-
+        // ==========================================
+        // GESTION DU MENU DÉROULANT (Vannes additionnelles)
+        // ==========================================
+        window.handleSelectVanne = function(safeId, val) {
+            let bVar = document.getElementById(`bloc-var-${safeId}`);
+            let bVarDbl = document.getElementById(`bloc-var-double-${safeId}`);
+            let bV2000 = document.getElementById(`bloc-v2000-${safeId}`);
+            
+            // On affiche uniquement le bloc correspondant à la sélection
+            if (bVar) bVar.style.display = (val === 'var') ? 'block' : 'none';
+            if (bVarDbl) bVarDbl.style.display = (val === 'var_double') ? 'block' : 'none';
+            if (bV2000) bV2000.style.display = (val === 'v2000') ? 'block' : 'none';
+        };
         window.saveAtelierBancRow = async function(idCanon, safeId, btn) {
             let fieldsObj = {};
             let canonData = window.snowCannons.features.find(f => f.properties.id == idCanon);
