@@ -1570,8 +1570,13 @@
         };
 
         // Extrait les valeurs du tableur et génère l'analyse interactive Chart.js
+               // =========================================================================
+        // RENDU GRAPHIQUE DE L'HISTORIQUE MÉTÉO (AVEC DATE ET HEURE SUR 2 LIGNES)
+        // =========================================================================
         window.renderMeteoHistoryChart = function() {
             let data = window.meteoHistData;
+            
+            // 1. Vérification de la présence de données
             if(!data || data.length < 2) {
                 let canvasBox = document.getElementById('meteo-history-canvas');
                 if(canvasBox) {
@@ -1587,6 +1592,7 @@
             let canvas = document.getElementById('meteo-history-canvas');
             if(!canvas) return;
             
+            // 2. Récupération des choix de l'utilisateur (sélecteurs)
             let metricIdx = parseInt(document.getElementById('meteo-metric').value) || 1;
             let chartType = document.getElementById('meteo-chart-type').value || 'line';
             let metricLabel = data[0][metricIdx];
@@ -1594,29 +1600,35 @@
             let labels = [];
             let values = [];
             
-            // Parcours des lignes du tableur de données brutes
+            // 3. Parcours et extraction des données brutes
             for(let i = 1; i < data.length; i++) {
                 let rawDate = data[i][0];
                 let rawVal = data[i][metricIdx];
                 if(rawDate == null || rawDate === "") continue;
                 
-                // Formatage propre de la date si elle est détectée comme une chaîne temporelle valide
-                let dateStr = rawDate.toString().trim();
-                if(dateStr.length >= 10 && !isNaN(Date.parse(dateStr))) {
-                    let d = new Date(dateStr);
-                    dateStr = d.toLocaleDateString('fr-FR') + " " + d.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'});
+                // 4. Conversion et formatage de la date + heure
+                let parsedDate = new Date(rawDate);
+                
+                // Si la donnée est bien identifiée comme une vraie date valide
+                if(!isNaN(parsedDate.getTime())) {
+                    let d = parsedDate.toLocaleDateString('fr-FR');
+                    let t = parsedDate.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'});
+                    // En envoyant un Array de deux strings, Chart.js fait un saut de ligne
+                    labels.push([d, t]); 
+                } else {
+                    // Fallback de sécurité si le format n'est pas reconnu (texte brut)
+                    labels.push(rawDate.toString().trim());
                 }
                 
-                labels.push(dateStr);
                 values.push(parseFloat(rawVal) || 0);
             }
             
-            // Destruction sécurisée du graphique précédent pour éviter la superposition de tracés
+            // 5. Nettoyage de l'ancien graphique pour éviter les superpositions
             if(window.chartInstances['meteo-hist-chart']) {
                 window.chartInstances['meteo-hist-chart'].destroy();
             }
             
-            // Génération de la nouvelle instance Chart.js avec gestion du Zoom et Pan existants
+            // 6. Création du nouveau graphique interactif
             window.chartInstances['meteo-hist-chart'] = new Chart(canvas.getContext('2d'), {
                 type: chartType,
                 data: {
@@ -1629,7 +1641,7 @@
                         borderWidth: 2,
                         fill: chartType === 'line',
                         tension: 0.2,
-                        pointRadius: labels.length > 80 ? 0 : 3,
+                        pointRadius: labels.length > 80 ? 0 : 3, // Masque les points s'il y a trop de données
                         pointHoverRadius: 6
                     }]
                 },
@@ -1639,7 +1651,12 @@
                     interaction: { mode: 'index', intersect: false },
                     scales: {
                         x: { 
-                            ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 45 }, 
+                            ticks: { 
+                                font: { size: 10 }, 
+                                // Retrait de la rotation pour garder les 2 lignes droites et lisibles
+                                maxRotation: 0, 
+                                autoSkip: true // Chart.js masquera de lui-même certaines dates si l'axe est surchargé
+                            }, 
                             grid: { display: false } 
                         },
                         y: { 
