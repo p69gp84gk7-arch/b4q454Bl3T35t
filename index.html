@@ -2364,9 +2364,167 @@
             if(allBtn) allBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); updateLogic(); }); 
             cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(allBtn) allBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(allBtn) allBtn.checked=true; } updateLogic(); })); 
         };
-
         /* ========================================================================= */
-        /* SECTION 17 : CORRECTION DE L'INITIALISATION DE L'INTERFACE (BOOT)         */
+        /* SECTION 17 : PATCH - FONCTIONS DE SÉLECTION ET COMPARAISONS MANQUANTES    */
+        /* ========================================================================= */
+
+        // 1. Ciblage d'un canon depuis la carte ou les listes
+        window.focusCannon = function(id) {
+            if (!window.geojsonLayer) return;
+            window.geojsonLayer.eachLayer(l => {
+                if (l.feature.properties.id === id) {
+                    if (!window.isMultiSelect && window.mainTheme !== 'suivi_entretien') {
+                        window.selectedCannonsMap.clear();
+                    }
+                    window.selectedCannonsMap.set(id, l);
+                    window.map.setView(l.getLatLng(), 17, {animate: true});
+                    window.updateMap();
+                    window.renderSelectionPanel();
+                    window.openBottomSheet('state-half'); // Ouvre le panneau mobile
+                }
+            });
+        };
+
+        // 2. Nettoyage de la sélection
+        window.clearSelection = function() {
+            window.selectedCannonsMap.clear();
+            window.updateMap();
+            window.renderSelectionPanel();
+            window.triggerGlobalFilterChart();
+        };
+
+        // 3. Bouton "Sélection Multiple" de la Bottom Bar
+        window.toggleMultiSelect = function() {
+            window.isMultiSelect = !window.isMultiSelect;
+            let span = document.getElementById('multi-text');
+            let btn = document.getElementById('btn-multi-toggle');
+            if (window.isMultiSelect) {
+                if(span) span.innerText = "Sél. ON";
+                if(btn) btn.classList.add('active');
+            } else {
+                if(span) span.innerText = "Sél. OFF";
+                if(btn) btn.classList.remove('active');
+            }
+            window.renderSelectionPanel();
+        };
+
+        // 4. Modale de comparaison Globale des Saisons
+        window.openGlobalCompareModal = function(show) {
+            let m = document.getElementById('compare-modal');
+            if (!m) return;
+            if (!show) { m.style.display = 'none'; return; }
+            m.style.display = 'flex';
+            
+            let s1 = document.getElementById('comp-s1');
+            let s2 = document.getElementById('comp-s2');
+            let p = document.getElementById('comp-piste');
+            
+            if (s1 && window.saisonsList) {
+                let options = window.saisonsList.map(s => `<option value="${s}">${s}</option>`).join('');
+                s1.innerHTML = options;
+                s2.innerHTML = options;
+                if (window.saisonsList.length > 1) s2.selectedIndex = 1;
+            }
+            if (p && window.columnValuesSets[window.keyPiste]) {
+                p.innerHTML = `<option value="all">Toutes</option>` + Array.from(window.columnValuesSets[window.keyPiste]).sort().map(x => `<option value="${x}">${x}</option>`).join('');
+            }
+        };
+
+        // 5. Rendu des graphiques de la Comparaison Globale
+        window.renderGlobalComparison = function() {
+            let s1 = document.getElementById('comp-s1').value;
+            let s2 = document.getElementById('comp-s2').value;
+            let piste = document.getElementById('comp-piste').value;
+            let metric = document.getElementById('comp-metric').value;
+            
+            let canons = window.snowCannons.features;
+            if (piste !== 'all') { canons = canons.filter(f => window.getV(f.properties, window.keyPiste) === piste); }
+            canons.sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id));
+            
+            let labels = canons.map(c => c.properties.id);
+            let d1 = canons.map(c => c.properties.historique[s1] ? c.properties.historique[s1][metric] : 0);
+            let d2 = canons.map(c => c.properties.historique[s2] ? c.properties.historique[s2][metric] : 0);
+            
+            document.getElementById('comp-title-1').innerText = `Saison ${s1} (${metric})`;
+            document.getElementById('comp-title-2').innerText = `Saison ${s2} (${metric})`;
+            
+            let c1 = document.getElementById('comp-canvas-1');
+            let c2 = document.getElementById('comp-canvas-2');
+            
+            if(window.chartInstances['comp1']) window.chartInstances['comp1'].destroy();
+            if(window.chartInstances['comp2']) window.chartInstances['comp2'].destroy();
+            
+            window.chartInstances['comp1'] = new Chart(c1.getContext('2d'), {
+                type: 'bar', data: { labels: labels, datasets: [{ data: d1, backgroundColor: '#3498db', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}} }
+            });
+            window.chartInstances['comp2'] = new Chart(c2.getContext('2d'), {
+                type: 'bar', data: { labels: labels, datasets: [{ data: d2, backgroundColor: '#e67e22', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}} }
+            });
+        };
+
+        // 6. Rendu des graphiques Pistes dans la fiche d'un Canon
+        window.drawPisteCompareChart = function(p) {
+            let canvas = document.getElementById(`chart-${p.id}`);
+            if(!canvas) return;
+            let pisteName = window.getV(p, window.keyPiste);
+            let s = window.saisonsList[window.histSeasonIdx];
+            let canonsPiste = window.snowCannons.features.filter(f => window.getV(f.properties, window.keyPiste) === pisteName).sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id));
+            
+            let labels = canonsPiste.map(c => c.properties.id);
+            let data = canonsPiste.map(c => c.properties.historique[s] ? c.properties.historique[s][window.histMetric] : 0);
+            let bgColors = canonsPiste.map(c => c.properties.id === p.id ? '#e74c3c' : '#bdc3c7');
+            
+            if(window.chartInstances[`main-piste-${p.id}`]) window.chartInstances[`main-piste-${p.id}`].destroy();
+            window.chartInstances[`main-piste-${p.id}`] = new Chart(canvas.getContext('2d'), {
+                type: 'bar', data: { labels: labels, datasets: [{ data: data, backgroundColor: bgColors, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}} }
+            });
+        };
+
+        window.drawSecondPisteChart = function(canonId, season) {
+            let canvas = document.getElementById(`chart2-${canonId}`);
+            if(!canvas || !season) return;
+            let p = window.snowCannons.features.find(f => f.properties.id === canonId).properties;
+            let pisteName = window.getV(p, window.keyPiste);
+            let canonsPiste = window.snowCannons.features.filter(f => window.getV(f.properties, window.keyPiste) === pisteName).sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id));
+            
+            let labels = canonsPiste.map(c => c.properties.id);
+            let data = canonsPiste.map(c => c.properties.historique[season] ? c.properties.historique[season][window.histMetric] : 0);
+            let bgColors = canonsPiste.map(c => c.properties.id === canonId ? '#e67e22' : '#ecf0f1');
+            
+            if(window.chartInstances[`sec-piste-${canonId}`]) window.chartInstances[`sec-piste-${canonId}`].destroy();
+            window.chartInstances[`sec-piste-${canonId}`] = new Chart(canvas.getContext('2d'), {
+                type: 'bar', data: { labels: labels, datasets: [{ data: data, backgroundColor: bgColors, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}} }
+            });
+        };
+
+        // 7. Sauvegarde Multiple Suivi Entretien
+        window.saveMultiSuivi = async function(btn) {
+            let updates = [];
+            window.selectedCannonsMap.forEach((layer, id) => {
+                let chkDec = document.getElementById(`chk-dec-single-${id}`);
+                let chkPrev = document.getElementById(`chk-prev-single-${id}`);
+                let rem = document.getElementById(`rem-single-${id}`);
+                if(chkDec && chkPrev) {
+                    updates.push({ idCanon: id, fields: { "Déconnecté": chkDec.checked ? "OUI" : "NON", "Préventif usine": chkPrev.checked ? "OUI" : "NON", "Remarques": rem ? rem.value : "" } });
+                }
+            });
+            
+            if(updates.length === 0) return;
+            let oldText = btn.innerText; btn.innerText = "⏳ Sauvegarde..."; btn.disabled = true;
+            
+            for(let u of updates) {
+                try {
+                    await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: u.idCanon, fields: u.fields }) });
+                    let row = window.suiviEntretienData.find(r => r[0] == u.idCanon);
+                    if(row) { row[2] = u.fields["Déconnecté"]; row[3] = u.fields["Préventif usine"]; row[5] = u.fields["Remarques"]; } 
+                    else { window.suiviEntretienData.push([u.idCanon, "", u.fields["Déconnecté"], u.fields["Préventif usine"], "", u.fields["Remarques"]]); }
+                } catch(e) {}
+            }
+            btn.innerText = "✅ Sauvegardé !"; window.updateMap();
+            setTimeout(() => { btn.innerText = oldText; btn.disabled = false; window.clearSelection(); window.closeBottomSheet(); }, 1500);
+        };
+        /* ========================================================================= */
+        /* SECTION 18 : CORRECTION DE L'INITIALISATION DE L'INTERFACE (BOOT)         */
         /* ========================================================================= */
         
         window.initAppUI = function() {
@@ -2487,7 +2645,7 @@
         };
 
         /* ========================================================================= */
-        /* SECTION 18 : L'ALLUMAGE DU MOTEUR (LA CLÉ MANQUANTE)                      */
+        /* SECTION 19 : L'ALLUMAGE DU MOTEUR (LA CLÉ MANQUANTE)                      */
         /* ========================================================================= */
         
         // Cet événement dit au navigateur : "Dès que tu es prêt, lance tout !"
