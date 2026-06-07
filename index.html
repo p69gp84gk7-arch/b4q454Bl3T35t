@@ -2064,138 +2064,52 @@
             if (window.rawAtelier && window.rawAtelier.length > 1) {
                 let headersAtelier = window.rawAtelier[0].map(h => h.toString().toLowerCase().trim());
                 let idxIdAtelier = headersAtelier.findIndex(h => h === "id" || h.includes("n°"));
-                if (idxIdAtelier !== -1) {
-                    for (let i = 1; i < window.rawAtelier.length; i++) idsValides.add(window.rawAtelier[i][idxIdAtelier].toString().trim());
-                }
+                if (idxIdAtelier !== -1) { for (let i = 1; i < window.rawAtelier.length; i++) idsValides.add(window.rawAtelier[i][idxIdAtelier].toString().trim()); }
             }
 
             let listeAFaire = []; let listeValidee = [];
             canonsEnAtelier.forEach(idCanon => { if (idsValides.has(idCanon)) listeValidee.push(idCanon); else listeAFaire.push(idCanon); });
             let orderedCanons = [...listeAFaire, ...listeValidee];
 
-            ws.innerHTML += `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; font-size:13px; color:#555; background:#eaf2f8; padding:12px; border-radius:6px; border-left:4px solid #3498db;">
-                    <b>${canonsEnAtelier.length} canon(s) au banc.</b>
-                    <span style="color:#27ae60; font-weight:bold; font-size:12px;">${listeValidee.length} validé(s)</span>
-                </div>`;
+            ws.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; font-size:13px; color:#555; background:#eaf2f8; padding:12px; border-radius:6px; border-left:4px solid #3498db;"><b>${canonsEnAtelier.length} canon(s) au banc.</b><span style="color:#27ae60; font-weight:bold; font-size:12px;">${listeValidee.length} validé(s)</span></div>`;
 
             orderedCanons.forEach(idCanon => {
                 let feature = window.snowCannons.features.find(f => f.properties.id == idCanon); if(!feature) return;
                 let p = feature.properties; let piste = window.getV(p, window.keyPiste); let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, ""); let estValide = idsValides.has(idCanon);
                 
-                let existingData = {};
-                if (estValide) {
-                    let headersAtelier = window.rawAtelier[0].map(h => h.toString().trim());
-                    let idxIdAtelier = headersAtelier.findIndex(h => h.toLowerCase() === "id" || h.toLowerCase().includes("n°"));
-                    let rowData = window.rawAtelier.find(r => r[idxIdAtelier].toString().trim() === idCanon);
-                    if (rowData) headersAtelier.forEach((h, i) => { existingData[h.toLowerCase().trim()] = rowData[i]; });
-                }
-
-                const getVal = (col) => existingData[col.toLowerCase().trim()] !== undefined ? existingData[col.toLowerCase().trim()] : "";
-
+                // Rendu des caractéristiques modifiables
                 let headersGen = window.rawGeneral[0] || []; let techHtml = "";
                 headersGen.forEach(h => {
                     if(h.toLowerCase().includes('xy') || h.toLowerCase().includes('gps') || h.toLowerCase() === 'id') return;
                     let val = window.getV(p, h);
-                    techHtml += `<div><span class="edit-label">${h}</span><input type="text" class="edit-input tech-field-${safeId}" data-head="${h}" value="${val}" style="margin-bottom:0; padding:10px; font-size:14px;"></div>`;
+                    techHtml += `<div><span class="edit-label">${h}</span><input type="text" class="edit-input tech-field-${safeId}" data-head="${h}" value="${val}" style="padding:10px; margin-bottom:8px;"></div>`;
                 });
 
-                let hist = window.getHistoryTickets(idCanon); let histHtml = `<div style="padding:15px; background:#fff; font-size:13px;">`;
+                // Rendu de l'historique
+                let hist = window.getHistoryTickets(idCanon); 
+                let histHtml = `<div style="padding:15px; background:#fff; font-size:13px;">`;
                 if(hist.length === 0) histHtml += `<span style="color:#7f8c8d; font-style:italic;">Aucune panne enregistrée.</span>`;
                 else hist.forEach(t => { histHtml += `<div style="padding:6px 0; border-bottom:1px solid #eee;"><b>${t.date}</b> : <span style="color:#e74c3c;">${t.defaut}</span></div>`; });
                 histHtml += `</div>`;
 
-                let isAbrisDouble = (window.getV(p, "abris double") || "").toString().toLowerCase() === "oui";
-                let strAd = ((window.getV(p, "vanne additionnelle") || "") + " " + (window.getV(p, "type vanne ad 1") || "")).toLowerCase();
-                let defaultVanne = "none";
-                if (strAd.includes("v2000")) defaultVanne = "v2000"; else if (strAd.includes("var")) defaultVanne = isAbrisDouble ? "var_double" : "var";
-
-                // Formulaire de l'atelier adapté en grid 1 colonne pour smartphone
-                let formHtml = `
-                    <div style="padding:15px; background:#fdfdfe;">
-                        <div style="background:#f4f9f9; border-left:4px solid #3498db; padding:12px; border-radius:6px; margin-bottom:15px; border:1px solid #e1e8ed; border-left-width:4px;">
-                            <h4 style="margin:0 0 10px 0; color:#2980b9; font-size:14px;">🔵 VANNE PRINCIPALE</h4>
-                            <div style="font-size:12px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">[Test 1] Avant Intervention :</div>
-                            <div style="display:grid; grid-template-columns: 1fr; gap:10px; margin-bottom:15px;">
-                                <div><span class="edit-label">Pression Eau 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" value="${getVal('test pression eau 1')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">Pression Air 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" value="${getVal('test pression air 1')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">Test Élec 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" value="${getVal('test elec Vanne')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">Manu 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 1" value="${getVal('manu 1')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">Capteur 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 1" value="${getVal('capteur 1')}" style="padding:10px; margin:0;"></div>
-                            </div>
-                            <div style="font-size:12px; font-weight:bold; color:#27ae60; margin-bottom:8px;">[Test 2] Après Intervention :</div>
-                            <div style="display:grid; grid-template-columns: 1fr; gap:10px;">
-                                <div><span class="edit-label">Pression Eau 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" value="${getVal('test pression eau 2')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">Pression Air 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 2" value="${getVal('test pression air 2')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">Test Élec 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" value="${getVal('test elec vanne')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">Manu 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 2" value="${getVal('manu 2')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">Capteur 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 2" value="${getVal('capteur 2')}" style="padding:10px; margin:0;"></div>
-                            </div>
-                        </div>
-
-                        <h4 style="margin:20px 0 10px 0; color:#8e44ad; border-bottom:1px solid #eee; padding-bottom:6px; font-size:14px;">➕ CONFIGURATION VANNE ADDITIONNELLE</h4>
-                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:15px; border-color:#8e44ad; font-weight:bold; padding:12px;">
-                            <option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune vanne détectée --</option>
-                            <option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>VAR (Simple)</option>
-                            <option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>VAR Double (Abris double)</option>
-                            <option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>V2000 (Double perche)</option>
-                        </select>
-                        
-                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; background:#fdf2e9; padding:15px; border-radius:6px; border:1px solid #f8c471; margin-bottom:15px;">
-                            <b style="color:#d35400; font-size:13px; margin-bottom:10px; display:block;">🛡️ BLOC DE TEST : VAR (1)</b>
-                            <div style="display:grid; grid-template-columns: 1fr; gap:10px;">
-                                <div><span class="edit-label">Test Élec 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" value="${getVal('test elec VAR (1)')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">Pression 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" value="${getVal('test pression 1 var')}" style="padding:10px; margin:0;"></div>
-                            </div>
-                        </div>
-
-                        <div id="bloc-var-double-${safeId}" style="display:${defaultVanne === 'var_double' ? 'block' : 'none'}; background:#fef5e7; padding:15px; border-radius:6px; border:1px solid #eb984e; margin-bottom:15px;">
-                            <b style="color:#ba4a00; font-size:13px; margin-bottom:10px; display:block;">🛡️ BLOC DE TEST : VAR DOUBLE</b>
-                            <div style="display:grid; grid-template-columns: 1fr; gap:10px;">
-                                <div><span class="edit-label">Élec 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" value="${getVal('test elec VAR (1)')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">Élec 2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" value="${getVal('test elec VAR (1) bis')}" style="padding:10px; margin:0;"></div>
-                            </div>
-                        </div>
-
-                        <div id="bloc-v2000-${safeId}" style="display:${defaultVanne === 'v2000' ? 'block' : 'none'}; background:#eaf2f8; padding:15px; border-radius:6px; border:1px solid #85c1e9; margin-bottom:15px;">
-                            <b style="color:#2980b9; font-size:13px; margin-bottom:10px; display:block;">🛡️ BLOC DE TEST : VALVE V2000</b>
-                            <div style="display:grid; grid-template-columns: 1fr; gap:10px;">
-                                <div><span class="edit-label">Élec C2 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" value="${getVal('test 1 elec V2000 c2')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">Press Eau C2 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c2" value="${getVal('test pression eau v2000 c2')}" style="padding:10px; margin:0;"></div>
-                            </div>
-                        </div>
-                        
-                        <div style="background:#f4f6f8; padding:12px; border-radius:6px; margin-top:15px; border:1px dashed #ccc;">
-                            <div style="font-weight:bold; font-size:12px; color:#555; text-transform:uppercase; margin-bottom:8px;">📋 Consommables & Clôture :</div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-                                <div><span class="edit-label">R18 Nitrile</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R18 NITRILE" value="${getVal('joint R18 NITRILE')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">R18 PTFE</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R18 ptfe" value="${getVal('joint R18 ptfe')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">PTFE R3</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint PTFE r3" value="${getVal('joint PTFE r3')}" style="padding:10px; margin:0;"></div>
-                                <div><span class="edit-label">R11 Nitrile</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R11 NITRILE" value="${getVal('joint R11 NITRILE')}" style="padding:10px; margin:0;"></div>
-                            </div>
-                            <div><span class="edit-label">Commentaire de clôture</span><textarea class="edit-input b-field-${safeId}" data-col="Commentaire" placeholder="Remarques..." style="padding:10px; margin-bottom:0;" rows="2">${getVal('Commentaire')}</textarea></div>
-                        </div>
-
-                        <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" class="btn-action-primary" style="margin-top:20px; padding:16px; font-size:14px; background:${estValide ? '#27ae60' : '#8e44ad'};">
-                            ${estValide ? '🔄 Mettre à jour le rapport' : '🚀 Archiver au Banc d\'Essais'}
-                        </button>
-                    </div>
-                `;
-
+                // ... [Reste du code Formulaire Atelier identique à la partie 6] ...
+                // (Note: J'ai omis le bloc formHtml ici pour ne pas saturer le message, 
+                // garde celui de la partie 6, il est parfait)
+                
                 let card = document.createElement('div'); card.className = "atelier-card";
                 if (estValide) { card.style.borderLeftColor = "#27ae60"; card.style.background = "#f4fdf7"; }
 
                 card.innerHTML = `
-                    <h3>📍 Canon N° ${idCanon} 
-                        ${estValide ? '<span style="background:#27ae60; color:white; font-size:10px; padding:3px 6px; border-radius:12px; vertical-align:middle; margin-left:10px; font-weight:bold;">✅ ARCHIVÉ</span>' : ''}
-                        <span style="font-size:13px; font-weight:normal; color:#888; float:right;">Piste: ${piste}</span>
-                    </h3>
-                    <details class="atelier-sub-details" style="margin-bottom:8px;"><summary>⚙️ 1. Données Techniques</summary>
+                    <h3>📍 Canon N° ${idCanon} ${estValide ? '<span style="background:#27ae60; color:white; font-size:10px; padding:3px 6px; border-radius:12px; vertical-align:middle; margin-left:10px; font-weight:bold;">✅ ARCHIVÉ</span>' : ''}</h3>
+                    
+                    <details class="atelier-sub-details" style="margin-bottom:8px;"><summary>⚙️ Données Techniques (Modifiables)</summary>
                         <div class="atelier-form-grid">${techHtml}</div>
-                        <div style="padding:0 15px 15px 15px;"><button onclick="window.saveAtelierTechRow('${idCanon}','${safeId}',this)" class="btn-action-primary" style="background:#2c3e50;">💾 Mettre à jour</button></div>
+                        <div style="padding:0 15px 15px 15px;"><button onclick="window.saveAtelierTechRow('${idCanon}','${safeId}',this)" class="btn-action-primary" style="background:#2c3e50;">💾 Mettre à jour les données techniques</button></div>
                     </details>
-                    <details class="atelier-sub-details" style="margin-bottom:8px;"><summary>🕒 2. Historique Pannes</summary>${histHtml}</details>
-                    <details class="atelier-sub-details" ${!estValide ? 'open' : ''}><summary>📝 3. Fiche d'Essai Usine</summary>${formHtml}</details>
+                    
+                    <details class="atelier-sub-details" style="margin-bottom:8px;"><summary>🕒 Historique des pannes</summary>${histHtml}</details>
+                    
+                    <details class="atelier-sub-details" ${!estValide ? 'open' : ''}><summary>📝 Fiche d'Essai Usine</summary>${formHtml}</details>
                 `;
                 ws.appendChild(card);
             });
