@@ -2317,7 +2317,206 @@
             html += `</div>`;
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html;
         };
+                /* ========================================================================= */
+        /* SECTION 16 : RESTAURATION DES FILTRES ET DE L'HISTORIQUE                  */
+        /* ========================================================================= */
+
+        window.calculateMaxes = function() {
+            if(!window.saisonsList[window.histSeasonIdx]) return;
+            let s = window.saisonsList[window.histSeasonIdx]; window.absoluteMaxes = { eau: 0, air: 0, temps: 0 };
+            window.snowCannons.features.forEach(f => {
+                if (f.properties.historique[s]) {
+                    window.absoluteMaxes.eau = Math.max(window.absoluteMaxes.eau, f.properties.historique[s].eau);
+                    window.absoluteMaxes.air = Math.max(window.absoluteMaxes.air, f.properties.historique[s].air);
+                    window.absoluteMaxes.temps = Math.max(window.absoluteMaxes.temps, f.properties.historique[s].temps);
+                }
+            });
+            window.currentMaxThreshold = { ...window.absoluteMaxes }; window.currentMinThreshold = { eau:0, air:0, temps:0 };
+            
+            let slmin = document.getElementById('slider-min'); let slmax = document.getElementById('slider-max');
+            if(slmin) { 
+                slmin.max = window.absoluteMaxes[window.histMetric] || 1; slmin.value = 0; slmin.step = "any";
+                slmin.oninput = function(e) { let val = parseFloat(e.target.value) || 0; if (val > window.currentMaxThreshold[window.histMetric]) { val = window.currentMaxThreshold[window.histMetric]; e.target.value = val; } window.currentMinThreshold[window.histMetric] = val; let vm = document.getElementById('val-min'); if(vm) vm.innerText = Math.round(val); window.updateMap(); window.triggerGlobalFilterChart(); };
+            }
+            if(slmax) { 
+                slmax.max = window.absoluteMaxes[window.histMetric] || 1; slmax.value = window.absoluteMaxes[window.histMetric] || 1; slmax.step = "any";
+                slmax.oninput = function(e) { let val = parseFloat(e.target.value) || 0; if (val < window.currentMinThreshold[window.histMetric]) { val = window.currentMinThreshold[window.histMetric]; e.target.value = val; } window.currentMaxThreshold[window.histMetric] = val; let vmx = document.getElementById('val-max'); if(vmx) vmx.innerText = Math.round(val); window.updateMap(); window.triggerGlobalFilterChart(); };
+            }
+            let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; 
+            let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
+        };
+
+        window.generateDynamicFiltersUI = function() { 
+            let container = document.getElementById('dynamic-filters-container'); if(!container) return; container.innerHTML = ""; 
+            let optionsHTML = `<option value="">-- Choisir un critère --</option>` + window.availableColumns.map(c => `<option value="${c}">${c.toUpperCase()}</option>`).join(''); 
+            container.innerHTML = `<div class="dynamic-filter-slot" style="margin-bottom:0; border:none; padding:0;"><select class="filter-select edit-input" id="filter-sel-0" data-idx="0" style="padding:10px; margin-bottom:10px;">${optionsHTML}</select><div class="checkbox-list" id="filter-cbx-0" style="display:none;"></div></div>`; 
+        };
+
+        window.renderCheckboxesForFilter = function(idx, colName) { 
+            let cbxContainer = document.getElementById(`filter-cbx-${idx}`); if(!cbxContainer) return; 
+            if(!colName) { cbxContainer.style.display = 'none'; window.activeFilters[idx] = {key:"", vals:[]}; window.updateMap(); window.triggerGlobalFilterChart(); return; } 
+            cbxContainer.style.display = 'block'; let vals = Array.from(window.columnValuesSets[colName] || []).sort(); 
+            let html = `<label style="display:flex; align-items:center; margin-bottom:10px;"><input type="checkbox" class="cb-all-${idx}" checked style="transform:scale(1.4); margin-right:10px;"> <b>Tout sélectionner</b></label><hr style="margin:10px 0; border-top:1px solid #eee;">`; 
+            vals.forEach(v => html += `<label style="display:flex; align-items:center; margin-bottom:10px;"><input type="checkbox" class="cb-val-${idx}" value="${v}" style="transform:scale(1.4); margin-right:10px;"> ${v}</label>`); 
+            cbxContainer.innerHTML = html; window.activeFilters[idx] = {key: colName, vals: ['all']}; 
+            let allBtn = cbxContainer.querySelector(`.cb-all-${idx}`); let cbs = cbxContainer.querySelectorAll(`.cb-val-${idx}`); 
+            const updateLogic = () => { window.activeFilters[idx].vals = allBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); window.updateMap(); window.triggerGlobalFilterChart(); }; 
+            if(allBtn) allBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); updateLogic(); }); 
+            cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(allBtn) allBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(allBtn) allBtn.checked=true; } updateLogic(); })); 
+        };
+
+        /* ========================================================================= */
+        /* SECTION 17 : CORRECTION DE L'INITIALISATION DE L'INTERFACE (BOOT)         */
+        /* ========================================================================= */
         
+        window.initAppUI = function() {
+            let ts=new Set(), rs=new Set(), trs=new Set(), ps=new Set();
+            window.snowCannons.features.forEach(f=>{ 
+                let p=f.properties; 
+                let t=window.getV(p,window.keyType); if(t!=="N/A")ts.add(t.toLowerCase()); 
+                let r=window.getV(p,window.keyRep); if(r!=="N/A")rs.add(r); 
+                let tr=window.getV(p,window.keyTransfo); if(tr!=="N/A")trs.add(tr); 
+                let pi=window.getV(p,window.keyPiste); if(pi!=="N/A")ps.add(pi); 
+            });
+            
+            // Couleurs Types
+            window.technoColors = {}; 
+            let tc=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6']; 
+            Array.from(ts).sort().forEach((t,i)=>window.technoColors[t]=tc[i%tc.length]);
+
+            // Couleurs Répéteurs et Transfos
+            window.repColors = {}; window.transfoColors = {};
+            let rc=['#1abc9c','#16a085','#f39c12','#d35400','#8e44ad']; 
+            Array.from(rs).sort().forEach((r,i)=>window.repColors[r]=rc[i%rc.length]);
+            let neonColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#00FFFF', '#FF8C00', '#FF1493', '#39FF14']; 
+            Array.from(trs).sort().forEach((t,i)=>window.transfoColors[t]=neonColors[i%neonColors.length]);
+
+            // Listes de données (Datalists pour formulaires)
+            let dlContainer = document.getElementById('datalists-container');
+            if (dlContainer) { 
+                let dlHtml = ""; 
+                for(let header in window.columnValuesSets) { 
+                    let safeId = "dl-" + header.replace(/[^a-zA-Z0-9]/g, '-'); 
+                    dlHtml += `<datalist id="${safeId}">${Array.from(window.columnValuesSets[header]).sort().map(v=>`<option value="${v}">`).join('')}</datalist>`; 
+                } 
+                dlContainer.innerHTML = dlHtml; 
+            }
+
+            // Gestion de l'historique slider
+            let sld = document.getElementById('season-slider');
+            if (window.saisonsList.length > 0 && sld) { 
+                sld.max = window.saisonsList.length - 1; sld.value = window.histSeasonIdx; 
+                let sdisp = document.getElementById('season-display'); if(sdisp) sdisp.innerText = window.saisonsList[window.histSeasonIdx]; 
+            }
+
+            // Construction des filtres à cocher (Pistes / Types)
+            function buildCbs(id, set, cls) { 
+                const c = document.getElementById(id); if(!c) return; c.innerHTML = ''; 
+                [...set].sort().forEach(v => { 
+                    let l=document.createElement('label'); l.style.display="flex"; l.style.alignItems="center"; l.style.marginBottom="10px";
+                    let cb=document.createElement('input'); cb.type='checkbox'; cb.className=cls; cb.value=v; cb.style.transform="scale(1.4)"; cb.style.marginRight="10px";
+                    l.appendChild(cb); l.appendChild(document.createTextNode(v)); c.appendChild(l); 
+                }); 
+            }
+            buildCbs('individual-pistes', ps, 'piste-cb'); buildCbs('individual-types', ts, 'type-cb');
+
+            function setupCbs(allId, cls, cbk) { 
+                const aBtn = document.getElementById(allId); if(!aBtn) return;
+                const cbs = document.querySelectorAll('.'+cls); const getVals = () => aBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); 
+                aBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); cbk(getVals()); }); 
+                cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(aBtn) aBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(aBtn) aBtn.checked=true; } cbk(getVals()); })); 
+            }
+            setupCbs('check-all-pistes', 'piste-cb', vals => { window.currentPistes = vals; window.updateMap(); window.triggerGlobalFilterChart(); }); 
+            setupCbs('check-all-types', 'type-cb', vals => { window.currentTypes = vals; window.updateMap(); window.triggerGlobalFilterChart(); });
+
+            // On réveille les filtres manquants !
+            window.generateDynamicFiltersUI(); 
+            if(window.renderCloudLayersList) window.renderCloudLayersList(); 
+            window.calculateMaxes();
+
+            // Placement des marqueurs sur la carte Leaflet
+            if(window.geojsonLayer) window.map.removeLayer(window.geojsonLayer);
+            window.geojsonLayer = L.geoJSON(window.snowCannons, {
+                pointToLayer: function (feature, latlng) { return L.marker(latlng, { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div></div>` }) }); },
+                onEachFeature: function (feature, layer) {
+                    layer.on('click', function(e) {
+                        L.DomEvent.stopPropagation(e);
+                        window.focusCannon(feature.properties.id);
+                    });
+                }
+            }).addTo(window.map);
+
+            if (window.snowCannons.features.length > 0) { 
+                let bounds = window.geojsonLayer.getBounds(); 
+                if(bounds.isValid() && window.map) window.map.fitBounds(bounds, { padding: [30, 30] }); 
+            }
+
+            // Écouteurs pour le changement de Thème
+            document.querySelectorAll('input[name="main_theme"]').forEach(r => {
+                r.addEventListener('change', e => {
+                    window.mainTheme = e.target.value;
+                    document.querySelectorAll('.theme-details, .theme-details-hist').forEach(el => el.style.display = 'none');
+                    let activeDetails = document.getElementById('details-' + window.mainTheme); 
+                    if (activeDetails) activeDetails.style.display = 'block'; 
+                    
+                    if(window.mainTheme === 'atelier') {
+                        document.getElementById('map').style.display = 'none'; 
+                        document.getElementById('atelier-workspace').style.display = 'block';
+                        window.closeBottomSheet(); 
+                        if(window.renderAtelierWorkspace) window.renderAtelierWorkspace();
+                    } else {
+                        document.getElementById('map').style.display = 'block'; 
+                        document.getElementById('atelier-workspace').style.display = 'none';
+                        if(window.mainTheme === 'historique') window.calculateMaxes(); 
+                        window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
+                        if(window.mainTheme === 'suivi_entretien' || window.mainTheme === 'entretien_tete') window.openBottomSheet('state-half');
+                    }
+                    window.toggleLeftMenu(); // Replie le menu pour retourner à l'action
+                });
+            });
+
+            // Écouteurs pour la Météo et Filtres persos
+            document.querySelectorAll('input[name="hist_metric"]').forEach(r => { r.addEventListener('change', e => { window.histMetric = e.target.value; window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); }); });
+            let ssl = document.getElementById('season-slider'); if(ssl) ssl.addEventListener('input', e => { window.histSeasonIdx = parseInt(e.target.value); let sd = document.getElementById('season-display'); if(sd) sd.innerText = window.saisonsList[window.histSeasonIdx]; window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); });
+            let dfc = document.getElementById('dynamic-filters-container'); if(dfc) dfc.addEventListener('change', e => { if(e.target.classList.contains('filter-select')) window.renderCheckboxesForFilter(e.target.getAttribute('data-idx'), e.target.value); });
+
+            // Premier dessin
+            window.updateLegend();
+            window.updateMap();
+            window.triggerGlobalFilterChart();
+        };
+
+        /* ========================================================================= */
+        /* SECTION 18 : L'ALLUMAGE DU MOTEUR (LA CLÉ MANQUANTE)                      */
+        /* ========================================================================= */
+        
+        // Cet événement dit au navigateur : "Dès que tu es prêt, lance tout !"
+        window.addEventListener('DOMContentLoaded', async () => {
+            if(window.bootAttempt > 0) return; window.bootAttempt = 1;
+            try {
+                window.setStep(0, "Initialisation de la carte...");
+                
+                let retries = 0; 
+                while (typeof L === 'undefined' && retries < 50) { 
+                    await new Promise(r => setTimeout(r, 100)); 
+                    retries++; 
+                }
+                if (typeof L === 'undefined') throw new Error("Impossible de charger la carte (Leaflet). Vérifiez votre réseau.");
+                
+                window.initMap();
+                if(window.initLocalDB) window.initLocalDB(); // Init DB pour les KMZ
+                
+                // Va chercher les données Google. À la fin, ça appellera window.initAppUI()
+                await window.fetchGoogleSheetsData();
+                
+            } catch (err) { 
+                window.showCrash(err.message, "Boot Principal"); 
+            }
+        });
+        
+        // Sécurité en cas de chargement asynchrone un peu trop long
+        setTimeout(() => { if(window.bootAttempt === 0) { window.document.dispatchEvent(new Event("DOMContentLoaded")); } }, 2000);
+
     </script>
 </body>
 </html>
