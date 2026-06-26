@@ -1056,76 +1056,155 @@
                 if (r.status === "success") { btn.innerText = "✅ OK"; btn.style.background = "#27ae60"; let idxNum = window.rawStock[0].findIndex(h => h && (h.toString().toLowerCase().includes("numero") || h.toString().toLowerCase() === "id")); if(idxNum === -1) idxNum = 0; let rIdx = window.rawStock.findIndex((row, idx) => idx > 0 && row[idxNum].toString().trim() === numPiece.toString().trim()); if (rIdx !== -1) window.rawStock[0].forEach((head, colIdx) => { let inp = document.querySelector(`.s-field-${safeId}[data-col="${head.toString().trim()}"]`); if (inp) window.rawStock[rIdx][colIdx] = inp.value; }); setTimeout(() => { btn.innerText = oldText; btn.style.background = "#16a085"; btn.disabled = false; }, 2000); } else { alert("Erreur."); btn.innerText = oldText; btn.disabled = false; }
             } catch(e) { alert("Erreur réseau."); btn.innerText = oldText; btn.disabled = false; }
         };
-                    /* ========================================================================= */
-        /* SECTION 11 : DASHBOARDS, BI, METEO ET COMPARAISON                         */
         /* ========================================================================= */
-        window.openMeteoWidget = function() {
-            let sb = document.getElementById('right-sidebar'); let rt = document.getElementById('right-title'); let sl = document.getElementById('selected-list'); if(!sb || !sl) return;
-            if(rt) rt.innerText = "⛅ Météo Live";
-            document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
-            window.switchMeteoTab = function(p) { let c = document.getElementById('meteo-content'); if(!c) return; document.querySelectorAll('.meteo-tab-btn').forEach(b => b.style.opacity = '0.5'); document.getElementById('btn-meteo-' + p).style.opacity = '1'; if(p === 'meteoblue') c.innerHTML = `<iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe>`; else if(p === 'windy') c.innerHTML = `<iframe src="https://embed.windy.com/embed2.html?lat=42.767&lon=0.582&zoom=12&overlay=wind&product=ecmwf" frameborder="0" style="width:100%;height:100%;"></iframe>`; else if(p === 'ventusky') c.innerHTML = `<iframe src="https://www.ventusky.com/?p=42.767;0.582;12&l=snow" frameborder="0" style="width:100%;height:100%;"></iframe>`; };
-            sl.innerHTML = `<div style="display:flex;gap:5px;margin-bottom:15px;"><button id="btn-meteo-meteoblue" class="meteo-tab-btn" onclick="window.switchMeteoTab('meteoblue')" style="flex:1;background:#3498db;color:white;border:none;padding:12px;border-radius:6px;font-weight:bold;opacity:1;">Meteoblue</button><button id="btn-meteo-windy" class="meteo-tab-btn" onclick="window.switchMeteoTab('windy')" style="flex:1;background:#e67e22;color:white;border:none;padding:12px;border-radius:6px;font-weight:bold;opacity:0.5;">Windy</button><button id="btn-meteo-ventusky" class="meteo-tab-btn" onclick="window.switchMeteoTab('ventusky')" style="flex:1;background:#2c3e50;color:white;border:none;padding:12px;border-radius:6px;font-weight:bold;opacity:0.5;">Ventusky</button></div><div id="meteo-content" style="background:#fff;border-radius:8px;border:1px solid #eee;padding:10px;height:calc(100vh - 250px);"><iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe></div>`;
-            window.openBottomSheet('state-full');
-        };
-
-        window.openMeteoHistoryModal = function(show) {
-            let m = document.getElementById('meteo-history-modal'); if(!m) return;
-            if(!show) { m.style.display = 'none'; return; } m.style.display = 'flex';
-            let selectMetric = document.getElementById('meteo-metric');
-            if(selectMetric && window.meteoHistData && window.meteoHistData.length > 0) {
-                let optionsHTML = ""; window.meteoHistData[0].forEach((h, i) => { let cleanH = h.toString().toLowerCase().trim(); if (cleanH !== 'date' && !cleanH.includes('heure') && !cleanH.includes('time') && cleanH !== "") { optionsHTML += `<option value="${i}">${h}</option>`; } });
-                selectMetric.innerHTML = optionsHTML !== "" ? optionsHTML : `<option value="">-- Aucune colonne trouvée --</option>`;
-            }
-            window.renderMeteoHistoryChart();
-        };
-
-        window.renderMeteoHistoryChart = function() {
-            let canvasBox = document.getElementById('meteo-history-canvas'); if(!canvasBox) return; let ctx = canvasBox.getContext('2d');
-            if(!window.meteoHistData || window.meteoHistData.length < 2) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Aucune donnée de l'onglet météo.", 20, 50); return; }
-            let metricIdx = parseInt(document.getElementById('meteo-metric').value); if(isNaN(metricIdx)) return; 
-            let chartType = document.getElementById('meteo-chart-type').value || 'line'; let metricLabel = window.meteoHistData[0][metricIdx];
-            let dateIdx = window.meteoHistData[0].findIndex(h => h.toString().toLowerCase().includes('date') || h.toString().toLowerCase().includes('time')); if (dateIdx === -1) dateIdx = 0; 
-            let labels = []; let values = [];
-            for(let i = 1; i < window.meteoHistData.length; i++) {
-                let rawDate = window.meteoHistData[i][dateIdx]; let rawVal = window.meteoHistData[i][metricIdx]; if(rawDate == null || rawDate === "") continue;
-                let displayLabel = rawDate; let parsedDate = new Date(rawDate); if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1970) displayLabel = parsedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-                labels.push(displayLabel); values.push(parseFloat(String(rawVal).replace(',', '.').replace(/[^0-9.-]/g, '')) || 0);
-            }
-            if(window.chartInstances['meteo-hist-chart']) window.chartInstances['meteo-hist-chart'].destroy();
-            window.chartInstances['meteo-hist-chart'] = new Chart(ctx, { type: chartType, data: { labels: labels, datasets: [{ label: metricLabel, data: values, backgroundColor: chartType === 'line' ? 'rgba(22, 160, 133, 0.2)' : '#16a085', borderColor: '#1abc9c', borderWidth: 2, fill: chartType === 'line', tension: 0.3, pointRadius: labels.length > 80 ? 0 : 2 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } } });
-        };
-
-        window.openGlobalCompareModal = function(show) {
-            let modal = document.getElementById('compare-modal'); if (!modal) return; if (!show) { modal.style.display = 'none'; return; }
-            let pistesSet = new Set(); window.snowCannons.features.forEach(f => { let piste = window.getV(f.properties, window.keyPiste); if (piste && piste !== "N/A") pistesSet.add(piste); });
-            let selPiste = document.getElementById('comp-piste'); if (selPiste) selPiste.innerHTML = `<option value="all">⛷️ Toutes les pistes</option>` + Array.from(pistesSet).sort().map(p => `<option value="${p}">${p}</option>`).join('');
-            let saisons = window.saisonsList || []; let optsSaisons = saisons.map(s => `<option value="${s}">Saison ${s}</option>`).join('');
-            let selS1 = document.getElementById('comp-s1'); let selS2 = document.getElementById('comp-s2');
-            if (selS1) selS1.innerHTML = optsSaisons; if (selS2) { selS2.innerHTML = optsSaisons; if (saisons.length > 1) selS2.selectedIndex = 1; }
-            modal.style.display = 'flex'; window.renderGlobalComparison();
-        };
-
-        window.renderGlobalComparison = function() {
-            let selPiste = document.getElementById('comp-piste').value; let metric = document.getElementById('comp-metric').value; let s1 = document.getElementById('comp-s1').value; let s2 = document.getElementById('comp-s2').value;
-            let canons = window.snowCannons.features.filter(f => { if (selPiste === "all") return true; return window.getV(f.properties, window.keyPiste) === selPiste; });
-            canons.sort((a, b) => parseInt(a.properties.id) - parseInt(b.properties.id));
-            let labels = []; let dataS1 = []; let dataS2 = [];
-            canons.forEach(f => { let p = f.properties; labels.push(p.id); dataS1.push(p.historique[s1] ? p.historique[s1][metric] || 0 : 0); dataS2.push(p.historique[s2] ? p.historique[s2][metric] || 0 : 0); });
+        /* SECTION 12 : INITIALISATION DE L'INTERFACE (LE MOTEUR MANQUANT)           */
+        /* ========================================================================= */
+        window.initAppUI = function() {
+            // 1. Extraction des listes uniques pour les filtres et couleurs
+            let ts=new Set(), rs=new Set(), trs=new Set(), ps=new Set();
+            window.snowCannons.features.forEach(f=>{ 
+                let p=f.properties; 
+                let t=window.getV(p,window.keyType); if(t!=="N/A")ts.add(t.toLowerCase()); 
+                let r=window.getV(p,window.keyRep); if(r!=="N/A")rs.add(r); 
+                let tr=window.getV(p,window.keyTransfo); if(tr!=="N/A")trs.add(tr); 
+                let pi=window.getV(p,window.keyPiste); if(pi!=="N/A")ps.add(pi); 
+            });
             
-            let canvas = document.getElementById('main-comp-canvas'); if (window.chartInstances['global-compare']) window.chartInstances['global-compare'].destroy();
-            let colorS1 = metric === 'air' ? '#f1c40f' : (metric === 'temps' ? '#2ecc71' : '#3498db'); let colorS2 = metric === 'air' ? '#e67e22' : (metric === 'temps' ? '#27ae60' : '#2c3e50');
-            window.chartInstances['global-compare'] = new Chart(canvas.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [ { label: `Saison ${s1}`, data: dataS1, backgroundColor: colorS1, borderRadius: 4 }, { label: `Saison ${s2}`, data: dataS2, backgroundColor: colorS2, borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom' } }, scales: { x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: {size: 10} } } } } });
-        };
+            // 2. Génération des couleurs
+            let tc=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6']; Array.from(ts).sort().forEach((t,i)=>window.technoColors[t]=tc[i%tc.length]);
+            let rc=['#1abc9c','#16a085','#f39c12','#d35400','#8e44ad']; Array.from(rs).sort().forEach((r,i)=>window.repColors[r]=rc[i%rc.length]);
+            let neonColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#00FFFF', '#FF8C00', '#FF1493', '#39FF14']; Array.from(trs).sort().forEach((t,i)=>window.transfoColors[t]=neonColors[i%neonColors.length]);
+            
+            // 3. Autocomplétions (Datalists)
+            let dlContainer = document.getElementById('datalists-container');
+            if (dlContainer) { 
+                let dlHtml = ""; 
+                for(let header in window.columnValuesSets) { 
+                    let safeId = "dl-" + header.replace(/[^a-zA-Z0-9]/g, '-'); 
+                    dlHtml += `<datalist id="${safeId}">${Array.from(window.columnValuesSets[header]).sort().map(v=>`<option value="${v}">`).join('')}</datalist>`; 
+                } 
+                dlContainer.innerHTML = dlHtml; 
+            }
 
-        window.openBiMeteo = function() { document.getElementById('bi-meteo-modal').style.display='flex'; window.biLoadSource(); };
-        window.biLoadSource = function() { /* (Logique BI standard conservée) */ let src = document.getElementById('bi-source').value; let data = src==='types' ? [["Modèle","Quantité"]] : (src==='defauts' ? [["Mois","Pannes"]] : window.rawHistorique); window.biCurrentData = data; let selX = document.getElementById('bi-x'); if(selX) selX.innerHTML = `<option value="0">Défaut (Index 0)</option>`; window.biUpdateUI(); };
-        window.biUpdateUI = function() { window.biDrawChart(); };
-        window.biDrawChart = function() { let ctx = document.getElementById('bi-canvas'); if(!ctx) return; if(window.chartInstances['bi-chart']) window.chartInstances['bi-chart'].destroy(); window.chartInstances['bi-chart'] = new Chart(ctx.getContext('2d'), { type: 'bar', data: { labels: ['A','B','C'], datasets: [{ label:'Démo BI', data:[10,20,15], backgroundColor:'#8e44ad' }] }, options: { responsive: true, maintainAspectRatio: false } }); };
+            // 4. Slider des saisons
+            let sld = document.getElementById('season-slider');
+            if (window.saisonsList.length > 0 && sld) { sld.max = window.saisonsList.length - 1; sld.value = window.histSeasonIdx; let sdisp = document.getElementById('season-display'); if(sdisp) sdisp.innerText = window.saisonsList[window.histSeasonIdx]; }
 
-        window.calculateMaxes = function() {
-            if(!window.saisonsList[window.histSeasonIdx]) return; let s = window.saisonsList[window.histSeasonIdx]; window.absoluteMaxes = { eau: 0, air: 0, temps: 0 };
-            window.snowCannons.features.forEach(f => { if (f.properties.historique[s]) { window.absoluteMaxes.eau = Math.max(window.absoluteMaxes.eau, f.properties.historique[s].eau); window.absoluteMaxes.air = Math.max(window.absoluteMaxes.air, f.properties.historique[s].air); window.absoluteMaxes.temps = Math.max(window.absoluteMaxes.temps, f.properties.historique[s].temps); } });
-            window.currentMaxThreshold = { ...window.absoluteMaxes }; window.currentMinThreshold = { eau:0, air:0, temps:0 };
+            // 5. Création des cases à cocher (Filtres)
+            function buildCbs(id, set, cls) { 
+                const c = document.getElementById(id); if(!c) return; c.innerHTML = ''; 
+                [...set].sort().forEach(v => { 
+                    let l=document.createElement('label'); l.style.display="flex"; l.style.alignItems="center"; l.style.marginBottom="10px";
+                    let cb=document.createElement('input'); cb.type='checkbox'; cb.className=cls; cb.value=v; cb.style.transform="scale(1.4)"; cb.style.marginRight="10px";
+                    l.appendChild(cb); l.appendChild(document.createTextNode(v)); c.appendChild(l); 
+                }); 
+            }
+            buildCbs('individual-pistes', ps, 'piste-cb'); buildCbs('individual-types', ts, 'type-cb');
+
+            function setupCbs(allId, cls, cbk) { 
+                const aBtn = document.getElementById(allId); if(!aBtn) return;
+                const cbs = document.querySelectorAll('.'+cls); const getVals = () => aBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); 
+                aBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); cbk(getVals()); }); 
+                cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(aBtn) aBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(aBtn) aBtn.checked=true; } cbk(getVals()); })); 
+            }
+            setupCbs('check-all-pistes', 'piste-cb', vals => { window.currentPistes = vals; window.updateMap(); window.triggerGlobalFilterChart(); }); 
+            setupCbs('check-all-types', 'type-cb', vals => { window.currentTypes = vals; window.updateMap(); window.triggerGlobalFilterChart(); });
+
+            window.generateDynamicFiltersUI = function() { 
+                let container = document.getElementById('dynamic-filters-container'); if(!container) return; container.innerHTML = ""; 
+                let optionsHTML = `<option value="">-- Choisir un critère --</option>` + window.availableColumns.map(c => `<option value="${c}">${c.toUpperCase()}</option>`).join(''); 
+                container.innerHTML = `<div class="dynamic-filter-slot" style="margin-bottom:0; border:none; padding:0;"><select class="filter-select edit-input" id="filter-sel-0" data-idx="0" style="padding:10px; margin-bottom:10px;">${optionsHTML}</select><div class="checkbox-list" id="filter-cbx-0" style="display:none;"></div></div>`; 
+            };
+            window.renderCheckboxesForFilter = function(idx, colName) { 
+                let cbxContainer = document.getElementById(`filter-cbx-${idx}`); if(!cbxContainer) return; 
+                if(!colName) { cbxContainer.style.display = 'none'; window.activeFilters[idx] = {key:"", vals:[]}; window.updateMap(); window.triggerGlobalFilterChart(); return; } 
+                cbxContainer.style.display = 'block'; let vals = Array.from(window.columnValuesSets[colName] || []).sort(); 
+                let html = `<label style="display:flex; align-items:center; margin-bottom:10px;"><input type="checkbox" class="cb-all-${idx}" checked style="transform:scale(1.4); margin-right:10px;"> <b>Tout sélectionner</b></label><hr style="margin:10px 0; border-top:1px solid #eee;">`; 
+                vals.forEach(v => html += `<label style="display:flex; align-items:center; margin-bottom:10px;"><input type="checkbox" class="cb-val-${idx}" value="${v}" style="transform:scale(1.4); margin-right:10px;"> ${v}</label>`); 
+                cbxContainer.innerHTML = html; window.activeFilters[idx] = {key: colName, vals: ['all']}; 
+                let allBtn = cbxContainer.querySelector(`.cb-all-${idx}`); let cbs = cbxContainer.querySelectorAll(`.cb-val-${idx}`); 
+                const updateLogic = () => { window.activeFilters[idx].vals = allBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); window.updateMap(); window.triggerGlobalFilterChart(); }; 
+                if(allBtn) allBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); updateLogic(); }); 
+                cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(allBtn) allBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(allBtn) allBtn.checked=true; } updateLogic(); })); 
+            };
+
+            window.generateDynamicFiltersUI(); 
+            if(window.calculateMaxes) window.calculateMaxes();
+
+            // 6. Création des marqueurs Leaflet sur la carte
+            if(window.geojsonLayer) window.map.removeLayer(window.geojsonLayer);
+            window.geojsonLayer = L.geoJSON(window.snowCannons, {
+                pointToLayer: function (feature, latlng) { return L.marker(latlng, { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div></div>` }) }); },
+                onEachFeature: function (feature, layer) {
+                    layer.on('click', function(e) {
+                        L.DomEvent.stopPropagation(e);
+                        if (window.currentlyEditingId) return;
+                        window.focusCannon(feature.properties.id);
+                    });
+                }
+            }).addTo(window.map);
+
+            if (window.snowCannons.features.length > 0) { 
+                let bounds = window.geojsonLayer.getBounds(); 
+                if(bounds.isValid() && window.map) window.map.fitBounds(bounds, { padding: [30, 30] }); 
+            }
+
+            // 7. Écouteurs pour le Menu Gauche et le routage des thèmes
+            document.querySelectorAll('input[name="main_theme"]').forEach(r => {
+                r.addEventListener('change', e => {
+                    window.mainTheme = e.target.value;
+                    
+                    document.querySelectorAll('.theme-details, .theme-details-hist').forEach(el => el.style.display = 'none');
+                    document.querySelectorAll('.radio-card').forEach(el => { el.style.borderBottomLeftRadius = '6px'; el.style.borderBottomRightRadius = '6px'; el.style.marginBottom = '8px'; el.style.borderColor = '#e1e8ed'; });
+                    
+                    let activeDetails = document.getElementById('details-' + window.mainTheme); 
+                    let activeLabel = document.getElementById('lbl-' + window.mainTheme);
+                    if (activeDetails && activeLabel) { 
+                        activeDetails.style.display = 'block'; 
+                        activeLabel.style.borderBottomLeftRadius = '0'; 
+                        activeLabel.style.borderBottomRightRadius = '0'; 
+                        activeLabel.style.marginBottom = '0'; 
+                        if(window.mainTheme === 'stock') activeLabel.style.borderColor = '#16a085'; 
+                        else if(window.mainTheme === 'atelier') activeLabel.style.borderColor = '#8e44ad'; 
+                        else activeLabel.style.borderColor = '#3498db'; 
+                    }
+                    
+                    // Routage d'affichage
+                    if(window.mainTheme === 'atelier') { 
+                        document.getElementById('map').style.display = 'none'; 
+                        document.getElementById('atelier-workspace').style.display = 'block'; 
+                        document.getElementById('stock-workspace').style.display = 'none'; 
+                        window.closeBottomSheet(); 
+                        if(window.renderAtelierWorkspace) window.renderAtelierWorkspace(); 
+                    } 
+                    else if(window.mainTheme === 'stock') { 
+                        document.getElementById('map').style.display = 'none'; 
+                        document.getElementById('atelier-workspace').style.display = 'none'; 
+                        document.getElementById('stock-workspace').style.display = 'block'; 
+                        window.closeBottomSheet(); 
+                        if(window.renderStockWorkspace) window.renderStockWorkspace(); 
+                    }
+                    else { 
+                        document.getElementById('map').style.display = 'block'; 
+                        document.getElementById('atelier-workspace').style.display = 'none'; 
+                        document.getElementById('stock-workspace').style.display = 'none'; 
+                        if(window.mainTheme === 'historique') window.calculateMaxes(); 
+                        window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); 
+                        if(window.mainTheme === 'suivi_entretien' || window.mainTheme === 'entretien_tete') window.openBottomSheet('state-half'); 
+                    }
+                    
+                    if(document.getElementById('sidebar').classList.contains('open')) window.toggleLeftMenu();
+                });
+            });
+
+            // 8. Écouteurs pour l'Historique Météo et Filtres
+            document.querySelectorAll('input[name="hist_metric"]').forEach(r => { r.addEventListener('change', e => { window.histMetric = e.target.value; window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); }); });
+            let dfc = document.getElementById('dynamic-filters-container'); if(dfc) dfc.addEventListener('change', e => { if(e.target.classList.contains('filter-select')) window.renderCheckboxesForFilter(e.target.getAttribute('data-idx'), e.target.value); });
+
+            // 9. Lancement final du premier affichage de la carte
+            window.updateLegend(); 
+            window.updateMap(); 
+            window.triggerGlobalFilterChart();
         };
 
         /* BOOT SEQUENCE */
