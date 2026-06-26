@@ -479,7 +479,7 @@
             let lst = document.getElementById('loading-step'); if(lst) lst.style.display = 'none';
             setTimeout(() => { window.initAppUI(); let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; }, 800);
         };
-                    /* ========================================================================= */
+        /* ========================================================================= */
         /* SECTION 4 : LOGIQUE DE L'INTERFACE MOBILE ET LEAFLET                      */
         /* ========================================================================= */
         window.initMap = function() {
@@ -527,7 +527,10 @@
             
             // Clic pour agrandir/réduire
             const toggleSheet = () => { if (sheet.classList.contains('state-half')) window.openBottomSheet('state-full'); else if (sheet.classList.contains('state-full')) window.openBottomSheet('state-half'); };
-            if(handleZone) handleZone.onclick = toggleSheet; if(rightTitle) rightTitle.onclick = toggleSheet;
+            
+            // CORRECTION ICI : on utilise bien sheetHandleZone
+            if(sheetHandleZone) sheetHandleZone.onclick = toggleSheet; 
+            if(rightTitle) rightTitle.onclick = toggleSheet;
 
             // Logique de Glissement
             let startY = 0; let currentY = 0; let isDraggingSheet = false;
