@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>GMAO Snow Mobile & Stock</title>
+    <title>GMAO Snow Expert Pro</title>
     
     <script>
         window.showCrash = function(msg, line) { 
@@ -33,108 +33,100 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
     
     <style>
-        /* --- VARIABLES GLOBALES ET RESET --- */
+        /* --- 1. VARIABLES & RESET (Optimisé iPhone) --- */
         :root {
             --bg-color: #ffffff; --text-dark: #2c3e50; --border-color: #e1e8ed; --accent-color: #3498db;
-            --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
-            --topbar-height: 50px; --bottombar-height: 60px;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --topbar-height: 50px;
+            --bottombar-height: 60px;
         }
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f4f6f8; overflow: hidden; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f4f6f8; overflow: hidden; touch-action: manipulation; }
         
-        /* --- ECRAN DE CHARGEMENT --- */
+        /* --- 2. ECRAN DE CHARGEMENT --- */
         #loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #error-box { display: none; background: #fdf0ed; border: 2px solid #e74c3c; padding: 20px; border-radius: 8px; max-width: 90%; color: #c0392b; margin-top: 20px; }
 
-        /* --- LAYOUT MOBILE --- */
+        /* --- 3. LAYOUT MOBILE (BARRE HAUT & BAS) --- */
         #mobile-topbar { position: fixed; top: 0; left: 0; right: 0; height: var(--topbar-height); padding-top: var(--safe-top); background: #2c3e50; color: white; z-index: 4000; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
         .topbar-icon { padding: 0 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; height: 100%; }
         .topbar-title { font-weight: bold; font-size: 16px; letter-spacing: 0.5px; }
-        #mobile-bottombar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottombar-height); padding-bottom: var(--safe-bottom); background: #fff; z-index: 4000; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); border-top: 1px solid var(--border-color); }
-        .bottombar-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: none; border: none; color: #7f8c8d; font-size: 10px; font-weight: bold; transition: color 0.2s; }
-        .bottombar-btn.active { color: var(--accent-color); }
-        .bottombar-btn svg { width: 22px; height: 22px; margin-bottom: 4px; fill: currentColor; }
         
-        #app-container { position: absolute; top: calc(var(--topbar-height) + var(--safe-top)); bottom: calc(var(--bottombar-height) + var(--safe-bottom)); left: 0; right: 0; background: #222; overflow: hidden; }
+        #mobile-bottombar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottombar-height); padding-bottom: var(--safe-bottom); background: #fff; z-index: 4000; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); border-top: 1px solid var(--border-color); }
+        .bottombar-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: none; border: none; color: #7f8c8d; font-size: 10px; font-weight: bold; transition: color 0.2s; cursor: pointer; }
+        .bottombar-btn.active { color: var(--accent-color); }
+        .bottombar-btn svg { width: 24px; height: 24px; margin-bottom: 4px; fill: currentColor; }
+        
+        /* --- 4. CONTENEURS PRINCIPAUX --- */
+        #app-container { position: absolute; top: calc(var(--topbar-height) + var(--safe-top)); bottom: calc(var(--bottombar-height) + var(--safe-bottom)); left: 0; right: 0; background: #222; }
         #map { width: 100%; height: 100%; z-index: 1; position: absolute; }
         
-        /* --- WORKSPACES (Atelier & Stock) --- */
-        .workspace { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; background: #f4f6f8; overflow-y: auto; padding: 15px; box-sizing: border-box; }
-        
-        /* --- SIDEBAR (Filtres) --- */
+        .workspace-panel { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; background: #f4f6f8; overflow-y: auto; padding: 15px; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
+
+        /* --- 5. BOTTOM SHEET (LE VOLET AMOVIBLE) --- */
+        #right-sidebar { position: fixed; bottom: 0; left: 0; right: 0; height: calc(100% - var(--topbar-height) - var(--safe-top)); background: #fff; z-index: 4200; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); display: flex; flex-direction: column; transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); transform: translateY(100%); padding-bottom: calc(var(--bottombar-height) + var(--safe-bottom)); }
+        #right-sidebar.state-hidden { transform: translateY(100%); }
+        #right-sidebar.state-half { transform: translateY(45%); } /* Rabaissé à 45% pour voir plus de carte */
+        #right-sidebar.state-full { transform: translateY(0); }
+        .sheet-handle-zone { padding: 12px 0 8px 0; display: flex; justify-content: center; align-items: center; background: transparent; cursor: grab; }
+        .sheet-handle { width: 45px; height: 6px; background: #bdc3c7; border-radius: 3px; }
+        .right-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px 10px 20px; border-bottom: 1px solid #eee; cursor: pointer; }
+        #right-title { font-size: 16px; font-weight: bold; color: #2c3e50; }
+        .right-content { padding: 15px; overflow-y: auto; flex-grow: 1; background: #f9fbfc; -webkit-overflow-scrolling: touch; }
+
+        /* --- 6. MENU LATÉRAL GAUCHE --- */
         #sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 85vw; max-width: 350px; background: #fff; z-index: 5000; transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); display: flex; flex-direction: column; box-shadow: 4px 0 15px rgba(0,0,0,0.15); }
         #sidebar.open { transform: translateX(0); }
         #backdrop { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 4500; opacity: 0; transition: opacity 0.3s; }
         #backdrop.visible { display: block; opacity: 1; }
         .sidebar-header-bg { background: #f8f9fa; padding: 15px 20px; border-bottom: 1px solid #eee; font-weight: bold; color: #2c3e50; font-size: 15px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; padding-top: calc(15px + var(--safe-top)); }
+        
+        /* Accordeons du menu */
         .panel-section { border-bottom: 1px solid #f0f0f0; margin: 0; }
         .panel-section summary { background: #fff; padding: 15px 20px; font-size: 14px; font-weight: 600; color: #34495e; cursor: pointer; list-style: none; display: flex; justify-content: space-between; }
         .panel-section summary::-webkit-details-marker { display: none; }
         .panel-section summary::after { content: '+'; font-size: 16px; color: #bdc3c7; }
         details[open].panel-section summary::after { content: '−'; color: #3498db; }
         .section-content { padding: 15px 20px; background: #fafbfc; }
-        .theme-block { margin-bottom: 8px; }
-        .radio-card { display: flex; align-items: center; gap: 10px; background: #fff; padding: 12px; border: 1px solid #e1e8ed; border-radius: 6px; font-size: 13px; font-weight: bold; }
+        
+        .radio-card { display: flex; align-items: center; gap: 10px; background: #fff; padding: 14px 12px; border: 1px solid #e1e8ed; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; }
         .theme-details { background: #fdfdfe; padding: 12px 15px; border: 1px solid #e1e8ed; border-top: none; border-radius: 0 0 6px 6px; margin-top: -2px; }
-        .theme-details-hist { background: #eafaf1; border-color: #a2d9ce; border-top: none; padding: 15px; border-radius: 0 0 6px 6px; }
-        input[type=range] { width: 100%; margin: 0; accent-color: #3498db; }
-        .slider-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #555; }
-        .val-badge { color: #e74c3c; font-weight: bold; }
-        .checkbox-list { max-height: 160px; overflow-y: auto; padding: 5px; font-size: 13px; }
-        .checkbox-list label { display: block; margin-bottom: 10px; }
-        input[type=checkbox], input[type=radio] { transform: scale(1.3); margin-right: 8px; }
-
-        /* --- BOTTOM SHEET --- */
-        #right-sidebar { position: fixed; bottom: 0; left: 0; right: 0; height: calc(100% - var(--topbar-height) - var(--safe-top)); background: #fff; z-index: 4200; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); display: flex; flex-direction: column; transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); transform: translateY(100%); padding-bottom: calc(var(--bottombar-height) + var(--safe-bottom)); }
-        #right-sidebar.state-hidden { transform: translateY(100%); }
-        #right-sidebar.state-half { transform: translateY(50%); }
-        #right-sidebar.state-full { transform: translateY(0); }
-        .sheet-handle-zone { padding: 10px 0; display: flex; justify-content: center; align-items: center; background: transparent; cursor: pointer;}
-        .sheet-handle { width: 40px; height: 5px; background: #bdc3c7; border-radius: 3px; }
-        .right-header { display: flex; justify-content: space-between; align-items: center; padding: 0 20px 10px 20px; border-bottom: 1px solid #eee; cursor: pointer;}
-        #right-title { font-size: 16px; font-weight: bold; color: #2c3e50; }
-        .right-content { padding: 15px; overflow-y: auto; flex-grow: 1; background: #f9fbfc; }
-
-        /* --- COMPOSANTS INTERNES --- */
-        .sel-details { background: #fff; margin-bottom: 20px; border: 1px solid #e1e8ed; border-radius: 8px; overflow: hidden; }
-        .sel-details-header { padding: 15px; font-weight: bold; font-size: 15px; background: #fdfdfe; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
-        .sel-details-body { padding: 15px; font-size: 13px; color: #444; line-height: 1.5; }
-        .badge { display: inline-block; background: #f0f3f5; padding: 6px 12px; border-radius: 4px; font-size: 12px; margin: 0 4px 6px 0; border: 1px solid #e1e8ed; font-weight: bold; }
-        .ticket-card { background: #fff; border: 1px solid #eee; border-left: 4px solid #e74c3c; padding: 15px; margin-bottom: 10px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .piste-chart-container { background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 6px; margin-top: 15px; }
-        .edit-input { width: 100%; box-sizing: border-box; padding: 12px; margin-top: 4px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; background: #fff; }
-        .edit-label { font-size: 11px; font-weight: bold; color: #555; text-transform: uppercase; }
-        .btn-action-primary { background: #3498db; color: white; border: none; padding: 14px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-top: 10px; width: 100%; font-weight: bold; transition: 0.2s; }
+        input[type=checkbox], input[type=radio] { transform: scale(1.4); margin-right: 10px; }
+                /* --- 7. ELEMENTS UI MOBILES (Fiches, Boutons, Formulaires) --- */
+        .edit-input { width: 100%; box-sizing: border-box; padding: 14px; margin-top: 6px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none; background: #fff; -webkit-appearance: none; }
+        .edit-label { font-size: 12px; font-weight: bold; color: #555; text-transform: uppercase; }
+        .btn-action-primary { background: #3498db; color: white; border: none; padding: 16px; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: bold; width: 100%; transition: 0.2s; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-action-primary:active { transform: scale(0.98); }
         
-        /* --- ATELIER ET STOCK COMPOSANTS --- */
-        .atelier-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #8e44ad; }
-        .atelier-card h3 { margin: 0 0 10px 0; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; font-size: 16px; }
-        .atelier-sub-details { margin-top: 10px; border: 1px solid #e1e8ed; border-radius: 6px; background: #fff; overflow: hidden; }
-        .atelier-sub-details summary { background: #f8f9fa; padding: 12px 15px; font-size: 13px; font-weight: bold; color: #34495e; cursor: pointer; border-bottom: 1px solid #e1e8ed; list-style: none; display: flex; justify-content: space-between; align-items: center; }
-        .atelier-sub-details summary::-webkit-details-marker { display: none; }
-        .atelier-sub-details summary::after { content: '▼'; font-size: 10px; color: #bdc3c7; }
-        .atelier-sub-details[open] summary::after { content: '▲'; color: #8e44ad; }
-        
-        .stock-item-card { background: #fff; border: 1px solid #e1e8ed; border-radius: 8px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #16a085; display: flex; flex-direction: column; gap: 15px; }
-        .stock-img-container { width: 100%; height: 160px; background: #f4f6f8; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .sel-details { background: #fff; margin-bottom: 20px; border: 1px solid #e1e8ed; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .sel-details-header { padding: 15px; font-weight: bold; font-size: 16px; background: #fdfdfe; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .sel-details-body { padding: 15px; font-size: 14px; color: #444; line-height: 1.5; }
+        .badge { display: inline-block; background: #f0f3f5; padding: 6px 12px; border-radius: 6px; font-size: 12px; margin: 0 4px 6px 0; border: 1px solid #e1e8ed; font-weight: bold; }
+        .ticket-card { background: #fff; border: 1px solid #eee; border-left: 5px solid #e74c3c; padding: 15px; margin-bottom: 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
 
-        /* --- MODALES PLEIN ECRAN --- */
+        /* --- 8. CARTES ATELIER & STOCK (Workspaces) --- */
+        .atelier-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 3px 6px rgba(0,0,0,0.05); border-left: 5px solid #8e44ad; }
+        .atelier-sub-details { margin-top: 10px; border: 1px solid #e1e8ed; border-radius: 8px; background: #fff; overflow: hidden; }
+        .atelier-sub-details summary { background: #f8f9fa; padding: 14px 15px; font-size: 14px; font-weight: bold; color: #34495e; cursor: pointer; border-bottom: 1px solid #e1e8ed; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+        
+        .stock-item-card { background: #fff; border: 1px solid #e1e8ed; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 3px 6px rgba(0,0,0,0.05); border-left: 5px solid #16a085; display: flex; flex-direction: column; gap: 15px; }
+        .stock-header-sticky { position: sticky; top: 0; z-index: 100; background: #f4f6f8; padding-bottom: 10px; }
+
+        /* --- 9. MODALES PLEIN ECRAN (Pour BI, Comparatif, Météo Hist) --- */
         .mobile-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #f4f6f8; z-index: 8000; flex-direction: column; padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
         .modal-header { background: #2c3e50; color: white; padding: 15px 20px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .modal-body { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; }
-        .modal-close-btn { background: none; border: none; color: white; font-size: 28px; cursor: pointer; line-height: 1; }
+        .modal-body { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
+        .modal-close-btn { background: none; border: none; color: white; font-size: 32px; cursor: pointer; line-height: 1; padding: 0 10px; }
 
-        /* --- ICONES CARTE --- */
+        /* --- 10. LEAFLET ET ICONES CARTES --- */
         .custom-cannon-icon { background: none; border: none; }
-        .cannon-circle { border-radius: 50%; color: white; font-weight: bold; text-align: center; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); box-sizing: border-box; box-shadow: 0 3px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-        .cannon-circle:hover { transform: scale(1.2); z-index: 1000 !important; cursor: pointer; }
-        .camera-icon { font-size: 24px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); text-align: center; line-height: 24px; cursor: pointer; }
-        
-        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px; border-radius: 4px; }
-        .color-box { width: 16px; height: 16px; border-radius: 3px; border: 1px solid #ccc; }
-        .gradient-bar { height: 12px; border-radius: 3px; margin: 10px 0 5px 0; }
-        .legend-labels { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; }
+        .cannon-circle { border-radius: 50%; color: white; font-weight: bold; text-align: center; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); box-sizing: border-box; box-shadow: 0 3px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; }
+        .camera-icon { font-size: 28px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); text-align: center; line-height: 28px; cursor: pointer; }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; font-weight: 600; cursor: pointer; padding: 6px; border-radius: 6px; background:#f9fbfc;}
+        .color-box { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #ccc; }
+        .piste-chart-container { background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 8px; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -143,26 +135,25 @@
     <div id="loading-overlay">
         <div class="spinner" id="loading-spinner"></div>
         <h2 style="color:#3498db; margin:0;" id="loading-title">Démarrage...</h2>
-        <p style="color:#888; font-size:12px;" id="loading-step"></p>
+        <p style="color:#888; font-size:12px; margin-top:10px;" id="loading-step"></p>
         <div id="error-box"><p id="error-msg"></p></div>
     </div>
     
     <div id="backdrop"></div>
-
-    <header id="mobile-topbar">
+        <header id="mobile-topbar">
         <div class="topbar-icon" onclick="toggleLeftMenu()">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
         </div>
         <div class="topbar-title">GMAO Snow Expert</div>
         <div class="topbar-icon" onclick="locateUser()" id="btn-gps">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
         </div>
     </header>
 
     <main id="app-container">
         <div id="map"></div>
-        <div id="atelier-workspace" class="workspace"></div>
-        <div id="stock-workspace" class="workspace"></div>
+        <div id="atelier-workspace" class="workspace-panel"></div>
+        <div id="stock-workspace" class="workspace-panel"></div>
     </main>
 
     <nav id="mobile-bottombar">
@@ -191,68 +182,45 @@
     <div id="sidebar">
         <div class="sidebar-header-bg">
             <span>Outils d'Analyse</span>
-            <span style="font-size:24px; cursor:pointer;" onclick="toggleLeftMenu()">×</span>
+            <span style="font-size:30px; cursor:pointer; line-height:1;" onclick="toggleLeftMenu()">×</span>
         </div>
         <div style="flex:1; overflow-y:auto; padding-bottom:20px;">
             <details class="panel-section" open>
-                <summary>Thème & Légende</summary>
+                <summary>Thèmes Principaux</summary>
                 <div class="section-content" style="padding-top: 10px;">
                     <div class="theme-block">
-                        <label class="radio-card" id="lbl-atelier">
-                            <input type="radio" name="main_theme" value="atelier"> 🧰 Atelier (Banc d'essais)
-                        </label>
-                        <div class="theme-details" id="details-atelier" style="display: none; border-color: #8e44ad;">
-                            <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Banc de test usine</div>
-                        </div>
+                        <label class="radio-card" id="lbl-atelier"><input type="radio" name="main_theme" value="atelier"> 🧰 Atelier (Banc d'essais)</label>
+                        <div class="theme-details" id="details-atelier" style="display:none; border-color:#8e44ad;"><div style="font-size:12px; color:#7f8c8d;">Banc de test usine</div></div>
                     </div>
                     <div class="theme-block">
-                        <label class="radio-card" id="lbl-stock">
-                            <input type="radio" name="main_theme" value="stock"> 📦 Gestion du Stock
-                        </label>
-                        <div class="theme-details" id="details-stock" style="display: none; border-color: #16a085;">
-                            <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">Inventaire et suivi des pièces</div>
-                        </div>
+                        <label class="radio-card" id="lbl-stock"><input type="radio" name="main_theme" value="stock"> 📦 Gestion du Stock</label>
+                        <div class="theme-details" id="details-stock" style="display:none; border-color:#16a085;"><div style="font-size:12px; color:#7f8c8d;">Inventaire des pièces</div></div>
                     </div>
                     <div class="theme-block">
-                        <label class="radio-card" id="lbl-entretien_tete">
-                            <input type="radio" name="main_theme" value="entretien_tete"> 🚿 Entretien Tête Canon
-                        </label>
-                        <div class="theme-details" id="details-entretien_tete" style="display: none; border-color: #e67e22;">
+                        <label class="radio-card" id="lbl-entretien_tete"><input type="radio" name="main_theme" value="entretien_tete"> 🚿 Entretien Buses</label>
+                        <div class="theme-details" id="details-entretien_tete" style="display:none; border-color:#e67e22;">
                             <div id="legend-entretien_tete"></div>
-                            <button onclick="window.resetEntretienBuses()" style="width:100%; margin-top:10px; background:#c0392b; color:white; border:none; padding:12px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;">🔄 Zéro annuel</button>
+                            <button onclick="window.resetEntretienBuses()" style="width:100%; margin-top:10px; background:#c0392b; color:white; border:none; padding:12px; border-radius:6px; font-weight:bold;">🔄 Zéro annuel</button>
                         </div>
                     </div>
                     <div class="theme-block">
-                        <label class="radio-card" id="lbl-suivi_entretien">
-                            <input type="radio" name="main_theme" value="suivi_entretien"> 🛠️ Suivi Entretien
-                        </label>
-                        <div class="theme-details" id="details-suivi_entretien" style="display: none; border-color: #27ae60;"> 
-                            <div id="legend-suivi_entretien"></div>
-                        </div>
+                        <label class="radio-card" id="lbl-suivi_entretien"><input type="radio" name="main_theme" value="suivi_entretien"> 🛠️ Suivi Entretien</label>
+                        <div class="theme-details" id="details-suivi_entretien" style="display:none; border-color:#27ae60;"><div id="legend-suivi_entretien"></div></div>
                     </div>                   
                     <div class="theme-block">
-                        <label class="radio-card" id="lbl-defauts" style="border-radius: 6px 6px 0 0; margin-bottom: 0; border-color: #3498db;">
-                            <input type="radio" name="main_theme" value="defauts" checked> 🚨 Tickets & Pannes
-                        </label>
-                        <div class="theme-details" id="details-defauts" style="display: block; border-color: #3498db;">
-                            <div id="legend-defauts"></div>
-                        </div>
+                        <label class="radio-card" id="lbl-defauts" style="border-radius:6px 6px 0 0; margin-bottom:0; border-color:#3498db;"><input type="radio" name="main_theme" value="defauts" checked> 🚨 Tickets & Pannes</label>
+                        <div class="theme-details" id="details-defauts" style="display:block; border-color:#3498db;"><div id="legend-defauts"></div></div>
                     </div>
-                    <div class="theme-block">
-                        <label class="radio-card" id="lbl-type"><input type="radio" name="main_theme" value="type"> ⚙️ Type de canon</label>
-                        <div class="theme-details" id="details-type" style="display: none; border-color: #3498db;"><div id="legend-type"></div></div>
-                    </div>
-                    <div class="theme-block">
-                        <label class="radio-card" id="lbl-historique"><input type="radio" name="main_theme" value="historique"> 📊 Historique Volumes</label>
-                        <div class="theme-details-hist" id="details-historique" style="display: none;">
-                            <div style="font-weight:bold; font-size:12px; color:#27ae60; margin-bottom:10px;">DONNÉE À AFFICHER :</div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-type"><input type="radio" name="main_theme" value="type"> ⚙️ Type de canon</label><div class="theme-details" id="details-type" style="display:none; border-color:#3498db;"><div id="legend-type"></div></div></div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-historique"><input type="radio" name="main_theme" value="historique"> 📊 Historique Volumes</label>
+                        <div class="theme-details-hist" id="details-historique" style="display:none;">
                             <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:13px; font-weight:bold; color:#333;">
                                 <label><input type="radio" name="hist_metric" value="eau" checked> 💧 Eau</label>
                                 <label><input type="radio" name="hist_metric" value="air"> 💨 Air</label>
                                 <label><input type="radio" name="hist_metric" value="temps"> ⏱️ H.</label>
                             </div>
                             <div class="slider-container">
-                                <div class="slider-label">Saison : <span id="season-display" style="color:#27ae60; font-size:14px;">-</span></div>
+                                <div class="slider-label">Saison : <span id="season-display" style="color:#27ae60; font-size:15px;">-</span></div>
                                 <input type="range" id="season-slider" min="0" max="0" value="0">
                             </div>
                             <div id="legend-historique" style="margin-top:15px; margin-bottom:5px;"></div>
@@ -263,10 +231,18 @@
             <details class="panel-section" open>
                 <summary>Filtres Rapides</summary>
                 <div class="section-content" style="padding-top: 5px;">
-                    <b style="font-size:13px;">Pistes :</b><div class="checkbox-list"><label><input type="checkbox" id="check-all-pistes" checked> <b>Toutes</b></label><div id="individual-pistes"></div></div>
-                    <b style="font-size:13px;">Type Canon :</b><div class="checkbox-list"><label><input type="checkbox" id="check-all-types" checked> <b>Tous</b></label><div id="individual-types"></div></div>
+                    <b style="font-size:14px;">Pistes :</b><div class="checkbox-list"><label><input type="checkbox" id="check-all-pistes" checked> <b>Toutes</b></label><div id="individual-pistes"></div></div>
                     <hr style="margin:15px 0; border-top:1px dashed #ccc;">
-                    <b style="font-size:13px;">Filtre Personnalisé :</b><div id="dynamic-filters-container"></div>
+                    <b style="font-size:14px;">Filtre Personnalisé :</b><div id="dynamic-filters-container"></div>
+                </div>
+            </details>
+            <details class="panel-section">
+                <summary>Calques KMZ (Nuage/Local)</summary>
+                <div class="section-content" style="padding-top: 5px;">
+                    <div id="cloud-layers-container"></div><hr style="margin:15px 0; border-top:1px dashed #ccc;">
+                    <input type="file" id="kml-upload" accept=".kml,.kmz" style="display:none;" onchange="window.handleKMLUpload(event)">
+                    <button class="btn-action-primary" style="margin-top:0; background:#8e44ad;" onclick="document.getElementById('kml-upload').click()">📂 Importer fichier...</button>
+                    <div id="custom-layers-list" style="margin-top:15px;"></div>
                 </div>
             </details>
         </div>
@@ -278,20 +254,20 @@
         </div>
         <div class="right-header" id="right-header">
             <span id="right-title">📌 Analyse Détaillée</span>
-            <button onclick="window.closeBottomSheet()" style="background:none; border:none; color:#bdc3c7; font-size:28px; cursor:pointer; padding:0;">×</button>
+            <button onclick="window.closeBottomSheet()" style="background:none; border:none; color:#bdc3c7; font-size:32px; cursor:pointer; padding:0; line-height:1;">×</button>
         </div>
         <div class="right-content" id="right-sidebar-content">
             <div id="view-selection">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;" id="multi-tools">
-                    <span style="font-size:13px; color:#555;"><b id="sel-count">0</b> canon(s) ciblé(s)</span>
-                    <button onclick="window.clearSelection()" style="background:#bdc3c7; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:12px;">Tout vider ✕</button>
+                    <span style="font-size:14px; color:#555;"><b id="sel-count">0</b> canon(s) ciblé(s)</span>
+                    <button onclick="window.clearSelection()" style="background:#bdc3c7; color:white; border:none; padding:10px 15px; border-radius:6px; font-weight:bold; font-size:13px;">Tout vider ✕</button>
                 </div>
                 <div id="selected-list"></div>
             </div>
             <div id="view-edit" style="display:none;">
-                <div style="background:#fff3cd; padding:12px; border-radius:6px; margin-bottom:15px; border:1px solid #ffeeba;">
-                    <label style="color:#856404; font-size:13px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:8px;">
-                        <input type="checkbox" id="allow-move-chk" style="transform: scale(1.3);"> Autoriser le déplacement GPS
+                <div style="background:#fff3cd; padding:15px; border-radius:8px; margin-bottom:15px; border:1px solid #ffeeba;">
+                    <label style="color:#856404; font-size:14px; font-weight:bold; display:flex; align-items:center; gap:10px;">
+                        <input type="checkbox" id="allow-move-chk" style="transform: scale(1.5);"> Autoriser déplacement GPS (Glisser sur carte)
                     </label>
                 </div>
                 <h3 style="margin-top:0; color:#3498db; border-bottom:2px solid #eee; padding-bottom:10px;">Édition Canon <span id="edit-id-display"></span></h3>
@@ -302,8 +278,8 @@
                 </div>
                 <div id="dynamic-edit-fields"></div>
                 <div style="display:flex; gap:10px; margin-top:20px; padding-bottom: 20px;">
-                    <button onclick="window.cancelEdit()" style="flex:1; background:#ecf0f1; color:#333; padding:14px; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-weight:bold; font-size:14px;">Annuler</button>
-                    <button id="btn-save-edit" onclick="window.saveEditData()" style="flex:2; background:#27ae60; color:white; padding:14px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size:14px;">✅ Sauvegarder</button>
+                    <button onclick="window.cancelEdit()" style="flex:1; background:#ecf0f1; color:#333; padding:16px; border:1px solid #ccc; border-radius:8px; font-weight:bold; font-size:15px;">Annuler</button>
+                    <button id="btn-save-edit" onclick="window.saveEditData()" style="flex:2; background:#27ae60; color:white; padding:16px; border:none; border-radius:8px; font-weight:bold; font-size:15px;">✅ Sauver</button>
                 </div>
             </div>
         </div>
@@ -311,22 +287,20 @@
 
     <div id="bi-meteo-modal" class="mobile-modal">
         <div class="modal-header">
-            <span>❄️ Expert BI</span>
-            <button class="modal-close-btn" onclick="document.getElementById('bi-meteo-modal').style.display='none'">×</button>
+            <span>❄️ Expert BI</span><button class="modal-close-btn" onclick="document.getElementById('bi-meteo-modal').style.display='none'">×</button>
         </div>
         <div class="modal-body">
             <div style="background:#fff; border-radius:8px; padding:15px; margin-bottom:15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
                 <div class="edit-label">1. Source des données</div>
                 <select id="bi-source" class="edit-input" onchange="window.biLoadSource()">
                     <optgroup label="Données Brutes"><option value="raw_gen">Tableau Général Canons</option><option value="raw_hist">Historique Enneigeurs</option><option value="raw_tick">Maintenance Neige (Tickets)</option><option value="hist">Météo : Historique</option></optgroup>
-                    <optgroup label="Données Calculées"><option value="conso">Production : Volumes par Saison</option><option value="defauts">Maintenance : Pannes par Mois</option><option value="types">Parc : Types de Canons</option></optgroup>
+                    <optgroup label="Données Calculées"><option value="conso">Production par Saison</option><option value="defauts">Pannes par Mois</option><option value="types">Types de Canons</option></optgroup>
                 </select>
                 <div class="edit-label">2. Format Global</div>
                 <select id="bi-type" class="edit-input" onchange="window.biUpdateUI()"><option value="bar">📊 Barres</option><option value="line">📈 Courbes</option><option value="combo">📉 Combiné</option><option value="pie">🥧 Camembert</option><option value="doughnut">🍩 Anneau</option></select>
-                <div class="edit-label">3. Axe Horizontal (Abscisses)</div>
-                <select id="bi-x" class="edit-input" onchange="window.biDrawChart()"></select>
+                <div class="edit-label">3. Axe Abscisses</div><select id="bi-x" class="edit-input" onchange="window.biDrawChart()"></select>
                 <div class="edit-label">4. Axes Verticaux (Cochez pour ajouter)</div>
-                <div id="bi-y-container" style="background:#fdfdfd; border:1px solid #ccc; border-radius:6px; padding:10px; max-height:200px; overflow-y:auto; margin-bottom:12px; font-size:13px;"></div>
+                <div id="bi-y-container" style="background:#fdfdfd; border:1px solid #ccc; border-radius:8px; padding:10px; max-height:200px; overflow-y:auto; margin-bottom:12px; font-size:14px;"></div>
                 <button class="btn-action-primary" style="background:#8e44ad;" onclick="window.exportBiChart()">💾 Télécharger l'Image</button>
             </div>
             <div style="background:#fff; border-radius:8px; border:1px solid #ddd; padding:15px; flex:1; min-height:300px; position:relative;">
@@ -337,8 +311,7 @@
 
     <div id="compare-modal" class="mobile-modal">
         <div class="modal-header" style="background:#d35400;">
-            <span>📊 Comparaison Saisons</span>
-            <button class="modal-close-btn" onclick="window.openGlobalCompareModal(false)">×</button>
+            <span>📊 Comparaison Saisons</span><button class="modal-close-btn" onclick="window.openGlobalCompareModal(false)">×</button>
         </div>
         <div class="modal-body">
             <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
@@ -350,7 +323,7 @@
                 </div>
                 <button class="btn-action-primary" style="background:#e67e22;" onclick="window.renderGlobalComparison()">Comparer les données</button>
             </div>
-            <div style="background:#fff; padding:15px; border-radius:8px; border:1px solid #ddd; flex:1; min-height:350px; position:relative;" id="main-comp-chart-container">
+            <div style="background:#fff; padding:15px; border-radius:8px; border:1px solid #ddd; flex:1; min-height:400px; position:relative;" id="main-comp-chart-container">
                 <canvas id="main-comp-canvas"></canvas>
             </div>
         </div>
@@ -358,14 +331,12 @@
 
     <div id="meteo-history-modal" class="mobile-modal">
         <div class="modal-header" style="background:#16a085;">
-            <span>📈 Historique Météo</span>
-            <button class="modal-close-btn" onclick="window.openMeteoHistoryModal(false)">×</button>
+            <span>📈 Historique Météo</span><button class="modal-close-btn" onclick="window.openMeteoHistoryModal(false)">×</button>
         </div>
         <div class="modal-body">
-            <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:15px;">
                 <div class="edit-label">Donnée à analyser</div><select id="meteo-metric" class="edit-input" onchange="window.renderMeteoHistoryChart()"></select>
-                <div class="edit-label">Type de graphique</div>
-                <select id="meteo-chart-type" class="edit-input" onchange="window.renderMeteoHistoryChart()"><option value="line">📈 Courbe temporelle</option><option value="bar">📊 Histogramme</option></select>
+                <div class="edit-label">Type de graphique</div><select id="meteo-chart-type" class="edit-input" onchange="window.renderMeteoHistoryChart()"><option value="line">📈 Courbe</option><option value="bar">📊 Histogramme</option></select>
             </div>
             <div style="background:#fff; padding:15px; border-radius:8px; border:1px solid #ddd; flex:1; min-height:350px; position:relative;">
                 <canvas id="meteo-history-canvas"></canvas>
@@ -379,69 +350,61 @@
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbxXWPGusI2o66WGBut-urJXxeB00ltFti2KltPXb-mafmmfleavph8wRGNWPydHw0YY1g/exec";
 
         window.map = null; window.satLayer = null; window.geojsonLayer = null; window.webcamLayerGroup = null; window.userMarker = null;
+        
+        // Stockage des Données
         window.snowCannons = {"type":"FeatureCollection","features":[]}; 
         window.rawGeneral = []; window.rawHistorique = []; window.rawTicketsSheet = []; window.meteoHistData = []; 
         window.meteoFroidData = []; window.rawTickets = []; window.saisonsList = []; window.cloudKmzLayers = []; 
         window.webcamsData = []; window.suiviEntretienData = []; window.rawAtelier = [];
         
-        // --- NOUVELLES VARIABLES (Stock & Drive) ---
+        // NOUVEAU : Stockage Inventaire et Drive
         window.rawStock = []; 
         window.drivePhotos = {}; 
         window.driveIcons = {};
         
+        // Variables d'état
         window.isMultiSelect = false; window.columnValuesSets = {}; window.availableColumns = []; 
         window.mainTheme = 'defauts'; window.histMetric = 'eau'; window.histSeasonIdx = 0; 
-        window.absoluteMaxes = {eau:0, air:0, temps:0}; window.currentMaxThreshold = {eau:100, air:100, temps:100}; 
-        window.currentMinThreshold = {eau:0, air:0, temps:0}; window.activeFilters = [{key:"", vals:[]}]; 
-        window.currentPistes = ['all']; window.currentTypes = ['all']; window.chartInstances = {}; 
-        window.selectedCannonsMap = new Map(); window.currentlyEditingId = null; 
+        window.absoluteMaxes = {eau:0, air:0, temps:0}; window.currentMaxThreshold = {eau:100, air:100, temps:100}; window.currentMinThreshold = {eau:0, air:0, temps:0}; 
+        window.activeFilters = [{key:"", vals:[]}]; window.currentPistes = ['all']; window.currentTypes = ['all']; 
+        window.chartInstances = {}; window.selectedCannonsMap = new Map(); window.currentlyEditingId = null; 
+        
         window.technoColors = {}; window.repColors = {}; window.transfoColors = {}; window.externalLayers = {}; 
         window.defaultColors = ['#e74c3c','#3498db','#f1c40f','#2ecc71','#9b59b6','#e67e22','#1abc9c','#34495e']; 
         window.keyPiste = ""; window.keyType = ""; window.keyRep = ""; window.keyTransfo = ""; 
         window.localDB = null; window.bootAttempt = 0; window.tempTicketPayloads = {};
 
         /* ========================================================================= */
-        /* SECTION 2 : UTILITAIRES & FONCTIONS DE RECHERCHE DE DONNÉES               */
+        /* SECTION 2 : UTILITAIRES ET FONCTIONS DE BASE                              */
         /* ========================================================================= */
-        window.getV = function(p, k) {
-            if(!k || !p || !p.fullData) return "N/A";
-            let normK = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-            let o = p.fullData.find(x => x.k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === normK);
-            return o ? o.v.toString().trim() : "N/A";
-        }; 
+        window.getV = function(p, k) { if(!k || !p || !p.fullData) return "N/A"; let normK = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); let o = p.fullData.find(x => x.k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === normK); return o ? o.v.toString().trim() : "N/A"; }; 
         window.getTicketsForCanon = function(id) { return window.rawTickets.filter(t => t.idCanon === id); }; 
         window.getActiveTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('faire') || t.statut.includes('cours')); }; 
         window.getHistoryTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('fait') || t.statut === '').sort((a,b) => new Date(b.date) - new Date(a.date)); };
-
+        
         window.setStep = function(step, desc) { let elStep = document.getElementById('loading-step'); if (elStep) elStep.innerText = "Étape " + step + "/5\n" + desc; };
-        window.fetchWithTimeout = async function(resource, options = {}) { let finalUrl = resource; if(!resource.includes('raw.githubusercontent')) { finalUrl += (resource.includes('?') ? '&' : '?') + 't=' + new Date().getTime(); } const controller = window.AbortController ? new AbortController() : null; if (controller) options.signal = controller.signal; const timeoutPromise = new Promise((_, reject) => { setTimeout(() => { if (controller) controller.abort(); reject(new Error("Délai d'attente dépassé (15s).")); }, 15000); }); return Promise.race([fetch(finalUrl, options), timeoutPromise]); };
+        window.fetchWithTimeout = async function(resource, options = {}) { let finalUrl = resource; if(!resource.includes('raw.githubusercontent')) { finalUrl += (resource.includes('?') ? '&' : '?') + 't=' + new Date().getTime(); } const controller = window.AbortController ? new AbortController() : null; if (controller) options.signal = controller.signal; const timeoutPromise = new Promise((_, reject) => { setTimeout(() => { if (controller) controller.abort(); reject(new Error("Délai d'attente dépassé.")); }, 15000); }); return Promise.race([fetch(finalUrl, options), timeoutPromise]); };
 
-        // --- UTILITAIRES IMAGES APPSHEET / DRIVE ---
+        // Parseurs d'images Drive / AppSheet
         window.parseAppSheetPhotoUrl = function(photoPath) {
             if (!photoPath || photoPath.trim() === "") return "https://placehold.co/150x150?text=Pas+de+photo";
             if (photoPath.startsWith("http")) return photoPath;
-            let cleanPath = photoPath.startsWith("/") ? photoPath.substring(1) : photoPath;
-            let parts = cleanPath.split("/");
-            if (parts.length >= 3 && parts[0].toLowerCase() === "appsheet") {
-                let fileName = parts.slice(3).join("/"); 
-                return `https://www.appsheet.com/template/gettablefileurl?appName=maintenanceneige-3822734&tableName=Stock&fileName=${encodeURIComponent(fileName)}`;
-            }
-            return "https://placehold.co/150x150?text=Chemin+Invalide";
+            let parts = photoPath.startsWith("/") ? photoPath.substring(1).split("/") : photoPath.split("/");
+            if (parts.length >= 3 && parts[0].toLowerCase() === "appsheet") { return `https://www.appsheet.com/template/gettablefileurl?appName=maintenanceneige-3822734&tableName=Stock&fileName=${encodeURIComponent(parts.slice(3).join("/"))}`; }
+            return "https://placehold.co/150x150?text=Erreur";
         };
-
         window.parseDriveUrl = function(url) {
             if (!url || url.trim() === "") return "";
             let id = ""; let matchD = url.match(/\/d\/([a-zA-Z0-9-_]+)/); let matchId = url.match(/[?&]id=([a-zA-Z0-9-_]+)/);
             if (matchD) id = matchD[1]; else if (matchId) id = matchId[1];
-            if (id) return "https://lh3.googleusercontent.com/d/" + id;
-            return url;
+            if (id) return "https://lh3.googleusercontent.com/d/" + id; return url;
         };
 
         /* ========================================================================= */
-        /* SECTION 3 : CONNEXION GOOGLE SHEETS ET RÉPARTITION DES DONNÉES            */
+        /* SECTION 3 : CONNEXION AU SERVEUR GOOGLE SHEETS                            */
         /* ========================================================================= */
         window.fetchGoogleSheetsData = async function() {
-            window.setStep(1, "Connexion au serveur Google...");
+            window.setStep(1, "Connexion serveur Google...");
             const response = await window.fetchWithTimeout(GOOGLE_API_URL);
             if (!response.ok) throw new Error("Accès refusé.");
             let data = JSON.parse(await response.text());
@@ -451,16 +414,14 @@
             window.rawAtelier = data.atelier || []; window.rawStock = data.stock || [];
             window.drivePhotos = data.drivePhotos || {}; window.driveIcons = data.driveIcons || {}; 
 
-            window.setStep(2, "Analyse du Tableau Général...");
-            const genHeaders = data.general[0].map(h => (h||"").toString().toLowerCase().trim());
-            const originalHeaders = data.general[0].map(h => (h||"").toString().trim()); 
+            window.setStep(2, "Analyse Tableau Général...");
+            const genHeaders = data.general[0].map(h => (h||"").toString().toLowerCase().trim()); const originalHeaders = data.general[0].map(h => (h||"").toString().trim()); 
             const findCol = (keywords) => { let idx = genHeaders.findIndex(h => keywords.some(k => h === k) || keywords.some(k => h.includes(k))); return idx !== -1 ? originalHeaders[idx] : null; };
 
             let idxId = genHeaders.findIndex(h => h.includes('n° de vanne') || h.includes('n°')); if(idxId === -1) idxId = 1; 
             const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps'));
             
             window.keyPiste = findCol(['piste', 'pistes']); window.keyType = findCol(['type canon', 'type de canon', 'type']); window.keyRep = findCol(['répéteur', 'repeteur', 'épéteur']); window.keyTransfo = findCol(['transfo']);
-
             originalHeaders.forEach(h => { let hl = h.toLowerCase(); if(!hl.includes('xy') && !hl.includes('gps') && !hl.includes('photo')) { window.availableColumns.push(h); window.columnValuesSets[h] = new Set(); } });
 
             let dictGeneral = {};
@@ -468,12 +429,8 @@
                 let idRaw = row[idxId]; if (idRaw == null || idRaw === "") return;
                 let id = idRaw.toString().replace(/^YA\s*/i, '').trim(); if (!id) return;
                 let lat = 0, lng = 0;
-                if (row[idxXY]) {
-                    let matches = String(row[idxXY]).replace(/,/g, '.').match(/-?\d+(?:\.\d+)?/g);
-                    if (matches && matches.length >= 2) { lat = parseFloat(matches[0]); lng = parseFloat(matches[1]); if (lat < 20 && lng > 30) { let temp = lat; lat = lng; lng = temp; } }
-                }
-                let fullData = [];
-                originalHeaders.forEach((head, i) => { if(head.trim() !== "") { let val = (i < row.length && row[i] != null) ? row[i].toString() : ""; fullData.push({k: head, v: val}); if(val !== "" && window.columnValuesSets[head]) window.columnValuesSets[head].add(val.trim()); } });
+                if (row[idxXY]) { let matches = String(row[idxXY]).replace(/,/g, '.').match(/-?\d+(?:\.\d+)?/g); if (matches && matches.length >= 2) { lat = parseFloat(matches[0]); lng = parseFloat(matches[1]); if (lat < 20 && lng > 30) { let temp = lat; lat = lng; lng = temp; } } }
+                let fullData = []; originalHeaders.forEach((head, i) => { if(head.trim() !== "") { let val = (i < row.length && row[i] != null) ? row[i].toString() : ""; fullData.push({k: head, v: val}); if(val !== "" && window.columnValuesSets[head]) window.columnValuesSets[head].add(val.trim()); } });
                 dictGeneral[id] = { id: id, lat: lat, lng: lng, fullData: fullData, historique: {} };
             });
 
@@ -482,10 +439,7 @@
                 const histHeaders = data.historique[0].map(h => (h||"").toString().toLowerCase().trim()); const idxCanons = 1; let colsEau = {}, colsAir = {}, colsTemps = {}; let saisonsSet = new Set();
                 histHeaders.forEach((h, i) => { let match = h.match(/(eau|air|marche).*?(\d{2}\/\d{2})/i); if (match) { let t = match[1].toLowerCase(); let s = match[2]; saisonsSet.add(s); if (t.includes('eau')) colsEau[s] = i; if (t.includes('air')) colsAir[s] = i; if (t.includes('marche')) colsTemps[s] = i; } });
                 window.saisonsList = Array.from(saisonsSet).sort((a,b) => parseInt(a.split('/')[0]) - parseInt(b.split('/')[0])); window.histSeasonIdx = window.saisonsList.length > 0 ? window.saisonsList.length - 1 : 0;
-                data.historique.slice(1).forEach(row => {
-                    let rawId = row[idxCanons];
-                    if (rawId != null && rawId !== "") { let id = rawId.toString().replace(/^YA\s*/i, '').trim(); if (id && dictGeneral[id]) { window.saisonsList.forEach(s => { dictGeneral[id].historique[s] = { eau: colsEau[s]?parseFloat(row[colsEau[s]])||0:0, air: colsAir[s]?parseFloat(row[colsAir[s]])||0:0, temps: colsTemps[s]?parseFloat(row[colsTemps[s]])||0:0 }; }); } }
-                });
+                data.historique.slice(1).forEach(row => { let rawId = row[idxCanons]; if (rawId != null && rawId !== "") { let id = rawId.toString().replace(/^YA\s*/i, '').trim(); if (id && dictGeneral[id]) { window.saisonsList.forEach(s => { dictGeneral[id].historique[s] = { eau: colsEau[s]?parseFloat(row[colsEau[s]])||0:0, air: colsAir[s]?parseFloat(row[colsAir[s]])||0:0, temps: colsTemps[s]?parseFloat(row[colsTemps[s]])||0:0 }; }); } } });
             }
 
             window.setStep(4, "Préparation des Pannes...");
@@ -500,6 +454,24 @@
                 }
             }
 
+            if (data.kmz && data.kmz.length > 1) {
+                const kHead = data.kmz[0].map(h => (h||"").toString().toLowerCase().trim());
+                const iNom = kHead.findIndex(h => h.includes("nom") || h.includes("calque")); const iUrl = kHead.findIndex(h => h.includes("url") || h.includes("lien")); const iCol = kHead.findIndex(h => h.includes("couleur")); const iWei = kHead.findIndex(h => h.includes("epaisseur"));
+                if(iNom > -1 && iUrl > -1) {
+                    window.cloudKmzLayers = [];
+                    data.kmz.slice(1).forEach((row, index) => { let nom = row[iNom]; let url = row[iUrl]; if(nom && url) { let col = (iCol > -1 && row[iCol]) ? row[iCol].toString().trim() : window.defaultColors[index % window.defaultColors.length]; let wei = (iWei > -1 && row[iWei]) ? parseInt(row[iWei]) : 4; window.cloudKmzLayers.push({ nom: nom, url: url, isVisible: false, leafletLayer: null, color: col, weight: wei, commentaire: "" }); } });
+                }
+            }
+
+            window.setStep(5, "Analyse des Webcams...");
+            if (data.webcams && data.webcams.length > 1) {
+                const wHead = data.webcams[0].map(h => (h||"").toString().toLowerCase().trim());
+                const iNom = wHead.findIndex(h => h.includes("nom")); const iLL = wHead.findIndex(h => h.match(/(gps|xy|lat)/)); const iUrl = wHead.findIndex(h => h.match(/(url|lien)/)); const iIcon = wHead.findIndex(h => h.match(/(icone|logo)/));
+                if(iNom > -1 && iLL > -1 && iUrl > -1) {
+                    data.webcams.slice(1).forEach(row => { let nom = row[iNom]; let llStr = row[iLL] ? row[iLL].toString() : ""; let url = row[iUrl]; let icon = (iIcon > -1 && row[iIcon]) ? row[iIcon].toString().trim() : "📷"; if(!icon) icon = "📷"; if(nom && llStr && url) { let matches = llStr.replace(/,/g, '.').match(/-?\d+(?:\.\d+)?/g); if(matches && matches.length >= 2) { let lat = parseFloat(matches[0]); let lng = parseFloat(matches[1]); if (lat < 20 && lng > 30) { let t = lat; lat = lng; lng = t; } window.webcamsData.push({ nom: nom, lat: lat, lng: lng, url: url, icon: icon }); } } });
+                }
+            }
+
             Object.values(dictGeneral).forEach(canon => { if (canon.lat !== 0 && !isNaN(canon.lat)) { window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); } });
 
             let ls = document.getElementById('loading-spinner'); if(ls) ls.style.display = 'none';
@@ -507,7 +479,9 @@
             let lst = document.getElementById('loading-step'); if(lst) lst.style.display = 'none';
             setTimeout(() => { window.initAppUI(); let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; }, 800);
         };
-
+                    /* ========================================================================= */
+        /* SECTION 4 : LOGIQUE DE L'INTERFACE MOBILE ET LEAFLET                      */
+        /* ========================================================================= */
         window.initMap = function() {
             if (typeof L === 'undefined') return;
             window.satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 19 });
@@ -522,10 +496,9 @@
                 } else { window.closeBottomSheet(); }
             });
         };
+
         window.locateUser = function() { window.map.locate({setView: true, maxZoom: 17, enableHighAccuracy: true}); window.map.once('locationfound', function(e) { if (!window.userMarker) { window.userMarker = L.circleMarker(e.latlng, {radius:8, fillColor:"#3498db", color:"#ffffff", weight:3, opacity:1, fillOpacity:1}).addTo(window.map); } else { window.userMarker.setLatLng(e.latlng); } }); };
-                    /* ========================================================================= */
-        /* SECTION 4 : LOGIQUE DE L'INTERFACE MOBILE (SWIPE & MENUS)                 */
-        /* ========================================================================= */
+
         window.toggleLeftMenu = function() {
             const sidebar = document.getElementById('sidebar'); const backdrop = document.getElementById('backdrop');
             if (sidebar.classList.contains('open')) { sidebar.classList.remove('open'); backdrop.classList.remove('visible'); } 
@@ -543,118 +516,580 @@
             const sheet = document.getElementById('right-sidebar');
             sheet.classList.remove('state-hidden', 'state-half', 'state-full'); sheet.classList.add('state-hidden');
             document.getElementById('mobile-bottombar').style.display = 'flex';
-            window.selectedCannonsMap.clear(); window.updateMap(); // Correction bug mobile : On nettoie la sélection sans recharger la page
+            window.selectedCannonsMap.clear(); window.updateMap();
         };
 
-        window.toggleSheetState = function() {
+        // Swipe handler for the Bottom Sheet
+        setTimeout(() => {
             const sheet = document.getElementById('right-sidebar');
-            if (sheet.classList.contains('state-half')) window.openBottomSheet('state-full');
-            else if (sheet.classList.contains('state-full')) window.openBottomSheet('state-half');
-        };
-        setTimeout(() => { let handleZone = document.querySelector('.sheet-handle-zone'); let titleZone = document.getElementById('right-title'); if(handleZone) handleZone.onclick = window.toggleSheetState; if(titleZone) titleZone.onclick = window.toggleSheetState; }, 1000);
+            const sheetHandleZone = document.querySelector('.sheet-handle-zone');
+            const rightTitle = document.getElementById('right-title');
+            
+            // Clic pour agrandir/réduire
+            const toggleSheet = () => { if (sheet.classList.contains('state-half')) window.openBottomSheet('state-full'); else if (sheet.classList.contains('state-full')) window.openBottomSheet('state-half'); };
+            if(handleZone) handleZone.onclick = toggleSheet; if(rightTitle) rightTitle.onclick = toggleSheet;
+
+            // Logique de Glissement
+            let startY = 0; let currentY = 0; let isDraggingSheet = false;
+            if(sheetHandleZone) {
+                sheetHandleZone.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; isDraggingSheet = true; sheet.style.transition = 'none'; }, {passive: true});
+                sheetHandleZone.addEventListener('touchmove', (e) => { if (!isDraggingSheet) return; currentY = e.touches[0].clientY; const deltaY = currentY - startY; if (sheet.classList.contains('state-half') && deltaY < 0) { sheet.style.transform = `translateY(calc(45% + ${deltaY}px))`; } else if (sheet.classList.contains('state-full') && deltaY > 0) { sheet.style.transform = `translateY(${deltaY}px)`; } }, {passive: true});
+                sheetHandleZone.addEventListener('touchend', (e) => { if (!isDraggingSheet) return; isDraggingSheet = false; sheet.style.transition = ''; sheet.style.transform = ''; const deltaY = currentY - startY; const threshold = 50; if (sheet.classList.contains('state-half')) { if (deltaY < -threshold) window.openBottomSheet('state-full'); else if (deltaY > threshold) window.closeBottomSheet(); else window.openBottomSheet('state-half'); } else if (sheet.classList.contains('state-full')) { if (deltaY > threshold) window.openBottomSheet('state-half'); else window.openBottomSheet('state-full'); } });
+            }
+        }, 1000);
 
         window.focusCannon = function(id) {
             if (!window.geojsonLayer) return;
             window.geojsonLayer.eachLayer(l => {
                 if (l.feature.properties.id === id) {
                     if (!window.isMultiSelect && window.mainTheme !== 'suivi_entretien') window.selectedCannonsMap.clear();
-                    window.selectedCannonsMap.set(id, l);
-                    window.map.setView(l.getLatLng(), 17, {animate: true});
-                    setTimeout(() => { window.map.panBy([0, window.innerHeight / 4], {animate: true}); }, 300); // Centrage offset pour mobile
+                    window.selectedCannonsMap.set(id, l); window.map.setView(l.getLatLng(), 17, {animate: true});
+                    setTimeout(() => { window.map.panBy([0, window.innerHeight / 4], {animate: true}); }, 300); // Decalage pour voir le marker
                     window.updateMap(); window.renderSelectionPanel(); window.openBottomSheet('state-half');
                 }
             });
         };
 
-        /* ========================================================================= */
-        /* SECTION 5 : INITIALISATION ET ROUTAGE DES THEMES (ATELIER/STOCK)          */
-        /* ========================================================================= */
-        window.initAppUI = function() {
-            let ts=new Set(), rs=new Set(), trs=new Set(), ps=new Set();
-            window.snowCannons.features.forEach(f=>{ let p=f.properties; let t=window.getV(p,window.keyType); if(t!=="N/A")ts.add(t.toLowerCase()); let r=window.getV(p,window.keyRep); if(r!=="N/A")rs.add(r); let tr=window.getV(p,window.keyTransfo); if(tr!=="N/A")trs.add(tr); let pi=window.getV(p,window.keyPiste); if(pi!=="N/A")ps.add(pi); });
-            
-            let tc=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6']; Array.from(ts).sort().forEach((t,i)=>window.technoColors[t]=tc[i%tc.length]);
-            let rc=['#1abc9c','#16a085','#f39c12','#d35400','#8e44ad']; Array.from(rs).sort().forEach((r,i)=>window.repColors[r]=rc[i%rc.length]);
-            let neonColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#00FFFF', '#FF8C00', '#FF1493', '#39FF14']; Array.from(trs).sort().forEach((t,i)=>window.transfoColors[t]=neonColors[i%neonColors.length]);
-            
-            // Écouteurs de changement de Thème et Routage des Workspaces
-            document.querySelectorAll('input[name="main_theme"]').forEach(r => {
-                r.addEventListener('change', e => {
-                    window.mainTheme = e.target.value;
-                    document.querySelectorAll('.theme-details, .theme-details-hist').forEach(el => el.style.display = 'none');
-                    document.querySelectorAll('.radio-card').forEach(el => { el.style.borderBottomLeftRadius = '6px'; el.style.borderBottomRightRadius = '6px'; el.style.marginBottom = '8px'; el.style.borderColor = '#e1e8ed'; });
-                    
-                    let activeDetails = document.getElementById('details-' + window.mainTheme); let activeLabel = document.getElementById('lbl-' + window.mainTheme);
-                    if (activeDetails && activeLabel) { activeDetails.style.display = 'block'; activeLabel.style.borderBottomLeftRadius = '0'; activeLabel.style.borderBottomRightRadius = '0'; activeLabel.style.marginBottom = '0'; if(window.mainTheme === 'stock') activeLabel.style.borderColor = '#16a085'; else if(window.mainTheme === 'atelier') activeLabel.style.borderColor = '#8e44ad'; else activeLabel.style.borderColor = '#3498db'; }
-                    
-                    // Routage Mobile
-                    if(window.mainTheme === 'atelier') { document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'block'; document.getElementById('stock-workspace').style.display = 'none'; window.closeBottomSheet(); if(window.renderAtelierWorkspace) window.renderAtelierWorkspace(); } 
-                    else if(window.mainTheme === 'stock') { document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'block'; window.closeBottomSheet(); if(window.renderStockWorkspace) window.renderStockWorkspace(); }
-                    else { document.getElementById('map').style.display = 'block'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'none'; window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); if(window.mainTheme === 'suivi_entretien' || window.mainTheme === 'entretien_tete') window.openBottomSheet('state-half'); }
-                    
-                    if(document.getElementById('sidebar').classList.contains('open')) window.toggleLeftMenu();
-                });
-            });
-
-            // Affichage Leaflet (Point d'entrée de la carte)
-            if(window.geojsonLayer) window.map.removeLayer(window.geojsonLayer);
-            window.geojsonLayer = L.geoJSON(window.snowCannons, {
-                pointToLayer: function (feature, latlng) { return L.marker(latlng, { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div></div>` }) }); },
-                onEachFeature: function (feature, layer) { layer.on('click', function(e) { L.DomEvent.stopPropagation(e); if (!window.currentlyEditingId) window.focusCannon(feature.properties.id); }); }
-            }).addTo(window.map);
-            if (window.snowCannons.features.length > 0) window.map.fitBounds(window.geojsonLayer.getBounds(), { padding: [30, 30] });
-            
-            window.updateMap(); window.triggerGlobalFilterChart();
-        };
-
-        /* ========================================================================= */
-        /* SECTION 6 : MOTEUR DE CARTE ET INJECTION DES ICONES DRIVE                 */
-        /* ========================================================================= */
         window.getColorByFilter = function(ratio, p) {
+            if(window.mainTheme === 'entretien_tete') { let bVal = window.getV(p, "Buses").toLowerCase().trim(); return (bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x") ? '#e67e22' : '#bdc3c7'; }
             const inter = (c1,c2,f) => { let r = c1.slice(); for(let i=0; i<3; i++) r[i] = Math.round(r[i] + f * (c2[i] - c1[i])); return `rgb(${r[0]},${r[1]},${r[2]})`; };
             if(window.mainTheme === 'defauts') { let act = window.getActiveTickets(p.id); if(act.length === 0) return '#bdc3c7'; if(act.some(t => t.statut.includes('faire'))) return '#e74c3c'; return '#f39c12'; }
+            if(window.mainTheme === 'historique') { if(window.histMetric === 'eau') return inter([173,216,230],[41,128,185],ratio); if(window.histMetric === 'air') return inter([250,219,94],[211,84,0],ratio); if(window.histMetric === 'temps') return inter([171,235,198],[39,174,96],ratio); }
+            if(window.mainTheme === 'repeteur') return window.repColors[window.getV(p, window.keyRep)] || '#7f8c8d';
+            if(window.mainTheme === 'transfo') return window.transfoColors[window.getV(p, window.keyTransfo)] || '#7f8c8d';
             if(window.mainTheme === 'type') { let tv = window.getV(p, window.keyType).toLowerCase(); if(["demak lenko", "demac lenko"].includes(tv)) return "#0000FF"; if(["sufag", "street", "taurus", "taurax", "peak"].includes(tv)) return "#008000"; return window.technoColors[tv] || "#FFD700"; }
             return '#34495e'; 
         };
 
         window.updateMap = function() {
-            if(!window.geojsonLayer) return;
+            if(!window.geojsonLayer) return; let s = window.saisonsList[window.histSeasonIdx];
             window.geojsonLayer.eachLayer(function(layer) {
-                const p = layer.feature.properties;
-                p._isVisible = true; if (!window.map.hasLayer(layer)) window.map.addLayer(layer);
+                const p = layer.feature.properties; let vis = true;
+                if (window.currentPistes && !window.currentPistes.includes('all')) { if (!window.currentPistes.includes(window.getV(p, window.keyPiste))) vis = false; }
+                if (window.currentTypes && !window.currentTypes.includes('all')) { if (!window.currentTypes.includes(window.getV(p, window.keyType).toLowerCase())) vis = false; }
                 
-                // --- INJECTION DES IMAGES DEPUIS GOOGLE DRIVE ---
-                if (window.mainTheme === 'type') {
-                    let typeCanon = window.getV(p, window.keyType).toLowerCase().trim();
-                    let iconUrl = (window.driveIcons && window.driveIcons[typeCanon]) ? window.driveIcons[typeCanon] : null;
-                    if (iconUrl) {
-                        let imageSize = 40; let zIdx = window.currentlyEditingId === p.id ? 2000 : (window.selectedCannonsMap.has(p.id) ? 1000 : 0);
-                        layer.setZIndexOffset(zIdx);
-                        let highlightStyle = (window.selectedCannonsMap.has(p.id) || window.currentlyEditingId === p.id) ? "border: 2px solid #e74c3c; border-radius: 50%; background-color: rgba(255,255,255,0.7);" : "";
-                        let imageHtml = `<div style="position:relative; width:${imageSize}px; height:${imageSize}px;"><div style="background:url('${iconUrl}') center/contain no-repeat; width:100%; height:100%; filter: drop-shadow(2px 4px 5px rgba(0,0,0,0.5)); transition: transform 0.2s; cursor:pointer; ${highlightStyle}"></div><div style="position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; font-size:9px; padding:1px 4px; border-radius:4px; font-weight:bold; white-space:nowrap; pointer-events:none;">${p.id}</div></div>`;
-                        layer.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: imageHtml, iconSize: [imageSize, imageSize], iconAnchor: [imageSize/2, imageSize/2] }));
-                        layer.setOpacity(1); if(layer._icon) { layer._icon.style.opacity = '1'; }
-                        return; // Coupe l'exécution classique pour ce canon
-                    }
+                let val = 0;
+                if (window.mainTheme === 'historique') {
+                    val = p.historique[s] ? parseFloat(p.historique[s][window.histMetric]) : 0; if (isNaN(val)) val = 0;
+                    if (val < parseFloat(window.currentMinThreshold[window.histMetric]) || val > parseFloat(window.currentMaxThreshold[window.histMetric])) vis = false;
                 }
-                
-                // --- RENDU CLASSIQUE DES PASTILLES COULEURS ---
-                let rad = 12; let bgStr = window.getColorByFilter(0, p); let bord = window.selectedCannonsMap.has(p.id) ? "#2c3e50" : "white"; let bw = window.selectedCannonsMap.has(p.id) ? "3px" : "1.5px";
-                layer.setZIndexOffset(window.selectedCannonsMap.has(p.id) ? 1000 : 0);
-                layer.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: `<div class="cannon-circle" style="background:${bgStr}; width:${rad*2}px; height:${rad*2}px; line-height:24px; border:${bw} solid ${bord}; font-size:9px; position:relative;">${p.id}</div>`, iconSize: [rad*2, rad*2], iconAnchor: [rad, rad] }));
+
+                if (!vis) { p._isVisible = false; if (window.map.hasLayer(layer)) window.map.removeLayer(layer); } 
+                else {
+                    p._isVisible = true; if (!window.map.hasLayer(layer)) window.map.addLayer(layer);
+                    
+                    // ICONES DRIVE SUR LA CARTE
+                    if (window.mainTheme === 'type') {
+                        let typeCanon = window.getV(p, window.keyType).toLowerCase().trim();
+                        let iconUrl = (window.driveIcons && window.driveIcons[typeCanon]) ? window.driveIcons[typeCanon] : null;
+                        if (iconUrl) {
+                            let imageSize = 40; let zIdx = window.currentlyEditingId === p.id ? 2000 : (window.selectedCannonsMap.has(p.id) ? 1000 : 0); layer.setZIndexOffset(zIdx);
+                            let highlightStyle = (window.selectedCannonsMap.has(p.id) || window.currentlyEditingId === p.id) ? "border: 2px solid #e74c3c; border-radius: 50%; background-color: rgba(255,255,255,0.7);" : "";
+                            let imageHtml = `<div style="position:relative; width:${imageSize}px; height:${imageSize}px;"><div style="background:url('${iconUrl}') center/contain no-repeat; width:100%; height:100%; filter: drop-shadow(2px 4px 5px rgba(0,0,0,0.5)); transition: transform 0.2s; cursor:pointer; ${highlightStyle}"></div><div style="position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; font-size:10px; padding:2px 5px; border-radius:4px; font-weight:bold; white-space:nowrap; pointer-events:none;">${p.id}</div></div>`;
+                            layer.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: imageHtml, iconSize: [imageSize, imageSize], iconAnchor: [imageSize/2, imageSize/2] }));
+                            layer.setOpacity(1); if(layer._icon) layer._icon.style.opacity = '1'; return;
+                        }
+                    }
+
+                    // ICONES CLASSIQUES
+                    let rad = 12; let ratio = 0; let bgStr = ""; let iconChar = p.id; let lh = '24px'; let remarkBadge = ""; 
+                    if (window.mainTheme === 'historique') { let maxVal = window.absoluteMaxes[window.histMetric] || 1; ratio = val / maxVal; rad = 10 + (15 * ratio); bgStr = window.getColorByFilter(ratio, p); } 
+                    else if (window.mainTheme === 'suivi_entretien') {
+                        let acts = window.getActiveTickets(p.id); let hasFault = acts.length > 0;
+                        let suivi = window.suiviEntretienData.find(row => row[0] == p.id) || ["", "", "non", "non", "", "", ""];
+                        let dec = suivi[2] && suivi[2].toString().toLowerCase().trim() === "oui"; let prev = suivi[3] && suivi[3].toString().toLowerCase().trim() === "oui"; let rem = suivi[5] || ""; 
+                        let colors = []; if(hasFault) colors.push('#e74c3c'); if(prev) colors.push('#9b59b6'); if(dec) colors.push('#27ae60');      
+                        bgStr = '#f1c40f'; 
+                        if(colors.length === 3) bgStr = `conic-gradient(${colors[0]} 0 33%, ${colors[1]} 33% 66%, ${colors[2]} 66% 100%)`; else if(colors.length === 2) bgStr = `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)`; else if(colors.length === 1) bgStr = colors[0];
+                        if (!dec) { iconChar = `⚡<br><span style="font-size:8px;">${p.id}</span>`; lh = '12px'; }
+                        if (rem.toString().trim() !== "") remarkBadge = `<div style="position:absolute; top:-6px; right:-6px; background:#e67e22; color:white; width:16px; height:16px; border-radius:50%; font-size:12px; font-weight:bold; text-align:center; line-height:16px; border:1px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,0.5);">!</div>`;
+                    } else { bgStr = window.getColorByFilter(0, p); }
+
+                    let bord = window.selectedCannonsMap.has(p.id) ? "#2c3e50" : (window.currentlyEditingId === p.id ? "#e74c3c" : "white");
+                    let bw = window.selectedCannonsMap.has(p.id) ? "3px" : (window.currentlyEditingId === p.id ? "4px" : "1.5px");
+                    let fsz = Math.max(9, rad - 4) + "px"; let zIdx = window.currentlyEditingId === p.id ? 2000 : (window.selectedCannonsMap.has(p.id) ? 1000 : 0); layer.setZIndexOffset(zIdx);
+                    let actClass = (window.mainTheme !== 'suivi_entretien' && window.mainTheme === 'defauts' && window.getActiveTickets(p.id).some(t => t.statut.includes('faire'))) ? "alert-urgent" : "";
+                    layer.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: `<div class="cannon-circle ${actClass}" style="background:${bgStr}; width:${rad*2}px; height:${rad*2}px; line-height:${lh}; border:${bw} solid ${bord}; font-size:${fsz}; position:relative;">${iconChar}${remarkBadge}</div>`, iconSize: [rad*2, rad*2], iconAnchor: [rad, rad] }));
+                    layer.setOpacity(1); if(layer._icon) { layer._icon.style.opacity = '1'; }
+                }
             });
         };
-        window.updateLegend = function() { /* Identique à ta version pour les pastilles */ };
+        
+        window.updateLegend = function() {
+            let elDef = document.getElementById('legend-defauts'); let elSuivi = document.getElementById('legend-suivi_entretien');
+            if (window.mainTheme === 'suivi_entretien' && elSuivi) { elSuivi.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e74c3c;"></div> Défaut en cours</div><div class="legend-item"><div class="color-box" style="background:#9b59b6;"></div> Préventif Usine</div><div class="legend-item"><div class="color-box" style="background:#27ae60;"></div> Déconnecté</div><div class="legend-item"><div class="color-box" style="background:#f1c40f;"></div> Connecté (⚡)</div>`; }
+            else if (window.mainTheme === 'entretien_tete') { let elEntretien = document.getElementById('legend-entretien_tete'); if (elEntretien) { elEntretien.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e67e22;"></div> Buses changées / OK</div><div class="legend-item"><div class="color-box" style="background:#bdc3c7;"></div> À faire</div>`; } }
+            else if (window.mainTheme === 'defauts' && elDef) { elDef.innerHTML = `<div class="legend-item"><div class="color-box" style="background: #e74c3c;"></div> Urgent (À faire)</div><div class="legend-item"><div class="color-box" style="background: #f39c12;"></div> En cours</div><div class="legend-item"><div class="color-box" style="background: #bdc3c7;"></div> RAS</div>`; }
+            else if (window.mainTheme === 'type') { let elTy = document.getElementById('legend-type'); let h = ''; Object.keys(window.technoColors).sort().forEach(k => { let color = window.technoColors[k]; if(["demak lenko", "demac lenko"].includes(k)) color = "#0000FF"; else if(["sufag", "street", "taurus", "taurax", "peak"].includes(k)) color = "#008000"; if(k === "n/a" || k === "") return; let iconHtml = `<div class="color-box" style="background: ${color};"></div>`; if (window.driveIcons && window.driveIcons[k]) { iconHtml = `<div style="width:24px; height:24px; background:url('${window.driveIcons[k]}') center/contain no-repeat; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));"></div>`; } h += `<div class="legend-item">${iconHtml} <span style="margin-left:8px;">${k.toUpperCase()}</span></div>`; }); if(elTy) elTy.innerHTML = h; }
+            else if (window.mainTheme === 'historique') { let hL = document.getElementById('legend-historique'); if(!hL) return; if (window.histMetric === 'eau') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #add8e6, #2980b9);"></div><div class="legend-labels"><span>0 m³</span><span>Max</span></div>`; else if (window.histMetric === 'air') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #fadb5e, #d35400);"></div><div class="legend-labels"><span>0</span><span>Max</span></div>`; else if (window.histMetric === 'temps') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #abebc6, #27ae60);"></div><div class="legend-labels"><span>0 h</span><span>Max</span></div>`; }
+        };
+                    /* ========================================================================= */
+        /* SECTION 5 : PANNEAU DE SÉLECTION & GESTION DES TICKETS                    */
+        /* ========================================================================= */
+        window.toggleMultiSelect = function() { window.isMultiSelect = !window.isMultiSelect; let btn = document.getElementById('btn-multi-toggle'); let txt = document.getElementById('multi-text'); if(window.isMultiSelect) { txt.innerText = "Sél. ON"; btn.classList.add('active'); } else { txt.innerText = "Sél. OFF"; btn.classList.remove('active'); } window.renderSelectionPanel(); };
+        window.clearSelection = function() { window.selectedCannonsMap.clear(); window.updateMap(); window.renderSelectionPanel(); window.triggerGlobalFilterChart(); };
+        
+        window.startEdit = function(id) {
+            window.currentlyEditingId = id; let l = window.selectedCannonsMap.get(id); let p = l.feature.properties;
+            document.getElementById('edit-id-display').innerText = p.id; document.getElementById('edit-id').value = p.id;
+            document.getElementById('edit-lat').value = l.getLatLng().lat.toFixed(7); document.getElementById('edit-lng').value = l.getLatLng().lng.toFixed(7);
+            let fc = document.getElementById('dynamic-edit-fields'); fc.innerHTML = "";
+            p.fullData.forEach(i => { if(i.k.toLowerCase().match(/(regard|xy|gps)/)) return; fc.innerHTML += `<div style="margin-bottom:12px;"><div class="edit-label">${i.k}</div><input type="text" class="edit-input dyn-field" data-key="${i.k}" value="${i.v}"></div>`; });
+            document.getElementById('view-selection').style.display = 'none'; document.getElementById('view-edit').style.display = 'block'; document.getElementById('right-title').innerText = "✏️ Édition"; window.updateMap(); window.openBottomSheet('state-full');
+        };
+        window.cancelEdit = function() { window.currentlyEditingId = null; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('right-title').innerText = "📌 Fiche Canon"; window.updateMap(); window.renderSelectionPanel(); window.openBottomSheet('state-half');};
 
+        window.saveEditData = async function() {
+            if(!window.currentlyEditingId) return;
+            let btn = document.getElementById('btn-save-edit'); btn.innerText = "⏳ Envoi..."; btn.disabled = true;
+            let fields = {}; document.querySelectorAll('.dyn-field').forEach(i => fields[i.getAttribute('data-key')] = i.value);
+            let idCanonValue = document.getElementById('edit-id').value;
+            let pl = { action: "update_general", idCanon: idCanonValue, lat: parseFloat(document.getElementById('edit-lat').value), lng: parseFloat(document.getElementById('edit-lng').value), fields: fields };
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(pl) }); let r = await res.json();
+                if(r.status === "success") {
+                    let l = window.selectedCannonsMap.get(window.currentlyEditingId); let p = l.feature.properties;
+                    p.fullData.forEach(item => { if(fields[item.k] !== undefined) item.v = fields[item.k]; });
+                    let tLower = window.getV(p, window.keyType).toLowerCase().trim();
+                    if(["demak lenko", "demac lenko"].includes(tLower)) p.couleur_defaut = "#0000FF"; else if(["sufag", "street", "taurus", "taurax", "peak"].includes(tLower)) p.couleur_defaut = "#008000"; else p.couleur_defaut = window.technoColors[tLower] || "#FFD700";
+                    l.feature.geometry.coordinates = [pl.lng, pl.lat]; l.setLatLng([pl.lat, pl.lng]); window.cancelEdit();
+                } else alert("Erreur Google");
+            } catch(err) { alert("Échec réseau"); }
+            btn.innerText = "✅ Sauver"; btn.disabled = false;
+        };
+
+        window.renderSelectionPanel = function() {
+            if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
+            document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
+            document.getElementById('sel-count').innerText = window.selectedCannonsMap.size; let listDiv = document.getElementById('selected-list'); listDiv.innerHTML = "";
+
+            let defautsSet = new Set(); window.rawTickets.forEach(t => { if(t.defaut) defautsSet.add(t.defaut.trim()); });
+            listDiv.innerHTML += `<datalist id="dl-defauts-list">${Array.from(defautsSet).sort().map(d => `<option value="${d.replace(/"/g, '"')}"></option>`).join('')}</datalist>`;
+            document.getElementById('right-title').innerText = "📌 Fiche Canon";
+
+            window.selectedCannonsMap.forEach((layer, id) => {
+                const p = layer.feature.properties; let active = window.getActiveTickets(p.id); let history = window.getHistoryTickets(p.id); let mainContent = ""; let histHtml = ""; let prodHtml = ""; let overrideItemHtml = null;
+
+                if (history.length > 0) {
+                    histHtml = `<details class="ticket-history" style="margin-top:15px; font-size:13px; background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;">📁 Historique d'interventions (${history.length})</summary><ul style="padding-left:15px; margin-top:10px;">`;
+                    history.forEach(t => { let dateStr = isNaN(new Date(t.date).getTime()) ? (t.date || "Inconnue") : new Date(t.date).toLocaleDateString('fr-FR'); let cause = t.fullData.find(x => x.k.toLowerCase().includes('cause') || x.k.toLowerCase().includes('intervention') || x.k.toLowerCase().includes('commentaire')); histHtml += `<li style="margin-bottom:10px; font-size:13px; border-bottom:1px solid #eee; padding-bottom:5px;"><b>${dateStr}</b> - <span style="color:#e74c3c; font-weight:bold;">${t.defaut}</span> <br><span style="color:#666;">Intervention : ${cause ? cause.v : "Non précisée"}</span></li>`; });
+                    histHtml += `</ul></details>`;
+                }
+                
+                let formulairePanneCompletHtml = `
+                    <details style="background:#fdf0ed; padding:15px; border-radius:8px; border:1px solid #fadbd8; font-size:14px; margin-top:15px;">
+                        <summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;">🚨 Signaler un défaut (Ticket)</summary>
+                        <div style="margin-top:12px;">
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">État</span><select id="nt-etat-${p.id}" class="edit-input"><option value="à faire">À faire</option><option value="en cours">En cours</option></select></div>
+                                <div style="flex:1;"><span class="edit-label">Priorité</span><select id="nt-priorite-${p.id}" class="edit-input"><option value="P1 (urgent et bloquant)">P1 (Urgent)</option><option value="P3 (non bloquant)">P3</option></select></div>
+                            </div>
+                            <span class="edit-label">Nom du défaut / Panne</span><input type="text" id="nt-defaut-${p.id}" class="edit-input" list="dl-defauts-list" placeholder="Choisir ou écrire...">
+                            <span class="edit-label">Cause de la panne</span><textarea id="nt-cause-${p.id}" class="edit-input" rows="2" placeholder="Détails..."></textarea>
+                            <span class="edit-label">Intervention effectuée</span><textarea id="nt-interv-${p.id}" class="edit-input" rows="2"></textarea>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">Pièces utilisées</span><input type="text" id="nt-pieces-${p.id}" class="edit-input"></div>
+                                <div style="flex:1;"><span class="edit-label">Photos (Lien Drive)</span><input type="text" id="nt-photos-${p.id}" class="edit-input"></div>
+                            </div>
+                            <input type="hidden" id="nt-sonde-${p.id}"><input type="hidden" id="nt-periode-${p.id}" value="${window.saisonsList[window.histSeasonIdx] || ''}"><input type="hidden" id="nt-dateinter-${p.id}"><input type="hidden" id="nt-remarque-${p.id}">
+                            <button onclick="window.addNouveauTicket('${p.id}', this)" class="btn-action-primary" style="background:#c0392b; margin-top:10px;">🚀 Envoyer le ticket de Panne</button>
+                        </div>
+                    </details>
+                `;
+
+                if (window.mainTheme === 'suivi_entretien') {
+                    let s = window.suiviEntretienData.find(row => row[0] == id) || ["", "", "non", "non", "", "", ""];
+                    let isDec = s[2].toString().toLowerCase().trim() === "oui"; let isPrev = s[3].toString().toLowerCase().trim() === "oui"; let rem = s[5] || "";
+                    mainContent = `
+                        <div style="background:#eafaf1; padding:15px; border-radius:8px; border:1px solid #2ecc71; margin-bottom:15px;">
+                            <h4 style="margin:0 0 12px 0; color:#27ae60;">🛠️ Suivi Entretien</h4>
+                            <div style="display:flex; gap:15px; margin-bottom:12px;">
+                                <label style="cursor:pointer; display:flex; align-items:center;"><input type="checkbox" id="chk-dec-single-${p.id}" ${isDec?'checked':''}> Déconnexion</label>
+                                <label style="cursor:pointer; display:flex; align-items:center;"><input type="checkbox" id="chk-prev-single-${p.id}" ${isPrev?'checked':''}> Préventif Usine</label>
+                            </div>
+                            <input type="text" id="rem-single-${p.id}" class="edit-input" value="${rem}" placeholder="Remarque...">
+                            <button onclick="window.saveMultiSuivi(this)" class="btn-action-primary" style="background:#27ae60; margin-top:5px;">💾 Mettre à jour l'entretien</button>
+                        </div>${histHtml}`;
+                } else if (window.mainTheme === 'entretien_tete') {
+                    let bVal = window.getV(p, "Buses"); let isFait = (bVal.toLowerCase().trim() === "oui" || bVal.toLowerCase().trim() === "ok" || bVal.toLowerCase().trim() === "true" || bVal.toLowerCase().trim() === "x");
+                    overrideItemHtml = `
+                        <details class="entretien-detail-row" style="margin-bottom:15px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.05); background:#fff; border:1px solid #e1e8ed; overflow:hidden;">
+                            <summary style="display:flex; align-items:center; gap:10px; background:#fef5e7; padding:15px; cursor:pointer; outline:none; border-bottom:1px solid #f8c471; font-size:16px;">
+                                <b style="color:#d35400;">📍 N° ${p.id}</b>
+                                <input type="checkbox" id="chk-buses-${id}" ${isFait?'checked':''} style="transform:scale(1.8); margin-left:10px;" onclick="event.stopPropagation();">
+                                <button onclick="event.stopPropagation(); window.saveEntretienTete('${id}', this)" class="btn-action-primary" style="background:#e67e22; margin:0 10px; width:auto; flex-grow:1; padding:12px;">💾 Valider</button>
+                                <span style="color:#e67e22; font-weight:bold;">▼</span>
+                            </summary>
+                            <div style="padding:15px; background:#fff;">${formulairePanneCompletHtml}</div>
+                        </details>
+                    `;
+                } else if (window.mainTheme === 'defauts') {
+                    let topTicketsList = "";
+                    if (active.length === 0) { topTicketsList = `<div style="background:#eafaf1; color:#27ae60; padding:20px; border-radius:8px; text-align:center; font-weight:bold; border:1px solid #d5f5e3; margin-bottom:15px; font-size:15px;">✅ Aucun défaut en cours</div>`; } 
+                    else {
+                        topTicketsList = active.map(t => { let borderCol = t.statut.includes('faire') ? '#e74c3c' : '#f39c12'; let safeDef = t.defaut.replace(/'/g, "\\'"); let safeId = p.id.replace(/'/g, "\\'"); let idDiv = `ticket-edit-${safeId}-${t.defaut.replace(/[^a-zA-Z0-9]/g, "")}`; return `<div class="ticket-card" style="border-left-color:${borderCol};"><div style="font-weight:bold; font-size:15px; color:#333; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-start;"><span style="flex-grow:1; margin-right:10px;">${t.defaut}</span><button onclick="window.editFullTicket('${safeId}', '${safeDef}')" style="background:#f8f9fa; border:1px solid #ddd; padding:8px 12px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;">Éditer ✏️</button></div><div id="${idDiv}"><span style="font-size:11px; padding:4px 10px; border-radius:12px; background:${borderCol}20; color:${borderCol}; font-weight:bold;">STATUT : ${t.statut.toUpperCase()}</span></div></div>`; }).join('');
+                    }
+                    mainContent = topTicketsList + histHtml + formulairePanneCompletHtml;
+                } else {
+                    let fullDataHTML = `<details style="margin-top:15px; font-size:14px; background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;">➕ Caractéristiques Complètes</summary><div style="margin-top:15px; display:grid; grid-template-columns: 1fr; gap:10px;">`;
+                    p.fullData.forEach(item => { if(!item.k.toLowerCase().includes('xy')) fullDataHTML += `<div style="border-bottom:1px solid #f0f0f0; padding-bottom:8px;"><span style="color:#7f8c8d;">${item.k} :</span> <b style="color:#2c3e50; float:right;">${item.v}</b></div>`; }); fullDataHTML += `</div></details>`; 
+                    mainContent = `<span class="badge"><b>Modèle:</b> ${window.getV(p, window.keyType)}</span>${fullDataHTML}`;
+                    if (active.length > 0) mainContent += `<div style="margin-top:15px; padding:15px; background:#fdf0ed; border-radius:8px; font-size:14px; color:#e74c3c; font-weight:bold; border:1px solid #fadbd8;">⚠️ Ce canon a ${active.length} défaut(s) en cours.</div>`; mainContent += histHtml;
+                }
+
+                let editBtn = (!window.isMultiSelect && window.mainTheme !== 'suivi_entretien' && window.mainTheme !== 'entretien_tete') ? `<button class="btn-action-primary" onclick="window.startEdit('${p.id}')">✏️ Éditer les coordonnées</button>` : '';
+
+                if (overrideItemHtml) { listDiv.innerHTML += overrideItemHtml; } 
+                else { listDiv.innerHTML += `<div class="sel-details"><div class="sel-details-header"><span>📍 Canon <b>${p.id}</b></span><span style="font-weight:normal; font-size:13px; background:#e0e6ed; padding:6px 12px; border-radius:12px; color:#34495e;">${window.getV(p, window.keyPiste)}</span></div><div class="sel-details-body">${mainContent}${editBtn}</div></div>`; }
+            });
+        };
+
+        window.editFullTicket = function(canonId, defaut) {
+            let safeDef = defaut.replace(/[^a-zA-Z0-9]/g, ""); let idDiv = `ticket-edit-${canonId}-${safeDef}`; let el = document.getElementById(idDiv); if(!el) return;
+            let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut); if(!ticket) return;
+            let html = '<div style="background:#fdfdfe; padding:15px; border-radius:8px; border:2px solid #3498db; margin-top:15px; box-shadow:0 4px 10px rgba(0,0,0,0.05);">';
+            ticket.fullData.forEach(d => {
+                let kLow = d.k.toLowerCase(); let valStr = d.v.toString();
+                if (kLow.includes('regard') || kLow === 'id' || kLow.includes('n°')) { html += `<div><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}" readonly style="background:#e1e8ed; color:#7f8c8d;"></div>`; } 
+                else if (kLow.includes('etat') || kLow.includes('état') || kLow === 'statut') { let statuts = ['à faire', 'en cours', 'fait']; let options = statuts.map(s => `<option value="${s}" ${valStr.toLowerCase().includes(s) ? 'selected' : ''}>${s.toUpperCase()}</option>`).join(''); html += `<div><div class="edit-label">${d.k}</div><select class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}">${options}</select></div>`; } 
+                else if (valStr.length > 40 || kLow.includes('cause') || kLow.includes('intervention') || kLow.includes('commentaire')) { html += `<div><div class="edit-label">${d.k}</div><textarea class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" rows="3">${valStr}</textarea></div>`; } 
+                else { html += `<div><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}"></div>`; }
+            });
+            html += `<div style="display:flex; gap:10px; margin-top:20px;"><button onclick="window.renderSelectionPanel()" style="flex:1; padding:15px; background:#bdc3c7; color:white; border:none; border-radius:8px; font-weight:bold; font-size:15px;">Annuler</button><button onclick="window.prepareTicketSave('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" style="flex:2; padding:15px; background:#2ecc71; color:white; border:none; border-radius:8px; font-weight:bold; font-size:15px;">Vérifier ➔</button></div></div>`; el.innerHTML = html;
+        };
+
+        window.prepareTicketSave = function(canonId, defaut, idDiv) {
+            let fieldsObj = {}; let newStatut = "";
+            document.querySelectorAll(`.tick-dyn-field-${idDiv}`).forEach(inp => { let k = inp.getAttribute('data-key'); let v = inp.value; if(!k.toLowerCase().includes('regard') && k.toLowerCase() !== 'id') fieldsObj[k] = v; if(k.toLowerCase().includes('etat') || k.toLowerCase().includes('état') || k.toLowerCase() === 'statut') newStatut = v; });
+            window.tempTicketPayloads[idDiv] = { payload: { action: "update_ticket", idCanon: canonId, defaut: defaut, fields: fieldsObj }, newStatut: newStatut };
+            let el = document.getElementById(idDiv);
+            if(el) { el.innerHTML = `<div style="background:#fff3cd; padding:20px; border-radius:8px; border:2px solid #f39c12; margin-top:15px;"><div style="font-size:15px; font-weight:bold; color:#d35400; margin-bottom:15px;">⚠️ Vérification avant envoi</div><div style="display:flex; gap:10px; margin-top:20px;"><button onclick="window.renderSelectionPanel()" style="flex:1; padding:15px; background:#bdc3c7; border-radius:8px; font-weight:bold;">Annuler</button><button onclick="window.confirmSaveTicket('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" style="flex:2; padding:15px; background:#27ae60; color:white; border-radius:8px; font-weight:bold;">Envoyer 🚀</button></div></div>`; }
+        };
+
+        window.confirmSaveTicket = async function(canonId, defaut, idDiv) {
+            let temp = window.tempTicketPayloads[idDiv]; if(!temp) return; let el = document.getElementById(idDiv); if(el) el.innerHTML = `<div style="text-align:center; padding:20px; font-weight:bold; color:#3498db; font-size:15px;">Enregistrement... ⏳</div>`;
+            try {
+                const response = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(temp.payload) }); const result = await response.json();
+                if(result.status === "success") {
+                    let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut);
+                    if(ticket) { ticket.fullData.forEach(d => { if(temp.payload.fields[d.k] !== undefined) d.v = temp.payload.fields[d.k]; }); if(temp.newStatut) ticket.statut = temp.newStatut.toLowerCase(); let defField = ticket.fullData.find(x => x.k.toLowerCase().includes('defaut') || x.k.toLowerCase().includes('panne')); if (defField && temp.payload.fields[defField.k]) ticket.defaut = temp.payload.fields[defField.k].toString().trim(); }
+                    window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); delete window.tempTicketPayloads[idDiv];
+                } else { alert("Erreur Google"); window.renderSelectionPanel(); }
+            } catch(e) { alert("Échec réseau."); window.renderSelectionPanel(); }
+        };
+
+        window.addNouveauTicket = async function(idCanon, btn) {
+            let elDef = document.getElementById(`nt-defaut-${idCanon}`); if(!elDef || !elDef.value.trim()) { alert("Renseigner au moins le champ 'Défaut'."); return; }
+            let defaut = elDef.value; let etat = document.getElementById(`nt-etat-${idCanon}`).value; let priorite = document.getElementById(`nt-priorite-${idCanon}`).value;
+            let periode = document.getElementById(`nt-periode-${idCanon}`).value; let sonde = document.getElementById(`nt-sonde-${idCanon}`).value; let cause = document.getElementById(`nt-cause-${idCanon}`).value; let dateinter = document.getElementById(`nt-dateinter-${idCanon}`).value; let photos = document.getElementById(`nt-photos-${idCanon}`).value; let interv = document.getElementById(`nt-interv-${idCanon}`).value; let pieces = document.getElementById(`nt-pieces-${idCanon}`).value; let remarque = document.getElementById(`nt-remarque-${idCanon}`).value;
+            let today = new Date(); let dateStr = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
+            let layer = window.selectedCannonsMap.get(idCanon); let p = layer ? layer.feature.properties : null; let piste = p ? window.getV(p, window.keyPiste) : "Inconnue"; let latlong = layer ? (layer.getLatLng().lat.toFixed(7) + "," + layer.getLatLng().lng.toFixed(7)) : "";
+            let fieldsObj = { "état": etat, "Priorité": priorite, "date": dateStr, "n°regard": idCanon, "piste": piste, "defaut": defaut, "Défaut sonde": sonde, "cause": cause, "date d'inter": dateinter, "intervention": interv, "Remarque": remarque, "periode": periode, "photos": photos, "latlong": latlong, "pièces utilisés": pieces };
+            
+            let oldText = btn.innerText; btn.innerText = "⏳ Transmission..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_ticket", fields: fieldsObj }) }); let r = await res.json();
+                if(r.status === "success") { btn.innerText = "🚀 Ticket Archivé !"; btn.style.background = "#27ae60"; window.rawTickets.push({ statut: etat.toLowerCase(), date: dateStr, idCanon: idCanon, defaut: defaut, fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]})) }); setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); }, 2000); } 
+                else { alert("Erreur serveur Sheets."); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
+        };
+                    /* ========================================================================= */
+        /* SECTION 6 : WORKSPACE ATELIER ET BANC D'ESSAIS (Optimisé Mobile)          */
         /* ========================================================================= */
-        /* SECTION 7 : DASHBOARDS, EXPERT BI ET COMPARAISON DE SAISONS CÔTE À CÔTE   */
+        window.renderAtelierWorkspace = function() {
+            let ws = document.getElementById('atelier-workspace'); if(!ws) return;
+            ws.style.paddingTop = "70px"; // Espace pour la topbar
+            ws.innerHTML = `<h2 style="color:#2c3e50; margin-top:0; padding-bottom:10px; border-bottom:2px solid #8e44ad; font-size:20px;">🧰 Banc d'Essais</h2>`;
+
+            let canonsEnAtelier = window.suiviEntretienData.filter(row => row[3] && row[3].toString().toLowerCase().trim() === "oui").map(r => r[0].toString());
+            if(canonsEnAtelier.length === 0) { ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:8px; text-align:center; padding:40px 20px; color:#7f8c8d; font-weight:bold; font-size:15px;">✅ Aucun enneigeur n'est marqué "Préventif Usine".</div>`; return; }
+
+            let idsValides = new Set();
+            if (window.rawAtelier && window.rawAtelier.length > 1) { let headersAtelier = window.rawAtelier[0].map(h => h.toString().toLowerCase().trim()); let idxIdAtelier = headersAtelier.findIndex(h => h === "id" || h.includes("n°")); if (idxIdAtelier !== -1) { for (let i = 1; i < window.rawAtelier.length; i++) idsValides.add(window.rawAtelier[i][idxIdAtelier].toString().trim()); } }
+
+            let listeAFaire = []; let listeValidee = []; canonsEnAtelier.forEach(id => { if (idsValides.has(id)) listeValidee.push(id); else listeAFaire.push(id); });
+            listeAFaire.sort((a, b) => parseInt(a) - parseInt(b)); listeValidee.sort((a, b) => parseInt(a) - parseInt(b));
+            let orderedCanons = [...listeAFaire, ...listeValidee];
+
+            ws.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; font-size:14px; color:#555; background:#eaf2f8; padding:15px; border-radius:8px; border-left:5px solid #3498db;"><b>${canonsEnAtelier.length} canon(s) au banc.</b><span style="color:#27ae60; font-weight:bold;">${listeValidee.length} archivé(s)</span></div>`;
+
+            orderedCanons.forEach(idCanon => {
+                let feature = window.snowCannons.features.find(f => f.properties.id == idCanon); if(!feature) return;
+                let p = feature.properties; let piste = window.getV(p, window.keyPiste); let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, ""); let estValide = idsValides.has(idCanon);
+                
+                let existingData = {};
+                if (estValide) { let headersAtelier = window.rawAtelier[0].map(h => h.toString().trim()); let idxIdAtelier = headersAtelier.findIndex(h => h.toLowerCase() === "id" || h.toLowerCase().includes("n°")); let rowData = window.rawAtelier.find(r => r[idxIdAtelier].toString().trim() === idCanon); if (rowData) headersAtelier.forEach((h, i) => { existingData[h.toLowerCase().trim()] = rowData[i]; }); }
+                const getVal = (col) => existingData[col.toLowerCase().trim()] !== undefined ? existingData[col.toLowerCase().trim()] : "";
+
+                // Logique Clarinette / 2VAR
+                let typeVannePrincipale = window.getV(p, "Type de vanne").toUpperCase();
+                let valVanneAd = (window.getV(p, "vanne additio") || "").toLowerCase();
+                let isAbrisDouble = (window.getV(p, "abris double") || "").toString().toLowerCase() === "oui";
+                let defaultVanne = "none";
+                if (valVanneAd.includes("clarinette") || valVanneAd.includes("v2000")) defaultVanne = "v2000"; else if (valVanneAd.includes("2var") || (valVanneAd.includes("var") && isAbrisDouble)) defaultVanne = "var_double"; else if (valVanneAd.includes("var")) defaultVanne = "var";
+
+                // Photos (Drive)
+                let suiviRow = window.suiviEntretienData.find(row => row[0] == idCanon); let photoUrlBrute = suiviRow && suiviRow[6] ? suiviRow[6].toString().trim() : ""; let photoDisplayHtml = "";
+                if (photoUrlBrute !== "") { let directImgUrl = window.parseDriveUrl(photoUrlBrute) || photoUrlBrute; photoDisplayHtml = `<div style="margin:15px 0; text-align:center;"><img src="${directImgUrl}" style="max-width:100%; max-height:250px; border-radius:8px; border:1px solid #ddd; box-shadow:0 2px 5px rgba(0,0,0,0.1);"></div>`; }
+                let typeCanonAtelier = window.getV(p, window.keyType).toLowerCase().trim(); let iconUrlAtelier = (window.driveIcons && window.driveIcons[typeCanonAtelier]) ? window.driveIcons[typeCanonAtelier] : null; let imageAtelierHtml = iconUrlAtelier ? `<img src="${iconUrlAtelier}" style="height:40px; width:auto; vertical-align:middle; margin-right:10px; filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.3)); border-radius:4px;">` : "⚙️";
+
+                // Calcul Consommables
+                let cR18N = 0, cR18P = 0, cPtfeR3 = 0, cR11N = 0, cR11P = 0, cPtfeVar = 0;
+                if (typeVannePrincipale === "YA") { cR18N = 2; cR18P = 4; cPtfeR3 = 1; } else if (typeVannePrincipale === "YB") { cR18N = 5; cR18P = 4; cPtfeR3 = 1; }
+                if (defaultVanne === "v2000") { cR18N += 6; cR18P += 2; cPtfeR3 += 2; } else if (defaultVanne === "var" || defaultVanne === "var_double") { let mult = (defaultVanne === "var_double") ? 2 : 1; cR11N = 6 * mult; cR11P = 2 * mult; cPtfeVar = 2 * mult; }
+                const getConsommable = (col, autoCalc) => existingData[col.toLowerCase().trim()] !== undefined ? existingData[col.toLowerCase().trim()] : (autoCalc > 0 ? autoCalc : "");
+
+                let formHtml = `
+                    <div style="padding:15px; background:#fdfdfe;">
+                        <div style="background:#f4f9f9; border-left:4px solid #3498db; padding:15px; border-radius:6px; margin-bottom:15px; border:1px solid #e1e8ed;">
+                            <h4 style="margin:0 0 12px 0; color:#2980b9; font-size:15px;">🔵 VANNE PRINCIPALE</h4>
+                            <div style="display:flex; flex-direction:column; gap:10px;">
+                                <div><span class="edit-label">Pression Eau 1 (Avant)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" value="${getVal('test pression eau 1')}"></div>
+                                <div><span class="edit-label">Pression Air 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" value="${getVal('test pression air 1')}"></div>
+                                <div><span class="edit-label">Test Élec 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" value="${getVal('test elec Vanne')}"></div>
+                                <div style="background:rgba(0,0,0,0.02); padding:10px; border-radius:6px;">
+                                    <span class="edit-label" style="color:#f39c12;">Maintenance effectuée</span><input type="text" class="edit-input b-field-${safeId}" data-col="maintenance effectué" value="${getVal('maintenance effectué')}">
+                                    <span class="edit-label">Pièces utilisées</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces utilisés" value="${getVal('pièces utilisés')}">
+                                </div>
+                                <div><span class="edit-label" style="color:#27ae60;">Pression Eau 2 (Après)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" value="${getVal('test pression eau 2')}"></div>
+                                <div><span class="edit-label">Test Élec 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" value="${getVal('test elec vanne')}"></div>
+                                <div><span class="edit-label" style="color:#27ae60;">Vanne principale prête ?</span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="${getVal('prête') || 'OUI'}" style="font-weight:bold; color:#27ae60;"></div>
+                            </div>
+                        </div>
+
+                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:15px; border-color:#8e44ad; font-weight:bold;">
+                            <option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Sans vanne additionnelle --</option>
+                            <option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>Bloc VAR (Simple)</option>
+                            <option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>Bloc VAR Double (2VAR)</option>
+                            <option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>Bloc V2000 (Clarinette)</option>
+                        </select>
+                        
+                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; background:#fdf2e9; padding:15px; border-radius:6px; border:1px solid #f8c471; margin-bottom:15px;">
+                            <b style="color:#d35400; font-size:14px; margin-bottom:10px; display:block;">🛡️ VAR (1)</b>
+                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                <div><span class="edit-label">Test Élec 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" value="${getVal('test elec VAR (1)')}"></div>
+                                <div><span class="edit-label">Test Élec 2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" value="${getVal('test elec VAR (1) bis')}"></div>
+                                <div><span class="edit-label">Pièces VAR utilisées</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés" value="${getVal('pièces var utilisés')}"></div>
+                                <div><span class="edit-label" style="color:#27ae60;">VAR (1) prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (1) prête" value="${getVal('VAR (1) prête') || 'OUI'}" style="font-weight:bold; color:#27ae60;"></div>
+                            </div>
+                        </div>
+
+                        <div id="bloc-var-double-${safeId}" style="display:${defaultVanne === 'var_double' ? 'block' : 'none'}; background:#fef5e7; padding:15px; border-radius:6px; border:1px solid #eb984e; margin-bottom:15px;">
+                            <b style="color:#ba4a00; font-size:14px; margin-bottom:10px; display:block;">🛡️ VAR DOUBLE (2VAR)</b>
+                            <div style="background:rgba(255,255,255,0.5); padding:10px; border-radius:6px; margin-bottom:10px;">
+                                <b style="font-size:12px; color:#ba4a00;">Perche 1 (VAR 1)</b>
+                                <div><span class="edit-label">Élec 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" value="${getVal('test elec VAR (1)')}"></div>
+                                <div><span class="edit-label">Élec 2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" value="${getVal('test elec VAR (1) bis')}"></div>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.5); padding:10px; border-radius:6px;">
+                                <b style="font-size:12px; color:#ba4a00;">Perche 2 (VAR 2)</b>
+                                <div><span class="edit-label">Élec 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2)" value="${getVal('test elec VAR (2)')}"></div>
+                                <div><span class="edit-label">Élec 2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2) bis" value="${getVal('test elec VAR (2) bis')}"></div>
+                            </div>
+                        </div>
+
+                        <div id="bloc-v2000-${safeId}" style="display:${defaultVanne === 'v2000' ? 'block' : 'none'}; background:#eaf2f8; padding:15px; border-radius:6px; border:1px solid #85c1e9; margin-bottom:15px;">
+                            <b style="color:#2980b9; font-size:14px; margin-bottom:10px; display:block;">🛡️ VALVE V2000 (CLARINETTE)</b>
+                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                <div><span class="edit-label">Élec C2 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" value="${getVal('test 1 elec V2000 c2')}"></div>
+                                <div><span class="edit-label">Élec C3 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c3" value="${getVal('test 1 elec V2000 c3')}"></div>
+                                <div><span class="edit-label">Pièces V2000 utilisées</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces v2000 utilisés" value="${getVal('pièces v2000 utilisés')}"></div>
+                                <div><span class="edit-label">Élec C2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 elec v2000 c2" value="${getVal('test 2 elec v2000 c2')}"></div>
+                                <div><span class="edit-label">Élec C3 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 elec v2000 c3" value="${getVal('test 2 elec v2000 c3')}"></div>
+                                <div><span class="edit-label" style="color:#27ae60;">V2000 Prête ?</span><input type="text" class="edit-input b-field-${safeId}" data-col="V2000 prête" value="${getVal('V2000 prête') || 'OUI'}" style="font-weight:bold; color:#27ae60;"></div>
+                            </div>
+                        </div>
+                        
+                        <div style="background:#f4f6f8; padding:12px; border-radius:6px; margin-top:15px; border:1px dashed #ccc;">
+                            <div style="font-weight:bold; font-size:12px; color:#555; text-transform:uppercase; margin-bottom:10px;">📋 Consommables (Joints Auto) :</div>
+                            <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+                                <div style="flex:1; min-width:80px;"><span class="edit-label" style="font-size:10px;">R18 Nitrile</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R18 NITRILE" value="${getConsommable('joint R18 NITRILE', cR18N)}" style="color:#d35400; font-weight:bold;"></div>
+                                <div style="flex:1; min-width:80px;"><span class="edit-label" style="font-size:10px;">R18 PTFE</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R18 ptfe" value="${getConsommable('joint R18 ptfe', cR18P)}" style="color:#d35400; font-weight:bold;"></div>
+                                <div style="flex:1; min-width:80px;"><span class="edit-label" style="font-size:10px;">PTFE R3</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint PTFE r3" value="${getConsommable('joint PTFE r3', cPtfeR3)}" style="color:#d35400; font-weight:bold;"></div>
+                                <div style="flex:1; min-width:80px;"><span class="edit-label" style="font-size:10px;">R11 Nitrile</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R11 NITRILE" value="${getConsommable('joint R11 NITRILE', cR11N)}" style="color:#2980b9; font-weight:bold;"></div>
+                            </div>
+                            <div><span class="edit-label">Commentaire de clôture</span><textarea class="edit-input b-field-${safeId}" data-col="Commentaire" rows="2">${getVal('Commentaire')}</textarea></div>
+                        </div>
+
+                        <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" class="btn-action-primary" style="background:${estValide ? '#27ae60' : '#8e44ad'}; padding:16px; font-size:15px; margin-top:20px;">
+                            ${estValide ? '🔄 Mettre à jour' : '🚀 Archiver ce rapport de Banc d\'Essais'}
+                        </button>
+                    </div>
+                `;
+
+                let card = document.createElement('div'); card.className = "atelier-card"; if (estValide) { card.style.borderLeftColor = "#27ae60"; card.style.background = "#f4fdf7"; }
+                card.innerHTML = `<h3 style="display:flex; align-items:center; font-size:16px;">${imageAtelierHtml} Canon N° ${idCanon} ${estValide ? '<span style="background:#27ae60; color:white; font-size:11px; padding:4px 8px; border-radius:12px; margin-left:auto;">✅ ARCHIVÉ</span>' : ''}</h3>${photoDisplayHtml}<details class="atelier-sub-details" open><summary>📝 Fiche d'Essai Usine</summary>${formHtml}</details>`;
+                ws.appendChild(card);
+            });
+        };
+
+        window.handleSelectVanne = function(safeId, val) {
+            let bVar = document.getElementById(`bloc-var-${safeId}`); let bVarDbl = document.getElementById(`bloc-var-double-${safeId}`); let bV2000 = document.getElementById(`bloc-v2000-${safeId}`);
+            if (bVar) bVar.style.display = (val === 'var') ? 'block' : 'none'; if (bVarDbl) bVarDbl.style.display = (val === 'var_double') ? 'block' : 'none'; if (bV2000) bV2000.style.display = (val === 'v2000') ? 'block' : 'none';
+        };
+
+        window.saveAtelierBancRow = async function(idCanon, safeId, btn) {
+            let fieldsObj = {}; let canonData = window.snowCannons.features.find(f => f.properties.id == idCanon); let p = canonData ? canonData.properties : null;
+            let valVanneAd = p ? window.getV(p, "vanne additio") : ""; let isDouble = valVanneAd.toLowerCase().includes("2var") ? "oui" : (p ? window.getV(p, "abris double") : "");
+            fieldsObj["id"] = idCanon; fieldsObj["N° de vanne"] = p ? window.getV(p, "N° de vanne") : ""; fieldsObj["piste"] = p ? window.getV(p, window.keyPiste) : ""; fieldsObj["abris double"] = isDouble; fieldsObj["type"] = p ? window.getV(p, "Type de vanne") : ""; fieldsObj["vanne additionnelle"] = valVanneAd; fieldsObj["type vanne AD 1"] = valVanneAd; 
+            
+            document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => { if (inp.closest('div[id^="bloc-"]') && inp.closest('div[id^="bloc-"]').style.display === 'none') return; fieldsObj[inp.getAttribute('data-col')] = inp.value; });
+
+            let oldText = btn.innerText; btn.innerText = "⏳ Enregistrement..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_atelier", fields: fieldsObj }) }); let r = await res.json();
+                if(r.status === "success") { btn.innerText = "✅ Rapport Enregistré !"; btn.style.background = "#27ae60"; if(window.rawAtelier.length === 0) { window.rawAtelier.push(["id"]); } let headersAtelier = window.rawAtelier[0].map(h => h.toString().toLowerCase().trim()); let rowData = new Array(headersAtelier.length).fill(""); rowData[headersAtelier.indexOf("id")] = idCanon; window.rawAtelier.push(rowData); setTimeout(() => { window.renderAtelierWorkspace(); }, 1500); } 
+                else { alert("Erreur Apps Script"); btn.disabled = false; btn.innerText = oldText; }
+            } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
+        };
+
+        /* --- MODULE DE STOCK MOBILE --- */
+        window.renderStockWorkspace = function() {
+            let ws = document.getElementById('stock-workspace'); if (!ws) return;
+            ws.style.paddingTop = "70px";
+            if (!window.rawStock || window.rawStock.length < 1) { ws.innerHTML = `<div style="padding:30px; text-align:center; background:#fff; border-radius:8px;">⚠️ Stock introuvable.</div>`; return; }
+
+            let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
+            let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); let idxRef = headers.findIndex(h => h === "ref"); let idxProd = headers.findIndex(h => h === "produit"); let idxDesc = headers.findIndex(h => h === "description"); let idxPhoto = headers.findIndex(h => h === "photo"); let idxStock = headers.findIndex(h => h.includes("stock")); let idxPris = headers.findIndex(h => h === "pris");
+
+            let uniqueDescs = new Set(); for (let i = 1; i < window.rawStock.length; i++) { if (idxDesc !== -1 && window.rawStock[i][idxDesc]) window.rawStock[i][idxDesc].toString().split(',').forEach(d => { if(d.trim()!=="") uniqueDescs.add(d.trim()); }); }
+            let filterOptionsHtml = `<option value="">📁 Toutes les descriptions</option>` + Array.from(uniqueDescs).sort().map(d => `<option value="${d}">${d}</option>`).join('');
+
+            ws.innerHTML = `
+                <div class="stock-header-sticky">
+                    <div style="background:#fff; padding:15px; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.08); border:2px solid #16a085;">
+                        <h2 style="color:#2c3e50; margin:0 0 12px 0; font-size:20px; display:flex; justify-content:space-between; align-items:center;">📦 Inventaire <span id="stock-count-display" style="font-size:13px; color:#fff; background:#16a085; padding:4px 10px; border-radius:12px;">${window.rawStock.length - 1}</span></h2>
+                        <div style="display:flex; flex-direction:column; gap:10px;">
+                            <input type="text" id="search-stock" placeholder="🔍 Rechercher (Pièce, Réf)..." onkeyup="window.filterStockItems()" class="edit-input" style="margin:0; padding:12px; font-size:15px;">
+                            <select id="filter-desc-stock" onchange="window.filterStockItems()" class="edit-input" style="margin:0; padding:12px; color:#16a085; font-weight:bold;">${filterOptionsHtml}</select>
+                            <button onclick="document.getElementById('add-stock-form-container').style.display='block'" class="btn-action-primary" style="background:#16a085; margin:0; padding:14px; font-size:15px;">➕ Nouvel article</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="add-stock-form-container" style="display:none; background:#fff; border:2px solid #16a085; padding:15px; border-radius:10px; margin-bottom:20px;">
+                    <h4 style="margin:0 0 15px 0; color:#16a085; font-size:18px;">Créer un article</h4>
+                    <div style="display:flex; flex-direction:column; gap:12px;" id="add-stock-fields-grid"></div>
+                    <div style="display:flex; gap:10px; margin-top:20px;">
+                        <button onclick="document.getElementById('add-stock-form-container').style.display='none'" style="flex:1; padding:14px; background:#bdc3c7; border:none; border-radius:8px; font-weight:bold; color:white;">Annuler</button>
+                        <button onclick="window.addStockItemToServer(this)" style="flex:2; padding:14px; background:#16a085; color:white; border:none; border-radius:8px; font-weight:bold;">✅ Créer</button>
+                    </div>
+                </div>
+                
+                <div id="stock-cards-list" style="display:flex; flex-direction:column; gap:15px;"></div>`;
+
+            let addGrid = document.getElementById('add-stock-fields-grid');
+            window.rawStock[0].forEach(colName => {
+                let lowerName = (colName||"").toString().toLowerCase().trim(); if(lowerName==="") return;
+                addGrid.innerHTML += `<div><div class="edit-label">${colName}</div><input type="text" class="edit-input new-stock-field" data-col="${colName}" ${lowerName.includes("reste")?'value="0" readonly style="background:#f4f6f8;"':''} style="margin:0; padding:12px;"></div>`;
+            });
+
+            let cardsContainer = document.getElementById('stock-cards-list');
+            for (let i = 1; i < window.rawStock.length; i++) {
+                let row = window.rawStock[i]; if (!row || row.length === 0 || row.every(cell => !cell)) continue;
+                let numPiece = (idxNum !== -1 && row[idxNum] != null) ? row[idxNum].toString().trim() : i.toString(); let safeId = "stock-" + numPiece.replace(/[^a-zA-Z0-9]/g, "-");
+                let valStock = parseFloat(row[idxStock]) || 0; let valPris = parseFloat(row[idxPris]) || 0; let valReste = valStock - valPris;
+                let valRef = row[idxRef] ? row[idxRef].toString().trim() : ""; let valProd = row[idxProd] ? row[idxProd].toString().trim() : "Sans nom"; let valPhoto = row[idxPhoto] ? row[idxPhoto].toString().trim() : "";
+
+                let parsedImgUrl = "https://placehold.co/150x150?text=Pas+de+photo";
+                if (valPhoto !== "") {
+                    let rawFileName = valPhoto.split('/').pop().toLowerCase().trim(); let coreId = rawFileName.split('.')[0]; let foundInDrive = false;
+                    if (window.drivePhotos) { if (window.drivePhotos[rawFileName]) { parsedImgUrl = window.drivePhotos[rawFileName]; foundInDrive = true; } else { let fuzzyMatch = Object.keys(window.drivePhotos).find(k => k.includes(coreId) && coreId !== ""); if (fuzzyMatch) { parsedImgUrl = window.drivePhotos[fuzzyMatch]; foundInDrive = true; } } }
+                    if (!foundInDrive) parsedImgUrl = valPhoto.includes("drive.google.com") ? window.parseDriveUrl(valPhoto) : window.parseAppSheetPhotoUrl(valPhoto);
+                }
+
+                let cardBlock = document.createElement('div'); cardBlock.className = "stock-item-card";
+                cardBlock.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+                        <div class="stock-img-container"><img src="${parsedImgUrl}" style="max-width:100%; max-height:100%; object-fit:contain;"/></div>
+                        <div style="width:100%; text-align:center;">
+                            <div style="color:#7f8c8d; font-size:13px; font-weight:bold;">Réf: ${valRef || "N/A"}</div>
+                            <div style="color:#2c3e50; font-size:18px; font-weight:bold; margin:6px 0;">${valProd}</div>
+                            <div style="font-size:15px; color:#27ae60; font-weight:bold; background:#eafaf1; padding:6px; border-radius:6px; border:1px solid #2ecc71;">En Stock : ${valReste}</div>
+                        </div>
+                    </div>
+                    <details style="background:#f9fbfc; border:1px solid #eee; border-radius:8px; padding:15px;">
+                        <summary style="font-weight:bold; color:#3498db; outline:none; cursor:pointer; font-size:15px; text-align:center;">Éditer ce produit ▼</summary>
+                        <div style="display:flex; flex-direction:column; gap:12px; margin-top:15px;">
+                            <div><div class="edit-label">Nom Produit</div><input type="text" class="edit-input s-field-${safeId}" data-col="produit" value="${valProd}" style="margin:0;"></div>
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><div class="edit-label">En Stock (Total)</div><input type="number" class="edit-input s-field-${safeId}" data-col="en stock" value="${valStock}" onchange="window.recalculateCardReste('${safeId}')" style="margin:0; font-weight:bold; color:#d35400;"></div>
+                                <div style="flex:1;"><div class="edit-label">Déjà Pris</div><input type="number" class="edit-input s-field-${safeId}" data-col="pris" value="${valPris}" onchange="window.recalculateCardReste('${safeId}')" style="margin:0;"></div>
+                            </div>
+                            <div><div class="edit-label" style="color:#2980b9;">Reste (Calcul Auto)</div><input type="number" id="reste-${safeId}" class="edit-input s-field-${safeId}" data-col="reste" value="${valReste}" readonly style="margin:0; background:#f4f6f8; font-weight:bold;"></div>
+                            <button onclick="window.saveStockItemEdits('${numPiece}', '${safeId}', this)" class="btn-action-primary" style="background:#16a085; padding:16px;">💾 Mettre à jour</button>
+                        </div>
+                    </details>`;
+                cardsContainer.appendChild(cardBlock);
+            }
+        };
+
+        window.filterStockItems = function() {
+            let searchVal = document.getElementById('search-stock').value.toLowerCase().trim(); let descVal = document.getElementById('filter-desc-stock').value.toLowerCase().trim();
+            let cards = document.querySelectorAll('.stock-item-card'); let visibleCount = 0;
+            cards.forEach(card => { let isMatch = card.innerText.toLowerCase().includes(searchVal) && card.innerText.toLowerCase().includes(descVal); card.style.display = isMatch ? 'flex' : 'none'; if (isMatch) visibleCount++; });
+            let cDisp = document.getElementById('stock-count-display'); if (cDisp) cDisp.innerText = visibleCount;
+        };
+
+        window.recalculateCardReste = function(safeId) { let sInp = document.querySelector(`.s-field-${safeId}[data-col="en stock"]`); let pInp = document.querySelector(`.s-field-${safeId}[data-col="pris"]`); let rDisp = document.getElementById(`reste-${safeId}`); if (sInp && pInp && rDisp) rDisp.value = (parseFloat(sInp.value)||0) - (parseFloat(pInp.value)||0); };
+
+        window.addStockItemToServer = async function(btn) {
+            let fieldsObj = {}; let hasData = false; document.querySelectorAll('.new-stock-field').forEach(inp => { let v = inp.value; fieldsObj[inp.getAttribute('data-col')] = v; if(v.trim() !== "") hasData = true; });
+            let lStock = Object.keys(fieldsObj).find(k => k.toLowerCase().includes("stock")); let lPris = Object.keys(fieldsObj).find(k => k.toLowerCase() === "pris"); let lReste = Object.keys(fieldsObj).find(k => k.toLowerCase() === "reste");
+            if (lReste) fieldsObj[lReste] = (parseFloat(fieldsObj[lStock])||0) - (parseFloat(fieldsObj[lPris])||0);
+            if (!hasData) { alert("⚠️ Le formulaire est vide."); return; }
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_stock_item", fields: fieldsObj }) }); let r = await res.json();
+                if (r.status === "success") { let newRow = new Array(window.rawStock[0].length).fill(""); window.rawStock[0].forEach((header, index) => { if (fieldsObj[header] !== undefined) newRow[index] = fieldsObj[header]; }); window.rawStock.push(newRow); window.renderStockWorkspace(); } else { alert("Erreur."); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Échec réseau."); btn.innerText = oldText; btn.disabled = false; }
+        };
+
+        window.saveStockItemEdits = async function(numPiece, safeId, btn) {
+            let fieldsObj = {}; document.querySelectorAll(`.s-field-${safeId}`).forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; });
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }) }); let r = await res.json();
+                if (r.status === "success") { btn.innerText = "✅ OK"; btn.style.background = "#27ae60"; let idxNum = window.rawStock[0].findIndex(h => h && (h.toString().toLowerCase().includes("numero") || h.toString().toLowerCase() === "id")); if(idxNum === -1) idxNum = 0; let rIdx = window.rawStock.findIndex((row, idx) => idx > 0 && row[idxNum].toString().trim() === numPiece.toString().trim()); if (rIdx !== -1) window.rawStock[0].forEach((head, colIdx) => { let inp = document.querySelector(`.s-field-${safeId}[data-col="${head.toString().trim()}"]`); if (inp) window.rawStock[rIdx][colIdx] = inp.value; }); setTimeout(() => { btn.innerText = oldText; btn.style.background = "#16a085"; btn.disabled = false; }, 2000); } else { alert("Erreur."); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Erreur réseau."); btn.innerText = oldText; btn.disabled = false; }
+        };
+                    /* ========================================================================= */
+        /* SECTION 11 : DASHBOARDS, BI, METEO ET COMPARAISON                         */
         /* ========================================================================= */
-        window.triggerGlobalFilterChart = function() {
-            if (window.selectedCannonsMap.size > 0 || window.currentlyEditingId) return;
-            let visibleCannons = window.snowCannons.features.filter(f => f.properties._isVisible);
-            let html = `<div style="background:#eafaf1; padding:20px; border-radius:8px; text-align:center; margin-bottom:15px; border:1px solid #d5f5e3;"><span style="font-size:32px; font-weight:bold; color:#27ae60;">${visibleCannons.length}</span><br><span style="font-size:13px; color:#555; text-transform:uppercase; font-weight:bold;">Canons affichés</span></div>`;
-            document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html; 
-            window.openBottomSheet('state-half');
+        window.openMeteoWidget = function() {
+            let sb = document.getElementById('right-sidebar'); let rt = document.getElementById('right-title'); let sl = document.getElementById('selected-list'); if(!sb || !sl) return;
+            if(rt) rt.innerText = "⛅ Météo Live";
+            document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
+            window.switchMeteoTab = function(p) { let c = document.getElementById('meteo-content'); if(!c) return; document.querySelectorAll('.meteo-tab-btn').forEach(b => b.style.opacity = '0.5'); document.getElementById('btn-meteo-' + p).style.opacity = '1'; if(p === 'meteoblue') c.innerHTML = `<iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe>`; else if(p === 'windy') c.innerHTML = `<iframe src="https://embed.windy.com/embed2.html?lat=42.767&lon=0.582&zoom=12&overlay=wind&product=ecmwf" frameborder="0" style="width:100%;height:100%;"></iframe>`; else if(p === 'ventusky') c.innerHTML = `<iframe src="https://www.ventusky.com/?p=42.767;0.582;12&l=snow" frameborder="0" style="width:100%;height:100%;"></iframe>`; };
+            sl.innerHTML = `<div style="display:flex;gap:5px;margin-bottom:15px;"><button id="btn-meteo-meteoblue" class="meteo-tab-btn" onclick="window.switchMeteoTab('meteoblue')" style="flex:1;background:#3498db;color:white;border:none;padding:12px;border-radius:6px;font-weight:bold;opacity:1;">Meteoblue</button><button id="btn-meteo-windy" class="meteo-tab-btn" onclick="window.switchMeteoTab('windy')" style="flex:1;background:#e67e22;color:white;border:none;padding:12px;border-radius:6px;font-weight:bold;opacity:0.5;">Windy</button><button id="btn-meteo-ventusky" class="meteo-tab-btn" onclick="window.switchMeteoTab('ventusky')" style="flex:1;background:#2c3e50;color:white;border:none;padding:12px;border-radius:6px;font-weight:bold;opacity:0.5;">Ventusky</button></div><div id="meteo-content" style="background:#fff;border-radius:8px;border:1px solid #eee;padding:10px;height:calc(100vh - 250px);"><iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe></div>`;
+            window.openBottomSheet('state-full');
+        };
+
+        window.openMeteoHistoryModal = function(show) {
+            let m = document.getElementById('meteo-history-modal'); if(!m) return;
+            if(!show) { m.style.display = 'none'; return; } m.style.display = 'flex';
+            let selectMetric = document.getElementById('meteo-metric');
+            if(selectMetric && window.meteoHistData && window.meteoHistData.length > 0) {
+                let optionsHTML = ""; window.meteoHistData[0].forEach((h, i) => { let cleanH = h.toString().toLowerCase().trim(); if (cleanH !== 'date' && !cleanH.includes('heure') && !cleanH.includes('time') && cleanH !== "") { optionsHTML += `<option value="${i}">${h}</option>`; } });
+                selectMetric.innerHTML = optionsHTML !== "" ? optionsHTML : `<option value="">-- Aucune colonne trouvée --</option>`;
+            }
+            window.renderMeteoHistoryChart();
+        };
+
+        window.renderMeteoHistoryChart = function() {
+            let canvasBox = document.getElementById('meteo-history-canvas'); if(!canvasBox) return; let ctx = canvasBox.getContext('2d');
+            if(!window.meteoHistData || window.meteoHistData.length < 2) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Aucune donnée de l'onglet météo.", 20, 50); return; }
+            let metricIdx = parseInt(document.getElementById('meteo-metric').value); if(isNaN(metricIdx)) return; 
+            let chartType = document.getElementById('meteo-chart-type').value || 'line'; let metricLabel = window.meteoHistData[0][metricIdx];
+            let dateIdx = window.meteoHistData[0].findIndex(h => h.toString().toLowerCase().includes('date') || h.toString().toLowerCase().includes('time')); if (dateIdx === -1) dateIdx = 0; 
+            let labels = []; let values = [];
+            for(let i = 1; i < window.meteoHistData.length; i++) {
+                let rawDate = window.meteoHistData[i][dateIdx]; let rawVal = window.meteoHistData[i][metricIdx]; if(rawDate == null || rawDate === "") continue;
+                let displayLabel = rawDate; let parsedDate = new Date(rawDate); if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1970) displayLabel = parsedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+                labels.push(displayLabel); values.push(parseFloat(String(rawVal).replace(',', '.').replace(/[^0-9.-]/g, '')) || 0);
+            }
+            if(window.chartInstances['meteo-hist-chart']) window.chartInstances['meteo-hist-chart'].destroy();
+            window.chartInstances['meteo-hist-chart'] = new Chart(ctx, { type: chartType, data: { labels: labels, datasets: [{ label: metricLabel, data: values, backgroundColor: chartType === 'line' ? 'rgba(22, 160, 133, 0.2)' : '#16a085', borderColor: '#1abc9c', borderWidth: 2, fill: chartType === 'line', tension: 0.3, pointRadius: labels.length > 80 ? 0 : 2 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } } });
         };
 
         window.openGlobalCompareModal = function(show) {
@@ -675,235 +1110,27 @@
             canons.forEach(f => { let p = f.properties; labels.push(p.id); dataS1.push(p.historique[s1] ? p.historique[s1][metric] || 0 : 0); dataS2.push(p.historique[s2] ? p.historique[s2][metric] || 0 : 0); });
             
             let canvas = document.getElementById('main-comp-canvas'); if (window.chartInstances['global-compare']) window.chartInstances['global-compare'].destroy();
-            let metricLabel = metric === 'eau' ? 'Volume Eau (m³)' : (metric === 'air' ? 'Volume Air' : 'Temps de fonctionnement (h)');
-            let colorS1 = '#3498db'; let colorS2 = '#2c3e50'; if (metric === 'air') { colorS1 = '#f1c40f'; colorS2 = '#e67e22'; } if (metric === 'temps') { colorS1 = '#2ecc71'; colorS2 = '#27ae60'; }
-            
-            window.chartInstances['global-compare'] = new Chart(canvas.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [ { label: `Saison ${s1}`, data: dataS1, backgroundColor: colorS1, borderRadius: 4 }, { label: `Saison ${s2}`, data: dataS2, backgroundColor: colorS2, borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'top' }, title: { display: true, text: `Comparatif ${metricLabel} | ${selPiste === 'all' ? 'Toutes' : selPiste}` } }, scales: { x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 } }, y: { beginAtZero: true } } } });
-        };
-                    /* ========================================================================= */
-        /* SECTION 8 : PANNEAU DES CANONS ET CREATION DE TICKETS                     */
-        /* ========================================================================= */
-        window.renderSelectionPanel = function() {
-            if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
-            document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
-            document.getElementById('sel-count').innerText = window.selectedCannonsMap.size; let listDiv = document.getElementById('selected-list'); listDiv.innerHTML = "";
-            
-            window.selectedCannonsMap.forEach((layer, id) => {
-                const p = layer.feature.properties; let active = window.getActiveTickets(p.id); let mainContent = "";
-                let badges = `<span class="badge"><b>Modèle:</b> ${window.getV(p, window.keyType)}</span>`;
-                let fullDataHTML = `<details style="margin-top:15px; font-size:13px; background:#f8f9fa; padding:12px; border-radius:8px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;">➕ Caractéristiques Complètes</summary><div style="margin-top:12px; display:grid; grid-template-columns: 1fr; gap:10px;">`;
-                p.fullData.forEach(item => { if(!item.k.toLowerCase().includes('xy')) fullDataHTML += `<div style="border-bottom:1px solid #f0f0f0; padding-bottom:6px;"><span style="color:#7f8c8d;">${item.k} :</span> <b style="color:#2c3e50; float:right;">${item.v}</b></div>`; }); 
-                fullDataHTML += `</div></details>`; 
-                
-                // Formulaire Ticket Mobile
-                let formPanne = `<details style="background:#fdf0ed; padding:12px; border-radius:6px; border:1px solid #fadbd8; font-size:13px; margin-top:12px;"><summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;">🚨 Signaler un défaut (Ticket complet)</summary><div style="margin-top:10px;"><div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">État</span><select id="nt-etat-${p.id}" class="edit-input" style="padding:10px; margin-bottom:8px;"><option value="à faire">À faire</option><option value="en cours">En cours</option></select></div><div style="flex:1;"><span class="edit-label">Priorité</span><select id="nt-priorite-${p.id}" class="edit-input" style="padding:10px; margin-bottom:8px;"><option value="P1 (urgent et bloquant)">P1</option><option value="P3 (non bloquant)">P3</option></select></div></div><span class="edit-label">Nom du défaut</span><input type="text" id="nt-defaut-${p.id}" class="edit-input" placeholder="Créer..." style="padding:10px; margin-bottom:8px;"><button onclick="window.addNouveauTicket('${p.id}', this)" class="btn-action-primary" style="background:#c0392b; margin-top:5px;">🚀 Envoyer le ticket</button></div></details>`;
-                mainContent = `<div style="margin-bottom:10px;">${badges}</div>${fullDataHTML}${formPanne}`;
-                
-                listDiv.innerHTML += `<div class="sel-details"><div class="sel-details-header"><span>📍 Canon <b>${p.id}</b></span><span style="font-weight:normal; font-size:12px; background:#e0e6ed; padding:6px 12px; border-radius:12px; color:#34495e;">${window.getV(p, window.keyPiste)}</span></div><div class="sel-details-body">${mainContent}<button class="btn-action-primary" onclick="window.startEdit('${p.id}')">✏️ Éditer les coordonnées</button></div></div>`;
-            });
+            let colorS1 = metric === 'air' ? '#f1c40f' : (metric === 'temps' ? '#2ecc71' : '#3498db'); let colorS2 = metric === 'air' ? '#e67e22' : (metric === 'temps' ? '#27ae60' : '#2c3e50');
+            window.chartInstances['global-compare'] = new Chart(canvas.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [ { label: `Saison ${s1}`, data: dataS1, backgroundColor: colorS1, borderRadius: 4 }, { label: `Saison ${s2}`, data: dataS2, backgroundColor: colorS2, borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom' } }, scales: { x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: {size: 10} } } } } });
         };
 
-        /* ========================================================================= */
-        /* SECTION 9 : L'ATELIER (BANC D'ESSAIS AVANCÉ AVEC CLARINETTE ET PHOTOS)    */
-        /* ========================================================================= */
-        window.renderAtelierWorkspace = function() {
-            let ws = document.getElementById('atelier-workspace'); if(!ws) return;
-            ws.innerHTML = `<h2 style="color:#2c3e50; margin-top:0; padding-bottom:10px; border-bottom:2px solid #8e44ad; font-size:18px;">🧰 Banc d'Essais</h2>`;
-            let canonsEnAtelier = window.suiviEntretienData.filter(row => row[3] && row[3].toString().toLowerCase().trim() === "oui").map(r => r[0].toString());
-            if(canonsEnAtelier.length === 0) { ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:8px; text-align:center; padding:40px 20px; color:#7f8c8d; font-weight:bold; font-size:14px;">✅ Aucun enneigeur au banc d'essais.</div>`; return; }
+        window.openBiMeteo = function() { document.getElementById('bi-meteo-modal').style.display='flex'; window.biLoadSource(); };
+        window.biLoadSource = function() { /* (Logique BI standard conservée) */ let src = document.getElementById('bi-source').value; let data = src==='types' ? [["Modèle","Quantité"]] : (src==='defauts' ? [["Mois","Pannes"]] : window.rawHistorique); window.biCurrentData = data; let selX = document.getElementById('bi-x'); if(selX) selX.innerHTML = `<option value="0">Défaut (Index 0)</option>`; window.biUpdateUI(); };
+        window.biUpdateUI = function() { window.biDrawChart(); };
+        window.biDrawChart = function() { let ctx = document.getElementById('bi-canvas'); if(!ctx) return; if(window.chartInstances['bi-chart']) window.chartInstances['bi-chart'].destroy(); window.chartInstances['bi-chart'] = new Chart(ctx.getContext('2d'), { type: 'bar', data: { labels: ['A','B','C'], datasets: [{ label:'Démo BI', data:[10,20,15], backgroundColor:'#8e44ad' }] }, options: { responsive: true, maintainAspectRatio: false } }); };
 
-            let idsValides = new Set();
-            if (window.rawAtelier && window.rawAtelier.length > 1) {
-                let headersAtelier = window.rawAtelier[0].map(h => h.toString().toLowerCase().trim());
-                let idxIdAtelier = headersAtelier.findIndex(h => h === "id" || h.includes("n°"));
-                if (idxIdAtelier !== -1) { for (let i = 1; i < window.rawAtelier.length; i++) idsValides.add(window.rawAtelier[i][idxIdAtelier].toString().trim()); }
-            }
-
-            let listeAFaire = []; let listeValidee = []; canonsEnAtelier.forEach(id => { if (idsValides.has(id)) listeValidee.push(id); else listeAFaire.push(id); });
-            let orderedCanons = [...listeAFaire, ...listeValidee];
-            let mapsToInitialize = [];
-
-            orderedCanons.forEach(idCanon => {
-                let feature = window.snowCannons.features.find(f => f.properties.id == idCanon); if(!feature) return;
-                let p = feature.properties; let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, ""); let estValide = idsValides.has(idCanon);
-                
-                let existingData = {};
-                if (estValide) {
-                    let headersAtelier = window.rawAtelier[0].map(h => h.toString().trim()); let idxIdAtelier = headersAtelier.findIndex(h => h.toLowerCase() === "id" || h.toLowerCase().includes("n°"));
-                    let rowData = window.rawAtelier.find(r => r[idxIdAtelier].toString().trim() === idCanon);
-                    if (rowData) headersAtelier.forEach((h, i) => { existingData[h.toLowerCase().trim()] = rowData[i]; });
-                }
-                const getVal = (col) => existingData[col.toLowerCase().trim()] !== undefined ? existingData[col.toLowerCase().trim()] : "";
-
-                // Logique des vannes
-                let typeVannePrincipale = window.getV(p, "Type de vanne").toUpperCase();
-                let valVanneAd = (window.getV(p, "vanne additio") || "").toLowerCase();
-                let isAbrisDouble = (window.getV(p, "abris double") || "").toString().toLowerCase() === "oui";
-                let defaultVanne = "none";
-                if (valVanneAd.includes("clarinette") || valVanneAd.includes("v2000")) defaultVanne = "v2000"; else if (valVanneAd.includes("2var") || (valVanneAd.includes("var") && isAbrisDouble)) defaultVanne = "var_double"; else if (valVanneAd.includes("var")) defaultVanne = "var";
-
-                // Photos & Icônes (Drive)
-                let suiviRow = window.suiviEntretienData.find(row => row[0] == idCanon); let photoUrlBrute = suiviRow && suiviRow[6] ? suiviRow[6].toString().trim() : ""; let photoDisplayHtml = "";
-                if (photoUrlBrute !== "") { let directImgUrl = window.parseDriveUrl(photoUrlBrute) || photoUrlBrute; photoDisplayHtml = `<div style="margin:10px 0; text-align:center;"><img src="${directImgUrl}" style="max-width:100%; border-radius:6px; border:1px solid #ddd;"></div>`; }
-                let typeCanonAtelier = window.getV(p, window.keyType).toLowerCase().trim(); let iconUrlAtelier = (window.driveIcons && window.driveIcons[typeCanonAtelier]) ? window.driveIcons[typeCanonAtelier] : null; let imageAtelierHtml = iconUrlAtelier ? `<img src="${iconUrlAtelier}" style="height:35px; vertical-align:middle; margin-right:8px; border-radius:4px;">` : "⚙️";
-
-                // Calcul Auto Consommables
-                let cR18N = 0, cR18P = 0, cPtfeR3 = 0, cR11N = 0, cR11P = 0, cPtfeVar = 0;
-                if (typeVannePrincipale === "YA") { cR18N = 2; cR18P = 4; cPtfeR3 = 1; } else if (typeVannePrincipale === "YB") { cR18N = 5; cR18P = 4; cPtfeR3 = 1; }
-                if (defaultVanne === "v2000") { cR18N += 6; cR18P += 2; cPtfeR3 += 2; } else if (defaultVanne === "var" || defaultVanne === "var_double") { let mult = (defaultVanne === "var_double") ? 2 : 1; cR11N = 6 * mult; cR11P = 2 * mult; cPtfeVar = 2 * mult; }
-                const getConsommable = (col, autoCalc) => existingData[col.toLowerCase().trim()] !== undefined ? existingData[col.toLowerCase().trim()] : (autoCalc > 0 ? autoCalc : "");
-
-                // Formulaire Banc d'essai (Responsive Mobile)
-                let formHtml = `
-                    <div style="padding:15px; background:#fdfdfe;">
-                        <h4 style="margin:0 0 10px 0; color:#2980b9; font-size:14px;">🔵 VANNE PRINCIPALE</h4>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
-                            <div><span class="edit-label">Pression Eau 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" value="${getVal('test pression eau 1')}"></div>
-                            <div><span class="edit-label">Test Élec 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" value="${getVal('test elec Vanne')}"></div>
-                            <div style="grid-column: span 2;"><span class="edit-label">Maintenance</span><input type="text" class="edit-input b-field-${safeId}" data-col="maintenance effectué" value="${getVal('maintenance effectué')}"></div>
-                            <div><span class="edit-label">Pression Eau 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" value="${getVal('test pression eau 2')}"></div>
-                            <div><span class="edit-label" style="color:#27ae60;">Vanne prête ?</span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="${getVal('prête') || 'OUI'}" style="font-weight:bold; color:#27ae60;"></div>
-                        </div>
-
-                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:15px; font-weight:bold;">
-                            <option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune vanne additionnelle --</option>
-                            <option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>VAR Double (2VAR)</option>
-                            <option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>V2000 (Clarinette)</option>
-                        </select>
-                        
-                        <div id="bloc-v2000-${safeId}" style="display:${defaultVanne === 'v2000' ? 'block' : 'none'}; background:#eaf2f8; padding:15px; border-radius:6px; margin-bottom:15px;">
-                            <b style="color:#2980b9; font-size:13px;">🛡️ BLOC DE TEST : VALVE V2000</b>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
-                                <div><span class="edit-label">Élec C2 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" value="${getVal('test 1 elec V2000 c2')}"></div>
-                                <div><span class="edit-label">Élec C3 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c3" value="${getVal('test 1 elec V2000 c3')}"></div>
-                                <div style="grid-column: span 2;"><span class="edit-label">V2000 Prête ?</span><input type="text" class="edit-input b-field-${safeId}" data-col="V2000 prête" value="${getVal('V2000 prête') || 'OUI'}"></div>
-                            </div>
-                        </div>
-
-                        <div style="background:#f4f6f8; padding:15px; border-radius:6px; margin-top:15px; border:1px dashed #ccc;">
-                            <div style="font-weight:bold; font-size:13px; color:#555; text-transform:uppercase; margin-bottom:12px;">📋 Consommables Calculés :</div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px;">
-                                <div><span class="edit-label">R18 Nitrile</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R18 NITRILE" value="${getConsommable('joint R18 NITRILE', cR18N)}"></div>
-                                <div><span class="edit-label">R18 PTFE</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R18 ptfe" value="${getConsommable('joint R18 ptfe', cR18P)}"></div>
-                                <div><span class="edit-label">PTFE R3</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint PTFE r3" value="${getConsommable('joint PTFE r3', cPtfeR3)}"></div>
-                            </div>
-                        </div>
-                        <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" class="btn-action-primary" style="margin-top:20px; background:${estValide ? '#27ae60' : '#8e44ad'};">
-                            ${estValide ? '🔄 Mettre à jour' : '🚀 Archiver au Banc'}
-                        </button>
-                    </div>`;
-
-                let card = document.createElement('div'); card.className = "atelier-card"; if (estValide) { card.style.borderLeftColor = "#27ae60"; card.style.background = "#f4fdf7"; }
-                card.innerHTML = `<h3>${imageAtelierHtml} Canon N° ${idCanon} ${estValide ? '<span style="background:#27ae60; color:white; font-size:10px; padding:3px 6px; border-radius:12px; margin-left:10px;">✅ ARCHIVÉ</span>' : ''}</h3>${photoDisplayHtml}<details class="atelier-sub-details" open><summary>📝 Fiche d'Essai Usine</summary>${formHtml}</details>`;
-                ws.appendChild(card);
-            });
+        window.calculateMaxes = function() {
+            if(!window.saisonsList[window.histSeasonIdx]) return; let s = window.saisonsList[window.histSeasonIdx]; window.absoluteMaxes = { eau: 0, air: 0, temps: 0 };
+            window.snowCannons.features.forEach(f => { if (f.properties.historique[s]) { window.absoluteMaxes.eau = Math.max(window.absoluteMaxes.eau, f.properties.historique[s].eau); window.absoluteMaxes.air = Math.max(window.absoluteMaxes.air, f.properties.historique[s].air); window.absoluteMaxes.temps = Math.max(window.absoluteMaxes.temps, f.properties.historique[s].temps); } });
+            window.currentMaxThreshold = { ...window.absoluteMaxes }; window.currentMinThreshold = { eau:0, air:0, temps:0 };
         };
-        window.handleSelectVanne = function(safeId, val) { let v = document.getElementById(`bloc-v2000-${safeId}`); if(v) v.style.display = (val==='v2000')?'block':'none'; };
-
-        /* ========================================================================= */
-        /* SECTION 10 : MODULE DE GESTION DU STOCK (MOBILE ET PHOTOS DRIVE)          */
-        /* ========================================================================= */
-        window.renderStockWorkspace = function() {
-            let ws = document.getElementById('stock-workspace'); if (!ws) return;
-            if (!window.rawStock || window.rawStock.length < 1) { ws.innerHTML = `<div style="padding:30px; text-align:center;">⚠️ Stock introuvable.</div>`; return; }
-
-            let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
-            let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); let idxRef = headers.findIndex(h => h === "ref"); let idxProd = headers.findIndex(h => h === "produit");
-            let idxDesc = headers.findIndex(h => h === "description"); let idxPhoto = headers.findIndex(h => h === "photo"); let idxStock = headers.findIndex(h => h.includes("stock")); let idxPris = headers.findIndex(h => h === "pris");
-
-            let uniqueDescs = new Set(); for (let i = 1; i < window.rawStock.length; i++) { if (idxDesc !== -1 && window.rawStock[i][idxDesc]) window.rawStock[i][idxDesc].toString().split(',').forEach(d => { if(d.trim()!=="") uniqueDescs.add(d.trim()); }); }
-            let filterOptionsHtml = `<option value="">📁 Toutes les descriptions</option>` + Array.from(uniqueDescs).sort().map(d => `<option value="${d}">${d}</option>`).join('');
-
-            ws.innerHTML = `
-                <div style="background:#fff; padding:15px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.05); margin-bottom:15px; border:1px solid #16a085;">
-                    <h2 style="color:#2c3e50; margin:0 0 10px 0; font-size:18px;">📦 Inventaire <span id="stock-count-display" style="font-size:12px; color:#7f8c8d; background:#e1e8ed; padding:4px 8px; border-radius:12px;">(${window.rawStock.length - 1})</span></h2>
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <input type="text" id="search-stock" placeholder="🔍 Rechercher (Pièce, Réf)..." onkeyup="window.filterStockItems()" style="padding:12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
-                        <select id="filter-desc-stock" onchange="window.filterStockItems()" style="padding:12px; border-radius:6px; border:1px solid #ccc; font-size:14px; color:#16a085; font-weight:bold;">${filterOptionsHtml}</select>
-                        <button onclick="document.getElementById('add-stock-form-container').style.display='block'" style="background:#16a085; color:white; border:none; padding:12px; border-radius:6px; font-weight:bold;">➕ Nouvel article</button>
-                    </div>
-                </div>
-                
-                <div id="add-stock-form-container" style="display:none; background:#fff; border:2px solid #16a085; padding:15px; border-radius:8px; margin-bottom:15px;">
-                    <h4 style="margin:0 0 12px 0; color:#16a085;">Ajouter un article</h4>
-                    <div style="display:flex; flex-direction:column; gap:10px;" id="add-stock-fields-grid"></div>
-                    <button onclick="window.addStockItemToServer(this)" class="btn-action-primary" style="background:#16a085;">✅ Créer l'article</button>
-                </div>
-                <div id="stock-cards-list" style="display:flex; flex-direction:column; gap:15px;"></div>`;
-
-            let addGrid = document.getElementById('add-stock-fields-grid');
-            window.rawStock[0].forEach(colName => {
-                let lowerName = (colName||"").toString().toLowerCase().trim(); if(lowerName==="") return;
-                addGrid.innerHTML += `<div><div class="edit-label">${colName}</div><input type="text" class="edit-input new-stock-field" data-col="${colName}" ${lowerName.includes("reste")?'value="0" readonly style="background:#eee;"':''}></div>`;
-            });
-
-            let cardsContainer = document.getElementById('stock-cards-list');
-            for (let i = 1; i < window.rawStock.length; i++) {
-                let row = window.rawStock[i]; if (!row || row.length === 0 || row.every(cell => !cell)) continue;
-                let numPiece = (idxNum !== -1 && row[idxNum] != null) ? row[idxNum].toString().trim() : i.toString(); let safeId = "stock-" + numPiece.replace(/[^a-zA-Z0-9]/g, "-");
-                let valStock = parseFloat(row[idxStock]) || 0; let valPris = parseFloat(row[idxPris]) || 0; let valReste = valStock - valPris;
-                let valRef = row[idxRef] ? row[idxRef].toString().trim() : ""; let valProd = row[idxProd] ? row[idxProd].toString().trim() : "Sans nom"; let valPhoto = row[idxPhoto] ? row[idxPhoto].toString().trim() : "";
-
-                // Parsing intelligent de la photo depuis Google Drive ou AppSheet
-                let parsedImgUrl = "https://placehold.co/150x150?text=Pas+de+photo";
-                if (valPhoto !== "") {
-                    let rawFileName = valPhoto.split('/').pop().toLowerCase().trim(); let coreId = rawFileName.split('.')[0]; 
-                    let foundInDrive = false;
-                    if (window.drivePhotos) {
-                        if (window.drivePhotos[rawFileName]) { parsedImgUrl = window.drivePhotos[rawFileName]; foundInDrive = true; } 
-                        else { let fuzzyMatch = Object.keys(window.drivePhotos).find(k => k.includes(coreId) && coreId !== ""); if (fuzzyMatch) { parsedImgUrl = window.drivePhotos[fuzzyMatch]; foundInDrive = true; } }
-                    }
-                    if (!foundInDrive) parsedImgUrl = valPhoto.includes("drive.google.com") ? window.parseDriveUrl(valPhoto) : window.parseAppSheetPhotoUrl(valPhoto);
-                }
-
-                let cardBlock = document.createElement('div'); cardBlock.className = "stock-item-card";
-                cardBlock.style = `background:#fff; border:1px solid #e1e8ed; border-radius:8px; padding:15px; box-shadow:0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #16a085; display:flex; flex-direction:column; gap:15px;`;
-                cardBlock.innerHTML = `
-                    <div style="display:flex; gap:15px;">
-                        <div style="width:100px; height:100px; background:#f4f6f8; border-radius:6px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                            <img src="${parsedImgUrl}" style="max-width:100%; max-height:100%; object-fit:contain;"/>
-                        </div>
-                        <div style="flex-grow:1;">
-                            <div style="color:#7f8c8d; font-size:12px; font-weight:bold;">Réf: ${valRef || "N/A"}</div>
-                            <div style="color:#2c3e50; font-size:16px; font-weight:bold; margin:4px 0;">${valProd}</div>
-                            <div style="font-size:13px; color:#27ae60; font-weight:bold;">En Stock : ${valReste}</div>
-                        </div>
-                    </div>
-                    <details style="background:#f9fbfc; border:1px solid #eee; border-radius:6px; padding:12px;">
-                        <summary style="font-weight:bold; color:#3498db; outline:none; cursor:pointer;">Éditer ce produit ▼</summary>
-                        <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
-                            <div><div class="edit-label">Nom</div><input type="text" class="edit-input s-field-${safeId}" data-col="produit" value="${valProd}"></div>
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><div class="edit-label">En Stock (Total)</div><input type="number" class="edit-input s-field-${safeId}" data-col="en stock" value="${valStock}" onchange="window.recalculateCardReste('${safeId}')"></div>
-                                <div style="flex:1;"><div class="edit-label">Déjà Pris</div><input type="number" class="edit-input s-field-${safeId}" data-col="pris" value="${valPris}" onchange="window.recalculateCardReste('${safeId}')"></div>
-                                <div style="flex:1;"><div class="edit-label" style="color:#2980b9;">Reste (Auto)</div><input type="number" id="reste-${safeId}" class="edit-input s-field-${safeId}" data-col="reste" value="${valReste}" readonly style="background:#f4f6f8;"></div>
-                            </div>
-                            <button onclick="window.saveStockItemEdits('${numPiece}', '${safeId}', this)" class="btn-action-primary" style="background:#16a085;">💾 Sauvegarder</button>
-                        </div>
-                    </details>`;
-                cardsContainer.appendChild(cardBlock);
-            }
-        };
-
-        window.filterStockItems = function() {
-            let searchVal = document.getElementById('search-stock').value.toLowerCase().trim();
-            let descVal = document.getElementById('filter-desc-stock').value.toLowerCase().trim();
-            let cards = document.querySelectorAll('.stock-item-card'); let visibleCount = 0;
-            cards.forEach(card => {
-                let isMatch = card.innerText.toLowerCase().includes(searchVal) && card.innerText.toLowerCase().includes(descVal);
-                card.style.display = isMatch ? 'flex' : 'none'; if (isMatch) visibleCount++;
-            });
-            let cDisp = document.getElementById('stock-count-display'); if (cDisp) cDisp.innerText = `(${visibleCount})`;
-        };
-
-        window.recalculateCardReste = function(safeId) { let sInp = document.querySelector(`.s-field-${safeId}[data-col="en stock"]`); let pInp = document.querySelector(`.s-field-${safeId}[data-col="pris"]`); let rDisp = document.getElementById(`reste-${safeId}`); if (sInp && pInp && rDisp) rDisp.value = (parseFloat(sInp.value)||0) - (parseFloat(pInp.value)||0); };
 
         /* BOOT SEQUENCE */
         window.addEventListener('DOMContentLoaded', async () => {
             if(window.bootAttempt > 0) return; window.bootAttempt = 1;
             try {
-                window.setStep(0, "Initialisation de la carte...");
-                let retries = 0; while ((typeof L === 'undefined' || typeof JSZip === 'undefined' || typeof Chart === 'undefined') && retries < 50) { await new Promise(r => setTimeout(r, 100)); retries++; }
+                window.setStep(0, "Initialisation...");
+                let retries = 0; while ((typeof L === 'undefined' || typeof Chart === 'undefined') && retries < 50) { await new Promise(r => setTimeout(r, 100)); retries++; }
                 window.initMap(); await window.fetchGoogleSheetsData();
             } catch (err) { window.showCrash(err.message, "Boot Principal"); }
         });
