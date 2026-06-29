@@ -539,3 +539,624 @@
             });
         };
         
+        /* ========================================================================= */
+        /* CHAPITRE 6 : FORMULAIRES & ÉDITION DES TICKETS                            */
+        /* ========================================================================= */
+
+        window.startEdit = function(id) {
+            window.currentlyEditingId = id; 
+            let layer = window.selectedCannonsMap.get(id); let p = layer.feature.properties;
+            document.getElementById('edit-id-display').innerText = p.id; document.getElementById('edit-id').value = p.id;
+            document.getElementById('edit-lat').value = layer.getLatLng().lat.toFixed(7); document.getElementById('edit-lng').value = layer.getLatLng().lng.toFixed(7);
+            
+            let fc = document.getElementById('dynamic-edit-fields'); fc.innerHTML = "";
+            p.fullData.forEach(i => { 
+                if(i.k.toLowerCase().match(/(regard|xy|gps)/)) return; 
+                fc.innerHTML += `<div style="margin-bottom:10px;"><div class="edit-label">${i.k}</div><input type="text" class="edit-input dyn-field" data-key="${i.k}" value="${i.v}"></div>`; 
+            });
+            
+            document.getElementById('view-selection').style.display = 'none'; document.getElementById('view-edit').style.display = 'block'; 
+            document.getElementById('right-title').innerText = "✏️ Édition"; window.openBottomSheet('full'); window.updateMap();
+        };
+
+        window.saveEditData = async function() {
+            if(!window.currentlyEditingId) return;
+            let btn = document.getElementById('btn-save-edit'); btn.innerText = "⏳ Envoi..."; btn.disabled = true;
+            let fields = {}; document.querySelectorAll('.dyn-field').forEach(i => fields[i.getAttribute('data-key')] = i.value);
+            
+            let pl = { action: "update_general", idCanon: document.getElementById('edit-id').value, lat: parseFloat(document.getElementById('edit-lat').value), lng: parseFloat(document.getElementById('edit-lng').value), fields: fields };
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(pl) }); let r = await res.json();
+                if(r.status === "success") {
+                    let l = window.selectedCannonsMap.get(window.currentlyEditingId); let p = l.feature.properties;
+                    p.fullData.forEach(item => { if(fields[item.k] !== undefined) item.v = fields[item.k]; });
+                    let tLower = window.getV(p, window.keyType).toLowerCase().trim();
+                    if(["demak lenko", "demac lenko"].includes(tLower)) p.couleur_defaut = "#0000FF"; else if(["sufag", "street", "taurus", "taurax", "peak"].includes(tLower)) p.couleur_defaut = "#008000"; else p.couleur_defaut = window.technoColors[tLower] || "#FFD700";
+                    l.feature.geometry.coordinates = [pl.lng, pl.lat]; l.setLatLng([pl.lat, pl.lng]);
+                    window.cancelEdit();
+                } else alert("Erreur Google");
+            } catch(err) { alert("Échec réseau"); }
+            btn.innerText = "✅ Sauver"; btn.disabled = false;
+        };
+
+        window.addNouveauTicket = async function(idCanon, btn) {
+            let elDef = document.getElementById(`nt-defaut-${idCanon}`); if(!elDef || !elDef.value.trim()) { alert("Veuillez renseigner la panne."); return; }
+            let fieldsObj = { 
+                "état": document.getElementById(`nt-etat-${idCanon}`).value, "Priorité": document.getElementById(`nt-priorite-${idCanon}`).value,
+                "date": new Date().toLocaleDateString('fr-FR'), "n°regard": idCanon, 
+                "piste": window.getV(window.selectedCannonsMap.get(idCanon).feature.properties, window.keyPiste) || "Inconnue", 
+                "defaut": elDef.value, "Défaut sonde": document.getElementById(`nt-sonde-${idCanon}`).value, 
+                "cause": document.getElementById(`nt-cause-${idCanon}`).value, "date d'inter": document.getElementById(`nt-dateinter-${idCanon}`).value, 
+                "intervention": document.getElementById(`nt-interv-${idCanon}`).value, "Remarque": document.getElementById(`nt-remarque-${idCanon}`).value, 
+                "periode": document.getElementById(`nt-periode-${idCanon}`).value, "photos": document.getElementById(`nt-photos-${idCanon}`).value, 
+                "pièces utilisés": document.getElementById(`nt-pieces-${idCanon}`).value 
+            };
+            
+            let oldText = btn.innerText; btn.innerText = "⏳ Transmission..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_ticket", fields: fieldsObj }) }); let r = await res.json();
+                if(r.status === "success") {
+                    btn.innerText = "🚀 Archivé !"; btn.style.background = "#27ae60"; 
+                    window.rawTickets.push({ statut: fieldsObj["état"].toLowerCase(), date: fieldsObj["date"], idCanon: idCanon, defaut: fieldsObj["defaut"], fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]})) });
+                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); }, 2000);
+                } else { alert("Erreur serveur."); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
+        };
+
+        window.editFullTicket = function(canonId, defaut) {
+            let safeDef = defaut.replace(/[^a-zA-Z0-9]/g, ""); let idDiv = `ticket-edit-${canonId}-${safeDef}`; let el = document.getElementById(idDiv); if(!el) return;
+            let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut); if(!ticket) return;
+            
+            let html = '<div style="background:#fdfdfe; padding:12px; border-radius:6px; border:2px solid #3498db; margin-top:10px;">';
+            ticket.fullData.forEach(d => {
+                let kLow = d.k.toLowerCase(); let valStr = d.v.toString();
+                if (kLow.includes('regard') || kLow === 'id' || kLow.includes('n°')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}" readonly style="background:#e1e8ed; color:#7f8c8d;"></div>`; } 
+                else if (kLow.includes('etat') || kLow.includes('état') || kLow === 'statut') { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><select class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}">${['à faire', 'en cours', 'fait'].map(s => `<option value="${s}" ${valStr.toLowerCase().includes(s) ? 'selected' : ''}>${s.toUpperCase()}</option>`).join('')}</select></div>`; } 
+                else if (valStr.length > 40 || kLow.includes('cause') || kLow.includes('intervention')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><textarea class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" rows="2">${valStr}</textarea></div>`; } 
+                else { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}"></div>`; }
+            });
+            html += `<div style="display:flex; gap:10px; margin-top:15px;"><button onclick="window.renderSelectionPanel()" class="btn-action-primary" style="background:#bdc3c7; flex:1; margin-top:0;">Annuler</button><button onclick="window.prepareTicketSave('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" class="btn-action-primary" style="background:#2ecc71; flex:2; margin-top:0;">Suivant ➔</button></div></div>`; el.innerHTML = html;
+        };
+
+        window.prepareTicketSave = function(canonId, defaut, idDiv) {
+            let fieldsObj = {}; let newStatutForLocal = "";
+            document.querySelectorAll(`.tick-dyn-field-${idDiv}`).forEach(inp => { let k = inp.getAttribute('data-key'); let v = inp.value; if(!k.toLowerCase().includes('regard') && k.toLowerCase() !== 'id') { fieldsObj[k] = v; } if(k.toLowerCase().includes('etat') || k.toLowerCase().includes('état') || k.toLowerCase() === 'statut') { newStatutForLocal = v; } });
+            window.tempTicketPayloads[idDiv] = { payload: { action: "update_ticket", idCanon: canonId, defaut: defaut, fields: fieldsObj }, newStatut: newStatutForLocal };
+            let el = document.getElementById(idDiv);
+            if(el) { el.innerHTML = `<div style="background:#fff3cd; padding:15px; border-radius:6px; border:2px solid #f39c12; margin-top:10px;"><div style="font-weight:bold; color:#d35400; margin-bottom:10px;">⚠️ Valider les modifs ?</div><div style="display:flex; gap:10px;"><button onclick="window.renderSelectionPanel()" class="btn-action-primary" style="background:#bdc3c7; margin-top:0;">Annuler</button><button onclick="window.confirmSaveTicket('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" class="btn-action-primary" style="background:#27ae60; margin-top:0;">Envoyer 🚀</button></div></div>`; }
+        };
+
+        window.confirmSaveTicket = async function(canonId, defaut, idDiv) {
+            let temp = window.tempTicketPayloads[idDiv]; if(!temp) return; 
+            document.getElementById(idDiv).innerHTML = `<div style="text-align:center; padding:10px; font-weight:bold; color:#3498db;">Enregistrement... ⏳</div>`;
+            try {
+                const response = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(temp.payload) }); const result = await response.json();
+                if(result.status === "success") {
+                    let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut);
+                    if(ticket) { ticket.fullData.forEach(d => { if(temp.payload.fields[d.k] !== undefined) d.v = temp.payload.fields[d.k]; }); if(temp.newStatut) ticket.statut = temp.newStatut.toLowerCase(); }
+                    window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); delete window.tempTicketPayloads[idDiv];
+                } else alert("Erreur Google");
+            } catch(e) { alert("Échec réseau."); }
+        };
+
+        window.saveMultiSuivi = async function(btn) {
+            let payloads = [];
+            window.selectedCannonsMap.forEach((layer, idCanon) => {
+                let chkDec = document.getElementById('chk-dec-single-' + idCanon); let chkPrev = document.getElementById('chk-prev-single-' + idCanon); let rem = document.getElementById('rem-single-' + idCanon);
+                payloads.push({ idCanon: idCanon, piste: window.getV(layer.feature.properties, window.keyPiste), deconnexion: chkDec ? chkDec.checked : false, preventif: chkPrev ? chkPrev.checked : false, vanneCorrectif: "", remarque: rem ? rem.value : "" });
+            });
+            if (payloads.length === 0) return;
+            let oldText = btn.innerText; btn.innerText = "⏳ Sauvegarde..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_suivi_multi", payloads: payloads }) }); let r = await res.json();
+                if (r.status === "success") {
+                    btn.innerText = "✅ Succès !";
+                    payloads.forEach(item => { let sRow = window.suiviEntretienData.find(row => row[0] == item.idCanon); if (sRow) { sRow[2] = item.deconnexion ? "oui" : "non"; sRow[3] = item.preventif ? "oui" : "non"; sRow[5] = item.remarque; } else { window.suiviEntretienData.push([item.idCanon, item.piste, item.deconnexion ? "oui" : "non", item.preventif ? "oui" : "non", "", item.remarque, ""]); } });
+                    window.updateMap(); setTimeout(() => { btn.innerText = oldText; btn.disabled = false; }, 2000);
+                } else alert("Erreur serveur.");
+            } catch (e) { alert("Échec réseau."); }
+        };
+
+        window.saveEntretienTete = async function(idCanon, btn) {
+            let chk = document.getElementById(`chk-buses-${idCanon}`); if(!chk) return;
+            let isChecked = chk.checked; let valBuses = isChecked ? "OUI" : ""; let currentYear = new Date().getFullYear();
+            let fieldsObj = { "Buses": valBuses, "années buses": isChecked ? currentYear.toString() : "" };
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: idCanon, fields: fieldsObj }) }); let r = await res.json();
+                if(r.status === "success") {
+                    btn.innerText = "✅ Validé"; btn.style.background = "#27ae60";
+                    let feat = window.snowCannons.features.find(f => f.properties.id == idCanon);
+                    if(feat) { let objB = feat.properties.fullData.find(x => x.k.toLowerCase() === "buses"); if(objB) objB.v = valBuses; else feat.properties.fullData.push({k: "Buses", v: valBuses}); let objA = feat.properties.fullData.find(x => x.k.toLowerCase() === "années buses"); if(objA) objA.v = fieldsObj["années buses"]; else feat.properties.fullData.push({k: "années buses", v: fieldsObj["années buses"]}); }
+                    window.updateMap(); setTimeout(() => { btn.innerText = "💾 Valider"; btn.disabled = false; btn.style.background = "#e67e22"; }, 2000);
+                } else alert("Erreur Serveur");
+            } catch(e) { alert("Erreur Réseau"); }
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 7 : ESPACE STOCK (100% FONCTIONNEL ET MOBILE)                    */
+        /* ========================================================================= */
+        
+        window.renderStockWorkspace = function() {
+            let ws = document.getElementById('stock-workspace'); if (!ws) return;
+            if (!window.rawStock || window.rawStock.length < 1) { ws.innerHTML = `<div style="text-align:center; padding:30px; font-weight:bold;">⚠️ Aucun stock détecté.</div>`; return; }
+
+            let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
+            let idxNum = headers.findIndex(h => h.includes("numero") || h === "id");
+            let idxRef = headers.findIndex(h => h === "ref"); let idxProd = headers.findIndex(h => h === "produit"); 
+            let idxDesc = headers.findIndex(h => h === "description"); let idxPhoto = headers.findIndex(h => h === "photo"); 
+            let idxStock = headers.findIndex(h => h.includes("stock")); let idxMini = headers.findIndex(h => h.includes("mini")); let idxPris = headers.findIndex(h => h === "pris");
+
+            let maxId = 0; let uniqueDescs = new Set();
+            for (let i = 1; i < window.rawStock.length; i++) {
+                let row = window.rawStock[i]; if (!row || row.length === 0) continue;
+                if (idxNum !== -1 && row[idxNum]) { let idVal = parseInt(row[idxNum], 10); if (!isNaN(idVal) && idVal > maxId) maxId = idVal; }
+                if (idxDesc !== -1 && row[idxDesc]) { row[idxDesc].toString().split(',').forEach(d => { let c = d.trim(); if(c !== "") uniqueDescs.add(c); }); }
+            }
+            let nextId = maxId > 0 ? (maxId + 1) : 1; let totalArticles = window.rawStock.length - 1;
+            let filterOptionsHtml = `<option value="">📁 Tous les types</option>` + Array.from(uniqueDescs).sort().map(d => `<option value="${d}">${d}</option>`).join('');
+
+            ws.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px; border-bottom:2px solid #16a085; padding-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h2 style="color:#2c3e50; margin:0; font-size:22px;">📦 Inventaire <span id="stock-count-display" style="font-size:12px; color:#7f8c8d; font-weight:normal;">(${totalArticles})</span></h2>
+                        <button onclick="window.toggleAddStockForm()" style="background:#16a085; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold;">➕ Ajouter</button>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <select id="filter-desc-stock" onchange="window.filterStockItems()" class="edit-input" style="flex:1; margin:0;">${filterOptionsHtml}</select>
+                        <input type="text" id="search-stock" placeholder="🔍 Réf..." onkeyup="window.filterStockItems()" class="edit-input" style="flex:1; margin:0;">
+                    </div>
+                </div>
+                
+                <div id="add-stock-form-container" style="display:none; background:#fff; border:2px solid #16a085; padding:15px; border-radius:8px; margin-bottom:20px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                    <h4 style="margin:0 0 12px 0; color:#16a085;">Créer un article</h4>
+                    <div style="display:flex; flex-direction:column; gap:10px;" id="add-stock-fields-grid"></div>
+                    <div style="display:flex; gap:10px; margin-top:15px;">
+                        <button onclick="window.toggleAddStockForm()" class="btn-action-primary" style="background:#e1e8ed; color:#333; margin-top:0;">Annuler</button>
+                        <button onclick="window.addStockItemToServer(this)" class="btn-action-primary" style="background:#16a085; margin-top:0;">🚀 Valider l'ajout</button>
+                    </div>
+                </div>
+                
+                <div id="stock-cards-list" style="display:flex; flex-direction:column; gap:15px;"></div>`;
+
+            let addGrid = document.getElementById('add-stock-fields-grid');
+            window.rawStock[0].forEach(colName => {
+                let cleanName = colName ? colName.toString().trim() : ""; let lowerName = cleanName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                if (cleanName === "" || lowerName.includes("commande") || lowerName === "cmd") return;
+                if (lowerName === "numero" || lowerName === "id") { addGrid.innerHTML += `<div><span class="edit-label">${cleanName} (Auto)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="${nextId}" readonly style="background:#eee; margin-bottom:0;"></div>`; } 
+                else if (lowerName === "reste") { addGrid.innerHTML += `<div><span class="edit-label">${cleanName} (Auto)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="0" readonly style="background:#eee; margin-bottom:0;"></div>`; } 
+                else { addGrid.innerHTML += `<div><span class="edit-label">${cleanName}</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" style="margin-bottom:0;"></div>`; }
+            });
+
+            let cardsContainer = document.getElementById('stock-cards-list');
+            for (let i = 1; i < window.rawStock.length; i++) {
+                let row = window.rawStock[i]; if (!row || row.length === 0) continue; 
+                let numPiece = (idxNum !== -1 && row[idxNum]) ? row[idxNum].toString().trim() : i.toString();
+                let safeId = "stock-" + numPiece.replace(/[^a-zA-Z0-9]/g, "-");
+                let valStock = (idxStock !== -1 && row[idxStock]) ? parseFloat(row[idxStock]) || 0 : 0;
+                let valMini = (idxMini !== -1 && row[idxMini]) ? parseFloat(row[idxMini]) || 0 : 0;
+                let valPris = (idxPris !== -1 && row[idxPris]) ? parseFloat(row[idxPris]) || 0 : 0;
+                let valRef = (idxRef !== -1 && row[idxRef]) ? row[idxRef].toString().trim() : "";
+                let valProd = (idxProd !== -1 && row[idxProd]) ? row[idxProd].toString().trim() : "Sans nom";
+                let valPhoto = (idxPhoto !== -1 && row[idxPhoto]) ? row[idxPhoto].toString().trim() : "";
+
+                let alerteStyle = valStock <= valMini ? "background:#fdf2f2; border-color:#e74c3c;" : "background:#fff; border-color:#ddd;";
+                let parsedImgUrl = "https://placehold.co/150x150?text=Pas+de+photo";
+                
+                if (valPhoto && valPhoto !== "") {
+                    let rawFileName = valPhoto.split('/').pop().toLowerCase().trim();
+                    let fuzzyMatch = Object.keys(window.drivePhotos || {}).find(k => k.includes(rawFileName.split('.')[0]));
+                    if (fuzzyMatch) parsedImgUrl = window.drivePhotos[fuzzyMatch];
+                    else if (valPhoto.includes("drive.google.com")) parsedImgUrl = window.parseDriveUrl(valPhoto);
+                }
+
+                let cardBlock = document.createElement('div'); cardBlock.className = "stock-item-card";
+                cardBlock.style = `border:1px solid #ddd; border-left:6px solid #16a085; border-radius:8px; padding:15px; display:flex; flex-direction:column; gap:10px; ${alerteStyle}`;
+                cardBlock.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <h3 style="margin:0; color:#2c3e50; font-size:16px;">${valProd} <br><span style="font-size:12px; color:#16a085;">Réf: ${valRef}</span></h3>
+                        ${parsedImgUrl !== "https://placehold.co/150x150?text=Pas+de+photo" ? `<img src="${parsedImgUrl}" style="max-width:60px; max-height:60px; border-radius:4px; border:1px solid #ccc;">` : ''}
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><span class="edit-label">En Stock</span><input type="number" class="edit-input s-field-${safeId}" data-col="en stock" value="${valStock}" style="font-weight:bold; margin-bottom:0; color:${valStock <= valMini ? '#e74c3c' : '#2c3e50'};"></div>
+                        <div style="flex:1;"><span class="edit-label">Mini</span><input type="number" class="edit-input s-field-${safeId}" data-col="seuil mini" value="${valMini}" style="margin-bottom:0;"></div>
+                        <div style="flex:1;"><span class="edit-label">Pris</span><input type="number" class="edit-input s-field-${safeId}" data-col="pris" value="${valPris}" style="margin-bottom:0;"></div>
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:5px;">
+                        <button onclick="window.deleteStockItemFromServer('${numPiece}', this)" class="btn-action-primary" style="background:#ecf0f1; color:#e74c3c; margin-top:0; flex:1;">🗑️ Supprimer</button>
+                        <button onclick="window.saveStockItemEdits('${numPiece}', '${safeId}', this)" class="btn-action-primary" style="background:#16a085; margin-top:0; flex:2;">💾 Sauvegarder</button>
+                    </div>`;
+                cardsContainer.appendChild(cardBlock);
+            }
+        };
+
+        window.toggleAddStockForm = function() { let form = document.getElementById('add-stock-form-container'); if (form) form.style.display = (form.style.display === 'none') ? 'block' : 'none'; };
+        window.filterStockItems = function() {
+            let searchVal = document.getElementById('search-stock').value.toLowerCase().trim(); let descVal = document.getElementById('filter-desc-stock').value.toLowerCase().trim(); let visibleCount = 0;
+            document.querySelectorAll('.stock-item-card').forEach(card => {
+                let txt = card.innerText.toLowerCase(); let inputs = card.querySelectorAll('input'); let matchSearch = (searchVal === "") || txt.includes(searchVal);
+                if (!matchSearch) inputs.forEach(inp => { if (inp.value.toLowerCase().includes(searchVal)) matchSearch = true; });
+                let matchDesc = (descVal === "") || txt.includes(descVal); let isMatch = matchSearch && matchDesc;
+                card.style.display = isMatch ? 'flex' : 'none'; if (isMatch) visibleCount++;
+            });
+            let countDisplay = document.getElementById('stock-count-display'); if (countDisplay) countDisplay.innerText = `(${visibleCount})`;
+        };
+
+        window.addStockItemToServer = async function(btn) {
+            let fieldsObj = {}; let hasData = false;
+            document.querySelectorAll('.new-stock-field').forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; if(inp.value.trim() !== "") hasData = true; });
+            if (!hasData) return;
+            let oldText = btn.innerText; btn.innerText = "⏳ Envoi..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_stock_item", fields: fieldsObj }) }); let r = await res.json();
+                if (r.status === "success") {
+                    let newRow = new Array(window.rawStock[0].length).fill("");
+                    window.rawStock[0].forEach((header, index) => { let colName = header.toString().trim(); if (fieldsObj[colName] !== undefined) newRow[index] = fieldsObj[colName]; });
+                    window.rawStock.push(newRow); window.renderStockWorkspace();
+                } else alert("Erreur serveur.");
+            } catch(e) { alert("Échec réseau."); }
+            btn.innerText = oldText; btn.disabled = false;
+        };
+
+        window.saveStockItemEdits = async function(numPiece, safeId, btn) {
+            let fieldsObj = {}; document.querySelectorAll(`.s-field-${safeId}`).forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; });
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }) }); let r = await res.json();
+                if (r.status === "success") { btn.innerText = "✅ OK"; btn.style.background = "#27ae60"; setTimeout(() => { window.renderStockWorkspace(); }, 1500); } else alert("Erreur.");
+            } catch(e) { alert("Échec."); }
+            btn.disabled = false;
+        };
+
+        window.deleteStockItemFromServer = async function(numPiece, btn) {
+            if (!confirm("⚠️ Confirmer la suppression définitive ?")) return;
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_stock_item", idPiece: numPiece }) }); let r = await res.json();
+                if (r.status === "success") {
+                    let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
+                    let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); if (idxNum === -1) idxNum = 0;
+                    let rowIndex = window.rawStock.findIndex((row, idx) => idx > 0 && row[idxNum].toString().trim() === numPiece.toString().trim());
+                    if (rowIndex !== -1) window.rawStock.splice(rowIndex, 1);
+                    btn.closest('.stock-item-card').remove(); window.filterStockItems();
+                } else alert("Erreur.");
+            } catch(e) { alert("Échec."); }
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 8 : ESPACE ATELIER AVEC FORMULAIRE COMPLET                       */
+        /* ========================================================================= */
+
+        window.renderAtelierWorkspace = function() {
+            let ws = document.getElementById('atelier-workspace'); if(!ws) return;
+            let canonsEnAtelier = window.suiviEntretienData.filter(row => row[3] && row[3].toString().toLowerCase().trim() === "oui").map(r => r[0].toString());
+            
+            ws.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px; border-bottom:2px solid #8e44ad; padding-bottom:10px;">
+                    <h2 style="color:#2c3e50; margin:0; font-size:22px;">🧰 Banc d'Essais</h2>
+                    <input type="text" id="search-atelier" placeholder="🔍 Rechercher N° Canon..." onkeyup="window.filterAtelierCanons(this.value)" class="edit-input" style="margin:0;">
+                </div>`;
+                
+            if(canonsEnAtelier.length === 0) { ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; font-weight:bold;">✅ Aucun canon au banc d'essai.</div>`; return; }
+
+            canonsEnAtelier.sort((a, b) => parseInt(a) - parseInt(b)).forEach(idCanon => {
+                let feature = window.snowCannons.features.find(f => f.properties.id == idCanon); if(!feature) return;
+                let p = feature.properties; let piste = window.getV(p, window.keyPiste); let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, "");
+                
+                let defaultVanne = "none"; let valVanneAd = (window.getV(p, "vanne additio") || "").toLowerCase();
+                if (valVanneAd.includes("clarinette")) defaultVanne = "v2000"; else if (valVanneAd.includes("2var")) defaultVanne = "var_double"; else if (valVanneAd.includes("var")) defaultVanne = "var";
+
+                let existingData = {}; let estValide = false; // Récupération si existant possible via window.rawAtelier...
+
+                // On reconstruit le gros formulaire de l'atelier original :
+                let formHtml = `
+                    <div style="padding:15px; display:flex; flex-direction:column; gap:10px; background:#f4f9f9;">
+                        <div style="font-size:12px; font-weight:bold; color:#2980b9;">🔵 VANNE PRINCIPALE</div>
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;"><span class="edit-label">Press Eau 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" style="margin-bottom:0;"></div>
+                            <div style="flex:1;"><span class="edit-label">Press Air 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" style="margin-bottom:0;"></div>
+                        </div>
+                        <div><span class="edit-label">Test Élec 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" style="margin-bottom:0;"></div>
+                        
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;"><span class="edit-label">Press Eau 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" style="margin-bottom:0;"></div>
+                            <div style="flex:1;"><span class="edit-label">Press Air 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 2" style="margin-bottom:0;"></div>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;"><span class="edit-label">Test Élec 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" style="margin-bottom:0;"></div>
+                            <div style="flex:1;"><span class="edit-label">Vanne Prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="OUI" style="margin-bottom:0; color:#27ae60; font-weight:bold;"></div>
+                        </div>
+
+                        <div style="font-size:12px; font-weight:bold; color:#8e44ad; margin-top:10px;">➕ CONFIG ADITIONNELLE</div>
+                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:0; font-size:14px;">
+                            <option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune --</option>
+                            <option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>Bloc VAR (Simple)</option>
+                            <option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>Bloc VAR Double (2VAR)</option>
+                            <option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>Bloc V2000 (Clarinette)</option>
+                        </select>
+                        
+                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; padding-top:10px;">
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">Pression VAR 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="margin-bottom:0;"></div>
+                                <div style="flex:1;"><span class="edit-label">Pression VAR 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="margin-bottom:0;"></div>
+                            </div>
+                        </div>
+                        <div id="bloc-var-double-${safeId}" style="display:${defaultVanne === 'var_double' ? 'block' : 'none'}; padding-top:10px;">
+                            <span class="edit-label">Élec 1 (Perche 1)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="margin-bottom:0;">
+                            <span class="edit-label">Élec 2 (Perche 2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2)" style="margin-bottom:0;">
+                        </div>
+                        <div id="bloc-v2000-${safeId}" style="display:${defaultVanne === 'v2000' ? 'block' : 'none'}; padding-top:10px;">
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;"><span class="edit-label">Élec C2 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" style="margin-bottom:0;"></div>
+                                <div style="flex:1;"><span class="edit-label">Élec C3 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c3" style="margin-bottom:0;"></div>
+                            </div>
+                        </div>
+
+                        <span class="edit-label" style="margin-top:10px;">Commentaire de clôture</span><input type="text" class="edit-input b-field-${safeId}" data-col="Commentaire" placeholder="Remarques..." style="margin-bottom:0;">
+                        <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" class="btn-action-primary" style="background:#8e44ad; margin-top:15px;">🚀 Archiver le Rapport</button>
+                    </div>`;
+
+                let card = document.createElement('div'); card.className = "atelier-card";
+                card.innerHTML = `<h3 style="font-size:18px;">N° ${idCanon} <span style="font-size:12px; color:#888; float:right; margin-top:4px;">${piste}</span></h3>
+                <details class="atelier-sub-details" open><summary style="outline:none;">📝 Fiche d'Essai Hydraulique</summary>${formHtml}</details>`;
+                ws.appendChild(card);
+            });
+        };
+
+        window.filterAtelierCanons = function(val) {
+            let search = val.toLowerCase().trim();
+            document.querySelectorAll('.atelier-card').forEach(card => {
+                let title = card.querySelector('h3').innerText.toLowerCase();
+                card.style.display = title.includes(search) ? 'block' : 'none';
+            });
+        };
+
+        window.handleSelectVanne = function(safeId, val) {
+            let bVar = document.getElementById(`bloc-var-${safeId}`); if (bVar) bVar.style.display = (val === 'var') ? 'block' : 'none';
+            let bVarD = document.getElementById(`bloc-var-double-${safeId}`); if (bVarD) bVarD.style.display = (val === 'var_double') ? 'block' : 'none';
+            let bV2000 = document.getElementById(`bloc-v2000-${safeId}`); if (bV2000) bV2000.style.display = (val === 'v2000') ? 'block' : 'none';
+        };
+
+        window.saveAtelierBancRow = async function(idCanon, safeId, btn) {
+            let fieldsObj = { "id": idCanon };
+            document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => { if (inp.closest('div[id^="bloc-"]') && inp.closest('div[id^="bloc-"]').style.display === 'none') return; fieldsObj[inp.getAttribute('data-col')] = inp.value; });
+            
+            let oldText = btn.innerText; btn.innerText = "⏳ Enregistrement..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_atelier", fields: fieldsObj }) }); let r = await res.json();
+                if(r.status === "success") { btn.innerText = "✅ Enregistré !"; btn.style.background = "#27ae60"; setTimeout(() => { window.renderAtelierWorkspace(); }, 1500); } 
+                else { alert("Erreur"); btn.disabled = false; btn.innerText = oldText; }
+            } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 9 : EXPERT BI & GRAPH COMBINÉ                                    */
+        /* ========================================================================= */
+        
+        window.openBiMeteo = function() { document.getElementById('bi-meteo-modal').style.display='flex'; window.biLoadSource(); };
+
+        window.biLoadSource = function() {
+            let src = document.getElementById('bi-source').value; let data = [];
+            if(src === 'hist') data = window.meteoHistData || [];
+            else if(src === 'froid') data = window.meteoFroidData || [];
+            else if(src === 'raw_gen') data = window.rawGeneral || [];
+            else if(src === 'raw_hist') data = window.rawHistorique || [];
+            else if(src === 'raw_tick') data = window.rawTicketsSheet || [];
+            else if(src === 'conso') {
+                data.push(["Saison","Eau (m³)","Air","Heures"]);
+                window.saisonsList.forEach(s => { let e=0, a=0, t=0; window.snowCannons.features.forEach(f => { let h = f.properties.historique[s]; if(h) { e += h.eau||0; a += h.air||0; t += h.temps||0; } }); data.push([s, Math.round(e), Math.round(a), Math.round(t)]); });
+            } else if(src === 'defauts') {
+                data.push(["Mois","Nombre de Pannes"]); let counts = {};
+                window.rawTickets.forEach(t => { if(!t.date) return; let d = new Date(t.date); if(isNaN(d.getTime())) return; let m = (d.getMonth()+1).toString().padStart(2,'0') + "/" + d.getFullYear(); counts[m] = (counts[m]||0) + 1; });
+                Object.keys(counts).sort((a,b) => { let pa = a.split('/'); let pb = b.split('/'); return new Date(pa[1], pa[0]-1) - new Date(pb[1], pb[0]-1); }).forEach(k => data.push([k, counts[k]])); if(data.length === 1) data.push(["Aucun ticket",0]);
+            } else if(src === 'types') {
+                data.push(["Modèle","Quantité"]); let counts = {}; window.snowCannons.features.forEach(f => { let t = window.getV(f.properties, window.keyType); if(t !== "N/A") counts[t] = (counts[t]||0) + 1; });
+                Object.keys(counts).sort().forEach(k => data.push([k, counts[k]]));
+            }
+            window.biCurrentData = data;
+            
+            let selX = document.getElementById('bi-x'); let containerY = document.getElementById('bi-y-container');
+            if(selX) selX.innerHTML = ""; if(containerY) containerY.innerHTML = "";
+            if(!data || data.length < 2) { if(containerY) containerY.innerHTML = "<i>Aucune donnée disponible.</i>"; return; }
+            
+            let headers = data[0]; const colors = ['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#34495e'];
+            headers.forEach((h, i) => {
+                if(h.toString().trim() === "") return;
+                if(selX) selX.innerHTML += `<option value="${i}">${h}</option>`;
+                let checked = (i === 1) ? 'checked' : ''; let color = colors[i % colors.length];
+                if(containerY) {
+                    containerY.innerHTML += `<div style="border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;"><label style="font-weight:bold; display:flex; align-items:center; gap:5px;"><input type="checkbox" class="bi-y-cbx" value="${i}" ${checked} onchange="window.biUpdateUI()"> <span style="color:#2c3e50;">${h}</span></label><div id="bi-opts-${i}" style="display:${checked?'flex':'none'}; gap:5px; margin-top:5px; flex-wrap:wrap; align-items:center;"><select class="bi-y-agg" data-idx="${i}" style="padding:4px; font-size:12px; border-radius:4px;"><option value="sum">Somme</option><option value="count">Comptage</option></select><select class="bi-y-type combo-only" data-idx="${i}" style="padding:4px; font-size:12px; border-radius:4px; display:none;"><option value="bar">Barre</option><option value="line">Courbe</option></select><select class="bi-y-axis" data-idx="${i}" style="padding:4px; font-size:12px; border-radius:4px;"><option value="y">Axe Gauche</option><option value="y1">Axe Droit</option></select><input type="color" class="bi-y-color" value="${color}" style="width:28px; height:28px; border:none; border-radius:4px;"></div></div>`;
+                }
+            });
+            if(selX) selX.selectedIndex = 0; window.biUpdateUI();
+        };
+
+        window.biUpdateUI = function() {
+            let gType = document.getElementById('bi-type').value; let isCombo = (gType === 'combo'); let isPie = (gType === 'doughnut');
+            document.querySelectorAll('.bi-y-cbx').forEach(cb => {
+                let opts = document.getElementById(`bi-opts-${cb.value}`);
+                if(opts) {
+                    opts.style.display = cb.checked ? 'flex' : 'none';
+                    let ts = opts.querySelector('.bi-y-type'); if(ts) ts.style.display = isCombo ? 'block' : 'none';
+                    let as = opts.querySelector('.bi-y-axis'); if(as) as.style.display = isPie ? 'none' : 'block';
+                }
+            });
+            window.biDrawChart();
+        };
+
+        window.biDrawChart = function() {
+            let data = window.biCurrentData; if(!data || data.length < 2) return;
+            let gType = document.getElementById('bi-type').value; let isCombo = (gType === 'combo'); let isPie = (gType === 'doughnut');
+            let idxX = parseInt(document.getElementById('bi-x').value);
+            
+            let yCbx = document.querySelectorAll('.bi-y-cbx:checked'); if(yCbx.length === 0) return;
+            let yCfgs = Array.from(yCbx).map(cb => { let i = cb.value; let p = document.getElementById(`bi-opts-${i}`); return { idx: parseInt(i), label: data[0][i], agg: p.querySelector('.bi-y-agg').value, type: isCombo ? p.querySelector('.bi-y-type').value : gType, axis: isPie ? 'y' : p.querySelector('.bi-y-axis').value, color: p.querySelector('.bi-y-color').value, uVals: new Set() }; });
+            
+            let grouped = {};
+            for(let r = 1; r < data.length; r++) {
+                let row = data[r]; let rawX = row[idxX]; if(rawX == null || rawX === "") continue;
+                let strX = rawX.toString().trim(); if(strX.length >= 10 && !isNaN(Date.parse(strX))) strX = new Date(strX).toLocaleDateString('fr-FR');
+                if(!grouped[strX]) grouped[strX] = {};
+                yCfgs.forEach(cfg => { let val = row[cfg.idx]; if(cfg.agg === 'count') { let tVal = (val != null && val.toString().trim() !== "") ? val.toString().trim() : "Non spécifié"; if(!grouped[strX][cfg.idx]) grouped[strX][cfg.idx] = {}; grouped[strX][cfg.idx][tVal] = (grouped[strX][cfg.idx][tVal] || 0) + 1; cfg.uVals.add(tVal); } else { let num = parseFloat(val) || 0; grouped[strX][cfg.idx] = (grouped[strX][cfg.idx] || 0) + num; } });
+            }
+            
+            let labels = Object.keys(grouped).sort(function(a, b) { let na = parseFloat(a), nb = parseFloat(b); if(!isNaN(na) && !isNaN(nb)) return na - nb; return a.localeCompare(b); });
+            let datasets = []; let colors = ['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#34495e']; let cIdx = 0;
+            yCfgs.forEach((cfg) => {
+                let fType = isCombo ? cfg.type : gType; let isL = (fType === 'line');
+                if(cfg.agg === 'count' && cfg.uVals.size > 0) {
+                    Array.from(cfg.uVals).sort().forEach(cat => { if(cat === "Non spécifié" && cfg.uVals.size > 1) return; let dData = labels.map(k => (grouped[k][cfg.idx] && grouped[k][cfg.idx][cat]) ? grouped[k][cfg.idx][cat] : 0); let color = colors[cIdx % colors.length]; let bgs = labels.map((_, i) => colors[(cIdx + i) % colors.length]); datasets.push({ label: `${cfg.label}:${cat}`, type: fType === 'combo' ? 'bar' : fType, data: dData, backgroundColor: isPie ? bgs : (isL ? color + '33' : color), borderColor: isPie ? '#fff' : color, borderWidth: (fType === 'bar' && !isPie) ? 0 : 2, fill: isL, yAxisID: cfg.axis, tension: 0.3, pointRadius: 3 }); cIdx++; });
+                } else {
+                    let dData = labels.map(k => grouped[k][cfg.idx] || 0); let bgs = labels.map((_, i) => colors[(cIdx + i) % colors.length]);
+                    datasets.push({ label: cfg.label, type: fType === 'combo' ? 'bar' : fType, data: dData, backgroundColor: isPie ? bgs : (isL ? cfg.color + '33' : cfg.color), borderColor: isPie ? '#fff' : cfg.color, borderWidth: (fType === 'bar' && !isPie) ? 0 : 2, fill: isL, yAxisID: cfg.axis, tension: 0.3, pointRadius: 3 }); cIdx++;
+                }
+            });
+            
+            if(isPie && datasets.length > 1) datasets = [datasets[0]];
+            let ctx = document.getElementById('bi-canvas'); if(!ctx) return;
+            if(window.chartInstances['bi-chart']) window.chartInstances['bi-chart'].destroy();
+            let hasR = datasets.some(d => d.yAxisID === 'y1'); let fMType = isCombo ? 'bar' : (isPie ? 'doughnut' : gType);
+            
+            window.chartInstances['bi-chart'] = new Chart(ctx.getContext('2d'), { type: fMType, data: { labels: labels, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: 'top' }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } }, scales: isPie ? {} : { x: { ticks: { font:{size:10}, maxRotation: 45, minRotation: 45 } }, y: { type: 'linear', display: true, position: 'left' }, y1: { type: 'linear', display: hasR, position: 'right', grid: { drawOnChartArea: false } } } } });
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 10 : MÉTÉO ET COMPARAISONS                                       */
+        /* ========================================================================= */
+        window.openMeteoWidget = function() {
+            let m = document.getElementById('meteo-modal'); if(!m) return; m.style.display = 'flex';
+            window.switchMeteoTab('meteoblue');
+        };
+        window.switchMeteoTab = function(p) {
+            let c = document.getElementById('meteo-content'); if(!c) return;
+            document.getElementById('btn-meteo-meteoblue').style.opacity = p === 'meteoblue' ? '1' : '0.5';
+            document.getElementById('btn-meteo-windy').style.opacity = p === 'windy' ? '1' : '0.5';
+            if(p === 'meteoblue') c.innerHTML = `<iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%; border-radius:8px;"></iframe>`;
+            else if(p === 'windy') c.innerHTML = `<iframe src="https://embed.windy.com/embed2.html?lat=42.767&lon=0.582&zoom=12&overlay=wind&product=ecmwf" frameborder="0" style="width:100%;height:100%; border-radius:8px;"></iframe>`;
+        };
+        
+        window.openWebcamGrid = function() {
+            let sl = document.getElementById('selected-list'); if(!sl) return;
+            document.getElementById('right-title').innerText = "📷 Webcams";
+            document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
+            let html = "<div style='display:flex;flex-direction:column;gap:15px; padding-bottom:30px;'>";
+            if(window.webcamsData.length === 0) html += "<p>Aucune caméra.</p>";
+            else window.webcamsData.forEach(w => { let isImg = w.url.toLowerCase().match(/\.(jpeg|jpg|png|gif)$/) != null; let mHtml = isImg ? `<img src="${w.url}" style="width:100%;border-radius:6px;"/>` : `<div style="width:100%;height:250px;border-radius:6px;overflow:hidden;"><iframe src="${w.url}" style="width:100%;height:100%;border:none;"></iframe></div>`; html += `<div style="background:#fff;padding:15px;border-radius:8px;border:1px solid #ddd;"><h4 style="margin:0 0 10px 0; color:var(--primary);">${w.icon} ${w.nom}</h4>${mHtml}</div>`; });
+            html += "</div>"; sl.innerHTML = html; window.openBottomSheet('full');
+        };
+
+        window.openGlobalCompareModal = function(show) {
+            let m = document.getElementById('compare-modal'); if(!m) return;
+            if(!show) { m.style.display = 'none'; return; }
+            let pistesSet = new Set(); window.snowCannons.features.forEach(f => { let piste = window.getV(f.properties, window.keyPiste); if (piste && piste !== "N/A") pistesSet.add(piste); });
+            document.getElementById('comp-piste').innerHTML = `<option value="all">Toutes les pistes</option>${Array.from(pistesSet).sort().map(p => `<option value="${p}">${p}</option>`).join('')}`;
+            let saisons = window.saisonsList || []; let optsSaisons = saisons.map(s => `<option value="${s}">Saison ${s}</option>`).join('');
+            document.getElementById('comp-s1').innerHTML = optsSaisons; document.getElementById('comp-s2').innerHTML = optsSaisons;
+            if(saisons.length > 1) document.getElementById('comp-s2').selectedIndex = 1;
+            m.style.display = 'flex'; window.renderGlobalComparison();
+        };
+
+        window.renderGlobalComparison = function() {
+            let selPiste = document.getElementById('comp-piste').value; let metric = document.getElementById('comp-metric').value;
+            let s1 = document.getElementById('comp-s1').value; let s2 = document.getElementById('comp-s2').value;
+            let canons = window.snowCannons.features.filter(f => selPiste === "all" || window.getV(f.properties, window.keyPiste) === selPiste).sort((a, b) => parseInt(a.properties.id) - parseInt(b.properties.id));
+            let labels = []; let dataS1 = []; let dataS2 = [];
+            canons.forEach(f => { let p = f.properties; labels.push(p.id); dataS1.push(p.historique[s1] ? p.historique[s1][metric] || 0 : 0); dataS2.push(p.historique[s2] ? p.historique[s2][metric] || 0 : 0); });
+            document.getElementById('main-comp-chart-container').style.display = 'block';
+            let canvas = document.getElementById('main-comp-canvas'); if(window.chartInstances['global-compare']) window.chartInstances['global-compare'].destroy();
+            let metricLabel = metric === 'eau' ? 'Eau (m³)' : (metric === 'air' ? 'Air' : 'Temps (h)');
+            let cS1 = metric === 'eau' ? '#3498db' : (metric === 'air' ? '#f1c40f' : '#2ecc71'); let cS2 = metric === 'eau' ? '#2c3e50' : (metric === 'air' ? '#e67e22' : '#27ae60');
+            window.chartInstances['global-compare'] = new Chart(canvas.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [ { label: `Saison ${s1}`, data: dataS1, backgroundColor: cS1, borderRadius: 4 }, { label: `Saison ${s2}`, data: dataS2, backgroundColor: cS2, borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'top' }, title: { display: true, text: `Comparatif ${metricLabel}` } }, scales: { x: { ticks: { maxRotation: 45, minRotation: 45, font: {size: 10} } } } } });
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 11 : CHARGEMENT GOOGLE SHEETS ET DÉMARRAGE                       */
+        /* ========================================================================= */
+        window.fetchWithTimeout = async function(resource, options = {}) { const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 15000); options.signal = controller.signal; return fetch(resource, options).finally(() => clearTimeout(timeoutId)); };
+
+        window.fetchGoogleSheetsData = async function() {
+            const response = await window.fetchWithTimeout(GOOGLE_API_URL);
+            if (!response.ok) throw new Error("Accès refusé. Vérifiez l'URL.");
+            let data = JSON.parse(await response.text()); 
+            
+            window.rawGeneral = data.general || []; window.rawHistorique = data.historique || []; window.rawTicketsSheet = data.tickets || []; window.meteoHistData = data.meteo_hist || []; window.meteoFroidData = data.meteo_froid || []; window.suiviEntretienData = data.suivi || []; window.rawAtelier = data.atelier || []; window.rawStock = data.stock || []; window.driveIcons = data.driveIcons || {}; window.drivePhotos = data.drivePhotos || {}; 
+            
+            if (!data.general || data.general.length < 2) throw new Error(`Onglet principal vide.`);
+            const genHeaders = data.general[0].map(h => (h||"").toString().toLowerCase().trim()); const originalHeaders = data.general[0].map(h => (h||"").toString().trim()); 
+            const findCol = (keys) => { let idx = genHeaders.findIndex(h => keys.some(k => h.includes(k))); return idx !== -1 ? originalHeaders[idx] : null; };
+            let idxId = genHeaders.findIndex(h => h.includes('n° de vanne') || h.includes('n°')); if(idxId === -1) idxId = 1; 
+            const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps'));
+            
+            window.keyPiste = findCol(['piste']); window.keyType = findCol(['type']); window.keyRep = findCol(['répéteur', 'repeteur']); window.keyTransfo = findCol(['transfo']);
+            originalHeaders.forEach(h => { let hl = h.toLowerCase(); if(!hl.includes('xy') && !hl.includes('gps') && !hl.includes('photo')) { window.availableColumns.push(h); window.columnValuesSets[h] = new Set(); } });
+
+            let dictGeneral = {};
+            data.general.slice(1).forEach(row => {
+                let idRaw = row[idxId]; if (idRaw == null || idRaw === "") return;
+                let id = idRaw.toString().replace(/^YA\s*/i, '').trim(); if (!id) return;
+                let lat = 0, lng = 0;
+                if (row[idxXY]) { let matches = String(row[idxXY]).replace(/,/g, '.').match(/-?\d+(?:\.\d+)?/g); if (matches && matches.length >= 2) { lat = parseFloat(matches[0]); lng = parseFloat(matches[1]); if (lat < 20 && lng > 30) { let temp = lat; lat = lng; lng = temp; } } }
+                let fullData = []; originalHeaders.forEach((head, i) => { if(head.trim() !== "") { let val = (i < row.length && row[i] != null) ? row[i].toString() : ""; fullData.push({k: head, v: val}); if(val !== "" && window.columnValuesSets[head]) window.columnValuesSets[head].add(val.trim()); } });
+                dictGeneral[id] = { id: id, lat: lat, lng: lng, fullData: fullData, historique: {} };
+            });
+
+            if (data.historique && data.historique.length > 1) {
+                const histHeaders = data.historique[0].map(h => (h||"").toString().toLowerCase().trim()); const idxCanons = 1; let colsEau = {}, colsAir = {}, colsTemps = {}; let saisonsSet = new Set();
+                histHeaders.forEach((h, i) => { let match = h.match(/(eau|air|marche).*?(\d{2}\/\d{2})/i); if (match) { let t = match[1].toLowerCase(); let s = match[2]; saisonsSet.add(s); if (t.includes('eau')) colsEau[s] = i; if (t.includes('air')) colsAir[s] = i; if (t.includes('marche')) colsTemps[s] = i; } });
+                window.saisonsList = Array.from(saisonsSet).sort((a,b) => parseInt(a.split('/')[0]) - parseInt(b.split('/')[0])); window.histSeasonIdx = window.saisonsList.length > 0 ? window.saisonsList.length - 1 : 0;
+                data.historique.slice(1).forEach(row => { let rawId = row[idxCanons]; if (rawId != null && rawId !== "") { let id = rawId.toString().replace(/^YA\s*/i, '').trim(); if (id && dictGeneral[id]) { window.saisonsList.forEach(s => { dictGeneral[id].historique[s] = { eau: colsEau[s]?parseFloat(row[colsEau[s]])||0:0, air: colsAir[s]?parseFloat(row[colsAir[s]])||0:0, temps: colsTemps[s]?parseFloat(row[colsTemps[s]])||0:0 }; }); } } });
+            }
+
+            if (data.tickets && data.tickets.length > 1) {
+                const tHeaders = data.tickets[0].map(h => (h||"").toString().toLowerCase().trim()); const originalTHeaders = data.tickets[0].map(h => (h||"").toString().trim());
+                const idxTEtat = tHeaders.findIndex(h => h.includes('état') || h.includes('etat')); const idxTDate = tHeaders.findIndex(h => h.includes('date')); const idxTRegard = tHeaders.findIndex(h => h.includes('n°regard') || h.includes('regard')); const idxTDefaut = tHeaders.findIndex(h => h.includes('defaut') || h.includes('défaut'));
+                if(idxTRegard > -1) {
+                    window.rawTickets = data.tickets.slice(1).map(row => {
+                        let fullTData = []; originalTHeaders.forEach((h, i) => { if(h.trim() !== "") fullTData.push({k: h, v: (i < row.length && row[i] != null) ? row[i].toString() : ""}); });
+                        return { statut: (idxTEtat>-1 && row[idxTEtat] != null ? row[idxTEtat].toString().toLowerCase().trim() : ""), date: (idxTDate>-1 && row[idxTDate] != null ? row[idxTDate] : ""), idCanon: (row[idxTRegard] != null ? row[idxTRegard].toString().replace(/^YA\s*/i, '').trim() : ""), defaut: (idxTDefaut>-1 && row[idxTDefaut] ? row[idxTDefaut].toString() : "Défaut"), fullData: fullTData };
+                    });
+                }
+            }
+            if (data.webcams && data.webcams.length > 1) {
+                const wHead = data.webcams[0].map(h => (h||"").toString().toLowerCase().trim());
+                const iNom = wHead.findIndex(h => h.includes("nom")); const iLL = wHead.findIndex(h => h.match(/(gps|xy|lat)/)); const iUrl = wHead.findIndex(h => h.match(/(url|lien)/)); const iIcon = wHead.findIndex(h => h.match(/(icone|logo)/));
+                if(iNom > -1 && iLL > -1 && iUrl > -1) {
+                    data.webcams.slice(1).forEach(row => {
+                        let nom = row[iNom]; let llStr = row[iLL] ? row[iLL].toString() : ""; let url = row[iUrl]; let icon = (iIcon > -1 && row[iIcon]) ? row[iIcon].toString().trim() : "📷"; if(!icon) icon = "📷";
+                        if(nom && llStr && url) { let matches = llStr.replace(/,/g, '.').match(/-?\d+(?:\.\d+)?/g); if(matches && matches.length >= 2) { let lat = parseFloat(matches[0]); let lng = parseFloat(matches[1]); if (lat < 20 && lng > 30) { let t = lat; lat = lng; lng = t; } window.webcamsData.push({ nom: nom, lat: lat, lng: lng, url: url, icon: icon }); } }
+                    });
+                }
+            }
+
+            Object.values(dictGeneral).forEach(canon => { if (canon.lat !== 0 && !isNaN(canon.lat)) window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); });
+            document.getElementById('loading-overlay').style.display = 'none'; window.initAppUI();
+        };
+
+        window.initAppUI = function() {
+            let ts=new Set(), rs=new Set(), trs=new Set();
+            window.snowCannons.features.forEach(f=>{ let p=f.properties; let t=window.getV(p,window.keyType); if(t!=="N/A")ts.add(t.toLowerCase()); let r=window.getV(p,window.keyRep); if(r!=="N/A")rs.add(r); let tr=window.getV(p,window.keyTransfo); if(tr!=="N/A")trs.add(tr); });
+            let tc=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6']; Array.from(ts).sort().forEach((t,i)=>window.technoColors[t]=tc[i%tc.length]);
+            let rc=['#1abc9c','#16a085','#f39c12','#d35400','#8e44ad']; Array.from(rs).sort().forEach((r,i)=>window.repColors[r]=rc[i%rc.length]);
+            let neonColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF']; Array.from(trs).sort().forEach((t,i)=>window.transfoColors[t]=neonColors[i%neonColors.length]);
+            
+            window.geojsonLayer = L.geoJSON(window.snowCannons, {
+                pointToLayer: function (feature, latlng) { return L.marker(latlng, { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div></div>` }) }); },
+                onEachFeature: function (feature, layer) { layer.on('click', function(e) { L.DomEvent.stopPropagation(e); const id = feature.properties.id; if (window.selectedCannonsMap.has(id)) { window.selectedCannonsMap.delete(id); } else { window.selectedCannonsMap.clear(); window.selectedCannonsMap.set(id, layer); } if(window.map) window.map.setView(layer.getLatLng(), 17, {animate: true}); window.updateMap(); window.renderSelectionPanel(); window.openBottomSheet('half'); }); }
+            }).addTo(window.map);
+
+            if (window.saisonsList.length > 0) {
+                let sld = document.getElementById('season-slider');
+                if (sld) { sld.max = window.saisonsList.length - 1; sld.value = window.histSeasonIdx; document.getElementById('season-display').innerText = window.saisonsList[window.histSeasonIdx]; window.calculateMaxes(); }
+            }
+
+            if (window.snowCannons.features.length > 0) window.map.fitBounds(window.geojsonLayer.getBounds(), { padding: [30, 30] });
+            window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
+        };
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            if(window.bootAttempt > 0) return; window.bootAttempt = 1;
+            try { initMap(); await window.fetchGoogleSheetsData(); } catch (err) { window.showCrash(err.message, "Boot Principal"); }
+        });
+    </script>
+</body>
+</html>
