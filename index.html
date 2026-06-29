@@ -8,7 +8,7 @@
     <title>GMAO Maintenance Neige</title>
     
     <script>
-        window.showCrash = function(msg, line) { let o = document.getElementById('loading-overlay'); if (o) { o.style.display='flex'; document.getElementById('loading-spinner').style.display='none'; document.getElementById('loading-title').innerText="🛑 ERREUR SYSTEME"; } else alert("🛑 CRASH : "+msg); };
+        window.showCrash = function(msg, line) { let o = document.getElementById('loading-overlay'); if (o) { o.style.display='flex'; document.getElementById('loading-spinner').style.display='none'; document.getElementById('loading-title').innerText="🛑 ERREUR SYSTEME"; document.getElementById('loading-desc').innerHTML = msg; } else alert("🛑 CRASH : "+msg); };
         window.onerror = function(msg, src, ln) { if (msg.indexOf('Script error') > -1) return false; window.showCrash(msg, ln); return true; };
     </script>
     
@@ -19,23 +19,20 @@
     <style>
         :root {
             --primary: #2c3e50; --secondary: #3498db; --bg-color: #f4f6f8;
-            --topbar-base-height: 50px; --topbar-height: calc(var(--topbar-base-height) + env(safe-area-inset-top));
+            --topbar-base-height: 55px; --topbar-height: calc(var(--topbar-base-height) + env(safe-area-inset-top));
             --sheet-banner-height: 80px; --sheet-half-height: 50vh; --sheet-full-height: 85vh;
         }
 
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg-color); overflow: hidden; touch-action: none; }
         
-        /* Composants standards */
         .edit-input { width: 100%; box-sizing: border-box; padding: 12px; margin-top: 4px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
         .edit-label { font-size: 12px; font-weight: bold; color: #555; text-transform: uppercase; }
         .btn-action-primary { background: var(--secondary); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-size: 15px; margin-top: 10px; width: 100%; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .badge { display: inline-block; background: #f0f3f5; padding: 5px 10px; border-radius: 4px; font-size: 11px; margin: 0 4px 6px 0; border: 1px solid #e1e8ed; }
 
-        /* Topbar */
         #topbar { position: fixed; top: 0; left: 0; right: 0; height: var(--topbar-height); padding-top: env(safe-area-inset-top); background: var(--primary); z-index: 4000; display: flex; justify-content: space-between; align-items: center; padding-left: 15px; padding-right: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); color: white; }
         .burger-btn { background: none; border: none; color: white; font-size: 26px; cursor: pointer; padding: 5px; }
         
-        /* Menu Burger 100% de la largeur */
         #left-sidebar { position: fixed; top: var(--topbar-height); left: 0; bottom: 0; width: 100vw; background: #fff; z-index: 4500; transform: translateX(-100%); transition: transform 0.3s ease; overflow-y: auto; padding-bottom: 20px; }
         #left-sidebar.open { transform: translateX(0); }
         
@@ -45,14 +42,12 @@
         .radio-card { display: flex; align-items: center; gap: 10px; background: #fff; padding: 12px; border: 1px solid #e1e8ed; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer;}
         .menu-btn { background: #ecf0f1; border: 1px solid #bdc3c7; padding: 12px; border-radius: 6px; font-weight: bold; color: #2c3e50; text-align: left; display: flex; align-items: center; gap: 10px; font-size: 14px; cursor:pointer;}
 
-        /* Carte et Plein Ecran */
         #main-app-area { position: absolute; top: var(--topbar-height); left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; }
         #map-container { flex-grow: 1; position: relative; width: 100%; height: 100%; background: #222; }
         #map { position: absolute; top: 0; bottom: 0; left: 0; right: 0; width: 100%; height: 100%; z-index: 1; }
         #fullscreen-workspace { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 3000; background: var(--bg-color); overflow-y: auto; padding: 15px; padding-bottom: 50px; touch-action: pan-y; }
-        #geo-btn { position: absolute; bottom: calc(var(--sheet-banner-height) + 15px); right: 15px; width: 45px; height: 45px; border-radius: 50%; background: white; border: 2px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 20px; z-index: 2000; cursor: pointer; }
+        #geo-btn { position: absolute; bottom: calc(var(--sheet-banner-height) + 15px); right: 15px; width: 50px; height: 50px; border-radius: 50%; background: white; border: 2px solid #ccc; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 22px; z-index: 2000; cursor: pointer; }
 
-        /* Bottom Sheet */
         #bottom-sheet { position: fixed; left: 0; right: 0; bottom: 0; background: white; z-index: 3100; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.15); display: flex; flex-direction: column; height: var(--sheet-banner-height); transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .sheet-handle { width: 100%; height: 35px; display: flex; justify-content: center; align-items: center; cursor: grab; flex-shrink: 0; }
         .sheet-handle::after { content: ''; width: 50px; height: 6px; background: #bdc3c7; border-radius: 6px; }
@@ -61,32 +56,33 @@
         #bottom-sheet.state-half { height: var(--sheet-half-height); }
         #bottom-sheet.state-full { height: var(--sheet-full-height); }
 
-        /* Icones Canons et Tableaux */
         .custom-cannon-icon { background:none; border:none; }
         .cannon-circle { border-radius:50%; color:white; font-weight:bold; text-align:center; text-shadow:1px 1px 2px rgba(0,0,0,0.8); box-sizing:border-box; box-shadow:0 3px 6px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; }
         .ticket-card { background:#fff; border:1px solid #eee; border-left:4px solid #e74c3c; padding:12px; margin-bottom:10px; border-radius:6px; }
         .piste-chart-container { background:#fff; border:1px solid #eee; padding:15px; border-radius:6px; margin-top:15px; margin-bottom:15px;}
         .atelier-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 4px solid #8e44ad; }
+        .stock-item-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 6px solid #16a085; display: flex; flex-direction: column; gap: 10px; }
 
-        /* Loader */
         #loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.95);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;}
         .spinner{border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin-bottom:20px;}
         @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
         
         .mobile-modal { display:none; position:fixed; top:var(--topbar-height); left:0; right:0; bottom:0; background:var(--bg-color); z-index:9000; flex-direction:column; overflow-y:auto; }
+        .comp-header { background:var(--primary); color:white; padding:15px; display:flex; justify-content:space-between; font-size:18px; font-weight:bold; }
     </style>
 </head>
 <body>
-    <div id="loading-overlay"><div class="spinner"></div><h2 style="color:#3498db;">Démarrage...</h2><p id="loading-step" style="color:#888;"></p></div>
+    <div id="loading-overlay"><div class="spinner"></div><h2 style="color:#3498db;">Démarrage...</h2><p id="loading-step" style="color:#888;"></p><p id="loading-desc" style="color:#aaa; font-size:12px;"></p></div>
 
     <div id="topbar">
         <button class="burger-btn" onclick="toggleMenu()">☰</button>
         <div style="font-weight: bold; font-size: 18px; letter-spacing: 1px;">GMAO NEIGE</div>
-        <div style="width: 30px;"></div> </div>
+        <div style="width: 30px;"></div> 
+    </div>
 
     <div id="left-sidebar">
         <div style="padding: 20px 15px; font-weight: bold; background: var(--bg-color); border-bottom: 1px solid #eee; font-size: 18px; color: var(--primary); display:flex; justify-content:space-between;">
-            Menu Principal <button onclick="toggleMenu()" style="background:none; border:none; font-size:24px; color:#555;">×</button>
+            Menu Principal <button onclick="toggleMenu()" style="background:none; border:none; font-size:28px; color:#555; padding:0;">×</button>
         </div>
         
         <details class="menu-section" open><summary>🏢 Espaces de travail (Plein écran)</summary>
@@ -171,18 +167,18 @@
     </div>
 
     <div id="compare-modal" class="mobile-modal">
-        <div class="comp-header"><span>📊 Comparaison Saisons</span><button onclick="window.openGlobalCompareModal(false)" style="background:none;border:none;color:white;font-size:24px;">×</button></div>
+        <div class="comp-header"><span>📊 Comparaison Saisons</span><button onclick="window.openGlobalCompareModal(false)" style="background:none;border:none;color:white;font-size:28px;padding:0;">×</button></div>
         <div style="padding:15px;">
             <div class="edit-label">Piste</div><select id="comp-piste" class="edit-input"><option value="all">Toutes</option></select>
             <div class="edit-label">Donnée</div><select id="comp-metric" class="edit-input"><option value="eau">Eau (m³)</option><option value="air">Air</option><option value="temps">Temps (h)</option></select>
             <div style="display:flex; gap:10px;"><div style="flex:1;"><div class="edit-label">Saison A</div><select id="comp-s1" class="edit-input"></select></div><div style="flex:1;"><div class="edit-label">Saison B</div><select id="comp-s2" class="edit-input"></select></div></div>
             <button class="btn-action-primary" onclick="window.renderGlobalComparison()">Comparer</button>
-            <div id="main-comp-chart-container" style="background:#fff; padding:10px; border-radius:8px; height:350px; margin-top:15px; display:none;"><canvas id="main-comp-canvas"></canvas></div>
+            <div id="main-comp-chart-container" style="background:#fff; padding:10px; border-radius:8px; height:350px; margin-top:15px; display:none; border:1px solid #ccc;"><canvas id="main-comp-canvas"></canvas></div>
         </div>
     </div>
 
     <div id="bi-meteo-modal" class="mobile-modal">
-        <div class="comp-header" style="background:#8e44ad;"><span>❄️ Centre Expert BI</span><button onclick="document.getElementById('bi-meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:24px;">×</button></div>
+        <div class="comp-header" style="background:#8e44ad;"><span>❄️ Centre Expert BI</span><button onclick="document.getElementById('bi-meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:28px;padding:0;">×</button></div>
         <div style="padding:15px;">
              <div class="edit-label">Source de données</div><select id="bi-source" class="edit-input" onchange="window.biLoadSource()">
                 <optgroup label="Données Brutes"><option value="raw_gen">Général Canons</option><option value="raw_hist">Historique Enneigeurs</option><option value="raw_tick">Tickets</option><option value="froid">Météo : Heures de Froid</option></optgroup>
@@ -190,23 +186,23 @@
             </select>
             <div class="edit-label">Format</div><select id="bi-type" class="edit-input" onchange="window.biUpdateUI()"><option value="bar">📊 Barres</option><option value="line">📈 Courbes</option><option value="combo">📉 Combiné</option><option value="doughnut">🍩 Anneau</option></select>
             <div class="edit-label">Abscisses</div><select id="bi-x" class="edit-input" onchange="window.biDrawChart()"></select>
-            <div class="edit-label">Axes Verticaux</div><div id="bi-y-container" style="background:#fff; border-radius:6px; padding:10px; margin-bottom:12px; font-size:14px; max-height:150px; overflow-y:auto; border:1px solid #ccc;"></div>
-            <button class="btn-action-primary" style="background:#27ae60;" onclick="window.biDrawChart()">🔄 Actualiser</button>
+            <div class="edit-label">Axes Verticaux</div><div id="bi-y-container" style="background:#fff; border-radius:6px; padding:10px; margin-bottom:12px; font-size:14px; max-height:180px; overflow-y:auto; border:1px solid #ccc;"></div>
+            <button class="btn-action-primary" style="background:#27ae60;" onclick="window.biDrawChart()">🔄 Actualiser Graphique</button>
             <div style="background:#fff; border-radius:8px; border:1px solid #ccc; margin-top:15px; padding:10px; height:350px;"><canvas id="bi-canvas"></canvas></div>
         </div>
     </div>
     
     <div id="meteo-modal" class="mobile-modal">
-        <div class="comp-header" style="background:#2980b9;"><span>⛅ Météo Live</span><button onclick="document.getElementById('meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:24px;">×</button></div>
+        <div class="comp-header" style="background:#2980b9;"><span>⛅ Météo Live</span><button onclick="document.getElementById('meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:28px;padding:0;">×</button></div>
         <div style="padding:15px; flex-grow:1; display:flex; flex-direction:column;">
             <div style="display:flex;gap:5px;margin-bottom:15px;"><button id="btn-meteo-meteoblue" class="btn-action-primary" onclick="window.switchMeteoTab('meteoblue')" style="flex:1; margin:0; opacity:1;">Meteoblue</button><button id="btn-meteo-windy" class="btn-action-primary" onclick="window.switchMeteoTab('windy')" style="flex:1; background:#e67e22; margin:0; opacity:0.5;">Windy</button></div>
-            <div id="meteo-content" style="background:#fff; border-radius:8px; border:1px solid #eee; flex-grow:1; min-height:400px;"></div>
+            <div id="meteo-content" style="background:#fff; border-radius:8px; border:1px solid #eee; flex-grow:1; min-height:400px; display:flex;"></div>
         </div>
     </div>
 
     <script>
         /* ========================================================================= */
-        /* LOGIQUE UI / UX MOBILE (Menu, Bottom Sheet, Cartographie)                 */
+        /* VARIABLES GLOBALES ET CONFIGURATION                                       */
         /* ========================================================================= */
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbxXWPGusI2o66WGBut-urJXxeB00ltFti2KltPXb-mafmmfleavph8wRGNWPydHw0YY1g/exec";
 
@@ -218,6 +214,9 @@
         window.chartInstances = {}; window.selectedCannonsMap = new Map(); window.currentlyEditingId = null; window.technoColors = {}; window.repColors = {}; window.transfoColors = {};
         window.keyPiste = ""; window.keyType = ""; window.keyRep = ""; window.keyTransfo = ""; window.tempTicketPayloads = {};
 
+        /* ========================================================================= */
+        /* LOGIQUE UI / UX MOBILE (Menu, Bottom Sheet)                               */
+        /* ========================================================================= */
         function toggleMenu() { document.getElementById('left-sidebar').classList.toggle('open'); }
 
         const sheet = document.getElementById('bottom-sheet'); const handle = document.getElementById('sheet-handle');
@@ -229,22 +228,12 @@
         window.openBottomSheet = function(state) { sheet.style.transition = 'height 0.3s ease'; sheet.classList.remove('state-banner', 'state-half', 'state-full'); sheet.classList.add('state-' + state); sheet.style.height = ''; };
         window.closeBottomSheet = function() { window.openBottomSheet('banner'); window.clearSelection(); };
 
-        function initMap() {
-            window.map = L.map('map', { zoomControl: false }).setView([42.766, 0.564], 14);
-            window.satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 18 }).addTo(window.map);
-            window.userMarker = null;
-            window.map.on('locationfound', function(e) { if (window.userMarker) { window.userMarker.setLatLng(e.latlng); } else { window.userMarker = L.circleMarker(e.latlng, { radius: 8, fillColor: "#3498db", color: "#fff", weight: 2, opacity: 1, fillOpacity: 0.8 }).addTo(window.map); } window.map.setView(e.latlng, 17, { animate: true }); document.getElementById('geo-btn').innerHTML = "🟢"; });
-            window.map.on('locationerror', function(e) { alert("GPS non disponible."); document.getElementById('geo-btn').innerHTML = "📍"; });
-        }
-        function geolocateUser() { document.getElementById('geo-btn').innerHTML = "⏳"; window.map.locate({setView: false, maxZoom: 17, enableHighAccuracy: true}); }
-
         function switchViewMode() {
             const selectedTheme = document.querySelector('input[name="main_theme"]:checked').value; window.mainTheme = selectedTheme;
             const mapContainer = document.getElementById('map-container'); const bottomSheet = document.getElementById('bottom-sheet'); const fullscreenArea = document.getElementById('fullscreen-workspace');
             const atelierWs = document.getElementById('atelier-workspace'); const stockWs = document.getElementById('stock-workspace');
             const histControls = document.getElementById('historique-controls');
 
-            // Affichage spécifique pour l'historique dans le panneau bas
             if(histControls) histControls.style.display = (selectedTheme === 'historique') ? 'block' : 'none';
 
             if (selectedTheme === 'stock' || selectedTheme === 'atelier') {
@@ -258,19 +247,16 @@
                 if(window.selectedCannonsMap && window.selectedCannonsMap.size === 0) window.openBottomSheet('banner');
             }
         }
-        document.addEventListener('DOMContentLoaded', () => { document.querySelectorAll('input[name="main_theme"]').forEach(r => { r.addEventListener('change', () => { switchViewMode(); document.getElementById('left-sidebar').classList.remove('open'); }); }); });
-        
-/* ========================================================================= */
-        /* CHAPITRE 2 : UTILITAIRES & FONCTIONS DE BASE                              */
+
+        document.addEventListener('DOMContentLoaded', () => { 
+            document.querySelectorAll('input[name="main_theme"]').forEach(r => { r.addEventListener('change', () => { switchViewMode(); document.getElementById('left-sidebar').classList.remove('open'); }); }); 
+            document.querySelectorAll('input[name="hist_metric"]').forEach(r => { r.addEventListener('change', e => { window.histMetric = e.target.value; window.calculateMaxes(); window.updateMap(); window.triggerGlobalFilterChart(); }); });
+        });
+
         /* ========================================================================= */
-        
-        window.getV = function(p, k) { 
-            if(!k || !p || !p.fullData) return "N/A"; 
-            let normK = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); 
-            let o = p.fullData.find(x => x.k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === normK); 
-            return o ? o.v.toString().trim() : "N/A"; 
-        }; 
-        
+        /* UTILITAIRES & FONCTIONS DE BASE                                           */
+        /* ========================================================================= */
+        window.getV = function(p, k) { if(!k || !p || !p.fullData) return "N/A"; let normK = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); let o = p.fullData.find(x => x.k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === normK); return o ? o.v.toString().trim() : "N/A"; }; 
         window.getTicketsForCanon = function(id) { return window.rawTickets.filter(t => t.idCanon === id); }; 
         window.getActiveTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('faire') || t.statut.includes('cours')); }; 
         window.getHistoryTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('fait') || t.statut === '').sort((a,b) => new Date(b.date) - new Date(a.date)); };
@@ -278,11 +264,22 @@
 
         window.clearSelection = function() { window.selectedCannonsMap.clear(); window.updateMap(); window.triggerGlobalFilterChart(); };
         window.cancelEdit = function() { window.currentlyEditingId = null; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('right-title').innerText = "📌 Tableau de Bord"; window.updateMap(); window.renderSelectionPanel(); };
+        window.focusCannon = function(id) { window.geojsonLayer.eachLayer(l => { if(l.feature.properties.id === id) { window.selectedCannonsMap.clear(); window.selectedCannonsMap.set(id,l); window.map.setView(l.getLatLng(),17); window.updateMap(); window.renderSelectionPanel(); window.openBottomSheet('half'); } }); };
 
         /* ========================================================================= */
-        /* CHAPITRE 3 : MOTEUR DE CARTE ET COULEURS                                  */
+        /* CARTE LEAFLET ET GEOLOCALISATION                                          */
         /* ========================================================================= */
-        
+        function initMap() {
+            window.map = L.map('map', { zoomControl: false }).setView([42.766, 0.564], 14);
+            window.satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 18 }).addTo(window.map);
+            window.userMarker = null;
+            window.map.on('locationfound', function(e) { if (window.userMarker) { window.userMarker.setLatLng(e.latlng); } else { window.userMarker = L.circleMarker(e.latlng, { radius: 8, fillColor: "#3498db", color: "#fff", weight: 2, opacity: 1, fillOpacity: 0.8 }).addTo(window.map); } window.map.setView(e.latlng, 17, { animate: true }); document.getElementById('geo-btn').innerHTML = "🟢"; });
+            window.map.on('locationerror', function(e) { alert("GPS non disponible."); document.getElementById('geo-btn').innerHTML = "📍"; });
+            
+            window.map.on('click', function(e) { let amc = document.getElementById('allow-move-chk'); if (window.currentlyEditingId && amc && amc.checked) { document.getElementById('edit-lat').value = e.latlng.lat.toFixed(7); document.getElementById('edit-lng').value = e.latlng.lng.toFixed(7); let layer = window.selectedCannonsMap.get(window.currentlyEditingId); if(layer) { layer.setLatLng(e.latlng); layer.feature.geometry.coordinates = [e.latlng.lng, e.latlng.lat]; } } else { window.closeBottomSheet(); } });
+        }
+        function geolocateUser() { document.getElementById('geo-btn').innerHTML = "⏳"; window.map.locate({setView: false, maxZoom: 17, enableHighAccuracy: true}); }
+
         window.getColorByFilter = function(ratio, p) {
             if(window.mainTheme === 'entretien_tete') { let bVal = window.getV(p, "Buses").toLowerCase().trim(); return (bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x") ? '#e67e22' : '#bdc3c7'; }
             const inter = (c1,c2,f) => { let r = c1.slice(); for(let i=0; i<3; i++) r[i] = Math.round(r[i] + f * (c2[i] - c1[i])); return `rgb(${r[0]},${r[1]},${r[2]})`; };
@@ -293,16 +290,12 @@
         };
 
         window.updateMap = function() {
-            if(!window.geojsonLayer) return;
-            let s = window.saisonsList[window.histSeasonIdx];
+            if(!window.geojsonLayer) return; let s = window.saisonsList[window.histSeasonIdx];
             window.geojsonLayer.eachLayer(function(layer) {
-                const p = layer.feature.properties; let vis = true;
-                
-                let val = 0;
+                const p = layer.feature.properties; let vis = true; let val = 0;
                 if (window.mainTheme === 'historique') {
                     val = p.historique[s] ? parseFloat(p.historique[s][window.histMetric]) : 0; if (isNaN(val)) val = 0;
-                    let minT = parseFloat(window.currentMinThreshold[window.histMetric]) || 0; 
-                    let maxT = parseFloat(window.currentMaxThreshold[window.histMetric]) || Infinity;
+                    let minT = parseFloat(window.currentMinThreshold[window.histMetric]) || 0; let maxT = parseFloat(window.currentMaxThreshold[window.histMetric]) || Infinity;
                     if (val < minT || val > maxT) vis = false;
                 }
 
@@ -311,12 +304,10 @@
                     p._isVisible = true; if (!window.map.hasLayer(layer)) window.map.addLayer(layer);
                     
                     if (window.mainTheme === 'type') {
-                        let typeCanon = window.getV(p, window.keyType).toLowerCase().trim();
-                        let iconUrl = window.driveIcons && window.driveIcons[typeCanon] ? window.driveIcons[typeCanon] : null;
+                        let typeCanon = window.getV(p, window.keyType).toLowerCase().trim(); let iconUrl = window.driveIcons && window.driveIcons[typeCanon] ? window.driveIcons[typeCanon] : null;
                         if (iconUrl) {
                             let imageSize = 40; let zIdx = window.currentlyEditingId === p.id ? 2000 : (window.selectedCannonsMap.has(p.id) ? 1000 : 0); layer.setZIndexOffset(zIdx);
-                            let isSelected = window.selectedCannonsMap.has(p.id) || window.currentlyEditingId === p.id;
-                            let highlightStyle = isSelected ? "border: 2px solid #e74c3c; border-radius: 50%; background-color: rgba(255,255,255,0.7);" : "";
+                            let highlightStyle = (window.selectedCannonsMap.has(p.id) || window.currentlyEditingId === p.id) ? "border: 2px solid #e74c3c; border-radius: 50%; background-color: rgba(255,255,255,0.7);" : "";
                             let imageHtml = `<div style="position:relative; width:${imageSize}px; height:${imageSize}px;"><div style="background:url('${iconUrl}') center/contain no-repeat; width:100%; height:100%; filter: drop-shadow(2px 4px 5px rgba(0,0,0,0.5)); ${highlightStyle}"></div><div style="position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; font-size:9px; padding:1px 4px; border-radius:4px; font-weight:bold;">${p.id}</div></div>`;
                             layer.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: imageHtml, iconSize: [imageSize, imageSize], iconAnchor: [imageSize/2, imageSize/2] }));
                             layer.setOpacity(1); return; 
@@ -324,25 +315,18 @@
                     }
 
                     let rad = 14; let ratio = 0; let bgStr = ""; let iconChar = p.id; let lh = '28px'; let remarkBadge = ""; 
-                    if (window.mainTheme === 'historique') { 
-                        let maxVal = window.absoluteMaxes[window.histMetric] || 1; ratio = val / maxVal; rad = 12 + (15 * ratio); bgStr = window.getColorByFilter(ratio, p);
-                    } else if (window.mainTheme === 'suivi_entretien') {
-                        let acts = window.getActiveTickets(p.id); let hasFault = acts.length > 0;
-                        let suivi = window.suiviEntretienData.find(row => row[0] == p.id) || ["", "", "non", "non", "", "", ""];
+                    if (window.mainTheme === 'historique') { let maxVal = window.absoluteMaxes[window.histMetric] || 1; ratio = val / maxVal; rad = 12 + (15 * ratio); bgStr = window.getColorByFilter(ratio, p); } 
+                    else if (window.mainTheme === 'suivi_entretien') {
+                        let hasFault = window.getActiveTickets(p.id).length > 0; let suivi = window.suiviEntretienData.find(row => row[0] == p.id) || ["", "", "non", "non", "", "", ""];
                         let dec = suivi[2] && suivi[2].toString().toLowerCase().trim() === "oui"; let prev = suivi[3] && suivi[3].toString().toLowerCase().trim() === "oui"; let rem = suivi[5] || ""; 
                         let colors = []; if(hasFault) colors.push('#e74c3c'); if(prev) colors.push('#9b59b6'); if(dec) colors.push('#27ae60');     
-                        bgStr = '#f1c40f'; 
-                        if(colors.length === 3) bgStr = `conic-gradient(${colors[0]} 0 33%, ${colors[1]} 33% 66%, ${colors[2]} 66% 100%)`;
-                        else if(colors.length === 2) bgStr = `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)`;
-                        else if(colors.length === 1) bgStr = colors[0];
+                        bgStr = '#f1c40f'; if(colors.length === 3) bgStr = `conic-gradient(${colors[0]} 0 33%, ${colors[1]} 33% 66%, ${colors[2]} 66% 100%)`; else if(colors.length === 2) bgStr = `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)`; else if(colors.length === 1) bgStr = colors[0];
                         if (!dec) { iconChar = `⚡<br><span style="font-size:8px;">${p.id}</span>`; lh = '14px'; }
                         if (rem.toString().trim() !== "") remarkBadge = `<div style="position:absolute; top:-6px; right:-6px; background:#e67e22; color:white; width:16px; height:16px; border-radius:50%; font-size:12px; font-weight:bold; text-align:center; line-height:16px; border:1px solid #fff;">!</div>`;
                     } else { bgStr = window.getColorByFilter(0, p); }
 
-                    let bord = window.selectedCannonsMap.has(p.id) ? "#2c3e50" : (window.currentlyEditingId === p.id ? "#e74c3c" : "white");
-                    let bw = window.selectedCannonsMap.has(p.id) ? "3px" : (window.currentlyEditingId === p.id ? "4px" : "1.5px");
-                    let fsz = Math.max(10, rad - 4) + "px"; 
-                    let zIdx = window.currentlyEditingId === p.id ? 2000 : (window.selectedCannonsMap.has(p.id) ? 1000 : 0);
+                    let bord = window.selectedCannonsMap.has(p.id) ? "#2c3e50" : (window.currentlyEditingId === p.id ? "#e74c3c" : "white"); let bw = window.selectedCannonsMap.has(p.id) ? "3px" : (window.currentlyEditingId === p.id ? "4px" : "1.5px");
+                    let fsz = Math.max(10, rad - 4) + "px"; let zIdx = window.currentlyEditingId === p.id ? 2000 : (window.selectedCannonsMap.has(p.id) ? 1000 : 0);
                     layer.setZIndexOffset(zIdx);
                     layer.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: `<div class="cannon-circle" style="background:${bgStr}; width:${rad*2}px; height:${rad*2}px; line-height:${lh}; border:${bw} solid ${bord}; font-size:${fsz}; position:relative;">${iconChar}${remarkBadge}</div>`, iconSize: [rad*2, rad*2], iconAnchor: [rad, rad] }));
                 }
@@ -352,32 +336,18 @@
         window.calculateMaxes = function() {
             if(!window.saisonsList[window.histSeasonIdx]) return;
             let s = window.saisonsList[window.histSeasonIdx]; window.absoluteMaxes = { eau: 0, air: 0, temps: 0 };
-            window.snowCannons.features.forEach(f => {
-                if (f.properties.historique[s]) {
-                    window.absoluteMaxes.eau = Math.max(window.absoluteMaxes.eau, f.properties.historique[s].eau);
-                    window.absoluteMaxes.air = Math.max(window.absoluteMaxes.air, f.properties.historique[s].air);
-                    window.absoluteMaxes.temps = Math.max(window.absoluteMaxes.temps, f.properties.historique[s].temps);
-                }
-            });
+            window.snowCannons.features.forEach(f => { if (f.properties.historique[s]) { window.absoluteMaxes.eau = Math.max(window.absoluteMaxes.eau, f.properties.historique[s].eau); window.absoluteMaxes.air = Math.max(window.absoluteMaxes.air, f.properties.historique[s].air); window.absoluteMaxes.temps = Math.max(window.absoluteMaxes.temps, f.properties.historique[s].temps); } });
             window.currentMaxThreshold = { ...window.absoluteMaxes }; window.currentMinThreshold = { eau:0, air:0, temps:0 };
             
             let slmin = document.getElementById('slider-min'); let slmax = document.getElementById('slider-max');
-            if(slmin) { 
-                slmin.max = window.absoluteMaxes[window.histMetric] || 1; slmin.value = 0; slmin.step = "any";
-                slmin.oninput = function(e) { let val = parseFloat(e.target.value) || 0; if (val > window.currentMaxThreshold[window.histMetric]) { val = window.currentMaxThreshold[window.histMetric]; e.target.value = val; } window.currentMinThreshold[window.histMetric] = val; document.getElementById('val-min').innerText = Math.round(val); window.updateMap(); window.triggerGlobalFilterChart(); };
-            }
-            if(slmax) { 
-                slmax.max = window.absoluteMaxes[window.histMetric] || 1; slmax.value = window.absoluteMaxes[window.histMetric] || 1; slmax.step = "any";
-                slmax.oninput = function(e) { let val = parseFloat(e.target.value) || 0; if (val < window.currentMinThreshold[window.histMetric]) { val = window.currentMinThreshold[window.histMetric]; e.target.value = val; } window.currentMaxThreshold[window.histMetric] = val; document.getElementById('val-max').innerText = Math.round(val); window.updateMap(); window.triggerGlobalFilterChart(); };
-            }
-            let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; 
-            let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
+            if(slmin) { slmin.max = window.absoluteMaxes[window.histMetric] || 1; slmin.value = 0; slmin.step = "any"; slmin.oninput = function(e) { let val = parseFloat(e.target.value) || 0; if (val > window.currentMaxThreshold[window.histMetric]) { val = window.currentMaxThreshold[window.histMetric]; e.target.value = val; } window.currentMinThreshold[window.histMetric] = val; document.getElementById('val-min').innerText = Math.round(val); window.updateMap(); window.triggerGlobalFilterChart(); }; }
+            if(slmax) { slmax.max = window.absoluteMaxes[window.histMetric] || 1; slmax.value = window.absoluteMaxes[window.histMetric] || 1; slmax.step = "any"; slmax.oninput = function(e) { let val = parseFloat(e.target.value) || 0; if (val < window.currentMinThreshold[window.histMetric]) { val = window.currentMinThreshold[window.histMetric]; e.target.value = val; } window.currentMaxThreshold[window.histMetric] = val; document.getElementById('val-max').innerText = Math.round(val); window.updateMap(); window.triggerGlobalFilterChart(); }; }
+            let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
         };
 
         /* ========================================================================= */
-        /* CHAPITRE 4 : TABLEAU DE BORD GLOBAL ET STATISTIQUES                       */
+        /* TABLEAU DE BORD GLOBAL ET FICHE DÉTAILLÉE CANON                           */
         /* ========================================================================= */
-        
         window.triggerGlobalFilterChart = function() {
             if (window.selectedCannonsMap.size > 0 || window.currentlyEditingId) return;
             let visibleCannons = window.snowCannons.features.filter(f => f.properties._isVisible);
@@ -408,15 +378,10 @@
                     if(window.chartInstances['global-filter-chart']) window.chartInstances['global-filter-chart'].destroy();
                     window.chartInstances['global-filter-chart'] = new Chart(ctx.getContext('2d'), { type: 'bar', data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: '#3498db', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
                 }, 100);
-
             } else if (window.mainTheme === 'suivi_entretien') {
                 document.getElementById('right-title').innerText = "📊 Dashboard Maintenance";
                 let cDef = 0, cDec = 0, cPrev = 0, cOk = 0;
-                visibleCannons.forEach(f => {
-                    let p = f.properties; let s = window.suiviEntretienData.find(row => row[0] == p.id) || [];
-                    let hasFault = window.getActiveTickets(p.id).length > 0; let isDec = s[2] && s[2].toString().toLowerCase().trim() === "oui"; let isPrev = s[3] && s[3].toString().toLowerCase().trim() === "oui";
-                    if(hasFault) cDef++; else if(isPrev) cPrev++; else if(isDec) cDec++; else cOk++;
-                });
+                visibleCannons.forEach(f => { let p = f.properties; let s = window.suiviEntretienData.find(row => row[0] == p.id) || []; let hasFault = window.getActiveTickets(p.id).length > 0; let isDec = s[2] && s[2].toString().toLowerCase().trim() === "oui"; let isPrev = s[3] && s[3].toString().toLowerCase().trim() === "oui"; if(hasFault) cDef++; else if(isPrev) cPrev++; else if(isDec) cDec++; else cOk++; });
                 html += `<div style="display:flex; gap:10px; text-align:center; margin-bottom:15px;"><div style="flex:1; background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px;"><b style="font-size:24px; color:#27ae60;">${cDec}</b><br><span style="font-size:12px;">Déconnectés</span></div><div style="flex:1; background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px;"><b style="font-size:24px; color:#9b59b6;">${cPrev}</b><br><span style="font-size:12px;">Préventifs</span></div></div>`;
             } else if (window.mainTheme === 'entretien_tete') {
                 document.getElementById('right-title').innerText = "📊 Avancement Têtes";
@@ -432,10 +397,6 @@
             document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html; 
         };
 
-        /* ========================================================================= */
-        /* CHAPITRE 5 : FICHE CANON DÉTAILLÉE (SÉLECTION UNIQUE)                     */
-        /* ========================================================================= */
-        
         window.renderSelectionPanel = function() {
             if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
@@ -457,12 +418,12 @@
                     histHtml += `</ul></details>`;
                 }
                 if (window.saisonsList && window.saisonsList.length > 0) {
-                    prodHtml = `<div style="margin-top:15px; font-size:14px; font-weight:bold; color:#2c3e50; border-bottom:2px solid #eee; padding-bottom:5px;">📊 Production (Comparatif Piste)</div><div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;"><div style="background:#fff; border:1px solid #eee; border-radius:6px; padding:10px;"><div style="font-size:12px; font-weight:bold; color:#3498db; text-align:center;">Eau (m³)</div><div style="position:relative; height:120px; width:100%;"><canvas id="he-${p.id}"></canvas></div></div><div style="background:#fff; border:1px solid #eee; border-radius:6px; padding:10px;"><div style="font-size:12px; font-weight:bold; color:#e67e22; text-align:center;">Air</div><div style="position:relative; height:120px; width:100%;"><canvas id="ha-${p.id}"></canvas></div></div><div style="background:#fff; border:1px solid #eee; border-radius:6px; padding:10px;"><div style="font-size:12px; font-weight:bold; color:#27ae60; text-align:center;">Heures</div><div style="position:relative; height:120px; width:100%;"><canvas id="ht-${p.id}"></canvas></div></div></div>`;
+                    prodHtml = `<div style="margin-top:15px; font-size:14px; font-weight:bold; color:#2c3e50; border-bottom:2px solid #eee; padding-bottom:5px;">📊 Production (Comparatif)</div><div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;"><div style="background:#fff; border:1px solid #eee; border-radius:6px; padding:10px;"><div style="font-size:12px; font-weight:bold; color:#3498db; text-align:center;">Eau (m³)</div><div style="position:relative; height:120px; width:100%;"><canvas id="he-${p.id}"></canvas></div></div><div style="background:#fff; border:1px solid #eee; border-radius:6px; padding:10px;"><div style="font-size:12px; font-weight:bold; color:#e67e22; text-align:center;">Air</div><div style="position:relative; height:120px; width:100%;"><canvas id="ha-${p.id}"></canvas></div></div><div style="background:#fff; border:1px solid #eee; border-radius:6px; padding:10px;"><div style="font-size:12px; font-weight:bold; color:#27ae60; text-align:center;">Heures</div><div style="position:relative; height:120px; width:100%;"><canvas id="ht-${p.id}"></canvas></div></div></div>`;
                 }
 
                 let formulairePanneCompletHtml = `
                     <details style="background:#fdf0ed; padding:15px; border-radius:6px; border:1px solid #fadbd8; font-size:14px; margin-top:12px;">
-                        <summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;">🚨 Signaler un défaut (Nouveau Ticket)</summary>
+                        <summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;">🚨 Signaler un défaut (Ticket)</summary>
                         <div style="margin-top:15px;">
                             <span class="edit-label">État</span><select id="nt-etat-${p.id}" class="edit-input"><option value="à faire">À faire</option><option value="en cours">En cours</option></select>
                             <span class="edit-label">Priorité</span><select id="nt-priorite-${p.id}" class="edit-input"><option value="P1 (urgent et bloquant)">P1 (urgent)</option><option value="P2 (non bloquant mais urgent)">P2 (moyen)</option><option value="P3 (non bloquant)">P3 (faible)</option></select>
@@ -471,9 +432,9 @@
                             <span class="edit-label">Date Inter</span><input type="text" id="nt-dateinter-${p.id}" class="edit-input" placeholder="JJ/MM/AAAA">
                             <span class="edit-label">Intervention</span><textarea id="nt-interv-${p.id}" class="edit-input" rows="2" placeholder="Travaux réalisés..."></textarea>
                             <span class="edit-label">Pièces</span><input type="text" id="nt-pieces-${p.id}" class="edit-input" placeholder="Ex: Joint R18">
+                            <span class="edit-label">Sonde</span><input type="text" id="nt-sonde-${p.id}" class="edit-input" placeholder="Défaut sonde...">
                             <span class="edit-label">Remarque</span><textarea id="nt-remarque-${p.id}" class="edit-input" rows="2"></textarea>
                             <input type="hidden" id="nt-periode-${p.id}" value="${window.saisonsList[window.histSeasonIdx] || ''}">
-                            <input type="hidden" id="nt-sonde-${p.id}" value="">
                             <input type="hidden" id="nt-photos-${p.id}" value="">
                             <button onclick="window.addNouveauTicket('${p.id}', this)" class="btn-action-primary" style="background:#c0392b;">🚀 Envoyer le Ticket</button>
                         </div>
@@ -538,32 +499,23 @@
                 }, 100);
             });
         };
-        
-        /* ========================================================================= */
-        /* CHAPITRE 6 : FORMULAIRES & ÉDITION DES TICKETS                            */
-        /* ========================================================================= */
 
+        /* ========================================================================= */
+        /* SAUVEGARDES, TICKETS ET ÉDITION                                           */
+        /* ========================================================================= */
         window.startEdit = function(id) {
-            window.currentlyEditingId = id; 
-            let layer = window.selectedCannonsMap.get(id); let p = layer.feature.properties;
+            window.currentlyEditingId = id; let layer = window.selectedCannonsMap.get(id); let p = layer.feature.properties;
             document.getElementById('edit-id-display').innerText = p.id; document.getElementById('edit-id').value = p.id;
             document.getElementById('edit-lat').value = layer.getLatLng().lat.toFixed(7); document.getElementById('edit-lng').value = layer.getLatLng().lng.toFixed(7);
-            
             let fc = document.getElementById('dynamic-edit-fields'); fc.innerHTML = "";
-            p.fullData.forEach(i => { 
-                if(i.k.toLowerCase().match(/(regard|xy|gps)/)) return; 
-                fc.innerHTML += `<div style="margin-bottom:10px;"><div class="edit-label">${i.k}</div><input type="text" class="edit-input dyn-field" data-key="${i.k}" value="${i.v}"></div>`; 
-            });
-            
-            document.getElementById('view-selection').style.display = 'none'; document.getElementById('view-edit').style.display = 'block'; 
-            document.getElementById('right-title').innerText = "✏️ Édition"; window.openBottomSheet('full'); window.updateMap();
+            p.fullData.forEach(i => { if(i.k.toLowerCase().match(/(regard|xy|gps)/)) return; fc.innerHTML += `<div style="margin-bottom:10px;"><div class="edit-label">${i.k}</div><input type="text" class="edit-input dyn-field" data-key="${i.k}" value="${i.v}"></div>`; });
+            document.getElementById('view-selection').style.display = 'none'; document.getElementById('view-edit').style.display = 'block'; document.getElementById('right-title').innerText = "✏️ Édition"; window.openBottomSheet('full'); window.updateMap();
         };
 
         window.saveEditData = async function() {
             if(!window.currentlyEditingId) return;
             let btn = document.getElementById('btn-save-edit'); btn.innerText = "⏳ Envoi..."; btn.disabled = true;
             let fields = {}; document.querySelectorAll('.dyn-field').forEach(i => fields[i.getAttribute('data-key')] = i.value);
-            
             let pl = { action: "update_general", idCanon: document.getElementById('edit-id').value, lat: parseFloat(document.getElementById('edit-lat').value), lng: parseFloat(document.getElementById('edit-lng').value), fields: fields };
             try {
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(pl) }); let r = await res.json();
@@ -581,17 +533,7 @@
 
         window.addNouveauTicket = async function(idCanon, btn) {
             let elDef = document.getElementById(`nt-defaut-${idCanon}`); if(!elDef || !elDef.value.trim()) { alert("Veuillez renseigner la panne."); return; }
-            let fieldsObj = { 
-                "état": document.getElementById(`nt-etat-${idCanon}`).value, "Priorité": document.getElementById(`nt-priorite-${idCanon}`).value,
-                "date": new Date().toLocaleDateString('fr-FR'), "n°regard": idCanon, 
-                "piste": window.getV(window.selectedCannonsMap.get(idCanon).feature.properties, window.keyPiste) || "Inconnue", 
-                "defaut": elDef.value, "Défaut sonde": document.getElementById(`nt-sonde-${idCanon}`).value, 
-                "cause": document.getElementById(`nt-cause-${idCanon}`).value, "date d'inter": document.getElementById(`nt-dateinter-${idCanon}`).value, 
-                "intervention": document.getElementById(`nt-interv-${idCanon}`).value, "Remarque": document.getElementById(`nt-remarque-${idCanon}`).value, 
-                "periode": document.getElementById(`nt-periode-${idCanon}`).value, "photos": document.getElementById(`nt-photos-${idCanon}`).value, 
-                "pièces utilisés": document.getElementById(`nt-pieces-${idCanon}`).value 
-            };
-            
+            let fieldsObj = { "état": document.getElementById(`nt-etat-${idCanon}`).value, "Priorité": document.getElementById(`nt-priorite-${idCanon}`).value, "date": new Date().toLocaleDateString('fr-FR'), "n°regard": idCanon, "piste": window.getV(window.selectedCannonsMap.get(idCanon).feature.properties, window.keyPiste) || "Inconnue", "defaut": elDef.value, "Défaut sonde": document.getElementById(`nt-sonde-${idCanon}`).value, "cause": document.getElementById(`nt-cause-${idCanon}`).value, "date d'inter": document.getElementById(`nt-dateinter-${idCanon}`).value, "intervention": document.getElementById(`nt-interv-${idCanon}`).value, "Remarque": document.getElementById(`nt-remarque-${idCanon}`).value, "periode": document.getElementById(`nt-periode-${idCanon}`).value, "photos": document.getElementById(`nt-photos-${idCanon}`).value, "pièces utilisés": document.getElementById(`nt-pieces-${idCanon}`).value };
             let oldText = btn.innerText; btn.innerText = "⏳ Transmission..."; btn.disabled = true;
             try {
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_ticket", fields: fieldsObj }) }); let r = await res.json();
@@ -606,7 +548,6 @@
         window.editFullTicket = function(canonId, defaut) {
             let safeDef = defaut.replace(/[^a-zA-Z0-9]/g, ""); let idDiv = `ticket-edit-${canonId}-${safeDef}`; let el = document.getElementById(idDiv); if(!el) return;
             let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut); if(!ticket) return;
-            
             let html = '<div style="background:#fdfdfe; padding:12px; border-radius:6px; border:2px solid #3498db; margin-top:10px;">';
             ticket.fullData.forEach(d => {
                 let kLow = d.k.toLowerCase(); let valStr = d.v.toString();
@@ -645,8 +586,7 @@
                 let chkDec = document.getElementById('chk-dec-single-' + idCanon); let chkPrev = document.getElementById('chk-prev-single-' + idCanon); let rem = document.getElementById('rem-single-' + idCanon);
                 payloads.push({ idCanon: idCanon, piste: window.getV(layer.feature.properties, window.keyPiste), deconnexion: chkDec ? chkDec.checked : false, preventif: chkPrev ? chkPrev.checked : false, vanneCorrectif: "", remarque: rem ? rem.value : "" });
             });
-            if (payloads.length === 0) return;
-            let oldText = btn.innerText; btn.innerText = "⏳ Sauvegarde..."; btn.disabled = true;
+            if (payloads.length === 0) return; let oldText = btn.innerText; btn.innerText = "⏳ Sauvegarde..."; btn.disabled = true;
             try {
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_suivi_multi", payloads: payloads }) }); let r = await res.json();
                 if (r.status === "success") {
@@ -674,18 +614,15 @@
         };
 
         /* ========================================================================= */
-        /* CHAPITRE 7 : ESPACE STOCK (100% FONCTIONNEL ET MOBILE)                    */
+        /* STOCK (PLEIN ECRAN)                                                       */
         /* ========================================================================= */
-        
         window.renderStockWorkspace = function() {
             let ws = document.getElementById('stock-workspace'); if (!ws) return;
             if (!window.rawStock || window.rawStock.length < 1) { ws.innerHTML = `<div style="text-align:center; padding:30px; font-weight:bold;">⚠️ Aucun stock détecté.</div>`; return; }
 
             let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
-            let idxNum = headers.findIndex(h => h.includes("numero") || h === "id");
-            let idxRef = headers.findIndex(h => h === "ref"); let idxProd = headers.findIndex(h => h === "produit"); 
-            let idxDesc = headers.findIndex(h => h === "description"); let idxPhoto = headers.findIndex(h => h === "photo"); 
-            let idxStock = headers.findIndex(h => h.includes("stock")); let idxMini = headers.findIndex(h => h.includes("mini")); let idxPris = headers.findIndex(h => h === "pris");
+            let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); let idxRef = headers.findIndex(h => h === "ref"); let idxProd = headers.findIndex(h => h === "produit"); 
+            let idxDesc = headers.findIndex(h => h === "description"); let idxPhoto = headers.findIndex(h => h === "photo"); let idxStock = headers.findIndex(h => h.includes("stock")); let idxMini = headers.findIndex(h => h.includes("mini")); let idxPris = headers.findIndex(h => h === "pris");
 
             let maxId = 0; let uniqueDescs = new Set();
             for (let i = 1; i < window.rawStock.length; i++) {
@@ -698,25 +635,10 @@
 
             ws.innerHTML = `
                 <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px; border-bottom:2px solid #16a085; padding-bottom:10px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h2 style="color:#2c3e50; margin:0; font-size:22px;">📦 Inventaire <span id="stock-count-display" style="font-size:12px; color:#7f8c8d; font-weight:normal;">(${totalArticles})</span></h2>
-                        <button onclick="window.toggleAddStockForm()" style="background:#16a085; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold;">➕ Ajouter</button>
-                    </div>
-                    <div style="display:flex; gap:10px;">
-                        <select id="filter-desc-stock" onchange="window.filterStockItems()" class="edit-input" style="flex:1; margin:0;">${filterOptionsHtml}</select>
-                        <input type="text" id="search-stock" placeholder="🔍 Réf..." onkeyup="window.filterStockItems()" class="edit-input" style="flex:1; margin:0;">
-                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;"><h2 style="color:#2c3e50; margin:0; font-size:22px;">📦 Inventaire <span id="stock-count-display" style="font-size:12px; color:#7f8c8d; font-weight:normal;">(${totalArticles})</span></h2><button onclick="window.toggleAddStockForm()" style="background:#16a085; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold;">➕ Ajouter</button></div>
+                    <div style="display:flex; gap:10px;"><select id="filter-desc-stock" onchange="window.filterStockItems()" class="edit-input" style="flex:1; margin:0;">${filterOptionsHtml}</select><input type="text" id="search-stock" placeholder="🔍 Réf..." onkeyup="window.filterStockItems()" class="edit-input" style="flex:1; margin:0;"></div>
                 </div>
-                
-                <div id="add-stock-form-container" style="display:none; background:#fff; border:2px solid #16a085; padding:15px; border-radius:8px; margin-bottom:20px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
-                    <h4 style="margin:0 0 12px 0; color:#16a085;">Créer un article</h4>
-                    <div style="display:flex; flex-direction:column; gap:10px;" id="add-stock-fields-grid"></div>
-                    <div style="display:flex; gap:10px; margin-top:15px;">
-                        <button onclick="window.toggleAddStockForm()" class="btn-action-primary" style="background:#e1e8ed; color:#333; margin-top:0;">Annuler</button>
-                        <button onclick="window.addStockItemToServer(this)" class="btn-action-primary" style="background:#16a085; margin-top:0;">🚀 Valider l'ajout</button>
-                    </div>
-                </div>
-                
+                <div id="add-stock-form-container" style="display:none; background:#fff; border:2px solid #16a085; padding:15px; border-radius:8px; margin-bottom:20px; box-shadow:0 4px 15px rgba(0,0,0,0.05);"><h4 style="margin:0 0 12px 0; color:#16a085;">Créer un article</h4><div style="display:flex; flex-direction:column; gap:10px;" id="add-stock-fields-grid"></div><div style="display:flex; gap:10px; margin-top:15px;"><button onclick="window.toggleAddStockForm()" class="btn-action-primary" style="background:#e1e8ed; color:#333; margin-top:0;">Annuler</button><button onclick="window.addStockItemToServer(this)" class="btn-action-primary" style="background:#16a085; margin-top:0;">🚀 Valider l'ajout</button></div></div>
                 <div id="stock-cards-list" style="display:flex; flex-direction:column; gap:15px;"></div>`;
 
             let addGrid = document.getElementById('add-stock-fields-grid');
@@ -731,41 +653,16 @@
             let cardsContainer = document.getElementById('stock-cards-list');
             for (let i = 1; i < window.rawStock.length; i++) {
                 let row = window.rawStock[i]; if (!row || row.length === 0) continue; 
-                let numPiece = (idxNum !== -1 && row[idxNum]) ? row[idxNum].toString().trim() : i.toString();
-                let safeId = "stock-" + numPiece.replace(/[^a-zA-Z0-9]/g, "-");
-                let valStock = (idxStock !== -1 && row[idxStock]) ? parseFloat(row[idxStock]) || 0 : 0;
-                let valMini = (idxMini !== -1 && row[idxMini]) ? parseFloat(row[idxMini]) || 0 : 0;
-                let valPris = (idxPris !== -1 && row[idxPris]) ? parseFloat(row[idxPris]) || 0 : 0;
-                let valRef = (idxRef !== -1 && row[idxRef]) ? row[idxRef].toString().trim() : "";
-                let valProd = (idxProd !== -1 && row[idxProd]) ? row[idxProd].toString().trim() : "Sans nom";
-                let valPhoto = (idxPhoto !== -1 && row[idxPhoto]) ? row[idxPhoto].toString().trim() : "";
+                let numPiece = (idxNum !== -1 && row[idxNum]) ? row[idxNum].toString().trim() : i.toString(); let safeId = "stock-" + numPiece.replace(/[^a-zA-Z0-9]/g, "-");
+                let valStock = (idxStock !== -1 && row[idxStock]) ? parseFloat(row[idxStock]) || 0 : 0; let valMini = (idxMini !== -1 && row[idxMini]) ? parseFloat(row[idxMini]) || 0 : 0; let valPris = (idxPris !== -1 && row[idxPris]) ? parseFloat(row[idxPris]) || 0 : 0; let valRef = (idxRef !== -1 && row[idxRef]) ? row[idxRef].toString().trim() : ""; let valProd = (idxProd !== -1 && row[idxProd]) ? row[idxProd].toString().trim() : "Sans nom"; let valPhoto = (idxPhoto !== -1 && row[idxPhoto]) ? row[idxPhoto].toString().trim() : "";
 
                 let alerteStyle = valStock <= valMini ? "background:#fdf2f2; border-color:#e74c3c;" : "background:#fff; border-color:#ddd;";
                 let parsedImgUrl = "https://placehold.co/150x150?text=Pas+de+photo";
-                
-                if (valPhoto && valPhoto !== "") {
-                    let rawFileName = valPhoto.split('/').pop().toLowerCase().trim();
-                    let fuzzyMatch = Object.keys(window.drivePhotos || {}).find(k => k.includes(rawFileName.split('.')[0]));
-                    if (fuzzyMatch) parsedImgUrl = window.drivePhotos[fuzzyMatch];
-                    else if (valPhoto.includes("drive.google.com")) parsedImgUrl = window.parseDriveUrl(valPhoto);
-                }
+                if (valPhoto && valPhoto !== "") { let rawFileName = valPhoto.split('/').pop().toLowerCase().trim(); let fuzzyMatch = Object.keys(window.drivePhotos || {}).find(k => k.includes(rawFileName.split('.')[0])); if (fuzzyMatch) parsedImgUrl = window.drivePhotos[fuzzyMatch]; else if (valPhoto.includes("drive.google.com")) parsedImgUrl = window.parseDriveUrl(valPhoto); }
 
                 let cardBlock = document.createElement('div'); cardBlock.className = "stock-item-card";
                 cardBlock.style = `border:1px solid #ddd; border-left:6px solid #16a085; border-radius:8px; padding:15px; display:flex; flex-direction:column; gap:10px; ${alerteStyle}`;
-                cardBlock.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <h3 style="margin:0; color:#2c3e50; font-size:16px;">${valProd} <br><span style="font-size:12px; color:#16a085;">Réf: ${valRef}</span></h3>
-                        ${parsedImgUrl !== "https://placehold.co/150x150?text=Pas+de+photo" ? `<img src="${parsedImgUrl}" style="max-width:60px; max-height:60px; border-radius:4px; border:1px solid #ccc;">` : ''}
-                    </div>
-                    <div style="display:flex; gap:10px;">
-                        <div style="flex:1;"><span class="edit-label">En Stock</span><input type="number" class="edit-input s-field-${safeId}" data-col="en stock" value="${valStock}" style="font-weight:bold; margin-bottom:0; color:${valStock <= valMini ? '#e74c3c' : '#2c3e50'};"></div>
-                        <div style="flex:1;"><span class="edit-label">Mini</span><input type="number" class="edit-input s-field-${safeId}" data-col="seuil mini" value="${valMini}" style="margin-bottom:0;"></div>
-                        <div style="flex:1;"><span class="edit-label">Pris</span><input type="number" class="edit-input s-field-${safeId}" data-col="pris" value="${valPris}" style="margin-bottom:0;"></div>
-                    </div>
-                    <div style="display:flex; gap:10px; margin-top:5px;">
-                        <button onclick="window.deleteStockItemFromServer('${numPiece}', this)" class="btn-action-primary" style="background:#ecf0f1; color:#e74c3c; margin-top:0; flex:1;">🗑️ Supprimer</button>
-                        <button onclick="window.saveStockItemEdits('${numPiece}', '${safeId}', this)" class="btn-action-primary" style="background:#16a085; margin-top:0; flex:2;">💾 Sauvegarder</button>
-                    </div>`;
+                cardBlock.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start;"><h3 style="margin:0; color:#2c3e50; font-size:16px;">${valProd} <br><span style="font-size:12px; color:#16a085;">Réf: ${valRef}</span></h3>${parsedImgUrl !== "https://placehold.co/150x150?text=Pas+de+photo" ? `<img src="${parsedImgUrl}" style="max-width:60px; max-height:60px; border-radius:4px; border:1px solid #ccc;">` : ''}</div><div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">En Stock</span><input type="number" class="edit-input s-field-${safeId}" data-col="en stock" value="${valStock}" style="font-weight:bold; margin-bottom:0; color:${valStock <= valMini ? '#e74c3c' : '#2c3e50'};"></div><div style="flex:1;"><span class="edit-label">Mini</span><input type="number" class="edit-input s-field-${safeId}" data-col="seuil mini" value="${valMini}" style="margin-bottom:0;"></div><div style="flex:1;"><span class="edit-label">Pris</span><input type="number" class="edit-input s-field-${safeId}" data-col="pris" value="${valPris}" style="margin-bottom:0;"></div></div><div style="display:flex; gap:10px; margin-top:5px;"><button onclick="window.deleteStockItemFromServer('${numPiece}', this)" class="btn-action-primary" style="background:#ecf0f1; color:#e74c3c; margin-top:0; flex:1;">🗑️ Supprimer</button><button onclick="window.saveStockItemEdits('${numPiece}', '${safeId}', this)" class="btn-action-primary" style="background:#16a085; margin-top:0; flex:2;">💾 Sauvegarder</button></div>`;
                 cardsContainer.appendChild(cardBlock);
             }
         };
@@ -783,17 +680,11 @@
         };
 
         window.addStockItemToServer = async function(btn) {
-            let fieldsObj = {}; let hasData = false;
-            document.querySelectorAll('.new-stock-field').forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; if(inp.value.trim() !== "") hasData = true; });
-            if (!hasData) return;
-            let oldText = btn.innerText; btn.innerText = "⏳ Envoi..."; btn.disabled = true;
+            let fieldsObj = {}; let hasData = false; document.querySelectorAll('.new-stock-field').forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; if(inp.value.trim() !== "") hasData = true; });
+            if (!hasData) return; let oldText = btn.innerText; btn.innerText = "⏳ Envoi..."; btn.disabled = true;
             try {
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_stock_item", fields: fieldsObj }) }); let r = await res.json();
-                if (r.status === "success") {
-                    let newRow = new Array(window.rawStock[0].length).fill("");
-                    window.rawStock[0].forEach((header, index) => { let colName = header.toString().trim(); if (fieldsObj[colName] !== undefined) newRow[index] = fieldsObj[colName]; });
-                    window.rawStock.push(newRow); window.renderStockWorkspace();
-                } else alert("Erreur serveur.");
+                if (r.status === "success") { let newRow = new Array(window.rawStock[0].length).fill(""); window.rawStock[0].forEach((header, index) => { let colName = header.toString().trim(); if (fieldsObj[colName] !== undefined) newRow[index] = fieldsObj[colName]; }); window.rawStock.push(newRow); window.renderStockWorkspace(); } else alert("Erreur serveur.");
             } catch(e) { alert("Échec réseau."); }
             btn.innerText = oldText; btn.disabled = false;
         };
@@ -801,193 +692,97 @@
         window.saveStockItemEdits = async function(numPiece, safeId, btn) {
             let fieldsObj = {}; document.querySelectorAll(`.s-field-${safeId}`).forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; });
             let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }) }); let r = await res.json();
-                if (r.status === "success") { btn.innerText = "✅ OK"; btn.style.background = "#27ae60"; setTimeout(() => { window.renderStockWorkspace(); }, 1500); } else alert("Erreur.");
-            } catch(e) { alert("Échec."); }
+            try { let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }) }); let r = await res.json(); if (r.status === "success") { btn.innerText = "✅ OK"; btn.style.background = "#27ae60"; setTimeout(() => { window.renderStockWorkspace(); }, 1500); } else alert("Erreur."); } catch(e) { alert("Échec."); }
             btn.disabled = false;
         };
 
         window.deleteStockItemFromServer = async function(numPiece, btn) {
-            if (!confirm("⚠️ Confirmer la suppression définitive ?")) return;
-            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_stock_item", idPiece: numPiece }) }); let r = await res.json();
-                if (r.status === "success") {
-                    let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
-                    let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); if (idxNum === -1) idxNum = 0;
-                    let rowIndex = window.rawStock.findIndex((row, idx) => idx > 0 && row[idxNum].toString().trim() === numPiece.toString().trim());
-                    if (rowIndex !== -1) window.rawStock.splice(rowIndex, 1);
-                    btn.closest('.stock-item-card').remove(); window.filterStockItems();
-                } else alert("Erreur.");
-            } catch(e) { alert("Échec."); }
+            if (!confirm("⚠️ Confirmer la suppression définitive ?")) return; let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try { let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_stock_item", idPiece: numPiece }) }); let r = await res.json(); if (r.status === "success") { let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""); let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); if (idxNum === -1) idxNum = 0; let rowIndex = window.rawStock.findIndex((row, idx) => idx > 0 && row[idxNum].toString().trim() === numPiece.toString().trim()); if (rowIndex !== -1) window.rawStock.splice(rowIndex, 1); btn.closest('.stock-item-card').remove(); window.filterStockItems(); } else alert("Erreur."); } catch(e) { alert("Échec."); }
         };
 
         /* ========================================================================= */
-        /* CHAPITRE 8 : ESPACE ATELIER AVEC FORMULAIRE COMPLET                       */
+        /* ATELIER (BANC ESSAI COMPLET MOBILE)                                       */
         /* ========================================================================= */
-
         window.renderAtelierWorkspace = function() {
             let ws = document.getElementById('atelier-workspace'); if(!ws) return;
             let canonsEnAtelier = window.suiviEntretienData.filter(row => row[3] && row[3].toString().toLowerCase().trim() === "oui").map(r => r[0].toString());
             
-            ws.innerHTML = `
-                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px; border-bottom:2px solid #8e44ad; padding-bottom:10px;">
-                    <h2 style="color:#2c3e50; margin:0; font-size:22px;">🧰 Banc d'Essais</h2>
-                    <input type="text" id="search-atelier" placeholder="🔍 Rechercher N° Canon..." onkeyup="window.filterAtelierCanons(this.value)" class="edit-input" style="margin:0;">
-                </div>`;
-                
+            ws.innerHTML = `<div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px; border-bottom:2px solid #8e44ad; padding-bottom:10px;"><h2 style="color:#2c3e50; margin:0; font-size:22px;">🧰 Banc d'Essais</h2><input type="text" id="search-atelier" placeholder="🔍 Rechercher N° Canon..." onkeyup="window.filterAtelierCanons(this.value)" class="edit-input" style="margin:0;"></div>`;
             if(canonsEnAtelier.length === 0) { ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; font-weight:bold;">✅ Aucun canon au banc d'essai.</div>`; return; }
 
             canonsEnAtelier.sort((a, b) => parseInt(a) - parseInt(b)).forEach(idCanon => {
                 let feature = window.snowCannons.features.find(f => f.properties.id == idCanon); if(!feature) return;
                 let p = feature.properties; let piste = window.getV(p, window.keyPiste); let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, "");
-                
                 let defaultVanne = "none"; let valVanneAd = (window.getV(p, "vanne additio") || "").toLowerCase();
                 if (valVanneAd.includes("clarinette")) defaultVanne = "v2000"; else if (valVanneAd.includes("2var")) defaultVanne = "var_double"; else if (valVanneAd.includes("var")) defaultVanne = "var";
 
-                let existingData = {}; let estValide = false; // Récupération si existant possible via window.rawAtelier...
-
-                // On reconstruit le gros formulaire de l'atelier original :
                 let formHtml = `
                     <div style="padding:15px; display:flex; flex-direction:column; gap:10px; background:#f4f9f9;">
                         <div style="font-size:12px; font-weight:bold; color:#2980b9;">🔵 VANNE PRINCIPALE</div>
-                        <div style="display:flex; gap:10px;">
-                            <div style="flex:1;"><span class="edit-label">Press Eau 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" style="margin-bottom:0;"></div>
-                            <div style="flex:1;"><span class="edit-label">Press Air 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" style="margin-bottom:0;"></div>
-                        </div>
+                        <div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">Press Eau 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" style="margin-bottom:0;"></div><div style="flex:1;"><span class="edit-label">Press Air 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" style="margin-bottom:0;"></div></div>
                         <div><span class="edit-label">Test Élec 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" style="margin-bottom:0;"></div>
-                        
-                        <div style="display:flex; gap:10px;">
-                            <div style="flex:1;"><span class="edit-label">Press Eau 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" style="margin-bottom:0;"></div>
-                            <div style="flex:1;"><span class="edit-label">Press Air 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 2" style="margin-bottom:0;"></div>
-                        </div>
-                        <div style="display:flex; gap:10px;">
-                            <div style="flex:1;"><span class="edit-label">Test Élec 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" style="margin-bottom:0;"></div>
-                            <div style="flex:1;"><span class="edit-label">Vanne Prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="OUI" style="margin-bottom:0; color:#27ae60; font-weight:bold;"></div>
-                        </div>
+                        <div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">Press Eau 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" style="margin-bottom:0;"></div><div style="flex:1;"><span class="edit-label">Press Air 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 2" style="margin-bottom:0;"></div></div>
+                        <div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">Test Élec 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" style="margin-bottom:0;"></div><div style="flex:1;"><span class="edit-label">Vanne Prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="OUI" style="margin-bottom:0; color:#27ae60; font-weight:bold;"></div></div>
 
                         <div style="font-size:12px; font-weight:bold; color:#8e44ad; margin-top:10px;">➕ CONFIG ADITIONNELLE</div>
-                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:0; font-size:14px;">
-                            <option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune --</option>
-                            <option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>Bloc VAR (Simple)</option>
-                            <option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>Bloc VAR Double (2VAR)</option>
-                            <option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>Bloc V2000 (Clarinette)</option>
-                        </select>
-                        
-                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; padding-top:10px;">
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">Pression VAR 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="margin-bottom:0;"></div>
-                                <div style="flex:1;"><span class="edit-label">Pression VAR 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="margin-bottom:0;"></div>
-                            </div>
-                        </div>
-                        <div id="bloc-var-double-${safeId}" style="display:${defaultVanne === 'var_double' ? 'block' : 'none'}; padding-top:10px;">
-                            <span class="edit-label">Élec 1 (Perche 1)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="margin-bottom:0;">
-                            <span class="edit-label">Élec 2 (Perche 2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2)" style="margin-bottom:0;">
-                        </div>
-                        <div id="bloc-v2000-${safeId}" style="display:${defaultVanne === 'v2000' ? 'block' : 'none'}; padding-top:10px;">
-                            <div style="display:flex; gap:10px;">
-                                <div style="flex:1;"><span class="edit-label">Élec C2 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" style="margin-bottom:0;"></div>
-                                <div style="flex:1;"><span class="edit-label">Élec C3 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c3" style="margin-bottom:0;"></div>
-                            </div>
-                        </div>
+                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:0; font-size:14px;"><option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune --</option><option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>Bloc VAR (Simple)</option><option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>Bloc VAR Double (2VAR)</option><option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>Bloc V2000 (Clarinette)</option></select>
+                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; padding-top:10px;"><div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">Pression VAR 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="margin-bottom:0;"></div><div style="flex:1;"><span class="edit-label">Pression VAR 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="margin-bottom:0;"></div></div></div>
+                        <div id="bloc-var-double-${safeId}" style="display:${defaultVanne === 'var_double' ? 'block' : 'none'}; padding-top:10px;"><span class="edit-label">Élec 1 (Perche 1)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="margin-bottom:0;"><span class="edit-label">Élec 2 (Perche 2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2)" style="margin-bottom:0;"></div>
+                        <div id="bloc-v2000-${safeId}" style="display:${defaultVanne === 'v2000' ? 'block' : 'none'}; padding-top:10px;"><div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">Élec C2 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" style="margin-bottom:0;"></div><div style="flex:1;"><span class="edit-label">Élec C3 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c3" style="margin-bottom:0;"></div></div></div>
 
                         <span class="edit-label" style="margin-top:10px;">Commentaire de clôture</span><input type="text" class="edit-input b-field-${safeId}" data-col="Commentaire" placeholder="Remarques..." style="margin-bottom:0;">
                         <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" class="btn-action-primary" style="background:#8e44ad; margin-top:15px;">🚀 Archiver le Rapport</button>
                     </div>`;
 
                 let card = document.createElement('div'); card.className = "atelier-card";
-                card.innerHTML = `<h3 style="font-size:18px;">N° ${idCanon} <span style="font-size:12px; color:#888; float:right; margin-top:4px;">${piste}</span></h3>
-                <details class="atelier-sub-details" open><summary style="outline:none;">📝 Fiche d'Essai Hydraulique</summary>${formHtml}</details>`;
+                card.innerHTML = `<h3 style="font-size:18px;">N° ${idCanon} <span style="font-size:12px; color:#888; float:right; margin-top:4px;">${piste}</span></h3><details class="atelier-sub-details" open><summary style="outline:none;">📝 Fiche d'Essai Hydraulique</summary>${formHtml}</details>`;
                 ws.appendChild(card);
             });
         };
 
-        window.filterAtelierCanons = function(val) {
-            let search = val.toLowerCase().trim();
-            document.querySelectorAll('.atelier-card').forEach(card => {
-                let title = card.querySelector('h3').innerText.toLowerCase();
-                card.style.display = title.includes(search) ? 'block' : 'none';
-            });
-        };
-
-        window.handleSelectVanne = function(safeId, val) {
-            let bVar = document.getElementById(`bloc-var-${safeId}`); if (bVar) bVar.style.display = (val === 'var') ? 'block' : 'none';
-            let bVarD = document.getElementById(`bloc-var-double-${safeId}`); if (bVarD) bVarD.style.display = (val === 'var_double') ? 'block' : 'none';
-            let bV2000 = document.getElementById(`bloc-v2000-${safeId}`); if (bV2000) bV2000.style.display = (val === 'v2000') ? 'block' : 'none';
-        };
+        window.filterAtelierCanons = function(val) { let search = val.toLowerCase().trim(); document.querySelectorAll('.atelier-card').forEach(card => { let title = card.querySelector('h3').innerText.toLowerCase(); card.style.display = title.includes(search) ? 'block' : 'none'; }); };
+        window.handleSelectVanne = function(safeId, val) { let bVar = document.getElementById(`bloc-var-${safeId}`); if (bVar) bVar.style.display = (val === 'var') ? 'block' : 'none'; let bVarD = document.getElementById(`bloc-var-double-${safeId}`); if (bVarD) bVarD.style.display = (val === 'var_double') ? 'block' : 'none'; let bV2000 = document.getElementById(`bloc-v2000-${safeId}`); if (bV2000) bV2000.style.display = (val === 'v2000') ? 'block' : 'none'; };
 
         window.saveAtelierBancRow = async function(idCanon, safeId, btn) {
-            let fieldsObj = { "id": idCanon };
-            document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => { if (inp.closest('div[id^="bloc-"]') && inp.closest('div[id^="bloc-"]').style.display === 'none') return; fieldsObj[inp.getAttribute('data-col')] = inp.value; });
-            
+            let fieldsObj = { "id": idCanon }; document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => { if (inp.closest('div[id^="bloc-"]') && inp.closest('div[id^="bloc-"]').style.display === 'none') return; fieldsObj[inp.getAttribute('data-col')] = inp.value; });
             let oldText = btn.innerText; btn.innerText = "⏳ Enregistrement..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_atelier", fields: fieldsObj }) }); let r = await res.json();
-                if(r.status === "success") { btn.innerText = "✅ Enregistré !"; btn.style.background = "#27ae60"; setTimeout(() => { window.renderAtelierWorkspace(); }, 1500); } 
-                else { alert("Erreur"); btn.disabled = false; btn.innerText = oldText; }
-            } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
+            try { let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_atelier", fields: fieldsObj }) }); let r = await res.json(); if(r.status === "success") { btn.innerText = "✅ Enregistré !"; btn.style.background = "#27ae60"; setTimeout(() => { window.renderAtelierWorkspace(); }, 1500); } else { alert("Erreur"); btn.disabled = false; btn.innerText = oldText; } } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
         };
 
         /* ========================================================================= */
-        /* CHAPITRE 9 : EXPERT BI & GRAPH COMBINÉ                                    */
+        /* EXPERT BI (COMBINE & FROID)                                               */
         /* ========================================================================= */
-        
         window.openBiMeteo = function() { document.getElementById('bi-meteo-modal').style.display='flex'; window.biLoadSource(); };
 
         window.biLoadSource = function() {
             let src = document.getElementById('bi-source').value; let data = [];
-            if(src === 'hist') data = window.meteoHistData || [];
-            else if(src === 'froid') data = window.meteoFroidData || [];
-            else if(src === 'raw_gen') data = window.rawGeneral || [];
-            else if(src === 'raw_hist') data = window.rawHistorique || [];
-            else if(src === 'raw_tick') data = window.rawTicketsSheet || [];
-            else if(src === 'conso') {
-                data.push(["Saison","Eau (m³)","Air","Heures"]);
-                window.saisonsList.forEach(s => { let e=0, a=0, t=0; window.snowCannons.features.forEach(f => { let h = f.properties.historique[s]; if(h) { e += h.eau||0; a += h.air||0; t += h.temps||0; } }); data.push([s, Math.round(e), Math.round(a), Math.round(t)]); });
-            } else if(src === 'defauts') {
-                data.push(["Mois","Nombre de Pannes"]); let counts = {};
-                window.rawTickets.forEach(t => { if(!t.date) return; let d = new Date(t.date); if(isNaN(d.getTime())) return; let m = (d.getMonth()+1).toString().padStart(2,'0') + "/" + d.getFullYear(); counts[m] = (counts[m]||0) + 1; });
-                Object.keys(counts).sort((a,b) => { let pa = a.split('/'); let pb = b.split('/'); return new Date(pa[1], pa[0]-1) - new Date(pb[1], pb[0]-1); }).forEach(k => data.push([k, counts[k]])); if(data.length === 1) data.push(["Aucun ticket",0]);
-            } else if(src === 'types') {
-                data.push(["Modèle","Quantité"]); let counts = {}; window.snowCannons.features.forEach(f => { let t = window.getV(f.properties, window.keyType); if(t !== "N/A") counts[t] = (counts[t]||0) + 1; });
-                Object.keys(counts).sort().forEach(k => data.push([k, counts[k]]));
-            }
-            window.biCurrentData = data;
+            if(src === 'hist') data = window.meteoHistData || []; else if(src === 'froid') data = window.meteoFroidData || []; else if(src === 'raw_gen') data = window.rawGeneral || []; else if(src === 'raw_hist') data = window.rawHistorique || []; else if(src === 'raw_tick') data = window.rawTicketsSheet || [];
+            else if(src === 'conso') { data.push(["Saison","Eau (m³)","Air","Heures"]); window.saisonsList.forEach(s => { let e=0, a=0, t=0; window.snowCannons.features.forEach(f => { let h = f.properties.historique[s]; if(h) { e += h.eau||0; a += h.air||0; t += h.temps||0; } }); data.push([s, Math.round(e), Math.round(a), Math.round(t)]); }); } 
+            else if(src === 'defauts') { data.push(["Mois","Nombre de Pannes"]); let counts = {}; window.rawTickets.forEach(t => { if(!t.date) return; let d = new Date(t.date); if(isNaN(d.getTime())) return; let m = (d.getMonth()+1).toString().padStart(2,'0') + "/" + d.getFullYear(); counts[m] = (counts[m]||0) + 1; }); Object.keys(counts).sort((a,b) => { let pa = a.split('/'); let pb = b.split('/'); return new Date(pa[1], pa[0]-1) - new Date(pb[1], pb[0]-1); }).forEach(k => data.push([k, counts[k]])); if(data.length === 1) data.push(["Aucun ticket",0]); } 
+            else if(src === 'types') { data.push(["Modèle","Quantité"]); let counts = {}; window.snowCannons.features.forEach(f => { let t = window.getV(f.properties, window.keyType); if(t !== "N/A") counts[t] = (counts[t]||0) + 1; }); Object.keys(counts).sort().forEach(k => data.push([k, counts[k]])); }
             
-            let selX = document.getElementById('bi-x'); let containerY = document.getElementById('bi-y-container');
-            if(selX) selX.innerHTML = ""; if(containerY) containerY.innerHTML = "";
+            window.biCurrentData = data;
+            let selX = document.getElementById('bi-x'); let containerY = document.getElementById('bi-y-container'); if(selX) selX.innerHTML = ""; if(containerY) containerY.innerHTML = "";
             if(!data || data.length < 2) { if(containerY) containerY.innerHTML = "<i>Aucune donnée disponible.</i>"; return; }
             
             let headers = data[0]; const colors = ['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#34495e'];
             headers.forEach((h, i) => {
-                if(h.toString().trim() === "") return;
-                if(selX) selX.innerHTML += `<option value="${i}">${h}</option>`;
-                let checked = (i === 1) ? 'checked' : ''; let color = colors[i % colors.length];
-                if(containerY) {
-                    containerY.innerHTML += `<div style="border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;"><label style="font-weight:bold; display:flex; align-items:center; gap:5px;"><input type="checkbox" class="bi-y-cbx" value="${i}" ${checked} onchange="window.biUpdateUI()"> <span style="color:#2c3e50;">${h}</span></label><div id="bi-opts-${i}" style="display:${checked?'flex':'none'}; gap:5px; margin-top:5px; flex-wrap:wrap; align-items:center;"><select class="bi-y-agg" data-idx="${i}" style="padding:4px; font-size:12px; border-radius:4px;"><option value="sum">Somme</option><option value="count">Comptage</option></select><select class="bi-y-type combo-only" data-idx="${i}" style="padding:4px; font-size:12px; border-radius:4px; display:none;"><option value="bar">Barre</option><option value="line">Courbe</option></select><select class="bi-y-axis" data-idx="${i}" style="padding:4px; font-size:12px; border-radius:4px;"><option value="y">Axe Gauche</option><option value="y1">Axe Droit</option></select><input type="color" class="bi-y-color" value="${color}" style="width:28px; height:28px; border:none; border-radius:4px;"></div></div>`;
-                }
+                if(h.toString().trim() === "") return; if(selX) selX.innerHTML += `<option value="${i}">${h}</option>`; let checked = (i === 1) ? 'checked' : ''; let color = colors[i % colors.length];
+                if(containerY) { containerY.innerHTML += `<div style="border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;"><label style="font-weight:bold; display:flex; align-items:center; gap:5px;"><input type="checkbox" class="bi-y-cbx" value="${i}" ${checked} onchange="window.biUpdateUI()" style="transform:scale(1.2);"> <span style="color:#2c3e50;">${h}</span></label><div id="bi-opts-${i}" style="display:${checked?'flex':'none'}; gap:5px; margin-top:5px; flex-wrap:wrap; align-items:center;"><select class="bi-y-agg" data-idx="${i}" style="padding:4px; font-size:12px; border-radius:4px;"><option value="sum">Somme</option><option value="count">Comptage</option></select><select class="bi-y-type combo-only" data-idx="${i}" style="padding:4px; font-size:12px; border-radius:4px; display:none;"><option value="bar">Barre</option><option value="line">Courbe</option></select><select class="bi-y-axis" data-idx="${i}" style="padding:4px; font-size:12px; border-radius:4px;"><option value="y">Axe Gauche</option><option value="y1">Axe Droit</option></select><input type="color" class="bi-y-color" value="${color}" style="width:28px; height:28px; border:none; border-radius:4px;"></div></div>`; }
             });
             if(selX) selX.selectedIndex = 0; window.biUpdateUI();
         };
 
         window.biUpdateUI = function() {
             let gType = document.getElementById('bi-type').value; let isCombo = (gType === 'combo'); let isPie = (gType === 'doughnut');
-            document.querySelectorAll('.bi-y-cbx').forEach(cb => {
-                let opts = document.getElementById(`bi-opts-${cb.value}`);
-                if(opts) {
-                    opts.style.display = cb.checked ? 'flex' : 'none';
-                    let ts = opts.querySelector('.bi-y-type'); if(ts) ts.style.display = isCombo ? 'block' : 'none';
-                    let as = opts.querySelector('.bi-y-axis'); if(as) as.style.display = isPie ? 'none' : 'block';
-                }
-            });
+            document.querySelectorAll('.bi-y-cbx').forEach(cb => { let opts = document.getElementById(`bi-opts-${cb.value}`); if(opts) { opts.style.display = cb.checked ? 'flex' : 'none'; let ts = opts.querySelector('.bi-y-type'); if(ts) ts.style.display = isCombo ? 'block' : 'none'; let as = opts.querySelector('.bi-y-axis'); if(as) as.style.display = isPie ? 'none' : 'block'; } });
             window.biDrawChart();
         };
 
         window.biDrawChart = function() {
             let data = window.biCurrentData; if(!data || data.length < 2) return;
-            let gType = document.getElementById('bi-type').value; let isCombo = (gType === 'combo'); let isPie = (gType === 'doughnut');
-            let idxX = parseInt(document.getElementById('bi-x').value);
+            let gType = document.getElementById('bi-type').value; let isCombo = (gType === 'combo'); let isPie = (gType === 'doughnut'); let idxX = parseInt(document.getElementById('bi-x').value);
             
             let yCbx = document.querySelectorAll('.bi-y-cbx:checked'); if(yCbx.length === 0) return;
             let yCfgs = Array.from(yCbx).map(cb => { let i = cb.value; let p = document.getElementById(`bi-opts-${i}`); return { idx: parseInt(i), label: data[0][i], agg: p.querySelector('.bi-y-agg').value, type: isCombo ? p.querySelector('.bi-y-type').value : gType, axis: isPie ? 'y' : p.querySelector('.bi-y-axis').value, color: p.querySelector('.bi-y-color').value, uVals: new Set() }; });
@@ -1013,31 +808,24 @@
             });
             
             if(isPie && datasets.length > 1) datasets = [datasets[0]];
-            let ctx = document.getElementById('bi-canvas'); if(!ctx) return;
-            if(window.chartInstances['bi-chart']) window.chartInstances['bi-chart'].destroy();
+            let ctx = document.getElementById('bi-canvas'); if(!ctx) return; if(window.chartInstances['bi-chart']) window.chartInstances['bi-chart'].destroy();
             let hasR = datasets.some(d => d.yAxisID === 'y1'); let fMType = isCombo ? 'bar' : (isPie ? 'doughnut' : gType);
-            
-            window.chartInstances['bi-chart'] = new Chart(ctx.getContext('2d'), { type: fMType, data: { labels: labels, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: 'top' }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } }, scales: isPie ? {} : { x: { ticks: { font:{size:10}, maxRotation: 45, minRotation: 45 } }, y: { type: 'linear', display: true, position: 'left' }, y1: { type: 'linear', display: hasR, position: 'right', grid: { drawOnChartArea: false } } } } });
+            window.chartInstances['bi-chart'] = new Chart(ctx.getContext('2d'), { type: fMType, data: { labels: labels, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: 'top' } }, scales: isPie ? {} : { x: { ticks: { font:{size:10}, maxRotation: 45, minRotation: 45 } }, y: { type: 'linear', display: true, position: 'left' }, y1: { type: 'linear', display: hasR, position: 'right', grid: { drawOnChartArea: false } } } } });
         };
 
         /* ========================================================================= */
-        /* CHAPITRE 10 : MÉTÉO ET COMPARAISONS                                       */
+        /* MÉTÉO ET COMPARAISONS                                                     */
         /* ========================================================================= */
-        window.openMeteoWidget = function() {
-            let m = document.getElementById('meteo-modal'); if(!m) return; m.style.display = 'flex';
-            window.switchMeteoTab('meteoblue');
-        };
+        window.openMeteoWidget = function() { document.getElementById('meteo-modal').style.display = 'flex'; window.switchMeteoTab('meteoblue'); };
         window.switchMeteoTab = function(p) {
             let c = document.getElementById('meteo-content'); if(!c) return;
-            document.getElementById('btn-meteo-meteoblue').style.opacity = p === 'meteoblue' ? '1' : '0.5';
-            document.getElementById('btn-meteo-windy').style.opacity = p === 'windy' ? '1' : '0.5';
+            document.getElementById('btn-meteo-meteoblue').style.opacity = p === 'meteoblue' ? '1' : '0.5'; document.getElementById('btn-meteo-windy').style.opacity = p === 'windy' ? '1' : '0.5';
             if(p === 'meteoblue') c.innerHTML = `<iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%; border-radius:8px;"></iframe>`;
             else if(p === 'windy') c.innerHTML = `<iframe src="https://embed.windy.com/embed2.html?lat=42.767&lon=0.582&zoom=12&overlay=wind&product=ecmwf" frameborder="0" style="width:100%;height:100%; border-radius:8px;"></iframe>`;
         };
         
         window.openWebcamGrid = function() {
-            let sl = document.getElementById('selected-list'); if(!sl) return;
-            document.getElementById('right-title').innerText = "📷 Webcams";
+            let sl = document.getElementById('selected-list'); if(!sl) return; document.getElementById('right-title').innerText = "📷 Webcams";
             document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
             let html = "<div style='display:flex;flex-direction:column;gap:15px; padding-bottom:30px;'>";
             if(window.webcamsData.length === 0) html += "<p>Aucune caméra.</p>";
@@ -1046,31 +834,25 @@
         };
 
         window.openGlobalCompareModal = function(show) {
-            let m = document.getElementById('compare-modal'); if(!m) return;
-            if(!show) { m.style.display = 'none'; return; }
+            let m = document.getElementById('compare-modal'); if(!m) return; if(!show) { m.style.display = 'none'; return; }
             let pistesSet = new Set(); window.snowCannons.features.forEach(f => { let piste = window.getV(f.properties, window.keyPiste); if (piste && piste !== "N/A") pistesSet.add(piste); });
             document.getElementById('comp-piste').innerHTML = `<option value="all">Toutes les pistes</option>${Array.from(pistesSet).sort().map(p => `<option value="${p}">${p}</option>`).join('')}`;
             let saisons = window.saisonsList || []; let optsSaisons = saisons.map(s => `<option value="${s}">Saison ${s}</option>`).join('');
             document.getElementById('comp-s1').innerHTML = optsSaisons; document.getElementById('comp-s2').innerHTML = optsSaisons;
-            if(saisons.length > 1) document.getElementById('comp-s2').selectedIndex = 1;
-            m.style.display = 'flex'; window.renderGlobalComparison();
+            if(saisons.length > 1) document.getElementById('comp-s2').selectedIndex = 1; m.style.display = 'flex'; window.renderGlobalComparison();
         };
 
         window.renderGlobalComparison = function() {
-            let selPiste = document.getElementById('comp-piste').value; let metric = document.getElementById('comp-metric').value;
-            let s1 = document.getElementById('comp-s1').value; let s2 = document.getElementById('comp-s2').value;
+            let selPiste = document.getElementById('comp-piste').value; let metric = document.getElementById('comp-metric').value; let s1 = document.getElementById('comp-s1').value; let s2 = document.getElementById('comp-s2').value;
             let canons = window.snowCannons.features.filter(f => selPiste === "all" || window.getV(f.properties, window.keyPiste) === selPiste).sort((a, b) => parseInt(a.properties.id) - parseInt(b.properties.id));
-            let labels = []; let dataS1 = []; let dataS2 = [];
-            canons.forEach(f => { let p = f.properties; labels.push(p.id); dataS1.push(p.historique[s1] ? p.historique[s1][metric] || 0 : 0); dataS2.push(p.historique[s2] ? p.historique[s2][metric] || 0 : 0); });
-            document.getElementById('main-comp-chart-container').style.display = 'block';
-            let canvas = document.getElementById('main-comp-canvas'); if(window.chartInstances['global-compare']) window.chartInstances['global-compare'].destroy();
-            let metricLabel = metric === 'eau' ? 'Eau (m³)' : (metric === 'air' ? 'Air' : 'Temps (h)');
-            let cS1 = metric === 'eau' ? '#3498db' : (metric === 'air' ? '#f1c40f' : '#2ecc71'); let cS2 = metric === 'eau' ? '#2c3e50' : (metric === 'air' ? '#e67e22' : '#27ae60');
+            let labels = []; let dataS1 = []; let dataS2 = []; canons.forEach(f => { let p = f.properties; labels.push(p.id); dataS1.push(p.historique[s1] ? p.historique[s1][metric] || 0 : 0); dataS2.push(p.historique[s2] ? p.historique[s2][metric] || 0 : 0); });
+            document.getElementById('main-comp-chart-container').style.display = 'block'; let canvas = document.getElementById('main-comp-canvas'); if(window.chartInstances['global-compare']) window.chartInstances['global-compare'].destroy();
+            let metricLabel = metric === 'eau' ? 'Eau (m³)' : (metric === 'air' ? 'Air' : 'Temps (h)'); let cS1 = metric === 'eau' ? '#3498db' : (metric === 'air' ? '#f1c40f' : '#2ecc71'); let cS2 = metric === 'eau' ? '#2c3e50' : (metric === 'air' ? '#e67e22' : '#27ae60');
             window.chartInstances['global-compare'] = new Chart(canvas.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [ { label: `Saison ${s1}`, data: dataS1, backgroundColor: cS1, borderRadius: 4 }, { label: `Saison ${s2}`, data: dataS2, backgroundColor: cS2, borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'top' }, title: { display: true, text: `Comparatif ${metricLabel}` } }, scales: { x: { ticks: { maxRotation: 45, minRotation: 45, font: {size: 10} } } } } });
         };
 
         /* ========================================================================= */
-        /* CHAPITRE 11 : CHARGEMENT GOOGLE SHEETS ET DÉMARRAGE                       */
+        /* CHARGEMENT DES DONNÉES (GOOGLE SHEETS) ET BOOT                            */
         /* ========================================================================= */
         window.fetchWithTimeout = async function(resource, options = {}) { const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 15000); options.signal = controller.signal; return fetch(resource, options).finally(() => clearTimeout(timeoutId)); };
 
@@ -1130,27 +912,6 @@
 
             Object.values(dictGeneral).forEach(canon => { if (canon.lat !== 0 && !isNaN(canon.lat)) window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); });
             document.getElementById('loading-overlay').style.display = 'none'; window.initAppUI();
-        };
-
-        window.initAppUI = function() {
-            let ts=new Set(), rs=new Set(), trs=new Set();
-            window.snowCannons.features.forEach(f=>{ let p=f.properties; let t=window.getV(p,window.keyType); if(t!=="N/A")ts.add(t.toLowerCase()); let r=window.getV(p,window.keyRep); if(r!=="N/A")rs.add(r); let tr=window.getV(p,window.keyTransfo); if(tr!=="N/A")trs.add(tr); });
-            let tc=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6']; Array.from(ts).sort().forEach((t,i)=>window.technoColors[t]=tc[i%tc.length]);
-            let rc=['#1abc9c','#16a085','#f39c12','#d35400','#8e44ad']; Array.from(rs).sort().forEach((r,i)=>window.repColors[r]=rc[i%rc.length]);
-            let neonColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF']; Array.from(trs).sort().forEach((t,i)=>window.transfoColors[t]=neonColors[i%neonColors.length]);
-            
-            window.geojsonLayer = L.geoJSON(window.snowCannons, {
-                pointToLayer: function (feature, latlng) { return L.marker(latlng, { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div></div>` }) }); },
-                onEachFeature: function (feature, layer) { layer.on('click', function(e) { L.DomEvent.stopPropagation(e); const id = feature.properties.id; if (window.selectedCannonsMap.has(id)) { window.selectedCannonsMap.delete(id); } else { window.selectedCannonsMap.clear(); window.selectedCannonsMap.set(id, layer); } if(window.map) window.map.setView(layer.getLatLng(), 17, {animate: true}); window.updateMap(); window.renderSelectionPanel(); window.openBottomSheet('half'); }); }
-            }).addTo(window.map);
-
-            if (window.saisonsList.length > 0) {
-                let sld = document.getElementById('season-slider');
-                if (sld) { sld.max = window.saisonsList.length - 1; sld.value = window.histSeasonIdx; document.getElementById('season-display').innerText = window.saisonsList[window.histSeasonIdx]; window.calculateMaxes(); }
-            }
-
-            if (window.snowCannons.features.length > 0) window.map.fitBounds(window.geojsonLayer.getBounds(), { padding: [30, 30] });
-            window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
         };
 
         window.addEventListener('DOMContentLoaded', async () => {
