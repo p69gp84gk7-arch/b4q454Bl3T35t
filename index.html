@@ -858,7 +858,7 @@
         /* ========================================================================= */
         /* CHARGEMENT DES DONNÉES (GOOGLE SHEETS) ET BOOT                            */
         /* ========================================================================= */
-        window.fetchWithTimeout = async function(resource, options = {}) { const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 15000); options.signal = controller.signal; return fetch(resource, options).finally(() => clearTimeout(timeoutId)); };
+        window.fetchWithTimeout = async function(resource, options = {}) { const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 45000); options.signal = controller.signal; return fetch(resource, options).finally(() => clearTimeout(timeoutId)); };
 
         window.fetchGoogleSheetsData = async function() {
             const response = await window.fetchWithTimeout(GOOGLE_API_URL);
