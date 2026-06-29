@@ -316,6 +316,13 @@
             if(!window.geojsonLayer) return; let s = window.saisonsList[window.histSeasonIdx];
             window.geojsonLayer.eachLayer(function(layer) {
                 const p = layer.feature.properties; let vis = true; let val = 0;
+                
+                // 🟢 LE FILTRE DES PISTES EST DE RETOUR ICI !
+                let pisteCanon = window.getV(p, window.keyPiste).trim();
+                if (window.currentPistes && !window.currentPistes.includes('all')) { 
+                    if (!window.currentPistes.includes(pisteCanon)) vis = false; 
+                }
+
                 if (window.mainTheme === 'historique') {
                     val = p.historique[s] ? parseFloat(p.historique[s][window.histMetric]) : 0; if (isNaN(val)) val = 0;
                     let minT = parseFloat(window.currentMinThreshold[window.histMetric]) || 0; let maxT = parseFloat(window.currentMaxThreshold[window.histMetric]) || Infinity;
