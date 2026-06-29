@@ -1208,34 +1208,38 @@
             Object.values(dictGeneral).forEach(canon => { if (canon.lat !== 0 && !isNaN(canon.lat)) window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); });
             document.getElementById('loading-overlay').style.display = 'none'; window.initAppUI();
         };
+               /* ========================================================================= */
+        /* INITIALISATION DE L'UI, DES PISTES ET DES SLIDERS                         */
+        /* ========================================================================= */
         window.initAppUI = function() {
-            // 1. On scanne la base de données pour récupérer les technos et les PISTES
+            // 1. On récupère les pistes, technos, et répéteurs depuis tes données
             let ts=new Set(), rs=new Set(), trs=new Set(), ps=new Set();
             window.snowCannons.features.forEach(f=>{ 
                 let p=f.properties; 
                 let t=window.getV(p,window.keyType); if(t!=="N/A")ts.add(t.toLowerCase()); 
                 let r=window.getV(p,window.keyRep); if(r!=="N/A")rs.add(r); 
                 let tr=window.getV(p,window.keyTransfo); if(tr!=="N/A")trs.add(tr); 
-                let pi=window.getV(p,window.keyPiste); if(pi!=="N/A" && pi!=="")ps.add(pi); // Récupération des pistes
+                let pi=window.getV(p,window.keyPiste); if(pi!=="N/A" && pi.trim()!=="")ps.add(pi.trim()); 
             });
             
             let tc=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6']; Array.from(ts).sort().forEach((t,i)=>window.technoColors[t]=tc[i%tc.length]);
             let rc=['#1abc9c','#16a085','#f39c12','#d35400','#8e44ad']; Array.from(rs).sort().forEach((r,i)=>window.repColors[r]=rc[i%rc.length]);
             let neonColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF']; Array.from(trs).sort().forEach((t,i)=>window.transfoColors[t]=neonColors[i%neonColors.length]);
             
-            // 2. Remplissage de la liste déroulante des pistes
+            // 2. Remplissage automatique du menu déroulant des pistes
             let pisteSelect = document.getElementById('piste-filter');
             if (pisteSelect) {
                 pisteSelect.innerHTML = '<option value="all">Toutes les pistes</option>';
                 Array.from(ps).sort().forEach(p => pisteSelect.innerHTML += `<option value="${p}">${p}</option>`);
             }
 
-            // 3. Dessin de la carte
+            // 3. Initialisation de la carte
             window.geojsonLayer = L.geoJSON(window.snowCannons, {
                 pointToLayer: function (feature, latlng) { return L.marker(latlng, { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div></div>` }) }); },
                 onEachFeature: function (feature, layer) { 
                     layer.on('click', function(e) { 
-                        L.DomEvent.stopPropagation(e); const id = feature.properties.id; 
+                        L.DomEvent.stopPropagation(e); 
+                        const id = feature.properties.id; 
                         if (window.selectedCannonsMap.has(id)) { window.selectedCannonsMap.delete(id); } 
                         else { window.selectedCannonsMap.clear(); window.selectedCannonsMap.set(id, layer); } 
                         if(window.map) window.map.setView(layer.getLatLng(), 17, {animate: true}); 
@@ -1244,7 +1248,7 @@
                 }
             }).addTo(window.map);
 
-            // 4. RÉACTIVATION DU CURSEUR HISTORIQUE
+            // 4. Initialisation du curseur de saison
             if (window.saisonsList.length > 0) {
                 let sld = document.getElementById('season-slider');
                 if (sld) { 
@@ -1253,7 +1257,6 @@
                     let sdisp = document.getElementById('season-display');
                     if(sdisp) sdisp.innerText = window.saisonsList[window.histSeasonIdx]; 
                     
-                    // L'écouteur qui manquait est ici !
                     sld.addEventListener('input', function(e) {
                         window.histSeasonIdx = parseInt(e.target.value);
                         if(sdisp) sdisp.innerText = window.saisonsList[window.histSeasonIdx];
@@ -1267,23 +1270,24 @@
                 }
             }
 
-            let bounds = window.geojsonLayer.getBounds();
-            if (window.snowCannons.features.length > 0 && bounds.isValid()) {
-                window.map.fitBounds(bounds, { padding: [30, 30] });
+            if (window.snowCannons.features.length > 0) {
+                let bounds = window.geojsonLayer.getBounds();
+                if(bounds.isValid()) window.map.fitBounds(bounds, { padding: [30, 30] });
             }
             
             if(window.updateLegend) window.updateLegend();
-            window.updateMap(); 
-            window.triggerGlobalFilterChart();
+            window.updateMap(); window.triggerGlobalFilterChart();
         };
 
-        // 5. NOUVELLE FONCTION : Application du filtre de Piste
+        // 5. FONCTION DE FILTRAGE PAR PISTE
         window.filterByPiste = function(val) {
-            window.currentPistes = [val]; // On dit au moteur de n'afficher que cette piste
-            window.clearSelection(); // On désélectionne le canon actif s'il y en a un
-            window.updateMap(); // On met à jour les puces sur la carte
-            window.triggerGlobalFilterChart(); // On met à jour le tableau de bord
-            toggleMenu(); // On ferme le menu burger automatiquement pour voir le résultat
+            window.currentPistes = [val]; // Enregistre la piste sélectionnée
+            window.clearSelection(); // Désélectionne un canon si l'utilisateur en regardait un
+            window.updateMap(); // Masque les puces des canons des autres pistes sur la carte
+            window.triggerGlobalFilterChart(); // Met à jour le taux de panne et les graphs globaux
+            
+            // Ferme le menu burger pour qu'on puisse voir le résultat sur la carte
+            document.getElementById('left-sidebar').classList.remove('open');
         };
         window.addEventListener('DOMContentLoaded', async () => {
             if(window.bootAttempt > 0) return; window.bootAttempt = 1;
