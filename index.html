@@ -541,12 +541,16 @@
             p.fullData.forEach(i => { if(i.k.toLowerCase().match(/(regard|xy|gps)/)) return; fc.innerHTML += `<div style="margin-bottom:10px;"><div class="edit-label">${i.k}</div><input type="text" class="edit-input dyn-field" data-key="${i.k}" value="${i.v}"></div>`; });
             document.getElementById('view-selection').style.display = 'none'; document.getElementById('view-edit').style.display = 'block'; document.getElementById('right-title').innerText = "✏️ Édition"; window.openBottomSheet('full'); window.updateMap();
         };
-
         window.saveEditData = async function() {
             if(!window.currentlyEditingId) return;
-            let btn = document.getElementById('btn-save-edit'); btn.innerText = "⏳ Envoi..."; btn.disabled = true;
+            // Sélection sécurisée du bouton de validation
+            let btn = document.querySelector('#view-edit button:nth-of-type(2)'); 
+            let oldText = "✅ Sauver";
+            if(btn) { oldText = btn.innerText; btn.innerText = "⏳ Envoi..."; btn.disabled = true; }
+            
             let fields = {}; document.querySelectorAll('.dyn-field').forEach(i => fields[i.getAttribute('data-key')] = i.value);
             let pl = { action: "update_general", idCanon: document.getElementById('edit-id').value, lat: parseFloat(document.getElementById('edit-lat').value), lng: parseFloat(document.getElementById('edit-lng').value), fields: fields };
+            
             try {
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(pl) }); let r = await res.json();
                 if(r.status === "success") {
@@ -556,9 +560,10 @@
                     if(["demak lenko", "demac lenko"].includes(tLower)) p.couleur_defaut = "#0000FF"; else if(["sufag", "street", "taurus", "taurax", "peak"].includes(tLower)) p.couleur_defaut = "#008000"; else p.couleur_defaut = window.technoColors[tLower] || "#FFD700";
                     l.feature.geometry.coordinates = [pl.lng, pl.lat]; l.setLatLng([pl.lat, pl.lng]);
                     window.cancelEdit();
-                } else alert("Erreur Google");
+                } else alert("Erreur Serveur Google");
             } catch(err) { alert("Échec réseau"); }
-            btn.innerText = "✅ Sauver"; btn.disabled = false;
+            
+            if(btn) { btn.innerText = oldText; btn.disabled = false; }
         };
 
         window.addNouveauTicket = async function(idCanon, btn) {
@@ -894,20 +899,25 @@
         /* ========================================================================= */
         /* ATELIER (BANC ESSAI COMPLET MOBILE)                                       */
         /* ========================================================================= */
-                window.renderAtelierWorkspace = function() {
+        window.renderAtelierWorkspace = function() {
             let ws = document.getElementById('atelier-workspace'); if(!ws) return;
+            
+            // 1. On liste les canons au banc
             let canonsEnAtelier = window.suiviEntretienData.filter(row => row[3] && row[3].toString().toLowerCase().trim() === "oui").map(r => r[0].toString());
             
-            ws.innerHTML = `
-                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px; border-bottom:2px solid #8e44ad; padding-bottom:10px;">
-                    <h2 style="color:#2c3e50; margin:0; font-size:22px;">🧰 Banc d'Essais</h2>
-                    <input type="text" id="search-atelier" placeholder="🔍 Rechercher N° Canon..." onkeyup="window.filterAtelierCanons(this.value)" class="edit-input" style="margin:0;">
-                </div>`;
-                
-            if(canonsEnAtelier.length === 0) { 
-                ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; font-weight:bold;">✅ Aucun canon au banc d'essai.</div>`; 
-                return; 
+            // 2. On applique le filtre par Piste globale !
+            if (window.currentPistes && !window.currentPistes.includes('all')) {
+                canonsEnAtelier = canonsEnAtelier.filter(idCanon => {
+                    let f = window.snowCannons.features.find(feat => feat.properties.id == idCanon);
+                    if (!f) return false;
+                    return window.getV(f.properties, window.keyPiste).trim() === window.currentPistes[0];
+                });
             }
+
+            ws.innerHTML = `<div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px; border-bottom:2px solid #8e44ad; padding-bottom:10px;"><h2 style="color:#2c3e50; margin:0; font-size:22px;">🧰 Banc d'Essais</h2><input type="text" id="search-atelier" placeholder="🔍 Rechercher N° Canon..." onkeyup="window.filterAtelierCanons(this.value)" class="edit-input" style="margin:0;"></div>`;
+            if(canonsEnAtelier.length === 0) { ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; font-weight:bold;">✅ Aucun canon au banc d'essai pour cette sélection.</div>`; return; }
+
+            // Le reste de ta fonction (la boucle avec formHtml) reste exactement identique...
 
             canonsEnAtelier.sort((a, b) => parseInt(a) - parseInt(b)).forEach(idCanon => {
                 let feature = window.snowCannons.features.find(f => f.properties.id == idCanon); if(!feature) return;
