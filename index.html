@@ -72,8 +72,12 @@
     </style>
 </head>
 <body>
-  <div id="loading-overlay"><div class="spinner" id="loading-spinner"></div><h2 style="color:#3498db;">Démarrage...</h2><p id="loading-step" style="color:#888;"></p><p id="loading-desc" style="color:#aaa; font-size:12px;"></p></div>
-
+      <div id="loading-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.95); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px;">
+        <div class="spinner" id="loading-spinner"></div>
+        <h2 id="loading-title" style="color:#3498db; margin:0 0 10px 0;">Démarrage...</h2>
+        <p id="loading-step" style="color:#888; margin:0 0 10px 0; font-weight:bold;"></p>
+        <p id="loading-desc" style="color:#e74c3c; font-size:14px; margin:0; word-break:break-word;"></p>
+    </div>
     <div id="topbar">
         <button class="burger-btn" onclick="toggleMenu()">☰</button>
         <div style="font-weight: bold; font-size: 18px; letter-spacing: 1px;">GMAO NEIGE</div>
