@@ -260,3 +260,282 @@
         }
         document.addEventListener('DOMContentLoaded', () => { document.querySelectorAll('input[name="main_theme"]').forEach(r => { r.addEventListener('change', () => { switchViewMode(); document.getElementById('left-sidebar').classList.remove('open'); }); }); });
         
+/* ========================================================================= */
+        /* CHAPITRE 2 : UTILITAIRES & FONCTIONS DE BASE                              */
+        /* ========================================================================= */
+        
+        window.getV = function(p, k) { 
+            if(!k || !p || !p.fullData) return "N/A"; 
+            let normK = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); 
+            let o = p.fullData.find(x => x.k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === normK); 
+            return o ? o.v.toString().trim() : "N/A"; 
+        }; 
+        
+        window.getTicketsForCanon = function(id) { return window.rawTickets.filter(t => t.idCanon === id); }; 
+        window.getActiveTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('faire') || t.statut.includes('cours')); }; 
+        window.getHistoryTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('fait') || t.statut === '').sort((a,b) => new Date(b.date) - new Date(a.date)); };
+        window.parseDriveUrl = function(url) { if (!url || url.trim() === "") return ""; let id = ""; let matchD = url.match(/\/d\/([a-zA-Z0-9-_]+)/); let matchId = url.match(/[?&]id=([a-zA-Z0-9-_]+)/); if (matchD) id = matchD[1]; else if (matchId) id = matchId[1]; if (id) return "https://lh3.googleusercontent.com/d/" + id; return url; };
+
+        window.clearSelection = function() { window.selectedCannonsMap.clear(); window.updateMap(); window.triggerGlobalFilterChart(); };
+        window.cancelEdit = function() { window.currentlyEditingId = null; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('right-title').innerText = "📌 Tableau de Bord"; window.updateMap(); window.renderSelectionPanel(); };
+
+        /* ========================================================================= */
+        /* CHAPITRE 3 : MOTEUR DE CARTE ET COULEURS                                  */
+        /* ========================================================================= */
+        
+        window.getColorByFilter = function(ratio, p) {
+            if(window.mainTheme === 'entretien_tete') { let bVal = window.getV(p, "Buses").toLowerCase().trim(); return (bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x") ? '#e67e22' : '#bdc3c7'; }
+            const inter = (c1,c2,f) => { let r = c1.slice(); for(let i=0; i<3; i++) r[i] = Math.round(r[i] + f * (c2[i] - c1[i])); return `rgb(${r[0]},${r[1]},${r[2]})`; };
+            if(window.mainTheme === 'defauts') { let act = window.getActiveTickets(p.id); if(act.length === 0) return '#bdc3c7'; if(act.some(t => t.statut.includes('faire'))) return '#e74c3c'; return '#f39c12'; }
+            if(window.mainTheme === 'historique') { if(window.histMetric === 'eau') return inter([173,216,230],[41,128,185],ratio); if(window.histMetric === 'air') return inter([250,219,94],[211,84,0],ratio); if(window.histMetric === 'temps') return inter([171,235,198],[39,174,96],ratio); }
+            if(window.mainTheme === 'type') { let tv = window.getV(p, window.keyType).toLowerCase(); if(["demak lenko", "demac lenko"].includes(tv)) return "#0000FF"; if(["sufag", "street", "taurus", "taurax", "peak"].includes(tv)) return "#008000"; return window.technoColors[tv] || "#FFD700"; }
+            return '#34495e'; 
+        };
+
+        window.updateMap = function() {
+            if(!window.geojsonLayer) return;
+            let s = window.saisonsList[window.histSeasonIdx];
+            window.geojsonLayer.eachLayer(function(layer) {
+                const p = layer.feature.properties; let vis = true;
+                
+                let val = 0;
+                if (window.mainTheme === 'historique') {
+                    val = p.historique[s] ? parseFloat(p.historique[s][window.histMetric]) : 0; if (isNaN(val)) val = 0;
+                    let minT = parseFloat(window.currentMinThreshold[window.histMetric]) || 0; 
+                    let maxT = parseFloat(window.currentMaxThreshold[window.histMetric]) || Infinity;
+                    if (val < minT || val > maxT) vis = false;
+                }
+
+                if (!vis) { p._isVisible = false; if (window.map.hasLayer(layer)) window.map.removeLayer(layer); } 
+                else {
+                    p._isVisible = true; if (!window.map.hasLayer(layer)) window.map.addLayer(layer);
+                    
+                    if (window.mainTheme === 'type') {
+                        let typeCanon = window.getV(p, window.keyType).toLowerCase().trim();
+                        let iconUrl = window.driveIcons && window.driveIcons[typeCanon] ? window.driveIcons[typeCanon] : null;
+                        if (iconUrl) {
+                            let imageSize = 40; let zIdx = window.currentlyEditingId === p.id ? 2000 : (window.selectedCannonsMap.has(p.id) ? 1000 : 0); layer.setZIndexOffset(zIdx);
+                            let isSelected = window.selectedCannonsMap.has(p.id) || window.currentlyEditingId === p.id;
+                            let highlightStyle = isSelected ? "border: 2px solid #e74c3c; border-radius: 50%; background-color: rgba(255,255,255,0.7);" : "";
+                            let imageHtml = `<div style="position:relative; width:${imageSize}px; height:${imageSize}px;"><div style="background:url('${iconUrl}') center/contain no-repeat; width:100%; height:100%; filter: drop-shadow(2px 4px 5px rgba(0,0,0,0.5)); ${highlightStyle}"></div><div style="position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; font-size:9px; padding:1px 4px; border-radius:4px; font-weight:bold;">${p.id}</div></div>`;
+                            layer.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: imageHtml, iconSize: [imageSize, imageSize], iconAnchor: [imageSize/2, imageSize/2] }));
+                            layer.setOpacity(1); return; 
+                        }
+                    }
+
+                    let rad = 14; let ratio = 0; let bgStr = ""; let iconChar = p.id; let lh = '28px'; let remarkBadge = ""; 
+                    if (window.mainTheme === 'historique') { 
+                        let maxVal = window.absoluteMaxes[window.histMetric] || 1; ratio = val / maxVal; rad = 12 + (15 * ratio); bgStr = window.getColorByFilter(ratio, p);
+                    } else if (window.mainTheme === 'suivi_entretien') {
+                        let acts = window.getActiveTickets(p.id); let hasFault = acts.length > 0;
+                        let suivi = window.suiviEntretienData.find(row => row[0] == p.id) || ["", "", "non", "non", "", "", ""];
+                        let dec = suivi[2] && suivi[2].toString().toLowerCase().trim() === "oui"; let prev = suivi[3] && suivi[3].toString().toLowerCase().trim() === "oui"; let rem = suivi[5] || ""; 
+                        let colors = []; if(hasFault) colors.push('#e74c3c'); if(prev) colors.push('#9b59b6'); if(dec) colors.push('#27ae60');     
+                        bgStr = '#f1c40f'; 
+                        if(colors.length === 3) bgStr = `conic-gradient(${colors[0]} 0 33%, ${colors[1]} 33% 66%, ${colors[2]} 66% 100%)`;
+                        else if(colors.length === 2) bgStr = `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)`;
+                        else if(colors.length === 1) bgStr = colors[0];
+                        if (!dec) { iconChar = `⚡<br><span style="font-size:8px;">${p.id}</span>`; lh = '14px'; }
+                        if (rem.toString().trim() !== "") remarkBadge = `<div style="position:absolute; top:-6px; right:-6px; background:#e67e22; color:white; width:16px; height:16px; border-radius:50%; font-size:12px; font-weight:bold; text-align:center; line-height:16px; border:1px solid #fff;">!</div>`;
+                    } else { bgStr = window.getColorByFilter(0, p); }
+
+                    let bord = window.selectedCannonsMap.has(p.id) ? "#2c3e50" : (window.currentlyEditingId === p.id ? "#e74c3c" : "white");
+                    let bw = window.selectedCannonsMap.has(p.id) ? "3px" : (window.currentlyEditingId === p.id ? "4px" : "1.5px");
+                    let fsz = Math.max(10, rad - 4) + "px"; 
+                    let zIdx = window.currentlyEditingId === p.id ? 2000 : (window.selectedCannonsMap.has(p.id) ? 1000 : 0);
+                    layer.setZIndexOffset(zIdx);
+                    layer.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: `<div class="cannon-circle" style="background:${bgStr}; width:${rad*2}px; height:${rad*2}px; line-height:${lh}; border:${bw} solid ${bord}; font-size:${fsz}; position:relative;">${iconChar}${remarkBadge}</div>`, iconSize: [rad*2, rad*2], iconAnchor: [rad, rad] }));
+                }
+            });
+        };
+
+        window.calculateMaxes = function() {
+            if(!window.saisonsList[window.histSeasonIdx]) return;
+            let s = window.saisonsList[window.histSeasonIdx]; window.absoluteMaxes = { eau: 0, air: 0, temps: 0 };
+            window.snowCannons.features.forEach(f => {
+                if (f.properties.historique[s]) {
+                    window.absoluteMaxes.eau = Math.max(window.absoluteMaxes.eau, f.properties.historique[s].eau);
+                    window.absoluteMaxes.air = Math.max(window.absoluteMaxes.air, f.properties.historique[s].air);
+                    window.absoluteMaxes.temps = Math.max(window.absoluteMaxes.temps, f.properties.historique[s].temps);
+                }
+            });
+            window.currentMaxThreshold = { ...window.absoluteMaxes }; window.currentMinThreshold = { eau:0, air:0, temps:0 };
+            
+            let slmin = document.getElementById('slider-min'); let slmax = document.getElementById('slider-max');
+            if(slmin) { 
+                slmin.max = window.absoluteMaxes[window.histMetric] || 1; slmin.value = 0; slmin.step = "any";
+                slmin.oninput = function(e) { let val = parseFloat(e.target.value) || 0; if (val > window.currentMaxThreshold[window.histMetric]) { val = window.currentMaxThreshold[window.histMetric]; e.target.value = val; } window.currentMinThreshold[window.histMetric] = val; document.getElementById('val-min').innerText = Math.round(val); window.updateMap(); window.triggerGlobalFilterChart(); };
+            }
+            if(slmax) { 
+                slmax.max = window.absoluteMaxes[window.histMetric] || 1; slmax.value = window.absoluteMaxes[window.histMetric] || 1; slmax.step = "any";
+                slmax.oninput = function(e) { let val = parseFloat(e.target.value) || 0; if (val < window.currentMinThreshold[window.histMetric]) { val = window.currentMinThreshold[window.histMetric]; e.target.value = val; } window.currentMaxThreshold[window.histMetric] = val; document.getElementById('val-max').innerText = Math.round(val); window.updateMap(); window.triggerGlobalFilterChart(); };
+            }
+            let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; 
+            let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 4 : TABLEAU DE BORD GLOBAL ET STATISTIQUES                       */
+        /* ========================================================================= */
+        
+        window.triggerGlobalFilterChart = function() {
+            if (window.selectedCannonsMap.size > 0 || window.currentlyEditingId) return;
+            let visibleCannons = window.snowCannons.features.filter(f => f.properties._isVisible);
+            let html = `<div style="background:#eafaf1; padding:15px; border-radius:8px; text-align:center; margin-bottom:15px; border:1px solid #d5f5e3;"><span style="font-size:28px; font-weight:bold; color:#27ae60;">${visibleCannons.length}</span><br><span style="font-size:14px; color:#555; font-weight:bold; text-transform:uppercase;">Canons affichés</span></div>`;
+
+            if (window.mainTheme === 'defauts') {
+                document.getElementById('right-title').innerText = "📊 Statut des Pannes";
+                let activeList = []; let cUrgent = 0, cEnCours = 0, cRas = 0;
+                visibleCannons.forEach(f => { let p = f.properties; let acts = window.getActiveTickets(p.id); if(acts.length === 0) { cRas++; } else { acts.forEach(t => { if(t.statut.includes('faire')) cUrgent++; else cEnCours++; activeList.push({id: p.id, piste: window.getV(p, window.keyPiste), ticket: t}); }); } });
+                let total = cUrgent + cEnCours + cRas; let faultPerc = total > 0 ? (((cUrgent + cEnCours) / total) * 100).toFixed(1) : 0;
+                html += `<div style="text-align:center; padding:15px; background:#fff; border-radius:8px; border:1px solid #eee; margin-bottom:15px;"><div style="font-size:24px; font-weight:bold; color:#e74c3c;">${faultPerc}%</div><div style="font-size:12px; font-weight:bold; color:#7f8c8d;">TAUX DE PANNES</div></div>`;
+                
+                if (activeList.length === 0) { html += `<div style="font-size:16px; color:#27ae60; text-align:center; padding:20px; font-weight:bold;">✅ Aucun défaut sur la sélection.</div>`; } 
+                else {
+                    activeList.sort((a,b) => { let wA = a.ticket.statut.includes('faire') ? 1 : 0; let wB = b.ticket.statut.includes('faire') ? 1 : 0; return wB - wA; });
+                    let listHtml = activeList.map(item => { let color = item.ticket.statut.includes('faire') ? '#e74c3c' : '#f39c12'; return `<div style="border-left:5px solid ${color}; background:#fff; padding:12px; margin-bottom:10px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;"><div><b style="color:#2c3e50; font-size:16px;">Canon ${item.id}</b> <span style="color:#7f8c8d; font-size:12px;">(${item.piste})</span><br><span style="color:${color}; font-weight:bold; font-size:14px; display:inline-block; margin-top:5px;">${item.ticket.defaut}</span></div><button onclick="window.focusCannon('${item.id}');" style="background:#eee; border:none; border-radius:6px; font-weight:bold; font-size:14px; padding:10px 15px;">📍</button></div>`; }).join('');
+                    html += `<div><h4 style="color:#2c3e50; margin-bottom:10px;">Défauts en cours :</h4>${listHtml}</div>`;
+                }
+            } else if (window.mainTheme === 'historique') {
+                document.getElementById('right-title').innerText = "📊 Historique Volumes";
+                let s = window.saisonsList[window.histSeasonIdx]; let metricName = window.histMetric === 'eau' ? 'Eau (m³)' : (window.histMetric === 'air' ? 'Air' : 'Temps (h)');
+                let pisteTotals = {}; visibleCannons.forEach(f => { let p = window.getV(f.properties, window.keyPiste); let val = f.properties.historique[s] ? f.properties.historique[s][window.histMetric] : 0; pisteTotals[p] = (pisteTotals[p] || 0) + val; });
+                let chartLabels = Object.keys(pisteTotals).sort(); let chartData = chartLabels.map(k => pisteTotals[k]);
+                html += `<div class="piste-chart-container"><div style="font-size:14px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Total ${metricName} par Piste</div><div style="position:relative;height:250px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
+                
+                setTimeout(() => {
+                    let ctx = document.getElementById('global-filter-chart'); if(!ctx) return;
+                    if(window.chartInstances['global-filter-chart']) window.chartInstances['global-filter-chart'].destroy();
+                    window.chartInstances['global-filter-chart'] = new Chart(ctx.getContext('2d'), { type: 'bar', data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: '#3498db', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+                }, 100);
+
+            } else if (window.mainTheme === 'suivi_entretien') {
+                document.getElementById('right-title').innerText = "📊 Dashboard Maintenance";
+                let cDef = 0, cDec = 0, cPrev = 0, cOk = 0;
+                visibleCannons.forEach(f => {
+                    let p = f.properties; let s = window.suiviEntretienData.find(row => row[0] == p.id) || [];
+                    let hasFault = window.getActiveTickets(p.id).length > 0; let isDec = s[2] && s[2].toString().toLowerCase().trim() === "oui"; let isPrev = s[3] && s[3].toString().toLowerCase().trim() === "oui";
+                    if(hasFault) cDef++; else if(isPrev) cPrev++; else if(isDec) cDec++; else cOk++;
+                });
+                html += `<div style="display:flex; gap:10px; text-align:center; margin-bottom:15px;"><div style="flex:1; background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px;"><b style="font-size:24px; color:#27ae60;">${cDec}</b><br><span style="font-size:12px;">Déconnectés</span></div><div style="flex:1; background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px;"><b style="font-size:24px; color:#9b59b6;">${cPrev}</b><br><span style="font-size:12px;">Préventifs</span></div></div>`;
+            } else if (window.mainTheme === 'entretien_tete') {
+                document.getElementById('right-title').innerText = "📊 Avancement Têtes";
+                let total = visibleCannons.length; let fait = 0;
+                visibleCannons.forEach(f => { let bVal = window.getV(f.properties, "Buses").toLowerCase().trim(); if(bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x") fait++; });
+                let percent = total === 0 ? 0 : Math.round((fait / total) * 100);
+                html += `<div style="background:#f8f9fa; padding:15px; border-radius:6px; border:1px solid #ddd; margin-bottom:15px; text-align:center;"><b style="font-size:32px; color:#e67e22;">${percent}%</b><br><span style="font-size:14px; color:#7f8c8d; font-weight:bold;">Avancement (${fait}/${total})</span><div style="width:100%; background:#ecf0f1; border-radius:8px; height:15px; margin-top:10px; overflow:hidden; border:1px solid #ddd;"><div style="width:${percent}%; background:#e67e22; height:100%;"></div></div></div>`;
+            } else {
+                document.getElementById('right-title').innerText = "📊 Répartition Globale";
+                html += `<div style="padding:20px; text-align:center; background:#fff; border-radius:8px; border:1px solid #eee;"><p style="font-size:16px; color:#34495e;">Sélectionnez un canon sur la carte pour voir ses détails.</p></div>`;
+            }
+            
+            document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html; 
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 5 : FICHE CANON DÉTAILLÉE (SÉLECTION UNIQUE)                     */
+        /* ========================================================================= */
+        
+        window.renderSelectionPanel = function() {
+            if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
+            document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
+            document.getElementById('sel-count').innerText = window.selectedCannonsMap.size; let listDiv = document.getElementById('selected-list'); if(!listDiv) return; 
+            
+            listDiv.innerHTML = "";
+            if (window.mainTheme === 'suivi_entretien') { listDiv.innerHTML = `<button onclick="window.saveMultiSuivi(this)" class="btn-action-primary" style="background:#27ae60; margin-bottom:15px; margin-top:0;">💾 Sauvegarder (Entretien)</button>`; }
+
+            let defautsSet = new Set(); window.rawTickets.forEach(t => { if(t.defaut) defautsSet.add(t.defaut.trim()); });
+            let datalistHtml = `<datalist id="dl-defauts-list">${Array.from(defautsSet).sort().map(d => `<option value="${d.replace(/"/g, '"')}"></option>`).join('')}</datalist>`;
+            listDiv.innerHTML += datalistHtml; document.getElementById('right-title').innerText = "📌 Fiche Canon";
+
+            window.selectedCannonsMap.forEach((layer, id) => {
+                const p = layer.feature.properties; let active = window.getActiveTickets(p.id); let history = window.getHistoryTickets(p.id); let mainContent = ""; let histHtml = ""; let prodHtml = ""; let overrideItemHtml = null;
+
+                if (history.length > 0) {
+                    histHtml = `<details class="ticket-history" style="margin-top:15px; font-size:14px; background:#f8f9fa; padding:15px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:bold; color:#34495e;">📁 Historique d'interventions (${history.length})</summary><ul style="padding-left:15px; margin-top:10px;">`;
+                    history.forEach(t => { let dateStr = isNaN(new Date(t.date).getTime()) ? (t.date || "Inconnue") : new Date(t.date).toLocaleDateString('fr-FR'); let cause = t.fullData.find(x => x.k.toLowerCase().includes('cause') || x.k.toLowerCase().includes('intervention') || x.k.toLowerCase().includes('commentaire')); histHtml += `<li style="margin-bottom:8px; font-size:13px; border-bottom:1px solid #eee; padding-bottom:5px;"><b>${dateStr}</b> - <span style="color:#e74c3c;">${t.defaut}</span> <br><span style="color:#666;">Interv: ${cause ? cause.v : "Non précisée"}</span></li>`; });
+                    histHtml += `</ul></details>`;
+                }
+                if (window.saisonsList && window.saisonsList.length > 0) {
+                    prodHtml = `<div style="margin-top:15px; font-size:14px; font-weight:bold; color:#2c3e50; border-bottom:2px solid #eee; padding-bottom:5px;">📊 Production (Comparatif Piste)</div><div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;"><div style="background:#fff; border:1px solid #eee; border-radius:6px; padding:10px;"><div style="font-size:12px; font-weight:bold; color:#3498db; text-align:center;">Eau (m³)</div><div style="position:relative; height:120px; width:100%;"><canvas id="he-${p.id}"></canvas></div></div><div style="background:#fff; border:1px solid #eee; border-radius:6px; padding:10px;"><div style="font-size:12px; font-weight:bold; color:#e67e22; text-align:center;">Air</div><div style="position:relative; height:120px; width:100%;"><canvas id="ha-${p.id}"></canvas></div></div><div style="background:#fff; border:1px solid #eee; border-radius:6px; padding:10px;"><div style="font-size:12px; font-weight:bold; color:#27ae60; text-align:center;">Heures</div><div style="position:relative; height:120px; width:100%;"><canvas id="ht-${p.id}"></canvas></div></div></div>`;
+                }
+
+                let formulairePanneCompletHtml = `
+                    <details style="background:#fdf0ed; padding:15px; border-radius:6px; border:1px solid #fadbd8; font-size:14px; margin-top:12px;">
+                        <summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;">🚨 Signaler un défaut (Nouveau Ticket)</summary>
+                        <div style="margin-top:15px;">
+                            <span class="edit-label">État</span><select id="nt-etat-${p.id}" class="edit-input"><option value="à faire">À faire</option><option value="en cours">En cours</option></select>
+                            <span class="edit-label">Priorité</span><select id="nt-priorite-${p.id}" class="edit-input"><option value="P1 (urgent et bloquant)">P1 (urgent)</option><option value="P2 (non bloquant mais urgent)">P2 (moyen)</option><option value="P3 (non bloquant)">P3 (faible)</option></select>
+                            <span class="edit-label">Panne</span><input type="text" id="nt-defaut-${p.id}" class="edit-input" list="dl-defauts-list" placeholder="Choisir ou écrire...">
+                            <span class="edit-label">Cause</span><textarea id="nt-cause-${p.id}" class="edit-input" rows="2" placeholder="Origine..."></textarea>
+                            <span class="edit-label">Date Inter</span><input type="text" id="nt-dateinter-${p.id}" class="edit-input" placeholder="JJ/MM/AAAA">
+                            <span class="edit-label">Intervention</span><textarea id="nt-interv-${p.id}" class="edit-input" rows="2" placeholder="Travaux réalisés..."></textarea>
+                            <span class="edit-label">Pièces</span><input type="text" id="nt-pieces-${p.id}" class="edit-input" placeholder="Ex: Joint R18">
+                            <span class="edit-label">Remarque</span><textarea id="nt-remarque-${p.id}" class="edit-input" rows="2"></textarea>
+                            <input type="hidden" id="nt-periode-${p.id}" value="${window.saisonsList[window.histSeasonIdx] || ''}">
+                            <input type="hidden" id="nt-sonde-${p.id}" value="">
+                            <input type="hidden" id="nt-photos-${p.id}" value="">
+                            <button onclick="window.addNouveauTicket('${p.id}', this)" class="btn-action-primary" style="background:#c0392b;">🚀 Envoyer le Ticket</button>
+                        </div>
+                    </details>
+                `;
+
+                if (window.mainTheme === 'suivi_entretien') {
+                    let s = window.suiviEntretienData.find(row => row[0] == id) || ["", "", "non", "non", "", "", ""];
+                    let isDec = s[2].toString().toLowerCase().trim() === "oui"; let isPrev = s[3].toString().toLowerCase().trim() === "oui"; let rem = s[5] || "";
+                    mainContent = `
+                        <div style="background:#eafaf1; padding:15px; border-radius:6px; border:1px solid #2ecc71; margin-bottom:10px;">
+                            <label style="cursor:pointer; display:block; font-size:16px; font-weight:bold; margin-bottom:10px;"><input type="checkbox" id="chk-dec-single-${p.id}" ${isDec?'checked':''} style="transform:scale(1.3); margin-right:10px;"> Déconnexion</label>
+                            <label style="cursor:pointer; display:block; font-size:16px; font-weight:bold; margin-bottom:10px;"><input type="checkbox" id="chk-prev-single-${p.id}" ${isPrev?'checked':''} style="transform:scale(1.3); margin-right:10px;"> Préventif Usine</label>
+                            <input type="text" id="rem-single-${p.id}" value="${rem}" class="edit-input" placeholder="Remarque (facultative)...">
+                        </div>
+                        <div style="background:#fdfdfe; padding:10px; border-radius:6px; border:1px solid #ccc; font-size:14px; margin-bottom:10px;"><b>Modèle:</b> ${window.getV(p, window.keyType)}</div>
+                        ${histHtml}`;
+                } 
+                else if (window.mainTheme === 'entretien_tete') {
+                    let bVal = window.getV(p, "Buses"); let isFait = (bVal.toLowerCase().trim() === "oui" || bVal.toLowerCase().trim() === "ok" || bVal.toLowerCase().trim() === "true" || bVal.toLowerCase().trim() === "x"); let anneeVal = window.getV(p, "années buses") || window.getV(p, "Année") || "N/A"; let currentYear = new Date().getFullYear();
+                    overrideItemHtml = `
+                        <div style="margin-bottom:10px; border-radius:6px; box-shadow:0 2px 5px rgba(0,0,0,0.05); background:#fff; border:1px solid #e1e8ed; overflow:hidden;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; background:#fef5e7; padding:15px; border-bottom:1px solid #f8c471;">
+                                <b style="color:#d35400; font-size:18px;">📍 N° ${p.id}</b>
+                                <input type="checkbox" id="chk-buses-${id}" ${isFait?'checked':''} style="transform:scale(2); margin:0 15px;">
+                                <button onclick="window.saveEntretienTete('${id}', this)" class="btn-action-primary" style="margin:0; padding:12px; background:#e67e22; width:auto;">💾 Valider</button>
+                            </div>
+                            <div style="padding:15px; background:#fff;">${formulairePanneCompletHtml}</div>
+                        </div>
+                    `;
+                }
+                else if (window.mainTheme === 'historique') {
+                    let s = window.saisonsList[window.histSeasonIdx]; let hd = p.historique[s] || {eau:0, air:0, temps:0};
+                    mainContent = `<div style="display:flex; justify-content: space-around; background:#f8f9fa; padding:20px; border-radius:8px; border:1px solid #eee;"><div style="text-align:center;"><div style="font-size:24px; font-weight:bold; color:#3498db;">${hd.eau}</div><div style="font-size:14px; font-weight:bold;">m³ Eau</div></div><div style="text-align:center;"><div style="font-size:24px; font-weight:bold; color:#e67e22;">${hd.air}</div><div style="font-size:14px; font-weight:bold;">Air</div></div><div style="text-align:center;"><div style="font-size:24px; font-weight:bold; color:#27ae60;">${hd.temps}</div><div style="font-size:14px; font-weight:bold;">Hrs</div></div></div>${histHtml}${prodHtml}`;
+                } else if (window.mainTheme === 'defauts') {
+                    let topTicketsList = "";
+                    if (active.length === 0) { topTicketsList = `<div style="background:#eafaf1; color:#27ae60; padding:15px; border-radius:6px; text-align:center; font-weight:bold; border:1px solid #d5f5e3; margin-bottom:15px; font-size:16px;">✅ Aucun défaut en cours</div>`; } else {
+                        topTicketsList = active.map(t => { let borderCol = t.statut.includes('faire') ? '#e74c3c' : '#f39c12'; let safeDef = t.defaut.replace(/'/g, "\\'"); let safeId = p.id.replace(/'/g, "\\'"); let idDiv = `ticket-edit-${safeId}-${t.defaut.replace(/[^a-zA-Z0-9]/g, "")}`; return `<div class="ticket-card" style="border-left-color:${borderCol};"><div style="font-weight:bold; font-size:16px; color:#333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start;"><span style="flex-grow:1; margin-right:10px;">${t.defaut}</span><button onclick="window.editFullTicket('${safeId}', '${safeDef}')" style="background:#eee; border:none; padding:8px 12px; border-radius:4px; font-size:14px; font-weight:bold; cursor:pointer;">✏️ Éditer</button></div><div id="${idDiv}"><span style="font-size:12px; padding:4px 10px; border-radius:12px; background:${borderCol}20; color:${borderCol}; font-weight:bold;">STATUT : ${t.statut.toUpperCase()}</span></div></div>`; }).join('');
+                    }
+                    mainContent = topTicketsList + histHtml + formulairePanneCompletHtml;
+                } else {
+                    let badges = `<span class="badge"><b>Modèle:</b> ${window.getV(p, window.keyType)}</span> <span class="badge"><b>Rép:</b> ${window.getV(p, window.keyRep)}</span> <span class="badge"><b>Trans:</b> ${window.getV(p, window.keyTransfo)}</span>`;
+                    let fullDataHTML = `<details style="margin-top:15px; font-size:14px; background:#f8f9fa; padding:15px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:bold; color:#34495e; outline:none;">➕ Caractéristiques Complètes</summary><div style="margin-top:12px; display:grid; grid-template-columns: 1fr; gap:10px;">`;
+                    p.fullData.forEach(item => { if(!item.k.toLowerCase().includes('xy') && !item.k.toLowerCase().includes('gps')) { fullDataHTML += `<div style="border-bottom:1px solid #f0f0f0; padding-bottom:6px;"><span style="color:#7f8c8d;">${item.k} :</span> <b style="color:#2c3e50; float:right;">${item.v}</b></div>`; } }); fullDataHTML += `</div></details>`; 
+                    mainContent = `<div style="margin-bottom:10px;">${badges}</div>${fullDataHTML}`;
+                    if (active.length > 0) mainContent += `<div style="margin-top:15px; padding:15px; background:#fdf0ed; border-radius:6px; font-size:14px; color:#e74c3c; font-weight:bold; border:1px solid #fadbd8;">⚠️ Ce canon a ${active.length} défaut(s) en cours.</div>`; mainContent += histHtml + prodHtml;
+                }
+
+                let editBtn = '';
+                if (window.mainTheme === 'type') editBtn = `<button class="btn-action-primary" onclick="window.startEdit('${p.id}')">✏️ Éditer les infos du canon</button>`;
+                else if (window.mainTheme === 'suivi_entretien') editBtn = `<button class="btn-action-primary" style="background:#f39c12; margin-top:15px;" onclick="window.startEdit('${p.id}')">⚙️ Éditer Données Techniques</button>`;
+
+                if (overrideItemHtml) { listDiv.innerHTML += overrideItemHtml.replace('', editBtn); } 
+                else { listDiv.innerHTML += `<div style="background:#fff; border:1px solid #e1e8ed; border-radius:8px; overflow:hidden; margin-bottom:20px;"><div style="padding:15px; font-weight:bold; font-size:18px; background:#fdfdfe; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center;"><span>📍 Canon <b>${p.id}</b></span><span style="font-weight:bold; font-size:13px; background:#e0e6ed; padding:4px 10px; border-radius:12px; color:#34495e;">${window.getV(p, window.keyPiste)}</span></div><div style="padding:15px;">${mainContent}${editBtn}</div></div>`; }
+                    
+                setTimeout(() => {
+                    if((window.mainTheme === 'type' || window.mainTheme === 'historique' || window.mainTheme === 'repeteur' || window.mainTheme === 'transfo' || window.mainTheme === 'suivi_entretien') && window.saisonsList.length > 0) {
+                        let labels = window.saisonsList.map(s => s.substring(0,5)); let dEau = window.saisonsList.map(s => p.historique[s] ? p.historique[s].eau : 0); let dAir = window.saisonsList.map(s => p.historique[s] ? p.historique[s].air : 0); let dTemps = window.saisonsList.map(s => p.historique[s] ? p.historique[s].temps : 0);
+                        const drawMiniChart = (id, data, color) => { let canvas = document.getElementById(id); if(!canvas) return; if(window.chartInstances[id]) window.chartInstances[id].destroy(); window.chartInstances[id] = new Chart(canvas.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [{ data: data, backgroundColor: color, borderRadius: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: {font:{size:10}, maxRotation:45, minRotation:45}, grid: {display:false} } } } }); };
+                        drawMiniChart(`he-${p.id}`, dEau, '#3498db'); drawMiniChart(`ha-${p.id}`, dAir, '#e67e22'); drawMiniChart(`ht-${p.id}`, dTemps, '#27ae60');
+                    }
+                }, 100);
+            });
+        };
+        
