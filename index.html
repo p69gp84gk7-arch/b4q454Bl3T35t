@@ -283,7 +283,15 @@
         window.getTicketsForCanon = function(id) { return window.rawTickets.filter(t => t.idCanon === id); }; 
         window.getActiveTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('faire') || t.statut.includes('cours')); }; 
         window.getHistoryTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('fait') || t.statut === '').sort((a,b) => new Date(b.date) - new Date(a.date)); };
-        window.parseDriveUrl = function(url) { if (!url || url.trim() === "") return ""; let id = ""; let matchD = url.match(/\/d\/([a-zA-Z0-9-_]+)/); let matchId = url.match(/[?&]id=([a-zA-Z0-9-_]+)/); if (matchD) id = matchD[1]; else if (matchId) id = matchId[1]; if (id) return "https://lh3.googleusercontent.com/d/" + id; return url; };
+      window.parseDriveUrl = function(url) { 
+    if (!url || url.trim() === "") return ""; 
+    let id = ""; 
+    let matchD = url.match(/\/d\/([a-zA-Z0-9-_]+)/); 
+    let matchId = url.match(/[?&]id=([a-zA-Z0-9-_]+)/); 
+    if (matchD) id = matchD[1]; else if (matchId) id = matchId[1]; 
+    if (id) return "https://drive.google.com/uc?export=view&id=" + id; 
+    return url; 
+};
 
         window.clearSelection = function() { window.selectedCannonsMap.clear(); window.updateMap(); window.triggerGlobalFilterChart(); };
         window.cancelEdit = function() { window.currentlyEditingId = null; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('right-title').innerText = "📌 Tableau de Bord"; window.updateMap(); window.renderSelectionPanel(); };
@@ -312,12 +320,33 @@
             return '#34495e'; 
         };
 
+             window.updateLegend = function() {
+            let elDef = document.getElementById('legend-defauts'); let elSuivi = document.getElementById('legend-suivi_entretien');
+            if (window.mainTheme === 'suivi_entretien' && elSuivi) { elSuivi.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e74c3c;"></div> Défaut</div><div class="legend-item"><div class="color-box" style="background:#9b59b6;"></div> Usine</div><div class="legend-item"><div class="color-box" style="background:#27ae60;"></div> Déco</div><div class="legend-item"><div class="color-box" style="background:#f1c40f;"></div> Connecté</div>`; }
+            else if (window.mainTheme === 'entretien_tete') { let elEntretien = document.getElementById('legend-entretien_tete'); if (elEntretien) { elEntretien.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e67e22;"></div> Fait</div><div class="legend-item"><div class="color-box" style="background:#bdc3c7;"></div> À faire</div>`; } }
+            else if (window.mainTheme === 'defauts' && elDef) { elDef.innerHTML = `<div class="legend-item"><div class="color-box" style="background: #e74c3c;"></div> Urgent</div><div class="legend-item"><div class="color-box" style="background: #f39c12;"></div> En cours</div><div class="legend-item"><div class="color-box" style="background: #bdc3c7;"></div> RAS</div>`; }
+            else if (window.mainTheme === 'type') { 
+                let elTy = document.getElementById('legend-type'); let h = '';  
+                Object.keys(window.technoColors).sort().forEach(k => {  
+                    let color = window.technoColors[k];  
+                    if(["demak lenko", "demac lenko"].includes(k)) color = "#0000FF"; else if(["sufag", "street", "taurus", "taurax", "peak"].includes(k)) color = "#008000"; if(k === "n/a" || k === "") return; 
+                    let iconHtml = `<div class="color-box" style="background: ${color};"></div>`; 
+                    let iconKey = Object.keys(window.driveIcons || {}).find(dk => dk.toLowerCase().trim() === k);
+                    if (iconKey && window.driveIcons[iconKey]) { 
+                        let finalUrl = window.parseDriveUrl(window.driveIcons[iconKey]);
+                        iconHtml = `<div style="width:16px; height:16px; background:url('${finalUrl}') center/contain no-repeat; margin-right:5px;"></div>`; 
+                    } 
+                    h += `<div class="legend-item">${iconHtml} ${k.toUpperCase()}</div>`;  
+                }); 
+                if(elTy) elTy.innerHTML = h; 
+            }
+        };
+
         window.updateMap = function() {
             if(!window.geojsonLayer) return; let s = window.saisonsList[window.histSeasonIdx];
             window.geojsonLayer.eachLayer(function(layer) {
                 const p = layer.feature.properties; let vis = true; let val = 0;
                 
-                // 🟢 LE FILTRE DES PISTES EST DE RETOUR ICI !
                 let pisteCanon = window.getV(p, window.keyPiste).trim();
                 if (window.currentPistes && !window.currentPistes.includes('all')) { 
                     if (!window.currentPistes.includes(pisteCanon)) vis = false; 
@@ -334,11 +363,15 @@
                     p._isVisible = true; if (!window.map.hasLayer(layer)) window.map.addLayer(layer);
                     
                     if (window.mainTheme === 'type') {
-                        let typeCanon = window.getV(p, window.keyType).toLowerCase().trim(); let iconUrl = window.driveIcons && window.driveIcons[typeCanon] ? window.driveIcons[typeCanon] : null;
-                        if (iconUrl) {
+                        let typeCanon = window.getV(p, window.keyType).toLowerCase().trim(); 
+                        let iconKey = Object.keys(window.driveIcons || {}).find(dk => dk.toLowerCase().trim() === typeCanon);
+                        let rawIconUrl = iconKey ? window.driveIcons[iconKey] : null;
+                        
+                        if (rawIconUrl) {
+                            let finalIconUrl = window.parseDriveUrl(rawIconUrl); 
                             let imageSize = 40; let zIdx = window.currentlyEditingId === p.id ? 2000 : (window.selectedCannonsMap.has(p.id) ? 1000 : 0); layer.setZIndexOffset(zIdx);
                             let highlightStyle = (window.selectedCannonsMap.has(p.id) || window.currentlyEditingId === p.id) ? "border: 2px solid #e74c3c; border-radius: 50%; background-color: rgba(255,255,255,0.7);" : "";
-                            let imageHtml = `<div style="position:relative; width:${imageSize}px; height:${imageSize}px;"><div style="background:url('${iconUrl}') center/contain no-repeat; width:100%; height:100%; filter: drop-shadow(2px 4px 5px rgba(0,0,0,0.5)); ${highlightStyle}"></div><div style="position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; font-size:9px; padding:1px 4px; border-radius:4px; font-weight:bold;">${p.id}</div></div>`;
+                            let imageHtml = `<div style="position:relative; width:${imageSize}px; height:${imageSize}px;"><div style="background:url('${finalIconUrl}') center/contain no-repeat; width:100%; height:100%; filter: drop-shadow(2px 4px 5px rgba(0,0,0,0.5)); ${highlightStyle}"></div><div style="position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; font-size:9px; padding:1px 4px; border-radius:4px; font-weight:bold;">${p.id}</div></div>`;
                             layer.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: imageHtml, iconSize: [imageSize, imageSize], iconAnchor: [imageSize/2, imageSize/2] }));
                             layer.setOpacity(1); return; 
                         }
