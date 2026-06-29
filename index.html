@@ -680,24 +680,231 @@
             document.getElementById('right-title').innerText = "📊 Résumé Global";
         };
 
+       /* ========================================================================= */
+        /* CHAPITRE 6 : ÉDITION DES CANONS ET TICKETS (API GOOGLE)                   */
         /* ========================================================================= */
-        /* MODÈLES PLEIN ÉCRAN : STOCK & ATELIER                                     */
+
+        window.startEdit = function(id) {
+            window.currentlyEditingId = id; 
+            let layer = window.selectedCannonsMap.get(id); let p = layer.feature.properties;
+            document.getElementById('edit-id-display').innerText = p.id; 
+            document.getElementById('edit-id').value = p.id;
+            document.getElementById('edit-lat').value = layer.getLatLng().lat.toFixed(7); 
+            document.getElementById('edit-lng').value = layer.getLatLng().lng.toFixed(7);
+            
+            let fc = document.getElementById('dynamic-edit-fields'); fc.innerHTML = "";
+            p.fullData.forEach(i => { 
+                if(i.k.toLowerCase().match(/(regard|xy|gps)/)) return; 
+                fc.innerHTML += `<div style="margin-bottom:10px;"><div class="edit-label">${i.k}</div><input type="text" class="edit-input dyn-field" data-key="${i.k}" value="${i.v}"></div>`; 
+            });
+            
+            document.getElementById('view-selection').style.display = 'none'; 
+            document.getElementById('view-edit').style.display = 'block'; 
+            document.getElementById('right-title').innerText = "✏️ Édition Canon"; 
+            
+            // Sur mobile, on ouvre le panneau en grand pour éditer confortablement
+            window.openBottomSheet('full'); 
+            window.updateMap();
+        };
+
+        window.saveEditData = async function() {
+            if(!window.currentlyEditingId) return;
+            let btn = document.getElementById('btn-save-edit'); btn.innerText = "⏳ Envoi..."; btn.disabled = true;
+            let fields = {}; document.querySelectorAll('.dyn-field').forEach(i => fields[i.getAttribute('data-key')] = i.value);
+            
+            let idCanonValue = document.getElementById('edit-id').value;
+            let pl = { action: "update_general", idCanon: idCanonValue, lat: parseFloat(document.getElementById('edit-lat').value), lng: parseFloat(document.getElementById('edit-lng').value), fields: fields };
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(pl) }); let r = await res.json();
+                if(r.status === "success") {
+                    let l = window.selectedCannonsMap.get(window.currentlyEditingId); let p = l.feature.properties;
+                    p.fullData.forEach(item => { if(fields[item.k] !== undefined) item.v = fields[item.k]; });
+                    let tLower = window.getV(p, window.keyType).toLowerCase().trim();
+                    if(["demak lenko", "demac lenko"].includes(tLower)) p.couleur_defaut = "#0000FF";
+                    else if(["sufag", "street", "taurus", "taurax", "peak"].includes(tLower)) p.couleur_defaut = "#008000";
+                    else p.couleur_defaut = window.technoColors[tLower] || "#FFD700";
+                    l.feature.geometry.coordinates = [pl.lng, pl.lat]; l.setLatLng([pl.lat, pl.lng]);
+                    window.cancelEdit();
+                } else alert("Erreur Google");
+            } catch(err) { alert("Échec réseau"); }
+            btn.innerText = "✅ Sauvegarder"; btn.disabled = false;
+        };
+
+        window.addNouveauTicket = async function(idCanon, btn) {
+            let elDef = document.getElementById(`nt-defaut-${idCanon}`); 
+            if(!elDef || !elDef.value.trim()) { alert("Veuillez renseigner au moins le champ 'Panne'."); return; }
+            
+            let defaut = elDef.value; let etat = document.getElementById(`nt-etat-${idCanon}`).value; 
+            let priorite = document.getElementById(`nt-priorite-${idCanon}`).value;
+            let periode = document.getElementById(`nt-periode-${idCanon}`).value; 
+            let sonde = document.getElementById(`nt-sonde-${idCanon}`).value; 
+            let cause = document.getElementById(`nt-cause-${idCanon}`).value; 
+            let dateinter = document.getElementById(`nt-dateinter-${idCanon}`).value; 
+            let photos = document.getElementById(`nt-photos-${idCanon}`).value; 
+            let interv = document.getElementById(`nt-interv-${idCanon}`).value; 
+            let pieces = document.getElementById(`nt-pieces-${idCanon}`).value; 
+            let remarque = document.getElementById(`nt-remarque-${idCanon}`).value;
+            
+            let today = new Date(); let dateStr = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
+            let layer = window.selectedCannonsMap.get(idCanon); let p = layer ? layer.feature.properties : null; 
+            let piste = p ? window.getV(p, window.keyPiste) : "Inconnue"; 
+            let latlong = layer ? (layer.getLatLng().lat.toFixed(7) + "," + layer.getLatLng().lng.toFixed(7)) : "";
+            
+            let fieldsObj = { "état": etat, "Priorité": priorite, "date": dateStr, "n°regard": idCanon, "piste": piste, "defaut": defaut, "Défaut sonde": sonde, "cause": cause, "date d'inter": dateinter, "intervention": interv, "Remarque": remarque, "periode": periode, "photos": photos, "latlong": latlong, "pièces utilisés": pieces };
+            
+            let oldText = btn.innerText; btn.innerText = "⏳ Transmission..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_ticket", fields: fieldsObj }) }); let r = await res.json();
+                if(r.status === "success") {
+                    btn.innerText = "🚀 Ticket Archivé !"; btn.style.background = "#27ae60"; 
+                    window.rawTickets.push({ statut: etat.toLowerCase(), date: dateStr, idCanon: idCanon, defaut: defaut, fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]})) });
+                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; window.renderSelectionPanel(); window.updateMap(); }, 2000);
+                } else { alert("Erreur serveur : " + (r.msg || "Inconnue")); btn.innerText = oldText; btn.disabled = false; }
+            } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
+        };
+
+        window.editFullTicket = function(canonId, defaut) {
+            let safeDef = defaut.replace(/[^a-zA-Z0-9]/g, ""); 
+            let idDiv = `ticket-edit-${canonId}-${safeDef}`; let el = document.getElementById(idDiv); 
+            if(!el) return;
+            let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut); 
+            if(!ticket) return;
+            
+            let html = '<div style="background:#fdfdfe; padding:12px; border-radius:6px; border:2px solid #3498db; margin-top:10px;">';
+            ticket.fullData.forEach(d => {
+                let kLow = d.k.toLowerCase(); let valStr = d.v.toString();
+                if (kLow.includes('regard') || kLow === 'id' || kLow.includes('n°')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}" readonly style="background:#e1e8ed; color:#7f8c8d;"></div>`; } 
+                else if (kLow.includes('etat') || kLow.includes('état') || kLow === 'statut') { let statuts = ['à faire', 'en cours', 'fait']; let options = statuts.map(s => `<option value="${s}" ${valStr.toLowerCase().includes(s) ? 'selected' : ''}>${s.toUpperCase()}</option>`).join(''); html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><select class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}">${options}</select></div>`; } 
+                else if (valStr.length > 40 || kLow.includes('cause') || kLow.includes('intervention')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><textarea class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" rows="2">${valStr}</textarea></div>`; } 
+                else { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}"></div>`; }
+            });
+            html += `<div style="display:flex; gap:10px; margin-top:15px;"><button onclick="window.renderSelectionPanel()" class="btn-action-primary" style="background:#bdc3c7; flex:1; margin-top:0;">Annuler</button><button onclick="window.prepareTicketSave('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" class="btn-action-primary" style="background:#2ecc71; flex:2; margin-top:0;">Suivant ➔</button></div></div>`; 
+            el.innerHTML = html;
+        };
+
+        window.prepareTicketSave = function(canonId, defaut, idDiv) {
+            let fieldsObj = {}; let newStatutForLocal = "";
+            document.querySelectorAll(`.tick-dyn-field-${idDiv}`).forEach(inp => { let k = inp.getAttribute('data-key'); let v = inp.value; if(!k.toLowerCase().includes('regard') && k.toLowerCase() !== 'id') { fieldsObj[k] = v; } if(k.toLowerCase().includes('etat') || k.toLowerCase().includes('état') || k.toLowerCase() === 'statut') { newStatutForLocal = v; } });
+            window.tempTicketPayloads[idDiv] = { payload: { action: "update_ticket", idCanon: canonId, defaut: defaut, fields: fieldsObj }, newStatut: newStatutForLocal };
+            let el = document.getElementById(idDiv);
+            if(el) { el.innerHTML = `<div style="background:#fff3cd; padding:15px; border-radius:6px; border:2px solid #f39c12; margin-top:10px;"><div style="font-weight:bold; color:#d35400; margin-bottom:10px;">⚠️ Valider les modifs ?</div><div style="display:flex; gap:10px;"><button onclick="window.renderSelectionPanel()" class="btn-action-primary" style="background:#bdc3c7; margin-top:0;">Annuler</button><button onclick="window.confirmSaveTicket('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" class="btn-action-primary" style="background:#27ae60; margin-top:0;">Envoyer 🚀</button></div></div>`; }
+        };
+
+        window.confirmSaveTicket = async function(canonId, defaut, idDiv) {
+            let temp = window.tempTicketPayloads[idDiv]; if(!temp) return; 
+            document.getElementById(idDiv).innerHTML = `<div style="text-align:center; padding:10px; font-weight:bold; color:#3498db;">Enregistrement... ⏳</div>`;
+            try {
+                const response = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(temp.payload) }); const result = await response.json();
+                if(result.status === "success") {
+                    let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut);
+                    if(ticket) { ticket.fullData.forEach(d => { if(temp.payload.fields[d.k] !== undefined) d.v = temp.payload.fields[d.k]; }); if(temp.newStatut) ticket.statut = temp.newStatut.toLowerCase(); }
+                    window.renderSelectionPanel(); window.updateMap(); delete window.tempTicketPayloads[idDiv];
+                } else alert("Erreur Google");
+            } catch(e) { alert("Échec réseau."); }
+        };
+
+        window.saveMultiSuivi = async function(btn) {
+            let payloads = [];
+            window.selectedCannonsMap.forEach((layer, idCanon) => {
+                let p = layer.feature.properties; let piste = window.getV(p, window.keyPiste);
+                let chkDec = document.getElementById('chk-dec-single-' + idCanon); 
+                let chkPrev = document.getElementById('chk-prev-single-' + idCanon); 
+                let rem = document.getElementById('rem-single-' + idCanon);
+                payloads.push({ idCanon: idCanon, piste: piste, deconnexion: chkDec ? chkDec.checked : false, preventif: chkPrev ? chkPrev.checked : false, vanneCorrectif: "", remarque: rem ? rem.value : "" });
+            });
+
+            if (payloads.length === 0) return;
+            let oldText = btn.innerText; btn.innerText = "⏳ Sauvegarde..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_suivi_multi", payloads: payloads }) }); let r = await res.json();
+                if (r.status === "success") {
+                    btn.innerText = "✅ Succès !";
+                    payloads.forEach(item => {
+                        let sRow = window.suiviEntretienData.find(row => row[0] == item.idCanon);
+                        if (sRow) { sRow[2] = item.deconnexion ? "oui" : "non"; sRow[3] = item.preventif ? "oui" : "non"; sRow[5] = item.remarque; } 
+                        else { window.suiviEntretienData.push([item.idCanon, item.piste, item.deconnexion ? "oui" : "non", item.preventif ? "oui" : "non", "", item.remarque, ""]); }
+                    });
+                    window.updateMap(); setTimeout(() => { btn.innerText = oldText; btn.disabled = false; }, 2000);
+                } else alert("Erreur serveur.");
+            } catch (e) { alert("Échec réseau."); }
+        };
+
+        window.saveEntretienTete = async function(idCanon, btn) {
+            let chk = document.getElementById(`chk-buses-${idCanon}`); if(!chk) return;
+            let isChecked = chk.checked; let valBuses = isChecked ? "OUI" : ""; let currentYear = new Date().getFullYear();
+            let fieldsObj = { "Buses": valBuses, "années buses": isChecked ? currentYear.toString() : "" };
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: idCanon, fields: fieldsObj }) }); let r = await res.json();
+                if(r.status === "success") {
+                    btn.innerText = "✅ Validé"; btn.style.background = "#27ae60";
+                    let feat = window.snowCannons.features.find(f => f.properties.id == idCanon);
+                    if(feat) { 
+                        let objB = feat.properties.fullData.find(x => x.k.toLowerCase() === "buses"); if(objB) objB.v = valBuses; else feat.properties.fullData.push({k: "Buses", v: valBuses}); 
+                        let objA = feat.properties.fullData.find(x => x.k.toLowerCase() === "années buses"); if(objA) objA.v = fieldsObj["années buses"]; else feat.properties.fullData.push({k: "années buses", v: fieldsObj["années buses"]}); 
+                    }
+                    window.updateMap(); setTimeout(() => { btn.innerText = "💾 Valider"; btn.disabled = false; btn.style.background = "#e67e22"; }, 2000);
+                } else alert("Erreur Serveur");
+            } catch(e) { alert("Erreur Réseau"); }
+        };
+
         /* ========================================================================= */
+        /* CHAPITRE 7 : ESPACE STOCK (COMPLET & MOBILE)                              */
+        /* ========================================================================= */
+
         window.renderStockWorkspace = function() {
             let ws = document.getElementById('stock-workspace'); if (!ws) return;
-            if (!window.rawStock || window.rawStock.length < 1) { ws.innerHTML = `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; color:#7f8c8d; font-weight:bold;">⚠️ Aucun stock détecté.</div>`; return; }
+            if (!window.rawStock || window.rawStock.length < 1) { ws.innerHTML = `<div style="text-align:center; padding:30px; font-weight:bold;">⚠️ Aucun stock détecté.</div>`; return; }
 
             let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
             let idxNum = headers.findIndex(h => h.includes("numero") || h === "id");
-            let idxRef = headers.findIndex(h => h === "ref"); let idxProd = headers.findIndex(h => h === "produit"); let idxDesc = headers.findIndex(h => h === "description"); let idxStock = headers.findIndex(h => h.includes("stock")); let idxMini = headers.findIndex(h => h.includes("mini")); let idxPris = headers.findIndex(h => h === "pris");
+            let idxRef = headers.findIndex(h => h === "ref"); let idxProd = headers.findIndex(h => h === "produit"); 
+            let idxDesc = headers.findIndex(h => h === "description"); let idxPhoto = headers.findIndex(h => h === "photo"); 
+            let idxCout = headers.findIndex(h => h === "cout"); let idxStock = headers.findIndex(h => h.includes("stock")); 
+            let idxMini = headers.findIndex(h => h.includes("mini") || h.includes("seuil")); let idxPris = headers.findIndex(h => h === "pris");
 
-            let filterOptionsHtml = `<option value="">📁 Tous les types</option>`;
+            let maxId = 0; let uniqueDescs = new Set();
+            for (let i = 1; i < window.rawStock.length; i++) {
+                let row = window.rawStock[i]; if (!row || row.length === 0) continue;
+                if (idxNum !== -1 && row[idxNum]) { let idVal = parseInt(row[idxNum], 10); if (!isNaN(idVal) && idVal > maxId) maxId = idVal; }
+                if (idxDesc !== -1 && row[idxDesc]) { row[idxDesc].toString().split(',').forEach(d => { let c = d.trim(); if(c !== "") uniqueDescs.add(c); }); }
+            }
+            let nextId = maxId > 0 ? (maxId + 1) : 1;
+            let totalArticles = window.rawStock.length - 1;
+
+            let filterOptionsHtml = `<option value="">📁 Tous les types</option>` + Array.from(uniqueDescs).sort().map(d => `<option value="${d}">${d}</option>`).join('');
+
             ws.innerHTML = `
-                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
-                    <h2 style="color:#2c3e50; margin:0;">📦 Inventaire</h2>
-                    <input type="text" id="search-stock" placeholder="🔍 Rechercher Réf, Nom..." onkeyup="window.filterStockItems()" class="edit-input" style="margin:0;">
+                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px; border-bottom:2px solid #16a085; padding-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h2 style="color:#2c3e50; margin:0; font-size:22px;">📦 Inventaire <span id="stock-count-display" style="font-size:12px; color:#7f8c8d; font-weight:normal;">(${totalArticles})</span></h2>
+                        <button onclick="window.toggleAddStockForm()" style="background:#16a085; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; font-size:14px;">➕ Ajouter</button>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <select id="filter-desc-stock" onchange="window.filterStockItems()" class="edit-input" style="flex:1; margin:0;">${filterOptionsHtml}</select>
+                        <input type="text" id="search-stock" placeholder="🔍 Réf..." onkeyup="window.filterStockItems()" class="edit-input" style="flex:1; margin:0;">
+                    </div>
                 </div>
+                
+                <div id="add-stock-form-container" style="display:none; background:#fff; border:2px solid #16a085; padding:15px; border-radius:8px; margin-bottom:20px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                    <h4 style="margin:0 0 12px 0; color:#16a085;">Créer un article</h4>
+                    <div style="display:flex; flex-direction:column; gap:10px;" id="add-stock-fields-grid"></div>
+                    <div style="display:flex; gap:10px; margin-top:15px;">
+                        <button onclick="window.toggleAddStockForm()" class="btn-action-primary" style="background:#e1e8ed; color:#333; margin-top:0;">Annuler</button>
+                        <button onclick="window.addStockItemToServer(this)" class="btn-action-primary" style="background:#16a085; margin-top:0;">🚀 Valider l'ajout</button>
+                    </div>
+                </div>
+                
                 <div id="stock-cards-list" style="display:flex; flex-direction:column; gap:15px;"></div>`;
+
+            let addGrid = document.getElementById('add-stock-fields-grid');
+            window.rawStock[0].forEach(colName => {
+                let cleanName = colName ? colName.toString().trim() : ""; let lowerName = cleanName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                if (cleanName === "" || lowerName.includes("commande") || lowerName === "cmd") return;
+                if (lowerName === "numero" || lowerName === "id") { addGrid.innerHTML += `<div><span class="edit-label">${cleanName} (Auto)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="${nextId}" readonly style="background:#eee; margin-bottom:0;"></div>`; } 
+                else if (lowerName === "reste") { addGrid.innerHTML += `<div><span class="edit-label">${cleanName} (Auto)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="0" readonly style="background:#eee; margin-bottom:0;"></div>`; } 
+                else { addGrid.innerHTML += `<div><span class="edit-label">${cleanName}</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" style="margin-bottom:0;"></div>`; }
+            });
 
             let cardsContainer = document.getElementById('stock-cards-list');
             for (let i = 1; i < window.rawStock.length; i++) {
@@ -709,161 +916,218 @@
                 let valPris = (idxPris !== -1 && row[idxPris]) ? parseFloat(row[idxPris]) || 0 : 0;
                 let valRef = (idxRef !== -1 && row[idxRef]) ? row[idxRef].toString().trim() : "";
                 let valProd = (idxProd !== -1 && row[idxProd]) ? row[idxProd].toString().trim() : "Sans nom";
+                let valPhoto = (idxPhoto !== -1 && row[idxPhoto]) ? row[idxPhoto].toString().trim() : "";
 
                 let alerteStyle = valStock <= valMini ? "background:#fdf2f2; border-color:#e74c3c;" : "background:#fff; border-color:#ddd;";
+                
+                // Recherche drive simplifiée pour l'affichage mobile
+                let parsedImgUrl = "https://placehold.co/150x150?text=Pas+de+photo";
+                if(valPhoto && valPhoto.includes("drive.google.com")) parsedImgUrl = window.parseDriveUrl(valPhoto);
+                
                 let cardBlock = document.createElement('div'); cardBlock.className = "stock-item-card";
-                cardBlock.style = `border:1px solid #ddd; border-left:6px solid #16a085; border-radius:8px; padding:15px; ${alerteStyle}`;
-                cardBlock.innerHTML = `<h3 style="margin:0 0 10px 0; color:#2c3e50; font-size:16px;">${valProd} <span style="font-size:12px; color:#16a085; float:right;">Réf: ${valRef}</span></h3>
-                    <div style="display:flex; gap:10px;">
-                        <div style="flex:1;"><span class="edit-label">En Stock</span><input type="number" class="edit-input s-field-${safeId}" data-col="en stock" value="${valStock}" style="font-weight:bold; color:${valStock <= valMini ? '#e74c3c' : '#2c3e50'};"></div>
-                        <div style="flex:1;"><span class="edit-label">Mini</span><input type="number" class="edit-input s-field-${safeId}" data-col="seuil mini" value="${valMini}"></div>
-                        <div style="flex:1;"><span class="edit-label">Pris</span><input type="number" class="edit-input s-field-${safeId}" data-col="pris" value="${valPris}"></div>
+                cardBlock.style = `border:1px solid #ddd; border-left:6px solid #16a085; border-radius:8px; padding:15px; display:flex; flex-direction:column; gap:10px; ${alerteStyle}`;
+                cardBlock.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <h3 style="margin:0; color:#2c3e50; font-size:16px;">${valProd} <br><span style="font-size:12px; color:#16a085;">Réf: ${valRef}</span></h3>
+                        ${parsedImgUrl !== "https://placehold.co/150x150?text=Pas+de+photo" ? `<img src="${parsedImgUrl}" style="max-width:60px; max-height:60px; border-radius:4px; border:1px solid #ccc;">` : ''}
                     </div>
-                    <button onclick="window.saveStockItemEdits('${numPiece}', '${safeId}', this)" class="btn-action-primary" style="margin-top:5px; background:#16a085;">💾 Sauvegarder</button>`;
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><span class="edit-label">En Stock</span><input type="number" class="edit-input s-field-${safeId}" data-col="en stock" value="${valStock}" style="font-weight:bold; margin-bottom:0; color:${valStock <= valMini ? '#e74c3c' : '#2c3e50'};"></div>
+                        <div style="flex:1;"><span class="edit-label">Mini</span><input type="number" class="edit-input s-field-${safeId}" data-col="seuil mini" value="${valMini}" style="margin-bottom:0;"></div>
+                        <div style="flex:1;"><span class="edit-label">Pris</span><input type="number" class="edit-input s-field-${safeId}" data-col="pris" value="${valPris}" style="margin-bottom:0;"></div>
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:5px;">
+                        <button onclick="window.deleteStockItemFromServer('${numPiece}', this)" class="btn-action-primary" style="background:#ecf0f1; color:#e74c3c; margin-top:0; flex:1;">🗑️ Suppr.</button>
+                        <button onclick="window.saveStockItemEdits('${numPiece}', '${safeId}', this)" class="btn-action-primary" style="background:#16a085; margin-top:0; flex:2;">💾 Sauvegarder</button>
+                    </div>`;
                 cardsContainer.appendChild(cardBlock);
             }
         };
+
+        window.toggleAddStockForm = function() {
+            let form = document.getElementById('add-stock-form-container');
+            if (form) form.style.display = (form.style.display === 'none') ? 'block' : 'none';
+        };
+
+        window.filterStockItems = function() {
+            let searchVal = document.getElementById('search-stock').value.toLowerCase().trim();
+            let descVal = document.getElementById('filter-desc-stock').value.toLowerCase().trim();
+            let visibleCount = 0;
+            document.querySelectorAll('.stock-item-card').forEach(card => {
+                let txt = card.innerText.toLowerCase(); let inputs = card.querySelectorAll('input');
+                let matchSearch = (searchVal === "") || txt.includes(searchVal);
+                if (!matchSearch) inputs.forEach(inp => { if (inp.value.toLowerCase().includes(searchVal)) matchSearch = true; });
+                let matchDesc = (descVal === "") || txt.includes(descVal);
+                let isMatch = matchSearch && matchDesc;
+                card.style.display = isMatch ? 'flex' : 'none';
+                if (isMatch) visibleCount++;
+            });
+            let countDisplay = document.getElementById('stock-count-display');
+            if (countDisplay) countDisplay.innerText = `(${visibleCount})`;
+        };
+
+        window.addStockItemToServer = async function(btn) {
+            let fieldsObj = {}; let hasData = false;
+            document.querySelectorAll('.new-stock-field').forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; if(inp.value.trim() !== "") hasData = true; });
+            if (!hasData) return;
+            let oldText = btn.innerText; btn.innerText = "⏳ Envoi..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_stock_item", fields: fieldsObj }) }); let r = await res.json();
+                if (r.status === "success") {
+                    let newRow = new Array(window.rawStock[0].length).fill("");
+                    window.rawStock[0].forEach((header, index) => { let colName = header.toString().trim(); if (fieldsObj[colName] !== undefined) newRow[index] = fieldsObj[colName]; });
+                    window.rawStock.push(newRow); window.renderStockWorkspace();
+                } else alert("Erreur serveur.");
+            } catch(e) { alert("Échec réseau."); }
+            btn.innerText = oldText; btn.disabled = false;
+        };
+
+        window.saveStockItemEdits = async function(numPiece, safeId, btn) {
+            let fieldsObj = {}; document.querySelectorAll(`.s-field-${safeId}`).forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; });
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }) }); let r = await res.json();
+                if (r.status === "success") {
+                    btn.innerText = "✅ OK"; btn.style.background = "#27ae60";
+                    setTimeout(() => { window.renderStockWorkspace(); }, 1500);
+                } else alert("Erreur.");
+            } catch(e) { alert("Échec."); }
+            btn.disabled = false;
+        };
+
+        window.deleteStockItemFromServer = async function(numPiece, btn) {
+            if (!confirm("⚠️ Confirmer la suppression définitive ?")) return;
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_stock_item", idPiece: numPiece }) }); let r = await res.json();
+                if (r.status === "success") {
+                    let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
+                    let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); if (idxNum === -1) idxNum = 0;
+                    let rowIndex = window.rawStock.findIndex((row, idx) => idx > 0 && row[idxNum].toString().trim() === numPiece.toString().trim());
+                    if (rowIndex !== -1) window.rawStock.splice(rowIndex, 1);
+                    btn.closest('.stock-item-card').remove(); window.filterStockItems();
+                } else alert("Erreur.");
+            } catch(e) { alert("Échec."); }
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 8 : ESPACE ATELIER (COMPLET & MOBILE)                            */
+        /* ========================================================================= */
 
         window.renderAtelierWorkspace = function() {
             let ws = document.getElementById('atelier-workspace'); if(!ws) return;
             let canonsEnAtelier = window.suiviEntretienData.filter(row => row[3] && row[3].toString().toLowerCase().trim() === "oui").map(r => r[0].toString());
             
-            ws.innerHTML = `<div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
-                <h2 style="color:#2c3e50; margin:0;">🧰 Banc d'Essais</h2>
-                <input type="text" id="search-atelier" placeholder="🔍 N° Canon..." onkeyup="window.filterAtelierCanons(this.value)" class="edit-input" style="margin:0;">
-            </div>`;
+            ws.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px; border-bottom:2px solid #8e44ad; padding-bottom:10px;">
+                    <h2 style="color:#2c3e50; margin:0; font-size:22px;">🧰 Banc d'Essais</h2>
+                    <input type="text" id="search-atelier" placeholder="🔍 Rechercher N° Canon..." onkeyup="window.filterAtelierCanons(this.value)" class="edit-input" style="margin:0;">
+                </div>`;
+                
             if(canonsEnAtelier.length === 0) { ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; font-weight:bold;">✅ Aucun canon au banc d'essai.</div>`; return; }
 
-            canonsEnAtelier.forEach(idCanon => {
+            canonsEnAtelier.sort((a, b) => parseInt(a) - parseInt(b)).forEach(idCanon => {
                 let feature = window.snowCannons.features.find(f => f.properties.id == idCanon); if(!feature) return;
-                let p = feature.properties; let piste = window.getV(p, window.keyPiste);
+                let p = feature.properties; let piste = window.getV(p, window.keyPiste); let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, "");
+                
+                let defaultVanne = "none"; let valVanneAd = (window.getV(p, "vanne additio") || "").toLowerCase();
+                if (valVanneAd.includes("clarinette")) defaultVanne = "v2000";
+                else if (valVanneAd.includes("2var")) defaultVanne = "var_double";
+                else if (valVanneAd.includes("var")) defaultVanne = "var";
+
                 let card = document.createElement('div'); card.className = "atelier-card";
-                card.innerHTML = `<h3 style="font-size:18px;">Canon N° ${idCanon} <span style="font-size:14px; font-weight:normal; color:#888; float:right;">${piste}</span></h3>
-                <details class="atelier-sub-details" open><summary>📝 Fiche d'Essai Hydraulique</summary>
-                <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">
-                    <div><span class="edit-label">Pression Eau 1</span><input type="text" class="edit-input"></div>
-                    <div><span class="edit-label">Pression Air 1</span><input type="text" class="edit-input"></div>
-                    <button class="btn-action-primary" style="background:#8e44ad;">🚀 Archiver Essai</button>
-                </div></details>`;
+                card.innerHTML = `
+                    <h3 style="font-size:18px;">N° ${idCanon} <span style="font-size:12px; color:#888; float:right; margin-top:4px;">${piste}</span></h3>
+                    <details class="atelier-sub-details" open><summary style="outline:none;">📝 Fiche d'Essai Hydraulique</summary>
+                    <div style="padding:15px; display:flex; flex-direction:column; gap:10px; background:#f4f9f9;">
+                        
+                        <div style="font-size:12px; font-weight:bold; color:#2980b9;">🔵 VANNE PRINCIPALE</div>
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;"><span class="edit-label">Press Eau</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" style="margin-bottom:0;"></div>
+                            <div style="flex:1;"><span class="edit-label">Press Air</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" style="margin-bottom:0;"></div>
+                        </div>
+                        <div><span class="edit-label">Test Élec 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" style="margin-bottom:0;"></div>
+                        
+                        <div style="font-size:12px; font-weight:bold; color:#8e44ad; margin-top:10px;">➕ CONFIG ADITIONNELLE</div>
+                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:0; font-size:14px;">
+                            <option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune --</option>
+                            <option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>Bloc VAR (Simple)</option>
+                            <option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>Bloc VAR Double (2VAR)</option>
+                            <option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>Bloc V2000 (Clarinette)</option>
+                        </select>
+                        
+                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; padding-top:10px;">
+                            <span class="edit-label">Pression VAR</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="margin-bottom:0;">
+                        </div>
+                        
+                        <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" class="btn-action-primary" style="background:#8e44ad; margin-top:15px;">🚀 Archiver Rapport</button>
+                    </div></details>`;
                 ws.appendChild(card);
             });
         };
 
-        /* ========================================================================= */
-        /* MODALS (COMPARAISON & BI)                                                 */
-        /* ========================================================================= */
-        window.openGlobalCompareModal = function(show) {
-            let m = document.getElementById('compare-modal'); if(!m) return;
-            if(!show) { m.style.display = 'none'; return; }
-            let saisons = window.saisonsList || []; let optsSaisons = saisons.map(s => `<option value="${s}">Saison ${s}</option>`).join('');
-            document.getElementById('comp-s1').innerHTML = optsSaisons; document.getElementById('comp-s2').innerHTML = optsSaisons;
-            if(saisons.length > 1) document.getElementById('comp-s2').selectedIndex = 1;
-            m.style.display = 'flex'; window.renderGlobalComparison();
-        };
-
-        window.renderGlobalComparison = function() {
-            let s1 = document.getElementById('comp-s1').value; let s2 = document.getElementById('comp-s2').value;
-            let metric = document.getElementById('comp-metric').value;
-            let canons = window.snowCannons.features.sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id));
-            let labels = []; let dataS1 = []; let dataS2 = [];
-            canons.forEach(f => { let p = f.properties; labels.push(p.id); dataS1.push(p.historique[s1] ? p.historique[s1][metric] || 0 : 0); dataS2.push(p.historique[s2] ? p.historique[s2][metric] || 0 : 0); });
-            document.getElementById('main-comp-chart-container').style.display = 'block';
-            let canvas = document.getElementById('main-comp-canvas');
-            if(window.chartInstances['global-compare']) window.chartInstances['global-compare'].destroy();
-            window.chartInstances['global-compare'] = new Chart(canvas.getContext('2d'), {
-                type: 'bar', data: { labels: labels, datasets: [ { label: `Saison ${s1}`, data: dataS1, backgroundColor: '#3498db' }, { label: `Saison ${s2}`, data: dataS2, backgroundColor: '#2c3e50' } ] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: {maxRotation: 90, minRotation: 90, font:{size:9}} } } }
+        window.filterAtelierCanons = function(val) {
+            let search = val.toLowerCase().trim();
+            document.querySelectorAll('.atelier-card').forEach(card => {
+                let title = card.querySelector('h3').innerText.toLowerCase();
+                card.style.display = title.includes(search) ? 'block' : 'none';
             });
         };
 
-        window.openBiMeteo = function() { document.getElementById('bi-meteo-modal').style.display='flex'; };
+        window.handleSelectVanne = function(safeId, val) {
+            let bVar = document.getElementById(`bloc-var-${safeId}`); if (bVar) bVar.style.display = (val === 'var') ? 'block' : 'none';
+        };
+
+        window.saveAtelierBancRow = async function(idCanon, safeId, btn) {
+            let fieldsObj = { "id": idCanon };
+            document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => { if (inp.closest('div[id^="bloc-"]') && inp.closest('div[id^="bloc-"]').style.display === 'none') return; fieldsObj[inp.getAttribute('data-col')] = inp.value; });
+            
+            let oldText = btn.innerText; btn.innerText = "⏳ Enregistrement..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_atelier", fields: fieldsObj }) }); let r = await res.json();
+                if(r.status === "success") { btn.innerText = "✅ Enregistré !"; btn.style.background = "#27ae60"; setTimeout(() => { window.renderAtelierWorkspace(); }, 1500); } 
+                else { alert("Erreur"); btn.disabled = false; btn.innerText = oldText; }
+            } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
+        };
 
         /* ========================================================================= */
-        /* BOOT PRINCIPAL (CHARGEMENT GOOGLE SHEETS)                                 */
+        /* CHAPITRE 9 : WEBCAMS ET MÉTÉO (MODALS PLEIN ÉCRAN)                        */
         /* ========================================================================= */
-        window.fetchWithTimeout = async function(resource, options = {}) { const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 15000); options.signal = controller.signal; return fetch(resource, options).finally(() => clearTimeout(timeoutId)); };
 
-        window.fetchGoogleSheetsData = async function() {
-            const response = await window.fetchWithTimeout(GOOGLE_API_URL);
-            if (!response.ok) throw new Error("Accès refusé. Vérifiez l'URL.");
-            let data = JSON.parse(await response.text()); 
+        window.openMeteoWidget = function() {
+            let rightTitle = document.getElementById('right-title'); if(rightTitle) rightTitle.innerText = "⛅ Météo Live";
+            let sl = document.getElementById('selected-list'); if(!sl) return;
+            document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
             
-            window.rawGeneral = data.general || []; window.rawHistorique = data.historique || []; 
-            window.rawTicketsSheet = data.tickets || []; window.meteoHistData = data.meteo_hist || []; 
-            window.suiviEntretienData = data.suivi || []; window.rawAtelier = data.atelier || []; window.rawStock = data.stock || [];
-            window.driveIcons = data.driveIcons || {}; 
+            window.switchMeteoTab = function(p) {
+                let c = document.getElementById('meteo-content'); if(!c) return;
+                document.querySelectorAll('.meteo-tab-btn').forEach(b => b.style.opacity = '0.5'); document.getElementById('btn-meteo-' + p).style.opacity = '1';
+                if(p === 'meteoblue') c.innerHTML = `<iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe>`;
+                else if(p === 'windy') c.innerHTML = `<iframe src="https://embed.windy.com/embed2.html?lat=42.767&lon=0.582&zoom=12&overlay=wind&product=ecmwf" frameborder="0" style="width:100%;height:100%;"></iframe>`;
+            };
             
-            if (!data.general || data.general.length < 2) throw new Error(`Onglet principal vide.`);
-            const genHeaders = data.general[0].map(h => (h||"").toString().toLowerCase().trim());
-            const originalHeaders = data.general[0].map(h => (h||"").toString().trim()); 
-            const findCol = (keys) => { let idx = genHeaders.findIndex(h => keys.some(k => h.includes(k))); return idx !== -1 ? originalHeaders[idx] : null; };
-            
-            let idxId = genHeaders.findIndex(h => h.includes('n° de vanne') || h.includes('n°')); if(idxId === -1) idxId = 1; 
-            const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps'));
-            
-            window.keyPiste = findCol(['piste']); window.keyType = findCol(['type']); window.keyRep = findCol(['répéteur', 'repeteur']); window.keyTransfo = findCol(['transfo']);
-            originalHeaders.forEach(h => { let hl = h.toLowerCase(); if(!hl.includes('xy') && !hl.includes('gps') && !hl.includes('photo')) { window.availableColumns.push(h); window.columnValuesSets[h] = new Set(); } });
+            sl.innerHTML = `<div style="display:flex;gap:5px;margin-bottom:15px;"><button id="btn-meteo-meteoblue" class="meteo-tab-btn" onclick="window.switchMeteoTab('meteoblue')" style="flex:1;background:#3498db;color:white;border:none;padding:12px;border-radius:6px;font-weight:bold;opacity:1;">Meteoblue</button><button id="btn-meteo-windy" class="meteo-tab-btn" onclick="window.switchMeteoTab('windy')" style="flex:1;background:#e67e22;color:white;border:none;padding:12px;border-radius:6px;font-weight:bold;opacity:0.5;">Windy</button></div><div id="meteo-content" style="background:#fff;border-radius:8px;border:1px solid #eee;padding:10px;height:60vh;"><iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe></div>`;
+            window.openBottomSheet('full');
+        };
 
-            let dictGeneral = {};
-            data.general.slice(1).forEach(row => {
-                let idRaw = row[idxId]; if (idRaw == null || idRaw === "") return;
-                let id = idRaw.toString().replace(/^YA\s*/i, '').trim(); if (!id) return;
-                let lat = 0, lng = 0;
-                if (row[idxXY]) { let matches = String(row[idxXY]).replace(/,/g, '.').match(/-?\d+(?:\.\d+)?/g); if (matches && matches.length >= 2) { lat = parseFloat(matches[0]); lng = parseFloat(matches[1]); if (lat < 20 && lng > 30) { let temp = lat; lat = lng; lng = temp; } } }
-                let fullData = [];
-                originalHeaders.forEach((head, i) => { if(head.trim() !== "") { let val = (i < row.length && row[i] != null) ? row[i].toString() : ""; fullData.push({k: head, v: val}); if(val !== "" && window.columnValuesSets[head]) window.columnValuesSets[head].add(val.trim()); } });
-                dictGeneral[id] = { id: id, lat: lat, lng: lng, fullData: fullData, historique: {} };
+        window.openWebcamGrid = function() {
+            let rightTitle = document.getElementById('right-title'); if(rightTitle) rightTitle.innerText = "📷 Webcams";
+            let sl = document.getElementById('selected-list'); if(!sl) return;
+            document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
+            
+            let html = "<div style='display:flex;flex-direction:column;gap:15px;'>";
+            if(window.webcamsData.length === 0) html += "<p style='text-align:center; padding:20px;'>Aucune caméra disponible.</p>";
+            else window.webcamsData.forEach(w => { 
+                let isImg = w.url.toLowerCase().match(/\.(jpeg|jpg|png|gif)$/) != null; 
+                let mHtml = isImg ? `<img src="${w.url}" style="width:100%;border-radius:6px;"/>` : `<div style="width:100%;height:250px;border-radius:6px;overflow:hidden;"><iframe src="${w.url}" style="width:100%;height:100%;border:none;"></iframe></div>`; 
+                html += `<div style="background:#fff;padding:15px;border-radius:8px;border:1px solid #ddd;"><h4 style="margin:0 0 10px 0; color:var(--primary);">${w.icon} ${w.nom}</h4>${mHtml}</div>`; 
             });
-
-            if (data.historique && data.historique.length > 1) {
-                const histHeaders = data.historique[0].map(h => (h||"").toString().toLowerCase().trim()); const idxCanons = 1; let colsEau = {}, colsAir = {}, colsTemps = {}; let saisonsSet = new Set();
-                histHeaders.forEach((h, i) => { let match = h.match(/(eau|air|marche).*?(\d{2}\/\d{2})/i); if (match) { let t = match[1].toLowerCase(); let s = match[2]; saisonsSet.add(s); if (t.includes('eau')) colsEau[s] = i; if (t.includes('air')) colsAir[s] = i; if (t.includes('marche')) colsTemps[s] = i; } });
-                window.saisonsList = Array.from(saisonsSet).sort((a,b) => parseInt(a.split('/')[0]) - parseInt(b.split('/')[0])); window.histSeasonIdx = window.saisonsList.length > 0 ? window.saisonsList.length - 1 : 0;
-                data.historique.slice(1).forEach(row => { let rawId = row[idxCanons]; if (rawId != null && rawId !== "") { let id = rawId.toString().replace(/^YA\s*/i, '').trim(); if (id && dictGeneral[id]) { window.saisonsList.forEach(s => { dictGeneral[id].historique[s] = { eau: colsEau[s]?parseFloat(row[colsEau[s]])||0:0, air: colsAir[s]?parseFloat(row[colsAir[s]])||0:0, temps: colsTemps[s]?parseFloat(row[colsTemps[s]])||0:0 }; }); } } });
-            }
-
-            if (data.tickets && data.tickets.length > 1) {
-                const tHeaders = data.tickets[0].map(h => (h||"").toString().toLowerCase().trim()); const originalTHeaders = data.tickets[0].map(h => (h||"").toString().trim());
-                const idxTEtat = tHeaders.findIndex(h => h.includes('état') || h.includes('etat')); const idxTDate = tHeaders.findIndex(h => h.includes('date')); const idxTRegard = tHeaders.findIndex(h => h.includes('n°regard') || h.includes('regard')); const idxTDefaut = tHeaders.findIndex(h => h.includes('defaut') || h.includes('défaut'));
-                if(idxTRegard > -1) {
-                    window.rawTickets = data.tickets.slice(1).map(row => {
-                        let fullTData = []; originalTHeaders.forEach((h, i) => { if(h.trim() !== "") fullTData.push({k: h, v: (i < row.length && row[i] != null) ? row[i].toString() : ""}); });
-                        return { statut: (idxTEtat>-1 && row[idxTEtat] != null ? row[idxTEtat].toString().toLowerCase().trim() : ""), date: (idxTDate>-1 && row[idxTDate] != null ? row[idxTDate] : ""), idCanon: (row[idxTRegard] != null ? row[idxTRegard].toString().replace(/^YA\s*/i, '').trim() : ""), defaut: (idxTDefaut>-1 && row[idxTDefaut] ? row[idxTDefaut].toString() : "Défaut"), fullData: fullTData };
-                    });
-                }
-            }
-
-            Object.values(dictGeneral).forEach(canon => { if (canon.lat !== 0 && !isNaN(canon.lat)) window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); });
-            document.getElementById('loading-overlay').style.display = 'none'; window.initAppUI();
+            html += "</div>"; sl.innerHTML = html; 
+            window.openBottomSheet('full'); window.toggleMenu(); // Ouvre en grand et ferme le menu burger
         };
-
-        window.initAppUI = function() {
-            let ts=new Set(), rs=new Set(), trs=new Set();
-            window.snowCannons.features.forEach(f=>{ let p=f.properties; let t=window.getV(p,window.keyType); if(t!=="N/A")ts.add(t.toLowerCase()); let r=window.getV(p,window.keyRep); if(r!=="N/A")rs.add(r); let tr=window.getV(p,window.keyTransfo); if(tr!=="N/A")trs.add(tr); });
-            let tc=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6']; Array.from(ts).sort().forEach((t,i)=>window.technoColors[t]=tc[i%tc.length]);
-            let rc=['#1abc9c','#16a085','#f39c12','#d35400','#8e44ad']; Array.from(rs).sort().forEach((r,i)=>window.repColors[r]=rc[i%rc.length]);
-            let neonColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF']; Array.from(trs).sort().forEach((t,i)=>window.transfoColors[t]=neonColors[i%neonColors.length]);
-            
-            window.geojsonLayer = L.geoJSON(window.snowCannons, {
-                pointToLayer: function (feature, latlng) { return L.marker(latlng, { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div></div>` }) }); },
-                onEachFeature: function (feature, layer) {
-                    layer.on('click', function(e) { L.DomEvent.stopPropagation(e); const id = feature.properties.id; if (window.selectedCannonsMap.has(id)) { window.selectedCannonsMap.delete(id); } else { window.selectedCannonsMap.clear(); window.selectedCannonsMap.set(id, layer); } if(window.map) window.map.setView(layer.getLatLng(), 17, {animate: true}); window.updateMap(); window.renderSelectionPanel(); window.openBottomSheet('half'); });
-                }
-            }).addTo(window.map);
-
-            if (window.saisonsList.length > 0) {
-                let sld = document.getElementById('season-slider');
-                if (sld) { sld.max = window.saisonsList.length - 1; sld.value = window.histSeasonIdx; document.getElementById('season-display').innerText = window.saisonsList[window.histSeasonIdx]; sld.addEventListener('input', e => { window.histSeasonIdx = parseInt(e.target.value); document.getElementById('season-display').innerText = window.saisonsList[window.histSeasonIdx]; window.updateMap(); window.triggerGlobalFilterChart(); }); }
-            }
-
-            if (window.snowCannons.features.length > 0) window.map.fitBounds(window.geojsonLayer.getBounds(), { padding: [30, 30] });
-            window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
-        };
-
-        window.addEventListener('DOMContentLoaded', async () => {
-            if(window.bootAttempt > 0) return; window.bootAttempt = 1;
-            try { initMap(); await window.fetchGoogleSheetsData(); } catch (err) { window.showCrash(err.message, "Boot Principal"); }
-        });
+        
+        // Utilitaires restants nécessaires pour l'interface
+        window.biLoadSource = function() { console.log("BI Module: Données prêtes à être analysées."); }; // Le BI lourd peut être adapté ici si nécessaire
     </script>
 </body>
 </html>
