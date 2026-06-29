@@ -620,13 +620,24 @@
         /* ========================================================================= */
         /* STOCK (PLEIN ECRAN)                                                       */
         /* ========================================================================= */
+                /* ========================================================================= */
+        /* CHAPITRE 7 : ESPACE STOCK (INVENTAIRE COMPLET & MOBILE)                   */
+        /* ========================================================================= */
+        
         window.renderStockWorkspace = function() {
             let ws = document.getElementById('stock-workspace'); if (!ws) return;
             if (!window.rawStock || window.rawStock.length < 1) { ws.innerHTML = `<div style="text-align:center; padding:30px; font-weight:bold;">⚠️ Aucun stock détecté.</div>`; return; }
 
             let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
-            let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); let idxRef = headers.findIndex(h => h === "ref"); let idxProd = headers.findIndex(h => h === "produit"); 
-            let idxDesc = headers.findIndex(h => h === "description"); let idxPhoto = headers.findIndex(h => h === "photo"); let idxStock = headers.findIndex(h => h.includes("stock")); let idxMini = headers.findIndex(h => h.includes("mini")); let idxPris = headers.findIndex(h => h === "pris");
+            let idxNum = headers.findIndex(h => h.includes("numero") || h === "id");
+            let idxRef = headers.findIndex(h => h === "ref"); 
+            let idxProd = headers.findIndex(h => h === "produit"); 
+            let idxDesc = headers.findIndex(h => h === "description"); 
+            let idxPhoto = headers.findIndex(h => h === "photo"); 
+            let idxCout = headers.findIndex(h => h === "cout"); 
+            let idxStock = headers.findIndex(h => h.includes("stock")); 
+            let idxMini = headers.findIndex(h => h.includes("mini") || h.includes("seuil")); 
+            let idxPris = headers.findIndex(h => h === "pris");
 
             let maxId = 0; let uniqueDescs = new Set();
             for (let i = 1; i < window.rawStock.length; i++) {
@@ -635,76 +646,225 @@
                 if (idxDesc !== -1 && row[idxDesc]) { row[idxDesc].toString().split(',').forEach(d => { let c = d.trim(); if(c !== "") uniqueDescs.add(c); }); }
             }
             let nextId = maxId > 0 ? (maxId + 1) : 1; let totalArticles = window.rawStock.length - 1;
+            
             let filterOptionsHtml = `<option value="">📁 Tous les types</option>` + Array.from(uniqueDescs).sort().map(d => `<option value="${d}">${d}</option>`).join('');
+            let badgesHtml = Array.from(uniqueDescs).sort().map(d => `<span onclick="window.appendDescToForm('${d.replace(/'/g, "\\'")}')" style="background:#e1e8ed; color:#2c3e50; padding:6px 10px; border-radius:15px; font-size:12px; cursor:pointer; margin:3px; display:inline-block; font-weight:bold; border:1px solid #ccc;">+ ${d}</span>`).join('');
 
             ws.innerHTML = `
                 <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px; border-bottom:2px solid #16a085; padding-bottom:10px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;"><h2 style="color:#2c3e50; margin:0; font-size:22px;">📦 Inventaire <span id="stock-count-display" style="font-size:12px; color:#7f8c8d; font-weight:normal;">(${totalArticles})</span></h2><button onclick="window.toggleAddStockForm()" style="background:#16a085; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold;">➕ Ajouter</button></div>
-                    <div style="display:flex; gap:10px;"><select id="filter-desc-stock" onchange="window.filterStockItems()" class="edit-input" style="flex:1; margin:0;">${filterOptionsHtml}</select><input type="text" id="search-stock" placeholder="🔍 Réf..." onkeyup="window.filterStockItems()" class="edit-input" style="flex:1; margin:0;"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h2 style="color:#2c3e50; margin:0; font-size:22px;">📦 Inventaire <span id="stock-count-display" style="font-size:12px; color:#7f8c8d; font-weight:normal;">(${totalArticles})</span></h2>
+                        <button onclick="window.toggleAddStockForm()" style="background:#16a085; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold;">➕ Ajouter</button>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <select id="filter-desc-stock" onchange="window.filterStockItems()" class="edit-input" style="flex:1; margin:0; height:40px;">${filterOptionsHtml}</select>
+                        <input type="text" id="search-stock" placeholder="🔍 Réf, Nom..." onkeyup="window.filterStockItems()" class="edit-input" style="flex:1; margin:0; height:40px;">
+                    </div>
                 </div>
-                <div id="add-stock-form-container" style="display:none; background:#fff; border:2px solid #16a085; padding:15px; border-radius:8px; margin-bottom:20px; box-shadow:0 4px 15px rgba(0,0,0,0.05);"><h4 style="margin:0 0 12px 0; color:#16a085;">Créer un article</h4><div style="display:flex; flex-direction:column; gap:10px;" id="add-stock-fields-grid"></div><div style="display:flex; gap:10px; margin-top:15px;"><button onclick="window.toggleAddStockForm()" class="btn-action-primary" style="background:#e1e8ed; color:#333; margin-top:0;">Annuler</button><button onclick="window.addStockItemToServer(this)" class="btn-action-primary" style="background:#16a085; margin-top:0;">🚀 Valider l'ajout</button></div></div>
+                
+                <div id="add-stock-form-container" style="display:none; background:#fff; border:2px solid #16a085; padding:15px; border-radius:8px; margin-bottom:20px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                    <h4 style="margin:0 0 12px 0; color:#16a085;">Créer un article</h4>
+                    <div style="display:flex; flex-direction:column; gap:10px;" id="add-stock-fields-grid"></div>
+                    <div style="display:flex; gap:10px; margin-top:15px;">
+                        <button onclick="window.toggleAddStockForm()" class="btn-action-primary" style="background:#e1e8ed; color:#333; margin-top:0;">Annuler</button>
+                        <button onclick="window.addStockItemToServer(this)" class="btn-action-primary" style="background:#16a085; margin-top:0;">🚀 Valider l'ajout</button>
+                    </div>
+                </div>
+                
                 <div id="stock-cards-list" style="display:flex; flex-direction:column; gap:15px;"></div>`;
 
             let addGrid = document.getElementById('add-stock-fields-grid');
             window.rawStock[0].forEach(colName => {
                 let cleanName = colName ? colName.toString().trim() : ""; let lowerName = cleanName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                 if (cleanName === "" || lowerName.includes("commande") || lowerName === "cmd") return;
-                if (lowerName === "numero" || lowerName === "id") { addGrid.innerHTML += `<div><span class="edit-label">${cleanName} (Auto)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="${nextId}" readonly style="background:#eee; margin-bottom:0;"></div>`; } 
-                else if (lowerName === "reste") { addGrid.innerHTML += `<div><span class="edit-label">${cleanName} (Auto)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="0" readonly style="background:#eee; margin-bottom:0;"></div>`; } 
-                else { addGrid.innerHTML += `<div><span class="edit-label">${cleanName}</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" style="margin-bottom:0;"></div>`; }
+                
+                if (lowerName === "numero" || lowerName === "id") { 
+                    addGrid.innerHTML += `<div><span class="edit-label">${cleanName} (Auto)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="${nextId}" readonly style="background:#eee; margin-bottom:0;"></div>`; 
+                } 
+                else if (lowerName === "description") { 
+                    addGrid.innerHTML += `<div><span class="edit-label">${cleanName} (Mots clés)</span><input type="text" id="new-stock-desc" class="edit-input new-stock-field" data-col="${cleanName}" style="margin-bottom:8px;"><div style="display:flex; flex-wrap:wrap; margin-bottom:5px;">${badgesHtml}</div></div>`; 
+                } 
+                else if (lowerName === "reste") { 
+                    addGrid.innerHTML += `<div><span class="edit-label">${cleanName} (Auto)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="0" readonly style="background:#eee; margin-bottom:0;"></div>`; 
+                } 
+                else { 
+                    addGrid.innerHTML += `<div><span class="edit-label">${cleanName}</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" style="margin-bottom:0;"></div>`; 
+                }
             });
 
             let cardsContainer = document.getElementById('stock-cards-list');
             for (let i = 1; i < window.rawStock.length; i++) {
                 let row = window.rawStock[i]; if (!row || row.length === 0) continue; 
-                let numPiece = (idxNum !== -1 && row[idxNum]) ? row[idxNum].toString().trim() : i.toString(); let safeId = "stock-" + numPiece.replace(/[^a-zA-Z0-9]/g, "-");
-                let valStock = (idxStock !== -1 && row[idxStock]) ? parseFloat(row[idxStock]) || 0 : 0; let valMini = (idxMini !== -1 && row[idxMini]) ? parseFloat(row[idxMini]) || 0 : 0; let valPris = (idxPris !== -1 && row[idxPris]) ? parseFloat(row[idxPris]) || 0 : 0; let valRef = (idxRef !== -1 && row[idxRef]) ? row[idxRef].toString().trim() : ""; let valProd = (idxProd !== -1 && row[idxProd]) ? row[idxProd].toString().trim() : "Sans nom"; let valPhoto = (idxPhoto !== -1 && row[idxPhoto]) ? row[idxPhoto].toString().trim() : "";
+                let numPiece = (idxNum !== -1 && row[idxNum]) ? row[idxNum].toString().trim() : i.toString();
+                let safeId = "stock-" + numPiece.replace(/[^a-zA-Z0-9]/g, "-");
+                
+                let valStock = (idxStock !== -1 && row[idxStock]) ? parseFloat(row[idxStock]) || 0 : 0;
+                let valMini = (idxMini !== -1 && row[idxMini]) ? parseFloat(row[idxMini]) || 0 : 0;
+                let valPris = (idxPris !== -1 && row[idxPris]) ? parseFloat(row[idxPris]) || 0 : 0;
+                let valReste = valStock - valPris;
+                let valRef = (idxRef !== -1 && row[idxRef]) ? row[idxRef].toString().trim() : "";
+                let valProd = (idxProd !== -1 && row[idxProd]) ? row[idxProd].toString().trim() : "Sans nom";
+                let valDesc = (idxDesc !== -1 && row[idxDesc]) ? row[idxDesc].toString().trim() : "";
+                let valPhoto = (idxPhoto !== -1 && row[idxPhoto]) ? row[idxPhoto].toString().trim() : "";
+                let valCout = (idxCout !== -1 && row[idxCout]) ? row[idxCout].toString().trim() : "0";
 
                 let alerteStyle = valStock <= valMini ? "background:#fdf2f2; border-color:#e74c3c;" : "background:#fff; border-color:#ddd;";
                 let parsedImgUrl = "https://placehold.co/150x150?text=Pas+de+photo";
-                if (valPhoto && valPhoto !== "") { let rawFileName = valPhoto.split('/').pop().toLowerCase().trim(); let fuzzyMatch = Object.keys(window.drivePhotos || {}).find(k => k.includes(rawFileName.split('.')[0])); if (fuzzyMatch) parsedImgUrl = window.drivePhotos[fuzzyMatch]; else if (valPhoto.includes("drive.google.com")) parsedImgUrl = window.parseDriveUrl(valPhoto); }
+                if (valPhoto && valPhoto !== "") {
+                    let rawFileName = valPhoto.split('/').pop().toLowerCase().trim();
+                    let fuzzyMatch = Object.keys(window.drivePhotos || {}).find(k => k.includes(rawFileName.split('.')[0]));
+                    if (fuzzyMatch) parsedImgUrl = window.drivePhotos[fuzzyMatch];
+                    else if (valPhoto.includes("drive.google.com")) parsedImgUrl = window.parseDriveUrl(valPhoto);
+                }
+
+                // Pour générer TOUS les champs dans l'éditeur (au cas où il y en aurait d'autres)
+                let allFieldsHtml = "";
+                window.rawStock[0].forEach((colName, cIdx) => {
+                    let cleanName = colName ? colName.toString().trim() : ""; let lowerName = cleanName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    if (cleanName === "" || lowerName.includes("commande") || lowerName === "cmd") return;
+                    let valCell = row[cIdx] !== undefined ? row[cIdx] : "";
+                    
+                    if (lowerName === "numero" || lowerName === "id") return; // On ne modifie pas l'ID
+                    if (lowerName === "reste") {
+                        allFieldsHtml += `<div><span class="edit-label">${cleanName} (Auto)</span><input type="number" id="reste-${safeId}" class="edit-input s-field-${safeId}" data-col="${cleanName}" value="${valReste}" readonly style="background:#eee; margin:0;"></div>`;
+                    } else if (lowerName.includes("stock") || lowerName === "pris") {
+                        allFieldsHtml += `<div><span class="edit-label">${cleanName}</span><input type="number" class="edit-input s-field-${safeId}" data-col="${cleanName}" value="${valCell}" oninput="window.recalculateCardReste('${safeId}')" style="margin:0;"></div>`;
+                    } else {
+                        allFieldsHtml += `<div><span class="edit-label">${cleanName}</span><input type="text" class="edit-input s-field-${safeId}" data-col="${cleanName}" value="${valCell}" style="margin:0;"></div>`;
+                    }
+                });
 
                 let cardBlock = document.createElement('div'); cardBlock.className = "stock-item-card";
                 cardBlock.style = `border:1px solid #ddd; border-left:6px solid #16a085; border-radius:8px; padding:15px; display:flex; flex-direction:column; gap:10px; ${alerteStyle}`;
-                cardBlock.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start;"><h3 style="margin:0; color:#2c3e50; font-size:16px;">${valProd} <br><span style="font-size:12px; color:#16a085;">Réf: ${valRef}</span></h3>${parsedImgUrl !== "https://placehold.co/150x150?text=Pas+de+photo" ? `<img src="${parsedImgUrl}" style="max-width:60px; max-height:60px; border-radius:4px; border:1px solid #ccc;">` : ''}</div><div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">En Stock</span><input type="number" class="edit-input s-field-${safeId}" data-col="en stock" value="${valStock}" style="font-weight:bold; margin-bottom:0; color:${valStock <= valMini ? '#e74c3c' : '#2c3e50'};"></div><div style="flex:1;"><span class="edit-label">Mini</span><input type="number" class="edit-input s-field-${safeId}" data-col="seuil mini" value="${valMini}" style="margin-bottom:0;"></div><div style="flex:1;"><span class="edit-label">Pris</span><input type="number" class="edit-input s-field-${safeId}" data-col="pris" value="${valPris}" style="margin-bottom:0;"></div></div><div style="display:flex; gap:10px; margin-top:5px;"><button onclick="window.deleteStockItemFromServer('${numPiece}', this)" class="btn-action-primary" style="background:#ecf0f1; color:#e74c3c; margin-top:0; flex:1;">🗑️ Supprimer</button><button onclick="window.saveStockItemEdits('${numPiece}', '${safeId}', this)" class="btn-action-primary" style="background:#16a085; margin-top:0; flex:2;">💾 Sauvegarder</button></div>`;
+                cardBlock.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <h3 style="margin:0; color:#2c3e50; font-size:16px;">${valProd} <br><span style="font-size:12px; color:#16a085;">Réf: ${valRef}</span></h3>
+                        ${parsedImgUrl !== "https://placehold.co/150x150?text=Pas+de+photo" ? `<img src="${parsedImgUrl}" style="max-width:60px; max-height:60px; border-radius:4px; border:1px solid #ccc;">` : ''}
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; background:rgba(0,0,0,0.03); padding:10px; border-radius:6px; text-align:center;">
+                        <div><div style="font-size:10px; color:#7f8c8d; font-weight:bold; text-transform:uppercase;">Stock</div><div style="font-size:16px; font-weight:bold; color:${valStock <= valMini ? '#e74c3c' : '#2c3e50'};">${valStock}</div></div>
+                        <div><div style="font-size:10px; color:#7f8c8d; font-weight:bold; text-transform:uppercase;">Pris</div><div style="font-size:16px; font-weight:bold; color:#e67e22;">${valPris}</div></div>
+                        <div><div style="font-size:10px; color:#7f8c8d; font-weight:bold; text-transform:uppercase;">Reste</div><div style="font-size:16px; font-weight:bold; color:#27ae60;">${valReste}</div></div>
+                    </div>
+
+                    <details style="margin-top:5px;">
+                        <summary style="font-size:14px; font-weight:bold; color:#16a085; outline:none; cursor:pointer;">✏️ Modifier l'article complet</summary>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
+                            ${allFieldsHtml}
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:15px;">
+                            <button onclick="window.deleteStockItemFromServer('${numPiece}', this)" class="btn-action-primary" style="background:#ecf0f1; color:#e74c3c; margin-top:0; flex:1;">🗑️ Supprimer</button>
+                            <button onclick="window.saveStockItemEdits('${numPiece}', '${safeId}', this)" class="btn-action-primary" style="background:#16a085; margin-top:0; flex:2;">💾 Sauvegarder</button>
+                        </div>
+                    </details>`;
                 cardsContainer.appendChild(cardBlock);
             }
         };
 
+        window.appendDescToForm = function(val) {
+            let input = document.getElementById('new-stock-desc');
+            if(!input) return;
+            let current = input.value.trim();
+            if(current === "") input.value = val;
+            else {
+                let parts = current.split(',').map(s => s.trim());
+                if(!parts.includes(val)) input.value = current + ", " + val;
+            }
+        };
+
+        window.recalculateCardReste = function(safeId) {
+            let inputs = document.querySelectorAll(`.s-field-${safeId}`);
+            let stockInp = Array.from(inputs).find(i => i.getAttribute('data-col').toLowerCase().includes("stock"));
+            let prisInp = Array.from(inputs).find(i => i.getAttribute('data-col').toLowerCase() === "pris");
+            let resteDisplay = document.getElementById(`reste-${safeId}`);
+            if (stockInp && prisInp && resteDisplay) {
+                let stk = parseFloat(stockInp.value) || 0;
+                let prs = parseFloat(prisInp.value) || 0;
+                resteDisplay.value = stk - prs;
+            }
+        };
+        
         window.toggleAddStockForm = function() { let form = document.getElementById('add-stock-form-container'); if (form) form.style.display = (form.style.display === 'none') ? 'block' : 'none'; };
+        
         window.filterStockItems = function() {
-            let searchVal = document.getElementById('search-stock').value.toLowerCase().trim(); let descVal = document.getElementById('filter-desc-stock').value.toLowerCase().trim(); let visibleCount = 0;
+            let searchVal = document.getElementById('search-stock').value.toLowerCase().trim(); 
+            let descVal = document.getElementById('filter-desc-stock').value.toLowerCase().trim(); 
+            let visibleCount = 0;
             document.querySelectorAll('.stock-item-card').forEach(card => {
-                let txt = card.innerText.toLowerCase(); let inputs = card.querySelectorAll('input'); let matchSearch = (searchVal === "") || txt.includes(searchVal);
+                let txt = card.innerText.toLowerCase(); 
+                let inputs = card.querySelectorAll('input'); 
+                let matchSearch = (searchVal === "") || txt.includes(searchVal);
                 if (!matchSearch) inputs.forEach(inp => { if (inp.value.toLowerCase().includes(searchVal)) matchSearch = true; });
-                let matchDesc = (descVal === "") || txt.includes(descVal); let isMatch = matchSearch && matchDesc;
-                card.style.display = isMatch ? 'flex' : 'none'; if (isMatch) visibleCount++;
+                let matchDesc = (descVal === "") || txt.includes(descVal); 
+                let isMatch = matchSearch && matchDesc;
+                card.style.display = isMatch ? 'flex' : 'none'; 
+                if (isMatch) visibleCount++;
             });
-            let countDisplay = document.getElementById('stock-count-display'); if (countDisplay) countDisplay.innerText = `(${visibleCount})`;
+            let countDisplay = document.getElementById('stock-count-display'); 
+            if (countDisplay) countDisplay.innerText = `(${visibleCount})`;
         };
 
         window.addStockItemToServer = async function(btn) {
-            let fieldsObj = {}; let hasData = false; document.querySelectorAll('.new-stock-field').forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; if(inp.value.trim() !== "") hasData = true; });
-            if (!hasData) return; let oldText = btn.innerText; btn.innerText = "⏳ Envoi..."; btn.disabled = true;
+            let fieldsObj = {}; let hasData = false; 
+            document.querySelectorAll('.new-stock-field').forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; if(inp.value.trim() !== "") hasData = true; });
+            
+            let stockKey = Object.keys(fieldsObj).find(k => k.toLowerCase().trim().includes("stock"));
+            let prisKey = Object.keys(fieldsObj).find(k => k.toLowerCase().trim() === "pris");
+            let resteKey = Object.keys(fieldsObj).find(k => k.toLowerCase().trim() === "reste");
+            if (resteKey) fieldsObj[resteKey] = (parseFloat(fieldsObj[stockKey]) || 0) - (parseFloat(fieldsObj[prisKey]) || 0);
+
+            if (!hasData) return; 
+            let oldText = btn.innerText; btn.innerText = "⏳ Envoi..."; btn.disabled = true;
             try {
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_stock_item", fields: fieldsObj }) }); let r = await res.json();
-                if (r.status === "success") { let newRow = new Array(window.rawStock[0].length).fill(""); window.rawStock[0].forEach((header, index) => { let colName = header.toString().trim(); if (fieldsObj[colName] !== undefined) newRow[index] = fieldsObj[colName]; }); window.rawStock.push(newRow); window.renderStockWorkspace(); } else alert("Erreur serveur.");
+                if (r.status === "success") { 
+                    let newRow = new Array(window.rawStock[0].length).fill(""); 
+                    window.rawStock[0].forEach((header, index) => { let colName = header.toString().trim(); if (fieldsObj[colName] !== undefined) newRow[index] = fieldsObj[colName]; }); 
+                    window.rawStock.push(newRow); window.renderStockWorkspace(); 
+                } else alert("Erreur serveur.");
             } catch(e) { alert("Échec réseau."); }
             btn.innerText = oldText; btn.disabled = false;
         };
 
         window.saveStockItemEdits = async function(numPiece, safeId, btn) {
-            let fieldsObj = {}; document.querySelectorAll(`.s-field-${safeId}`).forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; });
+            let fieldsObj = {}; 
+            document.querySelectorAll(`.s-field-${safeId}`).forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; });
+            
             let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
-            try { let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }) }); let r = await res.json(); if (r.status === "success") { btn.innerText = "✅ OK"; btn.style.background = "#27ae60"; setTimeout(() => { window.renderStockWorkspace(); }, 1500); } else alert("Erreur."); } catch(e) { alert("Échec."); }
+            try { 
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }) }); let r = await res.json(); 
+                if (r.status === "success") { 
+                    btn.innerText = "✅ OK"; btn.style.background = "#27ae60"; 
+                    let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
+                    let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); if (idxNum === -1) idxNum = 0;
+                    let rowIndex = window.rawStock.findIndex((row, idx) => idx > 0 && row[idxNum].toString().trim() === numPiece.toString().trim());
+                    if (rowIndex !== -1) {
+                        window.rawStock[0].forEach((head, colIdx) => { 
+                            let cleanHead = head.toString().trim(); 
+                            if (fieldsObj[cleanHead] !== undefined) window.rawStock[rowIndex][colIdx] = fieldsObj[cleanHead]; 
+                        });
+                    }
+                    setTimeout(() => { window.renderStockWorkspace(); }, 1500); 
+                } else alert("Erreur."); 
+            } catch(e) { alert("Échec."); }
             btn.disabled = false;
         };
 
         window.deleteStockItemFromServer = async function(numPiece, btn) {
-            if (!confirm("⚠️ Confirmer la suppression définitive ?")) return; let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
-            try { let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_stock_item", idPiece: numPiece }) }); let r = await res.json(); if (r.status === "success") { let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""); let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); if (idxNum === -1) idxNum = 0; let rowIndex = window.rawStock.findIndex((row, idx) => idx > 0 && row[idxNum].toString().trim() === numPiece.toString().trim()); if (rowIndex !== -1) window.rawStock.splice(rowIndex, 1); btn.closest('.stock-item-card').remove(); window.filterStockItems(); } else alert("Erreur."); } catch(e) { alert("Échec."); }
+            if (!confirm("⚠️ Confirmer la suppression définitive ?")) return; 
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try { 
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_stock_item", idPiece: numPiece }) }); let r = await res.json(); 
+                if (r.status === "success") { 
+                    let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : ""); 
+                    let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); if (idxNum === -1) idxNum = 0; 
+                    let rowIndex = window.rawStock.findIndex((row, idx) => idx > 0 && row[idxNum].toString().trim() === numPiece.toString().trim()); 
+                    if (rowIndex !== -1) window.rawStock.splice(rowIndex, 1); 
+                    btn.closest('.stock-item-card').remove(); window.filterStockItems(); 
+                } else alert("Erreur."); 
+            } catch(e) { alert("Échec."); }
         };
-
         /* ========================================================================= */
         /* ATELIER (BANC ESSAI COMPLET MOBILE)                                       */
         /* ========================================================================= */
