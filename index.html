@@ -105,6 +105,15 @@
                 <label class="radio-card" style="border-color:#95a5a6;"><input type="radio" name="main_theme" value="type"> ⚙️ Type de canon</label>
             </div>
         </details>
+
+        <details class="menu-section" open><summary>🔍 Filtres Rapides</summary>
+            <div class="menu-content">
+                <span class="edit-label">Sélectionner une piste :</span>
+                <select id="piste-filter" class="edit-input" style="margin-bottom:0;" onchange="window.filterByPiste(this.value)">
+                    <option value="all">Toutes les pistes</option>
+                </select>
+            </div>
+        </details>
         
         <details class="menu-section" open><summary>🛠️ Outils & Rapports</summary>
             <div class="menu-content">
