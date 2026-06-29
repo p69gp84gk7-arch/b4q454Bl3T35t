@@ -2,313 +2,205 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <!-- Optimisations Mobile & PWA (iOS) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#2c3e50">
-    <link rel="apple-touch-icon" href="https://placehold.co/180x180/2c3e50/ffffff?text=GMAO">
-    <title>GMAO Neige</title>
+    <title>GMAO Maintenance Neige</title>
     
     <script>
-        window.showCrash = function(msg, line) { let o = document.getElementById('loading-overlay'); if (o) { o.style.display='flex'; document.getElementById('loading-spinner').style.display='none'; document.getElementById('loading-title').innerText="🛑 ERREUR SYSTEME"; if(document.getElementById('error-box')) { document.getElementById('error-box').style.display='block'; document.getElementById('error-msg').innerHTML="<b>Détail:</b> "+msg+(line?"<br><b>Ligne:</b> "+line:""); } } else alert("🛑 CRASH : "+msg); };
+        window.showCrash = function(msg, line) { let o = document.getElementById('loading-overlay'); if (o) { o.style.display='flex'; document.getElementById('loading-spinner').style.display='none'; document.getElementById('loading-title').innerText="🛑 ERREUR SYSTEME"; } else alert("🛑 CRASH : "+msg); };
         window.onerror = function(msg, src, ln) { if (msg.indexOf('Script error') > -1) return false; window.showCrash(msg, ln); return true; };
-        window.addEventListener('unhandledrejection', function(e) { window.showCrash(e.reason ? e.reason.message : "Erreur réseau", "Réseau"); });
     </script>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
     
     <style>
-        /* ========================================================================= */
-        /* SECTION 1 : VARIABLES & RESET GLOBAL MOBILE-FIRST                         */
-        /* ========================================================================= */
         :root {
-            --primary: #2c3e50;
-            --secondary: #3498db;
-            --bg-color: #f4f6f8;
-            --topbar-base-height: 50px;
-            --topbar-height: calc(var(--topbar-base-height) + env(safe-area-inset-top));
-            --sheet-banner-height: 80px;
-            --sheet-half-height: 50vh;
-            --sheet-full-height: 85vh;
+            --primary: #2c3e50; --secondary: #3498db; --bg-color: #f4f6f8;
+            --topbar-base-height: 50px; --topbar-height: calc(var(--topbar-base-height) + env(safe-area-inset-top));
+            --sheet-banner-height: 80px; --sheet-half-height: 50vh; --sheet-full-height: 85vh;
         }
 
-        body, html {
-            margin: 0; padding: 0; height: 100%; width: 100%;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: var(--bg-color);
-            overflow: hidden; /* Empêche le rebond iOS */
-            touch-action: none;
-        }
-
-        /* Elements communs */
-        .edit-input { width: 100%; box-sizing: border-box; padding: 12px; margin-top: 4px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; outline: none; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg-color); overflow: hidden; touch-action: none; }
+        
+        /* Composants standards */
+        .edit-input { width: 100%; box-sizing: border-box; padding: 12px; margin-top: 4px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
         .edit-label { font-size: 12px; font-weight: bold; color: #555; text-transform: uppercase; }
-        .btn-action-primary { background: var(--secondary); color: white; border: none; padding: 14px; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 15px; width: 100%; font-weight: bold; transition: 0.2s; }
+        .btn-action-primary { background: var(--secondary); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-size: 15px; margin-top: 10px; width: 100%; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .badge { display: inline-block; background: #f0f3f5; padding: 5px 10px; border-radius: 4px; font-size: 11px; margin: 0 4px 6px 0; border: 1px solid #e1e8ed; }
 
-        /* ========================================================================= */
-        /* SECTION 2 : TOPBAR (BANDEAU SUPÉRIEUR)                                    */
-        /* ========================================================================= */
-        #topbar {
-            position: fixed; top: 0; left: 0; right: 0;
-            height: var(--topbar-height);
-            padding-top: env(safe-area-inset-top); /* Gestion de l'encoche iPhone */
-            background: var(--primary);
-            z-index: 4000; display: flex; justify-content: space-between; align-items: center;
-            padding-left: 15px; padding-right: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3); color: white;
-        }
-
+        /* Topbar */
+        #topbar { position: fixed; top: 0; left: 0; right: 0; height: var(--topbar-height); padding-top: env(safe-area-inset-top); background: var(--primary); z-index: 4000; display: flex; justify-content: space-between; align-items: center; padding-left: 15px; padding-right: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); color: white; }
         .burger-btn { background: none; border: none; color: white; font-size: 26px; cursor: pointer; padding: 5px; }
-        .top-actions { display: flex; gap: 10px; }
-        .icon-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; }
-
-        /* ========================================================================= */
-        /* SECTION 3 : SIDEBAR GAUCHE (MENU BURGER)                                  */
-        /* ========================================================================= */
-        #left-sidebar {
-            position: fixed; top: var(--topbar-height); left: 0; bottom: 0;
-            width: 320px; max-width: 85vw; background: #fff; z-index: 3500;
-            transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 2px 0 15px rgba(0,0,0,0.1); overflow-y: auto; padding-bottom: 20px;
-        }
+        
+        /* Menu Burger 100% de la largeur */
+        #left-sidebar { position: fixed; top: var(--topbar-height); left: 0; bottom: 0; width: 100vw; background: #fff; z-index: 4500; transform: translateX(-100%); transition: transform 0.3s ease; overflow-y: auto; padding-bottom: 20px; }
         #left-sidebar.open { transform: translateX(0); }
         
-        .menu-overlay { position: fixed; top: var(--topbar-height); left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 3499; display: none; }
-        .menu-overlay.active { display: block; }
-        
-        .menu-section summary { padding: 15px; font-weight: bold; border-bottom: 1px solid #eee; outline: none; display: flex; justify-content: space-between; align-items: center; background: #fdfdfe; color: var(--primary); }
+        .menu-section summary { padding: 15px; font-weight: bold; border-bottom: 1px solid #eee; outline: none; display: flex; justify-content: space-between; align-items: center; background: #fdfdfe; color: var(--primary); font-size: 16px; }
         .menu-section summary::-webkit-details-marker { display: none; }
-        .menu-section summary::after { content: '+'; font-size: 18px; color: #bdc3c7; }
-        details[open].menu-section summary::after { content: '−'; color: var(--secondary); }
         .menu-content { padding: 15px; display: flex; flex-direction: column; gap: 12px; background: #fafbfc; }
-        
-        .radio-card { display: flex; align-items: center; gap: 10px; background: #fff; padding: 12px; border: 1px solid #e1e8ed; border-radius: 6px; font-size: 14px; font-weight: bold; }
-        .legend-item { display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:12px; font-weight:600;}
-        .color-box { width:14px; height:14px; border-radius:3px; border:1px solid #ccc; }
+        .radio-card { display: flex; align-items: center; gap: 10px; background: #fff; padding: 12px; border: 1px solid #e1e8ed; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer;}
+        .menu-btn { background: #ecf0f1; border: 1px solid #bdc3c7; padding: 12px; border-radius: 6px; font-weight: bold; color: #2c3e50; text-align: left; display: flex; align-items: center; gap: 10px; font-size: 14px; cursor:pointer;}
 
-        /* ========================================================================= */
-        /* SECTION 4 : CONTENEURS PRINCIPAUX (CARTE & LISTES)                        */
-        /* ========================================================================= */
+        /* Carte et Plein Ecran */
         #main-app-area { position: absolute; top: var(--topbar-height); left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; }
         #map-container { flex-grow: 1; position: relative; width: 100%; height: 100%; background: #222; }
         #map { position: absolute; top: 0; bottom: 0; left: 0; right: 0; width: 100%; height: 100%; z-index: 1; }
-        
-        #fullscreen-workspace { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 3000; background: var(--bg-color); overflow-y: auto; padding: 15px; padding-bottom: 50px; touch-action: pan-y;}
-        
+        #fullscreen-workspace { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 3000; background: var(--bg-color); overflow-y: auto; padding: 15px; padding-bottom: 50px; touch-action: pan-y; }
         #geo-btn { position: absolute; bottom: calc(var(--sheet-banner-height) + 15px); right: 15px; width: 45px; height: 45px; border-radius: 50%; background: white; border: 2px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 20px; z-index: 2000; cursor: pointer; }
 
-        /* ========================================================================= */
-        /* SECTION 5 : BOTTOM SHEET (PANNEAU AJUSTABLE TACTILE)                      */
-        /* ========================================================================= */
+        /* Bottom Sheet */
         #bottom-sheet { position: fixed; left: 0; right: 0; bottom: 0; background: white; z-index: 3100; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.15); display: flex; flex-direction: column; height: var(--sheet-banner-height); transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .sheet-handle { width: 100%; height: 35px; display: flex; justify-content: center; align-items: center; cursor: grab; flex-shrink: 0; background: transparent; }
+        .sheet-handle { width: 100%; height: 35px; display: flex; justify-content: center; align-items: center; cursor: grab; flex-shrink: 0; }
         .sheet-handle::after { content: ''; width: 50px; height: 6px; background: #bdc3c7; border-radius: 6px; }
         .sheet-content { flex-grow: 1; padding: 0 15px 15px 15px; overflow-y: auto; touch-action: pan-y; }
-        
         #bottom-sheet.state-banner { height: var(--sheet-banner-height); }
         #bottom-sheet.state-half { height: var(--sheet-half-height); }
         #bottom-sheet.state-full { height: var(--sheet-full-height); }
-        
-        .sheet-header { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #eee; padding-bottom:10px; margin-bottom:15px; }
 
-        /* ========================================================================= */
-        /* COMPOSANTS DE L'APPLICATION ORIGINALE (Tickets, Graphiques, Icônes)       */
-        /* ========================================================================= */
+        /* Icones Canons et Tableaux */
         .custom-cannon-icon { background:none; border:none; }
         .cannon-circle { border-radius:50%; color:white; font-weight:bold; text-align:center; text-shadow:1px 1px 2px rgba(0,0,0,0.8); box-sizing:border-box; box-shadow:0 3px 6px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; }
-        .camera-icon { font-size:24px; text-shadow:2px 2px 4px rgba(0,0,0,0.8); text-align:center; line-height:24px; }
-        .sel-details { background:#fff; margin-bottom:20px; border:1px solid #e1e8ed; border-radius:8px; overflow:hidden; }
-        .sel-details-header { padding:15px; font-weight:bold; font-size:16px; background:#fdfdfe; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center; }
-        .sel-details-body { padding:15px; font-size:14px; color:#444; line-height:1.5; }
         .ticket-card { background:#fff; border:1px solid #eee; border-left:4px solid #e74c3c; padding:12px; margin-bottom:10px; border-radius:6px; }
-        .piste-chart-container { background:#fff; border:1px solid #eee; padding:15px; border-radius:6px; margin-top:15px; }
-        
-        .atelier-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #8e44ad; }
-        .atelier-card h3 { margin: 0 0 10px 0; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .atelier-sub-details { margin-top: 10px; border: 1px solid #e1e8ed; border-radius: 6px; background: #fff; overflow: hidden; }
-        .atelier-sub-details summary { background: #f8f9fa; padding: 12px 15px; font-size: 14px; font-weight: bold; color: #34495e; list-style: none; display: flex; justify-content: space-between; align-items: center; }
-        .atelier-form-grid { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 15px; background: #fdfdfe; }
+        .piste-chart-container { background:#fff; border:1px solid #eee; padding:15px; border-radius:6px; margin-top:15px; margin-bottom:15px;}
+        .atelier-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 4px solid #8e44ad; }
 
-        #loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.95);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;}
+        /* Loader */
+        #loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.95);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;}
         .spinner{border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin-bottom:20px;}
         @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
         
-        /* Modals en overlay complet pour mobile */
-        .mobile-modal { display:none; position:fixed; top:var(--topbar-height); left:0; right:0; bottom:0; background:white; z-index:9000; flex-direction:column; overflow-y:auto; }
-        .comp-header { background:var(--primary); color:white; padding:15px; display:flex; justify-content:space-between; font-size:16px; font-weight:bold; }
-        .comp-body { padding:15px; flex-grow:1; background:var(--bg-color); }
+        .mobile-modal { display:none; position:fixed; top:var(--topbar-height); left:0; right:0; bottom:0; background:var(--bg-color); z-index:9000; flex-direction:column; overflow-y:auto; }
     </style>
 </head>
 <body>
-    <div id="datalists-container"></div> 
-    
-    <div id="loading-overlay">
-        <div class="spinner" id="loading-spinner"></div>
-        <h2 style="color:#3498db; margin:0;" id="loading-title">Démarrage...</h2>
-        <p style="color:#888; font-size:14px;" id="loading-step"></p>
-        <p style="color:#aaa; font-size:12px;" id="loading-desc"></p>
-        <div id="error-box" style="display:none; color:red; margin-top:20px; padding:20px; border:1px solid red; border-radius:8px;"><p id="error-msg"></p></div>
-    </div>
+    <div id="loading-overlay"><div class="spinner"></div><h2 style="color:#3498db;">Démarrage...</h2><p id="loading-step" style="color:#888;"></p></div>
 
-    <!-- ========================================================================= -->
-    <!-- INTERFACE HAUT (TOPBAR)                                                   -->
-    <!-- ========================================================================= -->
     <div id="topbar">
         <button class="burger-btn" onclick="toggleMenu()">☰</button>
         <div style="font-weight: bold; font-size: 18px; letter-spacing: 1px;">GMAO NEIGE</div>
-        <div class="top-actions">
-            <!-- Remplacement par les appels existants -->
-            <button class="icon-btn" onclick="window.openMeteoWidget()" title="Météo Live">⛅</button>
-            <button class="icon-btn" onclick="window.openGlobalCompareModal(true)" title="Comparer">📊</button>
-        </div>
-    </div>
+        <div style="width: 30px;"></div> </div>
 
-    <!-- ========================================================================= -->
-    <!-- MENU LATÉRAL (BURGER)                                                     -->
-    <!-- ========================================================================= -->
-    <div class="menu-overlay" id="menu-overlay" onclick="toggleMenu()"></div>
     <div id="left-sidebar">
-        <div style="padding: 20px 15px; font-weight: bold; background: var(--bg-color); border-bottom: 1px solid #eee; font-size: 18px; color: var(--primary);">
-            Outils & Analyse
+        <div style="padding: 20px 15px; font-weight: bold; background: var(--bg-color); border-bottom: 1px solid #eee; font-size: 18px; color: var(--primary); display:flex; justify-content:space-between;">
+            Menu Principal <button onclick="toggleMenu()" style="background:none; border:none; font-size:24px; color:#555;">×</button>
         </div>
         
-        <details class="menu-section" open>
-            <summary>🏢 Espaces de travail</summary>
+        <details class="menu-section" open><summary>🏢 Espaces de travail (Plein écran)</summary>
             <div class="menu-content">
-                <label class="radio-card"><input type="radio" name="main_theme" value="stock"> 📦 Gestion du Stock</label>
-                <label class="radio-card"><input type="radio" name="main_theme" value="atelier"> 🧰 Atelier (Banc d'essais)</label>
+                <label class="radio-card" style="border-color:#16a085;"><input type="radio" name="main_theme" value="stock"> 📦 Gestion du Stock</label>
+                <label class="radio-card" style="border-color:#8e44ad;"><input type="radio" name="main_theme" value="atelier"> 🧰 Atelier (Banc d'essais)</label>
             </div>
         </details>
 
-        <details class="menu-section" open>
-            <summary>🗺️ Analyse Terrain</summary>
+        <details class="menu-section" open><summary>🗺️ Analyse Terrain (Carte)</summary>
             <div class="menu-content">
                 <label class="radio-card" style="border-color:#e74c3c;"><input type="radio" name="main_theme" value="defauts" checked> 🚨 Tickets & Pannes</label>
-                <div id="legend-defauts" style="padding-left:10px;"></div>
-                
                 <label class="radio-card" style="border-color:#27ae60;"><input type="radio" name="main_theme" value="suivi_entretien"> 🛠️ Suivi Entretien</label>
-                <div id="legend-suivi_entretien" style="padding-left:10px;"></div>
-                
                 <label class="radio-card" style="border-color:#e67e22;"><input type="radio" name="main_theme" value="entretien_tete"> 🚿 Entretien Têtes</label>
-                <div id="legend-entretien_tete" style="padding-left:10px;"></div>
-                
                 <label class="radio-card" style="border-color:#3498db;"><input type="radio" name="main_theme" value="historique"> 📊 Historique Volumes</label>
-                <div id="legend-historique" style="padding-left:10px; display:none;">
-                     <div style="font-weight:bold; font-size:12px; color:#27ae60; margin-bottom:10px;">DONNÉE :</div>
-                     <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:12px; font-weight:bold;"><label><input type="radio" name="hist_metric" value="eau" checked> 💧 Eau</label><label><input type="radio" name="hist_metric" value="air"> 💨 Air</label><label><input type="radio" name="hist_metric" value="temps"> ⏱️ Hrs</label></div>
-                     <div style="font-size:12px; font-weight:bold;">Saison: <span id="season-display">-</span></div>
-                     <input type="range" id="season-slider" min="0" max="0" value="0" style="width:100%; margin-top:5px;">
-                </div>
-                
-                <label class="radio-card"><input type="radio" name="main_theme" value="type"> ⚙️ Type de canon</label>
-                <div id="legend-type" style="padding-left:10px;"></div>
+                <label class="radio-card" style="border-color:#95a5a6;"><input type="radio" name="main_theme" value="type"> ⚙️ Type de canon</label>
             </div>
         </details>
         
-        <div style="padding: 15px;">
-             <button class="btn-action-primary" onclick="window.openWebcamGrid()" style="background:#8e44ad;">📷 Webcams</button>
-             <button class="btn-action-primary" onclick="window.openBiMeteo()" style="background:#16a085;">❄️ Centre Expert BI</button>
-        </div>
+        <details class="menu-section" open><summary>🛠️ Outils & Rapports</summary>
+            <div class="menu-content">
+                 <button class="menu-btn" onclick="window.openMeteoWidget(); toggleMenu();">⛅ Météo Live</button>
+                 <button class="menu-btn" onclick="window.openGlobalCompareModal(true); toggleMenu();">📊 Comparer Saisons</button>
+                 <button class="menu-btn" onclick="window.openBiMeteo(); toggleMenu();">❄️ Centre Expert BI</button>
+                 <button class="menu-btn" onclick="window.openWebcamGrid(); toggleMenu();">📷 Webcams</button>
+            </div>
+        </details>
     </div>
 
-    <!-- ========================================================================= -->
-    <!-- ZONES PRINCIPALES (CARTE OU PLEIN ÉCRAN)                                  -->
-    <!-- ========================================================================= -->
     <div id="main-app-area">
-        <div id="map-container">
-            <div id="map"></div>
-            <button id="geo-btn" onclick="geolocateUser()">📍</button>
-        </div>
-
+        <div id="map-container"><div id="map"></div><button id="geo-btn" onclick="geolocateUser()">📍</button></div>
         <div id="fullscreen-workspace">
             <div id="atelier-workspace" style="display:none;"></div>
             <div id="stock-workspace" style="display:none;"></div>
         </div>
     </div>
 
-    <!-- ========================================================================= -->
-    <!-- BOTTOM SHEET (PANNEAU COULISSANT)                                         -->
-    <!-- ========================================================================= -->
     <div id="bottom-sheet" class="state-banner">
         <div class="sheet-handle" id="sheet-handle"></div>
         <div class="sheet-content" id="sheet-content">
-            
-            <div class="sheet-header">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #eee; padding-bottom:10px; margin-bottom:15px;">
                 <span id="right-title" style="font-size:18px; font-weight:bold; color:var(--primary);">📌 Tableau de Bord</span>
-                <button onclick="window.closeBottomSheet()" style="background:none; border:none; font-size:24px; color:#bdc3c7;">×</button>
             </div>
             
-            <!-- Affichage Fiche et Liste -->
             <div id="view-selection">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; background:#f4f6f8; padding:10px; border-radius:8px;" id="multi-tools">
+                <div id="historique-controls" style="display:none; background:#f4f9f9; border:1px solid #3498db; border-radius:8px; padding:15px; margin-bottom:15px;">
+                    <div style="font-weight:bold; font-size:14px; color:#2980b9; margin-bottom:10px;">Réglages Historique</div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:13px; font-weight:bold;">
+                        <label><input type="radio" name="hist_metric" value="eau" checked> 💧 Eau</label>
+                        <label><input type="radio" name="hist_metric" value="air"> 💨 Air</label>
+                        <label><input type="radio" name="hist_metric" value="temps"> ⏱️ Hrs</label>
+                    </div>
+                    <div style="font-size:13px; font-weight:bold; margin-bottom:5px;">Saison : <span id="season-display" style="color:#e67e22;">-</span></div>
+                    <input type="range" id="season-slider" min="0" max="0" value="0" style="width:100%; margin-bottom:15px;">
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><span class="edit-label">Min (<span id="val-min">0</span>)</span><input type="range" id="slider-min" style="width:100%;"></div>
+                        <div style="flex:1;"><span class="edit-label">Max (<span id="val-max">100</span>)</span><input type="range" id="slider-max" style="width:100%;"></div>
+                    </div>
+                </div>
+
+                <div id="multi-tools" style="display:none; justify-content:space-between; align-items:center; margin-bottom: 15px; background:#f4f6f8; padding:10px; border-radius:8px;">
                     <span style="font-size:14px; font-weight:bold; color:var(--secondary);"><b id="sel-count">0</b> cible(s)</span>
                     <button onclick="window.clearSelection()" style="background:#bdc3c7; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold;">Vider ✕</button>
                 </div>
-                <div id="selected-list">
-                    <!-- Injection dynamique des cartes par le JS original -->
-                </div>
+                <div id="selected-list"></div>
             </div>
             
-            <!-- Affichage Mode Édition -->
             <div id="view-edit" style="display:none;">
-                <div style="background:#fff3cd; padding:12px; border-radius:6px; margin-bottom:15px; border:1px solid #ffeeba;">
-                    <label style="color:#856404; font-size:14px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:8px;"><input type="checkbox" id="allow-move-chk" style="transform:scale(1.3);"> Déplacer GPS</label>
-                </div>
-                <h3 style="margin-top:0; color:var(--secondary); border-bottom:2px solid #eee; padding-bottom:10px;">Édition Canon <span id="edit-id-display"></span></h3>
+                <h3 style="margin-top:0; color:var(--secondary); border-bottom:2px solid #eee; padding-bottom:10px;">Édition <span id="edit-id-display"></span></h3>
                 <input type="hidden" id="edit-id">
                 <div style="display:flex; gap:10px; margin-bottom: 15px;">
-                    <div style="flex:1;"><div class="edit-label">Latitude</div><input type="number" step="0.0000001" id="edit-lat" class="edit-input"></div>
-                    <div style="flex:1;"><div class="edit-label">Longitude</div><input type="number" step="0.0000001" id="edit-lng" class="edit-input"></div>
+                    <div style="flex:1;"><div class="edit-label">Lat</div><input type="number" step="0.0000001" id="edit-lat" class="edit-input"></div>
+                    <div style="flex:1;"><div class="edit-label">Lng</div><input type="number" step="0.0000001" id="edit-lng" class="edit-input"></div>
                 </div>
                 <div id="dynamic-edit-fields"></div>
                 <div style="display:flex; gap:10px; margin-top:20px; margin-bottom:30px;">
-                    <button onclick="window.cancelEdit()" style="flex:1; background:#ecf0f1; color:#333; padding:15px; border-radius:6px; font-weight:bold;">Annuler</button>
-                    <button id="btn-save-edit" onclick="window.saveEditData()" style="flex:2; background:#27ae60; color:white; padding:15px; border:none; border-radius:6px; font-weight:bold;">✅ Sauver</button>
+                    <button onclick="window.cancelEdit()" style="flex:1; background:#ecf0f1; padding:15px; border-radius:6px; font-weight:bold;">Annuler</button>
+                    <button onclick="window.saveEditData()" style="flex:2; background:#27ae60; color:white; padding:15px; border:none; border-radius:6px; font-weight:bold;">✅ Sauver</button>
                 </div>
             </div>
-            
         </div>
     </div>
 
-    <!-- ========================================================================= -->
-    <!-- MODALS PLEIN ÉCRAN POUR OUTILS ANNEXES                                    -->
-    <!-- ========================================================================= -->
     <div id="compare-modal" class="mobile-modal">
-        <div class="comp-header"><span>📊 Comparaison Globale</span><button onclick="window.openGlobalCompareModal(false)" style="background:none;border:none;color:white;font-size:24px;">×</button></div>
-        <div class="comp-body">
-            <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:15px;">
-                <div class="edit-label">Piste</div><select id="comp-piste" class="edit-input"><option value="all">Toutes</option></select>
-                <div class="edit-label">Donnée</div><select id="comp-metric" class="edit-input"><option value="eau">Eau (m³)</option><option value="air">Air</option><option value="temps">Temps (h)</option></select>
-                <div style="display:flex; gap:10px;">
-                    <div style="flex:1;"><div class="edit-label">Saison A</div><select id="comp-s1" class="edit-input"></select></div>
-                    <div style="flex:1;"><div class="edit-label">Saison B</div><select id="comp-s2" class="edit-input"></select></div>
-                </div>
-                <button class="btn-action-primary" onclick="window.renderGlobalComparison()">Comparer</button>
-            </div>
-            <div class="comp-chart-box" id="main-comp-chart-container" style="background:#fff; padding:10px; border-radius:8px; height:400px; display:none;"><canvas id="main-comp-canvas"></canvas></div>
+        <div class="comp-header"><span>📊 Comparaison Saisons</span><button onclick="window.openGlobalCompareModal(false)" style="background:none;border:none;color:white;font-size:24px;">×</button></div>
+        <div style="padding:15px;">
+            <div class="edit-label">Piste</div><select id="comp-piste" class="edit-input"><option value="all">Toutes</option></select>
+            <div class="edit-label">Donnée</div><select id="comp-metric" class="edit-input"><option value="eau">Eau (m³)</option><option value="air">Air</option><option value="temps">Temps (h)</option></select>
+            <div style="display:flex; gap:10px;"><div style="flex:1;"><div class="edit-label">Saison A</div><select id="comp-s1" class="edit-input"></select></div><div style="flex:1;"><div class="edit-label">Saison B</div><select id="comp-s2" class="edit-input"></select></div></div>
+            <button class="btn-action-primary" onclick="window.renderGlobalComparison()">Comparer</button>
+            <div id="main-comp-chart-container" style="background:#fff; padding:10px; border-radius:8px; height:350px; margin-top:15px; display:none;"><canvas id="main-comp-canvas"></canvas></div>
         </div>
     </div>
 
     <div id="bi-meteo-modal" class="mobile-modal">
-        <div class="comp-header" style="background:#8e44ad;"><span>❄️ PowerBI Neige</span><button onclick="document.getElementById('bi-meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:24px;">×</button></div>
-        <div class="comp-body">
+        <div class="comp-header" style="background:#8e44ad;"><span>❄️ Centre Expert BI</span><button onclick="document.getElementById('bi-meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:24px;">×</button></div>
+        <div style="padding:15px;">
              <div class="edit-label">Source de données</div><select id="bi-source" class="edit-input" onchange="window.biLoadSource()">
-                <optgroup label="Données Brutes"><option value="raw_gen">Général Canons</option><option value="raw_hist">Historique Enneigeurs</option><option value="raw_tick">Tickets</option></optgroup>
+                <optgroup label="Données Brutes"><option value="raw_gen">Général Canons</option><option value="raw_hist">Historique Enneigeurs</option><option value="raw_tick">Tickets</option><option value="froid">Météo : Heures de Froid</option></optgroup>
                 <optgroup label="Calculées"><option value="conso">Production par Saison</option><option value="defauts">Pannes par Mois</option><option value="types">Types de Canons</option></optgroup>
             </select>
-            <div class="edit-label">Format</div><select id="bi-type" class="edit-input" onchange="window.biUpdateUI()"><option value="bar">📊 Barres</option><option value="line">📈 Courbes</option><option value="doughnut">🍩 Anneau</option></select>
+            <div class="edit-label">Format</div><select id="bi-type" class="edit-input" onchange="window.biUpdateUI()"><option value="bar">📊 Barres</option><option value="line">📈 Courbes</option><option value="combo">📉 Combiné</option><option value="doughnut">🍩 Anneau</option></select>
             <div class="edit-label">Abscisses</div><select id="bi-x" class="edit-input" onchange="window.biDrawChart()"></select>
-            <div class="edit-label">Axes Verticaux</div><div id="bi-y-container" style="background:#fff; border-radius:6px; padding:10px; margin-bottom:12px; font-size:14px; max-height:150px; overflow-y:auto;"></div>
+            <div class="edit-label">Axes Verticaux</div><div id="bi-y-container" style="background:#fff; border-radius:6px; padding:10px; margin-bottom:12px; font-size:14px; max-height:150px; overflow-y:auto; border:1px solid #ccc;"></div>
             <button class="btn-action-primary" style="background:#27ae60;" onclick="window.biDrawChart()">🔄 Actualiser</button>
-            <div style="background:#fff; border-radius:8px; margin-top:15px; padding:10px; height:350px;"><canvas id="bi-canvas"></canvas></div>
+            <div style="background:#fff; border-radius:8px; border:1px solid #ccc; margin-top:15px; padding:10px; height:350px;"><canvas id="bi-canvas"></canvas></div>
+        </div>
+    </div>
+    
+    <div id="meteo-modal" class="mobile-modal">
+        <div class="comp-header" style="background:#2980b9;"><span>⛅ Météo Live</span><button onclick="document.getElementById('meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:24px;">×</button></div>
+        <div style="padding:15px; flex-grow:1; display:flex; flex-direction:column;">
+            <div style="display:flex;gap:5px;margin-bottom:15px;"><button id="btn-meteo-meteoblue" class="btn-action-primary" onclick="window.switchMeteoTab('meteoblue')" style="flex:1; margin:0; opacity:1;">Meteoblue</button><button id="btn-meteo-windy" class="btn-action-primary" onclick="window.switchMeteoTab('windy')" style="flex:1; background:#e67e22; margin:0; opacity:0.5;">Windy</button></div>
+            <div id="meteo-content" style="background:#fff; border-radius:8px; border:1px solid #eee; flex-grow:1; min-height:400px;"></div>
         </div>
     </div>
 
@@ -316,818 +208,55 @@
         /* ========================================================================= */
         /* LOGIQUE UI / UX MOBILE (Menu, Bottom Sheet, Cartographie)                 */
         /* ========================================================================= */
-
-        // 1. Menu Burger
-        function toggleMenu() {
-            document.getElementById('left-sidebar').classList.toggle('open');
-            document.getElementById('menu-overlay').classList.toggle('active');
-        }
-
-        // 2. Gestion Tactile du Bottom Sheet
-        const sheet = document.getElementById('bottom-sheet');
-        const handle = document.getElementById('sheet-handle');
-        let startY, startHeight;
-        
-        const getStates = () => [ 80, window.innerHeight * 0.5, window.innerHeight * 0.85 ];
-
-        handle.addEventListener('touchstart', (e) => {
-            startY = e.touches[0].clientY;
-            startHeight = sheet.getBoundingClientRect().height;
-            sheet.style.transition = 'none';
-        }, {passive: true});
-
-        handle.addEventListener('touchmove', (e) => {
-            const currentY = e.touches[0].clientY;
-            let newHeight = startHeight + (startY - currentY);
-            if (newHeight < 80) newHeight = 80;
-            if (newHeight > window.innerHeight * 0.9) newHeight = window.innerHeight * 0.9;
-            sheet.style.height = `${newHeight}px`;
-        }, {passive: true});
-
-        handle.addEventListener('touchend', () => {
-            sheet.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-            const currentHeight = sheet.getBoundingClientRect().height;
-            const states = getStates();
-            const closest = states.reduce((prev, curr) => Math.abs(curr - currentHeight) < Math.abs(prev - currentHeight) ? curr : prev);
-
-            sheet.classList.remove('state-banner', 'state-half', 'state-full');
-            sheet.style.height = ''; 
-            if (closest === states[0]) sheet.classList.add('state-banner');
-            else if (closest === states[1]) sheet.classList.add('state-half');
-            else sheet.classList.add('state-full');
-        });
-
-        // 3. Fonctions d'ouverture programmatique du Bottom Sheet (remplace Right Sidebar)
-        window.openBottomSheet = function(state) {
-            sheet.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-            sheet.classList.remove('state-banner', 'state-half', 'state-full');
-            sheet.classList.add('state-' + state);
-            sheet.style.height = ''; 
-        };
-        window.closeBottomSheet = function() { window.openBottomSheet('banner'); window.clearSelection(); };
-        window.closeRightSidebar = window.closeBottomSheet; // Rétrocompatibilité
-        window.toggleRightSidebar = function() {
-            if(sheet.classList.contains('state-banner')) window.openBottomSheet('half');
-            else window.openBottomSheet('banner');
-        };
-
-        // 4. Initialisation de la Carte Leaflet et GPS
-        function initMap() {
-            window.map = L.map('map', { zoomControl: false }).setView([42.766, 0.564], 14);
-            window.satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles © Esri', maxZoom: 18
-            }).addTo(window.map);
-
-            window.userMarker = null;
-            window.map.on('locationfound', function(e) {
-                if (window.userMarker) { window.userMarker.setLatLng(e.latlng); } 
-                else { window.userMarker = L.circleMarker(e.latlng, { radius: 8, fillColor: "#3498db", color: "#fff", weight: 2, opacity: 1, fillOpacity: 0.8 }).addTo(window.map); }
-                window.map.setView(e.latlng, 17, { animate: true });
-                document.getElementById('geo-btn').innerHTML = "🟢";
-            });
-            window.map.on('locationerror', function(e) {
-                alert("Impossible d'obtenir votre position GPS.");
-                document.getElementById('geo-btn').innerHTML = "📍";
-            });
-        }
-        
-        function geolocateUser() {
-            document.getElementById('geo-btn').innerHTML = "⏳";
-            window.map.locate({setView: false, maxZoom: 17, enableHighAccuracy: true});
-        }
-
-        // 5. Routage de l'Application (Thèmes & Vues Plein Écran)
-        function switchViewMode() {
-            const selectedTheme = document.querySelector('input[name="main_theme"]:checked').value;
-            window.mainTheme = selectedTheme;
-            
-            const mapContainer = document.getElementById('map-container');
-            const bottomSheet = document.getElementById('bottom-sheet');
-            const fullscreenArea = document.getElementById('fullscreen-workspace');
-            const atelierWs = document.getElementById('atelier-workspace');
-            const stockWs = document.getElementById('stock-workspace');
-            
-            // Gestion de l'affichage de la légende Météo Hist dans la sidebar
-            document.getElementById('legend-historique').style.display = (selectedTheme === 'historique') ? 'block' : 'none';
-
-            if (selectedTheme === 'stock' || selectedTheme === 'atelier') {
-                mapContainer.style.display = 'none'; bottomSheet.style.display = 'none';
-                fullscreenArea.style.display = 'block';
-                
-                if (selectedTheme === 'stock') {
-                    stockWs.style.display = 'block'; atelierWs.style.display = 'none';
-                    if(window.renderStockWorkspace) window.renderStockWorkspace();
-                } else {
-                    stockWs.style.display = 'none'; atelierWs.style.display = 'block';
-                    if(window.renderAtelierWorkspace) window.renderAtelierWorkspace();
-                }
-            } else {
-                mapContainer.style.display = 'block'; bottomSheet.style.display = 'flex';
-                fullscreenArea.style.display = 'none'; stockWs.style.display = 'none'; atelierWs.style.display = 'none';
-                
-                if (window.map) setTimeout(() => { window.map.invalidateSize(); }, 300);
-                
-                if(window.updateLegend) window.updateLegend();
-                if(window.updateMap) window.updateMap();
-                if(window.triggerGlobalFilterChart) window.triggerGlobalFilterChart();
-                if(window.selectedCannonsMap && window.selectedCannonsMap.size === 0) window.openBottomSheet('banner');
-            }
-        }
-
-        // Écouteur global pour changer de mode
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('input[name="main_theme"]').forEach(r => {
-                r.addEventListener('change', () => { switchViewMode(); toggleMenu(); });
-            });
-        });
-
-        /* ========================================================================= */
-        /* LE CODE ORIGINAL (DONNÉES, GOOGLE SHEETS, GESTION DES CANONS)             */
-        /* ========================================================================= */
-        
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbxXWPGusI2o66WGBut-urJXxeB00ltFti2KltPXb-mafmmfleavph8wRGNWPydHw0YY1g/exec";
 
         window.snowCannons = {"type":"FeatureCollection","features":[]}; 
-        window.rawGeneral = []; window.rawHistorique = []; window.rawTicketsSheet = []; window.meteoHistData = []; 
-        window.meteoFroidData = []; window.rawTickets = []; window.saisonsList = []; window.cloudKmzLayers = []; 
-        window.webcamsData = []; window.isMultiSelect = false; window.columnValuesSets = {}; window.availableColumns = []; 
+        window.rawGeneral = []; window.rawHistorique = []; window.rawTickets = []; window.meteoHistData = []; window.meteoFroidData = []; window.suiviEntretienData = []; window.rawAtelier = []; window.rawStock = [];
+        window.saisonsList = []; window.webcamsData = []; window.columnValuesSets = {}; window.availableColumns = []; 
         window.mainTheme = 'defauts'; window.histMetric = 'eau'; window.histSeasonIdx = 0; 
-        window.absoluteMaxes = {eau:0, air:0, temps:0}; window.currentMaxThreshold = {eau:100, air:100, temps:100}; 
-        window.currentMinThreshold = {eau:0, air:0, temps:0}; window.activeFilters = [{key:"", vals:[]}]; 
-        window.currentPistes = ['all']; window.currentTypes = ['all']; window.chartInstances = {}; 
-        window.selectedCannonsMap = new Map(); window.currentlyEditingId = null; window.technoColors = {}; 
-        window.repColors = {}; window.transfoColors = {}; window.externalLayers = {}; 
-        window.defaultColors = ['#e74c3c','#3498db','#f1c40f','#2ecc71','#9b59b6','#e67e22','#1abc9c','#34495e']; 
-        window.keyPiste = ""; window.keyType = ""; window.keyRep = ""; window.keyTransfo = ""; window.localDB = null; 
-        window.bootAttempt = 0; window.tempTicketPayloads = {}; window.suiviEntretienData = []; window.rawAtelier = []; window.rawStock = [];
+        window.absoluteMaxes = {eau:0, air:0, temps:0}; window.currentMaxThreshold = {eau:100, air:100, temps:100}; window.currentMinThreshold = {eau:0, air:0, temps:0};
+        window.chartInstances = {}; window.selectedCannonsMap = new Map(); window.currentlyEditingId = null; window.technoColors = {}; window.repColors = {}; window.transfoColors = {};
+        window.keyPiste = ""; window.keyType = ""; window.keyRep = ""; window.keyTransfo = ""; window.tempTicketPayloads = {};
 
-        window.getV = function(p, k) { if(!k || !p || !p.fullData) return "N/A"; let normK = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); let o = p.fullData.find(x => x.k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === normK); return o ? o.v.toString().trim() : "N/A"; }; 
-        window.getTicketsForCanon = function(id) { return window.rawTickets.filter(t => t.idCanon === id); }; 
-        window.getActiveTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('faire') || t.statut.includes('cours')); }; 
-        window.getHistoryTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('fait') || t.statut === '').sort((a,b) => new Date(b.date) - new Date(a.date)); };
+        function toggleMenu() { document.getElementById('left-sidebar').classList.toggle('open'); }
+
+        const sheet = document.getElementById('bottom-sheet'); const handle = document.getElementById('sheet-handle');
+        let startY, startHeight; const getStates = () => [ 80, window.innerHeight * 0.5, window.innerHeight * 0.85 ];
+        handle.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; startHeight = sheet.getBoundingClientRect().height; sheet.style.transition = 'none'; }, {passive: true});
+        handle.addEventListener('touchmove', (e) => { let newHeight = startHeight + (startY - e.touches[0].clientY); if (newHeight < 80) newHeight = 80; if (newHeight > window.innerHeight * 0.9) newHeight = window.innerHeight * 0.9; sheet.style.height = `${newHeight}px`; }, {passive: true});
+        handle.addEventListener('touchend', () => { sheet.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)'; const curr = sheet.getBoundingClientRect().height; const states = getStates(); const closest = states.reduce((prev, currState) => Math.abs(currState - curr) < Math.abs(prev - curr) ? currState : prev); sheet.classList.remove('state-banner', 'state-half', 'state-full'); sheet.style.height = ''; if (closest === states[0]) sheet.classList.add('state-banner'); else if (closest === states[1]) sheet.classList.add('state-half'); else sheet.classList.add('state-full'); });
         
-        window.parseDriveUrl = function(url) { if (!url || url.trim() === "") return ""; let id = ""; let matchD = url.match(/\/d\/([a-zA-Z0-9-_]+)/); let matchId = url.match(/[?&]id=([a-zA-Z0-9-_]+)/); if (matchD) id = matchD[1]; else if (matchId) id = matchId[1]; if (id) return "https://lh3.googleusercontent.com/d/" + id; return url; };
+        window.openBottomSheet = function(state) { sheet.style.transition = 'height 0.3s ease'; sheet.classList.remove('state-banner', 'state-half', 'state-full'); sheet.classList.add('state-' + state); sheet.style.height = ''; };
+        window.closeBottomSheet = function() { window.openBottomSheet('banner'); window.clearSelection(); };
 
-        window.clearSelection = function() { window.selectedCannonsMap.clear(); window.updateMap(); window.renderSelectionPanel(); window.triggerGlobalFilterChart(); };
-        window.cancelEdit = function() { window.currentlyEditingId = null; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('right-title').innerText = "📌 Fiche Canon"; window.updateMap(); window.renderSelectionPanel(); };
-        
-        window.focusCannon = function(id) { window.geojsonLayer.eachLayer(l => { if(l.feature.properties.id === id) { if(!window.isMultiSelect && window.mainTheme !== 'suivi_entretien') window.selectedCannonsMap.clear(); window.selectedCannonsMap.set(id,l); window.map.setView(l.getLatLng(),17); window.updateMap(); window.renderSelectionPanel(); window.openBottomSheet('half'); } }); };
-        
-        window.getColorByFilter = function(ratio, p) {
-            if(window.mainTheme === 'entretien_tete') { let bVal = window.getV(p, "Buses").toLowerCase().trim(); return (bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x") ? '#e67e22' : '#bdc3c7'; }
-            const inter = (c1,c2,f) => { let r = c1.slice(); for(let i=0; i<3; i++) r[i] = Math.round(r[i] + f * (c2[i] - c1[i])); return `rgb(${r[0]},${r[1]},${r[2]})`; };
-            if(window.mainTheme === 'defauts') { let act = window.getActiveTickets(p.id); if(act.length === 0) return '#bdc3c7'; if(act.some(t => t.statut.includes('faire'))) return '#e74c3c'; return '#f39c12'; }
-            if(window.mainTheme === 'historique') { if(window.histMetric === 'eau') return inter([173,216,230],[41,128,185],ratio); if(window.histMetric === 'air') return inter([250,219,94],[211,84,0],ratio); if(window.histMetric === 'temps') return inter([171,235,198],[39,174,96],ratio); }
-            if(window.mainTheme === 'repeteur') return window.repColors[window.getV(p, window.keyRep)] || '#7f8c8d';
-            if(window.mainTheme === 'transfo') return window.transfoColors[window.getV(p, window.keyTransfo)] || '#7f8c8d';
-            if(window.mainTheme === 'type') { let tv = window.getV(p, window.keyType).toLowerCase(); if(["demak lenko", "demac lenko"].includes(tv)) return "#0000FF"; if(["sufag", "street", "taurus", "taurax", "peak"].includes(tv)) return "#008000"; return window.technoColors[tv] || "#FFD700"; }
-            return '#34495e'; 
-        };
+        function initMap() {
+            window.map = L.map('map', { zoomControl: false }).setView([42.766, 0.564], 14);
+            window.satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 18 }).addTo(window.map);
+            window.userMarker = null;
+            window.map.on('locationfound', function(e) { if (window.userMarker) { window.userMarker.setLatLng(e.latlng); } else { window.userMarker = L.circleMarker(e.latlng, { radius: 8, fillColor: "#3498db", color: "#fff", weight: 2, opacity: 1, fillOpacity: 0.8 }).addTo(window.map); } window.map.setView(e.latlng, 17, { animate: true }); document.getElementById('geo-btn').innerHTML = "🟢"; });
+            window.map.on('locationerror', function(e) { alert("GPS non disponible."); document.getElementById('geo-btn').innerHTML = "📍"; });
+        }
+        function geolocateUser() { document.getElementById('geo-btn').innerHTML = "⏳"; window.map.locate({setView: false, maxZoom: 17, enableHighAccuracy: true}); }
 
-        window.updateLegend = function() {
-            let elDef = document.getElementById('legend-defauts'); let elSuivi = document.getElementById('legend-suivi_entretien');
-            if (window.mainTheme === 'suivi_entretien' && elSuivi) { elSuivi.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e74c3c;"></div> Défaut</div><div class="legend-item"><div class="color-box" style="background:#9b59b6;"></div> Usine</div><div class="legend-item"><div class="color-box" style="background:#27ae60;"></div> Déco</div><div class="legend-item"><div class="color-box" style="background:#f1c40f;"></div> Connecté</div>`; }
-            else if (window.mainTheme === 'entretien_tete') { let elEntretien = document.getElementById('legend-entretien_tete'); if (elEntretien) { elEntretien.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e67e22;"></div> Fait</div><div class="legend-item"><div class="color-box" style="background:#bdc3c7;"></div> À faire</div>`; } }
-            else if (window.mainTheme === 'defauts' && elDef) { elDef.innerHTML = `<div class="legend-item"><div class="color-box" style="background: #e74c3c;"></div> Urgent</div><div class="legend-item"><div class="color-box" style="background: #f39c12;"></div> En cours</div><div class="legend-item"><div class="color-box" style="background: #bdc3c7;"></div> RAS</div>`; }
-            else if (window.mainTheme === 'type') { let elTy = document.getElementById('legend-type'); let h = '';  Object.keys(window.technoColors).sort().forEach(k => {  let color = window.technoColors[k];  if(["demak lenko", "demac lenko"].includes(k)) color = "#0000FF"; else if(["sufag", "street", "taurus", "taurax", "peak"].includes(k)) color = "#008000"; if(k === "n/a" || k === "") return; let iconHtml = `<div class="color-box" style="background: ${color};"></div>`; if (window.driveIcons && window.driveIcons[k]) { iconHtml = `<div style="width:16px; height:16px; background:url('${window.driveIcons[k]}') center/contain no-repeat; margin-right:5px;"></div>`; } h += `<div class="legend-item">${iconHtml} ${k.toUpperCase()}</div>`;  }); if(elTy) elTy.innerHTML = h; }
-        };
+        function switchViewMode() {
+            const selectedTheme = document.querySelector('input[name="main_theme"]:checked').value; window.mainTheme = selectedTheme;
+            const mapContainer = document.getElementById('map-container'); const bottomSheet = document.getElementById('bottom-sheet'); const fullscreenArea = document.getElementById('fullscreen-workspace');
+            const atelierWs = document.getElementById('atelier-workspace'); const stockWs = document.getElementById('stock-workspace');
+            const histControls = document.getElementById('historique-controls');
 
-        window.updateMap = function() {
-            if(!window.geojsonLayer) return;
-            let s = window.saisonsList[window.histSeasonIdx];
-            window.geojsonLayer.eachLayer(function(layer) {
-                const p = layer.feature.properties; let vis = true;
-                if (window.currentPistes && !window.currentPistes.includes('all')) { if (!window.currentPistes.includes(window.getV(p, window.keyPiste))) vis = false; }
-                if (window.currentTypes && !window.currentTypes.includes('all')) { if (!window.currentTypes.includes(window.getV(p, window.keyType).toLowerCase())) vis = false; }
-                
-                let val = 0;
-                if (window.mainTheme === 'historique') {
-                    val = p.historique[s] ? parseFloat(p.historique[s][window.histMetric]) : 0; if (isNaN(val)) val = 0;
-                    let minT = parseFloat(window.currentMinThreshold[window.histMetric]) || 0; let maxT = parseFloat(window.currentMaxThreshold[window.histMetric]) || Infinity;
-                    if (val < minT || val > maxT) vis = false;
-                }
+            // Affichage spécifique pour l'historique dans le panneau bas
+            if(histControls) histControls.style.display = (selectedTheme === 'historique') ? 'block' : 'none';
 
-                if (!vis) { p._isVisible = false; if (window.map.hasLayer(layer)) window.map.removeLayer(layer); } 
-                else {
-                    p._isVisible = true; if (!window.map.hasLayer(layer)) window.map.addLayer(layer);
-                    
-                    if (window.mainTheme === 'type') {
-                        let typeCanon = window.getV(p, window.keyType).toLowerCase().trim();
-                        let iconUrl = window.driveIcons && window.driveIcons[typeCanon] ? window.driveIcons[typeCanon] : null;
-                        if (iconUrl) {
-                            let imageSize = 40; let zIdx = window.currentlyEditingId === p.id ? 2000 : (window.selectedCannonsMap.has(p.id) ? 1000 : 0); layer.setZIndexOffset(zIdx);
-                            let isSelected = window.selectedCannonsMap.has(p.id) || window.currentlyEditingId === p.id;
-                            let highlightStyle = isSelected ? "border: 2px solid #e74c3c; border-radius: 50%; background-color: rgba(255,255,255,0.7);" : "";
-                            let imageHtml = `<div style="position:relative; width:${imageSize}px; height:${imageSize}px;"><div style="background:url('${iconUrl}') center/contain no-repeat; width:100%; height:100%; filter: drop-shadow(2px 4px 5px rgba(0,0,0,0.5)); ${highlightStyle}"></div><div style="position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; font-size:9px; padding:1px 4px; border-radius:4px; font-weight:bold;">${p.id}</div></div>`;
-                            layer.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: imageHtml, iconSize: [imageSize, imageSize], iconAnchor: [imageSize/2, imageSize/2] }));
-                            layer.setOpacity(1); return; 
-                        }
-                    }
-
-                    let rad = 14; let ratio = 0; let bgStr = ""; let iconChar = p.id; let lh = '28px'; let remarkBadge = ""; 
-                    if (window.mainTheme === 'historique') { 
-                        let maxVal = window.absoluteMaxes[window.histMetric] || 1; ratio = val / maxVal; rad = 12 + (15 * ratio); bgStr = window.getColorByFilter(ratio, p);
-                    } else if (window.mainTheme === 'suivi_entretien') {
-                        let acts = window.getActiveTickets(p.id); let hasFault = acts.length > 0;
-                        let suivi = window.suiviEntretienData.find(row => row[0] == p.id) || ["", "", "non", "non", "", "", ""];
-                        let dec = suivi[2] && suivi[2].toString().toLowerCase().trim() === "oui"; let prev = suivi[3] && suivi[3].toString().toLowerCase().trim() === "oui"; let rem = suivi[5] || ""; 
-                        let colors = []; if(hasFault) colors.push('#e74c3c'); if(prev) colors.push('#9b59b6'); if(dec) colors.push('#27ae60');     
-                        bgStr = '#f1c40f'; 
-                        if(colors.length === 3) bgStr = `conic-gradient(${colors[0]} 0 33%, ${colors[1]} 33% 66%, ${colors[2]} 66% 100%)`;
-                        else if(colors.length === 2) bgStr = `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)`;
-                        else if(colors.length === 1) bgStr = colors[0];
-                        if (!dec) { iconChar = `⚡<br><span style="font-size:8px;">${p.id}</span>`; lh = '14px'; }
-                        if (rem.toString().trim() !== "") remarkBadge = `<div style="position:absolute; top:-6px; right:-6px; background:#e67e22; color:white; width:16px; height:16px; border-radius:50%; font-size:12px; font-weight:bold; text-align:center; line-height:16px; border:1px solid #fff;">!</div>`;
-                    } else { bgStr = window.getColorByFilter(0, p); }
-
-                    let bord = window.selectedCannonsMap.has(p.id) ? "#2c3e50" : (window.currentlyEditingId === p.id ? "#e74c3c" : "white");
-                    let bw = window.selectedCannonsMap.has(p.id) ? "3px" : (window.currentlyEditingId === p.id ? "4px" : "1.5px");
-                    let fsz = Math.max(10, rad - 4) + "px"; 
-                    let zIdx = window.currentlyEditingId === p.id ? 2000 : (window.selectedCannonsMap.has(p.id) ? 1000 : 0);
-                    layer.setZIndexOffset(zIdx);
-                    layer.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: `<div class="cannon-circle" style="background:${bgStr}; width:${rad*2}px; height:${rad*2}px; line-height:${lh}; border:${bw} solid ${bord}; font-size:${fsz}; position:relative;">${iconChar}${remarkBadge}</div>`, iconSize: [rad*2, rad*2], iconAnchor: [rad, rad] }));
-                }
-            });
-        };
-
-        window.renderSelectionPanel = function() {
-            if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
-            document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
-            document.getElementById('sel-count').innerText = window.selectedCannonsMap.size; let listDiv = document.getElementById('selected-list'); if(!listDiv) return; 
-            
-            listDiv.innerHTML = "";
-            if (window.mainTheme === 'suivi_entretien') { listDiv.innerHTML = `<button onclick="window.saveMultiSuivi(this)" class="btn-action-primary" style="background:#27ae60; margin-bottom:15px; margin-top:0;">💾 Sauvegarder la sélection</button>`; }
-
-            let defautsSet = new Set(); window.rawTickets.forEach(t => { if(t.defaut) defautsSet.add(t.defaut.trim()); });
-            let datalistHtml = `<datalist id="dl-defauts-list">${Array.from(defautsSet).sort().map(d => `<option value="${d.replace(/"/g, '"')}"></option>`).join('')}</datalist>`;
-            listDiv.innerHTML += datalistHtml; document.getElementById('right-title').innerText = "📌 Fiche Canon";
-
-            window.selectedCannonsMap.forEach((layer, id) => {
-                const p = layer.feature.properties; let active = window.getActiveTickets(p.id); let history = window.getHistoryTickets(p.id); let mainContent = ""; let histHtml = ""; let prodHtml = ""; let overrideItemHtml = null;
-
-                if (history.length > 0) {
-                    histHtml = `<details class="ticket-history" style="margin-top:15px; font-size:14px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:bold; color:#34495e;">📁 Historique d'interventions (${history.length})</summary><ul style="padding-left:15px; margin-top:10px;">`;
-                    history.forEach(t => { let dateStr = isNaN(new Date(t.date).getTime()) ? (t.date || "Inconnue") : new Date(t.date).toLocaleDateString('fr-FR'); let cause = t.fullData.find(x => x.k.toLowerCase().includes('cause') || x.k.toLowerCase().includes('intervention') || x.k.toLowerCase().includes('commentaire')); histHtml += `<li style="margin-bottom:8px; font-size:12px; border-bottom:1px solid #eee; padding-bottom:5px;"><b>${dateStr}</b> - <span style="color:#e74c3c;">${t.defaut}</span> <br><span style="color:#666;">Intervention : ${cause ? cause.v : "Non précisée"}</span></li>`; });
-                    histHtml += `</ul></details>`;
-                }
-                if (window.saisonsList && window.saisonsList.length > 0) {
-                    prodHtml = `<div style="margin-top:15px; font-size:14px; font-weight:bold; color:#2c3e50; border-bottom:2px solid #eee; padding-bottom:5px;">📊 Évolution de la production</div><div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;"><div style="background:#fff; border:1px solid #eee; border-radius:6px; padding:10px;"><div style="font-size:12px; font-weight:bold; color:#3498db; text-align:center;">Eau (m³)</div><div style="position:relative; height:100px; width:100%;"><canvas id="he-${p.id}"></canvas></div></div><div style="background:#fff; border:1px solid #eee; border-radius:6px; padding:10px;"><div style="font-size:12px; font-weight:bold; color:#e67e22; text-align:center;">Air</div><div style="position:relative; height:100px; width:100%;"><canvas id="ha-${p.id}"></canvas></div></div><div style="background:#fff; border:1px solid #eee; border-radius:6px; padding:10px;"><div style="font-size:12px; font-weight:bold; color:#27ae60; text-align:center;">Heures</div><div style="position:relative; height:100px; width:100%;"><canvas id="ht-${p.id}"></canvas></div></div></div>`;
-                }
-
-                let formulairePanneCompletHtml = `
-                    <details style="background:#fdf0ed; padding:12px; border-radius:6px; border:1px solid #fadbd8; font-size:14px; margin-top:12px;">
-                        <summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;">🚨 Signaler un défaut (Ticket)</summary>
-                        <div style="margin-top:10px;">
-                            <span class="edit-label">État</span><select id="nt-etat-${p.id}" class="edit-input"><option value="à faire">À faire</option><option value="en cours">En cours</option></select>
-                            <span class="edit-label">Priorité</span><select id="nt-priorite-${p.id}" class="edit-input"><option value="P1 (urgent et bloquant)">P1 (urgent)</option><option value="P2 (non bloquant mais urgent)">P2 (moyen)</option><option value="P3 (non bloquant)">P3 (faible)</option></select>
-                            <span class="edit-label">Panne</span><input type="text" id="nt-defaut-${p.id}" class="edit-input" list="dl-defauts-list" placeholder="Choisir ou écrire...">
-                            <span class="edit-label">Cause</span><textarea id="nt-cause-${p.id}" class="edit-input" rows="2" placeholder="Origine..."></textarea>
-                            <span class="edit-label">Date Inter</span><input type="text" id="nt-dateinter-${p.id}" class="edit-input" placeholder="JJ/MM/AAAA">
-                            <span class="edit-label">Intervention</span><textarea id="nt-interv-${p.id}" class="edit-input" rows="2" placeholder="Travaux réalisés..."></textarea>
-                            <span class="edit-label">Pièces</span><input type="text" id="nt-pieces-${p.id}" class="edit-input" placeholder="Ex: Joint R18">
-                            <span class="edit-label">Remarque</span><textarea id="nt-remarque-${p.id}" class="edit-input" rows="1"></textarea>
-                            <input type="hidden" id="nt-periode-${p.id}" value="${window.saisonsList[window.histSeasonIdx] || ''}">
-                            <input type="hidden" id="nt-sonde-${p.id}" value="">
-                            <input type="hidden" id="nt-photos-${p.id}" value="">
-                            <button onclick="window.addNouveauTicket('${p.id}', this)" class="btn-action-primary" style="background:#c0392b;">🚀 Envoyer Ticket</button>
-                        </div>
-                    </details>
-                `;
-
-                if (window.mainTheme === 'suivi_entretien') {
-                    let s = window.suiviEntretienData.find(row => row[0] == id) || ["", "", "non", "non", "", "", ""];
-                    let isDec = s[2].toString().toLowerCase().trim() === "oui"; let isPrev = s[3].toString().toLowerCase().trim() === "oui"; let rem = s[5] || "";
-                    mainContent = `
-                        <div style="background:#eafaf1; padding:15px; border-radius:6px; border:1px solid #2ecc71; margin-bottom:10px;">
-                            <label style="cursor:pointer; display:block; font-size:16px; font-weight:bold; margin-bottom:10px;"><input type="checkbox" id="chk-dec-single-${p.id}" ${isDec?'checked':''} style="transform:scale(1.3); margin-right:10px;"> Déconnexion</label>
-                            <label style="cursor:pointer; display:block; font-size:16px; font-weight:bold; margin-bottom:10px;"><input type="checkbox" id="chk-prev-single-${p.id}" ${isPrev?'checked':''} style="transform:scale(1.3); margin-right:10px;"> Préventif Usine</label>
-                            <input type="text" id="rem-single-${p.id}" value="${rem}" class="edit-input" placeholder="Remarque...">
-                        </div>
-                        <div style="background:#fdfdfe; padding:10px; border-radius:6px; border:1px solid #ccc; font-size:14px; margin-bottom:10px;"><b>Modèle:</b> ${window.getV(p, window.keyType)}</div>
-                        ${histHtml}`;
-                } 
-                else if (window.mainTheme === 'entretien_tete') {
-                    let bVal = window.getV(p, "Buses"); let isFait = (bVal.toLowerCase().trim() === "oui" || bVal.toLowerCase().trim() === "ok" || bVal.toLowerCase().trim() === "true" || bVal.toLowerCase().trim() === "x"); let anneeVal = window.getV(p, "années buses") || window.getV(p, "Année") || "N/A"; let currentYear = new Date().getFullYear();
-                    overrideItemHtml = `
-                        <div style="margin-bottom:10px; border-radius:6px; box-shadow:0 2px 5px rgba(0,0,0,0.05); background:#fff; border:1px solid #e1e8ed; overflow:hidden;">
-                            <div style="display:flex; align-items:center; gap:10px; background:#fef5e7; padding:15px; border-bottom:1px solid #f8c471;">
-                                <b style="color:#d35400; font-size:16px;">📍 N° ${p.id}</b>
-                                <input type="checkbox" id="chk-buses-${id}" ${isFait?'checked':''} style="transform:scale(1.8); margin:0 15px;">
-                                <button onclick="window.saveEntretienTete('${id}', this)" class="btn-action-primary" style="margin:0; padding:10px; background:#e67e22;">💾 Valider</button>
-                            </div>
-                            <div style="padding:15px; background:#fff;">${formulairePanneCompletHtml}</div>
-                        </div>
-                    `;
-                }
-                else if (window.mainTheme === 'historique') {
-                    let s = window.saisonsList[window.histSeasonIdx]; let hd = p.historique[s] || {eau:0, air:0, temps:0};
-                    mainContent = `<div style="display:flex; justify-content: space-around; background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #eee;"><div style="text-align:center;"><div style="font-size:22px; font-weight:bold; color:#3498db;">${hd.eau}</div><div style="font-size:12px;">m³ Eau</div></div><div style="text-align:center;"><div style="font-size:22px; font-weight:bold; color:#e67e22;">${hd.air}</div><div style="font-size:12px;">Air</div></div><div style="text-align:center;"><div style="font-size:22px; font-weight:bold; color:#27ae60;">${hd.temps}</div><div style="font-size:12px;">Heures</div></div></div>${histHtml}${prodHtml}`;
-                } else if (window.mainTheme === 'defauts') {
-                    let topTicketsList = "";
-                    if (active.length === 0) { topTicketsList = `<div style="background:#eafaf1; color:#27ae60; padding:15px; border-radius:6px; text-align:center; font-weight:bold; border:1px solid #d5f5e3; margin-bottom:15px; font-size:16px;">✅ Aucun défaut en cours</div>`; } else {
-                        topTicketsList = active.map(t => { let borderCol = t.statut.includes('faire') ? '#e74c3c' : '#f39c12'; let safeDef = t.defaut.replace(/'/g, "\\'"); let safeId = p.id.replace(/'/g, "\\'"); let idDiv = `ticket-edit-${safeId}-${t.defaut.replace(/[^a-zA-Z0-9]/g, "")}`; return `<div class="ticket-card" style="border-left-color:${borderCol};"><div style="font-weight:bold; font-size:16px; color:#333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start;"><span style="flex-grow:1; margin-right:10px;">${t.defaut}</span><button onclick="window.editFullTicket('${safeId}', '${safeDef}')" style="background:#eee; border:none; padding:8px 12px; border-radius:4px; font-size:14px; font-weight:bold; cursor:pointer;">✏️ Éditer</button></div><div id="${idDiv}"><span style="font-size:12px; padding:4px 10px; border-radius:12px; background:${borderCol}20; color:${borderCol}; font-weight:bold;">STATUT : ${t.statut.toUpperCase()}</span></div></div>`; }).join('');
-                    }
-                    mainContent = topTicketsList + histHtml + formulairePanneCompletHtml;
-                } else {
-                    let badges = `<span class="badge"><b>Mod:</b> ${window.getV(p, window.keyType)}</span> <span class="badge"><b>Rép:</b> ${window.getV(p, window.keyRep)}</span> <span class="badge"><b>Trans:</b> ${window.getV(p, window.keyTransfo)}</span>`;
-                    let fullDataHTML = `<details style="margin-top:15px; font-size:14px; background:#f8f9fa; padding:15px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:bold; color:#34495e; outline:none;">➕ Caractéristiques Complètes</summary><div style="margin-top:12px; display:grid; grid-template-columns: 1fr; gap:10px;">`;
-                    p.fullData.forEach(item => { if(!item.k.toLowerCase().includes('xy') && !item.k.toLowerCase().includes('gps')) { fullDataHTML += `<div style="border-bottom:1px solid #f0f0f0; padding-bottom:6px;"><span style="color:#7f8c8d;">${item.k} :</span> <b style="color:#2c3e50; float:right;">${item.v}</b></div>`; } }); fullDataHTML += `</div></details>`; 
-                    mainContent = `<div style="margin-bottom:10px;">${badges}</div>${fullDataHTML}`;
-                    if (active.length > 0) mainContent += `<div style="margin-top:15px; padding:15px; background:#fdf0ed; border-radius:6px; font-size:14px; color:#e74c3c; font-weight:bold; border:1px solid #fadbd8;">⚠️ Ce canon a ${active.length} défaut(s) en cours.</div>`; mainContent += histHtml + prodHtml;
-                }
-
-                let editBtn = '';
-                if (!window.isMultiSelect) {
-                    if (window.mainTheme === 'type') editBtn = `<button class="btn-action-primary" onclick="window.startEdit('${p.id}')">✏️ Éditer ce canon</button>`;
-                    else if (window.mainTheme === 'suivi_entretien') editBtn = `<button class="btn-action-primary" style="background:#f39c12; margin-top:15px;" onclick="window.startEdit('${p.id}')">⚙️ Éditer Données Tech</button>`;
-                }
-
-                if (overrideItemHtml) { listDiv.innerHTML += overrideItemHtml.replace('', editBtn); } 
-                else { listDiv.innerHTML += `<div class="sel-details"><div class="sel-details-header"><span>📍 Canon <b>${p.id}</b></span><span style="font-weight:normal; font-size:12px; background:#e0e6ed; padding:4px 10px; border-radius:12px;">${window.getV(p, window.keyPiste)}</span></div><div class="sel-details-body">${mainContent}${editBtn}</div></div>`; }
-                    
-                setTimeout(() => {
-                    if((window.mainTheme === 'type' || window.mainTheme === 'historique' || window.mainTheme === 'repeteur' || window.mainTheme === 'transfo' || window.mainTheme === 'suivi_entretien') && window.saisonsList.length > 0) {
-                        let labels = window.saisonsList.map(s => s.substring(0,5)); let dEau = window.saisonsList.map(s => p.historique[s] ? p.historique[s].eau : 0); let dAir = window.saisonsList.map(s => p.historique[s] ? p.historique[s].air : 0); let dTemps = window.saisonsList.map(s => p.historique[s] ? p.historique[s].temps : 0);
-                        const drawMiniChart = (id, data, color) => { let canvas = document.getElementById(id); if(!canvas) return; if(window.chartInstances[id]) window.chartInstances[id].destroy(); window.chartInstances[id] = new Chart(canvas.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [{ data: data, backgroundColor: color, borderRadius: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: {font:{size:9}, maxRotation:45, minRotation:45}, grid: {display:false} } } } }); };
-                        drawMiniChart(`he-${p.id}`, dEau, '#3498db'); drawMiniChart(`ha-${p.id}`, dAir, '#e67e22'); drawMiniChart(`ht-${p.id}`, dTemps, '#27ae60');
-                    }
-                }, 100);
-            });
-        };
-
-        window.triggerGlobalFilterChart = function() {
-            if (window.selectedCannonsMap.size > 0 || window.currentlyEditingId) return;
-            let visibleCannons = window.snowCannons.features.filter(f => f.properties._isVisible);
-            let html = `<div style="background:#eafaf1; padding:15px; border-radius:8px; text-align:center; margin-bottom:15px; border:1px solid #d5f5e3;"><span style="font-size:28px; font-weight:bold; color:#27ae60;">${visibleCannons.length}</span><br><span style="font-size:14px; color:#555; font-weight:bold; text-transform:uppercase;">Canons affichés</span></div>`;
-
-            if (window.mainTheme === 'defauts') {
-                let activeList = []; let cUrgent = 0, cEnCours = 0, cRas = 0;
-                visibleCannons.forEach(f => { let p = f.properties; let acts = window.getActiveTickets(p.id); if(acts.length === 0) { cRas++; } else { acts.forEach(t => { if(t.statut.includes('faire')) cUrgent++; else cEnCours++; activeList.push({id: p.id, piste: window.getV(p, window.keyPiste), ticket: t}); }); } });
-                let total = cUrgent + cEnCours + cRas; let faultPerc = total > 0 ? (((cUrgent + cEnCours) / total) * 100).toFixed(1) : 0;
-                html += `<div style="text-align:center; padding:15px; background:#fff; border-radius:8px; border:1px solid #eee; margin-bottom:15px;"><div style="font-size:24px; font-weight:bold; color:#e74c3c;">${faultPerc}%</div><div style="font-size:12px; font-weight:bold; color:#7f8c8d;">TAUX DE PANNES</div></div>`;
-                
-                if (activeList.length === 0) { html += `<div style="font-size:16px; color:#27ae60; text-align:center; padding:20px; font-weight:bold;">✅ Aucun défaut sur la sélection.</div>`; } 
-                else {
-                    activeList.sort((a,b) => { let wA = a.ticket.statut.includes('faire') ? 1 : 0; let wB = b.ticket.statut.includes('faire') ? 1 : 0; return wB - wA; });
-                    let listHtml = activeList.map(item => { let color = item.ticket.statut.includes('faire') ? '#e74c3c' : '#f39c12'; return `<div style="border-left:5px solid ${color}; background:#fff; padding:12px; margin-bottom:10px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;"><div><b style="color:#2c3e50; font-size:16px;">Canon ${item.id}</b> <span style="color:#7f8c8d; font-size:12px;">(${item.piste})</span><br><span style="color:${color}; font-weight:bold; font-size:14px; display:inline-block; margin-top:5px;">${item.ticket.defaut}</span></div><button onclick="window.focusCannon('${item.id}');" style="background:#eee; border:none; border-radius:6px; font-weight:bold; font-size:14px; padding:10px 15px;">📍</button></div>`; }).join('');
-                    html += `<div><h4 style="color:#2c3e50; margin-bottom:10px;">Défauts en cours :</h4>${listHtml}</div>`;
-                }
-            } else if (window.mainTheme === 'historique') {
-                html += `<div style="padding:20px; text-align:center; background:#fff; border-radius:8px; border:1px solid #eee;"><p style="font-size:16px; color:#34495e;">Sélectionnez un canon sur la carte pour voir ses statistiques détaillées.</p></div>`;
+            if (selectedTheme === 'stock' || selectedTheme === 'atelier') {
+                mapContainer.style.display = 'none'; bottomSheet.style.display = 'none'; fullscreenArea.style.display = 'block';
+                if (selectedTheme === 'stock') { stockWs.style.display = 'block'; atelierWs.style.display = 'none'; if(window.renderStockWorkspace) window.renderStockWorkspace(); } 
+                else { stockWs.style.display = 'none'; atelierWs.style.display = 'block'; if(window.renderAtelierWorkspace) window.renderAtelierWorkspace(); }
+            } else {
+                mapContainer.style.display = 'block'; bottomSheet.style.display = 'flex'; fullscreenArea.style.display = 'none';
+                if (window.map) setTimeout(() => { window.map.invalidateSize(); }, 300);
+                if(window.updateMap) window.updateMap(); if(window.triggerGlobalFilterChart) window.triggerGlobalFilterChart();
+                if(window.selectedCannonsMap && window.selectedCannonsMap.size === 0) window.openBottomSheet('banner');
             }
-            
-            document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html; 
-            document.getElementById('right-title').innerText = "📊 Résumé Global";
-        };
-
-       /* ========================================================================= */
-        /* CHAPITRE 6 : ÉDITION DES CANONS ET TICKETS (API GOOGLE)                   */
-        /* ========================================================================= */
-
-        window.startEdit = function(id) {
-            window.currentlyEditingId = id; 
-            let layer = window.selectedCannonsMap.get(id); let p = layer.feature.properties;
-            document.getElementById('edit-id-display').innerText = p.id; 
-            document.getElementById('edit-id').value = p.id;
-            document.getElementById('edit-lat').value = layer.getLatLng().lat.toFixed(7); 
-            document.getElementById('edit-lng').value = layer.getLatLng().lng.toFixed(7);
-            
-            let fc = document.getElementById('dynamic-edit-fields'); fc.innerHTML = "";
-            p.fullData.forEach(i => { 
-                if(i.k.toLowerCase().match(/(regard|xy|gps)/)) return; 
-                fc.innerHTML += `<div style="margin-bottom:10px;"><div class="edit-label">${i.k}</div><input type="text" class="edit-input dyn-field" data-key="${i.k}" value="${i.v}"></div>`; 
-            });
-            
-            document.getElementById('view-selection').style.display = 'none'; 
-            document.getElementById('view-edit').style.display = 'block'; 
-            document.getElementById('right-title').innerText = "✏️ Édition Canon"; 
-            
-            // Sur mobile, on ouvre le panneau en grand pour éditer confortablement
-            window.openBottomSheet('full'); 
-            window.updateMap();
-        };
-
-        window.saveEditData = async function() {
-            if(!window.currentlyEditingId) return;
-            let btn = document.getElementById('btn-save-edit'); btn.innerText = "⏳ Envoi..."; btn.disabled = true;
-            let fields = {}; document.querySelectorAll('.dyn-field').forEach(i => fields[i.getAttribute('data-key')] = i.value);
-            
-            let idCanonValue = document.getElementById('edit-id').value;
-            let pl = { action: "update_general", idCanon: idCanonValue, lat: parseFloat(document.getElementById('edit-lat').value), lng: parseFloat(document.getElementById('edit-lng').value), fields: fields };
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(pl) }); let r = await res.json();
-                if(r.status === "success") {
-                    let l = window.selectedCannonsMap.get(window.currentlyEditingId); let p = l.feature.properties;
-                    p.fullData.forEach(item => { if(fields[item.k] !== undefined) item.v = fields[item.k]; });
-                    let tLower = window.getV(p, window.keyType).toLowerCase().trim();
-                    if(["demak lenko", "demac lenko"].includes(tLower)) p.couleur_defaut = "#0000FF";
-                    else if(["sufag", "street", "taurus", "taurax", "peak"].includes(tLower)) p.couleur_defaut = "#008000";
-                    else p.couleur_defaut = window.technoColors[tLower] || "#FFD700";
-                    l.feature.geometry.coordinates = [pl.lng, pl.lat]; l.setLatLng([pl.lat, pl.lng]);
-                    window.cancelEdit();
-                } else alert("Erreur Google");
-            } catch(err) { alert("Échec réseau"); }
-            btn.innerText = "✅ Sauvegarder"; btn.disabled = false;
-        };
-
-        window.addNouveauTicket = async function(idCanon, btn) {
-            let elDef = document.getElementById(`nt-defaut-${idCanon}`); 
-            if(!elDef || !elDef.value.trim()) { alert("Veuillez renseigner au moins le champ 'Panne'."); return; }
-            
-            let defaut = elDef.value; let etat = document.getElementById(`nt-etat-${idCanon}`).value; 
-            let priorite = document.getElementById(`nt-priorite-${idCanon}`).value;
-            let periode = document.getElementById(`nt-periode-${idCanon}`).value; 
-            let sonde = document.getElementById(`nt-sonde-${idCanon}`).value; 
-            let cause = document.getElementById(`nt-cause-${idCanon}`).value; 
-            let dateinter = document.getElementById(`nt-dateinter-${idCanon}`).value; 
-            let photos = document.getElementById(`nt-photos-${idCanon}`).value; 
-            let interv = document.getElementById(`nt-interv-${idCanon}`).value; 
-            let pieces = document.getElementById(`nt-pieces-${idCanon}`).value; 
-            let remarque = document.getElementById(`nt-remarque-${idCanon}`).value;
-            
-            let today = new Date(); let dateStr = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
-            let layer = window.selectedCannonsMap.get(idCanon); let p = layer ? layer.feature.properties : null; 
-            let piste = p ? window.getV(p, window.keyPiste) : "Inconnue"; 
-            let latlong = layer ? (layer.getLatLng().lat.toFixed(7) + "," + layer.getLatLng().lng.toFixed(7)) : "";
-            
-            let fieldsObj = { "état": etat, "Priorité": priorite, "date": dateStr, "n°regard": idCanon, "piste": piste, "defaut": defaut, "Défaut sonde": sonde, "cause": cause, "date d'inter": dateinter, "intervention": interv, "Remarque": remarque, "periode": periode, "photos": photos, "latlong": latlong, "pièces utilisés": pieces };
-            
-            let oldText = btn.innerText; btn.innerText = "⏳ Transmission..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_ticket", fields: fieldsObj }) }); let r = await res.json();
-                if(r.status === "success") {
-                    btn.innerText = "🚀 Ticket Archivé !"; btn.style.background = "#27ae60"; 
-                    window.rawTickets.push({ statut: etat.toLowerCase(), date: dateStr, idCanon: idCanon, defaut: defaut, fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]})) });
-                    setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; window.renderSelectionPanel(); window.updateMap(); }, 2000);
-                } else { alert("Erreur serveur : " + (r.msg || "Inconnue")); btn.innerText = oldText; btn.disabled = false; }
-            } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
-        };
-
-        window.editFullTicket = function(canonId, defaut) {
-            let safeDef = defaut.replace(/[^a-zA-Z0-9]/g, ""); 
-            let idDiv = `ticket-edit-${canonId}-${safeDef}`; let el = document.getElementById(idDiv); 
-            if(!el) return;
-            let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut); 
-            if(!ticket) return;
-            
-            let html = '<div style="background:#fdfdfe; padding:12px; border-radius:6px; border:2px solid #3498db; margin-top:10px;">';
-            ticket.fullData.forEach(d => {
-                let kLow = d.k.toLowerCase(); let valStr = d.v.toString();
-                if (kLow.includes('regard') || kLow === 'id' || kLow.includes('n°')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}" readonly style="background:#e1e8ed; color:#7f8c8d;"></div>`; } 
-                else if (kLow.includes('etat') || kLow.includes('état') || kLow === 'statut') { let statuts = ['à faire', 'en cours', 'fait']; let options = statuts.map(s => `<option value="${s}" ${valStr.toLowerCase().includes(s) ? 'selected' : ''}>${s.toUpperCase()}</option>`).join(''); html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><select class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}">${options}</select></div>`; } 
-                else if (valStr.length > 40 || kLow.includes('cause') || kLow.includes('intervention')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><textarea class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" rows="2">${valStr}</textarea></div>`; } 
-                else { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}"></div>`; }
-            });
-            html += `<div style="display:flex; gap:10px; margin-top:15px;"><button onclick="window.renderSelectionPanel()" class="btn-action-primary" style="background:#bdc3c7; flex:1; margin-top:0;">Annuler</button><button onclick="window.prepareTicketSave('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" class="btn-action-primary" style="background:#2ecc71; flex:2; margin-top:0;">Suivant ➔</button></div></div>`; 
-            el.innerHTML = html;
-        };
-
-        window.prepareTicketSave = function(canonId, defaut, idDiv) {
-            let fieldsObj = {}; let newStatutForLocal = "";
-            document.querySelectorAll(`.tick-dyn-field-${idDiv}`).forEach(inp => { let k = inp.getAttribute('data-key'); let v = inp.value; if(!k.toLowerCase().includes('regard') && k.toLowerCase() !== 'id') { fieldsObj[k] = v; } if(k.toLowerCase().includes('etat') || k.toLowerCase().includes('état') || k.toLowerCase() === 'statut') { newStatutForLocal = v; } });
-            window.tempTicketPayloads[idDiv] = { payload: { action: "update_ticket", idCanon: canonId, defaut: defaut, fields: fieldsObj }, newStatut: newStatutForLocal };
-            let el = document.getElementById(idDiv);
-            if(el) { el.innerHTML = `<div style="background:#fff3cd; padding:15px; border-radius:6px; border:2px solid #f39c12; margin-top:10px;"><div style="font-weight:bold; color:#d35400; margin-bottom:10px;">⚠️ Valider les modifs ?</div><div style="display:flex; gap:10px;"><button onclick="window.renderSelectionPanel()" class="btn-action-primary" style="background:#bdc3c7; margin-top:0;">Annuler</button><button onclick="window.confirmSaveTicket('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" class="btn-action-primary" style="background:#27ae60; margin-top:0;">Envoyer 🚀</button></div></div>`; }
-        };
-
-        window.confirmSaveTicket = async function(canonId, defaut, idDiv) {
-            let temp = window.tempTicketPayloads[idDiv]; if(!temp) return; 
-            document.getElementById(idDiv).innerHTML = `<div style="text-align:center; padding:10px; font-weight:bold; color:#3498db;">Enregistrement... ⏳</div>`;
-            try {
-                const response = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(temp.payload) }); const result = await response.json();
-                if(result.status === "success") {
-                    let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut);
-                    if(ticket) { ticket.fullData.forEach(d => { if(temp.payload.fields[d.k] !== undefined) d.v = temp.payload.fields[d.k]; }); if(temp.newStatut) ticket.statut = temp.newStatut.toLowerCase(); }
-                    window.renderSelectionPanel(); window.updateMap(); delete window.tempTicketPayloads[idDiv];
-                } else alert("Erreur Google");
-            } catch(e) { alert("Échec réseau."); }
-        };
-
-        window.saveMultiSuivi = async function(btn) {
-            let payloads = [];
-            window.selectedCannonsMap.forEach((layer, idCanon) => {
-                let p = layer.feature.properties; let piste = window.getV(p, window.keyPiste);
-                let chkDec = document.getElementById('chk-dec-single-' + idCanon); 
-                let chkPrev = document.getElementById('chk-prev-single-' + idCanon); 
-                let rem = document.getElementById('rem-single-' + idCanon);
-                payloads.push({ idCanon: idCanon, piste: piste, deconnexion: chkDec ? chkDec.checked : false, preventif: chkPrev ? chkPrev.checked : false, vanneCorrectif: "", remarque: rem ? rem.value : "" });
-            });
-
-            if (payloads.length === 0) return;
-            let oldText = btn.innerText; btn.innerText = "⏳ Sauvegarde..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_suivi_multi", payloads: payloads }) }); let r = await res.json();
-                if (r.status === "success") {
-                    btn.innerText = "✅ Succès !";
-                    payloads.forEach(item => {
-                        let sRow = window.suiviEntretienData.find(row => row[0] == item.idCanon);
-                        if (sRow) { sRow[2] = item.deconnexion ? "oui" : "non"; sRow[3] = item.preventif ? "oui" : "non"; sRow[5] = item.remarque; } 
-                        else { window.suiviEntretienData.push([item.idCanon, item.piste, item.deconnexion ? "oui" : "non", item.preventif ? "oui" : "non", "", item.remarque, ""]); }
-                    });
-                    window.updateMap(); setTimeout(() => { btn.innerText = oldText; btn.disabled = false; }, 2000);
-                } else alert("Erreur serveur.");
-            } catch (e) { alert("Échec réseau."); }
-        };
-
-        window.saveEntretienTete = async function(idCanon, btn) {
-            let chk = document.getElementById(`chk-buses-${idCanon}`); if(!chk) return;
-            let isChecked = chk.checked; let valBuses = isChecked ? "OUI" : ""; let currentYear = new Date().getFullYear();
-            let fieldsObj = { "Buses": valBuses, "années buses": isChecked ? currentYear.toString() : "" };
-            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: idCanon, fields: fieldsObj }) }); let r = await res.json();
-                if(r.status === "success") {
-                    btn.innerText = "✅ Validé"; btn.style.background = "#27ae60";
-                    let feat = window.snowCannons.features.find(f => f.properties.id == idCanon);
-                    if(feat) { 
-                        let objB = feat.properties.fullData.find(x => x.k.toLowerCase() === "buses"); if(objB) objB.v = valBuses; else feat.properties.fullData.push({k: "Buses", v: valBuses}); 
-                        let objA = feat.properties.fullData.find(x => x.k.toLowerCase() === "années buses"); if(objA) objA.v = fieldsObj["années buses"]; else feat.properties.fullData.push({k: "années buses", v: fieldsObj["années buses"]}); 
-                    }
-                    window.updateMap(); setTimeout(() => { btn.innerText = "💾 Valider"; btn.disabled = false; btn.style.background = "#e67e22"; }, 2000);
-                } else alert("Erreur Serveur");
-            } catch(e) { alert("Erreur Réseau"); }
-        };
-
-        /* ========================================================================= */
-        /* CHAPITRE 7 : ESPACE STOCK (COMPLET & MOBILE)                              */
-        /* ========================================================================= */
-
-        window.renderStockWorkspace = function() {
-            let ws = document.getElementById('stock-workspace'); if (!ws) return;
-            if (!window.rawStock || window.rawStock.length < 1) { ws.innerHTML = `<div style="text-align:center; padding:30px; font-weight:bold;">⚠️ Aucun stock détecté.</div>`; return; }
-
-            let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
-            let idxNum = headers.findIndex(h => h.includes("numero") || h === "id");
-            let idxRef = headers.findIndex(h => h === "ref"); let idxProd = headers.findIndex(h => h === "produit"); 
-            let idxDesc = headers.findIndex(h => h === "description"); let idxPhoto = headers.findIndex(h => h === "photo"); 
-            let idxCout = headers.findIndex(h => h === "cout"); let idxStock = headers.findIndex(h => h.includes("stock")); 
-            let idxMini = headers.findIndex(h => h.includes("mini") || h.includes("seuil")); let idxPris = headers.findIndex(h => h === "pris");
-
-            let maxId = 0; let uniqueDescs = new Set();
-            for (let i = 1; i < window.rawStock.length; i++) {
-                let row = window.rawStock[i]; if (!row || row.length === 0) continue;
-                if (idxNum !== -1 && row[idxNum]) { let idVal = parseInt(row[idxNum], 10); if (!isNaN(idVal) && idVal > maxId) maxId = idVal; }
-                if (idxDesc !== -1 && row[idxDesc]) { row[idxDesc].toString().split(',').forEach(d => { let c = d.trim(); if(c !== "") uniqueDescs.add(c); }); }
-            }
-            let nextId = maxId > 0 ? (maxId + 1) : 1;
-            let totalArticles = window.rawStock.length - 1;
-
-            let filterOptionsHtml = `<option value="">📁 Tous les types</option>` + Array.from(uniqueDescs).sort().map(d => `<option value="${d}">${d}</option>`).join('');
-
-            ws.innerHTML = `
-                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px; border-bottom:2px solid #16a085; padding-bottom:10px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h2 style="color:#2c3e50; margin:0; font-size:22px;">📦 Inventaire <span id="stock-count-display" style="font-size:12px; color:#7f8c8d; font-weight:normal;">(${totalArticles})</span></h2>
-                        <button onclick="window.toggleAddStockForm()" style="background:#16a085; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; font-size:14px;">➕ Ajouter</button>
-                    </div>
-                    <div style="display:flex; gap:10px;">
-                        <select id="filter-desc-stock" onchange="window.filterStockItems()" class="edit-input" style="flex:1; margin:0;">${filterOptionsHtml}</select>
-                        <input type="text" id="search-stock" placeholder="🔍 Réf..." onkeyup="window.filterStockItems()" class="edit-input" style="flex:1; margin:0;">
-                    </div>
-                </div>
-                
-                <div id="add-stock-form-container" style="display:none; background:#fff; border:2px solid #16a085; padding:15px; border-radius:8px; margin-bottom:20px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
-                    <h4 style="margin:0 0 12px 0; color:#16a085;">Créer un article</h4>
-                    <div style="display:flex; flex-direction:column; gap:10px;" id="add-stock-fields-grid"></div>
-                    <div style="display:flex; gap:10px; margin-top:15px;">
-                        <button onclick="window.toggleAddStockForm()" class="btn-action-primary" style="background:#e1e8ed; color:#333; margin-top:0;">Annuler</button>
-                        <button onclick="window.addStockItemToServer(this)" class="btn-action-primary" style="background:#16a085; margin-top:0;">🚀 Valider l'ajout</button>
-                    </div>
-                </div>
-                
-                <div id="stock-cards-list" style="display:flex; flex-direction:column; gap:15px;"></div>`;
-
-            let addGrid = document.getElementById('add-stock-fields-grid');
-            window.rawStock[0].forEach(colName => {
-                let cleanName = colName ? colName.toString().trim() : ""; let lowerName = cleanName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                if (cleanName === "" || lowerName.includes("commande") || lowerName === "cmd") return;
-                if (lowerName === "numero" || lowerName === "id") { addGrid.innerHTML += `<div><span class="edit-label">${cleanName} (Auto)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="${nextId}" readonly style="background:#eee; margin-bottom:0;"></div>`; } 
-                else if (lowerName === "reste") { addGrid.innerHTML += `<div><span class="edit-label">${cleanName} (Auto)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="0" readonly style="background:#eee; margin-bottom:0;"></div>`; } 
-                else { addGrid.innerHTML += `<div><span class="edit-label">${cleanName}</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" style="margin-bottom:0;"></div>`; }
-            });
-
-            let cardsContainer = document.getElementById('stock-cards-list');
-            for (let i = 1; i < window.rawStock.length; i++) {
-                let row = window.rawStock[i]; if (!row || row.length === 0) continue; 
-                let numPiece = (idxNum !== -1 && row[idxNum]) ? row[idxNum].toString().trim() : i.toString();
-                let safeId = "stock-" + numPiece.replace(/[^a-zA-Z0-9]/g, "-");
-                let valStock = (idxStock !== -1 && row[idxStock]) ? parseFloat(row[idxStock]) || 0 : 0;
-                let valMini = (idxMini !== -1 && row[idxMini]) ? parseFloat(row[idxMini]) || 0 : 0;
-                let valPris = (idxPris !== -1 && row[idxPris]) ? parseFloat(row[idxPris]) || 0 : 0;
-                let valRef = (idxRef !== -1 && row[idxRef]) ? row[idxRef].toString().trim() : "";
-                let valProd = (idxProd !== -1 && row[idxProd]) ? row[idxProd].toString().trim() : "Sans nom";
-                let valPhoto = (idxPhoto !== -1 && row[idxPhoto]) ? row[idxPhoto].toString().trim() : "";
-
-                let alerteStyle = valStock <= valMini ? "background:#fdf2f2; border-color:#e74c3c;" : "background:#fff; border-color:#ddd;";
-                
-                // Recherche drive simplifiée pour l'affichage mobile
-                let parsedImgUrl = "https://placehold.co/150x150?text=Pas+de+photo";
-                if(valPhoto && valPhoto.includes("drive.google.com")) parsedImgUrl = window.parseDriveUrl(valPhoto);
-                
-                let cardBlock = document.createElement('div'); cardBlock.className = "stock-item-card";
-                cardBlock.style = `border:1px solid #ddd; border-left:6px solid #16a085; border-radius:8px; padding:15px; display:flex; flex-direction:column; gap:10px; ${alerteStyle}`;
-                cardBlock.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <h3 style="margin:0; color:#2c3e50; font-size:16px;">${valProd} <br><span style="font-size:12px; color:#16a085;">Réf: ${valRef}</span></h3>
-                        ${parsedImgUrl !== "https://placehold.co/150x150?text=Pas+de+photo" ? `<img src="${parsedImgUrl}" style="max-width:60px; max-height:60px; border-radius:4px; border:1px solid #ccc;">` : ''}
-                    </div>
-                    <div style="display:flex; gap:10px;">
-                        <div style="flex:1;"><span class="edit-label">En Stock</span><input type="number" class="edit-input s-field-${safeId}" data-col="en stock" value="${valStock}" style="font-weight:bold; margin-bottom:0; color:${valStock <= valMini ? '#e74c3c' : '#2c3e50'};"></div>
-                        <div style="flex:1;"><span class="edit-label">Mini</span><input type="number" class="edit-input s-field-${safeId}" data-col="seuil mini" value="${valMini}" style="margin-bottom:0;"></div>
-                        <div style="flex:1;"><span class="edit-label">Pris</span><input type="number" class="edit-input s-field-${safeId}" data-col="pris" value="${valPris}" style="margin-bottom:0;"></div>
-                    </div>
-                    <div style="display:flex; gap:10px; margin-top:5px;">
-                        <button onclick="window.deleteStockItemFromServer('${numPiece}', this)" class="btn-action-primary" style="background:#ecf0f1; color:#e74c3c; margin-top:0; flex:1;">🗑️ Suppr.</button>
-                        <button onclick="window.saveStockItemEdits('${numPiece}', '${safeId}', this)" class="btn-action-primary" style="background:#16a085; margin-top:0; flex:2;">💾 Sauvegarder</button>
-                    </div>`;
-                cardsContainer.appendChild(cardBlock);
-            }
-        };
-
-        window.toggleAddStockForm = function() {
-            let form = document.getElementById('add-stock-form-container');
-            if (form) form.style.display = (form.style.display === 'none') ? 'block' : 'none';
-        };
-
-        window.filterStockItems = function() {
-            let searchVal = document.getElementById('search-stock').value.toLowerCase().trim();
-            let descVal = document.getElementById('filter-desc-stock').value.toLowerCase().trim();
-            let visibleCount = 0;
-            document.querySelectorAll('.stock-item-card').forEach(card => {
-                let txt = card.innerText.toLowerCase(); let inputs = card.querySelectorAll('input');
-                let matchSearch = (searchVal === "") || txt.includes(searchVal);
-                if (!matchSearch) inputs.forEach(inp => { if (inp.value.toLowerCase().includes(searchVal)) matchSearch = true; });
-                let matchDesc = (descVal === "") || txt.includes(descVal);
-                let isMatch = matchSearch && matchDesc;
-                card.style.display = isMatch ? 'flex' : 'none';
-                if (isMatch) visibleCount++;
-            });
-            let countDisplay = document.getElementById('stock-count-display');
-            if (countDisplay) countDisplay.innerText = `(${visibleCount})`;
-        };
-
-        window.addStockItemToServer = async function(btn) {
-            let fieldsObj = {}; let hasData = false;
-            document.querySelectorAll('.new-stock-field').forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; if(inp.value.trim() !== "") hasData = true; });
-            if (!hasData) return;
-            let oldText = btn.innerText; btn.innerText = "⏳ Envoi..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_stock_item", fields: fieldsObj }) }); let r = await res.json();
-                if (r.status === "success") {
-                    let newRow = new Array(window.rawStock[0].length).fill("");
-                    window.rawStock[0].forEach((header, index) => { let colName = header.toString().trim(); if (fieldsObj[colName] !== undefined) newRow[index] = fieldsObj[colName]; });
-                    window.rawStock.push(newRow); window.renderStockWorkspace();
-                } else alert("Erreur serveur.");
-            } catch(e) { alert("Échec réseau."); }
-            btn.innerText = oldText; btn.disabled = false;
-        };
-
-        window.saveStockItemEdits = async function(numPiece, safeId, btn) {
-            let fieldsObj = {}; document.querySelectorAll(`.s-field-${safeId}`).forEach(inp => { fieldsObj[inp.getAttribute('data-col')] = inp.value; });
-            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }) }); let r = await res.json();
-                if (r.status === "success") {
-                    btn.innerText = "✅ OK"; btn.style.background = "#27ae60";
-                    setTimeout(() => { window.renderStockWorkspace(); }, 1500);
-                } else alert("Erreur.");
-            } catch(e) { alert("Échec."); }
-            btn.disabled = false;
-        };
-
-        window.deleteStockItemFromServer = async function(numPiece, btn) {
-            if (!confirm("⚠️ Confirmer la suppression définitive ?")) return;
-            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_stock_item", idPiece: numPiece }) }); let r = await res.json();
-                if (r.status === "success") {
-                    let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
-                    let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); if (idxNum === -1) idxNum = 0;
-                    let rowIndex = window.rawStock.findIndex((row, idx) => idx > 0 && row[idxNum].toString().trim() === numPiece.toString().trim());
-                    if (rowIndex !== -1) window.rawStock.splice(rowIndex, 1);
-                    btn.closest('.stock-item-card').remove(); window.filterStockItems();
-                } else alert("Erreur.");
-            } catch(e) { alert("Échec."); }
-        };
-
-        /* ========================================================================= */
-        /* CHAPITRE 8 : ESPACE ATELIER (COMPLET & MOBILE)                            */
-        /* ========================================================================= */
-
-        window.renderAtelierWorkspace = function() {
-            let ws = document.getElementById('atelier-workspace'); if(!ws) return;
-            let canonsEnAtelier = window.suiviEntretienData.filter(row => row[3] && row[3].toString().toLowerCase().trim() === "oui").map(r => r[0].toString());
-            
-            ws.innerHTML = `
-                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px; border-bottom:2px solid #8e44ad; padding-bottom:10px;">
-                    <h2 style="color:#2c3e50; margin:0; font-size:22px;">🧰 Banc d'Essais</h2>
-                    <input type="text" id="search-atelier" placeholder="🔍 Rechercher N° Canon..." onkeyup="window.filterAtelierCanons(this.value)" class="edit-input" style="margin:0;">
-                </div>`;
-                
-            if(canonsEnAtelier.length === 0) { ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; font-weight:bold;">✅ Aucun canon au banc d'essai.</div>`; return; }
-
-            canonsEnAtelier.sort((a, b) => parseInt(a) - parseInt(b)).forEach(idCanon => {
-                let feature = window.snowCannons.features.find(f => f.properties.id == idCanon); if(!feature) return;
-                let p = feature.properties; let piste = window.getV(p, window.keyPiste); let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, "");
-                
-                let defaultVanne = "none"; let valVanneAd = (window.getV(p, "vanne additio") || "").toLowerCase();
-                if (valVanneAd.includes("clarinette")) defaultVanne = "v2000";
-                else if (valVanneAd.includes("2var")) defaultVanne = "var_double";
-                else if (valVanneAd.includes("var")) defaultVanne = "var";
-
-                let card = document.createElement('div'); card.className = "atelier-card";
-                card.innerHTML = `
-                    <h3 style="font-size:18px;">N° ${idCanon} <span style="font-size:12px; color:#888; float:right; margin-top:4px;">${piste}</span></h3>
-                    <details class="atelier-sub-details" open><summary style="outline:none;">📝 Fiche d'Essai Hydraulique</summary>
-                    <div style="padding:15px; display:flex; flex-direction:column; gap:10px; background:#f4f9f9;">
-                        
-                        <div style="font-size:12px; font-weight:bold; color:#2980b9;">🔵 VANNE PRINCIPALE</div>
-                        <div style="display:flex; gap:10px;">
-                            <div style="flex:1;"><span class="edit-label">Press Eau</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" style="margin-bottom:0;"></div>
-                            <div style="flex:1;"><span class="edit-label">Press Air</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" style="margin-bottom:0;"></div>
-                        </div>
-                        <div><span class="edit-label">Test Élec 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" style="margin-bottom:0;"></div>
-                        
-                        <div style="font-size:12px; font-weight:bold; color:#8e44ad; margin-top:10px;">➕ CONFIG ADITIONNELLE</div>
-                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:0; font-size:14px;">
-                            <option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune --</option>
-                            <option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>Bloc VAR (Simple)</option>
-                            <option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>Bloc VAR Double (2VAR)</option>
-                            <option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>Bloc V2000 (Clarinette)</option>
-                        </select>
-                        
-                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; padding-top:10px;">
-                            <span class="edit-label">Pression VAR</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="margin-bottom:0;">
-                        </div>
-                        
-                        <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" class="btn-action-primary" style="background:#8e44ad; margin-top:15px;">🚀 Archiver Rapport</button>
-                    </div></details>`;
-                ws.appendChild(card);
-            });
-        };
-
-        window.filterAtelierCanons = function(val) {
-            let search = val.toLowerCase().trim();
-            document.querySelectorAll('.atelier-card').forEach(card => {
-                let title = card.querySelector('h3').innerText.toLowerCase();
-                card.style.display = title.includes(search) ? 'block' : 'none';
-            });
-        };
-
-        window.handleSelectVanne = function(safeId, val) {
-            let bVar = document.getElementById(`bloc-var-${safeId}`); if (bVar) bVar.style.display = (val === 'var') ? 'block' : 'none';
-        };
-
-        window.saveAtelierBancRow = async function(idCanon, safeId, btn) {
-            let fieldsObj = { "id": idCanon };
-            document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => { if (inp.closest('div[id^="bloc-"]') && inp.closest('div[id^="bloc-"]').style.display === 'none') return; fieldsObj[inp.getAttribute('data-col')] = inp.value; });
-            
-            let oldText = btn.innerText; btn.innerText = "⏳ Enregistrement..."; btn.disabled = true;
-            try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_atelier", fields: fieldsObj }) }); let r = await res.json();
-                if(r.status === "success") { btn.innerText = "✅ Enregistré !"; btn.style.background = "#27ae60"; setTimeout(() => { window.renderAtelierWorkspace(); }, 1500); } 
-                else { alert("Erreur"); btn.disabled = false; btn.innerText = oldText; }
-            } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
-        };
-
-        /* ========================================================================= */
-        /* CHAPITRE 9 : WEBCAMS ET MÉTÉO (MODALS PLEIN ÉCRAN)                        */
-        /* ========================================================================= */
-
-        window.openMeteoWidget = function() {
-            let rightTitle = document.getElementById('right-title'); if(rightTitle) rightTitle.innerText = "⛅ Météo Live";
-            let sl = document.getElementById('selected-list'); if(!sl) return;
-            document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
-            
-            window.switchMeteoTab = function(p) {
-                let c = document.getElementById('meteo-content'); if(!c) return;
-                document.querySelectorAll('.meteo-tab-btn').forEach(b => b.style.opacity = '0.5'); document.getElementById('btn-meteo-' + p).style.opacity = '1';
-                if(p === 'meteoblue') c.innerHTML = `<iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe>`;
-                else if(p === 'windy') c.innerHTML = `<iframe src="https://embed.windy.com/embed2.html?lat=42.767&lon=0.582&zoom=12&overlay=wind&product=ecmwf" frameborder="0" style="width:100%;height:100%;"></iframe>`;
-            };
-            
-            sl.innerHTML = `<div style="display:flex;gap:5px;margin-bottom:15px;"><button id="btn-meteo-meteoblue" class="meteo-tab-btn" onclick="window.switchMeteoTab('meteoblue')" style="flex:1;background:#3498db;color:white;border:none;padding:12px;border-radius:6px;font-weight:bold;opacity:1;">Meteoblue</button><button id="btn-meteo-windy" class="meteo-tab-btn" onclick="window.switchMeteoTab('windy')" style="flex:1;background:#e67e22;color:white;border:none;padding:12px;border-radius:6px;font-weight:bold;opacity:0.5;">Windy</button></div><div id="meteo-content" style="background:#fff;border-radius:8px;border:1px solid #eee;padding:10px;height:60vh;"><iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe></div>`;
-            window.openBottomSheet('full');
-        };
-
-        window.openWebcamGrid = function() {
-            let rightTitle = document.getElementById('right-title'); if(rightTitle) rightTitle.innerText = "📷 Webcams";
-            let sl = document.getElementById('selected-list'); if(!sl) return;
-            document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
-            
-            let html = "<div style='display:flex;flex-direction:column;gap:15px;'>";
-            if(window.webcamsData.length === 0) html += "<p style='text-align:center; padding:20px;'>Aucune caméra disponible.</p>";
-            else window.webcamsData.forEach(w => { 
-                let isImg = w.url.toLowerCase().match(/\.(jpeg|jpg|png|gif)$/) != null; 
-                let mHtml = isImg ? `<img src="${w.url}" style="width:100%;border-radius:6px;"/>` : `<div style="width:100%;height:250px;border-radius:6px;overflow:hidden;"><iframe src="${w.url}" style="width:100%;height:100%;border:none;"></iframe></div>`; 
-                html += `<div style="background:#fff;padding:15px;border-radius:8px;border:1px solid #ddd;"><h4 style="margin:0 0 10px 0; color:var(--primary);">${w.icon} ${w.nom}</h4>${mHtml}</div>`; 
-            });
-            html += "</div>"; sl.innerHTML = html; 
-            window.openBottomSheet('full'); window.toggleMenu(); // Ouvre en grand et ferme le menu burger
-        };
+        }
+        document.addEventListener('DOMContentLoaded', () => { document.querySelectorAll('input[name="main_theme"]').forEach(r => { r.addEventListener('change', () => { switchViewMode(); document.getElementById('left-sidebar').classList.remove('open'); }); }); });
         
-        // Utilitaires restants nécessaires pour l'interface
-        window.biLoadSource = function() { console.log("BI Module: Données prêtes à être analysées."); }; // Le BI lourd peut être adapté ici si nécessaire
-    </script>
-</body>
-</html>
