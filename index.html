@@ -708,50 +708,162 @@
         /* ========================================================================= */
         /* ATELIER (BANC ESSAI COMPLET MOBILE)                                       */
         /* ========================================================================= */
-        window.renderAtelierWorkspace = function() {
+                window.renderAtelierWorkspace = function() {
             let ws = document.getElementById('atelier-workspace'); if(!ws) return;
             let canonsEnAtelier = window.suiviEntretienData.filter(row => row[3] && row[3].toString().toLowerCase().trim() === "oui").map(r => r[0].toString());
             
-            ws.innerHTML = `<div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px; border-bottom:2px solid #8e44ad; padding-bottom:10px;"><h2 style="color:#2c3e50; margin:0; font-size:22px;">🧰 Banc d'Essais</h2><input type="text" id="search-atelier" placeholder="🔍 Rechercher N° Canon..." onkeyup="window.filterAtelierCanons(this.value)" class="edit-input" style="margin:0;"></div>`;
-            if(canonsEnAtelier.length === 0) { ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; font-weight:bold;">✅ Aucun canon au banc d'essai.</div>`; return; }
+            ws.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px; border-bottom:2px solid #8e44ad; padding-bottom:10px;">
+                    <h2 style="color:#2c3e50; margin:0; font-size:22px;">🧰 Banc d'Essais</h2>
+                    <input type="text" id="search-atelier" placeholder="🔍 Rechercher N° Canon..." onkeyup="window.filterAtelierCanons(this.value)" class="edit-input" style="margin:0;">
+                </div>`;
+                
+            if(canonsEnAtelier.length === 0) { 
+                ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; font-weight:bold;">✅ Aucun canon au banc d'essai.</div>`; 
+                return; 
+            }
 
             canonsEnAtelier.sort((a, b) => parseInt(a) - parseInt(b)).forEach(idCanon => {
                 let feature = window.snowCannons.features.find(f => f.properties.id == idCanon); if(!feature) return;
                 let p = feature.properties; let piste = window.getV(p, window.keyPiste); let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, "");
+                
                 let defaultVanne = "none"; let valVanneAd = (window.getV(p, "vanne additio") || "").toLowerCase();
-                if (valVanneAd.includes("clarinette")) defaultVanne = "v2000"; else if (valVanneAd.includes("2var")) defaultVanne = "var_double"; else if (valVanneAd.includes("var")) defaultVanne = "var";
+                let typeVannePrincipale = window.getV(p, "Type de vanne").toUpperCase();
+                
+                if (valVanneAd.includes("clarinette")) defaultVanne = "v2000"; 
+                else if (valVanneAd.includes("2var")) defaultVanne = "var_double"; 
+                else if (valVanneAd.includes("var")) defaultVanne = "var";
+
+                // Calcul automatique des consommables
+                let calcR18Nitrile = 0, calcR18Ptfe = 0, calcPtfeR3 = 0;
+                let calcR11Nitrile = 0, calcR11Ptfe = 0, calcPtfeVar = 0;
+
+                if (typeVannePrincipale === "YA") { calcR18Nitrile = 2; calcR18Ptfe = 4; calcPtfeR3 = 1; }
+                else if (typeVannePrincipale === "YB") { calcR18Nitrile = 5; calcR18Ptfe = 4; calcPtfeR3 = 1; }
+                
+                if (defaultVanne === "v2000") { 
+                    calcR18Nitrile += 6; calcR18Ptfe += 2; calcPtfeR3 += 2; 
+                } else if (defaultVanne === "var" || defaultVanne === "var_double") {
+                    let multiplicateur = (defaultVanne === "var_double") ? 2 : 1;
+                    calcR11Nitrile = 6 * multiplicateur; calcR11Ptfe = 2 * multiplicateur; calcPtfeVar = 2 * multiplicateur;
+                }
+
+                const getVal = (col) => ""; // Pour préremplir si besoin avec existingData
+                const getConsommable = (autoCalc) => autoCalc > 0 ? autoCalc : "";
 
                 let formHtml = `
-                    <div style="padding:15px; display:flex; flex-direction:column; gap:10px; background:#f4f9f9;">
-                        <div style="font-size:12px; font-weight:bold; color:#2980b9;">🔵 VANNE PRINCIPALE</div>
-                        <div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">Press Eau 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" style="margin-bottom:0;"></div><div style="flex:1;"><span class="edit-label">Press Air 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" style="margin-bottom:0;"></div></div>
-                        <div><span class="edit-label">Test Élec 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" style="margin-bottom:0;"></div>
-                        <div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">Press Eau 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" style="margin-bottom:0;"></div><div style="flex:1;"><span class="edit-label">Press Air 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 2" style="margin-bottom:0;"></div></div>
-                        <div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">Test Élec 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" style="margin-bottom:0;"></div><div style="flex:1;"><span class="edit-label">Vanne Prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="OUI" style="margin-bottom:0; color:#27ae60; font-weight:bold;"></div></div>
+                    <div style="padding:15px; display:flex; flex-direction:column; gap:10px; background:#f4f9f9; border-top:1px solid #eee;">
+                        
+                        <!-- VANNE PRINCIPALE (AVANT) -->
+                        <div style="font-size:14px; font-weight:bold; color:#2980b9;">🔵 VANNE PRINCIPALE</div>
+                        <div style="font-size:12px; font-weight:bold; color:#7f8c8d;">[Test 1] Avant Intervention :</div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div><span class="edit-label">Press Eau 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" style="margin-bottom:0; height:36px;"></div>
+                            <div><span class="edit-label">Press Air 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" style="margin-bottom:0; height:36px;"></div>
+                            <div><span class="edit-label">Test Élec 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" style="margin-bottom:0; height:36px;"></div>
+                            <div><span class="edit-label">Manu 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 1" style="margin-bottom:0; height:36px;"></div>
+                            <div style="grid-column: span 2;"><span class="edit-label">Capteur 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 1" style="margin-bottom:0; height:36px;"></div>
+                        </div>
 
-                        <div style="font-size:12px; font-weight:bold; color:#8e44ad; margin-top:10px;">➕ CONFIG ADITIONNELLE</div>
-                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:0; font-size:14px;"><option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune --</option><option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>Bloc VAR (Simple)</option><option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>Bloc VAR Double (2VAR)</option><option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>Bloc V2000 (Clarinette)</option></select>
-                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; padding-top:10px;"><div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">Pression VAR 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="margin-bottom:0;"></div><div style="flex:1;"><span class="edit-label">Pression VAR 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="margin-bottom:0;"></div></div></div>
-                        <div id="bloc-var-double-${safeId}" style="display:${defaultVanne === 'var_double' ? 'block' : 'none'}; padding-top:10px;"><span class="edit-label">Élec 1 (Perche 1)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="margin-bottom:0;"><span class="edit-label">Élec 2 (Perche 2)</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2)" style="margin-bottom:0;"></div>
-                        <div id="bloc-v2000-${safeId}" style="display:${defaultVanne === 'v2000' ? 'block' : 'none'}; padding-top:10px;"><div style="display:flex; gap:10px;"><div style="flex:1;"><span class="edit-label">Élec C2 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" style="margin-bottom:0;"></div><div style="flex:1;"><span class="edit-label">Élec C3 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c3" style="margin-bottom:0;"></div></div></div>
+                        <!-- MAINTENANCE EFFECTUEE -->
+                        <div style="background:rgba(0,0,0,0.03); padding:10px; border-radius:6px; margin:5px 0;">
+                            <span class="edit-label">Maintenance effectuée</span><input type="text" class="edit-input b-field-${safeId}" data-col="maintenance effectué" style="margin-bottom:8px; height:36px;">
+                            <span class="edit-label">Pièces utilisées (hors joints auto)</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces utilisés" style="margin-bottom:0; height:36px;">
+                        </div>
 
-                        <span class="edit-label" style="margin-top:10px;">Commentaire de clôture</span><input type="text" class="edit-input b-field-${safeId}" data-col="Commentaire" placeholder="Remarques..." style="margin-bottom:0;">
-                        <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" class="btn-action-primary" style="background:#8e44ad; margin-top:15px;">🚀 Archiver le Rapport</button>
+                        <!-- VANNE PRINCIPALE (APRES) -->
+                        <div style="font-size:12px; font-weight:bold; color:#27ae60; margin-top:5px;">[Test 2] Après Intervention :</div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div><span class="edit-label">Press Eau 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" style="margin-bottom:0; height:36px;"></div>
+                            <div><span class="edit-label">Press Air 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 2" style="margin-bottom:0; height:36px;"></div>
+                            <div><span class="edit-label">Test Élec 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" style="margin-bottom:0; height:36px;"></div>
+                            <div><span class="edit-label">Manu 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 2" style="margin-bottom:0; height:36px;"></div>
+                            <div><span class="edit-label">Capteur 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 2" style="margin-bottom:0; height:36px;"></div>
+                            <div><span class="edit-label" style="color:#27ae60;">Vanne Prête ?</span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="OUI" style="margin-bottom:0; height:36px; font-weight:bold; color:#27ae60;"></div>
+                        </div>
+
+                        <!-- CONFIGURATION ADDITIONNELLE -->
+                        <div style="font-size:14px; font-weight:bold; color:#8e44ad; margin-top:15px; border-top:1px dashed #ccc; padding-top:15px;">➕ CONFIG ADITIONNELLE</div>
+                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:0;">
+                            <option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune --</option>
+                            <option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>Bloc VAR (Simple)</option>
+                            <option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>Bloc VAR Double (2VAR)</option>
+                            <option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>Bloc V2000 (Clarinette)</option>
+                        </select>
+                        
+                        <!-- BLOC VAR SIMPLE -->
+                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; padding:10px; background:#fdf2e9; border:1px solid #f8c471; border-radius:6px; margin-top:10px;">
+                            <b style="color:#d35400; font-size:12px; margin-bottom:10px; display:block;">🛡️ VAR (1)</b>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                                <div><span class="edit-label">Élec 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Press 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Élec 2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Press 2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Pièces VAR</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces var utilisés" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">VAR Prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (1) prête" value="OUI" style="margin:0; height:36px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- BLOC VAR DOUBLE -->
+                        <div id="bloc-var-double-${safeId}" style="display:${defaultVanne === 'var_double' ? 'block' : 'none'}; padding:10px; background:#fef5e7; border:1px solid #eb984e; border-radius:6px; margin-top:10px;">
+                            <b style="color:#ba4a00; font-size:12px; margin-bottom:5px; display:block;">🛡️ VAR DOUBLE (2VAR)</b>
+                            <div style="font-size:11px; font-weight:bold; color:#ba4a00; margin-bottom:5px;">• Perche 1 (VAR 1)</div>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:10px;">
+                                <div><span class="edit-label">Élec 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Press 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Élec 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Press 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" style="margin:0; height:36px;"></div>
+                            </div>
+                            <div style="font-size:11px; font-weight:bold; color:#ba4a00; margin-bottom:5px;">• Perche 2 (VAR 2)</div>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                                <div><span class="edit-label">Élec 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2)" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Press 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var (2)" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Élec 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2) bis" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Press 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var (2)" style="margin:0; height:36px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- BLOC V2000 CLARINETTE -->
+                        <div id="bloc-v2000-${safeId}" style="display:${defaultVanne === 'v2000' ? 'block' : 'none'}; padding:10px; background:#eaf2f8; border:1px solid #85c1e9; border-radius:6px; margin-top:10px;">
+                            <b style="color:#2980b9; font-size:12px; margin-bottom:5px; display:block;">🛡️ V2000 (CLARINETTE)</b>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                                <div><span class="edit-label">Élec C2 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Élec C3 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c3" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Press C2 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c2" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Press C3 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c3" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Élec C2 [2]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 elec v2000 c2" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Élec C3 [2]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 elec v2000 c3" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Press C2 [2]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 pression eau v2000 2 c2" style="margin:0; height:36px;"></div>
+                                <div><span class="edit-label">Press C3 [2]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 pression eau v2000 2 c3" style="margin:0; height:36px;"></div>
+                                <div style="grid-column: span 2;"><span class="edit-label">Pièces V2000</span><input type="text" class="edit-input b-field-${safeId}" data-col="pièces v2000 utilisés" style="margin:0; height:36px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- CALCUL DES CONSOMMABLES AUTO -->
+                        <div style="background:#f0f3f5; padding:10px; border-radius:6px; margin-top:10px; border:1px solid #ccc;">
+                            <div style="font-weight:bold; font-size:11px; color:#555; text-transform:uppercase; margin-bottom:8px;">📋 Consommables Calculés (Joints) :</div>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+                                <div><span class="edit-label" style="font-size:10px;">R18 Nitrile</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R18 NITRILE" value="${getConsommable(calcR18Nitrile)}" style="margin:0; height:30px; font-weight:bold; color:#d35400;"></div>
+                                <div><span class="edit-label" style="font-size:10px;">R18 PTFE</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R18 ptfe" value="${getConsommable(calcR18Ptfe)}" style="margin:0; height:30px; font-weight:bold; color:#d35400;"></div>
+                                <div><span class="edit-label" style="font-size:10px;">PTFE R3</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint PTFE r3" value="${getConsommable(calcPtfeR3)}" style="margin:0; height:30px; font-weight:bold; color:#d35400;"></div>
+                                <div><span class="edit-label" style="font-size:10px;">R11 Nitrile</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R11 NITRILE" value="${getConsommable(calcR11Nitrile)}" style="margin:0; height:30px; font-weight:bold; color:#2980b9;"></div>
+                                <div><span class="edit-label" style="font-size:10px;">R11 PTFE</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R11 ptfe" value="${getConsommable(calcR11Ptfe)}" style="margin:0; height:30px; font-weight:bold; color:#2980b9;"></div>
+                                <div><span class="edit-label" style="font-size:10px;">PTFE VAR</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint PTFE var" value="${getConsommable(calcPtfeVar)}" style="margin:0; height:30px; font-weight:bold; color:#2980b9;"></div>
+                            </div>
+                        </div>
+
+                        <span class="edit-label" style="margin-top:10px;">Commentaire de clôture</span>
+                        <input type="text" class="edit-input b-field-${safeId}" data-col="Commentaire" placeholder="Remarques éventuelles..." style="margin-bottom:0;">
+                        
+                        <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" class="btn-action-primary" style="background:#8e44ad; margin-top:15px; font-size:16px;">🚀 Archiver le Rapport</button>
                     </div>`;
 
                 let card = document.createElement('div'); card.className = "atelier-card";
-                card.innerHTML = `<h3 style="font-size:18px;">N° ${idCanon} <span style="font-size:12px; color:#888; float:right; margin-top:4px;">${piste}</span></h3><details class="atelier-sub-details" open><summary style="outline:none;">📝 Fiche d'Essai Hydraulique</summary>${formHtml}</details>`;
+                card.innerHTML = `
+                    <h3 style="font-size:18px;">N° ${idCanon} <span style="font-size:13px; color:#888; float:right; margin-top:4px;">${piste}</span></h3>
+                    <details class="atelier-sub-details" open><summary style="outline:none;">📝 Formulaire Complet d'Essai</summary>${formHtml}</details>`;
                 ws.appendChild(card);
             });
-        };
-
-        window.filterAtelierCanons = function(val) { let search = val.toLowerCase().trim(); document.querySelectorAll('.atelier-card').forEach(card => { let title = card.querySelector('h3').innerText.toLowerCase(); card.style.display = title.includes(search) ? 'block' : 'none'; }); };
-        window.handleSelectVanne = function(safeId, val) { let bVar = document.getElementById(`bloc-var-${safeId}`); if (bVar) bVar.style.display = (val === 'var') ? 'block' : 'none'; let bVarD = document.getElementById(`bloc-var-double-${safeId}`); if (bVarD) bVarD.style.display = (val === 'var_double') ? 'block' : 'none'; let bV2000 = document.getElementById(`bloc-v2000-${safeId}`); if (bV2000) bV2000.style.display = (val === 'v2000') ? 'block' : 'none'; };
-
-        window.saveAtelierBancRow = async function(idCanon, safeId, btn) {
-            let fieldsObj = { "id": idCanon }; document.querySelectorAll(`.b-field-${safeId}`).forEach(inp => { if (inp.closest('div[id^="bloc-"]') && inp.closest('div[id^="bloc-"]').style.display === 'none') return; fieldsObj[inp.getAttribute('data-col')] = inp.value; });
-            let oldText = btn.innerText; btn.innerText = "⏳ Enregistrement..."; btn.disabled = true;
-            try { let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_atelier", fields: fieldsObj }) }); let r = await res.json(); if(r.status === "success") { btn.innerText = "✅ Enregistré !"; btn.style.background = "#27ae60"; setTimeout(() => { window.renderAtelierWorkspace(); }, 1500); } else { alert("Erreur"); btn.disabled = false; btn.innerText = oldText; } } catch(e) { alert("Erreur réseau"); btn.disabled = false; btn.innerText = oldText; }
         };
 
         /* ========================================================================= */
