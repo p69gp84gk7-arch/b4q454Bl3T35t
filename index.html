@@ -160,36 +160,72 @@
     </div>
 
     <!-- Modal : Paramètres Avancés (Moitié d'écran droite pour voir la carte à gauche) -->
+<!-- ========================================================================= -->
+    <!-- MODIFICATION : PANNEAU PARAMÈTRES AVANCÉS (COULEURS CARTE & SIDEBAR)      -->
+    <!-- ========================================================================= -->
     <div id="settings-panel" style="display:none; position:fixed; top:50px; right:0; bottom:0; width:400px; max-width:90vw; background:#fff; z-index:8500; box-shadow:-5px 0 25px rgba(0,0,0,0.2); flex-direction:column; border-left:1px solid #ddd;">
         <div style="background:#2c3e50; color:white; padding:15px; display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
             <span>⚙️ Paramètres de l'Application</span>
             <button onclick="document.getElementById('settings-panel').style.display='none'" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
         </div>
-        <div style="padding:20px; overflow-y:auto; flex:1; background:#fdfdfe;">
-            <div class="edit-label">🗺️ Fond de carte principal</div>
-            <select id="set-basemap" class="edit-input" onchange="window.applySettingsUI()">
-                <option value="sat">Satellite (Esri - Actuel)</option>
-                <option value="plan">Plan & Routes (OpenStreetMap)</option>
-                <option value="topo">Relief & Topographie (OpenTopoMap)</option>
-            </select>
+        <div style="padding:15px; overflow-y:auto; flex:1; background:#fdfdfe;">
             
-            <div class="edit-label" style="margin-top:15px;">🎨 Thème & Couleurs</div>
-            <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
-                <input type="color" id="set-topbar-color" value="#2c3e50" style="width:40px; height:40px; padding:2px; cursor:pointer;" onchange="window.applySettingsUI()">
-                <span style="font-size:12px; font-weight:bold; color:#555;">Couleur du bandeau supérieur</span>
-            </div>
+            <details class="panel-section" open style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;">🎨 Thème de l'interface</summary>
+                <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:12px; font-weight:bold; color:#555;">Couleur Bandeau Supérieur</span>
+                        <input type="color" id="set-topbar-color" value="#2c3e50" style="width:40px; height:30px; cursor:pointer;" onchange="window.applySettingsUI()">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:12px; font-weight:bold; color:#555;">Fond Menu Gauche (Sidebar)</span>
+                        <input type="color" id="set-sidebar-bg" value="#ffffff" style="width:40px; height:30px; cursor:pointer;" onchange="window.applySettingsUI()">
+                    </div>
+                </div>
+            </details>
 
-            <div class="edit-label" style="margin-top:15px;">👁️ Visibilité des sections (Menu de gauche)</div>
-            <div style="background:#f4f6f8; padding:10px; border-radius:6px; border:1px solid #eee;">
-                <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px; cursor:pointer; font-size:13px; font-weight:bold;">
-                    <input type="checkbox" id="set-show-tools" checked onchange="window.applySettingsUI()"> 🔧 Panneau "Outils d'Analyse" (Thèmes)
-                </label>
-                <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px; cursor:pointer; font-size:13px; font-weight:bold;">
-                    <input type="checkbox" id="set-show-filters" checked onchange="window.applySettingsUI()"> 🔍 Panneau "Filtres Rapides"
-                </label>
-            </div>
+            <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;">🗺️ Fond de carte & Affichage</summary>
+                <div style="padding:15px;">
+                    <select id="set-basemap" class="edit-input" onchange="window.applySettingsUI()" style="margin-bottom:15px;">
+                        <option value="sat">Satellite (Esri - Actuel)</option>
+                        <option value="plan">Plan & Routes (OpenStreetMap)</option>
+                        <option value="topo">Relief & Topographie (OpenTopoMap)</option>
+                    </select>
+                    <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px; cursor:pointer; font-size:12px; font-weight:bold;">
+                        <input type="checkbox" id="set-show-tools" checked onchange="window.applySettingsUI()"> 🔧 Outils d'Analyse (Menu Gauche)
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; font-weight:bold;">
+                        <input type="checkbox" id="set-show-filters" checked onchange="window.applySettingsUI()"> 🔍 Filtres Rapides (Menu Gauche)
+                    </label>
+                </div>
+            </details>
+
+            <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;">📍 Couleurs des Statuts (Carte)</summary>
+                <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">
+                    <b style="font-size:11px; color:#8e44ad;">🚨 Tickets & Pannes</b>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:12px;">Panne Urgente (À faire)</span><input type="color" id="set-col-urgent" value="#e74c3c" style="width:30px; height:25px;" onchange="window.triggerMapUpdate()">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:12px;">En cours</span><input type="color" id="set-col-encours" value="#f39c12" style="width:30px; height:25px;" onchange="window.triggerMapUpdate()">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span style="font-size:12px;">RAS (Aucun défaut)</span><input type="color" id="set-col-ras" value="#bdc3c7" style="width:30px; height:25px;" onchange="window.triggerMapUpdate()">
+                    </div>
+
+                    <b style="font-size:11px; color:#8e44ad; border-top:1px solid #eee; padding-top:10px;">🚿 Entretien Têtes</b>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:12px;">Buse Changée (OK)</span><input type="color" id="set-col-tete-ok" value="#e67e22" style="width:30px; height:25px;" onchange="window.triggerMapUpdate()">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:12px;">À faire</span><input type="color" id="set-col-tete-wait" value="#bdc3c7" style="width:30px; height:25px;" onchange="window.triggerMapUpdate()">
+                    </div>
+                </div>
+            </details>
             
-            <button onclick="window.saveSettingsLocally()" class="btn-action-primary" style="margin-top:25px; background:#27ae60; font-size:14px;">💾 Mémoriser ces paramètres</button>
+            <button onclick="window.saveSettingsLocally()" class="btn-action-primary" style="margin-top:15px; background:#27ae60; font-size:14px; width:100%;">💾 Mémoriser tous les paramètres</button>
         </div>
     </div>
 
@@ -694,10 +730,23 @@ window.renderPieceBadges = function(hiddenId, container) {
         
         window.initSidebarResizer = function() { let sb = document.getElementById('right-sidebar'); if(!sb) return; let rs = document.createElement('div'); rs.className = 'resizer'; sb.appendChild(rs); let isR = false; rs.addEventListener('mousedown', () => { isR = true; rs.classList.add('active'); document.body.style.cursor = 'ew-resize'; if(window.map) window.map.dragging.disable(); }); document.addEventListener('mousemove', (e) => { if(!isR) return; let nw = document.body.clientWidth - e.clientX; if(nw < 350) nw = 350; if(nw > document.body.clientWidth * 0.9) nw = document.body.clientWidth * 0.9; sb.style.width = nw + 'px'; }); document.addEventListener('mouseup', () => { if(isR) { isR = false; rs.classList.remove('active'); document.body.style.cursor = 'default'; if(window.map) window.map.dragging.enable(); } }); }; setTimeout(window.initSidebarResizer, 1000);
 
+/* ========================================================================= */
+
         window.getColorByFilter = function(ratio, p) {
-            if(window.mainTheme === 'entretien_tete') { let bVal = window.getV(p, "Buses").toLowerCase().trim(); return (bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x") ? '#e67e22' : '#bdc3c7'; }
+            let s = window.appSettings || {colUrgent:'#e74c3c', colEnCours:'#f39c12', colRas:'#bdc3c7', colTeteOk:'#e67e22', colTeteWait:'#bdc3c7'};
+            
+            if(window.mainTheme === 'entretien_tete') { 
+                let bVal = window.getV(p, "Buses").toLowerCase().trim(); 
+                return (bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x") ? s.colTeteOk : s.colTeteWait; 
+            }
             const inter = (c1,c2,f) => { let r = c1.slice(); for(let i=0; i<3; i++) r[i] = Math.round(r[i] + f * (c2[i] - c1[i])); return `rgb(${r[0]},${r[1]},${r[2]})`; };
-            if(window.mainTheme === 'defauts') { let act = window.getActiveTickets(p.id); if(act.length === 0) return '#bdc3c7'; if(act.some(t => t.statut.includes('faire'))) return '#e74c3c'; return '#f39c12'; }
+            
+            if(window.mainTheme === 'defauts') { 
+                let act = window.getActiveTickets(p.id); 
+                if(act.length === 0) return s.colRas; 
+                if(act.some(t => t.statut.includes('faire'))) return s.colUrgent; 
+                return s.colEnCours; 
+            }
             if(window.mainTheme === 'historique') { if(window.histMetric === 'eau') return inter([173,216,230],[41,128,185],ratio); if(window.histMetric === 'air') return inter([250,219,94],[211,84,0],ratio); if(window.histMetric === 'temps') return inter([171,235,198],[39,174,96],ratio); }
             if(window.mainTheme === 'repeteur') return window.repColors[window.getV(p, window.keyRep)] || '#7f8c8d';
             if(window.mainTheme === 'transfo') return window.transfoColors[window.getV(p, window.keyTransfo)] || '#7f8c8d';
@@ -706,16 +755,17 @@ window.renderPieceBadges = function(hiddenId, container) {
         };
 
         window.updateLegend = function() {
+            let s = window.appSettings || {colUrgent:'#e74c3c', colEnCours:'#f39c12', colRas:'#bdc3c7', colTeteOk:'#e67e22', colTeteWait:'#bdc3c7'};
             let elDef = document.getElementById('legend-defauts'); let elSuivi = document.getElementById('legend-suivi_entretien');
-            if (window.mainTheme === 'suivi_entretien') { if(elSuivi) elSuivi.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e74c3c;"></div> Défaut en cours</div><div class="legend-item"><div class="color-box" style="background:#9b59b6;"></div> Préventif Usine</div><div class="legend-item"><div class="color-box" style="background:#27ae60;"></div> Déconnecté</div><div class="legend-item"><div class="color-box" style="background:#f1c40f;"></div> Connecté (⚡)</div><div class="legend-item"><div style="background:#e67e22; color:white; width:14px; height:14px; border-radius:50%; font-size:10px; font-weight:bold; text-align:center; line-height:14px; border:1px solid #ccc;">!</div> Remarque présente</div><div class="legend-item" style="font-size:10px; color:#7f8c8d; margin-top:5px;"><i>Mélange de couleurs si multi-statuts.</i></div>`; }
-            else if (window.mainTheme === 'entretien_tete') { let elEntretien = document.getElementById('legend-entretien_tete'); if (elEntretien) { elEntretien.innerHTML = `<div class="legend-item"><div class="color-box" style="background:#e67e22;"></div> Buses changées / OK</div><div class="legend-item"><div class="color-box" style="background:#bdc3c7;"></div> À faire</div>`; } }
-            else if (window.mainTheme === 'defauts' && elDef) { elDef.innerHTML = `<div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'urgent')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #e74c3c;"></div> Urgent (À faire)</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'encours')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #f39c12;"></div> En cours</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'ras')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: #bdc3c7;"></div> RAS</div>`; }
-            else if (window.mainTheme === 'type') { let elTy = document.getElementById('legend-type'); let h = '';  Object.keys(window.technoColors).sort().forEach(k => {  let color = window.technoColors[k];  if(["demak lenko", "demac lenko"].includes(k)) color = "#0000FF"; else if(["sufag", "street", "taurus", "taurax", "peak"].includes(k)) color = "#008000"; if(k === "n/a" || k === "") return;  let iconHtml = `<div class="color-box" style="background: ${color};"></div>`;if (window.driveIcons && window.driveIcons[k]) { iconHtml = `<div style="width:20px; height:20px; background:url('${window.driveIcons[k]}') center/contain no-repeat; margin-right:5px; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));"></div>`; } h += `<div class="legend-item" onmouseenter="window.highlightLegend('type', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()">${iconHtml} ${k.toUpperCase()}</div>`;  }); if(elTy) elTy.innerHTML = h; }
-            else if (window.mainTheme === 'repeteur') { let h=''; Object.keys(window.repColors).sort().forEach(k => { h += `<div class="legend-item" onmouseenter="window.highlightLegend('repeteur', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${window.repColors[k]};"></div> Répéteur ${k}</div>`; }); let elRep = document.getElementById('legend-repeteur'); if(elRep) elRep.innerHTML = h; }
-            else if (window.mainTheme === 'transfo') { let h=''; Object.keys(window.transfoColors).sort().forEach(k => { h += `<div class="legend-item" onmouseenter="window.highlightLegend('transfo', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${window.transfoColors[k]};"></div> Transfo ${k}</div>`; }); let elTr = document.getElementById('legend-transfo'); if(elTr) elTr.innerHTML = h; }
-            else if (window.mainTheme === 'historique') { let hL = document.getElementById('legend-historique'); if(!hL) return; if (window.histMetric === 'eau') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #add8e6, #2980b9);"></div><div class="legend-labels"><span>0 m³</span><span>Max</span></div>`; else if (window.histMetric === 'air') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #fadb5e, #d35400);"></div><div class="legend-labels"><span>0</span><span>Max</span></div>`; else if (window.histMetric === 'temps') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #abebc6, #27ae60);"></div><div class="legend-labels"><span>0 h</span><span>Max</span></div>`; }
+            
+            if (window.mainTheme === 'suivi_entretien') { if(elSuivi) elSuivi.innerHTML = `<div class="legend-item"><div class="color-box" style="background:${s.colUrgent};"></div> Défaut en cours</div><div class="legend-item"><div class="color-box" style="background:#9b59b6;"></div> Préventif Usine</div><div class="legend-item"><div class="color-box" style="background:#27ae60;"></div> Déconnecté</div><div class="legend-item"><div class="color-box" style="background:#f1c40f;"></div> Connecté (⚡)</div><div class="legend-item"><div style="background:#e67e22; color:white; width:14px; height:14px; border-radius:50%; font-size:10px; font-weight:bold; text-align:center; line-height:14px; border:1px solid #ccc;">!</div> Remarque présente</div><div class="legend-item" style="font-size:10px; color:#7f8c8d; margin-top:5px;"><i>Mélange de couleurs si multi-statuts.</i></div>`; }
+            else if (window.mainTheme === 'entretien_tete') { let elEntretien = document.getElementById('legend-entretien_tete'); if (elEntretien) { elEntretien.innerHTML = `<div class="legend-item"><div class="color-box" style="background:${s.colTeteOk};"></div> Buses changées / OK</div><div class="legend-item"><div class="color-box" style="background:${s.colTeteWait};"></div> À faire</div>`; } }
+            else if (window.mainTheme === 'defauts' && elDef) { elDef.innerHTML = `<div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'urgent')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${s.colUrgent};"></div> Urgent (À faire)</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'encours')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${s.colEnCours};"></div> En cours</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'ras')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${s.colRas};"></div> RAS</div>`; }
+            else if (window.mainTheme === 'type') { /* inchangé ... */ let elTy = document.getElementById('legend-type'); let h = '';  Object.keys(window.technoColors).sort().forEach(k => {  let color = window.technoColors[k];  if(["demak lenko", "demac lenko"].includes(k)) color = "#0000FF"; else if(["sufag", "street", "taurus", "taurax", "peak"].includes(k)) color = "#008000"; if(k === "n/a" || k === "") return;  let iconHtml = `<div class="color-box" style="background: ${color};"></div>`;if (window.driveIcons && window.driveIcons[k]) { iconHtml = `<div style="width:20px; height:20px; background:url('${window.driveIcons[k]}') center/contain no-repeat; margin-right:5px; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));"></div>`; } h += `<div class="legend-item" onmouseenter="window.highlightLegend('type', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()">${iconHtml} ${k.toUpperCase()}</div>`;  }); if(elTy) elTy.innerHTML = h; }
+            else if (window.mainTheme === 'repeteur') { /* inchangé */ let h=''; Object.keys(window.repColors).sort().forEach(k => { h += `<div class="legend-item" onmouseenter="window.highlightLegend('repeteur', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${window.repColors[k]};"></div> Répéteur ${k}</div>`; }); let elRep = document.getElementById('legend-repeteur'); if(elRep) elRep.innerHTML = h; }
+            else if (window.mainTheme === 'transfo') { /* inchangé */ let h=''; Object.keys(window.transfoColors).sort().forEach(k => { h += `<div class="legend-item" onmouseenter="window.highlightLegend('transfo', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${window.transfoColors[k]};"></div> Transfo ${k}</div>`; }); let elTr = document.getElementById('legend-transfo'); if(elTr) elTr.innerHTML = h; }
+            else if (window.mainTheme === 'historique') { /* inchangé */ let hL = document.getElementById('legend-historique'); if(!hL) return; if (window.histMetric === 'eau') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #add8e6, #2980b9);"></div><div class="legend-labels"><span>0 m³</span><span>Max</span></div>`; else if (window.histMetric === 'air') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #fadb5e, #d35400);"></div><div class="legend-labels"><span>0</span><span>Max</span></div>`; else if (window.histMetric === 'temps') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #abebc6, #27ae60);"></div><div class="legend-labels"><span>0 h</span><span>Max</span></div>`; }
         };
-
         window.highlightLegend = function(theme, val) {
             if (theme === 'historique' || theme === 'suivi_entretien') return; if(!window.geojsonLayer) return;
             window.geojsonLayer.eachLayer(function(layer) {
@@ -2965,29 +3015,40 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
         /* CHAPITRE 16 : PARAMÈTRES (PIN), PDF EN LIGNE ET KMZ DEPUIS DRIVE          */
         /* ========================================================================= */
 
-        // --- 1. GESTION DES PARAMÈTRES ET DU CODE PIN ---
+       // --- 1. GESTION DES PARAMÈTRES ET DU CODE PIN ---
         window.promptSettings = function() {
-            // Demande simple et sécurisée sans surcharger l'interface graphique
             let pin = prompt("🔐 Menu protégé. Entrez le code d'accès (PIN) :");
-            if (pin === "1234") { // Tu peux modifier le code ici !
+            if (pin === "1602") { 
                 document.getElementById('settings-panel').style.display = 'flex';
-                window.loadSettingsLocally(); // Rafraichit les valeurs du menu
+                window.loadSettingsLocally(); 
             } else {
                 if (pin !== null) alert("❌ Code incorrect. Accès refusé.");
             }
         };
 
-        window.appSettings = { basemap: 'sat', topbarColor: '#2c3e50', showTools: true, showFilters: true };
+        // Paramètres par défaut avec les nouvelles couleurs
+        window.appSettings = { 
+            basemap: 'sat', topbarColor: '#2c3e50', showTools: true, showFilters: true,
+            sidebarBg: '#ffffff', colUrgent: '#e74c3c', colEnCours: '#f39c12', colRas: '#bdc3c7',
+            colTeteOk: '#e67e22', colTeteWait: '#bdc3c7'
+        };
 
         window.loadSettingsLocally = function() {
-            let saved = localStorage.getItem('gmao_settings_v1');
-            if (saved) { window.appSettings = JSON.parse(saved); }
+            let saved = localStorage.getItem('gmao_settings_v2');
+            if (saved) { window.appSettings = Object.assign(window.appSettings, JSON.parse(saved)); }
             
-            // Mise à jour des boutons du menu paramètre
-            let bMap = document.getElementById('set-basemap'); if(bMap) bMap.value = window.appSettings.basemap;
-            let bCol = document.getElementById('set-topbar-color'); if(bCol) bCol.value = window.appSettings.topbarColor;
-            let sTool = document.getElementById('set-show-tools'); if(sTool) sTool.checked = window.appSettings.showTools;
-            let sFilt = document.getElementById('set-show-filters'); if(sFilt) sFilt.checked = window.appSettings.showFilters;
+            let safeSet = (id, val, type="value") => { let el = document.getElementById(id); if(el) el[type] = val; };
+            safeSet('set-basemap', window.appSettings.basemap);
+            safeSet('set-topbar-color', window.appSettings.topbarColor);
+            safeSet('set-sidebar-bg', window.appSettings.sidebarBg);
+            safeSet('set-show-tools', window.appSettings.showTools, "checked");
+            safeSet('set-show-filters', window.appSettings.showFilters, "checked");
+            
+            safeSet('set-col-urgent', window.appSettings.colUrgent);
+            safeSet('set-col-encours', window.appSettings.colEnCours);
+            safeSet('set-col-ras', window.appSettings.colRas);
+            safeSet('set-col-tete-ok', window.appSettings.colTeteOk);
+            safeSet('set-col-tete-wait', window.appSettings.colTeteWait);
             
             window.applySettingsUI();
         };
@@ -2996,35 +3057,53 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
             window.appSettings = {
                 basemap: document.getElementById('set-basemap').value,
                 topbarColor: document.getElementById('set-topbar-color').value,
+                sidebarBg: document.getElementById('set-sidebar-bg').value,
                 showTools: document.getElementById('set-show-tools').checked,
-                showFilters: document.getElementById('set-show-filters').checked
+                showFilters: document.getElementById('set-show-filters').checked,
+                colUrgent: document.getElementById('set-col-urgent').value,
+                colEnCours: document.getElementById('set-col-encours').value,
+                colRas: document.getElementById('set-col-ras').value,
+                colTeteOk: document.getElementById('set-col-tete-ok').value,
+                colTeteWait: document.getElementById('set-col-tete-wait').value
             };
-            localStorage.setItem('gmao_settings_v1', JSON.stringify(window.appSettings));
-            alert("✅ Paramètres mémorisés avec succès ! Ils seront conservés à votre prochaine visite.");
+            localStorage.setItem('gmao_settings_v2', JSON.stringify(window.appSettings));
+            alert("✅ Paramètres mémorisés avec succès !");
             document.getElementById('settings-panel').style.display = 'none';
+            window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
         };
 
         window.applySettingsUI = function() {
-            // Appliquer la couleur
-            let color = document.getElementById('set-topbar-color') ? document.getElementById('set-topbar-color').value : window.appSettings.topbarColor;
-            document.getElementById('topbar').style.background = color;
+            let s = window.appSettings;
+            let currentTopbar = document.getElementById('set-topbar-color') ? document.getElementById('set-topbar-color').value : s.topbarColor;
+            let currentSidebar = document.getElementById('set-sidebar-bg') ? document.getElementById('set-sidebar-bg').value : s.sidebarBg;
+            
+            document.getElementById('topbar').style.background = currentTopbar;
+            document.getElementById('sidebar').style.background = currentSidebar;
 
-            // Appliquer le fond de carte
-            let mapType = document.getElementById('set-basemap') ? document.getElementById('set-basemap').value : window.appSettings.basemap;
+            let mapType = document.getElementById('set-basemap') ? document.getElementById('set-basemap').value : s.basemap;
             if(window.satLayer) {
                 if(mapType === 'sat') window.satLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
                 else if(mapType === 'plan') window.satLayer.setUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
                 else if(mapType === 'topo') window.satLayer.setUrl('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png');
             }
 
-            // Appliquer la visibilité des panneaux
-            let sTools = document.getElementById('set-show-tools') ? document.getElementById('set-show-tools').checked : window.appSettings.showTools;
-            let sFilters = document.getElementById('set-show-filters') ? document.getElementById('set-show-filters').checked : window.appSettings.showFilters;
+            let sTools = document.getElementById('set-show-tools') ? document.getElementById('set-show-tools').checked : s.showTools;
+            let sFilters = document.getElementById('set-show-filters') ? document.getElementById('set-show-filters').checked : s.showFilters;
             let sections = document.querySelectorAll('#sidebar .panel-section');
             if(sections.length >= 2) {
                 sections[0].style.display = sTools ? 'block' : 'none';
                 sections[1].style.display = sFilters ? 'block' : 'none';
             }
+        };
+
+        // Fonction intermédiaire pour mettre à jour la carte en temps réel sans sauvegarder
+        window.triggerMapUpdate = function() {
+            window.appSettings.colUrgent = document.getElementById('set-col-urgent').value;
+            window.appSettings.colEnCours = document.getElementById('set-col-encours').value;
+            window.appSettings.colRas = document.getElementById('set-col-ras').value;
+            window.appSettings.colTeteOk = document.getElementById('set-col-tete-ok').value;
+            window.appSettings.colTeteWait = document.getElementById('set-col-tete-wait').value;
+            window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
         };
 
         // --- 2. GESTION DES PDF (BIBLIOTHÈQUE) ---
