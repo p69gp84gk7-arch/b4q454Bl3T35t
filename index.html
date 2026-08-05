@@ -18,7 +18,20 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
+    <!-- Ajout de FontAwesome pour des icônes professionnelles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <style>
+        /* NOUVEAUX STYLES DYNAMIQUES (Boutons et Agencement) */
+        .app-btn-square .topbar-btn { border-radius: 2px !important; }
+        .app-btn-round .topbar-btn { border-radius: 20px !important; }
+        .app-btn-icon-only .btn-text { display: none !important; }
+        .app-btn-icon-only .topbar-btn { padding: 8px 12px !important; font-size: 16px !important; }
+        
+        .dash-layout-row { display: flex; flex-direction: row; gap: 10px; flex-wrap: wrap; }
+        .dash-layout-col { display: flex; flex-direction: column; gap: 10px; }
+        .dash-layout-row > div { flex: 1; min-width: 120px; }
+        /* Fin des nouveaux styles */
     <style>
         body,html{margin:0;padding:0;height:100%;width:100%;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f4f6f8;overflow:hidden;}
         #topbar{position:fixed;top:0;left:0;right:0;height:50px;background:#2c3e50;z-index:4000;display:flex;justify-content:space-between;align-items:center;padding:0 15px;box-shadow:0 2px 5px rgba(0,0,0,0.3);}
@@ -119,27 +132,28 @@
     <div id="datalists-container"></div> 
     <div id="loading-overlay"><div class="spinner" id="loading-spinner"></div><h2 style="color:#3498db; margin:0;" id="loading-title">Démarrage...</h2><p style="color:#888; font-size:12px;" id="loading-step"></p><div id="error-box"><p id="error-msg"></p></div></div>
 
-<!-- ========================================================================= -->
-    <!-- MODIFICATION : TOPBAR (AJOUT GEOLOC, SUPPRESSION MULTI-SELECT)            -->
-    <!-- ========================================================================= -->
+
 <!-- ========================================================================= -->
     <!-- CHAPITRE 1 : BANDEAU SUPÉRIEUR ET FENÊTRES MODALES (PDF & PARAMÈTRES)     -->
     <!-- ========================================================================= -->
+<!-- ========================================================================= -->
+    <!-- MODIFICATION : TOPBAR (NOUVELLES ICÔNES PROFESSIONNELLES)                 -->
+    <!-- ========================================================================= -->
     <div id="topbar">
         <div style="display:flex; align-items:center;">
-            <button class="topbar-btn" style="margin-left:0;" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">☰ Menu</button>
-            <button class="topbar-btn" onclick="window.toggleRightSidebar()">📊 Tableau de Bord</button>
+            <button class="topbar-btn" style="margin-left:0;" onclick="document.getElementById('sidebar').classList.toggle('collapsed')"><i class="fa-solid fa-bars"></i> <span class="btn-text">Menu</span></button>
+            <button class="topbar-btn" onclick="window.toggleRightSidebar()"><i class="fa-solid fa-chart-line"></i> <span class="btn-text">Tableau de Bord</span></button>
         </div>
         <div style="display:flex; align-items:center;">
-            <button class="topbar-btn" onclick="window.openPdfModal()" style="background:#8e44ad; border-color:#9b59b6;">📚 Documents</button>
-            <button class="topbar-btn" onclick="window.promptSettings()" style="background:#2c3e50; border-color:#34495e;">⚙️ Paramètres</button>
-            <div style="width:2px; height:20px; background:rgba(255,255,255,0.3); margin:0 10px;"></div> <!-- Séparateur -->
-            <button class="topbar-btn" onclick="window.openGlobalCompareModal(true)" style="background:#d35400; border-color:#e67e22;">📊 Comparer Saisons</button>
-            <button class="topbar-btn" onclick="window.openBiMeteo()" style="background:#16a085; border-color:#1abc9c;">❄️ Centre Expert BI</button>
-            <button class="topbar-btn" onclick="window.openMeteoWidget()">⛅ Météo Live</button>
-            <button class="topbar-btn" onclick="window.openWebcamGrid()">📷 Webcams</button>
-            <button class="topbar-btn" onclick="window.openMeteoHistoryModal(true)" style="background:#f39c12; border-color:#f1c40f;">📊 Hist. Météo</button>
-            <button class="topbar-btn" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;">📍 Localiser</button>
+            <button class="topbar-btn" onclick="window.openPdfModal()" style="background:#8e44ad; border-color:#9b59b6;"><i class="fa-solid fa-book-open"></i> <span class="btn-text">Documents</span></button>
+            <button class="topbar-btn" onclick="window.promptSettings()" style="background:#2c3e50; border-color:#34495e;"><i class="fa-solid fa-gear"></i> <span class="btn-text">Paramètres</span></button>
+            <div style="width:2px; height:20px; background:rgba(255,255,255,0.3); margin:0 10px;"></div>
+            <button class="topbar-btn" onclick="window.openGlobalCompareModal(true)" style="background:#d35400; border-color:#e67e22;"><i class="fa-solid fa-code-compare"></i> <span class="btn-text">Comparer Saisons</span></button>
+            <button class="topbar-btn" onclick="window.openBiMeteo()" style="background:#16a085; border-color:#1abc9c;"><i class="fa-solid fa-snowflake"></i> <span class="btn-text">Centre Expert BI</span></button>
+            <button class="topbar-btn" onclick="window.openMeteoWidget()"><i class="fa-solid fa-cloud-sun"></i> <span class="btn-text">Météo Live</span></button>
+            <button class="topbar-btn" onclick="window.openWebcamGrid()"><i class="fa-solid fa-video"></i> <span class="btn-text">Webcams</span></button>
+            <button class="topbar-btn" onclick="window.openMeteoHistoryModal(true)" style="background:#f39c12; border-color:#f1c40f;"><i class="fa-solid fa-temperature-half"></i> <span class="btn-text">Hist. Météo</span></button>
+            <button class="topbar-btn" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;"><i class="fa-solid fa-location-crosshairs"></i> <span class="btn-text">Localiser</span></button>
         </div>
     </div>
 
@@ -163,24 +177,27 @@
 <!-- ========================================================================= -->
     <!-- MODIFICATION : PANNEAU PARAMÈTRES AVANCÉS (COULEURS CARTE & SIDEBAR)      -->
     <!-- ========================================================================= -->
-    <div id="settings-panel" style="display:none; position:fixed; top:50px; right:0; bottom:0; width:400px; max-width:90vw; background:#fff; z-index:8500; box-shadow:-5px 0 25px rgba(0,0,0,0.2); flex-direction:column; border-left:1px solid #ddd;">
-        <div style="background:#2c3e50; color:white; padding:15px; display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
-            <span>⚙️ Paramètres de l'Application</span>
-            <button onclick="document.getElementById('settings-panel').style.display='none'" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
-        </div>
-        <div style="padding:15px; overflow-y:auto; flex:1; background:#fdfdfe;">
-            
-            <details class="panel-section" open style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
-                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;">🎨 Thème de l'interface</summary>
+<details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;">🎛️ Agencement & Boutons</summary>
                 <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:12px; font-weight:bold; color:#555;">Couleur Bandeau Supérieur</span>
-                        <input type="color" id="set-topbar-color" value="#2c3e50" style="width:40px; height:30px; cursor:pointer;" onchange="window.applySettingsUI()">
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:12px; font-weight:bold; color:#555;">Fond Menu Gauche (Sidebar)</span>
-                        <input type="color" id="set-sidebar-bg" value="#ffffff" style="width:40px; height:30px; cursor:pointer;" onchange="window.applySettingsUI()">
-                    </div>
+                    <div class="edit-label">Forme des Boutons (Haut)</div>
+                    <select id="set-btn-style" class="edit-input" onchange="window.applySettingsUI()" style="margin-bottom:0;">
+                        <option value="normal">Standard (Légèrement arrondis)</option>
+                        <option value="round">Pilule (Très arrondis)</option>
+                        <option value="square">Carrés (Angles stricts)</option>
+                    </select>
+                    
+                    <div class="edit-label" style="margin-top:5px;">Affichage des Boutons</div>
+                    <select id="set-btn-display" class="edit-input" onchange="window.applySettingsUI()" style="margin-bottom:0;">
+                        <option value="full">Icône + Texte</option>
+                        <option value="icon">Icône uniquement (Compact)</option>
+                    </select>
+
+                    <div class="edit-label" style="margin-top:5px;">Graphiques (Tableau de bord de droite)</div>
+                    <select id="set-dash-layout" class="edit-input" onchange="window.applySettingsUI()" style="margin-bottom:0;">
+                        <option value="row">Côte à côte (Ligne)</option>
+                        <option value="col">Superposés (Colonne)</option>
+                    </select>
                 </div>
             </details>
 
@@ -997,9 +1014,28 @@ window.renderPieceBadges = function(hiddenId, container) {
                     /* ---------------------------------------------------------------- */
                     histHtml += `</ul></details>`;
                 }
+                /* --- MODIFICATION AGENCEMENT DYNAMIQUE (CHAPITRE 7) --- */
                 if (window.saisonsList && window.saisonsList.length > 0) {
-                    prodHtml = `<div style="margin-top:15px; font-size:12px; font-weight:bold; color:#2c3e50; border-bottom:2px solid #eee; padding-bottom:5px;">📊 Évolution de la production</div><div style="display:flex; gap:10px; margin-top:10px;"><div style="flex:1; background:#fff; border:1px solid #eee; border-radius:4px; padding:5px; display:flex; flex-direction:column;"><div style="font-size:10px; font-weight:bold; color:#3498db; text-align:center; margin-bottom:5px;">Eau (m³)</div><div style="position:relative; height:90px; width:100%;"><canvas id="he-${p.id}"></canvas></div></div><div style="flex:1; background:#fff; border:1px solid #eee; border-radius:4px; padding:5px; display:flex; flex-direction:column;"><div style="font-size:10px; font-weight:bold; color:#e67e22; text-align:center; margin-bottom:5px;">Air</div><div style="position:relative; height:90px; width:100%;"><canvas id="ha-${p.id}"></canvas></div></div><div style="flex:1; background:#fff; border:1px solid #eee; border-radius:4px; padding:5px; display:flex; flex-direction:column;"><div style="font-size:10px; font-weight:bold; color:#27ae60; text-align:center; margin-bottom:5px;">Heures</div><div style="position:relative; height:90px; width:100%;"><canvas id="ht-${p.id}"></canvas></div></div></div>`;
+                    let dashLayoutCls = (window.appSettings && window.appSettings.dashLayout) ? `dash-layout-${window.appSettings.dashLayout}` : 'dash-layout-row';
+                    
+                    prodHtml = `
+                    <div style="margin-top:15px; font-size:12px; font-weight:bold; color:#2c3e50; border-bottom:2px solid #eee; padding-bottom:5px;">📊 Évolution de la production</div>
+                    <div class="${dashLayoutCls}" style="margin-top:10px;">
+                        <div style="background:#fff; border:1px solid #eee; border-radius:4px; padding:5px; display:flex; flex-direction:column;">
+                            <div style="font-size:10px; font-weight:bold; color:#3498db; text-align:center; margin-bottom:5px;"><i class="fa-solid fa-droplet"></i> Eau (m³)</div>
+                            <div style="position:relative; height:100px; width:100%;"><canvas id="he-${p.id}"></canvas></div>
+                        </div>
+                        <div style="background:#fff; border:1px solid #eee; border-radius:4px; padding:5px; display:flex; flex-direction:column;">
+                            <div style="font-size:10px; font-weight:bold; color:#e67e22; text-align:center; margin-bottom:5px;"><i class="fa-solid fa-wind"></i> Air</div>
+                            <div style="position:relative; height:100px; width:100%;"><canvas id="ha-${p.id}"></canvas></div>
+                        </div>
+                        <div style="background:#fff; border:1px solid #eee; border-radius:4px; padding:5px; display:flex; flex-direction:column;">
+                            <div style="font-size:10px; font-weight:bold; color:#27ae60; text-align:center; margin-bottom:5px;"><i class="fa-solid fa-clock"></i> Heures</div>
+                            <div style="position:relative; height:100px; width:100%;"><canvas id="ht-${p.id}"></canvas></div>
+                        </div>
+                    </div>`;
                 }
+                /* ------------------------------------------------------ */
 
                 let formulairePanneCompletHtml = `
                     <details style="background:#fdf0ed; padding:10px; border-radius:6px; border:1px solid #fadbd8; font-size:12px; margin-top:12px;">
@@ -3033,8 +3069,16 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
             colTeteOk: '#e67e22', colTeteWait: '#bdc3c7'
         };
 
+// Paramètres par défaut mis à jour
+        window.appSettings = { 
+            basemap: 'sat', topbarColor: '#2c3e50', showTools: true, showFilters: true,
+            sidebarBg: '#ffffff', colUrgent: '#e74c3c', colEnCours: '#f39c12', colRas: '#bdc3c7',
+            colTeteOk: '#e67e22', colTeteWait: '#bdc3c7',
+            btnStyle: 'normal', btnDisplay: 'full', dashLayout: 'row' // Nouvelles options
+        };
+
         window.loadSettingsLocally = function() {
-            let saved = localStorage.getItem('gmao_settings_v2');
+            let saved = localStorage.getItem('gmao_settings_v3'); // v3 pour forcer la mise à jour
             if (saved) { window.appSettings = Object.assign(window.appSettings, JSON.parse(saved)); }
             
             let safeSet = (id, val, type="value") => { let el = document.getElementById(id); if(el) el[type] = val; };
@@ -3043,12 +3087,16 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
             safeSet('set-sidebar-bg', window.appSettings.sidebarBg);
             safeSet('set-show-tools', window.appSettings.showTools, "checked");
             safeSet('set-show-filters', window.appSettings.showFilters, "checked");
-            
             safeSet('set-col-urgent', window.appSettings.colUrgent);
             safeSet('set-col-encours', window.appSettings.colEnCours);
             safeSet('set-col-ras', window.appSettings.colRas);
             safeSet('set-col-tete-ok', window.appSettings.colTeteOk);
             safeSet('set-col-tete-wait', window.appSettings.colTeteWait);
+            
+            // Nouvelles options
+            safeSet('set-btn-style', window.appSettings.btnStyle);
+            safeSet('set-btn-display', window.appSettings.btnDisplay);
+            safeSet('set-dash-layout', window.appSettings.dashLayout);
             
             window.applySettingsUI();
         };
@@ -3064,9 +3112,12 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
                 colEnCours: document.getElementById('set-col-encours').value,
                 colRas: document.getElementById('set-col-ras').value,
                 colTeteOk: document.getElementById('set-col-tete-ok').value,
-                colTeteWait: document.getElementById('set-col-tete-wait').value
+                colTeteWait: document.getElementById('set-col-tete-wait').value,
+                btnStyle: document.getElementById('set-btn-style').value,
+                btnDisplay: document.getElementById('set-btn-display').value,
+                dashLayout: document.getElementById('set-dash-layout').value
             };
-            localStorage.setItem('gmao_settings_v2', JSON.stringify(window.appSettings));
+            localStorage.setItem('gmao_settings_v3', JSON.stringify(window.appSettings));
             alert("✅ Paramètres mémorisés avec succès !");
             document.getElementById('settings-panel').style.display = 'none';
             window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
@@ -3094,8 +3145,21 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
                 sections[0].style.display = sTools ? 'block' : 'none';
                 sections[1].style.display = sFilters ? 'block' : 'none';
             }
-        };
 
+            // Application dynamique du style des boutons sur le <body>
+            document.body.classList.remove('app-btn-square', 'app-btn-round', 'app-btn-icon-only');
+            let btnStyle = document.getElementById('set-btn-style') ? document.getElementById('set-btn-style').value : s.btnStyle;
+            let btnDisplay = document.getElementById('set-btn-display') ? document.getElementById('set-btn-display').value : s.btnDisplay;
+            
+            if(btnStyle === 'square') document.body.classList.add('app-btn-square');
+            if(btnStyle === 'round') document.body.classList.add('app-btn-round');
+            if(btnDisplay === 'icon') document.body.classList.add('app-btn-icon-only');
+            
+            // Recharge l'agencement du tableau de bord si on a un canon ciblé
+            if(window.selectedCannonsMap && window.selectedCannonsMap.size > 0 && typeof window.renderSelectionPanel === "function") {
+                window.renderSelectionPanel();
+            }
+        };
         // Fonction intermédiaire pour mettre à jour la carte en temps réel sans sauvegarder
         window.triggerMapUpdate = function() {
             window.appSettings.colUrgent = document.getElementById('set-col-urgent').value;
