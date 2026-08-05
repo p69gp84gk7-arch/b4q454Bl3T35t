@@ -177,27 +177,25 @@
 <!-- ========================================================================= -->
     <!-- MODIFICATION : PANNEAU PARAMÈTRES AVANCÉS (COULEURS CARTE & SIDEBAR)      -->
     <!-- ========================================================================= -->
-<details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
-                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;">🎛️ Agencement & Boutons</summary>
+<!-- Modal : Paramètres Avancés -->
+    <div id="settings-panel" style="display:none; position:fixed; top:50px; right:0; bottom:0; width:400px; max-width:90vw; background:#fff; z-index:8500; box-shadow:-5px 0 25px rgba(0,0,0,0.2); flex-direction:column; border-left:1px solid #ddd;">
+        <div style="background:#2c3e50; color:white; padding:15px; display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
+            <span>⚙️ Paramètres de l'Application</span>
+            <button onclick="document.getElementById('settings-panel').style.display='none'" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
+        </div>
+        <div style="padding:15px; overflow-y:auto; flex:1; background:#fdfdfe;">
+            
+            <details class="panel-section" open style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;">🎨 Thème de l'interface</summary>
                 <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">
-                    <div class="edit-label">Forme des Boutons (Haut)</div>
-                    <select id="set-btn-style" class="edit-input" onchange="window.applySettingsUI()" style="margin-bottom:0;">
-                        <option value="normal">Standard (Légèrement arrondis)</option>
-                        <option value="round">Pilule (Très arrondis)</option>
-                        <option value="square">Carrés (Angles stricts)</option>
-                    </select>
-                    
-                    <div class="edit-label" style="margin-top:5px;">Affichage des Boutons</div>
-                    <select id="set-btn-display" class="edit-input" onchange="window.applySettingsUI()" style="margin-bottom:0;">
-                        <option value="full">Icône + Texte</option>
-                        <option value="icon">Icône uniquement (Compact)</option>
-                    </select>
-
-                    <div class="edit-label" style="margin-top:5px;">Graphiques (Tableau de bord de droite)</div>
-                    <select id="set-dash-layout" class="edit-input" onchange="window.applySettingsUI()" style="margin-bottom:0;">
-                        <option value="row">Côte à côte (Ligne)</option>
-                        <option value="col">Superposés (Colonne)</option>
-                    </select>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:12px; font-weight:bold; color:#555;">Couleur Bandeau Supérieur</span>
+                        <input type="color" id="set-topbar-color" value="#2c3e50" style="width:40px; height:30px; cursor:pointer;" onchange="window.applySettingsUI()">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:12px; font-weight:bold; color:#555;">Fond Menu Gauche (Sidebar)</span>
+                        <input type="color" id="set-sidebar-bg" value="#ffffff" style="width:40px; height:30px; cursor:pointer;" onchange="window.applySettingsUI()">
+                    </div>
                 </div>
             </details>
 
@@ -241,11 +239,34 @@
                     </div>
                 </div>
             </details>
+
+            <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;">🎛️ Agencement & Boutons</summary>
+                <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">
+                    <div class="edit-label">Forme des Boutons (Haut)</div>
+                    <select id="set-btn-style" class="edit-input" onchange="window.applySettingsUI()" style="margin-bottom:0;">
+                        <option value="normal">Standard (Légèrement arrondis)</option>
+                        <option value="round">Pilule (Très arrondis)</option>
+                        <option value="square">Carrés (Angles stricts)</option>
+                    </select>
+                    
+                    <div class="edit-label" style="margin-top:5px;">Affichage des Boutons</div>
+                    <select id="set-btn-display" class="edit-input" onchange="window.applySettingsUI()" style="margin-bottom:0;">
+                        <option value="full">Icône + Texte</option>
+                        <option value="icon">Icône uniquement (Compact)</option>
+                    </select>
+
+                    <div class="edit-label" style="margin-top:5px;">Graphiques (Tableau de bord de droite)</div>
+                    <select id="set-dash-layout" class="edit-input" onchange="window.applySettingsUI()" style="margin-bottom:0;">
+                        <option value="row">Côte à côte (Ligne)</option>
+                        <option value="col">Superposés (Colonne)</option>
+                    </select>
+                </div>
+            </details>
             
             <button onclick="window.saveSettingsLocally()" class="btn-action-primary" style="margin-top:15px; background:#27ae60; font-size:14px; width:100%;">💾 Mémoriser tous les paramètres</button>
         </div>
     </div>
-
     <div id="bi-meteo-modal">
         <div class="bi-header"><span>❄️ PowerBI Neige (Analyse & Graphiques Avancés)</span><button onclick="document.getElementById('bi-meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:28px;cursor:pointer;">×</button></div>
         <div class="bi-container">
