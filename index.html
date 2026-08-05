@@ -2633,8 +2633,8 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
             const timeoutPromise = new Promise((_, reject) => { 
                 setTimeout(() => { 
                     if (controller) controller.abort(); 
-                    reject(new Error("Le serveur Google met trop de temps à répondre (délai de 20s dépassé).")); 
-                }, 20000); // On allonge le délai à 20 secondes pour les connexions lentes
+                    reject(new Error("Le serveur Google met trop de temps à répondre (délai de 40s dépassé).")); 
+                }, 40000); // On allonge le délai à 20 secondes pour les connexions lentes
             }); 
             
             // On encapsule le fetch dans un catch pour absorber l'erreur "signal is aborted" sans faire crasher l'application
@@ -3134,7 +3134,7 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
             } catch (err) { window.showCrash(err.message, "Boot Principal"); }
         });
         
-        setTimeout(() => { if(window.bootAttempt === 0) { window.document.dispatchEvent(new Event("DOMContentLoaded")); } }, 4000);
+        setTimeout(() => { if(window.bootAttempt === 0) { window.document.dispatchEvent(new Event("DOMContentLoaded")); } }, 2000);
         window.isMobile = function() { return window.innerWidth <= 768; };
         window.addEventListener('load', () => { if (window.isMobile()) { console.log("Mode mobile activé"); } });
 
