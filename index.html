@@ -2900,7 +2900,7 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
             } catch (err) { window.showCrash(err.message, "Boot Principal"); }
         });
         
-        setTimeout(() => { if(window.bootAttempt === 0) { window.document.dispatchEvent(new Event("DOMContentLoaded")); } }, 2000);
+        setTimeout(() => { if(window.bootAttempt === 0) { window.document.dispatchEvent(new Event("DOMContentLoaded")); } }, 4000);
         window.isMobile = function() { return window.innerWidth <= 768; };
         window.addEventListener('load', () => { if (window.isMobile()) { console.log("Mode mobile activé"); } });
     </script>
