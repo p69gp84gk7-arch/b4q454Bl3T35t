@@ -175,9 +175,43 @@
 
     <!-- Modal : Paramètres Avancés (Moitié d'écran droite pour voir la carte à gauche) -->
 <!-- ========================================================================= -->
-    <!-- MODIFICATION : PANNEAU PARAMÈTRES AVANCÉS (COULEURS CARTE & SIDEBAR)      -->
+    <!-- MODIFICATION : TOPBAR (NOUVELLES ICÔNES PROFESSIONNELLES)                 -->
     <!-- ========================================================================= -->
-<!-- Modal : Paramètres Avancés -->
+    <div id="topbar">
+        <div style="display:flex; align-items:center;">
+            <button class="topbar-btn" style="margin-left:0;" onclick="document.getElementById('sidebar').classList.toggle('collapsed')"><i class="fa-solid fa-bars"></i> <span class="btn-text">Menu</span></button>
+            <button class="topbar-btn" onclick="window.toggleRightSidebar()"><i class="fa-solid fa-chart-line"></i> <span class="btn-text">Tableau de Bord</span></button>
+        </div>
+        <div style="display:flex; align-items:center;">
+            <button class="topbar-btn" onclick="window.openPdfModal()" style="background:#8e44ad; border-color:#9b59b6;"><i class="fa-solid fa-book-open"></i> <span class="btn-text">Documents</span></button>
+            <button class="topbar-btn" onclick="window.promptSettings()" style="background:#2c3e50; border-color:#34495e;"><i class="fa-solid fa-gear"></i> <span class="btn-text">Paramètres</span></button>
+            <div style="width:2px; height:20px; background:rgba(255,255,255,0.3); margin:0 10px;"></div>
+            <button class="topbar-btn" onclick="window.openGlobalCompareModal(true)" style="background:#d35400; border-color:#e67e22;"><i class="fa-solid fa-code-compare"></i> <span class="btn-text">Comparer Saisons</span></button>
+            <button class="topbar-btn" onclick="window.openBiMeteo()" style="background:#16a085; border-color:#1abc9c;"><i class="fa-solid fa-snowflake"></i> <span class="btn-text">Centre Expert BI</span></button>
+            <button class="topbar-btn" onclick="window.openMeteoWidget()"><i class="fa-solid fa-cloud-sun"></i> <span class="btn-text">Météo Live</span></button>
+            <button class="topbar-btn" onclick="window.openWebcamGrid()"><i class="fa-solid fa-video"></i> <span class="btn-text">Webcams</span></button>
+            <button class="topbar-btn" onclick="window.openMeteoHistoryModal(true)" style="background:#f39c12; border-color:#f1c40f;"><i class="fa-solid fa-temperature-half"></i> <span class="btn-text">Hist. Météo</span></button>
+            <button class="topbar-btn" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;"><i class="fa-solid fa-location-crosshairs"></i> <span class="btn-text">Localiser</span></button>
+        </div>
+    </div>
+
+    <!-- Modal : Liseuse PDF -->
+    <div id="pdf-modal" style="display:none; position:fixed; top:50px; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9000; justify-content:center; align-items:center;">
+        <div style="background:#fff; width:95%; max-width:1200px; height:90%; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+            <div style="background:#8e44ad; color:white; padding:15px; display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
+                <span>📚 Bibliothèque Documentaire (Google Drive)</span>
+                <button onclick="document.getElementById('pdf-modal').style.display='none'" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
+            </div>
+            <div style="display:flex; flex:1; overflow:hidden;">
+                <div id="pdf-list" style="width:280px; background:#f4f6f8; border-right:1px solid #ddd; overflow-y:auto; padding:10px;"></div>
+                <div id="pdf-viewer-container" style="flex:1; background:#ececec; display:flex; justify-content:center; align-items:center;">
+                    <span style="color:#7f8c8d; font-weight:bold;">Sélectionnez un document dans la liste de gauche 👈</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal : Paramètres Avancés -->
     <div id="settings-panel" style="display:none; position:fixed; top:50px; right:0; bottom:0; width:400px; max-width:90vw; background:#fff; z-index:8500; box-shadow:-5px 0 25px rgba(0,0,0,0.2); flex-direction:column; border-left:1px solid #ddd;">
         <div style="background:#2c3e50; color:white; padding:15px; display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
             <span>⚙️ Paramètres de l'Application</span>
