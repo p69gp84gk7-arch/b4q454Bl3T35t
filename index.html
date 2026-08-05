@@ -119,6 +119,9 @@
     <div id="datalists-container"></div> 
     <div id="loading-overlay"><div class="spinner" id="loading-spinner"></div><h2 style="color:#3498db; margin:0;" id="loading-title">Démarrage...</h2><p style="color:#888; font-size:12px;" id="loading-step"></p><div id="error-box"><p id="error-msg"></p></div></div>
 
+<!-- ========================================================================= -->
+    <!-- MODIFICATION : TOPBAR (AJOUT GEOLOC, SUPPRESSION MULTI-SELECT)            -->
+    <!-- ========================================================================= -->
     <div id="topbar">
         <div style="display:flex; align-items:center;">
             <button class="topbar-btn" style="margin-left:0;" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">☰ Menu</button>
@@ -130,7 +133,8 @@
             <button class="topbar-btn" onclick="window.openMeteoWidget()">⛅ Météo Live</button>
             <button class="topbar-btn" onclick="window.openWebcamGrid()">📷 Webcams</button>
             <button class="topbar-btn" onclick="window.openMeteoHistoryModal(true)" style="background:#16a085; border-color:#1abc9c;">📊 Hist. Météo</button>
-            <button id="btn-multi-toggle" class="topbar-btn" onclick="window.toggleMultiSelect()">🔲 Sélec. Multiple : OFF</button>
+            <button class="topbar-btn" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;">📍 Me localiser</button>
+            <!-- Bouton Sélection Multiple supprimé comme demandé -->
         </div>
     </div>
 
@@ -772,6 +776,43 @@ window.renderPieceBadges = function(hiddenId, container) {
                 }
             });
         };
+/* ========================================================================= */
+        /* SECTION AJOUTÉE : GÉOLOCALISATION UTILISATEUR                             */
+        /* ========================================================================= */
+        window.userMarker = null;
+        window.geolocateUser = function() {
+            if (!navigator.geolocation) { 
+                alert("La géolocalisation n'est pas supportée par votre navigateur."); 
+                return; 
+            }
+            let btn = document.querySelector('button[onclick="window.geolocateUser()"]');
+            let oldText = btn.innerText;
+            btn.innerText = "⏳ Recherche...";
+            
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    let lat = pos.coords.latitude;
+                    let lng = pos.coords.longitude;
+                    
+                    // Supprime l'ancien marqueur s'il existe
+                    if (window.userMarker) { window.map.removeLayer(window.userMarker); }
+                    
+                    // Crée un marqueur bleu avec bordure blanche pour l'utilisateur
+                    window.userMarker = L.circleMarker([lat, lng], { 
+                        radius: 8, color: '#fff', weight: 2, fillColor: '#3498db', fillOpacity: 1, zIndexOffset: 3000
+                    }).addTo(window.map);
+                    
+                    // Centre la carte sur l'utilisateur
+                    window.map.setView([lat, lng], 17, {animate: true});
+                    btn.innerText = oldText;
+                },
+                (err) => { 
+                    alert("Erreur de localisation : " + err.message); 
+                    btn.innerText = oldText; 
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        };
 
         /* ========================================================================= */
         /* CHAPITRE 6 : PANNEAU DE SÉLECTION ET ÉDITION (SIDEBAR DROITE)             */
@@ -828,7 +869,27 @@ window.renderPieceBadges = function(hiddenId, container) {
 
                 if (history.length > 0) {
                     histHtml = `<details class="ticket-history" style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;">📁 Historique d'interventions (${history.length})</summary><ul style="padding-left:15px; margin-top:10px;">`;
-                    history.forEach(t => { let dateStr = isNaN(new Date(t.date).getTime()) ? (t.date || "Inconnue") : new Date(t.date).toLocaleDateString('fr-FR'); let cause = t.fullData.find(x => x.k.toLowerCase().includes('cause') || x.k.toLowerCase().includes('intervention') || x.k.toLowerCase().includes('commentaire')); histHtml += `<li style="margin-bottom:8px; font-size:11.5px; border-bottom:1px solid #eee; padding-bottom:5px;"><b>${dateStr}</b> - <span style="color:#e74c3c;">${t.defaut}</span> <br><span style="color:#666;">Intervention : ${cause ? cause.v : "Non précisée"}</span></li>`; });
+                   /* --- MODIFICATION : HISTORIQUE DÉROULANT COMPLET (CHAPITRE 7) --- */
+                    history.forEach(t => { 
+                        let dateStr = isNaN(new Date(t.date).getTime()) ? (t.date || "Inconnue") : new Date(t.date).toLocaleDateString('fr-FR');
+                        
+                        // Création du détail complet du ticket en filtrant les champs vides
+                        let ticketDetails = t.fullData.filter(d => d.v && d.v.toString().trim() !== "").map(d => `<div style="margin-bottom:4px;"><span style="color:#7f8c8d;">${d.k}:</span> <b style="color:#2c3e50;">${d.v}</b></div>`).join('');
+                        
+                        histHtml += `
+                        <li style="margin-bottom:8px; list-style:none;">
+                            <details style="background:#fff; border:1px solid #e1e8ed; border-radius:4px; padding:8px; cursor:pointer;">
+                                <summary style="font-size:11.5px; font-weight:bold; outline:none; display:flex; justify-content:space-between; align-items:center;">
+                                    <span>${dateStr} - <span style="color:#e74c3c;">${t.defaut}</span></span>
+                                    <span style="color:#bdc3c7; font-size:10px;">▼ Détails</span>
+                                </summary>
+                                <div style="margin-top:8px; padding-top:8px; border-top:1px dashed #eee; font-size:11px; cursor:default;">
+                                    ${ticketDetails}
+                                </div>
+                            </details>
+                        </li>`; 
+                    });
+                    /* ---------------------------------------------------------------- */
                     histHtml += `</ul></details>`;
                 }
                 if (window.saisonsList && window.saisonsList.length > 0) {
@@ -1303,7 +1364,21 @@ window.renderPieceBadges = function(hiddenId, container) {
 
                 let hist = window.getHistoryTickets(idCanon); let histHtml = `<div style="padding:10px; background:#fff; font-size:12px;">`;
                 if(hist.length === 0) histHtml += `<span style="color:#7f8c8d; font-style:italic;">Aucune panne enregistrée.</span>`;
-                else hist.forEach(t => { histHtml += `<div style="padding:4px 0; border-bottom:1px solid #eee;"><b>${t.date}</b> : <span style="color:#e74c3c;">${t.defaut}</span></div>`; });
+                /* --- MODIFICATION : HISTORIQUE DÉROULANT COMPLET (CHAPITRE 10) --- */
+                else hist.forEach(t => { 
+                    let ticketDetails = t.fullData.filter(d => d.v && d.v.toString().trim() !== "").map(d => `<div style="margin-bottom:4px;"><span style="color:#7f8c8d;">${d.k}:</span> <b style="color:#2c3e50;">${d.v}</b></div>`).join('');
+                    histHtml += `
+                    <details style="background:#f8f9fa; border:1px solid #e1e8ed; border-radius:4px; padding:8px; margin-bottom:6px; cursor:pointer;">
+                        <summary style="font-size:11.5px; font-weight:bold; outline:none; display:flex; justify-content:space-between; align-items:center;">
+                            <span>${t.date} : <span style="color:#e74c3c;">${t.defaut}</span></span>
+                            <span style="color:#bdc3c7; font-size:10px;">▼ Détails</span>
+                        </summary>
+                        <div style="margin-top:8px; padding-top:8px; border-top:1px dashed #eee; font-size:11px; cursor:default;">
+                            ${ticketDetails}
+                        </div>
+                    </details>`; 
+                });
+                /* ----------------------------------------------------------------- */
                 histHtml += `</div>`;
 
                 let formHtml = `
