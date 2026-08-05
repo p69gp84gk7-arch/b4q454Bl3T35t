@@ -1435,6 +1435,264 @@
         window.loadSavedLayersFromDB = function() { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readonly"); const req = tx.objectStore("kmz_layers").getAll(); req.onsuccess = function() { req.result.forEach(item => { window.addGeoJsonToMap(item.id, item.name, item.geojson, item.isVisible, item.color || '#e67e22', item.weight || 4); }); }; };
         window.buildGeoJsonStyle = function(hexColor, weight) { let finalWeight = weight ? parseInt(weight) : 4; return { style: function (feature) { return { color: hexColor, weight: finalWeight, opacity: 0.8, fillColor: hexColor }; }, pointToLayer: function(feature, latlng) { return L.circleMarker(latlng, {radius: 6, color: hexColor, fillColor: hexColor, fillOpacity: 0.8, weight: 1}); } }; };
         window.addGeoJsonToMap = function(id, name, geojson, isVisible, hexColor, weight) { let finalWeight = weight || 4; const layer = L.geoJSON(geojson, window.buildGeoJsonStyle(hexColor, finalWeight)); if(isVisible) layer.addTo(window.map); if(isVisible && layer.getBounds && typeof layer.getBounds === 'function') { let b = layer.getBounds(); if(b.isValid()) window.map.fitBounds(b); } };
+
+/* ========================================================================= */
+        /* MOTEUR MANQUANT : DÉMARRAGE, DONNÉES, CARTE ET GRAPHIQUES GLOBAUX         */
+        /* ========================================================================= */
+        window.setStep = function(step, desc) { let elStep = document.getElementById('loading-step'); let elDesc = document.getElementById('loading-desc'); if (elStep) elStep.innerText = "Étape " + step + "/5"; if (elDesc) elDesc.innerText = desc; };
+        
+        window.fetchWithTimeout = async function(resource, options = {}) { 
+            let finalUrl = resource; 
+            if(!resource.includes('raw.githubusercontent')) { finalUrl += (resource.includes('?') ? '&' : '?') + 't=' + new Date().getTime(); } 
+            const controller = window.AbortController ? new AbortController() : null; 
+            if (controller) options.signal = controller.signal; 
+            const timeoutPromise = new Promise((_, reject) => { 
+                setTimeout(() => { if (controller) controller.abort(); reject(new Error("Le serveur Google met trop de temps à répondre (délai de 45s dépassé).")); }, 45000); 
+            }); 
+            return Promise.race([ fetch(finalUrl, options).catch(e => { if (e.name === 'AbortError' || e.message.includes('aborted')) { throw new Error("Connexion interrompue."); } throw e; }), timeoutPromise ]); 
+        };
+
+        window.fetchGoogleSheetsData = async function() {
+            window.setStep(1, "Connexion au serveur Google...");
+            const response = await window.fetchWithTimeout(GOOGLE_API_URL);
+            if (!response.ok) throw new Error("Accès refusé. Vérifiez l'URL.");
+            let textData = await response.text(); 
+            let data; try { data = JSON.parse(textData); } catch(e) { throw new Error("Format invalide."); }
+            
+            window.rawGeneral = data.general || []; window.rawHistorique = data.historique || []; window.rawTicketsSheet = data.tickets || [];
+            window.meteoHistData = data.meteo_hist || []; window.meteoFroidData = data.meteo_froid || []; window.suiviEntretienData = data.suivi || []; 
+            window.rawAtelier = data.atelier || []; window.rawStock = data.stock || []; window.drivePhotos = data.drivePhotos || {}; 
+            window.driveIcons = data.driveIcons || {}; window.drivePdfsData = data.drivePdfs || {}; window.driveKmzData = data.driveKmz || {};
+            window.historiqueData = window.rawHistorique; 
+            
+            window.setStep(2, "Analyse du Tableau Général...");
+            if (!data.general || data.general.length < 2) throw new Error(`L'onglet principal est introuvable ou vide.`);
+            const genHeaders = data.general[0].map(h => (h||"").toString().toLowerCase().trim());
+            const originalHeaders = data.general[0].map(h => (h||"").toString().trim()); 
+            const findCol = (keywords) => { let idx = genHeaders.findIndex(h => keywords.some(k => h === k)); if (idx === -1) idx = genHeaders.findIndex(h => keywords.some(k => h.includes(k))); return idx !== -1 ? originalHeaders[idx] : null; };
+            
+            let idxId = genHeaders.findIndex(h => h.includes('n° de vanne') || h.includes('n°')); if(idxId === -1) idxId = 1; 
+            const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps')); if (idxXY === -1) throw new Error("La colonne 'xy' est introuvable.");
+
+            window.keyPiste = findCol(['piste', 'pistes']); window.keyType = findCol(['type canon', 'type de canon', 'type']); window.keyRep = findCol(['répéteur', 'repeteur']); window.keyTransfo = findCol(['transfo']);
+            originalHeaders.forEach(h => { let hl = h.toLowerCase(); if(!hl.includes('xy') && !hl.includes('gps') && !hl.includes('photo')) { window.availableColumns.push(h); window.columnValuesSets[h] = new Set(); } });
+
+            let dictGeneral = {}; let validPointsCount = 0;
+            data.general.slice(1).forEach(row => {
+                let idRaw = row[idxId]; if (idRaw == null || idRaw === "") return; let id = idRaw.toString().replace(/^YA\s*/i, '').trim(); if (!id) return;
+                let lat = 0, lng = 0;
+                if (row[idxXY]) { let txt = String(row[idxXY]).replace(/,/g, '.'); let matches = txt.match(/-?\d+(?:\.\d+)?/g); if (matches && matches.length >= 2) { lat = parseFloat(matches[0]); lng = parseFloat(matches[1]); if (lat < 20 && lng > 30) { let temp = lat; lat = lng; lng = temp; } } }
+                let fullData = []; originalHeaders.forEach((head, i) => { if(head.trim() !== "") { let val = (i < row.length && row[i] != null) ? row[i].toString() : ""; fullData.push({k: head, v: val}); if(val !== "" && window.columnValuesSets[head]) window.columnValuesSets[head].add(val.trim()); } });
+                dictGeneral[id] = { id: id, lat: lat, lng: lng, fullData: fullData, historique: {} };
+            });
+
+            window.setStep(3, "Analyse de l'Historique...");
+            if (data.historique && data.historique.length > 1) {
+                const histHeaders = data.historique[0].map(h => (h||"").toString().toLowerCase().trim()); const idxCanons = 1; let colsEau = {}, colsAir = {}, colsTemps = {}; let saisonsSet = new Set();
+                histHeaders.forEach((h, i) => { let match = h.match(/(eau|air|marche).*?(\d{2}\/\d{2})/i); if (match) { let t = match[1].toLowerCase(); let s = match[2]; saisonsSet.add(s); if (t.includes('eau')) colsEau[s] = i; if (t.includes('air')) colsAir[s] = i; if (t.includes('marche')) colsTemps[s] = i; } });
+                window.saisonsList = Array.from(saisonsSet).sort((a,b) => parseInt(a.split('/')[0]) - parseInt(b.split('/')[0])); window.histSeasonIdx = window.saisonsList.length > 0 ? window.saisonsList.length - 1 : 0;
+                data.historique.slice(1).forEach(row => { let rawId = row[idxCanons]; if (rawId != null && rawId !== "") { let id = rawId.toString().replace(/^YA\s*/i, '').trim(); if (id && dictGeneral[id]) { window.saisonsList.forEach(s => { dictGeneral[id].historique[s] = { eau: colsEau[s]?parseFloat(row[colsEau[s]])||0:0, air: colsAir[s]?parseFloat(row[colsAir[s]])||0:0, temps: colsTemps[s]?parseFloat(row[colsTemps[s]])||0:0 }; }); } } });
+            }
+
+            window.setStep(4, "Préparation des Pannes...");
+            if (data.tickets && data.tickets.length > 1) {
+                const tHeaders = data.tickets[0].map(h => (h||"").toString().toLowerCase().trim()); const originalTHeaders = data.tickets[0].map(h => (h||"").toString().trim());
+                const idxTEtat = tHeaders.findIndex(h => h.includes('état') || h.includes('etat')); const idxTDate = tHeaders.findIndex(h => h.includes('date')); const idxTRegard = tHeaders.findIndex(h => h.includes('n°regard') || h.includes('regard') || h.includes('canon')); const idxTDefaut = tHeaders.findIndex(h => h.includes('defaut') || h.includes('défaut') || h.includes('panne'));
+                if(idxTRegard > -1) {
+                    window.rawTickets = data.tickets.slice(1).map(row => {
+                        let fullTData = []; originalTHeaders.forEach((h, i) => { if(h.trim() !== "") { let val = (i < row.length && row[i] != null) ? row[i].toString() : ""; fullTData.push({k: h, v: val}); } });
+                        return { statut: (idxTEtat>-1 && row[idxTEtat] != null ? row[idxTEtat].toString().toLowerCase().trim() : ""), date: (idxTDate>-1 && row[idxTDate] != null ? row[idxTDate] : ""), idCanon: (row[idxTRegard] != null ? row[idxTRegard].toString().replace(/^YA\s*/i, '').trim() : ""), defaut: (idxTDefaut>-1 && row[idxTDefaut] ? row[idxTDefaut].toString() : "Défaut non spécifié"), fullData: fullTData };
+                    });
+                }
+            }
+
+            if (data.kmz && data.kmz.length > 1) {
+                const kHead = data.kmz[0].map(h => (h||"").toString().toLowerCase().trim());
+                const iNom = kHead.findIndex(h => h.includes("nom") || h.includes("calque")); const iUrl = kHead.findIndex(h => h.includes("url") || h.includes("lien")); const iCol = kHead.findIndex(h => h.includes("couleur")); const iWei = kHead.findIndex(h => h.includes("epaisseur") || h.includes("taille"));
+                if(iNom > -1 && iUrl > -1) {
+                    window.cloudKmzLayers = [];
+                    data.kmz.slice(1).forEach((row, index) => {
+                        let nom = row[iNom]; let url = row[iUrl];
+                        if(nom && url) { let col = (iCol > -1 && row[iCol]) ? row[iCol].toString().trim() : window.defaultColors[index % window.defaultColors.length]; let wei = (iWei > -1 && row[iWei]) ? parseInt(row[iWei]) : 4; window.cloudKmzLayers.push({ nom: nom, url: url, isVisible: false, leafletLayer: null, color: col, weight: wei, commentaire: "" }); }
+                    });
+                }
+            }
+
+            window.setStep(5, "Analyse des Webcams...");
+            if (data.webcams && data.webcams.length > 1) {
+                const wHead = data.webcams[0].map(h => (h||"").toString().toLowerCase().trim());
+                const iNom = wHead.findIndex(h => h.includes("nom")); const iLL = wHead.findIndex(h => h.match(/(gps|xy|lat)/)); const iUrl = wHead.findIndex(h => h.match(/(url|lien)/)); const iIcon = wHead.findIndex(h => h.match(/(icone|logo)/));
+                if(iNom > -1 && iLL > -1 && iUrl > -1) {
+                    data.webcams.slice(1).forEach(row => {
+                        let nom = row[iNom]; let llStr = row[iLL] ? row[iLL].toString() : ""; let url = row[iUrl]; let icon = (iIcon > -1 && row[iIcon]) ? row[iIcon].toString().trim() : "📷"; if(!icon) icon = "📷";
+                        if(nom && llStr && url) { let matches = llStr.replace(/,/g, '.').match(/-?\d+(?:\.\d+)?/g); if(matches && matches.length >= 2) { let lat = parseFloat(matches[0]); let lng = parseFloat(matches[1]); if (lat < 20 && lng > 30) { let t = lat; lat = lng; lng = t; } window.webcamsData.push({ nom: nom, lat: lat, lng: lng, url: url, icon: icon }); } }
+                    });
+                }
+            }
+
+            Object.values(dictGeneral).forEach(canon => { if (canon.lat !== undefined && canon.lng !== undefined && !isNaN(canon.lat) && !isNaN(canon.lng) && canon.lat !== 0) { window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); } });
+
+            let ls = document.getElementById('loading-spinner'); if(ls) ls.style.display = 'none'; let lt = document.getElementById('loading-title'); if(lt) { lt.innerText = "✅ Chargement Réussi !"; lt.style.color = "#27ae60"; } let lst = document.getElementById('loading-step'); if(lst) lst.style.display = 'none'; let ld = document.getElementById('loading-desc'); if(ld) ld.innerHTML = `${window.snowCannons.features.length} canons placés.`;
+            setTimeout(() => { window.initAppUI(); if(window.initDriveKMZList) window.initDriveKMZList(); if(window.loadSettingsLocally) window.loadSettingsLocally(); let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; }, 800);
+        };
+
+        window.initAppUI = function() {
+            let ts=new Set(), rs=new Set(), trs=new Set(), ps=new Set();
+            window.snowCannons.features.forEach(f=>{ let p=f.properties; let t=window.getV(p,window.keyType); if(t!=="N/A")ts.add(t.toLowerCase()); let r=window.getV(p,window.keyRep); if(r!=="N/A")rs.add(r); let tr=window.getV(p,window.keyTransfo); if(tr!=="N/A")trs.add(tr); let pi=window.getV(p,window.keyPiste); if(pi!=="N/A")ps.add(pi); });
+            
+            let tc=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6']; Array.from(ts).sort().forEach((t,i)=>window.technoColors[t]=tc[i%tc.length]);
+            let rc=['#1abc9c','#16a085','#f39c12','#d35400','#8e44ad']; Array.from(rs).sort().forEach((r,i)=>window.repColors[r]=rc[i%rc.length]);
+            let neonColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#00FFFF', '#FF8C00', '#FF1493', '#39FF14']; Array.from(trs).sort().forEach((t,i)=>window.transfoColors[t]=neonColors[i%neonColors.length]);
+            
+            window.snowCannons.features.forEach(f=>{ let t=window.getV(f.properties,window.keyType).toLowerCase(); f.properties.couleur_defaut=(["demak lenko","demac lenko"].includes(t))?"#0000FF":(["sufag","street","taurus","taurax","peak"].includes(t))?"#008000":window.technoColors[t]||"#FFD700"; });
+            
+            let dlContainer = document.getElementById('datalists-container');
+            if (dlContainer) { let dlHtml = ""; for(let header in window.columnValuesSets) { let safeId = "dl-" + header.replace(/[^a-zA-Z0-9]/g, '-'); dlHtml += `<datalist id="${safeId}">${Array.from(window.columnValuesSets[header]).sort().map(v=>`<option value="${v}">`).join('')}</datalist>`; } dlContainer.innerHTML = dlHtml; }
+
+            let stockDatalistHtml = `<datalist id="dl-stock-list">`;
+            if (window.rawStock && window.rawStock.length > 1) {
+                let headersStock = window.rawStock[0].map(h => (h||"").toString().toLowerCase().trim()); let idxRef = headersStock.findIndex(h => h === "ref"); let idxProd = headersStock.findIndex(h => h === "produit");
+                for (let i = 1; i < window.rawStock.length; i++) { let row = window.rawStock[i]; if (!row || row.length === 0) continue; let ref = (idxRef !== -1 && row[idxRef]) ? row[idxRef].toString().trim() : ""; let prod = (idxProd !== -1 && row[idxProd]) ? row[idxProd].toString().trim() : ""; if (prod) { let optionValue = ref ? `[${ref}] ${prod}` : prod; stockDatalistHtml += `<option value="${optionValue.replace(/"/g, '&quot;')}"></option>`; } }
+            }
+            stockDatalistHtml += `</datalist>`; if (dlContainer) dlContainer.innerHTML += stockDatalistHtml; 
+            
+            let sld = document.getElementById('season-slider'); if (window.saisonsList.length > 0 && sld) { sld.max = window.saisonsList.length - 1; sld.value = window.histSeasonIdx; let sdisp = document.getElementById('season-display'); if(sdisp) sdisp.innerText = window.saisonsList[window.histSeasonIdx]; }
+
+            function buildCbs(id, set, cls) { const c = document.getElementById(id); if(!c) return; c.innerHTML = ''; [...set].sort().forEach(v => { let l=document.createElement('label'); let cb=document.createElement('input'); cb.type='checkbox'; cb.className=cls; cb.value=v; l.appendChild(cb); l.appendChild(document.createTextNode(' '+v)); c.appendChild(l); }); }
+            buildCbs('individual-pistes', ps, 'piste-cb'); buildCbs('individual-types', ts, 'type-cb');
+
+            function setupCbs(allId, cls, cbk) { const aBtn = document.getElementById(allId); if(!aBtn) return; const cbs = document.querySelectorAll('.'+cls); const getVals = () => aBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); aBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); cbk(getVals()); }); cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(aBtn) aBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(aBtn) aBtn.checked=true; } cbk(getVals()); })); }
+            setupCbs('check-all-pistes', 'piste-cb', vals => { window.currentPistes = vals; window.updateMap(); window.triggerGlobalFilterChart(); }); setupCbs('check-all-types', 'type-cb', vals => { window.currentTypes = vals; window.updateMap(); window.triggerGlobalFilterChart(); });
+
+            window.generateDynamicFiltersUI = function() { let container = document.getElementById('dynamic-filters-container'); if(!container) return; container.innerHTML = ""; let optionsHTML = `<option value="">-- Choisir un critère --</option>` + window.availableColumns.map(c => `<option value="${c}">${c.toUpperCase()}</option>`).join(''); container.innerHTML = `<div class="dynamic-filter-slot" style="margin-bottom:0; border:none; padding:0;"><select class="filter-select" id="filter-sel-0" data-idx="0">${optionsHTML}</select><div class="checkbox-list" id="filter-cbx-0" style="display:none;"></div></div>`; };
+            window.renderCheckboxesForFilter = function(idx, colName) { let cbxContainer = document.getElementById(`filter-cbx-${idx}`); if(!cbxContainer) return; if(!colName) { cbxContainer.style.display = 'none'; window.activeFilters[idx] = {key:"", vals:[]}; window.updateMap(); window.triggerGlobalFilterChart(); return; } cbxContainer.style.display = 'block'; let vals = Array.from(window.columnValuesSets[colName] || []).sort(); let html = `<label><input type="checkbox" class="cb-all-${idx}" checked> <b>Tout sélectionner</b></label><hr style="margin:4px 0; border-top:1px solid #eee;">`; vals.forEach(v => html += `<label><input type="checkbox" class="cb-val-${idx}" value="${v}"> ${v}</label>`); cbxContainer.innerHTML = html; window.activeFilters[idx] = {key: colName, vals: ['all']}; let allBtn = cbxContainer.querySelector(`.cb-all-${idx}`); let cbs = cbxContainer.querySelectorAll(`.cb-val-${idx}`); const updateLogic = () => { window.activeFilters[idx].vals = allBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); window.updateMap(); window.triggerGlobalFilterChart(); }; if(allBtn) allBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); updateLogic(); }); cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(allBtn) allBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(allBtn) allBtn.checked=true; } updateLogic(); })); };
+
+            window.generateDynamicFiltersUI(); if(window.renderCloudLayersList) window.renderCloudLayersList(); window.calculateMaxes();
+
+            window.geojsonLayer = L.geoJSON(window.snowCannons, {
+                pointToLayer: function (feature, latlng) { return L.marker(latlng, { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div></div>` }) }); },
+                onEachFeature: function (feature, layer) {
+                    layer.on('click', function(e) {
+                        L.DomEvent.stopPropagation(e); if (window.currentlyEditingId) return; const id = feature.properties.id;
+                        if (window.selectedCannonsMap.has(id)) { window.selectedCannonsMap.delete(id); } else { window.selectedCannonsMap.set(id, layer); }
+                        if(window.map) window.map.setView(layer.getLatLng(), 17, {animate: true});
+                        window.updateMap(); window.renderSelectionPanel(); let sb = document.getElementById('right-sidebar'); if (window.selectedCannonsMap.size > 0 && sb) sb.classList.add('open');
+                    });
+                }
+            }).addTo(window.map);
+
+            if (window.snowCannons.features.length > 0) { let bounds = window.geojsonLayer.getBounds(); if(bounds.isValid() && window.map) window.map.fitBounds(bounds, { padding: [30, 30] }); }
+
+            window.webcamLayerGroup = L.layerGroup();
+            window.webcamsData.forEach(wc => {
+                if (wc.lat !== undefined && wc.lng !== undefined && !isNaN(wc.lat) && !isNaN(wc.lng)) {
+                    let marker = L.marker([wc.lat, wc.lng], { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div class="camera-icon">${wc.icon}</div>`, iconSize: [24,24], iconAnchor: [12,12] }), draggable: false });
+                    marker.on('click', function(e) { L.DomEvent.stopPropagation(e); if(marker.dragging && marker.dragging.enabled()) return; if(window.map) window.map.setView([wc.lat, wc.lng], 17, {animate: true}); if(window.openSingleWebcam) window.openSingleWebcam(wc.nom); });
+                    marker.wcData = wc; window.webcamLayerGroup.addLayer(marker);
+                }
+            });
+            window.webcamLayerGroup.addTo(window.map);
+            
+            document.querySelectorAll('input[name="main_theme"]').forEach(r => {
+                r.addEventListener('change', e => {
+                    window.mainTheme = e.target.value;
+                    document.querySelectorAll('.theme-details, .theme-details-hist').forEach(el => el.style.display = 'none');
+                    document.querySelectorAll('.radio-card').forEach(el => { el.style.borderBottomLeftRadius = '6px'; el.style.borderBottomRightRadius = '6px'; el.style.marginBottom = '8px'; el.style.borderColor = '#e1e8ed'; });
+                    let activeDetails = document.getElementById('details-' + window.mainTheme); let activeLabel = document.getElementById('lbl-' + window.mainTheme);
+                    if (activeDetails && activeLabel) { activeDetails.style.display = 'block'; activeLabel.style.borderBottomLeftRadius = '0'; activeLabel.style.borderBottomRightRadius = '0'; activeLabel.style.marginBottom = '0'; if(window.mainTheme === 'stock') activeLabel.style.borderColor = '#16a085'; else if(window.mainTheme === 'atelier') activeLabel.style.borderColor = '#8e44ad'; else activeLabel.style.borderColor = '#3498db'; }
+                    if(window.mainTheme === 'atelier') { document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'block'; document.getElementById('stock-workspace').style.display = 'none'; window.closeRightSidebar(); if(window.renderAtelierWorkspace) window.renderAtelierWorkspace(); } 
+                    else if(window.mainTheme === 'stock') { document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'block'; window.closeRightSidebar(); if(window.renderStockWorkspace) window.renderStockWorkspace(); }
+                    else { document.getElementById('map').style.display = 'block'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'none'; if(window.mainTheme === 'historique') window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); }
+                });
+            });
+
+            document.querySelectorAll('input[name="hist_metric"]').forEach(r => { r.addEventListener('change', e => { window.histMetric = e.target.value; window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); }); });
+            let ssl = document.getElementById('season-slider'); if(ssl) ssl.addEventListener('input', e => { window.histSeasonIdx = parseInt(e.target.value); let sd = document.getElementById('season-display'); if(sd) sd.innerText = window.saisonsList[window.histSeasonIdx]; window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); });
+            let dfc = document.getElementById('dynamic-filters-container'); if(dfc) dfc.addEventListener('change', e => { if(e.target.classList.contains('filter-select')) window.renderCheckboxesForFilter(e.target.getAttribute('data-idx'), e.target.value); });
+            
+            if(window.map) {
+                window.map.on('click', function(e) {
+                    let amc = document.getElementById('allow-move-chk');
+                    if (window.currentlyEditingId && amc && amc.checked) { let elat = document.getElementById('edit-lat'); if(elat) elat.value = e.latlng.lat.toFixed(7); let elng = document.getElementById('edit-lng'); if(elng) elng.value = e.latlng.lng.toFixed(7); let layer = window.selectedCannonsMap.get(window.currentlyEditingId); if(layer) { layer.setLatLng(e.latlng); layer.feature.geometry.coordinates = [e.latlng.lng, e.latlng.lat]; } } else { window.closeRightSidebar(); }
+                });
+            }
+            window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
+        };
+
+        window.calculateMaxes = function() {
+            if(!window.saisonsList[window.histSeasonIdx]) return;
+            let s = window.saisonsList[window.histSeasonIdx]; window.absoluteMaxes = { eau: 0, air: 0, temps: 0 };
+            window.snowCannons.features.forEach(f => { if (f.properties.historique[s]) { window.absoluteMaxes.eau = Math.max(window.absoluteMaxes.eau, f.properties.historique[s].eau); window.absoluteMaxes.air = Math.max(window.absoluteMaxes.air, f.properties.historique[s].air); window.absoluteMaxes.temps = Math.max(window.absoluteMaxes.temps, f.properties.historique[s].temps); } });
+            window.currentMaxThreshold = { ...window.absoluteMaxes }; window.currentMinThreshold = { eau:0, air:0, temps:0 };
+            let slmin = document.getElementById('slider-min'); let slmax = document.getElementById('slider-max');
+            if(slmin) { slmin.max = window.absoluteMaxes[window.histMetric] || 1; slmin.value = 0; slmin.step = "any"; slmin.oninput = function(e) { let val = parseFloat(e.target.value) || 0; if (val > window.currentMaxThreshold[window.histMetric]) { val = window.currentMaxThreshold[window.histMetric]; e.target.value = val; } window.currentMinThreshold[window.histMetric] = val; let vm = document.getElementById('val-min'); if(vm) vm.innerText = Math.round(val); window.updateMap(); window.triggerGlobalFilterChart(); }; }
+            if(slmax) { slmax.max = window.absoluteMaxes[window.histMetric] || 1; slmax.value = window.absoluteMaxes[window.histMetric] || 1; slmax.step = "any"; slmax.oninput = function(e) { let val = parseFloat(e.target.value) || 0; if (val < window.currentMinThreshold[window.histMetric]) { val = window.currentMinThreshold[window.histMetric]; e.target.value = val; } window.currentMaxThreshold[window.histMetric] = val; let vmx = document.getElementById('val-max'); if(vmx) vmx.innerText = Math.round(val); window.updateMap(); window.triggerGlobalFilterChart(); }; }
+            let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
+        };
+
+        window.triggerGlobalFilterChart = function() {
+            if (window.selectedCannonsMap.size > 0 || window.currentlyEditingId) return;
+            let visibleCannons = window.snowCannons.features.filter(f => f.properties._isVisible);
+            let html = `<div style="background:#eafaf1; padding:15px; border-radius:6px; text-align:center; margin-bottom:15px; border:1px solid #d5f5e3;"><span style="font-size:24px; font-weight:bold; color:#27ae60;">${visibleCannons.length}</span><br><span style="font-size:12px; color:#555; text-transform:uppercase;">Canons affichés</span></div>`;
+
+            let chartLabels = []; let chartData = []; let chartColors = []; let chartType = 'bar';
+            let chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+            const centerTextPlugin = { id: 'centerText', beforeDraw: function(chart) { if (chart.config.type !== 'doughnut') return; let width = chart.width, height = chart.height, ctx = chart.ctx; ctx.restore(); let fontSize = (height / 100).toFixed(2); ctx.font = "bold " + fontSize + "em sans-serif"; ctx.textBaseline = "middle"; ctx.fillStyle = "#e74c3c"; let text = chart.config.options.plugins.centerText ? chart.config.options.plugins.centerText.text : ""; let textX = Math.round((width - ctx.measureText(text).width) / 2), textY = height / 2; ctx.fillText(text, textX, textY); ctx.save(); } };
+            let chartPlugins = [centerTextPlugin];
+
+            if (window.mainTheme === 'defauts') {
+                let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Analyse : Défauts";
+                let activeList = []; let cUrgent = 0, cEnCours = 0, cRas = 0;
+                visibleCannons.forEach(f => { let p = f.properties; let acts = window.getActiveTickets(p.id); if(acts.length === 0) { cRas++; } else { acts.forEach(t => { if(t.statut.includes('faire')) cUrgent++; else cEnCours++; activeList.push({id: p.id, piste: window.getV(p, window.keyPiste), ticket: t}); }); } });
+                chartLabels = ['À faire', 'En cours', 'RAS']; chartData = [cUrgent, cEnCours, cRas]; chartColors = ['#e74c3c', '#f39c12', '#bdc3c7']; chartType = 'doughnut';
+                let total = cUrgent + cEnCours + cRas; let faultPerc = total > 0 ? (((cUrgent + cEnCours) / total) * 100).toFixed(1) : 0;
+                chartOptions.plugins.legend = { position: 'right', labels: { boxWidth: 12, font: {size: 11} } }; chartOptions.plugins.centerText = { text: faultPerc + "%" };
+                html += `<div class="piste-chart-container"><div style="text-align:center; font-size:14px; font-weight:bold; color:#34495e; margin-bottom:5px;">Taux de pannes global</div><div style="height:180px;position:relative;"><canvas id="global-filter-chart"></canvas></div></div>`;
+                
+                let pCounts = {}; activeList.forEach(item => { pCounts[item.piste] = (pCounts[item.piste] || 0) + 1; });
+                let pLabels = Object.keys(pCounts).sort((a,b)=>pCounts[b]-pCounts[a]); let pData = pLabels.map(k=>pCounts[k]);
+                if(pLabels.length > 0) { html += `<div class="piste-chart-container" style="margin-top:15px;"><div style="text-align:center;font-weight:bold;font-size:12px;color:#34495e;margin-bottom:5px;">Pannes par Piste</div><div style="position:relative;height:160px;width:100%;"><canvas id="gfc-piste"></canvas></div></div>`; }
+                html += `<div style="font-size:13px; font-weight:bold; margin-top:15px; border-bottom:2px solid #eee; padding-bottom:5px;">Liste détaillée des défauts :</div>`;
+                if (activeList.length === 0) { html += `<div style="font-size:12px; color:#7f8c8d; text-align:center; padding:10px;">Aucun défaut sur les canons affichés.</div>`; } else { activeList.sort((a,b) => { let wA = a.ticket.statut.includes('faire') ? 1 : 0; let wB = b.ticket.statut.includes('faire') ? 1 : 0; return wB - wA; }); let listHtml = activeList.map(item => { let color = item.ticket.statut.includes('faire') ? '#e74c3c' : '#f39c12'; return `<div style="border-left:3px solid ${color}; background:#fff; padding:8px; margin-top:8px; border-radius:4px; box-shadow:0 1px 2px rgba(0,0,0,0.05); font-size:12px; display:flex; justify-content:space-between; align-items:center;"><div><b style="color:#2c3e50;">Canon ${item.id}</b> <span style="color:#7f8c8d; font-size:10px;">(${item.piste})</span><br><span style="color:${color}; font-weight:bold;">${item.ticket.defaut}</span></div><button onclick="window.focusCannon('${item.id}');" style="background:none; border:1px solid #ddd; border-radius:4px; cursor:pointer; font-size:10px; padding:4px 8px;">Cibler 📍</button></div>`; }).join(''); html += `<div style="max-height: 40vh; overflow-y: auto; padding-right:5px;">${listHtml}</div>`; }
+                setTimeout(() => { let cPiste = document.getElementById('gfc-piste'); if(cPiste){ if(window.chartInstances['gfc-piste']) window.chartInstances['gfc-piste'].destroy(); window.chartInstances['gfc-piste'] = new Chart(cPiste.getContext('2d'), { type: 'bar', data: { labels: pLabels, datasets: [{ data: pData, backgroundColor: '#e74c3c', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: {font:{size:9}} } } } }); } }, 100);
+            } else if (window.mainTheme === 'type' || window.mainTheme === 'repeteur' || window.mainTheme === 'transfo') {
+                let key = window.mainTheme === 'type' ? window.keyType : (window.mainTheme === 'repeteur' ? window.keyRep : window.keyTransfo); let title = window.mainTheme === 'type' ? 'Types de canon' : (window.mainTheme === 'repeteur' ? 'Répéteurs' : 'Transformateurs'); let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Analyse : " + title;
+                let counts = {}; visibleCannons.forEach(f => { let v = window.getV(f.properties, key); counts[v] = (counts[v] || 0) + 1; }); chartLabels = Object.keys(counts).sort(); chartData = chartLabels.map(k => counts[k]);
+                if (window.mainTheme === 'type') { chartColors = chartLabels.map(k => { let kL = k.toLowerCase(); if(["demak lenko", "demac lenko"].includes(kL)) return '#0000FF'; if(["sufag", "street", "taurus", "taurax", "peak"].includes(kL)) return '#008000'; return window.technoColors[kL] || '#FFD700'; }); } else if (window.mainTheme === 'repeteur') { chartColors = chartLabels.map(k => window.repColors[k] || '#3498db'); } else { chartColors = chartLabels.map(k => window.transfoColors[k] || '#3498db'); }
+                html += `<div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Répartition par ${title}</div><div style="position:relative;height:200px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
+            } else if (window.mainTheme === 'historique') {
+                let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Analyse : Historique"; let s = window.saisonsList[window.histSeasonIdx]; let metricName = window.histMetric === 'eau' ? 'Eau (m³)' : (window.histMetric === 'air' ? 'Air' : 'Temps (h)'); let isSinglePiste = (window.currentPistes.length === 1 && window.currentPistes[0] !== 'all');
+                if (isSinglePiste || visibleCannons.length <= 40) {
+                    let sorted = [...visibleCannons].sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id)); chartLabels = sorted.map(c => c.properties.id); chartData = sorted.map(c => c.properties.historique[s] ? c.properties.historique[s][window.histMetric] : 0); chartColors = '#3498db'; let pisteName = isSinglePiste ? window.currentPistes[0] : "Canons";
+                    html += `<div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Détail par canon (${metricName}) - ${pisteName}</div><div style="position:relative;height:250px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
+                } else {
+                    let pisteTotals = {}; visibleCannons.forEach(f => { let p = window.getV(f.properties, window.keyPiste); let val = f.properties.historique[s] ? f.properties.historique[s][window.histMetric] : 0; pisteTotals[p] = (pisteTotals[p] || 0) + val; });
+                    chartLabels = Object.keys(pisteTotals).sort(); chartData = chartLabels.map(k => pisteTotals[k]); chartColors = '#2980b9';
+                    html += `<div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Total ${metricName} par Piste (Saison ${s})</div><div style="position:relative;height:250px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
+                }
+            } else if (window.mainTheme === 'suivi_entretien') {
+                let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Dashboard Maintenance"; let bYearCounts = {}; let vYearCounts = {}; let cDef = 0, cDec = 0, cPrev = 0, cOk = 0;
+                visibleCannons.forEach(f => {
+                    let p = f.properties; let s = window.suiviEntretienData.find(row => row[0] == p.id) || []; let hasFault = window.getActiveTickets(p.id).length > 0; let isDec = s[2] && s[2].toString().toLowerCase().trim() === "oui"; let isPrev = s[3] && s[3].toString().toLowerCase().trim() === "oui";
+                    if(hasFault) cDef++; else if(isPrev) cPrev++; else if(isDec) cDec++; else cOk++;
+                    let bY = window.getV(p, "année de buse") || window.getV(p, "annee buse"); let vY = window.getV(p, "année vanne") || window.getV(p, "annee vanne"); if(bY && bY !== "N/A") bYearCounts[bY] = (bYearCounts[bY]||0)+1; if(vY && vY !== "N/A") vYearCounts[vY] = (vYearCounts[vY]||0)+1;
+                });
+                let topBuse = Object.entries(bYearCounts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} <span style="color:#7f8c8d">(${x[1]})</span>`).join('<br>'); let topVanne = Object.entries(vYearCounts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} <span style="color:#7f8c8d">(${x[1]})</span>`).join('<br>');
+                html += `<div style="display:flex; gap:10px; text-align:center; margin-bottom:15px;"><div style="flex:1; background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px;"><b style="font-size:20px; color:#27ae60;">${cDec}</b><br><span style="font-size:10px;">Déconnectés</span></div><div style="flex:1; background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px;"><b style="font-size:20px; color:#9b59b6;">${cPrev}</b><br><span style="font-size:10px;">Préventifs</span></div></div><div style="display:flex; gap:10px; margin-bottom:15px; font-size:11px;"><div style="flex:1; background:#fdfdfe; border:1px solid #e1e8ed; padding:10px; border-radius:6px;"><h4 style="margin:0 0 5px 0; color:#3498db;">Top Années Buse</h4>${topBuse || "Aucune info"}</div><div style="flex:1; background:#fdfdfe; border:1px solid #e1e8ed; padding:10px; border-radius:6px;"><h4 style="margin:0 0 5px 0; color:#e67e22;">Top Années Vanne</h4>${topVanne || "Aucune info"}</div></div><div class="piste-chart-container"><div style="text-align:center; font-weight:bold; font-size:12px; margin-bottom:10px;">Statuts Principaux (Priorité Haute)</div><div style="position:relative; height:180px; width:100%;"><canvas id="suivi-pie-global"></canvas></div></div>`;
+                let pistes = Array.from(window.columnValuesSets[window.keyPiste] || []).sort(); let selectHtml = `<div style="background:#f8f9fa; padding:15px; border-radius:6px; border:1px solid #ddd; margin-top:15px;"><div class="edit-label">Sélectionner une piste pour l'entretien :</div><select class="edit-input" style="margin-bottom:0;" onchange="window.renderSuiviList(this.value)"><option value="">-- Choisir une piste --</option>${pistes.map(p => `<option value="${p}">${p}</option>`).join('')}</select></div><div id="suivi-canons-container"></div>`;
+                document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html + selectHtml; 
+                setTimeout(() => { if(window.chartInstances['suivi-pie-global']) window.chartInstances['suivi-pie-global'].destroy(); let canvas = document.getElementById('suivi-pie-global'); if (canvas) window.chartInstances['suivi-pie-global'] = new Chart(canvas.getContext('2d'), { type: 'doughnut', data: { labels: ['En Défaut', 'Préventif Usine', 'Déconnecté', 'Connecté (⚡)'], datasets: [{ data: [cDef, cPrev, cDec, cOk], backgroundColor: ['#e74c3c', '#9b59b6', '#27ae60', '#f1c40f'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels:{boxWidth:10, font:{size:10}} } } } }); }, 100); return; 
+            } else if (window.mainTheme === 'entretien_tete') {
+                let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Dashboard Entretien Buses"; window.renderEntretienDashboard('all'); return; 
+            }
+            document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html; 
+
+            setTimeout(() => {
+                let ctx = document.getElementById('global-filter-chart'); if(!ctx) return;
+                if(window.chartInstances['global-filter-chart']) window.chartInstances['global-filter-chart'].destroy();
+                window.chartInstances['global-filter-chart'] = new Chart(ctx.getContext('2d'), { type: chartType, data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderRadius: chartType==='bar'?4:0 }] }, options: chartOptions, plugins: chartPlugins });
+            }, 50);
+        };
         
         window.addEventListener('DOMContentLoaded', async () => {
             if(window.bootAttempt > 0) return; window.bootAttempt = 1;
