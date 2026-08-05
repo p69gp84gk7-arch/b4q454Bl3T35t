@@ -18,6 +18,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
+    <!-- Ajout de FontAwesome pour des icônes professionnelles -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
@@ -41,17 +42,14 @@
         .panel-section summary::after{content:'+';font-size:16px;color:#bdc3c7;}
         details[open].panel-section summary::after{content:'−';color:#3498db;}
         .section-content{padding:15px 20px;background:#fafbfc;}
-        
         .theme-block{margin-bottom:8px;}
         .radio-card{display:flex;align-items:center;gap:10px;background:#fff;padding:12px;border:1px solid #e1e8ed;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold;}
         .theme-details{background:#fdfdfe;padding:12px 15px;border:1px solid #e1e8ed;border-top:none;border-radius:0 0 6px 6px;margin-top:-2px;}
         .theme-details-hist{background:#eafaf1;border-color:#a2d9ce;border-top:none;padding:15px;border-radius:0 0 6px 6px;}
-        
         .slider-container{margin-top:10px;}
         .slider-label{display:flex;justify-content:space-between;font-size:12px;font-weight:bold;margin-bottom:5px;color:#555;}
         input[type=range]{width:100%;margin:0;accent-color:#3498db;cursor:pointer;}
         .val-badge{color:#e74c3c;font-weight:bold;}
-        
         .dynamic-filter-slot{background:#fff;border:1px solid #e1e8ed;border-radius:6px;padding:10px;margin-bottom:10px;}
         .filter-select{width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:8px;outline:none;}
         .checkbox-list{max-height:140px;overflow-y:auto;padding:5px;font-size:12px;}
@@ -60,7 +58,6 @@
         .color-box{width:14px;height:14px;border-radius:3px;border:1px solid #ccc;}
         .gradient-bar{height:10px;border-radius:3px;margin:10px 0 5px 0;}
         .legend-labels{display:flex;justify-content:space-between;font-size:11px;font-weight:bold;}
-        
         #map-container{flex-grow:1;position:relative;height:100%;background:#222;}
         #map{position:absolute;top:0;bottom:0;left:0;right:0;width:100%;height:100%;z-index:1;}
         .custom-cannon-icon{background:none;border:none;}
@@ -139,8 +136,7 @@
         }
     </style>
 </head>
-
-    <body>
+<body>
     <div id="datalists-container"></div> 
     <div id="loading-overlay"><div class="spinner" id="loading-spinner"></div><h2 style="color:#3498db; margin:0;" id="loading-title">Démarrage...</h2><p style="color:#888; font-size:12px;" id="loading-step"></p><div id="error-box"><p id="error-msg"></p></div></div>
 
@@ -189,11 +185,11 @@
                 <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-palette"></i> Thème Global</summary>
                 <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:12px; font-weight:bold; color:#555;">Bandeau Supérieur (Top Bar)</span>
+                        <span style="font-size:12px; font-weight:bold; color:#555;">Bandeau Supérieur</span>
                         <input type="color" id="set-topbar-color" value="#2c3e50" style="width:40px; height:30px; cursor:pointer;" onchange="window.applySettingsUI()">
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:12px; font-weight:bold; color:#555;">Panneaux Latéraux (Sidebars)</span>
+                        <span style="font-size:12px; font-weight:bold; color:#555;">Panneaux Latéraux</span>
                         <input type="color" id="set-sidebar-bg" value="#ffffff" style="width:40px; height:30px; cursor:pointer;" onchange="window.applySettingsUI()">
                     </div>
                 </div>
@@ -220,9 +216,9 @@
                 <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-droplet"></i> Couleurs des Statuts (Carte)</summary>
                 <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">
                     <b style="font-size:11px; color:#8e44ad;">🚨 Tickets & Pannes</b>
-                    <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:12px;">Panne Urgente (À faire)</span><input type="color" id="set-col-urgent" value="#e74c3c" style="width:30px; height:25px;" onchange="window.triggerMapUpdate()"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:12px;">Urgent (À faire)</span><input type="color" id="set-col-urgent" value="#e74c3c" style="width:30px; height:25px;" onchange="window.triggerMapUpdate()"></div>
                     <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:12px;">En cours</span><input type="color" id="set-col-encours" value="#f39c12" style="width:30px; height:25px;" onchange="window.triggerMapUpdate()"></div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span style="font-size:12px;">RAS (Aucun défaut)</span><input type="color" id="set-col-ras" value="#bdc3c7" style="width:30px; height:25px;" onchange="window.triggerMapUpdate()"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span style="font-size:12px;">RAS</span><input type="color" id="set-col-ras" value="#bdc3c7" style="width:30px; height:25px;" onchange="window.triggerMapUpdate()"></div>
                     <b style="font-size:11px; color:#8e44ad; border-top:1px solid #eee; padding-top:10px;">🚿 Entretien Têtes</b>
                     <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:12px;">Buse Changée (OK)</span><input type="color" id="set-col-tete-ok" value="#e67e22" style="width:30px; height:25px;" onchange="window.triggerMapUpdate()"></div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span style="font-size:12px;">À faire</span><input type="color" id="set-col-tete-wait" value="#bdc3c7" style="width:30px; height:25px;" onchange="window.triggerMapUpdate()"></div>
@@ -366,7 +362,7 @@
             </div>
         </div>
     </div>
-<script>
+    <script>
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbxXWPGusI2o66WGBut-urJXxeB00ltFti2KltPXb-mafmmfleavph8wRGNWPydHw0YY1g/exec";
 
         window.map = null; window.satLayer = null; window.geojsonLayer = null; window.webcamLayerGroup = null;
@@ -597,7 +593,7 @@
             let ld = document.getElementById('loading-desc'); if(ld) ld.innerHTML = `${window.snowCannons.features.length} canons placés.`;
             setTimeout(() => { window.initAppUI(); window.initDriveKMZList(); window.loadSettingsLocally(); let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; }, 800);
         };
-    window.initAppUI = function() {
+        window.initAppUI = function() {
             window.loadSettingsLocally(); // Force le chargement dès le rafraîchissement
             let ts=new Set(), rs=new Set(), trs=new Set(), ps=new Set();
             window.snowCannons.features.forEach(f=>{ let p=f.properties; let t=window.getV(p,window.keyType); if(t!=="N/A")ts.add(t.toLowerCase()); let r=window.getV(p,window.keyRep); if(r!=="N/A")rs.add(r); let tr=window.getV(p,window.keyTransfo); if(tr!=="N/A")trs.add(tr); let pi=window.getV(p,window.keyPiste); if(pi!=="N/A")ps.add(pi); });
@@ -877,7 +873,7 @@
 
         window.focusCannon = function(id) { window.geojsonLayer.eachLayer(l => { if(l.feature.properties.id === id) { if(!window.isMultiSelect && window.mainTheme !== 'suivi_entretien') window.selectedCannonsMap.clear(); window.selectedCannonsMap.set(id,l); window.map.setView(l.getLatLng(),17); window.updateMap(); window.renderSelectionPanel(); document.getElementById('right-sidebar').classList.add('open'); } }); };
 
-    window.renderSelectionPanel = function() {
+        window.renderSelectionPanel = function() {
             if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; 
             document.getElementById('sel-count').innerText = window.selectedCannonsMap.size; let listDiv = document.getElementById('selected-list'); if(!listDiv) return; 
@@ -1280,375 +1276,6 @@
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html;
         };
 
-        window.renderStockWorkspace = function() {
-            let ws = document.getElementById('stock-workspace');
-            if (!ws) return;
-            ws.style.paddingTop = "75px"; 
-
-            if (!window.rawStock || window.rawStock.length < 1) {
-                ws.innerHTML = `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; color:#7f8c8d; font-weight:bold;">⚠️ Aucun onglet de stock détecté ou données vides.</div>`;
-                return;
-            }
-
-            let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
-            
-            let idxNum = headers.findIndex(h => h.includes("numero") || h === "id");
-            let idxRef = headers.findIndex(h => h === "ref");
-            let idxProd = headers.findIndex(h => h === "produit");
-            let idxDesc = headers.findIndex(h => h === "description");
-            let idxPhoto = headers.findIndex(h => h === "photo");
-            let idxCout = headers.findIndex(h => h === "cout");
-            let idxStock = headers.findIndex(h => h.includes("stock"));
-            let idxMini = headers.findIndex(h => h.includes("mini") || h.includes("seuil"));
-            let idxPris = headers.findIndex(h => h === "pris");
-
-            let maxId = 0; let uniqueDescs = new Set();
-
-            for (let i = 1; i < window.rawStock.length; i++) {
-                let row = window.rawStock[i];
-                if (!row || row.length === 0) continue;
-                if (idxNum !== -1 && row[idxNum]) { let idVal = parseInt(row[idxNum], 10); if (!isNaN(idVal) && idVal > maxId) maxId = idVal; }
-                if (idxDesc !== -1 && row[idxDesc]) { row[idxDesc].toString().split(',').forEach(desc => { let cleanDesc = desc.trim(); if (cleanDesc !== "") uniqueDescs.add(cleanDesc); }); }
-            }
-            let nextId = maxId > 0 ? (maxId + 1) : 1;
-            let totalArticles = window.rawStock.length - 1;
-            let filterOptionsHtml = `<option value="">📁 Toutes les descriptions</option>`;
-            Array.from(uniqueDescs).sort().forEach(d => { filterOptionsHtml += `<option value="${d}">${d}</option>`; });
-
-            ws.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:2px solid #16a085; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-                    <h2 style="color:#2c3e50; margin:0;"><i class="fa-solid fa-boxes-stacked"></i> Inventaire <span id="stock-count-display" style="font-size:12px; color:#7f8c8d; font-weight:normal; background:#e1e8ed; padding:4px 8px; border-radius:12px;">(${totalArticles} articles)</span></h2>
-                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                        <select id="filter-desc-stock" onchange="window.filterStockItems()" style="padding:8px; border-radius:6px; border:1px solid #ccc; outline:none; font-size:12px; background:#fff; max-width:180px; font-weight:bold; color:#16a085;">${filterOptionsHtml}</select>
-                        <input type="text" id="search-stock" placeholder="🔍 Pièce, Réf..." onkeyup="window.filterStockItems()" style="padding:8px; border-radius:6px; border:1px solid #ccc; outline:none; width:130px; font-weight:bold; font-size:12px;">
-                        <button onclick="window.toggleAddStockForm()" style="background:#16a085; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:12px; white-space:nowrap;"><i class="fa-solid fa-plus"></i> Ajouter</button>
-                    </div>
-                </div>
-                
-                <div id="add-stock-form-container" style="display:none; background:#fff; border:2px solid #16a085; padding:15px; border-radius:8px; margin-bottom:20px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
-                    <h4 style="margin:0 0 12px 0; color:#16a085; text-transform:uppercase;">Créer un nouvel article de stock</h4>
-                    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:10px;" id="add-stock-fields-grid"></div>
-                    <div style="display:flex; gap:10px; margin-top:15px; justify-content:flex-end;">
-                        <button onclick="window.toggleAddStockForm()" style="padding:10px 15px; background:#e1e8ed; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Annuler</button>
-                        <button onclick="window.addStockItemToServer(this)" style="padding:10px 20px; background:#16a085; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;"><i class="fa-solid fa-check"></i> Valider l'ajout</button>
-                    </div>
-                </div>
-                <div id="stock-cards-list" style="display:flex; flex-direction:column; gap:15px;"></div>`;
-
-            let addGrid = document.getElementById('add-stock-fields-grid');
-            let badgesHtml = Array.from(uniqueDescs).sort().map(d => `<span onclick="window.appendDescToForm('${d.replace(/'/g, "\\'")}')" style="background:#e1e8ed; color:#2c3e50; padding:4px 8px; border-radius:12px; font-size:10px; cursor:pointer; margin:2px; display:inline-block; font-weight:bold; border:1px solid #ccc;">+ ${d}</span>`).join('');
-
-            window.rawStock[0].forEach(colName => {
-                let cleanName = colName ? colName.toString().trim() : "";
-                let lowerName = cleanName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                if (cleanName === "" || lowerName.includes("commande") || lowerName === "cmd") return;
-
-                if (lowerName === "numero" || lowerName === "id") { addGrid.innerHTML += `<div><span class="edit-label" style="font-size:10px;">${cleanName} (Auto)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="${nextId}" readonly style="margin-top:2px; margin-bottom:0; padding:6px; height:30px; box-sizing:border-box; background:#f4f6f8; color:#7f8c8d; font-weight:bold;"></div>`; } 
-                else if (lowerName === "description") { addGrid.innerHTML += `<div style="grid-column: 1 / -1;"><span class="edit-label" style="font-size:10px;">${cleanName} (Séparation par virgules)</span><input type="text" id="new-stock-desc" class="edit-input new-stock-field" data-col="${cleanName}" placeholder="Ex: Joint, PTFE, Buse" style="margin-top:2px; margin-bottom:6px; padding:6px; height:30px; box-sizing:border-box;"><div style="display:flex; flex-wrap:wrap; gap:4px; padding-bottom:5px;">${badgesHtml}</div></div>`; } 
-                else if (lowerName === "reste") { addGrid.innerHTML += `<div><span class="edit-label" style="font-size:10px;">${cleanName} (Calculé)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="0" readonly placeholder="Auto" style="margin-top:2px; margin-bottom:0; padding:6px; height:30px; box-sizing:border-box; background:#f4f6f8; color:#7f8c8d;"></div>`; } 
-                else if (lowerName === "photo") { addGrid.innerHTML += `<div><span class="edit-label" style="font-size:10px;">📸 Lien Drive de la photo</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" placeholder="Coller le lien ici" style="margin-top:2px; margin-bottom:0; padding:6px; height:30px; box-sizing:border-box;"></div>`; } 
-                else { addGrid.innerHTML += `<div><span class="edit-label" style="font-size:10px;">${cleanName}</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" style="margin-top:2px; margin-bottom:0; padding:6px; height:30px; box-sizing:border-box;"></div>`; }
-            });
-
-            if (window.rawStock.length <= 1) return;
-            let cardsContainer = document.getElementById('stock-cards-list');
-            
-            for (let i = 1; i < window.rawStock.length; i++) {
-                try {
-                    let row = window.rawStock[i];
-                    let isRowEmpty = row.every(cell => cell === null || cell === undefined || cell.toString().trim() === "");
-                    if (isRowEmpty || !row || row.length === 0) continue; 
-
-                    let numRaw = (idxNum !== -1 && row[idxNum] !== undefined && row[idxNum] !== null) ? row[idxNum].toString().trim() : "";
-                    let numPiece = (numRaw !== "") ? numRaw : i.toString();
-                    let safeId = "stock-" + numPiece.replace(/[^a-zA-Z0-9]/g, "-");
-                    
-                    let valStock = (idxStock !== -1 && row[idxStock] !== undefined) ? parseFloat(row[idxStock]) || 0 : 0;
-                    let valMini = (idxMini !== -1 && row[idxMini] !== undefined) ? parseFloat(row[idxMini]) || 0 : 0;
-                    let valPris = (idxPris !== -1 && row[idxPris] !== undefined) ? parseFloat(row[idxPris]) || 0 : 0;
-                    let valReste = valStock - valPris;
-                    let valRef = (idxRef !== -1 && row[idxRef] !== undefined) ? row[idxRef].toString().trim() : "";
-                    let valProd = (idxProd !== -1 && row[idxProd] !== undefined) ? row[idxProd].toString().trim() : "Sans nom";
-                    let valDesc = (idxDesc !== -1 && row[idxDesc] !== undefined) ? row[idxDesc].toString().trim() : "";
-                    let valPhoto = (idxPhoto !== -1 && row[idxPhoto] !== undefined) ? row[idxPhoto].toString().trim() : "";
-                    let valCout = (idxCout !== -1 && row[idxCout] !== undefined) ? row[idxCout].toString().trim() : "0";
-
-                    let alerteStockStyle = "background:#fff; border-color:#ddd;";
-                    let badgeAlerteHtml = "";
-                    if (valStock <= valMini) {
-                        alerteStockStyle = "background:#fdf2f2; border-color:#e74c3c; box-shadow: 0 0 8px rgba(231, 76, 60, 0.15);";
-                        badgeAlerteHtml = `<span style="background:#e74c3c; color:white; font-size:9px; padding:2px 6px; border-radius:10px; font-weight:bold; vertical-align:middle; margin-left:8px;"><i class="fa-solid fa-triangle-exclamation"></i> SEUIL CRITIQUE</span>`;
-                    }
-
-                    let parsedImgUrl = "https://placehold.co/150x150?text=Pas+de+photo";
-                    if (valPhoto && valPhoto.trim() !== "") {
-                        let valPhotoStr = valPhoto.toString();
-                        let rawFileName = valPhotoStr.split('/').pop().toLowerCase().trim();
-                        let coreId = rawFileName.split('.')[0]; 
-                        let appSheetRelativePath = valPhotoStr;
-                        let photoIndex = valPhotoStr.indexOf("photos/");
-                        if (photoIndex !== -1) { appSheetRelativePath = valPhotoStr.substring(photoIndex); }
-
-                        let foundInDrive = false;
-                        if (window.drivePhotos) {
-                            let driveKeys = Object.keys(window.drivePhotos);
-                            if (window.drivePhotos[rawFileName]) { parsedImgUrl = window.drivePhotos[rawFileName]; foundInDrive = true; } 
-                            else { let fuzzyMatch = driveKeys.find(k => k.includes(coreId) && coreId !== ""); if (fuzzyMatch) { parsedImgUrl = window.drivePhotos[fuzzyMatch]; foundInDrive = true; } }
-                        }
-                        if (!foundInDrive) {
-                            if (valPhotoStr.includes("drive.google.com")) { parsedImgUrl = window.parseDriveUrl(valPhotoStr); } 
-                            else { parsedImgUrl = `https://www.appsheet.com/template/gettablefileurl?appName=maintenanceneige-3822734&tableName=Stock&fileName=${encodeURIComponent(appSheetRelativePath)}`; }
-                        }
-                    }
-
-                    let cardBlock = document.createElement('div');
-                    cardBlock.className = "stock-item-card"; cardBlock.setAttribute("data-num", numPiece);
-                    cardBlock.style = `border:1px solid #ddd; border-left:5px solid #16a085; border-radius:8px; padding:15px; display:flex; gap:15px; align-items:stretch; flex-wrap:wrap-reverse; transition: 0.2s; ${alerteStockStyle}`;
-                    cardBlock.innerHTML = `
-                        <div style="flex:3; min-width:260px; display:flex; flex-direction:column; gap:8px;">
-                            <h3 style="margin:0; color:#2c3e50; font-size:15px;">
-                                <i class="fa-solid fa-box"></i> Réf: <span style="color:#16a085;">${valRef || "Aucune"}</span> - ${valProd} ${badgeAlerteHtml}
-                                <span style="font-size:11px; font-weight:normal; color:#888; float:right;">N°: ${numPiece}</span>
-                            </h3>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap:8px; margin-top:5px;">
-                                <div><span class="edit-label" style="font-size:9px;">Référence</span><input type="text" class="edit-input s-field-${safeId}" data-col="ref" value="${valRef}" style="padding:4px; margin:0; font-size:11.5px; height:26px;"></div>
-                                <div><span class="edit-label" style="font-size:9px;">Nom Produit</span><input type="text" class="edit-input s-field-${safeId}" data-col="produit" value="${valProd}" style="padding:4px; margin:0; font-size:11.5px; height:26px;"></div>
-                                <div style="grid-column: span 2;"><span class="edit-label" style="font-size:9px;">Description</span><input type="text" class="edit-input s-field-${safeId}" data-col="description" value="${valDesc}" style="padding:4px; margin:0; font-size:11.5px; height:26px;"></div>
-                                <div><span class="edit-label" style="font-size:9px;">Coût (€)</span><input type="text" class="edit-input s-field-${safeId}" data-col="cout" value="${valCout}" style="padding:4px; margin:0; font-size:11.5px; height:26px;"></div>
-                                <div><span class="edit-label" style="font-size:9px; color:#e74c3c; font-weight:bold;">En Stock</span><input type="number" class="edit-input s-field-${safeId}" data-col="en stock" value="${valStock}" onchange="window.recalculateCardReste('${safeId}')" style="padding:4px; margin:0; font-size:11.5px; height:26px; font-weight:bold;"></div>
-                                <div><span class="edit-label" style="font-size:9px;">Seuil Mini</span><input type="number" class="edit-input s-field-${safeId}" data-col="seuil mini" value="${valMini}" style="padding:4px; margin:0; font-size:11.5px; height:26px;"></div>
-                                <div><span class="edit-label" style="font-size:9px; color:#2980b9; font-weight:bold;">Reste (Auto)</span><input type="number" id="reste-${safeId}" class="edit-input s-field-${safeId}" data-col="reste" value="${valReste}" readonly style="padding:4px; margin:0; font-size:11.5px; height:26px; font-weight:bold; background:#f4f6f8; color:#7f8c8d; cursor:not-allowed;"></div>
-                                <div><span class="edit-label" style="font-size:9px;">Pris</span><input type="number" class="edit-input s-field-${safeId}" data-col="pris" value="${valPris}" onchange="window.recalculateCardReste('${safeId}')" style="padding:4px; margin:0; font-size:11.5px; height:26px;"></div>
-                                <div style="grid-column: span 2;"><span class="edit-label" style="font-size:9px;">📸 Lien Drive de la Photo</span><input type="text" class="edit-input s-field-${safeId}" data-col="photo" value="${valPhoto}" placeholder="Coller le lien de partage Drive" style="padding:4px; margin:0; font-size:11.5px; height:26px;"></div>
-                            </div>
-                            <div style="display:flex; gap:8px; margin-top:8px;">
-                                <button onclick="window.deleteStockItemFromServer('${numPiece}', this)" style="background:none; border:1px solid #ccc; color:#e74c3c; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-trash"></i> Supprimer</button>
-                                <button onclick="window.saveStockItemEdits('${numPiece}', '${safeId}', this)" style="flex-grow:1; background:#16a085; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-floppy-disk"></i> Mettre à jour</button>
-                            </div>
-                        </div>
-                        <div style="flex:1; min-width:110px; max-width:160px; display:flex; align-items:center; justify-content:center; background:#fafbfc; border:1px solid #e1e8ed; border-radius:6px; overflow:hidden; padding:5px; box-sizing:border-box;">
-                            <img src="${parsedImgUrl}" style="max-width:100%; max-height:110px; object-fit:contain; border-radius:4px;" onerror="this.src='https://placehold.co/150x150?text=Image+Introuvable'"/>
-                        </div>`;
-                    cardsContainer.appendChild(cardBlock);
-                } catch (err) {}
-            }
-        };
-
-        window.renderAtelierWorkspace = function() {
-            let ws = document.getElementById('atelier-workspace');
-            if(!ws) return;
-            ws.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:2px solid #8e44ad; margin-bottom:15px;">
-                    <h2 style="color:#2c3e50; margin:0;"><i class="fa-solid fa-toolbox"></i> Banc d'Essais</h2>
-                    <input type="text" id="search-atelier" placeholder="🔍 N° Canon..." onkeyup="window.filterAtelierCanons(this.value)" style="padding:8px; border-radius:6px; border:1px solid #ccc; outline:none; width:120px; font-weight:bold;">
-                </div>`;
-            let canonsEnAtelier = window.suiviEntretienData.filter(row => row[3] && row[3].toString().toLowerCase().trim() === "oui").map(r => r[0].toString());
-            if(canonsEnAtelier.length === 0) { ws.innerHTML += `<div style="background:#fff; border:1px solid #ddd; border-radius:6px; text-align:center; padding:30px; color:#7f8c8d; font-weight:bold;">✅ Aucun enneigeur n'est actuellement marqué "Préventif Usine".</div>`; return; }
-
-            let idsValides = new Set();
-            if (window.rawAtelier && window.rawAtelier.length > 1) {
-                let headersAtelier = window.rawAtelier[0].map(h => h.toString().toLowerCase().trim());
-                let idxIdAtelier = headersAtelier.findIndex(h => h === "id" || h.includes("n°"));
-                if (idxIdAtelier !== -1) { for (let i = 1; i < window.rawAtelier.length; i++) { idsValides.add(window.rawAtelier[i][idxIdAtelier].toString().trim()); } }
-            }
-            let listeAFaire = []; let listeValidee = [];
-            canonsEnAtelier.forEach(idCanon => { if (idsValides.has(idCanon)) listeValidee.push(idCanon); else listeAFaire.push(idCanon); });
-            listeAFaire.sort((a, b) => parseInt(a) - parseInt(b)); listeValidee.sort((a, b) => parseInt(a) - parseInt(b));
-            let orderedCanons = [...listeAFaire, ...listeValidee];
-
-            ws.innerHTML += `
-                <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:13px; color:#555; background:#eaf2f8; padding:10px; border-radius:4px; border-left:4px solid #3498db;">
-                    <b>${canonsEnAtelier.length} canon(s) au banc d'essai.</b>
-                    <span style="color:#27ae60; font-weight:bold;">${listeValidee.length} archivé(s)</span>
-                </div>`;
-            let mapsToInitialize = [];
-
-            orderedCanons.forEach(idCanon => {
-                let feature = window.snowCannons.features.find(f => f.properties.id == idCanon); if(!feature) return;
-                let p = feature.properties; let piste = window.getV(p, window.keyPiste); let safeId = idCanon.replace(/[^a-zA-Z0-9]/g, ""); let estValide = idsValides.has(idCanon); let existingData = {};
-                
-                if (estValide) {
-                    let headersAtelier = window.rawAtelier[0].map(h => h.toString().trim());
-                    let idxIdAtelier = headersAtelier.findIndex(h => h.toLowerCase() === "id" || h.toLowerCase().includes("n°"));
-                    let rowData = window.rawAtelier.find(r => r[idxIdAtelier].toString().trim() === idCanon);
-                    if (rowData) headersAtelier.forEach((h, i) => { existingData[h.toLowerCase().trim()] = rowData[i]; });
-                }
-                const getVal = (col) => {
-                    let colLow = col.toLowerCase().trim(); if (existingData[colLow] !== undefined) return existingData[colLow];
-                    let fuzzyCol = colLow.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '').replace(/utilis(ees|es|ee|e)?/g, 'utilis');
-                    for (let key in existingData) { let fuzzyKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '').replace(/utilis(ees|es|ee|e)?/g, 'utilis'); if (fuzzyKey === fuzzyCol) return existingData[key]; } return "";
-                };
-
-                let typeVannePrincipale = window.getV(p, "Type de vanne").toUpperCase(); let valVanneAd = (window.getV(p, "vanne additio") || "").toLowerCase();
-                let defaultVanne = "none"; if (valVanneAd.includes("clarinette")) defaultVanne = "v2000"; else if (valVanneAd.includes("2var")) defaultVanne = "var_double"; else if (valVanneAd.includes("var")) defaultVanne = "var";
-
-                let suiviRow = window.suiviEntretienData.find(row => row[0] == idCanon);
-                let photoUrlBrute = suiviRow && suiviRow[6] ? suiviRow[6].toString().trim() : ""; let photoDisplayHtml = "";
-                if (photoUrlBrute !== "") {
-                    let directImgUrl = window.parseDriveUrl ? window.parseDriveUrl(photoUrlBrute) : photoUrlBrute;
-                    photoDisplayHtml = `<div style="margin-top:10px; margin-bottom:10px; text-align:center;"><span class="edit-label" style="display:block; text-align:left; margin-bottom:4px;">📷 Image Référence (Google Drive) :</span><a href="${photoUrlBrute}" target="_blank"><img src="${directImgUrl}" style="max-width:100%; max-height:220px; border-radius:6px; border:1px solid #ddd; box-shadow:0 2px 5px rgba(0,0,0,0.1);" alt="Photo Terrain"/></a></div>`;
-                }
-
-                let typeCanonAtelier = window.getV(p, window.keyType).toLowerCase().trim(); let iconUrlAtelier = (window.driveIcons && window.driveIcons[typeCanonAtelier]) ? window.driveIcons[typeCanonAtelier] : null;
-                let imageAtelierHtml = "<i class='fa-solid fa-snowflake' style='color:#3498db; margin-right:8px;'></i>"; 
-                if (iconUrlAtelier) { imageAtelierHtml = `<img src="${iconUrlAtelier}" style="height:35px; width:auto; vertical-align:middle; margin-right:8px; filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.3)); border-radius:4px;">`; }
-
-                let lng = feature.geometry.coordinates[0]; let lat = feature.geometry.coordinates[1]; let mapContainerHtml = "";
-                if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-                    mapContainerHtml = `<div id="minimap-${safeId}" style="width:100%; height:130px; border-radius:6px; margin-bottom:12px; border:1px solid #ccc; box-shadow:inset 0 1px 3px rgba(0,0,0,0.2); z-index:5;"></div>`;
-                    mapsToInitialize.push({ id: `minimap-${safeId}`, lat: lat, lng: lng, idCanon: idCanon, iconUrl: iconUrlAtelier });
-                }
-
-                let calcR18Nitrile = 0, calcR18Ptfe = 0, calcPtfeR3 = 0, calcR11Nitrile = 0, calcR11Ptfe = 0, calcPtfeVar = 0;
-                if (typeVannePrincipale === "YA") { calcR18Nitrile = 2; calcR18Ptfe = 4; calcPtfeR3 = 1; } else if (typeVannePrincipale === "YB") { calcR18Nitrile = 5; calcR18Ptfe = 4; calcPtfeR3 = 1; }
-                if (defaultVanne === "v2000") { calcR18Nitrile += 6; calcR18Ptfe += 2; calcPtfeR3 += 2; } else if (defaultVanne === "var" || defaultVanne === "var_double") { let multiplicateur = (defaultVanne === "var_double") ? 2 : 1; calcR11Nitrile = 6 * multiplicateur; calcR11Ptfe = 2 * multiplicateur; calcPtfeVar = 2 * multiplicateur; }
-                const getConsommable = (col, autoCalc) => existingData[col.toLowerCase().trim()] !== undefined ? existingData[col.toLowerCase().trim()] : (autoCalc > 0 ? autoCalc : "");
-
-                let headersGen = window.rawGeneral[0] || []; let techHtml = "";
-                headersGen.forEach(h => { if(h.toLowerCase().includes('xy') || h.toLowerCase().includes('gps') || h.toLowerCase() === 'id') return; let val = window.getV(p, h); techHtml += `<div><span class="edit-label">${h}</span><input type="text" class="edit-input tech-field-${safeId}" data-head="${h}" value="${val}" style="margin-bottom:0; padding:4px; font-size:11px; height:26px;"></div>`; });
-
-                let hist = window.getHistoryTickets(idCanon); let histHtml = `<div style="padding:10px; background:#fff; font-size:12px;">`;
-                if(hist.length === 0) histHtml += `<span style="color:#7f8c8d; font-style:italic;">Aucune panne enregistrée.</span>`;
-                else hist.forEach(t => { 
-                    let ticketDetails = t.fullData.filter(d => d.v && d.v.toString().trim() !== "").map(d => `<div style="margin-bottom:4px;"><span style="color:#7f8c8d;">${d.k}:</span> <b style="color:#2c3e50;">${d.v}</b></div>`).join('');
-                    histHtml += `<details style="background:#f8f9fa; border:1px solid #e1e8ed; border-radius:4px; padding:8px; margin-bottom:6px; cursor:pointer;"><summary style="font-size:11.5px; font-weight:bold; outline:none; display:flex; justify-content:space-between; align-items:center;"><span>${t.date} : <span style="color:#e74c3c;">${t.defaut}</span></span><span style="color:#bdc3c7; font-size:10px;">▼ Détails</span></summary><div style="margin-top:8px; padding-top:8px; border-top:1px dashed #eee; font-size:11px; cursor:default;">${ticketDetails}</div></details>`; 
-                });
-                histHtml += `</div>`;
-
-                let formHtml = `<div style="padding:10px; background:#fdfdfe;">
-                        <div style="background:#f4f9f9; border-left:4px solid #3498db; padding:10px; border-radius:4px; margin-bottom:12px; border:1px solid #e1e8ed;">
-                            <h4 style="margin:0 0 8px 0; color:#2980b9; font-size:12px;">🔵 VANNE PRINCIPALE</h4>
-                            <div style="font-size:11px; font-weight:bold; color:#7f8c8d; margin-bottom:4px;">[Test 1] Avant Intervention :</div>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:6px; margin-bottom:8px;">
-                                <div><span class="edit-label">Pression Eau 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 1" value="${getVal('test pression eau 1')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div><span class="edit-label">Pression Air 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 1" value="${getVal('test pression air 1')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div><span class="edit-label">Test Élec 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec Vanne" value="${getVal('test elec Vanne')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div><span class="edit-label">Manu 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 1" value="${getVal('manu 1')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div><span class="edit-label">Capteur 1</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 1" value="${getVal('capteur 1')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                            </div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:8px; background:rgba(0,0,0,0.02); padding:6px; border-radius:4px;">
-                                <div><span class="edit-label">Maintenance effectuée</span><input type="text" class="edit-input b-field-${safeId}" data-col="maintenance effectué" value="${getVal('maintenance effectué')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div style="grid-column: 1 / -1;">${window.buildPiecesUI('at1-pieces-'+safeId, 'edit-input b-field-'+safeId, 'pièces utilisés', 'Pièces utilisées (Stock)', getVal('pièces utilisés'))}</div>
-                            </div>
-                            <div style="font-size:11px; font-weight:bold; color:#27ae60; margin-bottom:4px;">[Test 2] Après Intervention :</div>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:6px;">
-                                <div><span class="edit-label">Pression Eau 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau 2" value="${getVal('test pression eau 2')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div><span class="edit-label">Pression Air 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression air 2" value="${getVal('test pression air 2')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div><span class="edit-label">Test Élec 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec vanne" value="${getVal('test elec vanne')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div><span class="edit-label">Manu 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="manu 2" value="${getVal('manu 2')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div><span class="edit-label">Capteur 2</span><input type="text" class="edit-input b-field-${safeId}" data-col="capteur 2" value="${getVal('capteur 2')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div><span class="edit-label">Vanne prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="prête" value="${getVal('prête') || 'OUI'}" style="padding:4px; margin:0; font-size:11px; height:26px; font-weight:bold; color:#27ae60;"></div>
-                            </div>
-                        </div>
-
-                        <h4 style="margin:15px 0 8px 0; color:#8e44ad; border-bottom:1px solid #eee; padding-bottom:4px; font-size:12px;">➕ CONFIGURATION VANNE ADDITIONNELLE</h4>
-                        <select class="edit-input" onchange="window.handleSelectVanne('${safeId}', this.value)" style="margin-bottom:12px; border-color:#8e44ad; font-weight:bold; font-size:11px; padding:4px; height:28px;">
-                            <option value="none" ${defaultVanne === 'none' ? 'selected' : ''}>-- Aucune vanne additionnelle détectée --</option>
-                            <option value="var" ${defaultVanne === 'var' ? 'selected' : ''}>Afficher Bloc complet VAR (Simple)</option>
-                            <option value="var_double" ${defaultVanne === 'var_double' ? 'selected' : ''}>Afficher Bloc complet VAR Double (2VAR)</option>
-                            <option value="v2000" ${defaultVanne === 'v2000' ? 'selected' : ''}>Afficher Bloc complet V2000 (Clarinette)</option>
-                        </select>
-                        
-                        <div id="bloc-var-${safeId}" style="display:${defaultVanne === 'var' ? 'block' : 'none'}; background:#fdf2e9; padding:10px; border-radius:4px; border:1px solid #f8c471; margin-bottom:12px;">
-                            <b style="color:#d35400; font-size:11px; margin-bottom:6px; display:block;">🛡️ BLOC DE TEST : VAR (1)</b>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:6px;">
-                                <div><span class="edit-label">Test Élec 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" value="${getVal('test elec VAR (1)')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div><span class="edit-label">Pression 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" value="${getVal('test pression 1 var')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div><span class="edit-label">Test Élec 2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" value="${getVal('test elec VAR (1) bis')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                                <div><span class="edit-label">Pression 2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" value="${getVal('test pression 2 var')}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                            </div>
-                            <div style="display:grid; grid-template-columns: 2fr 1fr; gap:6px; margin-top:6px;">
-                                <div style="grid-column: 1 / -1;">${window.buildPiecesUI('var1-pieces-'+safeId, 'edit-input b-field-'+safeId, 'pièces var 1 utilisés', 'Pièces VAR 1 (Stock)', getVal('pièces var 1 utilisés'))}</div>
-                                <div><span class="edit-label">VAR (1) prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (1) prête" value="${getVal('VAR (1) prête') || 'OUI'}" style="padding:4px; margin:0; font-size:11px; height:26px;"></div>
-                            </div>
-                        </div>
-
-                        <div id="bloc-var-double-${safeId}" style="display:${defaultVanne === 'var_double' ? 'block' : 'none'}; background:#fef5e7; padding:10px; border-radius:4px; border:1px solid #eb984e; margin-bottom:12px;">
-                            <b style="color:#ba4a00; font-size:11px; margin-bottom:6px; display:block;">🛡️ BLOC DE TEST : VAR DOUBLE (2VAR)</b>
-                            <div style="font-weight:bold; font-size:10px; color:#ba4a00; text-transform:uppercase; margin-bottom:2px;">• Perche 1 (VAR 1)</div>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:4px; background:rgba(255,255,255,0.4); padding:4px; border-radius:4px; margin-bottom:6px;">
-                                <div><span class="edit-label">Élec 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1)" value="${getVal('test elec VAR (1)')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div><span class="edit-label">Press 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var" value="${getVal('test pression 1 var')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div><span class="edit-label">Élec 2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (1) bis" value="${getVal('test elec VAR (1) bis')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div><span class="edit-label">Press 2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var" value="${getVal('test pression 2 var')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div style="grid-column: 1 / -1;">${window.buildPiecesUI('vard1-pieces-'+safeId, 'edit-input b-field-'+safeId, 'pièces var utilisés', 'Pièces VAR 1 (Stock)', getVal('pièces var utilisés'))}</div>
-                                <div><span class="edit-label">VAR 1 Prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (1) prête" value="${getVal('VAR (1) prête') || 'OUI'}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                            </div>
-                            <div style="font-weight:bold; font-size:10px; color:#ba4a00; text-transform:uppercase; margin-bottom:2px;">• Perche 2 (VAR 2)</div>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:4px; background:rgba(255,255,255,0.4); padding:4px; border-radius:4px;">
-                                <div><span class="edit-label">Élec 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2)" value="${getVal('test elec VAR (2)')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div><span class="edit-label">Press 1 [Avant]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 1 var (2)" value="${getVal('test pression 1 var (2)')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div><span class="edit-label">Élec 2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test elec VAR (2) bis" value="${getVal('test elec VAR (2) bis')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div><span class="edit-label">Press 2 [Après]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression 2 var (2)" value="${getVal('test pression 2 var (2)')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                               <div style="grid-column: 1 / -1;">${window.buildPiecesUI('vard2-pieces-'+safeId, 'edit-input b-field-'+safeId, 'pièces var utilisés bis', 'Pièces VAR 2 (Stock)', getVal('pièces var utilisés bis'))}</div>
-                                <div><span class="edit-label">VAR 2 Prête</span><input type="text" class="edit-input b-field-${safeId}" data-col="VAR (2) prête" value="${getVal('VAR (2) prête') || 'OUI'}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                            </div>
-                        </div>
-
-                        <div id="bloc-v2000-${safeId}" style="display:${defaultVanne === 'v2000' ? 'block' : 'none'}; background:#eaf2f8; padding:10px; border-radius:4px; border:1px solid #85c1e9; margin-bottom:12px;">
-                            <b style="color:#2980b9; font-size:11px; margin-bottom:6px; display:block;">🛡️ BLOC DE TEST : VALVE V2000 (CLARINETTE)</b>
-                            <div style="font-weight:bold; font-size:10px; color:#2980b9; margin-bottom:2px;">[Test 1] Avant Intervention :</div>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:4px; background:rgba(255,255,255,0.4); padding:4px; border-radius:4px; margin-bottom:6px;">
-                                <div><span class="edit-label">Élec C2 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c2" value="${getVal('test 1 elec V2000 c2')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div><span class="edit-label">Élec C3 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 1 elec V2000 c3" value="${getVal('test 1 elec V2000 c3')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div><span class="edit-label">Press Eau C2 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c2" value="${getVal('test pression eau v2000 c2')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div><span class="edit-label">Press Eau C3 [1]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test pression eau v2000 c3" value="${getVal('test pression eau v2000 c3')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                            </div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:6px;">
-                               <div style="grid-column: 1 / -1;">${window.buildPiecesUI('v2000-pieces-'+safeId, 'edit-input b-field-'+safeId, 'pièces v2000 utilisés', 'Pièces V2000 utilisées (Stock)', getVal('pièces v2000 utilisés'))}</div>
-                                <div><span class="edit-label">Commentaire V2000</span><input type="text" class="edit-input b-field-${safeId}" data-col="commentaire v2000" value="${getVal('commentaire v2000')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                            </div>
-                            <div style="font-weight:bold; font-size:10px; color:#27ae60; margin-bottom:2px;">[Test 2] Après Intervention :</div>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:4px; background:rgba(255,255,255,0.4); padding:4px; border-radius:4px;">
-                                <div><span class="edit-label">Élec C2 [2]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 elec v2000 c2" value="${getVal('test 2 elec v2000 c2')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div><span class="edit-label">Élec C3 [2]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 elec v2000 c3" value="${getVal('test 2 elec v2000 c3')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div><span class="edit-label">Press Eau C2 [2]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 pression eau v2000 2 c2" value="${getVal('test 2 pression eau v2000 2 c2')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div><span class="edit-label">Press Eau C3 [2]</span><input type="text" class="edit-input b-field-${safeId}" data-col="test 2 pression eau v2000 2 c3" value="${getVal('test 2 pression eau v2000 2 c3')}" style="padding:4px; margin:0; font-size:11px; height:24px;"></div>
-                                <div style="grid-column: span 3; display:flex; align-items:center; font-weight:bold; color:#27ae60;">V2000 Prête ?</div>
-                                <div><input type="text" class="edit-input b-field-${safeId}" data-col="V2000 prête" value="${getVal('V2000 prête') || 'OUI'}" style="padding:4px; margin:0; font-size:11px; height:24px; font-weight:bold; color:#27ae60;"></div>
-                            </div>
-                        </div>
-                        
-                        <div style="background:#f4f6f8; padding:8px; border-radius:4px; margin-top:10px; border:1px dashed #ccc;">
-                            <div style="font-weight:bold; font-size:10px; color:#555; text-transform:uppercase; margin-bottom:4px;">📋 Consommables (Calculés via Type Vanne + AD) :</div>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(95px, 1fr)); gap:4px; margin-bottom:6px;">
-                                <div><span class="edit-label" style="font-size:9px;">R18 Nitrile</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R18 NITRILE" value="${getConsommable('joint R18 NITRILE', calcR18Nitrile)}" style="padding:4px; margin:0; font-size:10px; height:22px; font-weight:bold; color:#d35400;"></div>
-                                <div><span class="edit-label" style="font-size:9px;">R18 PTFE</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R18 ptfe" value="${getConsommable('joint R18 ptfe', calcR18Ptfe)}" style="padding:4px; margin:0; font-size:10px; height:22px; font-weight:bold; color:#d35400;"></div>
-                                <div><span class="edit-label" style="font-size:9px;">PTFE R3</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint PTFE r3" value="${getConsommable('joint PTFE r3', calcPtfeR3)}" style="padding:4px; margin:0; font-size:10px; height:22px; font-weight:bold; color:#d35400;"></div>
-                                <div><span class="edit-label" style="font-size:9px;">R11 Nitrile</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R11 NITRILE" value="${getConsommable('joint R11 NITRILE', calcR11Nitrile)}" style="padding:4px; margin:0; font-size:10px; height:22px; font-weight:bold; color:#2980b9;"></div>
-                                <div><span class="edit-label" style="font-size:9px;">R11 PTFE</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint R11 ptfe" value="${getConsommable('joint R11 ptfe', calcR11Ptfe)}" style="padding:4px; margin:0; font-size:10px; height:22px; font-weight:bold; color:#2980b9;"></div>
-                                <div><span class="edit-label" style="font-size:9px;">PTFE VAR</span><input type="text" class="edit-input b-field-${safeId}" data-col="joint PTFE var" value="${getConsommable('joint PTFE var', calcPtfeVar)}" style="padding:4px; margin:0; font-size:10px; height:22px; font-weight:bold; color:#2980b9;"></div>
-                            </div>
-                            <div><span class="edit-label">Commentaire de clôture</span><input type="text" class="edit-input b-field-${safeId}" data-col="Commentaire" value="${getVal('Commentaire')}" placeholder="Remarques de fin d'essai..." style="padding:4px; margin-bottom:0; font-size:11px; height:26px;"></div>
-                        </div>
-                        <button onclick="window.saveAtelierBancRow('${idCanon}', '${safeId}', this)" style="width:100%; margin-top:12px; background:${estValide ? '#27ae60' : '#8e44ad'}; color:white; border:none; padding:10px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:13px; box-shadow:0 1px 3px rgba(0,0,0,0.15);">
-                            ${estValide ? "🔄 Mettre à jour le rapport d'Essai" : "🚀 Archiver ce rapport de Banc d'Essais"}
-                        </button>
-                    </div>`;
-
-                let card = document.createElement('div'); card.className = "atelier-card"; if (estValide) { card.style.borderLeftColor = "#27ae60"; card.style.background = "#f4fdf7"; }
-                card.innerHTML = `<h3 style="display:flex; align-items:center; flex-wrap:wrap; font-size:15px;">${imageAtelierHtml} Canon N° ${idCanon} ${estValide ? '<span style="background:#27ae60; color:white; font-size:9px; padding:2px 6px; border-radius:10px; margin-left:8px; font-weight:bold; line-height:1.2;">✅ ARCHIVÉ</span>' : ''}<span style="font-size:12px; font-weight:normal; color:#888; margin-left:auto;">Piste: ${piste}</span></h3>${mapContainerHtml}${photoDisplayHtml}<details class="atelier-sub-details" style="margin-bottom:6px;"><summary>⚙️ 1. Caractéristiques Techniques</summary><div class="atelier-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:6px; padding:10px;">${techHtml}</div><div style="padding:0 10px 10px 10px;"><button onclick="window.saveAtelierTechRow('${idCanon}','${safeId}',this)" style="width:100%; background:#2c3e50; color:white; border:none; padding:6px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px;">💾 Mettre à jour</button></div></details><details class="atelier-sub-details" style="margin-bottom:6px;"><summary>🕒 2. Rapports d'anomalies (Tickets)</summary>${histHtml}</details><details class="atelier-sub-details" open><summary>📝 3. Fiche d'Essai d'étanchéité & Hydraulique</summary>${formHtml}</details>`;
-                ws.appendChild(card);
-            });
-
-            setTimeout(() => {
-                mapsToInitialize.forEach(mapData => {
-                    let container = document.getElementById(mapData.id); if (!container) return;
-                    let miniMap = L.map(mapData.id, { zoomControl: false, attributionControl: false, dragging: false, touchZoom: false, scrollWheelZoom: false }).setView([mapData.lat, mapData.lng], 17);
-                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(miniMap);
-                    if (mapData.iconUrl) {
-                        let imageSize = 35; let imageHtml = `<div style="position:relative; width:${imageSize}px; height:${imageSize}px;"><div style="background:url('${mapData.iconUrl}') center/contain no-repeat; width:100%; height:100%; filter: drop-shadow(2px 4px 5px rgba(0,0,0,0.5));"></div><div style="position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; font-size:9px; padding:1px 4px; border-radius:4px; font-weight:bold; white-space:nowrap;">${mapData.idCanon}</div></div>`;
-                        let customIcon = L.divIcon({ className: 'custom-cannon-icon', html: imageHtml, iconSize: [imageSize, imageSize], iconAnchor: [imageSize/2, imageSize/2] });
-                        L.marker([mapData.lat, mapData.lng], { icon: customIcon }).addTo(miniMap);
-                    } else { L.marker([mapData.lat, mapData.lng]).addTo(miniMap); }
-                });
-            }, 200);
-        };
-        
-        window.filterAtelierCanons = function(val) { let search = val.toLowerCase().trim(); let cards = document.querySelectorAll('.atelier-card'); cards.forEach(card => { let title = card.querySelector('h3').innerText.toLowerCase(); card.style.display = title.includes(search) ? 'block' : 'none'; }); };
-        
-        window.saveAtelierBancRow = async function(idCanon, safeId, btn) { /* Ton code de sauvegarde inchangé */ };
-        
         window.addEventListener('DOMContentLoaded', async () => {
             if(window.bootAttempt > 0) return; window.bootAttempt = 1;
             try {
@@ -1664,5 +1291,3 @@
     </script>
 </body>
 </html>
-
-        
