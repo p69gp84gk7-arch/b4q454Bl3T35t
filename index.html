@@ -32,7 +32,7 @@
         .dash-layout-col { display: flex; flex-direction: column; gap: 10px; }
         .dash-layout-row > div { flex: 1; min-width: 120px; }
         /* Fin des nouveaux styles */
-    <style>
+   
         body,html{margin:0;padding:0;height:100%;width:100%;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f4f6f8;overflow:hidden;}
         #topbar{position:fixed;top:0;left:0;right:0;height:50px;background:#2c3e50;z-index:4000;display:flex;justify-content:space-between;align-items:center;padding:0 15px;box-shadow:0 2px 5px rgba(0,0,0,0.3);}
         .topbar-btn{background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.2);padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;transition:0.2s;margin-left:5px;}
@@ -2777,7 +2777,12 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
                 }
             }
 
-            Object.values(dictGeneral).forEach(canon => { if (canon.lat !== 0 && !isNaN(canon.lat)) { window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); } });
+           // SÉCURITÉ ANTI-CRASH GPS POUR LES CANONS
+            Object.values(dictGeneral).forEach(canon => { 
+                if (canon.lat !== undefined && canon.lng !== undefined && !isNaN(canon.lat) && !isNaN(canon.lng) && canon.lat !== 0) { 
+                    window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); 
+                } 
+            });
 
             let ls = document.getElementById('loading-spinner'); if(ls) ls.style.display = 'none';
             let lt = document.getElementById('loading-title'); if(lt) { lt.innerText = "✅ Chargement Réussi !"; lt.style.color = "#27ae60"; }
@@ -2873,16 +2878,19 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
 
             if (window.snowCannons.features.length > 0) { let bounds = window.geojsonLayer.getBounds(); if(bounds.isValid() && window.map) window.map.fitBounds(bounds, { padding: [30, 30] }); }
 
+            // SÉCURITÉ ANTI-CRASH GPS POUR LES WEBCAMS
             window.webcamLayerGroup = L.layerGroup();
             window.webcamsData.forEach(wc => {
-                let marker = L.marker([wc.lat, wc.lng], { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div class="camera-icon">${wc.icon}</div>`, iconSize: [24,24], iconAnchor: [12,12] }), draggable: false });
-                marker.on('click', function(e) { 
-                    L.DomEvent.stopPropagation(e); 
-                    if(marker.dragging && marker.dragging.enabled()) return; 
-                    if(window.map) window.map.setView([wc.lat, wc.lng], 17, {animate: true});
-                    window.openSingleWebcam(wc.nom); 
-                });
-                marker.wcData = wc; window.webcamLayerGroup.addLayer(marker);
+                if (wc.lat !== undefined && wc.lng !== undefined && !isNaN(wc.lat) && !isNaN(wc.lng)) {
+                    let marker = L.marker([wc.lat, wc.lng], { icon: L.divIcon({ className: 'custom-cannon-icon', html: `<div class="camera-icon">${wc.icon}</div>`, iconSize: [24,24], iconAnchor: [12,12] }), draggable: false });
+                    marker.on('click', function(e) { 
+                        L.DomEvent.stopPropagation(e); 
+                        if(marker.dragging && marker.dragging.enabled()) return; 
+                        if(window.map) window.map.setView([wc.lat, wc.lng], 17, {animate: true});
+                        window.openSingleWebcam(wc.nom); 
+                    });
+                    marker.wcData = wc; window.webcamLayerGroup.addLayer(marker);
+                }
             });
             window.webcamLayerGroup.addTo(window.map);
             
