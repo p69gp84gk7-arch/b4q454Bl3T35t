@@ -925,7 +925,23 @@
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html;
         };
 
-        window.renderEntretienDashboard = function(pisteFilter) { window.triggerGlobalFilterChart(); };
+       window.renderEntretienDashboard = function(pisteFilter) {
+    let visibleCannons = window.snowCannons.features; if(pisteFilter !== 'all') { visibleCannons = visibleCannons.filter(f => window.getV(f.properties, window.keyPiste) === pisteFilter); }
+    let total = visibleCannons.length; let fait = 0;
+    visibleCannons.forEach(f => { let bVal = window.getV(f.properties, "Buses").toLowerCase().trim(); if(bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x") fait++; });
+
+    let percent = total === 0 ? 0 : Math.round((fait / total) * 100); let pistes = Array.from(window.columnValuesSets[window.keyPiste] || []).sort();
+    let selectHtml = `<div class="edit-label">Filtrer par piste :</div><select class="edit-input" style="margin-bottom:0;" onchange="window.renderEntretienDashboard(this.value)"><option value="all">Toutes les pistes (Global)</option>${pistes.map(p => `<option value="${p}" ${p === pisteFilter ? 'selected':''}>${p}</option>`).join('')}</select>`;
+    let html = `<div style="background:#f8f9fa; padding:15px; border-radius:6px; border:1px solid #ddd; margin-bottom:15px;">${selectHtml}<div style="text-align:center; margin-top:15px;"><b style="font-size:28px; color:#e67e22;">${percent}%</b><br><span style="font-size:12px; color:#7f8c8d; font-weight:bold; text-transform:uppercase;">Avancement (${fait}/${total} canons)</span><div style="width:100%; background:#ecf0f1; border-radius:8px; height:12px; margin-top:10px; overflow:hidden; border:1px solid #ddd;"><div style="width:${percent}%; background:#e67e22; height:100%; transition: width 0.5s;"></div></div></div></div><div style="max-height: 45vh; overflow-y: auto; padding-right:5px;">`;
+
+    if(visibleCannons.length === 0) html += `<div style="text-align:center; color:#7f8c8d; padding:10px;">Aucun canon sur cette sélection.</div>`;
+    visibleCannons.forEach(f => {
+         let id = f.properties.id; let bVal = window.getV(f.properties, "Buses").toLowerCase().trim(); let isF = (bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x"); let color = isF ? '#e67e22' : '#bdc3c7'; let bgColor = isF ? '#fdf5e6' : '#f8f9fa';
+         html += `<div style="border-left:4px solid ${color}; background:${bgColor}; padding:10px; margin-bottom:8px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;"><div><b style="color:#2c3e50;">Canon ${id}</b> <br><span style="font-size:10px; color:${color}; font-weight:bold;">${isF ? '✅ ENTRETIEN FAIT' : '⏳ À FAIRE'}</span></div><button onclick="window.focusCannon('${id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; font-size:10px; cursor:pointer;">Cibler 📍</button></div>`;
+    });
+    html += `</div>`;
+    document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html;
+};
       /* ========================================================================= */
         /* SECTION 6 : FETCH ET ANALYSE DES DONNÉES GOOGLE SHEETS                    */
         /* ========================================================================= */
@@ -1430,6 +1446,216 @@
             } catch(e) { alert("Erreur technique"); btn.innerHTML = oldHtml; btn.disabled = false; }
         };
 
+window.biCurrentData = []; 
+        window.openBiMeteo = function() { document.getElementById('bi-meteo-modal').style.display='flex'; window.biLoadSource(); };
+        window.biLoadSource = function() {
+            let src = document.getElementById('bi-source').value; let data = [];
+            if(src === 'hist') data = window.meteoHistData || [];
+            else if(src === 'froid') data = window.meteoFroidData || [];
+            else if(src === 'raw_gen') data = window.rawGeneral || [];
+            else if(src === 'raw_hist') data = window.rawHistorique || [];
+            else if(src === 'raw_tick') data = window.rawTicketsSheet || [];
+            else if(src === 'conso') {
+                data.push(["Saison","Eau (m³)","Air","Heures"]);
+                window.saisonsList.forEach(s => {
+                    let e=0, a=0, t=0;
+                    window.snowCannons.features.forEach(f => { let h = f.properties.historique[s]; if(h) { e += h.eau||0; a += h.air||0; t += h.temps||0; } });
+                    data.push([s, Math.round(e), Math.round(a), Math.round(t)]);
+                });
+            } else if(src === 'defauts') {
+                data.push(["Mois","Nombre de Pannes"]); let counts = {};
+                window.rawTickets.forEach(t => {
+                    if(!t.date) return; let d = new Date(t.date); if(isNaN(d.getTime())) return;
+                    let m = (d.getMonth()+1).toString().padStart(2,'0') + "/" + d.getFullYear(); counts[m] = (counts[m]||0) + 1;
+                });
+                Object.keys(counts).sort((a,b) => { let pa = a.split('/'); let pb = b.split('/'); return new Date(pa[1], pa[0]-1) - new Date(pb[1], pb[0]-1); }).forEach(k => data.push([k, counts[k]]));
+                if(data.length === 1) data.push(["Aucun ticket",0]);
+            } else if(src === 'types') {
+                data.push(["Modèle de Canon","Quantité"]); let counts = {};
+                window.snowCannons.features.forEach(f => { let t = window.getV(f.properties, window.keyType); if(t !== "N/A") counts[t] = (counts[t]||0) + 1; });
+                Object.keys(counts).sort().forEach(k => data.push([k, counts[k]]));
+            }
+            window.biCurrentData = data;
+            let selX = document.getElementById('bi-x'); let containerY = document.getElementById('bi-y-container'); let selFilt = document.getElementById('bi-filter-col');
+            if(selX) selX.innerHTML = ""; if(containerY) containerY.innerHTML = ""; if(selFilt) selFilt.innerHTML = "<option value=''>-- Aucun --</option>";
+            if(!data || data.length < 2) { if(containerY) containerY.innerHTML = "<i>Aucune donnée disponible.</i>"; return; }
+            let headers = data[0]; const colors = ['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#34495e'];
+            headers.forEach((h, i) => {
+                if(h.toString().trim() === "") return;
+                if(selX) selX.innerHTML += `<option value="${i}">${h}</option>`;
+                if(selFilt) selFilt.innerHTML += `<option value="${i}">${h}</option>`;
+                let checked = (i === 1) ? 'checked' : ''; let color = colors[i % colors.length];
+                if(containerY) {
+                    containerY.innerHTML += `<div style="border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;"><label style="font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" class="bi-y-cbx" value="${i}" ${checked} onchange="window.biUpdateUI()"> <span style="color:#2c3e50;">${h}</span></label><div id="bi-opts-${i}" style="display:${checked?'flex':'none'}; gap:5px; margin-top:5px; flex-wrap:wrap; align-items:center;"><select class="bi-y-agg" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc;" onchange="window.biDrawChart()"><option value="sum">Somme</option><option value="count">Comptage</option></select><select class="bi-y-type combo-only" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc; display:none;" onchange="window.biDrawChart()"><option value="bar">Barre</option><option value="line">Courbe</option></select><select class="bi-y-axis" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc;" onchange="window.biDrawChart()"><option value="y">Axe Gauche</option><option value="y1">Axe Droit</option></select><input type="color" class="bi-y-color" data-idx="${i}" value="${color}" style="width:22px; height:22px; padding:0; border:none; cursor:pointer; border-radius:3px;" onchange="window.biDrawChart()"></div></div>`;
+                }
+            });
+            if(selX) selX.selectedIndex = 0; window.biUpdateUI();
+        };
+
+        window.biUpdateUI = function() {
+            let gType = document.getElementById('bi-type').value; let isCombo = (gType === 'combo'); let isPie = (gType === 'pie' || gType === 'doughnut' || gType === 'polarArea');
+            document.querySelectorAll('.bi-y-cbx').forEach(cb => {
+                let opts = document.getElementById(`bi-opts-${cb.value}`);
+                if(opts) {
+                    opts.style.display = cb.checked ? 'flex' : 'none';
+                    let ts = opts.querySelector('.bi-y-type'); if(ts) ts.style.display = isCombo ? 'block' : 'none';
+                    let as = opts.querySelector('.bi-y-axis'); if(as) as.style.display = isPie ? 'none' : 'block';
+                }
+            });
+            window.biDrawChart();
+        };
+
+        window.biDrawChart = function() {
+            let data = window.biCurrentData; if(!data || data.length < 2) return;
+            let gType = document.getElementById('bi-type').value; let isCombo = (gType === 'combo'); let isPie = (gType === 'pie' || gType === 'doughnut' || gType === 'polarArea'); let isRadar = (gType === 'radar');
+            let elPts = document.getElementById('bi-points'); let sPts = elPts ? elPts.checked : true;
+            let elX = document.getElementById('bi-x'); let idxX = elX ? parseInt(elX.value) : 0;
+            let elFCol = document.getElementById('bi-filter-col'); let elFVal = document.getElementById('bi-filter-val'); let fCol = elFCol ? elFCol.value : ""; let fVal = elFVal ? elFVal.value.trim().toLowerCase() : "";
+            
+            let yCbx = document.querySelectorAll('.bi-y-cbx:checked'); if(yCbx.length === 0) return;
+            let yCfgs = Array.from(yCbx).map(cb => { let i = cb.value; let p = document.getElementById(`bi-opts-${i}`); return { idx: parseInt(i), label: data[0][i], agg: p.querySelector('.bi-y-agg').value, type: isCombo ? p.querySelector('.bi-y-type').value : gType, axis: isPie || isRadar ? 'y' : p.querySelector('.bi-y-axis').value, color: p.querySelector('.bi-y-color').value, uVals: new Set() }; });
+            
+            let grouped = {};
+            for(let r = 1; r < data.length; r++) {
+                let row = data[r]; let rawX = row[idxX]; if(rawX == null || rawX === "") continue;
+                if(fCol !== "" && fVal !== "") {
+                    let cVal = (row[fCol] || "").toString().toLowerCase();
+                    if(fVal.startsWith('>')) { if(parseFloat(cVal) <= parseFloat(fVal.substring(1))) continue; }
+                    else if(fVal.startsWith('<')) { if(parseFloat(cVal) >= parseFloat(fVal.substring(1))) continue; }
+                    else if(fVal.startsWith('=')) { if(cVal !== fVal.substring(1).trim()) continue; }
+                    else { if(!cVal.includes(fVal)) continue; }
+                }
+                let strX = rawX.toString().trim(); if(strX.length >= 10 && !isNaN(Date.parse(strX))) strX = new Date(strX).toLocaleDateString('fr-FR');
+                if(!grouped[strX]) grouped[strX] = {};
+                yCfgs.forEach(cfg => {
+                    let val = row[cfg.idx];
+                    if(cfg.agg === 'count') {
+                        let tVal = (val != null && val.toString().trim() !== "") ? val.toString().trim() : "Non spécifié";
+                        if(!grouped[strX][cfg.idx]) grouped[strX][cfg.idx] = {};
+                        grouped[strX][cfg.idx][tVal] = (grouped[strX][cfg.idx][tVal] || 0) + 1; cfg.uVals.add(tVal);
+                    } else { let num = parseFloat(val) || 0; grouped[strX][cfg.idx] = (grouped[strX][cfg.idx] || 0) + num; }
+                });
+            }
+            
+            let labels = Object.keys(grouped).sort(function(a, b) { let na = parseFloat(a), nb = parseFloat(b); if(!isNaN(na) && !isNaN(nb)) return na - nb; return a.localeCompare(b); });
+            let pal = document.getElementById('bi-palette'); let pChoice = pal ? pal.value : 'default';
+            let pDef = ['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#34495e']; let pCold = ['#81D4FA','#26C6DA','#00BCD4','#00ACC1','#0097A7','#00838F','#006064']; let pWarm = ['#FFD54F','#FFCA28','#FFC107','#FFB300','#FFA000','#FF8F00','#E65100']; let pMono = ['#1A252C','#2C3E50','#34495E','#5D6D7E','#7F8C8D','#95A5A6','#BDC3C7'];
+            let colors = pChoice === 'cold' ? pCold : (pChoice === 'warm' ? pWarm : (pChoice === 'mono' ? pMono : pDef));
+            
+            let datasets = []; let cIdx = 0;
+            yCfgs.forEach((cfg) => {
+                let fType = isCombo ? cfg.type : (isRadar ? 'radar' : gType); let isL = (fType === 'line' || fType === 'radar');
+                if(cfg.agg === 'count' && cfg.uVals.size > 0) {
+                    let sCats = Array.from(cfg.uVals).sort();
+                    sCats.forEach(cat => {
+                        if(cat === "Non spécifié" && sCats.length > 1) return;
+                        let dData = labels.map(k => (grouped[k][cfg.idx] && grouped[k][cfg.idx][cat]) ? grouped[k][cfg.idx][cat] : 0);
+                        let color = colors[cIdx % colors.length]; let bgs = labels.map((_, i) => colors[(cIdx + i) % colors.length]);
+                        datasets.push({ label: `${cfg.label}:${cat}`, type: fType === 'combo' ? 'bar' : fType, data: dData, backgroundColor: isPie ? bgs : (isL ? color + '33' : color), borderColor: isPie ? '#fff' : color, borderWidth: (fType === 'bar' && !isPie) ? 0 : 2, fill: isL, yAxisID: cfg.axis, tension: 0.3, pointRadius: sPts ? 4 : 0, pointHoverRadius: 6, borderRadius: fType === 'bar' ? 4 : 0 }); cIdx++;
+                    });
+                } else {
+                    let dData = labels.map(k => grouped[k][cfg.idx] || 0); let color = cfg.color; let bgs = labels.map((_, i) => colors[(cIdx + i) % colors.length]);
+                    datasets.push({ label: cfg.label, type: fType === 'combo' ? 'bar' : fType, data: dData, backgroundColor: isPie ? bgs : (isL ? color + '33' : color), borderColor: isPie ? '#fff' : color, borderWidth: (fType === 'bar' && !isPie) ? 0 : 2, fill: isL, yAxisID: cfg.axis, tension: 0.3, pointRadius: sPts ? 4 : 0, pointHoverRadius: 6, borderRadius: fType === 'bar' ? 4 : 0 }); cIdx++;
+                }
+            });
+            
+            if(isPie && datasets.length > 1) datasets = [datasets[0]];
+            let ctx = document.getElementById('bi-canvas'); if(!ctx) return;
+            if(window.chartInstances['bi-chart']) window.chartInstances['bi-chart'].destroy();
+            const customBg = { id: 'customBg', beforeDraw: (chart) => { const c = chart.ctx; c.save(); c.globalCompositeOperation = 'destination-over'; c.fillStyle = '#ffffff'; c.fillRect(0, 0, chart.width, chart.height); c.restore(); } };
+            let hasR = datasets.some(d => d.yAxisID === 'y1'); let fMType = isCombo ? 'bar' : (isPie ? gType : (isRadar ? 'radar' : gType)); let isStk = datasets.length > 1 && gType === 'bar';
+            
+            window.chartInstances['bi-chart'] = new Chart(ctx.getContext('2d'), { type: fMType, data: { labels: labels, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: isPie || isRadar ? 'right' : 'top' }, title: { display: true, text: 'GMAO BI - ' + data[0][idxX], font: { size: 16 } }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } }, scales: (isPie || isRadar) ? {} : { x: { stacked: isStk, ticks: { maxRotation: 45, minRotation: 45 }, grid: { display: false } }, y: { stacked: isStk, type: 'linear', display: true, position: 'left' }, y1: { type: 'linear', display: hasR, position: 'right', grid: { drawOnChartArea: false } } } }, plugins: [customBg] });
+        };
+
+        window.exportBiChart = function() { let cvs = document.getElementById('bi-canvas'); if(!cvs) return; let a = document.createElement('a'); a.href = cvs.toDataURL('image/png'); a.download = 'GMAO_Expert_BI.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
+
+        window.openMeteoWidget = function() {
+            let sb = document.getElementById('right-sidebar'); let rt = document.getElementById('right-title'); let sl = document.getElementById('selected-list'); if(!sb || !sl) return;
+            if(rt) rt.innerText = "⛅ Météo Live";
+            document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
+            window.switchMeteoTab = function(p) {
+                let c = document.getElementById('meteo-content'); if(!c) return;
+                document.querySelectorAll('.meteo-tab-btn').forEach(b => b.style.opacity = '0.5'); document.getElementById('btn-meteo-' + p).style.opacity = '1';
+                if(p === 'meteoblue') c.innerHTML = `<iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe>`;
+                else if(p === 'windy') c.innerHTML = `<iframe src="https://embed.windy.com/embed2.html?lat=42.767&lon=0.582&zoom=12&overlay=wind&product=ecmwf" frameborder="0" style="width:100%;height:100%;"></iframe>`;
+                else if(p === 'ventusky') c.innerHTML = `<iframe src="https://www.ventusky.com/?p=42.767;0.582;12&l=snow" frameborder="0" style="width:100%;height:100%;"></iframe>`;
+            };
+            sl.innerHTML = `<div style="display:flex;gap:5px;margin-bottom:15px;"><button id="btn-meteo-meteoblue" class="meteo-tab-btn" onclick="window.switchMeteoTab('meteoblue')" style="flex:1;background:#3498db;color:white;border:none;padding:10px;border-radius:4px;cursor:pointer;opacity:1;">Meteoblue</button><button id="btn-meteo-windy" class="meteo-tab-btn" onclick="window.switchMeteoTab('windy')" style="flex:1;background:#e67e22;color:white;border:none;padding:10px;border-radius:4px;cursor:pointer;opacity:0.5;">Windy</button><button id="btn-meteo-ventusky" class="meteo-tab-btn" onclick="window.switchMeteoTab('ventusky')" style="flex:1;background:#2c3e50;color:white;border:none;padding:10px;border-radius:4px;cursor:pointer;opacity:0.5;">Ventusky</button></div><div id="meteo-content" style="background:#fff;border-radius:6px;border:1px solid #eee;padding:10px;height:calc(100vh - 200px);"><iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe></div>`;
+            sb.classList.add('open');
+        };
+
+        window.openWebcamGrid = function() {
+            let sb = document.getElementById('right-sidebar'); let sl = document.getElementById('selected-list'); if(!sb || !sl) return;
+            document.getElementById('right-title').innerText = "📷 Webcams"; document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
+            let html = "<div style='display:flex;flex-direction:column;gap:15px;'>";
+            if(window.webcamsData.length === 0) html += "<p>Aucune caméra.</p>";
+            else window.webcamsData.forEach(w => { let isImg = w.url.toLowerCase().match(/\.(jpeg|jpg|png|gif)$/) != null; let mHtml = isImg ? `<img src="${w.url}" style="width:100%;border-radius:4px;"/>` : `<div style="width:100%;height:300px;border-radius:4px;overflow:hidden;"><iframe src="${w.url}" style="width:100%;height:100%;border:none;"></iframe></div>`; html += `<div style="background:#f8f9fa;padding:15px;border-radius:6px;border:1px solid #ddd;"><b>${w.icon} ${w.nom}</b><br><br>${mHtml}<br><button onclick="window.enableWebcamEdit('${w.nom.replace(/'/g,"\\'")}')" style="width:100%;background:#f39c12;color:white;border:none;padding:8px;border-radius:4px;">✏️ Éditer</button></div>`; });
+            html += "</div>"; sl.innerHTML = html; sb.classList.add('open');
+        };
+
+        window.openSingleWebcam = function(nom) {
+            let wc = window.webcamsData.find(w => w.nom === nom); if(!wc) return;
+            let sb = document.getElementById('right-sidebar'); let sl = document.getElementById('selected-list'); document.getElementById('right-title').innerText = `${wc.icon} ${wc.nom}`; document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
+            let isImg = wc.url.toLowerCase().match(/\.(jpeg|jpg|png|gif)$/) != null; let mHtml = isImg ? `<img src="${wc.url}" style="width:100%;border-radius:4px;"/>` : `<div style="width:100%;height:300px;border-radius:4px;overflow:hidden;"><iframe src="${wc.url}" style="width:100%;height:100%;border:none;"></iframe></div>`;
+            sl.innerHTML = `<div style="background:#f8f9fa;padding:15px;border-radius:6px;">${mHtml}<button onclick="window.enableWebcamEdit('${wc.nom.replace(/'/g,"\\'")}')" style="margin-top:15px;width:100%;background:#f39c12;color:white;border:none;padding:10px;border-radius:4px;">✏️ Éditer position</button></div>`;
+            sb.classList.add('open');
+        };
+
+        window.enableWebcamEdit = function(nom) {
+            window.webcamLayerGroup.eachLayer(m => {
+                if(m.wcData.nom === nom) {
+                    m.dragging.enable(); let sl = document.getElementById('selected-list');
+                    sl.innerHTML = `<div style="padding:15px;background:#fff3cd;border:1px solid #ffeeba;border-radius:6px;"><b>Mode Édition: ${nom}</b><br>1. Glissez sur la carte<br>2. Emoji:<br><input type="text" id="edit-wc-icon" value="${m.wcData.icon}" style="width:50px;text-align:center;"><br><br><div style="display:flex;gap:10px;"><button onclick="window.openSingleWebcam('${nom.replace(/'/g,"\\'")}')" style="flex:1;padding:8px;">Annuler</button><button onclick="window.saveWebcamEdit('${nom.replace(/'/g,"\\'")}',this)" style="flex:2;background:#27ae60;color:white;border:none;">✅ Sauver</button></div></div>`;
+                }
+            });
+        };
+
+        window.saveWebcamEdit = async function(nom, btn) {
+            btn.innerText = "⏳..."; btn.disabled = true; let mSave = null;
+            window.webcamLayerGroup.eachLayer(m => { if(m.wcData.nom === nom) mSave = m; }); if(!mSave) return;
+            let nLat = mSave.getLatLng().lat.toFixed(7); let nLng = mSave.getLatLng().lng.toFixed(7); let inp = document.getElementById('edit-wc-icon'); let nIco = inp ? inp.value : mSave.wcData.icon;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_webcam", nom: nom, lat: parseFloat(nLat), lng: parseFloat(nLng), icon: nIco }) });
+                let r = await res.json();
+                if(r.status === "success") { mSave.dragging.disable(); mSave.wcData.lat = parseFloat(nLat); mSave.wcData.lng = parseFloat(nLng); mSave.wcData.icon = nIco; mSave.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: `<div class="camera-icon">${nIco}</div>`, iconSize: [24,24], iconAnchor: [12,12] })); window.openSingleWebcam(nom); } else { alert("Erreur"); btn.innerText = "✅ Sauver"; btn.disabled = false; }
+            } catch(e) { alert("Échec"); btn.disabled = false; }
+        };
+
+        window.openGlobalCompareModal = function(show) {
+            let modal = document.getElementById('compare-modal'); if (!modal) return; if (!show) { modal.style.display = 'none'; return; }
+            let pistesSet = new Set(); window.snowCannons.features.forEach(f => { let piste = window.getV(f.properties, window.keyPiste); if (piste && piste !== "N/A") pistesSet.add(piste); });
+            let selPiste = document.getElementById('comp-piste'); if (selPiste) { let optsPiste = Array.from(pistesSet).sort().map(p => `<option value="${p}">${p}</option>`).join(''); selPiste.innerHTML = `<option value="all">⛷️ Toutes les pistes</option>${optsPiste}`; }
+            let saisons = window.saisonsList || []; let optsSaisons = saisons.map(s => `<option value="${s}">Saison ${s}</option>`).join('');
+            let selS1 = document.getElementById('comp-s1'); let selS2 = document.getElementById('comp-s2');
+            if (selS1) selS1.innerHTML = optsSaisons; if (selS2) { selS2.innerHTML = optsSaisons; if (saisons.length > 1) selS2.selectedIndex = 1; }
+            modal.style.display = 'flex'; window.renderGlobalComparison();
+        };
+
+        window.renderGlobalComparison = function() {
+            let selPiste = document.getElementById('comp-piste').value; let metric = document.getElementById('comp-metric').value; let s1 = document.getElementById('comp-s1').value; let s2 = document.getElementById('comp-s2').value;
+            let canons = window.snowCannons.features.filter(f => { if (selPiste === "all") return true; return window.getV(f.properties, window.keyPiste) === selPiste; });
+            canons.sort((a, b) => parseInt(a.properties.id) - parseInt(b.properties.id));
+            let labels = []; let dataS1 = []; let dataS2 = [];
+            canons.forEach(f => {
+                let p = f.properties; labels.push(p.id);
+                let val1 = 0; let val2 = 0; if (p.historique[s1]) val1 = p.historique[s1][metric] || 0; if (p.historique[s2]) val2 = p.historique[s2][metric] || 0;
+                dataS1.push(val1); dataS2.push(val2);
+            });
+            document.querySelectorAll('.comp-chart-box').forEach(el => el.style.display = 'none');
+            let chartBox = document.querySelector('.comp-body'); let mainContainer = document.getElementById('main-comp-chart-container');
+            if (!mainContainer) { mainContainer = document.createElement('div'); mainContainer.id = 'main-comp-chart-container'; mainContainer.className = 'comp-chart-box'; mainContainer.style.height = '450px'; mainContainer.style.position = 'relative'; mainContainer.style.display = 'block'; mainContainer.innerHTML = '<canvas id="main-comp-canvas"></canvas>'; chartBox.appendChild(mainContainer); }
+            mainContainer.style.display = 'block'; let canvas = document.getElementById('main-comp-canvas'); if (window.chartInstances['global-compare']) { window.chartInstances['global-compare'].destroy(); }
+            let metricLabel = metric === 'eau' ? 'Volume Eau (m³)' : (metric === 'air' ? 'Volume Air' : 'Temps de fonctionnement (h)');
+            let colorS1 = '#3498db'; let colorS2 = '#2c3e50'; if (metric === 'air') { colorS1 = '#f1c40f'; colorS2 = '#e67e22'; } if (metric === 'temps') { colorS1 = '#2ecc71'; colorS2 = '#27ae60'; }
+            window.chartInstances['global-compare'] = new Chart(canvas.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [ { label: `Saison ${s1}`, data: dataS1, backgroundColor: colorS1, borderRadius: 4 }, { label: `Saison ${s2}`, data: dataS2, backgroundColor: colorS2, borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'top', labels: { font: { size: 13, weight: 'bold' } } }, title: { display: true, text: `Comparatif ${metricLabel} | ${selPiste === 'all' ? 'Toutes les pistes' : 'Piste : ' + selPiste}`, font: { size: 14 } }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } }, scales: { x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: {size: 10} } }, y: { beginAtZero: true } } } });
+        };
+
+        window.openMeteoHistoryModal = function(show) { let m = document.getElementById('meteo-history-modal'); if(!m) return; if(!show) { m.style.display = 'none'; return; } m.style.display = 'flex'; let selectMetric = document.getElementById('meteo-metric'); if(selectMetric) { let data = window.meteoHistData; if(data && data.length > 0) { let headers = data[0]; let optionsHTML = ""; headers.forEach((h, i) => { let cleanH = h.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); if (cleanH !== 'date' && !cleanH.includes('heure') && !cleanH.includes('time') && cleanH !== "") { optionsHTML += `<option value="${i}">${h}</option>`; } }); if (optionsHTML === "") { optionsHTML = `<option value="">-- Aucune colonne de données trouvée --</option>`; } selectMetric.innerHTML = optionsHTML; } else { selectMetric.innerHTML = `<option value="">-- Onglet météo vide ou introuvable --</option>`; } } window.renderMeteoHistoryChart(); };
+
+        window.renderMeteoHistoryChart = function() { let data = window.meteoHistData; let canvasBox = document.getElementById('meteo-history-canvas'); if(!canvasBox) return; let ctx = canvasBox.getContext('2d'); if(!data || data.length < 2) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Aucune donnée reçue de l'onglet météo.", 20, 50); return; } let metricIdx = parseInt(document.getElementById('meteo-metric').value); if(isNaN(metricIdx)) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Veuillez sélectionner une donnée à analyser.", 20, 50); return; } let chartType = document.getElementById('meteo-chart-type').value || 'line'; let metricLabel = data[0][metricIdx]; let headersList = data[0].map(h => h.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()); let dateIdx = headersList.findIndex(h => h === 'date' || h.includes('date') || h.includes('heure') || h.includes('time')); if (dateIdx === -1) dateIdx = 0; let labels = []; let values = []; for(let i = 1; i < data.length; i++) { let rawDate = data[i][dateIdx]; let rawVal = data[i][metricIdx]; if(rawDate == null || rawDate === "") continue; let rawStr = String(rawDate).trim(); let displayLabel = rawStr; let matchFr = rawStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2})[:hH](\d{1,2})(?::(\d{1,2}))?)?/); if (matchFr) { let day = parseInt(matchFr[1], 10); let month = parseInt(matchFr[2], 10); let year = parseInt(matchFr[3], 10); let hr = matchFr[4] ? parseInt(matchFr[4], 10) : null; let min = matchFr[5] ? parseInt(matchFr[5], 10) : null; let formattedDate = String(day).padStart(2, '0') + '/' + String(month).padStart(2, '0') + '/' + year; if (hr !== null && min !== null) { let formattedTime = String(hr).padStart(2, '0') + ':' + String(min).padStart(2, '0'); displayLabel = [formattedDate, formattedTime]; } else { displayLabel = formattedDate; } } else { let parsedDate = new Date(rawDate); if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1970) { let d = parsedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year:'numeric' }); let t = parsedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' }); if(t === "00:00") displayLabel = d; else displayLabel = [d, t]; } } labels.push(displayLabel); let cleanVal = String(rawVal).replace(',', '.').replace(/[^0-9.-]/g, ''); values.push(parseFloat(cleanVal) || 0); } if(window.chartInstances['meteo-hist-chart']) window.chartInstances['meteo-hist-chart'].destroy(); window.chartInstances['meteo-hist-chart'] = new Chart(ctx, { type: chartType, data: { labels: labels, datasets: [{ label: metricLabel, data: values, backgroundColor: chartType === 'line' ? 'rgba(52, 152, 219, 0.2)' : '#3498db', borderColor: '#2980b9', borderWidth: 2, fill: chartType === 'line', tension: 0.3, pointRadius: labels.length > 80 ? 0 : 3, pointHoverRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { x: { ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 15 }, grid: { display: false } }, y: { type: 'linear', display: true, ticks: { font: { size: 10 } } } }, plugins: { legend: { position: 'top', labels: { font: { size: 12, weight: 'bold' } } }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } } } }); };
+        
+        
         window.initLocalDB = function() { try { if (!window.indexedDB) return; const request = window.indexedDB.open("GMAONeigeDB", 2); request.onupgradeneeded = function(event) { window.localDB = event.target.result; if (!window.localDB.objectStoreNames.contains("kmz_layers")) window.localDB.createObjectStore("kmz_layers", { keyPath: "id" }); }; request.onsuccess = function(event) { window.localDB = event.target.result; window.loadSavedLayersFromDB(); }; } catch(e) {} };
         window.saveLayerToDB = function(id, name, geojson, color, weight) { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readwrite"); tx.objectStore("kmz_layers").put({ id: id, name: name, geojson: geojson, isVisible: true, color: color, weight: weight }); };
         window.loadSavedLayersFromDB = function() { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readonly"); const req = tx.objectStore("kmz_layers").getAll(); req.onsuccess = function() { req.result.forEach(item => { window.addGeoJsonToMap(item.id, item.name, item.geojson, item.isVisible, item.color || '#e67e22', item.weight || 4); }); }; };
