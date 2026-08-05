@@ -1109,8 +1109,35 @@ window.renderPieceBadges = function(hiddenId, container) {
                     ${histHtml}${prodHtml}`;
                 } else if (window.mainTheme === 'defauts') {
                     let topTicketsList = "";
-                    if (active.length === 0) { topTicketsList = `<div style="background:#eafaf1; color:#27ae60; padding:15px; border-radius:6px; text-align:center; font-weight:bold; border:1px solid #d5f5e3; margin-bottom:15px;">✅ Aucun défaut en cours</div>`; } else {
-                        topTicketsList = active.map(t => { let borderCol = t.statut.includes('faire') ? '#e74c3c' : '#f39c12'; let safeDef = t.defaut.replace(/'/g, "\\'"); let safeId = p.id.replace(/'/g, "\\'"); let idDiv = `ticket-edit-${safeId}-${t.defaut.replace(/[^a-zA-Z0-9]/g, "")}`; return `<div class="ticket-card" style="border-left-color:${borderCol};"><div style="font-weight:bold; font-size:14px; color:#333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start;"><span style="flex-grow:1; margin-right:10px;">${t.defaut}</span><button onclick="window.editFullTicket('${safeId}', '${safeDef}')" style="background:none; border:1px solid #ddd; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; flex-shrink:0;">Éditer ✏️</button></div><div id="${idDiv}"><span style="font-size:10px; padding:3px 8px; border-radius:12px; background:${borderCol}20; color:${borderCol}; font-weight:bold; display:inline-block; margin-bottom:8px;">STATUT : ${t.statut.toUpperCase()}</span></div></div>`; }).join('');
+                    let s = window.appSettings || { colUrgent: '#e74c3c', colEnCours: '#f39c12' }; // Sécurité couleurs
+                    
+                    // NOUVEAUTÉ : Barre de recherche intégrée au tableau de bord
+                    let filterHtml = `
+                    <div style="margin-bottom:10px;">
+                        <input type="text" id="dash-ticket-filter" placeholder="🔍 Filtrer les pannes..." onkeyup="window.filterDashTickets()" style="width:100%; box-sizing:border-box; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:12px; outline:none;">
+                    </div>`;
+
+                    if (active.length === 0) { 
+                        topTicketsList = `<div style="background:#eafaf1; color:#27ae60; padding:15px; border-radius:6px; text-align:center; font-weight:bold; border:1px solid #d5f5e3; margin-bottom:15px;">✅ Aucun défaut en cours</div>`; 
+                    } else {
+                        topTicketsList = filterHtml + active.map(t => { 
+                            let borderCol = t.statut.includes('faire') ? s.colUrgent : s.colEnCours; 
+                            let safeDef = t.defaut.replace(/'/g, "\\'"); 
+                            let safeId = p.id.replace(/'/g, "\\'"); 
+                            let idDiv = `ticket-edit-${safeId}-${t.defaut.replace(/[^a-zA-Z0-9]/g, "")}`; 
+                            
+                            // Ajout de la classe "dash-ticket-item" et "data-defaut" pour la barre de recherche
+                            return `
+                            <div class="ticket-card dash-ticket-item" data-defaut="${safeDef.toLowerCase()}" style="border-left-color:${borderCol};">
+                                <div style="font-weight:bold; font-size:14px; color:#333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start;">
+                                    <span style="flex-grow:1; margin-right:10px;">${t.defaut}</span>
+                                    <button onclick="window.editFullTicket('${safeId}', '${safeDef}')" style="background:none; border:1px solid #ddd; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; flex-shrink:0;"><i class="fa-solid fa-pen"></i> Éditer</button>
+                                </div>
+                                <div id="${idDiv}">
+                                    <span style="font-size:10px; padding:3px 8px; border-radius:12px; background:${borderCol}20; color:${borderCol}; font-weight:bold; display:inline-block; margin-bottom:8px;">STATUT : ${t.statut.toUpperCase()}</span>
+                                </div>
+                            </div>`; 
+                        }).join('');
                     }
                     mainContent = topTicketsList + histHtml + formulairePanneCompletHtml;
                 } else {
@@ -3047,40 +3074,44 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
         setTimeout(() => { if(window.bootAttempt === 0) { window.document.dispatchEvent(new Event("DOMContentLoaded")); } }, 4000);
         window.isMobile = function() { return window.innerWidth <= 768; };
         window.addEventListener('load', () => { if (window.isMobile()) { console.log("Mode mobile activé"); } });
+
+// NOUVEAUTÉ : Fonction de filtrage du tableau de bord
+        window.filterDashTickets = function() {
+            let val = document.getElementById('dash-ticket-filter').value.toLowerCase().trim();
+            document.querySelectorAll('.dash-ticket-item').forEach(el => {
+                let def = el.getAttribute('data-defaut');
+                el.style.display = def.includes(val) ? 'block' : 'none';
+            });
+        };
+        
         /* ========================================================================= */
         /* CHAPITRE 16 : PARAMÈTRES (PIN), PDF EN LIGNE ET KMZ DEPUIS DRIVE          */
         /* ========================================================================= */
 
-       // --- 1. GESTION DES PARAMÈTRES ET DU CODE PIN ---
+// --- 1. GESTION DES PARAMÈTRES ET DU CODE PIN (SÉCURISÉ) ---
         window.promptSettings = function() {
             let pin = prompt("🔐 Menu protégé. Entrez le code d'accès (PIN) :");
-            if (pin === "1602") { 
-                document.getElementById('settings-panel').style.display = 'flex';
+            if (pin === "1234") { 
+                let panel = document.getElementById('settings-panel');
+                if(panel) panel.style.display = 'flex';
                 window.loadSettingsLocally(); 
             } else {
                 if (pin !== null) alert("❌ Code incorrect. Accès refusé.");
             }
         };
 
-        // Paramètres par défaut avec les nouvelles couleurs
-        window.appSettings = { 
-            basemap: 'sat', topbarColor: '#2c3e50', showTools: true, showFilters: true,
-            sidebarBg: '#ffffff', colUrgent: '#e74c3c', colEnCours: '#f39c12', colRas: '#bdc3c7',
-            colTeteOk: '#e67e22', colTeteWait: '#bdc3c7'
-        };
-
-// Paramètres par défaut mis à jour
         window.appSettings = { 
             basemap: 'sat', topbarColor: '#2c3e50', showTools: true, showFilters: true,
             sidebarBg: '#ffffff', colUrgent: '#e74c3c', colEnCours: '#f39c12', colRas: '#bdc3c7',
             colTeteOk: '#e67e22', colTeteWait: '#bdc3c7',
-            btnStyle: 'normal', btnDisplay: 'full', dashLayout: 'row' // Nouvelles options
+            btnStyle: 'normal', btnDisplay: 'full', dashLayout: 'row'
         };
 
         window.loadSettingsLocally = function() {
-            let saved = localStorage.getItem('gmao_settings_v3'); // v3 pour forcer la mise à jour
+            let saved = localStorage.getItem('gmao_settings_v3');
             if (saved) { window.appSettings = Object.assign(window.appSettings, JSON.parse(saved)); }
             
+            // Fonction sécurisée pour injecter les valeurs dans les menus HTML
             let safeSet = (id, val, type="value") => { let el = document.getElementById(id); if(el) el[type] = val; };
             safeSet('set-basemap', window.appSettings.basemap);
             safeSet('set-topbar-color', window.appSettings.topbarColor);
@@ -3093,7 +3124,6 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
             safeSet('set-col-tete-ok', window.appSettings.colTeteOk);
             safeSet('set-col-tete-wait', window.appSettings.colTeteWait);
             
-            // Nouvelles options
             safeSet('set-btn-style', window.appSettings.btnStyle);
             safeSet('set-btn-display', window.appSettings.btnDisplay);
             safeSet('set-dash-layout', window.appSettings.dashLayout);
@@ -3102,24 +3132,28 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
         };
 
         window.saveSettingsLocally = function() {
+            // Fonction sécurisée pour lire les valeurs
+            let safeGet = (id, fallback, type="value") => { let el = document.getElementById(id); return el ? el[type] : fallback; };
+            
             window.appSettings = {
-                basemap: document.getElementById('set-basemap').value,
-                topbarColor: document.getElementById('set-topbar-color').value,
-                sidebarBg: document.getElementById('set-sidebar-bg').value,
-                showTools: document.getElementById('set-show-tools').checked,
-                showFilters: document.getElementById('set-show-filters').checked,
-                colUrgent: document.getElementById('set-col-urgent').value,
-                colEnCours: document.getElementById('set-col-encours').value,
-                colRas: document.getElementById('set-col-ras').value,
-                colTeteOk: document.getElementById('set-col-tete-ok').value,
-                colTeteWait: document.getElementById('set-col-tete-wait').value,
-                btnStyle: document.getElementById('set-btn-style').value,
-                btnDisplay: document.getElementById('set-btn-display').value,
-                dashLayout: document.getElementById('set-dash-layout').value
+                basemap: safeGet('set-basemap', 'sat'),
+                topbarColor: safeGet('set-topbar-color', '#2c3e50'),
+                sidebarBg: safeGet('set-sidebar-bg', '#ffffff'),
+                showTools: safeGet('set-show-tools', true, "checked"),
+                showFilters: safeGet('set-show-filters', true, "checked"),
+                colUrgent: safeGet('set-col-urgent', '#e74c3c'),
+                colEnCours: safeGet('set-col-encours', '#f39c12'),
+                colRas: safeGet('set-col-ras', '#bdc3c7'),
+                colTeteOk: safeGet('set-col-tete-ok', '#e67e22'),
+                colTeteWait: safeGet('set-col-tete-wait', '#bdc3c7'),
+                btnStyle: safeGet('set-btn-style', 'normal'),
+                btnDisplay: safeGet('set-btn-display', 'full'),
+                dashLayout: safeGet('set-dash-layout', 'row')
             };
             localStorage.setItem('gmao_settings_v3', JSON.stringify(window.appSettings));
             alert("✅ Paramètres mémorisés avec succès !");
-            document.getElementById('settings-panel').style.display = 'none';
+            let panel = document.getElementById('settings-panel');
+            if(panel) panel.style.display = 'none';
             window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
         };
 
@@ -3128,8 +3162,12 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
             let currentTopbar = document.getElementById('set-topbar-color') ? document.getElementById('set-topbar-color').value : s.topbarColor;
             let currentSidebar = document.getElementById('set-sidebar-bg') ? document.getElementById('set-sidebar-bg').value : s.sidebarBg;
             
-            document.getElementById('topbar').style.background = currentTopbar;
-            document.getElementById('sidebar').style.background = currentSidebar;
+            // ANTI-CRASH : Vérification de la présence des éléments avant d'appliquer le style
+            let topbarEl = document.getElementById('topbar');
+            if(topbarEl) topbarEl.style.background = currentTopbar;
+            
+            let sidebarEl = document.getElementById('sidebar');
+            if(sidebarEl) sidebarEl.style.background = currentSidebar;
 
             let mapType = document.getElementById('set-basemap') ? document.getElementById('set-basemap').value : s.basemap;
             if(window.satLayer) {
@@ -3140,33 +3178,36 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
 
             let sTools = document.getElementById('set-show-tools') ? document.getElementById('set-show-tools').checked : s.showTools;
             let sFilters = document.getElementById('set-show-filters') ? document.getElementById('set-show-filters').checked : s.showFilters;
-            let sections = document.querySelectorAll('#sidebar .panel-section');
-            if(sections.length >= 2) {
-                sections[0].style.display = sTools ? 'block' : 'none';
-                sections[1].style.display = sFilters ? 'block' : 'none';
+            
+            if(sidebarEl) {
+                let sections = sidebarEl.querySelectorAll('.panel-section');
+                if(sections.length >= 1 && sections[0]) sections[0].style.display = sTools ? 'block' : 'none';
+                if(sections.length >= 2 && sections[1]) sections[1].style.display = sFilters ? 'block' : 'none';
             }
 
-            // Application dynamique du style des boutons sur le <body>
-            document.body.classList.remove('app-btn-square', 'app-btn-round', 'app-btn-icon-only');
-            let btnStyle = document.getElementById('set-btn-style') ? document.getElementById('set-btn-style').value : s.btnStyle;
-            let btnDisplay = document.getElementById('set-btn-display') ? document.getElementById('set-btn-display').value : s.btnDisplay;
+            // Boutons dynamiques
+            if(document.body) {
+                document.body.classList.remove('app-btn-square', 'app-btn-round', 'app-btn-icon-only');
+                let btnStyle = document.getElementById('set-btn-style') ? document.getElementById('set-btn-style').value : s.btnStyle;
+                let btnDisplay = document.getElementById('set-btn-display') ? document.getElementById('set-btn-display').value : s.btnDisplay;
+                
+                if(btnStyle === 'square') document.body.classList.add('app-btn-square');
+                if(btnStyle === 'round') document.body.classList.add('app-btn-round');
+                if(btnDisplay === 'icon') document.body.classList.add('app-btn-icon-only');
+            }
             
-            if(btnStyle === 'square') document.body.classList.add('app-btn-square');
-            if(btnStyle === 'round') document.body.classList.add('app-btn-round');
-            if(btnDisplay === 'icon') document.body.classList.add('app-btn-icon-only');
-            
-            // Recharge l'agencement du tableau de bord si on a un canon ciblé
             if(window.selectedCannonsMap && window.selectedCannonsMap.size > 0 && typeof window.renderSelectionPanel === "function") {
                 window.renderSelectionPanel();
             }
         };
-        // Fonction intermédiaire pour mettre à jour la carte en temps réel sans sauvegarder
+
         window.triggerMapUpdate = function() {
-            window.appSettings.colUrgent = document.getElementById('set-col-urgent').value;
-            window.appSettings.colEnCours = document.getElementById('set-col-encours').value;
-            window.appSettings.colRas = document.getElementById('set-col-ras').value;
-            window.appSettings.colTeteOk = document.getElementById('set-col-tete-ok').value;
-            window.appSettings.colTeteWait = document.getElementById('set-col-tete-wait').value;
+            let safeVal = (id, fallback) => { let el = document.getElementById(id); return el ? el.value : fallback; };
+            window.appSettings.colUrgent = safeVal('set-col-urgent', window.appSettings.colUrgent);
+            window.appSettings.colEnCours = safeVal('set-col-encours', window.appSettings.colEnCours);
+            window.appSettings.colRas = safeVal('set-col-ras', window.appSettings.colRas);
+            window.appSettings.colTeteOk = safeVal('set-col-tete-ok', window.appSettings.colTeteOk);
+            window.appSettings.colTeteWait = safeVal('set-col-tete-wait', window.appSettings.colTeteWait);
             window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
         };
 
