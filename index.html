@@ -122,19 +122,74 @@
 <!-- ========================================================================= -->
     <!-- MODIFICATION : TOPBAR (AJOUT GEOLOC, SUPPRESSION MULTI-SELECT)            -->
     <!-- ========================================================================= -->
+<!-- ========================================================================= -->
+    <!-- CHAPITRE 1 : BANDEAU SUPÉRIEUR ET FENÊTRES MODALES (PDF & PARAMÈTRES)     -->
+    <!-- ========================================================================= -->
     <div id="topbar">
         <div style="display:flex; align-items:center;">
             <button class="topbar-btn" style="margin-left:0;" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">☰ Menu</button>
             <button class="topbar-btn" onclick="window.toggleRightSidebar()">📊 Tableau de Bord</button>
         </div>
         <div style="display:flex; align-items:center;">
+            <button class="topbar-btn" onclick="window.openPdfModal()" style="background:#8e44ad; border-color:#9b59b6;">📚 Documents</button>
+            <button class="topbar-btn" onclick="window.promptSettings()" style="background:#2c3e50; border-color:#34495e;">⚙️ Paramètres</button>
+            <div style="width:2px; height:20px; background:rgba(255,255,255,0.3); margin:0 10px;"></div> <!-- Séparateur -->
             <button class="topbar-btn" onclick="window.openGlobalCompareModal(true)" style="background:#d35400; border-color:#e67e22;">📊 Comparer Saisons</button>
-            <button class="topbar-btn" onclick="window.openBiMeteo()" style="background:#8e44ad; border-color:#9b59b6;">❄️ Centre Expert BI</button>
+            <button class="topbar-btn" onclick="window.openBiMeteo()" style="background:#16a085; border-color:#1abc9c;">❄️ Centre Expert BI</button>
             <button class="topbar-btn" onclick="window.openMeteoWidget()">⛅ Météo Live</button>
             <button class="topbar-btn" onclick="window.openWebcamGrid()">📷 Webcams</button>
-            <button class="topbar-btn" onclick="window.openMeteoHistoryModal(true)" style="background:#16a085; border-color:#1abc9c;">📊 Hist. Météo</button>
-            <button class="topbar-btn" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;">📍 Me localiser</button>
-            <!-- Bouton Sélection Multiple supprimé comme demandé -->
+            <button class="topbar-btn" onclick="window.openMeteoHistoryModal(true)" style="background:#f39c12; border-color:#f1c40f;">📊 Hist. Météo</button>
+            <button class="topbar-btn" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;">📍 Localiser</button>
+        </div>
+    </div>
+
+    <!-- Modal : Liseuse PDF -->
+    <div id="pdf-modal" style="display:none; position:fixed; top:50px; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9000; justify-content:center; align-items:center;">
+        <div style="background:#fff; width:95%; max-width:1200px; height:90%; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+            <div style="background:#8e44ad; color:white; padding:15px; display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
+                <span>📚 Bibliothèque Documentaire (Google Drive)</span>
+                <button onclick="document.getElementById('pdf-modal').style.display='none'" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
+            </div>
+            <div style="display:flex; flex:1; overflow:hidden;">
+                <div id="pdf-list" style="width:280px; background:#f4f6f8; border-right:1px solid #ddd; overflow-y:auto; padding:10px;"></div>
+                <div id="pdf-viewer-container" style="flex:1; background:#ececec; display:flex; justify-content:center; align-items:center;">
+                    <span style="color:#7f8c8d; font-weight:bold;">Sélectionnez un document dans la liste de gauche 👈</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal : Paramètres Avancés (Moitié d'écran droite pour voir la carte à gauche) -->
+    <div id="settings-panel" style="display:none; position:fixed; top:50px; right:0; bottom:0; width:400px; max-width:90vw; background:#fff; z-index:8500; box-shadow:-5px 0 25px rgba(0,0,0,0.2); flex-direction:column; border-left:1px solid #ddd;">
+        <div style="background:#2c3e50; color:white; padding:15px; display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
+            <span>⚙️ Paramètres de l'Application</span>
+            <button onclick="document.getElementById('settings-panel').style.display='none'" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
+        </div>
+        <div style="padding:20px; overflow-y:auto; flex:1; background:#fdfdfe;">
+            <div class="edit-label">🗺️ Fond de carte principal</div>
+            <select id="set-basemap" class="edit-input" onchange="window.applySettingsUI()">
+                <option value="sat">Satellite (Esri - Actuel)</option>
+                <option value="plan">Plan & Routes (OpenStreetMap)</option>
+                <option value="topo">Relief & Topographie (OpenTopoMap)</option>
+            </select>
+            
+            <div class="edit-label" style="margin-top:15px;">🎨 Thème & Couleurs</div>
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                <input type="color" id="set-topbar-color" value="#2c3e50" style="width:40px; height:40px; padding:2px; cursor:pointer;" onchange="window.applySettingsUI()">
+                <span style="font-size:12px; font-weight:bold; color:#555;">Couleur du bandeau supérieur</span>
+            </div>
+
+            <div class="edit-label" style="margin-top:15px;">👁️ Visibilité des sections (Menu de gauche)</div>
+            <div style="background:#f4f6f8; padding:10px; border-radius:6px; border:1px solid #eee;">
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px; cursor:pointer; font-size:13px; font-weight:bold;">
+                    <input type="checkbox" id="set-show-tools" checked onchange="window.applySettingsUI()"> 🔧 Panneau "Outils d'Analyse" (Thèmes)
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px; cursor:pointer; font-size:13px; font-weight:bold;">
+                    <input type="checkbox" id="set-show-filters" checked onchange="window.applySettingsUI()"> 🔍 Panneau "Filtres Rapides"
+                </label>
+            </div>
+            
+            <button onclick="window.saveSettingsLocally()" class="btn-action-primary" style="margin-top:25px; background:#27ae60; font-size:14px;">💾 Mémoriser ces paramètres</button>
         </div>
     </div>
 
@@ -2436,7 +2491,8 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
     try { 
         data = JSON.parse(textData); 
     } catch(e) { 
-        throw new Error("Format invalide."); 
+        throw new Error("Format invalide.");
+      setTimeout(() => { window.initAppUI(); window.initDriveKMZList(); window.loadSettingsLocally(); let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; }, 800);  
     }
     
     // CHARGEMENT DES DONNÉES PRINCIPALES
@@ -2447,6 +2503,8 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
     window.meteoFroidData = data.meteo_froid || []; 
     window.suiviEntretienData = data.suivi || []; 
     window.rawAtelier = data.atelier || [];
+    window.drivePdfsData = data.drivePdfs || {}; 
+    window.driveKmzData = data.driveKmz || {};
     
     // 💡 LE PONT POUR LE GRAPHIQUE : On copie rawHistorique dans historiqueData
     window.historiqueData = window.rawHistorique; 
@@ -2903,6 +2961,173 @@ window.deduireStockLocalEtServeur = async function(piecesString) {
         setTimeout(() => { if(window.bootAttempt === 0) { window.document.dispatchEvent(new Event("DOMContentLoaded")); } }, 4000);
         window.isMobile = function() { return window.innerWidth <= 768; };
         window.addEventListener('load', () => { if (window.isMobile()) { console.log("Mode mobile activé"); } });
+        /* ========================================================================= */
+        /* CHAPITRE 16 : PARAMÈTRES (PIN), PDF EN LIGNE ET KMZ DEPUIS DRIVE          */
+        /* ========================================================================= */
+
+        // --- 1. GESTION DES PARAMÈTRES ET DU CODE PIN ---
+        window.promptSettings = function() {
+            // Demande simple et sécurisée sans surcharger l'interface graphique
+            let pin = prompt("🔐 Menu protégé. Entrez le code d'accès (PIN) :");
+            if (pin === "1234") { // Tu peux modifier le code ici !
+                document.getElementById('settings-panel').style.display = 'flex';
+                window.loadSettingsLocally(); // Rafraichit les valeurs du menu
+            } else {
+                if (pin !== null) alert("❌ Code incorrect. Accès refusé.");
+            }
+        };
+
+        window.appSettings = { basemap: 'sat', topbarColor: '#2c3e50', showTools: true, showFilters: true };
+
+        window.loadSettingsLocally = function() {
+            let saved = localStorage.getItem('gmao_settings_v1');
+            if (saved) { window.appSettings = JSON.parse(saved); }
+            
+            // Mise à jour des boutons du menu paramètre
+            let bMap = document.getElementById('set-basemap'); if(bMap) bMap.value = window.appSettings.basemap;
+            let bCol = document.getElementById('set-topbar-color'); if(bCol) bCol.value = window.appSettings.topbarColor;
+            let sTool = document.getElementById('set-show-tools'); if(sTool) sTool.checked = window.appSettings.showTools;
+            let sFilt = document.getElementById('set-show-filters'); if(sFilt) sFilt.checked = window.appSettings.showFilters;
+            
+            window.applySettingsUI();
+        };
+
+        window.saveSettingsLocally = function() {
+            window.appSettings = {
+                basemap: document.getElementById('set-basemap').value,
+                topbarColor: document.getElementById('set-topbar-color').value,
+                showTools: document.getElementById('set-show-tools').checked,
+                showFilters: document.getElementById('set-show-filters').checked
+            };
+            localStorage.setItem('gmao_settings_v1', JSON.stringify(window.appSettings));
+            alert("✅ Paramètres mémorisés avec succès ! Ils seront conservés à votre prochaine visite.");
+            document.getElementById('settings-panel').style.display = 'none';
+        };
+
+        window.applySettingsUI = function() {
+            // Appliquer la couleur
+            let color = document.getElementById('set-topbar-color') ? document.getElementById('set-topbar-color').value : window.appSettings.topbarColor;
+            document.getElementById('topbar').style.background = color;
+
+            // Appliquer le fond de carte
+            let mapType = document.getElementById('set-basemap') ? document.getElementById('set-basemap').value : window.appSettings.basemap;
+            if(window.satLayer) {
+                if(mapType === 'sat') window.satLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+                else if(mapType === 'plan') window.satLayer.setUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+                else if(mapType === 'topo') window.satLayer.setUrl('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png');
+            }
+
+            // Appliquer la visibilité des panneaux
+            let sTools = document.getElementById('set-show-tools') ? document.getElementById('set-show-tools').checked : window.appSettings.showTools;
+            let sFilters = document.getElementById('set-show-filters') ? document.getElementById('set-show-filters').checked : window.appSettings.showFilters;
+            let sections = document.querySelectorAll('#sidebar .panel-section');
+            if(sections.length >= 2) {
+                sections[0].style.display = sTools ? 'block' : 'none';
+                sections[1].style.display = sFilters ? 'block' : 'none';
+            }
+        };
+
+        // --- 2. GESTION DES PDF (BIBLIOTHÈQUE) ---
+        window.openPdfModal = function() {
+            let modal = document.getElementById('pdf-modal');
+            let list = document.getElementById('pdf-list');
+            if(!modal || !list) return;
+
+            if(!window.drivePdfsData || Object.keys(window.drivePdfsData).length === 0) {
+                list.innerHTML = `<div style="padding:15px; color:#7f8c8d; font-style:italic;">Aucun PDF trouvé dans le dossier Drive.</div>`;
+            } else {
+                let html = "";
+                Object.keys(window.drivePdfsData).sort().forEach(name => {
+                    let fileId = window.drivePdfsData[name];
+                    // On force le formatage Google Drive Preview (Empêche le téléchargement, affiche la liseuse)
+                    let previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+                    html += `<div onclick="window.previewPdf('${previewUrl}', this)" style="background:#fff; border:1px solid #ddd; padding:10px; border-radius:6px; margin-bottom:8px; cursor:pointer; font-size:12px; font-weight:bold; color:#2c3e50; transition:0.2s;" onmouseover="this.style.background='#fdf5e6'" onmouseout="this.style.background='#fff'">📄 ${name.replace('.pdf', '')}</div>`;
+                });
+                list.innerHTML = html;
+            }
+            modal.style.display = 'flex';
+        };
+
+        window.previewPdf = function(url, btnElement) {
+            // Changement visuel pour indiquer quel PDF est actif
+            document.querySelectorAll('#pdf-list div').forEach(d => d.style.borderLeft = "1px solid #ddd");
+            btnElement.style.borderLeft = "4px solid #8e44ad";
+            
+            // Injection de l'Iframe Google Drive
+            let container = document.getElementById('pdf-viewer-container');
+            container.innerHTML = `<iframe src="${url}" width="100%" height="100%" frameborder="0" allow="autoplay"></iframe>`;
+        };
+
+        // --- 3. GESTION DES KMZ DEPUIS GOOGLE DRIVE ---
+        window.initDriveKMZList = function() {
+            // On injecte la liste des KMZ du Drive dynamiquement dans le panneau "Calques & Tracés"
+            let container = document.getElementById('cloud-layers-container');
+            if(!container) return;
+            
+            let parentSection = container.parentNode;
+            let driveDiv = document.createElement('div');
+            driveDiv.innerHTML = `
+                <hr style="margin:15px 0; border-top:1px dashed #ccc;">
+                <p style="font-size:11px; color:#666; margin-bottom:10px;"><b>3. Fichiers KMZ (Google Drive) :</b></p>
+                <div id="drive-kmz-list"></div>`;
+            parentSection.appendChild(driveDiv);
+            
+            let listDiv = document.getElementById('drive-kmz-list');
+            if(!window.driveKmzData || Object.keys(window.driveKmzData).length === 0) {
+                listDiv.innerHTML = `<i style="font-size:11px; color:#888;">Aucun fichier .kmz ou .kml trouvé.</i>`;
+                return;
+            }
+            
+            let html = "";
+            Object.keys(window.driveKmzData).sort().forEach(name => {
+                let id = window.driveKmzData[name];
+                html += `<div style="display:flex; align-items:center; background:#fff; padding:6px; border:1px solid #ddd; border-radius:4px; margin-bottom:6px; font-size:11px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                    <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:bold; color:#34495e;">🌍 ${name.replace('.kmz','').replace('.kml','')}</span>
+                    <button onclick="window.loadDriveKmz('${id}', '${name.replace(/'/g, "\\'")}', this)" style="background:#3498db; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">⬇️ Charger</button>
+                </div>`;
+            });
+            listDiv.innerHTML = html;
+        };
+
+        window.loadDriveKmz = async function(fileId, fileName, btn) {
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try {
+                // Appel du Apps Script pour télécharger le fichier en Base64 (contourne la sécurité CORS navigateur)
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_drive_file", fileId: fileId }) });
+                let r = await res.json();
+                
+                if(r.status === "success") {
+                    // Décodage du Base64 vers un fichier binaire lisible par JSZip
+                    let binaryString = atob(r.base64);
+                    let bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) { bytes[i] = binaryString.charCodeAt(i); }
+                    let kmlString = "";
+                    
+                    if(fileName.toLowerCase().endsWith('.kmz')) {
+                        const zip = await JSZip.loadAsync(bytes);
+                        const kmlFile = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.kml'));
+                        if (!kmlFile) throw new Error("Aucun fichier KML exploitable trouvé dans ce KMZ.");
+                        kmlString = await kmlFile.async("string");
+                    } else {
+                        kmlString = new TextDecoder("utf-8").decode(bytes); // Support pour KML simple
+                    }
+                    
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(kmlString, "text/xml");
+                    const geojson = toGeoJSON.kml(xmlDoc);
+                    
+                    let layerId = 'drive_' + fileId;
+                    window.addGeoJsonToMap(layerId, fileName, geojson, true, '#9b59b6', 4);
+                    btn.innerText = "✅ Placé !"; btn.style.background = "#27ae60";
+                } else { 
+                    alert("Erreur Serveur: " + r.msg); 
+                    btn.innerText = oldText; btn.disabled = false; 
+                }
+            } catch(e) { 
+                alert("Erreur technique: " + e.message); 
+                btn.innerText = oldText; btn.disabled = false; 
+            }
+        };
     </script>
 </body>
 </html>
