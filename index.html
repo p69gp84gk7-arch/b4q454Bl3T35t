@@ -1316,7 +1316,77 @@
 
         window.openMeteoHistoryModal = function(show) { let m = document.getElementById('meteo-history-modal'); if(!m) return; if(!show) { m.style.display = 'none'; return; } m.style.display = 'flex'; let selectMetric = document.getElementById('meteo-metric'); if(selectMetric) { let data = window.meteoHistData; if(data && data.length > 0) { let headers = data[0]; let optionsHTML = ""; headers.forEach((h, i) => { let cleanH = h.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); if (cleanH !== 'date' && !cleanH.includes('heure') && !cleanH.includes('time') && cleanH !== "") { optionsHTML += `<option value="${i}">${h}</option>`; } }); if (optionsHTML === "") { optionsHTML = `<option value="">-- Aucune colonne de données trouvée --</option>`; } selectMetric.innerHTML = optionsHTML; } else { selectMetric.innerHTML = `<option value="">-- Onglet météo vide ou introuvable --</option>`; } } window.renderMeteoHistoryChart(); };
         window.renderMeteoHistoryChart = function() { let data = window.meteoHistData; let canvasBox = document.getElementById('meteo-history-canvas'); if(!canvasBox) return; let ctx = canvasBox.getContext('2d'); if(!data || data.length < 2) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Aucune donnée reçue de l'onglet météo.", 20, 50); return; } let metricIdx = parseInt(document.getElementById('meteo-metric').value); if(isNaN(metricIdx)) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Veuillez sélectionner une donnée à analyser.", 20, 50); return; } let chartType = document.getElementById('meteo-chart-type').value || 'line'; let metricLabel = data[0][metricIdx]; let headersList = data[0].map(h => h.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()); let dateIdx = headersList.findIndex(h => h === 'date' || h.includes('date') || h.includes('heure') || h.includes('time')); if (dateIdx === -1) dateIdx = 0; let labels = []; let values = []; for(let i = 1; i < data.length; i++) { let rawDate = data[i][dateIdx]; let rawVal = data[i][metricIdx]; if(rawDate == null || rawDate === "") continue; let rawStr = String(rawDate).trim(); let displayLabel = rawStr; let matchFr = rawStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2})[:hH](\d{1,2})(?::(\d{1,2}))?)?/); if (matchFr) { let day = parseInt(matchFr[1], 10); let month = parseInt(matchFr[2], 10); let year = parseInt(matchFr[3], 10); let hr = matchFr[4] ? parseInt(matchFr[4], 10) : null; let min = matchFr[5] ? parseInt(matchFr[5], 10) : null; let formattedDate = String(day).padStart(2, '0') + '/' + String(month).padStart(2, '0') + '/' + year; if (hr !== null && min !== null) { let formattedTime = String(hr).padStart(2, '0') + ':' + String(min).padStart(2, '0'); displayLabel = [formattedDate, formattedTime]; } else { displayLabel = formattedDate; } } else { let parsedDate = new Date(rawDate); if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1970) { let d = parsedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year:'numeric' }); let t = parsedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' }); if(t === "00:00") displayLabel = d; else displayLabel = [d, t]; } } labels.push(displayLabel); let cleanVal = String(rawVal).replace(',', '.').replace(/[^0-9.-]/g, ''); values.push(parseFloat(cleanVal) || 0); } if(window.chartInstances['meteo-hist-chart']) window.chartInstances['meteo-hist-chart'].destroy(); window.chartInstances['meteo-hist-chart'] = new Chart(ctx, { type: chartType, data: { labels: labels, datasets: [{ label: metricLabel, data: values, backgroundColor: chartType === 'line' ? 'rgba(52, 152, 219, 0.2)' : '#3498db', borderColor: '#2980b9', borderWidth: 2, fill: chartType === 'line', tension: 0.3, pointRadius: labels.length > 80 ? 0 : 3, pointHoverRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { x: { ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 15 }, grid: { display: false } }, y: { type: 'linear', display: true, ticks: { font: { size: 10 } } } }, plugins: { legend: { position: 'top', labels: { font: { size: 12, weight: 'bold' } } }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } } } }); };
-        
+        // --- 3. GESTION DES KMZ DEPUIS GOOGLE DRIVE ---
+        window.initDriveKMZList = function() {
+            let container = document.getElementById('cloud-layers-container');
+            if(!container) return;
+            
+            let parentSection = container.parentNode;
+            let driveDiv = document.getElementById('drive-kmz-list-container');
+            if (!driveDiv) {
+                driveDiv = document.createElement('div');
+                driveDiv.id = 'drive-kmz-list-container';
+                driveDiv.innerHTML = `
+                    <hr style="margin:15px 0; border-top:1px dashed #ccc;">
+                    <p style="font-size:11px; color:#666; margin-bottom:10px;"><b>3. Fichiers KMZ (Google Drive) :</b></p>
+                    <div id="drive-kmz-list"></div>`;
+                parentSection.appendChild(driveDiv);
+            }
+            
+            let listDiv = document.getElementById('drive-kmz-list');
+            if(!window.driveKmzData || Object.keys(window.driveKmzData).length === 0) {
+                listDiv.innerHTML = `<i style="font-size:11px; color:#888;">Aucun fichier .kmz ou .kml trouvé.</i>`;
+                return;
+            }
+            
+            let html = "";
+            Object.keys(window.driveKmzData).sort().forEach(name => {
+                let id = window.driveKmzData[name];
+                html += `<div style="display:flex; align-items:center; background:#fff; padding:6px; border:1px solid #ddd; border-radius:4px; margin-bottom:6px; font-size:11px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                    <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:bold; color:#34495e;">🌍 ${name.replace('.kmz','').replace('.kml','')}</span>
+                    <button onclick="window.loadDriveKmz('${id}', '${name.replace(/'/g, "\\'")}', this)" style="background:#3498db; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">⬇️ Charger</button>
+                </div>`;
+            });
+            listDiv.innerHTML = html;
+        };
+
+        window.loadDriveKmz = async function(fileId, fileName, btn) {
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_drive_file", fileId: fileId }) });
+                let r = await res.json();
+                
+                if(r.status === "success") {
+                    let binaryString = atob(r.base64);
+                    let bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) { bytes[i] = binaryString.charCodeAt(i); }
+                    let kmlString = "";
+                    
+                    if(fileName.toLowerCase().endsWith('.kmz')) {
+                        const zip = await JSZip.loadAsync(bytes);
+                        const kmlFile = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.kml'));
+                        if (!kmlFile) throw new Error("Aucun fichier KML exploitable trouvé dans ce KMZ.");
+                        kmlString = await kmlFile.async("string");
+                    } else {
+                        kmlString = new TextDecoder("utf-8").decode(bytes); 
+                    }
+                    
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(kmlString, "text/xml");
+                    const geojson = toGeoJSON.kml(xmlDoc);
+                    
+                    let layerId = 'drive_' + fileId;
+                    window.addGeoJsonToMap(layerId, fileName, geojson, true, '#9b59b6', 4);
+                    btn.innerText = "✅ Placé !"; btn.style.background = "#27ae60";
+                } else { 
+                    alert("Erreur Serveur: " + r.msg); 
+                    btn.innerText = oldText; btn.disabled = false; 
+                }
+            } catch(e) { 
+                alert("Erreur technique: " + e.message); 
+                btn.innerText = oldText; btn.disabled = false; 
+            }
+        };
         window.addEventListener('DOMContentLoaded', async () => {
             if(window.bootAttempt > 0) return; window.bootAttempt = 1;
             try {
