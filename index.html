@@ -468,7 +468,7 @@
             );
         };
 
-        window.getV = function(p, k) { if(!k || !p || !p.fullData) return "N/A"; let normK = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); let o = p.fullData.find(x => x.k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === normK); return o ? o.v.toString().trim() : "N/A"; };
+        window.getV = function(p, k) { if(!k || !p || !p.fullData) return "N/A"; let normK = k.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim(); let o = p.fullData.find(x => x.k.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim() === normK); return o ? o.v.toString().trim() : "N/A"; };
         window.getTicketsForCanon = function(id) { return window.rawTickets.filter(t => t.idCanon === id); };
         window.getActiveTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('faire') || t.statut.includes('cours')); };
         window.getHistoryTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('fait') || t.statut === '').sort((a,b) => new Date(b.date) - new Date(a.date)); };
@@ -626,18 +626,6 @@
 
         /* ========================================================================= */
         /* CHAPITRE 4 : PANNEAU DE DROITE, ÉDITION, ACTIONS ET TICKETS               */
-        /* ------------------------------------------------------------------------- */
-        /* Ce chapitre existait en DEUX versions différentes dans le fichier         */
-        /* d'origine (renderSelectionPanel/editFullTicket/prepareTicketSave/         */
-        /* confirmSaveTicket/saveMultiSuivi étaient chacun définis deux fois).       */
-        /* En JavaScript, "window.x = function(){}" écrase silencieusement la       */
-        /* définition précédente : seule la DERNIÈRE déclarée dans le fichier       */
-        /* s'exécutait réellement, et c'était la version la plus simple (sans       */
-        /* bouton d'édition, sans filtre de tickets). Ce chapitre fusionne les      */
-        /* deux versions en une seule et implémente les fonctions qui étaient       */
-        /* appelées depuis le HTML mais jamais définies nulle part (startEdit,      */
-        /* saveEditData, drawSecondPisteChart) — c'est pourquoi le bouton           */
-        /* "Éditer ce canon" et le graphique de comparaison ne faisaient rien.      */
         /* ========================================================================= */
         window.renderSelectionPanel = function() {
             if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
@@ -808,9 +796,6 @@
             });
         };
 
-        // CHAPITRE 4.A — Graphique de comparaison "toute la piste" (canvas chart-{id} et chart2-{id}).
-        // Ces deux canvas existaient déjà dans le HTML généré ci-dessus mais aucune fonction ne les
-        // dessinait dans le fichier d'origine : ils restaient vides en permanence.
         window.renderPisteComparChart = function(canvasId, pisteName, saison, metric, highlightId) {
             let canvas = document.getElementById(canvasId); if(!canvas || !saison) return;
             let canons = window.snowCannons.features.filter(f => window.getV(f.properties, window.keyPiste) === pisteName).sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id));
@@ -829,9 +814,6 @@
             window.renderPisteComparChart(canvasId, window.getV(p, window.keyPiste), saisonB, window.histMetric, id);
         };
 
-        // CHAPITRE 4.B — Entrée/sortie du mode édition d'un canon (fonctions appelées par le bouton
-        // "Éditer ce canon" / "Éditer les Données Techniques" et par le bouton "✅ Sauvegarder" du
-        // panneau d'édition, mais qui n'existaient nulle part dans le fichier d'origine).
         window.startEdit = function(id) {
             let layer = window.selectedCannonsMap.get(id);
             if (!layer) { window.geojsonLayer.eachLayer(l => { if(l.feature.properties.id === id) layer = l; }); }
@@ -929,7 +911,7 @@
                 }
             });
             if (!hasChanges) { alert("Aucune modification."); window.renderSelectionPanel(); return; }
-            window.tempTicketPayloads[idDiv] = { payload: { action: "update_ticket", idCanon: canonId, defaut: defaut, fields: fieldsObj }, newStatut: newStatutForLocal, piecesAdded: piecesAddedStr };
+            window.tempTicketPayloads[idDiv] = { payload: { action: "update_ticket", idCanon: canonId, defaut: defaut, id: ticket.id || "", fields: fieldsObj }, newStatut: newStatutForLocal, piecesAdded: piecesAddedStr };
             let el = document.getElementById(idDiv);
             if(el) { el.innerHTML = `<div style="background:#fff3cd; padding:15px; border-radius:6px; border:2px solid #f39c12; margin-top:10px;"><div style="font-size:14px; font-weight:bold; color:#d35400; margin-bottom:15px; text-transform:uppercase;">⚠️ Vérification :</div>${diffHtml}<div style="display:flex; gap:10px; margin-top:20px;"><button onclick="window.renderSelectionPanel()" style="flex:1; padding:10px; background:#bdc3c7; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Annuler</button><button onclick="window.confirmSaveTicket('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" style="flex:2; padding:10px; background:#27ae60; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Envoyer 🚀</button></div></div>`; }
         };
@@ -941,7 +923,7 @@
                 if(result.status === "success") {
                     if (temp.piecesAdded && temp.piecesAdded !== "" && typeof window.deduireStockLocalEtServeur === "function") { window.deduireStockLocalEtServeur(temp.piecesAdded); }
                     let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut);
-                    if(ticket) { ticket.fullData.forEach(d => { if(temp.payload.fields[d.k] !== undefined) d.v = temp.payload.fields[d.k]; }); if(temp.newStatut) ticket.statut = temp.newStatut.toLowerCase(); }
+                    if(ticket) { ticket.fullData.forEach(d => { if(temp.payload.fields[d.k] !== undefined) d.v = temp.payload.fields[d.k]; }); if(temp.newStatut) ticket.statut = temp.newStatut.toLowerCase(); if(result.id) ticket.id = result.id; }
                     window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); delete window.tempTicketPayloads[idDiv];
                 } else { alert("Erreur Google : " + (result.msg || "inconnue")); window.renderSelectionPanel(); }
             } catch(e) { alert("Échec réseau."); window.renderSelectionPanel(); }
@@ -1010,13 +992,10 @@
             let oldText = btn.innerText; btn.innerText = "⏳ Transmission..."; btn.disabled = true;
             try {
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_ticket", fields: fieldsObj }) }); let r = await res.json();
-                if(r.status === "success") { btn.innerText = "🚀 Archivé !"; btn.style.background = "#27ae60"; window.rawTickets.push({ statut: etat.toLowerCase(), date: dateStr, idCanon: idCanon, defaut: defaut, fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]})) }); setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); }, 2000); } else { alert("Erreur serveur Sheets."); btn.innerText = oldText; btn.disabled = false; }
+                if(r.status === "success") { btn.innerText = "🚀 Archivé !"; btn.style.background = "#27ae60"; window.rawTickets.push({ statut: etat.toLowerCase(), date: dateStr, idCanon: idCanon, defaut: defaut, id: r.id || "", fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]})) }); setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); }, 2000); } else { alert("Erreur serveur Sheets."); btn.innerText = oldText; btn.disabled = false; }
             } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
         };
 
-        // CHAPITRE 4.C — Tableau de bord global (aucune sélection) : un canon/carte de synthèse
-        // avec un mini-graphique par thème. C'était aussi dupliqué dans le fichier d'origine ; on ne
-        // garde que la version la plus complète (celle qui gagnait déjà silencieusement).
         window.triggerGlobalFilterChart = function() {
             if (window.selectedCannonsMap.size > 0 || window.currentlyEditingId) return;
             let visibleCannons = window.snowCannons.features.filter(f => f.properties._isVisible);
@@ -1099,9 +1078,6 @@
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html;
         };
 
-        // CHAPITRE 4.D — Liste des canons d'une piste pour le thème "Suivi Entretien" : le <select> qui
-        // l'appelle existait déjà dans le fichier d'origine (onchange="window.renderSuiviList(...)")
-        // mais la fonction elle-même n'était définie nulle part (donc le menu ne faisait rien).
         window.renderSuiviList = function(pisteFilter) {
             let container = document.getElementById('suivi-canons-container'); if (!container) return;
             if (!pisteFilter) { container.innerHTML = ""; return; }
@@ -1125,11 +1101,6 @@
 
         /* ========================================================================= */
         /* CHAPITRE 5 : FETCH ET ANALYSE DES DONNÉES GOOGLE SHEETS                    */
-        /* ------------------------------------------------------------------------- */
-        /* setStep / fetchWithTimeout / fetchGoogleSheetsData étaient définis DEUX    */
-        /* fois dans le fichier d'origine. La première version (plus courte, sans    */
-        /* kmz ni webcams) était totalement écrasée par celle-ci et n'était donc     */
-        /* jamais exécutée : elle a été supprimée pour éviter toute confusion future.*/
         /* ========================================================================= */
         window.setStep = function(step, desc) {
             let elStep = document.getElementById('loading-step');
@@ -1172,9 +1143,6 @@
             let idxId = genHeaders.findIndex(h => h.includes('n° de vanne') || h.includes('n°')); if(idxId === -1) idxId = 1;
             const idxXY = genHeaders.findIndex(h => h.includes('xy') || h.includes('gps')); if (idxXY === -1) throw new Error("La colonne 'xy' est introuvable.");
 
-            // CHAPITRE 5.A — window.keyXY / window.keyId : ces deux en-têtes réels sont mémorisés pour
-            // pouvoir réécrire la position GPS et exclure la colonne d'identifiant lors de l'édition
-            // d'un canon (window.startEdit / window.saveEditData, chapitre 4).
             window.keyXY = originalHeaders[idxXY]; window.keyId = originalHeaders[idxId];
             window.keyPiste = findCol(['piste', 'pistes']); window.keyType = findCol(['type canon', 'type de canon', 'type']); window.keyRep = findCol(['répéteur', 'repeteur']); window.keyTransfo = findCol(['transfo']);
             originalHeaders.forEach(h => { let hl = h.toLowerCase(); if(!hl.includes('xy') && !hl.includes('gps') && !hl.includes('photo')) { window.availableColumns.push(h); window.columnValuesSets[h] = new Set(); } });
@@ -1200,10 +1168,11 @@
             if (data.tickets && data.tickets.length > 1) {
                 const tHeaders = data.tickets[0].map(h => (h||"").toString().toLowerCase().trim()); const originalTHeaders = data.tickets[0].map(h => (h||"").toString().trim());
                 const idxTEtat = tHeaders.findIndex(h => h.includes('état') || h.includes('etat')); const idxTDate = tHeaders.findIndex(h => h.includes('date')); const idxTRegard = tHeaders.findIndex(h => h.includes('n°regard') || h.includes('regard') || h.includes('canon')); const idxTDefaut = tHeaders.findIndex(h => h.includes('defaut') || h.includes('défaut') || h.includes('panne'));
+                const idxTId = tHeaders.findIndex(h => h === "id");
                 if(idxTRegard > -1) {
                     window.rawTickets = data.tickets.slice(1).map(row => {
                         let fullTData = []; originalTHeaders.forEach((h, i) => { if(h.trim() !== "") { let val = (i < row.length && row[i] != null) ? row[i].toString() : ""; fullTData.push({k: h, v: val}); } });
-                        return { statut: (idxTEtat>-1 && row[idxTEtat] != null ? row[idxTEtat].toString().toLowerCase().trim() : ""), date: (idxTDate>-1 && row[idxTDate] != null ? row[idxTDate] : ""), idCanon: (row[idxTRegard] != null ? row[idxTRegard].toString().replace(/^YA\s*/i, '').trim() : ""), defaut: (idxTDefaut>-1 && row[idxTDefaut] ? row[idxTDefaut].toString() : "Défaut non spécifié"), fullData: fullTData };
+                        return { statut: (idxTEtat>-1 && row[idxTEtat] != null ? row[idxTEtat].toString().toLowerCase().trim() : ""), date: (idxTDate>-1 && row[idxTDate] != null ? row[idxTDate] : ""), idCanon: (row[idxTRegard] != null ? row[idxTRegard].toString().replace(/^YA\s*/i, '').trim() : ""), defaut: (idxTDefaut>-1 && row[idxTDefaut] ? row[idxTDefaut].toString() : "Défaut non spécifié"), id: (idxTId>-1 && row[idxTId] != null ? row[idxTId].toString() : ""), fullData: fullTData };
                     });
                 }
             }
@@ -1240,11 +1209,6 @@
 
         /* ========================================================================= */
         /* CHAPITRE 6 : INITIALISATION INTERFACE (UI) ET LEAFLET                     */
-        /* ------------------------------------------------------------------------- */
-        /* initAppUI et calculateMaxes étaient eux aussi définis deux fois. La       */
-        /* version conservée ci-dessous est celle qui gagnait déjà silencieusement   */
-        /* (elle crée le calque des webcams, active le déplacement GPS en mode       */
-        /* édition, et branche les sliders min/max de l'historique).                */
         /* ========================================================================= */
         window.initAppUI = function() {
             let ts=new Set(), rs=new Set(), trs=new Set(), ps=new Set();
@@ -1327,8 +1291,6 @@
                 });
             }
 
-            // CHAPITRE 6.A — Redimensionnement du panneau droit (le CSS ".resizer" existait déjà
-            // dans le fichier d'origine mais aucun script ne le rendait fonctionnel).
             let resizer = document.getElementById('right-resizer'); let rightSidebar = document.getElementById('right-sidebar');
             if (resizer && rightSidebar) {
                 let isResizing = false;
@@ -1351,11 +1313,8 @@
             let vmin = document.getElementById('val-min'); if(vmin) vmin.innerText = 0; let vmax = document.getElementById('val-max'); if(vmax) vmax.innerText = Math.round(window.absoluteMaxes[window.histMetric]) || 1;
         };
 
-       /* ========================================================================= */
-        /* CHAPITRE 7 : ATELIER, GESTION DES STOCKS ET CALQUES KMZ                   */
         /* ========================================================================= */
-        /* ========================================================================= */
-        /* 7.A — GESTION DYNAMIQUE DES PIÈCES UTILISÉES (BADGES + ALERTE STOCK)      */
+        /* CHAPITRE 7.A : GESTION DYNAMIQUE DES PIÈCES UTILISÉES (BADGES + ALERTE STOCK) */
         /* ========================================================================= */
         window.buildPiecesUI = function(idHidden, classNames, dataCol, label, val) {
             let dataAttr = dataCol ? `data-col="${dataCol}"` : '';
@@ -1408,7 +1367,7 @@
             if(!hidden || !container) return;
             let currentList = hidden.value ? hidden.value.split(',').map(s => s.trim()).filter(s => s !== "") : [];
 
-            let headers = window.rawStock && window.rawStock.length > 0 ? window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "") : [];
+            let headers = window.rawStock && window.rawStock.length > 0 ? window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g, "") : "") : [];
             let idxRef = headers.findIndex(h => h === "ref");
             let idxProd = headers.findIndex(h => h === "produit");
             let idxReste = headers.findIndex(h => h === "reste");
@@ -1443,7 +1402,7 @@
         };
 
         /* ========================================================================= */
-        /* 7.B — BANC D'ESSAIS (ATELIER) : INTERFACE ET CHAMPS COMPLETS              */
+        /* CHAPITRE 7.B : BANC D'ESSAIS (ATELIER) : INTERFACE ET CHAMPS COMPLETS      */
         /* ========================================================================= */
         window.renderAtelierWorkspace = function() {
             let ws = document.getElementById('atelier-workspace');
@@ -1507,9 +1466,9 @@
                 const getVal = (col) => {
                     let colLow = col.toLowerCase().trim();
                     if (existingData[colLow] !== undefined) return existingData[colLow];
-                    let fuzzyCol = colLow.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '').replace(/utilis(ees|es|ee|e)?/g, 'utilis');
+                    let fuzzyCol = colLow.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, '').replace(/utilis(ees|es|ee|e)?/g, 'utilis');
                     for (let key in existingData) {
-                        let fuzzyKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '').replace(/utilis(ees|es|ee|e)?/g, 'utilis');
+                        let fuzzyKey = key.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, '').replace(/utilis(ees|es|ee|e)?/g, 'utilis');
                         if (fuzzyKey === fuzzyCol) return existingData[key];
                     }
                     return "";
@@ -1786,9 +1745,9 @@
                 let colLow = colName.toLowerCase().trim();
                 let exact = originalHeaders.find(h => h.toLowerCase().trim() === colLow);
                 if (exact) return exact;
-                let fuzzyC = colLow.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '').replace(/utilis(ees|es|ee|e)?/g, 'utilis');
+                let fuzzyC = colLow.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, '').replace(/utilis(ees|es|ee|e)?/g, 'utilis');
                 exact = originalHeaders.find(h => {
-                    let fuzzyH = h.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '').replace(/utilis(ees|es|ee|e)?/g, 'utilis');
+                    let fuzzyH = h.toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, '').replace(/utilis(ees|es|ee|e)?/g, 'utilis');
                     return fuzzyH === fuzzyC;
                 });
                 return exact || colName;
@@ -1865,7 +1824,7 @@
         };
 
         /* ========================================================================= */
-        /* 7.C — GESTION DU STOCK (CARTES, PHOTOS DRIVE, COMPTEUR, SEUIL MINI)       */
+        /* CHAPITRE 7.C : GESTION DU STOCK (CARTES, PHOTOS DRIVE, COMPTEUR, SEUIL MINI) */
         /* ========================================================================= */
         window.renderStockWorkspace = function() {
             let ws = document.getElementById('stock-workspace');
@@ -1878,7 +1837,7 @@
                 return;
             }
 
-            let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
+            let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g, "") : "");
 
             let idxNum = headers.findIndex(h => h.includes("numero") || h === "id");
             let idxRef = headers.findIndex(h => h === "ref");
@@ -1942,7 +1901,7 @@
 
             window.rawStock[0].forEach(colName => {
                 let cleanName = colName ? colName.toString().trim() : "";
-                let lowerName = cleanName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                let lowerName = cleanName.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
                 if (cleanName === "" || lowerName.includes("commande") || lowerName === "cmd") return;
 
                 if (lowerName === "numero" || lowerName === "id") {
@@ -1995,7 +1954,6 @@
                         badgeAlerteHtml = `<span style="background:#e74c3c; color:white; font-size:9px; padding:2px 6px; border-radius:10px; font-weight:bold; vertical-align:middle; margin-left:8px;">⚠️ SEUIL CRITIQUE</span>`;
                     }
 
-                    /* LIAISON INTELLIGENTE : GOOGLE SHEETS <-> DOSSIER DRIVE */
                     let parsedImgUrl = "https://placehold.co/150x150?text=Pas+de+photo";
 
                     if (valPhoto && valPhoto.trim() !== "") {
@@ -2167,7 +2125,7 @@
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }) }); let r = await res.json();
                 if (r.status === "success") {
                     btn.innerText = "✅ Enregistré !"; btn.style.background = "#27ae60";
-                    let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
+                    let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g, "") : "");
                     let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); if (idxNum === -1) idxNum = 0;
 
                     let rowIndex = window.rawStock.findIndex((row, idx) => idx > 0 && row[idxNum].toString().trim() === numPiece.toString().trim());
@@ -2187,7 +2145,7 @@
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_stock_item", idPiece: numPiece }) }); let r = await res.json();
                 if (r.status === "success") {
                     btn.innerText = "🗑️ Supprimé";
-                    let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
+                    let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g, "") : "");
                     let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); if (idxNum === -1) idxNum = 0;
                     let rowIndex = window.rawStock.findIndex((row, idx) => idx > 0 && row[idxNum].toString().trim() === numPiece.toString().trim());
                     if (rowIndex !== -1) window.rawStock.splice(rowIndex, 1);
@@ -2202,7 +2160,7 @@
         };
 
         /* ========================================================================= */
-        /* 7.D — DÉCOMPTE AUTOMATIQUE DU STOCK SUITE À UNE INTERVENTION              */
+        /* CHAPITRE 7.D : DÉCOMPTE AUTOMATIQUE DU STOCK SUITE À UNE INTERVENTION      */
         /* ========================================================================= */
         window.deduireStockLocalEtServeur = async function(piecesString) {
             if (!piecesString || piecesString.trim() === "") return;
@@ -2210,7 +2168,7 @@
             let pieces = piecesString.split(',').map(s => s.trim()).filter(s => s !== "");
             if (pieces.length === 0) return;
 
-            let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "");
+            let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g, "") : "");
             let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); if (idxNum === -1) idxNum = 0;
             let idxRef = headers.findIndex(h => h === "ref");
             let idxProd = headers.findIndex(h => h === "produit");
@@ -2263,7 +2221,7 @@
         };
 
         /* ========================================================================= */
-        /* 7.E — CALQUES KMZ : DEPUIS LE DRIVE (PDF-STYLE) ET LE STOCKAGE LOCAL      */
+        /* CHAPITRE 7.E : CALQUES KMZ : DEPUIS LE DRIVE (PDF-STYLE) ET LE STOCKAGE LOCAL */
         /* ========================================================================= */
         window.initDriveKMZList = function() {
             let driveDiv = document.getElementById('drive-kmz-dropdown-container'); if (!driveDiv) return;
@@ -2288,11 +2246,6 @@
             } catch(e) { alert("Erreur technique : " + e.message); btn.innerHTML = oldHtml; btn.disabled = false; }
         };
 
-        // CHAPITRE 7.F — Calques "Cloud" (onglet Sheets "kmz"/"calque") : la liste window.cloudKmzLayers
-        // était déjà remplie par fetchGoogleSheetsData, mais aucune fonction ne l'affichait jamais dans
-        // #cloud-layers-container (l'appel `if(window.renderCloudLayersList)` du chapitre 6 était donc
-        // toujours un no-op silencieux). On l'implémente ici : cases à cocher pour activer/désactiver,
-        // le KML/KMZ n'est téléchargé et parsé qu'au premier affichage puis mis en cache.
         window.renderCloudLayersList = function() {
             let container = document.getElementById('cloud-layers-container'); if (!container) return;
             if (!window.cloudKmzLayers || window.cloudKmzLayers.length === 0) { container.innerHTML = `<i style="font-size:11px; color:#888;">Aucun calque cloud configuré (onglet "kmz"/"calque" du Sheet).</i>`; return; }
@@ -2355,9 +2308,6 @@
             }
         };
 
-        // CHAPITRE 7.G — Import KML/KMZ local (bouton "Importer..." déjà présent dans le HTML avec
-        // onchange="window.handleKMLUpload(event)", mais cette fonction n'existait nulle part dans le
-        // fichier d'origine : le bouton ne faisait donc strictement rien).
         window.handleKMLUpload = function(event) {
             let file = event.target.files[0]; if (!file) return;
             let isKmz = file.name.toLowerCase().endsWith('.kmz');
@@ -2387,11 +2337,6 @@
             reader.readAsArrayBuffer(file);
         };
 
-        // CHAPITRE 7.H — Un calque importé localement n'avait, dans le fichier d'origine, ni case pour
-        // le masquer/afficher, ni bouton pour le supprimer : addGeoJsonToMap ne conservait même pas de
-        // référence vers l'objet Leaflet créé (window.externalLayers restait toujours vide). On corrige
-        // les deux : addGeoJsonToMap enregistre désormais le calque, et cette fonction dessine sa ligne
-        // dans #custom-layers-list avec les mêmes contrôles que les calques cloud (.kml-layer-item).
         window.renderCustomLayerItem = function(layerId, name, color, weight) {
             let container = document.getElementById('custom-layers-list'); if (!container) return;
             let safeId = layerId.replace(/[^a-zA-Z0-9_]/g, '');
@@ -2429,7 +2374,7 @@
         };
 
         /* ========================================================================= */
-        /* 7.I — PERSISTANCE LOCALE (INDEXEDDB) DES CALQUES IMPORTÉS                 */
+        /* CHAPITRE 7.F : PERSISTANCE LOCALE (INDEXEDDB) DES CALQUES IMPORTÉS         */
         /* ========================================================================= */
         window.initLocalDB = function() { try { if (!window.indexedDB) return; const request = window.indexedDB.open("GMAONeigeDB", 2); request.onupgradeneeded = function(event) { window.localDB = event.target.result; if (!window.localDB.objectStoreNames.contains("kmz_layers")) window.localDB.createObjectStore("kmz_layers", { keyPath: "id" }); }; request.onsuccess = function(event) { window.localDB = event.target.result; window.loadSavedLayersFromDB(); }; } catch(e) {} };
         window.saveLayerToDB = function(id, name, geojson, color, weight) { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readwrite"); tx.objectStore("kmz_layers").put({ id: id, name: name, geojson: geojson, isVisible: true, color: color, weight: weight }); };
@@ -2441,14 +2386,12 @@
             const layer = L.geoJSON(geojson, window.buildGeoJsonStyle(hexColor, finalWeight));
             if(isVisible) layer.addTo(window.map);
             if(isVisible && layer.getBounds && typeof layer.getBounds === 'function') { let b = layer.getBounds(); if(b.isValid()) window.map.fitBounds(b); }
-            // CHAPITRE 7.J — Avant cette correction, le calque créé n'était jamais mémorisé nulle part :
-            // impossible de le retrouver pour le masquer, changer sa couleur ou le supprimer ensuite.
             window.externalLayers[id] = { layer: layer, name: name, geojson: geojson, color: hexColor, weight: finalWeight, visible: isVisible };
             return layer;
         };
 
         /* ========================================================================= */
-        /* CHAPITRE 8 : CENTRE EXPERT BI (GRAPHIQUES PERSONNALISÉS)                  */
+        /* CHAPITRE 8 : CENTRE EXPERT BI (GRAPHIQUES PERSONNALISÉS)                   */
         /* ========================================================================= */
         window.biCurrentData = [];
         window.openBiMeteo = function() { document.getElementById('bi-meteo-modal').style.display='flex'; window.biLoadSource(); };
@@ -2658,9 +2601,9 @@
             window.chartInstances['global-compare'] = new Chart(canvas.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [ { label: `Saison ${s1}`, data: dataS1, backgroundColor: colorS1, borderRadius: 4 }, { label: `Saison ${s2}`, data: dataS2, backgroundColor: colorS2, borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'top', labels: { font: { size: 13, weight: 'bold' } } }, title: { display: true, text: `Comparatif ${metricLabel} | ${selPiste === 'all' ? 'Toutes les pistes' : 'Piste : ' + selPiste}`, font: { size: 14 } }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } }, scales: { x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: {size: 10} } }, y: { beginAtZero: true } } } });
         };
 
-        window.openMeteoHistoryModal = function(show) { let m = document.getElementById('meteo-history-modal'); if(!m) return; if(!show) { m.style.display = 'none'; return; } m.style.display = 'flex'; let selectMetric = document.getElementById('meteo-metric'); if(selectMetric) { let data = window.meteoHistData; if(data && data.length > 0) { let headers = data[0]; let optionsHTML = ""; headers.forEach((h, i) => { let cleanH = h.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); if (cleanH !== 'date' && !cleanH.includes('heure') && !cleanH.includes('time') && cleanH !== "") { optionsHTML += `<option value="${i}">${h}</option>`; } }); if (optionsHTML === "") { optionsHTML = `<option value="">-- Aucune colonne de données trouvée --</option>`; } selectMetric.innerHTML = optionsHTML; } else { selectMetric.innerHTML = `<option value="">-- Onglet météo vide ou introuvable --</option>`; } } window.renderMeteoHistoryChart(); };
+        window.openMeteoHistoryModal = function(show) { let m = document.getElementById('meteo-history-modal'); if(!m) return; if(!show) { m.style.display = 'none'; return; } m.style.display = 'flex'; let selectMetric = document.getElementById('meteo-metric'); if(selectMetric) { let data = window.meteoHistData; if(data && data.length > 0) { let headers = data[0]; let optionsHTML = ""; headers.forEach((h, i) => { let cleanH = h.toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim(); if (cleanH !== 'date' && !cleanH.includes('heure') && !cleanH.includes('time') && cleanH !== "") { optionsHTML += `<option value="${i}">${h}</option>`; } }); if (optionsHTML === "") { optionsHTML = `<option value="">-- Aucune colonne de données trouvée --</option>`; } selectMetric.innerHTML = optionsHTML; } else { selectMetric.innerHTML = `<option value="">-- Onglet météo vide ou introuvable --</option>`; } } window.renderMeteoHistoryChart(); };
 
-        window.renderMeteoHistoryChart = function() { let data = window.meteoHistData; let canvasBox = document.getElementById('meteo-history-canvas'); if(!canvasBox) return; let ctx = canvasBox.getContext('2d'); if(!data || data.length < 2) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Aucune donnée reçue de l'onglet météo.", 20, 50); return; } let metricIdx = parseInt(document.getElementById('meteo-metric').value); if(isNaN(metricIdx)) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Veuillez sélectionner une donnée à analyser.", 20, 50); return; } let chartType = document.getElementById('meteo-chart-type').value || 'line'; let metricLabel = data[0][metricIdx]; let headersList = data[0].map(h => h.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()); let dateIdx = headersList.findIndex(h => h === 'date' || h.includes('date') || h.includes('heure') || h.includes('time')); if (dateIdx === -1) dateIdx = 0; let labels = []; let values = []; for(let i = 1; i < data.length; i++) { let rawDate = data[i][dateIdx]; let rawVal = data[i][metricIdx]; if(rawDate == null || rawDate === "") continue; let rawStr = String(rawDate).trim(); let displayLabel = rawStr; let matchFr = rawStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2})[:hH](\d{1,2})(?::(\d{1,2}))?)?/); if (matchFr) { let day = parseInt(matchFr[1], 10); let month = parseInt(matchFr[2], 10); let year = parseInt(matchFr[3], 10); let hr = matchFr[4] ? parseInt(matchFr[4], 10) : null; let min = matchFr[5] ? parseInt(matchFr[5], 10) : null; let formattedDate = String(day).padStart(2, '0') + '/' + String(month).padStart(2, '0') + '/' + year; if (hr !== null && min !== null) { let formattedTime = String(hr).padStart(2, '0') + ':' + String(min).padStart(2, '0'); displayLabel = [formattedDate, formattedTime]; } else { displayLabel = formattedDate; } } else { let parsedDate = new Date(rawDate); if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1970) { let d = parsedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year:'numeric' }); let t = parsedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' }); if(t === "00:00") displayLabel = d; else displayLabel = [d, t]; } } labels.push(displayLabel); let cleanVal = String(rawVal).replace(',', '.').replace(/[^0-9.-]/g, ''); values.push(parseFloat(cleanVal) || 0); } if(window.chartInstances['meteo-hist-chart']) window.chartInstances['meteo-hist-chart'].destroy(); window.chartInstances['meteo-hist-chart'] = new Chart(ctx, { type: chartType, data: { labels: labels, datasets: [{ label: metricLabel, data: values, backgroundColor: chartType === 'line' ? 'rgba(52, 152, 219, 0.2)' : '#3498db', borderColor: '#2980b9', borderWidth: 2, fill: chartType === 'line', tension: 0.3, pointRadius: labels.length > 80 ? 0 : 3, pointHoverRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { x: { ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 15 }, grid: { display: false } }, y: { type: 'linear', display: true, ticks: { font: { size: 10 } } } }, plugins: { legend: { position: 'top', labels: { font: { size: 12, weight: 'bold' } } }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } } } }); };
+        window.renderMeteoHistoryChart = function() { let data = window.meteoHistData; let canvasBox = document.getElementById('meteo-history-canvas'); if(!canvasBox) return; let ctx = canvasBox.getContext('2d'); if(!data || data.length < 2) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Aucune donnée reçue de l'onglet météo.", 20, 50); return; } let metricIdx = parseInt(document.getElementById('meteo-metric').value); if(isNaN(metricIdx)) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Veuillez sélectionner une donnée à analyser.", 20, 50); return; } let chartType = document.getElementById('meteo-chart-type').value || 'line'; let metricLabel = data[0][metricIdx]; let headersList = data[0].map(h => h.toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim()); let dateIdx = headersList.findIndex(h => h === 'date' || h.includes('date') || h.includes('heure') || h.includes('time')); if (dateIdx === -1) dateIdx = 0; let labels = []; let values = []; for(let i = 1; i < data.length; i++) { let rawDate = data[i][dateIdx]; let rawVal = data[i][metricIdx]; if(rawDate == null || rawDate === "") continue; let rawStr = String(rawDate).trim(); let displayLabel = rawStr; let matchFr = rawStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2})[:hH](\d{1,2})(?::(\d{1,2}))?)?/); if (matchFr) { let day = parseInt(matchFr[1], 10); let month = parseInt(matchFr[2], 10); let year = parseInt(matchFr[3], 10); let hr = matchFr[4] ? parseInt(matchFr[4], 10) : null; let min = matchFr[5] ? parseInt(matchFr[5], 10) : null; let formattedDate = String(day).padStart(2, '0') + '/' + String(month).padStart(2, '0') + '/' + year; if (hr !== null && min !== null) { let formattedTime = String(hr).padStart(2, '0') + ':' + String(min).padStart(2, '0'); displayLabel = [formattedDate, formattedTime]; } else { displayLabel = formattedDate; } } else { let parsedDate = new Date(rawDate); if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1970) { let d = parsedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year:'numeric' }); let t = parsedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' }); if(t === "00:00") displayLabel = d; else displayLabel = [d, t]; } } labels.push(displayLabel); let cleanVal = String(rawVal).replace(',', '.').replace(/[^0-9.-]/g, ''); values.push(parseFloat(cleanVal) || 0); } if(window.chartInstances['meteo-hist-chart']) window.chartInstances['meteo-hist-chart'].destroy(); window.chartInstances['meteo-hist-chart'] = new Chart(ctx, { type: chartType, data: { labels: labels, datasets: [{ label: metricLabel, data: values, backgroundColor: chartType === 'line' ? 'rgba(52, 152, 219, 0.2)' : '#3498db', borderColor: '#2980b9', borderWidth: 2, fill: chartType === 'line', tension: 0.3, pointRadius: labels.length > 80 ? 0 : 3, pointHoverRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { x: { ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 15 }, grid: { display: false } }, y: { type: 'linear', display: true, ticks: { font: { size: 10 } } } }, plugins: { legend: { position: 'top', labels: { font: { size: 12, weight: 'bold' } } }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } } } }); };
 
         /* ========================================================================= */
         /* CHAPITRE 8.C : DÉMARRAGE DE L'APPLICATION                                 */
