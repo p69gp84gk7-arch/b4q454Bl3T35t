@@ -141,47 +141,45 @@
             #compare-modal { width: 98%; height: 95vh; top: 2%; left: 1%; transform: none; }
         }
 
-        .print-box { position:absolute; z-index:3000; background:rgba(255,255,255,0.96); border:1px solid #ccc; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.25); width:280px; height:auto; min-width:160px; min-height:100px; max-width:80vw; max-height:80vh; overflow:hidden; display:flex; flex-direction:column; }
-        .print-box-handle, .draggable-handle { background:#7f8c8d; color:white; padding:6px 10px; font-size:11px; font-weight:bold; cursor:move; display:flex; justify-content:space-between; align-items:center; user-select:none; flex-shrink:0; }
-        .print-box-body { padding:10px; font-size:11px; overflow-y:auto; flex:1; }
-        .print-box-body img { max-width:100%; }
-        #print-legend-box { top:20px; left:20px; }
-        #print-dashboard-box { top:20px; right:20px; }
-        .draggable-window { display:flex; flex-direction:column; }
-        .resize-handle { position:absolute; right:0; bottom:0; width:16px; height:16px; cursor:nwse-resize; z-index:10; }
-        .resize-handle::after { content:''; position:absolute; right:3px; bottom:3px; width:8px; height:8px; border-right:2px solid #999; border-bottom:2px solid #999; }
-        #print-page-frame-outline { position:absolute; border:2px dashed #e74c3c; pointer-events:none; z-index:2900; box-sizing:border-box; }
+        #print-panel { position:absolute; top:50px; right:0; bottom:0; width:380px; min-width:300px; max-width:90vw; background:#fff; z-index:6500; transform:translateX(100%); transition:transform 0.3s; box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; }
+        #print-panel.open { transform:translateX(0); }
+        #print-page-preview-modal { display:none; position:fixed; top:50px; left:0; right:400px; bottom:0; background:rgba(0,0,0,0.65); z-index:6400; overflow-y:auto; }
+        #print-page-preview-modal.open { display:block; }
+        #print-page-sheet-wrap { padding:20px; display:flex; flex-direction:column; align-items:center; gap:20px; min-height:100%; box-sizing:border-box; }
+        .print-page-sheet { background:#fff; box-shadow:0 5px 20px rgba(0,0,0,0.4); box-sizing:border-box; padding:15mm; overflow:hidden; flex-shrink:0; position:relative; }
+        .print-page-sheet::after { content: attr(data-page-label); position:absolute; bottom:4mm; right:6mm; font-size:8px; color:#bbb; }
+        .print-block-row { display:flex; align-items:center; gap:6px; padding:4px 2px; border-bottom:1px solid #f0f0f0; }
+        .print-block-row button { background:none; border:1px solid #ddd; border-radius:3px; width:20px; height:20px; cursor:pointer; font-size:9px; padding:0; flex-shrink:0; }
+        .print-block-row button:disabled { opacity:0.3; cursor:default; }
 
         #calendar-modal { display:none; position:fixed; top:50px; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:8200; justify-content:center; align-items:center; }
         #calendar-modal-inner { background:#fff; width:95%; max-width:1000px; height:90%; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
         .cal-header { background:#2c3e50; color:white; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
         .cal-nav-btn { background:rgba(255,255,255,0.15); border:none; color:white; width:32px; height:32px; border-radius:4px; cursor:pointer; font-size:14px; }
         .cal-body { display:flex; flex:1; overflow:hidden; }
-        #calendar-grid { flex:1; display:grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(70px, 1fr); gap:1px; background:#e1e8ed; overflow-y:auto; padding:1px; align-content:start; }
+        #calendar-grid { flex:1; display:grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(92px, 1fr); gap:1px; background:#e1e8ed; overflow-y:auto; padding:1px; align-content:start; }
         .cal-weekday { background:#f8f9fa; text-align:center; font-size:11px; font-weight:bold; color:#7f8c8d; padding:6px 0; text-transform:uppercase; }
         .cal-day { background:#fff; padding:6px; cursor:pointer; transition:0.15s; }
         .cal-day:hover { background:#eaf2f8; }
         .cal-day-empty { background:#fafbfc; cursor:default; }
         .cal-day-num { font-size:12px; font-weight:bold; color:#2c3e50; }
         .cal-day-today .cal-day-num { background:#3498db; color:white; border-radius:50%; width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; }
-        .cal-day-dots { display:flex; gap:3px; flex-wrap:wrap; margin-top:4px; }
+        .cal-day-bars { display:flex; flex-direction:column; gap:2px; margin-top:3px; overflow:hidden; }
+        .cal-bar { font-size:9px; line-height:14px; color:white; padding:0 4px; border-radius:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+        .cal-bar-more { font-size:9px; color:#7f8c8d; font-weight:bold; padding:0 4px; cursor:pointer; }
         .cal-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
         #calendar-day-panel { display:none; width:300px; flex-shrink:0; border-left:1px solid #eee; padding:15px; overflow-y:auto; background:#fafbfc; }
 
         @media print {
-            #topbar, #sidebar, #right-sidebar, #print-toolbar, #loading-overlay, #pdf-modal, #settings-panel, #bi-meteo-modal, #compare-modal, #meteo-history-modal, .resizer, .leaflet-control-zoom, .leaflet-control-attribution, #print-page-frame-outline, .resize-handle { display: none !important; }
+            #topbar, #sidebar, #right-sidebar, #print-panel, #loading-overlay, #pdf-modal, #settings-panel, #bi-meteo-modal, #compare-modal, #meteo-history-modal, #calendar-modal, .resizer, .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
             body, html { overflow: visible !important; height: auto !important; }
             #app-container { padding-top: 0 !important; height: auto !important; }
-            .print-box-handle { cursor: default !important; }
-
-            body:not(.print-mode-nomap) #map-container { position: static !important; width: 100% !important; height: 100vh !important; }
-            body:not(.print-mode-nomap) #print-page-preview-modal { display: none !important; }
-
-            body.print-mode-nomap #map-container, body.print-mode-nomap #atelier-workspace, body.print-mode-nomap #stock-workspace, body.print-mode-nomap .print-box { display: none !important; }
-            body.print-mode-nomap #print-page-preview-modal { display: flex !important; position: static !important; background: none !important; }
-            body.print-mode-nomap #print-page-preview-modal > div:first-child { display: none !important; }
-            body.print-mode-nomap #print-page-sheet-wrap { background: none !important; padding: 0 !important; max-height: none !important; overflow: visible !important; width: auto !important; box-shadow: none !important; }
-            body.print-mode-nomap #print-page-sheet { box-shadow: none !important; width: 100% !important; min-height: 0 !important; }
+            #map-container, #atelier-workspace, #stock-workspace, #theme-list-workspace { display: none !important; }
+            #print-page-preview-modal { display: block !important; position: static !important; background: none !important; overflow: visible !important; }
+            #print-page-sheet-wrap { padding: 0 !important; gap: 0 !important; }
+            .print-page-sheet { box-shadow: none !important; page-break-after: always; }
+            .print-page-sheet:last-child { page-break-after: auto; }
+            .print-page-sheet::after { display: none !important; }
         }
     </style>
 </head>
@@ -358,47 +356,33 @@
         </div>
     </div>
 
-    <!-- MODE IMPRESSION -->
-    <div id="print-toolbar" class="draggable-window" style="display:none; position:fixed; top:60px; left:15px; width:320px; height:auto; min-width:260px; min-height:200px; max-width:90vw; max-height:calc(100vh - 80px); background:#fff; z-index:7500; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.3); border:1px solid #ccc; flex-direction:column; overflow:hidden;">
-        <div class="draggable-handle" style="background:#7f8c8d; color:white; padding:12px 15px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:14px; cursor:move;">
-            <span><i class="fa-solid fa-print"></i> Mode Impression</span>
-            <button onclick="window.closePrintMode()" style="background:none; border:none; color:white; cursor:pointer; font-size:20px; line-height:16px;">×</button>
-        </div>
-        <div style="padding:15px; overflow-y:auto; flex:1;">
+    <!-- MODE IMPRESSION : PANNEAU DE RÉGLAGES (glisse depuis la droite, comme le Tableau de Bord) -->
+    <div id="print-panel">
+        <div class="right-header" style="background:#7f8c8d;"><span><i class="fa-solid fa-print"></i> Mode Impression</span><button onclick="window.closePrintMode()" style="background:none; border:none; color:white; font-size:28px; cursor:pointer;">×</button></div>
+        <div class="right-content">
             <div class="edit-label">Format</div>
             <div style="display:flex; gap:10px; margin-bottom:10px;">
-                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-format" value="A4" checked onchange="window.refreshPrintPreview()"> A4</label>
-                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-format" value="A3" onchange="window.refreshPrintPreview()"> A3</label>
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-format" value="A4" checked onchange="window.buildPrintPageSheet()"> A4</label>
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-format" value="A3" onchange="window.buildPrintPageSheet()"> A3</label>
             </div>
             <div class="edit-label">Orientation</div>
-            <div style="display:flex; gap:10px; margin-bottom:12px;">
-                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-orientation" value="portrait" checked onchange="window.refreshPrintPreview()"> Portrait</label>
-                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-orientation" value="landscape" onchange="window.refreshPrintPreview()"> Paysage</label>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-orientation" value="portrait" checked onchange="window.buildPrintPageSheet()"> Portrait</label>
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-orientation" value="landscape" onchange="window.buildPrintPageSheet()"> Paysage</label>
             </div>
-            <label id="print-map-toggle-row" style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:bold; margin-bottom:8px; border-top:1px dashed #ddd; padding-top:12px;"><input type="checkbox" id="print-show-map" checked onchange="window.refreshPrintPreview()"> Inclure la vue carte</label>
-            <label id="print-legend-row" style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:bold; margin-bottom:10px;"><input type="checkbox" id="print-show-legend" checked onchange="window.refreshPrintPreview()"> Afficher la légende</label>
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:bold; margin-bottom:8px; border-top:1px dashed #ddd; padding-top:10px;"><input type="checkbox" id="print-show-dashboard" checked onchange="window.refreshPrintPreview()"> Afficher le tableau de bord / menu</label>
-            <div id="print-dashboard-checklist" style="margin-left:22px; display:flex; flex-direction:column; gap:4px; font-size:11px; max-height:180px; overflow-y:auto; border:1px solid #eee; border-radius:4px; padding:8px; background:#fafbfc;"></div>
-            <p id="print-hint-text" style="font-size:10px; color:#888; margin:12px 0 0 0;">💡 Glissez les boîtes sur la carte pour les repositionner. Le cadre en pointillés indique la zone imprimée.</p>
-            <button onclick="window.refreshPrintPreview()" class="btn-action-primary" style="background:#7f8c8d; margin-top:12px;"><i class="fa-solid fa-arrows-rotate"></i> Actualiser l'aperçu</button>
-            <button onclick="window.openPrintPagePreview()" class="btn-action-primary" style="background:#2980b9; margin-top:8px;"><i class="fa-solid fa-magnifying-glass"></i> Prévisualiser la page</button>
+            <div class="edit-label">Contenu à imprimer (cases à cocher, flèches pour réordonner)</div>
+            <div id="print-dashboard-checklist" style="display:flex; flex-direction:column; gap:2px; font-size:11px; max-height:280px; overflow-y:auto; border:1px solid #eee; border-radius:4px; padding:8px; background:#fafbfc; margin-bottom:15px;"></div>
+            <div id="print-page-count-info" style="font-size:11px; color:#7f8c8d; text-align:center; margin-bottom:10px;"></div>
+            <button onclick="window.buildPrintPageSheet()" class="btn-action-primary" style="background:#7f8c8d;"><i class="fa-solid fa-arrows-rotate"></i> Actualiser l'aperçu</button>
             <button onclick="window.launchPrint()" class="btn-action-primary" style="background:#27ae60; margin-top:8px;"><i class="fa-solid fa-print"></i> Imprimer</button>
+            <button onclick="window.exportPrintPDF()" class="btn-action-primary" style="background:#8e44ad; margin-top:8px;"><i class="fa-solid fa-file-pdf"></i> Exporter en PDF</button>
+            <p style="font-size:10px; color:#888; margin-top:10px;">💡 "Exporter en PDF" ouvre la fenêtre d'impression : choisissez "Enregistrer en PDF" comme destination.</p>
         </div>
-        <div class="resize-handle"></div>
     </div>
 
-    <!-- APERÇU DE PAGE (SANS CARTE) -->
-    <div id="print-page-preview-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:9500; align-items:center; justify-content:center; flex-direction:column;">
-        <div style="background:#2c3e50; color:white; padding:10px 20px; border-radius:8px 8px 0 0; width:90%; max-width:900px; display:flex; justify-content:space-between; align-items:center;">
-            <b style="font-size:13px;"><i class="fa-solid fa-magnifying-glass"></i> Aperçu avant impression</b>
-            <div style="display:flex; gap:10px;">
-                <button onclick="window.launchPrint()" style="background:#27ae60; color:white; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;"><i class="fa-solid fa-print"></i> Imprimer</button>
-                <button onclick="document.getElementById('print-page-preview-modal').style.display='none'" style="background:none; border:none; color:white; cursor:pointer; font-size:22px; line-height:14px;">×</button>
-            </div>
-        </div>
-        <div id="print-page-sheet-wrap" style="background:#555; padding:20px; width:90%; max-width:900px; max-height:80vh; overflow:auto; border-radius:0 0 8px 8px; display:flex; justify-content:center;">
-            <div id="print-page-sheet" style="background:#fff; box-shadow:0 5px 20px rgba(0,0,0,0.4); padding:15mm; box-sizing:border-box;"></div>
-        </div>
+    <!-- MODE IMPRESSION : APERÇU PAGINÉ (une feuille par page, réparties automatiquement) -->
+    <div id="print-page-preview-modal">
+        <div id="print-page-sheet-wrap"></div>
     </div>
 
     <!-- MODAL CALENDRIER -->
@@ -899,6 +883,32 @@
         /* ========================================================================= */
         /* CHAPITRE 4 : PANNEAU DE DROITE, ÉDITION, ACTIONS ET TICKETS               */
         /* ========================================================================= */
+        // CHAPITRE 4.0 — Formulaire "Signaler un défaut" factorisé : utilisé à la fois sur la fiche
+        // canon (carte) et dans le formulaire "+ Nouveau ticket" de la vue liste (voir Chapitre 4.E).
+        window.buildPanneFormHtml = function(p) {
+            return `
+                <details style="background:#fdf0ed; padding:10px; border-radius:6px; border:1px solid #fadbd8; font-size:12px; margin-top:12px;">
+                    <summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;"><i class="fa-solid fa-triangle-exclamation"></i> Signaler un défaut (Ticket complet)</summary>
+                    <div style="margin-top:10px;">
+                        <div style="display:flex; gap:5px;">
+                            <div style="flex:1;"><span class="edit-label">État</span><select id="nt-etat-${p.id}" class="edit-input" style="padding:6px; margin-bottom:8px;"><option value="à faire">À faire</option><option value="en cours">En cours</option></select></div>
+                            <div style="flex:1;"><span class="edit-label">Priorité</span><select id="nt-priorite-${p.id}" class="edit-input" style="padding:6px; margin-bottom:8px;"><option value="P1 (urgent et bloquant)">P1 (urgent et bloquant)</option><option value="P2 (non bloquant mais urgent)">P2 (non bloquant mais urgent)</option><option value="P3 (non bloquant)">P3 (non bloquant)</option></select></div>
+                        </div>
+                        <span class="edit-label">Nom du défaut / Panne</span><input type="text" id="nt-defaut-${p.id}" class="edit-input" list="dl-defauts-list" placeholder="Choisir dans la liste ou créer..." style="padding:6px; margin-bottom:8px;">
+                        <span class="edit-label">Défaut Sonde</span><input type="text" id="nt-sonde-${p.id}" class="edit-input" placeholder="Ex: Sonde T°" style="padding:6px; margin-bottom:8px;">
+                        <span class="edit-label">Cause de la panne</span><textarea id="nt-cause-${p.id}" class="edit-input" rows="1" placeholder="Origine du problème..." style="padding:6px; margin-bottom:8px;"></textarea>
+                        <div style="display:flex; gap:5px;">
+                            <div style="flex:1;"><span class="edit-label">Période</span><input type="text" id="nt-periode-${p.id}" class="edit-input" value="${window.saisonsList[window.histSeasonIdx] || ''}" style="padding:6px; margin-bottom:8px;"></div>
+                            <div style="flex:1;"><span class="edit-label">Date d'inter</span><input type="date" id="nt-dateinter-${p.id}" class="edit-input" value="${window.todayIso()}" style="padding:6px; margin-bottom:8px;"></div>
+                        </div>
+                        <span class="edit-label">Intervention effectuée</span><textarea id="nt-interv-${p.id}" class="edit-input" rows="1" placeholder="Travaux réalisés..." style="padding:6px; margin-bottom:8px;"></textarea>
+                        ${window.buildPiecesUI('nt-pieces-'+p.id, '', '', 'Pièces utilisées (Stock)', '')}
+                        <button onclick="window.addNouveauTicket('${p.id}', this)" style="width:100%; background:#c0392b; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer; margin-top:5px;"><i class="fa-solid fa-paper-plane"></i> Envoyer le ticket de Panne</button>
+                    </div>
+                </details>
+            `;
+        };
+
         window.renderSelectionPanel = function() {
             if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block';
@@ -955,27 +965,7 @@
                     </div>`;
                 }
 
-                let formulairePanneCompletHtml = `
-                    <details style="background:#fdf0ed; padding:10px; border-radius:6px; border:1px solid #fadbd8; font-size:12px; margin-top:12px;">
-                        <summary style="cursor:pointer; font-weight:bold; color:#c0392b; outline:none;"><i class="fa-solid fa-triangle-exclamation"></i> Signaler un défaut (Ticket complet)</summary>
-                        <div style="margin-top:10px;">
-                            <div style="display:flex; gap:5px;">
-                                <div style="flex:1;"><span class="edit-label">État</span><select id="nt-etat-${p.id}" class="edit-input" style="padding:6px; margin-bottom:8px;"><option value="à faire">À faire</option><option value="en cours">En cours</option></select></div>
-                                <div style="flex:1;"><span class="edit-label">Priorité</span><select id="nt-priorite-${p.id}" class="edit-input" style="padding:6px; margin-bottom:8px;"><option value="P1 (urgent et bloquant)">P1 (urgent et bloquant)</option><option value="P2 (non bloquant mais urgent)">P2 (non bloquant mais urgent)</option><option value="P3 (non bloquant)">P3 (non bloquant)</option></select></div>
-                            </div>
-                            <span class="edit-label">Nom du défaut / Panne</span><input type="text" id="nt-defaut-${p.id}" class="edit-input" list="dl-defauts-list" placeholder="Choisir dans la liste ou créer..." style="padding:6px; margin-bottom:8px;">
-                            <span class="edit-label">Défaut Sonde</span><input type="text" id="nt-sonde-${p.id}" class="edit-input" placeholder="Ex: Sonde T°" style="padding:6px; margin-bottom:8px;">
-                            <span class="edit-label">Cause de la panne</span><textarea id="nt-cause-${p.id}" class="edit-input" rows="1" placeholder="Origine du problème..." style="padding:6px; margin-bottom:8px;"></textarea>
-                            <div style="display:flex; gap:5px;">
-                                <div style="flex:1;"><span class="edit-label">Période</span><input type="text" id="nt-periode-${p.id}" class="edit-input" value="${window.saisonsList[window.histSeasonIdx] || ''}" style="padding:6px; margin-bottom:8px;"></div>
-                                <div style="flex:1;"><span class="edit-label">Date d'inter</span><input type="date" id="nt-dateinter-${p.id}" class="edit-input" value="${window.todayIso()}" style="padding:6px; margin-bottom:8px;"></div>
-                            </div>
-                            <span class="edit-label">Intervention effectuée</span><textarea id="nt-interv-${p.id}" class="edit-input" rows="1" placeholder="Travaux réalisés..." style="padding:6px; margin-bottom:8px;"></textarea>
-                            ${window.buildPiecesUI('nt-pieces-'+p.id, '', '', 'Pièces utilisées (Stock)', '')}
-                            <button onclick="window.addNouveauTicket('${p.id}', this)" style="width:100%; background:#c0392b; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer; margin-top:5px;"><i class="fa-solid fa-paper-plane"></i> Envoyer le ticket de Panne</button>
-                        </div>
-                    </details>
-                `;
+                let formulairePanneCompletHtml = window.buildPanneFormHtml(p);
 
                 if (window.mainTheme === 'suivi_entretien') {
                     let s = window.suiviEntretienData.find(row => row[0] == id) || ["", "", "non", "non", "", "", ""];
@@ -1197,7 +1187,7 @@
                     if (temp.piecesAdded && temp.piecesAdded !== "" && typeof window.deduireStockLocalEtServeur === "function") { window.deduireStockLocalEtServeur(temp.piecesAdded); }
                     let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut);
                     if(ticket) { ticket.fullData.forEach(d => { if(temp.payload.fields[d.k] !== undefined) d.v = temp.payload.fields[d.k]; }); if(temp.newStatut) ticket.statut = temp.newStatut.toLowerCase(); if(result.id) ticket.id = result.id; }
-                    window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); delete window.tempTicketPayloads[idDiv];
+                    window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); window.refreshListViewIfActive(); delete window.tempTicketPayloads[idDiv];
                 } else { alert("Erreur Google : " + (result.msg || "inconnue")); window.renderSelectionPanel(); }
             } catch(e) { alert("Échec réseau."); window.renderSelectionPanel(); }
         };
@@ -1232,7 +1222,7 @@
                 if(r.status === "success") {
                     btn.innerText = "✅ Validé !"; btn.style.background = "#27ae60"; let feat = window.snowCannons.features.find(f => f.properties.id == idCanon);
                     if(feat) { let objB = feat.properties.fullData.find(x => x.k.toLowerCase() === "buses"); if(objB) objB.v = valBuses; else feat.properties.fullData.push({k: "Buses", v: valBuses}); let objA = feat.properties.fullData.find(x => x.k.toLowerCase() === "années buses"); if(objA) objA.v = fieldsObj["années buses"]; else feat.properties.fullData.push({k: "années buses", v: fieldsObj["années buses"]}); }
-                    window.updateMap(); if(window.mainTheme === 'entretien_tete' && window.selectedCannonsMap.size === 0) window.triggerGlobalFilterChart(); setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#e67e22"; }, 2000);
+                    window.updateMap(); if(window.mainTheme === 'entretien_tete' && window.selectedCannonsMap.size === 0) window.triggerGlobalFilterChart(); setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#e67e22"; window.refreshListViewIfActive(); }, 2000);
                 } else { alert("Erreur Serveur Sheets : " + (r.msg || "Inconnue")); btn.innerText = oldText; btn.disabled = false; }
             } catch(e) { alert("Erreur Réseau"); btn.innerText = oldText; btn.disabled = false; }
         };
@@ -1259,13 +1249,15 @@
             let periode = ntVal('periode'); let sonde = ntVal('sonde'); let cause = ntVal('cause'); let dateinter = window.isoToFr(ntVal('dateinter'));
             let photos = ntVal('photos'); let interv = ntVal('interv'); let pieces = ntVal('pieces'); let remarque = ntVal('remarque');
             let today = new Date(); let dateStr = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
-            let layer = window.selectedCannonsMap.get(idCanon); let p = layer ? layer.feature.properties : null; let piste = p ? window.getV(p, window.keyPiste) : "Inconnue"; let latlong = layer ? (layer.getLatLng().lat.toFixed(7) + "," + layer.getLatLng().lng.toFixed(7)) : "";
+            let layer = window.selectedCannonsMap.get(idCanon);
+            if (!layer && window.geojsonLayer) { window.geojsonLayer.eachLayer(l => { if (l.feature.properties.id === idCanon) layer = l; }); }
+            let p = layer ? layer.feature.properties : null; let piste = p ? window.getV(p, window.keyPiste) : "Inconnue"; let latlong = layer ? (layer.getLatLng().lat.toFixed(7) + "," + layer.getLatLng().lng.toFixed(7)) : "";
             let fieldsObj = { "état": etat, "Priorité": priorite, "date": dateStr, "n°regard": idCanon, "piste": piste, "defaut": defaut, "Défaut sonde": sonde, "cause": cause, "date d'inter": dateinter, "intervention": interv, "Remarque": remarque, "periode": periode, "photos": photos, "latlong": latlong, "pièces utilisés": pieces };
 
             let oldText = btn.innerText; btn.innerText = "⏳ Transmission..."; btn.disabled = true;
             try {
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_ticket", fields: fieldsObj }) }); let r = await res.json();
-                if(r.status === "success") { btn.innerText = "🚀 Archivé !"; btn.style.background = "#27ae60"; window.rawTickets.push({ statut: etat.toLowerCase(), date: dateStr, idCanon: idCanon, defaut: defaut, id: r.id || "", fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]})) }); setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); }, 2000); } else { alert("Erreur serveur Sheets."); btn.innerText = oldText; btn.disabled = false; }
+                if(r.status === "success") { btn.innerText = "🚀 Archivé !"; btn.style.background = "#27ae60"; window.rawTickets.push({ statut: etat.toLowerCase(), date: dateStr, idCanon: idCanon, defaut: defaut, id: r.id || "", fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]})) }); setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); window.closeAllListExpandRows && window.closeAllListExpandRows(); let ntf = document.getElementById('list-new-ticket-form'); if (ntf) { ntf.style.display = 'none'; ntf.innerHTML = ''; } window.refreshListViewIfActive(); }, 2000); } else { alert("Erreur serveur Sheets."); btn.innerText = oldText; btn.disabled = false; }
             } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
         };
 
@@ -1380,6 +1372,14 @@
         /* tableau filtrable — même sélection de canon au clic qu'un pin sur la carte */
         /* (window.focusCannon), donc le panneau de droite reste identique.           */
         /* ========================================================================= */
+        // CHAPITRE 4.E.0 — Dès qu'on ajuste un filtre de la vue liste, le menu gauche se replie
+        // automatiquement (comme pour Atelier/Stock) ; il ne se rouvre que si on clique sur "Menu".
+        window.setListFilter = function(key, val) {
+            window.listViewFilters[key] = val;
+            let sidebar = document.getElementById('sidebar'); if (sidebar) sidebar.classList.add('collapsed');
+            window.renderThemeListView();
+        };
+
         window.isCanonVisibleByFilters = function(p) {
             if (window.currentPistes && !window.currentPistes.includes('all') && !window.currentPistes.includes(window.getV(p, window.keyPiste))) return false;
             if (window.currentTypes && !window.currentTypes.includes('all') && !window.currentTypes.includes(window.getV(p, window.keyType).toLowerCase())) return false;
@@ -1427,21 +1427,51 @@
             let s = window.appSettings;
 
             let html = `<div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:2px solid #e74c3c; margin-bottom:15px;"><h2 style="margin:0; color:#2c3e50;">📋 Tickets & Pannes — Liste</h2><span style="font-size:12px; color:#7f8c8d;">${filtered.length} ticket(s)</span></div>`;
-            html += `<div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">`;
-            html += `<select class="edit-input" style="margin:0; width:auto; min-width:180px;" onchange="window.listViewFilters.defaut=this.value; window.renderThemeListView();"><option value="">Tous les défauts</option>${Array.from(defautsSet).sort().map(d => `<option value="${d.replace(/"/g, '&quot;')}" ${d === defautFilter ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
-            html += `<select class="edit-input" style="margin:0; width:auto; min-width:150px;" onchange="window.listViewFilters.statutTicket=this.value; window.renderThemeListView();"><option value="">Tous statuts</option><option value="faire" ${statutFilter === 'faire' ? 'selected' : ''}>À faire</option><option value="cours" ${statutFilter === 'cours' ? 'selected' : ''}>En cours</option></select>`;
+            html += `<div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap; align-items:center;">`;
+            html += `<select class="edit-input" style="margin:0; width:auto; min-width:180px;" onchange="window.setListFilter('defaut', this.value)"><option value="">Tous les défauts</option>${Array.from(defautsSet).sort().map(d => `<option value="${d.replace(/"/g, '&quot;')}" ${d === defautFilter ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
+            html += `<select class="edit-input" style="margin:0; width:auto; min-width:150px;" onchange="window.setListFilter('statutTicket', this.value)"><option value="">Tous statuts</option><option value="faire" ${statutFilter === 'faire' ? 'selected' : ''}>À faire</option><option value="cours" ${statutFilter === 'cours' ? 'selected' : ''}>En cours</option></select>`;
+            html += `<input type="text" id="list-new-ticket-canon" class="edit-input" style="margin:0; width:110px;" placeholder="N° Canon">`;
+            html += `<button class="btn-action-primary" style="margin:0; width:auto; padding:10px 16px; background:#c0392b;" onclick="window.toggleNewTicketRow()"><i class="fa-solid fa-plus"></i> Nouveau ticket</button>`;
             html += `</div>`;
+            html += `<div id="list-new-ticket-form" style="display:none; margin-bottom:15px;"></div>`;
 
             if (filtered.length === 0) { html += `<div style="text-align:center; color:#7f8c8d; padding:30px; background:#fff; border-radius:8px; border:1px solid #eee;">Aucun ticket ne correspond aux filtres (pensez aussi aux filtres Piste/Type dans le menu gauche).</div>`; }
             else {
                 html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Défaut</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Date</th><th></th></tr></thead><tbody>`;
                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
                     let color = r.statut.includes('faire') ? (s.colUrgent || '#e74c3c') : (s.colEnCours || '#f39c12');
-                    html += `<tr style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.focusCannon('${r.id}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;">${r.defaut}</td><td style="padding:10px;"><span style="background:${color}20; color:${color}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.statut.toUpperCase()}</span></td><td style="padding:10px; color:#888;">${r.date}</td><td style="padding:10px; text-align:right;"><button style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">Ouvrir 📍</button></td></tr>`;
+                    let safeDef = r.defaut.replace(/[^a-zA-Z0-9]/g, ""); let safeDefJs = r.defaut.replace(/'/g, "\\'");
+                    html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleTicketRow('${r.id}', '${safeDefJs}', '${safeDef}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;">${r.defaut}</td><td style="padding:10px;"><span style="background:${color}20; color:${color}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.statut.toUpperCase()}</span></td><td style="padding:10px; color:#888;">${r.date}</td><td style="padding:10px; text-align:right;"><button onclick="event.stopPropagation(); window.closeAllListExpandRows(); window.focusCannon('${r.id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">📍 Carte</button></td></tr>`;
+                    html += `<tr class="list-expand-row" id="ticket-expand-row-${r.id}-${safeDef}" style="display:none;"><td colspan="6" style="padding:0; background:#fafbfc; border-top:1px solid #eee;"><div id="ticket-edit-${r.id}-${safeDef}" style="padding:12px;"></div></td></tr>`;
                 });
                 html += `</tbody></table></div>`;
             }
             ws.innerHTML = html;
+        };
+
+        // CHAPITRE 4.E.1 — Actions inline (dépliant par ligne) : réutilise directement les fonctions
+        // d'édition existantes (editFullTicket, saveEntretienTete) en leur fournissant un conteneur au
+        // bon id dans la ligne dépliée, sans dupliquer leur logique ni ouvrir le panneau latéral.
+        window.closeAllListExpandRows = function() { document.querySelectorAll('.list-expand-row').forEach(r => r.style.display = 'none'); };
+
+        window.toggleTicketRow = function(canonId, defaut, safeDef) {
+            let row = document.getElementById(`ticket-expand-row-${canonId}-${safeDef}`); if (!row) return;
+            let isHidden = row.style.display === 'none' || row.style.display === '';
+            window.closeAllListExpandRows();
+            if (isHidden) { row.style.display = 'table-row'; window.editFullTicket(canonId, defaut); }
+        };
+
+        window.toggleNewTicketRow = function() {
+            let inputEl = document.getElementById('list-new-ticket-canon'); if (!inputEl) return;
+            let canonId = inputEl.value.trim();
+            if (!canonId) { alert("Merci d'indiquer un numéro de canon."); return; }
+            let feature = window.snowCannons.features.find(f => f.properties.id == canonId);
+            if (!feature) { alert("Canon " + canonId + " introuvable."); return; }
+            window.closeAllListExpandRows();
+            let formContainer = document.getElementById('list-new-ticket-form'); if (!formContainer) return;
+            let isHidden = formContainer.style.display === 'none' || formContainer.style.display === '';
+            if (isHidden) { formContainer.style.display = 'block'; formContainer.innerHTML = window.buildPanneFormHtml(feature.properties); }
+            else { formContainer.style.display = 'none'; formContainer.innerHTML = ''; }
         };
 
         window.renderSuiviListView = function(ws) {
@@ -1463,17 +1493,53 @@
             let colors = { defaut: s.colUrgent || '#e74c3c', preventif: s.colSuiviPrev || '#9b59b6', deconnecte: s.colSuiviDec || '#27ae60', connecte: s.colSuiviOk || '#f1c40f' };
 
             let html = `<div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:2px solid #27ae60; margin-bottom:15px;"><h2 style="margin:0; color:#2c3e50;">🛠️ Suivi Entretien — Liste</h2><span style="font-size:12px; color:#7f8c8d;">${filtered.length} canon(s)</span></div>`;
-            html += `<div style="margin-bottom:15px;"><select class="edit-input" style="margin:0; width:auto; min-width:200px;" onchange="window.listViewFilters.statutEntretien=this.value; window.renderThemeListView();"><option value="">Tous les statuts</option>${Object.keys(labels).map(k => `<option value="${k}" ${k === catFilter ? 'selected' : ''}>${labels[k]}</option>`).join('')}</select></div>`;
+            html += `<div style="margin-bottom:15px;"><select class="edit-input" style="margin:0; width:auto; min-width:200px;" onchange="window.setListFilter('statutEntretien', this.value)"><option value="">Tous les statuts</option>${Object.keys(labels).map(k => `<option value="${k}" ${k === catFilter ? 'selected' : ''}>${labels[k]}</option>`).join('')}</select></div>`;
 
             if (filtered.length === 0) { html += `<div style="text-align:center; color:#7f8c8d; padding:30px; background:#fff; border-radius:8px; border:1px solid #eee;">Aucun canon ne correspond aux filtres.</div>`; }
             else {
                 html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Remarque</th><th></th></tr></thead><tbody>`;
                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
-                    html += `<tr style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.focusCannon('${r.id}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${colors[r.cat]}20; color:${colors[r.cat]}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${labels[r.cat]}</span></td><td style="padding:10px; color:#888;">${r.remarque}</td><td style="padding:10px; text-align:right;"><button style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">Ouvrir 📍</button></td></tr>`;
+                    let safePiste = (r.piste || '').replace(/'/g, "\\'"); let safeRem = (r.remarque || '').replace(/'/g, "\\'").replace(/\n/g, ' ');
+                    html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleSuiviRow('${r.id}', '${safePiste}', '${r.cat}', '${safeRem}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${colors[r.cat]}20; color:${colors[r.cat]}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${labels[r.cat]}</span></td><td style="padding:10px; color:#888;">${r.remarque}</td><td style="padding:10px; text-align:right;"><button onclick="event.stopPropagation(); window.closeAllListExpandRows(); window.focusCannon('${r.id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">📍 Carte</button></td></tr>`;
+                    html += `<tr class="list-expand-row" id="suivi-expand-row-${r.id}" style="display:none;"><td colspan="5" style="padding:0; background:#fafbfc; border-top:1px solid #eee;"><div id="suivi-edit-${r.id}" style="padding:12px;"></div></td></tr>`;
                 });
                 html += `</tbody></table></div>`;
             }
             ws.innerHTML = html;
+        };
+
+        window.toggleSuiviRow = function(id, piste, cat, remarque) {
+            let row = document.getElementById(`suivi-expand-row-${id}`); if (!row) return;
+            let isHidden = row.style.display === 'none' || row.style.display === '';
+            window.closeAllListExpandRows();
+            if (!isHidden) return;
+            row.style.display = 'table-row';
+            let container = document.getElementById(`suivi-edit-${id}`); if (!container) return;
+            let isDec = cat === 'deconnecte'; let isPrev = cat === 'preventif';
+            container.innerHTML = `
+                <div style="display:flex; gap:15px; margin-bottom:8px; font-size:12px;">
+                    <label style="cursor:pointer;"><input type="checkbox" id="chk-dec-list-${id}" ${isDec ? 'checked' : ''}> Déconnexion</label>
+                    <label style="cursor:pointer;"><input type="checkbox" id="chk-prev-list-${id}" ${isPrev ? 'checked' : ''}> Préventif Usine</label>
+                </div>
+                <input type="text" id="rem-list-${id}" class="edit-input" value="${(remarque || '').replace(/"/g, '&quot;')}" placeholder="Remarque..." style="margin-bottom:8px;">
+                <button class="btn-action-primary" style="margin:0; background:#27ae60;" onclick="window.saveSuiviSingleFromList('${id}', '${piste.replace(/'/g, "\\'")}', this)"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
+            `;
+        };
+
+        window.saveSuiviSingleFromList = async function(idCanon, piste, btn) {
+            let chkDec = document.getElementById(`chk-dec-list-${idCanon}`); let chkPrev = document.getElementById(`chk-prev-list-${idCanon}`); let rem = document.getElementById(`rem-list-${idCanon}`);
+            let payload = { idCanon: idCanon, piste: piste, deconnexion: chkDec ? chkDec.checked : false, preventif: chkPrev ? chkPrev.checked : false, vanneCorrectif: "", remarque: rem ? rem.value : "" };
+            let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_suivi_multi", payloads: [payload] }) });
+                let r = await res.json();
+                if (r.status === "success") {
+                    let sRow = window.suiviEntretienData.find(row => row[0] == idCanon);
+                    if (sRow) { sRow[2] = payload.deconnexion ? "oui" : "non"; sRow[3] = payload.preventif ? "oui" : "non"; sRow[5] = payload.remarque; }
+                    else { window.suiviEntretienData.push([idCanon, piste, payload.deconnexion ? "oui" : "non", payload.preventif ? "oui" : "non", "", payload.remarque, ""]); }
+                    window.updateMap(); window.renderThemeListView();
+                } else { alert("Erreur serveur : " + (r.msg || "inconnue")); btn.innerText = oldText; btn.disabled = false; }
+            } catch (e) { alert("Échec réseau."); btn.innerText = oldText; btn.disabled = false; }
         };
 
         window.renderEntretienListView = function(ws) {
@@ -1490,18 +1556,32 @@
             let s = window.appSettings;
 
             let html = `<div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:2px solid #e67e22; margin-bottom:15px;"><h2 style="margin:0; color:#2c3e50;">🚿 Entretien Tête Canon — Liste</h2><span style="font-size:12px; color:#7f8c8d;">${filtered.length} canon(s)</span></div>`;
-            html += `<div style="margin-bottom:15px;"><select class="edit-input" style="margin:0; width:auto; min-width:180px;" onchange="window.listViewFilters.statutTete=this.value; window.renderThemeListView();"><option value="">Tous les statuts</option><option value="fait" ${statutFilter === 'fait' ? 'selected' : ''}>✅ Buses changées</option><option value="attente" ${statutFilter === 'attente' ? 'selected' : ''}>⏳ À faire</option></select></div>`;
+            html += `<div style="margin-bottom:15px;"><select class="edit-input" style="margin:0; width:auto; min-width:180px;" onchange="window.setListFilter('statutTete', this.value)"><option value="">Tous les statuts</option><option value="fait" ${statutFilter === 'fait' ? 'selected' : ''}>✅ Buses changées</option><option value="attente" ${statutFilter === 'attente' ? 'selected' : ''}>⏳ À faire</option></select></div>`;
 
             if (filtered.length === 0) { html += `<div style="text-align:center; color:#7f8c8d; padding:30px; background:#fff; border-radius:8px; border:1px solid #eee;">Aucun canon ne correspond aux filtres.</div>`; }
             else {
                 html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Année</th><th></th></tr></thead><tbody>`;
                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
                     let color = r.fait ? (s.colTeteOk || '#e67e22') : (s.colTeteWait || '#bdc3c7');
-                    html += `<tr style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.focusCannon('${r.id}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${color}20; color:${color}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.fait ? '✅ FAIT' : '⏳ À FAIRE'}</span></td><td style="padding:10px; color:#888;">${r.annee}</td><td style="padding:10px; text-align:right;"><button style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">Ouvrir 📍</button></td></tr>`;
+                    html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleEntretienRow('${r.id}', ${r.fait})"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${color}20; color:${color}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.fait ? '✅ FAIT' : '⏳ À FAIRE'}</span></td><td style="padding:10px; color:#888;">${r.annee}</td><td style="padding:10px; text-align:right;"><button onclick="event.stopPropagation(); window.closeAllListExpandRows(); window.focusCannon('${r.id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">📍 Carte</button></td></tr>`;
+                    html += `<tr class="list-expand-row" id="entretien-expand-row-${r.id}" style="display:none;"><td colspan="5" style="padding:0; background:#fafbfc; border-top:1px solid #eee;"><div id="entretien-edit-${r.id}" style="padding:12px;"></div></td></tr>`;
                 });
                 html += `</tbody></table></div>`;
             }
             ws.innerHTML = html;
+        };
+
+        window.toggleEntretienRow = function(id, fait) {
+            let row = document.getElementById(`entretien-expand-row-${id}`); if (!row) return;
+            let isHidden = row.style.display === 'none' || row.style.display === '';
+            window.closeAllListExpandRows();
+            if (!isHidden) return;
+            row.style.display = 'table-row';
+            let container = document.getElementById(`entretien-edit-${id}`); if (!container) return;
+            container.innerHTML = `
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; margin-bottom:8px;"><input type="checkbox" id="chk-buses-${id}" ${fait ? 'checked' : ''}> Buses changées</label>
+                <button class="btn-action-primary" style="margin:0; background:#e67e22;" onclick="window.saveEntretienTete('${id}', this)"><i class="fa-solid fa-floppy-disk"></i> Valider</button>
+            `;
         };
 
         /* ========================================================================= */
@@ -1574,10 +1654,11 @@
                 const tHeaders = data.tickets[0].map(h => (h||"").toString().toLowerCase().trim()); const originalTHeaders = data.tickets[0].map(h => (h||"").toString().trim());
                 const idxTEtat = tHeaders.findIndex(h => h.includes('état') || h.includes('etat')); const idxTDate = tHeaders.findIndex(h => h.includes('date')); const idxTRegard = tHeaders.findIndex(h => h.includes('n°regard') || h.includes('regard') || h.includes('canon')); const idxTDefaut = tHeaders.findIndex(h => h.includes('defaut') || h.includes('défaut') || h.includes('panne'));
                 const idxTId = tHeaders.findIndex(h => h === "id");
+                const idxTDateInter = tHeaders.findIndex(h => h.includes("date d'inter") || h.includes('date dinter') || (h.includes('date') && h.includes('inter')));
                 if(idxTRegard > -1) {
                     window.rawTickets = data.tickets.slice(1).map(row => {
                         let fullTData = []; originalTHeaders.forEach((h, i) => { if(h.trim() !== "") { let val = (i < row.length && row[i] != null) ? row[i].toString() : ""; fullTData.push({k: h, v: val}); } });
-                        return { statut: (idxTEtat>-1 && row[idxTEtat] != null ? row[idxTEtat].toString().toLowerCase().trim() : ""), date: (idxTDate>-1 && row[idxTDate] != null ? row[idxTDate] : ""), idCanon: (row[idxTRegard] != null ? row[idxTRegard].toString().replace(/^YA\s*/i, '').trim() : ""), defaut: (idxTDefaut>-1 && row[idxTDefaut] ? row[idxTDefaut].toString() : "Défaut non spécifié"), id: (idxTId>-1 && row[idxTId] != null ? row[idxTId].toString() : ""), fullData: fullTData };
+                        return { statut: (idxTEtat>-1 && row[idxTEtat] != null ? row[idxTEtat].toString().toLowerCase().trim() : ""), date: (idxTDate>-1 && row[idxTDate] != null ? row[idxTDate] : ""), dateInter: (idxTDateInter>-1 && row[idxTDateInter] != null ? row[idxTDateInter].toString() : ""), idCanon: (row[idxTRegard] != null ? row[idxTRegard].toString().replace(/^YA\s*/i, '').trim() : ""), defaut: (idxTDefaut>-1 && row[idxTDefaut] ? row[idxTDefaut].toString() : "Défaut non spécifié"), id: (idxTId>-1 && row[idxTId] != null ? row[idxTId].toString() : ""), fullData: fullTData };
                     });
                 }
             }
@@ -2998,69 +3079,10 @@
         window.renderMeteoHistoryChart = function() { let data = window.meteoHistData; let canvasBox = document.getElementById('meteo-history-canvas'); if(!canvasBox) return; let ctx = canvasBox.getContext('2d'); if(!data || data.length < 2) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Aucune donnée reçue de l'onglet météo.", 20, 50); return; } let metricIdx = parseInt(document.getElementById('meteo-metric').value); if(isNaN(metricIdx)) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Veuillez sélectionner une donnée à analyser.", 20, 50); return; } let chartType = document.getElementById('meteo-chart-type').value || 'line'; let metricLabel = data[0][metricIdx]; let headersList = data[0].map(h => h.toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim()); let dateIdx = headersList.findIndex(h => h === 'date' || h.includes('date') || h.includes('heure') || h.includes('time')); if (dateIdx === -1) dateIdx = 0; let labels = []; let values = []; for(let i = 1; i < data.length; i++) { let rawDate = data[i][dateIdx]; let rawVal = data[i][metricIdx]; if(rawDate == null || rawDate === "") continue; let rawStr = String(rawDate).trim(); let displayLabel = rawStr; let matchFr = rawStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2})[:hH](\d{1,2})(?::(\d{1,2}))?)?/); if (matchFr) { let day = parseInt(matchFr[1], 10); let month = parseInt(matchFr[2], 10); let year = parseInt(matchFr[3], 10); let hr = matchFr[4] ? parseInt(matchFr[4], 10) : null; let min = matchFr[5] ? parseInt(matchFr[5], 10) : null; let formattedDate = String(day).padStart(2, '0') + '/' + String(month).padStart(2, '0') + '/' + year; if (hr !== null && min !== null) { let formattedTime = String(hr).padStart(2, '0') + ':' + String(min).padStart(2, '0'); displayLabel = [formattedDate, formattedTime]; } else { displayLabel = formattedDate; } } else { let parsedDate = new Date(rawDate); if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1970) { let d = parsedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year:'numeric' }); let t = parsedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' }); if(t === "00:00") displayLabel = d; else displayLabel = [d, t]; } } labels.push(displayLabel); let cleanVal = String(rawVal).replace(',', '.').replace(/[^0-9.-]/g, ''); values.push(parseFloat(cleanVal) || 0); } if(window.chartInstances['meteo-hist-chart']) window.chartInstances['meteo-hist-chart'].destroy(); window.chartInstances['meteo-hist-chart'] = new Chart(ctx, { type: chartType, data: { labels: labels, datasets: [{ label: metricLabel, data: values, backgroundColor: chartType === 'line' ? 'rgba(52, 152, 219, 0.2)' : '#3498db', borderColor: '#2980b9', borderWidth: 2, fill: chartType === 'line', tension: 0.3, pointRadius: labels.length > 80 ? 0 : 3, pointHoverRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { x: { ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 15 }, grid: { display: false } }, y: { type: 'linear', display: true, ticks: { font: { size: 10 } } } }, plugins: { legend: { position: 'top', labels: { font: { size: 12, weight: 'bold' } } }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } } } }); };
 
         /* ========================================================================= */
-        /* CHAPITRE 8.D : MODE IMPRESSION (LÉGENDE + TABLEAU DE BORD DÉPLAÇABLES)     */
+        /* CHAPITRE 8.D : MODE IMPRESSION (PANNEAU LATÉRAL + APERÇU PAGINÉ)          */
         /* ========================================================================= */
-        // CHAPITRE 8.D.1 — Gestionnaire générique de glisser-déposer : couvre à la fois les boîtes
-        // flottantes sur la carte (.print-box, position:absolute dans #map-container) et la fenêtre
-        // "Mode Impression" elle-même (.draggable-window, position:fixed dans le viewport).
-        window.printDragState = { el: null, offsetX: 0, offsetY: 0, parentRect: null };
-        document.addEventListener('mousedown', function(e) {
-            let handle = e.target.closest ? e.target.closest('.print-box-handle, .draggable-handle') : null; if (!handle) return;
-            let box = handle.closest('.print-box, .draggable-window'); if (!box) return;
-            let rect = box.getBoundingClientRect();
-            let isFixed = window.getComputedStyle(box).position === 'fixed';
-            let parentRect = isFixed ? { left: 0, top: 0 } : box.parentElement.getBoundingClientRect();
-            window.printDragState = { el: box, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top, parentRect: parentRect };
-            e.preventDefault();
-        });
-        document.addEventListener('mousemove', function(e) {
-            let st = window.printDragState; if (!st || !st.el) return;
-            let x = e.clientX - st.parentRect.left - st.offsetX; let y = e.clientY - st.parentRect.top - st.offsetY;
-            st.el.style.left = x + 'px'; st.el.style.top = y + 'px'; st.el.style.right = 'auto'; st.el.style.bottom = 'auto';
-        });
-        document.addEventListener('mouseup', function() { if (window.printDragState) window.printDragState.el = null; });
-
-        // CHAPITRE 8.D.2 — Gestionnaire générique de redimensionnement (coin en bas à droite),
-        // même principe que le drag manager ci-dessus, pour .print-box et .draggable-window.
-        window.printResizeState = { el: null, startW: 0, startH: 0, startX: 0, startY: 0 };
-        document.addEventListener('mousedown', function(e) {
-            let handle = e.target.closest ? e.target.closest('.resize-handle') : null; if (!handle) return;
-            let box = handle.closest('.print-box, .draggable-window'); if (!box) return;
-            let rect = box.getBoundingClientRect();
-            window.printResizeState = { el: box, startW: rect.width, startH: rect.height, startX: e.clientX, startY: e.clientY };
-            e.preventDefault(); e.stopPropagation();
-        });
-        document.addEventListener('mousemove', function(e) {
-            let st = window.printResizeState; if (!st || !st.el) return;
-            let newW = st.startW + (e.clientX - st.startX); let newH = st.startH + (e.clientY - st.startY);
-            if (newW > 180) { st.el.style.width = newW + 'px'; }
-            if (newH > 120) { st.el.style.height = newH + 'px'; st.el.style.maxHeight = newH + 'px'; }
-        });
-        document.addEventListener('mouseup', function() { if (window.printResizeState) window.printResizeState.el = null; });
-
         window.PAGE_SIZES_MM = { A4: { portrait: [210, 297], landscape: [297, 210] }, A3: { portrait: [297, 420], landscape: [420, 297] } };
-
-        // CHAPITRE 8.D.3 — Le mode impression n'est plus restreint à la vue carte : Atelier et Stock
-        // (et tout autre thème) peuvent être imprimés, avec ou sans la carte selon la case "Inclure la
-        // vue carte" (masquée automatiquement quand il n'y a pas de carte à proposer).
-        window.openPrintMode = function() {
-            let toolbar = document.getElementById('print-toolbar'); if (!toolbar) return;
-            toolbar.style.display = 'flex';
-            let mapToggleRow = document.getElementById('print-map-toggle-row'); let showMapChk = document.getElementById('print-show-map');
-            let isMapTheme = window.isPrintMapAvailable();
-            if (mapToggleRow) mapToggleRow.style.display = isMapTheme ? 'flex' : 'none';
-            if (showMapChk) showMapChk.checked = isMapTheme;
-            window.buildPrintDashboardChecklist();
-            window.refreshPrintPreview();
-        };
-
-        window.closePrintMode = function() {
-            let toolbar = document.getElementById('print-toolbar'); if (toolbar) toolbar.style.display = 'none';
-            let lb = document.getElementById('print-legend-box'); if (lb) lb.remove();
-            let db = document.getElementById('print-dashboard-box'); if (db) db.remove();
-            let fr = document.getElementById('print-page-frame-outline'); if (fr) fr.remove();
-            let modal = document.getElementById('print-page-preview-modal'); if (modal) modal.style.display = 'none';
-        };
+        window.printBlocks = [];
 
         window.isPrintMapAvailable = function() {
             if (window.mainTheme === 'atelier' || window.mainTheme === 'stock') return false;
@@ -3083,19 +3105,6 @@
             return txt.length > 45 ? txt.substring(0, 45) + '…' : txt;
         };
 
-        window.buildPrintDashboardChecklist = function() {
-            let container = document.getElementById('print-dashboard-checklist'); if (!container) return;
-            let source = window.getPrintSourceContainer();
-            if (!source || source.children.length === 0) { container.innerHTML = '<i style="color:#888;">Aucun contenu à afficher.</i>'; return; }
-            let html = '';
-            Array.from(source.children).forEach((child, idx) => {
-                if (child.tagName === 'DATALIST') return;
-                let label = window.guessBlockLabel(child, idx);
-                html += `<label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="print-block-chk" data-block-idx="${idx}" checked onchange="window.refreshPrintPreview()"> ${label}</label>`;
-            });
-            container.innerHTML = html || '<i style="color:#888;">Aucun bloc disponible.</i>';
-        };
-
         window.cloneNodeForPrint = function(el) {
             let clone = el.cloneNode(true);
             let liveCanvases = el.querySelectorAll('canvas'); let cloneCanvases = clone.querySelectorAll('canvas');
@@ -3113,116 +3122,162 @@
             return `<div style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#34495e; margin-bottom:6px;">Légende</div>${el.innerHTML}`;
         };
 
-        // CHAPITRE 8.D.4 — Cadre en pointillés indiquant, à l'écran, la zone qui sera imprimée (les
-        // formats A4 et A3 partagent le même ratio ISO 216 : seule l'orientation change la forme).
-        window.updatePrintFrameOutline = function() {
-            let mapContainer = document.getElementById('map-container'); if (!mapContainer) return;
-            let old = document.getElementById('print-page-frame-outline'); if (old) old.remove();
-            let orientation = (document.querySelector('input[name="print-orientation"]:checked') || {}).value || 'portrait';
-            let ratio = orientation === 'landscape' ? (297 / 210) : (210 / 297);
-            let mcRect = mapContainer.getBoundingClientRect();
-            let maxW = mcRect.width * 0.85, maxH = mcRect.height * 0.85;
-            let w = maxW, h = w / ratio;
-            if (h > maxH) { h = maxH; w = h * ratio; }
-            let frame = document.createElement('div'); frame.id = 'print-page-frame-outline';
-            frame.style.left = ((mcRect.width - w) / 2) + 'px'; frame.style.top = ((mcRect.height - h) / 2) + 'px';
-            frame.style.width = w + 'px'; frame.style.height = h + 'px';
-            mapContainer.appendChild(frame);
+        // CHAPITRE 8.D.1 — Ouverture : construit la liste des blocs imprimables (carte, légende, puis
+        // chaque bloc du contenu actuellement affiché — panneau droit, Atelier, Stock ou vue Liste
+        // selon le contexte), et lance immédiatement un aperçu paginé.
+        window.openPrintMode = function() {
+            let panel = document.getElementById('print-panel'); if (!panel) return;
+            panel.classList.add('open');
+            window.buildPrintBlocksList();
+            window.buildPrintPageSheet();
         };
 
-        window.refreshPrintPreview = function() {
-            let mapContainer = document.getElementById('map-container'); if (!mapContainer) return;
-            let oldLegend = document.getElementById('print-legend-box'); if (oldLegend) oldLegend.remove();
-            let oldDash = document.getElementById('print-dashboard-box'); if (oldDash) oldDash.remove();
-            let oldFrame = document.getElementById('print-page-frame-outline'); if (oldFrame) oldFrame.remove();
+        window.closePrintMode = function() {
+            let panel = document.getElementById('print-panel'); if (panel) panel.classList.remove('open');
+            let modal = document.getElementById('print-page-preview-modal'); if (modal) modal.classList.remove('open');
+        };
 
-            let isMapTheme = window.isPrintMapAvailable();
-            let showMap = isMapTheme && (document.getElementById('print-show-map') ? document.getElementById('print-show-map').checked : true);
-            let showLegend = document.getElementById('print-show-legend') ? document.getElementById('print-show-legend').checked : true;
-            let showDash = document.getElementById('print-show-dashboard') ? document.getElementById('print-show-dashboard').checked : true;
-
-            let legendRow = document.getElementById('print-legend-row'); if (legendRow) legendRow.style.display = window.getCurrentLegendHtml() ? 'flex' : 'none';
-            let hint = document.getElementById('print-hint-text'); if (hint) hint.style.display = showMap ? 'block' : 'none';
-
-            if (showMap) {
-                window.updatePrintFrameOutline();
-                if (showLegend) {
-                    let legendHtml = window.getCurrentLegendHtml();
-                    if (legendHtml) {
-                        let box = document.createElement('div'); box.id = 'print-legend-box'; box.className = 'print-box';
-                        box.innerHTML = `<div class="print-box-handle"><span><i class="fa-solid fa-up-down-left-right"></i> Légende</span></div><div class="print-box-body">${legendHtml}</div><div class="resize-handle"></div>`;
-                        mapContainer.appendChild(box);
-                    }
-                }
-                if (showDash) {
-                    let source = window.getPrintSourceContainer();
-                    let checks = document.querySelectorAll('.print-block-chk:checked');
-                    if (source && checks.length > 0) {
-                        let box = document.createElement('div'); box.id = 'print-dashboard-box'; box.className = 'print-box';
-                        box.innerHTML = `<div class="print-box-handle"><span><i class="fa-solid fa-up-down-left-right"></i> Tableau de Bord</span></div>`;
-                        let bodyWrap = document.createElement('div'); bodyWrap.className = 'print-box-body';
-                        checks.forEach(chk => { let idx = parseInt(chk.getAttribute('data-block-idx')); let srcChild = source.children[idx]; if (srcChild) bodyWrap.appendChild(window.cloneNodeForPrint(srcChild)); });
-                        box.appendChild(bodyWrap);
-                        let rh = document.createElement('div'); rh.className = 'resize-handle'; box.appendChild(rh);
-                        mapContainer.appendChild(box);
-                    }
-                }
-            } else {
-                let modal = document.getElementById('print-page-preview-modal');
-                if (modal && modal.style.display === 'flex') window.buildPrintPageSheet();
+        window.buildPrintBlocksList = function() {
+            let blocks = [];
+            if (window.isPrintMapAvailable()) blocks.push({ id: 'blk-map', kind: 'map', label: '🗺️ Carte (vue actuelle)', checked: true });
+            if (window.getCurrentLegendHtml()) blocks.push({ id: 'blk-legend', kind: 'legend', label: '🏷️ Légende', checked: true });
+            let source = window.getPrintSourceContainer();
+            if (source) {
+                Array.from(source.children).forEach((child, idx) => {
+                    if (child.tagName === 'DATALIST') return;
+                    blocks.push({ id: 'blk-content-' + idx, kind: 'content', idx: idx, label: window.guessBlockLabel(child, idx), checked: true });
+                });
             }
+            window.printBlocks = blocks;
+            window.renderPrintBlocksChecklist();
         };
 
-        // CHAPITRE 8.D.5 — Aperçu "page" isolé (sans carte) : contenu cloné à plat, mis à l'échelle
-        // aux proportions réelles du format choisi (A4/A3 partagent le même ratio, seule l'orientation
-        // change la forme — voir updatePrintFrameOutline ci-dessus pour la même logique côté carte).
-        window.buildPrintPageSheet = function() {
-            let sheet = document.getElementById('print-page-sheet'); if (!sheet) return;
+        window.renderPrintBlocksChecklist = function() {
+            let container = document.getElementById('print-dashboard-checklist'); if (!container) return;
+            if (!window.printBlocks || window.printBlocks.length === 0) { container.innerHTML = '<i style="color:#888;">Aucun contenu à afficher.</i>'; return; }
+            container.innerHTML = window.printBlocks.map((b, i) => `
+                <div class="print-block-row">
+                    <input type="checkbox" ${b.checked ? 'checked' : ''} onchange="window.togglePrintBlock('${b.id}', this.checked)">
+                    <span style="flex:1;">${b.label}</span>
+                    <button onclick="window.movePrintBlock('${b.id}', -1)" ${i === 0 ? 'disabled' : ''}>▲</button>
+                    <button onclick="window.movePrintBlock('${b.id}', 1)" ${i === window.printBlocks.length - 1 ? 'disabled' : ''}>▼</button>
+                </div>`).join('');
+        };
+
+        window.togglePrintBlock = function(id, checked) {
+            let b = window.printBlocks.find(x => x.id === id); if (b) b.checked = checked;
+            window.buildPrintPageSheet();
+        };
+
+        window.movePrintBlock = function(id, dir) {
+            let idx = window.printBlocks.findIndex(b => b.id === id); if (idx === -1) return;
+            let newIdx = idx + dir; if (newIdx < 0 || newIdx >= window.printBlocks.length) return;
+            let tmp = window.printBlocks[idx]; window.printBlocks[idx] = window.printBlocks[newIdx]; window.printBlocks[newIdx] = tmp;
+            window.renderPrintBlocksChecklist(); window.buildPrintPageSheet();
+        };
+
+        // CHAPITRE 8.D.2 — Snapshot statique de la carte (export ArcGIS World_Imagery sur l'emprise
+        // visible), avec les pins des canons visibles superposés par simple interpolation linéaire
+        // lat/lng -> pixel (approximation suffisante à l'échelle d'un domaine skiable ; pas de
+        // reprojection Web Mercator complète). Dépend d'un service externe : en cas d'échec ou de
+        // lenteur (délai de 4s), un message de repli s'affiche à la place plutôt que de bloquer l'aperçu.
+        window.buildMapSnapshotNode = function() {
+            return new Promise(resolve => {
+                if (!window.map) { resolve(null); return; }
+                try {
+                    let bounds = window.map.getBounds();
+                    let minLng = bounds.getWest(), maxLng = bounds.getEast(), minLat = bounds.getSouth(), maxLat = bounds.getNorth();
+                    let w = 900; let h = Math.round(w * (maxLat - minLat) / (maxLng - minLng)) || 600; h = Math.max(300, Math.min(h, 900));
+                    let bbox = `${minLng},${minLat},${maxLng},${maxLat}`;
+                    let url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&size=${w},${h}&imageSR=4326&format=png32&f=image`;
+
+                    let container = document.createElement('div');
+                    container.style.cssText = 'position:relative; width:100%; margin-bottom:15px; border:1px solid #ddd; border-radius:6px; overflow:hidden;';
+                    let img = document.createElement('img'); img.style.cssText = 'width:100%; display:block;';
+
+                    window.snowCannons.features.forEach(f => {
+                        if (!f.properties._isVisible) return;
+                        let lng = f.geometry.coordinates[0], lat = f.geometry.coordinates[1];
+                        if (lng < minLng || lng > maxLng || lat < minLat || lat > maxLat) return;
+                        let xPct = (lng - minLng) / (maxLng - minLng) * 100;
+                        let yPct = (1 - (lat - minLat) / (maxLat - minLat)) * 100;
+                        let color = window.getColorByFilter(0, f.properties);
+                        let dot = document.createElement('div');
+                        dot.style.cssText = `position:absolute; left:${xPct}%; top:${yPct}%; width:8px; height:8px; margin:-4px 0 0 -4px; border-radius:50%; background:${color}; border:1px solid white; box-shadow:0 0 2px rgba(0,0,0,0.6);`;
+                        container.appendChild(dot);
+                    });
+
+                    let done = false;
+                    const finish = () => { if (done) return; done = true; resolve(container); };
+                    img.onload = finish;
+                    img.onerror = () => { if (done) return; done = true; let fb = document.createElement('div'); fb.style.cssText = 'padding:15px; background:#fdf0ed; border:1px solid #e74c3c; border-radius:6px; color:#c0392b; font-size:11px; margin-bottom:15px;'; fb.innerText = "⚠️ Impossible de charger l'aperçu de la carte (service externe indisponible)."; resolve(fb); };
+                    setTimeout(finish, 4000);
+                    container.insertBefore(img, container.firstChild);
+                    img.src = url;
+                } catch (e) { resolve(null); }
+            });
+        };
+
+        // CHAPITRE 8.D.3 — Pagination réelle : chaque bloc coché est ajouté à la page courante ; dès
+        // qu'il la fait déborder (mesure DOM réelle via scrollHeight, pas une estimation), il est
+        // déplacé sur une nouvelle page. Le nombre de feuilles générées reflète donc fidèlement ce qui
+        // sera imprimé, et le scroll du conteneur ne s'active que si le total dépasse la hauteur visible.
+        window.buildPrintPageSheet = async function() {
+            let wrap = document.getElementById('print-page-sheet-wrap'); if (!wrap) return;
+            let requestToken = (window._printBuildToken = (window._printBuildToken || 0) + 1);
+            wrap.innerHTML = '<div style="color:white; padding:30px; text-align:center;">⏳ Génération de l\'aperçu...</div>';
+
             let format = (document.querySelector('input[name="print-format"]:checked') || {}).value || 'A4';
             let orientation = (document.querySelector('input[name="print-orientation"]:checked') || {}).value || 'portrait';
-            let dims = window.PAGE_SIZES_MM[format][orientation];
-            let ratio = dims[0] / dims[1];
-            let previewW = 700; let previewH = previewW / ratio;
-            sheet.style.width = previewW + 'px'; sheet.style.minHeight = previewH + 'px';
+            let dims = window.PAGE_SIZES_MM[format][orientation]; let ratio = dims[0] / dims[1];
+            let previewW = 700; let previewH = Math.round(previewW / ratio);
 
-            let html = '';
-            let showMap = window.isPrintMapAvailable() && (document.getElementById('print-show-map') ? document.getElementById('print-show-map').checked : true);
-            let showLegend = document.getElementById('print-show-legend') ? document.getElementById('print-show-legend').checked : true;
-            if (showLegend && !showMap) { let lh = window.getCurrentLegendHtml(); if (lh) html += `<div style="margin-bottom:15px; padding:10px; border:1px solid #eee; border-radius:6px;">${lh}</div>`; }
-            let showDash = document.getElementById('print-show-dashboard') ? document.getElementById('print-show-dashboard').checked : true;
-            if (showDash) {
-                let source = window.getPrintSourceContainer();
-                let checks = document.querySelectorAll('.print-block-chk:checked');
-                if (source && checks.length > 0) {
-                    let wrap = document.createElement('div');
-                    checks.forEach(chk => { let idx = parseInt(chk.getAttribute('data-block-idx')); let srcChild = source.children[idx]; if (srcChild) wrap.appendChild(window.cloneNodeForPrint(srcChild)); });
-                    html += wrap.innerHTML;
-                }
+            let blockNodes = [];
+            for (let b of (window.printBlocks || [])) {
+                if (!b.checked) continue;
+                if (b.kind === 'map') { let node = await window.buildMapSnapshotNode(); if (node) blockNodes.push(node); }
+                else if (b.kind === 'legend') { let div = document.createElement('div'); div.innerHTML = window.getCurrentLegendHtml(); div.style.cssText = 'margin-bottom:15px; padding:10px; border:1px solid #eee; border-radius:6px;'; blockNodes.push(div); }
+                else { let source = window.getPrintSourceContainer(); let srcChild = source && source.children[b.idx]; if (srcChild) blockNodes.push(window.cloneNodeForPrint(srcChild)); }
             }
-            sheet.innerHTML = html || '<i style="color:#999;">Aucun contenu sélectionné.</i>';
+
+            if (requestToken !== window._printBuildToken) return;
+            wrap.innerHTML = '';
+            if (blockNodes.length === 0) { wrap.innerHTML = '<div style="color:white; padding:30px; text-align:center;">Aucun contenu sélectionné.</div>'; let info = document.getElementById('print-page-count-info'); if (info) info.innerText = ''; return; }
+
+            let pages = [];
+            const newPage = () => { let p = document.createElement('div'); p.className = 'print-page-sheet'; p.style.width = previewW + 'px'; p.style.height = previewH + 'px'; wrap.appendChild(p); pages.push(p); return p; };
+            let currentPage = newPage();
+
+            blockNodes.forEach(node => {
+                currentPage.appendChild(node);
+                if (currentPage.scrollHeight > currentPage.clientHeight + 1) {
+                    currentPage.removeChild(node);
+                    if (currentPage.children.length === 0) { currentPage.appendChild(node); }
+                    else { currentPage = newPage(); currentPage.appendChild(node); }
+                }
+            });
+
+            pages.forEach((p, i) => p.setAttribute('data-page-label', `Page ${i + 1}/${pages.length}`));
+            let info = document.getElementById('print-page-count-info'); if (info) info.innerText = pages.length + ' page(s) au format ' + format + ' ' + (orientation === 'portrait' ? 'Portrait' : 'Paysage');
+            document.getElementById('print-page-preview-modal').classList.add('open');
         };
 
-        window.openPrintPagePreview = function() {
-            window.buildPrintPageSheet();
-            document.getElementById('print-page-preview-modal').style.display = 'flex';
-        };
-
-        // CHAPITRE 8.D.6 — Applique le format/orientation choisis via une règle @page injectée (le
-        // seul moyen standard de piloter le format papier au moment de l'impression), puis imprime.
+        // CHAPITRE 8.D.4 — Applique le format/orientation choisis via une règle @page injectée (le
+        // seul moyen standard de piloter le format papier au moment de l'impression), puis imprime. Le
+        // même chemin sert pour "Imprimer" et "Exporter en PDF" (choisir "Enregistrer en PDF" comme
+        // imprimante dans la boîte de dialogue — pas de génération PDF côté serveur pour ce projet).
         window.launchPrint = function() {
             let format = (document.querySelector('input[name="print-format"]:checked') || {}).value || 'A4';
             let orientation = (document.querySelector('input[name="print-orientation"]:checked') || {}).value || 'portrait';
-            let isMapTheme = window.isPrintMapAvailable();
-            let showMap = isMapTheme && (document.getElementById('print-show-map') ? document.getElementById('print-show-map').checked : true);
-
             let styleEl = document.getElementById('print-page-size-style');
             if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = 'print-page-size-style'; document.head.appendChild(styleEl); }
             styleEl.textContent = `@page { size: ${format} ${orientation}; margin: 10mm; }`;
-
-            document.body.classList.toggle('print-mode-nomap', !showMap);
-            if (!showMap) window.buildPrintPageSheet();
-
             setTimeout(() => window.print(), 50);
+        };
+
+        window.exportPrintPDF = function() {
+            alert("La fenêtre d'impression va s'ouvrir : choisissez \"Enregistrer en PDF\" (ou \"Microsoft Print to PDF\") comme destination pour exporter en PDF.");
+            window.launchPrint();
         };
 
         /* ========================================================================= */
@@ -3248,6 +3303,9 @@
             return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
         };
 
+        // CHAPITRE 8.E.1 — "Tout l'historique d'intervention" : les tickets faits utilisent leur date
+        // d'intervention réelle (colonne "date d'inter") quand elle existe, pas seulement leur date de
+        // création — sinon un ticket réglé des mois après son signalement apparaîtrait au mauvais jour.
         window.getEventsForDate = function(dateObj) {
             let y = dateObj.getFullYear(), m = dateObj.getMonth(), d = dateObj.getDate();
             let dateStr = String(d).padStart(2, '0') + '/' + String(m + 1).padStart(2, '0') + '/' + y;
@@ -3259,13 +3317,32 @@
                 } else if (ev.dateDebut === dateStr) { result.rdv.push(ev); }
             });
             window.rawTickets.forEach(t => {
-                if (!t.date) return;
-                let td = window.parseFrDateLoose(t.date); if (!td) return;
+                let isFait = t.statut.includes('fait') || t.statut === '';
+                let relevantDate = isFait ? (t.dateInter || t.date) : t.date;
+                if (!relevantDate) return;
+                let td = window.parseFrDateLoose(relevantDate); if (!td) return;
                 if (td.getFullYear() === y && td.getMonth() === m && td.getDate() === d) {
-                    if (t.statut.includes('fait') || t.statut === '') result.ticketsFaits.push(t); else result.ticketsAFaire.push(t);
+                    if (isFait) result.ticketsFaits.push(t); else result.ticketsAFaire.push(t);
                 }
             });
             return result;
+        };
+
+        // CHAPITRE 8.E.2 — Barres pleine largeur empilées (façon calendrier iPhone) au lieu de simples
+        // points. Les périodes de travail multi-jours sont répétées chaque jour qu'elles couvrent
+        // (pas une barre unique qui s'étire sur plusieurs cases — approximation volontaire pour rester
+        // simple — mais le rendu donne bien l'impression d'une plage continue).
+        window.buildCalendarDayBars = function(y, m, day, evs) {
+            let items = [];
+            evs.rdv.forEach(ev => items.push({ color: '#3498db', icon: '📌', label: ev.titre, onclick: `window.editCalendarEvent('${ev.id}')` }));
+            evs.periode.forEach(ev => items.push({ color: '#9b59b6', icon: '🧰', label: ev.titre, onclick: `window.editCalendarEvent('${ev.id}')` }));
+            evs.ticketsAFaire.forEach(t => items.push({ color: '#e74c3c', icon: '🚨', label: 'C' + t.idCanon + ' ' + t.defaut, onclick: `window.closeCalendar(); window.focusCannon('${t.idCanon}');` }));
+            evs.ticketsFaits.forEach(t => items.push({ color: '#27ae60', icon: '✅', label: 'C' + t.idCanon + ' ' + t.defaut, onclick: `window.closeCalendar(); window.focusCannon('${t.idCanon}');` }));
+
+            let maxVisible = 3;
+            let html = items.slice(0, maxVisible).map(it => `<div class="cal-bar" style="background:${it.color};" title="${(it.label || '').toString().replace(/"/g, '&quot;')}" onclick="event.stopPropagation(); ${it.onclick}">${it.icon} ${it.label}</div>`).join('');
+            if (items.length > maxVisible) html += `<div class="cal-bar-more" onclick="event.stopPropagation(); window.openCalendarDay(${y},${m},${day})">+${items.length - maxVisible} autre(s)</div>`;
+            return html;
         };
 
         window.renderCalendarMonth = function() {
@@ -3286,12 +3363,8 @@
                 let dateObj = new Date(y, m, day);
                 let evs = window.getEventsForDate(dateObj);
                 let isToday = dateObj.toDateString() === today.toDateString();
-                let dots = '';
-                if (evs.rdv.length) dots += `<span class="cal-dot" style="background:#3498db;" title="${evs.rdv.length} rendez-vous"></span>`;
-                if (evs.periode.length) dots += `<span class="cal-dot" style="background:#9b59b6;" title="${evs.periode.length} période(s) de travail"></span>`;
-                if (evs.ticketsAFaire.length) dots += `<span class="cal-dot" style="background:#e74c3c;" title="${evs.ticketsAFaire.length} ticket(s) à faire"></span>`;
-                if (evs.ticketsFaits.length) dots += `<span class="cal-dot" style="background:#27ae60;" title="${evs.ticketsFaits.length} ticket(s) fait(s)"></span>`;
-                html += `<div class="cal-day ${isToday ? 'cal-day-today' : ''}" onclick="window.openCalendarDay(${y},${m},${day})"><div class="cal-day-num">${day}</div><div class="cal-day-dots">${dots}</div></div>`;
+                let barsHtml = window.buildCalendarDayBars(y, m, day, evs);
+                html += `<div class="cal-day ${isToday ? 'cal-day-today' : ''}" onclick="window.openCalendarDay(${y},${m},${day})"><div class="cal-day-num">${day}</div><div class="cal-day-bars">${barsHtml}</div></div>`;
             }
             container.innerHTML = html;
         };
