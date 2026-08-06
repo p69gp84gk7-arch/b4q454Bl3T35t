@@ -88,7 +88,7 @@
         .edit-input{width:100%;box-sizing:border-box;padding:10px;margin-top:4px;margin-bottom:12px;border:1px solid #ccc;border-radius:4px;font-size:13px;outline:none;}
         .edit-label{font-size:11px;font-weight:bold;color:#555;text-transform:uppercase;}
 
-        #compare-modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:800px;max-width:95%;background:white;z-index:9999;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,0.5);border:1px solid #ccc;flex-direction:column;overflow:hidden;}
+        #compare-modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:800px;max-width:95%;min-width:400px;min-height:300px;background:white;z-index:9999;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,0.5);border:1px solid #ccc;flex-direction:column;overflow:hidden;}
         .comp-header{background:#2c3e50;color:white;padding:15px 20px;display:flex;justify-content:space-between;font-size:16px;font-weight:bold;}
         .comp-body{padding:20px;max-height:80vh;overflow-y:auto;background:#f4f6f8;}
         .comp-controls{display:flex;gap:15px;background:#fff;padding:15px;border-radius:6px;margin-bottom:15px;border:1px solid #ddd;}
@@ -97,7 +97,7 @@
         .layer-color-picker{width:24px;height:24px;padding:0;border:none;}
         .layer-weight-picker{width:35px;height:22px;padding:2px;border:1px solid #ccc;text-align:center;margin-left:5px;}
 
-        #bi-meteo-modal {display:none;position:fixed;top:50px;left:0;right:0;bottom:0;background:#f4f6f8;z-index:8000;flex-direction:column;}
+        #bi-meteo-modal {display:none;position:fixed;top:60px;left:5vw;width:90vw;height:85vh;min-width:500px;min-height:400px;background:#f4f6f8;z-index:8000;flex-direction:column;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,0.5);border:1px solid #ccc;overflow:hidden;}
         .bi-header {background:#2c3e50;color:white;padding:15px 20px;font-size:18px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;}
         .bi-container {display:flex;flex:1;overflow:hidden;}
         .bi-sidebar {width:400px;background:#fff;border-right:1px solid #ddd;padding:20px;overflow-y:auto;box-shadow:2px 0 10px rgba(0,0,0,0.05);}
@@ -151,9 +151,18 @@
         .print-block-row { display:flex; align-items:center; gap:6px; padding:4px 2px; border-bottom:1px solid #f0f0f0; }
         .print-block-row button { background:none; border:1px solid #ddd; border-radius:3px; width:20px; height:20px; cursor:pointer; font-size:9px; padding:0; flex-shrink:0; }
         .print-block-row button:disabled { opacity:0.3; cursor:default; }
+        .list-row-arrow { display:inline-block; color:#7f8c8d; font-size:12px; font-weight:bold; }
+
+        /* CHAPITRE 1.D — Fenêtres flottantes/redimensionnables : toutes les "fenêtres" de la couche
+           principale (Documents, Centre Expert BI, Comparer Saisons, Historique Météo, Calendrier)
+           peuvent être déplacées (glisser l'en-tête) et redimensionnées (coin en bas à droite). */
+        .draggable-window { position:absolute; }
+        .draggable-handle { cursor:move; user-select:none; }
+        .resize-handle { position:absolute; right:0; bottom:0; width:16px; height:16px; cursor:nwse-resize; z-index:20; }
+        .resize-handle::after { content:''; position:absolute; right:3px; bottom:3px; width:8px; height:8px; border-right:2px solid #999; border-bottom:2px solid #999; }
 
         #calendar-modal { display:none; position:fixed; top:50px; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:8200; justify-content:center; align-items:center; }
-        #calendar-modal-inner { background:#fff; width:95%; max-width:1000px; height:90%; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
+        #calendar-modal-inner { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; width:95%; max-width:1000px; height:90%; min-width:500px; min-height:400px; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
         .cal-header { background:#2c3e50; color:white; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
         .cal-nav-btn { background:rgba(255,255,255,0.15); border:none; color:white; width:32px; height:32px; border-radius:4px; cursor:pointer; font-size:14px; }
         .cal-body { display:flex; flex:1; overflow:hidden; }
@@ -212,9 +221,9 @@
     </div>
 
     <!-- MODAL PDF -->
-    <div id="pdf-modal" style="display:none; position:fixed; top:50px; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9000; justify-content:center; align-items:center;">
-        <div style="background:#fff; width:95%; max-width:1200px; height:90%; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-            <div style="background:#8e44ad; color:white; padding:15px; display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
+    <div id="pdf-modal" style="display:none; position:fixed; top:50px; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9000;">
+        <div class="draggable-window" style="top:50%; left:50%; transform:translate(-50%,-50%); width:1100px; max-width:95vw; height:85vh; min-width:400px; min-height:300px; background:#fff; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+            <div class="draggable-handle" style="background:#8e44ad; color:white; padding:15px; display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
                 <span><i class="fa-solid fa-book"></i> Bibliothèque Documentaire (Google Drive)</span>
                 <button onclick="document.getElementById('pdf-modal').style.display='none'" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
             </div>
@@ -224,6 +233,7 @@
                     <span style="color:#7f8c8d; font-weight:bold;">Sélectionnez un document dans la liste de gauche 👈</span>
                 </div>
             </div>
+            <div class="resize-handle"></div>
         </div>
     </div>
 
@@ -313,8 +323,8 @@
     </div>
 
    <!-- MODAL EXPERT BI -->
-    <div id="bi-meteo-modal">
-        <div class="bi-header"><span><i class="fa-solid fa-snowflake"></i> PowerBI Neige</span><button onclick="document.getElementById('bi-meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:28px;cursor:pointer;">×</button></div>
+    <div id="bi-meteo-modal" class="draggable-window">
+        <div class="bi-header draggable-handle"><span><i class="fa-solid fa-snowflake"></i> PowerBI Neige</span><button onclick="document.getElementById('bi-meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:28px;cursor:pointer;">×</button></div>
         <div class="bi-container">
             <div class="bi-sidebar">
                 <div class="edit-label">1. Source des données</div>
@@ -330,11 +340,12 @@
             </div>
             <div class="bi-content"><div class="bi-canvas-box"><canvas id="bi-canvas"></canvas></div></div>
         </div>
+        <div class="resize-handle"></div>
     </div>
 
     <!-- MODAL COMPARAISON SAISONS -->
-    <div id="compare-modal">
-        <div class="comp-header"><span><i class="fa-solid fa-code-compare"></i> Comparaison Globale</span><button onclick="window.openGlobalCompareModal(false)" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;">×</button></div>
+    <div id="compare-modal" class="draggable-window">
+        <div class="comp-header draggable-handle"><span><i class="fa-solid fa-code-compare"></i> Comparaison Globale</span><button onclick="window.openGlobalCompareModal(false)" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;">×</button></div>
         <div class="comp-body">
             <div class="comp-controls">
                 <div style="flex:1;"><div class="edit-label">Piste</div><select id="comp-piste" class="edit-input" style="margin:0;"><option value="all">Toutes</option></select></div>
@@ -345,11 +356,12 @@
             </div>
             <div class="comp-chart-box" id="main-comp-chart-container" style="height:450px; display:none;"><canvas id="main-comp-canvas"></canvas></div>
         </div>
+        <div class="resize-handle"></div>
     </div>
 
     <!-- MODAL HISTORIQUE METEO -->
-    <div id="meteo-history-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:900px; max-width:95%; background:white; z-index:9999; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,0.5); border:1px solid #ccc; flex-direction:column; overflow:hidden;">
-        <div class="comp-header" style="background:#16a085;"><span><i class="fa-solid fa-temperature-half"></i> Historique Météo</span><button onclick="window.openMeteoHistoryModal(false)" style="background:none; border:none; color:white; cursor:pointer; font-size:24px;">×</button></div>
+    <div id="meteo-history-modal" class="draggable-window" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:900px; max-width:95%; min-width:400px; min-height:300px; background:white; z-index:9999; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,0.5); border:1px solid #ccc; flex-direction:column; overflow:hidden;">
+        <div class="comp-header draggable-handle" style="background:#16a085;"><span><i class="fa-solid fa-temperature-half"></i> Historique Météo</span><button onclick="window.openMeteoHistoryModal(false)" style="background:none; border:none; color:white; cursor:pointer; font-size:24px;">×</button></div>
         <div class="comp-body">
             <div class="comp-controls">
                 <div style="flex:1;"><div class="edit-label">Donnée à analyser</div><select id="meteo-metric" class="edit-input" style="margin:0;" onchange="window.renderMeteoHistoryChart()"></select></div>
@@ -357,6 +369,7 @@
             </div>
             <div class="comp-chart-box" style="height:380px; position:relative; background:#fff; padding:10px;"><canvas id="meteo-history-canvas"></canvas></div>
         </div>
+        <div class="resize-handle"></div>
     </div>
 
     <!-- MODE IMPRESSION : PANNEAU DE RÉGLAGES (glisse depuis la droite, comme le Tableau de Bord) -->
@@ -390,8 +403,8 @@
 
     <!-- MODAL CALENDRIER -->
     <div id="calendar-modal">
-        <div id="calendar-modal-inner">
-            <div class="cal-header">
+        <div id="calendar-modal-inner" class="draggable-window">
+            <div class="cal-header draggable-handle">
                 <div style="display:flex; align-items:center; gap:10px;">
                     <button class="cal-nav-btn" onclick="window.calendarShiftMonth(-1)"><i class="fa-solid fa-chevron-left"></i></button>
                     <b id="calendar-month-label" style="font-size:16px; min-width:160px; text-align:center;"></b>
@@ -412,6 +425,7 @@
                 <div id="calendar-grid"></div>
                 <div id="calendar-day-panel"></div>
             </div>
+            <div class="resize-handle"></div>
         </div>
     </div>
 
@@ -726,6 +740,21 @@
         };
 
         window.getV = function(p, k) { if(!k || !p || !p.fullData) return "N/A"; let normK = k.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim(); let o = p.fullData.find(x => x.k.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim() === normK); return o ? o.v.toString().trim() : "N/A"; };
+        // Regroupe dans la légende "Type de canon" les modèles dont le nom commence par COMP, PP, VFD
+        // ou SDM (familles de produits) sous une seule entrée — la vue Liste, elle, garde le nom exact.
+        window.getTypeGroupKey = function(rawType) {
+            let t = (rawType || '').toString().trim().toLowerCase();
+            if (t.startsWith('comp')) return 'comp';
+            if (t.startsWith('pp')) return 'pp';
+            if (t.startsWith('vfd')) return 'vfd';
+            if (t.startsWith('sdm')) return 'sdm';
+            return t;
+        };
+        window.getTypeGroupLabel = function(rawType) {
+            let key = window.getTypeGroupKey(rawType);
+            if (['comp', 'pp', 'vfd', 'sdm'].includes(key)) return key.toUpperCase();
+            return (rawType || '').toString().trim();
+        };
         window.todayIso = function() { let d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
         window.isoToFr = function(iso) { if(!iso) return ""; let m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(!m) return iso; return m[3] + '/' + m[2] + '/' + m[1]; };
         window.frToIso = function(fr) { if(!fr) return ""; let m = fr.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/); if(!m) return ""; return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0'); };
@@ -759,6 +788,48 @@
         };
 
         /* ========================================================================= */
+        /* CHAPITRE 2.C : FENÊTRES FLOTTANTES — GESTIONNAIRE GÉNÉRIQUE DRAG/RESIZE    */
+        /* ------------------------------------------------------------------------- */
+        /* S'applique à toute fenêtre marquée .draggable-window (en-tête .draggable-handle,
+           coin .resize-handle) : Documents, Centre Expert BI, Comparer Saisons, Historique
+           Météo, Calendrier. Les clics sur un bouton/champ de l'en-tête (fermer, navigation
+           mois...) ne déclenchent pas de glisser-déposer. */
+        /* ========================================================================= */
+        window.floatDragState = { el: null, offsetX: 0, offsetY: 0, parentRect: null };
+        document.addEventListener('mousedown', function(e) {
+            let handle = e.target.closest ? e.target.closest('.draggable-handle') : null; if (!handle) return;
+            if (e.target.closest('button, input, select, textarea, a')) return;
+            let box = handle.closest('.draggable-window'); if (!box) return;
+            let rect = box.getBoundingClientRect();
+            let isFixed = window.getComputedStyle(box).position === 'fixed';
+            let parentRect = isFixed ? { left: 0, top: 0 } : (box.offsetParent ? box.offsetParent.getBoundingClientRect() : { left: 0, top: 0 });
+            window.floatDragState = { el: box, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top, parentRect: parentRect };
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', function(e) {
+            let st = window.floatDragState; if (!st || !st.el) return;
+            let x = e.clientX - st.parentRect.left - st.offsetX; let y = e.clientY - st.parentRect.top - st.offsetY;
+            st.el.style.left = x + 'px'; st.el.style.top = y + 'px'; st.el.style.right = 'auto'; st.el.style.bottom = 'auto'; st.el.style.transform = 'none';
+        });
+        document.addEventListener('mouseup', function() { if (window.floatDragState) window.floatDragState.el = null; });
+
+        window.floatResizeState = { el: null, startW: 0, startH: 0, startX: 0, startY: 0 };
+        document.addEventListener('mousedown', function(e) {
+            let handle = e.target.closest ? e.target.closest('.resize-handle') : null; if (!handle) return;
+            let box = handle.closest('.draggable-window'); if (!box) return;
+            let rect = box.getBoundingClientRect();
+            window.floatResizeState = { el: box, startW: rect.width, startH: rect.height, startX: e.clientX, startY: e.clientY };
+            e.preventDefault(); e.stopPropagation();
+        });
+        document.addEventListener('mousemove', function(e) {
+            let st = window.floatResizeState; if (!st || !st.el) return;
+            let newW = st.startW + (e.clientX - st.startX); let newH = st.startH + (e.clientY - st.startY);
+            if (newW > 300) st.el.style.width = newW + 'px';
+            if (newH > 200) st.el.style.height = newH + 'px';
+        });
+        document.addEventListener('mouseup', function() { if (window.floatResizeState) window.floatResizeState.el = null; });
+
+        /* ========================================================================= */
         /* CHAPITRE 3 : CARTE, LÉGENDES ET GRAPHIQUES GLOBAUX                        */
         /* ========================================================================= */
         window.getColorByFilter = function(ratio, p) {
@@ -769,7 +840,7 @@
             if(window.mainTheme === 'historique') { if(window.histMetric === 'eau') return inter([173,216,230],[41,128,185],ratio); if(window.histMetric === 'air') return inter([250,219,94],[211,84,0],ratio); if(window.histMetric === 'temps') return inter([171,235,198],[39,174,96],ratio); }
             if(window.mainTheme === 'repeteur') return window.repColors[window.getV(p, window.keyRep)] || '#7f8c8d';
             if(window.mainTheme === 'transfo') return window.transfoColors[window.getV(p, window.keyTransfo)] || '#7f8c8d';
-            if(window.mainTheme === 'type') { let tv = window.getV(p, window.keyType).toLowerCase(); if(["demak lenko", "demac lenko"].includes(tv)) return "#0000FF"; if(["sufag", "street", "taurus", "taurax", "peak"].includes(tv)) return "#008000"; return window.technoColors[tv] || "#FFD700"; }
+            if(window.mainTheme === 'type') { let tv = window.getV(p, window.keyType).toLowerCase(); if(["demak lenko", "demac lenko"].includes(tv)) return "#0000FF"; if(["sufag", "street", "taurus", "taurax", "peak"].includes(tv)) return "#008000"; return window.technoColors[window.getTypeGroupKey(tv)] || "#FFD700"; }
             return '#34495e';
         };
 
@@ -791,7 +862,7 @@
                 if(!layer.feature.properties._isVisible) return;
                 let p = layer.feature.properties; let match = false;
                 if (theme === 'defauts') { let act = window.getActiveTickets(p.id); if (val === 'urgent' && act.some(t => t.statut.includes('faire'))) match = true; else if (val === 'encours' && act.some(t => t.statut.includes('cours'))) match = true; else if (val === 'ras' && act.length === 0) match = true; }
-                else if (theme === 'type') { let tLower = window.getV(p, window.keyType).toLowerCase(); if (tLower === val) match = true; }
+                else if (theme === 'type') { let tLower = window.getV(p, window.keyType).toLowerCase(); if (window.getTypeGroupKey(tLower) === val) match = true; }
                 else if (theme === 'repeteur') { if (window.getV(p, window.keyRep) === val) match = true; }
                 else if (theme === 'transfo') { if (window.getV(p, window.keyTransfo) === val) match = true; }
                 if (match) { layer.setOpacity(1); layer.setZIndexOffset(2000); if(layer._icon) { layer._icon.style.opacity = "1"; if(!layer._icon.style.transform.includes('scale(1.3)')) layer._icon.style.transform += ' scale(1.3)'; } } else { layer.setOpacity(0.2); layer.setZIndexOffset(0); if(layer._icon) { layer._icon.style.opacity = "0.2"; layer._icon.style.transform = layer._icon.style.transform.replace(' scale(1.3)', ''); } }
@@ -1292,8 +1363,8 @@
                 setTimeout(() => { let cPiste = document.getElementById('gfc-piste'); if(cPiste){ if(window.chartInstances['gfc-piste']) window.chartInstances['gfc-piste'].destroy(); window.chartInstances['gfc-piste'] = new Chart(cPiste.getContext('2d'), { type: 'bar', data: { labels: pLabels, datasets: [{ data: pData, backgroundColor: '#e74c3c', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: {font:{size:9}} } } } }); } }, 100);
             } else if (window.mainTheme === 'type' || window.mainTheme === 'repeteur' || window.mainTheme === 'transfo') {
                 let key = window.mainTheme === 'type' ? window.keyType : (window.mainTheme === 'repeteur' ? window.keyRep : window.keyTransfo); let title = window.mainTheme === 'type' ? 'Types de canon' : (window.mainTheme === 'repeteur' ? 'Répéteurs' : 'Transformateurs'); let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Analyse : " + title;
-                let counts = {}; visibleCannons.forEach(f => { let v = window.getV(f.properties, key); counts[v] = (counts[v] || 0) + 1; }); chartLabels = Object.keys(counts).sort(); chartData = chartLabels.map(k => counts[k]);
-                if (window.mainTheme === 'type') { chartColors = chartLabels.map(k => { let kL = k.toLowerCase(); if(["demak lenko", "demac lenko"].includes(kL)) return '#0000FF'; if(["sufag", "street", "taurus", "taurax", "peak"].includes(kL)) return '#008000'; return window.technoColors[kL] || '#FFD700'; }); } else if (window.mainTheme === 'repeteur') { chartColors = chartLabels.map(k => window.repColors[k] || '#3498db'); } else { chartColors = chartLabels.map(k => window.transfoColors[k] || '#3498db'); }
+                let counts = {}; visibleCannons.forEach(f => { let v = window.getV(f.properties, key); let label = (window.mainTheme === 'type') ? window.getTypeGroupLabel(v) : v; counts[label] = (counts[label] || 0) + 1; }); chartLabels = Object.keys(counts).sort(); chartData = chartLabels.map(k => counts[k]);
+                if (window.mainTheme === 'type') { chartColors = chartLabels.map(k => { let kL = k.toLowerCase(); if(["demak lenko", "demac lenko"].includes(kL)) return '#0000FF'; if(["sufag", "street", "taurus", "taurax", "peak"].includes(kL)) return '#008000'; return window.technoColors[window.getTypeGroupKey(kL)] || '#FFD700'; }); } else if (window.mainTheme === 'repeteur') { chartColors = chartLabels.map(k => window.repColors[k] || '#3498db'); } else { chartColors = chartLabels.map(k => window.transfoColors[k] || '#3498db'); }
                 html += `<div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Répartition par ${title}</div><div style="position:relative;height:200px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
             } else if (window.mainTheme === 'historique') {
                 let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Analyse : Historique"; let s = window.saisonsList[window.histSeasonIdx]; let metricName = window.histMetric === 'eau' ? 'Eau (m³)' : (window.histMetric === 'air' ? 'Air' : 'Temps (h)'); let isSinglePiste = (window.currentPistes.length === 1 && window.currentPistes[0] !== 'all');
@@ -1421,15 +1492,65 @@
             else if (window.mainTheme === 'transfo') window.renderAttributeListView(ws, window.keyTransfo, 'Transformateur', '#f1c40f', '⚡');
         };
 
-        // CHAPITRE 4.E.2 — Rendu générique pour les listes "attribut simple" (Type de canon, Répéteur,
-        // Transformateur) : tableau filtrable par valeur, ligne dépliable en fiche complète (lecture
-        // seule — l'édition se fait via "📍 Carte" puis "Éditer ce canon", comme pour le thème Type).
-        window.buildFicheReadOnlyHtml = function(p) {
+        // CHAPITRE 4.E.2 — Fiche canon complète et autonome : reproduit exactement le contenu du
+        // panneau de droite (badges, caractéristiques, historique d'interventions, mini-graphiques de
+        // production, bouton d'édition) en le recalculant depuis p plutôt qu'en dépendant de l'état
+        // interne de renderSelectionPanel — utilisée par les dépliants de la vue Liste.
+        window.buildTicketHistoryHtml = function(canonId) {
+            let history = window.getHistoryTickets(canonId); if (history.length === 0) return "";
+            let histHtml = `<details class="ticket-history" style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;"><i class="fa-solid fa-folder-open"></i> Historique d'interventions (${history.length})</summary><ul style="padding-left:15px; margin-top:10px;">`;
+            history.forEach(t => {
+                let dateStr = isNaN(new Date(t.date).getTime()) ? (t.date || "Inconnue") : new Date(t.date).toLocaleDateString('fr-FR');
+                let ticketDetails = t.fullData.filter(d => d.v && d.v.toString().trim() !== "").map(d => `<div style="margin-bottom:4px;"><span style="color:#7f8c8d;">${d.k}:</span> <b style="color:#2c3e50;">${d.v}</b></div>`).join('');
+                histHtml += `<li style="margin-bottom:8px; list-style:none;"><details style="background:#fff; border:1px solid #e1e8ed; border-radius:4px; padding:8px; cursor:pointer;"><summary style="font-size:11.5px; font-weight:bold; outline:none; display:flex; justify-content:space-between; align-items:center;"><span>${dateStr} - <span style="color:#e74c3c;">${t.defaut}</span></span><span style="color:#bdc3c7; font-size:10px;">▼ Détails</span></summary><div style="margin-top:8px; padding-top:8px; border-top:1px dashed #eee; font-size:11px; cursor:default;">${ticketDetails}</div></details></li>`;
+            });
+            histHtml += `</ul></details>`;
+            return histHtml;
+        };
+
+        window.buildCanonFicheHtml = function(p) {
+            let active = window.getActiveTickets(p.id);
+            let histHtml = window.buildTicketHistoryHtml(p.id); let prodHtml = ""; let editBtn = "";
+
+            if (window.saisonsList && window.saisonsList.length > 0) {
+                let dashLayoutCls = (window.appSettings && window.appSettings.dashLayout) ? `dash-layout-${window.appSettings.dashLayout}` : 'dash-layout-row';
+                prodHtml = `<div style="margin-top:15px; font-size:12px; font-weight:bold; color:#2c3e50; border-bottom:2px solid #eee; padding-bottom:5px;">📊 Évolution de la production</div><div class="${dashLayoutCls}" style="margin-top:10px;"><div style="background:#fff; border:1px solid #eee; border-radius:4px; padding:5px; display:flex; flex-direction:column;"><div style="font-size:10px; font-weight:bold; color:#3498db; text-align:center; margin-bottom:5px;"><i class="fa-solid fa-droplet"></i> Eau (m³)</div><div style="position:relative; height:100px; width:100%;"><canvas id="he-${p.id}"></canvas></div></div><div style="background:#fff; border:1px solid #eee; border-radius:4px; padding:5px; display:flex; flex-direction:column;"><div style="font-size:10px; font-weight:bold; color:#e67e22; text-align:center; margin-bottom:5px;"><i class="fa-solid fa-wind"></i> Air</div><div style="position:relative; height:100px; width:100%;"><canvas id="ha-${p.id}"></canvas></div></div><div style="background:#fff; border:1px solid #eee; border-radius:4px; padding:5px; display:flex; flex-direction:column;"><div style="font-size:10px; font-weight:bold; color:#27ae60; text-align:center; margin-bottom:5px;"><i class="fa-solid fa-clock"></i> Heures</div><div style="position:relative; height:100px; width:100%;"><canvas id="ht-${p.id}"></canvas></div></div></div>`;
+            }
+
             let badges = `<span class="badge"><b>Modèle:</b> ${window.getV(p, window.keyType)}</span> <span class="badge"><b>Rép:</b> ${window.getV(p, window.keyRep)}</span> <span class="badge"><b>Trans:</b> ${window.getV(p, window.keyTransfo)}</span>`;
-            let fullDataHTML = `<div style="margin-top:10px; display:grid; grid-template-columns: 1fr; gap:8px;">`;
-            p.fullData.forEach(item => { if (!item.k.toLowerCase().includes('xy') && !item.k.toLowerCase().includes('gps') && !(window.appSettings.hiddenColumns || []).includes(item.k)) { fullDataHTML += `<div style="border-bottom:1px solid #f0f0f0; padding-bottom:4px; font-size:12px;"><span style="color:#7f8c8d;">${item.k} :</span> <b style="color:#2c3e50; float:right;">${item.v}</b></div>`; } });
-            fullDataHTML += `</div>`;
-            return `<div style="margin-bottom:8px;">${badges}</div>${fullDataHTML}`;
+            let fullDataHTML = `<details style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;">➕ Caractéristiques Complètes</summary><div style="margin-top:12px; display:grid; grid-template-columns: 1fr; gap:8px;">`;
+            p.fullData.forEach(item => { if (!item.k.toLowerCase().includes('xy') && !item.k.toLowerCase().includes('gps') && !(window.appSettings.hiddenColumns || []).includes(item.k)) { fullDataHTML += `<div style="border-bottom:1px solid #f0f0f0; padding-bottom:4px;"><span style="color:#7f8c8d;">${item.k} :</span> <b style="color:#2c3e50; float:right;">${item.v}</b></div>`; } });
+            fullDataHTML += `</div></details>`;
+
+            let mainContent = `<div style="margin-bottom:10px;">${badges}</div>${fullDataHTML}`;
+            if (active.length > 0) mainContent += `<div style="margin-top:15px; padding:10px; background:#fdf0ed; border-radius:6px; font-size:12px; color:#e74c3c; font-weight:bold; border:1px solid #fadbd8;">⚠️ Ce canon a ${active.length} défaut(s) en cours.</div>`;
+            mainContent += histHtml + prodHtml;
+
+            if (window.mainTheme === 'type') { editBtn = `<button class="btn-action-primary" onclick="document.getElementById('right-sidebar').classList.add('open'); window.startEdit('${p.id}')"><i class="fa-solid fa-pen"></i> Éditer ce canon</button>`; }
+
+            if (window.mainTheme === 'historique') {
+                let s = window.saisonsList[window.histSeasonIdx]; let hd = p.historique[s] || { eau: 0, air: 0, temps: 0 };
+                mainContent = `<div class="hist-card"><div style="font-size:14px; color:#555; margin-bottom:10px; text-transform:uppercase;">Saison <b>${s}</b></div><div style="display:flex; justify-content: space-around;"><div><div style="font-size:24px; font-weight:bold; color:#2980b9;">${hd.eau}</div><div style="font-size:11px; color:#7f8c8d; text-transform:uppercase;">m³ Eau</div></div><div><div style="font-size:24px; font-weight:bold; color:#e67e22;">${hd.air}</div><div style="font-size:11px; color:#7f8c8d; text-transform:uppercase;">Air</div></div><div><div style="font-size:24px; font-weight:bold; color:#27ae60;">${hd.temps}</div><div style="font-size:11px; color:#7f8c8d; text-transform:uppercase;">Heures</div></div></div></div>
+                <div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; color:#34495e; text-align:center; margin-bottom:10px;">Comparatif sur la piste (${window.getV(p, window.keyPiste)})</div><div style="position:relative; height:160px; width:100%;"><canvas id="chart-${p.id}"></canvas></div></div>
+                <div class="piste-chart-container" style="background:#fafbfc;"><div style="font-size:11px; font-weight:bold; color:#555; text-align:center; margin-bottom:10px;">➕ Comparer avec une autre saison : <select onchange="window.drawSecondPisteChart('${p.id}', this.value)" style="padding:4px; border-radius:4px; border:1px solid #ccc; outline:none;"><option value="">-- Choisir --</option>${window.saisonsList.filter(x => x !== s).map(x => `<option value="${x}">${x}</option>`).join('')}</select></div><div style="position:relative; height:160px; width:100%;"><canvas id="chart2-${p.id}"></canvas></div></div>
+                ${histHtml}${prodHtml}`;
+            }
+
+            return `${mainContent}${editBtn}`;
+        };
+
+        window.drawCanonFicheCharts = function(p) {
+            setTimeout(() => {
+                if ((window.mainTheme === 'type' || window.mainTheme === 'historique' || window.mainTheme === 'repeteur' || window.mainTheme === 'transfo' || window.mainTheme === 'suivi_entretien') && window.saisonsList.length > 0) {
+                    let labels = window.saisonsList.map(s => s.substring(0, 5)); let dEau = window.saisonsList.map(s => p.historique[s] ? p.historique[s].eau : 0); let dAir = window.saisonsList.map(s => p.historique[s] ? p.historique[s].air : 0); let dTemps = window.saisonsList.map(s => p.historique[s] ? p.historique[s].temps : 0);
+                    const drawMiniChart = (id, data, color) => { let canvas = document.getElementById(id); if (!canvas) return; if (window.chartInstances[id]) window.chartInstances[id].destroy(); window.chartInstances[id] = new Chart(canvas.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [{ data: data, backgroundColor: color, borderRadius: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { titleFont: { size: 10 }, bodyFont: { size: 10 } } }, scales: { x: { ticks: { font: { size: 8 }, maxRotation: 45, minRotation: 45 }, grid: { display: false } }, y: { ticks: { font: { size: 8 }, maxTicksLimit: 4 } } } } }); };
+                    drawMiniChart(`he-${p.id}`, dEau, '#3498db'); drawMiniChart(`ha-${p.id}`, dAir, '#e67e22'); drawMiniChart(`ht-${p.id}`, dTemps, '#27ae60');
+                }
+                if (window.mainTheme === 'historique' && window.saisonsList.length > 0) {
+                    let s = window.saisonsList[window.histSeasonIdx];
+                    window.renderPisteComparChart(`chart-${p.id}`, window.getV(p, window.keyPiste), s, window.histMetric, p.id);
+                }
+            }, 100);
         };
 
         window.renderAttributeListView = function(ws, key, label, accentColor, icon) {
@@ -1451,7 +1572,7 @@
             else {
                 html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">${label}</th><th></th></tr></thead><tbody>`;
                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
-                    html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleAttributeRow('${r.id}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${accentColor}20; color:${accentColor}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.value}</span></td><td style="padding:10px; text-align:right;"><button onclick="event.stopPropagation(); window.closeAllListExpandRows(); window.focusCannon('${r.id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">📍 Carte</button></td></tr>`;
+                    html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleAttributeRow('${r.id}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${accentColor}20; color:${accentColor}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.value}</span></td><td style="padding:10px; text-align:right;"><span class="list-row-arrow" id="arrow-attr-${r.id}">▼</span></td></tr>`;
                     html += `<tr class="list-expand-row" id="attr-expand-row-${r.id}" style="display:none;"><td colspan="4" style="padding:0; background:#fafbfc; border-top:1px solid #eee;"><div id="attr-edit-${r.id}" style="padding:12px;"></div></td></tr>`;
                 });
                 html += `</tbody></table></div>`;
@@ -1465,9 +1586,29 @@
             window.closeAllListExpandRows();
             if (!isHidden) return;
             row.style.display = 'table-row';
+            let arrow = document.getElementById(`arrow-attr-${id}`); if (arrow) arrow.innerHTML = '▲';
             let container = document.getElementById(`attr-edit-${id}`); if (!container) return;
             let feature = window.snowCannons.features.find(f => f.properties.id == id); if (!feature) return;
-            container.innerHTML = window.buildFicheReadOnlyHtml(feature.properties);
+            container.innerHTML = window.buildCanonFicheHtml(feature.properties);
+            window.drawCanonFicheCharts(feature.properties);
+        };
+
+        // CHAPITRE 4.E.3 — Bloc d'impression supplémentaire pour le thème "Type de canon" : une vraie
+        // liste tabulaire de tous les canons visibles, imprimée en plus de la carte/légende (le
+        // <table> qu'il contient bénéficie de la découpe ligne par ligne de flowBlockIntoPages).
+        window.buildTypeCanonListNode = function() {
+            let rows = [];
+            window.snowCannons.features.forEach(f => {
+                if (!window.isCanonVisibleByFilters(f.properties)) return;
+                let p = f.properties;
+                rows.push({ id: p.id, piste: window.getV(p, window.keyPiste), type: window.getV(p, window.keyType) || 'N/A' });
+            });
+            rows.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+            let wrap = document.createElement('div');
+            wrap.style.cssText = 'background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden; margin-bottom:15px;';
+            let rowsHtml = rows.map(r => `<tr><td style="padding:8px 10px; font-weight:bold;">${r.id}</td><td style="padding:8px 10px;">${r.piste}</td><td style="padding:8px 10px;">${r.type}</td></tr>`).join('');
+            wrap.innerHTML = `<div style="padding:10px 10px 0 10px; font-weight:bold; font-size:12px; color:#2c3e50;">📋 Liste des canons — Type</div><table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:8px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:8px 10px;">Canon</th><th style="padding:8px 10px;">Piste</th><th style="padding:8px 10px;">Type</th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+            return wrap;
         };
 
         window.renderTicketsListView = function(ws) {
@@ -1497,7 +1638,7 @@
                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
                     let color = r.statut.includes('faire') ? (s.colUrgent || '#e74c3c') : (s.colEnCours || '#f39c12');
                     let safeDef = r.defaut.replace(/[^a-zA-Z0-9]/g, ""); let safeDefJs = r.defaut.replace(/'/g, "\\'");
-                    html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleTicketRow('${r.id}', '${safeDefJs}', '${safeDef}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;">${r.defaut}</td><td style="padding:10px;"><span style="background:${color}20; color:${color}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.statut.toUpperCase()}</span></td><td style="padding:10px; color:#888;">${r.date}</td><td style="padding:10px; text-align:right;"><button onclick="event.stopPropagation(); window.closeAllListExpandRows(); window.focusCannon('${r.id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">📍 Carte</button></td></tr>`;
+                    html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleTicketRow('${r.id}', '${safeDefJs}', '${safeDef}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;">${r.defaut}</td><td style="padding:10px;"><span style="background:${color}20; color:${color}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.statut.toUpperCase()}</span></td><td style="padding:10px; color:#888;">${r.date}</td><td style="padding:10px; text-align:right;"><span class="list-row-arrow" id="arrow-ticket-${r.id}-${safeDef}">▼</span></td></tr>`;
                     html += `<tr class="list-expand-row" id="ticket-expand-row-${r.id}-${safeDef}" style="display:none;"><td colspan="6" style="padding:0; background:#fafbfc; border-top:1px solid #eee;"><div id="ticket-edit-${r.id}-${safeDef}" style="padding:12px;"></div></td></tr>`;
                 });
                 html += `</tbody></table></div>`;
@@ -1508,13 +1649,13 @@
         // CHAPITRE 4.E.1 — Actions inline (dépliant par ligne) : réutilise directement les fonctions
         // d'édition existantes (editFullTicket, saveEntretienTete) en leur fournissant un conteneur au
         // bon id dans la ligne dépliée, sans dupliquer leur logique ni ouvrir le panneau latéral.
-        window.closeAllListExpandRows = function() { document.querySelectorAll('.list-expand-row').forEach(r => r.style.display = 'none'); };
+        window.closeAllListExpandRows = function() { document.querySelectorAll('.list-expand-row').forEach(r => r.style.display = 'none'); document.querySelectorAll('.list-row-arrow').forEach(a => a.innerHTML = '▼'); };
 
         window.toggleTicketRow = function(canonId, defaut, safeDef) {
             let row = document.getElementById(`ticket-expand-row-${canonId}-${safeDef}`); if (!row) return;
             let isHidden = row.style.display === 'none' || row.style.display === '';
             window.closeAllListExpandRows();
-            if (isHidden) { row.style.display = 'table-row'; window.editFullTicket(canonId, defaut); }
+            if (isHidden) { row.style.display = 'table-row'; let arrow = document.getElementById(`arrow-ticket-${canonId}-${safeDef}`); if (arrow) arrow.innerHTML = '▲'; window.editFullTicket(canonId, defaut); }
         };
 
         window.toggleNewTicketRow = function() {
@@ -1556,7 +1697,7 @@
                 html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Remarque</th><th></th></tr></thead><tbody>`;
                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
                     let safePiste = (r.piste || '').replace(/'/g, "\\'"); let safeRem = (r.remarque || '').replace(/'/g, "\\'").replace(/\n/g, ' ');
-                    html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleSuiviRow('${r.id}', '${safePiste}', '${r.cat}', '${safeRem}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${colors[r.cat]}20; color:${colors[r.cat]}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${labels[r.cat]}</span></td><td style="padding:10px; color:#888;">${r.remarque}</td><td style="padding:10px; text-align:right;"><button onclick="event.stopPropagation(); window.closeAllListExpandRows(); window.focusCannon('${r.id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">📍 Carte</button></td></tr>`;
+                    html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleSuiviRow('${r.id}', '${safePiste}', '${r.cat}', '${safeRem}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${colors[r.cat]}20; color:${colors[r.cat]}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${labels[r.cat]}</span></td><td style="padding:10px; color:#888;">${r.remarque}</td><td style="padding:10px; text-align:right;"><span class="list-row-arrow" id="arrow-suivi-${r.id}">▼</span></td></tr>`;
                     html += `<tr class="list-expand-row" id="suivi-expand-row-${r.id}" style="display:none;"><td colspan="5" style="padding:0; background:#fafbfc; border-top:1px solid #eee;"><div id="suivi-edit-${r.id}" style="padding:12px;"></div></td></tr>`;
                 });
                 html += `</tbody></table></div>`;
@@ -1570,15 +1711,27 @@
             window.closeAllListExpandRows();
             if (!isHidden) return;
             row.style.display = 'table-row';
+            let arrow = document.getElementById(`arrow-suivi-${id}`); if (arrow) arrow.innerHTML = '▲';
             let container = document.getElementById(`suivi-edit-${id}`); if (!container) return;
+            let feature = window.snowCannons.features.find(f => f.properties.id == id); let p = feature ? feature.properties : null;
             let isDec = cat === 'deconnecte'; let isPrev = cat === 'preventif';
+            let bY = p ? (window.getV(p, "année de buse") || window.getV(p, "annee buse") || "Inconnue") : "Inconnue";
+            let vAdY = p ? (window.getV(p, "année vanne ad") || window.getV(p, "annee vanne ad") || "Inconnue") : "Inconnue";
+            let vY = p ? (window.getV(p, "année vanne") || window.getV(p, "annee vanne") || "Inconnue") : "Inconnue";
             container.innerHTML = `
-                <div style="display:flex; gap:15px; margin-bottom:8px; font-size:12px;">
-                    <label style="cursor:pointer;"><input type="checkbox" id="chk-dec-list-${id}" ${isDec ? 'checked' : ''}> Déconnexion</label>
-                    <label style="cursor:pointer;"><input type="checkbox" id="chk-prev-list-${id}" ${isPrev ? 'checked' : ''}> Préventif Usine</label>
+                <div style="background:#eafaf1; padding:10px; border-radius:6px; border:1px solid #2ecc71; margin-bottom:10px; font-size:12px;">
+                    <h4 style="margin:0 0 8px 0; color:#27ae60;"><i class="fa-solid fa-wrench"></i> Suivi Entretien</h4>
+                    <div style="display:flex; gap:15px; margin-bottom:8px;">
+                        <label style="cursor:pointer;"><input type="checkbox" id="chk-dec-list-${id}" ${isDec ? 'checked' : ''}> Déconnexion</label>
+                        <label style="cursor:pointer;"><input type="checkbox" id="chk-prev-list-${id}" ${isPrev ? 'checked' : ''}> Préventif Usine</label>
+                    </div>
+                    <input type="text" id="rem-list-${id}" class="edit-input" value="${(remarque || '').replace(/"/g, '&quot;')}" placeholder="Remarque..." style="margin-bottom:0;">
                 </div>
-                <input type="text" id="rem-list-${id}" class="edit-input" value="${(remarque || '').replace(/"/g, '&quot;')}" placeholder="Remarque..." style="margin-bottom:8px;">
-                <button class="btn-action-primary" style="margin:0; background:#27ae60;" onclick="window.saveSuiviSingleFromList('${id}', '${piste.replace(/'/g, "\\'")}', this)"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
+                <div style="background:#fdfdfe; padding:10px; border-radius:6px; border:1px solid #ccc; font-size:12px; margin-bottom:10px;">
+                    <h4 style="margin:0 0 8px 0; color:#2c3e50;">📊 Données Techniques</h4><b>Modèle :</b> ${p ? window.getV(p, window.keyType) : 'N/A'}<br><b>Année Buse :</b> ${bY}<br><b>Année Vanne AD :</b> ${vAdY}<br><b>Année Vanne :</b> ${vY}
+                </div>
+                ${window.buildTicketHistoryHtml(id)}
+                <button class="btn-action-primary" style="margin-top:10px; background:#27ae60;" onclick="window.saveSuiviSingleFromList('${id}', '${piste.replace(/'/g, "\\'")}', this)"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
             `;
         };
 
@@ -1619,7 +1772,7 @@
                 html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Année</th><th></th></tr></thead><tbody>`;
                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
                     let color = r.fait ? (s.colTeteOk || '#e67e22') : (s.colTeteWait || '#bdc3c7');
-                    html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleEntretienRow('${r.id}', ${r.fait})"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${color}20; color:${color}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.fait ? '✅ FAIT' : '⏳ À FAIRE'}</span></td><td style="padding:10px; color:#888;">${r.annee}</td><td style="padding:10px; text-align:right;"><button onclick="event.stopPropagation(); window.closeAllListExpandRows(); window.focusCannon('${r.id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">📍 Carte</button></td></tr>`;
+                    html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleEntretienRow('${r.id}', ${r.fait})"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${color}20; color:${color}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.fait ? '✅ FAIT' : '⏳ À FAIRE'}</span></td><td style="padding:10px; color:#888;">${r.annee}</td><td style="padding:10px; text-align:right;"><span class="list-row-arrow" id="arrow-entretien-${r.id}">▼</span></td></tr>`;
                     html += `<tr class="list-expand-row" id="entretien-expand-row-${r.id}" style="display:none;"><td colspan="5" style="padding:0; background:#fafbfc; border-top:1px solid #eee;"><div id="entretien-edit-${r.id}" style="padding:12px;"></div></td></tr>`;
                 });
                 html += `</tbody></table></div>`;
@@ -1633,10 +1786,17 @@
             window.closeAllListExpandRows();
             if (!isHidden) return;
             row.style.display = 'table-row';
+            let arrow = document.getElementById(`arrow-entretien-${id}`); if (arrow) arrow.innerHTML = '▲';
             let container = document.getElementById(`entretien-edit-${id}`); if (!container) return;
+            let feature = window.snowCannons.features.find(f => f.properties.id == id); let p = feature ? feature.properties : null;
+            let anneeVal = p ? (window.getV(p, "années buses") || window.getV(p, "Année") || "N/A") : "N/A"; let currentYear = new Date().getFullYear();
             container.innerHTML = `
                 <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; margin-bottom:8px;"><input type="checkbox" id="chk-buses-${id}" ${fait ? 'checked' : ''}> Buses changées</label>
-                <button class="btn-action-primary" style="margin:0; background:#e67e22;" onclick="window.saveEntretienTete('${id}', this)"><i class="fa-solid fa-floppy-disk"></i> Valider</button>
+                <div style="background:#fdfdfe; padding:10px; border-radius:4px; border:1px solid #e1e8ed; font-size:12px; margin-bottom:10px;">
+                    <b style="color:#2c3e50;">Piste :</b> ${p ? window.getV(p, window.keyPiste) : 'N/A'}<br><b style="color:#2c3e50;">Modèle :</b> ${p ? window.getV(p, window.keyType) : 'N/A'}<br><b style="color:#2c3e50;">Année validée :</b> ${fait && anneeVal !== "N/A" ? anneeVal : currentYear}
+                </div>
+                ${p ? window.buildPanneFormHtml(p) : ''}
+                <button class="btn-action-primary" style="margin-top:10px; background:#e67e22;" onclick="window.saveEntretienTete('${id}', this)"><i class="fa-solid fa-floppy-disk"></i> Valider</button>
             `;
         };
 
@@ -1773,13 +1933,13 @@
         /* ========================================================================= */
         window.initAppUI = function() {
             let ts=new Set(), rs=new Set(), trs=new Set(), ps=new Set();
-            window.snowCannons.features.forEach(f=>{ let p=f.properties; let t=window.getV(p,window.keyType); if(t!=="N/A")ts.add(t.toLowerCase()); let r=window.getV(p,window.keyRep); if(r!=="N/A")rs.add(r); let tr=window.getV(p,window.keyTransfo); if(tr!=="N/A")trs.add(tr); let pi=window.getV(p,window.keyPiste); if(pi!=="N/A")ps.add(pi); });
+            window.snowCannons.features.forEach(f=>{ let p=f.properties; let t=window.getV(p,window.keyType); if(t!=="N/A")ts.add(window.getTypeGroupKey(t)); let r=window.getV(p,window.keyRep); if(r!=="N/A")rs.add(r); let tr=window.getV(p,window.keyTransfo); if(tr!=="N/A")trs.add(tr); let pi=window.getV(p,window.keyPiste); if(pi!=="N/A")ps.add(pi); });
 
             let tc=['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6']; Array.from(ts).sort().forEach((t,i)=>window.technoColors[t]=tc[i%tc.length]);
             let rc=['#1abc9c','#16a085','#f39c12','#d35400','#8e44ad']; Array.from(rs).sort().forEach((r,i)=>window.repColors[r]=rc[i%rc.length]);
             let neonColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#00FFFF', '#FF8C00', '#FF1493', '#39FF14']; Array.from(trs).sort().forEach((t,i)=>window.transfoColors[t]=neonColors[i%neonColors.length]);
 
-            window.snowCannons.features.forEach(f=>{ let t=window.getV(f.properties,window.keyType).toLowerCase(); f.properties.couleur_defaut=(["demak lenko","demac lenko"].includes(t))?"#0000FF":(["sufag","street","taurus","taurax","peak"].includes(t))?"#008000":window.technoColors[t]||"#FFD700"; });
+            window.snowCannons.features.forEach(f=>{ let t=window.getV(f.properties,window.keyType).toLowerCase(); f.properties.couleur_defaut=(["demak lenko","demac lenko"].includes(t))?"#0000FF":(["sufag","street","taurus","taurax","peak"].includes(t))?"#008000":window.technoColors[window.getTypeGroupKey(t)]||"#FFD700"; });
 
             let dlContainer = document.getElementById('datalists-container');
             if (dlContainer) { let dlHtml = ""; for(let header in window.columnValuesSets) { let safeId = "dl-" + header.replace(/[^a-zA-Z0-9]/g, '-'); dlHtml += `<datalist id="${safeId}">${Array.from(window.columnValuesSets[header]).sort().map(v=>`<option value="${v}">`).join('')}</datalist>`; } dlContainer.innerHTML = dlHtml; }
@@ -3197,6 +3357,7 @@
             let blocks = [];
             if (window.isPrintMapAvailable()) blocks.push({ id: 'blk-map', kind: 'map', label: '🗺️ Carte (vue actuelle)', checked: true });
             if (window.getCurrentLegendHtml()) blocks.push({ id: 'blk-legend', kind: 'legend', label: '🏷️ Légende', checked: true });
+            if (window.mainTheme === 'type') blocks.push({ id: 'blk-canonlist', kind: 'canonlist', label: '📋 Liste des canons (Type)', checked: true });
             let source = window.getPrintSourceContainer();
             if (source) {
                 Array.from(source.children).forEach((child, idx) => {
@@ -3240,7 +3401,7 @@
         // En mode "pleine page" (paysage), l'emprise est élargie pour coller au ratio réel de la page
         // (sans quoi l'image serait déformée ou laisserait des bandes vides), et la légende du thème
         // actif est incrustée en coin plutôt que d'être un bloc séparé.
-        window.buildMapSnapshotNode = function(fillPage, legendHtmlForOverlay) {
+        window.buildMapSnapshotNode = function(fillPage, legendHtmlForOverlay, targetRatio) {
             return new Promise(resolve => {
                 if (!window.map) { resolve(null); return; }
                 try {
@@ -3248,7 +3409,7 @@
                     let minLng = bounds.getWest(), maxLng = bounds.getEast(), minLat = bounds.getSouth(), maxLat = bounds.getNorth();
 
                     if (fillPage) {
-                        let dims = window.PAGE_SIZES_MM.A4.landscape; let targetRatio = dims[0] / dims[1];
+                        targetRatio = targetRatio || (window.PAGE_SIZES_MM.A4.landscape[0] / window.PAGE_SIZES_MM.A4.landscape[1]);
                         let lngSpan = maxLng - minLng, latSpan = maxLat - minLat;
                         let cLng = (minLng + maxLng) / 2, cLat = (minLat + maxLat) / 2;
                         if ((lngSpan / latSpan) < targetRatio) { lngSpan = latSpan * targetRatio; } else { latSpan = lngSpan / targetRatio; }
@@ -3371,6 +3532,10 @@
         window.buildPrintPageSheet = async function() {
             let wrap = document.getElementById('print-page-sheet-wrap'); if (!wrap) return;
             let requestToken = (window._printBuildToken = (window._printBuildToken || 0) + 1);
+            // CHAPITRE 8.D.5.bis — Le modal doit être visible (classe .open) AVANT toute mesure : un
+            // élément dans un ancêtre display:none a un scrollHeight/clientHeight de 0, ce qui faussait
+            // toute la pagination (pages tronquées/limitées) quand on l'ouvrait seulement à la fin.
+            document.getElementById('print-page-preview-modal').classList.add('open');
             wrap.innerHTML = '<div style="color:white; padding:30px; text-align:center;">⏳ Génération de l\'aperçu...</div>';
 
             let format = (document.querySelector('input[name="print-format"]:checked') || {}).value || 'A4';
@@ -3380,17 +3545,20 @@
 
             let mapBlock = (window.printBlocks || []).find(b => b.kind === 'map' && b.checked);
             let legendBlock = (window.printBlocks || []).find(b => b.kind === 'legend' && b.checked);
-            let forceFullMapPage = !!mapBlock && orientation === 'landscape';
+            // La carte occupe désormais toujours sa propre page pleine (portrait ou paysage), calée sur
+            // le ratio réel de la page choisie.
+            let forceFullMapPage = !!mapBlock;
 
             let otherBlockNodes = [];
             for (let b of (window.printBlocks || [])) {
                 if (!b.checked || b.kind === 'map') continue;
                 if (b.kind === 'legend') { if (forceFullMapPage) continue; let div = document.createElement('div'); div.innerHTML = window.getCurrentLegendHtml(); div.style.cssText = 'margin-bottom:15px; padding:10px; border:1px solid #eee; border-radius:6px;'; otherBlockNodes.push(div); continue; }
+                if (b.kind === 'canonlist') { let node = window.buildTypeCanonListNode(); if (node) otherBlockNodes.push(node); continue; }
                 let source = window.getPrintSourceContainer(); let srcChild = source && source.children[b.idx]; if (srcChild) otherBlockNodes.push(window.cloneNodeForPrint(srcChild));
             }
 
             let mapNode = null;
-            if (mapBlock) mapNode = await window.buildMapSnapshotNode(forceFullMapPage, forceFullMapPage && legendBlock ? window.getCurrentLegendHtml() : null);
+            if (mapBlock) mapNode = await window.buildMapSnapshotNode(forceFullMapPage, forceFullMapPage && legendBlock ? window.getCurrentLegendHtml() : null, ratio);
 
             if (requestToken !== window._printBuildToken) return;
             wrap.innerHTML = '';
@@ -3418,7 +3586,6 @@
 
             pages.forEach((p, i) => p.setAttribute('data-page-label', `Page ${i + 1}/${pages.length}`));
             let info = document.getElementById('print-page-count-info'); if (info) info.innerText = pages.length + ' page(s) au format ' + format + ' ' + (orientation === 'portrait' ? 'Portrait' : 'Paysage');
-            document.getElementById('print-page-preview-modal').classList.add('open');
         };
 
         // CHAPITRE 8.D.4 — Applique le format/orientation choisis via une règle @page injectée (le
