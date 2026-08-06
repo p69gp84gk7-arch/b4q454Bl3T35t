@@ -276,6 +276,9 @@
                     <div><div class="edit-label">Tickets & Pannes</div><select id="set-view-defauts" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('defauts', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
                     <div><div class="edit-label">Suivi Entretien</div><select id="set-view-suivi" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('suivi_entretien', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
                     <div><div class="edit-label">Entretien Tête Canon</div><select id="set-view-entretien" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('entretien_tete', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
+                    <div><div class="edit-label">Type de canon</div><select id="set-view-type" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('type', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
+                    <div><div class="edit-label">Répéteurs</div><select id="set-view-repeteur" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('repeteur', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
+                    <div><div class="edit-label">Transformateurs</div><select id="set-view-transfo" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('transfo', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
                 </div>
             </details>
             <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
@@ -509,7 +512,7 @@
             colSuiviDec: '#27ae60', colSuiviPrev: '#9b59b6', colSuiviOk: '#f1c40f', btnStyle: 'normal', btnDisplay: 'full', dashLayout: 'row',
             showHillshade: false, hillshadeOpacity: 70, showLabels: false, labelsOpacity: 80,
             btnColors: {}, hiddenColumns: [], repColorsOverride: {}, transfoColorsOverride: {},
-            viewMode: { defauts: 'map', suivi_entretien: 'map', entretien_tete: 'map' }
+            viewMode: { defauts: 'map', suivi_entretien: 'map', entretien_tete: 'map', type: 'map', repeteur: 'map', transfo: 'map' }
         };
         window.listViewFilters = { defaut: '', statutTicket: '', statutEntretien: '', statutTete: '' };
         window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d', calendar: '#e67e22' };
@@ -536,8 +539,9 @@
             safeSet('set-btn-style', window.appSettings.btnStyle); safeSet('set-btn-display', window.appSettings.btnDisplay); safeSet('set-dash-layout', window.appSettings.dashLayout);
             safeSet('set-show-hillshade', window.appSettings.showHillshade, "checked"); safeSet('set-hillshade-opacity', window.appSettings.hillshadeOpacity);
             safeSet('set-show-labels', window.appSettings.showLabels, "checked"); safeSet('set-labels-opacity', window.appSettings.labelsOpacity);
-            if (!window.appSettings.viewMode) window.appSettings.viewMode = { defauts: 'map', suivi_entretien: 'map', entretien_tete: 'map' };
+            if (!window.appSettings.viewMode) window.appSettings.viewMode = { defauts: 'map', suivi_entretien: 'map', entretien_tete: 'map', type: 'map', repeteur: 'map', transfo: 'map' };
             safeSet('set-view-defauts', window.appSettings.viewMode.defauts); safeSet('set-view-suivi', window.appSettings.viewMode.suivi_entretien); safeSet('set-view-entretien', window.appSettings.viewMode.entretien_tete);
+            safeSet('set-view-type', window.appSettings.viewMode.type); safeSet('set-view-repeteur', window.appSettings.viewMode.repeteur); safeSet('set-view-transfo', window.appSettings.viewMode.transfo);
             // Réapplique les couleurs personnalisées de répéteurs/transfos sur les palettes auto-générées par initAppUI.
             Object.keys(window.appSettings.repColorsOverride || {}).forEach(k => { if(window.repColors) window.repColors[k] = window.appSettings.repColorsOverride[k]; });
             Object.keys(window.appSettings.transfoColorsOverride || {}).forEach(k => { if(window.transfoColors) window.transfoColors[k] = window.appSettings.transfoColorsOverride[k]; });
@@ -1397,7 +1401,7 @@
         window.applyThemeViewMode = function() {
             let listWs = document.getElementById('theme-list-workspace'); let mapEl = document.getElementById('map');
             if (!listWs || !mapEl) return;
-            let listableThemes = ['defauts', 'suivi_entretien', 'entretien_tete'];
+            let listableThemes = ['defauts', 'suivi_entretien', 'entretien_tete', 'type', 'repeteur', 'transfo'];
             let useList = listableThemes.includes(window.mainTheme) && window.appSettings.viewMode && window.appSettings.viewMode[window.mainTheme] === 'list';
             if (useList) { mapEl.style.display = 'none'; listWs.style.display = 'block'; window.renderThemeListView(); }
             else { listWs.style.display = 'none'; if (window.mainTheme !== 'atelier' && window.mainTheme !== 'stock') mapEl.style.display = 'block'; }
@@ -1412,6 +1416,58 @@
             if (window.mainTheme === 'defauts') window.renderTicketsListView(ws);
             else if (window.mainTheme === 'suivi_entretien') window.renderSuiviListView(ws);
             else if (window.mainTheme === 'entretien_tete') window.renderEntretienListView(ws);
+            else if (window.mainTheme === 'type') window.renderAttributeListView(ws, window.keyType, 'Type de canon', '#3498db', '❄️');
+            else if (window.mainTheme === 'repeteur') window.renderAttributeListView(ws, window.keyRep, 'Répéteur', '#3498db', '📡');
+            else if (window.mainTheme === 'transfo') window.renderAttributeListView(ws, window.keyTransfo, 'Transformateur', '#f1c40f', '⚡');
+        };
+
+        // CHAPITRE 4.E.2 — Rendu générique pour les listes "attribut simple" (Type de canon, Répéteur,
+        // Transformateur) : tableau filtrable par valeur, ligne dépliable en fiche complète (lecture
+        // seule — l'édition se fait via "📍 Carte" puis "Éditer ce canon", comme pour le thème Type).
+        window.buildFicheReadOnlyHtml = function(p) {
+            let badges = `<span class="badge"><b>Modèle:</b> ${window.getV(p, window.keyType)}</span> <span class="badge"><b>Rép:</b> ${window.getV(p, window.keyRep)}</span> <span class="badge"><b>Trans:</b> ${window.getV(p, window.keyTransfo)}</span>`;
+            let fullDataHTML = `<div style="margin-top:10px; display:grid; grid-template-columns: 1fr; gap:8px;">`;
+            p.fullData.forEach(item => { if (!item.k.toLowerCase().includes('xy') && !item.k.toLowerCase().includes('gps') && !(window.appSettings.hiddenColumns || []).includes(item.k)) { fullDataHTML += `<div style="border-bottom:1px solid #f0f0f0; padding-bottom:4px; font-size:12px;"><span style="color:#7f8c8d;">${item.k} :</span> <b style="color:#2c3e50; float:right;">${item.v}</b></div>`; } });
+            fullDataHTML += `</div>`;
+            return `<div style="margin-bottom:8px;">${badges}</div>${fullDataHTML}`;
+        };
+
+        window.renderAttributeListView = function(ws, key, label, accentColor, icon) {
+            let rows = [];
+            window.snowCannons.features.forEach(f => {
+                if (!window.isCanonVisibleByFilters(f.properties)) return;
+                let p = f.properties;
+                rows.push({ id: p.id, piste: window.getV(p, window.keyPiste), value: window.getV(p, key) || 'N/A' });
+            });
+            let valuesSet = new Set(rows.map(r => r.value));
+            let filterKey = 'attr_' + window.mainTheme;
+            let valFilter = window.listViewFilters[filterKey] || '';
+            let filtered = valFilter ? rows.filter(r => r.value === valFilter) : rows;
+
+            let html = `<div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:2px solid ${accentColor}; margin-bottom:15px;"><h2 style="margin:0; color:#2c3e50;">${icon} ${label} — Liste</h2><span style="font-size:12px; color:#7f8c8d;">${filtered.length} canon(s)</span></div>`;
+            html += `<div style="margin-bottom:15px;"><select class="edit-input" style="margin:0; width:auto; min-width:200px;" onchange="window.setListFilter('${filterKey}', this.value)"><option value="">Toutes les valeurs</option>${Array.from(valuesSet).sort().map(v => `<option value="${v.replace(/"/g, '&quot;')}" ${v === valFilter ? 'selected' : ''}>${v}</option>`).join('')}</select></div>`;
+
+            if (filtered.length === 0) { html += `<div style="text-align:center; color:#7f8c8d; padding:30px; background:#fff; border-radius:8px; border:1px solid #eee;">Aucun canon ne correspond aux filtres.</div>`; }
+            else {
+                html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">${label}</th><th></th></tr></thead><tbody>`;
+                filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
+                    html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleAttributeRow('${r.id}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${accentColor}20; color:${accentColor}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.value}</span></td><td style="padding:10px; text-align:right;"><button onclick="event.stopPropagation(); window.closeAllListExpandRows(); window.focusCannon('${r.id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">📍 Carte</button></td></tr>`;
+                    html += `<tr class="list-expand-row" id="attr-expand-row-${r.id}" style="display:none;"><td colspan="4" style="padding:0; background:#fafbfc; border-top:1px solid #eee;"><div id="attr-edit-${r.id}" style="padding:12px;"></div></td></tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+            ws.innerHTML = html;
+        };
+
+        window.toggleAttributeRow = function(id) {
+            let row = document.getElementById(`attr-expand-row-${id}`); if (!row) return;
+            let isHidden = row.style.display === 'none' || row.style.display === '';
+            window.closeAllListExpandRows();
+            if (!isHidden) return;
+            row.style.display = 'table-row';
+            let container = document.getElementById(`attr-edit-${id}`); if (!container) return;
+            let feature = window.snowCannons.features.find(f => f.properties.id == id); if (!feature) return;
+            container.innerHTML = window.buildFicheReadOnlyHtml(feature.properties);
         };
 
         window.renderTicketsListView = function(ws) {
@@ -3181,19 +3237,32 @@
         // lat/lng -> pixel (approximation suffisante à l'échelle d'un domaine skiable ; pas de
         // reprojection Web Mercator complète). Dépend d'un service externe : en cas d'échec ou de
         // lenteur (délai de 4s), un message de repli s'affiche à la place plutôt que de bloquer l'aperçu.
-        window.buildMapSnapshotNode = function() {
+        // En mode "pleine page" (paysage), l'emprise est élargie pour coller au ratio réel de la page
+        // (sans quoi l'image serait déformée ou laisserait des bandes vides), et la légende du thème
+        // actif est incrustée en coin plutôt que d'être un bloc séparé.
+        window.buildMapSnapshotNode = function(fillPage, legendHtmlForOverlay) {
             return new Promise(resolve => {
                 if (!window.map) { resolve(null); return; }
                 try {
                     let bounds = window.map.getBounds();
                     let minLng = bounds.getWest(), maxLng = bounds.getEast(), minLat = bounds.getSouth(), maxLat = bounds.getNorth();
-                    let w = 900; let h = Math.round(w * (maxLat - minLat) / (maxLng - minLng)) || 600; h = Math.max(300, Math.min(h, 900));
+
+                    if (fillPage) {
+                        let dims = window.PAGE_SIZES_MM.A4.landscape; let targetRatio = dims[0] / dims[1];
+                        let lngSpan = maxLng - minLng, latSpan = maxLat - minLat;
+                        let cLng = (minLng + maxLng) / 2, cLat = (minLat + maxLat) / 2;
+                        if ((lngSpan / latSpan) < targetRatio) { lngSpan = latSpan * targetRatio; } else { latSpan = lngSpan / targetRatio; }
+                        minLng = cLng - lngSpan / 2; maxLng = cLng + lngSpan / 2; minLat = cLat - latSpan / 2; maxLat = cLat + latSpan / 2;
+                    }
+
+                    let w = 1100; let h = Math.round(w * (maxLat - minLat) / (maxLng - minLng)) || 700; h = Math.max(300, Math.min(h, 1400));
                     let bbox = `${minLng},${minLat},${maxLng},${maxLat}`;
                     let url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&size=${w},${h}&imageSR=4326&format=png32&f=image`;
 
                     let container = document.createElement('div');
-                    container.style.cssText = 'position:relative; width:100%; margin-bottom:15px; border:1px solid #ddd; border-radius:6px; overflow:hidden;';
-                    let img = document.createElement('img'); img.style.cssText = 'width:100%; display:block;';
+                    container.style.cssText = fillPage ? 'position:relative; width:100%; height:100%; overflow:hidden;' : 'position:relative; width:100%; margin-bottom:15px; border:1px solid #ddd; border-radius:6px; overflow:hidden;';
+                    let img = document.createElement('img');
+                    img.style.cssText = fillPage ? 'width:100%; height:100%; display:block; object-fit:cover;' : 'width:100%; display:block;';
 
                     window.snowCannons.features.forEach(f => {
                         if (!f.properties._isVisible) return;
@@ -3203,9 +3272,16 @@
                         let yPct = (1 - (lat - minLat) / (maxLat - minLat)) * 100;
                         let color = window.getColorByFilter(0, f.properties);
                         let dot = document.createElement('div');
-                        dot.style.cssText = `position:absolute; left:${xPct}%; top:${yPct}%; width:8px; height:8px; margin:-4px 0 0 -4px; border-radius:50%; background:${color}; border:1px solid white; box-shadow:0 0 2px rgba(0,0,0,0.6);`;
+                        dot.style.cssText = `position:absolute; left:${xPct}%; top:${yPct}%; width:9px; height:9px; margin:-4.5px 0 0 -4.5px; border-radius:50%; background:${color}; border:1px solid white; box-shadow:0 0 2px rgba(0,0,0,0.7); z-index:2;`;
                         container.appendChild(dot);
                     });
+
+                    if (legendHtmlForOverlay) {
+                        let legendBox = document.createElement('div');
+                        legendBox.style.cssText = 'position:absolute; bottom:8px; left:8px; background:rgba(255,255,255,0.92); border:1px solid #ccc; border-radius:6px; padding:8px 10px; font-size:9px; max-width:45%; z-index:3;';
+                        legendBox.innerHTML = legendHtmlForOverlay;
+                        container.appendChild(legendBox);
+                    }
 
                     let done = false;
                     const finish = () => { if (done) return; done = true; resolve(container); };
@@ -3218,10 +3294,80 @@
             });
         };
 
-        // CHAPITRE 8.D.3 — Pagination réelle : chaque bloc coché est ajouté à la page courante ; dès
-        // qu'il la fait déborder (mesure DOM réelle via scrollHeight, pas une estimation), il est
-        // déplacé sur une nouvelle page. Le nombre de feuilles générées reflète donc fidèlement ce qui
-        // sera imprimé, et le scroll du conteneur ne s'active que si le total dépasse la hauteur visible.
+        // CHAPITRE 8.D.3 — Neutralise les scrolls/hauteurs limitées hérités de l'interface live (ex:
+        // ".checkbox-list { max-height:140px; overflow-y:auto }") sur le contenu cloné pour l'impression :
+        // sans ça, le contenu au-delà de la limite resterait cliqué derrière un ascenseur invisible à
+        // l'impression au lieu de déborder sur les pages suivantes.
+        window.stripPrintOverflow = function(root) {
+            if (root.style) { root.style.maxHeight = 'none'; if (/(auto|scroll)/.test(root.style.overflowY || '')) root.style.overflowY = 'visible'; if (/(auto|scroll)/.test(root.style.overflow || '')) root.style.overflow = 'visible'; }
+            if (root.querySelectorAll) root.querySelectorAll('[style]').forEach(el => { el.style.maxHeight = 'none'; if (/(auto|scroll)/.test(el.style.overflowY || '')) el.style.overflowY = 'visible'; if (/(auto|scroll)/.test(el.style.overflow || '')) el.style.overflow = 'visible'; });
+        };
+
+        // CHAPITRE 8.D.4 — Fait "couler" un bloc dans les pages : s'il tient, terminé. Sinon, on le
+        // découpe : ligne par ligne (en-tête de tableau répété sur chaque page) pour un <table>, sinon
+        // enfant par enfant pour un conteneur multi-éléments (cartes de stock/atelier...). Un bloc sans
+        // rien à découper reste seul sur sa page, quitte à déborder (cas limite, ex: un graphique trop
+        // grand pour tenir sur une seule feuille).
+        window.flowBlockIntoPages = function(node, state) {
+            window.stripPrintOverflow(node);
+            state.page.appendChild(node);
+            if (state.page.scrollHeight <= state.page.clientHeight + 1) return;
+            state.page.removeChild(node);
+
+            let table = node.tagName === 'TABLE' ? node : node.querySelector('table');
+            if (table) {
+                let thead = table.querySelector('thead'); let tbody = table.querySelector('tbody');
+                let rows = tbody ? Array.from(tbody.children) : [];
+                if (rows.length > 0) {
+                    let idx = 0;
+                    while (idx < rows.length) {
+                        let wrapper = node.cloneNode(false); let tbl = table.cloneNode(false);
+                        if (thead) tbl.appendChild(thead.cloneNode(true));
+                        let tb = document.createElement('tbody'); tbl.appendChild(tb); wrapper.appendChild(tbl);
+                        if (state.page.children.length > 0) state.page = state.newPage();
+                        state.page.appendChild(wrapper);
+                        while (idx < rows.length) {
+                            let rowClone = rows[idx].cloneNode(true); tb.appendChild(rowClone);
+                            if (state.page.scrollHeight > state.page.clientHeight + 1) {
+                                tb.removeChild(rowClone);
+                                if (tb.children.length === 0) { tb.appendChild(rowClone); idx++; }
+                                break;
+                            }
+                            idx++;
+                        }
+                    }
+                    return;
+                }
+            }
+
+            if (node.children && node.children.length > 1) {
+                let children = Array.from(node.children); let idx = 0;
+                while (idx < children.length) {
+                    let wrapper = node.cloneNode(false);
+                    if (state.page.children.length > 0) state.page = state.newPage();
+                    state.page.appendChild(wrapper);
+                    while (idx < children.length) {
+                        let childClone = children[idx].cloneNode(true); window.stripPrintOverflow(childClone); wrapper.appendChild(childClone);
+                        if (state.page.scrollHeight > state.page.clientHeight + 1) {
+                            wrapper.removeChild(childClone);
+                            if (wrapper.children.length === 0) { wrapper.appendChild(childClone); idx++; }
+                            break;
+                        }
+                        idx++;
+                    }
+                }
+                return;
+            }
+
+            if (state.page.children.length > 0) state.page = state.newPage();
+            state.page.appendChild(node);
+        };
+
+        // CHAPITRE 8.D.5 — Pagination réelle basée sur une mesure DOM effective (scrollHeight), pas une
+        // estimation : le nombre de feuilles générées reflète fidèlement ce qui sera imprimé, et le
+        // scroll du conteneur ne s'active que si le total dépasse la hauteur visible. En paysage, la
+        // carte (si cochée) occupe systématiquement sa propre page pleine avec la légende incrustée ;
+        // le reste du contenu s'enchaîne normalement sur les pages suivantes.
         window.buildPrintPageSheet = async function() {
             let wrap = document.getElementById('print-page-sheet-wrap'); if (!wrap) return;
             let requestToken = (window._printBuildToken = (window._printBuildToken || 0) + 1);
@@ -3232,30 +3378,43 @@
             let dims = window.PAGE_SIZES_MM[format][orientation]; let ratio = dims[0] / dims[1];
             let previewW = 700; let previewH = Math.round(previewW / ratio);
 
-            let blockNodes = [];
+            let mapBlock = (window.printBlocks || []).find(b => b.kind === 'map' && b.checked);
+            let legendBlock = (window.printBlocks || []).find(b => b.kind === 'legend' && b.checked);
+            let forceFullMapPage = !!mapBlock && orientation === 'landscape';
+
+            let otherBlockNodes = [];
             for (let b of (window.printBlocks || [])) {
-                if (!b.checked) continue;
-                if (b.kind === 'map') { let node = await window.buildMapSnapshotNode(); if (node) blockNodes.push(node); }
-                else if (b.kind === 'legend') { let div = document.createElement('div'); div.innerHTML = window.getCurrentLegendHtml(); div.style.cssText = 'margin-bottom:15px; padding:10px; border:1px solid #eee; border-radius:6px;'; blockNodes.push(div); }
-                else { let source = window.getPrintSourceContainer(); let srcChild = source && source.children[b.idx]; if (srcChild) blockNodes.push(window.cloneNodeForPrint(srcChild)); }
+                if (!b.checked || b.kind === 'map') continue;
+                if (b.kind === 'legend') { if (forceFullMapPage) continue; let div = document.createElement('div'); div.innerHTML = window.getCurrentLegendHtml(); div.style.cssText = 'margin-bottom:15px; padding:10px; border:1px solid #eee; border-radius:6px;'; otherBlockNodes.push(div); continue; }
+                let source = window.getPrintSourceContainer(); let srcChild = source && source.children[b.idx]; if (srcChild) otherBlockNodes.push(window.cloneNodeForPrint(srcChild));
             }
+
+            let mapNode = null;
+            if (mapBlock) mapNode = await window.buildMapSnapshotNode(forceFullMapPage, forceFullMapPage && legendBlock ? window.getCurrentLegendHtml() : null);
 
             if (requestToken !== window._printBuildToken) return;
             wrap.innerHTML = '';
-            if (blockNodes.length === 0) { wrap.innerHTML = '<div style="color:white; padding:30px; text-align:center;">Aucun contenu sélectionné.</div>'; let info = document.getElementById('print-page-count-info'); if (info) info.innerText = ''; return; }
 
             let pages = [];
             const newPage = () => { let p = document.createElement('div'); p.className = 'print-page-sheet'; p.style.width = previewW + 'px'; p.style.height = previewH + 'px'; wrap.appendChild(p); pages.push(p); return p; };
-            let currentPage = newPage();
+            let state = { page: newPage(), newPage: newPage };
 
-            blockNodes.forEach(node => {
-                currentPage.appendChild(node);
-                if (currentPage.scrollHeight > currentPage.clientHeight + 1) {
-                    currentPage.removeChild(node);
-                    if (currentPage.children.length === 0) { currentPage.appendChild(node); }
-                    else { currentPage = newPage(); currentPage.appendChild(node); }
+            if (mapNode) {
+                if (forceFullMapPage) {
+                    if (state.page.children.length > 0) state.page = newPage();
+                    state.page.appendChild(mapNode);
+                    if (otherBlockNodes.length > 0) state.page = newPage();
+                } else {
+                    state.page.appendChild(mapNode);
+                    if (state.page.scrollHeight > state.page.clientHeight + 1) { state.page.removeChild(mapNode); state.page = newPage(); state.page.appendChild(mapNode); }
                 }
-            });
+            }
+
+            otherBlockNodes.forEach(node => { if (requestToken === window._printBuildToken) window.flowBlockIntoPages(node, state); });
+
+            if (requestToken !== window._printBuildToken) return;
+            if (pages.length > 1 && pages[pages.length - 1].children.length === 0) { wrap.removeChild(pages[pages.length - 1]); pages.pop(); }
+            if (pages.length === 0 || (pages.length === 1 && pages[0].children.length === 0)) { wrap.innerHTML = '<div style="color:white; padding:30px; text-align:center;">Aucun contenu sélectionné.</div>'; let info = document.getElementById('print-page-count-info'); if (info) info.innerText = ''; return; }
 
             pages.forEach((p, i) => p.setAttribute('data-page-label', `Page ${i + 1}/${pages.length}`));
             let info = document.getElementById('print-page-count-info'); if (info) info.innerText = pages.length + ' page(s) au format ' + format + ' ' + (orientation === 'portrait' ? 'Portrait' : 'Paysage');
