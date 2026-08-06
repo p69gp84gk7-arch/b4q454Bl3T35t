@@ -141,19 +141,47 @@
             #compare-modal { width: 98%; height: 95vh; top: 2%; left: 1%; transform: none; }
         }
 
-        .print-box { position:absolute; z-index:3000; background:rgba(255,255,255,0.96); border:1px solid #ccc; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.25); width:280px; max-width:80vw; overflow:hidden; }
-        .print-box-handle { background:#7f8c8d; color:white; padding:6px 10px; font-size:11px; font-weight:bold; cursor:move; display:flex; justify-content:space-between; align-items:center; user-select:none; }
-        .print-box-body { padding:10px; font-size:11px; max-height:420px; overflow-y:auto; }
+        .print-box { position:absolute; z-index:3000; background:rgba(255,255,255,0.96); border:1px solid #ccc; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.25); width:280px; height:auto; min-width:160px; min-height:100px; max-width:80vw; max-height:80vh; overflow:hidden; display:flex; flex-direction:column; }
+        .print-box-handle, .draggable-handle { background:#7f8c8d; color:white; padding:6px 10px; font-size:11px; font-weight:bold; cursor:move; display:flex; justify-content:space-between; align-items:center; user-select:none; flex-shrink:0; }
+        .print-box-body { padding:10px; font-size:11px; overflow-y:auto; flex:1; }
         .print-box-body img { max-width:100%; }
         #print-legend-box { top:20px; left:20px; }
         #print-dashboard-box { top:20px; right:20px; }
+        .draggable-window { display:flex; flex-direction:column; }
+        .resize-handle { position:absolute; right:0; bottom:0; width:16px; height:16px; cursor:nwse-resize; z-index:10; }
+        .resize-handle::after { content:''; position:absolute; right:3px; bottom:3px; width:8px; height:8px; border-right:2px solid #999; border-bottom:2px solid #999; }
+        #print-page-frame-outline { position:absolute; border:2px dashed #e74c3c; pointer-events:none; z-index:2900; box-sizing:border-box; }
+
+        #calendar-modal { display:none; position:fixed; top:50px; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:8200; justify-content:center; align-items:center; }
+        #calendar-modal-inner { background:#fff; width:95%; max-width:1000px; height:90%; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
+        .cal-header { background:#2c3e50; color:white; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+        .cal-nav-btn { background:rgba(255,255,255,0.15); border:none; color:white; width:32px; height:32px; border-radius:4px; cursor:pointer; font-size:14px; }
+        .cal-body { display:flex; flex:1; overflow:hidden; }
+        #calendar-grid { flex:1; display:grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(70px, 1fr); gap:1px; background:#e1e8ed; overflow-y:auto; padding:1px; align-content:start; }
+        .cal-weekday { background:#f8f9fa; text-align:center; font-size:11px; font-weight:bold; color:#7f8c8d; padding:6px 0; text-transform:uppercase; }
+        .cal-day { background:#fff; padding:6px; cursor:pointer; transition:0.15s; }
+        .cal-day:hover { background:#eaf2f8; }
+        .cal-day-empty { background:#fafbfc; cursor:default; }
+        .cal-day-num { font-size:12px; font-weight:bold; color:#2c3e50; }
+        .cal-day-today .cal-day-num { background:#3498db; color:white; border-radius:50%; width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; }
+        .cal-day-dots { display:flex; gap:3px; flex-wrap:wrap; margin-top:4px; }
+        .cal-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+        #calendar-day-panel { display:none; width:300px; flex-shrink:0; border-left:1px solid #eee; padding:15px; overflow-y:auto; background:#fafbfc; }
 
         @media print {
-            #topbar, #sidebar, #right-sidebar, #print-toolbar, #loading-overlay, #pdf-modal, #settings-panel, #bi-meteo-modal, #compare-modal, #meteo-history-modal, .resizer, .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+            #topbar, #sidebar, #right-sidebar, #print-toolbar, #loading-overlay, #pdf-modal, #settings-panel, #bi-meteo-modal, #compare-modal, #meteo-history-modal, .resizer, .leaflet-control-zoom, .leaflet-control-attribution, #print-page-frame-outline, .resize-handle { display: none !important; }
             body, html { overflow: visible !important; height: auto !important; }
             #app-container { padding-top: 0 !important; height: auto !important; }
-            #map-container { position: static !important; width: 100% !important; height: 100vh !important; }
             .print-box-handle { cursor: default !important; }
+
+            body:not(.print-mode-nomap) #map-container { position: static !important; width: 100% !important; height: 100vh !important; }
+            body:not(.print-mode-nomap) #print-page-preview-modal { display: none !important; }
+
+            body.print-mode-nomap #map-container, body.print-mode-nomap #atelier-workspace, body.print-mode-nomap #stock-workspace, body.print-mode-nomap .print-box { display: none !important; }
+            body.print-mode-nomap #print-page-preview-modal { display: flex !important; position: static !important; background: none !important; }
+            body.print-mode-nomap #print-page-preview-modal > div:first-child { display: none !important; }
+            body.print-mode-nomap #print-page-sheet-wrap { background: none !important; padding: 0 !important; max-height: none !important; overflow: visible !important; width: auto !important; box-shadow: none !important; }
+            body.print-mode-nomap #print-page-sheet { box-shadow: none !important; width: 100% !important; min-height: 0 !important; }
         }
     </style>
 </head>
@@ -181,6 +209,7 @@
             <button class="topbar-btn" data-btnkey="histmeteo" data-btnlabel="Hist. Météo" onclick="window.openMeteoHistoryModal(true)" style="background:#f39c12; border-color:#f1c40f;"><i class="fa-solid fa-temperature-half"></i> <span class="btn-text">Hist. Météo</span></button>
             <button class="topbar-btn" data-btnkey="localiser" data-btnlabel="Localiser" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;"><i class="fa-solid fa-location-crosshairs"></i> <span class="btn-text">Localiser</span></button>
             <button class="topbar-btn" data-btnkey="print" data-btnlabel="Imprimer" onclick="window.openPrintMode()" style="background:#7f8c8d; border-color:#95a5a6;"><i class="fa-solid fa-print"></i> <span class="btn-text">Imprimer</span></button>
+            <button class="topbar-btn" data-btnkey="calendar" data-btnlabel="Calendrier" onclick="window.openCalendar()" style="background:#e67e22; border-color:#f39c12;"><i class="fa-solid fa-calendar-days"></i> <span class="btn-text">Calendrier</span></button>
         </div>
     </div>
 
@@ -242,6 +271,14 @@
             <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
                 <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-list-check"></i> Fiche Canon (Champs Visibles)</summary>
                 <div id="settings-fiche-canon-cols" style="padding:15px; display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;"><i style="font-size:11px; color:#888;">Chargement des données requis...</i></div>
+            </details>
+            <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-table-list"></i> Affichage des Menus</summary>
+                <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">
+                    <div><div class="edit-label">Tickets & Pannes</div><select id="set-view-defauts" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('defauts', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
+                    <div><div class="edit-label">Suivi Entretien</div><select id="set-view-suivi" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('suivi_entretien', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
+                    <div><div class="edit-label">Entretien Tête Canon</div><select id="set-view-entretien" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('entretien_tete', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
+                </div>
             </details>
             <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
                 <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-droplet"></i> Couleurs des Statuts (Carte)</summary>
@@ -322,18 +359,72 @@
     </div>
 
     <!-- MODE IMPRESSION -->
-    <div id="print-toolbar" style="display:none; position:fixed; top:60px; right:15px; width:320px; max-width:90vw; background:#fff; z-index:7500; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.3); border:1px solid #ccc; flex-direction:column; max-height:calc(100vh - 80px); overflow:hidden;">
-        <div style="background:#7f8c8d; color:white; padding:12px 15px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:14px;">
+    <div id="print-toolbar" class="draggable-window" style="display:none; position:fixed; top:60px; left:15px; width:320px; height:auto; min-width:260px; min-height:200px; max-width:90vw; max-height:calc(100vh - 80px); background:#fff; z-index:7500; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.3); border:1px solid #ccc; flex-direction:column; overflow:hidden;">
+        <div class="draggable-handle" style="background:#7f8c8d; color:white; padding:12px 15px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:14px; cursor:move;">
             <span><i class="fa-solid fa-print"></i> Mode Impression</span>
             <button onclick="window.closePrintMode()" style="background:none; border:none; color:white; cursor:pointer; font-size:20px; line-height:16px;">×</button>
         </div>
-        <div style="padding:15px; overflow-y:auto;">
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:bold; margin-bottom:10px;"><input type="checkbox" id="print-show-legend" checked onchange="window.refreshPrintPreview()"> Afficher la légende</label>
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:bold; margin-bottom:8px; border-top:1px dashed #ddd; padding-top:10px;"><input type="checkbox" id="print-show-dashboard" checked onchange="window.refreshPrintPreview()"> Afficher le tableau de bord</label>
+        <div style="padding:15px; overflow-y:auto; flex:1;">
+            <div class="edit-label">Format</div>
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-format" value="A4" checked onchange="window.refreshPrintPreview()"> A4</label>
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-format" value="A3" onchange="window.refreshPrintPreview()"> A3</label>
+            </div>
+            <div class="edit-label">Orientation</div>
+            <div style="display:flex; gap:10px; margin-bottom:12px;">
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-orientation" value="portrait" checked onchange="window.refreshPrintPreview()"> Portrait</label>
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-orientation" value="landscape" onchange="window.refreshPrintPreview()"> Paysage</label>
+            </div>
+            <label id="print-map-toggle-row" style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:bold; margin-bottom:8px; border-top:1px dashed #ddd; padding-top:12px;"><input type="checkbox" id="print-show-map" checked onchange="window.refreshPrintPreview()"> Inclure la vue carte</label>
+            <label id="print-legend-row" style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:bold; margin-bottom:10px;"><input type="checkbox" id="print-show-legend" checked onchange="window.refreshPrintPreview()"> Afficher la légende</label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:bold; margin-bottom:8px; border-top:1px dashed #ddd; padding-top:10px;"><input type="checkbox" id="print-show-dashboard" checked onchange="window.refreshPrintPreview()"> Afficher le tableau de bord / menu</label>
             <div id="print-dashboard-checklist" style="margin-left:22px; display:flex; flex-direction:column; gap:4px; font-size:11px; max-height:180px; overflow-y:auto; border:1px solid #eee; border-radius:4px; padding:8px; background:#fafbfc;"></div>
-            <p style="font-size:10px; color:#888; margin:12px 0 0 0;">💡 Glissez les boîtes sur la carte pour les repositionner avant impression.</p>
+            <p id="print-hint-text" style="font-size:10px; color:#888; margin:12px 0 0 0;">💡 Glissez les boîtes sur la carte pour les repositionner. Le cadre en pointillés indique la zone imprimée.</p>
             <button onclick="window.refreshPrintPreview()" class="btn-action-primary" style="background:#7f8c8d; margin-top:12px;"><i class="fa-solid fa-arrows-rotate"></i> Actualiser l'aperçu</button>
-            <button onclick="window.print()" class="btn-action-primary" style="background:#27ae60; margin-top:8px;"><i class="fa-solid fa-print"></i> Imprimer</button>
+            <button onclick="window.openPrintPagePreview()" class="btn-action-primary" style="background:#2980b9; margin-top:8px;"><i class="fa-solid fa-magnifying-glass"></i> Prévisualiser la page</button>
+            <button onclick="window.launchPrint()" class="btn-action-primary" style="background:#27ae60; margin-top:8px;"><i class="fa-solid fa-print"></i> Imprimer</button>
+        </div>
+        <div class="resize-handle"></div>
+    </div>
+
+    <!-- APERÇU DE PAGE (SANS CARTE) -->
+    <div id="print-page-preview-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:9500; align-items:center; justify-content:center; flex-direction:column;">
+        <div style="background:#2c3e50; color:white; padding:10px 20px; border-radius:8px 8px 0 0; width:90%; max-width:900px; display:flex; justify-content:space-between; align-items:center;">
+            <b style="font-size:13px;"><i class="fa-solid fa-magnifying-glass"></i> Aperçu avant impression</b>
+            <div style="display:flex; gap:10px;">
+                <button onclick="window.launchPrint()" style="background:#27ae60; color:white; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;"><i class="fa-solid fa-print"></i> Imprimer</button>
+                <button onclick="document.getElementById('print-page-preview-modal').style.display='none'" style="background:none; border:none; color:white; cursor:pointer; font-size:22px; line-height:14px;">×</button>
+            </div>
+        </div>
+        <div id="print-page-sheet-wrap" style="background:#555; padding:20px; width:90%; max-width:900px; max-height:80vh; overflow:auto; border-radius:0 0 8px 8px; display:flex; justify-content:center;">
+            <div id="print-page-sheet" style="background:#fff; box-shadow:0 5px 20px rgba(0,0,0,0.4); padding:15mm; box-sizing:border-box;"></div>
+        </div>
+    </div>
+
+    <!-- MODAL CALENDRIER -->
+    <div id="calendar-modal">
+        <div id="calendar-modal-inner">
+            <div class="cal-header">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button class="cal-nav-btn" onclick="window.calendarShiftMonth(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+                    <b id="calendar-month-label" style="font-size:16px; min-width:160px; text-align:center;"></b>
+                    <button class="cal-nav-btn" onclick="window.calendarShiftMonth(1)"><i class="fa-solid fa-chevron-right"></i></button>
+                    <button class="cal-nav-btn" style="width:auto; padding:0 10px; font-size:11px;" onclick="window.calendarGoToday()">Aujourd'hui</button>
+                </div>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <div style="display:flex; gap:10px; font-size:10px;">
+                        <span><span class="cal-dot" style="background:#3498db; display:inline-block;"></span> RDV</span>
+                        <span><span class="cal-dot" style="background:#9b59b6; display:inline-block;"></span> Travaux</span>
+                        <span><span class="cal-dot" style="background:#e74c3c; display:inline-block;"></span> À faire</span>
+                        <span><span class="cal-dot" style="background:#27ae60; display:inline-block;"></span> Fait</span>
+                    </div>
+                    <button onclick="window.closeCalendar()" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
+                </div>
+            </div>
+            <div class="cal-body">
+                <div id="calendar-grid"></div>
+                <div id="calendar-day-panel"></div>
+            </div>
         </div>
     </div>
 
@@ -377,6 +468,7 @@
             <div id="map"></div>
             <div id="atelier-workspace" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; background:#f4f6f8; overflow-y:auto; padding:20px; box-sizing:border-box;"></div>
             <div id="stock-workspace" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; background:#f4f6f8; overflow-y:auto; padding:20px; box-sizing:border-box;"></div>
+            <div id="theme-list-workspace" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; background:#f4f6f8; overflow-y:auto; padding:20px; box-sizing:border-box;"></div>
         </div>
 
         <div id="right-sidebar">
@@ -422,6 +514,7 @@
         window.keyPiste = ""; window.keyType = ""; window.keyRep = ""; window.keyTransfo = ""; window.keyXY = ""; window.keyId = ""; window.localDB = null;
         window.bootAttempt = 0; window.tempTicketPayloads = {}; window.suiviEntretienData = []; window.rawAtelier = []; window.rawStock = [];
         window.drivePdfsData = {}; window.driveKmzData = {}; window.drivePhotos = {}; window.driveIcons = {};
+        window.rawCalendarEvents = []; window.calendarEvents = []; window.calendarViewDate = new Date();
 
         // =========================================================================
         // CHAPITRE 2.B : CONFIGURATION LOCALE ET UTILITAIRES DE BASE
@@ -431,9 +524,11 @@
             colUrgent: '#e74c3c', colEnCours: '#f39c12', colRas: '#bdc3c7', colTeteOk: '#e67e22', colTeteWait: '#bdc3c7',
             colSuiviDec: '#27ae60', colSuiviPrev: '#9b59b6', colSuiviOk: '#f1c40f', btnStyle: 'normal', btnDisplay: 'full', dashLayout: 'row',
             showHillshade: false, hillshadeOpacity: 70, showLabels: false, labelsOpacity: 80,
-            btnColors: {}, hiddenColumns: [], repColorsOverride: {}, transfoColorsOverride: {}
+            btnColors: {}, hiddenColumns: [], repColorsOverride: {}, transfoColorsOverride: {},
+            viewMode: { defauts: 'map', suivi_entretien: 'map', entretien_tete: 'map' }
         };
-        window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d' };
+        window.listViewFilters = { defaut: '', statutTicket: '', statutEntretien: '', statutTete: '' };
+        window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d', calendar: '#e67e22' };
         window.overlayLayers = { hillshade: null, labels: null };
 
         window.promptSettings = function() {
@@ -457,6 +552,8 @@
             safeSet('set-btn-style', window.appSettings.btnStyle); safeSet('set-btn-display', window.appSettings.btnDisplay); safeSet('set-dash-layout', window.appSettings.dashLayout);
             safeSet('set-show-hillshade', window.appSettings.showHillshade, "checked"); safeSet('set-hillshade-opacity', window.appSettings.hillshadeOpacity);
             safeSet('set-show-labels', window.appSettings.showLabels, "checked"); safeSet('set-labels-opacity', window.appSettings.labelsOpacity);
+            if (!window.appSettings.viewMode) window.appSettings.viewMode = { defauts: 'map', suivi_entretien: 'map', entretien_tete: 'map' };
+            safeSet('set-view-defauts', window.appSettings.viewMode.defauts); safeSet('set-view-suivi', window.appSettings.viewMode.suivi_entretien); safeSet('set-view-entretien', window.appSettings.viewMode.entretien_tete);
             // Réapplique les couleurs personnalisées de répéteurs/transfos sur les palettes auto-générées par initAppUI.
             Object.keys(window.appSettings.repColorsOverride || {}).forEach(k => { if(window.repColors) window.repColors[k] = window.appSettings.repColorsOverride[k]; });
             Object.keys(window.appSettings.transfoColorsOverride || {}).forEach(k => { if(window.transfoColors) window.transfoColors[k] = window.appSettings.transfoColorsOverride[k]; });
@@ -620,7 +717,7 @@
             window.appSettings.colUrgent = safeVal('set-col-urgent', window.appSettings.colUrgent); window.appSettings.colEnCours = safeVal('set-col-encours', window.appSettings.colEnCours); window.appSettings.colRas = safeVal('set-col-ras', window.appSettings.colRas);
             window.appSettings.colTeteOk = safeVal('set-col-tete-ok', window.appSettings.colTeteOk); window.appSettings.colTeteWait = safeVal('set-col-tete-wait', window.appSettings.colTeteWait);
             window.appSettings.colSuiviDec = safeVal('set-col-suivi-dec', window.appSettings.colSuiviDec); window.appSettings.colSuiviPrev = safeVal('set-col-suivi-prev', window.appSettings.colSuiviPrev); window.appSettings.colSuiviOk = safeVal('set-col-suivi-ok', window.appSettings.colSuiviOk);
-            window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
+            window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); window.refreshListViewIfActive();
         };
 
         window.userMarker = null;
@@ -1276,6 +1373,138 @@
         };
 
         /* ========================================================================= */
+        /* CHAPITRE 4.E : VUE LISTE FILTRABLE (ALTERNATIVE À LA CARTE)                */
+        /* ------------------------------------------------------------------------- */
+        /* Pour les thèmes Tickets/Suivi Entretien/Entretien Tête, un réglage dans    */
+        /* les Paramètres ("Affichage des Menus") permet de remplacer la carte par un */
+        /* tableau filtrable — même sélection de canon au clic qu'un pin sur la carte */
+        /* (window.focusCannon), donc le panneau de droite reste identique.           */
+        /* ========================================================================= */
+        window.isCanonVisibleByFilters = function(p) {
+            if (window.currentPistes && !window.currentPistes.includes('all') && !window.currentPistes.includes(window.getV(p, window.keyPiste))) return false;
+            if (window.currentTypes && !window.currentTypes.includes('all') && !window.currentTypes.includes(window.getV(p, window.keyType).toLowerCase())) return false;
+            let ok = true;
+            window.activeFilters.forEach(filt => { if (filt.key && filt.vals.length > 0 && !filt.vals.includes('all')) { let val = window.getV(p, filt.key); if (!filt.vals.includes(val)) ok = false; } });
+            return ok;
+        };
+
+        window.setViewMode = function(theme, mode) {
+            if (!window.appSettings.viewMode) window.appSettings.viewMode = {};
+            window.appSettings.viewMode[theme] = mode;
+            if (window.mainTheme === theme) window.applyThemeViewMode();
+        };
+
+        window.applyThemeViewMode = function() {
+            let listWs = document.getElementById('theme-list-workspace'); let mapEl = document.getElementById('map');
+            if (!listWs || !mapEl) return;
+            let listableThemes = ['defauts', 'suivi_entretien', 'entretien_tete'];
+            let useList = listableThemes.includes(window.mainTheme) && window.appSettings.viewMode && window.appSettings.viewMode[window.mainTheme] === 'list';
+            if (useList) { mapEl.style.display = 'none'; listWs.style.display = 'block'; window.renderThemeListView(); }
+            else { listWs.style.display = 'none'; if (window.mainTheme !== 'atelier' && window.mainTheme !== 'stock') mapEl.style.display = 'block'; }
+        };
+
+        window.refreshListViewIfActive = function() {
+            if (window.appSettings.viewMode && window.appSettings.viewMode[window.mainTheme] === 'list') window.renderThemeListView();
+        };
+
+        window.renderThemeListView = function() {
+            let ws = document.getElementById('theme-list-workspace'); if (!ws) return;
+            if (window.mainTheme === 'defauts') window.renderTicketsListView(ws);
+            else if (window.mainTheme === 'suivi_entretien') window.renderSuiviListView(ws);
+            else if (window.mainTheme === 'entretien_tete') window.renderEntretienListView(ws);
+        };
+
+        window.renderTicketsListView = function(ws) {
+            let rows = [];
+            window.snowCannons.features.forEach(f => {
+                if (!window.isCanonVisibleByFilters(f.properties)) return;
+                let p = f.properties;
+                window.getActiveTickets(p.id).forEach(t => rows.push({ id: p.id, piste: window.getV(p, window.keyPiste), defaut: t.defaut, statut: t.statut, date: t.date }));
+            });
+            let defautsSet = new Set(rows.map(r => r.defaut));
+            let statutFilter = window.listViewFilters.statutTicket || ''; let defautFilter = window.listViewFilters.defaut || '';
+            let filtered = rows.filter(r => (!statutFilter || r.statut.includes(statutFilter)) && (!defautFilter || r.defaut === defautFilter));
+            let s = window.appSettings;
+
+            let html = `<div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:2px solid #e74c3c; margin-bottom:15px;"><h2 style="margin:0; color:#2c3e50;">📋 Tickets & Pannes — Liste</h2><span style="font-size:12px; color:#7f8c8d;">${filtered.length} ticket(s)</span></div>`;
+            html += `<div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">`;
+            html += `<select class="edit-input" style="margin:0; width:auto; min-width:180px;" onchange="window.listViewFilters.defaut=this.value; window.renderThemeListView();"><option value="">Tous les défauts</option>${Array.from(defautsSet).sort().map(d => `<option value="${d.replace(/"/g, '&quot;')}" ${d === defautFilter ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
+            html += `<select class="edit-input" style="margin:0; width:auto; min-width:150px;" onchange="window.listViewFilters.statutTicket=this.value; window.renderThemeListView();"><option value="">Tous statuts</option><option value="faire" ${statutFilter === 'faire' ? 'selected' : ''}>À faire</option><option value="cours" ${statutFilter === 'cours' ? 'selected' : ''}>En cours</option></select>`;
+            html += `</div>`;
+
+            if (filtered.length === 0) { html += `<div style="text-align:center; color:#7f8c8d; padding:30px; background:#fff; border-radius:8px; border:1px solid #eee;">Aucun ticket ne correspond aux filtres (pensez aussi aux filtres Piste/Type dans le menu gauche).</div>`; }
+            else {
+                html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Défaut</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Date</th><th></th></tr></thead><tbody>`;
+                filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
+                    let color = r.statut.includes('faire') ? (s.colUrgent || '#e74c3c') : (s.colEnCours || '#f39c12');
+                    html += `<tr style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.focusCannon('${r.id}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;">${r.defaut}</td><td style="padding:10px;"><span style="background:${color}20; color:${color}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.statut.toUpperCase()}</span></td><td style="padding:10px; color:#888;">${r.date}</td><td style="padding:10px; text-align:right;"><button style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">Ouvrir 📍</button></td></tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+            ws.innerHTML = html;
+        };
+
+        window.renderSuiviListView = function(ws) {
+            let rows = [];
+            window.snowCannons.features.forEach(f => {
+                if (!window.isCanonVisibleByFilters(f.properties)) return;
+                let p = f.properties;
+                let sRow = window.suiviEntretienData.find(row => row[0] == p.id) || ["", "", "non", "non", "", "", ""];
+                let hasFault = window.getActiveTickets(p.id).length > 0;
+                let isDec = sRow[2] && sRow[2].toString().toLowerCase().trim() === "oui";
+                let isPrev = sRow[3] && sRow[3].toString().toLowerCase().trim() === "oui";
+                let cat = hasFault ? 'defaut' : (isPrev ? 'preventif' : (isDec ? 'deconnecte' : 'connecte'));
+                rows.push({ id: p.id, piste: window.getV(p, window.keyPiste), cat: cat, remarque: sRow[5] || "" });
+            });
+            let catFilter = window.listViewFilters.statutEntretien || '';
+            let filtered = rows.filter(r => !catFilter || r.cat === catFilter);
+            let labels = { defaut: '🚨 En défaut', preventif: '🧰 Préventif Usine', deconnecte: '🔌 Déconnecté', connecte: '⚡ Connecté (RAS)' };
+            let s = window.appSettings;
+            let colors = { defaut: s.colUrgent || '#e74c3c', preventif: s.colSuiviPrev || '#9b59b6', deconnecte: s.colSuiviDec || '#27ae60', connecte: s.colSuiviOk || '#f1c40f' };
+
+            let html = `<div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:2px solid #27ae60; margin-bottom:15px;"><h2 style="margin:0; color:#2c3e50;">🛠️ Suivi Entretien — Liste</h2><span style="font-size:12px; color:#7f8c8d;">${filtered.length} canon(s)</span></div>`;
+            html += `<div style="margin-bottom:15px;"><select class="edit-input" style="margin:0; width:auto; min-width:200px;" onchange="window.listViewFilters.statutEntretien=this.value; window.renderThemeListView();"><option value="">Tous les statuts</option>${Object.keys(labels).map(k => `<option value="${k}" ${k === catFilter ? 'selected' : ''}>${labels[k]}</option>`).join('')}</select></div>`;
+
+            if (filtered.length === 0) { html += `<div style="text-align:center; color:#7f8c8d; padding:30px; background:#fff; border-radius:8px; border:1px solid #eee;">Aucun canon ne correspond aux filtres.</div>`; }
+            else {
+                html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Remarque</th><th></th></tr></thead><tbody>`;
+                filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
+                    html += `<tr style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.focusCannon('${r.id}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${colors[r.cat]}20; color:${colors[r.cat]}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${labels[r.cat]}</span></td><td style="padding:10px; color:#888;">${r.remarque}</td><td style="padding:10px; text-align:right;"><button style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">Ouvrir 📍</button></td></tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+            ws.innerHTML = html;
+        };
+
+        window.renderEntretienListView = function(ws) {
+            let rows = [];
+            window.snowCannons.features.forEach(f => {
+                if (!window.isCanonVisibleByFilters(f.properties)) return;
+                let p = f.properties;
+                let bVal = window.getV(p, "Buses").toLowerCase().trim();
+                let isFait = (bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x");
+                rows.push({ id: p.id, piste: window.getV(p, window.keyPiste), fait: isFait, annee: window.getV(p, "années buses") || window.getV(p, "Année") || "" });
+            });
+            let statutFilter = window.listViewFilters.statutTete || '';
+            let filtered = rows.filter(r => !statutFilter || (statutFilter === 'fait' ? r.fait : !r.fait));
+            let s = window.appSettings;
+
+            let html = `<div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:2px solid #e67e22; margin-bottom:15px;"><h2 style="margin:0; color:#2c3e50;">🚿 Entretien Tête Canon — Liste</h2><span style="font-size:12px; color:#7f8c8d;">${filtered.length} canon(s)</span></div>`;
+            html += `<div style="margin-bottom:15px;"><select class="edit-input" style="margin:0; width:auto; min-width:180px;" onchange="window.listViewFilters.statutTete=this.value; window.renderThemeListView();"><option value="">Tous les statuts</option><option value="fait" ${statutFilter === 'fait' ? 'selected' : ''}>✅ Buses changées</option><option value="attente" ${statutFilter === 'attente' ? 'selected' : ''}>⏳ À faire</option></select></div>`;
+
+            if (filtered.length === 0) { html += `<div style="text-align:center; color:#7f8c8d; padding:30px; background:#fff; border-radius:8px; border:1px solid #eee;">Aucun canon ne correspond aux filtres.</div>`; }
+            else {
+                html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Année</th><th></th></tr></thead><tbody>`;
+                filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
+                    let color = r.fait ? (s.colTeteOk || '#e67e22') : (s.colTeteWait || '#bdc3c7');
+                    html += `<tr style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.focusCannon('${r.id}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${color}20; color:${color}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.fait ? '✅ FAIT' : '⏳ À FAIRE'}</span></td><td style="padding:10px; color:#888;">${r.annee}</td><td style="padding:10px; text-align:right;"><button style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:10px;">Ouvrir 📍</button></td></tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+            ws.innerHTML = html;
+        };
+
+        /* ========================================================================= */
         /* CHAPITRE 5 : FETCH ET ANALYSE DES DONNÉES GOOGLE SHEETS                    */
         /* ========================================================================= */
         window.setStep = function(step, desc) {
@@ -1365,6 +1594,25 @@
                 }
             }
 
+            window.rawCalendarEvents = data.calendrier || [];
+            if (data.calendrier && data.calendrier.length > 1) {
+                const cHeaders = data.calendrier[0].map(h => (h || "").toString().toLowerCase().trim());
+                const idxCId = cHeaders.findIndex(h => h === "id"); const idxCType = cHeaders.findIndex(h => h.includes("type"));
+                const idxCTitre = cHeaders.findIndex(h => h.includes("titre")); const idxCDebut = cHeaders.findIndex(h => h.includes("debut") || h.includes("début"));
+                const idxCHeure = cHeaders.findIndex(h => h.includes("heure")); const idxCFin = cHeaders.findIndex(h => h.includes("fin"));
+                const idxCCanon = cHeaders.findIndex(h => h.includes("canon")); const idxCRemarque = cHeaders.findIndex(h => h.includes("remarque"));
+                window.calendarEvents = data.calendrier.slice(1).filter(row => row && row.length).map(row => ({
+                    id: idxCId > -1 && row[idxCId] != null ? row[idxCId].toString() : "",
+                    type: idxCType > -1 && row[idxCType] != null ? row[idxCType].toString().toLowerCase().trim() : "rendez-vous",
+                    titre: idxCTitre > -1 && row[idxCTitre] != null ? row[idxCTitre].toString() : "",
+                    dateDebut: idxCDebut > -1 && row[idxCDebut] != null ? row[idxCDebut].toString() : "",
+                    heure: idxCHeure > -1 && row[idxCHeure] != null ? row[idxCHeure].toString() : "",
+                    dateFin: idxCFin > -1 && row[idxCFin] != null ? row[idxCFin].toString() : "",
+                    canon: idxCCanon > -1 && row[idxCCanon] != null ? row[idxCCanon].toString() : "",
+                    remarque: idxCRemarque > -1 && row[idxCRemarque] != null ? row[idxCRemarque].toString() : ""
+                })).filter(ev => ev.id && ev.dateDebut);
+            }
+
             window.setStep(5, "Analyse des Webcams...");
             if (data.webcams && data.webcams.length > 1) {
                 const wHead = data.webcams[0].map(h => (h||"").toString().toLowerCase().trim());
@@ -1412,10 +1660,10 @@
             buildCbs('individual-pistes', ps, 'piste-cb'); buildCbs('individual-types', ts, 'type-cb');
 
             function setupCbs(allId, cls, cbk) { const aBtn = document.getElementById(allId); if(!aBtn) return; const cbs = document.querySelectorAll('.'+cls); const getVals = () => aBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); aBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); cbk(getVals()); }); cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(aBtn) aBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(aBtn) aBtn.checked=true; } cbk(getVals()); })); }
-            setupCbs('check-all-pistes', 'piste-cb', vals => { window.currentPistes = vals; window.updateMap(); window.triggerGlobalFilterChart(); }); setupCbs('check-all-types', 'type-cb', vals => { window.currentTypes = vals; window.updateMap(); window.triggerGlobalFilterChart(); });
+            setupCbs('check-all-pistes', 'piste-cb', vals => { window.currentPistes = vals; window.updateMap(); window.triggerGlobalFilterChart(); window.refreshListViewIfActive(); }); setupCbs('check-all-types', 'type-cb', vals => { window.currentTypes = vals; window.updateMap(); window.triggerGlobalFilterChart(); window.refreshListViewIfActive(); });
 
             window.generateDynamicFiltersUI = function() { let container = document.getElementById('dynamic-filters-container'); if(!container) return; container.innerHTML = ""; let optionsHTML = `<option value="">-- Choisir un critère --</option>` + window.availableColumns.map(c => `<option value="${c}">${c.toUpperCase()}</option>`).join(''); container.innerHTML = `<div class="dynamic-filter-slot" style="margin-bottom:0; border:none; padding:0;"><select class="filter-select" id="filter-sel-0" data-idx="0">${optionsHTML}</select><div class="checkbox-list" id="filter-cbx-0" style="display:none;"></div></div>`; };
-            window.renderCheckboxesForFilter = function(idx, colName) { let cbxContainer = document.getElementById(`filter-cbx-${idx}`); if(!cbxContainer) return; if(!colName) { cbxContainer.style.display = 'none'; window.activeFilters[idx] = {key:"", vals:[]}; window.updateMap(); window.triggerGlobalFilterChart(); return; } cbxContainer.style.display = 'block'; let vals = Array.from(window.columnValuesSets[colName] || []).sort(); let html = `<label><input type="checkbox" class="cb-all-${idx}" checked> <b>Tout sélectionner</b></label><hr style="margin:4px 0; border-top:1px solid #eee;">`; vals.forEach(v => html += `<label><input type="checkbox" class="cb-val-${idx}" value="${v}"> ${v}</label>`); cbxContainer.innerHTML = html; window.activeFilters[idx] = {key: colName, vals: ['all']}; let allBtn = cbxContainer.querySelector(`.cb-all-${idx}`); let cbs = cbxContainer.querySelectorAll(`.cb-val-${idx}`); const updateLogic = () => { window.activeFilters[idx].vals = allBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); window.updateMap(); window.triggerGlobalFilterChart(); }; if(allBtn) allBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); updateLogic(); }); cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(allBtn) allBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(allBtn) allBtn.checked=true; } updateLogic(); })); };
+            window.renderCheckboxesForFilter = function(idx, colName) { let cbxContainer = document.getElementById(`filter-cbx-${idx}`); if(!cbxContainer) return; if(!colName) { cbxContainer.style.display = 'none'; window.activeFilters[idx] = {key:"", vals:[]}; window.updateMap(); window.triggerGlobalFilterChart(); window.refreshListViewIfActive(); return; } cbxContainer.style.display = 'block'; let vals = Array.from(window.columnValuesSets[colName] || []).sort(); let html = `<label><input type="checkbox" class="cb-all-${idx}" checked> <b>Tout sélectionner</b></label><hr style="margin:4px 0; border-top:1px solid #eee;">`; vals.forEach(v => html += `<label><input type="checkbox" class="cb-val-${idx}" value="${v}"> ${v}</label>`); cbxContainer.innerHTML = html; window.activeFilters[idx] = {key: colName, vals: ['all']}; let allBtn = cbxContainer.querySelector(`.cb-all-${idx}`); let cbs = cbxContainer.querySelectorAll(`.cb-val-${idx}`); const updateLogic = () => { window.activeFilters[idx].vals = allBtn.checked ? ['all'] : Array.from(cbs).filter(c=>c.checked).map(c=>c.value); window.updateMap(); window.triggerGlobalFilterChart(); window.refreshListViewIfActive(); }; if(allBtn) allBtn.addEventListener('change', e => { if(e.target.checked) cbs.forEach(c=>c.checked=false); updateLogic(); }); cbs.forEach(c => c.addEventListener('change', () => { if(c.checked) { if(allBtn) allBtn.checked=false; } else if(Array.from(cbs).every(x=>!x.checked)) { if(allBtn) allBtn.checked=true; } updateLogic(); })); };
 
             window.generateDynamicFiltersUI(); if(window.renderCloudLayersList) window.renderCloudLayersList(); window.calculateMaxes();
 
@@ -1452,7 +1700,7 @@
                     if (activeDetails && activeLabel) { activeDetails.style.display = 'block'; activeLabel.style.borderBottomLeftRadius = '0'; activeLabel.style.borderBottomRightRadius = '0'; activeLabel.style.marginBottom = '0'; if(window.mainTheme === 'stock') activeLabel.style.borderColor = '#16a085'; else if(window.mainTheme === 'atelier') activeLabel.style.borderColor = '#8e44ad'; else activeLabel.style.borderColor = '#3498db'; }
                     if(window.mainTheme === 'atelier') { document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'block'; document.getElementById('stock-workspace').style.display = 'none'; window.closeRightSidebar(); document.getElementById('sidebar').classList.add('collapsed'); if(window.renderAtelierWorkspace) window.renderAtelierWorkspace(); }
                     else if(window.mainTheme === 'stock') { document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'block'; window.closeRightSidebar(); document.getElementById('sidebar').classList.add('collapsed'); if(window.renderStockWorkspace) window.renderStockWorkspace(); }
-                    else { document.getElementById('map').style.display = 'block'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'none'; if(window.mainTheme === 'historique') window.calculateMaxes(); window.updateLegend(); window.updateMap(); if (window.selectedCannonsMap.size > 0) { window.renderSelectionPanel(); } else { window.triggerGlobalFilterChart(); } }
+                    else { document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'none'; if(window.mainTheme === 'historique') window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.applyThemeViewMode(); if (window.selectedCannonsMap.size > 0) { window.renderSelectionPanel(); } else { window.triggerGlobalFilterChart(); } }
                 });
             });
 
@@ -2752,11 +3000,16 @@
         /* ========================================================================= */
         /* CHAPITRE 8.D : MODE IMPRESSION (LÉGENDE + TABLEAU DE BORD DÉPLAÇABLES)     */
         /* ========================================================================= */
+        // CHAPITRE 8.D.1 — Gestionnaire générique de glisser-déposer : couvre à la fois les boîtes
+        // flottantes sur la carte (.print-box, position:absolute dans #map-container) et la fenêtre
+        // "Mode Impression" elle-même (.draggable-window, position:fixed dans le viewport).
         window.printDragState = { el: null, offsetX: 0, offsetY: 0, parentRect: null };
         document.addEventListener('mousedown', function(e) {
-            let handle = e.target.closest ? e.target.closest('.print-box-handle') : null; if (!handle) return;
-            let box = handle.closest('.print-box'); if (!box) return;
-            let rect = box.getBoundingClientRect(); let parentRect = box.parentElement.getBoundingClientRect();
+            let handle = e.target.closest ? e.target.closest('.print-box-handle, .draggable-handle') : null; if (!handle) return;
+            let box = handle.closest('.print-box, .draggable-window'); if (!box) return;
+            let rect = box.getBoundingClientRect();
+            let isFixed = window.getComputedStyle(box).position === 'fixed';
+            let parentRect = isFixed ? { left: 0, top: 0 } : box.parentElement.getBoundingClientRect();
             window.printDragState = { el: box, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top, parentRect: parentRect };
             e.preventDefault();
         });
@@ -2767,10 +3020,36 @@
         });
         document.addEventListener('mouseup', function() { if (window.printDragState) window.printDragState.el = null; });
 
+        // CHAPITRE 8.D.2 — Gestionnaire générique de redimensionnement (coin en bas à droite),
+        // même principe que le drag manager ci-dessus, pour .print-box et .draggable-window.
+        window.printResizeState = { el: null, startW: 0, startH: 0, startX: 0, startY: 0 };
+        document.addEventListener('mousedown', function(e) {
+            let handle = e.target.closest ? e.target.closest('.resize-handle') : null; if (!handle) return;
+            let box = handle.closest('.print-box, .draggable-window'); if (!box) return;
+            let rect = box.getBoundingClientRect();
+            window.printResizeState = { el: box, startW: rect.width, startH: rect.height, startX: e.clientX, startY: e.clientY };
+            e.preventDefault(); e.stopPropagation();
+        });
+        document.addEventListener('mousemove', function(e) {
+            let st = window.printResizeState; if (!st || !st.el) return;
+            let newW = st.startW + (e.clientX - st.startX); let newH = st.startH + (e.clientY - st.startY);
+            if (newW > 180) { st.el.style.width = newW + 'px'; }
+            if (newH > 120) { st.el.style.height = newH + 'px'; st.el.style.maxHeight = newH + 'px'; }
+        });
+        document.addEventListener('mouseup', function() { if (window.printResizeState) window.printResizeState.el = null; });
+
+        window.PAGE_SIZES_MM = { A4: { portrait: [210, 297], landscape: [297, 210] }, A3: { portrait: [297, 420], landscape: [420, 297] } };
+
+        // CHAPITRE 8.D.3 — Le mode impression n'est plus restreint à la vue carte : Atelier et Stock
+        // (et tout autre thème) peuvent être imprimés, avec ou sans la carte selon la case "Inclure la
+        // vue carte" (masquée automatiquement quand il n'y a pas de carte à proposer).
         window.openPrintMode = function() {
-            if (window.mainTheme === 'atelier' || window.mainTheme === 'stock') { alert("Le mode impression concerne la vue carte. Sélectionnez d'abord un thème carte (Type, Défauts, Historique...) avant d'imprimer."); return; }
             let toolbar = document.getElementById('print-toolbar'); if (!toolbar) return;
             toolbar.style.display = 'flex';
+            let mapToggleRow = document.getElementById('print-map-toggle-row'); let showMapChk = document.getElementById('print-show-map');
+            let isMapTheme = window.isPrintMapAvailable();
+            if (mapToggleRow) mapToggleRow.style.display = isMapTheme ? 'flex' : 'none';
+            if (showMapChk) showMapChk.checked = isMapTheme;
             window.buildPrintDashboardChecklist();
             window.refreshPrintPreview();
         };
@@ -2779,11 +3058,26 @@
             let toolbar = document.getElementById('print-toolbar'); if (toolbar) toolbar.style.display = 'none';
             let lb = document.getElementById('print-legend-box'); if (lb) lb.remove();
             let db = document.getElementById('print-dashboard-box'); if (db) db.remove();
+            let fr = document.getElementById('print-page-frame-outline'); if (fr) fr.remove();
+            let modal = document.getElementById('print-page-preview-modal'); if (modal) modal.style.display = 'none';
+        };
+
+        window.isPrintMapAvailable = function() {
+            if (window.mainTheme === 'atelier' || window.mainTheme === 'stock') return false;
+            if (window.appSettings.viewMode && window.appSettings.viewMode[window.mainTheme] === 'list') return false;
+            return true;
+        };
+
+        window.getPrintSourceContainer = function() {
+            if (window.mainTheme === 'atelier') return document.getElementById('atelier-workspace');
+            if (window.mainTheme === 'stock') return document.getElementById('stock-workspace');
+            if (window.appSettings.viewMode && window.appSettings.viewMode[window.mainTheme] === 'list') return document.getElementById('theme-list-workspace');
+            return document.getElementById('selected-list');
         };
 
         window.guessBlockLabel = function(el, idx) {
             let txt = "";
-            let h = el.querySelector ? el.querySelector('h3, h4, .sel-details-header, b') : null; if (h) txt = h.innerText.trim();
+            let h = el.querySelector ? el.querySelector('h3, h4, summary, .sel-details-header, b') : null; if (h) txt = h.innerText.trim();
             if (!txt) txt = (el.innerText || '').trim().split('\n')[0];
             if (!txt) txt = 'Bloc ' + (idx + 1);
             return txt.length > 45 ? txt.substring(0, 45) + '…' : txt;
@@ -2791,7 +3085,7 @@
 
         window.buildPrintDashboardChecklist = function() {
             let container = document.getElementById('print-dashboard-checklist'); if (!container) return;
-            let source = document.getElementById('selected-list');
+            let source = window.getPrintSourceContainer();
             if (!source || source.children.length === 0) { container.innerHTML = '<i style="color:#888;">Aucun contenu à afficher.</i>'; return; }
             let html = '';
             Array.from(source.children).forEach((child, idx) => {
@@ -2819,35 +3113,285 @@
             return `<div style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#34495e; margin-bottom:6px;">Légende</div>${el.innerHTML}`;
         };
 
+        // CHAPITRE 8.D.4 — Cadre en pointillés indiquant, à l'écran, la zone qui sera imprimée (les
+        // formats A4 et A3 partagent le même ratio ISO 216 : seule l'orientation change la forme).
+        window.updatePrintFrameOutline = function() {
+            let mapContainer = document.getElementById('map-container'); if (!mapContainer) return;
+            let old = document.getElementById('print-page-frame-outline'); if (old) old.remove();
+            let orientation = (document.querySelector('input[name="print-orientation"]:checked') || {}).value || 'portrait';
+            let ratio = orientation === 'landscape' ? (297 / 210) : (210 / 297);
+            let mcRect = mapContainer.getBoundingClientRect();
+            let maxW = mcRect.width * 0.85, maxH = mcRect.height * 0.85;
+            let w = maxW, h = w / ratio;
+            if (h > maxH) { h = maxH; w = h * ratio; }
+            let frame = document.createElement('div'); frame.id = 'print-page-frame-outline';
+            frame.style.left = ((mcRect.width - w) / 2) + 'px'; frame.style.top = ((mcRect.height - h) / 2) + 'px';
+            frame.style.width = w + 'px'; frame.style.height = h + 'px';
+            mapContainer.appendChild(frame);
+        };
+
         window.refreshPrintPreview = function() {
             let mapContainer = document.getElementById('map-container'); if (!mapContainer) return;
             let oldLegend = document.getElementById('print-legend-box'); if (oldLegend) oldLegend.remove();
             let oldDash = document.getElementById('print-dashboard-box'); if (oldDash) oldDash.remove();
+            let oldFrame = document.getElementById('print-page-frame-outline'); if (oldFrame) oldFrame.remove();
 
+            let isMapTheme = window.isPrintMapAvailable();
+            let showMap = isMapTheme && (document.getElementById('print-show-map') ? document.getElementById('print-show-map').checked : true);
             let showLegend = document.getElementById('print-show-legend') ? document.getElementById('print-show-legend').checked : true;
             let showDash = document.getElementById('print-show-dashboard') ? document.getElementById('print-show-dashboard').checked : true;
 
-            if (showLegend) {
-                let legendHtml = window.getCurrentLegendHtml();
-                if (legendHtml) {
-                    let box = document.createElement('div'); box.id = 'print-legend-box'; box.className = 'print-box';
-                    box.innerHTML = `<div class="print-box-handle"><span><i class="fa-solid fa-up-down-left-right"></i> Légende</span></div><div class="print-box-body">${legendHtml}</div>`;
-                    mapContainer.appendChild(box);
-                }
-            }
+            let legendRow = document.getElementById('print-legend-row'); if (legendRow) legendRow.style.display = window.getCurrentLegendHtml() ? 'flex' : 'none';
+            let hint = document.getElementById('print-hint-text'); if (hint) hint.style.display = showMap ? 'block' : 'none';
 
+            if (showMap) {
+                window.updatePrintFrameOutline();
+                if (showLegend) {
+                    let legendHtml = window.getCurrentLegendHtml();
+                    if (legendHtml) {
+                        let box = document.createElement('div'); box.id = 'print-legend-box'; box.className = 'print-box';
+                        box.innerHTML = `<div class="print-box-handle"><span><i class="fa-solid fa-up-down-left-right"></i> Légende</span></div><div class="print-box-body">${legendHtml}</div><div class="resize-handle"></div>`;
+                        mapContainer.appendChild(box);
+                    }
+                }
+                if (showDash) {
+                    let source = window.getPrintSourceContainer();
+                    let checks = document.querySelectorAll('.print-block-chk:checked');
+                    if (source && checks.length > 0) {
+                        let box = document.createElement('div'); box.id = 'print-dashboard-box'; box.className = 'print-box';
+                        box.innerHTML = `<div class="print-box-handle"><span><i class="fa-solid fa-up-down-left-right"></i> Tableau de Bord</span></div>`;
+                        let bodyWrap = document.createElement('div'); bodyWrap.className = 'print-box-body';
+                        checks.forEach(chk => { let idx = parseInt(chk.getAttribute('data-block-idx')); let srcChild = source.children[idx]; if (srcChild) bodyWrap.appendChild(window.cloneNodeForPrint(srcChild)); });
+                        box.appendChild(bodyWrap);
+                        let rh = document.createElement('div'); rh.className = 'resize-handle'; box.appendChild(rh);
+                        mapContainer.appendChild(box);
+                    }
+                }
+            } else {
+                let modal = document.getElementById('print-page-preview-modal');
+                if (modal && modal.style.display === 'flex') window.buildPrintPageSheet();
+            }
+        };
+
+        // CHAPITRE 8.D.5 — Aperçu "page" isolé (sans carte) : contenu cloné à plat, mis à l'échelle
+        // aux proportions réelles du format choisi (A4/A3 partagent le même ratio, seule l'orientation
+        // change la forme — voir updatePrintFrameOutline ci-dessus pour la même logique côté carte).
+        window.buildPrintPageSheet = function() {
+            let sheet = document.getElementById('print-page-sheet'); if (!sheet) return;
+            let format = (document.querySelector('input[name="print-format"]:checked') || {}).value || 'A4';
+            let orientation = (document.querySelector('input[name="print-orientation"]:checked') || {}).value || 'portrait';
+            let dims = window.PAGE_SIZES_MM[format][orientation];
+            let ratio = dims[0] / dims[1];
+            let previewW = 700; let previewH = previewW / ratio;
+            sheet.style.width = previewW + 'px'; sheet.style.minHeight = previewH + 'px';
+
+            let html = '';
+            let showMap = window.isPrintMapAvailable() && (document.getElementById('print-show-map') ? document.getElementById('print-show-map').checked : true);
+            let showLegend = document.getElementById('print-show-legend') ? document.getElementById('print-show-legend').checked : true;
+            if (showLegend && !showMap) { let lh = window.getCurrentLegendHtml(); if (lh) html += `<div style="margin-bottom:15px; padding:10px; border:1px solid #eee; border-radius:6px;">${lh}</div>`; }
+            let showDash = document.getElementById('print-show-dashboard') ? document.getElementById('print-show-dashboard').checked : true;
             if (showDash) {
-                let source = document.getElementById('selected-list');
+                let source = window.getPrintSourceContainer();
                 let checks = document.querySelectorAll('.print-block-chk:checked');
                 if (source && checks.length > 0) {
-                    let box = document.createElement('div'); box.id = 'print-dashboard-box'; box.className = 'print-box';
-                    box.innerHTML = `<div class="print-box-handle"><span><i class="fa-solid fa-up-down-left-right"></i> Tableau de Bord</span></div>`;
-                    let bodyWrap = document.createElement('div'); bodyWrap.className = 'print-box-body';
-                    checks.forEach(chk => { let idx = parseInt(chk.getAttribute('data-block-idx')); let srcChild = source.children[idx]; if (srcChild) bodyWrap.appendChild(window.cloneNodeForPrint(srcChild)); });
-                    box.appendChild(bodyWrap);
-                    mapContainer.appendChild(box);
+                    let wrap = document.createElement('div');
+                    checks.forEach(chk => { let idx = parseInt(chk.getAttribute('data-block-idx')); let srcChild = source.children[idx]; if (srcChild) wrap.appendChild(window.cloneNodeForPrint(srcChild)); });
+                    html += wrap.innerHTML;
                 }
             }
+            sheet.innerHTML = html || '<i style="color:#999;">Aucun contenu sélectionné.</i>';
+        };
+
+        window.openPrintPagePreview = function() {
+            window.buildPrintPageSheet();
+            document.getElementById('print-page-preview-modal').style.display = 'flex';
+        };
+
+        // CHAPITRE 8.D.6 — Applique le format/orientation choisis via une règle @page injectée (le
+        // seul moyen standard de piloter le format papier au moment de l'impression), puis imprime.
+        window.launchPrint = function() {
+            let format = (document.querySelector('input[name="print-format"]:checked') || {}).value || 'A4';
+            let orientation = (document.querySelector('input[name="print-orientation"]:checked') || {}).value || 'portrait';
+            let isMapTheme = window.isPrintMapAvailable();
+            let showMap = isMapTheme && (document.getElementById('print-show-map') ? document.getElementById('print-show-map').checked : true);
+
+            let styleEl = document.getElementById('print-page-size-style');
+            if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = 'print-page-size-style'; document.head.appendChild(styleEl); }
+            styleEl.textContent = `@page { size: ${format} ${orientation}; margin: 10mm; }`;
+
+            document.body.classList.toggle('print-mode-nomap', !showMap);
+            if (!showMap) window.buildPrintPageSheet();
+
+            setTimeout(() => window.print(), 50);
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 8.E : CALENDRIER (RENDEZ-VOUS, PÉRIODES DE TRAVAIL, TICKETS)      */
+        /* ========================================================================= */
+        window.openCalendar = function() {
+            let modal = document.getElementById('calendar-modal'); if (!modal) return;
+            modal.style.display = 'flex';
+            window.closeCalendarDayPanel();
+            window.renderCalendarMonth();
+        };
+        window.closeCalendar = function() { let modal = document.getElementById('calendar-modal'); if (modal) modal.style.display = 'none'; };
+
+        window.calendarShiftMonth = function(delta) { window.calendarViewDate.setMonth(window.calendarViewDate.getMonth() + delta); window.renderCalendarMonth(); };
+        window.calendarGoToday = function() { window.calendarViewDate = new Date(); window.renderCalendarMonth(); };
+
+        window.parseFrDateLoose = function(val) {
+            if (!val) return null;
+            let str = val.toString().trim();
+            let m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+            if (m) return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
+            let d = new Date(str);
+            return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        };
+
+        window.getEventsForDate = function(dateObj) {
+            let y = dateObj.getFullYear(), m = dateObj.getMonth(), d = dateObj.getDate();
+            let dateStr = String(d).padStart(2, '0') + '/' + String(m + 1).padStart(2, '0') + '/' + y;
+            let result = { rdv: [], periode: [], ticketsAFaire: [], ticketsFaits: [] };
+            window.calendarEvents.forEach(ev => {
+                if (ev.type === 'periode_travail') {
+                    let start = window.parseFrDateLoose(ev.dateDebut); let end = window.parseFrDateLoose(ev.dateFin || ev.dateDebut);
+                    if (start && end && dateObj >= start && dateObj <= end) result.periode.push(ev);
+                } else if (ev.dateDebut === dateStr) { result.rdv.push(ev); }
+            });
+            window.rawTickets.forEach(t => {
+                if (!t.date) return;
+                let td = window.parseFrDateLoose(t.date); if (!td) return;
+                if (td.getFullYear() === y && td.getMonth() === m && td.getDate() === d) {
+                    if (t.statut.includes('fait') || t.statut === '') result.ticketsFaits.push(t); else result.ticketsAFaire.push(t);
+                }
+            });
+            return result;
+        };
+
+        window.renderCalendarMonth = function() {
+            let container = document.getElementById('calendar-grid'); if (!container) return;
+            let viewDate = window.calendarViewDate; let y = viewDate.getFullYear(), m = viewDate.getMonth();
+            let monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+            let lbl = document.getElementById('calendar-month-label'); if (lbl) lbl.innerText = monthNames[m] + ' ' + y;
+
+            let firstDay = new Date(y, m, 1);
+            let startWeekday = (firstDay.getDay() + 6) % 7;
+            let daysInMonth = new Date(y, m + 1, 0).getDate();
+            let today = new Date();
+
+            let html = '';
+            ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].forEach(d => html += `<div class="cal-weekday">${d}</div>`);
+            for (let i = 0; i < startWeekday; i++) html += `<div class="cal-day cal-day-empty"></div>`;
+            for (let day = 1; day <= daysInMonth; day++) {
+                let dateObj = new Date(y, m, day);
+                let evs = window.getEventsForDate(dateObj);
+                let isToday = dateObj.toDateString() === today.toDateString();
+                let dots = '';
+                if (evs.rdv.length) dots += `<span class="cal-dot" style="background:#3498db;" title="${evs.rdv.length} rendez-vous"></span>`;
+                if (evs.periode.length) dots += `<span class="cal-dot" style="background:#9b59b6;" title="${evs.periode.length} période(s) de travail"></span>`;
+                if (evs.ticketsAFaire.length) dots += `<span class="cal-dot" style="background:#e74c3c;" title="${evs.ticketsAFaire.length} ticket(s) à faire"></span>`;
+                if (evs.ticketsFaits.length) dots += `<span class="cal-dot" style="background:#27ae60;" title="${evs.ticketsFaits.length} ticket(s) fait(s)"></span>`;
+                html += `<div class="cal-day ${isToday ? 'cal-day-today' : ''}" onclick="window.openCalendarDay(${y},${m},${day})"><div class="cal-day-num">${day}</div><div class="cal-day-dots">${dots}</div></div>`;
+            }
+            container.innerHTML = html;
+        };
+
+        window.openCalendarDay = function(y, m, day) {
+            let dateObj = new Date(y, m, day);
+            let evs = window.getEventsForDate(dateObj);
+            let dateStr = String(day).padStart(2, '0') + '/' + String(m + 1).padStart(2, '0') + '/' + y;
+            let panel = document.getElementById('calendar-day-panel'); if (!panel) return;
+
+            let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><b style="font-size:14px;">${dateStr}</b><button onclick="window.closeCalendarDayPanel()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#999;">×</button></div>`;
+            const renderEvList = (list, icon, color) => list.map(ev => `<div style="border-left:3px solid ${color}; background:#fff; padding:8px 10px; margin-bottom:6px; border-radius:4px; font-size:12px; cursor:pointer;" onclick="window.editCalendarEvent('${ev.id}')"><b>${icon} ${ev.titre}</b>${ev.heure ? ` <span style="color:#888;">à ${ev.heure}</span>` : ''}${ev.canon ? `<br><span style="color:#888;">Canon N° ${ev.canon}</span>` : ''}${ev.remarque ? `<br><span style="color:#888; font-style:italic;">${ev.remarque}</span>` : ''}</div>`).join('');
+            const renderTicketList = (list, icon, color) => list.map(t => `<div style="border-left:3px solid ${color}; background:#fff; padding:8px 10px; margin-bottom:6px; border-radius:4px; font-size:12px; cursor:pointer;" onclick="window.closeCalendar(); window.focusCannon('${t.idCanon}');"><b>${icon} Canon ${t.idCanon}</b><br><span style="color:#888;">${t.defaut}</span></div>`).join('');
+
+            html += renderEvList(evs.rdv, '📌', '#3498db');
+            html += renderEvList(evs.periode, '🧰', '#9b59b6');
+            html += renderTicketList(evs.ticketsAFaire, '🚨', '#e74c3c');
+            html += renderTicketList(evs.ticketsFaits, '✅', '#27ae60');
+            if (!evs.rdv.length && !evs.periode.length && !evs.ticketsAFaire.length && !evs.ticketsFaits.length) html += `<p style="color:#999; font-size:12px;">Aucun événement ce jour.</p>`;
+            html += `<button class="btn-action-primary" style="margin-top:10px; background:#3498db;" onclick="window.openCalendarEventForm(null, '${dateStr}')"><i class="fa-solid fa-plus"></i> Ajouter un événement</button>`;
+            panel.innerHTML = html; panel.style.display = 'block';
+        };
+        window.closeCalendarDayPanel = function() { let panel = document.getElementById('calendar-day-panel'); if (panel) panel.style.display = 'none'; };
+
+        window.openCalendarEventForm = function(eventId, defaultDate) {
+            let ev = eventId ? window.calendarEvents.find(e => e.id === eventId) : null;
+            let panel = document.getElementById('calendar-day-panel'); if (!panel) return;
+            let dStr = ev ? ev.dateDebut : defaultDate;
+            let dIso = window.frToIso(dStr) || window.todayIso();
+            let fIso = ev && ev.dateFin ? window.frToIso(ev.dateFin) : dIso;
+
+            panel.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><b style="font-size:14px;">${ev ? 'Modifier' : 'Nouvel'} événement</b><button onclick="window.closeCalendarDayPanel()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#999;">×</button></div>
+                <input type="hidden" id="cal-ev-id" value="${ev ? ev.id : ''}">
+                <div class="edit-label">Type</div>
+                <select id="cal-ev-type" class="edit-input" onchange="window.toggleCalendarEventFields()">
+                    <option value="rendez-vous" ${(!ev || ev.type === 'rendez-vous') ? 'selected' : ''}>📌 Rendez-vous</option>
+                    <option value="periode_travail" ${ev && ev.type === 'periode_travail' ? 'selected' : ''}>🧰 Période de travail</option>
+                </select>
+                <div class="edit-label">Titre</div>
+                <input type="text" id="cal-ev-titre" class="edit-input" value="${ev ? ev.titre.replace(/"/g, '&quot;') : ''}" placeholder="Ex: RDV fournisseur, Maintenance annuelle...">
+                <div style="display:flex; gap:8px;">
+                    <div style="flex:1;"><div class="edit-label">Date début</div><input type="date" id="cal-ev-debut" class="edit-input" value="${dIso}"></div>
+                    <div style="flex:1;" id="cal-ev-heure-wrap"><div class="edit-label">Heure</div><input type="time" id="cal-ev-heure" class="edit-input" value="${ev ? ev.heure : ''}"></div>
+                    <div style="flex:1; display:none;" id="cal-ev-fin-wrap"><div class="edit-label">Date fin</div><input type="date" id="cal-ev-fin" class="edit-input" value="${fIso}"></div>
+                </div>
+                <div class="edit-label">Canon lié (optionnel)</div>
+                <input type="text" id="cal-ev-canon" class="edit-input" value="${ev ? ev.canon : ''}" placeholder="N° canon">
+                <div class="edit-label">Remarque</div>
+                <textarea id="cal-ev-remarque" class="edit-input" rows="2">${ev ? ev.remarque : ''}</textarea>
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    ${ev ? `<button onclick="window.deleteCalendarEvent('${ev.id}')" style="background:none; border:1px solid #e74c3c; color:#e74c3c; padding:10px; border-radius:4px; cursor:pointer; font-weight:bold;">🗑️</button>` : ''}
+                    <button onclick="window.saveCalendarEvent()" class="btn-action-primary" style="margin:0; flex:1; background:#27ae60;">💾 Enregistrer</button>
+                </div>
+            `;
+            panel.style.display = 'block';
+            window.toggleCalendarEventFields();
+        };
+
+        window.toggleCalendarEventFields = function() {
+            let typeEl = document.getElementById('cal-ev-type'); if (!typeEl) return;
+            let type = typeEl.value;
+            let hw = document.getElementById('cal-ev-heure-wrap'); if (hw) hw.style.display = type === 'rendez-vous' ? 'block' : 'none';
+            let fw = document.getElementById('cal-ev-fin-wrap'); if (fw) fw.style.display = type === 'periode_travail' ? 'block' : 'none';
+        };
+
+        window.editCalendarEvent = function(id) { window.openCalendarEventForm(id, null); };
+
+        window.saveCalendarEvent = async function() {
+            let id = document.getElementById('cal-ev-id').value;
+            let type = document.getElementById('cal-ev-type').value;
+            let titre = document.getElementById('cal-ev-titre').value.trim();
+            if (!titre) { alert("Merci de renseigner un titre."); return; }
+            let debut = window.isoToFr(document.getElementById('cal-ev-debut').value);
+            let heure = type === 'rendez-vous' ? document.getElementById('cal-ev-heure').value : '';
+            let fin = type === 'periode_travail' ? window.isoToFr(document.getElementById('cal-ev-fin').value) : debut;
+            let canon = document.getElementById('cal-ev-canon').value.trim();
+            let remarque = document.getElementById('cal-ev-remarque').value.trim();
+            let fieldsObj = { type: type, titre: titre, "date_debut": debut, heure: heure, "date_fin": fin, canon: canon, remarque: remarque };
+            let payload = id ? { action: "update_event", id: id, fields: fieldsObj } : { action: "add_event", fields: fieldsObj };
+
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(payload) });
+                let r = await res.json();
+                if (r.status === "success") {
+                    if (id) { let evObj = window.calendarEvents.find(e => e.id === id); if (evObj) Object.assign(evObj, { type: type, titre: titre, dateDebut: debut, heure: heure, dateFin: fin, canon: canon, remarque: remarque }); }
+                    else { window.calendarEvents.push({ id: r.id || '', type: type, titre: titre, dateDebut: debut, heure: heure, dateFin: fin, canon: canon, remarque: remarque }); }
+                    window.closeCalendarDayPanel(); window.renderCalendarMonth();
+                } else { alert("Erreur : " + (r.msg || "inconnue")); }
+            } catch (e) { alert("Erreur réseau."); }
+        };
+
+        window.deleteCalendarEvent = async function(id) {
+            if (!confirm("Supprimer cet événement ?")) return;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_event", id: id }) });
+                let r = await res.json();
+                if (r.status === "success") { window.calendarEvents = window.calendarEvents.filter(e => e.id !== id); window.closeCalendarDayPanel(); window.renderCalendarMonth(); }
+                else { alert("Erreur : " + (r.msg || "inconnue")); }
+            } catch (e) { alert("Erreur réseau."); }
         };
 
         /* ========================================================================= */
