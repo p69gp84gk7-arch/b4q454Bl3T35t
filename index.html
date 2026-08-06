@@ -105,7 +105,11 @@
         .bi-canvas-box {background:#fff;border-radius:8px;border:1px solid #ddd;padding:20px;flex:1;position:relative;box-shadow:0 4px 15px rgba(0,0,0,0.05);}
 
         .atelier-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #8e44ad; }
-        .atelier-card h3 { margin: 0 0 10px 0; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .atelier-card > summary { margin: 0; color: #2c3e50; padding-bottom: 10px; cursor: pointer; list-style: none; }
+        .atelier-card > summary::-webkit-details-marker { display: none; }
+        .atelier-card > summary::after { content: '▼'; font-size: 11px; color: #bdc3c7; margin-left: 10px; }
+        .atelier-card[open] > summary { border-bottom: 1px solid #eee; }
+        .atelier-card[open] > summary::after { content: '▲'; color: #8e44ad; }
         .atelier-sub-details { margin-top: 10px; border: 1px solid #e1e8ed; border-radius: 6px; background: #fff; overflow: hidden; }
         .atelier-sub-details summary { background: #f8f9fa; padding: 12px 15px; font-size: 13px; font-weight: bold; color: #34495e; cursor: pointer; border-bottom: 1px solid #e1e8ed; list-style: none; display: flex; justify-content: space-between; align-items: center; }
         .atelier-sub-details summary::-webkit-details-marker { display: none; }
@@ -136,6 +140,21 @@
             .bi-content { height: 60vh; }
             #compare-modal { width: 98%; height: 95vh; top: 2%; left: 1%; transform: none; }
         }
+
+        .print-box { position:absolute; z-index:3000; background:rgba(255,255,255,0.96); border:1px solid #ccc; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.25); width:280px; max-width:80vw; overflow:hidden; }
+        .print-box-handle { background:#7f8c8d; color:white; padding:6px 10px; font-size:11px; font-weight:bold; cursor:move; display:flex; justify-content:space-between; align-items:center; user-select:none; }
+        .print-box-body { padding:10px; font-size:11px; max-height:420px; overflow-y:auto; }
+        .print-box-body img { max-width:100%; }
+        #print-legend-box { top:20px; left:20px; }
+        #print-dashboard-box { top:20px; right:20px; }
+
+        @media print {
+            #topbar, #sidebar, #right-sidebar, #print-toolbar, #loading-overlay, #pdf-modal, #settings-panel, #bi-meteo-modal, #compare-modal, #meteo-history-modal, .resizer, .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+            body, html { overflow: visible !important; height: auto !important; }
+            #app-container { padding-top: 0 !important; height: auto !important; }
+            #map-container { position: static !important; width: 100% !important; height: 100vh !important; }
+            .print-box-handle { cursor: default !important; }
+        }
     </style>
 </head>
 
@@ -148,19 +167,20 @@
     <!-- ========================================================================= -->
     <div id="topbar">
         <div style="display:flex; align-items:center;">
-            <button class="topbar-btn" style="margin-left:0;" onclick="document.getElementById('sidebar').classList.toggle('collapsed')"><i class="fa-solid fa-bars"></i> <span class="btn-text">Menu</span></button>
-            <button class="topbar-btn" onclick="window.toggleRightSidebar()"><i class="fa-solid fa-chart-line"></i> <span class="btn-text">Tableau de Bord</span></button>
+            <button class="topbar-btn" data-btnkey="menu" data-btnlabel="Menu" style="margin-left:0;" onclick="document.getElementById('sidebar').classList.toggle('collapsed')"><i class="fa-solid fa-bars"></i> <span class="btn-text">Menu</span></button>
+            <button class="topbar-btn" data-btnkey="dashboard" data-btnlabel="Tableau de Bord" onclick="window.toggleRightSidebar()"><i class="fa-solid fa-chart-line"></i> <span class="btn-text">Tableau de Bord</span></button>
         </div>
         <div class="topbar-actions">
-            <button class="topbar-btn" onclick="window.openPdfModal()" style="background:#8e44ad; border-color:#9b59b6;"><i class="fa-solid fa-book-open"></i> <span class="btn-text">Documents</span></button>
-            <button class="topbar-btn" onclick="window.promptSettings()" style="background:#2c3e50; border-color:#34495e;"><i class="fa-solid fa-gear"></i> <span class="btn-text">Paramètres</span></button>
+            <button class="topbar-btn" data-btnkey="documents" data-btnlabel="Documents" onclick="window.openPdfModal()" style="background:#8e44ad; border-color:#9b59b6;"><i class="fa-solid fa-book-open"></i> <span class="btn-text">Documents</span></button>
+            <button class="topbar-btn" data-btnkey="settings" data-btnlabel="Paramètres" onclick="window.promptSettings()" style="background:#2c3e50; border-color:#34495e;"><i class="fa-solid fa-gear"></i> <span class="btn-text">Paramètres</span></button>
             <div style="width:2px; height:20px; background:rgba(255,255,255,0.3); margin:0 10px;"></div>
-            <button class="topbar-btn" onclick="window.openGlobalCompareModal(true)" style="background:#d35400; border-color:#e67e22;"><i class="fa-solid fa-code-compare"></i> <span class="btn-text">Comparer Saisons</span></button>
-            <button class="topbar-btn" onclick="window.openBiMeteo()" style="background:#16a085; border-color:#1abc9c;"><i class="fa-solid fa-snowflake"></i> <span class="btn-text">Centre Expert BI</span></button>
-            <button class="topbar-btn" onclick="window.openMeteoWidget()"><i class="fa-solid fa-cloud-sun"></i> <span class="btn-text">Météo Live</span></button>
-            <button class="topbar-btn" onclick="window.openWebcamGrid()"><i class="fa-solid fa-video"></i> <span class="btn-text">Webcams</span></button>
-            <button class="topbar-btn" onclick="window.openMeteoHistoryModal(true)" style="background:#f39c12; border-color:#f1c40f;"><i class="fa-solid fa-temperature-half"></i> <span class="btn-text">Hist. Météo</span></button>
-            <button class="topbar-btn" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;"><i class="fa-solid fa-location-crosshairs"></i> <span class="btn-text">Localiser</span></button>
+            <button class="topbar-btn" data-btnkey="compare" data-btnlabel="Comparer Saisons" onclick="window.openGlobalCompareModal(true)" style="background:#d35400; border-color:#e67e22;"><i class="fa-solid fa-code-compare"></i> <span class="btn-text">Comparer Saisons</span></button>
+            <button class="topbar-btn" data-btnkey="bi" data-btnlabel="Centre Expert BI" onclick="window.openBiMeteo()" style="background:#16a085; border-color:#1abc9c;"><i class="fa-solid fa-snowflake"></i> <span class="btn-text">Centre Expert BI</span></button>
+            <button class="topbar-btn" data-btnkey="meteo" data-btnlabel="Météo Live" onclick="window.openMeteoWidget()"><i class="fa-solid fa-cloud-sun"></i> <span class="btn-text">Météo Live</span></button>
+            <button class="topbar-btn" data-btnkey="webcams" data-btnlabel="Webcams" onclick="window.openWebcamGrid()"><i class="fa-solid fa-video"></i> <span class="btn-text">Webcams</span></button>
+            <button class="topbar-btn" data-btnkey="histmeteo" data-btnlabel="Hist. Météo" onclick="window.openMeteoHistoryModal(true)" style="background:#f39c12; border-color:#f1c40f;"><i class="fa-solid fa-temperature-half"></i> <span class="btn-text">Hist. Météo</span></button>
+            <button class="topbar-btn" data-btnkey="localiser" data-btnlabel="Localiser" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;"><i class="fa-solid fa-location-crosshairs"></i> <span class="btn-text">Localiser</span></button>
+            <button class="topbar-btn" data-btnkey="print" data-btnlabel="Imprimer" onclick="window.openPrintMode()" style="background:#7f8c8d; border-color:#95a5a6;"><i class="fa-solid fa-print"></i> <span class="btn-text">Imprimer</span></button>
         </div>
     </div>
 
@@ -200,7 +220,28 @@
                     <select id="set-basemap" class="edit-input" onchange="window.applySettingsUI()" style="margin-bottom:15px;"><option value="sat">Satellite Haute Def (Esri)</option><option value="plan">Plan & Routes Standard (OSM)</option><option value="topo">Relief & Topographie (Esri Topo)</option><option value="dark">Cartographie Sombre (Dark Matter)</option><option value="light">Cartographie Claire (Positron)</option></select>
                     <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px; cursor:pointer; font-size:12px; font-weight:bold;"><input type="checkbox" id="set-show-tools" checked onchange="window.applySettingsUI()"> Outils d'Analyse (Menu Gauche)</label>
                     <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; font-weight:bold;"><input type="checkbox" id="set-show-filters" checked onchange="window.applySettingsUI()"> Filtres Rapides (Menu Gauche)</label>
+                    <div style="border-top:1px dashed #ccc; margin-top:12px; padding-top:12px;">
+                        <b style="font-size:11px; color:#8e44ad;">🗺️ Couches Superposées</b>
+                        <div style="margin-top:8px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; font-weight:bold;"><input type="checkbox" id="set-show-hillshade" onchange="window.applySettingsUI()"> Relief (Hillshade)</label>
+                            <div style="display:flex; align-items:center; gap:8px; margin:4px 0 10px 22px;"><input type="range" id="set-hillshade-opacity" min="0" max="100" value="70" oninput="window.applySettingsUI()" style="flex:1;"><span id="set-hillshade-opacity-val" style="font-size:11px; font-weight:bold; color:#8e44ad; width:32px; text-align:right;">70%</span></div>
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; font-weight:bold;"><input type="checkbox" id="set-show-labels" onchange="window.applySettingsUI()"> Repères & Noms de lieux</label>
+                            <div style="display:flex; align-items:center; gap:8px; margin:4px 0 0 22px;"><input type="range" id="set-labels-opacity" min="0" max="100" value="80" oninput="window.applySettingsUI()" style="flex:1;"><span id="set-labels-opacity-val" style="font-size:11px; font-weight:bold; color:#8e44ad; width:32px; text-align:right;">80%</span></div>
+                        </div>
+                    </div>
                 </div>
+            </details>
+            <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-brush"></i> Couleurs des Boutons (Topbar)</summary>
+                <div id="settings-btn-colors" style="padding:15px; display:flex; flex-direction:column; gap:8px;"></div>
+            </details>
+            <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-satellite-dish"></i> Légendes Répéteurs & Transfos</summary>
+                <div id="settings-legend-rep-transfo" style="padding:15px; display:flex; flex-direction:column; gap:8px;"><i style="font-size:11px; color:#888;">Chargement des données requis...</i></div>
+            </details>
+            <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-list-check"></i> Fiche Canon (Champs Visibles)</summary>
+                <div id="settings-fiche-canon-cols" style="padding:15px; display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;"><i style="font-size:11px; color:#888;">Chargement des données requis...</i></div>
             </details>
             <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
                 <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-droplet"></i> Couleurs des Statuts (Carte)</summary>
@@ -277,6 +318,22 @@
                 <div style="flex:1;"><div class="edit-label">Type de graphique</div><select id="meteo-chart-type" class="edit-input" style="margin:0;" onchange="window.renderMeteoHistoryChart()"><option value="line">📈 Courbe</option><option value="bar">📊 Histogramme</option></select></div>
             </div>
             <div class="comp-chart-box" style="height:380px; position:relative; background:#fff; padding:10px;"><canvas id="meteo-history-canvas"></canvas></div>
+        </div>
+    </div>
+
+    <!-- MODE IMPRESSION -->
+    <div id="print-toolbar" style="display:none; position:fixed; top:60px; right:15px; width:320px; max-width:90vw; background:#fff; z-index:7500; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.3); border:1px solid #ccc; flex-direction:column; max-height:calc(100vh - 80px); overflow:hidden;">
+        <div style="background:#7f8c8d; color:white; padding:12px 15px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:14px;">
+            <span><i class="fa-solid fa-print"></i> Mode Impression</span>
+            <button onclick="window.closePrintMode()" style="background:none; border:none; color:white; cursor:pointer; font-size:20px; line-height:16px;">×</button>
+        </div>
+        <div style="padding:15px; overflow-y:auto;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:bold; margin-bottom:10px;"><input type="checkbox" id="print-show-legend" checked onchange="window.refreshPrintPreview()"> Afficher la légende</label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:bold; margin-bottom:8px; border-top:1px dashed #ddd; padding-top:10px;"><input type="checkbox" id="print-show-dashboard" checked onchange="window.refreshPrintPreview()"> Afficher le tableau de bord</label>
+            <div id="print-dashboard-checklist" style="margin-left:22px; display:flex; flex-direction:column; gap:4px; font-size:11px; max-height:180px; overflow-y:auto; border:1px solid #eee; border-radius:4px; padding:8px; background:#fafbfc;"></div>
+            <p style="font-size:10px; color:#888; margin:12px 0 0 0;">💡 Glissez les boîtes sur la carte pour les repositionner avant impression.</p>
+            <button onclick="window.refreshPrintPreview()" class="btn-action-primary" style="background:#7f8c8d; margin-top:12px;"><i class="fa-solid fa-arrows-rotate"></i> Actualiser l'aperçu</button>
+            <button onclick="window.print()" class="btn-action-primary" style="background:#27ae60; margin-top:8px;"><i class="fa-solid fa-print"></i> Imprimer</button>
         </div>
     </div>
 
@@ -372,8 +429,12 @@
         window.appSettings = {
             basemap: 'sat', topbarColor: '#2c3e50', sidebarBg: '#ffffff', showTools: true, showFilters: true,
             colUrgent: '#e74c3c', colEnCours: '#f39c12', colRas: '#bdc3c7', colTeteOk: '#e67e22', colTeteWait: '#bdc3c7',
-            colSuiviDec: '#27ae60', colSuiviPrev: '#9b59b6', colSuiviOk: '#f1c40f', btnStyle: 'normal', btnDisplay: 'full', dashLayout: 'row'
+            colSuiviDec: '#27ae60', colSuiviPrev: '#9b59b6', colSuiviOk: '#f1c40f', btnStyle: 'normal', btnDisplay: 'full', dashLayout: 'row',
+            showHillshade: false, hillshadeOpacity: 70, showLabels: false, labelsOpacity: 80,
+            btnColors: {}, hiddenColumns: [], repColorsOverride: {}, transfoColorsOverride: {}
         };
+        window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d' };
+        window.overlayLayers = { hillshade: null, labels: null };
 
         window.promptSettings = function() {
             let pin = prompt("🔐 Menu protégé. Entrez le code d'accès (PIN) :");
@@ -394,19 +455,32 @@
             safeSet('set-col-tete-ok', window.appSettings.colTeteOk); safeSet('set-col-tete-wait', window.appSettings.colTeteWait);
             safeSet('set-col-suivi-dec', window.appSettings.colSuiviDec); safeSet('set-col-suivi-prev', window.appSettings.colSuiviPrev); safeSet('set-col-suivi-ok', window.appSettings.colSuiviOk);
             safeSet('set-btn-style', window.appSettings.btnStyle); safeSet('set-btn-display', window.appSettings.btnDisplay); safeSet('set-dash-layout', window.appSettings.dashLayout);
+            safeSet('set-show-hillshade', window.appSettings.showHillshade, "checked"); safeSet('set-hillshade-opacity', window.appSettings.hillshadeOpacity);
+            safeSet('set-show-labels', window.appSettings.showLabels, "checked"); safeSet('set-labels-opacity', window.appSettings.labelsOpacity);
+            // Réapplique les couleurs personnalisées de répéteurs/transfos sur les palettes auto-générées par initAppUI.
+            Object.keys(window.appSettings.repColorsOverride || {}).forEach(k => { if(window.repColors) window.repColors[k] = window.appSettings.repColorsOverride[k]; });
+            Object.keys(window.appSettings.transfoColorsOverride || {}).forEach(k => { if(window.transfoColors) window.transfoColors[k] = window.appSettings.transfoColorsOverride[k]; });
+            if(window.renderBtnColorSettings) window.renderBtnColorSettings();
+            if(window.renderLegendRepTransfoSettings) window.renderLegendRepTransfoSettings();
+            if(window.renderFicheCanonSettings) window.renderFicheCanonSettings();
+            if(window.updateLegend) window.updateLegend(); if(window.updateMap) window.updateMap();
             window.applySettingsUI();
         };
 
         window.saveSettingsLocally = function() {
             let safeGet = (id, fallback, type="value") => { let el = document.getElementById(id); return el ? el[type] : fallback; };
-            window.appSettings = {
+            // CHAPITRE 2.C — Object.assign (fusion) plutôt que remplacement complet : les réglages
+            // "vivants" (btnColors, hiddenColumns, repColorsOverride, transfoColorsOverride, couches de
+            // carte) sont déjà tenus à jour dans window.appSettings au fil de l'eau par leurs propres
+            // handlers ; un remplacement total ici les aurait silencieusement effacés à chaque sauvegarde.
+            Object.assign(window.appSettings, {
                 basemap: safeGet('set-basemap', 'sat'), topbarColor: safeGet('set-topbar-color', '#2c3e50'), sidebarBg: safeGet('set-sidebar-bg', '#ffffff'),
                 showTools: safeGet('set-show-tools', true, "checked"), showFilters: safeGet('set-show-filters', true, "checked"),
                 colUrgent: safeGet('set-col-urgent', '#e74c3c'), colEnCours: safeGet('set-col-encours', '#f39c12'), colRas: safeGet('set-col-ras', '#bdc3c7'),
                 colTeteOk: safeGet('set-col-tete-ok', '#e67e22'), colTeteWait: safeGet('set-col-tete-wait', '#bdc3c7'),
                 colSuiviDec: safeGet('set-col-suivi-dec', '#27ae60'), colSuiviPrev: safeGet('set-col-suivi-prev', '#9b59b6'), colSuiviOk: safeGet('set-col-suivi-ok', '#f1c40f'),
                 btnStyle: safeGet('set-btn-style', 'normal'), btnDisplay: safeGet('set-btn-display', 'full'), dashLayout: safeGet('set-dash-layout', 'row')
-            };
+            });
             localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings));
             alert("✅ Paramètres mémorisés avec succès !");
             let panel = document.getElementById('settings-panel'); if(panel) panel.style.display = 'none';
@@ -440,7 +514,105 @@
                 let btnDisplay = document.getElementById('set-btn-display') ? document.getElementById('set-btn-display').value : s.btnDisplay;
                 if(btnStyle === 'square') document.body.classList.add('app-btn-square'); if(btnStyle === 'round') document.body.classList.add('app-btn-round'); if(btnDisplay === 'icon') document.body.classList.add('app-btn-icon-only');
             }
+            if(window.applyOverlayLayers) window.applyOverlayLayers();
+            if(window.applyButtonColors) window.applyButtonColors();
             if(window.selectedCannonsMap && window.selectedCannonsMap.size > 0 && typeof window.renderSelectionPanel === "function") { window.renderSelectionPanel(); }
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 2.D : COUCHES DE CARTE SUPERPOSABLES (RELIEF, ÉTIQUETTES)         */
+        /* ========================================================================= */
+        window.applyOverlayLayers = function() {
+            if(!window.map) return;
+            let s = window.appSettings;
+            let showH = document.getElementById('set-show-hillshade') ? document.getElementById('set-show-hillshade').checked : s.showHillshade;
+            let opH = document.getElementById('set-hillshade-opacity') ? parseInt(document.getElementById('set-hillshade-opacity').value) : s.hillshadeOpacity;
+            let showL = document.getElementById('set-show-labels') ? document.getElementById('set-show-labels').checked : s.showLabels;
+            let opL = document.getElementById('set-labels-opacity') ? parseInt(document.getElementById('set-labels-opacity').value) : s.labelsOpacity;
+
+            let valH = document.getElementById('set-hillshade-opacity-val'); if(valH) valH.innerText = opH + '%';
+            let valL = document.getElementById('set-labels-opacity-val'); if(valL) valL.innerText = opL + '%';
+
+            if(showH) {
+                if(!window.overlayLayers.hillshade) { window.overlayLayers.hillshade = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {maxZoom:18, zIndex:250}); }
+                if(!window.map.hasLayer(window.overlayLayers.hillshade)) window.overlayLayers.hillshade.addTo(window.map);
+                window.overlayLayers.hillshade.setOpacity(opH/100);
+            } else if(window.overlayLayers.hillshade && window.map.hasLayer(window.overlayLayers.hillshade)) { window.map.removeLayer(window.overlayLayers.hillshade); }
+
+            if(showL) {
+                if(!window.overlayLayers.labels) { window.overlayLayers.labels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {maxZoom:18, zIndex:260}); }
+                if(!window.map.hasLayer(window.overlayLayers.labels)) window.overlayLayers.labels.addTo(window.map);
+                window.overlayLayers.labels.setOpacity(opL/100);
+            } else if(window.overlayLayers.labels && window.map.hasLayer(window.overlayLayers.labels)) { window.map.removeLayer(window.overlayLayers.labels); }
+
+            window.appSettings.showHillshade = showH; window.appSettings.hillshadeOpacity = opH; window.appSettings.showLabels = showL; window.appSettings.labelsOpacity = opL;
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 2.E : COULEURS INDIVIDUELLES DES BOUTONS DE LA TOPBAR             */
+        /* ========================================================================= */
+        window.renderBtnColorSettings = function() {
+            let container = document.getElementById('settings-btn-colors'); if(!container) return;
+            let buttons = document.querySelectorAll('#topbar [data-btnkey]');
+            let html = '';
+            buttons.forEach(btn => {
+                let key = btn.getAttribute('data-btnkey'); let label = btn.getAttribute('data-btnlabel') || key;
+                let current = (window.appSettings.btnColors && window.appSettings.btnColors[key]) || window.defaultBtnColors[key] || '#34495e';
+                html += `<div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:12px; font-weight:bold; color:#555;">${label}</span><input type="color" value="${current}" style="width:36px; height:26px; cursor:pointer;" onchange="window.setBtnColor('${key}', this.value)"></div>`;
+            });
+            container.innerHTML = html || '<i style="font-size:11px; color:#888;">Aucun bouton détecté.</i>';
+        };
+
+        window.setBtnColor = function(key, val) { if(!window.appSettings.btnColors) window.appSettings.btnColors = {}; window.appSettings.btnColors[key] = val; window.applyButtonColors(); };
+
+        window.applyButtonColors = function() {
+            let colors = window.appSettings.btnColors || {};
+            document.querySelectorAll('#topbar [data-btnkey]').forEach(btn => { let key = btn.getAttribute('data-btnkey'); if(colors[key]) btn.style.background = colors[key]; });
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 2.F : LÉGENDES RÉPÉTEURS & TRANSFORMATEURS PERSONNALISABLES       */
+        /* ========================================================================= */
+        window.renderLegendRepTransfoSettings = function() {
+            let container = document.getElementById('settings-legend-rep-transfo'); if(!container) return;
+            let repKeys = Object.keys(window.repColors || {}).sort(); let transfoKeys = Object.keys(window.transfoColors || {}).sort();
+            if(repKeys.length === 0 && transfoKeys.length === 0) { container.innerHTML = '<i style="font-size:11px; color:#888;">Aucune donnée de répéteur/transfo détectée.</i>'; return; }
+            let html = '';
+            if(repKeys.length > 0) {
+                html += '<b style="font-size:11px; color:#8e44ad;">📡 Répéteurs</b>';
+                repKeys.forEach(k => { let current = (window.appSettings.repColorsOverride && window.appSettings.repColorsOverride[k]) || window.repColors[k]; html += `<div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:12px;">${k}</span><input type="color" value="${current}" style="width:30px; height:25px; cursor:pointer;" onchange="window.setLegendColor('repeteur', '${k.replace(/'/g, "\\'")}', this.value)"></div>`; });
+            }
+            if(transfoKeys.length > 0) {
+                html += '<b style="font-size:11px; color:#8e44ad; border-top:1px solid #eee; padding-top:10px; display:block; margin-top:6px;">⚡ Transformateurs</b>';
+                transfoKeys.forEach(k => { let current = (window.appSettings.transfoColorsOverride && window.appSettings.transfoColorsOverride[k]) || window.transfoColors[k]; html += `<div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:12px;">${k}</span><input type="color" value="${current}" style="width:30px; height:25px; cursor:pointer;" onchange="window.setLegendColor('transfo', '${k.replace(/'/g, "\\'")}', this.value)"></div>`; });
+            }
+            container.innerHTML = html;
+        };
+
+        window.setLegendColor = function(type, key, val) {
+            if(type === 'repeteur') { if(!window.appSettings.repColorsOverride) window.appSettings.repColorsOverride = {}; window.appSettings.repColorsOverride[key] = val; window.repColors[key] = val; }
+            else { if(!window.appSettings.transfoColorsOverride) window.appSettings.transfoColorsOverride = {}; window.appSettings.transfoColorsOverride[key] = val; window.transfoColors[key] = val; }
+            window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart();
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 2.G : COLONNES VISIBLES SUR LA FICHE CANON                       */
+        /* ========================================================================= */
+        window.renderFicheCanonSettings = function() {
+            let container = document.getElementById('settings-fiche-canon-cols'); if(!container) return;
+            if(!window.availableColumns || window.availableColumns.length === 0) { container.innerHTML = '<i style="font-size:11px; color:#888;">Aucune colonne détectée.</i>'; return; }
+            let hidden = window.appSettings.hiddenColumns || [];
+            let html = '';
+            window.availableColumns.forEach(col => { let isHidden = hidden.includes(col); html += `<label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px;"><input type="checkbox" ${isHidden ? '' : 'checked'} onchange="window.toggleFicheCanonColumn('${col.replace(/'/g, "\\'")}', this.checked)"> ${col}</label>`; });
+            container.innerHTML = html;
+        };
+
+        window.toggleFicheCanonColumn = function(col, visible) {
+            if(!window.appSettings.hiddenColumns) window.appSettings.hiddenColumns = [];
+            let idx = window.appSettings.hiddenColumns.indexOf(col);
+            if(visible && idx > -1) window.appSettings.hiddenColumns.splice(idx, 1);
+            else if(!visible && idx === -1) window.appSettings.hiddenColumns.push(col);
+            if(window.selectedCannonsMap && window.selectedCannonsMap.size > 0) window.renderSelectionPanel();
         };
 
         window.triggerMapUpdate = function() {
@@ -469,6 +641,9 @@
         };
 
         window.getV = function(p, k) { if(!k || !p || !p.fullData) return "N/A"; let normK = k.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim(); let o = p.fullData.find(x => x.k.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim() === normK); return o ? o.v.toString().trim() : "N/A"; };
+        window.todayIso = function() { let d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+        window.isoToFr = function(iso) { if(!iso) return ""; let m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(!m) return iso; return m[3] + '/' + m[2] + '/' + m[1]; };
+        window.frToIso = function(fr) { if(!fr) return ""; let m = fr.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/); if(!m) return ""; return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0'); };
         window.getTicketsForCanon = function(id) { return window.rawTickets.filter(t => t.idCanon === id); };
         window.getActiveTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('faire') || t.statut.includes('cours')); };
         window.getHistoryTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('fait') || t.statut === '').sort((a,b) => new Date(b.date) - new Date(a.date)); };
@@ -696,10 +871,10 @@
                             <span class="edit-label">Cause de la panne</span><textarea id="nt-cause-${p.id}" class="edit-input" rows="1" placeholder="Origine du problème..." style="padding:6px; margin-bottom:8px;"></textarea>
                             <div style="display:flex; gap:5px;">
                                 <div style="flex:1;"><span class="edit-label">Période</span><input type="text" id="nt-periode-${p.id}" class="edit-input" value="${window.saisonsList[window.histSeasonIdx] || ''}" style="padding:6px; margin-bottom:8px;"></div>
-                                <div style="flex:1;"><span class="edit-label">Date d'inter</span><input type="text" id="nt-dateinter-${p.id}" class="edit-input" placeholder="JJ/MM/AAAA" style="padding:6px; margin-bottom:8px;"></div>
+                                <div style="flex:1;"><span class="edit-label">Date d'inter</span><input type="date" id="nt-dateinter-${p.id}" class="edit-input" value="${window.todayIso()}" style="padding:6px; margin-bottom:8px;"></div>
                             </div>
                             <span class="edit-label">Intervention effectuée</span><textarea id="nt-interv-${p.id}" class="edit-input" rows="1" placeholder="Travaux réalisés..." style="padding:6px; margin-bottom:8px;"></textarea>
-                            <span class="edit-label">Pièces utilisées (Séparation par virgules)</span><input type="text" id="nt-pieces-${p.id}" class="edit-input" placeholder="Ex: Buse x2, Joint" style="padding:6px; margin-bottom:8px;">
+                            ${window.buildPiecesUI('nt-pieces-'+p.id, '', '', 'Pièces utilisées (Stock)', '')}
                             <button onclick="window.addNouveauTicket('${p.id}', this)" style="width:100%; background:#c0392b; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer; margin-top:5px;"><i class="fa-solid fa-paper-plane"></i> Envoyer le ticket de Panne</button>
                         </div>
                     </details>
@@ -767,7 +942,7 @@
                 } else {
                     let badges = `<span class="badge"><b>Modèle:</b> ${window.getV(p, window.keyType)}</span> <span class="badge"><b>Rép:</b> ${window.getV(p, window.keyRep)}</span> <span class="badge"><b>Trans:</b> ${window.getV(p, window.keyTransfo)}</span>`;
                     let fullDataHTML = `<details style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;">➕ Caractéristiques Complètes</summary><div style="margin-top:12px; display:grid; grid-template-columns: 1fr; gap:8px;">`;
-                    p.fullData.forEach(item => { if(!item.k.toLowerCase().includes('xy') && !item.k.toLowerCase().includes('gps')) { fullDataHTML += `<div style="border-bottom:1px solid #f0f0f0; padding-bottom:4px;"><span style="color:#7f8c8d;">${item.k} :</span> <b style="color:#2c3e50; float:right;">${item.v}</b></div>`; } }); fullDataHTML += `</div></details>`;
+                    p.fullData.forEach(item => { if(!item.k.toLowerCase().includes('xy') && !item.k.toLowerCase().includes('gps') && !(window.appSettings.hiddenColumns || []).includes(item.k)) { fullDataHTML += `<div style="border-bottom:1px solid #f0f0f0; padding-bottom:4px;"><span style="color:#7f8c8d;">${item.k} :</span> <b style="color:#2c3e50; float:right;">${item.v}</b></div>`; } }); fullDataHTML += `</div></details>`;
                     mainContent = `<div style="margin-bottom:10px;">${badges}</div>${fullDataHTML}`;
                     if (active.length > 0) mainContent += `<div style="margin-top:15px; padding:10px; background:#fdf0ed; border-radius:6px; font-size:12px; color:#e74c3c; font-weight:bold; border:1px solid #fadbd8;">⚠️ Ce canon a ${active.length} défaut(s) en cours.</div>`; mainContent += histHtml + prodHtml;
                     if (window.mainTheme === 'type') { editBtn = `<button class="btn-action-primary" onclick="window.startEdit('${p.id}')"><i class="fa-solid fa-pen"></i> Éditer ce canon</button>`; }
@@ -890,6 +1065,7 @@
                 if (kLow.includes('regard') || kLow === 'id' || kLow.includes('n°')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}" readonly style="background:#e1e8ed; color:#7f8c8d; margin-bottom:0; cursor:not-allowed;"></div>`; }
                 else if (kLow.includes('etat') || kLow.includes('état') || kLow === 'statut') { let statuts = ['à faire', 'en cours', 'fait']; let options = statuts.map(s => `<option value="${s}" ${valStr.toLowerCase().includes(s) ? 'selected' : ''}>${s.toUpperCase()}</option>`).join(''); html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><select class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" style="margin-bottom:0;">${options}</select></div>`; }
                 else if (kLow.includes('priorité') || kLow.includes('priorite')) { let priors = ['P1 (urgent et bloquant)', 'P2 (non bloquant mais urgent)', 'P3 (non bloquant)']; let popts = priors.map(pr => `<option value="${pr}" ${valStr.toLowerCase().includes(pr.substring(0,2).toLowerCase()) ? 'selected' : ''}>${pr}</option>`).join(''); html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><select class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" style="margin-bottom:0;"><option value="">-- Sans priorité --</option>${popts}</select></div>`; }
+                else if (kLow.includes("date d'inter") || kLow.includes('date dinter')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="date" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${window.frToIso(valStr)}" style="margin-bottom:0;"></div>`; }
                 else if (valStr.length > 40 || kLow.includes('cause') || kLow.includes('intervention') || kLow.includes('commentaire') || kLow.includes('action')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><textarea class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" style="margin-bottom:0;" rows="2">${valStr}</textarea></div>`; }
                 else if (kLow.includes('pièce') || kLow.includes('piece')) { html += `<div style="margin-bottom:8px;">${window.buildPiecesUI(idDiv + '-' + kLow.replace(/[^a-z0-9]/g,''), 'tick-dyn-field-' + idDiv, d.k, d.k, valStr)}</div>`; }
                 else { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}" style="margin-bottom:0;"></div>`; }
@@ -899,7 +1075,7 @@
 
         window.prepareTicketSave = function(canonId, defaut, idDiv) {
             let fieldsObj = {}; let newStatutForLocal = "";
-            document.querySelectorAll(`.tick-dyn-field-${idDiv}`).forEach(inp => { let k = inp.getAttribute('data-key') || inp.getAttribute('data-col'); let v = inp.value; if(!k.toLowerCase().includes('regard') && k.toLowerCase() !== 'id') { fieldsObj[k] = v; } if(k.toLowerCase().includes('etat') || k.toLowerCase().includes('état') || k.toLowerCase() === 'statut') { newStatutForLocal = v; } });
+            document.querySelectorAll(`.tick-dyn-field-${idDiv}`).forEach(inp => { let k = inp.getAttribute('data-key') || inp.getAttribute('data-col'); let v = inp.type === 'date' ? window.isoToFr(inp.value) : inp.value; if(!k.toLowerCase().includes('regard') && k.toLowerCase() !== 'id') { fieldsObj[k] = v; } if(k.toLowerCase().includes('etat') || k.toLowerCase().includes('état') || k.toLowerCase() === 'statut') { newStatutForLocal = v; } });
             let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut); if(!ticket) return;
             let diffHtml = ""; let hasChanges = false; let piecesAddedStr = "";
             ticket.fullData.forEach(d => {
@@ -913,7 +1089,7 @@
             if (!hasChanges) { alert("Aucune modification."); window.renderSelectionPanel(); return; }
             window.tempTicketPayloads[idDiv] = { payload: { action: "update_ticket", idCanon: canonId, defaut: defaut, id: ticket.id || "", fields: fieldsObj }, newStatut: newStatutForLocal, piecesAdded: piecesAddedStr };
             let el = document.getElementById(idDiv);
-            if(el) { el.innerHTML = `<div style="background:#fff3cd; padding:15px; border-radius:6px; border:2px solid #f39c12; margin-top:10px;"><div style="font-size:14px; font-weight:bold; color:#d35400; margin-bottom:15px; text-transform:uppercase;">⚠️ Vérification :</div>${diffHtml}<div style="display:flex; gap:10px; margin-top:20px;"><button onclick="window.renderSelectionPanel()" style="flex:1; padding:10px; background:#bdc3c7; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Annuler</button><button onclick="window.confirmSaveTicket('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" style="flex:2; padding:10px; background:#27ae60; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Envoyer 🚀</button></div></div>`; }
+            if(el) { el.innerHTML = `<div style="background:#fff3cd; padding:15px; border-radius:6px; border:2px solid #f39c12; margin-top:10px;"><div style="font-size:14px; font-weight:bold; color:#d35400; margin-bottom:15px; text-transform:uppercase;">⚠️ Vérification :</div>${diffHtml}<div style="display:flex; gap:10px; margin-top:20px;"><button onclick="window.editFullTicket('${canonId}', '${defaut.replace(/'/g, "\\'")}')" style="flex:1; padding:10px; background:#bdc3c7; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Annuler</button><button onclick="window.confirmSaveTicket('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" style="flex:2; padding:10px; background:#27ae60; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Envoyer 🚀</button></div></div>`; }
         };
 
         window.confirmSaveTicket = async function(canonId, defaut, idDiv) {
@@ -983,7 +1159,7 @@
             let defaut = elDef.value;
             let etat = ntVal('etat') || "à faire";
             let priorite = ntVal('priorite');
-            let periode = ntVal('periode'); let sonde = ntVal('sonde'); let cause = ntVal('cause'); let dateinter = ntVal('dateinter');
+            let periode = ntVal('periode'); let sonde = ntVal('sonde'); let cause = ntVal('cause'); let dateinter = window.isoToFr(ntVal('dateinter'));
             let photos = ntVal('photos'); let interv = ntVal('interv'); let pieces = ntVal('pieces'); let remarque = ntVal('remarque');
             let today = new Date(); let dateStr = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
             let layer = window.selectedCannonsMap.get(idCanon); let p = layer ? layer.feature.properties : null; let piste = p ? window.getV(p, window.keyPiste) : "Inconnue"; let latlong = layer ? (layer.getLatLng().lat.toFixed(7) + "," + layer.getLatLng().lng.toFixed(7)) : "";
@@ -1274,9 +1450,9 @@
                     document.querySelectorAll('.radio-card').forEach(el => { el.style.borderBottomLeftRadius = '6px'; el.style.borderBottomRightRadius = '6px'; el.style.marginBottom = '8px'; el.style.borderColor = '#e1e8ed'; });
                     let activeDetails = document.getElementById('details-' + window.mainTheme); let activeLabel = document.getElementById('lbl-' + window.mainTheme);
                     if (activeDetails && activeLabel) { activeDetails.style.display = 'block'; activeLabel.style.borderBottomLeftRadius = '0'; activeLabel.style.borderBottomRightRadius = '0'; activeLabel.style.marginBottom = '0'; if(window.mainTheme === 'stock') activeLabel.style.borderColor = '#16a085'; else if(window.mainTheme === 'atelier') activeLabel.style.borderColor = '#8e44ad'; else activeLabel.style.borderColor = '#3498db'; }
-                    if(window.mainTheme === 'atelier') { document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'block'; document.getElementById('stock-workspace').style.display = 'none'; window.closeRightSidebar(); if(window.renderAtelierWorkspace) window.renderAtelierWorkspace(); }
-                    else if(window.mainTheme === 'stock') { document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'block'; window.closeRightSidebar(); if(window.renderStockWorkspace) window.renderStockWorkspace(); }
-                    else { document.getElementById('map').style.display = 'block'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'none'; if(window.mainTheme === 'historique') window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.triggerGlobalFilterChart(); }
+                    if(window.mainTheme === 'atelier') { document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'block'; document.getElementById('stock-workspace').style.display = 'none'; window.closeRightSidebar(); document.getElementById('sidebar').classList.add('collapsed'); if(window.renderAtelierWorkspace) window.renderAtelierWorkspace(); }
+                    else if(window.mainTheme === 'stock') { document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'block'; window.closeRightSidebar(); document.getElementById('sidebar').classList.add('collapsed'); if(window.renderStockWorkspace) window.renderStockWorkspace(); }
+                    else { document.getElementById('map').style.display = 'block'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'none'; if(window.mainTheme === 'historique') window.calculateMaxes(); window.updateLegend(); window.updateMap(); if (window.selectedCannonsMap.size > 0) { window.renderSelectionPanel(); } else { window.triggerGlobalFilterChart(); } }
                 });
             });
 
@@ -1445,8 +1621,6 @@
                     <span style="color:#27ae60; font-weight:bold;">${listeValidee.length} archivé(s) (en bas de liste)</span>
                 </div>`;
 
-            let mapsToInitialize = [];
-
             orderedCanons.forEach(idCanon => {
                 let feature = window.snowCannons.features.find(f => f.properties.id == idCanon); if(!feature) return;
 
@@ -1503,15 +1677,6 @@
                 let imageAtelierHtml = "⚙️";
                 if (iconUrlAtelier) {
                     imageAtelierHtml = `<img src="${iconUrlAtelier}" style="height:35px; width:auto; vertical-align:middle; margin-right:8px; filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.3)); border-radius:4px;">`;
-                }
-
-                let lng = feature.geometry.coordinates[0];
-                let lat = feature.geometry.coordinates[1];
-                let mapContainerHtml = "";
-
-                if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-                    mapContainerHtml = `<div id="minimap-${safeId}" style="width:100%; height:130px; border-radius:6px; margin-bottom:12px; border:1px solid #ccc; box-shadow:inset 0 1px 3px rgba(0,0,0,0.2); z-index:5;"></div>`;
-                    mapsToInitialize.push({ id: `minimap-${safeId}`, lat: lat, lng: lng, idCanon: idCanon, iconUrl: iconUrlAtelier });
                 }
 
                 let calcR18Nitrile = 0, calcR18Ptfe = 0, calcPtfeR3 = 0;
@@ -1655,56 +1820,35 @@
                     </div>
                 `;
 
-                let card = document.createElement('div');
+                let card = document.createElement('details');
                 card.className = "atelier-card";
                 if (estValide) { card.style.borderLeftColor = "#27ae60"; card.style.background = "#f4fdf7"; }
 
                 card.innerHTML = `
-                    <h3 style="display:flex; align-items:center; flex-wrap:wrap; font-size:15px;">
+                    <summary style="display:flex; align-items:center; flex-wrap:wrap; font-size:15px;">
                         ${imageAtelierHtml} Canon N° ${idCanon}
                         ${estValide ? '<span style="background:#27ae60; color:white; font-size:9px; padding:2px 6px; border-radius:10px; margin-left:8px; font-weight:bold; line-height:1.2;">✅ ARCHIVÉ</span>' : ''}
                         <span style="font-size:12px; font-weight:normal; color:#888; margin-left:auto;">Piste: ${piste}</span>
-                    </h3>
-                    ${mapContainerHtml}
-                    ${photoDisplayHtml}
-                    <details class="atelier-sub-details" style="margin-bottom:6px;"><summary>⚙️ 1. Caractéristiques Techniques</summary>
-                        <div class="atelier-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:6px; padding:10px;">${techHtml}</div>
-                        <div style="padding:0 10px 10px 10px;"><button onclick="window.saveAtelierTechRow('${idCanon}','${safeId}',this)" style="width:100%; background:#2c3e50; color:white; border:none; padding:6px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px;">💾 Mettre à jour</button></div>
-                    </details>
-                    <details class="atelier-sub-details" style="margin-bottom:6px;"><summary>🕒 2. Rapports d'anomalies (Tickets)</summary>${histHtml}</details>
-                    <details class="atelier-sub-details" open><summary>📝 3. Fiche d'Essai d'étanchéité & Hydraulique</summary>${formHtml}</details>
+                    </summary>
+                    <div style="padding-top:10px;">
+                        ${photoDisplayHtml}
+                        <details class="atelier-sub-details" style="margin-bottom:6px;"><summary>⚙️ 1. Caractéristiques Techniques</summary>
+                            <div class="atelier-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:6px; padding:10px;">${techHtml}</div>
+                            <div style="padding:0 10px 10px 10px;"><button onclick="window.saveAtelierTechRow('${idCanon}','${safeId}',this)" style="width:100%; background:#2c3e50; color:white; border:none; padding:6px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px;">💾 Mettre à jour</button></div>
+                        </details>
+                        <details class="atelier-sub-details" style="margin-bottom:6px;"><summary>🕒 2. Rapports d'anomalies (Tickets)</summary>${histHtml}</details>
+                        <details class="atelier-sub-details" open><summary>📝 3. Fiche d'Essai d'étanchéité & Hydraulique</summary>${formHtml}</details>
+                    </div>
                 `;
                 ws.appendChild(card);
             });
-
-            setTimeout(() => {
-                mapsToInitialize.forEach(mapData => {
-                    let container = document.getElementById(mapData.id);
-                    if (!container) return;
-                    let miniMap = L.map(mapData.id, { zoomControl: false, attributionControl: false, dragging: false, touchZoom: false, scrollWheelZoom: false }).setView([mapData.lat, mapData.lng], 17);
-                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(miniMap);
-
-                    if (mapData.iconUrl) {
-                        let imageSize = 35;
-                        let imageHtml = `
-                            <div style="position:relative; width:${imageSize}px; height:${imageSize}px;">
-                                <div style="background:url('${mapData.iconUrl}') center/contain no-repeat; width:100%; height:100%; filter: drop-shadow(2px 4px 5px rgba(0,0,0,0.5));"></div>
-                                <div style="position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; font-size:9px; padding:1px 4px; border-radius:4px; font-weight:bold; white-space:nowrap;">${mapData.idCanon}</div>
-                            </div>`;
-                        let customIcon = L.divIcon({ className: 'custom-cannon-icon', html: imageHtml, iconSize: [imageSize, imageSize], iconAnchor: [imageSize/2, imageSize/2] });
-                        L.marker([mapData.lat, mapData.lng], { icon: customIcon }).addTo(miniMap);
-                    } else {
-                        L.marker([mapData.lat, mapData.lng]).addTo(miniMap);
-                    }
-                });
-            }, 200);
         };
 
         window.filterAtelierCanons = function(val) {
             let search = val.toLowerCase().trim();
             let cards = document.querySelectorAll('.atelier-card');
             cards.forEach(card => {
-                let title = card.querySelector('h3').innerText.toLowerCase();
+                let title = card.querySelector('summary').innerText.toLowerCase();
                 card.style.display = title.includes(search) ? 'block' : 'none';
             });
         };
@@ -2604,6 +2748,107 @@
         window.openMeteoHistoryModal = function(show) { let m = document.getElementById('meteo-history-modal'); if(!m) return; if(!show) { m.style.display = 'none'; return; } m.style.display = 'flex'; let selectMetric = document.getElementById('meteo-metric'); if(selectMetric) { let data = window.meteoHistData; if(data && data.length > 0) { let headers = data[0]; let optionsHTML = ""; headers.forEach((h, i) => { let cleanH = h.toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim(); if (cleanH !== 'date' && !cleanH.includes('heure') && !cleanH.includes('time') && cleanH !== "") { optionsHTML += `<option value="${i}">${h}</option>`; } }); if (optionsHTML === "") { optionsHTML = `<option value="">-- Aucune colonne de données trouvée --</option>`; } selectMetric.innerHTML = optionsHTML; } else { selectMetric.innerHTML = `<option value="">-- Onglet météo vide ou introuvable --</option>`; } } window.renderMeteoHistoryChart(); };
 
         window.renderMeteoHistoryChart = function() { let data = window.meteoHistData; let canvasBox = document.getElementById('meteo-history-canvas'); if(!canvasBox) return; let ctx = canvasBox.getContext('2d'); if(!data || data.length < 2) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Aucune donnée reçue de l'onglet météo.", 20, 50); return; } let metricIdx = parseInt(document.getElementById('meteo-metric').value); if(isNaN(metricIdx)) { ctx.clearRect(0, 0, canvasBox.width, canvasBox.height); ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e74c3c"; ctx.fillText("⚠️ Veuillez sélectionner une donnée à analyser.", 20, 50); return; } let chartType = document.getElementById('meteo-chart-type').value || 'line'; let metricLabel = data[0][metricIdx]; let headersList = data[0].map(h => h.toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim()); let dateIdx = headersList.findIndex(h => h === 'date' || h.includes('date') || h.includes('heure') || h.includes('time')); if (dateIdx === -1) dateIdx = 0; let labels = []; let values = []; for(let i = 1; i < data.length; i++) { let rawDate = data[i][dateIdx]; let rawVal = data[i][metricIdx]; if(rawDate == null || rawDate === "") continue; let rawStr = String(rawDate).trim(); let displayLabel = rawStr; let matchFr = rawStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2})[:hH](\d{1,2})(?::(\d{1,2}))?)?/); if (matchFr) { let day = parseInt(matchFr[1], 10); let month = parseInt(matchFr[2], 10); let year = parseInt(matchFr[3], 10); let hr = matchFr[4] ? parseInt(matchFr[4], 10) : null; let min = matchFr[5] ? parseInt(matchFr[5], 10) : null; let formattedDate = String(day).padStart(2, '0') + '/' + String(month).padStart(2, '0') + '/' + year; if (hr !== null && min !== null) { let formattedTime = String(hr).padStart(2, '0') + ':' + String(min).padStart(2, '0'); displayLabel = [formattedDate, formattedTime]; } else { displayLabel = formattedDate; } } else { let parsedDate = new Date(rawDate); if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1970) { let d = parsedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year:'numeric' }); let t = parsedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' }); if(t === "00:00") displayLabel = d; else displayLabel = [d, t]; } } labels.push(displayLabel); let cleanVal = String(rawVal).replace(',', '.').replace(/[^0-9.-]/g, ''); values.push(parseFloat(cleanVal) || 0); } if(window.chartInstances['meteo-hist-chart']) window.chartInstances['meteo-hist-chart'].destroy(); window.chartInstances['meteo-hist-chart'] = new Chart(ctx, { type: chartType, data: { labels: labels, datasets: [{ label: metricLabel, data: values, backgroundColor: chartType === 'line' ? 'rgba(52, 152, 219, 0.2)' : '#3498db', borderColor: '#2980b9', borderWidth: 2, fill: chartType === 'line', tension: 0.3, pointRadius: labels.length > 80 ? 0 : 3, pointHoverRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { x: { ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 15 }, grid: { display: false } }, y: { type: 'linear', display: true, ticks: { font: { size: 10 } } } }, plugins: { legend: { position: 'top', labels: { font: { size: 12, weight: 'bold' } } }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } } } }); };
+
+        /* ========================================================================= */
+        /* CHAPITRE 8.D : MODE IMPRESSION (LÉGENDE + TABLEAU DE BORD DÉPLAÇABLES)     */
+        /* ========================================================================= */
+        window.printDragState = { el: null, offsetX: 0, offsetY: 0, parentRect: null };
+        document.addEventListener('mousedown', function(e) {
+            let handle = e.target.closest ? e.target.closest('.print-box-handle') : null; if (!handle) return;
+            let box = handle.closest('.print-box'); if (!box) return;
+            let rect = box.getBoundingClientRect(); let parentRect = box.parentElement.getBoundingClientRect();
+            window.printDragState = { el: box, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top, parentRect: parentRect };
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', function(e) {
+            let st = window.printDragState; if (!st || !st.el) return;
+            let x = e.clientX - st.parentRect.left - st.offsetX; let y = e.clientY - st.parentRect.top - st.offsetY;
+            st.el.style.left = x + 'px'; st.el.style.top = y + 'px'; st.el.style.right = 'auto'; st.el.style.bottom = 'auto';
+        });
+        document.addEventListener('mouseup', function() { if (window.printDragState) window.printDragState.el = null; });
+
+        window.openPrintMode = function() {
+            if (window.mainTheme === 'atelier' || window.mainTheme === 'stock') { alert("Le mode impression concerne la vue carte. Sélectionnez d'abord un thème carte (Type, Défauts, Historique...) avant d'imprimer."); return; }
+            let toolbar = document.getElementById('print-toolbar'); if (!toolbar) return;
+            toolbar.style.display = 'flex';
+            window.buildPrintDashboardChecklist();
+            window.refreshPrintPreview();
+        };
+
+        window.closePrintMode = function() {
+            let toolbar = document.getElementById('print-toolbar'); if (toolbar) toolbar.style.display = 'none';
+            let lb = document.getElementById('print-legend-box'); if (lb) lb.remove();
+            let db = document.getElementById('print-dashboard-box'); if (db) db.remove();
+        };
+
+        window.guessBlockLabel = function(el, idx) {
+            let txt = "";
+            let h = el.querySelector ? el.querySelector('h3, h4, .sel-details-header, b') : null; if (h) txt = h.innerText.trim();
+            if (!txt) txt = (el.innerText || '').trim().split('\n')[0];
+            if (!txt) txt = 'Bloc ' + (idx + 1);
+            return txt.length > 45 ? txt.substring(0, 45) + '…' : txt;
+        };
+
+        window.buildPrintDashboardChecklist = function() {
+            let container = document.getElementById('print-dashboard-checklist'); if (!container) return;
+            let source = document.getElementById('selected-list');
+            if (!source || source.children.length === 0) { container.innerHTML = '<i style="color:#888;">Aucun contenu à afficher.</i>'; return; }
+            let html = '';
+            Array.from(source.children).forEach((child, idx) => {
+                if (child.tagName === 'DATALIST') return;
+                let label = window.guessBlockLabel(child, idx);
+                html += `<label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="print-block-chk" data-block-idx="${idx}" checked onchange="window.refreshPrintPreview()"> ${label}</label>`;
+            });
+            container.innerHTML = html || '<i style="color:#888;">Aucun bloc disponible.</i>';
+        };
+
+        window.cloneNodeForPrint = function(el) {
+            let clone = el.cloneNode(true);
+            let liveCanvases = el.querySelectorAll('canvas'); let cloneCanvases = clone.querySelectorAll('canvas');
+            liveCanvases.forEach((cv, i) => {
+                let cc = cloneCanvases[i]; if (!cc || !cc.parentNode) return;
+                try { let img = document.createElement('img'); img.src = cv.toDataURL('image/png'); img.style.width = '100%'; cc.parentNode.replaceChild(img, cc); } catch (e) {}
+            });
+            return clone;
+        };
+
+        window.getCurrentLegendHtml = function() {
+            let map = { defauts: 'legend-defauts', type: 'legend-type', repeteur: 'legend-repeteur', transfo: 'legend-transfo', historique: 'legend-historique', entretien_tete: 'legend-entretien_tete', suivi_entretien: 'legend-suivi_entretien' };
+            let elId = map[window.mainTheme]; if (!elId) return '';
+            let el = document.getElementById(elId); if (!el || !el.innerHTML.trim()) return '';
+            return `<div style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#34495e; margin-bottom:6px;">Légende</div>${el.innerHTML}`;
+        };
+
+        window.refreshPrintPreview = function() {
+            let mapContainer = document.getElementById('map-container'); if (!mapContainer) return;
+            let oldLegend = document.getElementById('print-legend-box'); if (oldLegend) oldLegend.remove();
+            let oldDash = document.getElementById('print-dashboard-box'); if (oldDash) oldDash.remove();
+
+            let showLegend = document.getElementById('print-show-legend') ? document.getElementById('print-show-legend').checked : true;
+            let showDash = document.getElementById('print-show-dashboard') ? document.getElementById('print-show-dashboard').checked : true;
+
+            if (showLegend) {
+                let legendHtml = window.getCurrentLegendHtml();
+                if (legendHtml) {
+                    let box = document.createElement('div'); box.id = 'print-legend-box'; box.className = 'print-box';
+                    box.innerHTML = `<div class="print-box-handle"><span><i class="fa-solid fa-up-down-left-right"></i> Légende</span></div><div class="print-box-body">${legendHtml}</div>`;
+                    mapContainer.appendChild(box);
+                }
+            }
+
+            if (showDash) {
+                let source = document.getElementById('selected-list');
+                let checks = document.querySelectorAll('.print-block-chk:checked');
+                if (source && checks.length > 0) {
+                    let box = document.createElement('div'); box.id = 'print-dashboard-box'; box.className = 'print-box';
+                    box.innerHTML = `<div class="print-box-handle"><span><i class="fa-solid fa-up-down-left-right"></i> Tableau de Bord</span></div>`;
+                    let bodyWrap = document.createElement('div'); bodyWrap.className = 'print-box-body';
+                    checks.forEach(chk => { let idx = parseInt(chk.getAttribute('data-block-idx')); let srcChild = source.children[idx]; if (srcChild) bodyWrap.appendChild(window.cloneNodeForPrint(srcChild)); });
+                    box.appendChild(bodyWrap);
+                    mapContainer.appendChild(box);
+                }
+            }
+        };
 
         /* ========================================================================= */
         /* CHAPITRE 8.C : DÉMARRAGE DE L'APPLICATION                                 */
