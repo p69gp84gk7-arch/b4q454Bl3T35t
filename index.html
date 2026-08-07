@@ -36,6 +36,15 @@
         #topbar{position:fixed;top:0;left:0;right:0;height:50px;background:#2c3e50;z-index:4000;display:flex;justify-content:space-between;align-items:center;padding:0 15px;box-shadow:0 2px 5px rgba(0,0,0,0.3);}
         .topbar-btn{background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.2);padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;transition:0.2s;margin-left:5px;}
         .topbar-btn:hover{background:rgba(255,255,255,0.2);}
+        /* CHAPITRE 1.C.2 — Menu "Outils" du bandeau supérieur (version PC) : les boutons secondaires
+           sont repliés dans une liste déroulante. Le texte y reste toujours visible, même quand le
+           réglage "Icône uniquement" est actif — dans un menu, une colonne d'icônes seules est illisible. */
+        .topbar-tools-wrap{position:relative;display:inline-flex;}
+        #topbar-tools-menu{display:none;position:absolute;top:calc(100% + 9px);right:0;min-width:230px;background:#22303d;border:1px solid rgba(255,255,255,0.16);border-radius:10px;padding:7px;box-shadow:0 10px 30px rgba(0,0,0,0.45);z-index:4600;flex-direction:column;gap:5px;}
+        #topbar-tools-menu.open{display:flex;}
+        #topbar-tools-menu .topbar-btn{margin:0;width:100%;display:flex;align-items:center;gap:9px;justify-content:flex-start;text-align:left;padding:9px 12px;}
+        #topbar-tools-menu .btn-text{display:inline !important;}
+        #topbar-tools-menu::before{content:'';position:absolute;top:-7px;right:22px;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid #22303d;}
         #app-container{display:flex;height:100%;width:100%;position:relative;padding-top:50px;box-sizing:border-box;}
         #loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 50% 42%, #ffffff 0%, #eef4fb 55%, #e3ecf6 100%);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:20px;box-sizing:border-box;}
         @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
@@ -170,7 +179,10 @@
         .dash-layout-col { display: flex; flex-direction: column; gap: 10px; }
         .dash-layout-row > div { flex: 1; min-width: 120px; }
 
-        .topbar-actions { display: flex; align-items: center; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin-left:10px; }
+        /* overflow visible (et non plus overflow-x:auto) : il ne reste que trois boutons sur PC, donc
+           plus besoin de défilement horizontal — et un conteneur qui défile découpait le menu "Outils"
+           déroulé en dessous. */
+        .topbar-actions { display: flex; align-items: center; overflow: visible; flex-wrap: nowrap; margin-left:10px; }
         .topbar-actions::-webkit-scrollbar { display: none; }
 
         /* Tiroir mobile : masqué par défaut, ne s'active que sous 768px (cf. media query) */
@@ -232,7 +244,8 @@
             /* Calendrier : grille au-dessus, détail du jour en dessous plutôt que côte à côte */
             .cal-body { flex-direction: column; overflow-y: auto; }
             #calendar-day-panel { width: 100% !important; border-left: none; border-top: 2px solid #3498db; max-height: none; padding-bottom: 30px; }
-            #calendar-grid { grid-auto-rows: minmax(58px, auto); flex: none; }
+            #calendar-grid { grid-template-columns: 30px repeat(7, 1fr); grid-auto-rows: 64px; grid-template-rows: auto; flex: none; }
+            .cal-weeknum { font-size: 9px; }
             .cal-bar { font-size: 8px; line-height: 15px; }
             .cal-day-num { font-size: 12px; font-weight: bold; }
             .cal-month-label, #calendar-month-label { min-width: 0 !important; font-size: 14px !important; }
@@ -249,11 +262,28 @@
         #print-page-preview-modal { display:none; position:fixed; top:50px; left:0; right:400px; bottom:0; background:rgba(0,0,0,0.65); z-index:6400; overflow-y:auto; }
         #print-page-preview-modal.open { display:block; }
         #print-page-sheet-wrap { padding:20px; display:flex; flex-direction:column; align-items:center; gap:20px; min-height:100%; box-sizing:border-box; overflow-x:auto; }
-        .print-page-sheet { background:#fff; box-shadow:0 5px 20px rgba(0,0,0,0.4); box-sizing:border-box; padding:15mm; overflow:hidden; flex-shrink:0; position:relative; }
+        /* Le padding n'est plus figé ici : il est calculé page par page à partir des marges choisies,
+           à la même échelle que la feuille, pour que l'aperçu soit géométriquement identique au papier. */
+        .print-page-sheet { background:#fff; box-shadow:0 5px 20px rgba(0,0,0,0.4); box-sizing:border-box; overflow:hidden; flex-shrink:0; position:relative; }
+        /* Les boutons n'ont aucun sens sur une feuille imprimée : ils disparaissent dès l'aperçu. */
+        .print-page-sheet button { display:none !important; }
+        .stock-label { border:1px solid #b9c4cf; border-left:3px solid #16a085; border-radius:2px; padding:2mm 3mm; display:flex; align-items:center; gap:3mm; height:25mm; box-sizing:border-box; overflow:hidden; background:#fff; }
+        .stock-label.alert { border-left-color:#e74c3c; }
+        .stock-label-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:1mm; }
+        .stock-label-title { font-size:11px; font-weight:bold; color:#1b2b3a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .stock-label-desc { font-size:8.5px; color:#7f8c8d; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .stock-label-vals { font-size:9px; color:#2c3e50; display:flex; gap:4mm; flex-wrap:nowrap; overflow:hidden; }
+        .stock-label-vals b { color:#16a085; }
+        .stock-label-thumb { width:16mm; height:16mm; flex-shrink:0; object-fit:contain; border:1px solid #e1e8ed; border-radius:2px; background:#fafbfc; }
         .print-page-sheet::after { content: attr(data-page-label); position:absolute; bottom:4mm; right:6mm; font-size:8px; color:#bbb; }
         .print-block-row { display:flex; align-items:center; gap:6px; padding:4px 2px; border-bottom:1px solid #f0f0f0; }
         .print-block-row button { background:none; border:1px solid #ddd; border-radius:3px; width:20px; height:20px; cursor:pointer; font-size:9px; padding:0; flex-shrink:0; }
         .print-block-row button:disabled { opacity:0.3; cursor:default; }
+        .layout-row { display:flex; align-items:center; gap:5px; padding:5px 4px; border-bottom:1px solid #f0f0f0; font-size:11.5px; }
+        .layout-row span { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .layout-row.is-hidden span { opacity:0.42; text-decoration:line-through; }
+        .layout-row button { background:#fff; border:1px solid #ddd; border-radius:3px; width:23px; height:23px; cursor:pointer; font-size:10px; padding:0; flex-shrink:0; }
+        .layout-row button:disabled { opacity:0.3; cursor:default; }
         .list-row-arrow { display:inline-block; color:#7f8c8d; font-size:12px; font-weight:bold; }
 
         /* CHAPITRE 1.D — Fenêtres flottantes/redimensionnables : toutes les "fenêtres" de la couche
@@ -269,14 +299,24 @@
         .cal-header { background:#2c3e50; color:white; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
         .cal-nav-btn { background:rgba(255,255,255,0.15); border:none; color:white; width:32px; height:32px; border-radius:4px; cursor:pointer; font-size:14px; }
         .cal-body { display:flex; flex:1; overflow:hidden; }
-        #calendar-grid { flex:1; display:grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(92px, 1fr); gap:1px; background:#e1e8ed; overflow-y:auto; padding:1px; align-content:start; }
-        .cal-weekday { background:#f8f9fa; text-align:center; font-size:11px; font-weight:bold; color:#7f8c8d; padding:6px 0; text-transform:uppercase; }
-        .cal-day { background:#fff; padding:6px; cursor:pointer; transition:0.15s; }
+        /* Colonne des numéros de semaine + cases de hauteur FIXE : la grille garde exactement la même
+           géométrie d'un mois à l'autre, quel que soit le nombre d'événements d'une journée (le trop-plein
+           est replié dans le compteur "+N autre(s)"). Six lignes sont toujours tracées, y compris pour un
+           mois qui n'en occupe que cinq. */
+        #calendar-grid { flex:1; display:grid; grid-template-columns: 46px repeat(7, 1fr); grid-auto-rows: 96px; gap:1px; background:#e1e8ed; overflow-y:auto; padding:1px; align-content:start; }
+        #calendar-grid > .cal-weekday { grid-row: 1; }
+        .cal-weekday { background:#f8f9fa; text-align:center; font-size:11px; font-weight:bold; color:#7f8c8d; padding:6px 0; text-transform:uppercase; height:auto; }
+        /* Une seule rangée explicite (les en-têtes) ; toutes les rangées de jours sont implicites et
+           reprennent donc la hauteur fixe de grid-auto-rows, quel que soit leur nombre. */
+        #calendar-grid { grid-template-rows: auto; }
+        .cal-weeknum { background:#eef3f8; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:bold; color:#5d7183; letter-spacing:0.3px; }
+        .cal-weeknum-head { background:#e6edf4; color:#5d7183; }
+        .cal-day { background:#fff; padding:6px; cursor:pointer; transition:0.15s; overflow:hidden; display:flex; flex-direction:column; }
         .cal-day:hover { background:#eaf2f8; }
         .cal-day-empty { background:#fafbfc; cursor:default; }
         .cal-day-num { font-size:12px; font-weight:bold; color:#2c3e50; }
         .cal-day-today .cal-day-num { background:#3498db; color:white; border-radius:50%; width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; }
-        .cal-day-bars { display:flex; flex-direction:column; gap:2px; margin-top:3px; overflow:hidden; }
+        .cal-day-bars { display:flex; flex-direction:column; gap:2px; margin-top:3px; overflow:hidden; flex:1; min-height:0; }
         .cal-bar { font-size:9px; line-height:14px; color:white; padding:0 4px; border-radius:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
         .cal-bar-more { font-size:9px; color:#7f8c8d; font-weight:bold; padding:0 4px; cursor:pointer; }
         .cal-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
@@ -317,7 +357,7 @@
             #map-container, #atelier-workspace, #stock-workspace, #theme-list-workspace, #production-workspace { display: none !important; }
             #print-page-preview-modal { display: block !important; position: static !important; background: none !important; overflow: visible !important; }
             #print-page-sheet-wrap { padding: 0 !important; gap: 0 !important; }
-            .print-page-sheet { box-shadow: none !important; page-break-after: always; }
+            .print-page-sheet { box-shadow: none !important; page-break-after: always; transform: none !important; margin: 0 !important; }
             .print-page-sheet:last-child { page-break-after: auto; }
             .print-page-sheet::after { display: none !important; }
         }
@@ -382,15 +422,22 @@
         <div class="topbar-actions">
             <button class="topbar-btn" data-btnkey="documents" data-btnlabel="Documents" onclick="window.openPdfModal()" style="background:#8e44ad; border-color:#9b59b6;"><i class="fa-solid fa-book-open"></i> <span class="btn-text">Documents</span></button>
             <button class="topbar-btn" data-btnkey="settings" data-btnlabel="Paramètres" onclick="window.promptSettings()" style="background:#2c3e50; border-color:#34495e;"><i class="fa-solid fa-gear"></i> <span class="btn-text">Paramètres</span></button>
-            <div style="width:2px; height:20px; background:rgba(255,255,255,0.3); margin:0 10px;"></div>
-            <button class="topbar-btn" data-btnkey="compare" data-btnlabel="Comparer Saisons" onclick="window.openGlobalCompareModal(true)" style="background:#d35400; border-color:#e67e22;"><i class="fa-solid fa-code-compare"></i> <span class="btn-text">Comparer Saisons</span></button>
-            <button class="topbar-btn" data-btnkey="bi" data-btnlabel="Centre Expert BI" onclick="window.openBiMeteo()" style="background:#16a085; border-color:#1abc9c;"><i class="fa-solid fa-snowflake"></i> <span class="btn-text">Centre Expert BI</span></button>
-            <button class="topbar-btn" data-btnkey="meteo" data-btnlabel="Météo Live" onclick="window.openMeteoWidget()"><i class="fa-solid fa-cloud-sun"></i> <span class="btn-text">Météo Live</span></button>
-            <button class="topbar-btn" data-btnkey="webcams" data-btnlabel="Webcams" onclick="window.openWebcamGrid()"><i class="fa-solid fa-video"></i> <span class="btn-text">Webcams</span></button>
-            <button class="topbar-btn" data-btnkey="histmeteo" data-btnlabel="Hist. Météo" onclick="window.openMeteoHistoryModal(true)" style="background:#f39c12; border-color:#f1c40f;"><i class="fa-solid fa-temperature-half"></i> <span class="btn-text">Hist. Météo</span></button>
-            <button class="topbar-btn" data-btnkey="localiser" data-btnlabel="Localiser" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;"><i class="fa-solid fa-location-crosshairs"></i> <span class="btn-text">Localiser</span></button>
-            <button class="topbar-btn" data-btnkey="print" data-btnlabel="Imprimer" onclick="window.openPrintMode()" style="background:#7f8c8d; border-color:#95a5a6;"><i class="fa-solid fa-print"></i> <span class="btn-text">Imprimer</span></button>
-            <button class="topbar-btn" data-btnkey="calendar" data-btnlabel="Calendrier" onclick="window.openCalendar()" style="background:#e67e22; border-color:#f39c12;"><i class="fa-solid fa-calendar-days"></i> <span class="btn-text">Calendrier</span></button>
+            <!-- Tous les autres outils sont regroupés derrière ce bouton sur PC ; sur mobile le bandeau
+                 est masqué et c'est le tiroir du bas qui les reprend (data-dock-skip exclut le bouton
+                 "Outils" lui-même du tiroir, où il n'aurait aucun sens). -->
+            <div class="topbar-tools-wrap">
+                <button class="topbar-btn" data-btnkey="tools" data-btnlabel="Outils" data-dock-skip="1" onclick="window.toggleTopbarTools(event)" style="background:#546e7a; border-color:#78909c;"><i class="fa-solid fa-toolbox"></i> <span class="btn-text">Outils</span> <i class="fa-solid fa-chevron-down" style="font-size:9px; margin-left:3px; opacity:0.8;"></i></button>
+                <div id="topbar-tools-menu">
+                    <button class="topbar-btn" data-btnkey="compare" data-btnlabel="Comparer Saisons" onclick="window.openGlobalCompareModal(true)" style="background:#d35400; border-color:#e67e22;"><i class="fa-solid fa-code-compare"></i> <span class="btn-text">Comparer Saisons</span></button>
+                    <button class="topbar-btn" data-btnkey="bi" data-btnlabel="Centre Expert BI" onclick="window.openBiMeteo()" style="background:#16a085; border-color:#1abc9c;"><i class="fa-solid fa-snowflake"></i> <span class="btn-text">Centre Expert BI</span></button>
+                    <button class="topbar-btn" data-btnkey="meteo" data-btnlabel="Météo Live" onclick="window.openMeteoWidget()"><i class="fa-solid fa-cloud-sun"></i> <span class="btn-text">Météo Live</span></button>
+                    <button class="topbar-btn" data-btnkey="webcams" data-btnlabel="Webcams" onclick="window.openWebcamGrid()"><i class="fa-solid fa-video"></i> <span class="btn-text">Webcams</span></button>
+                    <button class="topbar-btn" data-btnkey="histmeteo" data-btnlabel="Hist. Météo" onclick="window.openMeteoHistoryModal(true)" style="background:#f39c12; border-color:#f1c40f;"><i class="fa-solid fa-temperature-half"></i> <span class="btn-text">Hist. Météo</span></button>
+                    <button class="topbar-btn" data-btnkey="localiser" data-btnlabel="Localiser" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;"><i class="fa-solid fa-location-crosshairs"></i> <span class="btn-text">Localiser</span></button>
+                    <button class="topbar-btn" data-btnkey="print" data-btnlabel="Imprimer" onclick="window.openPrintMode()" style="background:#7f8c8d; border-color:#95a5a6;"><i class="fa-solid fa-print"></i> <span class="btn-text">Imprimer</span></button>
+                    <button class="topbar-btn" data-btnkey="calendar" data-btnlabel="Calendrier" onclick="window.openCalendar()" style="background:#e67e22; border-color:#f39c12;"><i class="fa-solid fa-calendar-days"></i> <span class="btn-text">Calendrier</span></button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -452,6 +499,17 @@
                             <div style="display:flex; align-items:center; gap:8px; margin:4px 0 0 22px;"><input type="range" id="set-labels-opacity" min="0" max="100" value="80" oninput="window.applySettingsUI()" style="flex:1;"><span id="set-labels-opacity-val" style="font-size:11px; font-weight:bold; color:#8e44ad; width:32px; text-align:right;">80%</span></div>
                         </div>
                     </div>
+                </div>
+            </details>
+            <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-arrow-down-a-z"></i> Agencement du Menu Gauche</summary>
+                <div style="padding:15px;">
+                    <b style="font-size:11px; color:#8e44ad;">🧰 Outils d'Analyse (sections)</b>
+                    <div id="settings-sidebar-order" style="margin:8px 0 15px;"></div>
+                    <b style="font-size:11px; color:#8e44ad; border-top:1px solid #eee; padding-top:10px; display:block;">🎨 Thème &amp; Légende (menus)</b>
+                    <div id="settings-theme-order" style="margin:8px 0 10px; max-height:260px; overflow-y:auto;"></div>
+                    <button onclick="window.resetSidebarLayout()" style="width:100%; background:#ecf0f1; border:1px solid #ccc; padding:8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-rotate-left"></i> Réinitialiser l'agencement</button>
+                    <p style="font-size:10px; color:#888; margin:10px 0 0;">Masquer un menu le retire du bandeau de gauche ; s'il est actif au moment où vous le masquez, il le reste jusqu'au choix d'un autre menu.</p>
                 </div>
             </details>
             <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
@@ -604,6 +662,18 @@
                 <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-orientation" value="portrait" checked onchange="window.buildPrintPageSheet()"> Portrait</label>
                 <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px;"><input type="radio" name="print-orientation" value="landscape" onchange="window.buildPrintPageSheet()"> Paysage</label>
             </div>
+            <div class="edit-label">Marges de la page (mm)</div>
+            <div style="display:flex; gap:6px; margin-bottom:6px;">
+                <div style="flex:1;"><span style="font-size:9px; color:#888; font-weight:bold;">Haut</span><input type="number" id="print-mg-top" min="0" max="50" step="1" value="10" class="edit-input" style="margin:2px 0 0; padding:5px; height:28px; box-sizing:border-box; font-size:12px;" onchange="window.onPrintMarginsChange()"></div>
+                <div style="flex:1;"><span style="font-size:9px; color:#888; font-weight:bold;">Bas</span><input type="number" id="print-mg-bottom" min="0" max="50" step="1" value="10" class="edit-input" style="margin:2px 0 0; padding:5px; height:28px; box-sizing:border-box; font-size:12px;" onchange="window.onPrintMarginsChange()"></div>
+                <div style="flex:1;"><span style="font-size:9px; color:#888; font-weight:bold;">Gauche</span><input type="number" id="print-mg-left" min="0" max="50" step="1" value="10" class="edit-input" style="margin:2px 0 0; padding:5px; height:28px; box-sizing:border-box; font-size:12px;" onchange="window.onPrintMarginsChange()"></div>
+                <div style="flex:1;"><span style="font-size:9px; color:#888; font-weight:bold;">Droite</span><input type="number" id="print-mg-right" min="0" max="50" step="1" value="10" class="edit-input" style="margin:2px 0 0; padding:5px; height:28px; box-sizing:border-box; font-size:12px;" onchange="window.onPrintMarginsChange()"></div>
+            </div>
+            <div style="display:flex; gap:6px; margin-bottom:15px;">
+                <button onclick="window.setPrintMarginPreset(5)" style="flex:1; background:#ecf0f1; border:1px solid #ccc; border-radius:4px; padding:5px; font-size:10px; font-weight:bold; cursor:pointer;">Étroites 5</button>
+                <button onclick="window.setPrintMarginPreset(10)" style="flex:1; background:#ecf0f1; border:1px solid #ccc; border-radius:4px; padding:5px; font-size:10px; font-weight:bold; cursor:pointer;">Normales 10</button>
+                <button onclick="window.setPrintMarginPreset(20)" style="flex:1; background:#ecf0f1; border:1px solid #ccc; border-radius:4px; padding:5px; font-size:10px; font-weight:bold; cursor:pointer;">Larges 20</button>
+            </div>
             <div class="edit-label">Contenu à imprimer (cases à cocher, flèches pour réordonner)</div>
             <div id="print-dashboard-checklist" style="display:flex; flex-direction:column; gap:2px; font-size:11px; max-height:280px; overflow-y:auto; border:1px solid #eee; border-radius:4px; padding:8px; background:#fafbfc; margin-bottom:15px;"></div>
             <div id="print-page-count-info" style="font-size:11px; color:#7f8c8d; text-align:center; margin-bottom:10px;"></div>
@@ -611,6 +681,7 @@
             <button onclick="window.launchPrint()" class="btn-action-primary" style="background:#27ae60; margin-top:8px;"><i class="fa-solid fa-print"></i> Imprimer</button>
             <button onclick="window.exportPrintPDF()" class="btn-action-primary" style="background:#8e44ad; margin-top:8px;"><i class="fa-solid fa-file-pdf"></i> Exporter en PDF</button>
             <p style="font-size:10px; color:#888; margin-top:10px;">💡 "Exporter en PDF" ouvre la fenêtre d'impression : choisissez "Enregistrer en PDF" comme destination.</p>
+            <p style="font-size:10px; color:#c0392b; margin-top:6px; background:#fdf2f2; border:1px solid #f5c6c0; border-radius:4px; padding:7px;">⚠️ Dans la fenêtre d'impression du PC, mettez l'échelle sur <b>100 %</b> et décochez <b>« En-têtes et pieds de page »</b> : ce sont les deux seuls réglages qui peuvent encore faire diverger le papier de l'aperçu.</p>
         </div>
     </div>
 
@@ -652,18 +723,18 @@
     <div id="app-container">
         <div id="sidebar" class="open">
             <div class="sidebar-header-bg"><i class="fa-solid fa-layer-group"></i> Outils d'Analyse</div>
-            <details class="panel-section" open><summary>Thème & Légende</summary>
+            <details class="panel-section" data-sec="theme" open><summary>Thème & Légende</summary>
                 <div class="section-content" style="padding-top: 10px;">
-                    <div class="theme-block"><label class="radio-card" id="lbl-atelier"><input type="radio" name="main_theme" value="atelier"> <i class="fa-solid fa-toolbox" style="color:#8e44ad;"></i> Banc d'essais</label><div class="theme-details" id="details-atelier" style="display:none;border-color:#8e44ad;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Banc de test usine</div></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-stock"><input type="radio" name="main_theme" value="stock"> <i class="fa-solid fa-boxes-stacked" style="color:#16a085;"></i> Gestion du Stock</label><div class="theme-details" id="details-stock" style="display:none;border-color:#16a085;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Inventaire</div></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-production"><input type="radio" name="main_theme" value="production"> <i class="fa-solid fa-industry" style="color:#2980b9;"></i> Production</label><div class="theme-details" id="details-production" style="display:none;border-color:#2980b9;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Suivi de production neige</div><div class="edit-label" style="font-size:10px;">Saison affichée</div><select id="prod-season-select" class="edit-input" style="margin-bottom:8px;" onchange="window.setProductionSeason(this.value)"></select><button class="btn-action-primary" style="margin:0; background:#2980b9;" onclick="window.openProductionForm()"><i class="fa-solid fa-plus"></i> Nouvelle production</button></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-entretien_tete"><input type="radio" name="main_theme" value="entretien_tete"> <i class="fa-solid fa-shower" style="color:#e67e22;"></i> Entretien Tête Canon</label><div class="theme-details" id="details-entretien_tete" style="display:none;border-color:#e67e22;"><div class="view-toggle-wrap" data-vt="entretien_tete"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Buses <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('entretien_tete')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-entretien_tete" style="display:none;margin-bottom:8px;"></div><div id="legend-entretien_tete"></div><button onclick="window.resetEntretienBuses()" style="width:100%;margin-top:10px;background:#c0392b;color:white;border:none;padding:8px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;"><i class="fa-solid fa-rotate-left"></i> RAZ</button></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-suivi_entretien"><input type="radio" name="main_theme" value="suivi_entretien"> <i class="fa-solid fa-screwdriver-wrench" style="color:#27ae60;"></i> Suivi Entretien</label><div class="theme-details" id="details-suivi_entretien" style="display:none;border-color:#27ae60;"><div class="view-toggle-wrap" data-vt="suivi_entretien"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Vannes <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('suivi_entretien')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-suivi_entretien" style="display:none;margin-bottom:8px;"></div><div id="legend-suivi_entretien"></div></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-defauts"><input type="radio" name="main_theme" value="defauts" checked> <i class="fa-solid fa-triangle-exclamation" style="color:#e74c3c;"></i> Tickets & Pannes</label><div class="theme-details" id="details-defauts" style="display:block;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="defauts"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Statuts actuels <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('defauts')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-defauts" style="display:none;margin-bottom:8px;"></div><div id="legend-defauts"></div></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-type"><input type="radio" name="main_theme" value="type"> <i class="fa-solid fa-snowflake" style="color:#3498db;"></i> Type de canon</label><div class="theme-details" id="details-type" style="display:none;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="type"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Modèles <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('type')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-type" style="display:none;margin-bottom:8px;"></div><div id="legend-type"></div></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-repeteur"><input type="radio" name="main_theme" value="repeteur"> <i class="fa-solid fa-satellite-dish" style="color:#3498db;"></i> Répéteurs</label><div class="theme-details" id="details-repeteur" style="display:none;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="repeteur"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Répéteurs <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('repeteur')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-repeteur" style="display:none;margin-bottom:8px;"></div><div id="legend-repeteur"></div></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-transfo"><input type="radio" name="main_theme" value="transfo"> <i class="fa-solid fa-bolt" style="color:#f1c40f;"></i> Transformateurs</label><div class="theme-details" id="details-transfo" style="display:none;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="transfo"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Transfos <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('transfo')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-transfo" style="display:none;margin-bottom:8px;"></div><div id="legend-transfo"></div></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-historique"><input type="radio" name="main_theme" value="historique"> <i class="fa-solid fa-chart-column" style="color:#2ecc71;"></i> Historique Volumes</label><div class="theme-details-hist" id="details-historique" style="display:none;">
+                    <div class="theme-block" data-tb="atelier"><label class="radio-card" id="lbl-atelier"><input type="radio" name="main_theme" value="atelier"> <i class="fa-solid fa-toolbox" style="color:#8e44ad;"></i> Banc d'essais</label><div class="theme-details" id="details-atelier" style="display:none;border-color:#8e44ad;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Banc de test usine</div></div></div>
+                    <div class="theme-block" data-tb="stock"><label class="radio-card" id="lbl-stock"><input type="radio" name="main_theme" value="stock"> <i class="fa-solid fa-boxes-stacked" style="color:#16a085;"></i> Gestion du Stock</label><div class="theme-details" id="details-stock" style="display:none;border-color:#16a085;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Inventaire</div></div></div>
+                    <div class="theme-block" data-tb="production"><label class="radio-card" id="lbl-production"><input type="radio" name="main_theme" value="production"> <i class="fa-solid fa-industry" style="color:#2980b9;"></i> Production</label><div class="theme-details" id="details-production" style="display:none;border-color:#2980b9;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Suivi de production neige</div><div class="edit-label" style="font-size:10px;">Saison affichée</div><select id="prod-season-select" class="edit-input" style="margin-bottom:8px;" onchange="window.setProductionSeason(this.value)"></select><button class="btn-action-primary" style="margin:0; background:#2980b9;" onclick="window.openProductionForm()"><i class="fa-solid fa-plus"></i> Nouvelle production</button></div></div>
+                    <div class="theme-block" data-tb="entretien_tete"><label class="radio-card" id="lbl-entretien_tete"><input type="radio" name="main_theme" value="entretien_tete"> <i class="fa-solid fa-shower" style="color:#e67e22;"></i> Entretien Tête Canon</label><div class="theme-details" id="details-entretien_tete" style="display:none;border-color:#e67e22;"><div class="view-toggle-wrap" data-vt="entretien_tete"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Buses <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('entretien_tete')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-entretien_tete" style="display:none;margin-bottom:8px;"></div><div id="legend-entretien_tete"></div><button onclick="window.resetEntretienBuses()" style="width:100%;margin-top:10px;background:#c0392b;color:white;border:none;padding:8px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;"><i class="fa-solid fa-rotate-left"></i> RAZ</button></div></div>
+                    <div class="theme-block" data-tb="suivi_entretien"><label class="radio-card" id="lbl-suivi_entretien"><input type="radio" name="main_theme" value="suivi_entretien"> <i class="fa-solid fa-screwdriver-wrench" style="color:#27ae60;"></i> Suivi Entretien</label><div class="theme-details" id="details-suivi_entretien" style="display:none;border-color:#27ae60;"><div class="view-toggle-wrap" data-vt="suivi_entretien"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Vannes <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('suivi_entretien')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-suivi_entretien" style="display:none;margin-bottom:8px;"></div><div id="legend-suivi_entretien"></div></div></div>
+                    <div class="theme-block" data-tb="defauts"><label class="radio-card" id="lbl-defauts"><input type="radio" name="main_theme" value="defauts" checked> <i class="fa-solid fa-triangle-exclamation" style="color:#e74c3c;"></i> Tickets & Pannes</label><div class="theme-details" id="details-defauts" style="display:block;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="defauts"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Statuts actuels <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('defauts')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-defauts" style="display:none;margin-bottom:8px;"></div><div id="legend-defauts"></div></div></div>
+                    <div class="theme-block" data-tb="type"><label class="radio-card" id="lbl-type"><input type="radio" name="main_theme" value="type"> <i class="fa-solid fa-snowflake" style="color:#3498db;"></i> Type de canon</label><div class="theme-details" id="details-type" style="display:none;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="type"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Modèles <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('type')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-type" style="display:none;margin-bottom:8px;"></div><div id="legend-type"></div></div></div>
+                    <div class="theme-block" data-tb="repeteur"><label class="radio-card" id="lbl-repeteur"><input type="radio" name="main_theme" value="repeteur"> <i class="fa-solid fa-satellite-dish" style="color:#3498db;"></i> Répéteurs</label><div class="theme-details" id="details-repeteur" style="display:none;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="repeteur"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Répéteurs <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('repeteur')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-repeteur" style="display:none;margin-bottom:8px;"></div><div id="legend-repeteur"></div></div></div>
+                    <div class="theme-block" data-tb="transfo"><label class="radio-card" id="lbl-transfo"><input type="radio" name="main_theme" value="transfo"> <i class="fa-solid fa-bolt" style="color:#f1c40f;"></i> Transformateurs</label><div class="theme-details" id="details-transfo" style="display:none;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="transfo"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Transfos <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('transfo')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-transfo" style="display:none;margin-bottom:8px;"></div><div id="legend-transfo"></div></div></div>
+                    <div class="theme-block" data-tb="historique"><label class="radio-card" id="lbl-historique"><input type="radio" name="main_theme" value="historique"> <i class="fa-solid fa-chart-column" style="color:#2ecc71;"></i> Historique Volumes</label><div class="theme-details-hist" id="details-historique" style="display:none;">
                         <div style="font-weight:bold; font-size:12px; color:#27ae60; margin-bottom:10px;">DONNÉE À AFFICHER :</div>
                         <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:12px; font-weight:bold; color:#333;"><label><input type="radio" name="hist_metric" value="eau" checked> 💧 Eau</label><label><input type="radio" name="hist_metric" value="air"> 💨 Air</label><label><input type="radio" name="hist_metric" value="temps"> ⏱️ Heures</label></div>
                         <div class="slider-container"><div class="slider-label">Saison : <span id="season-display" style="color:#27ae60; font-size:14px;">-</span></div><input type="range" id="season-slider" min="0" max="0" value="0"></div>
@@ -672,18 +743,18 @@
                     </div></div>
                 </div>
             </details>
-            <details class="panel-section" open><summary>Filtres Rapides</summary><div class="section-content" style="padding-top: 5px;">
+            <details class="panel-section" data-sec="filtres" open><summary>Filtres Rapides</summary><div class="section-content" style="padding-top: 5px;">
                 <b style="font-size:12px;">Pistes :</b><div class="checkbox-list"><label><input type="checkbox" id="check-all-pistes" checked> <b>Toutes</b></label><div id="individual-pistes"></div></div>
                 <b style="font-size:12px;">Type Canon :</b><div class="checkbox-list"><label><input type="checkbox" id="check-all-types" checked> <b>Tous</b></label><div id="individual-types"></div></div>
                 <hr style="margin:10px 0; border-top:1px dashed #ccc;">
                 <b style="font-size:12px;">Filtre Personnalisé :</b><div id="dynamic-filters-container"></div>
             </div></details>
-            <details class="panel-section" open><summary>Calques & Tracés (KMZ)</summary><div class="section-content" style="padding-top: 5px;">
+            <details class="panel-section" data-sec="kmz" open><summary>Calques & Tracés (KMZ)</summary><div class="section-content" style="padding-top: 5px;">
                 <p style="font-size:11px; color:#666; margin-bottom:10px;"><b>1. Cloud (Depuis Sheets) :</b></p><div id="cloud-layers-container"></div>
                 <hr style="margin:15px 0; border-top:1px dashed #ccc;"><p style="font-size:11px; color:#666; margin-bottom:10px;"><b>2. Import PC :</b></p><input type="file" id="kml-upload" accept=".kml,.kmz" style="display:none;" onchange="window.handleKMLUpload(event)"><button class="btn-action-primary" style="margin-top:0; background:#8e44ad;" onclick="document.getElementById('kml-upload').click()"><i class="fa-solid fa-folder-open"></i> Importer...</button><div id="custom-layers-list" style="margin-top:15px;"></div>
                 <div id="drive-kmz-dropdown-container"></div>
             </div></details>
-            <details class="panel-section"><summary>Zones & Volume de Neige</summary><div class="section-content" style="padding-top: 5px;">
+            <details class="panel-section" data-sec="zones"><summary>Zones & Volume de Neige</summary><div class="section-content" style="padding-top: 5px;">
                 <p style="font-size:11px; color:#666; margin:0 0 8px;">Dessinez une zone sur la carte (ou reprenez un contour KMZ), réglez l'épaisseur de neige et obtenez le volume.</p>
                 <div style="display:flex; gap:6px;">
                     <button id="btn-draw-zone" class="btn-action-primary" style="margin:0; background:#2980b9; flex:1;" onclick="window.toggleZoneDraw()"><i class="fa-solid fa-draw-polygon"></i> Dessiner</button>
@@ -774,10 +845,12 @@
             btnColors: {}, hiddenColumns: [], repColorsOverride: {}, transfoColorsOverride: {},
             viewMode: { defauts: 'map', suivi_entretien: 'map', entretien_tete: 'map', type: 'map', repeteur: 'map', transfo: 'map' },
             legendConfig: {}, dashPrefs: {},
-            prodSettings: { prixKwh: 0.15, saison: '2026-2027', decimales: 2, devise: '€' }
+            prodSettings: { prixKwh: 0.15, saison: '2026-2027', decimales: 2, devise: '€' },
+            sidebarOrder: [], sidebarHidden: [], themeOrder: [], themeHidden: [],
+            printMargins: { top: 10, right: 10, bottom: 10, left: 10 }
         };
         window.listViewFilters = { defaut: '', statutTicket: '', statutEntretien: '', statutTete: '' };
-        window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d', calendar: '#e67e22' };
+        window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', tools: '#546e7a', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d', calendar: '#e67e22' };
         window.overlayLayers = { hillshade: null, labels: null };
 
         window.promptSettings = function() {
@@ -812,6 +885,9 @@
             // Réapplique les couleurs personnalisées de répéteurs/transfos sur les palettes auto-générées par initAppUI.
             Object.keys(window.appSettings.repColorsOverride || {}).forEach(k => { if(window.repColors) window.repColors[k] = window.appSettings.repColorsOverride[k]; });
             Object.keys(window.appSettings.transfoColorsOverride || {}).forEach(k => { if(window.transfoColors) window.transfoColors[k] = window.appSettings.transfoColorsOverride[k]; });
+            ['sidebarOrder', 'sidebarHidden', 'themeOrder', 'themeHidden'].forEach(k => { if (!Array.isArray(window.appSettings[k])) window.appSettings[k] = []; });
+            if(window.applySidebarLayout) window.applySidebarLayout();
+            if(window.renderSidebarOrderSettings) window.renderSidebarOrderSettings();
             if(window.renderBtnColorSettings) window.renderBtnColorSettings();
             if(window.renderLegendRepTransfoSettings) window.renderLegendRepTransfoSettings();
             if(window.renderFicheCanonSettings) window.renderFicheCanonSettings();
@@ -855,10 +931,10 @@
                 else if(mapType === 'light') window.satLayer.setUrl('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png');
             }
 
-            let sidebarEl = document.getElementById('sidebar');
-            let sTools = document.getElementById('set-show-tools') ? document.getElementById('set-show-tools').checked : s.showTools;
-            let sFilters = document.getElementById('set-show-filters') ? document.getElementById('set-show-filters').checked : s.showFilters;
-            if(sidebarEl) { let sections = sidebarEl.querySelectorAll('.panel-section'); if(sections.length >= 1 && sections[0]) sections[0].style.display = sTools ? 'block' : 'none'; if(sections.length >= 2 && sections[1]) sections[1].style.display = sFilters ? 'block' : 'none'; }
+            // L'ordre et la visibilité des sections sont désormais gérés par applySidebarLayout (qui
+            // combine ces deux cases historiques avec l'agencement personnalisé) : un masquage repéré
+            // à l'indice 0/1 devenait faux dès que l'utilisateur réordonnait le bandeau.
+            if(window.applySidebarLayout) window.applySidebarLayout();
 
             if(document.body) {
                 document.body.classList.remove('app-btn-square', 'app-btn-round', 'app-btn-icon-only');
@@ -932,6 +1008,7 @@
             let colors = window.appSettings.btnColors || {};
             let html = '';
             btns.forEach(b => {
+                if (b.getAttribute('data-dock-skip')) return;
                 let key = b.getAttribute('data-btnkey');
                 let label = b.getAttribute('data-btnlabel') || key;
                 let ico = b.querySelector('i');
@@ -949,6 +1026,23 @@
         };
 
         window.closeMobileDock = function() { let d = document.getElementById('mobile-dock'); if(d) d.classList.remove('open'); };
+
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 2.E.2.b : MENU "OUTILS" DU BANDEAU SUPÉRIEUR (PC)                 */
+        /* ------------------------------------------------------------------------- */
+        window.toggleTopbarTools = function(e) {
+            if (e) e.stopPropagation();
+            let m = document.getElementById('topbar-tools-menu'); if (m) m.classList.toggle('open');
+        };
+        window.closeTopbarTools = function() { let m = document.getElementById('topbar-tools-menu'); if (m) m.classList.remove('open'); };
+        document.addEventListener('click', function(e) {
+            let m = document.getElementById('topbar-tools-menu');
+            if (!m || !m.classList.contains('open')) return;
+            // Un clic dans le menu déclenche l'outil puis referme ; un clic ailleurs referme simplement.
+            if (e.target.closest && e.target.closest('#topbar-tools-menu .topbar-btn')) { setTimeout(window.closeTopbarTools, 0); return; }
+            if (e.target.closest && e.target.closest('.topbar-tools-wrap')) return;
+            m.classList.remove('open');
+        });
 
         window.initMobileDock = function() {
             let dock = document.getElementById('mobile-dock');
@@ -1106,6 +1200,123 @@
                 } else if (!box.contains(e.target)) { window.hideSuggestBox(); }
             });
             document.addEventListener('scroll', () => window.hideSuggestBox(), true);
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 2.E.5 : AGENCEMENT DU BANDEAU DE GAUCHE (ORDRE ET VISIBILITÉ)     */
+        /* ------------------------------------------------------------------------- */
+        /* Les sections "Outils d'Analyse" et les menus de "Thème & Légende" sont     */
+        /* réordonnables et masquables depuis les Paramètres. L'ordre est mémorisé    */
+        /* sous forme de clés (data-sec / data-tb) et non d'indices : ajouter un      */
+        /* nouveau menu plus tard ne décale donc pas l'agencement déjà enregistré,    */
+        /* le nouveau venu se plaçant simplement en fin de liste.                     */
+        /* ========================================================================= */
+        // Ordre d'origine figé au chargement de la page, AVANT toute réorganisation : sans lui,
+        // "Réinitialiser l'agencement" ne faisait que vider la liste enregistrée, et l'ordre reconstruit
+        // depuis le DOM courant restait celui que l'utilisateur venait justement de vouloir annuler.
+        window.DEFAULT_SIDEBAR_ORDER = Array.from(document.querySelectorAll('#sidebar > details.panel-section[data-sec]')).map(el => el.getAttribute('data-sec'));
+        window.DEFAULT_THEME_ORDER = Array.from(document.querySelectorAll('#sidebar .theme-block[data-tb]')).map(el => el.getAttribute('data-tb'));
+
+        window.getSidebarSections = function() {
+            return Array.from(document.querySelectorAll('#sidebar > details.panel-section[data-sec]')).map(el => ({
+                key: el.getAttribute('data-sec'),
+                label: ((el.querySelector('summary') || {}).innerText || el.getAttribute('data-sec')).trim(),
+                el: el
+            }));
+        };
+        window.getThemeBlocks = function() {
+            return Array.from(document.querySelectorAll('#sidebar .theme-block[data-tb]')).map(el => ({
+                key: el.getAttribute('data-tb'),
+                label: (((el.querySelector('.radio-card') || {}).innerText) || el.getAttribute('data-tb')).trim(),
+                el: el
+            }));
+        };
+
+        window.applySidebarLayout = function() {
+            let host = document.getElementById('sidebar'); if (!host) return;
+            let s = window.appSettings;
+            let sections = window.getSidebarSections();
+            if (sections.length) {
+                let byKey = {}; sections.forEach(x => { byKey[x.key] = x; });
+                let base = (window.DEFAULT_SIDEBAR_ORDER || []).filter(k => byKey[k]);
+                sections.forEach(x => { if (base.indexOf(x.key) === -1) base.push(x.key); });
+                let order = (s.sidebarOrder || []).filter(k => byKey[k]);
+                base.forEach(k => { if (order.indexOf(k) === -1) order.push(k); });
+                order.forEach(k => host.appendChild(byKey[k].el));
+                // Les deux cases historiques des Paramètres ("Outils d'Analyse" / "Filtres Rapides")
+                // restent maîtresses de leur section : la visibilité est le ET des deux réglages.
+                let elChk = (id, fb) => { let e = document.getElementById(id); return e ? e.checked : fb; };
+                let legacy = { theme: elChk('set-show-tools', s.showTools), filtres: elChk('set-show-filters', s.showFilters) };
+                let hidden = s.sidebarHidden || [];
+                sections.forEach(x => {
+                    let vis = hidden.indexOf(x.key) === -1 && (legacy[x.key] === undefined || legacy[x.key]);
+                    x.el.style.display = vis ? 'block' : 'none';
+                });
+            }
+            let blocks = window.getThemeBlocks();
+            if (blocks.length) {
+                let tHost = blocks[0].el.parentNode;
+                let bk = {}; blocks.forEach(x => { bk[x.key] = x; });
+                let tBase = (window.DEFAULT_THEME_ORDER || []).filter(k => bk[k]);
+                blocks.forEach(x => { if (tBase.indexOf(x.key) === -1) tBase.push(x.key); });
+                let tOrder = (s.themeOrder || []).filter(k => bk[k]);
+                tBase.forEach(k => { if (tOrder.indexOf(k) === -1) tOrder.push(k); });
+                tOrder.forEach(k => tHost.appendChild(bk[k].el));
+                let tHidden = s.themeHidden || [];
+                blocks.forEach(x => { x.el.style.display = tHidden.indexOf(x.key) === -1 ? '' : 'none'; });
+            }
+        };
+
+        window.buildLayoutRows = function(items, hidden, kind) {
+            if (!items.length) return '<i style="font-size:11px; color:#888;">Aucun élément.</i>';
+            return items.map((it, i) => {
+                let isHidden = hidden.indexOf(it.key) !== -1;
+                let lbl = it.label.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+                return `<div class="layout-row${isHidden ? ' is-hidden' : ''}">
+                    <span title="${lbl.replace(/"/g, '&quot;')}">${lbl}</span>
+                    <button title="Monter" onclick="window.moveLayoutItem('${kind}','${it.key}',-1)" ${i === 0 ? 'disabled' : ''}>▲</button>
+                    <button title="Descendre" onclick="window.moveLayoutItem('${kind}','${it.key}',1)" ${i === items.length - 1 ? 'disabled' : ''}>▼</button>
+                    <button title="${isHidden ? 'Afficher' : 'Masquer'}" onclick="window.toggleLayoutItem('${kind}','${it.key}')">${isHidden ? '🚫' : '👁️'}</button>
+                </div>`;
+            }).join('');
+        };
+
+        window.renderSidebarOrderSettings = function() {
+            let a = document.getElementById('settings-sidebar-order');
+            if (a) a.innerHTML = window.buildLayoutRows(window.getSidebarSections(), window.appSettings.sidebarHidden || [], 'sec');
+            let b = document.getElementById('settings-theme-order');
+            if (b) b.innerHTML = window.buildLayoutRows(window.getThemeBlocks(), window.appSettings.themeHidden || [], 'theme');
+        };
+
+        window.moveLayoutItem = function(kind, key, dir) {
+            let items = kind === 'sec' ? window.getSidebarSections() : window.getThemeBlocks();
+            let keys = items.map(x => x.key);
+            let i = keys.indexOf(key), j = i + dir;
+            if (i === -1 || j < 0 || j >= keys.length) return;
+            keys[i] = keys[j]; keys[j] = key;
+            if (kind === 'sec') window.appSettings.sidebarOrder = keys; else window.appSettings.themeOrder = keys;
+            window.persistLayoutSettings();
+        };
+
+        window.toggleLayoutItem = function(kind, key) {
+            let name = kind === 'sec' ? 'sidebarHidden' : 'themeHidden';
+            let arr = (window.appSettings[name] || []).slice();
+            let i = arr.indexOf(key);
+            if (i === -1) arr.push(key); else arr.splice(i, 1);
+            window.appSettings[name] = arr;
+            window.persistLayoutSettings();
+        };
+
+        window.resetSidebarLayout = function() {
+            window.appSettings.sidebarOrder = []; window.appSettings.sidebarHidden = [];
+            window.appSettings.themeOrder = []; window.appSettings.themeHidden = [];
+            window.persistLayoutSettings();
+        };
+
+        window.persistLayoutSettings = function() {
+            localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings));
+            window.applySidebarLayout();
+            window.renderSidebarOrderSettings();
         };
 
         /* ========================================================================= */
@@ -4889,9 +5100,37 @@
         // CHAPITRE 8.D.1 — Ouverture : construit la liste des blocs imprimables (carte, légende, puis
         // chaque bloc du contenu actuellement affiché — panneau droit, Atelier, Stock ou vue Liste
         // selon le contexte), et lance immédiatement un aperçu paginé.
+        // CHAPITRE 8.D.0 — Marges de page. L'aperçu et le papier partagent exactement la même
+        // géométrie : la feuille d'aperçu est dimensionnée en pixels CSS correspondant aux millimètres
+        // réels (96 dpi), et les marges deviennent le padding de cette feuille. À l'impression,
+        // "@page { margin: 0 }" laisse la main à ce padding — auparavant la marge @page de 10 mm
+        // s'ajoutait au padding de 15 mm de l'aperçu, d'où deux mises en page sans rapport.
+        window.MM_TO_PX = 96 / 25.4;
+        window.getPrintMargins = function() {
+            let s = window.appSettings.printMargins || {};
+            let g = function(id, fb) {
+                let e = document.getElementById(id);
+                let v = e ? parseFloat(e.value) : NaN;
+                if (isNaN(v)) v = (fb === undefined ? 10 : fb);
+                return Math.max(0, Math.min(50, v));
+            };
+            return { top: g('print-mg-top', s.top), bottom: g('print-mg-bottom', s.bottom), left: g('print-mg-left', s.left), right: g('print-mg-right', s.right) };
+        };
+        window.setPrintMarginPreset = function(v) {
+            ['top', 'bottom', 'left', 'right'].forEach(k => { let e = document.getElementById('print-mg-' + k); if (e) e.value = v; });
+            window.onPrintMarginsChange();
+        };
+        window.onPrintMarginsChange = function() {
+            window.appSettings.printMargins = window.getPrintMargins();
+            localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings));
+            window.buildPrintPageSheet();
+        };
+
         window.openPrintMode = function() {
             let panel = document.getElementById('print-panel'); if (!panel) return;
             panel.classList.add('open');
+            let m = window.appSettings.printMargins || { top: 10, bottom: 10, left: 10, right: 10 };
+            ['top', 'bottom', 'left', 'right'].forEach(k => { let e = document.getElementById('print-mg-' + k); if (e) e.value = (m[k] === undefined ? 10 : m[k]); });
             window.buildPrintBlocksList();
             window.buildPrintPageSheet();
         };
@@ -4910,7 +5149,11 @@
             if (source) {
                 Array.from(source.children).forEach((child, idx) => {
                     if (child.tagName === 'DATALIST') return;
-                    blocks.push({ id: 'blk-content-' + idx, kind: 'content', idx: idx, label: window.guessBlockLabel(child, idx), checked: true });
+                    // Le formulaire d'ajout d'article n'a rien à faire sur une impression de stock.
+                    if (window.mainTheme === 'stock' && child.id === 'add-stock-form-container') return;
+                    let label = window.guessBlockLabel(child, idx);
+                    if (window.mainTheme === 'stock' && child.id === 'stock-cards-list') label = '🏷️ Étiquettes articles (compact)';
+                    blocks.push({ id: 'blk-content-' + idx, kind: 'content', idx: idx, label: label, checked: true });
                 });
             }
             window.printBlocks = blocks;
@@ -4939,6 +5182,60 @@
             let newIdx = idx + dir; if (newIdx < 0 || newIdx >= window.printBlocks.length) return;
             let tmp = window.printBlocks[idx]; window.printBlocks[idx] = window.printBlocks[newIdx]; window.printBlocks[newIdx] = tmp;
             window.renderPrintBlocksChecklist(); window.buildPrintPageSheet();
+        };
+
+        // CHAPITRE 8.D.1.b — Impression du Stock : les fiches d'écran (photo pleine hauteur, une
+        // vingtaine de champs de saisie et deux boutons) sont converties en étiquettes d'un dixième de
+        // page, encadrées d'un filet fin, sans aucun bouton. Les valeurs sont relues dans les champs
+        // affichés — ce sont donc bien les données à l'écran, filtre de recherche compris, qui partent
+        // à l'imprimante. Renvoie undefined pour laisser le traitement générique s'appliquer.
+        window.buildStockPrintNode = function(srcChild) {
+            if (!srcChild) return undefined;
+            if (srcChild.id === 'add-stock-form-container') return null;
+
+            if (srcChild.id === 'stock-cards-list') {
+                let cards = Array.from(srcChild.querySelectorAll('.stock-item-card')).filter(c => c.style.display !== 'none');
+                if (!cards.length) return null;
+                let wrap = document.createElement('div');
+                wrap.style.cssText = 'display:flex; flex-direction:column; gap:2mm;';
+                cards.forEach(card => {
+                    let val = function(col) { let i = card.querySelector('[data-col="' + col + '"]'); return i ? (i.value || '').toString().trim() : ''; };
+                    let num = card.getAttribute('data-num') || '';
+                    let ref = val('ref'), prod = val('produit'), desc = val('description');
+                    let stock = parseFloat(val('en stock')) || 0, mini = parseFloat(val('seuil mini')) || 0;
+                    let pris = parseFloat(val('pris')) || 0, cout = val('cout');
+                    let reste = stock - pris;
+                    let img = card.querySelector('img');
+
+                    let row = document.createElement('div');
+                    row.className = 'stock-label' + (stock <= mini ? ' alert' : '');
+                    row.innerHTML =
+                        `<div class="stock-label-main">
+                            <div class="stock-label-title">${num ? 'N°' + window.prodEsc(num) + ' · ' : ''}${window.prodEsc(ref || '—')} — ${window.prodEsc(prod || 'Sans nom')}${stock <= mini ? ' <span style="color:#e74c3c;">⚠ SEUIL</span>' : ''}</div>
+                            ${desc ? `<div class="stock-label-desc">${window.prodEsc(desc)}</div>` : ''}
+                            <div class="stock-label-vals"><span>Stock <b>${stock}</b></span><span>Pris <b>${pris}</b></span><span>Reste <b>${reste}</b></span><span>Seuil <b>${mini}</b></span>${cout ? `<span>Coût <b>${window.prodEsc(cout)} €</b></span>` : ''}</div>
+                        </div>`;
+                    if (img && img.src && img.src.indexOf('placehold.co') === -1) {
+                        let thumb = document.createElement('img');
+                        thumb.className = 'stock-label-thumb'; thumb.src = img.src;
+                        row.appendChild(thumb);
+                    }
+                    wrap.appendChild(row);
+                });
+                return wrap;
+            }
+
+            // En-tête de l'atelier (titre + champs de recherche + boutons) : réduit à un simple titre.
+            if (srcChild.querySelector && srcChild.querySelector('h2')) {
+                let visible = document.querySelectorAll('.stock-item-card');
+                let shown = Array.from(visible).filter(c => c.style.display !== 'none').length;
+                let t = document.createElement('div');
+                t.style.cssText = 'border-bottom:1.5px solid #16a085; padding-bottom:2mm; margin-bottom:3mm;';
+                t.innerHTML = `<div style="font-size:14px; font-weight:bold; color:#1b2b3a;">INVENTAIRE — ÉTIQUETTES ARTICLES</div>
+                    <div style="font-size:9px; color:#7f8c8d; margin-top:1mm;">${shown} article(s) · édité le ${new Date().toLocaleDateString('fr-FR')}</div>`;
+                return t;
+            }
+            return undefined;
         };
 
         // CHAPITRE 8.D.2 — Snapshot statique de la carte (export ArcGIS World_Imagery sur l'emprise
@@ -5033,16 +5330,21 @@
                         let wrapper = node.cloneNode(false); let tbl = table.cloneNode(false);
                         if (thead) tbl.appendChild(thead.cloneNode(true));
                         let tb = document.createElement('tbody'); tbl.appendChild(tb); wrapper.appendChild(tbl);
-                        if (state.page.children.length > 0) state.page = state.newPage();
+                        // On tente TOUJOURS la page en cours d'abord : ouvrir une page neuve d'office
+                        // laissait un titre (ou un bloc court) seul sur sa feuille, l'espace restant perdu.
                         state.page.appendChild(wrapper);
+                        let placed = 0;
                         while (idx < rows.length) {
                             let rowClone = rows[idx].cloneNode(true); tb.appendChild(rowClone);
-                            if (state.page.scrollHeight > state.page.clientHeight + 1) {
-                                tb.removeChild(rowClone);
-                                if (tb.children.length === 0) { tb.appendChild(rowClone); idx++; }
-                                break;
-                            }
-                            idx++;
+                            if (state.page.scrollHeight > state.page.clientHeight + 1) { tb.removeChild(rowClone); break; }
+                            idx++; placed++;
+                        }
+                        if (placed === 0) {
+                            state.page.removeChild(wrapper);
+                            // Une ligne trop haute pour une page entière est acceptée telle quelle,
+                            // sinon la boucle ne progresserait jamais.
+                            if (state.page.children.length === 0) { tb.appendChild(rows[idx].cloneNode(true)); state.page.appendChild(wrapper); idx++; }
+                            if (idx < rows.length) state.page = state.newPage();
                         }
                     }
                     return;
@@ -5053,16 +5355,20 @@
                 let children = Array.from(node.children); let idx = 0;
                 while (idx < children.length) {
                     let wrapper = node.cloneNode(false);
-                    if (state.page.children.length > 0) state.page = state.newPage();
                     state.page.appendChild(wrapper);
+                    let placed = 0;
                     while (idx < children.length) {
                         let childClone = children[idx].cloneNode(true); window.stripPrintOverflow(childClone); wrapper.appendChild(childClone);
-                        if (state.page.scrollHeight > state.page.clientHeight + 1) {
-                            wrapper.removeChild(childClone);
-                            if (wrapper.children.length === 0) { wrapper.appendChild(childClone); idx++; }
-                            break;
+                        if (state.page.scrollHeight > state.page.clientHeight + 1) { wrapper.removeChild(childClone); break; }
+                        idx++; placed++;
+                    }
+                    if (placed === 0) {
+                        state.page.removeChild(wrapper);
+                        if (state.page.children.length === 0) {
+                            let c = children[idx].cloneNode(true); window.stripPrintOverflow(c);
+                            wrapper.appendChild(c); state.page.appendChild(wrapper); idx++;
                         }
-                        idx++;
+                        if (idx < children.length) state.page = state.newPage();
                     }
                 }
                 return;
@@ -5089,7 +5395,15 @@
             let format = (document.querySelector('input[name="print-format"]:checked') || {}).value || 'A4';
             let orientation = (document.querySelector('input[name="print-orientation"]:checked') || {}).value || 'portrait';
             let dims = window.PAGE_SIZES_MM[format][orientation]; let ratio = dims[0] / dims[1];
-            let previewW = 700; let previewH = Math.round(previewW / ratio);
+            // Feuille d'aperçu à la taille RÉELLE en pixels CSS : la pagination mesurée ici est donc
+            // celle du papier. Si la fenêtre est trop étroite, on réduit visuellement les feuilles avec
+            // un transform (qui, contrairement à zoom, ne change rien à la mise en page mesurée).
+            let mg = window.getPrintMargins();
+            let previewW = Math.round(dims[0] * window.MM_TO_PX);
+            let previewH = Math.round(dims[1] * window.MM_TO_PX);
+            let padCss = (mg.top * window.MM_TO_PX) + 'px ' + (mg.right * window.MM_TO_PX) + 'px ' + (mg.bottom * window.MM_TO_PX) + 'px ' + (mg.left * window.MM_TO_PX) + 'px';
+            let availW = (wrap.clientWidth || previewW) - 40;
+            let zoom = Math.min(1, availW / previewW);
 
             let mapBlock = (window.printBlocks || []).find(b => b.kind === 'map' && b.checked);
             let legendBlock = (window.printBlocks || []).find(b => b.kind === 'legend' && b.checked);
@@ -5102,7 +5416,13 @@
                 if (!b.checked || b.kind === 'map') continue;
                 if (b.kind === 'legend') { if (forceFullMapPage) continue; let div = document.createElement('div'); div.innerHTML = window.getCurrentLegendHtml(); div.style.cssText = 'margin-bottom:15px; padding:10px; border:1px solid #eee; border-radius:6px;'; otherBlockNodes.push(div); continue; }
                 if (b.kind === 'canonlist') { let node = window.buildTypeCanonListNode(); if (node) otherBlockNodes.push(node); continue; }
-                let source = window.getPrintSourceContainer(); let srcChild = source && source.children[b.idx]; if (srcChild) otherBlockNodes.push(window.cloneNodeForPrint(srcChild));
+                let source = window.getPrintSourceContainer(); let srcChild = source && source.children[b.idx];
+                if (!srcChild) continue;
+                if (window.mainTheme === 'stock') {
+                    let special = window.buildStockPrintNode(srcChild);
+                    if (special !== undefined) { if (special) otherBlockNodes.push(special); continue; }
+                }
+                otherBlockNodes.push(window.cloneNodeForPrint(srcChild));
             }
 
             let mapNode = null;
@@ -5112,7 +5432,12 @@
             wrap.innerHTML = '';
 
             let pages = [];
-            const newPage = () => { let p = document.createElement('div'); p.className = 'print-page-sheet'; p.style.width = previewW + 'px'; p.style.height = previewH + 'px'; wrap.appendChild(p); pages.push(p); return p; };
+            const newPage = () => {
+                let p = document.createElement('div'); p.className = 'print-page-sheet';
+                p.style.width = previewW + 'px'; p.style.height = previewH + 'px'; p.style.padding = padCss;
+                if (zoom < 1) { p.style.transform = 'scale(' + zoom.toFixed(4) + ')'; p.style.transformOrigin = 'top center'; p.style.marginBottom = Math.round(-previewH * (1 - zoom)) + 'px'; }
+                wrap.appendChild(p); pages.push(p); return p;
+            };
             let state = { page: newPage(), newPage: newPage };
 
             if (mapNode) {
@@ -5143,9 +5468,14 @@
         window.launchPrint = function() {
             let format = (document.querySelector('input[name="print-format"]:checked') || {}).value || 'A4';
             let orientation = (document.querySelector('input[name="print-orientation"]:checked') || {}).value || 'portrait';
+            let dims = window.PAGE_SIZES_MM[format][orientation];
+            let mg = window.getPrintMargins();
             let styleEl = document.getElementById('print-page-size-style');
             if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = 'print-page-size-style'; document.head.appendChild(styleEl); }
-            styleEl.textContent = `@page { size: ${format} ${orientation}; margin: 10mm; }`;
+            // Marge @page à zéro : ce sont les marges saisies (devenues le padding de la feuille) qui
+            // font foi, exprimées ici en millimètres pour ne dépendre d'aucune conversion du navigateur.
+            styleEl.textContent = `@page { size: ${format} ${orientation}; margin: 0; }
+                @media print { .print-page-sheet { width: ${dims[0]}mm !important; height: ${dims[1]}mm !important; padding: ${mg.top}mm ${mg.right}mm ${mg.bottom}mm ${mg.left}mm !important; } }`;
             setTimeout(() => window.print(), 50);
         };
 
@@ -5240,17 +5570,38 @@
             let daysInMonth = new Date(y, m + 1, 0).getDate();
             let today = new Date();
 
-            let html = '';
+            let html = '<div class="cal-weekday cal-weeknum-head">Sem.</div>';
             ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].forEach(d => html += `<div class="cal-weekday">${d}</div>`);
-            for (let i = 0; i < startWeekday; i++) html += `<div class="cal-day cal-day-empty"></div>`;
-            for (let day = 1; day <= daysInMonth; day++) {
-                let dateObj = new Date(y, m, day);
-                let evs = window.getEventsForDate(dateObj);
-                let isToday = dateObj.toDateString() === today.toDateString();
-                let barsHtml = window.buildCalendarDayBars(y, m, day, evs);
-                html += `<div class="cal-day ${isToday ? 'cal-day-today' : ''}" onclick="window.openCalendarDay(${y},${m},${day})"><div class="cal-day-num">${day}</div><div class="cal-day-bars">${barsHtml}</div></div>`;
+
+            // Cases de taille fixe (CSS grid-auto-rows) et rangées complètes de 7 jours : on ne dessine
+            // que les semaines réellement occupées par le mois, chacune précédée de son numéro ISO
+            // calculé sur son lundi.
+            let cursor = new Date(y, m, 1 - startWeekday);
+            let weeks = Math.ceil((startWeekday + daysInMonth) / 7);
+            for (let week = 0; week < weeks; week++) {
+                let monday = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+                html += `<div class="cal-weeknum" title="Semaine ${window.isoWeekNumber(monday)}">S${window.isoWeekNumber(monday)}</div>`;
+                for (let i = 0; i < 7; i++) {
+                    let dateObj = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+                    cursor.setDate(cursor.getDate() + 1);
+                    if (dateObj.getMonth() !== m || dateObj.getFullYear() !== y) { html += `<div class="cal-day cal-day-empty"></div>`; continue; }
+                    let day = dateObj.getDate();
+                    let evs = window.getEventsForDate(dateObj);
+                    let isToday = dateObj.toDateString() === today.toDateString();
+                    let barsHtml = window.buildCalendarDayBars(y, m, day, evs);
+                    html += `<div class="cal-day ${isToday ? 'cal-day-today' : ''}" onclick="window.openCalendarDay(${y},${m},${day})"><div class="cal-day-num">${day}</div><div class="cal-day-bars">${barsHtml}</div></div>`;
+                }
             }
             container.innerHTML = html;
+        };
+
+        // Numéro de semaine ISO 8601 (semaines commençant le lundi, la semaine 1 est celle du 4 janvier).
+        window.isoWeekNumber = function(d) {
+            let t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            let dayNum = t.getUTCDay() || 7;
+            t.setUTCDate(t.getUTCDate() + 4 - dayNum);
+            let yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+            return Math.ceil((((t - yearStart) / 86400000) + 1) / 7);
         };
 
         window.openCalendarDay = function(y, m, day) {
