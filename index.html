@@ -9,7 +9,12 @@
     <!-- CHAPITRE 1 : GESTION DES CRASHS ET LIBRAIRIES EXTERNES                    -->
     <!-- ========================================================================= -->
     <script>
-        window.showCrash = function(msg, line) { let o = document.getElementById('loading-overlay'); if (o) { o.style.display='flex'; document.getElementById('loading-spinner').style.display='none'; document.getElementById('loading-title').innerText="🛑 ERREUR SYSTEME"; if(document.getElementById('error-box')) { document.getElementById('error-box').style.display='block'; document.getElementById('error-msg').innerHTML="<b>Détail:</b> "+msg+(line?"<br><b>Ligne:</b> "+line:""); } } else alert("🛑 CRASH : "+msg); };
+        // Identité de l'application : source unique, recopiée dans l'écran de démarrage par le script
+        // principal. Sur un écran d'erreur, le nom et la version restent affichés — c'est l'information
+        // la plus utile à transmettre en cas de bug ; seul le flocon animé disparaît.
+        window.APP_NAME = "GMAO Neige";
+        window.APP_VERSION = "5.4.0";
+        window.showCrash = function(msg, line) { let o = document.getElementById('loading-overlay'); if (o) { o.style.display='flex'; let fw = document.getElementById('flake-wrap'); if(fw) fw.style.display='none'; let pc = document.getElementById('loading-pct'); if(pc) pc.style.display='none'; document.getElementById('loading-title').innerText="🛑 ERREUR SYSTEME"; if(document.getElementById('error-box')) { document.getElementById('error-box').style.display='block'; document.getElementById('error-msg').innerHTML="<b>Détail:</b> "+msg+(line?"<br><b>Ligne:</b> "+line:""); } } else alert("🛑 CRASH : "+msg); };
         window.onerror = function(msg, src, ln) { if (msg.indexOf('Script error') > -1) return false; window.showCrash(msg, ln); return true; };
         window.addEventListener('unhandledrejection', function(e) { window.showCrash(e.reason ? e.reason.message : "Erreur réseau", "Réseau"); });
     </script>
@@ -32,10 +37,19 @@
         .topbar-btn{background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.2);padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;transition:0.2s;margin-left:5px;}
         .topbar-btn:hover{background:rgba(255,255,255,0.2);}
         #app-container{display:flex;height:100%;width:100%;position:relative;padding-top:50px;box-sizing:border-box;}
-        #loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.95);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;}
-        .spinner{border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin-bottom:20px;}
+        #loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 50% 42%, #ffffff 0%, #eef4fb 55%, #e3ecf6 100%);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:20px;box-sizing:border-box;}
         @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+        /* CHAPITRE 1.A — Écran de démarrage : le flocon se remplit de bleu électrique par le bas au fil
+           des étapes de chargement. La progression est un simple rectangle de découpe (#flk-rect) que le
+           JS fait monter : aucune image, aucune librairie, et le tracé reste net à toutes les tailles. */
+        #flake-wrap{width:132px;height:132px;margin-bottom:22px;animation:flakePulse 2.6s ease-in-out infinite;}
+        #flake-wrap svg{width:100%;height:100%;display:block;overflow:visible;}
+        @keyframes flakePulse{0%,100%{transform:scale(1);filter:drop-shadow(0 0 6px rgba(0,102,255,0.20));}50%{transform:scale(1.045);filter:drop-shadow(0 0 16px rgba(0,102,255,0.42));}}
+        #loading-appname{margin:0;font-size:23px;font-weight:800;letter-spacing:3px;color:#1b2b3a;text-transform:uppercase;}
+        #loading-version{display:inline-block;margin:8px 0 16px;padding:3px 12px;border-radius:20px;background:#0066ff;color:#fff;font-size:11px;font-weight:bold;letter-spacing:1.2px;box-shadow:0 2px 8px rgba(0,102,255,0.35);}
+        #loading-pct{font-size:14px;font-weight:bold;color:#0066ff;letter-spacing:1px;margin-top:4px;font-variant-numeric:tabular-nums;}
         #error-box{display:none;background:#fdf0ed;border:2px solid #e74c3c;padding:20px;border-radius:8px;max-width:600px;color:#c0392b;margin-top:20px;}
+        @media (max-width: 480px){ #flake-wrap{width:104px;height:104px;} #loading-appname{font-size:18px;letter-spacing:2px;} }
 
         #sidebar{width:360px;flex-shrink:0;background:#fff;display:flex;flex-direction:column;z-index:2500;overflow-y:auto;box-shadow:2px 0 15px rgba(0,0,0,0.08);transition:transform 0.3s;position:absolute;height:calc(100% - 50px);left:0;top:50px;}
         #sidebar.collapsed{transform:translateX(-100%);}
@@ -312,7 +326,50 @@
 
     <body>
     <div id="datalists-container"></div>
-    <div id="loading-overlay"><div class="spinner" id="loading-spinner"></div><h2 style="color:#3498db; margin:0;" id="loading-title">Démarrage...</h2><p style="color:#888; font-size:12px;" id="loading-step"></p><p style="color:#aaa; font-size:11px;" id="loading-desc"></p><div id="error-box"><p id="error-msg"></p></div></div>
+    <div id="loading-overlay">
+        <div id="loading-spinner" style="display:flex; flex-direction:column; align-items:center;">
+            <div id="flake-wrap">
+                <svg viewBox="0 0 100 100" role="img" aria-label="Chargement">
+                    <defs>
+                        <g id="flk-branch">
+                            <line x1="50" y1="50" x2="50" y2="6"></line>
+                            <line x1="50" y1="6" x2="44.5" y2="13"></line>
+                            <line x1="50" y1="6" x2="55.5" y2="13"></line>
+                            <line x1="50" y1="21" x2="41.5" y2="13.5"></line>
+                            <line x1="50" y1="21" x2="58.5" y2="13.5"></line>
+                            <line x1="50" y1="34" x2="43.5" y2="28"></line>
+                            <line x1="50" y1="34" x2="56.5" y2="28"></line>
+                        </g>
+                        <g id="flk-full">
+                            <use href="#flk-branch"></use>
+                            <use href="#flk-branch" transform="rotate(60 50 50)"></use>
+                            <use href="#flk-branch" transform="rotate(120 50 50)"></use>
+                            <use href="#flk-branch" transform="rotate(180 50 50)"></use>
+                            <use href="#flk-branch" transform="rotate(240 50 50)"></use>
+                            <use href="#flk-branch" transform="rotate(300 50 50)"></use>
+                        </g>
+                        <!-- Deux bleus électriques volontairement proches : les moteurs SVG n'orientent
+                             pas tous ce dégradé de la même façon sur un tracé référencé par <use>, le
+                             rendu reste donc identique quel que soit le sens retenu. -->
+                        <linearGradient id="flk-grad" gradientUnits="userSpaceOnUse" x1="50" y1="96" x2="50" y2="4">
+                            <stop offset="0%" stop-color="#0072ff"></stop>
+                            <stop offset="100%" stop-color="#00b4ff"></stop>
+                        </linearGradient>
+                        <clipPath id="flk-clip"><rect id="flk-rect" x="-10" y="100" width="120" height="0"></rect></clipPath>
+                    </defs>
+                    <use href="#flk-full" fill="none" stroke="#cfdbe8" stroke-width="3.4" stroke-linecap="round"></use>
+                    <use href="#flk-full" fill="none" stroke="url(#flk-grad)" stroke-width="3.4" stroke-linecap="round" clip-path="url(#flk-clip)"></use>
+                </svg>
+            </div>
+            <h1 id="loading-appname">GMAO Neige</h1>
+            <span id="loading-version">v 5.4.0</span>
+        </div>
+        <h2 style="color:#3498db; margin:0;" id="loading-title">Démarrage...</h2>
+        <p style="color:#888; font-size:12px; margin:8px 0 0;" id="loading-step"></p>
+        <p style="color:#aaa; font-size:11px; margin:4px 0 0;" id="loading-desc"></p>
+        <div id="loading-pct">0 %</div>
+        <div id="error-box"><p id="error-msg"></p></div>
+    </div>
 
     <!-- ========================================================================= -->
     <!-- CHAPITRE 1.C : BANDEAU SUPÉRIEUR ET BOUTONS GLOBAUX                       -->
@@ -697,6 +754,14 @@
         window.rawCalendarEvents = []; window.calendarEvents = []; window.calendarViewDate = new Date();
         window.rawProduction = []; window.productionRows = []; window.prodSheetHeaders = []; window.prodEditingId = null;
         window.prodSearch = ''; window.prodSettingsOpen = false;
+
+        // Recopie de l'identité de l'app dans l'écran de démarrage : un seul endroit à modifier pour
+        // changer de version (window.APP_VERSION, chapitre 1), le HTML n'est qu'un affichage de repli.
+        (function() {
+            let n = document.getElementById('loading-appname'); if (n) n.innerText = window.APP_NAME;
+            let v = document.getElementById('loading-version'); if (v) v.innerText = 'v ' + window.APP_VERSION;
+            document.title = window.APP_NAME + ' — v' + window.APP_VERSION;
+        })();
 
         // =========================================================================
         // CHAPITRE 2.B : CONFIGURATION LOCALE ET UTILITAIRES DE BASE
@@ -2455,11 +2520,32 @@
         /* ========================================================================= */
         /* CHAPITRE 5 : FETCH ET ANALYSE DES DONNÉES GOOGLE SHEETS                    */
         /* ========================================================================= */
+        // CHAPITRE 5.A — Remplissage du flocon de l'écran de démarrage. Deux régimes : un rattrapage
+        // rapide vers l'étape atteinte, puis une reptation lente vers un plafond légèrement supérieur —
+        // sans ça, la jauge resterait figée pendant les longues secondes d'attente du serveur Google.
+        window.loaderCurrent = 0; window.loaderTarget = 0; window.loaderCeil = 0; window.loaderTimer = null;
+        window.setLoaderProgress = function(pct) {
+            window.loaderTarget = Math.max(0, Math.min(100, pct));
+            window.loaderCeil = window.loaderTarget >= 100 ? 100 : Math.min(99, window.loaderTarget + 12);
+            if (window.loaderTimer) return;
+            window.loaderTimer = setInterval(function() {
+                let cur = window.loaderCurrent;
+                if (cur < window.loaderTarget - 0.3) cur += (window.loaderTarget - cur) * 0.14;
+                else cur = Math.min(window.loaderCeil, cur + 0.08);
+                window.loaderCurrent = cur;
+                let rect = document.getElementById('flk-rect');
+                if (rect) { rect.setAttribute('y', (100 - cur).toFixed(2)); rect.setAttribute('height', cur.toFixed(2)); }
+                let lbl = document.getElementById('loading-pct'); if (lbl) lbl.innerText = Math.round(cur) + ' %';
+                if (cur >= window.loaderCeil - 0.001) { clearInterval(window.loaderTimer); window.loaderTimer = null; }
+            }, 45);
+        };
+
         window.setStep = function(step, desc) {
             let elStep = document.getElementById('loading-step');
             let elDesc = document.getElementById('loading-desc');
             if (elStep) elStep.innerText = "Étape " + step + "/5";
             if (elDesc) elDesc.innerText = desc;
+            window.setLoaderProgress(6 + (step / 5) * 90);
         };
 
         window.fetchWithTimeout = async function(resource, options = {}) {
@@ -2581,7 +2667,8 @@
 
             Object.values(dictGeneral).forEach(canon => { if (canon.lat !== undefined && canon.lng !== undefined && !isNaN(canon.lat) && !isNaN(canon.lng) && canon.lat !== 0) { window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); } });
 
-            let ls = document.getElementById('loading-spinner'); if(ls) ls.style.display = 'none'; let lt = document.getElementById('loading-title'); if(lt) { lt.innerText = "✅ Chargement Réussi !"; lt.style.color = "#27ae60"; } let lst = document.getElementById('loading-step'); if(lst) lst.style.display = 'none'; let ld = document.getElementById('loading-desc'); if(ld) ld.innerHTML = `${window.snowCannons.features.length} canons placés.`;
+            window.setLoaderProgress(100);
+            let lt = document.getElementById('loading-title'); if(lt) { lt.innerText = "✅ Chargement Réussi !"; lt.style.color = "#27ae60"; } let lst = document.getElementById('loading-step'); if(lst) lst.style.display = 'none'; let ld = document.getElementById('loading-desc'); if(ld) ld.innerHTML = `${window.snowCannons.features.length} canons placés.`;
             setTimeout(() => { window.initAppUI(); if(window.initDriveKMZList) window.initDriveKMZList(); if(window.loadSettingsLocally) window.loadSettingsLocally(); if(window.initMobileDock) window.initMobileDock(); if (window.innerWidth <= 768) { let sb = document.getElementById('sidebar'); if (sb) sb.classList.add('collapsed'); } let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; }, 800);
         };
 
@@ -4054,6 +4141,15 @@
             window.prodSheetHeaders = headers;
             let C = window.PROD_COLS, idx = {};
             Object.keys(C).forEach(k => { idx[k] = window.prodFindIdx(headers, C[k]); });
+            // Garde-fou : si aucune colonne structurante n'est reconnue, l'onglet reçu n'est pas celui
+            // de la production (ex. un ancien tableau de coûts de saison). On préfère un menu vide à un
+            // tableau rempli de lignes fantômes issues d'un onglet sans rapport.
+            if (idx.id === -1 && idx.num === -1 && idx.date === -1) {
+                console.warn("Onglet Production ignoré : colonnes attendues introuvables.", headers);
+                window.prodSheetHeaders = [];
+                if (window.renderProdSeasonSelect) window.renderProdSeasonSelect();
+                return;
+            }
             for (let i = 1; i < rows.length; i++) {
                 let row = rows[i] || [];
                 if (!row.length || row.every(c => c === null || c === undefined || c.toString().trim() === "")) continue;
