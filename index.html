@@ -40,6 +40,37 @@
         #sidebar{width:360px;flex-shrink:0;background:#fff;display:flex;flex-direction:column;z-index:2500;overflow-y:auto;box-shadow:2px 0 15px rgba(0,0,0,0.08);transition:transform 0.3s;position:absolute;height:calc(100% - 50px);left:0;top:50px;}
         #sidebar.collapsed{transform:translateX(-100%);}
         .sidebar-header-bg{background:#f8f9fa;padding:10px 20px;border-bottom:1px solid #eee;font-weight:bold;color:#2c3e50;font-size:14px;text-transform:uppercase;}
+        /* Briques de tableau de bord : contrôles + tableau de données filtrable */
+        .dash-block{background:#fff;border:1px solid #e6ebf0;border-radius:8px;padding:12px;margin-bottom:15px;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+        .dash-block-title{font-size:13px;font-weight:bold;color:#34495e;text-align:center;margin-bottom:8px;}
+        .dash-controls{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+        .dash-controls select{flex:1;min-width:105px;font-size:11px;padding:5px;border:1px solid #dfe6ec;border-radius:5px;background:#fbfcfd;color:#34495e;}
+        .dash-mini-btn{border:1px solid #dfe6ec;background:#fbfcfd;color:#7f8c8d;border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;}
+        .dash-mini-btn.on{background:#3498db;border-color:#3498db;color:#fff;}
+        .dash-table-wrap{margin-top:10px;}
+        .dash-filter{width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid #dfe6ec;border-radius:5px;font-size:12px;margin-bottom:6px;}
+        .dash-table{width:100%;border-collapse:collapse;font-size:11px;}
+        .dash-table th{text-align:left;background:#f4f6f8;color:#7f8c8d;font-size:10px;text-transform:uppercase;padding:6px;}
+        .dash-table td{padding:6px;border-top:1px solid #f0f3f6;}
+        .card-filter{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #dfe6ec;border-radius:6px;font-size:12px;margin:8px 0;}
+        /* Liste de suggestions partagée (fonctionne aussi pour les <textarea>) */
+        #suggest-box{position:fixed;display:none;z-index:99999;background:#fff;border:1px solid #ccd6dd;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,0.18);max-height:190px;overflow-y:auto;font-size:12px;}
+        .suggest-item{padding:8px 10px;cursor:pointer;border-bottom:1px solid #f4f6f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .suggest-item:last-child{border-bottom:none;}
+        .suggest-item:hover{background:#eaf4fd;color:#2980b9;}
+        /* Bascule Carte/Liste affichée directement sous le titre du thème sélectionné */
+        .view-toggle-wrap{display:flex;gap:6px;margin-bottom:10px;}
+        .view-toggle-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 4px;font-size:11px;font-weight:bold;border:1px solid #d5dde5;background:#fff;color:#7f8c8d;border-radius:6px;cursor:pointer;transition:0.15s;}
+        .view-toggle-btn:hover{border-color:#3498db;color:#3498db;}
+        .view-toggle-btn.active{background:#3498db;border-color:#3498db;color:#fff;}
+        /* Éditeur d'ordre/visibilité des légendes */
+        .legend-cfg-btn{background:none;border:1px solid #dfe6ec;color:#7f8c8d;border-radius:5px;font-size:10px;padding:3px 7px;cursor:pointer;}
+        .legend-cfg-btn:hover{border-color:#3498db;color:#3498db;}
+        .legend-cfg-row{display:flex;align-items:center;gap:5px;padding:4px 6px;background:#fff;border:1px solid #eef2f5;border-radius:4px;margin-bottom:4px;font-size:11px;}
+        .legend-cfg-row .lc-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .legend-cfg-row button{background:none;border:none;cursor:pointer;font-size:12px;color:#7f8c8d;padding:2px 4px;}
+        .legend-cfg-row button:hover{color:#3498db;}
+        .legend-item.legend-hidden{opacity:0.35;}
         .panel-section{border-bottom:1px solid #f0f0f0;margin:0;}
         .panel-section summary{background:#fff;padding:15px 20px;font-size:13px;font-weight:600;color:#34495e;cursor:pointer;list-style:none;text-transform:uppercase;display:flex;justify-content:space-between;}
         .panel-section summary:hover{background:#f8f9fa;color:#3498db;}
@@ -128,24 +159,82 @@
         .topbar-actions { display: flex; align-items: center; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin-left:10px; }
         .topbar-actions::-webkit-scrollbar { display: none; }
 
+        /* Tiroir mobile : masqué par défaut, ne s'active que sous 768px (cf. media query) */
+        #mobile-dock { display: none; }
+
         @media(max-width: 768px) {
+            /* Panneaux latéraux et fenêtres réglables en plein écran (pas de place pour du 400px+
+               fixe ou du glisser-déposer sur un téléphone) */
             #sidebar { width: 100% !important; z-index: 5000 !important; }
             #right-sidebar { width: 100% !important; max-width: 100% !important; z-index: 5100 !important; }
+            #settings-panel { width: 100% !important; max-width: 100% !important; }
+            #print-panel { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
+            #print-page-preview-modal { right: 0 !important; }
+
+            .draggable-window { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; min-width: 0 !important; min-height: 0 !important; border-radius: 0 !important; transform: none !important; }
+            .resize-handle { display: none !important; }
+
             .atelier-form-grid { grid-template-columns: 1fr !important; }
-            .edit-input, .topbar-btn { padding: 12px !important; font-size: 14px !important; }
+            #pdf-list-wrap { width: 100% !important; }
+            .dash-controls select { min-width: 0; flex: 1 1 45%; }
+
+            /* 16px sur les champs de saisie : en dessous, iOS Safari zoome automatiquement au focus */
+            .edit-input, input, select, textarea { font-size: 16px !important; }
+            .topbar-btn, .btn-action-primary { padding: 12px !important; font-size: 14px !important; }
             #topbar { padding: 0 5px; }
             .topbar-btn { flex-shrink: 0; }
+
+            /* Les boutons d'action quittent le bandeau pour le tiroir du bas */
+            .topbar-actions { display: none !important; }
+
+            #mobile-dock {
+                display: flex; flex-direction: column;
+                position: fixed; left: 0; right: 0; bottom: 0; z-index: 5200;
+                background: #1e2b38; border-radius: 18px 18px 0 0;
+                box-shadow: 0 -6px 24px rgba(0,0,0,0.4);
+                max-height: 72vh;
+                transform: translateY(calc(100% - 50px));
+                transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+                touch-action: none;
+            }
+            #mobile-dock.open { transform: translateY(0); }
+            #mobile-dock.dragging { transition: none; }
+            #mobile-dock-handle { flex-shrink: 0; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: grab; user-select: none; }
+            #mobile-dock-grip { width: 46px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.55); }
+            #mobile-dock-title { font-size: 11px; font-weight: bold; letter-spacing: 0.5px; color: rgba(255,255,255,0.8); }
+            #mobile-dock-body { overflow-y: auto; -webkit-overflow-scrolling: touch; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 4px 12px calc(16px + env(safe-area-inset-bottom)); }
+            .dock-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; min-height: 74px; padding: 10px 4px; border: none; border-radius: 12px; background: #34495e; color: #fff; font-size: 11px; font-weight: bold; line-height: 1.2; text-align: center; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); }
+            .dock-btn i { font-size: 20px; }
+            .dock-btn:active { filter: brightness(1.3); }
+            .leaflet-bottom { bottom: 54px; }
+
             .bi-container { flex-direction: column; }
             .bi-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #ddd; max-height: 40vh; }
             .bi-content { height: 60vh; }
-            #compare-modal { width: 98%; height: 95vh; top: 2%; left: 1%; transform: none; }
+
+            .comp-controls { flex-direction: column; gap: 10px; }
+            #compare-modal, #meteo-history-modal { width: 98%; height: 95vh; top: 2%; left: 1%; transform: none; min-width: 0; }
+
+            /* Calendrier : grille au-dessus, détail du jour en dessous plutôt que côte à côte */
+            .cal-body { flex-direction: column; overflow-y: auto; }
+            #calendar-day-panel { width: 100% !important; border-left: none; border-top: 2px solid #3498db; max-height: none; padding-bottom: 30px; }
+            #calendar-grid { grid-auto-rows: minmax(58px, auto); flex: none; }
+            .cal-bar { font-size: 8px; line-height: 15px; }
+            .cal-day-num { font-size: 12px; font-weight: bold; }
+            .cal-month-label, #calendar-month-label { min-width: 0 !important; font-size: 14px !important; }
+            /* La pastille de légende et le libellé "Aujourd'hui" ne tiennent pas dans l'en-tête d'un téléphone */
+            .cal-legend-dots { display: none !important; }
+            .cal-header { padding: 8px 10px !important; gap: 6px; }
+            .cal-nav-btn { flex-shrink: 0; }
+
+            .stock-item-card { flex-direction: column !important; }
         }
 
         #print-panel { position:absolute; top:50px; right:0; bottom:0; width:380px; min-width:300px; max-width:90vw; background:#fff; z-index:6500; transform:translateX(100%); transition:transform 0.3s; box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; }
         #print-panel.open { transform:translateX(0); }
         #print-page-preview-modal { display:none; position:fixed; top:50px; left:0; right:400px; bottom:0; background:rgba(0,0,0,0.65); z-index:6400; overflow-y:auto; }
         #print-page-preview-modal.open { display:block; }
-        #print-page-sheet-wrap { padding:20px; display:flex; flex-direction:column; align-items:center; gap:20px; min-height:100%; box-sizing:border-box; }
+        #print-page-sheet-wrap { padding:20px; display:flex; flex-direction:column; align-items:center; gap:20px; min-height:100%; box-sizing:border-box; overflow-x:auto; }
         .print-page-sheet { background:#fff; box-shadow:0 5px 20px rgba(0,0,0,0.4); box-sizing:border-box; padding:15mm; overflow:hidden; flex-shrink:0; position:relative; }
         .print-page-sheet::after { content: attr(data-page-label); position:absolute; bottom:4mm; right:6mm; font-size:8px; color:#bbb; }
         .print-block-row { display:flex; align-items:center; gap:6px; padding:4px 2px; border-bottom:1px solid #f0f0f0; }
@@ -180,7 +269,7 @@
         #calendar-day-panel { display:none; width:300px; flex-shrink:0; border-left:1px solid #eee; padding:15px; overflow-y:auto; background:#fafbfc; }
 
         @media print {
-            #topbar, #sidebar, #right-sidebar, #print-panel, #loading-overlay, #pdf-modal, #settings-panel, #bi-meteo-modal, #compare-modal, #meteo-history-modal, #calendar-modal, .resizer, .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+            #topbar, #mobile-dock, #sidebar, #right-sidebar, #print-panel, #loading-overlay, #pdf-modal, #settings-panel, #bi-meteo-modal, #compare-modal, #meteo-history-modal, #calendar-modal, .resizer, .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
             body, html { overflow: visible !important; height: auto !important; }
             #app-container { padding-top: 0 !important; height: auto !important; }
             #map-container, #atelier-workspace, #stock-workspace, #theme-list-workspace { display: none !important; }
@@ -220,15 +309,27 @@
         </div>
     </div>
 
+    <!-- TIROIR MOBILE : regroupe les boutons d'action, se glisse depuis le bas de l'écran -->
+    <div id="mobile-dock">
+        <div id="mobile-dock-handle">
+            <div id="mobile-dock-grip"></div>
+            <div id="mobile-dock-title">OUTILS</div>
+        </div>
+        <div id="mobile-dock-body"></div>
+    </div>
+
     <!-- MODAL PDF -->
     <div id="pdf-modal" style="display:none; position:fixed; top:50px; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9000;">
         <div class="draggable-window" style="top:50%; left:50%; transform:translate(-50%,-50%); width:1100px; max-width:95vw; height:85vh; min-width:400px; min-height:300px; background:#fff; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
             <div class="draggable-handle" style="background:#8e44ad; color:white; padding:15px; display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
-                <span><i class="fa-solid fa-book"></i> Bibliothèque Documentaire (Google Drive)</span>
+                <span style="display:flex; align-items:center; gap:10px;"><button onclick="event.stopPropagation(); window.togglePdfList()" title="Afficher / masquer la liste" style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); color:white; border-radius:5px; padding:5px 10px; cursor:pointer; font-size:13px;"><i class="fa-solid fa-list"></i></button><span><i class="fa-solid fa-book"></i> Bibliothèque Documentaire</span></span>
                 <button onclick="document.getElementById('pdf-modal').style.display='none'" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
             </div>
             <div style="display:flex; flex:1; overflow:hidden;">
-                <div id="pdf-list" style="width:280px; background:#f4f6f8; border-right:1px solid #ddd; overflow-y:auto; padding:10px;"></div>
+                <div id="pdf-list-wrap" style="width:280px; flex-shrink:0; background:#f4f6f8; border-right:1px solid #ddd; display:flex; flex-direction:column;">
+                    <input type="text" id="pdf-search" placeholder="🔍 Rechercher un document..." oninput="window.filterPdfList(this.value)" style="margin:10px 10px 5px; padding:8px; border:1px solid #ddd; border-radius:5px; font-size:12px; width:calc(100% - 20px); box-sizing:border-box;">
+                    <div id="pdf-list" style="flex:1; overflow-y:auto; padding:5px 10px 10px;"></div>
+                </div>
                 <div id="pdf-viewer-container" style="flex:1; background:#ececec; display:flex; justify-content:center; align-items:center;">
                     <span style="color:#7f8c8d; font-weight:bold;">Sélectionnez un document dans la liste de gauche 👈</span>
                 </div>
@@ -279,17 +380,6 @@
             <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
                 <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-list-check"></i> Fiche Canon (Champs Visibles)</summary>
                 <div id="settings-fiche-canon-cols" style="padding:15px; display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;"><i style="font-size:11px; color:#888;">Chargement des données requis...</i></div>
-            </details>
-            <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
-                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-table-list"></i> Affichage des Menus</summary>
-                <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">
-                    <div><div class="edit-label">Tickets & Pannes</div><select id="set-view-defauts" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('defauts', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
-                    <div><div class="edit-label">Suivi Entretien</div><select id="set-view-suivi" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('suivi_entretien', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
-                    <div><div class="edit-label">Entretien Tête Canon</div><select id="set-view-entretien" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('entretien_tete', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
-                    <div><div class="edit-label">Type de canon</div><select id="set-view-type" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('type', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
-                    <div><div class="edit-label">Répéteurs</div><select id="set-view-repeteur" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('repeteur', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
-                    <div><div class="edit-label">Transformateurs</div><select id="set-view-transfo" class="edit-input" style="margin-bottom:0;" onchange="window.setViewMode('transfo', this.value)"><option value="map">🗺️ Carte</option><option value="list">📋 Liste filtrable</option></select></div>
-                </div>
             </details>
             <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
                 <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-droplet"></i> Couleurs des Statuts (Carte)</summary>
@@ -412,12 +502,13 @@
                     <button class="cal-nav-btn" style="width:auto; padding:0 10px; font-size:11px;" onclick="window.calendarGoToday()">Aujourd'hui</button>
                 </div>
                 <div style="display:flex; align-items:center; gap:15px;">
-                    <div style="display:flex; gap:10px; font-size:10px;">
+                    <div class="cal-legend-dots" style="display:flex; gap:10px; font-size:10px;">
                         <span><span class="cal-dot" style="background:#3498db; display:inline-block;"></span> RDV</span>
                         <span><span class="cal-dot" style="background:#9b59b6; display:inline-block;"></span> Travaux</span>
                         <span><span class="cal-dot" style="background:#e74c3c; display:inline-block;"></span> À faire</span>
                         <span><span class="cal-dot" style="background:#27ae60; display:inline-block;"></span> Fait</span>
                     </div>
+                    <button onclick="window.quickAddCalendarEvent()" title="Nouvel événement" style="background:#27ae60; border:none; color:white; border-radius:6px; padding:7px 12px; cursor:pointer; font-weight:bold; font-size:13px;"><i class="fa-solid fa-plus"></i></button>
                     <button onclick="window.closeCalendar()" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
                 </div>
             </div>
@@ -437,12 +528,12 @@
                 <div class="section-content" style="padding-top: 10px;">
                     <div class="theme-block"><label class="radio-card" id="lbl-atelier"><input type="radio" name="main_theme" value="atelier"> <i class="fa-solid fa-toolbox" style="color:#8e44ad;"></i> Banc d'essais</label><div class="theme-details" id="details-atelier" style="display:none;border-color:#8e44ad;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Banc de test usine</div></div></div>
                     <div class="theme-block"><label class="radio-card" id="lbl-stock"><input type="radio" name="main_theme" value="stock"> <i class="fa-solid fa-boxes-stacked" style="color:#16a085;"></i> Gestion du Stock</label><div class="theme-details" id="details-stock" style="display:none;border-color:#16a085;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Inventaire</div></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-entretien_tete"><input type="radio" name="main_theme" value="entretien_tete"> <i class="fa-solid fa-shower" style="color:#e67e22;"></i> Entretien Tête Canon</label><div class="theme-details" id="details-entretien_tete" style="display:none;border-color:#e67e22;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Buses</div><div id="legend-entretien_tete"></div><button onclick="window.resetEntretienBuses()" style="width:100%;margin-top:10px;background:#c0392b;color:white;border:none;padding:8px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;"><i class="fa-solid fa-rotate-left"></i> RAZ</button></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-suivi_entretien"><input type="radio" name="main_theme" value="suivi_entretien"> <i class="fa-solid fa-screwdriver-wrench" style="color:#27ae60;"></i> Suivi Entretien</label><div class="theme-details" id="details-suivi_entretien" style="display:none;border-color:#27ae60;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Vannes</div><div id="legend-suivi_entretien"></div></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-defauts"><input type="radio" name="main_theme" value="defauts" checked> <i class="fa-solid fa-triangle-exclamation" style="color:#e74c3c;"></i> Tickets & Pannes</label><div class="theme-details" id="details-defauts" style="display:block;border-color:#3498db;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Statuts actuels</div><div id="legend-defauts"></div></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-type"><input type="radio" name="main_theme" value="type"> <i class="fa-solid fa-snowflake" style="color:#3498db;"></i> Type de canon</label><div class="theme-details" id="details-type" style="display:none;border-color:#3498db;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Modèles</div><div id="legend-type"></div></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-repeteur"><input type="radio" name="main_theme" value="repeteur"> <i class="fa-solid fa-satellite-dish" style="color:#3498db;"></i> Répéteurs</label><div class="theme-details" id="details-repeteur" style="display:none;border-color:#3498db;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Répéteurs</div><div id="legend-repeteur"></div></div></div>
-                    <div class="theme-block"><label class="radio-card" id="lbl-transfo"><input type="radio" name="main_theme" value="transfo"> <i class="fa-solid fa-bolt" style="color:#f1c40f;"></i> Transformateurs</label><div class="theme-details" id="details-transfo" style="display:none;border-color:#3498db;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Transfos</div><div id="legend-transfo"></div></div></div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-entretien_tete"><input type="radio" name="main_theme" value="entretien_tete"> <i class="fa-solid fa-shower" style="color:#e67e22;"></i> Entretien Tête Canon</label><div class="theme-details" id="details-entretien_tete" style="display:none;border-color:#e67e22;"><div class="view-toggle-wrap" data-vt="entretien_tete"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Buses <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('entretien_tete')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-entretien_tete" style="display:none;margin-bottom:8px;"></div><div id="legend-entretien_tete"></div><button onclick="window.resetEntretienBuses()" style="width:100%;margin-top:10px;background:#c0392b;color:white;border:none;padding:8px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;"><i class="fa-solid fa-rotate-left"></i> RAZ</button></div></div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-suivi_entretien"><input type="radio" name="main_theme" value="suivi_entretien"> <i class="fa-solid fa-screwdriver-wrench" style="color:#27ae60;"></i> Suivi Entretien</label><div class="theme-details" id="details-suivi_entretien" style="display:none;border-color:#27ae60;"><div class="view-toggle-wrap" data-vt="suivi_entretien"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Vannes <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('suivi_entretien')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-suivi_entretien" style="display:none;margin-bottom:8px;"></div><div id="legend-suivi_entretien"></div></div></div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-defauts"><input type="radio" name="main_theme" value="defauts" checked> <i class="fa-solid fa-triangle-exclamation" style="color:#e74c3c;"></i> Tickets & Pannes</label><div class="theme-details" id="details-defauts" style="display:block;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="defauts"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Statuts actuels <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('defauts')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-defauts" style="display:none;margin-bottom:8px;"></div><div id="legend-defauts"></div></div></div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-type"><input type="radio" name="main_theme" value="type"> <i class="fa-solid fa-snowflake" style="color:#3498db;"></i> Type de canon</label><div class="theme-details" id="details-type" style="display:none;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="type"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Modèles <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('type')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-type" style="display:none;margin-bottom:8px;"></div><div id="legend-type"></div></div></div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-repeteur"><input type="radio" name="main_theme" value="repeteur"> <i class="fa-solid fa-satellite-dish" style="color:#3498db;"></i> Répéteurs</label><div class="theme-details" id="details-repeteur" style="display:none;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="repeteur"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Répéteurs <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('repeteur')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-repeteur" style="display:none;margin-bottom:8px;"></div><div id="legend-repeteur"></div></div></div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-transfo"><input type="radio" name="main_theme" value="transfo"> <i class="fa-solid fa-bolt" style="color:#f1c40f;"></i> Transformateurs</label><div class="theme-details" id="details-transfo" style="display:none;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="transfo"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Transfos <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('transfo')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-transfo" style="display:none;margin-bottom:8px;"></div><div id="legend-transfo"></div></div></div>
                     <div class="theme-block"><label class="radio-card" id="lbl-historique"><input type="radio" name="main_theme" value="historique"> <i class="fa-solid fa-chart-column" style="color:#2ecc71;"></i> Historique Volumes</label><div class="theme-details-hist" id="details-historique" style="display:none;">
                         <div style="font-weight:bold; font-size:12px; color:#27ae60; margin-bottom:10px;">DONNÉE À AFFICHER :</div>
                         <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:12px; font-weight:bold; color:#333;"><label><input type="radio" name="hist_metric" value="eau" checked> 💧 Eau</label><label><input type="radio" name="hist_metric" value="air"> 💨 Air</label><label><input type="radio" name="hist_metric" value="temps"> ⏱️ Heures</label></div>
@@ -462,6 +553,21 @@
                 <p style="font-size:11px; color:#666; margin-bottom:10px;"><b>1. Cloud (Depuis Sheets) :</b></p><div id="cloud-layers-container"></div>
                 <hr style="margin:15px 0; border-top:1px dashed #ccc;"><p style="font-size:11px; color:#666; margin-bottom:10px;"><b>2. Import PC :</b></p><input type="file" id="kml-upload" accept=".kml,.kmz" style="display:none;" onchange="window.handleKMLUpload(event)"><button class="btn-action-primary" style="margin-top:0; background:#8e44ad;" onclick="document.getElementById('kml-upload').click()"><i class="fa-solid fa-folder-open"></i> Importer...</button><div id="custom-layers-list" style="margin-top:15px;"></div>
                 <div id="drive-kmz-dropdown-container"></div>
+            </div></details>
+            <details class="panel-section"><summary>Zones & Volume de Neige</summary><div class="section-content" style="padding-top: 5px;">
+                <p style="font-size:11px; color:#666; margin:0 0 8px;">Dessinez une zone sur la carte (ou reprenez un contour KMZ), réglez l'épaisseur de neige et obtenez le volume.</p>
+                <div style="display:flex; gap:6px;">
+                    <button id="btn-draw-zone" class="btn-action-primary" style="margin:0; background:#2980b9; flex:1;" onclick="window.toggleZoneDraw()"><i class="fa-solid fa-draw-polygon"></i> Dessiner</button>
+                    <button id="btn-pick-kmz" class="btn-action-primary" style="margin:0; background:#8e44ad; flex:1;" onclick="window.toggleZonePickKmz()"><i class="fa-solid fa-vector-square"></i> Contour KMZ</button>
+                </div>
+                <div id="zone-draw-hint" style="display:none; font-size:11px; background:#eaf4fd; border:1px solid #bfdcf3; color:#2471a3; padding:8px; border-radius:5px; margin-top:8px;"></div>
+                <div style="margin-top:10px; display:flex; align-items:center; gap:8px; font-size:11px; color:#7f8c8d;">
+                    <span>Densité neige</span>
+                    <input type="number" id="snow-density" value="400" min="50" max="900" step="10" style="width:70px; padding:4px; border:1px solid #ddd; border-radius:4px;" oninput="window.renderSnowZones()">
+                    <span>kg/m³</span>
+                </div>
+                <div id="snow-zones-list" style="margin-top:10px;"></div>
+                <div id="snow-zones-total"></div>
             </div></details>
         </div>
 
@@ -526,7 +632,8 @@
             colSuiviDec: '#27ae60', colSuiviPrev: '#9b59b6', colSuiviOk: '#f1c40f', btnStyle: 'normal', btnDisplay: 'full', dashLayout: 'row',
             showHillshade: false, hillshadeOpacity: 70, showLabels: false, labelsOpacity: 80,
             btnColors: {}, hiddenColumns: [], repColorsOverride: {}, transfoColorsOverride: {},
-            viewMode: { defauts: 'map', suivi_entretien: 'map', entretien_tete: 'map', type: 'map', repeteur: 'map', transfo: 'map' }
+            viewMode: { defauts: 'map', suivi_entretien: 'map', entretien_tete: 'map', type: 'map', repeteur: 'map', transfo: 'map' },
+            legendConfig: {}, dashPrefs: {}
         };
         window.listViewFilters = { defaut: '', statutTicket: '', statutEntretien: '', statutTete: '' };
         window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d', calendar: '#e67e22' };
@@ -554,8 +661,8 @@
             safeSet('set-show-hillshade', window.appSettings.showHillshade, "checked"); safeSet('set-hillshade-opacity', window.appSettings.hillshadeOpacity);
             safeSet('set-show-labels', window.appSettings.showLabels, "checked"); safeSet('set-labels-opacity', window.appSettings.labelsOpacity);
             if (!window.appSettings.viewMode) window.appSettings.viewMode = { defauts: 'map', suivi_entretien: 'map', entretien_tete: 'map', type: 'map', repeteur: 'map', transfo: 'map' };
-            safeSet('set-view-defauts', window.appSettings.viewMode.defauts); safeSet('set-view-suivi', window.appSettings.viewMode.suivi_entretien); safeSet('set-view-entretien', window.appSettings.viewMode.entretien_tete);
-            safeSet('set-view-type', window.appSettings.viewMode.type); safeSet('set-view-repeteur', window.appSettings.viewMode.repeteur); safeSet('set-view-transfo', window.appSettings.viewMode.transfo);
+            if (!window.appSettings.legendConfig) window.appSettings.legendConfig = {};
+            if(window.renderViewToggles) window.renderViewToggles();
             // Réapplique les couleurs personnalisées de répéteurs/transfos sur les palettes auto-générées par initAppUI.
             Object.keys(window.appSettings.repColorsOverride || {}).forEach(k => { if(window.repColors) window.repColors[k] = window.appSettings.repColorsOverride[k]; });
             Object.keys(window.appSettings.transfoColorsOverride || {}).forEach(k => { if(window.transfoColors) window.transfoColors[k] = window.appSettings.transfoColorsOverride[k]; });
@@ -591,7 +698,7 @@
             let currentTopbar = document.getElementById('set-topbar-color') ? document.getElementById('set-topbar-color').value : s.topbarColor;
             let currentSidebar = document.getElementById('set-sidebar-bg') ? document.getElementById('set-sidebar-bg').value : s.sidebarBg;
             let topbarEl = document.getElementById('topbar'); if(topbarEl) topbarEl.style.background = currentTopbar;
-            ['sidebar', 'right-sidebar', 'pdf-list'].forEach(id => { let el = document.getElementById(id); if(el) el.style.background = currentSidebar; });
+            ['sidebar', 'right-sidebar', 'pdf-list-wrap'].forEach(id => { let el = document.getElementById(id); if(el) el.style.background = currentSidebar; });
 
             let mapType = document.getElementById('set-basemap') ? document.getElementById('set-basemap').value : s.basemap;
             if(window.satLayer) {
@@ -667,6 +774,191 @@
         window.applyButtonColors = function() {
             let colors = window.appSettings.btnColors || {};
             document.querySelectorAll('#topbar [data-btnkey]').forEach(btn => { let key = btn.getAttribute('data-btnkey'); if(colors[key]) btn.style.background = colors[key]; });
+            if(window.buildMobileDock) window.buildMobileDock();
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 2.E.2 : TIROIR MOBILE (BOUTONS D'ACTION GLISSÉS DEPUIS LE BAS)    */
+        /* ========================================================================= */
+        window.buildMobileDock = function() {
+            let body = document.getElementById('mobile-dock-body'); if(!body) return;
+            let btns = document.querySelectorAll('#topbar .topbar-actions [data-btnkey]');
+            let colors = window.appSettings.btnColors || {};
+            let html = '';
+            btns.forEach(b => {
+                let key = b.getAttribute('data-btnkey');
+                let label = b.getAttribute('data-btnlabel') || key;
+                let ico = b.querySelector('i');
+                let bg = colors[key] || b.style.background || '#34495e';
+                html += `<button class="dock-btn" data-dockkey="${key}" style="background:${bg};" onclick="window.runDockAction('${key}')"><i class="${ico ? ico.className : 'fa-solid fa-circle'}"></i><span>${label}</span></button>`;
+            });
+            body.innerHTML = html;
+        };
+
+        /* On rejoue le clic du bouton d'origine : une seule source de vérité pour les actions */
+        window.runDockAction = function(key) {
+            let src = document.querySelector('#topbar .topbar-actions [data-btnkey="' + key + '"]');
+            window.closeMobileDock();
+            if(src) setTimeout(() => src.click(), 130);
+        };
+
+        window.closeMobileDock = function() { let d = document.getElementById('mobile-dock'); if(d) d.classList.remove('open'); };
+
+        window.initMobileDock = function() {
+            let dock = document.getElementById('mobile-dock');
+            let handle = document.getElementById('mobile-dock-handle');
+            if(!dock || !handle || dock.getAttribute('data-init')) return;
+            dock.setAttribute('data-init', '1');
+            window.buildMobileDock();
+
+            let startY = 0, delta = 0, startOpen = false, dragging = false;
+            const getY = e => e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY;
+            const hidden = () => Math.max(dock.offsetHeight - 50, 0);
+
+            const down = e => { dragging = true; delta = 0; startY = getY(e); startOpen = dock.classList.contains('open'); dock.classList.add('dragging'); };
+            const move = e => {
+                if(!dragging) return;
+                delta = getY(e) - startY;
+                let off = Math.min(Math.max((startOpen ? 0 : hidden()) + delta, 0), hidden());
+                dock.style.transform = 'translateY(' + off + 'px)';
+                if(e.cancelable) e.preventDefault();
+            };
+            const up = () => {
+                if(!dragging) return;
+                dragging = false; dock.classList.remove('dragging'); dock.style.transform = '';
+                if(Math.abs(delta) < 10) dock.classList.toggle('open');        /* simple appui = bascule */
+                else if(delta < 0) dock.classList.add('open');                  /* glissé vers le haut */
+                else dock.classList.remove('open');                             /* glissé vers le bas */
+            };
+
+            handle.addEventListener('touchstart', down, {passive:true});
+            handle.addEventListener('touchmove', move, {passive:false});
+            handle.addEventListener('touchend', up);
+            handle.addEventListener('mousedown', down);
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('click', e => { if(dock.classList.contains('open') && !dock.contains(e.target)) dock.classList.remove('open'); });
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 2.E.3 : SUGGESTIONS DE SAISIE (REMPLISSAGE RAPIDE)                */
+        /* ------------------------------------------------------------------------- */
+        /* Toute valeur déjà enregistrée dans le Sheet devient une proposition. Les    */
+        /* <textarea> n'acceptant pas l'attribut "list" natif, on utilise une petite   */
+        /* liste flottante commune, branchée par délégation d'événements : n'importe   */
+        /* quel champ portant data-sug / data-head / data-key / data-col en profite    */
+        /* sans modification de son formulaire.                                        */
+        /* ========================================================================= */
+        window.suggestSources = {};
+
+        window.buildSuggestionSources = function() {
+            let sets = {};
+            const add = (name, val) => {
+                if (val == null) return;
+                let v = val.toString().trim();
+                if (!v || v.length > 150) return;
+                if (!sets[name]) sets[name] = new Set();
+                sets[name].add(v);
+            };
+            const addSheet = (prefix, rows) => {
+                if (!rows || rows.length < 2) return;
+                let hs = rows[0].map(h => (h || '').toString().toLowerCase().trim());
+                for (let i = 1; i < rows.length; i++) { let row = rows[i] || []; hs.forEach((h, ci) => { if (h) add(prefix + h, row[ci]); }); }
+            };
+
+            (window.rawTickets || []).forEach(t => (t.fullData || []).forEach(f => add('ticket:' + f.k.toLowerCase().trim(), f.v)));
+            for (let h in (window.columnValuesSets || {})) { (window.columnValuesSets[h] || []).forEach(v => add('gen:' + h.toLowerCase().trim(), v)); }
+            addSheet('atelier:', window.rawAtelier);
+            addSheet('stock:', window.rawStock);
+            (window.suiviEntretienData || []).forEach(r => add('remarque', r && r[5]));
+            (window.calendarEvents || []).forEach(ev => { add('cal:titre', ev.titre); add('remarque', ev.remarque); });
+
+            window.suggestSources = {};
+            Object.keys(sets).forEach(k => { window.suggestSources[k] = Array.from(sets[k]).sort((a, b) => a.localeCompare(b, 'fr')); });
+
+            // Le calendrier propose les titres déjà utilisés via une datalist native
+            let dlc = document.getElementById('datalists-container');
+            if (dlc && !document.getElementById('dl-cal-titres')) {
+                let extra = document.createElement('div');
+                extra.innerHTML = `<datalist id="dl-cal-titres"></datalist><datalist id="dl-canon-ids"></datalist>`;
+                dlc.appendChild(extra);
+            }
+            let dlTit = document.getElementById('dl-cal-titres');
+            if (dlTit) dlTit.innerHTML = (window.suggestSources['cal:titre'] || []).map(v => `<option value="${v.replace(/"/g, '&quot;')}">`).join('');
+            let dlCan = document.getElementById('dl-canon-ids');
+            if (dlCan) dlCan.innerHTML = (window.snowCannons && window.snowCannons.features ? window.snowCannons.features : []).map(f => `<option value="${f.properties.id}">`).join('');
+        };
+
+        // Les intitulés de colonnes du Sheet ne sont pas figés ("cause", "cause de la panne"...) :
+        // à défaut de clé exacte, on retombe sur une correspondance souple, comme côté serveur.
+        window.lookupSuggestSource = function(key) {
+            if (window.suggestSources[key]) return window.suggestSources[key];
+            let sep = key.indexOf(':'); if (sep === -1) return [];
+            let prefix = key.substring(0, sep + 1), name = key.substring(sep + 1);
+            let found = Object.keys(window.suggestSources).find(k => {
+                if (k.indexOf(prefix) !== 0) return false;
+                let n = k.substring(sep + 1);
+                return n.includes(name) || name.includes(n);
+            });
+            return found ? window.suggestSources[found] : [];
+        };
+
+        window.resolveSuggestions = function(el) {
+            let explicit = el.getAttribute('data-sug');
+            if (explicit) return explicit.includes(':') ? window.lookupSuggestSource(explicit) : (window.suggestSources[explicit] || []);
+            let head = el.getAttribute('data-head') || el.getAttribute('data-key');
+            if (head) return window.lookupSuggestSource('gen:' + head.toLowerCase().trim());
+            let col = el.getAttribute('data-col');
+            if (col) return window.lookupSuggestSource('atelier:' + col.toLowerCase().trim());
+            return [];
+        };
+
+        window.hideSuggestBox = function() { let b = document.getElementById('suggest-box'); if (b) b.style.display = 'none'; };
+
+        window.showSuggestBox = function(el) {
+            let box = document.getElementById('suggest-box');
+            if (!box) { box = document.createElement('div'); box.id = 'suggest-box'; document.body.appendChild(box); }
+            let values = window.resolveSuggestions(el);
+            if (!values.length) { box.style.display = 'none'; return; }
+            let q = (el.value || '').toLowerCase().trim();
+            let matches = values.filter(v => !q || v.toLowerCase().includes(q)).slice(0, 8);
+            if (!matches.length || (matches.length === 1 && matches[0].toLowerCase() === q)) { box.style.display = 'none'; return; }
+            box.innerHTML = matches.map(v => `<div class="suggest-item">${v.replace(/</g, '&lt;')}</div>`).join('');
+            let r = el.getBoundingClientRect();
+            box.style.display = 'block';
+            box.style.left = r.left + 'px';
+            box.style.width = Math.max(r.width, 160) + 'px';
+            // Bascule au-dessus du champ s'il n'y a pas la place en dessous (clavier mobile)
+            let below = window.innerHeight - r.bottom;
+            if (below < 150 && r.top > 150) { box.style.top = 'auto'; box.style.bottom = (window.innerHeight - r.top + 2) + 'px'; }
+            else { box.style.bottom = 'auto'; box.style.top = (r.bottom + 2) + 'px'; }
+            window.suggestTarget = el;
+        };
+
+        window.initSuggestEngine = function() {
+            if (window.suggestEngineReady) return; window.suggestEngineReady = true;
+            const eligible = e => {
+                let t = e.target;
+                if (!t || !t.tagName) return false;
+                if (t.hasAttribute('list')) return false;
+                if (t.tagName !== 'TEXTAREA' && !(t.tagName === 'INPUT' && (t.type === 'text' || t.type === ''))) return false;
+                return t.hasAttribute('data-sug') || t.hasAttribute('data-head') || t.hasAttribute('data-key') || t.hasAttribute('data-col');
+            };
+            document.addEventListener('input', e => { if (eligible(e)) window.showSuggestBox(e.target); });
+            document.addEventListener('focusin', e => { if (eligible(e)) window.showSuggestBox(e.target); else window.hideSuggestBox(); });
+            document.addEventListener('mousedown', e => {
+                let box = document.getElementById('suggest-box');
+                if (!box || box.style.display === 'none') return;
+                if (e.target.classList && e.target.classList.contains('suggest-item')) {
+                    e.preventDefault();
+                    if (window.suggestTarget) {
+                        window.suggestTarget.value = e.target.textContent;
+                        window.suggestTarget.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    window.hideSuggestBox();
+                } else if (!box.contains(e.target)) { window.hideSuggestBox(); }
+            });
+            document.addEventListener('scroll', () => window.hideSuggestBox(), true);
         };
 
         /* ========================================================================= */
@@ -773,18 +1065,36 @@
                 Object.keys(window.drivePdfsData).sort().forEach(name => {
                     let fileId = window.drivePdfsData[name];
                     let previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
-                    html += `<div onclick="window.previewPdf('${previewUrl}', this)" style="background:#fff; border:1px solid #ddd; padding:10px; border-radius:6px; margin-bottom:8px; cursor:pointer; font-size:12px; font-weight:bold; color:#2c3e50; transition:0.2s;" onmouseover="this.style.background='#fdf5e6'" onmouseout="this.style.background='#fff'">📄 ${name.replace('.pdf', '')}</div>`;
+                    html += `<div class="pdf-item" data-name="${name.toLowerCase().replace(/"/g, '&quot;')}" onclick="window.previewPdf('${previewUrl}', this)" style="background:#fff; border:1px solid #ddd; padding:10px; border-radius:6px; margin-bottom:8px; cursor:pointer; font-size:12px; font-weight:bold; color:#2c3e50; transition:0.2s;" onmouseover="this.style.background='#fdf5e6'" onmouseout="this.style.background='#fff'">📄 ${name.replace('.pdf', '')}</div>`;
                 });
                 list.innerHTML = html;
             }
+            // Sur téléphone la liste occupe tout l'écran : on la replie d'emblée si un document est déjà ouvert
+            let wrap = document.getElementById('pdf-list-wrap');
+            if (wrap) wrap.style.display = 'flex';
             modal.style.display = 'flex';
         };
 
+        window.filterPdfList = function(q) {
+            let needle = (q || '').toLowerCase().trim();
+            document.querySelectorAll('#pdf-list .pdf-item').forEach(d => {
+                d.style.display = (!needle || (d.getAttribute('data-name') || '').includes(needle)) ? 'block' : 'none';
+            });
+        };
+
+        // CHAPITRE 2.B.2 — La liste des documents se replie pour libérer toute la largeur au PDF
+        // (indispensable sur téléphone, où la liste et le lecteur ne tiennent pas côte à côte).
+        window.togglePdfList = function() {
+            let wrap = document.getElementById('pdf-list-wrap'); if (!wrap) return;
+            wrap.style.display = (wrap.style.display === 'none') ? 'flex' : 'none';
+        };
+
         window.previewPdf = function(url, btnElement) {
-            document.querySelectorAll('#pdf-list div').forEach(d => d.style.borderLeft = "1px solid #ddd");
+            document.querySelectorAll('#pdf-list .pdf-item').forEach(d => d.style.borderLeft = "1px solid #ddd");
             btnElement.style.borderLeft = "4px solid #8e44ad";
             let container = document.getElementById('pdf-viewer-container');
             container.innerHTML = `<iframe src="${url}" width="100%" height="100%" frameborder="0" allow="autoplay"></iframe>`;
+            if (window.innerWidth <= 768) { let wrap = document.getElementById('pdf-list-wrap'); if (wrap) wrap.style.display = 'none'; }
         };
 
         /* ========================================================================= */
@@ -847,13 +1157,136 @@
         window.updateLegend = function() {
             let s = window.appSettings || {colUrgent:'#e74c3c', colEnCours:'#f39c12', colRas:'#bdc3c7', colTeteOk:'#e67e22', colTeteWait:'#bdc3c7', colSuiviDec:'#27ae60', colSuiviPrev:'#9b59b6', colSuiviOk:'#f1c40f'};
             let elDef = document.getElementById('legend-defauts'); let elSuivi = document.getElementById('legend-suivi_entretien');
-            if (window.mainTheme === 'suivi_entretien') { if(elSuivi) elSuivi.innerHTML = `<div class="legend-item"><div class="color-box" style="background:${s.colUrgent};"></div> Défaut en cours</div><div class="legend-item"><div class="color-box" style="background:${s.colSuiviPrev};"></div> Préventif Usine</div><div class="legend-item"><div class="color-box" style="background:${s.colSuiviDec};"></div> Déconnecté</div><div class="legend-item"><div class="color-box" style="background:${s.colSuiviOk};"></div> Connecté (⚡)</div><div class="legend-item"><div style="background:#e67e22; color:white; width:14px; height:14px; border-radius:50%; font-size:10px; font-weight:bold; text-align:center; line-height:14px; border:1px solid #ccc;">!</div> Remarque présente</div><div class="legend-item" style="font-size:10px; color:#7f8c8d; margin-top:5px;"><i>Mélange de couleurs si multi-statuts.</i></div>`; }
-            else if (window.mainTheme === 'entretien_tete') { let elEntretien = document.getElementById('legend-entretien_tete'); if (elEntretien) { elEntretien.innerHTML = `<div class="legend-item"><div class="color-box" style="background:${s.colTeteOk};"></div> Buses changées / OK</div><div class="legend-item"><div class="color-box" style="background:${s.colTeteWait};"></div> À faire</div>`; } }
-            else if (window.mainTheme === 'defauts' && elDef) { elDef.innerHTML = `<div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'urgent')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${s.colUrgent};"></div> Urgent (À faire)</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'encours')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${s.colEnCours};"></div> En cours</div><div class="legend-item" onmouseenter="window.highlightLegend('defauts', 'ras')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${s.colRas};"></div> RAS</div>`; }
-            else if (window.mainTheme === 'type') { let elTy = document.getElementById('legend-type'); let h = '';  Object.keys(window.technoColors).sort().forEach(k => {  let color = window.technoColors[k];  if(["demak lenko", "demac lenko"].includes(k)) color = "#0000FF"; else if(["sufag", "street", "taurus", "taurax", "peak"].includes(k)) color = "#008000"; if(k === "n/a" || k === "") return;  let iconHtml = `<div class="color-box" style="background: ${color};"></div>`;if (window.driveIcons && window.driveIcons[k]) { iconHtml = `<div style="width:20px; height:20px; background:url('${window.driveIcons[k]}') center/contain no-repeat; margin-right:5px; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));"></div>`; } h += `<div class="legend-item" onmouseenter="window.highlightLegend('type', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()">${iconHtml} ${k.toUpperCase()}</div>`;  }); if(elTy) elTy.innerHTML = h; }
-            else if (window.mainTheme === 'repeteur') { let h=''; Object.keys(window.repColors).sort().forEach(k => { h += `<div class="legend-item" onmouseenter="window.highlightLegend('repeteur', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${window.repColors[k]};"></div> Répéteur ${k}</div>`; }); let elRep = document.getElementById('legend-repeteur'); if(elRep) elRep.innerHTML = h; }
-            else if (window.mainTheme === 'transfo') { let h=''; Object.keys(window.transfoColors).sort().forEach(k => { h += `<div class="legend-item" onmouseenter="window.highlightLegend('transfo', '${k.replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"><div class="color-box" style="background: ${window.transfoColors[k]};"></div> Transfo ${k}</div>`; }); let elTr = document.getElementById('legend-transfo'); if(elTr) elTr.innerHTML = h; }
+            if (window.mainTheme === 'suivi_entretien') {
+                window.renderLegendItems('suivi_entretien', elSuivi, [
+                    { key: 'defaut', label: 'Défaut en cours', icon: `<div class="color-box" style="background:${s.colUrgent};"></div>` },
+                    { key: 'prev', label: 'Préventif Usine', icon: `<div class="color-box" style="background:${s.colSuiviPrev};"></div>` },
+                    { key: 'dec', label: 'Déconnecté', icon: `<div class="color-box" style="background:${s.colSuiviDec};"></div>` },
+                    { key: 'ok', label: 'Connecté (⚡)', icon: `<div class="color-box" style="background:${s.colSuiviOk};"></div>` },
+                    { key: 'remarque', label: 'Remarque présente', icon: `<div style="background:#e67e22; color:white; width:14px; height:14px; border-radius:50%; font-size:10px; font-weight:bold; text-align:center; line-height:14px; border:1px solid #ccc;">!</div>` }
+                ], `<div class="legend-item" style="font-size:10px; color:#7f8c8d; margin-top:5px;"><i>Mélange de couleurs si multi-statuts.</i></div>`);
+            }
+            else if (window.mainTheme === 'entretien_tete') {
+                window.renderLegendItems('entretien_tete', document.getElementById('legend-entretien_tete'), [
+                    { key: 'ok', label: 'Buses changées / OK', icon: `<div class="color-box" style="background:${s.colTeteOk};"></div>` },
+                    { key: 'wait', label: 'À faire', icon: `<div class="color-box" style="background:${s.colTeteWait};"></div>` }
+                ]);
+            }
+            else if (window.mainTheme === 'defauts') {
+                window.renderLegendItems('defauts', elDef, [
+                    { key: 'urgent', label: 'Urgent (À faire)', icon: `<div class="color-box" style="background:${s.colUrgent};"></div>`, hl: 'urgent' },
+                    { key: 'encours', label: 'En cours', icon: `<div class="color-box" style="background:${s.colEnCours};"></div>`, hl: 'encours' },
+                    { key: 'ras', label: 'RAS', icon: `<div class="color-box" style="background:${s.colRas};"></div>`, hl: 'ras' }
+                ]);
+            }
+            else if (window.mainTheme === 'type') {
+                let items = [];
+                Object.keys(window.technoColors).sort().forEach(k => {
+                    if(k === "n/a" || k === "") return;
+                    let color = window.technoColors[k];
+                    if(["demak lenko", "demac lenko"].includes(k)) color = "#0000FF"; else if(["sufag", "street", "taurus", "taurax", "peak"].includes(k)) color = "#008000";
+                    let iconHtml = `<div class="color-box" style="background: ${color};"></div>`;
+                    if (window.driveIcons && window.driveIcons[k]) iconHtml = `<div style="width:20px; height:20px; background:url('${window.driveIcons[k]}') center/contain no-repeat; margin-right:5px; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));"></div>`;
+                    items.push({ key: k, label: k.toUpperCase(), icon: iconHtml, hl: k });
+                });
+                window.renderLegendItems('type', document.getElementById('legend-type'), items);
+            }
+            else if (window.mainTheme === 'repeteur') {
+                let items = Object.keys(window.repColors).sort().map(k => ({ key: k, label: 'Répéteur ' + k, icon: `<div class="color-box" style="background: ${window.repColors[k]};"></div>`, hl: k }));
+                window.renderLegendItems('repeteur', document.getElementById('legend-repeteur'), items);
+            }
+            else if (window.mainTheme === 'transfo') {
+                let items = Object.keys(window.transfoColors).sort().map(k => ({ key: k, label: 'Transfo ' + k, icon: `<div class="color-box" style="background: ${window.transfoColors[k]};"></div>`, hl: k }));
+                window.renderLegendItems('transfo', document.getElementById('legend-transfo'), items);
+            }
             else if (window.mainTheme === 'historique') { let hL = document.getElementById('legend-historique'); if(!hL) return; if (window.histMetric === 'eau') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #add8e6, #2980b9);"></div><div class="legend-labels"><span>0 m³</span><span>Max</span></div>`; else if (window.histMetric === 'air') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #fadb5e, #d35400);"></div><div class="legend-labels"><span>0</span><span>Max</span></div>`; else if (window.histMetric === 'temps') hL.innerHTML = `<div class="gradient-bar" style="background: linear-gradient(to right, #abebc6, #27ae60);"></div><div class="legend-labels"><span>0 h</span><span>Max</span></div>`; }
+        };
+
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 3.A : LÉGENDES ORDONNABLES ET MASQUABLES                          */
+        /* ------------------------------------------------------------------------- */
+        /* Chaque entrée de légende porte une clé stable ; l'ordre choisi et les       */
+        /* entrées masquées sont mémorisés par thème dans appSettings.legendConfig.    */
+        /* Masquer une entrée agit sur la légende affichée/imprimée, pas sur la carte  */
+        /* (le filtrage des canons reste le rôle des "Filtres Rapides").               */
+        window.legendItemsCache = {};
+
+        window.getLegendConfig = function(theme) {
+            if (!window.appSettings.legendConfig) window.appSettings.legendConfig = {};
+            if (!window.appSettings.legendConfig[theme]) window.appSettings.legendConfig[theme] = { order: [], hidden: [] };
+            let c = window.appSettings.legendConfig[theme];
+            if (!c.order) c.order = []; if (!c.hidden) c.hidden = [];
+            return c;
+        };
+        window.saveLegendConfig = function() { try { localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings)); } catch(e) {} };
+
+        window.sortLegendItems = function(theme, items) {
+            let order = window.getLegendConfig(theme).order;
+            return items.map((it, i) => ({ it: it, i: i })).sort((a, b) => {
+                let ia = order.indexOf(String(a.it.key)), ib = order.indexOf(String(b.it.key));
+                if (ia === -1 && ib === -1) return a.i - b.i;
+                if (ia === -1) return 1;
+                if (ib === -1) return -1;
+                return ia - ib;
+            }).map(x => x.it);
+        };
+
+        window.renderLegendItems = function(theme, el, items, extraHtml) {
+            window.legendItemsCache[theme] = items;
+            if (!el) return;
+            let hidden = window.getLegendConfig(theme).hidden;
+            let html = window.sortLegendItems(theme, items).filter(it => !hidden.includes(String(it.key))).map(it => {
+                let hover = (it.hl != null) ? ` onmouseenter="window.highlightLegend('${theme}', '${String(it.hl).replace(/'/g, "\\'")}')" onmouseleave="window.resetHighlight()"` : '';
+                return `<div class="legend-item"${hover}>${it.icon} ${it.label}</div>`;
+            }).join('');
+            el.innerHTML = html + (extraHtml || '');
+            window.renderLegendEditor(theme);
+        };
+
+        window.toggleLegendEditor = function(theme) {
+            let box = document.getElementById('legend-cfg-' + theme); if (!box) return;
+            let show = (box.style.display === 'none' || box.style.display === '');
+            box.style.display = show ? 'block' : 'none';
+            if (show) window.renderLegendEditor(theme, true);
+        };
+
+        window.renderLegendEditor = function(theme, force) {
+            let box = document.getElementById('legend-cfg-' + theme); if (!box) return;
+            if (!force && box.style.display !== 'block') return;
+            let items = window.sortLegendItems(theme, window.legendItemsCache[theme] || []);
+            let hidden = window.getLegendConfig(theme).hidden;
+            let html = `<div style="font-size:10px; color:#95a5a6; margin-bottom:5px;">Ordre et visibilité des entrées :</div>`;
+            items.forEach((it, i) => {
+                let k = String(it.key); let hid = hidden.includes(k); let kEsc = k.replace(/'/g, "\\'");
+                html += `<div class="legend-cfg-row"><span class="lc-name" style="${hid ? 'opacity:0.45; text-decoration:line-through;' : ''}">${it.label}</span>`
+                     + `<button title="Monter" ${i === 0 ? 'disabled' : ''} style="${i === 0 ? 'opacity:0.25;' : ''}" onclick="window.moveLegendItem('${theme}','${kEsc}',-1)">▲</button>`
+                     + `<button title="Descendre" ${i === items.length - 1 ? 'disabled' : ''} style="${i === items.length - 1 ? 'opacity:0.25;' : ''}" onclick="window.moveLegendItem('${theme}','${kEsc}',1)">▼</button>`
+                     + `<button title="Afficher / Masquer" onclick="window.toggleLegendItemVisible('${theme}','${kEsc}')">${hid ? '🚫' : '👁️'}</button></div>`;
+            });
+            if (items.length === 0) html += `<i style="font-size:10px; color:#95a5a6;">Aucune entrée.</i>`;
+            html += `<button class="legend-cfg-btn" style="width:100%; margin-top:4px;" onclick="window.resetLegendConfig('${theme}')">Réinitialiser l'ordre</button>`;
+            box.innerHTML = html;
+        };
+
+        window.moveLegendItem = function(theme, key, dir) {
+            let keys = window.sortLegendItems(theme, window.legendItemsCache[theme] || []).map(it => String(it.key));
+            let idx = keys.indexOf(key); if (idx === -1) return;
+            let ni = idx + dir; if (ni < 0 || ni >= keys.length) return;
+            keys.splice(ni, 0, keys.splice(idx, 1)[0]);
+            window.getLegendConfig(theme).order = keys;
+            window.saveLegendConfig(); window.updateLegend(); window.renderLegendEditor(theme, true);
+        };
+
+        window.toggleLegendItemVisible = function(theme, key) {
+            let hidden = window.getLegendConfig(theme).hidden;
+            let i = hidden.indexOf(key);
+            if (i === -1) hidden.push(key); else hidden.splice(i, 1);
+            window.saveLegendConfig(); window.updateLegend(); window.renderLegendEditor(theme, true);
+        };
+
+        window.resetLegendConfig = function(theme) {
+            window.appSettings.legendConfig[theme] = { order: [], hidden: [] };
+            window.saveLegendConfig(); window.updateLegend(); window.renderLegendEditor(theme, true);
         };
 
         window.highlightLegend = function(theme, val) {
@@ -970,13 +1403,13 @@
                             <div style="flex:1;"><span class="edit-label">Priorité</span><select id="nt-priorite-${p.id}" class="edit-input" style="padding:6px; margin-bottom:8px;"><option value="P1 (urgent et bloquant)">P1 (urgent et bloquant)</option><option value="P2 (non bloquant mais urgent)">P2 (non bloquant mais urgent)</option><option value="P3 (non bloquant)">P3 (non bloquant)</option></select></div>
                         </div>
                         <span class="edit-label">Nom du défaut / Panne</span><input type="text" id="nt-defaut-${p.id}" class="edit-input" list="dl-defauts-list" placeholder="Choisir dans la liste ou créer..." style="padding:6px; margin-bottom:8px;">
-                        <span class="edit-label">Défaut Sonde</span><input type="text" id="nt-sonde-${p.id}" class="edit-input" placeholder="Ex: Sonde T°" style="padding:6px; margin-bottom:8px;">
-                        <span class="edit-label">Cause de la panne</span><textarea id="nt-cause-${p.id}" class="edit-input" rows="1" placeholder="Origine du problème..." style="padding:6px; margin-bottom:8px;"></textarea>
+                        <span class="edit-label">Défaut Sonde</span><input type="text" id="nt-sonde-${p.id}" class="edit-input" data-sug="ticket:defaut sonde" placeholder="Ex: Sonde T°" style="padding:6px; margin-bottom:8px;">
+                        <span class="edit-label">Cause de la panne</span><textarea id="nt-cause-${p.id}" class="edit-input" data-sug="ticket:cause" rows="1" placeholder="Origine du problème..." style="padding:6px; margin-bottom:8px;"></textarea>
                         <div style="display:flex; gap:5px;">
-                            <div style="flex:1;"><span class="edit-label">Période</span><input type="text" id="nt-periode-${p.id}" class="edit-input" value="${window.saisonsList[window.histSeasonIdx] || ''}" style="padding:6px; margin-bottom:8px;"></div>
+                            <div style="flex:1;"><span class="edit-label">Période</span><input type="text" id="nt-periode-${p.id}" class="edit-input" data-sug="ticket:periode" value="${window.saisonsList[window.histSeasonIdx] || ''}" style="padding:6px; margin-bottom:8px;"></div>
                             <div style="flex:1;"><span class="edit-label">Date d'inter</span><input type="date" id="nt-dateinter-${p.id}" class="edit-input" value="${window.todayIso()}" style="padding:6px; margin-bottom:8px;"></div>
                         </div>
-                        <span class="edit-label">Intervention effectuée</span><textarea id="nt-interv-${p.id}" class="edit-input" rows="1" placeholder="Travaux réalisés..." style="padding:6px; margin-bottom:8px;"></textarea>
+                        <span class="edit-label">Intervention effectuée</span><textarea id="nt-interv-${p.id}" class="edit-input" data-sug="ticket:intervention" rows="1" placeholder="Travaux réalisés..." style="padding:6px; margin-bottom:8px;"></textarea>
                         ${window.buildPiecesUI('nt-pieces-'+p.id, '', '', 'Pièces utilisées (Stock)', '')}
                         <button onclick="window.addNouveauTicket('${p.id}', this)" style="width:100%; background:#c0392b; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer; margin-top:5px;"><i class="fa-solid fa-paper-plane"></i> Envoyer le ticket de Panne</button>
                     </div>
@@ -1054,7 +1487,7 @@
                                 <label style="cursor:pointer;"><input type="checkbox" id="chk-dec-single-${p.id}" ${isDec?'checked':''}> Déconnexion</label>
                                 <label style="cursor:pointer;"><input type="checkbox" id="chk-prev-single-${p.id}" ${isPrev?'checked':''}> Préventif Usine</label>
                             </div>
-                            <input type="text" id="rem-single-${p.id}" value="${rem}" placeholder="Remarque..." style="width:100%; box-sizing:border-box; padding:6px; border:1px solid #ccc; border-radius:4px;">
+                            <input type="text" id="rem-single-${p.id}" data-sug="remarque" value="${rem}" placeholder="Remarque..." style="width:100%; box-sizing:border-box; padding:6px; border:1px solid #ccc; border-radius:4px;">
                         </div>
                         <div style="background:#fdfdfe; padding:10px; border-radius:6px; border:1px solid #ccc; font-size:12px;">
                             <h4 style="margin:0 0 8px 0; color:#2c3e50;">📊 Données Techniques</h4><b>Modèle :</b> ${window.getV(p, window.keyType)}<br><b>Année Buse :</b> ${bY}<br><b>Année Vanne AD :</b> ${vAdY}<br><b>Année Vanne :</b> ${vY}
@@ -1177,6 +1610,7 @@
                 if (kLow.includes('xy') || kLow.includes('gps')) return;
                 if (window.keyId && item.k === window.keyId) return;
                 html += `<div style="margin-bottom:10px;"><div class="edit-label">${item.k}</div><input type="text" class="edit-input dyn-edit-field" data-key="${item.k}" value="${(item.v || '').toString().replace(/"/g, '&quot;')}"></div>`;
+                // (les suggestions arrivent via data-key, cf. CHAPITRE 2.E.3)
             });
             document.getElementById('dynamic-edit-fields').innerHTML = html;
             window.updateMap();
@@ -1336,12 +1770,134 @@
             } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
         };
 
+        /* ========================================================================= */
+        /* CHAPITRE 4.D : BRIQUE DE TABLEAU DE BORD (TYPE DE GRAPHIQUE, TRI, TABLEAU) */
+        /* ------------------------------------------------------------------------- */
+        /* Chaque graphique des tableaux de bord est encapsulé dans une brique offrant */
+        /* le choix du type de rendu, l'ordre de tri et un tableau de données          */
+        /* filtrable. Les préférences sont mémorisées par bloc dans appSettings.       */
+        /* ========================================================================= */
+        window.dashChartTypes = [
+            { v: 'bar', l: '📊 Barres' }, { v: 'hbar', l: '📶 Barres horizontales' }, { v: 'line', l: '📈 Courbe' },
+            { v: 'doughnut', l: '🍩 Anneau' }, { v: 'pie', l: '🥧 Camembert' }, { v: 'polarArea', l: '🎯 Aire polaire' }, { v: 'radar', l: '🕸️ Radar' }
+        ];
+        window.dashSortModes = [
+            { v: 'default', l: '↕️ Ordre naturel' }, { v: 'val_desc', l: '⬇️ Valeur décroissante' },
+            { v: 'val_asc', l: '⬆️ Valeur croissante' }, { v: 'az', l: '🔤 A → Z' }, { v: 'za', l: '🔡 Z → A' }
+        ];
+        window.dashDataCache = {};
+
+        window.getDashPref = function(key) {
+            if (!window.appSettings.dashPrefs) window.appSettings.dashPrefs = {};
+            if (!window.appSettings.dashPrefs[key]) window.appSettings.dashPrefs[key] = { type: 'auto', sort: 'default', table: false, filter: '' };
+            return window.appSettings.dashPrefs[key];
+        };
+
+        window.setDashPref = function(key, field, val) {
+            let p = window.getDashPref(key);
+            p[field] = (val === 'true') ? true : (val === 'false' ? false : val);
+            try { localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings)); } catch(e) {}
+            window.triggerGlobalFilterChart();
+        };
+
+        window.buildDashBlockHtml = function(key, title, defaultType, canvasId, height) {
+            let p = window.getDashPref(key);
+            let cur = p.type === 'auto' ? defaultType : p.type;
+            let typeOpts = window.dashChartTypes.map(t => `<option value="${t.v}" ${t.v === cur ? 'selected' : ''}>${t.l}</option>`).join('');
+            let sortOpts = window.dashSortModes.map(t => `<option value="${t.v}" ${t.v === p.sort ? 'selected' : ''}>${t.l}</option>`).join('');
+            return `<div class="dash-block">
+                <div class="dash-block-title">${title}</div>
+                <div class="dash-controls">
+                    <select onchange="window.setDashPref('${key}','type',this.value)">${typeOpts}</select>
+                    <select onchange="window.setDashPref('${key}','sort',this.value)">${sortOpts}</select>
+                    <button class="dash-mini-btn ${p.table ? 'on' : ''}" onclick="window.setDashPref('${key}','table','${p.table ? 'false' : 'true'}')" title="Tableau de données"><i class="fa-solid fa-table"></i></button>
+                </div>
+                <div style="position:relative; height:${height || 200}px; width:100%;"><canvas id="${canvasId}"></canvas></div>
+                ${p.table ? `<div class="dash-table-wrap"><input type="text" class="dash-filter" placeholder="🔍 Filtrer le tableau..." value="${(p.filter || '').replace(/"/g, '&quot;')}" oninput="window.filterDashTable('${key}', this.value)"><div id="dash-table-${key}"></div></div>` : ''}
+            </div>`;
+        };
+
+        window.applyDashSort = function(key, labels, data, colors) {
+            let p = window.getDashPref(key);
+            let idx = labels.map((l, i) => i);
+            if (p.sort === 'val_desc') idx.sort((a, b) => (data[b] || 0) - (data[a] || 0));
+            else if (p.sort === 'val_asc') idx.sort((a, b) => (data[a] || 0) - (data[b] || 0));
+            else if (p.sort === 'az') idx.sort((a, b) => String(labels[a]).localeCompare(String(labels[b]), 'fr'));
+            else if (p.sort === 'za') idx.sort((a, b) => String(labels[b]).localeCompare(String(labels[a]), 'fr'));
+            return { labels: idx.map(i => labels[i]), data: idx.map(i => data[i]), colors: Array.isArray(colors) ? idx.map(i => colors[i]) : colors };
+        };
+
+        window.renderDashTable = function(key) {
+            let host = document.getElementById('dash-table-' + key); if (!host) return;
+            let d = window.dashDataCache[key]; if (!d) { host.innerHTML = ''; return; }
+            let total = d.data.reduce((a, b) => a + (parseFloat(b) || 0), 0);
+            let rows = d.labels.map((l, i) => {
+                let v = parseFloat(d.data[i]) || 0;
+                let pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0.0';
+                let col = Array.isArray(d.colors) ? d.colors[i] : d.colors;
+                return `<tr class="dash-row" data-label="${String(l).toLowerCase().replace(/"/g, '&quot;')}"><td><span style="display:inline-block; width:9px; height:9px; border-radius:2px; background:${col || '#3498db'}; margin-right:6px;"></span>${l}</td><td style="text-align:right; font-weight:bold;">${Number.isInteger(v) ? v : v.toFixed(1)}</td><td style="text-align:right; color:#7f8c8d;">${pct}%</td></tr>`;
+            }).join('');
+            host.innerHTML = `<table class="dash-table"><thead><tr><th>Libellé</th><th style="text-align:right;">Valeur</th><th style="text-align:right;">%</th></tr></thead><tbody>${rows}</tbody></table>`;
+            let p = window.getDashPref(key);
+            if (p.filter) window.filterDashTable(key, p.filter, true);
+        };
+
+        // Filtre texte générique sur une liste de cartes (chaque carte porte data-search)
+        window.filterCards = function(containerId, q) {
+            let c = document.getElementById(containerId); if (!c) return;
+            let needle = (q || '').toLowerCase().trim();
+            let shown = 0;
+            c.querySelectorAll('[data-search]').forEach(el => {
+                let ok = !needle || (el.getAttribute('data-search') || '').includes(needle);
+                el.style.display = ok ? '' : 'none'; if (ok) shown++;
+            });
+            let empty = document.getElementById(containerId + '-empty');
+            if (empty) empty.style.display = shown === 0 ? 'block' : 'none';
+        };
+
+        window.filterDashTable = function(key, q, skipSave) {
+            if (!skipSave) { window.getDashPref(key).filter = q; try { localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings)); } catch(e) {} }
+            let needle = (q || '').toLowerCase().trim();
+            let host = document.getElementById('dash-table-' + key); if (!host) return;
+            host.querySelectorAll('.dash-row').forEach(tr => {
+                tr.style.display = (!needle || (tr.getAttribute('data-label') || '').includes(needle)) ? '' : 'none';
+            });
+        };
+
+        window.drawDashChart = function(key, canvasId, labels, data, colors, defaultType, options, plugins) {
+            let ctx = document.getElementById(canvasId); if (!ctx) return;
+            let p = window.getDashPref(key);
+            let sorted = window.applyDashSort(key, labels, data, colors);
+            window.dashDataCache[key] = sorted;
+            let chosen = p.type === 'auto' ? defaultType : p.type;
+            let horizontal = (chosen === 'hbar');
+            let finalType = horizontal ? 'bar' : chosen;
+            let isCircular = ['pie', 'doughnut', 'polarArea', 'radar'].includes(finalType);
+            let opts = JSON.parse(JSON.stringify({ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }));
+            if (options) { opts = Object.assign(opts, JSON.parse(JSON.stringify(options))); }
+            if (horizontal) opts.indexAxis = 'y';
+            // Une légende n'a de sens que sur les rendus circulaires (une seule série ici)
+            if (!opts.plugins) opts.plugins = {};
+            if (isCircular) { if (!opts.plugins.legend || opts.plugins.legend.display === false) opts.plugins.legend = { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }; }
+            else { opts.plugins.legend = { display: false }; }
+            if (finalType !== 'doughnut' && opts.plugins.centerText) delete opts.plugins.centerText;
+
+            let ds = { data: sorted.data, backgroundColor: sorted.colors, borderRadius: finalType === 'bar' ? 4 : 0 };
+            if (finalType === 'line' || finalType === 'radar') {
+                let c = Array.isArray(sorted.colors) ? (sorted.colors[0] || '#3498db') : (sorted.colors || '#3498db');
+                ds.borderColor = c; ds.backgroundColor = c + '44'; ds.fill = true; ds.tension = 0.3; ds.pointRadius = 4;
+            }
+            if (window.chartInstances[canvasId]) window.chartInstances[canvasId].destroy();
+            window.chartInstances[canvasId] = new Chart(ctx.getContext('2d'), { type: finalType, data: { labels: sorted.labels, datasets: [ds] }, options: opts, plugins: plugins || [] });
+            window.renderDashTable(key);
+        };
+
         window.triggerGlobalFilterChart = function() {
             if (window.selectedCannonsMap.size > 0 || window.currentlyEditingId) return;
             let visibleCannons = window.snowCannons.features.filter(f => f.properties._isVisible);
             let html = `<div style="background:#eafaf1; padding:15px; border-radius:6px; text-align:center; margin-bottom:15px; border:1px solid #d5f5e3;"><span style="font-size:24px; font-weight:bold; color:#27ae60;">${visibleCannons.length}</span><br><span style="font-size:12px; color:#555; text-transform:uppercase;">Canons affichés</span></div>`;
 
-            let chartLabels = []; let chartData = []; let chartColors = []; let chartType = 'bar';
+            let chartLabels = []; let chartData = []; let chartColors = []; let chartType = 'bar'; let dashKey = 'main_' + window.mainTheme;
             let chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
             const centerTextPlugin = { id: 'centerText', beforeDraw: function(chart) { if (chart.config.type !== 'doughnut') return; let width = chart.width, height = chart.height, ctx = chart.ctx; ctx.restore(); let fontSize = (height / 100).toFixed(2); ctx.font = "bold " + fontSize + "em sans-serif"; ctx.textBaseline = "middle"; ctx.fillStyle = "#e74c3c"; let text = chart.config.options.plugins.centerText ? chart.config.options.plugins.centerText.text : ""; let textX = Math.round((width - ctx.measureText(text).width) / 2), textY = height / 2; ctx.fillText(text, textX, textY); ctx.save(); } };
             let chartPlugins = [centerTextPlugin];
@@ -1353,28 +1909,29 @@
                 chartLabels = ['À faire', 'En cours', 'RAS']; chartData = [cUrgent, cEnCours, cRas]; chartColors = ['#e74c3c', '#f39c12', '#bdc3c7']; chartType = 'doughnut';
                 let total = cUrgent + cEnCours + cRas; let faultPerc = total > 0 ? (((cUrgent + cEnCours) / total) * 100).toFixed(1) : 0;
                 chartOptions.plugins.legend = { position: 'right', labels: { boxWidth: 12, font: {size: 11} } }; chartOptions.plugins.centerText = { text: faultPerc + "%" };
-                html += `<div class="piste-chart-container"><div style="text-align:center; font-size:14px; font-weight:bold; color:#34495e; margin-bottom:5px;">Taux de pannes global</div><div style="height:180px;position:relative;"><canvas id="global-filter-chart"></canvas></div></div>`;
+                dashKey = 'defauts_statuts';
+                html += window.buildDashBlockHtml('defauts_statuts', 'Taux de pannes global', 'doughnut', 'global-filter-chart', 190);
 
                 let pCounts = {}; activeList.forEach(item => { pCounts[item.piste] = (pCounts[item.piste] || 0) + 1; });
                 let pLabels = Object.keys(pCounts).sort((a,b)=>pCounts[b]-pCounts[a]); let pData = pLabels.map(k=>pCounts[k]);
-                if(pLabels.length > 0) { html += `<div class="piste-chart-container" style="margin-top:15px;"><div style="text-align:center;font-weight:bold;font-size:12px;color:#34495e;margin-bottom:5px;">Pannes par Piste</div><div style="position:relative;height:160px;width:100%;"><canvas id="gfc-piste"></canvas></div></div>`; }
+                if(pLabels.length > 0) { html += window.buildDashBlockHtml('defauts_pistes', 'Pannes par Piste', 'bar', 'gfc-piste', 170); }
                 html += `<div style="font-size:13px; font-weight:bold; margin-top:15px; border-bottom:2px solid #eee; padding-bottom:5px;">Liste détaillée des défauts :</div>`;
-                if (activeList.length === 0) { html += `<div style="font-size:12px; color:#7f8c8d; text-align:center; padding:10px;">Aucun défaut sur les canons affichés.</div>`; } else { activeList.sort((a,b) => { let wA = a.ticket.statut.includes('faire') ? 1 : 0; let wB = b.ticket.statut.includes('faire') ? 1 : 0; return wB - wA; }); let listHtml = activeList.map(item => { let color = item.ticket.statut.includes('faire') ? '#e74c3c' : '#f39c12'; return `<div style="border-left:3px solid ${color}; background:#fff; padding:8px; margin-top:8px; border-radius:4px; box-shadow:0 1px 2px rgba(0,0,0,0.05); font-size:12px; display:flex; justify-content:space-between; align-items:center;"><div><b style="color:#2c3e50;">Canon ${item.id}</b> <span style="color:#7f8c8d; font-size:10px;">(${item.piste})</span><br><span style="color:${color}; font-weight:bold;">${item.ticket.defaut}</span></div><button onclick="window.focusCannon('${item.id}');" style="background:none; border:1px solid #ddd; border-radius:4px; cursor:pointer; font-size:10px; padding:4px 8px;">Cibler 📍</button></div>`; }).join(''); html += `<div style="max-height: 40vh; overflow-y: auto; padding-right:5px;">${listHtml}</div>`; }
-                setTimeout(() => { let cPiste = document.getElementById('gfc-piste'); if(cPiste){ if(window.chartInstances['gfc-piste']) window.chartInstances['gfc-piste'].destroy(); window.chartInstances['gfc-piste'] = new Chart(cPiste.getContext('2d'), { type: 'bar', data: { labels: pLabels, datasets: [{ data: pData, backgroundColor: '#e74c3c', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: {font:{size:9}} } } } }); } }, 100);
+                if (activeList.length === 0) { html += `<div style="font-size:12px; color:#7f8c8d; text-align:center; padding:10px;">Aucun défaut sur les canons affichés.</div>`; } else { activeList.sort((a,b) => { let wA = a.ticket.statut.includes('faire') ? 1 : 0; let wB = b.ticket.statut.includes('faire') ? 1 : 0; return wB - wA; }); let listHtml = activeList.map(item => { let color = item.ticket.statut.includes('faire') ? '#e74c3c' : '#f39c12'; let search = `${item.id} ${item.piste} ${item.ticket.defaut}`.toLowerCase().replace(/"/g, '&quot;'); return `<div data-search="${search}" style="border-left:3px solid ${color}; background:#fff; padding:8px; margin-top:8px; border-radius:4px; box-shadow:0 1px 2px rgba(0,0,0,0.05); font-size:12px; display:flex; justify-content:space-between; align-items:center;"><div><b style="color:#2c3e50;">Canon ${item.id}</b> <span style="color:#7f8c8d; font-size:10px;">(${item.piste})</span><br><span style="color:${color}; font-weight:bold;">${item.ticket.defaut}</span></div><button onclick="window.focusCannon('${item.id}');" style="background:none; border:1px solid #ddd; border-radius:4px; cursor:pointer; font-size:10px; padding:4px 8px;">Cibler 📍</button></div>`; }).join(''); html += `<input type="text" class="card-filter" placeholder="🔍 Filtrer par canon, piste ou défaut..." oninput="window.filterCards('defauts-detail-list', this.value)"><div id="defauts-detail-list" style="max-height: 40vh; overflow-y: auto; padding-right:5px;">${listHtml}<div id="defauts-detail-list-empty" style="display:none; text-align:center; color:#7f8c8d; font-size:12px; padding:10px;">Aucun résultat.</div></div>`; }
+                setTimeout(() => { if(document.getElementById('gfc-piste')) window.drawDashChart('defauts_pistes', 'gfc-piste', pLabels, pData, pLabels.map(() => '#e74c3c'), 'bar', { scales: { x: { ticks: {font:{size:9}} } } }); }, 100);
             } else if (window.mainTheme === 'type' || window.mainTheme === 'repeteur' || window.mainTheme === 'transfo') {
                 let key = window.mainTheme === 'type' ? window.keyType : (window.mainTheme === 'repeteur' ? window.keyRep : window.keyTransfo); let title = window.mainTheme === 'type' ? 'Types de canon' : (window.mainTheme === 'repeteur' ? 'Répéteurs' : 'Transformateurs'); let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Analyse : " + title;
                 let counts = {}; visibleCannons.forEach(f => { let v = window.getV(f.properties, key); let label = (window.mainTheme === 'type') ? window.getTypeGroupLabel(v) : v; counts[label] = (counts[label] || 0) + 1; }); chartLabels = Object.keys(counts).sort(); chartData = chartLabels.map(k => counts[k]);
                 if (window.mainTheme === 'type') { chartColors = chartLabels.map(k => { let kL = k.toLowerCase(); if(["demak lenko", "demac lenko"].includes(kL)) return '#0000FF'; if(["sufag", "street", "taurus", "taurax", "peak"].includes(kL)) return '#008000'; return window.technoColors[window.getTypeGroupKey(kL)] || '#FFD700'; }); } else if (window.mainTheme === 'repeteur') { chartColors = chartLabels.map(k => window.repColors[k] || '#3498db'); } else { chartColors = chartLabels.map(k => window.transfoColors[k] || '#3498db'); }
-                html += `<div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Répartition par ${title}</div><div style="position:relative;height:200px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
+                html += window.buildDashBlockHtml(dashKey, 'Répartition par ' + title, 'bar', 'global-filter-chart', 210);
             } else if (window.mainTheme === 'historique') {
                 let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Analyse : Historique"; let s = window.saisonsList[window.histSeasonIdx]; let metricName = window.histMetric === 'eau' ? 'Eau (m³)' : (window.histMetric === 'air' ? 'Air' : 'Temps (h)'); let isSinglePiste = (window.currentPistes.length === 1 && window.currentPistes[0] !== 'all');
                 if (isSinglePiste || visibleCannons.length <= 40) {
                     let sorted = [...visibleCannons].sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id)); chartLabels = sorted.map(c => c.properties.id); chartData = sorted.map(c => c.properties.historique[s] ? c.properties.historique[s][window.histMetric] : 0); chartColors = '#3498db'; let pisteName = isSinglePiste ? window.currentPistes[0] : "Canons";
-                    html += `<div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Détail par canon (${metricName}) - ${pisteName}</div><div style="position:relative;height:250px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
+                    html += window.buildDashBlockHtml(dashKey, `Détail par canon (${metricName}) - ${pisteName}`, 'bar', 'global-filter-chart', 250);
                 } else {
                     let pisteTotals = {}; visibleCannons.forEach(f => { let p = window.getV(f.properties, window.keyPiste); let val = f.properties.historique[s] ? f.properties.historique[s][window.histMetric] : 0; pisteTotals[p] = (pisteTotals[p] || 0) + val; });
                     chartLabels = Object.keys(pisteTotals).sort(); chartData = chartLabels.map(k => pisteTotals[k]); chartColors = '#2980b9';
-                    html += `<div class="piste-chart-container"><div style="font-size:12px; font-weight:bold; text-align:center; color:#34495e; margin-bottom:10px;">Total ${metricName} par Piste (Saison ${s})</div><div style="position:relative;height:250px;width:100%;"><canvas id="global-filter-chart"></canvas></div></div>`;
+                    html += window.buildDashBlockHtml(dashKey, `Total ${metricName} par Piste (Saison ${s})`, 'bar', 'global-filter-chart', 250);
                 }
             } else if (window.mainTheme === 'suivi_entretien') {
                 let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Dashboard Maintenance"; let bYearCounts = {}; let vYearCounts = {}; let cDef = 0, cDec = 0, cPrev = 0, cOk = 0;
@@ -1384,19 +1941,19 @@
                     let bY = window.getV(p, "année de buse") || window.getV(p, "annee buse"); let vY = window.getV(p, "année vanne") || window.getV(p, "annee vanne"); if(bY && bY !== "N/A") bYearCounts[bY] = (bYearCounts[bY]||0)+1; if(vY && vY !== "N/A") vYearCounts[vY] = (vYearCounts[vY]||0)+1;
                 });
                 let topBuse = Object.entries(bYearCounts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} <span style="color:#7f8c8d">(${x[1]})</span>`).join('<br>'); let topVanne = Object.entries(vYearCounts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} <span style="color:#7f8c8d">(${x[1]})</span>`).join('<br>');
-                html += `<div style="display:flex; gap:10px; text-align:center; margin-bottom:15px;"><div style="flex:1; background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px;"><b style="font-size:20px; color:#27ae60;">${cDec}</b><br><span style="font-size:10px;">Déconnectés</span></div><div style="flex:1; background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px;"><b style="font-size:20px; color:#9b59b6;">${cPrev}</b><br><span style="font-size:10px;">Préventifs</span></div></div><div style="display:flex; gap:10px; margin-bottom:15px; font-size:11px;"><div style="flex:1; background:#fdfdfe; border:1px solid #e1e8ed; padding:10px; border-radius:6px;"><h4 style="margin:0 0 5px 0; color:#3498db;">Top Années Buse</h4>${topBuse || "Aucune info"}</div><div style="flex:1; background:#fdfdfe; border:1px solid #e1e8ed; padding:10px; border-radius:6px;"><h4 style="margin:0 0 5px 0; color:#e67e22;">Top Années Vanne</h4>${topVanne || "Aucune info"}</div></div><div class="piste-chart-container"><div style="text-align:center; font-weight:bold; font-size:12px; margin-bottom:10px;">Statuts Principaux (Priorité Haute)</div><div style="position:relative; height:180px; width:100%;"><canvas id="suivi-pie-global"></canvas></div></div>`;
+                html += `<div style="display:flex; gap:10px; text-align:center; margin-bottom:15px;"><div style="flex:1; background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px;"><b style="font-size:20px; color:#27ae60;">${cDec}</b><br><span style="font-size:10px;">Déconnectés</span></div><div style="flex:1; background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px;"><b style="font-size:20px; color:#9b59b6;">${cPrev}</b><br><span style="font-size:10px;">Préventifs</span></div></div><div style="display:flex; gap:10px; margin-bottom:15px; font-size:11px;"><div style="flex:1; background:#fdfdfe; border:1px solid #e1e8ed; padding:10px; border-radius:6px;"><h4 style="margin:0 0 5px 0; color:#3498db;">Top Années Buse</h4>${topBuse || "Aucune info"}</div><div style="flex:1; background:#fdfdfe; border:1px solid #e1e8ed; padding:10px; border-radius:6px;"><h4 style="margin:0 0 5px 0; color:#e67e22;">Top Années Vanne</h4>${topVanne || "Aucune info"}</div></div>` + window.buildDashBlockHtml('suivi_statuts', 'Statuts Principaux', 'doughnut', 'suivi-pie-global', 190);
                 let pistes = Array.from(window.columnValuesSets[window.keyPiste] || []).sort(); let selectHtml = `<div style="background:#f8f9fa; padding:15px; border-radius:6px; border:1px solid #ddd; margin-top:15px;"><div class="edit-label">Sélectionner une piste pour l'entretien :</div><select class="edit-input" style="margin-bottom:0;" onchange="window.renderSuiviList(this.value)"><option value="">-- Choisir une piste --</option>${pistes.map(p => `<option value="${p}">${p}</option>`).join('')}</select></div><div id="suivi-canons-container"></div>`;
                 document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html + selectHtml;
-                setTimeout(() => { if(window.chartInstances['suivi-pie-global']) window.chartInstances['suivi-pie-global'].destroy(); let canvas = document.getElementById('suivi-pie-global'); if (canvas) window.chartInstances['suivi-pie-global'] = new Chart(canvas.getContext('2d'), { type: 'doughnut', data: { labels: ['En Défaut', 'Préventif Usine', 'Déconnecté', 'Connecté (⚡)'], datasets: [{ data: [cDef, cPrev, cDec, cOk], backgroundColor: ['#e74c3c', '#9b59b6', '#27ae60', '#f1c40f'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels:{boxWidth:10, font:{size:10}} } } } }); }, 100); return;
+                setTimeout(() => { window.drawDashChart('suivi_statuts', 'suivi-pie-global', ['En Défaut', 'Préventif Usine', 'Déconnecté', 'Connecté (⚡)'], [cDef, cPrev, cDec, cOk], ['#e74c3c', '#9b59b6', '#27ae60', '#f1c40f'], 'doughnut'); }, 100); return;
             } else if (window.mainTheme === 'entretien_tete') {
                 let rt = document.getElementById('right-title'); if(rt) rt.innerText = "📊 Dashboard Entretien Buses"; window.renderEntretienDashboard('all'); return;
             }
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html;
 
             setTimeout(() => {
-                let ctx = document.getElementById('global-filter-chart'); if(!ctx) return;
-                if(window.chartInstances['global-filter-chart']) window.chartInstances['global-filter-chart'].destroy();
-                window.chartInstances['global-filter-chart'] = new Chart(ctx.getContext('2d'), { type: chartType, data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderRadius: chartType==='bar'?4:0 }] }, options: chartOptions, plugins: chartPlugins });
+                if(!document.getElementById('global-filter-chart')) return;
+                let cols = Array.isArray(chartColors) ? chartColors : chartLabels.map(() => chartColors);
+                window.drawDashChart(dashKey, 'global-filter-chart', chartLabels, chartData, cols, chartType, chartOptions, chartPlugins);
             }, 50);
         };
 
@@ -1407,14 +1964,15 @@
 
             let percent = total === 0 ? 0 : Math.round((fait / total) * 100); let pistes = Array.from(window.columnValuesSets[window.keyPiste] || []).sort();
             let selectHtml = `<div class="edit-label">Filtrer par piste :</div><select class="edit-input" style="margin-bottom:0;" onchange="window.renderEntretienDashboard(this.value)"><option value="all">Toutes les pistes (Global)</option>${pistes.map(p => `<option value="${p}" ${p === pisteFilter ? 'selected':''}>${p}</option>`).join('')}</select>`;
-            let html = `<div style="background:#f8f9fa; padding:15px; border-radius:6px; border:1px solid #ddd; margin-bottom:15px;">${selectHtml}<div style="text-align:center; margin-top:15px;"><b style="font-size:28px; color:#e67e22;">${percent}%</b><br><span style="font-size:12px; color:#7f8c8d; font-weight:bold; text-transform:uppercase;">Avancement (${fait}/${total} canons)</span><div style="width:100%; background:#ecf0f1; border-radius:8px; height:12px; margin-top:10px; overflow:hidden; border:1px solid #ddd;"><div style="width:${percent}%; background:#e67e22; height:100%; transition: width 0.5s;"></div></div></div></div><div style="max-height: 45vh; overflow-y: auto; padding-right:5px;">`;
+            let html = `<div style="background:#f8f9fa; padding:15px; border-radius:6px; border:1px solid #ddd; margin-bottom:15px;">${selectHtml}<div style="text-align:center; margin-top:15px;"><b style="font-size:28px; color:#e67e22;">${percent}%</b><br><span style="font-size:12px; color:#7f8c8d; font-weight:bold; text-transform:uppercase;">Avancement (${fait}/${total} canons)</span><div style="width:100%; background:#ecf0f1; border-radius:8px; height:12px; margin-top:10px; overflow:hidden; border:1px solid #ddd;"><div style="width:${percent}%; background:#e67e22; height:100%; transition: width 0.5s;"></div></div></div></div><input type="text" class="card-filter" placeholder="🔍 Filtrer par n° de canon ou statut..." oninput="window.filterCards('entretien-canon-list', this.value)"><div id="entretien-canon-list" style="max-height: 45vh; overflow-y: auto; padding-right:5px;">`;
 
             if(visibleCannons.length === 0) html += `<div style="text-align:center; color:#7f8c8d; padding:10px;">Aucun canon sur cette sélection.</div>`;
             visibleCannons.forEach(f => {
                  let id = f.properties.id; let bVal = window.getV(f.properties, "Buses").toLowerCase().trim(); let isF = (bVal === "oui" || bVal === "ok" || bVal === "true" || bVal === "x"); let color = isF ? '#e67e22' : '#bdc3c7'; let bgColor = isF ? '#fdf5e6' : '#f8f9fa';
-                 html += `<div style="border-left:4px solid ${color}; background:${bgColor}; padding:10px; margin-bottom:8px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;"><div><b style="color:#2c3e50;">Canon ${id}</b> <br><span style="font-size:10px; color:${color}; font-weight:bold;">${isF ? '✅ ENTRETIEN FAIT' : '⏳ À FAIRE'}</span></div><button onclick="window.focusCannon('${id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; font-size:10px; cursor:pointer;">Cibler 📍</button></div>`;
+                 let search = (id + ' ' + (isF ? 'entretien fait' : 'à faire')).toLowerCase();
+                 html += `<div data-search="${search}" style="border-left:4px solid ${color}; background:${bgColor}; padding:10px; margin-bottom:8px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;"><div><b style="color:#2c3e50;">Canon ${id}</b> <br><span style="font-size:10px; color:${color}; font-weight:bold;">${isF ? '✅ ENTRETIEN FAIT' : '⏳ À FAIRE'}</span></div><button onclick="window.focusCannon('${id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; font-size:10px; cursor:pointer;">Cibler 📍</button></div>`;
             });
-            html += `</div>`;
+            html += `<div id="entretien-canon-list-empty" style="display:none; text-align:center; color:#7f8c8d; font-size:12px; padding:10px;">Aucun résultat.</div></div>`;
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('selected-list').innerHTML = html;
         };
 
@@ -1423,7 +1981,7 @@
             if (!pisteFilter) { container.innerHTML = ""; return; }
             let canons = window.snowCannons.features.filter(f => window.getV(f.properties, window.keyPiste) === pisteFilter).sort((a,b) => parseInt(a.properties.id) - parseInt(b.properties.id));
             let st = window.appSettings || {colUrgent:'#e74c3c', colSuiviDec:'#27ae60', colSuiviPrev:'#9b59b6', colSuiviOk:'#f1c40f'};
-            let html = `<div style="max-height:45vh; overflow-y:auto; padding-right:5px; margin-top:10px;">`;
+            let html = `<input type="text" class="card-filter" placeholder="🔍 Filtrer par n° de canon ou statut..." oninput="window.filterCards('suivi-canon-list', this.value)"><div id="suivi-canon-list" style="max-height:45vh; overflow-y:auto; padding-right:5px; margin-top:10px;">`;
             if (canons.length === 0) html += `<div style="text-align:center; color:#7f8c8d; padding:10px;">Aucun canon sur cette piste.</div>`;
             canons.forEach(f => {
                 let p = f.properties; let id = p.id;
@@ -1433,9 +1991,9 @@
                 let isPrev = s[3] && s[3].toString().toLowerCase().trim() === "oui";
                 let label = hasFault ? "🚨 Défaut en cours" : (isPrev ? "🧰 Préventif Usine" : (isDec ? "🔌 Déconnecté" : "⚡ Connecté (RAS)"));
                 let color = hasFault ? st.colUrgent : (isPrev ? st.colSuiviPrev : (isDec ? st.colSuiviDec : st.colSuiviOk));
-                html += `<div style="border-left:4px solid ${color}; background:#fff; padding:10px; margin-bottom:8px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.08); display:flex; justify-content:space-between; align-items:center;"><div><b style="color:#2c3e50;">Canon ${id}</b><br><span style="font-size:10px; color:${color}; font-weight:bold;">${label}</span></div><button onclick="window.focusCannon('${id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; font-size:10px; cursor:pointer;">Cibler 📍</button></div>`;
+                html += `<div data-search="${(id + ' ' + label).toLowerCase()}" style="border-left:4px solid ${color}; background:#fff; padding:10px; margin-bottom:8px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.08); display:flex; justify-content:space-between; align-items:center;"><div><b style="color:#2c3e50;">Canon ${id}</b><br><span style="font-size:10px; color:${color}; font-weight:bold;">${label}</span></div><button onclick="window.focusCannon('${id}')" style="background:none; border:1px solid #ddd; border-radius:4px; padding:4px 8px; font-size:10px; cursor:pointer;">Cibler 📍</button></div>`;
             });
-            html += `</div>`;
+            html += `<div id="suivi-canon-list-empty" style="display:none; text-align:center; color:#7f8c8d; font-size:12px; padding:10px;">Aucun résultat.</div></div>`;
             container.innerHTML = html;
         };
 
@@ -1463,10 +2021,22 @@
             return ok;
         };
 
+        // CHAPITRE 4.E.0.b — La bascule Carte/Liste est pilotée depuis le bandeau de gauche, juste sous
+        // le titre du thème sélectionné (deux boutons), et non plus depuis les Paramètres.
         window.setViewMode = function(theme, mode) {
             if (!window.appSettings.viewMode) window.appSettings.viewMode = {};
             window.appSettings.viewMode[theme] = mode;
+            try { localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings)); } catch(e) {}
             if (window.mainTheme === theme) window.applyThemeViewMode();
+            window.renderViewToggles();
+        };
+
+        window.renderViewToggles = function() {
+            document.querySelectorAll('.view-toggle-wrap').forEach(w => {
+                let th = w.getAttribute('data-vt');
+                let mode = (window.appSettings.viewMode && window.appSettings.viewMode[th]) || 'map';
+                w.innerHTML = `<button class="view-toggle-btn ${mode === 'map' ? 'active' : ''}" onclick="window.setViewMode('${th}','map')"><i class="fa-solid fa-map-location-dot"></i> Carte</button><button class="view-toggle-btn ${mode === 'list' ? 'active' : ''}" onclick="window.setViewMode('${th}','list')"><i class="fa-solid fa-table-list"></i> Liste</button>`;
+            });
         };
 
         window.applyThemeViewMode = function() {
@@ -1570,7 +2140,7 @@
 
             if (filtered.length === 0) { html += `<div style="text-align:center; color:#7f8c8d; padding:30px; background:#fff; border-radius:8px; border:1px solid #eee;">Aucun canon ne correspond aux filtres.</div>`; }
             else {
-                html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">${label}</th><th></th></tr></thead><tbody>`;
+                html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">${label}</th><th></th></tr></thead><tbody>`;
                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
                     html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleAttributeRow('${r.id}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${accentColor}20; color:${accentColor}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.value}</span></td><td style="padding:10px; text-align:right;"><span class="list-row-arrow" id="arrow-attr-${r.id}">▼</span></td></tr>`;
                     html += `<tr class="list-expand-row" id="attr-expand-row-${r.id}" style="display:none;"><td colspan="4" style="padding:0; background:#fafbfc; border-top:1px solid #eee;"><div id="attr-edit-${r.id}" style="padding:12px;"></div></td></tr>`;
@@ -1634,7 +2204,7 @@
 
             if (filtered.length === 0) { html += `<div style="text-align:center; color:#7f8c8d; padding:30px; background:#fff; border-radius:8px; border:1px solid #eee;">Aucun ticket ne correspond aux filtres (pensez aussi aux filtres Piste/Type dans le menu gauche).</div>`; }
             else {
-                html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Défaut</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Date</th><th></th></tr></thead><tbody>`;
+                html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Défaut</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Date</th><th></th></tr></thead><tbody>`;
                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
                     let color = r.statut.includes('faire') ? (s.colUrgent || '#e74c3c') : (s.colEnCours || '#f39c12');
                     let safeDef = r.defaut.replace(/[^a-zA-Z0-9]/g, ""); let safeDefJs = r.defaut.replace(/'/g, "\\'");
@@ -1694,7 +2264,7 @@
 
             if (filtered.length === 0) { html += `<div style="text-align:center; color:#7f8c8d; padding:30px; background:#fff; border-radius:8px; border:1px solid #eee;">Aucun canon ne correspond aux filtres.</div>`; }
             else {
-                html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Remarque</th><th></th></tr></thead><tbody>`;
+                html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Remarque</th><th></th></tr></thead><tbody>`;
                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
                     let safePiste = (r.piste || '').replace(/'/g, "\\'"); let safeRem = (r.remarque || '').replace(/'/g, "\\'").replace(/\n/g, ' ');
                     html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleSuiviRow('${r.id}', '${safePiste}', '${r.cat}', '${safeRem}')"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${colors[r.cat]}20; color:${colors[r.cat]}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${labels[r.cat]}</span></td><td style="padding:10px; color:#888;">${r.remarque}</td><td style="padding:10px; text-align:right;"><span class="list-row-arrow" id="arrow-suivi-${r.id}">▼</span></td></tr>`;
@@ -1725,7 +2295,7 @@
                         <label style="cursor:pointer;"><input type="checkbox" id="chk-dec-list-${id}" ${isDec ? 'checked' : ''}> Déconnexion</label>
                         <label style="cursor:pointer;"><input type="checkbox" id="chk-prev-list-${id}" ${isPrev ? 'checked' : ''}> Préventif Usine</label>
                     </div>
-                    <input type="text" id="rem-list-${id}" class="edit-input" value="${(remarque || '').replace(/"/g, '&quot;')}" placeholder="Remarque..." style="margin-bottom:0;">
+                    <input type="text" id="rem-list-${id}" class="edit-input" data-sug="remarque" value="${(remarque || '').replace(/"/g, '&quot;')}" placeholder="Remarque..." style="margin-bottom:0;">
                 </div>
                 <div style="background:#fdfdfe; padding:10px; border-radius:6px; border:1px solid #ccc; font-size:12px; margin-bottom:10px;">
                     <h4 style="margin:0 0 8px 0; color:#2c3e50;">📊 Données Techniques</h4><b>Modèle :</b> ${p ? window.getV(p, window.keyType) : 'N/A'}<br><b>Année Buse :</b> ${bY}<br><b>Année Vanne AD :</b> ${vAdY}<br><b>Année Vanne :</b> ${vY}
@@ -1769,7 +2339,7 @@
 
             if (filtered.length === 0) { html += `<div style="text-align:center; color:#7f8c8d; padding:30px; background:#fff; border-radius:8px; border:1px solid #eee;">Aucun canon ne correspond aux filtres.</div>`; }
             else {
-                html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Année</th><th></th></tr></thead><tbody>`;
+                html += `<div style="background:#fff; border-radius:8px; border:1px solid #eee; overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#f8f9fa; text-align:left;"><th style="padding:10px;">Canon</th><th style="padding:10px;">Piste</th><th style="padding:10px;">Statut</th><th style="padding:10px;">Année</th><th></th></tr></thead><tbody>`;
                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id)).forEach(r => {
                     let color = r.fait ? (s.colTeteOk || '#e67e22') : (s.colTeteWait || '#bdc3c7');
                     html += `<tr class="list-row" style="border-top:1px solid #f0f0f0; cursor:pointer;" onclick="window.toggleEntretienRow('${r.id}', ${r.fait})"><td style="padding:10px; font-weight:bold;">${r.id}</td><td style="padding:10px;">${r.piste}</td><td style="padding:10px;"><span style="background:${color}20; color:${color}; padding:3px 8px; border-radius:10px; font-weight:bold; font-size:10px;">${r.fait ? '✅ FAIT' : '⏳ À FAIRE'}</span></td><td style="padding:10px; color:#888;">${r.annee}</td><td style="padding:10px; text-align:right;"><span class="list-row-arrow" id="arrow-entretien-${r.id}">▼</span></td></tr>`;
@@ -1898,6 +2468,7 @@
                 const idxCTitre = cHeaders.findIndex(h => h.includes("titre")); const idxCDebut = cHeaders.findIndex(h => h.includes("debut") || h.includes("début"));
                 const idxCHeure = cHeaders.findIndex(h => h.includes("heure")); const idxCFin = cHeaders.findIndex(h => h.includes("fin"));
                 const idxCCanon = cHeaders.findIndex(h => h.includes("canon")); const idxCRemarque = cHeaders.findIndex(h => h.includes("remarque"));
+                const idxCCouleur = cHeaders.findIndex(h => h.includes("couleur") || h.includes("color"));
                 window.calendarEvents = data.calendrier.slice(1).filter(row => row && row.length).map(row => ({
                     id: idxCId > -1 && row[idxCId] != null ? row[idxCId].toString() : "",
                     type: idxCType > -1 && row[idxCType] != null ? row[idxCType].toString().toLowerCase().trim() : "rendez-vous",
@@ -1906,7 +2477,8 @@
                     heure: idxCHeure > -1 && row[idxCHeure] != null ? row[idxCHeure].toString() : "",
                     dateFin: idxCFin > -1 && row[idxCFin] != null ? row[idxCFin].toString() : "",
                     canon: idxCCanon > -1 && row[idxCCanon] != null ? row[idxCCanon].toString() : "",
-                    remarque: idxCRemarque > -1 && row[idxCRemarque] != null ? row[idxCRemarque].toString() : ""
+                    remarque: idxCRemarque > -1 && row[idxCRemarque] != null ? row[idxCRemarque].toString() : "",
+                    couleur: idxCCouleur > -1 && row[idxCCouleur] != null ? row[idxCCouleur].toString().trim() : ""
                 })).filter(ev => ev.id && ev.dateDebut);
             }
 
@@ -1925,7 +2497,7 @@
             Object.values(dictGeneral).forEach(canon => { if (canon.lat !== undefined && canon.lng !== undefined && !isNaN(canon.lat) && !isNaN(canon.lng) && canon.lat !== 0) { window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); } });
 
             let ls = document.getElementById('loading-spinner'); if(ls) ls.style.display = 'none'; let lt = document.getElementById('loading-title'); if(lt) { lt.innerText = "✅ Chargement Réussi !"; lt.style.color = "#27ae60"; } let lst = document.getElementById('loading-step'); if(lst) lst.style.display = 'none'; let ld = document.getElementById('loading-desc'); if(ld) ld.innerHTML = `${window.snowCannons.features.length} canons placés.`;
-            setTimeout(() => { window.initAppUI(); if(window.initDriveKMZList) window.initDriveKMZList(); if(window.loadSettingsLocally) window.loadSettingsLocally(); let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; }, 800);
+            setTimeout(() => { window.initAppUI(); if(window.initDriveKMZList) window.initDriveKMZList(); if(window.loadSettingsLocally) window.loadSettingsLocally(); if(window.initMobileDock) window.initMobileDock(); if (window.innerWidth <= 768) { let sb = document.getElementById('sidebar'); if (sb) sb.classList.add('collapsed'); } let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; }, 800);
         };
 
         /* ========================================================================= */
@@ -1950,6 +2522,10 @@
                 for (let i = 1; i < window.rawStock.length; i++) { let row = window.rawStock[i]; if (!row || row.length === 0) continue; let ref = (idxRef !== -1 && row[idxRef]) ? row[idxRef].toString().trim() : ""; let prod = (idxProd !== -1 && row[idxProd]) ? row[idxProd].toString().trim() : ""; if (prod) { let optionValue = ref ? `[${ref}] ${prod}` : prod; stockDatalistHtml += `<option value="${optionValue.replace(/"/g, '&quot;')}"></option>`; } }
             }
             stockDatalistHtml += `</datalist>`; if (dlContainer) dlContainer.innerHTML += stockDatalistHtml;
+
+            if (window.buildSuggestionSources) window.buildSuggestionSources();
+            if (window.initSuggestEngine) window.initSuggestEngine();
+            if (window.renderSnowZones) window.renderSnowZones();
 
             let sld = document.getElementById('season-slider'); if (window.saisonsList.length > 0 && sld) { sld.max = window.saisonsList.length - 1; sld.value = window.histSeasonIdx; let sdisp = document.getElementById('season-display'); if(sdisp) sdisp.innerText = window.saisonsList[window.histSeasonIdx]; }
 
@@ -1995,9 +2571,15 @@
                     document.querySelectorAll('.radio-card').forEach(el => { el.style.borderBottomLeftRadius = '6px'; el.style.borderBottomRightRadius = '6px'; el.style.marginBottom = '8px'; el.style.borderColor = '#e1e8ed'; });
                     let activeDetails = document.getElementById('details-' + window.mainTheme); let activeLabel = document.getElementById('lbl-' + window.mainTheme);
                     if (activeDetails && activeLabel) { activeDetails.style.display = 'block'; activeLabel.style.borderBottomLeftRadius = '0'; activeLabel.style.borderBottomRightRadius = '0'; activeLabel.style.marginBottom = '0'; if(window.mainTheme === 'stock') activeLabel.style.borderColor = '#16a085'; else if(window.mainTheme === 'atelier') activeLabel.style.borderColor = '#8e44ad'; else activeLabel.style.borderColor = '#3498db'; }
-                    if(window.mainTheme === 'atelier') { document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'block'; document.getElementById('stock-workspace').style.display = 'none'; window.closeRightSidebar(); document.getElementById('sidebar').classList.add('collapsed'); if(window.renderAtelierWorkspace) window.renderAtelierWorkspace(); }
-                    else if(window.mainTheme === 'stock') { document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'block'; window.closeRightSidebar(); document.getElementById('sidebar').classList.add('collapsed'); if(window.renderStockWorkspace) window.renderStockWorkspace(); }
+                    // Le plan de travail "liste" est un calque plein écran : sans ce masquage explicite,
+                    // il restait au-dessus des ateliers Stock/Banc d'essais qui semblaient alors vides.
+                    let listWsEl = document.getElementById('theme-list-workspace');
+                    if(window.mainTheme === 'atelier') { if(listWsEl) listWsEl.style.display = 'none'; document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'block'; document.getElementById('stock-workspace').style.display = 'none'; window.closeRightSidebar(); if(window.renderAtelierWorkspace) window.renderAtelierWorkspace(); }
+                    else if(window.mainTheme === 'stock') { if(listWsEl) listWsEl.style.display = 'none'; document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'block'; window.closeRightSidebar(); if(window.renderStockWorkspace) window.renderStockWorkspace(); }
                     else { document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'none'; if(window.mainTheme === 'historique') window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.applyThemeViewMode(); if (window.selectedCannonsMap.size > 0) { window.renderSelectionPanel(); } else { window.triggerGlobalFilterChart(); } }
+                    if(window.renderViewToggles) window.renderViewToggles();
+                    // Repli automatique du menu à chaque choix de thème (mobile ET PC)
+                    document.getElementById('sidebar').classList.add('collapsed');
                 });
             });
 
@@ -2007,6 +2589,8 @@
 
             if(window.map) {
                 window.map.on('click', function(e) {
+                    if (window.zoneDrawMode) { window.addZonePoint(e.latlng); return; }
+                    if (window.zonePickMode) return;
                     let amc = document.getElementById('allow-move-chk');
                     if (window.currentlyEditingId && amc && amc.checked) { let elat = document.getElementById('edit-lat'); if(elat) elat.value = e.latlng.lat.toFixed(7); let elng = document.getElementById('edit-lng'); if(elng) elng.value = e.latlng.lng.toFixed(7); let layer = window.selectedCannonsMap.get(window.currentlyEditingId); if(layer) { layer.setLatLng(e.latlng); layer.feature.geometry.coordinates = [e.latlng.lng, e.latlng.lat]; } } else if (!window.currentlyEditingId) { window.closeRightSidebar(); }
                 });
@@ -3080,6 +3664,212 @@
         };
 
         /* ========================================================================= */
+        /* CHAPITRE 7.G : ZONES DE NEIGE — DESSIN, SURFACE ET VOLUME                  */
+        /* ------------------------------------------------------------------------- */
+        /* Surface calculée par la formule d'aire sphérique (même approche que        */
+        /* L.GeometryUtil.geodesicArea) : exacte à l'échelle d'une piste, contrairement*/
+        /* à un calcul plan qui se dégraderait avec la latitude.                       */
+        /* Volume = surface × épaisseur ; l'équivalent eau applique la densité saisie. */
+        /* ========================================================================= */
+        window.snowZones = [];
+        window.zoneDrawMode = false; window.zonePickMode = false;
+        window.zoneDraftPoints = []; window.zoneDraftLayer = null; window.zoneSeq = 0;
+
+        window.geodesicArea = function(latlngs) {
+            const R = 6378137, D2R = Math.PI / 180;
+            let n = latlngs.length; if (n < 3) return 0;
+            let area = 0;
+            for (let i = 0; i < n; i++) {
+                let p1 = latlngs[i], p2 = latlngs[(i + 1) % n];
+                area += (p2.lng - p1.lng) * D2R * (2 + Math.sin(p1.lat * D2R) + Math.sin(p2.lat * D2R));
+            }
+            return Math.abs(area * R * R / 2);
+        };
+
+        window.setZoneHint = function(txt) {
+            let h = document.getElementById('zone-draw-hint'); if (!h) return;
+            h.innerHTML = txt || ''; h.style.display = txt ? 'block' : 'none';
+        };
+
+        window.toggleZoneDraw = function() {
+            if (window.zonePickMode) window.toggleZonePickKmz();
+            window.zoneDrawMode = !window.zoneDrawMode;
+            let btn = document.getElementById('btn-draw-zone');
+            if (window.zoneDrawMode) {
+                window.zoneDraftPoints = [];
+                if (btn) { btn.style.background = '#c0392b'; btn.innerHTML = '<i class="fa-solid fa-xmark"></i> Arrêter'; }
+                if (window.map) window.map.getContainer().style.cursor = 'crosshair';
+                window.setZoneHint(`Cliquez sur la carte pour poser les sommets (3 minimum).<div style="display:flex; gap:6px; margin-top:6px;"><button class="dash-mini-btn" onclick="window.finishZone()">✅ Terminer</button><button class="dash-mini-btn" onclick="window.undoZonePoint()">↶ Annuler le point</button></div>`);
+                let sb = document.getElementById('sidebar'); if (sb && window.innerWidth <= 768) sb.classList.add('collapsed');
+            } else {
+                if (btn) { btn.style.background = '#2980b9'; btn.innerHTML = '<i class="fa-solid fa-draw-polygon"></i> Dessiner'; }
+                if (window.map) window.map.getContainer().style.cursor = '';
+                window.clearZoneDraft(); window.setZoneHint('');
+            }
+        };
+
+        window.clearZoneDraft = function() {
+            if (window.zoneDraftLayer && window.map) window.map.removeLayer(window.zoneDraftLayer);
+            window.zoneDraftLayer = null; window.zoneDraftPoints = [];
+        };
+
+        window.addZonePoint = function(latlng) {
+            window.zoneDraftPoints.push(latlng);
+            window.redrawZoneDraft();
+        };
+
+        window.undoZonePoint = function() { window.zoneDraftPoints.pop(); window.redrawZoneDraft(); };
+
+        window.redrawZoneDraft = function() {
+            if (!window.map) return;
+            if (window.zoneDraftLayer) window.map.removeLayer(window.zoneDraftLayer);
+            window.zoneDraftLayer = null;
+            let pts = window.zoneDraftPoints;
+            if (pts.length === 0) return;
+            window.zoneDraftLayer = (pts.length < 3)
+                ? L.polyline(pts, { color: '#2980b9', weight: 3, dashArray: '5,5' })
+                : L.polygon(pts, { color: '#2980b9', weight: 3, fillColor: '#3498db', fillOpacity: 0.25, dashArray: '5,5' });
+            window.zoneDraftLayer.addTo(window.map);
+            if (pts.length >= 3) {
+                let a = window.geodesicArea(pts);
+                window.setZoneHint(`Surface en cours : <b>${window.fmtArea(a)}</b><div style="display:flex; gap:6px; margin-top:6px;"><button class="dash-mini-btn" onclick="window.finishZone()">✅ Terminer</button><button class="dash-mini-btn" onclick="window.undoZonePoint()">↶ Annuler le point</button></div>`);
+            }
+        };
+
+        window.finishZone = function() {
+            if (window.zoneDraftPoints.length < 3) { alert("Il faut au moins 3 points pour délimiter une zone."); return; }
+            window.addSnowZone(window.zoneDraftPoints.slice(), 'Zone dessinée');
+            window.clearZoneDraft();
+            if (window.zoneDrawMode) window.toggleZoneDraw();
+        };
+
+        window.addSnowZone = function(latlngs, baseName) {
+            window.zoneSeq++;
+            let color = window.defaultColors[(window.zoneSeq - 1) % window.defaultColors.length];
+            let layer = L.polygon(latlngs, { color: color, weight: 2, fillColor: color, fillOpacity: 0.3 });
+            if (window.map) layer.addTo(window.map);
+            let zone = { id: 'z' + window.zoneSeq, name: baseName + ' ' + window.zoneSeq, latlngs: latlngs, area: window.geodesicArea(latlngs), thickness: 30, layer: layer };
+            layer.bindTooltip(zone.name, { permanent: false });
+            window.snowZones.push(zone);
+            window.renderSnowZones();
+            let sec = document.getElementById('snow-zones-list'); if (sec) sec.scrollIntoView({ block: 'nearest' });
+        };
+
+        window.fmtArea = function(m2) {
+            if (m2 >= 10000) return (m2 / 10000).toFixed(2).replace('.', ',') + ' ha (' + Math.round(m2).toLocaleString('fr-FR') + ' m²)';
+            return Math.round(m2).toLocaleString('fr-FR') + ' m²';
+        };
+
+        window.setZoneThickness = function(id, val) {
+            let z = window.snowZones.find(x => x.id === id); if (!z) return;
+            z.thickness = parseInt(val) || 0;
+            let vEl = document.getElementById('zone-vol-' + id);
+            let tEl = document.getElementById('zone-th-' + id);
+            if (tEl) tEl.innerText = z.thickness + ' cm';
+            if (vEl) vEl.innerText = Math.round(z.area * z.thickness / 100).toLocaleString('fr-FR') + ' m³';
+            window.renderSnowZonesTotal();
+        };
+
+        window.deleteSnowZone = function(id) {
+            let i = window.snowZones.findIndex(x => x.id === id); if (i === -1) return;
+            if (window.map && window.snowZones[i].layer) window.map.removeLayer(window.snowZones[i].layer);
+            window.snowZones.splice(i, 1);
+            window.renderSnowZones();
+        };
+
+        window.zoomToSnowZone = function(id) {
+            let z = window.snowZones.find(x => x.id === id); if (!z || !window.map || !z.layer) return;
+            window.map.fitBounds(z.layer.getBounds(), { padding: [30, 30] });
+        };
+
+        window.renderSnowZones = function() {
+            let host = document.getElementById('snow-zones-list'); if (!host) return;
+            if (window.snowZones.length === 0) { host.innerHTML = `<i style="font-size:11px; color:#95a5a6;">Aucune zone pour l'instant.</i>`; window.renderSnowZonesTotal(); return; }
+            host.innerHTML = window.snowZones.map(z => {
+                let vol = Math.round(z.area * z.thickness / 100);
+                return `<div style="background:#fff; border:1px solid #e6ebf0; border-radius:6px; padding:10px; margin-bottom:8px;">
+                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                        <span style="width:10px; height:10px; border-radius:2px; background:${z.layer.options.color}; flex-shrink:0;"></span>
+                        <b style="font-size:12px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${z.name}</b>
+                        <button class="dash-mini-btn" title="Centrer" onclick="window.zoomToSnowZone('${z.id}')">🎯</button>
+                        <button class="dash-mini-btn" title="Supprimer" onclick="window.deleteSnowZone('${z.id}')">🗑️</button>
+                    </div>
+                    <div style="font-size:11px; color:#7f8c8d; margin-bottom:6px;">Surface : <b style="color:#2c3e50;">${window.fmtArea(z.area)}</b></div>
+                    <div class="slider-label" style="display:flex; justify-content:space-between; font-size:11px;">Épaisseur de neige <span id="zone-th-${z.id}" class="val-badge">${z.thickness} cm</span></div>
+                    <input type="range" min="0" max="100" step="1" value="${z.thickness}" style="width:100%;" oninput="window.setZoneThickness('${z.id}', this.value)">
+                    <div style="text-align:center; background:#eaf4fd; border-radius:5px; padding:6px; margin-top:6px;"><span style="font-size:16px; font-weight:bold; color:#2471a3;" id="zone-vol-${z.id}">${vol.toLocaleString('fr-FR')} m³</span><br><span style="font-size:10px; color:#7f8c8d;">VOLUME DE NEIGE</span></div>
+                </div>`;
+            }).join('');
+            window.renderSnowZonesTotal();
+        };
+
+        window.renderSnowZonesTotal = function() {
+            let host = document.getElementById('snow-zones-total'); if (!host) return;
+            if (window.snowZones.length === 0) { host.innerHTML = ''; return; }
+            let dEl = document.getElementById('snow-density');
+            let density = dEl ? (parseFloat(dEl.value) || 400) : 400;
+            let totalArea = window.snowZones.reduce((s, z) => s + z.area, 0);
+            let totalVol = window.snowZones.reduce((s, z) => s + z.area * z.thickness / 100, 0);
+            let water = totalVol * density / 1000;
+            host.innerHTML = `<div style="background:#2c3e50; color:#fff; border-radius:6px; padding:10px; margin-top:5px; font-size:11px;">
+                <div style="display:flex; justify-content:space-between;"><span>Surface totale</span><b>${window.fmtArea(totalArea)}</b></div>
+                <div style="display:flex; justify-content:space-between; margin-top:4px;"><span>Volume de neige</span><b>${Math.round(totalVol).toLocaleString('fr-FR')} m³</b></div>
+                <div style="display:flex; justify-content:space-between; margin-top:4px;"><span>Équivalent eau (${density} kg/m³)</span><b>${Math.round(water).toLocaleString('fr-FR')} m³</b></div>
+                <button class="dash-mini-btn" style="width:100%; margin-top:8px;" onclick="window.clearAllSnowZones()">Tout effacer</button>
+            </div>`;
+        };
+
+        window.clearAllSnowZones = function() {
+            if (!confirm("Supprimer toutes les zones ?")) return;
+            window.snowZones.forEach(z => { if (window.map && z.layer) window.map.removeLayer(z.layer); });
+            window.snowZones = []; window.renderSnowZones();
+        };
+
+        // Reprise d'un contour existant : n'importe quel polygone d'un calque KMZ affiché devient une
+        // zone mesurable d'un simple clic.
+        window.toggleZonePickKmz = function() {
+            if (window.zoneDrawMode) window.toggleZoneDraw();
+            window.zonePickMode = !window.zonePickMode;
+            let btn = document.getElementById('btn-pick-kmz');
+            if (window.zonePickMode) {
+                if (btn) { btn.style.background = '#c0392b'; btn.innerHTML = '<i class="fa-solid fa-xmark"></i> Arrêter'; }
+                if (window.map) window.map.getContainer().style.cursor = 'copy';
+                window.setZoneHint("Cliquez sur un contour d'un calque KMZ affiché pour en mesurer la surface.");
+                window.bindKmzPickHandlers(true);
+                let sb = document.getElementById('sidebar'); if (sb && window.innerWidth <= 768) sb.classList.add('collapsed');
+            } else {
+                if (btn) { btn.style.background = '#8e44ad'; btn.innerHTML = '<i class="fa-solid fa-vector-square"></i> Contour KMZ'; }
+                if (window.map) window.map.getContainer().style.cursor = '';
+                window.setZoneHint(''); window.bindKmzPickHandlers(false);
+            }
+        };
+
+        window.collectKmzGroups = function() {
+            let groups = [];
+            Object.keys(window.externalLayers || {}).forEach(k => { let e = window.externalLayers[k]; if (e && e.layer) groups.push({ layer: e.layer, name: e.name }); });
+            (window.cloudKmzLayers || []).forEach(c => { if (c.leafletLayer) groups.push({ layer: c.leafletLayer, name: c.nom }); });
+            return groups;
+        };
+
+        window.onKmzPickClick = function(e) {
+            let sub = e.layer || e.target;
+            let ll = (sub && sub.getLatLngs) ? sub.getLatLngs() : null;
+            if (!ll) { alert("Ce tracé n'est pas une surface fermée."); return; }
+            let ring = Array.isArray(ll[0]) ? (Array.isArray(ll[0][0]) ? ll[0][0] : ll[0]) : ll;
+            if (!ring || ring.length < 3) { alert("Ce tracé n'est pas une surface fermée."); return; }
+            L.DomEvent.stopPropagation(e);
+            window.addSnowZone(ring.map(p => L.latLng(p.lat, p.lng)), 'Contour KMZ');
+            window.toggleZonePickKmz();
+        };
+
+        window.bindKmzPickHandlers = function(on) {
+            window.collectKmzGroups().forEach(g => {
+                if (on) g.layer.on('click', window.onKmzPickClick);
+                else g.layer.off('click', window.onKmzPickClick);
+            });
+        };
+
+        /* ========================================================================= */
         /* CHAPITRE 8 : CENTRE EXPERT BI (GRAPHIQUES PERSONNALISÉS)                   */
         /* ========================================================================= */
         window.biCurrentData = [];
@@ -3658,10 +4448,20 @@
         // points. Les périodes de travail multi-jours sont répétées chaque jour qu'elles couvrent
         // (pas une barre unique qui s'étire sur plusieurs cases — approximation volontaire pour rester
         // simple — mais le rendu donne bien l'impression d'une plage continue).
+        // Couleur libre par événement (colonne "couleur" de l'onglet Calendrier) ; à défaut, la couleur
+        // historique du type : bleu pour un rendez-vous, violet pour une période de travail.
+        window.calDefaultColors = { 'rendez-vous': '#3498db', 'periode_travail': '#9b59b6' };
+        window.calPalette = ['#3498db', '#9b59b6', '#e67e22', '#27ae60', '#e74c3c', '#f1c40f', '#16a085', '#2c3e50'];
+        window.getEventColor = function(ev) {
+            let c = (ev && ev.couleur || '').toString().trim();
+            if (/^#[0-9a-fA-F]{6}$/.test(c)) return c;
+            return window.calDefaultColors[ev && ev.type] || '#3498db';
+        };
+
         window.buildCalendarDayBars = function(y, m, day, evs) {
             let items = [];
-            evs.rdv.forEach(ev => items.push({ color: '#3498db', icon: '📌', label: ev.titre, onclick: `window.editCalendarEvent('${ev.id}')` }));
-            evs.periode.forEach(ev => items.push({ color: '#9b59b6', icon: '🧰', label: ev.titre, onclick: `window.editCalendarEvent('${ev.id}')` }));
+            evs.rdv.forEach(ev => items.push({ color: window.getEventColor(ev), icon: '📌', label: ev.titre, onclick: `window.editCalendarEvent('${ev.id}')` }));
+            evs.periode.forEach(ev => items.push({ color: window.getEventColor(ev), icon: '🧰', label: ev.titre, onclick: `window.editCalendarEvent('${ev.id}')` }));
             evs.ticketsAFaire.forEach(t => items.push({ color: '#e74c3c', icon: '🚨', label: 'C' + t.idCanon + ' ' + t.defaut, onclick: `window.closeCalendar(); window.focusCannon('${t.idCanon}');` }));
             evs.ticketsFaits.forEach(t => items.push({ color: '#27ae60', icon: '✅', label: 'C' + t.idCanon + ' ' + t.defaut, onclick: `window.closeCalendar(); window.focusCannon('${t.idCanon}');` }));
 
@@ -3697,12 +4497,13 @@
 
         window.openCalendarDay = function(y, m, day) {
             let dateObj = new Date(y, m, day);
+            window.calendarSelectedDate = dateObj;
             let evs = window.getEventsForDate(dateObj);
             let dateStr = String(day).padStart(2, '0') + '/' + String(m + 1).padStart(2, '0') + '/' + y;
             let panel = document.getElementById('calendar-day-panel'); if (!panel) return;
 
             let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><b style="font-size:14px;">${dateStr}</b><button onclick="window.closeCalendarDayPanel()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#999;">×</button></div>`;
-            const renderEvList = (list, icon, color) => list.map(ev => `<div style="border-left:3px solid ${color}; background:#fff; padding:8px 10px; margin-bottom:6px; border-radius:4px; font-size:12px; cursor:pointer;" onclick="window.editCalendarEvent('${ev.id}')"><b>${icon} ${ev.titre}</b>${ev.heure ? ` <span style="color:#888;">à ${ev.heure}</span>` : ''}${ev.canon ? `<br><span style="color:#888;">Canon N° ${ev.canon}</span>` : ''}${ev.remarque ? `<br><span style="color:#888; font-style:italic;">${ev.remarque}</span>` : ''}</div>`).join('');
+            const renderEvList = (list, icon, color) => list.map(ev => `<div style="border-left:4px solid ${window.getEventColor(ev)}; background:#fff; padding:10px 12px; margin-bottom:6px; border-radius:4px; font-size:12px; cursor:pointer;" onclick="window.editCalendarEvent('${ev.id}')"><b>${icon} ${ev.titre}</b>${ev.heure ? ` <span style="color:#888;">à ${ev.heure}</span>` : ''}${ev.canon ? `<br><span style="color:#888;">Canon N° ${ev.canon}</span>` : ''}${ev.remarque ? `<br><span style="color:#888; font-style:italic;">${ev.remarque}</span>` : ''}</div>`).join('');
             const renderTicketList = (list, icon, color) => list.map(t => `<div style="border-left:3px solid ${color}; background:#fff; padding:8px 10px; margin-bottom:6px; border-radius:4px; font-size:12px; cursor:pointer;" onclick="window.closeCalendar(); window.focusCannon('${t.idCanon}');"><b>${icon} Canon ${t.idCanon}</b><br><span style="color:#888;">${t.defaut}</span></div>`).join('');
 
             html += renderEvList(evs.rdv, '📌', '#3498db');
@@ -3710,8 +4511,9 @@
             html += renderTicketList(evs.ticketsAFaire, '🚨', '#e74c3c');
             html += renderTicketList(evs.ticketsFaits, '✅', '#27ae60');
             if (!evs.rdv.length && !evs.periode.length && !evs.ticketsAFaire.length && !evs.ticketsFaits.length) html += `<p style="color:#999; font-size:12px;">Aucun événement ce jour.</p>`;
-            html += `<button class="btn-action-primary" style="margin-top:10px; background:#3498db;" onclick="window.openCalendarEventForm(null, '${dateStr}')"><i class="fa-solid fa-plus"></i> Ajouter un événement</button>`;
+            html += `<button class="btn-action-primary" style="margin-top:10px; background:#3498db; padding:14px;" onclick="window.openCalendarEventForm(null, '${dateStr}')"><i class="fa-solid fa-plus"></i> Ajouter un événement</button>`;
             panel.innerHTML = html; panel.style.display = 'block';
+            if (window.innerWidth <= 768) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         };
         window.closeCalendarDayPanel = function() { let panel = document.getElementById('calendar-day-panel'); if (panel) panel.style.display = 'none'; };
 
@@ -3721,6 +4523,7 @@
             let dStr = ev ? ev.dateDebut : defaultDate;
             let dIso = window.frToIso(dStr) || window.todayIso();
             let fIso = ev && ev.dateFin ? window.frToIso(ev.dateFin) : dIso;
+            let curColor = ev ? window.getEventColor(ev) : window.calDefaultColors['rendez-vous'];
 
             panel.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><b style="font-size:14px;">${ev ? 'Modifier' : 'Nouvel'} événement</b><button onclick="window.closeCalendarDayPanel()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#999;">×</button></div>
@@ -3731,14 +4534,19 @@
                     <option value="periode_travail" ${ev && ev.type === 'periode_travail' ? 'selected' : ''}>🧰 Période de travail</option>
                 </select>
                 <div class="edit-label">Titre</div>
-                <input type="text" id="cal-ev-titre" class="edit-input" value="${ev ? ev.titre.replace(/"/g, '&quot;') : ''}" placeholder="Ex: RDV fournisseur, Maintenance annuelle...">
+                <input type="text" id="cal-ev-titre" class="edit-input" list="dl-cal-titres" value="${ev ? ev.titre.replace(/"/g, '&quot;') : ''}" placeholder="Ex: RDV fournisseur, Maintenance annuelle...">
+                <div class="edit-label">Couleur</div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                    <input type="color" id="cal-ev-couleur" value="${curColor}" style="width:42px; height:32px; padding:0; border:1px solid #ddd; border-radius:5px; cursor:pointer;">
+                    ${window.calPalette.map(c => `<button type="button" title="${c}" onclick="document.getElementById('cal-ev-couleur').value='${c}'" style="width:24px; height:24px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px #ddd; background:${c}; cursor:pointer; padding:0;"></button>`).join('')}
+                </div>
                 <div style="display:flex; gap:8px;">
                     <div style="flex:1;"><div class="edit-label">Date début</div><input type="date" id="cal-ev-debut" class="edit-input" value="${dIso}"></div>
                     <div style="flex:1;" id="cal-ev-heure-wrap"><div class="edit-label">Heure</div><input type="time" id="cal-ev-heure" class="edit-input" value="${ev ? ev.heure : ''}"></div>
                     <div style="flex:1; display:none;" id="cal-ev-fin-wrap"><div class="edit-label">Date fin</div><input type="date" id="cal-ev-fin" class="edit-input" value="${fIso}"></div>
                 </div>
                 <div class="edit-label">Canon lié (optionnel)</div>
-                <input type="text" id="cal-ev-canon" class="edit-input" value="${ev ? ev.canon : ''}" placeholder="N° canon">
+                <input type="text" id="cal-ev-canon" class="edit-input" list="dl-canon-ids" value="${ev ? ev.canon : ''}" placeholder="N° canon">
                 <div class="edit-label">Remarque</div>
                 <textarea id="cal-ev-remarque" class="edit-input" rows="2">${ev ? ev.remarque : ''}</textarea>
                 <div style="display:flex; gap:8px; margin-top:10px;">
@@ -3747,6 +4555,7 @@
                 </div>
             `;
             panel.style.display = 'block';
+            if (window.innerWidth <= 768) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             window.toggleCalendarEventFields();
         };
 
@@ -3759,6 +4568,13 @@
 
         window.editCalendarEvent = function(id) { window.openCalendarEventForm(id, null); };
 
+        // Ajout rapide : depuis le bouton "+" de l'en-tête, sur le jour sélectionné sinon aujourd'hui.
+        window.quickAddCalendarEvent = function() {
+            let d = window.calendarSelectedDate || new Date();
+            let dateStr = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+            window.openCalendarEventForm(null, dateStr);
+        };
+
         window.saveCalendarEvent = async function() {
             let id = document.getElementById('cal-ev-id').value;
             let type = document.getElementById('cal-ev-type').value;
@@ -3769,15 +4585,16 @@
             let fin = type === 'periode_travail' ? window.isoToFr(document.getElementById('cal-ev-fin').value) : debut;
             let canon = document.getElementById('cal-ev-canon').value.trim();
             let remarque = document.getElementById('cal-ev-remarque').value.trim();
-            let fieldsObj = { type: type, titre: titre, "date_debut": debut, heure: heure, "date_fin": fin, canon: canon, remarque: remarque };
+            let couleur = document.getElementById('cal-ev-couleur') ? document.getElementById('cal-ev-couleur').value : '';
+            let fieldsObj = { type: type, titre: titre, "date_debut": debut, heure: heure, "date_fin": fin, canon: canon, remarque: remarque, couleur: couleur };
             let payload = id ? { action: "update_event", id: id, fields: fieldsObj } : { action: "add_event", fields: fieldsObj };
 
             try {
                 let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(payload) });
                 let r = await res.json();
                 if (r.status === "success") {
-                    if (id) { let evObj = window.calendarEvents.find(e => e.id === id); if (evObj) Object.assign(evObj, { type: type, titre: titre, dateDebut: debut, heure: heure, dateFin: fin, canon: canon, remarque: remarque }); }
-                    else { window.calendarEvents.push({ id: r.id || '', type: type, titre: titre, dateDebut: debut, heure: heure, dateFin: fin, canon: canon, remarque: remarque }); }
+                    if (id) { let evObj = window.calendarEvents.find(e => e.id === id); if (evObj) Object.assign(evObj, { type: type, titre: titre, dateDebut: debut, heure: heure, dateFin: fin, canon: canon, remarque: remarque, couleur: couleur }); }
+                    else { window.calendarEvents.push({ id: r.id || '', type: type, titre: titre, dateDebut: debut, heure: heure, dateFin: fin, canon: canon, remarque: remarque, couleur: couleur }); }
                     window.closeCalendarDayPanel(); window.renderCalendarMonth();
                 } else { alert("Erreur : " + (r.msg || "inconnue")); }
             } catch (e) { alert("Erreur réseau."); }
