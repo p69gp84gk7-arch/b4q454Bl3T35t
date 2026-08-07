@@ -268,11 +268,39 @@
         .cal-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
         #calendar-day-panel { display:none; width:300px; flex-shrink:0; border-left:1px solid #eee; padding:15px; overflow-y:auto; background:#fafbfc; }
 
+        /* CHAPITRE 1.E — Tableau de production : défilement horizontal contenu dans son cadre (le
+           tableau compte 20 colonnes, il ne doit jamais élargir la page sur mobile) et en-tête figé. */
+        #prod-table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid #ddd; border-radius:8px; background:#fff; }
+        table.prod-table { border-collapse:collapse; width:100%; font-size:12px; white-space:nowrap; }
+        table.prod-table th { position:sticky; top:0; z-index:2; background:#34495e; color:#fff; font-size:10.5px; text-transform:uppercase; letter-spacing:0.3px; padding:8px 9px; text-align:right; font-weight:bold; }
+        table.prod-table th:first-child, table.prod-table td:first-child { text-align:left; }
+        table.prod-table td { padding:7px 9px; border-top:1px solid #eef1f4; text-align:right; color:#2c3e50; }
+        table.prod-table tbody tr { cursor:pointer; }
+        table.prod-table tbody tr:nth-child(even) { background:#fafbfc; }
+        table.prod-table tbody tr:hover { background:#eaf4fd; }
+        table.prod-table tbody tr.prod-row-active { background:#d6eaf8; box-shadow: inset 3px 0 0 #2980b9; }
+        table.prod-table td.prod-calc { color:#2980b9; font-weight:bold; background:rgba(41,128,185,0.04); }
+        table.prod-table tfoot td { background:#ecf0f1; font-weight:bold; border-top:2px solid #34495e; padding:9px; text-align:right; }
+        .prod-stat { background:#fff; border:1px solid #ddd; border-left:4px solid #2980b9; border-radius:8px; padding:10px 12px; flex:1; min-width:130px; }
+        .prod-stat b { display:block; font-size:18px; color:#2c3e50; line-height:1.2; }
+        .prod-stat span { font-size:10px; color:#7f8c8d; text-transform:uppercase; font-weight:bold; letter-spacing:0.4px; }
+        #production-panel .pp-field { margin-bottom:12px; }
+        #production-panel .pp-field .edit-label { font-size:11px; }
+        #production-panel .pp-calc { display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px dashed #e1e8ed; font-size:12px; }
+        #production-panel .pp-calc b { color:#2980b9; font-variant-numeric:tabular-nums; }
+
+        @media (max-width: 768px) {
+            table.prod-table { font-size:11px; }
+            table.prod-table th { padding:7px 6px; font-size:9.5px; }
+            table.prod-table td { padding:6px; }
+            #production-panel { width:100% !important; max-width:100% !important; }
+        }
+
         @media print {
-            #topbar, #mobile-dock, #sidebar, #right-sidebar, #print-panel, #loading-overlay, #pdf-modal, #settings-panel, #bi-meteo-modal, #compare-modal, #meteo-history-modal, #calendar-modal, .resizer, .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+            #topbar, #mobile-dock, #sidebar, #right-sidebar, #print-panel, #loading-overlay, #pdf-modal, #settings-panel, #production-panel, #bi-meteo-modal, #compare-modal, #meteo-history-modal, #calendar-modal, .resizer, .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
             body, html { overflow: visible !important; height: auto !important; }
             #app-container { padding-top: 0 !important; height: auto !important; }
-            #map-container, #atelier-workspace, #stock-workspace, #theme-list-workspace { display: none !important; }
+            #map-container, #atelier-workspace, #stock-workspace, #theme-list-workspace, #production-workspace { display: none !important; }
             #print-page-preview-modal { display: block !important; position: static !important; background: none !important; overflow: visible !important; }
             #print-page-sheet-wrap { padding: 0 !important; gap: 0 !important; }
             .print-page-sheet { box-shadow: none !important; page-break-after: always; }
@@ -412,6 +440,49 @@
         </div>
     </div>
 
+    <!-- PANNEAU DE SAISIE PRODUCTION (s'ouvre sur la droite) -->
+    <div id="production-panel" style="display:none; position:fixed; top:50px; right:0; bottom:0; width:420px; max-width:92vw; background:#fff; z-index:8600; box-shadow:-5px 0 25px rgba(0,0,0,0.25); flex-direction:column; border-left:1px solid #ddd;">
+        <div style="background:#2980b9; color:white; padding:15px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:16px;">
+            <span><i class="fa-solid fa-industry"></i> <span id="prod-panel-title">Nouvelle production</span></span>
+            <button onclick="window.closeProductionForm()" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
+        </div>
+        <div style="padding:15px; overflow-y:auto; flex:1; background:#fdfdfe;">
+            <input type="hidden" id="prod-f-id">
+            <div style="display:flex; gap:10px;">
+                <div class="pp-field" style="flex:1;"><div class="edit-label">Saison</div><input type="text" id="prod-f-saison" class="edit-input" list="dl-prod-saisons" placeholder="2026-2027" style="margin-bottom:0;"></div>
+                <div class="pp-field" style="flex:1;"><div class="edit-label">N° de prod (auto)</div><input type="number" id="prod-f-num" class="edit-input" style="margin-bottom:0;"></div>
+            </div>
+            <div style="background:#eaf4fd; border:1px solid #bfdcf3; border-radius:6px; padding:12px; margin-bottom:12px;">
+                <div style="display:flex; gap:10px;">
+                    <div class="pp-field" style="flex:1; margin-bottom:0;"><div class="edit-label">Date de démarrage</div><input type="date" id="prod-f-date" class="edit-input" style="margin-bottom:0;" oninput="window.refreshProductionCalc()"></div>
+                    <div class="pp-field" style="width:110px; margin-bottom:0;"><div class="edit-label">H. démarrage</div><input type="time" id="prod-f-hdeb" class="edit-input" style="margin-bottom:0;" oninput="window.refreshProductionCalc()"></div>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <div class="pp-field" style="flex:1; margin-bottom:0;"><div class="edit-label">Date d'arrêt</div><input type="date" id="prod-f-datefin" class="edit-input" style="margin-bottom:0;" oninput="window.refreshProductionCalc()"></div>
+                    <div class="pp-field" style="width:110px; margin-bottom:0;"><div class="edit-label">H. arrêt</div><input type="time" id="prod-f-hfin" class="edit-input" style="margin-bottom:0;" oninput="window.refreshProductionCalc()"></div>
+                </div>
+                <div id="prod-date-warn" style="display:none; margin-top:8px; font-size:11px; font-weight:bold; color:#c0392b;"></div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div class="pp-field" style="flex:1;"><div class="edit-label">💧 Eau pompée (m³)</div><input type="number" step="any" id="prod-f-eau" class="edit-input" style="margin-bottom:0;" oninput="window.refreshProductionCalc()"></div>
+                <div class="pp-field" style="flex:1;"><div class="edit-label">⚡ Énergie consommée (kWh)</div><input type="number" step="any" id="prod-f-energie" class="edit-input" style="margin-bottom:0;" oninput="window.refreshProductionCalc()"></div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div class="pp-field" style="flex:1;"><div class="edit-label">❄️ Nbre enneigeurs max</div><input type="number" step="1" id="prod-f-enneigeurs" class="edit-input" style="margin-bottom:0;" oninput="window.refreshProductionCalc()"></div>
+                <div class="pp-field" style="flex:1;"><div class="edit-label">🌡️ Tempé. moy. de prod (°C)</div><input type="number" step="any" id="prod-f-temp" class="edit-input" style="margin-bottom:0;" oninput="window.refreshProductionCalc()"></div>
+            </div>
+            <div style="background:#fff; border:1px solid #ddd; border-radius:6px; padding:10px 12px; margin-top:5px;">
+                <div style="font-size:11px; font-weight:bold; color:#2980b9; text-transform:uppercase; margin-bottom:8px;"><i class="fa-solid fa-calculator"></i> Valeurs calculées</div>
+                <div id="prod-calc-preview"></div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:18px;">
+                <button id="prod-btn-delete" onclick="window.deleteProductionRow()" style="display:none; background:#c0392b; color:white; padding:12px; border:none; border-radius:6px; cursor:pointer; font-weight:bold;"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="window.closeProductionForm()" style="flex:1; background:#ecf0f1; color:#333; padding:12px; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-weight:bold;">Annuler</button>
+                <button id="prod-btn-save" onclick="window.saveProductionRow(this)" style="flex:2; background:#27ae60; color:white; padding:12px; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">✅ Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
    <!-- MODAL EXPERT BI -->
     <div id="bi-meteo-modal" class="draggable-window">
         <div class="bi-header draggable-handle"><span><i class="fa-solid fa-snowflake"></i> PowerBI Neige</span><button onclick="document.getElementById('bi-meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:28px;cursor:pointer;">×</button></div>
@@ -528,6 +599,7 @@
                 <div class="section-content" style="padding-top: 10px;">
                     <div class="theme-block"><label class="radio-card" id="lbl-atelier"><input type="radio" name="main_theme" value="atelier"> <i class="fa-solid fa-toolbox" style="color:#8e44ad;"></i> Banc d'essais</label><div class="theme-details" id="details-atelier" style="display:none;border-color:#8e44ad;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Banc de test usine</div></div></div>
                     <div class="theme-block"><label class="radio-card" id="lbl-stock"><input type="radio" name="main_theme" value="stock"> <i class="fa-solid fa-boxes-stacked" style="color:#16a085;"></i> Gestion du Stock</label><div class="theme-details" id="details-stock" style="display:none;border-color:#16a085;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Inventaire</div></div></div>
+                    <div class="theme-block"><label class="radio-card" id="lbl-production"><input type="radio" name="main_theme" value="production"> <i class="fa-solid fa-industry" style="color:#2980b9;"></i> Production</label><div class="theme-details" id="details-production" style="display:none;border-color:#2980b9;"><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;">Suivi de production neige</div><div class="edit-label" style="font-size:10px;">Saison affichée</div><select id="prod-season-select" class="edit-input" style="margin-bottom:8px;" onchange="window.setProductionSeason(this.value)"></select><button class="btn-action-primary" style="margin:0; background:#2980b9;" onclick="window.openProductionForm()"><i class="fa-solid fa-plus"></i> Nouvelle production</button></div></div>
                     <div class="theme-block"><label class="radio-card" id="lbl-entretien_tete"><input type="radio" name="main_theme" value="entretien_tete"> <i class="fa-solid fa-shower" style="color:#e67e22;"></i> Entretien Tête Canon</label><div class="theme-details" id="details-entretien_tete" style="display:none;border-color:#e67e22;"><div class="view-toggle-wrap" data-vt="entretien_tete"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Buses <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('entretien_tete')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-entretien_tete" style="display:none;margin-bottom:8px;"></div><div id="legend-entretien_tete"></div><button onclick="window.resetEntretienBuses()" style="width:100%;margin-top:10px;background:#c0392b;color:white;border:none;padding:8px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;"><i class="fa-solid fa-rotate-left"></i> RAZ</button></div></div>
                     <div class="theme-block"><label class="radio-card" id="lbl-suivi_entretien"><input type="radio" name="main_theme" value="suivi_entretien"> <i class="fa-solid fa-screwdriver-wrench" style="color:#27ae60;"></i> Suivi Entretien</label><div class="theme-details" id="details-suivi_entretien" style="display:none;border-color:#27ae60;"><div class="view-toggle-wrap" data-vt="suivi_entretien"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Vannes <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('suivi_entretien')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-suivi_entretien" style="display:none;margin-bottom:8px;"></div><div id="legend-suivi_entretien"></div></div></div>
                     <div class="theme-block"><label class="radio-card" id="lbl-defauts"><input type="radio" name="main_theme" value="defauts" checked> <i class="fa-solid fa-triangle-exclamation" style="color:#e74c3c;"></i> Tickets & Pannes</label><div class="theme-details" id="details-defauts" style="display:block;border-color:#3498db;"><div class="view-toggle-wrap" data-vt="defauts"></div><div style="font-size:11px;font-weight:bold;color:#7f8c8d;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">Statuts actuels <button class="legend-cfg-btn" onclick="window.toggleLegendEditor('defauts')"><i class="fa-solid fa-sliders"></i> Légende</button></div><div id="legend-cfg-defauts" style="display:none;margin-bottom:8px;"></div><div id="legend-defauts"></div></div></div>
@@ -576,6 +648,7 @@
             <div id="atelier-workspace" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; background:#f4f6f8; overflow-y:auto; padding:20px; box-sizing:border-box;"></div>
             <div id="stock-workspace" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; background:#f4f6f8; overflow-y:auto; padding:20px; box-sizing:border-box;"></div>
             <div id="theme-list-workspace" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; background:#f4f6f8; overflow-y:auto; padding:20px; box-sizing:border-box;"></div>
+            <div id="production-workspace" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; background:#f4f6f8; overflow-y:auto; padding:20px; box-sizing:border-box;"></div>
         </div>
 
         <div id="right-sidebar">
@@ -622,6 +695,8 @@
         window.bootAttempt = 0; window.tempTicketPayloads = {}; window.suiviEntretienData = []; window.rawAtelier = []; window.rawStock = [];
         window.drivePdfsData = {}; window.driveKmzData = {}; window.drivePhotos = {}; window.driveIcons = {};
         window.rawCalendarEvents = []; window.calendarEvents = []; window.calendarViewDate = new Date();
+        window.rawProduction = []; window.productionRows = []; window.prodSheetHeaders = []; window.prodEditingId = null;
+        window.prodSearch = ''; window.prodSettingsOpen = false;
 
         // =========================================================================
         // CHAPITRE 2.B : CONFIGURATION LOCALE ET UTILITAIRES DE BASE
@@ -633,7 +708,8 @@
             showHillshade: false, hillshadeOpacity: 70, showLabels: false, labelsOpacity: 80,
             btnColors: {}, hiddenColumns: [], repColorsOverride: {}, transfoColorsOverride: {},
             viewMode: { defauts: 'map', suivi_entretien: 'map', entretien_tete: 'map', type: 'map', repeteur: 'map', transfo: 'map' },
-            legendConfig: {}, dashPrefs: {}
+            legendConfig: {}, dashPrefs: {},
+            prodSettings: { prixKwh: 0.15, saison: '2026-2027', decimales: 2, devise: '€' }
         };
         window.listViewFilters = { defaut: '', statutTicket: '', statutEntretien: '', statutTete: '' };
         window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d', calendar: '#e67e22' };
@@ -662,7 +738,12 @@
             safeSet('set-show-labels', window.appSettings.showLabels, "checked"); safeSet('set-labels-opacity', window.appSettings.labelsOpacity);
             if (!window.appSettings.viewMode) window.appSettings.viewMode = { defauts: 'map', suivi_entretien: 'map', entretien_tete: 'map', type: 'map', repeteur: 'map', transfo: 'map' };
             if (!window.appSettings.legendConfig) window.appSettings.legendConfig = {};
+            // Object.assign ne fusionne que le premier niveau : un réglage de production absent du
+            // localStorage (version antérieure) doit retrouver sa valeur par défaut, sinon les calculs
+            // de coût tombent sur "undefined" et affichent NaN.
+            window.appSettings.prodSettings = Object.assign({ prixKwh: 0.15, saison: '2026-2027', decimales: 2, devise: '€' }, window.appSettings.prodSettings || {});
             if(window.renderViewToggles) window.renderViewToggles();
+            if(window.renderProdSeasonSelect) window.renderProdSeasonSelect();
             // Réapplique les couleurs personnalisées de répéteurs/transfos sur les palettes auto-générées par initAppUI.
             Object.keys(window.appSettings.repColorsOverride || {}).forEach(k => { if(window.repColors) window.repColors[k] = window.appSettings.repColorsOverride[k]; });
             Object.keys(window.appSettings.transfoColorsOverride || {}).forEach(k => { if(window.transfoColors) window.transfoColors[k] = window.appSettings.transfoColorsOverride[k]; });
@@ -870,6 +951,7 @@
             for (let h in (window.columnValuesSets || {})) { (window.columnValuesSets[h] || []).forEach(v => add('gen:' + h.toLowerCase().trim(), v)); }
             addSheet('atelier:', window.rawAtelier);
             addSheet('stock:', window.rawStock);
+            addSheet('prod:', window.rawProduction);
             (window.suiviEntretienData || []).forEach(r => add('remarque', r && r[5]));
             (window.calendarEvents || []).forEach(ev => { add('cal:titre', ev.titre); add('remarque', ev.remarque); });
 
@@ -2045,7 +2127,7 @@
             let listableThemes = ['defauts', 'suivi_entretien', 'entretien_tete', 'type', 'repeteur', 'transfo'];
             let useList = listableThemes.includes(window.mainTheme) && window.appSettings.viewMode && window.appSettings.viewMode[window.mainTheme] === 'list';
             if (useList) { mapEl.style.display = 'none'; listWs.style.display = 'block'; window.renderThemeListView(); }
-            else { listWs.style.display = 'none'; if (window.mainTheme !== 'atelier' && window.mainTheme !== 'stock') mapEl.style.display = 'block'; }
+            else { listWs.style.display = 'none'; if (window.mainTheme !== 'atelier' && window.mainTheme !== 'stock' && window.mainTheme !== 'production') mapEl.style.display = 'block'; }
         };
 
         window.refreshListViewIfActive = function() {
@@ -2482,6 +2564,9 @@
                 })).filter(ev => ev.id && ev.dateDebut);
             }
 
+            window.rawProduction = data.production || [];
+            if (window.parseProductionData) window.parseProductionData();
+
             window.setStep(5, "Analyse des Webcams...");
             if (data.webcams && data.webcams.length > 1) {
                 const wHead = data.webcams[0].map(h => (h||"").toString().toLowerCase().trim());
@@ -2574,8 +2659,11 @@
                     // Le plan de travail "liste" est un calque plein écran : sans ce masquage explicite,
                     // il restait au-dessus des ateliers Stock/Banc d'essais qui semblaient alors vides.
                     let listWsEl = document.getElementById('theme-list-workspace');
+                    let prodWsEl = document.getElementById('production-workspace');
+                    if(window.mainTheme !== 'production') { if(prodWsEl) prodWsEl.style.display = 'none'; if(window.closeProductionForm) window.closeProductionForm(); }
                     if(window.mainTheme === 'atelier') { if(listWsEl) listWsEl.style.display = 'none'; document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'block'; document.getElementById('stock-workspace').style.display = 'none'; window.closeRightSidebar(); if(window.renderAtelierWorkspace) window.renderAtelierWorkspace(); }
                     else if(window.mainTheme === 'stock') { if(listWsEl) listWsEl.style.display = 'none'; document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'block'; window.closeRightSidebar(); if(window.renderStockWorkspace) window.renderStockWorkspace(); }
+                    else if(window.mainTheme === 'production') { if(listWsEl) listWsEl.style.display = 'none'; document.getElementById('map').style.display = 'none'; document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'none'; if(prodWsEl) prodWsEl.style.display = 'block'; window.closeRightSidebar(); if(window.renderProductionWorkspace) window.renderProductionWorkspace(); }
                     else { document.getElementById('atelier-workspace').style.display = 'none'; document.getElementById('stock-workspace').style.display = 'none'; if(window.mainTheme === 'historique') window.calculateMaxes(); window.updateLegend(); window.updateMap(); window.applyThemeViewMode(); if (window.selectedCannonsMap.size > 0) { window.renderSelectionPanel(); } else { window.triggerGlobalFilterChart(); } }
                     if(window.renderViewToggles) window.renderViewToggles();
                     // Repli automatique du menu à chaque choix de thème (mobile ET PC)
@@ -3867,6 +3955,580 @@
                 if (on) g.layer.on('click', window.onKmzPickClick);
                 else g.layer.off('click', window.onKmzPickClick);
             });
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 7.H : PRODUCTION — SAISIE, CALCULS AUTOMATIQUES ET CONSTANTES     */
+        /* ------------------------------------------------------------------------- */
+        /* Onglet "Production webapp" du Google Sheet. Seules neuf valeurs sont       */
+        /* saisies à la main (saison, n°, dates, heures, eau pompée, enneigeurs,      */
+        /* énergie, température) : toutes les autres colonnes sont recalculées ici    */
+        /* puis écrites en clair dans le Sheet, pour que le classeur reste lisible et */
+        /* exploitable sans aucune formule. Les cumuls (total eau / temps total) sont */
+        /* recalculés dans l'ordre des numéros de prod, saison par saison, ce qui     */
+        /* permet de démarrer une nouvelle saison sans jamais vider le tableau.       */
+        /* ========================================================================= */
+        window.PROD_COLS = {
+            id: "id", num: "Numéro de prod", date: "date", hDeb: "h démarrage", dateFin: "date arrêt",
+            hFin: "h arrêt", temps: "temps de prod", temps10: "temps de prod /10", eau: "eau pompé",
+            enneigeurs: "Nbre enneigeur max", energie: "energie consommé", tempMoy: "tempé moy de prod",
+            debit: "débit moy", kwm3: "kW/m3 d'eau", kw: "kW", coutKwm3: "cout kW/m3 d'eau",
+            coutProd: "cout kW/prod", totalEau: "total eau", tempsTotal: "temps total", saison: "saison"
+        };
+
+        window.prodNorm = function(s) { return (s === null || s === undefined ? '' : s.toString()).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, '').trim(); };
+        window.prodEsc = function(s) { return (s === null || s === undefined ? '' : s.toString()).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+        window.prodPad = function(n) { return (n < 10 ? '0' : '') + n; };
+
+        // Correspondance de colonne stricte (accents/casse ignorés, puis ponctuation ignorée) : un
+        // "contient" serait piégeux ici, "temps de prod" étant un préfixe de "temps de prod /10".
+        window.prodFindIdx = function(headers, name) {
+            let squash = function(s) { return window.prodNorm(s).replace(/[^a-z0-9]/g, ''); };
+            let target = window.prodNorm(name);
+            let i = headers.findIndex(h => window.prodNorm(h) === target);
+            if (i > -1) return i;
+            let t2 = squash(name);
+            return headers.findIndex(h => squash(h) !== '' && squash(h) === t2);
+        };
+
+        window.prodNum = function(v) {
+            if (v === null || v === undefined || v === "") return 0;
+            if (typeof v === 'number') return isFinite(v) ? v : 0;
+            let n = parseFloat(v.toString().replace(/\s/g, '').replace(',', '.'));
+            return isNaN(n) ? 0 : n;
+        };
+        window.prodDecimals = function() { let n = parseInt((window.appSettings.prodSettings || {}).decimales, 10); return isNaN(n) ? 2 : Math.max(0, Math.min(4, n)); };
+        window.prodRound = function(v, d) { if (d === undefined) d = window.prodDecimals(); let f = Math.pow(10, d); return Math.round((window.prodNum(v) + Number.EPSILON) * f) / f; };
+        window.prodFmt = function(v, d) {
+            if (v === "" || v === null || v === undefined || !isFinite(v)) return "—";
+            if (d === undefined) d = window.prodDecimals();
+            return Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: d });
+        };
+
+        // Le Sheet renvoie ses cellules de date/heure en ISO (objets Date sérialisés) : on reconstruit
+        // toujours à partir des composantes LOCALES, sinon un 01/12 saisi en France ressort au 30/11.
+        window.prodToDateStr = function(v) {
+            if (v === null || v === undefined) return "";
+            let s = v.toString().trim(); if (!s) return "";
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+            let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+            if (m) return m[3] + '-' + window.prodPad(parseInt(m[2], 10)) + '-' + window.prodPad(parseInt(m[1], 10));
+            let d = new Date(s);
+            if (!isNaN(d.getTime())) return d.getFullYear() + '-' + window.prodPad(d.getMonth() + 1) + '-' + window.prodPad(d.getDate());
+            return "";
+        };
+        window.prodToTimeStr = function(v) {
+            if (v === null || v === undefined) return "";
+            let s = v.toString().trim(); if (!s) return "";
+            let m = s.match(/^(\d{1,2})\s*[:hH]\s*(\d{1,2})/);
+            if (m) return window.prodPad(parseInt(m[1], 10)) + ':' + window.prodPad(parseInt(m[2], 10));
+            let d = new Date(s);
+            if (!isNaN(d.getTime())) return window.prodPad(d.getHours()) + ':' + window.prodPad(d.getMinutes());
+            return "";
+        };
+        window.prodDateTime = function(dateStr, timeStr) {
+            let d = window.prodToDateStr(dateStr); if (!d) return null;
+            let t = window.prodToTimeStr(timeStr) || "00:00";
+            let dp = d.split('-').map(Number), tp = t.split(':').map(Number);
+            let dt = new Date(dp[0], dp[1] - 1, dp[2], tp[0], tp[1], 0, 0);
+            return isNaN(dt.getTime()) ? null : dt;
+        };
+        // Durée en h:mm — volontairement non bornée à 24 h : sert aussi au cumul "temps total".
+        window.prodFmtHours = function(h) {
+            if (!isFinite(h) || h <= 0) return "0:00";
+            let total = Math.round(h * 60);
+            return Math.floor(total / 60) + ':' + window.prodPad(total % 60);
+        };
+
+        /* ------------------------------------------------------------------------- */
+        /* 7.H.1 — Lecture de l'onglet et regroupement par saison                     */
+        /* ------------------------------------------------------------------------- */
+        window.prodCurrentSeason = function() { return ((window.appSettings.prodSettings || {}).saison || '2026-2027').toString(); };
+        window.prodPrixKwh = function() { return window.prodNum((window.appSettings.prodSettings || {}).prixKwh); };
+
+        window.parseProductionData = function() {
+            window.productionRows = []; window.prodSheetHeaders = [];
+            let rows = window.rawProduction || [];
+            if (!rows.length || !rows[0]) return;
+            let headers = rows[0].map(h => (h === null || h === undefined) ? "" : h.toString().trim());
+            window.prodSheetHeaders = headers;
+            let C = window.PROD_COLS, idx = {};
+            Object.keys(C).forEach(k => { idx[k] = window.prodFindIdx(headers, C[k]); });
+            for (let i = 1; i < rows.length; i++) {
+                let row = rows[i] || [];
+                if (!row.length || row.every(c => c === null || c === undefined || c.toString().trim() === "")) continue;
+                let get = function(k) { return (idx[k] > -1 && row[idx[k]] !== undefined && row[idx[k]] !== null) ? row[idx[k]] : ""; };
+                window.productionRows.push({
+                    id: get('id').toString().trim(),
+                    num: window.prodNum(get('num')),
+                    date: window.prodToDateStr(get('date')),
+                    hDeb: window.prodToTimeStr(get('hDeb')),
+                    dateFin: window.prodToDateStr(get('dateFin')),
+                    hFin: window.prodToTimeStr(get('hFin')),
+                    eau: window.prodNum(get('eau')),
+                    enneigeurs: window.prodNum(get('enneigeurs')),
+                    energie: window.prodNum(get('energie')),
+                    tempMoy: get('tempMoy') === "" ? "" : window.prodNum(get('tempMoy')),
+                    saison: get('saison').toString().trim()
+                });
+            }
+            if (window.renderProdSeasonSelect) window.renderProdSeasonSelect();
+        };
+
+        window.prodSeasons = function() {
+            let set = new Set();
+            (window.productionRows || []).forEach(r => { if (r.saison) set.add(r.saison); });
+            set.add(window.prodCurrentSeason());
+            return Array.from(set).sort();
+        };
+        window.prodNextSeasonName = function() {
+            let m = window.prodCurrentSeason().match(/(\d{4})\D+(\d{4})/);
+            if (m) return (parseInt(m[1], 10) + 1) + '-' + (parseInt(m[2], 10) + 1);
+            let y = new Date().getFullYear();
+            return y + '-' + (y + 1);
+        };
+        window.renderProdSeasonSelect = function() {
+            let sel = document.getElementById('prod-season-select'); if (!sel) return;
+            let cur = window.prodCurrentSeason();
+            sel.innerHTML = window.prodSeasons().map(s => `<option value="${window.prodEsc(s)}"${s === cur ? ' selected' : ''}>${window.prodEsc(s)}</option>`).join('')
+                + `<option value="__new__">➕ Nouvelle saison…</option>`;
+            let dl = document.getElementById('dl-prod-saisons');
+            if (!dl) { let box = document.getElementById('datalists-container'); if (box) { dl = document.createElement('datalist'); dl.id = 'dl-prod-saisons'; box.appendChild(dl); } }
+            if (dl) dl.innerHTML = window.prodSeasons().map(s => `<option value="${window.prodEsc(s)}">`).join('');
+        };
+        window.setProductionSeason = function(v) {
+            if (v === '__new__') {
+                let s = prompt("Nom de la nouvelle saison de production :", window.prodNextSeasonName());
+                if (!s || !s.trim()) { window.renderProdSeasonSelect(); return; }
+                v = s.trim();
+            }
+            window.appSettings.prodSettings.saison = v;
+            localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings));
+            window.renderProdSeasonSelect();
+            if (window.mainTheme === 'production') window.renderProductionWorkspace();
+        };
+
+        /* ------------------------------------------------------------------------- */
+        /* 7.H.2 — Calculs : durée, base 10, débit, kW, coûts, puis cumuls de saison  */
+        /* ------------------------------------------------------------------------- */
+        window.computeProductionRow = function(r, prix) {
+            if (prix === undefined) prix = window.prodPrixKwh();
+            let start = window.prodDateTime(r.date, r.hDeb);
+            // Tant qu'aucune borne de fin n'est saisie, la durée reste à zéro : sans ce garde-fou, une
+            // heure d'arrêt vide serait lue comme "00:00" et afficherait une production fantôme.
+            let hasEnd = !!(r.hFin || r.dateFin);
+            let end = hasEnd ? window.prodDateTime(r.dateFin || r.date, r.hFin) : null;
+            let heures = 0, warn = "";
+            if (start && end) {
+                let ms = end.getTime() - start.getTime();
+                if (ms < 0) {
+                    // Sans date d'arrêt saisie, un arrêt "avant" le démarrage signifie le lendemain matin.
+                    if (!r.dateFin) ms += 24 * 3600 * 1000;
+                    else { warn = "L'arrêt est antérieur au démarrage."; ms = 0; }
+                }
+                heures = ms / 3600000;
+            }
+            let eau = window.prodNum(r.eau), energie = window.prodNum(r.energie);
+            let h10 = heures;
+            return {
+                heures: heures,
+                temps: window.prodFmtHours(heures),
+                temps10: h10,
+                debit: h10 > 0 ? eau / h10 : 0,
+                kwm3: eau > 0 ? energie / eau : 0,
+                kw: h10 > 0 ? energie / h10 : 0,
+                coutKwm3: prix * (eau > 0 ? energie / eau : 0),
+                coutProd: prix * energie,
+                prix: prix, warn: warn
+            };
+        };
+
+        // Renvoie les lignes de la saison, triées par n° de prod, chacune enrichie de son objet .calc
+        // (cumuls inclus). Recalculé à chaque affichage : les totaux restent justes même si une ligne
+        // ancienne est modifiée après coup.
+        window.computeProductionSeason = function(saison) {
+            if (saison === undefined) saison = window.prodCurrentSeason();
+            let prix = window.prodPrixKwh();
+            let rows = (window.productionRows || []).filter(r => (r.saison || '') === saison);
+            rows.sort(function(a, b) {
+                if (a.num !== b.num) return a.num - b.num;
+                return (a.date || '') < (b.date || '') ? -1 : 1;
+            });
+            let cumulEau = 0, cumulH = 0;
+            rows.forEach(function(r) {
+                let c = window.computeProductionRow(r, prix);
+                cumulEau += window.prodNum(r.eau); cumulH += c.heures;
+                c.totalEau = cumulEau; c.tempsTotalH = cumulH; c.tempsTotal = window.prodFmtHours(cumulH);
+                r.calc = c;
+            });
+            return rows;
+        };
+
+        window.prodNextNum = function(saison) {
+            let max = 0;
+            (window.productionRows || []).forEach(function(r) { if ((r.saison || '') === saison && r.num > max) max = r.num; });
+            return max + 1;
+        };
+
+        /* ------------------------------------------------------------------------- */
+        /* 7.H.3 — Plan de travail : bandeau de réglages, synthèse et tableau         */
+        /* ------------------------------------------------------------------------- */
+        window.renderProductionWorkspace = function() {
+            let ws = document.getElementById('production-workspace'); if (!ws) return;
+            ws.style.paddingTop = "75px";
+            window.renderProdSeasonSelect();
+
+            let saison = window.prodCurrentSeason();
+            let rows = window.computeProductionSeason(saison);
+            let q = window.prodNorm(window.prodSearch || '');
+            let shown = q ? rows.filter(function(r) {
+                return window.prodNorm(r.num + ' ' + r.date + ' ' + r.dateFin + ' ' + r.hDeb + ' ' + r.saison).includes(q);
+            }) : rows;
+
+            let sumEau = 0, sumEnergie = 0, sumH = 0, sumCout = 0, maxEnn = 0;
+            rows.forEach(function(r) { sumEau += window.prodNum(r.eau); sumEnergie += window.prodNum(r.energie); sumH += r.calc.heures; sumCout += r.calc.coutProd; if (r.enneigeurs > maxEnn) maxEnn = r.enneigeurs; });
+            let kwm3Global = sumEau > 0 ? sumEnergie / sumEau : 0;
+            let debitGlobal = sumH > 0 ? sumEau / sumH : 0;
+            let dev = (window.appSettings.prodSettings || {}).devise || '€';
+
+            let seasonOpts = window.prodSeasons().map(function(s) { return `<option value="${window.prodEsc(s)}"${s === saison ? ' selected' : ''}>${window.prodEsc(s)}</option>`; }).join('') + `<option value="__new__">➕ Nouvelle saison…</option>`;
+
+            ws.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:2px solid #2980b9; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                    <h2 style="color:#2c3e50; margin:0;">🏭 Production <span style="font-size:12px; color:#7f8c8d; font-weight:normal; background:#e1e8ed; padding:4px 8px; border-radius:12px;">${rows.length} entrée(s) · ${window.prodEsc(saison)}</span></h2>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <select onchange="window.setProductionSeason(this.value)" style="padding:8px; border-radius:6px; border:1px solid #ccc; font-size:12px; font-weight:bold; color:#2980b9; background:#fff;">${seasonOpts}</select>
+                        <input type="text" id="prod-search" placeholder="🔍 N°, date..." value="${window.prodEsc(window.prodSearch || '')}" oninput="window.setProdSearch(this.value)" style="padding:8px; border-radius:6px; border:1px solid #ccc; width:130px; font-size:12px; font-weight:bold;">
+                        <button onclick="window.toggleProdSettings()" title="Constantes de calcul" style="background:#34495e; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:12px;"><i class="fa-solid fa-sliders"></i></button>
+                        <button onclick="window.openProductionForm()" style="background:#2980b9; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:12px; white-space:nowrap;">➕ Nouvelle production</button>
+                    </div>
+                </div>
+
+                <div id="prod-settings-card" style="display:${window.prodSettingsOpen ? 'block' : 'none'}; background:#fff; border:2px solid #34495e; border-radius:8px; padding:15px; margin-bottom:15px;">
+                    <h4 style="margin:0 0 12px 0; color:#34495e; text-transform:uppercase; font-size:13px;"><i class="fa-solid fa-sliders"></i> Constantes de calcul</h4>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:12px;">
+                        <div><span class="edit-label" style="font-size:10px;">Prix du kWh (${window.prodEsc(dev)})</span><input type="number" step="0.0001" id="prod-set-prix" value="${window.prodPrixKwh()}" class="edit-input" style="margin:2px 0 0; padding:6px; height:32px; box-sizing:border-box;" onchange="window.saveProdSettings()"></div>
+                        <div><span class="edit-label" style="font-size:10px;">Décimales affichées</span><input type="number" step="1" min="0" max="4" id="prod-set-dec" value="${window.prodDecimals()}" class="edit-input" style="margin:2px 0 0; padding:6px; height:32px; box-sizing:border-box;" onchange="window.saveProdSettings()"></div>
+                        <div><span class="edit-label" style="font-size:10px;">Symbole monétaire</span><input type="text" id="prod-set-dev" value="${window.prodEsc(dev)}" class="edit-input" style="margin:2px 0 0; padding:6px; height:32px; box-sizing:border-box;" onchange="window.saveProdSettings()"></div>
+                    </div>
+                    <p style="font-size:11px; color:#7f8c8d; margin:12px 0 8px;">Le prix du kWh alimente les colonnes « cout kW/m3 d'eau » et « cout kW/prod ». Les valeurs déjà écrites dans le Sheet ne changent pas toutes seules : utilisez le bouton ci-dessous pour les réaligner sur le nouveau prix.</p>
+                    <button onclick="window.recalcProductionSeason(this)" style="background:#e67e22; color:white; border:none; padding:9px 14px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:12px;"><i class="fa-solid fa-rotate"></i> Recalculer &amp; réécrire la saison ${window.prodEsc(saison)}</button>
+                </div>
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
+                    <div class="prod-stat"><span>Productions</span><b>${rows.length}</b></div>
+                    <div class="prod-stat"><span>Eau pompée</span><b>${window.prodFmt(sumEau, 0)} m³</b></div>
+                    <div class="prod-stat"><span>Temps total</span><b>${window.prodFmtHours(sumH)}</b></div>
+                    <div class="prod-stat"><span>Énergie</span><b>${window.prodFmt(sumEnergie, 0)} kWh</b></div>
+                    <div class="prod-stat"><span>Coût énergie</span><b>${window.prodFmt(sumCout)} ${window.prodEsc(dev)}</b></div>
+                    <div class="prod-stat"><span>kWh / m³ moyen</span><b>${window.prodFmt(kwm3Global)}</b></div>
+                    <div class="prod-stat"><span>Débit moyen</span><b>${window.prodFmt(debitGlobal, 0)} m³/h</b></div>
+                    <div class="prod-stat"><span>Enneigeurs max</span><b>${maxEnn ? window.prodFmt(maxEnn, 0) : '—'}</b></div>
+                </div>
+
+                <div id="prod-table-scroll"></div>
+                <p style="font-size:11px; color:#7f8c8d; margin-top:10px;">💡 Cliquez sur une ligne pour la modifier dans le panneau de droite. Les colonnes bleutées sont calculées automatiquement.</p>`;
+
+            let scroll = document.getElementById('prod-table-scroll');
+            if (!shown.length) {
+                scroll.innerHTML = `<div style="padding:30px; text-align:center; color:#7f8c8d; font-weight:bold;">${rows.length ? 'Aucune ligne ne correspond à la recherche.' : 'Aucune production enregistrée pour la saison ' + window.prodEsc(saison) + '.<br><span style="font-weight:normal; font-size:12px;">Cliquez sur « ➕ Nouvelle production » pour démarrer.</span>'}</div>`;
+                return;
+            }
+
+            let head = ['N°', 'Date', 'H. dém.', 'Date arrêt', 'H. arrêt', 'Temps', 'Temps /10', 'Eau pompée (m³)', 'Enneig. max', 'Énergie (kWh)', 'T° moy', 'Débit (m³/h)', 'kWh/m³', 'kW', dev + '/m³', dev + ' / prod', 'Total eau (m³)', 'Temps total'];
+            let body = shown.map(function(r) {
+                let c = r.calc;
+                let cls = (window.prodEditingId && window.prodEditingId === r.id) ? ' class="prod-row-active"' : '';
+                let noId = r.id ? '' : ' title="Ligne sans identifiant : saisie directement dans le Sheet"';
+                return `<tr${cls}${noId} onclick="window.openProductionForm('${window.prodEsc(r.id)}', ${r.num})">
+                    <td><b>${r.num ? window.prodFmt(r.num, 0) : '—'}</b>${r.id ? '' : ' <span style="color:#e67e22;">⚠</span>'}</td>
+                    <td>${window.prodEsc(window.prodDateFr(r.date))}</td>
+                    <td>${window.prodEsc(r.hDeb || '—')}</td>
+                    <td>${window.prodEsc(window.prodDateFr(r.dateFin))}</td>
+                    <td>${window.prodEsc(r.hFin || '—')}</td>
+                    <td class="prod-calc">${c.temps}</td>
+                    <td class="prod-calc">${window.prodFmt(c.temps10)}</td>
+                    <td>${window.prodFmt(r.eau, 0)}</td>
+                    <td>${r.enneigeurs ? window.prodFmt(r.enneigeurs, 0) : '—'}</td>
+                    <td>${window.prodFmt(r.energie, 0)}</td>
+                    <td>${r.tempMoy === "" ? '—' : window.prodFmt(r.tempMoy, 1) + '°'}</td>
+                    <td class="prod-calc">${window.prodFmt(c.debit, 0)}</td>
+                    <td class="prod-calc">${window.prodFmt(c.kwm3)}</td>
+                    <td class="prod-calc">${window.prodFmt(c.kw, 0)}</td>
+                    <td class="prod-calc">${window.prodFmt(c.coutKwm3)}</td>
+                    <td class="prod-calc">${window.prodFmt(c.coutProd)}</td>
+                    <td class="prod-calc">${window.prodFmt(c.totalEau, 0)}</td>
+                    <td class="prod-calc">${c.tempsTotal}</td>
+                </tr>`;
+            }).join('');
+
+            scroll.innerHTML = `<table class="prod-table">
+                <thead><tr>${head.map(function(h) { return '<th>' + window.prodEsc(h) + '</th>'; }).join('')}</tr></thead>
+                <tbody>${body}</tbody>
+                <tfoot><tr>
+                    <td colspan="5" style="text-align:left;">TOTAL SAISON ${window.prodEsc(saison)}</td>
+                    <td>${window.prodFmtHours(sumH)}</td><td>${window.prodFmt(sumH)}</td>
+                    <td>${window.prodFmt(sumEau, 0)}</td><td>—</td><td>${window.prodFmt(sumEnergie, 0)}</td><td>—</td>
+                    <td>${window.prodFmt(debitGlobal, 0)}</td><td>${window.prodFmt(kwm3Global)}</td><td>—</td>
+                    <td>—</td><td>${window.prodFmt(sumCout)}</td>
+                    <td>${window.prodFmt(sumEau, 0)}</td><td>${window.prodFmtHours(sumH)}</td>
+                </tr></tfoot>
+            </table>`;
+        };
+
+        window.prodDateFr = function(iso) {
+            if (!iso) return '—';
+            let p = iso.split('-'); if (p.length !== 3) return iso;
+            return p[2] + '/' + p[1] + '/' + p[0];
+        };
+        // Le plan de travail est reconstruit à chaque frappe : on rend la main au champ de recherche et
+        // on replace le curseur en fin de saisie, sinon la frappe s'interrompt au premier caractère.
+        window.setProdSearch = function(v) {
+            window.prodSearch = v;
+            window.renderProductionWorkspace();
+            let el = document.getElementById('prod-search');
+            if (el) { el.focus(); try { el.setSelectionRange(v.length, v.length); } catch (e) {} }
+        };
+        window.toggleProdSettings = function() { window.prodSettingsOpen = !window.prodSettingsOpen; window.renderProductionWorkspace(); };
+        window.saveProdSettings = function() {
+            let g = function(id, fb) { let el = document.getElementById(id); return el ? el.value : fb; };
+            window.appSettings.prodSettings = Object.assign(window.appSettings.prodSettings || {}, {
+                prixKwh: window.prodNum(g('prod-set-prix', 0.15)),
+                decimales: parseInt(g('prod-set-dec', 2), 10) || 0,
+                devise: (g('prod-set-dev', '€') || '€').toString().trim() || '€'
+            });
+            localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings));
+            window.renderProductionWorkspace();
+            if (document.getElementById('production-panel').style.display === 'flex') window.refreshProductionCalc();
+        };
+
+        /* ------------------------------------------------------------------------- */
+        /* 7.H.4 — Panneau de saisie (fenêtre de droite) et aperçu des calculs        */
+        /* ------------------------------------------------------------------------- */
+        window.openProductionForm = function(id, num) {
+            if (window.mainTheme !== 'production') {
+                let radio = document.querySelector('input[name="main_theme"][value="production"]');
+                if (radio && !radio.checked) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
+            }
+            let saison = window.prodCurrentSeason();
+            let row = null;
+            if (id) row = (window.productionRows || []).find(function(r) { return r.id === id; });
+            if (!row && !id && num !== undefined) row = (window.productionRows || []).find(function(r) { return r.saison === saison && r.num === num; });
+
+            if (id === '' && num !== undefined && !row) { alert("Cette ligne n'a pas d'identifiant : elle a été saisie directement dans le Google Sheet et ne peut pas être modifiée depuis l'application."); return; }
+            if (row && !row.id) { alert("Cette ligne n'a pas d'identifiant : elle a été saisie directement dans le Google Sheet et ne peut pas être modifiée depuis l'application."); return; }
+
+            window.prodEditingId = row ? row.id : null;
+            let set = function(fid, v) { let el = document.getElementById(fid); if (el) el.value = v; };
+            let today = new Date();
+            let todayIso = today.getFullYear() + '-' + window.prodPad(today.getMonth() + 1) + '-' + window.prodPad(today.getDate());
+
+            set('prod-f-id', row ? row.id : '');
+            set('prod-f-saison', row ? row.saison : saison);
+            set('prod-f-num', row ? row.num : window.prodNextNum(saison));
+            set('prod-f-date', row ? row.date : todayIso);
+            set('prod-f-hdeb', row ? row.hDeb : '');
+            set('prod-f-datefin', row ? row.dateFin : '');
+            set('prod-f-hfin', row ? row.hFin : '');
+            set('prod-f-eau', row ? (row.eau || '') : '');
+            set('prod-f-enneigeurs', row ? (row.enneigeurs || '') : '');
+            set('prod-f-energie', row ? (row.energie || '') : '');
+            set('prod-f-temp', row && row.tempMoy !== "" ? row.tempMoy : '');
+
+            document.getElementById('prod-panel-title').innerText = row ? ('Production n°' + window.prodFmt(row.num, 0)) : 'Nouvelle production';
+            document.getElementById('prod-btn-delete').style.display = row ? 'block' : 'none';
+            document.getElementById('production-panel').style.display = 'flex';
+            let sb = document.getElementById('sidebar'); if (sb) sb.classList.add('collapsed');
+            window.refreshProductionCalc();
+            if (window.mainTheme === 'production') window.renderProductionWorkspace();
+        };
+
+        window.closeProductionForm = function() {
+            let p = document.getElementById('production-panel'); if (p) p.style.display = 'none';
+            window.prodEditingId = null;
+            if (window.mainTheme === 'production' && window.renderProductionWorkspace) window.renderProductionWorkspace();
+        };
+
+        window.readProductionForm = function() {
+            let v = function(fid) { let el = document.getElementById(fid); return el ? el.value : ''; };
+            return {
+                id: v('prod-f-id').trim(),
+                saison: v('prod-f-saison').trim() || window.prodCurrentSeason(),
+                num: window.prodNum(v('prod-f-num')),
+                date: v('prod-f-date'),
+                hDeb: v('prod-f-hdeb'),
+                dateFin: v('prod-f-datefin'),
+                hFin: v('prod-f-hfin'),
+                eau: window.prodNum(v('prod-f-eau')),
+                enneigeurs: window.prodNum(v('prod-f-enneigeurs')),
+                energie: window.prodNum(v('prod-f-energie')),
+                tempMoy: v('prod-f-temp') === '' ? '' : window.prodNum(v('prod-f-temp'))
+            };
+        };
+
+        window.refreshProductionCalc = function() {
+            let box = document.getElementById('prod-calc-preview'); if (!box) return;
+            let r = window.readProductionForm();
+            let c = window.computeProductionRow(r);
+            let dev = (window.appSettings.prodSettings || {}).devise || '€';
+
+            // Cumuls prévisionnels : on rejoue la saison en remplaçant (ou en insérant) la ligne en cours.
+            let others = (window.productionRows || []).filter(function(x) { return x.saison === r.saison && x.id && x.id !== r.id; });
+            let cumulEau = 0, cumulH = 0;
+            others.concat([r]).filter(function(x) { return x.num < r.num || x === r; })
+                .sort(function(a, b) { return a.num - b.num; })
+                .forEach(function(x) {
+                    cumulEau += window.prodNum(x.eau);
+                    cumulH += (x === r ? c.heures : window.computeProductionRow(x).heures);
+                });
+
+            let line = function(label, val) { return `<div class="pp-calc"><span>${label}</span><b>${val}</b></div>`; };
+            box.innerHTML =
+                line('Temps de prod', c.temps) +
+                line('Temps de prod /10', window.prodFmt(c.temps10)) +
+                line('Débit moyen', window.prodFmt(c.debit, 0) + ' m³/h') +
+                line("kW/m³ d'eau", window.prodFmt(c.kwm3)) +
+                line('kW', window.prodFmt(c.kw, 0)) +
+                line("Coût kW/m³ d'eau", window.prodFmt(c.coutKwm3) + ' ' + window.prodEsc(dev)) +
+                line('Coût kW / prod', window.prodFmt(c.coutProd) + ' ' + window.prodEsc(dev)) +
+                line('Total eau (cumul)', window.prodFmt(cumulEau, 0) + ' m³') +
+                line('Temps total (cumul)', window.prodFmtHours(cumulH)) +
+                `<div style="font-size:10px; color:#7f8c8d; margin-top:8px;">Prix du kWh utilisé : <b>${window.prodFmt(c.prix, 4)} ${window.prodEsc(dev)}</b></div>`;
+
+            let warn = document.getElementById('prod-date-warn');
+            if (warn) {
+                if (c.warn) { warn.style.display = 'block'; warn.innerText = '⚠️ ' + c.warn; }
+                else if (!r.dateFin && r.hFin && r.hDeb && r.hFin <= r.hDeb) { warn.style.display = 'block'; warn.innerText = 'ℹ️ Arrêt considéré le lendemain (date d\'arrêt non renseignée).'; }
+                else { warn.style.display = 'none'; }
+            }
+        };
+
+        /* ------------------------------------------------------------------------- */
+        /* 7.H.5 — Écriture dans le Sheet (ajout, modification, suppression)          */
+        /* ------------------------------------------------------------------------- */
+        window.prodFieldsPayload = function(r, c, cumul) {
+            let C = window.PROD_COLS, f = {};
+            f[C.num] = r.num;
+            f[C.date] = r.date;
+            f[C.hDeb] = r.hDeb;
+            f[C.dateFin] = r.dateFin;
+            f[C.hFin] = r.hFin;
+            f[C.temps] = c.temps;
+            f[C.temps10] = window.prodRound(c.temps10);
+            f[C.eau] = r.eau;
+            f[C.enneigeurs] = r.enneigeurs;
+            f[C.energie] = r.energie;
+            f[C.tempMoy] = r.tempMoy;
+            f[C.debit] = window.prodRound(c.debit);
+            f[C.kwm3] = window.prodRound(c.kwm3, 4);
+            f[C.kw] = window.prodRound(c.kw);
+            f[C.coutKwm3] = window.prodRound(c.coutKwm3, 4);
+            f[C.coutProd] = window.prodRound(c.coutProd);
+            f[C.totalEau] = window.prodRound(cumul.eau, 0);
+            f[C.tempsTotal] = window.prodFmtHours(cumul.heures);
+            f[C.saison] = r.saison;
+            return f;
+        };
+
+        window.saveProductionRow = async function(btn) {
+            let r = window.readProductionForm();
+            if (!r.date) { alert("⚠️ La date de démarrage est obligatoire."); return; }
+            if (!r.num) { alert("⚠️ Le numéro de prod est obligatoire."); return; }
+            let dupe = (window.productionRows || []).find(function(x) { return x.saison === r.saison && x.num === r.num && x.id !== r.id; });
+            if (dupe && !confirm("Le n° " + r.num + " existe déjà pour la saison " + r.saison + ". Continuer quand même ?")) return;
+
+            let c = window.computeProductionRow(r);
+            if (c.warn && !confirm("⚠️ " + c.warn + "\nLe temps de production sera enregistré à 0. Continuer ?")) return;
+
+            // Cumuls : somme des lignes de la saison dont le n° est inférieur, plus la ligne courante.
+            let cumulEau = window.prodNum(r.eau), cumulH = c.heures;
+            (window.productionRows || []).forEach(function(x) {
+                if (x.saison === r.saison && x.id && x.id !== r.id && x.num < r.num) {
+                    cumulEau += window.prodNum(x.eau); cumulH += window.computeProductionRow(x).heures;
+                }
+            });
+            let fields = window.prodFieldsPayload(r, c, { eau: cumulEau, heures: cumulH });
+
+            let original = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Envoi...'; }
+            try {
+                let payload = r.id ? { action: "update_production", id: r.id, fields: fields } : { action: "add_production", fields: fields };
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(payload) });
+                let out = await res.json();
+                if (out.status !== "success") throw new Error(out.msg || "Erreur serveur.");
+
+                if (r.id) {
+                    let target = window.productionRows.find(function(x) { return x.id === r.id; });
+                    if (target) Object.assign(target, r);
+                } else {
+                    r.id = out.id || ('local-' + Date.now());
+                    window.productionRows.push(r);
+                }
+                window.appSettings.prodSettings.saison = r.saison;
+                localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings));
+
+                // Insérer ou corriger une production décale les cumuls de toutes celles qui suivent :
+                // l'affichage les recalcule, mais le Sheet resterait faux sans cette repropagation.
+                let after = window.computeProductionSeason(r.saison).filter(function(x) { return x.id && x.num > r.num; });
+                if (after.length && confirm("Les cumuls (total eau / temps total) des " + after.length + " production(s) suivantes ont changé.\nMettre le Google Sheet à jour maintenant ?")) {
+                    if (btn) btn.innerHTML = '⏳ Cumuls...';
+                    let sync = await window.pushProductionRows(after, function(i, n) { if (btn) btn.innerHTML = '⏳ ' + i + '/' + n; });
+                    if (sync.ko) alert("⚠️ " + sync.ko + " ligne(s) suivante(s) n'ont pas pu être mises à jour.");
+                }
+                window.closeProductionForm();
+                window.renderProductionWorkspace();
+            } catch (e) {
+                alert("❌ Enregistrement impossible : " + e.message);
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = original; }
+            }
+        };
+
+        window.deleteProductionRow = async function() {
+            let id = document.getElementById('prod-f-id').value.trim();
+            if (!id) { window.closeProductionForm(); return; }
+            let row = (window.productionRows || []).find(function(x) { return x.id === id; });
+            if (!confirm("Supprimer définitivement la production n°" + (row ? row.num : '?') + " de la saison " + (row ? row.saison : '?') + " ?")) return;
+            try {
+                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_production", id: id }) });
+                let out = await res.json();
+                if (out.status !== "success") throw new Error(out.msg || "Erreur serveur.");
+                window.productionRows = window.productionRows.filter(function(x) { return x.id !== id; });
+                window.closeProductionForm();
+                window.renderProductionWorkspace();
+            } catch (e) { alert("❌ Suppression impossible : " + e.message); }
+        };
+
+        // Réécrit dans le Sheet toutes les colonnes calculées de la saison : indispensable après un
+        // changement du prix du kWh, ou après l'insertion/modification d'une ligne ancienne (les cumuls
+        // des lignes suivantes se décalent alors, alors que l'affichage, lui, est toujours recalculé).
+        // Envoi séquentiel (et non en parallèle) : Apps Script sérialise de toute façon les écritures
+        // sur le classeur, et une rafale de requêtes simultanées se solderait par des timeouts.
+        window.pushProductionRows = async function(rows, progressFn) {
+            let ok = 0, ko = 0;
+            for (let i = 0; i < rows.length; i++) {
+                let r = rows[i];
+                if (progressFn) progressFn(i + 1, rows.length);
+                try {
+                    let fields = window.prodFieldsPayload(r, r.calc, { eau: r.calc.totalEau, heures: r.calc.tempsTotalH });
+                    let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_production", id: r.id, fields: fields }) });
+                    let out = await res.json();
+                    if (out.status === "success") ok++; else ko++;
+                } catch (e) { ko++; }
+            }
+            return { ok: ok, ko: ko };
+        };
+
+        window.recalcProductionSeason = async function(btn) {
+            let saison = window.prodCurrentSeason();
+            let rows = window.computeProductionSeason(saison).filter(function(r) { return r.id; });
+            if (!rows.length) { alert("Aucune ligne enregistrée pour la saison " + saison + "."); return; }
+            if (!confirm("Recalculer et réécrire " + rows.length + " ligne(s) dans le Google Sheet pour la saison " + saison + " ?\nCela peut prendre un moment.")) return;
+            let original = btn ? btn.innerHTML : '';
+            let out = await window.pushProductionRows(rows, function(i, n) { if (btn) btn.innerHTML = '⏳ ' + i + '/' + n; });
+            if (btn) btn.innerHTML = original;
+            alert("✅ " + out.ok + " ligne(s) synchronisée(s)." + (out.ko ? "\n⚠️ " + out.ko + " en échec." : ""));
+            window.renderProductionWorkspace();
         };
 
         /* ========================================================================= */
