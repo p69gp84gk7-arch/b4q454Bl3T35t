@@ -17,7 +17,7 @@
 /* cache intermédiaire ne ferait que masquer l'état réel de la synchro.         */
 /* =========================================================================== */
 
-const SW_VERSION = '5.5.0';
+const SW_VERSION = '5.6.0';
 const SHELL = 'gmao-shell-' + SW_VERSION;
 const LIBS  = 'gmao-libs-'  + SW_VERSION;
 const TILES = 'gmao-tiles-v1';
@@ -50,7 +50,7 @@ const CDN_HOSTS  = ['unpkg.com', 'cdn.jsdelivr.net', 'cdnjs.cloudflare.com'];
 
 // Reconnaissance par motif plutôt que par liste exacte : les fonds de carte utilisent des
 // sous-domaines tournants (a./b./c./d.) que Leaflet tire au sort tuile par tuile.
-const TILE_RE = /(^|\.)(arcgisonline\.com|tile\.openstreetmap\.org|basemaps\.cartocdn\.com|tiles\.stadiamaps\.com|data\.geopf\.fr|wxs\.ign\.fr|tile\.opentopomap\.org)$/;
+const TILE_RE = /(^|\.)(arcgisonline\.com|tile\.openstreetmap\.org|basemaps\.cartocdn\.com|tiles\.stadiamaps\.com|data\.geopf\.fr|wxs\.ign\.fr|tile\.opentopomap\.org|maps\.eox\.at|sh\.dataspace\.copernicus\.eu)$/;
 function isTileRequest(url) {
     if (TILE_RE.test(url.hostname)) return true;
     return /\/\d{1,2}\/\d{1,6}\/\d{1,6}(\.(png|jpe?g|webp))?$/.test(url.pathname);
@@ -105,16 +105,27 @@ async function staleWhileRevalidate(cacheName, url, request) {
     return new Response('', { status: 504, statusText: 'Hors réseau' });
 }
 
-async function networkFirst(cacheName, url, request, timeoutMs) {
+// Volontairement SANS minuteur. Un délai maximal ici transformerait un réseau simplement lent — la
+// 3G d'un télésiège — en panne franche : la requête aboutissait, mais la course était déjà perdue et
+// la page recevait un faux « hors réseau ». Constaté en test : la toute première requête suivant le
+// réveil du service worker dépassait parfois 8 s alors que le serveur répondait en 0,3 s.
+// On ne se rabat sur le cache que si la requête ÉCHOUE réellement.
+// Une reprise immédiate avant d'abandonner : la toute première requête suivant l'activation d'un
+// service worker échoue parfois sans raison réseau (l'instance précédente est arrêtée en plein vol).
+// Constaté en test, de façon reproductible, sur la première interrogation d'Open-Meteo.
+async function networkFirst(cacheName, url, request) {
     const cache = await caches.open(cacheName);
-    try {
-        const res = await withTimeout(fetch(request), timeoutMs || 6000);
-        if (res && res.ok) { cache.put(url, res.clone()).catch(function() {}); }
-        return res;
-    } catch (e) {
-        const hit = await cache.match(url);
-        if (hit) return hit;
-        throw e;
+    for (let essai = 0; essai < 2; essai++) {
+        try {
+            const res = await fetch(request);
+            if (res && res.ok) { cache.put(url, res.clone()).catch(function() {}); }
+            return res;
+        } catch (e) {
+            if (essai === 0) { await new Promise(function(r) { setTimeout(r, 400); }); continue; }
+            const hit = await cache.match(url);
+            if (hit) return hit;
+            throw e;
+        }
     }
 }
 
@@ -199,7 +210,7 @@ self.addEventListener('fetch', function(event) {
 
     // Prévisions météo : la dernière reçue reste consultable hors réseau.
     if (url.hostname.indexOf('open-meteo.com') !== -1) {
-        event.respondWith(networkFirst(API, url.href, req, 8000).catch(function() {
+        event.respondWith(networkFirst(API, url.href, req).catch(function() {
             return new Response(JSON.stringify({ error: true, reason: 'offline' }),
                 { status: 503, headers: { 'Content-Type': 'application/json' } });
         }));
