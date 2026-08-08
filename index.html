@@ -24,7 +24,7 @@
         // principal. Sur un écran d'erreur, le nom et la version restent affichés — c'est l'information
         // la plus utile à transmettre en cas de bug ; seul le flocon animé disparaît.
         window.APP_NAME = "GMAO Neige";
-        window.APP_VERSION = "5.8.0";
+        window.APP_VERSION = "5.9.0";
         window.showCrash = function(msg, line) { let o = document.getElementById('loading-overlay'); if (o) { o.style.display='flex'; let fw = document.getElementById('flake-wrap'); if(fw) fw.style.display='none'; let pc = document.getElementById('loading-pct'); if(pc) pc.style.display='none'; document.getElementById('loading-title').innerText="🛑 ERREUR SYSTEME"; if(document.getElementById('error-box')) { document.getElementById('error-box').style.display='block'; document.getElementById('error-msg').innerHTML="<b>Détail:</b> "+msg+(line?"<br><b>Ligne:</b> "+line:""); } } else alert("🛑 CRASH : "+msg); };
         window.onerror = function(msg, src, ln) { if (msg.indexOf('Script error') > -1) return false; window.showCrash(msg, ln); return true; };
         window.addEventListener('unhandledrejection', function(e) { window.showCrash(e.reason ? e.reason.message : "Erreur réseau", "Réseau"); });
@@ -127,6 +127,24 @@
             border:2px solid #fff;text-align:center;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.4);}
         .route-start-icon div{background:#16a085;}
         .route-step-pied div{background:#27ae60;}
+        .route-step-libre div{background:#8e44ad;border-style:dashed;}
+        /* Message éphémère du mode dessin : une alerte() bloquante interromprait le geste en cours. */
+        #route-toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(72px + var(--safe-bottom));
+            background:rgba(20,28,36,0.94);color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;
+            max-width:min(420px,88vw);text-align:center;z-index:6200;box-shadow:0 6px 22px rgba(0,0,0,0.4);
+            opacity:0;pointer-events:none;transition:opacity .2s;}
+        #route-toast.show{opacity:1;}
+        /* Scanner de QR code : la vidéo occupe l'écran, la mire indique où viser. */
+        #qr-scan{position:fixed;inset:0;z-index:7000;background:#000;display:none;flex-direction:column;}
+        #qr-scan.open{display:flex;}
+        #qr-scan video{flex:1;width:100%;object-fit:cover;background:#000;}
+        #qr-scan-bar{padding:calc(10px + var(--safe-top)) 12px 10px;background:#111a22;color:#fff;font-size:13px;
+            display:flex;align-items:center;gap:10px;}
+        #qr-scan-bar button{background:#c0392b;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;}
+        #qr-scan-info{padding:10px 12px calc(14px + var(--safe-bottom));background:#111a22;color:#cfd8dc;font-size:12px;text-align:center;}
+        #qr-scan-mire{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(70vw,300px);
+            height:min(70vw,300px);border:3px solid rgba(255,255,255,0.85);border-radius:16px;pointer-events:none;
+            box-shadow:0 0 0 100vmax rgba(0,0,0,0.35);}
         #route-print{display:none;}
         @media print{
             body.printing-route > *{display:none !important;}
@@ -1653,6 +1671,35 @@
         window.isoToFr = function(iso) { if(!iso) return ""; let m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(!m) return iso; return m[3] + '/' + m[2] + '/' + m[1]; };
         window.frToIso = function(fr) { if(!fr) return ""; let m = fr.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/); if(!m) return ""; return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0'); };
         window.getTicketsForCanon = function(id) { return window.rawTickets.filter(t => t.idCanon === id); };
+        /* Composer la tournée depuis un ticket de panne : on est en train de lire le défaut, c'est
+           le moment où l'on décide d'aller voir le canon. Le bouton annonce le rang qu'occupera
+           l'arrêt ; rien n'est figé tant qu'on n'a pas confirmé dans la fiche de route. */
+        window.boutonAjoutTrajet = function(id) {
+            let dedans = (window.routeSelection || []).indexOf(id) > -1;
+            let rang = dedans ? (window.routeSelection.indexOf(id) + 1) : ((window.routeSelection || []).length + 1);
+            return `<button onclick="event.stopPropagation(); window.routeAjouterDepuisTicket('${id}')" title="${dedans ? 'Déjà au programme — cliquez pour ouvrir la fiche de route' : 'Ajouter ce canon à la tournée'}"
+                style="background:${dedans ? '#27ae60' : '#e67e22'}; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-size:10px; font-weight:bold; cursor:pointer; flex-shrink:0; white-space:nowrap;">
+                <i class="fa-solid fa-route"></i> ${dedans ? 'Trajet n°' + rang : 'Au trajet (n°' + rang + ')'}</button>`;
+        };
+        window.routeAjouterDepuisTicket = function(id) {
+            if (!window.routeSelection) window.routeSelection = [];
+            if (window.routeSelection.indexOf(id) > -1) {
+                // Déjà dedans : le second clic mène à la fiche de route pour confirmer l'ensemble.
+                window.openFicheRoute(); window.lancerCalculRoute(null); return;
+            }
+            window.routeSelection.push(id);
+            if (window.routeSyncOrdre) window.routeSyncOrdre();
+            window.routeSave();
+            window.routeDernier = null;
+            window.routeToast("Canon " + id + " ajouté au trajet en position " + window.routeSelection.length +
+                              ". Confirmez dans la fiche de route.");
+            // Le bouton doit changer d'état tout de suite, sans refermer la fiche du canon.
+            document.querySelectorAll('button[onclick*="routeAjouterDepuisTicket"]').forEach(function(b) {
+                let m = (b.getAttribute('onclick') || '').match(/routeAjouterDepuisTicket\('(.*)'\)/);
+                if (m && m[1] === id) b.outerHTML = window.boutonAjoutTrajet(id);
+            });
+        };
+
         window.getActiveTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('faire') || t.statut.includes('cours')); };
         window.getHistoryTickets = function(id) { return window.getTicketsForCanon(id).filter(t => t.statut.includes('fait') || t.statut === '').sort((a,b) => new Date(b.date) - new Date(a.date)); };
         window.parseAppSheetPhotoUrl = function(photoPath) { if (!photoPath || photoPath.trim() === "") return "https://placehold.co/150x150?text=Pas+de+photo"; if (photoPath.startsWith("http")) return photoPath; let cleanPath = photoPath.startsWith("/") ? photoPath.substring(1) : photoPath; let parts = cleanPath.split("/"); if (parts.length >= 3 && parts[0].toLowerCase() === "appsheet") { let appName = parts[2]; let fileName = parts.slice(3).join("/"); return `https://www.appsheet.com/template/gettablefileurl?appName=${appName}&tableName=stock&fileName=${encodeURIComponent(fileName)}`; } return "https://placehold.co/150x150?text=Chemin+Invalide"; };
@@ -2236,6 +2283,7 @@
 
         window.renderSelectionPanel = function() {
             if(window.selectedCannonsMap.size === 0) { window.triggerGlobalFilterChart(); return; }
+            if (window.ouvrirPanneauDroite) window.panneauDroite = 'selection';
             document.getElementById('multi-tools').style.display = 'flex'; document.getElementById('view-selection').style.display = 'block';
             document.getElementById('sel-count').innerText = window.selectedCannonsMap.size; let listDiv = document.getElementById('selected-list'); if(!listDiv) return;
 
@@ -2342,6 +2390,7 @@
                             <div class="ticket-card dash-ticket-item" data-defaut="${safeDef.toLowerCase()}" style="border-left-color:${borderCol};">
                                 <div style="font-weight:bold; font-size:14px; color:#333; margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start;">
                                     <span style="flex-grow:1; margin-right:10px;">${t.defaut}</span>
+                                    ${window.boutonAjoutTrajet(safeId)}
                                     <button onclick="window.editFullTicket('${safeId}', '${safeDef}')" style="background:none; border:1px solid #ddd; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; flex-shrink:0;"><i class="fa-solid fa-pen"></i> Éditer</button>
                                 </div>
                                 <div id="${idDiv}">
@@ -2356,7 +2405,7 @@
                     let fullDataHTML = `<details style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;">➕ Caractéristiques Complètes</summary><div style="margin-top:12px; display:grid; grid-template-columns: 1fr; gap:8px;">`;
                     p.fullData.forEach(item => { if(!item.k.toLowerCase().includes('xy') && !item.k.toLowerCase().includes('gps') && !(window.appSettings.hiddenColumns || []).includes(item.k)) { fullDataHTML += `<div style="border-bottom:1px solid #f0f0f0; padding-bottom:4px;"><span style="color:#7f8c8d;">${item.k} :</span> <b style="color:#2c3e50; float:right;">${item.v}</b></div>`; } }); fullDataHTML += `</div></details>`;
                     mainContent = `<div style="margin-bottom:10px;">${badges}</div>${fullDataHTML}`;
-                    if (active.length > 0) mainContent += `<div style="margin-top:15px; padding:10px; background:#fdf0ed; border-radius:6px; font-size:12px; color:#e74c3c; font-weight:bold; border:1px solid #fadbd8;">⚠️ Ce canon a ${active.length} défaut(s) en cours.</div>`; mainContent += histHtml + prodHtml;
+                    if (active.length > 0) mainContent += `<div style="margin-top:15px; padding:10px; background:#fdf0ed; border-radius:6px; font-size:12px; color:#e74c3c; font-weight:bold; border:1px solid #fadbd8; display:flex; align-items:center; gap:8px;"><span style="flex:1;">⚠️ Ce canon a ${active.length} défaut(s) en cours.</span>${window.boutonAjoutTrajet(p.id.replace(/'/g, "\\'"))}</div>`; mainContent += histHtml + prodHtml;
                     if (window.mainTheme === 'type') { editBtn = `<button class="btn-action-primary" onclick="window.startEdit('${p.id}')"><i class="fa-solid fa-pen"></i> Éditer ce canon</button>`; }
                     if (window.mainTheme === 'historique') {
                         let s = window.saisonsList[window.histSeasonIdx]; let hd = p.historique[s] || {eau:0, air:0, temps:0};
@@ -3682,6 +3731,12 @@
                 calquesChemins: [],     // calques KMZ déclarés carrossables
                 ordreManuel: null,      // ordre imposé par l'utilisateur, sinon optimisation
                 retour: true,
+                planActif: true,        // utiliser « plan de circulation.kmz » comme réseau routier
+                planRouge: true,        // emprunter aussi les tronçons rouges (autorisés pour nous à la neige)
+                strictPlan: true,       // en véhicule, ne rouler QUE sur le plan de circulation
+                pointsLibres: [],       // arrêts posés à la main sur la carte : { id:'pt:…', lat, lng, nom }
+                tronconsPied: [],       // tronçons pédestres dessinés à la main
+                coupes: [],             // liaisons supprimées à la main, clés « arrêtA|arrêtB »
                 depart: null,           // { lat, lng, nom } ; sinon position GPS ou premier canon
                 interdits: [
                     { nom: "Record Hount Estrète", de: 318, a: 327 },
@@ -3693,7 +3748,9 @@
         window.routeSave = function() { try { localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings)); } catch(e) {} };
 
         window.routeNumero = function(id) {
-            let m = (id === null || id === undefined ? '' : id.toString()).match(/\d+/);
+            let s = (id === null || id === undefined ? '' : id.toString());
+            if (s.indexOf('pt:') === 0) return NaN;   // un point posé à la main n'est pas un canon
+            let m = s.match(/\d+/);
             return m ? parseInt(m[0], 10) : NaN;
         };
         window.routeCanonInterdit = function(id) {
@@ -3711,6 +3768,187 @@
         };
 
         /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 4.G.0.a — PLAN DE CIRCULATION                                     */
+        /*                                                                           */
+        /* Le fichier « plan de circulation.kmz » est déposé À CÔTÉ de index.html sur */
+        /* l'hébergement : il fait partie de l'application au même titre que le code, */
+        /* et se charge donc tout seul au démarrage — pas de calque à cocher, pas de  */
+        /* Drive à interroger. Deux couleurs y ont un sens réglementaire :             */
+        /*   • JAUNE  : circulation autorisée à tous ;                                */
+        /*   • ROUGE  : autorisation nécessaire — valable pour le service des neiges.  */
+        /* Les deux sont donc carrossables pour nous ; le rouge reste débrayable.      */
+        /* Le fichier est recopié en base locale : au premier chargement il vient du   */
+        /* serveur, ensuite il repart de la copie même sans réseau.                    */
+        /* ------------------------------------------------------------------------- */
+        window.PLAN_FICHIERS = ["plan de circulation.kmz", "Plan de circulation.kmz", "plan de circulation.kml",
+                                "plan-de-circulation.kmz", "plan_de_circulation.kmz", "plan de circulation.KMZ"];
+        window.planCirculation = null;     // { lignes: [...], nom, at, origine }
+        window.planEtat = { etat: "inconnu", msg: "" };
+        window.planLayer = null;
+
+        // Un rouge et un jaune de KML ne sont jamais exactement #ff0000 / #ffff00 : on classe par
+        // teinte, ce qui reconnaît aussi bien un orange soutenu qu'un jaune pâle.
+        window.planClasseCouleur = function(hex, nom) {
+            let s = (hex || '').toString().replace('#', '');
+            if (s.length === 8) s = s.slice(0, 6);           // certains styles arrivent en #rrggbbaa
+            if (s.length === 3) s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2];
+            let texte = (nom || '').toLowerCase();
+            if (/\brouge\b|autoris/.test(texte) && !/\bjaune\b/.test(texte)) return 'rouge';
+            if (/\bjaune\b/.test(texte)) return 'jaune';
+            if (!/^[0-9a-f]{6}$/i.test(s)) return 'autre';
+            let r = parseInt(s.slice(0, 2), 16) / 255, v = parseInt(s.slice(2, 4), 16) / 255, b = parseInt(s.slice(4, 6), 16) / 255;
+            let max = Math.max(r, v, b), min = Math.min(r, v, b), d = max - min;
+            if (d < 0.12) return 'autre';                    // gris, blanc, noir : aucune consigne
+            let h = 0;
+            if (max === r) h = 60 * (((v - b) / d) % 6);
+            else if (max === v) h = 60 * ((b - r) / d + 2);
+            else h = 60 * ((r - v) / d + 4);
+            if (h < 0) h += 360;
+            if (h <= 22 || h >= 336) return 'rouge';
+            if (h > 22 && h < 45) return 'orange';           // orange soutenu : traité comme le rouge
+            if (h >= 45 && h <= 75) return 'jaune';
+            return 'autre';
+        };
+        window.PLAN_COULEURS = { rouge: '#e74c3c', orange: '#e67e22', jaune: '#f1c40f', autre: '#95a5a6' };
+
+        // Extrait les lignes d'un GeoJSON issu d'un KML, en conservant le nom du dossier parent :
+        // beaucoup de plans rangent les tronçons dans des dossiers « Rouge » / « Jaune » plutôt que
+        // de styler chaque trait, et cette information-là est la plus fiable des deux.
+        window.planExtraireLignes = function(geo, dossiers) {
+            let out = [];
+            let feats = geo && geo.type === 'FeatureCollection' ? geo.features : (geo ? [geo] : []);
+            (feats || []).forEach(function(f) {
+                let p = f.properties || {}, gm = f.geometry;
+                if (!gm) return;
+                let nom = p.name || '';
+                let etiquette = nom + ' ' + (dossiers && dossiers[nom] ? dossiers[nom] : '') + ' ' + (p.styleUrl || '');
+                let classe = window.planClasseCouleur(p.stroke, etiquette);
+                let pousser = function(coords) {
+                    if (coords && coords.length > 1) out.push({ coords: coords, classe: classe, nom: nom, couleur: p.stroke || '' });
+                };
+                if (gm.type === 'LineString') pousser(gm.coordinates);
+                else if (gm.type === 'MultiLineString') (gm.coordinates || []).forEach(pousser);
+                else if (gm.type === 'Polygon') (gm.coordinates || []).forEach(pousser);
+                else if (gm.type === 'GeometryCollection') (gm.geometries || []).forEach(function(sub) {
+                    if (sub.type === 'LineString') pousser(sub.coordinates);
+                    else if (sub.type === 'MultiLineString') (sub.coordinates || []).forEach(pousser);
+                });
+            });
+            return out;
+        };
+
+        // Nom du dossier KML contenant chaque placemark : toGeoJSON aplatit la hiérarchie et la perd.
+        window.planDossiers = function(xmlDoc) {
+            let map = {};
+            try {
+                let folders = xmlDoc.getElementsByTagName('Folder');
+                for (let i = 0; i < folders.length; i++) {
+                    let n = folders[i].getElementsByTagName('name')[0];
+                    let nomDossier = n ? (n.textContent || '').trim() : '';
+                    if (!nomDossier) continue;
+                    let pms = folders[i].getElementsByTagName('Placemark');
+                    for (let j = 0; j < pms.length; j++) {
+                        let pn = pms[j].getElementsByTagName('name')[0];
+                        let np = pn ? (pn.textContent || '').trim() : '';
+                        if (np) map[np] = (map[np] ? map[np] + ' ' : '') + nomDossier;
+                    }
+                }
+            } catch (e) {}
+            return map;
+        };
+
+        window.planDepuisOctets = async function(octets, nomFichier) {
+            let kml = "";
+            if (/\.kmz$/i.test(nomFichier)) {
+                if (typeof JSZip === 'undefined') throw new Error("JSZip indisponible");
+                let zip = await JSZip.loadAsync(octets);
+                let f = Object.values(zip.files).find(function(x) { return /\.kml$/i.test(x.name); });
+                if (!f) throw new Error("aucun .kml dans le .kmz");
+                kml = await f.async("string");
+            } else {
+                kml = new TextDecoder("utf-8").decode(octets);
+            }
+            let xml = new DOMParser().parseFromString(kml, "text/xml");
+            let geo = toGeoJSON.kml(xml);
+            let lignes = window.planExtraireLignes(geo, window.planDossiers(xml));
+            if (!lignes.length) throw new Error("aucun tracé linéaire");
+            return lignes;
+        };
+
+        window.planCompter = function(lignes) {
+            let c = { rouge: 0, orange: 0, jaune: 0, autre: 0 };
+            (lignes || []).forEach(function(l) { c[l.classe] = (c[l.classe] || 0) + 1; });
+            return c;
+        };
+
+        window.chargerPlanCirculation = async function(forcerReseau) {
+            // 1. Copie locale d'abord : instantanée, et disponible sans réseau.
+            if (!forcerReseau) {
+                try {
+                    let cache = await window.idbGet("snapshot", "plan_circulation");
+                    if (cache && cache.b64) {
+                        let bin = atob(cache.b64), oct = new Uint8Array(bin.length);
+                        for (let i = 0; i < bin.length; i++) oct[i] = bin.charCodeAt(i);
+                        window.planCirculation = { lignes: await window.planDepuisOctets(oct.buffer, cache.nom),
+                                                   nom: cache.nom, at: cache.at, origine: "copie locale" };
+                        window.planEtat = { etat: "ok", msg: "copie locale du " + window.fmtSnapshotDate(cache.at) };
+                    }
+                } catch (e) { window.planEtat = { etat: "erreur", msg: "copie locale illisible (" + e.message + ")" }; }
+            }
+            // 2. Puis le serveur, pour rafraîchir. Un échec ici n'est pas grave si la copie a répondu.
+            for (let i = 0; i < window.PLAN_FICHIERS.length; i++) {
+                let nom = window.PLAN_FICHIERS[i];
+                try {
+                    let res = await fetch(encodeURI(nom), { cache: "no-cache" });
+                    if (!res.ok) continue;
+                    let buf = await res.arrayBuffer();
+                    if (buf.byteLength < 64) continue;                       // page d'erreur renvoyée en 200
+                    let lignes = await window.planDepuisOctets(buf, nom);
+                    window.planCirculation = { lignes: lignes, nom: nom, at: Date.now(), origine: "fichier de l'application" };
+                    window.planEtat = { etat: "ok", msg: lignes.length + " tronçon(s) — " + nom };
+                    let bin = "", u8 = new Uint8Array(buf);
+                    for (let k = 0; k < u8.length; k++) bin += String.fromCharCode(u8[k]);
+                    try { await window.idbPut("snapshot", { key: "plan_circulation", nom: nom, at: Date.now(), b64: btoa(bin) }); } catch (e) {}
+                    window.planAfficher(true);
+                    return window.planCirculation;
+                } catch (e) { /* on essaie le nom suivant */ }
+            }
+            if (!window.planCirculation)
+                window.planEtat = { etat: "absent", msg: "fichier « plan de circulation.kmz » introuvable à côté de index.html" };
+            else window.planAfficher(true);
+            return window.planCirculation;
+        };
+
+        // Affichage sur la carte, aux couleurs du plan.
+        window.planVisible = true;
+        window.planAfficher = function(on) {
+            if (!window.map) return;
+            if (window.planLayer) { window.map.removeLayer(window.planLayer); window.planLayer = null; }
+            window.planVisible = !!on;
+            if (!on || !window.planCirculation) return;
+            let g = L.layerGroup();
+            window.planCirculation.lignes.forEach(function(l) {
+                let pts = l.coords.map(function(c) { return [c[1], c[0]]; });
+                let col = window.PLAN_COULEURS[l.classe] || '#95a5a6';
+                g.addLayer(L.polyline(pts, { color: '#000', weight: 6, opacity: 0.25 }));
+                g.addLayer(L.polyline(pts, { color: col, weight: 3, opacity: 0.9 }));
+            });
+            window.planLayer = g; g.addTo(window.map);
+            if (window.planLayer.bringToBack) window.planLayer.bringToBack();
+        };
+        window.basculerPlanCarte = function() { window.planAfficher(!window.planVisible); window.renderFicheRoute(); };
+
+        // Tronçons réellement empruntables, selon le réglage « rouge autorisé ».
+        window.planLignesUtiles = function() {
+            let cfg = window.routeCfg();
+            if (!cfg.planActif || !window.planCirculation) return [];
+            return window.planCirculation.lignes.filter(function(l) {
+                if (l.classe === 'rouge' || l.classe === 'orange') return !!cfg.planRouge;
+                return true;
+            }).map(function(l) { return { nom: "Plan de circulation (" + l.classe + ")", coords: l.coords, classe: l.classe }; });
+        };
+
+        /* ------------------------------------------------------------------------- */
         /* CHAPITRE 4.G.0 — RÉSEAU DE CIRCULATION                                     */
         /*                                                                           */
         /* Deux sources, dans cet ordre de préférence :                               */
@@ -3723,9 +3961,39 @@
         window.routeGrilleM = 10;   // fusion des sommets de chemin distants de moins de 10 m
 
         window.routeClePoint = function(lat, lng) {
-            let cLat = window.routeGrilleM / 111320;
-            let cLng = window.routeGrilleM / (111320 * Math.cos(lat * Math.PI / 180) || 1);
-            return 'p:' + Math.round(lat / cLat) + ':' + Math.round(lng / cLng);
+            let c = window.routeCelluleXY(lat, lng, window.routeGrilleM);
+            return 'p:' + c[0] + ':' + c[1];
+        };
+        // Indices de cellule d'une grille régulière. Toutes les recherches de voisinage passent par là :
+        // un vrai plan de circulation compte facilement plusieurs milliers de sommets, et comparer
+        // chaque sommet à tous les autres — des dizaines de millions de calculs — figeait l'application
+        // pendant de longues secondes au premier calcul de tournée.
+        window.routeCelluleXY = function(lat, lng, taille) {
+            let cLat = taille / 111320;
+            let cLng = taille / (111320 * Math.cos(lat * Math.PI / 180) || 1);
+            return [Math.round(lat / cLat), Math.round(lng / cLng)];
+        };
+        // Range des points dans des cases, puis rend les points d'un voisinage de ±rayon cases.
+        window.routeGrilleSpatiale = function(taille) {
+            let cases = {};
+            return {
+                taille: taille,
+                ajouter: function(lat, lng, valeur) {
+                    let c = window.routeCelluleXY(lat, lng, taille), k = c[0] + '|' + c[1];
+                    (cases[k] || (cases[k] = [])).push(valeur);
+                },
+                autour: function(lat, lng, metres) {
+                    let c = window.routeCelluleXY(lat, lng, taille);
+                    let r = Math.max(1, Math.ceil(metres / taille));
+                    let out = [];
+                    for (let i = c[0] - r; i <= c[0] + r; i++)
+                        for (let j = c[1] - r; j <= c[1] + r; j++) {
+                            let b = cases[i + '|' + j];
+                            if (b) for (let k = 0; k < b.length; k++) out.push(b[k]);
+                        }
+                    return out;
+                }
+            };
         };
 
         // Récupère les tracés linéaires de tous les calques déclarés carrossables.
@@ -3753,7 +4021,8 @@
             (window.cloudKmzLayers || []).forEach(function(l, i) {
                 if (choisis.indexOf('drv:' + i) > -1) ajouterGeo(l.geojson, l.nom);
             });
-            return lignes;
+            // Le plan de circulation vient en premier : c'est le réseau de référence.
+            return window.planLignesUtiles().concat(lignes);
         };
         // Liste des calques disponibles, pour la case à cocher des réglages.
         window.routeCalquesDisponibles = function() {
@@ -3810,29 +4079,41 @@
                 });
             });
 
-            // Croisements : deux chemins qui se coupent sans partager de sommet.
+            // Croisements : deux chemins qui se coupent sans partager de sommet. La recherche se fait
+            // par voisinage de cases, jamais de tous à tous.
             let sommetsChemin = Object.keys(index);
-            for (let i = 0; i < sommetsChemin.length; i++) {
-                for (let j = i + 1; j < sommetsChemin.length; j++) {
-                    let a = index[sommetsChemin[i]], b = index[sommetsChemin[j]];
+            let grilleChemin = window.routeGrilleSpatiale(window.routeGrilleM);
+            sommetsChemin.forEach(function(k) { let n = index[k]; grilleChemin.ajouter(n.lat, n.lng, k); });
+            let seuilCroisement = window.routeGrilleM * 2;
+            sommetsChemin.forEach(function(k) {
+                let a = index[k];
+                grilleChemin.autour(a.lat, a.lng, seuilCroisement).forEach(function(k2) {
+                    if (k2 <= k) return;                     // une seule fois par paire
+                    let b = index[k2];
                     let d = window.distanceM(a.lat, a.lng, b.lat, b.lng);
-                    if (d <= window.routeGrilleM * 2) relier(a.id, b.id, d, 'chemin');
-                }
-            }
+                    if (d <= seuilCroisement) relier(a.id, b.id, d, 'chemin');
+                });
+            });
 
-            // --- 2. Les canons ---
+            // --- 2. Les canons, puis les points posés à la main ---
             let noeudsCanon = feats.map(function(f) {
                 let id = 'c:' + f.properties.id;
                 return ajouterNoeud(id, f.geometry.coordinates[1], f.geometry.coordinates[0], 'canon',
                     { canon: f.properties.id, piste: window.getV(f.properties, window.keyPiste) });
             });
+            // Un point libre est un arrêt comme un autre : il rejoint le réseau exactement de la même
+            // manière, et devient un arrêt à pied s'il a été posé loin de tout chemin.
+            let noeudsPoint = (cfg.pointsLibres || []).map(function(p) {
+                return ajouterNoeud('c:' + p.id, p.lat, p.lng, 'point', { canon: p.id, piste: p.nom || 'point posé' });
+            });
+            let noeudsArret = noeudsCanon.concat(noeudsPoint);
 
-            // Raccrochage de chaque canon au chemin le plus proche.
+            // Raccrochage de chaque arrêt au chemin le plus proche.
             let rAcc = cfg.rayonAccroche;
             let raccroches = 0;
-            noeudsCanon.forEach(function(n) {
+            noeudsArret.forEach(function(n) {
                 let best = null, bd = Infinity;
-                sommetsChemin.forEach(function(k) {
+                grilleChemin.autour(n.lat, n.lng, rAcc).forEach(function(k) {
                     let p = index[k];
                     let d = window.distanceM(n.lat, n.lng, p.lat, p.lng);
                     if (d < bd) { bd = d; best = k; }
@@ -3840,17 +4121,24 @@
                 if (best && bd <= rAcc) { relier(n.id, best, bd, 'acces'); n.accroche = best; n.accrocheM = Math.round(bd); raccroches++; }
             });
 
-            // --- 3. Liaisons entre canons voisins, là où aucun chemin ne dessert ---
-            // On les conserve toujours : sans calque de chemins, c'est le seul réseau disponible ; avec
-            // des chemins, elles comblent les portions non couvertes.
-            let R = cfg.rayonLien;
-            for (let i = 0; i < noeudsCanon.length; i++) {
-                for (let j = i + 1; j < noeudsCanon.length; j++) {
-                    let a = noeudsCanon[i], b = noeudsCanon[j];
-                    let d = window.distanceM(a.lat, a.lng, b.lat, b.lng);
-                    if (d > R) continue;
-                    relier(a.id, b.id, d, 'canons');
-                }
+            /* --- 3. Liaisons entre arrêts voisins, là où aucun chemin ne dessert ---
+               En mode strict — le mode normal dès qu'un plan de circulation existe — ces liaisons
+               disparaissent : le véhicule ne roule QUE sur le plan, et un canon qu'aucun tronçon ne
+               dessert devient un arrêt à finir à pied. Sans plan chargé, elles restent le seul réseau
+               disponible et le mode strict est ignoré : mieux vaut un trajet approximatif que rien. */
+            let strict = !!cfg.strictPlan && nbSommets > 0;
+            let grilleArret = window.routeGrilleSpatiale(Math.max(25, cfg.rayonInterdit));
+            noeudsArret.forEach(function(n) { grilleArret.ajouter(n.lat, n.lng, n); });
+            if (!strict) {
+                let R = cfg.rayonLien;
+                noeudsArret.forEach(function(a) {
+                    grilleArret.autour(a.lat, a.lng, R).forEach(function(b) {
+                        if (b.id <= a.id) return;
+                        let d = window.distanceM(a.lat, a.lng, b.lat, b.lng);
+                        if (d > R) return;
+                        relier(a.id, b.id, d, 'canons');
+                    });
+                });
             }
 
             // --- 4. Retrait des portions interdites ---
@@ -3860,10 +4148,13 @@
             let interdit = {};
             Object.keys(index).forEach(function(k) {
                 let n = index[k];
-                if (n.type === 'canon' && window.routeCanonInterdit(n.canon)) { interdit[k] = true; return; }
+                if ((n.type === 'canon' || n.type === 'point') && window.routeCanonInterdit(n.canon)) { interdit[k] = true; return; }
                 if (n.type === 'chemin') {
                     let procheInterdit = false, procheAutorise = false;
-                    noeudsCanon.forEach(function(c) {
+                    grilleArret.autour(n.lat, n.lng, cfg.rayonInterdit).forEach(function(c) {
+                        // Seuls les canons décident : un point posé à la main près d'une portion
+                        // interdite ne doit pas suffire à y rouvrir la circulation.
+                        if (c.type !== 'canon') return;
                         let d = window.distanceM(n.lat, n.lng, c.lat, c.lng);
                         if (d > cfg.rayonInterdit) return;
                         if (window.routeCanonInterdit(c.canon)) procheInterdit = true; else procheAutorise = true;
@@ -3882,9 +4173,9 @@
             });
 
             return { index: index, adj: adj, bloques: Math.round(bloques / 2), interdit: interdit,
-                     noeudsCanon: noeudsCanon, nbChemins: lignes.length, nbSommetsChemin: nbSommets,
-                     raccroches: raccroches,
-                     canonVersNoeud: (function() { let m = {}; noeudsCanon.forEach(function(n) { m[n.canon] = n.id; }); return m; })() };
+                     noeudsCanon: noeudsArret, nbChemins: lignes.length, nbSommetsChemin: nbSommets,
+                     raccroches: raccroches, strict: strict,
+                     canonVersNoeud: (function() { let m = {}; noeudsArret.forEach(function(n) { m[n.canon] = n.id; }); return m; })() };
         };
 
         /* Tas binaire : sans lui, Dijkstra retriait sa file à chaque extraction, ce qui restait tenable
@@ -3995,9 +4286,10 @@
             let arrets = [];
             ids.forEach(function(idCanon) {
                 let nCanon = g.index[g.canonVersNoeud[idCanon]];
+                let nomArret = nCanon.type === 'point' ? (nCanon.piste || 'point posé') : '';
                 let zone = window.routeCanonInterdit(idCanon);
-                if (!zone && !g.interdit[nCanon.id]) {
-                    arrets.push({ canon: idCanon, noeud: nCanon.id, aPied: 0, zone: null, lat: nCanon.lat, lng: nCanon.lng });
+                if (!zone && !g.interdit[nCanon.id] && (g.adj[nCanon.id] || []).length) {
+                    arrets.push({ canon: idCanon, noeud: nCanon.id, aPied: 0, zone: null, lat: nCanon.lat, lng: nCanon.lng, nom: nomArret });
                     return;
                 }
                 // Point accessible le plus proche à vol d'oiseau parmi les nœuds encore reliés.
@@ -4009,7 +4301,8 @@
                     if (d < bd) { bd = d; best = k; }
                 });
                 arrets.push({ canon: idCanon, noeud: best, aPied: Math.round(bd), zone: zone ? zone.nom : "hors réseau",
-                              lat: nCanon.lat, lng: nCanon.lng, approche: best ? { lat: g.index[best].lat, lng: g.index[best].lng } : null });
+                              nom: nomArret, lat: nCanon.lat, lng: nCanon.lng,
+                              approche: best ? { lat: g.index[best].lat, lng: g.index[best].lng } : null });
             });
             arrets = arrets.filter(function(a) { return a.noeud; });
             if (!arrets.length) return { err: "Aucun point d'arrêt accessible." };
@@ -4071,65 +4364,116 @@
                 });
             }
 
-            let etapes = [], trace = [], liaisons = [], pied = [], cumul = depDist, prec = depNoeud;
-            if (depart) trace.push([depart.lat, depart.lng]);
-            trace.push([g.index[depNoeud].lat, g.index[depNoeud].lng]);
+            /* Le trajet est découpé en LIAISONS explicites (« de tel arrêt vers tel arrêt »), et non
+               plus en une seule polyligne. C'est ce découpage qui rend l'édition possible : on peut
+               montrer, cliquer, couper ou remplacer une liaison précise sans toucher au reste. */
+            let coupes = {}; (cfg.coupes || []).forEach(function(c) { coupes[c] = true; });
+            let piedsManuels = {};
+            (cfg.tronconsPied || []).forEach(function(t) { if (t.a && t.b) piedsManuels[t.a + '|' + t.b] = t; });
+            let cleLiaison = function(a, b) { return a + '|' + b; };
+            let cherche = function(tbl, a, b) { return tbl[cleLiaison(a, b)] || tbl[cleLiaison(b, a)] || null; };
+
+            let etapes = [], liaisons = [], cumul = depDist, prec = depNoeud, precId = 'D';
+            let metresPiedDessine = 0;
+
+            let ajouterLiaison = function(deId, versId, nDe, nVers, i) {
+                let manuel = cherche(piedsManuels, deId, versId);
+                if (cherche(coupes, deId, versId))
+                    return { de: deId, vers: versId, type: 'coupe', d: 0, pts: [[nDe.lat, nDe.lng], [nVers.lat, nVers.lng]] };
+                if (manuel) {
+                    let d = 0;
+                    for (let k = 1; k < manuel.pts.length; k++)
+                        d += window.distanceM(manuel.pts[k - 1][0], manuel.pts[k - 1][1], manuel.pts[k][0], manuel.pts[k][1]);
+                    metresPiedDessine += d;
+                    return { de: deId, vers: versId, type: 'pied', d: d, pts: manuel.pts.slice(), manuel: manuel.id };
+                }
+                let d = M[nDe.id] && M[nDe.id][nVers.id] !== undefined ? M[nDe.id][nVers.id] : 0;
+                let hors = HORS[nDe.id] ? HORS[nDe.id][nVers.id] : false;
+                let pts;
+                if (hors) pts = [[nDe.lat, nDe.lng], [nVers.lat, nVers.lng]];
+                else {
+                    let ch = window.routeChemin(P[nDe.id], nDe.id, nVers.id);
+                    pts = ch ? ch.map(function(n) { return [g.index[n].lat, g.index[n].lng]; }) : [[nDe.lat, nDe.lng], [nVers.lat, nVers.lng]];
+                }
+                return { de: deId, vers: versId, type: hors ? 'liaison' : 'route', d: d, pts: pts };
+            };
+
+            if (depart) {
+                let nD = g.index[depNoeud];
+                liaisons.push({ de: 'D', vers: 'D', type: 'acces', d: depDist,
+                                pts: [[depart.lat, depart.lng], [nD.lat, nD.lng]] });
+            }
 
             sequence.forEach(function(a, i) {
-                let d = (i === 0 && a.noeud === depNoeud) ? depDist : M[prec][a.noeud];
-                let horsLigne = (i === 0 && a.noeud === depNoeud) ? !!depart : HORS[prec][a.noeud];
-                if (!(i === 0 && a.noeud === depNoeud)) {
-                    cumul += d;
-                    if (horsLigne) {
-                        let na = g.index[prec], nb = g.index[a.noeud];
-                        liaisons.push([[na.lat, na.lng], [nb.lat, nb.lng]]);
-                        trace.push([nb.lat, nb.lng]);
-                    } else {
-                        let ch = window.routeChemin(P[prec], prec, a.noeud);
-                        if (ch) ch.slice(1).forEach(function(n) { trace.push([g.index[n].lat, g.index[n].lng]); });
-                    }
+                let nVers = g.index[a.noeud];
+                let l = null, d = 0;
+                if (i === 0 && a.noeud === depNoeud && !depart) { d = 0; }
+                else {
+                    l = ajouterLiaison(precId, a.canon, g.index[prec], nVers, i);
+                    liaisons.push(l); d = l.d; cumul += d;
                 }
                 let nCan = g.index[g.canonVersNoeud[a.canon]] || {};
                 etapes.push({ id: a.canon, dist: d, cumul: cumul, piste: nCan.piste,
-                              lat: nCan.lat, lng: nCan.lng,
-                              horsLigne: horsLigne, aPied: a.aPied, zone: a.zone });
-                if (a.aPied > 0 && a.approche) pied.push([[a.approche.lat, a.approche.lng], [a.lat, a.lng]]);
-                prec = a.noeud;
+                              lat: nCan.lat, lng: nCan.lng, de: precId,
+                              type: l ? l.type : 'depart',
+                              horsLigne: l ? l.type === 'liaison' : false,
+                              aPied: a.aPied, zone: a.zone,
+                              point: (a.canon + '').indexOf('pt:') === 0, nom: a.nom || '' });
+                if (a.aPied > 0 && a.approche)
+                    liaisons.push({ de: a.canon, vers: a.canon, type: 'approche', d: a.aPied,
+                                    pts: [[a.approche.lat, a.approche.lng], [a.lat, a.lng]] });
+                prec = a.noeud; precId = a.canon;
             });
 
             let retour = 0;
             if (cfg.retour && etapes.length) {
-                retour = M[prec] && isFinite(M[prec][depNoeud]) ? M[prec][depNoeud] : 0;
-                if (retour) {
-                    if (HORS[prec][depNoeud]) {
-                        let na = g.index[prec], nb = g.index[depNoeud];
-                        liaisons.push([[na.lat, na.lng], [nb.lat, nb.lng]]);
-                        trace.push([nb.lat, nb.lng]);
-                    } else {
-                        let ch = window.routeChemin(P[prec], prec, depNoeud);
-                        if (ch) ch.slice(1).forEach(function(n) { trace.push([g.index[n].lat, g.index[n].lng]); });
+                let l = ajouterLiaison(precId, 'D', g.index[prec], g.index[depNoeud], -1);
+                if (l.type !== 'coupe') {
+                    liaisons.push(l); retour = l.d;
+                    if (depart) {
+                        let nD = g.index[depNoeud];
+                        liaisons.push({ de: 'D', vers: 'D', type: 'acces', d: depDist,
+                                        pts: [[nD.lat, nD.lng], [depart.lat, depart.lng]] });
+                        retour += depDist;
                     }
                 }
-                if (depart) { trace.push([depart.lat, depart.lng]); retour += depDist; }
             }
 
-            let distanceTotale = cumul + retour;
+            // Tronçons pédestres dessinés sans être rattachés à une liaison : ils s'ajoutent au total.
+            let piedLibres = (cfg.tronconsPied || []).filter(function(t) { return !(t.a && t.b); });
+            piedLibres.forEach(function(t) {
+                let d = 0;
+                for (let k = 1; k < t.pts.length; k++)
+                    d += window.distanceM(t.pts[k - 1][0], t.pts[k - 1][1], t.pts[k][0], t.pts[k][1]);
+                metresPiedDessine += d;
+                liaisons.push({ de: null, vers: null, type: 'pied', d: d, pts: t.pts.slice(), manuel: t.id });
+            });
+
+            let mVehicule = liaisons.filter(function(l) { return l.type === 'route' || l.type === 'liaison' || l.type === 'acces'; })
+                                    .reduce(function(t, l) { return t + l.d; }, 0);
+            let trace = [];
+            liaisons.forEach(function(l) { if (l.type !== 'coupe') l.pts.forEach(function(p) { trace.push(p); }); });
+
+            let distanceTotale = mVehicule;
             let minutesRoute = distanceTotale / 1000 / cfg.vitesse * 60;
-            let metresPied = etapes.reduce(function(t, e) { return t + (e.aPied || 0); }, 0);
-            // 4 km/h à pied, aller et retour depuis le point d'approche.
-            let minutesPied = metresPied * 2 / 1000 / 4 * 60;
+            // Approche d'un canon injoignable : aller ET retour depuis le point d'arrêt du véhicule.
+            let metresApproche = etapes.reduce(function(t, e) { return t + (e.aPied || 0); }, 0);
+            let metresPied = metresApproche * 2 + metresPiedDessine;
+            let minutesPied = metresPied / 1000 / 4 * 60;      // 4 km/h
             let minutesTravail = etapes.length * cfg.minutesParCanon;
             return {
-                err: "", etapes: etapes, trace: trace, liaisons: liaisons, pied: pied,
+                err: "", etapes: etapes, trace: trace, liaisons: liaisons,
+                pied: liaisons.filter(function(l) { return l.type === 'pied' || l.type === 'approche'; }),
                 depart: depart, depNoeud: depNoeud,
                 distance: distanceTotale, retour: retour, depDist: depDist,
                 minutesRoute: minutesRoute, minutesTravail: minutesTravail, minutesPied: minutesPied,
                 minutes: minutesRoute + minutesTravail + minutesPied,
-                metresPied: metresPied,
+                metresPied: metresPied, metresApproche: metresApproche, metresPiedDessine: metresPiedDessine,
                 horsLigne: etapes.filter(function(e) { return e.horsLigne; }).length,
+                coupees: liaisons.filter(function(l) { return l.type === 'coupe'; }).length,
                 aPied: etapes.filter(function(e) { return e.aPied > 0; }),
                 surChemins: g.nbSommetsChemin > 0, nbChemins: g.nbChemins,
-                nbSommetsChemin: g.nbSommetsChemin, raccroches: g.raccroches,
+                nbSommetsChemin: g.nbSommetsChemin, raccroches: g.raccroches, strict: g.strict,
                 troncons: g.bloques, piste: g.index, graphe: g,
                 ordre: sequence.map(function(a) { return a.canon; })
             };
@@ -4148,14 +4492,27 @@
         /* ------------------------------------------------------------------------- */
         window.routeSelection = [];
         window.routeTraceLayer = null;
-
-        window.openFicheRoute = function() {
-            let sb = document.getElementById('right-sidebar'); let sl = document.getElementById('selected-list'); if (!sb || !sl) return;
-            document.getElementById('right-title').innerHTML = "<i class='fa-solid fa-route'></i> Fiche de route";
+        /* Le panneau de droite est partagé par plusieurs outils. Chacun déclare ce qu'il affiche, et
+           refuse de redessiner quand ce n'est plus lui qui occupe la place — sans quoi un simple clic
+           sur la carte suffisait à faire réapparaître la fiche de route par-dessus l'aide au
+           diagnostic, symptôme constaté sur le terrain. */
+        window.panneauDroite = null;
+        window.ouvrirPanneauDroite = function(nom, titre) {
+            let sb = document.getElementById('right-sidebar'); let sl = document.getElementById('selected-list');
+            if (!sb || !sl) return false;
+            if (window.panneauDroite === 'route' && nom !== 'route') window.routeQuitterEdition();
+            window.panneauDroite = nom;
+            document.getElementById('right-title').innerHTML = titre;
             document.getElementById('multi-tools').style.display = 'none';
             document.getElementById('view-edit').style.display = 'none';
             document.getElementById('view-selection').style.display = 'block';
+            sl.innerHTML = '';
             sb.classList.add('open');
+            return true;
+        };
+
+        window.openFicheRoute = function() {
+            if (!window.ouvrirPanneauDroite('route', "<i class='fa-solid fa-route'></i> Fiche de route")) return;
             if (!window.routeSelection.length && window.selectedCannonsMap.size)
                 window.routeSelection = Array.from(window.selectedCannonsMap.keys());
             window.renderFicheRoute();
@@ -4172,35 +4529,249 @@
             window.routeSelection = Array.from(window.selectedCannonsMap.keys());
             window.routeDernier = null; window.renderFicheRoute();
         };
-        window.routeVider = function() { window.routeSelection = []; window.routeDernier = null; window.effacerTrace(); window.renderFicheRoute(); };
+        // « Effacer le trajet » : tout part, y compris les points posés, les tronçons dessinés et les
+        // liaisons coupées. Un bouton qui ne remettrait pas l'ardoise à zéro serait un piège.
+        window.routeEffacerTout = function(sansConfirmation) {
+            if (!sansConfirmation && !confirm("Effacer entièrement le trajet (arrêts, points posés, tronçons dessinés) ?")) return;
+            let cfg = window.routeCfg();
+            window.routeSelection = [];
+            cfg.ordreManuel = null; cfg.pointsLibres = []; cfg.tronconsPied = []; cfg.coupes = [];
+            window.routeSave();
+            window.routeDernier = null; window.routeBrouillon = null;
+            window.effacerTrace(); window.renderFicheRoute();
+        };
+        window.routeVider = window.routeEffacerTout;
 
-        /* Édition directe sur la carte : tant que le mode est actif, un clic sur un canon l'ajoute au
-           trajet ou l'en retire. Le clic est intercepté AVANT le comportement normal (ouverture de la
-           fiche canon), sinon le panneau de droite se remplacerait à chaque ajout. */
+        /* ------------------------------------------------------------------------- */
+        /* Mode dessin. Cinq outils, un seul actif à la fois ; tant qu'un outil est    */
+        /* choisi, la carte lui appartient et ne déclenche plus ni fiche canon ni      */
+        /* fermeture du panneau.                                                       */
+        /*   canon  : ajouter/retirer un canon                                         */
+        /*   point  : poser un arrêt libre, inséré dans le trajet là où il tombe        */
+        /*   pied   : dessiner un tronçon à parcourir à pied                            */
+        /*   gomme  : couper une liaison, supprimer un arrêt ou un tronçon dessiné       */
+        /* ------------------------------------------------------------------------- */
+        window.routeOutil = null;
+        window.routeBrouillon = null;      // tronçon pédestre en cours de dessin
         window.routeEditionCarte = false;
-        window.basculerEditionCarte = function() {
-            window.routeEditionCarte = !window.routeEditionCarte;
-            if (window.map) window.map.getContainer().style.cursor = window.routeEditionCarte ? 'copy' : '';
+
+        window.routeCurseur = function() {
+            if (!window.map) return;
+            let c = '';
+            if (window.routeOutil === 'gomme') c = 'not-allowed';
+            else if (window.routeOutil) c = 'crosshair';
+            window.map.getContainer().style.cursor = c;
+        };
+        window.routeChoisirOutil = function(nom) {
+            window.routeOutil = (window.routeOutil === nom) ? null : nom;
+            window.routeEditionCarte = !!window.routeOutil;
+            if (window.routeOutil !== 'pied') window.routeBrouillon = null;
+            window.routeCurseur();
+            window.tracerRoute(window.routeDernier);
             window.renderFicheRoute();
         };
+        window.routeQuitterEdition = function() {
+            window.routeOutil = null; window.routeEditionCarte = false; window.routeBrouillon = null;
+            window.routeCurseur();
+        };
+        window.basculerEditionCarte = function() { window.routeChoisirOutil('canon'); };
+
+        // Clic sur un canon : intercepté seulement par les outils qui le concernent.
         window.routeClicCanon = function(id) {
-            if (!window.routeEditionCarte) return false;
-            let i = window.routeSelection.indexOf(id);
-            if (i > -1) window.routeSelection.splice(i, 1); else window.routeSelection.push(id);
+            if (window.panneauDroite !== 'route' || !window.routeOutil) return false;
+            if (window.routeOutil === 'canon') {
+                let i = window.routeSelection.indexOf(id);
+                if (i > -1) window.routeSelection.splice(i, 1); else window.routeSelection.push(id);
+                window.routeSyncOrdre();
+                window.routeRecalculer();
+                return true;
+            }
+            if (window.routeOutil === 'gomme') {
+                window.routeRetirer(id); return true;
+            }
+            return false;   // outils « point » et « pied » : le clic vaut pour la carte
+        };
+
+        // L'ordre figé doit suivre les ajouts et retraits, sinon un canon ajouté à la main
+        // disparaîtrait du calcul (il n'est pas dans la liste imposée) sans explication.
+        window.routeSyncOrdre = function() {
+            let cfg = window.routeCfg();
+            if (!cfg.ordreManuel) return;
+            cfg.ordreManuel = cfg.ordreManuel.filter(function(x) { return window.routeSelection.indexOf(x) > -1; });
+            window.routeSelection.forEach(function(x) { if (cfg.ordreManuel.indexOf(x) === -1) cfg.ordreManuel.push(x); });
+            window.routeSave();
+        };
+        window.routeRecalculer = function() {
             window.routeDernier = null;
-            // Recalcul immédiat : voir le trajet se redessiner à chaque clic est tout l'intérêt.
-            if (window.routeSelection.length > 1) window.lancerCalculRoute(null);
+            if (window.routeSelection.length) window.lancerCalculRoute(null);
             else { window.effacerTrace(); window.renderFicheRoute(); }
-            return true;
+        };
+
+        /* Distance d'un point à un segment, en mètres. Sert à savoir sur quelle liaison on a cliqué :
+           c'est la mesure qui compte pour la gomme comme pour l'insertion d'un point. */
+        window.routeDistSegment = function(p, a, b) {
+            let latRef = (a[0] + b[0]) / 2 * Math.PI / 180;
+            let kx = 111320 * Math.cos(latRef), ky = 111320;
+            let px = (p[1] - a[1]) * kx, py = (p[0] - a[0]) * ky;
+            let bx = (b[1] - a[1]) * kx, by = (b[0] - a[0]) * ky;
+            let l2 = bx * bx + by * by;
+            let t = l2 ? Math.max(0, Math.min(1, (px * bx + py * by) / l2)) : 0;
+            let dx = px - t * bx, dy = py - t * by;
+            return Math.sqrt(dx * dx + dy * dy);
+        };
+        window.routeDistPolyligne = function(p, pts) {
+            let best = Infinity;
+            for (let i = 1; i < pts.length; i++) best = Math.min(best, window.routeDistSegment(p, pts[i - 1], pts[i]));
+            return best;
+        };
+
+        // Clic sur la carte pendant le mode dessin. Renvoie true quand le clic a été consommé.
+        window.routeCarteClic = function(e) {
+            if (window.panneauDroite !== 'route' || !window.routeOutil) return false;
+            let p = [e.latlng.lat, e.latlng.lng];
+            let cfg = window.routeCfg();
+
+            if (window.routeOutil === 'point') {
+                let id = 'pt:' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36);
+                if (!cfg.pointsLibres) cfg.pointsLibres = [];
+                cfg.pointsLibres.push({ id: id, lat: +p[0].toFixed(6), lng: +p[1].toFixed(6),
+                                        nom: "Point " + (cfg.pointsLibres.length + 1) });
+                // Insertion à l'endroit du trajet le plus proche du clic, comme on pose un point de
+                // passage sur un itinéraire : à défaut, en fin de tournée.
+                let ordre = window.routeOrdreCourant();
+                let pos = ordre.length, best = Infinity;
+                let r = window.routeDernier;
+                if (r && r.liaisons) {
+                    r.liaisons.forEach(function(l) {
+                        if (l.type === 'coupe' || l.type === 'approche' || !l.vers || l.vers === 'D') return;
+                        let d = window.routeDistPolyligne(p, l.pts);
+                        let k = ordre.indexOf(l.vers);
+                        if (k > -1 && d < best) { best = d; pos = k; }
+                    });
+                }
+                ordre.splice(pos, 0, id);
+                window.routeSelection = ordre.slice();
+                cfg.ordreManuel = ordre.slice();      // un point posé impose son emplacement
+                window.routeSave();
+                window.routeRecalculer();
+                return true;
+            }
+
+            if (window.routeOutil === 'pied') {
+                if (!window.routeBrouillon) window.routeBrouillon = { pts: [] };
+                window.routeBrouillon.pts.push([+p[0].toFixed(6), +p[1].toFixed(6)]);
+                window.tracerRoute(window.routeDernier);
+                window.renderFicheRoute();
+                return true;
+            }
+
+            if (window.routeOutil === 'gomme') { window.routeGommer(p); return true; }
+            return false;
+        };
+
+        window.routeOrdreCourant = function() {
+            let cfg = window.routeCfg();
+            let r = window.routeDernier;
+            if (r && !r.err && r.ordre && r.ordre.length) {
+                let o = r.ordre.slice();
+                window.routeSelection.forEach(function(x) { if (o.indexOf(x) === -1) o.push(x); });
+                return o.filter(function(x) { return window.routeSelection.indexOf(x) > -1; });
+            }
+            if (cfg.ordreManuel && cfg.ordreManuel.length) return cfg.ordreManuel.slice();
+            return window.routeSelection.slice();
+        };
+
+        // Gomme : on supprime l'élément dessiné le plus proche du clic, à moins de 60 m.
+        window.routeGommer = function(p) {
+            let cfg = window.routeCfg();
+            let r = window.routeDernier;
+            let SEUIL = 60;
+            let best = null, bd = SEUIL;
+            (r && r.etapes ? r.etapes : []).forEach(function(e) {
+                if (e.lat === undefined) return;
+                let d = window.distanceM(p[0], p[1], e.lat, e.lng);
+                if (d < bd) { bd = d; best = { quoi: 'arret', id: e.id }; }
+            });
+            (r && r.liaisons ? r.liaisons : []).forEach(function(l) {
+                if (l.type === 'approche') return;
+                let d = window.routeDistPolyligne(p, l.pts);
+                if (d < bd) { bd = d; best = l.manuel ? { quoi: 'pied', id: l.manuel } : { quoi: 'liaison', de: l.de, vers: l.vers }; }
+            });
+            if (!best) { window.routeToast("Rien à supprimer ici — visez un arrêt ou un tronçon."); return; }
+            if (best.quoi === 'arret') { window.routeRetirer(best.id); return; }
+            if (best.quoi === 'pied') {
+                cfg.tronconsPied = (cfg.tronconsPied || []).filter(function(t) { return t.id !== best.id; });
+                window.routeSave(); window.routeRecalculer(); return;
+            }
+            if (best.quoi === 'liaison') {
+                if (best.de === 'D' && best.vers === 'D') { window.routeToast("Le raccordement au point de départ ne se coupe pas."); return; }
+                let cle = best.de + '|' + best.vers;
+                if (!cfg.coupes) cfg.coupes = [];
+                if (cfg.coupes.indexOf(cle) === -1) cfg.coupes.push(cle);
+                cfg.ordreManuel = window.routeOrdreCourant();   // couper une liaison fige l'ordre
+                window.routeSave(); window.routeRecalculer();
+            }
+        };
+
+        // Fin du dessin d'un tronçon pédestre : il se rattache aux deux arrêts les plus proches de ses
+        // extrémités quand ils se suivent dans la tournée — auquel cas il REMPLACE la liaison en
+        // véhicule ; sinon il s'ajoute comme un aller à pied supplémentaire.
+        window.routeFinirPied = function() {
+            let cfg = window.routeCfg();
+            let br = window.routeBrouillon;
+            if (!br || br.pts.length < 2) { window.routeToast("Cliquez au moins deux points sur la carte."); return; }
+            let r = window.routeDernier;
+            let proche = function(pt) {
+                let best = null, bd = 120;
+                (r && r.etapes ? r.etapes : []).forEach(function(e) {
+                    if (e.lat === undefined) return;
+                    let d = window.distanceM(pt[0], pt[1], e.lat, e.lng);
+                    if (d < bd) { bd = d; best = e.id; }
+                });
+                return best;
+            };
+            let a = proche(br.pts[0]), b = proche(br.pts[br.pts.length - 1]);
+            let ordre = window.routeOrdreCourant();
+            let ia = ordre.indexOf(a), ib = ordre.indexOf(b);
+            let attache = (a && b && a !== b && Math.abs(ia - ib) === 1);
+            if (attache && ia > ib) { let t = a; a = b; b = t; let pts = br.pts.slice().reverse(); br.pts = pts; }
+            if (!cfg.tronconsPied) cfg.tronconsPied = [];
+            cfg.tronconsPied.push({ id: 'pd:' + Date.now().toString(36), pts: br.pts.slice(),
+                                    a: attache ? a : null, b: attache ? b : null });
+            if (attache) { cfg.ordreManuel = ordre; }
+            window.routeSave();
+            window.routeBrouillon = null;
+            window.routeRecalculer();
+            window.routeToast(attache ? "Tronçon à pied enregistré entre " + a + " et " + b + "."
+                                      : "Tronçon à pied enregistré (ajouté au temps de marche).");
+        };
+        window.routeAnnulerPied = function() { window.routeBrouillon = null; window.tracerRoute(window.routeDernier); window.renderFicheRoute(); };
+        window.routeDefairePied = function() {
+            if (window.routeBrouillon && window.routeBrouillon.pts.length) window.routeBrouillon.pts.pop();
+            window.tracerRoute(window.routeDernier); window.renderFicheRoute();
+        };
+        window.routeRetablirLiaisons = function() {
+            let cfg = window.routeCfg(); cfg.coupes = []; window.routeSave(); window.routeRecalculer();
+        };
+
+        // Petit message éphémère : en mode dessin, une alerte() casserait le geste en cours.
+        window.routeToast = function(txt) {
+            let d = document.getElementById('route-toast');
+            if (!d) { d = document.createElement('div'); d.id = 'route-toast'; document.body.appendChild(d); }
+            d.textContent = txt; d.className = 'show';
+            clearTimeout(window._routeToastT);
+            window._routeToastT = setTimeout(function() { d.className = ''; }, 3200);
         };
         window.routeDeplacer = function(i, sens) {
+            // On réordonne la tournée TELLE QU'ELLE EST AFFICHÉE, pas la liste brute de sélection :
+            // sur un ordre optimisé, décaler la ligne 3 doit décaler la 3ᵉ étape du trajet.
+            let ordre = window.routeOrdreCourant();
             let j = i + sens;
-            if (j < 0 || j >= window.routeSelection.length) return;
-            let t = window.routeSelection[i];
-            window.routeSelection[i] = window.routeSelection[j];
-            window.routeSelection[j] = t;
+            if (j < 0 || j >= ordre.length) return;
+            let t = ordre[i]; ordre[i] = ordre[j]; ordre[j] = t;
+            window.routeSelection = ordre.slice();
             // Déplacer une étape à la main, c'est vouloir cet ordre-là : on le fige automatiquement.
-            window.routeCfg().ordreManuel = window.routeSelection.slice();
+            window.routeCfg().ordreManuel = ordre.slice();
             window.routeSave();
             window.lancerCalculRoute(null);
         };
@@ -4222,8 +4793,13 @@
             window.routeSelection = window.routeSelection.filter(function(x) { return x !== id; });
             let cfg = window.routeCfg();
             if (cfg.ordreManuel) cfg.ordreManuel = cfg.ordreManuel.filter(function(x) { return x !== id; });
+            // Un arrêt qui s'en va emporte ce qui n'avait de sens que par lui.
+            if ((id + '').indexOf('pt:') === 0)
+                cfg.pointsLibres = (cfg.pointsLibres || []).filter(function(p) { return p.id !== id; });
+            cfg.coupes = (cfg.coupes || []).filter(function(c) { return c.split('|').indexOf(id) === -1; });
+            cfg.tronconsPied = (cfg.tronconsPied || []).filter(function(t) { return t.a !== id && t.b !== id; });
             window.routeSave();
-            window.routeDernier = null; window.renderFicheRoute();
+            window.routeRecalculer();
         };
 
         window.routeDefinirDepart = function(mode) {
@@ -4263,41 +4839,89 @@
             let ac = parseInt(g('route-accroche'), 10); if (!isNaN(ac)) cfg.rayonAccroche = Math.max(20, Math.min(600, ac));
             let it = parseInt(g('route-interdit'), 10); if (!isNaN(it)) cfg.rayonInterdit = Math.max(10, Math.min(300, it));
             let pf = parseFloat(g('route-pref')); if (!isNaN(pf)) cfg.preferenceChemin = Math.max(1, Math.min(10, pf));
-            let ret = document.getElementById('route-retour'); if (ret) cfg.retour = ret.checked;
+            let bool = function(id, cle) { let e = document.getElementById(id); if (e) cfg[cle] = e.checked; };
+            bool('route-retour', 'retour');
+            bool('route-plan', 'planActif');
+            bool('route-rouge', 'planRouge');
+            bool('route-strict', 'strictPlan');
             window.routeSave(); window.routeDernier = null; window.renderFicheRoute();
         };
 
         window.effacerTrace = function() {
             if (window.routeTraceLayer && window.map) { window.map.removeLayer(window.routeTraceLayer); window.routeTraceLayer = null; }
         };
+        /* Chaque liaison est tracée SÉPARÉMENT, avec son style propre : plein orange sur le plan de
+           circulation, pointillé rouge pour une estimation à vol d'oiseau, pointillé vert pour la
+           marche, gris barré pour une liaison coupée à la main. C'est ce découpage qui permet de
+           cliquer un tronçon précis pour le modifier. */
+        window.ROUTE_STYLES = {
+            route:    { color: '#e67e22', weight: 5, opacity: 0.95 },
+            liaison:  { color: '#c0392b', weight: 4, opacity: 0.9, dashArray: '9,7' },
+            acces:    { color: '#8e44ad', weight: 4, opacity: 0.9, dashArray: '4,5' },
+            pied:     { color: '#27ae60', weight: 4, opacity: 0.95, dashArray: '2,7' },
+            approche: { color: '#27ae60', weight: 3, opacity: 0.9, dashArray: '2,7' },
+            coupe:    { color: '#7f8c8d', weight: 2, opacity: 0.55, dashArray: '1,9' }
+        };
+        window.ROUTE_LIBELLES = {
+            route: "Sur le plan de circulation", liaison: "Liaison estimée (hors plan)",
+            acces: "Accès depuis le point de départ", pied: "À pied", approche: "Approche à pied",
+            coupe: "Liaison coupée à la main"
+        };
         window.tracerRoute = function(r) {
             window.effacerTrace();
-            if (!window.map || !r.trace || r.trace.length < 2) return;
-            window.routeTraceLayer = L.layerGroup([
-                L.polyline(r.trace, { color: '#fff', weight: 8, opacity: 0.75 }),
-                L.polyline(r.trace, { color: '#e67e22', weight: 4, opacity: 0.95 })
-            ]);
-            // Pointillé pour ce qui n'est pas une ligne de canons : le trait plein ne doit pas laisser
-            // croire à un tracé relevé sur le terrain.
-            (r.liaisons || []).forEach(function(l) {
-                window.routeTraceLayer.addLayer(L.polyline(l, { color: '#c0392b', weight: 3, opacity: 0.9, dashArray: '8,7' }));
+            if (!window.map) return;
+            let grp = L.layerGroup();
+            let cadrage = [];
+            let enEdition = (window.panneauDroite === 'route' && window.routeOutil);
+
+            (r && r.liaisons ? r.liaisons : []).forEach(function(l) {
+                let st = window.ROUTE_STYLES[l.type] || window.ROUTE_STYLES.route;
+                if (l.type !== 'coupe') grp.addLayer(L.polyline(l.pts, { color: '#fff', weight: st.weight + 4, opacity: 0.6 }));
+                let ligne = L.polyline(l.pts, st);
+                ligne.bindTooltip(window.ROUTE_LIBELLES[l.type] + (l.d ? " — " + window.routeFmtDist(l.d) : ""), { sticky: true });
+                if (enEdition) ligne.on('click', function(ev) {
+                    L.DomEvent.stopPropagation(ev);
+                    if (window.routeOutil === 'gomme') window.routeGommer([ev.latlng.lat, ev.latlng.lng]);
+                    else if (window.routeOutil) window.routeCarteClic(ev);
+                });
+                grp.addLayer(ligne);
+                l.pts.forEach(function(p) { cadrage.push(p); });
             });
-            // Derniers mètres à pied, depuis le point d'approche jusqu'au canon.
-            (r.pied || []).forEach(function(l) {
-                window.routeTraceLayer.addLayer(L.polyline(l, { color: '#27ae60', weight: 3, opacity: 0.95, dashArray: '2,6' }));
-            });
-            r.etapes.forEach(function(e, i) {
+
+            (r && r.etapes ? r.etapes : []).forEach(function(e, i) {
                 if (e.lat === undefined || e.lng === undefined) return;
-                window.routeTraceLayer.addLayer(L.marker([e.lat, e.lng], {
-                    icon: L.divIcon({ className: 'route-step-icon' + (e.aPied ? ' route-step-pied' : ''),
-                        html: '<div>' + (i + 1) + '</div>', iconSize: [26, 26], iconAnchor: [13, 13] })
-                }));
+                let cls = 'route-step-icon' + (e.aPied ? ' route-step-pied' : '') + (e.point ? ' route-step-libre' : '');
+                let mk = L.marker([e.lat, e.lng], {
+                    icon: L.divIcon({ className: cls, html: '<div>' + (i + 1) + '</div>', iconSize: [26, 26], iconAnchor: [13, 13] })
+                });
+                mk.bindTooltip((e.point ? (e.nom || "Point posé") : "Canon " + e.id) + " — étape " + (i + 1));
+                if (enEdition) mk.on('click', function(ev) {
+                    L.DomEvent.stopPropagation(ev);
+                    if (window.routeOutil === 'gomme') window.routeRetirer(e.id);
+                });
+                grp.addLayer(mk);
             });
-            if (r.depart) window.routeTraceLayer.addLayer(L.marker([r.depart.lat, r.depart.lng], {
+
+            if (r && r.depart) grp.addLayer(L.marker([r.depart.lat, r.depart.lng], {
                 icon: L.divIcon({ className: 'route-step-icon route-start-icon', html: '<div>D</div>', iconSize: [26, 26], iconAnchor: [13, 13] })
             }));
-            window.routeTraceLayer.addTo(window.map);
-            let b = L.latLngBounds(r.trace); if (b.isValid()) window.map.fitBounds(b, { padding: [40, 40] });
+
+            // Tronçon pédestre en cours de dessin : visible point par point, pour savoir où on en est.
+            let br = window.routeBrouillon;
+            if (br && br.pts.length) {
+                if (br.pts.length > 1) grp.addLayer(L.polyline(br.pts, { color: '#27ae60', weight: 4, opacity: 0.9, dashArray: '2,7' }));
+                br.pts.forEach(function(p, i) {
+                    grp.addLayer(L.circleMarker(p, { radius: 5, color: '#fff', weight: 2, fillColor: '#27ae60', fillOpacity: 1 })
+                        .bindTooltip("Point " + (i + 1) + " du tronçon à pied"));
+                });
+                br.pts.forEach(function(p) { cadrage.push(p); });
+            }
+
+            window.routeTraceLayer = grp; grp.addTo(window.map);
+            // On ne recadre qu'au calcul, pas à chaque clic de dessin : la carte sauterait sous la main.
+            if (!enEdition && cadrage.length > 1) {
+                let b = L.latLngBounds(cadrage); if (b.isValid()) window.map.fitBounds(b, { padding: [40, 40] });
+            }
         };
 
         window.lancerCalculRoute = function(btn) {
@@ -4305,16 +4929,29 @@
             if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Calcul…'; }
             setTimeout(function() {
                 let cfg = window.routeCfg();
-                let r = window.calculerFicheRoute(window.routeSelection, cfg.depart, cfg.ordreManuel);
+                let r;
+                try { r = window.calculerFicheRoute(window.routeSelection, cfg.depart, cfg.ordreManuel); }
+                catch (e) { r = { err: "Calcul impossible : " + e.message }; }
                 window.routeDernier = r;
                 if (!r.err) window.tracerRoute(r);
                 window.renderFicheRoute();
-                if (r.err) alert(r.err);
+                if (r.err) window.routeToast(r.err);
             }, 30);
+        };
+
+        window.rechargerPlan = async function(btn) {
+            let ancien = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '⏳'; }
+            try { await window.chargerPlanCirculation(true); }
+            catch (e) { window.planEtat = { etat: "erreur", msg: e.message }; }
+            if (btn) { btn.disabled = false; btn.innerHTML = ancien; }
+            window.routeDernier = null; window.renderFicheRoute();
         };
 
         window.renderFicheRoute = function() {
             let sl = document.getElementById('selected-list'); if (!sl) return;
+            // Le panneau appartient peut-être maintenant à un autre outil : on ne l'écrase pas.
+            if (window.panneauDroite !== 'route') return;
             let cfg = window.routeCfg();
             let r = window.routeDernier;
             let dep = cfg.depart;
@@ -4326,36 +4963,103 @@
                 return id + (t.length ? ' — ' + t[0].defaut : '');
             };
 
+            let ordre = window.routeOrdreCourant();
+            let nomArret = function(id) {
+                if ((id + '').indexOf('pt:') === 0) {
+                    let p = (cfg.pointsLibres || []).find(function(x) { return x.id === id; });
+                    return '📍 ' + (p ? p.nom : "Point posé");
+                }
+                return nomCanon(id);
+            };
+            let outil = function(cle, ico, txt, aide) {
+                let actif = window.routeOutil === cle;
+                return `<button onclick="window.routeChoisirOutil('${cle}')" title="${aide}"
+                    style="flex:1 1 0; min-width:62px; background:${actif ? '#27ae60' : '#34495e'}; color:#fff; border:${actif ? '2px solid #145a32' : '2px solid transparent'};
+                           padding:7px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; line-height:1.35;">
+                    <div style="font-size:15px;">${ico}</div>${txt}</button>`;
+            };
+            let plan = window.planCirculation;
+            let cpt = plan ? window.planCompter(plan.lignes) : null;
+
             let html = `<div style="display:flex; flex-direction:column; gap:10px;">
                 <div style="display:flex; gap:6px; flex-wrap:wrap;">
                     <button onclick="window.routePrendreDefauts()" style="flex:1 1 46%; background:#c0392b; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">⚠️ Tous les canons en défaut</button>
                     <button onclick="window.routePrendreSelection()" style="flex:1 1 46%; background:#2980b9; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">🖱️ Ma sélection sur la carte</button>
-                    <button onclick="window.collerCodeTrajet()" style="flex:1 1 100%; background:#16a085; color:#fff; border:none; padding:8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-qrcode"></i> Charger un trajet reçu (lien ou code)</button>
-                    <button onclick="window.basculerEditionCarte()" style="flex:1 1 100%; background:${window.routeEditionCarte ? '#27ae60' : '#34495e'}; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">
-                        ${window.routeEditionCarte ? '✅ Modification sur la carte ACTIVE — cliquez un canon pour l\'ajouter ou le retirer' : '✏️ Modifier le trajet sur la carte'}</button>
+                    <button onclick="window.ouvrirScanTrajet()" style="flex:1 1 60%; background:#16a085; color:#fff; border:none; padding:9px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-camera"></i> Scanner un QR code</button>
+                    <button onclick="window.collerCodeTrajet()" style="flex:1 1 34%; background:#7f8c8d; color:#fff; border:none; padding:9px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;" title="Coller un lien ou un code reçu">⌨️ Code</button>
+                </div>
+
+                <div style="border:2px solid ${window.routeOutil ? '#27ae60' : '#e1e8ed'}; border-radius:8px; padding:8px;">
+                    <div style="font-size:11px; font-weight:bold; color:#2c3e50; margin-bottom:6px;">✏️ Modifier le trajet sur la carte</div>
+                    <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                        ${outil('canon', '❄️', 'Canon', "Cliquez un canon pour l'ajouter ou le retirer")}
+                        ${outil('point', '📍', 'Point', "Cliquez la carte pour poser un passage obligé")}
+                        ${outil('pied', '🚶', 'À pied', "Dessinez un tronçon à parcourir à pied")}
+                        ${outil('gomme', '🧽', 'Gomme', "Cliquez un arrêt ou un tronçon pour le supprimer")}
+                        <button onclick="window.routeEffacerTout()" title="Tout effacer" style="flex:1 1 0; min-width:62px; background:#c0392b; color:#fff; border:2px solid transparent; padding:7px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; line-height:1.35;"><div style="font-size:15px;">🗑️</div>Effacer</button>
+                    </div>
+                    ${window.routeOutil ? `<div style="margin-top:7px; background:#eafaf1; border:1px solid #a9dfbf; border-radius:5px; padding:7px 9px; font-size:11px; color:#1e6b42;">
+                        ${window.routeOutil === 'canon' ? "Cliquez les canons sur la carte : ils entrent dans la tournée ou en sortent." : ''}
+                        ${window.routeOutil === 'point' ? "Cliquez la carte : un passage obligé se glisse dans le trajet à l'endroit le plus proche. Le véhicule y va par le plan de circulation." : ''}
+                        ${window.routeOutil === 'gomme' ? "Cliquez un numéro d'étape pour retirer l'arrêt, ou un tronçon pour couper la liaison." : ''}
+                        ${window.routeOutil === 'pied' ? `Cliquez les points du cheminement, puis validez. <b>${window.routeBrouillon ? window.routeBrouillon.pts.length : 0}</b> point(s) posé(s).
+                            <div style="display:flex; gap:5px; margin-top:6px;">
+                                <button onclick="window.routeFinirPied()" style="flex:1; background:#27ae60; color:#fff; border:none; padding:6px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">✅ Valider le tronçon</button>
+                                <button onclick="window.routeDefairePied()" style="background:#ecf0f1; border:1px solid #ccc; padding:6px 9px; border-radius:4px; font-size:11px; cursor:pointer;">↩︎</button>
+                                <button onclick="window.routeAnnulerPied()" style="background:#ecf0f1; border:1px solid #ccc; padding:6px 9px; border-radius:4px; font-size:11px; cursor:pointer;">✕</button>
+                            </div>` : ''}
+                    </div>` : `<div style="margin-top:6px; font-size:10px; color:#95a5a6;">Choisissez un outil : la carte passe alors en mode dessin et ne rouvre plus les fiches canon.</div>`}
+                    ${(cfg.coupes || []).length ? `<div style="margin-top:6px; font-size:10px; color:#7e5109; display:flex; align-items:center; gap:6px;">
+                        <span style="flex:1;">${cfg.coupes.length} liaison(s) coupée(s) à la main.</span>
+                        <button onclick="window.routeRetablirLiaisons()" style="background:#ecf0f1; border:1px solid #ccc; padding:3px 7px; border-radius:4px; font-size:10px; cursor:pointer;">Rétablir</button></div>` : ''}
+                    ${(cfg.tronconsPied || []).length ? `<div style="margin-top:4px; font-size:10px; color:#1e6b42;">${cfg.tronconsPied.length} tronçon(s) à pied dessiné(s).</div>` : ''}
                 </div>
 
                 <div style="border:1px solid #e1e8ed; border-radius:6px; overflow:hidden;">
                     <div style="background:#f8fafc; padding:8px 10px; font-size:12px; font-weight:bold; color:#2c3e50; display:flex; align-items:center;">
-                        <span style="flex:1;">${window.routeSelection.length} canon(s) à visiter</span>
-                        ${window.routeSelection.length ? `<button onclick="window.routeVider()" style="background:none; border:none; color:#c0392b; cursor:pointer; font-size:11px;">tout retirer</button>` : ''}
+                        <span style="flex:1;">${ordre.length} arrêt(s) au programme</span>
+                        ${ordre.length ? `<button onclick="window.routeEffacerTout()" style="background:none; border:none; color:#c0392b; cursor:pointer; font-size:11px;">effacer le trajet</button>` : ''}
                     </div>
                     <div style="max-height:170px; overflow-y:auto; padding:6px;">
-                        ${window.routeSelection.length
-                            ? window.routeSelection.map(function(id, i) {
+                        ${ordre.length
+                            ? ordre.map(function(id, i) {
                                 return `<div style="display:flex; align-items:center; gap:4px; font-size:11px; padding:4px 6px; border-bottom:1px solid #f0f3f6;">
                                     <span style="flex:0 0 20px; color:#95a5a6; text-align:right;">${i + 1}.</span>
-                                    <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${window.prodEsc(nomCanon(id))}</span>
+                                    <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${window.prodEsc(nomArret(id))}</span>
                                     <button onclick="window.routeDeplacer(${i}, -1)" title="Monter" ${i === 0 ? 'disabled' : ''} style="background:none; border:none; color:${i === 0 ? '#dde3e8' : '#2980b9'}; cursor:pointer; font-size:13px;">▲</button>
-                                    <button onclick="window.routeDeplacer(${i}, 1)" title="Descendre" ${i === window.routeSelection.length - 1 ? 'disabled' : ''} style="background:none; border:none; color:${i === window.routeSelection.length - 1 ? '#dde3e8' : '#2980b9'}; cursor:pointer; font-size:13px;">▼</button>
+                                    <button onclick="window.routeDeplacer(${i}, 1)" title="Descendre" ${i === ordre.length - 1 ? 'disabled' : ''} style="background:none; border:none; color:${i === ordre.length - 1 ? '#dde3e8' : '#2980b9'}; cursor:pointer; font-size:13px;">▼</button>
                                     <button onclick="window.routeRetirer('${id}')" style="background:none; border:none; color:#c0392b; cursor:pointer;">✕</button></div>`;
                               }).join('')
                             : `<i style="font-size:11px; color:#95a5a6;">Sélectionnez des canons sur la carte, ou reprenez tous ceux en défaut.</i>`}
                     </div>
-                    ${window.routeSelection.length ? `<div style="padding:6px 10px; background:#f8fafc; border-top:1px solid #eef2f5; font-size:10px; color:#7f8c8d; display:flex; align-items:center; gap:8px;">
+                    ${ordre.length ? `<div style="padding:6px 10px; background:#f8fafc; border-top:1px solid #eef2f5; font-size:10px; color:#7f8c8d; display:flex; align-items:center; gap:8px;">
                         <span style="flex:1;">${cfg.ordreManuel ? "Ordre <b>imposé</b> : le calcul suit votre liste." : "Ordre <b>optimisé</b> automatiquement."}</span>
                         <button onclick="window.routeBasculerOrdre()" style="background:#ecf0f1; border:1px solid #ccc; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;">${cfg.ordreManuel ? 'Réoptimiser' : 'Figer cet ordre'}</button>
                     </div>` : ''}
+                </div>
+
+                <div style="border:1px solid #e1e8ed; border-radius:6px; padding:10px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                        <span style="flex:1; font-size:11px; font-weight:bold; color:#2c3e50;">🚧 Plan de circulation</span>
+                        ${plan ? `<button onclick="window.basculerPlanCarte()" style="background:${window.planVisible ? '#27ae60' : '#ecf0f1'}; color:${window.planVisible ? '#fff' : '#555'}; border:1px solid #ccc; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer;">${window.planVisible ? 'visible' : 'masqué'}</button>` : ''}
+                        <button onclick="window.rechargerPlan(this)" style="background:#ecf0f1; border:1px solid #ccc; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer;">↻</button>
+                    </div>
+                    ${plan
+                        ? `<div style="font-size:11px; color:#2c3e50;">
+                             <b>${plan.lignes.length}</b> tronçon(s) — ${window.prodEsc(plan.nom)} <span style="color:#95a5a6;">(${window.prodEsc(plan.origine)})</span><br>
+                             <span style="color:${window.PLAN_COULEURS.jaune};">■</span> ${cpt.jaune} autorisés à tous ·
+                             <span style="color:${window.PLAN_COULEURS.rouge};">■</span> ${cpt.rouge + cpt.orange} sur autorisation ·
+                             <span style="color:${window.PLAN_COULEURS.autre};">■</span> ${cpt.autre} sans couleur
+                           </div>
+                           <label style="display:flex; align-items:center; gap:6px; font-size:11px; margin-top:7px; cursor:pointer;">
+                               <input type="checkbox" id="route-plan" ${cfg.planActif ? 'checked' : ''} onchange="window.routeMajReglages()"> Router sur le plan de circulation</label>
+                           <label style="display:flex; align-items:center; gap:6px; font-size:11px; margin-top:3px; cursor:pointer;">
+                               <input type="checkbox" id="route-rouge" ${cfg.planRouge ? 'checked' : ''} onchange="window.routeMajReglages()"> Emprunter aussi les tronçons rouges (sur autorisation)</label>
+                           <label style="display:flex; align-items:center; gap:6px; font-size:11px; margin-top:3px; cursor:pointer;">
+                               <input type="checkbox" id="route-strict" ${cfg.strictPlan ? 'checked' : ''} onchange="window.routeMajReglages()"> En véhicule, ne rouler QUE sur le plan</label>
+                           <p style="font-size:10px; color:#888; margin:7px 0 0;">Décochez la dernière case pour autoriser le passage le long de la ligne de canons là où le plan ne va pas. Un canon qu'aucun tronçon ne dessert devient un arrêt à finir à pied.</p>`
+                        : `<div style="font-size:11px; color:#c0392b;">${window.prodEsc(window.planEtat.msg || "non chargé")}<br>
+                             <span style="color:#7f8c8d; font-size:10px;">Déposez « plan de circulation.kmz » à côté de index.html sur l'hébergement : il se charge alors tout seul à chaque démarrage, puis reste disponible hors réseau.</span></div>`}
                 </div>
 
                 <div style="border:1px solid #e1e8ed; border-radius:6px; padding:10px;">
@@ -4403,14 +5107,16 @@
                         <div style="flex:1;"><div style="font-size:17px; font-weight:bold;">${r.etapes.length}</div><div style="font-size:10px; opacity:0.9;">ARRÊTS</div></div>
                     </div>
                     <div style="padding:8px 10px; font-size:11px; color:#666; background:#fdf6ef;">
-                        Route ${window.routeFmtDuree(r.minutesRoute)} à ${cfg.vitesse} km/h · interventions ${window.routeFmtDuree(r.minutesTravail)}${r.metresPied ? ' · marche ' + window.routeFmtDuree(r.minutesPied) + ' (' + r.metresPied + ' m aller)' : ''}${r.retour ? ' · retour compris' : ''}<br>
-                        <span style="color:#8a8a8a;">${r.surChemins ? r.nbChemins + ' tracé(s) de chemin suivis, ' + r.raccroches + ' canon(s) raccrochés' : 'Aucun chemin déclaré : le trajet suit la ligne des canons'}</span>
+                        Route ${window.routeFmtDuree(r.minutesRoute)} à ${cfg.vitesse} km/h · interventions ${window.routeFmtDuree(r.minutesTravail)}${r.metresPied ? ' · marche ' + window.routeFmtDuree(r.minutesPied) + ' (' + Math.round(r.metresPied) + ' m)' : ''}${r.retour ? ' · retour compris' : ''}<br>
+                        <span style="color:#8a8a8a;">${r.strict
+                            ? 'Véhicule strictement sur le plan de circulation (' + r.nbChemins + ' tronçon(s), ' + r.raccroches + ' arrêt(s) raccrochés)'
+                            : (r.surChemins ? r.nbChemins + ' tracé(s) suivis, ' + r.raccroches + ' arrêt(s) raccrochés' : 'Aucun chemin déclaré : le trajet suit la ligne des canons')}${r.coupees ? ' · ' + r.coupees + ' liaison(s) coupée(s)' : ''}</span>
                     </div>
                     <div style="max-height:280px; overflow-y:auto;">
                         ${r.etapes.map(function(e, i) {
                             return `<div style="display:flex; align-items:center; gap:8px; padding:7px 10px; border-bottom:1px solid #f0f3f6; font-size:12px;">
-                                <span style="flex:0 0 24px; height:24px; line-height:24px; text-align:center; background:#e67e22; color:#fff; border-radius:50%; font-size:11px; font-weight:bold;">${i + 1}</span>
-                                <span style="flex:1;"><b>Canon ${window.prodEsc(e.id)}</b>${e.piste && e.piste !== 'N/A' ? ' <span style="color:#888;">· ' + window.prodEsc(e.piste) + '</span>' : ''}${e.horsLigne ? ' <span style="color:#e67e22;" title="Liaison hors chemin">⤳</span>' : ''}${e.aPied ? ` <span style="color:#27ae60; font-weight:bold;" title="${window.prodEsc(e.zone || '')}">🚶 ${e.aPied} m</span>` : ''}</span>
+                                <span style="flex:0 0 24px; height:24px; line-height:24px; text-align:center; background:${e.point ? '#8e44ad' : '#e67e22'}; color:#fff; border-radius:50%; font-size:11px; font-weight:bold;">${i + 1}</span>
+                                <span style="flex:1;"><b>${e.point ? '📍 ' + window.prodEsc(e.nom || 'Point posé') : 'Canon ' + window.prodEsc(e.id)}</b>${!e.point && e.piste && e.piste !== 'N/A' ? ' <span style="color:#888;">· ' + window.prodEsc(e.piste) + '</span>' : ''}${e.horsLigne ? ' <span style="color:#c0392b;" title="Liaison estimée, hors plan">⤳</span>' : ''}${e.type === 'pied' ? ' <span style="color:#27ae60;" title="Tronçon dessiné à pied">🚶</span>' : ''}${e.type === 'coupe' ? ' <span style="color:#7f8c8d;" title="Liaison coupée">✂︎</span>' : ''}${e.aPied ? ` <span style="color:#27ae60; font-weight:bold;" title="${window.prodEsc(e.zone || '')}">🚶 ${e.aPied} m</span>` : ''}</span>
                                 <span style="color:#888; font-size:11px; text-align:right;">${window.routeFmtDist(e.dist)}<br><span style="font-size:10px;">${window.routeFmtDuree(e.cumul / 1000 / cfg.vitesse * 60 + i * cfg.minutesParCanon)}</span></span>
                             </div>`;
                         }).join('')}
@@ -4418,14 +5124,14 @@
                 </div>`;
                 if (r.aPied.length) {
                     html += `<div style="background:#eafaf1; border:1px solid #a9dfbf; border-radius:6px; padding:10px; font-size:11px; color:#1e6b42;">
-                        <b>🚶 ${r.aPied.length} canon(s) à finir à pied</b><br>
-                        ${r.aPied.map(function(x) { return "Canon <b>" + window.prodEsc(x.id) + "</b>" + (x.zone ? " (" + window.prodEsc(x.zone) + ")" : "") + " — " + x.aPied + " m depuis le point d'approche"; }).join('<br>')}
-                        <br><span style="color:#186a3b;">Le véhicule s'arrête au plus près en suivant les chemins ; le dernier tronçon est tracé en pointillé vert.</span>
+                        <b>🚶 ${r.aPied.length} arrêt(s) à finir à pied</b><br>
+                        ${r.aPied.map(function(x) { return (x.point ? "Point <b>" + window.prodEsc(x.nom || x.id) + "</b>" : "Canon <b>" + window.prodEsc(x.id) + "</b>") + (x.zone ? " (" + window.prodEsc(x.zone) + ")" : "") + " — " + x.aPied + " m depuis le point d'approche"; }).join('<br>')}
+                        <br><span style="color:#186a3b;">Le véhicule s'arrête au plus près en suivant le plan de circulation ; le dernier tronçon est tracé en pointillé vert.</span>
                     </div>`;
                 }
                 if (r.horsLigne) {
                     html += `<div style="background:#fef5e7; border:1px solid #f5cba7; border-radius:6px; padding:10px; font-size:11px; color:#7e5109;">
-                        <b>${r.horsLigne} liaison(s) hors ligne de canons</b> — tracées en pointillé. Aucune ligne continue ne relie ces points : la distance est estimée à vol d'oiseau majoré de 35 %, le temps réel dépendra de l'accès emprunté.
+                        <b>${r.horsLigne} liaison(s) hors plan de circulation</b> — tracées en pointillé rouge. Aucun tronçon continu ne relie ces points : la distance est estimée à vol d'oiseau majoré de 35 %, le temps réel dépendra de l'accès emprunté. Dessinez-y un tronçon à pied, ou complétez le plan de circulation.
                     </div>`;
                 }
                 html += `<div style="display:flex; gap:6px;">
@@ -4464,9 +5170,14 @@
                 [292,3,36,2,37],[346,4,43,1,44],[404,1,50,4,51],[466,6,36,2,37],[532,8,37,1,38],[581,4,40,5,41],
                 [655,5,41,5,42],[733,7,45,3,46],[815,10,46,1,47],[901,9,43,4,44],[991,3,44,11,45],[1085,3,41,13,42]];
             let ECC_M = [null,10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26];
+            /* Centres des motifs d'alignement. Le dernier vaut TOUJOURS 4v+10, soit n-7 : c'est cette
+               règle qui permet de vérifier la table d'un coup d'œil. Les versions 18 et 19 y portaient
+               80 et 82 au lieu de 82 et 86 — les motifs étaient posés au mauvais endroit et les codets
+               décalés d'autant. Les QR de ces deux versions (trajets d'environ 430 à 520 caractères)
+               étaient illisibles par n'importe quel lecteur, sans que rien ne le signale. */
             let ALIGN = [null,[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],
-                [6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,80],
-                [6,30,58,82],[6,34,62,90]];
+                [6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],
+                [6,30,58,86],[6,34,62,90]];
 
             let rsGen = function(deg) {
                 let poly = [1];
@@ -4706,10 +5417,25 @@
         /* ------------------------------------------------------------------------- */
         window.routeEncoder = function() {
             let cfg = window.routeCfg();
-            let o = { c: window.routeSelection, v: cfg.vitesse, m: cfg.minutesParCanon, r: cfg.retour ? 1 : 0 };
+            let o = { c: window.routeOrdreCourant(), v: cfg.vitesse, m: cfg.minutesParCanon, r: cfg.retour ? 1 : 0 };
             if (cfg.depart) o.d = [+cfg.depart.lat.toFixed(5), +cfg.depart.lng.toFixed(5), cfg.depart.nom];
             if (cfg.ordreManuel) o.o = 1;
             if ((cfg.calquesChemins || []).length) o.k = cfg.calquesChemins;
+            /* Le trajet transmis doit être le trajet TEL QU'IL A ÉTÉ COMPOSÉ : les points posés à la
+               main et les tronçons à pied dessinés en font partie autant que les canons. Sans eux, le
+               téléphone recalculerait un autre itinéraire — celui qu'on venait justement de corriger.
+               Les coordonnées sont arrondies à 5 décimales (≈ 1 m) : la précision utile au terrain,
+               pour un QR qui reste lisible. */
+            if ((cfg.pointsLibres || []).length)
+                o.p = cfg.pointsLibres.filter(function(p) { return o.c.indexOf(p.id) > -1; })
+                        .map(function(p) { return [p.id, +p.lat.toFixed(5), +p.lng.toFixed(5), p.nom || '']; });
+            if ((cfg.tronconsPied || []).length)
+                o.w = cfg.tronconsPied.map(function(t) {
+                    return [t.a || '', t.b || '', t.pts.map(function(x) { return [+x[0].toFixed(5), +x[1].toFixed(5)]; })];
+                });
+            if ((cfg.coupes || []).length) o.x = cfg.coupes;
+            if (cfg.strictPlan) o.s = 1;
+            if (!cfg.planRouge) o.g = 1;
             let json = JSON.stringify(o);
             // base64 « URL-safe » : le fragment traverse ainsi n'importe quel lecteur de QR.
             let b64 = btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -4735,6 +5461,14 @@
             cfg.depart = o.d ? { lat: o.d[0], lng: o.d[1], nom: o.d[2] || 'Départ' } : null;
             cfg.ordreManuel = o.o ? window.routeSelection.slice() : null;
             if (o.k) cfg.calquesChemins = o.k;
+            cfg.pointsLibres = (o.p || []).map(function(p) { return { id: p[0], lat: p[1], lng: p[2], nom: p[3] || "Point posé" }; });
+            cfg.tronconsPied = (o.w || []).map(function(t, i) { return { id: 'pd:r' + i, a: t[0] || null, b: t[1] || null, pts: t[2] }; });
+            cfg.coupes = o.x || [];
+            if (o.s !== undefined) cfg.strictPlan = !!o.s;
+            if (o.g !== undefined) cfg.planRouge = !o.g;
+            // Un trajet reçu avec des points posés est un trajet composé à la main : son ordre fait foi.
+            if ((cfg.pointsLibres.length || cfg.tronconsPied.length || cfg.coupes.length) && !cfg.ordreManuel)
+                cfg.ordreManuel = window.routeSelection.slice();
             window.routeSave();
             window.routeDernier = null;
             return true;
@@ -4778,6 +5512,677 @@
             let code = v.indexOf('#trajet=') > -1 ? v.split('#trajet=')[1] : v.trim();
             if (window.routeAppliquerCode(code)) { window.openFicheRoute(); window.lancerCalculRoute(null); }
         };
+
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 4.G.4 — LECTURE D'UN QR CODE PAR L'APPAREIL PHOTO                  */
+        /*                                                                           */
+        /* L'appareil photo natif de l'iPhone sait lire un QR, mais il ouvre le lien  */
+        /* dans Safari : on sort de l'application installée, et la tournée arrive     */
+        /* dans une autre fenêtre. Pour rester DANS l'app, il faut lire le code       */
+        /* nous-mêmes.                                                               */
+        /*                                                                           */
+        /* BarcodeDetector, quand le navigateur l'a (Chrome Android), fait le travail. */
+        /* Safari ne l'a pas : le décodeur ci-dessous prend le relais. Il est complet  */
+        /* — repérage des trois motifs de position, redressement par transformation    */
+        /* projective, lecture du format, démasquage, désentrelacement des blocs et    */
+        /* correction d'erreurs de Reed-Solomon — parce qu'un demi-décodeur qui        */
+        /* échouerait sur un code un peu de travers serait pire qu'inutile en montagne. */
+        /* ------------------------------------------------------------------------- */
+        /* Découpage en blocs de la norme, pour les quatre niveaux de correction, versions 1 à 20 :
+           [codets de correction par bloc, nb blocs groupe 1, codets de données groupe 1,
+            nb blocs groupe 2, codets de données groupe 2].
+           L'application n'émet que du niveau M, mais un QR reçu d'ailleurs peut être en L, Q ou H —
+           autant savoir le lire. Chaque ligne est vérifiable : la somme
+           blocs × (données + correction) doit retomber sur le nombre total de codets de la version. */
+        window.QR_TOTAUX = [null,26,44,70,100,134,172,196,242,292,346,404,466,532,581,655,733,815,901,991,1085];
+        window.QR_BLOCS = {
+            1: [null,[7,1,19],[10,1,34],[15,1,55],[20,1,80],[26,1,108],[18,2,68],[20,2,78],[24,2,97],[30,2,116],
+                [18,2,68,2,69],[20,4,81],[24,2,92,2,93],[26,4,107],[30,3,115,1,116],[22,5,87,1,88],[24,5,98,1,99],
+                [28,1,107,5,108],[30,5,120,1,121],[28,3,113,4,114],[28,3,107,5,108]],                       // L
+            0: [null,[10,1,16],[16,1,28],[26,1,44],[18,2,32],[24,2,43],[16,4,27],[18,4,31],[22,2,38,2,39],
+                [22,3,36,2,37],[26,4,43,1,44],[30,1,50,4,51],[22,6,36,2,37],[22,8,37,1,38],[24,4,40,5,41],
+                [24,5,41,5,42],[28,7,45,3,46],[28,10,46,1,47],[26,9,43,4,44],[26,3,44,11,45],[26,3,41,13,42]], // M
+            3: [null,[13,1,13],[22,1,22],[18,2,17],[26,2,24],[18,2,15,2,16],[24,4,19],[18,2,14,4,15],
+                [22,4,18,2,19],[20,4,16,4,17],[24,6,19,2,20],[28,4,22,4,23],[26,4,20,6,21],[24,8,20,4,21],
+                [20,11,16,5,17],[30,5,24,7,25],[24,15,19,2,20],[28,1,22,15,23],[28,17,22,1,23],[26,17,21,4,22],
+                [30,15,24,5,25]],                                                                            // Q
+            2: [null,[17,1,9],[28,1,16],[22,2,13],[16,4,9],[22,2,11,2,12],[28,4,15],[26,4,13,1,14],
+                [26,4,14,2,15],[24,4,12,4,13],[28,6,15,2,16],[24,3,12,8,13],[28,7,14,4,15],[22,12,11,4,12],
+                [24,11,12,5,13],[24,11,12,7,13],[30,3,15,13,16],[28,2,14,17,15],[28,2,14,19,15],[26,9,13,16,14],
+                [28,15,15,10,16]]                                                                            // H
+        };
+        window.QR_ALIGNEMENT = [null,[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],
+            [6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],
+            [6,30,58,86],[6,34,62,90]];
+
+        window.QRLire = (function() {
+            let EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+            (function() { let x = 1; for (let i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11d; }
+                          for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255]; })();
+            let mul = function(a, b) { return (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]]; };
+            let div = function(a, b) { return a === 0 ? 0 : EXP[(LOG[a] + 255 - LOG[b]) % 255]; };
+
+            /* --- Reed-Solomon : syndromes, Berlekamp-Massey, Chien, Forney --- */
+            function corriger(bloc, nbEcc) {
+                /* Le polynôme générateur des QR codes a ses racines à partir de α⁰ (et non α¹ comme
+                   dans bien d'autres usages de Reed-Solomon) : les syndromes s'évaluent donc en α⁰,
+                   α¹, … Se tromper d'un cran ici donne des syndromes non nuls sur un code pourtant
+                   parfait, et le décodeur refuse tout. */
+                let n = bloc.length;
+                let synd = new Array(nbEcc).fill(0), erreurs = false;
+                for (let i = 0; i < nbEcc; i++) {
+                    let s = 0;
+                    for (let j = 0; j < n; j++) s = mul(s, EXP[i]) ^ bloc[j];
+                    synd[i] = s; if (s) erreurs = true;
+                }
+                if (!erreurs) return bloc;
+                // Localisateur d'erreurs
+                let sigma = [1], B = [1];
+                let L = 0;
+                for (let r = 0; r < nbEcc; r++) {
+                    let delta = synd[r];
+                    for (let i = 1; i <= L; i++) delta ^= mul(sigma[i] || 0, synd[r - i]);
+                    B.unshift(0);
+                    if (delta !== 0) {
+                        let T = sigma.slice();
+                        let scale = B.map(function(b) { return mul(b, delta); });
+                        let taille = Math.max(sigma.length, scale.length);
+                        let nouveau = new Array(taille).fill(0);
+                        for (let i = 0; i < taille; i++) nouveau[i] = (sigma[i] || 0) ^ (scale[i] || 0);
+                        sigma = nouveau;
+                        if (2 * L <= r) { L = r + 1 - L; B = T.map(function(t) { return div(t, delta); }); }
+                    }
+                }
+                if (L > nbEcc / 2) return null;
+                // Racines par recherche de Chien
+                let positions = [];
+                for (let i = 0; i < n; i++) {
+                    let x = EXP[(255 - (i % 255)) % 255];        // x = alpha^-i
+                    let v = 0;
+                    for (let k = sigma.length - 1; k >= 0; k--) v = mul(v, x) ^ (sigma[k] || 0);
+                    if (v === 0) positions.push(n - 1 - i);
+                }
+                if (positions.length !== L) return null;
+                // Évaluateur d'erreurs oméga = synd * sigma mod x^nbEcc
+                let omega = new Array(nbEcc).fill(0);
+                for (let i = 0; i < nbEcc; i++)
+                    for (let j = 0; j <= i; j++) omega[i] ^= mul(synd[i - j], sigma[j] || 0);
+                // Forney
+                for (let k = 0; k < positions.length; k++) {
+                    let pos = positions[k];
+                    let xi = EXP[(n - 1 - pos) % 255];
+                    let xiInv = div(1, xi);
+                    let num = 0;
+                    for (let i = omega.length - 1; i >= 0; i--) num = mul(num, xiInv) ^ omega[i];
+                    let den = 0;
+                    for (let i = 1; i < sigma.length; i += 2) {
+                        let terme = mul(sigma[i], 1);
+                        let p = i - 1, x = 1;
+                        for (let q = 0; q < p; q++) x = mul(x, xiInv);
+                        den ^= mul(terme, x);
+                    }
+                    if (den === 0) return null;
+                    // Racines à partir de α⁰ : la magnitude de l'erreur se multiplie par X_l.
+                    bloc[pos] ^= mul(xi, mul(num, div(1, den)));
+                }
+                // Vérification : les syndromes doivent être nuls après correction.
+                for (let i = 0; i < nbEcc; i++) {
+                    let s = 0;
+                    for (let j = 0; j < n; j++) s = mul(s, EXP[i]) ^ bloc[j];
+                    if (s) return null;
+                }
+                return bloc;
+            }
+
+            function bitsPourLongueur(version, mode) {
+                if (mode === 1) return version < 10 ? 10 : (version < 27 ? 12 : 14);
+                if (mode === 2) return version < 10 ? 9 : (version < 27 ? 11 : 13);
+                if (mode === 4) return version < 10 ? 8 : 16;
+                if (mode === 8) return version < 10 ? 8 : (version < 27 ? 10 : 12);
+                return 8;
+            }
+
+            /* --- Binarisation locale (blocs de 8 px), comme ZXing : un seuil global se fait piéger
+                   par une photo prise à contre-jour ou sous un néon d'atelier. --- */
+            function binariser(img) {
+                let w = img.width, h = img.height, d = img.data;
+                let gris = new Uint8Array(w * h);
+                for (let i = 0, p = 0; i < d.length; i += 4, p++)
+                    gris[p] = (d[i] * 306 + d[i + 1] * 601 + d[i + 2] * 117) >> 10;
+                let T = 8, bw = Math.max(1, w >> 3), bh = Math.max(1, h >> 3);
+                let moy = new Int32Array(bw * bh);
+                for (let by = 0; by < bh; by++) for (let bx = 0; bx < bw; bx++) {
+                    let som = 0, mn = 255, mx = 0, n = 0;
+                    let y0 = by * T, x0 = bx * T;
+                    for (let y = y0; y < Math.min(y0 + T, h); y++) for (let x = x0; x < Math.min(x0 + T, w); x++) {
+                        let v = gris[y * w + x]; som += v; n++;
+                        if (v < mn) mn = v; if (v > mx) mx = v;
+                    }
+                    let m = n ? som / n : 128;
+                    if (mx - mn <= 24) {
+                        /* Bloc sans contraste : il est entièrement dans du blanc… ou entièrement dans
+                           un gros module noir, ce qui arrive dès que le QR est affiché en grand. Le
+                           traiter systématiquement comme du blanc effaçait les modules sombres et
+                           rendait illisibles précisément les codes les mieux visibles. On reprend donc
+                           le seuil des blocs voisins déjà calculés, et on ne conclut au blanc que si le
+                           bloc est réellement plus clair qu'eux. */
+                        m = mn / 2;
+                        if (by > 0 && bx > 0) {
+                            let voisin = (moy[(by - 1) * bw + bx] + 2 * moy[by * bw + bx - 1] + moy[(by - 1) * bw + bx - 1]) / 4;
+                            if (mn < voisin) m = voisin;
+                        }
+                    }
+                    moy[by * bw + bx] = m;
+                }
+                let bits = new Uint8Array(w * h);
+                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                    let bx = Math.min(bw - 1, x >> 3), by = Math.min(bh - 1, y >> 3);
+                    // Moyenne des 3×3 blocs voisins : évite les marches d'escalier aux frontières.
+                    let s = 0, n = 0;
+                    for (let j = Math.max(0, by - 1); j <= Math.min(bh - 1, by + 1); j++)
+                        for (let i = Math.max(0, bx - 1); i <= Math.min(bw - 1, bx + 1); i++) { s += moy[j * bw + i]; n++; }
+                    bits[y * w + x] = gris[y * w + x] < (s / n) ? 1 : 0;   // 1 = sombre
+                }
+                return { w: w, h: h, bits: bits };
+            }
+
+            // Repérage des motifs de position : suite de modules 1:1:3:1:1 sur une ligne, confirmée
+            // en colonne. C'est la signature que seule une zone de repérage peut produire.
+            function ratioOk(c) {
+                let total = c[0] + c[1] + c[2] + c[3] + c[4];
+                if (total < 7) return 0;
+                let mod = total / 7, tol = mod / 2;
+                if (Math.abs(mod - c[0]) < tol && Math.abs(mod - c[1]) < tol &&
+                    Math.abs(3 * mod - c[2]) < 3 * tol && Math.abs(mod - c[3]) < tol &&
+                    Math.abs(mod - c[4]) < tol) return mod;
+                return 0;
+            }
+            function noir(im, x, y) {
+                if (x < 0 || y < 0 || x >= im.w || y >= im.h) return 0;
+                return im.bits[y * im.w + x];
+            }
+            function centreVertical(im, x, yDebut, compteAttendu) {
+                let y = yDebut, c = [0, 0, 0, 0, 0];
+                while (y >= 0 && noir(im, x, y)) { c[2]++; y--; }
+                while (y >= 0 && !noir(im, x, y)) { c[1]++; y--; }
+                while (y >= 0 && noir(im, x, y)) { c[0]++; y--; }
+                y = yDebut + 1;
+                while (y < im.h && noir(im, x, y)) { c[2]++; y++; }
+                while (y < im.h && !noir(im, x, y)) { c[3]++; y++; }
+                while (y < im.h && noir(im, x, y)) { c[4]++; y++; }
+                let m = ratioOk(c);
+                if (!m) return null;
+                let total = c[0] + c[1] + c[2] + c[3] + c[4];
+                if (Math.abs(total - compteAttendu) * 5 >= 2 * compteAttendu) return null;
+                return y - c[4] - c[3] - c[2] / 2;
+            }
+            function trouverMotifs(im) {
+                let trouves = [];
+                let pas = Math.max(1, Math.floor(im.h / 200));
+                for (let y = pas; y < im.h; y += pas) {
+                    let c = [0, 0, 0, 0, 0], etat = 0;
+                    for (let x = 0; x < im.w; x++) {
+                        let v = noir(im, x, y);
+                        if (v) {
+                            if (etat % 2 === 1) etat++;
+                            c[etat]++;
+                        } else {
+                            if (etat % 2 === 0) {
+                                if (etat === 4) {
+                                    let mod = ratioOk(c);
+                                    if (mod) {
+                                        let cx = x - c[4] - c[3] - c[2] / 2;
+                                        let cy = centreVertical(im, Math.round(cx), y, c[0] + c[1] + c[2] + c[3] + c[4]);
+                                        if (cy !== null) {
+                                            let dejaVu = trouves.find(function(t) {
+                                                return Math.abs(t.x - cx) < t.mod && Math.abs(t.y - cy) < t.mod;
+                                            });
+                                            if (dejaVu) { dejaVu.n++; dejaVu.x = (dejaVu.x * (dejaVu.n - 1) + cx) / dejaVu.n;
+                                                          dejaVu.y = (dejaVu.y * (dejaVu.n - 1) + cy) / dejaVu.n;
+                                                          dejaVu.mod = (dejaVu.mod * (dejaVu.n - 1) + mod) / dejaVu.n; }
+                                            else trouves.push({ x: cx, y: cy, mod: mod, n: 1 });
+                                        }
+                                    }
+                                    c = [c[2], c[3], c[4], 1, 0]; etat = 3;
+                                    continue;
+                                }
+                                etat++;
+                            }
+                            c[etat]++;
+                        }
+                    }
+                }
+                return trouves.filter(function(t) { return t.n >= 2; });
+            }
+
+            // Trois motifs : on identifie le coin haut-gauche (angle droit), puis on oriente.
+            function ordonner(p) {
+                let d = function(a, b) { return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y); };
+                let d01 = d(p[0], p[1]), d02 = d(p[0], p[2]), d12 = d(p[1], p[2]);
+                let hg, a, b;
+                if (d12 >= d01 && d12 >= d02) { hg = p[0]; a = p[1]; b = p[2]; }
+                else if (d02 >= d01 && d02 >= d12) { hg = p[1]; a = p[0]; b = p[2]; }
+                else { hg = p[2]; a = p[0]; b = p[1]; }
+                /* Produit vectoriel, en repère IMAGE (y vers le bas) : aller du coin haut-gauche vers
+                   le haut-droit puis vers le bas-gauche tourne dans le sens des aiguilles d'une
+                   montre, ce qui donne un produit POSITIF. Le signe inverse — celui d'un repère
+                   mathématique classique — intervertissait les deux coins et faisait lire la matrice
+                   transposée : le code était détecté, jamais décodé. */
+                let cross = (a.x - hg.x) * (b.y - hg.y) - (a.y - hg.y) * (b.x - hg.x);
+                let hd = cross > 0 ? a : b, bg = cross > 0 ? b : a;
+                return { hg: hg, hd: hd, bg: bg };
+            }
+
+            // Transformation projective (4 points → grille) : un QR photographié n'est jamais un carré.
+            function perspective(p0, p1, p2, p3, dim) {
+                function quadVersCarre(x0, y0, x1, y1, x2, y2, x3, y3) {
+                    let dx3 = x0 - x1 + x2 - x3, dy3 = y0 - y1 + y2 - y3;
+                    if (dx3 === 0 && dy3 === 0)
+                        return [x1 - x0, x2 - x1, x0, y1 - y0, y2 - y1, y0, 0, 0, 1];
+                    let dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2;
+                    let den = dx1 * dy2 - dx2 * dy1;
+                    let a13 = (dx3 * dy2 - dx2 * dy3) / den;
+                    let a23 = (dx1 * dy3 - dx3 * dy1) / den;
+                    return [x1 - x0 + a13 * x1, x3 - x0 + a23 * x3, x0,
+                            y1 - y0 + a13 * y1, y3 - y0 + a23 * y3, y0, a13, a23, 1];
+                }
+                let m = quadVersCarre(p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], p3[0], p3[1]);
+                return function(u, v) {
+                    let x = u / dim, y = v / dim;
+                    let d = m[6] * x + m[7] * y + m[8];
+                    return [(m[0] * x + m[1] * y + m[2]) / d, (m[3] * x + m[4] * y + m[5]) / d];
+                };
+            }
+
+            function echantillonner(im, ordre, dim, alignement) {
+                let hg = ordre.hg, hd = ordre.hd, bg = ordre.bg;
+                let bd;
+                if (alignement) bd = [alignement.x, alignement.y];
+                else bd = [hd.x + bg.x - hg.x, hd.y + bg.y - hg.y];
+                // Les motifs sont centrés à 3,5 modules du bord ; la grille va de 0 à dim.
+                let m = dim, dec = 3.5;
+                let ptDroite = alignement ? m - 6.5 : m - 3.5;
+                let tr = perspective([hg.x, hg.y], [hd.x, hd.y], bd, [bg.x, bg.y], 1);
+                // On construit une correspondance directe module → pixel via quatre coins connus.
+                let coins = [
+                    { u: dec, v: dec, p: [hg.x, hg.y] },
+                    { u: m - dec, v: dec, p: [hd.x, hd.y] },
+                    { u: alignement ? ptDroite : m - dec, v: alignement ? ptDroite : m - dec, p: bd },
+                    { u: dec, v: m - dec, p: [bg.x, bg.y] }
+                ];
+                // Résolution directe : homographie des 4 points source (u,v) vers les pixels.
+                let A = [], B = [];
+                coins.forEach(function(c) {
+                    A.push([c.u, c.v, 1, 0, 0, 0, -c.u * c.p[0], -c.v * c.p[0]]); B.push(c.p[0]);
+                    A.push([0, 0, 0, c.u, c.v, 1, -c.u * c.p[1], -c.v * c.p[1]]); B.push(c.p[1]);
+                });
+                let h = resoudre(A, B);
+                if (!h) return null;
+                let grille = new Uint8Array(dim * dim);
+                for (let y = 0; y < dim; y++) for (let x = 0; x < dim; x++) {
+                    let u = x + 0.5, v = y + 0.5;
+                    let w = h[6] * u + h[7] * v + 1;
+                    let px = Math.round((h[0] * u + h[1] * v + h[2]) / w);
+                    let py = Math.round((h[3] * u + h[4] * v + h[5]) / w);
+                    grille[y * dim + x] = noir(im, px, py);
+                }
+                return grille;
+            }
+            // Élimination de Gauss avec pivot partiel, sur un système 8×8.
+            function resoudre(A, B) {
+                let n = B.length;
+                let M = A.map(function(r, i) { return r.concat([B[i]]); });
+                for (let c = 0; c < n; c++) {
+                    let piv = c;
+                    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+                    if (Math.abs(M[piv][c]) < 1e-9) return null;
+                    let t = M[c]; M[c] = M[piv]; M[piv] = t;
+                    for (let r = 0; r < n; r++) {
+                        if (r === c) continue;
+                        let f = M[r][c] / M[c][c];
+                        for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k];
+                    }
+                }
+                return M.map(function(r, i) { return r[n] / r[i]; });
+            }
+
+            function estFonction(dim, version, x, y) {
+                if (x <= 8 && y <= 8) return true;                       // repérage haut-gauche + format
+                if (x >= dim - 8 && y <= 8) return true;
+                if (x <= 8 && y >= dim - 8) return true;
+                if (x === 6 || y === 6) return true;                     // synchronisation
+                if (version >= 7 && ((x >= dim - 11 && y <= 5) || (y >= dim - 11 && x <= 5))) return true;
+                let centres = window.QR_ALIGNEMENT ? window.QR_ALIGNEMENT[version] : null;
+                if (centres) {
+                    for (let i = 0; i < centres.length; i++) for (let j = 0; j < centres.length; j++) {
+                        let cx = centres[i], cy = centres[j];
+                        if ((cx === 6 && cy === 6) || (cx === 6 && cy === centres[centres.length - 1]) ||
+                            (cy === 6 && cx === centres[centres.length - 1])) continue;
+                        if (Math.abs(x - cx) <= 2 && Math.abs(y - cy) <= 2) return true;
+                    }
+                }
+                return false;
+            }
+            let MASQUES = [
+                function(i, j) { return (i + j) % 2 === 0; },
+                function(i) { return i % 2 === 0; },
+                function(i, j) { return j % 3 === 0; },
+                function(i, j) { return (i + j) % 3 === 0; },
+                function(i, j) { return (Math.floor(i / 2) + Math.floor(j / 3)) % 2 === 0; },
+                function(i, j) { return (i * j) % 2 + (i * j) % 3 === 0; },
+                function(i, j) { return ((i * j) % 2 + (i * j) % 3) % 2 === 0; },
+                function(i, j) { return ((i + j) % 2 + (i * j) % 3) % 2 === 0; }
+            ];
+
+            /* Les quinze bits de format sont dispersés autour du repère haut-gauche, ET recopiés en
+               bas-gauche / haut-droite. Le bit de rang k occupe une case précise : construire la
+               valeur en décalant au fil de la lecture inverse l'ordre des bits et donne un mot faux
+               qui, une fois « corrigé » par le code BCH, désigne un masque plausible mais erroné —
+               tout le reste du décodage échoue alors sans raison apparente. */
+            function lireFormat(grille, dim) {
+                let lire = function(x, y) { return grille[y * dim + x]; };
+                let essais = [];
+                let f1 = 0;
+                for (let i = 0; i <= 5; i++) f1 |= lire(8, i) << i;      // bits 0-5  : colonne 8, lignes 0-5
+                f1 |= lire(8, 7) << 6;                                    // bit 6
+                f1 |= lire(8, 8) << 7;                                    // bit 7
+                f1 |= lire(7, 8) << 8;                                    // bit 8
+                for (let i = 9; i <= 14; i++) f1 |= lire(14 - i, 8) << i; // bits 9-14 : ligne 8, colonnes 5-0
+                essais.push(f1);
+                let f2 = 0;
+                for (let i = 0; i < 8; i++) f2 |= lire(dim - 1 - i, 8) << i;       // bits 0-7  : ligne 8, à droite
+                for (let i = 8; i <= 14; i++) f2 |= lire(8, dim - 15 + i) << i;    // bits 8-14 : colonne 8, en bas
+                essais.push(f2);
+                for (let k = 0; k < essais.length; k++) {
+                    let brut = essais[k] ^ 0x5412;
+                    let meilleur = -1, dist = 99;
+                    for (let d = 0; d < 32; d++) {
+                        let rem = d;
+                        for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+                        let mot = ((d << 10) | rem);
+                        let x = mot ^ brut, n = 0;
+                        while (x) { n += x & 1; x >>>= 1; }
+                        if (n < dist) { dist = n; meilleur = d; }
+                    }
+                    if (dist <= 3) return { ecc: (meilleur >> 3) & 3, masque: meilleur & 7 };
+                }
+                return null;
+            }
+
+            function lireCodets(grille, dim, version, masque) {
+                let bits = [];
+                let dir = -1, y = dim - 1;
+                for (let x = dim - 1; x > 0; x -= 2) {
+                    if (x === 6) x--;                       // la colonne de synchronisation est sautée
+                    for (;;) {
+                        for (let k = 0; k < 2; k++) {
+                            let cx = x - k;
+                            if (!estFonction(dim, version, cx, y)) {
+                                let v = grille[y * dim + cx];
+                                if (MASQUES[masque](y, cx)) v ^= 1;
+                                bits.push(v);
+                            }
+                        }
+                        y += dir;
+                        if (y < 0 || y >= dim) { y -= dir; dir = -dir; break; }
+                    }
+                }
+                let octets = [];
+                for (let i = 0; i + 8 <= bits.length; i += 8) {
+                    let o = 0;
+                    for (let k = 0; k < 8; k++) o = (o << 1) | bits[i + k];
+                    octets.push(o);
+                }
+                return octets;
+            }
+
+            function desentrelacer(octets, version, ecc) {
+                let c = window.QR_BLOCS[ecc] && window.QR_BLOCS[ecc][version];
+                if (!c) return null;
+                let nbEcc = c[0], groupes = [];
+                let ajouter = function(nb, motsData) { for (let i = 0; i < nb; i++) groupes.push({ data: motsData, mots: [] }); };
+                ajouter(c[1], c[2]);
+                if (c[3]) ajouter(c[3], c[4]);
+                let maxData = Math.max.apply(null, groupes.map(function(g) { return g.data; }));
+                let p = 0;
+                for (let i = 0; i < maxData; i++)
+                    groupes.forEach(function(g) { if (i < g.data) g.mots.push(octets[p++]); });
+                for (let i = 0; i < nbEcc; i++)
+                    groupes.forEach(function(g) { g.mots.push(octets[p++]); });
+                let sortie = [];
+                for (let i = 0; i < groupes.length; i++) {
+                    let corrige = corriger(groupes[i].mots.slice(), nbEcc);
+                    if (!corrige) return null;
+                    for (let k = 0; k < groupes[i].data; k++) sortie.push(corrige[k]);
+                }
+                return sortie;
+            }
+
+            let ALPHANUM = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
+            function decoderFlux(data, version) {
+                let pos = 0;
+                let lire = function(n) {
+                    let v = 0;
+                    for (let i = 0; i < n; i++) {
+                        let octet = data[pos >> 3];
+                        if (octet === undefined) throw new Error("flux tronqué");
+                        v = (v << 1) | ((octet >> (7 - (pos & 7))) & 1);
+                        pos++;
+                    }
+                    return v;
+                };
+                let octets = [], texte = "";
+                for (;;) {
+                    if (pos + 4 > data.length * 8) break;
+                    let mode = lire(4);
+                    if (mode === 0) break;
+                    if (mode === 7) { lire(8); continue; }               // ECI : on reste en UTF-8
+                    let n = lire(bitsPourLongueur(version, mode));
+                    if (mode === 4) { for (let i = 0; i < n; i++) octets.push(lire(8)); }
+                    else if (mode === 1) {
+                        let i = 0;
+                        while (i + 3 <= n) { let v = lire(10); texte += String(v).padStart(3, '0'); i += 3; }
+                        if (n - i === 2) texte += String(lire(7)).padStart(2, '0');
+                        else if (n - i === 1) texte += String(lire(4));
+                    } else if (mode === 2) {
+                        let i = 0;
+                        while (i + 2 <= n) { let v = lire(11); texte += ALPHANUM[Math.floor(v / 45)] + ALPHANUM[v % 45]; i += 2; }
+                        if (n - i === 1) texte += ALPHANUM[lire(6)];
+                    } else break;
+                }
+                if (octets.length) {
+                    try { texte += new TextDecoder("utf-8").decode(new Uint8Array(octets)); }
+                    catch (e) { octets.forEach(function(o) { texte += String.fromCharCode(o); }); }
+                }
+                return texte;
+            }
+
+            // Chaîne complète, sur une ImageData. Renvoie le texte, ou null.
+            function decoder(img) {
+                let im = binariser(img);
+                let motifs = trouverMotifs(im);
+                if (motifs.length < 3) return null;
+                motifs.sort(function(a, b) { return b.n - a.n; });
+                // On essaie les combinaisons de trois motifs les plus vus.
+                let candidats = motifs.slice(0, 5);
+                for (let i = 0; i < candidats.length; i++)
+                for (let j = i + 1; j < candidats.length; j++)
+                for (let k = j + 1; k < candidats.length; k++) {
+                    let r = essayer(im, [candidats[i], candidats[j], candidats[k]]);
+                    if (r) return r;
+                }
+                return null;
+            }
+            function essayer(im, trois) {
+                let o;
+                try { o = ordonner(trois); } catch (e) { return null; }
+                let mod = (o.hg.mod + o.hd.mod + o.bg.mod) / 3;
+                if (!(mod > 0.5)) return null;
+                let dLarge = Math.sqrt((o.hd.x - o.hg.x) * (o.hd.x - o.hg.x) + (o.hd.y - o.hg.y) * (o.hd.y - o.hg.y));
+                let dHaut = Math.sqrt((o.bg.x - o.hg.x) * (o.bg.x - o.hg.x) + (o.bg.y - o.hg.y) * (o.bg.y - o.hg.y));
+                let dim = Math.round((dLarge / mod + dHaut / mod) / 2) + 7;
+                // La dimension d'un QR vaut toujours 4v+17 : on cale sur la valeur légale la plus proche.
+                dim = dim + ((4 - ((dim - 17) % 4)) % 4);
+                if (dim < 21 || dim > 177) {
+                    dim = Math.max(21, Math.min(177, dim));
+                    dim = dim + ((4 - ((dim - 17) % 4)) % 4);
+                }
+                /* Plusieurs dimensions sont essayées autour de l'estimation. La taille de module
+                   déduite du rapport 1:1:3:1:1 est majorée d'un facteur √2 quand le code est vu de
+                   biais à 45° : la dimension tombe alors trop bas d'autant, et le code — pourtant
+                   parfaitement détecté — ne se décode pas. Un mauvais candidat est éliminé sans risque
+                   par le contrôle de format puis par la correction d'erreurs. */
+                let ecarts = [0, 4, -4, 8, -8, 12, -12, 16, -16, 20, -20, 24, -24];
+                for (let essai = 0; essai < ecarts.length; essai++) {
+                    let d = dim + ecarts[essai];
+                    if (d < 21 || d > 177 || (d - 17) % 4 !== 0) continue;
+                    let version = (d - 17) / 4;
+                    let grille = echantillonner(im, o, d, null);
+                    if (!grille) continue;
+                    let fmt = lireFormat(grille, d);
+                    if (!fmt) continue;
+                    let octets = lireCodets(grille, d, version, fmt.masque);
+                    let data = desentrelacer(octets, version, fmt.ecc);
+                    if (!data) continue;
+                    try { let t = decoderFlux(data, version); if (t) return t; } catch (e) {}
+                }
+                return null;
+            }
+            return { decoder: decoder, binariser: binariser, trouverMotifs: trouverMotifs, corriger: corriger };
+        })();
+
+        /* ------------------------------------------------------------------------- */
+        /* Scanner : la caméra reste DANS l'application. Sur Android, BarcodeDetector  */
+        /* du navigateur fait le décodage ; sur iPhone, il n'existe pas et c'est       */
+        /* QRLire qui s'en charge. Si la caméra est refusée ou absente, on retombe sur */
+        /* une simple photo, décodée de la même façon.                                */
+        /* ------------------------------------------------------------------------- */
+        window.qrScanEtat = { flux: null, timer: null, detecteur: null, actif: false };
+
+        window.qrTexteVersCode = function(txt) {
+            if (!txt) return null;
+            let t = txt.trim();
+            if (t.indexOf('#trajet=') > -1) t = t.split('#trajet=')[1];
+            t = t.split(/[?&#\s]/)[0];
+            return /^[A-Za-z0-9\-_]{8,}$/.test(t) ? t : null;
+        };
+
+        window.ouvrirScanTrajet = async function() {
+            let box = document.getElementById('qr-scan');
+            if (!box) {
+                box = document.createElement('div'); box.id = 'qr-scan';
+                box.innerHTML = `
+                    <div id="qr-scan-bar"><span style="flex:1;">📷 Visez le QR code affiché sur le PC</span>
+                        <button onclick="window.fermerScanTrajet()">Fermer</button></div>
+                    <div style="flex:1; position:relative; overflow:hidden;">
+                        <video id="qr-scan-video" playsinline muted autoplay></video>
+                        <div id="qr-scan-mire"></div>
+                    </div>
+                    <div id="qr-scan-info"><span id="qr-scan-msg">Ouverture de la caméra…</span><br>
+                        <label style="display:inline-block; margin-top:8px; background:#34495e; color:#fff; padding:8px 14px; border-radius:6px; font-size:12px; cursor:pointer;">
+                            🖼️ Utiliser une photo
+                            <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="window.qrScanFichier(this)">
+                        </label></div>`;
+                document.body.appendChild(box);
+            }
+            box.classList.add('open');
+            window.qrScanEtat.actif = true;
+            window.qrScanMsg("Ouverture de la caméra…");
+
+            if (window.BarcodeDetector) {
+                try {
+                    let formats = await window.BarcodeDetector.getSupportedFormats();
+                    if (formats.indexOf('qr_code') > -1) window.qrScanEtat.detecteur = new window.BarcodeDetector({ formats: ['qr_code'] });
+                } catch (e) {}
+            }
+            let v = document.getElementById('qr-scan-video');
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("caméra non disponible");
+                let flux = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+                window.qrScanEtat.flux = flux;
+                v.srcObject = flux;
+                await v.play().catch(function() {});
+                window.qrScanMsg("Recherche du code…");
+                window.qrScanBoucle();
+            } catch (e) {
+                window.qrScanMsg("Caméra indisponible (" + (e.message || e.name) + "). Prenez une photo du QR code, ou saisissez le code à la main.");
+            }
+        };
+        window.qrScanMsg = function(t) { let m = document.getElementById('qr-scan-msg'); if (m) m.innerHTML = t; };
+
+        window.fermerScanTrajet = function() {
+            window.qrScanEtat.actif = false;
+            if (window.qrScanEtat.timer) { clearTimeout(window.qrScanEtat.timer); window.qrScanEtat.timer = null; }
+            if (window.qrScanEtat.flux) { window.qrScanEtat.flux.getTracks().forEach(function(t) { t.stop(); }); window.qrScanEtat.flux = null; }
+            let v = document.getElementById('qr-scan-video'); if (v) v.srcObject = null;
+            let box = document.getElementById('qr-scan'); if (box) box.classList.remove('open');
+        };
+
+        window.qrScanImageData = function(source, largeurCible) {
+            let w = source.videoWidth || source.naturalWidth || source.width;
+            let h = source.videoHeight || source.naturalHeight || source.height;
+            if (!w || !h) return null;
+            let ech = Math.min(1, (largeurCible || 720) / Math.max(w, h));
+            let cw = Math.max(1, Math.round(w * ech)), ch = Math.max(1, Math.round(h * ech));
+            let cv = window._qrCanvas || (window._qrCanvas = document.createElement('canvas'));
+            cv.width = cw; cv.height = ch;
+            let ctx = cv.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(source, 0, 0, cw, ch);
+            return ctx.getImageData(0, 0, cw, ch);
+        };
+
+        window.qrScanBoucle = async function() {
+            if (!window.qrScanEtat.actif) return;
+            let v = document.getElementById('qr-scan-video');
+            let texte = null;
+            try {
+                if (window.qrScanEtat.detecteur && v && v.videoWidth) {
+                    let codes = await window.qrScanEtat.detecteur.detect(v);
+                    if (codes && codes.length) texte = codes[0].rawValue;
+                }
+                if (!texte && v && v.videoWidth) {
+                    let img = window.qrScanImageData(v, 720);
+                    if (img) texte = window.QRLire.decoder(img);
+                }
+            } catch (e) {}
+            if (texte) { window.qrScanReussi(texte); return; }
+            window.qrScanEtat.timer = setTimeout(window.qrScanBoucle, 220);
+        };
+
+        window.qrScanFichier = function(input) {
+            let f = input.files && input.files[0]; if (!f) return;
+            let img = new Image();
+            img.onload = function() {
+                let texte = null;
+                // Deux résolutions : un QR photographié de loin a besoin de tous ses pixels, un QR
+                // pris de près décode plus sûrement réduit (le bruit de capteur s'efface).
+                [1400, 900, 600].forEach(function(t) {
+                    if (texte) return;
+                    let d = window.qrScanImageData(img, t);
+                    if (d) { try { texte = window.QRLire.decoder(d); } catch (e) {} }
+                });
+                if (texte) window.qrScanReussi(texte);
+                else window.qrScanMsg("Code illisible sur cette photo. Recadrez sur le QR seul, bien à plat et net.");
+                URL.revokeObjectURL(img.src);
+            };
+            img.onerror = function() { window.qrScanMsg("Image illisible."); };
+            img.src = URL.createObjectURL(f);
+            input.value = "";
+        };
+
+        window.qrScanReussi = function(texte) {
+            let code = window.qrTexteVersCode(texte);
+            if (!code || !window.routeAppliquerCode(code, true)) {
+                window.qrScanMsg("Ce QR code n'est pas un trajet GMAO.<br><span style='font-size:11px;opacity:.8;'>" +
+                                 window.prodEsc(texte.slice(0, 60)) + "</span>");
+                return;
+            }
+            window.fermerScanTrajet();
+            window.openFicheRoute();
+            window.lancerCalculRoute(null);
+            window.routeToast("Trajet reçu : " + window.routeSelection.length + " arrêt(s).");
+        };
         // Au démarrage : un trajet passé dans l'adresse est chargé et affiché directement.
         window.chargerTrajetDepuisUrl = function() {
             let h = location.hash || '';
@@ -4805,16 +6210,18 @@
                 <table>
                     <thead><tr><th>#</th><th>Canon</th><th>Piste</th><th>Défaut signalé</th><th>Distance</th><th>Heure cumulée</th><th>Fait</th></tr></thead>
                     <tbody>${r.etapes.map(function(e, i) {
-                        let t = window.getActiveTickets(e.id);
-                        return `<tr><td>${i + 1}</td><td><b>${window.prodEsc(e.id)}</b>${e.aPied ? ' <span style="font-size:9px;">🚶 ' + e.aPied + ' m</span>' : ''}</td><td>${window.prodEsc(e.piste || '')}</td>
+                        let t = e.point ? [] : window.getActiveTickets(e.id);
+                        return `<tr><td>${i + 1}</td><td><b>${e.point ? '📍 ' + window.prodEsc(e.nom || 'Point posé') : window.prodEsc(e.id)}</b>${e.aPied ? ' <span style="font-size:9px;">🚶 ' + e.aPied + ' m</span>' : ''}${e.type === 'pied' ? ' <span style="font-size:9px;">🚶 accès à pied</span>' : ''}${e.type === 'coupe' ? ' <span style="font-size:9px;">✂︎ liaison coupée</span>' : ''}</td><td>${window.prodEsc(e.piste || '')}</td>
                             <td>${window.prodEsc(t.map(function(x) { return x.defaut; }).join(' · '))}</td>
                             <td>${window.routeFmtDist(e.dist)}</td>
                             <td>${window.routeFmtDuree(e.cumul / 1000 / cfg.vitesse * 60 + i * cfg.minutesParCanon)}</td><td class="rp-case"></td></tr>`;
                     }).join('')}</tbody>
                 </table>
-                ${r.aPied.length ? `<div class="rp-warn"><b>À finir à pied :</b> ${r.aPied.map(function(x) { return "canon " + window.prodEsc(x.id) + " (" + x.aPied + " m)"; }).join(' · ')}</div>` : ''}
-                ${r.horsLigne ? `<div class="rp-warn"><b>${r.horsLigne} liaison(s) hors chemin :</b> distance estimée, temps indicatif.</div>` : ''}
-                <p class="rp-foot">Circulation interdite : ${cfg.interdits.map(function(z) { return window.prodEsc(z.nom) + ' (' + z.de + '–' + z.a + ')'; }).join(' · ')}. Distances mesurées le long de la ligne de canons.</p>`;
+                ${r.aPied.length ? `<div class="rp-warn"><b>À finir à pied :</b> ${r.aPied.map(function(x) { return (x.point ? "point " + window.prodEsc(x.nom || x.id) : "canon " + window.prodEsc(x.id)) + " (" + x.aPied + " m)"; }).join(' · ')}</div>` : ''}
+                ${r.horsLigne ? `<div class="rp-warn"><b>${r.horsLigne} liaison(s) hors plan de circulation :</b> distance estimée, temps indicatif.</div>` : ''}
+                ${r.coupees ? `<div class="rp-warn"><b>${r.coupees} liaison(s) coupée(s) à la main :</b> aucun trajet n'est proposé entre ces deux arrêts.</div>` : ''}
+                ${r.metresPiedDessine ? `<div class="rp-warn"><b>Tronçons à pied dessinés :</b> ${Math.round(r.metresPiedDessine)} m, soit ${window.routeFmtDuree(r.metresPiedDessine / 1000 / 4 * 60)} de marche.</div>` : ''}
+                <p class="rp-foot">Circulation interdite : ${cfg.interdits.map(function(z) { return window.prodEsc(z.nom) + ' (' + z.de + '–' + z.a + ')'; }).join(' · ')}. ${r.strict ? "Distances mesurées le long du plan de circulation." : "Distances mesurées le long de la ligne de canons."}</p>`;
             document.body.classList.add('printing-route');
             setTimeout(function() {
                 window.print();
@@ -4936,15 +6343,21 @@
 
         window.diagCanon = null;
         window.openDiagnostic = function(id) {
-            let sb = document.getElementById('right-sidebar'); let sl = document.getElementById('selected-list'); if (!sb || !sl) return;
-            document.getElementById('right-title').innerHTML = "<i class='fa-solid fa-stethoscope'></i> Aide au diagnostic";
-            document.getElementById('multi-tools').style.display = 'none';
-            document.getElementById('view-edit').style.display = 'none';
-            document.getElementById('view-selection').style.display = 'block';
-            sb.classList.add('open');
+            // ouvrirPanneauDroite coupe au passage le mode dessin de la fiche de route : sans cela, un
+            // clic sur la carte relançait le calcul de tournée, qui réécrivait ce panneau-ci.
+            if (!window.ouvrirPanneauDroite('diag', "<i class='fa-solid fa-stethoscope'></i> Aide au diagnostic")) return;
             if (id) window.diagCanon = id;
             else if (!window.diagCanon && window.selectedCannonsMap.size) window.diagCanon = Array.from(window.selectedCannonsMap.keys())[0];
             window.renderDiagnostic();
+        };
+        // Depuis le diagnostic, on ajoute le canon À la tournée existante — il ne la remplace pas.
+        window.diagAjouterAuTrajet = function(id, ouvrir) {
+            if (!id) return;
+            if (window.routeSelection.indexOf(id) === -1) window.routeSelection.push(id);
+            window.routeSyncOrdre();
+            window.routeSave();
+            if (ouvrir) { window.openFicheRoute(); window.lancerCalculRoute(null); }
+            else { window.routeDernier = null; window.renderDiagnostic(); window.routeToast("Canon " + id + " ajouté au trajet (" + window.routeSelection.length + " arrêt(s))."); }
         };
         window.setDiagCanon = function(v) { window.diagCanon = v; window.diagDefaut = null; window.renderDiagnostic(); };
         window.setDiagDefaut = function(v) { window.diagDefaut = v; window.renderDiagnostic(); };
@@ -4968,6 +6381,17 @@
 
         window.renderDiagnostic = function() {
             let sl = document.getElementById('selected-list'); if (!sl) return;
+            if (window.panneauDroite !== 'diag') return;
+            // Une exception ici laissait autrefois le contenu précédent en place : on voyait la fiche de
+            // route sous le titre « Aide au diagnostic », sans la moindre indication de la panne.
+            try { window.renderDiagnosticCorps(sl); }
+            catch (e) {
+                sl.innerHTML = `<div style="background:#fdedec; border:1px solid #f5b7b1; border-radius:6px; padding:12px; font-size:12px; color:#922b21;">
+                    <b>L'aide au diagnostic n'a pas pu s'afficher.</b><br>${window.prodEsc(e.message)}<br>
+                    <span style="font-size:11px;">Cela vient en général d'un ticket dont une colonne attendue est vide. Le reste de l'application n'est pas affecté.</span></div>`;
+            }
+        };
+        window.renderDiagnosticCorps = function(sl) {
             let feats = ((window.snowCannons && window.snowCannons.features) || []);
             let avecTickets = feats.filter(function(f) { return (window.rawTickets || []).some(function(t) { return t.idCanon === f.properties.id; }); });
             let opts = avecTickets.map(function(f) {
@@ -4990,8 +6414,10 @@
                 sl.innerHTML = html; return;
             }
 
+            let dejaDansTrajet = window.routeSelection.indexOf(window.diagCanon) > -1;
             let a = window.diagAnalyser(window.diagCanon, window.diagDefaut);
-            if (a.err) { sl.innerHTML = html + `<div style="font-size:12px; color:#c0392b; padding:12px;">${a.err}</div></div>`; return; }
+            if (a.err) { sl.innerHTML = html + `<div style="font-size:12px; color:#c0392b; padding:12px;">${a.err}</div>
+                <button onclick="window.diagAjouterAuTrajet('${window.prodEsc(window.diagCanon)}', false)" style="background:#e67e22; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; margin:0 12px 12px;">➕ Ajouter au trajet</button></div>`; return; }
 
             let defOpts = a.defauts.map(function(d) {
                 return `<option value="${window.prodEsc(d.texte)}"${d.texte === a.defaut ? ' selected' : ''}>${window.prodEsc(d.texte)} (${d.n}×)</option>`;
@@ -5045,7 +6471,12 @@
                     <b style="font-size:12px; color:#2c3e50;">📊 Historique de ce canon (${a.totalCanon} ticket(s))</b>
                     ${window.diagListe('hist', a.defauts, a.totalCanon, '#34495e', "Aucun historique.")}
                 </div>
-                <button onclick="window.zoomSurCanon('${window.prodEsc(window.diagCanon)}')" style="background:#2980b9; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">🎯 Voir ce canon sur la carte</button>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <button onclick="window.zoomSurCanon('${window.prodEsc(window.diagCanon)}')" style="flex:1 1 100%; background:#2980b9; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">🎯 Voir ce canon sur la carte</button>
+                    <button onclick="window.diagAjouterAuTrajet('${window.prodEsc(window.diagCanon)}', false)" style="flex:1 1 60%; background:#e67e22; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">➕ Ajouter au trajet ${dejaDansTrajet ? '(déjà dedans)' : '(' + (window.routeSelection.length + 1) + 'ᵉ arrêt)'}</button>
+                    <button onclick="window.diagAjouterAuTrajet('${window.prodEsc(window.diagCanon)}', true)" style="flex:1 1 34%; background:#34495e; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;" title="Ajouter puis ouvrir la fiche de route">🗺️ Fiche</button>
+                </div>
+                <p style="font-size:10px; color:#888; margin:0;">Le canon <b>s'ajoute</b> à la tournée en cours (${window.routeSelection.length} arrêt(s)) : elle n'est jamais remplacée.</p>
             </div>`;
             sl.innerHTML = html;
         };
@@ -5519,6 +6950,8 @@
                 window.map.on('click', function(e) {
                     if (window.zoneDrawMode) { window.addZonePoint(e.latlng); return; }
                     if (window.zonePickMode) return;
+                    // Mode dessin du trajet : la carte lui appartient entièrement.
+                    if (window.routeCarteClic && window.routeCarteClic(e)) return;
                     let amc = document.getElementById('allow-move-chk');
                     if (window.currentlyEditingId && amc && amc.checked) { let elat = document.getElementById('edit-lat'); if(elat) elat.value = e.latlng.lat.toFixed(7); let elng = document.getElementById('edit-lng'); if(elng) elng.value = e.latlng.lng.toFixed(7); let layer = window.selectedCannonsMap.get(window.currentlyEditingId); if(layer) { layer.setLatLng(e.latlng); layer.feature.geometry.coordinates = [e.latlng.lng, e.latlng.lat]; } } else if (!window.currentlyEditingId) { window.closeRightSidebar(); }
                 });
@@ -8467,6 +9900,7 @@
 
         window.openSatellitePanel = function() {
             let sb = document.getElementById('right-sidebar'); let sl = document.getElementById('selected-list'); if (!sb || !sl) return;
+            if (window.ouvrirPanneauDroite) window.ouvrirPanneauDroite('satellite', '');
             document.getElementById('right-title').innerHTML = "<i class='fa-solid fa-satellite'></i> Vue satellite";
             document.getElementById('multi-tools').style.display = 'none';
             document.getElementById('view-edit').style.display = 'none';
@@ -8543,6 +9977,7 @@
 
         window.openMeteoWidget = function() {
             let sb = document.getElementById('right-sidebar'); let rt = document.getElementById('right-title'); let sl = document.getElementById('selected-list'); if(!sb || !sl) return;
+            if (window.ouvrirPanneauDroite) window.ouvrirPanneauDroite('meteo', '');
             if(rt) rt.innerText = "⛅ Météo Live";
             document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
             window.switchMeteoTab = function(p) {
@@ -8759,6 +10194,7 @@ ${so.ensoleille ? 'Soleil direct' : (so.alt <= 0 ? 'Nuit' : (!so.visible ? 'À l
 
         window.openWebcamGrid = function() {
             let sb = document.getElementById('right-sidebar'); let sl = document.getElementById('selected-list'); if(!sb || !sl) return;
+            if (window.ouvrirPanneauDroite) window.ouvrirPanneauDroite('webcams', '');
             document.getElementById('right-title').innerText = "📷 Webcams"; document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
             let html = "<div style='display:flex;flex-direction:column;gap:15px;'>";
             if(window.webcamsData.length === 0) html += "<p>Aucune caméra.</p>";
@@ -9512,6 +10948,9 @@ ${so.ensoleille ? 'Soleil direct' : (so.alt <= 0 ? 'Nuit' : (!so.visible ? 'À l
                 await window.initLocalDB();
                 await window.fetchGoogleSheetsData();
                 window.updateNetBanner();
+                // Le plan de circulation fait partie de l'application : il se charge tout seul, après
+                // les données pour ne pas retarder l'affichage, et sans faire échouer le démarrage.
+                window.chargerPlanCirculation().catch(function() {});
             } catch (err) { window.showCrash(err.message, "Boot Principal"); }
         });
     </script>
