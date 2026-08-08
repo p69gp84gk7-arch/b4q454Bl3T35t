@@ -24,7 +24,7 @@
         // principal. Sur un écran d'erreur, le nom et la version restent affichés — c'est l'information
         // la plus utile à transmettre en cas de bug ; seul le flocon animé disparaît.
         window.APP_NAME = "GMAO Neige";
-        window.APP_VERSION = "5.5.0";
+        window.APP_VERSION = "5.6.0";
         window.showCrash = function(msg, line) { let o = document.getElementById('loading-overlay'); if (o) { o.style.display='flex'; let fw = document.getElementById('flake-wrap'); if(fw) fw.style.display='none'; let pc = document.getElementById('loading-pct'); if(pc) pc.style.display='none'; document.getElementById('loading-title').innerText="🛑 ERREUR SYSTEME"; if(document.getElementById('error-box')) { document.getElementById('error-box').style.display='block'; document.getElementById('error-msg').innerHTML="<b>Détail:</b> "+msg+(line?"<br><b>Ligne:</b> "+line:""); } } else alert("🛑 CRASH : "+msg); };
         window.onerror = function(msg, src, ln) { if (msg.indexOf('Script error') > -1) return false; window.showCrash(msg, ln); return true; };
         window.addEventListener('unhandledrejection', function(e) { window.showCrash(e.reason ? e.reason.message : "Erreur réseau", "Réseau"); });
@@ -43,8 +43,23 @@
     <!-- CHAPITRE 1.B : STYLES CSS GLOBAUX                                         -->
     <!-- ========================================================================= -->
     <style>
+        /* CHAPITRE 1.B.0 — Gabarit vertical. Depuis l'installation en application autonome, la page
+           occupe TOUT l'écran, encoche et barre d'état comprises : sans ces marges de sécurité, les
+           boutons du bandeau supérieur passent sous l'horloge et la batterie de l'iPhone. Tout ce qui
+           se positionne sous le bandeau lit --topbar-h, pour qu'un seul endroit fasse foi. */
+        :root{
+            --safe-top:env(safe-area-inset-top,0px);
+            --safe-left:env(safe-area-inset-left,0px);
+            --safe-right:env(safe-area-inset-right,0px);
+            --safe-bottom:env(safe-area-inset-bottom,0px);
+            --topbar-h:calc(50px + var(--safe-top));
+            --banner-h:0px;
+        }
+        body.has-net-banner{--banner-h:32px;}
+        @media (max-width:768px){ body.has-net-banner{--banner-h:30px;} }
         body,html{margin:0;padding:0;height:100%;width:100%;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f4f6f8;overflow:hidden;}
-        #topbar{position:fixed;top:0;left:0;right:0;height:50px;background:#2c3e50;z-index:4000;display:flex;justify-content:space-between;align-items:center;padding:0 15px;box-shadow:0 2px 5px rgba(0,0,0,0.3);}
+        #topbar{position:fixed;top:0;left:0;right:0;height:var(--topbar-h);background:#2c3e50;z-index:4000;display:flex;justify-content:space-between;align-items:center;
+            padding:var(--safe-top) calc(15px + var(--safe-right)) 0 calc(15px + var(--safe-left));box-sizing:border-box;box-shadow:0 2px 5px rgba(0,0,0,0.3);}
         .topbar-btn{background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.2);padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;transition:0.2s;margin-left:5px;}
         .topbar-btn:hover{background:rgba(255,255,255,0.2);}
         /* CHAPITRE 1.C.2 — Menu "Outils" du bandeau supérieur (version PC) : les boutons secondaires
@@ -59,7 +74,7 @@
         /* CHAPITRE 1.C.3 — Bandeau d'état réseau. Il s'insère SOUS le bandeau supérieur en poussant le
            contenu vers le bas (padding-top de #app-container piloté en JS) plutôt qu'en le recouvrant :
            un bandeau flottant masquerait en permanence la première ligne de la carte ou du tableau. */
-        #net-banner{position:fixed;top:50px;left:0;right:0;z-index:3900;display:none;align-items:center;gap:10px;
+        #net-banner{position:fixed;top:var(--topbar-h);left:0;right:0;z-index:3900;display:none;align-items:center;gap:10px;
             padding:7px 14px;font-size:12px;font-weight:bold;color:#fff;background:#7f8c8d;box-shadow:0 2px 6px rgba(0,0,0,0.25);}
         #net-banner.show{display:flex;}
         #net-banner.offline{background:#c0392b;}
@@ -70,8 +85,12 @@
         #net-banner button{background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.45);color:#fff;
             padding:4px 10px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;}
         #net-banner button:hover{background:rgba(255,255,255,0.35);}
-        body.has-net-banner #app-container{padding-top:82px;}
-        body.has-net-banner #settings-panel,body.has-net-banner #right-sidebar{top:82px;}
+        body.has-net-banner #app-container{padding-top:calc(var(--topbar-h) + var(--banner-h));}
+        /* !important obligatoire : #settings-panel et #production-panel portent leur `top` en style
+           EN LIGNE, qui l'emporte sur toute règle de feuille de style. Sans cela ces deux panneaux
+           restaient collés sous le bandeau supérieur et passaient sous le bandeau réseau. */
+        body.has-net-banner #settings-panel,body.has-net-banner #right-sidebar,
+        body.has-net-banner #print-panel,body.has-net-banner #production-panel{top:calc(var(--topbar-h) + var(--banner-h)) !important;}
         @media (max-width:768px){ #net-banner{font-size:11px;padding:6px 10px;gap:7px;} }
         /* CHAPITRE 1.C.4 — Photos de panne. Les vignettes sont carrées et recadrées (object-fit:cover) :
            un cliché pris en portrait et un autre en paysage doivent s'aligner sans casser la rangée. */
@@ -90,13 +109,25 @@
            la largeur disponible (flex:1) pour que la bande tienne toujours dans le panneau, du
            téléphone au grand écran, sans défilement horizontal. */
         .meteo-strip{display:flex;gap:1px;height:34px;margin-bottom:8px;border-radius:3px;overflow:hidden;}
+        /* Alerte de proximité : posée au-dessus de tout, en bas de l'écran là où le pouce l'atteint,
+           et au-dessus de la barre d'accueil de l'iPhone. */
+        #prox-alert{position:fixed;left:10px;right:10px;bottom:calc(14px + var(--safe-bottom));z-index:9500;
+            display:none;background:#c0392b;color:#fff;border-radius:10px;box-shadow:0 8px 26px rgba(0,0,0,0.45);}
+        #prox-alert.show{display:block;animation:proxIn 0.25s ease-out;}
+        #prox-alert .prox-inner{display:flex;align-items:center;gap:10px;padding:12px 14px;font-size:13px;font-weight:bold;}
+        #prox-alert button{background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.5);color:#fff;
+            padding:7px 12px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;}
+        @keyframes proxIn{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+        @media(min-width:769px){ #prox-alert{left:auto;right:20px;width:380px;} }
+        .meteo-strip-sun{height:12px;margin-bottom:10px;}
+        .meteo-cell-sun{align-items:center;}
         .meteo-cell{flex:1 1 0;min-width:0;display:flex;align-items:flex-end;justify-content:center;
             font-size:8px;color:rgba(255,255,255,0.9);font-weight:bold;padding-bottom:2px;cursor:default;}
         .meteo-sect-row{display:flex;gap:5px;align-items:center;margin-bottom:5px;}
         .meteo-sect-row input{flex:1;min-width:0;padding:5px;font-size:11px;border:1px solid #ccc;border-radius:3px;}
         .meteo-sect-row input.coord{flex:0 0 74px;}
         .meteo-sect-row button{background:#c0392b;color:#fff;border:none;padding:5px 8px;border-radius:3px;cursor:pointer;font-size:11px;}
-        #app-container{display:flex;height:100%;width:100%;position:relative;padding-top:50px;box-sizing:border-box;}
+        #app-container{display:flex;height:100%;width:100%;position:relative;padding-top:var(--topbar-h);box-sizing:border-box;}
         #loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 50% 42%, #ffffff 0%, #eef4fb 55%, #e3ecf6 100%);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:20px;box-sizing:border-box;}
         @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
         /* CHAPITRE 1.A — Écran de démarrage : le flocon se remplit de bleu électrique par le bas au fil
@@ -111,7 +142,7 @@
         #error-box{display:none;background:#fdf0ed;border:2px solid #e74c3c;padding:20px;border-radius:8px;max-width:600px;color:#c0392b;margin-top:20px;}
         @media (max-width: 480px){ #flake-wrap{width:104px;height:104px;} #loading-appname{font-size:18px;letter-spacing:2px;} }
 
-        #sidebar{width:360px;flex-shrink:0;background:#fff;display:flex;flex-direction:column;z-index:2500;overflow-y:auto;box-shadow:2px 0 15px rgba(0,0,0,0.08);transition:transform 0.3s;position:absolute;height:calc(100% - 50px);left:0;top:50px;}
+        #sidebar{width:360px;flex-shrink:0;background:#fff;display:flex;flex-direction:column;z-index:2500;overflow-y:auto;box-shadow:2px 0 15px rgba(0,0,0,0.08);transition:transform 0.3s;position:absolute;height:calc(100% - var(--topbar-h));left:0;top:var(--topbar-h);}
         #sidebar.collapsed{transform:translateX(-100%);}
         .sidebar-header-bg{background:#f8f9fa;padding:10px 20px;border-bottom:1px solid #eee;font-weight:bold;color:#2c3e50;font-size:14px;text-transform:uppercase;}
         /* Briques de tableau de bord : contrôles + tableau de données filtrable */
@@ -175,7 +206,7 @@
         .cannon-circle:hover{transform:scale(1.2);z-index:1000 !important;cursor:pointer;}
         .camera-icon{font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,0.8);text-align:center;line-height:24px;cursor:pointer;}
 
-        #right-sidebar{position:absolute;top:50px;right:0;bottom:0;width:680px;min-width:300px;max-width:90vw;background:#fff;z-index:2001;transform:translateX(100%);transition:transform 0.3s;box-shadow:-5px 0 25px rgba(0,0,0,0.1);display:flex;flex-direction:column;}
+        #right-sidebar{position:absolute;top:var(--topbar-h);right:0;bottom:0;width:680px;min-width:300px;max-width:90vw;background:#fff;z-index:2001;transform:translateX(100%);transition:transform 0.3s;box-shadow:-5px 0 25px rgba(0,0,0,0.1);display:flex;flex-direction:column;}
         #right-sidebar.open{transform:translateX(0);}
         .resizer { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; cursor: ew-resize; background: rgba(0,0,0,0.05); z-index: 3000; border-left: 1px solid #ddd; transition: background 0.2s; }
         .resizer:hover, .resizer.active { background: #3498db; }
@@ -248,7 +279,7 @@
             #print-panel { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
             #print-page-preview-modal { right: 0 !important; }
 
-            .draggable-window { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; min-width: 0 !important; min-height: 0 !important; border-radius: 0 !important; transform: none !important; }
+            .draggable-window { position: fixed !important; top: var(--safe-top) !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; min-width: 0 !important; min-height: 0 !important; border-radius: 0 !important; transform: none !important; }
             .resize-handle { display: none !important; }
 
             .atelier-form-grid { grid-template-columns: 1fr !important; }
@@ -258,7 +289,7 @@
             /* 16px sur les champs de saisie : en dessous, iOS Safari zoome automatiquement au focus */
             .edit-input, input, select, textarea { font-size: 16px !important; }
             .topbar-btn, .btn-action-primary { padding: 12px !important; font-size: 14px !important; }
-            #topbar { padding: 0 5px; }
+            #topbar { padding: var(--safe-top) calc(5px + var(--safe-right)) 0 calc(5px + var(--safe-left)); }
             .topbar-btn { flex-shrink: 0; }
 
             /* Les boutons d'action quittent le bandeau pour le tiroir du bas */
@@ -270,11 +301,12 @@
                 background: #1e2b38; border-radius: 18px 18px 0 0;
                 box-shadow: 0 -6px 24px rgba(0,0,0,0.4);
                 max-height: 72vh;
-                transform: translateY(calc(100% - 50px));
+                transform: translateY(calc(100% - 50px - var(--safe-bottom)));
                 transition: transform 0.28s cubic-bezier(.4,0,.2,1);
                 touch-action: none;
             }
             #mobile-dock.open { transform: translateY(0); }
+            #mobile-dock-handle { padding-top: 2px; }
             #mobile-dock.dragging { transition: none; }
             #mobile-dock-handle { flex-shrink: 0; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: grab; user-select: none; }
             #mobile-dock-grip { width: 46px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.55); }
@@ -308,9 +340,9 @@
             .stock-item-card { flex-direction: column !important; }
         }
 
-        #print-panel { position:absolute; top:50px; right:0; bottom:0; width:380px; min-width:300px; max-width:90vw; background:#fff; z-index:6500; transform:translateX(100%); transition:transform 0.3s; box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; }
+        #print-panel { position:absolute; top:var(--topbar-h); right:0; bottom:0; width:380px; min-width:300px; max-width:90vw; background:#fff; z-index:6500; transform:translateX(100%); transition:transform 0.3s; box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; }
         #print-panel.open { transform:translateX(0); }
-        #print-page-preview-modal { display:none; position:fixed; top:50px; left:0; right:400px; bottom:0; background:rgba(0,0,0,0.65); z-index:6400; overflow-y:auto; }
+        #print-page-preview-modal { display:none; position:fixed; top:var(--topbar-h); left:0; right:400px; bottom:0; background:rgba(0,0,0,0.65); z-index:6400; overflow-y:auto; }
         #print-page-preview-modal.open { display:block; }
         #print-page-sheet-wrap { padding:20px; display:flex; flex-direction:column; align-items:center; gap:20px; min-height:100%; box-sizing:border-box; overflow-x:auto; }
         /* Le padding n'est plus figé ici : il est calculé page par page à partir des marges choisies,
@@ -345,7 +377,7 @@
         .resize-handle { position:absolute; right:0; bottom:0; width:16px; height:16px; cursor:nwse-resize; z-index:20; }
         .resize-handle::after { content:''; position:absolute; right:3px; bottom:3px; width:8px; height:8px; border-right:2px solid #999; border-bottom:2px solid #999; }
 
-        #calendar-modal { display:none; position:fixed; top:50px; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:8200; justify-content:center; align-items:center; }
+        #calendar-modal { display:none; position:fixed; top:var(--topbar-h); left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:8200; justify-content:center; align-items:center; }
         #calendar-modal-inner { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; width:95%; max-width:1000px; height:90%; min-width:500px; min-height:400px; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
         .cal-header { background:#2c3e50; color:white; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
         .cal-nav-btn { background:rgba(255,255,255,0.15); border:none; color:white; width:32px; height:32px; border-radius:4px; cursor:pointer; font-size:14px; }
@@ -483,6 +515,7 @@
                     <button class="topbar-btn" data-btnkey="bi" data-btnlabel="Centre d'Analyse" onclick="window.openBiMeteo()" style="background:#16a085; border-color:#1abc9c;"><i class="fa-solid fa-chart-simple"></i> <span class="btn-text">Centre d'Analyse</span></button>
                     <button class="topbar-btn" data-btnkey="meteo" data-btnlabel="Météo Live" onclick="window.openMeteoWidget()"><i class="fa-solid fa-cloud-sun"></i> <span class="btn-text">Météo Live</span></button>
                     <button class="topbar-btn" data-btnkey="webcams" data-btnlabel="Webcams" onclick="window.openWebcamGrid()"><i class="fa-solid fa-video"></i> <span class="btn-text">Webcams</span></button>
+                    <button class="topbar-btn" data-btnkey="satellite" data-btnlabel="Vue satellite" onclick="window.openSatellitePanel()"><i class="fa-solid fa-satellite"></i> <span class="btn-text">Vue satellite</span></button>
                     <button class="topbar-btn" data-btnkey="histmeteo" data-btnlabel="Hist. Météo" onclick="window.openMeteoHistoryModal(true)" style="background:#f39c12; border-color:#f1c40f;"><i class="fa-solid fa-temperature-half"></i> <span class="btn-text">Hist. Météo</span></button>
                     <button class="topbar-btn" data-btnkey="localiser" data-btnlabel="Localiser" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;"><i class="fa-solid fa-location-crosshairs"></i> <span class="btn-text">Localiser</span></button>
                     <button class="topbar-btn" data-btnkey="print" data-btnlabel="Imprimer" onclick="window.openPrintMode()" style="background:#7f8c8d; border-color:#95a5a6;"><i class="fa-solid fa-print"></i> <span class="btn-text">Imprimer</span></button>
@@ -502,7 +535,7 @@
     </div>
 
     <!-- MODAL PDF -->
-    <div id="pdf-modal" style="display:none; position:fixed; top:50px; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9000;">
+    <div id="pdf-modal" style="display:none; position:fixed; top:var(--topbar-h); left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9000;">
         <div class="draggable-window" style="top:50%; left:50%; transform:translate(-50%,-50%); width:1100px; max-width:95vw; height:85vh; min-width:400px; min-height:300px; background:#fff; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
             <div class="draggable-handle" style="background:#8e44ad; color:white; padding:15px; display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
                 <span style="display:flex; align-items:center; gap:10px;"><button onclick="event.stopPropagation(); window.togglePdfList()" title="Afficher / masquer la liste" style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); color:white; border-radius:5px; padding:5px 10px; cursor:pointer; font-size:13px;"><i class="fa-solid fa-list"></i></button><span><i class="fa-solid fa-book"></i> Bibliothèque Documentaire</span></span>
@@ -522,7 +555,7 @@
     </div>
 
     <!-- MODAL PARAMETRES -->
-    <div id="settings-panel" style="display:none; position:fixed; top:50px; right:0; bottom:0; width:400px; max-width:90vw; background:#fff; z-index:8500; box-shadow:-5px 0 25px rgba(0,0,0,0.2); flex-direction:column; border-left:1px solid #ddd;">
+    <div id="settings-panel" style="display:none; position:fixed; top:var(--topbar-h); right:0; bottom:0; width:400px; max-width:90vw; background:#fff; z-index:8500; box-shadow:-5px 0 25px rgba(0,0,0,0.2); flex-direction:column; border-left:1px solid #ddd;">
         <div style="background:#2c3e50; color:white; padding:15px; display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
             <span><i class="fa-solid fa-gear"></i> Paramètres</span>
             <button onclick="document.getElementById('settings-panel').style.display='none'" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
@@ -575,6 +608,18 @@
                     </div>
                     <p style="font-size:10px; color:#888; margin:0 0 14px;">La température humide se calcule à partir de la température de l'air et de l'humidité : c'est elle qui décide, pas la température affichée par les sites météo.</p>
 
+                    <b style="font-size:11px; color:#8e44ad; border-top:1px solid #eee; padding-top:10px; display:block;">🛰️ Vue satellite Copernicus</b>
+                    <p style="font-size:10px; color:#888; margin:4px 0 8px;">Pour l'image Sentinel-2 la plus récente, collez l'identifiant d'instance de votre configuration Copernicus (compte gratuit, <span style="color:#2980b9;">dataspace.copernicus.eu</span> → Sentinel Hub → Configuration Utility). Sans lui, seule la mosaïque annuelle sans nuages est disponible.</p>
+                    <input type="text" id="set-sh-instance" class="edit-input" style="margin:0 0 6px; padding:6px; font-size:11px;" placeholder="Identifiant d'instance (facultatif)" onchange="window.saveSatSettings()">
+                    <div style="display:flex; gap:6px; margin-bottom:14px;">
+                        <div style="flex:2;"><span class="edit-label" style="font-size:10px;">Couche</span>
+                            <input type="text" id="set-sh-layer" class="edit-input" style="margin:0; padding:6px; font-size:11px;" placeholder="FALSE-COLOR" onchange="window.saveSatSettings()"></div>
+                        <div style="flex:1;"><span class="edit-label" style="font-size:10px;">Nuages max</span>
+                            <input type="number" id="set-sh-maxcc" class="edit-input" style="margin:0; padding:6px; font-size:11px;" min="0" max="100" onchange="window.saveSatSettings()"></div>
+                        <div style="flex:1;"><span class="edit-label" style="font-size:10px;">Jours</span>
+                            <input type="number" id="set-sh-days" class="edit-input" style="margin:0; padding:6px; font-size:11px;" min="7" max="365" onchange="window.saveSatSettings()"></div>
+                    </div>
+
                     <b style="font-size:11px; color:#8e44ad; border-top:1px solid #eee; padding-top:10px; display:block;">📍 Secteurs suivis</b>
                     <p style="font-size:10px; color:#888; margin:4px 0 8px;">Une prévision par secteur. Cliquez sur « Prendre sur la carte » puis sur le point voulu.</p>
                     <div id="settings-meteo-secteurs" style="margin-bottom:8px;"></div>
@@ -582,6 +627,22 @@
                         <button onclick="window.addMeteoSecteur()" style="flex:1; background:#16a085; color:#fff; border:none; padding:8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-plus"></i> Ajouter</button>
                         <button onclick="window.pickMeteoSecteurOnMap()" style="flex:1; background:#2980b9; color:#fff; border:none; padding:8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-map-pin"></i> Prendre sur la carte</button>
                     </div>
+                </div>
+            </details>
+            <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-bell"></i> Alerte de proximité</summary>
+                <div style="padding:15px;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; font-weight:bold; margin-bottom:10px;">
+                        <input type="checkbox" id="set-prox-actif" onchange="window.proxBasculer(this)"> Me prévenir près d'un canon en défaut
+                    </label>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <div style="flex:1;"><span class="edit-label" style="font-size:10px;">Rayon (mètres)</span>
+                            <input type="number" id="set-prox-rayon" class="edit-input" style="margin:0; padding:6px;" min="20" max="2000" step="10" onchange="window.proxMajReglages()"></div>
+                        <div style="flex:1;"><span class="edit-label" style="font-size:10px;">Ne pas répéter avant (min)</span>
+                            <input type="number" id="set-prox-repos" class="edit-input" style="margin:0; padding:6px;" min="1" max="240" onchange="window.proxMajReglages()"></div>
+                    </div>
+                    <div id="prox-status" style="font-size:11px; line-height:1.7; color:#444; background:#f8fafc; border:1px solid #e6ecf2; border-radius:5px; padding:10px;"></div>
+                    <p style="font-size:10px; color:#888; margin:10px 0 0;">Le téléphone ne transmet sa position que <b>tant que l'application est à l'écran</b> : aucun navigateur ne le fait en arrière-plan. Sur iPhone, les notifications exigent l'application installée sur l'écran d'accueil ; sinon l'alerte s'affiche dans la page.</p>
                 </div>
             </details>
             <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
@@ -669,7 +730,7 @@
     </div>
 
     <!-- PANNEAU DE SAISIE PRODUCTION (s'ouvre sur la droite) -->
-    <div id="production-panel" style="display:none; position:fixed; top:50px; right:0; bottom:0; width:420px; max-width:92vw; background:#fff; z-index:8600; box-shadow:-5px 0 25px rgba(0,0,0,0.25); flex-direction:column; border-left:1px solid #ddd;">
+    <div id="production-panel" style="display:none; position:fixed; top:var(--topbar-h); right:0; bottom:0; width:420px; max-width:92vw; background:#fff; z-index:8600; box-shadow:-5px 0 25px rgba(0,0,0,0.25); flex-direction:column; border-left:1px solid #ddd;">
         <div style="background:#2980b9; color:white; padding:15px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:16px;">
             <span><i class="fa-solid fa-industry"></i> <span id="prod-panel-title">Nouvelle production</span></span>
             <button onclick="window.closeProductionForm()" style="background:none;border:none;color:white;cursor:pointer;font-size:24px;line-height:16px;">×</button>
@@ -723,8 +784,19 @@
                 <div style="display:flex; align-items:center; gap:6px; margin:-6px 0 10px;">
                     <span style="font-size:11px; color:#7f8c8d; white-space:nowrap;">sur la clé</span>
                     <select id="bi-join-key" class="edit-input" style="margin:0; flex:1; padding:5px; font-size:11px;" onchange="window.biLoadSource()">
-                        <option value="canon">N° de canon</option><option value="date">Date</option>
+                        <option value="canon">N° de canon</option><option value="date">Date</option><option value="piece">Référence de pièce</option>
                     </select>
+                </div>
+                <div id="bi-count-wrap" style="display:none; margin:-4px 0 10px;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span style="font-size:11px; color:#7f8c8d; white-space:nowrap;">compter par</span>
+                        <select id="bi-count-col" class="edit-input" style="margin:0; flex:1; padding:5px; font-size:11px;" onchange="window.biLoadSource()">
+                            <option value="">— rien de plus —</option>
+                        </select>
+                    </div>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#7f8c8d; margin-top:6px; cursor:pointer;">
+                        <input type="checkbox" id="bi-sums" onchange="window.biLoadSource()"> Ajouter aussi les totaux numériques
+                    </label>
                 </div>
                 <div id="bi-join-info" style="display:none; font-size:10px; line-height:1.5; color:#2c3e50; background:#eef7f4; border:1px solid #cfe6de; border-radius:4px; padding:7px; margin-bottom:10px;"></div>
                 <div class="edit-label">2. Format Global</div><select id="bi-type" class="edit-input" onchange="window.biUpdateUI()"><option value="bar">📊 Barres</option><option value="line">📈 Courbes</option><option value="combo">📉 Combiné</option><option value="pie">🥧 Camembert</option><option value="doughnut">🍩 Anneau</option><option value="polarArea">🎯 Zone Polaire</option></select>
@@ -973,17 +1045,19 @@
             meteo: { secteurs: [], seuilTH: -2.5, seuilBon: -5, jours: 3, ongletDefaut: 'production' }
         };
         window.listViewFilters = { defaut: '', statutTicket: '', statutEntretien: '', statutTete: '' };
-        window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', tools: '#546e7a', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d', calendar: '#e67e22' };
+        window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', tools: '#546e7a', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', satellite: '#00838f', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d', calendar: '#e67e22' };
         window.overlayLayers = { hillshade: null, labels: null };
 
+        // Plus de code d'accès : le PIN était en clair dans la page, il ne protégeait donc rien, et il
+        // ajoutait une saisie au clavier à chaque réglage — sur un téléphone, avec des gants.
         window.promptSettings = function() {
-            let pin = prompt("🔐 Menu protégé. Entrez le code d'accès (PIN) :");
-            if (pin === "1234") {
-                let panel = document.getElementById('settings-panel');
-                if(panel) panel.style.display = 'flex';
-                window.loadSettingsLocally();
-                if (window.renderOffPanel) window.renderOffPanel();
-            } else { if (pin !== null) alert("❌ Code incorrect. Accès refusé."); }
+            let panel = document.getElementById('settings-panel');
+            if(panel) panel.style.display = 'flex';
+            window.loadSettingsLocally();
+            if (window.renderOffPanel) window.renderOffPanel();
+            if (window.renderMeteoSettings) window.renderMeteoSettings();
+            if (window.renderSatSettings) window.renderSatSettings();
+            if (window.renderProxPanel) window.renderProxPanel();
         };
 
         window.loadSettingsLocally = function() {
@@ -1937,6 +2011,51 @@
             window.renderPannePhotos(idCanon);
         };
 
+        /* Bloc photo réutilisable : mêmes boutons, même réduction, même dépôt Drive, que l'on soit
+           dans un nouveau ticket, dans l'édition d'un ticket existant ou sur une fiche de stock. Il
+           gère deux listes distinctes — les photos DÉJÀ sur le Drive (des URL, modifiables) et celles
+           en attente d'envoi (des vignettes locales) — parce qu'elles ne se suppriment pas de la
+           même façon : retirer une URL modifie un champ, retirer une vignette annule un envoi. */
+        window.photoUrlsFromValue = function(v) {
+            if (!v) return [];
+            return v.toString().split(/[\s,;]+/).map(function(u) { return u.trim(); })
+                    .filter(function(u) { return u.indexOf("http") === 0; });
+        };
+        // La valeur est passée en argument, jamais relue dans le DOM au moment de la construction :
+        // le bloc est assemblé DANS une chaîne HTML qui n'est insérée qu'ensuite, si bien qu'un
+        // document.getElementById() au moment de l'appel ne trouve rien et les photos déjà déposées
+        // n'apparaissaient jamais. Après insertion, en revanche, le champ existe : les suppressions
+        // et les rafraîchissements, eux, peuvent le relire.
+        window.existingPhotoStripHtml = function(bucketId, hiddenId, valeur) {
+            let val = valeur;
+            if (val === undefined) { let el = document.getElementById(hiddenId); val = el ? el.value : ""; }
+            let urls = window.photoUrlsFromValue(val);
+            if (!urls.length) return '';
+            return urls.map(function(u, i) {
+                return `<div class="photo-thumb"><a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="" loading="lazy"></a>
+                    <button onclick="window.dropExistingPhoto('${bucketId}','${hiddenId}',${i})" title="Retirer cette photo">×</button></div>`;
+            }).join('');
+        };
+        window.dropExistingPhoto = function(bucketId, hiddenId, i) {
+            let el = document.getElementById(hiddenId); if (!el) return;
+            let urls = window.photoUrlsFromValue(el.value);
+            urls.splice(i, 1);
+            el.value = urls.join(' ');
+            let box = document.getElementById('nt-existing-box-' + bucketId);
+            if (box) box.innerHTML = window.existingPhotoStripHtml(bucketId, hiddenId);
+        };
+        window.buildPhotoBlockHtml = function(bucketId, hiddenId, labelTxt, valeur) {
+            return `<span class="edit-label" style="display:block;">📸 ${labelTxt || 'Photos'}</span>
+                <div id="nt-existing-box-${bucketId}" class="photo-strip">${window.existingPhotoStripHtml(bucketId, hiddenId, valeur === undefined ? '' : valeur)}</div>
+                <div id="nt-photos-box-${bucketId}" class="photo-strip">${window.pannePhotoStripHtml(bucketId)}</div>
+                <div style="display:flex; gap:5px; margin-bottom:8px;">
+                    <label class="photo-btn"><i class="fa-solid fa-camera"></i> Prendre une photo
+                        <input type="file" accept="image/*" capture="environment" onchange="window.addPannePhoto('${bucketId}', this)"></label>
+                    <label class="photo-btn"><i class="fa-solid fa-images"></i> Galerie
+                        <input type="file" accept="image/*" multiple onchange="window.addPannePhoto('${bucketId}', this)"></label>
+                </div>`;
+        };
+
         // Le contenu de la bandeau-photos est produit par une fonction à part : le panneau de droite se
         // reconstruit entièrement à chaque re-rendu, et les photos déjà prises doivent réapparaître —
         // elles ne sont pas encore sur le Drive, les perdre reviendrait à redemander une montée.
@@ -1979,22 +2098,65 @@
         // c'est Apps Script qui inscrit l'URL Drive dans la colonne "photos" de la ligne concernée.
         // Hors réseau, ticket et photos s'empilent dans la file dans cet ordre — donc la ligne existe
         // toujours au moment où la photo arrive.
-        window.uploadPannePhotos = async function(idCanon, ticketId, onProgress) {
-            let list = window.pannePhotos[idCanon] || [];
+        // `cible` désigne la ligne à laquelle rattacher la photo côté serveur : { ticketId } ou
+        // { stockRef }. C'est Apps Script qui écrit l'URL dans la bonne colonne — sans quoi une photo
+        // prise hors réseau serait déposée sur le Drive sans que rien ne la relie à quoi que ce soit,
+        // puisque le navigateur ne connaîtra jamais son URL.
+        window.uploadPannePhotos = async function(bucketId, cible, onProgress) {
+            if (typeof cible === 'string') cible = { ticketId: cible };
+            cible = cible || {};
+            let list = window.pannePhotos[bucketId] || [];
             let urls = [], ko = 0;
             for (let i = 0; i < list.length; i++) {
                 if (onProgress) onProgress(i + 1, list.length);
                 try {
-                    let res = await window.apiPost({ action: "upload_photo", ticketId: ticketId,
-                        base64: list[i].base64, mimeType: list[i].mime,
-                        filename: "canon" + idCanon + "_" + Date.now() + "_" + (i + 1) + ".jpg" });
+                    let payload = { action: "upload_photo", base64: list[i].base64, mimeType: list[i].mime,
+                        filename: String(bucketId).replace(/[^A-Za-z0-9_-]/g, '') + "_" + Date.now() + "_" + (i + 1) + ".jpg" };
+                    if (cible.ticketId) payload.ticketId = cible.ticketId;
+                    if (cible.stockRef) payload.stockRef = cible.stockRef;
+                    let res = await window.apiPost(payload);
                     let r = await res.json();
                     if (r.status === "success") { if (r.url) urls.push(r.url); } else ko++;
                 } catch (e) { ko++; }
             }
-            window.pannePhotos[idCanon] = [];
-            window.renderPannePhotos(idCanon);
+            window.pannePhotos[bucketId] = [];
+            window.renderPannePhotos(bucketId);
             return { urls: urls, ko: ko, total: list.length };
+        };
+
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 4.0.c — LECTURE DES DATES À LA FRANÇAISE                          */
+        /*                                                                           */
+        /* new Date("01/12/2025") ne rend pas le 1er décembre mais le 12 JANVIER :    */
+        /* le moteur applique la convention américaine mois/jour/année. Le classeur   */
+        /* étant entièrement en jour/mois/année, l'historique d'un ticket affichait    */
+        /* une date fausse et les « pannes par mois » se rangeaient dans le mauvais    */
+        /* mois. On lit donc explicitement, et on ne retombe sur l'analyse native      */
+        /* que pour les formats non ambigus (ISO).                                    */
+        /* ------------------------------------------------------------------------- */
+        window.parseFrDate = function(v) {
+            if (v === null || v === undefined || v === "") return null;
+            if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+            let t = v.toString().trim(); if (!t) return null;
+            let m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})(?:[\sT]+(\d{1,2})[:hH](\d{1,2}))?/);
+            if (m) {
+                let j = +m[1], mo = +m[2];
+                if (j >= 1 && j <= 31 && mo >= 1 && mo <= 12) {
+                    let d = new Date(+m[3], mo - 1, j, m[4] ? +m[4] : 0, m[5] ? +m[5] : 0);
+                    return isNaN(d.getTime()) ? null : d;
+                }
+            }
+            m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2}))?/);
+            if (m) {
+                let d = new Date(+m[1], +m[2] - 1, +m[3], m[4] ? +m[4] : 0, m[5] ? +m[5] : 0);
+                return isNaN(d.getTime()) ? null : d;
+            }
+            let d = new Date(t);
+            return isNaN(d.getTime()) ? null : d;
+        };
+        window.frDateLabel = function(v, secours) {
+            let d = window.parseFrDate(v);
+            return d ? d.toLocaleDateString('fr-FR') : (v || secours || "Inconnue");
         };
 
         window.buildPanneFormHtml = function(p) {
@@ -2047,7 +2209,7 @@
                 if (history.length > 0) {
                     histHtml = `<details class="ticket-history" style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;"><i class="fa-solid fa-folder-open"></i> Historique d'interventions (${history.length})</summary><ul style="padding-left:15px; margin-top:10px;">`;
                     history.forEach(t => {
-                        let dateStr = isNaN(new Date(t.date).getTime()) ? (t.date || "Inconnue") : new Date(t.date).toLocaleDateString('fr-FR');
+                        let dateStr = window.frDateLabel(t.date);
                         let ticketDetails = t.fullData.filter(d => d.v && d.v.toString().trim() !== "").map(d => window.renderTicketField(d)).join('');
                         histHtml += `
                         <li style="margin-bottom:8px; list-style:none;">
@@ -2268,6 +2430,7 @@
             if(!el) { idDiv = `t-${canonId}-${safeDef}`; el = document.getElementById(idDiv); } if(!el) return;
             let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut); if(!ticket) return;
             let html = '<div style="background:#fdfdfe; padding:12px; border-radius:6px; border:2px solid #3498db; margin-top:10px;">';
+            let aChampPhoto = false;
             ticket.fullData.forEach(d => {
                 let kLow = d.k.toLowerCase(); let valStr = d.v.toString();
                 if (kLow.includes('regard') || kLow === 'id' || kLow.includes('n°')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}" readonly style="background:#e1e8ed; color:#7f8c8d; margin-bottom:0; cursor:not-allowed;"></div>`; }
@@ -2276,8 +2439,17 @@
                 else if (kLow.includes("date d'inter") || kLow.includes('date dinter')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="date" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${window.frToIso(valStr)}" style="margin-bottom:0;"></div>`; }
                 else if (valStr.length > 40 || kLow.includes('cause') || kLow.includes('intervention') || kLow.includes('commentaire') || kLow.includes('action')) { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><textarea class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" style="margin-bottom:0;" rows="2">${valStr}</textarea></div>`; }
                 else if (kLow.includes('pièce') || kLow.includes('piece')) { html += `<div style="margin-bottom:8px;">${window.buildPiecesUI(idDiv + '-' + kLow.replace(/[^a-z0-9]/g,''), 'tick-dyn-field-' + idDiv, d.k, d.k, valStr)}</div>`; }
+                else if (kLow === 'photos' || kLow === 'photo') { aChampPhoto = true; html += `<div style="margin-bottom:8px;"><input type="hidden" class="tick-dyn-field-${idDiv}" data-key="${d.k}" id="ph-val-${idDiv}" value="${valStr.replace(/"/g, '&quot;')}">${window.buildPhotoBlockHtml(idDiv, 'ph-val-' + idDiv, d.k, valStr)}</div>`; }
                 else { html += `<div style="margin-bottom:8px;"><div class="edit-label">${d.k}</div><input type="text" class="edit-input tick-dyn-field-${idDiv}" data-key="${d.k}" value="${valStr}" style="margin-bottom:0;"></div>`; }
             });
+            // Onglet Tickets dépourvu de colonne « photos » : on propose quand même la prise de vue.
+            // La colonne sera créée par Apps Script au moment où la première photo est rattachée —
+            // exiger une préparation manuelle du classeur reviendrait à priver l'équipe de la fonction.
+            if (!aChampPhoto) {
+                html += `<div style="margin-bottom:8px; border-top:1px dashed #ccd6e0; padding-top:10px;">
+                    <input type="hidden" class="tick-dyn-field-${idDiv}" data-key="photos" id="ph-val-${idDiv}" value="">
+                    ${window.buildPhotoBlockHtml(idDiv, 'ph-val-' + idDiv, 'Photos du défaut', '')}</div>`;
+            }
             html += `<div style="display:flex; gap:10px; margin-top:15px;"><button onclick="window.renderSelectionPanel()" style="flex:1; padding:10px; background:#bdc3c7; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Annuler</button><button onclick="window.prepareTicketSave('${canonId}', '${defaut.replace(/'/g, "\\'")}', '${idDiv}')" style="flex:2; padding:10px; background:#2ecc71; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Suivant ➔</button></div></div>`; el.innerHTML = html;
         };
 
@@ -2294,6 +2466,13 @@
                     }
                 }
             });
+            // Une photo ajoutée est une modification à part entière : sans ce test, un utilisateur qui
+            // n'aurait fait que photographier le défaut se serait vu répondre « Aucune modification ».
+            let nbPhotosNouvelles = (window.pannePhotos[idDiv] || []).length;
+            if (nbPhotosNouvelles > 0) {
+                hasChanges = true;
+                diffHtml += `<div style="margin-bottom:5px; font-size:12px; border-bottom:1px dotted #ccc; padding-bottom:3px;"><span style="color:#555; font-weight:bold;">Photos :</span> <span style="color:#27ae60; font-weight:bold;">${nbPhotosNouvelles} nouvelle(s) à déposer sur le Drive</span></div>`;
+            }
             if (!hasChanges) { alert("Aucune modification."); window.renderSelectionPanel(); return; }
             window.tempTicketPayloads[idDiv] = { payload: { action: "update_ticket", idCanon: canonId, defaut: defaut, id: ticket.id || "", fields: fieldsObj }, newStatut: newStatutForLocal, piecesAdded: piecesAddedStr };
             let el = document.getElementById(idDiv);
@@ -2306,6 +2485,17 @@
                 const response = await window.apiPost(temp.payload); const result = await response.json();
                 if(result.status === "success") {
                     if (temp.piecesAdded && temp.piecesAdded !== "" && typeof window.deduireStockLocalEtServeur === "function") { window.deduireStockLocalEtServeur(temp.piecesAdded); }
+                    let ticketPourPhoto = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut);
+                    let idTicket = (result.id || (ticketPourPhoto && ticketPourPhoto.id) || temp.payload.id || "");
+                    if ((window.pannePhotos[idDiv] || []).length > 0) {
+                        if (el) el.innerHTML = `<div style="text-align:center; padding:20px; font-weight:bold; color:#3498db; font-size:14px;">Envoi des photos… 📸</div>`;
+                        let up = await window.uploadPannePhotos(idDiv, { ticketId: idTicket }, function(i, n) { if (el) el.innerHTML = `<div style="text-align:center; padding:20px; font-weight:bold; color:#3498db; font-size:14px;">Photo ${i}/${n} 📸</div>`; });
+                        if (up.urls.length) {
+                            let cle = Object.keys(temp.payload.fields).find(function(k) { return k.toLowerCase() === 'photos' || k.toLowerCase() === 'photo'; });
+                            if (cle) temp.payload.fields[cle] = [temp.payload.fields[cle], up.urls.join(' ')].filter(function(x) { return x; }).join(' ').trim();
+                        }
+                        if (up.ko) alert("⚠️ " + up.ko + " photo(s) sur " + up.total + " n'ont pas pu être déposées. Les autres modifications sont bien enregistrées.");
+                    }
                     let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut);
                     if(ticket) { ticket.fullData.forEach(d => { if(temp.payload.fields[d.k] !== undefined) d.v = temp.payload.fields[d.k]; }); if(temp.newStatut) ticket.statut = temp.newStatut.toLowerCase(); if(result.id) ticket.id = result.id; }
                     window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); window.refreshListViewIfActive(); delete window.tempTicketPayloads[idDiv];
@@ -2690,7 +2880,7 @@
             let history = window.getHistoryTickets(canonId); if (history.length === 0) return "";
             let histHtml = `<details class="ticket-history" style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;"><i class="fa-solid fa-folder-open"></i> Historique d'interventions (${history.length})</summary><ul style="padding-left:15px; margin-top:10px;">`;
             history.forEach(t => {
-                let dateStr = isNaN(new Date(t.date).getTime()) ? (t.date || "Inconnue") : new Date(t.date).toLocaleDateString('fr-FR');
+                let dateStr = window.frDateLabel(t.date);
                 let ticketDetails = t.fullData.filter(d => d.v && d.v.toString().trim() !== "").map(d => window.renderTicketField(d)).join('');
                 histHtml += `<li style="margin-bottom:8px; list-style:none;"><details style="background:#fff; border:1px solid #e1e8ed; border-radius:4px; padding:8px; cursor:pointer;"><summary style="font-size:11.5px; font-weight:bold; outline:none; display:flex; justify-content:space-between; align-items:center;"><span>${dateStr} - <span style="color:#e74c3c;">${t.defaut}</span></span><span style="color:#bdc3c7; font-size:10px;">▼ Détails</span></summary><div style="margin-top:8px; padding-top:8px; border-top:1px dashed #eee; font-size:11px; cursor:default;">${ticketDetails}</div></details></li>`;
             });
@@ -3242,6 +3432,184 @@
         window.addEventListener('offline', function() { window.updateNetBanner(); });
 
         /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 4.F.4.b — ALERTE DE PROXIMITÉ D'UN CANON EN DÉFAUT                */
+        /*                                                                           */
+        /* On passe devant un canon en panne sans le savoir : le numéro n'est pas     */
+        /* toujours lisible depuis la piste, et personne ne consulte la carte en      */
+        /* descendant. Le téléphone suit donc la position et prévient quand un canon  */
+        /* en défaut entre dans le rayon choisi.                                     */
+        /*                                                                           */
+        /* Deux limites du web qu'aucun code ne contourne, et qui sont annoncées      */
+        /* telles quelles dans les réglages :                                         */
+        /*   • le suivi ne fonctionne QUE l'application ouverte à l'écran — un        */
+        /*     navigateur ne reçoit pas la position en tâche de fond ;                */
+        /*   • sur iPhone, les notifications exigent l'application INSTALLÉE sur      */
+        /*     l'écran d'accueil (iOS 16.4+). Dans le navigateur, on se rabat sur     */
+        /*     une bannière dans la page, qui reste parfaitement lisible.             */
+        /* ------------------------------------------------------------------------- */
+        window.proxWatchId = null; window.proxDejaVus = {}; window.proxDernierePos = null;
+
+        window.proxCfg = function() {
+            if (!window.appSettings.proximite) window.appSettings.proximite = {};
+            window.appSettings.proximite = Object.assign({ actif: false, rayon: 120, repos: 30 }, window.appSettings.proximite);
+            return window.appSettings.proximite;
+        };
+        window.proxSave = function() { try { localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings)); } catch(e) {} };
+
+        // Distance en mètres (formule de haversine).
+        window.distanceM = function(lat1, lng1, lat2, lng2) {
+            let R = 6371000, r = Math.PI / 180;
+            let dLat = (lat2 - lat1) * r, dLng = (lng2 - lng1) * r;
+            let a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+        };
+
+        // Canons en défaut à portée, du plus proche au plus lointain.
+        window.canonsEnDefautProches = function(lat, lng, rayon) {
+            let out = [];
+            ((window.snowCannons && window.snowCannons.features) || []).forEach(function(f) {
+                let p = f.properties;
+                let c = f.geometry.coordinates;
+                if (!c || !c[0] || !c[1]) return;
+                let tickets = window.getActiveTickets ? window.getActiveTickets(p.id) : [];
+                if (!tickets.length) return;
+                let d = window.distanceM(lat, lng, c[1], c[0]);
+                if (d <= rayon) out.push({ id: p.id, dist: Math.round(d), defauts: tickets.map(function(t) { return t.defaut; }) });
+            });
+            return out.sort(function(a, b) { return a.dist - b.dist; });
+        };
+
+        window.proxDemanderPermission = async function() {
+            if (!('Notification' in window)) return 'indisponible';
+            if (Notification.permission === 'granted') return 'granted';
+            if (Notification.permission === 'denied') return 'denied';
+            try { return await Notification.requestPermission(); } catch (e) { return 'denied'; }
+        };
+
+        window.proxNotifier = function(c) {
+            let titre = "⚠️ Canon " + c.id + " en défaut — " + c.dist + " m";
+            let corps = c.defauts.slice(0, 3).join(" · ");
+            let envoyee = false;
+            if ('Notification' in window && Notification.permission === 'granted') {
+                try {
+                    // Passer par le service worker quand il est là : c'est la seule voie qui
+                    // fonctionne sur iPhone, et la notification y survit au verrouillage de l'écran.
+                    if (window.swReg && window.swReg.showNotification) {
+                        window.swReg.showNotification(titre, { body: corps, icon: 'icon-192.png', badge: 'icon-192.png',
+                            tag: 'gmao-prox-' + c.id, vibrate: [180, 90, 180] });
+                    } else {
+                        new Notification(titre, { body: corps, icon: 'icon-192.png', tag: 'gmao-prox-' + c.id });
+                    }
+                    envoyee = true;
+                } catch (e) {}
+            }
+            window.proxBanniere(c, envoyee);
+        };
+
+        // Repli visible dans la page : indispensable sur un iPhone non installé, où l'API de
+        // notification est absente.
+        window.proxBanniere = function(c, dejaNotifiee) {
+            let b = document.getElementById('prox-alert');
+            if (!b) {
+                b = document.createElement('div'); b.id = 'prox-alert';
+                document.body.appendChild(b);
+            }
+            b.innerHTML = `<div class="prox-inner">
+                <div style="flex:1; min-width:0;"><b>⚠️ Canon ${c.id} — ${c.dist} m</b><br>
+                <span style="font-weight:normal; opacity:0.95;">${c.defauts.slice(0, 2).join(' · ')}</span></div>
+                <button onclick="window.zoomSurCanon('${c.id}')">Voir</button>
+                <button onclick="document.getElementById('prox-alert').classList.remove('show')">✕</button>
+            </div>`;
+            b.classList.add('show');
+            clearTimeout(window.proxTimer);
+            window.proxTimer = setTimeout(function() { b.classList.remove('show'); }, 12000);
+            if (navigator.vibrate && !dejaNotifiee) { try { navigator.vibrate([180, 90, 180]); } catch (e) {} }
+        };
+
+        window.zoomSurCanon = function(id) {
+            let f = ((window.snowCannons && window.snowCannons.features) || []).find(function(x) { return x.properties.id === id; });
+            if (!f || !window.map) return;
+            window.map.setView([f.geometry.coordinates[1], f.geometry.coordinates[0]], 18);
+            let b = document.getElementById('prox-alert'); if (b) b.classList.remove('show');
+            if (window.geojsonLayer) window.geojsonLayer.eachLayer(function(l) { if (l.feature && l.feature.properties.id === id) l.fire('click'); });
+        };
+
+        window.proxTraiterPosition = function(pos) {
+            let c = window.proxCfg();
+            window.proxDernierePos = pos;
+            let proches = window.canonsEnDefautProches(pos.coords.latitude, pos.coords.longitude, c.rayon);
+            let maintenant = Date.now();
+            proches.forEach(function(p) {
+                // Une même alerte ne se répète pas avant le délai de repos : sans cela, rester à
+                // proximité d'un canon en panne déclencherait une notification par seconde.
+                let dernier = window.proxDejaVus[p.id] || 0;
+                if (maintenant - dernier < c.repos * 60000) return;
+                window.proxDejaVus[p.id] = maintenant;
+                window.proxNotifier(p);
+            });
+            // On oublie les canons quittés, pour qu'un second passage réalerte.
+            Object.keys(window.proxDejaVus).forEach(function(id) {
+                if (!proches.find(function(p) { return p.id === id; }) &&
+                    maintenant - window.proxDejaVus[id] > c.repos * 60000) delete window.proxDejaVus[id];
+            });
+            window.renderProxPanel();
+        };
+
+        window.proxDemarrer = async function() {
+            if (!navigator.geolocation) { alert("Ce navigateur ne donne pas accès à la position."); return false; }
+            let perm = await window.proxDemanderPermission();
+            if (perm === 'denied') {
+                alert("Les notifications sont refusées pour ce site.\nL'alerte s'affichera quand même dans la page, mais uniquement si l'application est à l'écran.");
+            }
+            if (window.proxWatchId !== null) navigator.geolocation.clearWatch(window.proxWatchId);
+            window.proxWatchId = navigator.geolocation.watchPosition(
+                window.proxTraiterPosition,
+                function(err) { window.proxErreur = err.message; window.renderProxPanel(); },
+                { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 });
+            window.proxCfg().actif = true; window.proxSave(); window.renderProxPanel();
+            return true;
+        };
+        window.proxArreter = function() {
+            if (window.proxWatchId !== null) { navigator.geolocation.clearWatch(window.proxWatchId); window.proxWatchId = null; }
+            window.proxCfg().actif = false; window.proxSave(); window.renderProxPanel();
+        };
+        window.proxBasculer = function(el) { if (el.checked) window.proxDemarrer(); else window.proxArreter(); };
+
+        window.renderProxPanel = function() {
+            let box = document.getElementById('prox-status'); if (!box) return;
+            let c = window.proxCfg();
+            let chk = document.getElementById('set-prox-actif'); if (chk) chk.checked = !!c.actif;
+            let r = document.getElementById('set-prox-rayon'); if (r) r.value = c.rayon;
+            let rp = document.getElementById('set-prox-repos'); if (rp) rp.value = c.repos;
+            let nbDefauts = ((window.snowCannons && window.snowCannons.features) || [])
+                .filter(function(f) { return window.getActiveTickets && window.getActiveTickets(f.properties.id).length; }).length;
+            let lignes = [];
+            lignes.push("<b>Suivi :</b> " + (window.proxWatchId !== null ? "<span style='color:#16a085;'>en cours</span>" : "arrêté"));
+            lignes.push("<b>Canons en défaut :</b> " + nbDefauts);
+            if (window.proxDernierePos) {
+                let p = window.proxDernierePos.coords;
+                let proches = window.canonsEnDefautProches(p.latitude, p.longitude, c.rayon);
+                lignes.push("<b>Position :</b> ±" + Math.round(p.accuracy) + " m · " + proches.length + " canon(s) en défaut à portée");
+            } else lignes.push("<b>Position :</b> <i>pas encore reçue</i>");
+            if ('Notification' in window) {
+                let etat = Notification.permission === 'granted' ? "autorisées" : (Notification.permission === 'denied' ? "<span style='color:#c0392b;'>refusées</span>" : "à autoriser");
+                lignes.push("<b>Notifications :</b> " + etat);
+            } else lignes.push("<b>Notifications :</b> <span style='color:#c0392b;'>indisponibles ici</span> — installez l'application sur l'écran d'accueil");
+            if (window.proxErreur) lignes.push("<span style='color:#c0392b;'>" + window.proxErreur + "</span>");
+            box.innerHTML = lignes.join("<br>");
+        };
+
+        window.proxMajReglages = function() {
+            let c = window.proxCfg();
+            let r = parseInt((document.getElementById('set-prox-rayon') || {}).value, 10);
+            let rp = parseInt((document.getElementById('set-prox-repos') || {}).value, 10);
+            if (!isNaN(r)) c.rayon = Math.max(20, Math.min(2000, r));
+            if (!isNaN(rp)) c.repos = Math.max(1, Math.min(240, rp));
+            window.proxSave(); window.renderProxPanel();
+        };
+
+        /* ------------------------------------------------------------------------- */
         /* CHAPITRE 4.F.5 — SERVICE WORKER ET CACHE DES TUILES                        */
         /* ------------------------------------------------------------------------- */
         window.swReg = null; window.swVersion = ""; window.tilesCount = 0; window.storageUsage = 0;
@@ -3610,7 +3978,7 @@
             let lst = document.getElementById('loading-step'); if(lst) lst.style.display = 'none';
             let ld = document.getElementById('loading-desc');
             if(ld) ld.innerHTML = `${window.snowCannons.features.length} canons placés.` + (window.offlineMode ? `<br><span style="color:#c0392b;">Copie locale du ${window.fmtSnapshotDate(window.snapshotAt)}</span>` : '');
-            setTimeout(() => { window.initAppUI(); if(window.initDriveKMZList) window.initDriveKMZList(); if(window.loadSettingsLocally) window.loadSettingsLocally(); if(window.initMobileDock) window.initMobileDock(); if (window.innerWidth <= 768) { let sb = document.getElementById('sidebar'); if (sb) sb.classList.add('collapsed'); } let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; window.refreshOutboxCount().then(function() { if (!window.offlineMode && window.outboxCount > 0) window.flushOutbox(); }); }, 800);
+            setTimeout(() => { window.initAppUI(); if(window.initDriveKMZList) window.initDriveKMZList(); if(window.loadSettingsLocally) window.loadSettingsLocally(); if(window.initMobileDock) window.initMobileDock(); if (window.innerWidth <= 768) { let sb = document.getElementById('sidebar'); if (sb) sb.classList.add('collapsed'); } let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; window.refreshOutboxCount().then(function() { if (!window.offlineMode && window.outboxCount > 0) window.flushOutbox(); }); if (window.proxCfg().actif) window.proxDemarrer(); }, 800);
         };
 
         /* ========================================================================= */
@@ -4305,7 +4673,10 @@
                 } else if (lowerName === "reste") {
                     addGrid.innerHTML += `<div><span class="edit-label" style="font-size:10px;">${cleanName} (Calculé)</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" value="0" readonly placeholder="Auto" style="margin-top:2px; margin-bottom:0; padding:6px; height:30px; box-sizing:border-box; background:#f4f6f8; color:#7f8c8d;"></div>`;
                 } else if (lowerName === "photo") {
-                    addGrid.innerHTML += `<div><span class="edit-label" style="font-size:10px;">📸 Lien Drive de la photo</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" placeholder="Coller le lien ici" style="margin-top:2px; margin-bottom:0; padding:6px; height:30px; box-sizing:border-box;"></div>`;
+                    addGrid.innerHTML += `<div style="grid-column: 1 / -1;">
+                        <input type="hidden" class="new-stock-field" data-col="${cleanName}" id="ph-val-newstock" value="">
+                        ${window.buildPhotoBlockHtml('newstock', 'ph-val-newstock', 'Photo du nouvel article', '')}
+                    </div>`;
                 } else {
                     addGrid.innerHTML += `<div><span class="edit-label" style="font-size:10px;">${cleanName}</span><input type="text" class="edit-input new-stock-field" data-col="${cleanName}" style="margin-top:2px; margin-bottom:0; padding:6px; height:30px; box-sizing:border-box;"></div>`;
                 }
@@ -4398,7 +4769,10 @@
                                 <div><span class="edit-label" style="font-size:9px; color:#2980b9; font-weight:bold;">Reste (Auto)</span><input type="number" id="reste-${safeId}" class="edit-input s-field-${safeId}" data-col="reste" value="${valReste}" readonly style="padding:4px; margin:0; font-size:11.5px; height:26px; font-weight:bold; background:#f4f6f8; color:#7f8c8d; cursor:not-allowed;"></div>
                                 <div><span class="edit-label" style="font-size:9px;">Pris</span><input type="number" class="edit-input s-field-${safeId}" data-col="pris" value="${valPris}" onchange="window.recalculateCardReste('${safeId}')" style="padding:4px; margin:0; font-size:11.5px; height:26px;"></div>
 
-                                <div style="grid-column: span 2;"><span class="edit-label" style="font-size:9px;">📸 Lien Drive de la Photo</span><input type="text" class="edit-input s-field-${safeId}" data-col="photo" value="${valPhoto}" placeholder="Coller le lien de partage Drive" style="padding:4px; margin:0; font-size:11.5px; height:26px;"></div>
+                                <div style="grid-column: 1 / -1;">
+                                    <input type="hidden" class="s-field-${safeId}" data-col="photo" id="ph-val-stk-${safeId}" value="${valPhoto.toString().replace(/"/g, '&quot;')}">
+                                    ${window.buildPhotoBlockHtml('stk-' + safeId, 'ph-val-stk-' + safeId, 'Photos de l\'article', valPhoto)}
+                                </div>
                             </div>
 
                             <div style="display:flex; gap:8px; margin-top:8px;">
@@ -4495,6 +4869,19 @@
             try {
                 let res = await window.apiPost({ action: "add_stock_item", fields: fieldsObj }); let r = await res.json();
                 if (r.status === "success") {
+                    // La photo suit l'article et se rattache à sa référence : c'est le seul identifiant
+                    // dont on dispose des deux côtés, et il est déjà écrit dans la ligne à cet instant.
+                    if ((window.pannePhotos['newstock'] || []).length > 0) {
+                        let refKey = Object.keys(fieldsObj).find(function(k) { return k.toLowerCase().trim() === 'ref'; });
+                        let refVal = refKey ? fieldsObj[refKey] : "";
+                        btn.innerText = "📸 Photo...";
+                        let up = await window.uploadPannePhotos('newstock', { stockRef: refVal }, function(i, n) { btn.innerText = "📸 " + i + "/" + n; });
+                        if (up.urls.length) {
+                            let phKey = Object.keys(fieldsObj).find(function(k) { return k.toLowerCase().trim() === 'photo'; });
+                            if (phKey) fieldsObj[phKey] = up.urls.join(' ');
+                        }
+                        if (up.ko) alert("⚠️ " + up.ko + " photo(s) n'ont pas pu être déposées. L'article, lui, est bien créé.");
+                    }
                     btn.innerText = "✅ Succès !";
                     let newRow = new Array(window.rawStock[0].length).fill("");
                     window.rawStock[0].forEach((header, index) => { let colName = header.toString().trim(); if (fieldsObj[colName] !== undefined) newRow[index] = fieldsObj[colName]; });
@@ -4513,6 +4900,16 @@
             try {
                 let res = await window.apiPost({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }); let r = await res.json();
                 if (r.status === "success") {
+                    if ((window.pannePhotos['stk-' + safeId] || []).length > 0) {
+                        btn.innerText = "📸 Photo...";
+                        let refKey = Object.keys(fieldsObj).find(function(k) { return k.toLowerCase().trim() === 'ref'; });
+                        let up = await window.uploadPannePhotos('stk-' + safeId, { stockRef: refKey ? fieldsObj[refKey] : "" }, function(i, n) { btn.innerText = "📸 " + i + "/" + n; });
+                        if (up.urls.length) {
+                            let ph = document.getElementById('ph-val-stk-' + safeId);
+                            if (ph) { ph.value = [ph.value, up.urls.join(' ')].filter(function(x) { return x; }).join(' ').trim(); fieldsObj['photo'] = ph.value; }
+                        }
+                        if (up.ko) alert("⚠️ " + up.ko + " photo(s) n'ont pas pu être déposées. Les autres modifications sont enregistrées.");
+                    }
                     btn.innerText = "✅ Enregistré !"; btn.style.background = "#27ae60";
                     let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g, "") : "");
                     let idxNum = headers.findIndex(h => h.includes("numero") || h === "id"); if (idxNum === -1) idxNum = 0;
@@ -5653,6 +6050,34 @@
                 return out;
             });
 
+            // Le champ "pièces utilisés" d'un ticket est une liste compacte : « REF12 x3, REF08 x1 ».
+            // Sous cette forme il est inexploitable — ni comptable, ni croisable avec le stock. On
+            // l'éclate donc en une ligne par pièce, ce qui crée du même coup le pont manquant entre
+            // les deux mondes : le stock ne connaît pas les canons, les tickets ne connaissent pas
+            // les articles, mais tous deux connaissent la référence de la pièce.
+            add('pieces', "Pièces utilisées (détail)", "Vues de l'application", function() {
+                let T = window.rawTicketsSheet || [];
+                if (T.length < 2) return [];
+                let h = T[0].map(window.analyseNorm);
+                let iP = h.findIndex(function(x) { return x.indexOf("piece") !== -1 || x.indexOf("pièce") !== -1; });
+                if (iP === -1) return [];
+                let iC = window.analyseFindKeyCol(T[0], 'canon');
+                let iD = window.analyseFindKeyCol(T[0], 'date');
+                let iDef = h.findIndex(function(x) { return x.indexOf("defaut") !== -1 || x.indexOf("panne") !== -1; });
+                let iEt = h.findIndex(function(x) { return x.indexOf("etat") !== -1; });
+                let iPi = h.findIndex(function(x) { return x.indexOf("piste") !== -1; });
+                let out = [["ref", "Quantité", "N° regard", "date", "defaut", "état", "piste"]];
+                for (let r = 1; r < T.length; r++) {
+                    let lst = window.parsePiecesField(T[r][iP]);
+                    for (let k = 0; k < lst.length; k++) {
+                        out.push([lst[k].ref, lst[k].qte,
+                                  iC > -1 ? T[r][iC] : "", iD > -1 ? T[r][iD] : "",
+                                  iDef > -1 ? T[r][iDef] : "", iEt > -1 ? T[r][iEt] : "", iPi > -1 ? T[r][iPi] : ""]);
+                    }
+                }
+                return out.length > 1 ? out : [];
+            });
+
             // ---- Agrégats prêts à l'emploi ----
             add('conso', "Consommation par saison", "Synthèses", function() {
                 let data = [["Saison", "Eau (m³)", "Air", "Heures"]];
@@ -5666,7 +6091,7 @@
             add('defauts', "Pannes par mois", "Synthèses", function() {
                 let data = [["Mois", "Nombre de Pannes"]]; let counts = {};
                 (window.rawTickets || []).forEach(function(t) {
-                    if (!t.date) return; let d = new Date(t.date); if (isNaN(d.getTime())) return;
+                    let d = window.parseFrDate(t.date); if (!d) return;
                     let m = (d.getMonth() + 1).toString().padStart(2, '0') + "/" + d.getFullYear(); counts[m] = (counts[m] || 0) + 1;
                 });
                 Object.keys(counts).sort(function(a, b) { let pa = a.split('/'), pb = b.split('/'); return new Date(pa[1], pa[0] - 1) - new Date(pb[1], pb[0] - 1); })
@@ -5703,9 +6128,20 @@
         /* ------------------------------------------------------------------------- */
         window.ANALYSE_KEYS = {
             canon: { label: "N° de canon", mots: ["n° regard", "n°regard", "n° de vanne", "numero de vanne", "canon", "regard", "enneigeur", "n° canon", "n°"] },
-            date:  { label: "Date",        mots: ["date", "date debut", "date_debut", "jour", "date/heure"] }
+            date:  { label: "Date",        mots: ["date", "date debut", "date_debut", "jour", "date/heure"] },
+            piece: { label: "Référence de pièce", mots: ["ref", "reference", "n° piece", "numero piece", "piece", "article", "produit"] }
         };
         window.analyseNorm = function(v) { return (v === null || v === undefined ? '' : v.toString()).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, '').trim(); };
+
+        // « REF12 x3, REF08 » → [{ref:"REF12", qte:3}, {ref:"REF08", qte:1}]
+        window.parsePiecesField = function(txt) {
+            if (!txt) return [];
+            return txt.toString().split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ""; })
+                .map(function(s) {
+                    let m = s.match(/^(.*?)\s*[xX×]\s*(\d+)$/);
+                    return m ? { ref: m[1].trim(), qte: parseInt(m[2], 10) || 1 } : { ref: s, qte: 1 };
+                }).filter(function(p) { return p.ref !== ""; });
+        };
 
         window.analyseFindKeyCol = function(headers, kind) {
             let mots = window.ANALYSE_KEYS[kind].mots;
@@ -5740,6 +6176,24 @@
         // additionnée — donnant une « somme des dates » aussi absurde qu'invisible dans un graphique.
         window.analyseNumRe = /^[+-]?(\d+([.,]\d*)?|[.,]\d+)([eE][+-]?\d+)?$/;
         window.analyseClean = function(v) { return String(v === null || v === undefined ? '' : v).replace(/[\s ]/g, '').replace(/€|%/g, ''); };
+        // Rend un instant triable pour tout ce qui ressemble à une date, et null sinon. Les quatre
+        // formes rencontrées dans le classeur : 04/12/2026, 2026-12-04, 12/2026 (mois seul) et
+        // 2026-12. On refuse explicitement un simple nombre — « 2026 » seul reste une valeur.
+        window.analyseSortDate = function(s) {
+            if (s === null || s === undefined) return null;
+            let t = s.toString().trim(); if (!t) return null;
+            // Un nombre nu n'est pas une date : new Date("104") rend l'an 104, et les numéros de
+            // canon se retrouveraient triés comme des années sur l'axe des abscisses.
+            if (/^\d+([.,]\d+)?$/.test(t)) return null;
+            let d = window.parseFrDate(t);
+            if (d) return d.getTime();
+            let m = t.match(/^(\d{1,2})[\/\-](\d{4})$/);            // 12/2026 : mois et année
+            if (m) return new Date(+m[2], +m[1] - 1, 1).getTime();
+            m = t.match(/^(\d{4})[\/\-](\d{1,2})$/);                // 2026-12
+            if (m) return new Date(+m[1], +m[2] - 1, 1).getTime();
+            return null;
+        };
+
         window.analyseIsNum = function(v) {
             if (v === null || v === undefined || v === "") return false;
             if (typeof v === 'number') return isFinite(v);
@@ -5753,7 +6207,18 @@
             return isNaN(n) ? 0 : n;
         };
 
-        window.analyseJoin = function(keyA, keyB, kind) {
+        /* Le croisement COMPTE par défaut, il ne somme pas. Additionner une colonne n'a de sens que
+           pour une poignée d'entre elles (un coût, une quantité) et n'en a aucun pour les autres —
+           une « somme des dates » ou une « somme des numéros de canon » est un non-sens qui passe
+           inaperçu dans un graphique. Ce qu'on veut réellement savoir tient au dénombrement :
+           combien d'interventions sur ce canon, combien de fois cette pièce y est passée. Les totaux
+           numériques restent disponibles, mais sur demande explicite.
+           Le comptage par valeur produit une colonne par valeur distincte : c'est ce qui permet de
+           lire « combien de REF12 sur le canon 104 » sans quitter le tableau. */
+        window.ANALYSE_MAX_CATS = 25;
+
+        window.analyseJoin = function(keyA, keyB, kind, opts) {
+            opts = opts || {};
             let A = window.analyseGetRows(keyA), B = window.analyseGetRows(keyB);
             if (A.length < 2) return { data: [], err: "La source « " + window.analyseLabel(keyA) + " » est vide." };
             if (B.length < 2) return { data: [], err: "La source « " + window.analyseLabel(keyB) + " » est vide." };
@@ -5761,28 +6226,66 @@
             if (ia === -1) return { data: [], err: "Aucune colonne « " + window.ANALYSE_KEYS[kind].label + " » dans « " + window.analyseLabel(keyA) + " »." };
             if (ib === -1) return { data: [], err: "Aucune colonne « " + window.ANALYSE_KEYS[kind].label + " » dans « " + window.analyseLabel(keyB) + " »." };
 
-            // Colonnes de B à agréger : toutes celles dont la majorité des valeurs sont numériques.
             let hb = B[0];
+            let cc = (opts.countCol === undefined || opts.countCol === null) ? -1 : parseInt(opts.countCol, 10);
+            if (isNaN(cc) || cc < 0 || cc >= hb.length) cc = -1;
+
+            // Valeurs distinctes de la colonne à ventiler, les plus fréquentes d'abord : au-delà d'une
+            // vingtaine de colonnes le tableau devient illisible, et la queue de distribution
+            // n'apprend rien — elle est regroupée dans « autres ».
+            let cats = [], catCount = {};
+            if (cc > -1) {
+                for (let r = 1; r < B.length; r++) {
+                    let v = B[r][cc]; if (v === "" || v === null || v === undefined) continue;
+                    let s = v.toString().trim(); catCount[s] = (catCount[s] || 0) + 1;
+                }
+                cats = Object.keys(catCount).sort(function(a, b) { return catCount[b] - catCount[a] || a.localeCompare(b); });
+            }
+            let catsShown = cats.slice(0, window.ANALYSE_MAX_CATS);
+            let catIdx = {}; catsShown.forEach(function(c, i) { catIdx[c] = i; });
+            let reste = cats.length - catsShown.length;
+
+            // Totaux numériques : uniquement sur demande, et uniquement sur les colonnes réellement
+            // numériques d'un bout à l'autre.
             let numCols = [];
-            for (let c = 0; c < hb.length; c++) {
-                if (c === ib || !hb[c] || String(hb[c]).trim() === "") continue;
-                let nb = 0, tot = 0;
-                for (let r = 1; r < B.length; r++) { let v = B[r][c]; if (v !== "" && v !== null && v !== undefined) { tot++; if (window.analyseIsNum(v)) nb++; } }
-                if (tot > 0 && nb / tot >= 0.6) numCols.push(c);
+            if (opts.sums) {
+                for (let c = 0; c < hb.length; c++) {
+                    if (c === ib || !hb[c] || String(hb[c]).trim() === "") continue;
+                    let nb = 0, tot = 0;
+                    for (let r = 1; r < B.length; r++) { let v = B[r][c]; if (v !== "" && v !== null && v !== undefined) { tot++; if (window.analyseIsNum(v)) nb++; } }
+                    if (tot > 0 && nb / tot >= 0.6) numCols.push(c);
+                }
             }
 
             let idx = {};
             for (let r = 1; r < B.length; r++) {
                 let k = window.analyseKeyVal(B[r][ib], kind); if (!k) continue;
-                if (!idx[k]) { idx[k] = { n: 0, sums: numCols.map(function() { return 0; }) }; }
-                idx[k].n++;
-                numCols.forEach(function(c, j) { idx[k].sums[j] += window.analyseNum(B[r][c]); });
+                if (!idx[k]) idx[k] = { n: 0, remplis: 0, vus: {}, cats: catsShown.map(function() { return 0; }), autres: 0,
+                                        sums: numCols.map(function() { return 0; }) };
+                let e = idx[k];
+                e.n++;
+                if (cc > -1) {
+                    let v = B[r][cc];
+                    if (v !== "" && v !== null && v !== undefined) {
+                        let s = v.toString().trim();
+                        e.remplis++; e.vus[s] = 1;
+                        if (catIdx[s] !== undefined) e.cats[catIdx[s]]++; else e.autres++;
+                    }
+                }
+                numCols.forEach(function(c, j) { e.sums[j] += window.analyseNum(B[r][c]); });
             }
 
             let lbl = window.analyseLabel(keyB);
             let head = A[0].slice();
             head.push(lbl + " : nombre de lignes");
+            if (cc > -1) {
+                head.push(lbl + " : " + hb[cc] + " renseigné(s)");
+                head.push(lbl + " : " + hb[cc] + " différent(s)");
+                catsShown.forEach(function(c) { head.push(lbl + " : " + hb[cc] + " = " + c); });
+                if (reste > 0) head.push(lbl + " : " + hb[cc] + " = autres (" + reste + " valeurs)");
+            }
             numCols.forEach(function(c) { head.push(lbl + " : total " + hb[c]); });
+
             let out = [head];
             let apparies = 0;
             for (let r = 1; r < A.length; r++) {
@@ -5792,11 +6295,17 @@
                 let row = A[r].slice();
                 while (row.length < A[0].length) row.push("");
                 row.push(hit ? hit.n : 0);
+                if (cc > -1) {
+                    row.push(hit ? hit.remplis : 0);
+                    row.push(hit ? Object.keys(hit.vus).length : 0);
+                    catsShown.forEach(function(_, i) { row.push(hit ? hit.cats[i] : 0); });
+                    if (reste > 0) row.push(hit ? hit.autres : 0);
+                }
                 numCols.forEach(function(_, j) { row.push(hit ? Math.round(hit.sums[j] * 1000) / 1000 : 0); });
                 out.push(row);
             }
             return { data: out, apparies: apparies, totalA: A.length - 1, cle: window.ANALYSE_KEYS[kind].label,
-                     colA: A[0][ia], colB: hb[ib], err: "" };
+                     colA: A[0][ia], colB: hb[ib], cats: cats.length, catsShown: catsShown.length, err: "" };
         };
 
         window.openBiMeteo = function() { document.getElementById('bi-meteo-modal').style.display='flex'; window.renderAnalyseSourceSelects(); window.biLoadSource(); };
@@ -5819,14 +6328,42 @@
             if (b) { let kb = b.value; b.innerHTML = `<option value="">— aucun croisement —</option>` + opts; if (kb) b.value = kb; }
         };
 
+        // La liste des colonnes à ventiler suit la source croisée. On conserve le choix courant s'il
+        // existe toujours dans la nouvelle source, sinon on repart sur « rien ».
+        window.renderAnalyseCountCol = function(keyB) {
+            let sel = document.getElementById('bi-count-col'); if (!sel) return;
+            let B = window.analyseGetRows(keyB);
+            let avant = sel.value, avantNom = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : "";
+            if (sel.getAttribute('data-src') === keyB) return;
+            sel.setAttribute('data-src', keyB);
+            let opts = `<option value="">— rien de plus —</option>`;
+            if (B.length > 1) {
+                B[0].forEach(function(h, i) {
+                    if (h === null || h === undefined || String(h).trim() === "") return;
+                    opts += `<option value="${i}">${window.prodEsc(h)}</option>`;
+                });
+            }
+            sel.innerHTML = opts;
+            for (let i = 0; i < sel.options.length; i++) { if (sel.options[i].text === avantNom) { sel.selectedIndex = i; return; } }
+            sel.value = "";
+        };
+
         window.biLoadSource = function() {
             let src = document.getElementById('bi-source').value;
             let srcB = document.getElementById('bi-source-b') ? document.getElementById('bi-source-b').value : "";
             let kind = document.getElementById('bi-join-key') ? document.getElementById('bi-join-key').value : "canon";
             let info = document.getElementById('bi-join-info');
             let data;
+            let boxCnt = document.getElementById('bi-count-wrap');
             if (srcB && srcB !== src) {
-                let j = window.analyseJoin(src, srcB, kind);
+                if (boxCnt) boxCnt.style.display = 'block';
+                window.renderAnalyseCountCol(srcB);
+                let cc = document.getElementById('bi-count-col');
+                let sums = document.getElementById('bi-sums');
+                let j = window.analyseJoin(src, srcB, kind, {
+                    countCol: cc && cc.value !== "" ? parseInt(cc.value, 10) : -1,
+                    sums: sums ? sums.checked : false
+                });
                 data = j.data;
                 if (info) {
                     info.style.display = 'block';
@@ -5834,9 +6371,11 @@
                         ? `<span style="color:#c0392b;">⚠️ ${j.err}</span>`
                         : `✅ Croisé sur <b>${j.cle}</b> — « ${j.colA} » ↔ « ${j.colB} »<br>
                            <b>${j.apparies}</b> ligne(s) sur ${j.totalA} ont trouvé une correspondance.` +
-                          (j.apparies === 0 ? `<br><span style="color:#c0392b;">Aucune correspondance : vérifiez que les deux onglets emploient bien les mêmes identifiants.</span>` : '');
+                          (j.cats > j.catsShown ? `<br>Ventilation limitée aux ${j.catsShown} valeurs les plus fréquentes (${j.cats - j.catsShown} regroupées dans « autres »).` : '') +
+                          (j.apparies === 0 ? `<br><span style="color:#c0392b;">Aucune correspondance : vérifiez que les deux sources emploient bien les mêmes identifiants.</span>` : '');
                 }
             } else {
+                if (boxCnt) boxCnt.style.display = 'none';
                 data = window.analyseGetRows(src);
                 if (info) info.style.display = 'none';
             }
@@ -5890,7 +6429,10 @@
                     else if(fVal.startsWith('=')) { if(cVal !== fVal.substring(1).trim()) continue; }
                     else { if(!cVal.includes(fVal)) continue; }
                 }
-                let strX = rawX.toString().trim(); if(strX.length >= 10 && !isNaN(Date.parse(strX))) strX = new Date(strX).toLocaleDateString('fr-FR');
+                // Normalisation de l'axe X : une date est ramenée à son libellé français, quel que
+                // soit le format d'origine, pour que deux écritures d'un même jour se regroupent.
+                let strX = rawX.toString().trim();
+                if (strX.length >= 8) { let dX = window.parseFrDate(strX); if (dX) strX = dX.toLocaleDateString('fr-FR'); }
                 if(!grouped[strX]) grouped[strX] = {};
                 yCfgs.forEach(cfg => {
                     let val = row[cfg.idx];
@@ -5902,7 +6444,18 @@
                 });
             }
 
-            let labels = Object.keys(grouped).sort(function(a, b) { let na = parseFloat(a), nb = parseFloat(b); if(!isNaN(na) && !isNaN(nb)) return na - nb; return a.localeCompare(b); });
+            // Tri de l'axe X. L'ordre alphabétique place « 01/2026 » avant « 12/2025 » et « lundi »
+            // avant « mardi » : sur une série temporelle, la courbe devient un zigzag sans signification.
+            // On reconnaît donc les dates AVANT de retomber sur le tri numérique puis alphabétique.
+            let labels = Object.keys(grouped).sort(function(a, b) {
+                let da = window.analyseSortDate(a), db = window.analyseSortDate(b);
+                if (da !== null && db !== null) return da - db;
+                if (da !== null) return -1;
+                if (db !== null) return 1;
+                let na = parseFloat(a), nb = parseFloat(b);
+                if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                return a.localeCompare(b, 'fr');
+            });
             let pal = document.getElementById('bi-palette'); let pChoice = pal ? pal.value : 'default';
             let pDef = ['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#34495e']; let pCold = ['#81D4FA','#26C6DA','#00BCD4','#00ACC1','#0097A7','#00838F','#006064']; let pWarm = ['#FFD54F','#FFCA28','#FFC107','#FFB300','#FFA000','#FF8F00','#E65100']; let pMono = ['#1A252C','#2C3E50','#34495E','#5D6D7E','#7F8C8D','#95A5A6','#BDC3C7'];
             let colors = pChoice === 'cold' ? pCold : (pChoice === 'warm' ? pWarm : (pChoice === 'mono' ? pMono : pDef));
@@ -6024,6 +6577,104 @@
             return c.secteurs;
         };
 
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 8.B.0.c — SOLEIL ET RELIEF                                        */
+        /*                                                                           */
+        /* En fond de vallée, le soleil se lève deux heures après l'heure officielle  */
+        /* et disparaît deux heures avant : une prévision qui ignore le relief se     */
+        /* trompe donc sur ce qui abîme le plus la neige fraîche. On calcule d'abord  */
+        /* la ligne de crête vue depuis chaque secteur (le « masque d'horizon »), puis*/
+        /* on ne retient comme ensoleillée qu'une heure où le soleil est À LA FOIS    */
+        /* au-dessus de cette ligne et non masqué par les nuages.                     */
+        /* ------------------------------------------------------------------------- */
+
+        // Position du soleil (algorithme NOAA basse précision, ±0,04° vérifié aux solstices).
+        // Azimut compté depuis le nord, dans le sens des aiguilles d'une montre.
+        window.solarPosition = function(date, lat, lng) {
+            let n = date.getTime() / 86400000 + 2440587.5 - 2451545.0;
+            let L = ((280.460 + 0.9856474 * n) % 360 + 360) % 360;
+            let g = (((357.528 + 0.9856003 * n) % 360 + 360) % 360) * Math.PI / 180;
+            let lam = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
+            let eps = (23.439 - 0.0000004 * n) * Math.PI / 180;
+            let ra = Math.atan2(Math.cos(eps) * Math.sin(lam), Math.cos(lam));
+            let dec = Math.asin(Math.sin(eps) * Math.sin(lam));
+            let gmst = (((18.697374558 + 24.06570982441908 * n) % 24) + 24) % 24;
+            let H = (gmst * 15 + lng) * Math.PI / 180 - ra;
+            let phi = lat * Math.PI / 180;
+            let alt = Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H));
+            let az = Math.atan2(-Math.sin(H), Math.tan(dec) * Math.cos(phi) - Math.sin(phi) * Math.cos(H));
+            return { alt: alt * 180 / Math.PI, az: ((az * 180 / Math.PI) % 360 + 360) % 360 };
+        };
+
+        window.HORIZON_AZ = 12;                                             // un relevé tous les 30°
+        window.HORIZON_D = [150, 300, 600, 1200, 2400, 4000, 6500, 10000];  // mètres
+        window.horizonKey = function(s) { return (+s.lat).toFixed(4) + ',' + (+s.lng).toFixed(4); };
+
+        // Le relief ne change pas : le masque est calculé une fois par secteur puis conservé dans les
+        // réglages. Sans cette mémorisation, chaque ouverture de la météo relancerait une requête
+        // d'altitude de 97 points par secteur, pour un résultat rigoureusement identique.
+        window.getHorizonCache = function() {
+            let c = window.meteoCfg();
+            if (!c.horizons) c.horizons = {};
+            return c.horizons;
+        };
+
+        window.fetchHorizon = async function(sec) {
+            let cache = window.getHorizonCache();
+            let k = window.horizonKey(sec);
+            if (cache[k] && cache[k].angles && cache[k].angles.length === window.HORIZON_AZ) return cache[k];
+
+            let lats = [+sec.lat], lngs = [+sec.lng];
+            let mLat = 111320, mLng = 111320 * Math.cos(sec.lat * Math.PI / 180);
+            for (let a = 0; a < window.HORIZON_AZ; a++) {
+                let az = a * 360 / window.HORIZON_AZ, r = az * Math.PI / 180;
+                for (let di = 0; di < window.HORIZON_D.length; di++) {
+                    let d = window.HORIZON_D[di];
+                    lats.push(+(sec.lat + d * Math.cos(r) / mLat).toFixed(6));
+                    lngs.push(+(sec.lng + d * Math.sin(r) / mLng).toFixed(6));
+                }
+            }
+            let url = "https://api.open-meteo.com/v1/elevation?latitude=" + lats.join(",") + "&longitude=" + lngs.join(",");
+            // Une seule reprise : le relief n'est demandé qu'une fois dans la vie d'un secteur, autant
+            // ne pas le perdre pour un aléa réseau et repartir sans masque pour toute la saison.
+            let res = null;
+            for (let essai = 0; essai < 2; essai++) {
+                try { res = await fetch(url); if (res.ok) break; } catch (e) { res = null; }
+                await new Promise(function(r) { setTimeout(r, 700); });
+            }
+            if (!res || !res.ok) throw new Error("Altitude indisponible" + (res ? " (HTTP " + res.status + ")" : ""));
+            let js = await res.json();
+            let h = js.elevation;
+            if (!Array.isArray(h) || h.length !== lats.length) throw new Error("Réponse d'altitude inattendue.");
+
+            let h0 = h[0], angles = [], p = 1;
+            for (let a = 0; a < window.HORIZON_AZ; a++) {
+                let best = 0;
+                for (let di = 0; di < window.HORIZON_D.length; di++) {
+                    let d = window.HORIZON_D[di];
+                    // Courbure terrestre atténuée par la réfraction atmosphérique (coefficient 0,13) :
+                    // au-delà de quelques kilomètres, un sommet paraît plus bas qu'il ne l'est.
+                    let baisse = d * d / (2 * 6371000) * 0.87;
+                    let ang = Math.atan2(h[p] - h0 - baisse, d) * 180 / Math.PI;
+                    if (ang > best) best = ang;
+                    p++;
+                }
+                angles.push(+best.toFixed(2));
+            }
+            cache[k] = { angles: angles, alt: Math.round(h0), at: Date.now() };
+            window.meteoSaveCfg();
+            return cache[k];
+        };
+
+        // Interpolation circulaire entre deux relevés d'azimut voisins.
+        window.horizonAt = function(angles, az) {
+            if (!angles || !angles.length) return 0;
+            let n = angles.length, pas = 360 / n;
+            let x = ((az % 360) + 360) % 360 / pas;
+            let i = Math.floor(x), f = x - i;
+            return angles[i % n] * (1 - f) + angles[(i + 1) % n] * f;
+        };
+
         window.fetchMeteo = async function(force) {
             if (window.meteoLoading) return;
             let c = window.meteoCfg(); let secs = window.meteoSecteurs();
@@ -6035,7 +6686,7 @@
                 let url = "https://api.open-meteo.com/v1/forecast"
                     + "?latitude=" + secs.map(function(s) { return s.lat; }).join(",")
                     + "&longitude=" + secs.map(function(s) { return s.lng; }).join(",")
-                    + "&hourly=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation,snowfall,cloud_cover"
+                    + "&hourly=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation,snowfall,cloud_cover,sunshine_duration"
                     + "&forecast_days=" + Math.max(1, Math.min(7, parseInt(c.jours) || 3))
                     + "&timezone=Europe%2FParis";
                 let res = await fetch(url, { cache: force ? 'reload' : 'default' });
@@ -6043,7 +6694,12 @@
                 let json = await res.json();
                 let arr = Array.isArray(json) ? json : [json];
                 if (arr[0] && arr[0].error) throw new Error(arr[0].reason || "Réponse invalide.");
-                window.meteoData = { at: Date.now(), secteurs: secs, series: arr };
+                // Masques de relief : une seule fois par secteur, en parallèle, et sans faire échouer
+                // la prévision si l'API d'altitude ne répond pas — on perdrait tout pour un bonus.
+                let masques = await Promise.all(secs.map(function(sc) {
+                    return window.fetchHorizon(sc).catch(function() { return null; });
+                }));
+                window.meteoData = { at: Date.now(), secteurs: secs, series: arr, horizons: masques };
             } catch (e) {
                 window.meteoError = (navigator.onLine === false)
                     ? "Hors réseau : dernière prévision reçue conservée par l'application."
@@ -6165,6 +6821,152 @@
             window.map.on('click', handler);
         };
 
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 8.B.0.d — VUE SATELLITE (SENTINEL-2)                              */
+        /*                                                                           */
+        /* Il n'existe PAS d'accès anonyme aux images Sentinel-2 récentes : le service*/
+        /* OGC de Copernicus exige un identifiant d'instance, obtenu gratuitement     */
+        /* après inscription. Deux sources sont donc proposées :                      */
+        /*   • Copernicus, si l'identifiant est renseigné — image la plus récente,    */
+        /*     filtrée sur la couverture nuageuse, en fausses couleurs ;              */
+        /*   • s2cloudless (EOX), sans aucun compte — mosaïque annuelle débarrassée   */
+        /*     des nuages. Elle ne montre pas l'état du jour, mais elle marche tout   */
+        /*     de suite et donne un fond bien plus net que l'imagerie par défaut.     */
+        /* Les tuiles passent par le même cache que le reste de la carte : une vue    */
+        /* consultée au chalet reste consultable en haut des pistes.                  */
+        /* ------------------------------------------------------------------------- */
+        window.satLayerExtra = null;
+
+        window.satCfg = function() {
+            let c = window.meteoCfg();
+            if (!c.sat) c.sat = {};
+            c.sat = Object.assign({ instance: "", layer: "FALSE-COLOR", maxcc: 20, jours: 90,
+                                    source: "", annee: "2024", opacite: 100 }, c.sat);
+            return c.sat;
+        };
+        window.saveSatSettings = function() {
+            let c = window.satCfg();
+            let g = function(id) { let e = document.getElementById(id); return e ? e.value : undefined; };
+            if (g('set-sh-instance') !== undefined) c.instance = g('set-sh-instance').trim();
+            if (g('set-sh-layer') !== undefined) c.layer = (g('set-sh-layer').trim() || "FALSE-COLOR");
+            let mc = parseInt(g('set-sh-maxcc'), 10); if (!isNaN(mc)) c.maxcc = Math.max(0, Math.min(100, mc));
+            let jr = parseInt(g('set-sh-days'), 10); if (!isNaN(jr)) c.jours = Math.max(7, Math.min(365, jr));
+            window.meteoSaveCfg();
+            if (window.satLayerExtra) window.applySatelliteLayer(c.source);
+        };
+        window.renderSatSettings = function() {
+            let c = window.satCfg();
+            let sv = function(id, v) { let e = document.getElementById(id); if (e) e.value = v; };
+            sv('set-sh-instance', c.instance); sv('set-sh-layer', c.layer);
+            sv('set-sh-maxcc', c.maxcc); sv('set-sh-days', c.jours);
+        };
+
+        window.satTimeRange = function() {
+            let c = window.satCfg();
+            let fin = new Date(), deb = new Date(Date.now() - c.jours * 86400000);
+            let f = function(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+            return f(deb) + '/' + f(fin);
+        };
+
+        window.buildSatLayer = function(source) {
+            let c = window.satCfg();
+            if (source === 'copernicus') {
+                if (!c.instance) return null;
+                return L.tileLayer.wms('https://sh.dataspace.copernicus.eu/ogc/wms/' + encodeURIComponent(c.instance), {
+                    layers: c.layer, format: 'image/jpeg', transparent: false, version: '1.3.0',
+                    maxcc: c.maxcc, time: window.satTimeRange(), priority: 'mostRecent',
+                    maxZoom: 18, attribution: 'Sentinel-2 © Copernicus / ESA'
+                });
+            }
+            if (source === 'cloudless') {
+                return L.tileLayer('https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-' + c.annee + '_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg', {
+                    maxZoom: 17, attribution: 'Sentinel-2 cloudless ' + c.annee + ' © EOX IT Services'
+                });
+            }
+            return null;
+        };
+
+        window.applySatelliteLayer = function(source) {
+            if (!window.map) return;
+            if (window.satLayerExtra) { window.map.removeLayer(window.satLayerExtra); window.satLayerExtra = null; }
+            let c = window.satCfg();
+            c.source = source || "";
+            window.meteoSaveCfg();
+            if (!source) { window.renderSatellitePanel(); return; }
+            let lay = window.buildSatLayer(source);
+            if (!lay) { alert("Renseignez d'abord l'identifiant d'instance Copernicus dans les Paramètres."); c.source = ""; window.renderSatellitePanel(); return; }
+            // zIndex 300 : au-dessus du fond de carte, sous le relief, les étiquettes et les canons.
+            lay.setZIndex(300);
+            lay.setOpacity(c.opacite / 100);
+            lay.addTo(window.map);
+            window.satLayerExtra = lay;
+            window.renderSatellitePanel();
+        };
+        window.setSatOpacity = function(v) {
+            let c = window.satCfg(); c.opacite = parseInt(v, 10) || 100; window.meteoSaveCfg();
+            if (window.satLayerExtra) window.satLayerExtra.setOpacity(c.opacite / 100);
+            let lbl = document.getElementById('sat-op-val'); if (lbl) lbl.innerText = c.opacite + ' %';
+        };
+
+        window.copernicusBrowserUrl = function() {
+            let b = window.getDomainBounds();
+            let lat = b ? (b.minLat + b.maxLat) / 2 : 42.766, lng = b ? (b.minLng + b.maxLng) / 2 : 0.564;
+            let c = window.satCfg();
+            let fin = new Date(), deb = new Date(Date.now() - c.jours * 86400000);
+            let iso = function(d) { return d.toISOString().slice(0, 10); };
+            return 'https://browser.dataspace.copernicus.eu/?zoom=13&lat=' + lat.toFixed(5) + '&lng=' + lng.toFixed(5) +
+                   '&datasetId=S2_L2A_CDAS&layerId=4-FALSE-COLOR&maxCloudCoverage=' + c.maxcc +
+                   '&fromTime=' + iso(deb) + 'T00%3A00%3A00.000Z&toTime=' + iso(fin) + 'T23%3A59%3A59.999Z';
+        };
+
+        window.openSatellitePanel = function() {
+            let sb = document.getElementById('right-sidebar'); let sl = document.getElementById('selected-list'); if (!sb || !sl) return;
+            document.getElementById('right-title').innerHTML = "<i class='fa-solid fa-satellite'></i> Vue satellite";
+            document.getElementById('multi-tools').style.display = 'none';
+            document.getElementById('view-edit').style.display = 'none';
+            document.getElementById('view-selection').style.display = 'block';
+            sb.classList.add('open');
+            window.renderSatellitePanel();
+        };
+
+        window.renderSatellitePanel = function() {
+            let sl = document.getElementById('selected-list'); if (!sl) return;
+            let c = window.satCfg();
+            let actif = function(v) { return c.source === v ? 'box-shadow:0 0 0 3px #00838f inset;' : ''; };
+            let annees = [];
+            for (let y = 2024; y >= 2018; y--) annees.push(`<option value="${y}"${c.annee == y ? ' selected' : ''}>${y}</option>`);
+            sl.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button onclick="window.applySatelliteLayer('copernicus')" style="text-align:left; background:${c.instance ? '#00838f' : '#95a5a6'}; color:#fff; border:none; padding:12px; border-radius:6px; cursor:pointer; ${actif('copernicus')}">
+                    <b>🛰️ Sentinel-2 récent — Copernicus</b><br>
+                    <span style="font-size:11px; opacity:0.9;">Fausses couleurs · nuages &lt; ${c.maxcc} % · ${c.jours} derniers jours${c.instance ? '' : " — identifiant d'instance manquant"}</span>
+                </button>
+                <button onclick="window.applySatelliteLayer('cloudless')" style="text-align:left; background:#16a085; color:#fff; border:none; padding:12px; border-radius:6px; cursor:pointer; ${actif('cloudless')}">
+                    <b>☁️ Sentinel-2 sans nuages — mosaïque ${c.annee}</b><br>
+                    <span style="font-size:11px; opacity:0.9;">Aucun compte requis. Image d'été composite : nette, mais pas celle du jour.</span>
+                </button>
+                <div style="display:flex; align-items:center; gap:8px; font-size:11px; color:#555;">
+                    <span style="white-space:nowrap;">Année de la mosaïque</span>
+                    <select class="edit-input" style="margin:0; padding:5px; flex:1;" onchange="window.satCfg().annee=this.value; window.meteoSaveCfg(); if(window.satCfg().source==='cloudless') window.applySatelliteLayer('cloudless'); else window.renderSatellitePanel();">${annees.join('')}</select>
+                </div>
+                <button onclick="window.applySatelliteLayer('')" style="background:#ecf0f1; border:1px solid #ccc; padding:10px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">↩️ Revenir au fond de carte habituel</button>
+                <div style="border-top:1px solid #eee; padding-top:10px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:11px; font-weight:bold; color:#555;">Opacité</span>
+                        <input type="range" min="20" max="100" value="${c.opacite}" style="flex:1;" oninput="window.setSatOpacity(this.value)">
+                        <span id="sat-op-val" style="font-size:11px; font-weight:bold; color:#00838f; width:42px; text-align:right;">${c.opacite} %</span>
+                    </div>
+                </div>
+                <a href="${window.copernicusBrowserUrl()}" target="_blank" rel="noopener" style="display:block; text-align:center; background:#2c3e50; color:#fff; padding:10px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:bold;">
+                    🔗 Ouvrir le Copernicus Browser sur le domaine
+                </a>
+                <p style="font-size:10px; color:#888; line-height:1.5; margin:0;">
+                    L'imagerie récente de Copernicus n'est pas accessible anonymement : créez un compte gratuit sur dataspace.copernicus.eu, ouvrez le Configuration Utility de Sentinel Hub, et recopiez l'identifiant d'instance dans les Paramètres → Météo de production.
+                    La couche s'affiche par-dessus le fond de carte ; les canons et les calques restent visibles au-dessus.
+                </p>
+            </div>`;
+        };
+
         window.openMeteoWidget = function() {
             let sb = document.getElementById('right-sidebar'); let rt = document.getElementById('right-title'); let sl = document.getElementById('selected-list'); if(!sb || !sl) return;
             if(rt) rt.innerText = "⛅ Météo Live";
@@ -6229,6 +7031,7 @@
                 let pres = s.hourly.surface_pressure || [];
                 let vents = s.hourly.wind_speed_10m || [];
                 let neige = s.hourly.snowfall || [];
+                let cloudPct = s.hourly.cloud_cover || [];
                 let tws = times.map(function(_, i) { return window.wetBulb(temps[i], hums[i], pres[i]); });
 
                 // On part de l'heure en cours : les heures passées de la journée n'intéressent personne.
@@ -6239,12 +7042,36 @@
                 let wins = window.meteoWindows(t2, tw2, seuil);
                 let heuresTotal = wins.reduce(function(a, w) { return a + w.heures; }, 0);
 
+                // Soleil réel heure par heure : au-dessus de la ligne de crête ET peu nuageux.
+                // On prend le milieu de l'heure comme instant de référence.
+                let masque = (window.meteoData.horizons || [])[si];
+                let soleil = t2.map(function(iso) {
+                    let d = new Date(iso); let mid = new Date(d.getTime() + 1800000);
+                    let sp = window.solarPosition(mid, +sec.lat, +sec.lng);
+                    let hz = masque ? window.horizonAt(masque.angles, sp.az) : 0;
+                    let visible = sp.alt > hz;
+                    let idx = times.indexOf(iso);
+                    let sd = (s.hourly.sunshine_duration || [])[idx];
+                    // sunshine_duration est en secondes d'ensoleillement dans l'heure : au-delà de
+                    // 15 min, on considère l'heure comme ensoleillée.
+                    let clair = (sd === undefined || sd === null) ? (cloudPct[idx] === undefined || cloudPct[idx] < 70) : (sd > 900);
+                    return { visible: visible, clair: clair, ensoleille: visible && clair, alt: sp.alt, az: sp.az, hz: hz };
+                });
+                let heuresSoleil = soleil.filter(function(x) { return x.ensoleille; }).length;
+
                 let cellules = t2.map(function(iso, k) {
                     let tw = tw2[k];
                     let bg = tw === null ? '#eceff1' : (tw <= bon ? '#0072ff' : (tw <= seuil ? '#16a085' : (tw <= seuil + 2 ? '#f39c12' : '#e74c3c')));
                     let d = new Date(iso);
+                    let so = soleil[k];
                     return `<div class="meteo-cell" style="background:${bg};" title="${window.meteoFmtHeure(iso)}
-TH ${tw === null ? '?' : tw.toFixed(1).replace('.', ',')} °C · air ${temps[i0 + k]} °C · ${hums[i0 + k]} % HR · vent ${vents[i0 + k]} km/h${neige[i0 + k] ? ' · neige ' + neige[i0 + k] + ' cm' : ''}">${d.getHours() % 6 === 0 ? d.getHours() + 'h' : ''}</div>`;
+TH ${tw === null ? '?' : tw.toFixed(1).replace('.', ',')} °C · air ${temps[i0 + k]} °C · ${hums[i0 + k]} % HR · vent ${vents[i0 + k]} km/h${neige[i0 + k] ? ' · neige ' + neige[i0 + k] + ' cm' : ''}
+${so.ensoleille ? 'Soleil direct' : (so.alt <= 0 ? 'Nuit' : (!so.visible ? 'À l\'ombre du relief (soleil à ' + so.alt.toFixed(0) + '°, crête à ' + so.hz.toFixed(0) + '°)' : 'Ciel couvert'))}">${d.getHours() % 6 === 0 ? d.getHours() + 'h' : ''}</div>`;
+                }).join('');
+
+                let bandeSoleil = soleil.map(function(so, k) {
+                    let bg = so.ensoleille ? '#f1c40f' : (so.visible ? '#d9dee3' : (so.alt > 0 ? '#8fa3b5' : '#2c3e50'));
+                    return `<div class="meteo-cell meteo-cell-sun" style="background:${bg};" title="${window.meteoFmtHeure(t2[k])} — ${so.ensoleille ? 'soleil direct' : (so.alt <= 0 ? 'nuit' : (!so.visible ? 'à l\'ombre du relief' : 'ciel couvert'))}"></div>`;
                 }).join('');
 
                 let cur = tw2[0];
@@ -6256,7 +7083,9 @@ TH ${tw === null ? '?' : tw.toFixed(1).replace('.', ',')} °C · air ${temps[i0 
                     </div>
                     <div style="padding:10px;">
                         <div style="font-size:10px; color:#888; margin-bottom:3px;">Température humide, 48 h à venir</div>
-                        <div class="meteo-strip">${cellules}</div>`;
+                        <div class="meteo-strip">${cellules}</div>
+                        <div style="font-size:10px; color:#888; margin-bottom:3px;">Soleil direct ${masque ? '(crête calculée sur le relief, ' + masque.alt + ' m)' : '<span style="color:#c0392b;">relief non calculé</span>'} — ${heuresSoleil} h sur 48</div>
+                        <div class="meteo-strip meteo-strip-sun">${bandeSoleil}</div>`;
 
                 if (!wins.length) {
                     html += `<div style="font-size:12px; color:#c0392b; padding:8px 0;"><b>Aucun créneau de production</b> sur les 48 h : la température humide ne descend jamais à ${seuil.toFixed(1).replace('.', ',')} °C.</div>`;
@@ -6265,9 +7094,14 @@ TH ${tw === null ? '?' : tw.toFixed(1).replace('.', ',')} °C · air ${temps[i0 
                     html += wins.map(function(w) {
                         let deb = window.prodDebitEstime(model, w.moy);
                         let vol = deb === null ? null : Math.round(deb * w.heures);
+                        // Heures de soleil DANS le créneau : c'est là que l'information est utile,
+                        // puisqu'elle dit quelle part de la production partira au réchauffement.
+                        let i1 = t2.indexOf(w.debut), i2 = t2.indexOf(w.fin);
+                        let solCre = (i1 > -1 && i2 > -1) ? soleil.slice(i1, i2 + 1).filter(function(x) { return x.ensoleille; }).length : 0;
                         return `<div style="display:flex; gap:8px; align-items:center; font-size:11px; padding:6px 8px; background:#f4fbf9; border-left:3px solid #16a085; border-radius:3px; margin-bottom:4px;">
                             <div style="flex:1;"><b>${window.meteoFmtHeure(w.debut)} → ${window.meteoFmtHeure(w.fin)}</b><br>
-                            <span style="color:#777;">${w.heures} h · TH min ${w.min.toFixed(1).replace('.', ',')} °C · moy ${w.moy.toFixed(1).replace('.', ',')} °C</span></div>
+                            <span style="color:#777;">${w.heures} h · TH min ${w.min.toFixed(1).replace('.', ',')} °C · moy ${w.moy.toFixed(1).replace('.', ',')} °C</span>
+                            <span style="color:${solCre ? '#d35400' : '#16a085'}; font-weight:bold;"> · ${solCre ? '☀️ ' + solCre + ' h de soleil' : '🌑 sans soleil'}</span></div>
                             ${vol !== null ? `<div style="text-align:right; color:#2980b9;"><b>≈ ${vol.toLocaleString('fr-FR')} m³</b><br><span style="font-size:9px; color:#888;">${Math.round(deb)} m³/h</span></div>` : ''}
                         </div>`;
                     }).join('');
