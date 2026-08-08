@@ -2,8 +2,19 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>GMAO Maintenance Neige</title>
+
+    <!-- Installation en application autonome (icône sur l'écran d'accueil, ouverture sans navigateur).
+         apple-touch-icon et apple-mobile-web-app-* sont indispensables : iOS ignore le manifeste. -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#2c3e50">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GMAO Neige">
+    <meta name="mobile-web-app-capable" content="yes">
 
     <!-- ========================================================================= -->
     <!-- CHAPITRE 1 : GESTION DES CRASHS ET LIBRAIRIES EXTERNES                    -->
@@ -13,7 +24,7 @@
         // principal. Sur un écran d'erreur, le nom et la version restent affichés — c'est l'information
         // la plus utile à transmettre en cas de bug ; seul le flocon animé disparaît.
         window.APP_NAME = "GMAO Neige";
-        window.APP_VERSION = "5.4.0";
+        window.APP_VERSION = "5.5.0";
         window.showCrash = function(msg, line) { let o = document.getElementById('loading-overlay'); if (o) { o.style.display='flex'; let fw = document.getElementById('flake-wrap'); if(fw) fw.style.display='none'; let pc = document.getElementById('loading-pct'); if(pc) pc.style.display='none'; document.getElementById('loading-title').innerText="🛑 ERREUR SYSTEME"; if(document.getElementById('error-box')) { document.getElementById('error-box').style.display='block'; document.getElementById('error-msg').innerHTML="<b>Détail:</b> "+msg+(line?"<br><b>Ligne:</b> "+line:""); } } else alert("🛑 CRASH : "+msg); };
         window.onerror = function(msg, src, ln) { if (msg.indexOf('Script error') > -1) return false; window.showCrash(msg, ln); return true; };
         window.addEventListener('unhandledrejection', function(e) { window.showCrash(e.reason ? e.reason.message : "Erreur réseau", "Réseau"); });
@@ -45,6 +56,46 @@
         #topbar-tools-menu .topbar-btn{margin:0;width:100%;display:flex;align-items:center;gap:9px;justify-content:flex-start;text-align:left;padding:9px 12px;}
         #topbar-tools-menu .btn-text{display:inline !important;}
         #topbar-tools-menu::before{content:'';position:absolute;top:-7px;right:22px;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid #22303d;}
+        /* CHAPITRE 1.C.3 — Bandeau d'état réseau. Il s'insère SOUS le bandeau supérieur en poussant le
+           contenu vers le bas (padding-top de #app-container piloté en JS) plutôt qu'en le recouvrant :
+           un bandeau flottant masquerait en permanence la première ligne de la carte ou du tableau. */
+        #net-banner{position:fixed;top:50px;left:0;right:0;z-index:3900;display:none;align-items:center;gap:10px;
+            padding:7px 14px;font-size:12px;font-weight:bold;color:#fff;background:#7f8c8d;box-shadow:0 2px 6px rgba(0,0,0,0.25);}
+        #net-banner.show{display:flex;}
+        #net-banner.offline{background:#c0392b;}
+        #net-banner.pending{background:#e67e22;}
+        #net-banner.stale{background:#8e44ad;}
+        #net-banner.ok{background:#16a085;}
+        #net-banner .nb-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        #net-banner button{background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.45);color:#fff;
+            padding:4px 10px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;}
+        #net-banner button:hover{background:rgba(255,255,255,0.35);}
+        body.has-net-banner #app-container{padding-top:82px;}
+        body.has-net-banner #settings-panel,body.has-net-banner #right-sidebar{top:82px;}
+        @media (max-width:768px){ #net-banner{font-size:11px;padding:6px 10px;gap:7px;} }
+        /* CHAPITRE 1.C.4 — Photos de panne. Les vignettes sont carrées et recadrées (object-fit:cover) :
+           un cliché pris en portrait et un autre en paysage doivent s'aligner sans casser la rangée. */
+        .photo-strip{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:20px;align-items:center;}
+        .photo-thumb{position:relative;width:64px;height:64px;border-radius:5px;overflow:hidden;border:1px solid #d5dde5;background:#f4f6f8;flex:0 0 auto;display:block;}
+        .photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+        .photo-thumb.photo-loading{display:flex;align-items:center;justify-content:center;font-size:18px;color:#95a5a6;}
+        .photo-thumb button{position:absolute;top:2px;right:2px;width:18px;height:18px;line-height:16px;padding:0;border:none;border-radius:50%;
+            background:rgba(192,57,43,0.92);color:#fff;font-size:13px;font-weight:bold;cursor:pointer;}
+        .photo-thumb span{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);color:#fff;font-size:8px;text-align:center;padding:1px 0;}
+        .photo-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#34495e;color:#fff;
+            padding:9px 6px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;text-align:center;}
+        .photo-btn:hover{background:#2c3e50;}
+        .photo-btn input{display:none;}
+        /* CHAPITRE 1.C.5 — Bande des 48 heures à venir. Chaque case vaut une heure ; elles se partagent
+           la largeur disponible (flex:1) pour que la bande tienne toujours dans le panneau, du
+           téléphone au grand écran, sans défilement horizontal. */
+        .meteo-strip{display:flex;gap:1px;height:34px;margin-bottom:8px;border-radius:3px;overflow:hidden;}
+        .meteo-cell{flex:1 1 0;min-width:0;display:flex;align-items:flex-end;justify-content:center;
+            font-size:8px;color:rgba(255,255,255,0.9);font-weight:bold;padding-bottom:2px;cursor:default;}
+        .meteo-sect-row{display:flex;gap:5px;align-items:center;margin-bottom:5px;}
+        .meteo-sect-row input{flex:1;min-width:0;padding:5px;font-size:11px;border:1px solid #ccc;border-radius:3px;}
+        .meteo-sect-row input.coord{flex:0 0 74px;}
+        .meteo-sect-row button{background:#c0392b;color:#fff;border:none;padding:5px 8px;border-radius:3px;cursor:pointer;font-size:11px;}
         #app-container{display:flex;height:100%;width:100%;position:relative;padding-top:50px;box-sizing:border-box;}
         #loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 50% 42%, #ffffff 0%, #eef4fb 55%, #e3ecf6 100%);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:20px;box-sizing:border-box;}
         @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
@@ -287,7 +338,7 @@
         .list-row-arrow { display:inline-block; color:#7f8c8d; font-size:12px; font-weight:bold; }
 
         /* CHAPITRE 1.D — Fenêtres flottantes/redimensionnables : toutes les "fenêtres" de la couche
-           principale (Documents, Centre Expert BI, Comparer Saisons, Historique Météo, Calendrier)
+           principale (Documents, Centre d'Analyse, Comparer Saisons, Historique Météo, Calendrier)
            peuvent être déplacées (glisser l'en-tête) et redimensionnées (coin en bas à droite). */
         .draggable-window { position:absolute; }
         .draggable-handle { cursor:move; user-select:none; }
@@ -429,7 +480,7 @@
                 <button class="topbar-btn" data-btnkey="tools" data-btnlabel="Outils" data-dock-skip="1" onclick="window.toggleTopbarTools(event)" style="background:#546e7a; border-color:#78909c;"><i class="fa-solid fa-toolbox"></i> <span class="btn-text">Outils</span> <i class="fa-solid fa-chevron-down" style="font-size:9px; margin-left:3px; opacity:0.8;"></i></button>
                 <div id="topbar-tools-menu">
                     <button class="topbar-btn" data-btnkey="compare" data-btnlabel="Comparer Saisons" onclick="window.openGlobalCompareModal(true)" style="background:#d35400; border-color:#e67e22;"><i class="fa-solid fa-code-compare"></i> <span class="btn-text">Comparer Saisons</span></button>
-                    <button class="topbar-btn" data-btnkey="bi" data-btnlabel="Centre Expert BI" onclick="window.openBiMeteo()" style="background:#16a085; border-color:#1abc9c;"><i class="fa-solid fa-snowflake"></i> <span class="btn-text">Centre Expert BI</span></button>
+                    <button class="topbar-btn" data-btnkey="bi" data-btnlabel="Centre d'Analyse" onclick="window.openBiMeteo()" style="background:#16a085; border-color:#1abc9c;"><i class="fa-solid fa-chart-simple"></i> <span class="btn-text">Centre d'Analyse</span></button>
                     <button class="topbar-btn" data-btnkey="meteo" data-btnlabel="Météo Live" onclick="window.openMeteoWidget()"><i class="fa-solid fa-cloud-sun"></i> <span class="btn-text">Météo Live</span></button>
                     <button class="topbar-btn" data-btnkey="webcams" data-btnlabel="Webcams" onclick="window.openWebcamGrid()"><i class="fa-solid fa-video"></i> <span class="btn-text">Webcams</span></button>
                     <button class="topbar-btn" data-btnkey="histmeteo" data-btnlabel="Hist. Météo" onclick="window.openMeteoHistoryModal(true)" style="background:#f39c12; border-color:#f1c40f;"><i class="fa-solid fa-temperature-half"></i> <span class="btn-text">Hist. Météo</span></button>
@@ -510,6 +561,68 @@
                     <div id="settings-theme-order" style="margin:8px 0 10px; max-height:260px; overflow-y:auto;"></div>
                     <button onclick="window.resetSidebarLayout()" style="width:100%; background:#ecf0f1; border:1px solid #ccc; padding:8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-rotate-left"></i> Réinitialiser l'agencement</button>
                     <p style="font-size:10px; color:#888; margin:10px 0 0;">Masquer un menu le retire du bandeau de gauche ; s'il est actif au moment où vous le masquez, il le reste jusqu'au choix d'un autre menu.</p>
+                </div>
+            </details>
+            <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-snowflake"></i> Météo de production</summary>
+                <div style="padding:15px;">
+                    <b style="font-size:11px; color:#8e44ad;">🌡️ Seuils de température humide</b>
+                    <div style="display:flex; gap:8px; margin:8px 0 5px;">
+                        <div style="flex:1;"><span class="edit-label" style="font-size:10px;">Production possible dès</span>
+                            <input type="number" step="0.5" id="set-meteo-seuil" class="edit-input" style="margin:0; padding:6px;" onchange="window.saveMeteoSettings()"></div>
+                        <div style="flex:1;"><span class="edit-label" style="font-size:10px;">Bonne production dès</span>
+                            <input type="number" step="0.5" id="set-meteo-bon" class="edit-input" style="margin:0; padding:6px;" onchange="window.saveMeteoSettings()"></div>
+                    </div>
+                    <p style="font-size:10px; color:#888; margin:0 0 14px;">La température humide se calcule à partir de la température de l'air et de l'humidité : c'est elle qui décide, pas la température affichée par les sites météo.</p>
+
+                    <b style="font-size:11px; color:#8e44ad; border-top:1px solid #eee; padding-top:10px; display:block;">📍 Secteurs suivis</b>
+                    <p style="font-size:10px; color:#888; margin:4px 0 8px;">Une prévision par secteur. Cliquez sur « Prendre sur la carte » puis sur le point voulu.</p>
+                    <div id="settings-meteo-secteurs" style="margin-bottom:8px;"></div>
+                    <div style="display:flex; gap:6px;">
+                        <button onclick="window.addMeteoSecteur()" style="flex:1; background:#16a085; color:#fff; border:none; padding:8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-plus"></i> Ajouter</button>
+                        <button onclick="window.pickMeteoSecteurOnMap()" style="flex:1; background:#2980b9; color:#fff; border:none; padding:8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-map-pin"></i> Prendre sur la carte</button>
+                    </div>
+                </div>
+            </details>
+            <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
+                <summary style="padding:10px; font-weight:bold; cursor:pointer; background:#f8f9fa; outline:none;"><i class="fa-solid fa-wifi"></i> Mode hors réseau</summary>
+                <div style="padding:15px;">
+                    <div id="off-status" style="font-size:11px; line-height:1.7; color:#444; background:#f8fafc; border:1px solid #e6ecf2; border-radius:5px; padding:10px; margin-bottom:12px;">Chargement…</div>
+
+                    <b style="font-size:11px; color:#8e44ad;">💾 Données de la webapp</b>
+                    <p style="font-size:10px; color:#888; margin:4px 0 8px;">Une copie complète du Google Sheet est conservée dans le téléphone à chaque chargement réussi. Sans réseau, l'application s'ouvre sur cette copie, en lecture.</p>
+                    <div style="display:flex; gap:6px; margin-bottom:15px;">
+                        <button onclick="window.offRefreshData(this)" style="flex:2; background:#2980b9; color:#fff; border:none; padding:8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-rotate"></i> Rafraîchir maintenant</button>
+                        <button onclick="window.offClearSnapshot()" style="flex:1; background:#ecf0f1; border:1px solid #ccc; padding:8px; border-radius:5px; font-size:11px; cursor:pointer;">Effacer</button>
+                    </div>
+
+                    <b style="font-size:11px; color:#8e44ad; border-top:1px solid #eee; padding-top:10px; display:block;">📤 Saisies en attente d'envoi</b>
+                    <div id="off-outbox-list" style="margin:8px 0; max-height:220px; overflow-y:auto;"></div>
+                    <div style="display:flex; gap:6px; margin-bottom:15px;">
+                        <button onclick="window.flushOutbox(true)" style="flex:2; background:#e67e22; color:#fff; border:none; padding:8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-paper-plane"></i> Envoyer maintenant</button>
+                        <button onclick="window.offClearOutbox()" style="flex:1; background:#ecf0f1; border:1px solid #ccc; padding:8px; border-radius:5px; font-size:11px; cursor:pointer;">Tout vider</button>
+                    </div>
+
+                    <b style="font-size:11px; color:#8e44ad; border-top:1px solid #eee; padding-top:10px; display:block;">🗺️ Fond de carte hors réseau</b>
+                    <p style="font-size:10px; color:#888; margin:4px 0 8px;">À faire une fois, en wifi. Les tuiles restent ensuite disponibles même sans réseau, et survivent aux mises à jour de l'application.</p>
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                        <span style="font-size:11px; font-weight:bold; color:#555; flex:1;">Niveau de détail max.</span>
+                        <select id="off-tile-zoom" class="edit-input" style="width:150px; margin:0; padding:5px; font-size:11px;" onchange="window.offEstimateTiles()">
+                            <option value="15">Zoom 15 — léger</option>
+                            <option value="16" selected>Zoom 16 — recommandé</option>
+                            <option value="17">Zoom 17 — détaillé</option>
+                            <option value="18">Zoom 18 — maximum</option>
+                        </select>
+                    </div>
+                    <div id="off-tile-estimate" style="font-size:10px; color:#888; margin-bottom:8px;"></div>
+                    <div id="off-tile-progress" style="display:none; margin-bottom:8px;">
+                        <div style="height:8px; background:#e6ecf2; border-radius:4px; overflow:hidden;"><div id="off-tile-bar" style="height:100%; width:0%; background:#16a085; transition:width 0.2s;"></div></div>
+                        <div id="off-tile-progress-txt" style="font-size:10px; color:#555; margin-top:4px;"></div>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <button id="off-tile-btn" onclick="window.offDownloadDomain(this)" style="flex:2; background:#16a085; color:#fff; border:none; padding:8px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-download"></i> Télécharger le domaine</button>
+                        <button onclick="window.offClearTiles()" style="flex:1; background:#ecf0f1; border:1px solid #ccc; padding:8px; border-radius:5px; font-size:11px; cursor:pointer;">Vider</button>
+                    </div>
                 </div>
             </details>
             <details class="panel-section" style="margin-bottom:10px; border:1px solid #eee; border-radius:6px; background:#fff;">
@@ -600,19 +713,25 @@
 
    <!-- MODAL EXPERT BI -->
     <div id="bi-meteo-modal" class="draggable-window">
-        <div class="bi-header draggable-handle"><span><i class="fa-solid fa-snowflake"></i> PowerBI Neige</span><button onclick="document.getElementById('bi-meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:28px;cursor:pointer;">×</button></div>
+        <div class="bi-header draggable-handle"><span><i class="fa-solid fa-snowflake"></i> Centre d'Analyse</span><button onclick="document.getElementById('bi-meteo-modal').style.display='none'" style="background:none;border:none;color:white;font-size:28px;cursor:pointer;">×</button></div>
         <div class="bi-container">
             <div class="bi-sidebar">
                 <div class="edit-label">1. Source des données</div>
-                <select id="bi-source" class="edit-input" onchange="window.biLoadSource()">
-                    <optgroup label="Données Brutes"><option value="raw_gen">Tableau Général Canons</option><option value="raw_hist">Historique Enneigeurs</option><option value="raw_tick">Maintenance Neige (Tickets)</option><option value="hist">Météo Historique</option><option value="froid">Météo Froid</option></optgroup>
-                    <optgroup label="Données Calculées"><option value="conso">Production par Saison</option><option value="defauts">Pannes par Mois</option><option value="types">Parc par Types</option></optgroup>
-                </select>
+                <select id="bi-source" class="edit-input" onchange="window.biLoadSource()"></select>
+                <div class="edit-label">1 bis. Croiser avec (optionnel)</div>
+                <select id="bi-source-b" class="edit-input" onchange="window.biLoadSource()"><option value="">— aucun croisement —</option></select>
+                <div style="display:flex; align-items:center; gap:6px; margin:-6px 0 10px;">
+                    <span style="font-size:11px; color:#7f8c8d; white-space:nowrap;">sur la clé</span>
+                    <select id="bi-join-key" class="edit-input" style="margin:0; flex:1; padding:5px; font-size:11px;" onchange="window.biLoadSource()">
+                        <option value="canon">N° de canon</option><option value="date">Date</option>
+                    </select>
+                </div>
+                <div id="bi-join-info" style="display:none; font-size:10px; line-height:1.5; color:#2c3e50; background:#eef7f4; border:1px solid #cfe6de; border-radius:4px; padding:7px; margin-bottom:10px;"></div>
                 <div class="edit-label">2. Format Global</div><select id="bi-type" class="edit-input" onchange="window.biUpdateUI()"><option value="bar">📊 Barres</option><option value="line">📈 Courbes</option><option value="combo">📉 Combiné</option><option value="pie">🥧 Camembert</option><option value="doughnut">🍩 Anneau</option><option value="polarArea">🎯 Zone Polaire</option></select>
                 <div class="edit-label">3. Axe X</div><select id="bi-x" class="edit-input" onchange="window.biDrawChart()"></select>
                 <div class="edit-label">4. Axe Y (Cochez pour ajouter)</div><div id="bi-y-container" style="background:#fdfdfd; border:1px solid #ccc; border-radius:4px; padding:10px; max-height:280px; overflow-y:auto; margin-bottom:12px; font-size:12px;"></div>
                 <div class="edit-label">Filtres Optionnels</div><div style="display:flex; gap:5px; margin-bottom:12px;"><select id="bi-filter-col" class="edit-input" style="margin:0; flex:1;" onchange="window.biDrawChart()"></select><input type="text" id="bi-filter-val" class="edit-input" style="margin:0; flex:1;" placeholder="Ex: Fait, >10..." onkeyup="window.biDrawChart()"></div>
-                <button class="btn-action-primary" style="background:#27ae60; margin-top:5px;" onclick="window.biDrawChart()">🔄 Actualiser</button><button class="btn-action-primary" style="background:#8e44ad; margin-top:10px;" onclick="window.exportBiChart()">💾 Télécharger (PNG)</button>
+                <button class="btn-action-primary" style="background:#27ae60; margin-top:5px;" onclick="window.biDrawChart()">🔄 Actualiser</button><button class="btn-action-primary" style="background:#8e44ad; margin-top:10px;" onclick="window.exportBiChart()">💾 Graphique (PNG)</button><button class="btn-action-primary" style="background:#2980b9; margin-top:10px;" onclick="window.exportAnalyseCsv()">📄 Tableau croisé (CSV)</button>
             </div>
             <div class="bi-content"><div class="bi-canvas-box"><canvas id="bi-canvas"></canvas></div></div>
         </div>
@@ -718,6 +837,9 @@
             <div class="resize-handle"></div>
         </div>
     </div>
+
+<!-- BANDEAU D'ÉTAT RÉSEAU (hors réseau / saisies en attente / données périmées) -->
+    <div id="net-banner"><span class="nb-txt"></span><span class="nb-actions"></span></div>
 
 <!-- STRUCTURE PRINCIPALE DE L'APP -->
     <div id="app-container">
@@ -847,7 +969,8 @@
             legendConfig: {}, dashPrefs: {},
             prodSettings: { prixKwh: 0.15, saison: '2026-2027', decimales: 2, devise: '€' },
             sidebarOrder: [], sidebarHidden: [], themeOrder: [], themeHidden: [],
-            printMargins: { top: 10, right: 10, bottom: 10, left: 10 }
+            printMargins: { top: 10, right: 10, bottom: 10, left: 10 },
+            meteo: { secteurs: [], seuilTH: -2.5, seuilBon: -5, jours: 3, ongletDefaut: 'production' }
         };
         window.listViewFilters = { defaut: '', statutTicket: '', statutEntretien: '', statutTete: '' };
         window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', tools: '#546e7a', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d', calendar: '#e67e22' };
@@ -859,6 +982,7 @@
                 let panel = document.getElementById('settings-panel');
                 if(panel) panel.style.display = 'flex';
                 window.loadSettingsLocally();
+                if (window.renderOffPanel) window.renderOffPanel();
             } else { if (pin !== null) alert("❌ Code incorrect. Accès refusé."); }
         };
 
@@ -880,6 +1004,9 @@
             // localStorage (version antérieure) doit retrouver sa valeur par défaut, sinon les calculs
             // de coût tombent sur "undefined" et affichent NaN.
             window.appSettings.prodSettings = Object.assign({ prixKwh: 0.15, saison: '2026-2027', decimales: 2, devise: '€' }, window.appSettings.prodSettings || {});
+            window.appSettings.meteo = Object.assign({ secteurs: [], seuilTH: -2.5, seuilBon: -5, jours: 3, ongletDefaut: 'production' }, window.appSettings.meteo || {});
+            if (!Array.isArray(window.appSettings.meteo.secteurs)) window.appSettings.meteo.secteurs = [];
+            if (window.renderMeteoSettings) window.renderMeteoSettings();
             if(window.renderViewToggles) window.renderViewToggles();
             if(window.renderProdSeasonSelect) window.renderProdSeasonSelect();
             // Réapplique les couleurs personnalisées de répéteurs/transfos sur les palettes auto-générées par initAppUI.
@@ -1459,7 +1586,7 @@
         /* CHAPITRE 2.C : FENÊTRES FLOTTANTES — GESTIONNAIRE GÉNÉRIQUE DRAG/RESIZE    */
         /* ------------------------------------------------------------------------- */
         /* S'applique à toute fenêtre marquée .draggable-window (en-tête .draggable-handle,
-           coin .resize-handle) : Documents, Centre Expert BI, Comparer Saisons, Historique
+           coin .resize-handle) : Documents, Centre d'Analyse, Comparer Saisons, Historique
            Météo, Calendrier. Les clics sur un bouton/champ de l'en-tête (fermer, navigation
            mois...) ne déclenchent pas de glisser-déposer. */
         /* ========================================================================= */
@@ -1751,6 +1878,125 @@
         /* ========================================================================= */
         // CHAPITRE 4.0 — Formulaire "Signaler un défaut" factorisé : utilisé à la fois sur la fiche
         // canon (carte) et dans le formulaire "+ Nouveau ticket" de la vue liste (voir Chapitre 4.E).
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 4.0.b — PHOTOS DE PANNE (APPAREIL PHOTO → DRIVE)                  */
+        /*                                                                           */
+        /* La photo est réduite DANS LE NAVIGATEUR avant l'envoi. Un cliché de        */
+        /* téléphone pèse 3 à 6 Mo, ce qui donne 8 Mo une fois encodé en base64 :     */
+        /* intransmissible en 3G au bord d'une piste, et inutile — 1600 px suffisent  */
+        /* largement à documenter une fuite ou un connecteur cassé.                   */
+        /* ------------------------------------------------------------------------- */
+        window.pannePhotos = {};
+        window.PHOTO_MAX_PX = 1600;
+        window.PHOTO_QUALITY = 0.82;
+
+        window.readPhotoFile = function(file) {
+            return new Promise(function(resolve, reject) {
+                // imageOrientation:'from-image' applique la rotation EXIF ; sans cela une photo prise
+                // en tenant le téléphone verticalement arrive couchée sur le Drive.
+                let bmp = (window.createImageBitmap)
+                    ? createImageBitmap(file, { imageOrientation: 'from-image' }).catch(function() { return createImageBitmap(file); })
+                    : Promise.reject(new Error("no bitmap"));
+                bmp.then(function(img) { resolve(img); }).catch(function() {
+                    let url = URL.createObjectURL(file); let im = new Image();
+                    im.onload = function() { resolve(im); };
+                    im.onerror = function() { URL.revokeObjectURL(url); reject(new Error("Image illisible.")); };
+                    im.src = url;
+                });
+            });
+        };
+
+        window.shrinkPhoto = async function(file) {
+            let img = await window.readPhotoFile(file);
+            let w = img.width, h = img.height;
+            let scale = Math.min(1, window.PHOTO_MAX_PX / Math.max(w, h));
+            let cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+            let cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+            cv.getContext('2d').drawImage(img, 0, 0, cw, ch);
+            if (img.close) img.close();
+            let dataUrl = cv.toDataURL('image/jpeg', window.PHOTO_QUALITY);
+            let base64 = dataUrl.substring(dataUrl.indexOf(',') + 1);
+            return { dataUrl: dataUrl, base64: base64, mime: 'image/jpeg', px: cw + '×' + ch,
+                     ko: Math.round(base64.length * 0.75 / 1024), source: file.name || 'photo.jpg' };
+        };
+
+        window.addPannePhoto = async function(idCanon, input) {
+            let files = Array.prototype.slice.call(input.files || []);
+            input.value = "";
+            if (!files.length) return;
+            if (!window.pannePhotos[idCanon]) window.pannePhotos[idCanon] = [];
+            let box = document.getElementById('nt-photos-box-' + idCanon);
+            for (let i = 0; i < files.length; i++) {
+                if (window.pannePhotos[idCanon].length >= 6) { alert("6 photos au maximum par ticket."); break; }
+                if (box) box.insertAdjacentHTML('beforeend', '<div class="photo-thumb photo-loading">⏳</div>');
+                try {
+                    let ph = await window.shrinkPhoto(files[i]);
+                    window.pannePhotos[idCanon].push(ph);
+                } catch (e) { alert("Photo illisible : " + (files[i].name || "") + "\n" + e.message); }
+            }
+            window.renderPannePhotos(idCanon);
+        };
+
+        // Le contenu de la bandeau-photos est produit par une fonction à part : le panneau de droite se
+        // reconstruit entièrement à chaque re-rendu, et les photos déjà prises doivent réapparaître —
+        // elles ne sont pas encore sur le Drive, les perdre reviendrait à redemander une montée.
+        // Une colonne "photos" ne contient plus du texte mais une ou plusieurs URL Drive : on les
+        // affiche en vignettes cliquables plutôt qu'en ligne d'adresse illisible.
+        window.renderTicketField = function(d) {
+            let key = (d.k || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+            let val = (d.v || "").toString().trim();
+            if ((key === "photos" || key === "photo") && val.indexOf("http") === 0) {
+                let urls = val.split(/[\s,;]+/).filter(function(u) { return u.indexOf("http") === 0; });
+                return `<div style="margin-bottom:6px;"><span style="color:#7f8c8d;">${d.k} :</span>
+                    <div class="photo-strip" style="margin-top:4px;">${urls.map(function(u) {
+                        return `<a class="photo-thumb" href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="Photo du défaut" loading="lazy"></a>`;
+                    }).join('')}</div></div>`;
+            }
+            return `<div style="margin-bottom:4px;"><span style="color:#7f8c8d;">${d.k}:</span> <b style="color:#2c3e50;">${d.v}</b></div>`;
+        };
+
+        window.pannePhotoStripHtml = function(idCanon) {
+            let list = window.pannePhotos[idCanon] || [];
+            if (!list.length) return '<i style="font-size:10px; color:#999;">Aucune photo. Elles partiront sur le Drive avec le ticket.</i>';
+            return list.map(function(ph, i) {
+                return `<div class="photo-thumb" title="${ph.px} · ${ph.ko} ko"><img src="${ph.dataUrl}" alt="">
+                    <button onclick="window.dropPannePhoto('${idCanon}', ${i})" title="Retirer">×</button>
+                    <span>${ph.ko} ko</span></div>`;
+            }).join('');
+        };
+        window.renderPannePhotos = function(idCanon) {
+            let box = document.getElementById('nt-photos-box-' + idCanon); if (!box) return;
+            box.innerHTML = window.pannePhotoStripHtml(idCanon);
+        };
+
+        window.dropPannePhoto = function(idCanon, i) {
+            if (!window.pannePhotos[idCanon]) return;
+            window.pannePhotos[idCanon].splice(i, 1);
+            window.renderPannePhotos(idCanon);
+        };
+
+        // Envoi des photos APRÈS la création du ticket : chacune part avec l'identifiant du ticket, et
+        // c'est Apps Script qui inscrit l'URL Drive dans la colonne "photos" de la ligne concernée.
+        // Hors réseau, ticket et photos s'empilent dans la file dans cet ordre — donc la ligne existe
+        // toujours au moment où la photo arrive.
+        window.uploadPannePhotos = async function(idCanon, ticketId, onProgress) {
+            let list = window.pannePhotos[idCanon] || [];
+            let urls = [], ko = 0;
+            for (let i = 0; i < list.length; i++) {
+                if (onProgress) onProgress(i + 1, list.length);
+                try {
+                    let res = await window.apiPost({ action: "upload_photo", ticketId: ticketId,
+                        base64: list[i].base64, mimeType: list[i].mime,
+                        filename: "canon" + idCanon + "_" + Date.now() + "_" + (i + 1) + ".jpg" });
+                    let r = await res.json();
+                    if (r.status === "success") { if (r.url) urls.push(r.url); } else ko++;
+                } catch (e) { ko++; }
+            }
+            window.pannePhotos[idCanon] = [];
+            window.renderPannePhotos(idCanon);
+            return { urls: urls, ko: ko, total: list.length };
+        };
+
         window.buildPanneFormHtml = function(p) {
             return `
                 <details style="background:#fdf0ed; padding:10px; border-radius:6px; border:1px solid #fadbd8; font-size:12px; margin-top:12px;">
@@ -1769,6 +2015,14 @@
                         </div>
                         <span class="edit-label">Intervention effectuée</span><textarea id="nt-interv-${p.id}" class="edit-input" data-sug="ticket:intervention" rows="1" placeholder="Travaux réalisés..." style="padding:6px; margin-bottom:8px;"></textarea>
                         ${window.buildPiecesUI('nt-pieces-'+p.id, '', '', 'Pièces utilisées (Stock)', '')}
+                        <span class="edit-label" style="margin-top:8px; display:block;">📸 Photos du défaut</span>
+                        <div id="nt-photos-box-${p.id}" class="photo-strip">${window.pannePhotoStripHtml(p.id)}</div>
+                        <div style="display:flex; gap:5px; margin-bottom:8px;">
+                            <label class="photo-btn"><i class="fa-solid fa-camera"></i> Prendre une photo
+                                <input type="file" accept="image/*" capture="environment" onchange="window.addPannePhoto('${p.id}', this)"></label>
+                            <label class="photo-btn"><i class="fa-solid fa-images"></i> Depuis la galerie
+                                <input type="file" accept="image/*" multiple onchange="window.addPannePhoto('${p.id}', this)"></label>
+                        </div>
                         <button onclick="window.addNouveauTicket('${p.id}', this)" style="width:100%; background:#c0392b; color:white; border:none; padding:12px; border-radius:4px; font-weight:bold; cursor:pointer; margin-top:5px;"><i class="fa-solid fa-paper-plane"></i> Envoyer le ticket de Panne</button>
                     </div>
                 </details>
@@ -1794,7 +2048,7 @@
                     histHtml = `<details class="ticket-history" style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;"><i class="fa-solid fa-folder-open"></i> Historique d'interventions (${history.length})</summary><ul style="padding-left:15px; margin-top:10px;">`;
                     history.forEach(t => {
                         let dateStr = isNaN(new Date(t.date).getTime()) ? (t.date || "Inconnue") : new Date(t.date).toLocaleDateString('fr-FR');
-                        let ticketDetails = t.fullData.filter(d => d.v && d.v.toString().trim() !== "").map(d => `<div style="margin-bottom:4px;"><span style="color:#7f8c8d;">${d.k}:</span> <b style="color:#2c3e50;">${d.v}</b></div>`).join('');
+                        let ticketDetails = t.fullData.filter(d => d.v && d.v.toString().trim() !== "").map(d => window.renderTicketField(d)).join('');
                         histHtml += `
                         <li style="margin-bottom:8px; list-style:none;">
                             <details style="background:#fff; border:1px solid #e1e8ed; border-radius:4px; padding:8px; cursor:pointer;">
@@ -1984,7 +2238,7 @@
 
             let btn = document.getElementById('btn-save-edit'); let oldText = btn.innerText; btn.innerText = "⏳ Sauvegarde..."; btn.disabled = true;
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: id, fields: fieldsObj }) });
+                let res = await window.apiPost({ action: "update_general", idCanon: id, fields: fieldsObj });
                 let r = await res.json();
                 if (r.status === "success") {
                     let feat = window.snowCannons.features.find(f => f.properties.id == id);
@@ -2049,7 +2303,7 @@
         window.confirmSaveTicket = async function(canonId, defaut, idDiv) {
             let temp = window.tempTicketPayloads[idDiv]; if(!temp) return; let el = document.getElementById(idDiv); if(el) el.innerHTML = `<div style="text-align:center; padding:20px; font-weight:bold; color:#3498db; font-size:14px;">Enregistrement Google... ⏳</div>`;
             try {
-                const response = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(temp.payload) }); const result = await response.json();
+                const response = await window.apiPost(temp.payload); const result = await response.json();
                 if(result.status === "success") {
                     if (temp.piecesAdded && temp.piecesAdded !== "" && typeof window.deduireStockLocalEtServeur === "function") { window.deduireStockLocalEtServeur(temp.piecesAdded); }
                     let ticket = window.rawTickets.find(t => t.idCanon == canonId && t.defaut == defaut);
@@ -2068,7 +2322,7 @@
             });
             if (payloads.length === 0) return; let oldText = btn.innerText; btn.innerText = "⏳ Sauvegarde..."; btn.disabled = true;
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_suivi_multi", payloads: payloads }) }); let r = await res.json();
+                let res = await window.apiPost({ action: "update_suivi_multi", payloads: payloads }); let r = await res.json();
                 if (r.status === "success") {
                     btn.innerText = "✅ Succès !";
                     payloads.forEach(item => {
@@ -2085,7 +2339,7 @@
             let chk = document.getElementById(`chk-buses-${idCanon}`); if(!chk) return; let isChecked = chk.checked; let valBuses = isChecked ? "OUI" : ""; let currentYear = new Date().getFullYear(); let fieldsObj = { "Buses": valBuses, "années buses": isChecked ? currentYear.toString() : "" };
             let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: idCanon, fields: fieldsObj }) }); let r = await res.json();
+                let res = await window.apiPost({ action: "update_general", idCanon: idCanon, fields: fieldsObj }); let r = await res.json();
                 if(r.status === "success") {
                     btn.innerText = "✅ Validé !"; btn.style.background = "#27ae60"; let feat = window.snowCannons.features.find(f => f.properties.id == idCanon);
                     if(feat) { let objB = feat.properties.fullData.find(x => x.k.toLowerCase() === "buses"); if(objB) objB.v = valBuses; else feat.properties.fullData.push({k: "Buses", v: valBuses}); let objA = feat.properties.fullData.find(x => x.k.toLowerCase() === "années buses"); if(objA) objA.v = fieldsObj["années buses"]; else feat.properties.fullData.push({k: "années buses", v: fieldsObj["années buses"]}); }
@@ -2102,7 +2356,7 @@
             let successCount = 0;
             for(let i = 0; i < cannonsToReset.length; i++) {
                 let id = cannonsToReset[i].properties.id; let fieldsObj = { "Buses": "", "années buses": "" };
-                try { let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: id, fields: fieldsObj }) }); let r = await res.json(); if(r.status === "success") { successCount++; let objB = cannonsToReset[i].properties.fullData.find(x => x.k.toLowerCase() === "buses"); if(objB) objB.v = ""; let objA = cannonsToReset[i].properties.fullData.find(x => x.k.toLowerCase() === "années buses"); if(objA) objA.v = ""; } } catch(e) {}
+                try { let res = await window.apiPost({ action: "update_general", idCanon: id, fields: fieldsObj }); let r = await res.json(); if(r.status === "success") { successCount++; let objB = cannonsToReset[i].properties.fullData.find(x => x.k.toLowerCase() === "buses"); if(objB) objB.v = ""; let objA = cannonsToReset[i].properties.fullData.find(x => x.k.toLowerCase() === "années buses"); if(objA) objA.v = ""; } } catch(e) {}
             }
             window.updateMap(); if(window.mainTheme === 'entretien_tete') window.triggerGlobalFilterChart(); btn.innerText = "✅ Terminé"; setTimeout(() => { btn.innerText = oldText; btn.disabled = false; }, 3000); alert(successCount + " canons ont été remis à zéro.");
         };
@@ -2123,8 +2377,16 @@
 
             let oldText = btn.innerText; btn.innerText = "⏳ Transmission..."; btn.disabled = true;
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_ticket", fields: fieldsObj }) }); let r = await res.json();
-                if(r.status === "success") { btn.innerText = "🚀 Archivé !"; btn.style.background = "#27ae60"; window.rawTickets.push({ statut: etat.toLowerCase(), date: dateStr, idCanon: idCanon, defaut: defaut, id: r.id || "", fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]})) }); setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); window.closeAllListExpandRows && window.closeAllListExpandRows(); let ntf = document.getElementById('list-new-ticket-form'); if (ntf) { ntf.style.display = 'none'; ntf.innerHTML = ''; } window.refreshListViewIfActive(); }, 2000); } else { alert("Erreur serveur Sheets."); btn.innerText = oldText; btn.disabled = false; }
+                let res = await window.apiPost({ action: "add_ticket", fields: fieldsObj }); let r = await res.json();
+                if(r.status === "success") {
+                    // Les photos suivent le ticket, une par une, avec son identifiant.
+                    let nbPhotos = (window.pannePhotos[idCanon] || []).length;
+                    if (nbPhotos > 0) {
+                        let up = await window.uploadPannePhotos(idCanon, r.id || "", function(i, n) { btn.innerText = "📸 Photo " + i + "/" + n; });
+                        if (up.urls.length) fieldsObj["photos"] = up.urls.join(" ");
+                        if (up.ko) alert("⚠️ " + up.ko + " photo(s) sur " + up.total + " n'ont pas pu être déposées sur le Drive. Le ticket, lui, est bien enregistré.");
+                    }
+                    btn.innerText = "🚀 Archivé !"; btn.style.background = "#27ae60"; window.rawTickets.push({ statut: etat.toLowerCase(), date: dateStr, idCanon: idCanon, defaut: defaut, id: r.id || "", fullData: Object.keys(fieldsObj).map(k => ({k: k, v: fieldsObj[k]})) }); setTimeout(() => { btn.innerText = oldText; btn.disabled = false; btn.style.background = "#c0392b"; window.renderSelectionPanel(); window.updateMap(); window.triggerGlobalFilterChart(); window.closeAllListExpandRows && window.closeAllListExpandRows(); let ntf = document.getElementById('list-new-ticket-form'); if (ntf) { ntf.style.display = 'none'; ntf.innerHTML = ''; } window.refreshListViewIfActive(); }, 2000); } else { alert("Erreur serveur Sheets."); btn.innerText = oldText; btn.disabled = false; }
             } catch(e) { alert("Erreur réseau"); btn.innerText = oldText; btn.disabled = false; }
         };
 
@@ -2429,7 +2691,7 @@
             let histHtml = `<details class="ticket-history" style="margin-top:15px; font-size:12px; background:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e1e8ed;"><summary style="cursor:pointer; font-weight:600; color:#34495e;"><i class="fa-solid fa-folder-open"></i> Historique d'interventions (${history.length})</summary><ul style="padding-left:15px; margin-top:10px;">`;
             history.forEach(t => {
                 let dateStr = isNaN(new Date(t.date).getTime()) ? (t.date || "Inconnue") : new Date(t.date).toLocaleDateString('fr-FR');
-                let ticketDetails = t.fullData.filter(d => d.v && d.v.toString().trim() !== "").map(d => `<div style="margin-bottom:4px;"><span style="color:#7f8c8d;">${d.k}:</span> <b style="color:#2c3e50;">${d.v}</b></div>`).join('');
+                let ticketDetails = t.fullData.filter(d => d.v && d.v.toString().trim() !== "").map(d => window.renderTicketField(d)).join('');
                 histHtml += `<li style="margin-bottom:8px; list-style:none;"><details style="background:#fff; border:1px solid #e1e8ed; border-radius:4px; padding:8px; cursor:pointer;"><summary style="font-size:11.5px; font-weight:bold; outline:none; display:flex; justify-content:space-between; align-items:center;"><span>${dateStr} - <span style="color:#e74c3c;">${t.defaut}</span></span><span style="color:#bdc3c7; font-size:10px;">▼ Détails</span></summary><div style="margin-top:8px; padding-top:8px; border-top:1px dashed #eee; font-size:11px; cursor:default;">${ticketDetails}</div></details></li>`;
             });
             histHtml += `</ul></details>`;
@@ -2668,7 +2930,7 @@
             let payload = { idCanon: idCanon, piste: piste, deconnexion: chkDec ? chkDec.checked : false, preventif: chkPrev ? chkPrev.checked : false, vanneCorrectif: "", remarque: rem ? rem.value : "" };
             let oldText = btn.innerText; btn.innerText = "⏳..."; btn.disabled = true;
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_suivi_multi", payloads: [payload] }) });
+                let res = await window.apiPost({ action: "update_suivi_multi", payloads: [payload] });
                 let r = await res.json();
                 if (r.status === "success") {
                     let sRow = window.suiviEntretienData.find(row => row[0] == idCanon);
@@ -2729,6 +2991,450 @@
         };
 
         /* ========================================================================= */
+        /* CHAPITRE 4.F : MODE HORS RÉSEAU                                           */
+        /*                                                                           */
+        /* En haut des pistes, l'absence de réseau est la situation NORMALE, pas      */
+        /* l'exception. Trois mécanismes indépendants :                              */
+        /*   1. un instantané complet du Google Sheet en base locale, qui permet      */
+        /*      d'ouvrir l'application en lecture sans réseau ;                       */
+        /*   2. une file d'attente : toute saisie part immédiatement si le réseau     */
+        /*      répond, sinon elle est mise de côté et repart d'elle-même ensuite ;   */
+        /*   3. un service worker qui garde le code, les librairies et les tuiles.    */
+        /* ========================================================================= */
+
+        // CHAPITRE 4.F.1 — Base locale. La version passe de 2 à 3 : deux magasins s'ajoutent aux
+        // calques KMZ. openLocalDB renvoie une promesse — le démarrage doit pouvoir ATTENDRE la base
+        // avant de décider s'il sait ouvrir l'app sans réseau.
+        window.DB_NAME = "GMAONeigeDB"; window.DB_VERSION = 3; window.dbPromise = null;
+        window.openLocalDB = function() {
+            if (window.dbPromise) return window.dbPromise;
+            window.dbPromise = new Promise(function(resolve) {
+                if (!window.indexedDB) { resolve(null); return; }
+                let req; try { req = window.indexedDB.open(window.DB_NAME, window.DB_VERSION); } catch (e) { resolve(null); return; }
+                req.onupgradeneeded = function(ev) {
+                    let db = ev.target.result;
+                    if (!db.objectStoreNames.contains("kmz_layers")) db.createObjectStore("kmz_layers", { keyPath: "id" });
+                    if (!db.objectStoreNames.contains("snapshot")) db.createObjectStore("snapshot", { keyPath: "key" });
+                    if (!db.objectStoreNames.contains("outbox")) db.createObjectStore("outbox", { keyPath: "seq", autoIncrement: true });
+                };
+                req.onsuccess = function(ev) { window.localDB = ev.target.result; resolve(window.localDB); };
+                req.onerror = function() { resolve(null); };
+                req.onblocked = function() { resolve(null); };
+                setTimeout(function() { resolve(window.localDB || null); }, 6000);
+            });
+            return window.dbPromise;
+        };
+
+        window.idbRun = function(store, mode, fn) {
+            return window.openLocalDB().then(function(db) {
+                if (!db || !db.objectStoreNames.contains(store)) return null;
+                return new Promise(function(resolve, reject) {
+                    let tx = db.transaction(store, mode);
+                    let req = fn(tx.objectStore(store));
+                    tx.onerror = function() { reject(tx.error); };
+                    tx.onabort = function() { reject(tx.error); };
+                    if (req) { req.onsuccess = function() { resolve(req.result); }; req.onerror = function() { reject(req.error); }; }
+                    else { tx.oncomplete = function() { resolve(true); }; }
+                });
+            }).catch(function() { return null; });
+        };
+        window.idbPut    = function(store, val) { return window.idbRun(store, "readwrite", function(os) { return os.put(val); }); };
+        window.idbGet    = function(store, key) { return window.idbRun(store, "readonly",  function(os) { return os.get(key); }); };
+        window.idbGetAll = function(store)      { return window.idbRun(store, "readonly",  function(os) { return os.getAll(); }); };
+        window.idbDelete = function(store, key) { return window.idbRun(store, "readwrite", function(os) { return os.delete(key); }); };
+        window.idbClear  = function(store)      { return window.idbRun(store, "readwrite", function(os) { return os.clear(); }); };
+
+        window.uuid = function() {
+            if (window.crypto && window.crypto.randomUUID) { try { return window.crypto.randomUUID(); } catch (e) {} }
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                let r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            });
+        };
+
+        // CHAPITRE 4.F.2 — Instantané. On stocke la réponse doGet TELLE QUELLE : au redémarrage hors
+        // réseau elle repasse par exactement le même code d'analyse que la réponse en direct, donc
+        // aucune divergence de comportement possible entre les deux modes.
+        window.offlineMode = false; window.snapshotAt = 0;
+        window.saveSnapshot = function(payload) {
+            return window.idbPut("snapshot", { key: "sheets", at: Date.now(), payload: payload })
+                .then(function() { window.snapshotAt = Date.now(); })
+                .catch(function() {});
+        };
+        window.loadSnapshot = function() { return window.idbGet("snapshot", "sheets"); };
+        window.fmtSnapshotDate = function(ts) {
+            if (!ts) return "date inconnue";
+            let d = new Date(ts);
+            return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + " à " +
+                   d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        };
+
+        // CHAPITRE 4.F.3 — File d'attente. get_drive_file est une LECTURE : la mettre en file n'aurait
+        // aucun sens (personne n'attendrait le résultat), elle échoue donc franchement hors réseau.
+        window.QUEUEABLE_ACTIONS = ["update_general", "add_ticket", "update_ticket", "update_suivi_multi",
+            "save_atelier", "add_stock_item", "update_stock_item", "delete_stock_item", "update_webcam",
+            "add_event", "update_event", "delete_event", "add_production", "update_production",
+            "delete_production", "upload_photo"];
+        window.ACTION_LABELS = {
+            update_general: "Fiche canon", add_ticket: "Nouveau ticket", update_ticket: "Ticket modifié",
+            update_suivi_multi: "Suivi d'entretien", save_atelier: "Banc d'essais", add_stock_item: "Stock : ajout",
+            update_stock_item: "Stock : modification", delete_stock_item: "Stock : suppression",
+            update_webcam: "Webcam", add_event: "Calendrier : ajout", update_event: "Calendrier : modification",
+            delete_event: "Calendrier : suppression", add_production: "Production : ajout",
+            update_production: "Production : modification", delete_production: "Production : suppression",
+            upload_photo: "Photo de panne"
+        };
+        window.MAX_OUTBOX_TRIES = 3;
+        window.outboxCount = 0; window.outboxFailed = 0; window.outboxFlushing = false;
+
+        window.enqueueOutbox = function(payload) {
+            return window.idbPut("outbox", { payload: payload, at: Date.now(), tries: 0, err: "" })
+                .then(function(seq) { window.outboxCount++; window.updateNetBanner(); return seq; });
+        };
+
+        // Réponse de substitution : même forme qu'un objet Response, pour que les ~20 points d'appel
+        // gardent leur `await res.json()` sans distinction entre envoi réel et mise en attente.
+        window.fakeResponse = function(obj) {
+            return { ok: true, status: 200, queued: true, json: async function() { return obj; }, text: async function() { return JSON.stringify(obj); } };
+        };
+
+        // Envoi brut, sans file d'attente : le seul endroit du fichier qui parle encore directement au
+        // réseau. apiPost et flushOutbox s'appuient dessus ; tout le reste de l'application passe par
+        // apiPost et hérite donc automatiquement du comportement hors réseau.
+        window.rawPost = function(payload) {
+            return fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(payload) });
+        };
+
+        window.ADD_ACTIONS = ["add_ticket", "add_production", "add_event"];
+
+        window.apiPost = async function(payload, opts) {
+            opts = opts || {};
+            let queueable = window.QUEUEABLE_ACTIONS.indexOf(payload.action) !== -1 && opts.noQueue !== true;
+
+            // Les créations reçoivent leur identifiant ICI, côté navigateur, et non plus au moment de
+            // l'écriture dans le Sheet. Sans cela, une ligne créée hors réseau n'aurait pas d'id tant
+            // qu'elle n'est pas partie — impossible de la modifier ou de la supprimer entre-temps, et
+            // impossible pour une modification en file de retrouver sa cible. Le serveur reprend cet
+            // identifiant tel quel (data.clientId) au lieu d'en fabriquer un nouveau.
+            if (window.ADD_ACTIONS.indexOf(payload.action) !== -1 && !payload.clientId) payload.clientId = window.uuid();
+
+            // Un envoi direct alors que la file n'est pas vide inverserait l'ordre des opérations
+            // (ex. le ticket créé hors réseau arriverait APRÈS sa propre clôture) : on empile.
+            if (queueable && window.outboxCount > 0) {
+                await window.enqueueOutbox(payload);
+                window.flushOutbox();
+                return window.fakeResponse({ status: "success", queued: true, id: payload.clientId || "" });
+            }
+
+            if (navigator.onLine !== false) {
+                try {
+                    let res = await window.rawPost(payload);
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    window.netLastOk = Date.now();
+                    return res;
+                } catch (e) {
+                    if (!queueable) throw e;
+                }
+            } else if (!queueable) {
+                throw new Error("Action impossible hors réseau.");
+            }
+
+            await window.enqueueOutbox(payload);
+            return window.fakeResponse({ status: "success", queued: true, id: payload.clientId || "" });
+        };
+
+        window.flushOutbox = async function(manual) {
+            if (window.outboxFlushing) return;
+            if (navigator.onLine === false) { if (manual) alert("Toujours hors réseau : les saisies restent en attente."); return; }
+            window.outboxFlushing = true;
+            let sent = 0, refused = 0, stopped = false;
+            try {
+                let items = await window.idbGetAll("outbox");
+                if (!items) items = [];
+                items.sort(function(a, b) { return a.seq - b.seq; });
+                for (let i = 0; i < items.length; i++) {
+                    let it = items[i];
+                    if ((it.tries || 0) >= window.MAX_OUTBOX_TRIES) { refused++; continue; }
+                    let r = null;
+                    try {
+                        let res = await window.rawPost(it.payload);
+                        if (!res.ok) throw new Error("HTTP " + res.status);
+                        r = await res.json();
+                    } catch (e) {
+                        // Coupure réseau : on s'arrête net et on garde l'ordre pour la prochaine fois.
+                        stopped = true; break;
+                    }
+                    if (r && r.status === "success") { await window.idbDelete("outbox", it.seq); sent++; }
+                    else {
+                        // Refus du serveur (canon introuvable, onglet absent…) : réessayer en boucle ne
+                        // servirait à rien. On compte les tentatives et on passe à la suivante.
+                        it.tries = (it.tries || 0) + 1; it.err = (r && r.msg) ? String(r.msg) : "Refus du serveur";
+                        await window.idbPut("outbox", it);
+                        if (it.tries >= window.MAX_OUTBOX_TRIES) refused++;
+                    }
+                }
+            } catch (e) { stopped = true; }
+            window.outboxFlushing = false;
+            await window.refreshOutboxCount();
+            if (window.renderOffPanel) window.renderOffPanel();
+            if (manual) {
+                if (sent > 0 && window.outboxCount === 0) alert(sent + " saisie(s) envoyée(s). La file est vide.");
+                else if (stopped) alert("Réseau interrompu : " + sent + " saisie(s) envoyée(s), le reste attend.");
+                else if (refused > 0) alert(sent + " saisie(s) envoyée(s). " + refused + " refusée(s) par le serveur — voir le détail dans les Paramètres.");
+                else if (sent === 0) alert("Aucune saisie en attente.");
+            }
+            if (sent > 0 && window.outboxCount === 0 && !window.offlineMode) window.markDataStale();
+        };
+
+        window.refreshOutboxCount = async function() {
+            let items = await window.idbGetAll("outbox");
+            items = items || [];
+            window.outboxCount = items.length;
+            window.outboxFailed = items.filter(function(i) { return (i.tries || 0) >= window.MAX_OUTBOX_TRIES; }).length;
+            window.updateNetBanner();
+            return items;
+        };
+
+        // CHAPITRE 4.F.4 — Bandeau d'état. Un seul message à la fois, par ordre de gravité :
+        // hors réseau > saisies en attente > données envoyées mais pas encore relues.
+        window.dataStale = false;
+        window.markDataStale = function() { window.dataStale = true; window.updateNetBanner(); };
+        window.updateNetBanner = function() {
+            let b = document.getElementById('net-banner'); if (!b) return;
+            let txt = b.querySelector('.nb-txt'); let act = b.querySelector('.nb-actions');
+            let cls = "", msg = "", btn = "";
+            let offline = (navigator.onLine === false) || window.offlineMode;
+            if (offline) {
+                cls = "offline";
+                msg = "🔌 Hors réseau — données du " + window.fmtSnapshotDate(window.snapshotAt);
+                if (window.outboxCount > 0) msg += " · " + window.outboxCount + " saisie(s) en attente";
+                btn = `<button onclick="window.offRetryOnline(this)">Réessayer</button>`;
+            } else if (window.outboxCount > 0) {
+                cls = "pending";
+                msg = "⏳ " + window.outboxCount + " saisie(s) en attente d'envoi";
+                if (window.outboxFailed > 0) msg += " · " + window.outboxFailed + " refusée(s)";
+                btn = `<button onclick="window.flushOutbox(true)">Envoyer</button>`;
+            } else if (window.dataStale) {
+                cls = "stale";
+                msg = "🔄 Saisies envoyées — rechargez pour voir le Google Sheet à jour";
+                btn = `<button onclick="location.reload()">Recharger</button><button onclick="window.dataStale=false;window.updateNetBanner();" style="margin-left:5px;">Plus tard</button>`;
+            }
+            if (!cls) { b.className = ""; document.body.classList.remove('has-net-banner'); if (window.map) setTimeout(function() { window.map.invalidateSize(); }, 60); return; }
+            txt.innerText = msg; act.innerHTML = btn;
+            b.className = "show " + cls;
+            document.body.classList.add('has-net-banner');
+            if (window.map) setTimeout(function() { window.map.invalidateSize(); }, 60);
+        };
+
+        window.offRetryOnline = async function(btn) {
+            if (btn) { btn.disabled = true; btn.innerText = "…"; }
+            try {
+                let res = await window.fetchWithTimeout(GOOGLE_API_URL);
+                if (res.ok) { location.reload(); return; }
+            } catch (e) {}
+            if (btn) { btn.disabled = false; btn.innerText = "Réessayer"; }
+            alert("Le serveur ne répond toujours pas.");
+        };
+
+        window.addEventListener('online', function() {
+            window.updateNetBanner();
+            if (window.outboxCount > 0) window.flushOutbox();
+        });
+        window.addEventListener('offline', function() { window.updateNetBanner(); });
+
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 4.F.5 — SERVICE WORKER ET CACHE DES TUILES                        */
+        /* ------------------------------------------------------------------------- */
+        window.swReg = null; window.swVersion = ""; window.tilesCount = 0; window.storageUsage = 0;
+        window.registerServiceWorker = function() {
+            if (!('serviceWorker' in navigator)) { window.swUnavailable = "Navigateur sans service worker."; return; }
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                // Exigence du navigateur, pas un choix : hors https, l'API est tout simplement absente.
+                window.swUnavailable = "Le mode hors réseau complet exige une adresse https:// (page servie ici en " + location.protocol + ").";
+                return;
+            }
+            navigator.serviceWorker.register('sw.js').then(function(reg) {
+                window.swReg = reg;
+                reg.addEventListener('updatefound', function() {
+                    let nw = reg.installing; if (!nw) return;
+                    nw.addEventListener('statechange', function() {
+                        if (nw.state === 'installed' && navigator.serviceWorker.controller) window.swUpdateReady = true;
+                    });
+                });
+                if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ type: 'VERSION' });
+                window.offRefreshTileInfo();
+            }).catch(function(e) { window.swUnavailable = "Enregistrement refusé : " + e.message; });
+
+            navigator.serviceWorker.addEventListener('message', function(ev) {
+                let m = ev.data || {};
+                if (m.type === 'VERSION') { window.swVersion = m.version; if (window.renderOffPanel) window.renderOffPanel(); }
+                else if (m.type === 'TILES_INFO') { window.tilesCount = m.count; window.storageUsage = m.usage; if (window.renderOffPanel) window.renderOffPanel(); }
+                else if (m.type === 'TILES_CLEARED') { window.tilesCount = 0; window.offRefreshTileInfo(); }
+                else if (m.type === 'PREFETCH_PROGRESS') window.offTileProgress(m);
+                else if (m.type === 'PREFETCH_DONE') window.offTileDone(m);
+            });
+        };
+        window.swPost = function(msg) {
+            let c = navigator.serviceWorker && navigator.serviceWorker.controller;
+            if (!c) return false;
+            c.postMessage(msg); return true;
+        };
+        window.offRefreshTileInfo = function() { setTimeout(function() { window.swPost({ type: 'TILES_INFO' }); }, 300); };
+
+        // Conversion latitude/longitude → indices de tuile (projection Web Mercator, la même que
+        // Leaflet). Sert à énumérer à l'avance toutes les tuiles couvrant le domaine skiable.
+        window.lngToTileX = function(lng, z) { return Math.floor((lng + 180) / 360 * Math.pow(2, z)); };
+        window.latToTileY = function(lat, z) {
+            let r = lat * Math.PI / 180;
+            return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z));
+        };
+
+        // Emprise des canons, élargie de 15 % pour couvrir les accès et le bas de station.
+        window.getDomainBounds = function() {
+            let feats = (window.snowCannons && window.snowCannons.features) ? window.snowCannons.features : [];
+            let pts = feats.map(function(f) { return f.geometry.coordinates; }).filter(function(c) { return c && c[0] && c[1]; });
+            if (pts.length === 0) return null;
+            let minLng = Math.min.apply(null, pts.map(function(c) { return c[0]; }));
+            let maxLng = Math.max.apply(null, pts.map(function(c) { return c[0]; }));
+            let minLat = Math.min.apply(null, pts.map(function(c) { return c[1]; }));
+            let maxLat = Math.max.apply(null, pts.map(function(c) { return c[1]; }));
+            let padLng = Math.max((maxLng - minLng) * 0.15, 0.004);
+            let padLat = Math.max((maxLat - minLat) * 0.15, 0.003);
+            return { minLng: minLng - padLng, maxLng: maxLng + padLng, minLat: minLat - padLat, maxLat: maxLat + padLat };
+        };
+
+        window.buildTileUrlList = function(zMax) {
+            let bounds = window.getDomainBounds(); if (!bounds) return [];
+            let tpl = (window.satLayer && window.satLayer._url) ? window.satLayer._url
+                    : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+            let subs = ['a', 'b', 'c'];
+            let urls = [];
+            for (let z = 12; z <= zMax; z++) {
+                let x0 = window.lngToTileX(bounds.minLng, z), x1 = window.lngToTileX(bounds.maxLng, z);
+                let y0 = window.latToTileY(bounds.maxLat, z), y1 = window.latToTileY(bounds.minLat, z);
+                for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) {
+                    for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) {
+                        let u = tpl.replace('{s}', subs[(x + y) % subs.length])
+                                   .replace('{z}', z).replace('{x}', x).replace('{y}', y).replace('{r}', '');
+                        urls.push(u);
+                    }
+                }
+            }
+            return urls;
+        };
+
+        window.offEstimateTiles = function() {
+            let el = document.getElementById('off-tile-estimate'); if (!el) return;
+            let sel = document.getElementById('off-tile-zoom');
+            let zMax = sel ? parseInt(sel.value) : 16;
+            let urls = window.buildTileUrlList(zMax);
+            if (urls.length === 0) { el.innerHTML = "<i>Emprise inconnue : les canons ne sont pas encore chargés.</i>"; return; }
+            // ~18 ko par tuile satellite en JPEG : ordre de grandeur mesuré sur ce fond de carte.
+            let mo = Math.round(urls.length * 18 / 1024);
+            el.innerHTML = "≈ <b>" + urls.length.toLocaleString('fr-FR') + "</b> tuiles, soit environ <b>" + mo + " Mo</b> à télécharger.";
+        };
+
+        window.offDownloadDomain = function(btn) {
+            if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
+                alert("Le cache de carte n'est pas actif.\n" + (window.swUnavailable || "Rechargez la page une fois pour l'activer."));
+                return;
+            }
+            let sel = document.getElementById('off-tile-zoom');
+            let zMax = sel ? parseInt(sel.value) : 16;
+            let urls = window.buildTileUrlList(zMax);
+            if (urls.length === 0) { alert("Emprise du domaine inconnue : aucun canon géolocalisé."); return; }
+            let mo = Math.round(urls.length * 18 / 1024);
+            if (!confirm("Télécharger " + urls.length.toLocaleString('fr-FR') + " tuiles (environ " + mo + " Mo) ?\n\nÀ faire en wifi. Laissez cet écran ouvert jusqu'à la fin.")) return;
+            document.getElementById('off-tile-progress').style.display = 'block';
+            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Téléchargement…';
+            window.swPost({ type: 'PREFETCH_TILES', urls: urls });
+        };
+        window.offTileProgress = function(m) {
+            let bar = document.getElementById('off-tile-bar'); let txt = document.getElementById('off-tile-progress-txt');
+            if (bar) bar.style.width = Math.round(m.done / m.total * 100) + '%';
+            if (txt) txt.innerText = m.done.toLocaleString('fr-FR') + " / " + m.total.toLocaleString('fr-FR') + " tuiles" + (m.fail ? " (" + m.fail + " échec(s))" : "");
+        };
+        window.offTileDone = function(m) {
+            let btn = document.getElementById('off-tile-btn');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-download"></i> Télécharger le domaine'; }
+            let txt = document.getElementById('off-tile-progress-txt');
+            if (txt) txt.innerText = "Terminé : " + m.ok.toLocaleString('fr-FR') + " tuiles disponibles hors réseau" + (m.fail ? ", " + m.fail + " échec(s)" : "") + ".";
+            window.offRefreshTileInfo();
+        };
+        window.offClearTiles = function() {
+            if (!confirm("Vider le cache des tuiles ? La carte redeviendra vide hors réseau.")) return;
+            if (!window.swPost({ type: 'CLEAR_TILES' })) alert("Le cache de carte n'est pas actif.");
+        };
+
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 4.F.6 — PANNEAU « MODE HORS RÉSEAU » DES PARAMÈTRES               */
+        /* ------------------------------------------------------------------------- */
+        window.renderOffPanel = async function() {
+            let st = document.getElementById('off-status'); if (!st) return;
+            let lignes = [];
+            lignes.push("<b>Réseau :</b> " + (navigator.onLine === false ? "<span style='color:#c0392b;'>absent</span>" : "<span style='color:#16a085;'>disponible</span>"));
+            lignes.push("<b>Source affichée :</b> " + (window.offlineMode ? "copie locale" : "Google Sheet en direct"));
+            lignes.push("<b>Copie locale :</b> " + (window.snapshotAt ? "du " + window.fmtSnapshotDate(window.snapshotAt) : "<i>aucune</i>"));
+            if (window.swUnavailable) lignes.push("<b>Cache application :</b> <span style='color:#c0392b;'>inactif</span><br><span style='font-size:10px;'>" + window.swUnavailable + "</span>");
+            else lignes.push("<b>Cache application :</b> " + (navigator.serviceWorker && navigator.serviceWorker.controller ? "actif" + (window.swVersion ? " (v" + window.swVersion + ")" : "") : "en cours d'activation…"));
+            lignes.push("<b>Tuiles en cache :</b> " + (window.tilesCount || 0).toLocaleString('fr-FR') +
+                (window.storageUsage ? " · " + Math.round(window.storageUsage / 1048576) + " Mo utilisés au total" : ""));
+            if (window.swUpdateReady) lignes.push("<b style='color:#e67e22;'>Une mise à jour est prête</b> — fermez puis rouvrez l'application.");
+            st.innerHTML = lignes.join("<br>");
+
+            let box = document.getElementById('off-outbox-list');
+            if (box) {
+                let items = await window.refreshOutboxCount();
+                if (!items || items.length === 0) box.innerHTML = "<i style='font-size:11px; color:#888;'>Rien en attente : tout est enregistré dans le Google Sheet.</i>";
+                else {
+                    box.innerHTML = items.sort(function(a, b) { return a.seq - b.seq; }).map(function(it) {
+                        let ko = (it.tries || 0) >= window.MAX_OUTBOX_TRIES;
+                        let lbl = window.ACTION_LABELS[it.payload.action] || it.payload.action;
+                        let cible = it.payload.idCanon || it.payload.idPiece || it.payload.nom || (it.payload.fields && (it.payload.fields["n°regard"] || it.payload.fields["Numéro de prod"])) || "";
+                        return `<div style="display:flex; align-items:center; gap:6px; font-size:11px; padding:6px; border:1px solid ${ko ? '#f5b7b1' : '#e6ecf2'}; background:${ko ? '#fdedec' : '#fff'}; border-radius:4px; margin-bottom:5px;">
+                            <div style="flex:1; min-width:0;"><b>${lbl}</b>${cible ? ' · ' + cible : ''}<br>
+                            <span style="color:#888; font-size:10px;">${window.fmtSnapshotDate(it.at)}${ko ? ' — refusé : ' + (it.err || '') : ''}</span></div>
+                            ${ko ? `<button onclick="window.offRetryItem(${it.seq})" title="Réessayer" style="background:#e67e22; color:#fff; border:none; padding:4px 7px; border-radius:3px; cursor:pointer;">↻</button>` : ''}
+                            <button onclick="window.offDropItem(${it.seq})" title="Supprimer" style="background:#c0392b; color:#fff; border:none; padding:4px 7px; border-radius:3px; cursor:pointer;">✕</button>
+                        </div>`;
+                    }).join('');
+                }
+            }
+            window.offEstimateTiles();
+        };
+        window.offRetryItem = async function(seq) {
+            let it = await window.idbGet("outbox", seq); if (!it) return;
+            it.tries = 0; it.err = ""; await window.idbPut("outbox", it);
+            window.flushOutbox(true);
+        };
+        window.offDropItem = async function(seq) {
+            if (!confirm("Supprimer cette saisie sans l'envoyer ?")) return;
+            await window.idbDelete("outbox", seq); await window.refreshOutboxCount(); window.renderOffPanel();
+        };
+        window.offClearOutbox = async function() {
+            if (!confirm("Vider toute la file ? Les saisies non envoyées seront définitivement perdues.")) return;
+            await window.idbClear("outbox"); await window.refreshOutboxCount(); window.renderOffPanel();
+        };
+        window.offClearSnapshot = async function() {
+            if (!confirm("Effacer la copie locale ? L'application ne s'ouvrira plus sans réseau tant qu'elle n'aura pas rechargé une fois.")) return;
+            await window.idbDelete("snapshot", "sheets"); window.snapshotAt = 0; window.renderOffPanel(); window.updateNetBanner();
+        };
+        window.offRefreshData = async function(btn) {
+            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> …';
+            try {
+                let res = await window.fetchWithTimeout(GOOGLE_API_URL);
+                let data = JSON.parse(await res.text());
+                if (data.status === "error") throw new Error(data.message);
+                await window.saveSnapshot(data);
+                btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Rafraîchir maintenant';
+                window.renderOffPanel();
+                if (confirm("Copie locale mise à jour.\nRecharger l'application pour afficher ces données ?")) location.reload();
+            } catch (e) {
+                btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Rafraîchir maintenant';
+                alert("Échec : " + e.message);
+            }
+        };
+
+        /* ========================================================================= */
         /* CHAPITRE 5 : FETCH ET ANALYSE DES DONNÉES GOOGLE SHEETS                    */
         /* ========================================================================= */
         // CHAPITRE 5.A — Remplissage du flocon de l'écran de démarrage. Deux régimes : un rattrapage
@@ -2770,13 +3476,30 @@
             return Promise.race([ fetch(finalUrl, options).catch(e => { if (e.name === 'AbortError' || e.message.includes('aborted')) { throw new Error("Connexion interrompue."); } throw e; }), timeoutPromise ]);
         };
 
+        // CHAPITRE 5.A.2 — Le réseau est tenté en premier, TOUJOURS. S'il ne répond pas et qu'une copie
+        // locale existe, l'application démarre dessus au lieu d'afficher l'écran d'erreur : c'est tout
+        // l'objet du mode hors réseau. La réponse en direct est archivée telle quelle, pour que le
+        // démarrage hors réseau emprunte exactement le même chemin d'analyse que le démarrage normal.
         window.fetchGoogleSheetsData = async function() {
             window.setStep(1, "Connexion au serveur Google...");
-            const response = await window.fetchWithTimeout(GOOGLE_API_URL);
-            if (!response.ok) throw new Error("Accès refusé. Vérifiez l'URL.");
-            let textData = await response.text();
-            let data; try { data = JSON.parse(textData); } catch(e) { throw new Error("Format invalide."); }
-            if (data.status === "error") throw new Error(data.message || "Erreur serveur Apps Script.");
+            let data = null;
+            try {
+                if (navigator.onLine === false) throw new Error("Appareil hors réseau.");
+                const response = await window.fetchWithTimeout(GOOGLE_API_URL);
+                if (!response.ok) throw new Error("Accès refusé. Vérifiez l'URL.");
+                let textData = await response.text();
+                try { data = JSON.parse(textData); } catch(e) { throw new Error("Format invalide."); }
+                if (data.status === "error") throw new Error(data.message || "Erreur serveur Apps Script.");
+                window.offlineMode = false;
+                window.saveSnapshot(data);
+            } catch (netErr) {
+                let snap = null;
+                try { snap = await window.loadSnapshot(); } catch(e) {}
+                if (!snap || !snap.payload) throw netErr;
+                data = snap.payload;
+                window.offlineMode = true; window.snapshotAt = snap.at;
+                window.setStep(1, "Hors réseau — copie du " + window.fmtSnapshotDate(snap.at));
+            }
 
             window.rawGeneral = data.general || []; window.rawHistorique = data.historique || []; window.rawTicketsSheet = data.tickets || [];
             window.meteoHistData = data.meteo_hist || []; window.meteoFroidData = data.meteo_froid || []; window.suiviEntretienData = data.suivi || [];
@@ -2879,8 +3602,15 @@
             Object.values(dictGeneral).forEach(canon => { if (canon.lat !== undefined && canon.lng !== undefined && !isNaN(canon.lat) && !isNaN(canon.lng) && canon.lat !== 0) { window.snowCannons.features.push({ "type": "Feature", "geometry": { "type": "Point", "coordinates": [canon.lng, canon.lat] }, "properties": canon }); } });
 
             window.setLoaderProgress(100);
-            let lt = document.getElementById('loading-title'); if(lt) { lt.innerText = "✅ Chargement Réussi !"; lt.style.color = "#27ae60"; } let lst = document.getElementById('loading-step'); if(lst) lst.style.display = 'none'; let ld = document.getElementById('loading-desc'); if(ld) ld.innerHTML = `${window.snowCannons.features.length} canons placés.`;
-            setTimeout(() => { window.initAppUI(); if(window.initDriveKMZList) window.initDriveKMZList(); if(window.loadSettingsLocally) window.loadSettingsLocally(); if(window.initMobileDock) window.initMobileDock(); if (window.innerWidth <= 768) { let sb = document.getElementById('sidebar'); if (sb) sb.classList.add('collapsed'); } let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; }, 800);
+            let lt = document.getElementById('loading-title');
+            if(lt) {
+                lt.innerText = window.offlineMode ? "🔌 Ouvert hors réseau" : "✅ Chargement Réussi !";
+                lt.style.color = window.offlineMode ? "#c0392b" : "#27ae60";
+            }
+            let lst = document.getElementById('loading-step'); if(lst) lst.style.display = 'none';
+            let ld = document.getElementById('loading-desc');
+            if(ld) ld.innerHTML = `${window.snowCannons.features.length} canons placés.` + (window.offlineMode ? `<br><span style="color:#c0392b;">Copie locale du ${window.fmtSnapshotDate(window.snapshotAt)}</span>` : '');
+            setTimeout(() => { window.initAppUI(); if(window.initDriveKMZList) window.initDriveKMZList(); if(window.loadSettingsLocally) window.loadSettingsLocally(); if(window.initMobileDock) window.initMobileDock(); if (window.innerWidth <= 768) { let sb = document.getElementById('sidebar'); if (sb) sb.classList.add('collapsed'); } let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; window.refreshOutboxCount().then(function() { if (!window.offlineMode && window.outboxCount > 0) window.flushOutbox(); }); }, 800);
         };
 
         /* ========================================================================= */
@@ -3379,7 +4109,7 @@
             document.querySelectorAll(`.tech-field-${safeId}`).forEach(inp => { fields[inp.getAttribute('data-head')] = inp.value; });
             let oldText = btn.innerText; btn.innerText = "⏳ Envoi..."; btn.disabled = true;
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_general", idCanon: idCanon, fields: fields }) });
+                let res = await window.apiPost({ action: "update_general", idCanon: idCanon, fields: fields });
                 let r = await res.json();
                 if (r.status === "success") {
                     let feat = window.snowCannons.features.find(f => f.properties.id == idCanon);
@@ -3457,7 +4187,7 @@
 
             let oldText = btn.innerText; btn.innerText = "⏳ Enregistrement..."; btn.disabled = true;
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "save_atelier", fields: fieldsObj }) });
+                let res = await window.apiPost({ action: "save_atelier", fields: fieldsObj });
                 let r = await res.json();
 
                 if(r.status === "success") {
@@ -3763,7 +4493,7 @@
             let oldText = btn.innerText; btn.innerText = "⏳ Envoi..."; btn.disabled = true;
 
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "add_stock_item", fields: fieldsObj }) }); let r = await res.json();
+                let res = await window.apiPost({ action: "add_stock_item", fields: fieldsObj }); let r = await res.json();
                 if (r.status === "success") {
                     btn.innerText = "✅ Succès !";
                     let newRow = new Array(window.rawStock[0].length).fill("");
@@ -3781,7 +4511,7 @@
             let oldText = btn.innerText; btn.innerText = "⏳ Enregistrement..."; btn.disabled = true;
 
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }) }); let r = await res.json();
+                let res = await window.apiPost({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }); let r = await res.json();
                 if (r.status === "success") {
                     btn.innerText = "✅ Enregistré !"; btn.style.background = "#27ae60";
                     let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g, "") : "");
@@ -3801,7 +4531,7 @@
             let oldText = btn.innerText; btn.innerText = "⏳ Sup..."; btn.disabled = true;
 
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_stock_item", idPiece: numPiece }) }); let r = await res.json();
+                let res = await window.apiPost({ action: "delete_stock_item", idPiece: numPiece }); let r = await res.json();
                 if (r.status === "success") {
                     btn.innerText = "🗑️ Supprimé";
                     let headers = window.rawStock[0].map(h => h ? h.toString().toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g, "") : "");
@@ -3869,7 +4599,7 @@
                     }
 
                     try {
-                        fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj }) });
+                        window.apiPost({ action: "update_stock_item", idPiece: numPiece, fields: fieldsObj });
                     } catch(e) { console.error("Échec de la MàJ du stock en arrière-plan", e); }
                 }
             }
@@ -3894,7 +4624,7 @@
             let select = document.getElementById('drive-kmz-select'); if (!select || !select.value) { alert("Veuillez sélectionner un fichier."); return; }
             let fileId = select.value; let fileName = select.options[select.selectedIndex].text; let oldHtml = btn.innerHTML; btn.innerHTML = "⏳"; btn.disabled = true;
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "get_drive_file", fileId: fileId }) }); let r = await res.json();
+                let res = await window.apiPost({ action: "get_drive_file", fileId: fileId }); let r = await res.json();
                 if(r.status === "success") {
                     let binaryString = atob(r.base64); let bytes = new Uint8Array(binaryString.length); for (let i = 0; i < binaryString.length; i++) { bytes[i] = binaryString.charCodeAt(i); }
                     let kmlString = "";
@@ -4035,7 +4765,14 @@
         /* ========================================================================= */
         /* CHAPITRE 7.F : PERSISTANCE LOCALE (INDEXEDDB) DES CALQUES IMPORTÉS         */
         /* ========================================================================= */
-        window.initLocalDB = function() { try { if (!window.indexedDB) return; const request = window.indexedDB.open("GMAONeigeDB", 2); request.onupgradeneeded = function(event) { window.localDB = event.target.result; if (!window.localDB.objectStoreNames.contains("kmz_layers")) window.localDB.createObjectStore("kmz_layers", { keyPath: "id" }); }; request.onsuccess = function(event) { window.localDB = event.target.result; window.loadSavedLayersFromDB(); }; } catch(e) {} };
+        // L'ouverture de la base est déportée dans openLocalDB (CHAPITRE 4.F.1), qui gère aussi les
+        // magasins « snapshot » et « outbox ». On attend ici la base AVANT de charger les calques :
+        // le démarrage a besoin de savoir tout de suite s'il dispose d'une copie locale exploitable.
+        window.initLocalDB = async function() {
+            let db = await window.openLocalDB();
+            if (db) window.loadSavedLayersFromDB();
+            return db;
+        };
         window.saveLayerToDB = function(id, name, geojson, color, weight) { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readwrite"); tx.objectStore("kmz_layers").put({ id: id, name: name, geojson: geojson, isVisible: true, color: color, weight: weight }); };
         window.loadSavedLayersFromDB = function() { if(!window.localDB) return; const tx = window.localDB.transaction("kmz_layers", "readonly"); const req = tx.objectStore("kmz_layers").getAll(); req.onsuccess = function() { req.result.forEach(item => { window.addGeoJsonToMap(item.id, item.name, item.geojson, item.isVisible, item.color || '#e67e22', item.weight || 4); window.renderCustomLayerItem(item.id, item.name, item.color || '#e67e22', item.weight || 4); }); }; };
         window.buildGeoJsonStyle = function(hexColor, weight) { let finalWeight = weight ? parseInt(weight) : 4; return { style: function (feature) { return { color: hexColor, weight: finalWeight, opacity: 0.8, fillColor: hexColor }; }, pointToLayer: function(feature, latlng) { return L.circleMarker(latlng, {radius: 6, color: hexColor, fillColor: hexColor, fillOpacity: 0.8, weight: 1}); } }; };
@@ -4760,7 +5497,7 @@
             if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Envoi...'; }
             try {
                 let payload = r.id ? { action: "update_production", id: r.id, fields: fields } : { action: "add_production", fields: fields };
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(payload) });
+                let res = await window.apiPost(payload);
                 let out = await res.json();
                 if (out.status !== "success") throw new Error(out.msg || "Erreur serveur.");
 
@@ -4797,7 +5534,7 @@
             let row = (window.productionRows || []).find(function(x) { return x.id === id; });
             if (!confirm("Supprimer définitivement la production n°" + (row ? row.num : '?') + " de la saison " + (row ? row.saison : '?') + " ?")) return;
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_production", id: id }) });
+                let res = await window.apiPost({ action: "delete_production", id: id });
                 let out = await res.json();
                 if (out.status !== "success") throw new Error(out.msg || "Erreur serveur.");
                 window.productionRows = window.productionRows.filter(function(x) { return x.id !== id; });
@@ -4818,7 +5555,7 @@
                 if (progressFn) progressFn(i + 1, rows.length);
                 try {
                     let fields = window.prodFieldsPayload(r, r.calc, { eau: r.calc.totalEau, heures: r.calc.tempsTotalH });
-                    let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_production", id: r.id, fields: fields }) });
+                    let res = await window.apiPost({ action: "update_production", id: r.id, fields: fields });
                     let out = await res.json();
                     if (out.status === "success") ok++; else ko++;
                 } catch (e) { ko++; }
@@ -4839,36 +5576,269 @@
         };
 
         /* ========================================================================= */
-        /* CHAPITRE 8 : CENTRE EXPERT BI (GRAPHIQUES PERSONNALISÉS)                   */
+        /* CHAPITRE 8 : CENTRE D'ANALYSE (SOURCES, CROISEMENTS, GRAPHIQUES)           */
         /* ========================================================================= */
         window.biCurrentData = [];
-        window.openBiMeteo = function() { document.getElementById('bi-meteo-modal').style.display='flex'; window.biLoadSource(); };
-        window.biLoadSource = function() {
-            let src = document.getElementById('bi-source').value; let data = [];
-            if(src === 'hist') data = window.meteoHistData || [];
-            else if(src === 'froid') data = window.meteoFroidData || [];
-            else if(src === 'raw_gen') data = window.rawGeneral || [];
-            else if(src === 'raw_hist') data = window.rawHistorique || [];
-            else if(src === 'raw_tick') data = window.rawTicketsSheet || [];
-            else if(src === 'conso') {
-                data.push(["Saison","Eau (m³)","Air","Heures"]);
-                window.saisonsList.forEach(s => {
-                    let e=0, a=0, t=0;
-                    window.snowCannons.features.forEach(f => { let h = f.properties.historique[s]; if(h) { e += h.eau||0; a += h.air||0; t += h.temps||0; } });
+
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 8.A.0 — REGISTRE DES SOURCES DU CENTRE D'ANALYSE                  */
+        /*                                                                           */
+        /* Toute donnée présente dans l'application est déclarée ici sous une forme   */
+        /* unique : un tableau [en-têtes, ...lignes]. Le reste du module ignore d'où  */
+        /* elle vient — ajouter un onglet plus tard, c'est ajouter une ligne à cette  */
+        /* liste, sans toucher ni au croisement ni aux graphiques.                    */
+        /* ------------------------------------------------------------------------- */
+        window.analyseSources = function() {
+            let S = [];
+            let add = function(key, label, groupe, build) { S.push({ key: key, label: label, groupe: groupe, build: build }); };
+
+            // ---- Onglets du Google Sheet, tels quels ----
+            add('raw_gen',  "Tableau Général Canons", "Onglets du classeur", function() { return window.rawGeneral || []; });
+            add('raw_hist', "Historique Enneigeurs",  "Onglets du classeur", function() { return window.rawHistorique || []; });
+            add('raw_tick', "Tickets & Pannes",       "Onglets du classeur", function() { return window.rawTicketsSheet || []; });
+            add('atelier',  "Banc d'essais (Atelier)","Onglets du classeur", function() { return window.rawAtelier || []; });
+            add('stock',    "Gestion du Stock",       "Onglets du classeur", function() { return window.rawStock || []; });
+            add('suivi',    "Suivi d'entretien",      "Onglets du classeur", function() { return window.suiviEntretienData || []; });
+            add('calendrier', "Calendrier",           "Onglets du classeur", function() { return window.rawCalendarEvents || []; });
+            add('production', "Production de neige",  "Onglets du classeur", function() { return window.rawProduction || []; });
+            add('hist',     "Météo Historique",       "Onglets du classeur", function() { return window.meteoHistData || []; });
+            add('froid',    "Météo Froid",            "Onglets du classeur", function() { return window.meteoFroidData || []; });
+
+            // ---- Ce que la page affiche réellement, et qu'aucun onglet ne contient ----
+            add('canons', "Canons affichés sur la carte", "Vues de l'application", function() {
+                let feats = (window.snowCannons && window.snowCannons.features) || [];
+                if (!feats.length) return [];
+                let cols = ["N° canon"];
+                (window.availableColumns || []).forEach(function(c) { if (cols.indexOf(c) === -1) cols.push(c); });
+                cols.push("Latitude", "Longitude", "Tickets actifs", "Tickets total");
+                let out = [cols];
+                feats.forEach(function(f) {
+                    let p = f.properties;
+                    let row = [p.id];
+                    for (let i = 1; i < cols.length - 4; i++) row.push(window.getV(p, cols[i]));
+                    row.push(f.geometry.coordinates[1], f.geometry.coordinates[0],
+                             (window.getActiveTickets ? window.getActiveTickets(p.id).length : 0),
+                             (window.rawTickets || []).filter(function(t) { return t.idCanon === p.id; }).length);
+                    out.push(row);
+                });
+                return out;
+            });
+            add('zones', "Zones de neige dessinées", "Vues de l'application", function() {
+                let z = window.snowZones || [];
+                if (!z.length) return [];
+                let dEl = document.getElementById('snow-density');
+                let densite = dEl ? (parseFloat(dEl.value) || 400) : 400;
+                let out = [["Nom", "Surface (m²)", "Épaisseur (cm)", "Volume neige (m³)", "Équivalent eau (m³)"]];
+                z.forEach(function(zo) {
+                    let vol = (zo.area || 0) * (zo.thickness || 0) / 100;
+                    out.push([zo.name || "Zone", Math.round(zo.area || 0), zo.thickness || 0,
+                              Math.round(vol), Math.round(vol * densite / 1000)]);
+                });
+                return out;
+            });
+            add('meteo_prev', "Prévision météo (48 h)", "Vues de l'application", function() {
+                if (!window.meteoData) return [];
+                let out = [["Secteur", "Date/heure", "Température air (°C)", "Humidité (%)", "Température humide (°C)", "Vent (km/h)", "Neige (cm)", "Production possible"]];
+                let seuil = parseFloat(window.meteoCfg().seuilTH); if (isNaN(seuil)) seuil = -2.5;
+                window.meteoData.secteurs.forEach(function(sec, si) {
+                    let s = window.meteoData.series[si]; if (!s || !s.hourly) return;
+                    let h = s.hourly;
+                    (h.time || []).forEach(function(iso, i) {
+                        let tw = window.wetBulb(h.temperature_2m[i], h.relative_humidity_2m[i], (h.surface_pressure || [])[i]);
+                        out.push([sec.nom, iso.replace('T', ' '), h.temperature_2m[i], h.relative_humidity_2m[i],
+                                  tw === null ? "" : +tw.toFixed(2), (h.wind_speed_10m || [])[i], (h.snowfall || [])[i],
+                                  (tw !== null && tw <= seuil) ? "oui" : "non"]);
+                    });
+                });
+                return out;
+            });
+
+            // ---- Agrégats prêts à l'emploi ----
+            add('conso', "Consommation par saison", "Synthèses", function() {
+                let data = [["Saison", "Eau (m³)", "Air", "Heures"]];
+                (window.saisonsList || []).forEach(function(s) {
+                    let e = 0, a = 0, t = 0;
+                    window.snowCannons.features.forEach(function(f) { let h = f.properties.historique[s]; if (h) { e += h.eau || 0; a += h.air || 0; t += h.temps || 0; } });
                     data.push([s, Math.round(e), Math.round(a), Math.round(t)]);
                 });
-            } else if(src === 'defauts') {
-                data.push(["Mois","Nombre de Pannes"]); let counts = {};
-                window.rawTickets.forEach(t => {
-                    if(!t.date) return; let d = new Date(t.date); if(isNaN(d.getTime())) return;
-                    let m = (d.getMonth()+1).toString().padStart(2,'0') + "/" + d.getFullYear(); counts[m] = (counts[m]||0) + 1;
+                return data;
+            });
+            add('defauts', "Pannes par mois", "Synthèses", function() {
+                let data = [["Mois", "Nombre de Pannes"]]; let counts = {};
+                (window.rawTickets || []).forEach(function(t) {
+                    if (!t.date) return; let d = new Date(t.date); if (isNaN(d.getTime())) return;
+                    let m = (d.getMonth() + 1).toString().padStart(2, '0') + "/" + d.getFullYear(); counts[m] = (counts[m] || 0) + 1;
                 });
-                Object.keys(counts).sort((a,b) => { let pa = a.split('/'); let pb = b.split('/'); return new Date(pa[1], pa[0]-1) - new Date(pb[1], pb[0]-1); }).forEach(k => data.push([k, counts[k]]));
-                if(data.length === 1) data.push(["Aucun ticket",0]);
-            } else if(src === 'types') {
-                data.push(["Modèle de Canon","Quantité"]); let counts = {};
-                window.snowCannons.features.forEach(f => { let t = window.getV(f.properties, window.keyType); if(t !== "N/A") counts[t] = (counts[t]||0) + 1; });
-                Object.keys(counts).sort().forEach(k => data.push([k, counts[k]]));
+                Object.keys(counts).sort(function(a, b) { let pa = a.split('/'), pb = b.split('/'); return new Date(pa[1], pa[0] - 1) - new Date(pb[1], pb[0] - 1); })
+                    .forEach(function(k) { data.push([k, counts[k]]); });
+                if (data.length === 1) data.push(["Aucun ticket", 0]);
+                return data;
+            });
+            add('types', "Parc par type de canon", "Synthèses", function() {
+                let data = [["Modèle de Canon", "Quantité"]]; let counts = {};
+                window.snowCannons.features.forEach(function(f) { let t = window.getV(f.properties, window.keyType); if (t !== "N/A") counts[t] = (counts[t] || 0) + 1; });
+                Object.keys(counts).sort().forEach(function(k) { data.push([k, counts[k]]); });
+                return data;
+            });
+            return S;
+        };
+        window.analyseGetRows = function(key) {
+            let src = window.analyseSources().find(function(s) { return s.key === key; });
+            if (!src) return [];
+            try { let r = src.build(); return Array.isArray(r) ? r : []; } catch (e) { return []; }
+        };
+        window.analyseLabel = function(key) {
+            let src = window.analyseSources().find(function(s) { return s.key === key; });
+            return src ? src.label : key;
+        };
+
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 8.A.0.b — CROISEMENT DE DEUX SOURCES SUR UNE CLÉ COMMUNE          */
+        /*                                                                           */
+        /* Deux clés seulement, parce que ce sont les deux seules qui existent        */
+        /* réellement d'un onglet à l'autre : le numéro de canon et la date. Le       */
+        /* croisement est une jointure à gauche AVEC AGRÉGATION du côté droit — un    */
+        /* canon a plusieurs tickets, une journée plusieurs relevés ; produire une    */
+        /* ligne par appariement gonflerait les totaux et fausserait tous les cumuls. */
+        /* ------------------------------------------------------------------------- */
+        window.ANALYSE_KEYS = {
+            canon: { label: "N° de canon", mots: ["n° regard", "n°regard", "n° de vanne", "numero de vanne", "canon", "regard", "enneigeur", "n° canon", "n°"] },
+            date:  { label: "Date",        mots: ["date", "date debut", "date_debut", "jour", "date/heure"] }
+        };
+        window.analyseNorm = function(v) { return (v === null || v === undefined ? '' : v.toString()).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, '').trim(); };
+
+        window.analyseFindKeyCol = function(headers, kind) {
+            let mots = window.ANALYSE_KEYS[kind].mots;
+            let hs = (headers || []).map(window.analyseNorm);
+            for (let m = 0; m < mots.length; m++) { let i = hs.indexOf(window.analyseNorm(mots[m])); if (i > -1) return i; }
+            for (let m = 0; m < mots.length; m++) {
+                let mm = window.analyseNorm(mots[m]);
+                for (let i = 0; i < hs.length; i++) { if (hs[i] && hs[i].indexOf(mm) !== -1) return i; }
+            }
+            return -1;
+        };
+
+        // Normalisation des valeurs de clé : "YA 104", "104", 104 et " 104 " désignent le même canon ;
+        // une date peut arriver en ISO, en 04/12/2026 ou en objet Date sérialisé. Sans cette mise au
+        // même format, la jointure ne trouverait quasiment aucune correspondance.
+        window.analyseKeyVal = function(v, kind) {
+            if (v === null || v === undefined) return "";
+            let s = v.toString().trim();
+            if (!s) return "";
+            if (kind === 'canon') return s.replace(/^ya\s*/i, '').replace(/\s+/g, '').toUpperCase();
+            let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+            if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+            m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (m) return m[1] + '-' + m[2] + '-' + m[3];
+            let d = new Date(s);
+            if (!isNaN(d.getTime())) return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            return s;
+        };
+
+        // Le test doit porter sur la valeur ENTIÈRE, pas sur son début : parseFloat("01/12/2025")
+        // renvoie 1 sans broncher, et une colonne de dates se retrouvait classée « numérique » puis
+        // additionnée — donnant une « somme des dates » aussi absurde qu'invisible dans un graphique.
+        window.analyseNumRe = /^[+-]?(\d+([.,]\d*)?|[.,]\d+)([eE][+-]?\d+)?$/;
+        window.analyseClean = function(v) { return String(v === null || v === undefined ? '' : v).replace(/[\s ]/g, '').replace(/€|%/g, ''); };
+        window.analyseIsNum = function(v) {
+            if (v === null || v === undefined || v === "") return false;
+            if (typeof v === 'number') return isFinite(v);
+            if (typeof v === 'boolean' || v instanceof Date) return false;
+            return window.analyseNumRe.test(window.analyseClean(v));
+        };
+        window.analyseNum = function(v) {
+            if (typeof v === 'number') return isFinite(v) ? v : 0;
+            if (!window.analyseIsNum(v)) return 0;
+            let n = parseFloat(window.analyseClean(v).replace(',', '.'));
+            return isNaN(n) ? 0 : n;
+        };
+
+        window.analyseJoin = function(keyA, keyB, kind) {
+            let A = window.analyseGetRows(keyA), B = window.analyseGetRows(keyB);
+            if (A.length < 2) return { data: [], err: "La source « " + window.analyseLabel(keyA) + " » est vide." };
+            if (B.length < 2) return { data: [], err: "La source « " + window.analyseLabel(keyB) + " » est vide." };
+            let ia = window.analyseFindKeyCol(A[0], kind), ib = window.analyseFindKeyCol(B[0], kind);
+            if (ia === -1) return { data: [], err: "Aucune colonne « " + window.ANALYSE_KEYS[kind].label + " » dans « " + window.analyseLabel(keyA) + " »." };
+            if (ib === -1) return { data: [], err: "Aucune colonne « " + window.ANALYSE_KEYS[kind].label + " » dans « " + window.analyseLabel(keyB) + " »." };
+
+            // Colonnes de B à agréger : toutes celles dont la majorité des valeurs sont numériques.
+            let hb = B[0];
+            let numCols = [];
+            for (let c = 0; c < hb.length; c++) {
+                if (c === ib || !hb[c] || String(hb[c]).trim() === "") continue;
+                let nb = 0, tot = 0;
+                for (let r = 1; r < B.length; r++) { let v = B[r][c]; if (v !== "" && v !== null && v !== undefined) { tot++; if (window.analyseIsNum(v)) nb++; } }
+                if (tot > 0 && nb / tot >= 0.6) numCols.push(c);
+            }
+
+            let idx = {};
+            for (let r = 1; r < B.length; r++) {
+                let k = window.analyseKeyVal(B[r][ib], kind); if (!k) continue;
+                if (!idx[k]) { idx[k] = { n: 0, sums: numCols.map(function() { return 0; }) }; }
+                idx[k].n++;
+                numCols.forEach(function(c, j) { idx[k].sums[j] += window.analyseNum(B[r][c]); });
+            }
+
+            let lbl = window.analyseLabel(keyB);
+            let head = A[0].slice();
+            head.push(lbl + " : nombre de lignes");
+            numCols.forEach(function(c) { head.push(lbl + " : total " + hb[c]); });
+            let out = [head];
+            let apparies = 0;
+            for (let r = 1; r < A.length; r++) {
+                let k = window.analyseKeyVal(A[r][ia], kind);
+                let hit = k ? idx[k] : null;
+                if (hit) apparies++;
+                let row = A[r].slice();
+                while (row.length < A[0].length) row.push("");
+                row.push(hit ? hit.n : 0);
+                numCols.forEach(function(_, j) { row.push(hit ? Math.round(hit.sums[j] * 1000) / 1000 : 0); });
+                out.push(row);
+            }
+            return { data: out, apparies: apparies, totalA: A.length - 1, cle: window.ANALYSE_KEYS[kind].label,
+                     colA: A[0][ia], colB: hb[ib], err: "" };
+        };
+
+        window.openBiMeteo = function() { document.getElementById('bi-meteo-modal').style.display='flex'; window.renderAnalyseSourceSelects(); window.biLoadSource(); };
+
+        window.renderAnalyseSourceSelects = function() {
+            let srcs = window.analyseSources();
+            let groupes = [];
+            srcs.forEach(function(s) { if (groupes.indexOf(s.groupe) === -1) groupes.push(s.groupe); });
+            let opts = groupes.map(function(g) {
+                return `<optgroup label="${g}">` + srcs.filter(function(s) { return s.groupe === g; })
+                    .map(function(s) {
+                        let n = window.analyseGetRows(s.key).length;
+                        return `<option value="${s.key}"${n < 2 ? ' disabled' : ''}>${s.label}${n < 2 ? ' (vide)' : ' (' + (n - 1) + ')'}</option>`;
+                    }).join('') + `</optgroup>`;
+            }).join('');
+            let a = document.getElementById('bi-source');
+            let b = document.getElementById('bi-source-b');
+            let keep = a ? a.value : '';
+            if (a) { a.innerHTML = opts; if (keep && a.querySelector('option[value="' + keep + '"]')) a.value = keep; }
+            if (b) { let kb = b.value; b.innerHTML = `<option value="">— aucun croisement —</option>` + opts; if (kb) b.value = kb; }
+        };
+
+        window.biLoadSource = function() {
+            let src = document.getElementById('bi-source').value;
+            let srcB = document.getElementById('bi-source-b') ? document.getElementById('bi-source-b').value : "";
+            let kind = document.getElementById('bi-join-key') ? document.getElementById('bi-join-key').value : "canon";
+            let info = document.getElementById('bi-join-info');
+            let data;
+            if (srcB && srcB !== src) {
+                let j = window.analyseJoin(src, srcB, kind);
+                data = j.data;
+                if (info) {
+                    info.style.display = 'block';
+                    info.innerHTML = j.err
+                        ? `<span style="color:#c0392b;">⚠️ ${j.err}</span>`
+                        : `✅ Croisé sur <b>${j.cle}</b> — « ${j.colA} » ↔ « ${j.colB} »<br>
+                           <b>${j.apparies}</b> ligne(s) sur ${j.totalA} ont trouvé une correspondance.` +
+                          (j.apparies === 0 ? `<br><span style="color:#c0392b;">Aucune correspondance : vérifiez que les deux onglets emploient bien les mêmes identifiants.</span>` : '');
+                }
+            } else {
+                data = window.analyseGetRows(src);
+                if (info) info.style.display = 'none';
             }
             window.biCurrentData = data;
             let selX = document.getElementById('bi-x'); let containerY = document.getElementById('bi-y-container'); let selFilt = document.getElementById('bi-filter-col');
@@ -4960,7 +5930,34 @@
             const customBg = { id: 'customBg', beforeDraw: (chart) => { const c = chart.ctx; c.save(); c.globalCompositeOperation = 'destination-over'; c.fillStyle = '#ffffff'; c.fillRect(0, 0, chart.width, chart.height); c.restore(); } };
             let hasR = datasets.some(d => d.yAxisID === 'y1'); let fMType = isCombo ? 'bar' : (isPie ? gType : (isRadar ? 'radar' : gType)); let isStk = datasets.length > 1 && gType === 'bar';
 
-            window.chartInstances['bi-chart'] = new Chart(ctx.getContext('2d'), { type: fMType, data: { labels: labels, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: isPie || isRadar ? 'right' : 'top' }, title: { display: true, text: 'GMAO BI - ' + data[0][idxX], font: { size: 16 } }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } }, scales: (isPie || isRadar) ? {} : { x: { stacked: isStk, ticks: { maxRotation: 45, minRotation: 45 }, grid: { display: false } }, y: { stacked: isStk, type: 'linear', display: true, position: 'left' }, y1: { type: 'linear', display: hasR, position: 'right', grid: { drawOnChartArea: false } } } }, plugins: [customBg] });
+            window.chartInstances['bi-chart'] = new Chart(ctx.getContext('2d'), { type: fMType, data: { labels: labels, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: isPie || isRadar ? 'right' : 'top' }, title: { display: true, text: (function() {
+                        let a = document.getElementById('bi-source'), b = document.getElementById('bi-source-b');
+                        let t = a ? window.analyseLabel(a.value) : '';
+                        if (b && b.value && b.value !== a.value) t += ' × ' + window.analyseLabel(b.value);
+                        return t + ' — par ' + data[0][idxX];
+                    })(), font: { size: 15 } }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } }, scales: (isPie || isRadar) ? {} : { x: { stacked: isStk, ticks: { maxRotation: 45, minRotation: 45 }, grid: { display: false } }, y: { stacked: isStk, type: 'linear', display: true, position: 'left' }, y1: { type: 'linear', display: hasR, position: 'right', grid: { drawOnChartArea: false } } } }, plugins: [customBg] });
+        };
+
+        // Le tableau croisé vaut souvent plus que le graphique : c'est lui qu'on colle dans un tableur
+        // ou qu'on transmet. Séparateur point-virgule et BOM UTF-8, pour qu'Excel français l'ouvre
+        // directement en colonnes et sans accents cassés.
+        window.exportAnalyseCsv = function() {
+            let d = window.biCurrentData;
+            if (!d || d.length < 2) { alert("Aucune donnée à exporter."); return; }
+            let csv = d.map(function(row) {
+                return row.map(function(v) {
+                    let s = (v === null || v === undefined) ? "" : v.toString();
+                    return (s.indexOf(';') !== -1 || s.indexOf('"') !== -1 || s.indexOf('\n') !== -1)
+                        ? '"' + s.replace(/"/g, '""') + '"' : s;
+                }).join(';');
+            }).join('\r\n');
+            let blob = new Blob(["﻿" + csv], { type: 'text/csv;charset=utf-8;' });
+            let a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            let src = document.getElementById('bi-source'); let srcB = document.getElementById('bi-source-b');
+            a.download = "GMAO_" + (src ? src.value : 'analyse') + (srcB && srcB.value ? '_x_' + srcB.value : '') + ".csv";
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
         };
 
         window.exportBiChart = function() { let cvs = document.getElementById('bi-canvas'); if(!cvs) return; let a = document.createElement('a'); a.href = cvs.toDataURL('image/png'); a.download = 'GMAO_Expert_BI.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
@@ -4968,19 +5965,355 @@
         /* ========================================================================= */
         /* CHAPITRE 8.B : MÉTÉO LIVE, WEBCAMS, COMPARAISON SAISONS, HISTORIQUE MÉTÉO */
         /* ========================================================================= */
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 8.B.0 — MÉTÉO DE PRODUCTION (TEMPÉRATURE HUMIDE)                  */
+        /*                                                                           */
+        /* Les widgets Windy/Meteoblue donnent la température de l'AIR. Or on ne      */
+        /* fabrique pas de neige à la température de l'air : c'est la température     */
+        /* humide (bulbe humide) qui commande — par air très sec on produit encore    */
+        /* à 0 °C sèche, par air saturé on ne produit déjà plus à −2 °C. D'où le      */
+        /* passage à une vraie API de données (Open-Meteo, gratuite et sans clé) :    */
+        /* un cadre web ne donne pas accès aux chiffres, une API si.                  */
+        /* ------------------------------------------------------------------------- */
+        window.meteoData = null; window.meteoLoading = false; window.meteoError = "";
+        window.meteoTab = 'production';
+
+        window.meteoCfg = function() {
+            if (!window.appSettings.meteo) window.appSettings.meteo = { secteurs: [], seuilTH: -2.5, seuilBon: -5, jours: 3, ongletDefaut: 'production' };
+            if (!Array.isArray(window.appSettings.meteo.secteurs)) window.appSettings.meteo.secteurs = [];
+            return window.appSettings.meteo;
+        };
+        window.meteoSaveCfg = function() { try { localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings)); } catch(e) {} };
+
+        // Température humide par résolution de l'équation psychrométrique, et non par la formule
+        // approchée de Stull : cette dernière, testée sur la plage d'enneigement (−12 à +3 °C), rend
+        // une courbe NON MONOTONE sous 25 % d'humidité — la température humide y rediminuait quand
+        // l'air s'humidifiait, ce qui est physiquement impossible et fausserait la décision juste
+        // autour du seuil. La dichotomie ci-dessous est exacte, monotone par construction, et coûte
+        // 60 itérations sur un nombre insignifiant de points.
+        //
+        //   e(T,HR) = es(Tw) − A·P·(T − Tw)        es = pression de vapeur saturante (Magnus)
+        //
+        // La pression réelle compte : à 1 600 m (≈ 830 hPa) la température humide descend de 0,3 °C
+        // de plus qu'au niveau de la mer. C'est un gain gratuit qu'il serait dommage d'ignorer.
+        window.esWater = function(T) { return 6.112 * Math.exp(17.67 * T / (T + 243.5)); };
+        window.wetBulb = function(T, RH, P) {
+            if (T === null || T === undefined || RH === null || RH === undefined || isNaN(T) || isNaN(RH)) return null;
+            P = (P && P > 300) ? P : 1013.25;
+            RH = Math.max(1, Math.min(100, RH));
+            let e = RH / 100 * window.esWater(T);
+            let A = 6.6e-4;                       // constante psychrométrique, °C⁻¹
+            let lo = T - 60, hi = T;              // f(Tw) est croissante : f(T) ≥ 0, f(T−60) < 0
+            for (let i = 0; i < 60; i++) {
+                let mid = (lo + hi) / 2;
+                if (window.esWater(mid) - A * P * (T - mid) - e > 0) hi = mid; else lo = mid;
+            }
+            return (lo + hi) / 2;
+        };
+
+        // Barycentre des canons : point de repli quand aucun secteur n'a encore été défini, pour que
+        // l'écran soit utile dès la première ouverture sans obliger à un paramétrage préalable.
+        window.meteoDefaultSecteur = function() {
+            let b = window.getDomainBounds();
+            if (!b) return { nom: "Station", lat: 42.766, lng: 0.564 };
+            return { nom: "Domaine", lat: +((b.minLat + b.maxLat) / 2).toFixed(5), lng: +((b.minLng + b.maxLng) / 2).toFixed(5) };
+        };
+        window.meteoSecteurs = function() {
+            let c = window.meteoCfg();
+            if (!c.secteurs.length) return [window.meteoDefaultSecteur()];
+            return c.secteurs;
+        };
+
+        window.fetchMeteo = async function(force) {
+            if (window.meteoLoading) return;
+            let c = window.meteoCfg(); let secs = window.meteoSecteurs();
+            window.meteoLoading = true; window.meteoError = "";
+            window.renderMeteoProduction();
+            try {
+                // Une seule requête pour tous les secteurs : Open-Meteo accepte des listes de
+                // coordonnées et renvoie un tableau de résultats dans le même ordre.
+                let url = "https://api.open-meteo.com/v1/forecast"
+                    + "?latitude=" + secs.map(function(s) { return s.lat; }).join(",")
+                    + "&longitude=" + secs.map(function(s) { return s.lng; }).join(",")
+                    + "&hourly=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation,snowfall,cloud_cover"
+                    + "&forecast_days=" + Math.max(1, Math.min(7, parseInt(c.jours) || 3))
+                    + "&timezone=Europe%2FParis";
+                let res = await fetch(url, { cache: force ? 'reload' : 'default' });
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                let json = await res.json();
+                let arr = Array.isArray(json) ? json : [json];
+                if (arr[0] && arr[0].error) throw new Error(arr[0].reason || "Réponse invalide.");
+                window.meteoData = { at: Date.now(), secteurs: secs, series: arr };
+            } catch (e) {
+                window.meteoError = (navigator.onLine === false)
+                    ? "Hors réseau : dernière prévision reçue conservée par l'application."
+                    : "Prévision indisponible (" + e.message + ").";
+            }
+            window.meteoLoading = false;
+            window.renderMeteoProduction();
+        };
+
+        // Découpe la série horaire en créneaux contigus où la température humide reste sous le seuil.
+        window.meteoWindows = function(times, tws, seuil) {
+            let out = [], cur = null;
+            for (let i = 0; i < times.length; i++) {
+                let ok = (tws[i] !== null && tws[i] <= seuil);
+                if (ok && !cur) cur = { i0: i, i1: i, min: tws[i], sum: tws[i], n: 1 };
+                else if (ok && cur) { cur.i1 = i; cur.min = Math.min(cur.min, tws[i]); cur.sum += tws[i]; cur.n++; }
+                else if (!ok && cur) { out.push(cur); cur = null; }
+            }
+            if (cur) out.push(cur);
+            // Le dernier point d'un créneau représente une heure entière de production.
+            return out.map(function(w) { return { debut: times[w.i0], fin: times[w.i1], heures: w.i1 - w.i0 + 1, min: w.min, moy: w.sum / w.n }; });
+        };
+
+        /* Rendement réel : régression linéaire du débit (m³/h) sur la température moyenne relevée dans
+           l'onglet Production. C'est la seule source de vérité disponible sur CETTE installation — un
+           abaque théorique de constructeur ignorerait le réseau, l'altitude et les réglages maison. */
+        window.prodRendementModel = function() {
+            let rows = (window.productionRows || []).filter(function(r) { return r.id; });
+            let pts = [];
+            rows.forEach(function(r) {
+                let c = window.computeProductionRow(r);
+                let eau = window.prodNum(r.eau), t = window.prodNum(r.tempMoy);
+                let h = c.temps10;
+                if (h > 0 && eau > 0 && r.tempMoy !== "" && r.tempMoy !== undefined && !isNaN(t)) pts.push({ t: t, d: eau / h });
+            });
+            if (pts.length < 2) return { pts: pts, a: null, b: null, r2: null };
+            let n = pts.length;
+            let sx = 0, sy = 0, sxx = 0, sxy = 0, syy = 0;
+            pts.forEach(function(p) { sx += p.t; sy += p.d; sxx += p.t * p.t; sxy += p.t * p.d; syy += p.d * p.d; });
+            let den = n * sxx - sx * sx;
+            if (Math.abs(den) < 1e-9) return { pts: pts, a: null, b: sy / n, r2: null };
+            let a = (n * sxy - sx * sy) / den;
+            let b = (sy - a * sx) / n;
+            let sst = syy - sy * sy / n;
+            let sse = 0; pts.forEach(function(p) { let e = p.d - (a * p.t + b); sse += e * e; });
+            return { pts: pts, a: a, b: b, r2: sst > 0 ? Math.max(0, 1 - sse / sst) : null };
+        };
+        window.prodDebitEstime = function(model, temp) {
+            if (!model || model.a === null) return null;
+            let d = model.a * temp + model.b;
+            return d > 0 ? d : 0;
+        };
+
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 8.B.0.b — RÉGLAGE DES SECTEURS ET DES SEUILS                      */
+        /* ------------------------------------------------------------------------- */
+        window.renderMeteoSettings = function() {
+            let c = window.meteoCfg();
+            let el = document.getElementById('set-meteo-seuil'); if (el) el.value = c.seuilTH;
+            let el2 = document.getElementById('set-meteo-bon'); if (el2) el2.value = c.seuilBon;
+            let box = document.getElementById('settings-meteo-secteurs'); if (!box) return;
+            if (!c.secteurs.length) {
+                let d = window.meteoDefaultSecteur();
+                box.innerHTML = `<div style="font-size:10px; color:#888; background:#f8fafc; border:1px dashed #ccd6e0; padding:8px; border-radius:4px;">
+                    Aucun secteur défini : la prévision porte sur le centre du domaine (${d.lat}, ${d.lng}).</div>`;
+                return;
+            }
+            box.innerHTML = c.secteurs.map(function(s, i) {
+                return `<div class="meteo-sect-row">
+                    <input type="text" value="${window.prodEsc(s.nom)}" placeholder="Nom" onchange="window.updateMeteoSecteur(${i}, 'nom', this.value)">
+                    <input type="number" step="0.00001" class="coord" value="${s.lat}" title="Latitude" onchange="window.updateMeteoSecteur(${i}, 'lat', this.value)">
+                    <input type="number" step="0.00001" class="coord" value="${s.lng}" title="Longitude" onchange="window.updateMeteoSecteur(${i}, 'lng', this.value)">
+                    <button onclick="window.removeMeteoSecteur(${i})" title="Supprimer">✕</button>
+                </div>`;
+            }).join('');
+        };
+        window.saveMeteoSettings = function() {
+            let c = window.meteoCfg();
+            let a = parseFloat((document.getElementById('set-meteo-seuil') || {}).value);
+            let b = parseFloat((document.getElementById('set-meteo-bon') || {}).value);
+            if (!isNaN(a)) c.seuilTH = a;
+            if (!isNaN(b)) c.seuilBon = b;
+            window.meteoSaveCfg();
+            window.renderMeteoProduction();
+        };
+        window.addMeteoSecteur = function() {
+            let c = window.meteoCfg();
+            let d = window.meteoDefaultSecteur();
+            c.secteurs.push({ nom: "Secteur " + (c.secteurs.length + 1), lat: d.lat, lng: d.lng });
+            window.meteoSaveCfg(); window.renderMeteoSettings(); window.meteoData = null;
+        };
+        window.updateMeteoSecteur = function(i, champ, val) {
+            let c = window.meteoCfg(); if (!c.secteurs[i]) return;
+            c.secteurs[i][champ] = (champ === 'nom') ? val : (parseFloat(val) || 0);
+            window.meteoSaveCfg(); window.meteoData = null;
+        };
+        window.removeMeteoSecteur = function(i) {
+            let c = window.meteoCfg(); c.secteurs.splice(i, 1);
+            window.meteoSaveCfg(); window.renderMeteoSettings(); window.meteoData = null;
+        };
+        // Saisie d'un secteur au doigt : bien plus rapide que de recopier des coordonnées, et c'est le
+        // seul moyen réaliste de poser un point « haut de la piste » sans relevé GPS sur place.
+        window.pickMeteoSecteurOnMap = function() {
+            if (!window.map) { alert("La carte n'est pas prête."); return; }
+            let panel = document.getElementById('settings-panel');
+            if (panel) panel.style.display = 'none';
+            window.map.getContainer().style.cursor = 'crosshair';
+            let handler = function(e) {
+                window.map.off('click', handler);
+                window.map.getContainer().style.cursor = '';
+                let nom = prompt("Nom du secteur :", "Secteur " + (window.meteoCfg().secteurs.length + 1));
+                if (nom) {
+                    window.meteoCfg().secteurs.push({ nom: nom, lat: +e.latlng.lat.toFixed(5), lng: +e.latlng.lng.toFixed(5) });
+                    window.meteoSaveCfg(); window.meteoData = null;
+                }
+                if (panel) panel.style.display = 'flex';
+                window.renderMeteoSettings();
+            };
+            window.map.on('click', handler);
+        };
+
         window.openMeteoWidget = function() {
             let sb = document.getElementById('right-sidebar'); let rt = document.getElementById('right-title'); let sl = document.getElementById('selected-list'); if(!sb || !sl) return;
             if(rt) rt.innerText = "⛅ Météo Live";
             document.getElementById('multi-tools').style.display = 'none'; document.getElementById('view-edit').style.display = 'none'; document.getElementById('view-selection').style.display = 'block';
             window.switchMeteoTab = function(p) {
+                window.meteoTab = p;
                 let c = document.getElementById('meteo-content'); if(!c) return;
-                document.querySelectorAll('.meteo-tab-btn').forEach(b => b.style.opacity = '0.5'); document.getElementById('btn-meteo-' + p).style.opacity = '1';
-                if(p === 'meteoblue') c.innerHTML = `<iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe>`;
+                document.querySelectorAll('.meteo-tab-btn').forEach(b => b.style.opacity = '0.5');
+                let bt = document.getElementById('btn-meteo-' + p); if (bt) bt.style.opacity = '1';
+                // Les cadres externes restent utiles pour le vent et la couverture nuageuse, mais ils
+                // n'apportent aucune donnée exploitable : ils passent en second.
+                if(p === 'production') { c.innerHTML = `<div id="meteo-prod-box" style="height:100%; overflow-y:auto;"></div>`; window.renderMeteoProduction(); if(!window.meteoData) window.fetchMeteo(); }
+                else if(p === 'meteoblue') c.innerHTML = `<iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe>`;
                 else if(p === 'windy') c.innerHTML = `<iframe src="https://embed.windy.com/embed2.html?lat=42.767&lon=0.582&zoom=12&overlay=wind&product=ecmwf" frameborder="0" style="width:100%;height:100%;"></iframe>`;
                 else if(p === 'ventusky') c.innerHTML = `<iframe src="https://www.ventusky.com/?p=42.767;0.582;12&l=snow" frameborder="0" style="width:100%;height:100%;"></iframe>`;
             };
-            sl.innerHTML = `<div style="display:flex;gap:5px;margin-bottom:15px;"><button id="btn-meteo-meteoblue" class="meteo-tab-btn" onclick="window.switchMeteoTab('meteoblue')" style="flex:1;background:#3498db;color:white;border:none;padding:10px;border-radius:4px;cursor:pointer;opacity:1;">Meteoblue</button><button id="btn-meteo-windy" class="meteo-tab-btn" onclick="window.switchMeteoTab('windy')" style="flex:1;background:#e67e22;color:white;border:none;padding:10px;border-radius:4px;cursor:pointer;opacity:0.5;">Windy</button><button id="btn-meteo-ventusky" class="meteo-tab-btn" onclick="window.switchMeteoTab('ventusky')" style="flex:1;background:#2c3e50;color:white;border:none;padding:10px;border-radius:4px;cursor:pointer;opacity:0.5;">Ventusky</button></div><div id="meteo-content" style="background:#fff;border-radius:6px;border:1px solid #eee;padding:10px;height:calc(100vh - 200px);"><iframe src="https://www.meteoblue.com/fr/meteo/widget/three/42.767N0.582E1791_Europe%2FParis?geoloc=fixed&nocurrent=0&noforecast=0&days=3&temp=1&layout=light" frameborder="0" style="width:100%;height:100%;"></iframe></div>`;
+            sl.innerHTML = `<div style="display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap;">
+                <button id="btn-meteo-production" class="meteo-tab-btn" onclick="window.switchMeteoTab('production')" style="flex:1 1 100%;background:#16a085;color:white;border:none;padding:10px;border-radius:4px;cursor:pointer;opacity:1;font-weight:bold;">❄️ Production de neige</button>
+                <button id="btn-meteo-meteoblue" class="meteo-tab-btn" onclick="window.switchMeteoTab('meteoblue')" style="flex:1;background:#3498db;color:white;border:none;padding:8px;border-radius:4px;cursor:pointer;opacity:0.5;font-size:12px;">Meteoblue</button>
+                <button id="btn-meteo-windy" class="meteo-tab-btn" onclick="window.switchMeteoTab('windy')" style="flex:1;background:#e67e22;color:white;border:none;padding:8px;border-radius:4px;cursor:pointer;opacity:0.5;font-size:12px;">Windy</button>
+                <button id="btn-meteo-ventusky" class="meteo-tab-btn" onclick="window.switchMeteoTab('ventusky')" style="flex:1;background:#2c3e50;color:white;border:none;padding:8px;border-radius:4px;cursor:pointer;opacity:0.5;font-size:12px;">Ventusky</button>
+            </div><div id="meteo-content" style="background:#fff;border-radius:6px;border:1px solid #eee;padding:10px;height:calc(100vh - 210px);"></div>`;
             sb.classList.add('open');
+            window.switchMeteoTab(window.meteoTab || 'production');
+        };
+
+        window.meteoFmtHeure = function(iso) {
+            let d = new Date(iso);
+            return d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + " " +
+                   String(d.getHours()).padStart(2, '0') + " h";
+        };
+
+        window.renderMeteoProduction = function() {
+            let box = document.getElementById('meteo-prod-box'); if (!box) return;
+            let c = window.meteoCfg();
+            let seuil = parseFloat(c.seuilTH); if (isNaN(seuil)) seuil = -2.5;
+            let bon = parseFloat(c.seuilBon); if (isNaN(bon)) bon = -5;
+
+            let head = `<div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:150px; font-size:11px; color:#555;">
+                    Production dès <b style="color:#16a085;">TH ≤ ${seuil.toFixed(1).replace('.', ',')} °C</b> · bonne dès <b style="color:#0072ff;">${bon.toFixed(1).replace('.', ',')} °C</b>
+                </div>
+                <button onclick="window.fetchMeteo(true)" style="background:#16a085;color:#fff;border:none;padding:6px 12px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;"><i class="fa-solid fa-rotate"></i> Actualiser</button>
+            </div>`;
+
+            if (window.meteoLoading) { box.innerHTML = head + `<div style="padding:30px; text-align:center; color:#888;"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>Interrogation d'Open-Meteo…</div>`; return; }
+            if (!window.meteoData) {
+                box.innerHTML = head + `<div style="padding:20px; text-align:center; color:#c0392b; font-size:12px;">${window.meteoError || "Aucune prévision chargée."}</div>`;
+                return;
+            }
+
+            let model = window.prodRendementModel();
+            let html = head;
+            if (window.meteoError) html += `<div style="background:#fdedec; border:1px solid #f5b7b1; color:#c0392b; padding:7px; border-radius:4px; font-size:11px; margin-bottom:10px;">${window.meteoError}</div>`;
+            html += `<div style="font-size:10px; color:#999; margin-bottom:10px;">Prévision Open-Meteo du ${window.fmtSnapshotDate(window.meteoData.at)}.</div>`;
+
+            window.meteoData.secteurs.forEach(function(sec, si) {
+                let s = window.meteoData.series[si]; if (!s || !s.hourly) return;
+                let times = s.hourly.time || [];
+                let temps = s.hourly.temperature_2m || [];
+                let hums = s.hourly.relative_humidity_2m || [];
+                let pres = s.hourly.surface_pressure || [];
+                let vents = s.hourly.wind_speed_10m || [];
+                let neige = s.hourly.snowfall || [];
+                let tws = times.map(function(_, i) { return window.wetBulb(temps[i], hums[i], pres[i]); });
+
+                // On part de l'heure en cours : les heures passées de la journée n'intéressent personne.
+                let now = new Date(); let i0 = 0;
+                for (let i = 0; i < times.length; i++) { if (new Date(times[i]) >= now) { i0 = Math.max(0, i - 1); break; } }
+                let iEnd = Math.min(times.length, i0 + 48);
+                let t2 = times.slice(i0, iEnd), tw2 = tws.slice(i0, iEnd);
+                let wins = window.meteoWindows(t2, tw2, seuil);
+                let heuresTotal = wins.reduce(function(a, w) { return a + w.heures; }, 0);
+
+                let cellules = t2.map(function(iso, k) {
+                    let tw = tw2[k];
+                    let bg = tw === null ? '#eceff1' : (tw <= bon ? '#0072ff' : (tw <= seuil ? '#16a085' : (tw <= seuil + 2 ? '#f39c12' : '#e74c3c')));
+                    let d = new Date(iso);
+                    return `<div class="meteo-cell" style="background:${bg};" title="${window.meteoFmtHeure(iso)}
+TH ${tw === null ? '?' : tw.toFixed(1).replace('.', ',')} °C · air ${temps[i0 + k]} °C · ${hums[i0 + k]} % HR · vent ${vents[i0 + k]} km/h${neige[i0 + k] ? ' · neige ' + neige[i0 + k] + ' cm' : ''}">${d.getHours() % 6 === 0 ? d.getHours() + 'h' : ''}</div>`;
+                }).join('');
+
+                let cur = tw2[0];
+                html += `<div style="border:1px solid #e1e8ed; border-radius:6px; margin-bottom:12px; overflow:hidden;">
+                    <div style="background:#f8fafc; padding:8px 10px; display:flex; align-items:center; gap:8px; border-bottom:1px solid #e1e8ed;">
+                        <b style="flex:1; color:#2c3e50; font-size:13px;">${sec.nom}</b>
+                        <span style="font-size:10px; color:#888;">${s.elevation ? Math.round(s.elevation) + ' m' : ''}</span>
+                        <span style="font-size:16px; font-weight:bold; color:${cur !== null && cur <= seuil ? '#16a085' : '#c0392b'};">${cur === null ? '—' : cur.toFixed(1).replace('.', ',') + ' °C'}</span>
+                    </div>
+                    <div style="padding:10px;">
+                        <div style="font-size:10px; color:#888; margin-bottom:3px;">Température humide, 48 h à venir</div>
+                        <div class="meteo-strip">${cellules}</div>`;
+
+                if (!wins.length) {
+                    html += `<div style="font-size:12px; color:#c0392b; padding:8px 0;"><b>Aucun créneau de production</b> sur les 48 h : la température humide ne descend jamais à ${seuil.toFixed(1).replace('.', ',')} °C.</div>`;
+                } else {
+                    html += `<div style="font-size:12px; color:#16a085; font-weight:bold; margin:8px 0 6px;">${wins.length} créneau(x) · ${heuresTotal} h de production possible</div>`;
+                    html += wins.map(function(w) {
+                        let deb = window.prodDebitEstime(model, w.moy);
+                        let vol = deb === null ? null : Math.round(deb * w.heures);
+                        return `<div style="display:flex; gap:8px; align-items:center; font-size:11px; padding:6px 8px; background:#f4fbf9; border-left:3px solid #16a085; border-radius:3px; margin-bottom:4px;">
+                            <div style="flex:1;"><b>${window.meteoFmtHeure(w.debut)} → ${window.meteoFmtHeure(w.fin)}</b><br>
+                            <span style="color:#777;">${w.heures} h · TH min ${w.min.toFixed(1).replace('.', ',')} °C · moy ${w.moy.toFixed(1).replace('.', ',')} °C</span></div>
+                            ${vol !== null ? `<div style="text-align:right; color:#2980b9;"><b>≈ ${vol.toLocaleString('fr-FR')} m³</b><br><span style="font-size:9px; color:#888;">${Math.round(deb)} m³/h</span></div>` : ''}
+                        </div>`;
+                    }).join('');
+                }
+                html += `</div></div>`;
+            });
+
+            /* Bloc rendement : ce que l'installation a RÉELLEMENT produit, par température. */
+            html += `<details style="border:1px solid #e1e8ed; border-radius:6px; background:#fff;" ${model.a !== null ? 'open' : ''}>
+                <summary style="padding:9px 10px; font-weight:bold; font-size:12px; cursor:pointer; background:#f8fafc; color:#2c3e50;">📈 Rendement réel de l'installation</summary>
+                <div style="padding:10px;">`;
+            if (model.pts.length < 2) {
+                html += `<div style="font-size:11px; color:#888;">Il faut au moins deux productions renseignées (avec eau pompée, durée et température moyenne) dans l'onglet Production pour établir une courbe de rendement. ${model.pts.length} disponible(s).</div>`;
+            } else {
+                html += `<div style="font-size:11px; color:#555; margin-bottom:8px;">
+                    ${model.pts.length} production(s) exploitées.
+                    ${model.a !== null ? `Débit ≈ <b>${model.a.toFixed(1).replace('.', ',')} × T + ${model.b.toFixed(0)}</b> m³/h` : ''}
+                    ${model.r2 !== null ? ` · corrélation R² = ${model.r2.toFixed(2).replace('.', ',')}` : ''}
+                </div>
+                <div style="height:190px; position:relative;"><canvas id="meteo-rendement-canvas"></canvas></div>
+                <div style="font-size:10px; color:#888; margin-top:6px;">Courbe établie sur la colonne « tempé moy de prod » de l'onglet Production, et appliquée telle quelle aux températures humides prévues : si vous y saisissez une température d'air, les volumes annoncés plus haut sont surestimés d'autant. Plus vous renseignez de productions, plus l'estimation devient juste.</div>`;
+            }
+            html += `</div></details>`;
+
+            box.innerHTML = html;
+            if (model.pts.length >= 2) window.drawRendementChart(model);
+        };
+
+        window.drawRendementChart = function(model) {
+            let cv = document.getElementById('meteo-rendement-canvas'); if (!cv || typeof Chart === 'undefined') return;
+            if (window.chartInstances['meteo-rendement']) window.chartInstances['meteo-rendement'].destroy();
+            let pts = model.pts.slice().sort(function(a, b) { return a.t - b.t; });
+            let ds = [{ label: 'Productions réalisées', data: pts.map(function(p) { return { x: p.t, y: p.d }; }),
+                        backgroundColor: '#2980b9', pointRadius: 5, showLine: false, type: 'scatter' }];
+            if (model.a !== null) {
+                let tMin = pts[0].t, tMax = pts[pts.length - 1].t;
+                ds.push({ label: 'Tendance', type: 'line', borderColor: '#16a085', borderWidth: 2, pointRadius: 0, fill: false,
+                          data: [{ x: tMin, y: Math.max(0, model.a * tMin + model.b) }, { x: tMax, y: Math.max(0, model.a * tMax + model.b) }] });
+            }
+            window.chartInstances['meteo-rendement'] = new Chart(cv.getContext('2d'), {
+                type: 'scatter', data: { datasets: ds },
+                options: { responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: true, labels: { font: { size: 10 } } } },
+                    scales: { x: { title: { display: true, text: 'Température moyenne de production (°C)', font: { size: 10 } }, ticks: { font: { size: 9 } } },
+                              y: { title: { display: true, text: 'Débit (m³/h)', font: { size: 10 } }, beginAtZero: true, ticks: { font: { size: 9 } } } } }
+            });
         };
 
         window.openWebcamGrid = function() {
@@ -5014,7 +6347,7 @@
             window.webcamLayerGroup.eachLayer(m => { if(m.wcData.nom === nom) mSave = m; }); if(!mSave) return;
             let nLat = mSave.getLatLng().lat.toFixed(7); let nLng = mSave.getLatLng().lng.toFixed(7); let inp = document.getElementById('edit-wc-icon'); let nIco = inp ? inp.value : mSave.wcData.icon;
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "update_webcam", nom: nom, lat: parseFloat(nLat), lng: parseFloat(nLng), icon: nIco }) });
+                let res = await window.apiPost({ action: "update_webcam", nom: nom, lat: parseFloat(nLat), lng: parseFloat(nLng), icon: nIco });
                 let r = await res.json();
                 if(r.status === "success") { mSave.dragging.disable(); mSave.wcData.lat = parseFloat(nLat); mSave.wcData.lng = parseFloat(nLng); mSave.wcData.icon = nIco; mSave.setIcon(L.divIcon({ className: 'custom-cannon-icon', html: `<div class="camera-icon">${nIco}</div>`, iconSize: [24,24], iconAnchor: [12,12] })); window.openSingleWebcam(nom); } else { alert("Erreur : " + (r.msg || "inconnue")); btn.innerText = "✅ Sauver"; btn.disabled = false; }
             } catch(e) { alert("Échec réseau."); btn.disabled = false; }
@@ -5699,7 +7032,7 @@
             let payload = id ? { action: "update_event", id: id, fields: fieldsObj } : { action: "add_event", fields: fieldsObj };
 
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify(payload) });
+                let res = await window.apiPost(payload);
                 let r = await res.json();
                 if (r.status === "success") {
                     if (id) { let evObj = window.calendarEvents.find(e => e.id === id); if (evObj) Object.assign(evObj, { type: type, titre: titre, dateDebut: debut, heure: heure, dateFin: fin, canon: canon, remarque: remarque, couleur: couleur }); }
@@ -5712,7 +7045,7 @@
         window.deleteCalendarEvent = async function(id) {
             if (!confirm("Supprimer cet événement ?")) return;
             try {
-                let res = await fetch(GOOGLE_API_URL, { method: 'POST', body: JSON.stringify({ action: "delete_event", id: id }) });
+                let res = await window.apiPost({ action: "delete_event", id: id });
                 let r = await res.json();
                 if (r.status === "success") { window.calendarEvents = window.calendarEvents.filter(e => e.id !== id); window.closeCalendarDayPanel(); window.renderCalendarMonth(); }
                 else { alert("Erreur : " + (r.msg || "inconnue")); }
@@ -5725,13 +7058,19 @@
         window.addEventListener('DOMContentLoaded', async () => {
             if(window.bootAttempt > 0) return; window.bootAttempt = 1;
             try {
+                // Le service worker est enregistré AVANT tout le reste : au tout premier démarrage il
+                // met le code et les librairies en cache pendant que les données arrivent, si bien que
+                // la sortie suivante — sans réseau — trouve déjà tout sur place.
+                window.registerServiceWorker();
                 window.setStep(0, "Initialisation de la carte...");
                 let retries = 0; while ((typeof L === 'undefined' || typeof JSZip === 'undefined' || typeof Chart === 'undefined') && retries < 50) { await new Promise(r => setTimeout(r, 100)); retries++; }
                 if (typeof L === 'undefined') throw new Error("Impossible de charger la carte (Leaflet). Vérifiez votre pare-feu.");
                 window.satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 18 });
                 window.map = L.map('map', {zoomControl: false, layers: [window.satLayer]}).setView([42.766, 0.564], 14);
                 L.control.zoom({ position: 'bottomright' }).addTo(window.map);
-                window.initLocalDB(); await window.fetchGoogleSheetsData();
+                await window.initLocalDB();
+                await window.fetchGoogleSheetsData();
+                window.updateNetBanner();
             } catch (err) { window.showCrash(err.message, "Boot Principal"); }
         });
     </script>
