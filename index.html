@@ -24,7 +24,7 @@
         // principal. Sur un écran d'erreur, le nom et la version restent affichés — c'est l'information
         // la plus utile à transmettre en cas de bug ; seul le flocon animé disparaît.
         window.APP_NAME = "GMAO Neige";
-        window.APP_VERSION = "5.6.0";
+        window.APP_VERSION = "5.7.0";
         window.showCrash = function(msg, line) { let o = document.getElementById('loading-overlay'); if (o) { o.style.display='flex'; let fw = document.getElementById('flake-wrap'); if(fw) fw.style.display='none'; let pc = document.getElementById('loading-pct'); if(pc) pc.style.display='none'; document.getElementById('loading-title').innerText="🛑 ERREUR SYSTEME"; if(document.getElementById('error-box')) { document.getElementById('error-box').style.display='block'; document.getElementById('error-msg').innerHTML="<b>Détail:</b> "+msg+(line?"<br><b>Ligne:</b> "+line:""); } } else alert("🛑 CRASH : "+msg); };
         window.onerror = function(msg, src, ln) { if (msg.indexOf('Script error') > -1) return false; window.showCrash(msg, ln); return true; };
         window.addEventListener('unhandledrejection', function(e) { window.showCrash(e.reason ? e.reason.message : "Erreur réseau", "Réseau"); });
@@ -121,6 +121,29 @@
         @media(min-width:769px){ #prox-alert{left:auto;right:20px;width:380px;} }
         .meteo-strip-sun{height:12px;margin-bottom:10px;}
         .meteo-cell-sun{align-items:center;}
+        /* Pastilles numérotées de la tournée, et fiche de route imprimable. L'impression masque toute
+           l'application : la fiche part sur le tableau de bord du 4x4, pas l'interface. */
+        .route-step-icon div{width:26px;height:26px;line-height:24px;border-radius:50%;background:#e67e22;color:#fff;
+            border:2px solid #fff;text-align:center;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.4);}
+        .route-start-icon div{background:#16a085;}
+        #route-print{display:none;}
+        @media print{
+            body.printing-route > *{display:none !important;}
+            body.printing-route #route-print{display:block !important;position:static;padding:0;font-family:'Segoe UI',Arial,sans-serif;color:#000;}
+            body.printing-route #route-print h1{font-size:17px;margin:0 0 4px;}
+            body.printing-route #route-print .rp-sub{font-size:11px;color:#333;margin:0 0 12px;line-height:1.5;}
+            body.printing-route #route-print table{width:100%;border-collapse:collapse;font-size:11px;}
+            body.printing-route #route-print th{background:#eee;border:1px solid #999;padding:5px;text-align:left;}
+            body.printing-route #route-print td{border:1px solid #bbb;padding:5px;}
+            body.printing-route #route-print tr{page-break-inside:avoid;}
+            body.printing-route #route-print .rp-case{width:34px;height:22px;}
+            body.printing-route #route-print .rp-warn{margin-top:10px;padding:7px;border:1px solid #900;font-size:11px;}
+            body.printing-route #route-print .rp-foot{margin-top:10px;font-size:10px;color:#555;}
+            @page{margin:12mm;}
+        }
+        .meteo-strip-precip{height:26px;margin-bottom:10px;background:#f4f7fa;align-items:flex-end;}
+        .meteo-cell-precip{align-items:flex-end;padding:0;}
+        .meteo-cell-precip span{display:block;width:100%;border-radius:1px 1px 0 0;}
         .meteo-cell{flex:1 1 0;min-width:0;display:flex;align-items:flex-end;justify-content:center;
             font-size:8px;color:rgba(255,255,255,0.9);font-weight:bold;padding-bottom:2px;cursor:default;}
         .meteo-sect-row{display:flex;gap:5px;align-items:center;margin-bottom:5px;}
@@ -516,6 +539,8 @@
                     <button class="topbar-btn" data-btnkey="meteo" data-btnlabel="Météo Live" onclick="window.openMeteoWidget()"><i class="fa-solid fa-cloud-sun"></i> <span class="btn-text">Météo Live</span></button>
                     <button class="topbar-btn" data-btnkey="webcams" data-btnlabel="Webcams" onclick="window.openWebcamGrid()"><i class="fa-solid fa-video"></i> <span class="btn-text">Webcams</span></button>
                     <button class="topbar-btn" data-btnkey="satellite" data-btnlabel="Vue satellite" onclick="window.openSatellitePanel()"><i class="fa-solid fa-satellite"></i> <span class="btn-text">Vue satellite</span></button>
+                    <button class="topbar-btn" data-btnkey="route" data-btnlabel="Fiche de route" onclick="window.openFicheRoute()"><i class="fa-solid fa-route"></i> <span class="btn-text">Fiche de route</span></button>
+                    <button class="topbar-btn" data-btnkey="diag" data-btnlabel="Aide au diagnostic" onclick="window.openDiagnostic()"><i class="fa-solid fa-stethoscope"></i> <span class="btn-text">Aide au diagnostic</span></button>
                     <button class="topbar-btn" data-btnkey="histmeteo" data-btnlabel="Hist. Météo" onclick="window.openMeteoHistoryModal(true)" style="background:#f39c12; border-color:#f1c40f;"><i class="fa-solid fa-temperature-half"></i> <span class="btn-text">Hist. Météo</span></button>
                     <button class="topbar-btn" data-btnkey="localiser" data-btnlabel="Localiser" onclick="window.geolocateUser()" style="background:#2980b9; border-color:#3498db;"><i class="fa-solid fa-location-crosshairs"></i> <span class="btn-text">Localiser</span></button>
                     <button class="topbar-btn" data-btnkey="print" data-btnlabel="Imprimer" onclick="window.openPrintMode()" style="background:#7f8c8d; border-color:#95a5a6;"><i class="fa-solid fa-print"></i> <span class="btn-text">Imprimer</span></button>
@@ -801,6 +826,11 @@
                 <div id="bi-join-info" style="display:none; font-size:10px; line-height:1.5; color:#2c3e50; background:#eef7f4; border:1px solid #cfe6de; border-radius:4px; padding:7px; margin-bottom:10px;"></div>
                 <div class="edit-label">2. Format Global</div><select id="bi-type" class="edit-input" onchange="window.biUpdateUI()"><option value="bar">📊 Barres</option><option value="line">📈 Courbes</option><option value="combo">📉 Combiné</option><option value="pie">🥧 Camembert</option><option value="doughnut">🍩 Anneau</option><option value="polarArea">🎯 Zone Polaire</option></select>
                 <div class="edit-label">3. Axe X</div><select id="bi-x" class="edit-input" onchange="window.biDrawChart()"></select>
+                <div class="edit-label">Ordre des abscisses</div><select id="bi-sort" class="edit-input" onchange="window.biDrawChart()">
+                    <option value="auto">Naturel (chronologique / alphabétique)</option>
+                    <option value="desc">Les plus fréquents d'abord</option>
+                    <option value="asc">Les moins fréquents d'abord</option>
+                </select>
                 <div class="edit-label">4. Axe Y (Cochez pour ajouter)</div><div id="bi-y-container" style="background:#fdfdfd; border:1px solid #ccc; border-radius:4px; padding:10px; max-height:280px; overflow-y:auto; margin-bottom:12px; font-size:12px;"></div>
                 <div class="edit-label">Filtres Optionnels</div><div style="display:flex; gap:5px; margin-bottom:12px;"><select id="bi-filter-col" class="edit-input" style="margin:0; flex:1;" onchange="window.biDrawChart()"></select><input type="text" id="bi-filter-val" class="edit-input" style="margin:0; flex:1;" placeholder="Ex: Fait, >10..." onkeyup="window.biDrawChart()"></div>
                 <button class="btn-action-primary" style="background:#27ae60; margin-top:5px;" onclick="window.biDrawChart()">🔄 Actualiser</button><button class="btn-action-primary" style="background:#8e44ad; margin-top:10px;" onclick="window.exportBiChart()">💾 Graphique (PNG)</button><button class="btn-action-primary" style="background:#2980b9; margin-top:10px;" onclick="window.exportAnalyseCsv()">📄 Tableau croisé (CSV)</button>
@@ -1045,7 +1075,7 @@
             meteo: { secteurs: [], seuilTH: -2.5, seuilBon: -5, jours: 3, ongletDefaut: 'production' }
         };
         window.listViewFilters = { defaut: '', statutTicket: '', statutEntretien: '', statutTete: '' };
-        window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', tools: '#546e7a', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', satellite: '#00838f', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d', calendar: '#e67e22' };
+        window.defaultBtnColors = { menu: '#34495e', dashboard: '#34495e', documents: '#8e44ad', settings: '#2c3e50', tools: '#546e7a', compare: '#d35400', bi: '#16a085', meteo: '#34495e', webcams: '#34495e', satellite: '#00838f', route: '#e67e22', diag: '#2980b9', histmeteo: '#f39c12', localiser: '#2980b9', print: '#7f8c8d', calendar: '#e67e22' };
         window.overlayLayers = { hillshade: null, labels: null };
 
         // Plus de code d'accès : le PIN était en clair dans la page, il ne protégeait donc rien, et il
@@ -3451,8 +3481,7 @@
 
         window.proxCfg = function() {
             if (!window.appSettings.proximite) window.appSettings.proximite = {};
-            window.appSettings.proximite = Object.assign({ actif: false, rayon: 120, repos: 30 }, window.appSettings.proximite);
-            return window.appSettings.proximite;
+            return window.completerReglages(window.appSettings.proximite, { actif: false, rayon: 120, repos: 30 });
         };
         window.proxSave = function() { try { localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings)); } catch(e) {} };
 
@@ -3607,6 +3636,734 @@
             if (!isNaN(r)) c.rayon = Math.max(20, Math.min(2000, r));
             if (!isNaN(rp)) c.repos = Math.max(1, Math.min(240, rp));
             window.proxSave(); window.renderProxPanel();
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 4.G : FICHE DE ROUTE — TOURNÉE ENTRE CANONS                      */
+        /*                                                                           */
+        /* Il n'existe pas de route carrossable sur le domaine : on circule LE LONG   */
+        /* de la ligne de canons. Le réseau routier est donc reconstruit à partir des */
+        /* canons eux-mêmes — deux canons voisins définissent un tronçon praticable — */
+        /* sauf sur les portions où la circulation est interdite, qui sont retirées   */
+        /* du graphe. Un canon situé au milieu d'une portion interdite devient de ce  */
+        /* fait injoignable en véhicule, et la fiche le signale au lieu de tracer un  */
+        /* trajet impossible.                                                        */
+        /* ========================================================================= */
+        /* Complète un objet de réglages EN PLACE. Object.assign({defauts}, actuel) rendait un objet
+           NEUF à chaque appel : toute référence gardée par le code appelant devenait aussitôt périmée,
+           et une modification y était silencieusement perdue. Piège rencontré en test. */
+        window.completerReglages = function(cible, defauts) {
+            Object.keys(defauts).forEach(function(k) { if (cible[k] === undefined) cible[k] = defauts[k]; });
+            return cible;
+        };
+
+        window.routeCfg = function() {
+            if (!window.appSettings.route) window.appSettings.route = {};
+            return window.completerReglages(window.appSettings.route, {
+                vitesse: 20,            // km/h, 4x4 sur piste
+                minutesParCanon: 10,    // temps d'intervention
+                rayonLien: 300,         // deux canons distants de moins de 300 m sont reliés
+                retour: true,
+                depart: null,           // { lat, lng, nom } ; sinon position GPS ou premier canon
+                interdits: [
+                    { nom: "Record Hount Estrète", de: 318, a: 327 },
+                    { nom: "Sarnailles (partie haute)", de: 41, a: 45 },
+                    { nom: "Talweg", de: 103, a: 106 }
+                ]
+            });
+        };
+        window.routeSave = function() { try { localStorage.setItem('gmao_settings_v5', JSON.stringify(window.appSettings)); } catch(e) {} };
+
+        window.routeNumero = function(id) {
+            let m = (id === null || id === undefined ? '' : id.toString()).match(/\d+/);
+            return m ? parseInt(m[0], 10) : NaN;
+        };
+        window.routeCanonInterdit = function(id) {
+            let n = window.routeNumero(id);
+            if (isNaN(n)) return null;
+            return window.routeCfg().interdits.find(function(z) { return n >= z.de && n <= z.a; }) || null;
+        };
+        // Lecture stricte : « circulation interdite de 318 à 327 » signifie qu'on ne roule NULLE PART
+        // sur cette portion. Tout tronçon touchant un de ces canons disparaît donc du réseau, et ces
+        // canons ne sont plus joignables qu'à pied. La lecture souple (n'interdire qu'entre deux
+        // canons tous deux dans la portion) laisserait le calculateur y faire entrer un véhicule par
+        // une extrémité — exactement ce que la règle proscrit.
+        window.routeTronconInterdit = function(idA, idB) {
+            return window.routeCanonInterdit(idA) || window.routeCanonInterdit(idB);
+        };
+
+        // Graphe : chaque canon relié à ses voisins proches. Le rayon reconstruit la ligne de canons
+        // d'une piste sans relier deux pistes qui se croisent de loin.
+        window.buildRouteGraph = function() {
+            let feats = ((window.snowCannons && window.snowCannons.features) || [])
+                .filter(function(f) { let c = f.geometry.coordinates; return c && c[0] && c[1]; });
+            let noeuds = feats.map(function(f) {
+                return { id: f.properties.id, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0],
+                         piste: window.getV(f.properties, window.keyPiste) };
+            });
+            let R = window.routeCfg().rayonLien;
+            let adj = {}; noeuds.forEach(function(n) { adj[n.id] = []; });
+            let bloques = 0;
+            for (let i = 0; i < noeuds.length; i++) {
+                for (let j = i + 1; j < noeuds.length; j++) {
+                    let d = window.distanceM(noeuds[i].lat, noeuds[i].lng, noeuds[j].lat, noeuds[j].lng);
+                    if (d > R) continue;
+                    if (window.routeTronconInterdit(noeuds[i].id, noeuds[j].id)) { bloques++; continue; }
+                    adj[noeuds[i].id].push({ v: noeuds[j].id, d: d });
+                    adj[noeuds[j].id].push({ v: noeuds[i].id, d: d });
+                }
+            }
+            let index = {}; noeuds.forEach(function(n) { index[n.id] = n; });
+            return { noeuds: noeuds, index: index, adj: adj, bloques: bloques };
+        };
+
+        // Dijkstra depuis un nœud : distances et chemins vers tout le reste du graphe.
+        window.routeDijkstra = function(g, source) {
+            let dist = {}, prec = {}, vus = {};
+            Object.keys(g.adj).forEach(function(k) { dist[k] = Infinity; });
+            if (dist[source] === undefined) return { dist: dist, prec: prec };
+            dist[source] = 0;
+            // File triée à la main : quelques centaines de nœuds, un tas binaire serait du zèle.
+            let file = [{ id: source, d: 0 }];
+            while (file.length) {
+                file.sort(function(a, b) { return a.d - b.d; });
+                let cur = file.shift();
+                if (vus[cur.id]) continue;
+                vus[cur.id] = 1;
+                (g.adj[cur.id] || []).forEach(function(e) {
+                    let nd = cur.d + e.d;
+                    if (nd < dist[e.v]) { dist[e.v] = nd; prec[e.v] = cur.id; file.push({ id: e.v, d: nd }); }
+                });
+            }
+            return { dist: dist, prec: prec };
+        };
+        window.routeChemin = function(prec, source, cible) {
+            let out = [cible], cur = cible, garde = 0;
+            while (cur !== source && prec[cur] !== undefined && garde++ < 5000) { cur = prec[cur]; out.push(cur); }
+            return cur === source ? out.reverse() : null;
+        };
+
+        /* Ordonnancement de la tournée : plus proche voisin, puis 2-opt. Le problème du voyageur de
+           commerce n'a pas de solution exacte praticable, mais sur une trentaine de points le 2-opt
+           donne un trajet dont on ne gagnerait plus grand-chose à s'écarter — et il est instantané. */
+        window.routeOrdonner = function(depart, points, D) {
+            let restants = points.slice(), ordre = [], cur = depart;
+            while (restants.length) {
+                let meilleur = 0, best = Infinity;
+                restants.forEach(function(p, i) { let d = D[cur][p]; if (d < best) { best = d; meilleur = i; } });
+                cur = restants.splice(meilleur, 1)[0];
+                ordre.push(cur);
+            }
+            let longueur = function(o) {
+                let t = D[depart][o[0]] || 0;
+                for (let i = 0; i < o.length - 1; i++) t += D[o[i]][o[i + 1]];
+                return t;
+            };
+            let ameliore = true, tours = 0;
+            while (ameliore && tours++ < 60) {
+                ameliore = false;
+                for (let i = 0; i < ordre.length - 1; i++) {
+                    for (let j = i + 1; j < ordre.length; j++) {
+                        let essai = ordre.slice(0, i).concat(ordre.slice(i, j + 1).reverse(), ordre.slice(j + 1));
+                        if (longueur(essai) < longueur(ordre) - 0.5) { ordre = essai; ameliore = true; }
+                    }
+                }
+            }
+            return ordre;
+        };
+
+        window.routeDernier = null;
+
+        window.calculerFicheRoute = function(ids, depart) {
+            let cfg = window.routeCfg();
+            let g = window.buildRouteGraph();
+            if (!g.noeuds.length) return { err: "Aucun canon géolocalisé." };
+            ids = ids.filter(function(id) { return g.index[id]; });
+            if (!ids.length) return { err: "Aucun canon sélectionné." };
+
+            // Le point de départ n'est pas un canon : on le raccroche au canon le plus proche, et le
+            // premier tronçon est parcouru à vol d'oiseau (piste d'accès, parking…).
+            let depNoeud = null, depDist = 0;
+            if (depart) {
+                let best = null, bd = Infinity;
+                g.noeuds.forEach(function(n) { let d = window.distanceM(depart.lat, depart.lng, n.lat, n.lng); if (d < bd) { bd = d; best = n; } });
+                depNoeud = best ? best.id : null; depDist = bd;
+            }
+            if (!depNoeud) { depNoeud = ids[0]; depDist = 0; depart = null; }
+
+            // Les canons d'une portion interdite ne sont pas joignables en véhicule, point final.
+            // Les autres le sont toujours : ils sont écartés de la tournée ici.
+            let interdits = ids.filter(function(id) { return window.routeCanonInterdit(id); });
+            ids = ids.filter(function(id) { return !window.routeCanonInterdit(id); });
+            if (!ids.length) return { err: "Tous les canons choisis sont sur une portion interdite à la circulation." };
+            if (window.routeCanonInterdit(depNoeud)) depNoeud = ids[0];
+
+            let sommets = [depNoeud].concat(ids.filter(function(id) { return id !== depNoeud; }));
+            let D = {}, P = {};
+            sommets.forEach(function(s) {
+                let r = window.routeDijkstra(g, s);
+                D[s] = r.dist; P[s] = r.prec;
+            });
+
+            /* Le réseau des canons n'est pas d'un seul tenant : deux pistes voisines ne sont pas
+               forcément reliées par une ligne continue, et les portions interdites le découpent
+               davantage. Refuser de router entre deux morceaux rendrait l'outil inutilisable dès la
+               première tournée à cheval sur deux pistes. On relie donc ces morceaux à vol d'oiseau,
+               majoré d'un tiers pour tenir compte du détour réel — c'est une estimation, et la fiche
+               le dit franchement plutôt que de faire passer une approximation pour un tracé. */
+            let FACTEUR_LIAISON = 1.35;
+            let M = {}, HORS = {};
+            sommets.forEach(function(a) {
+                M[a] = {}; HORS[a] = {};
+                sommets.forEach(function(b) {
+                    if (a === b) { M[a][b] = 0; HORS[a][b] = false; return; }
+                    let d = D[a] ? D[a][b] : Infinity;
+                    if (isFinite(d)) { M[a][b] = d; HORS[a][b] = false; }
+                    else {
+                        let na = g.index[a], nb = g.index[b];
+                        M[a][b] = window.distanceM(na.lat, na.lng, nb.lat, nb.lng) * FACTEUR_LIAISON;
+                        HORS[a][b] = true;
+                    }
+                });
+            });
+
+            let aVisiter = sommets.filter(function(s) { return s !== depNoeud; });
+            let ordre = aVisiter.length ? window.routeOrdonner(depNoeud, aVisiter, M) : [];
+            let visites = (ids.indexOf(depNoeud) > -1 ? [depNoeud] : []).concat(ordre);
+
+            let etapes = [], trace = [], liaisons = [], cumul = depDist, prec = depNoeud;
+            if (depart) trace.push([depart.lat, depart.lng]);
+            trace.push([g.index[depNoeud].lat, g.index[depNoeud].lng]);
+            if (ids.indexOf(depNoeud) > -1) {
+                etapes.push({ id: depNoeud, dist: depDist, cumul: cumul, piste: g.index[depNoeud].piste, horsLigne: !!depart });
+            }
+            ordre.forEach(function(cible) {
+                let d = M[prec][cible];
+                cumul += d;
+                etapes.push({ id: cible, dist: d, cumul: cumul, piste: g.index[cible].piste, horsLigne: HORS[prec][cible] });
+                if (HORS[prec][cible]) {
+                    let a = g.index[prec], b = g.index[cible];
+                    liaisons.push([[a.lat, a.lng], [b.lat, b.lng]]);
+                    trace.push([b.lat, b.lng]);
+                } else {
+                    let ch = window.routeChemin(P[prec], prec, cible);
+                    if (ch) ch.slice(1).forEach(function(n) { trace.push([g.index[n].lat, g.index[n].lng]); });
+                }
+                prec = cible;
+            });
+
+            let retour = 0;
+            if (cfg.retour && etapes.length) {
+                retour = M[prec] && isFinite(M[prec][depNoeud]) ? M[prec][depNoeud] : 0;
+                if (retour) {
+                    if (HORS[prec][depNoeud]) {
+                        let a = g.index[prec], b = g.index[depNoeud];
+                        liaisons.push([[a.lat, a.lng], [b.lat, b.lng]]);
+                        trace.push([b.lat, b.lng]);
+                    } else {
+                        let ch = window.routeChemin(P[prec], prec, depNoeud);
+                        if (ch) ch.slice(1).forEach(function(n) { trace.push([g.index[n].lat, g.index[n].lng]); });
+                    }
+                }
+                if (depart) { trace.push([depart.lat, depart.lng]); retour += depDist; }
+            }
+
+            let distanceTotale = cumul + retour;
+            let minutesRoute = distanceTotale / 1000 / cfg.vitesse * 60;
+            let minutesTravail = visites.length * cfg.minutesParCanon;
+            return {
+                err: "", etapes: etapes, trace: trace, liaisons: liaisons, depart: depart, depNoeud: depNoeud,
+                distance: distanceTotale, retour: retour, depDist: depDist,
+                minutesRoute: minutesRoute, minutesTravail: minutesTravail,
+                minutes: minutesRoute + minutesTravail,
+                horsLigne: etapes.filter(function(e) { return e.horsLigne; }).length,
+                interdits: interdits.map(function(id) {
+                    // Canon le plus proche hors portion interdite : c'est de là qu'on finira à pied.
+                    let best = null, bd = Infinity;
+                    g.noeuds.forEach(function(n) {
+                        if (window.routeCanonInterdit(n.id)) return;
+                        let d = window.distanceM(g.index[id].lat, g.index[id].lng, n.lat, n.lng);
+                        if (d < bd) { bd = d; best = n.id; }
+                    });
+                    let z = window.routeCanonInterdit(id);
+                    return { id: id, depuis: best, metres: Math.round(bd), zone: z ? z.nom : "" };
+                }),
+                troncons: g.bloques, piste: g.index
+            };
+        };
+
+        window.routeFmtDuree = function(min) {
+            let h = Math.floor(min / 60), m = Math.round(min % 60);
+            return h ? h + " h " + String(m).padStart(2, '0') : m + " min";
+        };
+        window.routeFmtDist = function(m) {
+            return m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + " km" : Math.round(m) + " m";
+        };
+
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 4.G.1 — INTERFACE DE LA FICHE DE ROUTE                            */
+        /* ------------------------------------------------------------------------- */
+        window.routeSelection = [];
+        window.routeTraceLayer = null;
+
+        window.openFicheRoute = function() {
+            let sb = document.getElementById('right-sidebar'); let sl = document.getElementById('selected-list'); if (!sb || !sl) return;
+            document.getElementById('right-title').innerHTML = "<i class='fa-solid fa-route'></i> Fiche de route";
+            document.getElementById('multi-tools').style.display = 'none';
+            document.getElementById('view-edit').style.display = 'none';
+            document.getElementById('view-selection').style.display = 'block';
+            sb.classList.add('open');
+            if (!window.routeSelection.length && window.selectedCannonsMap.size)
+                window.routeSelection = Array.from(window.selectedCannonsMap.keys());
+            window.renderFicheRoute();
+        };
+
+        window.routePrendreDefauts = function() {
+            window.routeSelection = ((window.snowCannons && window.snowCannons.features) || [])
+                .filter(function(f) { return window.getActiveTickets(f.properties.id).length; })
+                .map(function(f) { return f.properties.id; });
+            window.routeDernier = null;
+            window.renderFicheRoute();
+        };
+        window.routePrendreSelection = function() {
+            window.routeSelection = Array.from(window.selectedCannonsMap.keys());
+            window.routeDernier = null; window.renderFicheRoute();
+        };
+        window.routeVider = function() { window.routeSelection = []; window.routeDernier = null; window.effacerTrace(); window.renderFicheRoute(); };
+        window.routeRetirer = function(id) {
+            window.routeSelection = window.routeSelection.filter(function(x) { return x !== id; });
+            window.routeDernier = null; window.renderFicheRoute();
+        };
+
+        window.routeDefinirDepart = function(mode) {
+            let cfg = window.routeCfg();
+            if (mode === 'gps') {
+                if (!navigator.geolocation) { alert("Position indisponible sur cet appareil."); return; }
+                navigator.geolocation.getCurrentPosition(function(pos) {
+                    cfg.depart = { lat: pos.coords.latitude, lng: pos.coords.longitude, nom: "Ma position" };
+                    window.routeSave(); window.routeDernier = null; window.renderFicheRoute();
+                }, function(e) { alert("Position refusée : " + e.message); }, { enableHighAccuracy: true, timeout: 20000 });
+                return;
+            }
+            if (mode === 'carte') {
+                if (!window.map) return;
+                let sb = document.getElementById('right-sidebar'); if (sb) sb.classList.remove('open');
+                window.map.getContainer().style.cursor = 'crosshair';
+                let h = function(e) {
+                    window.map.off('click', h); window.map.getContainer().style.cursor = '';
+                    let nom = prompt("Nom du point de départ :", "Garage");
+                    cfg.depart = { lat: +e.latlng.lat.toFixed(6), lng: +e.latlng.lng.toFixed(6), nom: nom || "Départ" };
+                    window.routeSave(); window.routeDernier = null;
+                    if (sb) sb.classList.add('open');
+                    window.renderFicheRoute();
+                };
+                window.map.on('click', h);
+                return;
+            }
+            cfg.depart = null; window.routeSave(); window.routeDernier = null; window.renderFicheRoute();
+        };
+
+        window.routeMajReglages = function() {
+            let cfg = window.routeCfg();
+            let g = function(id) { let e = document.getElementById(id); return e ? e.value : undefined; };
+            let v = parseFloat(g('route-vitesse')); if (!isNaN(v)) cfg.vitesse = Math.max(3, Math.min(90, v));
+            let m = parseInt(g('route-minutes'), 10); if (!isNaN(m)) cfg.minutesParCanon = Math.max(0, Math.min(240, m));
+            let r = parseInt(g('route-rayon'), 10); if (!isNaN(r)) cfg.rayonLien = Math.max(50, Math.min(2000, r));
+            let ret = document.getElementById('route-retour'); if (ret) cfg.retour = ret.checked;
+            window.routeSave(); window.routeDernier = null; window.renderFicheRoute();
+        };
+
+        window.effacerTrace = function() {
+            if (window.routeTraceLayer && window.map) { window.map.removeLayer(window.routeTraceLayer); window.routeTraceLayer = null; }
+        };
+        window.tracerRoute = function(r) {
+            window.effacerTrace();
+            if (!window.map || !r.trace || r.trace.length < 2) return;
+            window.routeTraceLayer = L.layerGroup([
+                L.polyline(r.trace, { color: '#fff', weight: 8, opacity: 0.75 }),
+                L.polyline(r.trace, { color: '#e67e22', weight: 4, opacity: 0.95 })
+            ]);
+            // Pointillé pour ce qui n'est pas une ligne de canons : le trait plein ne doit pas laisser
+            // croire à un tracé relevé sur le terrain.
+            (r.liaisons || []).forEach(function(l) {
+                window.routeTraceLayer.addLayer(L.polyline(l, { color: '#c0392b', weight: 3, opacity: 0.9, dashArray: '8,7' }));
+            });
+            r.etapes.forEach(function(e, i) {
+                let n = r.piste[e.id];
+                window.routeTraceLayer.addLayer(L.marker([n.lat, n.lng], {
+                    icon: L.divIcon({ className: 'route-step-icon', html: '<div>' + (i + 1) + '</div>', iconSize: [26, 26], iconAnchor: [13, 13] })
+                }));
+            });
+            if (r.depart) window.routeTraceLayer.addLayer(L.marker([r.depart.lat, r.depart.lng], {
+                icon: L.divIcon({ className: 'route-step-icon route-start-icon', html: '<div>D</div>', iconSize: [26, 26], iconAnchor: [13, 13] })
+            }));
+            window.routeTraceLayer.addTo(window.map);
+            let b = L.latLngBounds(r.trace); if (b.isValid()) window.map.fitBounds(b, { padding: [40, 40] });
+        };
+
+        window.lancerCalculRoute = function(btn) {
+            if (!window.routeSelection.length) { alert("Choisissez d'abord les canons à visiter."); return; }
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Calcul…'; }
+            setTimeout(function() {
+                let r = window.calculerFicheRoute(window.routeSelection, window.routeCfg().depart);
+                window.routeDernier = r;
+                if (!r.err) window.tracerRoute(r);
+                window.renderFicheRoute();
+                if (r.err) alert(r.err);
+            }, 30);
+        };
+
+        window.renderFicheRoute = function() {
+            let sl = document.getElementById('selected-list'); if (!sl) return;
+            let cfg = window.routeCfg();
+            let r = window.routeDernier;
+            let dep = cfg.depart;
+            let nomCanon = function(id) {
+                let f = ((window.snowCannons && window.snowCannons.features) || []).find(function(x) { return x.properties.id === id; });
+                if (!f) return id;
+                let t = window.getActiveTickets(id);
+                return id + (t.length ? ' — ' + t[0].defaut : '');
+            };
+
+            let html = `<div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <button onclick="window.routePrendreDefauts()" style="flex:1 1 46%; background:#c0392b; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">⚠️ Tous les canons en défaut</button>
+                    <button onclick="window.routePrendreSelection()" style="flex:1 1 46%; background:#2980b9; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">🖱️ Ma sélection sur la carte</button>
+                </div>
+
+                <div style="border:1px solid #e1e8ed; border-radius:6px; overflow:hidden;">
+                    <div style="background:#f8fafc; padding:8px 10px; font-size:12px; font-weight:bold; color:#2c3e50; display:flex; align-items:center;">
+                        <span style="flex:1;">${window.routeSelection.length} canon(s) à visiter</span>
+                        ${window.routeSelection.length ? `<button onclick="window.routeVider()" style="background:none; border:none; color:#c0392b; cursor:pointer; font-size:11px;">tout retirer</button>` : ''}
+                    </div>
+                    <div style="max-height:170px; overflow-y:auto; padding:6px;">
+                        ${window.routeSelection.length
+                            ? window.routeSelection.map(function(id) {
+                                return `<div style="display:flex; align-items:center; gap:6px; font-size:11px; padding:4px 6px; border-bottom:1px solid #f0f3f6;">
+                                    <span style="flex:1;">${window.prodEsc(nomCanon(id))}</span>
+                                    <button onclick="window.routeRetirer('${id}')" style="background:none; border:none; color:#c0392b; cursor:pointer;">✕</button></div>`;
+                              }).join('')
+                            : `<i style="font-size:11px; color:#95a5a6;">Sélectionnez des canons sur la carte, ou reprenez tous ceux en défaut.</i>`}
+                    </div>
+                </div>
+
+                <div style="border:1px solid #e1e8ed; border-radius:6px; padding:10px;">
+                    <div style="font-size:11px; font-weight:bold; color:#2c3e50; margin-bottom:6px;">Départ : ${dep ? window.prodEsc(dep.nom) + ' (' + dep.lat.toFixed(4) + ', ' + dep.lng.toFixed(4) + ')' : '<i>premier canon de la tournée</i>'}</div>
+                    <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                        <button onclick="window.routeDefinirDepart('gps')" style="flex:1; background:#16a085; color:#fff; border:none; padding:7px; border-radius:4px; font-size:11px; cursor:pointer;">📍 Ma position</button>
+                        <button onclick="window.routeDefinirDepart('carte')" style="flex:1; background:#2980b9; color:#fff; border:none; padding:7px; border-radius:4px; font-size:11px; cursor:pointer;">🗺️ Sur la carte</button>
+                        <button onclick="window.routeDefinirDepart('')" style="flex:0 0 auto; background:#ecf0f1; border:1px solid #ccc; padding:7px 10px; border-radius:4px; font-size:11px; cursor:pointer;">✕</button>
+                    </div>
+                    <div style="display:flex; gap:6px; margin-top:8px;">
+                        <div style="flex:1;"><span class="edit-label" style="font-size:10px;">Vitesse (km/h)</span><input type="number" id="route-vitesse" class="edit-input" style="margin:0; padding:5px;" value="${cfg.vitesse}" min="3" max="90" onchange="window.routeMajReglages()"></div>
+                        <div style="flex:1;"><span class="edit-label" style="font-size:10px;">Min. par canon</span><input type="number" id="route-minutes" class="edit-input" style="margin:0; padding:5px;" value="${cfg.minutesParCanon}" min="0" max="240" onchange="window.routeMajReglages()"></div>
+                        <div style="flex:1;"><span class="edit-label" style="font-size:10px;">Portée (m)</span><input type="number" id="route-rayon" class="edit-input" style="margin:0; padding:5px;" value="${cfg.rayonLien}" min="50" max="2000" step="50" onchange="window.routeMajReglages()"></div>
+                    </div>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:11px; margin-top:8px; cursor:pointer;">
+                        <input type="checkbox" id="route-retour" ${cfg.retour ? 'checked' : ''} onchange="window.routeMajReglages()"> Revenir au point de départ
+                    </label>
+                    <p style="font-size:10px; color:#888; margin:8px 0 0;">Circulation interdite : ${cfg.interdits.map(function(z) { return window.prodEsc(z.nom) + ' (' + z.de + '–' + z.a + ')'; }).join(' · ')}.</p>
+                </div>
+
+                <button onclick="window.lancerCalculRoute(this)" style="background:#e67e22; color:#fff; border:none; padding:12px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-route"></i> Calculer la tournée</button>`;
+
+            if (r && !r.err) {
+                html += `<div style="border:2px solid #e67e22; border-radius:8px; overflow:hidden;">
+                    <div style="background:#e67e22; color:#fff; padding:10px; display:flex; gap:10px; text-align:center;">
+                        <div style="flex:1;"><div style="font-size:17px; font-weight:bold;">${window.routeFmtDist(r.distance)}</div><div style="font-size:10px; opacity:0.9;">PARCOURS</div></div>
+                        <div style="flex:1;"><div style="font-size:17px; font-weight:bold;">${window.routeFmtDuree(r.minutes)}</div><div style="font-size:10px; opacity:0.9;">TOTAL</div></div>
+                        <div style="flex:1;"><div style="font-size:17px; font-weight:bold;">${r.etapes.length}</div><div style="font-size:10px; opacity:0.9;">ARRÊTS</div></div>
+                    </div>
+                    <div style="padding:8px 10px; font-size:11px; color:#666; background:#fdf6ef;">
+                        Route ${window.routeFmtDuree(r.minutesRoute)} à ${cfg.vitesse} km/h · interventions ${window.routeFmtDuree(r.minutesTravail)}${r.retour ? ' · retour compris' : ''}
+                    </div>
+                    <div style="max-height:280px; overflow-y:auto;">
+                        ${r.etapes.map(function(e, i) {
+                            return `<div style="display:flex; align-items:center; gap:8px; padding:7px 10px; border-bottom:1px solid #f0f3f6; font-size:12px;">
+                                <span style="flex:0 0 24px; height:24px; line-height:24px; text-align:center; background:#e67e22; color:#fff; border-radius:50%; font-size:11px; font-weight:bold;">${i + 1}</span>
+                                <span style="flex:1;"><b>Canon ${window.prodEsc(e.id)}</b>${e.piste && e.piste !== 'N/A' ? ' <span style="color:#888;">· ' + window.prodEsc(e.piste) + '</span>' : ''}${e.horsLigne ? ' <span style="color:#e67e22;" title="Liaison hors ligne de canons">⤳</span>' : ''}</span>
+                                <span style="color:#888; font-size:11px; text-align:right;">${window.routeFmtDist(e.dist)}<br><span style="font-size:10px;">${window.routeFmtDuree(e.cumul / 1000 / cfg.vitesse * 60 + i * cfg.minutesParCanon)}</span></span>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+                if (r.interdits.length) {
+                    html += `<div style="background:#fdedec; border:1px solid #f5b7b1; border-radius:6px; padding:10px; font-size:11px; color:#922b21;">
+                        <b>⚠️ ${r.interdits.length} canon(s) à rejoindre à pied</b><br>
+                        ${r.interdits.map(function(x) { return "Canon <b>" + window.prodEsc(x.id) + "</b> (" + window.prodEsc(x.zone) + ") — depuis le canon " + window.prodEsc(x.depuis || '?') + ", " + x.metres + " m"; }).join('<br>')}
+                        <br><span style="color:#7b241c;">Circulation interdite sur cette portion : ils sont exclus du trajet en véhicule.</span>
+                    </div>`;
+                }
+                if (r.horsLigne) {
+                    html += `<div style="background:#fef5e7; border:1px solid #f5cba7; border-radius:6px; padding:10px; font-size:11px; color:#7e5109;">
+                        <b>${r.horsLigne} liaison(s) hors ligne de canons</b> — tracées en pointillé. Aucune ligne continue ne relie ces points : la distance est estimée à vol d'oiseau majoré de 35 %, le temps réel dépendra de l'accès emprunté.
+                    </div>`;
+                }
+                html += `<button onclick="window.imprimerFicheRoute()" style="background:#7f8c8d; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-print"></i> Imprimer la fiche</button>`;
+            }
+            html += `</div>`;
+            sl.innerHTML = html;
+        };
+
+        // Impression : on peint la fiche dans un conteneur dédié et une règle @media print masque tout
+        // le reste. Pas de fenêtre séparée, qui serait bloquée par les navigateurs mobiles.
+        window.imprimerFicheRoute = function() {
+            let r = window.routeDernier; if (!r || r.err) return;
+            let cfg = window.routeCfg();
+            let box = document.getElementById('route-print');
+            if (!box) { box = document.createElement('div'); box.id = 'route-print'; document.body.appendChild(box); }
+            let d = new Date();
+            box.innerHTML = `
+                <h1>Fiche de route — ${d.toLocaleDateString('fr-FR')} ${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}</h1>
+                <p class="rp-sub">${r.etapes.length} arrêt(s) · ${window.routeFmtDist(r.distance)} · ${window.routeFmtDuree(r.minutes)} au total
+                (route ${window.routeFmtDuree(r.minutesRoute)} à ${cfg.vitesse} km/h, interventions ${window.routeFmtDuree(r.minutesTravail)})<br>
+                Départ : ${cfg.depart ? window.prodEsc(cfg.depart.nom) : 'premier canon'}${cfg.retour ? ' · retour au départ compris' : ''}</p>
+                <table>
+                    <thead><tr><th>#</th><th>Canon</th><th>Piste</th><th>Défaut signalé</th><th>Distance</th><th>Heure cumulée</th><th>Fait</th></tr></thead>
+                    <tbody>${r.etapes.map(function(e, i) {
+                        let t = window.getActiveTickets(e.id);
+                        return `<tr><td>${i + 1}</td><td><b>${window.prodEsc(e.id)}</b></td><td>${window.prodEsc(e.piste || '')}</td>
+                            <td>${window.prodEsc(t.map(function(x) { return x.defaut; }).join(' · '))}</td>
+                            <td>${window.routeFmtDist(e.dist)}</td>
+                            <td>${window.routeFmtDuree(e.cumul / 1000 / cfg.vitesse * 60 + i * cfg.minutesParCanon)}</td><td class="rp-case"></td></tr>`;
+                    }).join('')}</tbody>
+                </table>
+                ${r.interdits.length ? `<div class="rp-warn"><b>À rejoindre à pied (circulation interdite) :</b> ${r.interdits.map(function(x) { return "canon " + window.prodEsc(x.id) + " depuis " + window.prodEsc(x.depuis || '?') + " (" + x.metres + " m)"; }).join(' · ')}</div>` : ''}
+                ${r.horsLigne ? `<div class="rp-warn"><b>${r.horsLigne} liaison(s) hors ligne de canons :</b> distance estimée, temps indicatif.</div>` : ''}
+                <p class="rp-foot">Circulation interdite : ${cfg.interdits.map(function(z) { return window.prodEsc(z.nom) + ' (' + z.de + '–' + z.a + ')'; }).join(' · ')}. Distances mesurées le long de la ligne de canons.</p>`;
+            document.body.classList.add('printing-route');
+            setTimeout(function() {
+                window.print();
+                setTimeout(function() { document.body.classList.remove('printing-route'); }, 400);
+            }, 60);
+        };
+
+        /* ========================================================================= */
+        /* CHAPITRE 4.H : AIDE AU DIAGNOSTIC                                         */
+        /*                                                                           */
+        /* Le principe est celui du raisonnement par cas, pas de la prédiction :      */
+        /* on ne devine rien, on RETROUVE ce qui a déjà marché. Pour le défaut en     */
+        /* cours sur un canon, on rassemble tous les tickets comparables déclarés sur */
+        /* l'ENSEMBLE du parc, et on classe ce qui en est ressorti — causes,          */
+        /* interventions, pièces, délai de remise en service.                        */
+        /*                                                                           */
+        /* Chaque chiffre est accompagné de son effectif. Une intervention citée      */
+        /* « 1 fois sur 1 » n'a pas la valeur d'une intervention citée 14 fois sur    */
+        /* 17, et l'écran doit permettre de faire la différence d'un coup d'œil.      */
+        /* ========================================================================= */
+        window.diagNorm = function(t) {
+            return (t === null || t === undefined ? '' : t.toString())
+                .toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, '')
+                .replace(/[^a-z0-9]+/g, ' ').trim();
+        };
+        window.DIAG_VIDES = ['le','la','les','un','une','des','du','de','et','ou','a','au','aux','sur','sous','en','dans','pour','par','avec','sans','plus','ne','pas','est','hs'];
+        window.diagMots = function(t) {
+            return window.diagNorm(t).split(' ').filter(function(m) { return m.length > 2 && window.DIAG_VIDES.indexOf(m) === -1; });
+        };
+        // Similarité de Jaccard sur les mots significatifs. Deux libellés saisis à la main pour la
+        // même panne ne se ressemblent jamais au caractère près : « sonde T° HS » et « défaut sonde
+        // température » n'ont aucun préfixe commun mais désignent la même chose.
+        window.diagSimilarite = function(a, b) {
+            let na = window.diagNorm(a), nb = window.diagNorm(b);
+            if (!na || !nb) return 0;
+            if (na === nb) return 1;
+            let ma = window.diagMots(a), mb = window.diagMots(b);
+            if (!ma.length || !mb.length) return 0;
+            let inter = ma.filter(function(m) { return mb.indexOf(m) > -1; }).length;
+            if (!inter) return 0;
+            // Jaccard seul punit la longueur : « Sonde HS » et « Défaut sonde température » désignent
+            // la même panne mais n'obtiennent que 0,33 parce que le second est plus bavard. On y ajoute
+            // le taux de recouvrement (part du libellé le plus court retrouvée dans l'autre), qui
+            // reconnaît une abréviation, sans pour autant confondre « fuite eau » et « fuite air ».
+            let jaccard = inter / (ma.length + mb.length - inter);
+            let recouvrement = inter / Math.min(ma.length, mb.length);
+            return 0.5 * jaccard + 0.5 * recouvrement;
+        };
+        window.DIAG_SEUIL = 0.45;
+
+        window.diagChamp = function(ticket, motsCles) {
+            let d = (ticket.fullData || []).find(function(x) {
+                let k = window.diagNorm(x.k);
+                return motsCles.some(function(m) { return k.indexOf(m) > -1; });
+            });
+            return d ? (d.v || '').toString().trim() : '';
+        };
+
+        window.diagClasser = function(valeurs) {
+            let c = {};
+            valeurs.forEach(function(v) {
+                let t = (v || '').trim(); if (!t) return;
+                // Regroupement par forme normalisée, mais on réaffiche la formulation d'origine.
+                let k = window.diagNorm(t); if (!k) return;
+                if (!c[k]) c[k] = { texte: t, n: 0 };
+                c[k].n++;
+            });
+            return Object.keys(c).map(function(k) { return c[k]; }).sort(function(a, b) { return b.n - a.n; });
+        };
+
+        window.diagAnalyser = function(idCanon, defautChoisi) {
+            let tous = window.rawTickets || [];
+            let duCanon = tous.filter(function(t) { return t.idCanon === idCanon; });
+            let actifs = window.getActiveTickets(idCanon);
+            let cible = defautChoisi || (actifs[0] ? actifs[0].defaut : (duCanon[0] ? duCanon[0].defaut : ''));
+            if (!cible) return { err: "Aucun défaut déclaré sur ce canon.", defauts: [] };
+
+            // Cas comparables : même défaut (ou très proche) partout sur le parc, hors ticket en cours.
+            let cas = tous.filter(function(t) {
+                return window.diagSimilarite(t.defaut, cible) >= window.DIAG_SEUIL;
+            });
+            let resolus = cas.filter(function(t) { return (t.statut || '').indexOf('fait') > -1; });
+
+            let delais = [];
+            resolus.forEach(function(t) {
+                let d1 = window.parseFrDate(t.date);
+                let d2 = window.parseFrDate(window.diagChamp(t, ['date d inter', 'date dinter', 'date inter', 'date de realisation']));
+                if (d1 && d2) { let h = (d2 - d1) / 3600000; if (h >= 0 && h < 24 * 400) delais.push(h); }
+            });
+            delais.sort(function(a, b) { return a - b; });
+            let mediane = delais.length ? delais[Math.floor(delais.length / 2)] : null;
+
+            let pieces = [];
+            resolus.forEach(function(t) {
+                window.parsePiecesField(window.diagChamp(t, ['piece'])).forEach(function(p) {
+                    for (let i = 0; i < p.qte; i++) pieces.push(p.ref);
+                });
+            });
+
+            // Historique propre au canon : un défaut qui revient sans cesse ne se traite pas comme un
+            // défaut isolé, et c'est l'information que la moyenne du parc masque.
+            let recurrence = duCanon.filter(function(t) { return window.diagSimilarite(t.defaut, cible) >= window.DIAG_SEUIL; });
+            let derniere = null;
+            recurrence.forEach(function(t) { let d = window.parseFrDate(t.date); if (d && (!derniere || d > derniere)) derniere = d; });
+
+            return {
+                err: "", canon: idCanon, defaut: cible,
+                defauts: window.diagClasser(duCanon.map(function(t) { return t.defaut; })),
+                nbCas: cas.length, nbResolus: resolus.length,
+                canonsConcernes: Array.from(new Set(cas.map(function(t) { return t.idCanon; }))).length,
+                causes: window.diagClasser(resolus.map(function(t) { return window.diagChamp(t, ['cause']); })),
+                interventions: window.diagClasser(resolus.map(function(t) { return window.diagChamp(t, ['intervention', 'action', 'travaux']); })),
+                pieces: window.diagClasser(pieces),
+                delaiMedian: mediane, delaiN: delais.length,
+                recurrence: recurrence.length, derniere: derniere,
+                totalCanon: duCanon.length
+            };
+        };
+
+        window.diagCanon = null;
+        window.openDiagnostic = function(id) {
+            let sb = document.getElementById('right-sidebar'); let sl = document.getElementById('selected-list'); if (!sb || !sl) return;
+            document.getElementById('right-title').innerHTML = "<i class='fa-solid fa-stethoscope'></i> Aide au diagnostic";
+            document.getElementById('multi-tools').style.display = 'none';
+            document.getElementById('view-edit').style.display = 'none';
+            document.getElementById('view-selection').style.display = 'block';
+            sb.classList.add('open');
+            if (id) window.diagCanon = id;
+            else if (!window.diagCanon && window.selectedCannonsMap.size) window.diagCanon = Array.from(window.selectedCannonsMap.keys())[0];
+            window.renderDiagnostic();
+        };
+        window.setDiagCanon = function(v) { window.diagCanon = v; window.diagDefaut = null; window.renderDiagnostic(); };
+        window.setDiagDefaut = function(v) { window.diagDefaut = v; window.renderDiagnostic(); };
+
+        window.diagBarre = function(n, total, couleur) {
+            let pct = total ? Math.round(n / total * 100) : 0;
+            return `<div style="height:5px; background:#eef2f5; border-radius:3px; overflow:hidden; margin-top:3px;">
+                <div style="height:100%; width:${pct}%; background:${couleur};"></div></div>`;
+        };
+        window.diagListe = function(titre, items, total, couleur, vide) {
+            if (!items.length) return `<div style="font-size:11px; color:#95a5a6; padding:6px 0;">${vide}</div>`;
+            return items.slice(0, 6).map(function(it) {
+                let pct = total ? Math.round(it.n / total * 100) : 0;
+                return `<div style="padding:6px 0; border-bottom:1px solid #f0f3f6;">
+                    <div style="display:flex; gap:8px; font-size:12px;">
+                        <span style="flex:1;">${window.prodEsc(it.texte)}</span>
+                        <b style="color:${couleur}; white-space:nowrap;">${it.n}× · ${pct} %</b>
+                    </div>${window.diagBarre(it.n, total, couleur)}</div>`;
+            }).join('');
+        };
+
+        window.renderDiagnostic = function() {
+            let sl = document.getElementById('selected-list'); if (!sl) return;
+            let feats = ((window.snowCannons && window.snowCannons.features) || []);
+            let avecTickets = feats.filter(function(f) { return (window.rawTickets || []).some(function(t) { return t.idCanon === f.properties.id; }); });
+            let opts = avecTickets.map(function(f) {
+                let id = f.properties.id;
+                let a = window.getActiveTickets(id).length;
+                return `<option value="${window.prodEsc(id)}"${id === window.diagCanon ? ' selected' : ''}>Canon ${window.prodEsc(id)}${a ? ' — ' + a + ' défaut(s) en cours' : ''}</option>`;
+            }).join('');
+
+            let html = `<div style="display:flex; flex-direction:column; gap:10px;">
+                <div>
+                    <span class="edit-label">Canon à diagnostiquer</span>
+                    <select class="edit-input" style="margin:0;" onchange="window.setDiagCanon(this.value)">
+                        <option value="">— choisir —</option>${opts}
+                    </select>
+                </div>`;
+
+            if (!window.diagCanon) {
+                html += `<div style="font-size:12px; color:#7f8c8d; background:#f8fafc; border:1px solid #e6ecf2; border-radius:6px; padding:12px;">
+                    Choisissez un canon. L'outil recherche dans l'historique de <b>tous</b> les canons les pannes comparables à celle qui est déclarée ici, et classe ce qui les a résolues.</div></div>`;
+                sl.innerHTML = html; return;
+            }
+
+            let a = window.diagAnalyser(window.diagCanon, window.diagDefaut);
+            if (a.err) { sl.innerHTML = html + `<div style="font-size:12px; color:#c0392b; padding:12px;">${a.err}</div></div>`; return; }
+
+            let defOpts = a.defauts.map(function(d) {
+                return `<option value="${window.prodEsc(d.texte)}"${d.texte === a.defaut ? ' selected' : ''}>${window.prodEsc(d.texte)} (${d.n}×)</option>`;
+            }).join('');
+
+            html += `<div>
+                    <span class="edit-label">Défaut analysé</span>
+                    <select class="edit-input" style="margin:0;" onchange="window.setDiagDefaut(this.value)">${defOpts}</select>
+                </div>
+
+                <div style="border:2px solid #2980b9; border-radius:8px; overflow:hidden;">
+                    <div style="background:#2980b9; color:#fff; padding:10px; display:flex; gap:10px; text-align:center;">
+                        <div style="flex:1;"><div style="font-size:18px; font-weight:bold;">${a.nbCas}</div><div style="font-size:10px; opacity:0.9;">CAS COMPARABLES</div></div>
+                        <div style="flex:1;"><div style="font-size:18px; font-weight:bold;">${a.nbResolus}</div><div style="font-size:10px; opacity:0.9;">RÉSOLUS</div></div>
+                        <div style="flex:1;"><div style="font-size:18px; font-weight:bold;">${a.canonsConcernes}</div><div style="font-size:10px; opacity:0.9;">CANONS TOUCHÉS</div></div>
+                    </div>
+                    <div style="padding:8px 10px; font-size:11px; background:#eaf3fb; color:#1b4f72;">
+                        ${a.delaiMedian !== null
+                            ? `Remise en service en <b>${a.delaiMedian < 24 ? Math.round(a.delaiMedian) + ' h' : Math.round(a.delaiMedian / 24) + ' jour(s)'}</b> en général (médiane sur ${a.delaiN} cas datés).`
+                            : `Aucun délai de remise en service exploitable dans l'historique.`}
+                    </div>
+                </div>`;
+
+            if (a.nbResolus < 3) {
+                html += `<div style="background:#fef5e7; border:1px solid #f5cba7; border-radius:6px; padding:10px; font-size:11px; color:#7e5109;">
+                    Seulement <b>${a.nbResolus}</b> cas résolu(s) comparable(s) dans l'historique : ce qui suit est une piste, pas une statistique. Plus les tickets seront renseignés (cause, intervention, pièces), plus cet écran deviendra fiable.</div>`;
+            }
+
+            html += `<div style="border:1px solid #e1e8ed; border-radius:6px; padding:10px;">
+                    <b style="font-size:12px; color:#2c3e50;">🔍 Causes le plus souvent relevées</b>
+                    ${window.diagListe('causes', a.causes, a.nbResolus, '#8e44ad', "Aucune cause renseignée sur les cas comparables.")}
+                </div>
+                <div style="border:1px solid #e1e8ed; border-radius:6px; padding:10px;">
+                    <b style="font-size:12px; color:#2c3e50;">🔧 Interventions qui ont résolu ce défaut</b>
+                    ${window.diagListe('interv', a.interventions, a.nbResolus, '#16a085', "Aucune intervention renseignée sur les cas comparables.")}
+                </div>
+                <div style="border:1px solid #e1e8ed; border-radius:6px; padding:10px;">
+                    <b style="font-size:12px; color:#2c3e50;">📦 Pièces habituellement consommées</b>
+                    ${window.diagListe('pieces', a.pieces, a.nbResolus, '#e67e22', "Aucune pièce enregistrée sur les cas comparables.")}
+                    ${a.pieces.length ? `<div style="font-size:10px; color:#888; margin-top:6px;">À prévoir avant de monter : ${a.pieces.slice(0, 3).map(function(p) { return window.prodEsc(p.texte); }).join(', ')}.</div>` : ''}
+                </div>`;
+
+            if (a.recurrence > 1) {
+                html += `<div style="background:#fdedec; border:1px solid #f5b7b1; border-radius:6px; padding:10px; font-size:12px; color:#922b21;">
+                    <b>⚠️ Défaut récurrent sur ce canon</b><br>
+                    Déjà survenu <b>${a.recurrence} fois</b> ici${a.derniere ? `, la dernière le ${a.derniere.toLocaleDateString('fr-FR')}` : ''}.
+                    Une réparation qui ne tient pas mérite qu'on cherche la cause en amont plutôt que de refaire le même geste.</div>`;
+            }
+
+            html += `<div style="border:1px solid #e1e8ed; border-radius:6px; padding:10px;">
+                    <b style="font-size:12px; color:#2c3e50;">📊 Historique de ce canon (${a.totalCanon} ticket(s))</b>
+                    ${window.diagListe('hist', a.defauts, a.totalCanon, '#34495e', "Aucun historique.")}
+                </div>
+                <button onclick="window.zoomSurCanon('${window.prodEsc(window.diagCanon)}')" style="background:#2980b9; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">🎯 Voir ce canon sur la carte</button>
+            </div>`;
+            sl.innerHTML = html;
         };
 
         /* ------------------------------------------------------------------------- */
@@ -6179,6 +6936,15 @@
         // Rend un instant triable pour tout ce qui ressemble à une date, et null sinon. Les quatre
         // formes rencontrées dans le classeur : 04/12/2026, 2026-12-04, 12/2026 (mois seul) et
         // 2026-12. On refuse explicitement un simple nombre — « 2026 » seul reste une valeur.
+        /* Une somme n'a de sens que sur une grandeur qui s'additionne : un volume, une consommation,
+           un prix, une quantité, une durée. Additionner des numéros de canon, des dates ou des
+           relevés de température ne produit qu'un nombre sans signification, d'autant plus trompeur
+           qu'il s'affiche exactement comme un vrai total. On restreint donc explicitement l'offre. */
+        window.ANALYSE_SOMMABLE = /(eau|volume|m3|m³|conso|consomm|energie|énergie|kw|kwh|cout|coût|prix|montant|euro|€|quantit|qte|qté|nombre|nb |stock|pris|reste|heure|duree|durée|temps|debit|débit|air)/;
+        window.analyseEstSommable = function(nomColonne) {
+            return window.ANALYSE_SOMMABLE.test(window.analyseNorm(nomColonne));
+        };
+
         window.analyseSortDate = function(s) {
             if (s === null || s === undefined) return null;
             let t = s.toString().trim(); if (!t) return null;
@@ -6390,10 +7156,22 @@
                 if(selFilt) selFilt.innerHTML += `<option value="${i}">${h}</option>`;
                 let checked = (i === 1) ? 'checked' : ''; let color = colors[i % colors.length];
                 if(containerY) {
-                    containerY.innerHTML += `<div style="border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;"><label style="font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" class="bi-y-cbx" value="${i}" ${checked} onchange="window.biUpdateUI()"> <span style="color:#2c3e50;">${h}</span></label><div id="bi-opts-${i}" style="display:${checked?'flex':'none'}; gap:5px; margin-top:5px; flex-wrap:wrap; align-items:center;"><select class="bi-y-agg" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc;" onchange="window.biDrawChart()"><option value="sum">Somme</option><option value="count">Comptage</option></select><select class="bi-y-type combo-only" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc; display:none;" onchange="window.biDrawChart()"><option value="bar">Barre</option><option value="line">Courbe</option></select><select class="bi-y-axis" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc;" onchange="window.biDrawChart()"><option value="y">Axe Gauche</option><option value="y1">Axe Droit</option></select><input type="color" class="bi-y-color" data-idx="${i}" value="${color}" style="width:22px; height:22px; padding:0; border:none; cursor:pointer; border-radius:3px;" onchange="window.biDrawChart()"></div></div>`;
+                    containerY.innerHTML += `<div style="border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;"><label style="font-weight:bold; display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" class="bi-y-cbx" value="${i}" ${checked} onchange="window.biUpdateUI()"> <span style="color:#2c3e50;">${h}</span></label><div id="bi-opts-${i}" style="display:${checked?'flex':'none'}; gap:5px; margin-top:5px; flex-wrap:wrap; align-items:center;"><select class="bi-y-agg" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc;" onchange="window.biDrawChart()"><option value="nb">Nombre de lignes</option><option value="count">Répartition par valeur</option>${window.analyseEstSommable(h) ? '<option value="sum">Somme</option>' : ''}</select><select class="bi-y-type combo-only" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc; display:none;" onchange="window.biDrawChart()"><option value="bar">Barre</option><option value="line">Courbe</option></select><select class="bi-y-axis" data-idx="${i}" style="padding:2px; font-size:10px; border-radius:3px; border:1px solid #ccc;" onchange="window.biDrawChart()"><option value="y">Axe Gauche</option><option value="y1">Axe Droit</option></select><input type="color" class="bi-y-color" data-idx="${i}" value="${color}" style="width:22px; height:22px; padding:0; border:none; cursor:pointer; border-radius:3px;" onchange="window.biDrawChart()"></div></div>`;
                 }
             });
             if(selX) selX.selectedIndex = 0; window.biUpdateUI();
+        };
+
+        // Valeur servant au tri par fréquence : total de toutes les séries de la colonne, quel que
+        // soit le mode d'agrégation choisi (nombre de lignes, somme, ou répartition par valeur).
+        window.analyseValeurTri = function(groupe, yCfgs) {
+            let t = 0;
+            yCfgs.forEach(function(cfg) {
+                let v = groupe[cfg.idx];
+                if (typeof v === 'number') t += v;
+                else if (v && typeof v === 'object') Object.keys(v).forEach(function(k) { t += v[k]; });
+            });
+            return t;
         };
 
         window.biUpdateUI = function() {
@@ -6436,7 +7214,12 @@
                 if(!grouped[strX]) grouped[strX] = {};
                 yCfgs.forEach(cfg => {
                     let val = row[cfg.idx];
-                    if(cfg.agg === 'count') {
+                    if(cfg.agg === 'nb') {
+                        // Répétitions : on compte les lignes, sans regarder la valeur. C'est la
+                        // réponse à « combien d'interventions sur ce canon », « combien de fois ce
+                        // défaut », et elle vaut pour du texte comme pour du chiffre.
+                        grouped[strX][cfg.idx] = (grouped[strX][cfg.idx] || 0) + 1;
+                    } else if(cfg.agg === 'count') {
                         let tVal = (val != null && val.toString().trim() !== "") ? val.toString().trim() : "Non spécifié";
                         if(!grouped[strX][cfg.idx]) grouped[strX][cfg.idx] = {};
                         grouped[strX][cfg.idx][tVal] = (grouped[strX][cfg.idx][tVal] || 0) + 1; cfg.uVals.add(tVal);
@@ -6447,7 +7230,14 @@
             // Tri de l'axe X. L'ordre alphabétique place « 01/2026 » avant « 12/2025 » et « lundi »
             // avant « mardi » : sur une série temporelle, la courbe devient un zigzag sans signification.
             // On reconnaît donc les dates AVANT de retomber sur le tri numérique puis alphabétique.
+            let ordre = document.getElementById('bi-sort') ? document.getElementById('bi-sort').value : 'auto';
             let labels = Object.keys(grouped).sort(function(a, b) {
+                // Tri par fréquence : c'est ce qu'on attend d'un classement de répétitions, où
+                // l'ordre alphabétique des libellés de panne n'apprend rigoureusement rien.
+                if (ordre !== 'auto') {
+                    let va = window.analyseValeurTri(grouped[a], yCfgs), vb = window.analyseValeurTri(grouped[b], yCfgs);
+                    if (va !== vb) return ordre === 'desc' ? vb - va : va - vb;
+                }
                 let da = window.analyseSortDate(a), db = window.analyseSortDate(b);
                 if (da !== null && db !== null) return da - db;
                 if (da !== null) return -1;
@@ -6472,7 +7262,8 @@
                         datasets.push({ label: `${cfg.label}:${cat}`, type: fType === 'combo' ? 'bar' : fType, data: dData, backgroundColor: isPie ? bgs : (isL ? color + '33' : color), borderColor: isPie ? '#fff' : color, borderWidth: (fType === 'bar' && !isPie) ? 0 : 2, fill: isL, yAxisID: cfg.axis, tension: 0.3, pointRadius: sPts ? 4 : 0, pointHoverRadius: 6, borderRadius: fType === 'bar' ? 4 : 0 }); cIdx++;
                     });
                 } else {
-                    let dData = labels.map(k => grouped[k][cfg.idx] || 0); let color = cfg.color; let bgs = labels.map((_, i) => colors[(cIdx + i) % colors.length]);
+                    let dData = labels.map(k => grouped[k][cfg.idx] || 0); let color = cfg.color;
+                    if (cfg.agg === 'nb') cfg.label = 'Répétitions (' + cfg.label + ')'; let bgs = labels.map((_, i) => colors[(cIdx + i) % colors.length]);
                     datasets.push({ label: cfg.label, type: fType === 'combo' ? 'bar' : fType, data: dData, backgroundColor: isPie ? bgs : (isL ? color + '33' : color), borderColor: isPie ? '#fff' : color, borderWidth: (fType === 'bar' && !isPie) ? 0 : 2, fill: isL, yAxisID: cfg.axis, tension: 0.3, pointRadius: sPts ? 4 : 0, pointHoverRadius: 6, borderRadius: fType === 'bar' ? 4 : 0 }); cIdx++;
                 }
             });
@@ -6532,7 +7323,8 @@
         window.meteoTab = 'production';
 
         window.meteoCfg = function() {
-            if (!window.appSettings.meteo) window.appSettings.meteo = { secteurs: [], seuilTH: -2.5, seuilBon: -5, jours: 3, ongletDefaut: 'production' };
+            if (!window.appSettings.meteo) window.appSettings.meteo = {};
+            window.completerReglages(window.appSettings.meteo, { secteurs: [], seuilTH: -2.5, seuilBon: -5, jours: 3, ongletDefaut: 'production' });
             if (!Array.isArray(window.appSettings.meteo.secteurs)) window.appSettings.meteo.secteurs = [];
             return window.appSettings.meteo;
         };
@@ -6840,9 +7632,40 @@
         window.satCfg = function() {
             let c = window.meteoCfg();
             if (!c.sat) c.sat = {};
-            c.sat = Object.assign({ instance: "", layer: "FALSE-COLOR", maxcc: 20, jours: 90,
-                                    source: "", annee: "2024", opacite: 100 }, c.sat);
-            return c.sat;
+            return window.completerReglages(c.sat, { instance: "", layer: "FALSE-COLOR", maxcc: 20, jours: 90,
+                                    source: "", annee: "2025", opacite: 100, couches: [],
+                                    gibs: "VIIRS_SNPP_CorrectedReflectance_TrueColor", gibsJour: "" });
+        };
+
+        /* Couches de l'instance Copernicus. Chaque configuration Sentinel Hub expose SES propres
+           couches (vraies couleurs, fausses couleurs, NDSI, indices maison…) : plutôt que d'obliger à
+           recopier un nom à la main, on lit le GetCapabilities du service et on les propose toutes. */
+        window.satFetchLayers = async function(silencieux) {
+            let c = window.satCfg();
+            if (!c.instance) { if (!silencieux) alert("Renseignez d'abord l'identifiant d'instance."); return []; }
+            let url = 'https://sh.dataspace.copernicus.eu/ogc/wms/' + encodeURIComponent(c.instance) +
+                      '?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0';
+            try {
+                let res = await fetch(url);
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                let xml = new DOMParser().parseFromString(await res.text(), 'text/xml');
+                let out = [];
+                // Seules les couches nommées sont demandables ; la racine du service ne l'est pas.
+                xml.querySelectorAll('Layer > Name').forEach(function(n) {
+                    let nom = (n.textContent || '').trim(); if (!nom) return;
+                    let t = n.parentNode.querySelector(':scope > Title');
+                    out.push({ nom: nom, titre: t ? (t.textContent || '').trim() : nom });
+                });
+                // Doublons possibles quand une couche est déclarée dans plusieurs groupes.
+                let vus = {}; out = out.filter(function(l) { if (vus[l.nom]) return false; vus[l.nom] = 1; return true; });
+                c.couches = out; window.meteoSaveCfg();
+                if (out.length && !out.find(function(l) { return l.nom === c.layer; })) { c.layer = out[0].nom; window.meteoSaveCfg(); }
+                return out;
+            } catch (e) {
+                if (!silencieux) alert("Impossible de lire les couches de l'instance :\n" + e.message +
+                    "\n\nVérifiez l'identifiant, et que la configuration est bien publique dans le Configuration Utility.");
+                return [];
+            }
         };
         window.saveSatSettings = function() {
             let c = window.satCfg();
@@ -6868,6 +7691,23 @@
             return f(deb) + '/' + f(fin);
         };
 
+        // Imagerie quotidienne de la NASA : 250 à 500 m par pixel seulement, mais sans aucun compte et
+        // remise à jour CHAQUE JOUR — de quoi voir l'enneigement d'hier, ce qu'aucune mosaïque
+        // annuelle ne montrera jamais. Les tuiles ne montent pas au-delà du zoom 8 : Leaflet les
+        // agrandit ensuite (maxNativeZoom), l'image devient floue mais reste lisible à l'échelle du domaine.
+        window.GIBS_LAYERS = [
+            { id: "VIIRS_SNPP_CorrectedReflectance_TrueColor", lib: "VIIRS — vraies couleurs (250 m)", ext: "jpg", zmax: 8 },
+            { id: "VIIRS_NOAA20_CorrectedReflectance_TrueColor", lib: "VIIRS NOAA-20 — vraies couleurs", ext: "jpg", zmax: 8 },
+            { id: "MODIS_Terra_CorrectedReflectance_TrueColor", lib: "MODIS Terra — vraies couleurs", ext: "jpg", zmax: 8 },
+            { id: "VIIRS_SNPP_CorrectedReflectance_BandsM11-I2-I1", lib: "VIIRS — fausses couleurs neige/glace", ext: "jpg", zmax: 8 },
+            { id: "MODIS_Terra_NDSI_Snow_Cover", lib: "MODIS — couverture neigeuse (NDSI)", ext: "png", zmax: 7 }
+        ];
+        window.gibsDefautJour = function() {
+            // Les produits du jour ne sont publiés qu'en fin de journée : on vise la veille.
+            let d = new Date(Date.now() - 86400000);
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        };
+
         window.buildSatLayer = function(source) {
             let c = window.satCfg();
             if (source === 'copernicus') {
@@ -6875,12 +7715,23 @@
                 return L.tileLayer.wms('https://sh.dataspace.copernicus.eu/ogc/wms/' + encodeURIComponent(c.instance), {
                     layers: c.layer, format: 'image/jpeg', transparent: false, version: '1.3.0',
                     maxcc: c.maxcc, time: window.satTimeRange(), priority: 'mostRecent',
+                    // Retire le logo Sentinel Hub incrusté en bas de chaque tuile : sur une carte
+                    // pavée, il se répète une fois par tuile et rend l'image illisible.
+                    showlogo: false,
                     maxZoom: 18, attribution: 'Sentinel-2 © Copernicus / ESA'
                 });
             }
             if (source === 'cloudless') {
                 return L.tileLayer('https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-' + c.annee + '_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg', {
-                    maxZoom: 17, attribution: 'Sentinel-2 cloudless ' + c.annee + ' © EOX IT Services'
+                    maxZoom: 18, maxNativeZoom: 17, attribution: 'Sentinel-2 cloudless ' + c.annee + ' © EOX IT Services'
+                });
+            }
+            if (source === 'gibs') {
+                let g = window.GIBS_LAYERS.find(function(x) { return x.id === c.gibs; }) || window.GIBS_LAYERS[0];
+                let jour = c.gibsJour || window.gibsDefautJour();
+                return L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/' + g.id +
+                        '/default/' + jour + '/GoogleMapsCompatible_Level' + (g.zmax + 1) + '/{z}/{y}/{x}.' + g.ext, {
+                    maxZoom: 18, maxNativeZoom: g.zmax, attribution: 'NASA EOSDIS GIBS — ' + jour
                 });
             }
             return null;
@@ -6919,6 +7770,14 @@
                    '&fromTime=' + iso(deb) + 'T00%3A00%3A00.000Z&toTime=' + iso(fin) + 'T23%3A59%3A59.999Z';
         };
 
+        window.satRafraichirCouches = async function(btn) {
+            let t = btn.innerHTML; btn.innerHTML = '…'; btn.disabled = true;
+            let l = await window.satFetchLayers(false);
+            btn.innerHTML = t; btn.disabled = false;
+            window.renderSatellitePanel();
+            if (l.length) alert(l.length + " couche(s) trouvée(s) dans votre instance.");
+        };
+
         window.openSatellitePanel = function() {
             let sb = document.getElementById('right-sidebar'); let sl = document.getElementById('selected-list'); if (!sb || !sl) return;
             document.getElementById('right-title').innerHTML = "<i class='fa-solid fa-satellite'></i> Vue satellite";
@@ -6927,6 +7786,10 @@
             document.getElementById('view-selection').style.display = 'block';
             sb.classList.add('open');
             window.renderSatellitePanel();
+            let c = window.satCfg();
+            if (c.instance && !(c.couches || []).length) {
+                window.satFetchLayers(true).then(function() { window.renderSatellitePanel(); });
+            }
         };
 
         window.renderSatellitePanel = function() {
@@ -6934,16 +7797,40 @@
             let c = window.satCfg();
             let actif = function(v) { return c.source === v ? 'box-shadow:0 0 0 3px #00838f inset;' : ''; };
             let annees = [];
-            for (let y = 2024; y >= 2018; y--) annees.push(`<option value="${y}"${c.annee == y ? ' selected' : ''}>${y}</option>`);
+            for (let y = 2025; y >= 2018; y--) annees.push(`<option value="${y}"${c.annee == y ? ' selected' : ''}>${y}</option>`);
+            let couches = (c.couches || []).map(function(l) {
+                return `<option value="${window.prodEsc(l.nom)}"${l.nom === c.layer ? ' selected' : ''}>${window.prodEsc(l.titre)}${l.titre !== l.nom ? ' (' + window.prodEsc(l.nom) + ')' : ''}</option>`;
+            }).join('');
+            let gibsOpts = window.GIBS_LAYERS.map(function(g) {
+                return `<option value="${g.id}"${g.id === c.gibs ? ' selected' : ''}>${g.lib}</option>`;
+            }).join('');
             sl.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:10px;">
                 <button onclick="window.applySatelliteLayer('copernicus')" style="text-align:left; background:${c.instance ? '#00838f' : '#95a5a6'}; color:#fff; border:none; padding:12px; border-radius:6px; cursor:pointer; ${actif('copernicus')}">
                     <b>🛰️ Sentinel-2 récent — Copernicus</b><br>
-                    <span style="font-size:11px; opacity:0.9;">Fausses couleurs · nuages &lt; ${c.maxcc} % · ${c.jours} derniers jours${c.instance ? '' : " — identifiant d'instance manquant"}</span>
+                    <span style="font-size:11px; opacity:0.9;">10 m · nuages &lt; ${c.maxcc} % · ${c.jours} derniers jours${c.instance ? '' : " — identifiant d'instance manquant"}</span>
                 </button>
+                <div style="display:flex; align-items:center; gap:6px; font-size:11px; color:#555;">
+                    <span style="white-space:nowrap;">Couche</span>
+                    <select class="edit-input" style="margin:0; padding:5px; flex:1;" onchange="window.satCfg().layer=this.value; window.meteoSaveCfg(); if(window.satCfg().source==='copernicus') window.applySatelliteLayer('copernicus');">
+                        ${couches || `<option value="${window.prodEsc(c.layer)}">${window.prodEsc(c.layer)}</option>`}
+                    </select>
+                    <button onclick="window.satRafraichirCouches(this)" title="Relire les couches de l'instance" style="background:#00838f; color:#fff; border:none; padding:6px 9px; border-radius:4px; cursor:pointer;">⟳</button>
+                </div>
+
+                <button onclick="window.applySatelliteLayer('gibs')" style="text-align:left; background:#8e44ad; color:#fff; border:none; padding:12px; border-radius:6px; cursor:pointer; ${actif('gibs')}">
+                    <b>📅 Imagerie du jour — NASA</b><br>
+                    <span style="font-size:11px; opacity:0.9;">Aucun compte requis, mise à jour quotidienne. 250 à 500 m par pixel : on voit l'enneigement, pas les canons.</span>
+                </button>
+                <div style="display:flex; align-items:center; gap:6px; font-size:11px; color:#555;">
+                    <select class="edit-input" style="margin:0; padding:5px; flex:2;" onchange="window.satCfg().gibs=this.value; window.meteoSaveCfg(); if(window.satCfg().source==='gibs') window.applySatelliteLayer('gibs'); else window.renderSatellitePanel();">${gibsOpts}</select>
+                    <input type="date" class="edit-input" style="margin:0; padding:5px; flex:1;" value="${c.gibsJour || window.gibsDefautJour()}" max="${window.gibsDefautJour()}"
+                        onchange="window.satCfg().gibsJour=this.value; window.meteoSaveCfg(); if(window.satCfg().source==='gibs') window.applySatelliteLayer('gibs');">
+                </div>
+
                 <button onclick="window.applySatelliteLayer('cloudless')" style="text-align:left; background:#16a085; color:#fff; border:none; padding:12px; border-radius:6px; cursor:pointer; ${actif('cloudless')}">
                     <b>☁️ Sentinel-2 sans nuages — mosaïque ${c.annee}</b><br>
-                    <span style="font-size:11px; opacity:0.9;">Aucun compte requis. Image d'été composite : nette, mais pas celle du jour.</span>
+                    <span style="font-size:11px; opacity:0.9;">Aucun compte requis, 10 m. Composite d'été : très net, mais pas celui du jour.</span>
                 </button>
                 <div style="display:flex; align-items:center; gap:8px; font-size:11px; color:#555;">
                     <span style="white-space:nowrap;">Année de la mosaïque</span>
@@ -7069,6 +7956,35 @@ TH ${tw === null ? '?' : tw.toFixed(1).replace('.', ',')} °C · air ${temps[i0 
 ${so.ensoleille ? 'Soleil direct' : (so.alt <= 0 ? 'Nuit' : (!so.visible ? 'À l\'ombre du relief (soleil à ' + so.alt.toFixed(0) + '°, crête à ' + so.hz.toFixed(0) + '°)' : 'Ciel couvert'))}">${d.getHours() % 6 === 0 ? d.getHours() + 'h' : ''}</div>`;
                 }).join('');
 
+                // Nuages et précipitations : deux bandes de plus, calées sur les mêmes heures que la
+                // température humide. Le nuage est une nuance de gris (0 % = ciel bleu, 100 % = plombé),
+                // la précipitation une hauteur de barre — la pluie sur une neige fraîche la ruine, et
+                // la neige naturelle change ce qu'il reste à produire.
+                let precip = s.hourly.precipitation || [];
+                let nuages2 = t2.map(function(_, k) { let v = cloudPct[i0 + k]; return (v === undefined || v === null) ? null : v; });
+                let precip2 = t2.map(function(_, k) { return window.prodNum(precip[i0 + k]); });
+                let neige2  = t2.map(function(_, k) { return window.prodNum(neige[i0 + k]); });
+                let nuageDefinis = nuages2.filter(function(v) { return v !== null; });
+                let nuageMoy = nuageDefinis.length ? nuageDefinis.reduce(function(a, b) { return a + b; }, 0) / nuageDefinis.length : 0;
+                let precipTotal = precip2.reduce(function(a, b) { return a + b; }, 0);
+                let neigeTotal = neige2.reduce(function(a, b) { return a + b; }, 0);
+                let precipMax = Math.max.apply(null, precip2.concat([0.1]));
+
+                let bandeNuages = nuages2.map(function(v, k) {
+                    if (v === null) return `<div class="meteo-cell meteo-cell-sun" style="background:#eceff1;"></div>`;
+                    // Du bleu ciel au gris plombé, en passant par le blanc : lisible d'un coup d'œil.
+                    let g = Math.round(235 - v * 1.25);
+                    let bg = v < 20 ? '#63b8ff' : 'rgb(' + g + ',' + g + ',' + (g + 8) + ')';
+                    return `<div class="meteo-cell meteo-cell-sun" style="background:${bg};" title="${window.meteoFmtHeure(t2[k])} — ${v} % de nuages"></div>`;
+                }).join('');
+
+                let bandePrecip = precip2.map(function(mm, k) {
+                    let h = Math.max(2, Math.round(mm / precipMax * 100));
+                    let neigeuse = neige2[k] > 0;
+                    let bg = mm === 0 ? 'transparent' : (neigeuse ? '#4fc3f7' : '#1565c0');
+                    return `<div class="meteo-cell meteo-cell-precip" title="${window.meteoFmtHeure(t2[k])} — ${mm.toFixed(1).replace('.', ',')} mm${neigeuse ? ' · ' + neige2[k].toFixed(1).replace('.', ',') + ' cm de neige' : ''}"><span style="height:${h}%; background:${bg};"></span></div>`;
+                }).join('');
+
                 let bandeSoleil = soleil.map(function(so, k) {
                     let bg = so.ensoleille ? '#f1c40f' : (so.visible ? '#d9dee3' : (so.alt > 0 ? '#8fa3b5' : '#2c3e50'));
                     return `<div class="meteo-cell meteo-cell-sun" style="background:${bg};" title="${window.meteoFmtHeure(t2[k])} — ${so.ensoleille ? 'soleil direct' : (so.alt <= 0 ? 'nuit' : (!so.visible ? 'à l\'ombre du relief' : 'ciel couvert'))}"></div>`;
@@ -7085,7 +8001,11 @@ ${so.ensoleille ? 'Soleil direct' : (so.alt <= 0 ? 'Nuit' : (!so.visible ? 'À l
                         <div style="font-size:10px; color:#888; margin-bottom:3px;">Température humide, 48 h à venir</div>
                         <div class="meteo-strip">${cellules}</div>
                         <div style="font-size:10px; color:#888; margin-bottom:3px;">Soleil direct ${masque ? '(crête calculée sur le relief, ' + masque.alt + ' m)' : '<span style="color:#c0392b;">relief non calculé</span>'} — ${heuresSoleil} h sur 48</div>
-                        <div class="meteo-strip meteo-strip-sun">${bandeSoleil}</div>`;
+                        <div class="meteo-strip meteo-strip-sun">${bandeSoleil}</div>
+                        <div style="font-size:10px; color:#888; margin-bottom:3px;">Couverture nuageuse — ${Math.round(nuageMoy)} % en moyenne</div>
+                        <div class="meteo-strip meteo-strip-sun">${bandeNuages}</div>
+                        <div style="font-size:10px; color:#888; margin-bottom:3px;">Précipitations — ${precipTotal.toFixed(1).replace('.', ',')} mm dont ${neigeTotal.toFixed(1).replace('.', ',')} cm de neige</div>
+                        <div class="meteo-strip meteo-strip-precip">${bandePrecip}</div>`;
 
                 if (!wins.length) {
                     html += `<div style="font-size:12px; color:#c0392b; padding:8px 0;"><b>Aucun créneau de production</b> sur les 48 h : la température humide ne descend jamais à ${seuil.toFixed(1).replace('.', ',')} °C.</div>`;
