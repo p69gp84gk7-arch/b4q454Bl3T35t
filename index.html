@@ -24,7 +24,7 @@
         // principal. Sur un écran d'erreur, le nom et la version restent affichés — c'est l'information
         // la plus utile à transmettre en cas de bug ; seul le flocon animé disparaît.
         window.APP_NAME = "GMAO Neige";
-        window.APP_VERSION = "5.7.0";
+        window.APP_VERSION = "5.8.0";
         window.showCrash = function(msg, line) { let o = document.getElementById('loading-overlay'); if (o) { o.style.display='flex'; let fw = document.getElementById('flake-wrap'); if(fw) fw.style.display='none'; let pc = document.getElementById('loading-pct'); if(pc) pc.style.display='none'; document.getElementById('loading-title').innerText="🛑 ERREUR SYSTEME"; if(document.getElementById('error-box')) { document.getElementById('error-box').style.display='block'; document.getElementById('error-msg').innerHTML="<b>Détail:</b> "+msg+(line?"<br><b>Ligne:</b> "+line:""); } } else alert("🛑 CRASH : "+msg); };
         window.onerror = function(msg, src, ln) { if (msg.indexOf('Script error') > -1) return false; window.showCrash(msg, ln); return true; };
         window.addEventListener('unhandledrejection', function(e) { window.showCrash(e.reason ? e.reason.message : "Erreur réseau", "Réseau"); });
@@ -126,6 +126,7 @@
         .route-step-icon div{width:26px;height:26px;line-height:24px;border-radius:50%;background:#e67e22;color:#fff;
             border:2px solid #fff;text-align:center;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.4);}
         .route-start-icon div{background:#16a085;}
+        .route-step-pied div{background:#27ae60;}
         #route-print{display:none;}
         @media print{
             body.printing-route > *{display:none !important;}
@@ -150,7 +151,10 @@
         .meteo-sect-row input{flex:1;min-width:0;padding:5px;font-size:11px;border:1px solid #ccc;border-radius:3px;}
         .meteo-sect-row input.coord{flex:0 0 74px;}
         .meteo-sect-row button{background:#c0392b;color:#fff;border:none;padding:5px 8px;border-radius:3px;cursor:pointer;font-size:11px;}
-        #app-container{display:flex;height:100%;width:100%;position:relative;padding-top:var(--topbar-h);box-sizing:border-box;}
+        /* overflow:hidden indispensable : les panneaux latéraux fermés sont rangés hors écran à droite
+           par translateX(100%). Sans clipping, ils créent une zone de défilement horizontal — un
+           balayage vers la droite sur téléphone faisait apparaître le panneau d'impression. */
+        #app-container{display:flex;height:100%;width:100%;position:relative;padding-top:var(--topbar-h);box-sizing:border-box;overflow:hidden;}
         #loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 50% 42%, #ffffff 0%, #eef4fb 55%, #e3ecf6 100%);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:20px;box-sizing:border-box;}
         @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
         /* CHAPITRE 1.A — Écran de démarrage : le flocon se remplit de bleu électrique par le bas au fil
@@ -324,17 +328,21 @@
                 background: #1e2b38; border-radius: 18px 18px 0 0;
                 box-shadow: 0 -6px 24px rgba(0,0,0,0.4);
                 max-height: 72vh;
-                transform: translateY(calc(100% - 50px - var(--safe-bottom)));
+                /* La marge de sécurité devient du VIDE en bas du tiroir. Elle était auparavant
+                   ajoutée au décalage sans padding correspondant : la hauteur laissée visible
+                   dépassait la poignée et découvrait la première rangée de boutons. */
+                transform: translateY(calc(100% - 34px - var(--safe-bottom)));
                 transition: transform 0.28s cubic-bezier(.4,0,.2,1);
                 touch-action: none;
             }
             #mobile-dock.open { transform: translateY(0); }
             #mobile-dock-handle { padding-top: 2px; }
             #mobile-dock.dragging { transition: none; }
-            #mobile-dock-handle { flex-shrink: 0; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: grab; user-select: none; }
-            #mobile-dock-grip { width: 46px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.55); }
-            #mobile-dock-title { font-size: 11px; font-weight: bold; letter-spacing: 0.5px; color: rgba(255,255,255,0.8); }
-            #mobile-dock-body { overflow-y: auto; -webkit-overflow-scrolling: touch; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 4px 12px calc(16px + env(safe-area-inset-bottom)); }
+            #mobile-dock-handle { flex-shrink: 0; height: 34px; box-sizing: content-box; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 9px; cursor: grab; user-select: none; }
+            #mobile-dock:not(.open) #mobile-dock-handle { padding-bottom: var(--safe-bottom); }
+            #mobile-dock-grip { width: 38px; height: 4px; border-radius: 3px; background: rgba(255,255,255,0.55); }
+            #mobile-dock-title { font-size: 10px; font-weight: bold; letter-spacing: 0.5px; color: rgba(255,255,255,0.7); }
+            #mobile-dock-body { overflow-y: auto; -webkit-overflow-scrolling: touch; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 4px 12px calc(16px + var(--safe-bottom)); }
             .dock-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; min-height: 74px; padding: 10px 4px; border: none; border-radius: 12px; background: #34495e; color: #fff; font-size: 11px; font-weight: bold; line-height: 1.2; text-align: center; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); }
             .dock-btn i { font-size: 20px; }
             .dock-btn:active { filter: brightness(1.3); }
@@ -363,7 +371,7 @@
             .stock-item-card { flex-direction: column !important; }
         }
 
-        #print-panel { position:absolute; top:var(--topbar-h); right:0; bottom:0; width:380px; min-width:300px; max-width:90vw; background:#fff; z-index:6500; transform:translateX(100%); transition:transform 0.3s; box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; }
+        #print-panel { position:fixed; top:var(--topbar-h); right:0; bottom:0; width:380px; min-width:300px; max-width:90vw; background:#fff; z-index:6500; transform:translateX(100%); transition:transform 0.3s; box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; }
         #print-panel.open { transform:translateX(0); }
         #print-page-preview-modal { display:none; position:fixed; top:var(--topbar-h); left:0; right:400px; bottom:0; background:rgba(0,0,0,0.65); z-index:6400; overflow-y:auto; }
         #print-page-preview-modal.open { display:block; }
@@ -1284,7 +1292,12 @@
 
             let startY = 0, delta = 0, startOpen = false, dragging = false;
             const getY = e => e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY;
-            const hidden = () => Math.max(dock.offsetHeight - 50, 0);
+            // Hauteur masquée pendant le glissé : elle doit correspondre EXACTEMENT au décalage de
+            // repos défini en CSS (poignée + marge de sécurité), sinon le tiroir saute au relâchement.
+            const hidden = () => {
+                let sb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom')) || 0;
+                return Math.max(dock.offsetHeight - 34 - sb, 0);
+            };
 
             const down = e => { dragging = true; delta = 0; startY = getY(e); startOpen = dock.classList.contains('open'); dock.classList.add('dragging'); };
             const move = e => {
@@ -3663,6 +3676,11 @@
                 vitesse: 20,            // km/h, 4x4 sur piste
                 minutesParCanon: 10,    // temps d'intervention
                 rayonLien: 300,         // deux canons distants de moins de 300 m sont reliés
+                rayonAccroche: 150,     // distance maxi entre un canon et le chemin qui le dessert
+                rayonInterdit: 50,      // largeur de la bande neutralisée le long d'une portion interdite
+                preferenceChemin: 3,    // un détour par un chemin reste préféré tant qu'il est < 3× la ligne droite
+                calquesChemins: [],     // calques KMZ déclarés carrossables
+                ordreManuel: null,      // ordre imposé par l'utilisateur, sinon optimisation
                 retour: true,
                 depart: null,           // { lat, lng, nom } ; sinon position GPS ou premier canon
                 interdits: [
@@ -3692,51 +3710,240 @@
             return window.routeCanonInterdit(idA) || window.routeCanonInterdit(idB);
         };
 
-        // Graphe : chaque canon relié à ses voisins proches. Le rayon reconstruit la ligne de canons
-        // d'une piste sans relier deux pistes qui se croisent de loin.
-        window.buildRouteGraph = function() {
-            let feats = ((window.snowCannons && window.snowCannons.features) || [])
-                .filter(function(f) { let c = f.geometry.coordinates; return c && c[0] && c[1]; });
-            let noeuds = feats.map(function(f) {
-                return { id: f.properties.id, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0],
-                         piste: window.getV(f.properties, window.keyPiste) };
-            });
-            let R = window.routeCfg().rayonLien;
-            let adj = {}; noeuds.forEach(function(n) { adj[n.id] = []; });
-            let bloques = 0;
-            for (let i = 0; i < noeuds.length; i++) {
-                for (let j = i + 1; j < noeuds.length; j++) {
-                    let d = window.distanceM(noeuds[i].lat, noeuds[i].lng, noeuds[j].lat, noeuds[j].lng);
-                    if (d > R) continue;
-                    if (window.routeTronconInterdit(noeuds[i].id, noeuds[j].id)) { bloques++; continue; }
-                    adj[noeuds[i].id].push({ v: noeuds[j].id, d: d });
-                    adj[noeuds[j].id].push({ v: noeuds[i].id, d: d });
-                }
-            }
-            let index = {}; noeuds.forEach(function(n) { index[n.id] = n; });
-            return { noeuds: noeuds, index: index, adj: adj, bloques: bloques };
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 4.G.0 — RÉSEAU DE CIRCULATION                                     */
+        /*                                                                           */
+        /* Deux sources, dans cet ordre de préférence :                               */
+        /*   1. les CHEMINS des calques KMZ, quand ils sont déclarés carrossables —    */
+        /*      c'est le tracé réel, avec ses lacets et ses détours ;                  */
+        /*   2. à défaut, la ligne des canons eux-mêmes, en dernier recours.           */
+        /* Un canon se raccroche au chemin le plus proche ; les derniers mètres sont   */
+        /* comptés mais signalés comme un accès et non comme de la route.              */
+        /* ------------------------------------------------------------------------- */
+        window.routeGrilleM = 10;   // fusion des sommets de chemin distants de moins de 10 m
+
+        window.routeClePoint = function(lat, lng) {
+            let cLat = window.routeGrilleM / 111320;
+            let cLng = window.routeGrilleM / (111320 * Math.cos(lat * Math.PI / 180) || 1);
+            return 'p:' + Math.round(lat / cLat) + ':' + Math.round(lng / cLng);
         };
 
-        // Dijkstra depuis un nœud : distances et chemins vers tout le reste du graphe.
+        // Récupère les tracés linéaires de tous les calques déclarés carrossables.
+        window.routeCollecterChemins = function() {
+            let cfg = window.routeCfg();
+            let choisis = cfg.calquesChemins || [];
+            let lignes = [];
+            let ajouterGeo = function(geo, nom) {
+                if (!geo) return;
+                let feats = geo.type === 'FeatureCollection' ? geo.features : [geo];
+                (feats || []).forEach(function(f) {
+                    let gm = f.geometry || f; if (!gm) return;
+                    if (gm.type === 'LineString') lignes.push({ nom: nom, coords: gm.coordinates });
+                    else if (gm.type === 'MultiLineString') gm.coordinates.forEach(function(c) { lignes.push({ nom: nom, coords: c }); });
+                    else if (gm.type === 'GeometryCollection') (gm.geometries || []).forEach(function(sub) {
+                        if (sub.type === 'LineString') lignes.push({ nom: nom, coords: sub.coordinates });
+                        else if (sub.type === 'MultiLineString') sub.coordinates.forEach(function(c) { lignes.push({ nom: nom, coords: c }); });
+                    });
+                });
+            };
+            Object.keys(window.externalLayers || {}).forEach(function(k) {
+                let l = window.externalLayers[k];
+                if (choisis.indexOf('loc:' + k) > -1) ajouterGeo(l.geojson, l.name);
+            });
+            (window.cloudKmzLayers || []).forEach(function(l, i) {
+                if (choisis.indexOf('drv:' + i) > -1) ajouterGeo(l.geojson, l.nom);
+            });
+            return lignes;
+        };
+        // Liste des calques disponibles, pour la case à cocher des réglages.
+        window.routeCalquesDisponibles = function() {
+            let out = [];
+            Object.keys(window.externalLayers || {}).forEach(function(k) {
+                out.push({ cle: 'loc:' + k, nom: (window.externalLayers[k].name || k) + ' (importé)' });
+            });
+            (window.cloudKmzLayers || []).forEach(function(l, i) {
+                if (l.geojson) out.push({ cle: 'drv:' + i, nom: (l.nom || 'Calque') + ' (Drive)' });
+            });
+            return out;
+        };
+
+        window.buildRouteGraph = function() {
+            let cfg = window.routeCfg();
+            let feats = ((window.snowCannons && window.snowCannons.features) || [])
+                .filter(function(f) { let c = f.geometry.coordinates; return c && c[0] && c[1]; });
+
+            let index = {}, adj = {};
+            let ajouterNoeud = function(id, lat, lng, type, extra) {
+                if (index[id]) return index[id];
+                index[id] = Object.assign({ id: id, lat: lat, lng: lng, type: type }, extra || {});
+                adj[id] = [];
+                return index[id];
+            };
+            /* Deux grandeurs par tronçon : la distance RÉELLE (d), qui sert aux calculs de temps, et
+               un COÛT de circulation (w) qui sert à choisir l'itinéraire. Un chemin relevé sur le
+               terrain garde son coût réel ; une liaison de canon à canon est pénalisée, parce qu'elle
+               suppose de rouler hors chemin. Sans cette distinction, le calculateur préférait toujours
+               la ligne droite et n'empruntait jamais les chemins déclarés — « suivre les chemins tant
+               que possible » n'était donc pas respecté. */
+            let pref = Math.max(1, cfg.preferenceChemin || 1);
+            let relier = function(a, b, d, type) {
+                if (a === b) return;
+                let w = d * (type === 'canons' ? pref : 1);
+                adj[a].push({ v: b, d: d, w: w, t: type });
+                adj[b].push({ v: a, d: d, w: w, t: type });
+            };
+
+            // --- 1. Les chemins ---
+            let lignes = window.routeCollecterChemins();
+            let nbSommets = 0;
+            lignes.forEach(function(l) {
+                let prec = null;
+                l.coords.forEach(function(c) {
+                    if (!c || c.length < 2) return;
+                    let lat = c[1], lng = c[0];
+                    let id = window.routeClePoint(lat, lng);
+                    if (!index[id]) { ajouterNoeud(id, lat, lng, 'chemin', { chemin: l.nom }); nbSommets++; }
+                    if (prec && prec !== id) {
+                        relier(prec, id, window.distanceM(index[prec].lat, index[prec].lng, lat, lng), 'chemin');
+                    }
+                    prec = id;
+                });
+            });
+
+            // Croisements : deux chemins qui se coupent sans partager de sommet.
+            let sommetsChemin = Object.keys(index);
+            for (let i = 0; i < sommetsChemin.length; i++) {
+                for (let j = i + 1; j < sommetsChemin.length; j++) {
+                    let a = index[sommetsChemin[i]], b = index[sommetsChemin[j]];
+                    let d = window.distanceM(a.lat, a.lng, b.lat, b.lng);
+                    if (d <= window.routeGrilleM * 2) relier(a.id, b.id, d, 'chemin');
+                }
+            }
+
+            // --- 2. Les canons ---
+            let noeudsCanon = feats.map(function(f) {
+                let id = 'c:' + f.properties.id;
+                return ajouterNoeud(id, f.geometry.coordinates[1], f.geometry.coordinates[0], 'canon',
+                    { canon: f.properties.id, piste: window.getV(f.properties, window.keyPiste) });
+            });
+
+            // Raccrochage de chaque canon au chemin le plus proche.
+            let rAcc = cfg.rayonAccroche;
+            let raccroches = 0;
+            noeudsCanon.forEach(function(n) {
+                let best = null, bd = Infinity;
+                sommetsChemin.forEach(function(k) {
+                    let p = index[k];
+                    let d = window.distanceM(n.lat, n.lng, p.lat, p.lng);
+                    if (d < bd) { bd = d; best = k; }
+                });
+                if (best && bd <= rAcc) { relier(n.id, best, bd, 'acces'); n.accroche = best; n.accrocheM = Math.round(bd); raccroches++; }
+            });
+
+            // --- 3. Liaisons entre canons voisins, là où aucun chemin ne dessert ---
+            // On les conserve toujours : sans calque de chemins, c'est le seul réseau disponible ; avec
+            // des chemins, elles comblent les portions non couvertes.
+            let R = cfg.rayonLien;
+            for (let i = 0; i < noeudsCanon.length; i++) {
+                for (let j = i + 1; j < noeudsCanon.length; j++) {
+                    let a = noeudsCanon[i], b = noeudsCanon[j];
+                    let d = window.distanceM(a.lat, a.lng, b.lat, b.lng);
+                    if (d > R) continue;
+                    relier(a.id, b.id, d, 'canons');
+                }
+            }
+
+            // --- 4. Retrait des portions interdites ---
+            // Un canon interdit perd tous ses tronçons. Un sommet de chemin longeant la portion est
+            // retiré lui aussi : c'est bien la piste qui est interdite, pas seulement les canons.
+            let bloques = 0;
+            let interdit = {};
+            Object.keys(index).forEach(function(k) {
+                let n = index[k];
+                if (n.type === 'canon' && window.routeCanonInterdit(n.canon)) { interdit[k] = true; return; }
+                if (n.type === 'chemin') {
+                    let procheInterdit = false, procheAutorise = false;
+                    noeudsCanon.forEach(function(c) {
+                        let d = window.distanceM(n.lat, n.lng, c.lat, c.lng);
+                        if (d > cfg.rayonInterdit) return;
+                        if (window.routeCanonInterdit(c.canon)) procheInterdit = true; else procheAutorise = true;
+                    });
+                    // Un sommet à portée d'un canon interdit ET d'aucun canon autorisé longe la
+                    // portion interdite. À l'entrée de la zone, où les deux voisinent, on laisse
+                    // passer : c'est précisément le point d'approche le plus proche.
+                    if (procheInterdit && !procheAutorise) interdit[k] = true;
+                }
+            });
+            Object.keys(adj).forEach(function(k) {
+                if (interdit[k]) { bloques += adj[k].length; adj[k] = []; return; }
+                let avant = adj[k].length;
+                adj[k] = adj[k].filter(function(e) { return !interdit[e.v]; });
+                bloques += avant - adj[k].length;
+            });
+
+            return { index: index, adj: adj, bloques: Math.round(bloques / 2), interdit: interdit,
+                     noeudsCanon: noeudsCanon, nbChemins: lignes.length, nbSommetsChemin: nbSommets,
+                     raccroches: raccroches,
+                     canonVersNoeud: (function() { let m = {}; noeudsCanon.forEach(function(n) { m[n.canon] = n.id; }); return m; })() };
+        };
+
+        /* Tas binaire : sans lui, Dijkstra retriait sa file à chaque extraction, ce qui restait tenable
+           sur quelques centaines de canons mais s'écroule dès qu'on ajoute les milliers de sommets
+           d'un tracé de chemin. */
+        window.TasMin = function() { this.a = []; };
+        window.TasMin.prototype.push = function(id, d) {
+            let a = this.a; a.push({ id: id, d: d });
+            let i = a.length - 1;
+            while (i > 0) { let p = (i - 1) >> 1; if (a[p].d <= a[i].d) break; let t = a[p]; a[p] = a[i]; a[i] = t; i = p; }
+        };
+        window.TasMin.prototype.pop = function() {
+            let a = this.a; if (!a.length) return null;
+            let top = a[0], last = a.pop();
+            if (a.length) {
+                a[0] = last; let i = 0;
+                for (;;) {
+                    let g = 2 * i + 1, dr = g + 1, m = i;
+                    if (g < a.length && a[g].d < a[m].d) m = g;
+                    if (dr < a.length && a[dr].d < a[m].d) m = dr;
+                    if (m === i) break;
+                    let t = a[m]; a[m] = a[i]; a[i] = t; i = m;
+                }
+            }
+            return top;
+        };
+        window.TasMin.prototype.vide = function() { return this.a.length === 0; };
+
         window.routeDijkstra = function(g, source) {
             let dist = {}, prec = {}, vus = {};
-            Object.keys(g.adj).forEach(function(k) { dist[k] = Infinity; });
-            if (dist[source] === undefined) return { dist: dist, prec: prec };
+            if (!g.adj[source]) return { dist: dist, prec: prec };
             dist[source] = 0;
-            // File triée à la main : quelques centaines de nœuds, un tas binaire serait du zèle.
-            let file = [{ id: source, d: 0 }];
-            while (file.length) {
-                file.sort(function(a, b) { return a.d - b.d; });
-                let cur = file.shift();
+            let file = new window.TasMin(); file.push(source, 0);
+            while (!file.vide()) {
+                let cur = file.pop();
                 if (vus[cur.id]) continue;
                 vus[cur.id] = 1;
-                (g.adj[cur.id] || []).forEach(function(e) {
-                    let nd = cur.d + e.d;
-                    if (nd < dist[e.v]) { dist[e.v] = nd; prec[e.v] = cur.id; file.push({ id: e.v, d: nd }); }
-                });
+                let voisins = g.adj[cur.id] || [];
+                for (let i = 0; i < voisins.length; i++) {
+                    let e = voisins[i], nd = cur.d + (e.w === undefined ? e.d : e.w);
+                    if (dist[e.v] === undefined || nd < dist[e.v]) { dist[e.v] = nd; prec[e.v] = cur.id; file.push(e.v, nd); }
+                }
             }
+            // Les nœuds jamais atteints restent à l'infini.
+            Object.keys(g.adj).forEach(function(k) { if (dist[k] === undefined) dist[k] = Infinity; });
             return { dist: dist, prec: prec };
         };
+        // Le coût sert à choisir l'itinéraire, mais les distances et les durées annoncées doivent être
+        // les vraies : on remesure le tracé retenu, nœud à nœud.
+        window.routeLongueurReelle = function(g, chemin) {
+            if (!chemin || chemin.length < 2) return 0;
+            let t = 0;
+            for (let i = 1; i < chemin.length; i++) {
+                let a = g.index[chemin[i - 1]], b = g.index[chemin[i]];
+                t += window.distanceM(a.lat, a.lng, b.lat, b.lng);
+            }
+            return t;
+        };
+
         window.routeChemin = function(prec, source, cible) {
             let out = [cible], cur = cible, garde = 0;
             while (cur !== source && prec[cur] !== undefined && garde++ < 5000) { cur = prec[cur]; out.push(cur); }
@@ -3774,43 +3981,61 @@
 
         window.routeDernier = null;
 
-        window.calculerFicheRoute = function(ids, depart) {
+        window.calculerFicheRoute = function(ids, depart, ordreImpose) {
             let cfg = window.routeCfg();
             let g = window.buildRouteGraph();
-            if (!g.noeuds.length) return { err: "Aucun canon géolocalisé." };
-            ids = ids.filter(function(id) { return g.index[id]; });
+            if (!g.noeudsCanon.length) return { err: "Aucun canon géolocalisé." };
+            ids = ids.filter(function(id) { return g.canonVersNoeud[id]; });
             if (!ids.length) return { err: "Aucun canon sélectionné." };
 
-            // Le point de départ n'est pas un canon : on le raccroche au canon le plus proche, et le
-            // premier tronçon est parcouru à vol d'oiseau (piste d'accès, parking…).
+            /* Chaque canon à visiter devient un POINT D'ARRÊT, qui n'est pas forcément le canon
+               lui-même : sur une portion interdite à la circulation, c'est le point accessible le
+               plus proche en suivant les chemins, avec les derniers mètres à faire à pied. C'est ce
+               que demande le terrain — on veut quand même s'approcher au maximum. */
+            let arrets = [];
+            ids.forEach(function(idCanon) {
+                let nCanon = g.index[g.canonVersNoeud[idCanon]];
+                let zone = window.routeCanonInterdit(idCanon);
+                if (!zone && !g.interdit[nCanon.id]) {
+                    arrets.push({ canon: idCanon, noeud: nCanon.id, aPied: 0, zone: null, lat: nCanon.lat, lng: nCanon.lng });
+                    return;
+                }
+                // Point accessible le plus proche à vol d'oiseau parmi les nœuds encore reliés.
+                let best = null, bd = Infinity;
+                Object.keys(g.index).forEach(function(k) {
+                    if (g.interdit[k] || !(g.adj[k] || []).length) return;
+                    let n = g.index[k];
+                    let d = window.distanceM(nCanon.lat, nCanon.lng, n.lat, n.lng);
+                    if (d < bd) { bd = d; best = k; }
+                });
+                arrets.push({ canon: idCanon, noeud: best, aPied: Math.round(bd), zone: zone ? zone.nom : "hors réseau",
+                              lat: nCanon.lat, lng: nCanon.lng, approche: best ? { lat: g.index[best].lat, lng: g.index[best].lng } : null });
+            });
+            arrets = arrets.filter(function(a) { return a.noeud; });
+            if (!arrets.length) return { err: "Aucun point d'arrêt accessible." };
+
+            // Point de départ : raccroché au nœud accessible le plus proche.
             let depNoeud = null, depDist = 0;
             if (depart) {
                 let best = null, bd = Infinity;
-                g.noeuds.forEach(function(n) { let d = window.distanceM(depart.lat, depart.lng, n.lat, n.lng); if (d < bd) { bd = d; best = n; } });
-                depNoeud = best ? best.id : null; depDist = bd;
+                Object.keys(g.index).forEach(function(k) {
+                    if (g.interdit[k] || !(g.adj[k] || []).length) return;
+                    let n = g.index[k];
+                    let d = window.distanceM(depart.lat, depart.lng, n.lat, n.lng);
+                    if (d < bd) { bd = d; best = k; }
+                });
+                depNoeud = best; depDist = bd;
             }
-            if (!depNoeud) { depNoeud = ids[0]; depDist = 0; depart = null; }
+            if (!depNoeud) { depNoeud = arrets[0].noeud; depDist = 0; depart = null; }
 
-            // Les canons d'une portion interdite ne sont pas joignables en véhicule, point final.
-            // Les autres le sont toujours : ils sont écartés de la tournée ici.
-            let interdits = ids.filter(function(id) { return window.routeCanonInterdit(id); });
-            ids = ids.filter(function(id) { return !window.routeCanonInterdit(id); });
-            if (!ids.length) return { err: "Tous les canons choisis sont sur une portion interdite à la circulation." };
-            if (window.routeCanonInterdit(depNoeud)) depNoeud = ids[0];
+            let sommets = [depNoeud];
+            arrets.forEach(function(a) { if (sommets.indexOf(a.noeud) === -1) sommets.push(a.noeud); });
 
-            let sommets = [depNoeud].concat(ids.filter(function(id) { return id !== depNoeud; }));
             let D = {}, P = {};
-            sommets.forEach(function(s) {
-                let r = window.routeDijkstra(g, s);
-                D[s] = r.dist; P[s] = r.prec;
-            });
+            sommets.forEach(function(s) { let r = window.routeDijkstra(g, s); D[s] = r.dist; P[s] = r.prec; });
 
-            /* Le réseau des canons n'est pas d'un seul tenant : deux pistes voisines ne sont pas
-               forcément reliées par une ligne continue, et les portions interdites le découpent
-               davantage. Refuser de router entre deux morceaux rendrait l'outil inutilisable dès la
-               première tournée à cheval sur deux pistes. On relie donc ces morceaux à vol d'oiseau,
-               majoré d'un tiers pour tenir compte du détour réel — c'est une estimation, et la fiche
-               le dit franchement plutôt que de faire passer une approximation pour un tracé. */
+            /* Le réseau n'est pas d'un seul tenant. Plutôt que de refuser de router entre deux
+               morceaux, on les relie à vol d'oiseau majoré d'un tiers, en le signalant clairement. */
             let FACTEUR_LIAISON = 1.35;
             let M = {}, HORS = {};
             sommets.forEach(function(a) {
@@ -3818,38 +4043,58 @@
                 sommets.forEach(function(b) {
                     if (a === b) { M[a][b] = 0; HORS[a][b] = false; return; }
                     let d = D[a] ? D[a][b] : Infinity;
-                    if (isFinite(d)) { M[a][b] = d; HORS[a][b] = false; }
-                    else {
-                        let na = g.index[a], nb = g.index[b];
-                        M[a][b] = window.distanceM(na.lat, na.lng, nb.lat, nb.lng) * FACTEUR_LIAISON;
+                    if (isFinite(d)) {
+                        let ch = window.routeChemin(P[a], a, b);
+                        M[a][b] = ch ? window.routeLongueurReelle(g, ch) : d;
+                        HORS[a][b] = false;
+                    } else {
+                        M[a][b] = window.distanceM(g.index[a].lat, g.index[a].lng, g.index[b].lat, g.index[b].lng) * FACTEUR_LIAISON;
                         HORS[a][b] = true;
                     }
                 });
             });
 
-            let aVisiter = sommets.filter(function(s) { return s !== depNoeud; });
-            let ordre = aVisiter.length ? window.routeOrdonner(depNoeud, aVisiter, M) : [];
-            let visites = (ids.indexOf(depNoeud) > -1 ? [depNoeud] : []).concat(ordre);
+            // Ordre : imposé par l'utilisateur, ou optimisé.
+            let sequence;
+            if (ordreImpose && ordreImpose.length) {
+                let parCanon = {}; arrets.forEach(function(a) { parCanon[a.canon] = a; });
+                sequence = ordreImpose.map(function(c) { return parCanon[c]; }).filter(Boolean);
+                arrets.forEach(function(a) { if (sequence.indexOf(a) === -1) sequence.push(a); });
+            } else {
+                let aVisiter = [];
+                arrets.forEach(function(a) { if (aVisiter.indexOf(a.noeud) === -1 && a.noeud !== depNoeud) aVisiter.push(a.noeud); });
+                let ordreNoeuds = aVisiter.length ? window.routeOrdonner(depNoeud, aVisiter, M) : [];
+                if (arrets.some(function(a) { return a.noeud === depNoeud; })) ordreNoeuds.unshift(depNoeud);
+                sequence = [];
+                ordreNoeuds.forEach(function(nd) {
+                    arrets.forEach(function(a) { if (a.noeud === nd && sequence.indexOf(a) === -1) sequence.push(a); });
+                });
+            }
 
-            let etapes = [], trace = [], liaisons = [], cumul = depDist, prec = depNoeud;
+            let etapes = [], trace = [], liaisons = [], pied = [], cumul = depDist, prec = depNoeud;
             if (depart) trace.push([depart.lat, depart.lng]);
             trace.push([g.index[depNoeud].lat, g.index[depNoeud].lng]);
-            if (ids.indexOf(depNoeud) > -1) {
-                etapes.push({ id: depNoeud, dist: depDist, cumul: cumul, piste: g.index[depNoeud].piste, horsLigne: !!depart });
-            }
-            ordre.forEach(function(cible) {
-                let d = M[prec][cible];
-                cumul += d;
-                etapes.push({ id: cible, dist: d, cumul: cumul, piste: g.index[cible].piste, horsLigne: HORS[prec][cible] });
-                if (HORS[prec][cible]) {
-                    let a = g.index[prec], b = g.index[cible];
-                    liaisons.push([[a.lat, a.lng], [b.lat, b.lng]]);
-                    trace.push([b.lat, b.lng]);
-                } else {
-                    let ch = window.routeChemin(P[prec], prec, cible);
-                    if (ch) ch.slice(1).forEach(function(n) { trace.push([g.index[n].lat, g.index[n].lng]); });
+
+            sequence.forEach(function(a, i) {
+                let d = (i === 0 && a.noeud === depNoeud) ? depDist : M[prec][a.noeud];
+                let horsLigne = (i === 0 && a.noeud === depNoeud) ? !!depart : HORS[prec][a.noeud];
+                if (!(i === 0 && a.noeud === depNoeud)) {
+                    cumul += d;
+                    if (horsLigne) {
+                        let na = g.index[prec], nb = g.index[a.noeud];
+                        liaisons.push([[na.lat, na.lng], [nb.lat, nb.lng]]);
+                        trace.push([nb.lat, nb.lng]);
+                    } else {
+                        let ch = window.routeChemin(P[prec], prec, a.noeud);
+                        if (ch) ch.slice(1).forEach(function(n) { trace.push([g.index[n].lat, g.index[n].lng]); });
+                    }
                 }
-                prec = cible;
+                let nCan = g.index[g.canonVersNoeud[a.canon]] || {};
+                etapes.push({ id: a.canon, dist: d, cumul: cumul, piste: nCan.piste,
+                              lat: nCan.lat, lng: nCan.lng,
+                              horsLigne: horsLigne, aPied: a.aPied, zone: a.zone });
+                if (a.aPied > 0 && a.approche) pied.push([[a.approche.lat, a.approche.lng], [a.lat, a.lng]]);
+                prec = a.noeud;
             });
 
             let retour = 0;
@@ -3857,9 +4102,9 @@
                 retour = M[prec] && isFinite(M[prec][depNoeud]) ? M[prec][depNoeud] : 0;
                 if (retour) {
                     if (HORS[prec][depNoeud]) {
-                        let a = g.index[prec], b = g.index[depNoeud];
-                        liaisons.push([[a.lat, a.lng], [b.lat, b.lng]]);
-                        trace.push([b.lat, b.lng]);
+                        let na = g.index[prec], nb = g.index[depNoeud];
+                        liaisons.push([[na.lat, na.lng], [nb.lat, nb.lng]]);
+                        trace.push([nb.lat, nb.lng]);
                     } else {
                         let ch = window.routeChemin(P[prec], prec, depNoeud);
                         if (ch) ch.slice(1).forEach(function(n) { trace.push([g.index[n].lat, g.index[n].lng]); });
@@ -3870,25 +4115,23 @@
 
             let distanceTotale = cumul + retour;
             let minutesRoute = distanceTotale / 1000 / cfg.vitesse * 60;
-            let minutesTravail = visites.length * cfg.minutesParCanon;
+            let metresPied = etapes.reduce(function(t, e) { return t + (e.aPied || 0); }, 0);
+            // 4 km/h à pied, aller et retour depuis le point d'approche.
+            let minutesPied = metresPied * 2 / 1000 / 4 * 60;
+            let minutesTravail = etapes.length * cfg.minutesParCanon;
             return {
-                err: "", etapes: etapes, trace: trace, liaisons: liaisons, depart: depart, depNoeud: depNoeud,
+                err: "", etapes: etapes, trace: trace, liaisons: liaisons, pied: pied,
+                depart: depart, depNoeud: depNoeud,
                 distance: distanceTotale, retour: retour, depDist: depDist,
-                minutesRoute: minutesRoute, minutesTravail: minutesTravail,
-                minutes: minutesRoute + minutesTravail,
+                minutesRoute: minutesRoute, minutesTravail: minutesTravail, minutesPied: minutesPied,
+                minutes: minutesRoute + minutesTravail + minutesPied,
+                metresPied: metresPied,
                 horsLigne: etapes.filter(function(e) { return e.horsLigne; }).length,
-                interdits: interdits.map(function(id) {
-                    // Canon le plus proche hors portion interdite : c'est de là qu'on finira à pied.
-                    let best = null, bd = Infinity;
-                    g.noeuds.forEach(function(n) {
-                        if (window.routeCanonInterdit(n.id)) return;
-                        let d = window.distanceM(g.index[id].lat, g.index[id].lng, n.lat, n.lng);
-                        if (d < bd) { bd = d; best = n.id; }
-                    });
-                    let z = window.routeCanonInterdit(id);
-                    return { id: id, depuis: best, metres: Math.round(bd), zone: z ? z.nom : "" };
-                }),
-                troncons: g.bloques, piste: g.index
+                aPied: etapes.filter(function(e) { return e.aPied > 0; }),
+                surChemins: g.nbSommetsChemin > 0, nbChemins: g.nbChemins,
+                nbSommetsChemin: g.nbSommetsChemin, raccroches: g.raccroches,
+                troncons: g.bloques, piste: g.index, graphe: g,
+                ordre: sequence.map(function(a) { return a.canon; })
             };
         };
 
@@ -3930,8 +4173,56 @@
             window.routeDernier = null; window.renderFicheRoute();
         };
         window.routeVider = function() { window.routeSelection = []; window.routeDernier = null; window.effacerTrace(); window.renderFicheRoute(); };
+
+        /* Édition directe sur la carte : tant que le mode est actif, un clic sur un canon l'ajoute au
+           trajet ou l'en retire. Le clic est intercepté AVANT le comportement normal (ouverture de la
+           fiche canon), sinon le panneau de droite se remplacerait à chaque ajout. */
+        window.routeEditionCarte = false;
+        window.basculerEditionCarte = function() {
+            window.routeEditionCarte = !window.routeEditionCarte;
+            if (window.map) window.map.getContainer().style.cursor = window.routeEditionCarte ? 'copy' : '';
+            window.renderFicheRoute();
+        };
+        window.routeClicCanon = function(id) {
+            if (!window.routeEditionCarte) return false;
+            let i = window.routeSelection.indexOf(id);
+            if (i > -1) window.routeSelection.splice(i, 1); else window.routeSelection.push(id);
+            window.routeDernier = null;
+            // Recalcul immédiat : voir le trajet se redessiner à chaque clic est tout l'intérêt.
+            if (window.routeSelection.length > 1) window.lancerCalculRoute(null);
+            else { window.effacerTrace(); window.renderFicheRoute(); }
+            return true;
+        };
+        window.routeDeplacer = function(i, sens) {
+            let j = i + sens;
+            if (j < 0 || j >= window.routeSelection.length) return;
+            let t = window.routeSelection[i];
+            window.routeSelection[i] = window.routeSelection[j];
+            window.routeSelection[j] = t;
+            // Déplacer une étape à la main, c'est vouloir cet ordre-là : on le fige automatiquement.
+            window.routeCfg().ordreManuel = window.routeSelection.slice();
+            window.routeSave();
+            window.lancerCalculRoute(null);
+        };
+        window.routeBasculerOrdre = function() {
+            let cfg = window.routeCfg();
+            cfg.ordreManuel = cfg.ordreManuel ? null : window.routeSelection.slice();
+            window.routeSave();
+            window.lancerCalculRoute(null);
+        };
+        window.routeBasculerCalque = function(cle, actif) {
+            let cfg = window.routeCfg();
+            if (!cfg.calquesChemins) cfg.calquesChemins = [];
+            let i = cfg.calquesChemins.indexOf(cle);
+            if (actif && i === -1) cfg.calquesChemins.push(cle);
+            if (!actif && i > -1) cfg.calquesChemins.splice(i, 1);
+            window.routeSave(); window.routeDernier = null; window.renderFicheRoute();
+        };
         window.routeRetirer = function(id) {
             window.routeSelection = window.routeSelection.filter(function(x) { return x !== id; });
+            let cfg = window.routeCfg();
+            if (cfg.ordreManuel) cfg.ordreManuel = cfg.ordreManuel.filter(function(x) { return x !== id; });
+            window.routeSave();
             window.routeDernier = null; window.renderFicheRoute();
         };
 
@@ -3969,6 +4260,9 @@
             let v = parseFloat(g('route-vitesse')); if (!isNaN(v)) cfg.vitesse = Math.max(3, Math.min(90, v));
             let m = parseInt(g('route-minutes'), 10); if (!isNaN(m)) cfg.minutesParCanon = Math.max(0, Math.min(240, m));
             let r = parseInt(g('route-rayon'), 10); if (!isNaN(r)) cfg.rayonLien = Math.max(50, Math.min(2000, r));
+            let ac = parseInt(g('route-accroche'), 10); if (!isNaN(ac)) cfg.rayonAccroche = Math.max(20, Math.min(600, ac));
+            let it = parseInt(g('route-interdit'), 10); if (!isNaN(it)) cfg.rayonInterdit = Math.max(10, Math.min(300, it));
+            let pf = parseFloat(g('route-pref')); if (!isNaN(pf)) cfg.preferenceChemin = Math.max(1, Math.min(10, pf));
             let ret = document.getElementById('route-retour'); if (ret) cfg.retour = ret.checked;
             window.routeSave(); window.routeDernier = null; window.renderFicheRoute();
         };
@@ -3988,10 +4282,15 @@
             (r.liaisons || []).forEach(function(l) {
                 window.routeTraceLayer.addLayer(L.polyline(l, { color: '#c0392b', weight: 3, opacity: 0.9, dashArray: '8,7' }));
             });
+            // Derniers mètres à pied, depuis le point d'approche jusqu'au canon.
+            (r.pied || []).forEach(function(l) {
+                window.routeTraceLayer.addLayer(L.polyline(l, { color: '#27ae60', weight: 3, opacity: 0.95, dashArray: '2,6' }));
+            });
             r.etapes.forEach(function(e, i) {
-                let n = r.piste[e.id];
-                window.routeTraceLayer.addLayer(L.marker([n.lat, n.lng], {
-                    icon: L.divIcon({ className: 'route-step-icon', html: '<div>' + (i + 1) + '</div>', iconSize: [26, 26], iconAnchor: [13, 13] })
+                if (e.lat === undefined || e.lng === undefined) return;
+                window.routeTraceLayer.addLayer(L.marker([e.lat, e.lng], {
+                    icon: L.divIcon({ className: 'route-step-icon' + (e.aPied ? ' route-step-pied' : ''),
+                        html: '<div>' + (i + 1) + '</div>', iconSize: [26, 26], iconAnchor: [13, 13] })
                 }));
             });
             if (r.depart) window.routeTraceLayer.addLayer(L.marker([r.depart.lat, r.depart.lng], {
@@ -4002,10 +4301,11 @@
         };
 
         window.lancerCalculRoute = function(btn) {
-            if (!window.routeSelection.length) { alert("Choisissez d'abord les canons à visiter."); return; }
+            if (!window.routeSelection.length) { window.routeDernier = null; window.effacerTrace(); window.renderFicheRoute(); return; }
             if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Calcul…'; }
             setTimeout(function() {
-                let r = window.calculerFicheRoute(window.routeSelection, window.routeCfg().depart);
+                let cfg = window.routeCfg();
+                let r = window.calculerFicheRoute(window.routeSelection, cfg.depart, cfg.ordreManuel);
                 window.routeDernier = r;
                 if (!r.err) window.tracerRoute(r);
                 window.renderFicheRoute();
@@ -4018,6 +4318,7 @@
             let cfg = window.routeCfg();
             let r = window.routeDernier;
             let dep = cfg.depart;
+            let calques = window.routeCalquesDisponibles();
             let nomCanon = function(id) {
                 let f = ((window.snowCannons && window.snowCannons.features) || []).find(function(x) { return x.properties.id === id; });
                 if (!f) return id;
@@ -4029,6 +4330,9 @@
                 <div style="display:flex; gap:6px; flex-wrap:wrap;">
                     <button onclick="window.routePrendreDefauts()" style="flex:1 1 46%; background:#c0392b; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">⚠️ Tous les canons en défaut</button>
                     <button onclick="window.routePrendreSelection()" style="flex:1 1 46%; background:#2980b9; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">🖱️ Ma sélection sur la carte</button>
+                    <button onclick="window.collerCodeTrajet()" style="flex:1 1 100%; background:#16a085; color:#fff; border:none; padding:8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-qrcode"></i> Charger un trajet reçu (lien ou code)</button>
+                    <button onclick="window.basculerEditionCarte()" style="flex:1 1 100%; background:${window.routeEditionCarte ? '#27ae60' : '#34495e'}; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">
+                        ${window.routeEditionCarte ? '✅ Modification sur la carte ACTIVE — cliquez un canon pour l\'ajouter ou le retirer' : '✏️ Modifier le trajet sur la carte'}</button>
                 </div>
 
                 <div style="border:1px solid #e1e8ed; border-radius:6px; overflow:hidden;">
@@ -4038,13 +4342,20 @@
                     </div>
                     <div style="max-height:170px; overflow-y:auto; padding:6px;">
                         ${window.routeSelection.length
-                            ? window.routeSelection.map(function(id) {
-                                return `<div style="display:flex; align-items:center; gap:6px; font-size:11px; padding:4px 6px; border-bottom:1px solid #f0f3f6;">
-                                    <span style="flex:1;">${window.prodEsc(nomCanon(id))}</span>
+                            ? window.routeSelection.map(function(id, i) {
+                                return `<div style="display:flex; align-items:center; gap:4px; font-size:11px; padding:4px 6px; border-bottom:1px solid #f0f3f6;">
+                                    <span style="flex:0 0 20px; color:#95a5a6; text-align:right;">${i + 1}.</span>
+                                    <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${window.prodEsc(nomCanon(id))}</span>
+                                    <button onclick="window.routeDeplacer(${i}, -1)" title="Monter" ${i === 0 ? 'disabled' : ''} style="background:none; border:none; color:${i === 0 ? '#dde3e8' : '#2980b9'}; cursor:pointer; font-size:13px;">▲</button>
+                                    <button onclick="window.routeDeplacer(${i}, 1)" title="Descendre" ${i === window.routeSelection.length - 1 ? 'disabled' : ''} style="background:none; border:none; color:${i === window.routeSelection.length - 1 ? '#dde3e8' : '#2980b9'}; cursor:pointer; font-size:13px;">▼</button>
                                     <button onclick="window.routeRetirer('${id}')" style="background:none; border:none; color:#c0392b; cursor:pointer;">✕</button></div>`;
                               }).join('')
                             : `<i style="font-size:11px; color:#95a5a6;">Sélectionnez des canons sur la carte, ou reprenez tous ceux en défaut.</i>`}
                     </div>
+                    ${window.routeSelection.length ? `<div style="padding:6px 10px; background:#f8fafc; border-top:1px solid #eef2f5; font-size:10px; color:#7f8c8d; display:flex; align-items:center; gap:8px;">
+                        <span style="flex:1;">${cfg.ordreManuel ? "Ordre <b>imposé</b> : le calcul suit votre liste." : "Ordre <b>optimisé</b> automatiquement."}</span>
+                        <button onclick="window.routeBasculerOrdre()" style="background:#ecf0f1; border:1px solid #ccc; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;">${cfg.ordreManuel ? 'Réoptimiser' : 'Figer cet ordre'}</button>
+                    </div>` : ''}
                 </div>
 
                 <div style="border:1px solid #e1e8ed; border-radius:6px; padding:10px;">
@@ -4062,7 +4373,24 @@
                     <label style="display:flex; align-items:center; gap:6px; font-size:11px; margin-top:8px; cursor:pointer;">
                         <input type="checkbox" id="route-retour" ${cfg.retour ? 'checked' : ''} onchange="window.routeMajReglages()"> Revenir au point de départ
                     </label>
-                    <p style="font-size:10px; color:#888; margin:8px 0 0;">Circulation interdite : ${cfg.interdits.map(function(z) { return window.prodEsc(z.nom) + ' (' + z.de + '–' + z.a + ')'; }).join(' · ')}.</p>
+                    <p style="font-size:10px; color:#888; margin:8px 0 0;">Circulation interdite : ${cfg.interdits.map(function(z) { return window.prodEsc(z.nom) + ' (' + z.de + '–' + z.a + ')'; }).join(' · ')}. Les canons concernés restent au programme : le trajet s'en approche au plus près par les chemins, le reste se fait à pied.</p>
+                </div>
+
+                <div style="border:1px solid #e1e8ed; border-radius:6px; padding:10px;">
+                    <div style="font-size:11px; font-weight:bold; color:#2c3e50; margin-bottom:6px;">🛤️ Chemins carrossables</div>
+                    ${calques.length
+                        ? calques.map(function(c) {
+                            let coche = (cfg.calquesChemins || []).indexOf(c.cle) > -1;
+                            return `<label style="display:flex; align-items:center; gap:7px; font-size:11px; padding:3px 0; cursor:pointer;">
+                                <input type="checkbox" ${coche ? 'checked' : ''} onchange="window.routeBasculerCalque('${c.cle}', this.checked)"> ${window.prodEsc(c.nom)}</label>`;
+                          }).join('')
+                        : `<i style="font-size:10px; color:#95a5a6;">Aucun calque chargé. Importez vos chemins en KMZ depuis le menu de gauche : le trajet les suivra au lieu de relier les canons en ligne droite.</i>`}
+                    ${calques.length ? `<div style="display:flex; gap:6px; margin-top:8px;">
+                        <div style="flex:1;"><span class="edit-label" style="font-size:10px;">Accroche au chemin (m)</span><input type="number" id="route-accroche" class="edit-input" style="margin:0; padding:5px;" value="${cfg.rayonAccroche}" min="20" max="600" step="10" onchange="window.routeMajReglages()"></div>
+                        <div style="flex:1;"><span class="edit-label" style="font-size:10px;">Largeur zone interdite (m)</span><input type="number" id="route-interdit" class="edit-input" style="margin:0; padding:5px;" value="${cfg.rayonInterdit}" min="10" max="300" step="10" onchange="window.routeMajReglages()"></div>
+                        <div style="flex:1;"><span class="edit-label" style="font-size:10px;">Préférence chemin</span><input type="number" id="route-pref" class="edit-input" style="margin:0; padding:5px;" value="${cfg.preferenceChemin}" min="1" max="10" step="0.5" onchange="window.routeMajReglages()"></div>
+                    </div>
+                    <p style="font-size:10px; color:#888; margin:6px 0 0;">Préférence chemin : un détour par un chemin reste choisi tant qu'il ne dépasse pas ce multiple de la ligne droite entre canons. À 1, le calcul reprend la ligne droite dès qu'elle est plus courte.</p>` : ''}
                 </div>
 
                 <button onclick="window.lancerCalculRoute(this)" style="background:#e67e22; color:#fff; border:none; padding:12px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-route"></i> Calculer la tournée</button>`;
@@ -4075,23 +4403,24 @@
                         <div style="flex:1;"><div style="font-size:17px; font-weight:bold;">${r.etapes.length}</div><div style="font-size:10px; opacity:0.9;">ARRÊTS</div></div>
                     </div>
                     <div style="padding:8px 10px; font-size:11px; color:#666; background:#fdf6ef;">
-                        Route ${window.routeFmtDuree(r.minutesRoute)} à ${cfg.vitesse} km/h · interventions ${window.routeFmtDuree(r.minutesTravail)}${r.retour ? ' · retour compris' : ''}
+                        Route ${window.routeFmtDuree(r.minutesRoute)} à ${cfg.vitesse} km/h · interventions ${window.routeFmtDuree(r.minutesTravail)}${r.metresPied ? ' · marche ' + window.routeFmtDuree(r.minutesPied) + ' (' + r.metresPied + ' m aller)' : ''}${r.retour ? ' · retour compris' : ''}<br>
+                        <span style="color:#8a8a8a;">${r.surChemins ? r.nbChemins + ' tracé(s) de chemin suivis, ' + r.raccroches + ' canon(s) raccrochés' : 'Aucun chemin déclaré : le trajet suit la ligne des canons'}</span>
                     </div>
                     <div style="max-height:280px; overflow-y:auto;">
                         ${r.etapes.map(function(e, i) {
                             return `<div style="display:flex; align-items:center; gap:8px; padding:7px 10px; border-bottom:1px solid #f0f3f6; font-size:12px;">
                                 <span style="flex:0 0 24px; height:24px; line-height:24px; text-align:center; background:#e67e22; color:#fff; border-radius:50%; font-size:11px; font-weight:bold;">${i + 1}</span>
-                                <span style="flex:1;"><b>Canon ${window.prodEsc(e.id)}</b>${e.piste && e.piste !== 'N/A' ? ' <span style="color:#888;">· ' + window.prodEsc(e.piste) + '</span>' : ''}${e.horsLigne ? ' <span style="color:#e67e22;" title="Liaison hors ligne de canons">⤳</span>' : ''}</span>
+                                <span style="flex:1;"><b>Canon ${window.prodEsc(e.id)}</b>${e.piste && e.piste !== 'N/A' ? ' <span style="color:#888;">· ' + window.prodEsc(e.piste) + '</span>' : ''}${e.horsLigne ? ' <span style="color:#e67e22;" title="Liaison hors chemin">⤳</span>' : ''}${e.aPied ? ` <span style="color:#27ae60; font-weight:bold;" title="${window.prodEsc(e.zone || '')}">🚶 ${e.aPied} m</span>` : ''}</span>
                                 <span style="color:#888; font-size:11px; text-align:right;">${window.routeFmtDist(e.dist)}<br><span style="font-size:10px;">${window.routeFmtDuree(e.cumul / 1000 / cfg.vitesse * 60 + i * cfg.minutesParCanon)}</span></span>
                             </div>`;
                         }).join('')}
                     </div>
                 </div>`;
-                if (r.interdits.length) {
-                    html += `<div style="background:#fdedec; border:1px solid #f5b7b1; border-radius:6px; padding:10px; font-size:11px; color:#922b21;">
-                        <b>⚠️ ${r.interdits.length} canon(s) à rejoindre à pied</b><br>
-                        ${r.interdits.map(function(x) { return "Canon <b>" + window.prodEsc(x.id) + "</b> (" + window.prodEsc(x.zone) + ") — depuis le canon " + window.prodEsc(x.depuis || '?') + ", " + x.metres + " m"; }).join('<br>')}
-                        <br><span style="color:#7b241c;">Circulation interdite sur cette portion : ils sont exclus du trajet en véhicule.</span>
+                if (r.aPied.length) {
+                    html += `<div style="background:#eafaf1; border:1px solid #a9dfbf; border-radius:6px; padding:10px; font-size:11px; color:#1e6b42;">
+                        <b>🚶 ${r.aPied.length} canon(s) à finir à pied</b><br>
+                        ${r.aPied.map(function(x) { return "Canon <b>" + window.prodEsc(x.id) + "</b>" + (x.zone ? " (" + window.prodEsc(x.zone) + ")" : "") + " — " + x.aPied + " m depuis le point d'approche"; }).join('<br>')}
+                        <br><span style="color:#186a3b;">Le véhicule s'arrête au plus près en suivant les chemins ; le dernier tronçon est tracé en pointillé vert.</span>
                     </div>`;
                 }
                 if (r.horsLigne) {
@@ -4099,10 +4428,365 @@
                         <b>${r.horsLigne} liaison(s) hors ligne de canons</b> — tracées en pointillé. Aucune ligne continue ne relie ces points : la distance est estimée à vol d'oiseau majoré de 35 %, le temps réel dépendra de l'accès emprunté.
                     </div>`;
                 }
-                html += `<button onclick="window.imprimerFicheRoute()" style="background:#7f8c8d; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-print"></i> Imprimer la fiche</button>`;
+                html += `<div style="display:flex; gap:6px;">
+                    <button onclick="window.imprimerFicheRoute()" style="flex:1; background:#7f8c8d; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-print"></i> Imprimer</button>
+                    <button onclick="window.afficherQrTrajet()" style="flex:1; background:#2c3e50; color:#fff; border:none; padding:10px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-qrcode"></i> Envoyer au téléphone</button>
+                </div>`;
             }
             html += `</div>`;
             sl.innerHTML = html;
+        };
+
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 4.G.2 — GÉNÉRATEUR DE QR CODE                                     */
+        /*                                                                           */
+        /* Écrit ici plutôt qu'emprunté à une librairie : le transfert d'un trajet du */
+        /* bureau vers le téléphone se fait dans le local technique, souvent sans     */
+        /* réseau. Un QR qui dépend d'un CDN ne s'afficherait pas au moment précis    */
+        /* où on en a besoin.                                                        */
+        /* Mode octet, correction de niveau M, versions 1 à 20, masque choisi par     */
+        /* évaluation des pénalités — c'est-à-dire un encodeur conforme, pas une      */
+        /* approximation.                                                            */
+        /* ------------------------------------------------------------------------- */
+        window.QR = (function() {
+            // Journaux et exponentielles dans GF(256), pour l'arithmétique de Reed-Solomon.
+            let EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+            (function() {
+                let x = 1;
+                for (let i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11d; }
+                for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+            })();
+            let mul = function(a, b) { return (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]]; };
+
+            // Nombre total de codets et découpage en blocs, pour le niveau M, versions 1 à 20.
+            let CAP_M = [null,
+                [26,1,16],[44,1,28],[70,1,44],[100,2,32],[134,2,43],[172,4,27],[196,4,31],[242,2,38,2,39],
+                [292,3,36,2,37],[346,4,43,1,44],[404,1,50,4,51],[466,6,36,2,37],[532,8,37,1,38],[581,4,40,5,41],
+                [655,5,41,5,42],[733,7,45,3,46],[815,10,46,1,47],[901,9,43,4,44],[991,3,44,11,45],[1085,3,41,13,42]];
+            let ECC_M = [null,10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26];
+            let ALIGN = [null,[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],
+                [6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,80],
+                [6,30,58,82],[6,34,62,90]];
+
+            let rsGen = function(deg) {
+                let poly = [1];
+                for (let i = 0; i < deg; i++) {
+                    let nv = new Array(poly.length + 1).fill(0);
+                    for (let j = 0; j < poly.length; j++) { nv[j] ^= mul(poly[j], 1); nv[j + 1] ^= mul(poly[j], EXP[i]); }
+                    poly = nv;
+                }
+                return poly;
+            };
+            let rsReste = function(data, deg) {
+                let gen = rsGen(deg), res = new Array(deg).fill(0);
+                data.forEach(function(b) {
+                    let facteur = b ^ res[0];
+                    res.shift(); res.push(0);
+                    for (let i = 0; i < deg; i++) res[i] ^= mul(gen[i + 1], facteur);
+                });
+                return res;
+            };
+
+            let versionPour = function(n) {
+                for (let v = 1; v <= 20; v++) {
+                    let c = CAP_M[v], ecc = ECC_M[v];
+                    let blocs = c[1] + (c[3] || 0);
+                    let dispo = c[0] - ecc * blocs;
+                    let entete = 4 + (v < 10 ? 8 : 16);
+                    if (n + Math.ceil(entete / 8) <= dispo) return v;
+                }
+                return 0;
+            };
+
+            let encoder = function(txt) {
+                let octets = [];
+                for (let i = 0; i < txt.length; i++) {
+                    let c = txt.charCodeAt(i);
+                    if (c < 128) octets.push(c);
+                    else if (c < 2048) { octets.push(192 | (c >> 6), 128 | (c & 63)); }
+                    else { octets.push(224 | (c >> 12), 128 | ((c >> 6) & 63), 128 | (c & 63)); }
+                }
+                let v = versionPour(octets.length);
+                if (!v) return null;
+                let c = CAP_M[v], ecc = ECC_M[v];
+                let blocs = c[1] + (c[3] || 0);
+                let totalData = c[0] - ecc * blocs;
+
+                let bits = [];
+                let put = function(val, n) { for (let i = n - 1; i >= 0; i--) bits.push((val >> i) & 1); };
+                put(4, 4);                                  // mode octet
+                put(octets.length, v < 10 ? 8 : 16);
+                octets.forEach(function(b) { put(b, 8); });
+                let reste = totalData * 8 - bits.length;
+                put(0, Math.min(4, reste));
+                while (bits.length % 8) bits.push(0);
+                let remplissage = [0xEC, 0x11], k = 0;
+                while (bits.length / 8 < totalData) { put(remplissage[k++ % 2], 8); }
+
+                let octetsData = [];
+                for (let i = 0; i < bits.length; i += 8) {
+                    let b = 0; for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
+                    octetsData.push(b);
+                }
+
+                // Découpage en blocs, puis entrelacement — imposé par la norme.
+                let groupes = [], pos = 0;
+                let ajouter = function(nb, taille) {
+                    for (let i = 0; i < nb; i++) { groupes.push(octetsData.slice(pos, pos + taille)); pos += taille; }
+                };
+                // c[2] et c[4] sont DÉJÀ des longueurs de données par bloc (v1-M : 26 codets au total,
+                // dont 16 de données et 10 de correction). En retranchant encore la correction, chaque
+                // bloc perdait la moitié de son contenu : le symbole se détectait mais ne se décodait pas.
+                ajouter(c[1], c[2]);
+                if (c[3]) ajouter(c[3], c[4]);
+                let eccs = groupes.map(function(g) { return rsReste(g, ecc); });
+
+                let final = [];
+                let maxLen = Math.max.apply(null, groupes.map(function(g) { return g.length; }));
+                for (let i = 0; i < maxLen; i++) groupes.forEach(function(g) { if (i < g.length) final.push(g[i]); });
+                for (let i = 0; i < ecc; i++) eccs.forEach(function(e) { final.push(e[i]); });
+                return { version: v, octets: final };
+            };
+
+            let construire = function(v, donnees, masque) {
+                let n = 17 + 4 * v;
+                let m = [], reserve = [];
+                for (let i = 0; i < n; i++) { m.push(new Array(n).fill(0)); reserve.push(new Array(n).fill(0)); }
+                let poser = function(x, y, val) { if (x >= 0 && y >= 0 && x < n && y < n) { m[y][x] = val; reserve[y][x] = 1; } };
+
+                let motifRecherche = function(cx, cy) {
+                    for (let dy = -1; dy <= 7; dy++) for (let dx = -1; dx <= 7; dx++) {
+                        let d = Math.max(Math.abs(dx - 3), Math.abs(dy - 3));
+                        poser(cx + dx, cy + dy, (d !== 2 && d <= 3) ? 1 : 0);
+                    }
+                };
+                motifRecherche(0, 0); motifRecherche(n - 7, 0); motifRecherche(0, n - 7);
+
+                for (let i = 8; i < n - 8; i++) { poser(i, 6, i % 2 === 0 ? 1 : 0); poser(6, i, i % 2 === 0 ? 1 : 0); }
+
+                let al = ALIGN[v] || [];
+                al.forEach(function(cy) { al.forEach(function(cx) {
+                    if ((cx < 8 && cy < 8) || (cx < 8 && cy > n - 9) || (cx > n - 9 && cy < 8)) return;
+                    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+                        let d = Math.max(Math.abs(dx), Math.abs(dy));
+                        poser(cx + dx, cy + dy, (d !== 1) ? 1 : 0);
+                    }
+                }); });
+
+                poser(8, n - 8, 1);   // module toujours sombre
+
+                // Réservation des zones d'information de format.
+                for (let i = 0; i <= 8; i++) { if (!reserve[8][i]) reserve[8][i] = 1; if (!reserve[i][8]) reserve[i][8] = 1; }
+                for (let i = 0; i < 8; i++) { reserve[8][n - 1 - i] = 1; reserve[n - 1 - i][8] = 1; }
+                if (v >= 7) {
+                    for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) { reserve[i][n - 11 + j] = 1; reserve[n - 11 + j][i] = 1; }
+                }
+
+                // Remplissage en zigzag, de droite à gauche, en sautant la colonne de synchro.
+                let bits = [];
+                donnees.forEach(function(b) { for (let i = 7; i >= 0; i--) bits.push((b >> i) & 1); });
+                let idx = 0, monte = true;
+                for (let col = n - 1; col > 0; col -= 2) {
+                    if (col === 6) col--;
+                    for (let k = 0; k < n; k++) {
+                        let y = monte ? n - 1 - k : k;
+                        for (let s = 0; s < 2; s++) {
+                            let x = col - s;
+                            if (reserve[y][x]) continue;
+                            let bit = idx < bits.length ? bits[idx++] : 0;
+                            let inv = false;
+                            switch (masque) {
+                                case 0: inv = (y + x) % 2 === 0; break;
+                                case 1: inv = y % 2 === 0; break;
+                                case 2: inv = x % 3 === 0; break;
+                                case 3: inv = (y + x) % 3 === 0; break;
+                                case 4: inv = (Math.floor(y / 2) + Math.floor(x / 3)) % 2 === 0; break;
+                                case 5: inv = ((y * x) % 2) + ((y * x) % 3) === 0; break;
+                                case 6: inv = (((y * x) % 2) + ((y * x) % 3)) % 2 === 0; break;
+                                default: inv = (((y + x) % 2) + ((y * x) % 3)) % 2 === 0; break;
+                            }
+                            m[y][x] = inv ? bit ^ 1 : bit;
+                        }
+                    }
+                    monte = !monte;
+                }
+
+                /* Information de format : 2 bits de niveau de correction (M = 00) + 3 bits de masque,
+                   complétés par 10 bits de contrôle BCH, le tout masqué par 0x5412.
+                   ATTENTION à l'orientation : la première copie se lit le long de la COLONNE 8 puis
+                   de la LIGNE 8. L'avoir transposée produisait un QR d'apparence tout à fait normale
+                   mais qu'aucun lecteur n'acceptait — le décodeur d'Apple ne détectait même pas le
+                   symbole, puisque le niveau de correction et le masque annoncés étaient faux. */
+                let fmt = (0 << 3) | masque;
+                let rem = fmt;
+                for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+                let format = ((fmt << 10) | rem) ^ 0x5412;
+                for (let i = 0; i <= 14; i++) {
+                    let bit = (format >>> i) & 1;
+                    // Première copie, autour du repère haut-gauche.
+                    if (i <= 5) m[i][8] = bit;
+                    else if (i === 6) m[7][8] = bit;
+                    else if (i === 7) m[8][8] = bit;
+                    else if (i === 8) m[8][7] = bit;
+                    else m[8][14 - i] = bit;
+                    // Seconde copie, répartie sur les deux autres repères.
+                    if (i < 8) m[8][n - 1 - i] = bit;
+                    else m[n - 15 + i][8] = bit;
+                }
+
+                if (v >= 7) {
+                    let rv = v;
+                    for (let i = 0; i < 12; i++) rv = (rv << 1) ^ ((rv >>> 11) * 0x1F25);
+                    let vinfo = (v << 12) | rv;
+                    for (let i = 0; i < 18; i++) {
+                        let bit = (vinfo >>> i) & 1;
+                        let a = n - 11 + (i % 3), b = Math.floor(i / 3);
+                        m[b][a] = bit;
+                        m[a][b] = bit;
+                    }
+                }
+                return m;
+            };
+
+            // Choix du masque : celui qui minimise les pénalités de la norme, donc le plus lisible.
+            let penalite = function(m) {
+                let n = m.length, p = 0;
+                for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+                    if (x < n - 1 && y < n - 1 && m[y][x] === m[y][x + 1] && m[y][x] === m[y + 1][x] && m[y][x] === m[y + 1][x + 1]) p += 3;
+                }
+                let serie = function(get) {
+                    for (let a = 0; a < n; a++) {
+                        let c = 1;
+                        for (let b = 1; b < n; b++) {
+                            if (get(a, b) === get(a, b - 1)) { c++; if (c === 5) p += 3; else if (c > 5) p++; }
+                            else c = 1;
+                        }
+                    }
+                };
+                serie(function(y, x) { return m[y][x]; });
+                serie(function(x, y) { return m[y][x]; });
+                let noirs = 0; m.forEach(function(l) { l.forEach(function(v) { if (v) noirs++; }); });
+                p += Math.floor(Math.abs(noirs * 100 / (n * n) - 50) / 5) * 10;
+                return p;
+            };
+
+            return {
+                matrice: function(txt) {
+                    let e = encoder(txt);
+                    if (!e) return null;
+                    let best = null, bp = Infinity;
+                    for (let mk = 0; mk < 8; mk++) {
+                        let m = construire(e.version, e.octets, mk);
+                        let p = penalite(m);
+                        if (p < bp) { bp = p; best = m; }
+                    }
+                    return best;
+                },
+                svg: function(txt, taille) {
+                    let m = window.QR.matrice(txt);
+                    if (!m) return null;
+                    let n = m.length, marge = 4, total = n + marge * 2;
+                    let d = '';
+                    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+                        if (m[y][x]) d += 'M' + (x + marge) + ' ' + (y + marge) + 'h1v1h-1z';
+                    }
+                    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="${taille}" height="${taille}" shape-rendering="crispEdges">
+                        <rect width="${total}" height="${total}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+                }
+            };
+        })();
+
+        /* ------------------------------------------------------------------------- */
+        /* CHAPITRE 4.G.3 — TRANSFERT DU TRAJET VERS LE TÉLÉPHONE                     */
+        /*                                                                           */
+        /* Le QR encode une URL de l'application avec le trajet dans le fragment. On  */
+        /* le scanne avec l'appareil photo du téléphone, qui ouvre l'application déjà */
+        /* chargée de la tournée. Aucun lecteur de QR à écrire, et le fragment ne     */
+        /* part jamais sur le réseau.                                                */
+        /* ------------------------------------------------------------------------- */
+        window.routeEncoder = function() {
+            let cfg = window.routeCfg();
+            let o = { c: window.routeSelection, v: cfg.vitesse, m: cfg.minutesParCanon, r: cfg.retour ? 1 : 0 };
+            if (cfg.depart) o.d = [+cfg.depart.lat.toFixed(5), +cfg.depart.lng.toFixed(5), cfg.depart.nom];
+            if (cfg.ordreManuel) o.o = 1;
+            if ((cfg.calquesChemins || []).length) o.k = cfg.calquesChemins;
+            let json = JSON.stringify(o);
+            // base64 « URL-safe » : le fragment traverse ainsi n'importe quel lecteur de QR.
+            let b64 = btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            return b64;
+        };
+        window.routeDecoder = function(code) {
+            try {
+                let b64 = code.replace(/-/g, '+').replace(/_/g, '/');
+                while (b64.length % 4) b64 += '=';
+                let o = JSON.parse(decodeURIComponent(escape(atob(b64))));
+                if (!o || !Array.isArray(o.c)) return null;
+                return o;
+            } catch (e) { return null; }
+        };
+        window.routeAppliquerCode = function(code, silencieux) {
+            let o = window.routeDecoder(code);
+            if (!o) { if (!silencieux) alert("Code de trajet illisible."); return false; }
+            let cfg = window.routeCfg();
+            window.routeSelection = o.c.map(String);
+            if (o.v) cfg.vitesse = o.v;
+            if (o.m !== undefined) cfg.minutesParCanon = o.m;
+            cfg.retour = !!o.r;
+            cfg.depart = o.d ? { lat: o.d[0], lng: o.d[1], nom: o.d[2] || 'Départ' } : null;
+            cfg.ordreManuel = o.o ? window.routeSelection.slice() : null;
+            if (o.k) cfg.calquesChemins = o.k;
+            window.routeSave();
+            window.routeDernier = null;
+            return true;
+        };
+        window.routeUrlPartage = function() {
+            let base = location.origin + location.pathname;
+            return base + '#trajet=' + window.routeEncoder();
+        };
+        window.afficherQrTrajet = function() {
+            if (!window.routeSelection.length) { alert("Composez d'abord un trajet."); return; }
+            let url = window.routeUrlPartage();
+            let svg = window.QR.svg(url, 260);
+            let sl = document.getElementById('selected-list'); if (!sl) return;
+            let box = document.getElementById('route-qr-box');
+            if (!box) { box = document.createElement('div'); box.id = 'route-qr-box'; sl.appendChild(box); }
+            box.innerHTML = svg
+                ? `<div style="background:#fff; border:2px solid #2c3e50; border-radius:8px; padding:14px; text-align:center; margin-top:10px;">
+                    <div style="font-size:12px; font-weight:bold; color:#2c3e50; margin-bottom:8px;">📱 Scannez avec l'appareil photo du téléphone</div>
+                    ${svg}
+                    <div style="font-size:10px; color:#888; margin-top:8px; line-height:1.5;">${window.routeSelection.length} canon(s) · ${url.length} caractères<br>
+                    Le téléphone ouvre l'application avec ce trajet déjà chargé.</div>
+                    <div style="display:flex; gap:6px; margin-top:10px;">
+                        <button onclick="window.copierCodeTrajet(this)" style="flex:1; background:#34495e; color:#fff; border:none; padding:8px; border-radius:5px; font-size:11px; cursor:pointer;">📋 Copier le code</button>
+                        <button onclick="document.getElementById('route-qr-box').remove()" style="flex:0 0 auto; background:#ecf0f1; border:1px solid #ccc; padding:8px 12px; border-radius:5px; font-size:11px; cursor:pointer;">Fermer</button>
+                    </div>
+                   </div>`
+                : `<div style="background:#fdedec; border:1px solid #f5b7b1; border-radius:6px; padding:10px; font-size:11px; color:#922b21; margin-top:10px;">
+                    Trajet trop long pour un QR code (${url.length} caractères). Réduisez la sélection, ou utilisez « Copier le code ».
+                    <button onclick="window.copierCodeTrajet(this)" style="width:100%; margin-top:8px; background:#34495e; color:#fff; border:none; padding:8px; border-radius:5px; font-size:11px; cursor:pointer;">📋 Copier le code</button></div>`;
+            box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        };
+        window.copierCodeTrajet = function(btn) {
+            let url = window.routeUrlPartage();
+            let ok = function() { if (btn) { let t = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(function() { btn.innerHTML = t; }, 1800); } };
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok).catch(function() { prompt("Copiez ce lien :", url); });
+            else prompt("Copiez ce lien :", url);
+        };
+        window.collerCodeTrajet = function() {
+            let v = prompt("Collez le lien ou le code du trajet :");
+            if (!v) return;
+            let code = v.indexOf('#trajet=') > -1 ? v.split('#trajet=')[1] : v.trim();
+            if (window.routeAppliquerCode(code)) { window.openFicheRoute(); window.lancerCalculRoute(null); }
+        };
+        // Au démarrage : un trajet passé dans l'adresse est chargé et affiché directement.
+        window.chargerTrajetDepuisUrl = function() {
+            let h = location.hash || '';
+            let m = h.match(/#?trajet=([A-Za-z0-9\-_]+)/);
+            if (!m) return false;
+            if (!window.routeAppliquerCode(m[1], true)) return false;
+            history.replaceState(null, '', location.pathname + location.search);
+            setTimeout(function() { window.openFicheRoute(); window.lancerCalculRoute(null); }, 400);
+            return true;
         };
 
         // Impression : on peint la fiche dans un conteneur dédié et une règle @media print masque tout
@@ -4122,14 +4806,14 @@
                     <thead><tr><th>#</th><th>Canon</th><th>Piste</th><th>Défaut signalé</th><th>Distance</th><th>Heure cumulée</th><th>Fait</th></tr></thead>
                     <tbody>${r.etapes.map(function(e, i) {
                         let t = window.getActiveTickets(e.id);
-                        return `<tr><td>${i + 1}</td><td><b>${window.prodEsc(e.id)}</b></td><td>${window.prodEsc(e.piste || '')}</td>
+                        return `<tr><td>${i + 1}</td><td><b>${window.prodEsc(e.id)}</b>${e.aPied ? ' <span style="font-size:9px;">🚶 ' + e.aPied + ' m</span>' : ''}</td><td>${window.prodEsc(e.piste || '')}</td>
                             <td>${window.prodEsc(t.map(function(x) { return x.defaut; }).join(' · '))}</td>
                             <td>${window.routeFmtDist(e.dist)}</td>
                             <td>${window.routeFmtDuree(e.cumul / 1000 / cfg.vitesse * 60 + i * cfg.minutesParCanon)}</td><td class="rp-case"></td></tr>`;
                     }).join('')}</tbody>
                 </table>
-                ${r.interdits.length ? `<div class="rp-warn"><b>À rejoindre à pied (circulation interdite) :</b> ${r.interdits.map(function(x) { return "canon " + window.prodEsc(x.id) + " depuis " + window.prodEsc(x.depuis || '?') + " (" + x.metres + " m)"; }).join(' · ')}</div>` : ''}
-                ${r.horsLigne ? `<div class="rp-warn"><b>${r.horsLigne} liaison(s) hors ligne de canons :</b> distance estimée, temps indicatif.</div>` : ''}
+                ${r.aPied.length ? `<div class="rp-warn"><b>À finir à pied :</b> ${r.aPied.map(function(x) { return "canon " + window.prodEsc(x.id) + " (" + x.aPied + " m)"; }).join(' · ')}</div>` : ''}
+                ${r.horsLigne ? `<div class="rp-warn"><b>${r.horsLigne} liaison(s) hors chemin :</b> distance estimée, temps indicatif.</div>` : ''}
                 <p class="rp-foot">Circulation interdite : ${cfg.interdits.map(function(z) { return window.prodEsc(z.nom) + ' (' + z.de + '–' + z.a + ')'; }).join(' · ')}. Distances mesurées le long de la ligne de canons.</p>`;
             document.body.classList.add('printing-route');
             setTimeout(function() {
@@ -4735,7 +5419,7 @@
             let lst = document.getElementById('loading-step'); if(lst) lst.style.display = 'none';
             let ld = document.getElementById('loading-desc');
             if(ld) ld.innerHTML = `${window.snowCannons.features.length} canons placés.` + (window.offlineMode ? `<br><span style="color:#c0392b;">Copie locale du ${window.fmtSnapshotDate(window.snapshotAt)}</span>` : '');
-            setTimeout(() => { window.initAppUI(); if(window.initDriveKMZList) window.initDriveKMZList(); if(window.loadSettingsLocally) window.loadSettingsLocally(); if(window.initMobileDock) window.initMobileDock(); if (window.innerWidth <= 768) { let sb = document.getElementById('sidebar'); if (sb) sb.classList.add('collapsed'); } let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; window.refreshOutboxCount().then(function() { if (!window.offlineMode && window.outboxCount > 0) window.flushOutbox(); }); if (window.proxCfg().actif) window.proxDemarrer(); }, 800);
+            setTimeout(() => { window.initAppUI(); if(window.initDriveKMZList) window.initDriveKMZList(); if(window.loadSettingsLocally) window.loadSettingsLocally(); if(window.initMobileDock) window.initMobileDock(); if (window.innerWidth <= 768) { let sb = document.getElementById('sidebar'); if (sb) sb.classList.add('collapsed'); } let ov = document.getElementById('loading-overlay'); if(ov) ov.style.display = 'none'; window.refreshOutboxCount().then(function() { if (!window.offlineMode && window.outboxCount > 0) window.flushOutbox(); }); if (window.proxCfg().actif) window.proxDemarrer(); if (window.chargerTrajetDepuisUrl) window.chargerTrajetDepuisUrl(); }, 800);
         };
 
         /* ========================================================================= */
@@ -4783,6 +5467,9 @@
                 onEachFeature: function (feature, layer) {
                     layer.on('click', function(e) {
                         L.DomEvent.stopPropagation(e); if (window.currentlyEditingId) return; const id = feature.properties.id;
+                        // Mode « modifier le trajet » : le clic sert à composer la tournée et rien
+                        // d'autre, sinon la fiche canon remplacerait le panneau à chaque ajout.
+                        if (window.routeClicCanon && window.routeClicCanon(id)) return;
                         if (window.selectedCannonsMap.has(id)) { window.selectedCannonsMap.delete(id); } else { window.selectedCannonsMap.set(id, layer); }
                         if(window.map) window.map.setView(layer.getLatLng(), 17, {animate: true});
                         window.updateMap(); window.renderSelectionPanel(); let sb = document.getElementById('right-sidebar'); if (window.selectedCannonsMap.size > 0 && sb) sb.classList.add('open');
