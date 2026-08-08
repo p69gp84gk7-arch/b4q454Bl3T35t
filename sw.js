@@ -17,7 +17,7 @@
 /* cache intermédiaire ne ferait que masquer l'état réel de la synchro.         */
 /* =========================================================================== */
 
-const SW_VERSION = '5.6.0';
+const SW_VERSION = '5.7.0';
 const SHELL = 'gmao-shell-' + SW_VERSION;
 const LIBS  = 'gmao-libs-'  + SW_VERSION;
 const TILES = 'gmao-tiles-v1';
@@ -50,7 +50,7 @@ const CDN_HOSTS  = ['unpkg.com', 'cdn.jsdelivr.net', 'cdnjs.cloudflare.com'];
 
 // Reconnaissance par motif plutôt que par liste exacte : les fonds de carte utilisent des
 // sous-domaines tournants (a./b./c./d.) que Leaflet tire au sort tuile par tuile.
-const TILE_RE = /(^|\.)(arcgisonline\.com|tile\.openstreetmap\.org|basemaps\.cartocdn\.com|tiles\.stadiamaps\.com|data\.geopf\.fr|wxs\.ign\.fr|tile\.opentopomap\.org|maps\.eox\.at|sh\.dataspace\.copernicus\.eu)$/;
+const TILE_RE = /(^|\.)(arcgisonline\.com|tile\.openstreetmap\.org|basemaps\.cartocdn\.com|tiles\.stadiamaps\.com|data\.geopf\.fr|wxs\.ign\.fr|tile\.opentopomap\.org|maps\.eox\.at|sh\.dataspace\.copernicus\.eu|earthdata\.nasa\.gov)$/;
 function isTileRequest(url) {
     if (TILE_RE.test(url.hostname)) return true;
     return /\/\d{1,2}\/\d{1,6}\/\d{1,6}(\.(png|jpe?g|webp))?$/.test(url.pathname);
