@@ -261,11 +261,12 @@ const crossesOn = p => (p.banks || 0) >= 2;
 const canBank = () => { const p = cur(); return state.turnPts > 0 && (p.opened || state.turnPts >= OPEN); };
 
 function addTurn(p){ if(winner()) return; state.turnPts += p; state.turnLog.push(p); save(); render(); }
-$('clearTurn').onclick = ()=>{ openGroup = null; if(window.plateau) plateau.reset(); state.turnPts = 0; state.turnLog = []; state.pickedUp = false; save(); render(); };
+$('clearTurn').onclick = ()=>{ openGroup = null; state.turnPts = 0; state.turnLog = []; state.pickedUp = false; if(window.plateau) plateau.reset(); save(); render(); };
 
 $('pickupBtn').onclick = ()=>{
   if(!state.lastBank) return;
   state.turnPts = state.lastBank.pts; state.turnLog = [state.lastBank.pts]; state.pickedUp = true;
+  if(window.plateau) plateau.reset();   // le plateau ne garde que les dés restants
   save(); render();
 };
 
@@ -283,10 +284,9 @@ function snapshot(){
   state.snaps.push(JSON.stringify(rest));
 }
 
-function endTurn(kind){
+function endTurn(kind, diceLeft){
   snapshot();
   openGroup = null;
-  if(window.plateau) plateau.reset();
   const p = cur();
   p.past = p.past || []; p.crosses = p.crosses || 0;
   const pickedUp = state.pickedUp;
@@ -297,7 +297,7 @@ function endTurn(kind){
     p.past.push(p.score);
     p.score += gained; p.opened = true; p.crosses = 0; p.banks = (p.banks || 0) + 1;
     msg = `+${fmt(gained)}${pickedUp ? ' (reprise)' : ''}`;
-    state.lastBank = { pts:gained, name:p.name };
+    state.lastBank = { pts:gained, name:p.name, dice: diceLeft || null };
     // Score égalé : l'autre joueur redescend
     const hit = state.players.filter(o => o !== p && o.score === p.score && p.score > 0);
     hit.forEach(o => { const before = o.score; stepBack(o); o.crosses = 0;
@@ -331,6 +331,7 @@ function endTurn(kind){
 
   state.history.unshift({ name:p.name, msg, total:p.score });
   state.turnPts = 0; state.turnLog = []; state.pickedUp = false;
+  if(window.plateau) plateau.reset();
   if(!winner()) state.turn = (state.turn + 1) % state.players.length;
   save(); render();
 }
@@ -362,7 +363,11 @@ window.plateauJeu = {
   opened: () => !!cur().opened,
   firstRoll: () => isFirstRoll(),
   add: pts => addTurn(pts),
-  bank: () => { if(canBank()) endTurn('bank'); },
+  bank: diceLeft => { if(canBank()) endTurn('bank', diceLeft); },
+  // Reprise des points du joueur précédent : nombre de dés qu'il avait laissés (0 = les 5)
+  pickupDice: () => (state.pickedUp && state.lastBank && state.lastBank.dice) || 0,
+  pickupInfo: () => { const lb = state.lastBank; return lb && !state.pickedUp && state.turnPts === 0 ? lb : null; },
+  pickup: () => $('pickupBtn').onclick(),
   bust: () => endTurn('bust'),
   bustLabel: () => $('bustBtn').textContent,
 };
@@ -400,7 +405,7 @@ function render(){
   const lb = state.lastBank;
   const showPick = !!(lb && !state.pickedUp && state.turnPts === 0);
   $('pickupBtn').classList.toggle('hidden', !showPick);
-  if(showPick) $('pickupBtn').textContent = `Reprendre les ${fmt(lb.pts)} points de ${lb.name}`;
+  if(showPick) $('pickupBtn').textContent = `Reprendre les ${fmt(lb.pts)} points de ${lb.name}` + (lb.dice ? ` (${lb.dice} dé${lb.dice > 1 ? 's' : ''} à lancer)` : '');
 
   const notOpen = cp && !cp.opened;
   $('openNote').classList.toggle('hidden', !notOpen);
