@@ -187,7 +187,7 @@ td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-n
       <tr><td>Raté en cours de tour, juste après l'ouverture</td><td>0, pas de croix</td></tr>
       <tr><td>Raté en cours de tour (ensuite)</td><td>une croix</td></tr>
       <tr><td>Trois croix</td><td>retour au score d'avant</td></tr>
-      <tr><td>Garder au moins 500 points</td><td>efface les croix</td></tr>
+      <tr><td>Noter des points, ou −500 au 1er lancer</td><td>efface les croix</td></tr>
       <tr><td>Dépasser 10 000</td><td>une croix</td></tr>
       <tr><td>Score égalé par un autre</td><td>retour au score d'avant</td></tr>
     </table>
@@ -256,7 +256,7 @@ $('nameList').addEventListener('click', e=>{ const b=e.target.closest('button');
 $('startBtn').onclick = ()=>{ state.started = true; state.turn = 0; save(); render(); };
 
 /* Tour de jeu */
-const OPEN = 1000, PENALTY = 500, MAX_CROSSES = 3, CLEAR_CROSSES = 500;
+const OPEN = 1000, PENALTY = 500, MAX_CROSSES = 3;
 const cur = () => state.players[state.turn];
 const isFirstRoll = () => !state.pickedUp && state.turnLog.length === 0;
 const crossesOn = p => (p.banks || 0) >= 2;
@@ -314,9 +314,9 @@ function endTurn(kind, diceLeft){
     const gained = state.turnPts;
     p.past.push(p.score);
     p.score += gained; p.opened = true; p.banks = (p.banks || 0) + 1;
-    // Garder au moins 500 points efface les croix
-    const cleared = gained >= CLEAR_CROSSES && p.crosses > 0;
-    if(gained >= CLEAR_CROSSES) p.crosses = 0;
+    // Noter des points efface les croix
+    const cleared = p.crosses > 0;
+    p.crosses = 0;
     msg = `+${fmt(gained)}${pickedUp ? ' (reprise)' : ''}${cleared ? ', croix effacées' : ''}`;
     state.lastBank = { pts:gained, name:p.name, dice: diceLeft || null };
     // Score égalé : l'autre joueur redescend
@@ -332,7 +332,10 @@ function endTurn(kind, diceLeft){
     const loss = Math.min(PENALTY, p.score);
     p.past.push(p.score);
     p.score -= loss;
-    msg = `rien au 1er lancer, −${fmt(loss)}`;
+    // Le −500 est noté sur le carton : il efface aussi les croix
+    const cleared = p.crosses > 0;
+    p.crosses = 0;
+    msg = `rien au 1er lancer, −${fmt(loss)}${cleared ? ', croix effacées' : ''}`;
     state.lastBank = null;
   } else if(!crossesOn(p)){
     // Premier score seulement : pas de croix
