@@ -1,7 +1,7 @@
-/* Le Gobelet : fonctionnement hors ligne.
+/* DesDés : fonctionnement hors ligne.
    Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement. */
-const VERSION = 'gobelet-v1';
-const FONTS = 'gobelet-fonts';
+const VERSION = 'desdes-v2';
+const FONTS = 'desdes-fonts';
 const SHELL = [
   './',
   'index.html',

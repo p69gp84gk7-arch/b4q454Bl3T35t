@@ -1,4 +1,4 @@
-# Le Gobelet
+# DesDés
 
 Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés.
 
