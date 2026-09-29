@@ -189,6 +189,7 @@ td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-n
       <tr><td>Trois croix</td><td>retour au score d'avant</td></tr>
       <tr><td>Noter des points, ou −500 au 1er lancer</td><td>efface les croix</td></tr>
       <tr><td>Dépasser 10 000</td><td>une croix</td></tr>
+      <tr><td>Reprise qui mènerait à 10 000 ou plus</td><td>impossible</td></tr>
       <tr><td>Score égalé par un autre</td><td>retour au score d'avant</td></tr>
     </table>
     <p style="margin-top:10px;color:var(--muted);font-size:.9rem">Il faut faire 1 000 points en un tour pour débloquer son compteur. Quand un joueur garde ses points, le suivant peut les reprendre et continuer à lancer. Le premier à faire 10 000 points pile gagne : dépasser 10 000 donne une croix.</p>
@@ -267,8 +268,10 @@ const canBank = () => { const p = cur(); return state.turnPts > 0 && !mustPlayPi
 function addTurn(p){ if(winner()) return; state.turnPts += p; state.turnLog.push(p); save(); render(); }
 $('clearTurn').onclick = ()=>{ openGroup = null; state.turnPts = 0; state.turnLog = []; state.pickedUp = false; if(window.plateau) plateau.reset(); save(); render(); };
 
+// Reprendre les points ferait arriver à 10 000 ou plus : impossible (il faudrait encore marquer, donc dépasser)
+const pickupTooMuch = lb => !!(lb && cur() && cur().score + lb.pts >= GOAL);
 $('pickupBtn').onclick = ()=>{
-  if(!state.lastBank) return;
+  if(!state.lastBank || pickupTooMuch(state.lastBank)) return;
   state.turnPts = state.lastBank.pts; state.turnLog = [state.lastBank.pts]; state.pickedUp = true;
   if(window.plateau) plateau.reset();   // le plateau ne garde que les dés restants
   save(); render();
@@ -385,7 +388,7 @@ window.plateauJeu = {
   bank: diceLeft => { if(canBank()) endTurn('bank', diceLeft); },
   // Reprise des points du joueur précédent : nombre de dés qu'il avait laissés (0 = les 5)
   pickupDice: () => (state.pickedUp && state.lastBank && state.lastBank.dice) || 0,
-  pickupInfo: () => { const lb = state.lastBank; return lb && !state.pickedUp && state.turnPts === 0 ? lb : null; },
+  pickupInfo: () => { const lb = state.lastBank; return lb && !state.pickedUp && state.turnPts === 0 ? { ...lb, blocked: pickupTooMuch(lb) } : null; },
   pickup: () => $('pickupBtn').onclick(),
   bust: () => endTurn('bust'),
   bustLabel: () => $('bustBtn').textContent,
@@ -424,7 +427,11 @@ function render(){
   const lb = state.lastBank;
   const showPick = !!(lb && !state.pickedUp && state.turnPts === 0);
   $('pickupBtn').classList.toggle('hidden', !showPick);
-  if(showPick) $('pickupBtn').textContent = `Reprendre les ${fmt(lb.pts)} points de ${lb.name}` + (lb.dice ? ` (${lb.dice} dé${lb.dice > 1 ? 's' : ''} à lancer)` : '');
+  const tooMuch = showPick && pickupTooMuch(lb);
+  $('pickupBtn').disabled = tooMuch;
+  if(showPick) $('pickupBtn').textContent = tooMuch
+    ? `Impossible de reprendre les ${fmt(lb.pts)} points de ${lb.name} : ${cp.name} dépasserait 10 000`
+    : `Reprendre les ${fmt(lb.pts)} points de ${lb.name}` + (lb.dice ? ` (${lb.dice} dé${lb.dice > 1 ? 's' : ''} à lancer)` : '');
 
   const notOpen = cp && !cp.opened;
   const over = cp && cp.score + state.turnPts > GOAL;
