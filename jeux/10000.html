@@ -258,7 +258,9 @@ const OPEN = 1000, PENALTY = 500, MAX_CROSSES = 3;
 const cur = () => state.players[state.turn];
 const isFirstRoll = () => !state.pickedUp && state.turnLog.length === 0;
 const crossesOn = p => (p.banks || 0) >= 2;
-const canBank = () => { const p = cur(); return state.turnPts > 0 && (p.opened || state.turnPts >= OPEN); };
+// Après une reprise, il faut avoir lancé et marqué des points avant de pouvoir garder
+const mustPlayPickup = () => state.pickedUp && state.turnLog.length <= 1;
+const canBank = () => { const p = cur(); return state.turnPts > 0 && !mustPlayPickup() && (p.opened || state.turnPts >= OPEN); };
 
 function addTurn(p){ if(winner()) return; state.turnPts += p; state.turnLog.push(p); save(); render(); }
 $('clearTurn').onclick = ()=>{ openGroup = null; state.turnPts = 0; state.turnLog = []; state.pickedUp = false; if(window.plateau) plateau.reset(); save(); render(); };
@@ -418,7 +420,8 @@ function render(){
   if(openGroup === 'five' && !first) openGroup = null;
   renderPicker();
   $('bankBtn').disabled = !canBank();
-  $('bankBtn').textContent = state.turnPts>0 ? `Garder ${fmt(state.turnPts)} points` : 'Garder les points';
+  $('bankBtn').textContent = mustPlayPickup() ? 'Lancer les dés avant de garder'
+    : state.turnPts>0 ? `Garder ${fmt(state.turnPts)} points` : 'Garder les points';
   if(cp){
     const c = cp.crosses || 0;
     $('bustBtn').textContent = !cp.opened ? 'Raté, 0 point'

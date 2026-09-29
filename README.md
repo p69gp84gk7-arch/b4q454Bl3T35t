@@ -24,7 +24,7 @@ Si on a oublié les dés, le bouton rouge **Dés** de chaque carnet ouvre un tap
   - Si tous les dés lancés rapportent, les points sont ajoutés et la relance des 5 dés est obligatoire.
   - Si les 2 derniers dés font un double (2, 3, 4 ou 6), relance obligatoire des 5 dés, sans points. Un double 1 ou 5 rapporte ses points, puis relance des 5.
   - Si aucun dé ne rapporte, le plateau propose de noter le raté.
-  - Quand un joueur reprend les points du précédent, il ne lance que les dés que celui-ci avait laissés (par exemple 2 dés pour 2 700 points gardés avec 2 dés restants).
+  - Quand un joueur reprend les points du précédent, il ne lance que les dés que celui-ci avait laissés (par exemple 2 dés pour 2 700 points gardés avec 2 dés restants). Il doit lancer et marquer des points avant de pouvoir garder : on ne peut pas reprendre un score et le noter sans jouer (règle appliquée aussi dans le carnet).
 
 Les dés ne se chevauchent jamais sur le tapis : après chaque lancer, ceux qui se touchent sont légèrement écartés.
 
