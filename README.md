@@ -14,6 +14,15 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
 
+## Plateau de dés
+
+Si on a oublié les dés, le bouton rouge **Dés** de chaque carnet ouvre un tapis avec 5 dés : on les lance en glissant le doigt sur le tapis (ou avec le bouton *Lancer*), et on touche un dé pour le garder.
+
+- **Yam's** : 3 lancers au plus par tour ; on garde ou reprend les dés de son choix entre deux lancers.
+- **10 000** : lancers sans limite ; il faut mettre au moins un dé de côté avant de relancer, et quand les 5 dés sont sortis on peut relancer les 5.
+
+Le plateau repart de zéro dès qu'un score est noté dans le carnet. Le code est dans `jeux/plateau.js`, partagé par les deux jeux.
+
 ## Mise en ligne
 
 Le site est fait de fichiers statiques, sans installation ni compilation.
@@ -35,6 +44,7 @@ Une fois ouvert une première fois, il fonctionne aussi sans réseau.
 index.html             accueil : choix du jeu
 jeux/10000.html        carnet du 10 000
 jeux/yams.html         feuille de Yam's
+jeux/plateau.js        plateau de 5 dés à lancer, commun aux deux jeux
 logo.svg               logo (source vectorielle)
 icons/                 icônes de l'application (192, 512, masquable, Apple)
 manifest.webmanifest   description de l'application installable
