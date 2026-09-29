@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="t">
+  <title id="t">Le Gobelet</title>
+  <defs>
+    <radialGradient id="felt" cx="50%" cy="25%" r="85%">
+      <stop offset="0" stop-color="#2A7358"/>
+      <stop offset="1" stop-color="#123A2C"/>
+    </radialGradient>
+    <linearGradient id="cup" x1="0" x2="1">
+      <stop offset="0" stop-color="#9E2820"/>
+      <stop offset=".4" stop-color="#D8473C"/>
+      <stop offset="1" stop-color="#8C221B"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#felt)"/>
+  <!-- Gobelet qui verse les dés -->
+  <g transform="translate(196 196) rotate(-48)">
+    <path d="M-66 -120 Q-66 -132 -54 -132 H54 Q66 -132 66 -120 L88 100 H-88 Z" fill="url(#cup)"/>
+    <path d="M-68 -96 H68" stroke="#E9B949" stroke-width="6" stroke-dasharray="10 8" stroke-linecap="round"/>
+    <path d="M-82 62 H82" stroke="#E9B949" stroke-width="6" stroke-dasharray="10 8" stroke-linecap="round"/>
+    <ellipse cx="0" cy="100" rx="90" ry="26" fill="#4A120E" stroke="#F7F3E8" stroke-width="12"/>
+  </g>
+  <!-- Dé : le 1 rouge -->
+  <g transform="rotate(16 318 382)">
+    <rect x="254" y="318" width="128" height="128" rx="26" fill="#F7F3E8" stroke="#1A1A1A" stroke-width="8"/>
+    <circle cx="318" cy="382" r="19" fill="#C8372D"/>
+  </g>
+  <!-- Dé : le 5 -->
+  <g transform="rotate(-14 414 304)">
+    <rect x="360" y="250" width="108" height="108" rx="22" fill="#F7F3E8" stroke="#1A1A1A" stroke-width="7"/>
+    <circle cx="387" cy="277" r="10" fill="#1A1A1A"/>
+    <circle cx="441" cy="277" r="10" fill="#1A1A1A"/>
+    <circle cx="414" cy="304" r="10" fill="#1A1A1A"/>
+    <circle cx="387" cy="331" r="10" fill="#1A1A1A"/>
+    <circle cx="441" cy="331" r="10" fill="#1A1A1A"/>
+  </g>
+</svg>

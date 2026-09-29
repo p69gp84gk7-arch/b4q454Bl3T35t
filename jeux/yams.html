@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Yam's · Le Gobelet</title>
+<meta name="theme-color" content="#F7FAFE">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Le Gobelet">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F7FAFE; --grid:#C4D5EA; --ink:#1E3A8A; --ui:#26324A; --muted:#6B7A93;
+  --margin:#D2453C; --band:#E6EEF8; --band-strong:#D4E2F3; --hit:#FFF5C2; --overlay:rgba(20,30,50,.45);
+  --sheet:#FFFFFF;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#141B27; --grid:#2E3C54; --ink:#A9C1FF; --ui:#DCE4F2; --muted:#8B9AB4;
+    --margin:#E0675E; --band:#1B2536; --band-strong:#223047; --hit:#3A3417; --overlay:rgba(0,0,0,.6);
+    --sheet:#182131;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141B27; --grid:#2E3C54; --ink:#A9C1FF; --ui:#DCE4F2; --muted:#8B9AB4;
+  --margin:#E0675E; --band:#1B2536; --band-strong:#223047; --hit:#3A3417; --overlay:rgba(0,0,0,.6);
+  --sheet:#182131;
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0}
+body{
+  background:var(--paper); color:var(--ui);
+  font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.4;
+}
+.wrap{max-width:1200px;margin:0 auto;padding:16px 12px 32px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+h1{
+  font-family:"Kalam","Comic Sans MS",cursive; font-weight:700; color:var(--ink);
+  font-size:2rem; margin:0; line-height:1;
+}
+h1 span{font-size:1.6rem;margin-right:6px}
+.controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.stepper{display:flex;align-items:center;border:1.5px solid var(--grid);border-radius:10px;background:var(--sheet);overflow:hidden}
+.stepper button{width:40px;height:40px;border:0;background:transparent;color:var(--ink);font-size:1.3rem;cursor:pointer}
+.stepper button:disabled{opacity:.3;cursor:default}
+.stepper output{min-width:92px;text-align:center;font-weight:700}
+.btn{
+  height:42px;padding:0 14px;border-radius:10px;border:1.5px solid var(--margin);
+  background:transparent;color:var(--margin);font:inherit;font-weight:700;cursor:pointer;
+}
+.btn:hover{background:var(--margin);color:#fff}
+button:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+
+.sheet-scroll{overflow-x:auto;border:1.5px solid var(--grid);border-radius:6px;background:var(--sheet)}
+table{border-collapse:collapse;width:100%;min-width:max-content}
+th,td{border:1px solid var(--grid);padding:0;text-align:center;height:44px}
+th.cat{
+  position:sticky;left:0;z-index:2;background:var(--sheet);
+  text-align:left;padding:0 10px;min-width:128px;font-weight:700;
+  border-right:2px solid var(--margin);
+}
+th.cat small{display:block;font-weight:400;color:var(--muted);font-size:.72rem;line-height:1.1}
+thead th{height:52px;background:var(--sheet)}
+thead input{
+  width:100%;min-width:96px;height:50px;border:0;background:transparent;text-align:center;
+  font-family:"Kalam",cursive;font-weight:700;font-size:1.1rem;color:var(--ink);
+}
+td.cell{min-width:96px}
+td.cell button{
+  width:100%;height:44px;border:0;background:transparent;cursor:pointer;
+  font-family:"Kalam",cursive;font-size:1.35rem;color:var(--ink);
+}
+td.cell button:hover{background:var(--hit)}
+td.cell button.crossed{color:var(--margin);position:relative}
+td.cell button.crossed::after{
+  content:"";position:absolute;left:18%;right:18%;top:50%;height:2.5px;
+  background:var(--margin);transform:rotate(-12deg);border-radius:2px;
+}
+tr.sum td,tr.sum th{background:var(--band)}
+tr.sum th.cat{background:var(--band)}
+tr.sum td{font-weight:700;font-size:1.05rem}
+tr.bonus td small{display:block;font-weight:400;font-size:.72rem;color:var(--muted)}
+tr.bonus td.ok{color:#1F8A4C}
+tr.grand td,tr.grand th.cat{background:var(--band-strong);height:52px}
+tr.grand td{font-family:"Kalam",cursive;font-size:1.6rem;color:var(--ink)}
+tr.grand td.lead::before{content:"🏆 ";font-size:1rem}
+tr.gap td,tr.gap th{height:10px;background:var(--paper);border-left-color:transparent;border-right-color:transparent}
+tr.gap th.cat{border-right-color:var(--margin)}
+.hint{color:var(--muted);font-size:.85rem;margin:10px 2px 0}
+
+/* Fenêtre de saisie */
+.overlay{position:fixed;inset:0;background:var(--overlay);display:none;align-items:flex-end;justify-content:center;z-index:10}
+.overlay.open{display:flex}
+.panel{
+  background:var(--sheet);width:100%;max-width:460px;border-radius:16px 16px 0 0;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -6px 30px rgba(0,0,0,.25);
+}
+@media (min-width:600px){.overlay{align-items:center}.panel{border-radius:16px}}
+.panel h2{margin:0;font-family:"Kalam",cursive;color:var(--ink);font-size:1.5rem}
+.panel p{margin:2px 0 14px;color:var(--muted);font-size:.9rem}
+.choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+.choices button{
+  min-height:52px;border:1.5px solid var(--grid);border-radius:10px;background:var(--paper);
+  color:var(--ui);font:inherit;cursor:pointer;padding:4px;
+}
+.choices button b{display:block;font-family:"Kalam",cursive;font-size:1.3rem;color:var(--ink);line-height:1.1}
+.choices button span{font-size:.75rem;color:var(--muted)}
+.choices button:hover,.choices button.current{border-color:var(--ink);background:var(--hit)}
+.choices.wide{grid-template-columns:1fr}
+.actions{display:flex;gap:8px;margin-top:14px}
+.actions button{flex:1;height:46px;border-radius:10px;font:inherit;font-weight:700;cursor:pointer}
+.act-cross{border:1.5px solid var(--margin);background:transparent;color:var(--margin)}
+.act-clear{border:1.5px solid var(--grid);background:transparent;color:var(--ui)}
+.act-cancel{border:0;background:var(--band-strong);color:var(--ui)}
+@media (prefers-reduced-motion:no-preference){
+  .overlay.open .panel{animation:up .18s ease-out}
+  @keyframes up{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+}
+
+/* Retour à l'accueil */
+.home{ display:inline-flex; align-items:center; gap:8px; color:var(--muted); text-decoration:none; font-weight:700; font-size:.95rem; padding:6px 10px 6px 6px; margin:0 0 6px -6px; border-radius:10px; }
+.home::before{ content:"←"; margin-right:2px; }
+.home:hover{ color:var(--ink); background:var(--band); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">Le Gobelet</a>
+  <header>
+    <h1><span>🎲</span>Feuille de Yam's</h1>
+    <div class="controls">
+      <div class="stepper" aria-label="Nombre de joueurs">
+        <button id="minus" aria-label="Retirer un joueur">−</button>
+        <output id="count"></output>
+        <button id="plus" aria-label="Ajouter un joueur">+</button>
+      </div>
+      <button class="btn" id="reset">Nouvelle partie</button>
+    </div>
+  </header>
+
+  <div class="sheet-scroll"><table id="grid"></table></div>
+  <p class="hint">Touchez une case pour noter les points ou la rayer. Touchez le nom pour le modifier.</p>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="pTitle">
+    <h2 id="pTitle"></h2>
+    <p id="pSub"></p>
+    <div class="choices" id="pChoices"></div>
+    <div class="actions">
+      <button class="act-cross" id="pCross">Rayer</button>
+      <button class="act-clear" id="pClear">Effacer</button>
+      <button class="act-cancel" id="pCancel">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="resetOv">
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="rTitle">
+    <h2 id="rTitle">Nouvelle partie ?</h2>
+    <p>Tout le carton sera effacé : scores, cases rayées et noms.</p>
+    <div class="actions">
+      <button class="act-cross" id="rYes">Tout effacer</button>
+      <button class="act-cancel" id="rNo">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MAX = 10;
+const UPPER = [1,2,3,4,5,6].map(f => ({key:'n'+f, label:'Total de '+f, short:String(f), type:'upper', face:f, help:'Somme des '+f}));
+const LOWER = [
+  {key:'brelan', label:'Brelan', type:'kind', n:3, help:'Somme des 3 dés'},
+  {key:'carre',  label:'Carré',  type:'kind', n:4, help:'Somme des 4 dés'},
+  {key:'full',   label:'Full',   type:'fixed', pts:25, help:'25 pts'},
+  {key:'ps',     label:'Petite suite', type:'fixed', pts:30, help:'1 à 5 · 30 pts'},
+  {key:'gs',     label:'Grande suite', type:'fixed', pts:40, help:'2 à 6 · 40 pts'},
+  {key:'yam',    label:"Yam's",  type:'fixed', pts:50, help:'5 dés identiques · 50 pts'},
+  {key:'chance', label:'Chance', type:'sum', help:'Somme des 5 dés'}
+];
+const ALL = [...UPPER, ...LOWER];
+
+function fresh(keepNames){
+  return {
+    count: keepNames ? state.count : 2,
+    names: keepNames ? state.names : Array.from({length:MAX},(_,i)=>'Joueur '+(i+1)),
+    scores: Array.from({length:MAX},()=>({}))
+  };
+}
+let state;
+try { state = JSON.parse(localStorage.getItem('yams-sheet')); } catch(e) { state = null; }
+if (!state || !Array.isArray(state.scores)) state = fresh(false);
+
+function save(){ try { localStorage.setItem('yams-sheet', JSON.stringify(state)); } catch(e) {} }
+const num = v => typeof v === 'number' ? v : 0;
+
+function totals(p){
+  const s = state.scores[p];
+  const up = UPPER.reduce((a,c)=>a+num(s[c.key]),0);
+  const bonus = up >= 63 ? 35 : 0;
+  const low = LOWER.reduce((a,c)=>a+num(s[c.key]),0);
+  return {up, bonus, t1: up+bonus, low, all: up+bonus+low};
+}
+
+function esc(t){ return String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function cellHTML(p, c){
+  const v = state.scores[p][c.key];
+  if (v === 'x') return `<td class="cell"><button class="crossed" data-p="${p}" data-k="${c.key}" aria-label="${c.label} rayé">✕</button></td>`;
+  return `<td class="cell"><button data-p="${p}" data-k="${c.key}" aria-label="${c.label}">${v ?? ''}</button></td>`;
+}
+
+function render(){
+  const n = state.count;
+  const players = [...Array(n).keys()];
+  const T = players.map(totals);
+  const best = Math.max(...T.map(t=>t.all));
+  let h = '<thead><tr><th class="cat">Joueurs</th>';
+  players.forEach(p => h += `<th><input data-name="${p}" value="${esc(state.names[p])}" aria-label="Nom du joueur ${p+1}"></th>`);
+  h += '</tr></thead><tbody>';
+  UPPER.forEach(c => {
+    h += `<tr><th class="cat">${c.short}<small>${c.help}</small></th>`;
+    players.forEach(p => h += cellHTML(p,c));
+    h += '</tr>';
+  });
+  h += '<tr class="sum"><th class="cat">Total haut</th>' + T.map(t=>`<td>${t.up}</td>`).join('') + '</tr>';
+  h += '<tr class="sum bonus"><th class="cat">Bonus<small>35 pts si 63 ou plus</small></th>' +
+       T.map(t=> t.bonus ? `<td class="ok">35</td>` : `<td>0<small>il manque ${63-t.up}</small></td>`).join('') + '</tr>';
+  h += '<tr class="sum"><th class="cat">Total 1</th>' + T.map(t=>`<td>${t.t1}</td>`).join('') + '</tr>';
+  h += '<tr class="gap"><th class="cat"></th>' + players.map(()=>'<td></td>').join('') + '</tr>';
+  LOWER.forEach(c => {
+    h += `<tr><th class="cat">${c.label}<small>${c.help}</small></th>`;
+    players.forEach(p => h += cellHTML(p,c));
+    h += '</tr>';
+  });
+  h += '<tr class="sum"><th class="cat">Total 2</th>' + T.map(t=>`<td>${t.low}</td>`).join('') + '</tr>';
+  h += '<tr class="grand"><th class="cat">Total général</th>' +
+       T.map(t=>`<td class="${best>0 && t.all===best && n>1 ? 'lead':''}">${t.all}</td>`).join('') + '</tr>';
+  h += '</tbody>';
+  document.getElementById('grid').innerHTML = h;
+  document.getElementById('count').textContent = n + (n>1 ? ' joueurs' : ' joueur');
+  document.getElementById('minus').disabled = n <= 1;
+  document.getElementById('plus').disabled = n >= MAX;
+}
+
+/* Fenêtre de saisie */
+const ov = document.getElementById('overlay');
+let cur = null;
+function openPicker(p, key){
+  const c = ALL.find(x=>x.key===key);
+  cur = {p, key};
+  const current = state.scores[p][key];
+  document.getElementById('pTitle').textContent = c.label;
+  document.getElementById('pSub').textContent = state.names[p] + ' · ' + c.help;
+  const box = document.getElementById('pChoices');
+  box.className = 'choices';
+  let opts = [];
+  if (c.type === 'upper') {
+    for (let k=1;k<=5;k++) opts.push({v:k*c.face, main:k*c.face, sub:`${k} dé${k>1?'s':''} de ${c.face}`});
+  } else if (c.type === 'kind') {
+    for (let f=1;f<=6;f++) opts.push({v:f*c.n, main:f*c.n, sub:`${c.n} × ${f}`});
+  } else if (c.type === 'sum') {
+    for (let s=5;s<=30;s++) opts.push({v:s, main:s, sub:''});
+  } else {
+    box.className = 'choices wide';
+    opts.push({v:c.pts, main:c.pts+' pts', sub:'Valider'});
+  }
+  box.innerHTML = opts.map(o => `<button data-v="${o.v}" class="${current===o.v?'current':''}"><b>${o.main}</b>${o.sub?`<span>${o.sub}</span>`:''}</button>`).join('');
+  ov.classList.add('open');
+  box.querySelector('button').focus();
+}
+function closePicker(){ ov.classList.remove('open'); cur = null; }
+function setScore(v){
+  if (!cur) return;
+  if (v === null) delete state.scores[cur.p][cur.key]; else state.scores[cur.p][cur.key] = v;
+  save(); closePicker(); render();
+}
+
+document.getElementById('pChoices').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (b) setScore(Number(b.dataset.v));
+});
+document.getElementById('pCross').onclick = () => setScore('x');
+document.getElementById('pClear').onclick = () => setScore(null);
+document.getElementById('pCancel').onclick = closePicker;
+ov.addEventListener('click', e => { if (e.target === ov) closePicker(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && cur) closePicker(); });
+
+const grid = document.getElementById('grid');
+grid.addEventListener('click', e => {
+  const b = e.target.closest('button[data-k]');
+  if (b) openPicker(Number(b.dataset.p), b.dataset.k);
+});
+grid.addEventListener('input', e => {
+  if (e.target.dataset.name !== undefined) { state.names[Number(e.target.dataset.name)] = e.target.value; save(); }
+});
+grid.addEventListener('focusin', e => { if (e.target.dataset.name !== undefined) e.target.select(); });
+
+document.getElementById('minus').onclick = () => { if (state.count>1){ state.count--; save(); render(); } };
+document.getElementById('plus').onclick  = () => { if (state.count<MAX){ state.count++; save(); render(); } };
+const resetOv = document.getElementById('resetOv');
+document.getElementById('reset').onclick = () => {
+  resetOv.classList.add('open');
+  document.getElementById('rNo').focus();
+};
+document.getElementById('rNo').onclick = () => resetOv.classList.remove('open');
+resetOv.addEventListener('click', e => { if (e.target === resetOv) resetOv.classList.remove('open'); });
+document.getElementById('rYes').onclick = () => {
+  const n = state.count;
+  state = fresh(false);
+  state.count = n;
+  save(); render();
+  resetOv.classList.remove('open');
+};
+
+render();
+
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+</script>
+</body>
+</html>

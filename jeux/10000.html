@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>10 000 · Le Gobelet</title>
+<meta name="theme-color" content="#1F5C47">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Le Gobelet">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --felt:#1F5C47; --felt-dark:#123A2C; --ivory:#F7F3E8; --ink:#1A1A1A;
+  --red:#C8372D; --gold:#E9B949; --line:rgba(247,243,232,.18); --muted:rgba(247,243,232,.7);
+  --card:#F7F3E8; --card-ink:#1A1A1A;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --felt:#173F31; --felt-dark:#0C261D; --card:#E9E4D6; } }
+:root[data-theme="dark"]{ --felt:#173F31; --felt-dark:#0C261D; --card:#E9E4D6; }
+html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+*,*::before,*::after{ box-sizing:inherit; }
+body{ margin:0; background:var(--felt); color:var(--ivory);
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background-image:radial-gradient(circle at 50% 0%, rgba(255,255,255,.07), transparent 60%);
+  min-height:100vh; }
+main{ max-width:640px; margin:0 auto; padding:20px 16px 48px; }
+h1{ font-size:clamp(2.4rem,11vw,3.6rem); font-weight:800; line-height:.95; margin:8px 0 4px; letter-spacing:-.02em; }
+h2{ font-size:1.25rem; font-weight:800; margin:28px 0 10px; }
+p{ line-height:1.5; margin:0 0 12px; }
+.sub{ color:var(--muted); margin-bottom:20px; }
+button{ font:inherit; cursor:pointer; border:0; border-radius:10px; }
+button:focus-visible, input:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
+.btn{ background:var(--ivory); color:var(--ink); font-weight:600; padding:12px 16px; font-size:1rem; }
+.btn-red{ background:var(--red); color:#fff; }
+.btn-gold{ background:var(--gold); color:var(--ink); }
+.btn-ghost{ background:transparent; color:var(--ivory); border:1.5px solid var(--line); }
+.btn:disabled{ opacity:.4; cursor:not-allowed; }
+input[type=text]{ font:inherit; font-size:1rem; padding:12px 14px; border-radius:10px; border:0; background:var(--card); color:var(--card-ink); width:100%; }
+.row{ display:flex; gap:8px; }
+.row > input{ flex:1; }
+
+/* Setup */
+.names{ list-style:none; padding:0; margin:12px 0; display:grid; gap:6px; }
+.names li{ display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-radius:10px; background:rgba(0,0,0,.18); }
+.names button{ background:transparent; color:var(--muted); font-size:1.3rem; padding:0 6px; }
+.count{ color:var(--muted); font-size:.9rem; }
+
+/* Game */
+.board{ display:grid; gap:6px; }
+.player{ display:grid; grid-template-columns:1fr auto; align-items:center; gap:4px 12px; padding:10px 14px; border-radius:10px; background:rgba(0,0,0,.18); position:relative; overflow:hidden; }
+.player .bar{ grid-column:1 / -1; height:4px; background:rgba(0,0,0,.25); border-radius:2px; overflow:hidden; }
+.player .bar span{ display:block; height:100%; background:var(--gold); transition:width .4s; }
+.player .name{ font-weight:600; }
+.player .score{ font-weight:800; font-size:1.3rem; font-variant-numeric:tabular-nums; }
+.player.current{ background:var(--card); color:var(--card-ink); }
+.player.current .bar{ background:rgba(0,0,0,.1); }
+.player.current .bar span{ background:var(--red); }
+.player .left{ font-size:.8rem; color:var(--muted); grid-column:1 / -1; margin-top:-2px; }
+.player.current .left{ color:#5b5b5b; }
+
+.turn{ margin-top:18px; background:var(--card); color:var(--card-ink); border-radius:16px; padding:16px; }
+.turn-head{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.turn-who{ font-weight:800; font-size:1.2rem; }
+.turn-pts{ font-weight:800; font-size:2.4rem; font-variant-numeric:tabular-nums; color:var(--red); line-height:1; }
+.chips{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:14px 0 8px; }
+.chip{ background:#fff; color:var(--card-ink); border:1.5px solid #d8d2c2; padding:8px 4px; display:flex; flex-direction:column; align-items:center; gap:4px; font-size:.95rem; font-weight:600; }
+.chip small{ font-weight:400; font-size:.72rem; color:#666; text-align:center; line-height:1.1; }
+.chip.suite{ grid-column:span 2; border-color:var(--red); }
+.dice{ display:flex; gap:2px; }
+.die{ width:14px; height:14px; background:var(--ivory); border:1.5px solid var(--ink); border-radius:3px; position:relative; }
+.die i{ position:absolute; width:3px; height:3px; border-radius:50%; background:var(--ink); }
+.die.one i{ background:var(--red); width:5px; height:5px; }
+.manual{ display:flex; gap:6px; margin:8px 0 12px; }
+.manual input{ background:#fff; border:1.5px solid #d8d2c2; }
+.turn-actions{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.turn-actions .full{ grid-column:1 / -1; }
+.small-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+.small-actions button{ font-size:.9rem; padding:8px 12px; }
+
+.winner{ text-align:center; padding:28px 16px; border-radius:16px; background:var(--gold); color:var(--ink); margin-bottom:16px; }
+.winner h2{ margin:0 0 6px; font-size:1.8rem; }
+
+.history{ font-size:.9rem; color:var(--muted); list-style:none; padding:0; margin:0; max-height:220px; overflow:auto; }
+.history li{ padding:6px 0; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:8px; }
+
+details{ margin-top:24px; border-top:1px solid var(--line); padding-top:12px; }
+summary{ font-weight:600; cursor:pointer; padding:6px 0; }
+table{ width:100%; border-collapse:collapse; margin-top:8px; font-size:.95rem; }
+td{ padding:7px 4px; border-bottom:1px solid var(--line); }
+td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-nums; }
+.open-note{ margin:12px 0 0; padding:8px 12px; border-radius:8px; background:#fbe9d0; color:#7a4a00; font-size:.9rem; }
+.pickup{ width:100%; margin-top:12px; background:var(--felt); color:var(--ivory); border:2px dashed var(--gold); }
+.player .tag{ font-size:.72rem; font-weight:600; padding:2px 6px; border-radius:6px; background:rgba(0,0,0,.25); margin-left:6px; vertical-align:middle; }
+.player.current .tag{ background:#fbe9d0; color:#7a4a00; }
+.crosses{ color:var(--red); font-weight:800; margin-left:8px; letter-spacing:2px; }
+.player:not(.current) .crosses{ color:#ff8a80; }
+.chips.five{ grid-template-columns:repeat(3,1fr); margin-top:4px; }
+.chip:disabled{ opacity:.35; cursor:not-allowed; }
+.five-note{ font-size:.8rem; color:#666; margin:10px 0 0; }
+.hidden{ display:none !important; }
+@media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+
+/* Retour à l'accueil */
+.home{ display:inline-flex; align-items:center; gap:8px; color:var(--muted); text-decoration:none; font-weight:600; font-size:.95rem; padding:6px 10px 6px 6px; margin-left:-6px; border-radius:10px; }
+.home::before{ content:"←"; margin-right:2px; }
+.home:hover{ color:var(--ivory); background:rgba(0,0,0,.18); }
+.home:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">Le Gobelet</a>
+  <h1>10 000</h1>
+  <p class="sub">Le carton de score, de 2 à 15 joueurs.</p>
+
+  <!-- Écran de départ -->
+  <section id="setup">
+    <h2>Qui joue ?</h2>
+    <div class="row">
+      <input type="text" id="nameInput" placeholder="Prénom du joueur" maxlength="20" autocomplete="off">
+      <button class="btn btn-gold" id="addBtn">Ajouter</button>
+    </div>
+    <ul class="names" id="nameList"></ul>
+    <p class="count" id="countTxt">0 / 15 joueurs</p>
+    <button class="btn btn-red" id="startBtn" disabled style="width:100%">Commencer la partie</button>
+  </section>
+
+  <!-- Partie -->
+  <section id="game" class="hidden">
+    <div id="winnerBox" class="winner hidden"></div>
+    <div class="board" id="board"></div>
+
+    <div class="turn" id="turnBox">
+      <div class="turn-head">
+        <div>
+          <div style="font-size:.85rem;color:#666">Au tour de</div>
+          <div class="turn-who" id="turnWho"></div>
+        </div>
+        <div class="turn-pts" id="turnPts">0</div>
+      </div>
+
+      <p class="open-note hidden" id="openNote"></p>
+      <button class="btn pickup hidden" id="pickupBtn"></button>
+
+      <div class="chips" id="chips"></div>
+      <p class="five-note">Cinq dés identiques, au premier lancer seulement</p>
+      <div class="chips five" id="chips5"></div>
+
+      <div class="manual">
+        <input type="text" inputmode="numeric" id="manualInput" placeholder="Autre montant">
+        <button class="btn btn-ghost" id="manualBtn" style="color:var(--card-ink);border-color:#d8d2c2">+ Ajouter</button>
+      </div>
+
+      <div class="turn-actions">
+        <button class="btn btn-ghost" id="clearTurn" style="color:var(--card-ink);border-color:#d8d2c2">Effacer le tour</button>
+        <button class="btn btn-red" id="bustBtn">Raté, −500</button>
+        <button class="btn btn-gold full" id="bankBtn">Garder les points</button>
+      </div>
+    </div>
+
+    <div class="small-actions">
+      <button class="btn btn-ghost" id="undoBtn">Annuler le dernier tour</button>
+      <button class="btn btn-ghost" id="newGameBtn">Nouvelle partie</button>
+    </div>
+
+    <h2>Historique</h2>
+    <ul class="history" id="history"></ul>
+  </section>
+
+  <details>
+    <summary>Rappel des points</summary>
+    <table>
+      <tr><td>Un 1</td><td>100</td></tr>
+      <tr><td>Un 5</td><td>50</td></tr>
+      <tr><td>Trois 1</td><td>1 000</td></tr>
+      <tr><td>Trois 2 / 3 / 4 / 5 / 6</td><td>200 / 300 / 400 / 500 / 600</td></tr>
+      <tr><td>Quatre dés identiques</td><td>triple × 2</td></tr>
+      <tr><td>Quatre 1</td><td>2 000</td></tr>
+      <tr><td>Quatre 2 / 3 / 4 / 5 / 6</td><td>400 / 600 / 800 / 1 000 / 1 200</td></tr>
+      <tr><td>Cinq 1 (1er lancer)</td><td>10 000</td></tr>
+      <tr><td>Cinq 2 / 3 / 4 / 5 / 6 (1er lancer)</td><td>2 000 / 3 000 / 4 000 / 5 000 / 6 000</td></tr>
+      <tr><td>Suite (1‑2‑3‑4‑5 ou 2‑3‑4‑5‑6)</td><td>1 500</td></tr>
+      <tr><td>Raté avant d'avoir ouvert</td><td>0</td></tr>
+      <tr><td>Rien du tout au 1er lancer (après ouverture)</td><td>−500</td></tr>
+      <tr><td>Raté en cours de tour, juste après l'ouverture</td><td>0, pas de croix</td></tr>
+      <tr><td>Raté en cours de tour (ensuite)</td><td>une croix</td></tr>
+      <tr><td>Trois croix</td><td>retour au score d'avant</td></tr>
+      <tr><td>Score égalé par un autre</td><td>retour au score d'avant</td></tr>
+    </table>
+    <p style="margin-top:10px;color:var(--muted);font-size:.9rem">Il faut faire 1 000 points en un tour pour débloquer son compteur. Quand un joueur garde ses points, le suivant peut les reprendre et continuer à lancer. Le premier à 10 000 points gagne.</p>
+  </details>
+</main>
+
+<script>
+const MAX = 15, GOAL = 10000, KEY = 'score10000';
+let state = { players: [], turn: 0, turnPts: 0, turnLog: [], history: [], started: false };
+
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString('fr-FR');
+
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && Array.isArray(s.players)) state = Object.assign(state, s); }catch(e){} }
+
+/* Dés dessinés */
+const PIPS = {1:[[50,50]],2:[[25,25],[75,75]],3:[[25,25],[50,50],[75,75]],4:[[25,25],[75,25],[25,75],[75,75]],5:[[25,25],[75,25],[50,50],[25,75],[75,75]],6:[[25,22],[75,22],[25,50],[75,50],[25,78],[75,78]]};
+function die(v){ return `<span class="die${v===1?' one':''}">${PIPS[v].map(([x,y])=>`<i style="left:calc(${x}% - ${v===1?2.5:1.5}px);top:calc(${y}% - ${v===1?2.5:1.5}px)"></i>`).join('')}</span>`; }
+const CHIPS = [
+  {pts:100, dice:[1], label:'Un 1'},
+  {pts:50, dice:[5], label:'Un 5'},
+  {pts:1000, dice:[1,1,1], label:'Trois 1'},
+  {pts:200, dice:[2,2,2], label:'Trois 2'},
+  {pts:300, dice:[3,3,3], label:'Trois 3'},
+  {pts:400, dice:[4,4,4], label:'Trois 4'},
+  {pts:500, dice:[5,5,5], label:'Trois 5'},
+  {pts:600, dice:[6,6,6], label:'Trois 6'},
+  {pts:2000, dice:[1,1,1,1], label:'Quatre 1'},
+  {pts:400, dice:[2,2,2,2], label:'Quatre 2'},
+  {pts:600, dice:[3,3,3,3], label:'Quatre 3'},
+  {pts:800, dice:[4,4,4,4], label:'Quatre 4'},
+  {pts:1000, dice:[5,5,5,5], label:'Quatre 5'},
+  {pts:1200, dice:[6,6,6,6], label:'Quatre 6'},
+  {pts:1500, dice:[1,2,3,4,5], label:'Suite', cls:'suite'},
+];
+$('chips').innerHTML = CHIPS.map((c,i)=>`<button class="chip ${c.cls||''}" data-i="${i}"><span class="dice">${c.dice.map(die).join('')}</span>+${fmt(c.pts)}<small>${c.label}</small></button>`).join('');
+const FIVES = [1,2,3,4,5,6].map(v => ({ pts: v===1 ? 10000 : v*1000, dice:[v,v,v,v,v], label:`Cinq ${v}` }));
+$('chips5').innerHTML = FIVES.map((c,i)=>`<button class="chip" data-i="${i}"><span class="dice">${c.dice.map(die).join('')}</span>+${fmt(c.pts)}<small>${c.label}</small></button>`).join('');
+$('chips5').addEventListener('click', e=>{ const b = e.target.closest('.chip'); if(!b || b.disabled) return; addTurn(FIVES[b.dataset.i].pts); });
+$('chips').addEventListener('click', e=>{ const b = e.target.closest('.chip'); if(!b) return; addTurn(CHIPS[b.dataset.i].pts); });
+
+/* Préparation */
+function addName(){
+  const v = $('nameInput').value.trim();
+  if(!v || state.players.length >= MAX) return;
+  state.players.push({ name:v, score:0 });
+  $('nameInput').value=''; $('nameInput').focus(); save(); render();
+}
+$('addBtn').onclick = addName;
+$('nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addName(); });
+$('nameList').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; state.players.splice(+b.dataset.i,1); save(); render(); });
+$('startBtn').onclick = ()=>{ state.started = true; state.turn = 0; save(); render(); };
+
+/* Tour de jeu */
+const OPEN = 1000, PENALTY = 500, MAX_CROSSES = 3;
+const cur = () => state.players[state.turn];
+const isFirstRoll = () => !state.pickedUp && state.turnLog.length === 0;
+const crossesOn = p => (p.banks || 0) >= 2;
+const canBank = () => { const p = cur(); return state.turnPts > 0 && (p.opened || state.turnPts >= OPEN); };
+
+function addTurn(p){ if(winner()) return; state.turnPts += p; state.turnLog.push(p); save(); render(); }
+$('manualBtn').onclick = ()=>{ const n = parseInt($('manualInput').value.replace(/\D/g,''),10); if(n>0){ addTurn(n); $('manualInput').value=''; } };
+$('manualInput').addEventListener('keydown', e=>{ if(e.key==='Enter') $('manualBtn').click(); });
+$('clearTurn').onclick = ()=>{ state.turnPts = 0; state.turnLog = []; state.pickedUp = false; save(); render(); };
+
+$('pickupBtn').onclick = ()=>{
+  if(!state.lastBank) return;
+  state.turnPts = state.lastBank.pts; state.turnLog = [state.lastBank.pts]; state.pickedUp = true;
+  save(); render();
+};
+
+/* Revenir au score d'avant (croix ou score égalé) */
+function stepBack(p){
+  p.score = p.past && p.past.length ? p.past.pop() : 0;
+  p.banks = Math.max(0, (p.banks || 0) - 1);
+  if(p.score === 0 && (!p.past || !p.past.length)) p.opened = false;
+}
+
+/* Photo de la partie pour pouvoir annuler */
+function snapshot(){
+  const { snaps, ...rest } = state;
+  state.snaps = (state.snaps || []).slice(-40);
+  state.snaps.push(JSON.stringify(rest));
+}
+
+function endTurn(kind){
+  snapshot();
+  const p = cur();
+  p.past = p.past || []; p.crosses = p.crosses || 0;
+  const pickedUp = state.pickedUp;
+  let msg;
+
+  if(kind === 'bank'){
+    const gained = state.turnPts;
+    p.past.push(p.score);
+    p.score += gained; p.opened = true; p.crosses = 0; p.banks = (p.banks || 0) + 1;
+    msg = `+${fmt(gained)}${pickedUp ? ' (reprise)' : ''}`;
+    state.lastBank = { pts:gained, name:p.name };
+    // Score égalé : l'autre joueur redescend
+    const hit = state.players.filter(o => o !== p && o.score === p.score && p.score > 0);
+    hit.forEach(o => { const before = o.score; stepBack(o); o.crosses = 0;
+      state.history.unshift({ name:o.name, msg:`égalé par ${p.name}, redescend (${fmt(before)} → ${fmt(o.score)})`, total:o.score }); });
+  } else if(!p.opened){
+    // Pas encore ouvert : rien, pas de pénalité
+    msg = 'raté, 0 point';
+    state.lastBank = null;
+  } else if(isFirstRoll()){
+    // Ouvert, rien du tout au premier lancer : -500 (sans descendre sous 0)
+    const loss = Math.min(PENALTY, p.score);
+    p.past.push(p.score);
+    p.score -= loss;
+    msg = `rien au 1er lancer, −${fmt(loss)}`;
+    state.lastBank = null;
+  } else if(!crossesOn(p)){
+    // Premier score seulement : pas de croix
+    msg = 'raté, 0 point (pas de croix au premier score)';
+    state.lastBank = null;
+  } else {
+    // Déjà ouvert : une croix
+    p.crosses += 1;
+    state.lastBank = null;
+    if(p.crosses >= MAX_CROSSES){
+      const before = p.score; stepBack(p); p.crosses = 0;
+      msg = `3e croix, revient au score d'avant (${fmt(before)} → ${fmt(p.score)})`;
+    } else {
+      msg = `raté, croix ${p.crosses}/${MAX_CROSSES}`;
+    }
+  }
+
+  state.history.unshift({ name:p.name, msg, total:p.score });
+  state.turnPts = 0; state.turnLog = []; state.pickedUp = false;
+  if(!winner()) state.turn = (state.turn + 1) % state.players.length;
+  save(); render();
+}
+$('bankBtn').onclick = ()=>{ if(canBank()) endTurn('bank'); };
+$('bustBtn').onclick = ()=> endTurn('bust');
+
+$('undoBtn').onclick = ()=>{
+  if(!state.snaps || !state.snaps.length) return;
+  const prev = JSON.parse(state.snaps.pop());
+  const snaps = state.snaps;
+  state = Object.assign({}, prev, { snaps });
+  save(); render();
+};
+$('newGameBtn').onclick = ()=>{
+  if(!confirm('Recommencer une partie ? Les scores seront remis à zéro (les joueurs restent).')) return;
+  state.players.forEach(p=>{ p.score=0; p.opened=false; p.crosses=0; p.past=[]; p.banks=0; });
+  Object.assign(state, { turn:0, turnPts:0, turnLog:[], history:[], started:false, lastBank:null, pickedUp:false, snaps:[] });
+  save(); render();
+};
+
+function winner(){ return state.players.find(p=>p.score>=GOAL); }
+
+/* Affichage */
+function crossesHtml(n){ return n ? `<span class="crosses" aria-label="${n} croix">${'✕'.repeat(n)}</span>` : ''; }
+function render(){
+  $('setup').classList.toggle('hidden', state.started);
+  $('game').classList.toggle('hidden', !state.started);
+
+  $('nameList').innerHTML = state.players.map((p,i)=>`<li><span>${esc(p.name)}</span><button data-i="${i}" aria-label="Retirer ${esc(p.name)}">×</button></li>`).join('');
+  $('countTxt').textContent = `${state.players.length} / ${MAX} joueurs` + (state.players.length<2 ? ' · il en faut au moins 2' : '');
+  $('startBtn').disabled = state.players.length < 2;
+  $('addBtn').disabled = state.players.length >= MAX;
+  if(!state.started) return;
+
+  const w = winner();
+  $('board').innerHTML = state.players.map((p,i)=>{
+    const pct = Math.max(0, Math.min(100, p.score/GOAL*100));
+    const isCur = i===state.turn && !w;
+    return `<div class="player${isCur?' current':''}">
+      <span class="name">${esc(p.name)}${p.opened?'':'<span class="tag">à ouvrir</span>'}${crossesHtml(p.crosses||0)}</span><span class="score">${fmt(p.score)}</span>
+      <span class="bar"><span style="width:${pct}%"></span></span>
+      <span class="left">${p.score>=GOAL ? 'Gagné !' : 'Encore ' + fmt(GOAL-p.score)}</span></div>`;
+  }).join('');
+
+  $('winnerBox').classList.toggle('hidden', !w);
+  $('turnBox').classList.toggle('hidden', !!w);
+  if(w) $('winnerBox').innerHTML = `<h2>${esc(w.name)} gagne !</h2><p style="margin:0">avec ${fmt(w.score)} points</p>`;
+
+  const cp = cur();
+  $('turnWho').textContent = cp ? cp.name : '';
+  $('turnPts').textContent = fmt(state.turnPts);
+
+  const lb = state.lastBank;
+  const showPick = !!(lb && !state.pickedUp && state.turnPts === 0);
+  $('pickupBtn').classList.toggle('hidden', !showPick);
+  if(showPick) $('pickupBtn').textContent = `Reprendre les ${fmt(lb.pts)} points de ${lb.name}`;
+
+  const notOpen = cp && !cp.opened;
+  $('openNote').classList.toggle('hidden', !notOpen);
+  if(notOpen) $('openNote').textContent = state.turnPts >= OPEN
+    ? `Compteur débloqué dès que tu gardes ces points.`
+    : `${cp.name} doit faire au moins 1 000 points dans ce tour pour débloquer son compteur` + (state.turnPts ? ` (encore ${fmt(OPEN - state.turnPts)}).` : '.');
+
+  const first = isFirstRoll();
+  document.querySelectorAll('#chips5 .chip').forEach(b => b.disabled = !first);
+  $('bankBtn').disabled = !canBank();
+  $('bankBtn').textContent = state.turnPts>0 ? `Garder ${fmt(state.turnPts)} points` : 'Garder les points';
+  if(cp){
+    const c = cp.crosses || 0;
+    $('bustBtn').textContent = !cp.opened ? 'Raté, 0 point'
+      : isFirstRoll() ? `Rien au 1er lancer, −${fmt(Math.min(PENALTY, cp.score))}`
+      : !crossesOn(cp) ? 'Raté, 0 point'
+      : (c + 1 >= MAX_CROSSES ? 'Raté, 3e croix' : `Raté, croix ${c+1}/${MAX_CROSSES}`);
+  }
+  $('undoBtn').disabled = !(state.snaps && state.snaps.length);
+
+  $('history').innerHTML = state.history.length
+    ? state.history.map(h=>`<li><span>${esc(h.name)} : ${esc(h.msg)}</span><span>${fmt(h.total)}</span></li>`).join('')
+    : '<li>Aucun tour joué pour l\'instant.</li>';
+}
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+load();
+// Anciennes parties : compléter les champs manquants
+state.players.forEach(p=>{ p.past = p.past || []; p.crosses = p.crosses || 0; if(p.opened === undefined) p.opened = p.score > 0; if(p.banks === undefined) p.banks = p.past.length; });
+if(state.history.some(h=>!h.msg)) state.history = [];
+render();
+
+
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+</script>
+</body>
+</html>

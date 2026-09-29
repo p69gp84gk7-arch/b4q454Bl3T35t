@@ -1,18 +1,24 @@
 {
-  "name": "GMAO Neige",
-  "short_name": "GMAO Neige",
-  "description": "Gestion de maintenance des enneigeurs : carte, pannes, stock, production de neige.",
+  "name": "Le Gobelet",
+  "short_name": "Le Gobelet",
+  "description": "Les carnets de score de nos jeux de dés : 10 000 et Yam's.",
   "lang": "fr",
   "dir": "ltr",
-  "start_url": "./index.html",
+  "id": "./",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "any",
-  "background_color": "#1b2a38",
-  "theme_color": "#2c3e50",
+  "orientation": "portrait",
+  "background_color": "#123A2C",
+  "theme_color": "#123A2C",
   "icons": [
-    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "10 000", "url": "jeux/10000.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Yam's", "url": "jeux/yams.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }
