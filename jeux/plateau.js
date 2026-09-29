@@ -29,9 +29,14 @@
   padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px));
   background:#123A2C; color:#F7F3E8; font-family:inherit; }
 .pl-ov[hidden]{ display:none; }
-.pl-head{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.pl-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
 .pl-title{ font-weight:800; font-size:1.25rem; line-height:1.1; }
 .pl-count{ font-size:.9rem; color:rgba(247,243,232,.75); margin-top:2px; font-variant-numeric:tabular-nums; }
+.pl-title.pl-big{ font-size:1.8rem; letter-spacing:-.01em; }
+.pl-count.chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.pl-chip{ padding:3px 10px; border-radius:999px; background:rgba(0,0,0,.28); color:#F7F3E8; font-size:.85rem; font-weight:600; white-space:nowrap; }
+.pl-chip.goal{ background:#E9B949; color:#1A1A1A; }
+.pl-chip.cross{ background:#C8372D; color:#fff; letter-spacing:.02em; }
 .pl-close{ border:1.5px solid rgba(247,243,232,.3); background:transparent; color:#F7F3E8; font:inherit;
   font-weight:600; padding:9px 14px; border-radius:10px; cursor:pointer; }
 .pl-tray{ position:relative; flex:1; min-height:180px; border-radius:18px; overflow:hidden; touch-action:none;
@@ -121,7 +126,7 @@ body.pl-open{ overflow:hidden; }
 
   const q = s => ov.querySelector(s);
   const tray = q('.pl-tray'), slots = q('.pl-slots'), hint = q('.pl-hint');
-  const msgEl = q('.pl-msg'), countEl = q('.pl-count'), rollBtn = q('.pl-roll'), props = q('.pl-props');
+  const msgEl = q('.pl-msg'), countEl = q('.pl-count'), titleEl = q('.pl-title'), rollBtn = q('.pl-roll'), props = q('.pl-props');
   const fmt = n => n.toLocaleString('fr-FR');
   const esc = t => String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -249,7 +254,22 @@ body.pl-open{ overflow:hidden; }
       countEl.textContent = `Lancer ${rolls} / ${MAX_YAMS}` + (rolls && !anim ? ` · total des dés ${sum}` : '');
     } else {
       const total = (j ? j.turnPts() : 0) + (p.all ? p.pts : 0);
-      countEl.textContent = (j ? `${j.player()} · ` : '') + `tour : ${fmt(total)} pts` + (rolls ? ` · lancer n° ${rolls}` : '');
+      // Bandeau : nom du joueur en grand, reste à faire pour 10 000 (en comptant le tour) et croix
+      titleEl.textContent = j ? j.player() : 'Plateau de dés';
+      titleEl.classList.toggle('pl-big', !!j);
+      let chips = '';
+      if(j){
+        const left = 10000 - j.score() - total;
+        const n = j.crosses();
+        chips += left >= 0
+          ? `<span class="pl-chip goal">Reste ${fmt(left)}</span>`
+          : `<span class="pl-chip cross">Dépasse de ${fmt(-left)}</span>`;
+        chips += n ? `<span class="pl-chip cross" aria-label="${n} croix">${'✕'.repeat(n)} ${n} croix</span>` : '<span class="pl-chip">Aucune croix</span>';
+      }
+      chips += `<span class="pl-chip">Tour : ${fmt(total)}</span>`;
+      if(rolls) chips += `<span class="pl-chip">Lancer n° ${rolls}</span>`;
+      countEl.innerHTML = chips;
+      countEl.classList.add('chips');
     }
 
     rollBtn.disabled = !canThrow();

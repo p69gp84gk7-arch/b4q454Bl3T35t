@@ -382,6 +382,7 @@ window.plateauJeu = {
   player: () => cur().name,
   turnPts: () => state.turnPts,
   score: () => cur().score,
+  crosses: () => cur().crosses || 0,
   opened: () => !!cur().opened,
   firstRoll: () => isFirstRoll(),
   add: pts => addTurn(pts),
