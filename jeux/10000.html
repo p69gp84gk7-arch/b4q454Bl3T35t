@@ -187,9 +187,11 @@ td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-n
       <tr><td>Raté en cours de tour, juste après l'ouverture</td><td>0, pas de croix</td></tr>
       <tr><td>Raté en cours de tour (ensuite)</td><td>une croix</td></tr>
       <tr><td>Trois croix</td><td>retour au score d'avant</td></tr>
+      <tr><td>Noter des points, ou −500 au 1er lancer</td><td>efface les croix</td></tr>
+      <tr><td>Dépasser 10 000</td><td>une croix</td></tr>
       <tr><td>Score égalé par un autre</td><td>retour au score d'avant</td></tr>
     </table>
-    <p style="margin-top:10px;color:var(--muted);font-size:.9rem">Il faut faire 1 000 points en un tour pour débloquer son compteur. Quand un joueur garde ses points, le suivant peut les reprendre et continuer à lancer. Le premier à 10 000 points gagne.</p>
+    <p style="margin-top:10px;color:var(--muted);font-size:.9rem">Il faut faire 1 000 points en un tour pour débloquer son compteur. Quand un joueur garde ses points, le suivant peut les reprendre et continuer à lancer. Le premier à faire 10 000 points pile gagne : dépasser 10 000 donne une croix.</p>
   </details>
 </main>
 
@@ -286,6 +288,16 @@ function snapshot(){
   state.snaps.push(JSON.stringify(rest));
 }
 
+/* Une croix de plus ; à la 3e, retour au score d'avant */
+function addCross(p, why){
+  p.crosses += 1;
+  if(p.crosses >= MAX_CROSSES){
+    const before = p.score; stepBack(p); p.crosses = 0;
+    return `${why}, 3e croix, revient au score d'avant (${fmt(before)} → ${fmt(p.score)})`;
+  }
+  return `${why}, croix ${p.crosses}/${MAX_CROSSES}`;
+}
+
 function endTurn(kind, diceLeft){
   snapshot();
   openGroup = null;
@@ -294,11 +306,18 @@ function endTurn(kind, diceLeft){
   const pickedUp = state.pickedUp;
   let msg;
 
-  if(kind === 'bank'){
+  if(kind === 'bank' && p.score + state.turnPts > GOAL){
+    // Il faut tomber pile sur 10 000 : dépasser donne une croix
+    state.lastBank = null;
+    msg = addCross(p, `dépasse 10 000 (${fmt(p.score + state.turnPts)})`);
+  } else if(kind === 'bank'){
     const gained = state.turnPts;
     p.past.push(p.score);
-    p.score += gained; p.opened = true; p.crosses = 0; p.banks = (p.banks || 0) + 1;
-    msg = `+${fmt(gained)}${pickedUp ? ' (reprise)' : ''}`;
+    p.score += gained; p.opened = true; p.banks = (p.banks || 0) + 1;
+    // Noter des points efface les croix
+    const cleared = p.crosses > 0;
+    p.crosses = 0;
+    msg = `+${fmt(gained)}${pickedUp ? ' (reprise)' : ''}${cleared ? ', croix effacées' : ''}`;
     state.lastBank = { pts:gained, name:p.name, dice: diceLeft || null };
     // Score égalé : l'autre joueur redescend
     const hit = state.players.filter(o => o !== p && o.score === p.score && p.score > 0);
@@ -313,7 +332,10 @@ function endTurn(kind, diceLeft){
     const loss = Math.min(PENALTY, p.score);
     p.past.push(p.score);
     p.score -= loss;
-    msg = `rien au 1er lancer, −${fmt(loss)}`;
+    // Le −500 est noté sur le carton : il efface aussi les croix
+    const cleared = p.crosses > 0;
+    p.crosses = 0;
+    msg = `rien au 1er lancer, −${fmt(loss)}${cleared ? ', croix effacées' : ''}`;
     state.lastBank = null;
   } else if(!crossesOn(p)){
     // Premier score seulement : pas de croix
@@ -321,14 +343,8 @@ function endTurn(kind, diceLeft){
     state.lastBank = null;
   } else {
     // Déjà ouvert : une croix
-    p.crosses += 1;
     state.lastBank = null;
-    if(p.crosses >= MAX_CROSSES){
-      const before = p.score; stepBack(p); p.crosses = 0;
-      msg = `3e croix, revient au score d'avant (${fmt(before)} → ${fmt(p.score)})`;
-    } else {
-      msg = `raté, croix ${p.crosses}/${MAX_CROSSES}`;
-    }
+    msg = addCross(p, 'raté');
   }
 
   state.history.unshift({ name:p.name, msg, total:p.score });
@@ -362,6 +378,7 @@ window.plateauJeu = {
   active: () => state.started && !!cur() && !winner(),
   player: () => cur().name,
   turnPts: () => state.turnPts,
+  score: () => cur().score,
   opened: () => !!cur().opened,
   firstRoll: () => isFirstRoll(),
   add: pts => addTurn(pts),
@@ -410,8 +427,10 @@ function render(){
   if(showPick) $('pickupBtn').textContent = `Reprendre les ${fmt(lb.pts)} points de ${lb.name}` + (lb.dice ? ` (${lb.dice} dé${lb.dice > 1 ? 's' : ''} à lancer)` : '');
 
   const notOpen = cp && !cp.opened;
-  $('openNote').classList.toggle('hidden', !notOpen);
-  if(notOpen) $('openNote').textContent = state.turnPts >= OPEN
+  const over = cp && cp.score + state.turnPts > GOAL;
+  $('openNote').classList.toggle('hidden', !notOpen && !over);
+  if(over) $('openNote').textContent = `${cp.name} dépasse 10 000 (${fmt(cp.score + state.turnPts)}) : il faut tomber pile. Garder ces points donne une croix.`;
+  else if(notOpen) $('openNote').textContent = state.turnPts >= OPEN
     ? `Compteur débloqué dès que tu gardes ces points.`
     : `${cp.name} doit faire au moins 1 000 points dans ce tour pour débloquer son compteur` + (state.turnPts ? ` (encore ${fmt(OPEN - state.turnPts)}).` : '.');
 
@@ -421,6 +440,7 @@ function render(){
   renderPicker();
   $('bankBtn').disabled = !canBank();
   $('bankBtn').textContent = mustPlayPickup() ? 'Lancer les dés avant de garder'
+    : over ? 'Dépasse 10 000 : noter la croix'
     : state.turnPts>0 ? `Garder ${fmt(state.turnPts)} points` : 'Garder les points';
   if(cp){
     const c = cp.crosses || 0;
