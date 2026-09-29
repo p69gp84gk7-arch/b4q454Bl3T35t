@@ -289,8 +289,10 @@ body.pl-open{ overflow:hidden; }
     const pick = JEU === '10000' && j && !anim && rolls === 0 && j.pickupInfo ? j.pickupInfo() : null;
     if(pick){
       propsKey = '';
-      props.innerHTML = `<button class="pl-wide pl-auto" data-act="pickup">Reprendre les ${fmt(pick.pts)} points de ${esc(pick.name)}` +
-        (pick.dice ? ` (${pick.dice} dé${pick.dice > 1 ? 's' : ''} à lancer)` : '') + '</button>';
+      props.innerHTML = pick.blocked
+        ? `<button class="pl-wide pl-auto" disabled>Impossible de reprendre les ${fmt(pick.pts)} points de ${esc(pick.name)} : dépasserait 10 000</button>`
+        : `<button class="pl-wide pl-auto" data-act="pickup">Reprendre les ${fmt(pick.pts)} points de ${esc(pick.name)}` +
+          (pick.dice ? ` (${pick.dice} dé${pick.dice > 1 ? 's' : ''} à lancer)` : '') + '</button>';
       props.hidden = false;
       return;
     }
