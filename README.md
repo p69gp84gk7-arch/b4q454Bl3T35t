@@ -19,7 +19,11 @@ Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitte
 Si on a oublié les dés, le bouton rouge **Dés** de chaque carnet ouvre un tapis avec 5 dés : on les lance en glissant le doigt sur le tapis (ou avec le bouton *Lancer*), et on touche un dé pour le garder.
 
 - **Yam's** : 3 lancers au plus par tour ; on garde ou reprend les dés de son choix entre deux lancers.
-- **10 000** : lancers sans limite ; il faut mettre au moins un dé de côté avant de relancer, et quand les 5 dés sont sortis on peut relancer les 5.
+  Après chaque lancer, le plateau reconnaît les figures (brelan, full, suites, Yam's…) et propose les cases libres du joueur avec leurs points ; un toucher note le score dans la feuille. On peut aussi rayer une case.
+- **10 000** : lancers sans limite ; il faut mettre de côté au moins un dé qui rapporte avant de relancer (bouton pour mettre de côté tout ce qui compte). Les points passent dans le tour du carnet à chaque relance, et « Garder les points » les inscrit.
+  - Si tous les dés lancés rapportent, les points sont ajoutés et la relance des 5 dés est obligatoire.
+  - Si les 2 derniers dés font un double (2, 3, 4 ou 6), relance obligatoire des 5 dés, sans points. Un double 1 ou 5 rapporte ses points, puis relance des 5.
+  - Si aucun dé ne rapporte, le plateau propose de noter le raté.
 
 Le plateau repart de zéro dès qu'un score est noté dans le carnet. Le code est dans `jeux/plateau.js`, partagé par les deux jeux.
 

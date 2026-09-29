@@ -204,6 +204,35 @@ if (!state || !Array.isArray(state.scores)) state = fresh(false);
 function save(){ try { localStorage.setItem('yams-sheet', JSON.stringify(state)); } catch(e) {} }
 const num = v => typeof v === 'number' ? v : 0;
 
+/* Lien avec le plateau de dés (plateau.js) : figures reconnues et cases proposées */
+function pointsFor(c, vals){
+  const n = [0,0,0,0,0,0,0];
+  vals.forEach(v => n[v]++);
+  const has = faces => faces.every(f => n[f] >= 1);
+  if (c.type === 'upper') return n[c.face] * c.face;
+  if (c.type === 'kind') { for (let f = 6; f >= 1; f--) if (n[f] >= c.n) return f * c.n; return 0; }
+  if (c.type === 'sum') return vals.reduce((a, b) => a + b, 0);
+  const ok = { full: n.includes(3) && n.includes(2), ps: has([1,2,3,4,5]), gs: has([2,3,4,5,6]), yam: n.includes(5) }[c.key];
+  return ok ? c.pts : 0;
+}
+window.plateauJeu = {
+  players: () => state.names.slice(0, state.count),
+  // Joueur suivant : celui qui a rempli le moins de cases
+  nextPlayer(){
+    let best = 0, min = Infinity;
+    for (let p = 0; p < state.count; p++) {
+      const filled = ALL.filter(c => state.scores[p][c.key] !== undefined).length;
+      if (filled < min) { min = filled; best = p; }
+    }
+    return best;
+  },
+  options: (vals, p) => ALL.filter(c => state.scores[p][c.key] === undefined).map(c => {
+    const pts = pointsFor(c, vals);
+    return { key:c.key, label: c.label, pts, fig: pts > 0 && (c.type === 'kind' || c.type === 'fixed') };
+  }),
+  note(p, key, v){ state.scores[p][key] = v; save(); render(); },
+};
+
 function totals(p){
   const s = state.scores[p];
   const up = UPPER.reduce((a,c)=>a+num(s[c.key]),0);

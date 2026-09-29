@@ -261,7 +261,7 @@ const crossesOn = p => (p.banks || 0) >= 2;
 const canBank = () => { const p = cur(); return state.turnPts > 0 && (p.opened || state.turnPts >= OPEN); };
 
 function addTurn(p){ if(winner()) return; state.turnPts += p; state.turnLog.push(p); save(); render(); }
-$('clearTurn').onclick = ()=>{ openGroup = null; state.turnPts = 0; state.turnLog = []; state.pickedUp = false; save(); render(); };
+$('clearTurn').onclick = ()=>{ openGroup = null; if(window.plateau) plateau.reset(); state.turnPts = 0; state.turnLog = []; state.pickedUp = false; save(); render(); };
 
 $('pickupBtn').onclick = ()=>{
   if(!state.lastBank) return;
@@ -342,6 +342,7 @@ $('undoBtn').onclick = ()=>{
   const prev = JSON.parse(state.snaps.pop());
   const snaps = state.snaps;
   state = Object.assign({}, prev, { snaps });
+  if(window.plateau) plateau.reset();
   save(); render();
 };
 $('newGameBtn').onclick = ()=>{
@@ -352,6 +353,19 @@ $('newGameBtn').onclick = ()=>{
 };
 
 function winner(){ return state.players.find(p=>p.score>=GOAL); }
+
+/* Lien avec le plateau de dés (plateau.js) : les points des dés mis de côté arrivent dans le tour */
+window.plateauJeu = {
+  active: () => state.started && !!cur() && !winner(),
+  player: () => cur().name,
+  turnPts: () => state.turnPts,
+  opened: () => !!cur().opened,
+  firstRoll: () => isFirstRoll(),
+  add: pts => addTurn(pts),
+  bank: () => { if(canBank()) endTurn('bank'); },
+  bust: () => endTurn('bust'),
+  bustLabel: () => $('bustBtn').textContent,
+};
 
 /* Affichage */
 function crossesHtml(n){ return n ? `<span class="crosses" aria-label="${n} croix">${'✕'.repeat(n)}</span>` : ''; }
