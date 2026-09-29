@@ -67,16 +67,22 @@ input[type=text]{ font:inherit; font-size:1rem; padding:12px 14px; border-radius
 .turn-head{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
 .turn-who{ font-weight:800; font-size:1.2rem; }
 .turn-pts{ font-weight:800; font-size:2.4rem; font-variant-numeric:tabular-nums; color:var(--red); line-height:1; }
-.chips{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:14px 0 8px; }
+.chips{ display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:14px 0 12px; }
 .chip{ background:#fff; color:var(--card-ink); border:1.5px solid #d8d2c2; padding:8px 4px; display:flex; flex-direction:column; align-items:center; gap:4px; font-size:.95rem; font-weight:600; }
 .chip small{ font-weight:400; font-size:.72rem; color:#666; text-align:center; line-height:1.1; }
-.chip.suite{ grid-column:span 2; border-color:var(--red); }
+.chip.single{ grid-column:span 3; font-size:1.25rem; padding:12px 4px 10px; }
+.chip.single .dice{ transform:scale(1.6); margin:6px 0 4px; }
+.chip.group{ grid-column:span 2; }
+.chip.group[aria-expanded="true"]{ border-color:var(--red); background:#fbe9d0; }
+.chip.suite{ grid-column:1 / -1; border-color:var(--red); }
+.die.blank{ background:#e9e4d6; border-color:#8a8474; }
+.picker{ grid-column:1 / -1; background:#fff; border:1.5px solid var(--red); border-radius:12px; padding:10px; }
+.picker p{ margin:0 0 8px; font-size:.85rem; font-weight:600; color:#666; }
+.picker .opts{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
 .dice{ display:flex; gap:2px; }
 .die{ width:14px; height:14px; background:var(--ivory); border:1.5px solid var(--ink); border-radius:3px; position:relative; }
 .die i{ position:absolute; width:3px; height:3px; border-radius:50%; background:var(--ink); }
 .die.one i{ background:var(--red); width:5px; height:5px; }
-.manual{ display:flex; gap:6px; margin:8px 0 12px; }
-.manual input{ background:#fff; border:1.5px solid #d8d2c2; }
 .turn-actions{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .turn-actions .full{ grid-column:1 / -1; }
 .small-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
@@ -99,9 +105,7 @@ td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-n
 .player.current .tag{ background:#fbe9d0; color:#7a4a00; }
 .crosses{ color:var(--red); font-weight:800; margin-left:8px; letter-spacing:2px; }
 .player:not(.current) .crosses{ color:#ff8a80; }
-.chips.five{ grid-template-columns:repeat(3,1fr); margin-top:4px; }
 .chip:disabled{ opacity:.35; cursor:not-allowed; }
-.five-note{ font-size:.8rem; color:#666; margin:10px 0 0; }
 .hidden{ display:none !important; }
 @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
 
@@ -148,13 +152,6 @@ td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-n
       <button class="btn pickup hidden" id="pickupBtn"></button>
 
       <div class="chips" id="chips"></div>
-      <p class="five-note">Cinq dés identiques, au premier lancer seulement</p>
-      <div class="chips five" id="chips5"></div>
-
-      <div class="manual">
-        <input type="text" inputmode="numeric" id="manualInput" placeholder="Autre montant">
-        <button class="btn btn-ghost" id="manualBtn" style="color:var(--card-ink);border-color:#d8d2c2">+ Ajouter</button>
-      </div>
 
       <div class="turn-actions">
         <button class="btn btn-ghost" id="clearTurn" style="color:var(--card-ink);border-color:#d8d2c2">Effacer le tour</button>
@@ -209,28 +206,40 @@ function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && A
 /* Dés dessinés */
 const PIPS = {1:[[50,50]],2:[[25,25],[75,75]],3:[[25,25],[50,50],[75,75]],4:[[25,25],[75,25],[25,75],[75,75]],5:[[25,25],[75,25],[50,50],[25,75],[75,75]],6:[[25,22],[75,22],[25,50],[75,50],[25,78],[75,78]]};
 function die(v){ return `<span class="die${v===1?' one':''}">${PIPS[v].map(([x,y])=>`<i style="left:calc(${x}% - ${v===1?2.5:1.5}px);top:calc(${y}% - ${v===1?2.5:1.5}px)"></i>`).join('')}</span>`; }
-const CHIPS = [
-  {pts:100, dice:[1], label:'Un 1'},
-  {pts:50, dice:[5], label:'Un 5'},
-  {pts:1000, dice:[1,1,1], label:'Trois 1'},
-  {pts:200, dice:[2,2,2], label:'Trois 2'},
-  {pts:300, dice:[3,3,3], label:'Trois 3'},
-  {pts:400, dice:[4,4,4], label:'Trois 4'},
-  {pts:500, dice:[5,5,5], label:'Trois 5'},
-  {pts:600, dice:[6,6,6], label:'Trois 6'},
-  {pts:2000, dice:[1,1,1,1], label:'Quatre 1'},
-  {pts:400, dice:[2,2,2,2], label:'Quatre 2'},
-  {pts:600, dice:[3,3,3,3], label:'Quatre 3'},
-  {pts:800, dice:[4,4,4,4], label:'Quatre 4'},
-  {pts:1000, dice:[5,5,5,5], label:'Quatre 5'},
-  {pts:1200, dice:[6,6,6,6], label:'Quatre 6'},
-  {pts:1500, dice:[1,2,3,4,5], label:'Suite', cls:'suite'},
-];
-$('chips').innerHTML = CHIPS.map((c,i)=>`<button class="chip ${c.cls||''}" data-i="${i}"><span class="dice">${c.dice.map(die).join('')}</span>+${fmt(c.pts)}<small>${c.label}</small></button>`).join('');
-const FIVES = [1,2,3,4,5,6].map(v => ({ pts: v===1 ? 10000 : v*1000, dice:[v,v,v,v,v], label:`Cinq ${v}` }));
-$('chips5').innerHTML = FIVES.map((c,i)=>`<button class="chip" data-i="${i}"><span class="dice">${c.dice.map(die).join('')}</span>+${fmt(c.pts)}<small>${c.label}</small></button>`).join('');
-$('chips5').addEventListener('click', e=>{ const b = e.target.closest('.chip'); if(!b || b.disabled) return; addTurn(FIVES[b.dataset.i].pts); });
-$('chips').addEventListener('click', e=>{ const b = e.target.closest('.chip'); if(!b) return; addTurn(CHIPS[b.dataset.i].pts); });
+const SINGLES = [ {pts:100, dice:[1], label:'Un 1'}, {pts:50, dice:[5], label:'Un 5'} ];
+const SUITE = {pts:1500, dice:[1,2,3,4,5], label:'Suite 1‑2‑3‑4‑5 ou 2‑3‑4‑5‑6'};
+/* Dés identiques : un bouton par nombre de dés, puis on choisit la valeur */
+const GROUPS = {
+  three:{ n:3, label:'Trois', title:'Trois dés identiques', pts:v => v===1 ? 1000 : v*100 },
+  four: { n:4, label:'Quatre', title:'Quatre dés identiques', pts:v => v===1 ? 2000 : v*200 },
+  five: { n:5, label:'Cinq', title:'Cinq dés identiques (1er lancer)', pts:v => v===1 ? 10000 : v*1000, note:'1er lancer' },
+};
+const blankDice = n => '<span class="die blank"></span>'.repeat(n);
+let openGroup = null;
+
+$('chips').innerHTML =
+  SINGLES.map((c,i)=>`<button class="chip single" data-single="${i}"><span class="dice">${c.dice.map(die).join('')}</span>+${fmt(c.pts)}<small>${c.label}</small></button>`).join('') +
+  Object.entries(GROUPS).map(([k,g])=>`<button class="chip group" id="grp-${k}" data-group="${k}" aria-expanded="false" aria-controls="picker"><span class="dice">${blankDice(g.n)}</span>${g.label}<small>${fmt(g.pts(2))} à ${fmt(g.pts(1))}${g.note ? '<br>' + g.note : ''}</small></button>`).join('') +
+  `<div class="picker hidden" id="picker"></div>` +
+  `<button class="chip suite" data-suite><span class="dice">${SUITE.dice.map(die).join('')}</span>+${fmt(SUITE.pts)}<small>${SUITE.label}</small></button>`;
+
+function renderPicker(){
+  const g = GROUPS[openGroup];
+  Object.keys(GROUPS).forEach(k => $('grp-' + k).setAttribute('aria-expanded', String(k === openGroup)));
+  $('picker').classList.toggle('hidden', !g);
+  if(!g) return;
+  $('picker').innerHTML = `<p>${g.title} : quelle valeur ?</p><div class="opts">` +
+    [1,2,3,4,5,6].map(v => `<button class="chip" data-v="${v}"><span class="dice">${Array(g.n).fill(v).map(die).join('')}</span>+${fmt(g.pts(v))}</button>`).join('') +
+    '</div>';
+}
+$('chips').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b || b.disabled) return;
+  if(b.dataset.single !== undefined) addTurn(SINGLES[b.dataset.single].pts);
+  else if(b.dataset.suite !== undefined) addTurn(SUITE.pts);
+  else if(b.dataset.group){ openGroup = openGroup === b.dataset.group ? null : b.dataset.group; renderPicker(); }
+  else if(b.dataset.v && openGroup){ const g = GROUPS[openGroup]; openGroup = null; addTurn(g.pts(+b.dataset.v)); }
+});
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && openGroup){ openGroup = null; renderPicker(); } });
 
 /* Préparation */
 function addName(){
@@ -252,9 +261,7 @@ const crossesOn = p => (p.banks || 0) >= 2;
 const canBank = () => { const p = cur(); return state.turnPts > 0 && (p.opened || state.turnPts >= OPEN); };
 
 function addTurn(p){ if(winner()) return; state.turnPts += p; state.turnLog.push(p); save(); render(); }
-$('manualBtn').onclick = ()=>{ const n = parseInt($('manualInput').value.replace(/\D/g,''),10); if(n>0){ addTurn(n); $('manualInput').value=''; } };
-$('manualInput').addEventListener('keydown', e=>{ if(e.key==='Enter') $('manualBtn').click(); });
-$('clearTurn').onclick = ()=>{ state.turnPts = 0; state.turnLog = []; state.pickedUp = false; save(); render(); };
+$('clearTurn').onclick = ()=>{ openGroup = null; state.turnPts = 0; state.turnLog = []; state.pickedUp = false; save(); render(); };
 
 $('pickupBtn').onclick = ()=>{
   if(!state.lastBank) return;
@@ -278,6 +285,7 @@ function snapshot(){
 
 function endTurn(kind){
   snapshot();
+  openGroup = null;
   const p = cur();
   p.past = p.past || []; p.crosses = p.crosses || 0;
   const pickedUp = state.pickedUp;
@@ -386,7 +394,9 @@ function render(){
     : `${cp.name} doit faire au moins 1 000 points dans ce tour pour débloquer son compteur` + (state.turnPts ? ` (encore ${fmt(OPEN - state.turnPts)}).` : '.');
 
   const first = isFirstRoll();
-  document.querySelectorAll('#chips5 .chip').forEach(b => b.disabled = !first);
+  $('grp-five').disabled = !first;
+  if(openGroup === 'five' && !first) openGroup = null;
+  renderPicker();
   $('bankBtn').disabled = !canBank();
   $('bankBtn').textContent = state.turnPts>0 ? `Garder ${fmt(state.turnPts)} points` : 'Garder les points';
   if(cp){
