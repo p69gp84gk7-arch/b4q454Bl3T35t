@@ -283,6 +283,7 @@ function closePicker(){ ov.classList.remove('open'); cur = null; }
 function setScore(v){
   if (!cur) return;
   if (v === null) delete state.scores[cur.p][cur.key]; else state.scores[cur.p][cur.key] = v;
+  if (v !== null && window.plateau) plateau.reset(); // score noté : le tour suivant repart de zéro
   save(); closePicker(); render();
 }
 
@@ -326,5 +327,6 @@ render();
 
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 </script>
+<script src="plateau.js" data-jeu="yams"></script>
 </body>
 </html>

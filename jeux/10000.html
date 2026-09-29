@@ -286,6 +286,7 @@ function snapshot(){
 function endTurn(kind){
   snapshot();
   openGroup = null;
+  if(window.plateau) plateau.reset();
   const p = cur();
   p.past = p.past || []; p.crosses = p.crosses || 0;
   const pickedUp = state.pickedUp;
@@ -423,5 +424,6 @@ render();
 
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 </script>
+<script src="plateau.js" data-jeu="10000"></script>
 </body>
 </html>
