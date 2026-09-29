@@ -325,7 +325,9 @@ body.pl-open{ overflow:hidden; }
         html = '<div class="pl-row">';
         if(best.pts > (p.all ? p.pts : 0)) html += `<button class="pl-wide pl-auto" data-act="auto">Mettre de côté ce qui compte (+${fmt(best.pts)})</button>`;
         html += `<button class="pl-wide pl-bank" data-act="bank"${okBank ? '' : ' disabled'}>` +
-          (!j.opened() && total < 1000 && p.pts ? `Il faut 1 000 pour ouvrir` : total ? `Garder ${fmt(total)} points` : 'Garder les points') + '</button></div>';
+          (!j.opened() && total < 1000 && p.pts ? `Il faut 1 000 pour ouvrir`
+            : j.score && j.score() + total > 10000 ? `Dépasse 10 000 (${fmt(j.score() + total)}) : noter la croix`
+            : total ? `Garder ${fmt(total)} points` : 'Garder les points') + '</button></div>';
       }
     }
     props.innerHTML = html;

@@ -8,7 +8,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 
 | Jeu | Fichier | Joueurs |
 | --- | --- | --- |
-| **10 000** : ouverture à 1 000, croix, reprises, pénalités | `jeux/10000.html` | 2 à 15 |
+| **10 000** : ouverture à 1 000, croix (effacées en gardant au moins 500 points), reprises, pénalités ; il faut finir à 10 000 pile, dépasser donne une croix | `jeux/10000.html` | 2 à 15 |
 | **Yam's** : feuille de marque classique, bonus à 63 | `jeux/yams.html` | 1 à 10 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
