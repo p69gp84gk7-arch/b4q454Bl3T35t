@@ -1,8 +1,11 @@
 /* DesDés : plateau de 5 dés, lancés en glissant le doigt sur le tapis.
    Utilisation : <script src="plateau.js" data-jeu="yams"></script> (ou data-jeu="10000").
    - Yam's : 3 lancers au plus, on garde les dés de son choix entre deux lancers.
-   - 10 000 : lancers sans limite ; les dés mis de côté restent de côté jusqu'à la fin du tour,
-     et quand les 5 sont sortis on peut relancer les 5.
+   - 10 000 : lancers sans limite ; les dés mis de côté restent de côté jusqu'à la fin du tour.
+     Quand tous les dés lancés comptent, ou que les 2 derniers dés font un double (sauf 1 et 5),
+     la relance des 5 dés est obligatoire.
+   Après chaque lancer, le plateau reconnaît les figures et propose de les noter dans le carnet,
+   à travers window.plateauJeu défini par la page du jeu.
    Expose window.plateau = { open, close, reset }. */
 (() => {
   const JEU = document.currentScript && document.currentScript.dataset.jeu === 'yams' ? 'yams' : '10000';
@@ -31,7 +34,7 @@
 .pl-count{ font-size:.9rem; color:rgba(247,243,232,.75); margin-top:2px; font-variant-numeric:tabular-nums; }
 .pl-close{ border:1.5px solid rgba(247,243,232,.3); background:transparent; color:#F7F3E8; font:inherit;
   font-weight:600; padding:9px 14px; border-radius:10px; cursor:pointer; }
-.pl-tray{ position:relative; flex:1; min-height:220px; border-radius:18px; overflow:hidden; touch-action:none;
+.pl-tray{ position:relative; flex:1; min-height:180px; border-radius:18px; overflow:hidden; touch-action:none;
   background:#1F5C47; box-shadow:inset 0 0 0 6px #0C261D, inset 0 0 40px rgba(0,0,0,.45);
   background-image:radial-gradient(circle at 50% 30%, rgba(255,255,255,.09), transparent 65%);
   -webkit-user-select:none; user-select:none; cursor:grab; }
@@ -65,6 +68,24 @@
 .pl-new{ border:1.5px solid rgba(247,243,232,.3); background:transparent; color:#F7F3E8; }
 .pl-roll{ border:0; background:#E9B949; color:#1A1A1A; }
 .pl-roll:disabled{ opacity:.4; cursor:not-allowed; }
+.pl-props{ display:flex; flex-direction:column; gap:8px; max-height:36vh; overflow:auto; flex:none; }
+.pl-props[hidden]{ display:none; }
+.pl-props p{ margin:0; font-size:.85rem; color:rgba(247,243,232,.7); }
+.pl-props-head{ display:flex; align-items:center; gap:8px; font-size:.85rem; font-weight:600; color:rgba(247,243,232,.75); }
+.pl-props select{ font:inherit; font-weight:700; padding:6px 8px; border-radius:8px; border:0; background:#F7F3E8; color:#1A1A1A; max-width:60%; }
+.pl-opts{ display:grid; grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:6px; }
+.pl-opt{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:7px 6px; border-radius:10px;
+  border:1.5px solid rgba(247,243,232,.25); background:rgba(0,0,0,.2); color:#F7F3E8; font:inherit; font-size:.85rem; line-height:1.15; cursor:pointer; }
+.pl-opt b{ font-size:1.2rem; }
+.pl-opt.fig{ background:#F7F3E8; color:#1A1A1A; border-color:#E9B949; box-shadow:0 0 0 2px #E9B949; }
+.pl-props summary{ cursor:pointer; font-size:.85rem; font-weight:600; color:rgba(247,243,232,.75); padding:2px 0; }
+.pl-props details .pl-opts{ margin-top:6px; }
+.pl-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; }
+.pl-wide{ font:inherit; font-weight:700; font-size:.95rem; padding:12px 10px; border-radius:12px; cursor:pointer; border:0; }
+.pl-bank{ background:#F7F3E8; color:#1A1A1A; }
+.pl-bust{ background:#C8372D; color:#fff; }
+.pl-auto{ background:transparent; color:#F7F3E8; border:1.5px dashed #E9B949; }
+.pl-wide:disabled{ opacity:.4; cursor:not-allowed; }
 body.pl-open{ overflow:hidden; }
 `;
   document.head.insertAdjacentHTML('beforeend', `<style>${css}</style>`);
@@ -92,13 +113,16 @@ body.pl-open{ overflow:hidden; }
     </div>
     <div class="pl-tray"><p class="pl-hint">${SWIPE_ICON}<span>Glissez le doigt sur le tapis pour lancer</span></p></div>
     <div class="pl-keep"><span class="pl-keep-label">${JEU === 'yams' ? 'Gardés' : 'De côté'}</span><div class="pl-slots"></div></div>
+    <div class="pl-props" hidden></div>
     <p class="pl-msg" aria-live="polite"></p>
     <div class="pl-actions"><button class="pl-new">Nouveau tour</button><button class="pl-roll">Lancer</button></div>`;
   document.body.append(fab, ov);
 
   const q = s => ov.querySelector(s);
   const tray = q('.pl-tray'), slots = q('.pl-slots'), hint = q('.pl-hint');
-  const msgEl = q('.pl-msg'), countEl = q('.pl-count'), rollBtn = q('.pl-roll');
+  const msgEl = q('.pl-msg'), countEl = q('.pl-count'), rollBtn = q('.pl-roll'), props = q('.pl-props');
+  const fmt = n => n.toLocaleString('fr-FR');
+  const esc = t => String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   /* ---------- Dés ---------- */
   const PIPS = { 0:[], 1:[4], 2:[2,6], 3:[2,4,6], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8] };
@@ -146,30 +170,62 @@ body.pl-open{ overflow:hidden; }
 
   /* ---------- État du tour ---------- */
   let rolls = 0, anim = 0;
+  let mustRoll5 = false, busted = false, curFirst = false, notice = '', lastRolled = [];
+  let yPlayer = null, propsKey = '';
   const free = () => dice.filter(d => !d.kept);
   const newlyKept = () => dice.filter(d => d.kept && !d.locked);
+  // Lien avec le carnet de la page ; absent ou inactif (partie pas commencée) : le plateau sert seul
+  const jeu = () => { const j = window.plateauJeu; return j && (!j.active || j.active()) ? j : null; };
+
+  /* Points du 10 000 pour une poignée de dés.
+     used[f] : nombre de dés de valeur f qui rapportent ; all : tous les dés rapportent. */
+  function score10000(vals, first){
+    const c = [0,0,0,0,0,0,0];
+    vals.forEach(v => c[v]++);
+    if(vals.length === 5 && ([1,2,3,4,5].every(f => c[f] === 1) || [2,3,4,5,6].every(f => c[f] === 1)))
+      return { pts:1500, used:c, all:true };
+    const used = [0,0,0,0,0,0,0];
+    let pts = 0;
+    for(let f = 1; f <= 6; f++){
+      let k = c[f];
+      const triple = f === 1 ? 1000 : f * 100;
+      if(k >= 5 && first){ pts += f === 1 ? 10000 : f * 1000; used[f] += 5; k -= 5; }
+      else if(k >= 4){ pts += triple * 2; used[f] += 4; k -= 4; }
+      else if(k >= 3){ pts += triple; used[f] += 3; k -= 3; }
+      if(f === 1){ pts += 100 * k; used[f] += k; }
+      if(f === 5){ pts += 50 * k; used[f] += k; }
+    }
+    const n = used.reduce((a, b) => a + b, 0);
+    return { pts, used, all: n > 0 && n === vals.length };
+  }
+  const pending = () => score10000(newlyKept().map(d => d.v), curFirst);
 
   function canThrow(){
     if(anim) return false;
     if(JEU === 'yams') return rolls < MAX_YAMS && free().length > 0;
-    // 10 000 : après un lancer, il faut avoir mis au moins un dé de côté (ou avoir sorti les 5)
-    return rolls === 0 || newlyKept().length > 0;
+    if(busted) return false;
+    if(rolls === 0 || mustRoll5) return true;
+    // 10 000 : il faut avoir mis de côté au moins un dé, et seulement des dés qui rapportent
+    return newlyKept().length > 0 && pending().all;
   }
 
   function update(){
     const vals = dice.filter(d => d.v).map(d => d.v);
     const sum = vals.reduce((a, b) => a + b, 0);
+    const j = jeu();
+    const p = JEU === '10000' ? pending() : null;
     if(JEU === 'yams'){
       countEl.textContent = `Lancer ${rolls} / ${MAX_YAMS}` + (rolls && !anim ? ` · total des dés ${sum}` : '');
     } else {
-      countEl.textContent = rolls ? `Lancer n° ${rolls}` : 'Nouveau tour';
+      const total = (j ? j.turnPts() : 0) + (p.all ? p.pts : 0);
+      countEl.textContent = (j ? `${j.player()} · ` : '') + `tour : ${fmt(total)} pts` + (rolls ? ` · lancer n° ${rolls}` : '');
     }
 
-    const allOut = JEU === '10000' && rolls > 0 && free().length === 0;
     rollBtn.disabled = !canThrow();
     rollBtn.textContent = anim ? 'Les dés roulent…'
       : JEU === 'yams' && rolls >= MAX_YAMS ? 'Plus de lancer'
-      : allOut ? 'Relancer les 5'
+      : busted ? 'Raté'
+      : mustRoll5 ? 'Relancer les 5 dés'
       : rolls === 0 ? 'Lancer les 5 dés'
       : `Relancer ${free().length} dé${free().length > 1 ? 's' : ''}`;
 
@@ -177,28 +233,100 @@ body.pl-open{ overflow:hidden; }
     if(anim) m = '';
     else if(rolls === 0) m = 'Glissez le doigt sur le tapis pour lancer les 5 dés (ou touchez le bouton).';
     else if(JEU === 'yams'){
-      m = rolls >= MAX_YAMS ? '3 lancers faits : notez votre score.'
-        : 'Touchez les dés à garder, puis glissez pour relancer les autres.';
+      m = rolls >= MAX_YAMS ? '3 lancers faits : choisissez la case à remplir.'
+        : 'Touchez les dés à garder, puis glissez pour relancer les autres. Vous pouvez aussi noter tout de suite.';
     } else {
-      m = allOut ? 'Les 5 dés sont sortis : vous pouvez relancer les 5, ou garder vos points.'
-        : newlyKept().length ? 'Relancez les dés restants, ou notez vos points.'
+      const nk = newlyKept().length;
+      m = busted ? 'Aucun dé ne rapporte de points : raté !'
+        : mustRoll5 ? notice
+        : nk && !p.all ? 'Un dé mis de côté ne rapporte rien : touchez-le pour le reprendre.'
+        : nk ? `+${fmt(p.pts)} avec les dés mis de côté. Relancez les ${free().length} autres, ou gardez vos points.`
         : 'Touchez les dés qui rapportent des points pour les mettre de côté.';
     }
     msgEl.textContent = m;
     hint.classList.toggle('off', !canThrow());
     slots.querySelector('.pl-empty')?.remove();
     if(!dice.some(d => d.kept)) slots.insertAdjacentHTML('beforeend', `<span class="pl-empty">${JEU === 'yams' ? 'Touchez un dé pour le garder' : 'Touchez un dé pour le mettre de côté'}</span>`);
+    renderProps();
   }
+
+  /* ---------- Propositions pour le carnet ---------- */
+  function renderProps(){
+    const j = jeu();
+    if(!j || anim || rolls === 0){ props.hidden = true; propsKey = ''; return; }
+    let html;
+    if(JEU === 'yams'){
+      const names = j.players();
+      if(yPlayer === null || yPlayer >= names.length) yPlayer = j.nextPlayer();
+      const vals = dice.map(d => d.v);
+      const key = vals.join() + '|' + yPlayer;
+      if(key === propsKey && !props.hidden) return;   // garder l'état ouvert/fermé de « Rayer »
+      propsKey = key;
+      const opts = j.options(vals, yPlayer);
+      const good = opts.filter(o => o.pts > 0);
+      html = `<div class="pl-props-head"><span>Noter pour</span><select class="pl-who" aria-label="Joueur">${names.map((n, i) => `<option value="${i}"${i === yPlayer ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></div>`;
+      if(!opts.length) html += '<p>Toutes les cases de ce joueur sont remplies.</p>';
+      else {
+        html += good.length
+          ? `<div class="pl-opts">${good.map(o => `<button class="pl-opt${o.fig ? ' fig' : ''}" data-key="${o.key}" data-v="${o.pts}">${esc(o.label)}<b>${o.pts}</b></button>`).join('')}</div>`
+          : '<p>Aucune case libre ne rapporte de points avec ces dés.</p>';
+        html += `<details${good.length ? '' : ' open'}><summary>Rayer une case</summary><div class="pl-opts">${opts.map(o => `<button class="pl-opt" data-key="${o.key}" data-v="x">${esc(o.label)}<b>✕</b></button>`).join('')}</div></details>`;
+      }
+    } else {
+      propsKey = '';
+      if(busted) html = `<button class="pl-wide pl-bust" data-act="bust">Noter : ${esc(j.bustLabel())}</button>`;
+      else if(mustRoll5){ props.hidden = true; return; }
+      else {
+        const p = pending();
+        const best = score10000(lastRolled.map(d => d.v), curFirst);
+        const total = j.turnPts() + (p.all ? p.pts : 0);
+        const okBank = p.all && p.pts > 0 && (j.opened() || total >= 1000);
+        html = '<div class="pl-row">';
+        if(best.pts > (p.all ? p.pts : 0)) html += `<button class="pl-wide pl-auto" data-act="auto">Mettre de côté ce qui compte (+${fmt(best.pts)})</button>`;
+        html += `<button class="pl-wide pl-bank" data-act="bank"${okBank ? '' : ' disabled'}>` +
+          (!j.opened() && total < 1000 && p.pts ? `Il faut 1 000 pour ouvrir` : total ? `Garder ${fmt(total)} points` : 'Garder les points') + '</button></div>';
+      }
+    }
+    props.innerHTML = html;
+    props.hidden = false;
+  }
+
+  // 10 000 : mettre de côté tous les dés du dernier lancer qui rapportent
+  function autoKeep(){
+    const need = score10000(lastRolled.map(d => d.v), curFirst).used.slice();
+    lastRolled.forEach(d => { if(d.kept) setKept(d, false); });
+    lastRolled.forEach(d => { if(need[d.v] > 0){ need[d.v]--; setKept(d, true); } });
+    update();
+  }
+  function setKept(d, on){
+    d.kept = on;
+    d.el.classList.toggle('kept', on);
+    if(on) slots.append(d.el);
+    else { tray.append(d.el); clamp(d); place(d); }
+    showFace(d, d.v);
+  }
+
+  props.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    const j = jeu();
+    if(!b || b.disabled || !j) return;
+    if(b.dataset.key){
+      j.note(yPlayer, b.dataset.key, b.dataset.v === 'x' ? 'x' : Number(b.dataset.v));
+      reset(); close();
+    } else if(b.dataset.act === 'auto') autoKeep();
+    else if(b.dataset.act === 'bank'){
+      const p = pending();
+      if(p.all && p.pts) j.add(p.pts);
+      j.bank(); reset(); close();
+    } else if(b.dataset.act === 'bust'){ j.bust(); reset(); close(); }
+  });
+  props.addEventListener('change', e => { if(e.target.matches('.pl-who')){ yPlayer = Number(e.target.value); renderProps(); } });
 
   function toggleKeep(d){
     if(anim || rolls === 0 || !d.v) return;
     if(JEU === 'yams' && rolls >= MAX_YAMS) return;
-    if(d.locked) return;
-    d.kept = !d.kept;
-    d.el.classList.toggle('kept', d.kept);
-    if(d.kept){ slots.append(d.el); }
-    else { tray.append(d.el); clamp(d); place(d); }
-    showFace(d, d.v);
+    if(d.locked || busted || mustRoll5) return;
+    setKept(d, !d.kept);
     update();
   }
 
@@ -206,15 +334,22 @@ body.pl-open{ overflow:hidden; }
   function throwDice(dirX, dirY, speed){
     if(!canThrow()) return;
     if(JEU === '10000'){
-      if(rolls > 0 && free().length === 0){
-        // Main pleine : les 5 dés reviennent sur le tapis
+      const j = jeu();
+      if(rolls > 0 && !mustRoll5){
+        // Les points des dés mis de côté passent dans le carnet
+        const p = pending();
+        if(j && p.pts) j.add(p.pts);
+        newlyKept().forEach(d => { d.locked = true; d.el.classList.add('locked'); });
+      }
+      if(mustRoll5 || free().length === 0){
+        // Les 5 dés reviennent sur le tapis
         dice.forEach(d => { d.kept = d.locked = false; d.el.classList.remove('kept', 'locked'); tray.append(d.el); });
         lineUp();
-      } else {
-        newlyKept().forEach(d => { d.locked = true; d.el.classList.add('locked'); });
+        mustRoll5 = false;
       }
     }
     const rolling = free();
+    lastRolled = rolling;
     const len = Math.hypot(dirX, dirY) || 1;
     rolling.forEach(d => {
       const ang = Math.atan2(dirY / len, dirX / len) + (rand() - .5) * 0.7;
@@ -224,7 +359,11 @@ body.pl-open{ overflow:hidden; }
       d.target = face();
     });
     rolls++;
-    if(REDUCE){ rolling.forEach(d => { d.x = D + rand() * (W - 2 * D); d.y = D + rand() * (H - 2 * D); d.a = (rand() - .5) * 40; }); finish(rolling); return; }
+    if(REDUCE){
+      // Sans animation : les dés se posent en ligne au milieu du tapis
+      rolling.forEach((d, k) => { d.x = W / 2 + (k - (rolling.length - 1) / 2) * D * 1.3; d.y = H / 2 + (rand() - .5) * D; d.a = (rand() - .5) * 30; clamp(d); });
+      finish(rolling); return;
+    }
     run(rolling);
   }
 
@@ -281,9 +420,29 @@ body.pl-open{ overflow:hidden; }
     anim = 0;
     tray.classList.remove('busy');
     rolling.forEach(d => { d.s = 1; showFace(d, d.target); place(d); });
+    if(JEU === '10000') judge10000(rolling);
     update();
     const res = rolling.map(d => d.v).sort((a, b) => a - b).join(', ');
     msgEl.textContent = `Résultat : ${res}. ` + msgEl.textContent;
+  }
+
+  // 10 000 : ce que donne le lancer (raté, relance obligatoire des 5, ou choix des dés)
+  function judge10000(rolled){
+    const vals = rolled.map(d => d.v);
+    const j = jeu();
+    curFirst = rolls === 1 && (!j || j.firstRoll());
+    const s = score10000(vals, curFirst);
+    notice = '';
+    if(vals.length === 2 && vals[0] === vals[1] && vals[0] !== 1 && vals[0] !== 5){
+      mustRoll5 = true;
+      notice = `Double ${vals[0]} avec les 2 derniers dés : relance obligatoire des 5 dés.`;
+    } else if(s.all){
+      // Tous les dés lancés rapportent : points ajoutés, et relance obligatoire des 5
+      if(j) j.add(s.pts);
+      rolled.forEach(d => { setKept(d, true); d.locked = true; d.el.classList.add('locked'); });
+      mustRoll5 = true;
+      notice = `Tous les dés comptent (+${fmt(s.pts)}) : relance obligatoire des 5 dés.`;
+    } else if(s.pts === 0) busted = true;
   }
 
   /* ---------- Glisser pour lancer ---------- */
@@ -328,6 +487,7 @@ body.pl-open{ overflow:hidden; }
   function reset(){
     if(anim){ cancelAnimationFrame(anim); anim = 0; tray.classList.remove('busy'); }
     rolls = 0;
+    mustRoll5 = busted = curFirst = false; notice = ''; lastRolled = []; yPlayer = null; propsKey = '';
     dice.forEach(d => { d.kept = d.locked = false; d.el.classList.remove('kept', 'locked'); tray.append(d.el); showFace(d, 0); });
     if(!ov.hidden) lineUp();
     update();
@@ -348,7 +508,8 @@ body.pl-open{ overflow:hidden; }
   fab.onclick = open;
   q('.pl-close').onclick = close;
   document.addEventListener('keydown', e => { if(e.key === 'Escape' && !ov.hidden){ e.stopPropagation(); close(); } }, true);
-  addEventListener('resize', () => { if(ov.hidden) return; measure(); dice.forEach(place); });
+  // Le tapis change de taille (rotation, propositions affichées en dessous) : les dés restent dedans
+  new ResizeObserver(() => { if(ov.hidden || anim) return; measure(); dice.forEach(place); }).observe(tray);
 
   dice.forEach(d => showFace(d, 0));
   update();
