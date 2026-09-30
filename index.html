@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DesDés</title>
-<meta name="description" content="Nos jeux : carnets de score du 10 000 et du Yam's, quiz de géographie.">
+<meta name="description" content="Nos jeux : carnets de score du 10 000 et du Yam's, quiz de géographie, course Draw Race.">
 <meta name="theme-color" content="#123A2C">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -82,7 +82,16 @@ h2{ font-size:.85rem; font-weight:600; text-transform:uppercase; letter-spacing:
 .ggeo .status b{ color:var(--ivory); }
 .ggeo .go{ background:#A9CFE6; color:#0F3B57; }
 .ggeo .corner{ position:absolute; right:-8px; top:-8px; width:76px; height:76px; transform:rotate(-8deg); }
-@media (min-width:620px){ .ggeo{ grid-column:1 / -1; min-height:0; } }
+
+/* Carte Draw Race : papier et crayon */
+.gdraw{ background:#F1EADA; color:#1F1F1F; border:2px solid #1F1F1F; box-shadow:4px 5px 0 #1F1F1F;
+  background-image:radial-gradient(rgba(0,0,0,.06) 1px, transparent 1px); background-size:14px 14px; }
+.gdraw .title{ font-family:"Kalam","Comic Sans MS",cursive; font-size:2.3rem; transform:rotate(-2deg); }
+.gdraw .title span{ color:#D7263D; }
+.gdraw .desc, .gdraw .status{ color:#5E574A; }
+.gdraw .status b{ color:#1F1F1F; }
+.gdraw .go{ background:#D7263D; color:#fff; }
+.gdraw .corner{ position:absolute; right:-6px; top:4px; width:96px; height:56px; transform:rotate(-14deg); }
 
 /* Carte Yam's : feuille quadrillée, comme le carnet */
 .gyams{ color:#26324A; background-color:var(--paper);
@@ -111,7 +120,7 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
     <img src="logo.svg" alt="">
     <div>
       <h1>DesDés</h1>
-      <p class="tagline">Nos carnets de jeux de dés et un quiz de géographie.</p>
+      <p class="tagline">Nos carnets de jeux de dés, un quiz de géographie et une course à dessiner.</p>
     </div>
   </header>
 
@@ -150,6 +159,24 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
       <p class="status" id="stgeo"><b>Pas encore de record</b></p>
       <span class="go">Jouer</span>
     </a>
+
+    <a class="game gdraw" href="jeux/drawrace.html">
+      <svg class="corner" viewBox="0 0 96 56" aria-hidden="true" fill="none" stroke="#1F1F1F" stroke-width="2.2" stroke-linejoin="round">
+        <path d="M6 44 C 26 8, 50 52, 90 14" stroke="#2E9E5B" stroke-width="4" stroke-dasharray="0" stroke-linecap="round"/>
+        <g transform="translate(54 22) rotate(-20)">
+          <rect x="-14" y="-10" width="7" height="5" fill="#222"/><rect x="-14" y="5" width="7" height="5" fill="#222"/>
+          <rect x="6" y="-9" width="6" height="4" fill="#222"/><rect x="6" y="5" width="6" height="4" fill="#222"/>
+          <rect x="-17" y="-8" width="4" height="16" fill="#2B2B2B"/>
+          <path d="M-13 -4 L-3 -5.5 L4 -3.5 L14 -1.5 L14 1.5 L4 3.5 L-3 5.5 L-13 4 Z" fill="#D7263D"/>
+          <rect x="13" y="-10" width="3" height="20" fill="#D7263D"/>
+          <circle cx="0" cy="0" r="2" fill="#FFE066"/>
+        </g>
+      </svg>
+      <p class="title">Draw <span>Race</span></p>
+      <p class="desc">Dessinez la trajectoire de votre monoplace, puis foncez avec le Boost. 10 circuits, jusqu'à 4 joueurs.</p>
+      <p class="status" id="stdraw"><b>Pas encore de record</b></p>
+      <span class="go">Jouer</span>
+    </a>
   </nav>
 
   <p class="soon"><b>D'autres jeux arriveront ici.</b> Chaque partie est gardée sur cet appareil : vous pouvez quitter un jeu et y revenir plus tard.</p>
@@ -157,6 +184,7 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
   <footer id="installHint">Astuce : ajoutez DesDés à l'écran d'accueil pour l'ouvrir comme une application, même sans réseau.</footer>
 </main>
 
+<script src="jeux/drawrace/circuits.js"></script>
 <script>
 const fmt = n => n.toLocaleString('fr-FR');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -220,7 +248,19 @@ function showGeo(){
   el.innerHTML = `<b>Record ${jeu === 'carte' ? 'carte' : 'drapeaux'} · ${GEO_ZONES[zone] || zone}</b>` +
     `${r.score} / ${r.total} en ${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}${r.nom ? ` par ${esc(r.nom)}` : ''}`;
 }
-function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); }
+/* Draw Race : record du dernier circuit choisi (clés partagées avec jeux/drawrace.html) */
+function showDraw(){
+  const recs = read('drawrace-records') || {};
+  const choix = read('drawrace-choix') || {};
+  const id = recs[choix.circuit] && recs[choix.circuit].courses.length ? choix.circuit : Object.keys(recs).find(k => recs[k].courses && recs[k].courses.length);
+  const el = document.getElementById('stdraw');
+  if(!id){ el.innerHTML = '<b>Pas encore de record</b>'; return; }
+  const circ = (window.CIRCUITS || []).find(x => x.id === id);
+  const r = recs[id].courses[0], c = circ ? circ.n : id;
+  const s = r.temps / 1000, m = Math.floor(s / 60);
+  el.innerHTML = `<b>Record · ${esc(c)}</b>${m}:${(s - m * 60).toFixed(2).padStart(5, '0')} par ${esc(r.nom)}`;
+}
+function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); }
 refresh();
 // Retour depuis un jeu (cache de navigation) : remettre les états à jour
 window.addEventListener('pageshow', refresh);

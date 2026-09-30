@@ -1,6 +1,6 @@
 # DesDés
 
-Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés et un quiz de géographie.
+Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés, un quiz de géographie et une course à dessiner.
 
 ![Logo](logo.svg)
 
@@ -11,6 +11,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **10 000** : ouverture à 1 000, croix (effacées dès qu'on note des points ou le −500 du 1er lancer), reprises, pénalités ; il faut finir à 10 000 pile, dépasser donne une croix, et on ne peut pas reprendre des points qui mèneraient à 10 000 ou plus | `jeux/10000.html` | 2 à 15 |
 | **Yam's** : feuille de marque classique, bonus à 63 | `jeux/yams.html` | 1 à 10 |
 | **Géographie** : drapeaux et placement des pays sur la carte, par continent ou le monde, avec chrono et records | `jeux/geo.html` | 1 |
+| **Draw Race** : course de monoplaces dont on dessine la trajectoire, 10 circuits inspirés de la F1 | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -42,6 +43,15 @@ Le chrono tourne pendant toute la partie. Les 5 meilleurs résultats de chaque j
 
 Les données (`jeux/geo/monde.js` et `jeux/geo/drapeaux/`) sont produites par `outils/construire-geo.mjs` à partir de : Natural Earth via world-atlas (domaine public), mledoze/countries via world-countries (licence ODbL), drapeaux flag-icons (licence MIT), noms français du CLDR.
 
+## Draw Race
+
+1. On choisit un circuit (10 circuits inspirés de la F1, difficulté de 1 à 5, de 2 à 5 tours), le nombre de joueurs (1 à 4, sur le même appareil), la couleur de chaque monoplace et le niveau des adversaires.
+2. Chaque joueur dessine sa trajectoire sur un tour, en partant de la ligne à damier. La vitesse du doigt devient la vitesse de la voiture : la jauge et la couleur du trait passent du vert (lent) au rouge (rapide). Un trait trop rapide dans un virage est signalé par ⚠ : la voiture y dérapera.
+3. La course se joue à 4 voitures (les places libres sont prises par des adversaires). Chaque voiture suit son tracé pendant tous les tours. Chaque joueur a 3 Boosts (vitesse ×1,4 pendant 1,3 s) ; un Boost dans un virage peut faire déraper.
+
+Hors piste, la voiture ralentit. Les records (5 meilleurs temps et meilleur tour) sont gardés par circuit.
+Les circuits sont dans `jeux/drawrace/circuits.js` (points de passage), la géométrie dans `jeux/drawrace/piste.js`.
+
 ## Mise en ligne
 
 Le site est fait de fichiers statiques, sans installation ni compilation.
@@ -67,6 +77,8 @@ jeux/plateau.js        plateau de 5 dés à lancer, commun aux deux jeux
 jeux/geo.html          jeu de géographie
 jeux/geo/              données de la carte et drapeaux
 outils/                script qui fabrique les données de géographie
+jeux/drawrace.html     jeu Draw Race
+jeux/drawrace/         circuits et géométrie de Draw Race
 logo.svg               logo (source vectorielle)
 icons/                 icônes de l'application (192, 512, masquable, Apple)
 manifest.webmanifest   description de l'application installable

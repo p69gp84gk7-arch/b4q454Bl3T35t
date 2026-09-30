@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Draw Race · DesDés</title>
+<meta name="theme-color" content="#F1EADA">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DesDés">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Kalam:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F1EADA; --paper-2:#E6DCC4; --ink:#1F1F1F; --muted:#6B6456; --red:#D7263D; --gold:#E9B949; --green:#2E9E5B;
+  --card:#FFFDF7; --line:rgba(31,31,31,.14);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --paper:#E9E1CE; --paper-2:#DCD0B4; }
+}
+:root[data-theme="dark"]{ --paper:#E9E1CE; --paper-2:#DCD0B4; }
+*,*::before,*::after{ box-sizing:inherit; }
+html,body{ margin:0; }
+body{ background:var(--paper); color:var(--ink); min-height:100vh;
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background-image:radial-gradient(rgba(0,0,0,.05) 1px, transparent 1px); background-size:14px 14px; }
+button{ font:inherit; cursor:pointer; border:0; border-radius:12px; color:inherit; }
+button:focus-visible, input:focus-visible, a:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
+[hidden]{ display:none !important; }
+
+/* ---------- Menu ---------- */
+.page{ max-width:680px; margin:0 auto; padding:20px 16px 48px; }
+.home{ display:inline-flex; align-items:center; gap:8px; color:var(--muted); text-decoration:none; font-weight:600; font-size:.95rem; padding:6px 10px 6px 6px; margin-left:-6px; border-radius:10px; }
+.home::before{ content:"←"; margin-right:2px; }
+.home:hover{ background:rgba(0,0,0,.06); color:var(--ink); }
+h1{ font-family:"Kalam","Comic Sans MS",cursive; font-size:clamp(2.6rem,12vw,3.6rem); line-height:.95; margin:10px 0 6px; transform:rotate(-2deg); }
+h1 span{ color:var(--red); }
+.sub{ color:var(--muted); margin:0 0 18px; line-height:1.4; }
+h2{ font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:24px 0 10px; }
+.circuits{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+.circ{ display:flex; flex-direction:column; gap:4px; padding:10px; background:var(--card); border:2px solid var(--line); text-align:left; box-shadow:2px 3px 0 rgba(0,0,0,.08); }
+.circ svg{ width:100%; height:110px; }
+.circ b{ font-size:1rem; line-height:1.1; }
+.circ small{ color:var(--muted); font-size:.78rem; line-height:1.25; }
+.circ .rec{ color:var(--ink); font-weight:600; }
+.circ[aria-pressed="true"]{ border-color:var(--ink); box-shadow:3px 4px 0 var(--ink); }
+.dots{ letter-spacing:2px; color:var(--red); font-size:.8rem; }
+.dots i{ color:#cfc6b1; font-style:normal; }
+.seg{ display:inline-flex; background:var(--card); border:2px solid var(--line); border-radius:12px; overflow:hidden; }
+.seg button{ padding:9px 14px; border-radius:0; font-weight:700; background:transparent; }
+.seg button[aria-pressed="true"]{ background:var(--ink); color:#fff; }
+.players{ display:grid; gap:10px; margin-top:10px; }
+.player{ padding:12px; background:var(--card); border:2px solid var(--line); border-radius:14px; display:grid; gap:8px; }
+.player-top{ display:flex; align-items:center; gap:10px; }
+.player canvas{ width:62px; height:36px; flex:none; }
+.player input{ flex:1; min-width:0; font:inherit; font-size:1rem; padding:9px 12px; border-radius:10px; border:2px solid var(--line); background:#fff; }
+.swatches{ display:flex; flex-wrap:wrap; gap:6px; }
+.sw{ width:30px; height:30px; border-radius:50%; border:2px solid rgba(0,0,0,.35); padding:0; }
+.sw[aria-pressed="true"]{ outline:3px solid var(--ink); outline-offset:2px; }
+.go{ width:100%; margin-top:20px; padding:15px; background:var(--red); color:#fff; font-weight:800; font-size:1.15rem; box-shadow:3px 4px 0 var(--ink); }
+
+/* ---------- Jeu (tracé et course) ---------- */
+.stage-wrap{ position:fixed; inset:0; display:flex; flex-direction:column; background:var(--paper);
+  padding:calc(8px + env(safe-area-inset-top,0px)) 10px calc(10px + env(safe-area-inset-bottom,0px)); gap:8px; }
+.top{ display:flex; align-items:center; gap:8px; min-height:42px; }
+.top .quit{ padding:8px 12px; background:var(--card); border:2px solid var(--line); font-weight:700; }
+.banner{ flex:1; font-weight:800; font-size:1.05rem; line-height:1.15; }
+.banner small{ display:block; font-weight:600; font-size:.8rem; color:var(--muted); }
+.timer{ font-family:"Kalam",cursive; font-size:1.4rem; font-variant-numeric:tabular-nums; }
+.stage{ position:relative; flex:1; min-height:0; display:flex; align-items:center; justify-content:center; }
+#cv{ display:block; touch-action:none; border-radius:14px; box-shadow:0 0 0 2px var(--ink), 4px 6px 0 rgba(0,0,0,.18); }
+.gauge{ position:relative; height:26px; border:2px solid var(--ink); border-radius:14px; overflow:hidden; flex:none;
+  background:linear-gradient(90deg, rgba(46,158,91,.18), rgba(233,185,73,.25), rgba(215,38,61,.22)); }
+.gauge i{ position:absolute; left:0; top:0; bottom:0; width:0; background:#2E9E5B; transition:width .06s linear; }
+.gauge span, .gauge b{ position:absolute; top:50%; transform:translateY(-50%); font-size:.8rem; font-weight:800; }
+.gauge span{ left:10px; } .gauge b{ right:10px; font-variant-numeric:tabular-nums; }
+.msg{ min-height:2.4em; margin:0; text-align:center; font-weight:600; line-height:1.2; }
+.msg.warn{ color:var(--red); }
+.controls{ display:flex; gap:8px; }
+.controls button{ flex:1; padding:13px 10px; font-weight:800; font-size:1rem; box-shadow:2px 3px 0 var(--ink); border:2px solid var(--ink); }
+.btn-light{ background:var(--card); }
+.btn-red{ background:var(--red); color:#fff; }
+.btn-red:disabled{ opacity:.4; box-shadow:none; }
+.lights{ position:absolute; top:12px; left:50%; transform:translateX(-50%); display:flex; gap:8px; padding:8px 10px; background:#1F1F1F; border-radius:12px; }
+.lights i{ width:22px; height:22px; border-radius:50%; background:#444; }
+.lights i.on{ background:#FF2A2A; box-shadow:0 0 12px #FF2A2A; }
+.standings{ position:absolute; left:6px; top:6px; background:rgba(255,253,247,.9); border:2px solid var(--ink); border-radius:10px; padding:4px 8px; font-size:.8rem; line-height:1.45; }
+.standings div{ display:flex; align-items:center; gap:6px; white-space:nowrap; }
+.standings em{ width:10px; height:10px; border-radius:50%; border:1.5px solid var(--ink); display:inline-block; }
+.boosts{ display:flex; gap:8px; }
+.boost{ flex:1; min-height:64px; border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); font-weight:800; font-size:1.05rem; line-height:1.1; -webkit-user-select:none; user-select:none; touch-action:manipulation; }
+.boost small{ display:block; font-size:.75rem; font-weight:700; opacity:.85; }
+.boost:disabled{ opacity:.45; box-shadow:none; }
+.boost.on{ transform:translateY(2px); box-shadow:0 1px 0 var(--ink); }
+
+/* ---------- Résultats ---------- */
+table{ width:100%; border-collapse:collapse; background:var(--card); border:2px solid var(--ink); border-radius:12px; overflow:hidden; }
+th, td{ padding:9px 8px; text-align:left; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+th{ font-size:.78rem; color:var(--muted); }
+td.r, th.r{ text-align:right; }
+tr.me td{ font-weight:800; }
+.dot{ display:inline-block; width:12px; height:12px; border-radius:50%; border:1.5px solid var(--ink); vertical-align:-1px; margin-right:6px; }
+.badges{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:12px 0; }
+.badge{ padding:6px 12px; border-radius:999px; background:var(--gold); font-weight:800; border:2px solid var(--ink); }
+.row{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:18px; }
+.row button{ padding:13px 6px; font-weight:800; border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); }
+.podium{ font-family:"Kalam",cursive; font-size:2.2rem; text-align:center; margin:6px 0 0; }
+@media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+</style>
+</head>
+<body>
+
+<!-- Menu -->
+<main class="page" id="menu">
+  <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">DesDés</a>
+  <h1>Draw <span>Race</span></h1>
+  <p class="sub">Dessinez la trajectoire de votre monoplace : la vitesse de votre doigt devient la vitesse de la voiture. Trop vite dans un virage, et c'est le dérapage ! Pendant la course, gardez le Boost pour les lignes droites.</p>
+
+  <h2>Circuit</h2>
+  <div class="circuits" id="circuits"></div>
+
+  <h2>Joueurs</h2>
+  <div class="seg" id="nbJoueurs" role="group" aria-label="Nombre de joueurs"></div>
+  <div class="players" id="players"></div>
+
+  <h2>Adversaires</h2>
+  <div class="seg" id="niveau" role="group" aria-label="Niveau des adversaires"></div>
+
+  <button class="go" id="goDraw">Tracer ma trajectoire</button>
+</main>
+
+<!-- Tracé et course -->
+<section class="stage-wrap" id="jeu" hidden>
+  <div class="top">
+    <button class="quit" id="quit">Menu</button>
+    <div class="banner" id="banner"></div>
+    <div class="timer" id="timer" hidden>0:00.0</div>
+  </div>
+  <div class="gauge" id="gauge" hidden><i></i><span>Vitesse du tracé</span><b id="kmh">0 km/h</b></div>
+  <div class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="lights" id="lights" hidden><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="standings" id="standings" hidden></div>
+  </div>
+  <p class="msg" id="msg" aria-live="polite"></p>
+  <div class="controls" id="drawCtl">
+    <button class="btn-light" id="clear">Effacer</button>
+    <button class="btn-red" id="done" disabled>C'est parti</button>
+  </div>
+  <div class="boosts" id="boosts" hidden></div>
+</section>
+
+<!-- Résultats -->
+<main class="page" id="fin" hidden>
+  <p class="podium" id="podium"></p>
+  <h2 id="finTitle">Résultats</h2>
+  <table id="results"></table>
+  <div class="badges" id="badges"></div>
+  <h2 id="recTitle">Records du circuit</h2>
+  <table id="records"></table>
+  <div class="row">
+    <button class="btn-light" id="toMenu">Menu</button>
+    <button class="btn-light" id="redraw">Retracer</button>
+    <button class="btn-red" id="rematch">Revanche</button>
+  </div>
+</main>
+
+<script src="drawrace/circuits.js"></script>
+<script src="drawrace/piste.js"></script>
+<script>
+const P = window.Piste;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const get = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const put = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const fmtTime = ms => { if(ms == null) return '—'; const s = ms / 1000, m = Math.floor(s / 60); return `${m}:${(s - m * 60).toFixed(2).padStart(5, '0')}`; };
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+const COULEURS = ['#D7263D', '#1B6FD8', '#F2C230', '#1E9E5B', '#F28C28', '#7B3FC4', '#E75A9B', '#2B2B2B', '#F4F4F4', '#17B3B0'];
+const BOTS = ['Vitesse', 'Turbo', 'Piston', 'Chrono', 'Éclair'];
+const NIVEAUX = { facile:{ n:'Facile', top:.76, virage:.84 }, normal:{ n:'Normal', top:.86, virage:.94 }, difficile:{ n:'Difficile', top:.94, virage:1.03 } };
+const BOOST = { n:3, duree:1.3, facteur:1.4 };
+const DERAPAGE = { seuil:1.15, duree:.85 };
+const HERBE = 90;                              // vitesse maximale hors piste
+const CIRC = window.CIRCUITS.map(P.construire);
+const byId = Object.fromEntries(CIRC.map(c => [c.id, c]));
+
+let cfg = get('drawrace-choix', null) || { circuit:'anneau', niveau:'normal', joueurs:[{ nom:'', couleur:COULEURS[0] }] };
+if(!byId[cfg.circuit]) cfg.circuit = 'anneau';
+const saveCfg = () => put('drawrace-choix', cfg);
+
+/* ---------- Dessin d'une monoplace vue de dessus, style croquis ---------- */
+function voiture(g, x, y, ang, couleur, k = 1, flamme = false){
+  g.save();
+  g.translate(x, y); g.rotate(ang); g.scale(k, k);
+  g.lineJoin = 'round'; g.lineCap = 'round'; g.lineWidth = 1.3; g.strokeStyle = '#1A1A1A';
+  const rect = (x0, y0, w, h, fill) => { g.beginPath(); g.roundRect ? g.roundRect(x0, y0, w, h, 1.5) : g.rect(x0, y0, w, h); g.fillStyle = fill; g.fill(); g.stroke(); };
+  if(flamme){
+    g.beginPath(); g.moveTo(-15, -3); g.lineTo(-24 - Math.random() * 6, 0); g.lineTo(-15, 3); g.closePath();
+    g.fillStyle = '#FFB020'; g.fill(); g.strokeStyle = '#E0461B'; g.stroke(); g.strokeStyle = '#1A1A1A';
+  }
+  rect(-12, -10.5, 7, 4.5, '#222'); rect(-12, 6, 7, 4.5, '#222');          // roues arrière
+  rect(6, -9.5, 6, 3.8, '#222'); rect(6, 5.7, 6, 3.8, '#222');              // roues avant
+  rect(-15, -8, 3.5, 16, '#2B2B2B');                                         // aileron arrière
+  g.beginPath();                                                              // coque
+  g.moveTo(-12, -3.6); g.lineTo(-3, -5.2); g.lineTo(4, -3.2); g.lineTo(13.5, -1.5);
+  g.lineTo(13.5, 1.5); g.lineTo(4, 3.2); g.lineTo(-3, 5.2); g.lineTo(-12, 3.6); g.closePath();
+  g.fillStyle = couleur; g.fill(); g.stroke();
+  [-1, 1].forEach(s => { g.beginPath(); g.ellipse(-4, s * 5.6, 5, 2, 0, 0, Math.PI * 2); g.fillStyle = couleur; g.fill(); g.stroke(); });  // pontons
+  rect(12.5, -9.5, 3, 19, couleur);                                          // aileron avant
+  g.beginPath(); g.ellipse(0.5, 0, 3.6, 2.5, 0, 0, Math.PI * 2); g.fillStyle = '#222'; g.fill();       // cockpit
+  g.beginPath(); g.arc(0, 0, 1.9, 0, Math.PI * 2); g.fillStyle = '#FFE066'; g.fill(); g.stroke();      // casque
+  g.restore();
+}
+
+/* ---------- Menu ---------- */
+function miniSvg(c){
+  const d = c.pts.filter((_, i) => i % 6 === 0).map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(0)} ${p[1].toFixed(0)}`).join('') + 'Z';
+  const s = c.pts[0], t = c.pts[3];
+  return `<svg viewBox="40 60 520 700" aria-hidden="true"><path d="${d}" fill="none" stroke="#1F1F1F" stroke-width="${P.LARGEUR + 12}" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="#A7A39A" stroke-width="${P.LARGEUR}" stroke-linejoin="round"/><circle cx="${s[0]}" cy="${s[1]}" r="20" fill="#D7263D" stroke="#1F1F1F" stroke-width="5"/><line x1="${s[0]}" y1="${s[1]}" x2="${t[0] + (t[0] - s[0]) * 3}" y2="${t[1] + (t[1] - s[1]) * 3}" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg>`;
+}
+function renderMenu(){
+  const recs = get('drawrace-records', {});
+  $('circuits').innerHTML = CIRC.map(c => {
+    const r = recs[c.id] && recs[c.id].courses && recs[c.id].courses[0];
+    return `<button class="circ" data-id="${c.id}" aria-pressed="${c.id === cfg.circuit}">${miniSvg(c)}
+      <b>${esc(c.n)}</b><small>${esc(c.inspi)}</small>
+      <small><span class="dots" aria-label="Difficulté ${c.d} sur 5">${'●'.repeat(c.d)}<i>${'●'.repeat(5 - c.d)}</i></span> · ${c.tours} tours</small>
+      <small class="rec">${r ? `Record ${fmtTime(r.temps)} · ${esc(r.nom)}` : 'Pas de record'}</small></button>`;
+  }).join('');
+  $('nbJoueurs').innerHTML = [1, 2, 3, 4].map(n => `<button data-n="${n}" aria-pressed="${cfg.joueurs.length === n}">${n}</button>`).join('');
+  $('niveau').innerHTML = Object.entries(NIVEAUX).map(([k, v]) => `<button data-k="${k}" aria-pressed="${cfg.niveau === k}">${v.n}</button>`).join('');
+  $('players').innerHTML = cfg.joueurs.map((j, i) => `<div class="player" data-i="${i}">
+      <div class="player-top"><canvas width="124" height="72"></canvas>
+      <input value="${esc(j.nom)}" maxlength="16" placeholder="Joueur ${i + 1}" aria-label="Nom du joueur ${i + 1}"></div>
+      <div class="swatches">${COULEURS.map(c => `<button class="sw" style="background:${c}" data-c="${c}" aria-pressed="${j.couleur === c}" aria-label="Couleur"></button>`).join('')}</div>
+    </div>`).join('');
+  document.querySelectorAll('.player canvas').forEach((cv, i) => {
+    const g = cv.getContext('2d'); g.clearRect(0, 0, 124, 72); voiture(g, 62, 36, 0, cfg.joueurs[i].couleur, 3.1);
+  });
+  $('goDraw').textContent = cfg.joueurs.length > 1 ? 'Tracer les trajectoires' : 'Tracer ma trajectoire';
+}
+$('circuits').addEventListener('click', e => { const b = e.target.closest('.circ'); if(b){ cfg.circuit = b.dataset.id; saveCfg(); renderMenu(); } });
+$('niveau').addEventListener('click', e => { const b = e.target.closest('button'); if(b){ cfg.niveau = b.dataset.k; saveCfg(); renderMenu(); } });
+$('nbJoueurs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  const n = Number(b.dataset.n);
+  while(cfg.joueurs.length < n){ const libre = COULEURS.find(c => !cfg.joueurs.some(j => j.couleur === c)); cfg.joueurs.push({ nom:'', couleur:libre }); }
+  cfg.joueurs.length = n;
+  saveCfg(); renderMenu();
+});
+$('players').addEventListener('input', e => { const p = e.target.closest('.player'); if(p){ cfg.joueurs[p.dataset.i].nom = e.target.value.trim(); saveCfg(); } });
+$('players').addEventListener('click', e => {
+  const b = e.target.closest('.sw'); if(!b) return;
+  const j = cfg.joueurs[b.closest('.player').dataset.i];
+  // Couleur déjà prise par un autre joueur : on échange
+  const autre = cfg.joueurs.find(o => o !== j && o.couleur === b.dataset.c);
+  if(autre) autre.couleur = j.couleur;
+  j.couleur = b.dataset.c; saveCfg(); renderMenu();
+});
+
+/* ---------- Écran de jeu : canevas à l'échelle ---------- */
+const cv = $('cv'), g = cv.getContext('2d');
+let echelle = 1, fond = null, circuit = null;
+function show(id){ ['menu', 'jeu', 'fin'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); }
+function dimensionner(){
+  const st = $('stage').getBoundingClientRect();
+  echelle = Math.min(st.width / P.W, st.height / P.H);
+  const dpr = window.devicePixelRatio || 1;
+  cv.style.width = P.W * echelle + 'px'; cv.style.height = P.H * echelle + 'px';
+  cv.width = Math.round(P.W * echelle * dpr); cv.height = Math.round(P.H * echelle * dpr);
+  g.setTransform(echelle * dpr, 0, 0, echelle * dpr, 0, 0);
+  fond = dessinerFond(dpr);
+}
+addEventListener('resize', () => { if(!$('jeu').hidden && circuit){ dimensionner(); redessiner(); } });
+
+function cheminPiste(c, ctx){
+  ctx.beginPath();
+  c.pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+  ctx.closePath();
+}
+function dessinerFond(dpr){
+  const off = document.createElement('canvas');
+  off.width = cv.width; off.height = cv.height;
+  const o = off.getContext('2d');
+  o.setTransform(echelle * dpr, 0, 0, echelle * dpr, 0, 0);
+  const c = circuit;
+  // Herbe façon papier, avec quelques coups de crayon
+  o.fillStyle = '#DCE9C4'; o.fillRect(0, 0, P.W, P.H);
+  o.strokeStyle = 'rgba(80,120,50,.13)'; o.lineWidth = 1.2;
+  for(let i = 0; i < 260; i++){ const x = (i * 97) % P.W, y = (i * 173) % P.H; o.beginPath(); o.moveTo(x, y); o.lineTo(x + 4, y - 7); o.stroke(); }
+  o.lineJoin = 'round'; o.lineCap = 'round';
+  // Contour, vibreurs dans les virages, bitume
+  cheminPiste(c, o); o.lineWidth = P.LARGEUR + 12; o.strokeStyle = '#1F1F1F'; o.stroke();
+  o.lineWidth = P.LARGEUR + 8; o.setLineDash([9, 9]);
+  for(let i = 0; i < c.pts.length; i++){
+    if(c.kappa[i] < 0.007) continue;
+    const a = c.pts[i], b = c.pts[(i + 1) % c.pts.length];
+    o.beginPath(); o.moveTo(a[0], a[1]); o.lineTo(b[0], b[1]);
+    o.strokeStyle = (Math.floor(i / 3) % 2) ? '#D7263D' : '#FFFFFF'; o.stroke();
+  }
+  o.setLineDash([]);
+  cheminPiste(c, o); o.lineWidth = P.LARGEUR; o.strokeStyle = '#A7A39A'; o.stroke();
+  cheminPiste(c, o); o.lineWidth = 1.4; o.setLineDash([10, 14]); o.strokeStyle = 'rgba(255,255,255,.7)'; o.stroke(); o.setLineDash([]);
+  // Ligne de départ en damier
+  const [sx, sy] = c.pts[0], a = c.cap[0], nx = -Math.sin(a), ny = Math.cos(a), dx = Math.cos(a), dy = Math.sin(a);
+  const cases = 8, t = P.LARGEUR / cases;
+  for(let r = 0; r < 2; r++) for(let k = 0; k < cases; k++){
+    const off2 = -P.LARGEUR / 2 + k * t;
+    o.fillStyle = (k + r) % 2 ? '#1F1F1F' : '#FFFFFF';
+    o.beginPath();
+    const x0 = sx + nx * off2 + dx * (r - 1) * t, y0 = sy + ny * off2 + dy * (r - 1) * t;
+    o.moveTo(x0, y0); o.lineTo(x0 + nx * t, y0 + ny * t); o.lineTo(x0 + nx * t + dx * t, y0 + ny * t + dy * t); o.lineTo(x0 + dx * t, y0 + dy * t); o.closePath(); o.fill();
+  }
+  // Flèche du sens de la course
+  const q = c.pts[18];
+  o.save(); o.translate(q[0], q[1]); o.rotate(c.cap[18]);
+  o.fillStyle = 'rgba(255,255,255,.85)'; o.beginPath(); o.moveTo(10, 0); o.lineTo(-6, -8); o.lineTo(-2, 0); o.lineTo(-6, 8); o.closePath(); o.fill();
+  o.restore();
+  return off;
+}
+function peindreFond(){
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(fond, 0, 0); g.restore();
+}
+const teinte = r => `hsl(${Math.round((1 - clamp(r, 0, 1)) * 120)}, 78%, 42%)`;   // vert (lent) → rouge (rapide)
+
+/* ---------- Tracé de la trajectoire ---------- */
+let traces = [];                // trajectoires validées, une par joueur humain
+let tr = null;                  // tracé en cours
+let joueurTrace = 0;
+
+function debutTraces(){
+  cancelAnimationFrame(raf); course = null;
+  circuit = byId[cfg.circuit];
+  traces = [];
+  joueurTrace = 0;
+  show('jeu');
+  dimensionner();
+  nouveauTrace();
+}
+function nomJoueur(i){ return cfg.joueurs[i].nom || `Joueur ${i + 1}`; }
+function nouveauTrace(){
+  tr = { pts:[], j:null, fini:false, actif:false, alertes:[] };
+  $('banner').innerHTML = `${esc(nomJoueur(joueurTrace))} : tracez votre trajectoire<small>${esc(circuit.n)} · ${circuit.tours} tours · partez de la ligne à damier</small>`;
+  $('msg').className = 'msg'; $('msg').textContent = 'Posez le doigt sur la ligne de départ et suivez la piste jusqu\'à revenir au départ.';
+  $('drawCtl').hidden = false; $('boosts').hidden = true; $('gauge').hidden = false;
+  $('lights').hidden = true; $('standings').hidden = true; $('timer').hidden = true;
+  $('done').disabled = true;
+  $('done').textContent = joueurTrace < cfg.joueurs.length - 1 ? 'Joueur suivant' : 'C\'est parti';
+  jauge(0);
+  redessiner();
+}
+function jauge(v){
+  const r = v / P.VMAX;
+  const i = $('gauge').querySelector('i');
+  i.style.width = (clamp(r, 0, 1) * 100) + '%';
+  i.style.background = teinte(r);
+  $('kmh').textContent = `${Math.round(v * 0.9)} km/h`;
+}
+const versPiste = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * P.W, (e.clientY - r.top) / r.height * P.H]; };
+// Vitesse de la voiture selon la vitesse du doigt (unités de circuit par milliseconde)
+const vitesseDoigt = u => P.VMAX * clamp((u - 0.05) / 1.1, 0.15, 1);
+
+function avertir(t){ $('msg').className = 'msg warn'; $('msg').textContent = t; }
+
+cv.addEventListener('pointerdown', e => {
+  if(!tr || tr.fini) return;
+  const [x, y] = versPiste(e);
+  const n = circuit.pts.length;
+  if(!tr.pts.length){
+    const pr = P.plusProche(circuit, x, y, 0, 14, 14);
+    if(pr.d > P.LARGEUR) return avertir('Commencez sur la ligne à damier.');
+    tr.j = tr.j0 = pr.j;   // indice « déroulé » : de -14 à 14 autour du départ
+  } else {
+    const last = tr.pts[tr.pts.length - 1];
+    if(Math.hypot(last.x - x, last.y - y) > 36) return avertir('Reprenez au bout de votre trait.');
+  }
+  try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+  tr.actif = true;
+  tr.pts.push({ x, y, t:e.timeStamp, v:tr.pts.length ? tr.pts[tr.pts.length - 1].v : 80 });
+  $('msg').className = 'msg'; $('msg').textContent = 'Lentement dans les virages, vite dans les lignes droites !';
+});
+cv.addEventListener('pointermove', e => {
+  if(!tr || !tr.actif || tr.fini) return;
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  for(const ev of evs){
+    if(!tr.actif) break;
+    ajouterPoint(...versPiste(ev), ev.timeStamp || e.timeStamp);
+  }
+  redessiner();
+});
+cv.addEventListener('pointerup', () => { if(tr) tr.actif = false; jauge(0); });
+cv.addEventListener('pointercancel', () => { if(tr) tr.actif = false; jauge(0); });
+
+function ajouterPoint(x, y, t){
+  const last = tr.pts[tr.pts.length - 1];
+  const d = Math.hypot(x - last.x, y - last.y);
+  if(d < 2.5) return;
+  const n = circuit.pts.length;
+  const pr = P.plusProche(circuit, x, y, tr.j, 40, 10);
+  if(pr.d > P.LARGEUR * 0.95){ tr.actif = false; jauge(0); return avertir('Trop loin de la piste ! Reprenez au bout de votre trait.'); }
+  if(pr.j < tr.j - 6){ tr.actif = false; jauge(0); return avertir('Mauvais sens ! Reprenez au bout de votre trait.'); }
+  tr.j = Math.max(tr.j, pr.j);
+  // Vitesse du doigt sur les ~70 dernières millisecondes
+  let k = tr.pts.length - 1, dist = d;
+  while(k > 0 && t - tr.pts[k].t < 70){ dist += Math.hypot(tr.pts[k].x - tr.pts[k - 1].x, tr.pts[k].y - tr.pts[k - 1].y); k--; }
+  const dt = Math.max(8, t - tr.pts[k].t);
+  const v = vitesseDoigt(dist / dt);
+  tr.pts.push({ x, y, t, v, herbe:pr.d > P.LARGEUR / 2 + 3 });
+  jauge(v);
+  if(tr.j >= tr.j0 + n) terminerTrace();   // retour à l'endroit du départ : un tour complet
+}
+
+// Tour complet : trajectoire lissée, profil de vitesse, virages trop rapides
+function terminerTrace(){
+  tr.actif = false; tr.fini = true; jauge(0);
+  const raw = tr.pts.map(p => [p.x, p.y]);
+  raw.push([tr.pts[0].x, tr.pts[0].y]);
+  const pts = P.resample(raw, P.STEP, true);
+  // Vitesse et herbe interpolées le long du trait
+  const cum = [0];
+  for(let i = 1; i < tr.pts.length; i++) cum.push(cum[i - 1] + Math.hypot(tr.pts[i].x - tr.pts[i - 1].x, tr.pts[i].y - tr.pts[i - 1].y));
+  let k = 0;
+  const vit = pts.map((_, i) => { const s = i * P.STEP; while(k < cum.length - 2 && cum[k + 1] < s) k++; return tr.pts[Math.min(k + 1, tr.pts.length - 1)].v; });
+  const lisses = lisserPts(pts, 3);
+  const trace = profil(lisses, P.lisser(vit, 5).map(v => Math.max(40, v)));
+  tr.trace = trace;
+  const zones = trace.danger.length;
+  $('done').disabled = false;
+  if(zones){ $('msg').className = 'msg warn'; $('msg').textContent = `⚠ ${zones} virage${zones > 1 ? 's' : ''} trop rapide${zones > 1 ? 's' : ''} : la voiture va déraper. Retracez, ou tentez votre chance !`; }
+  else { $('msg').className = 'msg'; $('msg').textContent = 'Beau tracé, aucun dérapage en vue !'; }
+  redessiner();
+}
+function lisserPts(pts, r){
+  const n = pts.length;
+  return pts.map((_, i) => { let x = 0, y = 0; for(let j = -r; j <= r; j++){ const q = pts[(i + j + n) % n]; x += q[0]; y += q[1]; } return [x / (2 * r + 1), y / (2 * r + 1)]; });
+}
+// Trajectoire prête pour la course : points, vitesses voulues, limite en virage, herbe, zones de dérapage
+function profil(pts, vit){
+  const kappa = P.courbure(pts);
+  const grip = kappa.map(P.vitesseVirage);
+  const n = pts.length;
+  let j = 0;
+  const herbe = pts.map(p => { const pr = P.plusProche(circuit, p[0], p[1], j, 40, 10); j = pr.j; return pr.d > P.LARGEUR / 2 + 3; });
+  const v = vit.map((x, i) => herbe[i] ? Math.min(x, HERBE) : x);
+  const danger = [];
+  for(let i = 0; i < n; i++){
+    const trop = v[i] > grip[i] * DERAPAGE.seuil, avant = v[(i - 1 + n) % n] > grip[(i - 1 + n) % n] * DERAPAGE.seuil;
+    if(trop && !avant) danger.push(i);
+  }
+  return { pts, v, grip, herbe, danger, len:n * P.STEP };
+}
+
+// Trajectoire des adversaires : la ligne centrale, un peu décalée, à une vitesse selon le niveau
+function traceBot(niv, graine){
+  const c = circuit, n = c.pts.length;
+  const pts = c.pts.map((p, i) => {
+    const a = c.cap[i], off = Math.sin(i / n * Math.PI * 2 * 3 + graine) * 9;
+    return [p[0] - Math.sin(a) * off, p[1] + Math.cos(a) * off];
+  });
+  const lis = lisserPts(pts, 2);
+  const kappa = P.courbure(lis), grip = kappa.map(P.vitesseVirage);
+  const var_ = 1 + (Math.sin(graine * 7) * 0.03);
+  let v = grip.map(gv => Math.min(P.VMAX * niv.top * var_, gv * niv.virage * var_));
+  // Freinages et accélérations progressifs
+  const DEC = 520, ACC = 260;
+  for(let pass = 0; pass < 2; pass++){
+    for(let i = n - 1; i >= 0; i--){ const nx = v[(i + 1) % n]; v[i] = Math.min(v[i], Math.sqrt(nx * nx + 2 * DEC * P.STEP)); }
+    for(let i = 0; i < n; i++){ const pv = v[(i - 1 + n) % n]; v[i] = Math.min(v[i], Math.sqrt(pv * pv + 2 * ACC * P.STEP)); }
+  }
+  return { pts:lis, v, grip, herbe:new Array(n).fill(false), danger:[], len:n * P.STEP };
+}
+
+function redessiner(){
+  if(!fond) return;
+  peindreFond();
+  if(course) return dessinerCourse();
+  // Trajectoires déjà validées des autres joueurs, en pâle
+  traces.forEach(t => traitVitesse(t.pts, t.v, .25, true));
+  if(!tr) return;
+  if(tr.trace){ traitVitesse(tr.trace.pts, tr.trace.v, 1, true); alertes(tr.trace); }
+  else if(tr.pts.length > 1){
+    g.lineCap = 'round'; g.lineWidth = 5;
+    for(let i = 1; i < tr.pts.length; i++){
+      const a = tr.pts[i - 1], b = tr.pts[i];
+      g.strokeStyle = teinte(b.v / P.VMAX);
+      g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
+    }
+    const l = tr.pts[tr.pts.length - 1];
+    g.fillStyle = '#1F1F1F'; g.beginPath(); g.arc(l.x, l.y, 5, 0, Math.PI * 2); g.fill();
+  }
+  if(tr.pts.length){ const f = tr.pts[0]; g.strokeStyle = '#1F1F1F'; g.lineWidth = 2; g.beginPath(); g.arc(f.x, f.y, 7, 0, Math.PI * 2); g.stroke(); }
+}
+function traitVitesse(pts, v, alpha, ferme){
+  g.save(); g.globalAlpha = alpha; g.lineCap = 'round'; g.lineWidth = 5;
+  for(let i = 1; i <= pts.length - (ferme ? 0 : 1); i++){
+    const a = pts[i - 1], b = pts[i % pts.length];
+    g.strokeStyle = teinte(v[i % pts.length] / P.VMAX);
+    g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+  }
+  g.restore();
+}
+function alertes(t){
+  t.danger.forEach(i => {
+    const [x, y] = t.pts[i];
+    g.fillStyle = '#FFE066'; g.strokeStyle = '#1F1F1F'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(x, y - 13); g.lineTo(x + 11, y + 7); g.lineTo(x - 11, y + 7); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = '#1F1F1F'; g.font = 'bold 13px sans-serif'; g.textAlign = 'center'; g.fillText('!', x, y + 5);
+  });
+}
+$('clear').onclick = () => nouveauTrace();
+$('done').onclick = () => {
+  if(!tr || !tr.trace) return;
+  traces[joueurTrace] = tr.trace;
+  joueurTrace++;
+  if(joueurTrace < cfg.joueurs.length) nouveauTrace();
+  else demarrerCourse();
+};
+
+/* ---------- Course ---------- */
+let course = null, raf = 0;
+function demarrerCourse(){
+  tr = null;
+  const niv = NIVEAUX[cfg.niveau];
+  const voitures = cfg.joueurs.map((j, i) => ({ nom:nomJoueur(i), couleur:j.couleur, humain:true, t:traces[i] }));
+  const pris = new Set(cfg.joueurs.map(j => j.couleur));
+  const libres = COULEURS.filter(c => !pris.has(c));
+  for(let k = 0; voitures.length < 4; k++) voitures.push({ nom:BOTS[k], couleur:libres[k], humain:false, t:traceBot(niv, 1.3 + k * 2.1) });
+  // Grille de départ : les humains derrière, en quinconce
+  const ordre = voitures.slice().sort((a, b) => a.humain - b.humain);
+  ordre.forEach((v, k) => Object.assign(v, { s:-24 - k * 26, cote:k % 2 ? 1 : -1, vit:0, boosts:BOOST.n, boostT:0, derapT:0, recup:false, angleDerap:0,
+    tours:[], debutTour:0, fin:null }));
+  course = { voitures, tours:circuit.tours, t:0, phase:'feux', feux:0, fumee:[], finHumains:null };
+  show('jeu');
+  $('drawCtl').hidden = true; $('gauge').hidden = true;
+  $('lights').hidden = false; $('standings').hidden = false; $('timer').hidden = false;
+  $('banner').innerHTML = `${esc(circuit.n)}<small>${circuit.tours} tours · Boost : ${BOOST.n} par pilote</small>`;
+  $('msg').className = 'msg'; $('msg').textContent = 'Attention aux feux…';
+  const humains = voitures.filter(v => v.humain);
+  $('boosts').hidden = false;
+  $('boosts').innerHTML = humains.map((v, i) => `<button class="boost" data-i="${voitures.indexOf(v)}" style="background:${v.couleur};color:${lisible(v.couleur)}">⚡ Boost<small>${esc(v.nom)} · ${v.boosts}</small></button>`).join('');
+  $('timer').textContent = '0:00.00';
+  dimensionner();
+  lampes(0);
+  cancelAnimationFrame(raf);
+  let last = performance.now();
+  const boucle = now => {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    etape(dt);
+    redessiner();
+    if(course && course.phase !== 'fini') raf = requestAnimationFrame(boucle);
+  };
+  raf = requestAnimationFrame(boucle);
+}
+const lisible = c => { const n = parseInt(c.slice(1), 16), r = n >> 16, gg = n >> 8 & 255, b = n & 255; return (r * 299 + gg * 587 + b * 114) / 1000 > 150 ? '#1F1F1F' : '#FFFFFF'; };
+function lampes(k){ $('lights').querySelectorAll('i').forEach((l, i) => l.classList.toggle('on', i < k)); }
+
+$('boosts').addEventListener('pointerdown', e => {
+  const b = e.target.closest('.boost');
+  if(!b || !course || course.phase !== 'course') return;
+  e.preventDefault();
+  const v = course.voitures[b.dataset.i];
+  if(v.boosts <= 0 || v.boostT > 0 || v.fin != null) return;
+  v.boosts--; v.boostT = BOOST.duree;
+  b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 150);
+  b.querySelector('small').textContent = `${v.nom} · ${v.boosts}`;
+  b.disabled = v.boosts === 0;
+});
+
+function etape(dt){
+  const c = course;
+  if(c.phase === 'feux'){
+    c.feux += dt;
+    const k = Math.min(5, Math.floor(c.feux / 0.6));
+    lampes(k);
+    if(c.feux >= 3.6){ lampes(0); $('lights').hidden = true; c.phase = 'course'; c.t = 0; $('msg').textContent = 'Partez !'; setTimeout(() => { if(course && course.phase === 'course') $('msg').textContent = ''; }, 1200); }
+    return;
+  }
+  if(c.phase !== 'course') return;
+  c.t += dt;
+  $('timer').textContent = fmtTime(c.t * 1000);
+  for(const v of c.voitures){
+    if(v.fin != null){ v.s += v.vit * dt * .6; v.vit *= 0.985; continue; }
+    const t = v.t, n = t.pts.length;
+    const i = ((Math.floor(v.s / P.STEP) % n) + n) % n;
+    let cible = v.s < 0 ? t.v[0] : t.v[i];
+    if(v.boostT > 0){ v.boostT -= dt; cible *= BOOST.facteur; }
+    if(!v.humain && v.boosts > 0 && v.boostT <= 0 && v.s > 0 && t.grip[(i + 25) % n] >= P.VMAX && t.grip[i] >= P.VMAX && Math.random() < dt * 0.35){ v.boosts--; v.boostT = BOOST.duree; }
+    if(!v.humain) cible = Math.min(cible, t.grip[i] * 1.08);
+    let vit;
+    if(v.derapT > 0){
+      v.derapT -= dt; vit = t.grip[i] * 0.35; v.angleDerap += dt * 9 * v.cote;
+      if(Math.random() < 0.6) c.fumee.push({ x:0, y:0, v, vie:0.8 });
+      if(v.derapT <= 0) v.angleDerap = 0;
+    } else if(v.humain && cible > t.grip[i] * DERAPAGE.seuil && !v.recup){
+      v.derapT = DERAPAGE.duree; v.recup = true; vit = t.grip[i] * 0.35;
+      if(v.humain) flash(`Dérapage de ${v.nom} !`);
+    } else if(v.recup){
+      vit = Math.min(cible, t.grip[i]);
+      if(cible <= t.grip[i] * 1.05) v.recup = false;
+    } else vit = cible;
+    if(t.herbe[i] && Math.random() < 0.3) c.fumee.push({ x:0, y:0, v, vie:0.5, herbe:true });
+    v.vit += (vit - v.vit) * Math.min(1, dt * (v.derapT > 0 ? 12 : 5));
+    const avant = v.s;
+    v.s += v.vit * dt;
+    // Passage de la ligne
+    const tourAvant = Math.floor(avant / t.len), tourApres = Math.floor(v.s / t.len);
+    if(tourApres > tourAvant && tourApres >= 1){
+      const quand = c.t - (v.s - tourApres * t.len) / Math.max(v.vit, 1);
+      v.tours.push(quand - v.debutTour); v.debutTour = quand;
+      if(tourApres >= c.tours){ v.fin = quand; if(v.humain) flash(`${v.nom} a fini !`); }
+    }
+  }
+  // Fumée : figée à l'endroit où elle apparaît
+  c.fumee.forEach(f => { if(f.v){ const p = position(f.v); f.x = p.x - Math.cos(p.a) * 12 + (Math.random() - .5) * 6; f.y = p.y - Math.sin(p.a) * 12 + (Math.random() - .5) * 6; f.v = null; } f.vie -= dt; });
+  c.fumee = c.fumee.filter(f => f.vie > 0);
+  classement();
+  const humains = c.voitures.filter(v => v.humain);
+  if(humains.every(v => v.fin != null) && c.finHumains == null) c.finHumains = c.t;
+  if(c.voitures.every(v => v.fin != null) || (c.finHumains != null && c.t - c.finHumains > 4)) terminerCourse();
+}
+let flashT = 0;
+function flash(t){ $('msg').className = 'msg warn'; $('msg').textContent = t; clearTimeout(flashT); flashT = setTimeout(() => { $('msg').className = 'msg'; $('msg').textContent = ''; }, 1400); }
+
+function position(v){
+  const t = v.t, n = t.pts.length;
+  const s = ((v.s % t.len) + t.len) % t.len, f = s / P.STEP, i = Math.floor(f) % n, u = f - Math.floor(f);
+  const a = t.pts[i], b = t.pts[(i + 1) % n], c = t.pts[(i + 3) % n];
+  let x = a[0] + (b[0] - a[0]) * u, y = a[1] + (b[1] - a[1]) * u;
+  const ang = Math.atan2(c[1] - a[1], c[0] - a[0]);
+  // Décalage de la grille de départ, qui s'efface dans les premiers mètres
+  const dec = v.cote * 13 * clamp(1 - (v.s + 40) / 160, 0, 1);
+  x += -Math.sin(ang) * dec; y += Math.cos(ang) * dec;
+  return { x, y, a:ang };
+}
+function progression(v){ return v.fin != null ? 1e9 - v.fin : v.s; }
+function classement(){
+  const c = course;
+  const tri = c.voitures.slice().sort((a, b) => progression(b) - progression(a));
+  $('standings').innerHTML = tri.map((v, k) => {
+    const tour = Math.min(c.tours, Math.max(1, Math.floor(v.s / v.t.len) + 1));
+    return `<div><b>${k + 1}</b><em style="background:${v.couleur}"></em>${esc(v.nom)} <small>${v.fin != null ? '🏁' : `T${tour}/${c.tours}`}</small></div>`;
+  }).join('');
+}
+function dessinerCourse(){
+  const c = course;
+  c.voitures.filter(v => v.humain).forEach(v => traitVitesse(v.t.pts, v.t.v, .18, true));
+  c.fumee.forEach(f => {
+    g.fillStyle = f.herbe ? `rgba(120,90,40,${f.vie * .5})` : `rgba(90,90,90,${f.vie * .45})`;
+    g.beginPath(); g.arc(f.x, f.y, (f.herbe ? 5 : 7) + (1 - f.vie) * 8, 0, Math.PI * 2); g.fill();
+  });
+  c.voitures.slice().sort((a, b) => a.humain - b.humain).forEach(v => {
+    const p = position(v);
+    voiture(g, p.x, p.y, p.a + v.angleDerap, v.couleur, 1.15, v.boostT > 0);
+  });
+}
+
+/* ---------- Fin de course et records ---------- */
+function terminerCourse(){
+  const c = course;
+  c.phase = 'fini';
+  cancelAnimationFrame(raf);
+  const tri = c.voitures.slice().sort((a, b) => progression(b) - progression(a));
+  const meilleurTour = v => v.tours.length ? Math.round(Math.min(...v.tours) * 1000) : null;
+  // Records : seuls les pilotes humains arrivés comptent
+  const all = get('drawrace-records', {});
+  const rec = all[circuit.id] || { courses:[], tour:null };
+  const badges = [];
+  const entrees = [];
+  let nouveauTour = false;
+  tri.filter(v => v.humain && v.fin != null).forEach(v => {
+    const e = { nom:v.nom, couleur:v.couleur, temps:Math.round(v.fin * 1000), date:Date.now() };
+    entrees.push(e); rec.courses.push(e);
+    const mt = meilleurTour(v);
+    if(mt != null && (!rec.tour || mt < rec.tour.temps)){ rec.tour = { nom:v.nom, couleur:v.couleur, temps:Math.round(mt) }; nouveauTour = true; }
+  });
+  if(nouveauTour) badges.push(`⏱ Record du tour : ${esc(rec.tour.nom)}`);
+  rec.courses.sort((a, b) => a.temps - b.temps);
+  rec.courses = rec.courses.slice(0, 5);
+  if(entrees.includes(rec.courses[0])) badges.unshift(`🏆 Record du circuit : ${esc(rec.courses[0].nom)}`);
+  all[circuit.id] = rec; put('drawrace-records', all);
+
+  const premier = tri[0];
+  $('podium').innerHTML = `🏁 ${esc(premier.nom)} gagne !`;
+  $('finTitle').textContent = `Résultats · ${circuit.n}`;
+  $('results').innerHTML = '<tr><th>#</th><th>Pilote</th><th class="r">Temps</th><th class="r">Meilleur tour</th></tr>' +
+    tri.map((v, k) => `<tr${v.humain ? ' class="me"' : ''}><td>${k + 1}</td><td><span class="dot" style="background:${v.couleur}"></span>${esc(v.nom)}</td><td class="r">${v.fin != null ? fmtTime(Math.round(v.fin * 1000)) : 'non classé'}</td><td class="r">${fmtTime(meilleurTour(v))}</td></tr>`).join('');
+  $('badges').innerHTML = badges.map(b => `<span class="badge">${b}</span>`).join('');
+  $('recTitle').textContent = `Records · ${circuit.n}`;
+  $('records').innerHTML = '<tr><th>#</th><th>Pilote</th><th class="r">Temps</th></tr>' +
+    (rec.courses.length ? rec.courses.map((r, k) => `<tr${entrees.includes(r) ? ' class="me"' : ''}><td>${k + 1}</td><td><span class="dot" style="background:${r.couleur}"></span>${esc(r.nom)}</td><td class="r">${fmtTime(r.temps)}</td></tr>`).join('') : '<tr><td colspan="3">Pas encore de record</td></tr>') +
+    (rec.tour ? `<tr><td>⏱</td><td>Meilleur tour : <span class="dot" style="background:${rec.tour.couleur}"></span>${esc(rec.tour.nom)}</td><td class="r">${fmtTime(rec.tour.temps)}</td></tr>` : '');
+  setTimeout(() => show('fin'), 900);
+}
+
+/* ---------- Navigation ---------- */
+$('goDraw').onclick = debutTraces;
+$('rematch').onclick = () => { course = null; show('jeu'); dimensionner(); demarrerCourse(); };
+$('redraw').onclick = () => { course = null; debutTraces(); };
+$('toMenu').onclick = () => { course = null; renderMenu(); show('menu'); };
+$('quit').onclick = () => {
+  if(course && course.phase === 'course' && !confirm('Quitter la course ?')) return;
+  cancelAnimationFrame(raf); course = null; tr = null; renderMenu(); show('menu');
+};
+
+renderMenu();
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+</script>
+</body>
+</html>
