@@ -1,6 +1,6 @@
 /* DesDés : fonctionnement hors ligne.
    Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement. */
-const VERSION = 'desdes-v11';
+const VERSION = 'desdes-v12';
 const FONTS = 'desdes-fonts';
 const SHELL = [
   './',
@@ -8,6 +8,8 @@ const SHELL = [
   'jeux/10000.html',
   'jeux/yams.html',
   'jeux/plateau.js',
+  'jeux/geo.html',
+  'jeux/geo/monde.js',
   'logo.svg',
   'manifest.webmanifest',
   'icons/icon-192.png',
