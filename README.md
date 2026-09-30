@@ -1,6 +1,6 @@
 # DesDés
 
-Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés , un quiz de géographie et une course à dessiner.
+Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés, un quiz de géographie et une course à dessiner.
 
 ![Logo](logo.svg)
 
