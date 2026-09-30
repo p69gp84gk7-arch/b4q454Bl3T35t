@@ -45,9 +45,11 @@ Les données (`jeux/geo/monde.js` et `jeux/geo/drapeaux/`) sont produites par `o
 
 ## Draw Race
 
-1. On choisit un circuit (10 circuits inspirés de la F1, difficulté de 1 à 5, de 2 à 5 tours), le nombre de joueurs (1 à 4, sur le même appareil), la couleur de chaque monoplace et le niveau des adversaires.
-2. Chaque joueur dessine sa trajectoire sur un tour, en partant de la ligne à damier. La vitesse du doigt devient la vitesse de la voiture : la jauge et la couleur du trait passent du vert (lent) au rouge (rapide). Un trait trop rapide dans un virage est signalé par ⚠ : la voiture y dérapera.
-3. La course se joue à 4 voitures (les places libres sont prises par des adversaires). Chaque voiture suit son tracé pendant tous les tours. Chaque joueur a 3 Boosts (vitesse ×1,4 pendant 1,3 s) ; un Boost dans un virage peut faire déraper.
+Le jeu se joue le téléphone à l'horizontale (un message le demande en vertical), pour des pistes plus larges.
+
+1. On choisit le nombre de joueurs (1 à 4, sur le même appareil), la couleur de chaque monoplace, le niveau des adversaires, puis le circuit dans le carrousel (10 circuits inspirés de la F1, difficulté de 1 à 5, de 2 à 5 tours).
+2. Chaque joueur dessine un tracé par tour, en partant à chaque fois de la ligne à damier. La vitesse du doigt devient la vitesse de la voiture : la jauge et la couleur du trait passent du vert (lent) au rouge (rapide). Un trait trop rapide dans un virage est signalé par ⚠ : la voiture y dérapera.
+3. La course se joue à 4 voitures (les places libres sont prises par des adversaires). Chaque voiture suit, à chaque tour, le tracé dessiné pour ce tour. On peut abandonner à tout moment (la partie ne compte pas). Chaque joueur a 3 Boosts (vitesse ×1,4 pendant 1,3 s) ; un Boost dans un virage peut faire déraper.
 
 Hors piste, la voiture ralentit. Les records (5 meilleurs temps et meilleur tour) sont gardés par circuit.
 Les circuits sont dans `jeux/drawrace/circuits.js` (points de passage), la géométrie dans `jeux/drawrace/piste.js`.

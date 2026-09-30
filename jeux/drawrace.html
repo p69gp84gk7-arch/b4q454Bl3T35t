@@ -42,9 +42,15 @@ h1{ font-family:"Kalam","Comic Sans MS",cursive; font-size:clamp(2.6rem,12vw,3.6
 h1 span{ color:var(--red); }
 .sub{ color:var(--muted); margin:0 0 18px; line-height:1.4; }
 h2{ font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:24px 0 10px; }
-.circuits{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
-.circ{ display:flex; flex-direction:column; gap:4px; padding:10px; background:var(--card); border:2px solid var(--line); text-align:left; box-shadow:2px 3px 0 rgba(0,0,0,.08); }
-.circ svg{ width:100%; height:110px; }
+.carousel{ position:relative; margin:0 -16px; }
+.circuits{ display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:6px 16px 14px; scrollbar-width:none; }
+.circuits::-webkit-scrollbar{ display:none; }
+.circ{ flex:0 0 min(78%, 340px); scroll-snap-align:center; display:flex; flex-direction:column; gap:4px; padding:12px; background:var(--card); border:2px solid var(--line); text-align:left; box-shadow:2px 3px 0 rgba(0,0,0,.08); }
+.circ svg{ width:100%; height:auto; aspect-ratio:5/3; }
+.nav{ position:absolute; top:34%; width:42px; height:42px; border-radius:50%; background:var(--card); border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); font-weight:800; font-size:1.2rem; z-index:1; }
+.nav.prev{ left:8px; } .nav.next{ right:8px; }
+.nav:disabled{ opacity:.3; }
+.carousel-info{ text-align:center; color:var(--muted); font-size:.85rem; font-weight:700; margin:0; }
 .circ b{ font-size:1rem; line-height:1.1; }
 .circ small{ color:var(--muted); font-size:.78rem; line-height:1.25; }
 .circ .rec{ color:var(--ink); font-weight:600; }
@@ -65,35 +71,41 @@ h2{ font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:
 .go{ width:100%; margin-top:20px; padding:15px; background:var(--red); color:#fff; font-weight:800; font-size:1.15rem; box-shadow:3px 4px 0 var(--ink); }
 
 /* ---------- Jeu (tracé et course) ---------- */
-.stage-wrap{ position:fixed; inset:0; display:flex; flex-direction:column; background:var(--paper);
-  padding:calc(8px + env(safe-area-inset-top,0px)) 10px calc(10px + env(safe-area-inset-bottom,0px)); gap:8px; }
-.top{ display:flex; align-items:center; gap:8px; min-height:42px; }
-.top .quit{ padding:8px 12px; background:var(--card); border:2px solid var(--line); font-weight:700; }
-.banner{ flex:1; font-weight:800; font-size:1.05rem; line-height:1.15; }
-.banner small{ display:block; font-weight:600; font-size:.8rem; color:var(--muted); }
-.timer{ font-family:"Kalam",cursive; font-size:1.4rem; font-variant-numeric:tabular-nums; }
-.stage{ position:relative; flex:1; min-height:0; display:flex; align-items:center; justify-content:center; }
+.stage-wrap{ position:fixed; inset:0; display:grid; grid-template-columns:minmax(0,1fr) clamp(170px, 24vw, 250px); gap:10px; background:var(--paper);
+  padding:calc(6px + env(safe-area-inset-top,0px)) calc(8px + env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) calc(8px + env(safe-area-inset-left,0px)); }
+.side{ display:flex; flex-direction:column; gap:8px; min-height:0; overflow-y:auto; padding:2px 4px 4px 0; }
+.side-top{ display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap; }
+.quit{ padding:8px 12px; background:var(--card); border:2px solid var(--ink); font-weight:800; box-shadow:2px 2px 0 var(--ink); }
+.banner{ font-weight:800; font-size:1rem; line-height:1.15; }
+.banner small{ display:block; font-weight:600; font-size:.78rem; color:var(--muted); margin-top:2px; }
+.timer{ font-family:"Kalam",cursive; font-size:1.2rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.stage{ position:relative; min-height:0; min-width:0; display:flex; align-items:center; justify-content:center; }
+.tourner{ display:none; position:absolute; inset:0; z-index:5; background:var(--paper); flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px; text-align:center; }
+.tourner svg{ width:90px; height:90px; }
+.tourner b{ font-size:1.3rem; }
+.tourner p{ margin:0; color:var(--muted); line-height:1.4; }
+@media (orientation:portrait) and (max-width:760px){ .stage-wrap .tourner{ display:flex; } }
 #cv{ display:block; touch-action:none; border-radius:14px; box-shadow:0 0 0 2px var(--ink), 4px 6px 0 rgba(0,0,0,.18); }
 .gauge{ position:relative; height:26px; border:2px solid var(--ink); border-radius:14px; overflow:hidden; flex:none;
   background:linear-gradient(90deg, rgba(46,158,91,.18), rgba(233,185,73,.25), rgba(215,38,61,.22)); }
 .gauge i{ position:absolute; left:0; top:0; bottom:0; width:0; background:#2E9E5B; transition:width .06s linear; }
 .gauge span, .gauge b{ position:absolute; top:50%; transform:translateY(-50%); font-size:.8rem; font-weight:800; }
 .gauge span{ left:10px; } .gauge b{ right:10px; font-variant-numeric:tabular-nums; }
-.msg{ min-height:2.4em; margin:0; text-align:center; font-weight:600; line-height:1.2; }
+.msg{ margin:0; font-weight:600; font-size:.9rem; line-height:1.25; }
 .msg.warn{ color:var(--red); }
-.controls{ display:flex; gap:8px; }
-.controls button{ flex:1; padding:13px 10px; font-weight:800; font-size:1rem; box-shadow:2px 3px 0 var(--ink); border:2px solid var(--ink); }
+.controls{ display:flex; flex-direction:column; gap:8px; margin-top:auto; }
+.controls button{ padding:12px 10px; font-weight:800; font-size:1rem; box-shadow:2px 3px 0 var(--ink); border:2px solid var(--ink); }
 .btn-light{ background:var(--card); }
 .btn-red{ background:var(--red); color:#fff; }
 .btn-red:disabled{ opacity:.4; box-shadow:none; }
 .lights{ position:absolute; top:12px; left:50%; transform:translateX(-50%); display:flex; gap:8px; padding:8px 10px; background:#1F1F1F; border-radius:12px; }
 .lights i{ width:22px; height:22px; border-radius:50%; background:#444; }
 .lights i.on{ background:#FF2A2A; box-shadow:0 0 12px #FF2A2A; }
-.standings{ position:absolute; left:6px; top:6px; background:rgba(255,253,247,.9); border:2px solid var(--ink); border-radius:10px; padding:4px 8px; font-size:.8rem; line-height:1.45; }
+.standings{ background:var(--card); border:2px solid var(--ink); border-radius:10px; padding:4px 8px; font-size:.82rem; line-height:1.5; }
 .standings div{ display:flex; align-items:center; gap:6px; white-space:nowrap; }
 .standings em{ width:10px; height:10px; border-radius:50%; border:1.5px solid var(--ink); display:inline-block; }
-.boosts{ display:flex; gap:8px; }
-.boost{ flex:1; min-height:64px; border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); font-weight:800; font-size:1.05rem; line-height:1.1; -webkit-user-select:none; user-select:none; touch-action:manipulation; }
+.boosts{ display:flex; flex-direction:column; gap:8px; margin-top:auto; flex:1; min-height:0; }
+.boost{ flex:1; min-height:52px; max-height:120px; border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); font-weight:800; font-size:1.05rem; line-height:1.1; -webkit-user-select:none; user-select:none; touch-action:manipulation; }
 .boost small{ display:block; font-size:.75rem; font-weight:700; opacity:.85; }
 .boost:disabled{ opacity:.45; box-shadow:none; }
 .boost.on{ transform:translateY(2px); box-shadow:0 1px 0 var(--ink); }
@@ -119,10 +131,7 @@ tr.me td{ font-weight:800; }
 <main class="page" id="menu">
   <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">DesDés</a>
   <h1>Draw <span>Race</span></h1>
-  <p class="sub">Dessinez la trajectoire de votre monoplace : la vitesse de votre doigt devient la vitesse de la voiture. Trop vite dans un virage, et c'est le dérapage ! Pendant la course, gardez le Boost pour les lignes droites.</p>
-
-  <h2>Circuit</h2>
-  <div class="circuits" id="circuits"></div>
+  <p class="sub">Dessinez la trajectoire de votre monoplace : la vitesse de votre doigt devient la vitesse de la voiture. Trop vite dans un virage, et c'est le dérapage ! Un tracé par tour, puis la course : gardez le Boost pour les lignes droites. Se joue le téléphone à l'horizontale.</p>
 
   <h2>Joueurs</h2>
   <div class="seg" id="nbJoueurs" role="group" aria-label="Nombre de joueurs"></div>
@@ -131,28 +140,43 @@ tr.me td{ font-weight:800; }
   <h2>Adversaires</h2>
   <div class="seg" id="niveau" role="group" aria-label="Niveau des adversaires"></div>
 
+  <h2>Circuit</h2>
+  <div class="carousel">
+    <button class="nav prev" id="prevC" aria-label="Circuit précédent">‹</button>
+    <div class="circuits" id="circuits"></div>
+    <button class="nav next" id="nextC" aria-label="Circuit suivant">›</button>
+  </div>
+  <p class="carousel-info" id="circInfo"></p>
+
   <button class="go" id="goDraw">Tracer ma trajectoire</button>
 </main>
 
 <!-- Tracé et course -->
 <section class="stage-wrap" id="jeu" hidden>
-  <div class="top">
-    <button class="quit" id="quit">Menu</button>
-    <div class="banner" id="banner"></div>
-    <div class="timer" id="timer" hidden>0:00.0</div>
-  </div>
-  <div class="gauge" id="gauge" hidden><i></i><span>Vitesse du tracé</span><b id="kmh">0 km/h</b></div>
   <div class="stage" id="stage">
     <canvas id="cv"></canvas>
     <div class="lights" id="lights" hidden><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <aside class="side">
+    <div class="side-top"><button class="quit" id="quit">Abandonner</button><div class="timer" id="timer" hidden>0:00.00</div></div>
+    <div class="banner" id="banner"></div>
+    <div class="gauge" id="gauge" hidden><i></i><span>Vitesse</span><b id="kmh">0 km/h</b></div>
     <div class="standings" id="standings" hidden></div>
+    <p class="msg" id="msg" aria-live="polite"></p>
+    <div class="controls" id="drawCtl">
+      <button class="btn-light" id="clear">Effacer</button>
+      <button class="btn-red" id="done" disabled>C'est parti</button>
+    </div>
+    <div class="boosts" id="boosts" hidden></div>
+  </aside>
+  <div class="tourner">
+    <svg viewBox="0 0 90 90" fill="none" stroke="#1F1F1F" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+      <rect x="30" y="8" width="30" height="52" rx="6"/><path d="M14 70h52a6 6 0 0 0 6-6V52" stroke="#D7263D"/><path d="M66 58l6-6 6 6" stroke="#D7263D"/>
+    </svg>
+    <b>Tournez votre téléphone</b>
+    <p>Draw Race se joue à l'horizontale : les circuits sont plus larges et plus faciles à tracer.</p>
+    <button class="quit" id="quit2">Abandonner</button>
   </div>
-  <p class="msg" id="msg" aria-live="polite"></p>
-  <div class="controls" id="drawCtl">
-    <button class="btn-light" id="clear">Effacer</button>
-    <button class="btn-red" id="done" disabled>C'est parti</button>
-  </div>
-  <div class="boosts" id="boosts" hidden></div>
 </section>
 
 <!-- Résultats -->
@@ -222,7 +246,7 @@ function voiture(g, x, y, ang, couleur, k = 1, flamme = false){
 function miniSvg(c){
   const d = c.pts.filter((_, i) => i % 6 === 0).map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(0)} ${p[1].toFixed(0)}`).join('') + 'Z';
   const s = c.pts[0], t = c.pts[3];
-  return `<svg viewBox="40 60 520 700" aria-hidden="true"><path d="${d}" fill="none" stroke="#1F1F1F" stroke-width="${P.LARGEUR + 12}" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="#A7A39A" stroke-width="${P.LARGEUR}" stroke-linejoin="round"/><circle cx="${s[0]}" cy="${s[1]}" r="20" fill="#D7263D" stroke="#1F1F1F" stroke-width="5"/><line x1="${s[0]}" y1="${s[1]}" x2="${t[0] + (t[0] - s[0]) * 3}" y2="${t[1] + (t[1] - s[1]) * 3}" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg>`;
+  return `<svg viewBox="20 20 960 560" aria-hidden="true"><path d="${d}" fill="none" stroke="#1F1F1F" stroke-width="${P.LARGEUR + 12}" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="#A7A39A" stroke-width="${P.LARGEUR}" stroke-linejoin="round"/><circle cx="${s[0]}" cy="${s[1]}" r="20" fill="#D7263D" stroke="#1F1F1F" stroke-width="5"/><line x1="${s[0]}" y1="${s[1]}" x2="${t[0] + (t[0] - s[0]) * 3}" y2="${t[1] + (t[1] - s[1]) * 3}" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg>`;
 }
 function renderMenu(){
   const recs = get('drawrace-records', {});
@@ -244,8 +268,35 @@ function renderMenu(){
     const g = cv.getContext('2d'); g.clearRect(0, 0, 124, 72); voiture(g, 62, 36, 0, cfg.joueurs[i].couleur, 3.1);
   });
   $('goDraw').textContent = cfg.joueurs.length > 1 ? 'Tracer les trajectoires' : 'Tracer ma trajectoire';
+  infoCircuit();
+  requestAnimationFrame(() => centrer(cfg.circuit, false));
 }
-$('circuits').addEventListener('click', e => { const b = e.target.closest('.circ'); if(b){ cfg.circuit = b.dataset.id; saveCfg(); renderMenu(); } });
+// Carrousel : le circuit choisi est celui du centre
+const idx = () => CIRC.findIndex(c => c.id === cfg.circuit);
+function infoCircuit(){
+  const i = idx();
+  $('circInfo').textContent = `${i + 1} / ${CIRC.length} · ${CIRC[i].n}`;
+  $('prevC').disabled = i === 0; $('nextC').disabled = i === CIRC.length - 1;
+  document.querySelectorAll('.circ').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === cfg.circuit)));
+}
+function centrer(id, doux = true){
+  const b = $('circuits').querySelector(`[data-id="${id}"]`), box = $('circuits');
+  if(b) box.scrollTo({ left:b.offsetLeft - (box.clientWidth - b.offsetWidth) / 2, behavior:doux ? 'smooth' : 'auto' });
+}
+function choisir(id){ cfg.circuit = id; saveCfg(); infoCircuit(); }
+let scrollT = 0;
+$('circuits').addEventListener('scroll', () => {
+  clearTimeout(scrollT);
+  scrollT = setTimeout(() => {
+    const box = $('circuits'), mid = box.scrollLeft + box.clientWidth / 2;
+    let best = null, bd = Infinity;
+    box.querySelectorAll('.circ').forEach(b => { const d = Math.abs(b.offsetLeft + b.offsetWidth / 2 - mid); if(d < bd){ bd = d; best = b; } });
+    if(best && best.dataset.id !== cfg.circuit) choisir(best.dataset.id);
+  }, 120);
+});
+$('prevC').onclick = () => { const i = idx(); if(i > 0){ choisir(CIRC[i - 1].id); centrer(cfg.circuit); } };
+$('nextC').onclick = () => { const i = idx(); if(i < CIRC.length - 1){ choisir(CIRC[i + 1].id); centrer(cfg.circuit); } };
+$('circuits').addEventListener('click', e => { const b = e.target.closest('.circ'); if(b){ choisir(b.dataset.id); centrer(b.dataset.id); } });
 $('niveau').addEventListener('click', e => { const b = e.target.closest('button'); if(b){ cfg.niveau = b.dataset.k; saveCfg(); renderMenu(); } });
 $('nbJoueurs').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
@@ -330,28 +381,29 @@ function peindreFond(){
 const teinte = r => `hsl(${Math.round((1 - clamp(r, 0, 1)) * 120)}, 78%, 42%)`;   // vert (lent) → rouge (rapide)
 
 /* ---------- Tracé de la trajectoire ---------- */
-let traces = [];                // trajectoires validées, une par joueur humain
+let traces = [];                // trajectoires validées : traces[joueur][tour]
 let tr = null;                  // tracé en cours
-let joueurTrace = 0;
+let joueurTrace = 0, tourTrace = 0;
 
 function debutTraces(){
   cancelAnimationFrame(raf); course = null;
   circuit = byId[cfg.circuit];
   traces = [];
-  joueurTrace = 0;
+  joueurTrace = 0; tourTrace = 0;
   show('jeu');
+  try{ screen.orientation.lock('landscape').catch(() => {}); }catch(e){}
   dimensionner();
   nouveauTrace();
 }
 function nomJoueur(i){ return cfg.joueurs[i].nom || `Joueur ${i + 1}`; }
 function nouveauTrace(){
   tr = { pts:[], j:null, fini:false, actif:false, alertes:[] };
-  $('banner').innerHTML = `${esc(nomJoueur(joueurTrace))} : tracez votre trajectoire<small>${esc(circuit.n)} · ${circuit.tours} tours · partez de la ligne à damier</small>`;
+  $('banner').innerHTML = `${esc(nomJoueur(joueurTrace))} · tour ${tourTrace + 1} / ${circuit.tours}<small>${esc(circuit.n)} · tracez un tour en partant de la ligne à damier</small>`;
   $('msg').className = 'msg'; $('msg').textContent = 'Posez le doigt sur la ligne de départ et suivez la piste jusqu\'à revenir au départ.';
   $('drawCtl').hidden = false; $('boosts').hidden = true; $('gauge').hidden = false;
   $('lights').hidden = true; $('standings').hidden = true; $('timer').hidden = true;
   $('done').disabled = true;
-  $('done').textContent = joueurTrace < cfg.joueurs.length - 1 ? 'Joueur suivant' : 'C\'est parti';
+  $('done').textContent = tourTrace < circuit.tours - 1 ? 'Tour suivant' : joueurTrace < cfg.joueurs.length - 1 ? 'Joueur suivant' : 'C\'est parti';
   jauge(0);
   redessiner();
 }
@@ -364,7 +416,7 @@ function jauge(v){
 }
 const versPiste = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * P.W, (e.clientY - r.top) / r.height * P.H]; };
 // Vitesse de la voiture selon la vitesse du doigt (unités de circuit par milliseconde)
-const vitesseDoigt = u => P.VMAX * clamp((u - 0.05) / 1.1, 0.15, 1);
+const vitesseDoigt = u => P.VMAX * clamp((u - 0.03) / 0.6, 0.12, 1);
 
 function avertir(t){ $('msg').className = 'msg warn'; $('msg').textContent = t; }
 
@@ -378,7 +430,7 @@ cv.addEventListener('pointerdown', e => {
     tr.j = tr.j0 = pr.j;   // indice « déroulé » : de -14 à 14 autour du départ
   } else {
     const last = tr.pts[tr.pts.length - 1];
-    if(Math.hypot(last.x - x, last.y - y) > 36) return avertir('Reprenez au bout de votre trait.');
+    if(Math.hypot(last.x - x, last.y - y) > 50) return avertir('Reprenez au bout de votre trait.');
   }
   try{ cv.setPointerCapture(e.pointerId); }catch(err){}
   tr.actif = true;
@@ -460,7 +512,7 @@ function profil(pts, vit){
 function traceBot(niv, graine){
   const c = circuit, n = c.pts.length;
   const pts = c.pts.map((p, i) => {
-    const a = c.cap[i], off = Math.sin(i / n * Math.PI * 2 * 3 + graine) * 9;
+    const a = c.cap[i], off = Math.sin(i / n * Math.PI * 2 * 3 + graine) * 14;
     return [p[0] - Math.sin(a) * off, p[1] + Math.cos(a) * off];
   });
   const lis = lisserPts(pts, 2);
@@ -480,8 +532,8 @@ function redessiner(){
   if(!fond) return;
   peindreFond();
   if(course) return dessinerCourse();
-  // Trajectoires déjà validées des autres joueurs, en pâle
-  traces.forEach(t => traitVitesse(t.pts, t.v, .25, true));
+  // Tours déjà tracés par ce joueur, en pâle
+  (traces[joueurTrace] || []).forEach(t => traitVitesse(t.pts, t.v, .22, true));
   if(!tr) return;
   if(tr.trace){ traitVitesse(tr.trace.pts, tr.trace.v, 1, true); alertes(tr.trace); }
   else if(tr.pts.length > 1){
@@ -516,8 +568,8 @@ function alertes(t){
 $('clear').onclick = () => nouveauTrace();
 $('done').onclick = () => {
   if(!tr || !tr.trace) return;
-  traces[joueurTrace] = tr.trace;
-  joueurTrace++;
+  (traces[joueurTrace] = traces[joueurTrace] || [])[tourTrace] = tr.trace;
+  if(++tourTrace >= circuit.tours){ tourTrace = 0; joueurTrace++; }
   if(joueurTrace < cfg.joueurs.length) nouveauTrace();
   else demarrerCourse();
 };
@@ -527,18 +579,22 @@ let course = null, raf = 0;
 function demarrerCourse(){
   tr = null;
   const niv = NIVEAUX[cfg.niveau];
-  const voitures = cfg.joueurs.map((j, i) => ({ nom:nomJoueur(i), couleur:j.couleur, humain:true, t:traces[i] }));
+  const voitures = cfg.joueurs.map((j, i) => ({ nom:nomJoueur(i), couleur:j.couleur, humain:true, laps:traces[i], t:traces[i][0] }));
   const pris = new Set(cfg.joueurs.map(j => j.couleur));
   const libres = COULEURS.filter(c => !pris.has(c));
-  for(let k = 0; voitures.length < 4; k++) voitures.push({ nom:BOTS[k], couleur:libres[k], humain:false, t:traceBot(niv, 1.3 + k * 2.1) });
+  for(let k = 0; voitures.length < 4; k++){
+    const bt = traceBot(niv, 1.3 + k * 2.1);
+    voitures.push({ nom:BOTS[k], couleur:libres[k], humain:false, laps:new Array(circuit.tours).fill(bt), t:bt });
+  }
   // Grille de départ : les humains derrière, en quinconce
   const ordre = voitures.slice().sort((a, b) => a.humain - b.humain);
-  ordre.forEach((v, k) => Object.assign(v, { s:-24 - k * 26, cote:k % 2 ? 1 : -1, vit:0, boosts:BOOST.n, boostT:0, derapT:0, recup:false, angleDerap:0,
+  ordre.forEach((v, k) => Object.assign(v, { s:-34 - k * 38, lap:0, t:v.laps[0], cote:k % 2 ? 1 : -1, vit:0, boosts:BOOST.n, boostT:0, derapT:0, recup:false, angleDerap:0,
     tours:[], debutTour:0, fin:null }));
   course = { voitures, tours:circuit.tours, t:0, phase:'feux', feux:0, fumee:[], finHumains:null };
   show('jeu');
   $('drawCtl').hidden = true; $('gauge').hidden = true;
   $('lights').hidden = false; $('standings').hidden = false; $('timer').hidden = false;
+  $('quit').textContent = 'Abandonner';
   $('banner').innerHTML = `${esc(circuit.n)}<small>${circuit.tours} tours · Boost : ${BOOST.n} par pilote</small>`;
   $('msg').className = 'msg'; $('msg').textContent = 'Attention aux feux…';
   const humains = voitures.filter(v => v.humain);
@@ -606,14 +662,14 @@ function etape(dt){
     } else vit = cible;
     if(t.herbe[i] && Math.random() < 0.3) c.fumee.push({ x:0, y:0, v, vie:0.5, herbe:true });
     v.vit += (vit - v.vit) * Math.min(1, dt * (v.derapT > 0 ? 12 : 5));
-    const avant = v.s;
     v.s += v.vit * dt;
-    // Passage de la ligne
-    const tourAvant = Math.floor(avant / t.len), tourApres = Math.floor(v.s / t.len);
-    if(tourApres > tourAvant && tourApres >= 1){
-      const quand = c.t - (v.s - tourApres * t.len) / Math.max(v.vit, 1);
+    // Passage de la ligne : on enchaîne sur le tracé du tour suivant
+    if(v.s >= t.len){
+      const quand = c.t - (v.s - t.len) / Math.max(v.vit, 1);
       v.tours.push(quand - v.debutTour); v.debutTour = quand;
-      if(tourApres >= c.tours){ v.fin = quand; if(v.humain) flash(`${v.nom} a fini !`); }
+      v.s -= t.len;
+      if(v.lap + 1 >= c.tours){ v.fin = quand; if(v.humain) flash(`${v.nom} a fini !`); }
+      else { v.lap++; v.t = v.laps[v.lap]; v.recup = false; }
     }
   }
   // Fumée : figée à l'endroit où elle apparaît
@@ -634,16 +690,16 @@ function position(v){
   let x = a[0] + (b[0] - a[0]) * u, y = a[1] + (b[1] - a[1]) * u;
   const ang = Math.atan2(c[1] - a[1], c[0] - a[0]);
   // Décalage de la grille de départ, qui s'efface dans les premiers mètres
-  const dec = v.cote * 13 * clamp(1 - (v.s + 40) / 160, 0, 1);
+  const dec = v.lap ? 0 : v.cote * 18 * clamp(1 - (v.s + 50) / 200, 0, 1);
   x += -Math.sin(ang) * dec; y += Math.cos(ang) * dec;
   return { x, y, a:ang };
 }
-function progression(v){ return v.fin != null ? 1e9 - v.fin : v.s; }
+function progression(v){ return v.fin != null ? 1e9 - v.fin : v.lap + v.s / v.t.len; }
 function classement(){
   const c = course;
   const tri = c.voitures.slice().sort((a, b) => progression(b) - progression(a));
   $('standings').innerHTML = tri.map((v, k) => {
-    const tour = Math.min(c.tours, Math.max(1, Math.floor(v.s / v.t.len) + 1));
+    const tour = Math.min(c.tours, v.lap + 1);
     return `<div><b>${k + 1}</b><em style="background:${v.couleur}"></em>${esc(v.nom)} <small>${v.fin != null ? '🏁' : `T${tour}/${c.tours}`}</small></div>`;
   }).join('');
 }
@@ -656,7 +712,7 @@ function dessinerCourse(){
   });
   c.voitures.slice().sort((a, b) => a.humain - b.humain).forEach(v => {
     const p = position(v);
-    voiture(g, p.x, p.y, p.a + v.angleDerap, v.couleur, 1.15, v.boostT > 0);
+    voiture(g, p.x, p.y, p.a + v.angleDerap, v.couleur, 1.5, v.boostT > 0);
   });
 }
 
@@ -702,11 +758,17 @@ function terminerCourse(){
 $('goDraw').onclick = debutTraces;
 $('rematch').onclick = () => { course = null; show('jeu'); dimensionner(); demarrerCourse(); };
 $('redraw').onclick = () => { course = null; debutTraces(); };
-$('toMenu').onclick = () => { course = null; renderMenu(); show('menu'); };
-$('quit').onclick = () => {
-  if(course && course.phase === 'course' && !confirm('Quitter la course ?')) return;
-  cancelAnimationFrame(raf); course = null; tr = null; renderMenu(); show('menu');
-};
+$('toMenu').onclick = () => { course = null; try{ screen.orientation.unlock(); }catch(e){} renderMenu(); show('menu'); };
+// Abandonner : retour au menu, la partie ne compte pas
+function abandonner(){
+  const enJeu = (course && course.phase !== 'fini') || (tr && tr.pts.length) || traces.length;
+  if(enJeu && !confirm('Abandonner la partie ? Elle ne comptera pas pour les records.')) return;
+  cancelAnimationFrame(raf); course = null; tr = null; traces = [];
+  try{ screen.orientation.unlock(); }catch(e){}
+  renderMenu(); show('menu');
+}
+$('quit').onclick = abandonner;
+$('quit2').onclick = abandonner;
 
 renderMenu();
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));

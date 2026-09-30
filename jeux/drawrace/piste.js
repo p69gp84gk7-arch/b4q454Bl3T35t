@@ -1,7 +1,7 @@
 /* Draw Race : géométrie des circuits et des trajectoires (lignes lissées, courbure, adhérence). */
 window.Piste = (() => {
-  const W = 600, H = 800;          // cadre des circuits
-  const LARGEUR = 54;              // largeur de la piste
+  const W = 1000, H = 600;          // cadre des circuits
+  const LARGEUR = 80;              // largeur de la piste
   const STEP = 4;                  // un point tous les 4 unités le long des lignes
   const VMAX = 340;                // vitesse maximale (unités par seconde)
   const GRIP = 230;                // adhérence : vitesse limite en virage = √(GRIP / courbure)
