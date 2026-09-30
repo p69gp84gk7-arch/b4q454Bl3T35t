@@ -131,7 +131,7 @@ tr.me td{ font-weight:800; }
 <main class="page" id="menu">
   <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">DesDés</a>
   <h1>Draw <span>Race</span></h1>
-  <p class="sub">Dessinez la trajectoire de votre monoplace : la vitesse de votre doigt devient la vitesse de la voiture. Trop vite dans un virage, et c'est le dérapage ! Un tracé par tour, puis la course : gardez le Boost pour les lignes droites. Se joue le téléphone à l'horizontale.</p>
+  <p class="sub">Dessinez la trajectoire de votre monoplace : la vitesse de votre doigt devient la vitesse de la voiture (dans les virages, elle ralentit toute seule). Enchaînez les tours sans lever le doigt, puis place à la course : gardez le Boost pour les lignes droites. Se joue le téléphone à l'horizontale.</p>
 
   <h2>Joueurs</h2>
   <div class="seg" id="nbJoueurs" role="group" aria-label="Nombre de joueurs"></div>
@@ -207,9 +207,8 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 const COULEURS = ['#D7263D', '#1B6FD8', '#F2C230', '#1E9E5B', '#F28C28', '#7B3FC4', '#E75A9B', '#2B2B2B', '#F4F4F4', '#17B3B0'];
 const BOTS = ['Vitesse', 'Turbo', 'Piston', 'Chrono', 'Éclair'];
-const NIVEAUX = { facile:{ n:'Facile', top:.76, virage:.84 }, normal:{ n:'Normal', top:.86, virage:.94 }, difficile:{ n:'Difficile', top:.94, virage:1.03 } };
+const NIVEAUX = { facile:{ n:'Facile', top:.52, virage:.66 }, normal:{ n:'Normal', top:.64, virage:.78 }, difficile:{ n:'Difficile', top:.76, virage:.9 } };
 const BOOST = { n:3, duree:1.3, facteur:1.4 };
-const DERAPAGE = { seuil:1.15, duree:.85 };
 const HERBE = 90;                              // vitesse maximale hors piste
 const CIRC = window.CIRCUITS.map(P.construire);
 const byId = Object.fromEntries(CIRC.map(c => [c.id, c]));
@@ -348,15 +347,31 @@ function dessinerFond(dpr){
   o.lineJoin = 'round'; o.lineCap = 'round';
   // Contour, vibreurs dans les virages, bitume
   cheminPiste(c, o); o.lineWidth = P.LARGEUR + 12; o.strokeStyle = '#1F1F1F'; o.stroke();
-  o.lineWidth = P.LARGEUR + 8; o.setLineDash([9, 9]);
-  for(let i = 0; i < c.pts.length; i++){
-    if(c.kappa[i] < 0.007) continue;
-    const a = c.pts[i], b = c.pts[(i + 1) % c.pts.length];
-    o.beginPath(); o.moveTo(a[0], a[1]); o.lineTo(b[0], b[1]);
-    o.strokeStyle = (Math.floor(i / 3) % 2) ? '#D7263D' : '#FFFFFF'; o.stroke();
-  }
-  o.setLineDash([]);
   cheminPiste(c, o); o.lineWidth = P.LARGEUR; o.strokeStyle = '#A7A39A'; o.stroke();
+  // Vibreurs rouge et blanc des deux côtés de chaque virage
+  const n = c.pts.length, dans = new Array(n).fill(false);
+  c.kappa.forEach((k, i) => { if(k > 0.0035) for(let d = -5; d <= 5; d++) dans[(i + d + n) % n] = true; });
+  const bord1 = P.LARGEUR / 2 - 7, bord2 = P.LARGEUR / 2 + 3;
+  for(let i = 0; i < n; i++){
+    if(!dans[i]) continue;
+    const a1 = c.pts[i], b1 = c.pts[(i + 1) % n];
+    const na = [-Math.sin(c.cap[i]), Math.cos(c.cap[i])], nb = [-Math.sin(c.cap[(i + 1) % n]), Math.cos(c.cap[(i + 1) % n])];
+    o.fillStyle = (Math.floor(i / 3) % 2) ? '#D7263D' : '#FFFFFF';
+    // Côté intérieur d'un virage très serré : on ne dessine pas (le vibreur se replierait sur lui-même)
+    let tourne = c.cap[(i + 1) % n] - c.cap[i];
+    while(tourne > Math.PI) tourne -= 2 * Math.PI;
+    while(tourne < -Math.PI) tourne += 2 * Math.PI;
+    const interieur = Math.sign(tourne);
+    for(const cote of [-1, 1]){
+      if(cote === interieur && c.kappa[i] * bord2 > 0.75) continue;
+      o.beginPath();
+      o.moveTo(a1[0] + na[0] * bord1 * cote, a1[1] + na[1] * bord1 * cote);
+      o.lineTo(b1[0] + nb[0] * bord1 * cote, b1[1] + nb[1] * bord1 * cote);
+      o.lineTo(b1[0] + nb[0] * bord2 * cote, b1[1] + nb[1] * bord2 * cote);
+      o.lineTo(a1[0] + na[0] * bord2 * cote, a1[1] + na[1] * bord2 * cote);
+      o.closePath(); o.fill();
+    }
+  }
   cheminPiste(c, o); o.lineWidth = 1.4; o.setLineDash([10, 14]); o.strokeStyle = 'rgba(255,255,255,.7)'; o.stroke(); o.setLineDash([]);
   // Ligne de départ en damier
   const [sx, sy] = c.pts[0], a = c.cap[0], nx = -Math.sin(a), ny = Math.cos(a), dx = Math.cos(a), dy = Math.sin(a);
@@ -396,14 +411,18 @@ function debutTraces(){
   nouveauTrace();
 }
 function nomJoueur(i){ return cfg.joueurs[i].nom || `Joueur ${i + 1}`; }
+// Nouveau tracé pour le joueur en cours : on repart du tour 1
 function nouveauTrace(){
-  tr = { pts:[], j:null, fini:false, actif:false, alertes:[] };
-  $('banner').innerHTML = `${esc(nomJoueur(joueurTrace))} · tour ${tourTrace + 1} / ${circuit.tours}<small>${esc(circuit.n)} · tracez un tour en partant de la ligne à damier</small>`;
-  $('msg').className = 'msg'; $('msg').textContent = 'Posez le doigt sur la ligne de départ et suivez la piste jusqu\'à revenir au départ.';
+  traces[joueurTrace] = [];
+  tourTrace = 0;
+  tr = { pts:[], j:null, fini:false, actif:false };
+  $('banner').innerHTML = `${esc(nomJoueur(joueurTrace))} · tour 1 / ${circuit.tours}<small>${esc(circuit.n)} · partez de la ligne à damier et enchaînez les ${circuit.tours} tours</small>`;
+  $('msg').className = 'msg'; $('msg').textContent = `Posez le doigt sur la ligne de départ et faites ${circuit.tours} tours sans lever le doigt (vous pouvez reprendre au bout du trait).`;
   $('drawCtl').hidden = false; $('boosts').hidden = true; $('gauge').hidden = false;
   $('lights').hidden = true; $('standings').hidden = true; $('timer').hidden = true;
+  $('clear').textContent = 'Recommencer';
   $('done').disabled = true;
-  $('done').textContent = tourTrace < circuit.tours - 1 ? 'Tour suivant' : joueurTrace < cfg.joueurs.length - 1 ? 'Joueur suivant' : 'C\'est parti';
+  $('done').textContent = joueurTrace < cfg.joueurs.length - 1 ? 'Joueur suivant' : 'C\'est parti';
   jauge(0);
   redessiner();
 }
@@ -416,7 +435,7 @@ function jauge(v){
 }
 const versPiste = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * P.W, (e.clientY - r.top) / r.height * P.H]; };
 // Vitesse de la voiture selon la vitesse du doigt (unités de circuit par milliseconde)
-const vitesseDoigt = u => P.VMAX * clamp((u - 0.03) / 0.6, 0.12, 1);
+const vitesseDoigt = u => P.VMAX * clamp((u - 0.02) / 0.45, 0.12, 1);
 
 function avertir(t){ $('msg').className = 'msg warn'; $('msg').textContent = t; }
 
@@ -465,47 +484,58 @@ function ajouterPoint(x, y, t){
   const v = vitesseDoigt(dist / dt);
   tr.pts.push({ x, y, t, v, herbe:pr.d > P.LARGEUR / 2 + 3 });
   jauge(v);
-  if(tr.j >= tr.j0 + n) terminerTrace();   // retour à l'endroit du départ : un tour complet
+  if(tr.j >= tr.j0 + n) tourTermine();   // retour à l'endroit du départ : un tour complet
 }
 
-// Tour complet : trajectoire lissée, profil de vitesse, virages trop rapides
-function terminerTrace(){
-  tr.actif = false; tr.fini = true; jauge(0);
-  const raw = tr.pts.map(p => [p.x, p.y]);
-  raw.push([tr.pts[0].x, tr.pts[0].y]);
-  const pts = P.resample(raw, P.STEP, true);
-  // Vitesse et herbe interpolées le long du trait
-  const cum = [0];
-  for(let i = 1; i < tr.pts.length; i++) cum.push(cum[i - 1] + Math.hypot(tr.pts[i].x - tr.pts[i - 1].x, tr.pts[i].y - tr.pts[i - 1].y));
-  let k = 0;
-  const vit = pts.map((_, i) => { const s = i * P.STEP; while(k < cum.length - 2 && cum[k + 1] < s) k++; return tr.pts[Math.min(k + 1, tr.pts.length - 1)].v; });
-  const lisses = lisserPts(pts, 3);
-  const trace = profil(lisses, P.lisser(vit, 5).map(v => Math.max(40, v)));
-  tr.trace = trace;
-  const zones = trace.danger.length;
-  $('done').disabled = false;
-  if(zones){ $('msg').className = 'msg warn'; $('msg').textContent = `⚠ ${zones} virage${zones > 1 ? 's' : ''} trop rapide${zones > 1 ? 's' : ''} : la voiture va déraper. Retracez, ou tentez votre chance !`; }
-  else { $('msg').className = 'msg'; $('msg').textContent = 'Beau tracé, aucun dérapage en vue !'; }
+// Tour complet : on le garde, et on enchaîne sur le suivant sans lever le doigt
+function tourTermine(){
+  traces[joueurTrace][tourTrace] = versTrace(tr.pts);
+  tourTrace++;
+  const last = tr.pts[tr.pts.length - 1];
+  if(tourTrace < circuit.tours){
+    // Le tour suivant repart du même endroit que le premier (pas de décalage qui s'accumule)
+    tr = { pts:[last], j:tr.j, j0:tr.j0 + circuit.pts.length, fini:false, actif:tr.actif };
+    $('banner').innerHTML = `${esc(nomJoueur(joueurTrace))} · tour ${tourTrace + 1} / ${circuit.tours}<small>${esc(circuit.n)} · continuez sans lever le doigt</small>`;
+    $('msg').className = 'msg'; $('msg').textContent = `Tour ${tourTrace} tracé ! Continuez pour le tour ${tourTrace + 1}.`;
+  } else {
+    tr.actif = false; tr.fini = true; jauge(0);
+    $('banner').innerHTML = `${esc(nomJoueur(joueurTrace))} · ${circuit.tours} tours tracés<small>${esc(circuit.n)}</small>`;
+    $('msg').className = 'msg'; $('msg').textContent = 'Tous les tours sont tracés !';
+    $('done').disabled = false;
+  }
   redessiner();
+}
+// Trait du doigt → trajectoire lissée avec sa vitesse
+function versTrace(tp){
+  const raw = tp.map(p => [p.x, p.y]);
+  raw.push([tp[0].x, tp[0].y]);
+  const pts = P.resample(raw, P.STEP, true);
+  const cum = [0];
+  for(let i = 1; i < tp.length; i++) cum.push(cum[i - 1] + Math.hypot(tp[i].x - tp[i - 1].x, tp[i].y - tp[i - 1].y));
+  let k = 0;
+  const vit = pts.map((_, i) => { const s = i * P.STEP; while(k < cum.length - 2 && cum[k + 1] < s) k++; return tp[Math.min(k + 1, tp.length - 1)].v; });
+  return profil(lisserPts(pts, 3), P.lisser(vit, 5).map(v => Math.max(40, v)));
 }
 function lisserPts(pts, r){
   const n = pts.length;
   return pts.map((_, i) => { let x = 0, y = 0; for(let j = -r; j <= r; j++){ const q = pts[(i + j + n) % n]; x += q[0]; y += q[1]; } return [x / (2 * r + 1), y / (2 * r + 1)]; });
 }
-// Trajectoire prête pour la course : points, vitesses voulues, limite en virage, herbe, zones de dérapage
+// Trajectoire prête pour la course : la voiture suit la vitesse du tracé, mais ralentit toute seule
+// dans les virages (freinage progressif avant) et hors piste
 function profil(pts, vit){
   const kappa = P.courbure(pts);
   const grip = kappa.map(P.vitesseVirage);
   const n = pts.length;
   let j = 0;
   const herbe = pts.map(p => { const pr = P.plusProche(circuit, p[0], p[1], j, 40, 10); j = pr.j; return pr.d > P.LARGEUR / 2 + 3; });
-  const v = vit.map((x, i) => herbe[i] ? Math.min(x, HERBE) : x);
-  const danger = [];
-  for(let i = 0; i < n; i++){
-    const trop = v[i] > grip[i] * DERAPAGE.seuil, avant = v[(i - 1 + n) % n] > grip[(i - 1 + n) % n] * DERAPAGE.seuil;
-    if(trop && !avant) danger.push(i);
-  }
-  return { pts, v, grip, herbe, danger, len:n * P.STEP };
+  const v = vit.map((x, i) => Math.min(x, grip[i], herbe[i] ? HERBE : Infinity));
+  freinages(v, 520);
+  return { pts, v, grip, herbe, len:n * P.STEP };
+}
+function freinages(v, dec){
+  const n = v.length;
+  for(let pass = 0; pass < 2; pass++)
+    for(let i = n - 1; i >= 0; i--){ const nx = v[(i + 1) % n]; v[i] = Math.min(v[i], Math.sqrt(nx * nx + 2 * dec * P.STEP)); }
 }
 
 // Trajectoire des adversaires : la ligne centrale, un peu décalée, à une vitesse selon le niveau
@@ -525,7 +555,7 @@ function traceBot(niv, graine){
     for(let i = n - 1; i >= 0; i--){ const nx = v[(i + 1) % n]; v[i] = Math.min(v[i], Math.sqrt(nx * nx + 2 * DEC * P.STEP)); }
     for(let i = 0; i < n; i++){ const pv = v[(i - 1 + n) % n]; v[i] = Math.min(v[i], Math.sqrt(pv * pv + 2 * ACC * P.STEP)); }
   }
-  return { pts:lis, v, grip, herbe:new Array(n).fill(false), danger:[], len:n * P.STEP };
+  return { pts:lis, v, grip, herbe:new Array(n).fill(false), len:n * P.STEP };
 }
 
 function redessiner(){
@@ -535,8 +565,7 @@ function redessiner(){
   // Tours déjà tracés par ce joueur, en pâle
   (traces[joueurTrace] || []).forEach(t => traitVitesse(t.pts, t.v, .22, true));
   if(!tr) return;
-  if(tr.trace){ traitVitesse(tr.trace.pts, tr.trace.v, 1, true); alertes(tr.trace); }
-  else if(tr.pts.length > 1){
+  if(tr.pts.length > 1){
     g.lineCap = 'round'; g.lineWidth = 5;
     for(let i = 1; i < tr.pts.length; i++){
       const a = tr.pts[i - 1], b = tr.pts[i];
@@ -557,19 +586,10 @@ function traitVitesse(pts, v, alpha, ferme){
   }
   g.restore();
 }
-function alertes(t){
-  t.danger.forEach(i => {
-    const [x, y] = t.pts[i];
-    g.fillStyle = '#FFE066'; g.strokeStyle = '#1F1F1F'; g.lineWidth = 2;
-    g.beginPath(); g.moveTo(x, y - 13); g.lineTo(x + 11, y + 7); g.lineTo(x - 11, y + 7); g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = '#1F1F1F'; g.font = 'bold 13px sans-serif'; g.textAlign = 'center'; g.fillText('!', x, y + 5);
-  });
-}
 $('clear').onclick = () => nouveauTrace();
 $('done').onclick = () => {
-  if(!tr || !tr.trace) return;
-  (traces[joueurTrace] = traces[joueurTrace] || [])[tourTrace] = tr.trace;
-  if(++tourTrace >= circuit.tours){ tourTrace = 0; joueurTrace++; }
+  if(!tr || !tr.fini) return;
+  joueurTrace++;
   if(joueurTrace < cfg.joueurs.length) nouveauTrace();
   else demarrerCourse();
 };
@@ -586,9 +606,9 @@ function demarrerCourse(){
     const bt = traceBot(niv, 1.3 + k * 2.1);
     voitures.push({ nom:BOTS[k], couleur:libres[k], humain:false, laps:new Array(circuit.tours).fill(bt), t:bt });
   }
-  // Grille de départ : les humains derrière, en quinconce
-  const ordre = voitures.slice().sort((a, b) => a.humain - b.humain);
-  ordre.forEach((v, k) => Object.assign(v, { s:-34 - k * 38, lap:0, t:v.laps[0], cote:k % 2 ? 1 : -1, vit:0, boosts:BOOST.n, boostT:0, derapT:0, recup:false, angleDerap:0,
+  // Grille de départ en quinconce : les joueurs devant, les adversaires derrière
+  const ordre = voitures.slice().sort((a, b) => b.humain - a.humain);
+  ordre.forEach((v, k) => Object.assign(v, { s:-34 - k * 38, lap:0, t:v.laps[0], cote:k % 2 ? 1 : -1, vit:0, boosts:BOOST.n, boostT:0,
     tours:[], debutTour:0, fin:null }));
   course = { voitures, tours:circuit.tours, t:0, phase:'feux', feux:0, fumee:[], finHumains:null };
   show('jeu');
@@ -647,21 +667,10 @@ function etape(dt){
     let cible = v.s < 0 ? t.v[0] : t.v[i];
     if(v.boostT > 0){ v.boostT -= dt; cible *= BOOST.facteur; }
     if(!v.humain && v.boosts > 0 && v.boostT <= 0 && v.s > 0 && t.grip[(i + 25) % n] >= P.VMAX && t.grip[i] >= P.VMAX && Math.random() < dt * 0.35){ v.boosts--; v.boostT = BOOST.duree; }
-    if(!v.humain) cible = Math.min(cible, t.grip[i] * 1.08);
-    let vit;
-    if(v.derapT > 0){
-      v.derapT -= dt; vit = t.grip[i] * 0.35; v.angleDerap += dt * 9 * v.cote;
-      if(Math.random() < 0.6) c.fumee.push({ x:0, y:0, v, vie:0.8 });
-      if(v.derapT <= 0) v.angleDerap = 0;
-    } else if(v.humain && cible > t.grip[i] * DERAPAGE.seuil && !v.recup){
-      v.derapT = DERAPAGE.duree; v.recup = true; vit = t.grip[i] * 0.35;
-      if(v.humain) flash(`Dérapage de ${v.nom} !`);
-    } else if(v.recup){
-      vit = Math.min(cible, t.grip[i]);
-      if(cible <= t.grip[i] * 1.05) v.recup = false;
-    } else vit = cible;
+    // Pas de dérapage : dans les virages, la voiture (même en Boost) ne dépasse pas la vitesse possible
+    const vit = Math.min(cible, t.grip[i]);
     if(t.herbe[i] && Math.random() < 0.3) c.fumee.push({ x:0, y:0, v, vie:0.5, herbe:true });
-    v.vit += (vit - v.vit) * Math.min(1, dt * (v.derapT > 0 ? 12 : 5));
+    v.vit += (vit - v.vit) * Math.min(1, dt * 5);
     v.s += v.vit * dt;
     // Passage de la ligne : on enchaîne sur le tracé du tour suivant
     if(v.s >= t.len){
@@ -669,7 +678,7 @@ function etape(dt){
       v.tours.push(quand - v.debutTour); v.debutTour = quand;
       v.s -= t.len;
       if(v.lap + 1 >= c.tours){ v.fin = quand; if(v.humain) flash(`${v.nom} a fini !`); }
-      else { v.lap++; v.t = v.laps[v.lap]; v.recup = false; }
+      else { v.lap++; v.t = v.laps[v.lap]; }
     }
   }
   // Fumée : figée à l'endroit où elle apparaît
@@ -712,7 +721,7 @@ function dessinerCourse(){
   });
   c.voitures.slice().sort((a, b) => a.humain - b.humain).forEach(v => {
     const p = position(v);
-    voiture(g, p.x, p.y, p.a + v.angleDerap, v.couleur, 1.5, v.boostT > 0);
+    voiture(g, p.x, p.y, p.a, v.couleur, 1.5, v.boostT > 0);
   });
 }
 
@@ -761,7 +770,7 @@ $('redraw').onclick = () => { course = null; debutTraces(); };
 $('toMenu').onclick = () => { course = null; try{ screen.orientation.unlock(); }catch(e){} renderMenu(); show('menu'); };
 // Abandonner : retour au menu, la partie ne compte pas
 function abandonner(){
-  const enJeu = (course && course.phase !== 'fini') || (tr && tr.pts.length) || traces.length;
+  const enJeu = (course && course.phase !== 'fini') || (tr && tr.pts.length) || traces.some(t => t && t.length);
   if(enJeu && !confirm('Abandonner la partie ? Elle ne comptera pas pour les records.')) return;
   cancelAnimationFrame(raf); course = null; tr = null; traces = [];
   try{ screen.orientation.unlock(); }catch(e){}
