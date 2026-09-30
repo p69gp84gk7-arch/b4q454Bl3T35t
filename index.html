@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DesDés</title>
-<meta name="description" content="Les carnets de score de nos jeux de dés : 10 000 et Yam's.">
+<meta name="description" content="Nos jeux : carnets de score du 10 000 et du Yam's, quiz de géographie.">
 <meta name="theme-color" content="#123A2C">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -75,6 +75,15 @@ h2{ font-size:.85rem; font-weight:600; text-transform:uppercase; letter-spacing:
 .g10000 .go{ background:var(--gold); color:var(--ink); }
 .g10000 .corner{ position:absolute; right:-10px; top:-10px; width:74px; height:74px; transform:rotate(14deg); opacity:.95; }
 
+/* Carte Géographie : océan et carte */
+.ggeo{ background:#0F3B57; color:var(--ivory); border:1.5px solid rgba(169,207,230,.35);
+  background-image:radial-gradient(circle at 85% 0%, rgba(169,207,230,.18), transparent 60%); }
+.ggeo .desc, .ggeo .status{ color:rgba(247,243,232,.75); }
+.ggeo .status b{ color:var(--ivory); }
+.ggeo .go{ background:#A9CFE6; color:#0F3B57; }
+.ggeo .corner{ position:absolute; right:-8px; top:-8px; width:76px; height:76px; transform:rotate(-8deg); }
+@media (min-width:620px){ .ggeo{ grid-column:1 / -1; min-height:0; } }
+
 /* Carte Yam's : feuille quadrillée, comme le carnet */
 .gyams{ color:#26324A; background-color:var(--paper);
   background-image:linear-gradient(var(--grid-soft) 1px, transparent 1px), linear-gradient(90deg, var(--grid-soft) 1px, transparent 1px);
@@ -102,11 +111,11 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
     <img src="logo.svg" alt="">
     <div>
       <h1>DesDés</h1>
-      <p class="tagline">Les carnets de score de nos jeux de dés.</p>
+      <p class="tagline">Nos carnets de jeux de dés et un quiz de géographie.</p>
     </div>
   </header>
 
-  <h2>Choisir un carnet</h2>
+  <h2>Choisir un jeu</h2>
   <nav class="games" aria-label="Jeux">
     <a class="game g10000" href="jeux/10000.html">
       <svg class="corner" viewBox="0 0 100 100" aria-hidden="true">
@@ -129,9 +138,21 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
       <p class="status" id="styams"><b>Aucune partie en cours</b></p>
       <span class="go" id="goyams">Ouvrir le carnet</span>
     </a>
+
+    <a class="game ggeo" href="jeux/geo.html">
+      <svg class="corner" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="42" fill="#A9CFE6" stroke="#F7F3E8" stroke-width="5"/>
+        <path d="M30 28c8-6 20-4 24 3s-4 10 2 16 12 2 12 10-10 14-18 12-6-10-14-12-12-8-10-16 0-9 4-13z" fill="#F4EFE1" stroke="#0F3B57" stroke-width="2.5"/>
+        <path d="M66 22c6 2 10 8 9 12-4 0-8-2-11-6z" fill="#F4EFE1" stroke="#0F3B57" stroke-width="2.5"/>
+      </svg>
+      <p class="title">Géographie</p>
+      <p class="desc">Drapeaux du monde et placement des pays sur la carte, par continent ou pour le monde entier. Chrono et records.</p>
+      <p class="status" id="stgeo"><b>Pas encore de record</b></p>
+      <span class="go">Jouer</span>
+    </a>
   </nav>
 
-  <p class="soon"><b>D'autres carnets arriveront ici.</b> Chaque partie est gardée sur cet appareil : vous pouvez quitter un jeu et y revenir plus tard.</p>
+  <p class="soon"><b>D'autres jeux arriveront ici.</b> Chaque partie est gardée sur cet appareil : vous pouvez quitter un jeu et y revenir plus tard.</p>
 
   <footer id="installHint">Astuce : ajoutez DesDés à l'écran d'accueil pour l'ouvrir comme une application, même sans réseau.</footer>
 </main>
@@ -186,7 +207,20 @@ function show(id, st){
   document.getElementById('st' + id).innerHTML = st ? `<b>${st.head}</b>${st.line}` : '<b>Aucune partie en cours</b>';
   document.getElementById('go' + id).textContent = st && st.head.startsWith('Partie en cours') ? 'Reprendre la partie' : 'Ouvrir le carnet';
 }
-function refresh(){ show('10000', status10000()); show('yams', statusYams()); }
+/* Géographie : meilleur record du dernier jeu choisi (clés partagées avec jeux/geo.html) */
+const GEO_ZONES = { monde:'Monde', europe:'Europe', afrique:'Afrique', asie:'Asie', amnord:'Amérique du Nord', amsud:'Amérique du Sud', oceanie:'Océanie' };
+function showGeo(){
+  const recs = read('geo-records') || {};
+  const choix = read('geo-choix') || {};
+  const key = recs[`${choix.jeu}-${choix.zone}`] ? `${choix.jeu}-${choix.zone}` : Object.keys(recs).find(k => recs[k] && recs[k].length);
+  const el = document.getElementById('stgeo');
+  if(!key){ el.innerHTML = '<b>Pas encore de record</b>'; return; }
+  const [jeu, zone] = key.split('-'), r = recs[key][0];
+  const s = r.temps / 1000, m = Math.floor(s / 60);
+  el.innerHTML = `<b>Record ${jeu === 'carte' ? 'carte' : 'drapeaux'} · ${GEO_ZONES[zone] || zone}</b>` +
+    `${r.score} / ${r.total} en ${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}${r.nom ? ` par ${esc(r.nom)}` : ''}`;
+}
+function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); }
 refresh();
 // Retour depuis un jeu (cache de navigation) : remettre les états à jour
 window.addEventListener('pageshow', refresh);

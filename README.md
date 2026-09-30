@@ -1,6 +1,6 @@
 # DesDés
 
-Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés.
+Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés et un quiz de géographie.
 
 ![Logo](logo.svg)
 
@@ -10,6 +10,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | --- | --- | --- |
 | **10 000** : ouverture à 1 000, croix (effacées dès qu'on note des points ou le −500 du 1er lancer), reprises, pénalités ; il faut finir à 10 000 pile, dépasser donne une croix, et on ne peut pas reprendre des points qui mèneraient à 10 000 ou plus | `jeux/10000.html` | 2 à 15 |
 | **Yam's** : feuille de marque classique, bonus à 63 | `jeux/yams.html` | 1 à 10 |
+| **Géographie** : drapeaux et placement des pays sur la carte, par continent ou le monde, avec chrono et records | `jeux/geo.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -29,6 +30,17 @@ Si on a oublié les dés, le bouton rouge **Dés** de chaque carnet ouvre un tap
 Les dés ne se chevauchent jamais sur le tapis : après chaque lancer, ceux qui se touchent sont légèrement écartés.
 
 Le plateau repart de zéro dès qu'un score est noté dans le carnet. Le code est dans `jeux/plateau.js`, partagé par les deux jeux.
+
+## Géographie
+
+Deux jeux, pour le monde entier (195 pays : membres de l'ONU, Vatican et Palestine) ou un continent :
+
+- **Drapeaux** : un drapeau et quatre pays du même continent ; il faut trouver le bon.
+- **Carte** : un nom de pays ; il faut le toucher sur la carte (on peut zoomer en pinçant ou avec les boutons, et se déplacer en glissant). Trois essais par pays, puis la réponse s'affiche. Les tout petits pays ont un repère rond pour pouvoir les toucher.
+
+Le chrono tourne pendant toute la partie. Les 5 meilleurs résultats de chaque jeu et de chaque zone sont gardés sur l'appareil (score du premier coup, puis temps).
+
+Les données (`jeux/geo/monde.js` et `jeux/geo/drapeaux/`) sont produites par `outils/construire-geo.mjs` à partir de : Natural Earth via world-atlas (domaine public), mledoze/countries via world-countries (licence ODbL), drapeaux flag-icons (licence MIT), noms français du CLDR.
 
 ## Mise en ligne
 
@@ -52,6 +64,9 @@ index.html             accueil : choix du jeu
 jeux/10000.html        carnet du 10 000
 jeux/yams.html         feuille de Yam's
 jeux/plateau.js        plateau de 5 dés à lancer, commun aux deux jeux
+jeux/geo.html          jeu de géographie
+jeux/geo/              données de la carte et drapeaux
+outils/                script qui fabrique les données de géographie
 logo.svg               logo (source vectorielle)
 icons/                 icônes de l'application (192, 512, masquable, Apple)
 manifest.webmanifest   description de l'application installable
