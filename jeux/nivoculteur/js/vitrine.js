@@ -78,11 +78,16 @@ function demarrerVitrine(){
       ], preparer: o => phareDameuse(o, vd.phares) },
     { nom: 'Garage des dameuses', creer: () => creerGarage('Garage des dameuses'), cible: 3, distance: 32, sol: 1,
       options: g => [{ libelle: () => g.userData.voulu ? 'Fermer la porte' : 'Ouvrir la porte', action: () => ouvrirGarage(g, !g.userData.voulu) }] },
-    { nom: 'Armoire « Départ élec »', creer: () => creerArmoire('Départ élec'), cible: 1.2, distance: 6, sol: 1, options: () => [] }
+    { nom: 'Armoire « Départ élec »', creer: () => creerArmoire('Départ élec'), cible: 1.2, distance: 6, sol: 1, options: () => [] },
+    { nom: 'Téléski', creer: () => creerTeleski({ nom: 'Téléski', type: 'teleski', aval: { x: 0, z: 22 }, amont: { x: 0, z: -22 }, pylones: 1, hauteur: 7, ecart: 2.6, espacementSieges: 6 }, () => 0),
+      cible: 3, distance: 34, sol: 1,
+      options: o => [{ libelle: () => o.userData.enMarche ? 'Arrêter' : 'Mettre en marche', action: () => { o.userData.enMarche = !o.userData.enMarche; } }] },
+    { nom: 'Commerces', creer: () => creerCommerce(vk.type), cible: () => COMMERCES[vk.type].chambres ? 6 : 3, distance: () => COMMERCES[vk.type].chambres ? 42 : 26, sol: 1,
+      options: () => [{ libelle: () => COMMERCES[vk.type].nom, action: () => { const k = Object.keys(COMMERCES); vk.type = k[(k.indexOf(vk.type) + 1) % k.length]; rebatir(true); } }] }
   ];
 
   let objet = null, modele = null, auto = true, actuel = 0;
-  const vc = { modele: 'v8', support: 'trepied', etat: 'arret', direction: 0, inclinaison: 20 }, vp = { modele: 'p6', etat: 'arret' }, vd = { modele: 'dm400', phares: true };
+  const vc = { modele: 'v8', support: 'trepied', etat: 'arret', direction: 0, inclinaison: 20 }, vp = { modele: 'p6', etat: 'arret' }, vd = { modele: 'dm400', phares: true }, vk = { type: 'restaurant' };
   const valeur = v => typeof v === 'function' ? v() : v;
   const rebatir = (recadrer = false) => choisir(actuel, !recadrer);
   const cam = creerCommandes(canvas, camera, {
@@ -123,6 +128,7 @@ function demarrerVitrine(){
       if(o.userData.compresseur) animerCompresseur(o, dt, temps);
       if(o.userData.dameuse) animerDameuse(o, temps);
       if(o.userData.garage) animerGarage(o, dt);
+      if(o.userData.animer) o.userData.animer(dt);
       if(o.userData.pompes){ animerSallePompage(o, dt, temps); voirAtravers(o, camera, dt); }
     });
     renderer.render(scene, camera);

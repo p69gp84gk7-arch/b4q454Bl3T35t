@@ -44,11 +44,41 @@ function distanceZoneJeu(t, x, z){
 }
 
 // Forme naturelle de la montagne, sans les replats ni les petites bosses
+// Station (mode Exploitation) : front de neige plat en bas, deux vallons qui y retombent, séparés par une crête.
+// Chaque vallon a son profil de pentes (en %, par tronçons, en remontant depuis le front de neige).
+function profilVallon(tr, s){
+  let h = 0, d = 0;
+  for(const [longueur, pente] of tr){
+    const l = Math.min(longueur, Math.max(0, s - d));
+    h += l * pente / 100; d += longueur;
+    if(s <= d) return h;
+  }
+  return h + (s - d) * tr[tr.length - 1][1] / 100;   // au-delà : la dernière pente continue
+}
+function altitudeStation(t, x, z){
+  const S = t.station, s = S.front - z;                            // s : m en remontant depuis le bord du front de neige
+  if(s <= 0) return t.altBas + S.penteFront / 100 * (t.longueur / 2 - z);   // front de neige : presque plat
+  const hf = t.altBas + S.penteFront / 100 * (t.longueur / 2 - S.front);
+  // les deux vallons se rejoignent au milieu ; on passe de l'un à l'autre en douceur
+  const [V1, V2] = S.vallons, xm = (V1.x + V2.x) / 2, pa = profilVallon(V1.profil, s), pb = profilVallon(V2.profil, s);
+  const w = lisse((x - xm) / S.demiLargeur * 0.8 + 0.5);
+  let h = hf + (1 - w) * pa + w * pb;
+  // crête entre les vallons : toujours plus haute que les deux (elle naît peu à peu au-dessus du front de neige)
+  const naissance = lisse(s / S.naissance), milieu = lisse(1 - Math.abs(x - xm) / (S.demiLargeur * 0.75));
+  h += milieu * (Math.abs(pb - pa) / 2 * (1 - Math.abs(2 * w - 1)) + S.crete * naissance);
+  // les bords extérieurs remontent aussi
+  const dehors = Math.max(0, Math.max(V1.x - x, x - V2.x)) / S.demiLargeur;
+  h += S.crete * naissance * Math.min(1.4, dehors * dehors);
+  // relief chaotique : bosses, croupes et ressauts, plus marqués en montant
+  const c = S.chaos * lisse((s - 40) / 160);
+  h += c * (0.7 * bruit(x / 70, z / 70, t.graine + 30) + 0.3 * bruit(x / 26, z / 26, t.graine + 31));
+  return h;
+}
 function altitudeNaturelle(t, x, z){
   const u = borne((t.longueur / 2 - z) / t.longueur, -0.9, 1.8);   // 0 en bas de la pente, 1 en haut
   let k = 1;                                                        // versants du grand domaine : pente plus douce ou plus raide
   if(t.versants){ const v = t.versants; k = 1 + ((x < 0 ? v.gauche : v.droite) - 1) * lisse((Math.abs(x) - v.debut) / v.transition); }
-  let h = t.altBas + t.denivele * k * (0.85 * u + 0.15 * u * u);
+  let h = t.station ? altitudeStation(t, x, z) : t.altBas + t.denivele * k * (0.85 * u + 0.15 * u * u);
   const bx = borne(x / (t.largeur / 2), -1.7, 1.7);
   h += t.bords * bx * bx;                                           // les côtés remontent
   for(const b of t.bosses) h += b.h * Math.exp(-((x - b.x) ** 2 + (z - b.z) ** 2) / (b.r * b.r));
@@ -631,21 +661,26 @@ function validerPiste(niveau, points, largeur){
   if(R && distancePolyligne(points, R.x, R.z) < R.cuvette.rayon + largeur / 2 + 3) return { ok: false, raison: 'La piste ne peut pas passer sur la retenue.' };
   if(P && distancePolyligne(points, P.x, P.z) < P.rayon + largeur / 2) return { ok: false, raison: 'La piste ne peut pas passer sur la salle de pompage.' };
   if(G && distancePolyligne(points, G.x, G.z) < G.rayon + largeur / 2) return { ok: false, raison: 'La piste ne peut pas passer sur le garage.' };
+  if((niveau.commerces || []).some(c => distancePolyligne(points, c.x, c.z) < rayonCommerce(c) + largeur / 2)) return { ok: false, raison: 'La piste ne peut pas passer sur un commerce.' };
   const pente = penteMaxi(t, points);
   return { ok: true, longueur, pente, couleur: couleurPente(pente), cout: Math.round(longueur * CONFIG.bac.prixPiste) };
 }
-// Un télésiège : gare aval plus bas que la gare amont, longueur raisonnable, sans survoler la retenue ni la salle de pompage
-function validerRemontee(niveau, aval, amont){
-  const t = niveau.terrain, R = niveau.retenue, P = niveau.pompage, [mini, maxi] = CONFIG.bac.remontee;
+// Une remontée (télésiège ou téléski) : gare aval plus bas que la gare amont, longueur raisonnable, sans passer sur la retenue,
+// la salle de pompage, le garage ni les commerces ; un téléski ne doit pas être trop raide (on se fait tirer sur la neige)
+function validerRemontee(niveau, aval, amont, type = 'telesiege'){
+  const t = niveau.terrain, R = niveau.retenue, P = niveau.pompage, T = TYPES_REMONTEES[type], [mini, maxi] = T.longueur, le = type === 'teleski' ? 'Le téléski' : 'Le télésiège';
   if(![aval, amont].every(g => dansZoneJeu(t, g.x, g.z))) return { ok: false, raison: 'Les deux gares doivent être dans le domaine skiable.' };
   const longueur = Math.hypot(amont.x - aval.x, amont.z - aval.z);
-  if(longueur < mini || longueur > maxi) return { ok: false, raison: `Un télésiège fait entre ${mini} et ${maxi} m (ici ${Math.round(longueur)} m).` };
-  if(altitude(t, amont.x, amont.z) < altitude(t, aval.x, aval.z) + 15) return { ok: false, raison: 'La gare d\'arrivée doit être plus haut que la gare de départ (touchez d\'abord le bas).' };
+  if(longueur < mini || longueur > maxi) return { ok: false, raison: `${type === 'teleski' ? 'Un téléski' : 'Un télésiège'} fait entre ${mini} et ${maxi} m (ici ${Math.round(longueur)} m).` };
+  const denivele = altitude(t, amont.x, amont.z) - altitude(t, aval.x, aval.z), pente = denivele / longueur * 100;
+  if(denivele < (type === 'teleski' ? 8 : 15)) return { ok: false, raison: 'La gare d\'arrivée doit être plus haut que la gare de départ (touchez d\'abord le bas).' };
+  if(T.penteMax && pente > T.penteMax) return { ok: false, raison: `Trop raide pour un téléski : ${Math.round(pente)} % de pente moyenne (${T.penteMax} % au plus). Prenez un télésiège.` };
   const ligne = [[aval.x, aval.z], [amont.x, amont.z]];
-  if(R && distancePolyligne(ligne, R.x, R.z) < R.rayon + 4) return { ok: false, raison: 'Le télésiège ne peut pas passer au-dessus de la retenue.' };
-  if(P && distancePolyligne(ligne, P.x, P.z) < P.rayon + 4) return { ok: false, raison: 'Le télésiège ne peut pas passer sur la salle de pompage.' };
-  if(niveau.garage && distancePolyligne(ligne, niveau.garage.x, niveau.garage.z) < niveau.garage.rayon + 4) return { ok: false, raison: 'Le télésiège ne peut pas passer sur le garage.' };
-  return { ok: true, longueur, cout: Math.round(longueur * CONFIG.bac.prixRemontee) };
+  if(R && distancePolyligne(ligne, R.x, R.z) < R.rayon + 4) return { ok: false, raison: `${le} ne peut pas passer au-dessus de la retenue.` };
+  if(P && distancePolyligne(ligne, P.x, P.z) < P.rayon + 4) return { ok: false, raison: `${le} ne peut pas passer sur la salle de pompage.` };
+  if(niveau.garage && distancePolyligne(ligne, niveau.garage.x, niveau.garage.z) < niveau.garage.rayon + 4) return { ok: false, raison: `${le} ne peut pas passer sur le garage.` };
+  if((niveau.commerces || []).some(c => distancePolyligne(ligne, c.x, c.z) < rayonCommerce(c) + 3)) return { ok: false, raison: `${le} ne peut pas passer sur un commerce.` };
+  return { ok: true, longueur, pente, type, cout: Math.round(longueur * T.prixMetre) };
 }
 const NOMS_COULEURS = { verte: 'verte', bleue: 'bleue', rouge: 'rouge', noire: 'noire' };
 function ajouterPisteBac(niveau, res, points, largeur){
@@ -658,14 +693,18 @@ function ajouterPisteBac(niveau, res, points, largeur){
   res.budget -= v.cout;
   return { ...v, nom };
 }
-function ajouterRemonteeBac(niveau, res, aval, amont){
-  const v = validerRemontee(niveau, aval, amont);
+function ajouterRemonteeBac(niveau, res, aval, amont, type = 'telesiege'){
+  const v = validerRemontee(niveau, aval, amont, type);
   if(!v.ok) return v;
   if(res.budget < v.cout) return { ok: false, raison: 'Budget insuffisant.' };
   res.remonteesBac = res.remonteesBac || [];
-  const nom = `Télésiège ${res.remonteesBac.length + 1}`;
-  res.remonteesBac.push({ nom, aval: { x: Math.round(aval.x), z: Math.round(aval.z) }, amont: { x: Math.round(amont.x), z: Math.round(amont.z) },
-    pylones: Math.max(2, Math.round(v.longueur / 55)), hauteur: 10, ecart: 5, espacementSieges: 22 });
+  const T = TYPES_REMONTEES[type], dejaPris = new Set((niveau.remontees || []).concat(res.remonteesBac).map(q => q.nom));
+  let k = res.remonteesBac.filter(q => (q.type || 'telesiege') === type).length + 1;
+  while(dejaPris.has(`${T.nom} ${k}`)) k++;
+  const nom = `${T.nom} ${k}`, gares = { aval: { x: Math.round(aval.x), z: Math.round(aval.z) }, amont: { x: Math.round(amont.x), z: Math.round(amont.z) } };
+  res.remonteesBac.push(type === 'teleski'
+    ? { nom, type, ...gares, pylones: Math.max(1, Math.round(v.longueur / 70)), hauteur: 7, ecart: 2.6, espacementSieges: 14 }
+    : { nom, type, ...gares, pylones: Math.max(2, Math.round(v.longueur / 55)), hauteur: 10, ecart: 5, espacementSieges: 22 });
   res.budget -= v.cout;
   return { ...v, nom };
 }
@@ -1088,7 +1127,7 @@ function changerDameuse(res, modele, lot = ++res.lot){
 
 // --- Remontées mécaniques ---
 function longueurRemontee(ts){ return Math.hypot(ts.amont.x - ts.aval.x, ts.amont.z - ts.aval.z); }
-function puissanceRemontee(ts){ return Math.round(longueurRemontee(ts) * CONFIG.remontees.kwParMetre); }
+function puissanceRemontee(ts){ return Math.round(longueurRemontee(ts) * typeRemontee(ts).kwParMetre); }
 function remonteeEnMarche(res, ts){ return (res.remonteesEnMarche || []).includes(ts.nom); }
 function basculerRemontee(res, nom, enMarche){
   const l = new Set(res.remonteesEnMarche || []);
@@ -1136,6 +1175,7 @@ function creerExploitation(niveau, res){
   res.carburant = { stock: E.carburant.depart };
   res.enneigement = Object.fromEntries(niveau.pistes.map(p => [p.nom, E.enneigementDepart]));
   res.remonteesEnMarche = (niveau.remontees || []).map(ts => ts.nom);
+  res.commerces = [];
   return res;
 }
 const idealSaison = res => CONFIG.exploitation.ideal + 5 * (res.exploitation.saison - 1);
@@ -1153,8 +1193,9 @@ function remonteesEnService(niveau, res){
   const E = CONFIG.exploitation;
   let agents = res.personnel ? res.personnel.agent : Infinity;
   return (niveau.remontees || []).filter(ts => {
-    if(!remonteeEnMarche(res, ts) || agents < E.agentsParRemontee) return false;
-    agents -= E.agentsParRemontee;
+    const besoin = typeRemontee(ts).agents;
+    if(!remonteeEnMarche(res, ts) || agents < besoin) return false;
+    agents -= besoin;
     return true;
   });
 }
@@ -1174,7 +1215,7 @@ function clientsAttendus(niveau, res, pistes = pistesOuvertes(niveau, res)){
   const attrait = Math.min(1.5, 0.35 + 0.33 * pistes.length) * (0.5 + 0.5 * qualiteNeige);
   const prixF = borne((E.prixReference / res.prixForfait) ** 1.3, 0.3, 1.8);
   const cal = E.calendrier[(ex.jour - 1) % E.calendrier.length];
-  return Math.round(E.clientsBase * E.croissance ** (ex.saison - 1) * cal * attrait * prixF * (0.4 + 0.75 * ex.reputation));
+  return Math.round(E.clientsBase * E.croissance ** (ex.saison - 1) * cal * attrait * prixF * (0.4 + 0.75 * ex.reputation) * effetCommerces(res, 'clients', 1));
 }
 // Début de la journée : combien de clients viennent (enneigement, pistes ouvertes, prix, réputation, calendrier)
 function debutJournee(niveau, res){
@@ -1191,6 +1232,73 @@ function debutJournee(niveau, res){
   jour.secours = planifierSecours(niveau, res, pistes, jour.clients);
   return jour;
 }
+// --- Commerces du front de neige ---
+const rayonCommerce = c => Math.hypot(...COMMERCES[c.type].taille) / 2;
+// Un commerce se débloque à un jour de la 1re saison (ou à une saison) ; il reste débloqué ensuite
+function commerceDisponible(res, type){
+  const C = COMMERCES[type], ex = res.exploitation, s = C.saison || 1;
+  return ex.saison > s || (ex.saison === s && ex.jour >= (C.jour || 1));
+}
+const commerceConstruit = (res, type) => (res.commerces || []).some(c => c.type === type);
+// Où poser un commerce : sur le front de neige (plat), pas sur une piste, une remontée, un bâtiment ou un autre commerce
+function validerCommerce(niveau, res, type, x, z){
+  const C = COMMERCES[type], t = niveau.terrain, r = Math.hypot(...C.taille) / 2;
+  if(!C) return { ok: false, raison: 'Commerce inconnu.' };
+  if(commerceConstruit(res, type)) return { ok: false, raison: `${C.nom} : la station en a déjà un.` };
+  if(!commerceDisponible(res, type)) return { ok: false, raison: `${C.nom} : pas encore disponible.` };
+  if(!dansZoneJeu(t, x - Math.sign(x) * r, z - Math.sign(z) * r) || !dansZoneJeu(t, x, z)) return { ok: false, raison: 'Le commerce doit être dans la station.' };
+  const hs = [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].map(([dx, dz]) => altitudeNaturelle(t, x + dx, z + dz));
+  if(Math.max(...hs) - Math.min(...hs) > 2.5 || (t.station && z < t.station.front - 5)) return { ok: false, raison: 'Les commerces se posent sur le front de neige, là où c\'est plat (en bas des pistes).' };
+  for(const p of niveau.pistes) if(distancePiste(p, x, z) < p.largeur / 2 + r + 2) return { ok: false, raison: `Trop près de la piste ${p.nom} : les skieurs arrivent par là.` };
+  for(const ts of niveau.remontees || []){
+    if(distanceTelesiege(ts, x, z) < r + 5 || Math.hypot(ts.aval.x - x, ts.aval.z - z) < r + 30) return { ok: false, raison: `Trop près du ${ts.nom} (sa ligne ou la file d'attente).` };
+  }
+  const batiments = [niveau.retenue && { ...niveau.retenue, r: niveau.retenue.rayon }, niveau.pompage && { ...niveau.pompage, r: niveau.pompage.rayon }, niveau.garage && { ...niveau.garage, r: niveau.garage.rayon }]
+    .filter(Boolean).concat((niveau.departsElec || []).map(d => ({ ...d, r: 3 })), (res.commerces || []).map(c => ({ x: c.x, z: c.z, r: rayonCommerce(c) + 3 })));
+  if(batiments.some(b => Math.hypot(b.x - x, b.z - z) < b.r + r + 2)) return { ok: false, raison: 'Trop près d\'un autre bâtiment.' };
+  if((res.noeuds || []).some(n => n.type === 'regard' && Math.hypot(n.x - x, n.z - z) < r + 3)) return { ok: false, raison: 'Trop près d\'un regard.' };
+  return { ok: true, cout: C.prix, rayon: r };
+}
+function ajouterCommerce(niveau, res, type, x, z){
+  const v = validerCommerce(niveau, res, type, x, z);
+  if(!v.ok) return v;
+  if(res.budget < v.cout) return { ok: false, raison: 'Budget insuffisant.' };
+  res.commerces = res.commerces || [];
+  const id = Math.max(0, ...res.commerces.map(c => c.id)) + 1;
+  res.commerces.push({ id, type, x: Math.round(x), z: Math.round(z), saison: res.exploitation.saison, jour: res.exploitation.jour });
+  res.budget -= v.cout;
+  return { ...v, id, nom: COMMERCES[type].nom };
+}
+// Vendre un commerce : on récupère la moitié de son prix
+function vendreCommerce(res, id){
+  const c = (res.commerces || []).find(q => q.id === id);
+  if(!c) return { ok: false, raison: 'Commerce introuvable.' };
+  const rendu = Math.round(COMMERCES[c.type].prix * CONFIG.couts.revente);
+  res.commerces.splice(res.commerces.indexOf(c), 1);
+  res.budget += rendu;
+  return { ok: true, rendu, nom: COMMERCES[c.type].nom };
+}
+// Effets des commerces construits (part de skieurs en plus, blessés en plus sur les pistes faciles)
+function effetCommerces(res, cle, base = 0){
+  return (res.commerces || []).reduce((s, c) => s + ((COMMERCES[c.type].effets || {})[cle] || 0), base);
+}
+// Hôtel : chambres remplies selon la réputation (moitié moins les jours où la station est fermée)
+function occupationHotel(res, ferme){ return borne(0.25 + 0.6 * res.exploitation.reputation, 0.2, 0.95) * (ferme ? 0.5 : 1); }
+// Recettes et charges de chaque commerce pour la journée
+function recettesCommerces(niveau, res, jour, sat){
+  const pistes = niveau.pistes.filter(p => (jour.pistes || []).includes(p.nom)), parPiste = repartitionClients(pistes, jour.clients);
+  const debutants = pistes.reduce((s, p, i) => s + (p.couleur === 'verte' || p.couleur === 'bleue' ? parPiste[i] : 0), 0);
+  const detail = (res.commerces || []).map(c => {
+    const C = COMMERCES[c.type];
+    let recette = 0;
+    if(C.chambres) recette = C.chambres * C.prixChambre * occupationHotel(res, jour.ferme);
+    else if(!jour.ferme) recette = (C.debutants ? debutants : jour.clients) * C.clientele * C.panier * (0.6 + 0.4 * sat);
+    return { id: c.id, type: c.type, nom: C.nom, recette: Math.round(recette), charges: C.charges };
+  });
+  const recette = detail.reduce((s, d) => s + d.recette, 0), charges = detail.reduce((s, d) => s + d.charges, 0);
+  return { detail, recette, charges, net: recette - charges };
+}
+
 // --- Secours sur piste ---
 // Point au hasard sur une piste (f de 0 à 1 le long du tracé, d de −1 à 1 en travers)
 function pointSurPiste(piste, f, d){
@@ -1217,7 +1325,8 @@ function planifierSecours(niveau, res, pistes, clients){
   const r = alea(niveau.terrain.graine * 389 + res.nuit * 2731 + ex.saison * 53), liste = [];
   const parPiste = repartitionClients(pistes, clients);
   pistes.forEach((p, i) => {
-    const attendu = parPiste[i] / 1000 * (S.taux[p.couleur] || 4);
+    const facile = p.couleur === 'verte' || p.couleur === 'bleue';
+    const attendu = parPiste[i] / 1000 * (S.taux[p.couleur] || 4) * (facile ? Math.max(1, (res.commerces || []).reduce((f, c) => f * ((COMMERCES[c.type].effets || {}).blesses || 1), 1)) : 1);
     const n = Math.floor(attendu) + (r() < attendu % 1 ? 1 : 0);
     for(let k = 0; k < n; k++){
       const pt = pointSurPiste(p, 0.08 + 0.84 * r(), r() * 2 - 1);
@@ -1265,7 +1374,8 @@ function avancerJournee(niveau, res, jour, dt){
   const finies = avancerPannes(res, jour.temps);
   const sec = avancerSecours(res, jour);
   const actives = jour.remontees.filter(nom => !enPanne(res, nom));
-  const ratio = jour.clients * E.tours / E.heuresOuverture / Math.max(1, actives.length * E.debitTelesiege);
+  const debit = actives.reduce((s, nom) => s + typeRemontee(niveau.remontees.find(q => q.nom === nom)).debit, 0);
+  const ratio = jour.clients * E.tours / E.heuresOuverture / Math.max(1, debit);
   jour.attente = actives.length ? 3 + Math.max(0, ratio - 0.6) * 35 : 60;
   jour.attenteSomme += jour.attente * (jour.temps - tAvant); jour.duree += jour.temps - tAvant;
   jour.remonteesActives = actives;
@@ -1286,18 +1396,20 @@ function finJournee(niveau, res, jour){
     d.attente = borne(1 - (attente - 4) / 30, 0, 1);
     d.prix = borne(1 - (res.prixForfait - 0.8 * E.prixReference) / (0.9 * E.prixReference), 0, 1);
     d.securite = 0.4 * Math.min(1, P.pisteur / n) + 0.6 * (sec.blesses ? sec.rapides / sec.blesses : 1);
-    d.accueil = Math.min(1, P.caissier * E.clientsParCaissier / Math.max(1, jour.clients));
+    const services = (res.commerces || []).filter(c => !COMMERCES[c.type].chambres).length;
+    d.accueil = 0.5 * Math.min(1, P.caissier * E.clientsParCaissier / Math.max(1, jour.clients)) + 0.5 * Math.min(1, services / COMMERCES_SERVICES);
     sat = 0.25 * d.neige + 0.15 * d.damage + 0.15 * d.choix + 0.2 * d.attente + 0.15 * d.prix + 0.05 * d.securite + 0.05 * d.accueil;
   }
-  const forfaits = Math.round(jour.clients * res.prixForfait), annexes = Math.round(jour.clients * E.depensesClient * (0.5 + 0.5 * sat));
+  const forfaits = Math.round(jour.clients * res.prixForfait), com = recettesCommerces(niveau, res, jour, sat);
   const salaires = Object.entries(P).reduce((s, [k, nb]) => s + nb * METIERS[k].salaire, 0);
-  res.budget += forfaits + annexes + sec.recette - salaires;
+  const net = forfaits + com.net + sec.recette - salaires;
+  res.budget += net;
   for(const p of pistes) res.enneigement[p.nom] = Math.max(0, res.enneigement[p.nom] - E.usure - E.usureClients * jour.clients / 1000 / n);
   ex.reputation = n ? 0.75 * ex.reputation + 0.25 * Math.min(1.2, sat * 1.2) : ex.reputation * 0.95;
   if(res.pannes) res.pannes = res.pannes.filter(p => p.etat !== 'reparation');      // les réparations commencées se terminent
   const bilan = { jour: ex.jour, saison: ex.saison, clients: jour.clients, satisfaction: sat, details: d, attente, pistes: n, totalPistes: niveau.pistes.length,
-    forfaits, annexes, secours: sec, salaires, net: forfaits + annexes + sec.recette - salaires, ferme: jour.ferme };
-  ex.jours.push({ clients: jour.clients, satisfaction: sat, net: bilan.net, ferme: jour.ferme, secours: sec.recette, blesses: sec.blesses });
+    forfaits, commerces: com, secours: sec, salaires, net, ferme: jour.ferme };
+  ex.jours.push({ clients: jour.clients, satisfaction: sat, net: bilan.net, ferme: jour.ferme, secours: sec.recette, blesses: sec.blesses, commerces: com.net });
   ex.dernier = bilan;
   ex.jour++;
   ex.phase = 'soir';
@@ -1336,9 +1448,9 @@ function acheterCarburant(res, litres){
 }
 // Personnel conseillé pour la station telle qu'elle est
 function besoinsPersonnel(niveau, res){
-  const E = CONFIG.exploitation, ts = (niveau.remontees || []).filter(q => remonteeEnMarche(res, q)).length;
+  const E = CONFIG.exploitation, ts = (niveau.remontees || []).filter(q => remonteeEnMarche(res, q)).reduce((s, q) => s + typeRemontee(q).agents, 0);
   const canons = res.noeuds.filter(n => n.type === 'regard').length, pistes = niveau.pistes.length;
-  return { nivoculteur: Math.max(1, Math.ceil(canons / E.nivoculteurCanons)), conducteur: 1, agent: ts * E.agentsParRemontee,
+  return { nivoculteur: Math.max(1, Math.ceil(canons / E.nivoculteurCanons)), conducteur: 1, agent: ts,
     pisteur: pistes + 1, technicien: 1, caissier: 2 };
 }
 
@@ -1798,26 +1910,45 @@ function testsSimulation(){
   const bb = finNuit(bac, rb);
   verifier('Bac à sable : eau et électricité gratuites si on le choisit', bb.remplissage.m3 > 0 && !bb.remplissage.cout && bb.kwh === 500 && !bb.electricite);
 
-  // Exploitation
-  const nx = LEVELS.find(l => l.exploitation), rx = creerReseau(nx);
-  verifier('Exploitation : 1,5 M€, personnel, forfait, gazole, 20 cm de neige naturelle, télésiège en marche',
+  // Exploitation : la station des Deux Vallons
+  const nx = LEVELS.find(l => l.exploitation), rx = creerReseau(nx), tx = nx.terrain;
+  const [pMarm, pVallon, pCouloir] = nx.pistes, tsV = nx.remontees[0], tsM = nx.remontees[1];
+  verifier('Exploitation : 1,5 M€, personnel, forfait, gazole, 20 cm de neige naturelle, télésiège et téléski en marche',
     rx.budget === CONFIG.exploitation.budgetDepart && rx.personnel.conducteur === 1 && rx.prixForfait === CONFIG.exploitation.prixDepart && rx.carburant.stock > 0
-    && Object.values(rx.enneigement).every(v => v === 20) && rx.remonteesEnMarche.length === 1);
+    && Object.values(rx.enneigement).every(v => v === 20) && rx.remonteesEnMarche.length === 2 && remonteesEnService(nx, rx).length === 2);
+  const hFront = [[-100, 220], [0, 230], [120, 215], [180, 240]].map(([x, z]) => altitudeNaturelle(tx, x, z));
+  verifier('Station : front de neige presque plat en bas', Math.max(...hFront) - Math.min(...hFront) < 8, hFront.map(h => Math.round(h)).join(' / '));
+  const hCrete = altitudeNaturelle(tx, 0, -150), hG = altitudeNaturelle(tx, -150, -150), hD = altitudeNaturelle(tx, 150, -150);
+  verifier('Station : deux vallons séparés par une crête', hCrete > hG + 15 && hCrete > hD + 10, `crête ${Math.round(hCrete)} m, vallons ${Math.round(hG)} / ${Math.round(hD)} m`);
+  verifier('Station : une verte en bas du vallon doux, une bleue, et une noire dans le vallon raide (pentes mesurées)',
+    nx.pistes.every(p => couleurPente(penteMaxi(tx, p.points)) === p.couleur), nx.pistes.map(p => `${p.nom} ${Math.round(penteMaxi(tx, p.points))} %`).join(', '));
+  verifier('Station : chaque piste est desservie par une remontée', nx.pistes.every(p => remonteesDePiste(nx, p, nx.remontees).length));
+  // Téléskis
+  const TS = TYPES_REMONTEES;
+  verifier('Téléski : moins cher, moins de débit, un seul agent, moins d\'électricité qu\'un télésiège',
+    TS.teleski.prixMetre < TS.telesiege.prixMetre && TS.teleski.debit < TS.telesiege.debit && TS.teleski.agents === 1 && puissanceRemontee(tsM) < puissanceRemontee({ ...tsM, type: 'telesiege' }));
+  const vTk = validerRemontee(nx, { x: -60, z: 175 }, { x: -80, z: 60 }, 'teleski'), vTkRaide = validerRemontee(nx, { x: 150, z: 20 }, { x: 160, z: -160 }, 'teleski');
+  verifier('Téléski : se pose sur une pente douce, refusé sur le mur du vallon raide', vTk.ok && !vTkRaide.ok && /raide/.test(vTkRaide.raison), (vTk.raison || '') + ' / ' + vTkRaide.raison);
+  const rTk = creerReseau(nx), aTk = ajouterRemonteeBac(nx, rTk, { x: -60, z: 175 }, { x: -80, z: 60 }, 'teleski');
+  verifier('Téléski : ajouté avec son nom et ses perches', aTk.ok && rTk.remonteesBac[0].type === 'teleski' && aTk.nom === 'Téléski 1' && rTk.budget === CONFIG.exploitation.budgetDepart - aTk.cout);
+  rx.personnel.agent = 2;
+  verifier('Avec 2 agents : le télésiège ouvre (2), plus personne pour le téléski', remonteesEnService(nx, rx).map(q => q.nom).join() === tsV.nom);
+  rx.personnel.agent = 3;
   const jFerme = debutJournee(nx, rx);
   verifier('Pas assez de neige (20 cm < 30) : les pistes sont fermées, aucun client', jFerme.ferme && !jFerme.clients);
   finJournee(nx, rx, jFerme);
-  rx.enneigement[PISTE_CLARINES.nom] = 50; rx.enneigement[PISTE_GENTIANES.nom] = 50;
+  for(const p of nx.pistes) rx.enneigement[p.nom] = 50;
   const j1 = debutJournee(nx, rx);
   for(let k = 0; k < 30; k++) avancerJournee(nx, rx, j1, CONFIG.exploitation.dureeJour / 30);
   const bx0 = rx.budget, bj = finJournee(nx, rx, j1);
-  verifier('Avec 50 cm, les deux pistes ouvrent : clients, forfaits, satisfaction', !j1.ferme && j1.pistes.length === 2 && bj.clients > 200 && bj.forfaits === bj.clients * rx.prixForfait && bj.satisfaction > 0.4 && rx.budget === bx0 + bj.net,
+  verifier('Avec 50 cm, les trois pistes ouvrent : clients, forfaits, satisfaction', !j1.ferme && j1.pistes.length === 3 && bj.clients > 200 && bj.forfaits === bj.clients * rx.prixForfait && bj.satisfaction > 0.4 && rx.budget === bx0 + bj.net,
     `${bj.clients} clients, satisfaction ${Math.round(bj.satisfaction * 100)} %, attente ${bj.attente.toFixed(0)} min`);
-  verifier('Les pistes s\'usent avec les skieurs', rx.enneigement[PISTE_CLARINES.nom] < 50);
+  verifier('Les pistes s\'usent avec les skieurs', rx.enneigement[pVallon.nom] < 50);
   const SC = CONFIG.exploitation.secours;
-  verifier('Secours : la journée a eu des blessés, tous secourus par les 2 pisteurs et facturés', bj.secours.blesses > 0 && bj.secours.secourus === bj.secours.blesses && !bj.secours.helico
-    && bj.secours.recette === j1.secours.reduce((t, x) => t + x.prix, 0) && bj.net === bj.forfaits + bj.annexes + bj.secours.recette - bj.salaires,
+  verifier('Secours : la journée a eu des blessés, tous secourus par les pisteurs et facturés', bj.secours.blesses > 0 && bj.secours.secourus === bj.secours.blesses && !bj.secours.helico
+    && bj.secours.recette === j1.secours.reduce((t, x) => t + x.prix, 0) && bj.net === bj.forfaits + bj.commerces.net + bj.secours.recette - bj.salaires,
     `${bj.secours.blesses} blessés, ${bj.secours.recette} €`);
-  const verteTest = { ...PISTE_CLARINES, nom: 'Test verte', couleur: 'verte' }, rougeTest = { ...PISTE_GENTIANES, nom: 'Test rouge', couleur: 'rouge' };
+  const verteTest = { ...pMarm, nom: 'Test verte' }, rougeTest = { ...pCouloir, nom: 'Test rouge', couleur: 'rouge' };
   const repT = repartitionClients([verteTest, rougeTest], 10000), secT = planifierSecours(nx, rx, [verteTest, rougeTest], 10000);
   const nbV = secT.filter(x => x.couleur === 'verte').length, nbR = secT.filter(x => x.couleur === 'rouge').length;
   verifier('Secours : plus de skieurs et plus de blessés sur la verte (débutants), mais un secours y rapporte moins que sur la rouge',
@@ -1832,29 +1963,60 @@ function testsSimulation(){
   const bsT = bilanSecours(jsT);
   verifier('Secours : à la fermeture, les blessés oubliés partent en hélicoptère (pas facturés), les longues attentes comptent', bsT.secourus === 2 && bsT.helico === 1 && bsT.recette === 440 && bsT.rapides === 2);
   rx.personnel.pisteur = pisteursAvant;
+  // Commerces
+  verifier('Commerces : location et restaurant dès le 1er jour, école plus tard, hôtel à la 2e saison',
+    commerceDisponible(rx, 'location') && commerceDisponible(rx, 'restaurant') && !commerceDisponible(rx, 'ecole') && !commerceDisponible(rx, 'hotel'));
+  const vPente = validerCommerce(nx, rx, 'restaurant', -150, -100), vPiste = validerCommerce(nx, rx, 'restaurant', pVallon.points[6][0], pVallon.points[6][1]);
+  verifier('Commerces : pas dans la pente, pas sur une piste', !vPente.ok && !vPiste.ok, `${vPente.raison} / ${vPiste.raison}`);
+  const budC = rx.budget, aRest = ajouterCommerce(nx, rx, 'restaurant', 140, 225), aLoc = ajouterCommerce(nx, rx, 'location', -40, 232);
+  verifier('Commerces : un restaurant et une location posés sur le front de neige, payés', aRest.ok && aLoc.ok && rx.budget === budC - COMMERCES.restaurant.prix - COMMERCES.location.prix && rx.commerces.length === 2,
+    `${aRest.raison || ''} ${aLoc.raison || ''}`);
+  verifier('Commerces : pas deux restaurants, pas l\'un sur l\'autre', !ajouterCommerce(nx, rx, 'restaurant', 200, 240).ok && !validerCommerce(nx, rx, 'bar', 142, 226).ok);
+  const j2 = debutJournee(nx, rx);
+  verifier('Avec des commerces, autant de clients (pas d\'effet sur la fréquentation pour ces deux-là)', j2.clients > 0);
+  for(let k = 0; k < 30; k++) avancerJournee(nx, rx, j2, CONFIG.exploitation.dureeJour / 30);
+  const bj2 = finJournee(nx, rx, j2), dLoc = bj2.commerces.detail.find(d => d.type === 'location'), dRest = bj2.commerces.detail.find(d => d.type === 'restaurant');
+  verifier('Commerces : chacun a ses recettes et ses charges, comptées dans le résultat du jour', dLoc.recette > dLoc.charges && dRest.recette > dRest.charges
+    && bj2.net === bj2.forfaits + bj2.commerces.recette - bj2.commerces.charges + bj2.secours.recette - bj2.salaires && bj2.details.accueil > bj.details.accueil,
+    `location ${dLoc.recette} €, restaurant ${dRest.recette} € ; accueil ${Math.round(bj.details.accueil * 100)} → ${Math.round(bj2.details.accueil * 100)} %`);
+  const debutantsSeuls = recettesCommerces({ ...nx, pistes: [pCouloir] }, rx, { pistes: [pCouloir.nom], clients: 1000, ferme: false }, 1).detail.find(d => d.type === 'location');
+  const avecVerte = recettesCommerces({ ...nx, pistes: [pMarm, pCouloir] }, rx, { pistes: [pMarm.nom, pCouloir.nom], clients: 1000, ferme: false }, 1).detail.find(d => d.type === 'location');
+  verifier('Location de skis : rien sans piste facile, beaucoup avec une verte (débutants)', debutantsSeuls.recette === 0 && avecVerte.recette > 5000, `${avecVerte.recette} €`);
+  rx.exploitation.jour = COMMERCES.ecole.jour;
+  const cl0 = clientsAttendus(nx, rx), aEc = ajouterCommerce(nx, rx, 'ecole', 90, 238), cl1 = clientsAttendus(nx, rx);
+  verifier('École de ski : débloquée au jour 4, elle fait venir plus de skieurs', aEc.ok && cl1 > cl0, `${cl0} → ${cl1} ${aEc.raison || ''}`);
+  const vente = vendreCommerce(rx, aEc.id);
+  verifier('Vendre un commerce rend la moitié de son prix', vente.ok && vente.rendu === COMMERCES.ecole.prix / 2 && !commerceConstruit(rx, 'ecole'));
+  rx.exploitation.jour = 3;
   rx.prixForfait = 75;
   const jCher = debutJournee(nx, rx); rx.prixForfait = 30; const jBon = debutJournee(nx, rx); rx.prixForfait = 42;
-  verifier('Forfait cher : moins de clients ; forfait bon marché : plus de clients', jCher.clients < j1.clients && jBon.clients > j1.clients, `${jCher.clients} à 75 €, ${jBon.clients} à 30 €`);
+  verifier('Forfait cher : moins de clients ; forfait bon marché : plus de clients', jCher.clients < jBon.clients, `${jCher.clients} à 75 €, ${jBon.clients} à 30 €`);
   rx.personnel.agent = 1;
-  verifier('Sans assez d\'agents, la remontée n\'ouvre pas, donc les pistes non plus', !remonteesEnService(nx, rx).length && !pistesOuvertes(nx, rx).length);
-  rx.personnel.agent = 2;
-  const jpx = debutJournee(nx, rx); jpx.pannesPrevues = [{ t: 5, nom: TELESIEGE_CLARINES.nom }];
+  verifier('Avec un seul agent, seul le téléski ouvre (et sa verte)', remonteesEnService(nx, rx).map(q => q.nom).join() === tsM.nom && pistesOuvertes(nx, rx).map(p => p.nom).join() === pMarm.nom);
+  rx.personnel.agent = 0;
+  verifier('Sans agent, aucune remontée, donc aucune piste', !remonteesEnService(nx, rx).length && !pistesOuvertes(nx, rx).length);
+  rx.personnel.agent = 3;
+  const jpx = debutJournee(nx, rx); jpx.pannesPrevues = [{ t: 5, nom: tsV.nom }];
   avancerJournee(nx, rx, jpx, 10);
-  verifier('Panne de télésiège : il s\'arrête, l\'attente explose', enPanne(rx, TELESIEGE_CLARINES.nom) && jpx.attente >= 60);
+  verifier('Panne du télésiège : il s\'arrête, l\'attente monte (seul le téléski tourne)', enPanne(rx, tsV.nom) && jpx.remonteesActives.join() === tsM.nom && jpx.attente > 10, `${Math.round(jpx.attente)} min`);
   const prx = rx.pannes.find(p => p.type === 'remontee'), dRep = reparerPanne(nx, rx, prx.id, true, jpx.temps);
   verifier('Avec 1 technicien, la réparation dure le temps normal', dRep.ok && dRep.duree === CONFIG.pannes.types.remontee.duree);
   finJournee(nx, rx, jpx);
-  rx.tas = [{ x: 15, z: 120, volume: 2000, aDamer: 2000 }];
-  const epx0 = rx.enneigement[PISTE_CLARINES.nom], stx0 = rx.carburant.stock, bnx = finNuit(nx, rx);
+  const ptx = pointSurPiste(pVallon, 0.8, 0);
+  rx.tas = [{ x: ptx.x, z: ptx.z, volume: 2000, aDamer: 2000 }];
+  const epx0 = rx.enneigement[pVallon.nom], stx0 = rx.carburant.stock, bnx = finNuit(nx, rx);
   verifier('Exploitation : la neige damée épaissit la piste (pas d\'argent au m³) et la dameuse consomme du gazole',
-    rx.enneigement[PISTE_CLARINES.nom] > epx0 + 5 && bnx.gain === 0 && rx.carburant.stock < stx0, `+${(rx.enneigement[PISTE_CLARINES.nom] - epx0).toFixed(1)} cm, ${stx0 - rx.carburant.stock} L`);
-  rx.personnel.conducteur = 0; rx.tas = [{ x: 15, z: 120, volume: 500, aDamer: 500 }];
+    rx.enneigement[pVallon.nom] > epx0 + 3 && bnx.gain === 0 && rx.carburant.stock < stx0, `+${(rx.enneigement[pVallon.nom] - epx0).toFixed(1)} cm, ${stx0 - rx.carburant.stock} L`);
+  rx.personnel.conducteur = 0; rx.tas = [{ x: ptx.x, z: ptx.z, volume: 500, aDamer: 500 }];
   verifier('Sans conducteur, la dameuse ne sort pas', finNuit(nx, rx).dame === 0);
   rx.personnel.conducteur = 1; rx.carburant.stock = 0;
   verifier('Sans gazole non plus', finNuit(nx, rx).dame === 0 && acheterCarburant(rx, 1000).ok && rx.carburant.stock === 1000);
   rx.exploitation.jour = CONFIG.exploitation.joursSaison;
   const jfx = finJournee(nx, rx, debutJournee(nx, rx));
   verifier('Dernier jour : bilan de saison, la saison suivante commence', !!jfx.saison && rx.exploitation.saison === 2 && rx.exploitation.jour === 1);
+  const aHot = ajouterCommerce(nx, rx, 'hotel', 200, 190);
+  verifier('Saison 2 : l\'hôtel se débloque ; il rapporte même station fermée (moitié moins)', commerceDisponible(rx, 'hotel') && aHot.ok
+    && occupationHotel(rx, true) < occupationHotel(rx, false), aHot.raison || '');
 
   // Dameuse et remontées
   const nd2 = LEVELS.find(l => l.id === 'reseau'), rd = creerReseau(nd2);

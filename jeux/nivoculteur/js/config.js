@@ -168,9 +168,9 @@ const CONFIG = {
     reprise: 0.25           // quand on change de dameuse, l'ancienne est reprise à cette part de son prix
   },
 
-  // --- Remontées mécaniques (activées par le joueur ; les clients viendront plus tard) ---
+  // --- Remontées mécaniques (activées par le joueur) ---
   remontees: {
-    kwParMetre: 0.35,       // kW consommés par mètre de télésiège quand il tourne
+    kwParMetre: 0.35,       // kW consommés par mètre de télésiège quand il tourne (voir TYPES_REMONTEES)
     heuresJour: 8,          // heures d'ouverture par jour
     vitesse: 5              // m/s : défilement des sièges en 3D
   },
@@ -211,11 +211,9 @@ CONFIG.exploitation = {
   croissance: 1.12,           // chaque saison, la clientèle grandit (et elle est plus exigeante)
   calendrier: [0.5, 0.6, 0.7, 1.2, 1.3, 0.7, 0.8, 1.0, 1.5, 1.6, 1.6, 1.5, 1.4, 0.8, 0.9, 1.2, 1.4, 1.0, 0.9, 1.3],   // affluence selon le jour (vacances, week-ends)
   prixReference: 45, prixMin: 20, prixMax: 80, prixDepart: 42,   // € le forfait journée
-  depensesClient: 14,         // € dépensés en plus par skieur (restaurant, location, boutique)
   tours: 8,                   // montées en remontée par skieur et par jour
   heuresOuverture: 8,
-  debitTelesiege: 1800,       // personnes par heure pour un télésiège 4 places
-  agentsParRemontee: 2,
+  // débit et agents de chaque remontée : voir TYPES_REMONTEES
   desserte: 230,              // m : une piste est desservie si son départ est à moins de 230 m de l'arrivée d'une remontée
   dureeJour: 300,             // s de jeu pour une journée de ski (5 minutes)
   panneRemontee: 0.12,        // chance qu'une remontée en marche tombe en panne pendant une journée
@@ -232,13 +230,47 @@ CONFIG.exploitation = {
     attenteMax: 30            // s de jeu : un blessé secouru plus tard attend trop (la sécurité baisse)
   }
 };
-CONFIG.pannes.types.remontee = { nom: 'Panne de télésiège', cout: 3500, duree: 40, poids: 0 };   // en journée seulement
+CONFIG.pannes.types.remontee = { nom: 'Panne de remontée', cout: 3500, duree: 40, poids: 0 };   // en journée seulement
 // Personnel : effectif de départ, salaire par jour (€) et rôle
+// Types de remontées : télésiège 4 places ou téléski à perches
+// prixMetre : € par mètre · debit : personnes par heure · agents : pour l'ouvrir · kwParMetre : kW par mètre quand il tourne
+// longueur : m (au moins, au plus) · penteMax : % de pente moyenne au plus (on se fait tirer sur la neige) · vitesse : m/s en 3D
+const TYPES_REMONTEES = {
+  telesiege: { nom: 'Télésiège', prixMetre: 2500, debit: 1800, agents: 2, kwParMetre: 0.35, longueur: [120, 600], penteMax: null, vitesse: 5,
+    resume: '4 places, grand débit, passe au-dessus de tout ; cher' },
+  teleski:   { nom: 'Téléski', prixMetre: 900, debit: 900, agents: 1, kwParMetre: 0.12, longueur: [80, 450], penteMax: 50, vitesse: 3,
+    resume: 'à perches, deux fois moins de débit, un seul agent ; bon marché, idéal pour les débutants' }
+};
+const typeRemontee = ts => TYPES_REMONTEES[(ts && ts.type) || 'telesiege'];
+
+// Commerces du front de neige (mode Exploitation) : on les achète avec le budget, un de chaque au plus.
+// prix : € pour le construire · charges : € par jour (salaires, énergie), même station fermée
+// jour / saison : débloqué à partir de ce jour de la 1re saison, ou de cette saison
+// clientele : part des skieurs du jour qui y passent (debutants : seulement ceux des pistes vertes et bleues) · panier : € par client,
+// un peu plus quand les clients sont contents · effets : clients (+ part de skieurs en plus), blesses (× sur les pistes faciles)
+// taille : [largeur, profondeur] en m · couleur et enseigne : en 3D
+const COMMERCES = {
+  location:   { nom: 'Location de skis', prix: 120000, charges: 450, jour: 1, clientele: 0.4, debutants: true, panier: 22,
+    taille: [13, 9], couleur: '#2F6FDE', enseigne: 'LOCATION', resume: 'les débutants louent leurs skis : rapporte plus avec des pistes vertes et bleues' },
+  restaurant: { nom: 'Restaurant', prix: 180000, charges: 900, jour: 1, clientele: 0.4, panier: 24,
+    taille: [16, 11], couleur: '#D7263D', enseigne: 'RESTAURANT', resume: 'une partie des skieurs y mange, plus quand ils sont contents' },
+  ecole:      { nom: 'École de ski', prix: 90000, charges: 600, jour: 4, clientele: 0.15, debutants: true, panier: 55, effets: { clients: 0.06, blesses: 1.25 },
+    taille: [10, 8], couleur: '#E58A1F', enseigne: 'ÉCOLE DE SKI', resume: '+6 % de skieurs, mais plus de débutants sur les pistes faciles (plus de blessés)' },
+  bar:        { nom: 'Bar après-ski', prix: 70000, charges: 350, jour: 7, clientele: 0.25, panier: 11,
+    taille: [10, 8], couleur: '#8E44AD', enseigne: 'BAR', resume: 'petit, pas cher, vite rentabilisé' },
+  magasin:    { nom: 'Magasin de sport', prix: 150000, charges: 500, jour: 10, clientele: 0.07, panier: 75,
+    taille: [12, 9], couleur: '#1ABC9C', enseigne: 'SPORT', resume: 'peu de clients, mais de gros achats' },
+  garderie:   { nom: 'Garderie des neiges', prix: 60000, charges: 300, jour: 13, clientele: 0.04, panier: 35, effets: { clients: 0.04 },
+    taille: [10, 8], couleur: '#E84393', enseigne: 'GARDERIE', resume: 'les familles viennent plus (+4 % de skieurs)' },
+  hotel:      { nom: 'Hôtel', prix: 600000, charges: 1500, saison: 2, chambres: 80, prixChambre: 150, effets: { clients: 0.12 },
+    taille: [26, 13], couleur: '#B8860B', enseigne: 'HÔTEL', resume: '80 chambres, remplies selon la réputation ; +12 % de skieurs' }
+};
+const COMMERCES_SERVICES = 3;   // commerces (hors hôtel) pour un accueil parfait (satisfaction)
 const METIERS = {
   nivoculteur: { nom: 'Nivoculteurs', salaire: 160, depart: 2, role: `font tourner les canons la nuit (${CONFIG.exploitation.nivoculteurCanons} canons chacun)` },
   conducteur: { nom: 'Conducteurs de dameuse', salaire: 170, depart: 1, role: 'sans conducteur, la dameuse ne sort pas ; un 2e double le travail (+60 %)' },
-  agent: { nom: 'Agents des remontées', salaire: 130, depart: 2, role: `${CONFIG.exploitation.agentsParRemontee} par remontée ouverte` },
-  pisteur: { nom: 'Pisteurs-secouristes', salaire: 150, depart: 2, role: 'surveillent les pistes et secourent les blessés (un secours à la fois chacun)' },
+  agent: { nom: 'Agents des remontées', salaire: 130, depart: 3, role: '2 par télésiège ouvert, 1 par téléski' },
+  pisteur: { nom: 'Pisteurs-secouristes', salaire: 150, depart: 3, role: 'surveillent les pistes et secourent les blessés (un secours à la fois chacun)' },
   technicien: { nom: 'Techniciens de maintenance', salaire: 170, depart: 1, role: 'réparent les pannes plus vite' },
   caissier: { nom: 'Caissiers', salaire: 120, depart: 2, role: `1 pour ${CONFIG.exploitation.clientsParCaissier} clients par jour` }
 };

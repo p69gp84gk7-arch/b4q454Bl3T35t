@@ -90,6 +90,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .devis .choix-retrait{ display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 8px; }
 .outil.actif[data-outil="piste"]{ background:#2E9E5B; border-color:#2E9E5B; }
 .outil.actif[data-outil="remontee"]{ background:#7A5638; border-color:#7A5638; }
+.outil.actif[data-outil="commerce"]{ background:#B8860B; border-color:#B8860B; }
 #choixTrace .bouton.petit{ padding:5px 10px; font-size:.82rem; }
 #choixTrace .pastille-couleur{ padding:3px 9px; border-radius:999px; font-weight:700; font-size:.8rem; color:#fff; white-space:nowrap; }
 #choixTrace .pastille-couleur.verte{ background:#2E9E5B; } #choixTrace .pastille-couleur.bleue{ background:#2F6FDE; }
@@ -106,7 +107,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .groupe-tiroir{ display:flex; flex-direction:column; align-items:center; gap:6px; }
 .titre-tiroir{ font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#7FB2FF; text-align:center; }
 .menu-tiroir.actif{ background:#2F6FDE; border-color:#2F6FDE; }
-.bouton.danger{ color:#FF9AA5; border-color:rgba(215,38,61,.5); }
+.bouton.danger, .devis .actions .bouton.danger:first-child{ background:var(--verre); color:#FF9AA5; border-color:rgba(215,38,61,.5); }
 #annuler{ min-width:40px; font-size:1.05rem; padding-top:6px; padding-bottom:6px; }
 .puce-outil{ display:inline-flex; align-items:center; gap:8px; padding:4px 5px 4px 12px; border-radius:999px; background:var(--verre); border:1px solid var(--or);
   font-weight:600; font-size:.84rem; white-space:nowrap; max-width:100%; }
@@ -234,7 +235,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 /* Options du bac à sable */
 .options{ max-width:920px; z-index:25; }
 .admin{ max-width:1000px; z-index:25; }
-.admin .metiers{ display:grid; gap:4px; }
+.admin .metiers, .admin .commerces{ display:grid; gap:4px; }
 .admin .metier{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; padding:6px 0; border-bottom:1px solid #1A2A40; font-size:.88rem; }
 .admin .metier .nom{ flex:1 1 200px; min-width:0; line-height:1.2; }
 .admin .metier .nom small{ display:block; color:var(--doux); font-size:.75rem; }
@@ -354,10 +355,11 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
         <button class="bouton outil construction" type="button" data-outil="depart">+ Départ élec</button>
         <button class="bouton outil construction" type="button" data-outil="demonter">Démonter</button>
       </div>
-      <div class="titre-tiroir" id="titreDomaine">Pistes et remontées</div>
+      <div class="titre-tiroir" id="titreDomaine">Domaine skiable</div>
       <div class="rang outils" id="rangDomaine">
         <button class="bouton outil construction" type="button" data-outil="piste" hidden>Tracer une piste</button>
-        <button class="bouton outil construction" type="button" data-outil="remontee" hidden>Poser un télésiège</button>
+        <button class="bouton outil construction" type="button" data-outil="remontee" hidden>Poser une remontée</button>
+        <button class="bouton outil construction" type="button" data-outil="commerce" hidden>Ouvrir un commerce</button>
       </div>
       <div class="rang outils"><button class="bouton construction danger" type="button" id="effacer">Tout effacer</button></div>
     </div>

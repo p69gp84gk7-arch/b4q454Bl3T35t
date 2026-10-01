@@ -163,7 +163,7 @@ function demarrer(){
     arm.rotation.y = Math.atan2(-d.x, t.longueur / 2 - d.z);     // porte tournée vers le bas de la pente
     scene.add(arm);
   }
-  const remontees3D = (niveau.remontees || []).map(ts => { const o = creerTelesiege(ts, poser); scene.add(o); return { ts, o }; });
+  const remontees3D = (niveau.remontees || []).map(ts => { const o = creerRemontee(ts, poser); scene.add(o); return { ts, o }; });
   // Compresseur d'air (niveau 3), sur le replat de la salle de pompage
   const K = niveau.compresseur, compresseur = K ? creerCompresseur(K.nom, { dx: K.sortie.x - K.x, dz: K.sortie.z - K.z }) : null;
   if(compresseur){ compresseur.position.set(K.x, poser(K.x, K.z), K.z); scene.add(compresseur); }
@@ -183,7 +183,7 @@ function demarrer(){
 
   // ----- Construction du réseau -----
   // Partie sauvegardée dans le navigateur (une par niveau) et progression (niveaux réussis)
-  const clePartie = `nivo-partie-${niveau.id}`, VERSION_PARTIE = 1;
+  const clePartie = `nivo-partie-${niveau.id}`, VERSION_PARTIE = niveau.versionPartie || 1;   // une partie d'une autre version ne se reprend pas
   const progression = lireSauvegarde('nivo-progression') || { niveaux: {}, dernier: null };
   progression.niveaux = progression.niveaux || {};
   function chargerPartie(){
@@ -198,6 +198,17 @@ function demarrer(){
   const nouvellePartie = () => niveau.carriere ? commencerEtape(niveau, creerReseau(niveau), niveau.etape)
                                               : construireReseauFixe(niveau, creerReseau(niveau));
   let reseau = chargerPartie() || nouvellePartie(), outil = null, depart = null, proposition = null, sousSol = false;
+  // Commerces du front de neige (Exploitation) : en 3D, et connus du niveau pour que pistes et remontées les évitent
+  if(niveau.exploitation) reseau.commerces = reseau.commerces || [];
+  niveau.commerces = reseau.commerces || [];
+  const commerces3D = new Map();
+  function poserCommerce3D(c){
+    const o = creerCommerce(c.type);
+    o.position.set(c.x, poser(c.x, c.z), c.z);
+    scene.add(o); commerces3D.set(c.id, o);
+  }
+  function retirerCommerce3D(id){ const o = commerces3D.get(id); if(o){ scene.remove(o); liberer(o); commerces3D.delete(id); } }
+  niveau.commerces.forEach(poserCommerce3D);
   let traceePiste = [], gareAval = null, gareAmont = null;            // bac à sable : piste ou télésiège en cours de tracé
   let deplaceId = null;
   let infosCanons = lireSauvegarde('nivo-infos-canons') !== false;     // bulles et points d'état au-dessus des canons                                                // regard en cours de déplacement
@@ -218,6 +229,7 @@ function demarrer(){
   if(niveau.construction === false) $('barreJeu').classList.add('sans-construction');
   document.querySelector('[data-outil="air"]').hidden = !niveau.compresseur;
   for(const o of ['piste', 'remontee']) document.querySelector(`[data-outil="${o}"]`).hidden = !niveau.bac && !niveau.carriere && !niveau.exploitation;   // tracés : grand domaine
+  document.querySelector('[data-outil="commerce"]').hidden = !niveau.exploitation;                                     // commerces : station en exploitation
   let choix = { modele: niveau.compresseur ? 'p10' : 'v8', support: 'trepied' };   // enneigeur posé avec un nouveau regard
   let fiche = null, nuit = null;                              // fiche : regard affiché ; nuit : { regime, temps, vitesse }
   let reussi = !!(progression.niveaux[niveau.id] || {}).reussi, alarmeJusqua = 0;
@@ -432,9 +444,10 @@ function demarrer(){
       depart: `Nouveau départ électrique : touchez l'endroit où poser l'armoire (${euros(CONFIG.couts.departElec)}).`,
       demonter: 'Démonter : touchez un regard (ou un départ électrique ajouté), ou une tranchée pour en retirer la conduite ou le câble.',
       deplacer: deplaceId && noeudReseau(reseau, deplaceId) ? `Déplacer ${noeudReseau(reseau, deplaceId).nom} : touchez le nouvel emplacement.` : null,
-      remontee: gareAval ? 'Touchez maintenant l\'emplacement de la gare d\'arrivée, en haut.' : 'Nouveau télésiège : touchez l\'emplacement de la gare de départ, en bas de la pente.'
+      remontee: gareAval ? 'Touchez maintenant l\'emplacement de la gare d\'arrivée, en haut.' : `Nouveau ${reglageTrace.typeRemontee === 'teleski' ? 'téléski' : 'télésiège'} : touchez l'emplacement de la gare de départ, en bas de la pente.`,
+      commerce: 'Choisissez le commerce ci-dessous, puis touchez le front de neige (en bas des pistes, là où c\'est plat) pour le construire.'
     }[outil] || null);
-    const trace = outil === 'piste' || outil === 'remontee';
+    const trace = outil === 'piste' || outil === 'remontee' || outil === 'commerce';
     $('choixEnneigeur').hidden = !outil || trace || ['depart', 'demonter', 'deplacer'].includes(outil);
     $('choixTrace').hidden = !trace;
     if(outil && !trace && !$('choixEnneigeur').hidden) majChoix();
@@ -758,9 +771,9 @@ function demarrer(){
     fermerDevis();
     const marche = remonteeEnMarche(reseau, ts), kw = puissanceRemontee(ts), parJour = Math.round(kw * CONFIG.remontees.heuresJour * CONFIG.electricite.prixKwh);
     const d = afficherPanneau(`<div class="tete"><span>${echapper(ts.nom)}</span><button class="fermer" type="button" id="tsFermer" aria-label="Fermer">×</button></div>
-      <ul><li>${nombreFr(longueurRemontee(ts))} m, ${ts.pylones} pylônes · ${marche ? 'en marche' : 'à l\'arrêt'}</li>
+      <ul><li>${typeRemontee(ts).nom} · ${nombreFr(longueurRemontee(ts))} m, ${ts.pylones} pylône${ts.pylones > 1 ? 's' : ''} · ${marche ? 'en marche' : 'à l\'arrêt'}</li>
       <li>En marche : ${nombreFr(kw)} kW pendant ${CONFIG.remontees.heuresJour} h d'ouverture par jour, environ ${euros(parJour)} d'électricité.</li>
-      <li>Les skieurs viendront plus tard : pour l'instant, elle ne rapporte rien.</li></ul>
+      <li>${EXPL ? `Débit : ${nombreFr(typeRemontee(ts).debit)} skieurs par heure · ${typeRemontee(ts).agents} agent${typeRemontee(ts).agents > 1 ? 's' : ''} pour l'ouvrir.` : 'Pas de skieurs dans ce mode : elle ne rapporte rien.'}</li></ul>
       <div class="actions"><button class="bouton" type="button" id="tsBasculer">${marche ? 'Arrêter' : 'Mettre en marche'}</button></div>`);
     d.querySelector('#tsFermer').onclick = fermerDevis;
     d.querySelector('#tsBasculer').onclick = () => {
@@ -771,7 +784,7 @@ function demarrer(){
   }
 
   // ----- Bac à sable : tracer une piste, poser un télésiège -----
-  const reglageTrace = { largeur: 30 };
+  const reglageTrace = { largeur: 30, typeRemontee: 'telesiege', commerce: null };
   function dessinerTrace(){
     apercu.children.slice().forEach(o => { apercu.remove(o); liberer(o); });
     const ep = Math.max(0.35, cam.actuel.distance * 0.0035);
@@ -809,12 +822,23 @@ function demarrer(){
       el.querySelector('#traceRetour').onclick = () => { traceePiste.pop(); dessinerTrace(); majPanneauTrace(); };
       el.querySelector('#traceFin').onclick = terminerPiste;
     } else if(outil === 'remontee'){
-      const v = gareAval && gareAmont ? validerRemontee(niveau, gareAval, gareAmont) : null;
-      el.innerHTML = `<span>${!gareAval ? 'Gare de départ : touchez le bas' : !gareAmont ? 'Gare d\'arrivée : touchez le haut' : `${nombreFr(v.longueur)} m${!niveau.bac || reseau.options.budget ? ` · ${euros(v.cout)}` : ''}`}</span>
+      const ty = reglageTrace.typeRemontee, T = TYPES_REMONTEES[ty], v = gareAval && gareAmont ? validerRemontee(niveau, gareAval, gareAmont, ty) : null;
+      el.innerHTML = `<label>Type <select id="traceType">${Object.entries(TYPES_REMONTEES).map(([k, q]) => `<option value="${k}"${k === ty ? ' selected' : ''}>${q.nom} · ${euros(q.prixMetre)}/m</option>`).join('')}</select></label>
+        <span>${!gareAval ? 'Gare de départ : touchez le bas' : !gareAmont ? 'Gare d\'arrivée : touchez le haut' : v.ok ? `${nombreFr(v.longueur)} m · pente ${Math.round(v.pente)} %${!niveau.bac || reseau.options.budget ? ` · ${euros(v.cout)}` : ''}` : echapper(v.raison)}</span>
         <button class="bouton petit" type="button" id="traceRetour"${gareAval ? '' : ' disabled'}>Recommencer</button>
-        <button class="bouton petit vert" type="button" id="traceFin"${v && v.ok ? '' : ' disabled'}>Construire le télésiège</button>`;
+        <button class="bouton petit vert" type="button" id="traceFin"${v && v.ok ? '' : ' disabled'}>Construire le ${T.nom.toLowerCase()}</button>`;
+      el.querySelector('#traceType').onchange = e => { reglageTrace.typeRemontee = e.target.value; dessinerTrace(); majPanneauTrace(); consigne(); };
       el.querySelector('#traceRetour').onclick = () => { gareAval = gareAmont = null; dessinerTrace(); majPanneauTrace(); consigne(); };
       el.querySelector('#traceFin').onclick = terminerRemontee;
+    } else if(outil === 'commerce'){
+      const libres = Object.keys(COMMERCES).filter(k => !commerceConstruit(reseau, k));
+      if(!libres.includes(reglageTrace.commerce)) reglageTrace.commerce = libres.find(k => commerceDisponible(reseau, k)) || libres[0] || null;
+      const C = reglageTrace.commerce && COMMERCES[reglageTrace.commerce];
+      el.innerHTML = libres.length ? `<label>Commerce <select id="choixCommerce">${libres.map(k => { const q = COMMERCES[k], ok = commerceDisponible(reseau, k);
+          return `<option value="${k}"${k === reglageTrace.commerce ? ' selected' : ''}${ok ? '' : ' disabled'}>${q.nom} · ${ok ? euros(q.prix) : debloqueCommerce(k)}</option>`; }).join('')}</select></label>
+        ${C ? `<span>${echapper(C.resume)}</span>` : ''}` : '<span>Tous les commerces sont construits.</span>';
+      const sel = el.querySelector('#choixCommerce');
+      if(sel) sel.onchange = e => { reglageTrace.commerce = e.target.value; majPanneauTrace(); };
     }
   }
   function outilPiste(x, z){
@@ -827,7 +851,7 @@ function demarrer(){
     if(!gareAval || gareAmont){ gareAval = { x, z }; gareAmont = null; }
     else {
       gareAmont = { x, z };
-      const v = validerRemontee(niveau, gareAval, gareAmont);
+      const v = validerRemontee(niveau, gareAval, gareAmont, reglageTrace.typeRemontee);
       if(!v.ok){ message(v.raison, 'attention', 4500); gareAmont = null; }
     }
     dessinerTrace(); majPanneauTrace(); consigne();
@@ -844,9 +868,47 @@ function demarrer(){
     rechargerBac(`${r.nom} (${r.couleur}, pente ${Math.round(r.pente)} %) ouverte : ${nombreFr(r.longueur)} m. La neige qui tombe dessus compte maintenant.`);
   }
   function terminerRemontee(){
-    const r = ajouterRemonteeBac(niveau, reseau, gareAval, gareAmont);
+    const r = ajouterRemonteeBac(niveau, reseau, gareAval, gareAmont, reglageTrace.typeRemontee);
     if(!r.ok) return message(r.raison, 'attention', 4500);
-    rechargerBac(`${r.nom} posé : ${nombreFr(r.longueur)} m.`);
+    rechargerBac(`${r.nom} posé : ${nombreFr(r.longueur)} m.${EXPL ? ' Il faut ' + typeRemontee({ type: reglageTrace.typeRemontee }).agents + ' agent(s) pour l\'ouvrir (Administration).' : ''}`);
+  }
+  // ----- Commerces du front de neige (Exploitation) -----
+  const debloqueCommerce = k => COMMERCES[k].saison ? `dès la saison ${COMMERCES[k].saison}` : `dès le jour ${COMMERCES[k].jour}`;
+  function outilCommerce(x, z){
+    const type = reglageTrace.commerce;
+    if(!type) return message('Tous les commerces sont déjà construits.', 'info', 3000);
+    const C = COMMERCES[type], v = validerCommerce(niveau, reseau, type, x, z);
+    if(!v.ok) return message(v.raison, 'attention', 4000);
+    fermerDevis();
+    marqueur(x, z, C.couleur);
+    proposition = { faire: () => {
+      const r = ajouterCommerce(niveau, reseau, type, x, z);
+      if(!r.ok) return message(r.raison, 'attention');
+      poserCommerce3D(reseau.commerces.find(c => c.id === r.id));
+      choisirOutil(null); majInfos(); sauver(true);
+      message(`${C.nom} ouvert (${euros(r.cout)}). Ses recettes comptent dès la prochaine journée.`, 'ok', 5000);
+    } };
+    afficherDevis({ titre: C.nom, total: C.prix, budgetApres: reseau.budget - C.prix, possible: reseau.budget >= C.prix, libelleOk: 'Construire',
+      lignes: [C.resume.charAt(0).toUpperCase() + C.resume.slice(1) + '.', `Charges : ${euros(C.charges)} par jour (personnel, énergie), même station fermée.`,
+        C.chambres ? `${C.chambres} chambres à ${euros(C.prixChambre)} la nuit, remplies selon la réputation.` : `Environ ${Math.round(C.clientele * 100)} % des skieurs${C.debutants ? ' débutants (pistes vertes et bleues)' : ''} y dépensent ${euros(C.panier)}.`] },
+      valider, () => { fermerDevis(); });
+  }
+  function ficheCommerce(c){
+    fermerDevis();
+    const C = COMMERCES[c.type], dj = reseau.exploitation.dernier, d = dj && dj.commerces && dj.commerces.detail.find(q => q.id === c.id);
+    const panneau = afficherPanneau(`<div class="tete"><span>${echapper(C.nom)}</span><button class="fermer" type="button" id="comFermer" aria-label="Fermer">×</button></div>
+      <ul><li>${echapper(C.resume.charAt(0).toUpperCase() + C.resume.slice(1))}.</li>
+      <li>Charges : ${euros(C.charges)} par jour.${d ? ` Dernière journée : ${euros(d.recette)} de recettes, soit ${d.recette - d.charges >= 0 ? '+' : '−'}${euros(Math.abs(d.recette - d.charges))}.` : ' Pas encore de journée de ski depuis son ouverture.'}</li>
+      <li>Ouvert depuis le jour ${c.jour} de la saison ${c.saison}.</li></ul>
+      <div class="actions"><button class="bouton danger" type="button" id="comVendre"${journee || nuit ? ' disabled' : ''}>Vendre · ${euros(C.prix * CONFIG.couts.revente)}</button></div>`);
+    panneau.querySelector('#comFermer').onclick = fermerDevis;
+    panneau.querySelector('#comVendre').onclick = () => {
+      if(!confirm(`Vendre ${C.nom} ? Vous récupérez ${euros(C.prix * CONFIG.couts.revente)}.`)) return;
+      const r = vendreCommerce(reseau, c.id);
+      if(!r.ok) return message(r.raison, 'attention');
+      retirerCommerce3D(c.id); fermerDevis(); majInfos(); sauver(true);
+      message(`${r.nom} vendu : ${euros(r.rendu)} récupérés.`, 'info', 4000);
+    };
   }
 
   function outilRegard(x, z, n){
@@ -934,6 +996,11 @@ function demarrer(){
     if(!reseau.historique.length && !commence) return message('Rien à effacer.', 'info', 2500);
     if(!confirm(commence ? 'Recommencer le niveau ? Le réseau, la neige et l\'argent gagné sont effacés.'
                          : 'Tout effacer ? Les regards, les conduites et les câbles sont retirés et le budget est entièrement remboursé.')) return;
+    if((reseau.pistesBac || []).length || (reseau.remonteesBac || []).length || (reseau.commerces || []).length){
+      effacerSauvegarde(clePartie);                      // pistes, remontées et commerces ont changé le terrain : on recharge
+      location.href = `index.html?niveau=${niveau.id}&nouvelle`;
+      return;
+    }
     reseau = nouvellePartie(); depart = null;
     effacerSauvegarde(clePartie);
     fermerDevis(); synchroniser(); montrerDepart(); consigne();
@@ -1469,11 +1536,14 @@ function demarrer(){
     if(!nuit && outil === 'deplacer') return outilDeplacer(x, z);
     if(!nuit && outil === 'piste') return outilPiste(x, z);
     if(!nuit && outil === 'remontee') return outilRemontee(x, z);
+    if(!nuit && outil === 'commerce') return outilCommerce(x, z);
     if(!nuit && outil === 'regard') return outilRegard(x, z, n);
     if(!nuit && outil) return outilTranchee(x, z, n);
     // Sans outil : renseignements sur le point touché
     if(n) return infoNoeud(n);
     if(G && Math.hypot(x - G.x, z - G.z) < 12) return ouvrirGarageFiche();
+    const com = (reseau.commerces || []).find(c => Math.hypot(x - c.x, z - c.z) < rayonCommerce(c) + 2);
+    if(com) return ficheCommerce(com);
     const ts = (niveau.remontees || []).find(q => distanceTelesiege(q, x, z) < Math.max(6, cam.actuel.distance * 0.02));
     if(ts) return ficheRemontee(ts);
     if(!dansZoneJeu(t, x, z)){ message('Ce point est en dehors du domaine skiable.', 'attention', 2500); return; }
@@ -1512,7 +1582,7 @@ function demarrer(){
   const departs = {};                                       // prochain départ de chaque télésiège
   function placeFile(ts, k){
     const dx = ts.amont.x - ts.aval.x, dz = ts.amont.z - ts.aval.z, L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L;
-    const rang = Math.floor(k / 4), col = k % 4 - 1.5;
+    const n = ts.type === 'teleski' ? 2 : 4, rang = Math.floor(k / n), col = k % n - (n - 1) / 2;   // téléski : file de deux
     return { x: ts.aval.x - ux * (8 + rang * 2.2) - uz * col * 1.6, z: ts.aval.z - uz * (8 + rang * 2.2) + ux * col * 1.6 };
   }
   function choisirRemontee(x, z){
@@ -1547,14 +1617,17 @@ function demarrer(){
       file.forEach((a, k) => { const f = placeFile(ts, k); a.x += (f.x - a.x) * Math.min(1, dt * 3); a.z += (f.z - a.z) * Math.min(1, dt * 3); a.cap = Math.atan2(ts.amont.x - ts.aval.x, ts.amont.z - ts.aval.z); });
       if(enPanne(reseau, nom) || !(journee.remonteesActives || []).includes(nom)) continue;
       departs[nom] = (departs[nom] || 0) - dt;
-      if(departs[nom] <= 0 && file.length){ const a = file[0]; a.etat = 'monte'; a.t = 0; a.duree = longueurRemontee(ts) / 35; departs[nom] = 0.35 * Math.max(0.6, journee.attente / 6); }
+      const tk = ts.type === 'teleski';
+      if(departs[nom] <= 0 && file.length){ const a = file[0]; a.etat = 'monte'; a.t = 0; a.duree = longueurRemontee(ts) / (tk ? 22 : 35); departs[nom] = (tk ? 0.5 : 0.35) * Math.max(0.6, journee.attente / 6); }
     }
     for(const a of agents){
       if(a.etat === 'monte'){
         const ts = a.ts;
         if(!enPanne(reseau, ts.nom)) a.t += dt / a.duree;
         const f = Math.min(1, a.t), x = ts.aval.x + (ts.amont.x - ts.aval.x) * f, z = ts.aval.z + (ts.amont.z - ts.aval.z) * f;
-        a.x = x; a.z = z; a.y = poser(x, z) + 6 + Math.sin(Math.PI * f) * 3; a.cap = Math.atan2(ts.amont.x - ts.aval.x, ts.amont.z - ts.aval.z);
+        const cote = ts.type === 'teleski' ? ts.ecart / 2 : 0, L = longueurRemontee(ts);      // téléski : tiré par la perche, sur la neige, côté montée
+        a.x = x - (ts.amont.z - ts.aval.z) / L * cote; a.z = z + (ts.amont.x - ts.aval.x) / L * cote;
+        a.y = ts.type === 'teleski' ? null : poser(x, z) + 6 + Math.sin(Math.PI * f) * 3; a.cap = Math.atan2(ts.amont.x - ts.aval.x, ts.amont.z - ts.aval.z);
         if(f >= 1){
           const pistes = niveau.pistes.filter(p => journee.pistes.includes(p.nom) && remonteesDePiste(niveau, p, [ts]).length);
           if(pistes.length){ const p = pistes[Math.floor(Math.random() * pistes.length)]; a.etat = 'liaison'; a.piste = p; const h = extremitesPiste(t, p).haut; a.cx = h[0]; a.cz = h[1]; }
@@ -1623,7 +1696,9 @@ function demarrer(){
     sauver(true);
     const lignes = bilan.ferme ? ['Station fermée : aucune piste n\'a pu ouvrir. Les salaires sont payés quand même et la réputation baisse un peu.'] : [
       `${nombreFr(bilan.clients)} skieurs sur ${bilan.pistes} piste${bilan.pistes > 1 ? 's' : ''} ouverte${bilan.pistes > 1 ? 's' : ''} sur ${bilan.totalPistes} · attente moyenne ${Math.round(bilan.attente)} min`,
-      `Forfaits : ${euros(bilan.forfaits)} · dépenses des skieurs : ${euros(bilan.annexes)} · salaires : −${euros(bilan.salaires)}`,
+      `Forfaits : ${euros(bilan.forfaits)} · salaires : −${euros(bilan.salaires)}`,
+      bilan.commerces.detail.length ? `Commerces : ${euros(bilan.commerces.recette)} de recettes, ${euros(bilan.commerces.charges)} de charges (${bilan.commerces.detail.map(d => `${d.nom} ${d.recette - d.charges >= 0 ? '+' : '−'}${euros(Math.abs(d.recette - d.charges))}`).join(', ')})`
+        : 'Pas encore de commerce : construisez-en sur le front de neige (Construire → Ouvrir un commerce).',
       bilan.secours.blesses ? `Secours sur piste : ${bilan.secours.secourus} blessé${bilan.secours.secourus > 1 ? 's' : ''} secouru${bilan.secours.secourus > 1 ? 's' : ''}, +${euros(bilan.secours.recette)} facturés`
         + (bilan.secours.helico ? ` · ${bilan.secours.helico} évacué${bilan.secours.helico > 1 ? 's' : ''} par hélicoptère faute de pisteur (non facturé${bilan.secours.helico > 1 ? 's' : ''})` : '')
         + (bilan.secours.secourus > bilan.secours.rapides ? ` · ${bilan.secours.secourus - bilan.secours.rapides} ont attendu trop longtemps` : '')
@@ -1697,6 +1772,8 @@ function demarrer(){
       saison: ex.saison, jour: ex.jour, reputation: ex.reputation, satisfaction: satisfactionSaison(reseau),
       clients: ex.jours.reduce((s, j) => s + j.clients, 0), resultat: Math.round(reseau.budget - ex.debutBudget), saisons: ex.saisons,
       dernier: ex.dernier && ex.dernier.saison === ex.saison ? ex.dernier : null,
+      commerces: Object.entries(COMMERCES).map(([k, C]) => { const c = (reseau.commerces || []).find(q => q.type === k), d = c && ex.dernier && ex.dernier.commerces && ex.dernier.commerces.detail.find(q => q.id === c.id);
+        return { type: k, nom: C.nom, prix: C.prix, charges: C.charges, resume: C.resume, construit: !!c, disponible: commerceDisponible(reseau, k), quand: debloqueCommerce(k), net: d ? d.recette - d.charges : null }; }),
       secoursSaison: { recette: ex.jours.reduce((t, j) => t + (j.secours || 0), 0), blesses: ex.jours.reduce((t, j) => t + (j.blesses || 0), 0) },
       secoursJour: journee && journee.secours ? { attente: journee.secours.filter(b => b.etat === 'attente').length, encours: journee.secours.filter(b => b.etat === 'encours').length,
         faits: journee.secours.filter(b => b.etat === 'fini').length } : null,
@@ -1708,6 +1785,7 @@ function demarrer(){
   function agirAdmin(action, valeur){
     if(action === 'fermer') return fermerAdministration();
     if(action === 'prix') fixerPrix(reseau, valeur);
+    if(action === 'commerce'){ fermerAdministration(); reglageTrace.commerce = valeur; choisirOutil('commerce'); return; }
     if(action === 'personnel'){ const [k, d] = valeur.split(':'); changerPersonnel(reseau, k, +d); majRemontees3D(); }
     if(action === 'carburant'){
       const r = acheterCarburant(reseau, +valeur);
@@ -1727,6 +1805,8 @@ function demarrer(){
       { texte: 'Pistes qui peuvent ouvrir', fait: ouvrables.length === niveau.pistes.length, progres: ouvrables.length / Math.max(1, niveau.pistes.length), detail: `${ouvrables.length} / ${niveau.pistes.length} (au moins ${E.ouverture} cm et une remontée en marche)` },
       { texte: 'Enneigement moyen des pistes', fait: moy >= ideal, progres: moy / ideal, detail: `${Math.round(moy)} cm sur ${ideal} cm idéals` },
       { texte: 'Gazole pour la dameuse', fait: reseau.carburant.stock >= DAMEUSES[reseau.dameuse.modele].conso, progres: reseau.carburant.stock / E.carburant.cuve, detail: `${nombreFr(reseau.carburant.stock)} L dans la cuve` },
+      { texte: 'Commerces sur le front de neige', fait: (reseau.commerces || []).length >= COMMERCES_SERVICES, progres: Math.min(1, (reseau.commerces || []).length / COMMERCES_SERVICES),
+        detail: `${(reseau.commerces || []).length} ouvert(s) · ${Object.keys(COMMERCES).filter(k => commerceDisponible(reseau, k) && !commerceConstruit(reseau, k)).length} disponible(s) à construire` },
       { texte: 'Personnel conseillé', fait: !manque.length, detail: manque.length ? `il manque : ${manque.map(k => METIERS[k].nom.toLowerCase()).join(', ')}` : 'au complet (Administration)' }
     ];
   }
