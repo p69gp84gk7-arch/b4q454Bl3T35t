@@ -105,7 +105,8 @@ function demarrerVitrine(){
     afficherVitrine(MODELES, i, choisir, modele.options(objet));
   }
   choisir(0);
-  $('recentrer').onclick = () => { cam.recentrer(); auto = true; };
+  $('recentrerVue').hidden = false;
+  $('recentrerVue').onclick = () => { cam.recentrer(); auto = true; };
 
   let avant = performance.now();
   function boucle(maintenant){

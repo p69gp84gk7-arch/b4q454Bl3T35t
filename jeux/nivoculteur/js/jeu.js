@@ -397,15 +397,20 @@ function demarrer(){
   function majRemontees3D(){ for(const r of remontees3D) r.o.userData.enMarche = remonteeEnMarche(reseau, r.ts) && !enPanne(reseau, r.ts.nom); }
   function damer(mesh){ mesh.scale.x *= 1.6; mesh.scale.z *= 1.6; mesh.scale.y *= 0.3; }
 
+  // Heure de la nuit affichée : 18 h → 6 h (une nuit de jeu = 12 h)
+  function heureNuit(){
+    const m = Math.round((18 + Math.min(1, nuit.temps / CONFIG.nuit.duree) * 12) * 60) % (24 * 60);
+    return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
+  }
   function majInfos(){
     const R = niveau.retenue;
-    majHud({ budget: niveau.bac && !reseau.options.budget ? 'Illimité' : reseau.budget, nuit: nuit ? `${libelleNuit()} · ${Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps))} s` : `n° ${libelleNuit()}`,
+    majHud({ budget: niveau.bac && !reseau.options.budget ? 'Illimité' : reseau.budget, nuit: nuit ? `${libelleNuit()} · ${heureNuit()}` : `n° ${libelleNuit()}`,
       neige: Math.round(neigeObjectif()), objectif: niveau.objectif.m3, vent: ventActuel(),
       retenue: reseau.retenue ? reseau.retenue.volume / volumeRetenue(R) : null });
     if(reseau.retenue) retenue.userData.remplir(hauteurRetenue(R, reseau.retenue.volume));
     if(EXPL){
-      const ex = reseau.exploitation, sat = satisfactionSaison(reseau), tps = nuit ? CONFIG.nuit.duree - nuit.temps : journee ? E.dureeJour - journee.temps : null;
-      $('hudNuit').textContent = `S${ex.saison} · J${ex.jour}/${E.joursSaison}${tps !== null ? ` · ${Math.max(0, Math.ceil(tps))} s` : ''}`;
+      const ex = reseau.exploitation, sat = satisfactionSaison(reseau);
+      $('hudNuit').textContent = `S${ex.saison} · J${ex.jour}/${E.joursSaison}${nuit ? ` · ${heureNuit()}` : journee ? ` · ${heureJournee(journee.temps)}` : ''}`;
       $('hudNeige').textContent = sat === null ? '—' : `${Math.round(sat * 100)} %`;
       $('lancerNuit').textContent = ex.phase === 'matin' ? 'Ouvrir la station' : 'Lancer la nuit';
     }
@@ -461,8 +466,32 @@ function demarrer(){
     document.querySelectorAll('[data-outil]').forEach(b => b.classList.toggle('actif', b.dataset.outil === outil));
     montrerDepart();
     consigne();
+    majPuceOutil();
   }
   document.querySelectorAll('[data-outil]').forEach(b => { b.onclick = () => choisirOutil(b.dataset.outil); });
+
+  // --- Menus de la barre du bas : Construire, Gestion, Affichage (un tiroir à la fois) ---
+  let tiroir = null;
+  function ouvrirTiroir(nom){
+    tiroir = tiroir === nom ? null : nom;
+    $('tiroir').hidden = !tiroir;
+    document.querySelectorAll('.groupe-tiroir').forEach(g => { g.hidden = g.dataset.groupe !== tiroir; });
+    document.querySelectorAll('[data-tiroir]').forEach(b => { b.classList.toggle('actif', b.dataset.tiroir === tiroir); b.setAttribute('aria-expanded', String(b.dataset.tiroir === tiroir)); });
+    // Titre « Pistes et remontées » seulement s'il y a des outils de tracé
+    const domaine = [...$('rangDomaine').children].some(b => !b.hidden);
+    $('titreDomaine').hidden = $('rangDomaine').hidden = !domaine;
+  }
+  function fermerTiroir(){ if(tiroir) ouvrirTiroir(tiroir); }
+  document.querySelectorAll('[data-tiroir]').forEach(b => { b.onclick = () => ouvrirTiroir(b.dataset.tiroir); });
+  $('tiroir').addEventListener('click', e => { if(e.target.closest('button')) fermerTiroir(); });   // un choix referme le tiroir
+  // L'outil en main, rappelé au-dessus de la barre (✕ pour le ranger)
+  function majPuceOutil(){
+    const b = outil && document.querySelector(`[data-outil="${outil}"]`);
+    const nom = outil === 'deplacer' ? 'Déplacer le regard' : b ? b.textContent.trim() : '';
+    $('rangOutilActif').hidden = !nom;
+    $('outilActifNom').textContent = nom ? `Outil : ${nom}` : '';
+  }
+  $('quitterOutil').onclick = () => { if(outil === 'deplacer'){ outil = null; deplaceId = null; surbrillance.visible = false; consigne(); majPuceOutil(); } else if(outil) choisirOutil(outil); };
 
   // Le nœud du réseau le plus proche du point touché (tolérance selon le zoom)
   function noeudProche(x, z){
@@ -673,6 +702,7 @@ function demarrer(){
     fermerDevis();
     outil = 'deplacer'; deplaceId = id;
     document.querySelectorAll('[data-outil]').forEach(b => b.classList.remove('actif'));
+    majPuceOutil();
     const n = noeudReseau(reseau, id);
     surbrillance.visible = true; surbrillance.material.color.set('#E58A1F'); surbrillance.position.set(n.x, poser(n.x, n.z) + 0.6, n.z);
     consigne();
@@ -929,13 +959,13 @@ function demarrer(){
     const prets = reseau.noeuds.filter(n => n.type === 'regard' && etatRegard(niveau, reseau, n.id).pret).length;
     if(!prets && !EXPL) return message(`Aucun canon n'est prêt : raccordez au moins un regard à l'eau et à l'électricité${K ? ' (et à l\'air pour une perche)' : ''}.`, 'attention', 4500);
     if(sousSol) $('sousSol').onclick();
-    choisirOutil(null);
+    choisirOutil(null); fermerTiroir();
     garer();                                               // la nuit, la dameuse reste au garage
     nuit = { regime: debutNuit(niveau, reseau), temps: 0, vitesse: 1 };
     const evDepart = evenementsProgramme(niveau, reseau, -1, 0);
     if(evDepart.length) nuit.regime = regimeNuit(niveau, reseau, nuit.regime.vent);
     $('barreJeu').classList.add('en-nuit');
-    $('accelerer').hidden = false; $('accelerer').classList.remove('actif');
+    $('accelerer').hidden = false; majBoutonVitesse(1);
     $('choixEnneigeur').hidden = true;
     appliquerRegime();
     const v = nuit.regime.vent, actifs = nuit.regime.canons.filter(c => c.production).length;
@@ -1085,7 +1115,8 @@ function demarrer(){
     apresPannes();
   }
   // Coin en haut à gauche : les objectifs du niveau (étapes de construction, production, argent)
-  let objectifsReplie = window.innerWidth < 1100;
+  // Objectifs repliés d'office (un badge « 🎯 Objectifs 2 / 5 ») ; le choix du joueur est gardé
+  let objectifsReplie = lireSauvegarde('nivo-objectifs-ouverts') !== true;
   function listeObjectifs(){
     const o = niveau.objectif, L = [];
     if(niveau.bac) return L;
@@ -1111,7 +1142,7 @@ function demarrer(){
     return L;
   }
   function majObjectifs(){
-    afficherObjectifs(listeObjectifs(), objectifsReplie, action => { if(action === 'replier'){ objectifsReplie = !objectifsReplie; majObjectifs(); } });
+    afficherObjectifs(listeObjectifs(), objectifsReplie, action => { if(action === 'replier'){ objectifsReplie = !objectifsReplie; ecrireSauvegarde('nivo-objectifs-ouverts', !objectifsReplie); majObjectifs(); } });
   }
   // Coin en haut à droite : la liste des pannes en cours (replié d'office sur un petit écran)
   let coinReplie = window.innerWidth < 1100;
@@ -1238,7 +1269,7 @@ function demarrer(){
         pilotable: e.pret && !niveau.programme };                    // au niveau 1, c'est le chef d'équipe qui ouvre les canons
     });
     return {
-      numero: reseau.nuit, vent: ventActuel(), accelere: !!nuit && nuit.vitesse > 1, total: neigeObjectif(), objectif: niveau.objectif.m3 || null,
+      numero: reseau.nuit, vent: ventActuel(), accelere: !!nuit && nuit.vitesse > 1, vitesse: nuit ? nuit.vitesse : 1, total: neigeObjectif(), objectif: niveau.objectif.m3 || null,
       remplissage: reseau.retenue ? { m3: reseau.retenue.remplissage ?? CONFIG.retenue.remplissageJour,
         choix: CONFIG.retenue.choix.filter(m => m <= (niveau.remplissageMax || Infinity)), prix: niveau.prixEau ?? CONFIG.retenue.prixM3 } : null,
       recette: niveau.carriere ? { fait: Math.round(avancementEtape(reseau).recette), objectif: niveau.objectif.recette } : null,
@@ -1405,15 +1436,24 @@ function demarrer(){
   }
   $('ouvrirOptions').hidden = !niveau.bac;
   $('ouvrirOptions').onclick = () => optionsOuvertes ? agirOptions('fermer') : ouvrirOptions();
+  // Vitesse : ×1 → ×3 → ×10 → ×1 (la nuit comme la journée)
+  function majBoutonVitesse(v){
+    const vs = CONFIG.nuit.vitesses, suivante = vs[(vs.indexOf(v) + 1) % vs.length];
+    $('accelerer').textContent = v > 1 ? `Vitesse ×${v} → ×${suivante}` : `Accélérer ×${suivante}`;
+    $('accelerer').classList.toggle('actif', v > 1);
+  }
   $('accelerer').onclick = () => {
-    if(!nuit) return;
-    nuit.vitesse = nuit.vitesse > 1 ? 1 : CONFIG.nuit.accelere;
-    $('accelerer').classList.toggle('actif', nuit.vitesse > 1);
+    const cours = nuit || journee;
+    if(!cours) return;
+    const vs = CONFIG.nuit.vitesses;
+    cours.vitesse = vs[(vs.indexOf(cours.vitesse) + 1) % vs.length];
+    majBoutonVitesse(cours.vitesse);
   };
 
   // --- Toucher court ---
   const rayon = new THREE.Raycaster(), ndc = new THREE.Vector2();
   function toucher(cx, cy){
+    fermerTiroir();
     const r = canvas.getBoundingClientRect();
     ndc.set((cx - r.left) / r.width * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
     rayon.setFromCamera(ndc, camera);
@@ -1558,7 +1598,7 @@ function demarrer(){
   // Ouvrir la station pour la journée
   function lancerJournee(){
     if(journee || nuit) return;
-    choisirOutil(null); fermerDevis(); fermerLePoste(); fermerAdministration();
+    choisirOutil(null); fermerDevis(); fermerLePoste(); fermerAdministration(); fermerTiroir();
     garer();
     journee = debutJournee(niveau, reseau);
     journee.vitesse = 1;
@@ -1568,14 +1608,14 @@ function demarrer(){
     }
     jourCible = 1;
     $('barreJeu').classList.add('en-nuit');
-    $('accelerer').hidden = false; $('accelerer').classList.remove('actif');
+    $('accelerer').hidden = false; majBoutonVitesse(1);
     demarrerSkieurs();
     majRemontees3D();
     message(`La station ouvre : ${nombreFr(journee.clients)} skieurs attendus sur ${journee.pistes.length} piste${journee.pistes.length > 1 ? 's' : ''}.`, 'ok', 5000);
   }
   function finirJournee(){
     const bilan = finJournee(niveau, reseau, journee);
-    journee = null; jourCible = 0; agents.length = 0; skieurs3D.count = 0;
+    journee = null; jourCible = 0; agents.length = 0; skieurs3D.count = 0; viderSecours3D();
     $('barreJeu').classList.remove('en-nuit');
     $('accelerer').hidden = true;
     afficherConsigne(null);
@@ -1583,7 +1623,11 @@ function demarrer(){
     sauver(true);
     const lignes = bilan.ferme ? ['Station fermée : aucune piste n\'a pu ouvrir. Les salaires sont payés quand même et la réputation baisse un peu.'] : [
       `${nombreFr(bilan.clients)} skieurs sur ${bilan.pistes} piste${bilan.pistes > 1 ? 's' : ''} ouverte${bilan.pistes > 1 ? 's' : ''} sur ${bilan.totalPistes} · attente moyenne ${Math.round(bilan.attente)} min`,
-      `Forfaits : ${euros(bilan.forfaits)} · dépenses des skieurs : ${euros(bilan.annexes)} · salaires : −${euros(bilan.salaires)}`];
+      `Forfaits : ${euros(bilan.forfaits)} · dépenses des skieurs : ${euros(bilan.annexes)} · salaires : −${euros(bilan.salaires)}`,
+      bilan.secours.blesses ? `Secours sur piste : ${bilan.secours.secourus} blessé${bilan.secours.secourus > 1 ? 's' : ''} secouru${bilan.secours.secourus > 1 ? 's' : ''}, +${euros(bilan.secours.recette)} facturés`
+        + (bilan.secours.helico ? ` · ${bilan.secours.helico} évacué${bilan.secours.helico > 1 ? 's' : ''} par hélicoptère faute de pisteur (non facturé${bilan.secours.helico > 1 ? 's' : ''})` : '')
+        + (bilan.secours.secourus > bilan.secours.rapides ? ` · ${bilan.secours.secourus - bilan.secours.rapides} ont attendu trop longtemps` : '')
+        : 'Secours sur piste : aucun blessé aujourd\'hui.'];
     const details = bilan.ferme ? '' : Object.entries(NOMS_SATISFACTION).map(([k, nom]) => `<div class="mesure"><span class="crit">${nom}</span>${barreSatisfaction(bilan.details[k])}</div>`).join('');
     let titre = `Journée ${bilan.jour} · saison ${bilan.saison}`, extra = '';
     if(bilan.saison && typeof bilan.saison === 'object'){
@@ -1600,16 +1644,46 @@ function demarrer(){
     d.querySelector('#bilanOk').onclick = fermerDevis;
     message(bilan.ferme ? 'Station fermée aujourd\'hui.' : `Fin de la journée : ${Math.round(bilan.satisfaction * 100)} % de clients satisfaits.`, bilan.ferme ? 'alarme' : 'ok', 5000);
   }
+  // Heure affichée pendant la journée : 9 h → 17 h
+  function heureJournee(t){
+    const m = Math.round((9 + Math.min(1, t / E.dureeJour) * E.heuresOuverture) * 60);
+    return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
+  }
+  // Secours sur piste : un repère par blessé (croix qui clignote, puis le pisteur et sa barquette)
+  const secours3D = new Map();
+  function ajouterSecours3D(b){
+    const g = creerSecours(VESTES[b.id % VESTES.length]), d = 4;
+    const pente = hauteur(b.x, b.z - d) - hauteur(b.x, b.z + d), devers = hauteur(b.x - d, b.z) - hauteur(b.x + d, b.z);
+    g.position.set(b.x, hauteur(b.x, b.z), b.z);
+    g.rotation.y = Math.atan2(devers, pente);                              // l'amont (le haut de la pente) vers −z local
+    g.scale.setScalar(2);
+    scene.add(g); secours3D.set(b.id, g);
+  }
+  function majSecours3D(temps){
+    for(const b of (journee && journee.secours) || []){
+      const g = secours3D.get(b.id);
+      if(!g) continue;
+      if(b.etat === 'fini'){ scene.remove(g); secours3D.delete(b.id); continue; }
+      g.userData.etat(b.etat, temps);
+    }
+  }
+  function viderSecours3D(){ for(const g of secours3D.values()) scene.remove(g); secours3D.clear(); }
   function boucleJournee(dt, maintenant){
     const dtJeu = dt * journee.vitesse, r = avancerJournee(niveau, reseau, journee, dtJeu);
     for(const p of r.nouvelles) message(`Panne : ${CONFIG.pannes.types.remontee.nom} · ${p.cible}. Les skieurs attendent !`, 'alarme', 7000);
     for(const p of r.finies) message(`Réparation terminée : ${p.cible}.`, 'ok', 4000);
     if(r.nouvelles.length || r.finies.length){ majPannes3D(); majRemontees3D(); majCoinPannes(); }
+    for(const b of r.blesses){
+      ajouterSecours3D(b);
+      message(`Blessé sur ${b.piste} (${b.couleur}) : ${b.etat === 'encours' ? 'un pisteur part le secourir.' : 'tous les pisteurs sont occupés, il attend !'}`, b.etat === 'encours' ? 'info' : 'attention', 3500);
+    }
+    for(const b of r.secourus) message(`Secours terminé sur ${b.piste} : ${euros(b.prix)} facturés.`, 'ok', 3000);
+    majSecours3D(maintenant / 1000);
     avancerSkieurs(dtJeu);
     if(maintenant - derniereMaj > 250){
       derniereMaj = maintenant;
       majInfos();
-      afficherConsigne(`Journée ${journee.jour} / ${E.joursSaison} · ${Math.max(0, Math.ceil(E.dureeJour - journee.temps))} s · ${nombreFr(journee.clients)} skieurs · attente ${Math.round(journee.attente)} min · ${journee.pistes.length} piste(s) ouverte(s)`);
+      afficherConsigne(`Journée ${journee.jour} / ${E.joursSaison} · ${heureJournee(journee.temps)} · ${nombreFr(journee.clients)} skieurs · attente ${Math.round(journee.attente)} min · ${journee.pistes.length} piste(s) ouverte(s)`);
       if(adminOuverte) rafraichirAdmin();
     }
     if(r.fini) finirJournee();
@@ -1623,6 +1697,9 @@ function demarrer(){
       saison: ex.saison, jour: ex.jour, reputation: ex.reputation, satisfaction: satisfactionSaison(reseau),
       clients: ex.jours.reduce((s, j) => s + j.clients, 0), resultat: Math.round(reseau.budget - ex.debutBudget), saisons: ex.saisons,
       dernier: ex.dernier && ex.dernier.saison === ex.saison ? ex.dernier : null,
+      secoursSaison: { recette: ex.jours.reduce((t, j) => t + (j.secours || 0), 0), blesses: ex.jours.reduce((t, j) => t + (j.blesses || 0), 0) },
+      secoursJour: journee && journee.secours ? { attente: journee.secours.filter(b => b.etat === 'attente').length, encours: journee.secours.filter(b => b.etat === 'encours').length,
+        faits: journee.secours.filter(b => b.etat === 'fini').length } : null,
       salaires: Object.entries(reseau.personnel).reduce((s, [k, n]) => s + n * METIERS[k].salaire, 0) };
   }
   function rafraichirAdmin(){ if(adminOuverte) afficherAdmin(donneesAdmin(), agirAdmin); }
@@ -1782,6 +1859,6 @@ function demarrer(){
   if(OUVRIR_MENU) ouvrirMenu();
 
   // Accès pour les essais automatiques (console du navigateur)
-  window.nivo = { lancerJournee, ouvrirAdministration, agirAdmin, get journee(){ return journee; }, proposerDemontage, proposerRetrait, commencerDeplacement, ouvrirOptions, agirOptions, get tournee(){ return tournee; }, ouvrirGarageFiche, ficheRemontee, synchroniser, scene, camera, renderer, cam, toucher, action, salle, compresseur, choisirOutil, valider, lancerNuit, ouvrirFiche, ouvrirPoste, agirPoste, ouvrirMenu, finirNuit,
+  window.nivo = { secours3D, ouvrirTiroir, lancerJournee, ouvrirAdministration, agirAdmin, get journee(){ return journee; }, proposerDemontage, proposerRetrait, commencerDeplacement, ouvrirOptions, agirOptions, get tournee(){ return tournee; }, ouvrirGarageFiche, ficheRemontee, synchroniser, scene, camera, renderer, cam, toucher, action, salle, compresseur, choisirOutil, valider, lancerNuit, ouvrirFiche, ouvrirPoste, agirPoste, ouvrirMenu, finirNuit,
     get reseau(){ return reseau; }, get nuit(){ return nuit; }, set choix(c){ choix = c; } };
 }

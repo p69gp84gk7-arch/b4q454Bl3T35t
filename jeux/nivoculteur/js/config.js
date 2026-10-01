@@ -75,15 +75,15 @@ const CONFIG = {
   pannes: {
     parNuit: [1, 3],        // nombre de pannes par nuit (au hasard entre les deux)
     frequences: { rare: [0, 1], normale: [1, 3], forte: [3, 5] },   // bac à sable : nombre de pannes par nuit au choix
-    moment: [4, 45],        // s de jeu : quand elles arrivent pendant la nuit
+    moment: [12, 135],      // s de jeu : quand elles arrivent pendant la nuit
     types: {
-      fuite:       { nom: 'Fuite sur une conduite', cout: 6000, duree: 15, poids: 2,
+      fuite:       { nom: 'Fuite sur une conduite', cout: 6000, duree: 30, poids: 2,
                      debit: 30,      // m³/h d'eau perdus par la fuite (la retenue se vide plus vite)
                      perte: 10 },    // bar perdus par les regards en aval de la fuite
-      moteur:      { nom: 'Moteur de ventilateur grillé', cout: 2500, duree: 10, poids: 2 },
-      gel:         { nom: 'Buse gelée sur une perche', cout: 300, duree: 5, poids: 2, facteur: 0.4 },   // production × 0,4
-      disjoncteur: { nom: 'Disjoncteur déclenché', cout: 0, duree: 2, poids: 1 },
-      pompe:       { nom: 'Pompe en défaut thermique', cout: 4000, duree: 20, poids: 1 }
+      moteur:      { nom: 'Moteur de ventilateur grillé', cout: 2500, duree: 20, poids: 2 },
+      gel:         { nom: 'Buse gelée sur une perche', cout: 300, duree: 10, poids: 2, facteur: 0.4 },   // production × 0,4
+      disjoncteur: { nom: 'Disjoncteur déclenché', cout: 0, duree: 4, poids: 1 },
+      pompe:       { nom: 'Pompe en défaut thermique', cout: 4000, duree: 40, poids: 1 }
     }
   },
 
@@ -103,9 +103,10 @@ const CONFIG = {
 
   // --- Nuit ---
   nuit: {
-    duree: 60,              // durée d'une nuit, en secondes de jeu
-    echelle: 720,           // 1 seconde de jeu = 720 secondes réelles (60 s de jeu = une nuit de 12 h)
-    accelere: 3             // vitesse avec le bouton « Accélérer »
+    duree: 180,             // durée d'une nuit, en secondes de jeu (3 minutes)
+    echelle: 240,           // 1 seconde de jeu = 240 secondes réelles (180 s de jeu = une nuit de 12 h)
+    accelere: 3,            // vitesse avec le bouton « Accélérer » (ancien réglage, voir vitesses)
+    vitesses: [1, 3, 10]    // le bouton de vitesse passe de l'une à l'autre (nuit et journée)
   },
 
   // --- Vent (tiré au sort pour chaque nuit, annoncé la veille) ---
@@ -216,20 +217,28 @@ CONFIG.exploitation = {
   debitTelesiege: 1800,       // personnes par heure pour un télésiège 4 places
   agentsParRemontee: 2,
   desserte: 230,              // m : une piste est desservie si son départ est à moins de 230 m de l'arrivée d'une remontée
-  dureeJour: 40,              // s de jeu pour une journée de ski
+  dureeJour: 300,             // s de jeu pour une journée de ski (5 minutes)
   panneRemontee: 0.12,        // chance qu'une remontée en marche tombe en panne pendant une journée
   carburant: { prix: 1.6, cuve: 6000, depart: 3000 },   // € par litre de gazole, litres que contient la cuve du garage
   reputationDepart: 0.8,
   nivoculteurCanons: 12,      // canons qu'un nivoculteur fait tourner la nuit
-  clientsParCaissier: 500
+  clientsParCaissier: 500,
+  // Secours sur piste : les débutants des pistes faciles se blessent plus souvent, mais un secours y est facturé moins cher
+  secours: {
+    part:   { verte: 1.5, bleue: 1.2, rouge: 0.8, noire: 0.5 },   // fréquentation relative d'une piste selon sa couleur
+    taux:   { verte: 8,   bleue: 5,   rouge: 3,   noire: 2.5 },   // blessés pour 1 000 skieurs sur la piste
+    prix:   { verte: 220, bleue: 320, rouge: 480, noire: 650 },   // € facturés par secours (payés par l'assurance du blessé)
+    duree:  { verte: 20,  bleue: 25,  rouge: 30,  noire: 35 },    // s de jeu pour un secours (un pisteur occupé)
+    attenteMax: 30            // s de jeu : un blessé secouru plus tard attend trop (la sécurité baisse)
+  }
 };
-CONFIG.pannes.types.remontee = { nom: 'Panne de télésiège', cout: 3500, duree: 12, poids: 0 };   // en journée seulement
+CONFIG.pannes.types.remontee = { nom: 'Panne de télésiège', cout: 3500, duree: 40, poids: 0 };   // en journée seulement
 // Personnel : effectif de départ, salaire par jour (€) et rôle
 const METIERS = {
   nivoculteur: { nom: 'Nivoculteurs', salaire: 160, depart: 2, role: `font tourner les canons la nuit (${CONFIG.exploitation.nivoculteurCanons} canons chacun)` },
   conducteur: { nom: 'Conducteurs de dameuse', salaire: 170, depart: 1, role: 'sans conducteur, la dameuse ne sort pas ; un 2e double le travail (+60 %)' },
   agent: { nom: 'Agents des remontées', salaire: 130, depart: 2, role: `${CONFIG.exploitation.agentsParRemontee} par remontée ouverte` },
-  pisteur: { nom: 'Pisteurs-secouristes', salaire: 150, depart: 2, role: '1 par piste ouverte pour la sécurité' },
+  pisteur: { nom: 'Pisteurs-secouristes', salaire: 150, depart: 2, role: 'surveillent les pistes et secourent les blessés (un secours à la fois chacun)' },
   technicien: { nom: 'Techniciens de maintenance', salaire: 170, depart: 1, role: 'réparent les pannes plus vite' },
   caissier: { nom: 'Caissiers', salaire: 120, depart: 2, role: `1 pour ${CONFIG.exploitation.clientsParCaissier} clients par jour` }
 };

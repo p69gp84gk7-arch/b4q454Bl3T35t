@@ -1188,7 +1188,68 @@ function debutJournee(niveau, res){
   // Pannes des remontées pendant la journée (au hasard)
   const r = alea(niveau.terrain.graine * 977 + res.nuit * 131 + ex.saison * 17);
   for(const ts of rem) if(r() < E.panneRemontee) jour.pannesPrevues.push({ t: E.dureeJour * (0.15 + 0.65 * r()), nom: ts.nom });
+  jour.secours = planifierSecours(niveau, res, pistes, jour.clients);
   return jour;
+}
+// --- Secours sur piste ---
+// Point au hasard sur une piste (f de 0 à 1 le long du tracé, d de −1 à 1 en travers)
+function pointSurPiste(piste, f, d){
+  const c = courbePiste(piste);
+  let reste = f * longueurLigne(c);
+  for(let i = 1; i < c.length; i++){
+    const a = c[i - 1], b = c[i], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if(reste <= l || i === c.length - 1){
+      const k = l ? Math.min(1, reste / l) : 0, nx = l ? -(b[1] - a[1]) / l : 0, nz = l ? (b[0] - a[0]) / l : 0, w = d * piste.largeur * 0.35;
+      return { x: a[0] + k * (b[0] - a[0]) + nx * w, z: a[1] + k * (b[1] - a[1]) + nz * w };
+    }
+    reste -= l;
+  }
+  return { x: c[0][0], z: c[0][1] };
+}
+// Skieurs de chaque piste ouverte : les pistes faciles attirent plus de monde (les débutants)
+function repartitionClients(pistes, clients){
+  const S = CONFIG.exploitation.secours, poids = pistes.map(p => S.part[p.couleur] || 1), tot = poids.reduce((s, x) => s + x, 0) || 1;
+  return pistes.map((p, i) => clients * poids[i] / tot);
+}
+// Blessés de la journée (au hasard, toujours les mêmes pour une même journée) : plus nombreux sur les pistes faciles
+function planifierSecours(niveau, res, pistes, clients){
+  const S = CONFIG.exploitation.secours, E = CONFIG.exploitation, ex = res.exploitation;
+  const r = alea(niveau.terrain.graine * 389 + res.nuit * 2731 + ex.saison * 53), liste = [];
+  const parPiste = repartitionClients(pistes, clients);
+  pistes.forEach((p, i) => {
+    const attendu = parPiste[i] / 1000 * (S.taux[p.couleur] || 4);
+    const n = Math.floor(attendu) + (r() < attendu % 1 ? 1 : 0);
+    for(let k = 0; k < n; k++){
+      const pt = pointSurPiste(p, 0.08 + 0.84 * r(), r() * 2 - 1);
+      liste.push({ id: 0, t: E.dureeJour * (0.04 + 0.86 * r()), piste: p.nom, couleur: p.couleur, x: pt.x, z: pt.z,
+        prix: S.prix[p.couleur] || 300, duree: S.duree[p.couleur] || 25, etat: 'prevu', debut: null, fin: null });
+    }
+  });
+  liste.sort((a, b) => a.t - b.t).forEach((s, i) => s.id = i + 1);
+  return liste;
+}
+// Les blessés apparaissent ; un pisteur libre part secourir le plus ancien ; le secours est facturé à la fin
+function avancerSecours(res, jour){
+  const blesses = [], secourus = [], liste = jour.secours || [];
+  for(const s of liste) if(s.etat === 'prevu' && s.t <= jour.temps){ s.etat = 'attente'; blesses.push(s); }
+  for(const s of liste) if(s.etat === 'encours' && s.fin <= jour.temps){ s.etat = 'fini'; secourus.push(s); }
+  let libres = (res.personnel ? res.personnel.pisteur : 0) - liste.filter(s => s.etat === 'encours').length;
+  for(const s of liste){
+    if(libres <= 0) break;
+    if(s.etat !== 'attente') continue;
+    s.etat = 'encours'; s.debut = jour.temps; s.fin = jour.temps + s.duree; libres--;
+  }
+  return { blesses, secourus };
+}
+// Résumé des secours d'une journée (à la fermeture, les secours en cours se terminent ; les blessés oubliés partent en hélicoptère, non facturés)
+function bilanSecours(jour){
+  const S = CONFIG.exploitation.secours, liste = (jour.secours || []).filter(s => s.etat !== 'prevu');
+  const faits = liste.filter(s => s.etat === 'fini' || s.etat === 'encours');
+  const rapides = faits.filter(s => s.debut - s.t <= S.attenteMax).length;
+  const parCouleur = {};
+  for(const s of faits){ const c = parCouleur[s.couleur] || (parCouleur[s.couleur] = { nombre: 0, recette: 0 }); c.nombre++; c.recette += s.prix; }
+  return { blesses: liste.length, secourus: faits.length, recette: faits.reduce((t, s) => t + s.prix, 0), rapides,
+    helico: liste.length - faits.length, parCouleur };
 }
 // La journée avance : attente aux remontées selon les clients et les remontées qui tournent ; pannes
 function avancerJournee(niveau, res, jour, dt){
@@ -1202,12 +1263,13 @@ function avancerJournee(niveau, res, jour, dt){
     nouvelles.push(p);
   }
   const finies = avancerPannes(res, jour.temps);
+  const sec = avancerSecours(res, jour);
   const actives = jour.remontees.filter(nom => !enPanne(res, nom));
   const ratio = jour.clients * E.tours / E.heuresOuverture / Math.max(1, actives.length * E.debitTelesiege);
   jour.attente = actives.length ? 3 + Math.max(0, ratio - 0.6) * 35 : 60;
   jour.attenteSomme += jour.attente * (jour.temps - tAvant); jour.duree += jour.temps - tAvant;
   jour.remonteesActives = actives;
-  return { nouvelles, finies, fini: jour.temps >= E.dureeJour };
+  return { nouvelles, finies, blesses: sec.blesses, secourus: sec.secourus, fini: jour.temps >= E.dureeJour };
 }
 // Fin de journée : satisfaction, recettes, salaires, usure des pistes, réputation ; fin de saison au dernier jour
 function finJournee(niveau, res, jour){
@@ -1216,25 +1278,26 @@ function finJournee(niveau, res, jour){
   const attente = jour.duree ? jour.attenteSomme / jour.duree : jour.attente;
   const d = { neige: 0, damage: 0, choix: 0, attente: 0, prix: 0, securite: 0, accueil: 0 };
   let sat = 0;
+  const sec = bilanSecours(jour);
   if(n){
     d.neige = pistes.reduce((s, p) => s + Math.min(1, res.enneigement[p.nom] / ideal), 0) / n;
     d.damage = res.damageQualite ?? 1;
     d.choix = 0.6 * Math.min(1, n / 4) + 0.4 * Math.min(1, new Set(pistes.map(p => p.couleur)).size / 3);
     d.attente = borne(1 - (attente - 4) / 30, 0, 1);
     d.prix = borne(1 - (res.prixForfait - 0.8 * E.prixReference) / (0.9 * E.prixReference), 0, 1);
-    d.securite = Math.min(1, P.pisteur / n);
+    d.securite = 0.4 * Math.min(1, P.pisteur / n) + 0.6 * (sec.blesses ? sec.rapides / sec.blesses : 1);
     d.accueil = Math.min(1, P.caissier * E.clientsParCaissier / Math.max(1, jour.clients));
     sat = 0.25 * d.neige + 0.15 * d.damage + 0.15 * d.choix + 0.2 * d.attente + 0.15 * d.prix + 0.05 * d.securite + 0.05 * d.accueil;
   }
   const forfaits = Math.round(jour.clients * res.prixForfait), annexes = Math.round(jour.clients * E.depensesClient * (0.5 + 0.5 * sat));
   const salaires = Object.entries(P).reduce((s, [k, nb]) => s + nb * METIERS[k].salaire, 0);
-  res.budget += forfaits + annexes - salaires;
+  res.budget += forfaits + annexes + sec.recette - salaires;
   for(const p of pistes) res.enneigement[p.nom] = Math.max(0, res.enneigement[p.nom] - E.usure - E.usureClients * jour.clients / 1000 / n);
   ex.reputation = n ? 0.75 * ex.reputation + 0.25 * Math.min(1.2, sat * 1.2) : ex.reputation * 0.95;
   if(res.pannes) res.pannes = res.pannes.filter(p => p.etat !== 'reparation');      // les réparations commencées se terminent
   const bilan = { jour: ex.jour, saison: ex.saison, clients: jour.clients, satisfaction: sat, details: d, attente, pistes: n, totalPistes: niveau.pistes.length,
-    forfaits, annexes, salaires, net: forfaits + annexes - salaires, ferme: jour.ferme };
-  ex.jours.push({ clients: jour.clients, satisfaction: sat, net: bilan.net, ferme: jour.ferme });
+    forfaits, annexes, secours: sec, salaires, net: forfaits + annexes + sec.recette - salaires, ferme: jour.ferme };
+  ex.jours.push({ clients: jour.clients, satisfaction: sat, net: bilan.net, ferme: jour.ferme, secours: sec.recette, blesses: sec.blesses });
   ex.dernier = bilan;
   ex.jour++;
   ex.phase = 'soir';
@@ -1276,7 +1339,7 @@ function besoinsPersonnel(niveau, res){
   const E = CONFIG.exploitation, ts = (niveau.remontees || []).filter(q => remonteeEnMarche(res, q)).length;
   const canons = res.noeuds.filter(n => n.type === 'regard').length, pistes = niveau.pistes.length;
   return { nivoculteur: Math.max(1, Math.ceil(canons / E.nivoculteurCanons)), conducteur: 1, agent: ts * E.agentsParRemontee,
-    pisteur: pistes, technicien: 1, caissier: 2 };
+    pisteur: pistes + 1, technicien: 1, caissier: 2 };
 }
 
 // --- Carrière ---
@@ -1527,9 +1590,9 @@ function testsSimulation(){
   verifier('Courbe de pompe : 62 bar sans débit, 52 bar au débit nominal (180 m³/h)', proche(pressionPompes(0, 1), 62) && proche(pressionPompes(180, 1), 52));
   const g0 = debutNuit(niv1, r1n);
   verifier('Niveau 1 : la nuit démarre pompes arrêtées, vanne fermée, canons fermés', !r1n.pompage.marche.some(Boolean) && r1n.pompage.ouverture === 0 && g0.canons.every(c => c.arrete));
-  const ev = evenementsProgramme(niv1, r1n, -1, 13);
-  verifier('Programme : entre 0 et 13 s, le chef d\'équipe ouvre les regards 1 à 4', ev.length === 4 && ev.every(e => e.ouvert));
-  evenementsProgramme(niv1, r1n, 13, 25);
+  const ev = evenementsProgramme(niv1, r1n, -1, 40);
+  verifier('Programme : entre 0 et 40 s, le chef d\'équipe ouvre les regards 1 à 4', ev.length === 4 && ev.every(e => e.ouvert));
+  evenementsProgramme(niv1, r1n, 40, 75);
   const vc = { force: 0, direction: 0 };
   verifier('Coup de bélier : démarrer la première pompe vanne grande ouverte', (r1n.pompage.ouverture = 1, commanderPompe(niv1, r1n, 0, true)).coup);
   commanderPompe(niv1, r1n, 0, false, false); r1n.pompage.ouverture = 0; r1n.coups = 0;
@@ -1745,11 +1808,30 @@ function testsSimulation(){
   finJournee(nx, rx, jFerme);
   rx.enneigement[PISTE_CLARINES.nom] = 50; rx.enneigement[PISTE_GENTIANES.nom] = 50;
   const j1 = debutJournee(nx, rx);
-  for(let k = 0; k < 40; k++) avancerJournee(nx, rx, j1, 1);
+  for(let k = 0; k < 30; k++) avancerJournee(nx, rx, j1, CONFIG.exploitation.dureeJour / 30);
   const bx0 = rx.budget, bj = finJournee(nx, rx, j1);
   verifier('Avec 50 cm, les deux pistes ouvrent : clients, forfaits, satisfaction', !j1.ferme && j1.pistes.length === 2 && bj.clients > 200 && bj.forfaits === bj.clients * rx.prixForfait && bj.satisfaction > 0.4 && rx.budget === bx0 + bj.net,
     `${bj.clients} clients, satisfaction ${Math.round(bj.satisfaction * 100)} %, attente ${bj.attente.toFixed(0)} min`);
   verifier('Les pistes s\'usent avec les skieurs', rx.enneigement[PISTE_CLARINES.nom] < 50);
+  const SC = CONFIG.exploitation.secours;
+  verifier('Secours : la journée a eu des blessés, tous secourus par les 2 pisteurs et facturés', bj.secours.blesses > 0 && bj.secours.secourus === bj.secours.blesses && !bj.secours.helico
+    && bj.secours.recette === j1.secours.reduce((t, x) => t + x.prix, 0) && bj.net === bj.forfaits + bj.annexes + bj.secours.recette - bj.salaires,
+    `${bj.secours.blesses} blessés, ${bj.secours.recette} €`);
+  const verteTest = { ...PISTE_CLARINES, nom: 'Test verte', couleur: 'verte' }, rougeTest = { ...PISTE_GENTIANES, nom: 'Test rouge', couleur: 'rouge' };
+  const repT = repartitionClients([verteTest, rougeTest], 10000), secT = planifierSecours(nx, rx, [verteTest, rougeTest], 10000);
+  const nbV = secT.filter(x => x.couleur === 'verte').length, nbR = secT.filter(x => x.couleur === 'rouge').length;
+  verifier('Secours : plus de skieurs et plus de blessés sur la verte (débutants), mais un secours y rapporte moins que sur la rouge',
+    repT[0] > repT[1] && nbV > 2 * nbR && SC.prix.verte < SC.prix.bleue && SC.prix.bleue < SC.prix.rouge && SC.prix.rouge < SC.prix.noire
+    && secT.every(x => surPiste(x.couleur === 'verte' ? verteTest : rougeTest, x.x, x.z)), `${nbV} blessés sur la verte, ${nbR} sur la rouge`);
+  const jsT = { temps: 0, secours: [1, 2, 3].map(i => ({ id: i, t: 1, piste: 'Test verte', couleur: 'verte', prix: 220, duree: 20, etat: 'prevu' })) };
+  const pisteursAvant = rx.personnel.pisteur; rx.personnel.pisteur = 1;
+  jsT.temps = 2; const evT = avancerSecours(rx, jsT);
+  verifier('Secours : un pisteur ne fait qu\'un secours à la fois, les autres blessés attendent', evT.blesses.length === 3 && jsT.secours.filter(x => x.etat === 'encours').length === 1 && jsT.secours.filter(x => x.etat === 'attente').length === 2);
+  jsT.temps = 23; const ev2T = avancerSecours(rx, jsT);
+  verifier('Secours : fini, le pisteur repart vers le blessé suivant', ev2T.secourus.length === 1 && jsT.secours.filter(x => x.etat === 'encours').length === 1);
+  const bsT = bilanSecours(jsT);
+  verifier('Secours : à la fermeture, les blessés oubliés partent en hélicoptère (pas facturés), les longues attentes comptent', bsT.secourus === 2 && bsT.helico === 1 && bsT.recette === 440 && bsT.rapides === 2);
+  rx.personnel.pisteur = pisteursAvant;
   rx.prixForfait = 75;
   const jCher = debutJournee(nx, rx); rx.prixForfait = 30; const jBon = debutJournee(nx, rx); rx.prixForfait = 42;
   verifier('Forfait cher : moins de clients ; forfait bon marché : plus de clients', jCher.clients < j1.clients && jBon.clients > j1.clients, `${jCher.clients} à 75 €, ${jBon.clients} à 30 €`);

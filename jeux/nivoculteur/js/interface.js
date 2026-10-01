@@ -17,7 +17,7 @@ function message(texte, type = 'info', duree = 4500){
   el.className = `message ${type}`;
   el.textContent = texte;
   zone.appendChild(el);
-  while(zone.children.length > 3) zone.firstChild.remove();
+  while(zone.children.length > (window.innerWidth < 700 ? 2 : 3)) zone.firstChild.remove();   // peu de messages à la fois
   setTimeout(() => { el.classList.add('sortie'); setTimeout(() => el.remove(), 450); }, duree);
 }
 
@@ -186,7 +186,7 @@ function afficherPoste(d, agir){
         ${d.remplissage ? `<div class="ligne">Remplissage de la journée (m³)</div>
         <div class="seg large">${d.remplissage.choix.map(m => `<button type="button" data-action="remplissage" data-valeur="${m}" class="${m === d.remplissage.m3 ? 'actif' : ''}">${m ? nombreFr(m) : 'Arrêt'}</button>`).join('')}</div>
         <p class="aide">m³ d'eau remontés dans la retenue chaque jour, à ${nombreFr(d.remplissage.prix, 2)} €/m³ (${euros(Math.round(d.remplissage.m3 * d.remplissage.prix))} par jour au plus).</p>` : ''}
-        <div class="ligne">${d.nuit ? `<button class="bouton petit" type="button" data-action="accelerer">${d.accelere ? 'Vitesse normale' : `Accélérer ×${CONFIG.nuit.accelere}`}</button>`
+        <div class="ligne">${d.nuit ? `<button class="bouton petit" type="button" data-action="accelerer">${(() => { const vs = CONFIG.nuit.vitesses, v = d.vitesse || 1, n = vs[(vs.indexOf(v) + 1) % vs.length]; return v > 1 ? `Vitesse ×${v} → ×${n}` : `Accélérer ×${n}`; })()}</button>`
           : '<button class="bouton vert" type="button" data-action="lancerNuit">Lancer la nuit</button>'}</div>
       </section>
       ${d.damage || d.remontees.length ? `<section class="bloc"><h3>Dameuse et remontées</h3>
@@ -252,7 +252,7 @@ function fermerMenu(){ $('menu').hidden = true; }
 // Administration de la station (mode Exploitation) : forfait, personnel, gazole, saison, dernière journée
 // d : données préparées par le jeu ; agir(action, valeur)
 // ---------------------------------------------------------------------------------------
-const NOMS_SATISFACTION = { neige: 'Enneigement', damage: 'Damage', choix: 'Choix de pistes', attente: 'Attente aux remontées', prix: 'Prix du forfait', securite: 'Sécurité (pisteurs)', accueil: 'Accueil (caisses)' };
+const NOMS_SATISFACTION = { neige: 'Enneigement', damage: 'Damage', choix: 'Choix de pistes', attente: 'Attente aux remontées', prix: 'Prix du forfait', securite: 'Sécurité (secours)', accueil: 'Accueil (caisses)' };
 function barreSatisfaction(f){
   const pc = Math.round(borne(f, 0, 1) * 100), cls = pc >= 75 ? 'bon' : pc >= 50 ? 'moyen' : 'mauvais';
   return `<span class="jauge"><span class="${cls}" style="left:0;width:${pc}%"></span></span><b>${pc} %</b>`;
@@ -291,8 +291,14 @@ function afficherAdmin(d, agir){
         <div class="ligne">${pastille(`${nombreFr(d.clients)} clients depuis le début de la saison`)}${pastille(`résultat ${d.resultat >= 0 ? '+' : '−'}${euros(Math.abs(d.resultat))}`, d.resultat >= 0 ? 'vert' : 'orange')}</div>
         ${d.saisons.map(x => `<div class="ligne">${pastille(`Saison ${x.saison}`)}${pastille(`${Math.round((x.satisfaction || 0) * 100)} % satisfaits`)}${pastille(`${nombreFr(x.clients)} clients`)}${pastille(`${x.resultat >= 0 ? '+' : '−'}${euros(Math.abs(x.resultat))}`)}</div>`).join('')}
       </section>
+      <section class="bloc"><h3>Secours sur piste</h3>
+        <div class="ligne">${['verte', 'bleue', 'rouge', 'noire'].map(c => pastille(`${c} : ${euros(E.secours.prix[c])}`)).join('')}</div>
+        <div class="ligne">${pastille(`${d.secoursSaison.blesses} blessé${d.secoursSaison.blesses > 1 ? 's' : ''} cette saison`)}${pastille(`+${euros(d.secoursSaison.recette)} facturés`, 'vert')}
+          ${d.secoursJour ? pastille(`aujourd'hui : ${d.secoursJour.faits} secourus, ${d.secoursJour.encours} en cours, ${d.secoursJour.attente} en attente`, d.secoursJour.attente ? 'orange' : '') : ''}</div>
+        <p class="aide">Les débutants des pistes vertes et bleues se blessent plus souvent, mais un secours y est facturé moins cher que sur une rouge ou une noire. Chaque pisteur fait un secours à la fois : sans pisteur libre, le blessé attend (la sécurité baisse) et, à la fermeture, part en hélicoptère sans être facturé.</p>
+      </section>
       <section class="bloc"><h3>Dernière journée</h3>
-        ${dj ? `<div class="ligne">${pastille(`${nombreFr(dj.clients)} clients`)}${pastille(`forfaits ${euros(dj.forfaits)}`, 'vert')}${pastille(`dépenses des skieurs ${euros(dj.annexes)}`, 'vert')}${pastille(`salaires −${euros(dj.salaires)}`, 'orange')}</div>
+        ${dj ? `<div class="ligne">${pastille(`${nombreFr(dj.clients)} clients`)}${pastille(`forfaits ${euros(dj.forfaits)}`, 'vert')}${pastille(`dépenses des skieurs ${euros(dj.annexes)}`, 'vert')}${dj.secours ? pastille(`secours +${euros(dj.secours.recette)}`, 'vert') : ''}${pastille(`salaires −${euros(dj.salaires)}`, 'orange')}</div>
           ${Object.entries(NOMS_SATISFACTION).map(([k, nom]) => `<div class="mesure"><span class="crit">${nom}</span>${barreSatisfaction(dj.details[k])}</div>`).join('')}`
           : '<p class="vide">Pas encore de journée de ski cette saison.</p>'}
       </section>
@@ -386,7 +392,7 @@ function afficherOptions(o, vent, agir, amenagements = { pistes: [], remontees: 
         <div class="types">${types}</div>
       </section>
       <section class="bloc"><h3>Pistes et remontées</h3>
-        <p class="aide">Tracez-en avec les outils « Piste » et « Remontée » de la barre du bas.</p>
+        <p class="aide">Tracez-en avec « Tracer une piste » et « Poser un télésiège » du menu Construire.</p>
         ${amenagements.pistes.map((p, i) => `<div class="ligne">${pastille(p.nom)}<small>${echapper(p.detail)}</small><button class="bouton petit" type="button" data-action="optSupprPiste" data-valeur="${i}">Supprimer</button></div>`).join('')}
         ${amenagements.remontees.map((r, i) => `<div class="ligne">${pastille(r.nom)}<small>${echapper(r.detail)}</small><button class="bouton petit" type="button" data-action="optSupprRemontee" data-valeur="${i}">Supprimer</button></div>`).join('')}
         ${amenagements.pistes.length || amenagements.remontees.length ? '' : '<p class="vide">Aucune pour l\'instant.</p>'}

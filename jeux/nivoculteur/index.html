@@ -100,6 +100,18 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 #sousSol.actif{ background:#5C6B86; border-color:#9FB0CF; }
 .bouton.nuit{ background:#2E9E5B; border-color:#2E9E5B; }
 #accelerer.actif{ background:#E9B949; border-color:#E9B949; color:#1C1F25; }
+/* Tiroirs de la barre du bas (Construire, Gestion, Affichage) */
+.tiroir{ width:min(560px, 100%); padding:8px 10px 10px; border-radius:14px; background:rgba(11,20,38,.94); border:1px solid var(--bord);
+  box-shadow:0 8px 22px rgba(0,0,0,.4); display:flex; flex-direction:column; gap:6px; }
+.groupe-tiroir{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+.titre-tiroir{ font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#7FB2FF; text-align:center; }
+.menu-tiroir.actif{ background:#2F6FDE; border-color:#2F6FDE; }
+.bouton.danger{ color:#FF9AA5; border-color:rgba(215,38,61,.5); }
+#annuler{ min-width:40px; font-size:1.05rem; padding-top:6px; padding-bottom:6px; }
+.puce-outil{ display:inline-flex; align-items:center; gap:8px; padding:4px 5px 4px 12px; border-radius:999px; background:var(--verre); border:1px solid var(--or);
+  font-weight:600; font-size:.84rem; white-space:nowrap; max-width:100%; }
+.puce-outil > span{ overflow:hidden; text-overflow:ellipsis; }
+.puce-outil button{ width:26px; height:26px; border-radius:50%; background:rgba(234,242,255,.12); font-size:.8rem; line-height:1; flex:none; }
 .en-nuit .construction{ display:none; }
 .stat b em{ font-style:normal; }
 .stat b .fleche{ width:15px; height:15px; vertical-align:-2px; transition:transform .3s ease; color:#9FD0FF; }
@@ -285,6 +297,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
   .stat{ min-width:auto; flex:1 1 auto; padding:6px 8px; } .stat b{ font-size:.95rem; white-space:nowrap; }
   .titre b{ font-size:1.1rem; }
   .outils .bouton{ font-size:.8rem; padding:7px 8px; }
+  .menu-tiroir .ico{ display:none; }
   .bas .rang{ gap:4px; }
   .stat{ padding:5px 4px; } .stat > span{ font-size:.58rem; letter-spacing:.02em; } .stat b{ font-size:.8rem; }
   .stat .obj{ display:none; }
@@ -302,10 +315,9 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
     <a class="home" href="../../index.html">DesDés</a>
     <div class="titre"><b id="titre">Nivoculteur</b><span id="sousTitre">Découverte du terrain</span></div>
     <button class="bouton" id="ouvrirMenu" type="button">Menu</button>
-    <button class="bouton" id="ouvrirOptions" type="button" aria-label="Options" hidden><span aria-hidden="true">⚙</span><span class="txt"> Options</span></button>
     <a class="bouton" id="lienModeles" href="index.html?modeles" hidden>Modèles 3D</a>
     <a class="bouton" id="lienTerrain" href="index.html" hidden>Terrain</a>
-    <button class="bouton" id="recentrer" type="button">Recentrer</button>
+    <button class="bouton" id="recentrerVue" type="button" hidden>Recentrer</button>
   </div>
   <div class="bandeau" id="bandeau" hidden>
     <div class="rang compteurs">
@@ -330,21 +342,48 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
     <span id="choixPrix"></span>
   </div>
   <div class="rang choix" id="choixTrace" hidden></div>
-  <div class="rang outils">
-    <button class="bouton outil construction" type="button" data-outil="regard">+ Regard</button>
-    <button class="bouton outil construction" type="button" data-outil="eau">Eau</button>
-    <button class="bouton outil construction" type="button" data-outil="cable">Électricité</button>
-    <button class="bouton outil construction" type="button" data-outil="air" hidden>Air</button>
-    <button class="bouton outil construction" type="button" data-outil="depart">+ Départ élec</button>
-    <button class="bouton outil construction" type="button" data-outil="demonter">Démonter</button>
-    <button class="bouton outil construction" type="button" data-outil="piste" hidden>Piste</button>
-    <button class="bouton outil construction" type="button" data-outil="remontee" hidden>Remontée</button>
-    <button class="bouton construction" type="button" id="sousSol">Vue sous-sol</button>
-    <button class="bouton construction" type="button" id="annuler" disabled>Annuler</button>
-    <button class="bouton construction" type="button" id="effacer">Tout effacer</button>
-    <button class="bouton" type="button" id="ouvrirAdmin" hidden>Administration</button>
-    <button class="bouton" type="button" id="infosCanons">Masquer infos canons</button>
-    <button class="bouton" type="button" id="ouvrirPoste">Poste de travail</button>
+  <!-- Menus de la barre : un seul tiroir ouvert à la fois, refermé dès qu'on choisit quelque chose -->
+  <div class="tiroir" id="tiroir" hidden>
+    <div class="groupe-tiroir" data-groupe="construire" hidden>
+      <div class="titre-tiroir">Réseau de neige</div>
+      <div class="rang outils">
+        <button class="bouton outil construction" type="button" data-outil="regard">+ Regard</button>
+        <button class="bouton outil construction" type="button" data-outil="eau">Eau</button>
+        <button class="bouton outil construction" type="button" data-outil="cable">Électricité</button>
+        <button class="bouton outil construction" type="button" data-outil="air" hidden>Air</button>
+        <button class="bouton outil construction" type="button" data-outil="depart">+ Départ élec</button>
+        <button class="bouton outil construction" type="button" data-outil="demonter">Démonter</button>
+      </div>
+      <div class="titre-tiroir" id="titreDomaine">Pistes et remontées</div>
+      <div class="rang outils" id="rangDomaine">
+        <button class="bouton outil construction" type="button" data-outil="piste" hidden>Tracer une piste</button>
+        <button class="bouton outil construction" type="button" data-outil="remontee" hidden>Poser un télésiège</button>
+      </div>
+      <div class="rang outils"><button class="bouton construction danger" type="button" id="effacer">Tout effacer</button></div>
+    </div>
+    <div class="groupe-tiroir" data-groupe="gestion" hidden>
+      <div class="rang outils">
+        <button class="bouton" type="button" id="ouvrirPoste">Poste de travail</button>
+        <button class="bouton" type="button" id="ouvrirAdmin" hidden>Administration</button>
+      </div>
+    </div>
+    <div class="groupe-tiroir" data-groupe="affichage" hidden>
+      <div class="rang outils">
+        <button class="bouton construction" type="button" id="sousSol">Vue sous-sol</button>
+        <button class="bouton" type="button" id="infosCanons">Masquer infos canons</button>
+        <button class="bouton" type="button" id="recentrer">Recentrer la vue</button>
+        <button class="bouton" id="ouvrirOptions" type="button" hidden>⚙ Options du bac à sable</button>
+      </div>
+    </div>
+  </div>
+  <div class="rang" id="rangOutilActif" hidden>
+    <span class="puce-outil" id="outilActif"><span id="outilActifNom"></span><button type="button" id="quitterOutil" aria-label="Ranger l'outil">✕</button></span>
+  </div>
+  <div class="rang outils principal">
+    <button class="bouton menu-tiroir construction" type="button" data-tiroir="construire" aria-expanded="false"><span class="ico" aria-hidden="true">🛠 </span>Construire<span class="ico" aria-hidden="true"> ▾</span></button>
+    <button class="bouton menu-tiroir" type="button" data-tiroir="gestion" aria-expanded="false"><span class="ico" aria-hidden="true">📋 </span>Gestion<span class="ico" aria-hidden="true"> ▾</span></button>
+    <button class="bouton menu-tiroir" type="button" data-tiroir="affichage" aria-expanded="false"><span class="ico" aria-hidden="true">👁 </span>Affichage<span class="ico" aria-hidden="true"> ▾</span></button>
+    <button class="bouton construction" type="button" id="annuler" disabled aria-label="Annuler la dernière action" title="Annuler la dernière action">↶</button>
     <button class="bouton nuit construction" type="button" id="lancerNuit">Lancer la nuit</button>
     <button class="bouton" type="button" id="accelerer" hidden>Accélérer ×3</button>
   </div>

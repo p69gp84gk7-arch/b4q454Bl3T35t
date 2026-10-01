@@ -1446,6 +1446,12 @@ function textureAlerte(type){
       g.fillStyle = '#FFD23A'; g.strokeStyle = '#1C1F25'; g.lineWidth = 5;
       g.beginPath(); g.moveTo(32, 5); g.lineTo(60, 56); g.lineTo(4, 56); g.closePath(); g.fill(); g.stroke();
       g.fillStyle = '#1C1F25'; g.fillRect(29, 20, 6, 20); g.beginPath(); g.arc(32, 47, 3.5, 0, Math.PI * 2); g.fill();
+    } else if(type === 'blesse' || type === 'secours'){
+      // Croix de secours : rouge sur fond blanc (un blessé attend), blanche sur fond rouge (un pisteur est là)
+      const fond = type === 'blesse' ? '#FFFFFF' : '#D7263D', croix = type === 'blesse' ? '#D7263D' : '#FFFFFF';
+      g.fillStyle = fond; g.strokeStyle = '#1C1F25'; g.lineWidth = 4;
+      g.beginPath(); g.roundRect ? g.roundRect(5, 5, 54, 54, 10) : g.rect(5, 5, 54, 54); g.fill(); g.stroke();
+      g.fillStyle = croix; g.fillRect(25, 12, 14, 40); g.fillRect(12, 25, 40, 14);
     } else {
       // Rond bleu avec une clé plate blanche : l'équipe répare
       g.fillStyle = '#2F6FDE'; g.strokeStyle = '#0B1426'; g.lineWidth = 4;
@@ -1471,6 +1477,43 @@ function etatAlerte(sp, reparation){
   sp.userData.reparation = reparation;
   sp.material.map = textureAlerte(reparation ? 'reparation' : 'panne');
   sp.material.needsUpdate = true;
+}
+// Secours sur piste : blessé allongé, skis plantés en croix au-dessus de lui (le signal des skieurs),
+// et, quand il arrive, le pisteur-secouriste avec sa barquette. Repère : l'amont vers −z. userData.etat(etat, temps)
+let _geoSecours = null;
+function creerSecours(veste){
+  if(!_geoSecours){
+    const b = new Atelier();                                                              // le blessé
+    b.boite(0.42, 0.26, 0.6, '#FFFFFF', 0, 0.16, 0);                                      // buste (teinté)
+    b.boite(0.36, 0.2, 0.9, '#3A3F4A', 0, 0.12, 0.72);                                    // jambes
+    b.sphere(0.15, '#E8E8E8', 0, 0.18, -0.45, 8);                                         // casque
+    const sk = new Atelier();                                                             // skis plantés en croix
+    for(const s of [-1, 1]) sk.boite(0.09, 1.7, 0.04, '#BFC5CE', 0, 0.75, 0, 0, 0, s * 0.45);
+    const pi = new Atelier();                                                             // pisteur et barquette
+    pi.boite(0.13, 0.8, 0.16, '#1C1F25', -0.12, 0.4, 0); pi.boite(0.13, 0.8, 0.16, '#1C1F25', 0.12, 0.4, 0);
+    pi.boite(0.46, 0.6, 0.3, '#D7263D', 0, 1.1, 0);                                       // veste rouge
+    pi.boite(0.08, 0.3, 0.02, '#FFFFFF', 0, 1.15, 0.16); pi.boite(0.24, 0.08, 0.02, '#FFFFFF', 0, 1.18, 0.16);   // croix blanche
+    pi.sphere(0.15, '#D7263D', 0, 1.55, 0, 8);
+    pi.boite(0.75, 0.28, 2.3, '#F28C28', 1.1, 0.14, 0.2);                                 // barquette orange
+    pi.boite(0.6, 0.06, 2.1, '#1C1F25', 1.1, 0.29, 0.2);
+    for(const s of [-1, 1]) pi.tube([1.1 + s * 0.3, 0.3, -0.9], [1.1 + s * 0.3, 0.9, -2.0], 0.03, '#3A3F4A', 4);   // brancards
+    _geoSecours = { blesse: b.geometrie(), skis: sk.geometrie(), pisteur: pi.geometrie(), mat: new THREE.MeshLambertMaterial({ vertexColors: true }) };
+  }
+  const G = _geoSecours, g = new THREE.Group();
+  const blesse = new THREE.Mesh(G.blesse, new THREE.MeshLambertMaterial({ vertexColors: true, color: veste || '#2F6FDE' }));
+  const skis = new THREE.Mesh(G.skis, G.mat); skis.position.set(0, 0, -1.9);
+  const pisteur = new THREE.Mesh(G.pisteur, G.mat); pisteur.position.set(0.75, 0, 0.1); pisteur.visible = false;   // barquette à côté, pas sur le blessé
+  for(const m of [blesse, skis, pisteur]) m.castShadow = true;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: textureAlerte('blesse'), sizeAttenuation: false, depthTest: false, transparent: true, fog: false }));
+  sp.scale.set(0.03, 0.03, 1); sp.center.set(0.5, 0); sp.position.y = 2.6; sp.renderOrder = 11;
+  g.add(blesse, skis, pisteur, sp);
+  g.userData.etat = (etat, temps) => {
+    pisteur.visible = etat === 'encours';
+    const tex = textureAlerte(etat === 'encours' ? 'secours' : 'blesse');
+    if(sp.material.map !== tex){ sp.material.map = tex; sp.material.needsUpdate = true; }
+    sp.visible = etat === 'encours' || Math.floor(temps * 2.5) % 2 === 0;               // clignote tant que personne n'est là
+  };
+  return g;
 }
 // Fuite : gerbe d'eau qui jaillit de la tranchée et flaque de glace qui grandit
 let _texGoutte = null;

@@ -128,9 +128,9 @@ const LEVELS = [
     // Programme de la nuit : le chef d'équipe ouvre puis ferme des canons (t en secondes de jeu)
     programme: [
       { t: 0,  ouvrir: ['R1', 'R2'], texte: 'Le chef d\'équipe ouvre les regards 1 et 2.' },
-      { t: 12, ouvrir: ['R3', 'R4'], texte: 'Il fait plus froid : ouverture des regards 3 et 4.' },
-      { t: 24, ouvrir: ['R5', 'R6'], texte: 'Ouverture des regards 5 et 6 : tout le réseau produit.' },
-      { t: 45, fermer: ['R5', 'R6'], texte: 'Le vent tourne : fermeture des regards 5 et 6.' }
+      { t: 36, ouvrir: ['R3', 'R4'], texte: 'Il fait plus froid : ouverture des regards 3 et 4.' },
+      { t: 72, ouvrir: ['R5', 'R6'], texte: 'Ouverture des regards 5 et 6 : tout le réseau produit.' },
+      { t: 135, fermer: ['R5', 'R6'], texte: 'Le vent tourne : fermeture des regards 5 et 6.' }
     ],
     objectif: { type: 'production', m3: 6000, nuits: 3, coupsMax: 2 }
   },
