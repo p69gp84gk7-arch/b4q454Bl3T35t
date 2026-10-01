@@ -100,6 +100,13 @@ const CATALOGUE = {
   p10n: { nom: 'Perche 10 m nouvelle génération', type: 'perche', prix: 10000, debit: 3.5, pressionMin: 14, pressionPleine: 22, neige: 5.5, portee: 9, longueur: 10, peuDAir: true, debloque: { niveau: 3, m3: 10000 } }
 };
 
+// Perches : posées sur un petit support vertical, inclinées, la tête projette vers l'avant (pas tout autour)
+const PERCHE = {
+  support: 1.5,             // m : hauteur du support vertical
+  penche: 30,               // degrés : inclinaison de la perche depuis la verticale
+  eventail: 30              // degrés : ouverture maximale du jet de la tête de buses
+};
+
 // Supports des ventilateurs : plus haut = envoie plus loin, mais le vent déporte davantage la neige
 const SUPPORTS = {
   trepied:   { nom: 'Trépied', prix: 0,    pivot: 1.15, portee: 1 },

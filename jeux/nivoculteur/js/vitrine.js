@@ -42,7 +42,7 @@ function demarrerVitrine(){
         ];
       } },
     { nom: 'Perches', creer: () => creerEnneigeur(vp), sol: 0.45,
-      cible: () => CATALOGUE[vp.modele].longueur * 0.45, distance: () => CATALOGUE[vp.modele].longueur * 1.3 + 3,
+      cible: () => PERCHE.support + CATALOGUE[vp.modele].longueur * 0.45, distance: () => CATALOGUE[vp.modele].longueur * 1.4 + 4,
       options: o => {
         const c = o.userData.canon, r = o.userData.regard, cycle = (liste, v) => liste[(liste.indexOf(v) + 1) % liste.length];
         etatCanon(c, vp.etat);

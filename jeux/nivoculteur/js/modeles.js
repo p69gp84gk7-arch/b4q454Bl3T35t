@@ -555,48 +555,61 @@ function creerCanon(options = {}){
 }
 
 // ---------------------------------------------------------------------------------------
-// Perche à neige : longue perche inclinée, tête de buses en haut, tuyaux d'eau et d'air le long
+// Perche à neige : petit support vertical de 1,50 m, longue perche inclinée, tête de buses en haut
+// qui projette vers l'avant dans un éventail de 30° au plus (pas tout autour), tuyaux d'eau et d'air le long.
 // options : longueur (6 ou 10 m), ng (nouvelle génération : tête orange, moins d'air)
 // ---------------------------------------------------------------------------------------
 function creerPerche(options = {}){
-  const perche = new THREE.Group(), C = COULEURS, L = options.longueur || 6, ng = !!options.ng, penche = 25 * Math.PI / 180;
+  const perche = new THREE.Group(), C = COULEURS, L = options.longueur || 6, ng = !!options.ng;
+  const H = PERCHE.support, penche = PERCHE.penche * Math.PI / 180;
+  // Support vertical (fixe) : platine, poteau de 1,50 m, coffret électrique
   const s = new Atelier();
   s.cylindre(0.28, 0.06, C.galva, 0, 0.03, 0, 0, 0, 0, 10);
-  s.boite(0.3, 0.26, 0.3, C.acierFonce, 0, 0.18, 0);
-  s.boite(0.32, 0.42, 0.18, '#D9DEE4', 0, 0.45, -0.4);                 // coffret de la perche
-  s.tube([0, 0.25, -0.45], [0, 0.05, -0.7], 0.025, C.noir, 6);
+  for(let k = 0; k < 4; k++){ const a = k * Math.PI / 2 + Math.PI / 4; s.cylindre(0.022, 0.08, C.acierFonce, Math.cos(a) * 0.2, 0.07, Math.sin(a) * 0.2, 0, 0, 0, 6); }
+  s.cylindre(0.09, H, C.galva, 0, H / 2, 0, 0, 0, 0, 10);
+  s.cylindre(0.16, 0.1, C.acierFonce, 0, H - 0.05, 0, 0, 0, 0, 12);    // couronne d'orientation
+  s.boite(0.3, 0.4, 0.16, '#D9DEE4', 0, 0.85, -0.17);                // coffret de la perche
+  s.tube([0, 0.65, -0.2], [0, 0.05, -0.5], 0.022, C.noir, 6);
+  s.cylindre(0.11, 0.22, C.conduiteEau, 0, 0.2, 0, 0, 0, 0, 10);       // raccord d'eau et d'air
   perche.add(s.mesh());
-  const pivot = new THREE.Group();                                       // tourne avec la direction
-  pivot.position.y = 0.3;
+  // Partie orientable : chape et perche inclinée vers l'avant (+z)
+  const pivot = new THREE.Group();
+  pivot.position.y = H;
   perche.add(pivot);
+  const chape = new Atelier();
+  chape.boite(0.26, 0.08, 0.26, C.acierFonce, 0, 0.04, 0);
+  for(const x of [-0.1, 0.1]) chape.boite(0.03, 0.24, 0.16, C.acierFonce, x, 0.18, 0);
+  pivot.add(chape.mesh());
   const mat = new THREE.Group();
-  mat.rotation.x = penche;                                               // la perche penche vers l'avant (+z)
+  mat.position.y = 0.2;
+  mat.rotation.x = penche;
   pivot.add(mat);
   const a = new Atelier();
-  a.cylindre(0.075, L, C.galva, 0, L / 2, 0, 0, 0, 0, 8, 0.045);
-  a.tube([0.09, 0.25, 0], [0.07, L - 0.35, 0], 0.022, C.conduiteEau, 5);   // eau
-  a.tube([-0.09, 0.25, 0], [-0.07, L - 0.35, 0], 0.018, '#8C96A6', 5);    // air comprimé
-  for(let y = 1; y < L - 0.5; y += 1.5) a.cylindre(0.1, 0.05, C.acierFonce, 0, y, 0, 0, 0, 0, 8);
-  const tete = ng ? C.orange : C.canon;
-  a.cylindre(0.12, 0.4, tete, 0, L + 0.1, 0, 0, 0, 0, 10);
-  for(let k = 0; k < 6; k++){
-    const ang = k / 6 * Math.PI * 2, y = L + (k % 2 ? 0.2 : 0.02);
-    a.tube([Math.cos(ang) * 0.1, y, Math.sin(ang) * 0.1], [Math.cos(ang) * 0.22, y + 0.04, Math.sin(ang) * 0.22], 0.022, C.buse, 5);
+  a.cylindre(0.07, L, C.galva, 0, L / 2, 0, 0, 0, 0, 8, 0.045);
+  a.tube([0.085, 0.3, 0], [0.065, L - 0.35, 0], 0.02, C.conduiteEau, 5);   // eau
+  a.tube([-0.085, 0.3, 0], [-0.065, L - 0.35, 0], 0.017, '#8C96A6', 5);   // air comprimé
+  for(let y = 1; y < L - 0.5; y += 1.5) a.cylindre(0.095, 0.05, C.acierFonce, 0, y, 0, 0, 0, 0, 8);
+  // Tête : corps, puis buses toutes tournées vers l'avant, en éventail de ±15° autour de l'horizontale avant
+  const tete = ng ? C.orange : C.canon, top = new THREE.Vector3(0, L + 0.12, 0);
+  a.cylindre(0.11, 0.36, tete, 0, L + 0.1, 0, 0, 0, 0, 10);
+  const avant = new THREE.Vector3(0, Math.sin(penche), Math.cos(penche));      // horizontale avant, vue depuis la perche
+  const demi = PERCHE.eventail / 2 * Math.PI / 180;
+  for(let k = 0; k < 4; k++){
+    const phi = -demi + k / 3 * 2 * demi;
+    const dir = new THREE.Vector3(Math.sin(phi), avant.y * Math.cos(phi), avant.z * Math.cos(phi)).normalize();
+    const base = top.clone().addScaledVector(dir, 0.08), bout = top.clone().addScaledVector(dir, 0.26);
+    a.tube(base.toArray(), bout.toArray(), 0.022, C.buse, 5);
   }
-  if(ng) a.tore(0.14, 0.025, '#FFFFFF', 0, L - 0.15, 0, Math.PI / 2, 0, 0, 4, 14);
+  a.boite(0.24, 0.03, 0.1, C.acierFonce, 0, L + 0.3, 0.04);                     // plaque au-dessus des buses
+  if(ng) a.tore(0.13, 0.025, '#FFFFFF', 0, L - 0.12, 0, Math.PI / 2, 0, 0, 4, 14);
   mat.add(a.mesh());
-  const j = new Atelier();                                                // jambe de force
-  j.tube([0, -0.25, 1.3], [0, L / 3 * Math.cos(penche), L / 3 * Math.sin(penche)], 0.04, C.galva, 6);
-  j.cylindre(0.12, 0.05, C.acierFonce, 0, -0.27, 1.3, 0, 0, 0, 8);
-  pivot.add(j.mesh());
-  const voyant = lampe(0.06, C.voyants.arret);
-  voyant.position.set(0, 0.72, -0.4);
+  const voyant = lampe(0.055, C.voyants.arret);
+  voyant.position.set(0, 1.1, -0.17);
   perche.add(voyant);
   perche.userData = { pivot, incl: null, helice: null, voyant, vitesse: 0, etat: 'arret', perche: true,
-    buse: { objet: mat, local: new THREE.Vector3(0, L + 0.15, 0) } };
+    buse: { objet: mat, local: new THREE.Vector3(0, L + 0.12, 0.25) } };
   return perche;
 }
-// Direction (degrés, 0 = vers +z) et inclinaison (degrés au-dessus de l'horizontale, 0 à 35)
 function orienterCanon(c, direction, inclinaison){
   c.userData.direction = direction; c.userData.inclinaison = borne(inclinaison, 0, 35);
   c.userData.pivot.rotation.y = direction * Math.PI / 180;

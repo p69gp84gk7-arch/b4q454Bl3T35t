@@ -190,7 +190,7 @@ function demarrer(){
         o.userData.cle = cle;
         const m = CATALOGUE[n.modele];
         o.userData.icone = creerIconeEtat();
-        o.userData.icone.position.y = m.type === 'perche' ? m.longueur + 1.5 : SUPPORTS[n.support].pivot + 2.5;
+        o.userData.icone.position.y = m.type === 'perche' ? PERCHE.support + m.longueur * 0.87 + 1.5 : SUPPORTS[n.support].pivot + 2.5;
         o.add(o.userData.icone);
         groupeReseau.add(o);
         regards3D.set(n.id, o);
@@ -470,7 +470,7 @@ function demarrer(){
       if(c && c.production) sources.push({
         depart: positionBuse(o.userData.canon, new THREE.Vector3()),
         arrivee: new THREE.Vector3(c.chute.x, poser(c.chute.x, c.chute.z) + 0.4, c.chute.z),
-        rayon: c.chute.rayon, hauteur: Math.max(1.5, c.chute.hauteurJet * 0.5), force: c.facteur });
+        rayon: c.chute.rayon, hauteur: CATALOGUE[c.modele].type === 'perche' ? 1 : Math.max(1.5, c.chute.hauteurJet * 0.5), force: c.facteur });
     }
     const d = g.debit;
     etatSallePompage(salle, { marche: [d > 0, d > 45, d > 90], pressions: [0, 1, 2].map(() => g.pressionDepart), pressionDepart: g.pressionDepart,

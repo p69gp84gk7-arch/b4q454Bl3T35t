@@ -24,6 +24,7 @@ Boucle : **construire** le jour (regards, canons, conduites d'eau, câbles) → 
 - Performances : réutiliser géométries et matériaux, objets répétés en `InstancedMesh`, peu de particules.
 - Sauvegarde dans `localStorage`, toujours dans un `try/catch` (à partir de l'étape 5 ; clés préfixées `nivo-`).
 - **Toute l'interface est en français.**
+- **Chaque texte reste dans sa capsule** (cases de la barre, boutons, panneaux) : vérifier aux largeurs 360, 390, 430, 768 et 1 280 px, le jour, la nuit, avec une fiche ouverte et dans la vitrine. Sur petit écran, les cases prennent la largeur de leur contenu (retour à la ligne si besoin) et le budget s'affiche en k€.
 - Unité : **1 unité 3D = 1 mètre**. Axe x de gauche à droite, axe z du haut de la pente (négatif) vers le bas (positif), y = altitude − altitude du bas.
 
 ### Fichiers (chargés dans cet ordre)
@@ -99,6 +100,8 @@ Tranchée eau seule 750 €/m · câble seul 550 €/m · commune eau + câble 9
 | Perche 6 m | 5 000 € | 3 l/s | 18 / 28 bar | 4,5 (180/nuit) | niveau 3 (air comprimé) |
 | Perche 10 m | 7 000 € | 3,5 l/s | 18 / 28 bar | 5,5 (220/nuit) | niveau 3 |
 | Perche 10 m nouvelle génération | 10 000 € | 3,5 l/s | 14 / 22 bar, moins d'air | 5,5 | niveau 3, après 10 000 m³ |
+
+Perches (`PERCHE` dans config.js) : petit support vertical de 1,50 m, perche inclinée de 30° depuis la verticale, tête de buses qui projette **vers l'avant dans un éventail de 30° au plus** (jamais tout autour).
 
 Supports des ventilateurs : trépied au sol (posé à côté du regard, relié par un flexible), tour (+4 000 €), tour haute +3 m (+7 000 €). Plus haut = plus de portée, mais plus de dérive au vent.
 

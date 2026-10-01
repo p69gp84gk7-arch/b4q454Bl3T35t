@@ -22,7 +22,9 @@ function message(texte, type = 'info', duree = 4500){
 }
 
 function majHud({ budget = null, nuit = null, neige = null, objectif = null, vent = null, retenue = null } = {}){
-  $('hudBudget').textContent = budget === null ? '—' : euros(budget);
+  // Sur un petit écran, le budget est arrondi en milliers d'euros (k€) pour tenir dans sa case
+  const etroit = window.innerWidth < 480;
+  $('hudBudget').textContent = budget === null ? '—' : etroit && Math.abs(budget) >= 10000 ? `${nombreFr(Math.round(budget / 1000))} k€` : euros(budget);
   $('hudNuit').textContent = nuit === null ? '—' : nuit;
   $('hudNeige').innerHTML = neige === null ? '—' : `${nombreFr(neige)}<span class="obj">${objectif ? ' / ' + nombreFr(objectif) : ''}</span> m³`;
   if(vent) $('hudVentForce').textContent = vent.force ? `${vent.force} km/h` : 'calme';

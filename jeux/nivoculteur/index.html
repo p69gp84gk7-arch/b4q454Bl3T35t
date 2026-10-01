@@ -60,8 +60,8 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
   background:linear-gradient(rgba(5,11,28,0), rgba(5,11,28,.85)); pointer-events:none; }
 .bas > *{ pointer-events:auto; }
 .stat{ min-width:96px; padding:7px 12px; border-radius:12px; background:var(--verre); border:1px solid var(--bord); text-align:center; }
-.stat > span{ display:block; font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--doux); }
-.stat b{ display:block; font-size:1.05rem; font-variant-numeric:tabular-nums; }
+.stat > span{ display:block; white-space:nowrap; font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--doux); }
+.stat b{ display:block; font-size:1.05rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
 /* ---------- Construction : consigne, devis, outils ---------- */
 .bas.jeu{ flex-direction:column; align-items:center; gap:6px; }
 .bas .rang{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:760px; }
@@ -113,7 +113,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .panneau small{ display:block; color:var(--doux); }
 .panneau .resume{ font-weight:800; margin:4px 0 10px; }
 @media (max-width:480px){
-  .stat{ min-width:0; flex:1; padding:6px 8px; } .stat b{ font-size:.95rem; white-space:nowrap; }
+  .stat{ min-width:auto; flex:1 1 auto; padding:6px 8px; } .stat b{ font-size:.95rem; white-space:nowrap; }
   .titre b{ font-size:1.1rem; }
   .outils .bouton{ font-size:.8rem; padding:7px 8px; }
   .bas .rang{ gap:4px; }

@@ -417,7 +417,7 @@ function pointChute(n, vent){
     hauteurJet = s.pivot + 1 + portee * Math.tan(incl * rad) * 0.25;
   } else {
     portee = m.portee;
-    hauteurJet = m.longueur * 0.9;
+    hauteurJet = PERCHE.support + m.longueur * Math.cos(PERCHE.penche * rad);   // tête de la perche, en haut du support
   }
   const derive = vent.force / 3.6 * (hauteurJet / cv.vitesseChute) * cv.entrainement;
   const d = n.direction * rad, w = vent.direction * rad;
