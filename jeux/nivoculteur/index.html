@@ -62,12 +62,24 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .stat{ min-width:96px; padding:7px 12px; border-radius:12px; background:var(--verre); border:1px solid var(--bord); text-align:center; }
 .stat span{ display:block; font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--doux); }
 .stat b{ display:block; font-size:1.05rem; font-variant-numeric:tabular-nums; }
-#aide{ position:fixed; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom, 0px) + 74px);
-  width:max-content; max-width:calc(100% - 24px); margin:0; padding:6px 12px; border-radius:14px; font-size:.8rem; text-align:center;
-  color:var(--doux); background:var(--verre); border:1px solid var(--bord); pointer-events:none; transition:opacity .6s ease; }
-#aide.cache{ opacity:0; }
-#aide .doigt{ display:none; }
-@media (pointer:coarse){ #aide .doigt{ display:inline; } #aide .souris{ display:none; } }
+/* ---------- Construction : consigne, devis, outils ---------- */
+.bas.jeu{ flex-direction:column; align-items:center; gap:6px; }
+.bas .rang{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:760px; }
+.consigne{ max-width:min(560px, 100%); padding:7px 12px; border-radius:10px; font-size:.88rem; line-height:1.3; text-align:center;
+  background:var(--verre); border:1px solid var(--bord); color:var(--texte); }
+.devis{ width:min(520px, 100%); padding:10px 12px; border-radius:12px; background:rgba(11,20,38,.94); border:1px solid var(--or); box-shadow:0 8px 22px rgba(0,0,0,.4); }
+.devis .tete{ display:flex; justify-content:space-between; gap:10px; font-weight:800; font-size:1rem; }
+.devis ul{ margin:6px 0 8px; padding-left:18px; font-size:.86rem; line-height:1.35; color:var(--doux); }
+.devis .refus{ color:#FF8A96; font-weight:700; font-size:.88rem; margin:0 0 8px; }
+.devis .actions{ display:flex; gap:8px; justify-content:flex-end; }
+.devis .actions .bouton:first-child{ background:var(--ok); border-color:var(--ok); }
+.devis .actions .bouton:disabled{ opacity:.45; cursor:default; }
+.outils .bouton{ font-size:.86rem; padding:8px 11px; }
+.outils .bouton:disabled{ opacity:.4; cursor:default; }
+.outil.actif[data-outil="regard"]{ background:#E58A1F; border-color:#E58A1F; }
+.outil.actif[data-outil="eau"]{ background:#2F6FDE; border-color:#2F6FDE; }
+.outil.actif[data-outil="cable"]{ background:#E9B949; border-color:#E9B949; color:#1C1F25; }
+#sousSol.actif{ background:#5C6B86; border-color:#9FB0CF; }
 
 /* ---------- Vitrine des modèles ---------- */
 .vitrine{ flex-direction:column; align-items:center; gap:8px; }
@@ -89,7 +101,8 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .panneau .resume{ font-weight:800; margin:4px 0 10px; }
 @media (max-width:480px){
   .stat{ min-width:0; flex:1; padding:6px 8px; } .stat b{ font-size:.95rem; white-space:nowrap; }
-  .titre b{ font-size:1.1rem; } #aide{ bottom:calc(env(safe-area-inset-bottom, 0px) + 82px); }
+  .titre b{ font-size:1.1rem; }
+  .outils .bouton{ font-size:.8rem; padding:7px 8px; }
   .haut .bouton{ padding:8px 9px; font-size:.82rem; }
   .vitrine .rang .bouton{ font-size:.8rem; padding:7px 8px; }
 }
@@ -109,12 +122,22 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 
 <div id="messages" aria-live="polite"></div>
 
-<p id="aide"><span class="souris">Glisser : tourner · Molette : zoom · Clic droit : déplacer · Clic : sélectionner</span><span class="doigt">Glisser : tourner · Pincer : zoom · Deux doigts : déplacer · Toucher : sélectionner</span></p>
-
-<footer class="bas" id="barreJeu">
-  <div class="stat"><span>Budget</span><b id="hudBudget">—</b></div>
-  <div class="stat"><span>Nuit</span><b id="hudNuit">—</b></div>
-  <div class="stat"><span>Neige piste</span><b id="hudNeige">—</b></div>
+<footer class="bas jeu" id="barreJeu">
+  <div class="consigne" id="consigne" hidden></div>
+  <div class="devis" id="devis" hidden></div>
+  <div class="rang">
+    <div class="stat"><span>Budget</span><b id="hudBudget">—</b></div>
+    <div class="stat"><span>Nuit</span><b id="hudNuit">—</b></div>
+    <div class="stat"><span>Neige piste</span><b id="hudNeige">—</b></div>
+  </div>
+  <div class="rang outils">
+    <button class="bouton outil" type="button" data-outil="regard">+ Regard</button>
+    <button class="bouton outil" type="button" data-outil="eau">Eau</button>
+    <button class="bouton outil" type="button" data-outil="cable">Électricité</button>
+    <button class="bouton" type="button" id="sousSol">Vue sous-sol</button>
+    <button class="bouton" type="button" id="annuler" disabled>Annuler</button>
+    <button class="bouton" type="button" id="effacer">Tout effacer</button>
+  </div>
 </footer>
 
 <footer class="bas vitrine" id="barreVitrine" hidden>
@@ -153,7 +176,8 @@ const CONFIG = {
   // --- Pression d'eau au regard ---
   // P_regard = P_pompes − pertes dues à la longueur − pertes dues à la montée − pertes dues au débit demandé
   pression: {
-    pompes: 60,             // bar fournis par les pompes en marche, à la sortie de la salle de pompage
+    pompes: 52,             // bar fournis par les pompes en marche, à la sortie de la salle de pompage
+                            // (52 bar : environ 51 bar en bas de la piste et 33 bar tout en haut)
     perteLongueur: 0.6,     // bar perdus par tranche de 100 m de conduite (perte de charge)
     perteDenivele: 1.2,     // bar perdus par tranche de 10 m de montée (dans la réalité, environ 1 bar pour 10 m)
     perteDebit: 0.05,       // bar perdus par m³/h d'eau demandé par l'ensemble des canons ouverts
@@ -168,6 +192,12 @@ const CONFIG = {
   production: {
     correcte: 10,           // m³ de neige par seconde de jeu, en zone correcte (et haute)
     faible: 4               // m³ de neige par seconde de jeu, en zone faible
+  },
+
+  // --- Construction du réseau ---
+  construction: {
+    ecartRegards: 12,       // m : distance minimale entre deux regards
+    profondeur: 1.5         // m : profondeur des conduites et des câbles (affichage en vue sous-sol)
   },
 
   // --- Nuit ---
@@ -223,7 +253,15 @@ const RETENUE_COMBE = {
 };
 
 // Salle de pompage, posée sur un replat (terrain aplani)
-const POMPAGE_COMBE = { nom: 'Salle de pompage', x: -98, z: 208, rayon: 12, talus: 14, rotation: 0 };
+const POMPAGE_COMBE = { nom: 'Salle de pompage', x: -98, z: 208, rayon: 12, talus: 14, rotation: 0,
+  sortie: { x: -90, z: 206.5 } };     // là où la conduite de départ sort du bâtiment
+
+// Départs électriques : près des bâtiments (salle de pompage, gares du télésiège)
+const DEPARTS_COMBE = [
+  { nom: 'Départ élec · pompage', x: -80, z: 214 },
+  { nom: 'Départ élec · gare aval', x: 95, z: 232 },
+  { nom: 'Départ élec · gare amont', x: 83, z: -236 }
+];
 
 // Remontée mécanique (décor : elle ne tourne pas la nuit)
 const TELESIEGE_CLARINES = {
@@ -276,7 +314,7 @@ const LEVELS = [
     pompage: POMPAGE_COMBE,
     retenue: RETENUE_COMBE,
     remontees: [TELESIEGE_CLARINES],
-    departsElec: [],
+    departsElec: DEPARTS_COMBE,
     budget: 0,
     objectif: { type: 'production', pourcent: 100 }
   },
@@ -289,11 +327,8 @@ const LEVELS = [
     pompage: POMPAGE_COMBE,
     retenue: RETENUE_COMBE,
     remontees: [TELESIEGE_CLARINES],
-    departsElec: [
-      { nom: 'Départ élec 1', x: 62, z: 150 },
-      { nom: 'Départ élec 2', x: -78, z: -60 }
-    ],
-    budget: 150000,
+    departsElec: DEPARTS_COMBE,
+    budget: 650000,
     objectif: { type: 'neigePiste', m3: 3000 }
   }
 ];
@@ -484,6 +519,163 @@ function coutTranchee(longueur, { eau = false, cable = false } = {}, cfg = CONFI
 }
 function gainNeige(m3SurPiste, cfg = CONFIG.gains){ return Math.round(m3SurPiste * cfg.parM3Piste); }
 
+// --- Réseau construit par le joueur ---
+// Nœuds : la salle de pompage (source d'eau), les départs électriques (sources d'électricité) et les regards.
+// Tranchées : entre deux nœuds, avec de l'eau, un câble, ou les deux (tranchée commune).
+function creerReseau(niveau){
+  const p = niveau.pompage;
+  return {
+    budget: niveau.budget,
+    noeuds: [
+      { id: 'pompage', type: 'pompage', nom: p.nom, x: p.sortie.x, z: p.sortie.z },
+      ...niveau.departsElec.map((d, i) => ({ id: `elec${i + 1}`, type: 'elec', nom: d.nom, x: d.x, z: d.z }))
+    ],
+    tranchees: [],          // { a, b, eau, cable, longueur }
+    historique: [],         // pour annuler : une entrée par achat, regroupées par « lot » (une action du joueur)
+    numero: 0,              // numéro du dernier regard posé
+    lot: 0
+  };
+}
+const cleTranchee = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+function noeudReseau(res, id){ return res.noeuds.find(n => n.id === id); }
+function trancheeEntre(res, a, b){ const k = cleTranchee(a, b); return res.tranchees.find(tr => cleTranchee(tr.a, tr.b) === k); }
+
+// Longueur d'une tranchée en ligne droite, en suivant le relief (m)
+function longueurTranchee(t, a, b){
+  const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 4));
+  let l = 0, prec = null;
+  for(let i = 0; i <= n; i++){
+    const x = a.x + (b.x - a.x) * i / n, z = a.z + (b.z - a.z) * i / n, y = altitude(t, x, z);
+    if(prec) l += Math.hypot(x - prec[0], y - prec[1], z - prec[2]);
+    prec = [x, y, z];
+  }
+  return l;
+}
+// Nœuds alimentés : reliés à une source (salle de pompage pour 'eau', départs électriques pour 'cable')
+function alimentes(res, quoi){
+  const ok = new Set(res.noeuds.filter(n => n.type === (quoi === 'eau' ? 'pompage' : 'elec')).map(n => n.id));
+  const pile = [...ok];
+  while(pile.length){
+    const id = pile.pop();
+    for(const tr of res.tranchees){
+      if(!tr[quoi]) continue;
+      const autre = tr.a === id ? tr.b : tr.b === id ? tr.a : null;
+      if(autre && !ok.has(autre)){ ok.add(autre); pile.push(autre); }
+    }
+  }
+  return ok;
+}
+// Longueur de conduite depuis la salle de pompage (par le chemin le plus court) pour chaque nœud alimenté en eau
+function longueursEau(res){
+  const dist = new Map([['pompage', 0]]), faits = new Set();
+  for(;;){
+    let id = null, d = Infinity;
+    for(const [k, v] of dist) if(!faits.has(k) && v < d){ id = k; d = v; }
+    if(id === null) return dist;
+    faits.add(id);
+    for(const tr of res.tranchees){
+      if(!tr.eau) continue;
+      const autre = tr.a === id ? tr.b : tr.b === id ? tr.a : null;
+      if(autre && d + tr.longueur < (dist.has(autre) ? dist.get(autre) : Infinity)) dist.set(autre, d + tr.longueur);
+    }
+  }
+}
+// État d'un regard : eau, électricité, pression prévue (pompes en marche, aucun canon ouvert)
+function etatRegard(niveau, res, id){
+  const n = noeudReseau(res, id), t = niveau.terrain, pomp = noeudReseau(res, 'pompage');
+  const eau = alimentes(res, 'eau').has(id), elec = alimentes(res, 'cable').has(id);
+  let pression = null, zone = null;
+  if(eau){
+    pression = pressionRegard({ pPompes: CONFIG.pression.pompes, longueur: longueursEau(res).get(id),
+      denivele: altitude(t, n.x, n.z) - altitude(t, pomp.x, pomp.z), debit: 0 });
+    zone = zonePression(pression);
+  }
+  const manque = !eau && !elec ? 'l\'eau et l\'électricité' : !eau ? 'l\'eau' : !elec ? 'l\'électricité' : null;
+  return { eau, elec, pression, zone, manque, pret: eau && elec };
+}
+// Peut-on poser un regard ici ? (null = oui, sinon la raison)
+function refusRegard(niveau, res, x, z){
+  const t = niveau.terrain, ecart = CONFIG.construction.ecartRegards, R = niveau.retenue;
+  if(!dansZoneJeu(t, x, z)) return 'Ce point est en dehors du domaine skiable.';
+  if(R && Math.hypot(x - R.x, z - R.z) < R.cuvette.rayon + 4) return 'Impossible de poser un regard dans la retenue.';
+  for(const r of t.replats || []) if(r !== R && Math.hypot(x - r.x, z - r.z) < r.rayon) return 'Trop près d\'un bâtiment.';
+  for(const ts of niveau.remontees || []) if(distanceTelesiege(ts, x, z) < 4) return 'Trop près de la ligne du télésiège.';
+  for(const n of res.noeuds){
+    const d = Math.hypot(x - n.x, z - n.z);
+    if(n.type === 'regard' && d < ecart) return `Trop près d'un autre regard (il faut au moins ${ecart} m).`;
+    if(n.type !== 'regard' && d < 6) return 'Trop près d\'une installation.';
+  }
+  return null;
+}
+function poserRegard(niveau, res, x, z, lot = ++res.lot){
+  const refus = refusRegard(niveau, res, x, z);
+  if(refus) return { ok: false, raison: refus };
+  const cout = CONFIG.couts.regardCanon;
+  if(res.budget < cout) return { ok: false, raison: 'Budget insuffisant.' };
+  const id = `R${++res.numero}`;
+  res.noeuds.push({ id, type: 'regard', nom: `Regard ${res.numero}`, x, z });
+  res.budget -= cout;
+  res.historique.push({ lot, type: 'regard', id, cout });
+  return { ok: true, id, cout };
+}
+// Devis d'une tranchée de A vers B, pour l'eau ('eau') ou l'électricité ('cable')
+function devisTranchee(niveau, res, idA, idB, quoi){
+  const A = noeudReseau(res, idA), B = noeudReseau(res, idB), c = CONFIG.couts, R = niveau.retenue;
+  const refus = raison => ({ ok: false, raison });
+  if(!A || !B || idA === idB) return refus('Choisissez deux points différents.');
+  if(B.type !== 'regard') return refus('L\'arrivée doit être un regard.');
+  if(quoi === 'eau' && A.type === 'elec') return refus('L\'eau part de la salle de pompage ou d\'un regard.');
+  if(quoi === 'cable' && A.type === 'pompage') return refus('Le câble part d\'un départ électrique ou d\'un regard.');
+  if(!alimentes(res, quoi).has(idA)) return refus(`${A.nom} n'est pas encore alimenté en ${quoi === 'eau' ? 'eau' : 'électricité'}.`);
+  if(R && distanceSegment(R.x, R.z, [A.x, A.z], [B.x, B.z]) < R.cuvette.rayon + 2) return refus('La tranchée ne peut pas traverser la retenue.');
+  const existe = trancheeEntre(res, idA, idB);
+  if(existe && existe[quoi]) return refus(`Ces deux points sont déjà reliés pour ${quoi === 'eau' ? 'l\'eau' : 'l\'électricité'}.`);
+  const longueur = existe ? existe.longueur : longueurTranchee(niveau.terrain, A, B);
+  const commune = !!(existe && existe[quoi === 'eau' ? 'cable' : 'eau']);
+  // Tranchée commune : la tranchée est déjà creusée, on ne paie que la différence
+  const parMetre = commune ? c.trancheeCommune - (quoi === 'eau' ? c.trancheeCable : c.trancheeEau) : (quoi === 'eau' ? c.trancheeEau : c.trancheeCable);
+  const cout = Math.round(longueur * parMetre);
+  const assez = res.budget >= cout;
+  return { ok: assez, raison: assez ? null : 'Budget insuffisant.', longueur, cout, commune, parMetre };
+}
+function ajouterTranchee(niveau, res, idA, idB, quoi, lot = ++res.lot){
+  const d = devisTranchee(niveau, res, idA, idB, quoi);
+  if(!d.ok) return d;
+  let tr = trancheeEntre(res, idA, idB);
+  const nouvelle = !tr;
+  if(nouvelle){ tr = { a: idA, b: idB, eau: false, cable: false, longueur: d.longueur }; res.tranchees.push(tr); }
+  tr[quoi] = true;
+  res.budget -= d.cout;
+  res.historique.push({ lot, type: 'tranchee', cle: cleTranchee(idA, idB), quoi, nouvelle, cout: d.cout });
+  return d;
+}
+// Annule la dernière action du joueur : tout ce qu'elle a acheté est remboursé
+function annulerAction(res){
+  if(!res.historique.length) return { ok: false, rembourse: 0 };
+  const lot = res.historique[res.historique.length - 1].lot;
+  let rembourse = 0;
+  while(res.historique.length && res.historique[res.historique.length - 1].lot === lot){
+    const h = res.historique.pop();
+    rembourse += h.cout;
+    if(h.type === 'regard'){
+      res.noeuds = res.noeuds.filter(n => n.id !== h.id);
+      if(h.id === `R${res.numero}`) res.numero--;
+    } else {
+      const tr = res.tranchees.find(x => cleTranchee(x.a, x.b) === h.cle);
+      if(h.nouvelle) res.tranchees = res.tranchees.filter(x => x !== tr); else tr[h.quoi] = false;
+    }
+  }
+  res.budget += rembourse;
+  return { ok: true, rembourse };
+}
+// Direction (degrés) qui fait souffler un canon vers la piste la plus proche ; vers le bas de la pente s'il est dessus
+function directionVersPiste(pistes, x, z){
+  let best = null, d = Infinity;
+  for(const p of pistes) for(const q of courbePiste(p)){ const e = Math.hypot(q[0] - x, q[1] - z); if(e < d){ d = e; best = q; } }
+  if(!best || d < 8) return 0;
+  return Math.round(Math.atan2(best[0] - x, best[1] - z) * 180 / Math.PI);
+}
+
 // --- Vérifications de la simulation (mode test : index.html?test) ---
 function testsSimulation(){
   const res = [];
@@ -549,6 +741,38 @@ function testsSimulation(){
   verifier('Télésiège : 8 pylônes régulièrement espacés', pyl.length === 8 && proche(premier, lt / 9, 1e-6), `${m(lt)} de ligne, un pylône tous les ${m(premier)}`);
   verifier('Télésiège : à l\'écart de la piste', pyl.every(q => !surPiste(piste, q.x, q.z)));
 
+  // Construction du réseau
+  const niv = LEVELS[1], rs = creerReseau(niv), pomp = noeudReseau(rs, 'pompage');
+  rs.budget = 2000000;                                 // budget large pour tester tout le réseau
+  const b0 = rs.budget;
+  const g1 = poserRegard(niv, rs, -40, 120), g2 = poserRegard(niv, rs, -30, 60);
+  verifier('Construction : poser deux regards coûte 2 × 8 000 €', g1.ok && g2.ok && b0 - rs.budget === 16000, `budget ${rs.budget} €`);
+  verifier('Construction : refus d\'un regard trop près d\'un autre', !poserRegard(niv, rs, -35, 117).ok);
+  verifier('Construction : refus d\'un regard dans la retenue', !poserRegard(niv, rs, RETENUE_COMBE.x, RETENUE_COMBE.z).ok);
+  verifier('Eau : impossible de partir d\'un regard pas encore alimenté', !devisTranchee(niv, rs, g2.id, g1.id, 'eau').ok);
+  verifier('Eau : impossible de partir d\'un départ électrique', !devisTranchee(niv, rs, 'elec1', g1.id, 'eau').ok);
+  const e1 = ajouterTranchee(niv, rs, 'pompage', g1.id, 'eau');
+  verifier('Eau : la salle de pompage alimente le regard 1, au prix de la tranchée eau seule',
+    e1.ok && alimentes(rs, 'eau').has(g1.id) && e1.cout === Math.round(e1.longueur * 750), `${m(e1.longueur)}, ${e1.cout} €`);
+  ajouterTranchee(niv, rs, g1.id, g2.id, 'eau');
+  const s2 = etatRegard(niv, rs, g2.id);
+  verifier('Regard 2 : de l\'eau mais pas d\'électricité → « il manque l\'électricité »', s2.eau && !s2.elec && s2.manque === 'l\'électricité');
+  verifier('Électricité : impossible de partir d\'un regard pas encore alimenté', !devisTranchee(niv, rs, g1.id, g2.id, 'cable').ok);
+  ajouterTranchee(niv, rs, 'elec1', g1.id, 'cable');
+  const c2 = ajouterTranchee(niv, rs, g1.id, g2.id, 'cable');
+  verifier('Tranchée commune : le câble dans une tranchée déjà creusée ne coûte que la différence (900 − 750 = 150 €/m)',
+    c2.ok && c2.commune && c2.parMetre === 150 && c2.cout === Math.round(c2.longueur * 150), `${c2.cout} €`);
+  const s2b = etatRegard(niv, rs, g2.id), L2 = longueursEau(rs).get(g2.id);
+  verifier('Regard 2 prêt : eau et électricité raccordées', s2b.pret);
+  verifier('Pression au regard 2 : formule avec la longueur de conduite depuis le pompage', proche(s2b.pression,
+    pressionRegard({ pPompes: CONFIG.pression.pompes, longueur: L2, denivele: altitude(t, -30, 60) - altitude(t, pomp.x, pomp.z), debit: 0 })), `${s2b.pression.toFixed(1)} bar, ${m(L2)} de conduite`);
+  const g3 = poserRegard(niv, rs, -130, 95);
+  verifier('Tranchée : impossible de traverser la retenue', g3.ok && !devisTranchee(niv, rs, 'pompage', g3.id, 'eau').ok);
+  while(annulerAction(rs).ok);
+  verifier('Annuler : tout est remboursé et le réseau revient à zéro', rs.budget === b0 && rs.noeuds.length === 1 + niv.departsElec.length && !rs.tranchees.length, `budget ${rs.budget} €`);
+  const dir = directionVersPiste(niv.pistes, 70, 0);
+  verifier('Un canon à droite de la piste souffle vers la gauche (vers la piste)', dir < -45 && dir > -135, `${dir}°`);
+
   const r1 = alea(42), r2 = alea(42);
   verifier('Hasard : la même graine redonne les mêmes nombres', [1, 2, 3].every(() => r1() === r2()));
 
@@ -569,6 +793,7 @@ const COULEURS = {
   moteur: '#2F5FB3', pompe: '#A3322B', volant: '#D7263D', jaune: '#F2C230', orange: '#E58A1F',
   conduiteEau: '#4A6C8E', armoire: '#C5CBD2', mur: '#B7AE9F', toit: '#4A5363', neigeToit: '#EEF3FA',
   bois: '#7A5638', siege: '#2F6FDE', fenetre: '#FFD58A', eau: '#173A63',
+  reseauEau: '#3D9BFF', reseauElec: '#FFD23A',
   jalons: { verte: '#2E9E5B', bleue: '#2F6FDE', rouge: '#D7263D', noire: '#1A1A1A' },
   voyants: { arret: '#6E7787', production: '#38D66B', faible: '#FF9A2E', defaut: '#FF3B4A' }
 };
@@ -834,7 +1059,7 @@ function creerTerrain(niveau){
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   geo.computeVertexNormals();
-  const mesh = new THREE.Mesh(geo, materiau('sommets'));
+  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }));   // à part : il devient transparent en vue sous-sol
   mesh.receiveShadow = true;
   mesh.name = 'terrain';
   // Pour poser les objets exactement sur la surface affichée
@@ -1096,59 +1321,60 @@ function animerCanon(c, dt){
 }
 
 // ---------------------------------------------------------------------------------------
-// Regard : chambre triangulaire en béton, enterrée, avec trappe et vanne
-// Repère : y = 0 au niveau du sol ; la pointe du triangle est vers −z ; le pied du canon se pose en PIED_REGARD.
+// Regard : chambre rectangulaire en béton, enterrée, avec trappe et vanne
+// Repère : y = 0 au niveau du sol ; 2,0 m (x) × 1,5 m (z) ; le pied du canon se pose en PIED_REGARD, la trappe est à droite.
 // ---------------------------------------------------------------------------------------
-const PIED_REGARD = [0, 0.26, -0.75];
-function triangle(r){
-  return [270, 30, 150].map(d => new THREE.Vector2(Math.cos(d * Math.PI / 180) * r, Math.sin(d * Math.PI / 180) * r));
-}
+const PIED_REGARD = [-0.5, 0.26, 0];
 function prisme(forme, profondeur){
   return new THREE.ExtrudeGeometry(forme, { depth: profondeur, bevelEnabled: false });
 }
+function rectangle(x0, z0, x1, z1){
+  return [new THREE.Vector2(x0, z0), new THREE.Vector2(x1, z0), new THREE.Vector2(x1, z1), new THREE.Vector2(x0, z1)];
+}
 function creerRegard(){
   const regard = new THREE.Group(), C = COULEURS;
-  const R = 1.6, ep = 0.16, prof = 1.9;
-  const a = new Atelier();
-  // Murs (triangle creux), radier (fond) et dalle de dessus percée d'une trappe
-  const murs = new THREE.Shape(triangle(R));
-  murs.holes.push(new THREE.Path(triangle(R - 2 * ep)));
-  a.ajouter(prisme(murs, prof), C.beton, matrice(0, 0.12, 0, Math.PI / 2, 0, 0));
-  a.ajouter(prisme(new THREE.Shape(triangle(R)), 0.15), C.betonClair, matrice(0, -prof + 0.12, 0, Math.PI / 2, 0, 0));
-  const dalle = new THREE.Shape(triangle(R + 0.05));
-  const tr = new THREE.Path();
-  tr.moveTo(-0.4, -0.2); tr.lineTo(0.4, -0.2); tr.lineTo(0.4, 0.6); tr.lineTo(-0.4, 0.6); tr.closePath();
-  dalle.holes.push(tr);
+  const L = 2.0, l = 1.5, ep = 0.15, prof = 1.9, haut = 0.12;          // haut : les murs dépassent un peu du sol
+  const a = new Atelier(), yMur = haut - prof / 2;
+  // Murs, radier (fond) et dalle percée d'une trappe
+  a.boite(L, prof, ep, C.beton, 0, yMur, -l / 2 + ep / 2);
+  a.boite(L, prof, ep, C.beton, 0, yMur, l / 2 - ep / 2);
+  a.boite(ep, prof, l - 2 * ep, C.beton, -L / 2 + ep / 2, yMur, 0);
+  a.boite(ep, prof, l - 2 * ep, C.beton, L / 2 - ep / 2, yMur, 0);
+  a.boite(L, 0.15, l, C.betonClair, 0, haut - prof - 0.075, 0);
+  const dalle = new THREE.Shape(rectangle(-L / 2 - 0.05, -l / 2 - 0.05, L / 2 + 0.05, l / 2 + 0.05));
+  dalle.holes.push(new THREE.Path(rectangle(0.05, -0.4, 0.85, 0.4)));
   a.ajouter(prisme(dalle, 0.14), C.betonClair, matrice(0, 0.26, 0, Math.PI / 2, 0, 0));
   // Cornière autour de la trappe
-  a.boite(0.86, 0.03, 0.05, C.galva, 0, 0.27, -0.2); a.boite(0.86, 0.03, 0.05, C.galva, 0, 0.27, 0.6);
-  a.boite(0.05, 0.03, 0.86, C.galva, -0.4, 0.27, 0.2); a.boite(0.05, 0.03, 0.86, C.galva, 0.4, 0.27, 0.2);
+  a.boite(0.86, 0.03, 0.05, C.galva, 0.45, 0.27, -0.4); a.boite(0.86, 0.03, 0.05, C.galva, 0.45, 0.27, 0.4);
+  a.boite(0.05, 0.03, 0.86, C.galva, 0.05, 0.27, 0); a.boite(0.05, 0.03, 0.86, C.galva, 0.85, 0.27, 0);
   // Conduite principale qui traverse la chambre
-  a.tube([-1.7, -1.45, 0.45], [1.7, -1.45, 0.45], 0.1, C.conduiteEau, 12);
-  bride(a, matrice(0, -1.45, 0.45, 0, 0, Math.PI / 2), 0.1);
-  // Té, montée, vanne et départ vers le pied du canon
-  a.tube([0, -1.45, 0.45], [0, -0.8, 0.45], 0.075, C.conduiteEau, 10);
-  a.sphere(0.09, C.conduiteEau, 0, -0.8, 0.45);
-  a.tube([0, -0.8, 0.45], [0, -0.8, -0.75], 0.075, C.conduiteEau, 10);
-  a.cylindre(0.13, 0.3, C.acier, 0, -0.8, 0.15, Math.PI / 2, 0, 0, 10);                // corps de vanne
-  bride(a, matrice(0, -0.8, 0.31, Math.PI / 2, 0, 0), 0.075);
-  bride(a, matrice(0, -0.8, -0.01, Math.PI / 2, 0, 0), 0.075);
-  a.cylindre(0.07, 0.24, C.acier, 0, -0.58, 0.15, 0, 0, 0, 8);                         // chapeau
-  a.cylindre(0.018, 0.2, C.galva, 0, -0.38, 0.15, 0, 0, 0, 6);                        // tige
-  a.repere(matrice(0, -0.3, 0.15, Math.PI / 2, 0, 0), () => volant(a, 0.17));
-  a.sphere(0.09, C.conduiteEau, 0, -0.8, -0.75);
-  a.tube([0, -0.8, -0.75], [0, 0.27, -0.75], 0.075, C.conduiteEau, 10);
-  // Coffret électrique dans le regard et gaine du câble
-  a.boite(0.32, 0.38, 0.14, '#D9DEE4', 0.62, -0.6, 0.55);
-  a.tube([0.62, -0.8, 0.55], [0.62, -1.5, 0.75], 0.03, C.noir, 6);
-  a.tube([0.62, -0.42, 0.55], [0.15, 0.2, -0.6], 0.025, C.noir, 6);
-  // Échelons
-  for(let k = 0; k < 3; k++) a.boite(0.36, 0.03, 0.03, C.galva, 0, -0.35 - k * 0.38, 0.6);
+  a.tube([-1.15, -1.45, 0.3], [1.15, -1.45, 0.3], 0.1, C.conduiteEau, 12);
+  bride(a, matrice(-0.3, -1.45, 0.3, 0, 0, Math.PI / 2), 0.1);
+  // Té, montée, vanne (sous la trappe) et départ vers le pied du canon
+  a.tube([0.45, -1.45, 0.3], [0.45, -0.8, 0.3], 0.075, C.conduiteEau, 10);
+  a.sphere(0.09, C.conduiteEau, 0.45, -0.8, 0.3);
+  a.tube([0.45, -0.8, 0.3], [-0.5, -0.8, 0.3], 0.075, C.conduiteEau, 10);
+  a.cylindre(0.13, 0.3, C.acier, 0.15, -0.8, 0.3, 0, 0, Math.PI / 2, 10);             // corps de vanne
+  bride(a, matrice(0.31, -0.8, 0.3, 0, 0, Math.PI / 2), 0.075);
+  bride(a, matrice(-0.01, -0.8, 0.3, 0, 0, Math.PI / 2), 0.075);
+  a.cylindre(0.07, 0.24, C.acier, 0.15, -0.58, 0.3, 0, 0, 0, 8);                      // chapeau
+  a.cylindre(0.018, 0.2, C.galva, 0.15, -0.38, 0.3, 0, 0, 0, 6);                      // tige
+  a.repere(matrice(0.15, -0.3, 0.3, Math.PI / 2, 0, 0), () => volant(a, 0.17));
+  a.sphere(0.09, C.conduiteEau, -0.5, -0.8, 0.3);
+  a.tube([-0.5, -0.8, 0.3], [-0.5, -0.8, 0], 0.075, C.conduiteEau, 10);
+  a.sphere(0.09, C.conduiteEau, -0.5, -0.8, 0);
+  a.tube([-0.5, -0.8, 0], [-0.5, 0.27, 0], 0.075, C.conduiteEau, 10);
+  // Coffret électrique, gaine du câble et câble vers le canon
+  a.boite(0.32, 0.38, 0.14, '#D9DEE4', 0.5, -0.6, -0.58);
+  a.tube([0.5, -0.8, -0.58], [0.9, -1.5, -0.58], 0.03, C.noir, 6);
+  a.tube([0.5, -0.42, -0.58], [-0.45, 0.2, -0.06], 0.025, C.noir, 6);
+  // Échelons sous la trappe
+  for(let k = 0; k < 3; k++) a.boite(0.03, 0.03, 0.36, C.galva, 0.82, -0.35 - k * 0.38, 0);
   regard.add(a.mesh());
 
-  // Couvercle de la trappe, articulé côté pointe
+  // Couvercle de la trappe, articulé côté arrière
   const charniere = new THREE.Group();
-  charniere.position.set(0, 0.28, -0.2);
+  charniere.position.set(0.45, 0.28, -0.4);
   const c = new Atelier();
   c.boite(0.78, 0.035, 0.78, '#7D8794', 0, 0.018, 0.39);
   for(let k = 0; k < 6; k++) c.boite(0.7, 0.008, 0.035, '#97A1AE', 0, 0.04, 0.08 + k * 0.125, 0, 0.5, 0);
@@ -1225,34 +1451,51 @@ function creerSallePompage(nom){
   for(const px of POMPES_X) ligneRect(px, -1.0, 2.1, 4.9);
   a.boite(12.8, 0.012, 0.1, C.jaune, 0, 0.026, 1.9);                              // allée de circulation
 
-  // Murs avec soubassement, porte et fenêtres éclairées
-  const murX = (x0, x1, y0, y1, z, coul = C.mur) => a.boite(x1 - x0, y1 - y0, ep, coul, (x0 + x1) / 2, (y0 + y1) / 2, z);
+  // Murs avec soubassement, porte et fenêtres éclairées : un groupe par mur,
+  // pour qu'un mur devienne transparent quand la caméra est devant (voirAtravers)
+  const murs = {
+    arriere: { n: [0, 0, -1], c: [0, H / 2, -D / 2], a: new Atelier(), l: new Atelier() },
+    avant: { n: [0, 0, 1], c: [0, H / 2, D / 2], a: new Atelier(), l: new Atelier() },
+    gauche: { n: [-1, 0, 0], c: [-W / 2, H / 2, 0], a: new Atelier(), l: new Atelier() },
+    droit: { n: [1, 0, 0], c: [W / 2, H / 2, 0], a: new Atelier(), l: new Atelier() }
+  };
+  const murX = (m, x0, x1, y0, y1, z) => m.a.boite(x1 - x0, y1 - y0, ep, C.mur, (x0 + x1) / 2, (y0 + y1) / 2, z);
   const fenetresArriere = [-3.4, 0, 3.4], fenetresAvant = [-4.6, -1.4];
   // Mur arrière (côté retenue) : bandes autour des fenêtres
-  murX(-W / 2, W / 2, 0, 2.8, -D / 2 + ep / 2); murX(-W / 2, W / 2, 3.55, H, -D / 2 + ep / 2);
+  const ar = murs.arriere, zAr = -D / 2 + ep / 2;
+  murX(ar, -W / 2, W / 2, 0, 2.8, zAr); murX(ar, -W / 2, W / 2, 3.55, H, zAr);
   let x0 = -W / 2;
-  for(const fx of fenetresArriere){ murX(x0, fx - 0.7, 2.8, 3.55, -D / 2 + ep / 2); x0 = fx + 0.7; lum.boite(1.4, 0.75, ep + 0.04, C.fenetre, fx, 3.175, -D / 2 + ep / 2); }
-  murX(x0, W / 2, 2.8, 3.55, -D / 2 + ep / 2);
+  for(const fx of fenetresArriere){ murX(ar, x0, fx - 0.7, 2.8, 3.55, zAr); x0 = fx + 0.7; ar.l.boite(1.4, 0.75, ep + 0.04, C.fenetre, fx, 3.175, zAr); }
+  murX(ar, x0, W / 2, 2.8, 3.55, zAr);
+  ar.a.boite(W + 0.06, 0.7, 0.04, C.betonClair, 0, 0.35, -D / 2 - 0.02);
   // Mur avant : porte en x = 3.6 et deux fenêtres
-  const zAv = D / 2 - ep / 2;
-  murX(-W / 2, 2.3, 0, 1.6, zAv); murX(-W / 2, 2.3, 2.6, H, zAv);
+  const av = murs.avant, zAv = D / 2 - ep / 2;
+  murX(av, -W / 2, 2.3, 0, 1.6, zAv); murX(av, -W / 2, 2.3, 2.6, H, zAv);
   x0 = -W / 2;
-  for(const fx of fenetresAvant){ murX(x0, fx - 0.8, 1.6, 2.6, zAv); x0 = fx + 0.8; lum.boite(1.6, 1.0, ep + 0.04, C.fenetre, fx, 2.1, zAv); }
-  murX(x0, 2.3, 1.6, 2.6, zAv);
-  murX(4.9, W / 2, 0, H, zAv); murX(2.3, 4.9, 3.0, H, zAv);
-  a.boite(2.5, 2.95, 0.08, '#3F5A78', 3.6, 1.5, D / 2 - 0.02);                  // porte
-  a.boite(0.06, 0.06, 0.4, C.galva, 4.5, 1.15, D / 2 + 0.05);
-  lum.boite(0.5, 0.35, 0.1, C.fenetre, 3.6, 2.3, D / 2 + 0.01);
+  for(const fx of fenetresAvant){ murX(av, x0, fx - 0.8, 1.6, 2.6, zAv); x0 = fx + 0.8; av.l.boite(1.6, 1.0, ep + 0.04, C.fenetre, fx, 2.1, zAv); }
+  murX(av, x0, 2.3, 1.6, 2.6, zAv);
+  murX(av, 4.9, W / 2, 0, H, zAv); murX(av, 2.3, 4.9, 3.0, H, zAv);
+  av.a.boite(2.5, 2.95, 0.08, '#3F5A78', 3.6, 1.5, D / 2 - 0.02);                 // porte
+  av.a.boite(0.06, 0.06, 0.4, C.galva, 4.5, 1.15, D / 2 + 0.05);
+  av.l.boite(0.5, 0.35, 0.1, C.fenetre, 3.6, 2.3, D / 2 + 0.01);
+  av.a.boite(W + 0.06, 0.7, 0.04, C.betonClair, 0, 0.35, D / 2 + 0.02);
+  av.a.boite(0.3, 0.08, 0.3, C.acierFonce, 3.6, 3.28, D / 2 + 0.12);              // support du gyrophare
   // Murs de côté, une fenêtre chacun
-  for(const s of [-1, 1]){
+  for(const [m, s] of [[murs.gauche, -1], [murs.droit, 1]]){
     const x = s * (W / 2 - ep / 2);
-    a.boite(ep, 2.6, D - 2 * ep, C.mur, x, 1.3, 0); a.boite(ep, H - 3.5, D - 2 * ep, C.mur, x, (3.5 + H) / 2, 0);
-    a.boite(ep, 0.9, 2.95, C.mur, x, 3.05, -2.3); a.boite(ep, 0.9, 2.95, C.mur, x, 3.05, 2.3);
-    lum.boite(ep + 0.04, 0.9, 2.3, C.fenetre, x, 3.05, 0);
+    m.a.boite(ep, 2.6, D - 2 * ep, C.mur, x, 1.3, 0); m.a.boite(ep, H - 3.5, D - 2 * ep, C.mur, x, (3.5 + H) / 2, 0);
+    m.a.boite(ep, 0.9, 2.95, C.mur, x, 3.05, -2.3); m.a.boite(ep, 0.9, 2.95, C.mur, x, 3.05, 2.3);
+    m.l.boite(ep + 0.04, 0.9, 2.3, C.fenetre, x, 3.05, 0);
+    m.a.boite(0.04, 0.7, D + 0.06, C.betonClair, s * (W / 2 + 0.02), 0.35, 0);
   }
-  // Soubassement béton tout autour
-  a.boite(W + 0.06, 0.7, 0.04, C.betonClair, 0, 0.35, D / 2 + 0.02); a.boite(W + 0.06, 0.7, 0.04, C.betonClair, 0, 0.35, -D / 2 - 0.02);
-  a.boite(0.04, 0.7, D + 0.06, C.betonClair, W / 2 + 0.02, 0.35, 0); a.boite(0.04, 0.7, D + 0.06, C.betonClair, -W / 2 - 0.02, 0.35, 0);
+  const transparents = [];
+  for(const m of Object.values(murs)){
+    const mur = new THREE.Mesh(m.a.geometrie(), new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, side: THREE.DoubleSide }));
+    mur.castShadow = mur.receiveShadow = true;
+    const vitres = new THREE.Mesh(m.l.geometrie(), new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true }));
+    salle.add(mur, vitres);
+    transparents.push({ n: m.n, c: m.c, meshes: [mur, vitres], opacite: 1 });
+  }
 
   // --- Pompes ---
   const pompes = [];
@@ -1381,8 +1624,6 @@ function creerSallePompage(nom){
     salle.add(g);
     gyrophares.push(g);
   }
-  a.boite(0.3, 0.08, 0.3, C.acierFonce, 3.6, 3.28, D / 2 + 0.12);
-
   const fixe = a.mesh('sommets2');
   salle.add(fixe, lum.mesh('lumineux', false));
 
@@ -1396,15 +1637,17 @@ function creerSallePompage(nom){
   const pignon = new THREE.Shape([new THREE.Vector2(-D / 2, 0), new THREE.Vector2(D / 2, 0), new THREE.Vector2(0, hf)]);
   tt.ajouter(prisme(pignon, ep), C.mur, matrice(-W / 2, H, 0, 0, Math.PI / 2, 0));
   tt.ajouter(prisme(pignon, ep), C.mur, matrice(W / 2 - ep, H, 0, 0, Math.PI / 2, 0));
-  const toit = tt.mesh();
+  const toit = new THREE.Mesh(tt.geometrie(), new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true }));
+  toit.castShadow = toit.receiveShadow = true;
   salle.add(toit);
+  transparents.push({ toit: true, meshes: [toit], opacite: 1 });
 
   if(nom){
     const e = creerEtiquette(nom);
     e.position.y = H + hf + 2.5;
     salle.add(e);
   }
-  salle.userData = { pompes, aiguilleDepart, volantPrincipal, gyrophares, toit, ecran: tex, barDepart: 0,
+  salle.userData = { pompes, aiguilleDepart, volantPrincipal, gyrophares, toit, transparents, hauteur: H, ecran: tex, barDepart: 0,
     etat: { marche: [false, false, false], pressions: [0, 0, 0], pressionDepart: 0, ouverture: 0, alarme: false } };
   dessinerEcran(salle);
   return salle;
@@ -1425,6 +1668,22 @@ function dessinerEcran(salle){
   g.fillStyle = '#7FB2FF'; g.font = '18px system-ui, sans-serif';
   g.fillText(e.alarme ? 'ALARME' : `Vanne principale : ${Math.round(e.ouverture * 100)} %`, 14, 164);
   u.ecran.needsUpdate = true;
+}
+// Les murs (et le toit) qui sont entre la caméra et l'intérieur deviennent presque transparents
+const _camLocale = new THREE.Vector3();
+function voirAtravers(salle, camera, dt, portee = Infinity){
+  const u = salle.userData, p = salle.worldToLocal(_camLocale.copy(camera.position));
+  const proche = p.length() < portee, k = Math.min(1, dt * 6);
+  for(const m of u.transparents){
+    const devant = proche && (m.toit ? p.y > u.hauteur
+      : (p.x - m.c[0]) * m.n[0] + (p.y - m.c[1]) * m.n[1] + (p.z - m.c[2]) * m.n[2] > 0);
+    m.opacite += ((devant ? 0.12 : 1) - m.opacite) * k;
+    for(const me of m.meshes){
+      me.material.opacity = m.opacite;
+      me.material.depthWrite = m.opacite > 0.95;
+      me.castShadow = m.opacite > 0.5 && !me.material.isMeshBasicMaterial;
+    }
+  }
 }
 function etatSallePompage(salle, etat){
   Object.assign(salle.userData.etat, etat);
@@ -1548,6 +1807,81 @@ function creerTelesiege(ts, poser){
   return groupe;
 }
 
+// ---------------------------------------------------------------------------------------
+// Réseau construit : trace des tranchées en surface, conduites et câbles enterrés (vue sous-sol)
+// ---------------------------------------------------------------------------------------
+let _matTrace = null;
+const _matReseau = {};
+function materiauReseau(couleur){ return _matReseau[couleur] || (_matReseau[couleur] = new THREE.MeshBasicMaterial({ color: couleur })); }
+// Points le long d'une ligne droite A → B, posés sur le terrain (+ dy), décalés de « decal » m sur le côté
+function pointsLigne(A, B, poser, dy, decal = 0, pas = 3){
+  const L = Math.hypot(B.x - A.x, B.z - A.z) || 1, n = Math.max(2, Math.ceil(L / pas));
+  const px = -(B.z - A.z) / L, pz = (B.x - A.x) / L, pts = [];
+  for(let i = 0; i <= n; i++){
+    const x = A.x + (B.x - A.x) * i / n + px * decal, z = A.z + (B.z - A.z) * i / n + pz * decal;
+    pts.push(new THREE.Vector3(x, poser(x, z) + dy, z));
+  }
+  return pts;
+}
+function creerTranchee3D(A, B, tr, poser){
+  // Surface : bande de neige remuée (tranchée rebouchée)
+  const gauche = pointsLigne(A, B, poser, 0.12, -0.8), droite = pointsLigne(A, B, poser, 0.12, 0.8), pos = [], idx = [];
+  gauche.forEach((g, i) => {
+    pos.push(g.x, g.y, g.z, droite[i].x, droite[i].y, droite[i].z);
+    if(i) idx.push(2 * i - 2, 2 * i - 1, 2 * i, 2 * i - 1, 2 * i + 1, 2 * i);
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  _matTrace = _matTrace || new THREE.MeshLambertMaterial({ color: '#9AA7C2', side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const surface = new THREE.Mesh(geo, _matTrace);
+  surface.receiveShadow = true;
+  // Sous terre : conduite d'eau (bleu) et câble (jaune), côte à côte dans une tranchée commune
+  const dessous = new THREE.Group(), prof = -CONFIG.construction.profondeur;
+  const tuyau = (decal, r, couleur) => {
+    const pts = pointsLigne(A, B, poser, prof, decal);
+    return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, r, 6), materiauReseau(couleur));
+  };
+  if(tr.eau) dessous.add(tuyau(tr.cable ? -0.45 : 0, 0.3, COULEURS.reseauEau));
+  if(tr.cable) dessous.add(tuyau(tr.eau ? 0.45 : 0, 0.18, COULEURS.reseauElec));
+  return { surface, dessous };
+}
+// Aperçu d'une tranchée proposée (tube clair au-dessus du sol, épaisseur selon le zoom)
+function creerApercu(A, B, poser, couleur, epaisseur){
+  const pts = pointsLigne(A, B, poser, 0.6 + epaisseur);
+  return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, epaisseur, 6),
+    new THREE.MeshBasicMaterial({ color: couleur, transparent: true, opacity: 0.75, depthTest: false }));
+}
+// Anneau qui marque le point de départ choisi
+function creerSurbrillance(){
+  const m = new THREE.Mesh(new THREE.RingGeometry(0.75, 1, 40), new THREE.MeshBasicMaterial({ color: '#FFFFFF', transparent: true, opacity: 0.9, depthTest: false, side: THREE.DoubleSide }));
+  m.rotation.x = -Math.PI / 2;
+  m.renderOrder = 5;
+  m.visible = false;
+  return m;
+}
+// Petite étiquette au-dessus d'un regard : goutte (eau) et éclair (électricité), en couleur s'ils sont raccordés
+const _texIcones = {};
+function textureIcone(eau, elec){
+  const k = `${eau}${elec}`;
+  return _texIcones[k] || (_texIcones[k] = canvasTexture(128, 64, g => {
+    g.fillStyle = 'rgba(11,20,38,.85)';
+    g.beginPath(); g.moveTo(14, 2); g.arcTo(126, 2, 126, 62, 12); g.arcTo(126, 62, 2, 62, 12); g.arcTo(2, 62, 2, 2, 12); g.arcTo(2, 2, 126, 2, 12); g.fill();
+    g.fillStyle = eau ? COULEURS.reseauEau : '#4E586B';
+    g.beginPath(); g.moveTo(36, 8); g.quadraticCurveTo(54, 32, 52, 40); g.arc(36, 40, 16, 0, Math.PI); g.quadraticCurveTo(18, 32, 36, 8); g.fill();
+    g.fillStyle = elec ? COULEURS.reseauElec : '#4E586B';
+    g.beginPath(); g.moveTo(98, 6); g.lineTo(74, 36); g.lineTo(90, 36); g.lineTo(82, 58); g.lineTo(110, 26); g.lineTo(94, 26); g.lineTo(106, 6); g.closePath(); g.fill();
+  }));
+}
+function creerIconeEtat(){
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: textureIcone(false, false), sizeAttenuation: false, depthTest: false, transparent: true, fog: false }));
+  sp.scale.set(0.064, 0.032, 1);
+  sp.center.set(0.5, 0);
+  sp.renderOrder = 9;
+  return sp;
+}
+
 /* =====================================================================================
    5. EFFETS — ciel, étoiles, lune, lumières (plus tard : particules de neige, brouillard, tas de neige)
    ===================================================================================== */
@@ -1667,6 +2001,25 @@ function majHud({ budget = null, nuit = null, neige = null, objectif = null } = 
   $('hudNuit').textContent = nuit === null ? '—' : nuit;
   $('hudNeige').textContent = neige === null ? '—' : `${nombreFr(neige)}${objectif ? ' / ' + nombreFr(objectif) : ''} m³`;
 }
+
+// Consigne de l'outil choisi (null = la cacher)
+function afficherConsigne(texte){
+  $('consigne').hidden = !texte;
+  $('consigne').textContent = texte || '';
+}
+// Devis d'une construction : titre, lignes de détail, total, et boutons Valider / Annuler
+function afficherDevis({ titre, lignes, total, budgetApres, possible }, valider, annuler){
+  const d = $('devis');
+  d.innerHTML = `<div class="tete"><span>${echapper(titre)}</span><span>${euros(total)}</span></div>
+    <ul>${lignes.map(l => `<li>${echapper(l)}</li>`).join('')}<li>Budget après : ${euros(budgetApres)}</li></ul>
+    ${possible ? '' : '<p class="refus">Budget insuffisant.</p>'}
+    <div class="actions"><button class="bouton" type="button" id="devisOk"${possible ? '' : ' disabled'}>Valider</button>
+    <button class="bouton" type="button" id="devisNon">Annuler</button></div>`;
+  d.hidden = false;
+  $('devisOk').onclick = valider;
+  $('devisNon').onclick = annuler;
+}
+function fermerPanneauDevis(){ $('devis').hidden = true; $('devis').innerHTML = ''; }
 
 function afficherTests(resultats){
   const ok = resultats.filter(r => r.ok).length, p = $('panneauTests');
@@ -1843,9 +2196,9 @@ function demarrer(){
   // Décor
   const ciel = creerCiel(), etoiles = creerEtoiles(CONFIG.graphismes.etoiles), lune = creerLune();
   const terrain = creerTerrain(niveau), poser = terrain.userData.poser;
-  scene.add(ciel, etoiles, lune, terrain,
-    creerLumieres(Math.max(t.largeur, t.longueur) / 2 + t.marge, new THREE.Vector3(0, t.denivele / 2, 0)),
-    creerSapins(niveau, CONFIG.graphismes.sapins, poser), creerRochers(niveau, CONFIG.graphismes.rochers, poser), creerJalons(niveau, poser));
+  const decor = [creerSapins(niveau, CONFIG.graphismes.sapins, poser), creerRochers(niveau, CONFIG.graphismes.rochers, poser), creerJalons(niveau, poser)];
+  scene.add(ciel, etoiles, lune, terrain, ...decor,
+    creerLumieres(Math.max(t.largeur, t.longueur) / 2 + t.marge, new THREE.Vector3(0, t.denivele / 2, 0)));
 
   // Installations : retenue, salle de pompage, départs électriques, remontées
   const retenue = creerRetenue(niveau, poser);
@@ -1864,26 +2217,212 @@ function demarrer(){
   scene.add(repere);
 
   // Caméra
-  const C = CONFIG.camera, rad = Math.PI / 180, aide = $('aide');
+  const C = CONFIG.camera, rad = Math.PI / 180;
   const cam = creerCommandes(canvas, camera, {
     depart: () => ({ x: 0, z: 10, distance: C.distanceDepart, azimut: 0, inclinaison: C.inclinaisonDepart * rad }),
     bornes: { x: t.largeur / 2, z: t.longueur / 2 },
     distanceMin: C.distanceMin, distanceMax: C.distanceMax, margeSol: 4,
     hauteurCible: hauteur, hauteurSol: poser,
-    interaction: () => aide.classList.add('cache'),
     toucher
   });
   $('recentrer').onclick = cam.recentrer;
 
-  // --- Toucher court : sélectionner un point du terrain ---
+  // ----- Construction du réseau -----
+  let reseau = creerReseau(niveau), outil = null, depart = null, proposition = null, sousSol = false;
+  const groupeReseau = new THREE.Group(), groupeSousSol = new THREE.Group(), apercu = new THREE.Group();
+  groupeSousSol.visible = false;
+  const surbrillance = creerSurbrillance();
+  scene.add(groupeReseau, groupeSousSol, apercu, surbrillance);
+  const regards3D = new Map();
+  let tranchees3D = [];
+  const COUL_OUTIL = { eau: COULEURS.reseauEau, cable: COULEURS.reseauElec };
+  const NOMS_ZONES = { arret: 'trop faible : pas de production', faible: 'production faible', correcte: 'production correcte', haute: 'pression haute, à surveiller', surpression: 'surpression !' };
+  const liberer = o => o.traverse(m => { if(m.geometry) m.geometry.dispose(); });
+
+  // Met la 3D à jour d'après le réseau (regards, icônes, tranchées)
+  function synchroniser(){
+    const vus = new Set();
+    for(const n of reseau.noeuds){
+      if(n.type !== 'regard') continue;
+      vus.add(n.id);
+      let o = regards3D.get(n.id);
+      if(!o){
+        o = creerEnneigeur();
+        o.position.set(n.x, poser(n.x, n.z), n.z);
+        orienterCanon(o.userData.canon, directionVersPiste(niveau.pistes, n.x, n.z), 20);
+        o.userData.icone = creerIconeEtat();
+        o.userData.icone.position.y = 5.2;
+        o.add(o.userData.icone);
+        groupeReseau.add(o);
+        regards3D.set(n.id, o);
+      }
+      const e = etatRegard(niveau, reseau, n.id);
+      o.userData.icone.material.map = textureIcone(e.eau, e.elec);
+    }
+    for(const [id, o] of regards3D) if(!vus.has(id)){ groupeReseau.remove(o); liberer(o); regards3D.delete(id); }
+    for(const o of tranchees3D){ groupeReseau.remove(o.surface); groupeSousSol.remove(o.dessous); liberer(o.surface); liberer(o.dessous); }
+    tranchees3D = reseau.tranchees.map(tr => {
+      const o = creerTranchee3D(noeudReseau(reseau, tr.a), noeudReseau(reseau, tr.b), tr, poser);
+      o.surface.visible = !sousSol;
+      groupeReseau.add(o.surface); groupeSousSol.add(o.dessous);
+      return o;
+    });
+    majHud({ budget: reseau.budget, nuit: '—', neige: 0, objectif: niveau.objectif.m3 });
+    $('annuler').disabled = !reseau.historique.length;
+  }
+
+  function consigne(){
+    const suite = depart && `Départ : ${depart.nom}. Touchez le regard à raccorder, ou un endroit libre pour poser un nouveau regard. Touchez à nouveau le départ pour en changer.`;
+    afficherConsigne({
+      regard: `Touchez le terrain pour poser un regard équipé de son canon (${euros(CONFIG.couts.regardCanon)}). Touchez un regard pour voir son état.`,
+      eau: suite || 'Eau : touchez la salle de pompage, ou un regard déjà alimenté en eau.',
+      cable: suite || 'Électricité : touchez un départ électrique (près des bâtiments), ou un regard déjà alimenté.'
+    }[outil] || null);
+  }
+  function montrerDepart(){
+    surbrillance.visible = !!depart;
+    if(!depart) return;
+    surbrillance.material.color.set(COUL_OUTIL[outil] || '#FFFFFF');
+    surbrillance.position.set(depart.x, poser(depart.x, depart.z) + 0.6, depart.z);
+  }
+  function fermerDevis(){
+    proposition = null;
+    fermerPanneauDevis();
+    apercu.children.slice().forEach(o => { apercu.remove(o); liberer(o); });
+  }
+  function choisirOutil(o){
+    outil = outil === o ? null : o;
+    depart = null;
+    fermerDevis();
+    document.querySelectorAll('[data-outil]').forEach(b => b.classList.toggle('actif', b.dataset.outil === outil));
+    montrerDepart();
+    consigne();
+  }
+  document.querySelectorAll('[data-outil]').forEach(b => { b.onclick = () => choisirOutil(b.dataset.outil); });
+
+  // Le nœud du réseau le plus proche du point touché (tolérance selon le zoom)
+  function noeudProche(x, z){
+    const tol = Math.max(5, cam.actuel.distance * 0.035);
+    let best = null, dMin = Infinity;
+    for(const n of reseau.noeuds){
+      let d = Math.hypot(x - n.x, z - n.z);
+      if(n.type === 'pompage') d = Math.min(d, Math.hypot(x - niveau.pompage.x, z - niveau.pompage.z) - 6);   // tout le bâtiment
+      if(d < (n.type === 'regard' ? tol : Math.max(tol, 10)) && d < dMin){ dMin = d; best = n; }
+    }
+    return best;
+  }
+  function infoNoeud(n){
+    if(n.type === 'pompage') return message(`${n.nom} : départ de l'eau, ${CONFIG.pression.pompes} bar à la sortie des pompes.`, 'info');
+    if(n.type === 'elec') return message(`${n.nom} : d'ici partent les câbles électriques.`, 'info');
+    const e = etatRegard(niveau, reseau, n.id), tete = `${n.nom} · altitude ${nombreFr(altitude(t, n.x, n.z))} m`;
+    if(e.pret) message(`${tete} · prêt, ${Math.round(e.pression)} bar (${NOMS_ZONES[e.zone]})`, e.zone === 'correcte' || e.zone === 'haute' ? 'ok' : 'attention', 5000);
+    else message(`${tete} · il manque ${e.manque}${e.eau ? ` (pression prévue ${Math.round(e.pression)} bar)` : ''}.`, 'attention', 5000);
+  }
+
+  function outilRegard(x, z, n){
+    if(n && n.type === 'regard') return infoNoeud(n);
+    const r = poserRegard(niveau, reseau, x, z);
+    if(!r.ok) return message(r.raison, 'attention', 3500);
+    synchroniser();
+    message(`${noeudReseau(reseau, r.id).nom} posé (${euros(r.cout)}). Raccordez-le à l'eau et à l'électricité.`, 'ok');
+  }
+
+  function outilTranchee(x, z, n){
+    const quoi = outil, nomQuoi = quoi === 'eau' ? 'eau' : 'électricité';
+    // 1er toucher : le point de départ
+    if(!depart){
+      if(!n || n.type === 'regard' && !alimentes(reseau, quoi).has(n.id) || quoi === 'eau' && n.type === 'elec' || quoi === 'cable' && n.type === 'pompage'){
+        const texte = n && n.type === 'regard' ? `${n.nom} n'est pas encore alimenté en ${nomQuoi}.` : '';
+        return message(`${texte} ${quoi === 'eau' ? 'L\'eau part de la salle de pompage ou d\'un regard déjà alimenté.' : 'Le câble part d\'un départ électrique ou d\'un regard déjà alimenté.'}`.trim(), 'attention', 4000);
+      }
+      depart = n;
+      montrerDepart(); consigne();
+      return;
+    }
+    if(n && n.id === depart.id){ depart = null; fermerDevis(); montrerDepart(); consigne(); return; }
+    // 2e toucher : l'arrivée. On essaie sur une copie du réseau pour connaître le prix et la pression.
+    const copie = JSON.parse(JSON.stringify(reseau));
+    copie.budget = Infinity;
+    let cible = n, nouveau = false, coutRegard = 0;
+    if(!cible){
+      const r = poserRegard(niveau, copie, x, z);
+      if(!r.ok) return message(r.raison, 'attention', 3500);
+      cible = noeudReseau(copie, r.id); nouveau = true; coutRegard = r.cout;
+    }
+    const d = ajouterTranchee(niveau, copie, depart.id, cible.id, quoi);
+    if(!d.ok) return message(d.raison, 'attention', 4000);
+    const e = etatRegard(niveau, copie, cible.id), total = d.cout + coutRegard;
+    const lignes = [`${nombreFr(d.longueur)} m de tranchée à ${euros(d.parMetre)}/m${d.commune ? ' : tranchée commune, on ne paie que la différence' : ''}`];
+    if(nouveau) lignes.push(`Nouveau regard et canon : ${euros(coutRegard)}`);
+    if(e.eau) lignes.push(`Pression prévue au regard : ${Math.round(e.pression)} bar (${NOMS_ZONES[e.zone]})`);
+    lignes.push(e.pret ? 'Le canon sera prêt : eau et électricité raccordées.' : `Il manquera encore ${e.manque}.`);
+    fermerDevis();
+    proposition = { quoi, departId: depart.id, cibleId: nouveau ? null : cible.id, x, z };
+    apercu.add(creerApercu(depart, cible, poser, COUL_OUTIL[quoi], Math.max(0.35, cam.actuel.distance * 0.0035)));
+    afficherDevis({ titre: `${quoi === 'eau' ? 'Conduite d\'eau' : 'Câble électrique'} : ${depart.nom} → ${cible.nom}`,
+      lignes, total, budgetApres: reseau.budget - total, possible: reseau.budget >= total }, valider, fermerDevis);
+  }
+  function valider(){
+    const p = proposition;
+    if(!p) return;
+    const lot = ++reseau.lot;
+    let cibleId = p.cibleId;
+    if(!cibleId){
+      const r = poserRegard(niveau, reseau, p.x, p.z, lot);
+      if(!r.ok) return message(r.raison, 'attention');
+      cibleId = r.id;
+    }
+    const d = ajouterTranchee(niveau, reseau, p.departId, cibleId, p.quoi, lot);
+    if(!d.ok){ if(!p.cibleId) annulerAction(reseau); return message(d.raison, 'attention'); }
+    fermerDevis();
+    depart = noeudReseau(reseau, cibleId);          // on continue depuis le regard qu'on vient de raccorder
+    synchroniser(); montrerDepart(); consigne();
+    const e = etatRegard(niveau, reseau, cibleId);
+    message(e.pret ? `${depart.nom} est prêt : eau et électricité raccordées.` : `${depart.nom} raccordé. Il manque encore ${e.manque}.`, e.pret ? 'ok' : 'info');
+  }
+
+  $('annuler').onclick = () => {
+    const r = annulerAction(reseau);
+    if(!r.ok) return;
+    fermerDevis();
+    if(depart && (!noeudReseau(reseau, depart.id) || !alimentes(reseau, outil || 'eau').has(depart.id))) depart = null;
+    synchroniser(); montrerDepart(); consigne();
+    message(`Annulé : ${euros(r.rembourse)} remboursés.`, 'info', 3000);
+  };
+  $('effacer').onclick = () => {
+    if(!reseau.historique.length) return message('Rien à effacer.', 'info', 2500);
+    if(!confirm('Tout effacer ? Les regards, les conduites et les câbles sont retirés et le budget est entièrement remboursé.')) return;
+    reseau = creerReseau(niveau); depart = null;
+    fermerDevis(); synchroniser(); montrerDepart(); consigne();
+    message('Réseau effacé, budget remboursé.', 'info', 3000);
+  };
+  // Vue sous-sol : le terrain devient transparent, on voit les conduites (bleu) et les câbles (jaune)
+  $('sousSol').onclick = () => {
+    sousSol = !sousSol;
+    $('sousSol').classList.toggle('actif', sousSol);
+    const m = terrain.material;
+    m.transparent = sousSol; m.opacity = sousSol ? 0.3 : 1; m.depthWrite = !sousSol; m.needsUpdate = true;
+    for(const o of decor) o.visible = !sousSol;
+    for(const o of tranchees3D) o.surface.visible = !sousSol;
+    groupeSousSol.visible = sousSol;
+    message(sousSol ? 'Vue sous-sol : conduites d\'eau en bleu, câbles électriques en jaune.' : 'Vue normale : le réseau est enterré, seule la trace des tranchées se voit.', 'info', 3500);
+  };
+
+  // --- Toucher court ---
   const rayon = new THREE.Raycaster(), ndc = new THREE.Vector2();
   function toucher(cx, cy){
     const r = canvas.getBoundingClientRect();
     ndc.set((cx - r.left) / r.width * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
     rayon.setFromCamera(ndc, camera);
     const hit = rayon.intersectObject(terrain, false)[0];
-    if(!hit) return;
-    const { x, z } = hit.point;
+    if(hit) action(hit.point.x, hit.point.z);
+  }
+  function action(x, z){
+    const n = noeudProche(x, z);
+    if(outil === 'regard') return outilRegard(x, z, n);
+    if(outil) return outilTranchee(x, z, n);
+    // Sans outil : renseignements sur le point touché
+    if(n) return infoNoeud(n);
     if(!dansZoneJeu(t, x, z)){ message('Ce point est en dehors du domaine skiable.', 'attention', 2500); return; }
     repere.position.set(x, hauteur(x, z) + 0.3, z);
     repere.visible = true;
@@ -1904,23 +2443,26 @@ function demarrer(){
     etoiles.position.copy(camera.position);
     lune.position.copy(camera.position);
     animerSallePompage(salle, dt, maintenant / 1000);
+    voirAtravers(salle, camera, dt, 70);
     if(repere.visible){
       repere.scale.setScalar(cam.actuel.distance / 140 + 0.6);
       repere.userData.fleche.position.y = 3.2 + Math.sin(maintenant / 220) * 0.6;
     }
+    if(surbrillance.visible) surbrillance.scale.setScalar(Math.max(4, cam.actuel.distance * 0.03) * (1 + 0.12 * Math.sin(maintenant / 180)));
     renderer.render(scene, camera);
     requestAnimationFrame(boucle);
   }
   requestAnimationFrame(boucle);
 
   // Accueil
-  majHud({ budget: niveau.budget, nuit: '—', neige: 0, objectif: niveau.objectif.m3 });
-  $('sousTitre').textContent = `Station de démonstration · piste ${PISTE_CLARINES.couleur} « ${PISTE_CLARINES.nom} »`;
-  message('Bienvenue ! Tournez autour de la station et touchez le terrain pour connaître l\'altitude.', 'info', 6000);
-  setTimeout(() => aide.classList.add('cache'), 12000);
+  synchroniser();
+  $('sousTitre').textContent = `Niveau 2 · ${niveau.nom} · piste ${PISTE_CLARINES.couleur} « ${PISTE_CLARINES.nom} »`;
+  const tactile = window.matchMedia('(pointer:coarse)').matches;
+  message(tactile ? 'Glissez pour tourner, pincez pour zoomer, deux doigts pour déplacer la vue. Choisissez un outil en bas pour construire.'
+                  : 'Glissez pour tourner, molette pour zoomer, clic droit pour déplacer la vue. Choisissez un outil en bas pour construire.', 'info', 7000);
 
   // Accès pour les essais automatiques (console du navigateur)
-  window.nivo = { scene, camera, renderer, cam, toucher, salle };
+  window.nivo = { scene, camera, renderer, cam, toucher, action, salle, choisirOutil, valider, get reseau(){ return reseau; } };
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1931,7 +2473,6 @@ function demarrerVitrine(){
   $('titre').textContent = 'Modèles 3D';
   $('lienModeles').hidden = true; $('lienTerrain').hidden = false;
   $('barreJeu').hidden = true; $('barreVitrine').hidden = false;
-  $('aide').hidden = true;
 
   const ciel = creerCiel(), etoiles = creerEtoiles(CONFIG.graphismes.etoiles), lune = creerLune();
   scene.add(ciel, etoiles, lune, creerLumieres(16, new THREE.Vector3(0, 1, 0)));
@@ -1968,12 +2509,10 @@ function demarrerVitrine(){
           marche: [0, 1, 2].map(i => i < n), pressions: [0, 1, 2].map(i => i < n ? 44 + i * 1.5 : 0),
           pressionDepart: n ? 42 : 0, ouverture, alarme });
         return [
-          { libelle: () => s.userData.toit.visible ? 'Cacher le toit' : 'Montrer le toit', action: () => { s.userData.toit.visible = !s.userData.toit.visible; } },
           { libelle: () => `Pompes en marche : ${n}`, action: () => { n = (n + 1) % 4; ouverture = n ? 1 : 0; appliquer(); } },
           { libelle: () => alarme ? 'Arrêter l\'alarme' : 'Déclencher l\'alarme', action: () => { alarme = !alarme; appliquer(); } }
         ];
-      },
-      preparer: s => { s.userData.toit.visible = false; } },
+      } },
     { nom: 'Armoire « Départ élec »', creer: () => creerArmoire('Départ élec'), cible: 1.2, distance: 6, sol: 1, options: () => [] }
   ];
 
@@ -1982,7 +2521,7 @@ function demarrerVitrine(){
     depart: () => ({ x: 0, z: 0, distance: modele ? modele.distance : 8, azimut: 0.6, inclinaison: 22 * Math.PI / 180 }),
     bornes: { x: 6, z: 6 }, distanceMin: 1.5, distanceMax: 60, margeSol: -10,
     hauteurCible: () => modele ? modele.cible : 1, hauteurSol: () => 0,
-    interaction: () => { auto = false; $('aide').classList.add('cache'); }
+    interaction: () => { auto = false; }
   });
   function choisir(i){
     if(objet) scene.remove(objet);
@@ -2012,7 +2551,7 @@ function demarrerVitrine(){
     objet.traverse(o => {
       if(o.userData.helice) animerCanon(o, dt);
       if(o.userData.charniere) animerRegard(o, dt);
-      if(o.userData.pompes) animerSallePompage(o, dt, temps);
+      if(o.userData.pompes){ animerSallePompage(o, dt, temps); voirAtravers(o, camera, dt); }
     });
     renderer.render(scene, camera);
     requestAnimationFrame(boucle);
