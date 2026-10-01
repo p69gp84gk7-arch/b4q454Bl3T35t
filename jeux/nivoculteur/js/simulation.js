@@ -540,10 +540,11 @@ function evenementsProgramme(niveau, res, tAvant, tApres){
 }
 // Fait avancer la nuit de dt secondes de jeu : la neige s'ajoute aux tas, l'eau sort de la retenue
 function avancerNuit(niveau, res, regime, dt){
+  const heures = CONFIG.nuit.echelle / 3600 * dt;                          // heures réelles écoulées
   for(const c of regime.canons){
-    if(!c.arrete) res.potentielNuit += CATALOGUE[c.modele].neige * dt;      // ce qu'on aurait pu faire avec une bonne pression
+    if(!c.arrete) res.potentielNuit += CATALOGUE[c.modele].neige * heures;  // ce qu'on aurait pu faire avec une bonne pression
     if(!c.production) continue;
-    const v = c.production * dt, vPiste = v * c.part;
+    const v = c.production * heures, vPiste = v * c.part;                   // production en m³/h
     res.neigeTotale += v; res.neigeNuit += v;
     res.neigePiste += vPiste; res.pisteNuit += vPiste;
     res.argentNuit += vPiste * CONFIG.gains.parM3Piste;
@@ -554,7 +555,6 @@ function avancerNuit(niveau, res, regime, dt){
     c.tas.volume += v;
   }
   // Réservoir d'air : monte vers la pression nominale quand le compresseur tourne (moins s'il est surchargé), baisse sinon
-  const heures = CONFIG.nuit.echelle / 3600 * dt;
   if(res.compresseur && regime.air){
     const a = regime.air, ca = CONFIG.air, c = res.compresseur;
     const cible = a.marche ? ca.pressionNominale * Math.min(1, a.capacite / Math.max(1, a.demande)) : 0;
@@ -778,9 +778,9 @@ function testsSimulation(){
   verifier('Plus de canons ouverts = moins de pression au regard 1',
     regime.canons.find(c => c.id === n1.id).pression < unSeul.canons.find(c => c.id === n1.id).pression);
   const budgetAvant = rn.budget, eauAvant = rn.retenue.volume;
-  for(let k = 0; k < 40; k++) avancerNuit(niv, rn, regime, 1);
-  const attendu = regime.canons.reduce((s, c) => s + c.production * 40, 0);
-  verifier('Nuit de 40 s : la neige produite correspond aux débits, en tas', proche(rn.neigeTotale, attendu, 1e-6) && rn.tas.length >= 1, `${Math.round(rn.neigeTotale)} m³`);
+  for(let k = 0; k < CONFIG.nuit.duree; k++) avancerNuit(niv, rn, regime, 1);
+  const attendu = regime.canons.reduce((s, c) => s + c.production * 12, 0);           // m³/h × 12 h
+  verifier(`Nuit de ${CONFIG.nuit.duree} s = 12 h : la neige produite correspond aux débits, en tas`, proche(rn.neigeTotale, attendu, 1e-6) && rn.tas.length >= 1, `${Math.round(rn.neigeTotale)} m³`);
   verifier('La retenue se vide pendant la nuit', rn.retenue.volume < eauAvant, `${Math.round(eauAvant - rn.retenue.volume)} m³ d'eau utilisés`);
   const bilan = finNuit(niv, rn);
   verifier('Fin de nuit : 20 € par m³ tombé sur la piste, moins l\'électricité des pompes', rn.budget - budgetAvant === Math.round(rn.neigePiste * 20) - bilan.electricite && bilan.electricite > 0 && rn.nuit === 2,
@@ -826,9 +826,9 @@ function testsSimulation(){
   verifier('Courbe de pompe : 62 bar sans débit, 52 bar au débit nominal (180 m³/h)', proche(pressionPompes(0, 1), 62) && proche(pressionPompes(180, 1), 52));
   const g0 = debutNuit(niv1, r1n);
   verifier('Niveau 1 : la nuit démarre pompes arrêtées, vanne fermée, canons fermés', !r1n.pompage.marche.some(Boolean) && r1n.pompage.ouverture === 0 && g0.canons.every(c => c.arrete));
-  const ev = evenementsProgramme(niv1, r1n, -1, 9);
-  verifier('Programme : entre 0 et 9 s, le chef d\'équipe ouvre les regards 1 à 4', ev.length === 4 && ev.every(e => e.ouvert));
-  evenementsProgramme(niv1, r1n, 9, 17);
+  const ev = evenementsProgramme(niv1, r1n, -1, 13);
+  verifier('Programme : entre 0 et 13 s, le chef d\'équipe ouvre les regards 1 à 4', ev.length === 4 && ev.every(e => e.ouvert));
+  evenementsProgramme(niv1, r1n, 13, 25);
   const vc = { force: 0, direction: 0 };
   verifier('Coup de bélier : démarrer la première pompe vanne grande ouverte', (r1n.pompage.ouverture = 1, commanderPompe(niv1, r1n, 0, true)).coup);
   commanderPompe(niv1, r1n, 0, false, false); r1n.pompage.ouverture = 0; r1n.coups = 0;

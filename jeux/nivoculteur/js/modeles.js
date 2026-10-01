@@ -18,7 +18,7 @@ const COULEURS = {
   bois: '#7A5638', siege: '#2F6FDE', fenetre: '#FFD58A', eau: '#173A63',
   reseauEau: '#3D9BFF', reseauElec: '#FFD23A', reseauAir: '#E8EDF5',
   jalons: { verte: '#2E9E5B', bleue: '#2F6FDE', rouge: '#D7263D', noire: '#1A1A1A' },
-  voyants: { arret: '#6E7787', production: '#38D66B', faible: '#FF9A2E', defaut: '#FF3B4A' }
+  voyants: { arret: '#FF3B4A', production: '#38D66B', faible: '#38D66B', defaut: '#FFD23A' }   // rouge : arrêt, vert : en marche, jaune : défaut
 };
 
 // Matériaux partagés
@@ -162,8 +162,42 @@ function textureDanger(){
     g.beginPath(); g.moveTo(70, 30); g.lineTo(46, 72); g.lineTo(62, 72); g.lineTo(54, 98); g.lineTo(82, 58); g.lineTo(66, 58); g.lineTo(76, 30); g.closePath(); g.fill();
   }));
 }
-// Étiquette flottante au-dessus d'un objet (taille fixe à l'écran)
-function creerEtiquette(texte, couleur = '#E9B949'){
+// Étiquette flottante au-dessus d'un objet (taille fixe à l'écran). Avec « carre » (une couleur), l'étiquette n'apparaît
+// que de près ; de loin, elle est remplacée par un petit carré de cette couleur (voir majEtiquettes).
+const ETIQUETTES = [];
+let _texCarre = null;
+function creerEtiquette(texte, couleur = '#E9B949', carre = null){
+  const groupe = new THREE.Group(), sp = spriteEtiquette(texte, couleur);
+  groupe.add(sp);
+  if(carre){
+    _texCarre = _texCarre || canvasTexture(32, 32, g => {
+      g.fillStyle = '#FFFFFF'; g.strokeStyle = 'rgba(11,20,38,.9)'; g.lineWidth = 5;
+      g.beginPath(); g.moveTo(9, 3); g.arcTo(29, 3, 29, 29, 6); g.arcTo(29, 29, 3, 29, 6); g.arcTo(3, 29, 3, 3, 6); g.arcTo(3, 3, 29, 3, 6); g.closePath();
+      g.fill(); g.stroke();
+    });
+    const c = new THREE.Sprite(new THREE.SpriteMaterial({ map: _texCarre, color: carre, sizeAttenuation: false, depthTest: false, transparent: true, fog: false }));
+    c.scale.set(0.022, 0.022, 1);
+    c.center.set(0.5, 0);
+    c.renderOrder = 10;
+    c.visible = false;
+    groupe.add(c);
+    groupe.userData = { etiquette: sp, carre: c };
+    ETIQUETTES.push(groupe);
+  }
+  return groupe;
+}
+// Étiquettes en entier près de la caméra, petits carrés de couleur au loin
+const _posEtiquette = { v: null };
+function majEtiquettes(camera, seuil){
+  const v = _posEtiquette.v || (_posEtiquette.v = new THREE.Vector3());
+  for(const e of ETIQUETTES){
+    if(!e.parent) continue;
+    const proche = e.getWorldPosition(v).distanceTo(camera.position) < seuil;
+    e.userData.etiquette.visible = proche;
+    e.userData.carre.visible = !proche;
+  }
+}
+function spriteEtiquette(texte, couleur){
   const police = 'bold 40px "Bricolage Grotesque", system-ui, sans-serif';
   const mesure = document.createElement('canvas').getContext('2d');
   mesure.font = police;
@@ -801,7 +835,7 @@ function creerArmoire(nom){
   panneau.position.set(-0.345, 1.75, 0.307);
   g.add(panneau);
   if(nom){
-    const e = creerEtiquette(nom);
+    const e = creerEtiquette(nom, undefined, COULEURS.reseauElec);
     e.position.y = 3.2;
     g.add(e);
   }
@@ -884,7 +918,7 @@ function creerCompresseur(nom, sortie = { dx: 2, dz: 5 }){
   const voyant = lampe(0.07, C.voyants.arret);
   voyant.position.set(cx + 0.9, 1.9, cz + 0.93);
   g.add(voyant);
-  if(nom){ const e = creerEtiquette(nom); e.position.y = 5.2; g.add(e); }
+  if(nom){ const e = creerEtiquette(nom, undefined, COULEURS.reseauAir); e.position.y = 5.2; g.add(e); }
   g.userData = { ventilo: helice, aiguille, voyant, vitesse: 0, bar: 0, etat: { marche: false, pression: 0 }, compresseur: true };
   return g;
 }
@@ -1110,7 +1144,7 @@ function creerSallePompage(nom){
   transparents.push({ toit: true, meshes: [toit], opacite: 1 });
 
   if(nom){
-    const e = creerEtiquette(nom);
+    const e = creerEtiquette(nom, undefined, COULEURS.reseauEau);
     e.position.y = H + hf + 2.5;
     salle.add(e);
   }
@@ -1276,6 +1310,66 @@ function creerTelesiege(ts, poser){
 }
 
 // ---------------------------------------------------------------------------------------
+// Dameuse : elle passe sur la piste quand l'objectif de neige est atteint
+// Repère : avant vers +z, sol à y = 0. Chenilles, caisse rouge, cabine, lame à l'avant, fraise et peigne à l'arrière.
+// ---------------------------------------------------------------------------------------
+let _texFaisceau = null;
+function creerDameuse(){
+  const g = new THREE.Group(), C = COULEURS, a = new Atelier(), rouge = '#C8202F';
+  // Chenilles (large bande à crampons) et barbotins
+  for(const s of [-1, 1]){
+    a.boite(1.0, 0.75, 4.2, '#23272F', s * 1.65, 0.45, 0);
+    for(const z of [-2.1, 2.1]) a.cylindre(0.38, 1.0, '#23272F', s * 1.65, 0.45, z, 0, 0, Math.PI / 2, 10);
+    for(let k = 0; k < 14; k++) a.boite(1.04, 0.06, 0.12, '#3A404B', s * 1.65, 0.84, -1.95 + k * 0.3);   // crampons
+    a.boite(0.08, 0.3, 3.6, rouge, s * 2.17, 0.75, 0);                                                  // carter
+  }
+  // Caisse et capot moteur
+  a.boite(2.3, 0.8, 4.0, rouge, 0, 1.15, -0.1);
+  a.boite(2.1, 0.5, 1.6, rouge, 0, 1.7, -1.1);
+  for(let k = 0; k < 5; k++) a.boite(1.6, 0.04, 0.06, '#7A1520', 0, 1.96, -1.7 + k * 0.28);               // grille du capot
+  // Cabine vitrée
+  a.boite(2.1, 1.25, 1.7, rouge, 0, 2.15, 0.85);
+  a.boite(2.0, 0.85, 1.72, '#18304F', 0, 2.25, 0.85);                                                   // vitres latérales
+  a.boite(1.9, 0.85, 0.06, '#1E3A60', 0, 2.25, 1.72, -0.12, 0, 0);                                      // pare-brise
+  a.boite(2.2, 0.12, 1.9, '#E8ECF2', 0, 2.83, 0.85);                                                    // toit blanc
+  a.boite(1.4, 0.1, 0.18, C.noir, 0, 2.95, 1.55);                                                       // rampe de phares
+  // Lame à l'avant (bras, lame bombée, ailes)
+  for(const s of [-1, 1]) a.tube([s * 0.9, 0.9, 1.6], [s * 1.1, 0.75, 2.75], 0.09, C.acierFonce, 6);
+  a.boite(4.6, 1.0, 0.14, rouge, 0, 0.62, 2.95, -0.25, 0, 0);
+  for(const s of [-1, 1]) a.boite(0.14, 0.9, 0.7, rouge, s * 2.3, 0.6, 2.7, 0, s * 0.35, 0);
+  a.boite(4.6, 0.08, 0.2, '#B9C0CA', 0, 0.12, 3.06);                                                     // couteau
+  // Fraise et peigne à l'arrière
+  a.tube([0, 0.9, -2.0], [0, 0.6, -2.9], 0.1, C.acierFonce, 6);
+  a.cylindre(0.38, 4.4, '#5D6B7A', 0, 0.42, -3.1, 0, 0, Math.PI / 2, 10);
+  a.boite(4.5, 0.35, 0.7, rouge, 0, 0.75, -3.1);
+  a.boite(4.4, 0.04, 1.3, '#1C1F25', 0, 0.06, -4.0);                                                     // peigne (finisseur)
+  g.add(a.mesh());
+  // Phares (toujours allumés) et faisceau sur la neige
+  const l = new Atelier();
+  for(const x of [-0.55, -0.2, 0.2, 0.55]) l.sphere(0.07, '#FFF6D8', x, 2.95, 1.66, 6);
+  for(const x of [-0.8, 0.8]) l.sphere(0.09, '#FFF6D8', x, 1.35, 1.92, 6);
+  g.add(l.mesh('lumineux', false));
+  _texFaisceau = _texFaisceau || canvasTexture(128, 128, c => {
+    const gr = c.createRadialGradient(64, 128, 4, 64, 128, 128);
+    gr.addColorStop(0, 'rgba(255,244,214,.55)'); gr.addColorStop(1, 'rgba(255,244,214,0)');
+    c.fillStyle = gr; c.beginPath(); c.moveTo(64, 128); c.lineTo(0, 0); c.lineTo(128, 0); c.closePath(); c.fill();
+  });
+  const faisceau = new THREE.Mesh(new THREE.PlaneGeometry(9, 14), new THREE.MeshBasicMaterial({ map: _texFaisceau, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  faisceau.rotation.x = -Math.PI / 2;
+  faisceau.position.set(0, 0.15, 3.1 + 7);
+  g.add(faisceau);
+  // Gyrophare orange
+  const gyro = lampe(0.13, '#FFA53A', true);
+  gyro.position.set(0, 2.9, 0.3);
+  g.add(gyro);
+  g.userData = { gyro, dameuse: true };
+  return g;
+}
+function animerDameuse(g, temps){
+  g.userData.gyro.material.color.set((temps * 2.2) % 1 < 0.5 ? '#FFA53A' : '#5A3A12');
+}
+
+// ---------------------------------------------------------------------------------------
 // Réseau construit : trace des tranchées en surface, conduites et câbles enterrés (vue sous-sol)
 // ---------------------------------------------------------------------------------------
 let _matTrace = null;
@@ -1348,6 +1442,19 @@ function textureIcone(eau, elec, air = null){
     g.fillStyle = elec ? COULEURS.reseauElec : '#4E586B';
     g.beginPath(); g.moveTo(98, 6); g.lineTo(74, 36); g.lineTo(90, 36); g.lineTo(82, 58); g.lineTo(110, 26); g.lineTo(94, 26); g.lineTo(106, 6); g.closePath(); g.fill();
   }));
+}
+// Petit point de couleur au-dessus d'un enneigeur : vert en marche, rouge à l'arrêt, jaune en défaut
+let _texPoint = null;
+function creerPointEtat(){
+  _texPoint = _texPoint || canvasTexture(32, 32, g => {
+    g.fillStyle = '#FFFFFF'; g.strokeStyle = 'rgba(11,20,38,.9)'; g.lineWidth = 5;
+    g.beginPath(); g.arc(16, 16, 12, 0, Math.PI * 2); g.fill(); g.stroke();
+  });
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: _texPoint, color: COULEURS.voyants.arret, sizeAttenuation: false, depthTest: false, transparent: true, fog: false }));
+  sp.scale.set(0.016, 0.016, 1);
+  sp.center.set(0.5, 0);
+  sp.renderOrder = 9;
+  return sp;
 }
 function creerIconeEtat(avecAir = false){
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: textureIcone(false, false, avecAir ? false : null), sizeAttenuation: false, depthTest: false, transparent: true, fog: false }));

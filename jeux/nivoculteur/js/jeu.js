@@ -30,7 +30,10 @@ function preparerRendu(brouillard){
   return { canvas, renderer, scene, camera };
 }
 
-// Caméra en orbite autour d'un point : glisser = tourner, pincer / molette = zoom, deux doigts / clic droit = déplacer
+// Caméra en orbite autour d'un point.
+// Au doigt (jeu) : un doigt = se déplacer ; deux doigts = pincer pour zoomer, tourner pour pivoter, glisser vers le haut
+// ou le bas pour incliner la vue. (Avec o.unDoigt = 'tourner', comme dans la vitrine, un doigt fait tourner.)
+// À la souris : glisser = tourner, molette = zoom, clic droit (ou Maj) = déplacer.
 function creerCommandes(canvas, camera, o){
   const C = CONFIG.camera, rad = Math.PI / 180;
   const voulu = o.depart(), actuel = o.depart();
@@ -71,11 +74,11 @@ function creerCommandes(canvas, camera, o){
   const interaction = () => o.interaction && o.interaction();
   const deuxDoigts = () => {
     const [p, q] = [...pointeurs.values()];
-    return { d: Math.hypot(p.x - q.x, p.y - q.y), x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
+    return { d: Math.hypot(p.x - q.x, p.y - q.y), a: Math.atan2(q.y - p.y, q.x - p.x), x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
   };
   canvas.addEventListener('pointerdown', e => {
-    canvas.setPointerCapture(e.pointerId);
-    pointeurs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
+    pointeurs.set(e.pointerId, { x: e.clientX, y: e.clientY, doigt: e.pointerType === 'touch' });
     if(pointeurs.size === 1) appui = { x: e.clientX, y: e.clientY, t: performance.now(), bouge: false, bouton: e.button };
     else { appui = null; const g = deuxDoigts(); ecart = g.d; centre = g; }
   });
@@ -87,12 +90,20 @@ function creerCommandes(canvas, camera, o){
     if(pointeurs.size === 1){
       if(appui && Math.hypot(e.clientX - appui.x, e.clientY - appui.y) > 8) appui.bouge = true;
       if(appui && !appui.bouge) return;
-      if(appui && (appui.bouton === 2 || e.shiftKey)) deplacer(dx, dy); else tourner(dx, dy);
+      if(p.doigt ? o.unDoigt === 'deplacer' : (appui && (appui.bouton === 2 || e.shiftKey))) deplacer(dx, dy); else tourner(dx, dy);
       interaction();
     } else if(pointeurs.size === 2){
       const g = deuxDoigts();
       if(ecart > 0) zoomer(ecart / Math.max(g.d, 1));
-      if(centre) deplacer(g.x - centre.x, g.y - centre.y);
+      if(centre){
+        if(o.unDoigt === 'deplacer'){
+          // Deux doigts : la rotation des doigts fait pivoter la vue, leur glissement vertical l'incline
+          let da = g.a - centre.a;
+          if(da > Math.PI) da -= Math.PI * 2; else if(da < -Math.PI) da += Math.PI * 2;
+          voulu.azimut += da;
+          tourner(0, (g.y - centre.y) * 1.4);
+        } else deplacer(g.x - centre.x, g.y - centre.y);
+      }
       ecart = g.d; centre = g;
       interaction();
     }
@@ -155,7 +166,7 @@ function demarrer(){
   const cam = creerCommandes(canvas, camera, {
     depart: () => ({ x: 0, z: 10, distance: C.distanceDepart, azimut: 0, inclinaison: C.inclinaisonDepart * rad }),
     bornes: { x: t.largeur / 2, z: t.longueur / 2 },
-    distanceMin: C.distanceMin, distanceMax: C.distanceMax, margeSol: 4,
+    distanceMin: C.distanceMin, distanceMax: C.distanceMax, margeSol: 4, unDoigt: 'deplacer',
     hauteurCible: hauteur, hauteurSol: poser,
     toucher
   });
@@ -203,6 +214,8 @@ function demarrer(){
   const NOMS_ZONES = { arret: 'pas assez de pression : pas de neige', faible: 'production réduite', correcte: 'bonne pression', haute: 'pression haute, à surveiller', surpression: 'surpression : le canon se met en sécurité' };
   const liberer = o => o.traverse(m => { if(m.geometry && m.geometry !== _geoTas) m.geometry.dispose(); });
   const ventActuel = () => nuit ? nuit.regime.vent : ventDeLaNuit(niveau, reseau.nuit);
+  // Voyant du canon et point de couleur au-dessus : vert en marche, rouge à l'arrêt, jaune en défaut
+  const marquer = (o, etat) => { etatCanon(o.userData.canon, etat); o.userData.point.material.color.set(COULEURS.voyants[etat]); };
   const attendAir = c => !c.arrete && c.pressionAir !== null && facteurAir(c.pressionAir) === 0;   // perche sans assez d'air
 
   // Met la 3D à jour d'après le réseau (regards et enneigeurs, icônes, tranchées, tas de neige)
@@ -219,9 +232,12 @@ function demarrer(){
         o.position.set(n.x, poser(n.x, n.z), n.z);
         o.userData.cle = cle;
         const m = CATALOGUE[n.modele];
-        o.userData.icone = creerIconeEtat(m.type === 'perche');
-        o.userData.icone.position.y = m.type === 'perche' ? PERCHE.support + m.longueur * 0.87 + 1.5 : SUPPORTS[n.support].pivot + 2.5;
-        o.add(o.userData.icone);
+        o.userData.icone = creerIconeEtat(m.type === 'perche');       // bulle juste sous l'enneigeur (au pied)
+        o.userData.icone.position.y = 0.2;
+        o.userData.icone.center.set(0.5, 1.15);
+        o.userData.point = creerPointEtat();                           // point vert / rouge / jaune au-dessus
+        o.userData.point.position.y = m.type === 'perche' ? PERCHE.support + m.longueur * 0.87 + 1.2 : SUPPORTS[n.support].pivot + 2.2;
+        o.add(o.userData.icone, o.userData.point);
         groupeReseau.add(o);
         regards3D.set(n.id, o);
       }
@@ -249,16 +265,70 @@ function demarrer(){
       let mesh = tas3D.get(q);
       if(!mesh){ mesh = creerTas(); mesh.position.set(q.x, poser(q.x, q.z) - 0.3, q.z); scene.add(mesh); tas3D.set(q, mesh); }
       majTas(mesh, q.volume);
+      if(q.dame) damer(mesh);
     }
   }
   // Ce qui compte pour l'objectif : toute la neige produite (niveau 1) ou la neige tombée sur la piste
   const neigeObjectif = () => niveau.objectif.type === 'production' ? reseau.neigeTotale : reseau.neigePiste;
+  // ----- Dameuse : quand l'objectif est atteint, une dameuse par piste fait des allers-retours -----
+  let dameuses = [], premiereMajDameuses = true;
+  function trajetDameuse(piste){
+    const c = courbePiste(piste), w = piste.largeur;
+    const passe = decal => c.map((p, i) => {
+      const a = c[Math.max(0, i - 1)], b = c[Math.min(c.length - 1, i + 1)], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      return [p[0] - (b[1] - a[1]) / L * decal, p[1] + (b[0] - a[0]) / L * decal];
+    });
+    const pts = [...passe(-w / 4), ...passe(w / 4).reverse()], cumul = [0];
+    pts.push(pts[0]);
+    for(let i = 1; i < pts.length; i++) cumul.push(cumul[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    return { pts, cumul, longueur: cumul[cumul.length - 1] };
+  }
+  function majDameuses(){
+    const atteint = neigeObjectif() >= niveau.objectif.m3;
+    if(atteint && !dameuses.length){
+      dameuses = niveau.pistes.map((piste, i) => {
+        const g = creerDameuse(), tr = trajetDameuse(piste);
+        g.rotation.order = 'YXZ';
+        scene.add(g);
+        return { g, tr, s: tr.longueur * (0.15 + i * 0.4) };
+      });
+      if(!premiereMajDameuses) message('Objectif atteint ! La dameuse passe pour préparer la piste.', 'ok', 7000);
+    } else if(!atteint && dameuses.length){
+      for(const d of dameuses){ scene.remove(d.g); liberer(d.g); }
+      dameuses = [];
+    }
+    premiereMajDameuses = false;
+  }
+  const _avant = [0, 0];
+  function avancerDameuses(dt, temps){
+    for(const d of dameuses){
+      const { pts, cumul, longueur } = d.tr;
+      d.s = (d.s + dt * CONFIG.dameuse.vitesse) % longueur;
+      let i = 1;
+      while(i < cumul.length - 1 && cumul[i] < d.s) i++;
+      const a = pts[i - 1], b = pts[i], f = (d.s - cumul[i - 1]) / Math.max(1e-6, cumul[i] - cumul[i - 1]);
+      const x = a[0] + (b[0] - a[0]) * f, z = a[1] + (b[1] - a[1]) * f, L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L;
+      _avant[0] = poser(x + ux * 2.5, z + uz * 2.5); _avant[1] = poser(x - ux * 2.5, z - uz * 2.5);
+      d.g.position.set(x, poser(x, z), z);
+      d.g.rotation.set(-Math.atan2(_avant[0] - _avant[1], 5), Math.atan2(ux, uz), 0);
+      animerDameuse(d.g, temps);
+      // Les tas de neige sur la piste sont étalés à son passage
+      for(const [q, mesh] of tas3D) if(!q.dame && Math.hypot(q.x - x, q.z - z) < 9 && niveau.pistes.some(p => surPiste(p, q.x, q.z))){
+        q.dame = true;
+        majTas(mesh, q.volume); damer(mesh);
+      }
+    }
+  }
+  function damer(mesh){ mesh.scale.x *= 1.6; mesh.scale.z *= 1.6; mesh.scale.y *= 0.3; }
+
   function majInfos(){
     const R = niveau.retenue;
     majHud({ budget: reseau.budget, nuit: nuit ? `${reseau.nuit} · ${Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps))} s` : `n° ${reseau.nuit}`,
       neige: Math.round(neigeObjectif()), objectif: niveau.objectif.m3, vent: ventActuel(),
       retenue: reseau.retenue ? reseau.retenue.volume / volumeRetenue(R) : null });
     if(reseau.retenue) retenue.userData.remplir(hauteurRetenue(R, reseau.retenue.volume));
+    majDameuses();
   }
 
   function consigne(){
@@ -335,35 +405,39 @@ function demarrer(){
     const chute = pointChute(n, vent), part = partSurPiste(niveau.pistes, chute.x, chute.z, chute.rayon);
     let etat;
     const c = nuit && nuit.regime.canons.find(q => q.id === n.id);
-    if(c) etat = c.production ? `En production : ${nombreFr(c.production, 1)} m³/s, ${Math.round(c.pression)} bar (${NOMS_ZONES[c.zone]})`
+    if(c) etat = c.production ? `En production : ${nombreFr(c.production)} m³/h de neige, ${Math.round(c.pression)} bar (${NOMS_ZONES[c.zone]})`
                  : attendAir(c) ? `En attente d'air : ${Math.round(c.pression)} bar d'eau`
                  : `Arrêté : ${Math.round(c.pression)} bar, il en faut au moins ${m.pressionMin}${nuit.regime.sec ? ' (retenue vide)' : ''}`;
     else if(e.pret) etat = `Prêt : ${Math.round(e.pression)} bar quand tous les canons sont fermés (${NOMS_ZONES[e.zone]})`;
-    if(c && c.pressionAir !== null) etat += ` · air ${nombreFr(c.pressionAir, 1)} bar${c.pressionAir < CONFIG.air.pressionMin ? ' (il en faut ' + CONFIG.air.pressionMin + ')' : c.pressionAir < CONFIG.air.pressionPleine ? ' (un peu juste)' : ''}`;
     else etat = `Pas prêt : il manque ${e.manque}`;
-    const ventilo = m.type === 'ventilateur';
+    if(c && c.pressionAir !== null) etat += ` · air ${nombreFr(c.pressionAir, 1)} bar${c.pressionAir < CONFIG.air.pressionMin ? ' (il en faut ' + CONFIG.air.pressionMin + ')' : c.pressionAir < CONFIG.air.pressionPleine ? ' (un peu juste)' : ''}`;
+    const ventilo = m.type === 'ventilateur', pressionFiche = c ? c.pression : e.eau ? e.pression : null;
     const options = Object.entries(CATALOGUE).map(([k, q]) => {
       const d = disponible(niveau, reseau, k);
       return `<option value="${k}"${d.ok ? '' : ' disabled'}${k === n.modele ? ' selected' : ''}>${echapper(q.nom)}${d.ok ? '' : ` · ${echapper(d.raison)}`}</option>`;
     }).join('');
     const supports = Object.entries(SUPPORTS).map(([k, s]) => `<option value="${k}"${k === (n.support || 'trepied') ? ' selected' : ''}>${echapper(s.nom)}</option>`).join('');
     const d = afficherPanneau(`<div class="tete"><span>${echapper(n.nom)} · ${echapper(nomEnneigeur(n.modele, n.support))}</span><button class="fermer" type="button" id="ficheFermer" aria-label="Fermer">×</button></div>
+      ${pressionFiche !== null ? `<div class="ligne">Pression ${jaugePression(pressionFiche, n.modele)}<b>${Math.round(pressionFiche)} bar</b></div>` : ''}
       <ul><li>${echapper(etat)}</li>
       <li>Neige sur la piste ${nuit ? 'cette nuit' : 'avec le vent prévu'} (${vent.force ? vent.force + ' km/h' : 'pas de vent'}) : <b>${Math.round(part * 100)} %</b></li>
-      <li>${m.debit} m³/h d'eau${m.air ? ` · ${m.air} Nm³/h d'air` : ''} · ${m.pressionMin} bar minimum · jusqu'à ${nombreFr(m.neige * CONFIG.nuit.duree)} m³ de neige par nuit</li></ul>
-      <div class="ligne">Direction <button class="bouton petit" type="button" id="dirG">↺ 15°</button><b>${n.direction}°</b><button class="bouton petit" type="button" id="dirD">↻ 15°</button></div>
-      ${ventilo ? `<div class="ligne">Inclinaison <button class="bouton petit" type="button" id="incM">−5°</button><b>${n.inclinaison}°</b><button class="bouton petit" type="button" id="incP">+5°</button></div>` : ''}
+      <li>${m.debit} m³/h d'eau${m.air ? ` · ${m.air} Nm³/h d'air` : ''} · ${m.pressionMin} bar minimum · jusqu'à ${nombreFr(m.neige * CONFIG.nuit.duree * CONFIG.nuit.echelle / 3600)} m³ de neige par nuit (${m.neige} m³/h)</li></ul>
+      <div class="ligne reglage-fiche">Direction <input type="range" id="ficheDir" min="-180" max="180" step="5" value="${n.direction}" aria-label="Direction du canon"><b>${n.direction}°</b></div>
+      ${ventilo ? `<div class="ligne reglage-fiche">Inclinaison <input type="range" id="ficheInc" min="0" max="35" step="1" value="${n.inclinaison}" aria-label="Inclinaison du canon"><b>${n.inclinaison}°</b></div>` : ''}
       ${nuit || niveau.construction === false ? '' : `<div class="ligne choix">Remplacer par <select id="ficheModele">${options}</select><select id="ficheSupport">${supports}</select><button class="bouton petit" type="button" id="ficheRemplacer"></button></div>`}`);
     d.querySelector('#ficheFermer').onclick = fermerDevis;
-    const tourner = (dd, di) => {
-      orienterRegard(reseau, n.id, n.direction + dd, n.inclinaison + di);
-      synchroniser();
+    // Curseurs : direction et inclinaison, le canon tourne en direct
+    const curDir = d.querySelector('#ficheDir'), curInc = d.querySelector('#ficheInc');
+    const regler = () => {
+      orienterRegard(reseau, n.id, +curDir.value, curInc ? +curInc.value : n.inclinaison);
+      const o = regards3D.get(n.id);
+      if(o) orienterCanon(o.userData.canon, n.direction, n.inclinaison);
       if(nuit){ nuit.regime = regimeNuit(niveau, reseau, nuit.regime.vent); appliquerRegime(); }
+      planifierSauvegarde();
       dessinerFiche();
     };
-    d.querySelector('#dirG').onclick = () => tourner(15, 0);
-    d.querySelector('#dirD').onclick = () => tourner(-15, 0);
-    if(ventilo){ d.querySelector('#incM').onclick = () => tourner(0, -5); d.querySelector('#incP').onclick = () => tourner(0, 5); }
+    curDir.oninput = regler;
+    if(curInc) curInc.oninput = regler;
     if(!nuit && niveau.construction !== false){
       const sel = d.querySelector('#ficheModele'), sup = d.querySelector('#ficheSupport'), btn = d.querySelector('#ficheRemplacer');
       const majBouton = () => {
@@ -519,7 +593,7 @@ function demarrer(){
     sources = [];
     for(const [id, o] of regards3D){
       const c = g.canons.find(q => q.id === id);
-      etatCanon(o.userData.canon, !c || c.arrete ? 'arret' : !c.production ? 'defaut' : c.facteur >= 0.999 ? 'production' : 'faible');
+      marquer(o, !c || c.arrete ? 'arret' : !c.production ? 'defaut' : c.facteur >= 0.999 ? 'production' : 'faible');
       if(c && c.production) sources.push({
         depart: positionBuse(o.userData.canon, new THREE.Vector3()),
         arrivee: new THREE.Vector3(c.chute.x, poser(c.chute.x, c.chute.z) + 0.4, c.chute.z),
@@ -540,7 +614,7 @@ function demarrer(){
     const bilan = finNuit(niveau, reseau);
     nuit = null; sources = [];
     jets.vider();
-    for(const o of regards3D.values()) etatCanon(o.userData.canon, 'arret');
+    for(const o of regards3D.values()) marquer(o, 'arret');
     etatSalleDepuis(null);
     if(compresseur) etatCompresseur(compresseur, { marche: false, pression: 0 });
     rafraichirPoste();
@@ -620,11 +694,11 @@ function demarrer(){
         if(c.zone === 'surpression') alarmes.push({ niveau: 'rouge', texte: `${n.nom} : surpression (${Math.round(c.pression)} bar), canon en sécurité.` });
       } else { led = 'pret'; etat = 'Prêt'; pression = e.pression; }
       return { id: n.id, nom: n.nom, modele: nomEnneigeur(n.modele, n.support), led, etat, pression, production, part, arrete: !!n.arret,
-        pressionAir: c ? c.pressionAir : null,
+        pressionAir: c ? c.pressionAir : null, cle: n.modele,
         pilotable: e.pret && !niveau.programme };                    // au niveau 1, c'est le chef d'équipe qui ouvre les canons
     });
     return {
-      numero: reseau.nuit, vent: ventActuel(), total: neigeObjectif(), objectif: niveau.objectif.m3,
+      numero: reseau.nuit, vent: ventActuel(), accelere: !!nuit && nuit.vitesse > 1, total: neigeObjectif(), objectif: niveau.objectif.m3,
       coups: reseau.coups || 0, coupsMax: niveau.objectif.coupsMax ?? null,
       retenue: reseau.retenue ? reseau.retenue.volume / volumeRetenue(R) : null,
       nuit: nuit && { numero: reseau.nuit, restant: Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps)), neige: reseau.pisteNuit, argent: Math.round(reseau.argentNuit) },
@@ -651,6 +725,8 @@ function demarrer(){
   function agirPoste(action, valeur){
     const cmd = reseau.pompage;
     if(action === 'fermer') return fermerLePoste();
+    if(action === 'lancerNuit'){ lancerNuit(); return rafraichirPoste(); }
+    if(action === 'accelerer'){ $('accelerer').onclick(); return rafraichirPoste(); }
     if(action === 'voir'){
       const n = noeudReseau(reseau, valeur);
       fermerLePoste();
@@ -785,6 +861,8 @@ function demarrer(){
     for(const o of regards3D.values()) animerCanon(o.userData.canon, dt);
     animerSallePompage(salle, dt, temps);
     if(compresseur) animerCompresseur(compresseur, dt, temps);
+    avancerDameuses(dt * (nuit ? nuit.vitesse : 1), temps);
+    majEtiquettes(camera, CONFIG.graphismes.distanceEtiquettes);
     voirAtravers(salle, camera, dt, 70);
     // Flèche du vent, tournée comme la vue
     const v = ventActuel(), a = cam.actuel.azimut, w = v.direction * Math.PI / 180;
@@ -806,12 +884,12 @@ function demarrer(){
   $('sousTitre').textContent = `Niveau ${niveau.numero} · ${niveau.nom} · objectif ${nombreFr(o.m3)} m³ ${o.type === 'production' ? `produits en ${o.nuits} nuits` : 'sur la piste'}`;
   $('hudNeigeTitre').textContent = o.type === 'production' ? 'Neige produite' : 'Neige piste';
   const tactile = window.matchMedia('(pointer:coarse)').matches;
-  const commandes = tactile ? 'Glissez pour tourner, pincez pour zoomer, deux doigts pour déplacer la vue.' : 'Glissez pour tourner, molette pour zoomer, clic droit pour déplacer la vue.';
+  const commandes = tactile ? 'Un doigt pour vous déplacer. Deux doigts : pincez pour zoomer, tournez-les pour pivoter, glissez-les vers le haut ou le bas pour incliner la vue.' : 'Glissez pour tourner, molette pour zoomer, clic droit pour déplacer la vue.';
   if(!OUVRIR_MENU) message(`${commandes} ${niveau.construction === false ? 'Lancez la nuit, puis pilotez la salle de pompage au poste de travail.' : 'Construisez, puis lancez la nuit.'}`, 'info', 7000);
   if(repris && !OUVRIR_MENU) message(`Partie reprise : prochaine nuit n° ${reseau.nuit}.`, 'ok', 4000);
   if(OUVRIR_MENU) ouvrirMenu();
 
   // Accès pour les essais automatiques (console du navigateur)
-  window.nivo = { scene, camera, renderer, cam, toucher, action, salle, compresseur, choisirOutil, valider, lancerNuit, ouvrirFiche, ouvrirPoste, agirPoste, ouvrirMenu, finirNuit,
+  window.nivo = { get dameuses(){ return dameuses; }, synchroniser, scene, camera, renderer, cam, toucher, action, salle, compresseur, choisirOutil, valider, lancerNuit, ouvrirFiche, ouvrirPoste, agirPoste, ouvrirMenu, finirNuit,
     get reseau(){ return reseau; }, get nuit(){ return nuit; }, set choix(c){ choix = c; } };
 }
