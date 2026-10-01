@@ -15,7 +15,8 @@ Boucle : **construire** le jour (regards, canons, conduites d'eau, câbles) → 
 
 ## Règles techniques
 
-- Tout le jeu tient dans **`index.html`** (HTML + CSS + JavaScript). Pas de npm, pas de Vite, pas de TypeScript, **pas de modules ES (`import`)** : le fichier doit s'ouvrir en double-cliquant (`file://`).
+- `index.html` contient le HTML et le CSS ; le JavaScript est découpé en fichiers dans `js/`, chargés dans l'ordre par des balises `<script>` classiques. Pas de npm, pas de Vite, pas de TypeScript, **pas de modules ES (`import`)** : le jeu doit s'ouvrir en double-cliquant sur `index.html` (`file://`), en gardant le dossier entier.
+- Les fichiers partagent les mêmes noms globaux (`const` de premier niveau). **Aucun fichier ne doit utiliser Three.js au moment de son chargement** (seulement dans des fonctions), pour que le message d'erreur et le mode test marchent sans Three.js.
 - **Three.js 0.149.0** en script classique : d'abord la copie locale `three.min.js` (jeu hors ligne), sinon le CDN jsdelivr.
 - Graphismes **low-poly** (ombrage plat), toutes les formes créées par le code : pas de modèle 3D ni d'image externe (les textures éventuelles sont dessinées par le code dans un canvas).
 - Commandes souris et tactiles : glisser = tourner ; pincer / molette = zoom ; deux doigts / clic droit = déplacer ; toucher court = action.
@@ -24,9 +25,24 @@ Boucle : **construire** le jour (regards, canons, conduites d'eau, câbles) → 
 - Sauvegarde dans `localStorage`, toujours dans un `try/catch` (à partir de l'étape 5 ; clés préfixées `nivo-`).
 - **Toute l'interface est en français.**
 - Unité : **1 unité 3D = 1 mètre**. Axe x de gauche à droite, axe z du haut de la pente (négatif) vers le bas (positif), y = altitude − altitude du bas.
-- Si le fichier dépasse ~3 000 lignes, proposer de le découper en quelques `.js` chargés par des `<script>` classiques.
 
-### Sections du script (dans cet ordre)
+### Fichiers (chargés dans cet ordre)
+
+| Fichier | Contenu |
+|---|---|
+| `js/config.js` | `CONFIG` (tous les chiffres réglables), `CATALOGUE` (enneigeurs), `SUPPORTS` (trépied, tour, tour haute) |
+| `js/niveaux.js` | terrain, piste, retenue, salle de pompage, départs électriques, télésiège, `LEVELS` |
+| `js/simulation.js` | logique pure, sans Three.js, et `testsSimulation()` |
+| `js/modeles.js` | toutes les formes 3D |
+| `js/effets.js` | ciel, étoiles, lune, lumières, jets de neige et brouillard |
+| `js/interface.js` | messages, barre du bas, devis, fiches, panneaux |
+| `js/jeu.js` | rendu, caméra et commandes, le terrain de jeu (construction, fiches, nuits) |
+| `js/vitrine.js` | la vitrine des modèles (`?modeles`) |
+| `js/demarrage.js` | choisit le mode (jeu, vitrine, test) — toujours en dernier |
+
+Tester la simulation sans navigateur : concaténer `config.js`, `niveaux.js` et `simulation.js` puis appeler `testsSimulation()` avec Node.
+
+### Sections (les numéros restent dans les en-têtes des fichiers)
 
 1. `CONFIG` : tous les chiffres réglables, commentés en français (valeurs provisoires, à ajuster par l'utilisateur).
 2. `LEVELS` : description des niveaux (terrain, pistes, pompage, retenue, départs électriques, budget, objectif).
@@ -42,7 +58,7 @@ Boucle : **construire** le jour (regards, canons, conduites d'eau, câbles) → 
 ### Modes spéciaux
 
 - `index.html?test` : lance `testsSimulation()` et affiche OK / ERREUR à l'écran (et dans la console).
-- `index.html?modeles` : vitrine des modèles 3D (bouton « Modèles 3D » en haut du terrain). Chaque modèle tourne seul ; les boutons jaunes testent ses mouvements (état du canon, direction, inclinaison, trappe du regard, toit et pompes de la salle, alarme).
+- `index.html?modeles` : vitrine des modèles 3D (bouton « Modèles 3D » en haut du terrain). Chaque modèle tourne seul ; les boutons jaunes testent ses mouvements : ventilateurs (modèle V8/V9/V10, support, état, direction, inclinaison, trappe), perches (6 m, 10 m, 10 m nouvelle génération), regard, salle de pompage (pompes, alarme ; murs transparents), armoire.
 
 On peut aussi vérifier que la simulation tourne sans Three.js en extrayant les sections 1 à 3 et en les lançant avec Node.
 
@@ -71,7 +87,29 @@ On peut aussi vérifier que la simulation tourne sans Three.js en extrayant les 
 
 ## Coûts et gains de départ (dans `CONFIG`)
 
-Tranchée eau seule 750 €/m · câble seul 550 €/m · commune eau + câble 900 €/m · regard + canon 8 000 € · gain 20 € par m³ de neige tombée sur la piste.
+Tranchée eau seule 750 €/m · câble seul 550 €/m · commune eau + câble 900 €/m · regard 5 000 € + enneigeur (catalogue) · reprise d'un enneigeur remplacé : 50 % · gain 20 € par m³ de neige tombée sur la piste.
+
+## Catalogue (validé par l'utilisateur, noms inventés inspirés des gammes du marché)
+
+| Enneigeur | Prix | Eau | Pression mini / pleine | Neige à pleine production | Disponible |
+|---|---|---|---|---|---|
+| Ventilateur V8 | 10 000 € | 6 l/s | 8 / 20 bar | 10 m³/s de jeu (400 m³/nuit) | dès le départ |
+| Ventilateur V9 | 18 000 € | 10 l/s | 8 / 22 bar | 16,25 (650/nuit) | après 5 000 m³ sur les pistes |
+| Ventilateur V10 | 28 000 € | 15 l/s | 8 / 24 bar | 23,75 (950/nuit) | après 15 000 m³ |
+| Perche 6 m | 5 000 € | 3 l/s | 18 / 28 bar | 4,5 (180/nuit) | niveau 3 (air comprimé) |
+| Perche 10 m | 7 000 € | 3,5 l/s | 18 / 28 bar | 5,5 (220/nuit) | niveau 3 |
+| Perche 10 m nouvelle génération | 10 000 € | 3,5 l/s | 14 / 22 bar, moins d'air | 5,5 | niveau 3, après 10 000 m³ |
+
+Supports des ventilateurs : trépied au sol (posé à côté du regard, relié par un flexible), tour (+4 000 €), tour haute +3 m (+7 000 €). Plus haut = plus de portée, mais plus de dérive au vent.
+
+## Production, vent, nuits (étape 4)
+
+- Production : 35 % à la pression minimale, 100 % à la pression pleine ; surpression > 55 bar = canon en sécurité.
+- Pression pendant la nuit : formule du cahier des charges avec le débit total des canons ouverts (l/s × 3,6 = m³/h). Tant qu'un canon manque de pression, on ferme le plus défavorisé et on recalcule (`regimeNuit`).
+- Vent tiré au sort par nuit (0 à 35 km/h, direction), annoncé la veille (flèche dans la barre, manche à air près de la salle). Point de chute = direction × portée (modèle, support, inclinaison) + dérive du vent (hauteur du jet / vitesse de chute × vent × 0,5). Seule la part de la zone enneigée qui tombe sur la piste compte et rapporte.
+- Une nuit = 40 s de jeu = 12 h (1 s de jeu = 1 080 s réelles) ; la retenue (11 260 m³ pleine) se vide au débit réel et regagne 3 000 m³ par jour ; vide = pompes à sec, tout s'arrête (alarme).
+- Les tas de neige restent d'une nuit à l'autre. À la fin de la nuit : bilan, argent ajouté au budget, nouveaux enneigeurs débloqués. On ne peut plus annuler ce qui a été construit avant une nuit.
+- Objectif du niveau 2 : 30 000 m³ sur la piste.
 
 ## Plan et avancement
 
@@ -80,14 +118,14 @@ Tranchée eau seule 750 €/m · câble seul 550 €/m · commune eau + câble 9
 - [x] **Étape 1 — Modèles 3D** : canon ventilateur (tube creux, hélice arrière derrière sa grille, moteur, couronne de 12 buses et nucléateurs, fourche orientable, voyant gris/vert/orange/rouge) sur son pied ; regard triangulaire enterré (trappe qui s'ouvre, conduite, vanne à volant, coffret électrique) ; salle de pompage (3 pompes multicellulaires, moteurs bleus à ailettes et ventilateur qui tourne, brides boulonnées, vannes à volant rouge, voyants, manomètres à aiguille, collecteurs d'aspiration et de refoulement, vanne principale, armoires, pupitre avec écran, gyrophares, toit amovible) ; armoire « Départ élec » avec étiquette. Vitrine `?modeles`. Sur le terrain : salle de pompage, retenue, départs électriques, télésiège.
 - [x] Retouches : murs et toit de la salle de pompage transparents quand ils cachent l'intérieur ; regards rectangulaires ; départs électriques près des bâtiments.
 - [x] **Étape 3 — Construction** (faite avant l'étape 2, à la demande) : outils + Regard, Eau, Électricité ; devis (longueur, prix au mètre, tranchée commune, pression prévue, ce qui manque, budget après) ; Valider / Annuler ; icônes goutte/éclair ; vue sous-sol ; Annuler (remboursé) ; Tout effacer. 39 vérifications en mode test.
+- [x] **Étape 4 — Production, vent et catalogue** (+ découpage en fichiers) : bouton « Lancer la nuit », jets de neige et brouillard, tas, bilan, accélérer ×3 ; vent et manche à air ; fiche d'un canon (état, pression, % sur la piste, direction, inclinaison, remplacement avec reprise, anneau du point de chute) ; choix de l'enneigeur à la pose ; ventilateurs V8/V9/V10 sur trépied/tour/tour haute ; perches 6 m / 10 m / 10 m NG (vitrine ; jouables au niveau 3) ; retenue qui se vide. 55 vérifications.
+- [ ] **Poste de travail** (prochaine étape, validée) : toucher l'écran du pupitre de la salle des machines, ou un bouton « Poste de travail », ouvre un écran de contrôle (pompes, vanne principale, pression, liste des canons avec état, pression et marche/arrêt).
 - [ ] **Étape 2 — Niveau 1** : salle de pompage jouable (3 pompes, vanne principale, pression, retenue, coup de bélier).
-- [ ] **Étape 4 — Production et argent** : nuits, particules, tas de neige, gains, objectif du niveau 2.
 - [ ] **Étape 5 — Menus et niveaux** : menu, choix du niveau, sauvegarde `localStorage`.
 - [ ] **Étape 6 — Perches, air comprimé, compresseur** (niveau 3).
 - [ ] **Étape 7 — Pannes et réparations** (niveau 4), dont les fuites.
 
-### Idées de l'utilisateur à planifier (à valider avec lui)
+### Idées à garder en tête
 
-- **Catalogue d'enneigeurs** débloqués au fil des objectifs : plus le canon est gros, plus il est cher et plus il a de débit ; modèles de **perches** inspirés de ce que font les constructeurs (noms inventés, pas de marques).
-- **Interface PC de supervision** pour piloter la salle des machines et le réseau de canons.
-- **Vent** (direction, force) : rend utiles l'orientation et l'inclinaison des canons.
+- Météo plus complète (température humide, redoux) qui module la production.
+- Tranchées avec points intermédiaires (détours) si l'utilisateur le demande.
