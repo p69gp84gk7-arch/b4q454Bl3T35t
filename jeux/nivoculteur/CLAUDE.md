@@ -31,7 +31,9 @@ Boucle : **construire** le jour (regards, canons, conduites d'eau, câbles) → 
 1. `CONFIG` : tous les chiffres réglables, commentés en français (valeurs provisoires, à ajuster par l'utilisateur).
 2. `LEVELS` : description des niveaux (terrain, pistes, pompage, retenue, départs électriques, budget, objectif).
 3. `SIMULATION` : logique pure, **jamais de Three.js** (pression, coûts, terrain, pistes, et plus tard réseau, neige, pannes). Contient `testsSimulation()`.
-4. `MODELES 3D` : terrain, sapins, rochers, jalons, montagnes (puis canon, regard, salle de pompage, armoire, compresseur, perche).
+4. `MODELES 3D` : terrain (petites facettes sur le domaine, grandes facettes pour les montagnes), sapins, rochers, jalons, retenue, canon, regard, armoire électrique, salle de pompage, télésiège (puis compresseur, perche).
+   Les pièces fixes d'un objet sont posées dans un `Atelier` puis fusionnées en une seule forme ; les pièces qui bougent (hélice, trappe, aiguilles, ventilateurs, voyants, gyrophares) restent à part.
+   Chaque modèle a ses fonctions : `orienterCanon`, `etatCanon`, `animerCanon` ; `ouvrirRegard`, `animerRegard` ; `etatSallePompage`, `animerSallePompage` ; `remplir(f)` pour la retenue.
 5. `EFFETS` : ciel, étoiles, lune, lumières (puis particules de neige, brouillard, tas).
 6. `INTERFACE` : messages, barre du bas, panneaux.
 7. `JEU` : scène, boucle, caméra, commandes.
@@ -39,7 +41,7 @@ Boucle : **construire** le jour (regards, canons, conduites d'eau, câbles) → 
 ### Modes spéciaux
 
 - `index.html?test` : lance `testsSimulation()` et affiche OK / ERREUR à l'écran (et dans la console).
-- `index.html?modeles` : vitrine des modèles 3D (prévu à l'étape 1).
+- `index.html?modeles` : vitrine des modèles 3D (bouton « Modèles 3D » en haut du terrain). Chaque modèle tourne seul ; les boutons jaunes testent ses mouvements (état du canon, direction, inclinaison, trappe du regard, toit et pompes de la salle, alarme).
 
 On peut aussi vérifier que la simulation tourne sans Three.js en extrayant les sections 1 à 3 et en les lançant avec Node.
 
@@ -55,6 +57,11 @@ On peut aussi vérifier que la simulation tourne sans Three.js en extrayant les 
   Les coefficients du cahier des charges (0,6 et 1,2) sont compris **par 100 m de conduite** et **par 10 m de montée** (sinon 100 m de conduite feraient perdre 60 bar). Un regard plus bas que le pompage gagne de la pression.
 - Zones de pression : < 22 bar arrêt, 22–30 faible, 30–50 correcte, **50–55 « haute »** (on produit normalement, mais à surveiller), > 55 surpression.
 - Sur la piste, la neige est « damée » : le terrain y a moins de petites bosses (`altitude(t, x, z, pistes)`).
+- Hors du domaine (zone non jouable), le terrain continue et monte en montagnes jusqu'à 1,6 km (décor), plus bas vers la vallée. La caméra monte d'elle-même si une montagne la gêne. Toucher hors du domaine affiche « en dehors du domaine skiable ».
+- Replats (`terrain.replats`) : terrain aplani pour la salle de pompage, les gares du télésiège et la retenue, raccordé par un talus enneigé.
+- Retenue des Clarines : à côté de la salle de pompage (x −112, z 146), lac de 32 m de rayon et 7 m de profondeur, digue, bâche sombre, clôture ; `eauRetenue()` donne la hauteur et la taille du lac selon le remplissage (le lac rétrécit en se vidant).
+- Télésiège des Clarines : fixe la nuit (décor), 446 m, 8 pylônes, sièges 4 places enneigés, à droite de la piste.
+- Salle de pompage : 14 m × 9 m ; la retenue est derrière (aspiration le long du mur arrière), le départ vers les pistes sort à droite après la vanne principale. Manomètres gradués de 0 à 80 bar avec les zones de couleur.
 
 ## Coûts et gains de départ (dans `CONFIG`)
 
@@ -63,7 +70,8 @@ Tranchée eau seule 750 €/m · câble seul 550 €/m · commune eau + câble 9
 ## Plan et avancement
 
 - [x] **Étape 0 — Base du projet** : page avec Three.js, sections en place, nuit (ciel, étoiles, lune), terrain low-poly avec piste damée, jalons, sapins, rochers, montagnes au loin, caméra orbite (tourner, zoomer, déplacer), toucher = altitude + sur/hors piste, barre du bas, messages colorés, mode `?test` (18 vérifications).
-- [ ] **Étape 1 — Modèles 3D** : canon ventilateur (cylindre creux, hélice arrière sous grille, couronne de buses, fourche orientable, voyant), regard triangulaire avec vanne, salle de pompage (pompes, manomètres, collecteurs, pupitre, gyrophare), armoire électrique « Départ élec ». Vitrine `?modeles`.
+- [x] Retouches de l'étape 0 : zone non jouable habillée (montagnes posées sur le terrain, plus de vide), télésiège fixe, emplacement de la retenue.
+- [x] **Étape 1 — Modèles 3D** : canon ventilateur (tube creux, hélice arrière derrière sa grille, moteur, couronne de 12 buses et nucléateurs, fourche orientable, voyant gris/vert/orange/rouge) sur son pied ; regard triangulaire enterré (trappe qui s'ouvre, conduite, vanne à volant, coffret électrique) ; salle de pompage (3 pompes multicellulaires, moteurs bleus à ailettes et ventilateur qui tourne, brides boulonnées, vannes à volant rouge, voyants, manomètres à aiguille, collecteurs d'aspiration et de refoulement, vanne principale, armoires, pupitre avec écran, gyrophares, toit amovible) ; armoire « Départ élec » avec étiquette. Vitrine `?modeles`. Sur le terrain : salle de pompage, retenue, départs électriques, télésiège.
 - [ ] **Étape 2 — Niveau 1** : salle de pompage jouable (3 pompes, vanne principale, pression, retenue, coup de bélier).
 - [ ] **Étape 3 — Construction** : regards, tracé de l'eau et de l'électricité (choix du départ), coûts, tranchée commune, vue sous-sol, annuler.
 - [ ] **Étape 4 — Production et argent** : nuits, particules, tas de neige, gains, objectif du niveau 2.
