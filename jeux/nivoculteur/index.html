@@ -79,6 +79,11 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .outil.actif[data-outil="regard"]{ background:#E58A1F; border-color:#E58A1F; }
 .outil.actif[data-outil="eau"]{ background:#2F6FDE; border-color:#2F6FDE; }
 .outil.actif[data-outil="cable"]{ background:#E9B949; border-color:#E9B949; color:#1C1F25; }
+.outil.actif[data-outil="piste"]{ background:#2E9E5B; border-color:#2E9E5B; }
+.outil.actif[data-outil="remontee"]{ background:#7A5638; border-color:#7A5638; }
+#choixTrace .bouton.petit{ padding:5px 10px; font-size:.82rem; }
+#choixTrace .bouton.vert{ background:var(--ok); border-color:var(--ok); }
+#choixTrace .bouton:disabled{ opacity:.45; }
 .outil.actif[data-outil="air"]{ background:#E8EDF5; border-color:#E8EDF5; color:#1C1F25; }
 #sousSol.actif{ background:#5C6B86; border-color:#9FB0CF; }
 .bouton.nuit{ background:#2E9E5B; border-color:#2E9E5B; }
@@ -141,6 +146,8 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .poste .seg{ display:inline-flex; border:1px solid #2B3B55; border-radius:10px; overflow:hidden; }
 .poste .seg button{ padding:6px 12px; background:none; font-size:.85rem; font-weight:600; }
 .poste .seg .actif{ background:#2F6FDE; }
+.poste .seg.large{ display:flex; width:100%; }
+.poste .seg.large button{ flex:1 1 0; min-width:0; padding:6px 2px; white-space:nowrap; }
 .poste .aide, .poste .vide{ margin:6px 0 0; font-size:.8rem; color:var(--doux); }
 .poste .alarme{ margin:0 0 6px; padding:6px 9px; border-radius:8px; font-size:.84rem; line-height:1.3; border-left:4px solid var(--attention); background:rgba(229,138,31,.12); }
 .poste .alarme.rouge{ border-left-color:var(--alarme); background:rgba(215,38,61,.18); }
@@ -158,6 +165,38 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .poste .pastille.rouge{ background:rgba(215,38,61,.2); border-color:#D7263D; }
 .poste .bouton.vert{ background:var(--ok); border-color:var(--ok); }
 .poste .resume{ margin:0 0 8px; }
+/* Pannes en cours : coin en haut à droite */
+.coin-pannes{ position:fixed; z-index:12; top:calc(env(safe-area-inset-top, 0px) + 62px); right:calc(env(safe-area-inset-right, 0px) + 12px);
+  width:min(300px, calc(100vw - 24px)); max-height:calc(100dvh - 240px); overflow:auto; border-radius:12px;
+  background:rgba(11,20,38,.94); border:1px solid #E58A1F; box-shadow:0 8px 22px rgba(0,0,0,.4); }
+@media (max-width:480px){ #ouvrirOptions .txt{ display:none; } }
+.coin-pannes.replie{ width:auto; max-width:calc(100vw - 24px); }
+/* Petit écran : les messages passent sous le coin des pannes */
+@media (max-width:699px){ body.avec-pannes #messages{ top:calc(env(safe-area-inset-top, 0px) + 108px); } }
+.coin-pannes .entete{ display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; background:rgba(229,138,31,.18); border:0; color:var(--texte);
+  font:inherit; font-size:.9rem; text-align:left; cursor:pointer; }
+.coin-pannes .entete .icone{ color:#FFD23A; font-size:1.1rem; }
+.coin-pannes .entete small{ color:var(--doux); font-size:.75rem; }
+.coin-pannes .entete .fleche{ margin-left:auto; color:var(--doux); }
+.coin-pannes .liste{ padding:4px 10px 8px; }
+.coin-pannes .item{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:7px 0; border-bottom:1px solid #1A2A40; font-size:.85rem; }
+.coin-pannes .item:last-child{ border-bottom:0; }
+.coin-pannes .nom{ flex:1 1 100%; min-width:0; line-height:1.2; border-left:4px solid #FFD23A; padding-left:7px; }
+.coin-pannes .item.repare .nom{ border-left-color:#2F6FDE; }
+.coin-pannes .nom small{ display:block; color:var(--doux); font-size:.75rem; }
+.coin-pannes .nom .equipe{ color:#7FB2FF; }
+.coin-pannes .actions{ display:flex; gap:6px; margin-left:auto; }
+.coin-pannes .bouton.petit{ padding:5px 9px; font-size:.8rem; }
+/* Options du bac à sable */
+.options{ max-width:920px; z-index:25; }
+.options .grille{ margin-top:10px; }
+.options .seg.large{ margin:4px 0; }
+.options .types{ display:flex; flex-wrap:wrap; gap:6px; }
+.options .bascule{ opacity:.55; }
+.options .bascule.actif{ opacity:1; background:#2F6FDE; border-color:#2F6FDE; }
+.options .ligne b{ min-width:58px; text-align:right; white-space:nowrap; }
+.options .reglage-bac{ flex-wrap:nowrap; }
+.poste .reglage-bac input{ flex:1 1 120px; min-width:0; height:28px; accent-color:#E9B949; }
 .poste .panne{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; padding:7px 0; border-bottom:1px solid #1A2A40; font-size:.88rem; }
 .poste .panne .nom{ flex:1 1 140px; min-width:0; line-height:1.15; }
 .poste .panne .nom small{ display:block; color:var(--doux); font-size:.75rem; }
@@ -174,6 +213,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .graduations{ display:flex; justify-content:space-between; font-size:.7rem; color:var(--doux); margin-bottom:4px; }
 /* Menu des niveaux */
 .menu{ max-width:720px; z-index:25; }
+.menu .groupe{ margin:16px 0 6px; font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; color:#7FB2FF; }
 .menu .intro{ margin:6px 0 12px; color:var(--doux); font-size:.92rem; line-height:1.4; }
 .menu .niveaux{ display:grid; gap:10px; }
 .menu .niveau{ display:flex; gap:12px; padding:12px; background:#0D1B2E; border:1px solid #22324A; border-radius:14px; }
@@ -220,6 +260,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
   <a class="home" href="../../index.html">DesDés</a>
   <div class="titre"><b id="titre">Nivoculteur</b><span id="sousTitre">Découverte du terrain</span></div>
   <button class="bouton" id="ouvrirMenu" type="button">Menu</button>
+  <button class="bouton" id="ouvrirOptions" type="button" aria-label="Options" hidden><span aria-hidden="true">⚙</span><span class="txt"> Options</span></button>
   <a class="bouton" id="lienModeles" href="index.html?modeles" hidden>Modèles 3D</a>
   <a class="bouton" id="lienTerrain" href="index.html" hidden>Terrain</a>
   <button class="bouton" id="recentrer" type="button">Recentrer</button>
@@ -242,11 +283,14 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
     <label>Support <select id="choixSupport"></select></label>
     <span id="choixPrix"></span>
   </div>
+  <div class="rang choix" id="choixTrace" hidden></div>
   <div class="rang outils">
     <button class="bouton outil construction" type="button" data-outil="regard">+ Regard</button>
     <button class="bouton outil construction" type="button" data-outil="eau">Eau</button>
     <button class="bouton outil construction" type="button" data-outil="cable">Électricité</button>
     <button class="bouton outil construction" type="button" data-outil="air" hidden>Air</button>
+    <button class="bouton outil construction" type="button" data-outil="piste" hidden>Piste</button>
+    <button class="bouton outil construction" type="button" data-outil="remontee" hidden>Remontée</button>
     <button class="bouton construction" type="button" id="sousSol">Vue sous-sol</button>
     <button class="bouton construction" type="button" id="annuler" disabled>Annuler</button>
     <button class="bouton construction" type="button" id="effacer">Tout effacer</button>
@@ -263,6 +307,8 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 
 <section class="poste" id="poste" hidden aria-label="Poste de travail"></section>
 <section class="poste menu" id="menu" hidden aria-label="Menu des niveaux"></section>
+<section class="poste options" id="options" hidden aria-label="Options du bac à sable"></section>
+<aside class="coin-pannes" id="pannesCoin" hidden aria-label="Pannes en cours"></aside>
 <section class="panneau" id="panneauTests" hidden></section>
 <section class="panneau" id="panneauErreur" hidden></section>
 

@@ -24,7 +24,7 @@ function message(texte, type = 'info', duree = 4500){
 function majHud({ budget = null, nuit = null, neige = null, objectif = null, vent = null, retenue = null } = {}){
   // Sur un petit écran, le budget est arrondi en milliers d'euros (k€) pour tenir dans sa case
   const etroit = window.innerWidth < 480;
-  $('hudBudget').textContent = budget === null ? '—' : etroit && Math.abs(budget) >= 10000 ? `${nombreFr(Math.round(budget / 1000))} k€` : euros(budget);
+  $('hudBudget').textContent = budget === null ? '—' : typeof budget === 'string' ? budget : etroit && Math.abs(budget) >= 10000 ? `${nombreFr(Math.round(budget / 1000))} k€` : euros(budget);
   $('hudNuit').textContent = nuit === null ? '—' : nuit;
   $('hudNeige').innerHTML = neige === null ? '—' : `${nombreFr(neige)}<span class="obj">${objectif ? ' / ' + nombreFr(objectif) : ''}</span> m³`;
   if(vent) $('hudVentForce').textContent = vent.force ? `${vent.force} km/h` : 'calme';
@@ -70,7 +70,8 @@ function remplirChoixEnneigeur(niveau, res, choix, changer){
     return `<option value="${k}"${d.ok ? '' : ' disabled'}${k === choix.modele ? ' selected' : ''}>${echapper(m.nom)}${d.ok ? ` · ${euros(m.prix)}` : ` · disponible ${echapper(d.raison)}`}</option>`;
   }).join('');
   const ventilo = CATALOGUE[choix.modele].type === 'ventilateur';
-  sup.innerHTML = Object.entries(SUPPORTS).map(([k, s]) => `<option value="${k}"${k === choix.support ? ' selected' : ''}>${echapper(s.nom)}${s.prix ? ` · +${euros(s.prix)}` : ''}</option>`).join('');
+  sup.innerHTML = Object.entries(SUPPORTS).map(([k, s]) => { const ok = supportDisponible(niveau, k).ok;
+    return `<option value="${k}"${k === choix.support ? ' selected' : ''}${ok ? '' : ' disabled'}>${echapper(s.nom)}${ok ? (s.prix ? ` · +${euros(s.prix)}` : '') : ' · plus tard dans la carrière'}</option>`; }).join('');
   sup.parentElement.hidden = !ventilo;
   $('choixPrix').textContent = `Regard + enneigeur : ${euros(CONFIG.couts.regard + prixEnneigeur(choix.modele, choix.support))}`;
   sel.onchange = () => changer({ modele: sel.value, support: choix.support || 'trepied' });
@@ -122,24 +123,12 @@ function jaugePression(bar, modele){
 function afficherPoste(d, agir){
   const el = $('poste'), haut = el.scrollTop, p = d.pompage;
   const pastille = (texte, cls = '') => `<span class="pastille ${cls}">${echapper(texte)}</span>`;
-  const pompes = p.marche.map((m, i) => p.defaut[i] ? `
+  const pompes = p.marche.map((m, i) => i >= p.installees ? `
+    <div class="pompe"><span class="led" style="background:${LED.manque}"></span><b>Pompe ${i + 1}</b>${pastille('Pas encore installée')}</div>` : p.defaut[i] ? `
     <div class="pompe"><span class="led" style="background:${LED.defaut}"></span><b>Pompe ${i + 1}</b>${pastille('DÉFAUT', 'orange')}</div>` : `
     <div class="pompe"><span class="led" style="background:${m ? LED.production : LED.arret}"></span>
       <b>Pompe ${i + 1}</b>${pastille(m ? 'MARCHE' : 'ARRÊT', m ? 'vert' : '')}
       ${p.mode === 'manuel' ? `<button class="bouton petit" type="button" data-action="pompe" data-valeur="${i}">${m ? 'Arrêter' : 'Démarrer'}</button>` : ''}</div>`).join('');
-  // Pannes (niveau 4) : ce qui est cassé, et l'équipe à envoyer
-  const pannes = d.pannes === null ? '' : `
-      <section class="bloc"><h3>Pannes${d.pannes.length ? ` (${d.pannes.length})` : ''}</h3>
-        ${d.pannes.length ? d.pannes.map(q => `<div class="panne">
-          <span class="led" style="background:${q.reparation ? '#2F6FDE' : LED.defaut}"></span>
-          <span class="nom"><b>${echapper(q.nom)}</b><small>${echapper(q.ou)}</small></span>
-          ${q.reparation ? pastille(q.reste !== null ? `Équipe sur place · ${q.reste} s` : 'Équipe sur place') : ''}
-          <span class="actions">
-            ${q.reparation ? '' : `<button class="bouton petit" type="button" data-action="reparer" data-valeur="${q.id}">${q.rearmer ? 'Réarmer' : `Réparer · ${euros(q.cout)}`}</button>`}
-            <button class="bouton petit" type="button" data-action="voirPanne" data-valeur="${q.id}">Voir</button>
-          </span></div>`).join('') : '<p class="vide">Aucune panne. Elles peuvent arriver à tout moment la nuit.</p>'}
-        <p class="aide">La nuit, l'équipe met un peu de temps (une fuite est isolée pendant les travaux : plus d'eau en aval). Le jour, la réparation est immédiate.</p>
-      </section>`;
   const canons = d.canons.length ? d.canons.map(c => `
     <div class="canon">
       <div class="entete"><span class="led" style="background:${LED[c.led]}"></span>
@@ -191,11 +180,14 @@ function afficherPoste(d, agir){
         <div class="ligne">${d.nuit ? pastille(`${d.nuit.restant} s restantes`) : pastille('Jour : construction')}${pastille(`Vent ${d.vent.force} km/h`)}</div>
         ${d.nuit ? `<div class="ligne">${pastille(`${nombreFr(d.nuit.neige)} m³ sur la piste`)}${pastille(`+${euros(d.nuit.argent)}`, 'vert')}</div>` : ''}
         ${d.electricite ? `<div class="ligne">${pastille(`Électricité ${nombreFr(d.electricite.kwh)} kWh`)}${pastille(`−${euros(d.electricite.euros)}`, 'orange')}</div>` : ''}
-        <div class="ligne">${pastille(`Retenue ${d.retenue === null ? '—' : Math.round(d.retenue * 100) + ' %'}`)}${pastille(`Objectif ${nombreFr(d.total)} / ${nombreFr(d.objectif)} m³`)}</div>
+        <div class="ligne">${pastille(`Retenue ${d.retenue === null ? '—' : Math.round(d.retenue * 100) + ' %'}`)}${pastille(d.objectif ? `Objectif ${nombreFr(d.total)} / ${nombreFr(d.objectif)} m³` : `${nombreFr(d.total)} m³ sur les pistes`)}</div>
+        ${d.recette ? `<div class="ligne">${pastille(`Recettes ${euros(d.recette.fait)} / ${euros(d.recette.objectif)}`, d.recette.fait >= d.recette.objectif ? 'vert' : '')}</div>` : ''}
+        ${d.remplissage ? `<div class="ligne">Remplissage de la journée (m³)</div>
+        <div class="seg large">${d.remplissage.choix.map(m => `<button type="button" data-action="remplissage" data-valeur="${m}" class="${m === d.remplissage.m3 ? 'actif' : ''}">${m ? nombreFr(m) : 'Arrêt'}</button>`).join('')}</div>
+        <p class="aide">m³ d'eau remontés dans la retenue chaque jour, à ${nombreFr(d.remplissage.prix, 2)} €/m³ (${euros(Math.round(d.remplissage.m3 * d.remplissage.prix))} par jour au plus).</p>` : ''}
         <div class="ligne">${d.nuit ? `<button class="bouton petit" type="button" data-action="accelerer">${d.accelere ? 'Vitesse normale' : `Accélérer ×${CONFIG.nuit.accelere}`}</button>`
           : '<button class="bouton vert" type="button" data-action="lancerNuit">Lancer la nuit</button>'}</div>
       </section>
-      ${pannes}
       <section class="bloc"><h3>Alarmes${d.coupsMax !== null ? ` · coups de bélier ${d.coups} / ${d.coupsMax}` : ''}</h3>
         ${d.alarmes.length ? d.alarmes.map(a => `<p class="alarme ${a.niveau}">${echapper(a.texte)}</p>`).join('') : '<p class="vide">Aucune alarme.</p>'}
       </section>
@@ -208,7 +200,11 @@ function afficherPoste(d, agir){
     const b = e.target.closest('[data-action]');
     if(b) agir(b.dataset.action, b.dataset.valeur);
   };
-  el.oninput = e => { if(e.target.dataset.curseur) agir('vanne-curseur', e.target.value / 100); };
+  el.oninput = e => {
+    const c = e.target.dataset.curseur;
+    if(c === 'vanne') agir('vanne-curseur', e.target.value / 100);
+    else if(c) agir(c, +e.target.value);
+  };
 }
 
 // ---------------------------------------------------------------------------------------
@@ -222,19 +218,20 @@ function effacerSauvegarde(cle){ try{ localStorage.removeItem(cle); }catch(e){} 
 // Menu : choix du niveau
 // cartes : [{ id, numero, nom, resume, etat, ouvert, partie, enCours }] ; agir(action, id)
 // ---------------------------------------------------------------------------------------
-function afficherMenu(cartes, aVenir, agir, peutRevenir){
+// groupes : [{ titre, intro, cartes: [{ id, numero, nom, resume, etat, ouvert, partie, libelleRecommencer }] }]
+function afficherMenu(groupes, agir, peutRevenir){
   const el = $('menu');
-  el.innerHTML = `<div class="tete"><h2>Nivoculteur</h2>${peutRevenir ? '<button class="fermer" type="button" data-action="fermer" aria-label="Revenir au jeu">×</button>' : ''}</div>
-    <p class="intro">Construisez et faites tourner le réseau de neige de culture de la station. Choisissez un niveau :</p>
-    <div class="niveaux">${cartes.map(c => `
+  const carte = c => `
       <article class="niveau${c.ouvert ? '' : ' ferme'}">
         <div class="num">${c.numero}</div>
         <div class="corps"><h3>${echapper(c.nom)}</h3><p>${echapper(c.resume)}</p><p class="etat">${echapper(c.etat)}</p>
           <div class="actions">${c.ouvert ? `<button class="bouton vert" type="button" data-action="jouer" data-valeur="${c.id}">${c.partie ? 'Reprendre' : 'Jouer'}</button>
-            ${c.partie ? `<button class="bouton" type="button" data-action="recommencer" data-valeur="${c.id}">Recommencer</button>` : ''}` : ''}</div></div>
-      </article>`).join('')}
-      ${aVenir.map(a => `<article class="niveau ferme"><div class="num">${a.numero}</div><div class="corps"><h3>${echapper(a.nom)}</h3><p class="etat">Bientôt</p></div></article>`).join('')}
-    </div>
+            ${c.partie ? `<button class="bouton" type="button" data-action="recommencer" data-valeur="${c.id}">${echapper(c.libelleRecommencer || 'Recommencer')}</button>` : ''}` : ''}</div></div>
+      </article>`;
+  el.innerHTML = `<div class="tete"><h2>Nivoculteur</h2>${peutRevenir ? '<button class="fermer" type="button" data-action="fermer" aria-label="Revenir au jeu">×</button>' : ''}</div>
+    <p class="intro">Construisez et faites tourner le réseau de neige de culture de la station.</p>
+    ${groupes.map(g => `<h3 class="groupe">${echapper(g.titre)}</h3>${g.intro ? `<p class="intro">${echapper(g.intro)}</p>` : ''}
+    <div class="niveaux">${g.cartes.map(carte).join('')}</div>`).join('')}
     <div class="actions bas-menu"><a class="bouton" href="index.html?modeles">Modèles 3D</a><a class="bouton" href="index.html?test">Vérifications</a></div>`;
   el.hidden = false;
   el.onclick = e => {
@@ -243,6 +240,80 @@ function afficherMenu(cartes, aVenir, agir, peutRevenir){
   };
 }
 function fermerMenu(){ $('menu').hidden = true; }
+
+// ---------------------------------------------------------------------------------------
+// Pannes en cours : petit panneau dans le coin en haut à droite (repliable)
+// liste : [{ id, nom, ou, reparation, reste, cout, rearmer }] ; agir(action, id)
+// ---------------------------------------------------------------------------------------
+function afficherPannesCoin(liste, replie, agir){
+  const el = $('pannesCoin');
+  document.body.classList.toggle('avec-pannes', liste.length > 0);
+  if(!liste.length){ el.hidden = true; el.innerHTML = ''; return; }
+  el.classList.toggle('replie', replie);
+  const enCours = liste.filter(q => !q.reparation).length;
+  mettreAJour(el, `<button class="entete" type="button" data-action="replier" aria-expanded="${!replie}">
+      <span class="icone">⚠</span><b>${liste.length} panne${liste.length > 1 ? 's' : ''}</b>${enCours < liste.length ? `<small>${liste.length - enCours} en réparation</small>` : ''}<span class="fleche">${replie ? '▾' : '▴'}</span></button>
+    ${replie ? '' : `<div class="liste">${liste.map(q => `<div class="item${q.reparation ? ' repare' : ''}">
+      <span class="nom"><b>${echapper(q.nom)}</b><small>${echapper(q.ou)}</small>${q.reparation ? `<small class="equipe">Équipe sur place${q.reste !== null ? ` · ${q.reste} s` : ''}</small>` : ''}</span>
+      <span class="actions">
+        ${q.reparation ? '' : `<button class="bouton petit" type="button" data-action="reparer" data-valeur="${q.id}">${q.rearmer ? 'Réarmer' : `Réparer · ${euros(q.cout)}`}</button>`}
+        <button class="bouton petit" type="button" data-action="voirPanne" data-valeur="${q.id}">Voir</button>
+      </span></div>`).join('')}</div>`}`);
+  el.hidden = false;
+  el.onclick = e => { const b = e.target.closest('[data-action]'); if(b) agir(b.dataset.action, b.dataset.valeur); };
+}
+
+// ---------------------------------------------------------------------------------------
+// Options du bac à sable : argent, vent, pannes, eau, électricité, retenue
+// o : options (res.options) ; vent : vent prévu ; agir(action, valeur)
+// ---------------------------------------------------------------------------------------
+function afficherOptions(o, vent, agir, amenagements = { pistes: [], remontees: [] }){
+  const el = $('options'), haut = el.scrollTop;
+  const pastille = (texte, cls = '') => `<span class="pastille ${cls}">${echapper(texte)}</span>`;
+  const seg = (action, choix, actuel) => `<span class="seg large">${choix.map(([v, t]) =>
+    `<button type="button" data-action="${action}" data-valeur="${v}" class="${String(v) === String(actuel) ? 'actif' : ''}">${t}</button>`).join('')}</span>`;
+  const ouiNon = (action, val) => seg(action, [['1', 'Oui'], ['0', 'Non']], val ? '1' : '0');
+  const types = Object.entries(CONFIG.pannes.types).map(([k, t]) =>
+    `<button type="button" class="bouton petit bascule${o.typesPannes[k] !== false ? ' actif' : ''}" data-action="optTypePanne" data-valeur="${k}">${echapper(t.nom)}</button>`).join('');
+  mettreAJour(el, `
+    <div class="tete"><h2>Options du bac à sable</h2><button class="fermer" type="button" data-action="fermer" aria-label="Fermer">×</button></div>
+    <p class="aide">Tout est débloqué. Réglez la partie comme vous voulez ; les changements s'appliquent tout de suite.</p>
+    <div class="grille">
+      <section class="bloc"><h3>Argent</h3>
+        ${seg('optBudget', [['', 'Illimité'], ['100000', '100 k€'], ['300000', '300 k€'], ['1000000', '1 M€']], o.budget ?? '')}
+        <p class="aide">Choisir un montant remet le budget à ce montant ; ensuite, tout se paie et la neige rapporte.</p>
+      </section>
+      <section class="bloc"><h3>Vent</h3>
+        ${seg('optVentMode', [['hasard', 'Au hasard'], ['impose', 'Imposé']], o.vent ? 'impose' : 'hasard')}
+        <div class="ligne reglage-bac">Force <input type="range" min="0" max="${CONFIG.vent.forceMax}" step="1" value="${vent.force}" data-curseur="optVentForce" aria-label="Force du vent"><b>${vent.force} km/h</b></div>
+        <div class="ligne reglage-bac">Direction <input type="range" min="-180" max="180" step="5" value="${vent.direction}" data-curseur="optVentDirection" aria-label="Direction du vent"><b>${vent.direction}°</b></div>
+      </section>
+      <section class="bloc"><h3>Pannes</h3>
+        ${ouiNon('optPannes', o.pannes)}
+        <div class="ligne">Combien par nuit</div>
+        ${seg('optFrequence', [['rare', 'Rare'], ['normale', 'Normal'], ['forte', 'Beaucoup']], o.frequence)}
+        <p class="aide">Rare : 0 ou 1 par nuit · normal : 1 à 3 · beaucoup : 3 à 5.</p>
+        <div class="ligne">Lesquelles</div>
+        <div class="types">${types}</div>
+      </section>
+      <section class="bloc"><h3>Pistes et remontées</h3>
+        <p class="aide">Tracez-en avec les outils « Piste » et « Remontée » de la barre du bas.</p>
+        ${amenagements.pistes.map((p, i) => `<div class="ligne">${pastille(p.nom)}<small>${echapper(p.detail)}</small><button class="bouton petit" type="button" data-action="optSupprPiste" data-valeur="${i}">Supprimer</button></div>`).join('')}
+        ${amenagements.remontees.map((r, i) => `<div class="ligne">${pastille(r.nom)}<small>${echapper(r.detail)}</small><button class="bouton petit" type="button" data-action="optSupprRemontee" data-valeur="${i}">Supprimer</button></div>`).join('')}
+        ${amenagements.pistes.length || amenagements.remontees.length ? '' : '<p class="vide">Aucune pour l\'instant.</p>'}
+      </section>
+      <section class="bloc"><h3>Eau et électricité</h3>
+        <div class="ligne">Remplissage de la retenue payant</div>${ouiNon('optEau', o.eauPayante)}
+        <div class="ligne">Électricité payante</div>${ouiNon('optElec', o.electricitePayante)}
+        <div class="ligne"><button class="bouton petit" type="button" data-action="optRemplir">Remplir la retenue</button><button class="bouton petit" type="button" data-action="optVider">Vider la retenue</button></div>
+      </section>
+    </div>`);
+  el.hidden = false;
+  el.scrollTop = haut;
+  el.onclick = e => { const b = e.target.closest('[data-action]'); if(b) agir(b.dataset.action, b.dataset.valeur); };
+  el.oninput = e => { const c = e.target.dataset.curseur; if(c) agir(c, +e.target.value); };
+}
+function fermerOptions(){ $('options').hidden = true; }
 function fermerPoste(){ $('poste').hidden = true; }
 
 function afficherTests(resultats){

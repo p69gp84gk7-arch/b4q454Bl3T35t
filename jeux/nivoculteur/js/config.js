@@ -70,6 +70,7 @@ const CONFIG = {
   // cout : prix de la réparation (€) · duree : temps de l'équipe la nuit (s de jeu ; le jour, c'est immédiat)
   pannes: {
     parNuit: [1, 3],        // nombre de pannes par nuit (au hasard entre les deux)
+    frequences: { rare: [0, 1], normale: [1, 3], forte: [3, 5] },   // bac à sable : nombre de pannes par nuit au choix
     moment: [4, 45],        // s de jeu : quand elles arrivent pendant la nuit
     types: {
       fuite:       { nom: 'Fuite sur une conduite', cout: 6000, duree: 15, poids: 2,
@@ -112,7 +113,9 @@ const CONFIG = {
 
   // --- Retenue d'eau ---
   retenue: {
-    remplissageJour: 3000   // m³ d'eau qui reviennent dans la retenue chaque jour (captage, ruisseau)
+    remplissageJour: 3000,  // m³ d'eau remis dans la retenue chaque jour (captage, ruisseau) : réglage de départ
+    choix: [0, 1500, 3000, 4500],   // volumes qu'on peut commander au poste de travail (m³ par jour)
+    prixM3: 0.5             // € par m³ d'eau prélevée et remontée dans la retenue
   },
 
   // --- Progression ---
@@ -143,6 +146,15 @@ const CONFIG = {
     pixelRatioMax: 2,       // limite la finesse d'affichage sur les écrans très denses
     flocons: 1600,          // nombre maximal de flocons affichés en même temps
     distanceEtiquettes: 170 // m : plus loin, les noms des bâtiments deviennent de petits carrés de couleur
+  },
+
+  // --- Bac à sable : tracer des pistes et poser des remontées ---
+  bac: {
+    prixPiste: 250,         // € par mètre de piste (seulement quand l'argent n'est pas illimité)
+    prixRemontee: 2500,     // € par mètre de télésiège
+    largeurs: [20, 30, 40], // m : largeurs de piste au choix
+    pisteMin: 80,           // m : longueur minimale d'une piste
+    remontee: [120, 600]    // m : longueur d'un télésiège (au moins, au plus)
   },
 
   // --- Dameuse (passe sur la piste quand l'objectif est atteint) ---

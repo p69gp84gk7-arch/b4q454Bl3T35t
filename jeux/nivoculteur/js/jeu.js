@@ -186,11 +186,15 @@ function demarrer(){
     const p = lireSauvegarde(clePartie);
     return p && p.version === VERSION_PARTIE && p.reseau && Array.isArray(p.reseau.noeuds) ? p.reseau : null;
   }
-  const nouvellePartie = () => construireReseauFixe(niveau, creerReseau(niveau));
+  const nouvellePartie = () => niveau.carriere ? commencerEtape(niveau, creerReseau(niveau), niveau.etape)
+                                              : construireReseauFixe(niveau, creerReseau(niveau));
   let reseau = chargerPartie() || nouvellePartie(), outil = null, depart = null, proposition = null, sousSol = false;
+  let traceePiste = [], gareAval = null, gareAmont = null;            // bac à sable : piste ou télésiège en cours de tracé
+  if(niveau.bac) reseau.options = { ...optionsBac(), ...(reseau.options || {}) };
+  if(niveau.carriere) etendreReseau(niveau, reseau);                                  // départs ou compresseur débloqués    // anciennes parties : options manquantes
   const repris = reseau.nuit > 1 || reseau.noeuds.some(n => n.type === 'regard' && !niveau.reseauFixe);
-  function sauver(){
-    if(nuit || (reseau.nuit === 1 && !reseau.lot)) return;        // rien à garder tant que le joueur n'a rien fait
+  function sauver(force = false){
+    if(nuit || (!force && reseau.nuit === 1 && !reseau.lot)) return;   // rien à garder tant que le joueur n'a rien fait
     ecrireSauvegarde(clePartie, { version: VERSION_PARTIE, reseau, date: Date.now() });
     progression.dernier = niveau.id;
     ecrireSauvegarde('nivo-progression', progression);
@@ -199,6 +203,7 @@ function demarrer(){
   const planifierSauvegarde = () => { clearTimeout(minuteurSauvegarde); minuteurSauvegarde = setTimeout(sauver, 600); };
   if(niveau.construction === false) $('barreJeu').classList.add('sans-construction');
   document.querySelector('[data-outil="air"]').hidden = !niveau.compresseur;
+  for(const o of ['piste', 'remontee']) document.querySelector(`[data-outil="${o}"]`).hidden = !niveau.bac;   // tracés : bac à sable seulement
   let choix = { modele: niveau.compresseur ? 'p10' : 'v8', support: 'trepied' };   // enneigeur posé avec un nouveau regard
   let fiche = null, nuit = null;                              // fiche : regard affiché ; nuit : { regime, temps, vitesse }
   let reussi = !!(progression.niveaux[niveau.id] || {}).reussi, alarmeJusqua = 0;
@@ -213,7 +218,7 @@ function demarrer(){
   const COUL_OUTIL = { eau: COULEURS.reseauEau, cable: COULEURS.reseauElec, air: COULEURS.reseauAir };
   const NOMS_ZONES = { arret: 'pas assez de pression : pas de neige', faible: 'production réduite', correcte: 'bonne pression', haute: 'pression haute, à surveiller', surpression: 'surpression : le canon se met en sécurité' };
   const liberer = o => o.traverse(m => { if(m.geometry && m.geometry !== _geoTas) m.geometry.dispose(); });
-  const ventActuel = () => nuit ? nuit.regime.vent : ventDeLaNuit(niveau, reseau.nuit);
+  const ventActuel = () => nuit ? nuit.regime.vent : ventPrevu(niveau, reseau);
   // Voyant du canon et point de couleur au-dessus : vert en marche, rouge à l'arrêt, jaune en défaut
   const marquer = (o, etat) => { etatCanon(o.userData.canon, etat); o.userData.point.material.color.set(COULEURS.voyants[etat]); };
   const attendAir = c => !c.arrete && c.pressionAir !== null && facteurAir(c.pressionAir) === 0;   // perche sans assez d'air
@@ -270,7 +275,10 @@ function demarrer(){
     }
   }
   // Ce qui compte pour l'objectif : toute la neige produite (niveau 1) ou la neige tombée sur la piste
-  const neigeObjectif = () => niveau.objectif.type === 'production' ? reseau.neigeTotale : reseau.neigePiste;
+  const neigeObjectif = () => niveau.objectif.type === 'production' ? reseau.neigeTotale
+    : niveau.carriere ? avancementEtape(reseau).neige : reseau.neigePiste;
+  // Numéro de la nuit à afficher (carrière : nuit de l'étape sur le nombre de nuits)
+  const libelleNuit = () => niveau.carriere ? `${avancementEtape(reseau).nuits + 1}/${niveau.objectif.nuits}` : `${reseau.nuit}`;
   // ----- Dameuse : quand l'objectif est atteint, une dameuse par piste fait des allers-retours -----
   let dameuses = [], premiereMajDameuses = true;
   function trajetDameuse(piste){
@@ -285,7 +293,7 @@ function demarrer(){
     return { pts, cumul, longueur: cumul[cumul.length - 1] };
   }
   function majDameuses(){
-    const atteint = neigeObjectif() >= niveau.objectif.m3;
+    const atteint = !!niveau.objectif.m3 && neigeObjectif() >= niveau.objectif.m3;
     if(atteint && !dameuses.length){
       dameuses = niveau.pistes.map((piste, i) => {
         const g = creerDameuse(), tr = trajetDameuse(piste);
@@ -325,11 +333,12 @@ function demarrer(){
 
   function majInfos(){
     const R = niveau.retenue;
-    majHud({ budget: reseau.budget, nuit: nuit ? `${reseau.nuit} · ${Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps))} s` : `n° ${reseau.nuit}`,
+    majHud({ budget: niveau.bac && !reseau.options.budget ? 'Illimité' : reseau.budget, nuit: nuit ? `${libelleNuit()} · ${Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps))} s` : `n° ${libelleNuit()}`,
       neige: Math.round(neigeObjectif()), objectif: niveau.objectif.m3, vent: ventActuel(),
       retenue: reseau.retenue ? reseau.retenue.volume / volumeRetenue(R) : null });
     if(reseau.retenue) retenue.userData.remplir(hauteurRetenue(R, reseau.retenue.volume));
     majDameuses();
+    majCoinPannes();
   }
 
   function consigne(){
@@ -339,12 +348,18 @@ function demarrer(){
       regard: 'Touchez le terrain pour poser un regard et son enneigeur (choisi ci-dessous). Touchez un regard pour le régler.',
       eau: suite || 'Eau : touchez la salle de pompage, ou un regard déjà alimenté en eau.',
       cable: suite || 'Électricité : touchez un départ électrique (près des bâtiments), ou un regard déjà alimenté.',
-      air: suite || 'Air comprimé : touchez le compresseur (à côté de la salle de pompage), ou un regard déjà alimenté en air. Seules les perches ont besoin d\'air.'
+      air: suite || 'Air comprimé : touchez le compresseur (à côté de la salle de pompage), ou un regard déjà alimenté en air. Seules les perches ont besoin d\'air.',
+      piste: 'Nouvelle piste : touchez des points du haut vers le bas, puis « Terminer la piste ».',
+      remontee: gareAval ? 'Touchez maintenant l\'emplacement de la gare d\'arrivée, en haut.' : 'Nouveau télésiège : touchez l\'emplacement de la gare de départ, en bas de la pente.'
     }[outil] || null);
-    $('choixEnneigeur').hidden = !outil;
-    if(outil) majChoix();
+    const trace = outil === 'piste' || outil === 'remontee';
+    $('choixEnneigeur').hidden = !outil || trace;
+    $('choixTrace').hidden = !trace;
+    if(outil && !trace) majChoix();
+    if(trace) majPanneauTrace();
   }
   function majChoix(){
+    if(!supportDisponible(niveau, choix.support).ok) choix = { ...choix, support: 'trepied' };
     if(!disponible(niveau, reseau, choix.modele).ok) choix = { modele: 'v8', support: choix.support || 'trepied' };
     remplirChoixEnneigeur(niveau, reseau, choix, nouveau => { choix = nouveau; majChoix(); });
   }
@@ -364,7 +379,7 @@ function demarrer(){
   }
   function choisirOutil(o){
     outil = outil === o ? null : o;
-    depart = null;
+    depart = null; traceePiste = []; gareAval = null; gareAmont = null;
     fermerDevis();
     document.querySelectorAll('[data-outil]').forEach(b => b.classList.toggle('actif', b.dataset.outil === outil));
     montrerDepart();
@@ -450,7 +465,7 @@ function demarrer(){
       const d = disponible(niveau, reseau, k);
       return `<option value="${k}"${d.ok ? '' : ' disabled'}${k === n.modele ? ' selected' : ''}>${echapper(q.nom)}${d.ok ? '' : ` · ${echapper(d.raison)}`}</option>`;
     }).join('');
-    const supports = Object.entries(SUPPORTS).map(([k, s]) => `<option value="${k}"${k === (n.support || 'trepied') ? ' selected' : ''}>${echapper(s.nom)}</option>`).join('');
+    const supports = Object.entries(SUPPORTS).map(([k, s]) => `<option value="${k}"${k === (n.support || 'trepied') ? ' selected' : ''}${supportDisponible(niveau, k).ok ? '' : ' disabled'}>${echapper(s.nom)}${supportDisponible(niveau, k).ok ? '' : ' · plus tard'}</option>`).join('');
     const d = afficherPanneau(`<div class="tete"><span>${echapper(n.nom)} · ${echapper(nomEnneigeur(n.modele, n.support))}</span><button class="fermer" type="button" id="ficheFermer" aria-label="Fermer">×</button></div>
       ${pressionFiche !== null ? `<div class="ligne">Pression ${jaugePression(pressionFiche, n.modele)}<b>${Math.round(pressionFiche)} bar</b></div>` : ''}
       ${pannesFiche.map(p => `<div class="ligne panne"><span>⚠ ${echapper(CONFIG.pannes.types[p.type].nom)}${p.etat === 'reparation' ? ' · équipe sur place' : ''}</span>
@@ -497,6 +512,81 @@ function demarrer(){
     anneauChute.material.color.set(part >= 0.5 ? '#38D66B' : '#FF9A2E');
     anneauChute.position.set(chute.x, poser(chute.x, chute.z) + 0.8, chute.z);
     anneauChute.scale.setScalar(chute.rayon);
+  }
+
+  // ----- Bac à sable : tracer une piste, poser un télésiège -----
+  const reglageTrace = { couleur: 'bleue', largeur: 30 };
+  function dessinerTrace(){
+    apercu.children.slice().forEach(o => { apercu.remove(o); liberer(o); });
+    const ep = Math.max(0.35, cam.actuel.distance * 0.0035);
+    if(outil === 'piste'){
+      const coul = COULEURS.jalons[reglageTrace.couleur];
+      traceePiste.forEach(([x, z], i) => {
+        const A = { x, z }, B = i ? { x: traceePiste[i - 1][0], z: traceePiste[i - 1][1] } : { x: x + 0.01, z };
+        apercu.add(creerApercu(B, A, poser, coul, ep * (i ? 1 : 3)));
+        if(i) for(const s of [-1, 1]){
+          const L = Math.hypot(A.x - B.x, A.z - B.z) || 1, nx = -(A.z - B.z) / L * s * reglageTrace.largeur / 2, nz = (A.x - B.x) / L * s * reglageTrace.largeur / 2;
+          apercu.add(creerApercu({ x: B.x + nx, z: B.z + nz }, { x: A.x + nx, z: A.z + nz }, poser, coul, ep * 0.5));
+        }
+      });
+    }
+    if(outil === 'remontee' && gareAval){
+      apercu.add(creerApercu(gareAval, { x: gareAval.x + 0.01, z: gareAval.z }, poser, '#C08A5A', ep * 4));
+      if(gareAmont) apercu.add(creerApercu(gareAval, gareAmont, poser, '#C08A5A', ep));
+    }
+  }
+  function majPanneauTrace(){
+    const el = $('choixTrace');
+    if(outil === 'piste'){
+      const v = traceePiste.length >= 2 ? validerPiste(niveau, traceePiste, reglageTrace.largeur) : null;
+      el.innerHTML = `<label>Couleur <select id="traceCouleur">${['verte', 'bleue', 'rouge', 'noire'].map(c => `<option value="${c}"${c === reglageTrace.couleur ? ' selected' : ''}>${c}</option>`).join('')}</select></label>
+        <label>Largeur <select id="traceLargeur">${CONFIG.bac.largeurs.map(l => `<option value="${l}"${l === reglageTrace.largeur ? ' selected' : ''}>${l} m</option>`).join('')}</select></label>
+        <span>${traceePiste.length} point${traceePiste.length > 1 ? 's' : ''}${traceePiste.length >= 2 ? ` · ${nombreFr(longueurPolyligne(traceePiste))} m${reseau.options.budget && v && v.ok ? ` · ${euros(v.cout)}` : ''}` : ''}</span>
+        <button class="bouton petit" type="button" id="traceRetour"${traceePiste.length ? '' : ' disabled'}>Point précédent</button>
+        <button class="bouton petit vert" type="button" id="traceFin"${traceePiste.length >= 2 ? '' : ' disabled'}>Terminer la piste</button>`;
+      el.querySelector('#traceCouleur').onchange = e => { reglageTrace.couleur = e.target.value; dessinerTrace(); };
+      el.querySelector('#traceLargeur').onchange = e => { reglageTrace.largeur = +e.target.value; dessinerTrace(); majPanneauTrace(); };
+      el.querySelector('#traceRetour').onclick = () => { traceePiste.pop(); dessinerTrace(); majPanneauTrace(); };
+      el.querySelector('#traceFin').onclick = terminerPiste;
+    } else if(outil === 'remontee'){
+      const v = gareAval && gareAmont ? validerRemontee(niveau, gareAval, gareAmont) : null;
+      el.innerHTML = `<span>${!gareAval ? 'Gare de départ : touchez le bas' : !gareAmont ? 'Gare d\'arrivée : touchez le haut' : `${nombreFr(v.longueur)} m${reseau.options.budget ? ` · ${euros(v.cout)}` : ''}`}</span>
+        <button class="bouton petit" type="button" id="traceRetour"${gareAval ? '' : ' disabled'}>Recommencer</button>
+        <button class="bouton petit vert" type="button" id="traceFin"${v && v.ok ? '' : ' disabled'}>Construire le télésiège</button>`;
+      el.querySelector('#traceRetour').onclick = () => { gareAval = gareAmont = null; dessinerTrace(); majPanneauTrace(); consigne(); };
+      el.querySelector('#traceFin').onclick = terminerRemontee;
+    }
+  }
+  function outilPiste(x, z){
+    if(!dansZoneJeu(t, x, z)) return message('La piste doit rester dans le domaine skiable.', 'attention', 3000);
+    traceePiste.push([x, z]);
+    dessinerTrace(); majPanneauTrace();
+  }
+  function outilRemontee(x, z){
+    if(!dansZoneJeu(t, x, z)) return message('Les gares doivent être dans le domaine skiable.', 'attention', 3000);
+    if(!gareAval || gareAmont){ gareAval = { x, z }; gareAmont = null; }
+    else {
+      gareAmont = { x, z };
+      const v = validerRemontee(niveau, gareAval, gareAmont);
+      if(!v.ok){ message(v.raison, 'attention', 4500); gareAmont = null; }
+    }
+    dessinerTrace(); majPanneauTrace(); consigne();
+  }
+  // Une piste ou un télésiège change le terrain (neige damée, gares aplanies, sapins) : on enregistre et on recharge
+  function rechargerBac(texte){
+    reseau.messageApres = texte;
+    sauver(true);
+    location.href = 'index.html?niveau=bac';
+  }
+  function terminerPiste(){
+    const r = ajouterPisteBac(niveau, reseau, traceePiste, reglageTrace.couleur, reglageTrace.largeur);
+    if(!r.ok) return message(r.raison, 'attention', 4500);
+    rechargerBac(`${r.nom} (${reglageTrace.couleur}) ouverte : ${nombreFr(r.longueur)} m. La neige qui tombe dessus compte maintenant.`);
+  }
+  function terminerRemontee(){
+    const r = ajouterRemonteeBac(niveau, reseau, gareAval, gareAmont);
+    if(!r.ok) return message(r.raison, 'attention', 4500);
+    rechargerBac(`${r.nom} posé : ${nombreFr(r.longueur)} m.`);
   }
 
   function outilRegard(x, z, n){
@@ -571,6 +661,14 @@ function demarrer(){
     message(`Annulé : ${euros(r.rembourse)} remboursés.`, 'info', 3000);
   };
   $('effacer').onclick = () => {
+    if(niveau.carriere){
+      // Carrière : on revient au début de l'étape (le réseau construit avant l'étape reste)
+      if(!confirm('Recommencer l\'étape ? Ce qui a été construit et gagné depuis son début est effacé.')) return;
+      reseau = recommencerEtape(reseau); depart = null;
+      sauver(true);
+      location.href = 'index.html?niveau=carriere';
+      return;
+    }
     const commence = reseau.nuit > 1;
     if(!reseau.historique.length && !commence) return message('Rien à effacer.', 'info', 2500);
     if(!confirm(commence ? 'Recommencer le niveau ? Le réseau, la neige et l\'argent gagné sont effacés.'
@@ -620,7 +718,7 @@ function demarrer(){
       message('Démarrez une pompe vanne fermée, puis ouvrez la vanne doucement. Gardez le départ dans le vert.', 'attention', 8000);
     }
     if(nuit.regime.sec) message('Retenue vide : les pompes sont à sec !', 'alarme', 6000);
-    if(niveau.pannes && reseau.pannes.length) message(`${reseau.pannes.length} panne(s) pas encore réparée(s) : voyez le poste de travail.`, 'attention', 6000);
+    if(avecPannes() && reseau.pannes.length) message(`${reseau.pannes.length} panne(s) pas encore réparée(s) : voyez en haut à droite.`, 'attention', 6000);
     majInfos();
   }
   // Applique le régime de la nuit : voyants des canons, jets de neige, salle de pompage
@@ -649,10 +747,58 @@ function demarrer(){
       ouverture: cmd.ouverture, alarme: (!!g && (g.sec || g.surcharge)) || performance.now() < alarmeJusqua });
   }
   // Pompes en marche (en automatique, les premières pompes qui ne sont pas en panne)
+  const installees = niveau.pompes || CONFIG.pompage.pompes;     // carrière : pompes déjà installées
+  // Fin de nuit en carrière : l'étape continue, est réussie (on passe à la suivante) ou ratée (on la recommence)
+  function bilanCarriere(bilan, casse){
+    const o = niveau.objectif, a = avancementEtape(reseau), R = niveau.retenue;
+    if(bilan.reussi && niveau.derniere){
+      progression.niveaux.carriere = { ...(progression.niveaux.carriere || {}), fini: true };
+      ecrireSauvegarde('nivo-progression', progression);
+    }
+    sauver();
+    const lignes = [
+      `Neige sur les pistes cette nuit : ${nombreFr(bilan.piste)} m³ (${nombreFr(bilan.neige)} m³ produits)`,
+      `Étape : ${nombreFr(Math.round(a.neige))} / ${nombreFr(o.m3)} m³ sur les pistes · recettes ${euros(Math.round(a.recette))} / ${euros(o.recette)} · nuit ${a.nuits} sur ${o.nuits}`,
+      bilan.kwh ? `Électricité : ${nombreFr(bilan.kwh)} kWh, soit ${euros(bilan.electricite)}` : null,
+      reseau.retenue ? `Eau de la journée : ${nombreFr(bilan.remplissage.m3)} m³ (${euros(bilan.remplissage.cout)}) · retenue à ${Math.round(reseau.retenue.volume / volumeRetenue(R) * 100)} %` : null,
+      avecPannes() ? `Pannes : ${bilan.pannes} cette nuit, réparations ${euros(bilan.reparations)}${reseau.pannes.length ? ` · encore ${reseau.pannes.length} à réparer (en haut à droite)` : ''}` : null,
+      bilan.coups ? `Coups de bélier : ${bilan.coups} (réparations : ${euros(bilan.coups * CONFIG.belier.reparation)})` : null
+    ].filter(Boolean);
+    let titre = `Fin de la nuit · étape ${niveau.numero}`, boutons = '<button class="bouton" type="button" id="bilanOk">Continuer</button>', extra = '';
+    if(bilan.reussi){
+      titre = niveau.derniere ? 'Carrière terminée !' : `Étape ${niveau.numero} réussie !`;
+      const debloque = nomsDeblocages(niveau.debloque);
+      extra = niveau.derniere ? '<li><b>Bravo : la station de la Combe est prête pour toute la saison.</b></li>'
+        : debloque.length ? `<li><b>Débloqué : ${debloque.map(echapper).join(', ')}.</b></li>` : '';
+      const suite = !niveau.derniere && niveauCarriere(niveau.etape + 1);
+      if(suite) extra += `<li>Étape suivante : ${echapper(suite.nom)} · ${nombreFr(suite.objectif.m3)} m³ et ${euros(suite.objectif.recette)} en ${suite.objectif.nuits} nuits.</li>`;
+      boutons = `${suite ? '<button class="bouton" type="button" id="bilanSuivant">Étape suivante</button>' : ''}<button class="bouton" type="button" id="bilanOk">Continuer ici</button>`;
+    } else if(bilan.rate){
+      titre = `Étape ${niveau.numero} ratée`;
+      lignes.push(bilan.rate);
+      boutons = '<button class="bouton" type="button" id="bilanRecommencer">Recommencer l\'étape</button><button class="bouton" type="button" id="bilanOk">Fermer</button>';
+    }
+    fermerDevis();
+    const d = afficherPanneau(`<div class="tete"><span>${echapper(titre)}</span><span>${bilan.net >= 0 ? '+' : '−'}${euros(Math.abs(bilan.net))}</span></div>
+      <ul>${lignes.map(l => `<li>${echapper(l)}</li>`).join('')}${extra}</ul>
+      <div class="actions">${boutons}</div>`);
+    d.querySelector('#bilanOk').onclick = fermerDevis;
+    const sv = d.querySelector('#bilanSuivant');
+    if(sv) sv.onclick = () => {
+      const suite = niveauCarriere(niveau.etape + 1);
+      commencerEtape(suite, reseau, suite.etape);
+      sauver(true);
+      location.href = 'index.html?niveau=carriere';
+    };
+    const rec = d.querySelector('#bilanRecommencer');
+    if(rec) rec.onclick = () => { reseau = recommencerEtape(reseau); sauver(true); location.href = 'index.html?niveau=carriere'; };
+    if(bilan.reussi) message(titre, 'ok', 7000);
+    if(bilan.rate) message(bilan.rate, 'alarme', 8000);
+  }
   function marchePompes(g){
     const cmd = reseau.pompage, hs = g ? g.pompesEnPanne : (reseau.pannes || []).filter(p => p.type === 'pompe').map(p => +p.cible);
-    if(cmd.mode !== 'auto') return [0, 1, 2].map(i => !!g && cmd.marche[i] && !hs.includes(i));
-    const dispo = [0, 1, 2].filter(i => !hs.includes(i)).slice(0, g ? g.pompes : 0);
+    if(cmd.mode !== 'auto') return [0, 1, 2].map(i => !!g && i < installees && cmd.marche[i] && !hs.includes(i));
+    const dispo = [0, 1, 2].filter(i => i < installees && !hs.includes(i)).slice(0, g ? g.pompes : 0);
     return [0, 1, 2].map(i => dispo.includes(i));
   }
 
@@ -691,6 +837,7 @@ function demarrer(){
       if(a.fuite) animerFuite(a.fuite, dt, temps);
     }
   }
+  const avecPannes = () => !!niveau.pannes || !!(reseau.options && reseau.options.pannes) || !!(reseau.pannes || []).length;
   const nomPanne = p => `${CONFIG.pannes.types[p.type].nom} · ${libellePanne(reseau, p)}`;
   function reparer(id){
     const p = (reseau.pannes || []).find(q => q.id === id);
@@ -701,6 +848,17 @@ function demarrer(){
     message(r.finie ? `${verbe} faite : ${libellePanne(reseau, p)}${r.cout ? ` (${euros(r.cout)})` : ''}.`
                     : `L'équipe part : ${libellePanne(reseau, p)}, environ ${r.duree} s${p.type === 'fuite' ? ' (conduite isolée pendant les travaux)' : ''}.`, 'info', 4500);
     apresPannes();
+  }
+  // Coin en haut à droite : la liste des pannes en cours (replié d'office sur un petit écran)
+  let coinReplie = window.innerWidth < 1100;
+  function majCoinPannes(){
+    afficherPannesCoin((reseau.pannes || []).map(p => ({ id: p.id, nom: CONFIG.pannes.types[p.type].nom, ou: libellePanne(reseau, p),
+      reparation: p.etat === 'reparation', reste: p.etat === 'reparation' && nuit ? Math.max(0, Math.ceil(p.fin - nuit.temps)) : null,
+      cout: CONFIG.pannes.types[p.type].cout, rearmer: p.type === 'disjoncteur' })), coinReplie, (action, valeur) => {
+      if(action === 'replier'){ coinReplie = !coinReplie; return majCoinPannes(); }
+      if(action === 'reparer') return reparer(valeur);
+      if(action === 'voirPanne') return agirPoste('voirPanne', valeur);
+    });
   }
   // Une panne arrive ou se termine : on recalcule la nuit et la 3D
   function apresPannes(){
@@ -713,6 +871,7 @@ function demarrer(){
 
   function finirNuit(casse = false){
     const bilan = finNuit(niveau, reseau);
+    fermerLePoste();                                  // le bilan ne doit pas rester caché derrière le poste
     nuit = null; sources = [];
     jets.vider();
     for(const o of regards3D.values()) marquer(o, 'arret');
@@ -724,6 +883,7 @@ function demarrer(){
     afficherConsigne(null);
     synchroniser();
     majPannes3D();
+    if(niveau.carriere) return bilanCarriere(bilan, casse);
     const premiereReussite = bilan.reussi && !reussi;
     if(premiereReussite){
       reussi = true;
@@ -731,15 +891,15 @@ function demarrer(){
       ecrireSauvegarde('nivo-progression', progression);
     }
     sauver();
-    const R = niveau.retenue, o = niveau.objectif, suivant = LEVELS[LEVELS.indexOf(niveau) + 1];
+    const R = niveau.retenue, o = niveau.objectif, suivant = LEVELS.slice(LEVELS.indexOf(niveau) + 1).find(l => !l.bac);
     const lignes = [
       `Neige produite : ${nombreFr(bilan.neige)} m³, dont ${nombreFr(bilan.piste)} m³ sur la piste`,
       bilan.kwh ? `Électricité : ${nombreFr(bilan.kwh)} kWh, soit ${euros(bilan.electricite)} retirés du gain` : null,
       bilan.rendement !== null ? `Rendement : ${Math.round(bilan.rendement * 100)} % de ce que les canons ouverts pouvaient produire` : null,
-      `${o.type === 'production' ? 'Neige produite' : 'Sur la piste'} depuis le début : ${nombreFr(neigeObjectif())} / ${nombreFr(o.m3)} m³${o.nuits ? ` (nuit ${bilan.nuit} sur ${o.nuits})` : ''}`,
+      `${o.type === 'production' ? 'Neige produite' : 'Sur la piste'} depuis le début : ${nombreFr(neigeObjectif())}${o.m3 ? ` / ${nombreFr(o.m3)}` : ''} m³${o.nuits ? ` (nuit ${bilan.nuit} sur ${o.nuits})` : ''}`,
       o.coupsMax !== undefined ? `Coups de bélier : ${bilan.coups} cette nuit, ${reseau.coups} au total (${o.coupsMax} au plus)` : (bilan.coups ? `Coups de bélier : ${bilan.coups} (réparations : ${euros(bilan.coups * CONFIG.belier.reparation)})` : null),
-      niveau.pannes ? `Pannes : ${bilan.pannes} cette nuit, réparations ${euros(bilan.reparations)}${reseau.pannes.length ? ` · encore ${reseau.pannes.length} à réparer (poste de travail)` : ''}` : null,
-      reseau.retenue ? `Retenue : ${Math.round(reseau.retenue.volume / volumeRetenue(R) * 100)} % après le remplissage de la journée` : null
+      avecPannes() ? `Pannes : ${bilan.pannes} cette nuit, réparations ${euros(bilan.reparations)}${reseau.pannes.length ? ` · encore ${reseau.pannes.length} à réparer (en haut à droite)` : ''}` : null,
+      reseau.retenue ? `Retenue : ${Math.round(reseau.retenue.volume / volumeRetenue(R) * 100)} % après le remplissage de la journée (${nombreFr(bilan.remplissage.m3)} m³ d'eau, ${euros(bilan.remplissage.cout)})` : null
     ].filter(Boolean);
     let titre = `Fin de la nuit ${bilan.nuit}`, boutons = '<button class="bouton" type="button" id="bilanOk">Continuer</button>';
     if(casse) titre = 'Casse !';
@@ -753,7 +913,8 @@ function demarrer(){
       boutons = `${suivant ? `<button class="bouton" type="button" id="bilanSuivant">Niveau suivant</button>` : ''}<button class="bouton" type="button" id="bilanOk">Continuer ici</button>`;
     }
     fermerDevis();
-    const d = afficherPanneau(`<div class="tete"><span>${echapper(titre)}</span><span>${bilan.gain - bilan.electricite >= 0 ? '+' : '−'}${euros(Math.abs(bilan.gain - bilan.electricite))}</span></div>
+    const net = bilan.gain - bilan.electricite - bilan.remplissage.cout;
+    const d = afficherPanneau(`<div class="tete"><span>${echapper(titre)}</span><span>${net >= 0 ? '+' : '−'}${euros(Math.abs(net))}</span></div>
       <ul>${lignes.map(l => `<li>${echapper(l)}</li>`).join('')}
       ${bilan.nouveaux.map(k => `<li><b>Nouveau : ${echapper(CATALOGUE[k].nom)} disponible !</b></li>`).join('')}</ul>
       <div class="actions">${boutons}</div>`);
@@ -807,18 +968,18 @@ function demarrer(){
         pilotable: e.pret && !niveau.programme };                    // au niveau 1, c'est le chef d'équipe qui ouvre les canons
     });
     return {
-      numero: reseau.nuit, vent: ventActuel(), accelere: !!nuit && nuit.vitesse > 1, total: neigeObjectif(), objectif: niveau.objectif.m3,
+      numero: reseau.nuit, vent: ventActuel(), accelere: !!nuit && nuit.vitesse > 1, total: neigeObjectif(), objectif: niveau.objectif.m3 || null,
+      remplissage: reseau.retenue ? { m3: reseau.retenue.remplissage ?? CONFIG.retenue.remplissageJour,
+        choix: CONFIG.retenue.choix.filter(m => m <= (niveau.remplissageMax || Infinity)), prix: niveau.prixEau ?? CONFIG.retenue.prixM3 } : null,
+      recette: niveau.carriere ? { fait: Math.round(avancementEtape(reseau).recette), objectif: niveau.objectif.recette } : null,
       coups: reseau.coups || 0, coupsMax: niveau.objectif.coupsMax ?? null,
       retenue: reseau.retenue ? reseau.retenue.volume / volumeRetenue(R) : null,
       nuit: nuit && { numero: reseau.nuit, restant: Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps)), neige: reseau.pisteNuit, argent: Math.round(reseau.argentNuit) },
       pompage: { mode: cmd.mode, ouverture: cmd.ouverture,
         marche: cmd.mode === 'auto' ? marchePompes(g) : cmd.marche.slice(),
-        defaut: [0, 1, 2].map(i => (reseau.pannes || []).some(p => p.type === 'pompe' && +p.cible === i)),
+        defaut: [0, 1, 2].map(i => (reseau.pannes || []).some(p => p.type === 'pompe' && +p.cible === i)), installees,
         pression: g ? g.pressionDepart : 0, debit: g ? g.debit : 0, capacite: g ? g.capacite : 0, modeImpose: !!niveau.programme,
         dansLeVert: !!g && g.pressionDepart >= CONFIG.pompage.zoneVerte[0] && g.pressionDepart <= CONFIG.pompage.zoneVerte[1] },
-      pannes: niveau.pannes ? (reseau.pannes || []).map(p => ({ id: p.id, nom: CONFIG.pannes.types[p.type].nom, ou: libellePanne(reseau, p),
-        reparation: p.etat === 'reparation', reste: p.etat === 'reparation' && nuit ? Math.max(0, Math.ceil(p.fin - nuit.temps)) : null,
-        cout: CONFIG.pannes.types[p.type].cout, rearmer: p.type === 'disjoncteur' })) : null,
       air: reseau.compresseur && {
         marche: g ? !!g.air.marche : (cmd.mode === 'manuel' && reseau.compresseur.marche),
         commande: !!reseau.compresseur.marche, pilotable: cmd.mode === 'manuel',
@@ -840,6 +1001,7 @@ function demarrer(){
     if(action === 'fermer') return fermerLePoste();
     if(action === 'lancerNuit'){ lancerNuit(); return rafraichirPoste(); }
     if(action === 'reparer') return reparer(valeur);
+    if(action === 'remplissage'){ reseau.retenue.remplissage = Math.min(+valeur, niveau.remplissageMax || Infinity); planifierSauvegarde(); return rafraichirPoste(); }
     if(action === 'voirPanne'){
       const p = (reseau.pannes || []).find(q => q.id === valeur), pos = p && positionPanne(reseau, p);
       if(!pos) return;
@@ -877,33 +1039,94 @@ function demarrer(){
   $('ouvrirPoste').onclick = () => posteOuvert ? fermerLePoste() : ouvrirPoste();
 
   // ----- Menu des niveaux -----
-  function cartesMenu(){
-    return LEVELS.map((l, i) => {
-      const pr = progression.niveaux[l.id] || {}, partie = lireSauvegarde(`nivo-partie-${l.id}`);
-      const ouvert = CONFIG.progression.toutOuvert || i === 0 || !!(progression.niveaux[LEVELS[i - 1].id] || {}).reussi;
-      let etat = pr.reussi ? 'Réussi ✓' : 'Pas encore réussi';
-      if(partie && partie.reseau){
-        const fait = l.objectif.type === 'production' ? partie.reseau.neigeTotale : partie.reseau.neigePiste;
-        etat = `${pr.reussi ? 'Réussi ✓ · ' : ''}Partie en cours : prochaine nuit n° ${partie.reseau.nuit}, ${nombreFr(Math.round(fait))} / ${nombreFr(l.objectif.m3)} m³`;
-      }
-      if(!ouvert) etat = 'Réussissez le niveau précédent pour l\'ouvrir.';
-      return { id: l.id, numero: l.numero, nom: l.nom, resume: l.resume, etat, ouvert, partie: !!(partie && partie.reseau) };
-    });
+  function carteNiveau(l, i){
+    const pr = progression.niveaux[l.id] || {}, partie = lireSauvegarde(`nivo-partie-${l.id}`);
+    const ouvert = CONFIG.progression.toutOuvert || i === 0 || !!l.bac || !!(progression.niveaux[LEVELS[i - 1].id] || {}).reussi;
+    let etat = l.bac ? 'Pour s\'entraîner et essayer' : pr.reussi ? 'Réussi ✓' : 'Pas encore réussi';
+    if(partie && partie.reseau){
+      const fait = l.objectif.type === 'production' ? partie.reseau.neigeTotale : partie.reseau.neigePiste;
+      etat = `${pr.reussi ? 'Réussi ✓ · ' : ''}Partie en cours : prochaine nuit n° ${partie.reseau.nuit}, ${nombreFr(Math.round(fait))}${l.objectif.m3 ? ` / ${nombreFr(l.objectif.m3)}` : ''} m³`;
+    }
+    if(!ouvert) etat = 'Réussissez le niveau précédent pour l\'ouvrir.';
+    return { id: l.id, numero: l.numero, nom: l.nom, resume: l.resume, etat, ouvert, partie: !!(partie && partie.reseau) };
+  }
+  function carteCarriere(){
+    const partie = lireSauvegarde('nivo-partie-carriere'), r = partie && partie.reseau, total = CARRIERE.etapes.length;
+    const fini = !!(progression.niveaux.carriere || {}).fini;
+    let etat = `${total} étapes, de la première pompe à la saison complète.`;
+    if(r && r.carriere){
+      const n = niveauCarriere(r.carriere.etape), a = avancementEtape(r);
+      etat = `${fini ? 'Carrière terminée ✓ · ' : ''}Étape ${n.numero} / ${total} · ${n.nom} : ${nombreFr(Math.round(a.neige))} / ${nombreFr(n.objectif.m3)} m³, nuit ${a.nuits + 1} sur ${n.objectif.nuits}`;
+    }
+    return { id: 'carriere', numero: '★', nom: 'La station de la Combe', resume: 'Une seule station qui grandit : votre réseau et votre argent restent d\'une étape à l\'autre. Chaque étape réussie débloque du matériel : pompes, canons, tours, compresseur, perches… puis viennent les pannes.',
+      etat, ouvert: true, partie: !!r, libelleRecommencer: 'Recommencer la carrière' };
+  }
+  function groupesMenu(){
+    const tutos = LEVELS.filter(l => !l.bac), bac = LEVELS.filter(l => l.bac);
+    return [
+      { titre: 'Carrière', cartes: [carteCarriere()] },
+      { titre: 'Tutoriels', intro: 'Pour apprendre chaque partie du métier, une à une.', cartes: tutos.map(l => carteNiveau(l, LEVELS.indexOf(l))) },
+      { titre: 'Bac à sable', cartes: bac.map(l => carteNiveau(l, LEVELS.indexOf(l))) }
+    ];
   }
   function ouvrirMenu(){
     sauver();
     fermerLePoste();
-    afficherMenu(cartesMenu(), [], (action, id) => {
+    afficherMenu(groupesMenu(), (action, id) => {
       if(action === 'fermer') return fermerMenu();
       if(action === 'jouer'){ if(id === niveau.id) return fermerMenu(); location.href = `index.html?niveau=${id}`; }
       if(action === 'recommencer'){
-        if(!confirm('Recommencer ce niveau depuis le début ? La partie en cours sera effacée.')) return;
+        if(!confirm(id === 'carriere' ? 'Recommencer toute la carrière depuis la première étape ? La station actuelle sera effacée.'
+                                      : 'Recommencer ce niveau depuis le début ? La partie en cours sera effacée.')) return;
         effacerSauvegarde(`nivo-partie-${id}`);
         location.href = `index.html?niveau=${id}&nouvelle`;
       }
     }, true);
   }
   $('ouvrirMenu').onclick = ouvrirMenu;
+
+  // ----- Options du bac à sable -----
+  let optionsOuvertes = false;
+  const amenagements = () => ({ pistes: (reseau.pistesBac || []).map(p => ({ nom: p.nom, detail: `${p.couleur}, ${p.largeur} m, ${nombreFr(longueurPolyligne(p.points))} m` })),
+    remontees: (reseau.remonteesBac || []).map(ts => ({ nom: ts.nom, detail: `${nombreFr(Math.hypot(ts.amont.x - ts.aval.x, ts.amont.z - ts.aval.z))} m` })) });
+  function ouvrirOptions(){ fermerLePoste(); optionsOuvertes = true; afficherOptions(reseau.options, ventActuel(), agirOptions, amenagements()); }
+  function agirOptions(action, valeur){
+    const o = reseau.options, v = ventActuel();
+    if(action === 'fermer'){ optionsOuvertes = false; return fermerOptions(); }
+    if(action === 'optBudget'){
+      o.budget = valeur ? +valeur : null;
+      reseau.budget = o.budget || niveau.budget;
+      message(o.budget ? `Budget remis à ${euros(o.budget)} : maintenant, tout se paie.` : 'Argent illimité.', 'info', 3500);
+    }
+    if(action === 'optVentMode') o.vent = valeur === 'impose' ? { force: v.force, direction: v.direction } : null;
+    if(action === 'optVentForce') o.vent = { force: valeur, direction: v.direction };
+    if(action === 'optVentDirection') o.vent = { force: v.force, direction: valeur };
+    if(action === 'optPannes'){
+      o.pannes = valeur === '1';
+      reseau.pannesPrevues = [];
+      // Pannes activées pendant la nuit : elles arrivent dans le temps qui reste
+      if(nuit && o.pannes) planifierPannes(niveau, reseau).forEach(e => { e.t = nuit.temps + 2 + (e.t - CONFIG.pannes.moment[0]) * Math.max(0, CONFIG.nuit.duree - nuit.temps - 3) / CONFIG.nuit.duree; });
+    }
+    if(action === 'optFrequence') o.frequence = valeur;
+    if(action === 'optTypePanne') o.typesPannes[valeur] = o.typesPannes[valeur] === false;
+    if(action === 'optEau') o.eauPayante = valeur === '1';
+    if(action === 'optElec') o.electricitePayante = valeur === '1';
+    if(action === 'optRemplir' && reseau.retenue) reseau.retenue.volume = volumeRetenue(niveau.retenue);
+    if(action === 'optVider' && reseau.retenue) reseau.retenue.volume = 0;
+    if(action === 'optSupprPiste' || action === 'optSupprRemontee'){
+      const liste = action === 'optSupprPiste' ? reseau.pistesBac : reseau.remonteesBac, el = liste && liste[+valeur];
+      if(!el || !confirm(`Supprimer « ${el.nom} » ?`)) return;
+      liste.splice(+valeur, 1);
+      return rechargerBac(`${el.nom} supprimé${action === 'optSupprPiste' ? 'e' : ''}.`);
+    }
+    if(nuit){ nuit.regime = regimeNuit(niveau, reseau, o.vent || nuit.regime.vent); appliquerRegime(); }
+    manche.userData.orienter(ventActuel());
+    majInfos(); planifierSauvegarde();
+    if(fiche) dessinerFiche();
+    if(optionsOuvertes) afficherOptions(o, ventActuel(), agirOptions, amenagements());
+  }
+  $('ouvrirOptions').hidden = !niveau.bac;
+  $('ouvrirOptions').onclick = () => optionsOuvertes ? agirOptions('fermer') : ouvrirOptions();
   $('accelerer').onclick = () => {
     if(!nuit) return;
     nuit.vitesse = nuit.vitesse > 1 ? 1 : CONFIG.nuit.accelere;
@@ -923,6 +1146,8 @@ function demarrer(){
   function action(x, z){
     const n = noeudProche(x, z);
     if(fiche && !(n && n.id === fiche)) fermerDevis();
+    if(!nuit && outil === 'piste') return outilPiste(x, z);
+    if(!nuit && outil === 'remontee') return outilRemontee(x, z);
     if(!nuit && outil === 'regard') return outilRegard(x, z, n);
     if(!nuit && outil) return outilTranchee(x, z, n);
     // Sans outil : renseignements sur le point touché
@@ -956,7 +1181,7 @@ function demarrer(){
         appliquerRegime();
         for(const t of new Set(ev.map(e => e.texte))) if(t) message(t, 'info', 5000);
       }
-      const nouvelles = evenementsPannes(niveau, reseau, tAvant, nuit.temps), finies = avancerPannes(reseau, nuit.temps);
+      const nouvelles = evenementsPannes(niveau, reseau, tAvant, nuit.temps, nuit.regime), finies = avancerPannes(reseau, nuit.temps);
       for(const p of nouvelles) message(`Panne : ${nomPanne(p)}`, 'alarme', 7000);
       for(const p of finies) message(`Réparation terminée : ${libellePanne(reseau, p)}.`, 'ok', 4000);
       if(nouvelles.length || finies.length) apresPannes();
@@ -1009,15 +1234,20 @@ function demarrer(){
   // Accueil
   synchroniser();
   const o = niveau.objectif;
-  $('sousTitre').textContent = `Niveau ${niveau.numero} · ${niveau.nom} · objectif ${nombreFr(o.m3)} m³ ${o.type === 'production' ? `produits en ${o.nuits} nuits` : 'sur la piste'}`;
+  $('sousTitre').textContent = niveau.bac ? 'Bac à sable · tout est débloqué, budget illimité'
+    : niveau.carriere ? `Carrière · étape ${niveau.numero}/${CARRIERE.etapes.length} · ${niveau.nom} · ${nombreFr(o.m3)} m³ et ${euros(o.recette)} en ${o.nuits} nuits`
+    : `Niveau ${niveau.numero} · ${niveau.nom} · objectif ${nombreFr(o.m3)} m³ ${o.type === 'production' ? `produits en ${o.nuits} nuits` : 'sur la piste'}${o.nuits && o.type !== 'production' ? ` en ${o.nuits} nuits` : ''}`;
   $('hudNeigeTitre').textContent = o.type === 'production' ? 'Neige produite' : 'Neige piste';
   const tactile = window.matchMedia('(pointer:coarse)').matches;
   const commandes = tactile ? 'Un doigt pour vous déplacer. Deux doigts : pincez pour zoomer, tournez-les pour pivoter, glissez-les vers le haut ou le bas pour incliner la vue.' : 'Glissez pour tourner, molette pour zoomer, clic droit pour déplacer la vue.';
+  if(!OUVRIR_MENU && niveau.carriere && avancementEtape(reseau).nuits === 0)
+    message(`Étape ${niveau.numero} · ${niveau.nom} : ${niveau.resume} Objectif : ${nombreFr(o.m3)} m³ sur les pistes et ${euros(o.recette)} de recettes en ${o.nuits} nuits.`, 'info', 12000);
   if(!OUVRIR_MENU) message(`${commandes} ${niveau.construction === false ? 'Lancez la nuit, puis pilotez la salle de pompage au poste de travail.' : 'Construisez, puis lancez la nuit.'}`, 'info', 7000);
+  if(reseau.messageApres){ message(reseau.messageApres, 'ok', 6000); delete reseau.messageApres; planifierSauvegarde(); }
   if(repris && !OUVRIR_MENU) message(`Partie reprise : prochaine nuit n° ${reseau.nuit}.`, 'ok', 4000);
   if(OUVRIR_MENU) ouvrirMenu();
 
   // Accès pour les essais automatiques (console du navigateur)
-  window.nivo = { get dameuses(){ return dameuses; }, synchroniser, scene, camera, renderer, cam, toucher, action, salle, compresseur, choisirOutil, valider, lancerNuit, ouvrirFiche, ouvrirPoste, agirPoste, ouvrirMenu, finirNuit,
+  window.nivo = { ouvrirOptions, agirOptions, get dameuses(){ return dameuses; }, synchroniser, scene, camera, renderer, cam, toucher, action, salle, compresseur, choisirOutil, valider, lancerNuit, ouvrirFiche, ouvrirPoste, agirPoste, ouvrirMenu, finirNuit,
     get reseau(){ return reseau; }, get nuit(){ return nuit; }, set choix(c){ choix = c; } };
 }

@@ -287,15 +287,20 @@ function showDraw(){
 }
 /* Nivoculteur : dernier niveau joué et partie en cours (clés partagées avec jeux/nivoculteur) */
 const NIVO_NIVEAUX = { pompage: { n: 1, nom: 'La salle de pompage', prod: true }, reseau: { n: 2, nom: 'Construire le réseau', prod: false },
-  air: { n: 3, nom: 'Les perches et l\'air comprimé', prod: false }, pannes: { n: 4, nom: 'Les pannes et les réparations', prod: false } };
+  air: { n: 3, nom: 'Les perches et l\'air comprimé', prod: false }, pannes: { n: 4, nom: 'Les pannes et les réparations', prod: false },
+  bac: { n: null, nom: 'Bac à sable', prod: false }, carriere: { n: null, nom: 'Carrière', prod: false } };
 function showNivo(){
   const p = read('nivo-progression') || {}, el = document.getElementById('stnivo');
   const reussis = Object.keys(p.niveaux || {}).filter(k => p.niveaux[k] && p.niveaux[k].reussi).length;
   const id = p.dernier, niv = NIVO_NIVEAUX[id];
   if(!niv){ el.innerHTML = '<b>Pas encore joué</b>Niveau 1 : la salle de pompage.'; return; }
   const partie = read(`nivo-partie-${id}`), r = partie && partie.reseau;
+  if(id === 'carriere'){
+    el.innerHTML = `<b>Carrière · ${r && r.carriere ? `étape ${r.carriere.etape + 1} / 20` : 'nouvelle station'}</b>` + (r ? `Prochaine nuit n° ${r.nuit} · ${fmt(Math.round(r.neigePiste))} m³ sur les pistes` : '');
+    return;
+  }
   const fait = r ? Math.round(niv.prod ? r.neigeTotale : r.neigePiste) : 0;
-  el.innerHTML = `<b>Niveau ${niv.n} · ${esc(niv.nom)}</b>` + (r ? `Prochaine nuit n° ${r.nuit} · ${fmt(fait)} m³` : 'Nouvelle partie') +
+  el.innerHTML = `<b>${niv.n ? `Niveau ${niv.n} · ` : ''}${esc(niv.nom)}</b>` + (r ? `Prochaine nuit n° ${r.nuit} · ${fmt(fait)} m³` : 'Nouvelle partie') +
     (reussis ? ` · ${plural(reussis, 'niveau')} réussi${reussis > 1 ? 's' : ''}` : '');
 }
 function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showNivo(); }

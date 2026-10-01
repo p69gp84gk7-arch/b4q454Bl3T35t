@@ -170,5 +170,152 @@ const LEVELS = [
       }
     },
     objectif: { type: 'neigePiste', m3: 18000, nuits: 6 }
+  },
+  {
+    id: 'bac',
+    numero: '∞',
+    bac: true,                                // bac à sable : tout débloqué, budget illimité, pas d'objectif
+    nom: 'Bac à sable',
+    resume: 'Tout est débloqué, le budget est illimité et il n\'y a pas d\'objectif. Construisez ce que vous voulez ; au poste de travail, choisissez le vent, activez les pannes, remplissez la retenue.',
+    terrain: TERRAIN_COMBE,
+    pistes: [PISTE_CLARINES, PISTE_GENTIANES],
+    pompage: POMPAGE_COMBE,
+    retenue: RETENUE_COMBE,
+    remontees: [TELESIEGE_CLARINES],
+    departsElec: [...DEPARTS_COMBE, { nom: 'Départ élec · Gentianes', x: -72, z: -150 }],
+    compresseur: COMPRESSEUR_COMBE,
+    budget: 1e9,
+    objectif: { type: 'libre' }
   }
 ];
+
+/* -------------------------------------------------------------------------------------
+   CARRIÈRE : une seule station qui grandit, étape par étape. Le réseau et l'argent sont gardés
+   d'une étape à l'autre. Chaque étape demande des m³ sur les pistes ET des recettes nettes
+   (neige vendue moins électricité et eau) en un nombre de nuits ; réussie, elle débloque du matériel.
+   Pour régler la difficulté : changer les chiffres ci-dessous, sans toucher au reste du code.
+   debloque : pompes (nombre installé), enneigeurs, supports, departs (nombre de départs électriques),
+              pistes, compresseur, remplissageMax (m³ par jour)
+   Au début d'une étape : prime (€ offerts), pannes (types possibles), frequencePannes, ventFort,
+              retenueDebut (hauteur d'eau 0 à 1), prixEau (€/m³)
+   ------------------------------------------------------------------------------------- */
+const PISTES_CARRIERE = { clarines: PISTE_CLARINES, gentianes: PISTE_GENTIANES };
+const DEPARTS_CARRIERE = [...DEPARTS_COMBE, { nom: 'Départ élec · Gentianes', x: -72, z: -150 }];
+const TOUTES_PANNES = ['disjoncteur', 'gel', 'moteur', 'fuite', 'pompe'];
+const CARRIERE = {
+  budgetDepart: 150000,
+  materielDepart: { pompes: 1, enneigeurs: ['v8'], supports: ['trepied'], departs: 1, pistes: ['clarines'], compresseur: false, remplissageMax: 3000 },
+  etapes: [
+    // Saison 1 : la piste bleue des Clarines
+    { nom: 'Le premier enneigeur', resume: 'Une pompe, des ventilateurs V8 sur trépied et le départ électrique de la salle de pompage : enneigez le bas de la piste bleue.',
+      objectif: { m3: 1500, recette: 15000, nuits: 4 }, debloque: { supports: ['tour'] } },
+    { nom: 'Monter sur la tour', resume: 'Sur une tour, le canon envoie plus loin : de quoi couvrir la largeur de la piste.',
+      objectif: { m3: 3000, recette: 30000, nuits: 4 }, debloque: { pompes: 2, departs: 2 } },
+    { nom: 'Plus de débit', resume: 'Une deuxième pompe et le départ électrique de la gare aval : allongez le réseau.',
+      objectif: { m3: 4500, recette: 45000, nuits: 4 }, debloque: { enneigeurs: ['v9'] } },
+    { nom: 'Le haut de la piste', resume: 'Le ventilateur V9 souffle plus de neige. Montez vers le haut de la piste.',
+      objectif: { m3: 6000, recette: 65000, nuits: 5 }, debloque: { departs: 3, supports: ['tourHaute'] } },
+    { nom: 'Le vent', resume: 'La tour haute porte loin mais le vent déporte davantage : orientez bien vos canons.',
+      objectif: { m3: 8000, recette: 90000, nuits: 5 }, debloque: { pompes: 3 } },
+    { nom: 'Pleine pression', resume: 'Trois pompes : de quoi alimenter beaucoup de canons sans perdre de pression.',
+      objectif: { m3: 10000, recette: 120000, nuits: 5 }, debloque: { enneigeurs: ['v10'] } },
+    { nom: 'L\'eau se paie', resume: 'La retenue démarre à moitié et l\'eau coûte deux fois plus cher : ne gaspillez pas.',
+      retenueDebut: 0.5, prixEau: 1,
+      objectif: { m3: 10000, recette: 130000, nuits: 5 },
+      debloque: { remplissageMax: 4500, pistes: ['gentianes'], departs: 4, compresseur: true, enneigeurs: ['p6'] } },
+    // Saison 2 : la piste rouge des Gentianes et l'air comprimé
+    { nom: 'La piste rouge', resume: 'La piste rouge des Gentianes ouvre. Une prime de 200 000 € pour l\'équiper : perches, eau, électricité et air comprimé.',
+      prime: 200000, objectif: { m3: 12000, recette: 160000, nuits: 5 }, debloque: { enneigeurs: ['p10'] } },
+    { nom: 'Les perches de 10 m', resume: 'Plus hautes, elles portent plus loin sur la piste étroite.',
+      objectif: { m3: 13000, recette: 180000, nuits: 5 }, debloque: { enneigeurs: ['p10n'] } },
+    { nom: 'Économiser l\'air', resume: 'La perche nouvelle génération consomme deux fois moins d\'air : le compresseur suit mieux.',
+      objectif: { m3: 14000, recette: 200000, nuits: 5 }, debloque: {} },
+    // Saison 3 : les pannes, une à une
+    { nom: 'Le disjoncteur', resume: 'Premières pannes : un départ électrique peut disjoncter. Réarmez-le vite (en haut à droite).',
+      pannes: ['disjoncteur'], objectif: { m3: 14000, recette: 200000, nuits: 5 }, debloque: {} },
+    { nom: 'Les buses gelées', resume: 'Une perche peut geler : elle fait moins de neige tant qu\'on ne l\'a pas dégivrée.',
+      pannes: ['disjoncteur', 'gel'], objectif: { m3: 14500, recette: 205000, nuits: 5 }, debloque: {} },
+    { nom: 'Les moteurs', resume: 'Un moteur de ventilateur peut griller : le canon s\'arrête jusqu\'à la réparation.',
+      pannes: ['disjoncteur', 'gel', 'moteur'], objectif: { m3: 15000, recette: 210000, nuits: 5 }, debloque: {} },
+    { nom: 'Les fuites', resume: 'Une conduite peut fuir : la pression chute en aval et la retenue se vide plus vite.',
+      pannes: ['disjoncteur', 'gel', 'moteur', 'fuite'], objectif: { m3: 15000, recette: 210000, nuits: 5 }, debloque: {} },
+    { nom: 'Les pompes', resume: 'Toutes les pannes, même celles des pompes. Gardez une pompe de réserve.',
+      pannes: TOUTES_PANNES, objectif: { m3: 16000, recette: 225000, nuits: 5 }, debloque: {} },
+    // Saison 4 : le grand jeu
+    { nom: 'Ouverture anticipée', resume: 'La station ouvre plus tôt : moins de nuits pour enneiger.',
+      pannes: TOUTES_PANNES, objectif: { m3: 13500, recette: 190000, nuits: 4 }, debloque: {} },
+    { nom: 'Vents forts', resume: 'Une semaine de vent fort : orientez les canons pour que la neige tombe quand même sur les pistes.',
+      pannes: TOUTES_PANNES, ventFort: true, objectif: { m3: 14000, recette: 195000, nuits: 5 }, debloque: {} },
+    { nom: 'Sécheresse', resume: 'La retenue est presque vide et l\'eau est très chère.',
+      pannes: TOUTES_PANNES, retenueDebut: 0.3, prixEau: 1.5, objectif: { m3: 14500, recette: 195000, nuits: 5 }, debloque: {} },
+    { nom: 'La mauvaise série', resume: 'Tout casse en même temps : beaucoup de pannes chaque nuit.',
+      pannes: TOUTES_PANNES, frequencePannes: 'forte', objectif: { m3: 14500, recette: 200000, nuits: 5 }, debloque: {} },
+    { nom: 'La saison complète', resume: 'Le grand final : une longue série de nuits, toutes les pannes, des pistes à préparer pour l\'ouverture.',
+      pannes: TOUTES_PANNES, objectif: { m3: 27000, recette: 380000, nuits: 8 }, debloque: {} }
+  ]
+};
+// Matériel disponible au début de l'étape n° etape (0 = la première) : celui du départ plus tout ce qui a été débloqué avant
+function materielCarriere(etape){
+  const m = JSON.parse(JSON.stringify(CARRIERE.materielDepart));
+  for(const e of CARRIERE.etapes.slice(0, etape)){
+    const d = e.debloque || {};
+    for(const k of ['enneigeurs', 'supports', 'pistes']) if(d[k]) m[k] = [...new Set([...m[k], ...d[k]])];
+    for(const k of ['pompes', 'departs', 'remplissageMax']) if(d[k]) m[k] = Math.max(m[k], d[k]);
+    if(d.compresseur) m.compresseur = true;
+  }
+  return m;
+}
+// Ce que débloque une étape, en mots
+function nomsDeblocages(d = {}){
+  const noms = [];
+  if(d.pompes) noms.push(`${d.pompes}e pompe`);
+  for(const k of d.enneigeurs || []) noms.push(CATALOGUE[k].nom);
+  for(const k of d.supports || []) noms.push(`Ventilateurs sur ${SUPPORTS[k].nom.toLowerCase()}`);
+  if(d.departs) noms.push(DEPARTS_CARRIERE[d.departs - 1].nom);
+  for(const k of d.pistes || []) noms.push(`Piste ${PISTES_CARRIERE[k].couleur} « ${PISTES_CARRIERE[k].nom} »`);
+  if(d.compresseur) noms.push('Compresseur d\'air');
+  if(d.remplissageMax) noms.push(`Remplissage jusqu'à ${d.remplissageMax.toLocaleString('fr-FR')} m³ par jour`);
+  return noms;
+}
+// Le « niveau » d'une étape de carrière : même forme que les niveaux de LEVELS
+function niveauCarriere(etape){
+  etape = Math.max(0, Math.min(CARRIERE.etapes.length - 1, etape || 0));
+  const e = CARRIERE.etapes[etape], m = materielCarriere(etape);
+  return {
+    id: 'carriere', carriere: true, etape, numero: etape + 1, nom: e.nom, resume: e.resume,
+    terrain: TERRAIN_COMBE,
+    pistes: m.pistes.map(k => PISTES_CARRIERE[k]),
+    pompage: POMPAGE_COMBE,
+    retenue: RETENUE_COMBE,
+    remontees: [TELESIEGE_CLARINES],
+    departsElec: DEPARTS_CARRIERE.slice(0, m.departs),
+    compresseur: m.compresseur ? COMPRESSEUR_COMBE : null,
+    pompes: m.pompes, enneigeurs: m.enneigeurs, supports: m.supports, remplissageMax: m.remplissageMax,
+    budget: CARRIERE.budgetDepart,
+    pannes: e.pannes || null, frequencePannes: e.frequencePannes || null,
+    ventFort: !!e.ventFort, prixEau: e.prixEau ?? null, retenueDebut: e.retenueDebut ?? null, prime: e.prime || 0,
+    objectif: { type: 'carriere', ...e.objectif },
+    debloque: e.debloque || {},
+    derniere: etape === CARRIERE.etapes.length - 1
+  };
+}
+// Bac à sable : ajoute au niveau les pistes tracées et les télésièges posés par le joueur (avant de construire la 3D)
+function amenagerBac(niveau, reseau){
+  const bac = LEVELS.find(l => l.bac);
+  const base = bac._origine || (bac._origine = { pistes: bac.pistes, remontees: bac.remontees, terrain: bac.terrain });   // jamais deux fois
+  const pistes = (reseau.pistesBac || []), remontees = (reseau.remonteesBac || []);
+  niveau.pistes = [...base.pistes, ...pistes];
+  niveau.remontees = [...base.remontees, ...remontees];
+  niveau.terrain = { ...base.terrain, replats: [...base.terrain.replats,
+    ...remontees.flatMap(ts => [{ ...ts.aval, rayon: 10, talus: 12 }, { ...ts.amont, rayon: 10, talus: 12 }])] };
+  return niveau;
+}
+// Trouver un niveau par son identifiant (la carrière reprend à l'étape sauvegardée)
+function trouverNiveau(id){
+  if(id === 'carriere'){
+    let etape = 0;
+    try{ const p = JSON.parse(localStorage.getItem('nivo-partie-carriere')); etape = p && p.reseau && p.reseau.carriere ? p.reseau.carriere.etape : 0; }catch(e){}
+    return niveauCarriere(etape);
+  }
+  return LEVELS.find(l => l.id === id) || null;
+}
