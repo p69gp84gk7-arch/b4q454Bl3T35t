@@ -122,10 +122,24 @@ function jaugePression(bar, modele){
 function afficherPoste(d, agir){
   const el = $('poste'), haut = el.scrollTop, p = d.pompage;
   const pastille = (texte, cls = '') => `<span class="pastille ${cls}">${echapper(texte)}</span>`;
-  const pompes = p.marche.map((m, i) => `
+  const pompes = p.marche.map((m, i) => p.defaut[i] ? `
+    <div class="pompe"><span class="led" style="background:${LED.defaut}"></span><b>Pompe ${i + 1}</b>${pastille('DÉFAUT', 'orange')}</div>` : `
     <div class="pompe"><span class="led" style="background:${m ? LED.production : LED.arret}"></span>
       <b>Pompe ${i + 1}</b>${pastille(m ? 'MARCHE' : 'ARRÊT', m ? 'vert' : '')}
       ${p.mode === 'manuel' ? `<button class="bouton petit" type="button" data-action="pompe" data-valeur="${i}">${m ? 'Arrêter' : 'Démarrer'}</button>` : ''}</div>`).join('');
+  // Pannes (niveau 4) : ce qui est cassé, et l'équipe à envoyer
+  const pannes = d.pannes === null ? '' : `
+      <section class="bloc"><h3>Pannes${d.pannes.length ? ` (${d.pannes.length})` : ''}</h3>
+        ${d.pannes.length ? d.pannes.map(q => `<div class="panne">
+          <span class="led" style="background:${q.reparation ? '#2F6FDE' : LED.defaut}"></span>
+          <span class="nom"><b>${echapper(q.nom)}</b><small>${echapper(q.ou)}</small></span>
+          ${q.reparation ? pastille(q.reste !== null ? `Équipe sur place · ${q.reste} s` : 'Équipe sur place') : ''}
+          <span class="actions">
+            ${q.reparation ? '' : `<button class="bouton petit" type="button" data-action="reparer" data-valeur="${q.id}">${q.rearmer ? 'Réarmer' : `Réparer · ${euros(q.cout)}`}</button>`}
+            <button class="bouton petit" type="button" data-action="voirPanne" data-valeur="${q.id}">Voir</button>
+          </span></div>`).join('') : '<p class="vide">Aucune panne. Elles peuvent arriver à tout moment la nuit.</p>'}
+        <p class="aide">La nuit, l'équipe met un peu de temps (une fuite est isolée pendant les travaux : plus d'eau en aval). Le jour, la réparation est immédiate.</p>
+      </section>`;
   const canons = d.canons.length ? d.canons.map(c => `
     <div class="canon">
       <div class="entete"><span class="led" style="background:${LED[c.led]}"></span>
@@ -181,6 +195,7 @@ function afficherPoste(d, agir){
         <div class="ligne">${d.nuit ? `<button class="bouton petit" type="button" data-action="accelerer">${d.accelere ? 'Vitesse normale' : `Accélérer ×${CONFIG.nuit.accelere}`}</button>`
           : '<button class="bouton vert" type="button" data-action="lancerNuit">Lancer la nuit</button>'}</div>
       </section>
+      ${pannes}
       <section class="bloc"><h3>Alarmes${d.coupsMax !== null ? ` · coups de bélier ${d.coups} / ${d.coupsMax}` : ''}</h3>
         ${d.alarmes.length ? d.alarmes.map(a => `<p class="alarme ${a.niveau}">${echapper(a.texte)}</p>`).join('') : '<p class="vide">Aucune alarme.</p>'}
       </section>

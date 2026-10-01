@@ -254,6 +254,7 @@ function demarrer(){
       return o;
     });
     majTasMeshes();
+    majPannes3D();
     majInfos();
     manche.userData.orienter(ventActuel());
     planifierSauvegarde();
@@ -357,6 +358,7 @@ function demarrer(){
     proposition = null;
     fiche = null;
     anneauChute.visible = false;
+    $('devis').classList.remove('fiche');
     fermerPanneauDevis();
     apercu.children.slice().forEach(o => { apercu.remove(o); liberer(o); });
   }
@@ -393,11 +395,42 @@ function demarrer(){
   }
 
   // ----- Fiche d'un canon : état, orientation, remplacement -----
+  // La fiche se range à gauche (écran large) ou monte du bas (téléphone) ; la vue se centre sur le canon et l'endroit
+  // où tombe sa neige, dans la partie de l'écran que la fiche laisse libre (décalage de la vue).
+  const ecranLarge = window.matchMedia('(min-width:700px) and (orientation:landscape)');
   function ouvrirFiche(id){
     fermerDevis();
     fiche = id;
+    $('devis').classList.add('fiche');
     dessinerFiche();
+    const n = noeudReseau(reseau, id), ch = pointChute(n, ventActuel());
+    cam.aller({ x: (n.x + ch.x) / 2, z: (n.z + ch.z) / 2, distance: Math.max(40, Math.hypot(ch.x - n.x, ch.z - n.z) * 1.9 + 24) });
   }
+  const decalage = { x: 0, y: 0 };
+  function decalerVue(){
+    let vx = 0, vy = 0;
+    const d = $('devis');
+    if(fiche && !d.hidden){
+      const r = d.getBoundingClientRect();
+      if(ecranLarge.matches) vx = r.right / 2; else vy = Math.max(0, window.innerHeight - r.top) / 2;
+    }
+    const k = 0.18;
+    decalage.x += (vx - decalage.x) * k; decalage.y += (vy - decalage.y) * k;
+    if(Math.abs(decalage.x) < 0.5 && Math.abs(decalage.y) < 0.5 && !vx && !vy){
+      if(camera.view && camera.view.enabled){ camera.clearViewOffset(); }
+      return;
+    }
+    const w = window.innerWidth, h = window.innerHeight;
+    camera.setViewOffset(w, h, -decalage.x, decalage.y, w, h);
+  }
+  // Téléphone : glisser la fiche vers le bas la ferme
+  (() => {
+    let y0 = null;
+    $('devis').addEventListener('pointerdown', e => {
+      y0 = fiche && !ecranLarge.matches && !e.target.closest('input, select, button') && $('devis').scrollTop <= 0 ? e.clientY : null;
+    });
+    $('devis').addEventListener('pointerup', e => { if(y0 !== null && e.clientY - y0 > 60) fermerDevis(); y0 = null; });
+  })();
   function dessinerFiche(){
     const n = fiche && noeudReseau(reseau, fiche);
     if(!n){ fermerDevis(); return; }
@@ -411,6 +444,7 @@ function demarrer(){
     else if(e.pret) etat = `Prêt : ${Math.round(e.pression)} bar quand tous les canons sont fermés (${NOMS_ZONES[e.zone]})`;
     else etat = `Pas prêt : il manque ${e.manque}`;
     if(c && c.pressionAir !== null) etat += ` · air ${nombreFr(c.pressionAir, 1)} bar${c.pressionAir < CONFIG.air.pressionMin ? ' (il en faut ' + CONFIG.air.pressionMin + ')' : c.pressionAir < CONFIG.air.pressionPleine ? ' (un peu juste)' : ''}`;
+    const pannesFiche = (reseau.pannes || []).filter(p => p.cible === n.id);
     const ventilo = m.type === 'ventilateur', pressionFiche = c ? c.pression : e.eau ? e.pression : null;
     const options = Object.entries(CATALOGUE).map(([k, q]) => {
       const d = disponible(niveau, reseau, k);
@@ -419,6 +453,8 @@ function demarrer(){
     const supports = Object.entries(SUPPORTS).map(([k, s]) => `<option value="${k}"${k === (n.support || 'trepied') ? ' selected' : ''}>${echapper(s.nom)}</option>`).join('');
     const d = afficherPanneau(`<div class="tete"><span>${echapper(n.nom)} · ${echapper(nomEnneigeur(n.modele, n.support))}</span><button class="fermer" type="button" id="ficheFermer" aria-label="Fermer">×</button></div>
       ${pressionFiche !== null ? `<div class="ligne">Pression ${jaugePression(pressionFiche, n.modele)}<b>${Math.round(pressionFiche)} bar</b></div>` : ''}
+      ${pannesFiche.map(p => `<div class="ligne panne"><span>⚠ ${echapper(CONFIG.pannes.types[p.type].nom)}${p.etat === 'reparation' ? ' · équipe sur place' : ''}</span>
+        ${p.etat === 'active' ? `<button class="bouton petit" type="button" data-reparer="${p.id}">Réparer · ${euros(CONFIG.pannes.types[p.type].cout)}</button>` : ''}</div>`).join('')}
       <ul><li>${echapper(etat)}</li>
       <li>Neige sur la piste ${nuit ? 'cette nuit' : 'avec le vent prévu'} (${vent.force ? vent.force + ' km/h' : 'pas de vent'}) : <b>${Math.round(part * 100)} %</b></li>
       <li>${m.debit} m³/h d'eau${m.air ? ` · ${m.air} Nm³/h d'air` : ''} · ${m.pressionMin} bar minimum · jusqu'à ${nombreFr(m.neige * CONFIG.nuit.duree * CONFIG.nuit.echelle / 3600)} m³ de neige par nuit (${m.neige} m³/h)</li></ul>
@@ -426,6 +462,7 @@ function demarrer(){
       ${ventilo ? `<div class="ligne reglage-fiche">Inclinaison <input type="range" id="ficheInc" min="0" max="35" step="1" value="${n.inclinaison}" aria-label="Inclinaison du canon"><b>${n.inclinaison}°</b></div>` : ''}
       ${nuit || niveau.construction === false ? '' : `<div class="ligne choix">Remplacer par <select id="ficheModele">${options}</select><select id="ficheSupport">${supports}</select><button class="bouton petit" type="button" id="ficheRemplacer"></button></div>`}`);
     d.querySelector('#ficheFermer').onclick = fermerDevis;
+    d.querySelectorAll('[data-reparer]').forEach(b => { b.onclick = () => reparer(b.dataset.reparer); });
     // Curseurs : direction et inclinaison, le canon tourne en direct
     const curDir = d.querySelector('#ficheDir'), curInc = d.querySelector('#ficheInc');
     const regler = () => {
@@ -583,6 +620,7 @@ function demarrer(){
       message('Démarrez une pompe vanne fermée, puis ouvrez la vanne doucement. Gardez le départ dans le vert.', 'attention', 8000);
     }
     if(nuit.regime.sec) message('Retenue vide : les pompes sont à sec !', 'alarme', 6000);
+    if(niveau.pannes && reseau.pannes.length) message(`${reseau.pannes.length} panne(s) pas encore réparée(s) : voyez le poste de travail.`, 'attention', 6000);
     majInfos();
   }
   // Applique le régime de la nuit : voyants des canons, jets de neige, salle de pompage
@@ -593,7 +631,7 @@ function demarrer(){
     sources = [];
     for(const [id, o] of regards3D){
       const c = g.canons.find(q => q.id === id);
-      marquer(o, !c || c.arrete ? 'arret' : !c.production ? 'defaut' : c.facteur >= 0.999 ? 'production' : 'faible');
+      marquer(o, !c || c.arrete ? 'arret' : !c.production || c.panne ? 'defaut' : c.facteur >= 0.999 ? 'production' : 'faible');
       if(c && c.production) sources.push({
         depart: positionBuse(o.userData.canon, new THREE.Vector3()),
         arrivee: new THREE.Vector3(c.chute.x, poser(c.chute.x, c.chute.z) + 0.4, c.chute.z),
@@ -606,10 +644,73 @@ function demarrer(){
   // La salle de pompage montre les pompes en marche, la pression de départ, l'ouverture de la vanne, l'alarme
   function etatSalleDepuis(g){
     const cmd = reseau.pompage;
-    const marche = [0, 1, 2].map(i => !!g && (cmd.mode === 'auto' ? i < g.pompes : cmd.marche[i]));
-    etatSallePompage(salle, { marche, pressions: marche.map(m => m ? g.pressionDepart : 0), pressionDepart: g ? g.pressionDepart : 0,
+    const marche = marchePompes(g), defaut = [0, 1, 2].map(i => !!g && g.pompesEnPanne.includes(i));
+    etatSallePompage(salle, { marche, defaut, pressions: marche.map(m => m ? g.pressionDepart : 0), pressionDepart: g ? g.pressionDepart : 0,
       ouverture: cmd.ouverture, alarme: (!!g && (g.sec || g.surcharge)) || performance.now() < alarmeJusqua });
   }
+  // Pompes en marche (en automatique, les premières pompes qui ne sont pas en panne)
+  function marchePompes(g){
+    const cmd = reseau.pompage, hs = g ? g.pompesEnPanne : (reseau.pannes || []).filter(p => p.type === 'pompe').map(p => +p.cible);
+    if(cmd.mode !== 'auto') return [0, 1, 2].map(i => !!g && cmd.marche[i] && !hs.includes(i));
+    const dispo = [0, 1, 2].filter(i => !hs.includes(i)).slice(0, g ? g.pompes : 0);
+    return [0, 1, 2].map(i => dispo.includes(i));
+  }
+
+  // ----- Pannes (niveau 4) : repères en 3D, réparations -----
+  const alertes3D = new Map();
+  function majPannes3D(){
+    const vues = new Set();
+    for(const p of reseau.pannes || []){
+      const pos = positionPanne(reseau, p);
+      if(!pos) continue;
+      vues.add(p.id);
+      let a = alertes3D.get(p.id);
+      if(!a){
+        a = { alerte: creerAlerte(), fuite: p.type === 'fuite' ? creerFuite() : null };
+        let h = 5;
+        if(p.type === 'pompe') h = 9;
+        else if(p.type === 'fuite') h = 3;
+        else if(regards3D.has(p.cible)) h = regards3D.get(p.cible).userData.point.position.y + 1.6;
+        a.alerte.position.set(pos.x, poser(pos.x, pos.z) + h, pos.z);
+        if(p.type === 'pompe') a.alerte.position.set(niveau.pompage.x, coteReplat(t, niveau.pompage) - t.altBas + h, niveau.pompage.z);
+        scene.add(a.alerte);
+        if(a.fuite){ a.fuite.position.set(pos.x, poser(pos.x, pos.z), pos.z); scene.add(a.fuite); }
+        alertes3D.set(p.id, a);
+      }
+      etatAlerte(a.alerte, p.etat === 'reparation');
+      if(a.fuite) a.fuite.userData.active = p.etat === 'active';
+    }
+    for(const [id, a] of alertes3D) if(!vues.has(id)){
+      scene.remove(a.alerte); if(a.fuite){ scene.remove(a.fuite); liberer(a.fuite); }
+      alertes3D.delete(id);
+    }
+  }
+  function animerPannes(dt, temps){
+    for(const a of alertes3D.values()){
+      a.alerte.material.opacity = a.alerte.userData.reparation ? 1 : 0.55 + 0.45 * Math.abs(Math.sin(temps * 3));
+      if(a.fuite) animerFuite(a.fuite, dt, temps);
+    }
+  }
+  const nomPanne = p => `${CONFIG.pannes.types[p.type].nom} · ${libellePanne(reseau, p)}`;
+  function reparer(id){
+    const p = (reseau.pannes || []).find(q => q.id === id);
+    if(!p) return;
+    const r = reparerPanne(niveau, reseau, id, !!nuit, nuit ? nuit.temps : 0);
+    if(!r.ok) return message(r.raison, 'attention', 4000);
+    const verbe = p.type === 'disjoncteur' ? 'Réarmement' : 'Réparation';
+    message(r.finie ? `${verbe} faite : ${libellePanne(reseau, p)}${r.cout ? ` (${euros(r.cout)})` : ''}.`
+                    : `L'équipe part : ${libellePanne(reseau, p)}, environ ${r.duree} s${p.type === 'fuite' ? ' (conduite isolée pendant les travaux)' : ''}.`, 'info', 4500);
+    apresPannes();
+  }
+  // Une panne arrive ou se termine : on recalcule la nuit et la 3D
+  function apresPannes(){
+    if(nuit){ nuit.regime = regimeNuit(niveau, reseau, nuit.regime.vent); appliquerRegime(); }
+    else etatSalleDepuis(null);
+    majPannes3D(); majInfos(); planifierSauvegarde();
+    if(fiche) dessinerFiche();
+    rafraichirPoste();
+  }
+
   function finirNuit(casse = false){
     const bilan = finNuit(niveau, reseau);
     nuit = null; sources = [];
@@ -622,6 +723,7 @@ function demarrer(){
     $('accelerer').hidden = true;
     afficherConsigne(null);
     synchroniser();
+    majPannes3D();
     const premiereReussite = bilan.reussi && !reussi;
     if(premiereReussite){
       reussi = true;
@@ -636,6 +738,7 @@ function demarrer(){
       bilan.rendement !== null ? `Rendement : ${Math.round(bilan.rendement * 100)} % de ce que les canons ouverts pouvaient produire` : null,
       `${o.type === 'production' ? 'Neige produite' : 'Sur la piste'} depuis le début : ${nombreFr(neigeObjectif())} / ${nombreFr(o.m3)} m³${o.nuits ? ` (nuit ${bilan.nuit} sur ${o.nuits})` : ''}`,
       o.coupsMax !== undefined ? `Coups de bélier : ${bilan.coups} cette nuit, ${reseau.coups} au total (${o.coupsMax} au plus)` : (bilan.coups ? `Coups de bélier : ${bilan.coups} (réparations : ${euros(bilan.coups * CONFIG.belier.reparation)})` : null),
+      niveau.pannes ? `Pannes : ${bilan.pannes} cette nuit, réparations ${euros(bilan.reparations)}${reseau.pannes.length ? ` · encore ${reseau.pannes.length} à réparer (poste de travail)` : ''}` : null,
       reseau.retenue ? `Retenue : ${Math.round(reseau.retenue.volume / volumeRetenue(R) * 100)} % après le remplissage de la journée` : null
     ].filter(Boolean);
     let titre = `Fin de la nuit ${bilan.nuit}`, boutons = '<button class="bouton" type="button" id="bilanOk">Continuer</button>';
@@ -649,6 +752,7 @@ function demarrer(){
       lignes.push(niveau.programme ? 'Bravo : la salle de pompage a tourné sans casse.' : 'Bravo : la piste est prête pour l\'ouverture.');
       boutons = `${suivant ? `<button class="bouton" type="button" id="bilanSuivant">Niveau suivant</button>` : ''}<button class="bouton" type="button" id="bilanOk">Continuer ici</button>`;
     }
+    fermerDevis();
     const d = afficherPanneau(`<div class="tete"><span>${echapper(titre)}</span><span>${bilan.gain - bilan.electricite >= 0 ? '+' : '−'}${euros(Math.abs(bilan.gain - bilan.electricite))}</span></div>
       <ul>${lignes.map(l => `<li>${echapper(l)}</li>`).join('')}
       ${bilan.nouveaux.map(k => `<li><b>Nouveau : ${echapper(CATALOGUE[k].nom)} disponible !</b></li>`).join('')}</ul>
@@ -674,6 +778,8 @@ function demarrer(){
       alarmes.push({ niveau: g.pressionDepart > CONFIG.pression.zones.surpression ? 'rouge' : '', texte: `Pression au départ hors du vert : ${Math.round(g.pressionDepart)} bar (${CONFIG.pompage.zoneVerte[0]} à ${CONFIG.pompage.zoneVerte[1]} conseillés).` });
     if(performance.now() < alarmeJusqua) alarmes.push({ niveau: 'rouge', texte: 'Coup de bélier ! Manœuvrez plus doucement.' });
     if(g && g.pompes && cmd.ouverture <= 0) alarmes.push({ niveau: '', texte: 'Pompe en marche, vanne principale fermée : ouvrez-la doucement.' });
+    for(const p of reseau.pannes || []) if(p.etat === 'active') alarmes.push({ niveau: 'rouge', texte: `Panne : ${nomPanne(p)}.` });
+    if(g && g.fuite) alarmes.push({ niveau: 'rouge', texte: `Fuite : ${nombreFr(g.fuite)} m³/h perdus, la pression chute en aval.` });
     if(cmd.mode === 'manuel' && !cmd.marche.some(Boolean)) alarmes.push({ niveau: 'rouge', texte: 'Mode manuel : aucune pompe démarrée.' });
     if(g && g.air){
       const perches = g.canons.filter(c => c.pressionAir !== null && !c.arrete);
@@ -684,12 +790,15 @@ function demarrer(){
     const canons = reseau.noeuds.filter(n => n.type === 'regard').map(n => {
       const e = etatRegard(niveau, reseau, n.id), c = g && g.canons.find(q => q.id === n.id), m = CATALOGUE[n.modele];
       let led, etat, pression = null, production = null, part = null;
+      const pn = (reseau.pannes || []).find(p => p.cible === n.id);
       if(!e.pret){ led = 'manque'; etat = `Il manque ${e.manque}`; }
+      else if(pn && pn.type === 'moteur'){ led = 'defaut'; etat = pn.etat === 'reparation' ? 'En réparation' : 'Moteur en panne'; }
       else if(n.arret){ led = 'arret'; etat = niveau.programme ? 'En attente du chef d\'équipe' : 'Arrêté au poste'; }
       else if(c){
         pression = c.pression; production = c.production; part = c.part;
         led = !c.production ? (attendAir(c) && c.zone !== 'surpression' ? 'faible' : 'defaut') : c.facteur >= 0.999 ? 'production' : 'faible';
-        etat = !c.production ? (c.zone === 'surpression' ? 'Surpression' : attendAir(c) ? 'Pas assez d\'air' : 'Pression insuffisante') : c.facteur >= 0.999 ? 'Production' : 'Production réduite';
+        etat = !c.production ? (c.zone === 'surpression' ? 'Surpression' : attendAir(c) ? 'Pas assez d\'air' : 'Pression insuffisante') : c.panne === 'gel' ? 'Buse gelée' : c.facteur >= 0.999 ? 'Production' : 'Production réduite';
+        if(c.panne === 'gel') led = 'defaut';
         if(!c.production && c.zone !== 'surpression' && !attendAir(c)) alarmes.push({ niveau: '', texte: `${n.nom} : ${Math.round(c.pression)} bar, il en faut ${m.pressionMin}.` });
         if(c.zone === 'surpression') alarmes.push({ niveau: 'rouge', texte: `${n.nom} : surpression (${Math.round(c.pression)} bar), canon en sécurité.` });
       } else { led = 'pret'; etat = 'Prêt'; pression = e.pression; }
@@ -703,9 +812,13 @@ function demarrer(){
       retenue: reseau.retenue ? reseau.retenue.volume / volumeRetenue(R) : null,
       nuit: nuit && { numero: reseau.nuit, restant: Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps)), neige: reseau.pisteNuit, argent: Math.round(reseau.argentNuit) },
       pompage: { mode: cmd.mode, ouverture: cmd.ouverture,
-        marche: [0, 1, 2].map(i => cmd.mode === 'auto' ? !!g && i < g.pompes : cmd.marche[i]),
+        marche: cmd.mode === 'auto' ? marchePompes(g) : cmd.marche.slice(),
+        defaut: [0, 1, 2].map(i => (reseau.pannes || []).some(p => p.type === 'pompe' && +p.cible === i)),
         pression: g ? g.pressionDepart : 0, debit: g ? g.debit : 0, capacite: g ? g.capacite : 0, modeImpose: !!niveau.programme,
         dansLeVert: !!g && g.pressionDepart >= CONFIG.pompage.zoneVerte[0] && g.pressionDepart <= CONFIG.pompage.zoneVerte[1] },
+      pannes: niveau.pannes ? (reseau.pannes || []).map(p => ({ id: p.id, nom: CONFIG.pannes.types[p.type].nom, ou: libellePanne(reseau, p),
+        reparation: p.etat === 'reparation', reste: p.etat === 'reparation' && nuit ? Math.max(0, Math.ceil(p.fin - nuit.temps)) : null,
+        cout: CONFIG.pannes.types[p.type].cout, rearmer: p.type === 'disjoncteur' })) : null,
       air: reseau.compresseur && {
         marche: g ? !!g.air.marche : (cmd.mode === 'manuel' && reseau.compresseur.marche),
         commande: !!reseau.compresseur.marche, pilotable: cmd.mode === 'manuel',
@@ -726,6 +839,15 @@ function demarrer(){
     const cmd = reseau.pompage;
     if(action === 'fermer') return fermerLePoste();
     if(action === 'lancerNuit'){ lancerNuit(); return rafraichirPoste(); }
+    if(action === 'reparer') return reparer(valeur);
+    if(action === 'voirPanne'){
+      const p = (reseau.pannes || []).find(q => q.id === valeur), pos = p && positionPanne(reseau, p);
+      if(!pos) return;
+      fermerLePoste();
+      if(p.type !== 'fuite' && p.type !== 'pompe' && p.type !== 'disjoncteur') return agirPoste('voir', p.cible);
+      cam.aller({ x: pos.x, z: pos.z, distance: 50 });
+      return;
+    }
     if(action === 'accelerer'){ $('accelerer').onclick(); return rafraichirPoste(); }
     if(action === 'voir'){
       const n = noeudReseau(reseau, valeur);
@@ -771,7 +893,7 @@ function demarrer(){
   function ouvrirMenu(){
     sauver();
     fermerLePoste();
-    afficherMenu(cartesMenu(), [{ numero: 4, nom: 'Les pannes et les réparations' }], (action, id) => {
+    afficherMenu(cartesMenu(), [], (action, id) => {
       if(action === 'fermer') return fermerMenu();
       if(action === 'jouer'){ if(id === niveau.id) return fermerMenu(); location.href = `index.html?niveau=${id}`; }
       if(action === 'recommencer'){
@@ -834,6 +956,10 @@ function demarrer(){
         appliquerRegime();
         for(const t of new Set(ev.map(e => e.texte))) if(t) message(t, 'info', 5000);
       }
+      const nouvelles = evenementsPannes(niveau, reseau, tAvant, nuit.temps), finies = avancerPannes(reseau, nuit.temps);
+      for(const p of nouvelles) message(`Panne : ${nomPanne(p)}`, 'alarme', 7000);
+      for(const p of finies) message(`Réparation terminée : ${libellePanne(reseau, p)}.`, 'ok', 4000);
+      if(nouvelles.length || finies.length) apresPannes();
       const r = avancerNuit(niveau, reseau, nuit.regime, dtJeu);
       if(r.vide){
         nuit.regime = regimeNuit(niveau, reseau, nuit.regime.vent);
@@ -861,6 +987,8 @@ function demarrer(){
     for(const o of regards3D.values()) animerCanon(o.userData.canon, dt);
     animerSallePompage(salle, dt, temps);
     if(compresseur) animerCompresseur(compresseur, dt, temps);
+    animerPannes(dt, temps);
+    decalerVue();
     avancerDameuses(dt * (nuit ? nuit.vitesse : 1), temps);
     majEtiquettes(camera, CONFIG.graphismes.distanceEtiquettes);
     voirAtravers(salle, camera, dt, 70);

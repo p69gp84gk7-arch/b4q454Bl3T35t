@@ -287,7 +287,7 @@ function showDraw(){
 }
 /* Nivoculteur : dernier niveau joué et partie en cours (clés partagées avec jeux/nivoculteur) */
 const NIVO_NIVEAUX = { pompage: { n: 1, nom: 'La salle de pompage', prod: true }, reseau: { n: 2, nom: 'Construire le réseau', prod: false },
-  air: { n: 3, nom: 'Les perches et l\'air comprimé', prod: false } };
+  air: { n: 3, nom: 'Les perches et l\'air comprimé', prod: false }, pannes: { n: 4, nom: 'Les pannes et les réparations', prod: false } };
 function showNivo(){
   const p = read('nivo-progression') || {}, el = document.getElementById('stnivo');
   const reussis = Object.keys(p.niveaux || {}).filter(k => p.niveaux[k] && p.niveaux[k].reussi).length;

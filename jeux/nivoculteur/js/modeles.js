@@ -1197,7 +1197,7 @@ function animerSallePompage(salle, dt, temps){
     const marche = e.marche[i];
     p.vitesse += ((marche ? 1 : 0) - p.vitesse) * Math.min(1, dt * 1.2);
     p.ventilateur.rotation.z += p.vitesse * dt * 40;
-    p.voyant.material.color.set(marche ? COULEURS.voyants.production : COULEURS.voyants.arret);
+    p.voyant.material.color.set(e.defaut && e.defaut[i] ? COULEURS.voyants.defaut : marche ? COULEURS.voyants.production : COULEURS.voyants.arret);
     p.bar += ((marche ? e.pressions[i] : 0) - p.bar) * k;
     p.aiguille.rotation.z = -angleCadran(p.bar + (marche ? Math.sin(temps * 7 + i) * 0.3 : 0));
   });
@@ -1307,6 +1307,82 @@ function creerTelesiege(ts, poser){
   sieges.forEach((s, i) => inst.setMatrixAt(i, m.compose(s.p, q.setFromAxisAngle(axe, s.rot), un)));
   groupe.add(inst);
   return groupe;
+}
+
+// ---------------------------------------------------------------------------------------
+// Pannes (niveau 4) : repère au-dessus de ce qui est en panne, jet d'eau d'une fuite
+// ---------------------------------------------------------------------------------------
+const _texAlertes = {};
+function textureAlerte(type){
+  return _texAlertes[type] || (_texAlertes[type] = canvasTexture(64, 64, g => {
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    if(type === 'panne'){
+      // Triangle jaune avec un point d'exclamation
+      g.fillStyle = '#FFD23A'; g.strokeStyle = '#1C1F25'; g.lineWidth = 5;
+      g.beginPath(); g.moveTo(32, 5); g.lineTo(60, 56); g.lineTo(4, 56); g.closePath(); g.fill(); g.stroke();
+      g.fillStyle = '#1C1F25'; g.fillRect(29, 20, 6, 20); g.beginPath(); g.arc(32, 47, 3.5, 0, Math.PI * 2); g.fill();
+    } else {
+      // Rond bleu avec une clé plate blanche : l'équipe répare
+      g.fillStyle = '#2F6FDE'; g.strokeStyle = '#0B1426'; g.lineWidth = 4;
+      g.beginPath(); g.arc(32, 32, 28, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.save(); g.translate(32, 32); g.rotate(-Math.PI / 4);
+      g.fillStyle = '#FFFFFF'; g.fillRect(-4, -4, 8, 26);
+      g.beginPath(); g.arc(0, -10, 11, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#2F6FDE'; g.fillRect(-4, -24, 8, 12);
+      g.restore();
+    }
+  }));
+}
+function creerAlerte(){
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: textureAlerte('panne'), sizeAttenuation: false, depthTest: false, transparent: true, fog: false }));
+  sp.scale.set(0.036, 0.036, 1);
+  sp.center.set(0.5, 0);
+  sp.renderOrder = 11;
+  sp.userData.reparation = false;
+  return sp;
+}
+function etatAlerte(sp, reparation){
+  if(sp.userData.reparation === reparation) return;
+  sp.userData.reparation = reparation;
+  sp.material.map = textureAlerte(reparation ? 'reparation' : 'panne');
+  sp.material.needsUpdate = true;
+}
+// Fuite : gerbe d'eau qui jaillit de la tranchée et flaque de glace qui grandit
+let _texGoutte = null;
+function creerFuite(){
+  const g = new THREE.Group(), N = 60;
+  const pos = new Float32Array(N * 3), graines = [];
+  for(let i = 0; i < N; i++) graines.push({ a: Math.random() * Math.PI * 2, v: 0.6 + Math.random() * 0.8, phase: Math.random() });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  _texGoutte = _texGoutte || canvasTexture(32, 32, c => {
+    const gr = c.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,.8)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = gr; c.fillRect(0, 0, 32, 32);
+  });
+  const gouttes = new THREE.Points(geo, new THREE.PointsMaterial({ color: '#CDEBFF', map: _texGoutte, size: 0.45, transparent: true, opacity: 0.9, depthWrite: false }));
+  gouttes.frustumCulled = false;
+  const glace = new THREE.Mesh(new THREE.CircleGeometry(1, 20), new THREE.MeshLambertMaterial({ color: '#A9D4F5', transparent: true, opacity: 0.8, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+  glace.rotation.x = -Math.PI / 2;
+  glace.position.y = 0.45;
+  glace.renderOrder = 2;
+  glace.scale.setScalar(1.5);
+  g.add(gouttes, glace);
+  g.userData = { gouttes, glace, graines, age: 0, active: true };
+  return g;
+}
+function animerFuite(g, dt, temps){
+  const u = g.userData, P = u.gouttes.geometry.attributes.position;
+  u.age += dt;
+  u.gouttes.visible = u.active;
+  if(u.active) u.glace.scale.setScalar(Math.min(6, 1.5 + u.age * 0.15));
+  if(!u.active) return;
+  u.graines.forEach((s, i) => {
+    const f = (temps * s.v + s.phase) % 1, r = f * 1.6;              // chaque goutte monte puis retombe
+    P.setXYZ(i, Math.cos(s.a) * r, 0.2 + 5.5 * s.v * f * (1 - f) * 2, Math.sin(s.a) * r);
+  });
+  P.needsUpdate = true;
 }
 
 // ---------------------------------------------------------------------------------------

@@ -119,19 +119,34 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
 
 - **Niveau 1 · La salle de pompage** : réseau déjà construit (`reseauFixe` : 6 V10 sur tour, raccordés), pas d'outils de construction (`construction: false`), mode manuel imposé. Chaque nuit démarre pompes arrêtées, vanne fermée ; le **programme** du chef d'équipe ouvre/ferme des canons (`programme` : t = 0, 12, 24, 45 s). Objectif : 6 000 m³ produits en 3 nuits au plus, 2 coups de bélier au plus (au 3e, la conduite casse : niveau raté). Une pompe ne suffit pas à pleine charge (324 m³/h), deux oui ; avec peu de canons ouverts, il faut fermer un peu la vanne.
 - **Niveau 2 · Construire le réseau** : comme avant (objectif 30 000 m³ sur la piste).
-- **Menu** (bouton « Menu », et à l'ouverture sans `?niveau=`) : cartes des niveaux (réussi, partie en cours, Jouer / Reprendre / Recommencer), niveau 4 « bientôt », liens Modèles 3D et Vérifications. Choisir un autre niveau recharge la page avec `index.html?niveau=<id>` (`&nouvelle` pour repartir de zéro).
+- **Menu** (bouton « Menu », et à l'ouverture sans `?niveau=`) : cartes des niveaux (réussi, partie en cours, Jouer / Reprendre / Recommencer), les 4 niveaux, liens Modèles 3D et Vérifications. Choisir un autre niveau recharge la page avec `index.html?niveau=<id>` (`&nouvelle` pour repartir de zéro).
 - **Sauvegarde** (`localStorage`, try/catch) : `nivo-partie-<id>` (le réseau complet, version 1), enregistrée après chaque action et chaque nuit (pas avant la première action) ; `nivo-progression` (`niveaux[id].reussi`, `dernier`). L'accueil DesDés lit ces clés pour afficher la partie en cours.
 - `CONFIG.progression.toutOuvert = true` pendant la mise au point (tous les niveaux jouables) ; à `false`, un niveau s'ouvre quand le précédent est réussi.
 
 
 ## Affichage et réglages (retouches demandées après l'étape 6)
 
+- Fiche d'un canon : **à gauche** sur un écran large (paysage, 700 px et plus), **volet qui monte du bas** sur téléphone (on le ferme avec × ou en le glissant vers le bas). À l'ouverture, la vue se centre sur le canon et l'endroit où tombe sa neige, dans la partie de l'écran que la fiche laisse libre (`decalerVue` : `camera.setViewOffset`).
 - Fiche d'un canon : **curseurs** pour la direction (−180 à 180°, pas de 5°) et l'inclinaison (0 à 35°) ; le canon tourne en direct, la nuit est recalculée. Jauge de pression.
 - **Jauges de pression** (`jaugePression`, `zonesPression` dans interface.js) : bande 0 → 80 bar, rouge = pas de neige ou surpression, orange = production réduite ou pression haute, vert = bonne pression, trait blanc = pression actuelle (prévue canons fermés le jour). Une au départ de la salle de pompage (zone verte 38–54 bar), une par canon.
 - Poste de travail : blocs à gauche, **liste des canons dans une colonne à droite** (en dessous sur téléphone) avec un résumé « bonne pression / réduite ou haute / hors limites ». Boutons **Lancer la nuit** et Accélérer dans le bloc de la nuit (le bouton de la barre du bas reste).
 - Couleurs d'état des canons : **vert = en marche** (même production réduite), **rouge = à l'arrêt**, **jaune = en défaut** (pression, air). Petit point de couleur au-dessus de chaque enneigeur (`creerPointEtat`), même code pour le voyant 3D et les voyants du poste. La bulle eau / électricité / air est **sous** l'enneigeur.
 - Noms des bâtiments (`creerEtiquette(nom, couleur, carre)`) : de loin (plus de `CONFIG.graphismes.distanceEtiquettes` = 170 m), un **petit carré** de couleur : bleu = salle de pompage, jaune = départ électrique, blanc = compresseur ; de près, le nom (`majEtiquettes`).
 - **Dameuse** (`creerDameuse`) : quand l'objectif du niveau est atteint, une dameuse par piste fait des allers-retours (deux passes décalées), phares et gyrophare allumés ; les tas de neige sur la piste s'étalent à son passage (`tas.dame`). `CONFIG.dameuse.vitesse`.
+
+## Pannes et réparations (niveau 4, étape 7)
+
+- **Niveau 4 · Les pannes et les réparations** : réseau déjà construit (`reseauFixe` avec `liaisons` : chaînes par réseau) — 6 V10 sur tour aux Clarines (R1–R6, eau depuis la salle, câble depuis `elec1`), 4 perches de 10 m aux Gentianes (R7–R10, eau depuis R5, câble depuis le départ des Gentianes `elec4`, air depuis le compresseur par R3 et R5). Budget 120 000 € (réparations, canons en plus). Objectif : **18 000 m³ sur les pistes en 6 nuits** (sans panne, environ 23 000 m³ avec l'orientation de départ).
+- `CONFIG.pannes` : 1 à 3 pannes par nuit, entre 4 et 45 s, tirées au sort (`planifierPannes`, toujours les mêmes pour une même nuit), jamais deux fois sur la même chose :
+  | Panne | Effet | Réparation |
+  |---|---|---|
+  | Fuite sur une conduite | 30 m³/h perdus (retenue), −10 bar pour les regards en aval | 6 000 €, 15 s ; conduite **isolée** pendant les travaux (plus d'eau en aval) |
+  | Moteur de ventilateur grillé | ce canon s'arrête | 2 500 €, 10 s |
+  | Buse gelée (perche) | production × 0,4 | 300 €, 5 s |
+  | Disjoncteur déclenché | le départ électrique ne fournit plus rien | « Réarmer », gratuit, 2 s |
+  | Pompe en défaut thermique | une pompe de moins | 4 000 €, 20 s |
+- Simulation : `res.pannes` (`{ id, type, cible, etat: 'active' | 'reparation', fin }`), `effetsPannes` (utilisé par `regimeNuit`), `evenementsPannes`, `reparerPanne` (payée tout de suite ; la nuit l'équipe met `duree` s, le jour c'est immédiat), `avancerPannes`, `libellePanne`, `positionPanne`. À la fin de la nuit, les réparations en cours se terminent ; les pannes non réparées restent. Remplacer un enneigeur supprime sa panne.
+- Jeu : message rouge quand une panne arrive ; triangle jaune clignotant au-dessus (clé bleue pendant la réparation) ; gerbe d'eau et flaque de glace sur une fuite ; voyant jaune « DÉFAUT » pour une pompe ; canon en panne en jaune. Bloc **Pannes** au poste (Réparer / Réarmer, Voir), ligne de panne dans la fiche, total des réparations au bilan.
 
 ## Air comprimé et perches (niveau 3, étape 6)
 
@@ -164,7 +179,7 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
 - [x] **Étape 2 — Niveau 1** : salle de pompage jouable (programme du chef d'équipe, pompes et vanne à la main, courbe de pompe, zone verte, coup de bélier, rendement, réussite / échec).
 - [x] **Étape 5 — Menus et niveaux** : menu des niveaux, sauvegarde de la partie et de la progression, reprise, recommencer, statut sur l'accueil DesDés. Débits passés en m³/h. 74 vérifications.
 - [x] **Étape 6 — Perches, air comprimé, compresseur** (niveau 3) : outil « Air », compresseur sur le replat de la salle de pompage, perches jouables, réservoir d'air, bloc « Air comprimé » au poste, électricité facturée. 84 vérifications.
-- [ ] **Étape 7 — Pannes et réparations** (niveau 4), dont les fuites.
+- [x] **Étape 7 — Pannes et réparations** (niveau 4) : fuites, moteurs, buses gelées, disjoncteurs, pompes ; repères en 3D, bloc « Pannes » au poste, réparation par l'équipe. 97 vérifications.
 
 ### Idées à garder en tête
 
