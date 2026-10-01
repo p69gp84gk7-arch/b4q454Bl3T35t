@@ -148,6 +148,17 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
 - Simulation : `res.pannes` (`{ id, type, cible, etat: 'active' | 'reparation', fin }`), `effetsPannes` (utilisé par `regimeNuit`), `evenementsPannes`, `reparerPanne` (payée tout de suite ; la nuit l'équipe met `duree` s, le jour c'est immédiat), `avancerPannes`, `libellePanne`, `positionPanne`. À la fin de la nuit, les réparations en cours se terminent ; les pannes non réparées restent. Remplacer un enneigeur supprime sa panne.
 - Jeu : message rouge quand une panne arrive ; triangle jaune clignotant au-dessus (clé bleue pendant la réparation) ; gerbe d'eau et flaque de glace sur une fuite ; voyant jaune « DÉFAUT » pour une pompe ; canon en panne en jaune. **Liste des pannes dans le coin en haut à droite** (demande de l'utilisateur ; `afficherPannesCoin`, `#pannesCoin`) avec Réparer / Réarmer et Voir ; repliée en badge « ⚠ n pannes » sur un écran de moins de 1 100 px (les messages passent dessous sur téléphone). Les pannes restent dans les alarmes du poste ; ligne de panne dans la fiche, total des réparations au bilan.
 
+## Modifier l'installation, objectifs et compteurs (demandes de l'utilisateur)
+
+- **Démonter** (outil « Démonter », ou bouton dans la fiche) : un regard et son enneigeur, ou un départ électrique ajouté ; les tranchées qui y arrivent sont retirées. On récupère `CONFIG.couts.revente` (50 %) du matériel et `repriseTranchee` (25 %) des tranchées ; le devis prévient quels regards perdront l'eau, le courant ou l'air (`devisDemontage`, `demonter`).
+- **Retirer une conduite ou un câble** : outil « Démonter » sur une tranchée → un bouton par réseau présent (25 % rendus) ; une tranchée vide disparaît (`devisRetrait`, `retirerReseau`).
+- **Déplacer un regard** (bouton « Déplacer » de la fiche, puis toucher le nouvel endroit) : les tranchées suivent ; on paie `CONFIG.couts.deplacement` (3 000 €) plus les mètres de tranchée gagnés, rien n'est rendu si elles raccourcissent (`devisDeplacement`, `deplacerRegard`).
+- **Nouveau départ électrique** (outil « + Départ élec ») : une armoire où l'on veut dans le domaine, `CONFIG.couts.departElec` (25 000 €) ; nœud `elecP<n>` avec `ajoute: true` (`devisDepart`, `ajouterDepartElec`).
+- Tout cela passe par l'historique : **Annuler** remet en place et reprend l'argent (types `demontage`, `retrait`, `deplacement`, `depart`). Les propositions du jeu ont une fonction `faire` appelée par « Valider ».
+- **Objectifs** dans le coin en haut à gauche (`afficherObjectifs`, `listeObjectifs`) : poser un regard, raccorder un canon (et une perche à l'air s'il y a un compresseur), lancer une nuit, objectif de neige (barre), objectif financier en carrière (barre), coups de bélier au niveau 1. Replié en badge sous 1 100 px de large. Pas d'objectifs dans le bac à sable.
+- **Compteurs** (budget, nuit, neige, vent, retenue) dans un **bandeau sous le titre**, repliable (bouton ▴ / « Compteurs ▾ », choix gardé dans `nivo-compteurs-replies`). La hauteur du haut de l'écran est suivie (`suivreHauteurHaut`, variable CSS `--h-haut`) pour placer messages, coins et fiche juste en dessous.
+- Pour plus tard (dit par l'utilisateur) : terrain, remontées, damage, clients et satisfaction. Pour l'instant, on reste sur la neige de culture.
+
 ## Carrière (validée par l'utilisateur : station continue, 4 niveaux = tutoriels)
 
 - Menu en trois parties : **Carrière** (une carte « La station de la Combe »), **Tutoriels** (les 4 niveaux de `LEVELS`), **Bac à sable**.

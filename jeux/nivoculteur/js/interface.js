@@ -84,12 +84,13 @@ function afficherConsigne(texte){
   $('consigne').textContent = texte || '';
 }
 // Devis d'une construction : titre, lignes de détail, total, et boutons Valider / Annuler
-function afficherDevis({ titre, lignes, total, budgetApres, possible }, valider, annuler){
+// rendu : l'opération rapporte de l'argent (démontage) ; refus : raison affichée si impossible
+function afficherDevis({ titre, lignes, total, budgetApres, possible, rendu = false, libelleOk = 'Valider', refus = 'Budget insuffisant.' }, valider, annuler){
   const d = $('devis');
-  d.innerHTML = `<div class="tete"><span>${echapper(titre)}</span><span>${euros(total)}</span></div>
+  d.innerHTML = `<div class="tete"><span>${echapper(titre)}</span><span>${rendu ? '+' : ''}${euros(total)}</span></div>
     <ul>${lignes.map(l => `<li>${echapper(l)}</li>`).join('')}<li>Budget après : ${euros(budgetApres)}</li></ul>
-    ${possible ? '' : '<p class="refus">Budget insuffisant.</p>'}
-    <div class="actions"><button class="bouton" type="button" id="devisOk"${possible ? '' : ' disabled'}>Valider</button>
+    ${possible ? '' : `<p class="refus">${echapper(refus)}</p>`}
+    <div class="actions"><button class="bouton" type="button" id="devisOk"${possible ? '' : ' disabled'}>${echapper(libelleOk)}</button>
     <button class="bouton" type="button" id="devisNon">Annuler</button></div>`;
   d.hidden = false;
   $('devisOk').onclick = valider;
@@ -261,6 +262,31 @@ function afficherPannesCoin(liste, replie, agir){
       </span></div>`).join('')}</div>`}`);
   el.hidden = false;
   el.onclick = e => { const b = e.target.closest('[data-action]'); if(b) agir(b.dataset.action, b.dataset.valeur); };
+}
+
+// ---------------------------------------------------------------------------------------
+// Objectifs : petit panneau dans le coin en haut à gauche (repliable)
+// liste : [{ texte, detail, fait, progres (0 à 1 ou null) }]
+// ---------------------------------------------------------------------------------------
+function afficherObjectifs(liste, replie, agir){
+  const el = $('objectifsCoin');
+  document.body.classList.toggle('avec-objectifs', liste.length > 0);
+  if(!liste.length){ el.hidden = true; el.innerHTML = ''; return; }
+  el.classList.toggle('replie', replie);
+  const faits = liste.filter(o => o.fait).length;
+  mettreAJour(el, `<button class="entete" type="button" data-action="replier" aria-expanded="${!replie}">
+      <span aria-hidden="true">🎯</span><b>Objectifs</b><small>${faits} / ${liste.length}</small><span class="fleche">${replie ? '▾' : '▴'}</span></button>
+    ${replie ? '' : `<ul>${liste.map(o => `<li class="${o.fait ? 'fait' : ''}"><span class="coche">${o.fait ? '✓' : ''}</span>
+      <span class="texte">${echapper(o.texte)}${o.detail ? `<small>${echapper(o.detail)}</small>` : ''}
+      ${o.progres !== null && o.progres !== undefined ? `<span class="barre"><i style="width:${Math.round(borne(o.progres, 0, 1) * 100)}%"></i></span>` : ''}</span></li>`).join('')}</ul>`}`);
+  el.hidden = false;
+  el.onclick = e => { const b = e.target.closest('[data-action]'); if(b) agir(b.dataset.action); };
+}
+// La hauteur du haut de l'écran (titre + compteurs) place les messages et les panneaux juste en dessous
+function suivreHauteurHaut(){
+  const h = $('haut'), maj = () => document.documentElement.style.setProperty('--h-haut', `${Math.round(h.getBoundingClientRect().height - 10)}px`);
+  maj();
+  if(window.ResizeObserver) new ResizeObserver(maj).observe(h); else window.addEventListener('resize', maj);
 }
 
 // ---------------------------------------------------------------------------------------

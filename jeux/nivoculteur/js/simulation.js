@@ -404,6 +404,112 @@ function ajouterTranchee(niveau, res, idA, idB, quoi, lot = ++res.lot){
   return d;
 }
 // Annule la dernière action du joueur : tout ce qu'elle a acheté est remboursé
+// --- Modifier l'installation : démonter, retirer un réseau, déplacer un regard, ajouter un départ électrique ---
+// Prix au mètre de ce que contient une tranchée (comme si on la refaisait)
+function prixMetreTranchee(tr, c = CONFIG.couts){
+  const base = tr.eau && tr.cable ? c.trancheeCommune : tr.eau ? c.trancheeEau : tr.cable ? c.trancheeCable : 0;
+  return base + (tr.air ? (tr.eau || tr.cable ? c.ajout.air : c.trancheeAir) : 0);
+}
+const PRIX_SEUL = { eau: 'trancheeEau', cable: 'trancheeCable', air: 'trancheeAir' };
+// Regards qui perdraient un réseau si l'on retirait ces tranchées (ou ce nœud)
+function regardsCoupes(res, apres){
+  const coupes = [];
+  for(const q of ['eau', 'cable', 'air']){
+    const avant = alimentes(res, q), reste = alimentes(apres, q);
+    for(const id of avant) if(!reste.has(id) && noeudReseau(apres, id) && noeudReseau(apres, id).type === 'regard') coupes.push({ id, quoi: q });
+  }
+  return coupes;
+}
+// Démonter un regard (et son enneigeur) ou un départ électrique ajouté : on récupère une part du prix
+function devisDemontage(niveau, res, id){
+  const n = noeudReseau(res, id), c = CONFIG.couts;
+  if(!n) return { ok: false, raison: 'Rien à démonter ici.' };
+  if(n.type !== 'regard' && !n.ajoute) return { ok: false, raison: `${n.nom} fait partie de la station : on ne peut pas le démonter.` };
+  const liees = res.tranchees.filter(tr => tr.a === id || tr.b === id);
+  const materiel = n.type === 'regard' ? Math.round((c.regard + prixEnneigeur(n.modele, n.support)) * c.revente) : Math.round(c.departElec * c.revente);
+  const tranchees = liees.reduce((s, tr) => s + Math.round(tr.longueur * prixMetreTranchee(tr) * c.repriseTranchee), 0);
+  const apres = { ...res, noeuds: res.noeuds.filter(q => q.id !== id), tranchees: res.tranchees.filter(tr => !liees.includes(tr)) };
+  return { ok: true, materiel, tranchees, rembourse: materiel + tranchees, nbTranchees: liees.length, coupes: regardsCoupes(res, apres) };
+}
+function demonter(niveau, res, id, lot = ++res.lot){
+  const d = devisDemontage(niveau, res, id);
+  if(!d.ok) return d;
+  const n = noeudReseau(res, id), liees = res.tranchees.filter(tr => tr.a === id || tr.b === id), cles = new Set(liees.map(tr => cleTranchee(tr.a, tr.b)));
+  const pannes = (res.pannes || []).filter(p => p.cible === id || cles.has(p.cible));
+  res.noeuds = res.noeuds.filter(q => q !== n);
+  res.tranchees = res.tranchees.filter(tr => !liees.includes(tr));
+  if(pannes.length) res.pannes = res.pannes.filter(p => !pannes.includes(p));
+  res.budget += d.rembourse;
+  res.historique.push({ lot, type: 'demontage', noeud: { ...n }, tranchees: liees.map(tr => ({ ...tr })), pannes, cout: -d.rembourse });
+  return d;
+}
+// Retirer un réseau (eau, câble ou air) d'une tranchée ; la tranchée vide disparaît
+function devisRetrait(niveau, res, cle, quoi){
+  const tr = trancheeParCle(res, cle);
+  if(!tr || !tr[quoi]) return { ok: false, raison: 'Rien à retirer ici.' };
+  const rembourse = Math.round(tr.longueur * CONFIG.couts[PRIX_SEUL[quoi]] * CONFIG.couts.repriseTranchee);
+  const apres = { ...res, tranchees: res.tranchees.map(x => x === tr ? { ...x, [quoi]: false } : x) };
+  return { ok: true, rembourse, longueur: tr.longueur, coupes: regardsCoupes(res, apres) };
+}
+function retirerReseau(niveau, res, cle, quoi, lot = ++res.lot){
+  const d = devisRetrait(niveau, res, cle, quoi);
+  if(!d.ok) return d;
+  const tr = trancheeParCle(res, cle), avant = { ...tr };
+  tr[quoi] = false;
+  const videe = !tr.eau && !tr.cable && !tr.air;
+  if(videe) res.tranchees = res.tranchees.filter(x => x !== tr);
+  if(quoi === 'eau' && res.pannes) res.pannes = res.pannes.filter(p => !(p.type === 'fuite' && p.cible === cle));
+  res.budget += d.rembourse;
+  res.historique.push({ lot, type: 'retrait', cle, quoi, tranchee: avant, videe, cout: -d.rembourse });
+  return d;
+}
+// Déplacer un regard : les tranchées qui y arrivent suivent ; on paie le déplacement et les mètres en plus
+function devisDeplacement(niveau, res, id, x, z){
+  const n = noeudReseau(res, id), c = CONFIG.couts, R = niveau.retenue;
+  if(!n || n.type !== 'regard') return { ok: false, raison: 'Seul un regard peut être déplacé.' };
+  const autres = { ...res, noeuds: res.noeuds.filter(q => q !== n) }, refus = refusRegard(niveau, autres, x, z);
+  if(refus) return { ok: false, raison: refus };
+  const nouveau = { ...n, x, z };
+  let rallonge = 0, cout = c.deplacement;
+  const longueurs = [];
+  for(const tr of res.tranchees.filter(tr => tr.a === id || tr.b === id)){
+    const autre = noeudReseau(res, tr.a === id ? tr.b : tr.a);
+    if(R && distanceSegment(R.x, R.z, [autre.x, autre.z], [x, z]) < R.cuvette.rayon + 2) return { ok: false, raison: 'Une tranchée traverserait la retenue.' };
+    const L = longueurTranchee(niveau.terrain, autre, nouveau);
+    longueurs.push({ cle: cleTranchee(tr.a, tr.b), avant: tr.longueur, apres: L });
+    if(L > tr.longueur){ rallonge += L - tr.longueur; cout += Math.round((L - tr.longueur) * prixMetreTranchee(tr)); }
+  }
+  return { ok: res.budget >= cout, raison: res.budget >= cout ? null : 'Budget insuffisant.', cout, rallonge, longueurs, distance: Math.hypot(x - n.x, z - n.z) };
+}
+function deplacerRegard(niveau, res, id, x, z, lot = ++res.lot){
+  const d = devisDeplacement(niveau, res, id, x, z);
+  if(!d.ok) return d;
+  const n = noeudReseau(res, id), avant = { x: n.x, z: n.z };
+  n.x = x; n.z = z;
+  for(const l of d.longueurs) trancheeParCle(res, l.cle).longueur = l.apres;
+  res.budget -= d.cout;
+  res.historique.push({ lot, type: 'deplacement', id, avant, longueurs: d.longueurs, cout: d.cout });
+  return d;
+}
+// Nouveau départ électrique (armoire raccordée au réseau électrique), où l'on veut dans le domaine
+function devisDepart(niveau, res, x, z){
+  const t = niveau.terrain, R = niveau.retenue, cout = CONFIG.couts.departElec;
+  if(!dansZoneJeu(t, x, z)) return { ok: false, raison: 'Ce point est en dehors du domaine skiable.' };
+  if(R && Math.hypot(x - R.x, z - R.z) < R.rayon) return { ok: false, raison: 'Impossible de poser une armoire dans la retenue.' };
+  for(const n of res.noeuds) if(Math.hypot(x - n.x, z - n.z) < 8) return { ok: false, raison: 'Trop près d\'une installation.' };
+  return { ok: res.budget >= cout, raison: res.budget >= cout ? null : 'Budget insuffisant.', cout };
+}
+function ajouterDepartElec(niveau, res, x, z, lot = ++res.lot){
+  const d = devisDepart(niveau, res, x, z);
+  if(!d.ok) return d;
+  res.numeroDepart = (res.numeroDepart || 0) + 1;
+  const id = `elecP${res.numeroDepart}`;
+  res.noeuds.push({ id, type: 'elec', nom: `Départ élec ${res.numeroDepart}`, x, z, ajoute: true });
+  res.budget -= d.cout;
+  res.historique.push({ lot, type: 'depart', id, cout: d.cout });
+  return { ...d, id };
+}
+
 function annulerAction(res){
   if(!res.historique.length) return { ok: false, rembourse: 0 };
   const lot = res.historique[res.historique.length - 1].lot;
@@ -416,6 +522,17 @@ function annulerAction(res){
       if(h.id === `R${res.numero}`) res.numero--;
     } else if(h.type === 'enneigeur'){
       Object.assign(noeudReseau(res, h.id), h.avant);
+    } else if(h.type === 'demontage'){
+      res.noeuds.push(h.noeud); res.tranchees.push(...h.tranchees);
+      if(h.pannes.length) res.pannes = [...(res.pannes || []), ...h.pannes];
+    } else if(h.type === 'retrait'){
+      if(h.videe) res.tranchees.push(h.tranchee); else trancheeParCle(res, h.cle)[h.quoi] = true;
+    } else if(h.type === 'deplacement'){
+      Object.assign(noeudReseau(res, h.id), h.avant);
+      for(const l of h.longueurs) trancheeParCle(res, l.cle).longueur = l.avant;
+    } else if(h.type === 'depart'){
+      res.noeuds = res.noeuds.filter(n => n.id !== h.id);
+      res.numeroDepart--;
     } else {
       const tr = res.tranchees.find(x => cleTranchee(x.a, x.b) === h.cle);
       if(h.nouvelle) res.tranchees = res.tranchees.filter(x => x !== tr); else tr[h.quoi] = false;
@@ -1238,6 +1355,34 @@ function testsSimulation(){
 
   const dir = directionVersPiste(niv.pistes, 70, 0);
   verifier('Un canon à droite de la piste souffle vers la gauche (vers la piste)', dir < -45 && dir > -135, `${dir}°`);
+
+  // Modifier l'installation
+  const nm = LEVELS.find(l => l.id === 'reseau'), rm = creerReseau(nm);
+  const m1 = poserRegard(nm, rm, -20, 205, { modele: 'v8' }), m2 = poserRegard(nm, rm, -25, 170, { modele: 'v8' });
+  for(const [q, src] of [['eau', 'pompage'], ['cable', 'elec1']]){ ajouterTranchee(nm, rm, src, m1.id, q); ajouterTranchee(nm, rm, m1.id, m2.id, q); }
+  const bm = rm.budget, dm = devisDemontage(nm, rm, m1.id);
+  verifier('Démonter un regard : la moitié du matériel rendue, et on prévient que le regard suivant perd l\'eau et le courant',
+    dm.materiel === Math.round((CONFIG.couts.regard + CATALOGUE.v8.prix) * 0.5) && dm.coupes.some(c => c.id === m2.id && c.quoi === 'eau') && dm.coupes.some(c => c.id === m2.id && c.quoi === 'cable'));
+  demonter(nm, rm, m1.id);
+  verifier('Démonter : le regard et ses tranchées disparaissent, le budget remonte', !noeudReseau(rm, m1.id) && !rm.tranchees.some(tr => tr.a === m1.id || tr.b === m1.id) && rm.budget === bm + dm.rembourse);
+  annulerAction(rm);
+  verifier('Annuler un démontage remet tout et reprend l\'argent', !!noeudReseau(rm, m1.id) && etatRegard(nm, rm, m2.id).pret && rm.budget === bm);
+  const cleM = cleTranchee(m1.id, m2.id), dr = retirerReseau(nm, rm, cleM, 'cable');
+  verifier('Retirer le câble d\'une tranchée commune : l\'eau reste, le câble part, un quart rendu',
+    dr.ok && trancheeParCle(rm, cleM).eau && !trancheeParCle(rm, cleM).cable && !etatRegard(nm, rm, m2.id).elec && dr.rembourse === Math.round(trancheeParCle(rm, cleM).longueur * CONFIG.couts.trancheeCable * 0.25));
+  retirerReseau(nm, rm, cleM, 'eau');
+  verifier('Tranchée vidée : elle disparaît', !trancheeParCle(rm, cleM));
+  annulerAction(rm); annulerAction(rm);
+  verifier('Annuler deux retraits remet la tranchée commune', trancheeParCle(rm, cleM).eau && trancheeParCle(rm, cleM).cable);
+  const lAvant = trancheeParCle(rm, cleM).longueur, dd = deplacerRegard(nm, rm, m2.id, -25, 150);
+  verifier('Déplacer un regard plus loin : les tranchées suivent et on paie les mètres en plus',
+    dd.ok && noeudReseau(rm, m2.id).z === 150 && trancheeParCle(rm, cleM).longueur > lAvant && dd.cout > CONFIG.couts.deplacement && etatRegard(nm, rm, m2.id).pret);
+  verifier('On ne déplace pas un regard dans la retenue', !devisDeplacement(nm, rm, m2.id, -112, 146).ok);
+  annulerAction(rm);
+  verifier('Annuler le déplacement remet le regard à sa place', noeudReseau(rm, m2.id).z === 170 && trancheeParCle(rm, cleM).longueur === lAvant);
+  const dep = ajouterDepartElec(nm, rm, 60, 100), m3 = poserRegard(nm, rm, 60, 80, { modele: 'v8' });
+  verifier('Nouveau départ électrique : il alimente un regard voisin', dep.ok && ajouterTranchee(nm, rm, dep.id, m3.id, 'cable').ok && etatRegard(nm, rm, m3.id).elec);
+  verifier('On ne démonte pas un départ de la station, mais bien un départ ajouté', !devisDemontage(nm, rm, 'elec1').ok && devisDemontage(nm, rm, dep.id).ok);
 
   // Carrière
   const c0 = niveauCarriere(0), rc = commencerEtape(c0, creerReseau(c0), 0);

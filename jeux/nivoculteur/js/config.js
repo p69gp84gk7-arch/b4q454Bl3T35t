@@ -16,7 +16,11 @@ const CONFIG = {
     // Dans une tranchée déjà creusée (pour un autre réseau), on ne paie que la pose du nouveau réseau, par mètre :
     ajout: { eau: 350, cable: 150, air: 200 },
     regard: 5000,           // € pour un regard (chambre béton, vanne) ; l'enneigeur se paie en plus (CATALOGUE)
-    reprise: 0.5            // quand on remplace un enneigeur, l'ancien est repris à cette part de son prix
+    reprise: 0.5,           // quand on remplace un enneigeur, l'ancien est repris à cette part de son prix
+    revente: 0.5,           // quand on démonte un regard (et son enneigeur) ou un départ électrique : part du prix rendue
+    repriseTranchee: 0.25,  // quand on retire une conduite ou un câble : part de son prix rendue
+    deplacement: 3000,      // € pour déplacer un regard (on paie en plus les mètres de tranchée gagnés)
+    departElec: 25000       // € pour un nouveau départ électrique (armoire raccordée au réseau)
   },
 
   // --- Argent gagné ---
