@@ -65,6 +65,13 @@ function demarrerVitrine(){
           { libelle: () => alarme ? 'Arrêter l\'alarme' : 'Déclencher l\'alarme', action: () => { alarme = !alarme; appliquer(); } }
         ];
       } },
+    { nom: 'Compresseur d\'air', creer: () => creerCompresseur('Compresseur'), cible: 1.6, distance: 14, sol: 1,
+      options: k => {
+        let marche = false;
+        const appliquer = () => etatCompresseur(k, { marche, pression: marche ? CONFIG.air.pressionNominale : 0 });
+        return [{ libelle: () => marche ? 'Arrêter le compresseur' : 'Démarrer le compresseur', action: () => { marche = !marche; appliquer(); } }];
+      } },
+    { nom: 'Dameuse', creer: creerDameuse, cible: 1.4, distance: 13, sol: 1, options: () => [] },
     { nom: 'Armoire « Départ élec »', creer: () => creerArmoire('Départ élec'), cible: 1.2, distance: 6, sol: 1, options: () => [] }
   ];
 
@@ -106,6 +113,8 @@ function demarrerVitrine(){
     objet.traverse(o => {
       if(o.userData.helice) animerCanon(o, dt);
       if(o.userData.charniere) animerRegard(o, dt);
+      if(o.userData.compresseur) animerCompresseur(o, dt, temps);
+      if(o.userData.dameuse) animerDameuse(o, temps);
       if(o.userData.pompes){ animerSallePompage(o, dt, temps); voirAtravers(o, camera, dt); }
     });
     renderer.render(scene, camera);

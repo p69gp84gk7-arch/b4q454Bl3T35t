@@ -79,6 +79,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .outil.actif[data-outil="regard"]{ background:#E58A1F; border-color:#E58A1F; }
 .outil.actif[data-outil="eau"]{ background:#2F6FDE; border-color:#2F6FDE; }
 .outil.actif[data-outil="cable"]{ background:#E9B949; border-color:#E9B949; color:#1C1F25; }
+.outil.actif[data-outil="air"]{ background:#E8EDF5; border-color:#E8EDF5; color:#1C1F25; }
 #sousSol.actif{ background:#5C6B86; border-color:#9FB0CF; }
 .bouton.nuit{ background:#2E9E5B; border-color:#2E9E5B; }
 #accelerer.actif{ background:#E9B949; border-color:#E9B949; color:#1C1F25; }
@@ -92,6 +93,8 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .devis .ligne{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:6px 0; font-size:.88rem; }
 .devis .ligne b{ min-width:44px; text-align:center; font-variant-numeric:tabular-nums; }
 .devis .petit{ padding:5px 10px; font-size:.85rem; }
+.devis .reglage-fiche input{ flex:1 1 140px; min-width:0; height:28px; accent-color:#E9B949; }
+.devis .mesure{ flex:1 1 auto; }
 .devis .fermer{ background:none; border:0; color:var(--doux); font-size:1.3rem; line-height:1; padding:0 4px; cursor:pointer; }
 
 /* ---------- Vitrine des modèles ---------- */
@@ -108,7 +111,10 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .poste h2{ margin:0; font-size:1.1rem; }
 .poste h3{ margin:0 0 8px; font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; color:#7FB2FF; }
 .poste .fermer{ background:none; border:0; color:var(--doux); font-size:1.6rem; line-height:1; padding:0 6px; cursor:pointer; }
-.poste .grille{ display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); margin:10px 0; }
+.poste .disposition{ display:grid; gap:10px; grid-template-columns:minmax(0, 1fr) minmax(300px, 400px); align-items:start; margin-top:10px; }
+.poste .grille{ display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); min-width:0; }
+.poste .colonne{ position:sticky; top:0; max-height:calc(100dvh - 90px); overflow:auto; }
+@media (max-width:820px){ .poste .disposition{ grid-template-columns:minmax(0, 1fr); } .poste .colonne{ position:static; max-height:none; overflow:visible; } }
 .poste .bloc{ background:#0D1B2E; border:1px solid #22324A; border-radius:12px; padding:10px 12px; min-width:0; }
 .poste .ligne{ display:flex; align-items:center; gap:6px 8px; flex-wrap:wrap; margin:6px 0; font-size:.88rem; }
 .poste .pompe{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid #1A2A40; font-size:.9rem; }
@@ -125,14 +131,29 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .poste .alarme{ margin:0 0 6px; padding:6px 9px; border-radius:8px; font-size:.84rem; line-height:1.3; border-left:4px solid var(--attention); background:rgba(229,138,31,.12); }
 .poste .alarme.rouge{ border-left-color:var(--alarme); background:rgba(215,38,61,.18); }
 .poste .canons{ display:grid; gap:6px; }
-.poste .canon{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; padding:7px 9px; background:#0A1626; border:1px solid #22324A; border-radius:10px; }
-.poste .canon .nom{ flex:1 1 150px; min-width:0; line-height:1.15; }
+.poste .canon{ padding:7px 9px; background:#0A1626; border:1px solid #22324A; border-radius:10px; min-width:0; }
+.poste .canon .entete, .poste .canon .pied{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; }
+.poste .canon .nom{ flex:1 1 110px; min-width:0; line-height:1.15; }
+.poste .canon .pied{ margin-top:2px; }
 .poste .canon .nom small{ display:block; color:var(--doux); font-size:.75rem; }
 .poste .canon .actions{ display:flex; gap:6px; margin-left:auto; }
 
 /* Curseur de la vanne */
 .poste .curseur{ width:100%; margin:4px 0 2px; accent-color:#2F6FDE; height:28px; }
 .poste .pastille.orange{ background:rgba(229,138,31,.22); border-color:#E58A1F; }
+.poste .pastille.rouge{ background:rgba(215,38,61,.2); border-color:#D7263D; }
+.poste .bouton.vert{ background:var(--ok); border-color:var(--ok); }
+.poste .resume{ margin:0 0 8px; }
+/* Jauges de pression */
+.mesure{ display:flex; align-items:center; gap:8px; margin:6px 0 2px; min-width:0; }
+.mesure b{ min-width:52px; text-align:right; font-size:.85rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.jauge{ position:relative; display:block; flex:1 1 auto; min-width:90px; height:10px; border-radius:5px; background:#13243B; }
+.jauge span{ position:absolute; top:0; bottom:0; opacity:.85; }
+.jauge span:first-child{ border-radius:5px 0 0 5px; }
+.jauge span:nth-last-child(1), .jauge span:nth-last-child(2):has(+ i){ border-radius:0 5px 5px 0; }
+.jauge .bon{ background:#2E9E5B; } .jauge .moyen{ background:#E58A1F; } .jauge .mauvais{ background:#D7263D; }
+.jauge i{ position:absolute; top:-4px; width:4px; height:18px; margin-left:-2px; background:#FFFFFF; border-radius:2px; box-shadow:0 0 0 1px #0B1426, 0 0 6px rgba(255,255,255,.6); transition:left .25s; }
+.graduations{ display:flex; justify-content:space-between; font-size:.7rem; color:var(--doux); margin-bottom:4px; }
 /* Menu des niveaux */
 .menu{ max-width:720px; z-index:25; }
 .menu .intro{ margin:6px 0 12px; color:var(--doux); font-size:.92rem; line-height:1.4; }
@@ -207,6 +228,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
     <button class="bouton outil construction" type="button" data-outil="regard">+ Regard</button>
     <button class="bouton outil construction" type="button" data-outil="eau">Eau</button>
     <button class="bouton outil construction" type="button" data-outil="cable">Électricité</button>
+    <button class="bouton outil construction" type="button" data-outil="air" hidden>Air</button>
     <button class="bouton construction" type="button" id="sousSol">Vue sous-sol</button>
     <button class="bouton construction" type="button" id="annuler" disabled>Annuler</button>
     <button class="bouton construction" type="button" id="effacer">Tout effacer</button>

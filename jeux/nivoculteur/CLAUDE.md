@@ -19,7 +19,7 @@ Boucle : **construire** le jour (regards, canons, conduites d'eau, câbles) → 
 - Les fichiers partagent les mêmes noms globaux (`const` de premier niveau). **Aucun fichier ne doit utiliser Three.js au moment de son chargement** (seulement dans des fonctions), pour que le message d'erreur et le mode test marchent sans Three.js.
 - **Three.js 0.149.0** en script classique : d'abord la copie locale `three.min.js` (jeu hors ligne), sinon le CDN jsdelivr.
 - Graphismes **low-poly** (ombrage plat), toutes les formes créées par le code : pas de modèle 3D ni d'image externe (les textures éventuelles sont dessinées par le code dans un canvas).
-- Commandes souris et tactiles : glisser = tourner ; pincer / molette = zoom ; deux doigts / clic droit = déplacer ; toucher court = action.
+- Commandes tactiles (choix de l'utilisateur) : **un doigt = se déplacer** ; deux doigts = pincer pour zoomer, tourner pour pivoter, glisser vers le haut / le bas pour incliner ; toucher court = action. Souris : glisser = tourner, molette = zoom, clic droit (ou Maj) = déplacer. La vitrine garde « un doigt = tourner » (`unDoigt` de `creerCommandes`).
 - Page adaptée au téléphone (portrait et paysage) et à l'ordinateur.
 - Performances : réutiliser géométries et matériaux, objets répétés en `InstancedMesh`, peu de particules.
 - Sauvegarde dans `localStorage`, toujours dans un `try/catch` (à partir de l'étape 5 ; clés préfixées `nivo-`).
@@ -48,10 +48,10 @@ Tester la simulation sans navigateur : concaténer `config.js`, `niveaux.js` et 
 1. `CONFIG` : tous les chiffres réglables, commentés en français (valeurs provisoires, à ajuster par l'utilisateur).
 2. `LEVELS` : description des niveaux (terrain, pistes, pompage, retenue, départs électriques, budget, objectif).
 3. `SIMULATION` : logique pure, **jamais de Three.js** (pression, coûts, terrain, pistes, réseau construit, et plus tard neige, pannes). Contient `testsSimulation()`.
-   Réseau : `creerReseau`, `poserRegard`, `devisTranchee`, `ajouterTranchee`, `annulerAction` (par « lot » = une action du joueur), `alimentes(res, 'eau'|'cable')`, `longueursEau`, `etatRegard` (eau, électricité, pression prévue, ce qui manque), `directionVersPiste`.
-4. `MODELES 3D` : terrain (petites facettes sur le domaine, grandes facettes pour les montagnes), sapins, rochers, jalons, retenue, canon, regard, armoire électrique, salle de pompage, télésiège (puis compresseur, perche).
+   Réseau : `creerReseau`, `poserRegard`, `devisTranchee`, `ajouterTranchee`, `annulerAction` (par « lot » = une action du joueur), `alimentes(res, 'eau'|'cable'|'air')` (sources : `SOURCES`), `longueursEau` / `longueursReseau`, `etatRegard` (eau, électricité, air pour une perche, pression prévue, ce qui manque), `directionVersPiste`.
+4. `MODELES 3D` : terrain (petites facettes sur le domaine, grandes facettes pour les montagnes), sapins, rochers, jalons, retenue, canon, regard, armoire électrique, salle de pompage, compresseur d'air, télésiège, ventilateurs et perches.
    Les pièces fixes d'un objet sont posées dans un `Atelier` puis fusionnées en une seule forme ; les pièces qui bougent (hélice, trappe, aiguilles, ventilateurs, voyants, gyrophares) restent à part.
-   Chaque modèle a ses fonctions : `orienterCanon`, `etatCanon`, `animerCanon` ; `ouvrirRegard`, `animerRegard` ; `etatSallePompage`, `animerSallePompage`, `voirAtravers` (murs et toit transparents quand ils cachent l'intérieur) ; `remplir(f)` pour la retenue ; `creerTranchee3D` (trace en surface + conduite bleue / câble jaune enterrés), `creerIconeEtat` / `textureIcone` (goutte et éclair au-dessus d'un regard).
+   Chaque modèle a ses fonctions : `orienterCanon`, `etatCanon`, `animerCanon` ; `ouvrirRegard`, `animerRegard` ; `etatSallePompage`, `animerSallePompage`, `voirAtravers` (murs et toit transparents quand ils cachent l'intérieur) ; `remplir(f)` pour la retenue ; `creerCompresseur`, `etatCompresseur`, `animerCompresseur` (ventilateur, manomètre 0–12 bar, voyant) ; `creerTranchee3D` (trace en surface + conduite bleue / conduite d'air blanche / câble jaune enterrés), `creerIconeEtat` / `textureIcone` (goutte, éclair et, pour une perche, souffle d'air au-dessus d'un regard).
 5. `EFFETS` : ciel, étoiles, lune, lumières (puis particules de neige, brouillard, tas).
 6. `INTERFACE` : messages, barre du bas, panneaux.
 7. `JEU` : scène, boucle, caméra, commandes.
@@ -59,7 +59,7 @@ Tester la simulation sans navigateur : concaténer `config.js`, `niveaux.js` et 
 ### Modes spéciaux
 
 - `index.html?test` : lance `testsSimulation()` et affiche OK / ERREUR à l'écran (et dans la console).
-- `index.html?modeles` : vitrine des modèles 3D (bouton « Modèles 3D » en haut du terrain). Chaque modèle tourne seul ; les boutons jaunes testent ses mouvements : ventilateurs (modèle V8/V9/V10, support, état, direction, inclinaison, trappe), perches (6 m, 10 m, 10 m nouvelle génération), regard, salle de pompage (pompes, alarme ; murs transparents), armoire.
+- `index.html?modeles` : vitrine des modèles 3D (bouton « Modèles 3D » en haut du terrain). Chaque modèle tourne seul ; les boutons jaunes testent ses mouvements : ventilateurs (modèle V8/V9/V10, support, état, direction, inclinaison, trappe), perches (6 m, 10 m, 10 m nouvelle génération), regard, salle de pompage (pompes, alarme ; murs transparents), compresseur d'air (marche / arrêt), dameuse, armoire.
 
 On peut aussi vérifier que la simulation tourne sans Three.js en extrayant les sections 1 à 3 et en les lançant avec Node.
 
@@ -94,12 +94,14 @@ Tranchée eau seule 750 €/m · câble seul 550 €/m · commune eau + câble 9
 
 | Enneigeur | Prix | Eau (m³/h) | Pression mini / pleine | Neige à pleine production | Disponible |
 |---|---|---|---|---|---|
-| Ventilateur V8 | 10 000 € | 22 | 8 / 20 bar | 10 m³/s de jeu (400 m³/nuit) | dès le départ |
-| Ventilateur V9 | 18 000 € | 36 | 8 / 22 bar | 16,25 (650/nuit) | après 5 000 m³ sur les pistes |
-| Ventilateur V10 | 28 000 € | 54 | 8 / 24 bar | 23,75 (950/nuit) | après 15 000 m³ |
-| Perche 6 m | 5 000 € | 11 | 18 / 28 bar | 4,5 (180/nuit) | niveau 3 (air comprimé) |
-| Perche 10 m | 7 000 € | 13 | 18 / 28 bar | 5,5 (220/nuit) | niveau 3 |
-| Perche 10 m nouvelle génération | 10 000 € | 13 | 14 / 22 bar, moins d'air | 5,5 | niveau 3, après 10 000 m³ |
+| Ventilateur V8 | 10 000 € | 22 | 8 / 20 bar | 35 m³/h (420 m³/nuit) | dès le départ |
+| Ventilateur V9 | 18 000 € | 36 | 8 / 22 bar | 55 m³/h (660/nuit) | après 5 000 m³ sur les pistes |
+| Ventilateur V10 | 28 000 € | 54 | 8 / 24 bar | 80 m³/h (960/nuit) | après 15 000 m³ |
+| Perche 6 m | 5 000 € | 11 | 18 / 28 bar | 15 m³/h (180/nuit) | niveau 3 (air comprimé) |
+| Perche 10 m | 7 000 € | 13 | 18 / 28 bar | 18 m³/h (216/nuit) | niveau 3 |
+| Perche 10 m nouvelle génération | 10 000 € | 13 | 14 / 22 bar, moins d'air | 18 m³/h | niveau 3, après 10 000 m³ |
+
+`neige` du catalogue est en **m³ de neige par heure** (une nuit = 12 h), indépendant de la durée d'une nuit en jeu.
 
 Perches (`PERCHE` dans config.js) : petit support vertical de 1,50 m, perche inclinée de 30° depuis la verticale, tête de buses qui projette **vers l'avant dans un éventail de 30° au plus** (jamais tout autour).
 
@@ -115,19 +117,37 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
 
 ## Niveaux, menu et sauvegarde (étape 5)
 
-- **Niveau 1 · La salle de pompage** : réseau déjà construit (`reseauFixe` : 6 V10 sur tour, raccordés), pas d'outils de construction (`construction: false`), mode manuel imposé. Chaque nuit démarre pompes arrêtées, vanne fermée ; le **programme** du chef d'équipe ouvre/ferme des canons (`programme` : t = 0, 8, 16, 30 s). Objectif : 6 000 m³ produits en 3 nuits au plus, 2 coups de bélier au plus (au 3e, la conduite casse : niveau raté). Une pompe ne suffit pas à pleine charge (324 m³/h), deux oui ; avec peu de canons ouverts, il faut fermer un peu la vanne.
+- **Niveau 1 · La salle de pompage** : réseau déjà construit (`reseauFixe` : 6 V10 sur tour, raccordés), pas d'outils de construction (`construction: false`), mode manuel imposé. Chaque nuit démarre pompes arrêtées, vanne fermée ; le **programme** du chef d'équipe ouvre/ferme des canons (`programme` : t = 0, 12, 24, 45 s). Objectif : 6 000 m³ produits en 3 nuits au plus, 2 coups de bélier au plus (au 3e, la conduite casse : niveau raté). Une pompe ne suffit pas à pleine charge (324 m³/h), deux oui ; avec peu de canons ouverts, il faut fermer un peu la vanne.
 - **Niveau 2 · Construire le réseau** : comme avant (objectif 30 000 m³ sur la piste).
-- **Menu** (bouton « Menu », et à l'ouverture sans `?niveau=`) : cartes des niveaux (réussi, partie en cours, Jouer / Reprendre / Recommencer), niveaux 3 et 4 « bientôt », liens Modèles 3D et Vérifications. Choisir un autre niveau recharge la page avec `index.html?niveau=<id>` (`&nouvelle` pour repartir de zéro).
+- **Menu** (bouton « Menu », et à l'ouverture sans `?niveau=`) : cartes des niveaux (réussi, partie en cours, Jouer / Reprendre / Recommencer), niveau 4 « bientôt », liens Modèles 3D et Vérifications. Choisir un autre niveau recharge la page avec `index.html?niveau=<id>` (`&nouvelle` pour repartir de zéro).
 - **Sauvegarde** (`localStorage`, try/catch) : `nivo-partie-<id>` (le réseau complet, version 1), enregistrée après chaque action et chaque nuit (pas avant la première action) ; `nivo-progression` (`niveaux[id].reussi`, `dernier`). L'accueil DesDés lit ces clés pour afficher la partie en cours.
 - `CONFIG.progression.toutOuvert = true` pendant la mise au point (tous les niveaux jouables) ; à `false`, un niveau s'ouvre quand le précédent est réussi.
 
+
+## Affichage et réglages (retouches demandées après l'étape 6)
+
+- Fiche d'un canon : **curseurs** pour la direction (−180 à 180°, pas de 5°) et l'inclinaison (0 à 35°) ; le canon tourne en direct, la nuit est recalculée. Jauge de pression.
+- **Jauges de pression** (`jaugePression`, `zonesPression` dans interface.js) : bande 0 → 80 bar, rouge = pas de neige ou surpression, orange = production réduite ou pression haute, vert = bonne pression, trait blanc = pression actuelle (prévue canons fermés le jour). Une au départ de la salle de pompage (zone verte 38–54 bar), une par canon.
+- Poste de travail : blocs à gauche, **liste des canons dans une colonne à droite** (en dessous sur téléphone) avec un résumé « bonne pression / réduite ou haute / hors limites ». Boutons **Lancer la nuit** et Accélérer dans le bloc de la nuit (le bouton de la barre du bas reste).
+- Couleurs d'état des canons : **vert = en marche** (même production réduite), **rouge = à l'arrêt**, **jaune = en défaut** (pression, air). Petit point de couleur au-dessus de chaque enneigeur (`creerPointEtat`), même code pour le voyant 3D et les voyants du poste. La bulle eau / électricité / air est **sous** l'enneigeur.
+- Noms des bâtiments (`creerEtiquette(nom, couleur, carre)`) : de loin (plus de `CONFIG.graphismes.distanceEtiquettes` = 170 m), un **petit carré** de couleur : bleu = salle de pompage, jaune = départ électrique, blanc = compresseur ; de près, le nom (`majEtiquettes`).
+- **Dameuse** (`creerDameuse`) : quand l'objectif du niveau est atteint, une dameuse par piste fait des allers-retours (deux passes décalées), phares et gyrophare allumés ; les tas de neige sur la piste s'étalent à son passage (`tas.dame`). `CONFIG.dameuse.vitesse`.
+
+## Air comprimé et perches (niveau 3, étape 6)
+
+- **Niveau 3 · Les perches et l'air comprimé** : deuxième piste, rouge et étroite, « Les Gentianes » (`PISTE_GENTIANES`), départ électrique en plus près d'elle, budget 700 000 €, objectif 20 000 m³ sur les pistes. Le compresseur (`COMPRESSEUR_COMBE`) est à côté de la salle de pompage ; la conduite d'air part de sa sortie.
+- Une perche a besoin de **trois réseaux** : eau, électricité et air. Outil « Air » (bouton caché sans compresseur) ; tranchée d'air seule 650 €/m, ou 200 €/m dans une tranchée déjà creusée (`CONFIG.couts.trancheeAir`, `ajout.air`).
+- `CONFIG.air` : réservoir à 8 bar nominal, compresseur de 600 Nm³/h (75 kW). Perche 6 m : 60 Nm³/h, 10 m : 70, 10 m nouvelle génération : 30 (`CATALOGUE[…].air`). Perte dans la conduite d'air : 0,3 bar par 100 m.
+- Le réservoir part de 0 bar à chaque nuit et monte vers 8 bar quand le compresseur tourne (`montee`), moins si la demande dépasse sa capacité ; il redescend à l'arrêt (`fuite`). Production d'une perche : nulle sous 4 bar d'air, réduite de 4 à 6 bar, pleine au-dessus (`facteurAir`), et toujours limitée aussi par la pression d'eau. Une perche sans assez d'air reste fermée (« En attente d'air », pas d'alarme de pression d'eau).
+- Compresseur : en **auto**, il démarre dès qu'une perche prête attend de l'air ; en **manuel** (même bouton que les pompes), on le démarre / l'arrête au poste (`commanderCompresseur`). Pendant la nuit, le régime est recalculé quand la pression du réservoir change (4 fois par seconde au plus).
+- **Électricité** (`CONFIG.electricite.prixKwh` = 0,18 €) : pompes 160 kW chacune, compresseur 75 kW ; le coût de la nuit est retiré du gain au bilan (tous les niveaux) et affiché au poste.
 
 ## Production, vent, nuits (étape 4)
 
 - Production : 35 % à la pression minimale, 100 % à la pression pleine ; surpression > 55 bar = canon en sécurité.
 - Pression pendant la nuit : formule du cahier des charges avec le débit total des canons ouverts (l/s × 3,6 = m³/h). Tant qu'un canon manque de pression, on ferme le plus défavorisé et on recalcule (`regimeNuit`).
 - Vent tiré au sort par nuit (0 à 35 km/h, direction), annoncé la veille (flèche dans la barre, manche à air près de la salle). Point de chute = direction × portée (modèle, support, inclinaison) + dérive du vent (hauteur du jet / vitesse de chute × vent × 0,5). Seule la part de la zone enneigée qui tombe sur la piste compte et rapporte.
-- Une nuit = 40 s de jeu = 12 h (1 s de jeu = 1 080 s réelles) ; la retenue (11 260 m³ pleine) se vide au débit réel et regagne 3 000 m³ par jour ; vide = pompes à sec, tout s'arrête (alarme).
+- Une nuit = **60 s** de jeu = 12 h (1 s de jeu = 720 s réelles) ; la retenue (11 260 m³ pleine) se vide au débit réel et regagne 3 000 m³ par jour ; vide = pompes à sec, tout s'arrête (alarme).
 - Les tas de neige restent d'une nuit à l'autre. À la fin de la nuit : bilan, argent ajouté au budget, nouveaux enneigeurs débloqués. On ne peut plus annuler ce qui a été construit avant une nuit.
 - Objectif du niveau 2 : 30 000 m³ sur la piste.
 
@@ -143,7 +163,7 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
 - [x] **Poste de travail** : bouton « Poste de travail », toucher l'écran du pupitre en 3D ou la salle de pompage (sans outil). Écran de supervision : pompes (auto / manuel, 50 l/s chacune, surcharge = chute de pression), vanne principale (−10 / +10 %, perte quand elle est mi-fermée, fermée = plus d'eau), départ (bar, l/s demandés / disponibles), nuit en cours, vent, retenue, objectif, alarmes, liste des canons (état, pression, production, % piste, Arrêter / Mettre en marche, Voir). Les commandes recalculent la nuit en cours tout de suite. Rafraîchi 4 fois par seconde la nuit **sans recréer les boutons** (`mettreAJour`), pour ne perdre aucun appui. 61 vérifications.
 - [x] **Étape 2 — Niveau 1** : salle de pompage jouable (programme du chef d'équipe, pompes et vanne à la main, courbe de pompe, zone verte, coup de bélier, rendement, réussite / échec).
 - [x] **Étape 5 — Menus et niveaux** : menu des niveaux, sauvegarde de la partie et de la progression, reprise, recommencer, statut sur l'accueil DesDés. Débits passés en m³/h. 74 vérifications.
-- [ ] **Étape 6 — Perches, air comprimé, compresseur** (niveau 3).
+- [x] **Étape 6 — Perches, air comprimé, compresseur** (niveau 3) : outil « Air », compresseur sur le replat de la salle de pompage, perches jouables, réservoir d'air, bloc « Air comprimé » au poste, électricité facturée. 84 vérifications.
 - [ ] **Étape 7 — Pannes et réparations** (niveau 4), dont les fuites.
 
 ### Idées à garder en tête

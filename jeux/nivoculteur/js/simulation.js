@@ -213,9 +213,11 @@ function creerReseau(niveau){
     budget: niveau.budget,
     noeuds: [
       { id: 'pompage', type: 'pompage', nom: p.nom, x: p.sortie.x, z: p.sortie.z },
-      ...niveau.departsElec.map((d, i) => ({ id: `elec${i + 1}`, type: 'elec', nom: d.nom, x: d.x, z: d.z }))
+      ...niveau.departsElec.map((d, i) => ({ id: `elec${i + 1}`, type: 'elec', nom: d.nom, x: d.x, z: d.z })),
+      ...(niveau.compresseur ? [{ id: 'compresseur', type: 'compresseur', nom: niveau.compresseur.nom, x: niveau.compresseur.sortie.x, z: niveau.compresseur.sortie.z }] : [])
     ],
-    tranchees: [],          // { a, b, eau, cable, longueur }
+    tranchees: [],          // { a, b, eau, cable, air, longueur }
+    compresseur: niveau.compresseur ? { marche: false, pression: 0 } : null,   // marche : commande manuelle ; pression du réservoir (bar)
     historique: [],         // pour annuler : une entrée par achat, regroupées par « lot » (une action du joueur)
     numero: 0,              // numéro du dernier regard posé
     lot: 0,
@@ -247,9 +249,12 @@ function longueurTranchee(t, a, b){
   }
   return l;
 }
-// Nœuds alimentés : reliés à une source (salle de pompage pour 'eau', départs électriques pour 'cable')
+// Chaque réseau part de sa source : salle de pompage (eau), départs électriques (câble), compresseur (air)
+const SOURCES = { eau: 'pompage', cable: 'elec', air: 'compresseur' };
+const NOMS_RESEAUX = { eau: 'l\'eau', cable: 'l\'électricité', air: 'l\'air comprimé' };
+// Nœuds alimentés : reliés à la source du réseau
 function alimentes(res, quoi){
-  const ok = new Set(res.noeuds.filter(n => n.type === (quoi === 'eau' ? 'pompage' : 'elec')).map(n => n.id));
+  const ok = new Set(res.noeuds.filter(n => n.type === SOURCES[quoi]).map(n => n.id));
   const pile = [...ok];
   while(pile.length){
     const id = pile.pop();
@@ -262,15 +267,17 @@ function alimentes(res, quoi){
   return ok;
 }
 // Longueur de conduite depuis la salle de pompage (par le chemin le plus court) pour chaque nœud alimenté en eau
-function longueursEau(res){
-  const dist = new Map([['pompage', 0]]), faits = new Set();
+function longueursEau(res){ return longueursReseau(res, 'eau'); }
+// Longueur de conduite depuis la source (par le chemin le plus court) pour chaque nœud alimenté
+function longueursReseau(res, quoi){
+  const dist = new Map(res.noeuds.filter(n => n.type === SOURCES[quoi]).map(n => [n.id, 0])), faits = new Set();
   for(;;){
     let id = null, d = Infinity;
     for(const [k, v] of dist) if(!faits.has(k) && v < d){ id = k; d = v; }
     if(id === null) return dist;
     faits.add(id);
     for(const tr of res.tranchees){
-      if(!tr.eau) continue;
+      if(!tr[quoi]) continue;
       const autre = tr.a === id ? tr.b : tr.b === id ? tr.a : null;
       if(autre && d + tr.longueur < (dist.has(autre) ? dist.get(autre) : Infinity)) dist.set(autre, d + tr.longueur);
     }
@@ -280,14 +287,16 @@ function longueursEau(res){
 function etatRegard(niveau, res, id){
   const n = noeudReseau(res, id), t = niveau.terrain, pomp = noeudReseau(res, 'pompage');
   const eau = alimentes(res, 'eau').has(id), elec = alimentes(res, 'cable').has(id);
+  const besoinAir = CATALOGUE[n.modele].type === 'perche', air = alimentes(res, 'air').has(id);
   let pression = null, zone = null;
   if(eau){
     pression = pressionRegard({ pPompes: CONFIG.pression.pompes, longueur: longueursEau(res).get(id),
       denivele: altitude(t, n.x, n.z) - altitude(t, pomp.x, pomp.z), debit: 0 });
     zone = zonePression(pression, CATALOGUE[n.modele]);
   }
-  const manque = !eau && !elec ? 'l\'eau et l\'électricité' : !eau ? 'l\'eau' : !elec ? 'l\'électricité' : null;
-  return { eau, elec, pression, zone, manque, pret: eau && elec };
+  const manques = [!eau && NOMS_RESEAUX.eau, !elec && NOMS_RESEAUX.cable, besoinAir && !air && NOMS_RESEAUX.air].filter(Boolean);
+  const manque = manques.length ? manques.length === 1 ? manques[0] : `${manques.slice(0, -1).join(', ')} et ${manques[manques.length - 1]}` : null;
+  return { eau, elec, air, besoinAir, pression, zone, manque, pret: !manques.length };
 }
 // Peut-on poser un regard ici ? (null = oui, sinon la raison)
 function refusRegard(niveau, res, x, z){
@@ -348,18 +357,19 @@ function orienterRegard(res, id, direction, inclinaison){
 function devisTranchee(niveau, res, idA, idB, quoi){
   const A = noeudReseau(res, idA), B = noeudReseau(res, idB), c = CONFIG.couts, R = niveau.retenue;
   const refus = raison => ({ ok: false, raison });
+  const departs = { eau: 'L\'eau part de la salle de pompage ou d\'un regard.', cable: 'Le câble part d\'un départ électrique ou d\'un regard.', air: 'L\'air part du compresseur ou d\'un regard.' };
+  if(quoi === 'air' && !niveau.compresseur) return refus('Pas d\'air comprimé dans ce niveau.');
   if(!A || !B || idA === idB) return refus('Choisissez deux points différents.');
   if(B.type !== 'regard') return refus('L\'arrivée doit être un regard.');
-  if(quoi === 'eau' && A.type === 'elec') return refus('L\'eau part de la salle de pompage ou d\'un regard.');
-  if(quoi === 'cable' && A.type === 'pompage') return refus('Le câble part d\'un départ électrique ou d\'un regard.');
-  if(!alimentes(res, quoi).has(idA)) return refus(`${A.nom} n'est pas encore alimenté en ${quoi === 'eau' ? 'eau' : 'électricité'}.`);
+  if(A.type !== 'regard' && A.type !== SOURCES[quoi]) return refus(departs[quoi]);
+  if(!alimentes(res, quoi).has(idA)) return refus(`${A.nom} n'est pas encore alimenté en ${{ eau: 'eau', cable: 'électricité', air: 'air' }[quoi]}.`);
   if(R && distanceSegment(R.x, R.z, [A.x, A.z], [B.x, B.z]) < R.cuvette.rayon + 2) return refus('La tranchée ne peut pas traverser la retenue.');
   const existe = trancheeEntre(res, idA, idB);
-  if(existe && existe[quoi]) return refus(`Ces deux points sont déjà reliés pour ${quoi === 'eau' ? 'l\'eau' : 'l\'électricité'}.`);
+  if(existe && existe[quoi]) return refus(`Ces deux points sont déjà reliés pour ${NOMS_RESEAUX[quoi]}.`);
   const longueur = existe ? existe.longueur : longueurTranchee(niveau.terrain, A, B);
-  const commune = !!(existe && existe[quoi === 'eau' ? 'cable' : 'eau']);
-  // Tranchée commune : la tranchée est déjà creusée, on ne paie que la différence
-  const parMetre = commune ? c.trancheeCommune - (quoi === 'eau' ? c.trancheeCable : c.trancheeEau) : (quoi === 'eau' ? c.trancheeEau : c.trancheeCable);
+  const commune = !!(existe && (existe.eau || existe.cable || existe.air));
+  // Tranchée commune : la tranchée est déjà creusée, on ne paie que la pose du nouveau réseau
+  const parMetre = commune ? c.ajout[quoi] : { eau: c.trancheeEau, cable: c.trancheeCable, air: c.trancheeAir }[quoi];
   const cout = Math.round(longueur * parMetre);
   const assez = res.budget >= cout;
   return { ok: assez, raison: assez ? null : 'Budget insuffisant.', longueur, cout, commune, parMetre };
@@ -369,7 +379,7 @@ function ajouterTranchee(niveau, res, idA, idB, quoi, lot = ++res.lot){
   if(!d.ok) return d;
   let tr = trancheeEntre(res, idA, idB);
   const nouvelle = !tr;
-  if(nouvelle){ tr = { a: idA, b: idB, eau: false, cable: false, longueur: d.longueur }; res.tranchees.push(tr); }
+  if(nouvelle){ tr = { a: idA, b: idB, eau: false, cable: false, air: false, longueur: d.longueur }; res.tranchees.push(tr); }
   tr[quoi] = true;
   res.budget -= d.cout;
   res.historique.push({ lot, type: 'tranchee', cle: cleTranchee(idA, idB), quoi, nouvelle, cout: d.cout });
@@ -443,10 +453,14 @@ function regimeNuit(niveau, res, vent){
   const t = niveau.terrain, pomp = noeudReseau(res, 'pompage'), cp = CONFIG.pompage;
   const cmd = res.pompage || { mode: 'auto', marche: [true, true, true], ouverture: 1 };
   const eau = alimentes(res, 'eau'), elec = alimentes(res, 'cable'), longueurs = longueursEau(res);
+  const air = alimentes(res, 'air'), longueursAir = longueursReseau(res, 'air'), ca = CONFIG.air;
   const sec = !!(res.retenue && res.retenue.volume <= 0);
-  const canons = res.noeuds.filter(n => n.type === 'regard' && eau.has(n.id) && elec.has(n.id)).map(n => {
+  const perche = n => CATALOGUE[n.modele].type === 'perche';
+  const canons = res.noeuds.filter(n => n.type === 'regard' && eau.has(n.id) && elec.has(n.id) && (!perche(n) || air.has(n.id))).map(n => {
     const chute = pointChute(n, vent);
-    return { id: n.id, modele: n.modele, longueur: longueurs.get(n.id), denivele: altitude(t, n.x, n.z) - altitude(t, pomp.x, pomp.z),
+    // Air à la perche : pression du réservoir moins les pertes dans la conduite d'air
+    const pressionAir = perche(n) && res.compresseur ? Math.max(0, res.compresseur.pression - longueursAir.get(n.id) / 100 * ca.perteLongueur) : null;
+    return { id: n.id, modele: n.modele, longueur: longueurs.get(n.id), denivele: altitude(t, n.x, n.z) - altitude(t, pomp.x, pomp.z), pressionAir,
       chute, part: partSurPiste(niveau.pistes, chute.x, chute.z, chute.rayon), arrete: !!n.arret, ouvert: !sec && !n.arret,
       pression: 0, zone: 'arret', facteur: 0, debit: 0, production: 0 };
   });
@@ -470,6 +484,7 @@ function regimeNuit(niveau, res, vent){
       c.pression = !eau ? 0 : Math.max(0, pressionRegard({ pPompes: pDepart, longueur: c.longueur, denivele: c.denivele, debit: demande }));
       c.zone = zonePression(c.pression, m);
       c.facteur = c.ouvert ? facteurProduction(c.pression, m) : 0;
+      if(c.pressionAir !== null) c.facteur = Math.min(c.facteur, facteurAir(c.pressionAir));   // pas assez d'air : pas de neige
     }
     const enDefaut = canons.filter(c => c.ouvert && c.facteur === 0);
     if(!enDefaut.length) break;
@@ -477,8 +492,20 @@ function regimeNuit(niveau, res, vent){
   }
   for(const c of canons){ const m = CATALOGUE[c.modele]; c.debit = c.ouvert ? m.debit : 0; c.production = c.facteur * m.neige; }
   const debit = canons.reduce((s, c) => s + c.debit, 0);
+  // Compresseur : en automatique, il tourne dès qu'une perche prête attend de l'air ; en manuel, selon la commande
+  let regimeAir = null;
+  if(res.compresseur){
+    const attente = canons.some(c => c.pressionAir !== null && !c.arrete);
+    regimeAir = { marche: cmd.mode === 'auto' ? attente : !!res.compresseur.marche, capacite: ca.capacite,
+      demande: canons.reduce((s, c) => s + (c.ouvert && c.pressionAir !== null ? CATALOGUE[c.modele].air : 0), 0), pression: res.compresseur.pression };
+  }
   return { vent, canons, debit, sec, pompes, capacite, surcharge: debit > capacite && pompes > 0,
-    pressionDepart: Math.max(0, pDepart) };
+    pressionDepart: Math.max(0, pDepart), air: regimeAir };
+}
+// Part de la production (0 à 1) selon la pression d'air à la perche
+function facteurAir(p, ca = CONFIG.air){
+  if(p < ca.pressionMin) return 0;
+  return borne(0.35 + 0.65 * (p - ca.pressionMin) / (ca.pressionPleine - ca.pressionMin), 0, 1);
 }
 // Pression des pompes en marche selon le débit demandé (m³/h) : courbe d'une pompe centrifuge
 function pressionPompes(debit, pompes, cp = CONFIG.pompage){
@@ -492,7 +519,7 @@ function perteVanne(debit, ouverture){
 }
 function debutNuit(niveau, res){
   res.historique = [];                       // on ne peut plus annuler ce qui a été construit avant la nuit
-  res.neigeNuit = 0; res.pisteNuit = 0; res.argentNuit = 0; res.potentielNuit = 0; res.coupsNuit = 0;
+  res.neigeNuit = 0; res.pisteNuit = 0; res.argentNuit = 0; res.potentielNuit = 0; res.coupsNuit = 0; res.kwhNuit = 0;
   res.dispoAvant = Object.keys(CATALOGUE).filter(k => disponible(niveau, res, k).ok);
   if(niveau.programme){
     // Démarrage « à froid » : pompes arrêtées, vanne fermée, canons fermés en attendant le programme de la nuit
@@ -513,10 +540,11 @@ function evenementsProgramme(niveau, res, tAvant, tApres){
 }
 // Fait avancer la nuit de dt secondes de jeu : la neige s'ajoute aux tas, l'eau sort de la retenue
 function avancerNuit(niveau, res, regime, dt){
+  const heures = CONFIG.nuit.echelle / 3600 * dt;                          // heures réelles écoulées
   for(const c of regime.canons){
-    if(!c.arrete) res.potentielNuit += CATALOGUE[c.modele].neige * dt;      // ce qu'on aurait pu faire avec une bonne pression
+    if(!c.arrete) res.potentielNuit += CATALOGUE[c.modele].neige * heures;  // ce qu'on aurait pu faire avec une bonne pression
     if(!c.production) continue;
-    const v = c.production * dt, vPiste = v * c.part;
+    const v = c.production * heures, vPiste = v * c.part;                   // production en m³/h
     res.neigeTotale += v; res.neigeNuit += v;
     res.neigePiste += vPiste; res.pisteNuit += vPiste;
     res.argentNuit += vPiste * CONFIG.gains.parM3Piste;
@@ -526,6 +554,14 @@ function avancerNuit(niveau, res, regime, dt){
     }
     c.tas.volume += v;
   }
+  // Réservoir d'air : monte vers la pression nominale quand le compresseur tourne (moins s'il est surchargé), baisse sinon
+  if(res.compresseur && regime.air){
+    const a = regime.air, ca = CONFIG.air, c = res.compresseur;
+    const cible = a.marche ? ca.pressionNominale * Math.min(1, a.capacite / Math.max(1, a.demande)) : 0;
+    c.pression += (cible - c.pression) * Math.min(1, (a.marche ? ca.montee : ca.fuite) * dt);
+    if(a.marche) res.kwhNuit = (res.kwhNuit || 0) + ca.puissance * heures;
+  }
+  res.kwhNuit = (res.kwhNuit || 0) + regime.pompes * CONFIG.pompage.puissance * heures;   // pompes
   let vide = false;
   if(res.retenue && regime.debit > 0){
     res.retenue.volume -= regime.debit * CONFIG.nuit.echelle / 3600 * dt;      // m³/h × heures réelles écoulées
@@ -537,6 +573,7 @@ function avancerNuit(niveau, res, regime, dt){
 // --- Commandes du poste de travail ---
 function commanderPompes(res, mode, marche){ res.pompage.mode = mode; if(marche) res.pompage.marche = marche.slice(); }
 function commanderCanon(res, id, enMarche){ noeudReseau(res, id).arret = !enMarche; }
+function commanderCompresseur(res, enMarche){ if(res.compresseur) res.compresseur.marche = enMarche; }
 // Coup de bélier : compté, réparation payée dans les niveaux avec budget
 function coupDeBelier(niveau, res, raison){
   res.coups = (res.coups || 0) + 1;
@@ -571,13 +608,14 @@ function commanderPompe(niveau, res, i, enMarche, enProduction = true){
 
 // Fin de nuit : l'argent gagné s'ajoute au budget, la retenue se remplit un peu pendant la journée
 function finNuit(niveau, res){
-  const gain = Math.round(res.argentNuit);
-  res.budget += gain;
-  const bilan = { nuit: res.nuit, neige: res.neigeNuit, piste: res.pisteNuit, gain, coups: res.coupsNuit || 0,
+  const gain = Math.round(res.argentNuit), kwh = Math.round(res.kwhNuit || 0), electricite = Math.round(kwh * CONFIG.electricite.prixKwh);
+  res.budget += gain - electricite;
+  const bilan = { nuit: res.nuit, neige: res.neigeNuit, piste: res.pisteNuit, gain, kwh, electricite, coups: res.coupsNuit || 0,
     rendement: res.potentielNuit > 0 ? res.neigeNuit / res.potentielNuit : null,
     nouveaux: Object.keys(CATALOGUE).filter(k => disponible(niveau, res, k).ok && !(res.dispoAvant || []).includes(k)) };
   res.nuit++;
   res.argentNuit = 0;
+  if(res.compresseur) res.compresseur.pression = 0;           // le réservoir se vide pendant la journée
   if(res.retenue) res.retenue.volume = Math.min(volumeRetenue(niveau.retenue), res.retenue.volume + CONFIG.retenue.remplissageJour);
   Object.assign(bilan, resultatNiveau(niveau, res));
   return bilan;
@@ -740,12 +778,13 @@ function testsSimulation(){
   verifier('Plus de canons ouverts = moins de pression au regard 1',
     regime.canons.find(c => c.id === n1.id).pression < unSeul.canons.find(c => c.id === n1.id).pression);
   const budgetAvant = rn.budget, eauAvant = rn.retenue.volume;
-  for(let k = 0; k < 40; k++) avancerNuit(niv, rn, regime, 1);
-  const attendu = regime.canons.reduce((s, c) => s + c.production * 40, 0);
-  verifier('Nuit de 40 s : la neige produite correspond aux débits, en tas', proche(rn.neigeTotale, attendu, 1e-6) && rn.tas.length >= 1, `${Math.round(rn.neigeTotale)} m³`);
+  for(let k = 0; k < CONFIG.nuit.duree; k++) avancerNuit(niv, rn, regime, 1);
+  const attendu = regime.canons.reduce((s, c) => s + c.production * 12, 0);           // m³/h × 12 h
+  verifier(`Nuit de ${CONFIG.nuit.duree} s = 12 h : la neige produite correspond aux débits, en tas`, proche(rn.neigeTotale, attendu, 1e-6) && rn.tas.length >= 1, `${Math.round(rn.neigeTotale)} m³`);
   verifier('La retenue se vide pendant la nuit', rn.retenue.volume < eauAvant, `${Math.round(eauAvant - rn.retenue.volume)} m³ d'eau utilisés`);
   const bilan = finNuit(niv, rn);
-  verifier('Fin de nuit : 20 € par m³ tombé sur la piste s\'ajoutent au budget', rn.budget - budgetAvant === Math.round(rn.neigePiste * 20) && bilan.gain >= 0 && rn.nuit === 2, `+${bilan.gain} €`);
+  verifier('Fin de nuit : 20 € par m³ tombé sur la piste, moins l\'électricité des pompes', rn.budget - budgetAvant === Math.round(rn.neigePiste * 20) - bilan.electricite && bilan.electricite > 0 && rn.nuit === 2,
+    `+${bilan.gain} €, électricité ${bilan.kwh} kWh = ${bilan.electricite} €`);
   rn.retenue.volume = 1;
   const r2n = debutNuit(niv, rn), fin = avancerNuit(niv, rn, r2n, 1), apres = regimeNuit(niv, rn, r2n.vent);
   verifier('Retenue vide : les pompes sont à sec, plus aucun canon ne produit', fin.vide && apres.sec && apres.canons.every(c => !c.production));
@@ -787,9 +826,9 @@ function testsSimulation(){
   verifier('Courbe de pompe : 62 bar sans débit, 52 bar au débit nominal (180 m³/h)', proche(pressionPompes(0, 1), 62) && proche(pressionPompes(180, 1), 52));
   const g0 = debutNuit(niv1, r1n);
   verifier('Niveau 1 : la nuit démarre pompes arrêtées, vanne fermée, canons fermés', !r1n.pompage.marche.some(Boolean) && r1n.pompage.ouverture === 0 && g0.canons.every(c => c.arrete));
-  const ev = evenementsProgramme(niv1, r1n, -1, 9);
-  verifier('Programme : entre 0 et 9 s, le chef d\'équipe ouvre les regards 1 à 4', ev.length === 4 && ev.every(e => e.ouvert));
-  evenementsProgramme(niv1, r1n, 9, 17);
+  const ev = evenementsProgramme(niv1, r1n, -1, 13);
+  verifier('Programme : entre 0 et 13 s, le chef d\'équipe ouvre les regards 1 à 4', ev.length === 4 && ev.every(e => e.ouvert));
+  evenementsProgramme(niv1, r1n, 13, 25);
   const vc = { force: 0, direction: 0 };
   verifier('Coup de bélier : démarrer la première pompe vanne grande ouverte', (r1n.pompage.ouverture = 1, commanderPompe(niv1, r1n, 0, true)).coup);
   commanderPompe(niv1, r1n, 0, false, false); r1n.pompage.ouverture = 0; r1n.coups = 0;
@@ -821,6 +860,35 @@ function testsSimulation(){
   verifier('Niveau 1 : au 3e coup de bélier, la conduite casse et le niveau est raté', !!resultatNiveau(niv1, r1n).rate);
   r1n.coups = 0; r1n.neigeTotale = 6000;
   verifier('Niveau 1 : 6 000 m³ produits sans casse = niveau réussi', resultatNiveau(niv1, r1n).reussi);
+
+  // Niveau 3 : perches et air comprimé
+  const niv3 = LEVELS[2], r3 = creerReseau(niv3);
+  r3.budget = 2000000;
+  r3.neigePiste = 10000;                               // perche nouvelle génération débloquée
+  const pa = poserRegard(niv3, r3, -40, 110, { modele: 'p10' }), pb = poserRegard(niv3, r3, -70, 60, { modele: 'p10n' });
+  verifier('Niveau 3 : les perches se posent', pa.ok && pb.ok, pa.raison || pb.raison || '');
+  for(const [q, src] of [['eau', 'pompage'], ['cable', 'elec4']]){ ajouterTranchee(niv3, r3, src, pa.id, q); ajouterTranchee(niv3, r3, pa.id, pb.id, q); }
+  const sansAir = etatRegard(niv3, r3, pa.id);
+  verifier('Une perche avec eau et électricité mais sans air : « il manque l\'air comprimé »', !sansAir.pret && sansAir.manque === 'l\'air comprimé');
+  verifier('Impossible de tirer l\'air depuis la salle de pompage', !devisTranchee(niv3, r3, 'pompage', pa.id, 'air').ok);
+  const aSeul = devisTranchee(niv3, r3, 'compresseur', pa.id, 'air');
+  ajouterTranchee(niv3, r3, 'compresseur', pa.id, 'air');
+  const aCommun = devisTranchee(niv3, r3, pa.id, pb.id, 'air');
+  verifier('Air : 650 €/m en tranchée seule, 200 €/m dans une tranchée déjà creusée', aSeul.parMetre === 650 && !aSeul.commune && aCommun.commune && aCommun.parMetre === 200, (aSeul.raison || '') + (aCommun.raison || ''));
+  ajouterTranchee(niv3, r3, pa.id, pb.id, 'air');
+  verifier('Avec l\'air, les deux perches sont prêtes', etatRegard(niv3, r3, pa.id).pret && etatRegard(niv3, r3, pb.id).pret);
+  const n3g = debutNuit(niv3, r3);
+  verifier('Compresseur arrêté au début de la nuit : réservoir vide, les perches ne produisent pas encore', n3g.air.marche && n3g.canons.every(c => !c.production), `réservoir ${r3.compresseur.pression} bar`);
+  let gr = n3g;
+  for(let k = 0; k < 40; k++){ avancerNuit(niv3, r3, gr, 0.25); gr = regimeNuit(niv3, r3, gr.vent); }
+  verifier('Après le démarrage, la pression d\'air monte et les perches produisent', r3.compresseur.pression > CONFIG.air.pressionPleine && gr.canons.every(c => c.production > 0),
+    `réservoir ${r3.compresseur.pression.toFixed(1)} bar`);
+  verifier('La perche nouvelle génération consomme moins d\'air', CATALOGUE.p10n.air < CATALOGUE.p10.air && gr.air.demande === CATALOGUE.p10.air + CATALOGUE.p10n.air, `${gr.air.demande} Nm³/h`);
+  verifier('Le compresseur consomme de l\'électricité', r3.kwhNuit > CONFIG.pompage.puissance * CONFIG.nuit.echelle / 3600 * 10 * 0.9, `${Math.round(r3.kwhNuit)} kWh en 10 s de jeu`);
+  commanderPompes(r3, 'manuel', [true, false, false]); commanderCompresseur(r3, false);
+  for(let k = 0; k < 40; k++){ gr = regimeNuit(niv3, r3, gr.vent); avancerNuit(niv3, r3, gr, 0.25); }
+  verifier('En manuel, compresseur arrêté : la pression d\'air retombe et les perches s\'arrêtent',
+    r3.compresseur.pression < CONFIG.air.pressionMin && regimeNuit(niv3, r3, gr.vent).canons.every(c => !c.production), `${r3.compresseur.pression.toFixed(1)} bar`);
 
   const dir = directionVersPiste(niv.pistes, 70, 0);
   verifier('Un canon à droite de la piste souffle vers la gauche (vers la piste)', dir < -45 && dir > -135, `${dir}°`);
