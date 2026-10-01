@@ -130,6 +130,25 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .poste .canon .nom small{ display:block; color:var(--doux); font-size:.75rem; }
 .poste .canon .actions{ display:flex; gap:6px; margin-left:auto; }
 
+/* Curseur de la vanne */
+.poste .curseur{ width:100%; margin:4px 0 2px; accent-color:#2F6FDE; height:28px; }
+.poste .pastille.orange{ background:rgba(229,138,31,.22); border-color:#E58A1F; }
+/* Menu des niveaux */
+.menu{ max-width:720px; z-index:25; }
+.menu .intro{ margin:6px 0 12px; color:var(--doux); font-size:.92rem; line-height:1.4; }
+.menu .niveaux{ display:grid; gap:10px; }
+.menu .niveau{ display:flex; gap:12px; padding:12px; background:#0D1B2E; border:1px solid #22324A; border-radius:14px; }
+.menu .niveau.ferme{ opacity:.55; }
+.menu .num{ flex:none; width:44px; height:44px; border-radius:12px; display:grid; place-items:center; font-weight:800; font-size:1.3rem; background:#13243B; border:1px solid #2B3B55; }
+.menu .corps{ min-width:0; flex:1; }
+.menu h3{ margin:0 0 4px; font-size:1.05rem; text-transform:none; letter-spacing:0; color:var(--texte); }
+.menu .corps p{ margin:0 0 6px; font-size:.86rem; line-height:1.35; color:var(--doux); }
+.menu .etat{ color:#9FD0FF !important; font-weight:600; }
+.menu .actions{ display:flex; gap:8px; flex-wrap:wrap; }
+.menu .bouton.vert{ background:#2E9E5B; border-color:#2E9E5B; }
+.menu .bas-menu{ margin-top:12px; justify-content:center; }
+.sans-construction .construction:not(#lancerNuit){ display:none; }
+
 /* ---------- Panneaux (mode test, erreur) ---------- */
 .panneau{ position:fixed; inset:calc(env(safe-area-inset-top, 0px) + 64px) 12px auto; margin:0 auto; max-width:560px;
   max-height:calc(100% - 160px); overflow:auto; padding:14px 16px; border-radius:14px;
@@ -161,7 +180,8 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 <header class="haut">
   <a class="home" href="../../index.html">DesDés</a>
   <div class="titre"><b id="titre">Nivoculteur</b><span id="sousTitre">Découverte du terrain</span></div>
-  <a class="bouton" id="lienModeles" href="index.html?modeles">Modèles 3D</a>
+  <button class="bouton" id="ouvrirMenu" type="button">Menu</button>
+  <a class="bouton" id="lienModeles" href="index.html?modeles" hidden>Modèles 3D</a>
   <a class="bouton" id="lienTerrain" href="index.html" hidden>Terrain</a>
   <button class="bouton" id="recentrer" type="button">Recentrer</button>
 </header>
@@ -174,7 +194,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
   <div class="rang">
     <div class="stat"><span>Budget</span><b id="hudBudget">—</b></div>
     <div class="stat"><span>Nuit</span><b id="hudNuit">—</b></div>
-    <div class="stat"><span>Neige piste</span><b id="hudNeige">—</b></div>
+    <div class="stat"><span id="hudNeigeTitre">Neige piste</span><b id="hudNeige">—</b></div>
     <div class="stat"><span>Vent</span><b><svg id="flecheVent" class="fleche" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1 L16.5 11 H11.5 V19 H8.5 V11 H3.5 Z" fill="currentColor"/></svg> <em id="hudVentForce">—</em></b></div>
     <div class="stat"><span>Retenue</span><b id="hudRetenue">—</b></div>
   </div>
@@ -202,6 +222,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 </footer>
 
 <section class="poste" id="poste" hidden aria-label="Poste de travail"></section>
+<section class="poste menu" id="menu" hidden aria-label="Menu des niveaux"></section>
 <section class="panneau" id="panneauTests" hidden></section>
 <section class="panneau" id="panneauErreur" hidden></section>
 

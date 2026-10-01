@@ -5,7 +5,10 @@
 const params = new URLSearchParams(location.search);
 const MODE_TEST = params.has('test');
 const MODE_MODELES = params.has('modeles');
-const niveau = LEVELS[1];
+// Le niveau vient de l'adresse (index.html?niveau=reseau) ; sans niveau, on ouvre le menu devant le dernier niveau joué
+const progressionSauvee = lireSauvegarde('nivo-progression') || {};
+const OUVRIR_MENU = !params.get('niveau') && !MODE_MODELES;
+const niveau = LEVELS.find(l => l.id === params.get('niveau')) || LEVELS.find(l => l.id === progressionSauvee.dernier) || LEVELS[0];
 
 if(MODE_TEST) afficherTests(testsSimulation());
 

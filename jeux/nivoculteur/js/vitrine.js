@@ -8,7 +8,7 @@
 function demarrerVitrine(){
   const { canvas, renderer, scene, camera } = preparerRendu(0.004);
   $('titre').textContent = 'Modèles 3D';
-  $('lienModeles').hidden = true; $('lienTerrain').hidden = false;
+  $('lienModeles').hidden = true; $('lienTerrain').hidden = false; $('ouvrirMenu').hidden = true;
   $('barreJeu').hidden = true; $('barreVitrine').hidden = false;
 
   const ciel = creerCiel(), etoiles = creerEtoiles(CONFIG.graphismes.etoiles), lune = creerLune();

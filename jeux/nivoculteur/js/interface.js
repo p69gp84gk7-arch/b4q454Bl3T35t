@@ -124,19 +124,21 @@ function afficherPoste(d, agir){
     <div class="grille">
       <section class="bloc"><h3>Salle de pompage</h3>
         <div class="ligne">Mode
-          <span class="seg"><button type="button" data-action="mode" data-valeur="auto" class="${p.mode === 'auto' ? 'actif' : ''}">Auto</button><button type="button" data-action="mode" data-valeur="manuel" class="${p.mode === 'manuel' ? 'actif' : ''}">Manuel</button></span></div>
+          ${p.modeImpose ? pastille('Manuel (imposé dans ce niveau)') : `<span class="seg"><button type="button" data-action="mode" data-valeur="auto" class="${p.mode === 'auto' ? 'actif' : ''}">Auto</button><button type="button" data-action="mode" data-valeur="manuel" class="${p.mode === 'manuel' ? 'actif' : ''}">Manuel</button></span>`}</div>
         ${pompes}
         <div class="ligne">Vanne principale
           <span class="reglage"><button class="bouton petit" type="button" data-action="vanne" data-valeur="-0.1">−10 %</button><b class="val">${Math.round(p.ouverture * 100)} %</b><button class="bouton petit" type="button" data-action="vanne" data-valeur="0.1">+10 %</button></span></div>
-        <div class="ligne">${pastille(`Départ : ${Math.round(p.pression)} bar`)}${pastille(`${nombreFr(p.debit)} / ${nombreFr(p.capacite)} l/s`)}</div>
-        <p class="aide">${p.mode === 'auto' ? 'En automatique, le bon nombre de pompes démarre selon le débit demandé.' : 'En manuel, c\'est vous qui démarrez les pompes (50 l/s chacune).'}</p>
+        <input class="curseur" type="range" min="0" max="100" step="1" value="${Math.round(p.ouverture * 100)}" data-curseur="vanne" aria-label="Ouverture de la vanne principale">
+        <div class="ligne">${pastille(`Départ : ${Math.round(p.pression)} bar`, p.pression <= 0 ? '' : p.dansLeVert ? 'vert' : 'orange')}${pastille(`${nombreFr(p.debit)} / ${nombreFr(p.capacite)} m³/h`)}</div>
+        <p class="aide">${p.mode === 'auto' ? 'En automatique, le bon nombre de pompes démarre selon le débit demandé et la vanne se règle seule.'
+          : `En manuel, c'est vous qui démarrez les pompes (${nombreFr(CONFIG.pompage.debitNominal)} m³/h chacune) et qui manœuvrez la vanne : gardez le départ entre ${CONFIG.pompage.zoneVerte[0]} et ${CONFIG.pompage.zoneVerte[1]} bar. Démarrez vanne fermée, ouvrez doucement.`}</p>
       </section>
       <section class="bloc"><h3>${d.nuit ? `Nuit ${d.nuit.numero} en cours` : `Prochaine nuit : n° ${d.numero}`}</h3>
         <div class="ligne">${d.nuit ? pastille(`${d.nuit.restant} s restantes`) : pastille('Jour : construction')}${pastille(`Vent ${d.vent.force} km/h`)}</div>
         ${d.nuit ? `<div class="ligne">${pastille(`${nombreFr(d.nuit.neige)} m³ sur la piste`)}${pastille(`+${euros(d.nuit.argent)}`, 'vert')}</div>` : ''}
         <div class="ligne">${pastille(`Retenue ${d.retenue === null ? '—' : Math.round(d.retenue * 100) + ' %'}`)}${pastille(`Objectif ${nombreFr(d.total)} / ${nombreFr(d.objectif)} m³`)}</div>
       </section>
-      <section class="bloc"><h3>Alarmes</h3>
+      <section class="bloc"><h3>Alarmes${d.coupsMax !== null ? ` · coups de bélier ${d.coups} / ${d.coupsMax}` : ''}</h3>
         ${d.alarmes.length ? d.alarmes.map(a => `<p class="alarme ${a.niveau}">${echapper(a.texte)}</p>`).join('') : '<p class="vide">Aucune alarme.</p>'}
       </section>
     </div>
@@ -147,7 +149,41 @@ function afficherPoste(d, agir){
     const b = e.target.closest('[data-action]');
     if(b) agir(b.dataset.action, b.dataset.valeur);
   };
+  el.oninput = e => { if(e.target.dataset.curseur) agir('vanne-curseur', e.target.value / 100); };
 }
+
+// ---------------------------------------------------------------------------------------
+// Sauvegarde dans le navigateur (toujours protégée : navigation privée, stockage plein…)
+// ---------------------------------------------------------------------------------------
+function lireSauvegarde(cle){ try{ return JSON.parse(localStorage.getItem(cle)); }catch(e){ return null; } }
+function ecrireSauvegarde(cle, valeur){ try{ localStorage.setItem(cle, JSON.stringify(valeur)); }catch(e){} }
+function effacerSauvegarde(cle){ try{ localStorage.removeItem(cle); }catch(e){} }
+
+// ---------------------------------------------------------------------------------------
+// Menu : choix du niveau
+// cartes : [{ id, numero, nom, resume, etat, ouvert, partie, enCours }] ; agir(action, id)
+// ---------------------------------------------------------------------------------------
+function afficherMenu(cartes, aVenir, agir, peutRevenir){
+  const el = $('menu');
+  el.innerHTML = `<div class="tete"><h2>Nivoculteur</h2>${peutRevenir ? '<button class="fermer" type="button" data-action="fermer" aria-label="Revenir au jeu">×</button>' : ''}</div>
+    <p class="intro">Construisez et faites tourner le réseau de neige de culture de la station. Choisissez un niveau :</p>
+    <div class="niveaux">${cartes.map(c => `
+      <article class="niveau${c.ouvert ? '' : ' ferme'}">
+        <div class="num">${c.numero}</div>
+        <div class="corps"><h3>${echapper(c.nom)}</h3><p>${echapper(c.resume)}</p><p class="etat">${echapper(c.etat)}</p>
+          <div class="actions">${c.ouvert ? `<button class="bouton vert" type="button" data-action="jouer" data-valeur="${c.id}">${c.partie ? 'Reprendre' : 'Jouer'}</button>
+            ${c.partie ? `<button class="bouton" type="button" data-action="recommencer" data-valeur="${c.id}">Recommencer</button>` : ''}` : ''}</div></div>
+      </article>`).join('')}
+      ${aVenir.map(a => `<article class="niveau ferme"><div class="num">${a.numero}</div><div class="corps"><h3>${echapper(a.nom)}</h3><p class="etat">Bientôt</p></div></article>`).join('')}
+    </div>
+    <div class="actions bas-menu"><a class="bouton" href="index.html?modeles">Modèles 3D</a><a class="bouton" href="index.html?test">Vérifications</a></div>`;
+  el.hidden = false;
+  el.onclick = e => {
+    const b = e.target.closest('[data-action]');
+    if(b) agir(b.dataset.action, b.dataset.valeur);
+  };
+}
+function fermerMenu(){ $('menu').hidden = true; }
 function fermerPoste(){ $('poste').hidden = true; }
 
 function afficherTests(resultats){

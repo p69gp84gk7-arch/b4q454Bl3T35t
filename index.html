@@ -199,7 +199,7 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
       </svg>
       <p class="title">Nivoculteur</p>
       <p class="desc">Construisez le réseau de neige de culture d'une station et enneigez les pistes avant l'ouverture. En 3D.</p>
-      <p class="status" id="stnivo"><b>Nouveau</b>En construction : découverte du terrain.</p>
+      <p class="status" id="stnivo"><b>Pas encore joué</b>Niveau 1 : la salle de pompage.</p>
       <span class="go">Jouer</span>
     </a>
   </nav>
@@ -285,7 +285,19 @@ function showDraw(){
   const s = r.temps / 1000, m = Math.floor(s / 60);
   el.innerHTML = `<b>Record · ${esc(c)}</b>${m}:${(s - m * 60).toFixed(2).padStart(5, '0')} par ${esc(r.nom)}`;
 }
-function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); }
+/* Nivoculteur : dernier niveau joué et partie en cours (clés partagées avec jeux/nivoculteur) */
+const NIVO_NIVEAUX = { pompage: { n: 1, nom: 'La salle de pompage', prod: true }, reseau: { n: 2, nom: 'Construire le réseau', prod: false } };
+function showNivo(){
+  const p = read('nivo-progression') || {}, el = document.getElementById('stnivo');
+  const reussis = Object.keys(p.niveaux || {}).filter(k => p.niveaux[k] && p.niveaux[k].reussi).length;
+  const id = p.dernier, niv = NIVO_NIVEAUX[id];
+  if(!niv){ el.innerHTML = '<b>Pas encore joué</b>Niveau 1 : la salle de pompage.'; return; }
+  const partie = read(`nivo-partie-${id}`), r = partie && partie.reseau;
+  const fait = r ? Math.round(niv.prod ? r.neigeTotale : r.neigePiste) : 0;
+  el.innerHTML = `<b>Niveau ${niv.n} · ${esc(niv.nom)}</b>` + (r ? `Prochaine nuit n° ${r.nuit} · ${fmt(fait)} m³` : 'Nouvelle partie') +
+    (reussis ? ` · ${plural(reussis, 'niveau')} réussi${reussis > 1 ? 's' : ''}` : '');
+}
+function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showNivo(); }
 refresh();
 // Retour depuis un jeu (cache de navigation) : remettre les états à jour
 window.addEventListener('pageshow', refresh);
