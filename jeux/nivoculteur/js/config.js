@@ -35,6 +35,13 @@ const CONFIG = {
     cadranMax: 80           // bar : graduation maximale des manomètres
   },
 
+  // --- Salle de pompage ---
+  pompage: {
+    pompes: 3,              // nombre de pompes
+    debitParPompe: 50,      // l/s que fournit chaque pompe
+    chuteSurcharge: 0.5     // bar perdus par l/s demandé au-delà de ce que les pompes en marche peuvent fournir
+  },
+
   // --- Construction du réseau ---
   construction: {
     ecartRegards: 12,       // m : distance minimale entre deux regards

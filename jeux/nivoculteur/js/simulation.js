@@ -223,6 +223,7 @@ function creerReseau(niveau){
     neigePiste: 0,          // m³ tombés sur les pistes depuis le début (compte pour l'objectif et les déblocages)
     neigeTotale: 0,
     tas: [],                // tas de neige { x, z, volume }
+    pompage: { mode: 'auto', marche: [true, true, true], ouverture: 1 },   // commandes du poste de travail
     retenue: niveau.retenue ? { volume: volumeRetenue(niveau.retenue) * niveau.retenue.niveau ** 2 } : null
   };
 }
@@ -437,19 +438,30 @@ function partSurPiste(pistes, x, z, rayon){
 // Fonctionnement de tous les canons prêts pendant une nuit. Plus on ouvre de canons, plus la pression baisse :
 // tant qu'un canon manque de pression, on ferme le plus défavorisé et on recalcule.
 function regimeNuit(niveau, res, vent){
-  const t = niveau.terrain, pomp = noeudReseau(res, 'pompage');
+  const t = niveau.terrain, pomp = noeudReseau(res, 'pompage'), cp = CONFIG.pompage;
+  const cmd = res.pompage || { mode: 'auto', marche: [true, true, true], ouverture: 1 };
   const eau = alimentes(res, 'eau'), elec = alimentes(res, 'cable'), longueurs = longueursEau(res);
   const sec = !!(res.retenue && res.retenue.volume <= 0);
   const canons = res.noeuds.filter(n => n.type === 'regard' && eau.has(n.id) && elec.has(n.id)).map(n => {
     const chute = pointChute(n, vent);
     return { id: n.id, modele: n.modele, longueur: longueurs.get(n.id), denivele: altitude(t, n.x, n.z) - altitude(t, pomp.x, pomp.z),
-      chute, part: partSurPiste(niveau.pistes, chute.x, chute.z, chute.rayon), ouvert: !sec, pression: 0, zone: 'arret', facteur: 0, debit: 0, production: 0 };
+      chute, part: partSurPiste(niveau.pistes, chute.x, chute.z, chute.rayon), arrete: !!n.arret, ouvert: !sec && !n.arret,
+      pression: 0, zone: 'arret', facteur: 0, debit: 0, production: 0 };
   });
+  // Pompes : en automatique, juste assez de pompes pour la demande ; en manuel, celles que le joueur a démarrées.
+  // Si la demande dépasse ce qu'elles fournissent, la pression chute. La vanne principale ajoute une perte quand elle est mi-fermée.
+  let pompes = 0, capacite = 0, pDepart = 0;
   for(let k = 0; k <= canons.length; k++){
-    const debitTotal = canons.reduce((s, c) => s + (c.ouvert ? CATALOGUE[c.modele].debit : 0), 0) * 3.6;   // l/s → m³/h
+    const demande = canons.reduce((s, c) => s + (c.ouvert ? CATALOGUE[c.modele].debit : 0), 0);     // l/s
+    pompes = cmd.mode === 'auto' ? Math.min(cp.pompes, Math.ceil(demande / cp.debitParPompe)) : cmd.marche.filter(Boolean).length;
+    capacite = pompes * cp.debitParPompe;
+    const ouverture = borne(cmd.ouverture, 0, 1);
+    const eau = !sec && pompes > 0 && ouverture > 0;
+    pDepart = eau ? CONFIG.pression.pompes - Math.max(0, demande - capacite) * cp.chuteSurcharge
+      - demande * 3.6 * CONFIG.pression.perteDebit * (1 / (ouverture * ouverture) - 1) : 0;
     for(const c of canons){
       const m = CATALOGUE[c.modele];
-      c.pression = sec ? 0 : pressionRegard({ pPompes: CONFIG.pression.pompes, longueur: c.longueur, denivele: c.denivele, debit: debitTotal });
+      c.pression = !eau ? 0 : Math.max(0, pressionRegard({ pPompes: pDepart, longueur: c.longueur, denivele: c.denivele, debit: demande * 3.6 }));
       c.zone = zonePression(c.pression, m);
       c.facteur = c.ouvert ? facteurProduction(c.pression, m) : 0;
     }
@@ -459,7 +471,8 @@ function regimeNuit(niveau, res, vent){
   }
   for(const c of canons){ const m = CATALOGUE[c.modele]; c.debit = c.ouvert ? m.debit : 0; c.production = c.facteur * m.neige; }
   const debit = canons.reduce((s, c) => s + c.debit, 0);
-  return { vent, canons, debit, sec, pressionDepart: sec ? 0 : CONFIG.pression.pompes - debit * 3.6 * CONFIG.pression.perteDebit };
+  return { vent, canons, debit, sec, pompes, capacite, surcharge: debit > capacite && pompes > 0,
+    pressionDepart: Math.max(0, pDepart) };
 }
 function debutNuit(niveau, res){
   res.historique = [];                       // on ne peut plus annuler ce qui a été construit avant la nuit
@@ -488,6 +501,11 @@ function avancerNuit(niveau, res, regime, dt){
   }
   return { vide };
 }
+// Commandes du poste de travail
+function commanderPompes(res, mode, marche){ res.pompage.mode = mode; if(marche) res.pompage.marche = marche.slice(); }
+function commanderVanne(res, ouverture){ res.pompage.ouverture = borne(Math.round(ouverture * 10) / 10, 0, 1); }
+function commanderCanon(res, id, enMarche){ noeudReseau(res, id).arret = !enMarche; }
+
 // Fin de nuit : l'argent gagné s'ajoute au budget, la retenue se remplit un peu pendant la journée
 function finNuit(niveau, res){
   const gain = Math.round(res.argentNuit);
@@ -639,6 +657,36 @@ function testsSimulation(){
   rn.retenue.volume = 1;
   const r2n = debutNuit(niv, rn), fin = avancerNuit(niv, rn, r2n, 1), apres = regimeNuit(niv, rn, r2n.vent);
   verifier('Retenue vide : les pompes sont à sec, plus aucun canon ne produit', fin.vide && apres.sec && apres.canons.every(c => !c.production));
+
+  // Poste de travail : pompes, vanne principale, arrêt d'un canon
+  const rp = creerReseau(niv);
+  rp.budget = 2000000;
+  rp.neigePiste = 20000;                               // V10 débloqué
+  const prets = [[-20, 150], [-30, 100], [-35, 50]].map(([x, z]) => poserRegard(niv, rp, x, z, { modele: 'v10', support: 'trepied' }).id);
+  let precedent = 'pompage';
+  for(const id of prets){ ajouterTranchee(niv, rp, precedent, id, 'eau'); precedent = id; }
+  precedent = 'elec1';
+  for(const id of prets){ ajouterTranchee(niv, rp, precedent, id, 'cable'); precedent = id; }
+  const vCalme = { force: 0, direction: 0 }, auto = regimeNuit(niv, rp, vCalme);
+  verifier('Pompes en automatique : 3 V10 (45 l/s) font tourner 1 pompe', auto.pompes === 1 && auto.canons.every(c => c.production > 0), `${auto.pompes} pompe(s), ${auto.debit} l/s`);
+  commanderPompes(rp, 'manuel', [false, false, false]);
+  verifier('Pompes en manuel, toutes arrêtées : aucun canon ne produit', regimeNuit(niv, rp, vCalme).canons.every(c => !c.production));
+  commanderPompes(rp, 'auto');
+  commanderVanne(rp, 0);
+  verifier('Vanne principale fermée : plus d\'eau sur le réseau', regimeNuit(niv, rp, vCalme).canons.every(c => !c.production));
+  commanderVanne(rp, 0.5);
+  const mi = regimeNuit(niv, rp, vCalme);
+  commanderVanne(rp, 1);
+  verifier('Vanne principale à moitié : moins de pression au départ', mi.pressionDepart < auto.pressionDepart, `${mi.pressionDepart.toFixed(1)} bar contre ${auto.pressionDepart.toFixed(1)} bar`);
+  commanderCanon(rp, prets[0], false);
+  const sansUn = regimeNuit(niv, rp, vCalme);
+  verifier('Arrêter un canon au poste de travail : il ne produit plus et les autres gagnent de la pression',
+    !sansUn.canons.find(c => c.id === prets[0]).production && sansUn.canons.find(c => c.id === prets[1]).pression > auto.canons.find(c => c.id === prets[1]).pression);
+  commanderCanon(rp, prets[0], true);
+  commanderPompes(rp, 'manuel', [true, false, false]);
+  for(const [x, z] of [[-10, 0], [-20, -50], [0, -100], [10, -150]]){ const id = poserRegard(niv, rp, x, z, { modele: 'v10' }).id; ajouterTranchee(niv, rp, precedent, id, 'eau'); ajouterTranchee(niv, rp, precedent, id, 'cable'); precedent = id; }
+  const charge = regimeNuit(niv, rp, vCalme);
+  verifier('Une seule pompe pour 7 V10 : surcharge, la pression chute', charge.surcharge && charge.pressionDepart < CONFIG.pression.pompes - 5, `${charge.pressionDepart.toFixed(1)} bar au départ`);
 
   const dir = directionVersPiste(niv.pistes, 70, 0);
   verifier('Un canon à droite de la piste souffle vers la gauche (vers la piste)', dir < -45 && dir > -135, `${dir}°`);

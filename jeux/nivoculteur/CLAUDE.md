@@ -105,6 +105,11 @@ Perches (`PERCHE` dans config.js) : petit support vertical de 1,50 m, perche inc
 
 Supports des ventilateurs : trépied au sol (posé à côté du regard, relié par un flexible), tour (+4 000 €), tour haute +3 m (+7 000 €). Plus haut = plus de portée, mais plus de dérive au vent.
 
+## Poste de travail
+
+- `reseau.pompage = { mode: 'auto' | 'manuel', marche: [p1, p2, p3], ouverture: 0 à 1 }` ; un canon arrêté au poste a `arret: true` (il reste arrêté les nuits suivantes jusqu'à « Mettre en marche »).
+- `CONFIG.pompage` : 3 pompes de 50 l/s ; au-delà, 0,5 bar perdu par l/s manquant. Vanne : perte = débit (m³/h) × 0,05 × (1/ouverture² − 1).
+
 ## Production, vent, nuits (étape 4)
 
 - Production : 35 % à la pression minimale, 100 % à la pression pleine ; surpression > 55 bar = canon en sécurité.
@@ -122,7 +127,8 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
 - [x] Retouches : murs et toit de la salle de pompage transparents quand ils cachent l'intérieur ; regards rectangulaires ; départs électriques près des bâtiments.
 - [x] **Étape 3 — Construction** (faite avant l'étape 2, à la demande) : outils + Regard, Eau, Électricité ; devis (longueur, prix au mètre, tranchée commune, pression prévue, ce qui manque, budget après) ; Valider / Annuler ; icônes goutte/éclair ; vue sous-sol ; Annuler (remboursé) ; Tout effacer. 39 vérifications en mode test.
 - [x] **Étape 4 — Production, vent et catalogue** (+ découpage en fichiers) : bouton « Lancer la nuit », jets de neige et brouillard, tas, bilan, accélérer ×3 ; vent et manche à air ; fiche d'un canon (état, pression, % sur la piste, direction, inclinaison, remplacement avec reprise, anneau du point de chute) ; choix de l'enneigeur à la pose ; ventilateurs V8/V9/V10 sur trépied/tour/tour haute ; perches 6 m / 10 m / 10 m NG (vitrine ; jouables au niveau 3) ; retenue qui se vide. 55 vérifications.
-- [ ] **Poste de travail** (prochaine étape, validée) : toucher l'écran du pupitre de la salle des machines, ou un bouton « Poste de travail », ouvre un écran de contrôle (pompes, vanne principale, pression, liste des canons avec état, pression et marche/arrêt).
+- [x] Retouches : perches sur support vertical de 1,50 m, jet en éventail de 30° vers l'avant ; aucun texte ne dépasse de sa capsule (360 → 1 280 px).
+- [x] **Poste de travail** : bouton « Poste de travail », toucher l'écran du pupitre en 3D ou la salle de pompage (sans outil). Écran de supervision : pompes (auto / manuel, 50 l/s chacune, surcharge = chute de pression), vanne principale (−10 / +10 %, perte quand elle est mi-fermée, fermée = plus d'eau), départ (bar, l/s demandés / disponibles), nuit en cours, vent, retenue, objectif, alarmes, liste des canons (état, pression, production, % piste, Arrêter / Mettre en marche, Voir). Les commandes recalculent la nuit en cours tout de suite. Rafraîchi 4 fois par seconde la nuit **sans recréer les boutons** (`mettreAJour`), pour ne perdre aucun appui. 61 vérifications.
 - [ ] **Étape 2 — Niveau 1** : salle de pompage jouable (3 pompes, vanne principale, pression, retenue, coup de bélier).
 - [ ] **Étape 5 — Menus et niveaux** : menu, choix du niveau, sauvegarde `localStorage`.
 - [ ] **Étape 6 — Perches, air comprimé, compresseur** (niveau 3).

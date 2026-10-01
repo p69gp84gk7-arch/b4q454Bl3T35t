@@ -1024,7 +1024,7 @@ function creerSallePompage(nom){
     e.position.y = H + hf + 2.5;
     salle.add(e);
   }
-  salle.userData = { pompes, aiguilleDepart, volantPrincipal, gyrophares, toit, transparents, hauteur: H, ecran: tex, barDepart: 0,
+  salle.userData = { pompes, aiguilleDepart, volantPrincipal, gyrophares, toit, transparents, hauteur: H, ecran: tex, ecranMesh: ecran, barDepart: 0,
     etat: { marche: [false, false, false], pressions: [0, 0, 0], pressionDepart: 0, ouverture: 0, alarme: false } };
   dessinerEcran(salle);
   return salle;
