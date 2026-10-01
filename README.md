@@ -1,6 +1,6 @@
 # DesDés
 
-Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés, un quiz de géographie et une course à dessiner.
+Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés, un quiz de géographie, une course à dessiner et un jeu de neige de culture en 3D.
 
 ![Logo](logo.svg)
 
@@ -12,6 +12,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Yam's** : feuille de marque classique, bonus à 63 | `jeux/yams.html` | 1 à 10 |
 | **Géographie** : drapeaux et placement des pays sur la carte, par continent ou le monde, avec chrono et records | `jeux/geo.html` | 1 |
 | **Draw Race** : course de monoplaces dont on dessine la trajectoire, 10 circuits inspirés de la F1 | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
+| **Nivoculteur** : construire et faire tourner le réseau de neige de culture d'une station, en 3D (en construction) | `jeux/nivoculteur/index.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -54,6 +55,16 @@ Le jeu se joue le téléphone à l'horizontale (un message le demande en vertica
 Hors piste, la voiture ralentit. Les virages sont bordés de vibreurs rouge et blanc. Les records (5 meilleurs temps et meilleur tour) sont gardés par circuit.
 Les circuits sont dans `jeux/drawrace/circuits.js` (points de passage), la géométrie dans `jeux/drawrace/piste.js`.
 
+## Nivoculteur
+
+Jeu 3D (Three.js) sur le métier de nivoculteur : construire le réseau (regards, canons, conduites, câbles) avec un budget, produire la neige la nuit, gagner de l'argent avec la neige tombée sur la piste.
+Il est construit étape par étape ; le projet, les règles et l'avancement sont décrits dans `jeux/nivoculteur/CLAUDE.md`.
+
+- Le jeu tient dans `jeux/nivoculteur/index.html` ; il s'ouvre aussi seul, en double-cliquant dessus, sur un ordinateur.
+- `three.min.js` (Three.js 0.149.0, licence MIT) est posé à côté pour jouer sans internet.
+- Tous les chiffres réglables (prix, pressions, débits, durées) sont dans l'objet `CONFIG` en haut du script, et les niveaux dans `LEVELS`.
+- `index.html?test` affiche les vérifications de la simulation.
+
 ## Mise en ligne
 
 Le site est fait de fichiers statiques, sans installation ni compilation.
@@ -81,6 +92,7 @@ jeux/geo/              données de la carte et drapeaux
 outils/                script qui fabrique les données de géographie
 jeux/drawrace.html     jeu Draw Race
 jeux/drawrace/         circuits et géométrie de Draw Race
+jeux/nivoculteur/      jeu Nivoculteur (page, Three.js, CLAUDE.md)
 logo.svg               logo (source vectorielle)
 icons/                 icônes de l'application (192, 512, masquable, Apple)
 manifest.webmanifest   description de l'application installable

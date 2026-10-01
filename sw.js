@@ -1,6 +1,6 @@
 /* DesDés : fonctionnement hors ligne.
    Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement. */
-const VERSION = 'desdes-v16';
+const VERSION = 'desdes-v17';
 const FONTS = 'desdes-fonts';
 const SHELL = [
   './',
@@ -13,6 +13,8 @@ const SHELL = [
   'jeux/drawrace.html',
   'jeux/drawrace/circuits.js',
   'jeux/drawrace/piste.js',
+  'jeux/nivoculteur/index.html',
+  'jeux/nivoculteur/three.min.js',
   'logo.svg',
   'manifest.webmanifest',
   'icons/icon-192.png',

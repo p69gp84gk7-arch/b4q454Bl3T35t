@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nivoculteur · DesDés</title>
+<meta name="theme-color" content="#0B1426">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DesDés">
+<link rel="manifest" href="../../manifest.webmanifest">
+<link rel="icon" href="../../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --nuit:#0B1426; --nuit-2:#13213D; --texte:#EAF2FF; --doux:rgba(234,242,255,.68);
+  --verre:rgba(11,20,38,.72); --bord:rgba(234,242,255,.16);
+  --info:#2F6FDE; --ok:#2E9E5B; --attention:#E58A1F; --alarme:#D7263D; --or:#E9B949;
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; height:100%; overflow:hidden; background:var(--nuit); color:var(--texte);
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-user-select:none; user-select:none; }
+button{ font:inherit; color:inherit; cursor:pointer; border:0; }
+button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offset:2px; }
+[hidden]{ display:none !important; }
+
+#scene{ position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+
+/* ---------- Bandeau du haut ---------- */
+.haut{ position:fixed; top:0; left:0; right:0; display:flex; align-items:center; gap:10px;
+  padding:calc(env(safe-area-inset-top, 0px) + 10px) calc(env(safe-area-inset-right, 0px) + 12px) 18px calc(env(safe-area-inset-left, 0px) + 12px);
+  background:linear-gradient(rgba(5,11,28,.85), rgba(5,11,28,0)); pointer-events:none; }
+.haut > *{ pointer-events:auto; }
+.home{ display:inline-flex; align-items:center; gap:6px; color:var(--doux); text-decoration:none; font-weight:600; font-size:.95rem;
+  padding:8px 10px; border-radius:10px; background:var(--verre); border:1px solid var(--bord); }
+.home::before{ content:"←"; }
+.home:hover{ color:var(--texte); }
+.titre{ flex:1; min-width:0; line-height:1.1; }
+.titre b{ display:block; font-size:1.25rem; font-weight:800; letter-spacing:-.01em; }
+.titre span{ display:block; font-size:.82rem; color:var(--doux); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bouton{ padding:9px 12px; border-radius:10px; background:var(--verre); border:1px solid var(--bord); font-weight:600; font-size:.9rem; }
+.bouton:hover{ background:rgba(47,111,222,.35); }
+
+/* ---------- Messages (bleu = info, vert = OK, orange = attention, rouge = alarme) ---------- */
+#messages{ position:fixed; left:50%; transform:translateX(-50%); top:calc(env(safe-area-inset-top, 0px) + 66px);
+  width:min(520px, calc(100% - 24px)); display:flex; flex-direction:column; gap:6px; pointer-events:none; }
+.message{ padding:9px 12px; border-radius:10px; font-size:.92rem; line-height:1.3; background:var(--verre);
+  border-left:5px solid var(--info); box-shadow:0 6px 18px rgba(0,0,0,.35); transition:opacity .4s ease, transform .4s ease; }
+.message.ok{ border-left-color:var(--ok); }
+.message.attention{ border-left-color:var(--attention); }
+.message.alarme{ border-left-color:var(--alarme); background:rgba(80,10,20,.82); }
+.message.sortie{ opacity:0; transform:translateY(-6px); }
+
+/* ---------- Barre du bas ---------- */
+.bas{ position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;
+  padding:18px calc(env(safe-area-inset-right, 0px) + 12px) calc(env(safe-area-inset-bottom, 0px) + 10px) calc(env(safe-area-inset-left, 0px) + 12px);
+  background:linear-gradient(rgba(5,11,28,0), rgba(5,11,28,.85)); pointer-events:none; }
+.stat{ min-width:96px; padding:7px 12px; border-radius:12px; background:var(--verre); border:1px solid var(--bord); text-align:center; }
+.stat span{ display:block; font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--doux); }
+.stat b{ display:block; font-size:1.05rem; font-variant-numeric:tabular-nums; }
+#aide{ position:fixed; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom, 0px) + 74px);
+  width:max-content; max-width:calc(100% - 24px); margin:0; padding:6px 12px; border-radius:14px; font-size:.8rem; text-align:center;
+  color:var(--doux); background:var(--verre); border:1px solid var(--bord); pointer-events:none; transition:opacity .6s ease; }
+#aide.cache{ opacity:0; }
+#aide .doigt{ display:none; }
+@media (pointer:coarse){ #aide .doigt{ display:inline; } #aide .souris{ display:none; } }
+
+/* ---------- Panneaux (mode test, erreur) ---------- */
+.panneau{ position:fixed; inset:calc(env(safe-area-inset-top, 0px) + 64px) 12px auto; margin:0 auto; max-width:560px;
+  max-height:calc(100% - 160px); overflow:auto; padding:14px 16px; border-radius:14px;
+  background:rgba(11,20,38,.94); border:1px solid var(--bord); box-shadow:0 12px 30px rgba(0,0,0,.45); -webkit-user-select:text; user-select:text; }
+.panneau h2{ margin:0 0 8px; font-size:1.1rem; }
+.panneau ul{ list-style:none; margin:0 0 10px; padding:0; }
+.panneau li{ display:flex; gap:8px; padding:5px 0; border-bottom:1px solid var(--bord); font-size:.9rem; line-height:1.3; }
+.panneau li:last-child{ border-bottom:0; }
+.panneau .etat{ flex:none; width:58px; font-weight:800; }
+.panneau .etat.ok{ color:#6BD68F; } .panneau .etat.ko{ color:#FF6B7A; }
+.panneau small{ display:block; color:var(--doux); }
+.panneau .resume{ font-weight:800; margin:4px 0 10px; }
+@media (max-width:480px){
+  .stat{ min-width:0; flex:1; padding:6px 8px; } .stat b{ font-size:.95rem; white-space:nowrap; }
+  .titre b{ font-size:1.1rem; } #aide{ bottom:calc(env(safe-area-inset-bottom, 0px) + 82px); }
+}
+@media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="Vue 3D de la station"></canvas>
+
+<header class="haut">
+  <a class="home" href="../../index.html">DesDés</a>
+  <div class="titre"><b>Nivoculteur</b><span id="sousTitre">Découverte du terrain</span></div>
+  <button class="bouton" id="recentrer" type="button">Recentrer</button>
+</header>
+
+<div id="messages" aria-live="polite"></div>
+
+<p id="aide"><span class="souris">Glisser : tourner · Molette : zoom · Clic droit : déplacer · Clic : sélectionner</span><span class="doigt">Glisser : tourner · Pincer : zoom · Deux doigts : déplacer · Toucher : sélectionner</span></p>
+
+<footer class="bas">
+  <div class="stat"><span>Budget</span><b id="hudBudget">—</b></div>
+  <div class="stat"><span>Nuit</span><b id="hudNuit">—</b></div>
+  <div class="stat"><span>Neige piste</span><b id="hudNeige">—</b></div>
+</footer>
+
+<section class="panneau" id="panneauTests" hidden></section>
+<section class="panneau" id="panneauErreur" hidden></section>
+
+<!-- Three.js : d'abord la copie posée à côté de cette page (pour jouer sans internet), sinon par internet -->
+<script src="three.min.js"></script>
+<script>window.THREE || document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"><\/script>');</script>
+
+<script>
+'use strict';
+
+/* =====================================================================================
+   1. CONFIG — tous les chiffres réglables du jeu
+   Les valeurs sont provisoires : à remplacer par celles d'une vraie installation.
+   ===================================================================================== */
+const CONFIG = {
+  // --- Coûts de construction, en euros ---
+  couts: {
+    trancheeEau: 750,       // € par mètre de tranchée avec une conduite d'eau seule
+    trancheeCable: 550,     // € par mètre de tranchée avec un câble électrique seul
+    trancheeCommune: 900,   // € par mètre de tranchée commune eau + câble (on ne creuse qu'une fois)
+    regardCanon: 8000       // € pour un regard équipé de son canon
+  },
+
+  // --- Argent gagné ---
+  gains: {
+    parM3Piste: 20          // € par m³ de neige tombée SUR la piste (la neige hors piste ne rapporte rien)
+  },
+
+  // --- Pression d'eau au regard ---
+  // P_regard = P_pompes − pertes dues à la longueur − pertes dues à la montée − pertes dues au débit demandé
+  pression: {
+    pompes: 60,             // bar fournis par les pompes en marche, à la sortie de la salle de pompage
+    perteLongueur: 0.6,     // bar perdus par tranche de 100 m de conduite (perte de charge)
+    perteDenivele: 1.2,     // bar perdus par tranche de 10 m de montée (dans la réalité, environ 1 bar pour 10 m)
+    perteDebit: 0.05,       // bar perdus par m³/h d'eau demandé par l'ensemble des canons ouverts
+    // Zones de fonctionnement (en bar) :
+    //   moins de 22 : pas de production · 22 à 30 : production faible · 30 à 50 : production correcte
+    //   50 à 55 : pression haute (on produit, mais à surveiller) · plus de 55 : surpression (alarme)
+    zones: { arret: 22, faible: 30, correcte: 50, surpression: 55 }
+  },
+
+  // --- Production de neige ---
+  production: {
+    correcte: 10,           // m³ de neige par seconde de jeu, en zone correcte (et haute)
+    faible: 4               // m³ de neige par seconde de jeu, en zone faible
+  },
+
+  // --- Nuit ---
+  nuit: {
+    duree: 40               // durée d'une nuit, en secondes de jeu
+  },
+
+  // --- Caméra ---
+  camera: {
+    distanceDepart: 390,    // m entre la caméra et le point regardé au lancement
+    distanceMin: 20,        // zoom le plus proche (m)
+    distanceMax: 700,       // zoom le plus lointain (m)
+    inclinaisonDepart: 16,  // degrés au-dessus de l'horizon au lancement
+    inclinaisonMin: 6,      // degrés
+    inclinaisonMax: 84,     // degrés
+    sensibiliteRotation: 0.006,
+    sensibiliteDeplacement: 0.0017,
+    douceur: 12             // plus c'est grand, plus la caméra suit vite le doigt
+  },
+
+  // --- Graphismes (baisser ces nombres si le téléphone rame) ---
+  graphismes: {
+    ombres: true,           // ombres des sapins sous la lune
+    tailleOmbres: 2048,     // précision des ombres (1024 = plus rapide)
+    sapins: 460,
+    rochers: 46,
+    etoiles: 900,
+    pixelRatioMax: 2        // limite la finesse d'affichage sur les écrans très denses
+  }
+};
+
+/* =====================================================================================
+   2. LEVELS — description des niveaux
+   Coordonnées en mètres. x : de gauche à droite. z : du haut de la pente (négatif) vers le bas (positif).
+   Pour ajouter un niveau : copier un bloc et changer les valeurs, sans toucher au reste du code.
+   ===================================================================================== */
+
+// Terrain partagé par les premiers niveaux : une combe de 300 m × 500 m et 150 m de dénivelé
+const TERRAIN_COMBE = {
+  largeur: 300,             // m, zone de jeu de gauche à droite
+  longueur: 500,            // m, zone de jeu du bas au haut de la pente (à plat)
+  altBas: 1650,             // altitude du bas de la zone de jeu (m)
+  denivele: 150,            // m entre le bas et le haut
+  bords: 24,                // m : les côtés de la combe remontent (pente en cuvette)
+  rugosite: 1.6,            // m : petites bosses de la neige
+  bosses: [                 // grosses bosses (h positif) ou creux (h négatif), r = rayon (m)
+    { x: -85, z: -120, r: 45, h: 10 },
+    { x: 95,  z: 30,   r: 55, h: 12 },
+    { x: -30, z: 120,  r: 40, h: -6 },
+    { x: 100, z: -185, r: 60, h: 14 },
+    { x: -110, z: 60,  r: 35, h: 7 }
+  ],
+  graine: 7,                // change la forme des petites bosses et la place des sapins
+  maille: 6,                // m : taille des facettes du terrain en 3D
+  marge: 110                // m de décor autour de la zone de jeu
+};
+
+const PISTE_CLARINES = {
+  nom: 'Les Clarines',
+  couleur: 'bleue',         // verte, bleue, rouge ou noire (couleur des jalons)
+  largeur: 40,              // m
+  points: [[-10, -250], [25, -180], [40, -110], [5, -40], [-40, 30], [-35, 100], [0, 170], [10, 250]]
+};
+
+const LEVELS = [
+  {
+    id: 'pompage',
+    nom: 'La salle de pompage',
+    resume: 'Démarrer les pompes, ouvrir la vanne principale et garder la pression dans la zone verte.',
+    terrain: TERRAIN_COMBE,
+    pistes: [PISTE_CLARINES],
+    pompage: { x: -95, z: 215 },                  // salle de pompage
+    retenue: { x: -118, z: 160, rayon: 30 },      // lac artificiel
+    departsElec: [],
+    budget: 0,
+    objectif: { type: 'production', pourcent: 100 }
+  },
+  {
+    id: 'reseau',
+    nom: 'Construire le réseau',
+    resume: 'Poser les regards et les canons, tracer l\'eau et l\'électricité, puis produire de la neige sur la piste.',
+    terrain: TERRAIN_COMBE,
+    pistes: [PISTE_CLARINES],
+    pompage: { x: -95, z: 215 },
+    retenue: { x: -118, z: 160, rayon: 30 },
+    departsElec: [
+      { nom: 'Départ élec 1', x: 88, z: 150 },
+      { nom: 'Départ élec 2', x: -78, z: -60 }
+    ],
+    budget: 150000,
+    objectif: { type: 'neigePiste', m3: 3000 }
+  }
+];
+
+/* =====================================================================================
+   3. SIMULATION — logique pure, sans Three.js
+   Tout ce qui est ici doit pouvoir fonctionner seul (même sans affichage 3D).
+   ===================================================================================== */
+
+// --- Hasard reproductible : la même graine donne toujours la même suite de nombres ---
+function alea(graine){
+  let a = graine >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Petites bosses régulières (bruit) entre −1 et 1
+function hachage(i, j, g){
+  let h = (Math.imul(i, 374761393) + Math.imul(j, 668265263) + Math.imul(g, 1274126177)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+function bruit(x, z, g){
+  const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j;
+  const sx = fx * fx * (3 - 2 * fx), sz = fz * fz * (3 - 2 * fz);
+  const a = hachage(i, j, g), b = hachage(i + 1, j, g), c = hachage(i, j + 1, g), d = hachage(i + 1, j + 1, g);
+  return (a + (b - a) * sx + (c - a) * sz + (a - b - c + d) * sx * sz) * 2 - 1;
+}
+
+// --- Terrain : altitude réelle (m) en un point (x, z) ---
+// Si on donne les pistes, la neige y est damée : presque plus de petites bosses.
+function altitude(t, x, z, pistes = null){
+  const u = (t.longueur / 2 - z) / t.longueur;          // 0 en bas de la pente, 1 en haut
+  let h = t.altBas + t.denivele * (0.85 * u + 0.15 * u * u);
+  const bx = x / (t.largeur / 2);
+  h += t.bords * bx * bx;                                // les côtés remontent
+  for(const b of t.bosses) h += b.h * Math.exp(-((x - b.x) ** 2 + (z - b.z) ** 2) / (b.r * b.r));
+  let rug = t.rugosite;
+  if(pistes){ const pp = pistePlusProche(pistes, x, z); if(pp) rug *= Math.min(1, 0.15 + pp.auBord / 10); }
+  h += rug * (bruit(x / 22, z / 22, t.graine) + 0.5 * bruit(x / 9, z / 9, t.graine + 1));
+  return h;
+}
+function dansZoneJeu(t, x, z){ return Math.abs(x) <= t.largeur / 2 && Math.abs(z) <= t.longueur / 2; }
+
+// --- Lignes et pistes ---
+// Courbe douce qui passe par tous les points (Catmull-Rom), avec un point tous les « pas » mètres environ
+function courbe(points, pas){
+  const out = [], n = points.length;
+  for(let i = 0; i < n - 1; i++){
+    const p0 = points[Math.max(0, i - 1)], p1 = points[i], p2 = points[i + 1], p3 = points[Math.min(n - 1, i + 2)];
+    const k = Math.max(2, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / pas));
+    for(let s = 0; s < k; s++){
+      const t = s / k, t2 = t * t, t3 = t2 * t;
+      out.push([0, 1].map(c => 0.5 * (2 * p1[c] + (-p0[c] + p2[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t2 + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t3)));
+    }
+  }
+  out.push(points[n - 1].slice());
+  return out;
+}
+function longueurLigne(pts){
+  let l = 0;
+  for(let i = 1; i < pts.length; i++) l += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  return l;
+}
+function distanceSegment(x, z, a, b){
+  const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz;
+  const t = l2 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2)) : 0;
+  return Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz);
+}
+const _courbesPistes = new WeakMap();
+function courbePiste(piste){
+  if(!_courbesPistes.has(piste)) _courbesPistes.set(piste, courbe(piste.points, 4));
+  return _courbesPistes.get(piste);
+}
+function distancePiste(piste, x, z){
+  const c = courbePiste(piste);
+  let d = Infinity;
+  for(let i = 1; i < c.length; i++) d = Math.min(d, distanceSegment(x, z, c[i - 1], c[i]));
+  return d;
+}
+function surPiste(piste, x, z){ return distancePiste(piste, x, z) <= piste.largeur / 2; }
+// La piste la plus proche d'un point, et la distance au bord (0 si on est dessus)
+function pistePlusProche(pistes, x, z){
+  let meilleure = null, dMin = Infinity;
+  for(const p of pistes){ const d = distancePiste(p, x, z); if(d < dMin){ dMin = d; meilleure = p; } }
+  return meilleure && { piste: meilleure, dessus: dMin <= meilleure.largeur / 2, auBord: Math.max(0, dMin - meilleure.largeur / 2) };
+}
+
+// --- Pression d'eau au regard (bar) ---
+// longueur : m de conduite depuis le pompage · denivele : m de montée (négatif si le regard est plus bas)
+// debit : m³/h demandés par l'ensemble des canons ouverts
+function pressionRegard({ pPompes, longueur, denivele, debit }, cfg = CONFIG.pression){
+  return pPompes - longueur / 100 * cfg.perteLongueur - denivele / 10 * cfg.perteDenivele - debit * cfg.perteDebit;
+}
+function zonePression(p, cfg = CONFIG.pression){
+  const z = cfg.zones;
+  if(p < z.arret) return 'arret';
+  if(p < z.faible) return 'faible';
+  if(p <= z.correcte) return 'correcte';
+  if(p <= z.surpression) return 'haute';
+  return 'surpression';
+}
+// m³ de neige produits par seconde de jeu selon la pression
+function productionCanon(p, cfg = CONFIG){
+  const z = zonePression(p, cfg.pression);
+  if(z === 'correcte' || z === 'haute') return cfg.production.correcte;
+  if(z === 'faible') return cfg.production.faible;
+  return 0;
+}
+
+// --- Coûts ---
+// Prix d'une tranchée de « longueur » mètres, selon ce qu'on y met (eau, câble, ou les deux : tranchée commune)
+function coutTranchee(longueur, { eau = false, cable = false } = {}, cfg = CONFIG.couts){
+  const parMetre = eau && cable ? cfg.trancheeCommune : eau ? cfg.trancheeEau : cable ? cfg.trancheeCable : 0;
+  return Math.round(longueur * parMetre);
+}
+function gainNeige(m3SurPiste, cfg = CONFIG.gains){ return Math.round(m3SurPiste * cfg.parM3Piste); }
+
+// --- Vérifications de la simulation (mode test : index.html?test) ---
+function testsSimulation(){
+  const res = [];
+  const verifier = (nom, ok, detail = '') => res.push({ nom, ok: !!ok, detail });
+  const proche = (a, b, e = 1e-6) => Math.abs(a - b) <= e;
+  const cfgP = { pompes: 60, perteLongueur: 0.6, perteDenivele: 1.2, perteDebit: 0.05, zones: { arret: 22, faible: 30, correcte: 50, surpression: 55 } };
+
+  const p1 = pressionRegard({ pPompes: 60, longueur: 500, denivele: 100, debit: 40 }, cfgP);
+  verifier('Pression : 60 bar, 500 m de conduite, 100 m de montée, 40 m³/h → 43 bar', proche(p1, 43), `obtenu ${p1.toFixed(2)} bar`);
+  const haut = pressionRegard({ pPompes: 60, longueur: 300, denivele: 120, debit: 0 }, cfgP);
+  const bas = pressionRegard({ pPompes: 60, longueur: 300, denivele: 40, debit: 0 }, cfgP);
+  verifier('Pression : un regard plus haut a moins de pression', haut < bas, `${haut.toFixed(1)} bar en haut, ${bas.toFixed(1)} bar plus bas`);
+  const loin = pressionRegard({ pPompes: 60, longueur: 900, denivele: 50, debit: 0 }, cfgP);
+  const pres = pressionRegard({ pPompes: 60, longueur: 200, denivele: 50, debit: 0 }, cfgP);
+  verifier('Pression : un regard plus loin a moins de pression', loin < pres, `${loin.toFixed(1)} bar loin, ${pres.toFixed(1)} bar près`);
+  const descente = pressionRegard({ pPompes: 60, longueur: 200, denivele: -30, debit: 0 }, cfgP);
+  verifier('Pression : un regard plus bas que le pompage gagne de la pression', descente > 60, `${descente.toFixed(1)} bar`);
+  const peu = pressionRegard({ pPompes: 60, longueur: 300, denivele: 50, debit: 10 }, cfgP);
+  const beaucoup = pressionRegard({ pPompes: 60, longueur: 300, denivele: 50, debit: 120 }, cfgP);
+  verifier('Pression : plus de canons ouverts = moins de pression', beaucoup < peu, `${beaucoup.toFixed(1)} bar contre ${peu.toFixed(1)} bar`);
+
+  const zones = [[15, 'arret'], [25, 'faible'], [30, 'correcte'], [40, 'correcte'], [52, 'haute'], [60, 'surpression']];
+  const zonesOk = zones.every(([p, z]) => zonePression(p, cfgP) === z);
+  verifier('Zones de pression : 15 arrêt, 25 faible, 30 et 40 correcte, 52 haute, 60 surpression', zonesOk,
+    zones.map(([p]) => `${p} → ${zonePression(p, cfgP)}`).join(', '));
+  const cfgProd = { pression: cfgP, production: { correcte: 10, faible: 4 } };
+  verifier('Production : 10 m³/s en zone correcte, 4 en faible, 0 à l\'arrêt',
+    productionCanon(40, cfgProd) === 10 && productionCanon(25, cfgProd) === 4 && productionCanon(15, cfgProd) === 0);
+
+  const cfgC = { trancheeEau: 750, trancheeCable: 550, trancheeCommune: 900 };
+  const eau = coutTranchee(100, { eau: true }, cfgC), cable = coutTranchee(100, { cable: true }, cfgC), commune = coutTranchee(100, { eau: true, cable: true }, cfgC);
+  verifier('Tranchée de 100 m : eau 75 000 €, câble 55 000 €, commune 90 000 €', eau === 75000 && cable === 55000 && commune === 90000, `${eau} / ${cable} / ${commune}`);
+  verifier('La tranchée commune coûte moins cher que deux tranchées séparées', commune < eau + cable, `${commune} € contre ${eau + cable} €`);
+  verifier('Gain : 150 m³ sur la piste → 3 000 €', gainNeige(150, { parM3Piste: 20 }) === 3000);
+
+  const t = TERRAIN_COMBE;
+  const aBas = altitude(t, 0, t.longueur / 2), aHaut = altitude(t, 0, -t.longueur / 2);
+  verifier('Terrain : le haut de la pente est plus haut que le bas', aHaut > aBas, `bas ${Math.round(aBas)} m, haut ${Math.round(aHaut)} m`);
+  verifier('Terrain : environ 150 m de dénivelé', Math.abs(aHaut - aBas - t.denivele) < 15, `${Math.round(aHaut - aBas)} m`);
+  verifier('Terrain : la même position donne toujours la même altitude', altitude(t, 37.5, -12) === altitude(t, 37.5, -12));
+
+  const piste = PISTE_CLARINES, [x0, z0] = piste.points[3];
+  verifier('Piste : un point de la ligne du milieu est sur la piste', surPiste(piste, x0, z0));
+  verifier('Piste : un point à 100 m est hors piste', !surPiste(piste, x0 + 100, z0));
+  const lPiste = longueurLigne(courbePiste(piste));
+  verifier('Piste : longueur raisonnable (entre 500 et 700 m)', lPiste > 500 && lPiste < 700, `${Math.round(lPiste)} m`);
+  verifier('Longueur d\'une ligne : 3-4-5 → 5 m', proche(longueurLigne([[0, 0], [3, 4]]), 5));
+
+  const r1 = alea(42), r2 = alea(42);
+  verifier('Hasard : la même graine redonne les mêmes nombres', [1, 2, 3].every(() => r1() === r2()));
+
+  return res;
+}
+
+/* =====================================================================================
+   4. MODELES 3D — objets du monde (terrain, sapins, rochers, montagnes…)
+   Les canons, regards, salle de pompage et armoires arriveront à l'étape 1.
+   ===================================================================================== */
+
+// Couleurs partagées
+const COULEURS = {
+  neige: '#9FB0CF', neigeBord: '#C9D5EA', piste: '#F2F6FD', rocher: '#4F586A',
+  sapin: '#1E4A3A', sapinNeige: '#E6EEF8', tronc: '#4A3426',
+  jalons: { verte: '#2E9E5B', bleue: '#2F6FDE', rouge: '#D7263D', noire: '#1A1A1A' }
+};
+
+// Assemble plusieurs formes en une seule (moins de travail pour la carte graphique), avec une couleur par sommet
+function fusionner(parts){
+  const pos = [], nor = [], col = [], c = new THREE.Color();
+  for(const p of parts){
+    const g = p.geo.index ? p.geo.toNonIndexed() : p.geo.clone();
+    if(p.pos) g.translate(p.pos[0], p.pos[1], p.pos[2]);
+    g.computeVertexNormals();                      // une normale par facette : ombrage plat (low-poly)
+    const P = g.attributes.position, N = g.attributes.normal;
+    for(let i = 0; i < P.count; i++){
+      pos.push(P.getX(i), P.getY(i), P.getZ(i));
+      nor.push(N.getX(i), N.getY(i), N.getZ(i));
+      c.set(typeof p.couleur === 'function' ? p.couleur(P.getX(i), P.getY(i), P.getZ(i)) : p.couleur);
+      col.push(c.r, c.g, c.b);
+    }
+    g.dispose();
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return geo;
+}
+
+// Matériau mat partagé, couleurs portées par les sommets
+let _materiauSommets = null;
+function materiauSommets(){
+  return _materiauSommets || (_materiauSommets = new THREE.MeshLambertMaterial({ vertexColors: true }));
+}
+
+// --- Terrain : pente en facettes, piste plus claire ---
+function creerTerrain(niveau){
+  const t = niveau.terrain, h = (x, z) => altitude(t, x, z, niveau.pistes) - t.altBas;
+  const larg = t.largeur + 2 * t.marge, long = t.longueur + 2 * t.marge;
+  const nx = Math.round(larg / t.maille), nz = Math.round(long / t.maille);
+  const dx = larg / nx, dz = long / nz, r = alea(t.graine * 31 + 5);
+
+  // Sommets de la grille, légèrement décalés pour casser la régularité
+  const sx = [], sz = [], sy = [];
+  for(let j = 0; j <= nz; j++) for(let i = 0; i <= nx; i++){
+    const bord = i === 0 || j === 0 || i === nx || j === nz;
+    const x = -larg / 2 + i * dx + (bord ? 0 : (r() - 0.5) * dx * 0.35);
+    const z = -long / 2 + j * dz + (bord ? 0 : (r() - 0.5) * dz * 0.35);
+    sx.push(x); sz.push(z); sy.push(h(x, z));
+  }
+  const pos = new Float32Array(nx * nz * 18), col = new Float32Array(nx * nz * 18);
+  const cNeige = new THREE.Color(COULEURS.neige), cBord = new THREE.Color(COULEURS.neigeBord), cPiste = new THREE.Color(COULEURS.piste);
+  const cRocher = new THREE.Color(COULEURS.rocher), c = new THREE.Color();
+  let k = 0;
+  const tri = (a, b, d) => {
+    const cx = (sx[a] + sx[b] + sx[d]) / 3, cz = (sz[a] + sz[b] + sz[d]) / 3;
+    // Couleur de la facette : piste damée, bord de piste, neige, ou rocher si c'est très raide
+    const pp = pistePlusProche(niveau.pistes, cx, cz);
+    if(pp && pp.dessus) c.copy(cPiste);
+    else if(pp && pp.auBord < 3) c.copy(cBord);
+    else c.copy(cNeige);
+    const ux = sx[b] - sx[a], uy = sy[b] - sy[a], uz = sz[b] - sz[a];
+    const vx = sx[d] - sx[a], vy = sy[d] - sy[a], vz = sz[d] - sz[a];
+    const ny = Math.abs(uz * vx - ux * vz) / Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx);
+    if(ny < 0.78) c.lerp(cRocher, Math.min(1, (0.78 - ny) * 4));
+    c.multiplyScalar(0.95 + r() * 0.07);
+    for(const s of [a, b, d]){
+      pos[k] = sx[s]; pos[k + 1] = sy[s]; pos[k + 2] = sz[s];
+      col[k] = c.r; col[k + 1] = c.g; col[k + 2] = c.b;
+      k += 3;
+    }
+  };
+  for(let j = 0; j < nz; j++) for(let i = 0; i < nx; i++){
+    const a = j * (nx + 1) + i, b = a + 1, cc = a + nx + 1, d = cc + 1;
+    if((i + j) % 2){ tri(a, cc, b); tri(b, cc, d); } else { tri(a, cc, d); tri(a, d, b); }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, materiauSommets());
+  mesh.receiveShadow = true;
+  mesh.name = 'terrain';
+  return mesh;
+}
+
+// Les endroits où l'on ne met pas de sapins (piste, pompage, retenue, départs électriques)
+function placeLibre(niveau, x, z, marge){
+  const pp = pistePlusProche(niveau.pistes, x, z);
+  if(pp && pp.auBord < marge) return false;
+  const reserves = [
+    niveau.pompage && { x: niveau.pompage.x, z: niveau.pompage.z, r: 32 },
+    niveau.retenue && { x: niveau.retenue.x, z: niveau.retenue.z, r: niveau.retenue.rayon + 10 },
+    ...niveau.departsElec.map(d => ({ x: d.x, z: d.z, r: 12 }))
+  ].filter(Boolean);
+  return reserves.every(s => Math.hypot(x - s.x, z - s.z) > s.r);
+}
+
+// --- Sapin low-poly : tronc et trois étages d'aiguilles poudrés de neige ---
+function geometrieSapin(){
+  const vert = new THREE.Color(COULEURS.sapin), neige = new THREE.Color(COULEURS.sapinNeige);
+  const etage = (rayon, hauteur, y) => ({
+    geo: new THREE.ConeGeometry(rayon, hauteur, 7),
+    pos: [0, y, 0],
+    couleur: (x, yy) => vert.clone().lerp(neige, Math.max(0, Math.min(1, (yy - (y - hauteur / 2)) / hauteur)) * 0.55)
+  });
+  return fusionner([
+    { geo: new THREE.CylinderGeometry(0.28, 0.4, 2.2, 6), pos: [0, 1.1, 0], couleur: COULEURS.tronc },
+    etage(2.7, 3.6, 3.1),
+    etage(2.1, 3.2, 5.0),
+    etage(1.4, 2.8, 6.8),
+    { geo: new THREE.ConeGeometry(0.55, 1.0, 7), pos: [0, 8.0, 0], couleur: COULEURS.sapinNeige }
+  ]);
+}
+
+function creerSapins(niveau, nombre){
+  const t = niveau.terrain, r = alea(t.graine * 101 + 3);
+  const larg = t.largeur + 2 * t.marge - 10, long = t.longueur + 2 * t.marge - 10;
+  const mesh = new THREE.InstancedMesh(geometrieSapin(), materiauSommets(), nombre);
+  mesh.castShadow = true;
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), axe = new THREE.Vector3(0, 1, 0), c = new THREE.Color();
+  let n = 0, essais = 0;
+  while(n < nombre && essais++ < nombre * 40){
+    const x = (r() - 0.5) * larg, z = (r() - 0.5) * long;
+    // Bosquets : plus de sapins là où le bruit est fort, et un peu moins vers le haut
+    const densite = bruit(x / 55, z / 55, t.graine + 9) + (z / t.longueur) * 0.6;
+    if(densite < -0.1 || r() > 0.35 + densite) continue;
+    if(!placeLibre(niveau, x, z, 6)) continue;
+    const e = 0.75 + r() * 0.75;
+    p.set(x, altitude(t, x, z, niveau.pistes) - t.altBas - 0.3, z);
+    q.setFromAxisAngle(axe, r() * Math.PI * 2);
+    s.set(e * (0.9 + r() * 0.2), e, e * (0.9 + r() * 0.2));
+    mesh.setMatrixAt(n, m.compose(p, q, s));
+    mesh.setColorAt(n, c.setScalar(0.82 + r() * 0.22));
+    n++;
+  }
+  mesh.count = n;
+  return mesh;
+}
+
+function creerRochers(niveau, nombre){
+  const t = niveau.terrain, r = alea(t.graine * 57 + 11);
+  const geo = new THREE.IcosahedronGeometry(1, 0);
+  geo.computeVertexNormals();
+  const mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: COULEURS.rocher }), nombre);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), e = new THREE.Euler();
+  let n = 0, essais = 0;
+  while(n < nombre && essais++ < nombre * 40){
+    const x = (r() - 0.5) * (t.largeur + 2 * t.marge - 20), z = (r() - 0.5) * (t.longueur + 2 * t.marge - 20);
+    if(!placeLibre(niveau, x, z, 10)) continue;
+    const taille = 0.8 + r() * r() * 3.5;
+    p.set(x, altitude(t, x, z, niveau.pistes) - t.altBas - taille * 0.3, z);
+    q.setFromEuler(e.set(r() * 3, r() * 3, r() * 3));
+    s.set(taille * (1 + r() * 0.6), taille * (0.5 + r() * 0.4), taille * (1 + r() * 0.6));
+    mesh.setMatrixAt(n++, m.compose(p, q, s));
+  }
+  mesh.count = n;
+  return mesh;
+}
+
+// --- Jalons de bord de piste, de la couleur de la piste, avec un bandeau réfléchissant ---
+function creerJalons(niveau){
+  const t = niveau.terrain, groupe = new THREE.Group();
+  for(const piste of niveau.pistes){
+    const coul = COULEURS.jalons[piste.couleur] || COULEURS.jalons.bleue;
+    const geo = fusionner([
+      { geo: new THREE.CylinderGeometry(0.09, 0.09, 2.2, 5), pos: [0, 1.1, 0], couleur: coul },
+      { geo: new THREE.CylinderGeometry(0.11, 0.11, 0.35, 5), pos: [0, 1.9, 0], couleur: '#FFFFFF' }
+    ]);
+    const c = courbePiste(piste), pas = 7;                  // un point de courbe tous les 4 m environ : un jalon tous les 28 m
+    const places = [];
+    for(let i = pas; i < c.length - 1; i += pas){
+      const a = c[i - 1], b = c[i + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const nx = -(b[1] - a[1]) / l, nz = (b[0] - a[0]) / l;
+      for(const cote of [-1, 1]){
+        const x = c[i][0] + nx * cote * (piste.largeur / 2 + 1.5), z = c[i][1] + nz * cote * (piste.largeur / 2 + 1.5);
+        places.push([x, altitude(t, x, z, niveau.pistes) - t.altBas - 0.2, z]);
+      }
+    }
+    const mesh = new THREE.InstancedMesh(geo, materiauSommets(), places.length);
+    const m = new THREE.Matrix4();
+    places.forEach((p, i) => mesh.setMatrixAt(i, m.makeTranslation(p[0], p[1], p[2])));
+    groupe.add(mesh);
+  }
+  return groupe;
+}
+
+// --- Montagnes du décor, au loin ---
+function creerMontagnes(niveau){
+  const t = niveau.terrain, r = alea(t.graine * 13 + 1), parts = [];
+  const roche = new THREE.Color('#5E6E8E'), neige = new THREE.Color('#E3EAF6');
+  for(let i = 0; i < 18; i++){
+    const ang = (i / 18) * Math.PI * 2 + r() * 0.25;
+    const dist = 560 + r() * 220, haut = 160 + r() * 240, rayon = 150 + r() * 120;
+    const x = Math.sin(ang) * dist * 1.1, z = Math.cos(ang) * dist * 1.25 - 40;
+    const base = altitude(t, Math.max(-t.largeur, Math.min(t.largeur, x)), Math.max(-t.longueur, Math.min(t.longueur, z))) - t.altBas - 40;
+    const limiteNeige = base + haut * (0.42 + r() * 0.2);
+    parts.push({
+      geo: new THREE.ConeGeometry(rayon, haut, 6 + Math.floor(r() * 3), 3),
+      pos: [x, base + haut / 2, z],
+      couleur: (xx, y) => y > limiteNeige ? neige : roche
+    });
+  }
+  const geo = fusionner(parts);
+  return new THREE.Mesh(geo, materiauSommets());
+}
+
+/* =====================================================================================
+   5. EFFETS — ciel, étoiles, lune (plus tard : particules de neige, brouillard, tas de neige)
+   ===================================================================================== */
+
+function creerCiel(){
+  const geo = new THREE.SphereGeometry(1800, 24, 16);
+  const haut = new THREE.Color('#030817'), milieu = new THREE.Color('#0D1A36'), horizon = new THREE.Color('#2A4370'), sol = new THREE.Color('#0B1426');
+  const P = geo.attributes.position, col = [], c = new THREE.Color();
+  for(let i = 0; i < P.count; i++){
+    const y = P.getY(i) / 1800;
+    if(y < 0) c.copy(horizon).lerp(sol, Math.min(1, -y * 6));
+    else if(y < 0.25) c.copy(horizon).lerp(milieu, y / 0.25);
+    else c.copy(milieu).lerp(haut, (y - 0.25) / 0.75);
+    col.push(c.r, c.g, c.b);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
+  mesh.renderOrder = -2;
+  return mesh;
+}
+
+function creerEtoiles(nombre){
+  const groupe = new THREE.Group(), r = alea(2024);
+  for(const [part, taille, opacite] of [[0.75, 1.6, 0.75], [0.25, 2.6, 0.95]]){
+    const pos = [];
+    for(let i = 0; i < nombre * part; i++){
+      const az = r() * Math.PI * 2, el = Math.asin(0.08 + r() * 0.92);
+      pos.push(Math.cos(el) * Math.sin(az) * 1700, Math.sin(el) * 1700, Math.cos(el) * Math.cos(az) * 1700);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: '#F4F7FF', size: taille, sizeAttenuation: false, transparent: true, opacity: opacite, fog: false, depthWrite: false }));
+    pts.renderOrder = -1;
+    groupe.add(pts);
+  }
+  return groupe;
+}
+
+// Halo doux dessiné par le code (pas d'image externe)
+function textureHalo(){
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const g = cv.getContext('2d'), d = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  d.addColorStop(0, 'rgba(255,255,255,1)'); d.addColorStop(0.2, 'rgba(220,230,255,.45)'); d.addColorStop(1, 'rgba(200,215,255,0)');
+  g.fillStyle = d; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(cv);
+}
+const DIRECTION_LUNE = [-0.5, 0.72, -0.48];             // d'où vient la lumière de la lune
+
+function creerLune(){
+  const groupe = new THREE.Group(), dir = new THREE.Vector3(...DIRECTION_LUNE).normalize();
+  const disque = new THREE.Mesh(new THREE.SphereGeometry(38, 20, 14), new THREE.MeshBasicMaterial({ color: '#F4F1E2', fog: false }));
+  disque.position.copy(dir).multiplyScalar(1500);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: textureHalo(), color: '#C9D8FF', transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  halo.scale.setScalar(420);
+  halo.position.copy(disque.position);
+  groupe.add(disque, halo);
+  groupe.renderOrder = -1;
+  return groupe;
+}
+
+function creerLumieres(niveau){
+  const t = niveau.terrain, groupe = new THREE.Group();
+  groupe.add(new THREE.HemisphereLight('#5876B4', '#0A1020', 0.5));
+  groupe.add(new THREE.AmbientLight('#22345A', 0.2));
+  const lune = new THREE.DirectionalLight('#C6D5FF', 0.72);
+  const dir = new THREE.Vector3(...DIRECTION_LUNE).normalize();
+  const centre = new THREE.Vector3(0, t.denivele / 2, 0);
+  lune.position.copy(centre).addScaledVector(dir, 700);
+  lune.target.position.copy(centre);
+  if(CONFIG.graphismes.ombres){
+    lune.castShadow = true;
+    lune.shadow.mapSize.set(CONFIG.graphismes.tailleOmbres, CONFIG.graphismes.tailleOmbres);
+    const cam = lune.shadow.camera, demi = Math.max(t.largeur, t.longueur) / 2 + t.marge * 0.6;
+    cam.left = -demi; cam.right = demi; cam.top = demi; cam.bottom = -demi; cam.near = 100; cam.far = 1400;
+    lune.shadow.bias = -0.0005;
+    lune.shadow.normalBias = 0.6;
+  }
+  groupe.add(lune, lune.target);
+  return groupe;
+}
+
+// Repère posé là où l'on touche le terrain
+function creerRepere(){
+  const groupe = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ color: '#FF9A2E', fog: false });
+  const anneau = new THREE.Mesh(new THREE.RingGeometry(1.6, 2.2, 24), mat);
+  anneau.rotation.x = -Math.PI / 2;
+  const fleche = new THREE.Mesh(new THREE.ConeGeometry(0.9, 2.6, 8), mat);
+  fleche.rotation.x = Math.PI;
+  fleche.position.y = 3.2;
+  groupe.add(anneau, fleche);
+  groupe.userData.fleche = fleche;
+  groupe.visible = false;
+  return groupe;
+}
+
+/* =====================================================================================
+   6. INTERFACE — messages, barre du bas, panneaux
+   ===================================================================================== */
+const $ = id => document.getElementById(id);
+const nombreFr = (n, dec = 0) => n.toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const euros = n => `${nombreFr(n)} €`;
+const echapper = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// type : 'info' (bleu), 'ok' (vert), 'attention' (orange), 'alarme' (rouge)
+function message(texte, type = 'info', duree = 4500){
+  const zone = $('messages');
+  const el = document.createElement('div');
+  el.className = `message ${type}`;
+  el.textContent = texte;
+  zone.appendChild(el);
+  while(zone.children.length > 3) zone.firstChild.remove();
+  setTimeout(() => { el.classList.add('sortie'); setTimeout(() => el.remove(), 450); }, duree);
+}
+
+function majHud({ budget = null, nuit = null, neige = null, objectif = null } = {}){
+  $('hudBudget').textContent = budget === null ? '—' : euros(budget);
+  $('hudNuit').textContent = nuit === null ? '—' : nuit;
+  $('hudNeige').textContent = neige === null ? '—' : `${nombreFr(neige)}${objectif ? ' / ' + nombreFr(objectif) : ''} m³`;
+}
+
+function afficherTests(resultats){
+  const ok = resultats.filter(r => r.ok).length, p = $('panneauTests');
+  p.innerHTML = `<h2>Mode test · simulation</h2>
+    <p class="resume" style="color:${ok === resultats.length ? '#6BD68F' : '#FF6B7A'}">${ok} / ${resultats.length} vérifications OK</p>
+    <ul>${resultats.map(r => `<li><span class="etat ${r.ok ? 'ok' : 'ko'}">${r.ok ? 'OK' : 'ERREUR'}</span>
+      <span>${echapper(r.nom)}${r.detail ? `<small>${echapper(r.detail)}</small>` : ''}</span></li>`).join('')}</ul>
+    <button class="bouton" type="button" id="fermerTests">Fermer</button>`;
+  p.hidden = false;
+  $('fermerTests').onclick = () => { p.hidden = true; };
+  console.table(resultats);
+}
+
+function afficherErreur(html){
+  const p = $('panneauErreur');
+  p.innerHTML = `<h2>Le jeu ne peut pas démarrer</h2><p>${html}</p>`;
+  p.hidden = false;
+}
+
+/* =====================================================================================
+   7. JEU — scène, boucle principale, caméra, commandes tactiles et souris
+   ===================================================================================== */
+const params = new URLSearchParams(location.search);
+const MODE_TEST = params.has('test');
+const niveau = LEVELS[1];
+
+if(MODE_TEST) afficherTests(testsSimulation());
+
+if(!window.THREE){
+  afficherErreur('Three.js n\'a pas pu être chargé. Vérifiez que le fichier <b>three.min.js</b> est bien à côté de <b>index.html</b>, ou que l\'appareil est connecté à internet.');
+} else {
+  demarrer();
+}
+
+function demarrer(){
+  const t = niveau.terrain;
+  const hauteur = (x, z) => altitude(t, x, z, niveau.pistes) - t.altBas;
+  const canvas = $('scene');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CONFIG.graphismes.pixelRatioMax));
+  renderer.shadowMap.enabled = CONFIG.graphismes.ombres;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color('#0B1426');
+  scene.fog = new THREE.FogExp2('#1F3560', 0.0013);
+
+  const camera = new THREE.PerspectiveCamera(50, 1, 1, 4500);
+
+  // Décor
+  const ciel = creerCiel(), etoiles = creerEtoiles(CONFIG.graphismes.etoiles), lune = creerLune();
+  const terrain = creerTerrain(niveau);
+  scene.add(ciel, etoiles, lune, terrain, creerLumieres(niveau), creerMontagnes(niveau),
+    creerSapins(niveau, CONFIG.graphismes.sapins), creerRochers(niveau, CONFIG.graphismes.rochers), creerJalons(niveau));
+  const repere = creerRepere();
+  scene.add(repere);
+
+  // --- Caméra en orbite autour d'un point du terrain ---
+  const C = CONFIG.camera, rad = Math.PI / 180;
+  const depart = () => ({ x: 0, z: 10, distance: C.distanceDepart, azimut: 0, inclinaison: C.inclinaisonDepart * rad });
+  const voulu = depart(), actuel = depart();
+  const borne = (v, a, b) => Math.max(a, Math.min(b, v));
+  const caler = () => {
+    voulu.x = borne(voulu.x, -t.largeur / 2, t.largeur / 2);
+    voulu.z = borne(voulu.z, -t.longueur / 2, t.longueur / 2);
+    voulu.distance = borne(voulu.distance, C.distanceMin, C.distanceMax);
+    voulu.inclinaison = borne(voulu.inclinaison, C.inclinaisonMin * rad, C.inclinaisonMax * rad);
+  };
+  const tourner = (dx, dy) => {
+    voulu.azimut -= dx * C.sensibiliteRotation;
+    voulu.inclinaison += dy * C.sensibiliteRotation * 0.8;
+    caler();
+  };
+  const deplacer = (dx, dy) => {
+    const k = actuel.distance * C.sensibiliteDeplacement, s = Math.sin(actuel.azimut), c = Math.cos(actuel.azimut);
+    voulu.x += (-dx * c - dy * s) * k;
+    voulu.z += (dx * s - dy * c) * k;
+    caler();
+  };
+  const zoomer = facteur => { voulu.distance *= facteur; caler(); };
+  const cible = new THREE.Vector3();
+  function placerCamera(dt){
+    const a = Math.min(1, dt * C.douceur);
+    for(const cle of ['x', 'z', 'distance', 'azimut', 'inclinaison']) actuel[cle] += (voulu[cle] - actuel[cle]) * a;
+    cible.set(actuel.x, hauteur(actuel.x, actuel.z), actuel.z);
+    const ci = Math.cos(actuel.inclinaison);
+    camera.position.set(
+      cible.x + actuel.distance * Math.sin(actuel.azimut) * ci,
+      cible.y + actuel.distance * Math.sin(actuel.inclinaison),
+      cible.z + actuel.distance * Math.cos(actuel.azimut) * ci);
+    const sol = hauteur(camera.position.x, camera.position.z) + 4;   // ne jamais passer sous la neige
+    if(camera.position.y < sol) camera.position.y = sol;
+    camera.lookAt(cible);
+  }
+  $('recentrer').onclick = () => Object.assign(voulu, depart());
+
+  // --- Commandes : souris et doigts ---
+  const pointeurs = new Map();
+  let appui = null, ecart = 0, centre = null;
+  const aide = $('aide');
+  const masquerAide = () => aide.classList.add('cache');
+  const deuxDoigts = () => {
+    const [a, b] = [...pointeurs.values()];
+    return { d: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  };
+  canvas.addEventListener('pointerdown', e => {
+    canvas.setPointerCapture(e.pointerId);
+    pointeurs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if(pointeurs.size === 1) appui = { x: e.clientX, y: e.clientY, t: performance.now(), bouge: false, bouton: e.button };
+    else { appui = null; const g = deuxDoigts(); ecart = g.d; centre = g; }
+  });
+  canvas.addEventListener('pointermove', e => {
+    const p = pointeurs.get(e.pointerId);
+    if(!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    if(pointeurs.size === 1){
+      if(appui && Math.hypot(e.clientX - appui.x, e.clientY - appui.y) > 8) appui.bouge = true;
+      if(appui && !appui.bouge) return;
+      if(appui && (appui.bouton === 2 || e.shiftKey)) deplacer(dx, dy); else tourner(dx, dy);
+      masquerAide();
+    } else if(pointeurs.size === 2){
+      const g = deuxDoigts();
+      if(ecart > 0) zoomer(ecart / Math.max(g.d, 1));
+      if(centre) deplacer(g.x - centre.x, g.y - centre.y);
+      ecart = g.d; centre = g;
+      masquerAide();
+    }
+  });
+  const relacher = e => {
+    if(!pointeurs.has(e.pointerId)) return;
+    pointeurs.delete(e.pointerId);
+    if(appui && !appui.bouge && e.type === 'pointerup' && performance.now() - appui.t < 450) toucher(e.clientX, e.clientY);
+    appui = null;
+    if(pointeurs.size === 1){                       // il reste un doigt : il reprend la rotation sans à-coup
+      const [p] = pointeurs.values();
+      appui = { x: p.x, y: p.y, t: 0, bouge: true, bouton: 0 };
+    }
+    if(pointeurs.size < 2){ ecart = 0; centre = null; }
+  };
+  canvas.addEventListener('pointerup', relacher);
+  canvas.addEventListener('pointercancel', relacher);
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('wheel', e => { e.preventDefault(); zoomer(Math.exp(e.deltaY * 0.0012)); masquerAide(); }, { passive: false });
+
+  // --- Toucher court : sélectionner un point du terrain ---
+  const rayon = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  function toucher(cx, cy){
+    const r = canvas.getBoundingClientRect();
+    ndc.set((cx - r.left) / r.width * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+    rayon.setFromCamera(ndc, camera);
+    const hit = rayon.intersectObject(terrain, false)[0];
+    if(!hit) return;
+    const { x, z } = hit.point;
+    if(!dansZoneJeu(t, x, z)){ message('Ce point est en dehors du domaine skiable.', 'attention', 2500); return; }
+    repere.position.set(x, hauteur(x, z) + 0.3, z);
+    repere.visible = true;
+    repere.userData.depuis = performance.now();
+    const pp = pistePlusProche(niveau.pistes, x, z);
+    const ou = pp.dessus ? `sur la piste ${pp.piste.couleur} « ${pp.piste.nom} »` : `hors piste, à ${nombreFr(pp.auBord)} m de la piste`;
+    message(`Altitude ${nombreFr(altitude(t, x, z, niveau.pistes))} m · ${ou}`, pp.dessus ? 'ok' : 'info', 3500);
+  }
+
+  // --- Taille de l'écran ---
+  function redimensionner(){
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.fov = w < h ? 62 : 48;                     // téléphone en portrait : champ de vision plus large
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', redimensionner);
+  window.addEventListener('orientationchange', () => setTimeout(redimensionner, 200));
+  redimensionner();
+
+  // --- Boucle principale ---
+  let avant = performance.now();
+  function boucle(maintenant){
+    const dt = Math.min(0.05, (maintenant - avant) / 1000);
+    avant = maintenant;
+    placerCamera(dt);
+    ciel.position.copy(camera.position);
+    etoiles.position.copy(camera.position);
+    lune.position.copy(camera.position);
+    if(repere.visible){
+      const s = actuel.distance / 140 + 0.6;
+      repere.scale.setScalar(s);
+      repere.userData.fleche.position.y = 3.2 + Math.sin(maintenant / 220) * 0.6;
+    }
+    renderer.render(scene, camera);
+    requestAnimationFrame(boucle);
+  }
+  requestAnimationFrame(boucle);
+
+  // Accueil
+  majHud({ budget: niveau.budget, nuit: '—', neige: 0, objectif: niveau.objectif.m3 });
+  $('sousTitre').textContent = `Station de démonstration · piste ${PISTE_CLARINES.couleur} « ${PISTE_CLARINES.nom} »`;
+  message('Bienvenue ! Tournez autour de la station et touchez le terrain pour connaître l\'altitude.', 'info', 6000);
+  setTimeout(masquerAide, 12000);
+
+  // Accès pour les essais automatiques (console du navigateur)
+  window.nivo = { scene, camera, renderer, voulu, toucher };
+}
+</script>
+</body>
+</html>
