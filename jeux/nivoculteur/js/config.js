@@ -174,6 +174,9 @@ const CONFIG = {
     vitesse: 5              // m/s : défilement des sièges en 3D
   },
 
+  // --- Terrassement des pistes tracées : le dévers est corrigé (0 = rien, 1 = piste parfaitement à plat en travers) ---
+  terrassement: { force: 0.75, talus: 10 },   // talus : m de raccord au terrain naturel de chaque côté
+
   // --- Couleur d'une piste selon sa pente la plus forte (sur 30 m), en % ---
   couleursPistes: { verte: 25, bleue: 42, rouge: 55 }   // au-delà de 55 % : noire
 };
@@ -184,8 +187,51 @@ const CONFIG = {
    On part toujours avec une DM 400 rangée au garage ; la DM 600 étale deux fois plus, mais coûte très cher.
    ------------------------------------------------------------------------------------- */
 const DAMEUSES = {
-  dm400: { nom: 'Dameuse DM 400', capacite: 3500, prix: 300000, largeur: 5.6, echelle: 1 },
-  dm600: { nom: 'Dameuse DM 600', capacite: 7000, prix: 480000, largeur: 6.6, echelle: 1.16 }
+  dm400: { nom: 'Dameuse DM 400', capacite: 3500, prix: 300000, largeur: 5.6, echelle: 1, surface: 60000, conso: 180 },
+  dm600: { nom: 'Dameuse DM 600', capacite: 7000, prix: 480000, largeur: 6.6, echelle: 1.16, surface: 120000, conso: 260 }
+};
+// surface : m² de pistes damés par jour (mode Exploitation) · conso : litres de gazole pour une journée de travail complète
+
+/* -------------------------------------------------------------------------------------
+   Mode EXPLOITATION : une station de ski qui tourne, saison après saison.
+   La nuit on fait la neige, le matin la dameuse étale et dame, la journée les clients skient.
+   But : la meilleure satisfaction des clients. L'argent vient des forfaits et des dépenses des skieurs.
+   ------------------------------------------------------------------------------------- */
+CONFIG.exploitation = {
+  budgetDepart: 1500000,
+  joursSaison: 20,
+  enneigementDepart: 20,      // cm de neige naturelle sur les pistes au début de la saison
+  ouverture: 30,              // cm : en dessous, la piste reste fermée
+  ideal: 60,                  // cm : enneigement parfait pour les clients (+5 cm chaque saison)
+  usure: 1.5,                 // cm perdus par jour d'ouverture
+  usureClients: 1,            // cm perdus en plus pour 1 000 skieurs sur une piste
+  neigeNaturelle: { chance: 0.25, min: 8, max: 20 },   // chute de neige pendant la nuit (au hasard)
+  clientsBase: 1200,          // clients d'une journée moyenne avec deux bonnes pistes
+  croissance: 1.12,           // chaque saison, la clientèle grandit (et elle est plus exigeante)
+  calendrier: [0.5, 0.6, 0.7, 1.2, 1.3, 0.7, 0.8, 1.0, 1.5, 1.6, 1.6, 1.5, 1.4, 0.8, 0.9, 1.2, 1.4, 1.0, 0.9, 1.3],   // affluence selon le jour (vacances, week-ends)
+  prixReference: 45, prixMin: 20, prixMax: 80, prixDepart: 42,   // € le forfait journée
+  depensesClient: 14,         // € dépensés en plus par skieur (restaurant, location, boutique)
+  tours: 8,                   // montées en remontée par skieur et par jour
+  heuresOuverture: 8,
+  debitTelesiege: 1800,       // personnes par heure pour un télésiège 4 places
+  agentsParRemontee: 2,
+  desserte: 230,              // m : une piste est desservie si son départ est à moins de 230 m de l'arrivée d'une remontée
+  dureeJour: 40,              // s de jeu pour une journée de ski
+  panneRemontee: 0.12,        // chance qu'une remontée en marche tombe en panne pendant une journée
+  carburant: { prix: 1.6, cuve: 6000, depart: 3000 },   // € par litre de gazole, litres que contient la cuve du garage
+  reputationDepart: 0.8,
+  nivoculteurCanons: 12,      // canons qu'un nivoculteur fait tourner la nuit
+  clientsParCaissier: 500
+};
+CONFIG.pannes.types.remontee = { nom: 'Panne de télésiège', cout: 3500, duree: 12, poids: 0 };   // en journée seulement
+// Personnel : effectif de départ, salaire par jour (€) et rôle
+const METIERS = {
+  nivoculteur: { nom: 'Nivoculteurs', salaire: 160, depart: 2, role: `font tourner les canons la nuit (${CONFIG.exploitation.nivoculteurCanons} canons chacun)` },
+  conducteur: { nom: 'Conducteurs de dameuse', salaire: 170, depart: 1, role: 'sans conducteur, la dameuse ne sort pas ; un 2e double le travail (+60 %)' },
+  agent: { nom: 'Agents des remontées', salaire: 130, depart: 2, role: `${CONFIG.exploitation.agentsParRemontee} par remontée ouverte` },
+  pisteur: { nom: 'Pisteurs-secouristes', salaire: 150, depart: 2, role: '1 par piste ouverte pour la sécurité' },
+  technicien: { nom: 'Techniciens de maintenance', salaire: 170, depart: 1, role: 'réparent les pannes plus vite' },
+  caissier: { nom: 'Caissiers', salaire: 120, depart: 2, role: `1 pour ${CONFIG.exploitation.clientsParCaissier} clients par jour` }
 };
 
 /* -------------------------------------------------------------------------------------

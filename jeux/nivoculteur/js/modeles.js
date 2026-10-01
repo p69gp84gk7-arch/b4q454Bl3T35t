@@ -405,6 +405,28 @@ function creerRochers(niveau, nombre, poser){
 }
 
 // --- Jalons de bord de piste, de la couleur de la piste, avec un bandeau réfléchissant ---
+// Porte de départ d'une piste : deux mâts et une banderole de la couleur de la piste, avec son nom
+// Repère : x en travers de la piste, la banderole se lit des deux côtés
+function creerPortePiste(nom, couleur, largeur){
+  const g = new THREE.Group(), a = new Atelier(), coul = COULEURS.jalons[couleur] || COULEURS.jalons.bleue, demi = Math.min(largeur / 2, 14) + 1;
+  for(const s of [-1, 1]){
+    a.cylindre(0.14, 5.4, '#E9EEF5', s * demi, 2.7, 0, 0, 0, 0, 8);
+    a.cylindre(0.3, 0.3, coul, s * demi, 0.15, 0, 0, 0, 0, 8);
+  }
+  g.add(a.mesh());
+  const texte = nom.toUpperCase(), w = 512, h = 96;
+  const tex = canvasTexture(w, h, c => {
+    c.fillStyle = coul; c.fillRect(0, 0, w, h);
+    c.fillStyle = 'rgba(255,255,255,.9)'; c.fillRect(0, 0, w, 6); c.fillRect(0, h - 6, w, 6);
+    c.fillStyle = couleur === 'noire' ? '#FFFFFF' : '#FFFFFF'; c.font = 'bold 52px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(texte, w / 2, h / 2 + 2, w - 30);
+  });
+  tex.minFilter = THREE.LinearFilter;
+  const banniere = new THREE.Mesh(new THREE.PlaneGeometry(demi * 2, demi * 2 * h / w * 1.4), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+  banniere.position.y = 4.6;
+  g.add(banniere);
+  return g;
+}
 function creerJalons(niveau, poser){
   const groupe = new THREE.Group();
   for(const piste of niveau.pistes){
@@ -1329,6 +1351,30 @@ function creerTelesiege(ts, poser){
   groupe.userData = { telesiege: ts.nom, enMarche: false,
     animer: dt => { if(!groupe.userData.enMarche) return; decalage = (decalage + dt * CONFIG.remontees.vitesse) % total; placer(); } };
   return groupe;
+}
+
+// ---------------------------------------------------------------------------------------
+// Skieurs (mode Exploitation) : petits personnages en InstancedMesh, couleur de veste par skieur
+// Repère : avant vers +z ; agrandis ×2 pour qu'on les voie de loin
+// ---------------------------------------------------------------------------------------
+const VESTES = ['#D7263D', '#2F6FDE', '#F2C230', '#2E9E5B', '#E58A1F', '#8E44AD', '#FFFFFF', '#1ABC9C', '#E84393'];
+function creerSkieurs(max){
+  const a = new Atelier(), gris = '#3A3F4A';
+  for(const s of [-1, 1]){
+    a.boite(0.09, 0.04, 1.7, '#BFC5CE', s * 0.14, 0.03, 0.1);                       // skis
+    a.boite(0.13, 0.75, 0.16, gris, s * 0.14, 0.45, 0, 0.25, 0, 0);                  // jambes fléchies
+    a.tube([s * 0.3, 0.95, 0.1], [s * 0.36, 0.0, -0.35], 0.02, gris, 4);           // bâtons
+  }
+  a.boite(0.44, 0.55, 0.28, '#FFFFFF', 0, 1.1, 0.06, 0.35, 0, 0);                  // veste (teintée par skieur)
+  a.sphere(0.15, '#FFFFFF', 0, 1.5, 0.2, 8);                                        // casque
+  a.boite(0.22, 0.08, 0.04, '#1C1F25', 0, 1.5, 0.35);                               // masque
+  const mesh = new THREE.InstancedMesh(a.geometrie(), new THREE.MeshLambertMaterial({ vertexColors: true }), max);
+  const c = new THREE.Color();
+  for(let i = 0; i < max; i++) mesh.setColorAt(i, c.set(VESTES[i % VESTES.length]));
+  mesh.count = 0;
+  mesh.frustumCulled = false;
+  mesh.castShadow = true;
+  return mesh;
 }
 
 // ---------------------------------------------------------------------------------------

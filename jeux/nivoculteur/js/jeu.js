@@ -139,8 +139,17 @@ function demarrer(){
   const ciel = creerCiel(), etoiles = creerEtoiles(CONFIG.graphismes.etoiles), lune = creerLune();
   const terrain = creerTerrain(niveau), poser = terrain.userData.poser;
   const decor = [creerSapins(niveau, Math.round(CONFIG.graphismes.sapins * (t.largeur + 520) / 820), poser), creerRochers(niveau, CONFIG.graphismes.rochers, poser), creerJalons(niveau, poser)];
-  scene.add(ciel, etoiles, lune, terrain, ...decor,
-    creerLumieres(Math.max(t.largeur, t.longueur) / 2 + t.marge, new THREE.Vector3(0, t.denivele / 2, 0)));
+  // Portes de départ en haut de chaque piste, de la couleur de la piste (sa difficulté la plus haute)
+  const placerPorte = (porte, piste) => {
+    const c = courbePiste(piste), e = extremitesPiste(t, piste), i0 = e.inverse ? c.length - 1 : 0, i1 = e.inverse ? Math.max(0, c.length - 3) : Math.min(c.length - 1, 2);
+    const dx = c[i1][0] - c[i0][0], dz = c[i1][1] - c[i0][1], L = Math.hypot(dx, dz) || 1, x = c[i0][0] + dx / L * 6, z = c[i0][1] + dz / L * 6;
+    porte.position.set(x, poser(x, z), z);
+    porte.rotation.y = Math.atan2(dx, dz);
+    return porte;
+  };
+  for(const p of niveau.pistes) decor.push(placerPorte(creerPortePiste(p.nom, p.couleur, p.largeur), p));
+  const lumieres = creerLumieres(Math.max(t.largeur, t.longueur) / 2 + t.marge, new THREE.Vector3(0, t.denivele / 2, 0));
+  scene.add(ciel, etoiles, lune, terrain, ...decor, lumieres);
 
   // Installations : retenue, salle de pompage, départs électriques, remontées
   const retenue = creerRetenue(niveau, poser);
@@ -190,11 +199,13 @@ function demarrer(){
                                               : construireReseauFixe(niveau, creerReseau(niveau));
   let reseau = chargerPartie() || nouvellePartie(), outil = null, depart = null, proposition = null, sousSol = false;
   let traceePiste = [], gareAval = null, gareAmont = null;            // bac à sable : piste ou télésiège en cours de tracé
-  let deplaceId = null;                                                // regard en cours de déplacement
+  let deplaceId = null;
+  let infosCanons = lireSauvegarde('nivo-infos-canons') !== false;     // bulles et points d'état au-dessus des canons                                                // regard en cours de déplacement
   if(niveau.bac) reseau.options = { ...optionsBac(), ...(reseau.options || {}) };
   if(niveau.carriere) etendreReseau(niveau, reseau);
   reseau.dameuse = reseau.dameuse || { modele: 'dm400' };                           // parties enregistrées avant le garage
-  reseau.remonteesEnMarche = reseau.remonteesEnMarche || [];                                  // départs ou compresseur débloqués    // anciennes parties : options manquantes
+  reseau.remonteesEnMarche = reseau.remonteesEnMarche || [];
+  if(reseau.exploitation && reseau.exploitation.phase === 'jour') reseau.exploitation.phase = 'matin';   // partie quittée en pleine journée                                  // départs ou compresseur débloqués    // anciennes parties : options manquantes
   const repris = reseau.nuit > 1 || reseau.noeuds.some(n => n.type === 'regard' && !niveau.reseauFixe);
   function sauver(force = false){
     if(nuit || (!force && reseau.nuit === 1 && !reseau.lot)) return;   // rien à garder tant que le joueur n'a rien fait
@@ -206,7 +217,7 @@ function demarrer(){
   const planifierSauvegarde = () => { clearTimeout(minuteurSauvegarde); minuteurSauvegarde = setTimeout(sauver, 600); };
   if(niveau.construction === false) $('barreJeu').classList.add('sans-construction');
   document.querySelector('[data-outil="air"]').hidden = !niveau.compresseur;
-  for(const o of ['piste', 'remontee']) document.querySelector(`[data-outil="${o}"]`).hidden = !niveau.bac && !niveau.carriere;   // tracés : grand domaine
+  for(const o of ['piste', 'remontee']) document.querySelector(`[data-outil="${o}"]`).hidden = !niveau.bac && !niveau.carriere && !niveau.exploitation;   // tracés : grand domaine
   let choix = { modele: niveau.compresseur ? 'p10' : 'v8', support: 'trepied' };   // enneigeur posé avec un nouveau regard
   let fiche = null, nuit = null;                              // fiche : regard affiché ; nuit : { regime, temps, vitesse }
   let reussi = !!(progression.niveaux[niveau.id] || {}).reussi, alarmeJusqua = 0;
@@ -251,6 +262,7 @@ function demarrer(){
       }
       o.position.set(n.x, poser(n.x, n.z), n.z);                     // un regard peut avoir été déplacé
       orienterCanon(o.userData.canon, n.direction, n.inclinaison);
+      o.userData.icone.visible = o.userData.point.visible = infosCanons;
       const e = etatRegard(niveau, reseau, n.id);
       o.userData.icone.material.map = textureIcone(e.eau, e.elec, e.besoinAir ? e.air : null);
     }
@@ -382,7 +394,7 @@ function demarrer(){
     }
   }
   // Remontées : elles tournent quand on les active
-  function majRemontees3D(){ for(const r of remontees3D) r.o.userData.enMarche = remonteeEnMarche(reseau, r.ts); }
+  function majRemontees3D(){ for(const r of remontees3D) r.o.userData.enMarche = remonteeEnMarche(reseau, r.ts) && !enPanne(reseau, r.ts.nom); }
   function damer(mesh){ mesh.scale.x *= 1.6; mesh.scale.z *= 1.6; mesh.scale.y *= 0.3; }
 
   function majInfos(){
@@ -391,6 +403,12 @@ function demarrer(){
       neige: Math.round(neigeObjectif()), objectif: niveau.objectif.m3, vent: ventActuel(),
       retenue: reseau.retenue ? reseau.retenue.volume / volumeRetenue(R) : null });
     if(reseau.retenue) retenue.userData.remplir(hauteurRetenue(R, reseau.retenue.volume));
+    if(EXPL){
+      const ex = reseau.exploitation, sat = satisfactionSaison(reseau), tps = nuit ? CONFIG.nuit.duree - nuit.temps : journee ? E.dureeJour - journee.temps : null;
+      $('hudNuit').textContent = `S${ex.saison} · J${ex.jour}/${E.joursSaison}${tps !== null ? ` · ${Math.max(0, Math.ceil(tps))} s` : ''}`;
+      $('hudNeige').textContent = sat === null ? '—' : `${Math.round(sat * 100)} %`;
+      $('lancerNuit').textContent = ex.phase === 'matin' ? 'Ouvrir la station' : 'Lancer la nuit';
+    }
     majDameuse3D();
     majRemontees3D();
     majCoinPannes();
@@ -737,6 +755,10 @@ function demarrer(){
           apercu.add(creerApercu({ x: B.x + nx, z: B.z + nz }, { x: A.x + nx, z: A.z + nz }, poser, coul, ep * 0.5));
         }
       });
+      if(traceePiste.length >= 2){
+        const p = { nom: `Piste ${(reseau.pistesBac || []).length + 1}`, largeur: reglageTrace.largeur, points: traceePiste };
+        apercu.add(placerPorte(creerPortePiste(p.nom, couleurPente(penteMaxi(t, traceePiste)), p.largeur), p));
+      }
     }
     if(outil === 'remontee' && gareAval){
       apercu.add(creerApercu(gareAval, { x: gareAval.x + 0.01, z: gareAval.z }, poser, '#C08A5A', ep * 4));
@@ -902,9 +924,10 @@ function demarrer(){
 
   // ----- Les nuits -----
   function lancerNuit(){
-    if(nuit) return;
+    if(nuit || journee) return;
+    if(EXPL && reseau.exploitation.phase === 'matin') return lancerJournee();     // le matin, on ouvre la station
     const prets = reseau.noeuds.filter(n => n.type === 'regard' && etatRegard(niveau, reseau, n.id).pret).length;
-    if(!prets) return message(`Aucun canon n'est prêt : raccordez au moins un regard à l'eau et à l'électricité${K ? ' (et à l\'air pour une perche)' : ''}.`, 'attention', 4500);
+    if(!prets && !EXPL) return message(`Aucun canon n'est prêt : raccordez au moins un regard à l'eau et à l'électricité${K ? ' (et à l\'air pour une perche)' : ''}.`, 'attention', 4500);
     if(sousSol) $('sousSol').onclick();
     choisirOutil(null);
     garer();                                               // la nuit, la dameuse reste au garage
@@ -1026,6 +1049,7 @@ function demarrer(){
         a = { alerte: creerAlerte(), fuite: p.type === 'fuite' ? creerFuite() : null };
         let h = 5;
         if(p.type === 'pompe') h = 9;
+        else if(p.type === 'remontee') h = 14;
         else if(p.type === 'fuite') h = 3;
         else if(regards3D.has(p.cible)) h = regards3D.get(p.cible).userData.point.position.y + 1.6;
         a.alerte.position.set(pos.x, poser(pos.x, pos.z) + h, pos.z);
@@ -1053,7 +1077,7 @@ function demarrer(){
   function reparer(id){
     const p = (reseau.pannes || []).find(q => q.id === id);
     if(!p) return;
-    const r = reparerPanne(niveau, reseau, id, !!nuit, nuit ? nuit.temps : 0);
+    const r = reparerPanne(niveau, reseau, id, !!(nuit || journee), nuit ? nuit.temps : journee ? journee.temps : 0);
     if(!r.ok) return message(r.raison, 'attention', 4000);
     const verbe = p.type === 'disjoncteur' ? 'Réarmement' : 'Réparation';
     message(r.finie ? `${verbe} faite : ${libellePanne(reseau, p)}${r.cout ? ` (${euros(r.cout)})` : ''}.`
@@ -1065,6 +1089,7 @@ function demarrer(){
   function listeObjectifs(){
     const o = niveau.objectif, L = [];
     if(niveau.bac) return L;
+    if(EXPL) return objectifsExploitation();
     const regards = reseau.noeuds.filter(n => n.type === 'regard'), prets = regards.filter(n => etatRegard(niveau, reseau, n.id).pret);
     if(niveau.construction !== false){
       L.push({ texte: 'Poser un regard et son enneigeur', fait: regards.length > 0 });
@@ -1092,7 +1117,7 @@ function demarrer(){
   let coinReplie = window.innerWidth < 1100;
   function majCoinPannes(){
     afficherPannesCoin((reseau.pannes || []).map(p => ({ id: p.id, nom: CONFIG.pannes.types[p.type].nom, ou: libellePanne(reseau, p),
-      reparation: p.etat === 'reparation', reste: p.etat === 'reparation' && nuit ? Math.max(0, Math.ceil(p.fin - nuit.temps)) : null,
+      reparation: p.etat === 'reparation', reste: p.etat === 'reparation' && (nuit || journee) ? Math.max(0, Math.ceil(p.fin - (nuit || journee).temps)) : null,
       cout: CONFIG.pannes.types[p.type].cout, rearmer: p.type === 'disjoncteur' })), coinReplie, (action, valeur) => {
       if(action === 'replier'){ coinReplie = !coinReplie; return majCoinPannes(); }
       if(action === 'reparer') return reparer(valeur);
@@ -1127,6 +1152,7 @@ function demarrer(){
       message(`Le matin, la dameuse sort du garage et étale ${nombreFr(bilan.dame)} m³ sur les pistes.`, 'info', 6000);
     }
     if(niveau.carriere) return bilanCarriere(bilan, casse);
+    if(EXPL) return bilanNuitExploitation(bilan);
     const premiereReussite = bilan.reussi && !reussi;
     if(premiereReussite){
       reussi = true;
@@ -1310,9 +1336,10 @@ function demarrer(){
       etat, ouvert: true, partie: !!r, libelleRecommencer: 'Recommencer la carrière' };
   }
   function groupesMenu(){
-    const tutos = LEVELS.filter(l => !l.bac), bac = LEVELS.filter(l => l.bac);
+    const tutos = LEVELS.filter(l => !l.bac && !l.exploitation), bac = LEVELS.filter(l => l.bac), expl = LEVELS.filter(l => l.exploitation);
     return [
       { titre: 'Carrière', cartes: [carteCarriere()] },
+      { titre: 'Exploitation', cartes: expl.map(l => carteNiveau(l, LEVELS.indexOf(l))) },
       { titre: 'Tutoriels', intro: 'Pour apprendre chaque partie du métier, une à une.', cartes: tutos.map(l => carteNiveau(l, LEVELS.indexOf(l))) },
       { titre: 'Bac à sable', cartes: bac.map(l => carteNiveau(l, LEVELS.indexOf(l))) }
     ];
@@ -1332,6 +1359,9 @@ function demarrer(){
     }, true);
   }
   $('ouvrirMenu').onclick = ouvrirMenu;
+  const boutonInfos = () => { $('infosCanons').classList.toggle('actif', infosCanons); $('infosCanons').textContent = infosCanons ? 'Masquer infos canons' : 'Infos canons'; };
+  $('infosCanons').onclick = () => { infosCanons = !infosCanons; ecrireSauvegarde('nivo-infos-canons', infosCanons); boutonInfos(); synchroniser(); };
+  boutonInfos();
 
   // ----- Options du bac à sable -----
   let optionsOuvertes = false;
@@ -1413,7 +1443,238 @@ function demarrer(){
     if(R && Math.hypot(x - R.x, z - R.z) < R.cuvette.rayon){ message(`${R.nom} · altitude du bord ${nombreFr(coteReplat(t, R))} m`, 'info', 3500); return; }
     const pp = pistePlusProche(niveau.pistes, x, z);
     const ou = pp.dessus ? `sur la piste ${pp.piste.couleur} « ${pp.piste.nom} »` : `hors piste, à ${nombreFr(pp.auBord)} m de la piste`;
-    message(`Altitude ${nombreFr(altitude(t, x, z, niveau.pistes))} m · ${ou}`, pp.dessus ? 'ok' : 'info', 3500);
+    const ep = EXPL && pp.dessus ? ` · ${Math.round(reseau.enneigement[pp.piste.nom] || 0)} cm de neige${pistesOuvertes(niveau, reseau).includes(pp.piste) ? ', peut ouvrir' : ', fermée'}` : '';
+    message(`Altitude ${nombreFr(altitude(t, x, z, niveau.pistes))} m · ${ou}${ep}`, pp.dessus ? 'ok' : 'info', 3500);
+  }
+
+  // ----- EXPLOITATION : la journée de ski, les skieurs, l'administration -----
+  const EXPL = !!niveau.exploitation, E = CONFIG.exploitation;
+  let journee = null;
+  // Lumière du jour : ciel clair, soleil ; retour à la nuit le soir
+  const nuitLumieres = lumieres.children.filter(l => l.isLight).map(l => ({ l, i: l.intensity, c: l.color.clone(), s: l.isHemisphereLight ? l.groundColor.clone() : null }));
+  const couleurNuit = new THREE.Color(COULEUR_HORIZON), couleurJour = new THREE.Color('#A9C9EE');
+  let jourF = 0, jourCible = 0;
+  function ambiance(dt){
+    if(Math.abs(jourF - jourCible) < 0.001) return;
+    jourF += Math.sign(jourCible - jourF) * Math.min(Math.abs(jourCible - jourF), dt * 0.8);
+    scene.background.copy(couleurNuit).lerp(couleurJour, jourF);
+    scene.fog.color.copy(scene.background);
+    ciel.visible = etoiles.visible = lune.visible = jourF < 0.5;
+    for(const n of nuitLumieres){
+      n.l.intensity = n.i * (1 + jourF * (n.l.isDirectionalLight ? 0.7 : n.l.isHemisphereLight ? 1.1 : 1.5));
+      n.l.color.copy(n.c).lerp(new THREE.Color(n.l.isDirectionalLight ? '#FFF2DC' : '#E6F0FF'), jourF);
+    }
+  }
+  // Skieurs : file d'attente → télésiège → piste → retour à une remontée
+  const skieurs3D = creerSkieurs(160), agents = [], _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3(2, 2, 2), _axe = new THREE.Vector3(0, 1, 0);
+  scene.add(skieurs3D);
+  const remonteeParNom = nom => niveau.remontees.find(ts => ts.nom === nom);
+  const departs = {};                                       // prochain départ de chaque télésiège
+  function placeFile(ts, k){
+    const dx = ts.amont.x - ts.aval.x, dz = ts.amont.z - ts.aval.z, L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L;
+    const rang = Math.floor(k / 4), col = k % 4 - 1.5;
+    return { x: ts.aval.x - ux * (8 + rang * 2.2) - uz * col * 1.6, z: ts.aval.z - uz * (8 + rang * 2.2) + ux * col * 1.6 };
+  }
+  function choisirRemontee(x, z){
+    const ouvertes = (journee.remonteesActives || journee.remontees).map(remonteeParNom).filter(Boolean);
+    if(!ouvertes.length) return null;
+    return ouvertes.sort((a, b) => Math.hypot(a.aval.x - x, a.aval.z - z) - Math.hypot(b.aval.x - x, b.aval.z - z))[0];
+  }
+  function demarrerSkieurs(){
+    agents.length = 0;
+    const n = Math.min(160, Math.round(journee.clients / 7)), pistes = niveau.pistes.filter(p => journee.pistes.includes(p.nom));
+    for(let i = 0; i < n; i++){
+      const a = { etat: 'file', x: 0, z: 0, cap: 0, ts: null, t: 0 };
+      // une partie des skieurs part déjà sur les pistes, les autres attendent en bas
+      if(i % 3 === 0 && pistes.length){ commencerDescente(a, pistes[i % pistes.length], Math.random()); }
+      else { a.ts = choisirRemontee(0, 250); if(a.ts){ const f = placeFile(a.ts, i); a.x = f.x; a.z = f.z; } }
+      agents.push(a);
+    }
+    skieurs3D.count = n;
+  }
+  function commencerDescente(a, piste, depart = 0){
+    const c = courbePiste(piste), e = extremitesPiste(t, piste);
+    a.etat = 'descente'; a.chemin = e.inverse ? c.slice().reverse() : c; a.largeur = piste.largeur; a.i = Math.floor(depart * (a.chemin.length - 2)); a.f = 0; a.ph = Math.random() * 6;
+  }
+  function avancerSkieurs(dt){
+    const files = {};
+    for(const a of agents){
+      if(a.etat === 'file' && a.ts) (files[a.ts.nom] = files[a.ts.nom] || []).push(a);
+    }
+    // Départs : une personne toutes les quelques fractions de seconde, plus lent quand il y a trop de monde ; rien si en panne
+    for(const [nom, file] of Object.entries(files)){
+      const ts = remonteeParNom(nom);
+      file.forEach((a, k) => { const f = placeFile(ts, k); a.x += (f.x - a.x) * Math.min(1, dt * 3); a.z += (f.z - a.z) * Math.min(1, dt * 3); a.cap = Math.atan2(ts.amont.x - ts.aval.x, ts.amont.z - ts.aval.z); });
+      if(enPanne(reseau, nom) || !(journee.remonteesActives || []).includes(nom)) continue;
+      departs[nom] = (departs[nom] || 0) - dt;
+      if(departs[nom] <= 0 && file.length){ const a = file[0]; a.etat = 'monte'; a.t = 0; a.duree = longueurRemontee(ts) / 35; departs[nom] = 0.35 * Math.max(0.6, journee.attente / 6); }
+    }
+    for(const a of agents){
+      if(a.etat === 'monte'){
+        const ts = a.ts;
+        if(!enPanne(reseau, ts.nom)) a.t += dt / a.duree;
+        const f = Math.min(1, a.t), x = ts.aval.x + (ts.amont.x - ts.aval.x) * f, z = ts.aval.z + (ts.amont.z - ts.aval.z) * f;
+        a.x = x; a.z = z; a.y = poser(x, z) + 6 + Math.sin(Math.PI * f) * 3; a.cap = Math.atan2(ts.amont.x - ts.aval.x, ts.amont.z - ts.aval.z);
+        if(f >= 1){
+          const pistes = niveau.pistes.filter(p => journee.pistes.includes(p.nom) && remonteesDePiste(niveau, p, [ts]).length);
+          if(pistes.length){ const p = pistes[Math.floor(Math.random() * pistes.length)]; a.etat = 'liaison'; a.piste = p; const h = extremitesPiste(t, p).haut; a.cx = h[0]; a.cz = h[1]; }
+          else { a.etat = 'file'; a.ts = choisirRemontee(a.x, a.z); }
+        }
+        continue;
+      }
+      a.y = null;
+      if(a.etat === 'liaison' || a.etat === 'retour'){
+        const dx = a.cx - a.x, dz = a.cz - a.z, d = Math.hypot(dx, dz), v = (a.etat === 'liaison' ? 18 : 22) * dt;
+        a.cap = Math.atan2(dx, dz);
+        if(d <= v){ if(a.etat === 'liaison') commencerDescente(a, a.piste); else a.etat = 'file'; }
+        else { a.x += dx / d * v; a.z += dz / d * v; }
+      } else if(a.etat === 'descente'){
+        const c = a.chemin;
+        let reste = 32 * dt;
+        while(reste > 0 && a.i < c.length - 1){
+          const p0 = c[a.i], p1 = c[a.i + 1], L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1, pas = Math.min(reste, (1 - a.f) * L);
+          a.f += pas / L; reste -= pas;
+          if(a.f >= 1){ a.i++; a.f = 0; }
+        }
+        if(a.i >= c.length - 1){
+          const ts = choisirRemontee(a.x, a.z);
+          a.etat = ts ? 'retour' : 'file'; a.ts = ts;
+          if(ts){ a.cx = ts.aval.x; a.cz = ts.aval.z; }
+          continue;
+        }
+        const p0 = c[a.i], p1 = c[a.i + 1], L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1, nx = -(p1[1] - p0[1]) / L, nz = (p1[0] - p0[0]) / L;
+        a.ph += dt * 2.2;
+        const lat = Math.sin(a.ph) * a.largeur * 0.32;
+        a.x = p0[0] + (p1[0] - p0[0]) * a.f + nx * lat; a.z = p0[1] + (p1[1] - p0[1]) * a.f + nz * lat;
+        a.cap = Math.atan2(p1[0] - p0[0], p1[1] - p0[1]) + Math.cos(a.ph) * 0.5;
+      }
+    }
+    agents.forEach((a, i) => {
+      _p.set(a.x, a.y !== null && a.y !== undefined ? a.y : poser(a.x, a.z), a.z);
+      skieurs3D.setMatrixAt(i, _m.compose(_p, _q.setFromAxisAngle(_axe, a.cap || 0), _s));
+    });
+    skieurs3D.instanceMatrix.needsUpdate = true;
+  }
+  // Ouvrir la station pour la journée
+  function lancerJournee(){
+    if(journee || nuit) return;
+    choisirOutil(null); fermerDevis(); fermerLePoste(); fermerAdministration();
+    garer();
+    journee = debutJournee(niveau, reseau);
+    journee.vitesse = 1;
+    if(journee.ferme){
+      message('Aucune piste ne peut ouvrir (pas assez de neige, pas de remontée en marche ou pas d\'agents) : la station reste fermée aujourd\'hui.', 'alarme', 7000);
+      return finirJournee();
+    }
+    jourCible = 1;
+    $('barreJeu').classList.add('en-nuit');
+    $('accelerer').hidden = false; $('accelerer').classList.remove('actif');
+    demarrerSkieurs();
+    majRemontees3D();
+    message(`La station ouvre : ${nombreFr(journee.clients)} skieurs attendus sur ${journee.pistes.length} piste${journee.pistes.length > 1 ? 's' : ''}.`, 'ok', 5000);
+  }
+  function finirJournee(){
+    const bilan = finJournee(niveau, reseau, journee);
+    journee = null; jourCible = 0; agents.length = 0; skieurs3D.count = 0;
+    $('barreJeu').classList.remove('en-nuit');
+    $('accelerer').hidden = true;
+    afficherConsigne(null);
+    synchroniser(); majPannes3D();
+    sauver(true);
+    const lignes = bilan.ferme ? ['Station fermée : aucune piste n\'a pu ouvrir. Les salaires sont payés quand même et la réputation baisse un peu.'] : [
+      `${nombreFr(bilan.clients)} skieurs sur ${bilan.pistes} piste${bilan.pistes > 1 ? 's' : ''} ouverte${bilan.pistes > 1 ? 's' : ''} sur ${bilan.totalPistes} · attente moyenne ${Math.round(bilan.attente)} min`,
+      `Forfaits : ${euros(bilan.forfaits)} · dépenses des skieurs : ${euros(bilan.annexes)} · salaires : −${euros(bilan.salaires)}`];
+    const details = bilan.ferme ? '' : Object.entries(NOMS_SATISFACTION).map(([k, nom]) => `<div class="mesure"><span class="crit">${nom}</span>${barreSatisfaction(bilan.details[k])}</div>`).join('');
+    let titre = `Journée ${bilan.jour} · saison ${bilan.saison}`, extra = '';
+    if(bilan.saison && typeof bilan.saison === 'object'){
+      const s = bilan.saison;
+      titre = `Fin de la saison ${s.saison} !`;
+      extra = `<p class="aide"><b>Satisfaction de la saison : ${Math.round((s.satisfaction || 0) * 100)} %</b> · ${nombreFr(s.clients)} clients · résultat ${s.resultat >= 0 ? '+' : '−'}${euros(Math.abs(s.resultat))}${s.joursFermes ? ` · ${s.joursFermes} jour(s) fermé(s)` : ''}.
+        L'été passe : la neige fond, la retenue se remplit. La saison ${s.saison + 1} attire plus de clients, plus exigeants (${idealSaison(reseau)} cm de neige pour être parfait).</p>`;
+    }
+    fermerDevis();
+    const d = afficherPanneau(`<div class="tete"><span>${echapper(titre)}</span><span>${bilan.net >= 0 ? '+' : '−'}${euros(Math.abs(bilan.net))}</span></div>
+      ${bilan.ferme ? '' : `<div class="mesure"><span class="crit"><b>Satisfaction</b></span>${barreSatisfaction(bilan.satisfaction)}</div>`}
+      <ul>${lignes.map(l => `<li>${echapper(l)}</li>`).join('')}</ul>${details}${extra}
+      <div class="actions"><button class="bouton" type="button" id="bilanOk">Continuer</button></div>`);
+    d.querySelector('#bilanOk').onclick = fermerDevis;
+    message(bilan.ferme ? 'Station fermée aujourd\'hui.' : `Fin de la journée : ${Math.round(bilan.satisfaction * 100)} % de clients satisfaits.`, bilan.ferme ? 'alarme' : 'ok', 5000);
+  }
+  function boucleJournee(dt, maintenant){
+    const dtJeu = dt * journee.vitesse, r = avancerJournee(niveau, reseau, journee, dtJeu);
+    for(const p of r.nouvelles) message(`Panne : ${CONFIG.pannes.types.remontee.nom} · ${p.cible}. Les skieurs attendent !`, 'alarme', 7000);
+    for(const p of r.finies) message(`Réparation terminée : ${p.cible}.`, 'ok', 4000);
+    if(r.nouvelles.length || r.finies.length){ majPannes3D(); majRemontees3D(); majCoinPannes(); }
+    avancerSkieurs(dtJeu);
+    if(maintenant - derniereMaj > 250){
+      derniereMaj = maintenant;
+      majInfos();
+      afficherConsigne(`Journée ${journee.jour} / ${E.joursSaison} · ${Math.max(0, Math.ceil(E.dureeJour - journee.temps))} s · ${nombreFr(journee.clients)} skieurs · attente ${Math.round(journee.attente)} min · ${journee.pistes.length} piste(s) ouverte(s)`);
+      if(adminOuverte) rafraichirAdmin();
+    }
+    if(r.fini) finirJournee();
+  }
+  // Administration
+  let adminOuverte = false;
+  function donneesAdmin(){
+    const ex = reseau.exploitation, m = DAMEUSES[reseau.dameuse.modele];
+    return { prix: reseau.prixForfait, estimation: journee ? journee.clients : (pistesOuvertes(niveau, reseau).length ? clientsAttendus(niveau, reseau) : null),
+      personnel: reseau.personnel, besoins: besoinsPersonnel(niveau, reseau), carburant: reseau.carburant, conso: m.conso,
+      saison: ex.saison, jour: ex.jour, reputation: ex.reputation, satisfaction: satisfactionSaison(reseau),
+      clients: ex.jours.reduce((s, j) => s + j.clients, 0), resultat: Math.round(reseau.budget - ex.debutBudget), saisons: ex.saisons,
+      dernier: ex.dernier && ex.dernier.saison === ex.saison ? ex.dernier : null,
+      salaires: Object.entries(reseau.personnel).reduce((s, [k, n]) => s + n * METIERS[k].salaire, 0) };
+  }
+  function rafraichirAdmin(){ if(adminOuverte) afficherAdmin(donneesAdmin(), agirAdmin); }
+  function ouvrirAdministration(){ fermerDevis(); fermerLePoste(); adminOuverte = true; rafraichirAdmin(); }
+  function fermerAdministration(){ adminOuverte = false; fermerAdmin(); }
+  function agirAdmin(action, valeur){
+    if(action === 'fermer') return fermerAdministration();
+    if(action === 'prix') fixerPrix(reseau, valeur);
+    if(action === 'personnel'){ const [k, d] = valeur.split(':'); changerPersonnel(reseau, k, +d); majRemontees3D(); }
+    if(action === 'carburant'){
+      const r = acheterCarburant(reseau, +valeur);
+      message(r.ok ? `${nombreFr(r.litres)} L de gazole livrés (${euros(r.cout)}).` : r.raison, r.ok ? 'ok' : 'attention', 3000);
+    }
+    majInfos(); planifierSauvegarde();
+    rafraichirAdmin();
+  }
+  if(EXPL){ $('ouvrirAdmin').hidden = false; $('ouvrirAdmin').onclick = () => adminOuverte ? fermerAdministration() : ouvrirAdministration(); }
+  // Objectifs de l'exploitation
+  function objectifsExploitation(){
+    const ex = reseau.exploitation, sat = satisfactionSaison(reseau), ideal = idealSaison(reseau);
+    const ouvrables = pistesOuvertes(niveau, reseau), ep = niveau.pistes.map(p => reseau.enneigement[p.nom] || 0), moy = ep.reduce((s, x) => s + x, 0) / Math.max(1, ep.length);
+    const b = besoinsPersonnel(niveau, reseau), manque = Object.keys(b).filter(k => reseau.personnel[k] < b[k]);
+    return [
+      { texte: 'Satisfaction de la saison', fait: sat !== null && sat >= 0.8, progres: sat ?? 0, detail: `${sat === null ? '—' : Math.round(sat * 100) + ' %'} · réputation ${Math.round(ex.reputation * 100)} % · jour ${ex.jour} / ${E.joursSaison}` },
+      { texte: 'Pistes qui peuvent ouvrir', fait: ouvrables.length === niveau.pistes.length, progres: ouvrables.length / Math.max(1, niveau.pistes.length), detail: `${ouvrables.length} / ${niveau.pistes.length} (au moins ${E.ouverture} cm et une remontée en marche)` },
+      { texte: 'Enneigement moyen des pistes', fait: moy >= ideal, progres: moy / ideal, detail: `${Math.round(moy)} cm sur ${ideal} cm idéals` },
+      { texte: 'Gazole pour la dameuse', fait: reseau.carburant.stock >= DAMEUSES[reseau.dameuse.modele].conso, progres: reseau.carburant.stock / E.carburant.cuve, detail: `${nombreFr(reseau.carburant.stock)} L dans la cuve` },
+      { texte: 'Personnel conseillé', fait: !manque.length, detail: manque.length ? `il manque : ${manque.map(k => METIERS[k].nom.toLowerCase()).join(', ')}` : 'au complet (Administration)' }
+    ];
+  }
+  // Bilan de la nuit en exploitation : la neige ne se vend pas, elle épaissit les pistes ; puis on ouvre la station
+  function bilanNuitExploitation(bilan){
+    reseau.exploitation.phase = 'matin';
+    sauver(true);
+    const dmg = bilan.damage, cout = bilan.electricite + bilan.remplissage.cout;
+    const lignes = [
+      `Neige produite : ${nombreFr(bilan.neige)} m³, dont ${nombreFr(bilan.piste)} m³ tombés sur les pistes`,
+      bilan.neigeNaturelle ? `Il a neigé cette nuit : +${bilan.neigeNaturelle} cm sur toutes les pistes !` : null,
+      dmg.sansConducteur ? 'Aucun conducteur : la dameuse est restée au garage (Administration).'
+        : `Damage : ${nombreFr(bilan.dame)} m³ étalés, ${Math.round((dmg.qualite ?? 1) * 100)} % des pistes damées, ${nombreFr(dmg.litres)} L de gazole (reste ${nombreFr(reseau.carburant.stock)} L)`,
+      bilan.aDamer >= 1 ? `Encore ${nombreFr(bilan.aDamer)} m³ en tas, à damer demain` : null,
+      `Enneigement : ${niveau.pistes.map(p => `${p.nom} ${Math.round(reseau.enneigement[p.nom] || 0)} cm`).join(' · ')} (ouverture à ${E.ouverture} cm)`,
+      bilan.kwh ? `Électricité : ${nombreFr(bilan.kwh)} kWh, ${euros(bilan.electricite)}` : null,
+      reseau.retenue ? `Eau de la journée : ${nombreFr(bilan.remplissage.m3)} m³ (${euros(bilan.remplissage.cout)})` : null,
+      avecPannes() && bilan.pannes ? `Pannes : ${bilan.pannes} cette nuit, réparations ${euros(bilan.reparations)}` : null
+    ].filter(Boolean);
+    fermerDevis();
+    const d = afficherPanneau(`<div class="tete"><span>Matin · jour ${reseau.exploitation.jour} / ${E.joursSaison}</span><span>−${euros(cout)}</span></div>
+      <ul>${lignes.map(l => `<li>${echapper(l)}</li>`).join('')}</ul>
+      <div class="actions"><button class="bouton" type="button" id="bilanJour">Ouvrir la station</button><button class="bouton" type="button" id="bilanOk">Plus tard</button></div>`);
+    d.querySelector('#bilanOk').onclick = fermerDevis;
+    d.querySelector('#bilanJour').onclick = lancerJournee;
   }
 
   // --- Boucle principale ---
@@ -1462,6 +1723,8 @@ function demarrer(){
       }
       if(nuit.temps >= CONFIG.nuit.duree) finirNuit();
     }
+    if(journee) boucleJournee(dt, maintenant);
+    ambiance(dt);
     jets.maj(dt * (nuit ? nuit.vitesse : 1), sources, temps);
     for(const o of regards3D.values()) animerCanon(o.userData.canon, dt);
     animerSallePompage(salle, dt, temps);
@@ -1503,10 +1766,12 @@ function demarrer(){
   // Accueil
   synchroniser();
   const o = niveau.objectif;
-  $('sousTitre').textContent = niveau.bac ? 'Bac à sable · tout est débloqué, budget illimité'
+  $('sousTitre').textContent = niveau.exploitation ? 'Exploitation de la station · la satisfaction des clients avant tout'
+    : niveau.bac ? 'Bac à sable · tout est débloqué, budget illimité'
     : niveau.carriere ? `Carrière · étape ${niveau.numero}/${CARRIERE.etapes.length} · ${niveau.nom} · ${nombreFr(o.m3)} m³ et ${euros(o.recette)} en ${o.nuits} nuits`
     : `Niveau ${niveau.numero} · ${niveau.nom} · objectif ${nombreFr(o.m3)} m³ ${o.type === 'production' ? `produits en ${o.nuits} nuits` : 'sur la piste'}${o.nuits && o.type !== 'production' ? ` en ${o.nuits} nuits` : ''}`;
-  $('hudNeigeTitre').textContent = o.type === 'production' ? 'Neige produite' : 'Neige piste';
+  if(EXPL) $('hudNuit').previousElementSibling.textContent = 'Saison · jour';
+  $('hudNeigeTitre').textContent = o.type === 'production' ? 'Neige produite' : o.type === 'exploitation' ? 'Satisfaction' : 'Neige piste';
   const tactile = window.matchMedia('(pointer:coarse)').matches;
   const commandes = tactile ? 'Un doigt pour vous déplacer. Deux doigts : pincez pour zoomer, tournez-les pour pivoter, glissez-les vers le haut ou le bas pour incliner la vue.' : 'Glissez pour tourner, molette pour zoomer, clic droit pour déplacer la vue.';
   if(!OUVRIR_MENU && niveau.carriere && avancementEtape(reseau).nuits === 0)
@@ -1517,6 +1782,6 @@ function demarrer(){
   if(OUVRIR_MENU) ouvrirMenu();
 
   // Accès pour les essais automatiques (console du navigateur)
-  window.nivo = { proposerDemontage, proposerRetrait, commencerDeplacement, ouvrirOptions, agirOptions, get tournee(){ return tournee; }, ouvrirGarageFiche, ficheRemontee, synchroniser, scene, camera, renderer, cam, toucher, action, salle, compresseur, choisirOutil, valider, lancerNuit, ouvrirFiche, ouvrirPoste, agirPoste, ouvrirMenu, finirNuit,
+  window.nivo = { lancerJournee, ouvrirAdministration, agirAdmin, get journee(){ return journee; }, proposerDemontage, proposerRetrait, commencerDeplacement, ouvrirOptions, agirOptions, get tournee(){ return tournee; }, ouvrirGarageFiche, ficheRemontee, synchroniser, scene, camera, renderer, cam, toucher, action, salle, compresseur, choisirOutil, valider, lancerNuit, ouvrirFiche, ouvrirPoste, agirPoste, ouvrirMenu, finirNuit,
     get reseau(){ return reseau; }, get nuit(){ return nuit; }, set choix(c){ choix = c; } };
 }

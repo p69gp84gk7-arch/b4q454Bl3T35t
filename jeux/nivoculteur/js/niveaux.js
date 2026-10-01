@@ -210,6 +210,24 @@ const LEVELS = [
     compresseur: COMPRESSEUR_COMBE,
     budget: 1e9,
     objectif: { type: 'libre' }
+  },
+  {
+    id: 'exploitation',
+    numero: '❄',
+    exploitation: true,                       // station de ski : canons, damage, remontées, clients, administration
+    nom: 'Exploitation de la station',
+    resume: 'Faites tourner toute la station, saison après saison : la neige la nuit, le damage le matin, les skieurs la journée. Gérez le personnel, le prix du forfait et le gazole des dameuses. But : la meilleure satisfaction des clients.',
+    terrain: TERRAIN_DOMAINE,
+    pistes: [PISTE_CLARINES, PISTE_GENTIANES],
+    pompage: POMPAGE_COMBE,
+    garage: GARAGE_COMBE,
+    retenue: RETENUE_COMBE,
+    remontees: [TELESIEGE_CLARINES],
+    departsElec: [...DEPARTS_COMBE, { nom: 'Départ élec · Gentianes', x: -72, z: -150 }],
+    compresseur: COMPRESSEUR_COMBE,
+    budget: 1500000,
+    pannes: true, frequencePannes: 'rare',     // la nuit, quelques pannes (canons, conduites, pompes) ; le jour, celles des télésièges
+    objectif: { type: 'exploitation' }
   }
 ];
 

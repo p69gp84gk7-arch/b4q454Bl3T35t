@@ -221,6 +221,15 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .coin-pannes .bouton.petit{ padding:5px 9px; font-size:.8rem; }
 /* Options du bac à sable */
 .options{ max-width:920px; z-index:25; }
+.admin{ max-width:1000px; z-index:25; }
+.admin .metiers{ display:grid; gap:4px; }
+.admin .metier{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; padding:6px 0; border-bottom:1px solid #1A2A40; font-size:.88rem; }
+.admin .metier .nom{ flex:1 1 200px; min-width:0; line-height:1.2; }
+.admin .metier .nom small{ display:block; color:var(--doux); font-size:.75rem; }
+.mesure .crit, .admin .mesure > span:first-child:not(.jauge){ flex:0 0 150px; min-width:0; font-size:.82rem; color:var(--doux); }
+@media (max-width:480px){ .mesure .crit, .admin .mesure > span:first-child:not(.jauge){ flex-basis:110px; } }
+.admin .reglage-bac input{ flex:1 1 140px; min-width:0; height:28px; accent-color:#E9B949; }
+.admin .reglage-bac b{ min-width:52px; text-align:right; }
 .options .grille{ margin-top:10px; }
 .options .seg.large{ margin:4px 0; }
 .options .types{ display:flex; flex-wrap:wrap; gap:6px; }
@@ -333,6 +342,8 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
     <button class="bouton construction" type="button" id="sousSol">Vue sous-sol</button>
     <button class="bouton construction" type="button" id="annuler" disabled>Annuler</button>
     <button class="bouton construction" type="button" id="effacer">Tout effacer</button>
+    <button class="bouton" type="button" id="ouvrirAdmin" hidden>Administration</button>
+    <button class="bouton" type="button" id="infosCanons">Masquer infos canons</button>
     <button class="bouton" type="button" id="ouvrirPoste">Poste de travail</button>
     <button class="bouton nuit construction" type="button" id="lancerNuit">Lancer la nuit</button>
     <button class="bouton" type="button" id="accelerer" hidden>Accélérer ×3</button>
@@ -347,6 +358,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 <section class="poste" id="poste" hidden aria-label="Poste de travail"></section>
 <section class="poste menu" id="menu" hidden aria-label="Menu des niveaux"></section>
 <section class="poste options" id="options" hidden aria-label="Options du bac à sable"></section>
+<section class="poste admin" id="admin" hidden aria-label="Administration de la station"></section>
 <aside class="coin-pannes" id="pannesCoin" hidden aria-label="Pannes en cours"></aside>
 <aside class="coin-objectifs" id="objectifsCoin" hidden aria-label="Objectifs"></aside>
 <section class="panneau" id="panneauTests" hidden></section>
