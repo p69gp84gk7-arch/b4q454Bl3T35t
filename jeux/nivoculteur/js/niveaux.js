@@ -26,8 +26,19 @@ const RETENUE_COMBE = {
 };
 
 // Salle de pompage, posée sur un replat (terrain aplani)
-const POMPAGE_COMBE = { nom: 'Salle de pompage', x: -98, z: 208, rayon: 12, talus: 14, rotation: 0,
+const POMPAGE_COMBE = { nom: 'Salle de pompage', x: -98, z: 208, rayon: 17, talus: 14, rotation: 0,
   sortie: { x: -90, z: 206.5 } };     // là où la conduite de départ sort du bâtiment
+
+// Compresseur d'air (niveau 3) : à côté de la salle de pompage, sur le même replat
+const COMPRESSEUR_COMBE = { nom: 'Compresseur', x: -111, z: 214, sortie: { x: -109, z: 219 } };
+
+// Deuxième piste (niveau 3), rouge, à gauche : étroite, idéale pour les perches
+const PISTE_GENTIANES = {
+  nom: 'Les Gentianes',
+  couleur: 'rouge',
+  largeur: 28,
+  points: [[-100, -248], [-112, -185], [-100, -120], [-122, -55], [-118, 5], [-78, 70]]
+};
 
 // Départs électriques : près des bâtiments (salle de pompage, gares du télésiège)
 const DEPARTS_COMBE = [
@@ -116,5 +127,20 @@ const LEVELS = [
     departsElec: DEPARTS_COMBE,
     budget: 650000,
     objectif: { type: 'neigePiste', m3: 30000 }
+  },
+  {
+    id: 'air',
+    numero: 3,
+    nom: 'Les perches et l\'air comprimé',
+    resume: 'Enneigez aussi la piste rouge des Gentianes avec des perches. Elles demandent de l\'eau, de l\'électricité et de l\'air comprimé : tracez les conduites d\'air depuis le compresseur et démarrez-le au poste de travail.',
+    terrain: TERRAIN_COMBE,
+    pistes: [PISTE_CLARINES, PISTE_GENTIANES],
+    pompage: POMPAGE_COMBE,
+    retenue: RETENUE_COMBE,
+    remontees: [TELESIEGE_CLARINES],
+    departsElec: [...DEPARTS_COMBE, { nom: 'Départ élec · Gentianes', x: -72, z: -150 }],
+    compresseur: COMPRESSEUR_COMBE,
+    budget: 700000,
+    objectif: { type: 'neigePiste', m3: 20000 }
   }
 ];

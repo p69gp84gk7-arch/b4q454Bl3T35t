@@ -113,12 +113,23 @@ function afficherPoste(d, agir){
       <span class="nom"><b>${echapper(c.nom)}</b><small>${echapper(c.modele)}</small></span>
       ${pastille(c.etat)}
       ${c.pression !== null ? pastille(`${Math.round(c.pression)} bar`) : ''}
+      ${c.pressionAir !== null ? pastille(`air ${nombreFr(c.pressionAir, 1)} bar`, c.pressionAir < CONFIG.air.pressionMin ? 'orange' : '') : ''}
       ${c.production !== null ? pastille(`${nombreFr(c.production, 1)} m³/s`) : ''}
       ${c.part !== null ? pastille(`${Math.round(c.part * 100)} % piste`) : ''}
       <span class="actions">
         ${c.pilotable ? `<button class="bouton petit" type="button" data-action="canon" data-valeur="${c.id}">${c.arrete ? 'Mettre en marche' : 'Arrêter'}</button>` : ''}
         <button class="bouton petit" type="button" data-action="voir" data-valeur="${c.id}">Voir</button>
       </span></div>`).join('') : '<p class="vide">Aucun regard posé pour l\'instant.</p>';
+  const a = d.air, ca = CONFIG.air;
+  const air = a ? `
+      <section class="bloc"><h3>Air comprimé</h3>
+        <div class="pompe"><span class="led" style="background:${a.marche ? LED.production : LED.arret}"></span>
+          <b>Compresseur</b>${pastille(a.marche ? 'MARCHE' : 'ARRÊT', a.marche ? 'vert' : '')}
+          ${a.pilotable ? `<button class="bouton petit" type="button" data-action="compresseur">${a.commande ? 'Arrêter' : 'Démarrer'}</button>` : ''}</div>
+        <div class="ligne">${pastille(`Réservoir : ${nombreFr(a.pression, 1)} bar`, a.pression >= ca.pressionPleine ? 'vert' : a.pression >= ca.pressionMin ? 'orange' : '')}${pastille(`${nombreFr(a.demande)} / ${nombreFr(a.capacite)} Nm³/h`, a.demande > a.capacite ? 'orange' : '')}</div>
+        <p class="aide">${a.pilotable ? `En manuel, démarrez le compresseur avant d'ouvrir les perches : le réservoir met un peu de temps à monter à ${ca.pressionNominale} bar.`
+          : `En automatique, le compresseur démarre dès qu'une perche attend de l'air.`} Les perches produisent bien au-dessus de ${ca.pressionPleine} bar, plus du tout en dessous de ${ca.pressionMin} bar.</p>
+      </section>` : '';
   mettreAJour(el, `
     <div class="tete"><h2>Poste de travail · supervision neige</h2><button class="fermer" type="button" data-action="fermer" aria-label="Fermer">×</button></div>
     <div class="grille">
@@ -132,10 +143,11 @@ function afficherPoste(d, agir){
         <div class="ligne">${pastille(`Départ : ${Math.round(p.pression)} bar`, p.pression <= 0 ? '' : p.dansLeVert ? 'vert' : 'orange')}${pastille(`${nombreFr(p.debit)} / ${nombreFr(p.capacite)} m³/h`)}</div>
         <p class="aide">${p.mode === 'auto' ? 'En automatique, le bon nombre de pompes démarre selon le débit demandé et la vanne se règle seule.'
           : `En manuel, c'est vous qui démarrez les pompes (${nombreFr(CONFIG.pompage.debitNominal)} m³/h chacune) et qui manœuvrez la vanne : gardez le départ entre ${CONFIG.pompage.zoneVerte[0]} et ${CONFIG.pompage.zoneVerte[1]} bar. Démarrez vanne fermée, ouvrez doucement.`}</p>
-      </section>
+      </section>${air}
       <section class="bloc"><h3>${d.nuit ? `Nuit ${d.nuit.numero} en cours` : `Prochaine nuit : n° ${d.numero}`}</h3>
         <div class="ligne">${d.nuit ? pastille(`${d.nuit.restant} s restantes`) : pastille('Jour : construction')}${pastille(`Vent ${d.vent.force} km/h`)}</div>
         ${d.nuit ? `<div class="ligne">${pastille(`${nombreFr(d.nuit.neige)} m³ sur la piste`)}${pastille(`+${euros(d.nuit.argent)}`, 'vert')}</div>` : ''}
+        ${d.electricite ? `<div class="ligne">${pastille(`Électricité ${nombreFr(d.electricite.kwh)} kWh`)}${pastille(`−${euros(d.electricite.euros)}`, 'orange')}</div>` : ''}
         <div class="ligne">${pastille(`Retenue ${d.retenue === null ? '—' : Math.round(d.retenue * 100) + ' %'}`)}${pastille(`Objectif ${nombreFr(d.total)} / ${nombreFr(d.objectif)} m³`)}</div>
       </section>
       <section class="bloc"><h3>Alarmes${d.coupsMax !== null ? ` · coups de bélier ${d.coups} / ${d.coupsMax}` : ''}</h3>

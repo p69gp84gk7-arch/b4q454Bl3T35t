@@ -144,6 +144,9 @@ function demarrer(){
     scene.add(arm);
   }
   for(const ts of niveau.remontees || []) scene.add(creerTelesiege(ts, poser));
+  // Compresseur d'air (niveau 3), sur le replat de la salle de pompage
+  const K = niveau.compresseur, compresseur = K ? creerCompresseur(K.nom, { dx: K.sortie.x - K.x, dz: K.sortie.z - K.z }) : null;
+  if(compresseur){ compresseur.position.set(K.x, poser(K.x, K.z), K.z); scene.add(compresseur); }
   const repere = creerRepere();
   scene.add(repere);
 
@@ -184,7 +187,8 @@ function demarrer(){
   let minuteurSauvegarde = null;
   const planifierSauvegarde = () => { clearTimeout(minuteurSauvegarde); minuteurSauvegarde = setTimeout(sauver, 600); };
   if(niveau.construction === false) $('barreJeu').classList.add('sans-construction');
-  let choix = { modele: 'v8', support: 'trepied' };          // enneigeur posé avec un nouveau regard
+  document.querySelector('[data-outil="air"]').hidden = !niveau.compresseur;
+  let choix = { modele: niveau.compresseur ? 'p10' : 'v8', support: 'trepied' };   // enneigeur posé avec un nouveau regard
   let fiche = null, nuit = null;                              // fiche : regard affiché ; nuit : { regime, temps, vitesse }
   let reussi = !!(progression.niveaux[niveau.id] || {}).reussi, alarmeJusqua = 0;
   const groupeReseau = new THREE.Group(), groupeSousSol = new THREE.Group(), apercu = new THREE.Group();
@@ -195,10 +199,11 @@ function demarrer(){
   scene.add(groupeReseau, groupeSousSol, apercu, surbrillance, anneauChute, jets.groupe, manche);
   const regards3D = new Map(), tas3D = new Map();
   let tranchees3D = [];
-  const COUL_OUTIL = { eau: COULEURS.reseauEau, cable: COULEURS.reseauElec };
+  const COUL_OUTIL = { eau: COULEURS.reseauEau, cable: COULEURS.reseauElec, air: COULEURS.reseauAir };
   const NOMS_ZONES = { arret: 'pas assez de pression : pas de neige', faible: 'production réduite', correcte: 'bonne pression', haute: 'pression haute, à surveiller', surpression: 'surpression : le canon se met en sécurité' };
   const liberer = o => o.traverse(m => { if(m.geometry && m.geometry !== _geoTas) m.geometry.dispose(); });
   const ventActuel = () => nuit ? nuit.regime.vent : ventDeLaNuit(niveau, reseau.nuit);
+  const attendAir = c => !c.arrete && c.pressionAir !== null && facteurAir(c.pressionAir) === 0;   // perche sans assez d'air
 
   // Met la 3D à jour d'après le réseau (regards et enneigeurs, icônes, tranchées, tas de neige)
   function synchroniser(){
@@ -214,7 +219,7 @@ function demarrer(){
         o.position.set(n.x, poser(n.x, n.z), n.z);
         o.userData.cle = cle;
         const m = CATALOGUE[n.modele];
-        o.userData.icone = creerIconeEtat();
+        o.userData.icone = creerIconeEtat(m.type === 'perche');
         o.userData.icone.position.y = m.type === 'perche' ? PERCHE.support + m.longueur * 0.87 + 1.5 : SUPPORTS[n.support].pivot + 2.5;
         o.add(o.userData.icone);
         groupeReseau.add(o);
@@ -222,7 +227,7 @@ function demarrer(){
       }
       orienterCanon(o.userData.canon, n.direction, n.inclinaison);
       const e = etatRegard(niveau, reseau, n.id);
-      o.userData.icone.material.map = textureIcone(e.eau, e.elec);
+      o.userData.icone.material.map = textureIcone(e.eau, e.elec, e.besoinAir ? e.air : null);
     }
     for(const [id, o] of regards3D) if(!vus.has(id)){ groupeReseau.remove(o); liberer(o); regards3D.delete(id); }
     for(const o of tranchees3D){ groupeReseau.remove(o.surface); groupeSousSol.remove(o.dessous); liberer(o.surface); liberer(o.dessous); }
@@ -262,7 +267,8 @@ function demarrer(){
     afficherConsigne({
       regard: 'Touchez le terrain pour poser un regard et son enneigeur (choisi ci-dessous). Touchez un regard pour le régler.',
       eau: suite || 'Eau : touchez la salle de pompage, ou un regard déjà alimenté en eau.',
-      cable: suite || 'Électricité : touchez un départ électrique (près des bâtiments), ou un regard déjà alimenté.'
+      cable: suite || 'Électricité : touchez un départ électrique (près des bâtiments), ou un regard déjà alimenté.',
+      air: suite || 'Air comprimé : touchez le compresseur (à côté de la salle de pompage), ou un regard déjà alimenté en air. Seules les perches ont besoin d\'air.'
     }[outil] || null);
     $('choixEnneigeur').hidden = !outil;
     if(outil) majChoix();
@@ -301,6 +307,7 @@ function demarrer(){
     for(const n of reseau.noeuds){
       let d = Math.hypot(x - n.x, z - n.z);
       if(n.type === 'pompage') d = Math.min(d, Math.hypot(x - niveau.pompage.x, z - niveau.pompage.z) - 6);   // tout le bâtiment
+      if(n.type === 'compresseur') d = Math.min(d, Math.hypot(x - K.x, z - K.z) - 3);
       if(d < (n.type === 'regard' ? tol : Math.max(tol, 10)) && d < dMin){ dMin = d; best = n; }
     }
     return best;
@@ -308,6 +315,10 @@ function demarrer(){
   function infoNoeud(n){
     if(n.type === 'pompage') return ouvrirPoste();
     if(n.type === 'elec') return message(`${n.nom} : d'ici partent les câbles électriques.`, 'info');
+    if(n.type === 'compresseur'){
+      message(`${n.nom} : d'ici part l'air comprimé des perches. Il se pilote au poste de travail.`, 'info', 4000);
+      return ouvrirPoste();
+    }
     ouvrirFiche(n.id);
   }
 
@@ -325,8 +336,10 @@ function demarrer(){
     let etat;
     const c = nuit && nuit.regime.canons.find(q => q.id === n.id);
     if(c) etat = c.production ? `En production : ${nombreFr(c.production, 1)} m³/s, ${Math.round(c.pression)} bar (${NOMS_ZONES[c.zone]})`
-                              : `Arrêté : ${Math.round(c.pression)} bar, il en faut au moins ${m.pressionMin}${nuit.regime.sec ? ' (retenue vide)' : ''}`;
+                 : attendAir(c) ? `En attente d'air : ${Math.round(c.pression)} bar d'eau`
+                 : `Arrêté : ${Math.round(c.pression)} bar, il en faut au moins ${m.pressionMin}${nuit.regime.sec ? ' (retenue vide)' : ''}`;
     else if(e.pret) etat = `Prêt : ${Math.round(e.pression)} bar quand tous les canons sont fermés (${NOMS_ZONES[e.zone]})`;
+    if(c && c.pressionAir !== null) etat += ` · air ${nombreFr(c.pressionAir, 1)} bar${c.pressionAir < CONFIG.air.pressionMin ? ' (il en faut ' + CONFIG.air.pressionMin + ')' : c.pressionAir < CONFIG.air.pressionPleine ? ' (un peu juste)' : ''}`;
     else etat = `Pas prêt : il manque ${e.manque}`;
     const ventilo = m.type === 'ventilateur';
     const options = Object.entries(CATALOGUE).map(([k, q]) => {
@@ -337,7 +350,7 @@ function demarrer(){
     const d = afficherPanneau(`<div class="tete"><span>${echapper(n.nom)} · ${echapper(nomEnneigeur(n.modele, n.support))}</span><button class="fermer" type="button" id="ficheFermer" aria-label="Fermer">×</button></div>
       <ul><li>${echapper(etat)}</li>
       <li>Neige sur la piste ${nuit ? 'cette nuit' : 'avec le vent prévu'} (${vent.force ? vent.force + ' km/h' : 'pas de vent'}) : <b>${Math.round(part * 100)} %</b></li>
-      <li>${m.debit} m³/h d'eau · ${m.pressionMin} bar minimum · jusqu'à ${nombreFr(m.neige * CONFIG.nuit.duree)} m³ de neige par nuit</li></ul>
+      <li>${m.debit} m³/h d'eau${m.air ? ` · ${m.air} Nm³/h d'air` : ''} · ${m.pressionMin} bar minimum · jusqu'à ${nombreFr(m.neige * CONFIG.nuit.duree)} m³ de neige par nuit</li></ul>
       <div class="ligne">Direction <button class="bouton petit" type="button" id="dirG">↺ 15°</button><b>${n.direction}°</b><button class="bouton petit" type="button" id="dirD">↻ 15°</button></div>
       ${ventilo ? `<div class="ligne">Inclinaison <button class="bouton petit" type="button" id="incM">−5°</button><b>${n.inclinaison}°</b><button class="bouton petit" type="button" id="incP">+5°</button></div>` : ''}
       ${nuit || niveau.construction === false ? '' : `<div class="ligne choix">Remplacer par <select id="ficheModele">${options}</select><select id="ficheSupport">${supports}</select><button class="bouton petit" type="button" id="ficheRemplacer"></button></div>`}`);
@@ -380,16 +393,17 @@ function demarrer(){
     const r = poserRegard(niveau, reseau, x, z, choix);
     if(!r.ok) return message(r.raison, 'attention', 3500);
     synchroniser();
-    message(`${noeudReseau(reseau, r.id).nom} posé avec un ${nomEnneigeur(choix.modele, choix.support)} (${euros(r.cout)}). Raccordez-le à l'eau et à l'électricité.`, 'ok');
+    message(`${noeudReseau(reseau, r.id).nom} posé avec un ${nomEnneigeur(choix.modele, choix.support)} (${euros(r.cout)}). Raccordez-le à l'eau et à l'électricité${CATALOGUE[choix.modele].type === 'perche' ? ', puis à l\'air comprimé' : ''}.`, 'ok');
   }
 
   function outilTranchee(x, z, n){
-    const quoi = outil, nomQuoi = quoi === 'eau' ? 'eau' : 'électricité';
-    // 1er toucher : le point de départ
+    const quoi = outil, nomQuoi = { eau: 'eau', cable: 'électricité', air: 'air' }[quoi];
+    // 1er toucher : le point de départ (la source de ce réseau, ou un regard déjà alimenté)
     if(!depart){
-      if(!n || n.type === 'regard' && !alimentes(reseau, quoi).has(n.id) || quoi === 'eau' && n.type === 'elec' || quoi === 'cable' && n.type === 'pompage'){
+      if(!n || (n.type === 'regard' ? !alimentes(reseau, quoi).has(n.id) : n.type !== SOURCES[quoi])){
         const texte = n && n.type === 'regard' ? `${n.nom} n'est pas encore alimenté en ${nomQuoi}.` : '';
-        return message(`${texte} ${quoi === 'eau' ? 'L\'eau part de la salle de pompage ou d\'un regard déjà alimenté.' : 'Le câble part d\'un départ électrique ou d\'un regard déjà alimenté.'}`.trim(), 'attention', 4000);
+        const ou = { eau: 'L\'eau part de la salle de pompage', cable: 'Le câble part d\'un départ électrique', air: 'L\'air part du compresseur' }[quoi];
+        return message(`${texte} ${ou} ou d'un regard déjà alimenté.`.trim(), 'attention', 4000);
       }
       depart = n;
       montrerDepart(); consigne();
@@ -411,11 +425,11 @@ function demarrer(){
     const lignes = [`${nombreFr(d.longueur)} m de tranchée à ${euros(d.parMetre)}/m${d.commune ? ' : tranchée commune, on ne paie que la différence' : ''}`];
     if(nouveau) lignes.push(`Nouveau regard (${euros(CONFIG.couts.regard)}) et ${nomEnneigeur(choix.modele, choix.support)} (${euros(prixEnneigeur(choix.modele, choix.support))})`);
     if(e.eau) lignes.push(`Pression prévue au regard, canons fermés : ${Math.round(e.pression)} bar (${NOMS_ZONES[e.zone]})`);
-    lignes.push(e.pret ? 'Le canon sera prêt : eau et électricité raccordées.' : `Il manquera encore ${e.manque}.`);
+    lignes.push(e.pret ? (CATALOGUE[cible.modele].type === 'perche' ? 'La perche sera prête : tout est raccordé.' : 'Le canon sera prêt : tout est raccordé.') : `Il manquera encore ${e.manque}.`);
     fermerDevis();
     proposition = { quoi, departId: depart.id, cibleId: nouveau ? null : cible.id, x, z };
     apercu.add(creerApercu(depart, cible, poser, COUL_OUTIL[quoi], Math.max(0.35, cam.actuel.distance * 0.0035)));
-    afficherDevis({ titre: `${quoi === 'eau' ? 'Conduite d\'eau' : 'Câble électrique'} : ${depart.nom} → ${cible.nom}`,
+    afficherDevis({ titre: `${{ eau: 'Conduite d\'eau', cable: 'Câble électrique', air: 'Conduite d\'air' }[quoi]} : ${depart.nom} → ${cible.nom}`,
       lignes, total, budgetApres: reseau.budget - total, possible: reseau.budget >= total }, valider, fermerDevis);
   }
   function valider(){
@@ -434,7 +448,7 @@ function demarrer(){
     depart = noeudReseau(reseau, cibleId);          // on continue depuis le regard qu'on vient de raccorder
     synchroniser(); montrerDepart(); consigne();
     const e = etatRegard(niveau, reseau, cibleId);
-    message(e.pret ? `${depart.nom} est prêt : eau et électricité raccordées.` : `${depart.nom} raccordé. Il manque encore ${e.manque}.`, e.pret ? 'ok' : 'info');
+    message(e.pret ? `${depart.nom} est prêt : tout est raccordé.` : `${depart.nom} raccordé. Il manque encore ${e.manque}.`, e.pret ? 'ok' : 'info');
   }
 
   $('annuler').onclick = () => {
@@ -465,14 +479,14 @@ function demarrer(){
     for(const o of tranchees3D) o.surface.visible = !sousSol;
     for(const o of tas3D.values()) o.visible = !sousSol;
     groupeSousSol.visible = sousSol;
-    message(sousSol ? 'Vue sous-sol : conduites d\'eau en bleu, câbles électriques en jaune.' : 'Vue normale : le réseau est enterré, seule la trace des tranchées se voit.', 'info', 3500);
+    message(sousSol ? `Vue sous-sol : conduites d'eau en bleu, câbles électriques en jaune${K ? ', air comprimé en blanc' : ''}.` : 'Vue normale : le réseau est enterré, seule la trace des tranchées se voit.', 'info', 3500);
   };
 
   // ----- Les nuits -----
   function lancerNuit(){
     if(nuit) return;
     const prets = reseau.noeuds.filter(n => n.type === 'regard' && etatRegard(niveau, reseau, n.id).pret).length;
-    if(!prets) return message('Aucun canon n\'est prêt : raccordez au moins un regard à l\'eau et à l\'électricité.', 'attention', 4500);
+    if(!prets) return message(`Aucun canon n'est prêt : raccordez au moins un regard à l'eau et à l'électricité${K ? ' (et à l\'air pour une perche)' : ''}.`, 'attention', 4500);
     if(sousSol) $('sousSol').onclick();
     choisirOutil(null);
     nuit = { regime: debutNuit(niveau, reseau), temps: 0, vitesse: 1 };
@@ -484,9 +498,12 @@ function demarrer(){
     appliquerRegime();
     const v = nuit.regime.vent, actifs = nuit.regime.canons.filter(c => c.production).length;
     message(`Nuit ${reseau.nuit} : vent ${v.force ? v.force + ' km/h' : 'nul'}. ${actifs} canon${actifs > 1 ? 's' : ''} en production.`, 'info', 5000);
-    if(nuit.regime.pompes) for(const c of nuit.regime.canons.filter(q => !q.production && !q.arrete))
+    if(nuit.regime.pompes) for(const c of nuit.regime.canons.filter(q => !q.production && !q.arrete && !attendAir(q)))
       message(`${noeudReseau(reseau, c.id).nom} arrêté : ${Math.round(c.pression)} bar, il en faut ${CATALOGUE[c.modele].pressionMin}.`, 'attention', 6000);
     for(const t of new Set(evDepart.map(e => e.texte))) if(t) message(t, 'info', 5000);
+    if(nuit.regime.canons.some(attendAir)) message(nuit.regime.air.marche
+      ? 'Le compresseur démarre : les perches produiront dès que la pression d\'air sera suffisante.'
+      : 'Compresseur arrêté : démarrez-le au poste de travail pour que les perches produisent.', nuit.regime.air.marche ? 'info' : 'attention', 6000);
     if(niveau.programme){
       ouvrirPoste();
       message('Démarrez une pompe vanne fermée, puis ouvrez la vanne doucement. Gardez le départ dans le vert.', 'attention', 8000);
@@ -509,6 +526,7 @@ function demarrer(){
         rayon: c.chute.rayon, hauteur: CATALOGUE[c.modele].type === 'perche' ? 1 : Math.max(1.5, c.chute.hauteurJet * 0.5), force: c.facteur });
     }
     etatSalleDepuis(g);
+    if(compresseur) etatCompresseur(compresseur, { marche: !!(g.air && g.air.marche), pression: reseau.compresseur.pression });
     rafraichirPoste();
   }
   // La salle de pompage montre les pompes en marche, la pression de départ, l'ouverture de la vanne, l'alarme
@@ -524,6 +542,7 @@ function demarrer(){
     jets.vider();
     for(const o of regards3D.values()) etatCanon(o.userData.canon, 'arret');
     etatSalleDepuis(null);
+    if(compresseur) etatCompresseur(compresseur, { marche: false, pression: 0 });
     rafraichirPoste();
     $('barreJeu').classList.remove('en-nuit');
     $('accelerer').hidden = true;
@@ -539,6 +558,7 @@ function demarrer(){
     const R = niveau.retenue, o = niveau.objectif, suivant = LEVELS[LEVELS.indexOf(niveau) + 1];
     const lignes = [
       `Neige produite : ${nombreFr(bilan.neige)} m³, dont ${nombreFr(bilan.piste)} m³ sur la piste`,
+      bilan.kwh ? `Électricité : ${nombreFr(bilan.kwh)} kWh, soit ${euros(bilan.electricite)} retirés du gain` : null,
       bilan.rendement !== null ? `Rendement : ${Math.round(bilan.rendement * 100)} % de ce que les canons ouverts pouvaient produire` : null,
       `${o.type === 'production' ? 'Neige produite' : 'Sur la piste'} depuis le début : ${nombreFr(neigeObjectif())} / ${nombreFr(o.m3)} m³${o.nuits ? ` (nuit ${bilan.nuit} sur ${o.nuits})` : ''}`,
       o.coupsMax !== undefined ? `Coups de bélier : ${bilan.coups} cette nuit, ${reseau.coups} au total (${o.coupsMax} au plus)` : (bilan.coups ? `Coups de bélier : ${bilan.coups} (réparations : ${euros(bilan.coups * CONFIG.belier.reparation)})` : null),
@@ -555,7 +575,7 @@ function demarrer(){
       lignes.push(niveau.programme ? 'Bravo : la salle de pompage a tourné sans casse.' : 'Bravo : la piste est prête pour l\'ouverture.');
       boutons = `${suivant ? `<button class="bouton" type="button" id="bilanSuivant">Niveau suivant</button>` : ''}<button class="bouton" type="button" id="bilanOk">Continuer ici</button>`;
     }
-    const d = afficherPanneau(`<div class="tete"><span>${echapper(titre)}</span><span>+${euros(bilan.gain)}</span></div>
+    const d = afficherPanneau(`<div class="tete"><span>${echapper(titre)}</span><span>${bilan.gain - bilan.electricite >= 0 ? '+' : '−'}${euros(Math.abs(bilan.gain - bilan.electricite))}</span></div>
       <ul>${lignes.map(l => `<li>${echapper(l)}</li>`).join('')}
       ${bilan.nouveaux.map(k => `<li><b>Nouveau : ${echapper(CATALOGUE[k].nom)} disponible !</b></li>`).join('')}</ul>
       <div class="actions">${boutons}</div>`);
@@ -581,6 +601,12 @@ function demarrer(){
     if(performance.now() < alarmeJusqua) alarmes.push({ niveau: 'rouge', texte: 'Coup de bélier ! Manœuvrez plus doucement.' });
     if(g && g.pompes && cmd.ouverture <= 0) alarmes.push({ niveau: '', texte: 'Pompe en marche, vanne principale fermée : ouvrez-la doucement.' });
     if(cmd.mode === 'manuel' && !cmd.marche.some(Boolean)) alarmes.push({ niveau: 'rouge', texte: 'Mode manuel : aucune pompe démarrée.' });
+    if(g && g.air){
+      const perches = g.canons.filter(c => c.pressionAir !== null && !c.arrete);
+      if(perches.length && !g.air.marche) alarmes.push({ niveau: 'rouge', texte: 'Compresseur arrêté : les perches n\'ont pas d\'air.' });
+      else if(g.air.demande > g.air.capacite) alarmes.push({ niveau: '', texte: `Compresseur surchargé : ${nombreFr(g.air.demande)} Nm³/h demandés pour ${nombreFr(g.air.capacite)}. La pression d'air baisse.` });
+      if(perches.some(c => c.pressionAir < CONFIG.air.pressionMin) && g.air.marche) alarmes.push({ niveau: '', texte: `Pression d'air trop basse pour certaines perches (${CONFIG.air.pressionMin} bar minimum).` });
+    }
     const canons = reseau.noeuds.filter(n => n.type === 'regard').map(n => {
       const e = etatRegard(niveau, reseau, n.id), c = g && g.canons.find(q => q.id === n.id), m = CATALOGUE[n.modele];
       let led, etat, pression = null, production = null, part = null;
@@ -588,12 +614,13 @@ function demarrer(){
       else if(n.arret){ led = 'arret'; etat = niveau.programme ? 'En attente du chef d\'équipe' : 'Arrêté au poste'; }
       else if(c){
         pression = c.pression; production = c.production; part = c.part;
-        led = !c.production ? 'defaut' : c.facteur >= 0.999 ? 'production' : 'faible';
-        etat = !c.production ? (c.zone === 'surpression' ? 'Surpression' : 'Pression insuffisante') : c.facteur >= 0.999 ? 'Production' : 'Production réduite';
-        if(!c.production && c.zone !== 'surpression') alarmes.push({ niveau: '', texte: `${n.nom} : ${Math.round(c.pression)} bar, il en faut ${m.pressionMin}.` });
+        led = !c.production ? (attendAir(c) && c.zone !== 'surpression' ? 'faible' : 'defaut') : c.facteur >= 0.999 ? 'production' : 'faible';
+        etat = !c.production ? (c.zone === 'surpression' ? 'Surpression' : attendAir(c) ? 'Pas assez d\'air' : 'Pression insuffisante') : c.facteur >= 0.999 ? 'Production' : 'Production réduite';
+        if(!c.production && c.zone !== 'surpression' && !attendAir(c)) alarmes.push({ niveau: '', texte: `${n.nom} : ${Math.round(c.pression)} bar, il en faut ${m.pressionMin}.` });
         if(c.zone === 'surpression') alarmes.push({ niveau: 'rouge', texte: `${n.nom} : surpression (${Math.round(c.pression)} bar), canon en sécurité.` });
       } else { led = 'pret'; etat = 'Prêt'; pression = e.pression; }
       return { id: n.id, nom: n.nom, modele: nomEnneigeur(n.modele, n.support), led, etat, pression, production, part, arrete: !!n.arret,
+        pressionAir: c ? c.pressionAir : null,
         pilotable: e.pret && !niveau.programme };                    // au niveau 1, c'est le chef d'équipe qui ouvre les canons
     });
     return {
@@ -605,6 +632,11 @@ function demarrer(){
         marche: [0, 1, 2].map(i => cmd.mode === 'auto' ? !!g && i < g.pompes : cmd.marche[i]),
         pression: g ? g.pressionDepart : 0, debit: g ? g.debit : 0, capacite: g ? g.capacite : 0, modeImpose: !!niveau.programme,
         dansLeVert: !!g && g.pressionDepart >= CONFIG.pompage.zoneVerte[0] && g.pressionDepart <= CONFIG.pompage.zoneVerte[1] },
+      air: reseau.compresseur && {
+        marche: g ? !!g.air.marche : (cmd.mode === 'manuel' && reseau.compresseur.marche),
+        commande: !!reseau.compresseur.marche, pilotable: cmd.mode === 'manuel',
+        pression: reseau.compresseur.pression, demande: g ? g.air.demande : 0, capacite: CONFIG.air.capacite },
+      electricite: nuit ? { kwh: Math.round(reseau.kwhNuit || 0), euros: Math.round((reseau.kwhNuit || 0) * CONFIG.electricite.prixKwh) } : null,
       alarmes, canons
     };
   }
@@ -639,6 +671,7 @@ function demarrer(){
       if(nuit && resultatNiveau(niveau, reseau).rate){ finirNuit(true); return; }
     }
     if(action === 'canon'){ const n = noeudReseau(reseau, valeur); commanderCanon(reseau, valeur, !!n.arret); }
+    if(action === 'compresseur' && cmd.mode === 'manuel') commanderCompresseur(reseau, !reseau.compresseur.marche);
     if(nuit){ nuit.regime = regimeNuit(niveau, reseau, nuit.regime.vent); appliquerRegime(); }
     else etatSalleDepuis(null);
     rafraichirPoste();
@@ -662,7 +695,7 @@ function demarrer(){
   function ouvrirMenu(){
     sauver();
     fermerLePoste();
-    afficherMenu(cartesMenu(), [{ numero: 3, nom: 'Les perches et l\'air comprimé' }, { numero: 4, nom: 'Les pannes et les réparations' }], (action, id) => {
+    afficherMenu(cartesMenu(), [{ numero: 4, nom: 'Les pannes et les réparations' }], (action, id) => {
       if(action === 'fermer') return fermerMenu();
       if(action === 'jouer'){ if(id === niveau.id) return fermerMenu(); location.href = `index.html?niveau=${id}`; }
       if(action === 'recommencer'){
@@ -737,7 +770,13 @@ function demarrer(){
         majInfos();
         afficherConsigne(`Nuit ${reseau.nuit} · ${Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps))} s · ${nuit.regime.canons.filter(c => c.production).length} canon(s) en production · ${nombreFr(reseau.pisteNuit)} m³ sur la piste · +${euros(Math.round(reseau.argentNuit))}`);
         if(fiche) dessinerFiche();
+        // Le réservoir d'air monte ou baisse : la production des perches change avec lui
+        if(reseau.compresseur && Math.abs(reseau.compresseur.pression - nuit.regime.air.pression) > 0.05){
+          nuit.regime = regimeNuit(niveau, reseau, nuit.regime.vent);
+          appliquerRegime();
+        }
         etatSalleDepuis(nuit.regime);
+        if(compresseur) etatCompresseur(compresseur, { pression: reseau.compresseur.pression });
         rafraichirPoste();
       }
       if(nuit.temps >= CONFIG.nuit.duree) finirNuit();
@@ -745,6 +784,7 @@ function demarrer(){
     jets.maj(dt * (nuit ? nuit.vitesse : 1), sources, temps);
     for(const o of regards3D.values()) animerCanon(o.userData.canon, dt);
     animerSallePompage(salle, dt, temps);
+    if(compresseur) animerCompresseur(compresseur, dt, temps);
     voirAtravers(salle, camera, dt, 70);
     // Flèche du vent, tournée comme la vue
     const v = ventActuel(), a = cam.actuel.azimut, w = v.direction * Math.PI / 180;
@@ -772,6 +812,6 @@ function demarrer(){
   if(OUVRIR_MENU) ouvrirMenu();
 
   // Accès pour les essais automatiques (console du navigateur)
-  window.nivo = { scene, camera, renderer, cam, toucher, action, salle, choisirOutil, valider, lancerNuit, ouvrirFiche, ouvrirPoste, agirPoste, ouvrirMenu, finirNuit,
+  window.nivo = { scene, camera, renderer, cam, toucher, action, salle, compresseur, choisirOutil, valider, lancerNuit, ouvrirFiche, ouvrirPoste, agirPoste, ouvrirMenu, finirNuit,
     get reseau(){ return reseau; }, get nuit(){ return nuit; }, set choix(c){ choix = c; } };
 }
