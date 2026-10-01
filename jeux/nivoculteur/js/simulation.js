@@ -450,6 +450,55 @@ function optionsBac(){
     electricitePayante: true      // électricité payante
   };
 }
+// --- Bac à sable : pistes tracées et remontées posées par le joueur (reseau.pistesBac, reseau.remonteesBac) ---
+function longueurPolyligne(points){ let l = 0; for(let i = 1; i < points.length; i++) l += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]); return l; }
+function distancePolyligne(points, x, z){ let d = Infinity; for(let i = 1; i < points.length; i++) d = Math.min(d, distanceSegment(x, z, points[i - 1], points[i])); return d; }
+// Une piste tracée : dans le domaine, assez longue, sans passer sur la retenue ni sur la salle de pompage
+function validerPiste(niveau, points, largeur){
+  const t = niveau.terrain, R = niveau.retenue, P = niveau.pompage;
+  if(points.length < 2) return { ok: false, raison: 'Touchez au moins deux points pour tracer la piste.' };
+  if(points.some(([x, z]) => !dansZoneJeu(t, x, z))) return { ok: false, raison: 'La piste doit rester dans le domaine skiable.' };
+  const longueur = longueurPolyligne(points);
+  if(longueur < CONFIG.bac.pisteMin) return { ok: false, raison: `Une piste fait au moins ${CONFIG.bac.pisteMin} m (ici ${Math.round(longueur)} m).` };
+  if(R && distancePolyligne(points, R.x, R.z) < R.cuvette.rayon + largeur / 2 + 3) return { ok: false, raison: 'La piste ne peut pas passer sur la retenue.' };
+  if(P && distancePolyligne(points, P.x, P.z) < P.rayon + largeur / 2) return { ok: false, raison: 'La piste ne peut pas passer sur la salle de pompage.' };
+  return { ok: true, longueur, cout: Math.round(longueur * CONFIG.bac.prixPiste) };
+}
+// Un télésiège : gare aval plus bas que la gare amont, longueur raisonnable, sans survoler la retenue ni la salle de pompage
+function validerRemontee(niveau, aval, amont){
+  const t = niveau.terrain, R = niveau.retenue, P = niveau.pompage, [mini, maxi] = CONFIG.bac.remontee;
+  if(![aval, amont].every(g => dansZoneJeu(t, g.x, g.z))) return { ok: false, raison: 'Les deux gares doivent être dans le domaine skiable.' };
+  const longueur = Math.hypot(amont.x - aval.x, amont.z - aval.z);
+  if(longueur < mini || longueur > maxi) return { ok: false, raison: `Un télésiège fait entre ${mini} et ${maxi} m (ici ${Math.round(longueur)} m).` };
+  if(altitude(t, amont.x, amont.z) < altitude(t, aval.x, aval.z) + 15) return { ok: false, raison: 'La gare d\'arrivée doit être plus haut que la gare de départ (touchez d\'abord le bas).' };
+  const ligne = [[aval.x, aval.z], [amont.x, amont.z]];
+  if(R && distancePolyligne(ligne, R.x, R.z) < R.rayon + 4) return { ok: false, raison: 'Le télésiège ne peut pas passer au-dessus de la retenue.' };
+  if(P && distancePolyligne(ligne, P.x, P.z) < P.rayon + 4) return { ok: false, raison: 'Le télésiège ne peut pas passer sur la salle de pompage.' };
+  return { ok: true, longueur, cout: Math.round(longueur * CONFIG.bac.prixRemontee) };
+}
+const NOMS_COULEURS = { verte: 'verte', bleue: 'bleue', rouge: 'rouge', noire: 'noire' };
+function ajouterPisteBac(niveau, res, points, couleur, largeur){
+  const v = validerPiste(niveau, points, largeur);
+  if(!v.ok) return v;
+  if(res.budget < v.cout) return { ok: false, raison: 'Budget insuffisant.' };
+  res.pistesBac = res.pistesBac || [];
+  const nom = `Piste ${res.pistesBac.length + 1}`;
+  res.pistesBac.push({ nom, couleur, largeur, points: points.map(([x, z]) => [Math.round(x), Math.round(z)]) });
+  res.budget -= v.cout;
+  return { ...v, nom };
+}
+function ajouterRemonteeBac(niveau, res, aval, amont){
+  const v = validerRemontee(niveau, aval, amont);
+  if(!v.ok) return v;
+  if(res.budget < v.cout) return { ok: false, raison: 'Budget insuffisant.' };
+  res.remonteesBac = res.remonteesBac || [];
+  const nom = `Télésiège ${res.remonteesBac.length + 1}`;
+  res.remonteesBac.push({ nom, aval: { x: Math.round(aval.x), z: Math.round(aval.z) }, amont: { x: Math.round(amont.x), z: Math.round(amont.z) },
+    pylones: Math.max(2, Math.round(v.longueur / 55)), hauteur: 10, ecart: 5, espacementSieges: 22 });
+  res.budget -= v.cout;
+  return { ...v, nom };
+}
+
 // Vent prévu pour la prochaine nuit : celui choisi dans le bac à sable, sinon celui tiré au sort
 function ventPrevu(niveau, res){ return (res.options && res.options.vent) || ventDeLaNuit(niveau, res.nuit); }
 // Où tombe la neige d'un enneigeur : centre de la zone enneigée (déportée par le vent) et son rayon
@@ -1215,6 +1264,17 @@ function testsSimulation(){
 
   // Bac à sable
   const bac = LEVELS.find(l => l.bac), rb = creerReseau(bac);
+  const pisteOk = ajouterPisteBac(bac, rb, [[120, -200], [110, -100], [120, 0]], 'verte', 30);
+  verifier('Bac à sable : on trace une piste dans le domaine', pisteOk.ok && rb.pistesBac.length === 1, pisteOk.raison || `${Math.round(pisteOk.longueur)} m`);
+  verifier('Bac à sable : une piste ne passe pas sur la retenue', !validerPiste(bac, [[-140, 100], [-112, 146], [-80, 200]], 30).ok);
+  verifier('Bac à sable : une piste fait une longueur minimale', !validerPiste(bac, [[0, 0], [0, 30]], 30).ok);
+  const tsOk = ajouterRemonteeBac(bac, rb, { x: 130, z: 100 }, { x: 125, z: -150 });
+  verifier('Bac à sable : on pose un télésiège du bas vers le haut', tsOk.ok && rb.remonteesBac.length === 1, tsOk.raison || '');
+  verifier('Bac à sable : un télésiège ne se pose pas à l\'envers', !validerRemontee(bac, { x: 125, z: -150 }, { x: 130, z: 100 }).ok);
+  const nivAmenage = amenagerBac({ ...bac }, rb);
+  verifier('Bac à sable : la piste tracée compte pour la neige, le télésiège a ses gares aplanies',
+    nivAmenage.pistes.length === bac.pistes.length + 1 && partSurPiste(nivAmenage.pistes, 115, -100, 5) > 0.9 && partSurPiste(bac.pistes, 115, -100, 5) === 0
+    && nivAmenage.terrain.replats.length === bac.terrain.replats.length + 2 && nivAmenage.remontees.length === 2);
   verifier('Bac à sable : tout est débloqué, pas d\'objectif', Object.keys(CATALOGUE).every(k => disponible(bac, rb, k).ok) && !resultatNiveau(bac, rb).reussi && !resultatNiveau(bac, rb).rate);
   rb.options.vent = { force: 12, direction: 45 };
   verifier('Bac à sable : le vent choisi est celui de la nuit', debutNuit(bac, rb).vent.force === 12 && !rb.pannesPrevues.length);

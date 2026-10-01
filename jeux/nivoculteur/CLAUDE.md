@@ -165,6 +165,13 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
 - Bouton **Options** (⚙ sur téléphone, seulement dans le bac à sable) : panneau `afficherOptions` ; tout est dans `res.options` (`optionsBac()`) :
   argent illimité (budget 1e9 affiché « Illimité ») ou 100 k€ / 300 k€ / 1 M€ (le budget est remis à ce montant) ; vent au hasard ou imposé (force, direction ; `ventPrevu`) ; pannes oui / non, fréquence rare / normale / forte (`CONFIG.pannes.frequences`) et types cochés un par un ; remplissage de la retenue payant ou gratuit ; électricité payante ou gratuite ; remplir / vider la retenue. Les changements s'appliquent tout de suite, même la nuit.
 
+## Bac à sable : tracer des pistes et poser des télésièges (demande de l'utilisateur : bac à sable seulement)
+
+- Outils **Piste** et **Remontée** dans la barre (cachés hors du bac à sable). Piste : on touche des points, on choisit la couleur (verte, bleue, rouge, noire) et la largeur (20, 30, 40 m), puis « Terminer la piste ». Remontée : gare de départ en bas, puis gare d'arrivée en haut, puis « Construire le télésiège ». Aperçu en couleur pendant le tracé (`dessinerTrace`, panneau `#choixTrace`).
+- Simulation : `validerPiste` (dans le domaine, au moins `CONFIG.bac.pisteMin` = 80 m, pas sur la retenue ni la salle de pompage), `validerRemontee` (120 à 600 m, arrivée plus haute d'au moins 15 m, pas au-dessus de la retenue ni de la salle), `ajouterPisteBac`, `ajouterRemonteeBac` (payants seulement si l'argent n'est pas illimité : `CONFIG.bac.prixPiste` 250 €/m, `prixRemontee` 2 500 €/m). Enregistrés dans `reseau.pistesBac` et `reseau.remonteesBac`.
+- `amenagerBac(niveau, reseau)` (niveaux.js), appelé par demarrage.js **avant** de construire la 3D : ajoute les pistes (neige damée, jalons, sapins écartés, et la neige tombée dessus compte), les télésièges et les replats de leurs gares. Après chaque tracé ou suppression, la partie est enregistrée et la page rechargée (`rechargerBac`, message affiché au retour via `reseau.messageApres`).
+- Options du bac à sable : section « Pistes et remontées » avec la liste et « Supprimer ». Les télésièges sont du décor (ils ne tournent pas la nuit).
+
 ## Air comprimé et perches (niveau 3, étape 6)
 
 - **Niveau 3 · Les perches et l'air comprimé** : deuxième piste, rouge et étroite, « Les Gentianes » (`PISTE_GENTIANES`), départ électrique en plus près d'elle, budget 700 000 €, objectif 20 000 m³ sur les pistes. Le compresseur (`COMPRESSEUR_COMBE`) est à côté de la salle de pompage ; la conduite d'air part de sa sortie.

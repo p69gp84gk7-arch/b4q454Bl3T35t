@@ -10,6 +10,12 @@ const progressionSauvee = lireSauvegarde('nivo-progression') || {};
 const OUVRIR_MENU = !params.get('niveau') && !MODE_MODELES;
 const niveau = trouverNiveau(params.get('niveau')) || trouverNiveau(progressionSauvee.dernier) || LEVELS[0];
 
+// Bac à sable : les pistes et télésièges du joueur font partie du terrain (à ajouter avant de le construire)
+if(niveau.bac && !params.has('nouvelle')){
+  const partie = lireSauvegarde('nivo-partie-bac');
+  if(partie && partie.reseau) amenagerBac(niveau, partie.reseau);
+}
+
 if(MODE_TEST) afficherTests(testsSimulation());
 
 if(!window.THREE){

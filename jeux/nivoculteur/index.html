@@ -79,6 +79,11 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .outil.actif[data-outil="regard"]{ background:#E58A1F; border-color:#E58A1F; }
 .outil.actif[data-outil="eau"]{ background:#2F6FDE; border-color:#2F6FDE; }
 .outil.actif[data-outil="cable"]{ background:#E9B949; border-color:#E9B949; color:#1C1F25; }
+.outil.actif[data-outil="piste"]{ background:#2E9E5B; border-color:#2E9E5B; }
+.outil.actif[data-outil="remontee"]{ background:#7A5638; border-color:#7A5638; }
+#choixTrace .bouton.petit{ padding:5px 10px; font-size:.82rem; }
+#choixTrace .bouton.vert{ background:var(--ok); border-color:var(--ok); }
+#choixTrace .bouton:disabled{ opacity:.45; }
 .outil.actif[data-outil="air"]{ background:#E8EDF5; border-color:#E8EDF5; color:#1C1F25; }
 #sousSol.actif{ background:#5C6B86; border-color:#9FB0CF; }
 .bouton.nuit{ background:#2E9E5B; border-color:#2E9E5B; }
@@ -278,11 +283,14 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
     <label>Support <select id="choixSupport"></select></label>
     <span id="choixPrix"></span>
   </div>
+  <div class="rang choix" id="choixTrace" hidden></div>
   <div class="rang outils">
     <button class="bouton outil construction" type="button" data-outil="regard">+ Regard</button>
     <button class="bouton outil construction" type="button" data-outil="eau">Eau</button>
     <button class="bouton outil construction" type="button" data-outil="cable">Électricité</button>
     <button class="bouton outil construction" type="button" data-outil="air" hidden>Air</button>
+    <button class="bouton outil construction" type="button" data-outil="piste" hidden>Piste</button>
+    <button class="bouton outil construction" type="button" data-outil="remontee" hidden>Remontée</button>
     <button class="bouton construction" type="button" id="sousSol">Vue sous-sol</button>
     <button class="bouton construction" type="button" id="annuler" disabled>Annuler</button>
     <button class="bouton construction" type="button" id="effacer">Tout effacer</button>

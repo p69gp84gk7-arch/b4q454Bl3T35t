@@ -299,6 +299,17 @@ function niveauCarriere(etape){
     derniere: etape === CARRIERE.etapes.length - 1
   };
 }
+// Bac à sable : ajoute au niveau les pistes tracées et les télésièges posés par le joueur (avant de construire la 3D)
+function amenagerBac(niveau, reseau){
+  const bac = LEVELS.find(l => l.bac);
+  const base = bac._origine || (bac._origine = { pistes: bac.pistes, remontees: bac.remontees, terrain: bac.terrain });   // jamais deux fois
+  const pistes = (reseau.pistesBac || []), remontees = (reseau.remonteesBac || []);
+  niveau.pistes = [...base.pistes, ...pistes];
+  niveau.remontees = [...base.remontees, ...remontees];
+  niveau.terrain = { ...base.terrain, replats: [...base.terrain.replats,
+    ...remontees.flatMap(ts => [{ ...ts.aval, rayon: 10, talus: 12 }, { ...ts.amont, rayon: 10, talus: 12 }])] };
+  return niveau;
+}
 // Trouver un niveau par son identifiant (la carrière reprend à l'étape sauvegardée)
 function trouverNiveau(id){
   if(id === 'carriere'){

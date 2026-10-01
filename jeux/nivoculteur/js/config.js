@@ -148,6 +148,15 @@ const CONFIG = {
     distanceEtiquettes: 170 // m : plus loin, les noms des bâtiments deviennent de petits carrés de couleur
   },
 
+  // --- Bac à sable : tracer des pistes et poser des remontées ---
+  bac: {
+    prixPiste: 250,         // € par mètre de piste (seulement quand l'argent n'est pas illimité)
+    prixRemontee: 2500,     // € par mètre de télésiège
+    largeurs: [20, 30, 40], // m : largeurs de piste au choix
+    pisteMin: 80,           // m : longueur minimale d'une piste
+    remontee: [120, 600]    // m : longueur d'un télésiège (au moins, au plus)
+  },
+
   // --- Dameuse (passe sur la piste quand l'objectif est atteint) ---
   dameuse: {
     vitesse: 9              // m par seconde de jeu (accélérée comme la nuit)

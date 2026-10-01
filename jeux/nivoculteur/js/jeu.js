@@ -189,6 +189,7 @@ function demarrer(){
   const nouvellePartie = () => niveau.carriere ? commencerEtape(niveau, creerReseau(niveau), niveau.etape)
                                               : construireReseauFixe(niveau, creerReseau(niveau));
   let reseau = chargerPartie() || nouvellePartie(), outil = null, depart = null, proposition = null, sousSol = false;
+  let traceePiste = [], gareAval = null, gareAmont = null;            // bac à sable : piste ou télésiège en cours de tracé
   if(niveau.bac) reseau.options = { ...optionsBac(), ...(reseau.options || {}) };
   if(niveau.carriere) etendreReseau(niveau, reseau);                                  // départs ou compresseur débloqués    // anciennes parties : options manquantes
   const repris = reseau.nuit > 1 || reseau.noeuds.some(n => n.type === 'regard' && !niveau.reseauFixe);
@@ -202,6 +203,7 @@ function demarrer(){
   const planifierSauvegarde = () => { clearTimeout(minuteurSauvegarde); minuteurSauvegarde = setTimeout(sauver, 600); };
   if(niveau.construction === false) $('barreJeu').classList.add('sans-construction');
   document.querySelector('[data-outil="air"]').hidden = !niveau.compresseur;
+  for(const o of ['piste', 'remontee']) document.querySelector(`[data-outil="${o}"]`).hidden = !niveau.bac;   // tracés : bac à sable seulement
   let choix = { modele: niveau.compresseur ? 'p10' : 'v8', support: 'trepied' };   // enneigeur posé avec un nouveau regard
   let fiche = null, nuit = null;                              // fiche : regard affiché ; nuit : { regime, temps, vitesse }
   let reussi = !!(progression.niveaux[niveau.id] || {}).reussi, alarmeJusqua = 0;
@@ -346,10 +348,15 @@ function demarrer(){
       regard: 'Touchez le terrain pour poser un regard et son enneigeur (choisi ci-dessous). Touchez un regard pour le régler.',
       eau: suite || 'Eau : touchez la salle de pompage, ou un regard déjà alimenté en eau.',
       cable: suite || 'Électricité : touchez un départ électrique (près des bâtiments), ou un regard déjà alimenté.',
-      air: suite || 'Air comprimé : touchez le compresseur (à côté de la salle de pompage), ou un regard déjà alimenté en air. Seules les perches ont besoin d\'air.'
+      air: suite || 'Air comprimé : touchez le compresseur (à côté de la salle de pompage), ou un regard déjà alimenté en air. Seules les perches ont besoin d\'air.',
+      piste: 'Nouvelle piste : touchez des points du haut vers le bas, puis « Terminer la piste ».',
+      remontee: gareAval ? 'Touchez maintenant l\'emplacement de la gare d\'arrivée, en haut.' : 'Nouveau télésiège : touchez l\'emplacement de la gare de départ, en bas de la pente.'
     }[outil] || null);
-    $('choixEnneigeur').hidden = !outil;
-    if(outil) majChoix();
+    const trace = outil === 'piste' || outil === 'remontee';
+    $('choixEnneigeur').hidden = !outil || trace;
+    $('choixTrace').hidden = !trace;
+    if(outil && !trace) majChoix();
+    if(trace) majPanneauTrace();
   }
   function majChoix(){
     if(!supportDisponible(niveau, choix.support).ok) choix = { ...choix, support: 'trepied' };
@@ -372,7 +379,7 @@ function demarrer(){
   }
   function choisirOutil(o){
     outil = outil === o ? null : o;
-    depart = null;
+    depart = null; traceePiste = []; gareAval = null; gareAmont = null;
     fermerDevis();
     document.querySelectorAll('[data-outil]').forEach(b => b.classList.toggle('actif', b.dataset.outil === outil));
     montrerDepart();
@@ -505,6 +512,81 @@ function demarrer(){
     anneauChute.material.color.set(part >= 0.5 ? '#38D66B' : '#FF9A2E');
     anneauChute.position.set(chute.x, poser(chute.x, chute.z) + 0.8, chute.z);
     anneauChute.scale.setScalar(chute.rayon);
+  }
+
+  // ----- Bac à sable : tracer une piste, poser un télésiège -----
+  const reglageTrace = { couleur: 'bleue', largeur: 30 };
+  function dessinerTrace(){
+    apercu.children.slice().forEach(o => { apercu.remove(o); liberer(o); });
+    const ep = Math.max(0.35, cam.actuel.distance * 0.0035);
+    if(outil === 'piste'){
+      const coul = COULEURS.jalons[reglageTrace.couleur];
+      traceePiste.forEach(([x, z], i) => {
+        const A = { x, z }, B = i ? { x: traceePiste[i - 1][0], z: traceePiste[i - 1][1] } : { x: x + 0.01, z };
+        apercu.add(creerApercu(B, A, poser, coul, ep * (i ? 1 : 3)));
+        if(i) for(const s of [-1, 1]){
+          const L = Math.hypot(A.x - B.x, A.z - B.z) || 1, nx = -(A.z - B.z) / L * s * reglageTrace.largeur / 2, nz = (A.x - B.x) / L * s * reglageTrace.largeur / 2;
+          apercu.add(creerApercu({ x: B.x + nx, z: B.z + nz }, { x: A.x + nx, z: A.z + nz }, poser, coul, ep * 0.5));
+        }
+      });
+    }
+    if(outil === 'remontee' && gareAval){
+      apercu.add(creerApercu(gareAval, { x: gareAval.x + 0.01, z: gareAval.z }, poser, '#C08A5A', ep * 4));
+      if(gareAmont) apercu.add(creerApercu(gareAval, gareAmont, poser, '#C08A5A', ep));
+    }
+  }
+  function majPanneauTrace(){
+    const el = $('choixTrace');
+    if(outil === 'piste'){
+      const v = traceePiste.length >= 2 ? validerPiste(niveau, traceePiste, reglageTrace.largeur) : null;
+      el.innerHTML = `<label>Couleur <select id="traceCouleur">${['verte', 'bleue', 'rouge', 'noire'].map(c => `<option value="${c}"${c === reglageTrace.couleur ? ' selected' : ''}>${c}</option>`).join('')}</select></label>
+        <label>Largeur <select id="traceLargeur">${CONFIG.bac.largeurs.map(l => `<option value="${l}"${l === reglageTrace.largeur ? ' selected' : ''}>${l} m</option>`).join('')}</select></label>
+        <span>${traceePiste.length} point${traceePiste.length > 1 ? 's' : ''}${traceePiste.length >= 2 ? ` · ${nombreFr(longueurPolyligne(traceePiste))} m${reseau.options.budget && v && v.ok ? ` · ${euros(v.cout)}` : ''}` : ''}</span>
+        <button class="bouton petit" type="button" id="traceRetour"${traceePiste.length ? '' : ' disabled'}>Point précédent</button>
+        <button class="bouton petit vert" type="button" id="traceFin"${traceePiste.length >= 2 ? '' : ' disabled'}>Terminer la piste</button>`;
+      el.querySelector('#traceCouleur').onchange = e => { reglageTrace.couleur = e.target.value; dessinerTrace(); };
+      el.querySelector('#traceLargeur').onchange = e => { reglageTrace.largeur = +e.target.value; dessinerTrace(); majPanneauTrace(); };
+      el.querySelector('#traceRetour').onclick = () => { traceePiste.pop(); dessinerTrace(); majPanneauTrace(); };
+      el.querySelector('#traceFin').onclick = terminerPiste;
+    } else if(outil === 'remontee'){
+      const v = gareAval && gareAmont ? validerRemontee(niveau, gareAval, gareAmont) : null;
+      el.innerHTML = `<span>${!gareAval ? 'Gare de départ : touchez le bas' : !gareAmont ? 'Gare d\'arrivée : touchez le haut' : `${nombreFr(v.longueur)} m${reseau.options.budget ? ` · ${euros(v.cout)}` : ''}`}</span>
+        <button class="bouton petit" type="button" id="traceRetour"${gareAval ? '' : ' disabled'}>Recommencer</button>
+        <button class="bouton petit vert" type="button" id="traceFin"${v && v.ok ? '' : ' disabled'}>Construire le télésiège</button>`;
+      el.querySelector('#traceRetour').onclick = () => { gareAval = gareAmont = null; dessinerTrace(); majPanneauTrace(); consigne(); };
+      el.querySelector('#traceFin').onclick = terminerRemontee;
+    }
+  }
+  function outilPiste(x, z){
+    if(!dansZoneJeu(t, x, z)) return message('La piste doit rester dans le domaine skiable.', 'attention', 3000);
+    traceePiste.push([x, z]);
+    dessinerTrace(); majPanneauTrace();
+  }
+  function outilRemontee(x, z){
+    if(!dansZoneJeu(t, x, z)) return message('Les gares doivent être dans le domaine skiable.', 'attention', 3000);
+    if(!gareAval || gareAmont){ gareAval = { x, z }; gareAmont = null; }
+    else {
+      gareAmont = { x, z };
+      const v = validerRemontee(niveau, gareAval, gareAmont);
+      if(!v.ok){ message(v.raison, 'attention', 4500); gareAmont = null; }
+    }
+    dessinerTrace(); majPanneauTrace(); consigne();
+  }
+  // Une piste ou un télésiège change le terrain (neige damée, gares aplanies, sapins) : on enregistre et on recharge
+  function rechargerBac(texte){
+    reseau.messageApres = texte;
+    sauver(true);
+    location.href = 'index.html?niveau=bac';
+  }
+  function terminerPiste(){
+    const r = ajouterPisteBac(niveau, reseau, traceePiste, reglageTrace.couleur, reglageTrace.largeur);
+    if(!r.ok) return message(r.raison, 'attention', 4500);
+    rechargerBac(`${r.nom} (${reglageTrace.couleur}) ouverte : ${nombreFr(r.longueur)} m. La neige qui tombe dessus compte maintenant.`);
+  }
+  function terminerRemontee(){
+    const r = ajouterRemonteeBac(niveau, reseau, gareAval, gareAmont);
+    if(!r.ok) return message(r.raison, 'attention', 4500);
+    rechargerBac(`${r.nom} posé : ${nombreFr(r.longueur)} m.`);
   }
 
   function outilRegard(x, z, n){
@@ -1005,7 +1087,9 @@ function demarrer(){
 
   // ----- Options du bac à sable -----
   let optionsOuvertes = false;
-  function ouvrirOptions(){ fermerLePoste(); optionsOuvertes = true; afficherOptions(reseau.options, ventActuel(), agirOptions); }
+  const amenagements = () => ({ pistes: (reseau.pistesBac || []).map(p => ({ nom: p.nom, detail: `${p.couleur}, ${p.largeur} m, ${nombreFr(longueurPolyligne(p.points))} m` })),
+    remontees: (reseau.remonteesBac || []).map(ts => ({ nom: ts.nom, detail: `${nombreFr(Math.hypot(ts.amont.x - ts.aval.x, ts.amont.z - ts.aval.z))} m` })) });
+  function ouvrirOptions(){ fermerLePoste(); optionsOuvertes = true; afficherOptions(reseau.options, ventActuel(), agirOptions, amenagements()); }
   function agirOptions(action, valeur){
     const o = reseau.options, v = ventActuel();
     if(action === 'fermer'){ optionsOuvertes = false; return fermerOptions(); }
@@ -1029,11 +1113,17 @@ function demarrer(){
     if(action === 'optElec') o.electricitePayante = valeur === '1';
     if(action === 'optRemplir' && reseau.retenue) reseau.retenue.volume = volumeRetenue(niveau.retenue);
     if(action === 'optVider' && reseau.retenue) reseau.retenue.volume = 0;
+    if(action === 'optSupprPiste' || action === 'optSupprRemontee'){
+      const liste = action === 'optSupprPiste' ? reseau.pistesBac : reseau.remonteesBac, el = liste && liste[+valeur];
+      if(!el || !confirm(`Supprimer « ${el.nom} » ?`)) return;
+      liste.splice(+valeur, 1);
+      return rechargerBac(`${el.nom} supprimé${action === 'optSupprPiste' ? 'e' : ''}.`);
+    }
     if(nuit){ nuit.regime = regimeNuit(niveau, reseau, o.vent || nuit.regime.vent); appliquerRegime(); }
     manche.userData.orienter(ventActuel());
     majInfos(); planifierSauvegarde();
     if(fiche) dessinerFiche();
-    if(optionsOuvertes) afficherOptions(o, ventActuel(), agirOptions);
+    if(optionsOuvertes) afficherOptions(o, ventActuel(), agirOptions, amenagements());
   }
   $('ouvrirOptions').hidden = !niveau.bac;
   $('ouvrirOptions').onclick = () => optionsOuvertes ? agirOptions('fermer') : ouvrirOptions();
@@ -1056,6 +1146,8 @@ function demarrer(){
   function action(x, z){
     const n = noeudProche(x, z);
     if(fiche && !(n && n.id === fiche)) fermerDevis();
+    if(!nuit && outil === 'piste') return outilPiste(x, z);
+    if(!nuit && outil === 'remontee') return outilRemontee(x, z);
     if(!nuit && outil === 'regard') return outilRegard(x, z, n);
     if(!nuit && outil) return outilTranchee(x, z, n);
     // Sans outil : renseignements sur le point touché
@@ -1151,6 +1243,7 @@ function demarrer(){
   if(!OUVRIR_MENU && niveau.carriere && avancementEtape(reseau).nuits === 0)
     message(`Étape ${niveau.numero} · ${niveau.nom} : ${niveau.resume} Objectif : ${nombreFr(o.m3)} m³ sur les pistes et ${euros(o.recette)} de recettes en ${o.nuits} nuits.`, 'info', 12000);
   if(!OUVRIR_MENU) message(`${commandes} ${niveau.construction === false ? 'Lancez la nuit, puis pilotez la salle de pompage au poste de travail.' : 'Construisez, puis lancez la nuit.'}`, 'info', 7000);
+  if(reseau.messageApres){ message(reseau.messageApres, 'ok', 6000); delete reseau.messageApres; planifierSauvegarde(); }
   if(repris && !OUVRIR_MENU) message(`Partie reprise : prochaine nuit n° ${reseau.nuit}.`, 'ok', 4000);
   if(OUVRIR_MENU) ouvrirMenu();
 

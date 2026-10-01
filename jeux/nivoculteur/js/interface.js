@@ -267,8 +267,9 @@ function afficherPannesCoin(liste, replie, agir){
 // Options du bac à sable : argent, vent, pannes, eau, électricité, retenue
 // o : options (res.options) ; vent : vent prévu ; agir(action, valeur)
 // ---------------------------------------------------------------------------------------
-function afficherOptions(o, vent, agir){
+function afficherOptions(o, vent, agir, amenagements = { pistes: [], remontees: [] }){
   const el = $('options'), haut = el.scrollTop;
+  const pastille = (texte, cls = '') => `<span class="pastille ${cls}">${echapper(texte)}</span>`;
   const seg = (action, choix, actuel) => `<span class="seg large">${choix.map(([v, t]) =>
     `<button type="button" data-action="${action}" data-valeur="${v}" class="${String(v) === String(actuel) ? 'actif' : ''}">${t}</button>`).join('')}</span>`;
   const ouiNon = (action, val) => seg(action, [['1', 'Oui'], ['0', 'Non']], val ? '1' : '0');
@@ -294,6 +295,12 @@ function afficherOptions(o, vent, agir){
         <p class="aide">Rare : 0 ou 1 par nuit · normal : 1 à 3 · beaucoup : 3 à 5.</p>
         <div class="ligne">Lesquelles</div>
         <div class="types">${types}</div>
+      </section>
+      <section class="bloc"><h3>Pistes et remontées</h3>
+        <p class="aide">Tracez-en avec les outils « Piste » et « Remontée » de la barre du bas.</p>
+        ${amenagements.pistes.map((p, i) => `<div class="ligne">${pastille(p.nom)}<small>${echapper(p.detail)}</small><button class="bouton petit" type="button" data-action="optSupprPiste" data-valeur="${i}">Supprimer</button></div>`).join('')}
+        ${amenagements.remontees.map((r, i) => `<div class="ligne">${pastille(r.nom)}<small>${echapper(r.detail)}</small><button class="bouton petit" type="button" data-action="optSupprRemontee" data-valeur="${i}">Supprimer</button></div>`).join('')}
+        ${amenagements.pistes.length || amenagements.remontees.length ? '' : '<p class="vide">Aucune pour l\'instant.</p>'}
       </section>
       <section class="bloc"><h3>Eau et électricité</h3>
         <div class="ligne">Remplissage de la retenue payant</div>${ouiNon('optEau', o.eauPayante)}
