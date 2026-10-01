@@ -142,5 +142,33 @@ const LEVELS = [
     compresseur: COMPRESSEUR_COMBE,
     budget: 700000,
     objectif: { type: 'neigePiste', m3: 20000 }
+  },
+  {
+    id: 'pannes',
+    numero: 4,
+    nom: 'Les pannes et les réparations',
+    resume: 'Les deux pistes sont équipées. Chaque nuit, des pannes arrivent : fuites, moteurs grillés, buses gelées, disjoncteurs, pompes. Repérez-les au poste de travail et envoyez l\'équipe réparer, avant la date d\'ouverture.',
+    terrain: TERRAIN_COMBE,
+    pistes: [PISTE_CLARINES, PISTE_GENTIANES],
+    pompage: POMPAGE_COMBE,
+    retenue: RETENUE_COMBE,
+    remontees: [TELESIEGE_CLARINES],
+    departsElec: [...DEPARTS_COMBE, { nom: 'Départ élec · Gentianes', x: -72, z: -150 }],
+    compresseur: COMPRESSEUR_COMBE,
+    budget: 120000,                           // pour les réparations (et quelques canons de plus)
+    pannes: true,
+    // Réseau déjà construit : 6 V10 sur tour aux Clarines (R1 à R6), 4 perches de 10 m aux Gentianes (R7 à R10)
+    reseauFixe: {
+      regards: [
+        ...[[-19, 219], [27, 172], [-38, 151], [-10, 92], [-69, 63], [-12, 31]].map(([x, z]) => ({ x, z, modele: 'v10', support: 'tour' })),
+        ...[[-79, 40], [-101, 0], [-104, -40], [-97, -80]].map(([x, z]) => ({ x, z, modele: 'p10' }))
+      ],
+      liaisons: {
+        eau: [['pompage', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6'], ['R5', 'R7', 'R8', 'R9', 'R10']],
+        cable: [['elec1', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6'], ['elec4', 'R10', 'R9', 'R8', 'R7']],
+        air: [['compresseur', 'R3', 'R5', 'R7', 'R8', 'R9', 'R10']]
+      }
+    },
+    objectif: { type: 'neigePiste', m3: 18000, nuits: 6 }
   }
 ];

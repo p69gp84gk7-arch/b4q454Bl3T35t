@@ -66,6 +66,22 @@ const CONFIG = {
     prixKwh: 0.18           // € par kWh (pompes et compresseur), retiré du gain de la nuit
   },
 
+  // --- Pannes (niveau 4) : tirées au sort chaque nuit, toujours les mêmes pour une même nuit ---
+  // cout : prix de la réparation (€) · duree : temps de l'équipe la nuit (s de jeu ; le jour, c'est immédiat)
+  pannes: {
+    parNuit: [1, 3],        // nombre de pannes par nuit (au hasard entre les deux)
+    moment: [4, 45],        // s de jeu : quand elles arrivent pendant la nuit
+    types: {
+      fuite:       { nom: 'Fuite sur une conduite', cout: 6000, duree: 15, poids: 2,
+                     debit: 30,      // m³/h d'eau perdus par la fuite (la retenue se vide plus vite)
+                     perte: 10 },    // bar perdus par les regards en aval de la fuite
+      moteur:      { nom: 'Moteur de ventilateur grillé', cout: 2500, duree: 10, poids: 2 },
+      gel:         { nom: 'Buse gelée sur une perche', cout: 300, duree: 5, poids: 2, facteur: 0.4 },   // production × 0,4
+      disjoncteur: { nom: 'Disjoncteur déclenché', cout: 0, duree: 2, poids: 1 },
+      pompe:       { nom: 'Pompe en défaut thermique', cout: 4000, duree: 20, poids: 1 }
+    }
+  },
+
   // --- Coup de bélier : une manœuvre trop rapide envoie un pic de pression dans les conduites ---
   belier: {
     fenetre: 1,             // s : on regarde la manœuvre de la vanne sur cette durée

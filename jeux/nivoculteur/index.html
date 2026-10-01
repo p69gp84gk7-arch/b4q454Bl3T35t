@@ -93,6 +93,20 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .devis .ligne{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:6px 0; font-size:.88rem; }
 .devis .ligne b{ min-width:44px; text-align:center; font-variant-numeric:tabular-nums; }
 .devis .petit{ padding:5px 10px; font-size:.85rem; }
+/* Fiche d'un canon : panneau à gauche sur grand écran, volet qui monte du bas sur téléphone */
+.devis.fiche{ position:fixed; z-index:15; overflow:auto; overscroll-behavior:contain; }
+@media (min-width:700px) and (orientation:landscape){
+  .devis.fiche{ left:calc(env(safe-area-inset-left, 0px) + 12px); top:64px; width:min(380px, 42vw); max-height:calc(100dvh - 78px); animation:ficheGauche .25s ease-out; }
+}
+@media not all and (min-width:700px) and (orientation:landscape){
+  .devis.fiche{ left:0; right:0; bottom:0; width:auto; max-height:56dvh; border-radius:18px 18px 0 0; border-bottom:0;
+    padding:6px 14px calc(env(safe-area-inset-bottom, 0px) + 12px); animation:ficheBas .28s ease-out; }
+  .devis.fiche::before{ content:''; display:block; width:44px; height:5px; border-radius:3px; background:#3A4A66; margin:2px auto 8px; }
+}
+@keyframes ficheGauche{ from{ transform:translateX(-110%); } to{ transform:none; } }
+@keyframes ficheBas{ from{ transform:translateY(100%); } to{ transform:none; } }
+.devis.fiche .choix select{ flex:1 1 140px; min-width:0; max-width:100%; }
+.devis .ligne.panne{ justify-content:space-between; padding:6px 9px; border-radius:8px; background:rgba(255,210,58,.12); border-left:4px solid #FFD23A; }
 .devis .reglage-fiche input{ flex:1 1 140px; min-width:0; height:28px; accent-color:#E9B949; }
 .devis .mesure{ flex:1 1 auto; }
 .devis .fermer{ background:none; border:0; color:var(--doux); font-size:1.3rem; line-height:1; padding:0 4px; cursor:pointer; }
@@ -144,6 +158,10 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .poste .pastille.rouge{ background:rgba(215,38,61,.2); border-color:#D7263D; }
 .poste .bouton.vert{ background:var(--ok); border-color:var(--ok); }
 .poste .resume{ margin:0 0 8px; }
+.poste .panne{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; padding:7px 0; border-bottom:1px solid #1A2A40; font-size:.88rem; }
+.poste .panne .nom{ flex:1 1 140px; min-width:0; line-height:1.15; }
+.poste .panne .nom small{ display:block; color:var(--doux); font-size:.75rem; }
+.poste .panne .actions{ display:flex; gap:6px; margin-left:auto; }
 /* Jauges de pression */
 .mesure{ display:flex; align-items:center; gap:8px; margin:6px 0 2px; min-width:0; }
 .mesure b{ min-width:52px; text-align:right; font-size:.85rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
