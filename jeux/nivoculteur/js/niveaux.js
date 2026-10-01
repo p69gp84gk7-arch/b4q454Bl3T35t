@@ -47,6 +47,9 @@ const DEPARTS_COMBE = [
   { nom: 'Départ élec · gare amont', x: 83, z: -236 }
 ];
 
+// Garage des dameuses : en bas du domaine, porte tournée vers le haut de la pente
+const GARAGE_COMBE = { nom: 'Garage des dameuses', x: 64, z: 230, rayon: 13, talus: 10 };
+
 // Remontée mécanique (décor : elle ne tourne pas la nuit)
 const TELESIEGE_CLARINES = {
   nom: 'Télésiège des Clarines',
@@ -80,12 +83,28 @@ const TERRAIN_COMBE = {
     RETENUE_COMBE,
     POMPAGE_COMBE,
     { ...TELESIEGE_CLARINES.aval, rayon: 10, talus: 12 },
-    { ...TELESIEGE_CLARINES.amont, rayon: 10, talus: 12 }
+    { ...TELESIEGE_CLARINES.amont, rayon: 10, talus: 12 },
+    GARAGE_COMBE
   ],
   graine: 7,                // change la forme des petites bosses et la place des sapins
   maille: 6,                // m : taille des facettes du terrain en 3D près de la zone de jeu
   marge: 60,                // m de terrain fin (petites facettes) autour de la zone de jeu
   etendue: 1600             // m : le décor s'étend jusque-là dans chaque direction
+};
+
+// Grand domaine (carrière et bac à sable) : la combe deux fois plus large, avec un versant doux à gauche
+// (pistes vertes et bleues) et un versant raide à droite (pistes rouges et noires). Le milieu ne change presque pas.
+const TERRAIN_DOMAINE = {
+  ...TERRAIN_COMBE,
+  largeur: 620,
+  bords: 36,
+  versants: { debut: 140, transition: 110, gauche: 0.5, droite: 1.65 },   // la pente est multipliée par ce nombre
+  bosses: [
+    ...TERRAIN_COMBE.bosses,
+    { x: -230, z: -60, r: 60, h: 8 }, { x: -260, z: 150, r: 50, h: -5 }, { x: -200, z: 60, r: 40, h: 6 },
+    { x: 230, z: -140, r: 55, h: 12 }, { x: 260, z: 90, r: 45, h: -8 }, { x: 210, z: 10, r: 35, h: 9 }
+  ],
+  montagnes: { hauteur: 560, distance: 420, recul: 60 }
 };
 
 const LEVELS = [
@@ -97,6 +116,7 @@ const LEVELS = [
     terrain: TERRAIN_COMBE,
     pistes: [PISTE_CLARINES],
     pompage: POMPAGE_COMBE,
+    garage: GARAGE_COMBE,
     retenue: RETENUE_COMBE,
     retenueDepart: 0.6,                       // la retenue n'est pas pleine au départ (hauteur d'eau, 0 à 1)
     remontees: [TELESIEGE_CLARINES],
@@ -122,6 +142,7 @@ const LEVELS = [
     terrain: TERRAIN_COMBE,
     pistes: [PISTE_CLARINES],
     pompage: POMPAGE_COMBE,
+    garage: GARAGE_COMBE,
     retenue: RETENUE_COMBE,
     remontees: [TELESIEGE_CLARINES],
     departsElec: DEPARTS_COMBE,
@@ -136,6 +157,7 @@ const LEVELS = [
     terrain: TERRAIN_COMBE,
     pistes: [PISTE_CLARINES, PISTE_GENTIANES],
     pompage: POMPAGE_COMBE,
+    garage: GARAGE_COMBE,
     retenue: RETENUE_COMBE,
     remontees: [TELESIEGE_CLARINES],
     departsElec: [...DEPARTS_COMBE, { nom: 'Départ élec · Gentianes', x: -72, z: -150 }],
@@ -151,6 +173,7 @@ const LEVELS = [
     terrain: TERRAIN_COMBE,
     pistes: [PISTE_CLARINES, PISTE_GENTIANES],
     pompage: POMPAGE_COMBE,
+    garage: GARAGE_COMBE,
     retenue: RETENUE_COMBE,
     remontees: [TELESIEGE_CLARINES],
     departsElec: [...DEPARTS_COMBE, { nom: 'Départ élec · Gentianes', x: -72, z: -150 }],
@@ -177,9 +200,10 @@ const LEVELS = [
     bac: true,                                // bac à sable : tout débloqué, budget illimité, pas d'objectif
     nom: 'Bac à sable',
     resume: 'Tout est débloqué, le budget est illimité et il n\'y a pas d\'objectif. Construisez ce que vous voulez ; au poste de travail, choisissez le vent, activez les pannes, remplissez la retenue.',
-    terrain: TERRAIN_COMBE,
+    terrain: TERRAIN_DOMAINE,
     pistes: [PISTE_CLARINES, PISTE_GENTIANES],
     pompage: POMPAGE_COMBE,
+    garage: GARAGE_COMBE,
     retenue: RETENUE_COMBE,
     remontees: [TELESIEGE_CLARINES],
     departsElec: [...DEPARTS_COMBE, { nom: 'Départ élec · Gentianes', x: -72, z: -150 }],
@@ -283,9 +307,10 @@ function niveauCarriere(etape){
   const e = CARRIERE.etapes[etape], m = materielCarriere(etape);
   return {
     id: 'carriere', carriere: true, etape, numero: etape + 1, nom: e.nom, resume: e.resume,
-    terrain: TERRAIN_COMBE,
+    terrain: TERRAIN_DOMAINE,
     pistes: m.pistes.map(k => PISTES_CARRIERE[k]),
     pompage: POMPAGE_COMBE,
+    garage: GARAGE_COMBE,
     retenue: RETENUE_COMBE,
     remontees: [TELESIEGE_CLARINES],
     departsElec: DEPARTS_CARRIERE.slice(0, m.departs),
@@ -299,17 +324,17 @@ function niveauCarriere(etape){
     derniere: etape === CARRIERE.etapes.length - 1
   };
 }
-// Bac à sable : ajoute au niveau les pistes tracées et les télésièges posés par le joueur (avant de construire la 3D)
-function amenagerBac(niveau, reseau){
-  const bac = LEVELS.find(l => l.bac);
-  const base = bac._origine || (bac._origine = { pistes: bac.pistes, remontees: bac.remontees, terrain: bac.terrain });   // jamais deux fois
-  const pistes = (reseau.pistesBac || []), remontees = (reseau.remonteesBac || []);
+// Carrière et bac à sable : ajoute au niveau les pistes tracées et les télésièges posés par le joueur (avant de construire la 3D)
+function amenager(niveau, reseau){
+  const base = niveau._base || (niveau._base = { pistes: niveau.pistes, remontees: niveau.remontees, terrain: niveau.terrain });   // jamais deux fois
+  const pistes = reseau.pistesBac || [], remontees = reseau.remonteesBac || [];
   niveau.pistes = [...base.pistes, ...pistes];
   niveau.remontees = [...base.remontees, ...remontees];
   niveau.terrain = { ...base.terrain, replats: [...base.terrain.replats,
     ...remontees.flatMap(ts => [{ ...ts.aval, rayon: 10, talus: 12 }, { ...ts.amont, rayon: 10, talus: 12 }])] };
   return niveau;
 }
+const amenagerBac = amenager;
 // Trouver un niveau par son identifiant (la carrière reprend à l'étape sauvegardée)
 function trouverNiveau(id){
   if(id === 'carriere'){

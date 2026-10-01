@@ -46,7 +46,9 @@ function distanceZoneJeu(t, x, z){
 // Forme naturelle de la montagne, sans les replats ni les petites bosses
 function altitudeNaturelle(t, x, z){
   const u = borne((t.longueur / 2 - z) / t.longueur, -0.9, 1.8);   // 0 en bas de la pente, 1 en haut
-  let h = t.altBas + t.denivele * (0.85 * u + 0.15 * u * u);
+  let k = 1;                                                        // versants du grand domaine : pente plus douce ou plus raide
+  if(t.versants){ const v = t.versants; k = 1 + ((x < 0 ? v.gauche : v.droite) - 1) * lisse((Math.abs(x) - v.debut) / v.transition); }
+  let h = t.altBas + t.denivele * k * (0.85 * u + 0.15 * u * u);
   const bx = borne(x / (t.largeur / 2), -1.7, 1.7);
   h += t.bords * bx * bx;                                           // les côtés remontent
   for(const b of t.bosses) h += b.h * Math.exp(-((x - b.x) ** 2 + (z - b.z) ** 2) / (b.r * b.r));
@@ -240,7 +242,9 @@ function creerReseau(niveau){
     coups: 0,               // coups de bélier depuis le début du niveau
     options: niveau.bac ? optionsBac() : null,   // bac à sable : tout se règle (voir optionsBac)
     pannes: [],             // pannes en cours (niveau 4) : { id, type, cible, nuit, t, etat: 'active' | 'reparation', fin }
-    numeroPanne: 0
+    numeroPanne: 0,
+    dameuse: { modele: 'dm400' },   // dameuse rangée au garage
+    remonteesEnMarche: []           // noms des remontées activées
   };
 }
 // Volume d'eau de la retenue pleine (m³) et hauteur d'eau (0 à 1) pour un volume donné (cuvette en forme de bol)
@@ -530,6 +534,8 @@ function annulerAction(res){
     } else if(h.type === 'deplacement'){
       Object.assign(noeudReseau(res, h.id), h.avant);
       for(const l of h.longueurs) trancheeParCle(res, l.cle).longueur = l.avant;
+    } else if(h.type === 'dameuse'){
+      res.dameuse.modele = h.avant;
     } else if(h.type === 'depart'){
       res.noeuds = res.noeuds.filter(n => n.id !== h.id);
       res.numeroDepart--;
@@ -571,15 +577,30 @@ function optionsBac(){
 function longueurPolyligne(points){ let l = 0; for(let i = 1; i < points.length; i++) l += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]); return l; }
 function distancePolyligne(points, x, z){ let d = Infinity; for(let i = 1; i < points.length; i++) d = Math.min(d, distanceSegment(x, z, points[i - 1], points[i])); return d; }
 // Une piste tracée : dans le domaine, assez longue, sans passer sur la retenue ni sur la salle de pompage
+// Pente la plus forte d'un tracé (en %, sur 30 m) et la couleur qui va avec
+function penteMaxi(t, points){
+  const c = courbe(points, 4);
+  let maxi = 0;
+  for(let i = 0; i < c.length - 1; i++){
+    let j = i, l = 0;
+    while(j < c.length - 1 && l < 30){ l += Math.hypot(c[j + 1][0] - c[j][0], c[j + 1][1] - c[j][1]); j++; }
+    if(l < 15) break;
+    maxi = Math.max(maxi, Math.abs(altitudeNaturelle(t, c[i][0], c[i][1]) - altitudeNaturelle(t, c[j][0], c[j][1])) / l * 100);
+  }
+  return maxi;
+}
+function couleurPente(pente, s = CONFIG.couleursPistes){ return pente <= s.verte ? 'verte' : pente <= s.bleue ? 'bleue' : pente <= s.rouge ? 'rouge' : 'noire'; }
 function validerPiste(niveau, points, largeur){
-  const t = niveau.terrain, R = niveau.retenue, P = niveau.pompage;
+  const t = niveau.terrain, R = niveau.retenue, P = niveau.pompage, G = niveau.garage;
   if(points.length < 2) return { ok: false, raison: 'Touchez au moins deux points pour tracer la piste.' };
   if(points.some(([x, z]) => !dansZoneJeu(t, x, z))) return { ok: false, raison: 'La piste doit rester dans le domaine skiable.' };
   const longueur = longueurPolyligne(points);
   if(longueur < CONFIG.bac.pisteMin) return { ok: false, raison: `Une piste fait au moins ${CONFIG.bac.pisteMin} m (ici ${Math.round(longueur)} m).` };
   if(R && distancePolyligne(points, R.x, R.z) < R.cuvette.rayon + largeur / 2 + 3) return { ok: false, raison: 'La piste ne peut pas passer sur la retenue.' };
   if(P && distancePolyligne(points, P.x, P.z) < P.rayon + largeur / 2) return { ok: false, raison: 'La piste ne peut pas passer sur la salle de pompage.' };
-  return { ok: true, longueur, cout: Math.round(longueur * CONFIG.bac.prixPiste) };
+  if(G && distancePolyligne(points, G.x, G.z) < G.rayon + largeur / 2) return { ok: false, raison: 'La piste ne peut pas passer sur le garage.' };
+  const pente = penteMaxi(t, points);
+  return { ok: true, longueur, pente, couleur: couleurPente(pente), cout: Math.round(longueur * CONFIG.bac.prixPiste) };
 }
 // Un télésiège : gare aval plus bas que la gare amont, longueur raisonnable, sans survoler la retenue ni la salle de pompage
 function validerRemontee(niveau, aval, amont){
@@ -591,16 +612,17 @@ function validerRemontee(niveau, aval, amont){
   const ligne = [[aval.x, aval.z], [amont.x, amont.z]];
   if(R && distancePolyligne(ligne, R.x, R.z) < R.rayon + 4) return { ok: false, raison: 'Le télésiège ne peut pas passer au-dessus de la retenue.' };
   if(P && distancePolyligne(ligne, P.x, P.z) < P.rayon + 4) return { ok: false, raison: 'Le télésiège ne peut pas passer sur la salle de pompage.' };
+  if(niveau.garage && distancePolyligne(ligne, niveau.garage.x, niveau.garage.z) < niveau.garage.rayon + 4) return { ok: false, raison: 'Le télésiège ne peut pas passer sur le garage.' };
   return { ok: true, longueur, cout: Math.round(longueur * CONFIG.bac.prixRemontee) };
 }
 const NOMS_COULEURS = { verte: 'verte', bleue: 'bleue', rouge: 'rouge', noire: 'noire' };
-function ajouterPisteBac(niveau, res, points, couleur, largeur){
+function ajouterPisteBac(niveau, res, points, largeur){
   const v = validerPiste(niveau, points, largeur);
   if(!v.ok) return v;
   if(res.budget < v.cout) return { ok: false, raison: 'Budget insuffisant.' };
   res.pistesBac = res.pistesBac || [];
   const nom = `Piste ${res.pistesBac.length + 1}`;
-  res.pistesBac.push({ nom, couleur, largeur, points: points.map(([x, z]) => [Math.round(x), Math.round(z)]) });
+  res.pistesBac.push({ nom, couleur: v.couleur, largeur, pente: Math.round(v.pente), points: points.map(([x, z]) => [Math.round(x), Math.round(z)]) });
   res.budget -= v.cout;
   return { ...v, nom };
 }
@@ -878,13 +900,13 @@ function avancerNuit(niveau, res, regime, dt){
     if(!c.production) continue;
     const v = c.production * heures, vPiste = v * c.part;                   // production en m³/h
     res.neigeTotale += v; res.neigeNuit += v;
-    res.neigePiste += vPiste; res.pisteNuit += vPiste;
-    res.argentNuit += vPiste * CONFIG.gains.parM3Piste;
+    res.pisteNuit += vPiste;                                                // tombé sur la piste : la dameuse l'étalera le matin
     if(!c.tas){
       c.tas = res.tas.find(q => Math.hypot(q.x - c.chute.x, q.z - c.chute.z) < 6);
-      if(!c.tas){ c.tas = { x: c.chute.x, z: c.chute.z, volume: 0 }; res.tas.push(c.tas); }
+      if(!c.tas){ c.tas = { x: c.chute.x, z: c.chute.z, volume: 0, aDamer: 0 }; res.tas.push(c.tas); }
     }
     c.tas.volume += v;
+    c.tas.aDamer = (c.tas.aDamer || 0) + vPiste;
   }
   // Réservoir d'air : monte vers la pression nominale quand le compresseur tourne (moins s'il est surchargé), baisse sinon
   if(res.compresseur && regime.air){
@@ -941,9 +963,13 @@ function commanderPompe(niveau, res, i, enMarche, enProduction = true){
 // Fin de nuit : l'argent gagné s'ajoute au budget, la retenue se remplit un peu pendant la journée
 function finNuit(niveau, res){
   const gratuite = res.options && res.options.electricitePayante === false;
-  const gain = Math.round(res.argentNuit), kwh = Math.round(res.kwhNuit || 0), electricite = gratuite ? 0 : Math.round(kwh * CONFIG.electricite.prixKwh);
+  const damage = damerNeige(niveau, res);                         // le matin, la dameuse étale les tas : c'est cette neige qui se vend
+  const kwhRemontees = Math.round(kwhRemonteesJour(niveau, res));
+  const gain = Math.round(damage.m3 * CONFIG.gains.parM3Piste), kwh = Math.round(res.kwhNuit || 0) + kwhRemontees;
+  const electricite = gratuite ? 0 : Math.round(kwh * CONFIG.electricite.prixKwh);
   res.budget += gain - electricite;
-  const bilan = { nuit: res.nuit, neige: res.neigeNuit, piste: res.pisteNuit, gain, kwh, electricite, coups: res.coupsNuit || 0,
+  const bilan = { nuit: res.nuit, neige: res.neigeNuit || 0, piste: res.pisteNuit || 0, dame: damage.m3, aDamer: damage.reste, tasDames: damage.tas, capacite: damage.capacite,
+    gain, kwh, kwhRemontees, electricite, coups: res.coupsNuit || 0,
     rendement: res.potentielNuit > 0 ? res.neigeNuit / res.potentielNuit : null,
     pannes: res.pannesNuit || 0, reparations: res.reparationsNuit || 0,
     nouveaux: Object.keys(CATALOGUE).filter(k => disponible(niveau, res, k).ok && !(res.dispoAvant || []).includes(k)) };
@@ -958,6 +984,56 @@ function finNuit(niveau, res){
   Object.assign(bilan, resultatNiveau(niveau, res));
   return bilan;
 }
+// --- Dameuse ---
+// Neige tombée sur les pistes qui attend la dameuse (m³)
+function neigeADamer(res){ return res.tas.reduce((s, q) => s + (q.aDamer || 0), 0); }
+// Le matin, la dameuse étale les tas sur la piste, jusqu'à sa capacité du jour (les plus gros tas d'abord).
+// Ce qui est étalé compte pour les pistes et se vend ; le reste attend le lendemain.
+function damerNeige(niveau, res){
+  const m = DAMEUSES[(res.dameuse && res.dameuse.modele) || 'dm400'], capacite = m.capacite;
+  let reste = capacite, total = 0;
+  const tas = [];
+  for(const q of [...res.tas].filter(q => q.aDamer > 0.01).sort((a, b) => b.aDamer - a.aDamer)){
+    if(reste <= 0) break;
+    const v = Math.min(reste, q.aDamer);
+    q.aDamer -= v; q.volume = Math.max(0, q.volume - v); reste -= v; total += v;
+    if(q.aDamer < 0.01){ q.aDamer = 0; q.dame = true; }
+    tas.push({ x: q.x, z: q.z });
+  }
+  res.neigePiste += total;
+  return { m3: total, reste: neigeADamer(res), capacite, tas };
+}
+// Changer de dameuse (l'ancienne est reprise) : on paie la différence
+function devisDameuse(res, modele){
+  const actuel = (res.dameuse && res.dameuse.modele) || 'dm400', m = DAMEUSES[modele];
+  if(!m) return { ok: false, raison: 'Ce modèle n\'existe pas.' };
+  if(actuel === modele) return { ok: false, raison: 'C\'est déjà cette dameuse.' };
+  const reprise = Math.round(DAMEUSES[actuel].prix * CONFIG.dameuse.reprise), cout = m.prix - reprise;
+  return { ok: res.budget >= cout, raison: res.budget >= cout ? null : 'Budget insuffisant.', cout, reprise };
+}
+function changerDameuse(res, modele, lot = ++res.lot){
+  const d = devisDameuse(res, modele);
+  if(!d.ok) return d;
+  res.historique.push({ lot, type: 'dameuse', avant: res.dameuse.modele, cout: d.cout });
+  res.dameuse.modele = modele;
+  res.budget -= d.cout;
+  return d;
+}
+
+// --- Remontées mécaniques ---
+function longueurRemontee(ts){ return Math.hypot(ts.amont.x - ts.aval.x, ts.amont.z - ts.aval.z); }
+function puissanceRemontee(ts){ return Math.round(longueurRemontee(ts) * CONFIG.remontees.kwParMetre); }
+function remonteeEnMarche(res, ts){ return (res.remonteesEnMarche || []).includes(ts.nom); }
+function basculerRemontee(res, nom, enMarche){
+  const l = new Set(res.remonteesEnMarche || []);
+  if(enMarche) l.add(nom); else l.delete(nom);
+  res.remonteesEnMarche = [...l];
+}
+// Électricité des remontées qui tournent pendant la journée (kWh)
+function kwhRemonteesJour(niveau, res){
+  return (niveau.remontees || []).filter(ts => remonteeEnMarche(res, ts)).reduce((s, ts) => s + puissanceRemontee(ts) * CONFIG.remontees.heuresJour, 0);
+}
+
 // Remplissage de la retenue pendant la journée : le volume commandé (sans dépasser la place libre ni le budget), payé au m³
 function remplirRetenue(niveau, res){
   const R = res.retenue;
@@ -1409,7 +1485,7 @@ function testsSimulation(){
 
   // Bac à sable
   const bac = LEVELS.find(l => l.bac), rb = creerReseau(bac);
-  const pisteOk = ajouterPisteBac(bac, rb, [[120, -200], [110, -100], [120, 0]], 'verte', 30);
+  const pisteOk = ajouterPisteBac(bac, rb, [[120, -200], [110, -100], [120, 0]], 30);
   verifier('Bac à sable : on trace une piste dans le domaine', pisteOk.ok && rb.pistesBac.length === 1, pisteOk.raison || `${Math.round(pisteOk.longueur)} m`);
   verifier('Bac à sable : une piste ne passe pas sur la retenue', !validerPiste(bac, [[-140, 100], [-112, 146], [-80, 200]], 30).ok);
   verifier('Bac à sable : une piste fait une longueur minimale', !validerPiste(bac, [[0, 0], [0, 30]], 30).ok);
@@ -1419,7 +1495,13 @@ function testsSimulation(){
   const nivAmenage = amenagerBac({ ...bac }, rb);
   verifier('Bac à sable : la piste tracée compte pour la neige, le télésiège a ses gares aplanies',
     nivAmenage.pistes.length === bac.pistes.length + 1 && partSurPiste(nivAmenage.pistes, 115, -100, 5) > 0.9 && partSurPiste(bac.pistes, 115, -100, 5) === 0
-    && nivAmenage.terrain.replats.length === bac.terrain.replats.length + 2 && nivAmenage.remontees.length === 2);
+    && nivAmenage.terrain.replats.length === (bac._base || bac).terrain.replats.length + 2 && nivAmenage.remontees.length === 2);
+  const nd = LEVELS.find(l => l.bac), td = nd.terrain;
+  const pDouce = penteMaxi(td, [[-250, -200], [-250, 200]]), pRaide = penteMaxi(td, [[260, -200], [260, 200]]);
+  verifier('Grand domaine : versant doux à gauche, raide à droite ; couleurs selon la pente',
+    td.largeur > 2 * TERRAIN_COMBE.largeur * 0.9 && pDouce < pRaide && couleurPente(pDouce) !== 'noire' && ['rouge', 'noire'].includes(couleurPente(pRaide))
+    && couleurPente(penteMaxi(TERRAIN_COMBE, PISTE_CLARINES.points)) === 'bleue' && couleurPente(penteMaxi(TERRAIN_COMBE, PISTE_GENTIANES.points)) === 'rouge',
+    `gauche ${Math.round(pDouce)} % (${couleurPente(pDouce)}), droite ${Math.round(pRaide)} % (${couleurPente(pRaide)})`);
   verifier('Bac à sable : tout est débloqué, pas d\'objectif', Object.keys(CATALOGUE).every(k => disponible(bac, rb, k).ok) && !resultatNiveau(bac, rb).reussi && !resultatNiveau(bac, rb).rate);
   rb.options.vent = { force: 12, direction: 45 };
   verifier('Bac à sable : le vent choisi est celui de la nuit', debutNuit(bac, rb).vent.force === 12 && !rb.pannesPrevues.length);
@@ -1430,6 +1512,21 @@ function testsSimulation(){
   rb.options.eauPayante = false; rb.options.electricitePayante = false; rb.retenue.volume = 0; rb.kwhNuit = 500;
   const bb = finNuit(bac, rb);
   verifier('Bac à sable : eau et électricité gratuites si on le choisit', bb.remplissage.m3 > 0 && !bb.remplissage.cout && bb.kwh === 500 && !bb.electricite);
+
+  // Dameuse et remontées
+  const nd2 = LEVELS.find(l => l.id === 'reseau'), rd = creerReseau(nd2);
+  rd.tas = [{ x: 0, z: 0, volume: 3000, aDamer: 2500 }, { x: 50, z: 0, volume: 2000, aDamer: 1800 }];
+  const bilanD = finNuit(nd2, rd);
+  verifier('Dameuse DM 400 : 3 500 m³ étalés par jour, payés 20 €/m³, le reste attend', bilanD.dame === 3500 && Math.round(bilanD.aDamer) === 800 && rd.neigePiste === 3500 && bilanD.gain === 70000,
+    `${bilanD.dame} m³ damés, ${Math.round(bilanD.aDamer)} m³ en attente`);
+  const chD = changerDameuse(rd, 'dm600');
+  verifier('Passer à la DM 600 : très cher, l\'ancienne est reprise', chD.ok && chD.cout === DAMEUSES.dm600.prix - DAMEUSES.dm400.prix * CONFIG.dameuse.reprise && DAMEUSES.dm600.capacite > DAMEUSES.dm400.capacite);
+  annulerAction(rd);
+  verifier('Annuler le changement de dameuse', rd.dameuse.modele === 'dm400');
+  basculerRemontee(rd, TELESIEGE_CLARINES.nom, true);
+  verifier('Télésiège en marche : il consomme de l\'électricité la journée', kwhRemonteesJour(nd2, rd) === puissanceRemontee(TELESIEGE_CLARINES) * CONFIG.remontees.heuresJour && finNuit(nd2, rd).kwhRemontees > 0);
+  basculerRemontee(rd, TELESIEGE_CLARINES.nom, false);
+  verifier('Télésiège arrêté : rien à payer', kwhRemonteesJour(nd2, rd) === 0);
 
   const r1 = alea(42), r2 = alea(42);
   verifier('Hasard : la même graine redonne les mêmes nombres', [1, 2, 3].every(() => r1() === r2()));

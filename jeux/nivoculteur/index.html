@@ -91,6 +91,9 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .outil.actif[data-outil="piste"]{ background:#2E9E5B; border-color:#2E9E5B; }
 .outil.actif[data-outil="remontee"]{ background:#7A5638; border-color:#7A5638; }
 #choixTrace .bouton.petit{ padding:5px 10px; font-size:.82rem; }
+#choixTrace .pastille-couleur{ padding:3px 9px; border-radius:999px; font-weight:700; font-size:.8rem; color:#fff; white-space:nowrap; }
+#choixTrace .pastille-couleur.verte{ background:#2E9E5B; } #choixTrace .pastille-couleur.bleue{ background:#2F6FDE; }
+#choixTrace .pastille-couleur.rouge{ background:#D7263D; } #choixTrace .pastille-couleur.noire{ background:#1A1A1A; border:1px solid #888; }
 #choixTrace .bouton.vert{ background:var(--ok); border-color:var(--ok); }
 #choixTrace .bouton:disabled{ opacity:.45; }
 .outil.actif[data-outil="air"]{ background:#E8EDF5; border-color:#E8EDF5; color:#1C1F25; }
@@ -120,6 +123,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 @keyframes ficheGauche{ from{ transform:translateX(-110%); } to{ transform:none; } }
 @keyframes ficheBas{ from{ transform:translateY(100%); } to{ transform:none; } }
 .devis.fiche .choix select{ flex:1 1 140px; min-width:0; max-width:100%; }
+.devis .aide{ margin:4px 0 0; font-size:.8rem; line-height:1.3; color:var(--doux); }
 .devis .ligne.panne{ justify-content:space-between; padding:6px 9px; border-radius:8px; background:rgba(255,210,58,.12); border-left:4px solid #FFD23A; }
 .devis .reglage-fiche input{ flex:1 1 140px; min-width:0; height:28px; accent-color:#E9B949; }
 .devis .mesure{ flex:1 1 auto; }

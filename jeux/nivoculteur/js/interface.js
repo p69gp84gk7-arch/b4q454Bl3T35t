@@ -179,7 +179,7 @@ function afficherPoste(d, agir){
       </section>${air}
       <section class="bloc"><h3>${d.nuit ? `Nuit ${d.nuit.numero} en cours` : `Prochaine nuit : n° ${d.numero}`}</h3>
         <div class="ligne">${d.nuit ? pastille(`${d.nuit.restant} s restantes`) : pastille('Jour : construction')}${pastille(`Vent ${d.vent.force} km/h`)}</div>
-        ${d.nuit ? `<div class="ligne">${pastille(`${nombreFr(d.nuit.neige)} m³ sur la piste`)}${pastille(`+${euros(d.nuit.argent)}`, 'vert')}</div>` : ''}
+        ${d.nuit ? `<div class="ligne">${pastille(`${nombreFr(d.nuit.neige)} m³ tombés sur la piste`)}${pastille('à damer demain matin')}</div>` : ''}
         ${d.electricite ? `<div class="ligne">${pastille(`Électricité ${nombreFr(d.electricite.kwh)} kWh`)}${pastille(`−${euros(d.electricite.euros)}`, 'orange')}</div>` : ''}
         <div class="ligne">${pastille(`Retenue ${d.retenue === null ? '—' : Math.round(d.retenue * 100) + ' %'}`)}${pastille(d.objectif ? `Objectif ${nombreFr(d.total)} / ${nombreFr(d.objectif)} m³` : `${nombreFr(d.total)} m³ sur les pistes`)}</div>
         ${d.recette ? `<div class="ligne">${pastille(`Recettes ${euros(d.recette.fait)} / ${euros(d.recette.objectif)}`, d.recette.fait >= d.recette.objectif ? 'vert' : '')}</div>` : ''}
@@ -189,6 +189,12 @@ function afficherPoste(d, agir){
         <div class="ligne">${d.nuit ? `<button class="bouton petit" type="button" data-action="accelerer">${d.accelere ? 'Vitesse normale' : `Accélérer ×${CONFIG.nuit.accelere}`}</button>`
           : '<button class="bouton vert" type="button" data-action="lancerNuit">Lancer la nuit</button>'}</div>
       </section>
+      ${d.damage || d.remontees.length ? `<section class="bloc"><h3>Dameuse et remontées</h3>
+        ${d.damage ? `<div class="ligne">${pastille(d.damage.nom)}${pastille(`${nombreFr(d.damage.capacite)} m³ par jour`)}</div>
+        <div class="ligne">${pastille(`${nombreFr(d.damage.aDamer)} m³ à damer`, d.damage.aDamer > d.damage.capacite ? 'orange' : '')}<button class="bouton petit" type="button" data-action="garage">Garage</button></div>` : ''}
+        ${d.remontees.map(r => `<div class="pompe"><span class="led" style="background:${r.enMarche ? LED.production : LED.arret}"></span><b>${echapper(r.nom)}</b>${pastille(`${nombreFr(r.kw)} kW`)}
+          <button class="bouton petit" type="button" data-action="remontee" data-valeur="${r.i}">${r.enMarche ? 'Arrêter' : 'Mettre en marche'}</button></div>`).join('')}
+      </section>` : ''}
       <section class="bloc"><h3>Alarmes${d.coupsMax !== null ? ` · coups de bélier ${d.coups} / ${d.coupsMax}` : ''}</h3>
         ${d.alarmes.length ? d.alarmes.map(a => `<p class="alarme ${a.niveau}">${echapper(a.texte)}</p>`).join('') : '<p class="vide">Aucune alarme.</p>'}
       </section>

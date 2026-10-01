@@ -11,7 +11,7 @@ Avancer étape par étape : proposer un plan court, attendre la validation, puis
 
 Enneiger les pistes d'une station avant la date d'ouverture, puis tenir la saison, en construisant et en faisant fonctionner un réseau de neige de culture, avec un budget limité (esprit « jeu de construction de ponts »).
 
-Boucle : **construire** le jour (regards, canons, conduites d'eau, câbles) → **produire** la nuit (pression, eau, tas de neige) → **gagner** (la neige tombée sur la piste rapporte) → **agrandir / réparer**.
+Boucle : **construire** le jour (regards, canons, conduites d'eau, câbles) → **produire** la nuit (pression, eau, tas de neige) → **damer** le matin (la dameuse étale les tas sur les pistes) → **gagner** (seule la neige damée sur les pistes rapporte) → **agrandir / réparer**.
 
 ## Règles techniques
 
@@ -132,7 +132,7 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
 - Poste de travail : blocs à gauche, **liste des canons dans une colonne à droite** (en dessous sur téléphone) avec un résumé « bonne pression / réduite ou haute / hors limites ». Boutons **Lancer la nuit** et Accélérer dans le bloc de la nuit (le bouton de la barre du bas reste).
 - Couleurs d'état des canons : **vert = en marche** (même production réduite), **rouge = à l'arrêt**, **jaune = en défaut** (pression, air). Petit point de couleur au-dessus de chaque enneigeur (`creerPointEtat`), même code pour le voyant 3D et les voyants du poste. La bulle eau / électricité / air est **sous** l'enneigeur.
 - Noms des bâtiments (`creerEtiquette(nom, couleur, carre)`) : de loin (plus de `CONFIG.graphismes.distanceEtiquettes` = 170 m), un **petit carré** de couleur : bleu = salle de pompage, jaune = départ électrique, blanc = compresseur ; de près, le nom (`majEtiquettes`).
-- **Dameuse** (`creerDameuse`) : quand l'objectif du niveau est atteint, une dameuse par piste fait des allers-retours (deux passes décalées), phares et gyrophare allumés ; les tas de neige sur la piste s'étalent à son passage (`tas.dame`). `CONFIG.dameuse.vitesse`.
+- Dameuse : voir « Grand domaine, garage, dameuses et remontées » plus bas.
 
 ## Pannes et réparations (niveau 4, étape 7)
 
@@ -176,11 +176,20 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
 - Bouton **Options** (⚙ sur téléphone, seulement dans le bac à sable) : panneau `afficherOptions` ; tout est dans `res.options` (`optionsBac()`) :
   argent illimité (budget 1e9 affiché « Illimité ») ou 100 k€ / 300 k€ / 1 M€ (le budget est remis à ce montant) ; vent au hasard ou imposé (force, direction ; `ventPrevu`) ; pannes oui / non, fréquence rare / normale / forte (`CONFIG.pannes.frequences`) et types cochés un par un ; remplissage de la retenue payant ou gratuit ; électricité payante ou gratuite ; remplir / vider la retenue. Les changements s'appliquent tout de suite, même la nuit.
 
-## Bac à sable : tracer des pistes et poser des télésièges (demande de l'utilisateur : bac à sable seulement)
+## Grand domaine, garage, dameuses et remontées (choix validés par l'utilisateur)
 
-- Outils **Piste** et **Remontée** dans la barre (cachés hors du bac à sable). Piste : on touche des points, on choisit la couleur (verte, bleue, rouge, noire) et la largeur (20, 30, 40 m), puis « Terminer la piste ». Remontée : gare de départ en bas, puis gare d'arrivée en haut, puis « Construire le télésiège ». Aperçu en couleur pendant le tracé (`dessinerTrace`, panneau `#choixTrace`).
-- Simulation : `validerPiste` (dans le domaine, au moins `CONFIG.bac.pisteMin` = 80 m, pas sur la retenue ni la salle de pompage), `validerRemontee` (120 à 600 m, arrivée plus haute d'au moins 15 m, pas au-dessus de la retenue ni de la salle), `ajouterPisteBac`, `ajouterRemonteeBac` (payants seulement si l'argent n'est pas illimité : `CONFIG.bac.prixPiste` 250 €/m, `prixRemontee` 2 500 €/m). Enregistrés dans `reseau.pistesBac` et `reseau.remonteesBac`.
-- `amenagerBac(niveau, reseau)` (niveaux.js), appelé par demarrage.js **avant** de construire la 3D : ajoute les pistes (neige damée, jalons, sapins écartés, et la neige tombée dessus compte), les télésièges et les replats de leurs gares. Après chaque tracé ou suppression, la partie est enregistrée et la page rechargée (`rechargerBac`, message affiché au retour via `reseau.messageApres`).
+- **Grand domaine** (`TERRAIN_DOMAINE`, niveaux.js) pour la carrière et le bac à sable ; les tutoriels gardent la petite combe (`TERRAIN_COMBE`). 620 m de large au lieu de 300 : `terrain.versants` multiplie la pente sur les côtés (gauche × 0,5 : pistes vertes et bleues ; droite × 1,65 : rouges et noires), le milieu ne change presque pas (`altitudeNaturelle`). Bosses en plus sur les côtés, sapins en proportion.
+- **Couleur des pistes selon la pente** : `penteMaxi` (pente la plus forte sur 30 m le long du tracé) et `couleurPente` avec `CONFIG.couleursPistes` (verte ≤ 25 %, bleue ≤ 42 %, rouge ≤ 55 %, noire au-delà). Les Clarines (41 %) sortent bleues, les Gentianes (46 %) rouges. Pendant le tracé, le panneau montre la couleur et la pente.
+- **La neige se paie damée** : la nuit, la neige tombée sur une piste s'ajoute au tas (`tas.aDamer`) mais ne compte pas encore. À la fin de la nuit, `damerNeige` étale les tas (les plus gros d'abord) jusqu'à la capacité de la dameuse ; seule cette neige compte pour `neigePiste` (objectifs, déblocages) et rapporte 20 €/m³. Le reste attend le lendemain. Bilan : neige tombée, damée, encore à damer.
+- **Garage des dameuses** (`GARAGE_COMBE`, en bas à droite de la piste bleue, sur un replat ; `creerGarage` : hangar, deux portes sectionnelles dont une s'ouvre, toit à deux pans enneigé). On part avec une **DM 400** (3 500 m³ par jour) ; la **DM 600** (7 000 m³ par jour) coûte 480 000 €, l'ancienne reprise 25 % (`DAMEUSES` dans config.js, `devisDameuse`, `changerDameuse`, annulable). Toucher le garage ouvre sa fiche ; bloc « Dameuse et remontées » au poste.
+- **Dameuse 3D** (`creerDameuse(modele)`, inspirée des grandes dameuses à lame avant et fraise arrière) : chenilles à crampons, cabine panoramique, lame 12 positions à ailes, fraise sous capot rouge et peigne (finisseur), rampe de phares, gyrophare, feux arrière ; deux tailles. Le faisceau des phares part du véhicule vers l'avant (il était à l'envers). Le matin, elle **sort du garage**, fait une tournée des pistes qui ont des tas (deux passes par piste), les tas s'étalent à son passage, puis elle **rentre en marche arrière** et la porte se ferme (`commencerTournee`, `avancerTournee`, `garer`, `CONFIG.dameuse.vitesse` 30 m/s). La nuit, elle reste au garage.
+- **Remontées** : toucher un télésiège ouvre sa fiche (longueur, puissance, coût par jour) avec « Mettre en marche / Arrêter » ; aussi au poste. En marche, les sièges défilent (`creerTelesiege` → `userData.animer`) et il consomme `CONFIG.remontees.kwParMetre` × longueur pendant `heuresJour` h, payé avec l'électricité de la nuit (`kwhRemonteesJour`). Pas encore de recettes (les clients viendront plus tard). `reseau.remonteesEnMarche`.
+
+## Tracer des pistes et poser des télésièges (carrière et bac à sable)
+
+- Outils **Piste** et **Remontée** dans la barre (carrière et bac à sable, cachés dans les tutoriels). Piste : on touche des points, on choisit la largeur (20, 30, 40 m) ; la couleur vient de la pente ; puis « Terminer la piste ». Remontée : gare de départ en bas, puis gare d'arrivée en haut, puis « Construire le télésiège ». Aperçu en couleur pendant le tracé (`dessinerTrace`, panneau `#choixTrace`).
+- Simulation : `validerPiste` (dans le domaine, au moins `CONFIG.bac.pisteMin` = 80 m, pas sur la retenue ni la salle de pompage), `validerRemontee` (120 à 600 m, arrivée plus haute d'au moins 15 m, pas au-dessus de la retenue ni de la salle), `ajouterPisteBac`, `ajouterRemonteeBac` (dans le bac à sable, payants seulement si l'argent n'est pas illimité : `CONFIG.bac.prixPiste` 250 €/m, `prixRemontee` 2 500 €/m). Enregistrés dans `reseau.pistesBac` et `reseau.remonteesBac`.
+- `amenager(niveau, reseau)` (niveaux.js, ancien `amenagerBac`), appelé par demarrage.js pour la carrière et le bac à sable **avant** de construire la 3D : ajoute les pistes (neige damée, jalons, sapins écartés, et la neige tombée dessus compte), les télésièges et les replats de leurs gares. Après chaque tracé ou suppression, la partie est enregistrée et la page rechargée (`rechargerBac`, message affiché au retour via `reseau.messageApres`).
 - Options du bac à sable : section « Pistes et remontées » avec la liste et « Supprimer ». Les télésièges sont du décor (ils ne tournent pas la nuit).
 
 ## Air comprimé et perches (niveau 3, étape 6)
@@ -214,6 +223,7 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
 - [x] **Étape 2 — Niveau 1** : salle de pompage jouable (programme du chef d'équipe, pompes et vanne à la main, courbe de pompe, zone verte, coup de bélier, rendement, réussite / échec).
 - [x] **Étape 5 — Menus et niveaux** : menu des niveaux, sauvegarde de la partie et de la progression, reprise, recommencer, statut sur l'accueil DesDés. Débits passés en m³/h. 74 vérifications.
 - [x] **Étape 6 — Perches, air comprimé, compresseur** (niveau 3) : outil « Air », compresseur sur le replat de la salle de pompage, perches jouables, réservoir d'air, bloc « Air comprimé » au poste, électricité facturée. 84 vérifications.
+- [x] **Grand domaine** : zone élargie (versants doux et raide), couleur des pistes selon la pente, tracé en carrière, garage et dameuses (neige payée au damage), télésièges activables. 136 vérifications.
 - [x] **Étape 7 — Pannes et réparations** (niveau 4) : fuites, moteurs, buses gelées, disjoncteurs, pompes ; repères en 3D, bloc « Pannes » au poste, réparation par l'équipe. 97 vérifications.
 
 ### Idées à garder en tête
