@@ -213,7 +213,7 @@ function demarrer(){
   const COUL_OUTIL = { eau: COULEURS.reseauEau, cable: COULEURS.reseauElec, air: COULEURS.reseauAir };
   const NOMS_ZONES = { arret: 'pas assez de pression : pas de neige', faible: 'production réduite', correcte: 'bonne pression', haute: 'pression haute, à surveiller', surpression: 'surpression : le canon se met en sécurité' };
   const liberer = o => o.traverse(m => { if(m.geometry && m.geometry !== _geoTas) m.geometry.dispose(); });
-  const ventActuel = () => nuit ? nuit.regime.vent : ventDeLaNuit(niveau, reseau.nuit);
+  const ventActuel = () => nuit ? nuit.regime.vent : ventPrevu(niveau, reseau);
   // Voyant du canon et point de couleur au-dessus : vert en marche, rouge à l'arrêt, jaune en défaut
   const marquer = (o, etat) => { etatCanon(o.userData.canon, etat); o.userData.point.material.color.set(COULEURS.voyants[etat]); };
   const attendAir = c => !c.arrete && c.pressionAir !== null && facteurAir(c.pressionAir) === 0;   // perche sans assez d'air
@@ -285,7 +285,7 @@ function demarrer(){
     return { pts, cumul, longueur: cumul[cumul.length - 1] };
   }
   function majDameuses(){
-    const atteint = neigeObjectif() >= niveau.objectif.m3;
+    const atteint = !!niveau.objectif.m3 && neigeObjectif() >= niveau.objectif.m3;
     if(atteint && !dameuses.length){
       dameuses = niveau.pistes.map((piste, i) => {
         const g = creerDameuse(), tr = trajetDameuse(piste);
@@ -325,7 +325,7 @@ function demarrer(){
 
   function majInfos(){
     const R = niveau.retenue;
-    majHud({ budget: reseau.budget, nuit: nuit ? `${reseau.nuit} · ${Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps))} s` : `n° ${reseau.nuit}`,
+    majHud({ budget: niveau.bac ? 'Illimité' : reseau.budget, nuit: nuit ? `${reseau.nuit} · ${Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps))} s` : `n° ${reseau.nuit}`,
       neige: Math.round(neigeObjectif()), objectif: niveau.objectif.m3, vent: ventActuel(),
       retenue: reseau.retenue ? reseau.retenue.volume / volumeRetenue(R) : null });
     if(reseau.retenue) retenue.userData.remplir(hauteurRetenue(R, reseau.retenue.volume));
@@ -620,7 +620,7 @@ function demarrer(){
       message('Démarrez une pompe vanne fermée, puis ouvrez la vanne doucement. Gardez le départ dans le vert.', 'attention', 8000);
     }
     if(nuit.regime.sec) message('Retenue vide : les pompes sont à sec !', 'alarme', 6000);
-    if(niveau.pannes && reseau.pannes.length) message(`${reseau.pannes.length} panne(s) pas encore réparée(s) : voyez le poste de travail.`, 'attention', 6000);
+    if(avecPannes() && reseau.pannes.length) message(`${reseau.pannes.length} panne(s) pas encore réparée(s) : voyez le poste de travail.`, 'attention', 6000);
     majInfos();
   }
   // Applique le régime de la nuit : voyants des canons, jets de neige, salle de pompage
@@ -691,6 +691,7 @@ function demarrer(){
       if(a.fuite) animerFuite(a.fuite, dt, temps);
     }
   }
+  const avecPannes = () => !!niveau.pannes || !!(reseau.options && reseau.options.pannes) || !!(reseau.pannes || []).length;
   const nomPanne = p => `${CONFIG.pannes.types[p.type].nom} · ${libellePanne(reseau, p)}`;
   function reparer(id){
     const p = (reseau.pannes || []).find(q => q.id === id);
@@ -731,15 +732,15 @@ function demarrer(){
       ecrireSauvegarde('nivo-progression', progression);
     }
     sauver();
-    const R = niveau.retenue, o = niveau.objectif, suivant = LEVELS[LEVELS.indexOf(niveau) + 1];
+    const R = niveau.retenue, o = niveau.objectif, suivant = LEVELS.slice(LEVELS.indexOf(niveau) + 1).find(l => !l.bac);
     const lignes = [
       `Neige produite : ${nombreFr(bilan.neige)} m³, dont ${nombreFr(bilan.piste)} m³ sur la piste`,
       bilan.kwh ? `Électricité : ${nombreFr(bilan.kwh)} kWh, soit ${euros(bilan.electricite)} retirés du gain` : null,
       bilan.rendement !== null ? `Rendement : ${Math.round(bilan.rendement * 100)} % de ce que les canons ouverts pouvaient produire` : null,
-      `${o.type === 'production' ? 'Neige produite' : 'Sur la piste'} depuis le début : ${nombreFr(neigeObjectif())} / ${nombreFr(o.m3)} m³${o.nuits ? ` (nuit ${bilan.nuit} sur ${o.nuits})` : ''}`,
+      `${o.type === 'production' ? 'Neige produite' : 'Sur la piste'} depuis le début : ${nombreFr(neigeObjectif())}${o.m3 ? ` / ${nombreFr(o.m3)}` : ''} m³${o.nuits ? ` (nuit ${bilan.nuit} sur ${o.nuits})` : ''}`,
       o.coupsMax !== undefined ? `Coups de bélier : ${bilan.coups} cette nuit, ${reseau.coups} au total (${o.coupsMax} au plus)` : (bilan.coups ? `Coups de bélier : ${bilan.coups} (réparations : ${euros(bilan.coups * CONFIG.belier.reparation)})` : null),
-      niveau.pannes ? `Pannes : ${bilan.pannes} cette nuit, réparations ${euros(bilan.reparations)}${reseau.pannes.length ? ` · encore ${reseau.pannes.length} à réparer (poste de travail)` : ''}` : null,
-      reseau.retenue ? `Retenue : ${Math.round(reseau.retenue.volume / volumeRetenue(R) * 100)} % après le remplissage de la journée` : null
+      avecPannes() ? `Pannes : ${bilan.pannes} cette nuit, réparations ${euros(bilan.reparations)}${reseau.pannes.length ? ` · encore ${reseau.pannes.length} à réparer (poste de travail)` : ''}` : null,
+      reseau.retenue ? `Retenue : ${Math.round(reseau.retenue.volume / volumeRetenue(R) * 100)} % après le remplissage de la journée (${nombreFr(bilan.remplissage.m3)} m³ d'eau, ${euros(bilan.remplissage.cout)})` : null
     ].filter(Boolean);
     let titre = `Fin de la nuit ${bilan.nuit}`, boutons = '<button class="bouton" type="button" id="bilanOk">Continuer</button>';
     if(casse) titre = 'Casse !';
@@ -753,7 +754,8 @@ function demarrer(){
       boutons = `${suivant ? `<button class="bouton" type="button" id="bilanSuivant">Niveau suivant</button>` : ''}<button class="bouton" type="button" id="bilanOk">Continuer ici</button>`;
     }
     fermerDevis();
-    const d = afficherPanneau(`<div class="tete"><span>${echapper(titre)}</span><span>${bilan.gain - bilan.electricite >= 0 ? '+' : '−'}${euros(Math.abs(bilan.gain - bilan.electricite))}</span></div>
+    const net = bilan.gain - bilan.electricite - bilan.remplissage.cout;
+    const d = afficherPanneau(`<div class="tete"><span>${echapper(titre)}</span><span>${net >= 0 ? '+' : '−'}${euros(Math.abs(net))}</span></div>
       <ul>${lignes.map(l => `<li>${echapper(l)}</li>`).join('')}
       ${bilan.nouveaux.map(k => `<li><b>Nouveau : ${echapper(CATALOGUE[k].nom)} disponible !</b></li>`).join('')}</ul>
       <div class="actions">${boutons}</div>`);
@@ -807,7 +809,9 @@ function demarrer(){
         pilotable: e.pret && !niveau.programme };                    // au niveau 1, c'est le chef d'équipe qui ouvre les canons
     });
     return {
-      numero: reseau.nuit, vent: ventActuel(), accelere: !!nuit && nuit.vitesse > 1, total: neigeObjectif(), objectif: niveau.objectif.m3,
+      numero: reseau.nuit, vent: ventActuel(), accelere: !!nuit && nuit.vitesse > 1, total: neigeObjectif(), objectif: niveau.objectif.m3 || null,
+      remplissage: reseau.retenue ? { m3: reseau.retenue.remplissage ?? CONFIG.retenue.remplissageJour, choix: CONFIG.retenue.choix, prix: CONFIG.retenue.prixM3 } : null,
+      bac: niveau.bac ? { vent: ventActuel(), impose: !!reseau.options.vent, pannes: !!reseau.options.pannes } : null,
       coups: reseau.coups || 0, coupsMax: niveau.objectif.coupsMax ?? null,
       retenue: reseau.retenue ? reseau.retenue.volume / volumeRetenue(R) : null,
       nuit: nuit && { numero: reseau.nuit, restant: Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps)), neige: reseau.pisteNuit, argent: Math.round(reseau.argentNuit) },
@@ -816,7 +820,7 @@ function demarrer(){
         defaut: [0, 1, 2].map(i => (reseau.pannes || []).some(p => p.type === 'pompe' && +p.cible === i)),
         pression: g ? g.pressionDepart : 0, debit: g ? g.debit : 0, capacite: g ? g.capacite : 0, modeImpose: !!niveau.programme,
         dansLeVert: !!g && g.pressionDepart >= CONFIG.pompage.zoneVerte[0] && g.pressionDepart <= CONFIG.pompage.zoneVerte[1] },
-      pannes: niveau.pannes ? (reseau.pannes || []).map(p => ({ id: p.id, nom: CONFIG.pannes.types[p.type].nom, ou: libellePanne(reseau, p),
+      pannes: avecPannes() ? (reseau.pannes || []).map(p => ({ id: p.id, nom: CONFIG.pannes.types[p.type].nom, ou: libellePanne(reseau, p),
         reparation: p.etat === 'reparation', reste: p.etat === 'reparation' && nuit ? Math.max(0, Math.ceil(p.fin - nuit.temps)) : null,
         cout: CONFIG.pannes.types[p.type].cout, rearmer: p.type === 'disjoncteur' })) : null,
       air: reseau.compresseur && {
@@ -840,6 +844,20 @@ function demarrer(){
     if(action === 'fermer') return fermerLePoste();
     if(action === 'lancerNuit'){ lancerNuit(); return rafraichirPoste(); }
     if(action === 'reparer') return reparer(valeur);
+    if(action === 'remplissage'){ reseau.retenue.remplissage = +valeur; planifierSauvegarde(); return rafraichirPoste(); }
+    if(niveau.bac && action.startsWith('bac')){
+      const o = reseau.options, v = ventActuel();
+      if(action === 'bacVentForce') o.vent = { force: +valeur, direction: v.direction };
+      if(action === 'bacVentDirection') o.vent = { force: v.force, direction: +valeur };
+      if(action === 'bacVentHasard') o.vent = null;
+      if(action === 'bacPannes'){ o.pannes = valeur === '1'; if(nuit && o.pannes) planifierPannes(niveau, reseau).forEach(e => { e.t = nuit.temps + 2 + (e.t - CONFIG.pannes.moment[0]) * 0.5; }); if(!o.pannes) reseau.pannesPrevues = []; }
+      if(action === 'bacRemplir' && reseau.retenue) reseau.retenue.volume = volumeRetenue(niveau.retenue);
+      if(nuit && action.startsWith('bacVent')){ nuit.regime = regimeNuit(niveau, reseau, o.vent || ventDeLaNuit(niveau, reseau.nuit)); appliquerRegime(); }
+      manche.userData.orienter(ventActuel());
+      majInfos(); planifierSauvegarde();
+      if(fiche) dessinerFiche();
+      return rafraichirPoste();
+    }
     if(action === 'voirPanne'){
       const p = (reseau.pannes || []).find(q => q.id === valeur), pos = p && positionPanne(reseau, p);
       if(!pos) return;
@@ -880,11 +898,11 @@ function demarrer(){
   function cartesMenu(){
     return LEVELS.map((l, i) => {
       const pr = progression.niveaux[l.id] || {}, partie = lireSauvegarde(`nivo-partie-${l.id}`);
-      const ouvert = CONFIG.progression.toutOuvert || i === 0 || !!(progression.niveaux[LEVELS[i - 1].id] || {}).reussi;
-      let etat = pr.reussi ? 'Réussi ✓' : 'Pas encore réussi';
+      const ouvert = CONFIG.progression.toutOuvert || i === 0 || !!l.bac || !!(progression.niveaux[LEVELS[i - 1].id] || {}).reussi;
+      let etat = l.bac ? 'Pour s\'entraîner et essayer' : pr.reussi ? 'Réussi ✓' : 'Pas encore réussi';
       if(partie && partie.reseau){
         const fait = l.objectif.type === 'production' ? partie.reseau.neigeTotale : partie.reseau.neigePiste;
-        etat = `${pr.reussi ? 'Réussi ✓ · ' : ''}Partie en cours : prochaine nuit n° ${partie.reseau.nuit}, ${nombreFr(Math.round(fait))} / ${nombreFr(l.objectif.m3)} m³`;
+        etat = `${pr.reussi ? 'Réussi ✓ · ' : ''}Partie en cours : prochaine nuit n° ${partie.reseau.nuit}, ${nombreFr(Math.round(fait))}${l.objectif.m3 ? ` / ${nombreFr(l.objectif.m3)}` : ''} m³`;
       }
       if(!ouvert) etat = 'Réussissez le niveau précédent pour l\'ouvrir.';
       return { id: l.id, numero: l.numero, nom: l.nom, resume: l.resume, etat, ouvert, partie: !!(partie && partie.reseau) };
@@ -956,7 +974,7 @@ function demarrer(){
         appliquerRegime();
         for(const t of new Set(ev.map(e => e.texte))) if(t) message(t, 'info', 5000);
       }
-      const nouvelles = evenementsPannes(niveau, reseau, tAvant, nuit.temps), finies = avancerPannes(reseau, nuit.temps);
+      const nouvelles = evenementsPannes(niveau, reseau, tAvant, nuit.temps, nuit.regime), finies = avancerPannes(reseau, nuit.temps);
       for(const p of nouvelles) message(`Panne : ${nomPanne(p)}`, 'alarme', 7000);
       for(const p of finies) message(`Réparation terminée : ${libellePanne(reseau, p)}.`, 'ok', 4000);
       if(nouvelles.length || finies.length) apresPannes();
@@ -1009,7 +1027,8 @@ function demarrer(){
   // Accueil
   synchroniser();
   const o = niveau.objectif;
-  $('sousTitre').textContent = `Niveau ${niveau.numero} · ${niveau.nom} · objectif ${nombreFr(o.m3)} m³ ${o.type === 'production' ? `produits en ${o.nuits} nuits` : 'sur la piste'}`;
+  $('sousTitre').textContent = niveau.bac ? 'Bac à sable · tout est débloqué, budget illimité'
+    : `Niveau ${niveau.numero} · ${niveau.nom} · objectif ${nombreFr(o.m3)} m³ ${o.type === 'production' ? `produits en ${o.nuits} nuits` : 'sur la piste'}${o.nuits && o.type !== 'production' ? ` en ${o.nuits} nuits` : ''}`;
   $('hudNeigeTitre').textContent = o.type === 'production' ? 'Neige produite' : 'Neige piste';
   const tactile = window.matchMedia('(pointer:coarse)').matches;
   const commandes = tactile ? 'Un doigt pour vous déplacer. Deux doigts : pincez pour zoomer, tournez-les pour pivoter, glissez-les vers le haut ou le bas pour incliner la vue.' : 'Glissez pour tourner, molette pour zoomer, clic droit pour déplacer la vue.';

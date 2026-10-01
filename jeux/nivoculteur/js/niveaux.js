@@ -170,5 +170,21 @@ const LEVELS = [
       }
     },
     objectif: { type: 'neigePiste', m3: 18000, nuits: 6 }
+  },
+  {
+    id: 'bac',
+    numero: '∞',
+    bac: true,                                // bac à sable : tout débloqué, budget illimité, pas d'objectif
+    nom: 'Bac à sable',
+    resume: 'Tout est débloqué, le budget est illimité et il n\'y a pas d\'objectif. Construisez ce que vous voulez ; au poste de travail, choisissez le vent, activez les pannes, remplissez la retenue.',
+    terrain: TERRAIN_COMBE,
+    pistes: [PISTE_CLARINES, PISTE_GENTIANES],
+    pompage: POMPAGE_COMBE,
+    retenue: RETENUE_COMBE,
+    remontees: [TELESIEGE_CLARINES],
+    departsElec: [...DEPARTS_COMBE, { nom: 'Départ élec · Gentianes', x: -72, z: -150 }],
+    compresseur: COMPRESSEUR_COMBE,
+    budget: 1e9,
+    objectif: { type: 'libre' }
   }
 ];

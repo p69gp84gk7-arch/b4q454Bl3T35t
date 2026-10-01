@@ -137,7 +137,7 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
 ## Pannes et réparations (niveau 4, étape 7)
 
 - **Niveau 4 · Les pannes et les réparations** : réseau déjà construit (`reseauFixe` avec `liaisons` : chaînes par réseau) — 6 V10 sur tour aux Clarines (R1–R6, eau depuis la salle, câble depuis `elec1`), 4 perches de 10 m aux Gentianes (R7–R10, eau depuis R5, câble depuis le départ des Gentianes `elec4`, air depuis le compresseur par R3 et R5). Budget 120 000 € (réparations, canons en plus). Objectif : **18 000 m³ sur les pistes en 6 nuits** (sans panne, environ 23 000 m³ avec l'orientation de départ).
-- `CONFIG.pannes` : 1 à 3 pannes par nuit, entre 4 et 45 s, tirées au sort (`planifierPannes`, toujours les mêmes pour une même nuit), jamais deux fois sur la même chose :
+- `CONFIG.pannes` : 1 à 3 pannes par nuit, entre 4 et 45 s (`planifierPannes` tire les instants et les dés, toujours les mêmes pour une même nuit). **Ce qui casse est choisi au moment de la panne, parmi ce qui fonctionne** (demande de l'utilisateur, `ciblesPannes(niveau, res, regime)`) : canon qui produit, pompe en marche (une seule pompe en défaut à la fois), conduite où l'eau va vers un canon qui produit, départ électrique qui alimente un canon qui produit. Si rien ne tourne, pas de panne. Jamais deux fois sur la même chose :
   | Panne | Effet | Réparation |
   |---|---|---|
   | Fuite sur une conduite | 30 m³/h perdus (retenue), −10 bar pour les regards en aval | 6 000 €, 15 s ; conduite **isolée** pendant les travaux (plus d'eau en aval) |
@@ -147,6 +147,11 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
   | Pompe en défaut thermique | une pompe de moins | 4 000 €, 20 s |
 - Simulation : `res.pannes` (`{ id, type, cible, etat: 'active' | 'reparation', fin }`), `effetsPannes` (utilisé par `regimeNuit`), `evenementsPannes`, `reparerPanne` (payée tout de suite ; la nuit l'équipe met `duree` s, le jour c'est immédiat), `avancerPannes`, `libellePanne`, `positionPanne`. À la fin de la nuit, les réparations en cours se terminent ; les pannes non réparées restent. Remplacer un enneigeur supprime sa panne.
 - Jeu : message rouge quand une panne arrive ; triangle jaune clignotant au-dessus (clé bleue pendant la réparation) ; gerbe d'eau et flaque de glace sur une fuite ; voyant jaune « DÉFAUT » pour une pompe ; canon en panne en jaune. Bloc **Pannes** au poste (Réparer / Réarmer, Voir), ligne de panne dans la fiche, total des réparations au bilan.
+
+## Retenue payante et bac à sable
+
+- **Remplissage payant** (`CONFIG.retenue`) : chaque jour, la retenue reçoit le volume commandé au poste de travail (Arrêt, 1 500, 3 000 ou 4 500 m³ ; 3 000 au départ), sans dépasser la place libre ni le budget, à **0,50 €/m³** (`remplirRetenue`, appelée par `finNuit` ; `res.retenue.remplissage`). Le coût apparaît au bilan et le gain affiché est net (neige − électricité − eau).
+- **Bac à sable** (`LEVELS` id `bac`, `bac: true`, numéro « ∞ ») : les deux pistes, le compresseur, tout débloqué (`disponible`), budget illimité (1e9, affiché « Illimité »), pas d'objectif (`objectif.type = 'libre'`, pas de dameuse). Au poste, bloc « Bac à sable » : vent imposé (force, direction) ou au hasard (`res.options.vent`, `ventPrevu`), pannes oui / non (`res.options.pannes`), remplir la retenue d'un coup. Toujours ouvert dans le menu ; jamais proposé comme « niveau suivant ».
 
 ## Air comprimé et perches (niveau 3, étape 6)
 

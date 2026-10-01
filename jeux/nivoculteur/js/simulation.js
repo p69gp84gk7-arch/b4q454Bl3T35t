@@ -191,6 +191,7 @@ function nomEnneigeur(modele, support){
 // Un enneigeur est-il disponible ? (niveau atteint, et neige déjà faite sur les pistes)
 function disponible(niveau, res, modele){
   const d = CATALOGUE[modele].debloque;
+  if(niveau.bac) return { ok: true };                          // bac à sable : tout est débloqué
   if(niveau.numero < d.niveau) return { ok: false, raison: d.niveau === 3 ? 'au niveau 3 (air comprimé)' : `au niveau ${d.niveau}` };
   if(res.neigePiste < d.m3) return { ok: false, raison: `après ${d.m3.toLocaleString('fr-FR')} m³ de neige sur les pistes` };
   return { ok: true };
@@ -227,8 +228,10 @@ function creerReseau(niveau){
     tas: [],                // tas de neige { x, z, volume }
     pompage: niveau.programme ? { mode: 'manuel', marche: [false, false, false], ouverture: 0 }   // niveau 1 : tout à la main
                               : { mode: 'auto', marche: [true, true, true], ouverture: 1 },     // commandes du poste de travail
-    retenue: niveau.retenue ? { volume: volumeRetenue(niveau.retenue) * (niveau.retenueDepart ?? niveau.retenue.niveau) ** 2 } : null,
+    retenue: niveau.retenue ? { volume: volumeRetenue(niveau.retenue) * (niveau.retenueDepart ?? niveau.retenue.niveau) ** 2,
+                                remplissage: CONFIG.retenue.remplissageJour } : null,   // m³ commandés pour chaque journée (payants)
     coups: 0,               // coups de bélier depuis le début du niveau
+    options: niveau.bac ? { vent: null, pannes: false } : null,   // bac à sable : vent imposé (ou au hasard), pannes oui / non
     pannes: [],             // pannes en cours (niveau 4) : { id, type, cible, nuit, t, etat: 'active' | 'reparation', fin }
     numeroPanne: 0
   };
@@ -424,6 +427,8 @@ function ventDeLaNuit(niveau, numero){
   const r = alea(niveau.terrain.graine * 7919 + numero * 104729);
   return { force: Math.round(r() * CONFIG.vent.forceMax), direction: Math.round(r() * 360 - 180) };
 }
+// Vent prévu pour la prochaine nuit : celui choisi dans le bac à sable, sinon celui tiré au sort
+function ventPrevu(niveau, res){ return (res.options && res.options.vent) || ventDeLaNuit(niveau, res.nuit); }
 // Où tombe la neige d'un enneigeur : centre de la zone enneigée (déportée par le vent) et son rayon
 function pointChute(n, vent){
   const m = CATALOGUE[n.modele], cv = CONFIG.vent, rad = Math.PI / 180;
@@ -548,34 +553,44 @@ function effetsPannes(niveau, res){
   return E;
 }
 function trancheeParCle(res, cle){ return res.tranchees.find(tr => cleTranchee(tr.a, tr.b) === cle); }
-// Ce qui peut tomber en panne (on ne casse pas deux fois la même chose)
-function ciblesPannes(niveau, res){
-  const prets = res.noeuds.filter(n => n.type === 'regard' && etatRegard(niveau, res, n.id).pret);
+// Ce qui peut tomber en panne : seulement ce qui fonctionne à cet instant (canons qui produisent, pompes en marche,
+// conduites où l'eau circule vers un canon, départs électriques qui alimentent un canon), jamais deux fois la même chose.
+function ciblesPannes(niveau, res, regime){
   const deja = new Set((res.pannes || []).map(p => p.type + p.cible));
+  const actifs = regime.canons.filter(c => c.production > 0 && !c.panne), ids = new Set(actifs.map(c => c.id));
+  const type = id => CATALOGUE[noeudReseau(res, id).modele].type;
+  const coupe = perdus => [...perdus].some(id => ids.has(id));
+  const eau = alimentes(res, 'eau'), elec = alimentes(res, 'cable');
   const c = {
-    fuite: res.tranchees.filter(tr => tr.eau).map(tr => cleTranchee(tr.a, tr.b)),
-    moteur: prets.filter(n => CATALOGUE[n.modele].type === 'ventilateur').map(n => n.id),
-    gel: prets.filter(n => CATALOGUE[n.modele].type === 'perche').map(n => n.id),
-    disjoncteur: res.noeuds.filter(n => n.type === 'elec' && res.tranchees.some(tr => tr.cable && (tr.a === n.id || tr.b === n.id))).map(n => n.id),
-    pompe: ['0', '1', '2']
+    fuite: res.tranchees.filter(tr => tr.eau && regime.pompes > 0).map(tr => cleTranchee(tr.a, tr.b)).filter(cle => {
+      const reste = alimentes({ ...res, tranchees: res.tranchees.map(tr => cleTranchee(tr.a, tr.b) === cle ? { ...tr, eau: false } : tr) }, 'eau');
+      return coupe([...eau].filter(id => !reste.has(id)));
+    }),
+    moteur: actifs.filter(q => type(q.id) === 'ventilateur').map(q => q.id),
+    gel: actifs.filter(q => type(q.id) === 'perche').map(q => q.id),
+    disjoncteur: res.noeuds.filter(n => n.type === 'elec').map(n => n.id).filter(src => {
+      const reste = alimentes(res, 'cable', new Set([src]));
+      return coupe([...elec].filter(id => !reste.has(id)));
+    }),
+    pompe: (res.pannes || []).some(p => p.type === 'pompe') ? [] : pompesEnMarche(res, regime).map(String)   // une pompe en défaut à la fois
   };
   for(const k in c) c[k] = c[k].filter(x => !deja.has(k + x));
   return c;
 }
-// Pannes de la nuit, tirées au sort au début de la nuit (toujours les mêmes pour une même nuit)
+// Indices des pompes qui tournent (en automatique : les premières pompes qui ne sont pas en panne)
+function pompesEnMarche(res, regime){
+  const cmd = res.pompage, hs = regime.pompesEnPanne || [];
+  if(cmd.mode !== 'auto') return [0, 1, 2].filter(i => cmd.marche[i] && !hs.includes(i));
+  return [0, 1, 2].filter(i => !hs.includes(i)).slice(0, regime.pompes);
+}
+// Pannes de la nuit, tirées au sort au début de la nuit (toujours les mêmes pour une même nuit) : on tire les
+// instants et les dés ; ce qui casse est choisi au moment de la panne, parmi ce qui fonctionne à cet instant.
 function planifierPannes(niveau, res){
   res.pannesPrevues = [];
-  if(!niveau.pannes) return [];
+  if(!(niveau.pannes || (res.options && res.options.pannes))) return [];
   const cp = CONFIG.pannes, r = alea(niveau.terrain.graine * 4513 + res.nuit * 92821 + 7);
-  const nb = cp.parNuit[0] + Math.floor(r() * (cp.parNuit[1] - cp.parNuit[0] + 1)), cibles = ciblesPannes(niveau, res);
-  for(let k = 0; k < nb; k++){
-    const types = Object.keys(cp.types).filter(ty => cibles[ty].length);
-    if(!types.length) break;
-    let x = r() * types.reduce((s, ty) => s + cp.types[ty].poids, 0), type = types[0];
-    for(const ty of types){ x -= cp.types[ty].poids; if(x < 0){ type = ty; break; } }
-    const cible = cibles[type].splice(Math.floor(r() * cibles[type].length), 1)[0];
-    res.pannesPrevues.push({ t: cp.moment[0] + r() * (cp.moment[1] - cp.moment[0]), type, cible });
-  }
+  const nb = cp.parNuit[0] + Math.floor(r() * (cp.parNuit[1] - cp.parNuit[0] + 1));
+  for(let k = 0; k < nb; k++) res.pannesPrevues.push({ t: cp.moment[0] + r() * (cp.moment[1] - cp.moment[0]), de1: r(), de2: r() });
   res.pannesPrevues.sort((a, b) => a.t - b.t);
   return res.pannesPrevues;
 }
@@ -586,12 +601,22 @@ function declencherPanne(res, type, cible, t = 0){
   res.pannesNuit = (res.pannesNuit || 0) + 1;
   return p;
 }
-// Les pannes qui arrivent entre deux instants de la nuit
-function evenementsPannes(niveau, res, tAvant, tApres){
+// Les pannes qui arrivent entre deux instants de la nuit (regime : le fonctionnement à cet instant)
+function evenementsPannes(niveau, res, tAvant, tApres, regime){
   const dues = (res.pannesPrevues || []).filter(e => e.t > tAvant && e.t <= tApres);
   if(!dues.length) return [];
   res.pannesPrevues = res.pannesPrevues.filter(e => !dues.includes(e));
-  return dues.map(e => declencherPanne(res, e.type, e.cible, e.t));
+  const cp = CONFIG.pannes, nouvelles = [];
+  for(const e of dues){
+    const cibles = ciblesPannes(niveau, res, regime), types = Object.keys(cp.types).filter(ty => cibles[ty].length);
+    if(!types.length) continue;                    // rien ne tourne : pas de panne
+    let x = e.de1 * types.reduce((s, ty) => s + cp.types[ty].poids, 0), type = types[0];
+    for(const ty of types){ x -= cp.types[ty].poids; if(x < 0){ type = ty; break; } }
+    const liste = cibles[type];
+    nouvelles.push(declencherPanne(res, type, liste[Math.floor(e.de2 * liste.length)], e.t));
+    regime = regimeNuit(niveau, res, regime.vent);  // la suivante tient compte de celle-ci
+  }
+  return nouvelles;
 }
 // Envoyer l'équipe : on paie tout de suite ; la nuit, la réparation prend du temps, le jour elle est immédiate
 function reparerPanne(niveau, res, id, enNuit = false, t = 0){
@@ -639,7 +664,7 @@ function debutNuit(niveau, res){
     res.pompage = { mode: 'manuel', marche: [false, false, false], ouverture: 0, histo: [] };
     for(const n of res.noeuds) if(n.type === 'regard') n.arret = true;
   }
-  return regimeNuit(niveau, res, ventDeLaNuit(niveau, res.nuit));
+  return regimeNuit(niveau, res, ventPrevu(niveau, res));
 }
 // Programme de la nuit (niveau 1) : les canons que le chef d'équipe ouvre ou ferme entre deux instants
 function evenementsProgramme(niveau, res, tAvant, tApres){
@@ -732,13 +757,24 @@ function finNuit(niveau, res){
   if(res.compresseur) res.compresseur.pression = 0;           // le réservoir se vide pendant la journée
   if(res.pannes) res.pannes = res.pannes.filter(p => p.etat !== 'reparation');   // l'équipe finit son travail ; les autres pannes restent
   res.pannesPrevues = [];
-  if(res.retenue) res.retenue.volume = Math.min(volumeRetenue(niveau.retenue), res.retenue.volume + CONFIG.retenue.remplissageJour);
+  bilan.remplissage = remplirRetenue(niveau, res);
   Object.assign(bilan, resultatNiveau(niveau, res));
   return bilan;
+}
+// Remplissage de la retenue pendant la journée : le volume commandé (sans dépasser la place libre ni le budget), payé au m³
+function remplirRetenue(niveau, res){
+  const R = res.retenue;
+  if(!R) return { m3: 0, cout: 0 };
+  const prix = CONFIG.retenue.prixM3, voulu = R.remplissage ?? CONFIG.retenue.remplissageJour;
+  const m3 = Math.max(0, Math.floor(Math.min(voulu, volumeRetenue(niveau.retenue) - R.volume, prix > 0 ? Math.max(0, res.budget) / prix : Infinity)));
+  const cout = Math.round(m3 * prix);
+  R.volume += m3; res.budget -= cout;
+  return { m3, cout };
 }
 // Où en est le niveau ? reussi / rate (avec la raison) / en cours
 function resultatNiveau(niveau, res){
   const o = niveau.objectif, coups = res.coups || 0;
+  if(o.type === 'libre') return { reussi: false, rate: null };     // bac à sable : pas d'objectif
   if(o.coupsMax !== undefined && coups > o.coupsMax) return { reussi: false, rate: `${coups} coups de bélier : une conduite a cassé.` };
   const fait = o.type === 'production' ? res.neigeTotale >= o.m3 : res.neigePiste >= o.m3;
   if(fait) return { reussi: true, rate: null };
@@ -903,8 +939,15 @@ function testsSimulation(){
   verifier(`Nuit de ${CONFIG.nuit.duree} s = 12 h : la neige produite correspond aux débits, en tas`, proche(rn.neigeTotale, attendu, 1e-6) && rn.tas.length >= 1, `${Math.round(rn.neigeTotale)} m³`);
   verifier('La retenue se vide pendant la nuit', rn.retenue.volume < eauAvant, `${Math.round(eauAvant - rn.retenue.volume)} m³ d'eau utilisés`);
   const bilan = finNuit(niv, rn);
-  verifier('Fin de nuit : 20 € par m³ tombé sur la piste, moins l\'électricité des pompes', rn.budget - budgetAvant === Math.round(rn.neigePiste * 20) - bilan.electricite && bilan.electricite > 0 && rn.nuit === 2,
+  verifier('Fin de nuit : 20 € par m³ tombé sur la piste, moins l\'électricité des pompes et l\'eau de la journée',
+    rn.budget - budgetAvant === Math.round(rn.neigePiste * 20) - bilan.electricite - bilan.remplissage.cout && bilan.electricite > 0 && rn.nuit === 2,
     `+${bilan.gain} €, électricité ${bilan.kwh} kWh = ${bilan.electricite} €`);
+  verifier('Remplissage de la journée payé au m³', bilan.remplissage.m3 > 0 && bilan.remplissage.cout === Math.round(bilan.remplissage.m3 * CONFIG.retenue.prixM3),
+    `${bilan.remplissage.m3} m³ pour ${bilan.remplissage.cout} €`);
+  const vAvantArret = rn.retenue.volume, bAvantArret = rn.budget;
+  rn.retenue.remplissage = 0;
+  verifier('Remplissage arrêté : rien n\'est ajouté ni payé', !remplirRetenue(niv, rn).m3 && rn.retenue.volume === vAvantArret && rn.budget === bAvantArret);
+  rn.retenue.remplissage = CONFIG.retenue.remplissageJour;
   rn.retenue.volume = 1;
   const r2n = debutNuit(niv, rn), fin = avancerNuit(niv, rn, r2n, 1), apres = regimeNuit(niv, rn, r2n.vent);
   verifier('Retenue vide : les pompes sont à sec, plus aucun canon ne produit', fin.vide && apres.sec && apres.canons.every(c => !c.production));
@@ -1015,14 +1058,27 @@ function testsSimulation(){
   const regards4 = r4.noeuds.filter(n => n.type === 'regard');
   verifier('Niveau 4 : réseau déjà construit, 6 V10 et 4 perches prêts', regards4.length === 10 && regards4.every(n => etatRegard(niv4, r4, n.id).pret));
   debutNuit(niv4, r4);
-  const prevues = r4.pannesPrevues.map(p => p.type + p.cible).join();
+  const prevues = r4.pannesPrevues.map(p => `${p.t.toFixed(2)}/${p.de1.toFixed(3)}`).join();
   r4.compresseur.pression = CONFIG.air.pressionNominale;
   const v4 = { force: 0, direction: 0 }, base4 = regimeNuit(niv4, r4, v4);
   verifier('Pannes : 1 à 3 par nuit, toujours les mêmes pour une même nuit',
-    r4.pannesPrevues.length >= 1 && r4.pannesPrevues.length <= 3 && planifierPannes(niv4, r4).map(p => p.type + p.cible).join() === prevues, prevues);
+    r4.pannesPrevues.length >= 1 && r4.pannesPrevues.length <= 3 && planifierPannes(niv4, r4).map(p => `${p.t.toFixed(2)}/${p.de1.toFixed(3)}`).join() === prevues, prevues);
   verifier('Sans panne, les 10 canons produisent', base4.canons.length === 10 && base4.canons.every(c => c.production > 0));
-  const ev4 = evenementsPannes(niv4, r4, -1, CONFIG.nuit.duree);
-  verifier('Les pannes prévues arrivent pendant la nuit', ev4.length === r4.pannes.length && !r4.pannesPrevues.length);
+  const nbPrevues = r4.pannesPrevues.length, ev4 = evenementsPannes(niv4, r4, -1, CONFIG.nuit.duree, base4);
+  verifier('Les pannes prévues arrivent pendant la nuit', ev4.length === nbPrevues && r4.pannes.length === nbPrevues && !r4.pannesPrevues.length,
+    ev4.map(p => `${p.type} ${p.cible}`).join(', '));
+  // Seul R1 tourne (les autres canons sont arrêtés au poste) : les pannes ne touchent que lui, ce qui l'alimente, ou une pompe en marche
+  r4.pannes = [];
+  for(const n of regards4) n.arret = n.id !== 'R1';
+  const seulR1 = regimeNuit(niv4, r4, v4), permis = new Set(['moteur R1', `fuite ${cleTranchee('pompage', 'R1')}`, 'disjoncteur elec1',
+    ...pompesEnMarche(r4, seulR1).map(i => `pompe ${i}`)]);
+  r4.pannesPrevues = [0.05, 0.3, 0.55, 0.8, 0.99].map((d, k) => ({ t: 5 + k, de1: d, de2: 1 - d }));
+  const evR1 = evenementsPannes(niv4, r4, 0, 20, seulR1);
+  verifier('Une panne ne touche que ce qui fonctionne', evR1.length && evR1.every(p => permis.has(`${p.type} ${p.cible}`)), evR1.map(p => `${p.type} ${p.cible}`).join(', '));
+  r4.pannesPrevues = [{ t: 30, de1: 0.5, de2: 0.5 }];
+  for(const n of regards4) n.arret = true;
+  verifier('Si rien ne tourne, pas de panne', !evenementsPannes(niv4, r4, 25, 35, regimeNuit(niv4, r4, v4)).length);
+  for(const n of regards4) n.arret = false;
   r4.pannes = [];
   const mot = declencherPanne(r4, 'moteur', 'R2'), gMot = regimeNuit(niv4, r4, v4);
   verifier('Moteur grillé : ce canon ne produit plus, les autres oui', !gMot.canons.find(c => c.id === 'R2').production && gMot.canons.filter(c => c.id !== 'R2').every(c => c.production > 0));
@@ -1056,6 +1112,14 @@ function testsSimulation(){
 
   const dir = directionVersPiste(niv.pistes, 70, 0);
   verifier('Un canon à droite de la piste souffle vers la gauche (vers la piste)', dir < -45 && dir > -135, `${dir}°`);
+
+  // Bac à sable
+  const bac = LEVELS.find(l => l.bac), rb = creerReseau(bac);
+  verifier('Bac à sable : tout est débloqué, pas d\'objectif', Object.keys(CATALOGUE).every(k => disponible(bac, rb, k).ok) && !resultatNiveau(bac, rb).reussi && !resultatNiveau(bac, rb).rate);
+  rb.options.vent = { force: 12, direction: 45 };
+  verifier('Bac à sable : le vent choisi est celui de la nuit', debutNuit(bac, rb).vent.force === 12 && !rb.pannesPrevues.length);
+  rb.options.pannes = true; rb.nuit++;
+  verifier('Bac à sable : on peut activer les pannes', debutNuit(bac, rb) && rb.pannesPrevues.length >= 1);
 
   const r1 = alea(42), r2 = alea(42);
   verifier('Hasard : la même graine redonne les mêmes nombres', [1, 2, 3].every(() => r1() === r2()));

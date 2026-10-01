@@ -112,7 +112,9 @@ const CONFIG = {
 
   // --- Retenue d'eau ---
   retenue: {
-    remplissageJour: 3000   // m³ d'eau qui reviennent dans la retenue chaque jour (captage, ruisseau)
+    remplissageJour: 3000,  // m³ d'eau remis dans la retenue chaque jour (captage, ruisseau) : réglage de départ
+    choix: [0, 1500, 3000, 4500],   // volumes qu'on peut commander au poste de travail (m³ par jour)
+    prixM3: 0.5             // € par m³ d'eau prélevée et remontée dans la retenue
   },
 
   // --- Progression ---

@@ -24,7 +24,7 @@ function message(texte, type = 'info', duree = 4500){
 function majHud({ budget = null, nuit = null, neige = null, objectif = null, vent = null, retenue = null } = {}){
   // Sur un petit écran, le budget est arrondi en milliers d'euros (k€) pour tenir dans sa case
   const etroit = window.innerWidth < 480;
-  $('hudBudget').textContent = budget === null ? '—' : etroit && Math.abs(budget) >= 10000 ? `${nombreFr(Math.round(budget / 1000))} k€` : euros(budget);
+  $('hudBudget').textContent = budget === null ? '—' : typeof budget === 'string' ? budget : etroit && Math.abs(budget) >= 10000 ? `${nombreFr(Math.round(budget / 1000))} k€` : euros(budget);
   $('hudNuit').textContent = nuit === null ? '—' : nuit;
   $('hudNeige').innerHTML = neige === null ? '—' : `${nombreFr(neige)}<span class="obj">${objectif ? ' / ' + nombreFr(objectif) : ''}</span> m³`;
   if(vent) $('hudVentForce').textContent = vent.force ? `${vent.force} km/h` : 'calme';
@@ -127,6 +127,17 @@ function afficherPoste(d, agir){
     <div class="pompe"><span class="led" style="background:${m ? LED.production : LED.arret}"></span>
       <b>Pompe ${i + 1}</b>${pastille(m ? 'MARCHE' : 'ARRÊT', m ? 'vert' : '')}
       ${p.mode === 'manuel' ? `<button class="bouton petit" type="button" data-action="pompe" data-valeur="${i}">${m ? 'Arrêter' : 'Démarrer'}</button>` : ''}</div>`).join('');
+  // Bac à sable : vent, pannes, retenue
+  const b = d.bac;
+  const bac = b ? `
+      <section class="bloc"><h3>Bac à sable</h3>
+        <div class="ligne">Vent ${pastille(b.vent.force ? `${b.vent.force} km/h` : 'calme')}${b.impose ? '' : pastille('au hasard')}
+          ${b.impose ? '<button class="bouton petit" type="button" data-action="bacVentHasard">Au hasard</button>' : ''}</div>
+        <div class="ligne reglage-bac">Force <input type="range" min="0" max="${CONFIG.vent.forceMax}" step="1" value="${b.vent.force}" data-curseur="bacVentForce" aria-label="Force du vent"></div>
+        <div class="ligne reglage-bac">Direction <input type="range" min="-180" max="180" step="5" value="${b.vent.direction}" data-curseur="bacVentDirection" aria-label="Direction du vent"><b>${b.vent.direction}°</b></div>
+        <div class="ligne">Pannes <span class="seg"><button type="button" data-action="bacPannes" data-valeur="0" class="${b.pannes ? '' : 'actif'}">Non</button><button type="button" data-action="bacPannes" data-valeur="1" class="${b.pannes ? 'actif' : ''}">Oui</button></span>
+          <button class="bouton petit" type="button" data-action="bacRemplir">Remplir la retenue</button></div>
+      </section>` : '';
   // Pannes (niveau 4) : ce qui est cassé, et l'équipe à envoyer
   const pannes = d.pannes === null ? '' : `
       <section class="bloc"><h3>Pannes${d.pannes.length ? ` (${d.pannes.length})` : ''}</h3>
@@ -191,11 +202,14 @@ function afficherPoste(d, agir){
         <div class="ligne">${d.nuit ? pastille(`${d.nuit.restant} s restantes`) : pastille('Jour : construction')}${pastille(`Vent ${d.vent.force} km/h`)}</div>
         ${d.nuit ? `<div class="ligne">${pastille(`${nombreFr(d.nuit.neige)} m³ sur la piste`)}${pastille(`+${euros(d.nuit.argent)}`, 'vert')}</div>` : ''}
         ${d.electricite ? `<div class="ligne">${pastille(`Électricité ${nombreFr(d.electricite.kwh)} kWh`)}${pastille(`−${euros(d.electricite.euros)}`, 'orange')}</div>` : ''}
-        <div class="ligne">${pastille(`Retenue ${d.retenue === null ? '—' : Math.round(d.retenue * 100) + ' %'}`)}${pastille(`Objectif ${nombreFr(d.total)} / ${nombreFr(d.objectif)} m³`)}</div>
+        <div class="ligne">${pastille(`Retenue ${d.retenue === null ? '—' : Math.round(d.retenue * 100) + ' %'}`)}${pastille(d.objectif ? `Objectif ${nombreFr(d.total)} / ${nombreFr(d.objectif)} m³` : `${nombreFr(d.total)} m³ sur les pistes`)}</div>
+        ${d.remplissage ? `<div class="ligne">Remplissage de la journée (m³)</div>
+        <div class="seg large">${d.remplissage.choix.map(m => `<button type="button" data-action="remplissage" data-valeur="${m}" class="${m === d.remplissage.m3 ? 'actif' : ''}">${m ? nombreFr(m) : 'Arrêt'}</button>`).join('')}</div>
+        <p class="aide">m³ d'eau remontés dans la retenue chaque jour, à ${nombreFr(d.remplissage.prix, 2)} €/m³ (${euros(Math.round(d.remplissage.m3 * d.remplissage.prix))} par jour au plus).</p>` : ''}
         <div class="ligne">${d.nuit ? `<button class="bouton petit" type="button" data-action="accelerer">${d.accelere ? 'Vitesse normale' : `Accélérer ×${CONFIG.nuit.accelere}`}</button>`
           : '<button class="bouton vert" type="button" data-action="lancerNuit">Lancer la nuit</button>'}</div>
       </section>
-      ${pannes}
+      ${pannes}${bac}
       <section class="bloc"><h3>Alarmes${d.coupsMax !== null ? ` · coups de bélier ${d.coups} / ${d.coupsMax}` : ''}</h3>
         ${d.alarmes.length ? d.alarmes.map(a => `<p class="alarme ${a.niveau}">${echapper(a.texte)}</p>`).join('') : '<p class="vide">Aucune alarme.</p>'}
       </section>
@@ -208,7 +222,11 @@ function afficherPoste(d, agir){
     const b = e.target.closest('[data-action]');
     if(b) agir(b.dataset.action, b.dataset.valeur);
   };
-  el.oninput = e => { if(e.target.dataset.curseur) agir('vanne-curseur', e.target.value / 100); };
+  el.oninput = e => {
+    const c = e.target.dataset.curseur;
+    if(c === 'vanne') agir('vanne-curseur', e.target.value / 100);
+    else if(c) agir(c, +e.target.value);
+  };
 }
 
 // ---------------------------------------------------------------------------------------

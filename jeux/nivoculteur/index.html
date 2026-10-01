@@ -141,6 +141,8 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .poste .seg{ display:inline-flex; border:1px solid #2B3B55; border-radius:10px; overflow:hidden; }
 .poste .seg button{ padding:6px 12px; background:none; font-size:.85rem; font-weight:600; }
 .poste .seg .actif{ background:#2F6FDE; }
+.poste .seg.large{ display:flex; width:100%; }
+.poste .seg.large button{ flex:1 1 0; min-width:0; padding:6px 2px; white-space:nowrap; }
 .poste .aide, .poste .vide{ margin:6px 0 0; font-size:.8rem; color:var(--doux); }
 .poste .alarme{ margin:0 0 6px; padding:6px 9px; border-radius:8px; font-size:.84rem; line-height:1.3; border-left:4px solid var(--attention); background:rgba(229,138,31,.12); }
 .poste .alarme.rouge{ border-left-color:var(--alarme); background:rgba(215,38,61,.18); }
@@ -158,6 +160,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .poste .pastille.rouge{ background:rgba(215,38,61,.2); border-color:#D7263D; }
 .poste .bouton.vert{ background:var(--ok); border-color:var(--ok); }
 .poste .resume{ margin:0 0 8px; }
+.poste .reglage-bac input{ flex:1 1 120px; min-width:0; height:28px; accent-color:#E9B949; }
 .poste .panne{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; padding:7px 0; border-bottom:1px solid #1A2A40; font-size:.88rem; }
 .poste .panne .nom{ flex:1 1 140px; min-width:0; line-height:1.15; }
 .poste .panne .nom small{ display:block; color:var(--doux); font-size:.75rem; }
