@@ -1,6 +1,6 @@
 /* DesDés : fonctionnement hors ligne.
    Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement. */
-const VERSION = 'desdes-v18';
+const VERSION = 'desdes-v21';
 const FONTS = 'desdes-fonts';
 const SHELL = [
   './',
@@ -15,6 +15,15 @@ const SHELL = [
   'jeux/drawrace/piste.js',
   'jeux/nivoculteur/index.html',
   'jeux/nivoculteur/three.min.js',
+  'jeux/nivoculteur/js/config.js',
+  'jeux/nivoculteur/js/niveaux.js',
+  'jeux/nivoculteur/js/simulation.js',
+  'jeux/nivoculteur/js/modeles.js',
+  'jeux/nivoculteur/js/effets.js',
+  'jeux/nivoculteur/js/interface.js',
+  'jeux/nivoculteur/js/jeu.js',
+  'jeux/nivoculteur/js/vitrine.js',
+  'jeux/nivoculteur/js/demarrage.js',
   'logo.svg',
   'manifest.webmanifest',
   'icons/icon-192.png',

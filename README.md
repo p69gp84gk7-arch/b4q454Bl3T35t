@@ -60,9 +60,11 @@ Les circuits sont dans `jeux/drawrace/circuits.js` (points de passage), la géom
 Jeu 3D (Three.js) sur le métier de nivoculteur : construire le réseau (regards, canons, conduites, câbles) avec un budget, produire la neige la nuit, gagner de l'argent avec la neige tombée sur la piste.
 Il est construit étape par étape ; le projet, les règles et l'avancement sont décrits dans `jeux/nivoculteur/CLAUDE.md`.
 
-- Le jeu tient dans `jeux/nivoculteur/index.html` ; il s'ouvre aussi seul, en double-cliquant dessus, sur un ordinateur.
+- La page `jeux/nivoculteur/index.html` charge les scripts du dossier `jeux/nivoculteur/js/` ; le jeu s'ouvre aussi seul, en double-cliquant sur la page, sur un ordinateur (garder le dossier entier).
 - `three.min.js` (Three.js 0.149.0, licence MIT) est posé à côté pour jouer sans internet.
-- Tous les chiffres réglables (prix, pressions, débits, durées) sont dans l'objet `CONFIG` en haut du script, et les niveaux dans `LEVELS`.
+- Tous les chiffres réglables (prix, pressions, débits, durées, vent) sont dans `js/config.js` (`CONFIG`, catalogue des enneigeurs et supports), les niveaux dans `js/niveaux.js`.
+- Nuits : « Lancer la nuit » fait produire les canons prêts ; le vent déporte la neige, seule la neige tombée sur la piste rapporte ; la retenue se vide. Toucher un regard ouvre sa fiche (orientation, remplacement de l'enneigeur).
+- Construction : outils « + Regard », « Eau » (depuis la salle de pompage ou un regard alimenté), « Électricité » (depuis un départ électrique près des bâtiments ou un regard alimenté) ; un devis s'affiche avant chaque achat (tranchée commune moins chère, pression prévue) ; vue sous-sol, annuler, tout effacer.
 - `index.html?test` affiche les vérifications de la simulation ; `index.html?modeles` (bouton « Modèles 3D ») montre chaque modèle 3D seul : canon, regard, salle de pompage, armoire électrique.
 
 ## Mise en ligne
