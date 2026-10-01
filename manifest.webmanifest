@@ -1,7 +1,7 @@
 {
   "name": "DesDés",
   "short_name": "DesDés",
-  "description": "Nos jeux : carnets de score du 10 000 et du Yam's, quiz de géographie, course Draw Race.",
+  "description": "Nos jeux : carnets de score du 10 000 et du Yam's, quiz de géographie, course Draw Race, Nivoculteur.",
   "lang": "fr",
   "dir": "ltr",
   "id": "./",
@@ -21,6 +21,7 @@
     { "name": "10 000", "url": "jeux/10000.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Yam's", "url": "jeux/yams.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Géographie", "url": "jeux/geo.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Draw Race", "url": "jeux/drawrace.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Draw Race", "url": "jeux/drawrace.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Nivoculteur", "url": "jeux/nivoculteur/index.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }
