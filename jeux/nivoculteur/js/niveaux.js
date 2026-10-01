@@ -82,15 +82,26 @@ const LEVELS = [
     id: 'pompage',
     numero: 1,
     nom: 'La salle de pompage',
-    resume: 'Démarrer les pompes, ouvrir la vanne principale et garder la pression dans la zone verte.',
+    resume: 'Le réseau est déjà construit. Démarrez les pompes et manœuvrez la vanne principale pour garder la pression dans le vert, sans coup de bélier, pendant que le chef d\'équipe ouvre les canons.',
     terrain: TERRAIN_COMBE,
     pistes: [PISTE_CLARINES],
     pompage: POMPAGE_COMBE,
     retenue: RETENUE_COMBE,
+    retenueDepart: 0.6,                       // la retenue n'est pas pleine au départ (hauteur d'eau, 0 à 1)
     remontees: [TELESIEGE_CLARINES],
     departsElec: DEPARTS_COMBE,
+    construction: false,                      // pas d'outils de construction : tout se joue au poste de travail
     budget: 0,
-    objectif: { type: 'production', pourcent: 100 }
+    // Six ventilateurs V10 sur tour, déjà raccordés à l'eau et à l'électricité
+    reseauFixe: { regards: [[-19, 219], [27, 172], [-38, 151], [-10, 92], [-69, 63], [-12, 31]].map(([x, z]) => ({ x, z, modele: 'v10', support: 'tour' })) },
+    // Programme de la nuit : le chef d'équipe ouvre puis ferme des canons (t en secondes de jeu)
+    programme: [
+      { t: 0,  ouvrir: ['R1', 'R2'], texte: 'Le chef d\'équipe ouvre les regards 1 et 2.' },
+      { t: 8,  ouvrir: ['R3', 'R4'], texte: 'Il fait plus froid : ouverture des regards 3 et 4.' },
+      { t: 16, ouvrir: ['R5', 'R6'], texte: 'Ouverture des regards 5 et 6 : tout le réseau produit.' },
+      { t: 30, fermer: ['R5', 'R6'], texte: 'Le vent tourne : fermeture des regards 5 et 6.' }
+    ],
+    objectif: { type: 'production', m3: 6000, nuits: 3, coupsMax: 2 }
   },
   {
     id: 'reseau',

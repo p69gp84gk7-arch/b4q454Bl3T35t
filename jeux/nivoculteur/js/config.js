@@ -28,11 +28,29 @@ const CONFIG = {
                             // (52 bar : environ 51 bar en bas de la piste et 33 bar tout en haut)
     perteLongueur: 0.6,     // bar perdus par tranche de 100 m de conduite (perte de charge)
     perteDenivele: 1.2,     // bar perdus par tranche de 10 m de montée (dans la réalité, environ 1 bar pour 10 m)
-    perteDebit: 0.05,       // bar perdus par m³/h d'eau demandé par l'ensemble des canons ouverts
+    perteDebit: 0.05,       // bar perdus par m³/h d'eau demandé par l'ensemble des canons ouverts (tous les débits sont en m³/h)
     // Chaque enneigeur a sa pression minimale et sa pression de pleine production (voir CATALOGUE).
     // Pour tous : au-dessus de 50 bar, pression haute (à surveiller) ; au-dessus de 55 bar, surpression (le canon se met en sécurité).
     zones: { correcte: 50, surpression: 55 },
     cadranMax: 80           // bar : graduation maximale des manomètres
+  },
+
+  // --- Salle de pompage ---
+  // Courbe d'une pompe : pression au débit nominal (CONFIG.pression.pompes), plus haute quand on débite moins
+  // (vanne fermée = pressionVanneFermee), et qui chute quand on demande plus que le débit nominal.
+  pompage: {
+    pompes: 3,              // nombre de pompes
+    debitNominal: 180,      // m³/h que fournit chaque pompe à sa pression nominale
+    pressionVanneFermee: 62,// bar quand la pompe tourne sans débit
+    zoneVerte: [38, 54]     // bar : pression de départ conseillée (affichée en vert au poste de travail)
+  },
+
+  // --- Coup de bélier : une manœuvre trop rapide envoie un pic de pression dans les conduites ---
+  belier: {
+    fenetre: 1,             // s : on regarde la manœuvre de la vanne sur cette durée
+    variationMax: 0.3,      // ouvrir ou fermer la vanne de plus de 30 % en 1 s (avec de l'eau qui circule) = coup de bélier
+    ouvertureDemarrage: 0.3,// démarrer la première pompe (ou arrêter la dernière) vanne ouverte à plus de 30 % = coup de bélier
+    reparation: 5000        // € de réparation par coup de bélier (niveaux avec budget)
   },
 
   // --- Construction du réseau ---
@@ -58,6 +76,11 @@ const CONFIG = {
   // --- Retenue d'eau ---
   retenue: {
     remplissageJour: 3000   // m³ d'eau qui reviennent dans la retenue chaque jour (captage, ruisseau)
+  },
+
+  // --- Progression ---
+  progression: {
+    toutOuvert: true        // pendant la mise au point : tous les niveaux sont jouables sans avoir réussi le précédent
   },
 
   // --- Caméra ---
@@ -87,17 +110,17 @@ const CONFIG = {
 
 /* -------------------------------------------------------------------------------------
    Catalogue des enneigeurs (noms inventés, inspirés des gammes du marché)
-   prix : € · debit : litres d'eau par seconde · pressionMin : en dessous, pas de neige
+   prix : € · debit : m³ d'eau par heure · pressionMin : en dessous, pas de neige
    pressionPleine : à partir de là, production complète · neige : m³ de neige par seconde de jeu à pleine production
    portee : m (distance où tombe la neige) · debloque : niveau, et m³ de neige déjà faits sur les pistes
    ------------------------------------------------------------------------------------- */
 const CATALOGUE = {
-  v8:   { nom: 'Ventilateur V8', type: 'ventilateur', prix: 10000, debit: 6,   pressionMin: 8,  pressionPleine: 20, neige: 10,    portee: 22, taille: 0.85, debloque: { niveau: 2, m3: 0 } },
-  v9:   { nom: 'Ventilateur V9', type: 'ventilateur', prix: 18000, debit: 10,  pressionMin: 8,  pressionPleine: 22, neige: 16.25, portee: 27, taille: 1.0,  debloque: { niveau: 2, m3: 5000 } },
-  v10:  { nom: 'Ventilateur V10', type: 'ventilateur', prix: 28000, debit: 15, pressionMin: 8,  pressionPleine: 24, neige: 23.75, portee: 32, taille: 1.15, debloque: { niveau: 2, m3: 15000 } },
-  p6:   { nom: 'Perche 6 m', type: 'perche', prix: 5000,  debit: 3,   pressionMin: 18, pressionPleine: 28, neige: 4.5, portee: 7, longueur: 6,  debloque: { niveau: 3, m3: 0 } },
-  p10:  { nom: 'Perche 10 m', type: 'perche', prix: 7000,  debit: 3.5, pressionMin: 18, pressionPleine: 28, neige: 5.5, portee: 9, longueur: 10, debloque: { niveau: 3, m3: 0 } },
-  p10n: { nom: 'Perche 10 m nouvelle génération', type: 'perche', prix: 10000, debit: 3.5, pressionMin: 14, pressionPleine: 22, neige: 5.5, portee: 9, longueur: 10, peuDAir: true, debloque: { niveau: 3, m3: 10000 } }
+  v8:   { nom: 'Ventilateur V8', type: 'ventilateur', prix: 10000, debit: 22,  pressionMin: 8,  pressionPleine: 20, neige: 10,    portee: 22, taille: 0.85, debloque: { niveau: 2, m3: 0 } },
+  v9:   { nom: 'Ventilateur V9', type: 'ventilateur', prix: 18000, debit: 36,  pressionMin: 8,  pressionPleine: 22, neige: 16.25, portee: 27, taille: 1.0,  debloque: { niveau: 2, m3: 5000 } },
+  v10:  { nom: 'Ventilateur V10', type: 'ventilateur', prix: 28000, debit: 54, pressionMin: 8,  pressionPleine: 24, neige: 23.75, portee: 32, taille: 1.15, debloque: { niveau: 2, m3: 15000 } },
+  p6:   { nom: 'Perche 6 m', type: 'perche', prix: 5000,  debit: 11,  pressionMin: 18, pressionPleine: 28, neige: 4.5, portee: 7, longueur: 6,  debloque: { niveau: 3, m3: 0 } },
+  p10:  { nom: 'Perche 10 m', type: 'perche', prix: 7000,  debit: 13,  pressionMin: 18, pressionPleine: 28, neige: 5.5, portee: 9, longueur: 10, debloque: { niveau: 3, m3: 0 } },
+  p10n: { nom: 'Perche 10 m nouvelle génération', type: 'perche', prix: 10000, debit: 13,  pressionMin: 14, pressionPleine: 22, neige: 5.5, portee: 9, longueur: 10, peuDAir: true, debloque: { niveau: 3, m3: 10000 } }
 };
 
 // Perches : posées sur un petit support vertical, inclinées, la tête projette vers l'avant (pas tout autour)

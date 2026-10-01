@@ -33,10 +33,31 @@ function majHud({ budget = null, nuit = null, neige = null, objectif = null, ven
 // Flèche du vent : angle à l'écran (degrés, 0 = vers le haut de l'écran)
 function orienterFlecheVent(angle){ $('flecheVent').style.transform = `rotate(${angle}deg)`; }
 
+// Met à jour le contenu d'un élément sans recréer ce qui n'a pas changé : les boutons restent les mêmes,
+// un appui en cours n'est donc jamais perdu quand les chiffres se rafraîchissent (nuit en cours).
+function mettreAJour(el, html){
+  const modele = document.createElement('div');
+  modele.innerHTML = html;
+  const accorder = (a, n) => {
+    if(a.nodeType !== n.nodeType || a.nodeName !== n.nodeName){ a.replaceWith(n.cloneNode(true)); return; }
+    if(a.nodeType === 3){ if(a.nodeValue !== n.nodeValue) a.nodeValue = n.nodeValue; return; }
+    if(a.nodeType !== 1) return;
+    for(const at of [...a.attributes]) if(!n.hasAttribute(at.name)) a.removeAttribute(at.name);
+    for(const at of [...n.attributes]) if(a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+    enfants(a, n);
+  };
+  const enfants = (a, n) => {
+    const ea = [...a.childNodes], en = [...n.childNodes];
+    en.forEach((x, i) => i < ea.length ? accorder(ea[i], x) : a.appendChild(x.cloneNode(true)));
+    for(let i = en.length; i < ea.length; i++) ea[i].remove();
+  };
+  enfants(el, modele);
+}
+
 // Panneau du bas (fiche d'un canon, bilan de nuit) : html libre, puis on branche les boutons
 function afficherPanneau(html){
   const d = $('devis');
-  d.innerHTML = html;
+  mettreAJour(d, html);
   d.hidden = false;
   return d;
 }
@@ -74,6 +95,96 @@ function afficherDevis({ titre, lignes, total, budgetApres, possible }, valider,
   $('devisNon').onclick = annuler;
 }
 function fermerPanneauDevis(){ $('devis').hidden = true; $('devis').innerHTML = ''; }
+
+// ---------------------------------------------------------------------------------------
+// Poste de travail : écran de supervision (salle de pompage, nuit, alarmes, canons)
+// d : données préparées par le jeu ; quand on touche un bouton, agir(action, valeur) est appelé
+// ---------------------------------------------------------------------------------------
+const LED = { production: '#38D66B', faible: '#FF9A2E', defaut: '#FF3B4A', arret: '#6E7787', pret: '#9FB0CF', manque: '#4E586B' };
+function afficherPoste(d, agir){
+  const el = $('poste'), haut = el.scrollTop, p = d.pompage;
+  const pastille = (texte, cls = '') => `<span class="pastille ${cls}">${echapper(texte)}</span>`;
+  const pompes = p.marche.map((m, i) => `
+    <div class="pompe"><span class="led" style="background:${m ? LED.production : LED.arret}"></span>
+      <b>Pompe ${i + 1}</b>${pastille(m ? 'MARCHE' : 'ARRÊT', m ? 'vert' : '')}
+      ${p.mode === 'manuel' ? `<button class="bouton petit" type="button" data-action="pompe" data-valeur="${i}">${m ? 'Arrêter' : 'Démarrer'}</button>` : ''}</div>`).join('');
+  const canons = d.canons.length ? d.canons.map(c => `
+    <div class="canon"><span class="led" style="background:${LED[c.led]}"></span>
+      <span class="nom"><b>${echapper(c.nom)}</b><small>${echapper(c.modele)}</small></span>
+      ${pastille(c.etat)}
+      ${c.pression !== null ? pastille(`${Math.round(c.pression)} bar`) : ''}
+      ${c.production !== null ? pastille(`${nombreFr(c.production, 1)} m³/s`) : ''}
+      ${c.part !== null ? pastille(`${Math.round(c.part * 100)} % piste`) : ''}
+      <span class="actions">
+        ${c.pilotable ? `<button class="bouton petit" type="button" data-action="canon" data-valeur="${c.id}">${c.arrete ? 'Mettre en marche' : 'Arrêter'}</button>` : ''}
+        <button class="bouton petit" type="button" data-action="voir" data-valeur="${c.id}">Voir</button>
+      </span></div>`).join('') : '<p class="vide">Aucun regard posé pour l\'instant.</p>';
+  mettreAJour(el, `
+    <div class="tete"><h2>Poste de travail · supervision neige</h2><button class="fermer" type="button" data-action="fermer" aria-label="Fermer">×</button></div>
+    <div class="grille">
+      <section class="bloc"><h3>Salle de pompage</h3>
+        <div class="ligne">Mode
+          ${p.modeImpose ? pastille('Manuel (imposé dans ce niveau)') : `<span class="seg"><button type="button" data-action="mode" data-valeur="auto" class="${p.mode === 'auto' ? 'actif' : ''}">Auto</button><button type="button" data-action="mode" data-valeur="manuel" class="${p.mode === 'manuel' ? 'actif' : ''}">Manuel</button></span>`}</div>
+        ${pompes}
+        <div class="ligne">Vanne principale
+          <span class="reglage"><button class="bouton petit" type="button" data-action="vanne" data-valeur="-0.1">−10 %</button><b class="val">${Math.round(p.ouverture * 100)} %</b><button class="bouton petit" type="button" data-action="vanne" data-valeur="0.1">+10 %</button></span></div>
+        <input class="curseur" type="range" min="0" max="100" step="1" value="${Math.round(p.ouverture * 100)}" data-curseur="vanne" aria-label="Ouverture de la vanne principale">
+        <div class="ligne">${pastille(`Départ : ${Math.round(p.pression)} bar`, p.pression <= 0 ? '' : p.dansLeVert ? 'vert' : 'orange')}${pastille(`${nombreFr(p.debit)} / ${nombreFr(p.capacite)} m³/h`)}</div>
+        <p class="aide">${p.mode === 'auto' ? 'En automatique, le bon nombre de pompes démarre selon le débit demandé et la vanne se règle seule.'
+          : `En manuel, c'est vous qui démarrez les pompes (${nombreFr(CONFIG.pompage.debitNominal)} m³/h chacune) et qui manœuvrez la vanne : gardez le départ entre ${CONFIG.pompage.zoneVerte[0]} et ${CONFIG.pompage.zoneVerte[1]} bar. Démarrez vanne fermée, ouvrez doucement.`}</p>
+      </section>
+      <section class="bloc"><h3>${d.nuit ? `Nuit ${d.nuit.numero} en cours` : `Prochaine nuit : n° ${d.numero}`}</h3>
+        <div class="ligne">${d.nuit ? pastille(`${d.nuit.restant} s restantes`) : pastille('Jour : construction')}${pastille(`Vent ${d.vent.force} km/h`)}</div>
+        ${d.nuit ? `<div class="ligne">${pastille(`${nombreFr(d.nuit.neige)} m³ sur la piste`)}${pastille(`+${euros(d.nuit.argent)}`, 'vert')}</div>` : ''}
+        <div class="ligne">${pastille(`Retenue ${d.retenue === null ? '—' : Math.round(d.retenue * 100) + ' %'}`)}${pastille(`Objectif ${nombreFr(d.total)} / ${nombreFr(d.objectif)} m³`)}</div>
+      </section>
+      <section class="bloc"><h3>Alarmes${d.coupsMax !== null ? ` · coups de bélier ${d.coups} / ${d.coupsMax}` : ''}</h3>
+        ${d.alarmes.length ? d.alarmes.map(a => `<p class="alarme ${a.niveau}">${echapper(a.texte)}</p>`).join('') : '<p class="vide">Aucune alarme.</p>'}
+      </section>
+    </div>
+    <section class="bloc large"><h3>Canons (${d.canons.length})</h3><div class="canons">${canons}</div></section>`);
+  el.hidden = false;
+  el.scrollTop = haut;
+  el.onclick = e => {
+    const b = e.target.closest('[data-action]');
+    if(b) agir(b.dataset.action, b.dataset.valeur);
+  };
+  el.oninput = e => { if(e.target.dataset.curseur) agir('vanne-curseur', e.target.value / 100); };
+}
+
+// ---------------------------------------------------------------------------------------
+// Sauvegarde dans le navigateur (toujours protégée : navigation privée, stockage plein…)
+// ---------------------------------------------------------------------------------------
+function lireSauvegarde(cle){ try{ return JSON.parse(localStorage.getItem(cle)); }catch(e){ return null; } }
+function ecrireSauvegarde(cle, valeur){ try{ localStorage.setItem(cle, JSON.stringify(valeur)); }catch(e){} }
+function effacerSauvegarde(cle){ try{ localStorage.removeItem(cle); }catch(e){} }
+
+// ---------------------------------------------------------------------------------------
+// Menu : choix du niveau
+// cartes : [{ id, numero, nom, resume, etat, ouvert, partie, enCours }] ; agir(action, id)
+// ---------------------------------------------------------------------------------------
+function afficherMenu(cartes, aVenir, agir, peutRevenir){
+  const el = $('menu');
+  el.innerHTML = `<div class="tete"><h2>Nivoculteur</h2>${peutRevenir ? '<button class="fermer" type="button" data-action="fermer" aria-label="Revenir au jeu">×</button>' : ''}</div>
+    <p class="intro">Construisez et faites tourner le réseau de neige de culture de la station. Choisissez un niveau :</p>
+    <div class="niveaux">${cartes.map(c => `
+      <article class="niveau${c.ouvert ? '' : ' ferme'}">
+        <div class="num">${c.numero}</div>
+        <div class="corps"><h3>${echapper(c.nom)}</h3><p>${echapper(c.resume)}</p><p class="etat">${echapper(c.etat)}</p>
+          <div class="actions">${c.ouvert ? `<button class="bouton vert" type="button" data-action="jouer" data-valeur="${c.id}">${c.partie ? 'Reprendre' : 'Jouer'}</button>
+            ${c.partie ? `<button class="bouton" type="button" data-action="recommencer" data-valeur="${c.id}">Recommencer</button>` : ''}` : ''}</div></div>
+      </article>`).join('')}
+      ${aVenir.map(a => `<article class="niveau ferme"><div class="num">${a.numero}</div><div class="corps"><h3>${echapper(a.nom)}</h3><p class="etat">Bientôt</p></div></article>`).join('')}
+    </div>
+    <div class="actions bas-menu"><a class="bouton" href="index.html?modeles">Modèles 3D</a><a class="bouton" href="index.html?test">Vérifications</a></div>`;
+  el.hidden = false;
+  el.onclick = e => {
+    const b = e.target.closest('[data-action]');
+    if(b) agir(b.dataset.action, b.dataset.valeur);
+  };
+}
+function fermerMenu(){ $('menu').hidden = true; }
+function fermerPoste(){ $('poste').hidden = true; }
 
 function afficherTests(resultats){
   const ok = resultats.filter(r => r.ok).length, p = $('panneauTests');

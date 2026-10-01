@@ -23,7 +23,7 @@ Boucle : **construire** le jour (regards, canons, conduites d'eau, câbles) → 
 - Page adaptée au téléphone (portrait et paysage) et à l'ordinateur.
 - Performances : réutiliser géométries et matériaux, objets répétés en `InstancedMesh`, peu de particules.
 - Sauvegarde dans `localStorage`, toujours dans un `try/catch` (à partir de l'étape 5 ; clés préfixées `nivo-`).
-- **Toute l'interface est en français.**
+- **Toute l'interface est en français.** **Débits toujours en m³/h** (demande de l'utilisateur), pressions en bar.
 - **Chaque texte reste dans sa capsule** (cases de la barre, boutons, panneaux) : vérifier aux largeurs 360, 390, 430, 768 et 1 280 px, le jour, la nuit, avec une fiche ouverte et dans la vitrine. Sur petit écran, les cases prennent la largeur de leur contenu (retour à la ligne si besoin) et le budget s'affiche en k€.
 - Unité : **1 unité 3D = 1 mètre**. Axe x de gauche à droite, axe z du haut de la pente (négatif) vers le bas (positif), y = altitude − altitude du bas.
 
@@ -92,18 +92,35 @@ Tranchée eau seule 750 €/m · câble seul 550 €/m · commune eau + câble 9
 
 ## Catalogue (validé par l'utilisateur, noms inventés inspirés des gammes du marché)
 
-| Enneigeur | Prix | Eau | Pression mini / pleine | Neige à pleine production | Disponible |
+| Enneigeur | Prix | Eau (m³/h) | Pression mini / pleine | Neige à pleine production | Disponible |
 |---|---|---|---|---|---|
-| Ventilateur V8 | 10 000 € | 6 l/s | 8 / 20 bar | 10 m³/s de jeu (400 m³/nuit) | dès le départ |
-| Ventilateur V9 | 18 000 € | 10 l/s | 8 / 22 bar | 16,25 (650/nuit) | après 5 000 m³ sur les pistes |
-| Ventilateur V10 | 28 000 € | 15 l/s | 8 / 24 bar | 23,75 (950/nuit) | après 15 000 m³ |
-| Perche 6 m | 5 000 € | 3 l/s | 18 / 28 bar | 4,5 (180/nuit) | niveau 3 (air comprimé) |
-| Perche 10 m | 7 000 € | 3,5 l/s | 18 / 28 bar | 5,5 (220/nuit) | niveau 3 |
-| Perche 10 m nouvelle génération | 10 000 € | 3,5 l/s | 14 / 22 bar, moins d'air | 5,5 | niveau 3, après 10 000 m³ |
+| Ventilateur V8 | 10 000 € | 22 | 8 / 20 bar | 10 m³/s de jeu (400 m³/nuit) | dès le départ |
+| Ventilateur V9 | 18 000 € | 36 | 8 / 22 bar | 16,25 (650/nuit) | après 5 000 m³ sur les pistes |
+| Ventilateur V10 | 28 000 € | 54 | 8 / 24 bar | 23,75 (950/nuit) | après 15 000 m³ |
+| Perche 6 m | 5 000 € | 11 | 18 / 28 bar | 4,5 (180/nuit) | niveau 3 (air comprimé) |
+| Perche 10 m | 7 000 € | 13 | 18 / 28 bar | 5,5 (220/nuit) | niveau 3 |
+| Perche 10 m nouvelle génération | 10 000 € | 13 | 14 / 22 bar, moins d'air | 5,5 | niveau 3, après 10 000 m³ |
 
 Perches (`PERCHE` dans config.js) : petit support vertical de 1,50 m, perche inclinée de 30° depuis la verticale, tête de buses qui projette **vers l'avant dans un éventail de 30° au plus** (jamais tout autour).
 
 Supports des ventilateurs : trépied au sol (posé à côté du regard, relié par un flexible), tour (+4 000 €), tour haute +3 m (+7 000 €). Plus haut = plus de portée, mais plus de dérive au vent.
+
+## Poste de travail
+
+- `reseau.pompage = { mode: 'auto' | 'manuel', marche: [p1, p2, p3], ouverture: 0 à 1 }` ; un canon arrêté au poste a `arret: true` (il reste arrêté les nuits suivantes jusqu'à « Mettre en marche »).
+- `CONFIG.pompage` : 3 pompes de 180 m³/h. Courbe de pompe : 62 bar sans débit, 52 bar au débit nominal, la pression chute au-delà (`pressionPompes`). Vanne : perte = débit (m³/h) × 0,05 × (1/ouverture² − 1) (`perteVanne`).
+- Mode **auto** : juste assez de pompes, et la vanne se règle seule pour ne pas dépasser 52 bar (régulation). Mode **manuel** : pompes et vanne à la main ; trop de pompes pour peu de canons = surpression.
+- **Coup de bélier** (`CONFIG.belier`, mode manuel, eau qui circule) : vanne ouverte ou fermée de plus de 30 % en moins d'1 s ; première pompe démarrée (ou dernière arrêtée) vanne ouverte à plus de 30 %. Compté dans `reseau.coups` ; 5 000 € de réparation dans les niveaux avec budget. Le poste a un **curseur** pour la vanne (et −10 / +10 %).
+- Zone verte de la pression de départ : 38 à 54 bar (affichée au poste).
+
+## Niveaux, menu et sauvegarde (étape 5)
+
+- **Niveau 1 · La salle de pompage** : réseau déjà construit (`reseauFixe` : 6 V10 sur tour, raccordés), pas d'outils de construction (`construction: false`), mode manuel imposé. Chaque nuit démarre pompes arrêtées, vanne fermée ; le **programme** du chef d'équipe ouvre/ferme des canons (`programme` : t = 0, 8, 16, 30 s). Objectif : 6 000 m³ produits en 3 nuits au plus, 2 coups de bélier au plus (au 3e, la conduite casse : niveau raté). Une pompe ne suffit pas à pleine charge (324 m³/h), deux oui ; avec peu de canons ouverts, il faut fermer un peu la vanne.
+- **Niveau 2 · Construire le réseau** : comme avant (objectif 30 000 m³ sur la piste).
+- **Menu** (bouton « Menu », et à l'ouverture sans `?niveau=`) : cartes des niveaux (réussi, partie en cours, Jouer / Reprendre / Recommencer), niveaux 3 et 4 « bientôt », liens Modèles 3D et Vérifications. Choisir un autre niveau recharge la page avec `index.html?niveau=<id>` (`&nouvelle` pour repartir de zéro).
+- **Sauvegarde** (`localStorage`, try/catch) : `nivo-partie-<id>` (le réseau complet, version 1), enregistrée après chaque action et chaque nuit (pas avant la première action) ; `nivo-progression` (`niveaux[id].reussi`, `dernier`). L'accueil DesDés lit ces clés pour afficher la partie en cours.
+- `CONFIG.progression.toutOuvert = true` pendant la mise au point (tous les niveaux jouables) ; à `false`, un niveau s'ouvre quand le précédent est réussi.
+
 
 ## Production, vent, nuits (étape 4)
 
@@ -122,9 +139,10 @@ Supports des ventilateurs : trépied au sol (posé à côté du regard, relié p
 - [x] Retouches : murs et toit de la salle de pompage transparents quand ils cachent l'intérieur ; regards rectangulaires ; départs électriques près des bâtiments.
 - [x] **Étape 3 — Construction** (faite avant l'étape 2, à la demande) : outils + Regard, Eau, Électricité ; devis (longueur, prix au mètre, tranchée commune, pression prévue, ce qui manque, budget après) ; Valider / Annuler ; icônes goutte/éclair ; vue sous-sol ; Annuler (remboursé) ; Tout effacer. 39 vérifications en mode test.
 - [x] **Étape 4 — Production, vent et catalogue** (+ découpage en fichiers) : bouton « Lancer la nuit », jets de neige et brouillard, tas, bilan, accélérer ×3 ; vent et manche à air ; fiche d'un canon (état, pression, % sur la piste, direction, inclinaison, remplacement avec reprise, anneau du point de chute) ; choix de l'enneigeur à la pose ; ventilateurs V8/V9/V10 sur trépied/tour/tour haute ; perches 6 m / 10 m / 10 m NG (vitrine ; jouables au niveau 3) ; retenue qui se vide. 55 vérifications.
-- [ ] **Poste de travail** (prochaine étape, validée) : toucher l'écran du pupitre de la salle des machines, ou un bouton « Poste de travail », ouvre un écran de contrôle (pompes, vanne principale, pression, liste des canons avec état, pression et marche/arrêt).
-- [ ] **Étape 2 — Niveau 1** : salle de pompage jouable (3 pompes, vanne principale, pression, retenue, coup de bélier).
-- [ ] **Étape 5 — Menus et niveaux** : menu, choix du niveau, sauvegarde `localStorage`.
+- [x] Retouches : perches sur support vertical de 1,50 m, jet en éventail de 30° vers l'avant ; aucun texte ne dépasse de sa capsule (360 → 1 280 px).
+- [x] **Poste de travail** : bouton « Poste de travail », toucher l'écran du pupitre en 3D ou la salle de pompage (sans outil). Écran de supervision : pompes (auto / manuel, 50 l/s chacune, surcharge = chute de pression), vanne principale (−10 / +10 %, perte quand elle est mi-fermée, fermée = plus d'eau), départ (bar, l/s demandés / disponibles), nuit en cours, vent, retenue, objectif, alarmes, liste des canons (état, pression, production, % piste, Arrêter / Mettre en marche, Voir). Les commandes recalculent la nuit en cours tout de suite. Rafraîchi 4 fois par seconde la nuit **sans recréer les boutons** (`mettreAJour`), pour ne perdre aucun appui. 61 vérifications.
+- [x] **Étape 2 — Niveau 1** : salle de pompage jouable (programme du chef d'équipe, pompes et vanne à la main, courbe de pompe, zone verte, coup de bélier, rendement, réussite / échec).
+- [x] **Étape 5 — Menus et niveaux** : menu des niveaux, sauvegarde de la partie et de la progression, reprise, recommencer, statut sur l'accueil DesDés. Débits passés en m³/h. 74 vérifications.
 - [ ] **Étape 6 — Perches, air comprimé, compresseur** (niveau 3).
 - [ ] **Étape 7 — Pannes et réparations** (niveau 4), dont les fuites.
 
