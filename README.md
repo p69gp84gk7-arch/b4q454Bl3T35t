@@ -63,7 +63,7 @@ Il est construit étape par étape ; le projet, les règles et l'avancement sont
 - Le jeu tient dans `jeux/nivoculteur/index.html` ; il s'ouvre aussi seul, en double-cliquant dessus, sur un ordinateur.
 - `three.min.js` (Three.js 0.149.0, licence MIT) est posé à côté pour jouer sans internet.
 - Tous les chiffres réglables (prix, pressions, débits, durées) sont dans l'objet `CONFIG` en haut du script, et les niveaux dans `LEVELS`.
-- `index.html?test` affiche les vérifications de la simulation.
+- `index.html?test` affiche les vérifications de la simulation ; `index.html?modeles` (bouton « Modèles 3D ») montre chaque modèle 3D seul : canon, regard, salle de pompage, armoire électrique.
 
 ## Mise en ligne
 
