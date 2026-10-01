@@ -192,9 +192,16 @@ function nomEnneigeur(modele, support){
 function disponible(niveau, res, modele){
   const d = CATALOGUE[modele].debloque;
   if(niveau.bac) return { ok: true };                          // bac à sable : tout est débloqué
+  if(niveau.enneigeurs) return niveau.enneigeurs.includes(modele) ? { ok: true } : { ok: false, raison: 'plus tard dans la carrière' };
   if(niveau.numero < d.niveau) return { ok: false, raison: d.niveau === 3 ? 'au niveau 3 (air comprimé)' : `au niveau ${d.niveau}` };
   if(res.neigePiste < d.m3) return { ok: false, raison: `après ${d.m3.toLocaleString('fr-FR')} m³ de neige sur les pistes` };
   return { ok: true };
+}
+
+// Un support de ventilateur est-il disponible ? (carrière : débloqué au fil des étapes)
+function supportDisponible(niveau, support){
+  if(!support || !niveau.supports || niveau.supports.includes(support)) return { ok: true };
+  return { ok: false, raison: `${SUPPORTS[support].nom} : disponible plus tard dans la carrière.` };
 }
 
 // --- Coûts ---
@@ -324,6 +331,8 @@ function poserRegard(niveau, res, x, z, choix = {}, lot = ++res.lot, impose = fa
   if(refus) return { ok: false, raison: refus };
   const dispo = disponible(niveau, res, modele);
   if(!dispo.ok && !impose) return { ok: false, raison: `${CATALOGUE[modele].nom} : disponible ${dispo.raison}.` };
+  const sup = supportDisponible(niveau, support);
+  if(!sup.ok && !impose) return { ok: false, raison: sup.raison };
   const cout = CONFIG.couts.regard + prixEnneigeur(modele, support);
   if(res.budget < cout) return { ok: false, raison: 'Budget insuffisant.' };
   const id = `R${++res.numero}`;
@@ -340,6 +349,8 @@ function devisEnneigeur(niveau, res, id, modele, support){
   if(n.modele === modele && n.support === support) return { ok: false, raison: 'C\'est déjà cet enneigeur.', cout: 0 };
   const dispo = disponible(niveau, res, modele);
   if(!dispo.ok) return { ok: false, raison: `${m.nom} : disponible ${dispo.raison}.`, cout: 0 };
+  const sup = supportDisponible(niveau, support);
+  if(!sup.ok) return { ok: false, raison: sup.raison, cout: 0 };
   const reprise = Math.round(prixEnneigeur(n.modele, n.support) * CONFIG.couts.reprise);
   const cout = prixEnneigeur(modele, support) - reprise, assez = res.budget >= cout;
   return { ok: assez, raison: assez ? null : 'Budget insuffisant.', cout, reprise, support };
@@ -424,8 +435,8 @@ function directionVersPiste(pistes, x, z){
 // --- Les nuits : vent, production, tas de neige, retenue ---
 // Vent de la nuit n° numero (tiré au sort, toujours le même pour une même nuit) : force en km/h, direction vers laquelle il souffle
 function ventDeLaNuit(niveau, numero){
-  const r = alea(niveau.terrain.graine * 7919 + numero * 104729);
-  return { force: Math.round(r() * CONFIG.vent.forceMax), direction: Math.round(r() * 360 - 180) };
+  const r = alea(niveau.terrain.graine * 7919 + numero * 104729), mini = niveau.ventFort ? 20 : 0;   // ventFort : au moins 20 km/h
+  return { force: Math.round(mini + r() * (CONFIG.vent.forceMax - mini)), direction: Math.round(r() * 360 - 180) };
 }
 // Options du bac à sable : tout est réglable par le joueur
 function optionsBac(){
@@ -473,7 +484,7 @@ function partSurPiste(pistes, x, z, rayon){
 function regimeNuit(niveau, res, vent){
   const t = niveau.terrain, pomp = noeudReseau(res, 'pompage'), cp = CONFIG.pompage;
   const cmd = res.pompage || { mode: 'auto', marche: [true, true, true], ouverture: 1 };
-  const P = effetsPannes(niveau, res);
+  const P = effetsPannes(niveau, res), installees = niveau.pompes || cp.pompes;   // carrière : pompes installées
   const eau = alimentes(P.resEau, 'eau'), elec = alimentes(res, 'cable', P.coupees), longueurs = longueursEau(P.resEau);
   const air = alimentes(res, 'air'), longueursAir = longueursReseau(res, 'air'), ca = CONFIG.air;
   const sec = !!(res.retenue && res.retenue.volume <= 0);
@@ -491,8 +502,8 @@ function regimeNuit(niveau, res, vent){
   let pompes = 0, capacite = 0, pDepart = 0;
   for(let k = 0; k <= canons.length; k++){
     const demande = canons.reduce((s, c) => s + (c.ouvert ? CATALOGUE[c.modele].debit : 0), 0) + P.debitFuites;   // m³/h, fuites comprises
-    pompes = cmd.mode === 'auto' ? Math.min(cp.pompes - P.pompes.size, Math.max(demande > 0 ? 1 : 0, Math.ceil(demande / cp.debitNominal)))
-                                 : cmd.marche.filter((m, i) => m && !P.pompes.has(i)).length;
+    pompes = cmd.mode === 'auto' ? Math.min(installees - P.pompes.size, Math.max(demande > 0 ? 1 : 0, Math.ceil(demande / cp.debitNominal)))
+                                 : cmd.marche.filter((m, i) => m && i < installees && !P.pompes.has(i)).length;
     capacite = pompes * cp.debitNominal;
     const ouverture = borne(cmd.ouverture, 0, 1);
     const eau = !sec && pompes > 0 && ouverture > 0;
@@ -524,7 +535,7 @@ function regimeNuit(niveau, res, vent){
       demande: canons.reduce((s, c) => s + (c.ouvert && c.pressionAir !== null ? CATALOGUE[c.modele].air : 0), 0), pression: res.compresseur.pression };
   }
   return { vent, canons, debit, sec, pompes, capacite, surcharge: debit > capacite && pompes > 0,
-    pressionDepart: Math.max(0, pDepart), air: regimeAir, fuite, pompesEnPanne: [...P.pompes] };
+    pressionDepart: Math.max(0, pDepart), air: regimeAir, fuite, pompesEnPanne: [...P.pompes], pompesInstallees: installees };
 }
 // Part de la production (0 à 1) selon la pression d'air à la perche
 function facteurAir(p, ca = CONFIG.air){
@@ -591,9 +602,9 @@ function ciblesPannes(niveau, res, regime){
 }
 // Indices des pompes qui tournent (en automatique : les premières pompes qui ne sont pas en panne)
 function pompesEnMarche(res, regime){
-  const cmd = res.pompage, hs = regime.pompesEnPanne || [];
-  if(cmd.mode !== 'auto') return [0, 1, 2].filter(i => cmd.marche[i] && !hs.includes(i));
-  return [0, 1, 2].filter(i => !hs.includes(i)).slice(0, regime.pompes);
+  const cmd = res.pompage, hs = regime.pompesEnPanne || [], n = regime.pompesInstallees || 3;
+  if(cmd.mode !== 'auto') return [0, 1, 2].filter(i => i < n && cmd.marche[i] && !hs.includes(i));
+  return [0, 1, 2].filter(i => i < n && !hs.includes(i)).slice(0, regime.pompes);
 }
 // Pannes de la nuit, tirées au sort au début de la nuit (toujours les mêmes pour une même nuit) : on tire les
 // instants et les dés ; ce qui casse est choisi au moment de la panne, parmi ce qui fonctionne à cet instant.
@@ -601,7 +612,8 @@ function planifierPannes(niveau, res){
   res.pannesPrevues = [];
   if(!(niveau.pannes || (res.options && res.options.pannes))) return [];
   const cp = CONFIG.pannes, r = alea(niveau.terrain.graine * 4513 + res.nuit * 92821 + 7);
-  const o = res.options, [mini, maxi] = o && o.pannes ? cp.frequences[o.frequence] || cp.parNuit : cp.parNuit;
+  const o = res.options, freq = o && o.pannes ? o.frequence : niveau.frequencePannes;
+  const [mini, maxi] = cp.frequences[freq] || cp.parNuit;
   const nb = mini + Math.floor(r() * (maxi - mini + 1));
   for(let k = 0; k < nb; k++) res.pannesPrevues.push({ t: cp.moment[0] + r() * (cp.moment[1] - cp.moment[0]), de1: r(), de2: r() });
   res.pannesPrevues.sort((a, b) => a.t - b.t);
@@ -621,7 +633,9 @@ function evenementsPannes(niveau, res, tAvant, tApres, regime){
   res.pannesPrevues = res.pannesPrevues.filter(e => !dues.includes(e));
   const cp = CONFIG.pannes, nouvelles = [];
   for(const e of dues){
-    const permis = res.options && res.options.pannes ? res.options.typesPannes || {} : null;     // bac à sable : types choisis
+    // Types possibles : ceux cochés dans le bac à sable, ceux de l'étape de carrière, sinon tous
+    const permis = res.options && res.options.pannes ? res.options.typesPannes || {}
+      : Array.isArray(niveau.pannes) ? Object.fromEntries(Object.keys(cp.types).map(k => [k, niveau.pannes.includes(k)])) : null;
     const cibles = ciblesPannes(niveau, res, regime), types = Object.keys(cp.types).filter(ty => cibles[ty].length && (!permis || permis[ty] !== false));
     if(!types.length) continue;                    // rien ne tourne : pas de panne
     let x = e.de1 * types.reduce((s, ty) => s + cp.types[ty].poids, 0), type = types[0];
@@ -773,6 +787,8 @@ function finNuit(niveau, res){
   if(res.pannes) res.pannes = res.pannes.filter(p => p.etat !== 'reparation');   // l'équipe finit son travail ; les autres pannes restent
   res.pannesPrevues = [];
   bilan.remplissage = remplirRetenue(niveau, res);
+  bilan.net = gain - electricite - bilan.remplissage.cout;
+  res.recettes = (res.recettes || 0) + bilan.net;                 // recettes nettes depuis le début (carrière)
   Object.assign(bilan, resultatNiveau(niveau, res));
   return bilan;
 }
@@ -780,7 +796,7 @@ function finNuit(niveau, res){
 function remplirRetenue(niveau, res){
   const R = res.retenue;
   if(!R) return { m3: 0, cout: 0 };
-  const prix = res.options && res.options.eauPayante === false ? 0 : CONFIG.retenue.prixM3, voulu = R.remplissage ?? CONFIG.retenue.remplissageJour;
+  const prix = res.options && res.options.eauPayante === false ? 0 : niveau.prixEau ?? CONFIG.retenue.prixM3, voulu = R.remplissage ?? CONFIG.retenue.remplissageJour;
   const m3 = Math.max(0, Math.floor(Math.min(voulu, volumeRetenue(niveau.retenue) - R.volume, prix > 0 ? Math.max(0, res.budget) / prix : Infinity)));
   const cout = Math.round(m3 * prix);
   R.volume += m3; res.budget -= cout;
@@ -790,12 +806,58 @@ function remplirRetenue(niveau, res){
 function resultatNiveau(niveau, res){
   const o = niveau.objectif, coups = res.coups || 0;
   if(o.type === 'libre') return { reussi: false, rate: null };     // bac à sable : pas d'objectif
+  if(o.type === 'carriere'){
+    const e = avancementEtape(res);
+    if(e.neige >= o.m3 && e.recette >= o.recette) return { reussi: true, rate: null };
+    if(e.nuits >= o.nuits) return { reussi: false, rate: `Les ${o.nuits} nuits de l'étape sont passées : ${e.neige < o.m3 ? 'pas assez de neige sur les pistes' : 'pas assez de recettes'}.` };
+    return { reussi: false, rate: null };
+  }
   if(o.coupsMax !== undefined && coups > o.coupsMax) return { reussi: false, rate: `${coups} coups de bélier : une conduite a cassé.` };
   const fait = o.type === 'production' ? res.neigeTotale >= o.m3 : res.neigePiste >= o.m3;
   if(fait) return { reussi: true, rate: null };
   if(o.nuits && res.nuit > o.nuits) return { reussi: false, rate: `Les ${o.nuits} nuits sont passées sans atteindre l'objectif.` };
   return { reussi: false, rate: null };
 }
+// --- Carrière ---
+// Où en est l'étape : neige sur les pistes, recettes nettes et nuits jouées depuis son début
+function avancementEtape(res){
+  const c = res.carriere || { debutNeige: 0, debutRecettes: 0, debutNuit: 1 };
+  return { neige: res.neigePiste - c.debutNeige, recette: (res.recettes || 0) - c.debutRecettes, nuits: res.nuit - c.debutNuit };
+}
+// Ajoute au réseau ce que l'étape a débloqué (départs électriques, compresseur), sans rien enlever
+function etendreReseau(niveau, res){
+  niveau.departsElec.forEach((d, i) => {
+    if(!noeudReseau(res, `elec${i + 1}`)) res.noeuds.push({ id: `elec${i + 1}`, type: 'elec', nom: d.nom, x: d.x, z: d.z });
+  });
+  if(niveau.compresseur && !noeudReseau(res, 'compresseur')){
+    res.noeuds.push({ id: 'compresseur', type: 'compresseur', nom: niveau.compresseur.nom, x: niveau.compresseur.sortie.x, z: niveau.compresseur.sortie.z });
+    res.compresseur = { marche: false, pression: 0 };
+  }
+  res.pannes = res.pannes || [];
+  return res;
+}
+// Début d'une étape : on note d'où l'on part (pour compter l'objectif et pouvoir recommencer l'étape)
+function commencerEtape(niveau, res, etape){
+  etendreReseau(niveau, res);
+  if(niveau.prime) res.budget += niveau.prime;
+  if(niveau.retenueDebut !== null && niveau.retenueDebut !== undefined && res.retenue)
+    res.retenue.volume = volumeRetenue(niveau.retenue) * niveau.retenueDebut ** 2;
+  if(res.retenue && niveau.remplissageMax) res.retenue.remplissage = Math.min(res.retenue.remplissage ?? CONFIG.retenue.remplissageJour, niveau.remplissageMax);
+  res.historique = [];
+  res.carriere = { etape, debutNeige: res.neigePiste, debutRecettes: res.recettes || 0, debutNuit: res.nuit, depart: null };
+  const copie = JSON.parse(JSON.stringify(res));
+  res.carriere.depart = copie;
+  return res;
+}
+// Recommencer l'étape : le réseau, l'argent et la neige reviennent comme au début de l'étape
+function recommencerEtape(res){
+  const depart = res.carriere && res.carriere.depart;
+  if(!depart) return res;
+  const r = JSON.parse(JSON.stringify(depart));
+  r.carriere.depart = depart;
+  return r;
+}
+
 // Réseau déjà construit (niveau 1) : regards, conduites et câbles posés d'avance, gratuitement
 function construireReseauFixe(niveau, res){
   const f = niveau.reseauFixe;
@@ -1127,6 +1189,29 @@ function testsSimulation(){
 
   const dir = directionVersPiste(niv.pistes, 70, 0);
   verifier('Un canon à droite de la piste souffle vers la gauche (vers la piste)', dir < -45 && dir > -135, `${dir}°`);
+
+  // Carrière
+  const c0 = niveauCarriere(0), rc = commencerEtape(c0, creerReseau(c0), 0);
+  verifier('Carrière, étape 1 : 150 000 €, une pompe, V8 sur trépied seulement',
+    rc.budget === CARRIERE.budgetDepart && disponible(c0, rc, 'v8').ok && !disponible(c0, rc, 'v9').ok && !poserRegard(c0, rc, -20, 205, { modele: 'v8', support: 'tour' }).ok);
+  const rc1 = poserRegard(c0, rc, -20, 205, { modele: 'v8', support: 'trepied' }), rc2 = poserRegard(c0, rc, -25, 175, { modele: 'v8', support: 'trepied' });
+  for(const [q, src] of [['eau', 'pompage'], ['cable', 'elec1']]){ ajouterTranchee(c0, rc, src, rc1.id, q); ajouterTranchee(c0, rc, rc1.id, rc2.id, q); }
+  rc.pompage.mode = 'manuel'; rc.pompage.marche = [true, true, true];
+  verifier('Carrière : seules les pompes installées tournent', regimeNuit(c0, rc, { force: 0, direction: 0 }).pompes === 1);
+  rc.pompage.mode = 'auto';
+  const c7 = niveauCarriere(7);
+  verifier('Carrière : le matériel débloqué s\'ajoute au fil des étapes',
+    c7.pompes === 3 && c7.enneigeurs.includes('v10') && c7.enneigeurs.includes('p6') && !!c7.compresseur && c7.pistes.length === 2 && c7.departsElec.length === 4);
+  rc.neigePiste += c0.objectif.m3; rc.recettes = c0.objectif.recette;
+  verifier('Carrière : étape réussie quand la neige ET les recettes sont atteintes', resultatNiveau(c0, rc).reussi);
+  rc.recettes = 0; rc.nuit += c0.objectif.nuits;
+  verifier('Carrière : étape ratée si les nuits passent sans les recettes', !resultatNiveau(c0, rc).reussi && !!resultatNiveau(c0, rc).rate);
+  const repris = recommencerEtape(rc);
+  verifier('Carrière : recommencer l\'étape remet le réseau, l\'argent et la neige du début', repris.budget === CARRIERE.budgetDepart && repris.neigePiste === 0 && repris.nuit === 1 && !!repris.carriere.depart);
+  const budgetAvant7 = rc.budget;
+  commencerEtape(c7, rc, 7);
+  verifier('Carrière : une nouvelle étape ajoute départs électriques, compresseur et prime',
+    !!noeudReseau(rc, 'elec4') && !!noeudReseau(rc, 'compresseur') && !!rc.compresseur && rc.budget === budgetAvant7 + c7.prime && avancementEtape(rc).nuits === 0);
 
   // Bac à sable
   const bac = LEVELS.find(l => l.bac), rb = creerReseau(bac);

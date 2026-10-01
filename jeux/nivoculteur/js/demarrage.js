@@ -8,7 +8,7 @@ const MODE_MODELES = params.has('modeles');
 // Le niveau vient de l'adresse (index.html?niveau=reseau) ; sans niveau, on ouvre le menu devant le dernier niveau joué
 const progressionSauvee = lireSauvegarde('nivo-progression') || {};
 const OUVRIR_MENU = !params.get('niveau') && !MODE_MODELES;
-const niveau = LEVELS.find(l => l.id === params.get('niveau')) || LEVELS.find(l => l.id === progressionSauvee.dernier) || LEVELS[0];
+const niveau = trouverNiveau(params.get('niveau')) || trouverNiveau(progressionSauvee.dernier) || LEVELS[0];
 
 if(MODE_TEST) afficherTests(testsSimulation());
 
