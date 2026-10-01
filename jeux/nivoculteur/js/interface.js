@@ -127,30 +127,6 @@ function afficherPoste(d, agir){
     <div class="pompe"><span class="led" style="background:${m ? LED.production : LED.arret}"></span>
       <b>Pompe ${i + 1}</b>${pastille(m ? 'MARCHE' : 'ARRÊT', m ? 'vert' : '')}
       ${p.mode === 'manuel' ? `<button class="bouton petit" type="button" data-action="pompe" data-valeur="${i}">${m ? 'Arrêter' : 'Démarrer'}</button>` : ''}</div>`).join('');
-  // Bac à sable : vent, pannes, retenue
-  const b = d.bac;
-  const bac = b ? `
-      <section class="bloc"><h3>Bac à sable</h3>
-        <div class="ligne">Vent ${pastille(b.vent.force ? `${b.vent.force} km/h` : 'calme')}${b.impose ? '' : pastille('au hasard')}
-          ${b.impose ? '<button class="bouton petit" type="button" data-action="bacVentHasard">Au hasard</button>' : ''}</div>
-        <div class="ligne reglage-bac">Force <input type="range" min="0" max="${CONFIG.vent.forceMax}" step="1" value="${b.vent.force}" data-curseur="bacVentForce" aria-label="Force du vent"></div>
-        <div class="ligne reglage-bac">Direction <input type="range" min="-180" max="180" step="5" value="${b.vent.direction}" data-curseur="bacVentDirection" aria-label="Direction du vent"><b>${b.vent.direction}°</b></div>
-        <div class="ligne">Pannes <span class="seg"><button type="button" data-action="bacPannes" data-valeur="0" class="${b.pannes ? '' : 'actif'}">Non</button><button type="button" data-action="bacPannes" data-valeur="1" class="${b.pannes ? 'actif' : ''}">Oui</button></span>
-          <button class="bouton petit" type="button" data-action="bacRemplir">Remplir la retenue</button></div>
-      </section>` : '';
-  // Pannes (niveau 4) : ce qui est cassé, et l'équipe à envoyer
-  const pannes = d.pannes === null ? '' : `
-      <section class="bloc"><h3>Pannes${d.pannes.length ? ` (${d.pannes.length})` : ''}</h3>
-        ${d.pannes.length ? d.pannes.map(q => `<div class="panne">
-          <span class="led" style="background:${q.reparation ? '#2F6FDE' : LED.defaut}"></span>
-          <span class="nom"><b>${echapper(q.nom)}</b><small>${echapper(q.ou)}</small></span>
-          ${q.reparation ? pastille(q.reste !== null ? `Équipe sur place · ${q.reste} s` : 'Équipe sur place') : ''}
-          <span class="actions">
-            ${q.reparation ? '' : `<button class="bouton petit" type="button" data-action="reparer" data-valeur="${q.id}">${q.rearmer ? 'Réarmer' : `Réparer · ${euros(q.cout)}`}</button>`}
-            <button class="bouton petit" type="button" data-action="voirPanne" data-valeur="${q.id}">Voir</button>
-          </span></div>`).join('') : '<p class="vide">Aucune panne. Elles peuvent arriver à tout moment la nuit.</p>'}
-        <p class="aide">La nuit, l'équipe met un peu de temps (une fuite est isolée pendant les travaux : plus d'eau en aval). Le jour, la réparation est immédiate.</p>
-      </section>`;
   const canons = d.canons.length ? d.canons.map(c => `
     <div class="canon">
       <div class="entete"><span class="led" style="background:${LED[c.led]}"></span>
@@ -209,7 +185,6 @@ function afficherPoste(d, agir){
         <div class="ligne">${d.nuit ? `<button class="bouton petit" type="button" data-action="accelerer">${d.accelere ? 'Vitesse normale' : `Accélérer ×${CONFIG.nuit.accelere}`}</button>`
           : '<button class="bouton vert" type="button" data-action="lancerNuit">Lancer la nuit</button>'}</div>
       </section>
-      ${pannes}${bac}
       <section class="bloc"><h3>Alarmes${d.coupsMax !== null ? ` · coups de bélier ${d.coups} / ${d.coupsMax}` : ''}</h3>
         ${d.alarmes.length ? d.alarmes.map(a => `<p class="alarme ${a.niveau}">${echapper(a.texte)}</p>`).join('') : '<p class="vide">Aucune alarme.</p>'}
       </section>
@@ -261,6 +236,73 @@ function afficherMenu(cartes, aVenir, agir, peutRevenir){
   };
 }
 function fermerMenu(){ $('menu').hidden = true; }
+
+// ---------------------------------------------------------------------------------------
+// Pannes en cours : petit panneau dans le coin en haut à droite (repliable)
+// liste : [{ id, nom, ou, reparation, reste, cout, rearmer }] ; agir(action, id)
+// ---------------------------------------------------------------------------------------
+function afficherPannesCoin(liste, replie, agir){
+  const el = $('pannesCoin');
+  document.body.classList.toggle('avec-pannes', liste.length > 0);
+  if(!liste.length){ el.hidden = true; el.innerHTML = ''; return; }
+  el.classList.toggle('replie', replie);
+  const enCours = liste.filter(q => !q.reparation).length;
+  mettreAJour(el, `<button class="entete" type="button" data-action="replier" aria-expanded="${!replie}">
+      <span class="icone">⚠</span><b>${liste.length} panne${liste.length > 1 ? 's' : ''}</b>${enCours < liste.length ? `<small>${liste.length - enCours} en réparation</small>` : ''}<span class="fleche">${replie ? '▾' : '▴'}</span></button>
+    ${replie ? '' : `<div class="liste">${liste.map(q => `<div class="item${q.reparation ? ' repare' : ''}">
+      <span class="nom"><b>${echapper(q.nom)}</b><small>${echapper(q.ou)}</small>${q.reparation ? `<small class="equipe">Équipe sur place${q.reste !== null ? ` · ${q.reste} s` : ''}</small>` : ''}</span>
+      <span class="actions">
+        ${q.reparation ? '' : `<button class="bouton petit" type="button" data-action="reparer" data-valeur="${q.id}">${q.rearmer ? 'Réarmer' : `Réparer · ${euros(q.cout)}`}</button>`}
+        <button class="bouton petit" type="button" data-action="voirPanne" data-valeur="${q.id}">Voir</button>
+      </span></div>`).join('')}</div>`}`);
+  el.hidden = false;
+  el.onclick = e => { const b = e.target.closest('[data-action]'); if(b) agir(b.dataset.action, b.dataset.valeur); };
+}
+
+// ---------------------------------------------------------------------------------------
+// Options du bac à sable : argent, vent, pannes, eau, électricité, retenue
+// o : options (res.options) ; vent : vent prévu ; agir(action, valeur)
+// ---------------------------------------------------------------------------------------
+function afficherOptions(o, vent, agir){
+  const el = $('options'), haut = el.scrollTop;
+  const seg = (action, choix, actuel) => `<span class="seg large">${choix.map(([v, t]) =>
+    `<button type="button" data-action="${action}" data-valeur="${v}" class="${String(v) === String(actuel) ? 'actif' : ''}">${t}</button>`).join('')}</span>`;
+  const ouiNon = (action, val) => seg(action, [['1', 'Oui'], ['0', 'Non']], val ? '1' : '0');
+  const types = Object.entries(CONFIG.pannes.types).map(([k, t]) =>
+    `<button type="button" class="bouton petit bascule${o.typesPannes[k] !== false ? ' actif' : ''}" data-action="optTypePanne" data-valeur="${k}">${echapper(t.nom)}</button>`).join('');
+  mettreAJour(el, `
+    <div class="tete"><h2>Options du bac à sable</h2><button class="fermer" type="button" data-action="fermer" aria-label="Fermer">×</button></div>
+    <p class="aide">Tout est débloqué. Réglez la partie comme vous voulez ; les changements s'appliquent tout de suite.</p>
+    <div class="grille">
+      <section class="bloc"><h3>Argent</h3>
+        ${seg('optBudget', [['', 'Illimité'], ['100000', '100 k€'], ['300000', '300 k€'], ['1000000', '1 M€']], o.budget ?? '')}
+        <p class="aide">Choisir un montant remet le budget à ce montant ; ensuite, tout se paie et la neige rapporte.</p>
+      </section>
+      <section class="bloc"><h3>Vent</h3>
+        ${seg('optVentMode', [['hasard', 'Au hasard'], ['impose', 'Imposé']], o.vent ? 'impose' : 'hasard')}
+        <div class="ligne reglage-bac">Force <input type="range" min="0" max="${CONFIG.vent.forceMax}" step="1" value="${vent.force}" data-curseur="optVentForce" aria-label="Force du vent"><b>${vent.force} km/h</b></div>
+        <div class="ligne reglage-bac">Direction <input type="range" min="-180" max="180" step="5" value="${vent.direction}" data-curseur="optVentDirection" aria-label="Direction du vent"><b>${vent.direction}°</b></div>
+      </section>
+      <section class="bloc"><h3>Pannes</h3>
+        ${ouiNon('optPannes', o.pannes)}
+        <div class="ligne">Combien par nuit</div>
+        ${seg('optFrequence', [['rare', 'Rare'], ['normale', 'Normal'], ['forte', 'Beaucoup']], o.frequence)}
+        <p class="aide">Rare : 0 ou 1 par nuit · normal : 1 à 3 · beaucoup : 3 à 5.</p>
+        <div class="ligne">Lesquelles</div>
+        <div class="types">${types}</div>
+      </section>
+      <section class="bloc"><h3>Eau et électricité</h3>
+        <div class="ligne">Remplissage de la retenue payant</div>${ouiNon('optEau', o.eauPayante)}
+        <div class="ligne">Électricité payante</div>${ouiNon('optElec', o.electricitePayante)}
+        <div class="ligne"><button class="bouton petit" type="button" data-action="optRemplir">Remplir la retenue</button><button class="bouton petit" type="button" data-action="optVider">Vider la retenue</button></div>
+      </section>
+    </div>`);
+  el.hidden = false;
+  el.scrollTop = haut;
+  el.onclick = e => { const b = e.target.closest('[data-action]'); if(b) agir(b.dataset.action, b.dataset.valeur); };
+  el.oninput = e => { const c = e.target.dataset.curseur; if(c) agir(c, +e.target.value); };
+}
+function fermerOptions(){ $('options').hidden = true; }
 function fermerPoste(){ $('poste').hidden = true; }
 
 function afficherTests(resultats){

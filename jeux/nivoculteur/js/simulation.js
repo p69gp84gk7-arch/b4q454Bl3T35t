@@ -231,7 +231,7 @@ function creerReseau(niveau){
     retenue: niveau.retenue ? { volume: volumeRetenue(niveau.retenue) * (niveau.retenueDepart ?? niveau.retenue.niveau) ** 2,
                                 remplissage: CONFIG.retenue.remplissageJour } : null,   // m³ commandés pour chaque journée (payants)
     coups: 0,               // coups de bélier depuis le début du niveau
-    options: niveau.bac ? { vent: null, pannes: false } : null,   // bac à sable : vent imposé (ou au hasard), pannes oui / non
+    options: niveau.bac ? optionsBac() : null,   // bac à sable : tout se règle (voir optionsBac)
     pannes: [],             // pannes en cours (niveau 4) : { id, type, cible, nuit, t, etat: 'active' | 'reparation', fin }
     numeroPanne: 0
   };
@@ -427,6 +427,18 @@ function ventDeLaNuit(niveau, numero){
   const r = alea(niveau.terrain.graine * 7919 + numero * 104729);
   return { force: Math.round(r() * CONFIG.vent.forceMax), direction: Math.round(r() * 360 - 180) };
 }
+// Options du bac à sable : tout est réglable par le joueur
+function optionsBac(){
+  return {
+    budget: null,                 // null = argent illimité, sinon le budget de départ choisi (€)
+    vent: null,                   // null = tiré au sort chaque nuit, sinon { force, direction } imposé
+    pannes: false,                // pannes oui / non
+    frequence: 'normale',         // rare, normale, forte (CONFIG.pannes.frequences)
+    typesPannes: Object.fromEntries(Object.keys(CONFIG.pannes.types).map(k => [k, true])),
+    eauPayante: true,             // remplissage de la retenue payant
+    electricitePayante: true      // électricité payante
+  };
+}
 // Vent prévu pour la prochaine nuit : celui choisi dans le bac à sable, sinon celui tiré au sort
 function ventPrevu(niveau, res){ return (res.options && res.options.vent) || ventDeLaNuit(niveau, res.nuit); }
 // Où tombe la neige d'un enneigeur : centre de la zone enneigée (déportée par le vent) et son rayon
@@ -589,7 +601,8 @@ function planifierPannes(niveau, res){
   res.pannesPrevues = [];
   if(!(niveau.pannes || (res.options && res.options.pannes))) return [];
   const cp = CONFIG.pannes, r = alea(niveau.terrain.graine * 4513 + res.nuit * 92821 + 7);
-  const nb = cp.parNuit[0] + Math.floor(r() * (cp.parNuit[1] - cp.parNuit[0] + 1));
+  const o = res.options, [mini, maxi] = o && o.pannes ? cp.frequences[o.frequence] || cp.parNuit : cp.parNuit;
+  const nb = mini + Math.floor(r() * (maxi - mini + 1));
   for(let k = 0; k < nb; k++) res.pannesPrevues.push({ t: cp.moment[0] + r() * (cp.moment[1] - cp.moment[0]), de1: r(), de2: r() });
   res.pannesPrevues.sort((a, b) => a.t - b.t);
   return res.pannesPrevues;
@@ -608,7 +621,8 @@ function evenementsPannes(niveau, res, tAvant, tApres, regime){
   res.pannesPrevues = res.pannesPrevues.filter(e => !dues.includes(e));
   const cp = CONFIG.pannes, nouvelles = [];
   for(const e of dues){
-    const cibles = ciblesPannes(niveau, res, regime), types = Object.keys(cp.types).filter(ty => cibles[ty].length);
+    const permis = res.options && res.options.pannes ? res.options.typesPannes || {} : null;     // bac à sable : types choisis
+    const cibles = ciblesPannes(niveau, res, regime), types = Object.keys(cp.types).filter(ty => cibles[ty].length && (!permis || permis[ty] !== false));
     if(!types.length) continue;                    // rien ne tourne : pas de panne
     let x = e.de1 * types.reduce((s, ty) => s + cp.types[ty].poids, 0), type = types[0];
     for(const ty of types){ x -= cp.types[ty].poids; if(x < 0){ type = ty; break; } }
@@ -746,7 +760,8 @@ function commanderPompe(niveau, res, i, enMarche, enProduction = true){
 
 // Fin de nuit : l'argent gagné s'ajoute au budget, la retenue se remplit un peu pendant la journée
 function finNuit(niveau, res){
-  const gain = Math.round(res.argentNuit), kwh = Math.round(res.kwhNuit || 0), electricite = Math.round(kwh * CONFIG.electricite.prixKwh);
+  const gratuite = res.options && res.options.electricitePayante === false;
+  const gain = Math.round(res.argentNuit), kwh = Math.round(res.kwhNuit || 0), electricite = gratuite ? 0 : Math.round(kwh * CONFIG.electricite.prixKwh);
   res.budget += gain - electricite;
   const bilan = { nuit: res.nuit, neige: res.neigeNuit, piste: res.pisteNuit, gain, kwh, electricite, coups: res.coupsNuit || 0,
     rendement: res.potentielNuit > 0 ? res.neigeNuit / res.potentielNuit : null,
@@ -765,7 +780,7 @@ function finNuit(niveau, res){
 function remplirRetenue(niveau, res){
   const R = res.retenue;
   if(!R) return { m3: 0, cout: 0 };
-  const prix = CONFIG.retenue.prixM3, voulu = R.remplissage ?? CONFIG.retenue.remplissageJour;
+  const prix = res.options && res.options.eauPayante === false ? 0 : CONFIG.retenue.prixM3, voulu = R.remplissage ?? CONFIG.retenue.remplissageJour;
   const m3 = Math.max(0, Math.floor(Math.min(voulu, volumeRetenue(niveau.retenue) - R.volume, prix > 0 ? Math.max(0, res.budget) / prix : Infinity)));
   const cout = Math.round(m3 * prix);
   R.volume += m3; res.budget -= cout;
@@ -1120,6 +1135,11 @@ function testsSimulation(){
   verifier('Bac à sable : le vent choisi est celui de la nuit', debutNuit(bac, rb).vent.force === 12 && !rb.pannesPrevues.length);
   rb.options.pannes = true; rb.nuit++;
   verifier('Bac à sable : on peut activer les pannes', debutNuit(bac, rb) && rb.pannesPrevues.length >= 1);
+  rb.options.frequence = 'forte'; rb.nuit++;
+  verifier('Bac à sable : beaucoup de pannes si on le demande', debutNuit(bac, rb) && rb.pannesPrevues.length >= 3, `${rb.pannesPrevues.length} pannes`);
+  rb.options.eauPayante = false; rb.options.electricitePayante = false; rb.retenue.volume = 0; rb.kwhNuit = 500;
+  const bb = finNuit(bac, rb);
+  verifier('Bac à sable : eau et électricité gratuites si on le choisit', bb.remplissage.m3 > 0 && !bb.remplissage.cout && bb.kwh === 500 && !bb.electricite);
 
   const r1 = alea(42), r2 = alea(42);
   verifier('Hasard : la même graine redonne les mêmes nombres', [1, 2, 3].every(() => r1() === r2()));

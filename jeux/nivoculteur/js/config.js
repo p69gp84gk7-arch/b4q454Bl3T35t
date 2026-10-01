@@ -70,6 +70,7 @@ const CONFIG = {
   // cout : prix de la réparation (€) · duree : temps de l'équipe la nuit (s de jeu ; le jour, c'est immédiat)
   pannes: {
     parNuit: [1, 3],        // nombre de pannes par nuit (au hasard entre les deux)
+    frequences: { rare: [0, 1], normale: [1, 3], forte: [3, 5] },   // bac à sable : nombre de pannes par nuit au choix
     moment: [4, 45],        // s de jeu : quand elles arrivent pendant la nuit
     types: {
       fuite:       { nom: 'Fuite sur une conduite', cout: 6000, duree: 15, poids: 2,

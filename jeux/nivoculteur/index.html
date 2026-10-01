@@ -160,6 +160,37 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 .poste .pastille.rouge{ background:rgba(215,38,61,.2); border-color:#D7263D; }
 .poste .bouton.vert{ background:var(--ok); border-color:var(--ok); }
 .poste .resume{ margin:0 0 8px; }
+/* Pannes en cours : coin en haut à droite */
+.coin-pannes{ position:fixed; z-index:12; top:calc(env(safe-area-inset-top, 0px) + 62px); right:calc(env(safe-area-inset-right, 0px) + 12px);
+  width:min(300px, calc(100vw - 24px)); max-height:calc(100dvh - 240px); overflow:auto; border-radius:12px;
+  background:rgba(11,20,38,.94); border:1px solid #E58A1F; box-shadow:0 8px 22px rgba(0,0,0,.4); }
+@media (max-width:480px){ #ouvrirOptions .txt{ display:none; } }
+.coin-pannes.replie{ width:auto; max-width:calc(100vw - 24px); }
+/* Petit écran : les messages passent sous le coin des pannes */
+@media (max-width:699px){ body.avec-pannes #messages{ top:calc(env(safe-area-inset-top, 0px) + 108px); } }
+.coin-pannes .entete{ display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; background:rgba(229,138,31,.18); border:0; color:var(--texte);
+  font:inherit; font-size:.9rem; text-align:left; cursor:pointer; }
+.coin-pannes .entete .icone{ color:#FFD23A; font-size:1.1rem; }
+.coin-pannes .entete small{ color:var(--doux); font-size:.75rem; }
+.coin-pannes .entete .fleche{ margin-left:auto; color:var(--doux); }
+.coin-pannes .liste{ padding:4px 10px 8px; }
+.coin-pannes .item{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:7px 0; border-bottom:1px solid #1A2A40; font-size:.85rem; }
+.coin-pannes .item:last-child{ border-bottom:0; }
+.coin-pannes .nom{ flex:1 1 100%; min-width:0; line-height:1.2; border-left:4px solid #FFD23A; padding-left:7px; }
+.coin-pannes .item.repare .nom{ border-left-color:#2F6FDE; }
+.coin-pannes .nom small{ display:block; color:var(--doux); font-size:.75rem; }
+.coin-pannes .nom .equipe{ color:#7FB2FF; }
+.coin-pannes .actions{ display:flex; gap:6px; margin-left:auto; }
+.coin-pannes .bouton.petit{ padding:5px 9px; font-size:.8rem; }
+/* Options du bac à sable */
+.options{ max-width:920px; z-index:25; }
+.options .grille{ margin-top:10px; }
+.options .seg.large{ margin:4px 0; }
+.options .types{ display:flex; flex-wrap:wrap; gap:6px; }
+.options .bascule{ opacity:.55; }
+.options .bascule.actif{ opacity:1; background:#2F6FDE; border-color:#2F6FDE; }
+.options .ligne b{ min-width:58px; text-align:right; white-space:nowrap; }
+.options .reglage-bac{ flex-wrap:nowrap; }
 .poste .reglage-bac input{ flex:1 1 120px; min-width:0; height:28px; accent-color:#E9B949; }
 .poste .panne{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; padding:7px 0; border-bottom:1px solid #1A2A40; font-size:.88rem; }
 .poste .panne .nom{ flex:1 1 140px; min-width:0; line-height:1.15; }
@@ -223,6 +254,7 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
   <a class="home" href="../../index.html">DesDés</a>
   <div class="titre"><b id="titre">Nivoculteur</b><span id="sousTitre">Découverte du terrain</span></div>
   <button class="bouton" id="ouvrirMenu" type="button">Menu</button>
+  <button class="bouton" id="ouvrirOptions" type="button" aria-label="Options" hidden><span aria-hidden="true">⚙</span><span class="txt"> Options</span></button>
   <a class="bouton" id="lienModeles" href="index.html?modeles" hidden>Modèles 3D</a>
   <a class="bouton" id="lienTerrain" href="index.html" hidden>Terrain</a>
   <button class="bouton" id="recentrer" type="button">Recentrer</button>
@@ -266,6 +298,8 @@ button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offs
 
 <section class="poste" id="poste" hidden aria-label="Poste de travail"></section>
 <section class="poste menu" id="menu" hidden aria-label="Menu des niveaux"></section>
+<section class="poste options" id="options" hidden aria-label="Options du bac à sable"></section>
+<aside class="coin-pannes" id="pannesCoin" hidden aria-label="Pannes en cours"></aside>
 <section class="panneau" id="panneauTests" hidden></section>
 <section class="panneau" id="panneauErreur" hidden></section>
 
