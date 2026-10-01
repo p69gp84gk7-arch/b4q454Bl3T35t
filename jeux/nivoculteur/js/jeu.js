@@ -138,7 +138,7 @@ function demarrer(){
   // Décor
   const ciel = creerCiel(), etoiles = creerEtoiles(CONFIG.graphismes.etoiles), lune = creerLune();
   const terrain = creerTerrain(niveau), poser = terrain.userData.poser;
-  const decor = [creerSapins(niveau, CONFIG.graphismes.sapins, poser), creerRochers(niveau, CONFIG.graphismes.rochers, poser), creerJalons(niveau, poser)];
+  const decor = [creerSapins(niveau, Math.round(CONFIG.graphismes.sapins * (t.largeur + 520) / 820), poser), creerRochers(niveau, CONFIG.graphismes.rochers, poser), creerJalons(niveau, poser)];
   scene.add(ciel, etoiles, lune, terrain, ...decor,
     creerLumieres(Math.max(t.largeur, t.longueur) / 2 + t.marge, new THREE.Vector3(0, t.denivele / 2, 0)));
 
@@ -154,7 +154,7 @@ function demarrer(){
     arm.rotation.y = Math.atan2(-d.x, t.longueur / 2 - d.z);     // porte tournée vers le bas de la pente
     scene.add(arm);
   }
-  for(const ts of niveau.remontees || []) scene.add(creerTelesiege(ts, poser));
+  const remontees3D = (niveau.remontees || []).map(ts => { const o = creerTelesiege(ts, poser); scene.add(o); return { ts, o }; });
   // Compresseur d'air (niveau 3), sur le replat de la salle de pompage
   const K = niveau.compresseur, compresseur = K ? creerCompresseur(K.nom, { dx: K.sortie.x - K.x, dz: K.sortie.z - K.z }) : null;
   if(compresseur){ compresseur.position.set(K.x, poser(K.x, K.z), K.z); scene.add(compresseur); }
@@ -190,8 +190,11 @@ function demarrer(){
                                               : construireReseauFixe(niveau, creerReseau(niveau));
   let reseau = chargerPartie() || nouvellePartie(), outil = null, depart = null, proposition = null, sousSol = false;
   let traceePiste = [], gareAval = null, gareAmont = null;            // bac à sable : piste ou télésiège en cours de tracé
+  let deplaceId = null;                                                // regard en cours de déplacement
   if(niveau.bac) reseau.options = { ...optionsBac(), ...(reseau.options || {}) };
-  if(niveau.carriere) etendreReseau(niveau, reseau);                                  // départs ou compresseur débloqués    // anciennes parties : options manquantes
+  if(niveau.carriere) etendreReseau(niveau, reseau);
+  reseau.dameuse = reseau.dameuse || { modele: 'dm400' };                           // parties enregistrées avant le garage
+  reseau.remonteesEnMarche = reseau.remonteesEnMarche || [];                                  // départs ou compresseur débloqués    // anciennes parties : options manquantes
   const repris = reseau.nuit > 1 || reseau.noeuds.some(n => n.type === 'regard' && !niveau.reseauFixe);
   function sauver(force = false){
     if(nuit || (!force && reseau.nuit === 1 && !reseau.lot)) return;   // rien à garder tant que le joueur n'a rien fait
@@ -203,7 +206,7 @@ function demarrer(){
   const planifierSauvegarde = () => { clearTimeout(minuteurSauvegarde); minuteurSauvegarde = setTimeout(sauver, 600); };
   if(niveau.construction === false) $('barreJeu').classList.add('sans-construction');
   document.querySelector('[data-outil="air"]').hidden = !niveau.compresseur;
-  for(const o of ['piste', 'remontee']) document.querySelector(`[data-outil="${o}"]`).hidden = !niveau.bac;   // tracés : bac à sable seulement
+  for(const o of ['piste', 'remontee']) document.querySelector(`[data-outil="${o}"]`).hidden = !niveau.bac && !niveau.carriere;   // tracés : grand domaine
   let choix = { modele: niveau.compresseur ? 'p10' : 'v8', support: 'trepied' };   // enneigeur posé avec un nouveau regard
   let fiche = null, nuit = null;                              // fiche : regard affiché ; nuit : { regime, temps, vitesse }
   let reussi = !!(progression.niveaux[niveau.id] || {}).reussi, alarmeJusqua = 0;
@@ -213,7 +216,7 @@ function demarrer(){
   const jets = creerJets(CONFIG.graphismes.flocons), manche = creerMancheAir();
   manche.position.set(niveau.pompage.x + 26, poser(niveau.pompage.x + 26, niveau.pompage.z - 12), niveau.pompage.z - 12);
   scene.add(groupeReseau, groupeSousSol, apercu, surbrillance, anneauChute, jets.groupe, manche);
-  const regards3D = new Map(), tas3D = new Map();
+  const regards3D = new Map(), tas3D = new Map(), departs3D = new Map();
   let tranchees3D = [];
   const COUL_OUTIL = { eau: COULEURS.reseauEau, cable: COULEURS.reseauElec, air: COULEURS.reseauAir };
   const NOMS_ZONES = { arret: 'pas assez de pression : pas de neige', faible: 'production réduite', correcte: 'bonne pression', haute: 'pression haute, à surveiller', surpression: 'surpression : le canon se met en sécurité' };
@@ -246,11 +249,24 @@ function demarrer(){
         groupeReseau.add(o);
         regards3D.set(n.id, o);
       }
+      o.position.set(n.x, poser(n.x, n.z), n.z);                     // un regard peut avoir été déplacé
       orienterCanon(o.userData.canon, n.direction, n.inclinaison);
       const e = etatRegard(niveau, reseau, n.id);
       o.userData.icone.material.map = textureIcone(e.eau, e.elec, e.besoinAir ? e.air : null);
     }
     for(const [id, o] of regards3D) if(!vus.has(id)){ groupeReseau.remove(o); liberer(o); regards3D.delete(id); }
+    // Départs électriques ajoutés par le joueur
+    const departsVus = new Set();
+    for(const n of reseau.noeuds.filter(q => q.type === 'elec' && q.ajoute)){
+      departsVus.add(n.id);
+      if(!departs3D.has(n.id)){
+        const arm = creerArmoire(n.nom);
+        arm.position.set(n.x, poser(n.x, n.z), n.z);
+        arm.rotation.y = Math.atan2(-n.x, t.longueur / 2 - n.z);
+        groupeReseau.add(arm); departs3D.set(n.id, arm);
+      }
+    }
+    for(const [id, o] of departs3D) if(!departsVus.has(id)){ groupeReseau.remove(o); departs3D.delete(id); }
     for(const o of tranchees3D){ groupeReseau.remove(o.surface); groupeSousSol.remove(o.dessous); liberer(o.surface); liberer(o.dessous); }
     tranchees3D = reseau.tranchees.map(tr => {
       const o = creerTranchee3D(noeudReseau(reseau, tr.a), noeudReseau(reseau, tr.b), tr, poser);
@@ -270,6 +286,7 @@ function demarrer(){
     for(const q of reseau.tas){
       let mesh = tas3D.get(q);
       if(!mesh){ mesh = creerTas(); mesh.position.set(q.x, poser(q.x, q.z) - 0.3, q.z); scene.add(mesh); tas3D.set(q, mesh); }
+      if(q.attente) continue;                                        // la dameuse n'est pas encore passée
       majTas(mesh, q.volume);
       if(q.dame) damer(mesh);
     }
@@ -279,56 +296,93 @@ function demarrer(){
     : niveau.carriere ? avancementEtape(reseau).neige : reseau.neigePiste;
   // Numéro de la nuit à afficher (carrière : nuit de l'étape sur le nombre de nuits)
   const libelleNuit = () => niveau.carriere ? `${avancementEtape(reseau).nuits + 1}/${niveau.objectif.nuits}` : `${reseau.nuit}`;
-  // ----- Dameuse : quand l'objectif est atteint, une dameuse par piste fait des allers-retours -----
-  let dameuses = [], premiereMajDameuses = true;
+  // ----- Garage et dameuse : la dameuse sort le matin, étale les tas sur les pistes, puis rentre au garage -----
+  const G = niveau.garage, placeGarage = new THREE.Vector3(), sortieGarage = new THREE.Vector3();
+  let garage = null, dameuse3D = null, tournee = null;
+  if(G){
+    garage = creerGarage(G.nom);
+    garage.position.set(G.x, coteReplat(t, G) - t.altBas + 0.05, G.z);
+    garage.rotation.y = Math.PI;                                      // portes tournées vers le haut de la pente
+    scene.add(garage);
+    garage.updateMatrixWorld(true);
+    garage.localToWorld(placeGarage.copy(garage.userData.places[0]));
+    garage.localToWorld(sortieGarage.set(garage.userData.places[0].x, 0, garage.userData.profondeur / 2 + 9));
+  }
   function trajetDameuse(piste){
     const c = courbePiste(piste), w = piste.largeur;
     const passe = decal => c.map((p, i) => {
       const a = c[Math.max(0, i - 1)], b = c[Math.min(c.length - 1, i + 1)], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
       return [p[0] - (b[1] - a[1]) / L * decal, p[1] + (b[0] - a[0]) / L * decal];
     });
-    const pts = [...passe(-w / 4), ...passe(w / 4).reverse()], cumul = [0];
-    pts.push(pts[0]);
+    return [...passe(-w / 4), ...passe(w / 4).reverse()];
+  }
+  function majDameuse3D(){
+    if(!G) return;
+    if(dameuse3D && dameuse3D.userData.modele === reseau.dameuse.modele) return;
+    if(dameuse3D){ scene.remove(dameuse3D); liberer(dameuse3D); }
+    dameuse3D = creerDameuse(reseau.dameuse.modele);
+    dameuse3D.rotation.order = 'YXZ';
+    scene.add(dameuse3D);
+    garer();
+  }
+  // La dameuse au garage, phares éteints, porte fermée
+  function garer(){
+    if(!dameuse3D) return;
+    dameuse3D.position.copy(placeGarage);
+    dameuse3D.rotation.set(0, Math.PI, 0);
+    phareDameuse(dameuse3D, false);
+    if(tournee){ for(const q of tournee.attente) delete q.attente; tournee = null; majTasMeshes(); }
+    ouvrirGarage(garage, false);
+  }
+  // Tournée du matin : garage → pistes où il y a des tas → garage (les tas s'étalent à son passage)
+  function commencerTournee(tasDames){
+    if(!dameuse3D || !tasDames.length) return;
+    const attente = new Set(reseau.tas.filter(q => tasDames.some(d => d.x === q.x && d.z === q.z)));
+    for(const q of attente) q.attente = true;
+    let restantes = niveau.pistes.filter(p => tasDames.some(q => distancePiste(p, q.x, q.z) < p.largeur / 2 + 25));
+    const pts = [[placeGarage.x, placeGarage.z], [sortieGarage.x, sortieGarage.z]];
+    while(restantes.length){
+      const [x0, z0] = pts[pts.length - 1];
+      const boucles = restantes.map(p => {
+        const b = trajetDameuse(p);
+        let k = 0, dMin = Infinity;
+        b.forEach(([x, z], i) => { const d = Math.hypot(x - x0, z - z0); if(d < dMin){ dMin = d; k = i; } });
+        return { p, b: [...b.slice(k), ...b.slice(0, k), b[k]], dMin };
+      }).sort((a, b) => a.dMin - b.dMin);
+      pts.push(...boucles[0].b);
+      restantes = restantes.filter(p => p !== boucles[0].p);
+    }
+    pts.push([sortieGarage.x, sortieGarage.z], [placeGarage.x, placeGarage.z]);
+    const cumul = [0];
     for(let i = 1; i < pts.length; i++) cumul.push(cumul[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
-    return { pts, cumul, longueur: cumul[cumul.length - 1] };
+    tournee = { pts, cumul, longueur: cumul[cumul.length - 1], s: 0, i: 1, attente };
+    phareDameuse(dameuse3D, true);
+    majTasMeshes();
   }
-  function majDameuses(){
-    const atteint = !!niveau.objectif.m3 && neigeObjectif() >= niveau.objectif.m3;
-    if(atteint && !dameuses.length){
-      dameuses = niveau.pistes.map((piste, i) => {
-        const g = creerDameuse(), tr = trajetDameuse(piste);
-        g.rotation.order = 'YXZ';
-        scene.add(g);
-        return { g, tr, s: tr.longueur * (0.15 + i * 0.4) };
-      });
-      if(!premiereMajDameuses) message('Objectif atteint ! La dameuse passe pour préparer la piste.', 'ok', 7000);
-    } else if(!atteint && dameuses.length){
-      for(const d of dameuses){ scene.remove(d.g); liberer(d.g); }
-      dameuses = [];
-    }
-    premiereMajDameuses = false;
-  }
-  const _avant = [0, 0];
-  function avancerDameuses(dt, temps){
-    for(const d of dameuses){
-      const { pts, cumul, longueur } = d.tr;
-      d.s = (d.s + dt * CONFIG.dameuse.vitesse) % longueur;
-      let i = 1;
-      while(i < cumul.length - 1 && cumul[i] < d.s) i++;
-      const a = pts[i - 1], b = pts[i], f = (d.s - cumul[i - 1]) / Math.max(1e-6, cumul[i] - cumul[i - 1]);
-      const x = a[0] + (b[0] - a[0]) * f, z = a[1] + (b[1] - a[1]) * f, L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
-      const ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L;
-      _avant[0] = poser(x + ux * 2.5, z + uz * 2.5); _avant[1] = poser(x - ux * 2.5, z - uz * 2.5);
-      d.g.position.set(x, poser(x, z), z);
-      d.g.rotation.set(-Math.atan2(_avant[0] - _avant[1], 5), Math.atan2(ux, uz), 0);
-      animerDameuse(d.g, temps);
-      // Les tas de neige sur la piste sont étalés à son passage
-      for(const [q, mesh] of tas3D) if(!q.dame && Math.hypot(q.x - x, q.z - z) < 9 && niveau.pistes.some(p => surPiste(p, q.x, q.z))){
-        q.dame = true;
-        majTas(mesh, q.volume); damer(mesh);
-      }
+  const _pente = [0, 0];
+  function avancerTournee(dt, temps){
+    if(!dameuse3D || !tournee) return;
+    const tr = tournee;
+    tr.s += dt * CONFIG.dameuse.vitesse;
+    if(tr.s >= tr.longueur) return garer();
+    while(tr.i < tr.cumul.length - 1 && tr.cumul[tr.i] < tr.s) tr.i++;
+    const a = tr.pts[tr.i - 1], b = tr.pts[tr.i], f = (tr.s - tr.cumul[tr.i - 1]) / Math.max(1e-6, tr.cumul[tr.i] - tr.cumul[tr.i - 1]);
+    const x = a[0] + (b[0] - a[0]) * f, z = a[1] + (b[1] - a[1]) * f, L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const recul = tr.i === tr.pts.length - 1, sens = recul ? -1 : 1;              // elle rentre au garage en marche arrière
+    const ux = (b[0] - a[0]) / L * sens, uz = (b[1] - a[1]) / L * sens, auGarage = Math.hypot(x - placeGarage.x, z - placeGarage.z);
+    _pente[0] = poser(x + ux * 2.5, z + uz * 2.5); _pente[1] = poser(x - ux * 2.5, z - uz * 2.5);
+    dameuse3D.position.set(x, auGarage < 12 ? placeGarage.y : poser(x, z), z);
+    dameuse3D.rotation.set(auGarage < 12 ? 0 : -Math.atan2(_pente[0] - _pente[1], 5), Math.atan2(ux, uz), 0);
+    animerDameuse(dameuse3D, temps);
+    ouvrirGarage(garage, auGarage < 30);
+    for(const q of [...tr.attente]) if(Math.hypot(q.x - x, q.z - z) < 14){
+      tr.attente.delete(q); delete q.attente;
+      const mesh = tas3D.get(q);
+      if(mesh){ majTas(mesh, q.volume); if(q.dame) damer(mesh); }
     }
   }
+  // Remontées : elles tournent quand on les active
+  function majRemontees3D(){ for(const r of remontees3D) r.o.userData.enMarche = remonteeEnMarche(reseau, r.ts); }
   function damer(mesh){ mesh.scale.x *= 1.6; mesh.scale.z *= 1.6; mesh.scale.y *= 0.3; }
 
   function majInfos(){
@@ -337,8 +391,10 @@ function demarrer(){
       neige: Math.round(neigeObjectif()), objectif: niveau.objectif.m3, vent: ventActuel(),
       retenue: reseau.retenue ? reseau.retenue.volume / volumeRetenue(R) : null });
     if(reseau.retenue) retenue.userData.remplir(hauteurRetenue(R, reseau.retenue.volume));
-    majDameuses();
+    majDameuse3D();
+    majRemontees3D();
     majCoinPannes();
+    majObjectifs();
   }
 
   function consigne(){
@@ -349,13 +405,16 @@ function demarrer(){
       eau: suite || 'Eau : touchez la salle de pompage, ou un regard déjà alimenté en eau.',
       cable: suite || 'Électricité : touchez un départ électrique (près des bâtiments), ou un regard déjà alimenté.',
       air: suite || 'Air comprimé : touchez le compresseur (à côté de la salle de pompage), ou un regard déjà alimenté en air. Seules les perches ont besoin d\'air.',
-      piste: 'Nouvelle piste : touchez des points du haut vers le bas, puis « Terminer la piste ».',
+      piste: 'Nouvelle piste : touchez des points du haut vers le bas, puis « Terminer la piste ». Sa couleur dépend de la pente.',
+      depart: `Nouveau départ électrique : touchez l'endroit où poser l'armoire (${euros(CONFIG.couts.departElec)}).`,
+      demonter: 'Démonter : touchez un regard (ou un départ électrique ajouté), ou une tranchée pour en retirer la conduite ou le câble.',
+      deplacer: deplaceId && noeudReseau(reseau, deplaceId) ? `Déplacer ${noeudReseau(reseau, deplaceId).nom} : touchez le nouvel emplacement.` : null,
       remontee: gareAval ? 'Touchez maintenant l\'emplacement de la gare d\'arrivée, en haut.' : 'Nouveau télésiège : touchez l\'emplacement de la gare de départ, en bas de la pente.'
     }[outil] || null);
     const trace = outil === 'piste' || outil === 'remontee';
-    $('choixEnneigeur').hidden = !outil || trace;
+    $('choixEnneigeur').hidden = !outil || trace || ['depart', 'demonter', 'deplacer'].includes(outil);
     $('choixTrace').hidden = !trace;
-    if(outil && !trace) majChoix();
+    if(outil && !trace && !$('choixEnneigeur').hidden) majChoix();
     if(trace) majPanneauTrace();
   }
   function majChoix(){
@@ -379,7 +438,7 @@ function demarrer(){
   }
   function choisirOutil(o){
     outil = outil === o ? null : o;
-    depart = null; traceePiste = []; gareAval = null; gareAmont = null;
+    depart = null; traceePiste = []; gareAval = null; gareAmont = null; deplaceId = null;
     fermerDevis();
     document.querySelectorAll('[data-outil]').forEach(b => b.classList.toggle('actif', b.dataset.outil === outil));
     montrerDepart();
@@ -475,8 +534,12 @@ function demarrer(){
       <li>${m.debit} m³/h d'eau${m.air ? ` · ${m.air} Nm³/h d'air` : ''} · ${m.pressionMin} bar minimum · jusqu'à ${nombreFr(m.neige * CONFIG.nuit.duree * CONFIG.nuit.echelle / 3600)} m³ de neige par nuit (${m.neige} m³/h)</li></ul>
       <div class="ligne reglage-fiche">Direction <input type="range" id="ficheDir" min="-180" max="180" step="5" value="${n.direction}" aria-label="Direction du canon"><b>${n.direction}°</b></div>
       ${ventilo ? `<div class="ligne reglage-fiche">Inclinaison <input type="range" id="ficheInc" min="0" max="35" step="1" value="${n.inclinaison}" aria-label="Inclinaison du canon"><b>${n.inclinaison}°</b></div>` : ''}
+      ${nuit || niveau.construction === false ? '' : `<div class="ligne"><button class="bouton petit" type="button" id="ficheDeplacer">Déplacer</button><button class="bouton petit" type="button" id="ficheDemonter">Démonter · +${euros(devisDemontage(niveau, reseau, n.id).rembourse)}</button></div>`}
       ${nuit || niveau.construction === false ? '' : `<div class="ligne choix">Remplacer par <select id="ficheModele">${options}</select><select id="ficheSupport">${supports}</select><button class="bouton petit" type="button" id="ficheRemplacer"></button></div>`}`);
     d.querySelector('#ficheFermer').onclick = fermerDevis;
+    const bDep = d.querySelector('#ficheDeplacer'), bDem = d.querySelector('#ficheDemonter');
+    if(bDep) bDep.onclick = () => commencerDeplacement(n.id);
+    if(bDem) bDem.onclick = () => proposerDemontage(n.id);
     d.querySelectorAll('[data-reparer]').forEach(b => { b.onclick = () => reparer(b.dataset.reparer); });
     // Curseurs : direction et inclinaison, le canon tourne en direct
     const curDir = d.querySelector('#ficheDir'), curInc = d.querySelector('#ficheInc');
@@ -514,13 +577,158 @@ function demarrer(){
     anneauChute.scale.setScalar(chute.rayon);
   }
 
+  // ----- Modifier l'installation : départ électrique, démontage, retrait d'un réseau, déplacement -----
+  const NOMS_QUOI = { eau: 'la conduite d\'eau', cable: 'le câble électrique', air: 'la conduite d\'air' };
+  const texteCoupes = coupes => {
+    const parRegard = new Map();
+    for(const c of coupes) parRegard.set(c.id, [...(parRegard.get(c.id) || []), { eau: 'l\'eau', cable: 'le courant', air: 'l\'air' }[c.quoi]]);
+    return [...parRegard].map(([id, q]) => `${noeudReseau(reseau, id).nom} perdra ${q.join(' et ')}`);
+  };
+  function marqueur(x, z, couleur){
+    apercu.add(creerApercu({ x, z }, { x: x + 0.01, z }, poser, couleur, Math.max(1, cam.actuel.distance * 0.012)));
+  }
+  function outilDepart(x, z){
+    const d = devisDepart(niveau, reseau, x, z);
+    if(!d.ok && d.raison !== 'Budget insuffisant.') return message(d.raison, 'attention', 3500);
+    fermerDevis();
+    marqueur(x, z, COULEURS.reseauElec);
+    proposition = { faire: () => {
+      const r = ajouterDepartElec(niveau, reseau, x, z);
+      if(!r.ok) return message(r.raison, 'attention');
+      synchroniser();
+      message(`${noeudReseau(reseau, r.id).nom} posé (${euros(r.cout)}). Tirez les câbles depuis lui avec l'outil Électricité.`, 'ok', 5000);
+    } };
+    afficherDevis({ titre: 'Nouveau départ électrique', lignes: ['Armoire raccordée au réseau électrique, comme celles près des bâtiments', 'Les câbles des regards pourront partir d\'ici'],
+      total: d.cout, budgetApres: reseau.budget - d.cout, possible: d.ok }, valider, fermerDevis);
+  }
+  function proposerDemontage(id){
+    const n = noeudReseau(reseau, id), d = devisDemontage(niveau, reseau, id);
+    if(!d.ok) return message(d.raison, 'attention', 3500);
+    fermerDevis();
+    marqueur(n.x, n.z, '#D7263D');
+    const lignes = [n.type === 'regard' ? `${nomEnneigeur(n.modele, n.support)} et regard repris : ${euros(d.materiel)}` : `Armoire reprise : ${euros(d.materiel)}`];
+    if(d.nbTranchees) lignes.push(`${d.nbTranchees} tranchée${d.nbTranchees > 1 ? 's' : ''} retirée${d.nbTranchees > 1 ? 's' : ''} : ${euros(d.tranchees)} récupérés`);
+    lignes.push(...texteCoupes(d.coupes));
+    proposition = { faire: () => {
+      const r = demonter(niveau, reseau, id);
+      if(!r.ok) return message(r.raison, 'attention');
+      synchroniser();
+      message(`${n.nom} démonté : ${euros(r.rembourse)} récupérés. « Annuler » le remet en place.`, 'ok', 5000);
+    } };
+    afficherDevis({ titre: `Démonter ${n.nom}`, lignes, total: d.rembourse, budgetApres: reseau.budget + d.rembourse, possible: true, rendu: true, libelleOk: 'Démonter' }, valider, fermerDevis);
+  }
+  function outilDemonter(x, z, n){
+    if(n && (n.type === 'regard' || n.ajoute)) return proposerDemontage(n.id);
+    if(n) return message(`${n.nom} fait partie de la station : on ne peut pas le démonter.`, 'attention', 3500);
+    // Sinon, la tranchée la plus proche
+    const tol = Math.max(4, cam.actuel.distance * 0.02);
+    let tr = null, dMin = tol;
+    for(const q of reseau.tranchees){
+      const A = noeudReseau(reseau, q.a), B = noeudReseau(reseau, q.b), d = distanceSegment(x, z, [A.x, A.z], [B.x, B.z]);
+      if(d < dMin){ dMin = d; tr = q; }
+    }
+    if(!tr) return message('Touchez un regard ou une tranchée.', 'info', 2500);
+    proposerRetrait(cleTranchee(tr.a, tr.b));
+  }
+  function proposerRetrait(cle){
+    const tr = trancheeParCle(reseau, cle);
+    fermerDevis();
+    if(!tr) return;
+    const A = noeudReseau(reseau, tr.a), B = noeudReseau(reseau, tr.b);
+    apercu.add(creerApercu(A, B, poser, '#D7263D', Math.max(0.35, cam.actuel.distance * 0.0035)));
+    const choix = ['eau', 'cable', 'air'].filter(q => tr[q]).map(q => ({ q, d: devisRetrait(niveau, reseau, cle, q) }));
+    const d = afficherPanneau(`<div class="tete"><span>Tranchée ${echapper(A.nom)} – ${echapper(B.nom)}</span><span>${nombreFr(tr.longueur)} m</span></div>
+      <ul><li>Retirer un réseau rend ${Math.round(CONFIG.couts.repriseTranchee * 100)} % de son prix ; une tranchée vide disparaît.</li>
+      ${choix.flatMap(c => texteCoupes(c.d.coupes).map(t => `<li>Sans ${NOMS_QUOI[c.q]} : ${echapper(t)}</li>`)).join('')}</ul>
+      <div class="choix-retrait">${choix.map(c => `<button class="bouton petit" type="button" data-retirer="${c.q}">Retirer ${NOMS_QUOI[c.q]} · +${euros(c.d.rembourse)}</button>`).join('')}</div>
+      <div class="actions"><button class="bouton" type="button" id="retraitFermer">Fermer</button></div>`);
+    d.querySelectorAll('[data-retirer]').forEach(b => { b.onclick = () => {
+      const r = retirerReseau(niveau, reseau, cle, b.dataset.retirer);
+      if(!r.ok) return message(r.raison, 'attention');
+      synchroniser();
+      message(`${NOMS_QUOI[b.dataset.retirer][0].toUpperCase()}${NOMS_QUOI[b.dataset.retirer].slice(1)} retiré${b.dataset.retirer === 'eau' || b.dataset.retirer === 'air' ? 'e' : ''} : +${euros(r.rembourse)}.`, 'ok', 3500);
+      proposerRetrait(cle);
+    }; });
+    d.querySelector('#retraitFermer').onclick = fermerDevis;
+  }
+  function commencerDeplacement(id){
+    fermerDevis();
+    outil = 'deplacer'; deplaceId = id;
+    document.querySelectorAll('[data-outil]').forEach(b => b.classList.remove('actif'));
+    const n = noeudReseau(reseau, id);
+    surbrillance.visible = true; surbrillance.material.color.set('#E58A1F'); surbrillance.position.set(n.x, poser(n.x, n.z) + 0.6, n.z);
+    consigne();
+  }
+  function outilDeplacer(x, z){
+    const n = noeudReseau(reseau, deplaceId);
+    if(!n) return choisirOutil(null);
+    const d = devisDeplacement(niveau, reseau, deplaceId, x, z);
+    if(!d.ok && d.raison !== 'Budget insuffisant.') return message(d.raison, 'attention', 3500);
+    fermerDevis();
+    for(const tr of reseau.tranchees.filter(q => q.a === n.id || q.b === n.id)){
+      const autre = noeudReseau(reseau, tr.a === n.id ? tr.b : tr.a);
+      apercu.add(creerApercu(autre, { x, z }, poser, '#E58A1F', Math.max(0.35, cam.actuel.distance * 0.0035)));
+    }
+    marqueur(x, z, '#E58A1F');
+    const id = deplaceId;
+    proposition = { faire: () => {
+      const r = deplacerRegard(niveau, reseau, id, x, z);
+      if(!r.ok) return message(r.raison, 'attention');
+      choisirOutil(null);
+      synchroniser();
+      message(`${n.nom} déplacé de ${nombreFr(r.distance)} m (${euros(r.cout)}).`, 'ok', 4000);
+      ouvrirFiche(id);
+    } };
+    afficherDevis({ titre: `Déplacer ${n.nom}`, total: d.cout, budgetApres: reseau.budget - d.cout, possible: d.ok, libelleOk: 'Déplacer',
+      lignes: [`Déplacement du regard et de l'enneigeur (${nombreFr(d.distance)} m) : ${euros(CONFIG.couts.deplacement)}`,
+        d.rallonge > 0 ? `Tranchées rallongées de ${nombreFr(d.rallonge)} m : ${euros(d.cout - CONFIG.couts.deplacement)}` : 'Les tranchées raccourcissent : rien à payer en plus',
+        'Les conduites et les câbles suivent le regard.'] }, valider, () => { fermerDevis(); });
+  }
+
+  // ----- Fiches du garage et des remontées -----
+  function ouvrirGarageFiche(){
+    fermerDevis();
+    const m = DAMEUSES[reseau.dameuse.modele], aDamer = neigeADamer(reseau);
+    const autres = Object.entries(DAMEUSES).filter(([k]) => k !== reseau.dameuse.modele);
+    const d = afficherPanneau(`<div class="tete"><span>${echapper(G.nom)}</span><button class="fermer" type="button" id="garageFermer" aria-label="Fermer">×</button></div>
+      <ul><li><b>${echapper(m.nom)}</b> : lame avant, fraise de ${nombreFr(m.largeur, 1)} m à l'arrière ; elle étale jusqu'à ${nombreFr(m.capacite)} m³ de neige par jour.</li>
+      <li>Chaque matin, elle sort étaler les tas tombés sur les pistes. Seule la neige damée compte et se vend (${euros(CONFIG.gains.parM3Piste)} par m³).</li>
+      <li>Neige qui attend la dameuse : <b>${nombreFr(Math.round(aDamer))} m³</b>${aDamer > m.capacite ? ' (plus que ce qu\'elle étale en un jour)' : ''}</li></ul>
+      ${autres.map(([k, a]) => { const dv = devisDameuse(reseau, k);
+        return `<div class="ligne"><span>${echapper(a.nom)} : ${nombreFr(a.capacite)} m³ par jour</span><button class="bouton petit" type="button" data-dameuse="${k}"${dv.ok && !nuit ? '' : ' disabled'}>Changer · ${euros(dv.cout)}</button></div>`; }).join('')}
+      <p class="aide">L'ancienne dameuse est reprise ${Math.round(CONFIG.dameuse.reprise * 100)} % de son prix.</p>`);
+    d.querySelector('#garageFermer').onclick = fermerDevis;
+    d.querySelectorAll('[data-dameuse]').forEach(b => { b.onclick = () => {
+      const r = changerDameuse(reseau, b.dataset.dameuse);
+      if(!r.ok) return message(r.raison, 'attention');
+      majDameuse3D(); majInfos(); planifierSauvegarde();
+      message(`${DAMEUSES[b.dataset.dameuse].nom} livrée au garage (${euros(r.cout)}, ancienne reprise ${euros(r.reprise)}).`, 'ok', 5000);
+      ouvrirGarageFiche();
+    }; });
+  }
+  function ficheRemontee(ts){
+    fermerDevis();
+    const marche = remonteeEnMarche(reseau, ts), kw = puissanceRemontee(ts), parJour = Math.round(kw * CONFIG.remontees.heuresJour * CONFIG.electricite.prixKwh);
+    const d = afficherPanneau(`<div class="tete"><span>${echapper(ts.nom)}</span><button class="fermer" type="button" id="tsFermer" aria-label="Fermer">×</button></div>
+      <ul><li>${nombreFr(longueurRemontee(ts))} m, ${ts.pylones} pylônes · ${marche ? 'en marche' : 'à l\'arrêt'}</li>
+      <li>En marche : ${nombreFr(kw)} kW pendant ${CONFIG.remontees.heuresJour} h d'ouverture par jour, environ ${euros(parJour)} d'électricité.</li>
+      <li>Les skieurs viendront plus tard : pour l'instant, elle ne rapporte rien.</li></ul>
+      <div class="actions"><button class="bouton" type="button" id="tsBasculer">${marche ? 'Arrêter' : 'Mettre en marche'}</button></div>`);
+    d.querySelector('#tsFermer').onclick = fermerDevis;
+    d.querySelector('#tsBasculer').onclick = () => {
+      basculerRemontee(reseau, ts.nom, !marche); majRemontees3D(); planifierSauvegarde();
+      message(`${ts.nom} ${marche ? 'arrêté' : 'en marche'}.`, 'info', 2500);
+      ficheRemontee(ts);
+    };
+  }
+
   // ----- Bac à sable : tracer une piste, poser un télésiège -----
-  const reglageTrace = { couleur: 'bleue', largeur: 30 };
+  const reglageTrace = { largeur: 30 };
   function dessinerTrace(){
     apercu.children.slice().forEach(o => { apercu.remove(o); liberer(o); });
     const ep = Math.max(0.35, cam.actuel.distance * 0.0035);
     if(outil === 'piste'){
-      const coul = COULEURS.jalons[reglageTrace.couleur];
+      const coul = COULEURS.jalons[couleurPente(traceePiste.length >= 2 ? penteMaxi(t, traceePiste) : 0)];
       traceePiste.forEach(([x, z], i) => {
         const A = { x, z }, B = i ? { x: traceePiste[i - 1][0], z: traceePiste[i - 1][1] } : { x: x + 0.01, z };
         apercu.add(creerApercu(B, A, poser, coul, ep * (i ? 1 : 3)));
@@ -539,18 +747,18 @@ function demarrer(){
     const el = $('choixTrace');
     if(outil === 'piste'){
       const v = traceePiste.length >= 2 ? validerPiste(niveau, traceePiste, reglageTrace.largeur) : null;
-      el.innerHTML = `<label>Couleur <select id="traceCouleur">${['verte', 'bleue', 'rouge', 'noire'].map(c => `<option value="${c}"${c === reglageTrace.couleur ? ' selected' : ''}>${c}</option>`).join('')}</select></label>
+      const pente = traceePiste.length >= 2 ? penteMaxi(t, traceePiste) : null;
+      el.innerHTML = `${pente === null ? '' : `<span class="pastille-couleur ${couleurPente(pente)}">Piste ${couleurPente(pente)} · pente ${Math.round(pente)} %</span>`}
         <label>Largeur <select id="traceLargeur">${CONFIG.bac.largeurs.map(l => `<option value="${l}"${l === reglageTrace.largeur ? ' selected' : ''}>${l} m</option>`).join('')}</select></label>
-        <span>${traceePiste.length} point${traceePiste.length > 1 ? 's' : ''}${traceePiste.length >= 2 ? ` · ${nombreFr(longueurPolyligne(traceePiste))} m${reseau.options.budget && v && v.ok ? ` · ${euros(v.cout)}` : ''}` : ''}</span>
+        <span>${traceePiste.length} point${traceePiste.length > 1 ? 's' : ''}${traceePiste.length >= 2 ? ` · ${nombreFr(longueurPolyligne(traceePiste))} m${(!niveau.bac || reseau.options.budget) && v && v.ok ? ` · ${euros(v.cout)}` : ''}` : ''}</span>
         <button class="bouton petit" type="button" id="traceRetour"${traceePiste.length ? '' : ' disabled'}>Point précédent</button>
         <button class="bouton petit vert" type="button" id="traceFin"${traceePiste.length >= 2 ? '' : ' disabled'}>Terminer la piste</button>`;
-      el.querySelector('#traceCouleur').onchange = e => { reglageTrace.couleur = e.target.value; dessinerTrace(); };
       el.querySelector('#traceLargeur').onchange = e => { reglageTrace.largeur = +e.target.value; dessinerTrace(); majPanneauTrace(); };
       el.querySelector('#traceRetour').onclick = () => { traceePiste.pop(); dessinerTrace(); majPanneauTrace(); };
       el.querySelector('#traceFin').onclick = terminerPiste;
     } else if(outil === 'remontee'){
       const v = gareAval && gareAmont ? validerRemontee(niveau, gareAval, gareAmont) : null;
-      el.innerHTML = `<span>${!gareAval ? 'Gare de départ : touchez le bas' : !gareAmont ? 'Gare d\'arrivée : touchez le haut' : `${nombreFr(v.longueur)} m${reseau.options.budget ? ` · ${euros(v.cout)}` : ''}`}</span>
+      el.innerHTML = `<span>${!gareAval ? 'Gare de départ : touchez le bas' : !gareAmont ? 'Gare d\'arrivée : touchez le haut' : `${nombreFr(v.longueur)} m${!niveau.bac || reseau.options.budget ? ` · ${euros(v.cout)}` : ''}`}</span>
         <button class="bouton petit" type="button" id="traceRetour"${gareAval ? '' : ' disabled'}>Recommencer</button>
         <button class="bouton petit vert" type="button" id="traceFin"${v && v.ok ? '' : ' disabled'}>Construire le télésiège</button>`;
       el.querySelector('#traceRetour').onclick = () => { gareAval = gareAmont = null; dessinerTrace(); majPanneauTrace(); consigne(); };
@@ -576,12 +784,12 @@ function demarrer(){
   function rechargerBac(texte){
     reseau.messageApres = texte;
     sauver(true);
-    location.href = 'index.html?niveau=bac';
+    location.href = `index.html?niveau=${niveau.id}`;
   }
   function terminerPiste(){
-    const r = ajouterPisteBac(niveau, reseau, traceePiste, reglageTrace.couleur, reglageTrace.largeur);
+    const r = ajouterPisteBac(niveau, reseau, traceePiste, reglageTrace.largeur);
     if(!r.ok) return message(r.raison, 'attention', 4500);
-    rechargerBac(`${r.nom} (${reglageTrace.couleur}) ouverte : ${nombreFr(r.longueur)} m. La neige qui tombe dessus compte maintenant.`);
+    rechargerBac(`${r.nom} (${r.couleur}, pente ${Math.round(r.pente)} %) ouverte : ${nombreFr(r.longueur)} m. La neige qui tombe dessus compte maintenant.`);
   }
   function terminerRemontee(){
     const r = ajouterRemonteeBac(niveau, reseau, gareAval, gareAmont);
@@ -636,6 +844,7 @@ function demarrer(){
   function valider(){
     const p = proposition;
     if(!p) return;
+    if(p.faire){ fermerDevis(); return p.faire(); }      // démontage, déplacement, départ électrique
     const lot = ++reseau.lot;
     let cibleId = p.cibleId;
     if(!cibleId){
@@ -698,6 +907,7 @@ function demarrer(){
     if(!prets) return message(`Aucun canon n'est prêt : raccordez au moins un regard à l'eau et à l'électricité${K ? ' (et à l\'air pour une perche)' : ''}.`, 'attention', 4500);
     if(sousSol) $('sousSol').onclick();
     choisirOutil(null);
+    garer();                                               // la nuit, la dameuse reste au garage
     nuit = { regime: debutNuit(niveau, reseau), temps: 0, vitesse: 1 };
     const evDepart = evenementsProgramme(niveau, reseau, -1, 0);
     if(evDepart.length) nuit.regime = regimeNuit(niveau, reseau, nuit.regime.vent);
@@ -757,9 +967,10 @@ function demarrer(){
     }
     sauver();
     const lignes = [
-      `Neige sur les pistes cette nuit : ${nombreFr(bilan.piste)} m³ (${nombreFr(bilan.neige)} m³ produits)`,
+      `Neige tombée sur les pistes cette nuit : ${nombreFr(bilan.piste)} m³ (${nombreFr(bilan.neige)} m³ produits)`,
+      `Damage du matin : ${nombreFr(bilan.dame)} m³ étalés sur les pistes (${DAMEUSES[reseau.dameuse.modele].nom}, ${nombreFr(bilan.capacite)} m³ par jour au plus)${bilan.aDamer >= 1 ? ` · encore ${nombreFr(bilan.aDamer)} m³ à damer demain` : ''}`,
       `Étape : ${nombreFr(Math.round(a.neige))} / ${nombreFr(o.m3)} m³ sur les pistes · recettes ${euros(Math.round(a.recette))} / ${euros(o.recette)} · nuit ${a.nuits} sur ${o.nuits}`,
-      bilan.kwh ? `Électricité : ${nombreFr(bilan.kwh)} kWh, soit ${euros(bilan.electricite)}` : null,
+      bilan.kwh ? `Électricité : ${nombreFr(bilan.kwh)} kWh${bilan.kwhRemontees ? ` (dont ${nombreFr(bilan.kwhRemontees)} pour les remontées)` : ''}, soit ${euros(bilan.electricite)}` : null,
       reseau.retenue ? `Eau de la journée : ${nombreFr(bilan.remplissage.m3)} m³ (${euros(bilan.remplissage.cout)}) · retenue à ${Math.round(reseau.retenue.volume / volumeRetenue(R) * 100)} %` : null,
       avecPannes() ? `Pannes : ${bilan.pannes} cette nuit, réparations ${euros(bilan.reparations)}${reseau.pannes.length ? ` · encore ${reseau.pannes.length} à réparer (en haut à droite)` : ''}` : null,
       bilan.coups ? `Coups de bélier : ${bilan.coups} (réparations : ${euros(bilan.coups * CONFIG.belier.reparation)})` : null
@@ -849,6 +1060,34 @@ function demarrer(){
                     : `L'équipe part : ${libellePanne(reseau, p)}, environ ${r.duree} s${p.type === 'fuite' ? ' (conduite isolée pendant les travaux)' : ''}.`, 'info', 4500);
     apresPannes();
   }
+  // Coin en haut à gauche : les objectifs du niveau (étapes de construction, production, argent)
+  let objectifsReplie = window.innerWidth < 1100;
+  function listeObjectifs(){
+    const o = niveau.objectif, L = [];
+    if(niveau.bac) return L;
+    const regards = reseau.noeuds.filter(n => n.type === 'regard'), prets = regards.filter(n => etatRegard(niveau, reseau, n.id).pret);
+    if(niveau.construction !== false){
+      L.push({ texte: 'Poser un regard et son enneigeur', fait: regards.length > 0 });
+      L.push({ texte: 'Raccorder un canon à l\'eau et à l\'électricité', fait: prets.length > 0 });
+      if(niveau.compresseur) L.push({ texte: 'Raccorder une perche à l\'air comprimé', fait: prets.some(n => CATALOGUE[n.modele].type === 'perche') });
+    } else L.push({ texte: 'Démarrer une pompe vanne fermée, puis ouvrir doucement', fait: reseau.nuit > 1 || (!!nuit && reseau.pompage.ouverture > 0) });
+    const nuitsFaites = niveau.carriere ? avancementEtape(reseau).nuits : reseau.nuit - 1;
+    L.push({ texte: 'Lancer une nuit', fait: nuitsFaites > 0 || !!nuit });
+    if(o.m3){
+      const f = neigeObjectif();
+      L.push({ texte: o.type === 'production' ? 'Objectif de production' : 'Objectif de neige sur les pistes', fait: f >= o.m3, progres: f / o.m3,
+        detail: `${nombreFr(Math.round(f))} / ${nombreFr(o.m3)} m³${o.nuits ? ` · nuit ${Math.min(nuitsFaites + 1, o.nuits)} sur ${o.nuits}` : ''}` });
+    }
+    if(o.recette){
+      const a = avancementEtape(reseau).recette;
+      L.push({ texte: 'Objectif financier', fait: a >= o.recette, progres: a / o.recette, detail: `${euros(Math.round(a))} / ${euros(o.recette)} de recettes (neige vendue − électricité − eau)` });
+    }
+    if(o.coupsMax !== undefined) L.push({ texte: `Pas plus de ${o.coupsMax} coups de bélier`, fait: (reseau.coups || 0) <= o.coupsMax, detail: `${reseau.coups || 0} pour l'instant` });
+    return L;
+  }
+  function majObjectifs(){
+    afficherObjectifs(listeObjectifs(), objectifsReplie, action => { if(action === 'replier'){ objectifsReplie = !objectifsReplie; majObjectifs(); } });
+  }
   // Coin en haut à droite : la liste des pannes en cours (replié d'office sur un petit écran)
   let coinReplie = window.innerWidth < 1100;
   function majCoinPannes(){
@@ -883,6 +1122,10 @@ function demarrer(){
     afficherConsigne(null);
     synchroniser();
     majPannes3D();
+    if(bilan.dame > 0){
+      commencerTournee(bilan.tasDames);
+      message(`Le matin, la dameuse sort du garage et étale ${nombreFr(bilan.dame)} m³ sur les pistes.`, 'info', 6000);
+    }
     if(niveau.carriere) return bilanCarriere(bilan, casse);
     const premiereReussite = bilan.reussi && !reussi;
     if(premiereReussite){
@@ -893,8 +1136,9 @@ function demarrer(){
     sauver();
     const R = niveau.retenue, o = niveau.objectif, suivant = LEVELS.slice(LEVELS.indexOf(niveau) + 1).find(l => !l.bac);
     const lignes = [
-      `Neige produite : ${nombreFr(bilan.neige)} m³, dont ${nombreFr(bilan.piste)} m³ sur la piste`,
-      bilan.kwh ? `Électricité : ${nombreFr(bilan.kwh)} kWh, soit ${euros(bilan.electricite)} retirés du gain` : null,
+      `Neige produite : ${nombreFr(bilan.neige)} m³, dont ${nombreFr(bilan.piste)} m³ tombés sur la piste`,
+      `Damage du matin : ${nombreFr(bilan.dame)} m³ étalés sur les pistes (${DAMEUSES[reseau.dameuse.modele].nom}, ${nombreFr(bilan.capacite)} m³ par jour au plus)${bilan.aDamer >= 1 ? ` · encore ${nombreFr(bilan.aDamer)} m³ à damer demain` : ''}`,
+      bilan.kwh ? `Électricité : ${nombreFr(bilan.kwh)} kWh${bilan.kwhRemontees ? ` (dont ${nombreFr(bilan.kwhRemontees)} pour les remontées)` : ''}, soit ${euros(bilan.electricite)} retirés du gain` : null,
       bilan.rendement !== null ? `Rendement : ${Math.round(bilan.rendement * 100)} % de ce que les canons ouverts pouvaient produire` : null,
       `${o.type === 'production' ? 'Neige produite' : 'Sur la piste'} depuis le début : ${nombreFr(neigeObjectif())}${o.m3 ? ` / ${nombreFr(o.m3)}` : ''} m³${o.nuits ? ` (nuit ${bilan.nuit} sur ${o.nuits})` : ''}`,
       o.coupsMax !== undefined ? `Coups de bélier : ${bilan.coups} cette nuit, ${reseau.coups} au total (${o.coupsMax} au plus)` : (bilan.coups ? `Coups de bélier : ${bilan.coups} (réparations : ${euros(bilan.coups * CONFIG.belier.reparation)})` : null),
@@ -974,7 +1218,9 @@ function demarrer(){
       recette: niveau.carriere ? { fait: Math.round(avancementEtape(reseau).recette), objectif: niveau.objectif.recette } : null,
       coups: reseau.coups || 0, coupsMax: niveau.objectif.coupsMax ?? null,
       retenue: reseau.retenue ? reseau.retenue.volume / volumeRetenue(R) : null,
-      nuit: nuit && { numero: reseau.nuit, restant: Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps)), neige: reseau.pisteNuit, argent: Math.round(reseau.argentNuit) },
+      nuit: nuit && { numero: reseau.nuit, restant: Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps)), neige: reseau.pisteNuit },
+      damage: G ? { nom: DAMEUSES[reseau.dameuse.modele].nom, capacite: DAMEUSES[reseau.dameuse.modele].capacite, aDamer: Math.round(neigeADamer(reseau)) } : null,
+      remontees: (niveau.remontees || []).map((ts, i) => ({ i, nom: ts.nom, enMarche: remonteeEnMarche(reseau, ts), kw: puissanceRemontee(ts) })),
       pompage: { mode: cmd.mode, ouverture: cmd.ouverture,
         marche: cmd.mode === 'auto' ? marchePompes(g) : cmd.marche.slice(),
         defaut: [0, 1, 2].map(i => (reseau.pannes || []).some(p => p.type === 'pompe' && +p.cible === i)), installees,
@@ -1001,6 +1247,8 @@ function demarrer(){
     if(action === 'fermer') return fermerLePoste();
     if(action === 'lancerNuit'){ lancerNuit(); return rafraichirPoste(); }
     if(action === 'reparer') return reparer(valeur);
+    if(action === 'remontee'){ const ts = niveau.remontees[+valeur]; basculerRemontee(reseau, ts.nom, !remonteeEnMarche(reseau, ts)); majRemontees3D(); planifierSauvegarde(); return rafraichirPoste(); }
+    if(action === 'garage'){ fermerLePoste(); return ouvrirGarageFiche(); }
     if(action === 'remplissage'){ reseau.retenue.remplissage = Math.min(+valeur, niveau.remplissageMax || Infinity); planifierSauvegarde(); return rafraichirPoste(); }
     if(action === 'voirPanne'){
       const p = (reseau.pannes || []).find(q => q.id === valeur), pos = p && positionPanne(reseau, p);
@@ -1146,12 +1394,18 @@ function demarrer(){
   function action(x, z){
     const n = noeudProche(x, z);
     if(fiche && !(n && n.id === fiche)) fermerDevis();
+    if(!nuit && outil === 'depart') return outilDepart(x, z);
+    if(!nuit && outil === 'demonter') return outilDemonter(x, z, n);
+    if(!nuit && outil === 'deplacer') return outilDeplacer(x, z);
     if(!nuit && outil === 'piste') return outilPiste(x, z);
     if(!nuit && outil === 'remontee') return outilRemontee(x, z);
     if(!nuit && outil === 'regard') return outilRegard(x, z, n);
     if(!nuit && outil) return outilTranchee(x, z, n);
     // Sans outil : renseignements sur le point touché
     if(n) return infoNoeud(n);
+    if(G && Math.hypot(x - G.x, z - G.z) < 12) return ouvrirGarageFiche();
+    const ts = (niveau.remontees || []).find(q => distanceTelesiege(q, x, z) < Math.max(6, cam.actuel.distance * 0.02));
+    if(ts) return ficheRemontee(ts);
     if(!dansZoneJeu(t, x, z)){ message('Ce point est en dehors du domaine skiable.', 'attention', 2500); return; }
     repere.position.set(x, hauteur(x, z) + 0.3, z);
     repere.visible = true;
@@ -1195,7 +1449,7 @@ function demarrer(){
       if(maintenant - derniereMaj > 250){                // 4 fois par seconde : chiffres, consigne, fiche, poste
         derniereMaj = maintenant;
         majInfos();
-        afficherConsigne(`Nuit ${reseau.nuit} · ${Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps))} s · ${nuit.regime.canons.filter(c => c.production).length} canon(s) en production · ${nombreFr(reseau.pisteNuit)} m³ sur la piste · +${euros(Math.round(reseau.argentNuit))}`);
+        afficherConsigne(`Nuit ${reseau.nuit} · ${Math.max(0, Math.ceil(CONFIG.nuit.duree - nuit.temps))} s · ${nuit.regime.canons.filter(c => c.production).length} canon(s) en production · ${nombreFr(reseau.pisteNuit)} m³ sur la piste, à damer demain matin`);
         if(fiche) dessinerFiche();
         // Le réservoir d'air monte ou baisse : la production des perches change avec lui
         if(reseau.compresseur && Math.abs(reseau.compresseur.pression - nuit.regime.air.pression) > 0.05){
@@ -1214,7 +1468,9 @@ function demarrer(){
     if(compresseur) animerCompresseur(compresseur, dt, temps);
     animerPannes(dt, temps);
     decalerVue();
-    avancerDameuses(dt * (nuit ? nuit.vitesse : 1), temps);
+    avancerTournee(dt, temps);
+    if(garage) animerGarage(garage, dt);
+    for(const r of remontees3D) r.o.userData.animer(dt);
     majEtiquettes(camera, CONFIG.graphismes.distanceEtiquettes);
     voirAtravers(salle, camera, dt, 70);
     // Flèche du vent, tournée comme la vue
@@ -1230,6 +1486,19 @@ function demarrer(){
     requestAnimationFrame(boucle);
   }
   requestAnimationFrame(boucle);
+
+  // Bandeau des compteurs en haut, repliable (le choix est gardé)
+  const bandeau = $('bandeau'), boutonBandeau = $('replierBandeau');
+  const replierBandeau = replie => {
+    bandeau.classList.toggle('replie', replie);
+    boutonBandeau.textContent = replie ? 'Compteurs ▾' : '▴';
+    boutonBandeau.setAttribute('aria-expanded', String(!replie));
+    boutonBandeau.setAttribute('aria-label', replie ? 'Afficher les compteurs' : 'Replier les compteurs');
+  };
+  bandeau.hidden = false;
+  replierBandeau(!!lireSauvegarde('nivo-compteurs-replies'));
+  boutonBandeau.onclick = () => { const r = !bandeau.classList.contains('replie'); replierBandeau(r); ecrireSauvegarde('nivo-compteurs-replies', r); };
+  suivreHauteurHaut();
 
   // Accueil
   synchroniser();
@@ -1248,6 +1517,6 @@ function demarrer(){
   if(OUVRIR_MENU) ouvrirMenu();
 
   // Accès pour les essais automatiques (console du navigateur)
-  window.nivo = { ouvrirOptions, agirOptions, get dameuses(){ return dameuses; }, synchroniser, scene, camera, renderer, cam, toucher, action, salle, compresseur, choisirOutil, valider, lancerNuit, ouvrirFiche, ouvrirPoste, agirPoste, ouvrirMenu, finirNuit,
+  window.nivo = { proposerDemontage, proposerRetrait, commencerDeplacement, ouvrirOptions, agirOptions, get tournee(){ return tournee; }, ouvrirGarageFiche, ficheRemontee, synchroniser, scene, camera, renderer, cam, toucher, action, salle, compresseur, choisirOutil, valider, lancerNuit, ouvrirFiche, ouvrirPoste, agirPoste, ouvrirMenu, finirNuit,
     get reseau(){ return reseau; }, get nuit(){ return nuit; }, set choix(c){ choix = c; } };
 }

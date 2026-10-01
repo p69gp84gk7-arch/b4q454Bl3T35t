@@ -1274,8 +1274,8 @@ function creerTelesiege(ts, poser){
   }
   appuis.push({ x: ts.amont.x, z: ts.amont.z, y: poser(ts.amont.x, ts.amont.z) + 5.0 });
 
-  // Câbles (légèrement pendants entre deux appuis) et sièges immobiles
-  const sieges = [];
+  // Câbles (légèrement pendants entre deux appuis) ; les sièges suivent la boucle montée (côté +) puis descente (côté −)
+  const sieges = [], cables = {};
   for(const s of [-1, 1]){
     const pts = [];
     for(let i = 0; i < appuis.length - 1; i++){
@@ -1287,6 +1287,7 @@ function creerTelesiege(ts, poser){
     }
     const fin = appuis[appuis.length - 1];
     pts.push(new THREE.Vector3(fin.x + px * s * e, fin.y, fin.z + pz * s * e));
+    cables[s] = pts;
     a.ajouter(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, 0.06, 5), C.noir);
     // Un siège tous les « espacementSieges » mètres
     let parcouru = 0, prochain = 10;
@@ -1306,7 +1307,85 @@ function creerTelesiege(ts, poser){
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), un = new THREE.Vector3(1, 1, 1), axe = new THREE.Vector3(0, 1, 0);
   sieges.forEach((s, i) => inst.setMatrixAt(i, m.compose(s.p, q.setFromAxisAngle(axe, s.rot), un)));
   groupe.add(inst);
+  // Boucle des sièges : montée par le câble +, descente par le câble − ; animer(dt) les fait avancer quand elle tourne
+  const boucle = [...cables[1], ...cables[-1].slice().reverse()], cumul = [0];
+  for(let i = 1; i < boucle.length; i++) cumul.push(cumul[i - 1] + boucle[i].distanceTo(boucle[i - 1]));
+  const total = cumul[cumul.length - 1] + boucle[0].distanceTo(boucle[boucle.length - 1]), moitie = cumul[cables[1].length - 1];
+  const nb = Math.min(sieges.length, Math.floor(total / ts.espacementSieges)), p = new THREE.Vector3();
+  inst.count = nb;
+  let decalage = 0;
+  const placer = () => {
+    for(let k = 0; k < nb; k++){
+      const d = (decalage + k * total / nb) % total;
+      let i = 1;
+      while(i < cumul.length && cumul[i] < d) i++;
+      if(i >= cumul.length) p.copy(boucle[boucle.length - 1]).lerp(boucle[0], (d - cumul[cumul.length - 1]) / Math.max(1e-6, total - cumul[cumul.length - 1]));
+      else p.copy(boucle[i - 1]).lerp(boucle[i], (d - cumul[i - 1]) / Math.max(1e-6, cumul[i] - cumul[i - 1]));
+      inst.setMatrixAt(k, m.compose(p, q.setFromAxisAngle(axe, d < moitie ? rotY : rotY + Math.PI), un));
+    }
+    inst.instanceMatrix.needsUpdate = true;
+  };
+  placer();
+  groupe.userData = { telesiege: ts.nom, enMarche: false,
+    animer: dt => { if(!groupe.userData.enMarche) return; decalage = (decalage + dt * CONFIG.remontees.vitesse) % total; placer(); } };
   return groupe;
+}
+
+// ---------------------------------------------------------------------------------------
+// Garage des dameuses : hangar à deux portes sectionnelles (la gauche s'ouvre), toit enneigé
+// Repère : sol à y = 0, portes du côté +z ; places de parking dans userData.places (repère local)
+// ---------------------------------------------------------------------------------------
+function creerGarage(nom){
+  const g = new THREE.Group(), C = COULEURS, a = new Atelier();
+  const W = 18, D = 14, H = 6.5, bardage = '#6C7A8C';
+  a.boite(W + 2, 0.5, D + 6, C.beton, 0, -0.2, 1.5);                                       // dalle et parvis
+  a.boite(W, H, 0.3, bardage, 0, H / 2, -D / 2);                                           // mur du fond
+  for(const s of [-1, 1]) a.boite(0.3, H, D, bardage, s * W / 2, H / 2, 0);                // côtés
+  for(let k = 0; k <= 18; k++){ const x = -W / 2 + k; a.boite(0.06, H, 0.05, '#5A6676', x, H / 2, -D / 2 + 0.17); }   // nervures
+  for(let k = 0; k <= 14; k++) for(const s of [-1, 1]) a.boite(0.05, H, 0.06, '#5A6676', s * (W / 2 + 0.17), H / 2, -D / 2 + k);
+  // Façade : trumeaux et linteau autour des deux portes
+  for(const x of [-W / 2 + 0.5, 0, W / 2 - 0.5]) a.boite(1.0, H, 0.35, bardage, x, H / 2, D / 2);
+  a.boite(W, 1.1, 0.35, bardage, 0, H - 0.55, D / 2);
+  a.boite(W + 0.2, 0.18, 0.4, C.jaune, 0, H - 1.2, D / 2 + 0.05);                         // bandeau
+  // Toit à deux pans, enneigé
+  const hf = 2.2, pente = Math.atan2(hf, W / 2), pan = Math.hypot(W / 2, hf) + 0.8;
+  for(const s of [-1, 1]){
+    const cx = s * (W / 4 + 0.35 * Math.cos(pente)), cy = H + hf / 2 - 0.35 * Math.sin(pente);
+    a.boite(pan, 0.22, D + 1.2, C.toit, cx, cy + 0.12, 0, 0, 0, -s * pente);
+    a.boite(pan - 0.2, 0.2, D + 1.0, C.neigeToit, cx, cy + 0.33, 0, 0, 0, -s * pente);
+  }
+  // Pignons triangulaires devant et derrière
+  const pignon = new THREE.Shape([new THREE.Vector2(-W / 2, 0), new THREE.Vector2(W / 2, 0), new THREE.Vector2(0, hf)]);
+  a.ajouter(prisme(pignon, 0.3), bardage, matrice(0, H, -D / 2 - 0.15));
+  a.ajouter(prisme(pignon, 0.3), bardage, matrice(0, H, D / 2 - 0.15));
+  // Intérieur : établi, bidons, lampes
+  a.boite(4, 0.9, 0.8, C.bois, 6, 0.45, -D / 2 + 0.8);
+  for(const x of [7.5, 8.1]) a.cylindre(0.3, 0.9, C.orange, x, 0.45, -D / 2 + 2.2, 0, 0, 0, 10);
+  g.add(a.mesh());
+  const lum = new Atelier();
+  for(const x of [-4.5, 4.5]) lum.boite(2.4, 0.1, 0.4, '#FFE6A8', x, H - 0.3, 0);
+  lum.boite(1.2, 0.5, 0.05, C.fenetre, 6, 3.2, -D / 2 + 0.2);
+  g.add(lum.mesh('lumineux', false));
+  // Portes sectionnelles : la gauche s'ouvre (elle remonte sous le plafond)
+  const porte = new Atelier();
+  for(let k = 0; k < 9; k++) porte.boite(7.2, 0.56, 0.12, k % 2 ? '#C9CFD6' : '#BAC1C9', 0, 0.3 + k * 0.58, 0);
+  porte.boite(1.2, 0.3, 0.14, '#1C1F25', 0, 2.2, 0.05);
+  const pG = porte.mesh(), geoPorte = pG.geometry;
+  pG.position.set(-4.5, 0, D / 2 + 0.05);
+  const pD = new THREE.Mesh(geoPorte, pG.material);
+  pD.position.set(4.5, 0, D / 2 + 0.05);
+  pG.castShadow = pD.castShadow = true;
+  g.add(pG, pD);
+  if(nom){ const e = creerEtiquette(nom, '#E58A1F', '#E58A1F'); e.position.y = H + 4; g.add(e); }
+  g.userData = { porte: pG, ouverture: 0, voulu: 0, places: [new THREE.Vector3(-4.5, 0.05, -1.2), new THREE.Vector3(4.5, 0.05, -1.2)], profondeur: D, garage: true };
+  return g;
+}
+function ouvrirGarage(g, ouvert){ g.userData.voulu = ouvert ? 1 : 0; }
+function animerGarage(g, dt){
+  const u = g.userData;
+  u.ouverture += Math.sign(u.voulu - u.ouverture) * Math.min(Math.abs(u.voulu - u.ouverture), dt * 0.6);
+  u.porte.position.y = u.ouverture * 5.3;
+  u.porte.position.z = u.profondeur / 2 + 0.05 - u.ouverture * 0.4;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1390,57 +1469,80 @@ function animerFuite(g, dt, temps){
 // Repère : avant vers +z, sol à y = 0. Chenilles, caisse rouge, cabine, lame à l'avant, fraise et peigne à l'arrière.
 // ---------------------------------------------------------------------------------------
 let _texFaisceau = null;
-function creerDameuse(){
-  const g = new THREE.Group(), C = COULEURS, a = new Atelier(), rouge = '#C8202F';
-  // Chenilles (large bande à crampons) et barbotins
+// modele : clé de DAMEUSES (taille et largeur de fraise). Repère : avant vers +z, sol à y = 0.
+function creerDameuse(modele = 'dm400'){
+  const g = new THREE.Group(), C = COULEURS, a = new Atelier(), m = DAMEUSES[modele] || DAMEUSES.dm400;
+  const rouge = '#C8202F', rougeFonce = '#8E1622', gris = '#3A4250', alu = '#B9C0CA', vitre = '#14273F';
+  const W = m.largeur, xc = W * 0.3;                                   // xc : écartement des chenilles
+  // Chenilles : bande noire à crampons alu, barbotin avant et roues
   for(const s of [-1, 1]){
-    a.boite(1.0, 0.75, 4.2, '#23272F', s * 1.65, 0.45, 0);
-    for(const z of [-2.1, 2.1]) a.cylindre(0.38, 1.0, '#23272F', s * 1.65, 0.45, z, 0, 0, Math.PI / 2, 10);
-    for(let k = 0; k < 14; k++) a.boite(1.04, 0.06, 0.12, '#3A404B', s * 1.65, 0.84, -1.95 + k * 0.3);   // crampons
-    a.boite(0.08, 0.3, 3.6, rouge, s * 2.17, 0.75, 0);                                                  // carter
+    a.boite(1.25, 0.82, 4.4, '#1E2128', s * xc, 0.5, 0);
+    for(const z of [-2.2, 2.2]) a.cylindre(0.41, 1.25, '#1E2128', s * xc, 0.5, z, 0, 0, Math.PI / 2, 12);
+    for(let k = 0; k < 16; k++) a.boite(1.29, 0.05, 0.1, alu, s * xc, 0.93, -2.1 + k * 0.28);
+    for(const z of [-1.4, -0.45, 0.5, 1.45]) a.cylindre(0.33, 0.2, '#555D6A', s * (xc + 0.64), 0.42, z, 0, 0, Math.PI / 2, 10);
+    a.boite(0.1, 0.32, 3.9, rouge, s * (xc + 0.68), 0.92, 0);               // garde-boue
   }
-  // Caisse et capot moteur
-  a.boite(2.3, 0.8, 4.0, rouge, 0, 1.15, -0.1);
-  a.boite(2.1, 0.5, 1.6, rouge, 0, 1.7, -1.1);
-  for(let k = 0; k < 5; k++) a.boite(1.6, 0.04, 0.06, '#7A1520', 0, 1.96, -1.7 + k * 0.28);               // grille du capot
-  // Cabine vitrée
-  a.boite(2.1, 1.25, 1.7, rouge, 0, 2.15, 0.85);
-  a.boite(2.0, 0.85, 1.72, '#18304F', 0, 2.25, 0.85);                                                   // vitres latérales
-  a.boite(1.9, 0.85, 0.06, '#1E3A60', 0, 2.25, 1.72, -0.12, 0, 0);                                      // pare-brise
-  a.boite(2.2, 0.12, 1.9, '#E8ECF2', 0, 2.83, 0.85);                                                    // toit blanc
-  a.boite(1.4, 0.1, 0.18, C.noir, 0, 2.95, 1.55);                                                       // rampe de phares
-  // Lame à l'avant (bras, lame bombée, ailes)
-  for(const s of [-1, 1]) a.tube([s * 0.9, 0.9, 1.6], [s * 1.1, 0.75, 2.75], 0.09, C.acierFonce, 6);
-  a.boite(4.6, 1.0, 0.14, rouge, 0, 0.62, 2.95, -0.25, 0, 0);
-  for(const s of [-1, 1]) a.boite(0.14, 0.9, 0.7, rouge, s * 2.3, 0.6, 2.7, 0, s * 0.35, 0);
-  a.boite(4.6, 0.08, 0.2, '#B9C0CA', 0, 0.12, 3.06);                                                     // couteau
-  // Fraise et peigne à l'arrière
-  a.tube([0, 0.9, -2.0], [0, 0.6, -2.9], 0.1, C.acierFonce, 6);
-  a.cylindre(0.38, 4.4, '#5D6B7A', 0, 0.42, -3.1, 0, 0, Math.PI / 2, 10);
-  a.boite(4.5, 0.35, 0.7, rouge, 0, 0.75, -3.1);
-  a.boite(4.4, 0.04, 1.3, '#1C1F25', 0, 0.06, -4.0);                                                     // peigne (finisseur)
+  // Châssis et capot moteur (derrière la cabine)
+  a.boite(2 * xc - 0.6, 0.7, 4.3, rouge, 0, 1.2, -0.1);
+  a.boite(2.3, 0.95, 2.1, rouge, 0, 1.95, -1.25);
+  a.boite(2.32, 0.08, 2.12, rougeFonce, 0, 2.45, -1.25);
+  for(let k = 0; k < 6; k++) a.boite(1.6, 0.03, 0.08, '#2A0A0E', 0, 2.5, -2.1 + k * 0.32);       // grille d'aération
+  a.cylindre(0.08, 0.7, '#2B2F38', 0.85, 2.85, -1.9, 0, 0, 0, 8);                               // échappement
+  // Cabine panoramique à l'avant, grandes vitres
+  a.boite(2.35, 1.55, 1.95, rouge, 0, 2.3, 0.85);
+  a.boite(2.37, 1.05, 1.6, vitre, 0, 2.45, 0.95);                                               // vitres latérales
+  a.boite(2.2, 1.1, 0.06, vitre, 0, 2.42, 1.86, -0.18, 0, 0);                                    // pare-brise incliné
+  for(const x of [-1.1, 1.1]) a.boite(0.1, 1.2, 0.1, rougeFonce, x, 2.4, 1.8);                  // montants
+  a.boite(2.45, 0.14, 2.05, rouge, 0, 3.12, 0.85);                                               // toit
+  a.boite(1.7, 0.12, 0.22, '#1C1F25', 0, 3.25, 1.68);                                            // rampe de phares
+  // Lame avant 12 positions : partie centrale et deux ailes rabattues vers l'avant
+  for(const s of [-1, 1]) a.tube([s * 0.8, 1.05, 1.9], [s * 1.0, 0.75, 2.95], 0.1, gris, 6);       // bras de poussée
+  a.tube([0, 1.6, 1.9], [0, 1.15, 2.95], 0.1, gris, 6);                                         // vérin
+  const lc = W * 0.62, la = W * 0.24;
+  a.boite(lc, 1.15, 0.16, gris, 0, 0.66, 3.05, -0.22, 0, 0);
+  a.boite(lc, 0.1, 0.22, alu, 0, 0.1, 3.18);                                                     // couteau
+  for(const s of [-1, 1]){
+    a.repere(matrice(s * lc / 2, 0, 3.05, 0, -s * 0.5, 0), () => {
+      a.boite(la, 1.15, 0.16, gris, s * la / 2, 0.66, 0, -0.22, 0, 0);
+      a.boite(la, 0.1, 0.22, alu, s * la / 2, 0.1, 0.12);
+    });
+  }
+  a.boite(lc, 0.08, 0.2, rouge, 0, 1.24, 2.96);                                                  // liseré rouge
+  // Arrière : bras, fraise sous son capot rouge, peigne (finisseur) qui laisse le velours
+  for(const s of [-1, 1]) a.tube([s * 0.7, 1.0, -2.1], [s * 0.9, 0.7, -2.95], 0.09, gris, 6);
+  a.cylindre(0.38, W, '#5D6B7A', 0, 0.45, -3.25, 0, 0, Math.PI / 2, 12);
+  a.boite(W + 0.1, 0.42, 0.95, rouge, 0, 0.92, -3.25);
+  a.boite(W + 0.12, 0.08, 1.0, rougeFonce, 0, 1.14, -3.25);
+  a.boite(W, 0.04, 1.35, '#15171C', 0, 0.06, -4.3);                                              // peigne
+  for(let k = 0; k <= 8; k++) a.boite(0.04, 0.2, 1.3, '#15171C', -W / 2 + k * W / 8, 0.14, -4.3);
   g.add(a.mesh());
-  // Phares (toujours allumés) et faisceau sur la neige
+  // Phares (allumés) et faisceau sur la neige, devant la lame
   const l = new Atelier();
-  for(const x of [-0.55, -0.2, 0.2, 0.55]) l.sphere(0.07, '#FFF6D8', x, 2.95, 1.66, 6);
-  for(const x of [-0.8, 0.8]) l.sphere(0.09, '#FFF6D8', x, 1.35, 1.92, 6);
+  for(const x of [-0.65, -0.32, 0, 0.32, 0.65]) l.sphere(0.07, '#FFF6D8', x, 3.25, 1.8, 6);
+  for(const x of [-0.95, 0.95]) l.sphere(0.1, '#FFF6D8', x, 1.65, 1.88, 6);
+  for(const x of [-0.8, 0.8]) l.sphere(0.06, '#FF3B4A', x, 2.0, -2.32, 6);                        // feux arrière
   g.add(l.mesh('lumineux', false));
   _texFaisceau = _texFaisceau || canvasTexture(128, 128, c => {
     const gr = c.createRadialGradient(64, 128, 4, 64, 128, 128);
     gr.addColorStop(0, 'rgba(255,244,214,.55)'); gr.addColorStop(1, 'rgba(255,244,214,0)');
     c.fillStyle = gr; c.beginPath(); c.moveTo(64, 128); c.lineTo(0, 0); c.lineTo(128, 0); c.closePath(); c.fill();
   });
-  const faisceau = new THREE.Mesh(new THREE.PlaneGeometry(9, 14), new THREE.MeshBasicMaterial({ map: _texFaisceau, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-  faisceau.rotation.x = -Math.PI / 2;
-  faisceau.position.set(0, 0.15, 3.1 + 7);
+  // Le cône de lumière part du véhicule (pointe, en bas de la texture) et s'ouvre vers l'avant (+z)
+  const geoF = new THREE.PlaneGeometry(9, 14);
+  geoF.rotateX(Math.PI / 2);                   // le haut de la texture (le côté large) va vers +z
+  const faisceau = new THREE.Mesh(geoF, new THREE.MeshBasicMaterial({ map: _texFaisceau, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  faisceau.position.set(0, 0.15, 3.2 + 7);
   g.add(faisceau);
-  // Gyrophare orange
+  // Gyrophare orange sur le toit
   const gyro = lampe(0.13, '#FFA53A', true);
-  gyro.position.set(0, 2.9, 0.3);
+  gyro.position.set(0, 3.2, 0.2);
   g.add(gyro);
-  g.userData = { gyro, dameuse: true };
+  g.scale.setScalar(m.echelle);
+  g.userData = { gyro, faisceau, dameuse: true, modele };
   return g;
 }
+// Allume ou éteint les phares (au garage, la dameuse est éteinte)
+function phareDameuse(g, allume){ g.userData.faisceau.visible = allume; }
 function animerDameuse(g, temps){
   g.userData.gyro.material.color.set((temps * 2.2) % 1 < 0.5 ? '#FFA53A' : '#5A3A12');
 }

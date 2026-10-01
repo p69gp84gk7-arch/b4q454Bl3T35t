@@ -84,12 +84,13 @@ function afficherConsigne(texte){
   $('consigne').textContent = texte || '';
 }
 // Devis d'une construction : titre, lignes de détail, total, et boutons Valider / Annuler
-function afficherDevis({ titre, lignes, total, budgetApres, possible }, valider, annuler){
+// rendu : l'opération rapporte de l'argent (démontage) ; refus : raison affichée si impossible
+function afficherDevis({ titre, lignes, total, budgetApres, possible, rendu = false, libelleOk = 'Valider', refus = 'Budget insuffisant.' }, valider, annuler){
   const d = $('devis');
-  d.innerHTML = `<div class="tete"><span>${echapper(titre)}</span><span>${euros(total)}</span></div>
+  d.innerHTML = `<div class="tete"><span>${echapper(titre)}</span><span>${rendu ? '+' : ''}${euros(total)}</span></div>
     <ul>${lignes.map(l => `<li>${echapper(l)}</li>`).join('')}<li>Budget après : ${euros(budgetApres)}</li></ul>
-    ${possible ? '' : '<p class="refus">Budget insuffisant.</p>'}
-    <div class="actions"><button class="bouton" type="button" id="devisOk"${possible ? '' : ' disabled'}>Valider</button>
+    ${possible ? '' : `<p class="refus">${echapper(refus)}</p>`}
+    <div class="actions"><button class="bouton" type="button" id="devisOk"${possible ? '' : ' disabled'}>${echapper(libelleOk)}</button>
     <button class="bouton" type="button" id="devisNon">Annuler</button></div>`;
   d.hidden = false;
   $('devisOk').onclick = valider;
@@ -178,7 +179,7 @@ function afficherPoste(d, agir){
       </section>${air}
       <section class="bloc"><h3>${d.nuit ? `Nuit ${d.nuit.numero} en cours` : `Prochaine nuit : n° ${d.numero}`}</h3>
         <div class="ligne">${d.nuit ? pastille(`${d.nuit.restant} s restantes`) : pastille('Jour : construction')}${pastille(`Vent ${d.vent.force} km/h`)}</div>
-        ${d.nuit ? `<div class="ligne">${pastille(`${nombreFr(d.nuit.neige)} m³ sur la piste`)}${pastille(`+${euros(d.nuit.argent)}`, 'vert')}</div>` : ''}
+        ${d.nuit ? `<div class="ligne">${pastille(`${nombreFr(d.nuit.neige)} m³ tombés sur la piste`)}${pastille('à damer demain matin')}</div>` : ''}
         ${d.electricite ? `<div class="ligne">${pastille(`Électricité ${nombreFr(d.electricite.kwh)} kWh`)}${pastille(`−${euros(d.electricite.euros)}`, 'orange')}</div>` : ''}
         <div class="ligne">${pastille(`Retenue ${d.retenue === null ? '—' : Math.round(d.retenue * 100) + ' %'}`)}${pastille(d.objectif ? `Objectif ${nombreFr(d.total)} / ${nombreFr(d.objectif)} m³` : `${nombreFr(d.total)} m³ sur les pistes`)}</div>
         ${d.recette ? `<div class="ligne">${pastille(`Recettes ${euros(d.recette.fait)} / ${euros(d.recette.objectif)}`, d.recette.fait >= d.recette.objectif ? 'vert' : '')}</div>` : ''}
@@ -188,6 +189,12 @@ function afficherPoste(d, agir){
         <div class="ligne">${d.nuit ? `<button class="bouton petit" type="button" data-action="accelerer">${d.accelere ? 'Vitesse normale' : `Accélérer ×${CONFIG.nuit.accelere}`}</button>`
           : '<button class="bouton vert" type="button" data-action="lancerNuit">Lancer la nuit</button>'}</div>
       </section>
+      ${d.damage || d.remontees.length ? `<section class="bloc"><h3>Dameuse et remontées</h3>
+        ${d.damage ? `<div class="ligne">${pastille(d.damage.nom)}${pastille(`${nombreFr(d.damage.capacite)} m³ par jour`)}</div>
+        <div class="ligne">${pastille(`${nombreFr(d.damage.aDamer)} m³ à damer`, d.damage.aDamer > d.damage.capacite ? 'orange' : '')}<button class="bouton petit" type="button" data-action="garage">Garage</button></div>` : ''}
+        ${d.remontees.map(r => `<div class="pompe"><span class="led" style="background:${r.enMarche ? LED.production : LED.arret}"></span><b>${echapper(r.nom)}</b>${pastille(`${nombreFr(r.kw)} kW`)}
+          <button class="bouton petit" type="button" data-action="remontee" data-valeur="${r.i}">${r.enMarche ? 'Arrêter' : 'Mettre en marche'}</button></div>`).join('')}
+      </section>` : ''}
       <section class="bloc"><h3>Alarmes${d.coupsMax !== null ? ` · coups de bélier ${d.coups} / ${d.coupsMax}` : ''}</h3>
         ${d.alarmes.length ? d.alarmes.map(a => `<p class="alarme ${a.niveau}">${echapper(a.texte)}</p>`).join('') : '<p class="vide">Aucune alarme.</p>'}
       </section>
@@ -261,6 +268,31 @@ function afficherPannesCoin(liste, replie, agir){
       </span></div>`).join('')}</div>`}`);
   el.hidden = false;
   el.onclick = e => { const b = e.target.closest('[data-action]'); if(b) agir(b.dataset.action, b.dataset.valeur); };
+}
+
+// ---------------------------------------------------------------------------------------
+// Objectifs : petit panneau dans le coin en haut à gauche (repliable)
+// liste : [{ texte, detail, fait, progres (0 à 1 ou null) }]
+// ---------------------------------------------------------------------------------------
+function afficherObjectifs(liste, replie, agir){
+  const el = $('objectifsCoin');
+  document.body.classList.toggle('avec-objectifs', liste.length > 0);
+  if(!liste.length){ el.hidden = true; el.innerHTML = ''; return; }
+  el.classList.toggle('replie', replie);
+  const faits = liste.filter(o => o.fait).length;
+  mettreAJour(el, `<button class="entete" type="button" data-action="replier" aria-expanded="${!replie}">
+      <span aria-hidden="true">🎯</span><b>Objectifs</b><small>${faits} / ${liste.length}</small><span class="fleche">${replie ? '▾' : '▴'}</span></button>
+    ${replie ? '' : `<ul>${liste.map(o => `<li class="${o.fait ? 'fait' : ''}"><span class="coche">${o.fait ? '✓' : ''}</span>
+      <span class="texte">${echapper(o.texte)}${o.detail ? `<small>${echapper(o.detail)}</small>` : ''}
+      ${o.progres !== null && o.progres !== undefined ? `<span class="barre"><i style="width:${Math.round(borne(o.progres, 0, 1) * 100)}%"></i></span>` : ''}</span></li>`).join('')}</ul>`}`);
+  el.hidden = false;
+  el.onclick = e => { const b = e.target.closest('[data-action]'); if(b) agir(b.dataset.action); };
+}
+// La hauteur du haut de l'écran (titre + compteurs) place les messages et les panneaux juste en dessous
+function suivreHauteurHaut(){
+  const h = $('haut'), maj = () => document.documentElement.style.setProperty('--h-haut', `${Math.round(h.getBoundingClientRect().height - 10)}px`);
+  maj();
+  if(window.ResizeObserver) new ResizeObserver(maj).observe(h); else window.addEventListener('resize', maj);
 }
 
 // ---------------------------------------------------------------------------------------

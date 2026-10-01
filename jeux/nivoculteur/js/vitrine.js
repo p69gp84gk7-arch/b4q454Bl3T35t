@@ -71,12 +71,18 @@ function demarrerVitrine(){
         const appliquer = () => etatCompresseur(k, { marche, pression: marche ? CONFIG.air.pressionNominale : 0 });
         return [{ libelle: () => marche ? 'Arrêter le compresseur' : 'Démarrer le compresseur', action: () => { marche = !marche; appliquer(); } }];
       } },
-    { nom: 'Dameuse', creer: creerDameuse, cible: 1.4, distance: 13, sol: 1, options: () => [] },
+    { nom: 'Dameuse', creer: () => creerDameuse(vd.modele), cible: 1.4, distance: 15, sol: 1,
+      options: o => [
+        { libelle: () => DAMEUSES[vd.modele].nom, action: () => { vd.modele = vd.modele === 'dm400' ? 'dm600' : 'dm400'; rebatir(); } },
+        { libelle: () => vd.phares ? 'Éteindre les phares' : 'Allumer les phares', action: () => { vd.phares = !vd.phares; phareDameuse(o, vd.phares); } }
+      ], preparer: o => phareDameuse(o, vd.phares) },
+    { nom: 'Garage des dameuses', creer: () => creerGarage('Garage des dameuses'), cible: 3, distance: 32, sol: 1,
+      options: g => [{ libelle: () => g.userData.voulu ? 'Fermer la porte' : 'Ouvrir la porte', action: () => ouvrirGarage(g, !g.userData.voulu) }] },
     { nom: 'Armoire « Départ élec »', creer: () => creerArmoire('Départ élec'), cible: 1.2, distance: 6, sol: 1, options: () => [] }
   ];
 
   let objet = null, modele = null, auto = true, actuel = 0;
-  const vc = { modele: 'v8', support: 'trepied', etat: 'arret', direction: 0, inclinaison: 20 }, vp = { modele: 'p6', etat: 'arret' };
+  const vc = { modele: 'v8', support: 'trepied', etat: 'arret', direction: 0, inclinaison: 20 }, vp = { modele: 'p6', etat: 'arret' }, vd = { modele: 'dm400', phares: true };
   const valeur = v => typeof v === 'function' ? v() : v;
   const rebatir = (recadrer = false) => choisir(actuel, !recadrer);
   const cam = creerCommandes(canvas, camera, {
@@ -115,6 +121,7 @@ function demarrerVitrine(){
       if(o.userData.charniere) animerRegard(o, dt);
       if(o.userData.compresseur) animerCompresseur(o, dt, temps);
       if(o.userData.dameuse) animerDameuse(o, temps);
+      if(o.userData.garage) animerGarage(o, dt);
       if(o.userData.pompes){ animerSallePompage(o, dt, temps); voirAtravers(o, camera, dt); }
     });
     renderer.render(scene, camera);

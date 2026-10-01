@@ -16,7 +16,11 @@ const CONFIG = {
     // Dans une tranchée déjà creusée (pour un autre réseau), on ne paie que la pose du nouveau réseau, par mètre :
     ajout: { eau: 350, cable: 150, air: 200 },
     regard: 5000,           // € pour un regard (chambre béton, vanne) ; l'enneigeur se paie en plus (CATALOGUE)
-    reprise: 0.5            // quand on remplace un enneigeur, l'ancien est repris à cette part de son prix
+    reprise: 0.5,           // quand on remplace un enneigeur, l'ancien est repris à cette part de son prix
+    revente: 0.5,           // quand on démonte un regard (et son enneigeur) ou un départ électrique : part du prix rendue
+    repriseTranchee: 0.25,  // quand on retire une conduite ou un câble : part de son prix rendue
+    deplacement: 3000,      // € pour déplacer un regard (on paie en plus les mètres de tranchée gagnés)
+    departElec: 25000       // € pour un nouveau départ électrique (armoire raccordée au réseau)
   },
 
   // --- Argent gagné ---
@@ -159,8 +163,29 @@ const CONFIG = {
 
   // --- Dameuse (passe sur la piste quand l'objectif est atteint) ---
   dameuse: {
-    vitesse: 9              // m par seconde de jeu (accélérée comme la nuit)
-  }
+    vitesse: 30,            // m/s : vitesse de la dameuse pendant sa tournée du matin (accélérée pour le jeu)
+    reprise: 0.25           // quand on change de dameuse, l'ancienne est reprise à cette part de son prix
+  },
+
+  // --- Remontées mécaniques (activées par le joueur ; les clients viendront plus tard) ---
+  remontees: {
+    kwParMetre: 0.35,       // kW consommés par mètre de télésiège quand il tourne
+    heuresJour: 8,          // heures d'ouverture par jour
+    vitesse: 5              // m/s : défilement des sièges en 3D
+  },
+
+  // --- Couleur d'une piste selon sa pente la plus forte (sur 30 m), en % ---
+  couleursPistes: { verte: 25, bleue: 42, rouge: 55 }   // au-delà de 55 % : noire
+};
+
+/* -------------------------------------------------------------------------------------
+   Dameuses (noms inventés, inspirées des grandes dameuses à lame avant et fraise arrière)
+   capacite : m³ de neige des tas étalés sur la piste par jour · prix : € · largeur : m de la fraise
+   On part toujours avec une DM 400 rangée au garage ; la DM 600 étale deux fois plus, mais coûte très cher.
+   ------------------------------------------------------------------------------------- */
+const DAMEUSES = {
+  dm400: { nom: 'Dameuse DM 400', capacite: 3500, prix: 300000, largeur: 5.6, echelle: 1 },
+  dm600: { nom: 'Dameuse DM 600', capacite: 7000, prix: 480000, largeur: 6.6, echelle: 1.16 }
 };
 
 /* -------------------------------------------------------------------------------------
