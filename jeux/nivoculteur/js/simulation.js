@@ -61,16 +61,16 @@ function altitudeStation(t, x, z){
   const hf = t.altBas + S.penteFront / 100 * (t.longueur / 2 - S.front);
   // les deux vallons se rejoignent au milieu ; on passe de l'un à l'autre en douceur
   const [V1, V2] = S.vallons, xm = (V1.x + V2.x) / 2, pa = profilVallon(V1.profil, s), pb = profilVallon(V2.profil, s);
-  const w = lisse((x - xm) / S.demiLargeur * 0.8 + 0.5);
+  const w = lisse((x - xm) / S.demiLargeur * 0.5 + 0.5);
   let h = hf + (1 - w) * pa + w * pb;
   // crête entre les vallons : toujours plus haute que les deux (elle naît peu à peu au-dessus du front de neige)
-  const naissance = lisse(s / S.naissance), milieu = lisse(1 - Math.abs(x - xm) / (S.demiLargeur * 0.75));
+  const naissance = lisse(s / S.naissance), milieu = lisse(1 - Math.abs(x - xm) / S.demiLargeur);
   h += milieu * (Math.abs(pb - pa) / 2 * (1 - Math.abs(2 * w - 1)) + S.crete * naissance);
   // les bords extérieurs remontent aussi
   const dehors = Math.max(0, Math.max(V1.x - x, x - V2.x)) / S.demiLargeur;
   h += S.crete * naissance * Math.min(1.4, dehors * dehors);
   // relief chaotique : bosses, croupes et ressauts, plus marqués en montant
-  const c = S.chaos * lisse((s - 40) / 160);
+  const c = S.chaos * lisse((s - 40) / 160) * (1 - 0.6 * milieu);    // moins de bosses sur les flancs de la crête
   h += c * (0.7 * bruit(x / 70, z / 70, t.graine + 30) + 0.3 * bruit(x / 26, z / 26, t.graine + 31));
   return h;
 }
@@ -101,7 +101,13 @@ function altitudeNaturelle(t, x, z){
 // Hauteur d'un replat : celle du terrain naturel en son centre (mémorisée)
 const _cotesReplats = new WeakMap();
 function coteReplat(t, r){
-  if(!_cotesReplats.has(r)) _cotesReplats.set(r, altitudeNaturelle(t, r.x, r.z) + (r.surelever || 0));
+  if(!_cotesReplats.has(r)){
+    // un plateau (départs de pistes, arrivées de remontées) se met à la hauteur moyenne de son pourtour :
+    // autant de déblai que de remblai, pas de falaise d'un côté
+    let h = altitudeNaturelle(t, r.x, r.z);
+    if(r.plateau){ let s = h, n = 1; for(let k = 0; k < 12; k++){ const a = k / 12 * Math.PI * 2; s += altitudeNaturelle(t, r.x + Math.cos(a) * r.rayon, r.z + Math.sin(a) * r.rayon); n++; } h = s / n; }
+    _cotesReplats.set(r, h + (r.surelever || 0));
+  }
   return _cotesReplats.get(r);
 }
 
@@ -109,14 +115,39 @@ function coteReplat(t, r){
 // Point le plus proche sur l'axe d'une piste : distance et coordonnées
 function projectionPiste(piste, x, z){
   const c = courbePiste(piste);
-  let best = { d: Infinity, x: c[0][0], z: c[0][1] };
+  let best = { d: Infinity, x: c[0][0], z: c[0][1], s: 0 }, cumul = 0;
   for(let i = 1; i < c.length; i++){
     const a = c[i - 1], b = c[i], dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz;
     const f = l2 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2)) : 0;
     const px = a[0] + f * dx, pz = a[1] + f * dz, d = Math.hypot(x - px, z - pz);
-    if(d < best.d) best = { d, x: px, z: pz };
+    if(d < best.d) best = { d, x: px, z: pz, s: cumul + f * Math.sqrt(l2) };   // s : m depuis le premier point
+    cumul += Math.sqrt(l2);
   }
   return best;
+}
+// Profil en long d'une piste tracée : l'altitude du terrain le long de l'axe, lissée sur ±15 m (les bosses sont rabotées)
+const _profilsPistes = new WeakMap();
+function profilPiste(t, piste){
+  let parTerrain = _profilsPistes.get(piste);
+  if(!parTerrain){ parTerrain = new WeakMap(); _profilsPistes.set(piste, parTerrain); }
+  if(parTerrain.has(t)) return parTerrain.get(t);
+  const c = courbePiste(piste), pas = 2, brut = [];
+  for(let i = 1; i < c.length; i++){
+    const a = c[i - 1], b = c[i], l = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.round(l / pas));
+    for(let k = i === 1 ? 0 : 1; k <= n; k++) brut.push(altitudeNaturelle(t, a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n));
+  }
+  const demi = Math.round(15 / pas), lisse = brut.map((_, i) => {
+    let s = 0, n = 0;
+    for(let j = Math.max(0, i - demi); j <= Math.min(brut.length - 1, i + demi); j++){ s += brut[j]; n++; }
+    return s / n;
+  });
+  const longueur = longueurLigne(c), profil = { pas: longueur / Math.max(1, lisse.length - 1), h: lisse };
+  parTerrain.set(t, profil);
+  return profil;
+}
+function hauteurProfil(profil, s){
+  const k = s / profil.pas, i = Math.max(0, Math.min(profil.h.length - 2, Math.floor(k))), f = Math.max(0, Math.min(1, k - i));
+  return profil.h.length < 2 ? profil.h[0] : profil.h[i] + (profil.h[i + 1] - profil.h[i]) * f;
 }
 // Le haut et le bas d'une piste (le joueur peut la tracer dans les deux sens)
 function extremitesPiste(t, piste){
@@ -126,6 +157,7 @@ function extremitesPiste(t, piste){
 function altitude(t, x, z, pistes = null){
   let h = altitudeNaturelle(t, x, z);
   // Pistes tracées par le joueur : terrassées, le dévers est corrigé (le terrain est mis à niveau en travers de la piste)
+  // et les bosses sont rabotées dans le sens de la pente (profil en long lissé)
   if(pistes){
     const T = CONFIG.terrassement;
     let w = 0, cible = h;
@@ -134,7 +166,7 @@ function altitude(t, x, z, pistes = null){
       const pr = projectionPiste(p, x, z), demi = p.largeur / 2;
       if(pr.d > demi + T.talus) continue;
       const wp = (pr.d <= demi ? 1 : 1 - lisse((pr.d - demi) / T.talus)) * T.force;
-      if(wp > w){ w = wp; cible = altitudeNaturelle(t, pr.x, pr.z); }
+      if(wp > w){ w = wp; cible = hauteurProfil(profilPiste(t, p), pr.s); }
     }
     h += (cible - h) * w;
   }
@@ -690,6 +722,7 @@ function ajouterPisteBac(niveau, res, points, largeur){
   res.pistesBac = res.pistesBac || [];
   const nom = `Piste ${res.pistesBac.length + 1}`;
   res.pistesBac.push({ nom, couleur: v.couleur, largeur, pente: Math.round(v.pente), terrasse: true, points: points.map(([x, z]) => [Math.round(x), Math.round(z)]) });
+  if(res.enneigement && !(nom in res.enneigement)) res.enneigement[nom] = CONFIG.exploitation.enneigementDepart;   // exploitation : la neige naturelle
   res.budget -= v.cout;
   return { ...v, nom };
 }
@@ -705,6 +738,7 @@ function ajouterRemonteeBac(niveau, res, aval, amont, type = 'telesiege'){
   res.remonteesBac.push(type === 'teleski'
     ? { nom, type, ...gares, pylones: Math.max(1, Math.round(v.longueur / 70)), hauteur: 7, ecart: 2.6, espacementSieges: 14 }
     : { nom, type, ...gares, pylones: Math.max(2, Math.round(v.longueur / 55)), hauteur: 10, ecart: 5, espacementSieges: 22 });
+  if(res.exploitation) basculerRemontee(res, nom, true);                     // exploitation : la nouvelle remontée est en marche
   res.budget -= v.cout;
   return { ...v, nom };
 }
@@ -1204,15 +1238,28 @@ function remonteesDePiste(niveau, piste, remontees){
   const h = extremitesPiste(niveau.terrain, piste).haut;
   return remontees.filter(ts => Math.hypot(ts.amont.x - h[0], ts.amont.z - h[1]) < CONFIG.exploitation.desserte);
 }
+// Jonction : la piste part du milieu d'une autre (son départ est sur l'autre piste)
+function partDePiste(niveau, piste, autre){
+  if(autre === piste) return false;
+  const h = extremitesPiste(niveau.terrain, piste).haut;
+  return distancePiste(autre, h[0], h[1]) <= autre.largeur / 2 + 8;
+}
+// Pistes ouvertes : assez de neige, et un départ desservi — par une remontée, ou par une autre piste ouverte (jonction)
 function pistesOuvertes(niveau, res, remontees = remonteesEnService(niveau, res).filter(ts => !enPanne(res, ts.nom))){
-  return niveau.pistes.filter(p => (res.enneigement[p.nom] || 0) >= CONFIG.exploitation.ouverture && remonteesDePiste(niveau, p, remontees).length);
+  const enneigees = niveau.pistes.filter(p => (res.enneigement[p.nom] || 0) >= CONFIG.exploitation.ouverture);
+  const ouvertes = new Set(enneigees.filter(p => remonteesDePiste(niveau, p, remontees).length));
+  for(let encore = true; encore;){
+    encore = false;
+    for(const p of enneigees) if(!ouvertes.has(p) && [...ouvertes].some(o => partDePiste(niveau, p, o))){ ouvertes.add(p); encore = true; }
+  }
+  return niveau.pistes.filter(p => ouvertes.has(p));
 }
 // Clients attendus pour la journée selon les pistes ouvertes, leur enneigement, le prix, la réputation et le calendrier
 function clientsAttendus(niveau, res, pistes = pistesOuvertes(niveau, res)){
   const E = CONFIG.exploitation, ex = res.exploitation;
   if(!pistes.length) return 0;
   const ideal = idealSaison(res), qualiteNeige = pistes.reduce((s, p) => s + Math.min(1, res.enneigement[p.nom] / ideal), 0) / pistes.length;
-  const attrait = Math.min(1.5, 0.35 + 0.33 * pistes.length) * (0.5 + 0.5 * qualiteNeige);
+  const attrait = Math.min(1.5, 0.45 + 0.3 * pistes.length) * (0.5 + 0.5 * qualiteNeige);
   const prixF = borne((E.prixReference / res.prixForfait) ** 1.3, 0.3, 1.8);
   const cal = E.calendrier[(ex.jour - 1) % E.calendrier.length];
   return Math.round(E.clientsBase * E.croissance ** (ex.saison - 1) * cal * attrait * prixF * (0.4 + 0.75 * ex.reputation) * effetCommerces(res, 'clients', 1));
@@ -1233,6 +1280,11 @@ function debutJournee(niveau, res){
   return jour;
 }
 // --- Commerces du front de neige ---
+// Le front de neige (station des Deux Vallons) : la bande plate en bas, où l'on pose les commerces (délimitée en 3D)
+function zoneFrontNeige(t){
+  const S = t.station;
+  return S ? { x0: -t.largeur / 2 + 12, x1: t.largeur / 2 - 12, z0: S.front + 4, z1: t.longueur / 2 - 6 } : null;
+}
 const rayonCommerce = c => Math.hypot(...COMMERCES[c.type].taille) / 2;
 // Un commerce se débloque à un jour de la 1re saison (ou à une saison) ; il reste débloqué ensuite
 function commerceDisponible(res, type){
@@ -1247,8 +1299,10 @@ function validerCommerce(niveau, res, type, x, z){
   if(commerceConstruit(res, type)) return { ok: false, raison: `${C.nom} : la station en a déjà un.` };
   if(!commerceDisponible(res, type)) return { ok: false, raison: `${C.nom} : pas encore disponible.` };
   if(!dansZoneJeu(t, x - Math.sign(x) * r, z - Math.sign(z) * r) || !dansZoneJeu(t, x, z)) return { ok: false, raison: 'Le commerce doit être dans la station.' };
-  const hs = [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].map(([dx, dz]) => altitudeNaturelle(t, x + dx, z + dz));
-  if(Math.max(...hs) - Math.min(...hs) > 2.5 || (t.station && z < t.station.front - 5)) return { ok: false, raison: 'Les commerces se posent sur le front de neige, là où c\'est plat (en bas des pistes).' };
+  const F = zoneFrontNeige(t);
+  if(F ? (x - r < F.x0 || x + r > F.x1 || z - r < F.z0 || z + r > F.z1)
+       : (() => { const hs = [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].map(([dx, dz]) => altitudeNaturelle(t, x + dx, z + dz)); return Math.max(...hs) - Math.min(...hs) > 2.5; })())
+    return { ok: false, raison: 'Les commerces se posent sur le front de neige : dans la zone délimitée en bleu, en bas des pistes.' };
   for(const p of niveau.pistes) if(distancePiste(p, x, z) < p.largeur / 2 + r + 2) return { ok: false, raison: `Trop près de la piste ${p.nom} : les skieurs arrivent par là.` };
   for(const ts of niveau.remontees || []){
     if(distanceTelesiege(ts, x, z) < r + 5 || Math.hypot(ts.aval.x - x, ts.aval.z - z) < r + 30) return { ok: false, raison: `Trop près du ${ts.nom} (sa ligne ou la file d'attente).` };
@@ -1910,29 +1964,65 @@ function testsSimulation(){
   const bb = finNuit(bac, rb);
   verifier('Bac à sable : eau et électricité gratuites si on le choisit', bb.remplissage.m3 > 0 && !bb.remplissage.cout && bb.kwh === 500 && !bb.electricite);
 
-  // Exploitation : la station des Deux Vallons
+  // Exploitation : la station des Deux Vallons, vide au départ ; on y construit une station d'essai
   const nx = LEVELS.find(l => l.exploitation), rx = creerReseau(nx), tx = nx.terrain;
-  const [pMarm, pVallon, pCouloir] = nx.pistes, tsV = nx.remontees[0], tsM = nx.remontees[1];
-  verifier('Exploitation : 1,5 M€, personnel, forfait, gazole, 20 cm de neige naturelle, télésiège et téléski en marche',
-    rx.budget === CONFIG.exploitation.budgetDepart && rx.personnel.conducteur === 1 && rx.prixForfait === CONFIG.exploitation.prixDepart && rx.carburant.stock > 0
-    && Object.values(rx.enneigement).every(v => v === 20) && rx.remonteesEnMarche.length === 2 && remonteesEnService(nx, rx).length === 2);
+  verifier('Exploitation : 2 M€, personnel, forfait, gazole, et ni piste ni remontée au départ',
+    rx.budget === CONFIG.exploitation.budgetDepart && rx.budget === 2000000 && rx.personnel.conducteur === 1 && rx.prixForfait === CONFIG.exploitation.prixDepart && rx.carburant.stock > 0
+    && !nx.pistes.length && !nx.remontees.length && !rx.remonteesEnMarche.length);
+  verifier('Exploitation : sans piste, la station reste fermée', debutJournee(nx, rx).ferme);
+  rx.exploitation.phase = 'soir';
   const hFront = [[-100, 220], [0, 230], [120, 215], [180, 240]].map(([x, z]) => altitudeNaturelle(tx, x, z));
   verifier('Station : front de neige presque plat en bas', Math.max(...hFront) - Math.min(...hFront) < 8, hFront.map(h => Math.round(h)).join(' / '));
   const hCrete = altitudeNaturelle(tx, 0, -150), hG = altitudeNaturelle(tx, -150, -150), hD = altitudeNaturelle(tx, 150, -150);
-  verifier('Station : deux vallons séparés par une crête', hCrete > hG + 15 && hCrete > hD + 10, `crête ${Math.round(hCrete)} m, vallons ${Math.round(hG)} / ${Math.round(hD)} m`);
-  verifier('Station : une verte en bas du vallon doux, une bleue, et une noire dans le vallon raide (pentes mesurées)',
-    nx.pistes.every(p => couleurPente(penteMaxi(tx, p.points)) === p.couleur), nx.pistes.map(p => `${p.nom} ${Math.round(penteMaxi(tx, p.points))} %`).join(', '));
+  verifier('Station : deux vallons séparés par une crête', hCrete > hG + 5 && hCrete > hD + 5, `crête ${Math.round(hCrete)} m, vallons ${Math.round(hG)} / ${Math.round(hD)} m`);
+  let raideCrete = 0;
+  for(let z = -220; z <= 0; z += 20) for(let x = -140; x < 140; x += 10) raideCrete = Math.max(raideCrete, Math.abs(altitudeNaturelle(tx, x + 10, z) - altitudeNaturelle(tx, x, z)) / 10 * 100);
+  verifier('Station : la crête n\'est pas trop raide en travers (moins de 60 %)', raideCrete < 60, `${Math.round(raideCrete)} % au plus`);
+  const sommet = tx.replats.find(r => /sommet/.test(r.nom || ''));
+  verifier('Station : un plateau au sommet de la crête pour les départs de pistes',
+    !!sommet && [[0, 0], [25, 0], [-25, 0], [0, 25], [0, -25]].every(([dx, dz]) => Math.abs(altitude(tx, sommet.x + dx, sommet.z + dz) - altitude(tx, sommet.x, sommet.z)) < 2.5));
+  const F = zoneFrontNeige(tx);
+  verifier('Station : le front de neige est une zone délimitée, en bas', F && F.z0 > tx.station.front && F.z1 <= tx.longueur / 2);
+  // Construire : un téléski et un télésiège, une verte, une bleue, une noire (les tracés sont gratuits)
+  const bud0 = rx.budget;
+  const aTsk = ajouterRemonteeBac(nx, rx, { x: -112, z: 190 }, { x: -150, z: 40 }, 'teleski');
+  const aTsg = ajouterRemonteeBac(nx, rx, { x: 0, z: 178 }, { x: 0, z: -205 }, 'telesiege');
+  verifier('Exploitation : un téléski et un télésiège posés, payés, et aussitôt en marche', aTsk.ok && aTsg.ok && rx.budget === bud0 - aTsk.cout - aTsg.cout
+    && rx.remonteesEnMarche.length === 2, `${aTsk.raison || ''} ${aTsg.raison || ''}`);
+  const bud1 = rx.budget;
+  const aMarm = ajouterPisteBac(nx, rx, [[-150, 45], [-168, 95], [-152, 145], [-122, 192]], 40);
+  const aVal = ajouterPisteBac(nx, rx, [[-25, -212], [-90, -195], [-150, -130], [-175, -50], [-185, 40], [-176, 120], [-145, 195]], 34);
+  const aCoul = ajouterPisteBac(nx, rx, [[25, -212], [100, -190], [150, -150], [160, -80], [152, 0], [120, 90], [60, 192]], 30);
+  verifier('Tracer des pistes est gratuit', aMarm.ok && aVal.ok && aCoul.ok && rx.budget === bud1 && CONFIG.bac.prixPiste === 0, `${aMarm.raison || ''} ${aVal.raison || ''} ${aCoul.raison || ''}`);
+  amenager(nx, rx);
+  const [pMarm, pVallon, pCouloir] = nx.pistes, tsM = nx.remontees[0], tsV = nx.remontees[1];
+  verifier('Station : une verte en bas du vallon doux et une noire dans le vallon raide (pentes mesurées)', pMarm.couleur === 'verte' && pCouloir.couleur === 'noire',
+    nx.pistes.map(p => `${p.nom} ${p.couleur} ${p.pente} %`).join(', '));
+  verifier('Nouvelles pistes : 20 cm de neige naturelle', [pMarm, pVallon, pCouloir].every(p => rx.enneigement[p.nom] === CONFIG.exploitation.enneigementDepart));
   verifier('Station : chaque piste est desservie par une remontée', nx.pistes.every(p => remonteesDePiste(nx, p, nx.remontees).length));
+  const terr = [[0, 0], [8, 0], [-8, 0]].map(([d]) => { const pr = pointSurPiste(pVallon, 0.55, d / (pVallon.largeur * 0.35)); return altitude(tx, pr.x, pr.z, nx.pistes); });
+  verifier('Terrassement : la piste est presque plate en travers', Math.max(...terr) - Math.min(...terr) < 1.6, terr.map(h => h.toFixed(1)).join(' / '));
+  // Jonction : une bretelle part du milieu du Vallon
+  const pmV = pointSurPiste(pVallon, 0.45, 0), aBret = ajouterPisteBac(nx, rx, [[pmV.x, pmV.z], [pmV.x + 40, pmV.z + 80], [pmV.x + 60, pmV.z + 170]], 20);
+  amenager(nx, rx);
+  const pBret = nx.pistes.find(p => p.nom === aBret.nom);
+  for(const p of nx.pistes) rx.enneigement[p.nom] = 50;
+  verifier('Jonction : une piste qui part du milieu d\'une autre est desservie par elle', aBret.ok && partDePiste(nx, pBret, pVallon) && !remonteesDePiste(nx, pBret, nx.remontees).length
+    && pistesOuvertes(nx, rx).includes(pBret), aBret.raison || '');
+  rx.enneigement[pVallon.nom] = 10;
+  verifier('Jonction : si la piste de départ est fermée, la bretelle aussi', !pistesOuvertes(nx, rx).includes(pBret));
+  rx.pistesBac = rx.pistesBac.filter(p => p.nom !== aBret.nom); delete rx.enneigement[aBret.nom];
+  amenager(nx, rx);
+  for(const p of nx.pistes) rx.enneigement[p.nom] = 20;
   // Téléskis
   const TS = TYPES_REMONTEES;
   verifier('Téléski : moins cher, moins de débit, un seul agent, moins d\'électricité qu\'un télésiège',
     TS.teleski.prixMetre < TS.telesiege.prixMetre && TS.teleski.debit < TS.telesiege.debit && TS.teleski.agents === 1 && puissanceRemontee(tsM) < puissanceRemontee({ ...tsM, type: 'telesiege' }));
-  const vTk = validerRemontee(nx, { x: -60, z: 175 }, { x: -80, z: 60 }, 'teleski'), vTkRaide = validerRemontee(nx, { x: 150, z: 20 }, { x: 160, z: -160 }, 'teleski');
+  const vTk = validerRemontee(nx, { x: -60, z: 175 }, { x: -80, z: 60 }, 'teleski'), vTkRaide = validerRemontee(nx, { x: 150, z: -5 }, { x: 150, z: -90 }, 'teleski');
   verifier('Téléski : se pose sur une pente douce, refusé sur le mur du vallon raide', vTk.ok && !vTkRaide.ok && /raide/.test(vTkRaide.raison), (vTk.raison || '') + ' / ' + vTkRaide.raison);
-  const rTk = creerReseau(nx), aTk = ajouterRemonteeBac(nx, rTk, { x: -60, z: 175 }, { x: -80, z: 60 }, 'teleski');
-  verifier('Téléski : ajouté avec son nom et ses perches', aTk.ok && rTk.remonteesBac[0].type === 'teleski' && aTk.nom === 'Téléski 1' && rTk.budget === CONFIG.exploitation.budgetDepart - aTk.cout);
+  verifier('Téléski : ajouté avec son nom et ses perches', tsM.type === 'teleski' && tsM.nom === 'Téléski 1' && tsV.nom === 'Télésiège 1');
   rx.personnel.agent = 2;
-  verifier('Avec 2 agents : le télésiège ouvre (2), plus personne pour le téléski', remonteesEnService(nx, rx).map(q => q.nom).join() === tsV.nom);
+  verifier('Avec 2 agents : le premier posé (le téléski, 1 agent) ouvre, plus assez pour le télésiège', remonteesEnService(nx, rx).map(q => q.nom).join() === tsM.nom);
   rx.personnel.agent = 3;
   const jFerme = debutJournee(nx, rx);
   verifier('Pas assez de neige (20 cm < 30) : les pistes sont fermées, aucun client', jFerme.ferme && !jFerme.clients);
@@ -1966,7 +2056,7 @@ function testsSimulation(){
   // Commerces
   verifier('Commerces : location et restaurant dès le 1er jour, école plus tard, hôtel à la 2e saison',
     commerceDisponible(rx, 'location') && commerceDisponible(rx, 'restaurant') && !commerceDisponible(rx, 'ecole') && !commerceDisponible(rx, 'hotel'));
-  const vPente = validerCommerce(nx, rx, 'restaurant', -150, -100), vPiste = validerCommerce(nx, rx, 'restaurant', pVallon.points[6][0], pVallon.points[6][1]);
+  const pBasV = pointSurPiste(pVallon, 0.97, 0), vPente = validerCommerce(nx, rx, 'restaurant', -150, -100), vPiste = validerCommerce(nx, rx, 'restaurant', pBasV.x, pBasV.z);
   verifier('Commerces : pas dans la pente, pas sur une piste', !vPente.ok && !vPiste.ok, `${vPente.raison} / ${vPiste.raison}`);
   const budC = rx.budget, aRest = ajouterCommerce(nx, rx, 'restaurant', 140, 225), aLoc = ajouterCommerce(nx, rx, 'location', -40, 232);
   verifier('Commerces : un restaurant et une location posés sur le front de neige, payés', aRest.ok && aLoc.ok && rx.budget === budC - COMMERCES.restaurant.prix - COMMERCES.location.prix && rx.commerces.length === 2,
@@ -1983,7 +2073,7 @@ function testsSimulation(){
   const avecVerte = recettesCommerces({ ...nx, pistes: [pMarm, pCouloir] }, rx, { pistes: [pMarm.nom, pCouloir.nom], clients: 1000, ferme: false }, 1).detail.find(d => d.type === 'location');
   verifier('Location de skis : rien sans piste facile, beaucoup avec une verte (débutants)', debutantsSeuls.recette === 0 && avecVerte.recette > 5000, `${avecVerte.recette} €`);
   rx.exploitation.jour = COMMERCES.ecole.jour;
-  const cl0 = clientsAttendus(nx, rx), aEc = ajouterCommerce(nx, rx, 'ecole', 90, 238), cl1 = clientsAttendus(nx, rx);
+  const cl0 = clientsAttendus(nx, rx), aEc = ajouterCommerce(nx, rx, 'ecole', 90, 228), cl1 = clientsAttendus(nx, rx);
   verifier('École de ski : débloquée au jour 4, elle fait venir plus de skieurs', aEc.ok && cl1 > cl0, `${cl0} → ${cl1} ${aEc.raison || ''}`);
   const vente = vendreCommerce(rx, aEc.id);
   verifier('Vendre un commerce rend la moitié de son prix', vente.ok && vente.rendu === COMMERCES.ecole.prix / 2 && !commerceConstruit(rx, 'ecole'));

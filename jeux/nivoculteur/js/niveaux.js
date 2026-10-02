@@ -116,22 +116,6 @@ const RETENUE_STATION = { ...RETENUE_COMBE, nom: 'Retenue des Deux Vallons', x: 
 const POMPAGE_STATION = { ...POMPAGE_COMBE, x: -186, z: 220, sortie: { x: -178, z: 218.5 } };
 const COMPRESSEUR_STATION = { ...COMPRESSEUR_COMBE, x: -199, z: 226, sortie: { x: -197, z: 231 } };
 const GARAGE_STATION = { ...GARAGE_COMBE, x: 262, z: 222 };
-const TELESIEGE_VALLONS = {
-  nom: 'Télésiège des Deux Vallons', type: 'telesiege',
-  aval: { x: 0, z: 176 }, amont: { x: 4, z: -226 },
-  pylones: 7, hauteur: 10, ecart: 5, espacementSieges: 22
-};
-const TELESKI_MARMOTTES = {
-  nom: 'Téléski des Marmottes', type: 'teleski',
-  aval: { x: -96, z: 178 }, amont: { x: -128, z: 20 },
-  pylones: 2, hauteur: 7, ecart: 2.6, espacementSieges: 14
-};
-const PISTE_MARMOTTES = { nom: 'Les Marmottes', couleur: 'verte', largeur: 40,
-  points: [[-150, 14], [-168, 70], [-156, 125], [-128, 168], [-112, 200]] };
-const PISTE_VALLON = { nom: 'Le Vallon', couleur: 'bleue', largeur: 34,
-  points: [[-118, -238], [-150, -170], [-140, -100], [-175, -30], [-200, 60], [-185, 130], [-150, 190]] };
-const PISTE_COULOIR = { nom: 'Le Couloir', couleur: 'noire', largeur: 30,
-  points: [[120, -238], [150, -170], [140, -95], [165, -20], [150, 60], [110, 130], [70, 190]] };
 const TERRAIN_STATION = {
   ...TERRAIN_DOMAINE,
   versants: null,
@@ -139,31 +123,33 @@ const TERRAIN_STATION = {
   station: {
     front: 150,               // z : en dessous (vers le bas de l'écran), le front de neige
     penteFront: 3,            // % : le front de neige est presque plat
-    crete: 38,                // m : hauteur de la crête entre les deux vallons (et des bords)
+    crete: 12,                // m : la crête dépasse le plus haut des deux vallons d'autant
     demiLargeur: 150,         // m : du fond d'un vallon à la crête
-    naissance: 110,           // m : la crête naît en remontant depuis le front de neige
-    chaos: 9,                 // m : bosses et croupes en montant
+    naissance: 120,           // m : la crête naît en remontant depuis le front de neige
+    chaos: 6,                 // m : bosses et croupes en montant
     vallons: [
-      { x: -150, profil: [[110, 15], [70, 30], [55, 52], [400, 28]] },   // vallon doux : débutants en bas, un ressaut au milieu
-      { x: 150,  profil: [[45, 24], [95, 44], [80, 72], [400, 40]] }     // vallon raide : un mur noir
+      { x: -150, profil: [[110, 15], [60, 26], [60, 40], [400, 34]] },   // vallon doux : débutants en bas, un ressaut au milieu
+      { x: 150,  profil: [[60, 20], [110, 30], [50, 72], [400, 22]] }     // vallon raide : un mur noir
     ]
   },
   bosses: [
-    { x: -60, z: -150, r: 35, h: 6 }, { x: 70, z: -40, r: 30, h: 7 }, { x: 230, z: -120, r: 40, h: 10 },
-    { x: -250, z: -60, r: 45, h: 9 }, { x: 200, z: 40, r: 30, h: -5 }
+    { x: -60, z: -150, r: 35, h: 5 }, { x: 70, z: -40, r: 30, h: 5 }, { x: 230, z: -120, r: 40, h: 8 },
+    { x: -250, z: -60, r: 45, h: 7 }, { x: 200, z: 40, r: 30, h: -4 }
   ],
+  // Replats : la retenue, les bâtiments, et des plateaux pour les arrivées de remontées et les départs de pistes
   replats: [
     RETENUE_STATION, POMPAGE_STATION, GARAGE_STATION,
-    { ...TELESIEGE_VALLONS.aval, rayon: 10, talus: 12 }, { ...TELESIEGE_VALLONS.amont, rayon: 10, talus: 12 },
-    { ...TELESKI_MARMOTTES.aval, rayon: 6, talus: 8 }, { ...TELESKI_MARMOTTES.amont, rayon: 6, talus: 8 }
+    { nom: 'Plateau du sommet', x: 0, z: -212, rayon: 42, talus: 30, plateau: true },
+    { nom: 'Plateau des Marmottes', x: -150, z: 30, rayon: 26, talus: 22, plateau: true },
+    { nom: 'Plateau du Couloir', x: 150, z: -150, rayon: 22, talus: 20, plateau: true }
   ]
 };
 const DEPARTS_STATION = [
   { nom: 'Départ élec · pompage', x: -168, z: 226 },
-  { nom: 'Départ élec · front de neige', x: 22, z: 200 },
-  { nom: 'Départ élec · sommet', x: 24, z: -232 },
-  { nom: 'Départ élec · Couloir', x: 95, z: -70 },
-  { nom: 'Départ élec · Vallon', x: -100, z: -60 }
+  { nom: 'Départ élec · front de neige', x: 30, z: 236 },
+  { nom: 'Départ élec · sommet', x: 30, z: -236 },
+  { nom: 'Départ élec · Couloir', x: 120, z: -100 },
+  { nom: 'Départ élec · Vallon', x: -120, z: -60 }
 ];
 
 const LEVELS = [
@@ -276,16 +262,16 @@ const LEVELS = [
     exploitation: true,                       // station de ski : canons, damage, remontées, clients, administration
     nom: 'Exploitation de la station',
     resume: 'La station des Deux Vallons : un front de neige, un vallon doux et un vallon raide. Faites-la tourner saison après saison : la neige la nuit, le damage le matin, les skieurs la journée. Posez téléskis et télésièges, ouvrez des commerces, gérez le personnel et le prix du forfait. But : la meilleure satisfaction des clients.',
-    versionPartie: 2,                         // 2 : la station des Deux Vallons (les anciennes parties ne se reprennent pas)
+    versionPartie: 3,                         // 3 : la station des Deux Vallons, vide au départ (les anciennes parties ne se reprennent pas)
     terrain: TERRAIN_STATION,
-    pistes: [PISTE_MARMOTTES, PISTE_VALLON, PISTE_COULOIR],
+    pistes: [],                               // au départ : ni piste ni remontée, tout est à construire
     pompage: POMPAGE_STATION,
     garage: GARAGE_STATION,
     retenue: RETENUE_STATION,
-    remontees: [TELESIEGE_VALLONS, TELESKI_MARMOTTES],
+    remontees: [],
     departsElec: DEPARTS_STATION,
     compresseur: COMPRESSEUR_STATION,
-    budget: 1500000,
+    budget: 2000000,
     pannes: true, frequencePannes: 'rare',     // la nuit, quelques pannes (canons, conduites, pompes) ; le jour, celles des télésièges
     objectif: { type: 'exploitation' }
   }
@@ -409,7 +395,9 @@ function amenager(niveau, reseau){
   niveau.pistes = [...base.pistes, ...pistes];
   niveau.remontees = [...base.remontees, ...remontees];
   niveau.terrain = { ...base.terrain, replats: [...base.terrain.replats,
-    ...remontees.flatMap(ts => { const r = ts.type === 'teleski' ? { rayon: 6, talus: 8 } : { rayon: 10, talus: 12 }; return [{ ...ts.aval, ...r }, { ...ts.amont, ...r }]; })] };
+    ...remontees.flatMap(ts => { const tk = ts.type === 'teleski';
+      return [{ ...ts.aval, rayon: tk ? 6 : 10, talus: tk ? 8 : 12 },
+              { ...ts.amont, rayon: tk ? 12 : 18, talus: tk ? 12 : 16, plateau: true }]; })] };   // l'arrivée : un replat pour partir sur les pistes
   return niveau;
 }
 const amenagerBac = amenager;

@@ -435,7 +435,7 @@ function creerJalons(niveau, poser){
     const a = new Atelier(), coul = COULEURS.jalons[piste.couleur] || COULEURS.jalons.bleue;
     a.cylindre(0.09, 2.2, coul, 0, 1.1, 0, 0, 0, 0, 5);
     a.cylindre(0.11, 0.35, '#FFFFFF', 0, 1.9, 0, 0, 0, 0, 5);
-    const c = courbePiste(piste), pas = 7;                  // un point de courbe tous les 4 m environ : un jalon tous les 28 m
+    const c = courbePiste(piste), pas = 5;                  // un point de courbe tous les 4 m environ : un jalon tous les 20 m
     const places = [];
     for(let i = pas; i < c.length - 1; i += pas){
       const p0 = c[i - 1], p1 = c[i + 1], l = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
@@ -1353,6 +1353,97 @@ function creerTelesiege(ts, poser){
   groupe.userData = { telesiege: ts.nom, enMarche: false,
     animer: dt => { if(!groupe.userData.enMarche) return; decalage = (decalage + dt * CONFIG.remontees.vitesse) % total; placer(); } };
   return groupe;
+}
+
+// ---------------------------------------------------------------------------------------
+// Délimitations au sol : un ruban posé sur la neige le long d'une ligne (pointillé si on veut), et des piquets
+// points : [[x, z], …] (ligne ouverte) · poser(x, z) : hauteur du sol affiché
+// ---------------------------------------------------------------------------------------
+function creerRuban(points, poser, couleur, largeur = 1, { tirets = 0, opacite = 0.9, hauteur = 0.25, pas = 3 } = {}){
+  const pos = [], idx = [];
+  let cumul = 0;
+  for(let i = 1; i < points.length; i++){
+    const [ax, az] = points[i - 1], [bx, bz] = points[i], l = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(l / pas));
+    const nx = -(bz - az) / l * largeur / 2, nz = (bx - ax) / l * largeur / 2;
+    for(let k = 0; k < n; k++){
+      const f0 = k / n, f1 = (k + 1) / n, s = cumul + f0 * l;
+      if(tirets && Math.floor(s / tirets) % 2) continue;                       // trou du pointillé
+      const P = f => { const x = ax + (bx - ax) * f, z = az + (bz - az) * f; return [x, z, poser(x, z) + hauteur]; };
+      const [x0, z0, y0] = P(f0), [x1, z1, y1] = P(f1), b = pos.length / 3;
+      pos.push(x0 - nx, y0, z0 - nz, x0 + nx, y0, z0 + nz, x1 - nx, y1, z1 - nz, x1 + nx, y1, z1 + nz);
+      idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+    }
+    cumul += l;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: couleur, transparent: opacite < 1, opacity: opacite, side: THREE.DoubleSide,
+    depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  mesh.renderOrder = 2;
+  return mesh;
+}
+// Piquets de délimitation (bandes de couleur), un tous les « ecart » mètres le long d'une ligne
+function creerPiquets(points, poser, couleurs, ecart = 25, haut = 2.4){
+  const a = new Atelier();
+  a.cylindre(0.08, haut, couleurs[0], 0, haut / 2, 0, 0, 0, 0, 5);
+  for(let k = 1; k < 4; k += 2) a.cylindre(0.09, haut / 6, couleurs[1], 0, haut * (k + 1) / 6 + haut / 12, 0, 0, 0, 0, 5);
+  const places = [];
+  let reste = 0;
+  for(let i = 1; i < points.length; i++){
+    const [ax, az] = points[i - 1], [bx, bz] = points[i], l = Math.hypot(bx - ax, bz - az);
+    for(let d = reste; d < l; d += ecart){ const x = ax + (bx - ax) * d / l, z = az + (bz - az) * d / l; places.push([x, poser(x, z) - 0.2, z]); }
+    reste = (reste - l) % ecart; if(reste < 0) reste += ecart;
+  }
+  const mesh = new THREE.InstancedMesh(a.geometrie(), materiau('sommets'), places.length), m = new THREE.Matrix4();
+  places.forEach((p, i) => mesh.setMatrixAt(i, m.makeTranslation(p[0], p[1], p[2])));
+  mesh.castShadow = true;
+  return mesh;
+}
+// Le domaine skiable (zone de jeu) : piquets orange et noir et ruban orange en pointillé tout autour ;
+// le front de neige (station) : ruban bleu, piquets bleus et son nom, et un voile bleu montré quand on pose un commerce
+function creerDelimitations(niveau, poser){
+  const t = niveau.terrain, g = new THREE.Group(), X = t.largeur / 2, Z = t.longueur / 2;
+  const tour = [[-X, -Z], [X, -Z], [X, Z], [-X, Z], [-X, -Z]];
+  g.add(creerRuban(tour, poser, '#FF8A2A', 1.2, { tirets: 6, opacite: 0.85 }), creerPiquets(tour, poser, ['#FF8A2A', '#1C1F25'], 30));
+  const F = zoneFrontNeige(t);
+  if(F){
+    const cadre = [[F.x0, F.z0], [F.x1, F.z0], [F.x1, F.z1], [F.x0, F.z1], [F.x0, F.z0]];
+    g.add(creerRuban(cadre, poser, '#3D9BFF', 0.9, { opacite: 0.8 }), creerPiquets(cadre, poser, ['#3D9BFF', '#FFFFFF'], 22, 1.6));
+    const et = creerEtiquette('Front de neige', '#3D9BFF', '#3D9BFF');
+    et.position.set(0, poser(0, F.z0 + 6) + 4, F.z0 + 6);
+    g.add(et);
+    // voile : le front de neige en bleu clair (outil « Ouvrir un commerce »)
+    const nx = 40, nz = 8, pos = [], idx = [];
+    for(let j = 0; j <= nz; j++) for(let i = 0; i <= nx; i++){
+      const x = F.x0 + (F.x1 - F.x0) * i / nx, z = F.z0 + (F.z1 - F.z0) * j / nz;
+      pos.push(x, poser(x, z) + 0.3, z);
+    }
+    for(let j = 0; j < nz; j++) for(let i = 0; i < nx; i++){ const k = j * (nx + 1) + i; idx.push(k, k + nx + 1, k + 1, k + 1, k + nx + 1, k + nx + 2); }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx);
+    const voile = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#3D9BFF', transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    voile.visible = false; voile.renderOrder = 1;
+    g.add(voile);
+    g.userData.voileFront = voile;
+  }
+  return g;
+}
+// Bords des pistes : une ligne de la couleur de la piste de chaque côté (la piste est bien délimitée)
+function creerBordsPistes(niveau, poser){
+  const g = new THREE.Group();
+  for(const p of niveau.pistes){
+    const c = courbePiste(p), coul = COULEURS.jalons[p.couleur] || COULEURS.jalons.bleue;
+    for(const cote of [-1, 1]){
+      const bord = c.map((q, i) => {
+        const a = c[Math.max(0, i - 1)], b = c[Math.min(c.length - 1, i + 1)], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        return [q[0] - (b[1] - a[1]) / l * cote * p.largeur / 2, q[1] + (b[0] - a[0]) / l * cote * p.largeur / 2];
+      });
+      g.add(creerRuban(bord, poser, coul, 0.7, { opacite: 0.75, hauteur: 0.2 }));
+    }
+  }
+  return g;
 }
 
 // Remontée selon son type (télésiège ou téléski)

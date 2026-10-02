@@ -155,7 +155,7 @@ const CONFIG = {
 
   // --- Bac à sable : tracer des pistes et poser des remontées ---
   bac: {
-    prixPiste: 250,         // € par mètre de piste (seulement quand l'argent n'est pas illimité)
+    prixPiste: 0,           // € par mètre de piste : le tracé des pistes est gratuit (demande de l'utilisateur)
     prixRemontee: 2500,     // € par mètre de télésiège
     largeurs: [20, 30, 40], // m : largeurs de piste au choix
     pisteMin: 80,           // m : longueur minimale d'une piste
@@ -176,7 +176,7 @@ const CONFIG = {
   },
 
   // --- Terrassement des pistes tracées : le dévers est corrigé (0 = rien, 1 = piste parfaitement à plat en travers) ---
-  terrassement: { force: 0.75, talus: 10 },   // talus : m de raccord au terrain naturel de chaque côté
+  terrassement: { force: 0.95, talus: 9 },   // talus : m de raccord au terrain naturel de chaque côté
 
   // --- Couleur d'une piste selon sa pente la plus forte (sur 30 m), en % ---
   couleursPistes: { verte: 25, bleue: 42, rouge: 55 }   // au-delà de 55 % : noire
@@ -199,7 +199,7 @@ const DAMEUSES = {
    But : la meilleure satisfaction des clients. L'argent vient des forfaits et des dépenses des skieurs.
    ------------------------------------------------------------------------------------- */
 CONFIG.exploitation = {
-  budgetDepart: 1500000,
+  budgetDepart: 2000000,
   joursSaison: 20,
   enneigementDepart: 20,      // cm de neige naturelle sur les pistes au début de la saison
   ouverture: 30,              // cm : en dessous, la piste reste fermée
@@ -207,14 +207,14 @@ CONFIG.exploitation = {
   usure: 1.5,                 // cm perdus par jour d'ouverture
   usureClients: 1,            // cm perdus en plus pour 1 000 skieurs sur une piste
   neigeNaturelle: { chance: 0.25, min: 8, max: 20 },   // chute de neige pendant la nuit (au hasard)
-  clientsBase: 1200,          // clients d'une journée moyenne avec deux bonnes pistes
+  clientsBase: 1600,          // clients d'une journée moyenne avec deux bonnes pistes
   croissance: 1.12,           // chaque saison, la clientèle grandit (et elle est plus exigeante)
   calendrier: [0.5, 0.6, 0.7, 1.2, 1.3, 0.7, 0.8, 1.0, 1.5, 1.6, 1.6, 1.5, 1.4, 0.8, 0.9, 1.2, 1.4, 1.0, 0.9, 1.3],   // affluence selon le jour (vacances, week-ends)
   prixReference: 45, prixMin: 20, prixMax: 80, prixDepart: 42,   // € le forfait journée
   tours: 8,                   // montées en remontée par skieur et par jour
   heuresOuverture: 8,
   // débit et agents de chaque remontée : voir TYPES_REMONTEES
-  desserte: 230,              // m : une piste est desservie si son départ est à moins de 230 m de l'arrivée d'une remontée
+  desserte: 60,               // m : une piste est desservie si son départ est à moins de 60 m de l'arrivée d'une remontée (ou sur une autre piste)
   dureeJour: 300,             // s de jeu pour une journée de ski (5 minutes)
   panneRemontee: 0.12,        // chance qu'une remontée en marche tombe en panne pendant une journée
   carburant: { prix: 1.6, cuve: 6000, depart: 3000 },   // € par litre de gazole, litres que contient la cuve du garage
