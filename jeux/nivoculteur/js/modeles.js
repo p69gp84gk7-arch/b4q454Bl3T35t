@@ -328,6 +328,8 @@ function creerTerrain(niveau){
 
 // Les endroits où l'on ne met ni sapins ni rochers
 function placeLibre(niveau, x, z, marge){
+  const S = niveau.terrain.station;
+  if(S && z > S.front - 6 && Math.abs(x) < niveau.terrain.largeur / 2 - 12) return false;   // le front de neige reste dégagé
   const pp = pistePlusProche(niveau.pistes, x, z);
   if(pp && pp.auBord < marge) return false;
   for(const r of niveau.terrain.replats || []) if(Math.hypot(x - r.x, z - r.z) < r.rayon + r.talus * 0.5 + marge) return false;
@@ -405,6 +407,28 @@ function creerRochers(niveau, nombre, poser){
 }
 
 // --- Jalons de bord de piste, de la couleur de la piste, avec un bandeau réfléchissant ---
+// Porte de départ d'une piste : deux mâts et une banderole de la couleur de la piste, avec son nom
+// Repère : x en travers de la piste, la banderole se lit des deux côtés
+function creerPortePiste(nom, couleur, largeur){
+  const g = new THREE.Group(), a = new Atelier(), coul = COULEURS.jalons[couleur] || COULEURS.jalons.bleue, demi = Math.min(largeur / 2, 14) + 1;
+  for(const s of [-1, 1]){
+    a.cylindre(0.14, 5.4, '#E9EEF5', s * demi, 2.7, 0, 0, 0, 0, 8);
+    a.cylindre(0.3, 0.3, coul, s * demi, 0.15, 0, 0, 0, 0, 8);
+  }
+  g.add(a.mesh());
+  const texte = nom.toUpperCase(), w = 512, h = 96;
+  const tex = canvasTexture(w, h, c => {
+    c.fillStyle = coul; c.fillRect(0, 0, w, h);
+    c.fillStyle = 'rgba(255,255,255,.9)'; c.fillRect(0, 0, w, 6); c.fillRect(0, h - 6, w, 6);
+    c.fillStyle = couleur === 'noire' ? '#FFFFFF' : '#FFFFFF'; c.font = 'bold 52px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(texte, w / 2, h / 2 + 2, w - 30);
+  });
+  tex.minFilter = THREE.LinearFilter;
+  const banniere = new THREE.Mesh(new THREE.PlaneGeometry(demi * 2, demi * 2 * h / w * 1.4), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+  banniere.position.y = 4.6;
+  g.add(banniere);
+  return g;
+}
 function creerJalons(niveau, poser){
   const groupe = new THREE.Group();
   for(const piste of niveau.pistes){
@@ -1331,6 +1355,231 @@ function creerTelesiege(ts, poser){
   return groupe;
 }
 
+// Remontée selon son type (télésiège ou téléski)
+function creerRemontee(ts, poser){ return ts.type === 'teleski' ? creerTeleski(ts, poser) : creerTelesiege(ts, poser); }
+// ---------------------------------------------------------------------------------------
+// Téléski à perches : gare motrice en bas (portique, poulie horizontale, moteur, cabane du conducteur), gare de retour en haut,
+// pylônes en T à un seul fût, câble à environ 6 m du sol ; les perches montent dépliées d'un côté (une assiette au bout,
+// à hauteur de skieur) et redescendent repliées de l'autre. Repère : +z local vers la gare d'arrivée.
+// ---------------------------------------------------------------------------------------
+let _geoPerche = null;
+function creerTeleski(ts, poser){
+  const groupe = new THREE.Group(), C = COULEURS, jaune = '#E9B949';
+  const dx = ts.amont.x - ts.aval.x, dz = ts.amont.z - ts.aval.z, L = Math.hypot(dx, dz);
+  const ux = dx / L, uz = dz / L, px = -uz, pz = ux, e = ts.ecart / 2, H = ts.hauteur;
+  const rotY = Math.atan2(ux, uz);
+  const a = new Atelier(), lum = new Atelier(), yPoulie = H - 0.9;
+  // Gares : portique jaune, grande poulie horizontale ; en bas le moteur et la cabane, en haut le contrepoids de tension
+  for(const [P, amont] of [[ts.aval, false], [ts.amont, true]]){
+    const y = poser(P.x, P.z);
+    a.repere(matrice(P.x, y, P.z, 0, rotY, 0), () => {
+      a.boite(5, 0.5, 5, C.beton, 0, 0.05, 0);
+      const arriere = amont ? 1.6 : -1.6;                                              // le portique est derrière la poulie
+      for(const s of [-1, 1]) a.cylindre(0.22, yPoulie + 0.6, jaune, s * (e + 0.6), (yPoulie + 0.6) / 2, arriere, 0, 0, 0, 8);
+      a.boite(2 * e + 1.8, 0.45, 0.45, jaune, 0, yPoulie + 0.6, arriere);
+      a.boite(0.5, 0.4, Math.abs(arriere) + 0.4, jaune, 0, yPoulie + 0.6, arriere / 2);
+      a.tore(e, 0.12, C.acierFonce, 0, yPoulie, 0, Math.PI / 2, 0, 0, 6, 24);         // poulie
+      for(let k = 0; k < 4; k++){ const ang = k / 4 * Math.PI; a.tube([Math.cos(ang) * e, yPoulie, Math.sin(ang) * e], [-Math.cos(ang) * e, yPoulie, -Math.sin(ang) * e], 0.05, C.acier, 5); }
+      a.cylindre(0.25, 0.9, C.acier, 0, yPoulie + 0.2, 0, 0, 0, 0, 10);
+      if(!amont){
+        a.boite(1.6, 1.1, 1.2, C.moteur, 0, yPoulie + 1.0, 0);                         // moteur et réducteur
+        a.boite(2.2, 2.4, 2.2, C.bois, e + 3.2, 1.2, -1.5);                           // cabane du conducteur
+        a.boite(2.6, 0.2, 2.6, C.toit, e + 3.2, 2.5, -1.5);
+        a.boite(2.4, 0.18, 2.4, C.neigeToit, e + 3.2, 2.68, -1.5);
+        lum.boite(0.1, 0.8, 1.2, C.fenetre, e + 2.07, 1.5, -1.5);
+        for(const s of [-1, 1]) a.boite(0.08, 1.0, 9, '#D7263D', s * (e + 1.2), 0.5, -5.5);   // couloir de départ (barrières)
+      } else {
+        a.boite(1.2, 1.6, 1.2, C.beton, 0, 2.2, arriere * 1.8);                        // contrepoids
+        a.tube([0, yPoulie, 0], [0, 3, arriere * 1.8], 0.04, C.acierFonce, 4);
+      }
+    });
+  }
+  // Pylônes en T et points d'appui du câble
+  const appuis = [{ x: ts.aval.x, z: ts.aval.z, y: poser(ts.aval.x, ts.aval.z) + yPoulie }];
+  for(const p of pylonesTelesiege(ts)){
+    const y0 = poser(p.x, p.z);
+    a.repere(matrice(p.x, y0, p.z, 0, rotY, 0), () => {
+      a.boite(1.4, 0.6, 1.4, C.beton, 0, 0.05, 0);
+      a.cylindre(0.26, H, jaune, 0, H / 2, 0, 0, 0, 0, 8, 0.2);
+      a.boite(2 * e + 1.0, 0.3, 0.35, jaune, 0, H, 0);
+      for(const s of [-1, 1]) a.boite(0.22, 0.24, 1.6, C.acierFonce, s * e, H - 0.15, 0);          // galets
+    });
+    appuis.push({ x: p.x, z: p.z, y: y0 + H - 0.3 });
+  }
+  appuis.push({ x: ts.amont.x, z: ts.amont.z, y: poser(ts.amont.x, ts.amont.z) + yPoulie });
+  const cables = {};
+  for(const s of [-1, 1]){
+    const pts = [];
+    for(let i = 0; i < appuis.length - 1; i++){
+      const A = appuis[i], B = appuis[i + 1], portee = Math.hypot(B.x - A.x, B.z - A.z);
+      for(let k = 0; k < 10; k++){
+        const f = k / 10;
+        pts.push(new THREE.Vector3(A.x + (B.x - A.x) * f + px * s * e, A.y + (B.y - A.y) * f - portee * 0.01 * Math.sin(Math.PI * f), A.z + (B.z - A.z) * f + pz * s * e));
+      }
+    }
+    const fin = appuis[appuis.length - 1];
+    pts.push(new THREE.Vector3(fin.x + px * s * e, fin.y, fin.z + pz * s * e));
+    cables[s] = pts;
+    a.ajouter(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, 0.04, 4), C.noir);
+  }
+  groupe.add(a.mesh(), lum.mesh('lumineux', false));
+  // Perches : enrouleur sous le câble, tige, assiette au bout (repère : y = 0 au câble, la tige descend)
+  if(!_geoPerche){
+    const pa = new Atelier(), lp = yPoulie - 0.9;
+    pa.boite(0.3, 0.35, 0.3, C.acierFonce, 0, -0.25, 0);
+    pa.cylindre(0.025, lp, C.galva, 0, -0.4 - lp / 2, 0, 0, 0, 0, 5);
+    pa.cylindre(0.2, 0.05, '#D7263D', 0, -0.4 - lp, 0, 0, 0, 0, 10);
+    _geoPerche = pa.geometrie();
+  }
+  const boucle = [...cables[1], ...cables[-1].slice().reverse()], cumul = [0];
+  for(let i = 1; i < boucle.length; i++) cumul.push(cumul[i - 1] + boucle[i].distanceTo(boucle[i - 1]));
+  const total = cumul[cumul.length - 1] + boucle[0].distanceTo(boucle[boucle.length - 1]), moitie = cumul[cables[1].length - 1];
+  const nb = Math.max(2, Math.floor(total / ts.espacementSieges));
+  const inst = new THREE.InstancedMesh(_geoPerche, materiau('sommets'), nb);
+  inst.castShadow = true;
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), axe = new THREE.Vector3(0, 1, 0);
+  const deplie = new THREE.Vector3(1, 1, 1), replie = new THREE.Vector3(1, 0.22, 1);
+  let decalage = 0;
+  const placer = () => {
+    for(let k = 0; k < nb; k++){
+      const d = (decalage + k * total / nb) % total;
+      let i = 1;
+      while(i < cumul.length && cumul[i] < d) i++;
+      if(i >= cumul.length) p.copy(boucle[boucle.length - 1]).lerp(boucle[0], (d - cumul[cumul.length - 1]) / Math.max(1e-6, total - cumul[cumul.length - 1]));
+      else p.copy(boucle[i - 1]).lerp(boucle[i], (d - cumul[i - 1]) / Math.max(1e-6, cumul[i] - cumul[i - 1]));
+      inst.setMatrixAt(k, m.compose(p, q.setFromAxisAngle(axe, rotY), d < moitie ? deplie : replie));
+    }
+    inst.instanceMatrix.needsUpdate = true;
+  };
+  placer();
+  groupe.add(inst);
+  groupe.userData = { telesiege: ts.nom, enMarche: false,
+    animer: dt => { if(!groupe.userData.enMarche) return; decalage = (decalage + dt * TYPES_REMONTEES.teleski.vitesse) % total; placer(); } };
+  return groupe;
+}
+
+// ---------------------------------------------------------------------------------------
+// Commerces du front de neige : chalets en bois sur un soubassement de pierre, toit à deux pans enneigé, enseigne de couleur,
+// et un détail par commerce (râteliers de skis, terrasse et parasols, drapeaux, transats, bonhomme de neige, balcons de l'hôtel).
+// Repère : y = 0 au sol (le soubassement descend dessous pour rattraper la pente), façade et enseigne vers +z.
+// ---------------------------------------------------------------------------------------
+const _texEnseignes = {};
+function textureEnseigne(type){
+  const T = COMMERCES[type];
+  return _texEnseignes[type] || (_texEnseignes[type] = canvasTexture(512, 128, g => {
+    g.fillStyle = T.couleur; g.fillRect(0, 0, 512, 128);
+    g.strokeStyle = '#FFFFFF'; g.lineWidth = 8; g.strokeRect(8, 8, 496, 112);
+    let taille = 72;
+    g.font = `800 ${taille}px "Bricolage Grotesque", system-ui, sans-serif`;
+    while(g.measureText(T.enseigne).width > 460 && taille > 30){ taille -= 4; g.font = `800 ${taille}px "Bricolage Grotesque", system-ui, sans-serif`; }
+    g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(T.enseigne, 256, 68);
+  }));
+}
+function creerCommerce(type){
+  const T = COMMERCES[type], C = COULEURS, g = new THREE.Group(), a = new Atelier(), lum = new Atelier();
+  const [W, D] = T.taille, etages = T.chambres ? 3 : 1, H = etages * 3.2, socle = 0.6, hf = Math.min(4, D * 0.36);
+  const bois = '#8A6440', boisClair = '#A9805A', pierre = '#8F8A84';
+  a.boite(W + 0.4, 2.6, D + 0.4, pierre, 0, socle - 1.3, 0);                                 // soubassement
+  a.boite(W, H, D, bois, 0, socle + H / 2, 0);                                                // murs
+  for(let k = 1; k < H / 0.55; k++) for(const s of [-1, 1]) a.boite(W + 0.06, 0.06, 0.06, boisClair, 0, socle + k * 0.55, s * (D / 2 + 0.01));   // lames
+  for(const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) a.boite(0.35, H, 0.35, '#6B4A2C', sx * W / 2, socle + H / 2, sz * D / 2);   // poteaux d'angle
+  // Fenêtres (éclairées) devant et derrière, à chaque étage ; porte au milieu de la façade
+  const nf = Math.max(2, Math.floor(W / 3.2));
+  for(let et = 0; et < etages; et++) for(let i = 0; i < nf; i++){
+    const x = -W / 2 + (i + 0.5) * W / nf;
+    if(et === 0 && Math.abs(x) < 1.2) continue;
+    for(const s of [-1, 1]){
+      lum.boite(1.4, 1.3, 0.08, C.fenetre, x, socle + et * 3.2 + 1.7, s * (D / 2 + 0.04));
+      a.boite(1.7, 0.14, 0.2, '#5A3D24', x, socle + et * 3.2 + 1.0, s * (D / 2 + 0.1));
+    }
+  }
+  a.boite(1.6, 2.3, 0.12, '#4A3020', 0, socle + 1.15, D / 2 + 0.06);                           // porte
+  a.boite(2.6, 0.3, 1.8, '#6B4A2C', 0, socle + 2.6, D / 2 + 0.9);                            // auvent
+  if(T.chambres) for(let et = 1; et < etages; et++){                                          // balcons de l'hôtel
+    a.boite(W - 1, 0.18, 1.3, '#6B4A2C', 0, socle + et * 3.2 + 0.1, D / 2 + 0.65);
+    a.boite(W - 1, 0.9, 0.08, boisClair, 0, socle + et * 3.2 + 0.6, D / 2 + 1.28);
+  }
+  // Toit à deux pans (faîtage dans la longueur), enneigé ; pignons en bois sur les côtés ; cheminée
+  const pente = Math.atan2(hf, D / 2), pan = Math.hypot(D / 2, hf) + 1.0, yt = socle + H;
+  for(const s of [-1, 1]){
+    a.boite(W + 1.6, 0.26, pan, C.toit, 0, yt + hf / 2 + 0.12, s * D / 4, s * pente, 0, 0);
+    a.boite(W + 1.4, 0.24, pan - 0.2, C.neigeToit, 0, yt + hf / 2 + 0.36, s * D / 4, s * pente, 0, 0);
+  }
+  const pignon = new THREE.Shape([new THREE.Vector2(-D / 2, 0), new THREE.Vector2(D / 2, 0), new THREE.Vector2(0, hf)]);
+  a.ajouter(prisme(pignon, 0.3), bois, matrice(W / 2 - 0.3, yt, 0, 0, Math.PI / 2, 0));
+  a.ajouter(prisme(pignon, 0.3), bois, matrice(-W / 2, yt, 0, 0, Math.PI / 2, 0));
+  for(const x of T.chambres ? [-W / 3, W / 3] : [W / 4]) a.boite(0.9, hf + 1.4, 0.9, pierre, x, yt + hf / 2 + 0.8, -D / 6);
+  // Enseigne au-dessus de la porte
+  const lE = Math.min(W - 1.5, 8), enseigne = new THREE.Mesh(new THREE.PlaneGeometry(lE, lE / 4), new THREE.MeshBasicMaterial({ map: textureEnseigne(type) }));
+  if(T.chambres) enseigne.position.set(0, yt + hf + lE / 8 + 0.4, 0);                      // l'hôtel : sur le faîtage
+  else enseigne.position.set(0, socle + 2.75 + lE / 8, D / 2 + 1.82);                        // posée sur l'auvent
+  for(const sx of [-1, 1]) a.boite(0.12, T.chambres ? lE / 4 + 0.6 : 0.4, 0.12, C.acierFonce, sx * lE * 0.35, T.chambres ? yt + hf + 0.2 : socle + 2.85, T.chambres ? -0.08 : D / 2 + 1.75);
+  // Le détail de chaque commerce, devant la façade
+  const zd = D / 2 + 3.2;
+  if(type === 'location') for(const sx of [-1, 1]){
+    const x0 = sx * (W / 2 - 2.5);
+    for(const dxp of [-1.2, 1.2]) a.boite(0.12, 1.2, 0.12, C.acierFonce, x0 + dxp, 0.6, zd);
+    a.boite(2.6, 0.1, 0.1, C.acierFonce, x0, 1.15, zd);
+    VESTES.slice(0, 6).forEach((c, i) => a.boite(0.1, 1.7, 0.04, c, x0 - 1.0 + i * 0.4, 0.85, zd + 0.15, -0.18, 0, 0));
+  }
+  if(type === 'restaurant' || type === 'bar'){
+    const lt = W - 1, pt = 6;
+    a.boite(lt, 0.3, pt, '#7A5638', 0, socle - 0.15, D / 2 + pt / 2);                          // terrasse
+    for(const sx of [-1, 1]) a.boite(0.1, 0.9, pt, '#5A3D24', sx * lt / 2, socle + 0.45, D / 2 + pt / 2);
+    a.boite(lt, 0.9, 0.1, '#5A3D24', 0, socle + 0.45, D / 2 + pt);
+    const nb = Math.max(2, Math.floor(lt / 4.5));
+    for(let i = 0; i < nb; i++){
+      const x = -lt / 2 + (i + 0.5) * lt / nb, z = D / 2 + pt / 2 + 0.5;
+      if(type === 'restaurant'){
+        a.cylindre(0.7, 0.08, '#E6E0D6', x, socle + 0.85, z, 0, 0, 0, 10);
+        a.cylindre(0.06, 2.6, '#E6E0D6', x, socle + 1.3, z, 0, 0, 0, 5);
+        a.cylindre(1.7, 0.7, i % 2 ? '#FFFFFF' : T.couleur, x, socle + 2.75, z, 0, 0, 0, 8, 0.05);   // parasol
+      } else {
+        for(const s of [-0.5, 0.5]) a.boite(0.7, 0.12, 1.7, T.couleur, x + s * 1.4, socle + 0.45, z, -0.35, 0, 0);   // transats
+      }
+    }
+  }
+  if(type === 'ecole') ['#E58A1F', '#2F6FDE', '#FFFFFF'].forEach((c, i) => {
+    const x = -W / 2 + 1.5 + i * 2.6;
+    a.cylindre(0.06, 6, C.galva, x, 3, zd, 0, 0, 0, 5);
+    a.boite(1.6, 1.0, 0.04, c, x + 0.8, 5.4, zd);
+  });
+  if(type === 'garderie'){
+    a.sphere(0.9, '#F4F7FB', W / 2 - 2, 0.8, zd, 10); a.sphere(0.65, '#F4F7FB', W / 2 - 2, 2.0, zd, 10); a.sphere(0.45, '#F4F7FB', W / 2 - 2, 2.9, zd, 10);
+    a.cylindre(0.08, 0.5, C.orange, W / 2 - 2, 2.9, zd + 0.6, Math.PI / 2, 0, 0, 6, 0);
+    for(let i = 0; i < 8; i++) a.boite(0.12, 0.8, 0.12, VESTES[i % VESTES.length], -W / 2 + 0.5 + i * 0.9, 0.4, zd + 1.2);
+    a.boite(7, 0.1, 0.08, '#FFFFFF', -W / 2 + 3.6, 0.7, zd + 1.2);
+  }
+  if(type === 'magasin') lum.boite(W - 3, 1.9, 0.1, '#FFF1C9', 0, socle + 1.4, D / 2 + 0.07);   // grande vitrine
+  g.add(a.mesh(), lum.mesh('lumineux', false), enseigne);
+  g.userData.commerce = type;
+  return g;
+}
+
+// ---------------------------------------------------------------------------------------
+// Skieurs (mode Exploitation) : petits personnages en InstancedMesh, couleur de veste par skieur
+// Repère : avant vers +z ; agrandis ×2 pour qu'on les voie de loin
+// ---------------------------------------------------------------------------------------
+const VESTES = ['#D7263D', '#2F6FDE', '#F2C230', '#2E9E5B', '#E58A1F', '#8E44AD', '#FFFFFF', '#1ABC9C', '#E84393'];
+function creerSkieurs(max){
+  const a = new Atelier(), gris = '#3A3F4A';
+  for(const s of [-1, 1]){
+    a.boite(0.09, 0.04, 1.7, '#BFC5CE', s * 0.14, 0.03, 0.1);                       // skis
+    a.boite(0.13, 0.75, 0.16, gris, s * 0.14, 0.45, 0, 0.25, 0, 0);                  // jambes fléchies
+    a.tube([s * 0.3, 0.95, 0.1], [s * 0.36, 0.0, -0.35], 0.02, gris, 4);           // bâtons
+  }
+  a.boite(0.44, 0.55, 0.28, '#FFFFFF', 0, 1.1, 0.06, 0.35, 0, 0);                  // veste (teintée par skieur)
+  a.sphere(0.15, '#FFFFFF', 0, 1.5, 0.2, 8);                                        // casque
+  a.boite(0.22, 0.08, 0.04, '#1C1F25', 0, 1.5, 0.35);                               // masque
+  const mesh = new THREE.InstancedMesh(a.geometrie(), new THREE.MeshLambertMaterial({ vertexColors: true }), max);
+  const c = new THREE.Color();
+  for(let i = 0; i < max; i++) mesh.setColorAt(i, c.set(VESTES[i % VESTES.length]));
+  mesh.count = 0;
+  mesh.frustumCulled = false;
+  mesh.castShadow = true;
+  return mesh;
+}
+
 // ---------------------------------------------------------------------------------------
 // Garage des dameuses : hangar à deux portes sectionnelles (la gauche s'ouvre), toit enneigé
 // Repère : sol à y = 0, portes du côté +z ; places de parking dans userData.places (repère local)
@@ -1400,6 +1649,12 @@ function textureAlerte(type){
       g.fillStyle = '#FFD23A'; g.strokeStyle = '#1C1F25'; g.lineWidth = 5;
       g.beginPath(); g.moveTo(32, 5); g.lineTo(60, 56); g.lineTo(4, 56); g.closePath(); g.fill(); g.stroke();
       g.fillStyle = '#1C1F25'; g.fillRect(29, 20, 6, 20); g.beginPath(); g.arc(32, 47, 3.5, 0, Math.PI * 2); g.fill();
+    } else if(type === 'blesse' || type === 'secours'){
+      // Croix de secours : rouge sur fond blanc (un blessé attend), blanche sur fond rouge (un pisteur est là)
+      const fond = type === 'blesse' ? '#FFFFFF' : '#D7263D', croix = type === 'blesse' ? '#D7263D' : '#FFFFFF';
+      g.fillStyle = fond; g.strokeStyle = '#1C1F25'; g.lineWidth = 4;
+      g.beginPath(); g.roundRect ? g.roundRect(5, 5, 54, 54, 10) : g.rect(5, 5, 54, 54); g.fill(); g.stroke();
+      g.fillStyle = croix; g.fillRect(25, 12, 14, 40); g.fillRect(12, 25, 40, 14);
     } else {
       // Rond bleu avec une clé plate blanche : l'équipe répare
       g.fillStyle = '#2F6FDE'; g.strokeStyle = '#0B1426'; g.lineWidth = 4;
@@ -1425,6 +1680,43 @@ function etatAlerte(sp, reparation){
   sp.userData.reparation = reparation;
   sp.material.map = textureAlerte(reparation ? 'reparation' : 'panne');
   sp.material.needsUpdate = true;
+}
+// Secours sur piste : blessé allongé, skis plantés en croix au-dessus de lui (le signal des skieurs),
+// et, quand il arrive, le pisteur-secouriste avec sa barquette. Repère : l'amont vers −z. userData.etat(etat, temps)
+let _geoSecours = null;
+function creerSecours(veste){
+  if(!_geoSecours){
+    const b = new Atelier();                                                              // le blessé
+    b.boite(0.42, 0.26, 0.6, '#FFFFFF', 0, 0.16, 0);                                      // buste (teinté)
+    b.boite(0.36, 0.2, 0.9, '#3A3F4A', 0, 0.12, 0.72);                                    // jambes
+    b.sphere(0.15, '#E8E8E8', 0, 0.18, -0.45, 8);                                         // casque
+    const sk = new Atelier();                                                             // skis plantés en croix
+    for(const s of [-1, 1]) sk.boite(0.09, 1.7, 0.04, '#BFC5CE', 0, 0.75, 0, 0, 0, s * 0.45);
+    const pi = new Atelier();                                                             // pisteur et barquette
+    pi.boite(0.13, 0.8, 0.16, '#1C1F25', -0.12, 0.4, 0); pi.boite(0.13, 0.8, 0.16, '#1C1F25', 0.12, 0.4, 0);
+    pi.boite(0.46, 0.6, 0.3, '#D7263D', 0, 1.1, 0);                                       // veste rouge
+    pi.boite(0.08, 0.3, 0.02, '#FFFFFF', 0, 1.15, 0.16); pi.boite(0.24, 0.08, 0.02, '#FFFFFF', 0, 1.18, 0.16);   // croix blanche
+    pi.sphere(0.15, '#D7263D', 0, 1.55, 0, 8);
+    pi.boite(0.75, 0.28, 2.3, '#F28C28', 1.1, 0.14, 0.2);                                 // barquette orange
+    pi.boite(0.6, 0.06, 2.1, '#1C1F25', 1.1, 0.29, 0.2);
+    for(const s of [-1, 1]) pi.tube([1.1 + s * 0.3, 0.3, -0.9], [1.1 + s * 0.3, 0.9, -2.0], 0.03, '#3A3F4A', 4);   // brancards
+    _geoSecours = { blesse: b.geometrie(), skis: sk.geometrie(), pisteur: pi.geometrie(), mat: new THREE.MeshLambertMaterial({ vertexColors: true }) };
+  }
+  const G = _geoSecours, g = new THREE.Group();
+  const blesse = new THREE.Mesh(G.blesse, new THREE.MeshLambertMaterial({ vertexColors: true, color: veste || '#2F6FDE' }));
+  const skis = new THREE.Mesh(G.skis, G.mat); skis.position.set(0, 0, -1.9);
+  const pisteur = new THREE.Mesh(G.pisteur, G.mat); pisteur.position.set(0.75, 0, 0.1); pisteur.visible = false;   // barquette à côté, pas sur le blessé
+  for(const m of [blesse, skis, pisteur]) m.castShadow = true;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: textureAlerte('blesse'), sizeAttenuation: false, depthTest: false, transparent: true, fog: false }));
+  sp.scale.set(0.03, 0.03, 1); sp.center.set(0.5, 0); sp.position.y = 2.6; sp.renderOrder = 11;
+  g.add(blesse, skis, pisteur, sp);
+  g.userData.etat = (etat, temps) => {
+    pisteur.visible = etat === 'encours';
+    const tex = textureAlerte(etat === 'encours' ? 'secours' : 'blesse');
+    if(sp.material.map !== tex){ sp.material.map = tex; sp.material.needsUpdate = true; }
+    sp.visible = etat === 'encours' || Math.floor(temps * 2.5) % 2 === 0;               // clignote tant que personne n'est là
+  };
+  return g;
 }
 // Fuite : gerbe d'eau qui jaillit de la tranchée et flaque de glace qui grandit
 let _texGoutte = null;

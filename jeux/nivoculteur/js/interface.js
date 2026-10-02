@@ -17,7 +17,7 @@ function message(texte, type = 'info', duree = 4500){
   el.className = `message ${type}`;
   el.textContent = texte;
   zone.appendChild(el);
-  while(zone.children.length > 3) zone.firstChild.remove();
+  while(zone.children.length > (window.innerWidth < 700 ? 2 : 3)) zone.firstChild.remove();   // peu de messages à la fois
   setTimeout(() => { el.classList.add('sortie'); setTimeout(() => el.remove(), 450); }, duree);
 }
 
@@ -186,7 +186,7 @@ function afficherPoste(d, agir){
         ${d.remplissage ? `<div class="ligne">Remplissage de la journée (m³)</div>
         <div class="seg large">${d.remplissage.choix.map(m => `<button type="button" data-action="remplissage" data-valeur="${m}" class="${m === d.remplissage.m3 ? 'actif' : ''}">${m ? nombreFr(m) : 'Arrêt'}</button>`).join('')}</div>
         <p class="aide">m³ d'eau remontés dans la retenue chaque jour, à ${nombreFr(d.remplissage.prix, 2)} €/m³ (${euros(Math.round(d.remplissage.m3 * d.remplissage.prix))} par jour au plus).</p>` : ''}
-        <div class="ligne">${d.nuit ? `<button class="bouton petit" type="button" data-action="accelerer">${d.accelere ? 'Vitesse normale' : `Accélérer ×${CONFIG.nuit.accelere}`}</button>`
+        <div class="ligne">${d.nuit ? `<button class="bouton petit" type="button" data-action="accelerer">${(() => { const vs = CONFIG.nuit.vitesses, v = d.vitesse || 1, n = vs[(vs.indexOf(v) + 1) % vs.length]; return v > 1 ? `Vitesse ×${v} → ×${n}` : `Accélérer ×${n}`; })()}</button>`
           : '<button class="bouton vert" type="button" data-action="lancerNuit">Lancer la nuit</button>'}</div>
       </section>
       ${d.damage || d.remontees.length ? `<section class="bloc"><h3>Dameuse et remontées</h3>
@@ -247,6 +247,76 @@ function afficherMenu(groupes, agir, peutRevenir){
   };
 }
 function fermerMenu(){ $('menu').hidden = true; }
+
+// ---------------------------------------------------------------------------------------
+// Administration de la station (mode Exploitation) : forfait, personnel, gazole, saison, dernière journée
+// d : données préparées par le jeu ; agir(action, valeur)
+// ---------------------------------------------------------------------------------------
+const NOMS_SATISFACTION = { neige: 'Enneigement', damage: 'Damage', choix: 'Choix de pistes', attente: 'Attente aux remontées', prix: 'Prix du forfait', securite: 'Sécurité (secours)', accueil: 'Accueil (caisses, commerces)' };
+function barreSatisfaction(f){
+  const pc = Math.round(borne(f, 0, 1) * 100), cls = pc >= 75 ? 'bon' : pc >= 50 ? 'moyen' : 'mauvais';
+  return `<span class="jauge"><span class="${cls}" style="left:0;width:${pc}%"></span></span><b>${pc} %</b>`;
+}
+function afficherAdmin(d, agir){
+  const el = $('admin'), haut = el.scrollTop;
+  const pastille = (texte, cls = '') => `<span class="pastille ${cls}">${echapper(texte)}</span>`;
+  const E = CONFIG.exploitation, C = E.carburant;
+  const metiers = Object.entries(METIERS).map(([k, m]) => {
+    const n = d.personnel[k], b = d.besoins[k];
+    return `<div class="metier"><span class="nom"><b>${echapper(m.nom)}</b><small>${echapper(m.role)}</small></span>
+      <span class="reglage"><button class="bouton petit" type="button" data-action="personnel" data-valeur="${k}:-1" aria-label="Un de moins">−</button><b class="val">${n}</b>
+      <button class="bouton petit" type="button" data-action="personnel" data-valeur="${k}:1" aria-label="Un de plus">+</button></span>
+      ${pastille(`conseillé : ${b}`, n >= b ? 'vert' : 'orange')}${pastille(`${euros(m.salaire)} / jour`)}</div>`;
+  }).join('');
+  const dj = d.dernier;
+  mettreAJour(el, `
+    <div class="tete"><h2>Administration de la station</h2><button class="fermer" type="button" data-action="fermer" aria-label="Fermer">×</button></div>
+    <div class="grille">
+      <section class="bloc"><h3>Forfait journée</h3>
+        <div class="ligne reglage-bac">Prix <input type="range" min="${E.prixMin}" max="${E.prixMax}" step="1" value="${d.prix}" data-curseur="prix" aria-label="Prix du forfait"><b>${euros(d.prix)}</b></div>
+        <div class="ligne">${pastille(`prix habituel : ${euros(E.prixReference)}`)}${d.estimation !== null ? pastille(`environ ${nombreFr(d.estimation)} clients demain`) : pastille('pistes fermées : pas de clients')}</div>
+        <p class="aide">Moins cher, plus de clients et plus contents ; plus cher, chaque forfait rapporte plus. Les skieurs dépensent aussi dans les commerces du front de neige, d'autant plus qu'ils sont satisfaits.</p>
+      </section>
+      <section class="bloc"><h3>Gazole des dameuses</h3>
+        <div class="mesure">${barreSatisfaction(d.carburant.stock / C.cuve).replace(/<b>.*<\/b>/, '')}<b>${nombreFr(d.carburant.stock)} L</b></div>
+        <div class="ligne">${pastille(`cuve de ${nombreFr(C.cuve)} L`)}${pastille(`${d.conso} L pour une journée de damage`, d.carburant.stock < d.conso ? 'orange' : '')}</div>
+        <div class="ligne"><button class="bouton petit" type="button" data-action="carburant" data-valeur="500">+500 L · ${euros(500 * C.prix)}</button>
+          <button class="bouton petit" type="button" data-action="carburant" data-valeur="1000">+1 000 L · ${euros(1000 * C.prix)}</button>
+          <button class="bouton petit" type="button" data-action="carburant" data-valeur="${C.cuve}">Remplir la cuve</button></div>
+        <p class="aide">${nombreFr(C.prix, 2)} € le litre. Sans gazole, la dameuse ne sort pas : la neige des canons reste en tas et les pistes ne sont pas damées.</p>
+      </section>
+      <section class="bloc"><h3>Saison ${d.saison}</h3>
+        <div class="ligne">${pastille(`jour ${d.jour} / ${E.joursSaison}`)}${pastille(`réputation ${Math.round(d.reputation * 100)} %`)}</div>
+        <div class="mesure"><span>Satisfaction</span>${d.satisfaction === null ? '<b>—</b>' : barreSatisfaction(d.satisfaction)}</div>
+        <div class="ligne">${pastille(`${nombreFr(d.clients)} clients depuis le début de la saison`)}${pastille(`résultat ${d.resultat >= 0 ? '+' : '−'}${euros(Math.abs(d.resultat))}`, d.resultat >= 0 ? 'vert' : 'orange')}</div>
+        ${d.saisons.map(x => `<div class="ligne">${pastille(`Saison ${x.saison}`)}${pastille(`${Math.round((x.satisfaction || 0) * 100)} % satisfaits`)}${pastille(`${nombreFr(x.clients)} clients`)}${pastille(`${x.resultat >= 0 ? '+' : '−'}${euros(Math.abs(x.resultat))}`)}</div>`).join('')}
+      </section>
+      <section class="bloc large"><h3>Commerces du front de neige</h3>
+        <div class="commerces">${d.commerces.map(c => `<div class="metier"><span class="nom"><b>${echapper(c.nom)}</b><small>${echapper(c.resume)} · charges ${euros(c.charges)} / jour</small></span>
+          ${c.construit ? pastille(c.net === null ? 'ouvert' : `ouvert · ${c.net >= 0 ? '+' : '−'}${euros(Math.abs(c.net))} hier`, 'vert')
+            : c.disponible ? `<button class="bouton petit" type="button" data-action="commerce" data-valeur="${c.type}">Construire · ${euros(c.prix)}</button>`
+            : pastille(c.quand)}</div>`).join('')}</div>
+        <p class="aide">De nouveaux commerces se débloquent au fil de la saison. Ils se posent sur le front de neige, en bas des pistes ; touchez-en un pour voir ce qu'il rapporte ou le vendre.</p>
+      </section>
+      <section class="bloc"><h3>Secours sur piste</h3>
+        <div class="ligne">${['verte', 'bleue', 'rouge', 'noire'].map(c => pastille(`${c} : ${euros(E.secours.prix[c])}`)).join('')}</div>
+        <div class="ligne">${pastille(`${d.secoursSaison.blesses} blessé${d.secoursSaison.blesses > 1 ? 's' : ''} cette saison`)}${pastille(`+${euros(d.secoursSaison.recette)} facturés`, 'vert')}
+          ${d.secoursJour ? pastille(`aujourd'hui : ${d.secoursJour.faits} secourus, ${d.secoursJour.encours} en cours, ${d.secoursJour.attente} en attente`, d.secoursJour.attente ? 'orange' : '') : ''}</div>
+        <p class="aide">Les débutants des pistes vertes et bleues se blessent plus souvent, mais un secours y est facturé moins cher que sur une rouge ou une noire. Chaque pisteur fait un secours à la fois : sans pisteur libre, le blessé attend (la sécurité baisse) et, à la fermeture, part en hélicoptère sans être facturé.</p>
+      </section>
+      <section class="bloc"><h3>Dernière journée</h3>
+        ${dj ? `<div class="ligne">${pastille(`${nombreFr(dj.clients)} clients`)}${pastille(`forfaits ${euros(dj.forfaits)}`, 'vert')}${dj.commerces && dj.commerces.detail.length ? pastille(`commerces ${dj.commerces.net >= 0 ? '+' : '−'}${euros(Math.abs(dj.commerces.net))}`, dj.commerces.net >= 0 ? 'vert' : 'orange') : ''}${dj.secours ? pastille(`secours +${euros(dj.secours.recette)}`, 'vert') : ''}${pastille(`salaires −${euros(dj.salaires)}`, 'orange')}</div>
+          ${Object.entries(NOMS_SATISFACTION).map(([k, nom]) => `<div class="mesure"><span class="crit">${nom}</span>${barreSatisfaction(dj.details[k])}</div>`).join('')}`
+          : '<p class="vide">Pas encore de journée de ski cette saison.</p>'}
+      </section>
+    </div>
+    <section class="bloc large"><h3>Personnel · ${euros(d.salaires)} de salaires par jour</h3><div class="metiers">${metiers}</div></section>`);
+  el.hidden = false;
+  el.scrollTop = haut;
+  el.onclick = e => { const b = e.target.closest('[data-action]'); if(b) agir(b.dataset.action, b.dataset.valeur); };
+  el.oninput = e => { if(e.target.dataset.curseur === 'prix') agir('prix', +e.target.value); };
+}
+function fermerAdmin(){ $('admin').hidden = true; }
 
 // ---------------------------------------------------------------------------------------
 // Pannes en cours : petit panneau dans le coin en haut à droite (repliable)
@@ -329,7 +399,7 @@ function afficherOptions(o, vent, agir, amenagements = { pistes: [], remontees: 
         <div class="types">${types}</div>
       </section>
       <section class="bloc"><h3>Pistes et remontées</h3>
-        <p class="aide">Tracez-en avec les outils « Piste » et « Remontée » de la barre du bas.</p>
+        <p class="aide">Tracez-en avec « Tracer une piste » et « Poser une remontée » du menu Construire.</p>
         ${amenagements.pistes.map((p, i) => `<div class="ligne">${pastille(p.nom)}<small>${echapper(p.detail)}</small><button class="bouton petit" type="button" data-action="optSupprPiste" data-valeur="${i}">Supprimer</button></div>`).join('')}
         ${amenagements.remontees.map((r, i) => `<div class="ligne">${pastille(r.nom)}<small>${echapper(r.detail)}</small><button class="bouton petit" type="button" data-action="optSupprRemontee" data-valeur="${i}">Supprimer</button></div>`).join('')}
         ${amenagements.pistes.length || amenagements.remontees.length ? '' : '<p class="vide">Aucune pour l\'instant.</p>'}

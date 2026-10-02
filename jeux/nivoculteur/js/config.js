@@ -75,15 +75,15 @@ const CONFIG = {
   pannes: {
     parNuit: [1, 3],        // nombre de pannes par nuit (au hasard entre les deux)
     frequences: { rare: [0, 1], normale: [1, 3], forte: [3, 5] },   // bac à sable : nombre de pannes par nuit au choix
-    moment: [4, 45],        // s de jeu : quand elles arrivent pendant la nuit
+    moment: [12, 135],      // s de jeu : quand elles arrivent pendant la nuit
     types: {
-      fuite:       { nom: 'Fuite sur une conduite', cout: 6000, duree: 15, poids: 2,
+      fuite:       { nom: 'Fuite sur une conduite', cout: 6000, duree: 30, poids: 2,
                      debit: 30,      // m³/h d'eau perdus par la fuite (la retenue se vide plus vite)
                      perte: 10 },    // bar perdus par les regards en aval de la fuite
-      moteur:      { nom: 'Moteur de ventilateur grillé', cout: 2500, duree: 10, poids: 2 },
-      gel:         { nom: 'Buse gelée sur une perche', cout: 300, duree: 5, poids: 2, facteur: 0.4 },   // production × 0,4
-      disjoncteur: { nom: 'Disjoncteur déclenché', cout: 0, duree: 2, poids: 1 },
-      pompe:       { nom: 'Pompe en défaut thermique', cout: 4000, duree: 20, poids: 1 }
+      moteur:      { nom: 'Moteur de ventilateur grillé', cout: 2500, duree: 20, poids: 2 },
+      gel:         { nom: 'Buse gelée sur une perche', cout: 300, duree: 10, poids: 2, facteur: 0.4 },   // production × 0,4
+      disjoncteur: { nom: 'Disjoncteur déclenché', cout: 0, duree: 4, poids: 1 },
+      pompe:       { nom: 'Pompe en défaut thermique', cout: 4000, duree: 40, poids: 1 }
     }
   },
 
@@ -103,9 +103,10 @@ const CONFIG = {
 
   // --- Nuit ---
   nuit: {
-    duree: 60,              // durée d'une nuit, en secondes de jeu
-    echelle: 720,           // 1 seconde de jeu = 720 secondes réelles (60 s de jeu = une nuit de 12 h)
-    accelere: 3             // vitesse avec le bouton « Accélérer »
+    duree: 180,             // durée d'une nuit, en secondes de jeu (3 minutes)
+    echelle: 240,           // 1 seconde de jeu = 240 secondes réelles (180 s de jeu = une nuit de 12 h)
+    accelere: 3,            // vitesse avec le bouton « Accélérer » (ancien réglage, voir vitesses)
+    vitesses: [1, 3, 10]    // le bouton de vitesse passe de l'une à l'autre (nuit et journée)
   },
 
   // --- Vent (tiré au sort pour chaque nuit, annoncé la veille) ---
@@ -167,12 +168,15 @@ const CONFIG = {
     reprise: 0.25           // quand on change de dameuse, l'ancienne est reprise à cette part de son prix
   },
 
-  // --- Remontées mécaniques (activées par le joueur ; les clients viendront plus tard) ---
+  // --- Remontées mécaniques (activées par le joueur) ---
   remontees: {
-    kwParMetre: 0.35,       // kW consommés par mètre de télésiège quand il tourne
+    kwParMetre: 0.35,       // kW consommés par mètre de télésiège quand il tourne (voir TYPES_REMONTEES)
     heuresJour: 8,          // heures d'ouverture par jour
     vitesse: 5              // m/s : défilement des sièges en 3D
   },
+
+  // --- Terrassement des pistes tracées : le dévers est corrigé (0 = rien, 1 = piste parfaitement à plat en travers) ---
+  terrassement: { force: 0.75, talus: 10 },   // talus : m de raccord au terrain naturel de chaque côté
 
   // --- Couleur d'une piste selon sa pente la plus forte (sur 30 m), en % ---
   couleursPistes: { verte: 25, bleue: 42, rouge: 55 }   // au-delà de 55 % : noire
@@ -184,8 +188,91 @@ const CONFIG = {
    On part toujours avec une DM 400 rangée au garage ; la DM 600 étale deux fois plus, mais coûte très cher.
    ------------------------------------------------------------------------------------- */
 const DAMEUSES = {
-  dm400: { nom: 'Dameuse DM 400', capacite: 3500, prix: 300000, largeur: 5.6, echelle: 1 },
-  dm600: { nom: 'Dameuse DM 600', capacite: 7000, prix: 480000, largeur: 6.6, echelle: 1.16 }
+  dm400: { nom: 'Dameuse DM 400', capacite: 3500, prix: 300000, largeur: 5.6, echelle: 1, surface: 60000, conso: 180 },
+  dm600: { nom: 'Dameuse DM 600', capacite: 7000, prix: 480000, largeur: 6.6, echelle: 1.16, surface: 120000, conso: 260 }
+};
+// surface : m² de pistes damés par jour (mode Exploitation) · conso : litres de gazole pour une journée de travail complète
+
+/* -------------------------------------------------------------------------------------
+   Mode EXPLOITATION : une station de ski qui tourne, saison après saison.
+   La nuit on fait la neige, le matin la dameuse étale et dame, la journée les clients skient.
+   But : la meilleure satisfaction des clients. L'argent vient des forfaits et des dépenses des skieurs.
+   ------------------------------------------------------------------------------------- */
+CONFIG.exploitation = {
+  budgetDepart: 1500000,
+  joursSaison: 20,
+  enneigementDepart: 20,      // cm de neige naturelle sur les pistes au début de la saison
+  ouverture: 30,              // cm : en dessous, la piste reste fermée
+  ideal: 60,                  // cm : enneigement parfait pour les clients (+5 cm chaque saison)
+  usure: 1.5,                 // cm perdus par jour d'ouverture
+  usureClients: 1,            // cm perdus en plus pour 1 000 skieurs sur une piste
+  neigeNaturelle: { chance: 0.25, min: 8, max: 20 },   // chute de neige pendant la nuit (au hasard)
+  clientsBase: 1200,          // clients d'une journée moyenne avec deux bonnes pistes
+  croissance: 1.12,           // chaque saison, la clientèle grandit (et elle est plus exigeante)
+  calendrier: [0.5, 0.6, 0.7, 1.2, 1.3, 0.7, 0.8, 1.0, 1.5, 1.6, 1.6, 1.5, 1.4, 0.8, 0.9, 1.2, 1.4, 1.0, 0.9, 1.3],   // affluence selon le jour (vacances, week-ends)
+  prixReference: 45, prixMin: 20, prixMax: 80, prixDepart: 42,   // € le forfait journée
+  tours: 8,                   // montées en remontée par skieur et par jour
+  heuresOuverture: 8,
+  // débit et agents de chaque remontée : voir TYPES_REMONTEES
+  desserte: 230,              // m : une piste est desservie si son départ est à moins de 230 m de l'arrivée d'une remontée
+  dureeJour: 300,             // s de jeu pour une journée de ski (5 minutes)
+  panneRemontee: 0.12,        // chance qu'une remontée en marche tombe en panne pendant une journée
+  carburant: { prix: 1.6, cuve: 6000, depart: 3000 },   // € par litre de gazole, litres que contient la cuve du garage
+  reputationDepart: 0.8,
+  nivoculteurCanons: 12,      // canons qu'un nivoculteur fait tourner la nuit
+  clientsParCaissier: 500,
+  // Secours sur piste : les débutants des pistes faciles se blessent plus souvent, mais un secours y est facturé moins cher
+  secours: {
+    part:   { verte: 1.5, bleue: 1.2, rouge: 0.8, noire: 0.5 },   // fréquentation relative d'une piste selon sa couleur
+    taux:   { verte: 8,   bleue: 5,   rouge: 3,   noire: 2.5 },   // blessés pour 1 000 skieurs sur la piste
+    prix:   { verte: 220, bleue: 320, rouge: 480, noire: 650 },   // € facturés par secours (payés par l'assurance du blessé)
+    duree:  { verte: 20,  bleue: 25,  rouge: 30,  noire: 35 },    // s de jeu pour un secours (un pisteur occupé)
+    attenteMax: 30            // s de jeu : un blessé secouru plus tard attend trop (la sécurité baisse)
+  }
+};
+CONFIG.pannes.types.remontee = { nom: 'Panne de remontée', cout: 3500, duree: 40, poids: 0 };   // en journée seulement
+// Personnel : effectif de départ, salaire par jour (€) et rôle
+// Types de remontées : télésiège 4 places ou téléski à perches
+// prixMetre : € par mètre · debit : personnes par heure · agents : pour l'ouvrir · kwParMetre : kW par mètre quand il tourne
+// longueur : m (au moins, au plus) · penteMax : % de pente moyenne au plus (on se fait tirer sur la neige) · vitesse : m/s en 3D
+const TYPES_REMONTEES = {
+  telesiege: { nom: 'Télésiège', prixMetre: 2500, debit: 1800, agents: 2, kwParMetre: 0.35, longueur: [120, 600], penteMax: null, vitesse: 5,
+    resume: '4 places, grand débit, passe au-dessus de tout ; cher' },
+  teleski:   { nom: 'Téléski', prixMetre: 900, debit: 900, agents: 1, kwParMetre: 0.12, longueur: [80, 450], penteMax: 50, vitesse: 3,
+    resume: 'à perches, deux fois moins de débit, un seul agent ; bon marché, idéal pour les débutants' }
+};
+const typeRemontee = ts => TYPES_REMONTEES[(ts && ts.type) || 'telesiege'];
+
+// Commerces du front de neige (mode Exploitation) : on les achète avec le budget, un de chaque au plus.
+// prix : € pour le construire · charges : € par jour (salaires, énergie), même station fermée
+// jour / saison : débloqué à partir de ce jour de la 1re saison, ou de cette saison
+// clientele : part des skieurs du jour qui y passent (debutants : seulement ceux des pistes vertes et bleues) · panier : € par client,
+// un peu plus quand les clients sont contents · effets : clients (+ part de skieurs en plus), blesses (× sur les pistes faciles)
+// taille : [largeur, profondeur] en m · couleur et enseigne : en 3D
+const COMMERCES = {
+  location:   { nom: 'Location de skis', prix: 120000, charges: 450, jour: 1, clientele: 0.4, debutants: true, panier: 22,
+    taille: [13, 9], couleur: '#2F6FDE', enseigne: 'LOCATION', resume: 'les débutants louent leurs skis : rapporte plus avec des pistes vertes et bleues' },
+  restaurant: { nom: 'Restaurant', prix: 180000, charges: 900, jour: 1, clientele: 0.4, panier: 24,
+    taille: [16, 11], couleur: '#D7263D', enseigne: 'RESTAURANT', resume: 'une partie des skieurs y mange, plus quand ils sont contents' },
+  ecole:      { nom: 'École de ski', prix: 90000, charges: 600, jour: 4, clientele: 0.15, debutants: true, panier: 55, effets: { clients: 0.06, blesses: 1.25 },
+    taille: [10, 8], couleur: '#E58A1F', enseigne: 'ÉCOLE DE SKI', resume: '+6 % de skieurs, mais plus de débutants sur les pistes faciles (plus de blessés)' },
+  bar:        { nom: 'Bar après-ski', prix: 70000, charges: 350, jour: 7, clientele: 0.25, panier: 11,
+    taille: [10, 8], couleur: '#8E44AD', enseigne: 'BAR', resume: 'petit, pas cher, vite rentabilisé' },
+  magasin:    { nom: 'Magasin de sport', prix: 150000, charges: 500, jour: 10, clientele: 0.07, panier: 75,
+    taille: [12, 9], couleur: '#1ABC9C', enseigne: 'SPORT', resume: 'peu de clients, mais de gros achats' },
+  garderie:   { nom: 'Garderie des neiges', prix: 60000, charges: 300, jour: 13, clientele: 0.04, panier: 35, effets: { clients: 0.04 },
+    taille: [10, 8], couleur: '#E84393', enseigne: 'GARDERIE', resume: 'les familles viennent plus (+4 % de skieurs)' },
+  hotel:      { nom: 'Hôtel', prix: 600000, charges: 1500, saison: 2, chambres: 80, prixChambre: 150, effets: { clients: 0.12 },
+    taille: [26, 13], couleur: '#B8860B', enseigne: 'HÔTEL', resume: '80 chambres, remplies selon la réputation ; +12 % de skieurs' }
+};
+const COMMERCES_SERVICES = 3;   // commerces (hors hôtel) pour un accueil parfait (satisfaction)
+const METIERS = {
+  nivoculteur: { nom: 'Nivoculteurs', salaire: 160, depart: 2, role: `font tourner les canons la nuit (${CONFIG.exploitation.nivoculteurCanons} canons chacun)` },
+  conducteur: { nom: 'Conducteurs de dameuse', salaire: 170, depart: 1, role: 'sans conducteur, la dameuse ne sort pas ; un 2e double le travail (+60 %)' },
+  agent: { nom: 'Agents des remontées', salaire: 130, depart: 3, role: '2 par télésiège ouvert, 1 par téléski' },
+  pisteur: { nom: 'Pisteurs-secouristes', salaire: 150, depart: 3, role: 'surveillent les pistes et secourent les blessés (un secours à la fois chacun)' },
+  technicien: { nom: 'Techniciens de maintenance', salaire: 170, depart: 1, role: 'réparent les pannes plus vite' },
+  caissier: { nom: 'Caissiers', salaire: 120, depart: 2, role: `1 pour ${CONFIG.exploitation.clientsParCaissier} clients par jour` }
 };
 
 /* -------------------------------------------------------------------------------------

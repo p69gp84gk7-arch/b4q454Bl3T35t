@@ -11,9 +11,9 @@ const OUVRIR_MENU = !params.get('niveau') && !MODE_MODELES;
 const niveau = trouverNiveau(params.get('niveau')) || trouverNiveau(progressionSauvee.dernier) || LEVELS[0];
 
 // Bac à sable : les pistes et télésièges du joueur font partie du terrain (à ajouter avant de le construire)
-if((niveau.bac || niveau.carriere) && !params.has('nouvelle')){
+if((niveau.bac || niveau.carriere || niveau.exploitation) && !params.has('nouvelle')){
   const partie = lireSauvegarde(`nivo-partie-${niveau.id}`);
-  if(partie && partie.reseau) amenager(niveau, partie.reseau);
+  if(partie && partie.reseau && partie.version === (niveau.versionPartie || 1)) amenager(niveau, partie.reseau);
 }
 
 if(MODE_TEST) afficherTests(testsSimulation());
