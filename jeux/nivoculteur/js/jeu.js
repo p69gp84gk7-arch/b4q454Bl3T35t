@@ -139,6 +139,9 @@ function demarrer(){
   const ciel = creerCiel(), etoiles = creerEtoiles(CONFIG.graphismes.etoiles), lune = creerLune();
   const terrain = creerTerrain(niveau), poser = terrain.userData.poser;
   const decor = [creerSapins(niveau, Math.round(CONFIG.graphismes.sapins * (t.largeur + 520) / 820), poser), creerRochers(niveau, CONFIG.graphismes.rochers, poser), creerJalons(niveau, poser)];
+  // Délimitations (grand domaine) : le domaine skiable, le front de neige, et les bords des pistes
+  const delimitations = (t.versants || t.station) ? creerDelimitations(niveau, poser) : null;
+  if(delimitations) decor.push(delimitations, creerBordsPistes(niveau, poser));
   // Portes de départ en haut de chaque piste, de la couleur de la piste (sa difficulté la plus haute)
   const placerPorte = (porte, piste) => {
     const c = courbePiste(piste), e = extremitesPiste(t, piste), i0 = e.inverse ? c.length - 1 : 0, i1 = e.inverse ? Math.max(0, c.length - 3) : Math.min(c.length - 1, 2);
@@ -480,6 +483,7 @@ function demarrer(){
     montrerDepart();
     consigne();
     majPuceOutil();
+    if(delimitations && delimitations.userData.voileFront) delimitations.userData.voileFront.visible = outil === 'commerce';
   }
   document.querySelectorAll('[data-outil]').forEach(b => { b.onclick = () => choisirOutil(b.dataset.outil); });
 
@@ -813,9 +817,11 @@ function demarrer(){
     if(outil === 'piste'){
       const v = traceePiste.length >= 2 ? validerPiste(niveau, traceePiste, reglageTrace.largeur) : null;
       const pente = traceePiste.length >= 2 ? penteMaxi(t, traceePiste) : null;
+      const dep = traceePiste.length >= 2 ? departPiste(traceePiste, reglageTrace.largeur) : null;
       el.innerHTML = `${pente === null ? '' : `<span class="pastille-couleur ${couleurPente(pente)}">Piste ${couleurPente(pente)} · pente ${Math.round(pente)} %</span>`}
+        ${dep ? `<span class="${dep.ok ? 'depart-ok' : 'depart-non'}">${echapper(dep.texte)}</span>` : ''}
         <label>Largeur <select id="traceLargeur">${CONFIG.bac.largeurs.map(l => `<option value="${l}"${l === reglageTrace.largeur ? ' selected' : ''}>${l} m</option>`).join('')}</select></label>
-        <span>${traceePiste.length} point${traceePiste.length > 1 ? 's' : ''}${traceePiste.length >= 2 ? ` · ${nombreFr(longueurPolyligne(traceePiste))} m${(!niveau.bac || reseau.options.budget) && v && v.ok ? ` · ${euros(v.cout)}` : ''}` : ''}</span>
+        <span>${traceePiste.length} point${traceePiste.length > 1 ? 's' : ''}${traceePiste.length >= 2 ? ` · ${nombreFr(longueurPolyligne(traceePiste))} m${(!niveau.bac || reseau.options.budget) && v && v.ok && v.cout > 0 ? ` · ${euros(v.cout)}` : ''}` : ''}</span>
         <button class="bouton petit" type="button" id="traceRetour"${traceePiste.length ? '' : ' disabled'}>Point précédent</button>
         <button class="bouton petit vert" type="button" id="traceFin"${traceePiste.length >= 2 ? '' : ' disabled'}>Terminer la piste</button>`;
       el.querySelector('#traceLargeur').onchange = e => { reglageTrace.largeur = +e.target.value; dessinerTrace(); majPanneauTrace(); };
@@ -841,6 +847,16 @@ function demarrer(){
       if(sel) sel.onchange = e => { reglageTrace.commerce = e.target.value; majPanneauTrace(); };
     }
   }
+  // D'où part une piste en cours de tracé : de l'arrivée d'une remontée, d'une autre piste (jonction), ou de nulle part
+  function departPiste(points, largeur){
+    if(!niveau.exploitation) return null;
+    const p = { nom: '?', largeur, points }, h = extremitesPiste(t, p).haut;
+    const ts = (niveau.remontees || []).find(q => Math.hypot(q.amont.x - h[0], q.amont.z - h[1]) < CONFIG.exploitation.desserte);
+    if(ts) return { ok: true, texte: `Départ : arrivée du ${ts.nom}` };
+    const autre = niveau.pistes.find(q => partDePiste(niveau, p, q));
+    if(autre) return { ok: true, texte: `Départ : jonction sur ${autre.nom}` };
+    return { ok: false, texte: 'Départ non desservi : partez de l\'arrivée d\'une remontée ou d\'une autre piste' };
+  }
   function outilPiste(x, z){
     if(!dansZoneJeu(t, x, z)) return message('La piste doit rester dans le domaine skiable.', 'attention', 3000);
     traceePiste.push([x, z]);
@@ -865,7 +881,8 @@ function demarrer(){
   function terminerPiste(){
     const r = ajouterPisteBac(niveau, reseau, traceePiste, reglageTrace.largeur);
     if(!r.ok) return message(r.raison, 'attention', 4500);
-    rechargerBac(`${r.nom} (${r.couleur}, pente ${Math.round(r.pente)} %) ouverte : ${nombreFr(r.longueur)} m. La neige qui tombe dessus compte maintenant.`);
+    const dep = departPiste(traceePiste, reglageTrace.largeur);
+    rechargerBac(`${r.nom} (${r.couleur}, pente ${Math.round(r.pente)} %) tracée : ${nombreFr(r.longueur)} m. La neige qui tombe dessus compte maintenant.${dep && !dep.ok ? ' Attention : son départ n\'est desservi par aucune remontée ni aucune piste.' : ''}`);
   }
   function terminerRemontee(){
     const r = ajouterRemonteeBac(niveau, reseau, gareAval, gareAmont, reglageTrace.typeRemontee);
@@ -1551,8 +1568,8 @@ function demarrer(){
     repere.visible = true;
     const R = niveau.retenue;
     if(R && Math.hypot(x - R.x, z - R.z) < R.cuvette.rayon){ message(`${R.nom} · altitude du bord ${nombreFr(coteReplat(t, R))} m`, 'info', 3500); return; }
-    const pp = pistePlusProche(niveau.pistes, x, z);
-    const ou = pp.dessus ? `sur la piste ${pp.piste.couleur} « ${pp.piste.nom} »` : `hors piste, à ${nombreFr(pp.auBord)} m de la piste`;
+    const pp = pistePlusProche(niveau.pistes, x, z) || { dessus: false, auBord: Infinity };
+    const ou = !niveau.pistes.length ? 'pas encore de piste' : pp.dessus ? `sur la piste ${pp.piste.couleur} « ${pp.piste.nom} »` : `hors piste, à ${nombreFr(pp.auBord)} m de la piste`;
     const ep = EXPL && pp.dessus ? ` · ${Math.round(reseau.enneigement[pp.piste.nom] || 0)} cm de neige${pistesOuvertes(niveau, reseau).includes(pp.piste) ? ', peut ouvrir' : ', fermée'}` : '';
     message(`Altitude ${nombreFr(altitude(t, x, z, niveau.pistes))} m · ${ou}${ep}`, pp.dessus ? 'ok' : 'info', 3500);
   }
@@ -1571,7 +1588,8 @@ function demarrer(){
     scene.fog.color.copy(scene.background);
     ciel.visible = etoiles.visible = lune.visible = jourF < 0.5;
     for(const n of nuitLumieres){
-      n.l.intensity = n.i * (1 + jourF * (n.l.isDirectionalLight ? 0.7 : n.l.isHemisphereLight ? 1.1 : 1.5));
+      // le jour, une lumière blanche mais pas plus forte que la nuit (la neige ne doit pas éblouir)
+      n.l.intensity = n.i * (1 + jourF * (n.l.isDirectionalLight ? -0.12 : n.l.isHemisphereLight ? -0.15 : -0.1));
       n.l.color.copy(n.c).lerp(new THREE.Color(n.l.isDirectionalLight ? '#FFF2DC' : '#E6F0FF'), jourF);
     }
   }
@@ -1602,9 +1620,23 @@ function demarrer(){
     }
     skieurs3D.count = n;
   }
-  function commencerDescente(a, piste, depart = 0){
-    const c = courbePiste(piste), e = extremitesPiste(t, piste);
-    a.etat = 'descente'; a.chemin = e.inverse ? c.slice().reverse() : c; a.largeur = piste.largeur; a.i = Math.floor(depart * (a.chemin.length - 2)); a.f = 0; a.ph = Math.random() * 6;
+  const cheminPiste = piste => { const c = courbePiste(piste); return extremitesPiste(t, piste).inverse ? c.slice().reverse() : c; };
+  const indexProche = (chemin, x, z) => chemin.reduce((m, q, i) => Math.hypot(q[0] - x, q[1] - z) < Math.hypot(chemin[m][0] - x, chemin[m][1] - z) ? i : m, 0);
+  function commencerDescente(a, piste, depart = 0, iDepart = null){
+    a.etat = 'descente'; a.piste = piste; a.chemin = cheminPiste(piste); a.largeur = piste.largeur;
+    a.i = iDepart ?? Math.floor(depart * (a.chemin.length - 2)); a.f = 0; a.ph = a.ph ?? Math.random() * 6;
+  }
+  // Jonctions : les bretelles qui partent d'une piste (et à quel point du chemin), la piste qu'on rejoint en bas
+  const _bretelles = new Map();
+  function bretelles(piste){
+    if(!_bretelles.has(piste)){
+      const ch = cheminPiste(piste);
+      _bretelles.set(piste, niveau.pistes.filter(b => partDePiste(niveau, b, piste)).map(b => { const h = extremitesPiste(t, b).haut; return { piste: b, i: indexProche(ch, h[0], h[1]) }; }));
+    }
+    return _bretelles.get(piste).filter(b => journee.pistes.includes(b.piste.nom));
+  }
+  function pisteRejointe(piste, x, z){
+    return niveau.pistes.find(q => q !== piste && journee.pistes.includes(q.nom) && distancePiste(q, x, z) <= q.largeur / 2 + 8);
   }
   function avancerSkieurs(dt){
     const files = {};
@@ -1647,15 +1679,22 @@ function demarrer(){
         while(reste > 0 && a.i < c.length - 1){
           const p0 = c[a.i], p1 = c[a.i + 1], L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1, pas = Math.min(reste, (1 - a.f) * L);
           a.f += pas / L; reste -= pas;
-          if(a.f >= 1){ a.i++; a.f = 0; }
+          if(a.f >= 1){
+            a.i++; a.f = 0;
+            const br = a.piste && bretelles(a.piste).find(b => b.i === a.i);
+            if(br && Math.random() < 0.5){ commencerDescente(a, br.piste, 0, 0); break; }   // il prend la bretelle
+          }
         }
-        if(a.i >= c.length - 1){
+        if(a.i >= a.chemin.length - 1){
+          // Jonction : la piste finit au milieu d'une autre, il continue dessus
+          const fin = a.chemin[a.chemin.length - 1], suite = pisteRejointe(a.piste, fin[0], fin[1]);
+          if(suite){ const ch = cheminPiste(suite), k = indexProche(ch, fin[0], fin[1]); if(k < ch.length - 2){ commencerDescente(a, suite, 0, k); continue; } }
           const ts = choisirRemontee(a.x, a.z);
           a.etat = ts ? 'retour' : 'file'; a.ts = ts;
           if(ts){ a.cx = ts.aval.x; a.cz = ts.aval.z; }
           continue;
         }
-        const p0 = c[a.i], p1 = c[a.i + 1], L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1, nx = -(p1[1] - p0[1]) / L, nz = (p1[0] - p0[0]) / L;
+        const p0 = a.chemin[a.i], p1 = a.chemin[a.i + 1], L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1, nx = -(p1[1] - p0[1]) / L, nz = (p1[0] - p0[0]) / L;
         a.ph += dt * 2.2;
         const lat = Math.sin(a.ph) * a.largeur * 0.32;
         a.x = p0[0] + (p1[0] - p0[0]) * a.f + nx * lat; a.z = p0[1] + (p1[1] - p0[1]) * a.f + nz * lat;
@@ -1800,9 +1839,13 @@ function demarrer(){
     const ex = reseau.exploitation, sat = satisfactionSaison(reseau), ideal = idealSaison(reseau);
     const ouvrables = pistesOuvertes(niveau, reseau), ep = niveau.pistes.map(p => reseau.enneigement[p.nom] || 0), moy = ep.reduce((s, x) => s + x, 0) / Math.max(1, ep.length);
     const b = besoinsPersonnel(niveau, reseau), manque = Object.keys(b).filter(k => reseau.personnel[k] < b[k]);
+    const premiers = [];
+    if(!niveau.remontees.length) premiers.push({ texte: 'Poser une première remontée', fait: false, detail: 'Construire → Poser une remontée : un téléski (pas cher, pour les débutants) ou un télésiège ; la gare d\'arrivée devient un plateau pour les départs de pistes' });
+    if(!niveau.pistes.length) premiers.push({ texte: 'Tracer une piste', fait: false, detail: 'Construire → Tracer une piste (gratuit), en partant de l\'arrivée d\'une remontée ou d\'une autre piste' });
     return [
+      ...premiers,
       { texte: 'Satisfaction de la saison', fait: sat !== null && sat >= 0.8, progres: sat ?? 0, detail: `${sat === null ? '—' : Math.round(sat * 100) + ' %'} · réputation ${Math.round(ex.reputation * 100)} % · jour ${ex.jour} / ${E.joursSaison}` },
-      { texte: 'Pistes qui peuvent ouvrir', fait: ouvrables.length === niveau.pistes.length, progres: ouvrables.length / Math.max(1, niveau.pistes.length), detail: `${ouvrables.length} / ${niveau.pistes.length} (au moins ${E.ouverture} cm et une remontée en marche)` },
+      { texte: 'Pistes qui peuvent ouvrir', fait: niveau.pistes.length > 0 && ouvrables.length === niveau.pistes.length, progres: ouvrables.length / Math.max(1, niveau.pistes.length), detail: `${ouvrables.length} / ${niveau.pistes.length} (au moins ${E.ouverture} cm, et un départ desservi : remontée en marche ou jonction)` },
       { texte: 'Enneigement moyen des pistes', fait: moy >= ideal, progres: moy / ideal, detail: `${Math.round(moy)} cm sur ${ideal} cm idéals` },
       { texte: 'Gazole pour la dameuse', fait: reseau.carburant.stock >= DAMEUSES[reseau.dameuse.modele].conso, progres: reseau.carburant.stock / E.carburant.cuve, detail: `${nombreFr(reseau.carburant.stock)} L dans la cuve` },
       { texte: 'Commerces sur le front de neige', fait: (reseau.commerces || []).length >= COMMERCES_SERVICES, progres: Math.min(1, (reseau.commerces || []).length / COMMERCES_SERVICES),
@@ -1933,7 +1976,7 @@ function demarrer(){
   const commandes = tactile ? 'Un doigt pour vous déplacer. Deux doigts : pincez pour zoomer, tournez-les pour pivoter, glissez-les vers le haut ou le bas pour incliner la vue.' : 'Glissez pour tourner, molette pour zoomer, clic droit pour déplacer la vue.';
   if(!OUVRIR_MENU && niveau.carriere && avancementEtape(reseau).nuits === 0)
     message(`Étape ${niveau.numero} · ${niveau.nom} : ${niveau.resume} Objectif : ${nombreFr(o.m3)} m³ sur les pistes et ${euros(o.recette)} de recettes en ${o.nuits} nuits.`, 'info', 12000);
-  if(!OUVRIR_MENU) message(`${commandes} ${niveau.construction === false ? 'Lancez la nuit, puis pilotez la salle de pompage au poste de travail.' : 'Construisez, puis lancez la nuit.'}`, 'info', 7000);
+  if(!OUVRIR_MENU) message(`${commandes} ${niveau.construction === false ? 'Lancez la nuit, puis pilotez la salle de pompage au poste de travail.' : EXPL && !niveau.remontees.length ? 'La station est vide : posez une remontée, tracez des pistes depuis son arrivée, puis enneigez-les. Le domaine skiable est bordé de piquets orange, le front de neige de bleu.' : 'Construisez, puis lancez la nuit.'}`, 'info', 7000);
   if(reseau.messageApres){ message(reseau.messageApres, 'ok', 6000); delete reseau.messageApres; planifierSauvegarde(); }
   if(repris && !OUVRIR_MENU) message(`Partie reprise : prochaine nuit n° ${reseau.nuit}.`, 'ok', 4000);
   if(OUVRIR_MENU) ouvrirMenu();
