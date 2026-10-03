@@ -1,6 +1,6 @@
 /* DesDés : fonctionnement hors ligne.
    Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement. */
-const VERSION = 'desdes-v36';
+const VERSION = 'desdes-v37';
 const FONTS = 'desdes-fonts';
 const SHELL = [
   './',
@@ -8,8 +8,11 @@ const SHELL = [
   'jeux/10000.html',
   'jeux/yams.html',
   'jeux/plateau.js',
+  'jeux/sauvegarde.js',
   'jeux/geo.html',
   'jeux/geo/monde.js',
+  'jeux/geo/france.js',
+  'jeux/geo/usa.js',
   'jeux/drawrace.html',
   'jeux/drawrace/circuits.js',
   'jeux/drawrace/piste.js',
@@ -32,8 +35,21 @@ const SHELL = [
   'icons/apple-touch-icon.png'
 ];
 
+// Drapeaux : la liste est lue dans les données de la carte (codes "c":"xx" des pays et des États)
+async function drapeaux(c){
+  const liste = [];
+  for(const [donnees, dossier] of [['jeux/geo/monde.js', 'drapeaux'], ['jeux/geo/usa.js', 'drapeaux-us']]){
+    const r = await c.match(donnees);
+    if(!r) continue;
+    const texte = await r.text();
+    for(const m of texte.matchAll(/"c":"([a-z]{2})"/g)) liste.push(`jeux/geo/${dossier}/${m[1]}.svg`);
+  }
+  // Un drapeau manquant n'empêche pas l'installation
+  await Promise.allSettled(liste.map(u => c.add(u)));
+}
+
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL).then(() => drapeaux(c))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {

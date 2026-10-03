@@ -22,6 +22,10 @@
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --felt:#173F31; --felt-dark:#0C261D; --card:#E9E4D6; } }
 :root[data-theme="dark"]{ --felt:#173F31; --felt-dark:#0C261D; --card:#E9E4D6; }
+:root[data-carton="bordeaux"]{ --felt:#5E1A22; --felt-dark:#3A0E13; }
+:root[data-carton="bleu"]{ --felt:#16395E; --felt-dark:#0C2340; }
+:root[data-carton="bois"]{ --felt:#6B4423; --felt-dark:#43290F; --card:#FFF6E3; }
+:root[data-carton="ardoise"]{ --felt:#2B3036; --felt-dark:#16191C; }
 html{ scroll-padding-top:env(safe-area-inset-top,0px); }
 *,*::before,*::after{ box-sizing:inherit; }
 body{ margin:0; background:var(--felt); color:var(--ivory);
@@ -53,8 +57,10 @@ input[type=text]{ font:inherit; font-size:1rem; padding:12px 14px; border-radius
 /* Game */
 .board{ display:grid; gap:6px; }
 .player{ display:grid; grid-template-columns:1fr auto; align-items:center; gap:4px 12px; padding:10px 14px; border-radius:10px; background:rgba(0,0,0,.18); position:relative; overflow:hidden; }
-.player .bar{ grid-column:1 / -1; height:4px; background:rgba(0,0,0,.25); border-radius:2px; overflow:hidden; }
-.player .bar span{ display:block; height:100%; background:var(--gold); transition:width .4s; }
+.player .bar{ grid-column:1 / -1; height:14px; background:rgba(0,0,0,.25); border-radius:7px; overflow:hidden; cursor:pointer; position:relative; }
+.player .bar::after{ content:"Fiche ›"; position:absolute; right:6px; top:50%; transform:translateY(-50%); font-size:.62rem; font-weight:700; opacity:.6; letter-spacing:.02em; }
+.player{ cursor:pointer; }
+.player .bar span{ display:block; height:100%; background:var(--gold); transition:width .4s; border-radius:7px; }
 .player .name{ font-weight:600; }
 .player .score{ font-weight:800; font-size:1.3rem; font-variant-numeric:tabular-nums; }
 .player.current{ background:var(--card); color:var(--card-ink); }
@@ -100,7 +106,52 @@ table{ width:100%; border-collapse:collapse; margin-top:8px; font-size:.95rem; }
 td{ padding:7px 4px; border-bottom:1px solid var(--line); }
 td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-nums; }
 .open-note{ margin:12px 0 0; padding:8px 12px; border-radius:8px; background:#fbe9d0; color:#7a4a00; font-size:.9rem; }
-.pickup{ width:100%; margin-top:12px; background:var(--felt); color:var(--ivory); border:2px dashed var(--gold); }
+.pickup{ width:100%; margin-top:12px; background:var(--gold); color:var(--ink); border:0; font-weight:800; font-size:1.1rem;
+  padding:16px 14px; box-shadow:0 0 0 4px rgba(233,185,73,.35), 0 6px 16px rgba(0,0,0,.25); }
+.pickup::before{ content:"⤵ "; }
+.pickup:disabled{ background:#e9e4d6; color:#666; box-shadow:none; }
+.pickup:disabled::before{ content:""; }
+@media (prefers-reduced-motion:no-preference){ .pickup:not(:disabled){ animation:pulse 1.6s ease-in-out infinite; } }
+@keyframes pulse{ 50%{ box-shadow:0 0 0 9px rgba(233,185,73,.15), 0 6px 16px rgba(0,0,0,.25); } }
+
+/* Fiche du joueur, plein écran */
+.fiche{ position:fixed; inset:0; z-index:40; overflow:auto; background:var(--felt); color:var(--ivory); touch-action:pan-y;
+  padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(100px + env(safe-area-inset-bottom,0px));
+  background-image:radial-gradient(circle at 50% 0%, rgba(255,255,255,.08), transparent 60%); }
+.fiche[hidden]{ display:none; }
+.fiche-in{ max-width:560px; margin:0 auto; }
+@media (prefers-reduced-motion:no-preference){ .fiche-in.glisse-g{ animation:glisseG .28s ease-out; } .fiche-in.glisse-d{ animation:glisseD .28s ease-out; } }
+@keyframes glisseG{ from{ transform:translateX(40px); opacity:0 } to{ transform:none; opacity:1 } }
+@keyframes glisseD{ from{ transform:translateX(-40px); opacity:0 } to{ transform:none; opacity:1 } }
+.fiche-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.fiche-top .btn{ padding:9px 12px; font-size:.92rem; }
+.fiche-pos{ color:var(--muted); font-size:.9rem; font-weight:600; }
+.fiche-nom{ font-size:clamp(2rem,10vw,3rem); font-weight:800; line-height:1; margin:14px 0 2px; letter-spacing:-.02em; overflow-wrap:anywhere; }
+.fiche-score{ font-size:clamp(3rem,16vw,4.6rem); font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+.fiche-bar{ height:26px; border-radius:13px; background:rgba(0,0,0,.28); overflow:hidden; margin:12px 0 6px; position:relative; }
+.fiche-bar span{ display:block; height:100%; background:var(--gold); border-radius:13px; transition:width .5s; }
+.fiche-bar i{ position:absolute; top:0; bottom:0; background:repeating-linear-gradient(45deg, rgba(200,55,45,.85) 0 6px, rgba(200,55,45,.55) 6px 12px); border-radius:0 13px 13px 0; transition:all .3s; }
+.fiche-infos{ display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 4px; }
+.fiche-infos span{ padding:4px 10px; border-radius:999px; background:rgba(0,0,0,.25); font-weight:700; font-size:.9rem; }
+.fiche-infos .x{ background:var(--red); }
+.fiche-infos .g{ background:var(--gold); color:var(--ink); }
+.fiche-tour{ max-width:560px; margin:14px auto 0; }
+.fiche-tour .turn{ margin-top:0; }
+.fiche-res{ margin-top:16px; padding:18px; border-radius:16px; background:var(--card); color:var(--card-ink); text-align:center; }
+.fiche-res b{ display:block; font-size:2rem; line-height:1.1; }
+.fiche-hist{ margin-top:14px; }
+.fiche-suiv{ position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom,0px)); z-index:41;
+  width:min(528px, calc(100% - 32px)); padding:15px; font-size:1.1rem; font-weight:800; box-shadow:0 8px 20px rgba(0,0,0,.35); }
+.fiche-aide{ text-align:center; color:var(--muted); font-size:.82rem; margin-top:14px; }
+.robot-add{ display:flex; gap:8px; margin-top:8px; }
+.robot-add select{ font:inherit; padding:10px; border-radius:10px; border:0; background:var(--card); color:var(--card-ink); }
+.robot-add .btn{ flex:1; }
+.cartons{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.cartons button{ padding:10px 12px; border-radius:10px; font-weight:700; border:2px solid var(--line); color:#fff; }
+.cartons button[aria-pressed="true"]{ border-color:var(--gold); box-shadow:0 0 0 2px var(--gold); }
+.st-t td, .st-t th{ padding:6px 4px; border-bottom:1px solid var(--line); text-align:right; font-variant-numeric:tabular-nums; }
+.st-t td:first-child, .st-t th:first-child{ text-align:left; }
+.st-t th{ font-size:.8rem; color:var(--muted); font-weight:600; }
 .player .tag{ font-size:.72rem; font-weight:600; padding:2px 6px; border-radius:6px; background:rgba(0,0,0,.25); margin-left:6px; vertical-align:middle; }
 .player.current .tag{ background:#fbe9d0; color:#7a4a00; }
 .crosses{ color:var(--red); font-weight:800; margin-left:8px; letter-spacing:2px; }
@@ -130,6 +181,10 @@ td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-n
       <button class="btn btn-gold" id="addBtn">Ajouter</button>
     </div>
     <ul class="names" id="nameList"></ul>
+    <div class="robot-add">
+      <select id="robotNiv" aria-label="Niveau du robot"><option value="facile">Facile</option><option value="moyen" selected>Moyen</option><option value="fort">Fort</option></select>
+      <button class="btn btn-ghost" id="addRobot">🤖 Ajouter un robot</button>
+    </div>
     <p class="count" id="countTxt">0 / 15 joueurs</p>
     <button class="btn btn-red" id="startBtn" disabled style="width:100%">Commencer la partie</button>
   </section>
@@ -169,6 +224,19 @@ td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-n
     <ul class="history" id="history"></ul>
   </section>
 
+  <details id="statsDetails">
+    <summary>Statistiques et sauvegarde</summary>
+    <div id="statsBox"></div>
+    <h2 style="font-size:1rem;margin-top:18px">Sauvegarde dans mes fichiers</h2>
+    <div id="sauve"></div>
+  </details>
+
+  <details>
+    <summary>Couleur du carnet</summary>
+    <div class="cartons" id="cartons"></div>
+    <p style="margin-top:10px;color:var(--muted);font-size:.9rem">La couleur du tapis de dés se choisit sur le tapis (bouton 🎨).</p>
+  </details>
+
   <details>
     <summary>Rappel des points</summary>
     <table>
@@ -196,6 +264,15 @@ td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-n
   </details>
 </main>
 
+<!-- Fiche du joueur (touchez sa barre de score) -->
+<div class="fiche" id="fiche" hidden role="dialog" aria-modal="true" aria-label="Fiche du joueur">
+  <div class="fiche-in" id="ficheIn"></div>
+  <div class="fiche-tour" id="ficheTour"></div>
+  <div class="fiche-in" id="ficheHist"></div>
+</div>
+<button class="btn btn-gold fiche-suiv" id="ficheSuiv" hidden>Joueur suivant →</button>
+
+<script src="sauvegarde.js"></script>
 <script>
 const MAX = 15, GOAL = 10000, KEY = 'score10000';
 let state = { players: [], turn: 0, turnPts: 0, turnLog: [], history: [], started: false };
@@ -254,7 +331,16 @@ function addName(){
 $('addBtn').onclick = addName;
 $('nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addName(); });
 $('nameList').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; state.players.splice(+b.dataset.i,1); save(); render(); });
-$('startBtn').onclick = ()=>{ state.started = true; state.turn = 0; save(); render(); };
+$('startBtn').onclick = ()=>{ state.started = true; state.turn = 0; state.partieId = Date.now(); save(); render(); robotSuivant(); };
+// Robot : il joue sur le tapis de dés quand vient son tour
+$('addRobot').onclick = ()=>{
+  if(state.players.length >= MAX) return;
+  const niveau = $('robotNiv').value;
+  let k = 1; while(state.players.some(p => p.name === `Robot ${k}`)) k++;
+  state.players.push({ name:`Robot ${k}`, score:0, robot:niveau });
+  save(); render();
+};
+const robotSuivant = () => { if(window.plateau) plateau.robotSuivant(); };
 
 /* Tour de jeu */
 const OPEN = 1000, PENALTY = 500, MAX_CROSSES = 3;
@@ -353,8 +439,13 @@ function endTurn(kind, diceLeft){
   state.history.unshift({ name:p.name, msg, total:p.score });
   state.turnPts = 0; state.turnLog = []; state.pickedUp = false;
   if(window.plateau) plateau.reset();
+  const joue = state.turn;
   if(!winner()) state.turn = (state.turn + 1) % state.players.length;
+  if(winner()) enregistrerPartie();
+  // Fiche ouverte sur ce joueur : elle montre le résultat du tour, puis « Joueur suivant »
+  if(ficheIdx === joue) ficheVu = joue;
   save(); render();
+  robotSuivant();
 }
 $('bankBtn').onclick = ()=>{ if(canBank()) endTurn('bank'); };
 $('bustBtn').onclick = ()=> endTurn('bust');
@@ -370,7 +461,7 @@ $('undoBtn').onclick = ()=>{
 $('newGameBtn').onclick = ()=>{
   if(!confirm('Recommencer une partie ? Les scores seront remis à zéro (les joueurs restent).')) return;
   state.players.forEach(p=>{ p.score=0; p.opened=false; p.crosses=0; p.past=[]; p.banks=0; });
-  Object.assign(state, { turn:0, turnPts:0, turnLog:[], history:[], started:false, lastBank:null, pickedUp:false, snaps:[] });
+  Object.assign(state, { turn:0, turnPts:0, turnLog:[], history:[], started:false, lastBank:null, pickedUp:false, snaps:[], partieId:null });
   save(); render();
 };
 
@@ -379,6 +470,7 @@ function winner(){ return state.players.find(p=>p.score>=GOAL); }
 /* Lien avec le plateau de dés (plateau.js) : les points des dés mis de côté arrivent dans le tour */
 window.plateauJeu = {
   active: () => state.started && !!cur() && !winner(),
+  robot: () => (cur() && cur().robot) || null,
   player: () => cur().name,
   turnPts: () => state.turnPts,
   score: () => cur().score,
@@ -401,18 +493,19 @@ function render(){
   $('setup').classList.toggle('hidden', state.started);
   $('game').classList.toggle('hidden', !state.started);
 
-  $('nameList').innerHTML = state.players.map((p,i)=>`<li><span>${esc(p.name)}</span><button data-i="${i}" aria-label="Retirer ${esc(p.name)}">×</button></li>`).join('');
+  $('nameList').innerHTML = state.players.map((p,i)=>`<li><span>${p.robot ? '🤖 ' : ''}${esc(p.name)}${p.robot ? ` <small style="color:var(--muted)">robot ${p.robot}</small>` : ''}</span><button data-i="${i}" aria-label="Retirer ${esc(p.name)}">×</button></li>`).join('');
   $('countTxt').textContent = `${state.players.length} / ${MAX} joueurs` + (state.players.length<2 ? ' · il en faut au moins 2' : '');
   $('startBtn').disabled = state.players.length < 2;
   $('addBtn').disabled = state.players.length >= MAX;
+  $('addRobot').disabled = state.players.length >= MAX;
   if(!state.started) return;
 
   const w = winner();
   $('board').innerHTML = state.players.map((p,i)=>{
     const pct = Math.max(0, Math.min(100, p.score/GOAL*100));
     const isCur = i===state.turn && !w;
-    return `<div class="player${isCur?' current':''}">
-      <span class="name">${esc(p.name)}${p.opened?'':'<span class="tag">à ouvrir</span>'}${crossesHtml(p.crosses||0)}</span><span class="score">${fmt(p.score)}</span>
+    return `<div class="player${isCur?' current':''}" data-i="${i}" role="button" tabindex="0" aria-label="Fiche de ${esc(p.name)}">
+      <span class="name">${p.robot ? '🤖 ' : ''}${esc(p.name)}${p.opened?'':'<span class="tag">à ouvrir</span>'}${crossesHtml(p.crosses||0)}</span><span class="score">${fmt(p.score)}</span>
       <span class="bar"><span style="width:${pct}%"></span></span>
       <span class="left">${p.score>=GOAL ? 'Gagné !' : 'Encore ' + fmt(GOAL-p.score)}</span></div>`;
   }).join('');
@@ -458,12 +551,127 @@ function render(){
       : (c + 1 >= MAX_CROSSES ? 'Raté, 3e croix' : `Raté, croix ${c+1}/${MAX_CROSSES}`);
   }
   $('undoBtn').disabled = !(state.snaps && state.snaps.length);
+  renderFiche();
 
   $('history').innerHTML = state.history.length
     ? state.history.map(h=>`<li><span>${esc(h.name)} : ${esc(h.msg)}</span><span>${fmt(h.total)}</span></li>`).join('')
     : '<li>Aucun tour joué pour l\'instant.</li>';
 }
 function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- Fiche du joueur : jouer le tour en grand ---------- */
+let ficheIdx = null, ficheVu = null;
+const turnHome = document.createComment('tour');
+$('turnBox').before(turnHome);
+function openFiche(i){
+  ficheIdx = i; ficheVu = null;
+  $('fiche').hidden = false;
+  document.body.style.overflow = 'hidden';
+  renderFiche('g');
+}
+function closeFiche(){
+  ficheIdx = null; ficheVu = null;
+  $('fiche').hidden = true; $('ficheSuiv').hidden = true;
+  turnHome.after($('turnBox'));
+  document.body.style.overflow = '';
+}
+function allerA(i, sens){ ficheIdx = (i + state.players.length) % state.players.length; ficheVu = null; renderFiche(sens); }
+function renderFiche(sens){
+  if(ficheIdx === null) return;
+  const n = state.players.length;
+  if(!n){ closeFiche(); return; }
+  ficheIdx = Math.min(ficheIdx, n - 1);
+  const p = state.players[ficheIdx], w = winner(), isCur = ficheIdx === state.turn && !w;
+  const tour = isCur ? state.turnPts : 0;
+  const pct = v => Math.max(0, Math.min(100, v / GOAL * 100));
+  const reste = GOAL - p.score - tour;
+  const hist = state.history.filter(h => h.name === p.name).slice(0, 6);
+  let h = `<div class="fiche-top"><button class="btn btn-ghost" id="ficheClose">← Carnet</button><span class="fiche-pos">Joueur ${ficheIdx + 1} / ${n} · balayez pour changer</span></div>
+    <div class="fiche-nom">${p.robot ? '🤖 ' : ''}${esc(p.name)}</div>
+    <div class="fiche-score">${fmt(p.score)}</div>
+    <div class="fiche-bar" aria-label="${Math.round(pct(p.score))} % de 10 000"><span style="width:${pct(p.score)}%"></span>${tour ? `<i style="left:${pct(p.score)}%;width:${pct(p.score + tour) - pct(p.score)}%"></i>` : ''}</div>
+    <div class="fiche-infos">
+      ${p.score >= GOAL ? '<span class="g">🏆 Gagné !</span>' : reste >= 0 ? `<span class="g">Reste ${fmt(reste)}</span>` : `<span class="x">Dépasse de ${fmt(-reste)}</span>`}
+      ${tour ? `<span>Tour : +${fmt(tour)}</span>` : ''}
+      ${p.opened ? '' : '<span>À ouvrir (1 000)</span>'}
+      ${p.crosses ? `<span class="x">${'✕'.repeat(p.crosses)} ${p.crosses} croix</span>` : '<span>Aucune croix</span>'}
+      ${p.robot ? `<span>Robot ${p.robot}</span>` : ''}
+    </div>`;
+  if(!isCur && ficheVu === ficheIdx && hist[0]){
+    h += `<div class="fiche-res"><b>${esc(hist[0].msg)}</b>Nouveau score : ${fmt(hist[0].total)}</div>`;
+  } else if(!isCur && !w){
+    h += `<p class="fiche-aide">C'est au tour de ${esc(cur().name)}.</p>`;
+  }
+  if(isCur && p.robot) h += `<div class="fiche-res"><b>🤖 Le robot joue</b><button class="btn btn-red" id="ficheRobot" style="margin-top:10px;width:100%">Voir le robot lancer les dés</button></div>`;
+  $('ficheHist').innerHTML = hist.length ? `<h2 style="font-size:1rem;margin:18px 0 6px">Derniers tours de ${esc(p.name)}</h2><ul class="history fiche-hist">${hist.map(x => `<li><span>${esc(x.msg)}</span><span>${fmt(x.total)}</span></li>`).join('')}</ul>` : '';
+  const el = $('ficheIn');
+  el.innerHTML = h;
+  if(sens){ el.classList.remove('glisse-g', 'glisse-d'); void el.offsetWidth; el.classList.add('glisse-' + sens); }
+  // Le tour se joue dans la fiche : le bloc « Au tour de » y est déplacé
+  if(isCur && !p.robot) $('ficheTour').append($('turnBox'));
+  else turnHome.after($('turnBox'));
+  $('ficheSuiv').hidden = isCur || !!w;
+  $('ficheSuiv').textContent = ficheVu === ficheIdx ? `Joueur suivant : ${cur().name} →` : `Aller au tour de ${cur() ? cur().name : ''} →`;
+  $('ficheClose').onclick = closeFiche;
+  if($('ficheRobot')) $('ficheRobot').onclick = () => { if(window.plateau){ plateau.open(); plateau.robotSuivant(); } };
+}
+$('board').addEventListener('click', e => { const el = e.target.closest('.player'); if(el) openFiche(+el.dataset.i); });
+$('board').addEventListener('keydown', e => { const el = e.target.closest('.player'); if(el && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openFiche(+el.dataset.i); } });
+$('ficheSuiv').onclick = () => allerA(state.turn, 'g');
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && ficheIdx !== null) closeFiche(); });
+// Balayer : joueur suivant (vers la gauche) ou précédent (vers la droite)
+let glisse = null;
+$('fiche').addEventListener('pointerdown', e => { glisse = { x:e.clientX, y:e.clientY }; });
+$('fiche').addEventListener('pointerup', e => {
+  if(!glisse) return;
+  const dx = e.clientX - glisse.x, dy = e.clientY - glisse.y;
+  glisse = null;
+  if(Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.7) return;
+  if(dx < 0) allerA(ficheVu === ficheIdx ? state.turn : ficheIdx + 1, 'g');
+  else allerA(ficheIdx - 1, 'd');
+});
+$('fiche').addEventListener('pointercancel', () => { glisse = null; });
+
+/* ---------- Statistiques : chaque partie gagnée est gardée (exportable avec la sauvegarde) ---------- */
+function lireStats(){ try{ return JSON.parse(localStorage.getItem('desdes-stats-10000')) || []; }catch(e){ return []; } }
+function enregistrerPartie(){
+  const w = winner(); if(!w) return;
+  const id = state.partieId || Date.now();
+  const parties = lireStats().filter(g => g.id !== id);
+  parties.push({ id, date:Date.now(), gagnant:w.name, joueurs:state.players.map(p => ({ nom:p.name, score:p.score, robot:p.robot || null })) });
+  try{ localStorage.setItem('desdes-stats-10000', JSON.stringify(parties.slice(-500))); }catch(e){}
+  renderStats();
+}
+function renderStats(){
+  const parties = lireStats();
+  if(!parties.length){ $('statsBox').innerHTML = '<p style="color:var(--muted);margin-top:8px">Aucune partie terminée pour l\'instant.</p>'; return; }
+  const par = {};
+  for(const g of parties) for(const j of g.joueurs){
+    const k = j.nom + (j.robot ? ' 🤖' : '');
+    const s = par[k] = par[k] || { n:0, v:0, tot:0 };
+    s.n++; s.tot += j.score; if(j.nom === g.gagnant) s.v++;
+  }
+  $('statsBox').innerHTML = `<table class="st-t"><tr><th>Joueur</th><th>Parties</th><th>Victoires</th><th>% gagnées</th><th>Score moyen</th></tr>` +
+    Object.entries(par).sort((a, b) => b[1].v - a[1].v || b[1].n - a[1].n).map(([k, s]) =>
+      `<tr><td>${esc(k)}</td><td>${s.n}</td><td>${s.v}</td><td>${Math.round(s.v / s.n * 100)} %</td><td>${fmt(Math.round(s.tot / s.n))}</td></tr>`).join('') +
+    `</table><p style="color:var(--muted);font-size:.85rem;margin-top:6px">${parties.length} partie${parties.length > 1 ? 's' : ''} terminée${parties.length > 1 ? 's' : ''}.</p>`;
+}
+
+/* ---------- Couleur du carnet ---------- */
+const CARTONS = { vert:['Feutre vert', '#1F5C47'], bordeaux:['Bordeaux', '#5E1A22'], bleu:['Bleu nuit', '#16395E'], bois:['Bois', '#6B4423'], ardoise:['Ardoise', '#2B3036'] };
+function appliquerCarton(c){
+  if(!CARTONS[c]) c = 'vert';
+  if(c === 'vert') delete document.documentElement.dataset.carton; else document.documentElement.dataset.carton = c;
+  $('cartons').innerHTML = Object.entries(CARTONS).map(([k, [n, col]]) => `<button data-c="${k}" aria-pressed="${k === c}" style="background:${col}">${n}</button>`).join('');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content = CARTONS[c][1];
+}
+let carton = 'vert';
+try{ carton = JSON.parse(localStorage.getItem('score10000-carton')) || 'vert'; }catch(e){}
+appliquerCarton(carton);
+$('cartons').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; try{ localStorage.setItem('score10000-carton', JSON.stringify(b.dataset.c)); }catch(err){} appliquerCarton(b.dataset.c); });
+renderStats();
+DesDesSauvegarde.boutons($('sauve'));
 
 load();
 // Anciennes parties : compléter les champs manquants
@@ -474,6 +682,7 @@ render();
 
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 </script>
+<script src="ia.js"></script>
 <script src="plateau.js" data-jeu="10000"></script>
 </body>
 </html>
