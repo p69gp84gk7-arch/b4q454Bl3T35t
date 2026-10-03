@@ -17,7 +17,7 @@
 :root{
   --paper:#F7FAFE; --grid:#C4D5EA; --ink:#1E3A8A; --ui:#26324A; --muted:#6B7A93;
   --margin:#D2453C; --band:#E6EEF8; --band-strong:#D4E2F3; --hit:#FFF5C2; --overlay:rgba(20,30,50,.45);
-  --sheet:#FFFFFF;
+  --sheet:#FFFFFF; --libre:rgba(255,214,102,.16); --libre-fort:rgba(255,214,102,.42); --libre-bord:#E9B949;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
@@ -33,6 +33,26 @@
   --paper:#141B27; --grid:#2E3C54; --ink:#A9C1FF; --ui:#DCE4F2; --muted:#8B9AB4;
   --margin:#E0675E; --band:#1B2536; --band-strong:#223047; --hit:#3A3417; --overlay:rgba(0,0,0,.6);
   --sheet:#182131;
+}
+/* Thèmes du carton (Réglages) */
+:root[data-carton="ardoise"]{
+  --paper:#1F2A24; --grid:#3E5247; --ink:#F4F1E6; --ui:#E7EFE9; --muted:#9FB3A7;
+  --margin:#F2A65A; --band:#26332C; --band-strong:#2E3E35; --hit:#3B4A31; --overlay:rgba(0,0,0,.6); --sheet:#22302A;
+  --libre:rgba(242,166,90,.10); --libre-fort:rgba(242,166,90,.28); --libre-bord:#F2A65A;
+}
+:root[data-carton="papier"]{
+  --paper:#F3E9D2; --grid:#D2BF95; --ink:#5B3A1A; --ui:#4A3520; --muted:#8C7354;
+  --margin:#A23B2A; --band:#EADCB9; --band-strong:#E0CDA0; --hit:#FFF0C2; --overlay:rgba(40,25,10,.45); --sheet:#FBF4E2;
+  --libre:rgba(162,59,42,.07); --libre-fort:rgba(162,59,42,.18); --libre-bord:#A23B2A;
+}
+:root[data-carton="menthe"]{
+  --paper:#EEF8F3; --grid:#B5DCC9; --ink:#0F6B4E; --ui:#1E3B31; --muted:#5F8475;
+  --margin:#E0567A; --band:#DDF1E7; --band-strong:#C8E8D8; --hit:#FFF5C2; --overlay:rgba(10,40,30,.45); --sheet:#FFFFFF;
+}
+:root[data-carton="nuit"]{
+  --paper:#141B27; --grid:#2E3C54; --ink:#A9C1FF; --ui:#DCE4F2; --muted:#8B9AB4;
+  --margin:#E0675E; --band:#1B2536; --band-strong:#223047; --hit:#3A3417; --overlay:rgba(0,0,0,.6); --sheet:#182131;
+  --libre:rgba(255,214,102,.08); --libre-fort:rgba(255,214,102,.2);
 }
 *,*::before,*::after{box-sizing:inherit}
 html,body{margin:0}
@@ -60,7 +80,9 @@ h1 span{font-size:1.6rem;margin-right:6px}
 .btn:hover{background:var(--margin);color:#fff}
 button:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 
-.sheet-scroll{overflow-x:auto;border:1.5px solid var(--grid);border-radius:6px;background:var(--sheet)}
+.sheet-scroll{overflow:auto;max-height:calc(100vh - 150px);max-height:calc(100dvh - 150px);border:1.5px solid var(--grid);border-radius:6px;background:var(--sheet);overscroll-behavior:contain}
+thead th{position:sticky;top:0;z-index:3;box-shadow:0 2px 0 var(--grid)}
+thead th.cat{z-index:4}
 table{border-collapse:collapse;width:100%;min-width:max-content}
 th,td{border:1px solid var(--grid);padding:0;text-align:center;height:44px}
 th.cat{
@@ -80,11 +102,19 @@ td.cell button{
   font-family:"Kalam",cursive;font-size:1.35rem;color:var(--ink);
 }
 td.cell button:hover{background:var(--hit)}
-td.cell button.crossed{color:var(--margin);position:relative}
+td.cell button.crossed{position:relative}
+/* Case rayée : une seule barre oblique */
 td.cell button.crossed::after{
-  content:"";position:absolute;left:18%;right:18%;top:50%;height:2.5px;
-  background:var(--margin);transform:rotate(-12deg);border-radius:2px;
+  content:"";position:absolute;left:50%;top:50%;width:3px;height:30px;margin:-15px 0 0 -1.5px;
+  background:var(--margin);transform:rotate(30deg);border-radius:2px;
 }
+/* Cases restant à remplir ; colonne du joueur qui doit jouer */
+td.cell.libre button{background:var(--libre)}
+td.cell.libre.tour button{background:var(--libre-fort);box-shadow:inset 0 0 0 1.5px var(--libre-bord)}
+thead th.tour{background:var(--libre-fort)}
+thead th.tour input{text-decoration:underline;text-decoration-color:var(--margin);text-underline-offset:4px;text-decoration-thickness:2px}
+.robot-tag{display:block;font-size:.7rem;font-weight:700;color:var(--muted);margin-top:-8px;padding-bottom:3px}
+body.sans-totaux tr.sum, body.sans-totaux tr.grand, body.sans-totaux tr.bonus{display:none}
 tr.sum td,tr.sum th{background:var(--band)}
 tr.sum th.cat{background:var(--band)}
 tr.sum td{font-weight:700;font-size:1.05rem}
@@ -127,6 +157,23 @@ tr.gap th.cat{border-right-color:var(--margin)}
   @keyframes up{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
 }
 
+/* Réglages */
+.reglages{max-height:88vh;overflow:auto}
+.reglages h3{margin:16px 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--grid);cursor:pointer}
+.switch input{width:22px;height:22px;accent-color:var(--ink)}
+.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.themes button{height:52px;border-radius:10px;border:2px solid var(--grid);font:inherit;font-weight:700;cursor:pointer;font-family:"Kalam",cursive;font-size:1.05rem}
+.themes button[aria-pressed="true"]{outline:3px solid var(--margin);outline-offset:1px}
+.joueurs-l{display:grid;gap:6px}
+.joueurs-l label{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.joueurs-l span{font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.joueurs-l select{font:inherit;padding:8px;border-radius:8px;border:1.5px solid var(--grid);background:var(--paper);color:var(--ui)}
+.st-table{width:100%;border-collapse:collapse;font-size:.92rem}
+.st-table th,.st-table td{border:0;border-bottom:1px solid var(--grid);height:auto;padding:6px 4px;text-align:right}
+.st-table th:first-child,.st-table td:first-child{text-align:left}
+.st-none{color:var(--muted);font-size:.9rem;margin:0}
+
 /* Retour à l'accueil */
 .home{ display:inline-flex; align-items:center; gap:8px; color:var(--muted); text-decoration:none; font-weight:700; font-size:.95rem; padding:6px 10px 6px 6px; margin:0 0 6px -6px; border-radius:10px; }
 .home::before{ content:"←"; margin-right:2px; }
@@ -144,12 +191,13 @@ tr.gap th.cat{border-right-color:var(--margin)}
         <output id="count"></output>
         <button id="plus" aria-label="Ajouter un joueur">+</button>
       </div>
+      <button class="btn" id="reglagesBtn" aria-haspopup="dialog">⚙️ Réglages</button>
       <button class="btn" id="reset">Nouvelle partie</button>
     </div>
   </header>
 
   <div class="sheet-scroll"><table id="grid"></table></div>
-  <p class="hint">Touchez une case pour noter les points ou la rayer. Touchez le nom pour le modifier.</p>
+  <p class="hint">Touchez une case pour noter les points ou la rayer. Touchez le nom pour le modifier. Les cases en couleur restent à remplir ; la colonne soulignée est celle du joueur qui doit jouer.</p>
 </div>
 
 <div class="overlay" id="overlay">
@@ -165,6 +213,24 @@ tr.gap th.cat{border-right-color:var(--margin)}
   </div>
 </div>
 
+<div class="overlay" id="regOv">
+  <div class="panel reglages" role="dialog" aria-modal="true" aria-labelledby="regTitle">
+    <h2 id="regTitle">Réglages</h2>
+    <h3>Carton</h3>
+    <label class="switch"><span>Afficher les totaux<br><small style="color:var(--muted)">Cachés, ils réapparaissent à la fin de la partie.</small></span><input type="checkbox" id="optTotaux"></label>
+    <h3>Couleur du carton</h3>
+    <div class="themes" id="themes"></div>
+    <h3>Joueurs et robots</h3>
+    <div class="joueurs-l" id="joueursL"></div>
+    <p style="margin:8px 0 0">Un robot joue tout seul sur le tapis de dés (bouton rouge « Dés ») quand vient son tour, puis note son score.</p>
+    <h3>Statistiques</h3>
+    <div id="statsBox"></div>
+    <h3>Sauvegarde dans mes fichiers</h3>
+    <div id="sauve"></div>
+    <div class="actions"><button class="act-cancel" id="regClose">Fermer</button></div>
+  </div>
+</div>
+
 <div class="overlay" id="resetOv">
   <div class="panel" role="dialog" aria-modal="true" aria-labelledby="rTitle">
     <h2 id="rTitle">Nouvelle partie ?</h2>
@@ -176,6 +242,7 @@ tr.gap th.cat{border-right-color:var(--margin)}
   </div>
 </div>
 
+<script src="sauvegarde.js"></script>
 <script>
 const MAX = 10;
 const UPPER = [1,2,3,4,5,6].map(f => ({key:'n'+f, label:'Total de '+f, short:String(f), type:'upper', face:f, help:'Somme des '+f}));
@@ -194,15 +261,38 @@ function fresh(keepNames){
   return {
     count: keepNames ? state.count : 2,
     names: keepNames ? state.names : Array.from({length:MAX},(_,i)=>'Joueur '+(i+1)),
+    robots: keepNames ? state.robots : Array(MAX).fill(null),
     scores: Array.from({length:MAX},()=>({}))
   };
 }
 let state;
 try { state = JSON.parse(localStorage.getItem('yams-sheet')); } catch(e) { state = null; }
 if (!state || !Array.isArray(state.scores)) state = fresh(false);
+if (!Array.isArray(state.robots)) state.robots = Array(MAX).fill(null);
+
+/* Réglages : totaux affichés, couleur du carton */
+let reglages = { totaux:true, carton:'classique' };
+try { Object.assign(reglages, JSON.parse(localStorage.getItem('yams-reglages')) || {}); } catch(e) {}
+function saveReglages(){ try { localStorage.setItem('yams-reglages', JSON.stringify(reglages)); } catch(e) {} }
+function appliquerCarton(){
+  if (reglages.carton === 'classique') delete document.documentElement.dataset.carton;
+  else document.documentElement.dataset.carton = reglages.carton;
+}
+appliquerCarton();
 
 function save(){ try { localStorage.setItem('yams-sheet', JSON.stringify(state)); } catch(e) {} }
 const num = v => typeof v === 'number' ? v : 0;
+const filledCount = p => ALL.filter(c => state.scores[p][c.key] !== undefined).length;
+// Joueur suivant : celui qui a rempli le moins de cases
+function nextPlayer(){
+  let best = 0, min = Infinity;
+  for (let p = 0; p < state.count; p++) {
+    const filled = filledCount(p);
+    if (filled < min) { min = filled; best = p; }
+  }
+  return best;
+}
+const finie = () => state.count > 0 && [...Array(state.count).keys()].every(p => filledCount(p) === ALL.length);
 
 /* Lien avec le plateau de dés (plateau.js) : figures reconnues et cases proposées */
 function pointsFor(c, vals){
@@ -217,15 +307,10 @@ function pointsFor(c, vals){
 }
 window.plateauJeu = {
   players: () => state.names.slice(0, state.count),
-  // Joueur suivant : celui qui a rempli le moins de cases
-  nextPlayer(){
-    let best = 0, min = Infinity;
-    for (let p = 0; p < state.count; p++) {
-      const filled = ALL.filter(c => state.scores[p][c.key] !== undefined).length;
-      if (filled < min) { min = filled; best = p; }
-    }
-    return best;
-  },
+  nextPlayer,
+  // Cases libres et total du haut (conseils et robot)
+  etat: p => ({ ouvertes: ALL.filter(c => state.scores[p][c.key] === undefined).map(c => c.key), haut: totals(p).up }),
+  robot: p => p < state.count ? state.robots[p] : null,
   options: (vals, p) => ALL.filter(c => state.scores[p][c.key] === undefined).map(c => {
     const pts = pointsFor(c, vals);
     return { key:c.key, label: c.label, pts, fig: pts > 0 && (c.type === 'kind' || c.type === 'fixed') };
@@ -243,10 +328,11 @@ function totals(p){
 
 function esc(t){ return String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-function cellHTML(p, c){
+function cellHTML(p, c, tour){
   const v = state.scores[p][c.key];
-  if (v === 'x') return `<td class="cell"><button class="crossed" data-p="${p}" data-k="${c.key}" aria-label="${c.label} rayé">✕</button></td>`;
-  return `<td class="cell"><button data-p="${p}" data-k="${c.key}" aria-label="${c.label}">${v ?? ''}</button></td>`;
+  if (v === 'x') return `<td class="cell"><button class="crossed" data-p="${p}" data-k="${c.key}" aria-label="${c.label} rayé"></button></td>`;
+  const libre = v === undefined;
+  return `<td class="cell${libre ? ' libre' : ''}${libre && p === tour ? ' tour' : ''}"><button data-p="${p}" data-k="${c.key}" aria-label="${c.label}${libre ? ' (à remplir)' : ''}">${v ?? ''}</button></td>`;
 }
 
 function render(){
@@ -254,12 +340,15 @@ function render(){
   const players = [...Array(n).keys()];
   const T = players.map(totals);
   const best = Math.max(...T.map(t=>t.all));
+  const fin = finie();
+  const tour = fin ? -1 : nextPlayer();
+  document.body.classList.toggle('sans-totaux', !reglages.totaux && !fin);
   let h = '<thead><tr><th class="cat">Joueurs</th>';
-  players.forEach(p => h += `<th><input data-name="${p}" value="${esc(state.names[p])}" aria-label="Nom du joueur ${p+1}"></th>`);
+  players.forEach(p => h += `<th class="${p === tour ? 'tour' : ''}"><input data-name="${p}" size="6" value="${esc(state.names[p])}" aria-label="Nom du joueur ${p+1}">${state.robots[p] ? `<span class="robot-tag">🤖 robot ${state.robots[p]}</span>` : ''}</th>`);
   h += '</tr></thead><tbody>';
   UPPER.forEach(c => {
     h += `<tr><th class="cat">${c.short}<small>${c.help}</small></th>`;
-    players.forEach(p => h += cellHTML(p,c));
+    players.forEach(p => h += cellHTML(p,c,tour));
     h += '</tr>';
   });
   h += '<tr class="sum"><th class="cat">Total haut</th>' + T.map(t=>`<td>${t.up}</td>`).join('') + '</tr>';
@@ -269,7 +358,7 @@ function render(){
   h += '<tr class="gap"><th class="cat"></th>' + players.map(()=>'<td></td>').join('') + '</tr>';
   LOWER.forEach(c => {
     h += `<tr><th class="cat">${c.label}<small>${c.help}</small></th>`;
-    players.forEach(p => h += cellHTML(p,c));
+    players.forEach(p => h += cellHTML(p,c,tour));
     h += '</tr>';
   });
   h += '<tr class="sum"><th class="cat">Total 2</th>' + T.map(t=>`<td>${t.low}</td>`).join('') + '</tr>';
@@ -280,6 +369,35 @@ function render(){
   document.getElementById('count').textContent = n + (n>1 ? ' joueurs' : ' joueur');
   document.getElementById('minus').disabled = n <= 1;
   document.getElementById('plus').disabled = n >= MAX;
+  if (fin) enregistrerPartie(T);
+}
+
+/* Statistiques : chaque partie terminée est gardée (exportable avec la sauvegarde) */
+function lireStats(){ try { return JSON.parse(localStorage.getItem('desdes-stats-yams')) || []; } catch(e) { return []; } }
+function enregistrerPartie(T){
+  if (state.enregistre) return;
+  state.enregistre = true; save();
+  const parties = lireStats();
+  parties.push({ date: Date.now(), joueurs: T.map((t, p) => ({ nom: state.names[p], score: t.all, robot: state.robots[p] || null })) });
+  try { localStorage.setItem('desdes-stats-yams', JSON.stringify(parties.slice(-500))); } catch(e) {}
+}
+function statsHTML(){
+  const parties = lireStats();
+  if (!parties.length) return '<p class="st-none">Aucune partie terminée pour l\'instant. Les parties finies sont comptées ici.</p>';
+  const parNom = {};
+  for (const g of parties) {
+    const max = Math.max(...g.joueurs.map(j => j.score));
+    for (const j of g.joueurs) {
+      const k = j.nom + (j.robot ? ' 🤖' : '');
+      const s = parNom[k] = parNom[k] || { n:0, v:0, best:0, tot:0 };
+      s.n++; s.tot += j.score; s.best = Math.max(s.best, j.score);
+      if (g.joueurs.length > 1 && j.score === max) s.v++;
+    }
+  }
+  const rows = Object.entries(parNom).sort((a, b) => b[1].best - a[1].best);
+  return `<table class="st-table"><tr><th>Joueur</th><th>Parties</th><th>Victoires</th><th>Record</th><th>Moyenne</th></tr>` +
+    rows.map(([k, s]) => `<tr><td>${esc(k)}</td><td>${s.n}</td><td>${s.v}</td><td>${s.best}</td><td>${Math.round(s.tot / s.n)}</td></tr>`).join('') +
+    `</table><p class="st-none" style="margin-top:6px">${parties.length} partie${parties.length > 1 ? 's' : ''} terminée${parties.length > 1 ? 's' : ''}.</p>`;
 }
 
 /* Fenêtre de saisie */
@@ -314,6 +432,7 @@ function setScore(v){
   if (v === null) delete state.scores[cur.p][cur.key]; else state.scores[cur.p][cur.key] = v;
   if (v !== null && window.plateau) plateau.reset(); // score noté : le tour suivant repart de zéro
   save(); closePicker(); render();
+  if (v !== null && window.plateau) plateau.robotSuivant();
 }
 
 document.getElementById('pChoices').addEventListener('click', e => {
@@ -345,17 +464,52 @@ document.getElementById('reset').onclick = () => {
 document.getElementById('rNo').onclick = () => resetOv.classList.remove('open');
 resetOv.addEventListener('click', e => { if (e.target === resetOv) resetOv.classList.remove('open'); });
 document.getElementById('rYes').onclick = () => {
-  const n = state.count;
+  const n = state.count, robots = state.robots, names = state.names;
   state = fresh(false);
-  state.count = n;
+  state.count = n; state.robots = robots;
+  // Les robots gardent leur nom
+  robots.forEach((r, i) => { if (r) state.names[i] = names[i]; });
   save(); render();
   resetOv.classList.remove('open');
 };
+
+/* Fenêtre des réglages */
+const regOv = document.getElementById('regOv');
+const CARTONS = { classique:['Classique', '#F7FAFE', '#1E3A8A'], papier:['Vieux papier', '#F3E9D2', '#5B3A1A'], ardoise:['Ardoise', '#22302A', '#F4F1E6'],
+  menthe:['Menthe', '#EEF8F3', '#0F6B4E'], nuit:['Nuit', '#182131', '#A9C1FF'] };
+const NIV = { '':'Humain', facile:'Robot facile', moyen:'Robot moyen', fort:'Robot fort' };
+function renderReglages(){
+  document.getElementById('optTotaux').checked = reglages.totaux;
+  document.getElementById('themes').innerHTML = Object.entries(CARTONS).map(([k, [n, bg, ink]]) =>
+    `<button data-carton="${k}" aria-pressed="${k === reglages.carton}" style="background:${bg};color:${ink}">${n}</button>`).join('');
+  document.getElementById('joueursL').innerHTML = [...Array(state.count).keys()].map(p =>
+    `<label><span>${esc(state.names[p])}</span><select data-robot="${p}" aria-label="Type de joueur pour ${esc(state.names[p])}">` +
+    Object.entries(NIV).map(([k, n]) => `<option value="${k}"${(state.robots[p] || '') === k ? ' selected' : ''}>${n}</option>`).join('') + '</select></label>').join('');
+  document.getElementById('statsBox').innerHTML = statsHTML();
+}
+document.getElementById('reglagesBtn').onclick = () => { renderReglages(); regOv.classList.add('open'); document.getElementById('regClose').focus(); };
+document.getElementById('regClose').onclick = () => regOv.classList.remove('open');
+regOv.addEventListener('click', e => { if (e.target === regOv) regOv.classList.remove('open'); });
+document.getElementById('optTotaux').onchange = e => { reglages.totaux = e.target.checked; saveReglages(); render(); };
+document.getElementById('themes').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  reglages.carton = b.dataset.carton; saveReglages(); appliquerCarton(); renderReglages();
+});
+document.getElementById('joueursL').addEventListener('change', e => {
+  const p = Number(e.target.dataset.robot);
+  const v = e.target.value || null;
+  state.robots[p] = v;
+  if (v && /^Joueur \d+$/.test(state.names[p])) state.names[p] = 'Robot ' + (p + 1);
+  if (!v && /^Robot \d+$/.test(state.names[p])) state.names[p] = 'Joueur ' + (p + 1);
+  save(); render(); renderReglages();
+});
+DesDesSauvegarde.boutons(document.getElementById('sauve'));
 
 render();
 
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 </script>
+<script src="ia.js"></script>
 <script src="plateau.js" data-jeu="yams"></script>
 </body>
 </html>

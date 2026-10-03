@@ -110,6 +110,41 @@ tr.me td{ color:var(--gold); font-weight:700; }
 .again{ background:var(--red); color:#fff; } .back{ background:var(--ivory); color:var(--ink); }
 .end table{ text-align:left; margin-top:8px; }
 @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+
+/* Terrains, défi du jour, statistiques */
+.terrains{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.terrain{ display:flex; align-items:center; gap:10px; padding:11px 12px; background:rgba(0,0,0,.2); color:var(--ivory); text-align:left; font-weight:700; line-height:1.15; }
+.terrain span{ font-size:1.5rem; line-height:1; }
+.terrain small{ display:block; font-weight:400; color:var(--muted); font-size:.8rem; margin-top:2px; }
+.terrain[aria-pressed="true"]{ background:var(--ivory); color:var(--ink); box-shadow:0 0 0 2px var(--gold); }
+.terrain[aria-pressed="true"] small{ color:#555; }
+.modes{ grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); }
+.mode:disabled{ display:none; }
+.counts{ display:flex; gap:8px; flex-wrap:wrap; }
+.defi{ display:flex; gap:14px; align-items:center; width:100%; margin:4px 0 6px; padding:14px 16px; text-align:left;
+  background:linear-gradient(135deg, var(--gold), #F3D27A); color:var(--ink); border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,.25); }
+.defi .ico{ font-size:2.2rem; line-height:1; }
+.defi b{ display:block; font-size:1.15rem; }
+.defi small{ display:block; color:#4a3d14; line-height:1.3; margin-top:2px; }
+.defi .etat{ margin-left:auto; text-align:right; font-weight:800; white-space:nowrap; }
+.defi .etat small{ font-weight:600; }
+.defi.fait{ background:linear-gradient(135deg, #CFE8D6, #A9D8B8); }
+.stat-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.stat{ background:rgba(0,0,0,.2); border-radius:12px; padding:10px; text-align:center; }
+.stat b{ display:block; font-size:1.4rem; font-variant-numeric:tabular-nums; }
+.stat small{ color:var(--muted); font-size:.78rem; line-height:1.2; display:block; }
+.revoir{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.revoir span{ display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; background:rgba(0,0,0,.25); font-size:.88rem; }
+.revoir img{ width:22px; height:16px; object-fit:cover; border-radius:2px; }
+.revoir em{ font-style:normal; color:var(--muted); font-size:.78rem; }
+.sauve{ margin-top:12px; }
+.bigq{ text-align:center; font-weight:800; font-size:clamp(3rem,18vw,6rem); line-height:1; letter-spacing:-.02em; color:var(--ivory); text-shadow:0 6px 18px rgba(0,0,0,.35); }
+.bigq.nom{ font-size:clamp(1.8rem,9vw,3rem); }
+.map .cadre{ fill:none; stroke:var(--border); stroke-width:1; stroke-dasharray:4 3; vector-effect:non-scaling-stroke; pointer-events:none; }
+.map .cadre-n{ font-size:11px; fill:#41566a; pointer-events:none; font-family:inherit; }
+.map .limites{ fill:none; stroke:#41566a; stroke-width:1.6; vector-effect:non-scaling-stroke; pointer-events:none; stroke-linejoin:round; }
+#endTitle{ font-size:clamp(1.7rem,8vw,2.6rem); }
+.qtype{ display:inline-block; margin-bottom:4px; padding:2px 10px; border-radius:999px; background:rgba(0,0,0,.28); font-size:.78rem; font-weight:700; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -118,22 +153,40 @@ tr.me td{ color:var(--gold); font-weight:700; }
 <main class="page" id="menu">
   <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">DesDés</a>
   <h1>Géographie</h1>
-  <p class="sub">Reconnaître les drapeaux ou placer les pays sur la carte, le plus vite possible.</p>
+  <p class="sub">Drapeaux, pays, régions, départements et États américains, le plus vite possible.</p>
+
+  <button class="defi" id="defi"></button>
+
+  <h2>Terrain de jeu</h2>
+  <div class="terrains" id="terrains"></div>
 
   <h2>Jeu</h2>
-  <div class="modes">
+  <div class="modes" id="modes">
     <button class="mode" data-jeu="drapeaux" aria-pressed="false">
       <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 4v32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M10 6h22l-5 7 5 7H10z" fill="#C8372D"/></svg>
-      <b>Drapeaux</b><small>Un drapeau, quatre pays : trouvez le bon.</small>
+      <b>Drapeaux</b><small>Un drapeau, quatre noms : trouvez le bon.</small>
     </button>
     <button class="mode" data-jeu="carte" aria-pressed="false">
       <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M4 9l10-4 12 4 10-4v26l-10 4-12-4-10 4z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><circle cx="21" cy="17" r="4.5" fill="#C8372D"/></svg>
-      <b>Carte</b><small>Un nom de pays : touchez-le sur la carte.</small>
+      <b>Carte</b><small>Un nom : touchez-le sur la carte.</small>
+    </button>
+    <button class="mode" data-jeu="melange" aria-pressed="false">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M5 5v18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M7 6h13l-3 4 3 4H7z" fill="#C8372D"/><path d="M16 22l7-3 8 3 6-3v15l-6 3-8-3-7 3z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>
+      <b>Mélange</b><small>Drapeaux et carte, en alternance.</small>
+    </button>
+    <button class="mode" data-jeu="numeros" aria-pressed="false">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="4" y="9" width="32" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="2.5"/><text x="20" y="26" text-anchor="middle" font-size="14" font-weight="800" fill="#C8372D">74</text></svg>
+      <b>Numéros</b><small>Le numéro d'un département, ou l'inverse.</small>
     </button>
   </div>
 
-  <h2>Zone</h2>
-  <div class="zones" id="zones"></div>
+  <div id="zoneBox">
+    <h2 id="zoneTitle">Zone</h2>
+    <div class="zones" id="zones"></div>
+  </div>
+
+  <h2>Nombre de questions</h2>
+  <div class="counts zones" id="counts"></div>
 
   <h2>Joueur</h2>
   <input class="name" id="name" maxlength="20" placeholder="Votre prénom (pour les records)" autocomplete="off">
@@ -142,6 +195,11 @@ tr.me td{ color:var(--gold); font-weight:700; }
 
   <h2 id="recTitle">Records</h2>
   <div id="records"></div>
+
+  <h2>Statistiques</h2>
+  <div id="stats"></div>
+  <h2>Sauvegarde dans mes fichiers</h2>
+  <div class="sauve" id="sauve"></div>
 </main>
 
 <!-- Partie -->
@@ -159,11 +217,12 @@ tr.me td{ color:var(--gold); font-weight:700; }
 
   <div class="flagbox" id="flagbox" hidden>
     <img class="flag" id="flag" alt="Drapeau à reconnaître">
+    <div class="bigq" id="bigq" hidden></div>
     <div class="answers" id="answers"></div>
   </div>
 
   <div class="mapbox" id="mapbox" hidden>
-    <svg class="map" id="map" aria-label="Carte du monde"></svg>
+    <svg class="map" id="map" aria-label="Carte"></svg>
     <div class="zoom">
       <button id="zin" aria-label="Zoomer">+</button>
       <button id="zout" aria-label="Dézoomer">−</button>
@@ -179,66 +238,239 @@ tr.me td{ color:var(--gold); font-weight:700; }
   <p class="big" id="endScore"></p>
   <p class="sub" id="endDetail"></p>
   <div id="endBadge"></div>
+  <div id="endRevoir"></div>
   <h2 id="endRecTitle">Records</h2>
   <div id="endRecords"></div>
   <div class="row"><button class="back" id="toMenu">Menu</button><button class="again" id="again">Rejouer</button></div>
 </main>
 
 <script src="geo/monde.js"></script>
+<script src="sauvegarde.js"></script>
 <script>
 const G = window.GEO;
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const get = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
 const put = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
-const shuffle = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const shuffle = (a, rnd = Math.random) => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const fmtTime = ms => { const s = ms / 1000, m = Math.floor(s / 60); return `${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}`; };
-const ZONES = ['monde', 'europe', 'afrique', 'asie', 'amnord', 'amsud', 'oceanie'];
-const JEUX = { drapeaux:'Drapeaux', carte:'Carte' };
-const inZone = z => z === 'monde' ? G.countries : G.countries.filter(c => c.z === z);
-const byCode = Object.fromEntries(G.countries.map(c => [c.c, c]));
 const MAX_TRIES = 3;
+const CONTINENTS = ['europe', 'afrique', 'asie', 'amnord', 'amsud', 'oceanie'];
+const DOM = ['971', '972', '973', '974', '976'];
 
-let cfg = get('geo-choix', { jeu:'drapeaux', zone:'europe' });
+/* ---------- Terrains de jeu ---------- */
+// Chaque terrain : ses éléments, ses zones, sa carte et ses drapeaux
+const TERRAINS = {
+  monde: {
+    n:'Pays du monde', ico:'🌍', jeux:['drapeaux', 'carte', 'melange'], tout:'monde', quoi:['pays', 'pays'],
+    items: () => G.countries,
+    zones: () => [['monde', 'Tous les continents'], ...CONTINENTS.map(z => [z, G.zones[z].n])],
+    zoneOf: c => c.z,
+    carte: () => ({ w:G.w, h:G.h, fond:G.others, items:G.countries, cadres:[], petit:10 }),
+    vue: z => G.zones[z].v,
+    drapeau: c => `geo/drapeaux/${c.c}.svg`,
+  },
+  regions: {
+    n:'Régions de France', ico:'🇫🇷', fichier:'geo/france.js', jeux:['carte'], tout:'tout', quoi:['région', 'régions'],
+    items: () => GEO_FRANCE.regions,
+    carte: () => ({ w:GEO_FRANCE.w, h:GEO_FRANCE.h, items:GEO_FRANCE.regions, cadres:GEO_FRANCE.cadres, petit:40 }),
+  },
+  departements: {
+    n:'Départements', ico:'🗺️', fichier:'geo/france.js', jeux:['carte', 'numeros'], tout:'france', quoi:['département', 'départements'],
+    items: () => GEO_FRANCE.departements,
+    zones: () => [['france', 'Toute la France'],
+      ...GEO_FRANCE.regions.filter(r => !DOM_REGION(r.c)).map(r => ['r' + r.c, r.n]), ['om', 'Outre-mer']],
+    zoneOf: c => DOM.includes(c.c) ? 'om' : 'r' + c.r,
+    carte: () => ({ w:GEO_FRANCE.w, h:GEO_FRANCE.h, items:GEO_FRANCE.departements, cadres:GEO_FRANCE.cadres, petit:300,
+      limites:GEO_FRANCE.regions.map(r => r.d).join('') }),
+  },
+  usa: {
+    n:'États-Unis', ico:'🇺🇸', fichier:'geo/usa.js', jeux:['drapeaux', 'carte', 'melange'], tout:'tout', quoi:['État', 'États'],
+    items: () => GEO_USA.etats,
+    carte: () => ({ w:GEO_USA.w, h:GEO_USA.h, fond:GEO_USA.autres, items:GEO_USA.etats, cadres:GEO_USA.cadres, petit:60 }),
+    drapeau: c => `geo/drapeaux-us/${c.c}.svg`,
+  },
+};
+const DOM_REGION = code => code.length === 2 && code < '10';
+const JEUX = { drapeaux:'Drapeaux', carte:'Carte', melange:'Mélange', numeros:'Numéros' };
+const COUNTS = [10, 20, 'tout'];
+
+// Chargement à la demande des cartes de France et des États-Unis
+const charges = {};
+function charger(fichier){
+  if(!fichier) return Promise.resolve();
+  return charges[fichier] = charges[fichier] || new Promise((ok, ko) => {
+    const s = document.createElement('script');
+    s.src = fichier; s.onload = ok;
+    s.onerror = () => { delete charges[fichier]; ko(new Error('Carte introuvable : vérifiez la connexion.')); };
+    document.head.append(s);
+  });
+}
+const zoneItems = (t, z) => {
+  const T = TERRAINS[t], all = T.items();
+  return !T.zones || z === T.tout ? all : all.filter(c => T.zoneOf(c) === z);
+};
+const zoneNom = (t, z) => { const T = TERRAINS[t]; return T.zones ? (T.zones().find(([k]) => k === z) || [, ''])[1] : ''; };
+
+let cfg = Object.assign({ terrain:'monde', jeu:'drapeaux', zone:'europe', n:20 }, get('geo-choix', {}));
+if(!TERRAINS[cfg.terrain]) cfg.terrain = 'monde';
 $('name').value = get('geo-nom', '');
 
-/* ---------- Records : les 5 meilleurs par jeu et par zone ---------- */
-const recKey = () => `${cfg.jeu}-${cfg.zone}`;
-const better = (a, b) => b.score - a.score || a.temps - b.temps;
+/* ---------- Records : les 5 meilleurs par jeu, terrain, zone et nombre de questions ---------- */
+// Clé historique « jeu-zone » pour les pays du monde joués en entier
+const recKeyOf = c => c.terrain === 'monde' && c.n === 'tout' && c.jeu !== 'melange' ? `${c.jeu}-${c.zone}` : `${c.jeu}-${c.terrain}-${c.zone}-${c.n}`;
+const titreOf = c => {
+  const T = TERRAINS[c.terrain], z = T.zones ? zoneNom(c.terrain, c.zone) : '';
+  return `${JEUX[c.jeu]} · ${c.terrain === 'monde' ? z : T.n + (z && c.zone !== T.tout ? ' · ' + z : '')}` + (c.n === 'tout' ? '' : ` · ${c.n} questions`);
+};
+const better = (a, b) => b.score / b.total - a.score / a.total || a.temps - b.temps;
 function recordsHTML(list, mine){
   if(!list || !list.length) return '<p class="none">Pas encore de record : à vous de jouer !</p>';
   return '<table><tr><th>#</th><th>Joueur</th><th>Score</th><th class="r">Temps</th></tr>' +
     list.map((r, i) => `<tr${i === mine ? ' class="me"' : ''}><td>${i + 1}</td><td>${esc(r.nom || '—')}</td><td>${r.score} / ${r.total}</td><td class="r">${fmtTime(r.temps)}</td></tr>`).join('') + '</table>';
 }
 
+/* ---------- Statistiques (gardées sur l'appareil, exportables) ---------- */
+const STATS0 = { parties:0, questions:0, bonnes:0, rates:{}, defis:{} };
+const stats = () => Object.assign({}, STATS0, get('geo-stats', {}));
+const jourCle = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function serie(defis){
+  // Jours de défi consécutifs jusqu'à aujourd'hui (ou hier si celui du jour n'est pas encore fait)
+  const d = new Date();
+  if(!defis[jourCle(d)]) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while(defis[jourCle(d)]){ n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+function itemDe(cle){
+  const [t, code] = cle.split(':');
+  const T = TERRAINS[t];
+  if(!T || (T.fichier && !charges[T.fichier])) return null;
+  try{ return { t, c:T.items().find(x => x.c === code) }; }catch(e){ return null; }
+}
+function revoirHTML(cles){
+  const out = cles.map(k => { const it = itemDe(k); return it && it.c ? it : null; }).filter(Boolean).slice(0, 10);
+  if(!out.length) return '';
+  return '<div class="revoir">' + out.map(({ t, c }) => {
+    const T = TERRAINS[t];
+    return `<span>${T.drapeau ? `<img src="${T.drapeau(c)}" alt="">` : ''}${esc(c.n)}${t === 'departements' ? ` <em>${c.c}</em>` : ''}</span>`;
+  }).join('') + '</div>';
+}
+function renderStats(){
+  const s = stats();
+  const pct = s.questions ? Math.round(s.bonnes / s.questions * 100) : 0;
+  const n = serie(s.defis), nDefis = Object.keys(s.defis).length;
+  const pires = Object.entries(s.rates).sort((a, b) => b[1] - a[1]).map(([k]) => k);
+  // Les cartes de France et des États-Unis sont chargées pour afficher leurs noms
+  const manque = [...new Set(pires.slice(0, 10).map(k => TERRAINS[k.split(':')[0]]?.fichier).filter(f => f && !charges[f]))];
+  if(manque.length) Promise.all(manque.map(charger)).then(renderStats).catch(() => {});
+  $('stats').innerHTML = `<div class="stat-grid">
+      <div class="stat"><b>${s.parties}</b><small>parties</small></div>
+      <div class="stat"><b>${pct} %</b><small>du premier coup (${s.questions} questions)</small></div>
+      <div class="stat"><b>${n ? '🔥 ' + n : nDefis}</b><small>${n ? `jour${n > 1 ? 's' : ''} de défi d'affilée` : 'défis du jour faits'}</small></div>
+    </div>` + (pires.length ? `<h2 style="margin-top:16px">À revoir</h2>${revoirHTML(pires)}` : '');
+}
+
 /* ---------- Menu ---------- */
 function renderMenu(){
-  document.querySelectorAll('.mode').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.jeu === cfg.jeu)));
-  $('zones').innerHTML = ZONES.map(z => `<button class="zone" data-zone="${z}" aria-pressed="${z === cfg.zone}">${G.zones[z].n}<span>${inZone(z).length}</span></button>`).join('');
-  $('recTitle').textContent = `Records · ${JEUX[cfg.jeu]} · ${G.zones[cfg.zone].n}`;
-  $('records').innerHTML = recordsHTML(get('geo-records', {})[recKey()]);
+  const T = TERRAINS[cfg.terrain];
+  $('terrains').innerHTML = Object.entries(TERRAINS).map(([k, t]) => `<button class="terrain" data-t="${k}" aria-pressed="${k === cfg.terrain}"><span>${t.ico}</span><div>${t.n}<small>${k === 'monde' ? G.countries.length + ' pays' : k === 'regions' ? '18 régions' : k === 'departements' ? '101 départements' : '50 États'}</small></div></button>`).join('');
+  if(!T.jeux.includes(cfg.jeu)) cfg.jeu = T.jeux[0];
+  document.querySelectorAll('.mode').forEach(b => {
+    b.disabled = !T.jeux.includes(b.dataset.jeu);
+    b.setAttribute('aria-pressed', String(b.dataset.jeu === cfg.jeu));
+  });
+  document.querySelector('[data-jeu="drapeaux"] small').textContent = `Un drapeau, quatre ${T.quoi[1]} : trouvez le bon.`;
+  const pret = !T.fichier || charges[T.fichier];
+  if(!pret){
+    $('zoneBox').hidden = true; $('counts').innerHTML = ''; $('records').innerHTML = '<p class="none">Chargement de la carte…</p>';
+    charger(T.fichier).then(renderMenu).catch(e => { $('records').innerHTML = `<p class="none">${esc(e.message)}</p>`; });
+    $('play').disabled = true;
+    return;
+  }
+  $('play').disabled = false;
+  const zones = T.zones ? T.zones() : null;
+  if(!zones || !zones.some(([k]) => k === cfg.zone)) cfg.zone = T.tout;
+  $('zoneBox').hidden = !zones;
+  if(zones){
+    $('zoneTitle').textContent = cfg.terrain === 'monde' ? 'Continent' : 'Région';
+    $('zones').innerHTML = zones.map(([z, n]) => `<button class="zone" data-zone="${z}" aria-pressed="${z === cfg.zone}">${esc(n)}<span>${zoneItems(cfg.terrain, z).length}</span></button>`).join('');
+  }
+  const total = zoneItems(cfg.terrain, cfg.zone).length;
+  if(cfg.n !== 'tout' && cfg.n >= total) cfg.n = 'tout';
+  $('counts').innerHTML = COUNTS.filter(n => n === 'tout' || n < total).map(n => `<button class="zone" data-n="${n}" aria-pressed="${n === cfg.n}">${n === 'tout' ? `Tous<span>${total}</span>` : `${n}<span>au hasard</span>`}</button>`).join('');
+  $('recTitle').textContent = `Records · ${titreOf(cfg)}`;
+  $('records').innerHTML = recordsHTML(get('geo-records', {})[recKeyOf(cfg)]);
+  put('geo-choix', cfg);
+  renderDefi(); renderStats();
 }
-document.querySelector('.modes').addEventListener('click', e => { const b = e.target.closest('.mode'); if(b){ cfg.jeu = b.dataset.jeu; put('geo-choix', cfg); renderMenu(); } });
-$('zones').addEventListener('click', e => { const b = e.target.closest('.zone'); if(b){ cfg.zone = b.dataset.zone; put('geo-choix', cfg); renderMenu(); } });
+$('terrains').addEventListener('click', e => { const b = e.target.closest('.terrain'); if(b){ cfg.terrain = b.dataset.t; renderMenu(); } });
+$('modes').addEventListener('click', e => { const b = e.target.closest('.mode'); if(b){ cfg.jeu = b.dataset.jeu; renderMenu(); } });
+$('zones').addEventListener('click', e => { const b = e.target.closest('.zone'); if(b){ cfg.zone = b.dataset.zone; renderMenu(); } });
+$('counts').addEventListener('click', e => { const b = e.target.closest('.zone'); if(b){ cfg.n = b.dataset.n === 'tout' ? 'tout' : Number(b.dataset.n); renderMenu(); } });
 $('name').addEventListener('input', () => put('geo-nom', $('name').value.trim()));
 
 function show(id){ ['menu', 'game', 'end'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); }
 
+/* ---------- Défi du jour : les mêmes 12 questions pour tout le monde ---------- */
+function graine(txt){ let h = 1779033703; for(const ch of txt){ h = Math.imul(h ^ ch.charCodeAt(0), 3432918353); h = h << 13 | h >>> 19; } return h >>> 0; }
+function hasard(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const DEFI_N = 12;
+function questionsDefi(jour){
+  const rnd = hasard(graine('desdes-' + jour));
+  const pris = (t, n) => shuffle(TERRAINS[t].items(), rnd).slice(0, n);
+  const [d1, d2] = [pris('monde', 8), pris('departements', 2)];
+  const us = pris('usa', 2);
+  return [
+    ...d1.slice(0, 4).map(c => ({ t:'drapeau', terrain:'monde', zone:'monde', c })),
+    ...d1.slice(4).map(c => ({ t:'carte', terrain:'monde', zone:'monde', c })),
+    ...d2.map(c => ({ t:'carte', terrain:'departements', zone:'france', c })),
+    { t:'drapeau', terrain:'usa', zone:'tout', c:us[0] },
+    { t:'carte', terrain:'usa', zone:'tout', c:us[1] },
+  ].map(q => Object.assign(q, { rnd }));
+}
+function renderDefi(){
+  const s = stats(), r = s.defis[jourCle()], n = serie(s.defis);
+  const date = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+  $('defi').className = 'defi' + (r ? ' fait' : '');
+  $('defi').innerHTML = `<span class="ico">${r ? '✅' : '📅'}</span><span><b>Défi du jour</b><small>${date} · ${DEFI_N} questions : drapeaux, pays, départements et États. Les mêmes pour tout le monde.</small></span>` +
+    `<span class="etat">${r ? `${r.score} / ${r.total}<small>${fmtTime(r.temps)}</small>` : 'Jouer'}${n ? `<small>🔥 ${n} jour${n > 1 ? 's' : ''}</small>` : ''}</span>`;
+}
+$('defi').onclick = async () => {
+  const s = stats();
+  if(s.defis[jourCle()] && !confirm('Défi du jour déjà fait. Le rejouer pour s\'entraîner ? (Le premier résultat reste celui qui compte.)')) return;
+  $('defi').disabled = true;
+  try{ await Promise.all([charger('geo/france.js'), charger('geo/usa.js')]); }
+  catch(e){ alert(e.message); return; }
+  finally{ $('defi').disabled = false; }
+  start({ defi:jourCle() });
+};
+
 /* ---------- Partie ---------- */
 let g = null, tick = 0;
-function start(){
-  const list = shuffle(inZone(cfg.zone));
-  g = { jeu:cfg.jeu, zone:cfg.zone, list, i:0, score:0, fautes:0, tries:0, t0:performance.now(), locked:false };
+function preparer(c){
+  const T = TERRAINS[c.terrain];
+  const items = shuffle(zoneItems(c.terrain, c.zone));
+  const list = c.n === 'tout' ? items : items.slice(0, c.n);
+  return list.map((it, i) => ({
+    t: c.jeu === 'carte' ? 'carte' : c.jeu === 'drapeaux' ? 'drapeau' : c.jeu === 'numeros' ? 'numero'
+      : (i % 2 ? 'carte' : 'drapeau'),
+    terrain:c.terrain, zone:c.zone, c:it,
+    sens: Math.random() < .5 ? 'nom' : 'num',   // numéros : trouver le nom ou le numéro
+  })).map(q => (q.t === 'drapeau' && !T.drapeau ? Object.assign(q, { t:'carte' }) : q));
+}
+function start(opts = {}){
+  const defi = opts.defi || null;
+  const conf = defi ? { defi } : Object.assign({}, cfg);
+  const list = defi ? questionsDefi(defi) : preparer(conf);
+  g = { conf, list, i:0, score:0, fautes:0, tries:0, t0:performance.now(), locked:false, rates:[], carteCle:null };
   show('game');
-  $('flagbox').hidden = g.jeu !== 'drapeaux';
-  $('mapbox').hidden = g.jeu !== 'carte';
   $('feedback').textContent = '';
-  if(g.jeu === 'carte') buildMap();
   clearInterval(tick);
   tick = setInterval(() => { $('time').textContent = fmtTime(performance.now() - g.t0); }, 100);
   ask();
 }
-function stats(){
+function majChips(){
   $('prog').textContent = `${Math.min(g.i + 1, g.list.length)} / ${g.list.length}`;
   $('okN').textContent = `✓ ${g.score}`;
   $('koN').textContent = `✕ ${g.fautes}`;
@@ -246,60 +478,119 @@ function stats(){
 function ask(){
   if(g.i >= g.list.length) return finish();
   g.tries = 0; g.locked = false;
-  stats();
-  const c = g.list[g.i];
-  if(g.jeu === 'drapeaux') askFlag(c);
-  else $('prompt').innerHTML = `Où est<b>${esc(c.n)}</b>`;
+  majChips();
+  const q = g.list[g.i];
+  const carte = q.t === 'carte';
+  $('flagbox').hidden = carte;
+  $('mapbox').hidden = !carte;
+  const T = TERRAINS[q.terrain];
+  const type = g.conf.defi ? `<span class="qtype">${T.ico} ${T.n}</span>` : '';
+  if(carte){
+    const cle = q.terrain + '|' + q.zone;
+    if(g.carteCle !== cle){ buildMap(q.terrain, q.zone); g.carteCle = cle; }
+    else requestAnimationFrame(() => { if(!vb) fit(); });
+    $('prompt').innerHTML = `${type}Où est<b>${esc(q.c.n)}</b>`;
+  } else askChoice(q, type);
 }
 function next(delay){ g.locked = true; setTimeout(() => { if(!g) return; g.i++; ask(); }, delay); }
+function rater(q){ const k = `${q.terrain}:${q.c.c}`; if(!g.rates.includes(k)) g.rates.push(k); }
 
-/* Drapeaux : 4 propositions du même continent */
-function askFlag(c){
-  $('prompt').textContent = 'Quel est ce pays ?';
-  $('flag').src = `geo/drapeaux/${c.c}.svg`;
-  const others = shuffle(G.countries.filter(o => o.z === c.z && o !== c)).slice(0, 3);
-  $('answers').innerHTML = shuffle([c, ...others]).map(o => `<button data-c="${o.c}">${esc(o.n)}</button>`).join('');
+/* Questions à 4 propositions : drapeaux et numéros */
+function voisins(q, n){
+  const T = TERRAINS[q.terrain], c = q.c;
+  let pool = T.items().filter(o => o !== c);
+  if(q.terrain === 'monde') pool = pool.filter(o => o.z === c.z);
+  if(q.t === 'numero'){
+    // Départements proches : plus difficile qu'au hasard
+    const dom = DOM.includes(c.c);
+    pool = pool.filter(o => DOM.includes(o.c) === dom || !dom)
+      .sort((a, b) => Math.hypot(a.x - c.x, a.y - c.y) - Math.hypot(b.x - c.x, b.y - c.y)).slice(0, 8);
+  }
+  return shuffle(pool, q.rnd || Math.random).slice(0, n);
+}
+function askChoice(q, type){
+  const T = TERRAINS[q.terrain];
+  const opts = shuffle([q.c, ...voisins(q, 3)], q.rnd || Math.random);
+  q.opts = opts;
+  if(q.t === 'drapeau'){
+    $('flag').hidden = false; $('bigq').hidden = true;
+    $('prompt').innerHTML = `${type}${q.terrain === 'usa' ? 'Quel est cet État ?' : 'Quel est ce pays ?'}`;
+    $('flag').src = T.drapeau(q.c);
+    $('answers').innerHTML = opts.map((o, i) => `<button data-k="${i}">${esc(o.n)}</button>`).join('');
+  } else {
+    $('flag').hidden = true; $('bigq').hidden = false;
+    const nom = q.sens === 'num';
+    $('prompt').innerHTML = `${type}${nom ? 'Quel est le numéro de' : 'Quel département porte le numéro'}`;
+    $('bigq').className = 'bigq' + (nom ? ' nom' : '');
+    $('bigq').textContent = nom ? q.c.n : q.c.c;
+    $('answers').innerHTML = opts.map((o, i) => `<button data-k="${i}">${esc(nom ? o.c : o.n)}</button>`).join('');
+  }
+  // Drapeau suivant chargé à l'avance
   const n = g.list[g.i + 1];
-  if(n) new Image().src = `geo/drapeaux/${n.c}.svg`;   // drapeau suivant chargé à l'avance
+  if(n && n.t === 'drapeau') new Image().src = TERRAINS[n.terrain].drapeau(n.c);
 }
 $('answers').addEventListener('click', e => {
   const b = e.target.closest('button');
   if(!b || !g || g.locked) return;
-  const c = g.list[g.i];
-  if(b.dataset.c === c.c){
+  const q = g.list[g.i], o = q.opts[Number(b.dataset.k)];
+  const rep = q.t === 'numero' ? `${q.c.c} · ${q.c.n}` : q.c.n;
+  if(o === q.c){
     g.score++; b.classList.add('ok');
-    $('feedback').className = 'feedback ok'; $('feedback').textContent = 'Bravo !';
-    next(450);
+    $('feedback').className = 'feedback ok'; $('feedback').textContent = q.t === 'numero' ? `Bravo : ${rep} !` : 'Bravo !';
+    next(q.t === 'numero' ? 900 : 450);
   } else {
-    g.fautes++; b.classList.add('ko');
-    $('answers').querySelector(`[data-c="${c.c}"]`).classList.add('ok');
-    $('feedback').className = 'feedback ko'; $('feedback').textContent = `Réponse : ${c.n}`;
-    next(1300);
+    g.fautes++; b.classList.add('ko'); rater(q);
+    $('answers').querySelector(`[data-k="${q.opts.indexOf(q.c)}"]`).classList.add('ok');
+    $('feedback').className = 'feedback ko'; $('feedback').textContent = `Réponse : ${rep}`;
+    next(1500);
   }
-  stats();
+  majChips();
 });
 
 /* Carte */
 const svg = $('map');
-const SMALL = 10;              // en dessous de cette surface, un repère rond facilite le toucher
-let vb = null;
-function buildMap(){
-  const z = g.zone;
-  let h = `<rect x="-2000" y="-2000" width="5000" height="5000" fill="transparent"/><path class="bg" d="${G.others}"/>`;
+let vb = null, M = null;
+function buildMap(t, zone){
+  const T = TERRAINS[t];
+  M = T.carte();
+  M.terrain = t; M.zone = zone;
+  const inZone = c => !T.zones || zone === T.tout || T.zoneOf(c) === zone;
+  let h = `<rect x="-5000" y="-5000" width="11000" height="11000" fill="transparent"/>`;
+  if(M.fond) h += `<path class="bg" d="${M.fond}"/>`;
+  h += M.cadres.map(c => `<rect class="cadre" x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="6"/><text class="cadre-n" x="${c.x + 6}" y="${c.y + 14}">${esc(c.n)}</text>`).join('');
   const marks = [];
-  for(const c of G.countries){
-    const out = z !== 'monde' && c.z !== z;
+  for(const c of M.items){
+    const out = !inZone(c);
     if(c.d) h += `<path class="land${out ? ' out' : ''}" data-c="${c.c}" d="${c.d}"/>`;
-    if(!out && c.a < SMALL) marks.push(`<circle class="mk" data-c="${c.c}" cx="${c.x}" cy="${c.y}" r="4"/>`);
+    if(!out && c.a < M.petit) marks.push(`<circle class="mk" data-c="${c.c}" cx="${c.x}" cy="${c.y}" r="4"/>`);
   }
+  if(M.limites) h += `<path class="limites" d="${M.limites}"/>`;
   svg.innerHTML = h + `<g id="marks">${marks.join('')}</g>`;
+  vb = null;
   requestAnimationFrame(fit);
 }
 function fit(){
-  const [x, y, w, h] = G.zones[g.zone].v;
+  if(!M) return;
+  const T = TERRAINS[M.terrain];
+  let x, y, w, h;
+  if(T.vue) [x, y, w, h] = T.vue(M.zone);
+  else if(!T.zones || M.zone === T.tout) [x, y, w, h] = [0, 0, M.w, M.h];
+  else {
+    // Cadrage sur les éléments de la zone
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    svg.querySelectorAll('.land:not(.out), .mk').forEach(el => {
+      const b = el.getBBox();
+      if(!b.width && !b.height) return;
+      x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height);
+    });
+    if(!isFinite(x0)) [x0, y0, x1, y1] = [0, 0, M.w, M.h];
+    [x, y, w, h] = [x0, y0, x1 - x0, y1 - y0];
+  }
   const pad = 0.04;
   let vx = x - w * pad, vy = y - h * pad, vw = w * (1 + 2 * pad), vh = h * (1 + 2 * pad);
-  const r = svg.getBoundingClientRect(), ar = r.width / r.height;
+  const r = svg.getBoundingClientRect();
+  if(!r.width || !r.height) return;
+  const ar = r.width / r.height;
   if(vw / vh > ar){ const nh = vw / ar; vy -= (nh - vh) / 2; vh = nh; }
   else { const nw = vh * ar; vx -= (nw - vw) / 2; vw = nw; }
   vb = { x:vx, y:vy, w:vw, h:vh };
@@ -308,15 +599,16 @@ function fit(){
 function apply(){
   const r = svg.getBoundingClientRect();
   // Rester autour de la carte
-  vb.x = Math.min(Math.max(vb.x, -vb.w / 2), G.w - vb.w / 2);
-  vb.y = Math.min(Math.max(vb.y, -vb.h / 2), G.h - vb.h / 2);
+  vb.x = Math.min(Math.max(vb.x, -vb.w / 2), M.w - vb.w / 2);
+  vb.y = Math.min(Math.max(vb.y, -vb.h / 2), M.h - vb.h / 2);
   svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
   const k = vb.w / (r.width || 1);
   svg.querySelectorAll('.mk').forEach(m => m.setAttribute('r', (7 * k).toFixed(2)));
 }
 function zoomAt(f, px, py){
+  if(!vb) return;
   const r = svg.getBoundingClientRect();
-  const nw = Math.min(Math.max(vb.w * f, 12), G.w * 1.3), s = nw / vb.w;
+  const nw = Math.min(Math.max(vb.w * f, 12), M.w * 1.3), s = nw / vb.w;
   const mx = vb.x + (px - r.left) / r.width * vb.w, my = vb.y + (py - r.top) / r.height * vb.h;
   vb = { x:mx - (mx - vb.x) * s, y:my - (my - vb.y) * s, w:nw, h:vb.h * s };
   apply();
@@ -326,7 +618,7 @@ $('zin').onclick = () => zoomAt(1 / 1.6, ...center());
 $('zout').onclick = () => zoomAt(1.6, ...center());
 $('zfit').onclick = () => fit();
 svg.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.deltaY > 0 ? 1.2 : 1 / 1.2, e.clientX, e.clientY); }, { passive:false });
-addEventListener('resize', () => { if(g && g.jeu === 'carte' && !$('game').hidden) fit(); });
+addEventListener('resize', () => { if(g && !$('mapbox').hidden) fit(); });
 
 // Glisser pour se déplacer, pincer pour zoomer, toucher pour répondre
 const pts = new Map();
@@ -340,7 +632,7 @@ svg.addEventListener('pointerdown', e => {
 });
 svg.addEventListener('pointermove', e => {
   const p = pts.get(e.pointerId);
-  if(!p) return;
+  if(!p || !vb) return;
   const dx = e.clientX - p.x, dy = e.clientY - p.y;
   p.x = e.clientX; p.y = e.clientY;
   if(pts.size === 1){
@@ -358,7 +650,7 @@ function release(e){
   if(pts.size === 0 && moved < 8 && e.type === 'pointerup'){
     const t = document.elementFromPoint(e.clientX, e.clientY);
     const hit = t && t.closest && t.closest('[data-c]');
-    if(hit && svg.contains(hit)) tapCountry(hit.dataset.c);
+    if(hit && svg.contains(hit)) tapItem(hit.dataset.c);
   }
   if(pts.size < 2) pinch = 0;
 }
@@ -366,30 +658,34 @@ svg.addEventListener('pointerup', release);
 svg.addEventListener('pointercancel', release);
 
 const mark = (code, cls) => svg.querySelectorAll(`[data-c="${code}"]`).forEach(el => el.classList.add(cls));
-function tapCountry(code){
-  if(!g || g.locked || g.jeu !== 'carte') return;
-  const c = g.list[g.i], t = byCode[code];
+function tapItem(code){
+  if(!g || g.locked) return;
+  const q = g.list[g.i];
+  if(!q || q.t !== 'carte') return;
+  const c = q.c, t = M.items.find(x => x.c === code);
+  if(!t) return;
+  const nomDe = x => q.terrain === 'departements' ? `${x.n} (${x.c})` : x.n;
   const el = svg.querySelector(`[data-c="${code}"]`);
-  if(el && /found|late|missed/.test(el.getAttribute('class'))){ $('feedback').className = 'feedback'; $('feedback').textContent = `${t.n} : déjà placé.`; return; }
+  if(el && /found|late|missed/.test(el.getAttribute('class'))){ $('feedback').className = 'feedback'; $('feedback').textContent = `${nomDe(t)} : déjà placé.`; return; }
   if(code === c.c){
     if(g.tries === 0) g.score++;
     mark(code, g.tries === 0 ? 'found' : 'late');
-    $('feedback').className = 'feedback ok'; $('feedback').textContent = `Bravo : ${c.n} !`;
-    stats(); next(350);
+    $('feedback').className = 'feedback ok'; $('feedback').textContent = `Bravo : ${nomDe(c)} !`;
+    majChips(); next(q.terrain === 'departements' ? 700 : 350);
     return;
   }
-  g.fautes++; g.tries++;
+  g.fautes++; g.tries++; rater(q);
   mark(code, 'wrong');
   setTimeout(() => svg.querySelectorAll(`[data-c="${code}"]`).forEach(e => e.classList.remove('wrong')), 600);
   $('feedback').className = 'feedback ko';
   if(g.tries >= MAX_TRIES){
     // 3 erreurs : on montre où il était
     mark(c.c, 'missed'); mark(c.c, 'reveal');
-    $('feedback').textContent = `✕ ${t.n}. Réponse : ${c.n} (en jaune).`;
-    stats(); next(1800);
+    $('feedback').textContent = `✕ ${nomDe(t)}. Réponse : ${nomDe(c)} (en jaune).`;
+    majChips(); next(1800);
   } else {
-    $('feedback').textContent = `✕ ${t.n}. Encore ${MAX_TRIES - g.tries} essai${MAX_TRIES - g.tries > 1 ? 's' : ''}.`;
-    stats();
+    $('feedback').textContent = `✕ ${nomDe(t)}. Encore ${MAX_TRIES - g.tries} essai${MAX_TRIES - g.tries > 1 ? 's' : ''}.`;
+    majChips();
   }
 }
 
@@ -399,32 +695,61 @@ function finish(){
   const temps = Math.round(performance.now() - g.t0);
   const total = g.list.length;
   const entry = { nom:$('name').value.trim(), score:g.score, total, temps, date:Date.now() };
-  const all = get('geo-records', {});
-  const key = `${g.jeu}-${g.zone}`;
-  const list = (all[key] || []).concat(entry).sort(better).slice(0, 5);
-  const rank = list.indexOf(entry);
-  all[key] = list; put('geo-records', all);
 
-  $('endTitle').textContent = `${JEUX[g.jeu]} · ${G.zones[g.zone].n}`;
+  // Statistiques : questions, bonnes réponses, éléments à revoir, défis
+  const s = stats();
+  s.parties++; s.questions += total; s.bonnes += g.score;
+  for(const q of g.list){
+    const k = `${q.terrain}:${q.c.c}`;
+    if(g.rates.includes(k)) s.rates[k] = (s.rates[k] || 0) + 1;
+    else if(s.rates[k] && --s.rates[k] <= 0) delete s.rates[k];   // réussi du premier coup : un peu moins à revoir
+  }
+  const defi = g.conf.defi;
+  const premier = defi && !s.defis[defi];
+  if(premier) s.defis[defi] = { score:g.score, total, temps };
+  put('geo-stats', s);
+
+  let titre, list = null, rank = -1;
+  if(defi){
+    titre = 'Défi du jour';
+    const r = s.defis[defi];
+    $('endBadge').innerHTML = premier ? `<span class="badge">🔥 ${serie(s.defis)} jour${serie(s.defis) > 1 ? 's' : ''} de défi d'affilée</span>`
+      : `<span class="badge">Entraînement : le résultat du jour reste ${r.score} / ${r.total}</span>`;
+    $('endRecTitle').hidden = true; $('endRecords').innerHTML = '';
+  } else {
+    const all = get('geo-records', {});
+    const key = recKeyOf(g.conf);
+    list = (all[key] || []).concat(entry).sort(better).slice(0, 5);
+    rank = list.indexOf(entry);
+    all[key] = list; put('geo-records', all);
+    titre = titreOf(g.conf);
+    put('geo-dernier', { titre, record:list[0] });
+    $('endBadge').innerHTML = rank === 0 ? '<span class="badge">🏆 Nouveau record !</span>'
+      : rank > 0 ? `<span class="badge">${rank + 1}e meilleur score</span>` : '';
+    $('endRecTitle').hidden = false;
+    $('endRecTitle').textContent = `Records · ${titre}`;
+    $('endRecords').innerHTML = recordsHTML(list, rank);
+  }
+  $('endTitle').textContent = titre;
   $('endScore').textContent = `${g.score} / ${total}`;
   $('endDetail').textContent = `${Math.round(g.score / total * 100)} % du premier coup · ${g.fautes} erreur${g.fautes > 1 ? 's' : ''} · ${fmtTime(temps)}`;
-  $('endBadge').innerHTML = rank === 0 ? '<span class="badge">🏆 Nouveau record !</span>'
-    : rank > 0 ? `<span class="badge">${rank + 1}e meilleur score</span>` : '';
-  $('endRecTitle').textContent = `Records · ${JEUX[g.jeu]} · ${G.zones[g.zone].n}`;
-  $('endRecords').innerHTML = recordsHTML(list, rank);
+  $('endRevoir').innerHTML = g.rates.length ? `<h2>À revoir</h2>${revoirHTML(g.rates)}` : '';
+  last = g.conf;
   g = null;
   show('end');
 }
+let last = null;
 
-$('play').onclick = start;
-$('again').onclick = start;
+$('play').onclick = () => start();
+$('again').onclick = () => start(last && last.defi ? { defi:last.defi } : {});
 $('toMenu').onclick = () => { renderMenu(); show('menu'); };
 $('quit').onclick = () => {
-  if(!confirm('Arrêter la partie ? Elle ne comptera pas pour les records.')) return;
+  if(!confirm('Arrêter la partie ? Elle ne comptera pas.')) return;
   clearInterval(tick); g = null; renderMenu(); show('menu');
 };
 
 renderMenu();
+DesDesSauvegarde.boutons($('sauve'));
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 </script>
 </body>

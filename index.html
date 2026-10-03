@@ -119,6 +119,7 @@ h2{ font-size:.85rem; font-weight:600; text-transform:uppercase; letter-spacing:
   border:2px dashed var(--line); color:var(--muted); font-size:.95rem; line-height:1.4;
 }
 .soon b{ color:var(--ivory); }
+.sauve{ margin-top:28px; padding:16px 18px; border-radius:18px; background:rgba(0,0,0,.18); }
 footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; text-align:center; }
 @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
 </style>
@@ -141,7 +142,7 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
         <circle cx="50" cy="50" r="13" fill="#C8372D"/>
       </svg>
       <p class="title">10 000</p>
-      <p class="desc">Carton de score avec ouverture à 1 000, croix, reprises et pénalités. De 2 à 15 joueurs.</p>
+      <p class="desc">Carton de score avec ouverture à 1 000, croix, reprises et pénalités. De 2 à 15 joueurs, robots compris.</p>
       <p class="status" id="st10000"><b>Aucune partie en cours</b></p>
       <span class="go" id="go10000">Ouvrir le carnet</span>
     </a>
@@ -152,7 +153,7 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
         <g fill="#1E3A8A"><circle cx="30" cy="30" r="8"/><circle cx="70" cy="30" r="8"/><circle cx="50" cy="50" r="8"/><circle cx="30" cy="70" r="8"/><circle cx="70" cy="70" r="8"/></g>
       </svg>
       <p class="title">Yam's</p>
-      <p class="desc">Feuille de marque classique : haut, bonus à 63, brelan, full, suites, Yam's et chance. Jusqu'à 10 joueurs.</p>
+      <p class="desc">Feuille de marque classique : haut, bonus à 63, brelan, full, suites, Yam's et chance. Jusqu'à 10 joueurs, robots et conseils sur le tapis.</p>
       <p class="status" id="styams"><b>Aucune partie en cours</b></p>
       <span class="go" id="goyams">Ouvrir le carnet</span>
     </a>
@@ -164,7 +165,7 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
         <path d="M66 22c6 2 10 8 9 12-4 0-8-2-11-6z" fill="#F4EFE1" stroke="#0F3B57" stroke-width="2.5"/>
       </svg>
       <p class="title">Géographie</p>
-      <p class="desc">Drapeaux du monde et placement des pays sur la carte, par continent ou pour le monde entier. Chrono et records.</p>
+      <p class="desc">Drapeaux et cartes : pays du monde, régions et départements français, États américains. Défi du jour, chrono et records.</p>
       <p class="status" id="stgeo"><b>Pas encore de record</b></p>
       <span class="go">Jouer</span>
     </a>
@@ -206,10 +207,16 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
 
   <p class="soon"><b>D'autres jeux arriveront ici.</b> Chaque partie est gardée sur cet appareil : vous pouvez quitter un jeu et y revenir plus tard.</p>
 
-  <footer id="installHint">Astuce : ajoutez DesDés à l'écran d'accueil pour l'ouvrir comme une application, même sans réseau.</footer>
+  <section class="sauve">
+    <h2>Sauvegarde dans mes fichiers</h2>
+    <div id="sauve"></div>
+  </section>
+
+  <footer id="installHint">Astuce : ajoutez DesDés à l'écran d'accueil pour l'ouvrir comme une application. Tous les jeux marchent ensuite sans réseau.</footer>
 </main>
 
 <script src="jeux/drawrace/circuits.js"></script>
+<script src="jeux/sauvegarde.js"></script>
 <script>
 const fmt = n => n.toLocaleString('fr-FR');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -263,15 +270,22 @@ function show(id, st){
 /* Géographie : meilleur record du dernier jeu choisi (clés partagées avec jeux/geo.html) */
 const GEO_ZONES = { monde:'Monde', europe:'Europe', afrique:'Afrique', asie:'Asie', amnord:'Amérique du Nord', amsud:'Amérique du Sud', oceanie:'Océanie' };
 function showGeo(){
-  const recs = read('geo-records') || {};
-  const choix = read('geo-choix') || {};
-  const key = recs[`${choix.jeu}-${choix.zone}`] ? `${choix.jeu}-${choix.zone}` : Object.keys(recs).find(k => recs[k] && recs[k].length);
   const el = document.getElementById('stgeo');
-  if(!key){ el.innerHTML = '<b>Pas encore de record</b>'; return; }
-  const [jeu, zone] = key.split('-'), r = recs[key][0];
-  const s = r.temps / 1000, m = Math.floor(s / 60);
-  el.innerHTML = `<b>Record ${jeu === 'carte' ? 'carte' : 'drapeaux'} · ${GEO_ZONES[zone] || zone}</b>` +
-    `${r.score} / ${r.total} en ${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}${r.nom ? ` par ${esc(r.nom)}` : ''}`;
+  const d = read('geo-dernier');
+  const st = read('geo-stats') || {};
+  const jour = new Date(), cle = `${jour.getFullYear()}-${String(jour.getMonth() + 1).padStart(2, '0')}-${String(jour.getDate()).padStart(2, '0')}`;
+  const defi = st.defis && st.defis[cle] ? `Défi du jour : ${st.defis[cle].score} / ${st.defis[cle].total}` : 'Défi du jour à faire';
+  let rec = null, titre = '';
+  if(d && d.record){ rec = d.record; titre = d.titre; }
+  else {
+    const recs = read('geo-records') || {};
+    const choix = read('geo-choix') || {};
+    const key = recs[`${choix.jeu}-${choix.zone}`] ? `${choix.jeu}-${choix.zone}` : Object.keys(recs).find(k => recs[k] && recs[k].length);
+    if(key){ const [jeu, zone] = key.split('-'); rec = recs[key][0]; titre = `${jeu === 'carte' ? 'Carte' : 'Drapeaux'} · ${GEO_ZONES[zone] || zone}`; }
+  }
+  if(!rec){ el.innerHTML = `<b>${defi}</b>Pas encore de record.`; return; }
+  const s = rec.temps / 1000, m = Math.floor(s / 60);
+  el.innerHTML = `<b>${defi}</b>Record ${esc(titre)} : ${rec.score} / ${rec.total} en ${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}${rec.nom ? ` par ${esc(rec.nom)}` : ''}`;
 }
 /* Draw Race : record du dernier circuit choisi (clés partagées avec jeux/drawrace.html) */
 function showDraw(){
@@ -311,6 +325,7 @@ function showNivo(){
 }
 function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showNivo(); }
 refresh();
+DesDesSauvegarde.boutons(document.getElementById('sauve'));
 // Retour depuis un jeu (cache de navigation) : remettre les états à jour
 window.addEventListener('pageshow', refresh);
 window.addEventListener('storage', refresh);
