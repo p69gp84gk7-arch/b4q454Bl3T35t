@@ -40,7 +40,7 @@
 .pl-tool{ border:1.5px solid rgba(247,243,232,.3); background:transparent; color:#F7F3E8; font:inherit; font-weight:600;
   font-size:.85rem; padding:7px 10px; border-radius:10px; cursor:pointer; }
 .pl-tool[aria-pressed="true"]{ background:#E9B949; color:#1A1A1A; border-color:#E9B949; }
-.pl-deco{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:-2px; }
+.pl-deco{ display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; }
 .pl-deco .pl-theme{ padding:6px 10px; font-size:.82rem; }
 .pl-themes{ display:flex; gap:6px; flex-wrap:wrap; }
 .pl-themes[hidden]{ display:none; }
@@ -160,11 +160,11 @@ body.pl-open{ overflow:hidden; }
       </div>
     </div>
     <div class="pl-tray"><p class="pl-hint">${SWIPE_ICON}<span>Glissez le doigt sur le tapis pour lancer</span></p><div class="pl-fig" hidden></div></div>
-    <div class="pl-deco"><button class="pl-tool pl-theme" aria-expanded="false">🎨 Couleur du tapis</button><div class="pl-themes" hidden></div></div>
     <div class="pl-keep"><span class="pl-keep-label">${JEU === 'yams' ? 'Gardés' : 'De côté'}</span><div class="pl-slots"></div></div>
     <div class="pl-props" hidden></div>
     <p class="pl-msg" aria-live="polite"></p>
-    <div class="pl-actions"><button class="pl-new">Nouveau tour</button><button class="pl-roll">Lancer</button></div>`;
+    <div class="pl-actions"><button class="pl-new">Nouveau tour</button><button class="pl-roll">Lancer</button></div>
+    <div class="pl-deco"><button class="pl-tool pl-theme" aria-expanded="false">🎨 Couleur du tapis</button><div class="pl-themes" hidden></div></div>`;
   document.body.append(fab, ov);
 
   const q = s => ov.querySelector(s);
