@@ -1,6 +1,6 @@
 /* DesDés : fonctionnement hors ligne.
    Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement. */
-const VERSION = 'desdes-v37';
+const VERSION = 'desdes-v38';
 const FONTS = 'desdes-fonts';
 const SHELL = [
   './',

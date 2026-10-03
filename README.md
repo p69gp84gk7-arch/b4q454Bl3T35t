@@ -60,7 +60,7 @@ Si on a oublié les dés, le bouton rouge **Dés** de chaque carnet ouvre un tap
 
 Les dés ne se chevauchent jamais sur le tapis : après chaque lancer, ceux qui se touchent sont légèrement écartés.
 
-- **Couleurs** (bouton 🎨) : feutre vert, casino, bleu, bois, ardoise avec dés rouges, nuit avec dés noirs. Ce choix est commun aux deux jeux.
+- **Couleurs** (bouton « 🎨 Couleur du tapis », sous le tapis) : feutre vert, casino, bleu, bois, ardoise avec dés rouges, nuit avec dés noirs. Ce choix est commun aux deux jeux.
 - **Conseils** (Yam's, bouton 💡) : après chaque lancer, les dés à garder sont entourés de jaune.
   Le plateau donne aussi les chances de faire chaque figure encore libre (brelan, carré, full, suites, Yam's) à la fin du tour.
   Après le dernier lancer, la case conseillée est marquée d'une étoile.
