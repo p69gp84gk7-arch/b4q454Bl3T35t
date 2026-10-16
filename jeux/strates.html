@@ -61,21 +61,13 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 #pinceaux button{ width:38px; height:38px; border-radius:12px; border:2px solid transparent; background:var(--creme-2); display:grid; place-items:center; }
 #pinceaux button i{ display:block; border-radius:50%; background:var(--encre); }
 #pinceaux button.actif{ border-color:var(--turquoise); background:#E3F4F2; }
-#choixBloc{ display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; max-width:min(70vw, 560px); }
-#choixBloc[hidden]{ display:none; }
-#choixBloc::-webkit-scrollbar{ display:none; }
-#choixBloc button{ flex:none; display:flex; align-items:center; gap:5px; border-radius:12px; border:2px solid transparent; background:var(--creme-2); padding:4px 8px; font-size:.8rem; }
-#choixBloc button.actif{ border-color:var(--turquoise); background:#E3F4F2; }
-#choixBloc i, .obj i, .cout i{ width:16px; height:16px; border-radius:5px; display:inline-block; box-shadow:inset 0 -3px 0 rgba(0,0,0,.15); flex:none; }
-#choixBloc b{ color:var(--doux); font-weight:600; }
+.obj i, .cout i{ width:16px; height:16px; border-radius:5px; display:inline-block; box-shadow:inset 0 -3px 0 rgba(0,0,0,.15); flex:none; }
 .outils{ display:flex; gap:4px; background:var(--creme); border-radius:20px; box-shadow:var(--ombre); padding:5px; overflow-x:auto; max-width:100%; scrollbar-width:none; }
 .outils::-webkit-scrollbar{ display:none; }
 .outils button{ flex:none; border:none; background:transparent; border-radius:15px; padding:5px 8px 4px; min-width:58px; display:flex; flex-direction:column; align-items:center; gap:1px; font-size:.72rem; font-weight:600; color:var(--doux); }
 .outils button span{ font-size:1.45rem; line-height:1.1; }
 .outils button.actif{ background:var(--turquoise); color:#fff; }
 .outils .sep{ width:1px; background:var(--ligne); margin:6px 2px; flex:none; }
-#bRemblai span{ position:relative; }
-#bRemblai span::after{ content:""; position:absolute; right:-5px; bottom:1px; width:11px; height:11px; border-radius:3px; background:var(--c, #B98F62); border:1.5px solid #fff; }
 
 /* Panneaux */
 .voile{ position:fixed; inset:0; background:rgba(40,50,60,.28); z-index:9; }
@@ -148,11 +140,6 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 </div>
 
 <div class="cam">
-  <button id="camG" aria-label="Tourner à gauche">⟲</button>
-  <button id="camD" aria-label="Tourner à droite">⟳</button>
-  <button id="camP" aria-label="Zoomer">＋</button>
-  <button id="camM" aria-label="Dézoomer">－</button>
-  <button id="camI" aria-label="Incliner la vue">◢</button>
   <button id="camC" aria-label="Revenir au village">🎯</button>
 </div>
 
@@ -162,17 +149,15 @@ button{ font:inherit; color:inherit; cursor:pointer; }
   <div class="aide-outil" id="aideOutil"></div>
   <div class="options" id="options" hidden>
     <div id="pinceaux" aria-label="Taille du pinceau">
-      <button data-p="1" aria-label="1 case"><i style="width:7px;height:7px"></i></button>
-      <button data-p="2" aria-label="5 cases"><i style="width:13px;height:13px"></i></button>
-      <button data-p="3" aria-label="21 cases"><i style="width:20px;height:20px"></i></button>
+      <button data-p="1" aria-label="Petit pinceau"><i style="width:7px;height:7px"></i></button>
+      <button data-p="2" aria-label="Pinceau moyen"><i style="width:13px;height:13px"></i></button>
+      <button data-p="3" aria-label="Grand pinceau"><i style="width:20px;height:20px"></i></button>
     </div>
-    <div id="choixBloc" aria-label="Bloc à poser"></div>
   </div>
   <nav class="outils" id="outils">
     <button data-outil="main" class="actif"><span>✋</span>Main</button>
     <button data-outil="creuser"><span>⛏️</span>Creuser</button>
-    <button data-outil="aplanir"><span>🏞️</span>Aplanir</button>
-    <button data-outil="remblayer" id="bRemblai"><span>🧱</span>Remblayer</button>
+    <button data-outil="sculpter"><span>🏞️</span>Sculpter</button>
     <i class="sep"></i>
     <button data-panneau="pConstruire"><span>🏠</span>Construire</button>
     <button data-panneau="pFabriquer"><span>🔨</span>Fabriquer</button>
@@ -213,13 +198,13 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 </section>
 <section class="panneau aide" id="pAide" hidden><header><h2>Comment jouer</h2><button class="fermer" aria-label="Fermer">✕</button></header>
   <h3>La vue</h3>
-  <ul><li>Avec la <b>Main ✋</b> : glissez un doigt pour vous déplacer.</li><li>Avec les autres outils : <b>deux doigts</b> pour vous déplacer, pincer pour zoomer, tourner les doigts pour pivoter.</li>
-    <li>Les boutons à droite tournent, zooment, inclinent la vue ; 🎯 revient au village. À la souris : clic droit pour tourner, molette pour zoomer.</li></ul>
+  <ul><li>Toujours avec <b>deux doigts</b> : glissez pour vous déplacer, pincez pour zoomer (la vue s'incline en s'approchant), tournez les doigts pour pivoter.</li>
+    <li>Un seul doigt sert à l'outil choisi. Le bouton 🎯 revient au village. À la souris : clic droit pour tourner, clic du milieu pour se déplacer, molette pour zoomer.</li></ul>
   <h3>Sculpter le terrain</h3>
-  <ul><li><b>Creuser ⛏️</b> : la couche touchée descend d'un cran. Vous récoltez le bloc enlevé.</li>
-    <li><b>Aplanir 🏞️</b> : appuyez puis glissez, le terrain se met au niveau de la case touchée (on creuse ce qui dépasse, on remplit les creux).</li>
-    <li><b>Remblayer 🧱</b> : la couche touchée monte d'un cran avec le bloc choisi (terre, pierre, planches, verre…).</li>
-    <li>Choisissez la taille du pinceau (1, 5 ou 21 cases). Chaque bloc déplacé coûte 1 point de <b>foi 🙏</b> : vos habitants en donnent en priant.</li></ul>
+  <ul><li><b>Sculpter 🏞️</b>, comme dans Godus : posez le doigt sur une couche, puis
+      <ul><li>tirez vers le terrain plus bas : la couche s'étend et le recouvre ;</li><li>poussez vers l'intérieur de la couche : elle recule et laisse voir la couche du dessous.</li></ul></li>
+    <li><b>Creuser ⛏️</b> : la couche touchée descend d'un cran et le bloc enlevé va dans le sac. Gardez le doigt appuyé pour creuser de plus en plus profond.</li>
+    <li>Choisissez la taille du pinceau (petit, moyen, grand). Chaque couche déplacée coûte 1 point de <b>foi 🙏</b> par case : vos habitants en donnent en priant.</li></ul>
   <h3>Le sous-sol</h3>
   <ul><li>Sous la terre : la pierre, puis le charbon, le fer, l'or et les cristaux, de plus en plus profond. La tranche des falaises montre les couches.</li>
     <li>Il faut une pioche pour les blocs durs : en bois (pierre, charbon), en pierre (fer), en fer (or, cristal, obsidienne).</li>
@@ -233,11 +218,11 @@ button{ font:inherit; color:inherit; cursor:pointer; }
   <ul><li>En grandissant, le peuple passe des <b>paliers</b> qui débloquent bâtiments, outils et îles. Construisez un <b>Port</b> pour partir vers l'Île des Sables, l'Île du Volcan puis l'Île des Glaces.</li></ul>
 </section>
 
-<script src="nivoculteur/three.min.js?v=47"></script>
+<script src="nivoculteur/three.min.js?v=48"></script>
 <script>window.THREE || document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"><\/script>');</script>
-<script src="strates/monde.js?v=47"></script>
-<script src="strates/rendu.js?v=47"></script>
-<script src="strates/jeu.js?v=47"></script>
+<script src="strates/monde.js?v=48"></script>
+<script src="strates/rendu.js?v=48"></script>
+<script src="strates/jeu.js?v=48"></script>
 <script>
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });

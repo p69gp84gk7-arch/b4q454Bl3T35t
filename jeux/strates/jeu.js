@@ -2,7 +2,7 @@
    pierre et minerais, fabriquez des outils et des matériaux, et vos habitants bâtissent leur village sur vos terrains plats. */
 (() => {
 const M = window.Monde, R = window.Rendu;
-const { N, H, LH, SEA, MATS, ID, POSABLES, idx, dans, VOISINS, clamp } = M;
+const { N, H, LH, SEA, K, MATS, ID, idx, dans, VOISINS, clamp } = M;
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const CLE = 'strates-partie', CLE_RESUME = 'strates-resume';
@@ -56,13 +56,13 @@ const BATS = {
 };
 const A_CONSTRUIRE = ['cabane', 'ferme', 'atelier', 'four', 'fontaine', 'port', 'statue', 'phare', 'temple'];
 const BOIS_ARBRE = { 1:3, 2:3, 3:2, 4:1, 5:3 };
-const FOI_HAB = .25;           // foi par habitant et par seconde
+const FOI_HAB = .5;            // foi par habitant et par seconde
 const NOMS = { ...Object.fromEntries(Object.entries(BATS).map(([k, b]) => [k, b.n])), ...Object.fromEntries(Object.entries(RECETTES).map(([k, r]) => [k, r.n])),
   'ile:sables':'Île des Sables', 'ile:volcan':'Île du Volcan', 'ile:glaces':'Île des Glaces' };
 
 /* ---------- État ---------- */
 let S = null, I = null;
-let outil = 'main', geste = null, aRotation = 0;
+let outil = 'main', geste = null;
 const libre = () => S && S.mode === 'libre';
 const debloque = k => libre() || PALIERS.slice(0, S.palier + 1).some(p => p.d.includes(k));
 const palierDe = k => PALIERS.findIndex(p => p.d.includes(k));
@@ -115,9 +115,9 @@ const capacite = () => I.bat.reduce((s, b) => s + (BATS[b.k].cap || 0), 0);
 const nourriture = () => 4 + I.bat.reduce((s, b) => s + (BATS[b.k].nourrit || 0), 0);
 const bonusFoi = () => 1 + I.bat.reduce((s, b) => s + (BATS[b.k].foi || 0), 0);
 const popTotale = () => Object.entries(S.pops).reduce((s, [k, n]) => s + (k === S.active ? 0 : n), 0) + I.hab.length;
-const auBordDeLEau = cases => cases.some(c => { const i = c % N, j = (c / N) | 0; return VOISINS.some(([a, b]) => dans(i + a, j + b) && I.w[idx(i + a, j + b)] > .3); });
+const auBordDeLEau = cases => cases.some(c => { const i = c % N, j = (c / N) | 0; return VOISINS.some(([a, b]) => dans(i + a, j + b) && I.w[idx(i + a, j + b)] > .6); });
 function directionEau(cases){
-  for(const c of cases){ const i = c % N, j = (c / N) | 0; for(const [a, b] of VOISINS) if(dans(i + a, j + b) && I.w[idx(i + a, j + b)] > .3) return Math.atan2(-b, a); }
+  for(const c of cases){ const i = c % N, j = (c / N) | 0; for(const [a, b] of VOISINS) if(dans(i + a, j + b) && I.w[idx(i + a, j + b)] > .6) return Math.atan2(-b, a); }
   return 0;
 }
 // Pourquoi on ne peut pas construire ici ('' : c'est possible)
@@ -127,7 +127,7 @@ function emplacement(k, i, j){
   const h = I.h[cases[0]];
   if(cases.some(c => I.h[c] !== h)) return 'Le terrain doit être plat' + (t > 1 ? ` sur ${t} × ${t} cases.` : '.');
   if(h <= SEA) return 'Trop bas : au niveau de la mer.';
-  if(cases.some(c => I.w[c] > .05 || I.l[c] > 0)) return 'Il y a de l\'eau ou de la lave.';
+  if(cases.some(c => I.w[c] > .1 || I.l[c] > 0)) return 'Il y a de l\'eau ou de la lave.';
   if(cases.some(c => I.occ[c])) return 'Il y a déjà un bâtiment.';
   if(BATS[k].cote && !auBordDeLEau(cases)) return 'Il faut être au bord de l\'eau.';
   return '';
@@ -142,8 +142,8 @@ function nouvelHabitant(b, x, z){
   return h;
 }
 function marchable(c, depuis, h){
-  if(I.w[c] > .3 || I.l[c] > .02 || I.h[c] <= SEA - 1) return false;
-  if(Math.abs(I.h[c] - I.h[depuis]) > 1) return false;
+  if(I.w[c] > .7 || I.l[c] > .05 || I.h[c] <= SEA - 1) return false;
+  if(Math.abs(I.h[c] - I.h[depuis]) > 2) return false;
   return !I.occ[c] || I.occ[c] === h.maison;
 }
 function choisirCible(h){
@@ -151,16 +151,16 @@ function choisirCible(h){
   if(b && Math.random() < .3){ h.cible = [b.i, b.j]; return; }
   const ox = b ? b.i : Math.floor(h.x), oz = b ? b.j : Math.floor(h.z);
   for(let k = 0; k < 8; k++){
-    const i = clamp(ox + Math.round((Math.random() - .5) * 14), 0, N - 1), j = clamp(oz + Math.round((Math.random() - .5) * 14), 0, N - 1);
+    const i = clamp(ox + Math.round((Math.random() - .5) * 24), 0, N - 1), j = clamp(oz + Math.round((Math.random() - .5) * 24), 0, N - 1);
     const c = idx(i, j);
-    if(I.h[c] > SEA && I.w[c] < .1 && !I.occ[c]){ h.cible = [i, j]; return; }
+    if(I.h[c] > SEA && I.w[c] < .25 && !I.occ[c]){ h.cible = [i, j]; return; }
   }
   h.cible = null;
 }
 function bougerHabitants(dt){
   for(const h of I.hab){
     const ci = clamp(Math.floor(h.x), 0, N - 1), cj = clamp(Math.floor(h.z), 0, N - 1), c = idx(ci, cj);
-    const yc = I.h[c] * LH + (I.w[c] > .05 ? Math.min(I.w[c], .4) * LH : 0);
+    const yc = I.h[c] * LH + (I.w[c] > .1 ? Math.min(I.w[c], 1) * LH : 0);
     h.y = h.y ? h.y + (yc - h.y) * Math.min(1, dt * 10) : yc;
     if(h.dedans > 0){ h.dedans -= dt; continue; }
     if(h.pause > 0){ h.pause -= dt; h.marche = false; continue; }
@@ -183,7 +183,7 @@ function bougerHabitants(dt){
       if(!best || bd > d0 + .6){ if(++h.bloque > 3 || !best){ h.cible = null; h.pause = .4; continue; } }
       h.pas = best;
     }
-    const tx = h.pas[0] + .5, tz = h.pas[1] + .5, dx = tx - h.x, dz = tz - h.z, d = Math.hypot(dx, dz), v = dt * .95;
+    const tx = h.pas[0] + .5, tz = h.pas[1] + .5, dx = tx - h.x, dz = tz - h.z, d = Math.hypot(dx, dz), v = dt * 1.4;
     h.marche = true;
     if(d <= v){ h.x = tx; h.z = tz; h.pas = null; }
     else { h.x += dx / d * v; h.z += dz / d * v; h.ang = Math.atan2(dx, dz); }
@@ -204,7 +204,7 @@ function placeLibre(){
     if(!ok) continue;
     let d = Infinity;
     for(const b of ref) d = Math.min(d, Math.hypot(b.i - i, b.j - j));
-    if(d > 16) continue;
+    if(d > 30) continue;
     d += Math.random() * 1.5;
     if(d < bd){ bd = d; best = c; }
   }
@@ -248,16 +248,16 @@ function seconde(){
   }
   // Dangers : la lave brûle, l'eau noie
   for(let c = 0; c < N * N; c++){
-    if(I.arbres[c] && (I.l[c] > .05 || I.w[c] > .25)){ I.arbres[c] = 0; arbres++; }
+    if(I.arbres[c] && (I.l[c] > .05 || I.w[c] > .6)){ I.arbres[c] = 0; arbres++; }
   }
   if(arbres) R.majArbres();
   for(const b of I.bat.slice()){
     const cases = casesBat(b);
     if(cases.some(c => I.l[c] > .05)) retirerBat(b, `🔥 La lave a brûlé : ${BATS[b.k].n}.`);
-    else if(!BATS[b.k].cote && cases.some(c => I.w[c] > .5)) retirerBat(b, `🌊 L'eau a emporté : ${BATS[b.k].n}.`);
+    else if(!BATS[b.k].cote && cases.some(c => I.w[c] > 1.2)) retirerBat(b, `🌊 L'eau a emporté : ${BATS[b.k].n}.`);
   }
   const avant = I.hab.length;
-  I.hab = I.hab.filter(h => { const c = idx(clamp(Math.floor(h.x), 0, N - 1), clamp(Math.floor(h.z), 0, N - 1)); return !(I.l[c] > .05 || I.w[c] > 1.5); });
+  I.hab = I.hab.filter(h => { const c = idx(clamp(Math.floor(h.x), 0, N - 1), clamp(Math.floor(h.z), 0, N - 1)); return !(I.l[c] > .05 || I.w[c] > 3.5); });
   if(I.hab.length < avant) toast(avant - I.hab.length > 1 ? `${avant - I.hab.length} habitants ont péri.` : 'Un habitant a péri.', true);
   // Paliers (sur toute la population de l'archipel)
   const pt = popTotale();
@@ -272,8 +272,14 @@ function seconde(){
   I.t++;
 }
 
-/* ---------- Sculpter le terrain ---------- */
+/* ---------- Creuser et sculpter le terrain ---------- */
 const niveauPioche = () => libre() ? 3 : S.pioche;
+function couperArbre(c){ if(I.arbres[c]){ gagner('bois', BOIS_ARBRE[I.arbres[c]] || 2); I.arbres[c] = 0; if(geste) geste.arbres = true; } }
+function annoncer(ev){
+  if(ev.includes('lave')) toast('🔥 Une poche de lave ! Elle se met à couler.', true);
+  if(ev.includes('source')) toast('💧 Une source ! L\'eau jaillit.', true);
+}
+// Creuser : on enlève le bloc du dessus et il va dans le sac (il faut la bonne pioche)
 function creuserCase(c, raisons){
   if(I.occ[c]){ raisons.add('bat'); return false; }
   const m = M.dessus(I, c);
@@ -281,73 +287,94 @@ function creuserCase(c, raisons){
   if(I.h[c] <= 1 || MATS[m].outil === 9){ raisons.add('fond'); return false; }
   if(MATS[m].outil > niveauPioche()){ raisons.add(`outil:${MATS[m].outil}:${m}`); return false; }
   if(!libre() && S.foi < 1){ raisons.add('foi'); return false; }
-  if(I.arbres[c]){ gagner('bois', BOIS_ARBRE[I.arbres[c]] || 2); I.arbres[c] = 0; geste && (geste.arbres = true); }
+  couperArbre(c);
   const r = M.retirer(I, c);
   if(!r) return false;
   if(!libre()) S.foi -= 1;
   gagner(MATS[r.mat].k);
-  if(r.ev.includes('lave')) toast('🔥 Une poche de lave ! Elle se met à couler.', true);
-  if(r.ev.includes('source')) toast('💧 Une source ! L\'eau jaillit.', true);
+  annoncer(r.ev);
   R.majCellule(c); R.fluides();
-  R.eclats(c % N, (c / N) | 0, r.mat, 4);
+  R.eclats(c % N, (c / N) | 0, r.mat, 3);
   return true;
 }
-function remplirCase(c, bloc, raisons){
+// Sculpter, comme dans Godus : la couche recule (sans récolte) …
+function abaisser(c, raisons){
   if(I.occ[c]){ raisons.add('bat'); return false; }
-  if(I.h[c] >= H - 2){ raisons.add('haut'); return false; }
-  if(qte(bloc) < 1){ raisons.add('bloc:' + bloc); return false; }
+  if(I.h[c] <= 2 || M.dessus(I, c) === ID.roche){ raisons.add('fond'); return false; }
   if(!libre() && S.foi < 1){ raisons.add('foi'); return false; }
-  if(I.arbres[c]){ gagner('bois', BOIS_ARBRE[I.arbres[c]] || 2); I.arbres[c] = 0; geste && (geste.arbres = true); }
-  M.poser(I, c, ID[bloc]);
-  if(!libre()){ S.foi -= 1; S.inv[bloc]--; }
+  couperArbre(c);
+  const r = M.retirer(I, c);
+  if(!r) return false;
+  if(!libre()) S.foi -= 1;
+  annoncer(r.ev);
   R.majCellule(c); R.fluides();
-  R.eclats(c % N, (c / N) | 0, ID[bloc], 3);
   return true;
+}
+// … ou s'étend par-dessus le terrain plus bas (la colonne monte jusqu'à la couche tirée)
+function elever(c, L, modele, raisons){
+  if(I.occ[c]){ raisons.add('bat'); return false; }
+  const n = L - I.h[c];
+  if(n <= 0) return false;
+  if(!libre() && S.foi < n){ raisons.add('foi'); return false; }
+  couperArbre(c);
+  const fait = M.etendre(I, c, L, modele);
+  if(!libre()) S.foi -= fait;
+  R.majCellule(c); R.fluides();
+  return fait > 0;
 }
 function expliquer(raisons){
   for(const r of raisons){
     if(r === 'foi') return conseil('foi', '🙏 Plus assez de foi. Vos habitants prient : attendez un peu, ou faites grandir le village.', 6);
     if(r.startsWith('outil:')){ const [, n, m] = r.split(':'); return conseil(r, `Il faut une <b>${PIOCHES[n].toLowerCase()}</b> pour creuser : ${MATS[m].n.toLowerCase()}.`, 6); }
-    if(r.startsWith('bloc:')) return conseil(r, `Plus de ${OBJETS[r.slice(5)].n.toLowerCase()} dans le sac. Creusez pour en récolter, ou choisissez un autre bloc.`, 6);
     if(r === 'bat') return conseil(r, 'On ne peut pas changer le terrain sous un bâtiment.', 6);
-    if(r === 'fond') return conseil(r, 'Impossible de creuser plus bas : la roche-mère.', 6);
-    if(r === 'haut') return conseil(r, 'Hauteur maximale atteinte.', 6);
+    if(r === 'fond') return conseil(r, 'Impossible d\'aller plus bas : la roche-mère.', 6);
   }
 }
+const RAYONS = [0, 1.5, 3];
 function pinceau(i, j){
-  const r = S.pinceau - 1, out = [];
-  for(let b = -r; b <= r; b++) for(let a = -r; a <= r; a++) if(a * a + b * b <= r * r + r * .5 && dans(i + a, j + b)) out.push(idx(i + a, j + b));
+  const r = RAYONS[S.pinceau - 1] || 0, n = Math.ceil(r), out = [];
+  for(let b = -n; b <= n; b++) for(let a = -n; a <= n; a++) if(a * a + b * b <= r * r + .3 && dans(i + a, j + b)) out.push(idx(i + a, j + b));
   return out;
 }
 function appliquer(){
   const g = geste, cell = g.cell;
   let fait = 0;
-  for(const c of pinceau(cell.i, cell.j)){
-    const h = I.h[c];
-    if(outil === 'creuser'){ if(!g.fait.has(c) && h === g.niveau && creuserCase(c, g.raisons)){ g.fait.add(c); fait++; } }
-    else if(outil === 'remblayer'){ if(!g.fait.has(c) && h === g.niveau && remplirCase(c, S.bloc, g.raisons)){ g.fait.add(c); fait++; } }
-    else if(outil === 'aplanir'){
-      if(h > g.niveau){ if(creuserCase(c, g.raisons)) fait++; }
-      else if(h < g.niveau){ if(remplirCase(c, S.bloc, g.raisons)) fait++; }
+  if(outil === 'creuser'){
+    for(const c of pinceau(cell.i, cell.j)) if(!g.fait.has(c) && I.h[c] === g.niveau && creuserCase(c, g.raisons)){ g.fait.add(c); fait++; }
+  } else if(outil === 'sculpter'){
+    // Le sens se décide à la première case quittée : vers plus bas, on tire la couche ; sur la couche, on la pousse
+    if(!g.mode && cell.c !== g.depart){
+      const h = I.h[cell.c];
+      if(h < g.niveau) g.mode = 'tirer';
+      else if(h === g.niveau) g.mode = 'pousser';
+    }
+    if(g.mode) for(const c of pinceau(cell.i, cell.j)){
+      if(g.fait.has(c)) continue;
+      if(g.mode === 'tirer' && I.h[c] < g.niveau){ if(elever(c, g.niveau, g.depart, g.raisons)){ g.fait.add(c); fait++; } }
+      else if(g.mode === 'pousser' && I.h[c] === g.niveau){ if(abaisser(c, g.raisons)){ g.fait.add(c); fait++; } }
     }
   }
   if(g.arbres){ R.majArbres(); g.arbres = false; }
   if(!fait) expliquer(g.raisons);
   g.raisons.clear();
   if(fait) majInterface();
-  R.montrerCurseur(cell.i, cell.j, S.pinceau - 1);
+  R.montrerCurseur(cell.i, cell.j, RAYONS[S.pinceau - 1]);
 }
 function debutGeste(cell){
-  geste = { cell, niveau:I.h[cell.c], fait:new Set(), raisons:new Set() };
+  geste = { cell, depart:cell.c, niveau:I.h[cell.c], fait:new Set(), raisons:new Set(), bouge:performance.now() };
   if(outil === 'construire'){ survolConstruire(cell); return; }
   appliquer();
-  if(outil === 'aplanir') geste.timer = setInterval(() => geste && appliquer(), 110);
+  // Creuser : le doigt immobile continue de creuser, de plus en plus profond
+  if(outil === 'creuser') geste.timer = setInterval(() => {
+    if(!geste || performance.now() - geste.bouge < 350) return;
+    geste.niveau--; geste.fait.clear(); appliquer();
+  }, 170);
 }
 function suiteGeste(cell){
   if(!geste) return;
   if(outil === 'construire'){ geste.cell = cell; survolConstruire(cell); return; }
   if(cell.c === geste.cell.c) return;
-  geste.cell = cell;
+  geste.cell = cell; geste.bouge = performance.now();
   appliquer();
 }
 function finGeste(annule){
@@ -400,27 +427,23 @@ function poserBatiment(cell){
 }
 
 /* ---------- Interface ---------- */
-const OUTILS_SCULPTE = ['creuser', 'aplanir', 'remblayer'];
+const OUTILS_SCULPTE = ['creuser', 'sculpter'];
 function choisirOutil(k){
   outil = k;
   document.querySelectorAll('#outils [data-outil]').forEach(b => b.classList.toggle('actif', b.dataset.outil === k));
   $('options').hidden = !OUTILS_SCULPTE.includes(k);
-  $('choixBloc').hidden = k === 'creuser';
   if(k !== 'construire'){ aConstruire = null; R.montrerFantome(); }
   if(!OUTILS_SCULPTE.includes(k)) R.montrerCurseur();
   $('aideOutil').textContent = {
-    main:'Glissez pour bouger la vue · touchez un arbre pour le bois, un bâtiment pour le voir',
-    creuser:'Touchez ou glissez : la couche touchée descend d\'un cran · 2 doigts pour bouger la vue',
-    aplanir:'Appuyez puis glissez : le terrain se met au niveau de la case touchée',
-    remblayer:'Touchez ou glissez : la couche touchée monte d\'un cran avec le bloc choisi',
+    main:'Touchez un arbre pour le bois, un bâtiment pour le voir · deux doigts pour bouger la vue',
+    creuser:'Touchez ou glissez pour creuser · gardez le doigt appuyé pour creuser plus profond',
+    sculpter:'Posez le doigt sur une couche : tirez vers le bas pour l\'étendre, poussez vers l\'intérieur pour la faire reculer',
     construire:aConstruire ? `${BATS[aConstruire].n} : glissez jusqu'à l'endroit voulu et relâchez` : '',
   }[k] || '';
   majOptions();
 }
 function majOptions(){
   document.querySelectorAll('#pinceaux button').forEach(b => b.classList.toggle('actif', +b.dataset.p === S.pinceau));
-  const blocs = POSABLES.filter(k => libre() || (S.inv[k] || 0) > 0 || k === S.bloc);
-  $('choixBloc').innerHTML = blocs.map(k => `<button data-bloc="${k}" class="${k === S.bloc ? 'actif' : ''}" title="${esc(OBJETS[k].n)}"><i style="background:${OBJETS[k].c}"></i><span>${esc(OBJETS[k].n)}</span><b>${libre() ? '∞' : S.inv[k] || 0}</b></button>`).join('');
 }
 function majInterface(){
   if(!S) return;
@@ -432,7 +455,6 @@ function majInterface(){
   const p = PALIERS[S.palier], suiv = PALIERS[S.palier + 1], pt = popTotale();
   $('cPalier').innerHTML = `<b>${esc(p.n)}</b><i><s style="width:${suiv ? clamp((pt - p.pop) / (suiv.pop - p.pop), 0, 1) * 100 : 100}%"></s></i><small>${suiv ? `${pt} / ${suiv.pop} habitants` : `${pt} habitants`}</small>`;
   $('bIle').textContent = ILES.find(x => x.k === S.active).n;
-  $('bRemblai').style.setProperty('--c', OBJETS[S.bloc].c);
   if(!$('pSac').hidden) remplirSac();
   if(!$('pFabriquer').hidden) remplirFabriquer();
   if(!$('pConstruire').hidden) remplirConstruire();
@@ -531,7 +553,7 @@ function installerVillage(ile, colons, port){
   const b = ajouterBat('cabane', i, j);
   if(port){
     let best = null, bd = Infinity;
-    for(let y = j - 20; y <= j + 20; y++) for(let x = i - 20; x <= i + 20; x++){
+    for(let y = j - 36; y <= j + 36; y++) for(let x = i - 36; x <= i + 36; x++){
       if(!dans(x, y)) continue;
       if(emplacement('port', x, y)) continue;
       const d = Math.hypot(x - i, y - j);
@@ -571,10 +593,10 @@ function voyager(k){
 /* ---------- Partie : nouvelle, sauvegarde, reprise ---------- */
 function nouvellePartie(mode){
   S = { v:1, mode, active:'verte', iles:{}, pops:{}, decouvertes:['verte'], inv:mode === 'libre' ? {} : { bois:6, terre:12 },
-    foi:200, pioche:0, palier:mode === 'libre' ? PALIERS.length - 1 : 0, pinceau:2, bloc:'terre' };
+    foi:500, pioche:0, palier:mode === 'libre' ? PALIERS.length - 1 : 0, pinceau:2 };
   installerVillage(M.creerIle('verte', Math.floor(Math.random() * 1e9)), 2, false);
   R.centrer(I.depart.i, I.depart.j);
-  R.cam.dist = 22;
+  R.cam.dist = 42;
   fermer();
   choisirOutil('main');
   majInterface();
@@ -584,7 +606,7 @@ function nouvellePartie(mode){
 function sauver(){
   if(!S || !I) return;
   try{
-    const o = { ...S, iles:{ ...S.iles, [S.active]:M.serialiser(I) }, pops:{ ...S.pops, [S.active]:I.hab.length }, cam:{ ...R.cam } };
+    const o = { ...S, v:2, iles:{ ...S.iles, [S.active]:M.serialiser(I) }, pops:{ ...S.pops, [S.active]:I.hab.length }, cam:{ ...R.cam } };
     localStorage.setItem(CLE, JSON.stringify(o));
     localStorage.setItem(CLE_RESUME, JSON.stringify({ mode:S.mode, ile:S.active, pop:popTotale(), palier:S.palier, nomPalier:PALIERS[S.palier].n, iles:S.decouvertes.length, t:Date.now() }));
   }catch(e){ conseil('sauve', 'Sauvegarde impossible (mémoire du téléphone pleine ?).', 120); }
@@ -593,10 +615,11 @@ function reprendre(){
   let o = null;
   try{ o = JSON.parse(localStorage.getItem(CLE)); }catch(e){}
   if(!o || !o.iles || !o.iles[o.active]) return false;
+  if(o.v !== 2){ toast('Le monde de Strates est maintenant plus fin : une nouvelle partie commence.', true); return false; }
   S = o;
   I = M.deserialiser(S.iles[S.active]);
   delete S.iles[S.active];
-  S.pinceau = S.pinceau || 2; S.bloc = S.bloc || 'terre';
+  S.pinceau = S.pinceau || 2;
   if(S.foi == null) S.foi = 0;
   refaireOcc();
   R.charger(I);
@@ -607,7 +630,7 @@ function reprendre(){
   return true;
 }
 
-/* ---------- Gestes : un doigt pour l'outil (ou la vue avec la main), deux doigts pour la vue ---------- */
+/* ---------- Gestes : un doigt pour l'outil, deux doigts (et seulement deux) pour la vue ---------- */
 function gestes(cv){
   const pts = new Map();
   let mode = null, ref = null;
@@ -616,11 +639,13 @@ function gestes(cv){
     if(!S) return;
     try{ cv.setPointerCapture(e.pointerId); }catch(err){}
     pts.set(e.pointerId, { x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, t0:performance.now() });
+    // Souris (sur ordinateur) : clic droit pour tourner, clic du milieu pour se déplacer
     if(e.pointerType === 'mouse' && e.button !== 0){ mode = e.button === 2 ? 'tourne' : 'pan'; return; }
     if(pts.size === 1){
-      if(outil === 'main'){ mode = 'cam'; return; }
+      if(outil === 'main'){ mode = 'toucher'; return; }
       const cell = R.viser(e.clientX, e.clientY);
-      if(cell){ mode = 'outil'; debutGeste(cell); } else mode = 'cam';
+      mode = cell ? 'outil' : 'rien';
+      if(cell) debutGeste(cell);
     } else if(pts.size === 2){
       if(mode === 'outil') finGeste(true);
       mode = 'deux'; ref = deux();
@@ -634,21 +659,21 @@ function gestes(cv){
       if(e.pointerType === 'mouse'){
         const cell = R.viser(e.clientX, e.clientY);
         if(outil === 'construire' && cell) survolConstruire(cell);
-        else if(OUTILS_SCULPTE.includes(outil) && cell) R.montrerCurseur(cell.i, cell.j, S.pinceau - 1);
+        else if(OUTILS_SCULPTE.includes(outil) && cell) R.montrerCurseur(cell.i, cell.j, RAYONS[S.pinceau - 1]);
       }
       return;
     }
     const dx = e.clientX - p.x, dy = e.clientY - p.y;
     p.x = e.clientX; p.y = e.clientY;
-    if(mode === 'cam' || mode === 'pan') R.deplacer(dx, dy);
-    else if(mode === 'tourne') R.tourner(-dx * .008, dy * .005);
+    if(mode === 'pan') R.deplacer(dx, dy);
+    else if(mode === 'tourne') R.tourner(dx * .008);
     else if(mode === 'outil'){ const cell = R.viser(e.clientX, e.clientY); if(cell) suiteGeste(cell); }
     else if(mode === 'deux' && pts.size === 2){
       const n = deux();
       R.deplacer(n.mx - ref.mx, n.my - ref.my);
       if(n.d > 10 && ref.d > 10) R.zoomer(ref.d / n.d);
       let da = n.a - ref.a; if(da > Math.PI) da -= 2 * Math.PI; if(da < -Math.PI) da += 2 * Math.PI;
-      R.tourner(-da);
+      R.tourner(da);
       ref = n;
     }
   });
@@ -657,12 +682,12 @@ function gestes(cv){
     if(!p) return;
     pts.delete(e.pointerId);
     if(mode === 'outil') finGeste(e.type === 'pointercancel');
-    else if(mode === 'cam' && outil === 'main' && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < 9 && performance.now() - p.t0 < 450){
+    else if(mode === 'toucher' && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < 12 && performance.now() - p.t0 < 500){
       const cell = R.viser(e.clientX, e.clientY);
       if(cell) toucher(cell);
     }
     if(!pts.size) mode = null;
-    else if(mode === 'deux') mode = 'fini';
+    else if(mode === 'deux') mode = 'fini';      // le doigt qui reste ne fait plus rien
   };
   cv.addEventListener('pointerup', fin);
   cv.addEventListener('pointercancel', fin);
@@ -680,7 +705,7 @@ function boucle(now){
     if(accEau >= .1){ accEau = 0; if(M.pasEau(I) > .002) R.fluides(); }
     if(accLave >= .3){
       accLave = 0;
-      if(I.cratere >= 0 && I.eruption && I.eruption.fin > 0) I.l[I.cratere] += .55;
+      if(I.cratere >= 0 && I.eruption && I.eruption.fin > 0) I.l[I.cratere] += 2.4;
       const ch = [];
       if(M.pasLave(I, ch) > .002 || ch.length) R.fluides();
       if(ch.length){ ch.forEach(c => { R.majCellule(c); I.arbres[c] = 0; }); R.majArbres(); }
@@ -688,7 +713,6 @@ function boucle(now){
     if(accSec >= 1){ accSec = 0; seconde(); }
     if(accUI >= .25){ accUI = 0; majInterface(); }
     if(accSauve >= 30){ accSauve = 0; sauver(); }
-    if(aRotation){ const p = aRotation * Math.min(1, dt * 8); R.tourner(p); aRotation -= p; if(Math.abs(aRotation) < .002) aRotation = 0; }
     bougerHabitants(dt);
     R.rendre(dt, I.hab, temps);
   }
@@ -700,7 +724,6 @@ function brancher(){
   document.querySelectorAll('#outils [data-outil]').forEach(b => b.onclick = () => choisirOutil(b.dataset.outil));
   document.querySelectorAll('#outils [data-panneau], .barre-haut [data-panneau]').forEach(b => b.onclick = () => ouvrir(b.dataset.panneau));
   $('pinceaux').onclick = e => { const b = e.target.closest('button'); if(b){ S.pinceau = +b.dataset.p; majOptions(); } };
-  $('choixBloc').onclick = e => { const b = e.target.closest('button'); if(b){ S.bloc = b.dataset.bloc; majOptions(); majInterface(); } };
   $('voile').onclick = fermer;
   document.querySelectorAll('.panneau .fermer').forEach(b => b.onclick = fermer);
   $('lConstruire').onclick = e => { const b = e.target.closest('[data-bat]'); if(!b) return; aConstruire = b.dataset.bat; fermer(); choisirOutil('construire'); toast(`${BATS[aConstruire].n} : glissez jusqu'à l'endroit voulu et relâchez.`); };
@@ -719,11 +742,6 @@ function brancher(){
   $('aNouvelle').onclick = () => nouvellePartie('partie');
   $('aLibre').onclick = () => nouvellePartie('libre');
   $('bAide').onclick = () => ouvrir('pAide');
-  $('camG').onclick = () => { aRotation += Math.PI / 4; };
-  $('camD').onclick = () => { aRotation -= Math.PI / 4; };
-  $('camP').onclick = () => R.zoomer(.8);
-  $('camM').onclick = () => R.zoomer(1.25);
-  $('camI').onclick = () => { R.cam.pitch = R.cam.pitch > 1.1 ? .7 : R.cam.pitch > .8 ? 1.3 : .95; };
   $('camC').onclick = () => { const v = I.bat.find(b => BATS[b.k].cap) || I.depart; R.centrer(v.i, v.j); };
   window.addEventListener('pagehide', sauver);
   document.addEventListener('visibilitychange', () => { if(document.hidden) sauver(); });

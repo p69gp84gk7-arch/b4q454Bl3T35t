@@ -1,5 +1,5 @@
 /* Strates : rendu 3D (three.js). Le terrain est dessiné couche par couche, comme des courbes de niveau :
-   chaque couche est une plaque dont le contour passe à mi-chemin entre les colonnes (coins coupés en biais),
+   chaque couche est une fine plaque au contour arrondi (placé entre les colonnes d'après un relief adouci),
    avec sa tranche colorée par le matériau (on voit les strates du sous-sol sur les falaises). */
 (() => {
 const { N, H, LH, SEA, MATS, ID, hash, clamp } = window.Monde;
@@ -13,18 +13,18 @@ const groupeBats = new T.Group(), modeles = new Map();
 const arbresMesh = {};
 let corps, tetes, fantome, curseur;
 const debris = [];
-const cam = { x:N / 2, z:N / 2, dist:34, yaw:.6, pitch:.95 };
+const cam = { x:N / 2, z:N / 2, dist:60, yaw:.6, pitch:.95 };
 const FOV = 40;
 
 /* ---------- Couleurs ---------- */
 const DESSUS = MATS.map(m => m && new T.Color(m.dessus)), COTE = MATS.map(m => m && new T.Color(m.cote));
 const HERBE_BAS = new T.Color('#A9D46F'), HERBE_HAUT = new T.Color('#4F8E4F'), HERBE_SABLE = new T.Color('#C9D98A');
 const tmpA = new T.Color(), tmpB = new T.Color(), tmpC = new T.Color();
-function herbe(L, out){ return out.copy(HERBE_BAS).lerp(HERBE_HAUT, clamp((L - SEA - 1) / 13, 0, 1)); }
+function herbe(L, out){ return out.copy(HERBE_BAS).lerp(HERBE_HAUT, clamp((L - SEA - 2) / 32, 0, 1)); }
 function couleurDessus(mat, c, L, sommet, out){
   if(mat === ID.terre && sommet && L > SEA) herbe(L, out);
   else out.copy(DESSUS[mat] || DESSUS[ID.terre]);
-  out.multiplyScalar((L % 2 ? 1 : .955) * (.975 + hash(c, L, 0, 7) * .05));
+  out.multiplyScalar((L % 2 ? 1 : .965) * (.98 + hash(c, L, 0, 7) * .04));
   return out;
 }
 
@@ -39,6 +39,8 @@ function tri(P, No, C, a, b, c, n, ca, cb, cc){
   C.push(ca.r, ca.g, ca.b, cb.r, cb.g, cb.b, cc.r, cc.g, cc.b);
 }
 const hauteur = (i, j) => (i < 0 || j < 0 || i >= N || j >= N) ? 0 : I.h[j * N + i];
+// Relief adouci : sert seulement à placer le contour de chaque couche entre deux colonnes (bords arrondis)
+const adouci = (i, j) => (2 * hauteur(i, j) + hauteur(i + 1, j) + hauteur(i - 1, j) + hauteur(i, j + 1) + hauteur(i, j - 1)) / 6;
 const K = [[0, 0], [1, 0], [1, 1], [0, 1]];
 // Une cellule entre les centres de 4 colonnes voisines : pour chaque couche, la partie de la plaque qui s'y trouve
 function cellule(di, dj, P, No, C){
@@ -46,12 +48,19 @@ function cellule(di, dj, P, No, C){
   const lo = Math.min(hs[0], hs[1], hs[2], hs[3]), hi = Math.max(hs[0], hs[1], hs[2], hs[3]);
   if(hi === 0) return;
   const x0 = di + .5, z0 = dj + .5;
+  const sm = lo === hi ? null : [adouci(di, dj), adouci(di + 1, dj), adouci(di + 1, dj + 1), adouci(di, dj + 1)];
   for(let L = Math.max(1, lo); L <= hi; L++){
     const poly = [], milieu = [];
     for(let k = 0; k < 4; k++){
-      const a = hs[k] >= L, b = hs[(k + 1) % 4] >= L, pa = K[k], pb = K[(k + 1) % 4];
+      const k2 = (k + 1) % 4, a = hs[k] >= L, b = hs[k2] >= L, pa = K[k], pb = K[k2];
       if(a){ poly.push([x0 + pa[0], z0 + pa[1]]); milieu.push(false); }
-      if(a !== b){ poly.push([x0 + (pa[0] + pb[0]) / 2, z0 + (pa[1] + pb[1]) / 2]); milieu.push(true); }
+      if(a !== b){
+        // Point du contour sur l'arête : depuis le coin dans la couche vers le coin dehors
+        const ki = a ? k : k2, ko = a ? k2 : k, si = sm[ki], so = sm[ko];
+        const t = clamp(si > so ? (si - (L - .5)) / (si - so) : .5, .12, .88);
+        poly.push([x0 + K[ki][0] + (K[ko][0] - K[ki][0]) * t, z0 + K[ki][1] + (K[ko][1] - K[ki][1]) * t]);
+        milieu.push(true);
+      }
     }
     let kc = -1;
     for(let k = 0; k < 4; k++) if(hs[k] === L){ kc = k; break; }
@@ -102,7 +111,7 @@ function construireMorceau(ci, cj){
 }
 function majCellule(c){
   const i = c % N, j = (c / N) | 0;
-  for(let dj = j - 1; dj <= j; dj++) for(let di = i - 1; di <= i; di++){
+  for(let dj = j - 2; dj <= j + 1; dj++) for(let di = i - 2; di <= i + 1; di++){
     const ci = Math.floor((di + 1) / CH), cj = Math.floor((dj + 1) / CH);
     if(ci >= 0 && cj >= 0 && ci < NCH && cj < NCH) sales.add(cj * NCH + ci);
   }
@@ -112,7 +121,7 @@ function majCellule(c){
 const coinH = new Float32Array((N + 1) * (N + 1)), surf = new Float32Array(N * N);
 const EAU_CLAIRE = new T.Color('#A6E1F1'), EAU_FONCEE = new T.Color('#7CC4E2'), LAVE_A = new T.Color('#FF7A1F'), LAVE_B = new T.Color('#FFD45C');
 function construireFluide(f, mesh, eau){
-  for(let c = 0; c < N * N; c++) surf[c] = f[c] > .015 ? (I.h[c] + f[c]) * LH + .025 : -1;
+  for(let c = 0; c < N * N; c++) surf[c] = f[c] > .03 ? (I.h[c] + f[c]) * LH + .02 : -1;
   for(let j = 0; j <= N; j++) for(let i = 0; i <= N; i++){
     let s = 0, n = 0;
     for(let b = j - 1; b <= j; b++) for(let a = i - 1; a <= i; a++){
@@ -127,7 +136,7 @@ function construireFluide(f, mesh, eau){
     const c = j * N + i;
     if(surf[c] < 0) continue;
     const y00 = coinH[j * (N + 1) + i], y10 = coinH[j * (N + 1) + i + 1], y11 = coinH[(j + 1) * (N + 1) + i + 1], y01 = coinH[(j + 1) * (N + 1) + i];
-    const col = eau ? tmpA.copy(EAU_CLAIRE).lerp(EAU_FONCEE, clamp(f[c] / 2.5, 0, 1)) : tmpA.copy(LAVE_A).lerp(LAVE_B, hash(i, j, 1, 3) * .7);
+    const col = eau ? tmpA.copy(EAU_CLAIRE).lerp(EAU_FONCEE, clamp(f[c] / 6, 0, 1)) : tmpA.copy(LAVE_A).lerp(LAVE_B, hash(i, j, 1, 3) * .7);
     tri(P, No, C, [i, y00, j], [i + 1, y10, j], [i + 1, y11, j + 1], HAUT, col, col, col);
     tri(P, No, C, [i, y00, j], [i + 1, y11, j + 1], [i, y01, j + 1], HAUT, col, col, col);
   }
@@ -380,6 +389,7 @@ function montrerCurseur(i, j, r){
 /* ---------- Caméra ---------- */
 const Y0 = () => SEA * LH + 1;
 function placerCamera(){
+  inclinaison();
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   camera.position.set(cam.x + Math.sin(cam.yaw) * cp * cam.dist, Y0() + sp * cam.dist, cam.z + Math.cos(cam.yaw) * cp * cam.dist);
   camera.lookAt(cam.x, Y0(), cam.z);
@@ -391,8 +401,10 @@ function deplacer(dx, dy){
   cam.x = clamp(cam.x - rx * dx * k + fx * dy * k * v, -4, N + 4);
   cam.z = clamp(cam.z - rz * dx * k + fz * dy * k * v, -4, N + 4);
 }
-const zoomer = f => { cam.dist = clamp(cam.dist * f, 7, 80); };
-const tourner = (da, dp = 0) => { cam.yaw += da; cam.pitch = clamp(cam.pitch + dp, .45, 1.45); };
+// Plus on s'approche, plus la vue s'incline (comme dans Godus)
+const inclinaison = () => { cam.pitch = .72 + clamp((cam.dist - 10) / 150, 0, 1) * .55; };
+const zoomer = f => { cam.dist = clamp(cam.dist * f, 10, 160); inclinaison(); };
+const tourner = da => { cam.yaw += da; };
 const centrer = (i, j) => { cam.x = i + .5; cam.z = j + .5; };
 
 // Case de terrain sous un point de l'écran : on avance le long du rayon jusqu'à toucher le dessus d'une colonne
@@ -405,7 +417,7 @@ function viser(px, py){
   const o = ray.ray.origin, d = ray.ray.direction;
   let t = 0;
   if(o.y > H * LH && d.y < 0) t = (o.y - H * LH) / -d.y;
-  for(let k = 0; k < 5000; k++, t += .035){
+  for(let k = 0; k < 14000; k++, t += .035){
     const x = o.x + d.x * t, y = o.y + d.y * t, z = o.z + d.z * t;
     if(y < 0) return null;
     const i = Math.floor(x), j = Math.floor(z);
@@ -422,8 +434,8 @@ function init(cv){
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   scene = new T.Scene();
   scene.background = new T.Color('#CFEAF4');
-  scene.fog = new T.Fog('#CFEAF4', 80, 230);
-  camera = new T.PerspectiveCamera(FOV, 1, .3, 900);
+  scene.fog = new T.Fog('#CFEAF4', 140, 380);
+  camera = new T.PerspectiveCamera(FOV, 1, .5, 1200);
   scene.add(new T.HemisphereLight('#FFFFFF', '#8FA37A', .58));
   const sol = new T.DirectionalLight('#FFF1D8', .72);
   sol.position.set(-30, 60, 25);
@@ -443,7 +455,7 @@ function init(cv){
   eauMesh.renderOrder = 2;
   scene.add(eauMesh, laveMesh, groupeBats);
   for(const k of [1, 2, 3, 4, 5]){
-    arbresMesh[k] = new T.InstancedMesh(geoArbre(k), matArbres, 2200);
+    arbresMesh[k] = new T.InstancedMesh(geoArbre(k), matArbres, 7000);
     arbresMesh[k].count = 0;
     scene.add(arbresMesh[k]);
   }
