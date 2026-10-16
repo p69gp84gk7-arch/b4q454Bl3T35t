@@ -242,7 +242,7 @@ tr.gap th.cat{border-right-color:var(--margin)}
   </div>
 </div>
 
-<script src="sauvegarde.js?v=46"></script>
+<script src="sauvegarde.js?v=47"></script>
 <script>
 const MAX = 10;
 const UPPER = [1,2,3,4,5,6].map(f => ({key:'n'+f, label:'Total de '+f, short:String(f), type:'upper', face:f, help:'Somme des '+f}));
@@ -511,7 +511,7 @@ if('serviceWorker' in navigator) window.addEventListener('load', () => navigator
 // Nouvelle version installée : on recharge une fois, pour que la page et ses scripts soient de la même version
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
 </script>
-<script src="ia.js?v=46"></script>
-<script src="plateau.js?v=46" data-jeu="yams"></script>
+<script src="ia.js?v=47"></script>
+<script src="plateau.js?v=47" data-jeu="yams"></script>
 </body>
 </html>
