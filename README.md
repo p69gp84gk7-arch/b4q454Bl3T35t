@@ -1,6 +1,6 @@
 # DesDés
 
-Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés, un quiz de géographie, une course à dessiner et un jeu de neige de culture en 3D.
+Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés, un quiz de géographie, une course à dessiner, un jeu de neige de culture en 3D et un bac à sable en 3D, Strates.
 
 ![Logo](logo.svg)
 
@@ -13,6 +13,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), défi du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
 | **Draw Race** : course de monoplaces dont on dessine la trajectoire, 20 circuits inspirés de la F1, pneus, météo et arrêts au stand ; modes Arcade et Championnat | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 | **Nivoculteur** : construire et faire tourner le réseau de neige de culture d'une station, en 3D (en construction) | `jeux/nivoculteur/index.html` | 1 |
+| **Strates** : bac à sable en 3D, entre Godus et Minecraft : sculpter les couches d'une île, creuser le sous-sol, fabriquer, faire grandir un village, découvrir un archipel | `jeux/strates.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -245,6 +246,26 @@ Il est construit étape par étape ; le projet, les règles et l'avancement sont
 - Construction : outils « + Regard », « Eau » (depuis la salle de pompage ou un regard alimenté), « Électricité » (depuis un départ électrique près des bâtiments ou un regard alimenté) ; un devis s'affiche avant chaque achat (tranchée commune moins chère, pression prévue) ; vue sous-sol, annuler, tout effacer.
 - `index.html?test` affiche les vérifications de la simulation ; `index.html?modeles` (bouton « Modèles 3D ») montre chaque modèle 3D seul : ventilateurs, perches, regard, salle de pompage, compresseur d'air, dameuses, garage, armoire électrique.
 
+## Strates
+
+Bac à sable en 3D (Three.js), dans l'esprit de Godus (un dieu sculpte un terrain en couches, aux couleurs douces, et son peuple y bâtit) mêlé à Minecraft (creuser le sous-sol, récolter, fabriquer). Fichiers : `jeux/strates.html` (page et interface), `jeux/strates/monde.js` (îles, matériaux, eau et lave), `jeux/strates/rendu.js` (3D), `jeux/strates/jeu.js` (règles). Three.js est pris dans `jeux/nivoculteur/three.min.js`.
+
+- **Le monde** : une île de 64 × 64 colonnes, chaque colonne est une pile de blocs (30 couches au plus). Le terrain est dessiné couche par couche, comme des courbes de niveau : chaque couche est une plaque aux coins coupés en biais, et la tranche des falaises montre les strates du sous-sol.
+- **Deux modes** : *Nouvelle partie* (avec progression) ou *Bac à sable libre* (tout débloqué, foi et matériaux sans limite).
+- **La vue** : avec la Main, un doigt déplace la vue ; avec les autres outils, deux doigts (pincer pour zoomer, tourner les doigts pour pivoter). Boutons à droite : tourner, zoomer, incliner, revenir au village. À la souris : clic droit pour tourner, molette pour zoomer.
+- **Sculpter** (1 point de foi par bloc déplacé ; pinceau de 1, 5 ou 21 cases) :
+  - *Creuser* : la couche touchée descend d'un cran, le bloc enlevé va dans le sac ;
+  - *Aplanir* : en glissant, le terrain se met au niveau de la case touchée ;
+  - *Remblayer* : la couche touchée monte d'un cran avec le bloc choisi (terre, sable, argile, pierre, grès, basalte, neige, glace, obsidienne, planches, briques, verre).
+- **Le sous-sol** : sous la terre, la pierre, puis le charbon, le fer, l'or et les cristaux, de plus en plus profond (par filons). La roche-mère, tout en bas, ne se creuse pas. Il faut une pioche pour les blocs durs : en bois (pierre, charbon, grès, basalte, glace), en pierre (fer), en fer (or, cristal, obsidienne).
+- **L'eau et la lave coulent** vers les colonnes plus basses. Creuser sous le niveau de la mer près du rivage fait entrer la mer. En creusant, on peut percer une source (l'eau jaillit jusqu'à un peu au-dessus de la source) ou une poche de lave. La lave est visqueuse : au contact de l'eau elle devient de l'obsidienne, et une coulée qui s'arrête refroidit en basalte. La lave brûle arbres et bâtiments, l'eau profonde emporte les bâtiments (sauf le port et le phare).
+- **Le village** : les habitants prient (0,25 point de foi par seconde chacun, plus avec une fontaine, une statue, un phare ou un temple). Ils bâtissent seuls une cabane quand il y a de la nourriture mais plus de place, sur une case dont les 4 voisines sont au même niveau. Une naissance environ toutes les 8 s s'il y a de la place et de quoi manger (4 habitants nourris de base, 6 de plus par ferme). Un habitant sans toit part au bout de 90 s. Toucher une maison avec la Main permet de l'améliorer : cabane (2 habitants), maison (4), villa (8). Toucher un arbre donne du bois.
+- **Fabriquer** : planches (sans bâtiment), pioches (à l'Atelier), lingots de fer et d'or, verre, briques (au Four).
+- **Bâtiments** : cabane, ferme (2 × 2), atelier, four, fontaine, port et phare (au bord de l'eau), statue, temple (2 × 2).
+- **Paliers** (selon les habitants de tout l'archipel) : Le premier village (0), Le hameau (6 : pioche en bois, maison, four), Le village (12 : pioche en pierre, fer, verre, fontaine), Le bourg (20 : port, briques, statue, Île des Sables), La petite ville (32 : pioche en fer, or, villa), La ville (45 : temple, Île du Volcan), La cité (60 : phare, Île des Glaces).
+- **L'archipel** : avec un port, le bateau mène aux autres îles. Découvrir une île y envoie 2 colons (il faut 4 habitants au moins) ; un port et une cabane les attendent. Le sac et la foi voyagent avec vous, chaque île garde son village. Île Verte (prairies, forêts, fer), Île des Sables (dunes, palmiers, cactus, grès, argile, beaucoup d'or), Île du Volcan (basalte, obsidienne, cristaux ; éruptions toutes les 2 à 5 minutes, pendant 25 s), Île des Glaces (neige, glace, sapins, cristaux).
+- **Sauvegarde** : toutes les 30 s et en quittant, dans `strates-partie` (environ 60 Ko par île, blocs compressés) ; `strates-resume` sert à l'accueil. Le fichier de sauvegarde de DesDés l'emporte aussi.
+
 ## Mise en ligne
 
 Le site est fait de fichiers statiques, sans installation ni compilation.
@@ -279,6 +300,8 @@ outils/                script qui fabrique les données de géographie
 jeux/drawrace.html     jeu Draw Race
 jeux/drawrace/         circuits et géométrie de Draw Race
 jeux/nivoculteur/      jeu Nivoculteur (page, Three.js, CLAUDE.md)
+jeux/strates.html      jeu Strates (bac à sable en 3D)
+jeux/strates/          monde, rendu 3D et règles de Strates
 logo.svg               logo (source vectorielle)
 icons/                 icônes de l'application (192, 512, masquable, Apple)
 manifest.webmanifest   description de l'application installable
