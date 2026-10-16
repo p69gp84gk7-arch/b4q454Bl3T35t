@@ -1,6 +1,7 @@
 /* DesDés : fonctionnement hors ligne.
-   Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement. */
-const VERSION = 'desdes-v40';
+   Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement,
+   ainsi que le numéro ?v= des scripts dans les pages (outils/version.sh fait les deux). */
+const VERSION = 'desdes-v41';
 const FONTS = 'desdes-fonts';
 const SHELL = [
   './',
@@ -49,7 +50,8 @@ async function drapeaux(c){
 }
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL).then(() => drapeaux(c))).then(() => self.skipWaiting()));
+  // cache:'reload' : on prend les fichiers sur le serveur, pas dans le cache HTTP du navigateur
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL.map(u => new Request(u, { cache:'reload' }))).then(() => drapeaux(c))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -78,21 +80,29 @@ self.addEventListener('fetch', e => {
   }
   if(url.origin !== location.origin) return;
 
-  // Pages : réseau d'abord (pour avoir la dernière version), cache si hors ligne
-  if(req.mode === 'navigate'){
-    e.respondWith(
-      fetch(req).then(res => {
-        const copy = res.clone();
-        caches.open(VERSION).then(c => c.put(req, copy));
-        return res;
-      }).catch(() => caches.match(req, { ignoreSearch:true }).then(r => r || caches.match('./')))
-    );
+  // Images (drapeaux, icônes) : cache d'abord, elles ne changent pas
+  if(/\.(svg|png|jpe?g|webp)$/i.test(url.pathname) && req.mode !== 'navigate'){
+    e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {
+      if(res.ok){ const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
+      return res;
+    })));
     return;
   }
 
-  // Le reste : cache d'abord
-  e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {
-    if(res.ok){ const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
-    return res;
-  })));
+  // Pages et scripts : réseau d'abord, pour que la page et ses scripts soient toujours de la même version.
+  // Hors ligne (ou réseau trop lent, plus de 4 s), on prend la copie gardée.
+  e.respondWith(new Promise(resolve => {
+    let fini = false;
+    const secours = () => caches.match(req, { ignoreSearch:true })
+      .then(r => r || (req.mode === 'navigate' ? caches.match('./') : null));
+    const minuterie = setTimeout(() => secours().then(r => { if(r && !fini){ fini = true; resolve(r); } }), 4000);
+    fetch(req.mode === 'navigate' ? req : new Request(req, { cache:'no-cache' })).then(res => {
+      clearTimeout(minuterie);
+      if(res.ok){ const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
+      if(!fini){ fini = true; resolve(res); }
+    }).catch(() => {
+      clearTimeout(minuterie);
+      secours().then(r => { if(!fini){ fini = true; resolve(r || Response.error()); } });
+    });
+  }));
 });
