@@ -1,8 +1,11 @@
-/* Strates : le jeu. Vous êtes le dieu d'un archipel : sculptez les couches du terrain, creusez pour trouver
-   pierre et minerais, fabriquez des outils et des matériaux, et vos habitants bâtissent leur village sur vos terrains plats. */
+/* Strates : le jeu, comme Godus. Vous êtes le dieu d'un archipel : du doigt, vous tirez et poussez les couches
+   du terrain (en les faisant reculer, vous récoltez ce qu'elles contiennent : terre, pierre, minerais) ;
+   vos habitants bâtissent leur village sur vos terrains plats et vous donnent des bulles de foi.
+   En plus de Godus : lisser le terrain et tracer des rampes (plans inclinés). */
 (() => {
 const M = window.Monde, R = window.Rendu;
 const { N, H, LH, SEA, K, MATS, ID, idx, dans, VOISINS, clamp } = M;
+const qi = v => Math.floor(v + 1e-4);
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const CLE = 'strates-partie', CLE_RESUME = 'strates-resume';
@@ -33,9 +36,9 @@ const PALIERS = [
 ];
 const RECETTES = {
   planches:      { n:'Planches', donne:{ planches:4 }, cout:{ bois:1 } },
-  pioche_bois:   { n:'Pioche en bois', outil:1, cout:{ planches:3 }, lieu:'atelier', d:'Creuse la pierre, le charbon, le grès, le basalte et la glace.' },
-  pioche_pierre: { n:'Pioche en pierre', outil:2, cout:{ pierre:3, planches:2 }, lieu:'atelier', d:'Creuse aussi le minerai de fer.' },
-  pioche_fer:    { n:'Pioche en fer', outil:3, cout:{ lingot_fer:3, planches:2 }, lieu:'atelier', d:'Creuse tout : or, cristal, obsidienne.' },
+  pioche_bois:   { n:'Pioche en bois', outil:1, cout:{ planches:3 }, lieu:'atelier', d:'Pour garder la pierre, le charbon, le grès, le basalte et la glace des couches que vous poussez.' },
+  pioche_pierre: { n:'Pioche en pierre', outil:2, cout:{ pierre:3, planches:2 }, lieu:'atelier', d:'Pour garder aussi le minerai de fer.' },
+  pioche_fer:    { n:'Pioche en fer', outil:3, cout:{ lingot_fer:3, planches:2 }, lieu:'atelier', d:'Pour tout garder : or, cristal, obsidienne.' },
   lingot_fer:    { n:'Lingot de fer', donne:{ lingot_fer:1 }, cout:{ fer:1, charbon:1 }, lieu:'four' },
   lingot_or:     { n:'Lingot d\'or', donne:{ lingot_or:1 }, cout:{ or:1, charbon:1 }, lieu:'four' },
   verre:         { n:'Verre', donne:{ verre:2 }, cout:{ sable:2, charbon:1 }, lieu:'four' },
@@ -56,14 +59,15 @@ const BATS = {
 };
 const A_CONSTRUIRE = ['cabane', 'ferme', 'atelier', 'four', 'fontaine', 'port', 'statue', 'phare', 'temple'];
 const BOIS_ARBRE = { 1:3, 2:3, 3:2, 4:1, 5:3 };
-const FOI_HAB = .9;            // foi par habitant et par seconde
+const FOI_HAB = .9;            // foi par habitant et par seconde (dans les bulles des maisons)
+const BULLE_MAX = 30;          // foi au plus dans la bulle d'une maison, par place d'habitant
 const Q = K / 2.47;            // les épaisseurs d'eau sont comptées en couches : seuils proportionnels à leur finesse
 const NOMS = { ...Object.fromEntries(Object.entries(BATS).map(([k, b]) => [k, b.n])), ...Object.fromEntries(Object.entries(RECETTES).map(([k, r]) => [k, r.n])),
   'ile:sables':'Île des Sables', 'ile:volcan':'Île du Volcan', 'ile:glaces':'Île des Glaces' };
 
 /* ---------- État ---------- */
 let S = null, I = null;
-let outil = 'main', geste = null;
+let geste = null, pente = 0, construction = false;        // pente : 0 sculpter, 1 lisser, 2 rampe
 const libre = () => S && S.mode === 'libre';
 const debloque = k => libre() || PALIERS.slice(0, S.palier + 1).some(p => p.d.includes(k));
 const palierDe = k => PALIERS.findIndex(p => p.d.includes(k));
@@ -125,8 +129,8 @@ function directionEau(cases){
 function emplacement(k, i, j){
   const t = BATS[k].t || 1, cases = [];
   for(let b = j; b < j + t; b++) for(let a = i; a < i + t; a++){ if(!dans(a, b)) return 'Hors de l\'île.'; cases.push(idx(a, b)); }
-  const h = I.h[cases[0]];
-  if(cases.some(c => I.h[c] !== h)) return 'Le terrain doit être plat' + (t > 1 ? ` sur ${t} × ${t} cases.` : '.');
+  const h = qi(I.h[cases[0]]);
+  if(cases.some(c => qi(I.h[c]) !== h || (I.s[c] && Math.abs(I.h[c] - h - .5) > .5))) return 'Le terrain doit être plat' + (t > 1 ? ` sur ${t} × ${t} cases.` : '.');
   if(h <= SEA) return 'Trop bas : au niveau de la mer.';
   if(cases.some(c => I.w[c] > .1 * Q || I.l[c] > 0)) return 'Il y a de l\'eau ou de la lave.';
   if(cases.some(c => I.occ[c])) return 'Il y a déjà un bâtiment.';
@@ -138,13 +142,14 @@ function emplacement(k, i, j){
 function nouvelHabitant(b, x, z){
   const t = BATS[b.k].t || 1;
   const h = { id:I.prochainId++, x:x ?? b.i + t / 2, z:z ?? b.j + t / 2, y:0, maison:b.id, coul:Math.floor(Math.random() * 8), pause:Math.random() * 2, sans:0 };
-  h.y = I.h[idx(Math.floor(h.x), Math.floor(h.z))] * LH;
+  h.y = R.sol(h.x, h.z) * LH;
   I.hab.push(h);
   return h;
 }
 function marchable(c, depuis, h){
   if(I.w[c] > .7 * Q || I.l[c] > .05 || I.h[c] <= SEA - 1) return false;
-  if(Math.abs(I.h[c] - I.h[depuis]) > 3) return false;
+  // Une falaise de plus de 2 couches arrête les habitants ; une pente ou une rampe se monte
+  if(Math.abs(solCase(c) - solCase(depuis)) > 2.2) return false;
   return !I.occ[c] || I.occ[c] === h.maison;
 }
 function choisirCible(h){
@@ -161,7 +166,7 @@ function choisirCible(h){
 function bougerHabitants(dt){
   for(const h of I.hab){
     const ci = clamp(Math.floor(h.x), 0, N - 1), cj = clamp(Math.floor(h.z), 0, N - 1), c = idx(ci, cj);
-    const yc = I.h[c] * LH + (I.w[c] > .1 * Q ? Math.min(I.w[c], Q) * LH : 0);
+    const yc = R.sol(h.x, h.z) * LH + (I.w[c] > .1 * Q ? Math.min(I.w[c], Q) * LH : 0);
     h.y = h.y ? h.y + (yc - h.y) * Math.min(1, dt * 10) : yc;
     if(h.dedans > 0){ h.dedans -= dt; continue; }
     if(h.pause > 0){ h.pause -= dt; h.marche = false; continue; }
@@ -198,10 +203,10 @@ function placeLibre(){
   const ref = vill.length ? vill : I.bat.length ? I.bat : [{ i:I.depart.i, j:I.depart.j }];
   let best = -1, bd = Infinity;
   for(let j = 1; j < N - 1; j++) for(let i = 1; i < N - 1; i++){
-    const c = idx(i, j), h = I.h[c];
-    if(h <= SEA || I.w[c] > 0 || I.l[c] > 0 || I.occ[c]) continue;
+    const c = idx(i, j), h = qi(I.h[c]);
+    if(h <= SEA || I.w[c] > 0 || I.l[c] > 0 || I.occ[c] || I.s[c]) continue;
     let ok = true;
-    for(const [a, b] of VOISINS){ const n = idx(i + a, j + b); if(I.h[n] !== h || I.occ[n] || I.w[n] > .05 || I.l[n] > 0){ ok = false; break; } }
+    for(const [a, b] of VOISINS){ const n = idx(i + a, j + b); if(qi(I.h[n]) !== h || I.s[n] || I.occ[n] || I.w[n] > .05 || I.l[n] > 0){ ok = false; break; } }
     if(!ok) continue;
     let d = Infinity;
     for(const b of ref) d = Math.min(d, Math.hypot(b.i - i, b.j - j));
@@ -213,7 +218,12 @@ function placeLibre(){
 }
 function seconde(){
   const pop = I.hab.length, cap = capacite(), food = nourriture();
-  if(!libre()) S.foi += (pop * bonusFoi() + Object.entries(S.pops).reduce((s, [k, n]) => s + (k === S.active ? 0 : n), 0)) * FOI_HAB;
+  // Foi : chaque maison remplit sa bulle (à toucher) ; les autres îles prient un peu, sans bulle
+  if(!libre()){
+    const bf = bonusFoi();
+    for(const b of I.bat) if(BATS[b.k].cap) b.foi = Math.min(BATS[b.k].cap * BULLE_MAX, (b.foi || 0) + residents(b) * FOI_HAB * bf);
+    S.foi += Object.entries(S.pops).reduce((s, [k, n]) => s + (k === S.active ? 0 : n), 0) * FOI_HAB * .3;
+  }
   // Sans abri : on cherche une place libre dans une maison
   for(const h of I.hab){
     if(h.maison) { h.sans = 0; continue; }
@@ -234,14 +244,14 @@ function seconde(){
   if(pop >= cap && pop < food && I.auto >= 12 && pop > 0){
     const c = placeLibre();
     if(c >= 0){ ajouterBat('cabane', c % N, (c / N) | 0); I.auto = 0; toast('🏠 Vos habitants ont bâti une cabane.'); }
-    else conseil('place', 'Vos habitants manquent de place : <b>aplanissez</b> un terrain (une case et ses 4 voisines au même niveau).', 50);
+    else conseil('place', 'Vos habitants manquent de place : étendez une couche pour faire un grand <b>terrain plat</b>.', 50);
   }
   if(pop >= food && cap >= food) conseil('faim', 'Plus assez de nourriture pour de nouveaux habitants : construisez une <b>Ferme</b>.', 70);
   // Les arbres poussent près des autres arbres
   let arbres = 0;
   for(let k = 0; k < 8; k++){
     const i = 1 + Math.floor(Math.random() * (N - 2)), j = 1 + Math.floor(Math.random() * (N - 2)), c = idx(i, j);
-    if(I.arbres[c] || I.occ[c] || I.h[c] <= SEA || I.w[c] > 0 || I.l[c] > 0) continue;
+    if(I.arbres[c] || I.occ[c] || I.h[c] <= SEA + 1 || I.w[c] > 0 || I.l[c] > 0) continue;
     const e = M.especePour(I, c);
     if(!e) continue;
     const voisin = VOISINS.some(([a, b]) => I.arbres[idx(i + a, j + b)]);
@@ -273,140 +283,175 @@ function seconde(){
   I.t++;
 }
 
-/* ---------- Creuser et sculpter le terrain ---------- */
+/* ---------- Modeler le terrain ---------- */
 const niveauPioche = () => libre() ? 3 : S.pioche;
-function couperArbre(c){ if(I.arbres[c]){ gagner('bois', BOIS_ARBRE[I.arbres[c]] || 2); I.arbres[c] = 0; if(geste) geste.arbres = true; } }
+const solCase = c => I.s[c] ? I.h[c] : qi(I.h[c]);
 function annoncer(ev){
   if(ev.includes('lave')) toast('🔥 Une poche de lave ! Elle se met à couler.', true);
   if(ev.includes('source')) toast('💧 Une source ! L\'eau jaillit.', true);
 }
-// Creuser : on enlève le bloc du dessus et il va dans le sac (il faut la bonne pioche)
-function creuserCase(c, raisons){
-  if(I.occ[c]){ raisons.add('bat'); return false; }
-  const m = M.dessus(I, c);
-  if(!m) return false;
-  if(I.h[c] <= 1 || MATS[m].outil === 9){ raisons.add('fond'); return false; }
-  if(MATS[m].outil > niveauPioche()){ raisons.add(`outil:${MATS[m].outil}:${m}`); return false; }
-  if(!libre() && S.foi < 1){ raisons.add('foi'); return false; }
-  couperArbre(c);
-  const r = M.retirer(I, c);
-  if(!r) return false;
-  if(!libre()) S.foi -= 1;
-  gagner(MATS[r.mat].k);
-  annoncer(r.ev);
-  R.majCellule(c); R.fluides();
-  R.eclats(c % N, (c / N) | 0, r.mat, 3);
-  return true;
-}
-// Sculpter, comme dans Godus : la couche recule (sans récolte) …
-function abaisser(c, raisons){
-  if(I.occ[c]){ raisons.add('bat'); return false; }
-  if(I.h[c] <= 2 || M.dessus(I, c) === ID.roche){ raisons.add('fond'); return false; }
-  if(!libre() && S.foi < 1){ raisons.add('foi'); return false; }
-  couperArbre(c);
-  const r = M.retirer(I, c);
-  if(!r) return false;
-  if(!libre()) S.foi -= 1;
-  annoncer(r.ev);
-  R.majCellule(c); R.fluides();
-  return true;
-}
-// … ou s'étend par-dessus le terrain plus bas (la colonne monte jusqu'à la couche tirée)
-function elever(c, L, modele, raisons){
-  if(I.occ[c]){ raisons.add('bat'); return false; }
-  const n = L - I.h[c];
-  if(n <= 0) return false;
-  if(!libre() && S.foi < n){ raisons.add('foi'); return false; }
-  couperArbre(c);
-  const fait = M.etendre(I, c, L, modele);
-  if(!libre()) S.foi -= fait;
-  R.majCellule(c); R.fluides();
-  return fait > 0;
-}
-function expliquer(raisons){
-  for(const r of raisons){
-    if(r === 'foi') return conseil('foi', '🙏 Plus assez de foi. Vos habitants prient : attendez un peu, ou faites grandir le village.', 6);
-    if(r.startsWith('outil:')){ const [, n, m] = r.split(':'); return conseil(r, `Il faut une <b>${PIOCHES[n].toLowerCase()}</b> pour creuser : ${MATS[m].n.toLowerCase()}.`, 6); }
-    if(r === 'bat') return conseil(r, 'On ne peut pas changer le terrain sous un bâtiment.', 6);
-    if(r === 'fond') return conseil(r, 'Impossible d\'aller plus bas : la roche-mère.', 6);
+// Change la hauteur d'un point : coûte 1 foi par couche ajoutée ou enlevée ; les couches enlevées vont dans le sac
+// (les blocs durs seulement avec la bonne pioche). Renvoie false si ce n'est pas possible.
+function changer(c, nv, modele, g){
+  if(I.occ[c]){ g.raisons.add('bat'); return false; }
+  const dq = Math.abs(qi(nv) - qi(I.h[c]));
+  if(dq && !libre() && S.foi < dq){ g.raisons.add('foi'); return false; }
+  const r = M.regler(I, c, nv, modele);
+  const n = r.retires.length + r.ajoutes;
+  if(n){
+    if(!libre()) S.foi -= n;
+    if(I.arbres[c]){ gagner('bois', BOIS_ARBRE[I.arbres[c]] || 2); I.arbres[c] = 0; g.arbres = true; }
+    for(const m of r.retires){
+      if(!m || m === ID.lave || m === ID.source) continue;
+      if(MATS[m].outil > niveauPioche()){ g.perdus[m] = (g.perdus[m] || 0) + 1; continue; }
+      gagner(MATS[m].k); g.recolte[m] = (g.recolte[m] || 0) + 1;
+    }
+    annoncer(r.ev);
+    if(r.ev.length) R.fluides();
   }
+  R.majCellule(c);
+  g.change = true;
+  return true;
 }
-// Pinceau : un disque autour du point exact sous le doigt (petit : la case touchée seulement)
-const RAYONS = [.5, 1.7, 3.2];
-function pinceau(x, z){
-  const r = RAYONS[S.pinceau - 1] || .5, n = Math.ceil(r) + 1, i0 = Math.floor(x), j0 = Math.floor(z), out = [];
-  if(r <= .5){ if(dans(i0, j0)) out.push(idx(i0, j0)); return out; }
+// Les points autour de (x, z), avec leur distance
+function autour(x, z, r){
+  const out = [], n = Math.ceil(r) + 2, i0 = Math.floor(x), j0 = Math.floor(z);
   for(let b = -n; b <= n; b++) for(let a = -n; a <= n; a++){
     const i = i0 + a, j = j0 + b;
-    if(dans(i, j) && (i + .5 - x) ** 2 + (j + .5 - z) ** 2 <= r * r) out.push(idx(i, j));
+    if(!dans(i, j)) continue;
+    out.push([idx(i, j), Math.hypot(i + .5 - x, j + .5 - z)]);
   }
   return out;
 }
-function appliquerEn(x, z){
-  const g = geste, c0 = idx(clamp(Math.floor(x), 0, N - 1), clamp(Math.floor(z), 0, N - 1));
-  let fait = 0;
-  if(outil === 'creuser'){
-    for(const c of pinceau(x, z)) if(!g.fait.has(c) && I.h[c] === g.niveau && creuserCase(c, g.raisons)){ g.fait.add(c); fait++; }
-  } else if(outil === 'sculpter'){
-    // Une seule couche à la fois. Le sens se décide quand le doigt s'est un peu éloigné du point de départ :
-    // vers le bas de la pente, on tire (la couche s'étend d'un cran) ; vers l'intérieur, on pousse (elle recule d'un cran)
-    if(!g.mode){
-      const mx = x - g.x0, mz = z - g.z0, d = Math.hypot(mx, mz);
-      if(d < .5) return 0;
-      if(g.descente) g.mode = mx * g.descente[0] + mz * g.descente[1] > 0 ? 'tirer' : 'pousser';
-      else { const h = I.h[c0]; g.mode = h < g.niveau ? 'tirer' : h === g.niveau ? 'pousser' : null; }
-      if(!g.mode) return 0;
-      // Le sens est décidé : on reprend depuis le point de départ (rien n'est perdu)
-      const n = Math.ceil(d / .35);
-      let f = 0;
-      for(let k = 0; k < n; k++) f += appliquerEn(g.x0 + mx * k / n, g.z0 + mz * k / n);
-      fait += f;
-    }
-    if(g.mode) for(const c of pinceau(x, z)){
-      if(g.fait.has(c)) continue;
-      if(g.mode === 'tirer' && I.h[c] === g.niveau - 1){ if(elever(c, g.niveau, g.depart, g.raisons)){ g.fait.add(c); fait++; } }
-      else if(g.mode === 'pousser' && I.h[c] === g.niveau){ if(abaisser(c, g.raisons)){ g.fait.add(c); fait++; } }
+// Sculpter, comme dans Godus. La couche saisie (L, et les n - 1 couches dessous) s'étend ou recule jusqu'au doigt :
+// la hauteur suit un petit cône autour du doigt, si bien que le bord de la couche passe exactement à la distance r.
+function sculpterEn(x, z){
+  const g = geste, r = g.r, L = g.L, n = g.n;
+  for(const [c, d] of autour(x, z, r)){
+    if(d > r + 2) continue;
+    const h = I.h[c];
+    if(g.mode === 'tirer'){
+      if(h >= L || h < L - n) continue;                    // seulement le terrain des n couches juste en dessous
+      const v = L + Math.min(.5, (r - d) * .5);
+      if(v <= h) continue;
+      if(qi(v) > qi(h) || I.s[c]){ I.s[c] = 0; changer(c, v, g.depart, g); }
+      else { I.h[c] = v; I.modif.add(c); R.majCellule(c); g.change = true; }
+    } else {
+      const bas = L - n + 1;                                // la couche qui restera au-dessus est bas - 1
+      if(h >= L + 1 || h < bas - .001) continue;
+      const v = bas - Math.min(.5, (r - d) * .5);
+      if(v >= h) continue;
+      if(qi(v) < qi(h) || I.s[c]){ I.s[c] = 0; changer(c, v, c, g); }
+      else { I.h[c] = v; I.modif.add(c); R.majCellule(c); g.change = true; }
     }
   }
-  return fait;
 }
-function appliquer(){
-  const g = geste, cell = g.cell;
-  // Le long du trajet du doigt, par petits pas (rien n'est sauté quand on va vite)
-  const x0 = g.px ?? cell.x, z0 = g.pz ?? cell.z, d = Math.hypot(cell.x - x0, cell.z - z0), n = Math.max(1, Math.ceil(d / .35));
-  let fait = 0;
-  for(let k = 1; k <= n; k++) fait += appliquerEn(x0 + (cell.x - x0) * k / n, z0 + (cell.z - z0) * k / n);
-  g.px = cell.x; g.pz = cell.z;
+// Lisser : chaque point se rapproche de la moyenne de ses voisins, et devient une pente douce
+function lisserEn(x, z){
+  const g = geste, r = g.r;
+  const prevu = [];
+  for(const [c, d] of autour(x, z, r)){
+    if(d > r || I.occ[c]) continue;
+    const i = c % N, j = (c / N) | 0;
+    let s = 0, k = 0;
+    for(let b = -1; b <= 1; b++) for(let a = -1; a <= 1; a++) if(dans(i + a, j + b)){ s += I.h[idx(i + a, j + b)]; k++; }
+    prevu.push([c, I.h[c] + (s / k - I.h[c]) * .45 * (1 - d / (r + .5))]);
+  }
+  for(const [c, v] of prevu){ I.s[c] = 1; changer(c, v, c, g); }
+}
+// Rampe : un plan incliné régulier du point de départ (A) au point d'arrivée (B)
+function poserRampe(A, B){
+  const g = geste, w = Math.max(1, g.r * .8), dx = B.x - A.x, dz = B.z - A.z, l2 = dx * dx + dz * dz;
+  if(l2 < 1) return;
+  const i0 = Math.floor(Math.min(A.x, B.x) - w - 2), i1 = Math.ceil(Math.max(A.x, B.x) + w + 2);
+  const j0 = Math.floor(Math.min(A.z, B.z) - w - 2), j1 = Math.ceil(Math.max(A.z, B.z) + w + 2);
+  const ca = idx(clamp(Math.floor(A.x), 0, N - 1), clamp(Math.floor(A.z), 0, N - 1)), cb = idx(clamp(Math.floor(B.x), 0, N - 1), clamp(Math.floor(B.z), 0, N - 1));
+  for(let j = j0; j <= j1; j++) for(let i = i0; i <= i1; i++){
+    if(!dans(i, j)) continue;
+    const c = idx(i, j), px = i + .5 - A.x, pz = j + .5 - A.z;
+    const t = clamp((px * dx + pz * dz) / l2, 0, 1), ex = px - dx * t, ez = pz - dz * t, d = Math.hypot(ex, ez);
+    if(d > w + 1.2) continue;
+    const v = A.h + (B.h - A.h) * t;
+    // sur les bords de la rampe, on rejoint doucement le terrain d'à côté
+    const k = d <= w ? 1 : 1 - (d - w) / 1.2;
+    I.s[c] = 1;
+    changer(c, I.h[c] + (v - I.h[c]) * k, t < .5 ? ca : cb, g);
+  }
+}
+function expliquer(g){
+  const r = g.raisons;
+  if(r.has('foi')) conseil('foi', '🙏 Plus assez de foi : touchez les bulles au-dessus des maisons.', 6);
+  else if(r.has('bat')) conseil('bat', 'On ne peut pas changer le terrain sous un bâtiment.', 6);
+  r.clear();
+}
+// Ce qui a été récolté pendant le geste
+function bilanRecolte(g){
+  const t = Object.entries(g.recolte).filter(([m]) => +m !== ID.terre && +m !== ID.sable && +m !== ID.neige).map(([m, n]) => `+${n} ${MATS[m].n.toLowerCase()}`);
+  if(t.length) toast('⛏️ ' + t.join(' · '));
+  const p = Object.keys(g.perdus);
+  if(p.length){
+    const m = +p[0];
+    conseil('perdu' + m, `${MATS[m].n} perdu : il faut une <b>${PIOCHES[MATS[m].outil].toLowerCase()}</b> pour le garder (🔨 Fabriquer).`, 20);
+  }
+}
+
+/* ---------- Gestes d'un doigt sur le terrain ---------- */
+function debutGeste(cell, px, py){
+  geste = { cell, x0:cell.x, z0:cell.z, px:cell.x, pz:cell.z, sx:px, sy:py, t0:performance.now(), L:cell.L, n:1, r:R.rayon(),
+    depart:cell.c, raisons:new Set(), recolte:{}, perdus:{}, etat:'attente', A:{ x:cell.x, z:cell.z, h:cell.sol } };
+  if(construction){ survolConstruire(cell); geste.etat = 'construire'; return; }
+  if(pente === 0) R.montrerContour(geste.L, cell.x, cell.z, 9, 1);
+  // Doigt immobile : comme dans Godus, on saisit une couche de plus toutes les 0,4 s
+  geste.timer = setInterval(() => {
+    const g = geste;
+    if(!g || g.etat !== 'attente' || pente !== 0) return;
+    const t = performance.now() - g.t0;
+    const n = Math.min(10, 1 + Math.floor(Math.max(0, t - 450) / 400));
+    if(n !== g.n){ g.n = n; R.montrerContour(g.L, g.x0, g.z0, 9, n); if(navigator.vibrate) navigator.vibrate(8); $('aideOutil').textContent = `${n} couches saisies : glissez pour les déplacer`; }
+  }, 60);
+}
+function suiteGeste(cell, px, py){
+  const g = geste;
+  if(!g) return;
+  if(g.etat === 'construire'){ g.cell = cell; survolConstruire(cell); return; }
+  if(g.etat === 'attente'){
+    if(Math.hypot(px - g.sx, py - g.sy) < 10) return;
+    g.etat = 'actif';
+    if(pente === 0){
+      // Le sens : vers le bas de la pente (ou vers une couche plus basse), on tire ; vers l'intérieur, on pousse
+      const d = descente(g.x0, g.z0, g.L - g.n + 1);
+      const mx = cell.x - g.x0, mz = cell.z - g.z0;
+      g.mode = d ? (mx * d[0] + mz * d[1] > 0 ? 'tirer' : 'pousser') : (qi(I.h[cell.c]) < g.L ? 'tirer' : 'pousser');
+    }
+  }
+  if(pente === 2){ g.B = { x:cell.x, z:cell.z, h:cell.sol }; R.montrerRampe(g.A, g.B, Math.max(1, g.r * .8)); return; }
+  // Le long du trajet du doigt, par petits pas
+  const d = Math.hypot(cell.x - g.px, cell.z - g.pz), n = Math.max(1, Math.ceil(d / .3));
+  for(let k = 1; k <= n; k++){
+    const x = g.px + (cell.x - g.px) * k / n, z = g.pz + (cell.z - g.pz) * k / n;
+    if(pente === 0) sculpterEn(x, z); else lisserEn(x, z);
+  }
+  g.px = cell.x; g.pz = cell.z; g.cell = cell;
   if(g.arbres){ R.majArbres(); g.arbres = false; }
-  if(outil === 'sculpter') R.montrerContour(g.niveau, cell.x, cell.z);
-  if(!fait) expliquer(g.raisons);
-  g.raisons.clear();
-  if(fait) majInterface();
-  R.montrerCurseur(cell.x, cell.z, RAYONS[S.pinceau - 1], g.niveau);
+  if(pente === 0) R.montrerContour(g.L, cell.x, cell.z, 9, g.n);
+  else R.montrerCurseur(cell.x, cell.z, g.r);
+  if(g.change){ R.fluides(); majInterface(); g.change = false; }
+  expliquer(g);
 }
-function debutGeste(cell){
-  geste = { cell, depart:cell.c, niveau:I.h[cell.c], fait:new Set(), raisons:new Set(), bouge:performance.now(), x0:cell.x, z0:cell.z };
-  if(outil === 'construire'){ survolConstruire(cell); return; }
-  if(outil === 'sculpter') geste.descente = descente(cell.x, cell.z, geste.niveau);
-  appliquer();
-  // Creuser : le doigt immobile continue de creuser, de plus en plus profond
-  if(outil === 'creuser') geste.timer = setInterval(() => {
-    if(!geste || performance.now() - geste.bouge < 350) return;
-    geste.niveau--; geste.fait.clear(); geste.px = geste.pz = undefined; appliquer();
-  }, 120);
-}
-function suiteGeste(cell){
-  if(!geste) return;
-  if(outil === 'construire'){ geste.cell = cell; survolConstruire(cell); return; }
-  if(Math.hypot(cell.x - geste.cell.x, cell.z - geste.cell.z) < .15) return;
-  geste.cell = cell; geste.bouge = performance.now();
-  appliquer();
-}
-function finGeste(){
-  if(!geste) return;
-  clearInterval(geste.timer);
-  R.montrerContour();
+function finGeste(annule){
+  const g = geste;
+  if(!g) return null;
+  clearInterval(g.timer);
+  R.montrerContour(); R.montrerRampe(); R.montrerCurseur();
+  if(!annule && g.etat === 'actif' && pente === 2 && g.B){
+    poserRampe(g.A, g.B);
+    if(g.arbres) R.majArbres();
+    R.fluides(); majInterface(); expliquer(g);
+  }
+  if(g.etat === 'actif') bilanRecolte(g);
   geste = null;
+  majAideOutil();
+  return g;
 }
 // Direction où le terrain descend sous la couche L, autour du point touché (null au milieu d'un plateau)
 function descente(x, z, L){
@@ -422,8 +467,36 @@ function descente(x, z, L){
   return l > .05 ? [dx / l, dz / l] : null;
 }
 
-/* ---------- Toucher avec la main : récolter un arbre, ouvrir un bâtiment ---------- */
-function toucher(cell){
+/* ---------- Toucher : une bulle de foi, un bâtiment, un arbre ---------- */
+function bullesVisibles(){
+  if(libre()) return [];
+  return I.bat.filter(b => BATS[b.k].cap && (b.foi || 0) >= 3).map(b => {
+    const t = BATS[b.k].t || 1, x = b.i + t / 2, z = b.j + t / 2;
+    return { b, x, y:qi(I.h[idx(b.i, b.j)]) * LH, z, n:b.foi };
+  });
+}
+function cueillir(b){
+  const n = Math.floor(b.foi || 0);
+  if(!n) return;
+  S.foi += n; b.foi -= n;
+  toast(`🙏 +${n} foi`);
+  majInterface();
+}
+function toucher(px, py){
+  // D'abord les bulles (la plus proche du doigt, à l'écran)
+  let best = null, bd = 46;
+  for(const u of bullesVisibles()){
+    const e = R.ecranPoint(u.x, u.y + 1.15 * 1.2, u.z);
+    const d = Math.hypot(e.x - px, e.y - py);
+    if(e.devant && d < bd){ bd = d; best = u.b; }
+  }
+  if(best){
+    // une bulle touchée : on cueille aussi celles des maisons voisines
+    for(const b of I.bat) if(BATS[b.k].cap && b.foi >= 3 && Math.hypot(b.i - best.i, b.j - best.j) < 6 && b !== best) cueillir(b);
+    return cueillir(best);
+  }
+  const cell = R.viser(px, py);
+  if(!cell) return;
   const c = cell.c, b = batSur(c);
   if(b) return ouvrirBat(b);
   if(I.arbres[c]){
@@ -433,10 +506,7 @@ function toucher(cell){
     R.majArbres(); R.eclats(cell.i, cell.j, ID.planches, 5);
     toast(`🪵 +${n} bois`);
     majInterface();
-    return;
   }
-  const m = M.dessus(I, c);
-  toast(`${m ? esc(MATS[m].n) : 'Fond'} · couche ${I.h[c]}${I.w[c] > .1 * Q ? ' · sous l\'eau' : ''}${I.l[c] > .05 ? ' · lave !' : ''}`);
 }
 
 /* ---------- Construire ---------- */
@@ -445,7 +515,8 @@ let aConstruire = null, pose = null;
 function commencerConstruction(k){
   aConstruire = k;
   fermer();
-  choisirOutil('construire');
+  construction = true;
+  majAideOutil();
   const r = $('vue').getBoundingClientRect();
   const cell = R.viser(r.left + r.width / 2, r.top + r.height * .45) || { i:I.depart.i, j:I.depart.j, c:idx(I.depart.i, I.depart.j) };
   survolConstruire(cell);
@@ -473,28 +544,28 @@ function poserBatiment(cell){
   ajouterBat(k, cell.i, cell.j, BATS[k].cote ? { dir:directionEau(cases) } : {});
   toast(`${BATS[k].n} : construit !`);
   if(k === 'port') toast('⛵ Le port est prêt. Ouvrez l\'<b>Archipel</b> pour voyager.', true);
-  choisirOutil('main');
+  annulerConstruction();
   majInterface();
+}
+function annulerConstruction(){
+  construction = false; aConstruire = null; pose = null;
+  R.montrerFantome(); $('poser').hidden = true;
+  majAideOutil();
 }
 
 /* ---------- Interface ---------- */
-const OUTILS_SCULPTE = ['creuser', 'sculpter'];
-function choisirOutil(k){
-  outil = k;
-  document.querySelectorAll('#outils [data-outil]').forEach(b => b.classList.toggle('actif', b.dataset.outil === k));
-  $('options').hidden = !OUTILS_SCULPTE.includes(k);
-  if(k !== 'construire'){ aConstruire = null; pose = null; R.montrerFantome(); $('poser').hidden = true; }
-  if(!OUTILS_SCULPTE.includes(k)) R.montrerCurseur();
-  $('aideOutil').textContent = {
-    main:'Touchez un arbre pour le bois, un bâtiment pour le voir · deux doigts pour bouger la vue',
-    creuser:'Touchez ou glissez pour creuser · gardez le doigt appuyé pour creuser plus profond',
-    sculpter:'Doigt sur le bord d\'une couche (liseré blanc) : tirez vers le bas, elle s\'étend ; poussez, elle recule',
-    construire:'Glissez un doigt pour placer le bâtiment · deux doigts pour bouger la vue',
-  }[k] || '';
-  majOptions();
+// Le bouton « Pente » : sculpter (comme Godus) → lisser → rampe → sculpter…
+function majBoutonPente(){
+  const b = $('bPente');
+  b.classList.toggle('actif', pente > 0);
+  b.innerHTML = ['<span>⛰️</span>Pente', '<span>〰️</span>Lisser', '<span>📐</span>Rampe'][pente];
+  majAideOutil();
 }
-function majOptions(){
-  document.querySelectorAll('#pinceaux button').forEach(b => b.classList.toggle('actif', +b.dataset.p === S.pinceau));
+function majAideOutil(){
+  $('aideOutil').textContent = construction ? 'Glissez un doigt pour placer le bâtiment · deux doigts pour bouger la vue'
+    : ['Tirez une couche pour l\'étendre, poussez-la pour la réduire · doigt immobile : plusieurs couches',
+       'Lisser : frottez du doigt pour adoucir le terrain',
+       'Rampe : posez le doigt au départ, glissez jusqu\'à l\'arrivée, relâchez'][pente];
 }
 function majInterface(){
   if(!S) return;
@@ -506,17 +577,15 @@ function majInterface(){
   const p = PALIERS[S.palier], suiv = PALIERS[S.palier + 1], pt = popTotale();
   $('cPalier').innerHTML = `<b>${esc(p.n)}</b><i><s style="width:${suiv ? clamp((pt - p.pop) / (suiv.pop - p.pop), 0, 1) * 100 : 100}%"></s></i><small>${suiv ? `${pt} / ${suiv.pop} habitants` : `${pt} habitants`}</small>`;
   $('bIle').textContent = ILES.find(x => x.k === S.active).n;
-  if(!$('pSac').hidden) remplirSac();
   if(!$('pFabriquer').hidden) remplirFabriquer();
   if(!$('pConstruire').hidden) remplirConstruire();
-  if(!$('options').hidden) majOptions();
 }
 // Ne redessine un panneau que si son contenu change (sinon le bouton touché disparaît sous le doigt)
 function remplir(id, html){ const el = $(id); if(el.dataset.html !== html){ el.innerHTML = html; el.dataset.html = html; } }
 function ouvrir(id){
   document.querySelectorAll('.panneau').forEach(p => { p.hidden = p.id !== id; });
   $('voile').hidden = false;
-  ({ pConstruire:remplirConstruire, pFabriquer:remplirFabriquer, pSac:remplirSac, pArchipel:remplirArchipel, pPaliers:remplirPaliers }[id] || (() => {}))();
+  ({ pConstruire:remplirConstruire, pFabriquer:remplirFabriquer, pArchipel:remplirArchipel, pPaliers:remplirPaliers }[id] || (() => {}))();
 }
 function fermer(){ document.querySelectorAll('.panneau').forEach(p => p.hidden = true); $('voile').hidden = true; }
 function verrou(k){ const p = palierDe(k); return p >= 0 ? `Palier « ${esc(PALIERS[p].n)} » (${PALIERS[p].pop} habitants)` : ''; }
@@ -530,7 +599,7 @@ function remplirConstruire(){
 }
 function lieuOk(r){ return !r.lieu || libre() || I.bat.some(b => b.k === r.lieu); }
 function remplirFabriquer(){
-  remplir('lFabriquer', Object.entries(RECETTES).map(([k, r]) => {
+  remplir('lFabriquer', contenuSac() + Object.entries(RECETTES).map(([k, r]) => {
     const ok = debloque(k), deja = r.outil && niveauPioche() >= r.outil, lieu = lieuOk(r), payable = peutPayer(r.cout);
     const donne = r.donne ? Object.entries(r.donne).map(([o, n]) => `${n} ${esc(OBJETS[o].n.toLowerCase())}`).join(', ') : esc(r.n);
     return `<div class="fiche${ok ? '' : ' verrou'}"><div class="ft"><b>${esc(r.n)}</b>${r.lieu ? `<small>${esc(BATS[r.lieu].n)}</small>` : ''}</div>
@@ -553,9 +622,10 @@ function fabriquer(k, n){
   majInterface();
   remplirFabriquer();
 }
-function remplirSac(){
+// Le sac, en haut du panneau Fabriquer
+function contenuSac(){
   const items = ORDRE_SAC.filter(k => libre() || (S.inv[k] || 0) > 0);
-  remplir('lSac', `<p class="outilActuel">Outil : <b>${esc(PIOCHES[niveauPioche()])}</b></p>` + (items.length ? `<div class="grilleSac">${items.map(k => `<div class="obj"><i style="background:${OBJETS[k].c}"></i><span>${esc(OBJETS[k].n)}</span><b>${libre() ? '∞' : S.inv[k]}</b></div>`).join('')}</div>` : '<p>Le sac est vide. Creusez et coupez des arbres !</p>'));
+  return `<div class="sac"><p class="outilActuel">🎒 Sac · outil : <b>${esc(PIOCHES[niveauPioche()])}</b></p>` + (items.length ? `<div class="grilleSac">${items.map(k => `<div class="obj"><i style="background:${OBJETS[k].c}"></i><span>${esc(OBJETS[k].n)}</span><b>${libre() ? '∞' : S.inv[k]}</b></div>`).join('')}</div>` : '<p>Le sac est vide : poussez des couches pour récolter terre, pierre et minerais, touchez les arbres pour le bois.</p>') + '</div>';
 }
 function remplirArchipel(){
   const port = libre() || I.bat.some(b => b.k === 'port');
@@ -584,7 +654,7 @@ function ouvrirBat(b){
   const B = BATS[b.k];
   const up = Object.entries(BATS).find(([, x]) => x.depuis === b.k);
   let h = `<h2>${esc(B.n)}</h2><p>${esc(B.d)}</p>`;
-  if(B.cap) h += `<p>👥 ${residents(b)} / ${B.cap} habitants</p>`;
+  if(B.cap) h += `<p>👥 ${residents(b)} / ${B.cap} habitants</p>` + (!libre() && b.foi >= 1 ? `<button data-cueillir="1">🙏 Récolter ${Math.floor(b.foi)} foi</button>` : '');
   if(up){
     const [k, U] = up;
     h += debloque(k) ? `<div class="fiche"><div class="ft"><b>Améliorer en ${esc(U.n)}</b><small>${U.cap} habitants</small></div><div class="couts">${fmtCout(U.cout)}</div><button data-ameliorer="${k}"${peutPayer(U.cout) ? '' : ' disabled'}>Améliorer</button></div>`
@@ -646,12 +716,12 @@ function voyager(k){
 /* ---------- Partie : nouvelle, sauvegarde, reprise ---------- */
 function nouvellePartie(mode){
   S = { v:1, mode, active:'verte', iles:{}, pops:{}, decouvertes:['verte'], inv:mode === 'libre' ? {} : { bois:6, terre:12 },
-    foi:900, pioche:0, palier:mode === 'libre' ? PALIERS.length - 1 : 0, pinceau:2 };
+    foi:900, pioche:0, palier:mode === 'libre' ? PALIERS.length - 1 : 0 };
   installerVillage(M.creerIle('verte', Math.floor(Math.random() * 1e9)), 2, false);
   R.centrer(I.depart.i, I.depart.j);
   R.cam.dist = 60;
   fermer();
-  choisirOutil('main');
+  pente = 0; majBoutonPente();
   majInterface();
   sauver();
   if(!localStorage.getItem('strates-aide')){ try{ localStorage.setItem('strates-aide', '1'); }catch(e){} ouvrir('pAide'); }
@@ -659,7 +729,7 @@ function nouvellePartie(mode){
 function sauver(){
   if(!S || !I) return;
   try{
-    const o = { ...S, v:3, iles:{ ...S.iles, [S.active]:M.serialiser(I) }, pops:{ ...S.pops, [S.active]:I.hab.length }, cam:{ ...R.cam } };
+    const o = { ...S, v:4, iles:{ ...S.iles, [S.active]:M.serialiser(I) }, pops:{ ...S.pops, [S.active]:I.hab.length }, cam:{ ...R.cam } };
     localStorage.setItem(CLE, JSON.stringify(o));
     localStorage.setItem(CLE_RESUME, JSON.stringify({ mode:S.mode, ile:S.active, pop:popTotale(), palier:S.palier, nomPalier:PALIERS[S.palier].n, iles:S.decouvertes.length, t:Date.now() }));
   }catch(e){ conseil('sauve', 'Sauvegarde impossible (mémoire du téléphone pleine ?).', 120); }
@@ -668,22 +738,21 @@ function reprendre(){
   let o = null;
   try{ o = JSON.parse(localStorage.getItem(CLE)); }catch(e){}
   if(!o || !o.iles || !o.iles[o.active]) return false;
-  if(o.v !== 3){ toast('Le monde de Strates est maintenant plus fin : une nouvelle partie commence.', true); return false; }
+  if(o.v !== 4){ toast('Strates a changé (terrain continu, comme Godus) : une nouvelle partie commence.', true); return false; }
   S = o;
   I = M.deserialiser(S.iles[S.active]);
   delete S.iles[S.active];
-  S.pinceau = S.pinceau || 2;
   if(S.foi == null) S.foi = 0;
   refaireOcc();
   R.charger(I);
   if(o.cam) Object.assign(R.cam, o.cam); else R.centrer(I.depart.i, I.depart.j);
   delete S.cam;
-  choisirOutil('main');
+  majBoutonPente();
   majInterface();
   return true;
 }
 
-/* ---------- Gestes : un doigt pour l'outil, deux doigts (et seulement deux) pour la vue ---------- */
+/* ---------- Gestes : un doigt pour modeler (ou toucher), deux doigts (et seulement deux) pour la vue ---------- */
 function gestes(cv){
   const pts = new Map();
   let mode = null, ref = null;
@@ -695,12 +764,11 @@ function gestes(cv){
     // Souris (sur ordinateur) : clic droit pour tourner, clic du milieu pour se déplacer
     if(e.pointerType === 'mouse' && e.button !== 0){ mode = e.button === 2 ? 'tourne' : 'pan'; return; }
     if(pts.size === 1){
-      if(outil === 'main'){ mode = 'toucher'; return; }
       const cell = R.viser(e.clientX, e.clientY);
-      mode = cell ? 'outil' : 'rien';
-      if(cell) debutGeste(cell);
+      mode = 'doigt';
+      if(cell) debutGeste(cell, e.clientX, e.clientY);
     } else if(pts.size === 2){
-      if(mode === 'outil') finGeste();
+      if(mode === 'doigt') finGeste(true);
       mode = 'deux'; ref = deux();
     }
   });
@@ -711,8 +779,8 @@ function gestes(cv){
       // Souris sans bouton : fantôme du bâtiment ou cercle du pinceau
       if(e.pointerType === 'mouse'){
         const cell = R.viser(e.clientX, e.clientY);
-        if(outil === 'construire' && cell) survolConstruire(cell);
-        else if(OUTILS_SCULPTE.includes(outil) && cell) R.montrerCurseur(cell.x, cell.z, RAYONS[S.pinceau - 1]);
+        if(construction && cell) survolConstruire(cell);
+        else if(cell && pente === 1) R.montrerCurseur(cell.x, cell.z, R.rayon());
       }
       return;
     }
@@ -720,7 +788,7 @@ function gestes(cv){
     p.x = e.clientX; p.y = e.clientY;
     if(mode === 'pan') R.deplacer(dx, dy);
     else if(mode === 'tourne') R.tourner(dx * .008);
-    else if(mode === 'outil'){ const cell = R.viser(e.clientX, e.clientY); if(cell) suiteGeste(cell); }
+    else if(mode === 'doigt' && geste){ const cell = R.viser(e.clientX, e.clientY); if(cell) suiteGeste(cell, e.clientX, e.clientY); }
     else if(mode === 'deux' && pts.size === 2){
       const n = deux();
       R.deplacer(n.mx - ref.mx, n.my - ref.my);
@@ -734,10 +802,11 @@ function gestes(cv){
     const p = pts.get(e.pointerId);
     if(!p) return;
     pts.delete(e.pointerId);
-    if(mode === 'outil') finGeste();
-    else if(mode === 'toucher' && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < 12 && performance.now() - p.t0 < 500){
-      const cell = R.viser(e.clientX, e.clientY);
-      if(cell) toucher(cell);
+    if(mode === 'doigt'){
+      const g = finGeste(e.type === 'pointercancel');
+      // Un toucher bref, sans glisser : une bulle, un bâtiment ou un arbre
+      const bref = Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < 10 && performance.now() - p.t0 < 400;
+      if(bref && (!g || g.etat === 'attente') && !construction) toucher(e.clientX, e.clientY);
     }
     if(!pts.size) mode = null;
     else if(mode === 'deux') mode = 'fini';      // le doigt qui reste ne fait plus rien
@@ -767,27 +836,27 @@ function boucle(now){
     if(accUI >= .25){ accUI = 0; majInterface(); }
     if(accSauve >= 30){ accSauve = 0; sauver(); }
     bougerHabitants(dt);
-    R.rendre(dt, I.hab, temps);
+    R.rendre(dt, I.hab, temps, bullesVisibles());
   }
   requestAnimationFrame(boucle);
 }
 
 /* ---------- Démarrage ---------- */
 function brancher(){
-  document.querySelectorAll('#outils [data-outil]').forEach(b => b.onclick = () => choisirOutil(b.dataset.outil));
+  $('bPente').onclick = () => { pente = (pente + 1) % 3; majBoutonPente(); toast(['Sculpter, comme dans Godus', 'Lisser : frottez du doigt pour adoucir le terrain', 'Rampe : glissez du point de départ au point d\'arrivée'][pente]); };
   document.querySelectorAll('#outils [data-panneau], .barre-haut [data-panneau]').forEach(b => b.onclick = () => ouvrir(b.dataset.panneau));
-  $('pinceaux').onclick = e => { const b = e.target.closest('button'); if(b){ S.pinceau = +b.dataset.p; majOptions(); } };
   $('voile').onclick = fermer;
   document.querySelectorAll('.panneau .fermer').forEach(b => b.onclick = fermer);
   $('lConstruire').onclick = e => { const b = e.target.closest('[data-bat]'); if(b) commencerConstruction(b.dataset.bat); };
   $('poserOk').onclick = () => { if(pose) poserBatiment(pose); };
-  $('poserNon').onclick = () => choisirOutil('main');
+  $('poserNon').onclick = annulerConstruction;
   $('lFabriquer').onclick = e => { const b = e.target.closest('[data-fab]'); if(b) fabriquer(b.dataset.fab, +b.dataset.n); };
   $('lArchipel').onclick = e => { const b = e.target.closest('[data-ile]'); if(b) voyager(b.dataset.ile); };
   $('tBat').onclick = e => {
     const b = batOuvert;
     if(!b) return;
     const a = e.target.closest('[data-ameliorer]'), d = e.target.closest('[data-demolir]'), p = e.target.closest('[data-panneau]');
+    if(e.target.closest('[data-cueillir]')){ cueillir(b); ouvrirBat(b); return; }
     if(a){ const k = a.dataset.ameliorer; if(!peutPayer(BATS[k].cout)) return; payer(BATS[k].cout); b.k = k; R.majBatiments(); toast(`${BATS[k].n} : terminée !`); ouvrirBat(b); majInterface(); }
     if(d){ if(!confirm(`Démolir : ${BATS[b.k].n} ?`)) return; for(const [k, n] of Object.entries(BATS[b.k].cout)) gagner(k, Math.floor(n / 2)); retirerBat(b); fermer(); majInterface(); }
     if(p) ouvrir(p.dataset.panneau);
@@ -807,5 +876,6 @@ brancher();
 gestes($('vue'));
 if(!reprendre()) ouvrir('pAccueil');
 requestAnimationFrame(boucle);
-window.Strates = { get S(){ return S; }, get I(){ return I; }, nouvellePartie, voyager, sauver, seconde, BATS, PALIERS, choisirOutil, ajouterBat, emplacement, fabriquer };
+window.Strates = { get S(){ return S; }, get I(){ return I; }, nouvellePartie, voyager, sauver, seconde, BATS, PALIERS, ajouterBat, emplacement, fabriquer, bullesVisibles,
+  set pente(v){ pente = v; majBoutonPente(); } };
 })();

@@ -56,12 +56,8 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 .bas > *{ pointer-events:auto; }
 .aide-outil{ font-size:.8rem; background:rgba(255,248,236,.85); padding:3px 10px; border-radius:10px; color:var(--doux); text-align:center; max-width:94vw; pointer-events:none; }
 .aide-outil:empty{ display:none; }
-.options{ display:flex; gap:8px; align-items:center; background:var(--creme); border-radius:16px; box-shadow:var(--ombre); padding:6px 8px; max-width:100%; }
-.options[hidden]{ display:none; }
-#pinceaux{ display:flex; gap:4px; flex:none; }
-#pinceaux button{ width:38px; height:38px; border-radius:12px; border:2px solid transparent; background:var(--creme-2); display:grid; place-items:center; }
-#pinceaux button i{ display:block; border-radius:50%; background:var(--encre); }
-#pinceaux button.actif{ border-color:var(--turquoise); background:#E3F4F2; }
+.sac{ grid-column:1 / -1; background:var(--creme-2); border-radius:16px; padding:6px 8px 8px; }
+.sac .outilActuel{ margin:2px 0 6px; }
 .obj i, .cout i{ width:16px; height:16px; border-radius:5px; display:inline-block; box-shadow:inset 0 -3px 0 rgba(0,0,0,.15); flex:none; }
 .poser{ display:flex; align-items:center; gap:8px; background:var(--creme); border-radius:16px; box-shadow:var(--ombre); padding:6px 8px 6px 12px; max-width:100%; }
 .poser[hidden]{ display:none; }
@@ -157,22 +153,12 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 
 <div class="bas">
   <div class="aide-outil" id="aideOutil"></div>
-  <div class="options" id="options" hidden>
-    <div id="pinceaux" aria-label="Taille du pinceau">
-      <button data-p="1" aria-label="Petit pinceau"><i style="width:7px;height:7px"></i></button>
-      <button data-p="2" aria-label="Pinceau moyen"><i style="width:13px;height:13px"></i></button>
-      <button data-p="3" aria-label="Grand pinceau"><i style="width:20px;height:20px"></i></button>
-    </div>
-  </div>
   <div class="poser" id="poser" hidden><span id="poserTxt"></span><button id="poserOk">✔ Construire ici</button><button id="poserNon" aria-label="Annuler">✕</button></div>
   <nav class="outils" id="outils">
-    <button data-outil="main" class="actif"><span>✋</span>Main</button>
-    <button data-outil="creuser"><span>⛏️</span>Creuser</button>
-    <button data-outil="sculpter"><span>🏞️</span>Sculpter</button>
+    <button id="bPente"><span>⛰️</span>Pente</button>
     <i class="sep"></i>
     <button data-panneau="pConstruire"><span>🏠</span>Construire</button>
     <button data-panneau="pFabriquer"><span>🔨</span>Fabriquer</button>
-    <button data-panneau="pSac"><span>🎒</span>Sac</button>
     <button data-panneau="pArchipel"><span>🧭</span>Archipel</button>
     <button data-panneau="pMenu"><span>☰</span>Menu</button>
   </nav>
@@ -181,9 +167,8 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 <div class="voile" id="voile" hidden></div>
 
 <section class="panneau" id="pConstruire" hidden><header><h2>🏠 Construire</h2><button class="fermer" aria-label="Fermer">✕</button></header>
-  <p>Choisissez un bâtiment : il apparaît sur l'île. Déplacez-le du doigt, puis touchez « Construire ici ». Les maisons s'améliorent en les touchant avec la main ✋.</p><div class="liste" id="lConstruire"></div></section>
-<section class="panneau" id="pFabriquer" hidden><header><h2>🔨 Fabriquer</h2><button class="fermer" aria-label="Fermer">✕</button></header><div class="liste" id="lFabriquer"></div></section>
-<section class="panneau" id="pSac" hidden><header><h2>🎒 Sac</h2><button class="fermer" aria-label="Fermer">✕</button></header><div id="lSac"></div></section>
+  <p>Choisissez un bâtiment : il apparaît sur l'île. Déplacez-le du doigt, puis touchez « Construire ici ». Les maisons s'améliorent en les touchant.</p><div class="liste" id="lConstruire"></div></section>
+<section class="panneau" id="pFabriquer" hidden><header><h2>🔨 Sac et fabrication</h2><button class="fermer" aria-label="Fermer">✕</button></header><div class="liste" id="lFabriquer"></div></section>
 <section class="panneau" id="pArchipel" hidden><header><h2>🧭 Archipel</h2><button class="fermer" aria-label="Fermer">✕</button></header>
   <p>Le sac et la foi voyagent avec vous. Chaque île garde son village.</p><div class="liste" id="lArchipel"></div></section>
 <section class="panneau" id="pPaliers" hidden><header><h2>Paliers du peuple</h2><button class="fermer" aria-label="Fermer">✕</button></header>
@@ -201,7 +186,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 </section>
 <section class="panneau accueil" id="pAccueil" hidden>
   <h1>Strates</h1>
-  <p>Vous êtes le dieu d'un petit archipel. Sculptez les couches du terrain, creusez pour trouver pierre, charbon, fer, or et cristaux, fabriquez vos outils… et regardez votre peuple bâtir son village sur vos terres.</p>
+  <p>Vous êtes le dieu d'un petit archipel. Du doigt, tirez et poussez les couches du terrain, comme dans Godus : vos habitants bâtissent leur village sur vos terres et vous offrent des bulles de foi. Sous les couches : pierre, charbon, fer, or et cristaux, pour fabriquer outils et bâtiments.</p>
   <div class="choix">
     <button id="aNouvelle" class="gros">🌱 Nouvelle partie<small>Avec progression : le village grandit, on débloque bâtiments, pioches et îles.</small></button>
     <button id="aLibre" class="gros" style="background:var(--or);color:var(--encre)">🏖️ Bac à sable libre<small>Tout est débloqué, sans limite de foi ni de matériaux.</small></button>
@@ -209,31 +194,36 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 </section>
 <section class="panneau aide" id="pAide" hidden><header><h2>Comment jouer</h2><button class="fermer" aria-label="Fermer">✕</button></header>
   <h3>La vue</h3>
-  <ul><li>Toujours avec <b>deux doigts</b> : glissez pour vous déplacer, pincez pour zoomer (la vue s'incline en s'approchant), tournez les doigts pour pivoter.</li>
-    <li>Un seul doigt sert à l'outil choisi. Le bouton 🎯 revient au village. À la souris : clic droit pour tourner, clic du milieu pour se déplacer, molette pour zoomer.</li></ul>
-  <h3>Sculpter le terrain</h3>
-  <ul><li><b>Sculpter 🏞️</b>, comme dans Godus, une couche à la fois : posez le doigt sur le bord d'une couche (il s'entoure d'un liseré blanc), puis
-      <ul><li>tirez vers le terrain plus bas : la couche s'étend et le recouvre ;</li><li>poussez vers l'intérieur de la couche : elle recule et laisse voir la couche du dessous.</li></ul></li>
-    <li><b>Creuser ⛏️</b> : la couche touchée descend d'un cran et le bloc enlevé va dans le sac. Gardez le doigt appuyé pour creuser de plus en plus profond.</li>
-    <li>Choisissez la taille du pinceau (petit, moyen, grand). Chaque couche déplacée coûte 1 point de <b>foi 🙏</b> par case : vos habitants en donnent en priant.</li></ul>
+  <ul><li>Avec <b>deux doigts</b> : glissez pour vous déplacer, pincez pour zoomer (la vue s'incline en s'approchant), tournez les doigts pour pivoter. Le bouton 🎯 revient au village.</li>
+    <li>À la souris : clic droit pour tourner, clic du milieu pour se déplacer, molette pour zoomer.</li></ul>
+  <h3>Sculpter, comme dans Godus</h3>
+  <ul><li>Posez un doigt sur une couche : son bord s'entoure d'un liseré blanc.
+      <ul><li>Tirez vers le terrain plus bas : la couche s'étend jusqu'à votre doigt.</li><li>Poussez vers l'intérieur : elle recule et laisse voir la couche du dessous. Ce qu'elle contenait va dans le sac.</li></ul></li>
+    <li>Gardez le doigt immobile un instant : vous saisissez une couche de plus toutes les 0,4 s (jusqu'à 10), puis glissez pour les déplacer toutes ensemble.</li>
+    <li>Plus vous zoomez, plus le geste est précis. Chaque couche déplacée coûte de la <b>foi 🙏</b>.</li></ul>
+  <h3>Pentes (en plus de Godus)</h3>
+  <ul><li>Le bouton <b>Pente</b> change ce que fait le doigt : <b>Lisser</b> (frottez pour adoucir le terrain), puis <b>Rampe</b> (posez le doigt au départ, glissez jusqu'à l'arrivée : un plan incliné régulier se forme), puis retour à la sculpture.</li>
+    <li>Les habitants montent les pentes et les rampes, mais pas les falaises de plus de 2 couches.</li></ul>
+  <h3>La foi</h3>
+  <ul><li>Une <b>bulle dorée</b> grossit au-dessus de chaque maison : touchez-la pour récolter la foi (les bulles des maisons voisines viennent avec).</li></ul>
   <h3>Le sous-sol</h3>
   <ul><li>Sous la terre : la pierre, puis le charbon, le fer, l'or et les cristaux, de plus en plus profond. La tranche des falaises montre les couches.</li>
-    <li>Il faut une pioche pour les blocs durs : en bois (pierre, charbon), en pierre (fer), en fer (or, cristal, obsidienne).</li>
-    <li>En creusant, vous pouvez percer une <b>source</b> (l'eau jaillit et coule) ou une <b>poche de lave</b>. L'eau et la lave coulent vers le bas. Au contact de l'eau, la lave devient de l'obsidienne ; une coulée fine refroidit en basalte. Creuser sous le niveau de la mer près du rivage fait entrer la mer.</li></ul>
+    <li>Pour garder les blocs durs, il faut une pioche : en bois (pierre, charbon), en pierre (fer), en fer (or, cristal, obsidienne). Sinon ils sont perdus.</li>
+    <li>En faisant reculer une couche, vous pouvez percer une <b>source</b> (l'eau jaillit et coule) ou une <b>poche de lave</b>. Au contact de l'eau, la lave devient de l'obsidienne ; une coulée fine refroidit en basalte.</li></ul>
   <h3>Le village</h3>
-  <ul><li>Vos habitants bâtissent eux-mêmes des <b>cabanes</b> sur les terrains plats (une case et ses 4 voisines au même niveau) : aplanissez de grands terrains !</li>
-    <li>Ils ont besoin de nourriture 🌾 : chaque <b>Ferme</b> en nourrit 6 de plus. Touchez une maison pour l'améliorer.</li>
-    <li>Touchez un arbre avec la main pour le bois. Fabriquez des planches, puis un Atelier et des pioches, un Four pour le fer, l'or, le verre et les briques.</li>
+  <ul><li>Vos habitants bâtissent eux-mêmes des <b>cabanes</b> sur les terrains plats : étendez de grandes couches !</li>
+    <li>Ils ont besoin de nourriture 🌾 : chaque <b>Ferme</b> en nourrit 6 de plus. Touchez une maison pour l'améliorer, un arbre pour son bois.</li>
+    <li>Fabriquez des planches, puis un Atelier et des pioches, un Four pour le fer, l'or, le verre et les briques.</li>
     <li>La lave brûle les bâtiments et l'eau les emporte : protégez le village.</li></ul>
   <h3>L'archipel</h3>
   <ul><li>En grandissant, le peuple passe des <b>paliers</b> qui débloquent bâtiments, outils et îles. Construisez un <b>Port</b> pour partir vers l'Île des Sables, l'Île du Volcan puis l'Île des Glaces.</li></ul>
 </section>
 
-<script src="nivoculteur/three.min.js?v=50"></script>
+<script src="nivoculteur/three.min.js?v=51"></script>
 <script>window.THREE || document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"><\/script>');</script>
-<script src="strates/monde.js?v=50"></script>
-<script src="strates/rendu.js?v=50"></script>
-<script src="strates/jeu.js?v=50"></script>
+<script src="strates/monde.js?v=51"></script>
+<script src="strates/rendu.js?v=51"></script>
+<script src="strates/jeu.js?v=51"></script>
 <script>
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });

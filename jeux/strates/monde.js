@@ -1,6 +1,9 @@
 /* Strates : les îles en couches fines (comme des courbes de niveau), leurs matériaux, l'eau et la lave qui coulent.
-   Une île fait N × N colonnes. Chaque colonne est une pile de h blocs ; m donne le matériau de chaque bloc.
-   w et l : hauteur d'eau et de lave au-dessus du sol de chaque colonne (en couches). */
+   Une île fait N × N points. La hauteur h de chaque point est continue (en couches, avec une partie décimale) :
+   les bords des couches se placent donc au plus près, sous le doigt. Sous la surface, la colonne est une pile
+   de couches de matériaux (m, une couche par niveau entier, floor(h) couches).
+   s : points lissés ou en pente (dessinés en vraie pente, et non en couches).
+   w et l : hauteur d'eau et de lave au-dessus du sol (en couches). */
 (() => {
 const N = 192, H = 124, LH = 0.28, SEA = 22;
 // Les formes des îles sont décrites dans une échelle « de base » (64 colonnes, couches épaisses, mer à 5) :
@@ -98,12 +101,12 @@ function genererTerrain(I){
   const { type, seed } = I;
   for(let j = 0; j < N; j++) for(let i = 0; i < N; i++){
     const z = relief(type, seed, (i + .5) / E, (j + .5) / E) * K;
-    I.h[idx(i, j)] = Math.round(clamp(z, 1, H - 3));
+    I.h[idx(i, j)] = clamp(z, 1.2, H - 3);
   }
   const F = FILONS[type];
   const filon = (i, j, z, k, t = 4) => hash(Math.floor(i / t), Math.floor(j / t), Math.floor(z / t), seed + k);
   for(let j = 0; j < N; j++) for(let i = 0; i < N; i++){
-    const c = idx(i, j), h = I.h[c];
+    const c = idx(i, j), h = Math.floor(I.h[c] + 1e-4);
     for(let z = 0; z < h; z++){
       let k = choisir(I, F, filon, i, j, z, h - 1 - z, h);
       if(z >= h - 4 && (k === 'lave' || k === 'source')) k = F.base;   // jamais de poche juste sous la surface
@@ -113,12 +116,12 @@ function genererTerrain(I){
 }
 
 function creerIle(type, seed){
-  const I = { type, seed, h:new Uint8Array(N * N), m:new Uint8Array(N * N * H), w:new Float32Array(N * N), l:new Float32Array(N * N),
+  const I = { type, seed, h:new Float32Array(N * N), s:new Uint8Array(N * N), m:new Uint8Array(N * N * H), w:new Float32Array(N * N), l:new Float32Array(N * N),
     arbres:new Uint8Array(N * N), sources:[], bat:[], hab:[], prochainId:1, t:0, cratere:-1, modif:new Set() };
   genererTerrain(I);
   // Arbres
   for(let j = 0; j < N; j++) for(let i = 0; i < N; i++){
-    const c = idx(i, j), h = I.h[c];
+    const c = idx(i, j), h = Math.floor(I.h[c] + 1e-4);
     if(h <= SEA) continue;
     const dessus = I.m[c * H + h - 1], foret = fbm(i / E / 6, j / E / 6, seed + 21, 2), r = hash(i, j, 3, seed);
     I.arbres[c] = arbreNaturel(type, dessus, h, foret, r * 3.6);
@@ -178,7 +181,7 @@ function arbreNaturel(type, dessus, h, foret, r){
   return 0;
 }
 function especePour(I, c){
-  const h = I.h[c], dessus = I.m[c * H + h - 1];
+  const h = Math.floor(I.h[c] + 1e-4), dessus = I.m[c * H + h - 1];
   if(dessus === ID.terre) return I.type === 'glaces' || h > 12 * K ? 2 : 1;
   if(dessus === ID.neige) return 5;
   if(dessus === ID.sable && I.type === 'sables') return h <= SEA + 2 * K ? 3 : 4;
@@ -210,19 +213,26 @@ function terrainDeDepart(I){
   for(const [, i, j] of cand){
     const hs = [];
     let ok = true;
-    for(let b = j - R; b <= j + R && ok; b++) for(let a = i - R; a <= i + R; a++){ const h = I.h[idx(a, b)]; if(h <= SEA || I.w[idx(a, b)] > 0){ ok = false; break; } hs.push(h); }
+    for(let b = j - R; b <= j + R && ok; b++) for(let a = i - R; a <= i + R; a++){ const h = Math.floor(I.h[idx(a, b)]); if(h <= SEA || I.w[idx(a, b)] > 0){ ok = false; break; } hs.push(h); }
     if(!ok) continue;
     hs.sort((a, b) => a - b);
     if(hs[hs.length - 1] - hs[0] > 4 * K) continue;
     const cible = Math.max(SEA + 2, hs[hs.length >> 1]);
     const dessusMat = I.type === 'sables' ? ID.sable : I.type === 'glaces' ? ID.neige : ID.terre;
-    for(let b = j - R; b <= j + R; b++) for(let a = i - R; a <= i + R; a++){
-      if((a - i) ** 2 + (b - j) ** 2 > (R + .5) ** 2) continue;     // un terrain rond
-      const c = idx(a, b);
-      while(I.h[c] > cible){ I.h[c]--; I.m[c * H + I.h[c]] = 0; }
-      while(I.h[c] < cible){ I.m[c * H + I.h[c]] = I.type === 'sables' ? ID.sable : ID.terre; I.h[c]++; }
-      I.m[c * H + I.h[c] - 1] = dessusMat;
-      I.arbres[c] = 0;
+    // Un terrain rond et plat, qui rejoint en douceur le relief autour (sur 4 colonnes)
+    const F = 4;
+    for(let b = j - R - F; b <= j + R + F; b++) for(let a = i - R - F; a <= i + R + F; a++){
+      if(!dans(a, b)) continue;
+      const d = Math.hypot(a - i, b - j);
+      if(d > R + F) continue;
+      const c = idx(a, b), u = clamp((d - R) / F, 0, 1), k = u * u * (3 - 2 * u);
+      const nv = (cible + .5) * (1 - k) + I.h[c] * k;
+      let q = Math.floor(I.h[c] + 1e-4);
+      const q1 = Math.floor(nv + 1e-4);
+      while(q > q1){ q--; I.m[c * H + q] = 0; }
+      while(q < q1){ I.m[c * H + q] = I.type === 'sables' ? ID.sable : ID.terre; q++; }
+      I.h[c] = nv;
+      if(d <= R + .5){ I.m[c * H + q - 1] = dessusMat; I.arbres[c] = 0; }
       I.modif.add(c);
     }
     return { i, j };
@@ -231,28 +241,46 @@ function terrainDeDepart(I){
 }
 
 /* ---------- Modifier le terrain ---------- */
-const dessus = (I, c) => I.h[c] ? I.m[c * H + I.h[c] - 1] : 0;
-// Enlève le bloc du dessus. Une poche de lave ou une source mise au jour se met à couler.
-// Renvoie { mat, ev:[...] }
-function retirer(I, c){
-  const mat = dessus(I, c);
-  if(!mat || I.h[c] <= 1) return null;
-  I.h[c]--; I.m[c * H + I.h[c]] = 0;
-  I.modif.add(c);
-  const ev = [];
-  while(I.h[c] > 1){
-    const t = dessus(I, c);
-    if(t === ID.lave){ I.h[c]--; I.m[c * H + I.h[c]] = 0; I.l[c] += 1.4 * K; ev.push('lave'); }
-    else if(t === ID.source){ I.h[c]--; I.m[c * H + I.h[c]] = 0; I.w[c] += .8 * K; I.sources.push({ c, z:I.h[c] + 1 }); ev.push('source'); }
-    else break;
+const niveau = (I, c) => Math.floor(I.h[c] + 1e-4);          // nombre de couches pleines de la colonne
+const dessus = (I, c) => { const q = niveau(I, c); return q ? I.m[c * H + q - 1] : 0; };
+// Une poche de lave ou une source mise au jour se met à couler
+function poches(I, c, ev){
+  for(let q = niveau(I, c); q > 1; q--){
+    const t = I.m[c * H + q - 1];
+    if(t !== ID.lave && t !== ID.source) break;
+    I.m[c * H + q - 1] = 0; I.h[c] -= 1;
+    if(t === ID.lave){ I.l[c] += 1.4 * K; ev.push('lave'); }
+    else { I.w[c] += .8 * K; I.sources.push({ c, z:q }); ev.push('source'); }
   }
-  return { mat, ev };
 }
-function poser(I, c, mat){
-  if(I.h[c] >= H - 1) return false;
-  I.m[c * H + I.h[c]] = mat; I.h[c]++;
+// Change la hauteur d'un point. Les couches enlevées sont renvoyées (pour le sac) ;
+// les couches ajoutées reprennent celles de la colonne modèle, sans les minerais.
+function regler(I, c, nv, modele = c){
+  nv = clamp(nv, 1.02, H - 1.5);
+  const q0 = niveau(I, c), q1 = Math.floor(nv + 1e-4), res = { retires:[], ajoutes:0, ev:[] };
+  if(q1 < q0) for(let z = q0 - 1; z >= q1; z--){ res.retires.push(I.m[c * H + z]); I.m[c * H + z] = 0; }
+  else if(q1 > q0){
+    const base = ID[FILONS[I.type].base], qm = niveau(I, modele), top = dessus(I, modele) || ID.terre;
+    for(let z = q0; z < q1; z++){
+      let mat = z === q1 - 1 ? top : (z < qm ? I.m[modele * H + z] : 0) || ID.terre;
+      if(PRECIEUX.has(mat)) mat = z >= q1 - 6 ? ID.terre : base;
+      I.m[c * H + z] = mat;
+      res.ajoutes++;
+    }
+    // l'ancien dessus devient une couche enfouie : de la terre sous l'herbe, comme dans le reste de l'île
+    if(q0 > 0 && I.m[c * H + q0 - 1] === ID.neige) I.m[c * H + q0 - 1] = ID.terre;
+  }
+  I.h[c] = nv;
+  if(q1 < q0) poches(I, c, res.ev);
   I.modif.add(c);
-  // L'eau (ou la lave) prise sous le bloc va chez le voisin le plus bas
+  return res;
+}
+// Une couche entière de plus ou de moins (lave refroidie, obsidienne) : la partie décimale est gardée
+function poser(I, c, mat){
+  if(I.h[c] >= H - 1.5) return false;
+  I.m[c * H + niveau(I, c)] = mat; I.h[c] += 1;
+  I.modif.add(c);
+  // L'eau (ou la lave) prise sous la couche va chez le voisin le plus bas
   for(const f of [I.w, I.l]){
     if(f[c] <= 0) continue;
     const i = c % N, j = (c / N) | 0;
@@ -263,21 +291,6 @@ function poser(I, c, mat){
     f[c] -= part;
   }
   return true;
-}
-// Étendre une couche (comme dans Godus) : la colonne monte jusqu'à la hauteur L ;
-// les blocs ajoutés reprennent ceux de la colonne modèle, sans les minerais
-function etendre(I, c, L, modele){
-  const base = ID[FILONS[I.type].base];
-  let n = 0;
-  while(I.h[c] < L && I.h[c] < H - 1){
-    const z = I.h[c];
-    let mat = z === L - 1 ? dessus(I, modele) : (I.m[modele * H + z] || base);
-    if(PRECIEUX.has(mat)) mat = z >= L - 3 ? ID.terre : base;
-    if(!mat) mat = ID.terre;
-    poser(I, c, mat);
-    n++;
-  }
-  return n;
 }
 
 /* ---------- Eau et lave qui coulent ---------- */
@@ -359,25 +372,29 @@ const flottants = f => { const q = new Uint16Array(f.length); for(let i = 0; i <
 const deFlottants = b => { const q = new Uint16Array(unrle(deB64(b), N * N * 2).buffer), f = new Float32Array(N * N); for(let i = 0; i < f.length; i++) f[i] = q[i] / 256; return f; };
 
 function serialiser(I){
-  // Colonnes modifiées : numéro (2 octets), hauteur, puis les matériaux
-  const cols = [...I.modif], octets = [];
-  for(const c of cols){ octets.push(c & 255, c >> 8, I.h[c]); for(let z = 0; z < I.h[c]; z++) octets.push(I.m[c * H + z]); }
-  return { v:2, type:I.type, seed:I.seed, t:I.t, cols:versB64(rle(Uint8Array.from(octets))), nb:octets.length,
+  // Points modifiés : numéro (2 octets), hauteur précise (2 octets), lissé, nombre de couches, puis les matériaux
+  const octets = [];
+  for(const c of I.modif){
+    const q = niveau(I, c), hq = Math.round(I.h[c] * 256);
+    octets.push(c & 255, c >> 8, hq & 255, hq >> 8, I.s[c], q);
+    for(let z = 0; z < q; z++) octets.push(I.m[c * H + z]);
+  }
+  return { v:4, type:I.type, seed:I.seed, t:I.t, cols:versB64(rle(Uint8Array.from(octets))), nb:octets.length,
     w:flottants(I.w), l:flottants(I.l), a:versB64(rle(I.arbres)),
     sources:I.sources, bat:I.bat, hab:I.hab.map(p => ({ id:p.id, x:+p.x.toFixed(2), z:+p.z.toFixed(2), maison:p.maison, coul:p.coul, sans:p.sans || 0 })),
     prochainId:I.prochainId, cratere:I.cratere, depart:I.depart, eruption:I.eruption || null };
 }
 function deserialiser(o){
-  const I = { type:o.type, seed:o.seed, t:o.t || 0, h:new Uint8Array(N * N), m:new Uint8Array(N * N * H), modif:new Set() };
+  const I = { type:o.type, seed:o.seed, t:o.t || 0, h:new Float32Array(N * N), s:new Uint8Array(N * N), m:new Uint8Array(N * N * H), modif:new Set() };
   genererTerrain(I);
   const oc = unrle(deB64(o.cols), o.nb);
   for(let k = 0; k < oc.length;){
-    const c = oc[k] | oc[k + 1] << 8, h = oc[k + 2];
-    k += 3;
-    I.h[c] = h;
+    const c = oc[k] | oc[k + 1] << 8, hq = oc[k + 2] | oc[k + 3] << 8, q = oc[k + 5];
+    I.h[c] = hq / 256; I.s[c] = oc[k + 4];
+    k += 6;
     I.m.fill(0, c * H, c * H + H);
-    for(let z = 0; z < h; z++) I.m[c * H + z] = oc[k + z];
-    k += h;
+    for(let z = 0; z < q; z++) I.m[c * H + z] = oc[k + z];
+    k += q;
     I.modif.add(c);
   }
   Object.assign(I, { w:deFlottants(o.w), l:deFlottants(o.l), arbres:unrle(deB64(o.a), N * N), sources:o.sources || [], bat:o.bat || [],
@@ -386,6 +403,6 @@ function deserialiser(o){
   return I;
 }
 
-window.Monde = { N, H, LH, SEA, K, MATS, ID, idx, dans, VOISINS, clamp, hash, fbm, creerIle, especePour, dessus, retirer, poser, etendre,
+window.Monde = { N, H, LH, SEA, K, MATS, ID, idx, dans, VOISINS, clamp, hash, fbm, creerIle, especePour, niveau, dessus, regler, poser,
   pasEau, pasLave, serialiser, deserialiser };
 })();
