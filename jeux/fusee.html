@@ -166,9 +166,9 @@ const fmtN = n => Math.round(n).toLocaleString('fr-FR');
 /* ---------- Réglages, records ---------- */
 const NIVEAUX = {
   // ecart0 / ecart1 : temps minimum entre deux obstacles au début et à la fin du morceau
-  facile:   { n:'Facile', vit:.82, frole:1.25, ecart0:1.3, ecart1:.5 },
+  facile:   { n:'Facile', vit:.85, frole:1.25, ecart0:1.3, ecart1:.5 },
   normal:   { n:'Normal', vit:1, frole:1, ecart0:1, ecart1:.32 },
-  difficile:{ n:'Difficile', vit:1.2, frole:.85, ecart0:.75, ecart1:.22 },
+  difficile:{ n:'Difficile', vit:1.12, frole:.85, ecart0:.75, ecart1:.22 },
 };
 let niveau = lire('fusee-niveau', 'normal');
 if(!NIVEAUX[niveau]) niveau = 'normal';
@@ -347,12 +347,13 @@ function analyser(buf){
 
 /* ---------- Le parcours : les points placés pour arriver sur la fusée au moment du son ---------- */
 function alea(graine){ let s = graine >>> 0; return () => { s += 0x6D2B79F5; let t = s; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const VITESSE = .52;       // vitesse du défilement (hauteurs d'écran par seconde), la même du début à la fin
 const LARG_FUSEE = .05;    // largeur de la fusée (en part de la piste)
 function parcours(an, niv){
   const N = NIVEAUX[niv], rng = alea(Math.round(an.duree * 1000) + an.attaques.length * 7 + niv.length);
-  // Vitesse (en hauteurs d'écran par seconde) selon l'intensité, et distance parcourue à chaque instant
+  // Vitesse constante (en hauteurs d'écran par seconde) : c'est le nombre de points qui augmente, pas la vitesse
   const S = new Float32Array(an.nf + 1);
-  for(let i = 0; i < an.nf; i++) S[i + 1] = S[i] + (.38 + .6 * an.env[i]) * N.vit * TRAME;
+  for(let i = 0; i < an.nf; i++) S[i + 1] = S[i] + VITESSE * N.vit * TRAME;
   const sA = t => { const f = clamp(t / TRAME, 0, an.nf - 1.001), i = Math.floor(f); return S[i] + (S[i + 1] - S[i]) * (f - i); };
   const objets = [];
   // Place libre : pas de mur infranchissable, il reste toujours un passage pour la fusée
@@ -364,14 +365,18 @@ function parcours(an, niv){
     return 1 - bord > LARG_FUSEE * 1.5;
   }
   // Peu d'obstacles au début, puis de plus en plus au fil du morceau : un écart minimum entre deux obstacles
-  // qui diminue peu à peu (même si la musique s'emballe, il n'y en a pas forcément plus)
-  let derT = -9;
+  // qui diminue peu à peu. Entre eux, des points « en plus » (extra) qui n'apparaissent qu'avec le multiplicateur.
+  let derT = -9, derTous = -9;
   for(const at of an.attaques){
     if(at.t < 2.5 || at.t > an.duree - 1) continue;
     const prog = at.t / an.duree, ecart = N.ecart0 + (N.ecart1 - N.ecart0) * Math.pow(prog, .8);
-    if(at.t - derT < ecart) continue;
-    if(at.force < .55 - .4 * prog && rng() > .2) continue;     // au début, surtout les coups forts
-    derT = at.t;
+    let extra = false;
+    if(at.t - derT < ecart || (at.force < .55 - .4 * prog && rng() > .2)){
+      if(at.t - derTous < Math.max(N.ecart1, ecart * .5) || at.t - derT < N.ecart1) continue;
+      extra = true;
+    } else derT = at.t;
+    derTous = at.t;
+    const u = rng();
     const s = sA(at.t);
     const groupe = at.bande === 2 ? 1 + Math.floor(rng() * (niv === 'facile' ? 2 : 3)) : 1;
     for(let g = 0; g < groupe; g++){
@@ -380,10 +385,10 @@ function parcours(an, niv){
       let ok = false, x = 0;
       for(let essai = 0; essai < 7 && !ok; essai++){ x = r + rng() * (1 - 2 * r); ok = passage(so, x, r); }
       if(!ok) continue;
-      objets.push({ s:so, x, r, bande:at.bande, t:at.t, type:'point' });
+      objets.push({ s:so, x, r, bande:at.bande, t:at.t, type:'point', extra, u });
     }
     // De temps en temps, une étoile à ramasser, dans un passage libre
-    if(at.bande === 2 && rng() < .3){
+    if(!extra && at.bande === 2 && rng() < .3){
       const so = s + .1;
       for(let essai = 0; essai < 6; essai++){ const x = .06 + rng() * .88; if(passage(so, x, .03)){ objets.push({ s:so, x, r:.022, type:'etoile', t:at.t }); break; } }
     }
@@ -568,23 +573,24 @@ function boucle(now){
   const dt = Math.min(.05, (now - P.dernier) / 1000); P.dernier = now;
   const t = AC.currentTime - P.t0, an = P.an, N = NIVEAUX[niveau];
   const f = clamp(t / TRAME, 0, an.nf - 1), intens = an.env[Math.floor(f)] || 0, prog = clamp(t / an.duree, 0, 1);
-  // Difficulté qui monte : vers la fin du morceau et avec le multiplicateur ; un choc freine un moment
-  P.frein = Math.min(1, P.frein + dt * .12);
-  const kCible = (1 + .32 * prog + .05 * (P.mult - 1)) * P.frein;
-  P.k += (kCible - P.k) * Math.min(1, dt * 2.5);
+  // La vitesse ne change pas (seul un choc freine un peu, puis elle revient tout doucement)
+  P.frein = Math.min(1, P.frein + dt * .06);
+  P.k += (P.frein - P.k) * Math.min(1, dt * 1.2);
+  // Avec le multiplicateur, des points en plus apparaissent (jusqu'à 90 % des points « extra » à ×8)
+  const densite = clamp((P.mult - 1) / 7, 0, 1) * .9;
   // Plus on enchaîne, plus la fusée monte dans l'écran (moins de temps pour réagir) ; après un choc, elle redescend
   const hautCible = .84 - .4 * clamp(P.chaine / 26, 0, 1);
   P.haut += (hautCible - P.haut) * Math.min(1, dt * (hautCible > P.haut ? 1.4 : 2));
   // La flamme grandit peu à peu à chaque enchaînement
   const flCible = .45 + 1.1 * clamp(P.chaine / 28, 0, 1);
   P.flamme += (flCible - P.flamme) * Math.min(1, dt * 2.5);
-  const vit = (.38 + .6 * intens) * N.vit * P.k;
+  const vit = VITESSE * N.vit * P.k;
   const sNow = P.prc.sA(Math.max(0, t));
   const p = piste(), yF = p.ph * P.haut, tailleF = p.pw * LARG_FUSEE;
   // Commandes : gauche / droite font tourner la fusée ; elle avance là où pointe son nez (des courbes)
   const dir = (commandes.droite ? 1 : 0) - (commandes.gauche ? 1 : 0);
   // Plus ça défile vite, plus la fusée est vive (elle tourne et se déplace plus vite)
-  const vif = clamp(vit / .75, .7, 1.6);
+  const vif = clamp(vit / VITESSE, .7, 1.4);
   if(dir) P.ang = clamp(P.ang + dir * (dir * P.ang < 0 ? 7 : 4.2) * vif * dt, -1.05, 1.05);
   else P.ang *= Math.exp(-4.5 * vif * dt);
   P.vx = Math.sin(P.ang) * 1.3 * (.7 + .3 * vif);
@@ -622,7 +628,9 @@ function boucle(now){
   for(let k = P.idx; k < objs.length; k++){
     const o = objs[k], y = yF - (o.s - sNow) * echelle;
     if(y < -p.pw * .3) break;
-    if(o.pris) continue;
+    // un point « extra » est montré ou non quand il arrive en haut, selon le multiplicateur du moment
+    if(o.cache === undefined) o.cache = !!o.extra && o.u >= densite;
+    if(o.pris || o.cache) continue;
     const x = p.x0 + o.x * p.pw, r = o.r * p.pw;
     if(o.type === 'etoile'){
       g.save(); g.translate(x, y); g.rotate(t * 2);
@@ -648,7 +656,7 @@ function boucle(now){
       // (les points gagnés en frôlant ce point-là sont perdus aussi)
       P.score = Math.max(0, P.score - 400 - (o.gain || 0)); P.bonusFrole -= o.gain || 0;
       if(P.cumul) P.cumul.val -= o.gain || 0;
-      P.invul = 1.6; P.secousse = .35; P.flash = 1; P.frein = .72; P.flamme = .22;
+      P.invul = 1.6; P.secousse = .35; P.flash = 1; P.frein = .85; P.flamme = .22;
       couperMusique(); eclats(x, y, TH.coul[o.bande], 22);
       if(P.cumul){ if(P.cumul.val > 0) P.textes.push({ ...P.cumul, txt:'+' + fmtN(P.cumul.val), vie:.8 }); P.cumul = null; }
       const cote = xF > W - 110 ? -1 : 1;
@@ -726,7 +734,7 @@ function finir(){
   $('fTitre').textContent = `${m.nom} · ${NIVEAUX[niveau].n}`;
   $('fScore').textContent = fmtN(sc);
   $('fRecord').textContent = nouveau ? (ancien ? `🏆 Nouveau record ! (avant : ${fmtN(ancien)})` : '🏆 Premier record sur ce morceau !') : `Record : ${fmtN(ancien)}`;
-  const total = P.prc.objets.filter(o => o.type === 'point').length;
+  const total = P.prc.objets.filter(o => o.type === 'point' && !o.cache).length;
   $('fStats').innerHTML = `<div><b>${P.chocs}</b><small>choc${P.chocs > 1 ? 's' : ''}</small></div><div><b>${P.froles}</b><small>frôlés (+${fmtN(P.bonusFrole)})</small></div>
     <div><b>${P.etoiles}</b><small>étoile${P.etoiles > 1 ? 's' : ''}</small></div><div><b>${total ? Math.round((1 - P.chocs / total) * 100) : 100} %</b><small>points évités</small></div>`;
   $('hud').hidden = $('barre').hidden = $('hTitre').hidden = true;
