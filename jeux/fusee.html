@@ -54,6 +54,13 @@ h1{ font-family:"Audiowide", sans-serif; font-weight:400; font-size:clamp(2rem, 
 .niveaux{ display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; }
 .niveaux button{ border:1.5px solid var(--ligne); background:transparent; border-radius:12px; padding:9px 4px; font-weight:700; }
 .niveaux button.actif{ border-color:var(--cyan); background:rgba(63,224,255,.14); color:#fff; }
+.formes{ display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; }
+.formes button{ border:1.5px solid var(--ligne); background:rgba(10,15,42,.6); border-radius:12px; padding:6px 2px 5px; font-size:.72rem; font-weight:700; display:flex; flex-direction:column; align-items:center; gap:2px; }
+.formes canvas{ width:44px; height:52px; }
+.themes{ display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
+.themes button{ border:1.5px solid var(--ligne); border-radius:12px; padding:8px 2px 6px; font-size:.75rem; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.6); }
+.themes button i{ display:inline-block; width:9px; height:9px; border-radius:50%; margin:0 1px 3px; border:1px solid rgba(255,255,255,.7); }
+.formes button.actif, .themes button.actif{ border-color:var(--cyan); box-shadow:0 0 0 1.5px var(--cyan) inset; color:#fff; }
 .gros{ width:100%; border:none; border-radius:16px; padding:15px 14px; font-weight:800; font-size:1.05rem; color:#14102E;
   background:linear-gradient(90deg, var(--cyan), #B49BFF); box-shadow:0 8px 24px rgba(63,224,255,.25); }
 .gros small{ display:block; font-weight:600; font-size:.8rem; opacity:.75; margin-top:2px; }
@@ -103,6 +110,14 @@ h1{ font-family:"Audiowide", sans-serif; font-weight:400; font-size:clamp(2rem, 
         <button data-n="facile">Facile</button><button data-n="normal">Normal</button><button data-n="difficile">Difficile</button>
       </div>
     </div>
+    <div class="carte">
+      <h2>Fusée</h2>
+      <div class="formes" id="formes"></div>
+    </div>
+    <div class="carte">
+      <h2>Décor</h2>
+      <div class="themes" id="themes"></div>
+    </div>
     <button class="gros" id="bFichier">🎵 Choisir un morceau<small>un fichier audio du téléphone (MP3, M4A, WAV…)</small></button>
     <input type="file" id="fichier" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac" hidden>
     <div class="carte">
@@ -150,9 +165,10 @@ const fmtN = n => Math.round(n).toLocaleString('fr-FR');
 
 /* ---------- Réglages, records ---------- */
 const NIVEAUX = {
-  facile:   { n:'Facile', vit:.82, garde:.42, frole:1.25 },
-  normal:   { n:'Normal', vit:1, garde:.7, frole:1 },
-  difficile:{ n:'Difficile', vit:1.2, garde:1, frole:.85 },
+  // ecart0 / ecart1 : temps minimum entre deux obstacles au début et à la fin du morceau
+  facile:   { n:'Facile', vit:.82, frole:1.25, ecart0:1.3, ecart1:.5 },
+  normal:   { n:'Normal', vit:1, frole:1, ecart0:1, ecart1:.32 },
+  difficile:{ n:'Difficile', vit:1.2, frole:.85, ecart0:.75, ecart1:.22 },
 };
 let niveau = lire('fusee-niveau', 'normal');
 if(!NIVEAUX[niveau]) niveau = 'normal';
@@ -331,7 +347,7 @@ function analyser(buf){
 
 /* ---------- Le parcours : les points placés pour arriver sur la fusée au moment du son ---------- */
 function alea(graine){ let s = graine >>> 0; return () => { s += 0x6D2B79F5; let t = s; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const LARG_FUSEE = .06;    // largeur de la fusée (en part de la piste)
+const LARG_FUSEE = .05;    // largeur de la fusée (en part de la piste)
 function parcours(an, niv){
   const N = NIVEAUX[niv], rng = alea(Math.round(an.duree * 1000) + an.attaques.length * 7 + niv.length);
   // Vitesse (en hauteurs d'écran par seconde) selon l'intensité, et distance parcourue à chaque instant
@@ -347,12 +363,15 @@ function parcours(an, niv){
     for(const [a, b] of occ){ if(a - bord > LARG_FUSEE * 1.5) return true; bord = Math.max(bord, b); }
     return 1 - bord > LARG_FUSEE * 1.5;
   }
+  // Peu d'obstacles au début, puis de plus en plus au fil du morceau : un écart minimum entre deux obstacles
+  // qui diminue peu à peu (même si la musique s'emballe, il n'y en a pas forcément plus)
+  let derT = -9;
   for(const at of an.attaques){
-    if(at.t < 2.2 || at.t > an.duree - 1) continue;
-    // Plus on avance dans le morceau, plus il y a de points (de 80 % au début à 125 % à la fin)
-    const monte = .8 + .45 * at.t / an.duree;
-    if(at.bande > 0 && rng() > N.garde * (.45 + .55 * at.force) * monte) continue;
-    if(at.bande === 0 && rng() > (.35 + .65 * N.garde) * monte) continue;
+    if(at.t < 2.5 || at.t > an.duree - 1) continue;
+    const prog = at.t / an.duree, ecart = N.ecart0 + (N.ecart1 - N.ecart0) * Math.pow(prog, .8);
+    if(at.t - derT < ecart) continue;
+    if(at.force < .55 - .4 * prog && rng() > .2) continue;     // au début, surtout les coups forts
+    derT = at.t;
     const s = sA(at.t);
     const groupe = at.bande === 2 ? 1 + Math.floor(rng() * (niv === 'facile' ? 2 : 3)) : 1;
     for(let g = 0; g < groupe; g++){
@@ -364,7 +383,7 @@ function parcours(an, niv){
       objets.push({ s:so, x, r, bande:at.bande, t:at.t, type:'point' });
     }
     // De temps en temps, une étoile à ramasser, dans un passage libre
-    if(at.bande === 2 && rng() < .12){
+    if(at.bande === 2 && rng() < .3){
       const so = s + .1;
       for(let essai = 0; essai < 6; essai++){ const x = .06 + rng() * .88; if(passage(so, x, .03)){ objets.push({ s:so, x, r:.022, type:'etoile', t:at.t }); break; } }
     }
@@ -387,50 +406,110 @@ addEventListener('orientationchange', () => setTimeout(taille, 300));
 taille();
 // La piste : une colonne centrée (toute la largeur en portrait)
 const piste = () => { const pw = Math.min(W, Hh * .78); return { x0:(W - pw) / 2, pw, ph:Hh }; };
-// Couleurs des points : graves, médiums, aigus (pleines, douces, avec un bord net)
-const COUL = ['#D9576F', '#E39B52', '#4FB3CF'];
-const BORD = ['#F6B7C2', '#F7D2A6', '#B8E6F2'];
-const etoilesFond = Array.from({ length:140 }, () => ({ x:Math.random(), y:Math.random(), z:.2 + Math.random() * .8 }));
+/* ---------- Thèmes : fond, particules, couleurs des points (toujours ronds) et de la fusée ---------- */
+const THEMES = {
+  espace:   { n:'Espace', haut:'#141B4A', bas:'#070B1F', part:'traits', coul:['#D9576F', '#E39B52', '#4FB3CF'], bord:['#F6B7C2', '#F7D2A6', '#B8E6F2'], corps:'#EAF6FF', accent:'#3FE0FF' },
+  couchant: { n:'Couchant', haut:'#2A1446', bas:'#A8475E', part:'poussiere', coul:['#6A3D9A', '#F2B45A', '#FFE3B3'], bord:['#D9BFF2', '#FFE0A8', '#FFFFFF'], corps:'#FFF4E0', accent:'#FF7A59' },
+  ocean:    { n:'Océan', haut:'#06304D', bas:'#021624', part:'bulles', coul:['#F08A75', '#F5D78E', '#8FE0D0'], bord:['#FFD0C4', '#FFF1C9', '#D6FFF6'], corps:'#F1FBFF', accent:'#2EC4B6' },
+  aurore:   { n:'Aurore', haut:'#04161C', bas:'#0B2E36', part:'aurore', coul:['#B7E36A', '#6FD3B6', '#E8F7F2'], bord:['#E6F7C2', '#C9F2E6', '#FFFFFF'], corps:'#F2FFF9', accent:'#7CFFB2' },
+  retro:    { n:'Rétro', haut:'#12002A', bas:'#3B0A5C', part:'grille', coul:['#FF5FA2', '#FFC857', '#5CE1E6'], bord:['#FFC2DD', '#FFE7B0', '#C9F7F9'], corps:'#FFF0FA', accent:'#FF5FA2' },
+  volcan:   { n:'Volcan', haut:'#1A0806', bas:'#3A110A', part:'braises', coul:['#7A7473', '#E8633A', '#F7C64A'], bord:['#C4BEBC', '#FFB08F', '#FFE6A3'], corps:'#FFF3E8', accent:'#FF6B3D' },
+};
+let themeChoisi = lire('fusee-theme', 'aleatoire');
+if(themeChoisi !== 'aleatoire' && !THEMES[themeChoisi]) themeChoisi = 'aleatoire';
+let TH = THEMES.espace;
+const tirerTheme = () => { const k = Object.keys(THEMES); TH = THEMES[themeChoisi === 'aleatoire' ? k[Math.floor(Math.random() * k.length)] : themeChoisi]; };
 
-function dessinerFond(dt, vit, intens, t){
+/* ---------- Formes de fusée (contours en unités de la taille de la fusée ; la pointe vers le haut) ---------- */
+const bez = (a, c, b, n) => Array.from({ length:n + 1 }, (_, k) => { const t = k / n, u = 1 - t; return [u * u * a[0] + 2 * u * t * c[0] + t * t * b[0], u * u * a[1] + 2 * u * t * c[1] + t * t * b[1]]; });
+// Le côté droit, de la pointe jusqu'en bas, puis son reflet
+const miroir = d => [...d, ...d.slice(1).filter(p => p[0] > 1e-6).reverse().map(([x, y]) => [-x, y])];
+const FORMES = {
+  fleche:  { n:'Flèche', pts:[[0, -.8], [.5, .46], [0, .22], [-.5, .46]] },
+  delta:   { n:'Delta', pts:miroir([...bez([0, -.85], [.38, -.2], [.52, .46], 8), ...bez([.52, .46], [.24, .26], [0, .3], 5).slice(1)]) },
+  ogive:   { n:'Ogive', pts:miroir([...bez([0, -.85], [.2, -.62], [.2, -.12], 8), [.2, .18], [.44, .5], [.2, .42], [.08, .42]]) },
+  plume:   { n:'Plume', pts:miroir([...bez([0, -.95], [.36, -.35], [.28, .36], 9), [.1, .46], [0, .34]]) },
+  navette: { n:'Navette', pts:miroir([...bez([0, -.72], [.24, -.66], [.24, -.18], 7), [.24, .12], [.5, .36], [.5, .48], [.2, .44], [.1, .44]]) },
+};
+let forme = lire('fusee-forme', 'fleche');
+if(!FORMES[forme]) forme = 'fleche';
+
+const etoilesFond = Array.from({ length:140 }, () => ({ x:Math.random(), y:Math.random(), z:.2 + Math.random() * .8, p:Math.random() * 6.3 }));
+function dessinerFond(dt, vit, intens, t, th = TH){
   const grad = g.createLinearGradient(0, 0, 0, Hh);
-  const h = 230 + intens * 60;
-  grad.addColorStop(0, `hsl(${h}, 60%, ${7 + intens * 5}%)`); grad.addColorStop(1, '#070B1F');
+  grad.addColorStop(0, th.haut); grad.addColorStop(1, th.bas);
   g.fillStyle = grad; g.fillRect(0, 0, W, Hh);
-  g.fillStyle = '#fff';
+  if(intens > 0){ g.fillStyle = `rgba(255,255,255,${intens * .04})`; g.fillRect(0, 0, W, Hh); }
+  const part = th.part;
+  if(part === 'aurore'){
+    // voiles d'aurore boréale qui ondulent en haut de l'écran
+    g.lineWidth = 34;
+    for(let k = 0; k < 3; k++){
+      g.strokeStyle = `rgba(${k === 1 ? '120,220,255' : '124,255,178'},${.07 + intens * .05})`;
+      g.beginPath();
+      for(let x = 0; x <= W; x += 16) g.lineTo(x, Hh * (.1 + .09 * k) + Math.sin(x * .012 + t * .4 + k * 1.7) * 22);
+      g.stroke();
+    }
+  }
+  if(part === 'grille'){
+    // sol quadrillé qui défile (style rétro)
+    const hz = Hh * .62;
+    g.strokeStyle = 'rgba(255,95,162,.28)'; g.lineWidth = 1;
+    const dec = (t * vit * 1.6) % 1;
+    for(let k = 0; k < 14; k++){ const u = (k + dec) / 14, y = hz + (Hh - hz) * u * u; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+    for(let k = -10; k <= 10; k++){ g.beginPath(); g.moveTo(W / 2 + k * 8, hz); g.lineTo(W / 2 + k * W * .16, Hh); g.stroke(); }
+  }
   for(const e of etoilesFond){
-    e.y += vit * dt * e.z * .9;
-    if(e.y > 1){ e.y -= 1; e.x = Math.random(); }
-    const l = 1 + vit * e.z * 18;
+    if(part === 'grille' && e.y > .6) continue;
+    if(part === 'braises'){ e.y -= (vit * .25 + .05) * dt * e.z; if(e.y < 0){ e.y += 1; e.x = Math.random(); } }
+    else { e.y += vit * dt * e.z * (part === 'bulles' ? .45 : part === 'aurore' ? .25 : .9); if(e.y > 1){ e.y -= 1; e.x = Math.random(); } }
+    const x = e.x * W, y = e.y * Hh;
     g.globalAlpha = .25 + e.z * .55;
-    g.fillRect(e.x * W, e.y * Hh, 1.4 * e.z + .4, l);
+    if(part === 'traits'){ g.fillStyle = '#fff'; g.fillRect(x, y, 1.4 * e.z + .4, 1 + vit * e.z * 18); }
+    else if(part === 'bulles'){ g.strokeStyle = 'rgba(210,245,255,.7)'; g.lineWidth = 1; g.beginPath(); g.arc(x + Math.sin(t * 2 + e.p) * 4, y, 1 + e.z * 3, 0, Math.PI * 2); g.stroke(); }
+    else if(part === 'braises'){ g.fillStyle = e.z > .6 ? '#FFB347' : '#FF6B3D'; g.globalAlpha *= .6 + .4 * Math.sin(t * 6 + e.p); g.fillRect(x, y, 1.5 + e.z * 1.5, 1.5 + e.z * 1.5); }
+    else if(part === 'poussiere'){ g.fillStyle = '#FFE1B8'; g.fillRect(x, y, 1 + e.z, 1 + vit * e.z * 8); }
+    else { g.fillStyle = '#fff'; g.fillRect(x, y, 1 + e.z, 1 + e.z); }
   }
   g.globalAlpha = 1;
   const p = piste();
   if(p.pw < W){ g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, 0, p.x0, Hh); g.fillRect(p.x0 + p.pw, 0, W - p.x0 - p.pw, Hh); }
 }
-// La fusée : une flèche et son jet ; la flamme grandit avec le multiplicateur
-function dessinerFusee(x, y, taille, inclin, t, clign, flamme){
+// La fusée : la forme choisie, son jet (qui grandit avec les enchaînements) ; ang : direction de la pointe
+function dessinerFusee(ctx, f, x, y, T, ang, t, clign, flamme, th = TH){
   if(clign && Math.floor(t * 14) % 2) return;
-  g.save();
-  g.translate(x, y); g.rotate(inclin);
-  const L = taille * 1.25, l = taille * .5;
-  const fl0 = L * flamme * (.8 + Math.random() * .35), lj = l * (.42 + Math.min(.25, flamme * .08));
-  const fl = g.createLinearGradient(0, L * .35, 0, L * .35 + fl0);
+  const pts = FORMES[f].pts;
+  ctx.save();
+  ctx.translate(x, y); ctx.rotate(ang);
+  const fl0 = T * (.35 + 1.5 * flamme) * (.82 + Math.random() * .3), lj = T * (.16 + .05 * flamme), y0 = T * .4;
+  const fl = ctx.createLinearGradient(0, y0, 0, y0 + fl0);
   fl.addColorStop(0, '#FFFFFF'); fl.addColorStop(.25, '#FFD54F'); fl.addColorStop(.6, '#FF6B3D'); fl.addColorStop(1, 'rgba(255,60,120,0)');
-  g.fillStyle = fl;
-  g.beginPath(); g.moveTo(-lj, L * .32); g.quadraticCurveTo(0, L * .35 + fl0 * 1.1, lj, L * .32); g.closePath(); g.fill();
-  g.fillStyle = '#EAF6FF'; g.strokeStyle = '#3FE0FF'; g.lineWidth = 1.6;
-  g.beginPath(); g.moveTo(0, -L * .62); g.lineTo(l, L * .38); g.lineTo(0, L * .16); g.lineTo(-l, L * .38); g.closePath();
-  g.fill(); g.stroke();
-  g.fillStyle = '#3FE0FF'; g.beginPath(); g.moveTo(0, -L * .3); g.lineTo(l * .3, L * .1); g.lineTo(-l * .3, L * .1); g.closePath(); g.fill();
-  g.restore();
+  ctx.fillStyle = fl;
+  ctx.beginPath(); ctx.moveTo(-lj, y0 - T * .04); ctx.quadraticCurveTo(0, y0 + fl0 * 1.1, lj, y0 - T * .04); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); pts.forEach(([a, b], i) => i ? ctx.lineTo(a * T, b * T) : ctx.moveTo(a * T, b * T)); ctx.closePath();
+  ctx.fillStyle = th.corps; ctx.fill();
+  ctx.lineWidth = Math.max(1.2, T * .07); ctx.lineJoin = 'round'; ctx.strokeStyle = th.accent; ctx.stroke();
+  // le hublot / la bande : la même forme en petit
+  ctx.beginPath(); pts.forEach(([a, b], i) => { const X = a * T * .38, Y = (b * .38 - .1) * T; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }); ctx.closePath();
+  ctx.fillStyle = th.accent; ctx.fill();
+  ctx.restore();
+}
+// Distance d'un point (en unités de la fusée) au contour de la forme : négative à l'intérieur
+function distForme(px, py, pts){
+  let dedans = false, dmin = Infinity;
+  for(let i = 0, j = pts.length - 1; i < pts.length; j = i++){
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) dedans = !dedans;
+    const dx = xj - xi, dy = yj - yi, l2 = dx * dx + dy * dy, u = l2 ? clamp(((px - xi) * dx + (py - yi) * dy) / l2, 0, 1) : 0;
+    dmin = Math.min(dmin, Math.hypot(px - xi - u * dx, py - yi - u * dy));
+  }
+  return dedans ? -dmin : dmin;
 }
 // Un point à éviter : disque plein, petit reflet, bord net
 function dessinerPoint(x, y, r, bande){
   g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
-  g.fillStyle = COUL[bande]; g.fill();
-  g.lineWidth = Math.max(1.2, Math.min(3, r * .08)); g.strokeStyle = BORD[bande]; g.stroke();
+  g.fillStyle = TH.coul[bande]; g.fill();
+  g.lineWidth = Math.max(1.2, Math.min(3, r * .08)); g.strokeStyle = TH.bord[bande]; g.stroke();
   if(r > 5){ g.beginPath(); g.arc(x - r * .32, y - r * .32, r * .32, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,.18)'; g.fill(); }
 }
 // Petit tintement quand on frôle un point
@@ -447,6 +526,7 @@ let partie = null, raf = 0, morceauCourant = null;
 const commandes = { gauche:false, droite:false, doigts:new Map() };
 function demarrer(m){
   morceauCourant = m;
+  tirerTheme();
   const ctx = audio();
   const an = m.an, prc = parcours(an, niveau);
   const src = ctx.createBufferSource();
@@ -456,7 +536,7 @@ function demarrer(m){
   const t0 = ctx.currentTime + .25;
   src.start(t0);
   partie = { m, an, prc, src, t0, x:.5, vx:0, score:0, chaine:0, mult:1, chocs:0, froles:0, bonusFrole:0, etoiles:0, invul:0, secousse:0, flash:0, eclats:[], textes:[], idx:0, fin:false, dernier:performance.now(),
-    k:1, frein:1, haut:.82, flamme:.6 };
+    k:1, frein:1, haut:.84, flamme:.45, ang:0, trace:[], cumul:null };
   src.onended = () => { if(partie && partie.src === src && !partie.fin && AC.currentTime - t0 > an.duree - .6) finir(); };
   ['eMenu', 'eChargement', 'eFin', 'ePause'].forEach(id => $(id).hidden = true);
   $('hud').hidden = $('barre').hidden = $('hTitre').hidden = false;
@@ -474,6 +554,12 @@ function couperMusique(){
 function eclats(x, y, c, n){
   for(let k = 0; k < n; k++){ const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 260; partie.eclats.push({ x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v, vie:.6 + Math.random() * .4, c }); }
 }
+// Ajoute un bonus au compteur affiché à côté de la fusée : les bonus rapprochés s'additionnent
+function cumuler(P, v, c){
+  if(P.cumul && P.cumul.vie > 0){ P.cumul.val += v; P.cumul.n++; if(c === '#9FEFFF') P.cumul.c = c; }
+  else P.cumul = { val:v, n:1, c, x:0, y:0 };
+  Object.assign(P.cumul, { vie:1.4, pop:1, txt:'+' + fmtN(P.cumul.val) });
+}
 function boucle(now){
   const P = partie;
   if(!P) return;
@@ -485,19 +571,22 @@ function boucle(now){
   const kCible = (1 + .32 * prog + .05 * (P.mult - 1)) * P.frein;
   P.k += (kCible - P.k) * Math.min(1, dt * 2.5);
   // Plus on enchaîne, plus la fusée monte dans l'écran (moins de temps pour réagir) ; après un choc, elle redescend
-  const hautCible = .82 - .3 * clamp(P.chaine / 28, 0, 1);
-  P.haut += (hautCible - P.haut) * Math.min(1, dt * (hautCible > P.haut ? 1.6 : .8));
-  const flCible = .55 + .13 * (P.mult - 1);
-  P.flamme += (flCible - P.flamme) * Math.min(1, dt * 3);
+  const hautCible = .84 - .4 * clamp(P.chaine / 26, 0, 1);
+  P.haut += (hautCible - P.haut) * Math.min(1, dt * (hautCible > P.haut ? 1.4 : 2));
+  // La flamme grandit peu à peu à chaque enchaînement
+  const flCible = .45 + 1.1 * clamp(P.chaine / 28, 0, 1);
+  P.flamme += (flCible - P.flamme) * Math.min(1, dt * 2.5);
   const vit = (.38 + .6 * intens) * N.vit * P.k;
   const sNow = P.prc.sA(Math.max(0, t));
   const p = piste(), yF = p.ph * P.haut, tailleF = p.pw * LARG_FUSEE;
-  // Commandes : gauche / droite (accélération, puis glisse)
+  // Commandes : gauche / droite font tourner la fusée ; elle avance là où pointe son nez (des courbes)
   const dir = (commandes.droite ? 1 : 0) - (commandes.gauche ? 1 : 0);
-  if(dir) P.vx = clamp(P.vx + dir * 6.5 * dt, -1.35, 1.35); else P.vx *= Math.exp(-9 * dt);
-  if(dir && Math.sign(P.vx) !== dir) P.vx *= Math.exp(-14 * dt);
-  P.x = clamp(P.x + P.vx * dt, LARG_FUSEE * .6, 1 - LARG_FUSEE * .6);
-  if(P.x <= LARG_FUSEE * .6 || P.x >= 1 - LARG_FUSEE * .6) P.vx = 0;
+  if(dir) P.ang = clamp(P.ang + dir * (dir * P.ang < 0 ? 7 : 4.2) * dt, -1.05, 1.05);
+  else P.ang *= Math.exp(-4.5 * dt);
+  P.vx = Math.sin(P.ang) * 1.3;
+  const bordG = LARG_FUSEE * .6, bordD = 1 - LARG_FUSEE * .6;
+  P.x = clamp(P.x + P.vx * dt, bordG, bordD);
+  if((P.x <= bordG && P.ang < 0) || (P.x >= bordD && P.ang > 0)) P.ang *= Math.exp(-10 * dt);
   // Points : du temps qui passe, plus avec le multiplicateur et la vitesse
   if(t > 0 && !P.fin) P.score += 20 * P.mult * (.6 + vit) * dt;
   P.invul = Math.max(0, P.invul - dt); P.secousse = Math.max(0, P.secousse - dt); P.flash = Math.max(0, P.flash - dt * 2.5);
@@ -509,7 +598,19 @@ function boucle(now){
   const objs = P.prc.objets, echelle = p.ph * P.k;
   // (les distances sont multipliées par k : les points arrivent toujours sur la fusée au moment du son)
   while(P.idx < objs.length && (yF - (objs[P.idx].s - sNow) * echelle) > p.ph + p.pw * .3) P.idx++;
-  const rF = tailleF * .42, seuilFrole = tailleF * .75 * N.frole;
+  // Traînée : les positions passées descendent avec le défilement et dessinent la courbe
+  P.trace.push({ x:P.x, s:sNow });
+  while(P.trace.length && yF + (sNow - P.trace[0].s) * echelle > p.ph + 20) P.trace.shift();
+  if(P.trace.length > 2){
+    g.lineCap = 'round';
+    for(let k = 1; k < P.trace.length; k++){
+      const a = P.trace[k - 1], b = P.trace[k], u = k / P.trace.length;
+      g.strokeStyle = TH.accent; g.globalAlpha = u * .35; g.lineWidth = tailleF * (.08 + .3 * u);
+      g.beginPath(); g.moveTo(p.x0 + a.x * p.pw, yF + (sNow - a.s) * echelle + tailleF * .45); g.lineTo(p.x0 + b.x * p.pw, yF + (sNow - b.s) * echelle + tailleF * .45); g.stroke();
+    }
+    g.globalAlpha = 1;
+  }
+  const pts = FORMES[forme].pts, ca = Math.cos(P.ang), sa = Math.sin(P.ang), seuilFrole = tailleF * 1.0 * N.frole;
   for(let k = P.idx; k < objs.length; k++){
     const o = objs[k], y = yF - (o.s - sNow) * echelle;
     if(y < -p.pw * .3) break;
@@ -526,41 +627,55 @@ function boucle(now){
       dessinerPoint(x, y, r * pulse, o.bande);
     }
     if(P.fin) continue;
-    // Choc (la fusée : deux cercles, le nez et le corps)
-    const d1 = Math.hypot(x - xF, y - (yF - tailleF * .35)), d2 = Math.hypot(x - xF, y - (yF + tailleF * .12));
-    const d = Math.min(d1 - tailleF * .18, d2 - rF);
+    // Choc : distance du centre du point au bord de la fusée (ailes comprises, en tenant compte de l'inclinaison)
+    const dx = (x - xF) / tailleF, dy = (y - yF) / tailleF;
+    const d = distForme(dx * ca + dy * sa, -dx * sa + dy * ca, pts) * tailleF;
     if(o.type === 'etoile'){
-      if(d < r){ o.pris = true; P.etoiles++; P.chaine++; P.score += 150 * P.mult; eclats(x, y, '#FFD54F', 14); P.textes.push({ x, y, txt:`+${150 * P.mult}`, c:'#FFD54F', vie:1 }); }
+      if(d < r){ o.pris = true; P.etoiles++; P.chaine++; P.score += 150 * P.mult; eclats(x, y, '#FFD54F', 14); cumuler(P, 150 * P.mult, '#FFD54F'); }
       continue;
     }
-    if(d < r * .95 && P.invul <= 0 && !o.touche){
+    if(d < r * .92 && P.invul <= 0 && !o.touche){
       // Choc : points perdus, la musique s'éteint, la fusée ralentit, redescend, la flamme baisse
       o.touche = true; P.chocs++; P.chaine = 0;
       P.score = Math.max(0, P.score - 400);
       P.invul = 1.6; P.secousse = .35; P.flash = 1; P.frein = .72; P.flamme = .22;
-      couperMusique(); eclats(x, y, COUL[o.bande], 22);
-      P.textes.push({ x:xF, y:yF - tailleF, txt:'−400', c:'#FF8FA3', vie:1.2 });
+      couperMusique(); eclats(x, y, TH.coul[o.bande], 22);
+      if(P.cumul){ P.textes.push({ ...P.cumul, vie:.8 }); P.cumul = null; }
+      P.textes.push({ x:xF + tailleF * 1.8 * (xF > W - 80 ? -1 : 1), y:yF - tailleF * .3, txt:'−400', c:'#FF8FA3', vie:1.2, gros:1 });
       if(navigator.vibrate) navigator.vibrate(70);
-    } else if(!o.touche && !o.frole && y > yF + tailleF * .4 && o.dmin < seuilFrole && P.invul <= 0){
-      // Frôlé sans le toucher : un bonus, d'autant plus gros qu'on est passé près
+    } else if(!o.touche && !o.frole && y - r > yF + tailleF * .6 && o.dmin < seuilFrole && P.invul <= 0){
+      // Frôlé sans le toucher (écart entre le bord du point et le bord de la fusée) : un bonus, d'autant plus gros qu'on est passé près
       const pres = clamp(1 - o.dmin / seuilFrole, 0, 1), bonus = Math.round((60 + 140 * pres) * P.mult / 10) * 10;
       o.frole = true; P.froles++; P.chaine++; P.score += bonus; P.bonusFrole += bonus;
       eclats(xF, yF, '#9FEFFF', 6);
-      P.textes.push({ x:xF + (o.x < P.x ? 26 : -26), y:yF - tailleF * .4, txt:`+${bonus}${pres > .6 ? ' frôlé !' : ''}`, c:'#9FEFFF', vie:.9 });
+      cumuler(P, bonus, '#9FEFFF');
       tinter(pres);
     }
-    o.dmin = Math.min(o.dmin ?? 1e9, d);
+    o.dmin = Math.min(o.dmin ?? 1e9, d - r);
   }
   P.mult = Math.min(8, 1 + Math.floor(P.chaine / 4));
   // Fusée, éclats, bonus affichés
-  dessinerFusee(xF, yF, tailleF, P.vx * .28, t, P.invul > 0, P.flamme);
+  dessinerFusee(g, forme, xF, yF, tailleF, P.ang, t, P.invul > 0, P.flamme);
   g.globalCompositeOperation = 'lighter';
   P.eclats = P.eclats.filter(e => (e.vie -= dt) > 0);
   for(const e of P.eclats){ e.x += e.vx * dt; e.y += e.vy * dt; e.vx *= .96; e.vy *= .96; g.globalAlpha = Math.min(1, e.vie * 1.6); g.fillStyle = e.c; g.fillRect(e.x - 2, e.y - 2, 4, 4); }
   g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
   P.textes = P.textes.filter(e => (e.vie -= dt) > 0);
-  g.textAlign = 'center'; g.font = '700 15px Audiowide, sans-serif';
-  for(const e of P.textes){ e.y -= 40 * dt; g.globalAlpha = Math.min(1, e.vie * 1.8); g.fillStyle = e.c; g.fillText(e.txt, e.x, e.y); }
+  g.textAlign = 'center';
+  for(const e of P.textes){ e.y -= 40 * dt; g.globalAlpha = Math.min(1, e.vie * 1.8); g.fillStyle = e.c; g.font = `700 ${e.gros ? 19 : 15}px Audiowide, sans-serif`; g.fillText(e.txt, e.x, e.y); }
+  // Les bonus qui s'additionnent, à côté de la fusée (comme le −400)
+  if(P.cumul){
+    const C = P.cumul;
+    C.vie -= dt; C.pop = Math.max(0, C.pop - dt * 4);
+    const cote = xF > W - 90 ? -1 : 1;
+    C.x = xF + tailleF * 1.8 * cote; C.y = yF - tailleF * .3;
+    if(C.vie <= 0){ P.textes.push({ ...C, vie:.8, gros:1 }); P.cumul = null; }
+    else {
+      g.globalAlpha = Math.min(1, C.vie * 3); g.fillStyle = C.c; g.font = `700 ${Math.round(19 + 7 * C.pop)}px Audiowide, sans-serif`;
+      g.fillText(C.txt, C.x, C.y);
+      if(C.n > 1){ g.font = '600 11px Audiowide, sans-serif'; g.fillText(`×${C.n}`, C.x, C.y + 14); }
+    }
+  }
   g.globalAlpha = 1;
   if(P.flash > 0){ g.fillStyle = `rgba(255,79,163,${P.flash * .3})`; g.fillRect(0, 0, W, Hh); }
   if(t < 0){ g.fillStyle = '#fff'; g.font = '700 28px Audiowide, sans-serif'; g.fillText('Prêt…', W / 2, Hh * .4); }
@@ -654,6 +769,8 @@ function ligneRecord(r){
 }
 function menu(){
   document.querySelectorAll('#niveaux button').forEach(b => b.classList.toggle('actif', b.dataset.n === niveau));
+  document.querySelectorAll('#formes button').forEach(b => b.classList.toggle('actif', b.dataset.f === forme));
+  document.querySelectorAll('#themes button').forEach(b => b.classList.toggle('actif', b.dataset.t === themeChoisi));
   $('lPistes').innerHTML = PISTES.map(p => {
     const d = Math.round(p.mesures * 16 * 60 / p.bpm / 4);
     return `<button class="piste" data-piste="${p.id}"><span class="ico" style="background:${p.c}33">${p.ico}</span><span><b>${esc(p.n)}</b><small>${p.bpm} bpm · ${fmtT(d)}</small></span>${ligneRecord(records[p.id])}</button>`;
@@ -697,6 +814,18 @@ addEventListener('keyup', e => {
 });
 document.addEventListener('visibilitychange', () => { if(document.hidden) pause(); });
 
+// Choix de la forme (avec un aperçu) et du décor
+$('formes').innerHTML = Object.entries(FORMES).map(([k, f]) => `<button data-f="${k}"><canvas width="88" height="104"></canvas>${f.n}</button>`).join('');
+const apercus = () => document.querySelectorAll('#formes button').forEach(b => {
+  const c = b.querySelector('canvas').getContext('2d');
+  c.clearRect(0, 0, 88, 104); dessinerFusee(c, b.dataset.f, 44, 42, 46, 0, 0, false, .25, themeChoisi === 'aleatoire' ? THEMES.espace : TH);
+});
+$('themes').innerHTML = `<button data-t="aleatoire" style="background:linear-gradient(135deg,#141B4A,#A8475E,#06304D,#3B0A5C)">🎲<br>Aléatoire</button>` +
+  Object.entries(THEMES).map(([k, th]) => `<button data-t="${k}" style="background:linear-gradient(${th.haut},${th.bas})">${th.coul.map(c => `<i style="background:${c}"></i>`).join('')}<br>${th.n}</button>`).join('');
+$('formes').onclick = e => { const b = e.target.closest('button'); if(!b) return; forme = b.dataset.f; ecrire('fusee-forme', forme); menu(); };
+$('themes').onclick = e => { const b = e.target.closest('button'); if(!b) return; themeChoisi = b.dataset.t; ecrire('fusee-theme', themeChoisi); if(themeChoisi !== 'aleatoire') TH = THEMES[themeChoisi]; apercus(); menu(); };
+if(themeChoisi !== 'aleatoire') TH = THEMES[themeChoisi];
+apercus();
 $('niveaux').onclick = e => { const b = e.target.closest('button'); if(!b) return; niveau = b.dataset.n; ecrire('fusee-niveau', niveau); menu(); };
 $('lPistes').onclick = e => { const b = e.target.closest('[data-piste]'); if(b) jouerPiste(PISTES.find(p => p.id === b.dataset.piste)); };
 $('bFichier').onclick = () => { audio(); $('fichier').value = ''; $('fichier').click(); };
@@ -715,7 +844,7 @@ let dernierFond = performance.now();
   requestAnimationFrame(fond);
 })(performance.now());
 menu();
-window.Fusee = { PISTES, composer, analyser, parcours, get partie(){ return partie; }, get t(){ return partie && AC ? AC.currentTime - partie.t0 : 0; }, commandes, demarrer, records, jouerPiste };
+window.Fusee = { PISTES, composer, analyser, parcours, get partie(){ return partie; }, get t(){ return partie && AC ? AC.currentTime - partie.t0 : 0; }, commandes, demarrer, records, jouerPiste, FORMES, THEMES, distForme, get theme(){ return TH; } };
 
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
