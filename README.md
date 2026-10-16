@@ -1,6 +1,6 @@
 # DesDés
 
-Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés, un quiz de géographie, une course à dessiner, et un jeu de neige de culture en 3D.
+Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés, un quiz de géographie, une course à dessiner, un jeu de neige de culture en 3D et un jeu de fusée en musique.
 
 ![Logo](logo.svg)
 
@@ -13,6 +13,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), défi du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
 | **Draw Race** : course de monoplaces dont on dessine la trajectoire, 20 circuits inspirés de la F1, pneus, météo et arrêts au stand ; modes Arcade et Championnat | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 | **Nivoculteur** : construire et faire tourner le réseau de neige de culture d'une station, en 3D (en construction) | `jeux/nivoculteur/index.html` | 1 |
+| **Fusée Rythme** : piloter une fusée à gauche et à droite au rythme d'un morceau (fourni ou pris dans vos fichiers) et éviter les points ; la partie dure le temps de la musique | `jeux/fusee.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -245,6 +246,18 @@ Il est construit étape par étape ; le projet, les règles et l'avancement sont
 - Construction : outils « + Regard », « Eau » (depuis la salle de pompage ou un regard alimenté), « Électricité » (depuis un départ électrique près des bâtiments ou un regard alimenté) ; un devis s'affiche avant chaque achat (tranchée commune moins chère, pression prévue) ; vue sous-sol, annuler, tout effacer.
 - `index.html?test` affiche les vérifications de la simulation ; `index.html?modeles` (bouton « Modèles 3D ») montre chaque modèle 3D seul : ventilateurs, perches, regard, salle de pompage, compresseur d'air, dameuses, garage, armoire électrique.
 
+## Fusée Rythme
+
+Jeu d'adresse musical, inspiré de Rhythm Rocket (iPhone, 2012) : on choisit un morceau, la partie dure le temps de la musique, et une fusée en forme de flèche, avec son jet, file vers le haut en évitant des points qui arrivent au rythme du morceau. Tout est dans `jeux/fusee.html` (canvas 2D, Web Audio).
+
+- **Commandes** : toucher la moitié gauche ou droite de l'écran (ou les flèches du clavier). La fusée accélère puis glisse. Pause : bouton ⏸ (ou Échap) ; quitter l'application met en pause.
+- **La musique** : un fichier audio du téléphone (MP3, M4A, WAV…, choisi dans Fichiers), ou l'un des 3 morceaux composés par le jeu (Décollage 96 bpm, Orbite 124 bpm, Hyperespace 172 bpm), synthétisés en moins d'une seconde sans aucun fichier. Une page web n'a pas accès à la bibliothèque protégée de l'app Musique ni à Spotify. Sur iPhone (iOS 17 et plus), le son joue même en mode silencieux.
+- **L'analyse** : avant la partie, le morceau est découpé en tranches de 20 ms ; trois bandes (graves sous 160 Hz, médiums, aigus au-dessus de 3,8 kHz) donnent les attaques, et l'énergie lissée sur 1,5 s donne l'intensité.
+- **Le parcours** : chaque attaque devient un point placé pour arriver sur la fusée au moment du son : graves → très gros points roses, médiums → points orange moyens, aigus → tout petits points cyan (parfois par 2 ou 3), et de temps en temps une étoile dorée à ramasser. Il reste toujours un passage assez large. La vitesse suit l'intensité de la musique (plus vite dans les refrains). Le même morceau donne toujours le même parcours.
+- **Points** : des points chaque seconde, multipliés (×1 à ×8) ; un point frôlé sans le toucher (+50) ou une étoile (+150) fait monter le multiplicateur (+1 tous les 4). Un choc : −400 points, le multiplicateur retombe à ×1, la musique se coupe un instant (étouffée), puis reprend ; la fusée clignote 1,3 s.
+- **Difficultés** : Facile, Normal, Difficile (vitesse, nombre de points, marge pour frôler).
+- **Records** : par morceau et par difficulté, dans `fusee-records` ; vos fichiers joués restent dans la liste (il faut rechoisir le fichier pour rejouer). La difficulté choisie est gardée dans `fusee-niveau`.
+
 ## Mise en ligne
 
 Le site est fait de fichiers statiques, sans installation ni compilation.
@@ -279,6 +292,7 @@ outils/                script qui fabrique les données de géographie
 jeux/drawrace.html     jeu Draw Race
 jeux/drawrace/         circuits et géométrie de Draw Race
 jeux/nivoculteur/      jeu Nivoculteur (page, Three.js, CLAUDE.md)
+jeux/fusee.html        jeu Fusée Rythme
 logo.svg               logo (source vectorielle)
 icons/                 icônes de l'application (192, 512, masquable, Apple)
 manifest.webmanifest   description de l'application installable

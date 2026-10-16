@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Kalam:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Kalam:wght@700&family=Audiowide&display=swap" rel="stylesheet">
 <style>
 :root{
   --felt:#1F5C47; --felt-dark:#123A2C; --ivory:#F7F3E8; --ink:#1A1A1A;
@@ -92,6 +92,15 @@ h2{ font-size:.85rem; font-weight:600; text-transform:uppercase; letter-spacing:
 .gdraw .status b{ color:#1F1F1F; }
 .gdraw .go{ background:#D7263D; color:#fff; }
 .gdraw .corner{ position:absolute; right:-6px; top:4px; width:96px; height:56px; transform:rotate(-14deg); }
+
+/* Carte Fusée Rythme : l'espace, néons */
+.gfusee{ background:#070B1F; color:#EAF0FF; border:1.5px solid rgba(150,170,255,.3);
+  background-image:radial-gradient(circle at 80% 10%, rgba(255,79,163,.25), transparent 50%), radial-gradient(circle at 10% 90%, rgba(63,224,255,.18), transparent 55%); }
+.gfusee .title{ font-family:"Audiowide", "Bricolage Grotesque", sans-serif; font-weight:400; font-size:1.9rem; background:linear-gradient(90deg, #3FE0FF, #B49BFF 55%, #FF4FA3); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.gfusee .desc, .gfusee .status{ color:rgba(234,240,255,.72); }
+.gfusee .status b{ color:#EAF0FF; }
+.gfusee .go{ background:linear-gradient(90deg, #3FE0FF, #B49BFF); color:#14102E; }
+.gfusee .corner{ position:absolute; right:-2px; top:4px; width:96px; height:70px; }
 
 /* Carte Nivoculteur : nuit en montagne */
 .gnivo{ background:#0B1426; color:#EAF2FF; border:1.5px solid rgba(169,196,240,.35);
@@ -188,6 +197,18 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
       <span class="go">Jouer</span>
     </a>
 
+    <a class="game gfusee" href="jeux/fusee.html">
+      <svg class="corner" viewBox="0 0 96 70" aria-hidden="true">
+        <circle cx="22" cy="18" r="11" fill="#FF4FA3" opacity=".9"/><circle cx="62" cy="12" r="5" fill="#FF9A3C"/><circle cx="80" cy="30" r="2.5" fill="#3FE0FF"/><circle cx="14" cy="42" r="2" fill="#3FE0FF"/>
+        <path d="M54 66 Q58 50 62 66 Z" fill="#FFD54F"/>
+        <path d="M58 30 L68 56 L58 50 L48 56 Z" fill="#EAF6FF" stroke="#3FE0FF" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <p class="title">Fusée Rythme</p>
+      <p class="desc">Choisissez une musique : votre fusée file au rythme du morceau. Gauche, droite, et évitez les points, des tout petits aux énormes. La partie dure le temps de la chanson.</p>
+      <p class="status" id="stfusee"><b>Pas encore joué</b>3 morceaux fournis, ou vos fichiers audio.</p>
+      <span class="go">Jouer</span>
+    </a>
+
     <a class="game gnivo" href="jeux/nivoculteur/index.html">
       <svg class="corner" viewBox="0 0 92 70" aria-hidden="true">
         <g fill="#F4F7FF"><circle cx="14" cy="18" r="2.2"/><circle cx="24" cy="10" r="1.6"/><circle cx="8" cy="30" r="1.8"/><circle cx="22" cy="26" r="2.4"/><circle cx="32" cy="18" r="1.5"/><circle cx="16" cy="40" r="1.4"/></g>
@@ -215,8 +236,8 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
   <footer id="installHint">Astuce : ajoutez DesDés à l'écran d'accueil pour l'ouvrir comme une application. Tous les jeux marchent ensuite sans réseau.</footer>
 </main>
 
-<script src="jeux/drawrace/circuits.js?v=52"></script>
-<script src="jeux/sauvegarde.js?v=52"></script>
+<script src="jeux/drawrace/circuits.js?v=53"></script>
+<script src="jeux/sauvegarde.js?v=53"></script>
 <script>
 const fmt = n => n.toLocaleString('fr-FR');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -331,7 +352,15 @@ function showNivo(){
   el.innerHTML = `<b>${niv.n ? `Niveau ${niv.n} · ` : ''}${esc(niv.nom)}</b>` + (r ? `Prochaine nuit n° ${r.nuit} · ${fmt(fait)} m³` : 'Nouvelle partie') +
     (reussis ? ` · ${plural(reussis, 'niveau')} réussi${reussis > 1 ? 's' : ''}` : '');
 }
-function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showNivo(); }
+/* Fusée Rythme : le dernier morceau joué et son record (clé partagée avec jeux/fusee.html) */
+function showFusee(){
+  const r = read('fusee-records') || {}, el = document.getElementById('stfusee');
+  const der = Object.values(r).sort((a, b) => (b.dernier || 0) - (a.dernier || 0))[0];
+  if(!der){ el.innerHTML = '<b>Pas encore joué</b>3 morceaux fournis, ou vos fichiers audio.'; return; }
+  const best = Math.max(0, ...Object.values(der.meilleurs || {}));
+  el.innerHTML = `<b>${esc(der.nom)}</b>Record ${best.toLocaleString('fr-FR')} points · ${plural(Object.keys(r).length, 'morceau')} joué${Object.keys(r).length > 1 ? 's' : ''}`;
+}
+function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showNivo(); showFusee(); }
 refresh();
 DesDesSauvegarde.boutons(document.getElementById('sauve'));
 // Retour depuis un jeu (cache de navigation) : remettre les états à jour

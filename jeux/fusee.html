@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Fusée Rythme · DesDés</title>
+<meta name="theme-color" content="#070B1F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DesDés">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --nuit:#070B1F; --nuit-2:#0F1638; --carte:rgba(22,30,72,.86); --ligne:rgba(150,170,255,.18);
+  --texte:#EAF0FF; --doux:#9FAAD6; --rose:#FF4FA3; --cyan:#3FE0FF; --or:#FFD54F; --vert:#5BE38E;
+}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --nuit:#070B1F; } }
+:root[data-theme="light"]{ --nuit:#070B1F; }
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; height:100%; overflow:hidden; background:var(--nuit); color:var(--texte);
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+button{ font:inherit; color:inherit; cursor:pointer; }
+#cv{ position:fixed; left:0; top:0; width:100vw; height:100vh; height:100lvh; display:block; touch-action:none; }
+
+/* Pendant la partie */
+.hud{ position:fixed; left:0; right:0; top:0; padding:calc(8px + env(safe-area-inset-top, 0px)) 12px 0; display:flex; align-items:center; gap:10px; pointer-events:none; z-index:3; }
+.hud[hidden]{ display:none; }
+.hud .score{ font-family:"Audiowide", sans-serif; font-size:1.5rem; letter-spacing:.04em; text-shadow:0 0 12px rgba(63,224,255,.6); }
+.hud .mult{ font-family:"Audiowide", sans-serif; font-size:1rem; color:var(--or); text-shadow:0 0 10px rgba(255,213,79,.6); }
+.hud .reste{ margin-left:auto; font-variant-numeric:tabular-nums; color:var(--doux); font-weight:600; }
+.hud button{ pointer-events:auto; border:1px solid var(--ligne); background:rgba(15,22,56,.7); border-radius:12px; width:40px; height:40px; font-size:1.1rem; }
+.barre{ position:fixed; left:0; right:0; top:0; height:4px; z-index:4; background:rgba(255,255,255,.08); pointer-events:none; }
+.barre[hidden]{ display:none; }
+.barre i{ display:block; height:100%; width:0; background:linear-gradient(90deg, var(--cyan), var(--rose)); box-shadow:0 0 10px var(--rose); }
+.titre-morceau{ position:fixed; left:0; right:0; bottom:calc(14px + env(safe-area-inset-bottom, 0px)); text-align:center; color:var(--doux); font-size:.85rem; pointer-events:none; z-index:3; opacity:.75; }
+.titre-morceau[hidden]{ display:none; }
+
+/* Écrans */
+.ecran{ position:fixed; inset:0; z-index:6; display:flex; align-items:flex-start; justify-content:center; overflow:auto;
+  padding:calc(16px + env(safe-area-inset-top, 0px)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(7,11,31,.72); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+.ecran[hidden]{ display:none; }
+.boite{ width:min(100%, 520px); display:flex; flex-direction:column; gap:14px; }
+.tete{ display:flex; align-items:center; gap:10px; }
+.tete a{ text-decoration:none; color:var(--texte); border:1px solid var(--ligne); border-radius:12px; padding:6px 12px; font-weight:700; background:rgba(15,22,56,.7); }
+h1{ font-family:"Audiowide", sans-serif; font-weight:400; font-size:clamp(2rem, 9vw, 2.8rem); margin:4px 0 0; line-height:1; letter-spacing:.03em;
+  background:linear-gradient(90deg, var(--cyan), #9C7BFF 55%, var(--rose)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.sous{ margin:0; color:var(--doux); line-height:1.4; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:18px; padding:14px; }
+.carte h2{ margin:0 0 10px; font-size:.82rem; text-transform:uppercase; letter-spacing:.1em; color:var(--doux); font-weight:600; }
+.niveaux{ display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; }
+.niveaux button{ border:1.5px solid var(--ligne); background:transparent; border-radius:12px; padding:9px 4px; font-weight:700; }
+.niveaux button.actif{ border-color:var(--cyan); background:rgba(63,224,255,.14); color:#fff; }
+.gros{ width:100%; border:none; border-radius:16px; padding:15px 14px; font-weight:800; font-size:1.05rem; color:#14102E;
+  background:linear-gradient(90deg, var(--cyan), #B49BFF); box-shadow:0 8px 24px rgba(63,224,255,.25); }
+.gros small{ display:block; font-weight:600; font-size:.8rem; opacity:.75; margin-top:2px; }
+.piste{ width:100%; display:flex; align-items:center; gap:12px; text-align:left; border:1px solid var(--ligne); background:rgba(10,15,42,.6); border-radius:14px; padding:10px 12px; margin-top:6px; }
+.piste .ico{ width:40px; height:40px; border-radius:12px; display:grid; place-items:center; font-size:1.2rem; flex:none; }
+.piste b{ display:block; }
+.piste small{ color:var(--doux); }
+.piste .rec{ margin-left:auto; text-align:right; font-family:"Audiowide", sans-serif; font-size:.85rem; color:var(--or); flex:none; }
+.piste .rec small{ display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:.72rem; }
+.note{ font-size:.82rem; color:var(--doux); line-height:1.4; margin:8px 0 0; }
+.vide{ color:var(--doux); font-size:.9rem; margin:0; }
+.centre{ text-align:center; }
+.chargement{ display:flex; flex-direction:column; align-items:center; gap:14px; margin-top:22vh; text-align:center; }
+.roue{ width:46px; height:46px; border-radius:50%; border:4px solid rgba(255,255,255,.12); border-top-color:var(--cyan); animation:tourne 1s linear infinite; }
+@keyframes tourne{ to{ transform:rotate(360deg); } }
+.resultat{ font-family:"Audiowide", sans-serif; font-size:3rem; line-height:1; text-align:center; text-shadow:0 0 18px rgba(63,224,255,.6); }
+.record{ text-align:center; color:var(--or); font-weight:700; }
+.stats{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.stats div{ background:rgba(10,15,42,.6); border:1px solid var(--ligne); border-radius:12px; padding:9px 10px; }
+.stats b{ display:block; font-size:1.2rem; }
+.stats small{ color:var(--doux); }
+.btns{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.sec{ border:1.5px solid var(--ligne); background:transparent; border-radius:14px; padding:12px; font-weight:700; }
+.erreur{ color:#FF9DB0; }
+</style>
+</head>
+<body>
+<canvas id="cv" aria-label="La course de la fusée"></canvas>
+<div class="barre" id="barre" hidden><i id="barreI"></i></div>
+<div class="hud" id="hud" hidden>
+  <span class="score" id="hScore">0</span><span class="mult" id="hMult">×1</span>
+  <span class="reste" id="hReste">0:00</span>
+  <button id="bPause" aria-label="Pause">⏸</button>
+</div>
+<div class="titre-morceau" id="hTitre" hidden></div>
+
+<section class="ecran" id="eMenu">
+  <div class="boite">
+    <div class="tete"><a href="../index.html">‹ DesDés</a></div>
+    <div>
+      <h1>Fusée Rythme</h1>
+      <p class="sous">Choisissez un morceau : la course dure le temps de la musique. Touchez la gauche ou la droite de l'écran pour éviter les points, des plus petits aux plus gros. Ils arrivent au rythme du morceau.</p>
+    </div>
+    <div class="carte">
+      <h2>Difficulté</h2>
+      <div class="niveaux" id="niveaux">
+        <button data-n="facile">Facile</button><button data-n="normal">Normal</button><button data-n="difficile">Difficile</button>
+      </div>
+    </div>
+    <button class="gros" id="bFichier">🎵 Choisir un morceau<small>un fichier audio du téléphone (MP3, M4A, WAV…)</small></button>
+    <input type="file" id="fichier" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac" hidden>
+    <div class="carte">
+      <h2>Morceaux du jeu</h2>
+      <div id="lPistes"></div>
+    </div>
+    <div class="carte">
+      <h2>Vos morceaux</h2>
+      <div id="lFichiers"></div>
+      <p class="note">Pour rejouer un de vos morceaux, choisissez à nouveau son fichier : le record est gardé.<br>Sur iPhone, les titres protégés de l'app Musique ou de Spotify ne sont pas accessibles : prenez un fichier rangé dans Fichiers. Si l'iPhone est en mode silencieux, le son peut être coupé.</p>
+    </div>
+  </div>
+</section>
+
+<section class="ecran" id="eChargement" hidden>
+  <div class="chargement"><div class="roue"></div><b id="cTxt">Analyse du morceau…</b><span class="note" id="cDetail"></span></div>
+</section>
+
+<section class="ecran" id="ePause" hidden>
+  <div class="boite" style="margin-top:20vh">
+    <p class="resultat" style="font-size:2rem">Pause</p>
+    <div class="btns"><button class="gros" id="bReprendre">▶ Reprendre</button><button class="sec" id="bQuitter">Quitter</button></div>
+  </div>
+</section>
+
+<section class="ecran" id="eFin" hidden>
+  <div class="boite" style="margin-top:6vh">
+    <p class="sous centre" id="fTitre"></p>
+    <p class="resultat" id="fScore">0</p>
+    <p class="record" id="fRecord"></p>
+    <div class="stats" id="fStats"></div>
+    <div class="btns"><button class="gros" id="bRejouer">↻ Rejouer</button><button class="sec" id="bMenu">Morceaux</button></div>
+  </div>
+</section>
+
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const fmtT = s => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const fmtN = n => Math.round(n).toLocaleString('fr-FR');
+
+/* ---------- Réglages, records ---------- */
+const NIVEAUX = {
+  facile:   { n:'Facile', vit:.82, garde:.42, frole:1.25 },
+  normal:   { n:'Normal', vit:1, garde:.7, frole:1 },
+  difficile:{ n:'Difficile', vit:1.2, garde:1, frole:.85 },
+};
+let niveau = lire('fusee-niveau', 'normal');
+if(!NIVEAUX[niveau]) niveau = 'normal';
+const records = lire('fusee-records', {});           // { idMorceau: { nom, duree, meilleurs:{ niveau: score }, parties } }
+
+/* ---------- Son ---------- */
+let AC = null, gainMusique = null, filtre = null;
+function audio(){
+  if(!AC){
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    // iPhone (iOS 17 et plus) : jouer même en mode silencieux, comme une musique
+    try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
+    filtre = AC.createBiquadFilter(); filtre.type = 'lowpass'; filtre.frequency.value = 20000;
+    gainMusique = AC.createGain();
+    filtre.connect(gainMusique); gainMusique.connect(AC.destination);
+  }
+  if(AC.state === 'suspended') AC.resume();
+  return AC;
+}
+const decoder = data => new Promise((ok, ko) => {
+  const p = audio().decodeAudioData(data, ok, ko);
+  if(p && p.then) p.then(ok, ko);
+});
+
+/* ---------- Morceaux composés par le jeu (synthétisés, sans fichier) ---------- */
+const PISTES = [
+  { id:'decollage', n:'Décollage', ico:'🌅', c:'#3FE0FF', bpm:96, mesures:56, style:'calme', accords:[[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]] },
+  { id:'orbite', n:'Orbite', ico:'🪐', c:'#B49BFF', bpm:124, mesures:64, style:'electro', accords:[[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55]] },
+  { id:'hyper', n:'Hyperespace', ico:'🌠', c:'#FF4FA3', bpm:172, mesures:80, style:'dnb', accords:[[52, 55, 59], [48, 52, 55], [55, 59, 62], [50, 54, 57]] },
+];
+const freq = n => 440 * 2 ** ((n - 69) / 12);
+// Intensité d'une mesure : intro, montée, refrain, pause, refrain, fin
+function section(m, total){
+  if(m < 8) return .3;
+  if(m < 16) return .6;
+  if(m < total * .45) return 1;
+  if(m < total * .45 + 8) return .4;
+  if(m < total - 4) return 1;
+  return .3;
+}
+const memoPistes = {};
+// Petit synthétiseur : chaque son est calculé directement, échantillon par échantillon (rapide, même sur téléphone)
+function composer(p){
+  if(memoPistes[p.id]) return Promise.resolve(memoPistes[p.id]);
+  const sr = 22050, pas = 60 / p.bpm / 4, duree = p.mesures * 16 * pas + 2, n = Math.ceil(duree * sr);
+  const L = new Float32Array(n), R = new Float32Array(n);
+  let graine = 12345;
+  const hasard = () => (graine = (graine * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff * 2 - 1;
+  const ajoute = (i, v, pan = 0) => { if(i < n){ L[i] += v * (1 - pan); R[i] += v * (1 + pan); } };
+  function kick(t){
+    const i0 = Math.floor(t * sr), d = Math.floor(.3 * sr);
+    let ph = 0;
+    for(let k = 0; k < d; k++){
+      const tt = k / sr, f = 42 + 110 * Math.exp(-tt / .04);
+      ph += 2 * Math.PI * f / sr;
+      ajoute(i0 + k, Math.sin(ph) * Math.exp(-tt / .09) * .9);
+    }
+  }
+  // Bruit filtré (filtre d'état variable) : charleston (aigu) ou caisse claire (médium)
+  function souffle(t, fc, q, d, v, mode, pan = 0){
+    const i0 = Math.floor(t * sr), m = Math.floor(d * 4 * sr), f = 2 * Math.sin(Math.PI * Math.min(fc, sr / 4) / sr);
+    let lp = 0, bp = 0;
+    for(let k = 0; k < m; k++){
+      const x = hasard(), hp = x - lp - q * bp;
+      bp += f * hp; lp += f * bp;
+      const y = mode === 'aigu' ? hp : bp;
+      ajoute(i0 + k, y * v * Math.exp(-k / sr / d), pan);
+    }
+  }
+  function caisse(t){ souffle(t, 1900, .5, .07, .5, 'medium'); note(t, 52, 'sin', .06, .25); }
+  // Note : onde (dent de scie, carrée, triangle, sinus), enveloppe, léger filtre
+  function note(t, nn, onde, d, v, fc = 0, att = .006, pan = 0, detune = 0){
+    const i0 = Math.floor(t * sr), m = Math.floor((d * 3 + att) * sr), fr = freq(nn) * (1 + detune) / sr;
+    const a = fc ? 1 - Math.exp(-2 * Math.PI * fc / sr) : 1;
+    let ph = Math.random(), y = 0;
+    for(let k = 0; k < m; k++){
+      ph += fr; ph -= Math.floor(ph);
+      let x = onde === 'saw' ? 2 * ph - 1 : onde === 'sq' ? (ph < .5 ? 1 : -1) : onde === 'tri' ? 1 - 4 * Math.abs(ph - .5) : Math.sin(2 * Math.PI * ph);
+      y += a * (x - y);
+      const tt = k / sr, e = tt < att ? tt / att : Math.exp(-(tt - att) / d);
+      ajoute(i0 + k, y * e * v, pan);
+    }
+  }
+  const melo = [0, 2, 1, 2, 0, 1, 2, 1];
+  for(let m = 0; m < p.mesures; m++){
+    const lv = section(m, p.mesures), ac = p.accords[Math.floor(m / 2) % p.accords.length], t0 = m * 16 * pas, mes = 16 * pas;
+    // nappe : l'accord tenu sur la mesure
+    ac.forEach((nn, k) => note(t0, nn, 'saw', mes * .45, lv >= 1 ? .025 : .045, 900, mes * .25, (k - 1) * .4, (k - 1) * .003));
+    for(let s = 0; s < 16; s++){
+      const t = t0 + s * pas;
+      if(p.style === 'calme'){
+        if(lv >= .6 && (s === 0 || s === 8 || (lv >= 1 && s === 10))) kick(t);
+        if(lv >= .6 && (s === 4 || s === 12)) caisse(t);
+        if(lv >= .3 && s % 2 === 0) souffle(t, 7500, .3, .012, .14, 'aigu', .3);
+        if(lv >= .4 && s % 2 === 0) note(t, ac[(s / 2) % 3] + 12, 'tri', .09, .12, 0, .004, -.2);
+      } else if(p.style === 'electro'){
+        if(lv >= .6 && s % 4 === 0) kick(t);
+        if(lv >= .6 && (s === 4 || s === 12)) caisse(t);
+        if(lv >= .3 && s % 4 === 2) souffle(t, 6500, .3, .035, .16, 'aigu', .3);
+        if(lv >= .3 && s % 2 === 1) souffle(t, 9000, .3, .01, .08, 'aigu', -.3);
+        if(lv >= .4 && s % 2 === 0) note(t, ac[(s / 2) % 3] + 12, 'sq', .045, .05, 2600, .003, .25);
+      } else {
+        if(lv >= .6 && (s === 0 || s === 10)) kick(t);
+        if(lv >= .6 && (s === 4 || s === 12)) caisse(t);
+        if(lv >= .3) souffle(t, 8000, .3, .008, s % 2 ? .07 : .12, 'aigu', .2);
+        if(lv >= .4 && s % 2 === 0) note(t, ac[melo[(s / 2 + m) % 8]] + 12, 'tri', .05, .1, 0, .003, -.25);
+      }
+      // basse
+      if(lv >= .6 && [0, 3, 6, 8, 11, 14].includes(s)) note(t, ac[0] - 24, p.style === 'calme' ? 'tri' : 'saw', pas * .8, .3, 600);
+      // mélodie des refrains
+      if(lv >= 1 && s % 4 === 0 && (m + s) % 3 !== 0) note(t, ac[melo[(m * 4 + s / 4) % 8]] + 24, 'sin', pas * 1.4, .1, 0, .01);
+    }
+  }
+  // Volume : on ramène le plus fort à 0,9, avec une légère saturation douce
+  let pic = 0;
+  for(let i = 0; i < n; i++) pic = Math.max(pic, Math.abs(L[i]), Math.abs(R[i]));
+  const k = 1.4 / (pic || 1);
+  for(let i = 0; i < n; i++){ L[i] = Math.tanh(L[i] * k) * .9; R[i] = Math.tanh(R[i] * k) * .9; }
+  const buf = audio().createBuffer(2, n, sr);
+  buf.getChannelData(0).set(L); buf.getChannelData(1).set(R);
+  return Promise.resolve(memoPistes[p.id] = buf);
+}
+
+/* ---------- Analyse du morceau : graves, médiums, aigus, intensité, attaques ---------- */
+const TRAME = .02;   // une mesure toutes les 20 ms
+function analyser(buf){
+  const sr = buf.sampleRate, n = buf.length, a = buf.getChannelData(0), b = buf.numberOfChannels > 1 ? buf.getChannelData(1) : null;
+  const hop = Math.round(sr * TRAME), nf = Math.floor(n / hop);
+  const ban = [new Float32Array(nf), new Float32Array(nf), new Float32Array(nf)];
+  const cB = 1 - Math.exp(-2 * Math.PI * 160 / sr), cB2 = cB, cH = 1 - Math.exp(-2 * Math.PI * 3800 / sr);
+  let l1 = 0, l2 = 0, h1 = 0, s0 = 0, s1 = 0, s2 = 0, k = 0, f = 0;
+  for(let i = 0; i < n && f < nf; i++){
+    const x = b ? (a[i] + b[i]) * .5 : a[i];
+    l1 += cB * (x - l1); l2 += cB2 * (l1 - l2); h1 += cH * (x - h1);
+    const g = l2, m = h1 - l2, ai = x - h1;
+    s0 += g * g; s1 += m * m; s2 += ai * ai;
+    if(++k === hop){ ban[0][f] = Math.sqrt(s0 / hop); ban[1][f] = Math.sqrt(s1 / hop); ban[2][f] = Math.sqrt(s2 / hop); s0 = s1 = s2 = 0; k = 0; f++; }
+  }
+  const quantile = (arr, q) => { const t = Array.from(arr).sort((x, y) => x - y); return t[Math.floor(clamp(q, 0, 1) * (t.length - 1))] || 1e-6; };
+  for(const e of ban){ const q = quantile(e, .95) || 1e-6; for(let i = 0; i < nf; i++) e[i] = Math.min(1.6, e[i] / q); }
+  // Intensité : énergie moyenne lissée sur 1,5 s, ramenée entre 0 et 1
+  const brut = new Float32Array(nf);
+  for(let i = 0; i < nf; i++) brut[i] = (ban[0][i] * 1.2 + ban[1][i] + ban[2][i] * .8) / 3;
+  const env = new Float32Array(nf), R = 37;
+  let acc = 0;
+  for(let i = 0; i < nf + R; i++){
+    if(i < nf) acc += brut[i];
+    if(i - 2 * R - 1 >= 0) acc -= brut[i - 2 * R - 1];
+    const c = i - R;
+    if(c >= 0 && c < nf) env[c] = acc / (Math.min(nf - 1, c + R) - Math.max(0, c - R) + 1);
+  }
+  const lo = quantile(env, .08), hi = quantile(env, .96);
+  for(let i = 0; i < nf; i++) env[i] = clamp((env[i] - lo) / Math.max(1e-4, hi - lo), 0, 1);
+  // Attaques : montée brusque d'une bande au-dessus de son niveau récent
+  const attaques = [], ecart = [9, 6, 5];
+  ban.forEach((e, bd) => {
+    const flux = new Float32Array(nf);
+    for(let i = 6; i < nf; i++){ let m = 0; for(let j = i - 6; j < i; j++) m += e[j]; flux[i] = Math.max(0, e[i] - m / 6); }
+    const qf = quantile(flux, .97) || 1e-4;
+    let der = -99;
+    for(let i = 1; i < nf - 1; i++){
+      const v = flux[i];
+      if(v < .06 || v < flux[i - 1] || v < flux[i + 1]) continue;
+      let m = 0, m2 = 0, c = 0;
+      for(let j = Math.max(0, i - 25); j < Math.min(nf, i + 25); j++){ m += flux[j]; m2 += flux[j] * flux[j]; c++; }
+      m /= c; const sd = Math.sqrt(Math.max(0, m2 / c - m * m));
+      if(v < m + 1.3 * sd) continue;
+      if(i - der < ecart[bd]) continue;
+      der = i;
+      attaques.push({ t:i * TRAME, bande:bd, force:clamp(v / qf, .15, 1) });
+    }
+  });
+  attaques.sort((x, y) => x.t - y.t);
+  return { duree:buf.duration, env, attaques, nf };
+}
+
+/* ---------- Le parcours : les points placés pour arriver sur la fusée au moment du son ---------- */
+function alea(graine){ let s = graine >>> 0; return () => { s += 0x6D2B79F5; let t = s; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const LARG_FUSEE = .075;   // largeur de la fusée (en part de la piste)
+function parcours(an, niv){
+  const N = NIVEAUX[niv], rng = alea(Math.round(an.duree * 1000) + an.attaques.length * 7 + niv.length);
+  // Vitesse (en hauteurs d'écran par seconde) selon l'intensité, et distance parcourue à chaque instant
+  const S = new Float32Array(an.nf + 1);
+  for(let i = 0; i < an.nf; i++) S[i + 1] = S[i] + (.38 + .6 * an.env[i]) * N.vit * TRAME;
+  const sA = t => { const f = clamp(t / TRAME, 0, an.nf - 1.001), i = Math.floor(f); return S[i] + (S[i + 1] - S[i]) * (f - i); };
+  const objets = [];
+  // Place libre : pas de mur infranchissable, il reste toujours un passage pour la fusée
+  const proches = s => objets.filter(o => Math.abs(o.s - s) < .2 + o.r * 1.6);
+  function passage(s, x, r){
+    const occ = proches(s).map(o => [o.x - o.r - .02, o.x + o.r + .02]).concat([[x - r - .02, x + r + .02]]).sort((p, q) => p[0] - q[0]);
+    let bord = 0;
+    for(const [a, b] of occ){ if(a - bord > LARG_FUSEE * 1.5) return true; bord = Math.max(bord, b); }
+    return 1 - bord > LARG_FUSEE * 1.5;
+  }
+  for(const at of an.attaques){
+    if(at.t < 2.2 || at.t > an.duree - 1) continue;
+    if(at.bande > 0 && rng() > N.garde * (.45 + .55 * at.force)) continue;
+    if(at.bande === 0 && rng() > .35 + .65 * N.garde) continue;
+    const s = sA(at.t);
+    const groupe = at.bande === 2 ? 1 + Math.floor(rng() * (niv === 'facile' ? 2 : 3)) : 1;
+    for(let g = 0; g < groupe; g++){
+      const r = at.bande === 0 ? .06 + .13 * at.force * (at.force > .75 ? 1.15 : 1) : at.bande === 1 ? .028 + .03 * at.force : .011 + .01 * at.force;
+      const so = s + g * .045;
+      let ok = false, x = 0;
+      for(let essai = 0; essai < 7 && !ok; essai++){ x = r + rng() * (1 - 2 * r); ok = passage(so, x, r); }
+      if(!ok) continue;
+      objets.push({ s:so, x, r, bande:at.bande, t:at.t, type:'point' });
+    }
+    // De temps en temps, une étoile à ramasser, dans un passage libre
+    if(at.bande === 2 && rng() < .12){
+      const so = s + .1;
+      for(let essai = 0; essai < 6; essai++){ const x = .06 + rng() * .88; if(passage(so, x, .03)){ objets.push({ s:so, x, r:.022, type:'etoile', t:at.t }); break; } }
+    }
+  }
+  objets.sort((p, q) => p.s - q.s);
+  return { objets, sA, total:S[an.nf] };
+}
+
+/* ---------- Dessin ---------- */
+const cv = $('cv'), g = cv.getContext('2d');
+let W = 0, Hh = 0, DPR = 1;
+function taille(){
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = cv.clientWidth || innerWidth; Hh = cv.clientHeight || innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(Hh * DPR);
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener('resize', taille);
+addEventListener('orientationchange', () => setTimeout(taille, 300));
+taille();
+// La piste : une colonne centrée (toute la largeur en portrait)
+const piste = () => { const pw = Math.min(W, Hh * .78); return { x0:(W - pw) / 2, pw, ph:Hh }; };
+// Halos préparés une fois (plus rapide que les ombres du canvas)
+const COUL = ['#FF4FA3', '#FF9A3C', '#3FE0FF'];
+const halos = COUL.map(c => {
+  const s = document.createElement('canvas'); s.width = s.height = 128;
+  const x = s.getContext('2d'), r = x.createRadialGradient(64, 64, 10, 64, 64, 64);
+  r.addColorStop(0, c); r.addColorStop(.48, c); r.addColorStop(.52, c + 'AA'); r.addColorStop(1, c + '00');
+  x.fillStyle = r; x.fillRect(0, 0, 128, 128);
+  x.fillStyle = 'rgba(255,255,255,.55)'; x.beginPath(); x.arc(52, 50, 12, 0, Math.PI * 2); x.fill();
+  return s;
+});
+const etoilesFond = Array.from({ length:140 }, () => ({ x:Math.random(), y:Math.random(), z:.2 + Math.random() * .8 }));
+
+function dessinerFond(dt, vit, intens, t){
+  const grad = g.createLinearGradient(0, 0, 0, Hh);
+  const h = 230 + intens * 60;
+  grad.addColorStop(0, `hsl(${h}, 60%, ${7 + intens * 5}%)`); grad.addColorStop(1, '#070B1F');
+  g.fillStyle = grad; g.fillRect(0, 0, W, Hh);
+  g.fillStyle = '#fff';
+  for(const e of etoilesFond){
+    e.y += vit * dt * e.z * .9;
+    if(e.y > 1){ e.y -= 1; e.x = Math.random(); }
+    const l = 1 + vit * e.z * 18;
+    g.globalAlpha = .25 + e.z * .55;
+    g.fillRect(e.x * W, e.y * Hh, 1.4 * e.z + .4, l);
+  }
+  g.globalAlpha = 1;
+  const p = piste();
+  if(p.pw < W){ g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, 0, p.x0, Hh); g.fillRect(p.x0 + p.pw, 0, W - p.x0 - p.pw, Hh); }
+}
+function dessinerFusee(x, y, taille, inclin, t, clign){
+  if(clign && Math.floor(t * 14) % 2) return;
+  g.save();
+  g.translate(x, y); g.rotate(inclin);
+  const L = taille * 1.25, l = taille * .5;
+  // le jet de propulsion
+  const flamme = L * (.55 + Math.random() * .35);
+  const fl = g.createLinearGradient(0, L * .35, 0, L * .35 + flamme);
+  fl.addColorStop(0, '#FFFFFF'); fl.addColorStop(.25, '#FFD54F'); fl.addColorStop(.6, '#FF6B3D'); fl.addColorStop(1, 'rgba(255,60,120,0)');
+  g.fillStyle = fl;
+  g.beginPath(); g.moveTo(-l * .45, L * .32); g.quadraticCurveTo(0, L * .35 + flamme * 1.1, l * .45, L * .32); g.closePath(); g.fill();
+  // la flèche
+  g.fillStyle = '#EAF6FF'; g.strokeStyle = '#3FE0FF'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(0, -L * .62); g.lineTo(l, L * .38); g.lineTo(0, L * .16); g.lineTo(-l, L * .38); g.closePath();
+  g.fill(); g.stroke();
+  g.fillStyle = '#3FE0FF'; g.beginPath(); g.moveTo(0, -L * .3); g.lineTo(l * .3, L * .1); g.lineTo(-l * .3, L * .1); g.closePath(); g.fill();
+  g.restore();
+}
+
+/* ---------- Partie ---------- */
+let partie = null, raf = 0, morceauCourant = null;
+const commandes = { gauche:false, droite:false, doigts:new Map() };
+function demarrer(m){
+  morceauCourant = m;
+  const ctx = audio();
+  const an = m.an, prc = parcours(an, niveau);
+  const src = ctx.createBufferSource();
+  src.buffer = m.buf; src.connect(filtre);
+  gainMusique.gain.cancelScheduledValues(ctx.currentTime); gainMusique.gain.setValueAtTime(1, ctx.currentTime);
+  filtre.frequency.cancelScheduledValues(ctx.currentTime); filtre.frequency.setValueAtTime(20000, ctx.currentTime);
+  const t0 = ctx.currentTime + .25;
+  src.start(t0);
+  partie = { m, an, prc, src, t0, x:.5, vx:0, score:0, chaine:0, mult:1, chocs:0, froles:0, etoiles:0, invul:0, secousse:0, flash:0, eclats:[], idx:0, fin:false, dernier:performance.now(), coupe:0 };
+  src.onended = () => { if(partie && partie.src === src && !partie.fin && AC.currentTime - t0 > an.duree - .6) finir(); };
+  ['eMenu', 'eChargement', 'eFin', 'ePause'].forEach(id => $(id).hidden = true);
+  $('hud').hidden = $('barre').hidden = $('hTitre').hidden = false;
+  $('hTitre').textContent = `♪ ${m.nom} · ${NIVEAUX[niveau].n}`;
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(boucle);
+}
+// Au choc : la musique se coupe un instant, étouffée, puis revient
+function couperMusique(){
+  const t = AC.currentTime, gm = gainMusique.gain, fq = filtre.frequency;
+  gm.cancelScheduledValues(t); gm.setValueAtTime(gm.value, t); gm.linearRampToValueAtTime(0.0001, t + .05);
+  gm.setValueAtTime(0.0001, t + .75); gm.linearRampToValueAtTime(1, t + 1.25);
+  fq.cancelScheduledValues(t); fq.setValueAtTime(500, t + .05); fq.exponentialRampToValueAtTime(20000, t + 1.6);
+}
+function eclats(x, y, c, n){
+  for(let k = 0; k < n; k++){ const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 260; partie.eclats.push({ x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v, vie:.6 + Math.random() * .4, c }); }
+}
+function boucle(now){
+  const P = partie;
+  if(!P) return;
+  const dt = Math.min(.05, (now - P.dernier) / 1000); P.dernier = now;
+  const t = AC.currentTime - P.t0, an = P.an, N = NIVEAUX[niveau];
+  const f = clamp(t / TRAME, 0, an.nf - 1), intens = an.env[Math.floor(f)] || 0;
+  const vit = (.38 + .6 * intens) * N.vit;
+  const sNow = P.prc.sA(Math.max(0, t));
+  const p = piste(), yF = p.ph * .8, tailleF = p.pw * LARG_FUSEE;
+  // Commandes : gauche / droite (accélération, puis glisse)
+  const dir = (commandes.droite ? 1 : 0) - (commandes.gauche ? 1 : 0);
+  if(dir) P.vx = clamp(P.vx + dir * 6.5 * dt, -1.35, 1.35); else P.vx *= Math.exp(-9 * dt);
+  if(dir && Math.sign(P.vx) !== dir) P.vx *= Math.exp(-14 * dt);
+  P.x = clamp(P.x + P.vx * dt, LARG_FUSEE * .6, 1 - LARG_FUSEE * .6);
+  if(P.x <= LARG_FUSEE * .6 || P.x >= 1 - LARG_FUSEE * .6) P.vx = 0;
+  // Points : du temps qui passe, plus avec le multiplicateur
+  if(t > 0 && !P.fin) P.score += 20 * P.mult * (.6 + vit) * dt;
+  P.invul = Math.max(0, P.invul - dt); P.secousse = Math.max(0, P.secousse - dt); P.flash = Math.max(0, P.flash - dt * 2.5);
+  // Dessin
+  g.save();
+  if(P.secousse > 0) g.translate((Math.random() - .5) * 14 * P.secousse, (Math.random() - .5) * 14 * P.secousse);
+  dessinerFond(dt, vit, intens, t);
+  const xF = p.x0 + P.x * p.pw;
+  const objs = P.prc.objets;
+  while(P.idx < objs.length && (yF - (objs[P.idx].s - sNow) * p.ph) > p.ph + p.pw * .3) P.idx++;
+  const rF = tailleF * .42;
+  for(let k = P.idx; k < objs.length; k++){
+    const o = objs[k], y = yF - (o.s - sNow) * p.ph;
+    if(y < -p.pw * .3) break;
+    if(o.pris) continue;
+    const x = p.x0 + o.x * p.pw, r = o.r * p.pw;
+    if(o.type === 'etoile'){
+      g.save(); g.translate(x, y); g.rotate(t * 2);
+      g.fillStyle = '#FFD54F'; g.shadowColor = '#FFD54F'; g.shadowBlur = 12;
+      g.beginPath(); for(let i = 0; i < 10; i++){ const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } g.closePath(); g.fill();
+      g.restore();
+    } else {
+      // les points battent au rythme
+      const pulse = 1 + .08 * Math.max(0, 1 - Math.abs(t - o.t) * 6);
+      const rr = r * 2 * pulse;
+      g.drawImage(halos[o.bande], x - rr, y - rr, rr * 2, rr * 2);
+    }
+    if(P.fin) continue;
+    // Choc (la fusée : deux cercles, le nez et le corps)
+    const d1 = Math.hypot(x - xF, y - (yF - tailleF * .35)), d2 = Math.hypot(x - xF, y - (yF + tailleF * .12));
+    const d = Math.min(d1 - tailleF * .18, d2 - rF);
+    if(o.type === 'etoile'){
+      if(d < r){ o.pris = true; P.etoiles++; P.chaine++; P.score += 150 * P.mult; eclats(x, y, '#FFD54F', 14); }
+      continue;
+    }
+    if(d < r * .92 && P.invul <= 0 && !o.touche){
+      o.touche = true; P.chocs++; P.chaine = 0;
+      P.score = Math.max(0, P.score - 400);
+      P.invul = 1.3; P.secousse = .35; P.flash = 1;
+      couperMusique(); eclats(x, y, COUL[o.bande], 22);
+      if(navigator.vibrate) navigator.vibrate(70);
+    } else if(!o.touche && !o.frole && y > yF + tailleF * .4 && o.dmin < r + tailleF * .5 * N.frole){
+      // frôlé sans le toucher : bonus
+      o.frole = true; P.froles++; P.chaine++; P.score += 50 * P.mult;
+      eclats(xF, yF, '#3FE0FF', 5);
+    }
+    o.dmin = Math.min(o.dmin ?? 1e9, d);
+  }
+  P.mult = Math.min(8, 1 + Math.floor(P.chaine / 4));
+  // Fusée et éclats
+  dessinerFusee(xF, yF, tailleF, P.vx * .28, t, P.invul > 0);
+  g.globalCompositeOperation = 'lighter';
+  P.eclats = P.eclats.filter(e => (e.vie -= dt) > 0);
+  for(const e of P.eclats){ e.x += e.vx * dt; e.y += e.vy * dt; e.vx *= .96; e.vy *= .96; g.globalAlpha = Math.min(1, e.vie * 1.6); g.fillStyle = e.c; g.fillRect(e.x - 2, e.y - 2, 4, 4); }
+  g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  if(P.flash > 0){ g.fillStyle = `rgba(255,79,163,${P.flash * .35})`; g.fillRect(0, 0, W, Hh); }
+  // Compte à rebours
+  if(t < 0){ g.fillStyle = '#fff'; g.font = '700 28px Audiowide, sans-serif'; g.textAlign = 'center'; g.fillText('Prêt…', W / 2, Hh * .4); }
+  g.restore();
+  // Barre et compteurs
+  $('hScore').textContent = fmtN(P.score);
+  $('hMult').textContent = '×' + P.mult;
+  $('hReste').textContent = fmtT(an.duree - Math.max(0, t));
+  $('barreI').style.width = clamp(t / an.duree, 0, 1) * 100 + '%';
+  if(!P.fin && t >= an.duree - .05) return finir();
+  raf = requestAnimationFrame(boucle);
+}
+function finir(){
+  const P = partie;
+  if(!P || P.fin) return;
+  P.fin = true;
+  try{ P.src.stop(); }catch(e){}
+  cancelAnimationFrame(raf);
+  const m = P.m, sc = Math.round(P.score);
+  const r = records[m.id] || (records[m.id] = { nom:m.nom, duree:Math.round(m.an.duree), meilleurs:{}, parties:0, fichier:!!m.fichier });
+  r.parties++; r.dernier = Date.now();
+  const ancien = r.meilleurs[niveau] || 0, nouveau = sc > ancien;
+  if(nouveau) r.meilleurs[niveau] = sc;
+  ecrire('fusee-records', records);
+  $('fTitre').textContent = `${m.nom} · ${NIVEAUX[niveau].n}`;
+  $('fScore').textContent = fmtN(sc);
+  $('fRecord').textContent = nouveau ? (ancien ? `🏆 Nouveau record ! (avant : ${fmtN(ancien)})` : '🏆 Premier record sur ce morceau !') : `Record : ${fmtN(ancien)}`;
+  const total = P.prc.objets.filter(o => o.type === 'point').length;
+  $('fStats').innerHTML = `<div><b>${P.chocs}</b><small>choc${P.chocs > 1 ? 's' : ''}</small></div><div><b>${P.froles}</b><small>points frôlés</small></div>
+    <div><b>${P.etoiles}</b><small>étoile${P.etoiles > 1 ? 's' : ''}</small></div><div><b>${total ? Math.round((1 - P.chocs / total) * 100) : 100} %</b><small>points évités</small></div>`;
+  $('hud').hidden = $('barre').hidden = $('hTitre').hidden = true;
+  $('eFin').hidden = false;
+  partie = null;
+}
+function quitter(){
+  if(partie){ try{ partie.src.stop(); }catch(e){} partie = null; }
+  cancelAnimationFrame(raf);
+  if(AC && AC.state === 'suspended') AC.resume();
+  $('hud').hidden = $('barre').hidden = $('hTitre').hidden = true;
+  ['ePause', 'eFin'].forEach(id => $(id).hidden = true);
+  menu();
+}
+function pause(){
+  if(!partie || partie.fin) return;
+  AC.suspend();
+  cancelAnimationFrame(raf);
+  $('ePause').hidden = false;
+}
+function reprendre(){
+  $('ePause').hidden = true;
+  AC.resume().then(() => { partie.dernier = performance.now(); raf = requestAnimationFrame(boucle); });
+}
+
+/* ---------- Charger un morceau ---------- */
+function chargement(txt, detail = ''){ $('cTxt').textContent = txt; $('cDetail').textContent = detail; $('eMenu').hidden = true; $('eChargement').hidden = false; }
+const attendre = () => new Promise(r => setTimeout(r, 30));
+async function jouerPiste(p){
+  try{
+    audio();
+    chargement('Composition du morceau…', p.n);
+    await attendre();
+    const buf = await composer(p);
+    chargement('Analyse du rythme…', p.n);
+    await attendre();
+    demarrer({ id:p.id, nom:p.n, buf, an:p.an || (p.an = analyser(buf)) });
+  }catch(e){ erreur('Ce morceau n\'a pas pu être préparé.'); }
+}
+async function jouerFichier(fic){
+  try{
+    audio();
+    chargement('Lecture du fichier…', fic.name);
+    const data = await fic.arrayBuffer();
+    chargement('Décodage de la musique…', fic.name);
+    const buf = await decoder(data);
+    chargement('Analyse du rythme…', fic.name);
+    await attendre();
+    const an = analyser(buf);
+    const nom = fic.name.replace(/\.[a-z0-9]{2,5}$/i, '');
+    demarrer({ id:'f:' + nom + ':' + Math.round(buf.duration), nom, buf, an, fichier:true });
+  }catch(e){ erreur('Ce fichier ne peut pas être lu (format non pris en charge ou fichier protégé).'); }
+}
+function erreur(t){
+  $('eChargement').hidden = true; menu();
+  $('lFichiers').insertAdjacentHTML('afterbegin', `<p class="vide erreur">⚠️ ${esc(t)}</p>`);
+}
+
+/* ---------- Menu ---------- */
+function ligneRecord(r){
+  const b = r && r.meilleurs[niveau];
+  return b ? `<span class="rec">${fmtN(b)}<small>record</small></span>` : `<span class="rec"><small>${r ? 'pas en ' + NIVEAUX[niveau].n.toLowerCase() : 'jamais joué'}</small></span>`;
+}
+function menu(){
+  document.querySelectorAll('#niveaux button').forEach(b => b.classList.toggle('actif', b.dataset.n === niveau));
+  $('lPistes').innerHTML = PISTES.map(p => {
+    const d = Math.round(p.mesures * 16 * 60 / p.bpm / 4);
+    return `<button class="piste" data-piste="${p.id}"><span class="ico" style="background:${p.c}33">${p.ico}</span><span><b>${esc(p.n)}</b><small>${p.bpm} bpm · ${fmtT(d)}</small></span>${ligneRecord(records[p.id])}</button>`;
+  }).join('');
+  const fics = Object.entries(records).filter(([, r]) => r.fichier).sort((a, b) => (b[1].dernier || 0) - (a[1].dernier || 0)).slice(0, 12);
+  $('lFichiers').innerHTML = fics.length ? fics.map(([id, r]) => `<div class="piste"><span class="ico" style="background:#FFD54F22">🎧</span><span><b>${esc(r.nom)}</b><small>${fmtT(r.duree)} · ${r.parties} partie${r.parties > 1 ? 's' : ''}</small></span>${ligneRecord(r)}</div>`).join('')
+    : '<p class="vide">Aucun pour l\'instant : choisissez un fichier audio ci-dessus.</p>';
+  $('eMenu').hidden = false;
+}
+
+/* ---------- Commandes : moitié gauche / droite de l'écran, ou flèches du clavier ---------- */
+function majDoigts(){
+  let dernier = null;
+  for(const v of commandes.doigts.values()) dernier = v;
+  commandes.gauche = dernier === 'g'; commandes.droite = dernier === 'd';
+}
+cv.addEventListener('pointerdown', e => {
+  if(!partie) return;
+  try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+  commandes.doigts.delete(e.pointerId);
+  commandes.doigts.set(e.pointerId, e.clientX < W / 2 ? 'g' : 'd');
+  majDoigts();
+});
+cv.addEventListener('pointermove', e => {
+  if(!commandes.doigts.has(e.pointerId)) return;
+  const c = e.clientX < W / 2 ? 'g' : 'd';
+  if(commandes.doigts.get(e.pointerId) !== c){ commandes.doigts.delete(e.pointerId); commandes.doigts.set(e.pointerId, c); majDoigts(); }
+});
+const lacher = e => { commandes.doigts.delete(e.pointerId); majDoigts(); };
+cv.addEventListener('pointerup', lacher);
+cv.addEventListener('pointercancel', lacher);
+cv.addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('keydown', e => {
+  if(e.key === 'ArrowLeft'){ commandes.doigts.set('kg', 'g'); majDoigts(); }
+  if(e.key === 'ArrowRight'){ commandes.doigts.set('kd', 'd'); majDoigts(); }
+  if(e.key === 'Escape' || e.key === ' ') { if(partie && $('ePause').hidden) pause(); else if(partie) reprendre(); }
+});
+addEventListener('keyup', e => {
+  if(e.key === 'ArrowLeft'){ commandes.doigts.delete('kg'); majDoigts(); }
+  if(e.key === 'ArrowRight'){ commandes.doigts.delete('kd'); majDoigts(); }
+});
+document.addEventListener('visibilitychange', () => { if(document.hidden) pause(); });
+
+$('niveaux').onclick = e => { const b = e.target.closest('button'); if(!b) return; niveau = b.dataset.n; ecrire('fusee-niveau', niveau); menu(); };
+$('lPistes').onclick = e => { const b = e.target.closest('[data-piste]'); if(b) jouerPiste(PISTES.find(p => p.id === b.dataset.piste)); };
+$('bFichier').onclick = () => { audio(); $('fichier').value = ''; $('fichier').click(); };
+$('fichier').onchange = () => { const f = $('fichier').files[0]; if(f) jouerFichier(f); };
+$('bPause').onclick = pause;
+$('bReprendre').onclick = reprendre;
+$('bQuitter').onclick = quitter;
+$('bRejouer').onclick = () => { $('eFin').hidden = true; if(morceauCourant) demarrer(morceauCourant); };
+$('bMenu').onclick = quitter;
+
+// Écran du menu : un ciel étoilé qui défile doucement derrière
+let dernierFond = performance.now();
+(function fond(now){
+  if(!partie){ const dt = Math.min(.05, (now - dernierFond) / 1000); dessinerFond(dt, .25, .2, now / 1000); }
+  dernierFond = now;
+  requestAnimationFrame(fond);
+})(performance.now());
+menu();
+window.Fusee = { PISTES, composer, analyser, parcours, get partie(){ return partie; }, commandes, demarrer, records, jouerPiste };
+
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
+})();
+</script>
+</body>
+</html>

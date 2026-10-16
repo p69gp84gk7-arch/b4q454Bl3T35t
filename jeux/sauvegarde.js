@@ -4,7 +4,7 @@
    Utilisation : <script src="sauvegarde.js"></script> puis DesDesSauvegarde.boutons(element). */
 (() => {
   // Clés de l'application dans le stockage du navigateur
-  const PREFIXES = ['yams-', 'score10000', 'geo-', 'drawrace-', 'nivo-', 'desdes-'];
+  const PREFIXES = ['yams-', 'score10000', 'geo-', 'drawrace-', 'nivo-', 'fusee-', 'desdes-'];
   const nos = k => PREFIXES.some(p => k.startsWith(p));
 
   function cles(){
