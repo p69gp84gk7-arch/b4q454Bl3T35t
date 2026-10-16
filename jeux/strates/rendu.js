@@ -1,6 +1,7 @@
 /* Strates : rendu 3D (three.js). Le terrain est dessiné couche par couche, comme des courbes de niveau :
-   chaque couche est une fine plaque au contour arrondi (placé entre les colonnes d'après un relief adouci),
-   avec sa tranche colorée par le matériau (on voit les strates du sous-sol sur les falaises). */
+   chaque couche est une fine plaque dont le contour passe exactement là où la hauteur continue du terrain
+   atteint ce niveau, avec sa tranche colorée par le matériau (on voit les strates sur les falaises).
+   Les zones lissées et les rampes sont dessinées en vraie pente. */
 (() => {
 const { N, H, LH, SEA, MATS, ID, hash, clamp } = window.Monde;
 const T = THREE;
@@ -39,41 +40,59 @@ function tri(P, No, C, a, b, c, n, ca, cb, cc){
   No.push(n[0], n[1], n[2], n[0], n[1], n[2], n[0], n[1], n[2]);
   C.push(ca.r, ca.g, ca.b, cb.r, cb.g, cb.b, cc.r, cc.g, cc.b);
 }
+// Triangle d'une pente : normale calculée, tournée vers le haut
+function triPente(P, No, C, a, b, c, ca, cb, cc){
+  const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+  let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+  if(ny < 0){ nx = -nx; ny = -ny; nz = -nz; }
+  const l = Math.hypot(nx, ny, nz) || 1;
+  tri(P, No, C, a, b, c, [nx / l, ny / l, nz / l], ca, cb, cc);
+}
+const qi = v => Math.floor(v + 1e-4);
 const hauteur = (i, j) => (i < 0 || j < 0 || i >= N || j >= N) ? 0 : I.h[j * N + i];
-// Relief adouci : sert seulement à placer le contour de chaque couche entre deux colonnes (bords arrondis)
-const adouci = (i, j) => (2 * hauteur(i, j) + hauteur(i + 1, j) + hauteur(i - 1, j) + hauteur(i, j + 1) + hauteur(i, j - 1)) / 6;
+const lisse = (i, j) => !(i < 0 || j < 0 || i >= N || j >= N) && I.s[j * N + i] === 1;
+// Hauteur affichée d'un point (en couches) : le dessus de sa couche, ou la vraie hauteur s'il est en pente
+const solPoint = (i, j) => lisse(i, j) ? hauteur(i, j) : qi(hauteur(i, j));
 const K = [[0, 0], [1, 0], [1, 1], [0, 1]];
-// Une cellule entre les centres de 4 colonnes voisines : pour chaque couche, la partie de la plaque qui s'y trouve
+const hs = [0, 0, 0, 0], ls = [false, false, false, false], cs = [0, 0, 0, 0];
+const colP = [new T.Color(), new T.Color(), new T.Color(), new T.Color()];
+// Une cellule entre 4 points voisins : pour chaque couche, la partie de la plaque qui s'y trouve.
+// Le contour de la couche L passe exactement là où la hauteur vaut L (entre deux points, par interpolation).
 function cellule(di, dj, P, No, C){
-  const hs = [hauteur(di, dj), hauteur(di + 1, dj), hauteur(di + 1, dj + 1), hauteur(di, dj + 1)];
-  const lo = Math.min(hs[0], hs[1], hs[2], hs[3]), hi = Math.max(hs[0], hs[1], hs[2], hs[3]);
-  if(hi === 0) return;
+  let nl = 0;
+  for(let k = 0; k < 4; k++){
+    const i = di + K[k][0], j = dj + K[k][1];
+    hs[k] = hauteur(i, j); ls[k] = lisse(i, j); cs[k] = (i < 0 || j < 0 || i >= N || j >= N) ? -1 : j * N + i;
+    if(ls[k]) nl++;
+  }
+  const hi = Math.max(hs[0], hs[1], hs[2], hs[3]);
+  if(hi < 1) return;
+  if(nl) return pente(di, dj, P, No, C);
+  const lo = Math.min(hs[0], hs[1], hs[2], hs[3]), qlo = qi(lo), qhi = qi(hi);
   const x0 = di + .5, z0 = dj + .5;
-  const sm = lo === hi ? null : [adouci(di, dj), adouci(di + 1, dj), adouci(di + 1, dj + 1), adouci(di, dj + 1)];
-  for(let L = Math.max(1, lo); L <= hi; L++){
+  for(let L = Math.max(1, qlo); L <= qhi; L++){
     const poly = [], milieu = [];
     for(let k = 0; k < 4; k++){
-      const k2 = (k + 1) % 4, a = hs[k] >= L, b = hs[k2] >= L, pa = K[k], pb = K[k2];
+      const k2 = (k + 1) % 4, a = qi(hs[k]) >= L, b = qi(hs[k2]) >= L, pa = K[k];
       if(a){ poly.push([x0 + pa[0], z0 + pa[1]]); milieu.push(false); }
       if(a !== b){
-        // Point du contour sur l'arête : depuis le coin dans la couche vers le coin dehors
-        const ki = a ? k : k2, ko = a ? k2 : k, si = sm[ki], so = sm[ko];
-        const t = clamp(si > so ? (si - (L - .5)) / (si - so) : .5, .12, .88);
+        const ki = a ? k : k2, ko = a ? k2 : k;
+        const t = clamp((hs[ki] - L) / Math.max(1e-4, hs[ki] - hs[ko]), .03, .97);
         poly.push([x0 + K[ki][0] + (K[ko][0] - K[ki][0]) * t, z0 + K[ki][1] + (K[ko][1] - K[ki][1]) * t]);
         milieu.push(true);
       }
     }
     let kc = -1;
-    for(let k = 0; k < 4; k++) if(hs[k] === L){ kc = k; break; }
-    if(kc < 0) for(let k = 0; k < 4; k++) if(hs[k] >= L){ kc = k; break; }
-    const c = (dj + K[kc][1]) * N + di + K[kc][0];
-    const mat = I.m[c * H + L - 1] || ID.terre, sommet = hs[kc] === L;
+    for(let k = 0; k < 4; k++) if(qi(hs[k]) === L){ kc = k; break; }
+    if(kc < 0) for(let k = 0; k < 4; k++) if(qi(hs[k]) >= L){ kc = k; break; }
+    const c = cs[kc];
+    const mat = I.m[c * H + L - 1] || ID.terre, sommet = qi(hs[kc]) === L;
     const top = couleurDessus(mat, c, L, sommet, tmpA);
     const y = L * LH;
     for(let t = 1; t + 1 < poly.length; t++)
       tri(P, No, C, [poly[0][0], y, poly[0][1]], [poly[t][0], y, poly[t][1]], [poly[t + 1][0], y, poly[t + 1][1]], HAUT, top, top, top);
-    if(L <= lo) continue;
-    // Tranches : le long du contour (entre deux milieux d'arêtes)
+    if(L <= qlo) continue;
+    // Tranches : le long du contour (entre deux points du contour)
     let gx = 0, gz = 0;
     poly.forEach(p => { gx += p[0]; gz += p[1]; });
     gx /= poly.length; gz /= poly.length;
@@ -95,6 +114,18 @@ function cellule(di, dj, P, No, C){
       tri(P, No, C, A, Cc, D, n, bas, haut, haut);
     }
   }
+}
+// Cellule en pente (lissée ou rampe) : une vraie surface inclinée, rayée par les couches traversées
+function pente(di, dj, P, No, C){
+  const v = [];
+  for(let k = 0; k < 4; k++){
+    const c = cs[k], hk = ls[k] ? hs[k] : qi(hs[k]), q = Math.max(1, qi(hs[k]));
+    const mat = c >= 0 ? (I.m[c * H + q - 1] || ID.terre) : ID.sable;
+    couleurDessus(mat, c < 0 ? 0 : c, q, true, colP[k]);
+    v.push([di + .5 + K[k][0], hk * LH, dj + .5 + K[k][1]]);
+  }
+  triPente(P, No, C, v[0], v[1], v[2], colP[0], colP[1], colP[2]);
+  triPente(P, No, C, v[0], v[2], v[3], colP[0], colP[2], colP[3]);
 }
 const matTerrain = new T.MeshLambertMaterial({ vertexColors:true });
 function construireMorceau(ci, cj){
@@ -220,7 +251,7 @@ function majArbres(){
     mesh.count = Math.min(liste.length, mesh.instanceMatrix.count);
     for(let n = 0; n < mesh.count; n++){
       const c = liste[n], i = c % N, j = (c / N) | 0, r = hash(i, j, 5, 11), s = (.8 + hash(i, j, 6, 11) * .45) * ECH;
-      m.compose(new T.Vector3(i + .5 + (r - .5) * .3, I.h[c] * LH, j + .5 + (hash(i, j, 7, 11) - .5) * .3),
+      m.compose(new T.Vector3(i + .5 + (r - .5) * .3, solPoint(i, j) * LH, j + .5 + (hash(i, j, 7, 11) - .5) * .3),
         new T.Quaternion().setFromEuler(new T.Euler(0, r * 6.28, 0)), new T.Vector3(s, s, s));
       mesh.setMatrixAt(n, m);
     }
@@ -332,7 +363,7 @@ function majBatiments(){
     if(e && e.k !== b.k){ groupeBats.remove(e.g); modeles.delete(b.id); e = null; }
     if(!e){
       const t = b.t || 1;
-      b.y0 = I.h[b.j * N + b.i];
+      b.y0 = qi(I.h[b.j * N + b.i]);
       const g = modele(b);
       g.position.set(b.i + t / 2, b.y0 * LH, b.j + t / 2);
       g.userData.nais = performance.now();
@@ -370,7 +401,7 @@ function majHabitants(liste, t){
 /* ---------- Effets : éclats de terre quand on creuse ---------- */
 const geoEclat = boiteG(.12, .12, .12);
 function eclats(i, j, mat, nb = 6){
-  const c = j * N + i, y = I.h[c] * LH + .1;
+  const y = solPoint(i, j) * LH + .1;
   for(let k = 0; k < nb; k++){
     let d = debris.find(x => !x.visible);
     if(!d){ if(debris.length > 80) return; d = new T.Mesh(geoEclat, new T.MeshLambertMaterial({ color:'#fff' })); scene.add(d); debris.push(d); }
@@ -395,7 +426,7 @@ function majEclats(dt){
 /* ---------- Fantôme d'un bâtiment à poser, curseur du pinceau ---------- */
 function montrerFantome(t, i, j, ok){
   if(i == null){ fantome.visible = false; return; }
-  const h = I.h[j * N + i];
+  const h = qi(I.h[j * N + i]);
   fantome.visible = true;
   fantome.scale.set(t * .96, 1, t * .96);
   fantome.position.set(i + t / 2, h * LH + .3, j + t / 2);
@@ -407,7 +438,7 @@ function montrerCurseur(x, z, r, niveau){
   const i = clamp(Math.floor(x), 0, N - 1), j = clamp(Math.floor(z), 0, N - 1);
   curseur.visible = true;
   curseur.scale.setScalar(Math.max(.45, r));
-  curseur.position.set(x, (niveau ?? I.h[j * N + i]) * LH + .04, z);
+  curseur.position.set(x, (niveau ?? sol(x, z)) * LH + .04, z);
 }
 
 /* ---------- Caméra ---------- */
@@ -431,7 +462,14 @@ const zoomer = f => { cam.dist = clamp(cam.dist * f, 12, 240); inclinaison(); };
 const tourner = da => { cam.yaw += da; };
 const centrer = (i, j) => { cam.x = i + .5; cam.z = j + .5; };
 
-// Case de terrain sous un point de l'écran : on avance le long du rayon jusqu'à toucher le dessus d'une colonne
+// Hauteur affichée (en couches) en un point précis : le dessus de la couche, ou la pente
+function sol(x, z){
+  const u = x - .5, v = z - .5, i0 = Math.floor(u), j0 = Math.floor(v), fu = u - i0, fv = v - j0;
+  const bil = f => f(i0, j0) * (1 - fu) * (1 - fv) + f(i0 + 1, j0) * fu * (1 - fv) + f(i0, j0 + 1) * (1 - fu) * fv + f(i0 + 1, j0 + 1) * fu * fv;
+  if(lisse(i0, j0) || lisse(i0 + 1, j0) || lisse(i0, j0 + 1) || lisse(i0 + 1, j0 + 1)) return bil(solPoint);
+  return qi(bil(hauteur));
+}
+// Point du terrain sous un point de l'écran : on avance le long du rayon jusqu'à toucher le sol affiché
 const ray = new T.Raycaster(), ndc = new T.Vector2();
 function viser(px, py){
   if(!I) return null;
@@ -446,7 +484,8 @@ function viser(px, py){
     if(y < 0) return null;
     const i = Math.floor(x), j = Math.floor(z);
     if(i < 0 || j < 0 || i >= N || j >= N){ if(y < LH) return null; continue; }
-    if(y <= I.h[j * N + i] * LH) return { i, j, c:j * N + i, x, z };
+    const sl = sol(x, z);
+    if(y <= sl * LH) return { i, j, c:j * N + i, x, z, L:Math.floor(sl + 1e-4), sol:sl };
   }
   return null;
 }
@@ -498,30 +537,32 @@ function init(cv){
   window.addEventListener('orientationchange', () => setTimeout(taille, 300));
   if(window.visualViewport) window.visualViewport.addEventListener('resize', taille);
 }
-/* ---------- Bord de la couche saisie (Sculpter) : un liseré blanc, comme dans Godus ---------- */
+/* ---------- Bord des couches saisies (Sculpter) : un liseré blanc, comme dans Godus ---------- */
 let liseré = null;
-function montrerContour(L, x, z, r = 9){
+function montrerContour(L, x, z, r = 9, n = 1){
   if(L == null){ if(liseré) liseré.visible = false; return; }
-  const P = [], w = .09, y = L * LH + .03;
+  const P = [], w = .08;
   const i0 = Math.floor(x - r), i1 = Math.ceil(x + r), j0 = Math.floor(z - r), j1 = Math.ceil(z + r);
-  for(let dj = j0; dj <= j1; dj++) for(let di = i0; di <= i1; di++){
-    const hs = [hauteur(di, dj), hauteur(di + 1, dj), hauteur(di + 1, dj + 1), hauteur(di, dj + 1)];
-    const dans = hs.map(h => h >= L), n = dans.filter(Boolean).length;
-    if(n === 0 || n === 4) continue;
-    const sm = [adouci(di, dj), adouci(di + 1, dj), adouci(di + 1, dj + 1), adouci(di, dj + 1)];
-    const pts = [];
-    for(let k = 0; k < 4; k++){
-      const k2 = (k + 1) % 4;
-      if(dans[k] === dans[k2]) continue;
-      const ki = dans[k] ? k : k2, ko = dans[k] ? k2 : k, si = sm[ki], so = sm[ko];
-      const t = clamp(si > so ? (si - (L - .5)) / (si - so) : .5, .12, .88);
-      pts.push([di + .5 + K[ki][0] + (K[ko][0] - K[ki][0]) * t, dj + .5 + K[ki][1] + (K[ko][1] - K[ki][1]) * t]);
-    }
-    for(let a = 0; a + 1 < pts.length; a += 2){
-      const p = pts[a], q = pts[a + 1], dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz) || 1;
-      const nx = -dz / l * w, nz = dx / l * w;
-      P.push(p[0] - nx, y, p[1] - nz, q[0] - nx, y, q[1] - nz, q[0] + nx, y, q[1] + nz,
-             p[0] - nx, y, p[1] - nz, q[0] + nx, y, q[1] + nz, p[0] + nx, y, p[1] + nz);
+  for(let niv = L; niv > L - n; niv--){
+    const y = niv * LH + .03;
+    for(let dj = j0; dj <= j1; dj++) for(let di = i0; di <= i1; di++){
+      const h4 = [hauteur(di, dj), hauteur(di + 1, dj), hauteur(di + 1, dj + 1), hauteur(di, dj + 1)];
+      const d4 = h4.map(h => qi(h) >= niv), nb = d4.filter(Boolean).length;
+      if(nb === 0 || nb === 4) continue;
+      const pts = [];
+      for(let k = 0; k < 4; k++){
+        const k2 = (k + 1) % 4;
+        if(d4[k] === d4[k2]) continue;
+        const ki = d4[k] ? k : k2, ko = d4[k] ? k2 : k;
+        const t = clamp((h4[ki] - niv) / Math.max(1e-4, h4[ki] - h4[ko]), .03, .97);
+        pts.push([di + .5 + K[ki][0] + (K[ko][0] - K[ki][0]) * t, dj + .5 + K[ki][1] + (K[ko][1] - K[ki][1]) * t]);
+      }
+      for(let a = 0; a + 1 < pts.length; a += 2){
+        const p = pts[a], q = pts[a + 1], dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz) || 1;
+        const nx = -dz / l * w, nz = dx / l * w;
+        P.push(p[0] - nx, y, p[1] - nz, q[0] - nx, y, q[1] - nz, q[0] + nx, y, q[1] + nz,
+               p[0] - nx, y, p[1] - nz, q[0] + nx, y, q[1] + nz, p[0] + nx, y, p[1] + nz);
+      }
     }
   }
   if(!liseré){
@@ -534,6 +575,65 @@ function montrerContour(L, x, z, r = 9){
   liseré.geometry.setAttribute('position', new T.Float32BufferAttribute(P, 3));
   liseré.visible = true;
 }
+/* ---------- Aperçu de la rampe : un ruban entre le point haut et le point bas ---------- */
+let ruban = null;
+function montrerRampe(a, b, w){
+  if(!a){ if(ruban) ruban.visible = false; return; }
+  const dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1, nx = -dz / l * w, nz = dx / l * w, P = [];
+  const y = t => (a.h + (b.h - a.h) * t) * LH + .08;
+  for(let k = 0; k < 16; k++){
+    const t0 = k / 16, t1 = (k + 1) / 16;
+    const x0 = a.x + dx * t0, z0 = a.z + dz * t0, x1 = a.x + dx * t1, z1 = a.z + dz * t1;
+    P.push(x0 - nx, y(t0), z0 - nz, x1 - nx, y(t1), z1 - nz, x1 + nx, y(t1), z1 + nz, x0 - nx, y(t0), z0 - nz, x1 + nx, y(t1), z1 + nz, x0 + nx, y(t0), z0 + nz);
+  }
+  if(!ruban){
+    ruban = new T.Mesh(new T.BufferGeometry(), new T.MeshBasicMaterial({ color:'#FFFFFF', transparent:true, opacity:.45, depthWrite:false, side:T.DoubleSide }));
+    ruban.renderOrder = 4;
+    scene.add(ruban);
+  }
+  ruban.geometry.dispose();
+  ruban.geometry = new T.BufferGeometry();
+  ruban.geometry.setAttribute('position', new T.Float32BufferAttribute(P, 3));
+  ruban.visible = true;
+}
+/* ---------- Bulles de foi au-dessus des maisons ---------- */
+let texBulle = null;
+const bulles = [];
+function textureBulle(){
+  const c = document.createElement('canvas'); c.width = c.height = 96;
+  const g = c.getContext('2d');
+  const r = g.createRadialGradient(48, 48, 6, 48, 48, 46);
+  r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.45, 'rgba(255,236,150,.95)'); r.addColorStop(.8, 'rgba(255,200,80,.55)'); r.addColorStop(1, 'rgba(255,200,80,0)');
+  g.fillStyle = r; g.beginPath(); g.arc(48, 48, 46, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 4; g.beginPath(); g.arc(48, 48, 26, 0, Math.PI * 2); g.stroke();
+  // une petite étoile au centre
+  g.fillStyle = '#E8A21C'; g.beginPath();
+  for(let k = 0; k < 10; k++){ const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? 6 : 15; g.lineTo(48 + Math.cos(a) * rr, 48 + Math.sin(a) * rr); }
+  g.closePath(); g.fill();
+  return new T.CanvasTexture(c);
+}
+function majBulles(liste, t){
+  if(!texBulle) texBulle = textureBulle();
+  while(bulles.length < liste.length){
+    const sp = new T.Sprite(new T.SpriteMaterial({ map:texBulle, transparent:true, depthWrite:false }));
+    sp.renderOrder = 5; scene.add(sp); bulles.push(sp);
+  }
+  bulles.forEach((sp, k) => {
+    const b = liste[k];
+    sp.visible = !!b;
+    if(!b) return;
+    const s = (.75 + Math.min(1, b.n / 40) * .7) * ECH;
+    sp.scale.set(s, s, s);
+    sp.position.set(b.x, b.y + 1.15 * ECH + Math.sin(t * 2.2 + k) * .07, b.z);
+  });
+}
+// Position à l'écran d'un point 3D
+function ecranPoint(x, y, z){
+  const v = new T.Vector3(x, y, z).project(camera), r = canvas.getBoundingClientRect();
+  return { x:r.left + (v.x + 1) / 2 * r.width, y:r.top + (1 - v.y) / 2 * r.height, devant:v.z < 1 };
+}
+// Taille du pinceau selon le zoom (comme dans Godus : plus près, plus précis)
+const rayon = () => clamp(cam.dist / 26, .8, 6);
 function taille(){
   const w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
   renderer.setSize(w, h, false);
@@ -551,8 +651,9 @@ function charger(ile){
   scene.fog.color.set(I.type === 'volcan' ? '#E6D9D2' : I.type === 'glaces' ? '#E3F0F7' : I.type === 'sables' ? '#F2E7CF' : '#CFEAF4');
   scene.background.copy(scene.fog.color);
 }
-let dernierFluide = 0;
-function rendre(dt, habitants, t){
+let dernierFluide = 0, bullesAAfficher = null;
+function rendre(dt, habitants, t, listeBulles){
+  bullesAAfficher = listeBulles || [];
   for(const k of sales) construireMorceau(k % NCH, Math.floor(k / NCH));
   sales.clear();
   if(fluidesSales && t - dernierFluide > .2){ construireFluide(I.w, eauMesh, true); construireFluide(I.l, laveMesh, false); fluidesSales = false; dernierFluide = t; }
@@ -563,6 +664,7 @@ function rendre(dt, habitants, t){
     if(n){ const a = Math.min(1, (maintenant - n) / 900); const k = e.g.userData.ech; e.g.scale.set(k, k * (.05 + .95 * (1 - (1 - a) ** 3)), k); if(a >= 1) e.g.userData.nais = 0; }
   }
   majHabitants(habitants, t);
+  if(bullesAAfficher) majBulles(bullesAAfficher, t);
   majEclats(dt);
   placerCamera();
   renderer.render(scene, camera);
@@ -570,11 +672,11 @@ function rendre(dt, habitants, t){
 
 // Position à l'écran du dessus d'une case (pour les tests)
 function ecran(i, j){
-  const v = new T.Vector3(i + .5, I.h[j * N + i] * LH, j + .5).project(camera), r = canvas.getBoundingClientRect();
+  const v = new T.Vector3(i + .5, solPoint(i, j) * LH, j + .5).project(camera), r = canvas.getBoundingClientRect();
   return { x:r.left + (v.x + 1) / 2 * r.width, y:r.top + (1 - v.y) / 2 * r.height };
 }
 // Nombre de triangles du terrain (pour les tests)
 const stats = () => ({ terrain:morceaux.reduce((s, m) => s + (m ? m.geometry.attributes.position.count / 3 : 0), 0), eau:eauMesh.geometry.attributes.position ? eauMesh.geometry.attributes.position.count / 3 : 0 });
-window.Rendu = { montrerContour, stats, ecran, init, charger, rendre, majCellule, majArbres, majBatiments, eclats, viser, montrerFantome, montrerCurseur,
+window.Rendu = { montrerContour, montrerRampe, majBulles, ecranPoint, rayon, sol, solPoint:(i, j) => solPoint(i, j), stats, ecran, init, charger, rendre, majCellule, majArbres, majBatiments, eclats, viser, montrerFantome, montrerCurseur,
   deplacer, zoomer, tourner, centrer, cam, fluides:() => { fluidesSales = true; }, taille };
 })();
