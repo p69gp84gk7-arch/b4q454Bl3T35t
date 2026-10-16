@@ -346,8 +346,8 @@ tr.me td{ font-weight:800; }
   </div>
 </main>
 
-<script src="drawrace/circuits.js?v=43"></script>
-<script src="drawrace/piste.js?v=43"></script>
+<script src="drawrace/circuits.js?v=44"></script>
+<script src="drawrace/piste.js?v=44"></script>
 <script>
 const P = window.Piste;
 // Garde-fou : page et scripts de versions différentes (ancien cache) → on recharge une fois depuis le réseau
@@ -473,6 +473,7 @@ const enChampionnat = () => !!(champ && !champ.fini && cfg.mode === 'championnat
 // Pilotes de la session : le joueur du championnat, ou les joueurs de l'arcade
 let JOUEURS = cfg.joueurs;
 cfg.champ = Object.assign({ courses:8, tours:3, meteo:'variable', ordre:'hasard', difficulte:cfg.difficulte }, cfg.champ || {});
+cfg.champ.courses = clamp(cfg.champ.courses, 2, window.CIRCUITS.length);
 
 /* ---------- Dessin d'une monoplace vue de dessus, style croquis ---------- */
 function voiture(g, x, y, ang, couleur, k = 1, flamme = false){
@@ -662,7 +663,9 @@ function renderChampMenu(){
       </div>
       <p class="verrou">🔒 Réglée une fois pour toutes : elle ne pourra plus être changée pendant le championnat.</p>
       <h2>Nombre de courses</h2>
-      <div class="seg" id="cmCourses">${NB_COURSES.map(n => `<button data-n="${n}" aria-pressed="${C.courses === n}">${n}</button>`).join('')}</div>
+      <div class="tours"><div class="seg"><button id="cmCoursesM" aria-label="Une course de moins">−</button><output id="cmCoursesN">${C.courses} courses</output><button id="cmCoursesP" aria-label="Une course de plus">+</button></div>
+        <div class="seg" id="cmCourses">${NB_COURSES.map(n => `<button data-n="${n}" aria-pressed="${C.courses === n}">${n}</button>`).join('')}</div></div>
+      <p class="aide">De 2 à ${CIRC.length} courses (un circuit différent à chaque course).</p>
       <h2>Tours par course</h2>
       <div class="tours"><div class="seg"><button id="cmToursM" aria-label="Un tour de moins">−</button><output id="cmTours">${C.tours} tours</output><button id="cmToursP" aria-label="Un tour de plus">+</button></div><span class="aide">3 tours minimum.</span></div>
       <h2>Météo</h2>
@@ -680,6 +683,9 @@ function renderChampMenu(){
     $('cmNom').oninput = e => { j.nom = e.target.value.trim(); saveCfg(); };
     el.querySelector('.swatches').onclick = e => { const b = e.target.closest('.sw'); if(b){ j.couleur = b.dataset.c; saveCfg(); renderMenu(); } };
     $('cmCourses').onclick = e => { const b = e.target.closest('button'); if(b){ C.courses = Number(b.dataset.n); saveCfg(); renderMenu(); } };
+    $('cmCoursesM').onclick = () => { C.courses = Math.max(2, C.courses - 1); saveCfg(); renderMenu(); };
+    $('cmCoursesP').onclick = () => { C.courses = Math.min(CIRC.length, C.courses + 1); saveCfg(); renderMenu(); };
+    $('cmCoursesM').disabled = C.courses <= 2; $('cmCoursesP').disabled = C.courses >= CIRC.length;
     $('cmToursM').onclick = () => { C.tours = Math.max(3, C.tours - 1); saveCfg(); renderMenu(); };
     $('cmToursP').onclick = () => { C.tours = Math.min(10, C.tours + 1); saveCfg(); renderMenu(); };
     $('cmMeteo').onclick = e => { const b = e.target.closest('button'); if(b){ C.meteo = b.dataset.m; saveCfg(); renderMenu(); } };

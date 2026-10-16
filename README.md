@@ -115,7 +115,7 @@ Deux modes de jeu, au choix en haut du menu :
 - **Réglages au départ** :
   - nom et couleur du pilote ;
   - difficulté (curseur de 0 à 100 %), **fixée pour tout le championnat** ;
-  - nombre de courses : 5, 8, 12 ou 20 ;
+  - nombre de courses, de 2 à 20, avec − et + (ou les raccourcis 5, 8, 12, 20) ; chaque course a lieu sur un circuit différent ;
   - tours par course, de 3 à 10 ;
   - météo : variable (chaque course a sa météo, découverte en arrivant sur le circuit) ou toujours sèche ;
   - calendrier : au hasard, ou du plus facile au plus dur.
