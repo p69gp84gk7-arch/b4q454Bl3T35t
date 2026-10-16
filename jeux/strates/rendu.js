@@ -495,6 +495,44 @@ function init(cv){
   scene.add(fantome, curseur);
   taille();
   window.addEventListener('resize', taille);
+  window.addEventListener('orientationchange', () => setTimeout(taille, 300));
+  if(window.visualViewport) window.visualViewport.addEventListener('resize', taille);
+}
+/* ---------- Bord de la couche saisie (Sculpter) : un liseré blanc, comme dans Godus ---------- */
+let liseré = null;
+function montrerContour(L, x, z, r = 9){
+  if(L == null){ if(liseré) liseré.visible = false; return; }
+  const P = [], w = .09, y = L * LH + .03;
+  const i0 = Math.floor(x - r), i1 = Math.ceil(x + r), j0 = Math.floor(z - r), j1 = Math.ceil(z + r);
+  for(let dj = j0; dj <= j1; dj++) for(let di = i0; di <= i1; di++){
+    const hs = [hauteur(di, dj), hauteur(di + 1, dj), hauteur(di + 1, dj + 1), hauteur(di, dj + 1)];
+    const dans = hs.map(h => h >= L), n = dans.filter(Boolean).length;
+    if(n === 0 || n === 4) continue;
+    const sm = [adouci(di, dj), adouci(di + 1, dj), adouci(di + 1, dj + 1), adouci(di, dj + 1)];
+    const pts = [];
+    for(let k = 0; k < 4; k++){
+      const k2 = (k + 1) % 4;
+      if(dans[k] === dans[k2]) continue;
+      const ki = dans[k] ? k : k2, ko = dans[k] ? k2 : k, si = sm[ki], so = sm[ko];
+      const t = clamp(si > so ? (si - (L - .5)) / (si - so) : .5, .12, .88);
+      pts.push([di + .5 + K[ki][0] + (K[ko][0] - K[ki][0]) * t, dj + .5 + K[ki][1] + (K[ko][1] - K[ki][1]) * t]);
+    }
+    for(let a = 0; a + 1 < pts.length; a += 2){
+      const p = pts[a], q = pts[a + 1], dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz) || 1;
+      const nx = -dz / l * w, nz = dx / l * w;
+      P.push(p[0] - nx, y, p[1] - nz, q[0] - nx, y, q[1] - nz, q[0] + nx, y, q[1] + nz,
+             p[0] - nx, y, p[1] - nz, q[0] + nx, y, q[1] + nz, p[0] + nx, y, p[1] + nz);
+    }
+  }
+  if(!liseré){
+    liseré = new T.Mesh(new T.BufferGeometry(), new T.MeshBasicMaterial({ color:'#FFFFFF', transparent:true, opacity:.95, depthWrite:false, side:T.DoubleSide }));
+    liseré.renderOrder = 4;
+    scene.add(liseré);
+  }
+  liseré.geometry.dispose();
+  liseré.geometry = new T.BufferGeometry();
+  liseré.geometry.setAttribute('position', new T.Float32BufferAttribute(P, 3));
+  liseré.visible = true;
 }
 function taille(){
   const w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
@@ -537,6 +575,6 @@ function ecran(i, j){
 }
 // Nombre de triangles du terrain (pour les tests)
 const stats = () => ({ terrain:morceaux.reduce((s, m) => s + (m ? m.geometry.attributes.position.count / 3 : 0), 0), eau:eauMesh.geometry.attributes.position ? eauMesh.geometry.attributes.position.count / 3 : 0 });
-window.Rendu = { stats, ecran, init, charger, rendre, majCellule, majArbres, majBatiments, eclats, viser, montrerFantome, montrerCurseur,
+window.Rendu = { montrerContour, stats, ecran, init, charger, rendre, majCellule, majArbres, majBatiments, eclats, viser, montrerFantome, montrerCurseur,
   deplacer, zoomer, tourner, centrer, cam, fluides:() => { fluidesSales = true; }, taille };
 })();

@@ -24,7 +24,8 @@
 html,body{ margin:0; height:100%; overflow:hidden; background:#CFEAF4; color:var(--encre);
   font-family:"Fredoka", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
 button{ font:inherit; color:inherit; cursor:pointer; }
-#vue{ position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+/* La vue couvre tout l'écran, jusque sous la barre d'accueil du téléphone */
+#vue{ position:fixed; left:0; top:0; width:100vw; height:100vh; height:100lvh; display:block; touch-action:none; }
 
 /* Barre du haut */
 .barre-haut{ position:fixed; top:calc(8px + env(safe-area-inset-top, 0px)); left:calc(8px + env(safe-area-inset-left, 0px)); right:calc(8px + env(safe-area-inset-right, 0px));
@@ -62,6 +63,15 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 #pinceaux button i{ display:block; border-radius:50%; background:var(--encre); }
 #pinceaux button.actif{ border-color:var(--turquoise); background:#E3F4F2; }
 .obj i, .cout i{ width:16px; height:16px; border-radius:5px; display:inline-block; box-shadow:inset 0 -3px 0 rgba(0,0,0,.15); flex:none; }
+.poser{ display:flex; align-items:center; gap:8px; background:var(--creme); border-radius:16px; box-shadow:var(--ombre); padding:6px 8px 6px 12px; max-width:100%; }
+.poser[hidden]{ display:none; }
+.poser span{ font-size:.85rem; line-height:1.25; }
+.poser span b{ display:block; font-size:.95rem; }
+.poser span small{ color:var(--rouge); font-weight:600; }
+.poser button{ border:none; border-radius:12px; padding:9px 14px; font-weight:700; flex:none; }
+#poserOk{ background:var(--turquoise); color:#fff; }
+#poserOk:disabled{ background:#C9C3B8; }
+#poserNon{ background:var(--creme-2); }
 .outils{ display:flex; gap:4px; background:var(--creme); border-radius:20px; box-shadow:var(--ombre); padding:5px; overflow-x:auto; max-width:100%; scrollbar-width:none; }
 .outils::-webkit-scrollbar{ display:none; }
 .outils button{ flex:none; border:none; background:transparent; border-radius:15px; padding:5px 8px 4px; min-width:58px; display:flex; flex-direction:column; align-items:center; gap:1px; font-size:.72rem; font-weight:600; color:var(--doux); }
@@ -154,6 +164,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
       <button data-p="3" aria-label="Grand pinceau"><i style="width:20px;height:20px"></i></button>
     </div>
   </div>
+  <div class="poser" id="poser" hidden><span id="poserTxt"></span><button id="poserOk">✔ Construire ici</button><button id="poserNon" aria-label="Annuler">✕</button></div>
   <nav class="outils" id="outils">
     <button data-outil="main" class="actif"><span>✋</span>Main</button>
     <button data-outil="creuser"><span>⛏️</span>Creuser</button>
@@ -170,7 +181,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 <div class="voile" id="voile" hidden></div>
 
 <section class="panneau" id="pConstruire" hidden><header><h2>🏠 Construire</h2><button class="fermer" aria-label="Fermer">✕</button></header>
-  <p>Les maisons s'améliorent en les touchant avec la main ✋.</p><div class="liste" id="lConstruire"></div></section>
+  <p>Choisissez un bâtiment : il apparaît sur l'île. Déplacez-le du doigt, puis touchez « Construire ici ». Les maisons s'améliorent en les touchant avec la main ✋.</p><div class="liste" id="lConstruire"></div></section>
 <section class="panneau" id="pFabriquer" hidden><header><h2>🔨 Fabriquer</h2><button class="fermer" aria-label="Fermer">✕</button></header><div class="liste" id="lFabriquer"></div></section>
 <section class="panneau" id="pSac" hidden><header><h2>🎒 Sac</h2><button class="fermer" aria-label="Fermer">✕</button></header><div id="lSac"></div></section>
 <section class="panneau" id="pArchipel" hidden><header><h2>🧭 Archipel</h2><button class="fermer" aria-label="Fermer">✕</button></header>
@@ -201,7 +212,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
   <ul><li>Toujours avec <b>deux doigts</b> : glissez pour vous déplacer, pincez pour zoomer (la vue s'incline en s'approchant), tournez les doigts pour pivoter.</li>
     <li>Un seul doigt sert à l'outil choisi. Le bouton 🎯 revient au village. À la souris : clic droit pour tourner, clic du milieu pour se déplacer, molette pour zoomer.</li></ul>
   <h3>Sculpter le terrain</h3>
-  <ul><li><b>Sculpter 🏞️</b>, comme dans Godus : posez le doigt sur une couche, puis
+  <ul><li><b>Sculpter 🏞️</b>, comme dans Godus, une couche à la fois : posez le doigt sur le bord d'une couche (il s'entoure d'un liseré blanc), puis
       <ul><li>tirez vers le terrain plus bas : la couche s'étend et le recouvre ;</li><li>poussez vers l'intérieur de la couche : elle recule et laisse voir la couche du dessous.</li></ul></li>
     <li><b>Creuser ⛏️</b> : la couche touchée descend d'un cran et le bloc enlevé va dans le sac. Gardez le doigt appuyé pour creuser de plus en plus profond.</li>
     <li>Choisissez la taille du pinceau (petit, moyen, grand). Chaque couche déplacée coûte 1 point de <b>foi 🙏</b> par case : vos habitants en donnent en priant.</li></ul>
@@ -218,11 +229,11 @@ button{ font:inherit; color:inherit; cursor:pointer; }
   <ul><li>En grandissant, le peuple passe des <b>paliers</b> qui débloquent bâtiments, outils et îles. Construisez un <b>Port</b> pour partir vers l'Île des Sables, l'Île du Volcan puis l'Île des Glaces.</li></ul>
 </section>
 
-<script src="nivoculteur/three.min.js?v=49"></script>
+<script src="nivoculteur/three.min.js?v=50"></script>
 <script>window.THREE || document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"><\/script>');</script>
-<script src="strates/monde.js?v=49"></script>
-<script src="strates/rendu.js?v=49"></script>
-<script src="strates/jeu.js?v=49"></script>
+<script src="strates/monde.js?v=50"></script>
+<script src="strates/rendu.js?v=50"></script>
+<script src="strates/jeu.js?v=50"></script>
 <script>
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
