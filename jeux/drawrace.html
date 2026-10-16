@@ -141,6 +141,9 @@ h2{ font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:
 .boost{ flex:1; min-height:38px; max-height:120px; border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); font-weight:800; font-size:1.05rem; line-height:1.1; -webkit-user-select:none; user-select:none; touch-action:manipulation; }
 .boost small{ display:block; font-size:.75rem; font-weight:700; opacity:.85; }
 .boost:disabled{ opacity:.45; box-shadow:none; }
+.boost{ position:relative; overflow:hidden; }
+.boost .recharge{ position:absolute; left:6px; right:6px; bottom:4px; height:4px; border-radius:2px; background:rgba(0,0,0,.25); }
+.boost .recharge i{ display:block; height:100%; width:0; border-radius:2px; background:currentColor; }
 .boost.on{ transform:translateY(2px); box-shadow:0 1px 0 var(--ink); }
 
 /* Grille de départ : météo et pneus */
@@ -346,8 +349,8 @@ tr.me td{ font-weight:800; }
   </div>
 </main>
 
-<script src="drawrace/circuits.js?v=44"></script>
-<script src="drawrace/piste.js?v=44"></script>
+<script src="drawrace/circuits.js?v=45"></script>
+<script src="drawrace/piste.js?v=45"></script>
 <script>
 const P = window.Piste;
 // Garde-fou : page et scripts de versions différentes (ancien cache) → on recharge une fois depuis le réseau
@@ -430,8 +433,11 @@ function scorePneu(type, meteo, tours){
   return cas.reduce((s, [m, p]) => { let t = 0; for(let k = 0; k < tours; k++) t += Math.sqrt(Math.max(.2, adherence(type, k, mouilleTour(m, k, tours)))); return s + p * t; }, 0);
 }
 const meilleurPneu = (meteo, tours) => Object.keys(PNEUS).sort((a, b) => scorePneu(b, meteo, tours) - scorePneu(a, meteo, tours))[0];
-const BOOST = { n:3, duree:1.3, facteur:1.4 };
-const HERBE = 90;                              // vitesse maximale hors piste
+// Boost : 2 charges au départ, 3 au plus, une charge de plus toutes les 12 s de course
+const BOOST = { n:2, max:3, recharge:12, duree:1.3, facteur:1.4 };
+const HERBE = 75;                              // vitesse maximale hors piste
+// Physique légère (dérapage, patinage sous la pluie) : plus marquée quand la difficulté monte
+const facteurPhysique = d => 0.6 + 0.8 * d / 100;
 const CIRC = window.CIRCUITS.map(P.construire);
 CIRC.forEach(c => { c.toursBase = c.tours; });
 const toursDe = c => clamp(cfg.tours[c.id] || c.toursBase, 1, 10);
@@ -609,6 +615,8 @@ $('players').addEventListener('click', e => {
 });
 
 /* ---------- Championnat : réglages, déroulement, classement ---------- */
+// Tours d'une course du championnat : ceux du circuit, sans descendre sous le minimum choisi au départ
+const toursChamp = c => Math.max(champ.toursMin ?? champ.tours ?? 3, c.toursBase);
 const pilotesChamp = () => [{ id:'moi', nom:champ.joueur.nom || 'Vous', c:champ.joueur.couleur, humain:true }, ...champ.pilotes];
 // Classement général : points, puis victoires, puis meilleures places
 function classementGeneral(){
@@ -644,7 +652,7 @@ function renderChampMenu(){
     el.innerHTML = `<h2>Championnat en cours</h2><div class="champ-carte">
       <b>Course ${champ.course + 1} sur ${champ.calendrier.length} · ${esc(byId[champ.calendrier[champ.course]].n)}</b>
       <span>${esc(cl[moi].nom)} : ${moi + 1}<sup>e</sup> avec ${cl[moi].pts} point${cl[moi].pts > 1 ? 's' : ''} · en tête : ${esc(cl[0].nom)} (${cl[0].pts})</span>
-      <span class="aide" style="margin:0">Difficulté ${champ.difficulte} % (${niveauDe(champ.difficulte).n}), réglée pour tout le championnat · ${champ.tours} tours par course</span>
+      <span class="aide" style="margin:0">Difficulté ${champ.difficulte} % (${niveauDe(champ.difficulte).n}), réglée pour tout le championnat · au moins ${champ.toursMin ?? champ.tours} tours par course</span>
       <div class="row champ-act"><button class="btn-light" id="cmAbandon">Abandonner le championnat</button><button class="btn-red" id="cmContinuer">▶ Continuer</button></div>
     </div>`;
     $('cmContinuer').onclick = afficherChamp;
@@ -666,8 +674,8 @@ function renderChampMenu(){
       <div class="tours"><div class="seg"><button id="cmCoursesM" aria-label="Une course de moins">−</button><output id="cmCoursesN">${C.courses} courses</output><button id="cmCoursesP" aria-label="Une course de plus">+</button></div>
         <div class="seg" id="cmCourses">${NB_COURSES.map(n => `<button data-n="${n}" aria-pressed="${C.courses === n}">${n}</button>`).join('')}</div></div>
       <p class="aide">De 2 à ${CIRC.length} courses (un circuit différent à chaque course).</p>
-      <h2>Tours par course</h2>
-      <div class="tours"><div class="seg"><button id="cmToursM" aria-label="Un tour de moins">−</button><output id="cmTours">${C.tours} tours</output><button id="cmToursP" aria-label="Un tour de plus">+</button></div><span class="aide">3 tours minimum.</span></div>
+      <h2>Tours minimum par course</h2>
+      <div class="tours"><div class="seg"><button id="cmToursM" aria-label="Un tour de moins">−</button><output id="cmTours">${C.tours} tours</output><button id="cmToursP" aria-label="Un tour de plus">+</button></div><span class="aide">Chaque circuit garde son nombre de tours habituel (de 2 à 5), sans descendre sous ce minimum (3 au moins).</span></div>
       <h2>Météo</h2>
       <div class="seg" id="cmMeteo"><button data-m="variable" aria-pressed="${C.meteo === 'variable'}">🌦 Variable</button><button data-m="sec" aria-pressed="${C.meteo === 'sec'}">☀️ Toujours sec</button></div>
       <p class="aide">Variable : chaque course a sa météo (sec, averse, pluie ou déluge), découverte en arrivant sur le circuit.</p>
@@ -706,7 +714,7 @@ function lancerChampionnat(){
   let cal;
   if(C.ordre === 'ordre') cal = Array.from({ length:n }, (_, k) => ids[Math.round(k * (ids.length - 1) / Math.max(1, n - 1))]);
   else { cal = ids.slice(); for(let k = cal.length - 1; k > 0; k--){ const r = Math.floor(Math.random() * (k + 1)); [cal[k], cal[r]] = [cal[r], cal[k]]; } }
-  champ = { id:Date.now(), joueur:{ nom:j.nom || 'Vous', couleur:j.couleur, pneu:j.pneu || 'medium' }, difficulte:C.difficulte, tours:Math.max(3, C.tours),
+  champ = { id:Date.now(), joueur:{ nom:j.nom || 'Vous', couleur:j.couleur, pneu:j.pneu || 'medium' }, difficulte:C.difficulte, toursMin:Math.max(3, C.tours),
     meteo:C.meteo, calendrier:cal.slice(0, C.courses), course:0, pilotes:choisirAdversaires(j.couleur), points:{}, resultats:[], fini:false };
   saveChamp();
   afficherChamp();
@@ -724,15 +732,15 @@ function afficherChamp(){
   const N = champ.calendrier.length, cl = classementGeneral();
   const fini = champ.fini;
   $('champTitre').textContent = fini ? '🏆 Classement final' : `🏆 Championnat · course ${champ.course + 1} / ${N}`;
-  $('champSous').textContent = `Difficulté ${champ.difficulte} % (${niveauDe(champ.difficulte).n}) · ${champ.tours} tours par course · météo ${champ.meteo === 'sec' ? 'toujours sèche' : 'variable'}`;
-  const cal = `<div class="calendrier">${champ.calendrier.map((id, k) => `<span class="${k < champ.course ? 'fait' : k === champ.course && !fini ? 'ici' : ''}">${k + 1}. ${esc(byId[id].n)}</span>`).join('')}</div>`;
+  $('champSous').textContent = `Difficulté ${champ.difficulte} % (${niveauDe(champ.difficulte).n}) · au moins ${champ.toursMin ?? champ.tours} tours par course · météo ${champ.meteo === 'sec' ? 'toujours sèche' : 'variable'}`;
+  const cal = `<div class="calendrier">${champ.calendrier.map((id, k) => `<span class="${k < champ.course ? 'fait' : k === champ.course && !fini ? 'ici' : ''}">${k + 1}. ${esc(byId[id].n)} · ${toursChamp(byId[id])} t.</span>`).join('')}</div>`;
   if(fini){
     const moi = cl.findIndex(p => p.humain);
     $('champProchaine').innerHTML = `<p class="podium-final">${moi === 0 ? `🏆 ${esc(cl[0].nom)}, champion du monde !` : `🏆 ${esc(cl[0].nom)} est champion. Vous finissez ${moi + 1}<sup>e</sup>.`}</p>` + cal;
   } else {
     const c = byId[champ.calendrier[champ.course]];
     $('champProchaine').innerHTML = `<div class="champ-prochaine">${miniSvg(c)}<div><small>Prochaine course</small><b>${esc(c.n)}</b>
-      <small>${esc(c.inspi)} · difficulté du circuit ${'●'.repeat(c.d)}${'○'.repeat(5 - c.d)} · ${champ.tours} tours</small>
+      <small>${esc(c.inspi)} · difficulté du circuit ${'●'.repeat(c.d)}${'○'.repeat(5 - c.d)} · ${toursChamp(c)} tours</small>
       <small>${champ.meteo === 'sec' ? '☀️ Piste sèche' : '🌦 Météo découverte en arrivant sur le circuit'}</small></div></div>` + cal;
   }
   $('champClTitre').textContent = champ.resultats.length ? `Classement général après ${champ.resultats.length} course${champ.resultats.length > 1 ? 's' : ''}` : 'Classement général (aucune course courue)';
@@ -784,30 +792,38 @@ function dessinerFond(dpr){
   // Contour, vibreurs dans les virages, bitume
   cheminPiste(c, o); o.lineWidth = P.LARGEUR + 12; o.strokeStyle = '#1F1F1F'; o.stroke();
   cheminPiste(c, o); o.lineWidth = P.LARGEUR; o.strokeStyle = D.bitume || '#A7A39A'; o.stroke();
-  // Vibreurs rouge et blanc des deux côtés de chaque virage
-  const n = c.pts.length, dans = new Array(n).fill(false);
-  c.kappa.forEach((k, i) => { if(k > 0.0035) for(let d = -5; d <= 5; d++) dans[(i + d + n) % n] = true; });
-  const bord1 = P.LARGEUR / 2 - 7, bord2 = P.LARGEUR / 2 + 3;
-  for(let i = 0; i < n; i++){
-    if(!dans[i]) continue;
-    const a1 = c.pts[i], b1 = c.pts[(i + 1) % n];
-    const na = [-Math.sin(c.cap[i]), Math.cos(c.cap[i])], nb = [-Math.sin(c.cap[(i + 1) % n]), Math.cos(c.cap[(i + 1) % n])];
-    o.fillStyle = (Math.floor(i / 3) % 2) ? '#D7263D' : '#FFFFFF';
-    // Côté intérieur d'un virage très serré : on ne dessine pas (le vibreur se replierait sur lui-même)
-    let tourne = c.cap[(i + 1) % n] - c.cap[i];
-    while(tourne > Math.PI) tourne -= 2 * Math.PI;
-    while(tourne < -Math.PI) tourne += 2 * Math.PI;
-    const interieur = Math.sign(tourne);
-    for(const cote of [-1, 1]){
-      if(cote === interieur && c.kappa[i] * bord2 > 0.75) continue;
-      o.beginPath();
-      o.moveTo(a1[0] + na[0] * bord1 * cote, a1[1] + na[1] * bord1 * cote);
-      o.lineTo(b1[0] + nb[0] * bord1 * cote, b1[1] + nb[1] * bord1 * cote);
-      o.lineTo(b1[0] + nb[0] * bord2 * cote, b1[1] + nb[1] * bord2 * cote);
-      o.lineTo(a1[0] + na[0] * bord2 * cote, a1[1] + na[1] * bord2 * cote);
-      o.closePath(); o.fill();
+  // Vibreurs rouge et blanc des deux côtés de chaque virage : une bande continue le long du bord,
+  // avec des normales lissées (pas de pointes dans les virages serrés)
+  const n = c.pts.length;
+  const nor = c.pts.map((_, i) => {
+    let x = 0, y = 0;
+    for(let d = -4; d <= 4; d++){ const a = c.cap[(i + d + n) % n]; x += Math.cos(a); y += Math.sin(a); }
+    const l = Math.hypot(x, y) || 1;
+    return [-y / l, x / l];
+  });
+  const dk = P.LARGEUR / 2 - 2;              // milieu de la bande du vibreur (de -7 à +3 autour du bord)
+  const cotes = vibreursCotes(c);
+  for(const cote of [-1, 1]){
+    const ok = i => cotes[i] & (cote > 0 ? 2 : 1);
+    // Morceaux continus de vibreur
+    const debut = (() => { for(let i = 0; i < n; i++) if(!ok(i)) return i; return 0; })();
+    let run = [];
+    const tracer = () => {
+      if(run.length < 3){ run = []; return; }
+      const pts = run.map(i => [c.pts[i][0] + nor[i][0] * dk * cote, c.pts[i][1] + nor[i][1] * dk * cote]);
+      const ligne = () => { o.beginPath(); pts.forEach((q, k) => k ? o.lineTo(q[0], q[1]) : o.moveTo(q[0], q[1])); };
+      o.lineCap = 'butt'; o.lineJoin = 'round';
+      ligne(); o.lineWidth = 10; o.strokeStyle = '#FFFFFF'; o.setLineDash([]); o.stroke();
+      ligne(); o.strokeStyle = '#D7263D'; o.setLineDash([12, 12]); o.stroke();
+      o.setLineDash([]);
+      run = [];
+    };
+    for(let k = 0; k <= n; k++){
+      const i = (debut + k) % n;
+      if(k < n && ok(i)) run.push(i); else tracer();
     }
   }
+  o.lineCap = 'round';
   cheminPiste(c, o); o.lineWidth = 1.4; o.setLineDash([10, 14]); o.strokeStyle = 'rgba(255,255,255,.7)'; o.stroke(); o.setLineDash([]);
   // Ligne de départ en damier
   const [sx, sy] = c.pts[0], a = c.cap[0], nx = -Math.sin(a), ny = Math.cos(a), dx = Math.cos(a), dy = Math.sin(a);
@@ -1088,7 +1104,7 @@ function texteMeteo(){
 }
 function debutTraces(){
   cancelAnimationFrame(raf); course = null;
-  if(enChampionnat()){ circuit = byId[champ.calendrier[champ.course]]; circuit.tours = champ.tours; JOUEURS = [champ.joueur]; }
+  if(enChampionnat()){ circuit = byId[champ.calendrier[champ.course]]; circuit.tours = toursChamp(circuit); JOUEURS = [champ.joueur]; }
   else { circuit = byId[cfg.circuit]; circuit.tours = toursDe(circuit); JOUEURS = cfg.joueurs; }
   tirerMeteo();
   traces = [];
@@ -1143,7 +1159,7 @@ cv.addEventListener('pointerdown', e => {
   try{ cv.setPointerCapture(e.pointerId); }catch(err){}
   tr.actif = true;
   tr.pts.push({ x, y, t:e.timeStamp, v:tr.pts.length ? tr.pts[tr.pts.length - 1].v : 80 });
-  $('msg').className = 'msg'; $('msg').textContent = 'Lentement dans les virages, vite dans les lignes droites !';
+  $('msg').className = 'msg'; $('msg').textContent = 'Lentement dans les virages (sinon la voiture dérape), vite dans les lignes droites !';
 });
 cv.addEventListener('pointermove', e => {
   if(!tr || !tr.actif || tr.fini) return;
@@ -1216,9 +1232,8 @@ function profil(pts, vit){
   const n = pts.length;
   const an = annoter(pts);
   const herbe = Array.from(an.off, o => Math.abs(o) > P.LARGEUR / 2 + 3);
-  const demande = vit.map((x, i) => Math.min(x, herbe[i] ? HERBE : Infinity));
-  const { v, grip } = P.vitesses(pts, demande, 1, kappa);
-  return { pts, vit:demande, kappa, herbe, fac:1, v, grip, len:n * P.STEP, ...an };
+  const { v, grip } = P.vitesses(pts, vit, 1, kappa);
+  return { pts, vit:vit.slice(), kappa, herbe, fac:1, v, grip, len:n * P.STEP, ...an };
 }
 // Pour chaque point d'une trajectoire : écart signé au milieu de la piste (positif à droite), point du milieu le plus proche,
 // et sens du virage (1 : à droite, -1 : à gauche)
@@ -1238,6 +1253,20 @@ function annoter(pts){
     tourne[i] = t > .004 ? 1 : t < -.004 ? -1 : 0;
   }
   return { off, ci, tourne };
+}
+// Côtés bordés d'un vibreur en chaque point : 1 à gauche, 2 à droite (pas à l'intérieur d'un virage très serré,
+// où la bande se replierait sur elle-même)
+function vibreursCotes(c){
+  if(c.vibC) return c.vibC;
+  const n = c.pts.length, vib = vibreurs(c), out = new Uint8Array(n), dk = P.LARGEUR / 2 - 2;
+  for(let i = 0; i < n; i++){
+    if(!vib[i]) continue;
+    let t = c.cap[(i + 3) % n] - c.cap[(i - 3 + n) % n];
+    while(t > Math.PI) t -= 2 * Math.PI; while(t < -Math.PI) t += 2 * Math.PI;
+    const serre = c.kappa[i] * (dk + 12) > .45;
+    for(const cote of [-1, 1]) if(!(serre && Math.sign(t) === cote)) out[i] |= cote > 0 ? 2 : 1;
+  }
+  return c.vibC = out;
 }
 // Morceaux de la piste bordés de vibreurs (mêmes règles que le dessin)
 function vibreurs(c){
@@ -1262,9 +1291,11 @@ function usurer(v, dt, i, acc){
   else { k[0] += .3 * clamp(-acc / 500, 0, 1); k[1] += .3 * clamp(-acc / 500, 0, 1); }
   // Vibreurs : roues du côté du vibreur ; herbe : les quatre
   const o = t.off[i];
-  v.surVibreur = vibreurs(circuit)[t.ci[i]] && Math.abs(o) > P.LARGEUR / 2 - 14 && Math.abs(o) <= P.LARGEUR / 2 + 3;
+  v.surVibreur = !!(vibreursCotes(circuit)[t.ci[i]] & (o > 0 ? 2 : 1)) && Math.abs(o) > P.LARGEUR / 2 - 14 && Math.abs(o) <= P.LARGEUR / 2 + 3;
   if(v.surVibreur){ const d = o > 0 ? [1, 3] : [0, 2]; k[d[0]] += 2.5; k[d[1]] += 2.5; k[1 - d[0] % 2] += .3; }
   if(t.herbe[i]) for(let r = 0; r < 4; r++) k[r] += .8;
+  // Dérapage : les quatre pneus frottent
+  if(v.glisse > .05) for(let r = 0; r < 4; r++) k[r] += 2 * v.glisse;
   for(let r = 0; r < 4; r++) v.us[r] += base * k[r];
 }
 
@@ -1299,7 +1330,7 @@ function redessiner(){
   (traces[joueurTrace] || []).forEach(t => traitVitesse(t.pts, t.v, .22, true));
   if(!tr) return;
   if(tr.pts.length > 1){
-    g.lineCap = 'round'; g.lineWidth = 5;
+    g.lineCap = 'round'; g.lineWidth = 6.5;
     for(let i = 1; i < tr.pts.length; i++){
       const a = tr.pts[i - 1], b = tr.pts[i];
       g.strokeStyle = teinte(b.v / P.VMAX);
@@ -1311,7 +1342,7 @@ function redessiner(){
   if(tr.pts.length){ const f = tr.pts[0]; g.strokeStyle = '#1F1F1F'; g.lineWidth = 2; g.beginPath(); g.arc(f.x, f.y, 7, 0, Math.PI * 2); g.stroke(); }
 }
 function traitVitesse(pts, v, alpha, ferme){
-  g.save(); g.globalAlpha = alpha; g.lineCap = 'round'; g.lineWidth = 5;
+  g.save(); g.globalAlpha = alpha; g.lineCap = 'round'; g.lineWidth = 6.5;
   for(let i = 1; i <= pts.length - (ferme ? 0 : 1); i++){
     const a = pts[i - 1], b = pts[i % pts.length];
     g.strokeStyle = teinte(v[i % pts.length] / P.VMAX);
@@ -1385,23 +1416,24 @@ function demarrerCourse(){
     : rangs ? voitures.slice().sort((a, b) => rangs.indexOf(a.pid) - rangs.indexOf(b.pid))
     : voitures.slice().sort(() => Math.random() - .5);
   ordre.forEach((v, k) => Object.assign(v, { s:-34 - k * 38, lap:0, t:v.laps[0], cote:k % 2 ? 1 : -1, vit:0, boosts:BOOST.n, boostT:0,
-    tours:[], debutTour:0, fin:null, m:0, prof:null, age:0, us:[0, 0, 0, 0], stand:null, arret:0, arrets:0 }));
+    tours:[], debutTour:0, fin:null, m:0, prof:null, age:0, us:[0, 0, 0, 0], stand:null, arret:0, arrets:0,
+    charge:0, glisse:0, derive:0, lacet:0, horsPiste:false }));
   const w0 = meteo === 'pluie' ? .5 : meteo === 'deluge' ? 1 : 0;
   course = { voitures, tours:circuit.tours, t:0, phase:'feux', feux:0, fumee:[], finHumains:null, niv, champ:ch,
-    meteo, w:w0, wCible:w0, pluieA:meteoCourse.pluieA, gouttes:[], facUsure:facteurUsure(niv.d), longueur:circuit.len };
+    meteo, w:w0, wCible:w0, pluieA:meteoCourse.pluieA, gouttes:[], facUsure:facteurUsure(niv.d), facPhys:facteurPhysique(niv.d), longueur:circuit.len };
   voitures.forEach(majAdherence);
   show('jeu');
   $('drawCtl').hidden = true; $('gauge').hidden = true;
   $('lights').hidden = false; $('standings').hidden = false; $('timer').hidden = false;
   $('quit').textContent = 'Abandonner';
-  $('banner').innerHTML = `${ch ? `🏆 ${champ.course + 1}/${champ.calendrier.length} · ` : ''}${esc(circuit.n)}<small>${circuit.tours} tours · Boost : ${BOOST.n} par pilote · ${METEOS[meteo].ico} ${METEOS[meteo].n}</small>`;
+  $('banner').innerHTML = `${ch ? `🏆 ${champ.course + 1}/${champ.calendrier.length} · ` : ''}${esc(circuit.n)}<small>${circuit.tours} tours · Boost rechargeable · ${METEOS[meteo].ico} ${METEOS[meteo].n}</small>`;
   $('msg').className = 'msg';
   $('msg').textContent = 'Attention aux feux…';
   const humains = voitures.filter(v => v.humain);
   $('boosts').hidden = false;
   $('boosts').dataset.n = humains.length;
   $('boosts').innerHTML = humains.map(v => { const i = voitures.indexOf(v); return `<div class="pilote" data-i="${i}">
-      <button class="boost" data-i="${i}" style="background:${v.couleur};color:${lisible(v.couleur)}">⚡ Boost<small>${esc(v.nom)} · ${v.boosts}</small></button>
+      <button class="boost" data-i="${i}" style="background:${v.couleur};color:${lisible(v.couleur)}">⚡ Boost<small>${esc(v.nom)} · ${v.boosts}</small><span class="recharge"><i></i></span></button>
       <div class="pneus4" data-i="${i}">
         <span class="p4t"></span>${ROUES.map((r, k) => `<span class="p4" data-k="${k}"><small>${r}</small><b>0\u00a0%</b></span>`).join('')}
       </div>
@@ -1471,8 +1503,7 @@ $('boosts').addEventListener('pointerdown', e => {
   if(v.boosts <= 0 || v.boostT > 0 || v.fin != null) return;
   v.boosts--; v.boostT = BOOST.duree;
   b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 150);
-  b.querySelector('small').textContent = `${v.nom} · ${v.boosts}`;
-  b.disabled = v.boosts === 0;
+  majBoosts();
 });
 
 // Adhérence de la voiture : usure moyenne des 4 pneus (chute quand l'un d'eux est au bout) et piste mouillée
@@ -1519,16 +1550,42 @@ function etape(dt){
     const t = v.t, n = t.pts.length, pr = v.prof;
     const i = ((Math.floor(v.s / P.STEP) % n) + n) % n;
     let cible = v.s < 0 ? pr.v[0] : pr.v[i];
+    // Boost : une charge de plus régulièrement (3 au plus)
+    if(v.boosts < BOOST.max){ v.charge += dt / BOOST.recharge; if(v.charge >= 1){ v.charge = 0; v.boosts++; } } else v.charge = 0;
     if(v.boostT > 0){ v.boostT -= dt; cible *= BOOST.facteur; }
+    // Pneus usés : un peu moins de vitesse de pointe
+    cible *= 1 - .07 * Math.min(1.5, usureMoy(v) / 100);
     // Boost des adversaires : dans les longues lignes droites, plus souvent aux niveaux élevés
     if(!v.humain && v.boosts > 0 && v.boostT <= 0 && v.s > 0 && pr.grip[(i + 25) % n] >= P.VMAX && pr.grip[(i + 50) % n] >= P.VMAX && pr.grip[i] >= P.VMAX && Math.random() < dt * (v.niv || c.niv).boost){ v.boosts--; v.boostT = BOOST.duree; }
-    // Pas de dérapage : dans les virages, la voiture (même en Boost) ne dépasse pas la vitesse possible
-    const vit = Math.min(cible, pr.grip[i]);
-    if(t.herbe[i] && Math.random() < 0.3) c.fumee.push({ x:0, y:0, v, vie:0.5, herbe:true });
+    // Dans les virages, la voiture (même en Boost) ne dépasse pas la vitesse possible…
+    let vit = Math.min(cible, pr.grip[i]);
+    // … mais un virage tracé trop vite fait déraper : la voiture glisse vers l'extérieur et perd de la vitesse
+    let g = 0;
+    if(v.humain && v.s >= 0 && pr.grip[i] < P.VMAX * .97){
+      const exces = t.vit[i] / pr.grip[i] - 1;
+      if(exces > .08) g = clamp(exces - .08, 0, .8) * c.facPhys;
+    }
+    // Pluie : patinage à l'accélération (surtout en pneus lisses)
+    const lisses = !['inter', 'pluie'].includes(v.pneu);
+    const patine = vit > v.vit + 8 && c.w > .05 ? c.w * (lisses ? 1 : .35) * c.facPhys : 0;
+    g = Math.max(g, patine * .45);
+    if(g > 0) vit *= 1 - .2 * Math.min(1, g);
+    v.glisse += (g - v.glisse) * Math.min(1, dt * 6);
+    v.lacet = (t.tourne[i] || 0) * v.glisse * .5;
+    v.derive += (-(t.tourne[i] || 0) * v.glisse * 10 - v.derive) * Math.min(1, dt * 4);
+    if(v.glisse > .12 && Math.random() < v.glisse) c.fumee.push({ x:0, y:0, v, vie:0.45, pneu:true });
+    if(v.humain && g > .3 && c.t - (v.flashDer || -9) > 4){ v.flashDer = c.t; flash(patine * .45 >= g ? `${v.nom} : ça patine sous la pluie !` : `${v.nom} : dérapage, virage tracé trop vite !`); }
+    // Hors piste : la voiture ralentit fort dans l'herbe
+    const herbe = v.s >= 0 && t.herbe[i];
+    if(herbe) vit = Math.min(vit, HERBE);
+    if(v.humain && herbe && !v.horsPiste) flash(`${v.nom} : hors piste !`);
+    v.horsPiste = herbe;
+    if(herbe && Math.random() < 0.3) c.fumee.push({ x:0, y:0, v, vie:0.5, herbe:true });
     else if(c.w > .15 && v.vit > 120 && Math.random() < c.w * 0.5) c.fumee.push({ x:0, y:0, v, vie:0.4, eau:true });
-    // Accélération : plus vive avec des pneus qui accrochent (pas de patinage)
+    // Accélération : plus vive avec des pneus qui accrochent, moins vive quand ça patine ; freinage fort dans l'herbe
     const avant = v.vit;
-    v.vit += (vit - v.vit) * Math.min(1, dt * 5 * (vit > v.vit ? Math.min(1.2, v.m) : 1));
+    const taux = vit > v.vit ? Math.min(1.2, v.m) * (1 - .6 * Math.min(1, patine)) : herbe ? 2.2 : 1;
+    v.vit += (vit - v.vit) * Math.min(1, dt * 5 * taux);
     if(v.s >= 0) usurer(v, dt, i, (v.vit - avant) / Math.max(dt, 1e-3));
     if(v.surVibreur && Math.random() < .25) c.fumee.push({ x:0, y:0, v, vie:0.3, vib:true });
     v.s += v.vit * dt;
@@ -1567,14 +1624,23 @@ function position(v){
   let x = a[0] + (b[0] - a[0]) * u, y = a[1] + (b[1] - a[1]) * u;
   const ang = Math.atan2(c[1] - a[1], c[0] - a[0]);
   // Décalage de la grille de départ, qui s'efface dans les premiers mètres
-  const dec = v.lap ? 0 : v.cote * 18 * clamp(1 - (v.s + 50) / 200, 0, 1);
+  const dec = (v.lap ? 0 : v.cote * 18 * clamp(1 - (v.s + 50) / 200, 0, 1)) + (v.derive || 0);
   x += -Math.sin(ang) * dec; y += Math.cos(ang) * dec;
-  return { x, y, a:ang };
+  return { x, y, a:ang + (v.lacet || 0) };
 }
 function progression(v){ return v.abandon ? -1e9 : v.fin != null ? 1e9 - v.fin : v.lap + v.s / v.t.len; }
+function majBoosts(){
+  $('boosts').querySelectorAll('.boost').forEach(b => {
+    const v = course.voitures[b.dataset.i];
+    b.querySelector('small').textContent = `${v.nom} · ${v.boosts}`;
+    b.querySelector('.recharge i').style.width = (v.boosts >= BOOST.max ? 100 : v.charge * 100) + '%';
+    b.disabled = v.boosts === 0 || v.fin != null;
+  });
+}
 function classement(){
   const c = course;
   if(c.accelere) return;      // fin de course simulée : pas d'affichage à chaque pas
+  majBoosts();
   // Usure des 4 pneus de chaque joueur
   $('boosts').querySelectorAll('.pneus4').forEach(el => {
     const v = c.voitures[el.dataset.i];
@@ -1596,7 +1662,7 @@ function dessinerCourse(){
   const c = course;
   c.voitures.filter(v => v.humain).forEach(v => traitVitesse(v.t.pts, v.t.v, .18, true));
   c.fumee.forEach(f => {
-    g.fillStyle = f.herbe ? `rgba(120,90,40,${f.vie * .5})` : f.vib ? `rgba(60,60,60,${f.vie * .6})` : f.eau ? `rgba(235,242,250,${f.vie * .7})` : `rgba(90,90,90,${f.vie * .45})`;
+    g.fillStyle = f.herbe ? `rgba(120,90,40,${f.vie * .5})` : f.vib ? `rgba(60,60,60,${f.vie * .6})` : f.pneu ? `rgba(235,235,235,${f.vie * .9})` : f.eau ? `rgba(235,242,250,${f.vie * .7})` : `rgba(90,90,90,${f.vie * .45})`;
     g.beginPath(); g.arc(f.x, f.y, (f.herbe ? 5 : 7) + (1 - f.vie) * 8, 0, Math.PI * 2); g.fill();
   });
   c.voitures.slice().sort((a, b) => a.humain - b.humain).forEach(v => {
