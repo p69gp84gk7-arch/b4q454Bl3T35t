@@ -13,8 +13,9 @@ const groupeBats = new T.Group(), modeles = new Map();
 const arbresMesh = {};
 let corps, tetes, fantome, curseur;
 const debris = [];
-const cam = { x:N / 2, z:N / 2, dist:60, yaw:.6, pitch:.95 };
+const cam = { x:N / 2, z:N / 2, dist:80, yaw:.6, pitch:.95 };
 const FOV = 40;
+const ECH = 1.2;     // arbres, bâtiments et habitants un peu plus grands que la case (les cases sont très fines)
 
 /* ---------- Couleurs ---------- */
 const DESSUS = MATS.map(m => m && new T.Color(m.dessus)), COTE = MATS.map(m => m && new T.Color(m.cote));
@@ -117,28 +118,48 @@ function majCellule(c){
   }
 }
 
-/* ---------- Eau et lave ---------- */
-const coinH = new Float32Array((N + 1) * (N + 1)), surf = new Float32Array(N * N);
-const EAU_CLAIRE = new T.Color('#A6E1F1'), EAU_FONCEE = new T.Color('#7CC4E2'), LAVE_A = new T.Color('#FF7A1F'), LAVE_B = new T.Color('#FFD45C');
+/* ---------- Eau et lave ----------
+   La surface est dessinée entre les colonnes (comme le terrain) et un peu sous le niveau de l'eau :
+   elle s'étend jusque sous le terrain voisin plus haut, qui la recouvre. Le bord de l'eau suit donc
+   exactement le contour des couches (plage parfaite, au niveau de la mer). */
+const surf = new Float32Array(N * N);
+const EAU_CLAIRE = new T.Color('#BDEAF3'), EAU_FONCEE = new T.Color('#7CC4E2'), LAVE_A = new T.Color('#FF7A1F'), LAVE_B = new T.Color('#FFD45C');
+const BAISSE_EAU = .35, BAISSE_LAVE = .2;
 function construireFluide(f, mesh, eau){
-  for(let c = 0; c < N * N; c++) surf[c] = f[c] > .03 ? (I.h[c] + f[c]) * LH + .02 : -1;
-  for(let j = 0; j <= N; j++) for(let i = 0; i <= N; i++){
-    let s = 0, n = 0;
-    for(let b = j - 1; b <= j; b++) for(let a = i - 1; a <= i; a++){
-      if(a < 0 || b < 0 || a >= N || b >= N) continue;
-      const v = surf[b * N + a];
-      if(v >= 0){ s += v; n++; }
-    }
-    coinH[j * (N + 1) + i] = n ? s / n : 0;
-  }
+  const seuil = .03, baisse = eau ? BAISSE_EAU : BAISSE_LAVE, prof = eau ? 4 * window.Monde.K / 2.47 : 1;
+  for(let c = 0; c < N * N; c++) surf[c] = f[c] > seuil ? I.h[c] + f[c] : -1;
   const P = [], No = [], C = [];
-  for(let j = 0; j < N; j++) for(let i = 0; i < N; i++){
-    const c = j * N + i;
-    if(surf[c] < 0) continue;
-    const y00 = coinH[j * (N + 1) + i], y10 = coinH[j * (N + 1) + i + 1], y11 = coinH[(j + 1) * (N + 1) + i + 1], y01 = coinH[(j + 1) * (N + 1) + i];
-    const col = eau ? tmpA.copy(EAU_CLAIRE).lerp(EAU_FONCEE, clamp(f[c] / 6, 0, 1)) : tmpA.copy(LAVE_A).lerp(LAVE_B, hash(i, j, 1, 3) * .7);
-    tri(P, No, C, [i, y00, j], [i + 1, y10, j], [i + 1, y11, j + 1], HAUT, col, col, col);
-    tri(P, No, C, [i, y00, j], [i + 1, y11, j + 1], [i, y01, j + 1], HAUT, col, col, col);
+  const s4 = [0, 0, 0, 0], h4 = [0, 0, 0, 0], d4 = [0, 0, 0, 0], dedans = [false, false, false, false];
+  const cols = [new T.Color(), new T.Color(), new T.Color(), new T.Color()];
+  const couleur = (d, i, j, out) => eau ? out.copy(EAU_CLAIRE).lerp(EAU_FONCEE, clamp(d / prof, 0, 1)) : out.copy(LAVE_A).lerp(LAVE_B, hash(i, j, 1, 3) * .7);
+  for(let dj = -1; dj < N; dj++) for(let di = -1; di < N; di++){
+    let mouilles = 0, somme = 0;
+    for(let k = 0; k < 4; k++){
+      const i = di + K[k][0], j = dj + K[k][1], horsCarte = i < 0 || j < 0 || i >= N || j >= N;
+      if(horsCarte){ s4[k] = eau ? SEA : -1; h4[k] = 0; d4[k] = eau ? SEA : 0; }
+      else { const c = j * N + i; s4[k] = surf[c]; h4[k] = I.h[c]; d4[k] = f[c]; }
+      if(s4[k] >= 0){ mouilles++; somme += s4[k]; }
+    }
+    if(!mouilles) continue;
+    const S = somme / mouilles;
+    // Une colonne sèche mais plus haute que l'eau : la surface passe dessous (cachée par le terrain)
+    for(let k = 0; k < 4; k++) dedans[k] = s4[k] >= 0 || h4[k] >= S - baisse;
+    const poly = [];
+    for(let k = 0; k < 4; k++){
+      const k2 = (k + 1) % 4, a = dedans[k], b = dedans[k2];
+      const yk = s4[k] >= 0 ? s4[k] : S;
+      if(a) poly.push([di + .5 + K[k][0], (yk - baisse) * LH, dj + .5 + K[k][1], s4[k] >= 0 ? d4[k] : 0, k]);
+      if(a !== b){
+        const ki = a ? k : k2, yi = s4[ki] >= 0 ? s4[ki] : S;
+        poly.push([di + .5 + (K[k][0] + K[k2][0]) / 2, (yi - baisse) * LH, dj + .5 + (K[k][1] + K[k2][1]) / 2, s4[ki] >= 0 ? d4[ki] * .5 : 0, ki]);
+      }
+    }
+    if(poly.length < 3) continue;
+    for(let t = 1; t + 1 < poly.length; t++){
+      const A = poly[0], B = poly[t], Cc = poly[t + 1];
+      tri(P, No, C, [A[0], A[1], A[2]], [B[0], B[1], B[2]], [Cc[0], Cc[1], Cc[2]], HAUT,
+        couleur(A[3], di, dj, cols[0]), couleur(B[3], di, dj, cols[1]), couleur(Cc[3], di, dj, cols[2]));
+    }
   }
   const g = new T.BufferGeometry();
   g.setAttribute('position', new T.Float32BufferAttribute(P, 3));
@@ -198,7 +219,7 @@ function majArbres(){
     const mesh = arbresMesh[k], liste = parType[k];
     mesh.count = Math.min(liste.length, mesh.instanceMatrix.count);
     for(let n = 0; n < mesh.count; n++){
-      const c = liste[n], i = c % N, j = (c / N) | 0, r = hash(i, j, 5, 11), s = .8 + hash(i, j, 6, 11) * .45;
+      const c = liste[n], i = c % N, j = (c / N) | 0, r = hash(i, j, 5, 11), s = (.8 + hash(i, j, 6, 11) * .45) * ECH;
       m.compose(new T.Vector3(i + .5 + (r - .5) * .3, I.h[c] * LH, j + .5 + (hash(i, j, 7, 11) - .5) * .3),
         new T.Quaternion().setFromEuler(new T.Euler(0, r * 6.28, 0)), new T.Vector3(s, s, s));
       mesh.setMatrixAt(n, m);
@@ -272,7 +293,7 @@ function modele(b){
     boite(bateau, .58, .14, .24, 0, 0, 0, '#8E5B34'); boite(bateau, .5, .03, .2, 0, .08, 0, '#C9965E');
     ajoute(bateau, cyl(.015, .015, .5, 4), '#5A3B22', 0, .32, 0);
     ajoute(bateau, toitG(.02, .36, .3), '#F7F3EA', .08, .14, 0, Math.PI / 2);
-    bateau.position.set(1.35, (SEA - b.y0) * LH + .02, .3);
+    bateau.position.set(1.35, ((SEA - BAISSE_EAU - b.y0) * LH) / ECH + .02, .3);
     gp.add(bateau);
     gp.rotation.y = a;
     g.add(gp);
@@ -315,6 +336,7 @@ function majBatiments(){
       const g = modele(b);
       g.position.set(b.i + t / 2, b.y0 * LH, b.j + t / 2);
       g.userData.nais = performance.now();
+      g.userData.ech = t > 1 ? 1 : ECH;      // les bâtiments de 2 × 2 cases gardent leur taille
       groupeBats.add(g);
       modeles.set(b.id, { k:b.k, g });
     }
@@ -327,14 +349,14 @@ const COULEURS_HAB = ['#E4572E', '#F3A712', '#4F86C6', '#7BB662', '#A05EB5', '#E
 const PEAU = [new T.Color('#F1C9A5'), new T.Color('#D9A57B'), new T.Color('#A86F4C'), new T.Color('#F5D7BD')];
 const MAXHAB = 500;
 function majHabitants(liste, t){
-  const m = new T.Matrix4(), q = new T.Quaternion(), s = new T.Vector3(1, 1, 1), p = new T.Vector3();
+  const m = new T.Matrix4(), q = new T.Quaternion(), s = new T.Vector3(ECH, ECH, ECH), p = new T.Vector3();
   let n = 0;
   for(const h of liste){
     if(h.dedans || n >= MAXHAB) continue;
     const saut = h.marche ? Math.abs(Math.sin(t * 11 + h.id)) * .035 : 0;
     q.setFromEuler(new T.Euler(0, h.ang || 0, 0));
-    p.set(h.x, h.y + .11 + saut, h.z); m.compose(p, q, s); corps.setMatrixAt(n, m);
-    p.set(h.x, h.y + .27 + saut, h.z); m.compose(p, q, s); tetes.setMatrixAt(n, m);
+    p.set(h.x, h.y + .11 * ECH + saut, h.z); m.compose(p, q, s); corps.setMatrixAt(n, m);
+    p.set(h.x, h.y + .27 * ECH + saut, h.z); m.compose(p, q, s); tetes.setMatrixAt(n, m);
     corps.setColorAt(n, COULEURS_HAB[h.coul % COULEURS_HAB.length]);
     tetes.setColorAt(n, PEAU[h.id % PEAU.length]);
     n++;
@@ -379,11 +401,13 @@ function montrerFantome(t, i, j, ok){
   fantome.position.set(i + t / 2, h * LH + .3, j + t / 2);
   fantome.material.color.set(ok ? '#5BD17A' : '#E5534B');
 }
-function montrerCurseur(i, j, r){
-  if(i == null){ curseur.visible = false; return; }
+// Cercle du pinceau autour du point exact (x, z), posé sur la couche saisie
+function montrerCurseur(x, z, r, niveau){
+  if(x == null){ curseur.visible = false; return; }
+  const i = clamp(Math.floor(x), 0, N - 1), j = clamp(Math.floor(z), 0, N - 1);
   curseur.visible = true;
-  curseur.scale.setScalar(r + .5);
-  curseur.position.set(i + .5, I.h[j * N + i] * LH + .05, j + .5);
+  curseur.scale.setScalar(Math.max(.45, r));
+  curseur.position.set(x, (niveau ?? I.h[j * N + i]) * LH + .04, z);
 }
 
 /* ---------- Caméra ---------- */
@@ -402,8 +426,8 @@ function deplacer(dx, dy){
   cam.z = clamp(cam.z - rz * dx * k + fz * dy * k * v, -4, N + 4);
 }
 // Plus on s'approche, plus la vue s'incline (comme dans Godus)
-const inclinaison = () => { cam.pitch = .72 + clamp((cam.dist - 10) / 150, 0, 1) * .55; };
-const zoomer = f => { cam.dist = clamp(cam.dist * f, 10, 160); inclinaison(); };
+const inclinaison = () => { cam.pitch = .72 + clamp((cam.dist - 12) / 220, 0, 1) * .55; };
+const zoomer = f => { cam.dist = clamp(cam.dist * f, 12, 240); inclinaison(); };
 const tourner = da => { cam.yaw += da; };
 const centrer = (i, j) => { cam.x = i + .5; cam.z = j + .5; };
 
@@ -417,12 +441,12 @@ function viser(px, py){
   const o = ray.ray.origin, d = ray.ray.direction;
   let t = 0;
   if(o.y > H * LH && d.y < 0) t = (o.y - H * LH) / -d.y;
-  for(let k = 0; k < 14000; k++, t += .035){
+  for(let k = 0; k < 20000; k++, t += .03){
     const x = o.x + d.x * t, y = o.y + d.y * t, z = o.z + d.z * t;
     if(y < 0) return null;
     const i = Math.floor(x), j = Math.floor(z);
     if(i < 0 || j < 0 || i >= N || j >= N){ if(y < LH) return null; continue; }
-    if(y <= I.h[j * N + i] * LH) return { i, j, c:j * N + i };
+    if(y <= I.h[j * N + i] * LH) return { i, j, c:j * N + i, x, z };
   }
   return null;
 }
@@ -434,8 +458,8 @@ function init(cv){
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   scene = new T.Scene();
   scene.background = new T.Color('#CFEAF4');
-  scene.fog = new T.Fog('#CFEAF4', 140, 380);
-  camera = new T.PerspectiveCamera(FOV, 1, .5, 1200);
+  scene.fog = new T.Fog('#CFEAF4', 210, 560);
+  camera = new T.PerspectiveCamera(FOV, 1, .5, 1600);
   scene.add(new T.HemisphereLight('#FFFFFF', '#8FA37A', .58));
   const sol = new T.DirectionalLight('#FFF1D8', .72);
   sol.position.set(-30, 60, 25);
@@ -447,7 +471,7 @@ function init(cv){
   const mer = new T.MeshLambertMaterial({ color:'#7CC4E2', transparent:true, opacity:.88 });
   for(const [x, z, w, d] of [[-1000, N / 2, 2000, 2000 + N], [N + 1000, N / 2, 2000, 2000 + N], [N / 2, -1000, N, 2000], [N / 2, N + 1000, N, 2000]]){
     const p = new T.Mesh(new T.PlaneGeometry(w, d), mer);
-    p.rotation.x = -Math.PI / 2; p.position.set(x, SEA * LH + .025, z);
+    p.rotation.x = -Math.PI / 2; p.position.set(x, (SEA - BAISSE_EAU) * LH, z);
     scene.add(p);
   }
   eauMesh = new T.Mesh(new T.BufferGeometry(), new T.MeshLambertMaterial({ vertexColors:true, transparent:true, opacity:.88 }));
@@ -466,7 +490,7 @@ function init(cv){
   scene.add(corps, tetes);
   fantome = new T.Mesh(boiteG(1, .6, 1), new T.MeshBasicMaterial({ color:'#5BD17A', transparent:true, opacity:.45, depthWrite:false }));
   fantome.visible = false;
-  curseur = new T.Mesh(new T.RingGeometry(.86, 1, 40), new T.MeshBasicMaterial({ color:'#FFFFFF', transparent:true, opacity:.85, depthWrite:false }));
+  curseur = new T.Mesh(new T.RingGeometry(.9, 1, 48), new T.MeshBasicMaterial({ color:'#FFFFFF', transparent:true, opacity:.85, depthWrite:false }));
   curseur.rotation.x = -Math.PI / 2; curseur.visible = false; curseur.renderOrder = 3;
   scene.add(fantome, curseur);
   taille();
@@ -498,7 +522,7 @@ function rendre(dt, habitants, t){
   const maintenant = performance.now();
   for(const [, e] of modeles){
     const n = e.g.userData.nais;
-    if(n){ const a = Math.min(1, (maintenant - n) / 900); e.g.scale.set(1, .05 + .95 * (1 - (1 - a) ** 3), 1); if(a >= 1) e.g.userData.nais = 0; }
+    if(n){ const a = Math.min(1, (maintenant - n) / 900); const k = e.g.userData.ech; e.g.scale.set(k, k * (.05 + .95 * (1 - (1 - a) ** 3)), k); if(a >= 1) e.g.userData.nais = 0; }
   }
   majHabitants(habitants, t);
   majEclats(dt);
@@ -511,6 +535,8 @@ function ecran(i, j){
   const v = new T.Vector3(i + .5, I.h[j * N + i] * LH, j + .5).project(camera), r = canvas.getBoundingClientRect();
   return { x:r.left + (v.x + 1) / 2 * r.width, y:r.top + (1 - v.y) / 2 * r.height };
 }
-window.Rendu = { ecran, init, charger, rendre, majCellule, majArbres, majBatiments, eclats, viser, montrerFantome, montrerCurseur,
+// Nombre de triangles du terrain (pour les tests)
+const stats = () => ({ terrain:morceaux.reduce((s, m) => s + (m ? m.geometry.attributes.position.count / 3 : 0), 0), eau:eauMesh.geometry.attributes.position ? eauMesh.geometry.attributes.position.count / 3 : 0 });
+window.Rendu = { stats, ecran, init, charger, rendre, majCellule, majArbres, majBatiments, eclats, viser, montrerFantome, montrerCurseur,
   deplacer, zoomer, tourner, centrer, cam, fluides:() => { fluidesSales = true; }, taille };
 })();

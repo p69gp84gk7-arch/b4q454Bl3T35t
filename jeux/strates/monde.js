@@ -2,10 +2,10 @@
    Une île fait N × N colonnes. Chaque colonne est une pile de h blocs ; m donne le matériau de chaque bloc.
    w et l : hauteur d'eau et de lave au-dessus du sol de chaque colonne (en couches). */
 (() => {
-const N = 128, H = 68, LH = 0.34, SEA = 12;
+const N = 192, H = 124, LH = 0.28, SEA = 22;
 // Les formes des îles sont décrites dans une échelle « de base » (64 colonnes, couches épaisses, mer à 5) :
 // E = colonnes par unité de base, K = couches par couche de base
-const E = N / 64, K = 2.47, SEA0 = 5;
+const E = N / 64, K = 4.5, SEA0 = 5;
 
 // Matériaux : couleur du dessus, couleur des côtés, outil nécessaire pour creuser
 // (0 : à la main, 1 : pioche en bois, 2 : en pierre, 3 : en fer, 9 : impossible)
@@ -61,7 +61,7 @@ function fbm(x, y, s, oct = 4){
 }
 
 /* ---------- Création d'une île ---------- */
-// Proportions des poches et filons selon l'île (par paquets de 3 colonnes × 3 couches)
+// Proportions des poches et filons selon l'île (par paquets de 4 colonnes × 4 couches)
 const FILONS = {
   verte:  { lave:.02, source:.05, cristal:.012, or:.03, fer:.08, charbon:.13, base:'pierre' },
   sables: { lave:.01, source:.04, cristal:.012, or:.09, fer:.05, charbon:.09, base:'gres' },
@@ -101,7 +101,7 @@ function genererTerrain(I){
     I.h[idx(i, j)] = Math.round(clamp(z, 1, H - 3));
   }
   const F = FILONS[type];
-  const filon = (i, j, z, k, t = 3) => hash(Math.floor(i / t), Math.floor(j / t), Math.floor(z / t), seed + k);
+  const filon = (i, j, z, k, t = 4) => hash(Math.floor(i / t), Math.floor(j / t), Math.floor(z / t), seed + k);
   for(let j = 0; j < N; j++) for(let i = 0; i < N; i++){
     const c = idx(i, j), h = I.h[c];
     for(let z = 0; z < h; z++){
@@ -121,15 +121,15 @@ function creerIle(type, seed){
     const c = idx(i, j), h = I.h[c];
     if(h <= SEA) continue;
     const dessus = I.m[c * H + h - 1], foret = fbm(i / E / 6, j / E / 6, seed + 21, 2), r = hash(i, j, 3, seed);
-    I.arbres[c] = arbreNaturel(type, dessus, h, foret, r * 1.9);
+    I.arbres[c] = arbreNaturel(type, dessus, h, foret, r * 3.6);
   }
   remplirMer(I);
   // Volcan : le point le plus bas du cratère
   if(type === 'volcan'){
     let best = -1;
-    for(let j = N / 2 - 5; j <= N / 2 + 5; j++) for(let i = N / 2 - 5; i <= N / 2 + 5; i++){ if(Math.hypot(i - N / 2, j - N / 2) > 5) continue; const c = idx(i, j); if(best < 0 || I.h[c] < I.h[best]) best = c; }
+    for(let j = N / 2 - 8; j <= N / 2 + 8; j++) for(let i = N / 2 - 8; i <= N / 2 + 8; i++){ if(Math.hypot(i - N / 2, j - N / 2) > 8) continue; const c = idx(i, j); if(best < 0 || I.h[c] < I.h[best]) best = c; }
     I.cratere = best;
-    I.l[best] = 3.5;
+    I.l[best] = 1.4 * K;
   }
   I.depart = terrainDeDepart(I);
   return I;
@@ -201,9 +201,9 @@ function remplirMer(I){
   }
 }
 
-// Premier terrain du village : un carré plat de 9 × 9 colonnes près du rivage, aplani
+// Premier terrain du village : un terrain rond et plat de 13 colonnes de large près du rivage
 function terrainDeDepart(I){
-  const R = 4, ox = N / 2, oy = N * .72;
+  const R = 6, ox = N / 2, oy = N * .72;
   const cand = [];
   for(let j = R + 2; j < N - R - 2; j++) for(let i = R + 2; i < N - R - 2; i++) cand.push([Math.hypot(i - ox, j - oy), i, j]);
   cand.sort((a, b) => a[0] - b[0]);
@@ -242,8 +242,8 @@ function retirer(I, c){
   const ev = [];
   while(I.h[c] > 1){
     const t = dessus(I, c);
-    if(t === ID.lave){ I.h[c]--; I.m[c * H + I.h[c]] = 0; I.l[c] += 3.5; ev.push('lave'); }
-    else if(t === ID.source){ I.h[c]--; I.m[c * H + I.h[c]] = 0; I.w[c] += 2; I.sources.push({ c, z:I.h[c] + 1 }); ev.push('source'); }
+    if(t === ID.lave){ I.h[c]--; I.m[c * H + I.h[c]] = 0; I.l[c] += 1.4 * K; ev.push('lave'); }
+    else if(t === ID.source){ I.h[c]--; I.m[c * H + I.h[c]] = 0; I.w[c] += .8 * K; I.sources.push({ c, z:I.h[c] + 1 }); ev.push('source'); }
     else break;
   }
   return { mat, ev };
@@ -313,31 +313,31 @@ function couler(I, f, k, reste = 0){
 // Un pas d'eau : écoulement, sources, mer au bord, évaporation des flaques trop fines
 function pasEau(I){
   const w = I.w, h = I.h;
-  for(const s of I.sources) if(h[s.c] + w[s.c] < s.z + 4) w[s.c] += .07;
+  for(const s of I.sources) if(h[s.c] + w[s.c] < s.z + 1.6 * K) w[s.c] += .028 * K;
   const b = couler(I, w, .24);
   for(let k = 0; k < N; k++){
     for(const c of [k, (N - 1) * N + k, k * N, k * N + N - 1]) w[c] = Math.max(0, SEA - h[c]);
   }
-  for(let c = 0; c < N * N; c++) if(w[c] > 0 && w[c] < .025) w[c] = 0;
+  for(let c = 0; c < N * N; c++) if(w[c] > 0 && w[c] < .01 * K) w[c] = 0;
   return b;
 }
 // Un pas de lave : écoulement lent et visqueux ; au contact de l'eau, de l'obsidienne ;
 // une coulée qui s'arrête refroidit en basalte, une trace trop fine disparaît
 function pasLave(I, changees){
   const l = I.l, w = I.w;
-  const b = couler(I, l, .16, .15);
+  const b = couler(I, l, .16, .06 * K);
   for(let c = 0; c < N * N; c++){
     if(l[c] <= 0) continue;
-    if(w[c] > .25 && l[c] > .25){
+    if(w[c] > .1 * K && l[c] > .1 * K){
       poser(I, c, ID.obsidienne); l[c] = Math.max(0, l[c] - 1); w[c] = Math.max(0, w[c] - 1);
       changees.push(c);
       continue;
     }
-    if(w[c] > .25){ l[c] = 0; continue; }          // une trace de lave dans l'eau : éteinte
+    if(w[c] > .1 * K){ l[c] = 0; continue; }          // une trace de lave dans l'eau : éteinte
     if(c === I.cratere) continue;
-    l[c] -= .006;
-    if(l[c] < .07){ l[c] = 0; continue; }
-    if(l[c] < .5 && Math.random() < .03){ l[c] = Math.max(0, l[c] - 1); poser(I, c, ID.basalte); changees.push(c); }
+    l[c] -= .0025 * K;
+    if(l[c] < .03 * K){ l[c] = 0; continue; }
+    if(l[c] < .2 * K && Math.random() < .03){ l[c] = Math.max(0, l[c] - 1); poser(I, c, ID.basalte); changees.push(c); }
   }
   return b;
 }
