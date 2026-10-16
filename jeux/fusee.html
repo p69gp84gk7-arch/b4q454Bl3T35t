@@ -412,13 +412,15 @@ taille();
 // La piste : une colonne centrée (toute la largeur en portrait)
 const piste = () => { const pw = Math.min(W, Hh * .78); return { x0:(W - pw) / 2, pw, ph:Hh }; };
 /* ---------- Thèmes : fond, particules, couleurs des points (toujours ronds) et de la fusée ---------- */
+// Espace : ciel étoilé qui défile avec le jeu ; les autres : un fond uni, rien qui bouge
 const THEMES = {
-  espace:   { n:'Espace', haut:'#141B4A', bas:'#070B1F', part:'traits', coul:['#D9576F', '#E39B52', '#4FB3CF'], bord:['#F6B7C2', '#F7D2A6', '#B8E6F2'], corps:'#EAF6FF', accent:'#3FE0FF' },
-  couchant: { n:'Couchant', haut:'#2A1446', bas:'#A8475E', part:'poussiere', coul:['#6A3D9A', '#F2B45A', '#FFE3B3'], bord:['#D9BFF2', '#FFE0A8', '#FFFFFF'], corps:'#FFF4E0', accent:'#FF7A59' },
-  ocean:    { n:'Océan', haut:'#06304D', bas:'#021624', part:'bulles', coul:['#F08A75', '#F5D78E', '#8FE0D0'], bord:['#FFD0C4', '#FFF1C9', '#D6FFF6'], corps:'#F1FBFF', accent:'#2EC4B6' },
-  aurore:   { n:'Aurore', haut:'#04161C', bas:'#0B2E36', part:'aurore', coul:['#B7E36A', '#6FD3B6', '#E8F7F2'], bord:['#E6F7C2', '#C9F2E6', '#FFFFFF'], corps:'#F2FFF9', accent:'#7CFFB2' },
-  retro:    { n:'Rétro', haut:'#12002A', bas:'#3B0A5C', part:'grille', coul:['#FF5FA2', '#FFC857', '#5CE1E6'], bord:['#FFC2DD', '#FFE7B0', '#C9F7F9'], corps:'#FFF0FA', accent:'#FF5FA2' },
-  volcan:   { n:'Volcan', haut:'#1A0806', bas:'#3A110A', part:'braises', coul:['#7A7473', '#E8633A', '#F7C64A'], bord:['#C4BEBC', '#FFB08F', '#FFE6A3'], corps:'#FFF3E8', accent:'#FF6B3D' },
+  espace:   { n:'Espace', haut:'#141B4A', bas:'#070B1F', part:'traits', coul:['#F28CA0', '#F2B677', '#7FD0E6'], corps:'#EAF6FF', accent:'#3FE0FF' },
+  nuit:     { n:'Nuit', haut:'#10162E', bas:'#10162E', coul:['#F28CA0', '#F2C27A', '#8FD8EE'], corps:'#EEF3FF', accent:'#8FA8FF' },
+  ardoise:  { n:'Ardoise', haut:'#2B3038', bas:'#2B3038', coul:['#F09A8A', '#F0CF7A', '#9ED3F0'], corps:'#F5F7FA', accent:'#9ED3F0' },
+  ocean:    { n:'Océan', haut:'#0B3447', bas:'#0B3447', coul:['#FF9E8A', '#F7D98E', '#9FF0E0'], corps:'#F1FBFF', accent:'#4FD6C6' },
+  foret:    { n:'Forêt', haut:'#173527', bas:'#173527', coul:['#F2A07A', '#E8E07A', '#BFF2D6'], corps:'#F2FFF6', accent:'#8EE6A8' },
+  couchant: { n:'Couchant', haut:'#43213C', bas:'#43213C', coul:['#C9A6F2', '#FFC07A', '#FFE7C2'], corps:'#FFF4E8', accent:'#FF8F6B' },
+  volcan:   { n:'Volcan', haut:'#33130E', bas:'#33130E', coul:['#D8D0CC', '#FF8A5C', '#FFD66B'], corps:'#FFF3E8', accent:'#FF7A4D' },
 };
 let themeChoisi = lire('fusee-theme', 'aleatoire');
 if(themeChoisi !== 'aleatoire' && !THEMES[themeChoisi]) themeChoisi = 'aleatoire';
@@ -441,42 +443,19 @@ if(!FORMES[forme]) forme = 'fleche';
 
 const etoilesFond = Array.from({ length:140 }, () => ({ x:Math.random(), y:Math.random(), z:.2 + Math.random() * .8, p:Math.random() * 6.3 }));
 function dessinerFond(dt, vit, intens, t, th = TH){
-  const grad = g.createLinearGradient(0, 0, 0, Hh);
-  grad.addColorStop(0, th.haut); grad.addColorStop(1, th.bas);
-  g.fillStyle = grad; g.fillRect(0, 0, W, Hh);
-  if(intens > 0){ g.fillStyle = `rgba(255,255,255,${intens * .04})`; g.fillRect(0, 0, W, Hh); }
-  const part = th.part;
-  if(part === 'aurore'){
-    // voiles d'aurore boréale qui ondulent en haut de l'écran
-    g.lineWidth = 34;
-    for(let k = 0; k < 3; k++){
-      g.strokeStyle = `rgba(${k === 1 ? '120,220,255' : '124,255,178'},${.07 + intens * .05})`;
-      g.beginPath();
-      for(let x = 0; x <= W; x += 16) g.lineTo(x, Hh * (.1 + .09 * k) + Math.sin(x * .012 + t * .4 + k * 1.7) * 22);
-      g.stroke();
+  if(th.haut === th.bas) g.fillStyle = th.haut;
+  else { const grad = g.createLinearGradient(0, 0, 0, Hh); grad.addColorStop(0, th.haut); grad.addColorStop(1, th.bas); g.fillStyle = grad; }
+  g.fillRect(0, 0, W, Hh);
+  if(th.part === 'traits'){
+    // étoiles filantes qui descendent avec le défilement
+    g.fillStyle = '#fff';
+    for(const e of etoilesFond){
+      e.y += vit * dt * e.z * .9; if(e.y > 1){ e.y -= 1; e.x = Math.random(); }
+      g.globalAlpha = .25 + e.z * .55;
+      g.fillRect(e.x * W, e.y * Hh, 1.4 * e.z + .4, 1 + vit * e.z * 18);
     }
+    g.globalAlpha = 1;
   }
-  if(part === 'grille'){
-    // sol quadrillé qui défile (style rétro)
-    const hz = Hh * .62;
-    g.strokeStyle = 'rgba(255,95,162,.28)'; g.lineWidth = 1;
-    const dec = (t * vit * 1.6) % 1;
-    for(let k = 0; k < 14; k++){ const u = (k + dec) / 14, y = hz + (Hh - hz) * u * u; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
-    for(let k = -10; k <= 10; k++){ g.beginPath(); g.moveTo(W / 2 + k * 8, hz); g.lineTo(W / 2 + k * W * .16, Hh); g.stroke(); }
-  }
-  for(const e of etoilesFond){
-    if(part === 'grille' && e.y > .6) continue;
-    if(part === 'braises'){ e.y -= (vit * .25 + .05) * dt * e.z; if(e.y < 0){ e.y += 1; e.x = Math.random(); } }
-    else { e.y += vit * dt * e.z * (part === 'bulles' ? .45 : part === 'aurore' ? .25 : .9); if(e.y > 1){ e.y -= 1; e.x = Math.random(); } }
-    const x = e.x * W, y = e.y * Hh;
-    g.globalAlpha = .25 + e.z * .55;
-    if(part === 'traits'){ g.fillStyle = '#fff'; g.fillRect(x, y, 1.4 * e.z + .4, 1 + vit * e.z * 18); }
-    else if(part === 'bulles'){ g.strokeStyle = 'rgba(210,245,255,.7)'; g.lineWidth = 1; g.beginPath(); g.arc(x + Math.sin(t * 2 + e.p) * 4, y, 1 + e.z * 3, 0, Math.PI * 2); g.stroke(); }
-    else if(part === 'braises'){ g.fillStyle = e.z > .6 ? '#FFB347' : '#FF6B3D'; g.globalAlpha *= .6 + .4 * Math.sin(t * 6 + e.p); g.fillRect(x, y, 1.5 + e.z * 1.5, 1.5 + e.z * 1.5); }
-    else if(part === 'poussiere'){ g.fillStyle = '#FFE1B8'; g.fillRect(x, y, 1 + e.z, 1 + vit * e.z * 8); }
-    else { g.fillStyle = '#fff'; g.fillRect(x, y, 1 + e.z, 1 + e.z); }
-  }
-  g.globalAlpha = 1;
   const p = piste();
   if(p.pw < W){ g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, 0, p.x0, Hh); g.fillRect(p.x0 + p.pw, 0, W - p.x0 - p.pw, Hh); }
 }
@@ -510,12 +489,11 @@ function distForme(px, py, pts){
   }
   return dedans ? -dmin : dmin;
 }
-// Un point à éviter : disque plein, petit reflet, bord net
+// Un point à éviter : un simple rond, transparent, au bord net
 function dessinerPoint(x, y, r, bande){
   g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
-  g.fillStyle = TH.coul[bande]; g.fill();
-  g.lineWidth = Math.max(1.2, Math.min(3, r * .08)); g.strokeStyle = TH.bord[bande]; g.stroke();
-  if(r > 5){ g.beginPath(); g.arc(x - r * .32, y - r * .32, r * .32, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,.18)'; g.fill(); }
+  g.fillStyle = TH.coul[bande]; g.globalAlpha = r < 6 ? .45 : .16; g.fill(); g.globalAlpha = 1;
+  g.lineWidth = Math.max(1.5, Math.min(2.6, r * .06)); g.strokeStyle = TH.coul[bande]; g.stroke();
 }
 // Petit tintement quand on frôle un point
 function tinter(force){
@@ -856,8 +834,8 @@ const apercus = () => document.querySelectorAll('#formes button').forEach(b => {
   const c = b.querySelector('canvas').getContext('2d');
   c.clearRect(0, 0, 88, 104); dessinerFusee(c, b.dataset.f, 44, 42, 46, 0, 0, false, .25, themeChoisi === 'aleatoire' ? THEMES.espace : TH);
 });
-$('themes').innerHTML = `<button data-t="aleatoire" style="background:linear-gradient(135deg,#141B4A,#A8475E,#06304D,#3B0A5C)">🎲<br>Aléatoire</button>` +
-  Object.entries(THEMES).map(([k, th]) => `<button data-t="${k}" style="background:linear-gradient(${th.haut},${th.bas})">${th.coul.map(c => `<i style="background:${c}"></i>`).join('')}<br>${th.n}</button>`).join('');
+$('themes').innerHTML = `<button data-t="aleatoire" style="background:linear-gradient(135deg,#141B4A,#43213C,#0B3447,#173527)">🎲<br>Aléatoire</button>` +
+  Object.entries(THEMES).map(([k, th]) => `<button data-t="${k}" style="background:linear-gradient(${th.haut},${th.bas})">${th.coul.map(c => `<i style="border-color:${c};background:${c}33"></i>`).join('')}<br>${th.n}</button>`).join('');
 $('formes').onclick = e => { const b = e.target.closest('button'); if(!b) return; forme = b.dataset.f; ecrire('fusee-forme', forme); menu(); };
 $('themes').onclick = e => { const b = e.target.closest('button'); if(!b) return; themeChoisi = b.dataset.t; ecrire('fusee-theme', themeChoisi); if(themeChoisi !== 'aleatoire') TH = THEMES[themeChoisi]; apercus(); menu(); };
 if(themeChoisi !== 'aleatoire') TH = THEMES[themeChoisi];
