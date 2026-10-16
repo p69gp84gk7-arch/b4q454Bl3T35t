@@ -555,10 +555,12 @@ function eclats(x, y, c, n){
   for(let k = 0; k < n; k++){ const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 260; partie.eclats.push({ x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v, vie:.6 + Math.random() * .4, c }); }
 }
 // Ajoute un bonus au compteur affiché à côté de la fusée : les bonus rapprochés s'additionnent
-function cumuler(P, v, c){
-  if(P.cumul && P.cumul.vie > 0){ P.cumul.val += v; P.cumul.n++; if(c === '#9FEFFF') P.cumul.c = c; }
-  else P.cumul = { val:v, n:1, c, x:0, y:0 };
-  Object.assign(P.cumul, { vie:1.4, pop:1, txt:'+' + fmtN(P.cumul.val) });
+// z : la zone de frôlement (couleur et nom), ou une couleur seule (étoile)
+function cumuler(P, v, z, nouveau = true){
+  const c = typeof z === 'string' ? z : z.c, nom = typeof z === 'string' ? 'étoile' : z.n;
+  if(P.cumul && P.cumul.vie > 0){ P.cumul.val += v; if(nouveau){ P.cumul.c = c; P.cumul.nom = nom; } }
+  else P.cumul = { val:v, c, nom, x:0, y:0 };
+  Object.assign(P.cumul, { vie:1.4, pop:nouveau ? 1 : Math.max(P.cumul.pop || 0, .35), txt:'+' + fmtN(P.cumul.val) });
 }
 function boucle(now){
   const P = partie;
@@ -581,9 +583,11 @@ function boucle(now){
   const p = piste(), yF = p.ph * P.haut, tailleF = p.pw * LARG_FUSEE;
   // Commandes : gauche / droite font tourner la fusée ; elle avance là où pointe son nez (des courbes)
   const dir = (commandes.droite ? 1 : 0) - (commandes.gauche ? 1 : 0);
-  if(dir) P.ang = clamp(P.ang + dir * (dir * P.ang < 0 ? 7 : 4.2) * dt, -1.05, 1.05);
-  else P.ang *= Math.exp(-4.5 * dt);
-  P.vx = Math.sin(P.ang) * 1.3;
+  // Plus ça défile vite, plus la fusée est vive (elle tourne et se déplace plus vite)
+  const vif = clamp(vit / .75, .7, 1.6);
+  if(dir) P.ang = clamp(P.ang + dir * (dir * P.ang < 0 ? 7 : 4.2) * vif * dt, -1.05, 1.05);
+  else P.ang *= Math.exp(-4.5 * vif * dt);
+  P.vx = Math.sin(P.ang) * 1.3 * (.7 + .3 * vif);
   const bordG = LARG_FUSEE * .6, bordD = 1 - LARG_FUSEE * .6;
   P.x = clamp(P.x + P.vx * dt, bordG, bordD);
   if((P.x <= bordG && P.ang < 0) || (P.x >= bordD && P.ang > 0)) P.ang *= Math.exp(-10 * dt);
@@ -599,18 +603,22 @@ function boucle(now){
   // (les distances sont multipliées par k : les points arrivent toujours sur la fusée au moment du son)
   while(P.idx < objs.length && (yF - (objs[P.idx].s - sNow) * echelle) > p.ph + p.pw * .3) P.idx++;
   // Traînée : les positions passées descendent avec le défilement et dessinent la courbe
-  P.trace.push({ x:P.x, s:sNow });
+  // (on garde la position de l'arrière de la fusée, même penchée : la traînée part toujours de la tuyère)
+  const pts = FORMES[forme].pts, ca = Math.cos(P.ang), sa = Math.sin(P.ang);
+  P.trace.push({ x:P.x - .42 * tailleF * sa / p.pw, s:sNow - .42 * tailleF * ca / echelle });
   while(P.trace.length && yF + (sNow - P.trace[0].s) * echelle > p.ph + 20) P.trace.shift();
   if(P.trace.length > 2){
-    g.lineCap = 'round';
-    for(let k = 1; k < P.trace.length; k++){
-      const a = P.trace[k - 1], b = P.trace[k], u = k / P.trace.length;
-      g.strokeStyle = TH.accent; g.globalAlpha = u * .35; g.lineWidth = tailleF * (.08 + .3 * u);
-      g.beginPath(); g.moveTo(p.x0 + a.x * p.pw, yF + (sNow - a.s) * echelle + tailleF * .45); g.lineTo(p.x0 + b.x * p.pw, yF + (sNow - b.s) * echelle + tailleF * .45); g.stroke();
+    g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = TH.accent;
+    const n = P.trace.length, X = q => p.x0 + q.x * p.pw, Y = q => yF + (sNow - q.s) * echelle;
+    for(let k = 1; k < n; k++){
+      const a = P.trace[k - 1], b = P.trace[k], u = k / n;
+      g.globalAlpha = u * u * .45; g.lineWidth = tailleF * (.06 + .32 * u);
+      g.beginPath(); g.moveTo(X(a), Y(a)); g.lineTo(X(b), Y(b)); g.stroke();
     }
     g.globalAlpha = 1;
   }
-  const pts = FORMES[forme].pts, ca = Math.cos(P.ang), sa = Math.sin(P.ang), seuilFrole = tailleF * 1.0 * N.frole;
+  // Frôler : trois zones autour de la fusée (écart entre le bord du point et le bord de la fusée)
+  const M = tailleF * N.frole, ZONES = [null, { lim:.45 * M, pts:100, c:'#FFD54F', n:'rasé !' }, { lim:1 * M, pts:50, c:'#9FEFFF', n:'tout près' }, { lim:1.9 * M, pts:10, c:'#D6E4FF', n:'frôlé' }];
   for(let k = P.idx; k < objs.length; k++){
     const o = objs[k], y = yF - (o.s - sNow) * echelle;
     if(y < -p.pw * .3) break;
@@ -637,21 +645,36 @@ function boucle(now){
     if(d < r * .92 && P.invul <= 0 && !o.touche){
       // Choc : points perdus, la musique s'éteint, la fusée ralentit, redescend, la flamme baisse
       o.touche = true; P.chocs++; P.chaine = 0;
-      P.score = Math.max(0, P.score - 400);
+      // (les points gagnés en frôlant ce point-là sont perdus aussi)
+      P.score = Math.max(0, P.score - 400 - (o.gain || 0)); P.bonusFrole -= o.gain || 0;
+      if(P.cumul) P.cumul.val -= o.gain || 0;
       P.invul = 1.6; P.secousse = .35; P.flash = 1; P.frein = .72; P.flamme = .22;
       couperMusique(); eclats(x, y, TH.coul[o.bande], 22);
-      if(P.cumul){ P.textes.push({ ...P.cumul, vie:.8 }); P.cumul = null; }
-      P.textes.push({ x:xF + tailleF * 1.8 * (xF > W - 80 ? -1 : 1), y:yF - tailleF * .3, txt:'−400', c:'#FF8FA3', vie:1.2, gros:1 });
+      if(P.cumul){ if(P.cumul.val > 0) P.textes.push({ ...P.cumul, txt:'+' + fmtN(P.cumul.val), vie:.8 }); P.cumul = null; }
+      const cote = xF > W - 110 ? -1 : 1;
+      P.textes.push({ x:xF + tailleF * 1.1 * cote, al:cote > 0 ? 'left' : 'right', y:yF - tailleF * .3, txt:'−400', c:'#FF8FA3', vie:1.2, gros:1 });
       if(navigator.vibrate) navigator.vibrate(70);
-    } else if(!o.touche && !o.frole && y - r > yF + tailleF * .6 && o.dmin < seuilFrole && P.invul <= 0){
-      // Frôlé sans le toucher (écart entre le bord du point et le bord de la fusée) : un bonus, d'autant plus gros qu'on est passé près
-      const pres = clamp(1 - o.dmin / seuilFrole, 0, 1), bonus = Math.round((60 + 140 * pres) * P.mult / 10) * 10;
-      o.frole = true; P.froles++; P.chaine++; P.score += bonus; P.bonusFrole += bonus;
-      eclats(xF, yF, '#9FEFFF', 6);
-      cumuler(P, bonus, '#9FEFFF');
-      tinter(pres);
+    } else if(!o.touche && !o.fini){
+      if(y - r > yF + tailleF * .6){
+        // le point est passé sans être touché : s'il a été frôlé, l'enchaînement continue
+        o.fini = true;
+        if(o.zone){ P.froles++; P.chaine++; }
+      } else if(P.invul <= 0){
+        // Tant qu'on reste le long du point, les points tombent : 100 par 100 tout contre, 50 par 50 un peu plus loin, 10 par 10 au large
+        const ecart = d - r, z = ecart < ZONES[1].lim ? 1 : ecart < ZONES[2].lim ? 2 : ecart < ZONES[3].lim ? 3 : 0;
+        if(z){
+          o.tic = (o.tic || 0) + dt;
+          const mieux = !o.zone || z < o.zone;
+          if(mieux || o.tic >= .1){
+            if(mieux){ o.zone = z; tinter(z === 1 ? 1 : z === 2 ? .5 : 0); if(z === 1) eclats(xF, yF, '#FFD54F', 5); }
+            o.tic = 0;
+            const v = ZONES[z].pts * P.mult;
+            o.gain = (o.gain || 0) + v; P.score += v; P.bonusFrole += v;
+            cumuler(P, v, ZONES[z], mieux);
+          }
+        }
+      }
     }
-    o.dmin = Math.min(o.dmin ?? 1e9, d - r);
   }
   P.mult = Math.min(8, 1 + Math.floor(P.chaine / 4));
   // Fusée, éclats, bonus affichés
@@ -661,22 +684,22 @@ function boucle(now){
   for(const e of P.eclats){ e.x += e.vx * dt; e.y += e.vy * dt; e.vx *= .96; e.vy *= .96; g.globalAlpha = Math.min(1, e.vie * 1.6); g.fillStyle = e.c; g.fillRect(e.x - 2, e.y - 2, 4, 4); }
   g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
   P.textes = P.textes.filter(e => (e.vie -= dt) > 0);
-  g.textAlign = 'center';
-  for(const e of P.textes){ e.y -= 40 * dt; g.globalAlpha = Math.min(1, e.vie * 1.8); g.fillStyle = e.c; g.font = `700 ${e.gros ? 19 : 15}px Audiowide, sans-serif`; g.fillText(e.txt, e.x, e.y); }
+  for(const e of P.textes){ e.y -= 40 * dt; g.textAlign = e.al || 'center'; g.globalAlpha = Math.min(1, e.vie * 1.8); g.fillStyle = e.c; g.font = `700 ${e.gros ? 19 : 15}px Audiowide, sans-serif`; g.fillText(e.txt, e.x, e.y); }
   // Les bonus qui s'additionnent, à côté de la fusée (comme le −400)
   if(P.cumul){
     const C = P.cumul;
     C.vie -= dt; C.pop = Math.max(0, C.pop - dt * 4);
-    const cote = xF > W - 90 ? -1 : 1;
-    C.x = xF + tailleF * 1.8 * cote; C.y = yF - tailleF * .3;
+    // à droite de la fusée (à gauche si elle est contre le bord droit), sans la cacher
+    const cote = xF > W - 110 ? -1 : 1;
+    C.x = xF + tailleF * 1.1 * cote; C.y = yF - tailleF * .3; C.al = cote > 0 ? 'left' : 'right';
     if(C.vie <= 0){ P.textes.push({ ...C, vie:.8, gros:1 }); P.cumul = null; }
     else {
-      g.globalAlpha = Math.min(1, C.vie * 3); g.fillStyle = C.c; g.font = `700 ${Math.round(19 + 7 * C.pop)}px Audiowide, sans-serif`;
+      g.textAlign = C.al; g.globalAlpha = Math.min(1, C.vie * 3); g.fillStyle = C.c; g.font = `700 ${Math.round(19 + 7 * C.pop)}px Audiowide, sans-serif`;
       g.fillText(C.txt, C.x, C.y);
-      if(C.n > 1){ g.font = '600 11px Audiowide, sans-serif'; g.fillText(`×${C.n}`, C.x, C.y + 14); }
+      g.font = '600 11px Audiowide, sans-serif'; g.fillText(C.nom, C.x, C.y + 14);
     }
   }
-  g.globalAlpha = 1;
+  g.globalAlpha = 1; g.textAlign = 'center';
   if(P.flash > 0){ g.fillStyle = `rgba(255,79,163,${P.flash * .3})`; g.fillRect(0, 0, W, Hh); }
   if(t < 0){ g.fillStyle = '#fff'; g.font = '700 28px Audiowide, sans-serif'; g.fillText('Prêt…', W / 2, Hh * .4); }
   g.restore();
