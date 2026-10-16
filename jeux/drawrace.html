@@ -129,9 +129,18 @@ h2{ font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:
 .btn-light{ background:var(--card); }
 .btn-red{ background:var(--red); color:#fff; }
 .btn-red:disabled{ opacity:.4; box-shadow:none; }
-.lights{ position:absolute; top:12px; left:50%; transform:translateX(-50%); display:flex; gap:8px; padding:8px 10px; background:#1F1F1F; border-radius:12px; }
-.lights i{ width:22px; height:22px; border-radius:50%; background:#444; }
-.lights i.on{ background:#FF2A2A; box-shadow:0 0 12px #FF2A2A; }
+.lights{ position:absolute; top:42%; left:50%; transform:translate(-50%, -50%); display:flex; gap:clamp(8px, 2vw, 16px); padding:clamp(10px, 2vw, 18px);
+  background:#1F1F1F; border-radius:18px; border:3px solid #000; box-shadow:0 10px 30px rgba(0,0,0,.45); z-index:4; }
+.lights i{ width:clamp(30px, 7vw, 64px); height:clamp(30px, 7vw, 64px); border-radius:50%; background:#3A3A3A; box-shadow:inset 0 -4px 0 rgba(0,0,0,.4); }
+.lights i.on{ background:#FF2A2A; box-shadow:0 0 22px #FF2A2A, inset 0 -4px 0 rgba(0,0,0,.25); }
+.departs{ position:absolute; top:calc(42% + clamp(40px, 7vw, 70px)); left:50%; transform:translateX(-50%); display:flex; gap:10px; z-index:4; flex-wrap:wrap; justify-content:center; width:min(96%, 640px); }
+.departs[hidden]{ display:none; }
+.depart{ min-width:150px; padding:12px 18px; font-weight:800; font-size:1.15rem; border:3px solid var(--ink); box-shadow:3px 4px 0 var(--ink); -webkit-user-select:none; user-select:none; touch-action:manipulation; }
+.depart small{ display:block; font-size:.8rem; font-weight:700; }
+.depart:disabled{ opacity:.85; box-shadow:none; }
+.option{ display:flex; gap:10px; align-items:flex-start; padding:10px 12px; background:var(--card); border:2px solid var(--line); border-radius:12px; cursor:pointer; }
+.option input{ width:22px; height:22px; margin-top:2px; accent-color:var(--red); flex:none; }
+.option small{ display:block; color:var(--muted); font-size:.82rem; line-height:1.35; margin-top:2px; }
 .standings{ background:var(--card); border:2px solid var(--ink); border-radius:10px; padding:4px 8px; font-size:.82rem; line-height:1.5; }
 .standings div{ display:flex; align-items:center; gap:6px; white-space:nowrap; }
 .standings em{ width:10px; height:10px; border-radius:50%; border:1.5px solid var(--ink); display:inline-block; flex:none; }
@@ -258,6 +267,9 @@ tr.me td{ font-weight:800; }
   <div class="seg seg-wrap" id="meteo" role="group" aria-label="Météo"></div>
   <p class="aide" id="meteoAide"></p>
 
+  <h2>Départ</h2>
+  <label class="option"><input type="checkbox" id="optReaction"><span><b>🚦 Départ au temps de réaction</b><small>Grands feux au milieu de l'écran : appuyez sur « Départ » quand ils s'éteignent. Plus vous êtes rapide, meilleur est le départ. Trop tôt : faux départ, pénalité de 1 s.</small></span></label>
+
   <h2>Circuit</h2>
   <div class="carousel">
     <button class="nav prev" id="prevC" aria-label="Circuit précédent">‹</button>
@@ -297,6 +309,7 @@ tr.me td{ font-weight:800; }
   <div class="stage" id="stage">
     <canvas id="cv"></canvas>
     <div class="lights" id="lights" hidden><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="departs" id="departs" hidden></div>
   </div>
   <aside class="side">
     <div class="side-top"><button class="quit" id="quit">Abandonner</button><div class="timer" id="timer" hidden>0:00.00</div></div>
@@ -349,8 +362,8 @@ tr.me td{ font-weight:800; }
   </div>
 </main>
 
-<script src="drawrace/circuits.js?v=45"></script>
-<script src="drawrace/piste.js?v=45"></script>
+<script src="drawrace/circuits.js?v=46"></script>
+<script src="drawrace/piste.js?v=46"></script>
 <script>
 const P = window.Piste;
 // Garde-fou : page et scripts de versions différentes (ancien cache) → on recharge une fois depuis le réseau
@@ -433,11 +446,13 @@ function scorePneu(type, meteo, tours){
   return cas.reduce((s, [m, p]) => { let t = 0; for(let k = 0; k < tours; k++) t += Math.sqrt(Math.max(.2, adherence(type, k, mouilleTour(m, k, tours)))); return s + p * t; }, 0);
 }
 const meilleurPneu = (meteo, tours) => Object.keys(PNEUS).sort((a, b) => scorePneu(b, meteo, tours) - scorePneu(a, meteo, tours))[0];
-// Boost : 2 charges au départ, 3 au plus, une charge de plus toutes les 12 s de course
-const BOOST = { n:2, max:3, recharge:12, duree:1.3, facteur:1.4 };
+// Boost : 2 charges au départ, 3 au plus, une charge de plus toutes les 6 s de course
+const BOOST = { n:2, max:3, recharge:6, duree:1.3, facteur:1.4 };
 const HERBE = 75;                              // vitesse maximale hors piste
 // Physique légère (dérapage, patinage sous la pluie) : plus marquée quand la difficulté monte
 const facteurPhysique = d => 0.6 + 0.8 * d / 100;
+// Erreurs des adversaires (par seconde passée en virage) : nombreuses en Facile, rares mais présentes en Expert
+const tauxErreur = d => 0.5 - 0.38 * d / 100;
 const CIRC = window.CIRCUITS.map(P.construire);
 CIRC.forEach(c => { c.toursBase = c.tours; });
 const toursDe = c => clamp(cfg.tours[c.id] || c.toursBase, 1, 10);
@@ -453,6 +468,7 @@ if(!METEOS[cfg.meteo]) cfg.meteo = 'sec';
 cfg.joueurs.forEach(j => { if(!PNEUS[j.pneu]) j.pneu = 'medium'; });
 const saveCfg = () => put('drawrace-choix', cfg);
 if(cfg.mode !== 'championnat') cfg.mode = 'arcade';
+if(typeof cfg.reaction !== 'boolean') cfg.reaction = true;
 
 /* ---------- Championnat ----------
    Pilotes aux noms inspirés de vrais pilotes de F1 ; force : un peu plus (ou moins) rapide que la difficulté choisie. */
@@ -482,26 +498,72 @@ cfg.champ = Object.assign({ courses:8, tours:3, meteo:'variable', ordre:'hasard'
 cfg.champ.courses = clamp(cfg.champ.courses, 2, window.CIRCUITS.length);
 
 /* ---------- Dessin d'une monoplace vue de dessus, style croquis ---------- */
+// Teinte plus claire (f > 0) ou plus foncée (f < 0) d'une couleur #rrggbb
+function nuance(c, f){
+  const n = parseInt(c.slice(1), 16), m = f > 0 ? 255 : 0, a = Math.abs(f);
+  const r = Math.round((n >> 16) + (m - (n >> 16)) * a), g2 = Math.round((n >> 8 & 255) + (m - (n >> 8 & 255)) * a), b = Math.round((n & 255) + (m - (n & 255)) * a);
+  return `rgb(${r},${g2},${b})`;
+}
 function voiture(g, x, y, ang, couleur, k = 1, flamme = false){
   g.save();
   g.translate(x, y); g.rotate(ang); g.scale(k, k);
-  g.lineJoin = 'round'; g.lineCap = 'round'; g.lineWidth = 1.3; g.strokeStyle = '#1A1A1A';
-  const rect = (x0, y0, w, h, fill) => { g.beginPath(); g.roundRect ? g.roundRect(x0, y0, w, h, 1.5) : g.rect(x0, y0, w, h); g.fillStyle = fill; g.fill(); g.stroke(); };
+  g.lineJoin = 'round'; g.lineCap = 'round'; g.lineWidth = 1; g.strokeStyle = '#151515';
+  const fonce = nuance(couleur, -.35), clair = nuance(couleur, .45);
+  const forme = (pts, fill, trait = true) => { g.beginPath(); pts.forEach(([a, b], i) => i ? g.lineTo(a, b) : g.moveTo(a, b)); g.closePath(); g.fillStyle = fill; g.fill(); if(trait) g.stroke(); };
+  const rect = (x0, y0, w, h, fill, r = 1.2) => { g.beginPath(); g.roundRect ? g.roundRect(x0, y0, w, h, r) : g.rect(x0, y0, w, h); g.fillStyle = fill; g.fill(); g.stroke(); };
   if(flamme){
-    g.beginPath(); g.moveTo(-15, -3); g.lineTo(-24 - Math.random() * 6, 0); g.lineTo(-15, 3); g.closePath();
-    g.fillStyle = '#FFB020'; g.fill(); g.strokeStyle = '#E0461B'; g.stroke(); g.strokeStyle = '#1A1A1A';
+    g.beginPath(); g.moveTo(-16, -2.6); g.lineTo(-25 - Math.random() * 7, 0); g.lineTo(-16, 2.6); g.closePath();
+    g.fillStyle = '#FFB020'; g.fill(); g.strokeStyle = '#E0461B'; g.stroke(); g.strokeStyle = '#151515';
   }
-  rect(-12, -10.5, 7, 4.5, '#222'); rect(-12, 6, 7, 4.5, '#222');          // roues arrière
-  rect(6, -9.5, 6, 3.8, '#222'); rect(6, 5.7, 6, 3.8, '#222');              // roues avant
-  rect(-15, -8, 3.5, 16, '#2B2B2B');                                         // aileron arrière
-  g.beginPath();                                                              // coque
-  g.moveTo(-12, -3.6); g.lineTo(-3, -5.2); g.lineTo(4, -3.2); g.lineTo(13.5, -1.5);
-  g.lineTo(13.5, 1.5); g.lineTo(4, 3.2); g.lineTo(-3, 5.2); g.lineTo(-12, 3.6); g.closePath();
-  g.fillStyle = couleur; g.fill(); g.stroke();
-  [-1, 1].forEach(s => { g.beginPath(); g.ellipse(-4, s * 5.6, 5, 2, 0, 0, Math.PI * 2); g.fillStyle = couleur; g.fill(); g.stroke(); });  // pontons
-  rect(12.5, -9.5, 3, 19, couleur);                                          // aileron avant
-  g.beginPath(); g.ellipse(0.5, 0, 3.6, 2.5, 0, 0, Math.PI * 2); g.fillStyle = '#222'; g.fill();       // cockpit
-  g.beginPath(); g.arc(0, 0, 1.9, 0, Math.PI * 2); g.fillStyle = '#FFE066'; g.fill(); g.stroke();      // casque
+  // Ombre au sol
+  g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(1, 1.5, 17, 9.5, 0, 0, Math.PI * 2); g.fill();
+  // Suspensions (bras fins jusqu'aux roues)
+  g.strokeStyle = '#2B2B2B'; g.lineWidth = .9;
+  [[-8.5, -7.5, -4, -3.5], [-8.5, 7.5, -4, 3.5], [9, -7, 6, -2], [9, 7, 6, 2], [9, -7, 3, -2.2], [9, 7, 3, 2.2]].forEach(([a, b, c, d]) => { g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); });
+  g.strokeStyle = '#151515'; g.lineWidth = 1;
+  // Roues : pneus noirs, jante grise et sculptures
+  const roue = (cx, cy, l, w) => {
+    rect(cx - l / 2, cy - w / 2, l, w, '#1C1C1C', 1.6);
+    g.fillStyle = '#8C8C8C'; g.fillRect(cx - l / 2 + 1.4, cy - .55, l - 2.8, 1.1);
+    g.strokeStyle = 'rgba(255,255,255,.18)'; g.lineWidth = .5;
+    for(let t = -l / 2 + 1.2; t < l / 2 - .6; t += 1.4){ g.beginPath(); g.moveTo(cx + t, cy - w / 2 + .5); g.lineTo(cx + t, cy + w / 2 - .5); g.stroke(); }
+    g.strokeStyle = '#151515'; g.lineWidth = 1;
+  };
+  roue(-10, -8.4, 7.4, 4.6); roue(-10, 8.4, 7.4, 4.6);   // arrière (plus larges)
+  roue(9.2, -7.8, 6.2, 3.8); roue(9.2, 7.8, 6.2, 3.8);   // avant
+  // Fond plat, sous la voiture
+  forme([[-12.5, -4.8], [-4, -6.6], [5, -4.2], [5, 4.2], [-4, 6.6], [-12.5, 4.8]], '#2A2A2A');
+  // Aileron arrière : plan principal, volet, dérives
+  rect(-16.5, -7.6, 4.2, 15.2, fonce, .8);
+  g.beginPath(); g.moveTo(-14.4, -7.2); g.lineTo(-14.4, 7.2); g.strokeStyle = clair; g.lineWidth = .8; g.stroke(); g.strokeStyle = '#151515'; g.lineWidth = 1;
+  rect(-17, -8.2, 5.2, 1.3, '#151515', .4); rect(-17, 6.9, 5.2, 1.3, '#151515', .4);
+  // Pontons, avec leurs prises d'air
+  forme([[-9, -3.8], [-6.5, -6.4], [1.5, -6.6], [4, -4.6], [4, -2.6], [-9, -2.4]], couleur);
+  forme([[-9, 3.8], [-6.5, 6.4], [1.5, 6.6], [4, 4.6], [4, 2.6], [-9, 2.4]], couleur);
+  g.fillStyle = '#151515'; g.beginPath(); g.ellipse(3.1, -5, .8, 1.5, 0, 0, Math.PI * 2); g.fill(); g.beginPath(); g.ellipse(3.1, 5, .8, 1.5, 0, 0, Math.PI * 2); g.fill();
+  // Coque : capot moteur, cockpit, museau
+  forme([[-13, -1.9], [-6, -3.4], [2.5, -3.1], [7, -2], [14.2, -1], [15.2, 0], [14.2, 1], [7, 2], [2.5, 3.1], [-6, 3.4], [-13, 1.9]], couleur);
+  // Bande de décoration et aileron de requin
+  g.fillStyle = clair; g.beginPath(); g.moveTo(-12, -.6); g.lineTo(13.8, -.45); g.lineTo(13.8, .45); g.lineTo(-12, .6); g.closePath(); g.fill();
+  g.strokeStyle = fonce; g.lineWidth = 1.1; g.beginPath(); g.moveTo(-12.6, 0); g.lineTo(-5, 0); g.stroke();
+  g.strokeStyle = '#151515'; g.lineWidth = 1;
+  // Prise d'air au-dessus du pilote
+  rect(-5.2, -1.5, 2.6, 3, '#151515', .8);
+  // Cockpit, casque, halo
+  g.beginPath(); g.ellipse(.6, 0, 3.7, 2.4, 0, 0, Math.PI * 2); g.fillStyle = '#1E1E1E'; g.fill(); g.stroke();
+  g.beginPath(); g.arc(0, 0, 1.8, 0, Math.PI * 2); g.fillStyle = '#FFE066'; g.fill(); g.stroke();
+  g.fillStyle = '#2B6CB0'; g.fillRect(.6, -1.1, 1.1, 2.2);                     // visière
+  g.strokeStyle = '#3A3A3A'; g.lineWidth = 1.2;
+  g.beginPath(); g.moveTo(-2.4, -2.1); g.quadraticCurveTo(4.4, -2.6, 4.6, 0); g.quadraticCurveTo(4.4, 2.6, -2.4, 2.1); g.stroke();   // halo
+  g.beginPath(); g.moveTo(4.6, 0); g.lineTo(6.2, 0); g.stroke();
+  g.strokeStyle = '#151515'; g.lineWidth = 1;
+  // Rétroviseurs
+  rect(1.5, -4.6, 1.6, 1.2, '#151515', .3); rect(1.5, 3.4, 1.6, 1.2, '#151515', .3);
+  // Aileron avant : deux éléments et dérives
+  forme([[12.5, -9.6], [15.6, -9.2], [16.8, -2], [16.8, 2], [15.6, 9.2], [12.5, 9.6], [13.8, 2], [13.8, -2]], fonce);
+  g.beginPath(); g.moveTo(14.3, -8.8); g.lineTo(15.4, -1.8); g.moveTo(14.3, 8.8); g.lineTo(15.4, 1.8); g.strokeStyle = clair; g.lineWidth = .7; g.stroke();
+  g.strokeStyle = '#151515'; g.lineWidth = 1;
+  rect(12.2, -10.2, 4, 1.1, '#151515', .3); rect(12.2, 9.1, 4, 1.1, '#151515', .3);
   g.restore();
 }
 
@@ -527,6 +589,7 @@ function renderMenu(){
   }).join('');
   $('nbJoueurs').innerHTML = [1, 2, 3, 4].map(n => `<button data-n="${n}" aria-pressed="${cfg.joueurs.length === n}">${n}</button>`).join('');
   majNiveau();
+  $('optReaction').checked = cfg.reaction;
   $('meteo').innerHTML = Object.entries(METEOS).map(([k, m]) => `<button data-m="${k}" aria-pressed="${cfg.meteo === k}">${m.ico} ${m.n}</button>`).join('');
   $('meteoAide').textContent = METEOS[cfg.meteo].aide + ' Choisissez les pneus de chaque pilote en conséquence.';
   $('players').innerHTML = cfg.joueurs.map((j, i) => `<div class="player" data-i="${i}">
@@ -593,6 +656,7 @@ function majTours(){
 const changerTours = d => { const c = byId[cfg.circuit], n = clamp(toursDe(c) + d, 1, 10); if(n === c.toursBase) delete cfg.tours[c.id]; else cfg.tours[c.id] = n; saveCfg(); majTours(); };
 $('toursMoins').onclick = () => changerTours(-1);
 $('toursPlus').onclick = () => changerTours(1);
+$('optReaction').addEventListener('change', e => { cfg.reaction = e.target.checked; saveCfg(); });
 $('modeJeu').addEventListener('click', e => { const b = e.target.closest('button'); if(b){ cfg.mode = b.dataset.mode; saveCfg(); renderMenu(); } });
 $('meteo').addEventListener('click', e => { const b = e.target.closest('button'); if(b){ cfg.meteo = b.dataset.m; saveCfg(); renderMenu(); } });
 $('nbJoueurs').addEventListener('click', e => {
@@ -679,6 +743,8 @@ function renderChampMenu(){
       <h2>Météo</h2>
       <div class="seg" id="cmMeteo"><button data-m="variable" aria-pressed="${C.meteo === 'variable'}">🌦 Variable</button><button data-m="sec" aria-pressed="${C.meteo === 'sec'}">☀️ Toujours sec</button></div>
       <p class="aide">Variable : chaque course a sa météo (sec, averse, pluie ou déluge), découverte en arrivant sur le circuit.</p>
+      <h2>Départ</h2>
+      <label class="option"><input type="checkbox" id="cmReaction"${C.reaction !== false ? ' checked' : ''}><span><b>🚦 Départ au temps de réaction</b><small>Appuyez sur « Départ » quand les feux s'éteignent ; faux départ : 1 s de pénalité.</small></span></label>
       <h2>Calendrier</h2>
       <div class="seg" id="cmOrdre"><button data-o="hasard" aria-pressed="${C.ordre === 'hasard'}">Au hasard</button><button data-o="ordre" aria-pressed="${C.ordre === 'ordre'}">Du plus facile au plus dur</button></div>
       <p class="aide">Vos adversaires : 5 pilotes tirés parmi ${PILOTES.map(p => p.nom).join(', ')}.</p>
@@ -699,6 +765,7 @@ function renderChampMenu(){
     $('cmMeteo').onclick = e => { const b = e.target.closest('button'); if(b){ C.meteo = b.dataset.m; saveCfg(); renderMenu(); } };
     $('cmOrdre').onclick = e => { const b = e.target.closest('button'); if(b){ C.ordre = b.dataset.o; saveCfg(); renderMenu(); } };
     $('cmLancer').onclick = lancerChampionnat;
+    $('cmReaction').onchange = e => { C.reaction = e.target.checked; saveCfg(); };
   }
 }
 function palmaresHTML(){
@@ -715,7 +782,7 @@ function lancerChampionnat(){
   if(C.ordre === 'ordre') cal = Array.from({ length:n }, (_, k) => ids[Math.round(k * (ids.length - 1) / Math.max(1, n - 1))]);
   else { cal = ids.slice(); for(let k = cal.length - 1; k > 0; k--){ const r = Math.floor(Math.random() * (k + 1)); [cal[k], cal[r]] = [cal[r], cal[k]]; } }
   champ = { id:Date.now(), joueur:{ nom:j.nom || 'Vous', couleur:j.couleur, pneu:j.pneu || 'medium' }, difficulte:C.difficulte, toursMin:Math.max(3, C.tours),
-    meteo:C.meteo, calendrier:cal.slice(0, C.courses), course:0, pilotes:choisirAdversaires(j.couleur), points:{}, resultats:[], fini:false };
+    meteo:C.meteo, reaction:C.reaction !== false, calendrier:cal.slice(0, C.courses), course:0, pilotes:choisirAdversaires(j.couleur), points:{}, resultats:[], fini:false };
   saveChamp();
   afficherChamp();
 }
@@ -1086,7 +1153,8 @@ function peindreFond(){
 const teinte = r => `hsl(${Math.round((1 - clamp(r, 0, 1)) * 120)}, 78%, 42%)`;   // vert (lent) → rouge (rapide)
 
 /* ---------- Tracé de la trajectoire ---------- */
-let traces = [];                // trajectoires validées : traces[joueur][tour]
+let traces = [];                // trajectoires validées : traces[joueur][tour] (pour l'affichage)
+let bruts = [];                 // points du doigt de chaque tour : bruts[joueur][tour]
 let tr = null;                  // tracé en cours
 let joueurTrace = 0, tourTrace = 0;
 
@@ -1107,7 +1175,7 @@ function debutTraces(){
   if(enChampionnat()){ circuit = byId[champ.calendrier[champ.course]]; circuit.tours = toursChamp(circuit); JOUEURS = [champ.joueur]; }
   else { circuit = byId[cfg.circuit]; circuit.tours = toursDe(circuit); JOUEURS = cfg.joueurs; }
   tirerMeteo();
-  traces = [];
+  traces = []; bruts = [];
   joueurTrace = 0; tourTrace = 0;
   show('jeu');
   try{ screen.orientation.lock('landscape').catch(() => {}); }catch(e){}
@@ -1117,8 +1185,9 @@ function debutTraces(){
 function nomJoueur(i){ return JOUEURS[i].nom || `Joueur ${i + 1}`; }
 // Nouveau tracé pour le joueur en cours : on repart du tour 1
 function nouveauTrace(){
-  $('grille').hidden = true;
+  $('grille').hidden = true; $('departs').hidden = true;
   traces[joueurTrace] = [];
+  bruts[joueurTrace] = [];
   tourTrace = 0;
   tr = { pts:[], j:null, fini:false, actif:false };
   $('banner').innerHTML = `${esc(nomJoueur(joueurTrace))} · tour 1 / ${circuit.tours}<small>${esc(circuit.n)} · partez de la ligne à damier et enchaînez les ${circuit.tours} tours</small>`;
@@ -1195,6 +1264,7 @@ function ajouterPoint(x, y, t){
 // Tour complet : on le garde, et on enchaîne sur le suivant sans lever le doigt
 function tourTermine(){
   traces[joueurTrace][tourTrace] = versTrace(tr.pts);
+  (bruts[joueurTrace] = bruts[joueurTrace] || [])[tourTrace] = tr.pts.slice();
   tourTrace++;
   const last = tr.pts[tr.pts.length - 1];
   if(tourTrace < circuit.tours){
@@ -1237,10 +1307,10 @@ function profil(pts, vit){
 }
 // Pour chaque point d'une trajectoire : écart signé au milieu de la piste (positif à droite), point du milieu le plus proche,
 // et sens du virage (1 : à droite, -1 : à gauche)
-function annoter(pts){
+function annoter(pts, j0 = 0){
   const c = circuit, n = pts.length;
   const off = new Float32Array(n), ci = new Int32Array(n), tourne = new Int8Array(n);
-  let j = 0;
+  let j = j0;
   pts.forEach((p, i) => {
     const pr = P.plusProche(c, p[0], p[1], j, 40, 10); j = pr.j;
     const q = c.pts[pr.i], a = c.cap[pr.i];
@@ -1301,19 +1371,71 @@ function usurer(v, dt, i, acc){
 
 // Trajectoire des adversaires : entre le milieu de la piste et la trajectoire idéale selon le niveau
 function traceBot(niv, graine){
-  const c = circuit, n = c.pts.length, ideale = P.trajectoireIdeale(c);
+  const c = circuit, nc = c.pts.length, ideale = P.trajectoireIdeale(c);
   const pts = c.pts.map((p, i) => {
-    const q = ideale[i], a = c.cap[i], off = Math.sin(i / n * Math.PI * 2 * 3 + graine) * 10 * (1 - niv.ligne);
+    const q = ideale[i], a = c.cap[i], off = Math.sin(i / nc * Math.PI * 2 * 3 + graine) * 10 * (1 - niv.ligne);
     return [p[0] + (q[0] - p[0]) * niv.ligne - Math.sin(a) * off, p[1] + (q[1] - p[1]) * niv.ligne + Math.cos(a) * off];
   });
-  const lis = niv.ligne < 1 ? lisserPts(pts, 2) : pts;
-  const var_ = 1 + Math.sin(graine * 7) * 0.015;
+  // Pas régulier le long de la trajectoire (à l'intérieur d'une épingle serrée, les points se tasseraient)
+  const brut = niv.ligne < 1 ? lisserPts(pts, 2) : pts;
+  const lis = lisserPts(P.resample(brut, P.STEP, true), 2), n = lis.length;
+  const v0 = 1 + Math.sin(graine * 7) * 0.015;
+  // Vitesses ajustées pour garder le même temps au tour qu'avec l'ancien découpage (réglage des niveaux inchangé)
+  const temps = q => P.tempsTour(P.vitesses(q, new Array(q.length).fill(P.VMAX * niv.top * v0), (niv.virage * v0) ** 2).v);
+  const var_ = v0 * temps(lis) / temps(brut);
   const kappa = P.courbure(lis);
   const vit = new Array(n).fill(P.VMAX * niv.top * var_);
   const fac = (niv.virage * var_) ** 2;
   const { v, grip } = P.vitesses(lis, vit, fac, kappa);
   return { pts:lis, vit, kappa, herbe:new Array(n).fill(false), fac, v, grip, len:n * P.STEP, ...annoter(lis) };
 }
+/* Chemin de course : une seule trajectoire continue pour toute la course, de la grille (avant la ligne)
+   jusqu'après l'arrivée. Les tours s'enchaînent sans saut : la fin d'un tour est le début du suivant.
+   s = 0 sur la ligne de départ ; depart : distance de la grille avant la ligne ; bornes : fin de chaque tour. */
+const AVANT = 240, APRES = 360;
+const lisserOuvert = (pts, r) => pts.map((_, i) => { let x = 0, y = 0, k = 0; for(let j = -r; j <= r; j++){ const q = pts[clamp(i + j, 0, pts.length - 1)]; x += q[0]; y += q[1]; k++; } return [x / k, y / k]; });
+function cheminHumain(laps){
+  const c = circuit, n = c.pts.length, ka = Math.round(AVANT / P.STEP), kb = Math.round(APRES / P.STEP);
+  const premier = laps[0][0], dernier = laps[laps.length - 1][laps[laps.length - 1].length - 1];
+  const i0 = P.plusProche(c, premier.x, premier.y, 0, 14, 14).i;
+  const i1 = P.plusProche(c, dernier.x, dernier.y, 0, 20, 20).i;
+  // Avant la ligne : le milieu de la piste ; ensuite les tours du doigt ; après l'arrivée : le milieu de la piste
+  // (décalés du même écart que le début et la fin du tracé, pour ne pas faire d'écart brusque)
+  const ecart = (q, i) => (q.x - c.pts[i][0]) * -Math.sin(c.cap[i]) + (q.y - c.pts[i][1]) * Math.cos(c.cap[i]);
+  const milieu = (i, e) => { const a = c.cap[i]; return { x:c.pts[i][0] - Math.sin(a) * e, y:c.pts[i][1] + Math.cos(a) * e, v:P.VMAX }; };
+  const e0 = clamp(ecart(premier, i0), -P.LARGEUR / 2, P.LARGEUR / 2), e1 = clamp(ecart(dernier, i1), -P.LARGEUR / 2, P.LARGEUR / 2);
+  const tous = [];
+  for(let j = -ka; j < 0; j++) tous.push(milieu(((i0 + j) % n + n) % n, e0));
+  const debut = tous.length, fins = [];
+  laps.forEach((tp, k) => { (k ? tp.slice(1) : tp).forEach(q => tous.push(q)); fins.push(tous.length - 1); });
+  for(let j = 3; j < kb; j++) tous.push(milieu((i1 + j) % n, e1 * Math.max(0, 1 - j / kb)));
+  // Longueurs le long du chemin
+  const cum = [0];
+  for(let k = 1; k < tous.length; k++) cum.push(cum[k - 1] + Math.hypot(tous[k].x - tous[k - 1].x, tous[k].y - tous[k - 1].y));
+  const pts0 = P.resample(tous.map(q => [q.x, q.y]), P.STEP, false);
+  let k = 0;
+  const vit = pts0.map((_, i) => { const d = i * P.STEP; while(k < cum.length - 2 && cum[k + 1] < d) k++; return tous[Math.min(k + 1, tous.length - 1)].v; });
+  const pts = lisserOuvert(pts0, 3);
+  return finirChemin(pts, P.lisser(vit, 5).map(x => Math.max(40, x)), 1, cum[debut], fins.map(f => cum[f] - cum[debut]), i0 - ka);
+}
+// Adversaires : leur boucle répétée autant de fois qu'il y a de tours
+function cheminBot(bt, tours){
+  const n = bt.pts.length, ka = Math.round(AVANT / P.STEP), kb = Math.round(APRES / P.STEP);
+  const idx = [];
+  for(let j = -ka; j < tours * n + kb; j++) idx.push(((j % n) + n) % n);
+  const pts = idx.map(i => bt.pts[i]), vit = idx.map(i => bt.vit[i]);
+  return finirChemin(pts, vit, bt.fac, ka * P.STEP, Array.from({ length:tours }, (_, k) => (k + 1) * bt.len), -ka);
+}
+function finirChemin(pts, vit, fac, depart, bornes, j0){
+  // Courbure d'un chemin ouvert : aux deux bouts, on recopie la valeur voisine (pas de raccord bout à bout)
+  const kappa = P.courbure(pts), m = pts.length;
+  for(let i = 0; i < 10 && i < m; i++){ kappa[i] = kappa[Math.min(10, m - 1)]; kappa[m - 1 - i] = kappa[Math.max(0, m - 11)]; }
+  const an = annoter(pts, j0);
+  const herbe = Array.from(an.off, o => Math.abs(o) > P.LARGEUR / 2 + 3);
+  return { pts, vit, kappa, herbe, fac, depart, bornes, len:pts.length * P.STEP, ...an };
+}
+const indice = (t, s) => clamp(Math.floor((s + t.depart) / P.STEP), 0, t.pts.length - 1);
+
 // Vitesses d'une trajectoire avec une adhérence m (pneus, pluie) ; gardées en mémoire par valeur de m
 function profilAvec(t, m){
   const k = Math.round(m * 400);
@@ -1330,7 +1452,7 @@ function redessiner(){
   (traces[joueurTrace] || []).forEach(t => traitVitesse(t.pts, t.v, .22, true));
   if(!tr) return;
   if(tr.pts.length > 1){
-    g.lineCap = 'round'; g.lineWidth = 6.5;
+    g.lineCap = 'round'; g.lineWidth = 9;
     for(let i = 1; i < tr.pts.length; i++){
       const a = tr.pts[i - 1], b = tr.pts[i];
       g.strokeStyle = teinte(b.v / P.VMAX);
@@ -1342,7 +1464,7 @@ function redessiner(){
   if(tr.pts.length){ const f = tr.pts[0]; g.strokeStyle = '#1F1F1F'; g.lineWidth = 2; g.beginPath(); g.arc(f.x, f.y, 7, 0, Math.PI * 2); g.stroke(); }
 }
 function traitVitesse(pts, v, alpha, ferme){
-  g.save(); g.globalAlpha = alpha; g.lineCap = 'round'; g.lineWidth = 6.5;
+  g.save(); g.globalAlpha = alpha; g.lineCap = 'round'; g.lineWidth = 9;
   for(let i = 1; i <= pts.length - (ferme ? 0 : 1); i++){
     const a = pts[i - 1], b = pts[i % pts.length];
     g.strokeStyle = teinte(v[i % pts.length] / P.VMAX);
@@ -1389,7 +1511,7 @@ function demarrerCourse(){
   const niv = niveauDe(ch ? champ.difficulte : cfg.difficulte);
   if(!meteoCourse) tirerMeteo();
   const meteo = meteoCourse.m;
-  const voitures = JOUEURS.map((j, i) => ({ nom:nomJoueur(i), couleur:j.couleur, humain:true, laps:traces[i], t:traces[i][0], pneu:j.pneu || 'medium', pid:'moi' }));
+  const voitures = JOUEURS.map((j, i) => ({ nom:nomJoueur(i), couleur:j.couleur, humain:true, affichage:traces[i], t:cheminHumain(bruts[i]), pneu:j.pneu || 'medium', pid:'moi' }));
   const pris = new Set(JOUEURS.map(j => j.couleur));
   const libres = COULEURS.filter(c => !pris.has(c));
   const meilleur = meilleurPneu(meteo, circuit.tours), secs = ['tendre', 'medium', 'dur'];
@@ -1400,14 +1522,14 @@ function demarrerCourse(){
     const forme = 1 + p.force / 1100 + (Math.random() - .5) * .03;
     const nb = Object.assign({}, niv, { top:Math.min(1.03, niv.top * forme), virage:Math.min(1.03, niv.virage * forme) });
     const bt = traceBot(nb, Math.random() * 12);
-    voitures.push({ nom:p.nom, court:p.nom.split(' ').slice(-1)[0], couleur:p.c, humain:false, laps:new Array(circuit.tours).fill(bt), t:bt, pneu:choixPneu(), pid:p.id, niv:nb });
+    voitures.push({ nom:p.nom, court:p.nom.split(' ').slice(-1)[0], couleur:p.c, humain:false, t:cheminBot(bt, circuit.tours), pneu:choixPneu(), pid:p.id, niv:nb });
   });
   for(let k = 0; !ch && voitures.length < 4; k++){
     const bt = traceBot(niv, 1.3 + k * 2.1);
     // Pneus des adversaires : au hasard en Facile, souvent les bons en Normal, toujours les bons ensuite
     const pneu = niv.d < 20 ? secs[Math.floor(Math.random() * 3)]
       : niv.d < 50 && Math.random() < .4 ? secs[Math.floor(Math.random() * 3)] : meilleur;
-    voitures.push({ nom:BOTS[k], couleur:libres[k], humain:false, laps:new Array(circuit.tours).fill(bt), t:bt, pneu });
+    voitures.push({ nom:BOTS[k], couleur:libres[k], humain:false, t:cheminBot(bt, circuit.tours), pneu });
   }
   // Grille de départ en quinconce : en arcade, les joueurs devant ; en championnat, dans l'ordre du classement
   // (au hasard pour la première course)
@@ -1415,11 +1537,18 @@ function demarrerCourse(){
   const ordre = !ch ? voitures.slice().sort((a, b) => b.humain - a.humain)
     : rangs ? voitures.slice().sort((a, b) => rangs.indexOf(a.pid) - rangs.indexOf(b.pid))
     : voitures.slice().sort(() => Math.random() - .5);
-  ordre.forEach((v, k) => Object.assign(v, { s:-34 - k * 38, lap:0, t:v.laps[0], cote:k % 2 ? 1 : -1, vit:0, boosts:BOOST.n, boostT:0,
+  ordre.forEach((v, k) => Object.assign(v, { s:-34 - k * 38, lap:0, cote:k % 2 ? 1 : -1, vit:0, boosts:BOOST.n, boostT:0,
     tours:[], debutTour:0, fin:null, m:0, prof:null, age:0, us:[0, 0, 0, 0], stand:null, arret:0, arrets:0,
     charge:0, glisse:0, derive:0, lacet:0, horsPiste:false }));
   const w0 = meteo === 'pluie' ? .5 : meteo === 'deluge' ? 1 : 0;
-  course = { voitures, tours:circuit.tours, t:0, phase:'feux', feux:0, fumee:[], finHumains:null, niv, champ:ch,
+  // Départ au temps de réaction : les feux restent allumés un temps au hasard (0,4 à 2,4 s) ;
+  // les adversaires réagissent en 0,2 à 0,45 s (plus vite aux niveaux élevés)
+  const reaction = ch ? champ.reaction !== false : cfg.reaction;
+  voitures.forEach(v => {
+    v.depart = !reaction ? 0 : v.humain ? null : .2 + .18 * (1 - niv.d / 100) + Math.random() * .07;
+    v.reaction = reaction && !v.humain ? v.depart : null;
+  });
+  course = { voitures, tours:circuit.tours, t:0, phase:'feux', feux:0, extinction:3 + .4 + Math.random() * 2, reaction, fumee:[], finHumains:null, niv, champ:ch,
     meteo, w:w0, wCible:w0, pluieA:meteoCourse.pluieA, gouttes:[], facUsure:facteurUsure(niv.d), facPhys:facteurPhysique(niv.d), longueur:circuit.len };
   voitures.forEach(majAdherence);
   show('jeu');
@@ -1441,6 +1570,9 @@ function demarrerCourse(){
       <div class="stand-choix" hidden>${Object.entries(PNEUS).map(([k, p]) => `<button class="pn" data-pneu="${k}" style="--c:${p.c}" aria-label="Pneus ${p.n}" title="${p.n}">${p.l}</button>`).join('')}</div>
     </div>`; }).join('');
   $('timer').textContent = '0:00.00';
+  // Boutons « Départ » des joueurs, sous les feux
+  $('departs').hidden = !reaction;
+  $('departs').innerHTML = reaction ? humains.map(v => `<button class="depart" data-i="${voitures.indexOf(v)}" style="background:${v.couleur};color:${lisible(v.couleur)}">🚦 Départ<small>${esc(v.nom)}</small></button>`).join('') : '';
   dimensionner();
   lampes(0);
   cancelAnimationFrame(raf);
@@ -1454,6 +1586,17 @@ function demarrerCourse(){
   raf = requestAnimationFrame(boucle);
 }
 const lisible = c => { const n = parseInt(c.slice(1), 16), r = n >> 16, gg = n >> 8 & 255, b = n & 255; return (r * 299 + gg * 587 + b * 114) / 1000 > 150 ? '#1F1F1F' : '#FFFFFF'; };
+// Appui sur « Départ » : trop tôt, faux départ ; sinon, le temps de réaction
+$('departs').addEventListener('pointerdown', e => {
+  const b = e.target.closest('.depart');
+  if(!b || !course || b.disabled) return;
+  e.preventDefault();
+  const c = course, v = c.voitures[b.dataset.i];
+  if(v.depart != null) return;
+  b.disabled = true;
+  if(c.phase === 'feux'){ v.faux = true; v.depart = 1; v.reaction = null; b.innerHTML = `⛔ Faux départ<small>${esc(v.nom)} · +1 s</small>`; flash(`${v.nom} : faux départ ! Pénalité de 1 s.`); }
+  else { v.depart = c.t; v.reaction = c.t; v.lance = 1.2; b.innerHTML = `⏱ ${c.t.toFixed(3).replace('.', ',')} s<small>${esc(v.nom)} · ${c.t < .2 ? 'excellent !' : c.t < .3 ? 'très bien' : c.t < .45 ? 'correct' : 'lent'}</small>`; }
+});
 function lampes(k){ $('lights').querySelectorAll('i').forEach((l, i) => l.classList.toggle('on', i < k)); }
 
 // Stand : on choisit les pneus, le changement se fait au prochain passage de la ligne
@@ -1509,16 +1652,16 @@ $('boosts').addEventListener('pointerdown', e => {
 // Adhérence de la voiture : usure moyenne des 4 pneus (chute quand l'un d'eux est au bout) et piste mouillée
 function majAdherence(v){
   const m = Math.max(.25, adherence(v.pneu, ageEffectif(v, course.w), course.w, usureMax(v) >= 100));
-  if(!v.prof || Math.abs(m - v.m) > .004 || v.prof.t !== v.t){
+  if(!v.prof || Math.abs(m - v.m) > .004){
     // Prévenir un joueur dont les pneus chutent
     if(v.humain && v.prof && m < v.m - .08) flash(`${v.nom} : pneus usés !`);
-    v.m = m; v.prof = Object.assign({ t:v.t }, profilAvec(v.t, m));
+    v.m = m; v.prof = profilAvec(v.t, m);
   }
 }
 function meteoEtape(dt){
   const c = course;
   if(c.pluieA != null && c.wCible === 0){
-    const tete = Math.max(...c.voitures.map(v => v.lap + Math.max(0, v.s) / v.t.len)) / c.tours;
+    const tete = Math.max(...c.voitures.map(v => Math.max(0, progression(v)))) / c.tours;
     if(tete >= c.pluieA){ c.wCible = .6; flash('🌧 La pluie arrive ! 🔧 Stand pour changer de pneus.'); }
   }
   if(c.w !== c.wCible) c.w = c.w < c.wCible ? Math.min(c.wCible, c.w + dt * .12) : Math.max(c.wCible, c.w - dt * .12);
@@ -1530,7 +1673,7 @@ function etape(dt){
     c.feux += dt;
     const k = Math.min(5, Math.floor(c.feux / 0.6));
     lampes(k);
-    if(c.feux >= 3.6){ lampes(0); $('lights').hidden = true; c.phase = 'course'; c.t = 0; $('msg').textContent = 'Partez !'; setTimeout(() => { if(course && course.phase === 'course') $('msg').textContent = ''; }, 1200); }
+    if(c.feux >= (c.reaction ? c.extinction : 3.6)){ lampes(0); $('lights').hidden = true; c.phase = 'course'; c.t = 0; $('msg').textContent = 'Partez !'; setTimeout(() => { if(course && course.phase === 'course') $('msg').textContent = ''; }, 1200); }
     return;
   }
   if(c.phase !== 'course') return;
@@ -1540,6 +1683,9 @@ function etape(dt){
   for(const v of c.voitures){
     if(v.abandon){ v.vit = 0; continue; }
     if(v.fin != null){ v.s += v.vit * dt * .6; v.vit *= 0.985; continue; }
+    if(v.depart == null && c.t > 1.5){ v.depart = 1.5; v.reaction = 1.5; }
+    if(v.depart == null || c.t < v.depart){ v.vit = 0; continue; }
+    if(c.reaction && c.t > 2.5 && !$('departs').hidden) $('departs').hidden = true;
     if(v.arret > 0){
       // Arrêt au stand : la voiture est immobile, puis repart avec les nouveaux pneus
       v.arret -= dt; v.vit = 0;
@@ -1548,8 +1694,8 @@ function etape(dt){
     }
     majAdherence(v);
     const t = v.t, n = t.pts.length, pr = v.prof;
-    const i = ((Math.floor(v.s / P.STEP) % n) + n) % n;
-    let cible = v.s < 0 ? pr.v[0] : pr.v[i];
+    const i = indice(t, v.s);
+    let cible = pr.v[i];
     // Boost : une charge de plus régulièrement (3 au plus)
     if(v.boosts < BOOST.max){ v.charge += dt / BOOST.recharge; if(v.charge >= 1){ v.charge = 0; v.boosts++; } } else v.charge = 0;
     if(v.boostT > 0){ v.boostT -= dt; cible *= BOOST.facteur; }
@@ -1565,18 +1711,27 @@ function etape(dt){
       const exces = t.vit[i] / pr.grip[i] - 1;
       if(exces > .08) g = clamp(exces - .08, 0, .8) * c.facPhys;
     }
+    // Adversaires : de temps en temps une erreur en virage (glissade, ou sortie large dans l'herbe), plus souvent sous la pluie
+    if(!v.humain && v.s >= 0){
+      if(!v.erreur && pr.grip[i] < P.VMAX * .85 && Math.random() < dt * tauxErreur(c.niv.d) * (1 + 1.5 * c.w)){
+        v.erreur = { fin:c.t + .5 + Math.random() * .8, force:.25 + Math.random() * .45, large:Math.random() < .35 };
+        if(v.erreur.large && c.t - (c.flashErr || -9) > 5){ c.flashErr = c.t; flash(`${v.court || v.nom} sort large !`); }
+      }
+      if(v.erreur){ if(c.t > v.erreur.fin) v.erreur = null; else g = Math.max(g, v.erreur.force); }
+    }
     // Pluie : patinage à l'accélération (surtout en pneus lisses)
     const lisses = !['inter', 'pluie'].includes(v.pneu);
     const patine = vit > v.vit + 8 && c.w > .05 ? c.w * (lisses ? 1 : .35) * c.facPhys : 0;
     g = Math.max(g, patine * .45);
     if(g > 0) vit *= 1 - .2 * Math.min(1, g);
     v.glisse += (g - v.glisse) * Math.min(1, dt * 6);
-    v.lacet = (t.tourne[i] || 0) * v.glisse * .5;
-    v.derive += (-(t.tourne[i] || 0) * v.glisse * 10 - v.derive) * Math.min(1, dt * 4);
+    v.lacet += ((t.tourne[i] || 0) * v.glisse * .5 - v.lacet) * Math.min(1, dt * 5);
+    const large = v.erreur && v.erreur.large ? 30 : 0;
+    v.derive += (-(t.tourne[i] || 0) * (v.glisse * 10 + large) - v.derive) * Math.min(1, dt * 4);
     if(v.glisse > .12 && Math.random() < v.glisse) c.fumee.push({ x:0, y:0, v, vie:0.45, pneu:true });
     if(v.humain && g > .3 && c.t - (v.flashDer || -9) > 4){ v.flashDer = c.t; flash(patine * .45 >= g ? `${v.nom} : ça patine sous la pluie !` : `${v.nom} : dérapage, virage tracé trop vite !`); }
     // Hors piste : la voiture ralentit fort dans l'herbe
-    const herbe = v.s >= 0 && t.herbe[i];
+    const herbe = v.s >= 0 && (t.herbe[i] || Math.abs(t.off[i] + v.derive) > P.LARGEUR / 2 + 6);
     if(herbe) vit = Math.min(vit, HERBE);
     if(v.humain && herbe && !v.horsPiste) flash(`${v.nom} : hors piste !`);
     v.horsPiste = herbe;
@@ -1584,22 +1739,23 @@ function etape(dt){
     else if(c.w > .15 && v.vit > 120 && Math.random() < c.w * 0.5) c.fumee.push({ x:0, y:0, v, vie:0.4, eau:true });
     // Accélération : plus vive avec des pneus qui accrochent, moins vive quand ça patine ; freinage fort dans l'herbe
     const avant = v.vit;
-    const taux = vit > v.vit ? Math.min(1.2, v.m) * (1 - .6 * Math.min(1, patine)) : herbe ? 2.2 : 1;
+    let taux = vit > v.vit ? Math.min(1.2, v.m) * (1 - .6 * Math.min(1, patine)) : herbe ? 2.2 : 1;
+    if(v.lance > 0){ v.lance -= dt; if(vit > v.vit) taux *= 1 + .6 * clamp((.4 - (v.reaction ?? .4)) / .25, 0, 1); }
     v.vit += (vit - v.vit) * Math.min(1, dt * 5 * taux);
     if(v.s >= 0) usurer(v, dt, i, (v.vit - avant) / Math.max(dt, 1e-3));
     if(v.surVibreur && Math.random() < .25) c.fumee.push({ x:0, y:0, v, vie:0.3, vib:true });
     v.s += v.vit * dt;
-    // Passage de la ligne : on enchaîne sur le tracé du tour suivant
-    if(v.s >= t.len){
-      const quand = c.t - (v.s - t.len) / Math.max(v.vit, 1);
+    // Passage de la ligne : fin d'un tour (le chemin continue sur le tour suivant)
+    const borne = t.bornes[v.lap];
+    if(v.s >= borne){
+      const quand = c.t - (v.s - borne) / Math.max(v.vit, 1);
       v.tours.push(quand - v.debutTour); v.debutTour = quand;
-      v.s -= t.len;
       if(v.lap + 1 >= c.tours){ v.fin = quand; if(v.humain) flash(`${v.nom} a fini !`); }
       else {
         if(!v.humain) strategieBot(v);
-        v.lap++; v.age++; v.t = v.laps[v.lap];
+        v.lap++; v.age++;
         if(v.stand){
-          v.pneu = v.stand; v.stand = null; v.age = 0; v.us = [0, 0, 0, 0]; v.arret = 3; v.arrets++; v.prof = null; v.s = 0;
+          v.pneu = v.stand; v.stand = null; v.age = 0; v.us = [0, 0, 0, 0]; v.arret = 3; v.arrets++; v.prof = null; v.s = borne;
           if(v.humain){ flash(`🔧 ${v.nom} : arrêt au stand, ${PNEUS[v.pneu].n}`); majStand(v); }
         }
       }
@@ -1619,16 +1775,24 @@ function flash(t){ $('msg').className = 'msg warn'; $('msg').textContent = t; cl
 
 function position(v){
   const t = v.t, n = t.pts.length;
-  const s = ((v.s % t.len) + t.len) % t.len, f = s / P.STEP, i = Math.floor(f) % n, u = f - Math.floor(f);
-  const a = t.pts[i], b = t.pts[(i + 1) % n], c = t.pts[(i + 3) % n];
+  const f = clamp((v.s + t.depart) / P.STEP, 0, n - 1.001), i = Math.floor(f), u = f - i;
+  const a = t.pts[i], b = t.pts[Math.min(i + 1, n - 1)];
+  // Cap pris sur une vingtaine de pixels (évite que la voiture pivote sur un petit à-coup du tracé)
+  const q0 = t.pts[Math.max(0, i - 3)], q3 = t.pts[Math.min(i + 4, n - 1)];
   let x = a[0] + (b[0] - a[0]) * u, y = a[1] + (b[1] - a[1]) * u;
-  const ang = Math.atan2(c[1] - a[1], c[0] - a[0]);
+  const ang = Math.atan2(q3[1] - q0[1], q3[0] - q0[0]);
   // Décalage de la grille de départ, qui s'efface dans les premiers mètres
   const dec = (v.lap ? 0 : v.cote * 18 * clamp(1 - (v.s + 50) / 200, 0, 1)) + (v.derive || 0);
   x += -Math.sin(ang) * dec; y += Math.cos(ang) * dec;
   return { x, y, a:ang + (v.lacet || 0) };
 }
-function progression(v){ return v.abandon ? -1e9 : v.fin != null ? 1e9 - v.fin : v.lap + v.s / v.t.len; }
+// Avancement en tours (2,5 : à mi-chemin du 3e tour)
+function progression(v){
+  if(v.abandon) return -1e9;
+  if(v.fin != null) return 1e9 - v.fin;
+  const b = v.t.bornes, a = v.lap ? b[v.lap - 1] : 0;
+  return v.lap + (v.s - a) / (b[v.lap] - a);
+}
 function majBoosts(){
   $('boosts').querySelectorAll('.boost').forEach(b => {
     const v = course.voitures[b.dataset.i];
@@ -1660,7 +1824,7 @@ function classement(){
 }
 function dessinerCourse(){
   const c = course;
-  c.voitures.filter(v => v.humain).forEach(v => traitVitesse(v.t.pts, v.t.v, .18, true));
+  c.voitures.filter(v => v.humain && v.affichage).forEach(v => { const d = v.affichage[Math.min(v.lap, v.affichage.length - 1)]; traitVitesse(d.pts, d.v, .18, true); });
   c.fumee.forEach(f => {
     g.fillStyle = f.herbe ? `rgba(120,90,40,${f.vie * .5})` : f.vib ? `rgba(60,60,60,${f.vie * .6})` : f.pneu ? `rgba(235,235,235,${f.vie * .9})` : f.eau ? `rgba(235,242,250,${f.vie * .7})` : `rgba(90,90,90,${f.vie * .45})`;
     g.beginPath(); g.arc(f.x, f.y, (f.herbe ? 5 : 7) + (1 - f.vie) * 8, 0, Math.PI * 2); g.fill();
@@ -1721,8 +1885,8 @@ function terminerCourse(){
   $('podium').innerHTML = `🏁 ${esc(premier.nom)} gagne !`;
   const pts = c.champ ? pointsCourse(c, tri, meilleurTour) : null;
   if(!c.champ) $('finTitle').textContent = `Résultats · ${circuit.n} · ${METEOS[c.meteo].ico} ${METEOS[c.meteo].n} · ${c.niv.n} ${c.niv.d} % · ${c.tours} tours`;
-  $('results').innerHTML = `<tr><th>#</th><th>Pilote</th><th>Pneus</th><th class="r">Temps</th><th class="r">Meilleur tour</th>${pts ? '<th class="r">Pts</th>' : ''}</tr>` +
-    tri.map((v, k) => `<tr${v.humain ? ' class="me"' : ''}><td>${k + 1}</td><td><span class="dot" style="background:${v.couleur}"></span>${esc(v.nom)}</td><td><i class="pn" style="--c:${PNEUS[v.pneu].c};width:22px;height:22px;border-width:3px;font-size:.65rem">${PNEUS[v.pneu].l}</i></td><td class="r">${v.abandon ? 'abandon' : v.fin != null ? fmtTime(Math.round(v.fin * 1000)) : 'non classé'}</td><td class="r">${fmtTime(meilleurTour(v))}</td>${pts ? `<td class="r"><b>${pts.get(v) || 0}</b></td>` : ''}</tr>`).join('');
+  $('results').innerHTML = `<tr><th>#</th><th>Pilote</th><th>Pneus</th><th class="r">Temps</th><th class="r">Meilleur tour</th>${c.reaction ? '<th class="r">Réaction</th>' : ''}${pts ? '<th class="r">Pts</th>' : ''}</tr>` +
+    tri.map((v, k) => `<tr${v.humain ? ' class="me"' : ''}><td>${k + 1}</td><td><span class="dot" style="background:${v.couleur}"></span>${esc(v.nom)}</td><td><i class="pn" style="--c:${PNEUS[v.pneu].c};width:22px;height:22px;border-width:3px;font-size:.65rem">${PNEUS[v.pneu].l}</i></td><td class="r">${v.abandon ? 'abandon' : v.fin != null ? fmtTime(Math.round(v.fin * 1000)) : 'non classé'}</td><td class="r">${fmtTime(meilleurTour(v))}</td>${c.reaction ? `<td class="r">${v.faux ? 'faux départ' : v.reaction != null ? v.reaction.toFixed(3).replace('.', ',') + ' s' : '—'}</td>` : ''}${pts ? `<td class="r"><b>${pts.get(v) || 0}</b></td>` : ''}</tr>`).join('');
   // Championnat : classement général à jour, et boutons de la suite
   $('finChamp').hidden = !pts;
   ['redraw', 'rematch'].forEach(id => $(id).hidden = !!pts);
@@ -1774,6 +1938,7 @@ function abandonner(){
       if(!confirm('Abandonner cette course ? Vous marquez 0 point, les autres pilotes finissent la course.')) return;
       course.voitures.filter(v => v.humain).forEach(v => { v.abandon = true; v.fin = null; });
       if(course.phase === 'feux'){ course.phase = 'course'; $('lights').hidden = true; }
+      $('departs').hidden = true;
       terminerCourse();
       return;
     }
