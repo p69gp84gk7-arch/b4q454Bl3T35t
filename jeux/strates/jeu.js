@@ -348,12 +348,19 @@ function appliquerEn(x, z){
   if(outil === 'creuser'){
     for(const c of pinceau(x, z)) if(!g.fait.has(c) && I.h[c] === g.niveau && creuserCase(c, g.raisons)){ g.fait.add(c); fait++; }
   } else if(outil === 'sculpter'){
-    // Une seule couche à la fois. Le sens se décide à la première case quittée :
-    // sur la couche juste en dessous, on tire (la couche s'étend d'un cran) ; sur la même couche, on pousse (elle recule d'un cran)
-    if(!g.mode && c0 !== g.depart){
-      const h = I.h[c0];
-      if(h < g.niveau) g.mode = 'tirer';
-      else if(h === g.niveau) g.mode = 'pousser';
+    // Une seule couche à la fois. Le sens se décide quand le doigt s'est un peu éloigné du point de départ :
+    // vers le bas de la pente, on tire (la couche s'étend d'un cran) ; vers l'intérieur, on pousse (elle recule d'un cran)
+    if(!g.mode){
+      const mx = x - g.x0, mz = z - g.z0, d = Math.hypot(mx, mz);
+      if(d < .5) return 0;
+      if(g.descente) g.mode = mx * g.descente[0] + mz * g.descente[1] > 0 ? 'tirer' : 'pousser';
+      else { const h = I.h[c0]; g.mode = h < g.niveau ? 'tirer' : h === g.niveau ? 'pousser' : null; }
+      if(!g.mode) return 0;
+      // Le sens est décidé : on reprend depuis le point de départ (rien n'est perdu)
+      const n = Math.ceil(d / .35);
+      let f = 0;
+      for(let k = 0; k < n; k++) f += appliquerEn(g.x0 + mx * k / n, g.z0 + mz * k / n);
+      fait += f;
     }
     if(g.mode) for(const c of pinceau(x, z)){
       if(g.fait.has(c)) continue;
@@ -371,14 +378,16 @@ function appliquer(){
   for(let k = 1; k <= n; k++) fait += appliquerEn(x0 + (cell.x - x0) * k / n, z0 + (cell.z - z0) * k / n);
   g.px = cell.x; g.pz = cell.z;
   if(g.arbres){ R.majArbres(); g.arbres = false; }
+  if(outil === 'sculpter') R.montrerContour(g.niveau, cell.x, cell.z);
   if(!fait) expliquer(g.raisons);
   g.raisons.clear();
   if(fait) majInterface();
   R.montrerCurseur(cell.x, cell.z, RAYONS[S.pinceau - 1], g.niveau);
 }
 function debutGeste(cell){
-  geste = { cell, depart:cell.c, niveau:I.h[cell.c], fait:new Set(), raisons:new Set(), bouge:performance.now() };
+  geste = { cell, depart:cell.c, niveau:I.h[cell.c], fait:new Set(), raisons:new Set(), bouge:performance.now(), x0:cell.x, z0:cell.z };
   if(outil === 'construire'){ survolConstruire(cell); return; }
+  if(outil === 'sculpter') geste.descente = descente(cell.x, cell.z, geste.niveau);
   appliquer();
   // Creuser : le doigt immobile continue de creuser, de plus en plus profond
   if(outil === 'creuser') geste.timer = setInterval(() => {
@@ -393,11 +402,24 @@ function suiteGeste(cell){
   geste.cell = cell; geste.bouge = performance.now();
   appliquer();
 }
-function finGeste(annule){
+function finGeste(){
   if(!geste) return;
   clearInterval(geste.timer);
-  if(outil === 'construire' && !annule && geste.cell) poserBatiment(geste.cell);
+  R.montrerContour();
   geste = null;
+}
+// Direction où le terrain descend sous la couche L, autour du point touché (null au milieu d'un plateau)
+function descente(x, z, L){
+  let dx = 0, dz = 0;
+  const i0 = Math.floor(x), j0 = Math.floor(z);
+  for(let b = -2; b <= 2; b++) for(let a = -2; a <= 2; a++){
+    const i = i0 + a, j = j0 + b;
+    if(!dans(i, j) || I.h[idx(i, j)] >= L) continue;
+    const vx = i + .5 - x, vz = j + .5 - z, d = Math.hypot(vx, vz) || 1;
+    dx += vx / d / d; dz += vz / d / d;
+  }
+  const l = Math.hypot(dx, dz);
+  return l > .05 ? [dx / l, dz / l] : null;
 }
 
 /* ---------- Toucher avec la main : récolter un arbre, ouvrir un bâtiment ---------- */
@@ -418,11 +440,26 @@ function toucher(cell){
 }
 
 /* ---------- Construire ---------- */
-let aConstruire = null;
+let aConstruire = null, pose = null;
+// On choisit le bâtiment, il apparaît au milieu de l'écran ; on le déplace du doigt, puis on confirme
+function commencerConstruction(k){
+  aConstruire = k;
+  fermer();
+  choisirOutil('construire');
+  const r = $('vue').getBoundingClientRect();
+  const cell = R.viser(r.left + r.width / 2, r.top + r.height * .45) || { i:I.depart.i, j:I.depart.j, c:idx(I.depart.i, I.depart.j) };
+  survolConstruire(cell);
+}
 function survolConstruire(cell){
-  if(!aConstruire){ R.montrerFantome(); return; }
-  const t = BATS[aConstruire].t || 1;
-  R.montrerFantome(t, cell.i, cell.j, !emplacement(aConstruire, cell.i, cell.j) && peutPayer(BATS[aConstruire].cout));
+  if(!aConstruire){ R.montrerFantome(); $('poser').hidden = true; return; }
+  const B = BATS[aConstruire], t = B.t || 1;
+  pose = { i:clamp(cell.i, 0, N - t), j:clamp(cell.j, 0, N - t) };
+  const pb = emplacement(aConstruire, pose.i, pose.j), manque = Object.entries(B.cout).filter(([k, n]) => !libre() && (S.inv[k] || 0) < n);
+  R.montrerFantome(t, pose.i, pose.j, !pb && !manque.length);
+  $('poser').hidden = false;
+  $('poserTxt').innerHTML = `<b>${esc(B.n)}</b>` + (manque.length ? `<small>Il manque ${manque.map(([k, n]) => `${n - (S.inv[k] || 0)} ${esc(OBJETS[k].n.toLowerCase())}`).join(', ')}${manque.some(([k]) => k === 'planches') ? ' (🔨 Fabriquer : du bois en planches)' : ''}</small>`
+    : pb ? `<small>${esc(pb)}</small>` : 'Déplacez-le du doigt, puis validez');
+  $('poserOk').disabled = !!pb || !!manque.length;
 }
 function poserBatiment(cell){
   const k = aConstruire;
@@ -434,10 +471,8 @@ function poserBatiment(cell){
   const t = BATS[k].t || 1, cases = [];
   for(let j = cell.j; j < cell.j + t; j++) for(let i = cell.i; i < cell.i + t; i++) cases.push(idx(i, j));
   ajouterBat(k, cell.i, cell.j, BATS[k].cote ? { dir:directionEau(cases) } : {});
-  R.montrerFantome();
   toast(`${BATS[k].n} : construit !`);
   if(k === 'port') toast('⛵ Le port est prêt. Ouvrez l\'<b>Archipel</b> pour voyager.', true);
-  aConstruire = null;
   choisirOutil('main');
   majInterface();
 }
@@ -448,13 +483,13 @@ function choisirOutil(k){
   outil = k;
   document.querySelectorAll('#outils [data-outil]').forEach(b => b.classList.toggle('actif', b.dataset.outil === k));
   $('options').hidden = !OUTILS_SCULPTE.includes(k);
-  if(k !== 'construire'){ aConstruire = null; R.montrerFantome(); }
+  if(k !== 'construire'){ aConstruire = null; pose = null; R.montrerFantome(); $('poser').hidden = true; }
   if(!OUTILS_SCULPTE.includes(k)) R.montrerCurseur();
   $('aideOutil').textContent = {
     main:'Touchez un arbre pour le bois, un bâtiment pour le voir · deux doigts pour bouger la vue',
     creuser:'Touchez ou glissez pour creuser · gardez le doigt appuyé pour creuser plus profond',
-    sculpter:'Posez le doigt sur le bord d\'une couche : tirez vers le bas pour l\'étendre d\'un cran, poussez vers l\'intérieur pour la faire reculer d\'un cran',
-    construire:aConstruire ? `${BATS[aConstruire].n} : glissez jusqu'à l'endroit voulu et relâchez` : '',
+    sculpter:'Doigt sur le bord d\'une couche (liseré blanc) : tirez vers le bas, elle s\'étend ; poussez, elle recule',
+    construire:'Glissez un doigt pour placer le bâtiment · deux doigts pour bouger la vue',
   }[k] || '';
   majOptions();
 }
@@ -476,6 +511,8 @@ function majInterface(){
   if(!$('pConstruire').hidden) remplirConstruire();
   if(!$('options').hidden) majOptions();
 }
+// Ne redessine un panneau que si son contenu change (sinon le bouton touché disparaît sous le doigt)
+function remplir(id, html){ const el = $(id); if(el.dataset.html !== html){ el.innerHTML = html; el.dataset.html = html; } }
 function ouvrir(id){
   document.querySelectorAll('.panneau').forEach(p => { p.hidden = p.id !== id; });
   $('voile').hidden = false;
@@ -485,22 +522,22 @@ function fermer(){ document.querySelectorAll('.panneau').forEach(p => p.hidden =
 function verrou(k){ const p = palierDe(k); return p >= 0 ? `Palier « ${esc(PALIERS[p].n)} » (${PALIERS[p].pop} habitants)` : ''; }
 
 function remplirConstruire(){
-  $('lConstruire').innerHTML = A_CONSTRUIRE.map(k => {
+  remplir('lConstruire', A_CONSTRUIRE.map(k => {
     const b = BATS[k], ok = debloque(k), payable = peutPayer(b.cout);
     return `<div class="fiche${ok ? '' : ' verrou'}"><div class="ft"><b>${esc(b.n)}</b>${b.t ? '<small>2 × 2</small>' : ''}</div><p>${esc(b.d)}</p>
-      ${ok ? `<div class="couts">${fmtCout(b.cout)}</div><button data-bat="${k}"${payable ? '' : ' disabled'}>Placer</button>` : `<p class="lock">🔒 ${verrou(k)}</p>`}</div>`;
-  }).join('');
+      ${ok ? `<div class="couts">${fmtCout(b.cout)}</div><button data-bat="${k}">Placer</button>${payable ? '' : '<p class="lock">Il manque des matériaux (en rouge) : vous pouvez déjà choisir l\'endroit.</p>'}` : `<p class="lock">🔒 ${verrou(k)}</p>`}</div>`;
+  }).join(''));
 }
 function lieuOk(r){ return !r.lieu || libre() || I.bat.some(b => b.k === r.lieu); }
 function remplirFabriquer(){
-  $('lFabriquer').innerHTML = Object.entries(RECETTES).map(([k, r]) => {
+  remplir('lFabriquer', Object.entries(RECETTES).map(([k, r]) => {
     const ok = debloque(k), deja = r.outil && niveauPioche() >= r.outil, lieu = lieuOk(r), payable = peutPayer(r.cout);
     const donne = r.donne ? Object.entries(r.donne).map(([o, n]) => `${n} ${esc(OBJETS[o].n.toLowerCase())}`).join(', ') : esc(r.n);
     return `<div class="fiche${ok ? '' : ' verrou'}"><div class="ft"><b>${esc(r.n)}</b>${r.lieu ? `<small>${esc(BATS[r.lieu].n)}</small>` : ''}</div>
       <p>${r.d ? esc(r.d) : 'Donne : ' + donne + '.'}</p>
       ${!ok ? `<p class="lock">🔒 ${verrou(k)}</p>` : deja ? '<p class="ok">✔ Vous l\'avez déjà.</p>' : !lieu ? `<p class="lock">Il faut un ${esc(BATS[r.lieu].n.toLowerCase())} sur cette île.</p>` :
       `<div class="couts">${fmtCout(r.cout)}</div><div class="btns"><button data-fab="${k}" data-n="1"${payable ? '' : ' disabled'}>Fabriquer</button>${r.outil ? '' : `<button data-fab="${k}" data-n="10" class="sec"${payable ? '' : ' disabled'}>× 10</button>`}</div>`}</div>`;
-  }).join('');
+  }).join(''));
 }
 function fabriquer(k, n){
   const r = RECETTES[k];
@@ -518,22 +555,22 @@ function fabriquer(k, n){
 }
 function remplirSac(){
   const items = ORDRE_SAC.filter(k => libre() || (S.inv[k] || 0) > 0);
-  $('lSac').innerHTML = `<p class="outilActuel">Outil : <b>${esc(PIOCHES[niveauPioche()])}</b></p>` + (items.length ? `<div class="grilleSac">${items.map(k => `<div class="obj"><i style="background:${OBJETS[k].c}"></i><span>${esc(OBJETS[k].n)}</span><b>${libre() ? '∞' : S.inv[k]}</b></div>`).join('')}</div>` : '<p>Le sac est vide. Creusez et coupez des arbres !</p>');
+  remplir('lSac', `<p class="outilActuel">Outil : <b>${esc(PIOCHES[niveauPioche()])}</b></p>` + (items.length ? `<div class="grilleSac">${items.map(k => `<div class="obj"><i style="background:${OBJETS[k].c}"></i><span>${esc(OBJETS[k].n)}</span><b>${libre() ? '∞' : S.inv[k]}</b></div>`).join('')}</div>` : '<p>Le sac est vide. Creusez et coupez des arbres !</p>'));
 }
 function remplirArchipel(){
   const port = libre() || I.bat.some(b => b.k === 'port');
-  $('lArchipel').innerHTML = (port ? '' : '<p class="info">⛵ Construisez un <b>Port</b> au bord de l\'eau pour prendre le bateau.</p>') + ILES.map(ile => {
+  remplir('lArchipel', (port ? '' : '<p class="info">⛵ Construisez un <b>Port</b> au bord de l\'eau pour prendre le bateau.</p>') + ILES.map(ile => {
     const ici = ile.k === S.active, connue = S.decouvertes.includes(ile.k), ok = libre() || S.palier >= ile.palier;
     const pop = ici ? I.hab.length : S.pops[ile.k] || 0;
     return `<div class="fiche ile ile-${ile.k}${ok ? '' : ' verrou'}"><div class="ft"><b>${esc(ile.n)}</b>${connue ? `<small>👥 ${pop}</small>` : ''}</div><p>${esc(ile.d)}</p>
       ${ici ? '<p class="ok">📍 Vous êtes ici.</p>' : !ok ? `<p class="lock">🔒 Palier « ${esc(PALIERS[ile.palier].n)} » (${PALIERS[ile.palier].pop} habitants)</p>` :
       `<button data-ile="${ile.k}"${port ? '' : ' disabled'}>${connue ? 'Partir' : 'Découvrir (2 colons partent)'}</button>`}</div>`;
-  }).join('');
+  }).join(''));
 }
 function remplirPaliers(){
   const pt = popTotale();
-  $('lPaliers').innerHTML = PALIERS.map((p, k) => `<div class="fiche${k <= S.palier ? ' atteint' : ''}${k === S.palier ? ' actuel' : ''}"><div class="ft"><b>${esc(p.n)}</b><small>${p.pop} habitants</small></div>
-    <p>${p.d.map(x => esc(NOMS[x] || x)).join(' · ')}</p>${k === S.palier + 1 ? `<p class="lock">Encore ${p.pop - pt} habitant${p.pop - pt > 1 ? 's' : ''}.</p>` : ''}</div>`).join('');
+  remplir('lPaliers', PALIERS.map((p, k) => `<div class="fiche${k <= S.palier ? ' atteint' : ''}${k === S.palier ? ' actuel' : ''}"><div class="ft"><b>${esc(p.n)}</b><small>${p.pop} habitants</small></div>
+    <p>${p.d.map(x => esc(NOMS[x] || x)).join(' · ')}</p>${k === S.palier + 1 ? `<p class="lock">Encore ${p.pop - pt} habitant${p.pop - pt > 1 ? 's' : ''}.</p>` : ''}</div>`).join(''));
 }
 function annoncerPalier(k){
   const p = PALIERS[k];
@@ -663,7 +700,7 @@ function gestes(cv){
       mode = cell ? 'outil' : 'rien';
       if(cell) debutGeste(cell);
     } else if(pts.size === 2){
-      if(mode === 'outil') finGeste(true);
+      if(mode === 'outil') finGeste();
       mode = 'deux'; ref = deux();
     }
   });
@@ -697,7 +734,7 @@ function gestes(cv){
     const p = pts.get(e.pointerId);
     if(!p) return;
     pts.delete(e.pointerId);
-    if(mode === 'outil') finGeste(e.type === 'pointercancel');
+    if(mode === 'outil') finGeste();
     else if(mode === 'toucher' && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < 12 && performance.now() - p.t0 < 500){
       const cell = R.viser(e.clientX, e.clientY);
       if(cell) toucher(cell);
@@ -742,7 +779,9 @@ function brancher(){
   $('pinceaux').onclick = e => { const b = e.target.closest('button'); if(b){ S.pinceau = +b.dataset.p; majOptions(); } };
   $('voile').onclick = fermer;
   document.querySelectorAll('.panneau .fermer').forEach(b => b.onclick = fermer);
-  $('lConstruire').onclick = e => { const b = e.target.closest('[data-bat]'); if(!b) return; aConstruire = b.dataset.bat; fermer(); choisirOutil('construire'); toast(`${BATS[aConstruire].n} : glissez jusqu'à l'endroit voulu et relâchez.`); };
+  $('lConstruire').onclick = e => { const b = e.target.closest('[data-bat]'); if(b) commencerConstruction(b.dataset.bat); };
+  $('poserOk').onclick = () => { if(pose) poserBatiment(pose); };
+  $('poserNon').onclick = () => choisirOutil('main');
   $('lFabriquer').onclick = e => { const b = e.target.closest('[data-fab]'); if(b) fabriquer(b.dataset.fab, +b.dataset.n); };
   $('lArchipel').onclick = e => { const b = e.target.closest('[data-ile]'); if(b) voyager(b.dataset.ile); };
   $('tBat').onclick = e => {
