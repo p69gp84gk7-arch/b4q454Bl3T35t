@@ -114,10 +114,31 @@ h2{ font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:
 .standings div{ display:flex; align-items:center; gap:6px; white-space:nowrap; }
 .standings em{ width:10px; height:10px; border-radius:50%; border:1.5px solid var(--ink); display:inline-block; }
 .boosts{ display:flex; flex-direction:column; gap:8px; margin-top:auto; flex:1; min-height:0; }
-.boost{ flex:1; min-height:52px; max-height:120px; border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); font-weight:800; font-size:1.05rem; line-height:1.1; -webkit-user-select:none; user-select:none; touch-action:manipulation; }
+.boost{ flex:1; min-height:46px; max-height:120px; border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); font-weight:800; font-size:1.05rem; line-height:1.1; -webkit-user-select:none; user-select:none; touch-action:manipulation; }
 .boost small{ display:block; font-size:.75rem; font-weight:700; opacity:.85; }
 .boost:disabled{ opacity:.45; box-shadow:none; }
 .boost.on{ transform:translateY(2px); box-shadow:0 1px 0 var(--ink); }
+
+/* Grille de départ : météo et pneus */
+.grille{ position:absolute; inset:0; z-index:6; background:rgba(241,234,218,.96); overflow:auto; display:flex; justify-content:center;
+  padding:calc(10px + env(safe-area-inset-top,0px)) 14px calc(12px + env(safe-area-inset-bottom,0px)); }
+.grille-in{ width:min(640px, 100%); display:flex; flex-direction:column; gap:10px; }
+.grille-t{ margin:4px 0 0; }
+.meteo-carte{ display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--card); border:2px solid var(--ink); border-radius:14px; box-shadow:2px 3px 0 var(--ink); }
+.meteo-carte .ico{ font-size:2.4rem; line-height:1; }
+.meteo-carte b{ display:block; font-size:1.1rem; }
+.meteo-carte small{ color:var(--muted); line-height:1.3; display:block; }
+.pilote-g{ padding:10px 12px; background:var(--card); border:2px solid var(--line); border-radius:12px; display:grid; gap:6px; }
+.pilote-g b{ display:flex; align-items:center; gap:8px; }
+.conseil-pn{ font-size:.82rem; color:var(--ink); }
+.grille-act{ display:grid; grid-template-columns:1fr 1.6fr; gap:8px; }
+.grille-act button{ padding:12px; font-weight:800; font-size:1.05rem; border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); }
+/* Stand pendant la course */
+.pilote{ display:flex; flex-direction:column; gap:6px; flex:1; min-height:0; }
+.stand{ padding:7px 8px; font-weight:800; font-size:.85rem; background:var(--card); border:2px solid var(--ink); box-shadow:2px 2px 0 var(--ink); line-height:1.15; }
+.stand.prevu{ background:var(--gold); }
+.stand-choix{ display:flex; flex-wrap:wrap; gap:4px; justify-content:center; }
+.stand-choix .pn{ width:30px; height:30px; }
 
 /* ---------- Résultats ---------- */
 table{ width:100%; border-collapse:collapse; background:var(--card); border:2px solid var(--ink); border-radius:12px; overflow:hidden; }
@@ -183,6 +204,15 @@ tr.me td{ font-weight:800; }
     </div>
     <div class="boosts" id="boosts" hidden></div>
   </aside>
+  <div class="grille" id="grille" hidden>
+    <div class="grille-in">
+      <h2 class="grille-t" id="grilleTitre">Grille de départ</h2>
+      <div class="meteo-carte" id="grilleMeteo"></div>
+      <div id="grillePilotes"></div>
+      <p class="aide">Pendant la course, le bouton 🔧 Stand change les pneus : arrêt de 3 s au prochain passage de la ligne.</p>
+      <div class="grille-act"><button class="btn-light" id="grilleRetour">Retracer</button><button class="btn-red" id="grilleGo">🚦 Feux !</button></div>
+    </div>
+  </div>
   <div class="tourner">
     <svg viewBox="0 0 90 90" fill="none" stroke="#1F1F1F" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
       <rect x="30" y="8" width="30" height="52" rx="6"/><path d="M14 70h52a6 6 0 0 0 6-6V52" stroke="#D7263D"/><path d="M66 58l6-6 6 6" stroke="#D7263D"/>
@@ -208,10 +238,14 @@ tr.me td{ font-weight:800; }
   </div>
 </main>
 
-<script src="drawrace/circuits.js"></script>
-<script src="drawrace/piste.js"></script>
+<script src="drawrace/circuits.js?v=41"></script>
+<script src="drawrace/piste.js?v=41"></script>
 <script>
 const P = window.Piste;
+// Garde-fou : page et scripts de versions différentes (ancien cache) → on recharge une fois depuis le réseau
+if(!P || !P.vitesses || !window.CIRCUITS.every(c => c.decor)){
+  try{ if(!sessionStorage.getItem('drawrace-recharge')){ sessionStorage.setItem('drawrace-recharge', '1'); location.reload(); } }catch(e){}
+}
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const get = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
@@ -473,6 +507,7 @@ const DECORS = {
   fleuve:{ sol:'#D6E8C0', trait:'rgba(80,120,50,.13)', eau:'autour', objets:{ arbre:5 } },
   lac:{ sol:'#D9EBC4', trait:'rgba(80,120,50,.13)', eau:'lac', objets:{ arbre:4, buisson:3 } },
   mer:{ sol:'#E6DECB', trait:'rgba(120,100,70,.12)', eau:'bord', bateaux:true, objets:{ immeuble:4, palmier:2 } },
+  montagne:{ sol:'#D3DFC4', trait:'rgba(70,90,70,.15)', objets:{ sapin:5, rocher:3, neige:3, maison:1 } },
   prairie:{ sol:'#E6DFB2', trait:'rgba(130,110,40,.15)', objets:{ botte:2, rocher:2, cactus:2, arbre:1 } },
 };
 // Hasard reproductible : le même décor à chaque partie sur un circuit
@@ -564,7 +599,7 @@ function dessinerDecor(o, c, D){
   if(D.bateaux) cellules.filter((_, k) => k % 37 === 5).slice(0, 6).forEach(([x, y]) => objet(o, 'bateau', x, y, 8, rnd, D));
   // Les autres éléments, tirés selon leur poids
   const liste = Object.entries(D.objets), total = liste.reduce((s, [, p]) => s + p, 0);
-  const TAILLE = { arbre:11, buisson:6, sapin:9, olivier:7, cerisier:10, palmier:10, dune:18, rocher:7, cactus:7, botte:6, maison:11, immeuble:20, neon:12 };
+  const TAILLE = { neige:22, arbre:11, buisson:6, sapin:9, olivier:7, cerisier:10, palmier:10, dune:18, rocher:7, cactus:7, botte:6, maison:11, immeuble:20, neon:12 };
   for(let k = 0; k < 900; k++){
     let r = rnd() * total, type = liste[0][0];
     for(const [t, p] of liste){ if((r -= p) < 0){ type = t; break; } }
@@ -604,6 +639,9 @@ function objet(o, type, x, y, r, rnd, D){
       o.fillStyle = '#5E9B4F';
       o.beginPath(); o.roundRect ? o.roundRect(-2.5, -r, 5, r * 2, 2.5) : o.rect(-2.5, -r, 5, r * 2); o.fill(); o.stroke();
       o.beginPath(); o.roundRect ? o.roundRect(-r * .8, -2, r * 1.6, 4, 2) : o.rect(-r * .8, -2, r * 1.6, 4); o.fill(); o.stroke(); break;
+    case 'neige':
+      o.fillStyle = '#FBFDFF'; o.strokeStyle = 'rgba(120,150,190,.8)';
+      o.beginPath(); for(let k = 0; k < 9; k++){ const a = k / 9 * Math.PI * 2, rr = r * (.6 + rnd() * .4); o.lineTo(Math.cos(a) * rr, Math.sin(a) * rr * .7); } o.closePath(); o.fill(); o.stroke(); break;
     case 'botte': disque(0, 0, r, '#E8C766'); o.beginPath(); o.arc(0, 0, r * .5, 0, Math.PI * 1.6); o.stroke(); break;
     case 'maison':
       o.rotate(rnd() * Math.PI);
@@ -699,9 +737,22 @@ let traces = [];                // trajectoires validées : traces[joueur][tour]
 let tr = null;                  // tracé en cours
 let joueurTrace = 0, tourTrace = 0;
 
+// Météo réelle sur le circuit : tirée en arrivant (la surprise est découverte ici) ; l'averse arrive entre 30 et 65 % de la course
+let meteoCourse = null;
+function tirerMeteo(){
+  let m = cfg.meteo;
+  if(m === 'surprise'){ let r = Math.random(); m = SURPRISE.find(([, p]) => (r -= p) < 0)[0]; }
+  meteoCourse = { m, pluieA:m === 'averse' ? .3 + Math.random() * .35 : null };
+}
+function texteMeteo(){
+  const { m, pluieA } = meteoCourse, T = circuit.tours;
+  return { sec:'Piste sèche toute la course.', pluie:'Pluie légère : piste mouillée toute la course.', deluge:'Grosse pluie : piste inondée.',
+    averse:`Sec au départ. La pluie est attendue vers le tour ${Math.min(T, Math.floor(pluieA * T) + 1)} sur ${T}.` }[m];
+}
 function debutTraces(){
   cancelAnimationFrame(raf); course = null;
   circuit = byId[cfg.circuit];
+  tirerMeteo();
   traces = [];
   joueurTrace = 0; tourTrace = 0;
   show('jeu');
@@ -712,11 +763,12 @@ function debutTraces(){
 function nomJoueur(i){ return cfg.joueurs[i].nom || `Joueur ${i + 1}`; }
 // Nouveau tracé pour le joueur en cours : on repart du tour 1
 function nouveauTrace(){
+  $('grille').hidden = true;
   traces[joueurTrace] = [];
   tourTrace = 0;
   tr = { pts:[], j:null, fini:false, actif:false };
   $('banner').innerHTML = `${esc(nomJoueur(joueurTrace))} · tour 1 / ${circuit.tours}<small>${esc(circuit.n)} · partez de la ligne à damier et enchaînez les ${circuit.tours} tours</small>`;
-  $('msg').className = 'msg'; $('msg').textContent = `Posez le doigt sur la ligne de départ et faites ${circuit.tours} tours sans lever le doigt (vous pouvez reprendre au bout du trait).`;
+  $('msg').className = 'msg'; $('msg').textContent = `${METEOS[meteoCourse.m].ico} ${texteMeteo()} Posez le doigt sur la ligne de départ et faites ${circuit.tours} tours sans lever le doigt (vous pouvez reprendre au bout du trait).`;
   $('drawCtl').hidden = false; $('boosts').hidden = true; $('gauge').hidden = false;
   $('lights').hidden = true; $('standings').hidden = true; $('timer').hidden = true;
   $('clear').textContent = 'Recommencer';
@@ -887,21 +939,42 @@ $('done').onclick = () => {
   if(!tr || !tr.fini) return;
   joueurTrace++;
   if(joueurTrace < cfg.joueurs.length) nouveauTrace();
-  else demarrerCourse();
+  else ouvrirGrille();
 };
+
+/* ---------- Grille de départ : on découvre la météo et on choisit ses pneus ---------- */
+function ouvrirGrille(){
+  tr = null;
+  const M = METEOS[meteoCourse.m], conseil = meilleurPneu(meteoCourse.m, circuit.tours);
+  $('grilleTitre').textContent = `Grille de départ · ${circuit.n} · ${circuit.tours} tours`;
+  $('grilleMeteo').innerHTML = `<span class="ico">${M.ico}</span><span><b>Météo : ${M.n}</b><small>${texteMeteo()}</small></span>`;
+  $('grillePilotes').innerHTML = cfg.joueurs.map((j, i) => `<div class="pilote-g" data-i="${i}">
+      <b><span class="dot" style="background:${j.couleur}"></span>${esc(nomJoueur(i))}</b>
+      <div class="pneus">${Object.entries(PNEUS).map(([k, p]) => `<button class="pn" data-pneu="${k}" style="--c:${p.c}" aria-pressed="${j.pneu === k}" aria-label="Pneus ${p.n}" title="${p.n}">${p.l}</button>`).join('')}</div>
+      <p class="pn-aide"><b style="display:inline">${PNEUS[j.pneu].n}</b> : ${PNEUS[j.pneu].aide}</p>
+      <p class="pn-aide conseil-pn">🔧 Conseil de l'ingénieur : <b style="display:inline">${PNEUS[conseil].n}</b></p>
+    </div>`).join('');
+  $('grille').hidden = false;
+  redessiner();
+}
+$('grillePilotes').addEventListener('click', e => {
+  const b = e.target.closest('.pn'); if(!b) return;
+  cfg.joueurs[b.closest('.pilote-g').dataset.i].pneu = b.dataset.pneu; saveCfg(); ouvrirGrille();
+});
+$('grilleGo').onclick = () => { $('grille').hidden = true; demarrerCourse(); };
+$('grilleRetour').onclick = () => { $('grille').hidden = true; joueurTrace = 0; nouveauTrace(); };
 
 /* ---------- Course ---------- */
 let course = null, raf = 0;
 function demarrerCourse(){
   tr = null;
   const niv = NIVEAUX[cfg.niveau];
-  // Météo de la course (la surprise est tirée maintenant)
-  let meteo = cfg.meteo;
-  if(meteo === 'surprise'){ let r = Math.random(); meteo = SURPRISE.find(([, p]) => (r -= p) < 0)[0]; }
+  if(!meteoCourse) tirerMeteo();
+  const meteo = meteoCourse.m;
   const voitures = cfg.joueurs.map((j, i) => ({ nom:nomJoueur(i), couleur:j.couleur, humain:true, laps:traces[i], t:traces[i][0], pneu:j.pneu || 'medium' }));
   const pris = new Set(cfg.joueurs.map(j => j.couleur));
   const libres = COULEURS.filter(c => !pris.has(c));
-  const meilleur = meilleurPneu(cfg.meteo, circuit.tours), secs = ['tendre', 'medium', 'dur'];
+  const meilleur = meilleurPneu(meteo, circuit.tours), secs = ['tendre', 'medium', 'dur'];
   for(let k = 0; voitures.length < 4; k++){
     const bt = traceBot(niv, 1.3 + k * 2.1);
     // Pneus des adversaires : au hasard en Facile, souvent les bons en Normal, toujours les bons ensuite
@@ -912,10 +985,10 @@ function demarrerCourse(){
   // Grille de départ en quinconce : les joueurs devant, les adversaires derrière
   const ordre = voitures.slice().sort((a, b) => b.humain - a.humain);
   ordre.forEach((v, k) => Object.assign(v, { s:-34 - k * 38, lap:0, t:v.laps[0], cote:k % 2 ? 1 : -1, vit:0, boosts:BOOST.n, boostT:0,
-    tours:[], debutTour:0, fin:null, m:0, prof:null }));
+    tours:[], debutTour:0, fin:null, m:0, prof:null, age:0, stand:null, arret:0, arrets:0 }));
   const w0 = meteo === 'pluie' ? .5 : meteo === 'deluge' ? 1 : 0;
   course = { voitures, tours:circuit.tours, t:0, phase:'feux', feux:0, fumee:[], finHumains:null, niv,
-    meteo, w:w0, wCible:w0, pluieA:meteo === 'averse' ? .3 + Math.random() * .35 : null, gouttes:[] };
+    meteo, w:w0, wCible:w0, pluieA:meteoCourse.pluieA, gouttes:[] };
   voitures.forEach(majAdherence);
   show('jeu');
   $('drawCtl').hidden = true; $('gauge').hidden = true;
@@ -923,10 +996,14 @@ function demarrerCourse(){
   $('quit').textContent = 'Abandonner';
   $('banner').innerHTML = `${esc(circuit.n)}<small>${circuit.tours} tours · Boost : ${BOOST.n} par pilote · ${METEOS[meteo].ico} ${METEOS[meteo].n}</small>`;
   $('msg').className = 'msg';
-  $('msg').textContent = (cfg.meteo === 'surprise' ? `Météo surprise : ${METEOS[meteo].ico} ${METEOS[meteo].n} ! ` : '') + 'Attention aux feux…';
+  $('msg').textContent = 'Attention aux feux…';
   const humains = voitures.filter(v => v.humain);
   $('boosts').hidden = false;
-  $('boosts').innerHTML = humains.map((v, i) => `<button class="boost" data-i="${voitures.indexOf(v)}" style="background:${v.couleur};color:${lisible(v.couleur)}">⚡ Boost<small>${esc(v.nom)} · ${v.boosts}</small></button>`).join('');
+  $('boosts').innerHTML = humains.map(v => { const i = voitures.indexOf(v); return `<div class="pilote" data-i="${i}">
+      <button class="boost" data-i="${i}" style="background:${v.couleur};color:${lisible(v.couleur)}">⚡ Boost<small>${esc(v.nom)} · ${v.boosts}</small></button>
+      <button class="stand" data-i="${i}">🔧 Stand<small style="display:block;font-weight:600">${PNEUS[v.pneu].n}</small></button>
+      <div class="stand-choix" hidden>${Object.entries(PNEUS).map(([k, p]) => `<button class="pn" data-pneu="${k}" style="--c:${p.c}" aria-label="Pneus ${p.n}" title="${p.n}">${p.l}</button>`).join('')}</div>
+    </div>`; }).join('');
   $('timer').textContent = '0:00.00';
   dimensionner();
   lampes(0);
@@ -943,6 +1020,45 @@ function demarrerCourse(){
 const lisible = c => { const n = parseInt(c.slice(1), 16), r = n >> 16, gg = n >> 8 & 255, b = n & 255; return (r * 299 + gg * 587 + b * 114) / 1000 > 150 ? '#1F1F1F' : '#FFFFFF'; };
 function lampes(k){ $('lights').querySelectorAll('i').forEach((l, i) => l.classList.toggle('on', i < k)); }
 
+// Stand : on choisit les pneus, le changement se fait au prochain passage de la ligne
+function majStand(v){
+  const el = $('boosts').querySelector(`.pilote[data-i="${course.voitures.indexOf(v)}"]`);
+  if(!el) return;
+  const b = el.querySelector('.stand');
+  b.classList.toggle('prevu', !!v.stand);
+  b.innerHTML = v.arret > 0 ? '🔧 Au stand…<small style="display:block;font-weight:600">changement de pneus</small>'
+    : v.stand ? `🔧 ${PNEUS[v.stand].n}<small style="display:block;font-weight:600">au prochain passage (toucher pour annuler)</small>`
+    : `🔧 Stand<small style="display:block;font-weight:600">${PNEUS[v.pneu].n}</small>`;
+}
+$('boosts').addEventListener('click', e => {
+  if(!course || course.phase === 'fini') return;
+  const st = e.target.closest('.stand'), pn = e.target.closest('.stand-choix .pn');
+  if(st){
+    const v = course.voitures[st.dataset.i], choix = st.parentNode.querySelector('.stand-choix');
+    if(v.fin != null || v.arret > 0) return;
+    if(v.stand){ v.stand = null; choix.hidden = true; majStand(v); return; }
+    choix.hidden = !choix.hidden;
+  } else if(pn){
+    const el = pn.closest('.pilote'), v = course.voitures[el.dataset.i];
+    if(v.fin != null) return;
+    v.stand = pn.dataset.pneu;
+    el.querySelector('.stand-choix').hidden = true;
+    majStand(v);
+    flash(`${v.nom} : ${PNEUS[v.stand].n} au prochain passage`);
+  }
+});
+// Adversaires : changent de pneus quand ce n'est plus les bons (pas en Facile)
+function strategieBot(v){
+  const c = course, reste = c.tours - (v.lap + 1);
+  if(c.niv === NIVEAUX.facile || reste < 1 || !v.tours.length) return;
+  const tourT = v.tours.reduce((a, b) => a + b, 0) / v.tours.length;
+  const temps = (type, age) => { let t = 0; for(let k = 0; k < reste; k++) t += tourT * (.5 + .5 / Math.sqrt(Math.max(.25, adherence(type, age + k, c.w)))); return t; };
+  const actuel = temps(v.pneu, v.age);
+  let best = null, bt = actuel - (c.niv === NIVEAUX.normal ? 6 : 3.5);
+  for(const k of Object.keys(PNEUS)){ const t = temps(k, 0); if(t < bt){ bt = t; best = k; } }
+  if(best) v.stand = best;
+}
+
 $('boosts').addEventListener('pointerdown', e => {
   const b = e.target.closest('.boost');
   if(!b || !course || course.phase !== 'course') return;
@@ -957,7 +1073,7 @@ $('boosts').addEventListener('pointerdown', e => {
 
 // Adhérence de la voiture : pneus (usure selon les tours faits) et piste mouillée
 function majAdherence(v){
-  const m = Math.max(.25, adherence(v.pneu, v.lap, course.w));
+  const m = Math.max(.25, adherence(v.pneu, v.age, course.w));
   if(!v.prof || Math.abs(m - v.m) > .004 || v.prof.t !== v.t){
     // Prévenir un joueur dont les pneus chutent
     if(v.humain && v.prof && m < v.m - .08) flash(`${v.nom} : pneus usés !`);
@@ -968,7 +1084,7 @@ function meteoEtape(dt){
   const c = course;
   if(c.pluieA != null && c.wCible === 0){
     const tete = Math.max(...c.voitures.map(v => v.lap + Math.max(0, v.s) / v.t.len)) / c.tours;
-    if(tete >= c.pluieA){ c.wCible = .6; flash('🌧 La pluie arrive !'); }
+    if(tete >= c.pluieA){ c.wCible = .6; flash('🌧 La pluie arrive ! 🔧 Stand pour changer de pneus.'); }
   }
   if(c.w !== c.wCible) c.w = c.w < c.wCible ? Math.min(c.wCible, c.w + dt * .12) : Math.max(c.wCible, c.w - dt * .12);
 }
@@ -988,6 +1104,12 @@ function etape(dt){
   meteoEtape(dt);
   for(const v of c.voitures){
     if(v.fin != null){ v.s += v.vit * dt * .6; v.vit *= 0.985; continue; }
+    if(v.arret > 0){
+      // Arrêt au stand : la voiture est immobile, puis repart avec les nouveaux pneus
+      v.arret -= dt; v.vit = 0;
+      if(v.arret <= 0){ v.arret = 0; if(v.humain) majStand(v); }
+      continue;
+    }
     majAdherence(v);
     const t = v.t, n = t.pts.length, pr = v.prof;
     const i = ((Math.floor(v.s / P.STEP) % n) + n) % n;
@@ -1008,7 +1130,14 @@ function etape(dt){
       v.tours.push(quand - v.debutTour); v.debutTour = quand;
       v.s -= t.len;
       if(v.lap + 1 >= c.tours){ v.fin = quand; if(v.humain) flash(`${v.nom} a fini !`); }
-      else { v.lap++; v.t = v.laps[v.lap]; }
+      else {
+        if(!v.humain) strategieBot(v);
+        v.lap++; v.age++; v.t = v.laps[v.lap];
+        if(v.stand){
+          v.pneu = v.stand; v.stand = null; v.age = 0; v.arret = 3; v.arrets++; v.prof = null; v.s = 0;
+          if(v.humain){ flash(`🔧 ${v.nom} : arrêt au stand, ${PNEUS[v.pneu].n}`); majStand(v); }
+        }
+      }
     }
   }
   // Fumée : figée à l'endroit où elle apparaît
@@ -1040,7 +1169,7 @@ function classement(){
   $('standings').innerHTML = tri.map((v, k) => {
     const tour = Math.min(c.tours, v.lap + 1);
     const pn = PNEUS[v.pneu];
-    return `<div><b>${k + 1}</b><em style="background:${v.couleur}"></em>${esc(v.nom)} <i class="pn" style="--c:${pn.c}" title="${pn.n}">${pn.l}</i> <small>${v.fin != null ? '🏁' : `T${tour}/${c.tours}`}</small></div>`;
+    return `<div><b>${k + 1}</b><em style="background:${v.couleur}"></em>${esc(v.nom)} <i class="pn" style="--c:${pn.c}" title="${pn.n}">${pn.l}</i> <small>${v.fin != null ? '🏁' : v.arret > 0 ? '🔧 stand' : `T${tour}/${c.tours}`}</small></div>`;
   }).join('');
 }
 function dessinerCourse(){
@@ -1112,7 +1241,7 @@ function terminerCourse(){
 
 /* ---------- Navigation ---------- */
 $('goDraw').onclick = debutTraces;
-$('rematch').onclick = () => { course = null; show('jeu'); dimensionner(); demarrerCourse(); };
+$('rematch').onclick = () => { course = null; show('jeu'); dimensionner(); tirerMeteo(); ouvrirGrille(); };
 $('redraw').onclick = () => { course = null; debutTraces(); };
 $('toMenu').onclick = () => { course = null; try{ screen.orientation.unlock(); }catch(e){} renderMenu(); show('menu'); };
 // Abandonner : retour au menu, la partie ne compte pas
@@ -1128,6 +1257,8 @@ $('quit2').onclick = abandonner;
 
 renderMenu();
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+// Nouvelle version installée : on recharge une fois, pour que la page et ses scripts soient de la même version
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
 </script>
 </body>
 </html>

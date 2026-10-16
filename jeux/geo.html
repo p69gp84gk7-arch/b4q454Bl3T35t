@@ -244,8 +244,8 @@ tr.me td{ color:var(--gold); font-weight:700; }
   <div class="row"><button class="back" id="toMenu">Menu</button><button class="again" id="again">Rejouer</button></div>
 </main>
 
-<script src="geo/monde.js"></script>
-<script src="sauvegarde.js"></script>
+<script src="geo/monde.js?v=41"></script>
+<script src="sauvegarde.js?v=41"></script>
 <script>
 const G = window.GEO;
 const $ = id => document.getElementById(id);
@@ -301,7 +301,7 @@ function charger(fichier){
   if(!fichier) return Promise.resolve();
   return charges[fichier] = charges[fichier] || new Promise((ok, ko) => {
     const s = document.createElement('script');
-    s.src = fichier; s.onload = ok;
+    s.src = fichier + '?v=41'; s.onload = ok;   // même numéro de version que les autres scripts
     s.onerror = () => { delete charges[fichier]; ko(new Error('Carte introuvable : vérifiez la connexion.')); };
     document.head.append(s);
   });
@@ -751,6 +751,8 @@ $('quit').onclick = () => {
 renderMenu();
 DesDesSauvegarde.boutons($('sauve'));
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+// Nouvelle version installée : on recharge une fois, pour que la page et ses scripts soient de la même version
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
 </script>
 </body>
 </html>
