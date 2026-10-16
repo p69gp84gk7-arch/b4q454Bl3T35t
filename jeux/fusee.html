@@ -331,7 +331,7 @@ function analyser(buf){
 
 /* ---------- Le parcours : les points placés pour arriver sur la fusée au moment du son ---------- */
 function alea(graine){ let s = graine >>> 0; return () => { s += 0x6D2B79F5; let t = s; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const LARG_FUSEE = .075;   // largeur de la fusée (en part de la piste)
+const LARG_FUSEE = .06;    // largeur de la fusée (en part de la piste)
 function parcours(an, niv){
   const N = NIVEAUX[niv], rng = alea(Math.round(an.duree * 1000) + an.attaques.length * 7 + niv.length);
   // Vitesse (en hauteurs d'écran par seconde) selon l'intensité, et distance parcourue à chaque instant
@@ -349,8 +349,10 @@ function parcours(an, niv){
   }
   for(const at of an.attaques){
     if(at.t < 2.2 || at.t > an.duree - 1) continue;
-    if(at.bande > 0 && rng() > N.garde * (.45 + .55 * at.force)) continue;
-    if(at.bande === 0 && rng() > .35 + .65 * N.garde) continue;
+    // Plus on avance dans le morceau, plus il y a de points (de 80 % au début à 125 % à la fin)
+    const monte = .8 + .45 * at.t / an.duree;
+    if(at.bande > 0 && rng() > N.garde * (.45 + .55 * at.force) * monte) continue;
+    if(at.bande === 0 && rng() > (.35 + .65 * N.garde) * monte) continue;
     const s = sA(at.t);
     const groupe = at.bande === 2 ? 1 + Math.floor(rng() * (niv === 'facile' ? 2 : 3)) : 1;
     for(let g = 0; g < groupe; g++){
@@ -385,16 +387,9 @@ addEventListener('orientationchange', () => setTimeout(taille, 300));
 taille();
 // La piste : une colonne centrée (toute la largeur en portrait)
 const piste = () => { const pw = Math.min(W, Hh * .78); return { x0:(W - pw) / 2, pw, ph:Hh }; };
-// Halos préparés une fois (plus rapide que les ombres du canvas)
-const COUL = ['#FF4FA3', '#FF9A3C', '#3FE0FF'];
-const halos = COUL.map(c => {
-  const s = document.createElement('canvas'); s.width = s.height = 128;
-  const x = s.getContext('2d'), r = x.createRadialGradient(64, 64, 10, 64, 64, 64);
-  r.addColorStop(0, c); r.addColorStop(.48, c); r.addColorStop(.52, c + 'AA'); r.addColorStop(1, c + '00');
-  x.fillStyle = r; x.fillRect(0, 0, 128, 128);
-  x.fillStyle = 'rgba(255,255,255,.55)'; x.beginPath(); x.arc(52, 50, 12, 0, Math.PI * 2); x.fill();
-  return s;
-});
+// Couleurs des points : graves, médiums, aigus (pleines, douces, avec un bord net)
+const COUL = ['#D9576F', '#E39B52', '#4FB3CF'];
+const BORD = ['#F6B7C2', '#F7D2A6', '#B8E6F2'];
 const etoilesFond = Array.from({ length:140 }, () => ({ x:Math.random(), y:Math.random(), z:.2 + Math.random() * .8 }));
 
 function dessinerFond(dt, vit, intens, t){
@@ -414,23 +409,37 @@ function dessinerFond(dt, vit, intens, t){
   const p = piste();
   if(p.pw < W){ g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, 0, p.x0, Hh); g.fillRect(p.x0 + p.pw, 0, W - p.x0 - p.pw, Hh); }
 }
-function dessinerFusee(x, y, taille, inclin, t, clign){
+// La fusée : une flèche et son jet ; la flamme grandit avec le multiplicateur
+function dessinerFusee(x, y, taille, inclin, t, clign, flamme){
   if(clign && Math.floor(t * 14) % 2) return;
   g.save();
   g.translate(x, y); g.rotate(inclin);
   const L = taille * 1.25, l = taille * .5;
-  // le jet de propulsion
-  const flamme = L * (.55 + Math.random() * .35);
-  const fl = g.createLinearGradient(0, L * .35, 0, L * .35 + flamme);
+  const fl0 = L * flamme * (.8 + Math.random() * .35), lj = l * (.42 + Math.min(.25, flamme * .08));
+  const fl = g.createLinearGradient(0, L * .35, 0, L * .35 + fl0);
   fl.addColorStop(0, '#FFFFFF'); fl.addColorStop(.25, '#FFD54F'); fl.addColorStop(.6, '#FF6B3D'); fl.addColorStop(1, 'rgba(255,60,120,0)');
   g.fillStyle = fl;
-  g.beginPath(); g.moveTo(-l * .45, L * .32); g.quadraticCurveTo(0, L * .35 + flamme * 1.1, l * .45, L * .32); g.closePath(); g.fill();
-  // la flèche
-  g.fillStyle = '#EAF6FF'; g.strokeStyle = '#3FE0FF'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(-lj, L * .32); g.quadraticCurveTo(0, L * .35 + fl0 * 1.1, lj, L * .32); g.closePath(); g.fill();
+  g.fillStyle = '#EAF6FF'; g.strokeStyle = '#3FE0FF'; g.lineWidth = 1.6;
   g.beginPath(); g.moveTo(0, -L * .62); g.lineTo(l, L * .38); g.lineTo(0, L * .16); g.lineTo(-l, L * .38); g.closePath();
   g.fill(); g.stroke();
   g.fillStyle = '#3FE0FF'; g.beginPath(); g.moveTo(0, -L * .3); g.lineTo(l * .3, L * .1); g.lineTo(-l * .3, L * .1); g.closePath(); g.fill();
   g.restore();
+}
+// Un point à éviter : disque plein, petit reflet, bord net
+function dessinerPoint(x, y, r, bande){
+  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
+  g.fillStyle = COUL[bande]; g.fill();
+  g.lineWidth = Math.max(1.2, Math.min(3, r * .08)); g.strokeStyle = BORD[bande]; g.stroke();
+  if(r > 5){ g.beginPath(); g.arc(x - r * .32, y - r * .32, r * .32, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,.18)'; g.fill(); }
+}
+// Petit tintement quand on frôle un point
+function tinter(force){
+  if(!AC) return;
+  const t = AC.currentTime, o = AC.createOscillator(), gn = AC.createGain();
+  o.type = 'sine'; o.frequency.setValueAtTime(880 + 500 * force, t); o.frequency.exponentialRampToValueAtTime(1600 + 600 * force, t + .08);
+  gn.gain.setValueAtTime(0.0001, t); gn.gain.linearRampToValueAtTime(.12, t + .01); gn.gain.exponentialRampToValueAtTime(0.0001, t + .18);
+  o.connect(gn); gn.connect(AC.destination); o.start(t); o.stop(t + .2);
 }
 
 /* ---------- Partie ---------- */
@@ -446,7 +455,8 @@ function demarrer(m){
   filtre.frequency.cancelScheduledValues(ctx.currentTime); filtre.frequency.setValueAtTime(20000, ctx.currentTime);
   const t0 = ctx.currentTime + .25;
   src.start(t0);
-  partie = { m, an, prc, src, t0, x:.5, vx:0, score:0, chaine:0, mult:1, chocs:0, froles:0, etoiles:0, invul:0, secousse:0, flash:0, eclats:[], idx:0, fin:false, dernier:performance.now(), coupe:0 };
+  partie = { m, an, prc, src, t0, x:.5, vx:0, score:0, chaine:0, mult:1, chocs:0, froles:0, bonusFrole:0, etoiles:0, invul:0, secousse:0, flash:0, eclats:[], textes:[], idx:0, fin:false, dernier:performance.now(),
+    k:1, frein:1, haut:.82, flamme:.6 };
   src.onended = () => { if(partie && partie.src === src && !partie.fin && AC.currentTime - t0 > an.duree - .6) finir(); };
   ['eMenu', 'eChargement', 'eFin', 'ePause'].forEach(id => $(id).hidden = true);
   $('hud').hidden = $('barre').hidden = $('hTitre').hidden = false;
@@ -454,12 +464,12 @@ function demarrer(m){
   cancelAnimationFrame(raf);
   raf = requestAnimationFrame(boucle);
 }
-// Au choc : la musique se coupe un instant, étouffée, puis revient
+// Au choc : la musique s'éteint, puis revient doucement, étouffée au début
 function couperMusique(){
   const t = AC.currentTime, gm = gainMusique.gain, fq = filtre.frequency;
-  gm.cancelScheduledValues(t); gm.setValueAtTime(gm.value, t); gm.linearRampToValueAtTime(0.0001, t + .05);
-  gm.setValueAtTime(0.0001, t + .75); gm.linearRampToValueAtTime(1, t + 1.25);
-  fq.cancelScheduledValues(t); fq.setValueAtTime(500, t + .05); fq.exponentialRampToValueAtTime(20000, t + 1.6);
+  gm.cancelScheduledValues(t); gm.setValueAtTime(gm.value, t); gm.linearRampToValueAtTime(0.0001, t + .06);
+  gm.setValueAtTime(0.0001, t + 1.3); gm.linearRampToValueAtTime(1, t + 2.1);
+  fq.cancelScheduledValues(t); fq.setValueAtTime(450, t + .06); fq.setValueAtTime(450, t + 1.3); fq.exponentialRampToValueAtTime(20000, t + 2.6);
 }
 function eclats(x, y, c, n){
   for(let k = 0; k < n; k++){ const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 260; partie.eclats.push({ x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v, vie:.6 + Math.random() * .4, c }); }
@@ -469,17 +479,26 @@ function boucle(now){
   if(!P) return;
   const dt = Math.min(.05, (now - P.dernier) / 1000); P.dernier = now;
   const t = AC.currentTime - P.t0, an = P.an, N = NIVEAUX[niveau];
-  const f = clamp(t / TRAME, 0, an.nf - 1), intens = an.env[Math.floor(f)] || 0;
-  const vit = (.38 + .6 * intens) * N.vit;
+  const f = clamp(t / TRAME, 0, an.nf - 1), intens = an.env[Math.floor(f)] || 0, prog = clamp(t / an.duree, 0, 1);
+  // Difficulté qui monte : vers la fin du morceau et avec le multiplicateur ; un choc freine un moment
+  P.frein = Math.min(1, P.frein + dt * .12);
+  const kCible = (1 + .32 * prog + .05 * (P.mult - 1)) * P.frein;
+  P.k += (kCible - P.k) * Math.min(1, dt * 2.5);
+  // Plus on enchaîne, plus la fusée monte dans l'écran (moins de temps pour réagir) ; après un choc, elle redescend
+  const hautCible = .82 - .3 * clamp(P.chaine / 28, 0, 1);
+  P.haut += (hautCible - P.haut) * Math.min(1, dt * (hautCible > P.haut ? 1.6 : .8));
+  const flCible = .55 + .13 * (P.mult - 1);
+  P.flamme += (flCible - P.flamme) * Math.min(1, dt * 3);
+  const vit = (.38 + .6 * intens) * N.vit * P.k;
   const sNow = P.prc.sA(Math.max(0, t));
-  const p = piste(), yF = p.ph * .8, tailleF = p.pw * LARG_FUSEE;
+  const p = piste(), yF = p.ph * P.haut, tailleF = p.pw * LARG_FUSEE;
   // Commandes : gauche / droite (accélération, puis glisse)
   const dir = (commandes.droite ? 1 : 0) - (commandes.gauche ? 1 : 0);
   if(dir) P.vx = clamp(P.vx + dir * 6.5 * dt, -1.35, 1.35); else P.vx *= Math.exp(-9 * dt);
   if(dir && Math.sign(P.vx) !== dir) P.vx *= Math.exp(-14 * dt);
   P.x = clamp(P.x + P.vx * dt, LARG_FUSEE * .6, 1 - LARG_FUSEE * .6);
   if(P.x <= LARG_FUSEE * .6 || P.x >= 1 - LARG_FUSEE * .6) P.vx = 0;
-  // Points : du temps qui passe, plus avec le multiplicateur
+  // Points : du temps qui passe, plus avec le multiplicateur et la vitesse
   if(t > 0 && !P.fin) P.score += 20 * P.mult * (.6 + vit) * dt;
   P.invul = Math.max(0, P.invul - dt); P.secousse = Math.max(0, P.secousse - dt); P.flash = Math.max(0, P.flash - dt * 2.5);
   // Dessin
@@ -487,62 +506,70 @@ function boucle(now){
   if(P.secousse > 0) g.translate((Math.random() - .5) * 14 * P.secousse, (Math.random() - .5) * 14 * P.secousse);
   dessinerFond(dt, vit, intens, t);
   const xF = p.x0 + P.x * p.pw;
-  const objs = P.prc.objets;
-  while(P.idx < objs.length && (yF - (objs[P.idx].s - sNow) * p.ph) > p.ph + p.pw * .3) P.idx++;
-  const rF = tailleF * .42;
+  const objs = P.prc.objets, echelle = p.ph * P.k;
+  // (les distances sont multipliées par k : les points arrivent toujours sur la fusée au moment du son)
+  while(P.idx < objs.length && (yF - (objs[P.idx].s - sNow) * echelle) > p.ph + p.pw * .3) P.idx++;
+  const rF = tailleF * .42, seuilFrole = tailleF * .75 * N.frole;
   for(let k = P.idx; k < objs.length; k++){
-    const o = objs[k], y = yF - (o.s - sNow) * p.ph;
+    const o = objs[k], y = yF - (o.s - sNow) * echelle;
     if(y < -p.pw * .3) break;
     if(o.pris) continue;
     const x = p.x0 + o.x * p.pw, r = o.r * p.pw;
     if(o.type === 'etoile'){
       g.save(); g.translate(x, y); g.rotate(t * 2);
-      g.fillStyle = '#FFD54F'; g.shadowColor = '#FFD54F'; g.shadowBlur = 12;
-      g.beginPath(); for(let i = 0; i < 10; i++){ const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } g.closePath(); g.fill();
+      g.fillStyle = '#FFD54F'; g.strokeStyle = '#FFF3C4'; g.lineWidth = 1.5;
+      g.beginPath(); for(let i = 0; i < 10; i++){ const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } g.closePath(); g.fill(); g.stroke();
       g.restore();
     } else {
-      // les points battent au rythme
-      const pulse = 1 + .08 * Math.max(0, 1 - Math.abs(t - o.t) * 6);
-      const rr = r * 2 * pulse;
-      g.drawImage(halos[o.bande], x - rr, y - rr, rr * 2, rr * 2);
+      // les points battent légèrement au rythme
+      const pulse = 1 + .05 * Math.max(0, 1 - Math.abs(t - o.t) * 6);
+      dessinerPoint(x, y, r * pulse, o.bande);
     }
     if(P.fin) continue;
     // Choc (la fusée : deux cercles, le nez et le corps)
     const d1 = Math.hypot(x - xF, y - (yF - tailleF * .35)), d2 = Math.hypot(x - xF, y - (yF + tailleF * .12));
     const d = Math.min(d1 - tailleF * .18, d2 - rF);
     if(o.type === 'etoile'){
-      if(d < r){ o.pris = true; P.etoiles++; P.chaine++; P.score += 150 * P.mult; eclats(x, y, '#FFD54F', 14); }
+      if(d < r){ o.pris = true; P.etoiles++; P.chaine++; P.score += 150 * P.mult; eclats(x, y, '#FFD54F', 14); P.textes.push({ x, y, txt:`+${150 * P.mult}`, c:'#FFD54F', vie:1 }); }
       continue;
     }
-    if(d < r * .92 && P.invul <= 0 && !o.touche){
+    if(d < r * .95 && P.invul <= 0 && !o.touche){
+      // Choc : points perdus, la musique s'éteint, la fusée ralentit, redescend, la flamme baisse
       o.touche = true; P.chocs++; P.chaine = 0;
       P.score = Math.max(0, P.score - 400);
-      P.invul = 1.3; P.secousse = .35; P.flash = 1;
+      P.invul = 1.6; P.secousse = .35; P.flash = 1; P.frein = .72; P.flamme = .22;
       couperMusique(); eclats(x, y, COUL[o.bande], 22);
+      P.textes.push({ x:xF, y:yF - tailleF, txt:'−400', c:'#FF8FA3', vie:1.2 });
       if(navigator.vibrate) navigator.vibrate(70);
-    } else if(!o.touche && !o.frole && y > yF + tailleF * .4 && o.dmin < r + tailleF * .5 * N.frole){
-      // frôlé sans le toucher : bonus
-      o.frole = true; P.froles++; P.chaine++; P.score += 50 * P.mult;
-      eclats(xF, yF, '#3FE0FF', 5);
+    } else if(!o.touche && !o.frole && y > yF + tailleF * .4 && o.dmin < seuilFrole && P.invul <= 0){
+      // Frôlé sans le toucher : un bonus, d'autant plus gros qu'on est passé près
+      const pres = clamp(1 - o.dmin / seuilFrole, 0, 1), bonus = Math.round((60 + 140 * pres) * P.mult / 10) * 10;
+      o.frole = true; P.froles++; P.chaine++; P.score += bonus; P.bonusFrole += bonus;
+      eclats(xF, yF, '#9FEFFF', 6);
+      P.textes.push({ x:xF + (o.x < P.x ? 26 : -26), y:yF - tailleF * .4, txt:`+${bonus}${pres > .6 ? ' frôlé !' : ''}`, c:'#9FEFFF', vie:.9 });
+      tinter(pres);
     }
     o.dmin = Math.min(o.dmin ?? 1e9, d);
   }
   P.mult = Math.min(8, 1 + Math.floor(P.chaine / 4));
-  // Fusée et éclats
-  dessinerFusee(xF, yF, tailleF, P.vx * .28, t, P.invul > 0);
+  // Fusée, éclats, bonus affichés
+  dessinerFusee(xF, yF, tailleF, P.vx * .28, t, P.invul > 0, P.flamme);
   g.globalCompositeOperation = 'lighter';
   P.eclats = P.eclats.filter(e => (e.vie -= dt) > 0);
   for(const e of P.eclats){ e.x += e.vx * dt; e.y += e.vy * dt; e.vx *= .96; e.vy *= .96; g.globalAlpha = Math.min(1, e.vie * 1.6); g.fillStyle = e.c; g.fillRect(e.x - 2, e.y - 2, 4, 4); }
   g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
-  if(P.flash > 0){ g.fillStyle = `rgba(255,79,163,${P.flash * .35})`; g.fillRect(0, 0, W, Hh); }
-  // Compte à rebours
-  if(t < 0){ g.fillStyle = '#fff'; g.font = '700 28px Audiowide, sans-serif'; g.textAlign = 'center'; g.fillText('Prêt…', W / 2, Hh * .4); }
+  P.textes = P.textes.filter(e => (e.vie -= dt) > 0);
+  g.textAlign = 'center'; g.font = '700 15px Audiowide, sans-serif';
+  for(const e of P.textes){ e.y -= 40 * dt; g.globalAlpha = Math.min(1, e.vie * 1.8); g.fillStyle = e.c; g.fillText(e.txt, e.x, e.y); }
+  g.globalAlpha = 1;
+  if(P.flash > 0){ g.fillStyle = `rgba(255,79,163,${P.flash * .3})`; g.fillRect(0, 0, W, Hh); }
+  if(t < 0){ g.fillStyle = '#fff'; g.font = '700 28px Audiowide, sans-serif'; g.fillText('Prêt…', W / 2, Hh * .4); }
   g.restore();
   // Barre et compteurs
   $('hScore').textContent = fmtN(P.score);
   $('hMult').textContent = '×' + P.mult;
   $('hReste').textContent = fmtT(an.duree - Math.max(0, t));
-  $('barreI').style.width = clamp(t / an.duree, 0, 1) * 100 + '%';
+  $('barreI').style.width = prog * 100 + '%';
   if(!P.fin && t >= an.duree - .05) return finir();
   raf = requestAnimationFrame(boucle);
 }
@@ -562,7 +589,7 @@ function finir(){
   $('fScore').textContent = fmtN(sc);
   $('fRecord').textContent = nouveau ? (ancien ? `🏆 Nouveau record ! (avant : ${fmtN(ancien)})` : '🏆 Premier record sur ce morceau !') : `Record : ${fmtN(ancien)}`;
   const total = P.prc.objets.filter(o => o.type === 'point').length;
-  $('fStats').innerHTML = `<div><b>${P.chocs}</b><small>choc${P.chocs > 1 ? 's' : ''}</small></div><div><b>${P.froles}</b><small>points frôlés</small></div>
+  $('fStats').innerHTML = `<div><b>${P.chocs}</b><small>choc${P.chocs > 1 ? 's' : ''}</small></div><div><b>${P.froles}</b><small>frôlés (+${fmtN(P.bonusFrole)})</small></div>
     <div><b>${P.etoiles}</b><small>étoile${P.etoiles > 1 ? 's' : ''}</small></div><div><b>${total ? Math.round((1 - P.chocs / total) * 100) : 100} %</b><small>points évités</small></div>`;
   $('hud').hidden = $('barre').hidden = $('hTitre').hidden = true;
   $('eFin').hidden = false;
@@ -688,7 +715,7 @@ let dernierFond = performance.now();
   requestAnimationFrame(fond);
 })(performance.now());
 menu();
-window.Fusee = { PISTES, composer, analyser, parcours, get partie(){ return partie; }, commandes, demarrer, records, jouerPiste };
+window.Fusee = { PISTES, composer, analyser, parcours, get partie(){ return partie; }, get t(){ return partie && AC ? AC.currentTime - partie.t0 : 0; }, commandes, demarrer, records, jouerPiste };
 
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
