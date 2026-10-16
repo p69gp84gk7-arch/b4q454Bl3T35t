@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Fredoka:wght@600&family=Kalam:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Kalam:wght@700&display=swap" rel="stylesheet">
 <style>
 :root{
   --felt:#1F5C47; --felt-dark:#123A2C; --ivory:#F7F3E8; --ink:#1A1A1A;
@@ -92,14 +92,6 @@ h2{ font-size:.85rem; font-weight:600; text-transform:uppercase; letter-spacing:
 .gdraw .status b{ color:#1F1F1F; }
 .gdraw .go{ background:#D7263D; color:#fff; }
 .gdraw .corner{ position:absolute; right:-6px; top:4px; width:96px; height:56px; transform:rotate(-14deg); }
-
-/* Carte Strates : île en couches, couleurs douces */
-.gstrates{ background:linear-gradient(170deg, #DDF1F7 0%, #CFEAF4 55%, #BFE3D2 100%); color:#2F3A36; border:1.5px solid rgba(63,167,160,.35); }
-.gstrates .title{ font-family:"Fredoka", "Bricolage Grotesque", system-ui, sans-serif; color:#2D857F; }
-.gstrates .desc, .gstrates .status{ color:#55625D; }
-.gstrates .status b{ color:#2F3A36; }
-.gstrates .go{ background:#3FA7A0; color:#fff; }
-.gstrates .corner{ position:absolute; right:-6px; top:4px; width:104px; height:68px; }
 
 /* Carte Nivoculteur : nuit en montagne */
 .gnivo{ background:#0B1426; color:#EAF2FF; border:1.5px solid rgba(169,196,240,.35);
@@ -196,22 +188,6 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
       <span class="go">Jouer</span>
     </a>
 
-    <a class="game gstrates" href="jeux/strates.html">
-      <svg class="corner" viewBox="0 0 104 68" aria-hidden="true">
-        <path d="M2 62 L18 50 L36 50 L46 42 L64 42 L74 50 L92 50 L102 62 Z" fill="#F1DDA4"/>
-        <path d="M12 54 L24 44 L40 44 L48 36 L62 36 L70 44 L84 44 L94 54 Z" fill="#A9D46F"/>
-        <path d="M24 46 L34 36 L44 36 L50 28 L60 28 L66 36 L74 36 L82 46 Z" fill="#86BD62"/>
-        <path d="M36 38 L44 28 L52 22 L60 22 L66 30 L70 38 Z" fill="#5F9C58"/>
-        <path d="M12 54 L94 54 L94 57 L12 57 Z M24 46 L82 46 L82 49 L24 49 Z M36 38 L70 38 L70 41 L36 41 Z" fill="#C49A6C" opacity=".7"/>
-        <g transform="translate(55 30)"><rect x="-4" y="-5" width="8" height="5" fill="#A8774A"/><path d="M-6 -5 L0 -10 L6 -5 Z" fill="#E2C26A"/></g>
-        <g fill="#3F7F4E"><path d="M30 44 l3 -8 l3 8 z"/><path d="M76 44 l3 -8 l3 8 z"/><path d="M40 36 l2.5 -7 l2.5 7 z"/></g>
-      </svg>
-      <p class="title">Strates</p>
-      <p class="desc">Comme dans Godus : modelez du doigt les couches d'une île, lissez et tracez des rampes, récoltez minerais et foi, et regardez votre peuple bâtir son village. En 3D.</p>
-      <p class="status" id="ststrates"><b>Pas encore joué</b>4 îles à découvrir.</p>
-      <span class="go">Jouer</span>
-    </a>
-
     <a class="game gnivo" href="jeux/nivoculteur/index.html">
       <svg class="corner" viewBox="0 0 92 70" aria-hidden="true">
         <g fill="#F4F7FF"><circle cx="14" cy="18" r="2.2"/><circle cx="24" cy="10" r="1.6"/><circle cx="8" cy="30" r="1.8"/><circle cx="22" cy="26" r="2.4"/><circle cx="32" cy="18" r="1.5"/><circle cx="16" cy="40" r="1.4"/></g>
@@ -239,8 +215,8 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
   <footer id="installHint">Astuce : ajoutez DesDés à l'écran d'accueil pour l'ouvrir comme une application. Tous les jeux marchent ensuite sans réseau.</footer>
 </main>
 
-<script src="jeux/drawrace/circuits.js?v=51"></script>
-<script src="jeux/sauvegarde.js?v=51"></script>
+<script src="jeux/drawrace/circuits.js?v=52"></script>
+<script src="jeux/sauvegarde.js?v=52"></script>
 <script>
 const fmt = n => n.toLocaleString('fr-FR');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -355,14 +331,7 @@ function showNivo(){
   el.innerHTML = `<b>${niv.n ? `Niveau ${niv.n} · ` : ''}${esc(niv.nom)}</b>` + (r ? `Prochaine nuit n° ${r.nuit} · ${fmt(fait)} m³` : 'Nouvelle partie') +
     (reussis ? ` · ${plural(reussis, 'niveau')} réussi${reussis > 1 ? 's' : ''}` : '');
 }
-/* Strates : résumé de la partie (clé partagée avec jeux/strates) */
-function showStrates(){
-  const r = read('strates-resume'), el = document.getElementById('ststrates');
-  if(!r){ el.innerHTML = '<b>Pas encore joué</b>4 îles à découvrir.'; return; }
-  const iles = { verte:'Île Verte', sables:'Île des Sables', volcan:'Île du Volcan', glaces:'Île des Glaces' };
-  el.innerHTML = `<b>${r.mode === 'libre' ? 'Bac à sable libre' : esc(r.nomPalier || 'Partie en cours')}</b>${plural(r.pop || 0, 'habitant')} · ${esc(iles[r.ile] || '')}` + (r.iles > 1 ? ` · ${r.iles} îles` : '');
-}
-function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showNivo(); showStrates(); }
+function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showNivo(); }
 refresh();
 DesDesSauvegarde.boutons(document.getElementById('sauve'));
 // Retour depuis un jeu (cache de navigation) : remettre les états à jour

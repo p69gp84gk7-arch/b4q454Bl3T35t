@@ -1,6 +1,6 @@
 # DesDés
 
-Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés, un quiz de géographie, une course à dessiner, un jeu de neige de culture en 3D et un bac à sable en 3D, Strates.
+Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés, un quiz de géographie, une course à dessiner, et un jeu de neige de culture en 3D.
 
 ![Logo](logo.svg)
 
@@ -13,7 +13,6 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), défi du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
 | **Draw Race** : course de monoplaces dont on dessine la trajectoire, 20 circuits inspirés de la F1, pneus, météo et arrêts au stand ; modes Arcade et Championnat | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 | **Nivoculteur** : construire et faire tourner le réseau de neige de culture d'une station, en 3D (en construction) | `jeux/nivoculteur/index.html` | 1 |
-| **Strates** : bac à sable en 3D qui se joue comme Godus : modeler les couches d'une île du doigt, lisser et tracer des rampes, récolter minerais et bulles de foi, fabriquer, faire grandir un village, découvrir un archipel | `jeux/strates.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -246,31 +245,6 @@ Il est construit étape par étape ; le projet, les règles et l'avancement sont
 - Construction : outils « + Regard », « Eau » (depuis la salle de pompage ou un regard alimenté), « Électricité » (depuis un départ électrique près des bâtiments ou un regard alimenté) ; un devis s'affiche avant chaque achat (tranchée commune moins chère, pression prévue) ; vue sous-sol, annuler, tout effacer.
 - `index.html?test` affiche les vérifications de la simulation ; `index.html?modeles` (bouton « Modèles 3D ») montre chaque modèle 3D seul : ventilateurs, perches, regard, salle de pompage, compresseur d'air, dameuses, garage, armoire électrique.
 
-## Strates
-
-Bac à sable en 3D (Three.js) qui se joue comme Godus : un dieu modèle du doigt un terrain en couches fines, aux couleurs douces, et son peuple y bâtit son village. En plus de Godus : les minerais et la fabrication (four, pioches, lingots), et deux gestes pour faire des pentes (lisser, rampe). Fichiers : `jeux/strates.html` (page et interface), `jeux/strates/monde.js` (îles, matériaux, eau et lave), `jeux/strates/rendu.js` (3D), `jeux/strates/jeu.js` (règles). Three.js est pris dans `jeux/nivoculteur/three.min.js`.
-
-- **Le terrain** : une île de 192 × 192 points. La hauteur de chaque point est continue (en couches, avec une partie décimale) : le bord de chaque couche passe exactement là où le terrain atteint ce niveau, au plus près du doigt, en courbes douces. Sous la surface, chaque colonne est une pile de couches de matériaux (124 au plus) ; la tranche des falaises montre les strates. Les zones lissées et les rampes sont dessinées en vraie pente.
-- **Deux modes** : *Nouvelle partie* (avec progression) ou *Bac à sable libre* (tout débloqué, foi et matériaux sans limite).
-- **La vue** : uniquement à deux doigts (glisser pour se déplacer, pincer pour zoomer, tourner les doigts pour pivoter). La vue s'incline en s'approchant. Le bouton 🎯 revient au village. À la souris : clic droit pour tourner, clic du milieu pour se déplacer, molette pour zoomer.
-- **Sculpter, comme dans Godus** (un doigt, sans outil à choisir) :
-  - on pose le doigt sur une couche, son bord s'entoure d'un liseré blanc ;
-  - en tirant vers le terrain plus bas, la couche s'étend jusqu'au doigt (sur la couche juste en dessous) ; en poussant vers l'intérieur, elle recule et laisse voir la couche du dessous ;
-  - doigt immobile : une couche de plus est saisie toutes les 0,4 s (jusqu'à 10), puis on les déplace toutes ensemble ;
-  - le pinceau dépend du zoom (plus on est près, plus c'est précis) ; la hauteur suit un petit cône autour du doigt, si bien que le bord de la couche s'arrête exactement à la distance voulue ;
-  - chaque couche ajoutée ou enlevée coûte 1 point de foi ; ce qu'une couche qui recule contenait va dans le sac (terre, sable, pierre, charbon, fer, or, cristal…), les blocs durs seulement avec la bonne pioche (en bois : pierre, charbon, grès, basalte, glace ; en pierre : fer ; en fer : or, cristal, obsidienne), sinon ils sont perdus.
-- **Pentes (en plus de Godus)** : un seul bouton, *Pente*, change ce que fait le doigt : *Lisser* (frotter adoucit le terrain), puis *Rampe* (du point de départ au point d'arrivée, un plan incliné régulier, qui rejoint en douceur le terrain sur ses bords), puis retour à la sculpture. Les habitants montent pentes et rampes, mais pas les falaises de plus de 2 couches.
-- **Toucher** (bref, sans glisser) : une bulle de foi, un bâtiment (fiche, amélioration, démolition), un arbre (du bois).
-- **La foi** : chaque maison remplit une bulle dorée (0,9 point par habitant et par seconde, plus avec fontaine, statue, phare ou temple ; 30 par place au plus). On la touche pour récolter (les bulles des maisons voisines viennent avec). Les autres îles de l'archipel prient un peu, sans bulle. 900 points au départ.
-- **L'eau et la lave coulent** vers les points plus bas. Leur surface est dessinée un peu sous le niveau de l'eau et passe sous le terrain voisin : le rivage suit exactement les couches. En faisant reculer une couche, on peut percer une source ou une poche de lave. Au contact de l'eau, la lave devient de l'obsidienne ; une coulée qui s'arrête refroidit en basalte. La lave brûle arbres et bâtiments, l'eau profonde emporte les bâtiments (sauf le port et le phare).
-- **Le village** : les habitants bâtissent seuls une cabane quand il y a de la nourriture mais plus de place, sur un point dont les 4 voisins sont sur la même couche. Une naissance environ toutes les 8 s s'il y a de la place et de quoi manger (4 habitants nourris de base, 6 de plus par ferme). Un habitant sans toit part au bout de 90 s. Cabane (2 habitants), maison (4), villa (8).
-- **Fabriquer** (panneau *Fabriquer*, avec le sac en haut) : planches (sans bâtiment), pioches (à l'Atelier), lingots de fer et d'or, verre, briques (au Four).
-- **Bâtiments** : on choisit un bâtiment (même s'il manque des matériaux : la barre du bas dit ce qui manque), il apparaît au milieu de l'écran en vert (ou rouge si l'endroit ne va pas) ; on le déplace du doigt, puis on touche « Construire ici ». Cabane, ferme (2 × 2), atelier, four, fontaine, port et phare (au bord de l'eau), statue, temple (2 × 2).
-- **Paliers** (selon les habitants de tout l'archipel) : Le premier village (0), Le hameau (6 : pioche en bois, maison, four), Le village (12 : pioche en pierre, fer, verre, fontaine), Le bourg (20 : port, briques, statue, Île des Sables), La petite ville (32 : pioche en fer, or, villa), La ville (45 : temple, Île du Volcan), La cité (60 : phare, Île des Glaces).
-- **L'archipel** : avec un port, le bateau mène aux autres îles. Découvrir une île y envoie 2 colons (il faut 4 habitants au moins) ; un port et une cabane les attendent. Le sac et la foi voyagent avec vous, chaque île garde son village. Île Verte, Île des Sables (grès, argile, or), Île du Volcan (basalte, obsidienne, cristaux ; éruptions toutes les 2 à 5 minutes), Île des Glaces (neige, glace, cristaux).
-- **Barre du bas** : Pente, Construire, Fabriquer, Archipel, Menu.
-- **Sauvegarde** : toutes les 30 s et en quittant, dans `strates-partie`. L'île se recalcule à partir de sa graine : seuls les points modifiés sont gardés (hauteur précise, pente, couches ; environ 130 Ko par île). `strates-resume` sert à l'accueil. Le fichier de sauvegarde de DesDés l'emporte aussi. Les parties des versions précédentes ne sont pas reprises.
-
 ## Mise en ligne
 
 Le site est fait de fichiers statiques, sans installation ni compilation.
@@ -305,8 +279,6 @@ outils/                script qui fabrique les données de géographie
 jeux/drawrace.html     jeu Draw Race
 jeux/drawrace/         circuits et géométrie de Draw Race
 jeux/nivoculteur/      jeu Nivoculteur (page, Three.js, CLAUDE.md)
-jeux/strates.html      jeu Strates (bac à sable en 3D)
-jeux/strates/          monde, rendu 3D et règles de Strates
 logo.svg               logo (source vectorielle)
 icons/                 icônes de l'application (192, 512, masquable, Apple)
 manifest.webmanifest   description de l'application installable

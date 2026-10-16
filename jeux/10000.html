@@ -272,7 +272,7 @@ td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-n
 </div>
 <button class="btn btn-gold fiche-suiv" id="ficheSuiv" hidden>Joueur suivant →</button>
 
-<script src="sauvegarde.js?v=51"></script>
+<script src="sauvegarde.js?v=52"></script>
 <script>
 const MAX = 15, GOAL = 10000, KEY = 'score10000';
 let state = { players: [], turn: 0, turnPts: 0, turnLog: [], history: [], started: false };
@@ -684,7 +684,7 @@ if('serviceWorker' in navigator) window.addEventListener('load', () => navigator
 // Nouvelle version installée : on recharge une fois, pour que la page et ses scripts soient de la même version
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
 </script>
-<script src="ia.js?v=51"></script>
-<script src="plateau.js?v=51" data-jeu="10000"></script>
+<script src="ia.js?v=52"></script>
+<script src="plateau.js?v=52" data-jeu="10000"></script>
 </body>
 </html>
