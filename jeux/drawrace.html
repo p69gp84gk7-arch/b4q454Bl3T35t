@@ -68,6 +68,23 @@ h2{ font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:
 .swatches{ display:flex; flex-wrap:wrap; gap:6px; }
 .sw{ width:30px; height:30px; border-radius:50%; border:2px solid rgba(0,0,0,.35); padding:0; }
 .sw[aria-pressed="true"]{ outline:3px solid var(--ink); outline-offset:2px; }
+.curseur{ padding:10px 14px 8px; background:var(--card); border:2px solid var(--line); border-radius:14px; }
+.curseur-t{ display:flex; justify-content:space-between; align-items:baseline; font-size:1.05rem; }
+.curseur-t span{ font-weight:800; font-variant-numeric:tabular-nums; color:var(--muted); }
+.curseur input{ width:100%; margin:10px 0 4px; height:28px; -webkit-appearance:none; appearance:none; background:transparent; }
+.curseur input::-webkit-slider-runnable-track{ height:10px; border-radius:5px; border:2px solid var(--ink); background:linear-gradient(90deg, #2E9E5B, #E9B949, #F28C28, #D7263D); }
+.curseur input::-moz-range-track{ height:10px; border-radius:5px; border:2px solid var(--ink); background:linear-gradient(90deg, #2E9E5B, #E9B949, #F28C28, #D7263D); }
+.curseur input::-webkit-slider-thumb{ -webkit-appearance:none; width:28px; height:28px; margin-top:-11px; border-radius:50%; background:var(--card); border:3px solid var(--ink); box-shadow:2px 2px 0 var(--ink); }
+.curseur input::-moz-range-thumb{ width:24px; height:24px; border-radius:50%; background:var(--card); border:3px solid var(--ink); }
+.curseur-l{ display:flex; justify-content:space-between; font-size:.75rem; font-weight:700; color:var(--muted); }
+.tours{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.tours .seg button{ width:44px; font-size:1.2rem; }
+.tours output{ min-width:84px; text-align:center; font-weight:800; padding:9px 0; }
+.tours .aide{ margin:0; }
+.usure{ position:relative; height:22px; border:2px solid var(--ink); border-radius:11px; overflow:hidden; background:var(--card); flex:none; }
+.usure i{ position:absolute; left:0; top:0; bottom:0; width:0; }
+.usure span{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:800; white-space:nowrap; }
+.standings small.us{ font-weight:700; }
 .aide{ margin:6px 0 0; color:var(--muted); font-size:.85rem; line-height:1.35; }
 .seg-wrap{ flex-wrap:wrap; }
 .pneus{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
@@ -167,8 +184,12 @@ tr.me td{ font-weight:800; }
   <div class="seg" id="nbJoueurs" role="group" aria-label="Nombre de joueurs"></div>
   <div class="players" id="players"></div>
 
-  <h2>Adversaires</h2>
-  <div class="seg" id="niveau" role="group" aria-label="Niveau des adversaires"></div>
+  <h2>Difficulté des adversaires</h2>
+  <div class="curseur">
+    <div class="curseur-t"><b id="niveauNom"></b><span id="niveauPct"></span></div>
+    <input type="range" id="difficulte" min="0" max="100" step="1" aria-label="Difficulté des adversaires">
+    <div class="curseur-l" aria-hidden="true"><span>Facile</span><span>Normal</span><span>Difficile</span><span>Expert</span></div>
+  </div>
   <p class="aide" id="niveauAide"></p>
 
   <h2>Météo</h2>
@@ -182,6 +203,12 @@ tr.me td{ font-weight:800; }
     <button class="nav next" id="nextC" aria-label="Circuit suivant">›</button>
   </div>
   <p class="carousel-info" id="circInfo"></p>
+
+  <h2>Nombre de tours</h2>
+  <div class="tours">
+    <div class="seg"><button id="toursMoins" aria-label="Un tour de moins">−</button><output id="toursN"></output><button id="toursPlus" aria-label="Un tour de plus">+</button></div>
+    <span class="aide" id="toursAide"></span>
+  </div>
 
   <button class="go" id="goDraw">Tracer ma trajectoire</button>
 </main>
@@ -238,8 +265,8 @@ tr.me td{ font-weight:800; }
   </div>
 </main>
 
-<script src="drawrace/circuits.js?v=41"></script>
-<script src="drawrace/piste.js?v=41"></script>
+<script src="drawrace/circuits.js?v=42"></script>
+<script src="drawrace/piste.js?v=42"></script>
 <script>
 const P = window.Piste;
 // Garde-fou : page et scripts de versions différentes (ancien cache) → on recharge une fois depuis le réseau
@@ -258,11 +285,19 @@ const BOTS = ['Vitesse', 'Turbo', 'Piston', 'Chrono', 'Éclair'];
 /* Adversaires : vitesse de pointe et adhérence (part du maximum), trajectoire (0 : milieu de la piste, 1 : trajectoire idéale),
    envie d'utiliser le Boost. Expert : la trajectoire idéale à fond, comme un tracé parfait. */
 const NIVEAUX = {
-  facile:{ n:'Facile', top:.78, virage:.8, ligne:.5, boost:.3 },
-  normal:{ n:'Normal', top:.9, virage:.9, ligne:.8, boost:.5 },
-  difficile:{ n:'Difficile', top:.96, virage:.96, ligne:1, boost:.9 },
-  expert:{ n:'Expert', top:1, virage:1, ligne:1, boost:1.5 },
+  facile:{ n:'Facile', d:0, top:.78, virage:.8, ligne:.5, boost:.3 },
+  normal:{ n:'Normal', d:33, top:.9, virage:.9, ligne:.8, boost:.5 },
+  difficile:{ n:'Difficile', d:67, top:.96, virage:.96, ligne:1, boost:.9 },
+  expert:{ n:'Expert', d:100, top:1, virage:1, ligne:1, boost:1.5 },
 };
+// Curseur de difficulté (0 à 100) : réglages pris entre les deux niveaux voisins
+function niveauDe(d){
+  const L = Object.values(NIVEAUX);
+  let k = 0; while(k < L.length - 2 && d > L[k + 1].d) k++;
+  const a = L[k], b = L[k + 1], u = clamp((d - a.d) / (b.d - a.d), 0, 1), mix = f => a[f] + (b[f] - a[f]) * u;
+  const n = d < 20 ? 'Facile' : d < 50 ? 'Normal' : d < 84 ? 'Difficile' : 'Expert';
+  return { n, d, top:mix('top'), virage:mix('virage'), ligne:mix('ligne'), boost:mix('boost') };
+}
 /* Pneus, comme en F1 : adhérence (×, sur la vitesse possible en virage), usure par tour, chute brutale après quelques tours */
 const PNEUS = {
   tendre:{ n:'Tendres', l:'T', c:'#E3242B', aide:'Les plus rapides au sec, mais ils s\'usent vite et chutent après 3 tours.' },
@@ -278,6 +313,14 @@ function adherence(type, tours, w){
   const p = { tendre:[1.22, 0.04, 3, 0.22], medium:[1.11, 0.022, 5, 0.12], dur:[1, 0.005, 99, 0] }[type] || [1, 0, 99, 0];
   return (p[0] - p[1] * tours - (tours >= p[2] ? p[3] : 0)) * (1 - 0.65 * w);
 }
+// Durée de vie d'un pneu (en tours) : au-delà, il est usé (et les tendres chutent brutalement)
+function vie(type, w){
+  if(type === 'inter') return w < .2 ? 3 : 10;
+  if(type === 'pluie') return w < .2 ? 2.5 : 14;
+  return { tendre:3, medium:5, dur:15 }[type] || 5;
+}
+const usurePct = (type, age, w) => Math.round(age / vie(type, w) * 100);
+const couleurUsure = p => `hsl(${Math.round(120 * (1 - clamp(p / 100, 0, 1)))}, 70%, 45%)`;
 const METEOS = {
   sec:{ n:'Sec', ico:'☀️', aide:'Piste sèche toute la course.' },
   averse:{ n:'Averse', ico:'🌦', aide:'Sec au départ, la pluie arrive pendant la course.' },
@@ -296,11 +339,16 @@ const meilleurPneu = (meteo, tours) => Object.keys(PNEUS).sort((a, b) => scorePn
 const BOOST = { n:3, duree:1.3, facteur:1.4 };
 const HERBE = 90;                              // vitesse maximale hors piste
 const CIRC = window.CIRCUITS.map(P.construire);
+CIRC.forEach(c => { c.toursBase = c.tours; });
+const toursDe = c => clamp(cfg.tours[c.id] || c.toursBase, 1, 10);
+// Records : à part quand on ne fait pas le nombre de tours habituel du circuit
+const cleRecords = c => c.tours === c.toursBase ? c.id : `${c.id}-${c.tours}t`;
 const byId = Object.fromEntries(CIRC.map(c => [c.id, c]));
 
 let cfg = get('drawrace-choix', null) || { circuit:'anneau', niveau:'normal', joueurs:[{ nom:'', couleur:COULEURS[0] }] };
 if(!byId[cfg.circuit]) cfg.circuit = 'anneau';
-if(!NIVEAUX[cfg.niveau]) cfg.niveau = 'normal';
+if(typeof cfg.difficulte !== 'number') cfg.difficulte = (NIVEAUX[cfg.niveau] || NIVEAUX.normal).d;
+cfg.tours = cfg.tours || {};          // nombre de tours choisi, par circuit
 if(!METEOS[cfg.meteo]) cfg.meteo = 'sec';
 cfg.joueurs.forEach(j => { if(!PNEUS[j.pneu]) j.pneu = 'medium'; });
 const saveCfg = () => put('drawrace-choix', cfg);
@@ -342,13 +390,11 @@ function renderMenu(){
     const r = recs[c.id] && recs[c.id].courses && recs[c.id].courses[0];
     return `<button class="circ" data-id="${c.id}" aria-pressed="${c.id === cfg.circuit}">${miniSvg(c)}
       <b>${esc(c.n)}</b><small>${esc(c.inspi)}</small>
-      <small><span class="dots" aria-label="Difficulté ${c.d} sur 5">${'●'.repeat(c.d)}<i>${'●'.repeat(5 - c.d)}</i></span> · ${c.tours} tours</small>
+      <small><span class="dots" aria-label="Difficulté ${c.d} sur 5">${'●'.repeat(c.d)}<i>${'●'.repeat(5 - c.d)}</i></span> · ${c.toursBase} tours</small>
       <small class="rec">${r ? `Record ${fmtTime(r.temps)} · ${esc(r.nom)}` : 'Pas de record'}</small></button>`;
   }).join('');
   $('nbJoueurs').innerHTML = [1, 2, 3, 4].map(n => `<button data-n="${n}" aria-pressed="${cfg.joueurs.length === n}">${n}</button>`).join('');
-  $('niveau').innerHTML = Object.entries(NIVEAUX).map(([k, v]) => `<button data-k="${k}" aria-pressed="${cfg.niveau === k}">${v.n}</button>`).join('');
-  $('niveauAide').textContent = { facile:'Pour débuter : les adversaires roulent au milieu de la piste.', normal:'Les adversaires coupent les virages et roulent vite.',
-    difficile:'Trajectoire idéale, presque à fond : il faut un tracé propre pour gagner.', expert:'Trajectoire idéale à fond, bons pneus et Boosts bien placés : un tracé parfait est nécessaire.' }[cfg.niveau];
+  majNiveau();
   $('meteo').innerHTML = Object.entries(METEOS).map(([k, m]) => `<button data-m="${k}" aria-pressed="${cfg.meteo === k}">${m.ico} ${m.n}</button>`).join('');
   $('meteoAide').textContent = METEOS[cfg.meteo].aide + ' Choisissez les pneus de chaque pilote en conséquence.';
   $('players').innerHTML = cfg.joueurs.map((j, i) => `<div class="player" data-i="${i}">
@@ -370,6 +416,7 @@ const idx = () => CIRC.findIndex(c => c.id === cfg.circuit);
 function infoCircuit(){
   const i = idx();
   $('circInfo').textContent = `${i + 1} / ${CIRC.length} · ${CIRC[i].n}`;
+  majTours();
   $('prevC').disabled = i === 0; $('nextC').disabled = i === CIRC.length - 1;
   document.querySelectorAll('.circ').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === cfg.circuit)));
 }
@@ -391,7 +438,29 @@ $('circuits').addEventListener('scroll', () => {
 $('prevC').onclick = () => { const i = idx(); if(i > 0){ choisir(CIRC[i - 1].id); centrer(cfg.circuit); } };
 $('nextC').onclick = () => { const i = idx(); if(i < CIRC.length - 1){ choisir(CIRC[i + 1].id); centrer(cfg.circuit); } };
 $('circuits').addEventListener('click', e => { const b = e.target.closest('.circ'); if(b){ choisir(b.dataset.id); centrer(b.dataset.id); } });
-$('niveau').addEventListener('click', e => { const b = e.target.closest('button'); if(b){ cfg.niveau = b.dataset.k; saveCfg(); renderMenu(); } });
+function majNiveau(){
+  const niv = niveauDe(cfg.difficulte);
+  $('difficulte').value = cfg.difficulte;
+  $('niveauNom').textContent = niv.n;
+  $('niveauPct').textContent = `${cfg.difficulte} %`;
+  $('niveauAide').textContent = (cfg.difficulte < 20 ? 'Pour débuter : les adversaires roulent près du milieu de la piste. '
+    : cfg.difficulte < 50 ? 'Les adversaires coupent les virages et roulent vite. '
+    : cfg.difficulte < 84 ? 'Trajectoire idéale, presque à fond : il faut un tracé propre pour gagner. '
+    : 'Trajectoire idéale à fond, bons pneus et Boosts bien placés : un tracé parfait est nécessaire. ') +
+    `Vitesse ${Math.round(niv.top * 100)}\u00a0%, adhérence ${Math.round(niv.virage * 100)}\u00a0%.`;
+}
+$('difficulte').addEventListener('input', e => { cfg.difficulte = Number(e.target.value); majNiveau(); });
+$('difficulte').addEventListener('change', saveCfg);
+// Nombre de tours du circuit choisi
+function majTours(){
+  const c = byId[cfg.circuit], n = toursDe(c);
+  $('toursN').textContent = `${n} tour${n > 1 ? 's' : ''}`;
+  $('toursMoins').disabled = n <= 1; $('toursPlus').disabled = n >= 10;
+  $('toursAide').textContent = n === c.toursBase ? `Nombre habituel pour ${c.n}.` : `Habituel : ${c.toursBase}. Records à part.`;
+}
+const changerTours = d => { const c = byId[cfg.circuit], n = clamp(toursDe(c) + d, 1, 10); if(n === c.toursBase) delete cfg.tours[c.id]; else cfg.tours[c.id] = n; saveCfg(); majTours(); };
+$('toursMoins').onclick = () => changerTours(-1);
+$('toursPlus').onclick = () => changerTours(1);
 $('meteo').addEventListener('click', e => { const b = e.target.closest('button'); if(b){ cfg.meteo = b.dataset.m; saveCfg(); renderMenu(); } });
 $('nbJoueurs').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
@@ -752,6 +821,7 @@ function texteMeteo(){
 function debutTraces(){
   cancelAnimationFrame(raf); course = null;
   circuit = byId[cfg.circuit];
+  circuit.tours = toursDe(circuit);
   tirerMeteo();
   traces = [];
   joueurTrace = 0; tourTrace = 0;
@@ -951,7 +1021,8 @@ function ouvrirGrille(){
   $('grillePilotes').innerHTML = cfg.joueurs.map((j, i) => `<div class="pilote-g" data-i="${i}">
       <b><span class="dot" style="background:${j.couleur}"></span>${esc(nomJoueur(i))}</b>
       <div class="pneus">${Object.entries(PNEUS).map(([k, p]) => `<button class="pn" data-pneu="${k}" style="--c:${p.c}" aria-pressed="${j.pneu === k}" aria-label="Pneus ${p.n}" title="${p.n}">${p.l}</button>`).join('')}</div>
-      <p class="pn-aide"><b style="display:inline">${PNEUS[j.pneu].n}</b> : ${PNEUS[j.pneu].aide}</p>
+      <p class="pn-aide"><b style="display:inline">${PNEUS[j.pneu].n}</b> : ${PNEUS[j.pneu].aide}
+        Durée de vie avec cette météo : environ ${vie(j.pneu, mouilleTour(meteoCourse.m, 0, circuit.tours))} tours pour ${circuit.tours} tour${circuit.tours > 1 ? 's' : ''} de course.</p>
       <p class="pn-aide conseil-pn">🔧 Conseil de l'ingénieur : <b style="display:inline">${PNEUS[conseil].n}</b></p>
     </div>`).join('');
   $('grille').hidden = false;
@@ -968,7 +1039,7 @@ $('grilleRetour').onclick = () => { $('grille').hidden = true; joueurTrace = 0; 
 let course = null, raf = 0;
 function demarrerCourse(){
   tr = null;
-  const niv = NIVEAUX[cfg.niveau];
+  const niv = niveauDe(cfg.difficulte);
   if(!meteoCourse) tirerMeteo();
   const meteo = meteoCourse.m;
   const voitures = cfg.joueurs.map((j, i) => ({ nom:nomJoueur(i), couleur:j.couleur, humain:true, laps:traces[i], t:traces[i][0], pneu:j.pneu || 'medium' }));
@@ -978,8 +1049,8 @@ function demarrerCourse(){
   for(let k = 0; voitures.length < 4; k++){
     const bt = traceBot(niv, 1.3 + k * 2.1);
     // Pneus des adversaires : au hasard en Facile, souvent les bons en Normal, toujours les bons ensuite
-    const pneu = cfg.niveau === 'facile' ? secs[Math.floor(Math.random() * 3)]
-      : cfg.niveau === 'normal' && Math.random() < .4 ? secs[Math.floor(Math.random() * 3)] : meilleur;
+    const pneu = niv.d < 20 ? secs[Math.floor(Math.random() * 3)]
+      : niv.d < 50 && Math.random() < .4 ? secs[Math.floor(Math.random() * 3)] : meilleur;
     voitures.push({ nom:BOTS[k], couleur:libres[k], humain:false, laps:new Array(circuit.tours).fill(bt), t:bt, pneu });
   }
   // Grille de départ en quinconce : les joueurs devant, les adversaires derrière
@@ -1001,6 +1072,7 @@ function demarrerCourse(){
   $('boosts').hidden = false;
   $('boosts').innerHTML = humains.map(v => { const i = voitures.indexOf(v); return `<div class="pilote" data-i="${i}">
       <button class="boost" data-i="${i}" style="background:${v.couleur};color:${lisible(v.couleur)}">⚡ Boost<small>${esc(v.nom)} · ${v.boosts}</small></button>
+      <div class="usure" data-i="${i}"><i></i><span></span></div>
       <button class="stand" data-i="${i}">🔧 Stand<small style="display:block;font-weight:600">${PNEUS[v.pneu].n}</small></button>
       <div class="stand-choix" hidden>${Object.entries(PNEUS).map(([k, p]) => `<button class="pn" data-pneu="${k}" style="--c:${p.c}" aria-label="Pneus ${p.n}" title="${p.n}">${p.l}</button>`).join('')}</div>
     </div>`; }).join('');
@@ -1050,11 +1122,11 @@ $('boosts').addEventListener('click', e => {
 // Adversaires : changent de pneus quand ce n'est plus les bons (pas en Facile)
 function strategieBot(v){
   const c = course, reste = c.tours - (v.lap + 1);
-  if(c.niv === NIVEAUX.facile || reste < 1 || !v.tours.length) return;
+  if(c.niv.d < 15 || reste < 1 || !v.tours.length) return;
   const tourT = v.tours.reduce((a, b) => a + b, 0) / v.tours.length;
   const temps = (type, age) => { let t = 0; for(let k = 0; k < reste; k++) t += tourT * (.5 + .5 / Math.sqrt(Math.max(.25, adherence(type, age + k, c.w)))); return t; };
   const actuel = temps(v.pneu, v.age);
-  let best = null, bt = actuel - (c.niv === NIVEAUX.normal ? 6 : 3.5);
+  let best = null, bt = actuel - (c.niv.d < 50 ? 6 : 3.5);
   for(const k of Object.keys(PNEUS)){ const t = temps(k, 0); if(t < bt){ bt = t; best = k; } }
   if(best) v.stand = best;
 }
@@ -1072,8 +1144,10 @@ $('boosts').addEventListener('pointerdown', e => {
 });
 
 // Adhérence de la voiture : pneus (usure selon les tours faits) et piste mouillée
+// Âge des pneus en tours, en comptant la partie du tour en cours (l'usure avance en continu)
+const agePneus = v => v.age + (v.fin != null ? 0 : clamp(v.s / v.t.len, 0, 1));
 function majAdherence(v){
-  const m = Math.max(.25, adherence(v.pneu, v.age, course.w));
+  const m = Math.max(.25, adherence(v.pneu, agePneus(v), course.w));
   if(!v.prof || Math.abs(m - v.m) > .004 || v.prof.t !== v.t){
     // Prévenir un joueur dont les pneus chutent
     if(v.humain && v.prof && m < v.m - .08) flash(`${v.nom} : pneus usés !`);
@@ -1165,11 +1239,18 @@ function position(v){
 function progression(v){ return v.fin != null ? 1e9 - v.fin : v.lap + v.s / v.t.len; }
 function classement(){
   const c = course;
+  // Jauge d'usure des pneus de chaque joueur
+  $('boosts').querySelectorAll('.usure').forEach(el => {
+    const v = c.voitures[el.dataset.i], p = usurePct(v.pneu, agePneus(v), c.w);
+    el.querySelector('i').style.width = clamp(p, 0, 100) + '%';
+    el.querySelector('i').style.background = couleurUsure(p);
+    el.querySelector('span').textContent = `${PNEUS[v.pneu].n} · usure ${p}\u00a0%${p >= 100 ? ' : usés !' : ''}`;
+  });
   const tri = c.voitures.slice().sort((a, b) => progression(b) - progression(a));
   $('standings').innerHTML = tri.map((v, k) => {
     const tour = Math.min(c.tours, v.lap + 1);
     const pn = PNEUS[v.pneu];
-    return `<div><b>${k + 1}</b><em style="background:${v.couleur}"></em>${esc(v.nom)} <i class="pn" style="--c:${pn.c}" title="${pn.n}">${pn.l}</i> <small>${v.fin != null ? '🏁' : v.arret > 0 ? '🔧 stand' : `T${tour}/${c.tours}`}</small></div>`;
+    return `<div><b>${k + 1}</b><em style="background:${v.couleur}"></em>${esc(v.nom)} <i class="pn" style="--c:${pn.c}" title="${pn.n}">${pn.l}</i><small class="us" style="color:${couleurUsure(usurePct(v.pneu, agePneus(v), c.w))}">${usurePct(v.pneu, agePneus(v), c.w)}\u00a0%</small> <small>${v.fin != null ? '🏁' : v.arret > 0 ? '🔧 stand' : `T${tour}/${c.tours}`}</small></div>`;
   }).join('');
 }
 function dessinerCourse(){
@@ -1210,7 +1291,7 @@ function terminerCourse(){
   const meilleurTour = v => v.tours.length ? Math.round(Math.min(...v.tours) * 1000) : null;
   // Records : seuls les pilotes humains arrivés comptent
   const all = get('drawrace-records', {});
-  const rec = all[circuit.id] || { courses:[], tour:null };
+  const cle = cleRecords(circuit), rec = all[cle] || { courses:[], tour:null };
   const badges = [];
   const entrees = [];
   let nouveauTour = false;
@@ -1224,15 +1305,15 @@ function terminerCourse(){
   rec.courses.sort((a, b) => a.temps - b.temps);
   rec.courses = rec.courses.slice(0, 5);
   if(entrees.includes(rec.courses[0])) badges.unshift(`🏆 Record du circuit : ${esc(rec.courses[0].nom)}`);
-  all[circuit.id] = rec; put('drawrace-records', all);
+  all[cle] = rec; put('drawrace-records', all);
 
   const premier = tri[0];
   $('podium').innerHTML = `🏁 ${esc(premier.nom)} gagne !`;
-  $('finTitle').textContent = `Résultats · ${circuit.n} · ${METEOS[c.meteo].ico} ${METEOS[c.meteo].n} · ${NIVEAUX[cfg.niveau].n}`;
+  $('finTitle').textContent = `Résultats · ${circuit.n} · ${METEOS[c.meteo].ico} ${METEOS[c.meteo].n} · ${c.niv.n} ${c.niv.d} % · ${c.tours} tours`;
   $('results').innerHTML = '<tr><th>#</th><th>Pilote</th><th>Pneus</th><th class="r">Temps</th><th class="r">Meilleur tour</th></tr>' +
     tri.map((v, k) => `<tr${v.humain ? ' class="me"' : ''}><td>${k + 1}</td><td><span class="dot" style="background:${v.couleur}"></span>${esc(v.nom)}</td><td><i class="pn" style="--c:${PNEUS[v.pneu].c};width:22px;height:22px;border-width:3px;font-size:.65rem">${PNEUS[v.pneu].l}</i></td><td class="r">${v.fin != null ? fmtTime(Math.round(v.fin * 1000)) : 'non classé'}</td><td class="r">${fmtTime(meilleurTour(v))}</td></tr>`).join('');
   $('badges').innerHTML = badges.map(b => `<span class="badge">${b}</span>`).join('');
-  $('recTitle').textContent = `Records · ${circuit.n}`;
+  $('recTitle').textContent = `Records · ${circuit.n}` + (circuit.tours === circuit.toursBase ? '' : ` · ${circuit.tours} tours`);
   $('records').innerHTML = '<tr><th>#</th><th>Pilote</th><th class="r">Temps</th></tr>' +
     (rec.courses.length ? rec.courses.map((r, k) => `<tr${entrees.includes(r) ? ' class="me"' : ''}><td>${k + 1}</td><td><span class="dot" style="background:${r.couleur}"></span>${esc(r.nom)}</td><td class="r">${fmtTime(r.temps)}</td></tr>`).join('') : '<tr><td colspan="3">Pas encore de record</td></tr>') +
     (rec.tour ? `<tr><td>⏱</td><td>Meilleur tour : <span class="dot" style="background:${rec.tour.couleur}"></span>${esc(rec.tour.nom)}</td><td class="r">${fmtTime(rec.tour.temps)}</td></tr>` : '');

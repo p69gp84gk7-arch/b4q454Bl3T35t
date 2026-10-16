@@ -109,8 +109,10 @@ Le jeu se joue le téléphone à l'horizontale (un message le demande en vertica
 
 1. On choisit :
    - le nombre de joueurs (1 à 4, sur le même appareil), la couleur et les **pneus** de chaque monoplace ;
-   - le niveau des adversaires et la **météo** ;
+   - la difficulté des adversaires avec un **curseur** de 0 à 100 % (Facile, Normal, Difficile, Expert, et tous les réglages entre deux) et la **météo** ;
    - le circuit dans le carrousel : 20 circuits inspirés de la F1, de difficulté 1 à 5, de 2 à 5 tours, chacun avec son décor.
+   - le **nombre de tours**, de 1 à 10 (le nombre habituel du circuit est proposé). Les records sont gardés à part quand on ne fait pas le nombre habituel.
+
    La météo réelle du circuit est annoncée dès l'arrivée sur la piste (une météo « Surprise » est découverte à ce moment-là).
 2. Chaque joueur dessine ses tours d'affilée, sans lever le doigt, en partant de la ligne à damier (on peut reprendre au bout du trait, ou tout recommencer). La vitesse du doigt devient la vitesse de la voiture : la jauge et la couleur du trait passent du vert (lent) au rouge (rapide). Dans les virages, la voiture ralentit toute seule : pas de dérapage.
 3. La course se joue à 4 voitures (les places libres sont prises par des adversaires, qui partent derrière les joueurs). Chaque voiture suit, à chaque tour, le tracé dessiné pour ce tour. Chaque joueur a 3 Boosts (vitesse ×1,4 pendant 1,3 s). On peut abandonner à tout moment (la partie ne compte pas).
@@ -121,12 +123,14 @@ Hors piste, la voiture ralentit. Les virages sont bordés de vibreurs rouge et b
 
 Ils suivent une **trajectoire de course** calculée pour chaque circuit : un ruban tendu entre les bords de la piste, qui coupe les virages.
 
-| Niveau | Trajectoire | Vitesse et adhérence | Pneus |
+Le curseur mélange les réglages des deux niveaux voisins : à 50 %, par exemple, les adversaires sont entre Normal et Difficile.
+
+| Niveau (curseur) | Trajectoire | Vitesse et adhérence | Pneus |
 | --- | --- | --- | --- |
-| Facile | à mi-chemin entre le milieu de la piste et la trajectoire idéale | 78 % et 80 % | au hasard (secs) |
-| Normal | presque idéale | 90 % | souvent les bons |
-| Difficile | idéale | 96 % | les bons |
-| Expert | idéale | 100 % : un tour parfait | les bons, Boosts dans les longues lignes droites |
+| Facile (0 %) | à mi-chemin entre le milieu de la piste et la trajectoire idéale | 78 % et 80 % | au hasard (secs) |
+| Normal (33 %) | presque idéale | 90 % | souvent les bons |
+| Difficile (67 %) | idéale | 96 % | les bons |
+| Expert (100 %) | idéale | 100 % : un tour parfait | les bons, Boosts dans les longues lignes droites |
 
 En course simulée sur l'Aérodrome, un tracé propre bat Normal, se joue au dixième contre Difficile et perd contre Expert, sauf avec des Boosts bien placés.
 
@@ -145,6 +149,10 @@ L'adhérence limite la vitesse dans les virages et l'accélération en sortie. E
 Météo : Sec, Averse (la pluie arrive pendant la course, entre 30 et 65 % de la distance), Pluie, Déluge, ou Surprise (tirée en arrivant sur le circuit).
 
 - **Grille de départ** : une fois les trajectoires tracées, la grille montre la météo du circuit (pour une averse, le tour où la pluie est attendue). Chaque joueur y choisit ses pneus, avec le conseil de l'ingénieur.
+- **Usure** : pendant la course, une jauge sous le Boost montre l'usure des pneus de chaque joueur. Elle va du vert au rouge, en continu au fil du tour. Le classement donne l'usure de toutes les voitures.
+  100 % correspond à la durée de vie du pneu : environ 3 tours pour les Tendres (qui chutent alors brutalement), 5 pour les Mediums et 15 pour les Durs.
+  Pour les Intermédiaires, c'est 3 tours au sec et 10 sous la pluie ; pour les Pluie, 2,5 tours au sec et 14 sous la pluie.
+  La grille de départ indique la durée de vie du pneu choisi avec la météo du jour.
 - **Stand** : pendant la course, le bouton 🔧 Stand permet de choisir de nouveaux pneus. Le changement se fait au prochain passage de la ligne : arrêt de 3 s, pneus neufs (l'usure repart de zéro). Un nouveau toucher annule.
   Les adversaires (sauf en Facile) s'arrêtent aussi quand le changement leur fait gagner du temps sur les tours restants, par exemple quand la pluie arrive. La pluie s'affiche sur la piste et les voitures soulèvent des gerbes d'eau. Le classement montre les pneus de chacun, et un message prévient quand les pneus d'un joueur chutent.
 
