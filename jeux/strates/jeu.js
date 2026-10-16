@@ -56,7 +56,8 @@ const BATS = {
 };
 const A_CONSTRUIRE = ['cabane', 'ferme', 'atelier', 'four', 'fontaine', 'port', 'statue', 'phare', 'temple'];
 const BOIS_ARBRE = { 1:3, 2:3, 3:2, 4:1, 5:3 };
-const FOI_HAB = .5;            // foi par habitant et par seconde
+const FOI_HAB = .9;            // foi par habitant et par seconde
+const Q = K / 2.47;            // les épaisseurs d'eau sont comptées en couches : seuils proportionnels à leur finesse
 const NOMS = { ...Object.fromEntries(Object.entries(BATS).map(([k, b]) => [k, b.n])), ...Object.fromEntries(Object.entries(RECETTES).map(([k, r]) => [k, r.n])),
   'ile:sables':'Île des Sables', 'ile:volcan':'Île du Volcan', 'ile:glaces':'Île des Glaces' };
 
@@ -115,9 +116,9 @@ const capacite = () => I.bat.reduce((s, b) => s + (BATS[b.k].cap || 0), 0);
 const nourriture = () => 4 + I.bat.reduce((s, b) => s + (BATS[b.k].nourrit || 0), 0);
 const bonusFoi = () => 1 + I.bat.reduce((s, b) => s + (BATS[b.k].foi || 0), 0);
 const popTotale = () => Object.entries(S.pops).reduce((s, [k, n]) => s + (k === S.active ? 0 : n), 0) + I.hab.length;
-const auBordDeLEau = cases => cases.some(c => { const i = c % N, j = (c / N) | 0; return VOISINS.some(([a, b]) => dans(i + a, j + b) && I.w[idx(i + a, j + b)] > .6); });
+const auBordDeLEau = cases => cases.some(c => { const i = c % N, j = (c / N) | 0; return VOISINS.some(([a, b]) => dans(i + a, j + b) && I.w[idx(i + a, j + b)] > .5); });
 function directionEau(cases){
-  for(const c of cases){ const i = c % N, j = (c / N) | 0; for(const [a, b] of VOISINS) if(dans(i + a, j + b) && I.w[idx(i + a, j + b)] > .6) return Math.atan2(-b, a); }
+  for(const c of cases){ const i = c % N, j = (c / N) | 0; for(const [a, b] of VOISINS) if(dans(i + a, j + b) && I.w[idx(i + a, j + b)] > .5) return Math.atan2(-b, a); }
   return 0;
 }
 // Pourquoi on ne peut pas construire ici ('' : c'est possible)
@@ -127,7 +128,7 @@ function emplacement(k, i, j){
   const h = I.h[cases[0]];
   if(cases.some(c => I.h[c] !== h)) return 'Le terrain doit être plat' + (t > 1 ? ` sur ${t} × ${t} cases.` : '.');
   if(h <= SEA) return 'Trop bas : au niveau de la mer.';
-  if(cases.some(c => I.w[c] > .1 || I.l[c] > 0)) return 'Il y a de l\'eau ou de la lave.';
+  if(cases.some(c => I.w[c] > .1 * Q || I.l[c] > 0)) return 'Il y a de l\'eau ou de la lave.';
   if(cases.some(c => I.occ[c])) return 'Il y a déjà un bâtiment.';
   if(BATS[k].cote && !auBordDeLEau(cases)) return 'Il faut être au bord de l\'eau.';
   return '';
@@ -142,8 +143,8 @@ function nouvelHabitant(b, x, z){
   return h;
 }
 function marchable(c, depuis, h){
-  if(I.w[c] > .7 || I.l[c] > .05 || I.h[c] <= SEA - 1) return false;
-  if(Math.abs(I.h[c] - I.h[depuis]) > 2) return false;
+  if(I.w[c] > .7 * Q || I.l[c] > .05 || I.h[c] <= SEA - 1) return false;
+  if(Math.abs(I.h[c] - I.h[depuis]) > 3) return false;
   return !I.occ[c] || I.occ[c] === h.maison;
 }
 function choisirCible(h){
@@ -151,16 +152,16 @@ function choisirCible(h){
   if(b && Math.random() < .3){ h.cible = [b.i, b.j]; return; }
   const ox = b ? b.i : Math.floor(h.x), oz = b ? b.j : Math.floor(h.z);
   for(let k = 0; k < 8; k++){
-    const i = clamp(ox + Math.round((Math.random() - .5) * 24), 0, N - 1), j = clamp(oz + Math.round((Math.random() - .5) * 24), 0, N - 1);
+    const i = clamp(ox + Math.round((Math.random() - .5) * 36), 0, N - 1), j = clamp(oz + Math.round((Math.random() - .5) * 36), 0, N - 1);
     const c = idx(i, j);
-    if(I.h[c] > SEA && I.w[c] < .25 && !I.occ[c]){ h.cible = [i, j]; return; }
+    if(I.h[c] > SEA && I.w[c] < .25 * Q && !I.occ[c]){ h.cible = [i, j]; return; }
   }
   h.cible = null;
 }
 function bougerHabitants(dt){
   for(const h of I.hab){
     const ci = clamp(Math.floor(h.x), 0, N - 1), cj = clamp(Math.floor(h.z), 0, N - 1), c = idx(ci, cj);
-    const yc = I.h[c] * LH + (I.w[c] > .1 ? Math.min(I.w[c], 1) * LH : 0);
+    const yc = I.h[c] * LH + (I.w[c] > .1 * Q ? Math.min(I.w[c], Q) * LH : 0);
     h.y = h.y ? h.y + (yc - h.y) * Math.min(1, dt * 10) : yc;
     if(h.dedans > 0){ h.dedans -= dt; continue; }
     if(h.pause > 0){ h.pause -= dt; h.marche = false; continue; }
@@ -183,7 +184,7 @@ function bougerHabitants(dt){
       if(!best || bd > d0 + .6){ if(++h.bloque > 3 || !best){ h.cible = null; h.pause = .4; continue; } }
       h.pas = best;
     }
-    const tx = h.pas[0] + .5, tz = h.pas[1] + .5, dx = tx - h.x, dz = tz - h.z, d = Math.hypot(dx, dz), v = dt * 1.4;
+    const tx = h.pas[0] + .5, tz = h.pas[1] + .5, dx = tx - h.x, dz = tz - h.z, d = Math.hypot(dx, dz), v = dt * 2;
     h.marche = true;
     if(d <= v){ h.x = tx; h.z = tz; h.pas = null; }
     else { h.x += dx / d * v; h.z += dz / d * v; h.ang = Math.atan2(dx, dz); }
@@ -204,7 +205,7 @@ function placeLibre(){
     if(!ok) continue;
     let d = Infinity;
     for(const b of ref) d = Math.min(d, Math.hypot(b.i - i, b.j - j));
-    if(d > 30) continue;
+    if(d > 45) continue;
     d += Math.random() * 1.5;
     if(d < bd){ bd = d; best = c; }
   }
@@ -248,16 +249,16 @@ function seconde(){
   }
   // Dangers : la lave brûle, l'eau noie
   for(let c = 0; c < N * N; c++){
-    if(I.arbres[c] && (I.l[c] > .05 || I.w[c] > .6)){ I.arbres[c] = 0; arbres++; }
+    if(I.arbres[c] && (I.l[c] > .05 || I.w[c] > .6 * Q)){ I.arbres[c] = 0; arbres++; }
   }
   if(arbres) R.majArbres();
   for(const b of I.bat.slice()){
     const cases = casesBat(b);
     if(cases.some(c => I.l[c] > .05)) retirerBat(b, `🔥 La lave a brûlé : ${BATS[b.k].n}.`);
-    else if(!BATS[b.k].cote && cases.some(c => I.w[c] > 1.2)) retirerBat(b, `🌊 L'eau a emporté : ${BATS[b.k].n}.`);
+    else if(!BATS[b.k].cote && cases.some(c => I.w[c] > 1.2 * Q)) retirerBat(b, `🌊 L'eau a emporté : ${BATS[b.k].n}.`);
   }
   const avant = I.hab.length;
-  I.hab = I.hab.filter(h => { const c = idx(clamp(Math.floor(h.x), 0, N - 1), clamp(Math.floor(h.z), 0, N - 1)); return !(I.l[c] > .05 || I.w[c] > 3.5); });
+  I.hab = I.hab.filter(h => { const c = idx(clamp(Math.floor(h.x), 0, N - 1), clamp(Math.floor(h.z), 0, N - 1)); return !(I.l[c] > .05 || I.w[c] > 3.5 * Q); });
   if(I.hab.length < avant) toast(avant - I.hab.length > 1 ? `${avant - I.hab.length} habitants ont péri.` : 'Un habitant a péri.', true);
   // Paliers (sur toute la population de l'archipel)
   const pt = popTotale();
@@ -330,35 +331,50 @@ function expliquer(raisons){
     if(r === 'fond') return conseil(r, 'Impossible d\'aller plus bas : la roche-mère.', 6);
   }
 }
-const RAYONS = [0, 1.5, 3];
-function pinceau(i, j){
-  const r = RAYONS[S.pinceau - 1] || 0, n = Math.ceil(r), out = [];
-  for(let b = -n; b <= n; b++) for(let a = -n; a <= n; a++) if(a * a + b * b <= r * r + .3 && dans(i + a, j + b)) out.push(idx(i + a, j + b));
+// Pinceau : un disque autour du point exact sous le doigt (petit : la case touchée seulement)
+const RAYONS = [.5, 1.7, 3.2];
+function pinceau(x, z){
+  const r = RAYONS[S.pinceau - 1] || .5, n = Math.ceil(r) + 1, i0 = Math.floor(x), j0 = Math.floor(z), out = [];
+  if(r <= .5){ if(dans(i0, j0)) out.push(idx(i0, j0)); return out; }
+  for(let b = -n; b <= n; b++) for(let a = -n; a <= n; a++){
+    const i = i0 + a, j = j0 + b;
+    if(dans(i, j) && (i + .5 - x) ** 2 + (j + .5 - z) ** 2 <= r * r) out.push(idx(i, j));
+  }
   return out;
 }
-function appliquer(){
-  const g = geste, cell = g.cell;
+function appliquerEn(x, z){
+  const g = geste, c0 = idx(clamp(Math.floor(x), 0, N - 1), clamp(Math.floor(z), 0, N - 1));
   let fait = 0;
   if(outil === 'creuser'){
-    for(const c of pinceau(cell.i, cell.j)) if(!g.fait.has(c) && I.h[c] === g.niveau && creuserCase(c, g.raisons)){ g.fait.add(c); fait++; }
+    for(const c of pinceau(x, z)) if(!g.fait.has(c) && I.h[c] === g.niveau && creuserCase(c, g.raisons)){ g.fait.add(c); fait++; }
   } else if(outil === 'sculpter'){
-    // Le sens se décide à la première case quittée : vers plus bas, on tire la couche ; sur la couche, on la pousse
-    if(!g.mode && cell.c !== g.depart){
-      const h = I.h[cell.c];
+    // Une seule couche à la fois. Le sens se décide à la première case quittée :
+    // sur la couche juste en dessous, on tire (la couche s'étend d'un cran) ; sur la même couche, on pousse (elle recule d'un cran)
+    if(!g.mode && c0 !== g.depart){
+      const h = I.h[c0];
       if(h < g.niveau) g.mode = 'tirer';
       else if(h === g.niveau) g.mode = 'pousser';
     }
-    if(g.mode) for(const c of pinceau(cell.i, cell.j)){
+    if(g.mode) for(const c of pinceau(x, z)){
       if(g.fait.has(c)) continue;
-      if(g.mode === 'tirer' && I.h[c] < g.niveau){ if(elever(c, g.niveau, g.depart, g.raisons)){ g.fait.add(c); fait++; } }
+      if(g.mode === 'tirer' && I.h[c] === g.niveau - 1){ if(elever(c, g.niveau, g.depart, g.raisons)){ g.fait.add(c); fait++; } }
       else if(g.mode === 'pousser' && I.h[c] === g.niveau){ if(abaisser(c, g.raisons)){ g.fait.add(c); fait++; } }
     }
   }
+  return fait;
+}
+function appliquer(){
+  const g = geste, cell = g.cell;
+  // Le long du trajet du doigt, par petits pas (rien n'est sauté quand on va vite)
+  const x0 = g.px ?? cell.x, z0 = g.pz ?? cell.z, d = Math.hypot(cell.x - x0, cell.z - z0), n = Math.max(1, Math.ceil(d / .35));
+  let fait = 0;
+  for(let k = 1; k <= n; k++) fait += appliquerEn(x0 + (cell.x - x0) * k / n, z0 + (cell.z - z0) * k / n);
+  g.px = cell.x; g.pz = cell.z;
   if(g.arbres){ R.majArbres(); g.arbres = false; }
   if(!fait) expliquer(g.raisons);
   g.raisons.clear();
   if(fait) majInterface();
-  R.montrerCurseur(cell.i, cell.j, RAYONS[S.pinceau - 1]);
+  R.montrerCurseur(cell.x, cell.z, RAYONS[S.pinceau - 1], g.niveau);
 }
 function debutGeste(cell){
   geste = { cell, depart:cell.c, niveau:I.h[cell.c], fait:new Set(), raisons:new Set(), bouge:performance.now() };
@@ -367,13 +383,13 @@ function debutGeste(cell){
   // Creuser : le doigt immobile continue de creuser, de plus en plus profond
   if(outil === 'creuser') geste.timer = setInterval(() => {
     if(!geste || performance.now() - geste.bouge < 350) return;
-    geste.niveau--; geste.fait.clear(); appliquer();
-  }, 170);
+    geste.niveau--; geste.fait.clear(); geste.px = geste.pz = undefined; appliquer();
+  }, 120);
 }
 function suiteGeste(cell){
   if(!geste) return;
   if(outil === 'construire'){ geste.cell = cell; survolConstruire(cell); return; }
-  if(cell.c === geste.cell.c) return;
+  if(Math.hypot(cell.x - geste.cell.x, cell.z - geste.cell.z) < .15) return;
   geste.cell = cell; geste.bouge = performance.now();
   appliquer();
 }
@@ -398,7 +414,7 @@ function toucher(cell){
     return;
   }
   const m = M.dessus(I, c);
-  toast(`${m ? esc(MATS[m].n) : 'Fond'} · couche ${I.h[c]}${I.w[c] > .1 ? ' · sous l\'eau' : ''}${I.l[c] > .05 ? ' · lave !' : ''}`);
+  toast(`${m ? esc(MATS[m].n) : 'Fond'} · couche ${I.h[c]}${I.w[c] > .1 * Q ? ' · sous l\'eau' : ''}${I.l[c] > .05 ? ' · lave !' : ''}`);
 }
 
 /* ---------- Construire ---------- */
@@ -437,7 +453,7 @@ function choisirOutil(k){
   $('aideOutil').textContent = {
     main:'Touchez un arbre pour le bois, un bâtiment pour le voir · deux doigts pour bouger la vue',
     creuser:'Touchez ou glissez pour creuser · gardez le doigt appuyé pour creuser plus profond',
-    sculpter:'Posez le doigt sur une couche : tirez vers le bas pour l\'étendre, poussez vers l\'intérieur pour la faire reculer',
+    sculpter:'Posez le doigt sur le bord d\'une couche : tirez vers le bas pour l\'étendre d\'un cran, poussez vers l\'intérieur pour la faire reculer d\'un cran',
     construire:aConstruire ? `${BATS[aConstruire].n} : glissez jusqu'à l'endroit voulu et relâchez` : '',
   }[k] || '';
   majOptions();
@@ -553,7 +569,7 @@ function installerVillage(ile, colons, port){
   const b = ajouterBat('cabane', i, j);
   if(port){
     let best = null, bd = Infinity;
-    for(let y = j - 36; y <= j + 36; y++) for(let x = i - 36; x <= i + 36; x++){
+    for(let y = j - 54; y <= j + 54; y++) for(let x = i - 54; x <= i + 54; x++){
       if(!dans(x, y)) continue;
       if(emplacement('port', x, y)) continue;
       const d = Math.hypot(x - i, y - j);
@@ -593,10 +609,10 @@ function voyager(k){
 /* ---------- Partie : nouvelle, sauvegarde, reprise ---------- */
 function nouvellePartie(mode){
   S = { v:1, mode, active:'verte', iles:{}, pops:{}, decouvertes:['verte'], inv:mode === 'libre' ? {} : { bois:6, terre:12 },
-    foi:500, pioche:0, palier:mode === 'libre' ? PALIERS.length - 1 : 0, pinceau:2 };
+    foi:900, pioche:0, palier:mode === 'libre' ? PALIERS.length - 1 : 0, pinceau:2 };
   installerVillage(M.creerIle('verte', Math.floor(Math.random() * 1e9)), 2, false);
   R.centrer(I.depart.i, I.depart.j);
-  R.cam.dist = 42;
+  R.cam.dist = 60;
   fermer();
   choisirOutil('main');
   majInterface();
@@ -606,7 +622,7 @@ function nouvellePartie(mode){
 function sauver(){
   if(!S || !I) return;
   try{
-    const o = { ...S, v:2, iles:{ ...S.iles, [S.active]:M.serialiser(I) }, pops:{ ...S.pops, [S.active]:I.hab.length }, cam:{ ...R.cam } };
+    const o = { ...S, v:3, iles:{ ...S.iles, [S.active]:M.serialiser(I) }, pops:{ ...S.pops, [S.active]:I.hab.length }, cam:{ ...R.cam } };
     localStorage.setItem(CLE, JSON.stringify(o));
     localStorage.setItem(CLE_RESUME, JSON.stringify({ mode:S.mode, ile:S.active, pop:popTotale(), palier:S.palier, nomPalier:PALIERS[S.palier].n, iles:S.decouvertes.length, t:Date.now() }));
   }catch(e){ conseil('sauve', 'Sauvegarde impossible (mémoire du téléphone pleine ?).', 120); }
@@ -615,7 +631,7 @@ function reprendre(){
   let o = null;
   try{ o = JSON.parse(localStorage.getItem(CLE)); }catch(e){}
   if(!o || !o.iles || !o.iles[o.active]) return false;
-  if(o.v !== 2){ toast('Le monde de Strates est maintenant plus fin : une nouvelle partie commence.', true); return false; }
+  if(o.v !== 3){ toast('Le monde de Strates est maintenant plus fin : une nouvelle partie commence.', true); return false; }
   S = o;
   I = M.deserialiser(S.iles[S.active]);
   delete S.iles[S.active];
@@ -659,7 +675,7 @@ function gestes(cv){
       if(e.pointerType === 'mouse'){
         const cell = R.viser(e.clientX, e.clientY);
         if(outil === 'construire' && cell) survolConstruire(cell);
-        else if(OUTILS_SCULPTE.includes(outil) && cell) R.montrerCurseur(cell.i, cell.j, RAYONS[S.pinceau - 1]);
+        else if(OUTILS_SCULPTE.includes(outil) && cell) R.montrerCurseur(cell.x, cell.z, RAYONS[S.pinceau - 1]);
       }
       return;
     }
@@ -705,7 +721,7 @@ function boucle(now){
     if(accEau >= .1){ accEau = 0; if(M.pasEau(I) > .002) R.fluides(); }
     if(accLave >= .3){
       accLave = 0;
-      if(I.cratere >= 0 && I.eruption && I.eruption.fin > 0) I.l[I.cratere] += 2.4;
+      if(I.cratere >= 0 && I.eruption && I.eruption.fin > 0) I.l[I.cratere] += 4.4;
       const ch = [];
       if(M.pasLave(I, ch) > .002 || ch.length) R.fluides();
       if(ch.length){ ch.forEach(c => { R.majCellule(c); I.arbres[c] = 0; }); R.majArbres(); }
