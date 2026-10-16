@@ -11,7 +11,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **10 000** : ouverture à 1 000, croix (effacées dès qu'on note des points ou le −500 du 1er lancer), reprises, pénalités ; il faut finir à 10 000 pile, dépasser donne une croix, et on ne peut pas reprendre des points qui mèneraient à 10 000 ou plus | `jeux/10000.html` | 2 à 15 |
 | **Yam's** : feuille de marque classique, bonus à 63 | `jeux/yams.html` | 1 à 10 |
 | **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), défi du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
-| **Draw Race** : course de monoplaces dont on dessine la trajectoire, 20 circuits inspirés de la F1, pneus, météo et arrêts au stand | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
+| **Draw Race** : course de monoplaces dont on dessine la trajectoire, 20 circuits inspirés de la F1, pneus, météo et arrêts au stand ; modes Arcade et Championnat | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 | **Nivoculteur** : construire et faire tourner le réseau de neige de culture d'une station, en 3D (en construction) | `jeux/nivoculteur/index.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
@@ -105,9 +105,39 @@ Sources : IGN Admin Express via france-geojson (Licence ouverte), U.S. Census Bu
 
 ## Draw Race
 
+Deux modes de jeu, au choix en haut du menu :
+
+- **Arcade** : une course, de 1 à 4 joueurs sur le même appareil, contre des adversaires. Tout se règle : circuit, nombre de tours, difficulté, météo.
+- **Championnat** : un joueur seul contre 5 pilotes, course après course.
+
+### Championnat
+
+- **Réglages au départ** :
+  - nom et couleur du pilote ;
+  - difficulté (curseur de 0 à 100 %), **fixée pour tout le championnat** ;
+  - nombre de courses : 5, 8, 12 ou 20 ;
+  - tours par course, de 3 à 10 ;
+  - météo : variable (chaque course a sa météo, découverte en arrivant sur le circuit) ou toujours sèche ;
+  - calendrier : au hasard, ou du plus facile au plus dur.
+- **Adversaires** : 5 pilotes tirés parmi 12 noms inspirés de vrais pilotes de F1, chacun avec sa couleur : Max Verstapin, Lewis Hamiltown, Charles Leclaire, Lando Norrish, Oscar Piastrino, Fernando Alonsso, George Russelle, Carlos Sainze, Pierre Gaslight, Esteban Ocone, Yuki Tsunodo, Valtteri Bottass.
+  Il y a toujours l'un des trois plus forts. Chaque pilote a sa force (au plus ±1 % de vitesse autour de la difficulté choisie), plus une forme du jour qui change à chaque course.
+- **Points** : 25, 18, 15, 12, 10 et 8 du 1er au 6e, et 1 point pour le meilleur tour en course. Un abandon ne rapporte rien.
+  Les autres pilotes terminent la course (simulée d'un coup) pour avoir de vrais temps. À égalité de points, le nombre de victoires puis les meilleures places départagent.
+- **Avant chaque course**, l'écran du championnat montre :
+  - la prochaine course (circuit, nombre de tours, météo à découvrir) ;
+  - le calendrier, avec les courses faites et celle à venir ;
+  - le classement général, avec les points gagnés à la dernière course.
+- **Grille de départ** : dans l'ordre du classement général (au hasard pour la première course).
+- **Abandons** :
+  - *Abandonner* pendant une course donne 0 point, et les autres finissent la course ;
+  - pendant le tracé, on retourne au classement sans pénalité, et la course reste à faire ;
+  - *Abandonner le championnat* (sur l'écran du classement ou au menu) efface le championnat en cours.
+- **Sauvegarde** : le championnat est gardé sur l'appareil. On peut quitter et reprendre plus tard : le menu propose *Continuer*. L'accueil de DesDés affiche la course et la place.
+- **Fin** : classement final et champion. Un **palmarès** garde les derniers championnats (date, nombre de courses, difficulté, place, points).
+
 Le jeu se joue le téléphone à l'horizontale (un message le demande en vertical), pour des pistes plus larges.
 
-1. On choisit :
+1. En Arcade, on choisit :
    - le nombre de joueurs (1 à 4, sur le même appareil), la couleur et les **pneus** de chaque monoplace ;
    - la difficulté des adversaires avec un **curseur** de 0 à 100 % (Facile, Normal, Difficile, Expert, et tous les réglages entre deux) et la **météo** ;
    - le circuit dans le carrousel : 20 circuits inspirés de la F1, de difficulté 1 à 5, de 2 à 5 tours, chacun avec son décor.
