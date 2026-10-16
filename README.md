@@ -11,7 +11,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **10 000** : ouverture à 1 000, croix (effacées dès qu'on note des points ou le −500 du 1er lancer), reprises, pénalités ; il faut finir à 10 000 pile, dépasser donne une croix, et on ne peut pas reprendre des points qui mèneraient à 10 000 ou plus | `jeux/10000.html` | 2 à 15 |
 | **Yam's** : feuille de marque classique, bonus à 63 | `jeux/yams.html` | 1 à 10 |
 | **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), défi du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
-| **Draw Race** : course de monoplaces dont on dessine la trajectoire, 10 circuits inspirés de la F1 | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
+| **Draw Race** : course de monoplaces dont on dessine la trajectoire, 18 circuits inspirés de la F1, pneus et météo | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 | **Nivoculteur** : construire et faire tourner le réseau de neige de culture d'une station, en 3D (en construction) | `jeux/nivoculteur/index.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
@@ -107,12 +107,48 @@ Sources : IGN Admin Express via france-geojson (Licence ouverte), U.S. Census Bu
 
 Le jeu se joue le téléphone à l'horizontale (un message le demande en vertical), pour des pistes plus larges.
 
-1. On choisit le nombre de joueurs (1 à 4, sur le même appareil), la couleur de chaque monoplace, le niveau des adversaires, puis le circuit dans le carrousel (10 circuits inspirés de la F1, difficulté de 1 à 5, de 2 à 5 tours).
+1. On choisit :
+   - le nombre de joueurs (1 à 4, sur le même appareil), la couleur et les **pneus** de chaque monoplace ;
+   - le niveau des adversaires et la **météo** ;
+   - le circuit dans le carrousel : 18 circuits inspirés de la F1, de difficulté 1 à 5, de 2 à 5 tours, chacun avec son décor.
 2. Chaque joueur dessine ses tours d'affilée, sans lever le doigt, en partant de la ligne à damier (on peut reprendre au bout du trait, ou tout recommencer). La vitesse du doigt devient la vitesse de la voiture : la jauge et la couleur du trait passent du vert (lent) au rouge (rapide). Dans les virages, la voiture ralentit toute seule : pas de dérapage.
 3. La course se joue à 4 voitures (les places libres sont prises par des adversaires, qui partent derrière les joueurs). Chaque voiture suit, à chaque tour, le tracé dessiné pour ce tour. Chaque joueur a 3 Boosts (vitesse ×1,4 pendant 1,3 s). On peut abandonner à tout moment (la partie ne compte pas).
 
 Hors piste, la voiture ralentit. Les virages sont bordés de vibreurs rouge et blanc. Les records (5 meilleurs temps et meilleur tour) sont gardés par circuit.
-Les circuits sont dans `jeux/drawrace/circuits.js` (points de passage), la géométrie dans `jeux/drawrace/piste.js`.
+
+### Adversaires
+
+Ils suivent une **trajectoire de course** calculée pour chaque circuit : un ruban tendu entre les bords de la piste, qui coupe les virages.
+
+| Niveau | Trajectoire | Vitesse et adhérence | Pneus |
+| --- | --- | --- | --- |
+| Facile | à mi-chemin entre le milieu de la piste et la trajectoire idéale | 78 % et 80 % | au hasard (secs) |
+| Normal | presque idéale | 90 % | souvent les bons |
+| Difficile | idéale | 96 % | les bons |
+| Expert | idéale | 100 % : un tour parfait | les bons, Boosts dans les longues lignes droites |
+
+En course simulée sur l'Aérodrome, un tracé propre bat Normal, se joue au dixième contre Difficile et perd contre Expert, sauf avec des Boosts bien placés.
+
+### Pneus et météo
+
+| Pneus | Au sec | Sous la pluie |
+| --- | --- | --- |
+| Tendres (T, rouge) | les plus rapides, mais usure rapide et chute après 3 tours | très glissants |
+| Mediums (M, jaune) | rapides, tiennent 5 tours | glissants |
+| Durs (D, blanc) | moins d'adhérence, presque pas d'usure | glissants |
+| Intermédiaires (I, vert) | lents et vite usés | les meilleurs sous la pluie légère |
+| Pluie (P, bleu) | très lents | les meilleurs sous le déluge |
+
+L'adhérence limite la vitesse dans les virages et l'accélération en sortie. Exemple sur le Tourniquet (3 tours) : 35,7 s en Tendres, 36,7 en Mediums, 37,9 en Durs au sec. Sous la pluie : 39,3 s en Intermédiaires contre 41,2 en Tendres.
+
+Météo : Sec, Averse (la pluie arrive pendant la course, entre 30 et 65 % de la distance), Pluie, Déluge, ou Surprise (tirée au départ). La pluie s'affiche sur la piste et les voitures soulèvent des gerbes d'eau. Le classement montre les pneus de chacun, et un message prévient quand les pneus d'un joueur chutent.
+
+### Décors
+
+Chaque circuit a un paysage : parc, campagne et champs, collines d'oliviers, forêt, sapins, désert, dunes et mer, ville, ville de nuit (néons, lampadaires), cerisiers et grande roue, île au milieu de l'eau, lac, port avec bateaux, prairie.
+On trouve aussi des tribunes avec le public le long de la ligne droite et des stands en face.
+Les décors sont placés automatiquement loin de la piste, toujours au même endroit pour un circuit donné.
+Les circuits sont dans `jeux/drawrace/circuits.js` (points de passage et décor), la géométrie et la trajectoire de course dans `jeux/drawrace/piste.js`.
 
 ## Nivoculteur
 
