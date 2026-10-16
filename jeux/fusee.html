@@ -591,8 +591,13 @@ function boucle(now){
   const dir = (commandes.droite ? 1 : 0) - (commandes.gauche ? 1 : 0);
   // Plus ça défile vite, plus la fusée est vive (elle tourne et se déplace plus vite)
   const vif = clamp(vit / VITESSE, .7, 1.4);
-  if(dir) P.ang = clamp(P.ang + dir * (dir * P.ang < 0 ? 7 : 4.2) * vif * dt, -1.05, 1.05);
-  else P.ang *= Math.exp(-4.5 * vif * dt);
+  // Plus on appuie longtemps, plus elle penche (donc plus elle se déplace vite) ; un appui court ne la décale qu'un peu
+  if(dir){ if(dir !== P.dirAppui){ P.dirAppui = dir; P.appui = 0; } P.appui += dt; } else { P.dirAppui = 0; P.appui = 0; }
+  const tenu = clamp(P.appui / .9, 0, 1);
+  if(dir){
+    const cible = dir * (.22 + .83 * tenu), taux = (dir * P.ang < 0 ? 9 : 2.5 + 3 * tenu) * vif;
+    P.ang += clamp(cible - P.ang, -taux * dt, taux * dt);
+  } else P.ang *= Math.exp(-4.5 * vif * dt);
   P.vx = Math.sin(P.ang) * 1.3 * (.7 + .3 * vif);
   const bordG = LARG_FUSEE * .6, bordD = 1 - LARG_FUSEE * .6;
   P.x = clamp(P.x + P.vx * dt, bordG, bordD);
