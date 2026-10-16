@@ -183,7 +183,7 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
         </g>
       </svg>
       <p class="title">Draw <span>Race</span></p>
-      <p class="desc">Dessinez la trajectoire de votre monoplace, choisissez vos pneus selon la météo, puis foncez avec le Boost. 20 circuits, jusqu'à 4 joueurs.</p>
+      <p class="desc">Dessinez la trajectoire de votre monoplace, choisissez vos pneus selon la météo, puis foncez avec le Boost. 20 circuits, mode Arcade (jusqu'à 4 joueurs) ou Championnat.</p>
       <p class="status" id="stdraw"><b>Pas encore de record</b></p>
       <span class="go">Jouer</span>
     </a>
@@ -215,8 +215,8 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
   <footer id="installHint">Astuce : ajoutez DesDés à l'écran d'accueil pour l'ouvrir comme une application. Tous les jeux marchent ensuite sans réseau.</footer>
 </main>
 
-<script src="jeux/drawrace/circuits.js?v=43"></script>
-<script src="jeux/sauvegarde.js?v=43"></script>
+<script src="jeux/drawrace/circuits.js?v=44"></script>
+<script src="jeux/sauvegarde.js?v=44"></script>
 <script>
 const fmt = n => n.toLocaleString('fr-FR');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -289,6 +289,14 @@ function showGeo(){
 }
 /* Draw Race : record du dernier circuit choisi (clés partagées avec jeux/drawrace.html) */
 function showDraw(){
+  // Championnat en cours : course et classement du joueur
+  const ch = read('drawrace-championnat');
+  if(ch && !ch.fini && ch.calendrier && ch.pilotes){
+    const pts = ch.points || {}, ids = ['moi', ...ch.pilotes.map(p => p.id)];
+    const place = ids.slice().sort((a, b) => (pts[b] || 0) - (pts[a] || 0)).indexOf('moi') + 1;
+    document.getElementById('stdraw').innerHTML = `<b>Championnat · course ${ch.course + 1} / ${ch.calendrier.length}</b>${place === 1 ? 'En tête' : place + 'e'} avec ${pts.moi || 0} point${(pts.moi || 0) > 1 ? 's' : ''}.`;
+    return;
+  }
   const recs = read('drawrace-records') || {};
   const choix = read('drawrace-choix') || {};
   const id = recs[choix.circuit] && recs[choix.circuit].courses.length ? choix.circuit : Object.keys(recs).find(k => recs[k].courses && recs[k].courses.length);

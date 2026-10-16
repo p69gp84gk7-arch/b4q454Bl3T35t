@@ -134,7 +134,9 @@ h2{ font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:
 .lights i.on{ background:#FF2A2A; box-shadow:0 0 12px #FF2A2A; }
 .standings{ background:var(--card); border:2px solid var(--ink); border-radius:10px; padding:4px 8px; font-size:.82rem; line-height:1.5; }
 .standings div{ display:flex; align-items:center; gap:6px; white-space:nowrap; }
-.standings em{ width:10px; height:10px; border-radius:50%; border:1.5px solid var(--ink); display:inline-block; }
+.standings em{ width:10px; height:10px; border-radius:50%; border:1.5px solid var(--ink); display:inline-block; flex:none; }
+.standings .nm{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.standings .pn, .standings small{ flex:none; }
 .boosts{ display:flex; flex-direction:column; gap:8px; margin-top:auto; flex:1; min-height:0; }
 .boost{ flex:1; min-height:38px; max-height:120px; border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); font-weight:800; font-size:1.05rem; line-height:1.1; -webkit-user-select:none; user-select:none; touch-action:manipulation; }
 .boost small{ display:block; font-size:.75rem; font-weight:700; opacity:.85; }
@@ -181,6 +183,31 @@ h2{ font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:
 .stand-choix{ display:flex; flex-wrap:wrap; gap:4px; justify-content:center; }
 .stand-choix .pn{ width:30px; height:30px; }
 
+/* Modes de jeu et championnat */
+.modes-jeu{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+.modes-jeu button{ display:flex; flex-direction:column; gap:4px; padding:12px; text-align:left; background:var(--card); border:2px solid var(--line); box-shadow:2px 3px 0 rgba(0,0,0,.08); }
+.modes-jeu button b{ font-size:1.1rem; }
+.modes-jeu button small{ color:var(--muted); font-size:.8rem; line-height:1.3; }
+.modes-jeu button[aria-pressed="true"]{ border-color:var(--ink); box-shadow:3px 4px 0 var(--ink); background:#FFF7DC; }
+.champ-carte{ padding:14px; background:var(--card); border:2px solid var(--ink); border-radius:14px; box-shadow:3px 4px 0 var(--ink); display:grid; gap:8px; }
+.champ-carte b{ font-size:1.1rem; }
+.champ-carte .row{ margin-top:4px; }
+.champ-t{ font-size:clamp(2rem,9vw,2.8rem); }
+.champ-prochaine{ display:grid; grid-template-columns:minmax(120px, 40%) 1fr; gap:12px; align-items:center; padding:12px; background:var(--card); border:2px solid var(--ink); border-radius:14px; box-shadow:2px 3px 0 var(--ink); }
+.champ-prochaine svg{ width:100%; height:auto; }
+.champ-prochaine b{ font-size:1.2rem; display:block; }
+.champ-prochaine small{ display:block; color:var(--muted); line-height:1.35; }
+.calendrier{ display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
+.calendrier span{ padding:3px 8px; border-radius:999px; border:1.5px solid var(--line); font-size:.75rem; font-weight:700; background:var(--card); }
+.calendrier span.fait{ background:#E3DCC8; color:var(--muted); }
+.calendrier span.ici{ background:var(--gold); border-color:var(--ink); }
+.champ-act{ grid-template-columns:1fr 1.4fr !important; }
+.adversaires{ display:flex; flex-wrap:wrap; gap:6px; }
+.adversaires span{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:var(--card); border:1.5px solid var(--line); font-size:.85rem; font-weight:700; }
+.gain{ color:var(--green); font-weight:800; font-size:.85rem; }
+.podium-final{ font-family:"Kalam",cursive; font-size:1.6rem; text-align:center; margin:4px 0 12px; }
+.verrou{ font-size:.82rem; color:var(--red); font-weight:700; margin:6px 0 0; }
+
 /* ---------- Résultats ---------- */
 table{ width:100%; border-collapse:collapse; background:var(--card); border:2px solid var(--ink); border-radius:12px; overflow:hidden; }
 th, td{ padding:9px 8px; text-align:left; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
@@ -204,6 +231,14 @@ tr.me td{ font-weight:800; }
   <h1>Draw <span>Race</span></h1>
   <p class="sub">Dessinez la trajectoire de votre monoplace : la vitesse de votre doigt devient la vitesse de la voiture (dans les virages, elle ralentit toute seule). Enchaînez les tours sans lever le doigt, puis place à la course : gardez le Boost pour les lignes droites. Choisissez bien vos pneus selon la météo et le nombre de tours. Se joue le téléphone à l'horizontale.</p>
 
+  <div class="modes-jeu" id="modeJeu" role="group" aria-label="Mode de jeu">
+    <button data-mode="arcade"><b>🏁 Arcade</b><small>Une course, de 1 à 4 joueurs, tout se règle.</small></button>
+    <button data-mode="championnat"><b>🏆 Championnat</b><small>Seul contre 5 pilotes, course après course, au classement aux points.</small></button>
+  </div>
+
+  <div id="champMenu" hidden></div>
+
+  <div id="arcade">
   <h2>Joueurs</h2>
   <div class="seg" id="nbJoueurs" role="group" aria-label="Nombre de joueurs"></div>
   <div class="players" id="players"></div>
@@ -235,6 +270,23 @@ tr.me td{ font-weight:800; }
   </div>
 
   <button class="go" id="goDraw">Tracer ma trajectoire</button>
+  </div>
+</main>
+
+<!-- Championnat : classement général avant chaque course, et classement final -->
+<main class="page" id="champ" hidden>
+  <a class="home" href="#" id="champMenuLien">Menu</a>
+  <h1 class="champ-t" id="champTitre">Championnat</h1>
+  <p class="sub" id="champSous"></p>
+  <div id="champProchaine"></div>
+  <h2 id="champClTitre">Classement général</h2>
+  <table id="champClassement"></table>
+  <h2>Points</h2>
+  <p class="aide">25, 18, 15, 12, 10 et 8 points du 1er au 6e, et 1 point de plus pour le meilleur tour en course. Un abandon ne rapporte rien.</p>
+  <div class="row champ-act">
+    <button class="btn-light" id="champAbandon">Abandonner le championnat</button>
+    <button class="btn-red" id="champGo">Course suivante</button>
+  </div>
 </main>
 
 <!-- Tracé et course -->
@@ -280,17 +332,22 @@ tr.me td{ font-weight:800; }
   <h2 id="finTitle">Résultats</h2>
   <table id="results"></table>
   <div class="badges" id="badges"></div>
+  <div id="finChamp" hidden>
+    <h2>Classement général</h2>
+    <table id="finClassement"></table>
+  </div>
   <h2 id="recTitle">Records du circuit</h2>
   <table id="records"></table>
   <div class="row">
     <button class="btn-light" id="toMenu">Menu</button>
     <button class="btn-light" id="redraw">Retracer</button>
     <button class="btn-red" id="rematch">Revanche</button>
+    <button class="btn-red" id="champSuite" hidden>Classement général →</button>
   </div>
 </main>
 
-<script src="drawrace/circuits.js?v=43"></script>
-<script src="drawrace/piste.js?v=43"></script>
+<script src="drawrace/circuits.js?v=44"></script>
+<script src="drawrace/piste.js?v=44"></script>
 <script>
 const P = window.Piste;
 // Garde-fou : page et scripts de versions différentes (ancien cache) → on recharge une fois depuis le réseau
@@ -389,6 +446,34 @@ cfg.tours = cfg.tours || {};          // nombre de tours choisi, par circuit
 if(!METEOS[cfg.meteo]) cfg.meteo = 'sec';
 cfg.joueurs.forEach(j => { if(!PNEUS[j.pneu]) j.pneu = 'medium'; });
 const saveCfg = () => put('drawrace-choix', cfg);
+if(cfg.mode !== 'championnat') cfg.mode = 'arcade';
+
+/* ---------- Championnat ----------
+   Pilotes aux noms inspirés de vrais pilotes de F1 ; force : un peu plus (ou moins) rapide que la difficulté choisie. */
+const PILOTES = [
+  { id:'verstapin', nom:'Max Verstapin', c:'#1E3A8A', force:12 },
+  { id:'hamiltown', nom:'Lewis Hamiltown', c:'#00A19C', force:9 },
+  { id:'leclaire', nom:'Charles Leclaire', c:'#DC0000', force:7 },
+  { id:'norrish', nom:'Lando Norrish', c:'#FF8700', force:6 },
+  { id:'piastrino', nom:'Oscar Piastrino', c:'#F2A23B', force:4 },
+  { id:'alonsso', nom:'Fernando Alonsso', c:'#006F62', force:4 },
+  { id:'russelle', nom:'George Russelle', c:'#27C4B0', force:2 },
+  { id:'sainze', nom:'Carlos Sainze', c:'#0090FF', force:1 },
+  { id:'gaslight', nom:'Pierre Gaslight', c:'#5B8DEF', force:-2 },
+  { id:'ocone', nom:'Esteban Ocone', c:'#E75A9B', force:-4 },
+  { id:'tsunodo', nom:'Yuki Tsunodo', c:'#7B3FC4', force:-6 },
+  { id:'bottass', nom:'Valtteri Bottass', c:'#52B04A', force:-8 },
+];
+const POINTS = [25, 18, 15, 12, 10, 8];
+const NB_COURSES = [5, 8, 12, 20];
+let champ = get('drawrace-championnat', null);
+if(champ && (!champ.pilotes || !champ.calendrier)) champ = null;
+const saveChamp = () => put('drawrace-championnat', champ);
+const enChampionnat = () => !!(champ && !champ.fini && cfg.mode === 'championnat');
+// Pilotes de la session : le joueur du championnat, ou les joueurs de l'arcade
+let JOUEURS = cfg.joueurs;
+cfg.champ = Object.assign({ courses:8, tours:3, meteo:'variable', ordre:'hasard', difficulte:cfg.difficulte }, cfg.champ || {});
+cfg.champ.courses = clamp(cfg.champ.courses, 2, window.CIRCUITS.length);
 
 /* ---------- Dessin d'une monoplace vue de dessus, style croquis ---------- */
 function voiture(g, x, y, ang, couleur, k = 1, flamme = false){
@@ -422,6 +507,10 @@ function miniSvg(c){
   return `<svg viewBox="20 20 960 560" aria-hidden="true" style="background:${D.sol};border-radius:8px"><path d="${d}" fill="none" stroke="#1F1F1F" stroke-width="${P.LARGEUR + 12}" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="#A7A39A" stroke-width="${P.LARGEUR}" stroke-linejoin="round"/><circle cx="${s[0]}" cy="${s[1]}" r="20" fill="#D7263D" stroke="#1F1F1F" stroke-width="5"/><line x1="${s[0]}" y1="${s[1]}" x2="${t[0] + (t[0] - s[0]) * 3}" y2="${t[1] + (t[1] - s[1]) * 3}" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg>`;
 }
 function renderMenu(){
+  document.querySelectorAll('#modeJeu button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === cfg.mode)));
+  $('arcade').hidden = cfg.mode !== 'arcade';
+  $('champMenu').hidden = cfg.mode !== 'championnat';
+  if(cfg.mode === 'championnat') renderChampMenu();
   const recs = get('drawrace-records', {});
   $('circuits').innerHTML = CIRC.map(c => {
     const r = recs[c.id] && recs[c.id].courses && recs[c.id].courses[0];
@@ -441,7 +530,7 @@ function renderMenu(){
       <div class="pneus"><span>Pneus</span>${Object.entries(PNEUS).map(([k, p]) => `<button class="pn" data-pneu="${k}" style="--c:${p.c}" aria-pressed="${j.pneu === k}" aria-label="Pneus ${p.n}" title="${p.n}">${p.l}</button>`).join('')}</div>
       <p class="pn-aide"><b>${PNEUS[j.pneu].n}</b> : ${PNEUS[j.pneu].aide}</p>
     </div>`).join('');
-  document.querySelectorAll('.player canvas').forEach((cv, i) => {
+  document.querySelectorAll('#players .player canvas').forEach((cv, i) => {
     const g = cv.getContext('2d'); g.clearRect(0, 0, 124, 72); voiture(g, 62, 36, 0, cfg.joueurs[i].couleur, 3.1);
   });
   $('goDraw').textContent = cfg.joueurs.length > 1 ? 'Tracer les trajectoires' : 'Tracer ma trajectoire';
@@ -498,6 +587,7 @@ function majTours(){
 const changerTours = d => { const c = byId[cfg.circuit], n = clamp(toursDe(c) + d, 1, 10); if(n === c.toursBase) delete cfg.tours[c.id]; else cfg.tours[c.id] = n; saveCfg(); majTours(); };
 $('toursMoins').onclick = () => changerTours(-1);
 $('toursPlus').onclick = () => changerTours(1);
+$('modeJeu').addEventListener('click', e => { const b = e.target.closest('button'); if(b){ cfg.mode = b.dataset.mode; saveCfg(); renderMenu(); } });
 $('meteo').addEventListener('click', e => { const b = e.target.closest('button'); if(b){ cfg.meteo = b.dataset.m; saveCfg(); renderMenu(); } });
 $('nbJoueurs').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
@@ -518,10 +608,151 @@ $('players').addEventListener('click', e => {
   j.couleur = b.dataset.c; saveCfg(); renderMenu();
 });
 
+/* ---------- Championnat : réglages, déroulement, classement ---------- */
+const pilotesChamp = () => [{ id:'moi', nom:champ.joueur.nom || 'Vous', c:champ.joueur.couleur, humain:true }, ...champ.pilotes];
+// Classement général : points, puis victoires, puis meilleures places
+function classementGeneral(){
+  return pilotesChamp().map(p => {
+    const res = champ.resultats.map(r => r.ordre.find(o => o.id === p.id)).filter(Boolean);
+    return { ...p, pts:champ.points[p.id] || 0, v:res.filter(o => o.pos === 1).length, places:res.map(o => o.pos).sort((a, b) => a - b), dernier:res[res.length - 1] || null };
+  }).sort((a, b) => (b.pts - a.pts) || (b.v - a.v) || meilleuresPlaces(a.places, b.places));
+}
+// À égalité : celui qui a les meilleures places (plus de 2e, puis de 3e…) passe devant
+function meilleuresPlaces(a, b){
+  for(let k = 0; k < Math.max(a.length, b.length); k++){ const x = a[k] ?? 99, y = b[k] ?? 99; if(x !== y) return x - y; }
+  return 0;
+}
+function tableauGeneral(avecDernier){
+  const cl = classementGeneral();
+  return '<tr><th>#</th><th>Pilote</th><th class="r">Victoires</th><th class="r">Points</th></tr>' + cl.map((p, k) =>
+    `<tr${p.humain ? ' class="me"' : ''}><td>${k + 1}</td><td><span class="dot" style="background:${p.c}"></span>${esc(p.nom)}</td><td class="r">${p.v}</td>` +
+    `<td class="r">${p.pts}${avecDernier && p.dernier ? ` <span class="gain">+${p.dernier.pts}</span>` : ''}</td></tr>`).join('');
+}
+function choisirAdversaires(couleur){
+  // 5 pilotes au hasard, toujours avec l'un des 3 plus forts ; aucun de la couleur du joueur
+  const proche = c => { const a = parseInt(c.slice(1), 16), b = parseInt(couleur.slice(1), 16); return Math.abs((a >> 16) - (b >> 16)) + Math.abs((a >> 8 & 255) - (b >> 8 & 255)) + Math.abs((a & 255) - (b & 255)) < 90; };
+  const pool = PILOTES.filter(p => !proche(p.c));
+  const forts = pool.slice(0, 3), autres = pool.slice(3);
+  const un = forts[Math.floor(Math.random() * forts.length)];
+  const reste = [...forts.filter(p => p !== un), ...autres].sort(() => Math.random() - .5).slice(0, 4);
+  return [un, ...reste].map(p => ({ id:p.id, nom:p.nom, c:p.c, force:p.force }));
+}
+function renderChampMenu(){
+  const el = $('champMenu'), C = cfg.champ;
+  if(champ && !champ.fini){
+    const cl = classementGeneral(), moi = cl.findIndex(p => p.humain);
+    el.innerHTML = `<h2>Championnat en cours</h2><div class="champ-carte">
+      <b>Course ${champ.course + 1} sur ${champ.calendrier.length} · ${esc(byId[champ.calendrier[champ.course]].n)}</b>
+      <span>${esc(cl[moi].nom)} : ${moi + 1}<sup>e</sup> avec ${cl[moi].pts} point${cl[moi].pts > 1 ? 's' : ''} · en tête : ${esc(cl[0].nom)} (${cl[0].pts})</span>
+      <span class="aide" style="margin:0">Difficulté ${champ.difficulte} % (${niveauDe(champ.difficulte).n}), réglée pour tout le championnat · ${champ.tours} tours par course</span>
+      <div class="row champ-act"><button class="btn-light" id="cmAbandon">Abandonner le championnat</button><button class="btn-red" id="cmContinuer">▶ Continuer</button></div>
+    </div>`;
+    $('cmContinuer').onclick = afficherChamp;
+    $('cmAbandon').onclick = abandonnerChampionnat;
+  } else {
+    const j = cfg.joueurs[0];
+    el.innerHTML = `<h2>Votre pilote</h2>
+      <div class="player" id="cmPilote"><div class="player-top"><canvas width="124" height="72"></canvas>
+        <input id="cmNom" value="${esc(j.nom)}" maxlength="16" placeholder="Votre nom" aria-label="Votre nom"></div>
+        <div class="swatches">${COULEURS.map(c => `<button class="sw" style="background:${c}" data-c="${c}" aria-pressed="${j.couleur === c}" aria-label="Couleur"></button>`).join('')}</div></div>
+      <h2>Difficulté</h2>
+      <div class="curseur">
+        <div class="curseur-t"><b id="cmNiv"></b><span id="cmPct"></span></div>
+        <input type="range" id="cmDiff" min="0" max="100" step="1" value="${C.difficulte}" aria-label="Difficulté du championnat">
+        <div class="curseur-l" aria-hidden="true"><span>Facile</span><span>Normal</span><span>Difficile</span><span>Expert</span></div>
+      </div>
+      <p class="verrou">🔒 Réglée une fois pour toutes : elle ne pourra plus être changée pendant le championnat.</p>
+      <h2>Nombre de courses</h2>
+      <div class="tours"><div class="seg"><button id="cmCoursesM" aria-label="Une course de moins">−</button><output id="cmCoursesN">${C.courses} courses</output><button id="cmCoursesP" aria-label="Une course de plus">+</button></div>
+        <div class="seg" id="cmCourses">${NB_COURSES.map(n => `<button data-n="${n}" aria-pressed="${C.courses === n}">${n}</button>`).join('')}</div></div>
+      <p class="aide">De 2 à ${CIRC.length} courses (un circuit différent à chaque course).</p>
+      <h2>Tours par course</h2>
+      <div class="tours"><div class="seg"><button id="cmToursM" aria-label="Un tour de moins">−</button><output id="cmTours">${C.tours} tours</output><button id="cmToursP" aria-label="Un tour de plus">+</button></div><span class="aide">3 tours minimum.</span></div>
+      <h2>Météo</h2>
+      <div class="seg" id="cmMeteo"><button data-m="variable" aria-pressed="${C.meteo === 'variable'}">🌦 Variable</button><button data-m="sec" aria-pressed="${C.meteo === 'sec'}">☀️ Toujours sec</button></div>
+      <p class="aide">Variable : chaque course a sa météo (sec, averse, pluie ou déluge), découverte en arrivant sur le circuit.</p>
+      <h2>Calendrier</h2>
+      <div class="seg" id="cmOrdre"><button data-o="hasard" aria-pressed="${C.ordre === 'hasard'}">Au hasard</button><button data-o="ordre" aria-pressed="${C.ordre === 'ordre'}">Du plus facile au plus dur</button></div>
+      <p class="aide">Vos adversaires : 5 pilotes tirés parmi ${PILOTES.map(p => p.nom).join(', ')}.</p>
+      <button class="go" id="cmLancer">🏆 Lancer le championnat</button>` + palmaresHTML();
+    const cv = el.querySelector('canvas'), g2 = cv.getContext('2d'); voiture(g2, 62, 36, 0, j.couleur, 3.1);
+    const majNiv = () => { const n = niveauDe(C.difficulte); $('cmNiv').textContent = n.n; $('cmPct').textContent = `${C.difficulte} %`; };
+    majNiv();
+    $('cmDiff').oninput = e => { C.difficulte = Number(e.target.value); majNiv(); };
+    $('cmDiff').onchange = saveCfg;
+    $('cmNom').oninput = e => { j.nom = e.target.value.trim(); saveCfg(); };
+    el.querySelector('.swatches').onclick = e => { const b = e.target.closest('.sw'); if(b){ j.couleur = b.dataset.c; saveCfg(); renderMenu(); } };
+    $('cmCourses').onclick = e => { const b = e.target.closest('button'); if(b){ C.courses = Number(b.dataset.n); saveCfg(); renderMenu(); } };
+    $('cmCoursesM').onclick = () => { C.courses = Math.max(2, C.courses - 1); saveCfg(); renderMenu(); };
+    $('cmCoursesP').onclick = () => { C.courses = Math.min(CIRC.length, C.courses + 1); saveCfg(); renderMenu(); };
+    $('cmCoursesM').disabled = C.courses <= 2; $('cmCoursesP').disabled = C.courses >= CIRC.length;
+    $('cmToursM').onclick = () => { C.tours = Math.max(3, C.tours - 1); saveCfg(); renderMenu(); };
+    $('cmToursP').onclick = () => { C.tours = Math.min(10, C.tours + 1); saveCfg(); renderMenu(); };
+    $('cmMeteo').onclick = e => { const b = e.target.closest('button'); if(b){ C.meteo = b.dataset.m; saveCfg(); renderMenu(); } };
+    $('cmOrdre').onclick = e => { const b = e.target.closest('button'); if(b){ C.ordre = b.dataset.o; saveCfg(); renderMenu(); } };
+    $('cmLancer').onclick = lancerChampionnat;
+  }
+}
+function palmaresHTML(){
+  const pal = get('drawrace-palmares', []);
+  if(!pal.length) return '';
+  return '<h2>Palmarès</h2><table><tr><th>Date</th><th>Courses</th><th>Difficulté</th><th class="r">Place</th><th class="r">Points</th></tr>' +
+    pal.slice(-8).reverse().map(r => `<tr${r.place === 1 ? ' class="me"' : ''}><td>${new Date(r.date).toLocaleDateString('fr-FR')}</td><td>${r.courses}</td><td>${r.difficulte} %</td><td class="r">${r.place === 1 ? '🏆 1re' : r.place + 'e'}</td><td class="r">${r.points}</td></tr>`).join('') + '</table>';
+}
+function lancerChampionnat(){
+  const C = cfg.champ, j = cfg.joueurs[0];
+  const ids = CIRC.map(c => c.id), n = Math.min(C.courses, ids.length);
+  // Dans l'ordre : des circuits répartis du plus facile au plus dur ; au hasard : tirés au sort
+  let cal;
+  if(C.ordre === 'ordre') cal = Array.from({ length:n }, (_, k) => ids[Math.round(k * (ids.length - 1) / Math.max(1, n - 1))]);
+  else { cal = ids.slice(); for(let k = cal.length - 1; k > 0; k--){ const r = Math.floor(Math.random() * (k + 1)); [cal[k], cal[r]] = [cal[r], cal[k]]; } }
+  champ = { id:Date.now(), joueur:{ nom:j.nom || 'Vous', couleur:j.couleur, pneu:j.pneu || 'medium' }, difficulte:C.difficulte, tours:Math.max(3, C.tours),
+    meteo:C.meteo, calendrier:cal.slice(0, C.courses), course:0, pilotes:choisirAdversaires(j.couleur), points:{}, resultats:[], fini:false };
+  saveChamp();
+  afficherChamp();
+}
+function abandonnerChampionnat(){
+  if(!champ || !confirm('Abandonner le championnat ? Le classement sera perdu.')) return;
+  champ = null; put('drawrace-championnat', null);
+  cancelAnimationFrame(raf); course = null; tr = null; traces = [];
+  try{ screen.orientation.unlock(); }catch(e){}
+  renderMenu(); show('menu');
+}
+// Classement général avant chaque course (ou classement final)
+function afficherChamp(){
+  if(!champ) return;
+  const N = champ.calendrier.length, cl = classementGeneral();
+  const fini = champ.fini;
+  $('champTitre').textContent = fini ? '🏆 Classement final' : `🏆 Championnat · course ${champ.course + 1} / ${N}`;
+  $('champSous').textContent = `Difficulté ${champ.difficulte} % (${niveauDe(champ.difficulte).n}) · ${champ.tours} tours par course · météo ${champ.meteo === 'sec' ? 'toujours sèche' : 'variable'}`;
+  const cal = `<div class="calendrier">${champ.calendrier.map((id, k) => `<span class="${k < champ.course ? 'fait' : k === champ.course && !fini ? 'ici' : ''}">${k + 1}. ${esc(byId[id].n)}</span>`).join('')}</div>`;
+  if(fini){
+    const moi = cl.findIndex(p => p.humain);
+    $('champProchaine').innerHTML = `<p class="podium-final">${moi === 0 ? `🏆 ${esc(cl[0].nom)}, champion du monde !` : `🏆 ${esc(cl[0].nom)} est champion. Vous finissez ${moi + 1}<sup>e</sup>.`}</p>` + cal;
+  } else {
+    const c = byId[champ.calendrier[champ.course]];
+    $('champProchaine').innerHTML = `<div class="champ-prochaine">${miniSvg(c)}<div><small>Prochaine course</small><b>${esc(c.n)}</b>
+      <small>${esc(c.inspi)} · difficulté du circuit ${'●'.repeat(c.d)}${'○'.repeat(5 - c.d)} · ${champ.tours} tours</small>
+      <small>${champ.meteo === 'sec' ? '☀️ Piste sèche' : '🌦 Météo découverte en arrivant sur le circuit'}</small></div></div>` + cal;
+  }
+  $('champClTitre').textContent = champ.resultats.length ? `Classement général après ${champ.resultats.length} course${champ.resultats.length > 1 ? 's' : ''}` : 'Classement général (aucune course courue)';
+  $('champClassement').innerHTML = tableauGeneral(true);
+  $('champGo').textContent = fini ? 'Nouveau championnat' : `Course suivante : ${byId[champ.calendrier[champ.course]].n}`;
+  $('champAbandon').hidden = fini;
+  show('champ');
+}
+$('champGo').onclick = () => {
+  if(champ && champ.fini){ champ = null; put('drawrace-championnat', null); renderMenu(); show('menu'); return; }
+  debutTraces();
+};
+$('champAbandon').onclick = abandonnerChampionnat;
+$('champMenuLien').onclick = e => { e.preventDefault(); renderMenu(); show('menu'); };
+$('champSuite').onclick = () => { course = null; afficherChamp(); };
+
 /* ---------- Écran de jeu : canevas à l'échelle ---------- */
 const cv = $('cv'), g = cv.getContext('2d');
 let echelle = 1, fond = null, circuit = null;
-function show(id){ ['menu', 'jeu', 'fin'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); }
+function show(id){ ['menu', 'jeu', 'fin', 'champ'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); }
 function dimensionner(){
   const st = $('stage').getBoundingClientRect();
   echelle = Math.min(st.width / P.W, st.height / P.H);
@@ -846,7 +1077,7 @@ let joueurTrace = 0, tourTrace = 0;
 // Météo réelle sur le circuit : tirée en arrivant (la surprise est découverte ici) ; l'averse arrive entre 30 et 65 % de la course
 let meteoCourse = null;
 function tirerMeteo(){
-  let m = cfg.meteo;
+  let m = enChampionnat() ? (champ.meteo === 'sec' ? 'sec' : 'surprise') : cfg.meteo;
   if(m === 'surprise'){ let r = Math.random(); m = SURPRISE.find(([, p]) => (r -= p) < 0)[0]; }
   meteoCourse = { m, pluieA:m === 'averse' ? .3 + Math.random() * .35 : null };
 }
@@ -857,8 +1088,8 @@ function texteMeteo(){
 }
 function debutTraces(){
   cancelAnimationFrame(raf); course = null;
-  circuit = byId[cfg.circuit];
-  circuit.tours = toursDe(circuit);
+  if(enChampionnat()){ circuit = byId[champ.calendrier[champ.course]]; circuit.tours = champ.tours; JOUEURS = [champ.joueur]; }
+  else { circuit = byId[cfg.circuit]; circuit.tours = toursDe(circuit); JOUEURS = cfg.joueurs; }
   tirerMeteo();
   traces = [];
   joueurTrace = 0; tourTrace = 0;
@@ -867,7 +1098,7 @@ function debutTraces(){
   dimensionner();
   nouveauTrace();
 }
-function nomJoueur(i){ return cfg.joueurs[i].nom || `Joueur ${i + 1}`; }
+function nomJoueur(i){ return JOUEURS[i].nom || `Joueur ${i + 1}`; }
 // Nouveau tracé pour le joueur en cours : on repart du tour 1
 function nouveauTrace(){
   $('grille').hidden = true;
@@ -880,7 +1111,7 @@ function nouveauTrace(){
   $('lights').hidden = true; $('standings').hidden = true; $('timer').hidden = true;
   $('clear').textContent = 'Recommencer';
   $('done').disabled = true;
-  $('done').textContent = joueurTrace < cfg.joueurs.length - 1 ? 'Joueur suivant' : 'C\'est parti';
+  $('done').textContent = joueurTrace < JOUEURS.length - 1 ? 'Joueur suivant' : 'C\'est parti';
   jauge(0);
   redessiner();
 }
@@ -1092,7 +1323,7 @@ $('clear').onclick = () => nouveauTrace();
 $('done').onclick = () => {
   if(!tr || !tr.fini) return;
   joueurTrace++;
-  if(joueurTrace < cfg.joueurs.length) nouveauTrace();
+  if(joueurTrace < JOUEURS.length) nouveauTrace();
   else ouvrirGrille();
 };
 
@@ -1100,9 +1331,9 @@ $('done').onclick = () => {
 function ouvrirGrille(){
   tr = null;
   const M = METEOS[meteoCourse.m], conseil = meilleurPneu(meteoCourse.m, circuit.tours);
-  $('grilleTitre').textContent = `Grille de départ · ${circuit.n} · ${circuit.tours} tours`;
+  $('grilleTitre').textContent = (enChampionnat() ? `Course ${champ.course + 1} / ${champ.calendrier.length} · ` : 'Grille de départ · ') + `${circuit.n} · ${circuit.tours} tours`;
   $('grilleMeteo').innerHTML = `<span class="ico">${M.ico}</span><span><b>Météo : ${M.n}</b><small>${texteMeteo()}</small></span>`;
-  $('grillePilotes').innerHTML = cfg.joueurs.map((j, i) => `<div class="pilote-g" data-i="${i}">
+  $('grillePilotes').innerHTML = JOUEURS.map((j, i) => `<div class="pilote-g" data-i="${i}">
       <b><span class="dot" style="background:${j.couleur}"></span>${esc(nomJoueur(i))}</b>
       <div class="pneus">${Object.entries(PNEUS).map(([k, p]) => `<button class="pn" data-pneu="${k}" style="--c:${p.c}" aria-pressed="${j.pneu === k}" aria-label="Pneus ${p.n}" title="${p.n}">${p.l}</button>`).join('')}</div>
       <p class="pn-aide"><b style="display:inline">${PNEUS[j.pneu].n}</b> : ${PNEUS[j.pneu].aide}
@@ -1114,7 +1345,7 @@ function ouvrirGrille(){
 }
 $('grillePilotes').addEventListener('click', e => {
   const b = e.target.closest('.pn'); if(!b) return;
-  cfg.joueurs[b.closest('.pilote-g').dataset.i].pneu = b.dataset.pneu; saveCfg(); ouvrirGrille();
+  JOUEURS[b.closest('.pilote-g').dataset.i].pneu = b.dataset.pneu; saveCfg(); if(enChampionnat()) saveChamp(); ouvrirGrille();
 });
 $('grilleGo').onclick = () => { $('grille').hidden = true; demarrerCourse(); };
 $('grilleRetour').onclick = () => { $('grille').hidden = true; joueurTrace = 0; nouveauTrace(); };
@@ -1123,33 +1354,47 @@ $('grilleRetour').onclick = () => { $('grille').hidden = true; joueurTrace = 0; 
 let course = null, raf = 0;
 function demarrerCourse(){
   tr = null;
-  const niv = niveauDe(cfg.difficulte);
+  const ch = enChampionnat();
+  const niv = niveauDe(ch ? champ.difficulte : cfg.difficulte);
   if(!meteoCourse) tirerMeteo();
   const meteo = meteoCourse.m;
-  const voitures = cfg.joueurs.map((j, i) => ({ nom:nomJoueur(i), couleur:j.couleur, humain:true, laps:traces[i], t:traces[i][0], pneu:j.pneu || 'medium' }));
-  const pris = new Set(cfg.joueurs.map(j => j.couleur));
+  const voitures = JOUEURS.map((j, i) => ({ nom:nomJoueur(i), couleur:j.couleur, humain:true, laps:traces[i], t:traces[i][0], pneu:j.pneu || 'medium', pid:'moi' }));
+  const pris = new Set(JOUEURS.map(j => j.couleur));
   const libres = COULEURS.filter(c => !pris.has(c));
   const meilleur = meilleurPneu(meteo, circuit.tours), secs = ['tendre', 'medium', 'dur'];
-  for(let k = 0; voitures.length < 4; k++){
+  const choixPneu = () => niv.d < 20 ? secs[Math.floor(Math.random() * 3)]
+    : niv.d < 50 && Math.random() < .4 ? secs[Math.floor(Math.random() * 3)] : meilleur;
+  // Championnat : les 5 pilotes, chacun un peu plus ou moins rapide selon sa force (et sa forme du jour)
+  if(ch) champ.pilotes.forEach((p, k) => {
+    const forme = 1 + p.force / 1100 + (Math.random() - .5) * .03;
+    const nb = Object.assign({}, niv, { top:Math.min(1.03, niv.top * forme), virage:Math.min(1.03, niv.virage * forme) });
+    const bt = traceBot(nb, Math.random() * 12);
+    voitures.push({ nom:p.nom, court:p.nom.split(' ').slice(-1)[0], couleur:p.c, humain:false, laps:new Array(circuit.tours).fill(bt), t:bt, pneu:choixPneu(), pid:p.id, niv:nb });
+  });
+  for(let k = 0; !ch && voitures.length < 4; k++){
     const bt = traceBot(niv, 1.3 + k * 2.1);
     // Pneus des adversaires : au hasard en Facile, souvent les bons en Normal, toujours les bons ensuite
     const pneu = niv.d < 20 ? secs[Math.floor(Math.random() * 3)]
       : niv.d < 50 && Math.random() < .4 ? secs[Math.floor(Math.random() * 3)] : meilleur;
     voitures.push({ nom:BOTS[k], couleur:libres[k], humain:false, laps:new Array(circuit.tours).fill(bt), t:bt, pneu });
   }
-  // Grille de départ en quinconce : les joueurs devant, les adversaires derrière
-  const ordre = voitures.slice().sort((a, b) => b.humain - a.humain);
+  // Grille de départ en quinconce : en arcade, les joueurs devant ; en championnat, dans l'ordre du classement
+  // (au hasard pour la première course)
+  const rangs = ch && champ.resultats.length ? classementGeneral().map(p => p.id) : null;
+  const ordre = !ch ? voitures.slice().sort((a, b) => b.humain - a.humain)
+    : rangs ? voitures.slice().sort((a, b) => rangs.indexOf(a.pid) - rangs.indexOf(b.pid))
+    : voitures.slice().sort(() => Math.random() - .5);
   ordre.forEach((v, k) => Object.assign(v, { s:-34 - k * 38, lap:0, t:v.laps[0], cote:k % 2 ? 1 : -1, vit:0, boosts:BOOST.n, boostT:0,
     tours:[], debutTour:0, fin:null, m:0, prof:null, age:0, us:[0, 0, 0, 0], stand:null, arret:0, arrets:0 }));
   const w0 = meteo === 'pluie' ? .5 : meteo === 'deluge' ? 1 : 0;
-  course = { voitures, tours:circuit.tours, t:0, phase:'feux', feux:0, fumee:[], finHumains:null, niv,
+  course = { voitures, tours:circuit.tours, t:0, phase:'feux', feux:0, fumee:[], finHumains:null, niv, champ:ch,
     meteo, w:w0, wCible:w0, pluieA:meteoCourse.pluieA, gouttes:[], facUsure:facteurUsure(niv.d), longueur:circuit.len };
   voitures.forEach(majAdherence);
   show('jeu');
   $('drawCtl').hidden = true; $('gauge').hidden = true;
   $('lights').hidden = false; $('standings').hidden = false; $('timer').hidden = false;
   $('quit').textContent = 'Abandonner';
-  $('banner').innerHTML = `${esc(circuit.n)}<small>${circuit.tours} tours · Boost : ${BOOST.n} par pilote · ${METEOS[meteo].ico} ${METEOS[meteo].n}</small>`;
+  $('banner').innerHTML = `${ch ? `🏆 ${champ.course + 1}/${champ.calendrier.length} · ` : ''}${esc(circuit.n)}<small>${circuit.tours} tours · Boost : ${BOOST.n} par pilote · ${METEOS[meteo].ico} ${METEOS[meteo].n}</small>`;
   $('msg').className = 'msg';
   $('msg').textContent = 'Attention aux feux…';
   const humains = voitures.filter(v => v.humain);
@@ -1262,6 +1507,7 @@ function etape(dt){
   $('timer').textContent = fmtTime(c.t * 1000);
   meteoEtape(dt);
   for(const v of c.voitures){
+    if(v.abandon){ v.vit = 0; continue; }
     if(v.fin != null){ v.s += v.vit * dt * .6; v.vit *= 0.985; continue; }
     if(v.arret > 0){
       // Arrêt au stand : la voiture est immobile, puis repart avec les nouveaux pneus
@@ -1275,7 +1521,7 @@ function etape(dt){
     let cible = v.s < 0 ? pr.v[0] : pr.v[i];
     if(v.boostT > 0){ v.boostT -= dt; cible *= BOOST.facteur; }
     // Boost des adversaires : dans les longues lignes droites, plus souvent aux niveaux élevés
-    if(!v.humain && v.boosts > 0 && v.boostT <= 0 && v.s > 0 && pr.grip[(i + 25) % n] >= P.VMAX && pr.grip[(i + 50) % n] >= P.VMAX && pr.grip[i] >= P.VMAX && Math.random() < dt * c.niv.boost){ v.boosts--; v.boostT = BOOST.duree; }
+    if(!v.humain && v.boosts > 0 && v.boostT <= 0 && v.s > 0 && pr.grip[(i + 25) % n] >= P.VMAX && pr.grip[(i + 50) % n] >= P.VMAX && pr.grip[i] >= P.VMAX && Math.random() < dt * (v.niv || c.niv).boost){ v.boosts--; v.boostT = BOOST.duree; }
     // Pas de dérapage : dans les virages, la voiture (même en Boost) ne dépasse pas la vitesse possible
     const vit = Math.min(cible, pr.grip[i]);
     if(t.herbe[i] && Math.random() < 0.3) c.fumee.push({ x:0, y:0, v, vie:0.5, herbe:true });
@@ -1306,9 +1552,10 @@ function etape(dt){
   c.fumee.forEach(f => { if(f.v){ const p = position(f.v); f.x = p.x - Math.cos(p.a) * 12 + (Math.random() - .5) * 6; f.y = p.y - Math.sin(p.a) * 12 + (Math.random() - .5) * 6; f.v = null; } f.vie -= dt; });
   c.fumee = c.fumee.filter(f => f.vie > 0);
   classement();
-  const humains = c.voitures.filter(v => v.humain);
+  if(c.accelere) return;      // fin de course simulée d'un coup (championnat) : pas de nouvelle fin
+  const humains = c.voitures.filter(v => v.humain && !v.abandon);
   if(humains.every(v => v.fin != null) && c.finHumains == null) c.finHumains = c.t;
-  if(c.voitures.every(v => v.fin != null) || (c.finHumains != null && c.t - c.finHumains > 8)) terminerCourse();
+  if(c.voitures.every(v => v.fin != null || v.abandon) || (c.finHumains != null && c.t - c.finHumains > (c.champ ? 2.5 : 8))) terminerCourse();
 }
 let flashT = 0;
 function flash(t){ $('msg').className = 'msg warn'; $('msg').textContent = t; clearTimeout(flashT); flashT = setTimeout(() => { $('msg').className = 'msg'; $('msg').textContent = ''; }, 1400); }
@@ -1324,9 +1571,10 @@ function position(v){
   x += -Math.sin(ang) * dec; y += Math.cos(ang) * dec;
   return { x, y, a:ang };
 }
-function progression(v){ return v.fin != null ? 1e9 - v.fin : v.lap + v.s / v.t.len; }
+function progression(v){ return v.abandon ? -1e9 : v.fin != null ? 1e9 - v.fin : v.lap + v.s / v.t.len; }
 function classement(){
   const c = course;
+  if(c.accelere) return;      // fin de course simulée : pas d'affichage à chaque pas
   // Usure des 4 pneus de chaque joueur
   $('boosts').querySelectorAll('.pneus4').forEach(el => {
     const v = c.voitures[el.dataset.i];
@@ -1341,7 +1589,7 @@ function classement(){
   $('standings').innerHTML = tri.map((v, k) => {
     const tour = Math.min(c.tours, v.lap + 1);
     const pn = PNEUS[v.pneu];
-    return `<div><b>${k + 1}</b><em style="background:${v.couleur}"></em>${esc(v.nom)} <i class="pn" style="--c:${pn.c}" title="${pn.n}">${pn.l}</i><small class="us" style="color:${couleurUsure(usureMax(v))}" title="Pneu le plus usé">${Math.round(usureMax(v))}\u00a0%</small> <small>${v.fin != null ? '🏁' : v.arret > 0 ? '🔧 stand' : `T${tour}/${c.tours}`}</small></div>`;
+    return `<div><b>${k + 1}</b><em style="background:${v.couleur}"></em><span class="nm">${esc(v.court || v.nom)}</span><i class="pn" style="--c:${pn.c}" title="${pn.n}">${pn.l}</i><small class="us" style="color:${couleurUsure(usureMax(v))}" title="Pneu le plus usé">${Math.round(usureMax(v))}\u00a0%</small> <small>${v.fin != null ? '🏁' : v.arret > 0 ? '🔧 stand' : `T${tour}/${c.tours}`}</small></div>`;
   }).join('');
 }
 function dessinerCourse(){
@@ -1376,8 +1624,13 @@ function dessinerPluie(c){
 /* ---------- Fin de course et records ---------- */
 function terminerCourse(){
   const c = course;
-  c.phase = 'fini';
   cancelAnimationFrame(raf);
+  // Championnat : les autres pilotes terminent leur course (simulée d'un coup) pour avoir de vrais temps
+  if(c.champ){
+    c.accelere = true;
+    for(let k = 0; k < 60 * 400 && !c.voitures.every(v => v.fin != null || v.abandon); k++) etape(1 / 60);
+  }
+  c.phase = 'fini';
   const tri = c.voitures.slice().sort((a, b) => progression(b) - progression(a));
   const meilleurTour = v => v.tours.length ? Math.round(Math.min(...v.tours) * 1000) : null;
   // Records : seuls les pilotes humains arrivés comptent
@@ -1400,15 +1653,47 @@ function terminerCourse(){
 
   const premier = tri[0];
   $('podium').innerHTML = `🏁 ${esc(premier.nom)} gagne !`;
-  $('finTitle').textContent = `Résultats · ${circuit.n} · ${METEOS[c.meteo].ico} ${METEOS[c.meteo].n} · ${c.niv.n} ${c.niv.d} % · ${c.tours} tours`;
-  $('results').innerHTML = '<tr><th>#</th><th>Pilote</th><th>Pneus</th><th class="r">Temps</th><th class="r">Meilleur tour</th></tr>' +
-    tri.map((v, k) => `<tr${v.humain ? ' class="me"' : ''}><td>${k + 1}</td><td><span class="dot" style="background:${v.couleur}"></span>${esc(v.nom)}</td><td><i class="pn" style="--c:${PNEUS[v.pneu].c};width:22px;height:22px;border-width:3px;font-size:.65rem">${PNEUS[v.pneu].l}</i></td><td class="r">${v.fin != null ? fmtTime(Math.round(v.fin * 1000)) : 'non classé'}</td><td class="r">${fmtTime(meilleurTour(v))}</td></tr>`).join('');
+  const pts = c.champ ? pointsCourse(c, tri, meilleurTour) : null;
+  if(!c.champ) $('finTitle').textContent = `Résultats · ${circuit.n} · ${METEOS[c.meteo].ico} ${METEOS[c.meteo].n} · ${c.niv.n} ${c.niv.d} % · ${c.tours} tours`;
+  $('results').innerHTML = `<tr><th>#</th><th>Pilote</th><th>Pneus</th><th class="r">Temps</th><th class="r">Meilleur tour</th>${pts ? '<th class="r">Pts</th>' : ''}</tr>` +
+    tri.map((v, k) => `<tr${v.humain ? ' class="me"' : ''}><td>${k + 1}</td><td><span class="dot" style="background:${v.couleur}"></span>${esc(v.nom)}</td><td><i class="pn" style="--c:${PNEUS[v.pneu].c};width:22px;height:22px;border-width:3px;font-size:.65rem">${PNEUS[v.pneu].l}</i></td><td class="r">${v.abandon ? 'abandon' : v.fin != null ? fmtTime(Math.round(v.fin * 1000)) : 'non classé'}</td><td class="r">${fmtTime(meilleurTour(v))}</td>${pts ? `<td class="r"><b>${pts.get(v) || 0}</b></td>` : ''}</tr>`).join('');
+  // Championnat : classement général à jour, et boutons de la suite
+  $('finChamp').hidden = !pts;
+  ['redraw', 'rematch'].forEach(id => $(id).hidden = !!pts);
+  $('champSuite').hidden = !pts;
+  if(pts){
+    $('finClassement').innerHTML = tableauGeneral(true);
+    $('finTitle').textContent = `Course ${champ.resultats.length} / ${champ.calendrier.length} · ${circuit.n} · ${METEOS[c.meteo].ico} ${METEOS[c.meteo].n}`;
+    $('champSuite').textContent = champ.fini ? 'Classement final →' : 'Classement général →';
+  }
   $('badges').innerHTML = badges.map(b => `<span class="badge">${b}</span>`).join('');
   $('recTitle').textContent = `Records · ${circuit.n}` + (circuit.tours === circuit.toursBase ? '' : ` · ${circuit.tours} tours`);
   $('records').innerHTML = '<tr><th>#</th><th>Pilote</th><th class="r">Temps</th></tr>' +
     (rec.courses.length ? rec.courses.map((r, k) => `<tr${entrees.includes(r) ? ' class="me"' : ''}><td>${k + 1}</td><td><span class="dot" style="background:${r.couleur}"></span>${esc(r.nom)}</td><td class="r">${fmtTime(r.temps)}</td></tr>`).join('') : '<tr><td colspan="3">Pas encore de record</td></tr>') +
     (rec.tour ? `<tr><td>⏱</td><td>Meilleur tour : <span class="dot" style="background:${rec.tour.couleur}"></span>${esc(rec.tour.nom)}</td><td class="r">${fmtTime(rec.tour.temps)}</td></tr>` : '');
   setTimeout(() => show('fin'), 900);
+}
+
+// Points de la course : 25, 18, 15, 12, 10, 8 ; +1 pour le meilleur tour ; rien pour un abandon
+function pointsCourse(c, tri, meilleurTour){
+  const pts = new Map();
+  const classes = tri.filter(v => !v.abandon);
+  classes.forEach((v, k) => pts.set(v, POINTS[k] || 0));
+  const mt = classes.filter(v => meilleurTour(v) != null).sort((a, b) => meilleurTour(a) - meilleurTour(b))[0];
+  if(mt) pts.set(mt, pts.get(mt) + 1);
+  const ordre = tri.map((v, k) => ({ id:v.pid, pos:v.abandon ? null : k + 1, pts:pts.get(v) || 0, temps:v.fin != null ? Math.round(v.fin * 1000) : null, mt:mt === v }));
+  ordre.forEach(o => { champ.points[o.id] = (champ.points[o.id] || 0) + o.pts; });
+  champ.resultats.push({ circuit:circuit.id, meteo:c.meteo, ordre });
+  champ.course++;
+  if(champ.course >= champ.calendrier.length){
+    champ.fini = true;
+    const cl = classementGeneral(), place = cl.findIndex(p => p.humain) + 1;
+    const pal = get('drawrace-palmares', []);
+    pal.push({ date:Date.now(), courses:champ.calendrier.length, difficulte:champ.difficulte, place, points:champ.points.moi || 0, champion:cl[0].nom });
+    put('drawrace-palmares', pal.slice(-50));
+  }
+  saveChamp();
+  return pts;
 }
 
 /* ---------- Navigation ---------- */
@@ -1418,6 +1703,20 @@ $('redraw').onclick = () => { course = null; debutTraces(); };
 $('toMenu').onclick = () => { course = null; try{ screen.orientation.unlock(); }catch(e){} renderMenu(); show('menu'); };
 // Abandonner : retour au menu, la partie ne compte pas
 function abandonner(){
+  if(enChampionnat()){
+    if(course && course.phase !== 'fini'){
+      if(!confirm('Abandonner cette course ? Vous marquez 0 point, les autres pilotes finissent la course.')) return;
+      course.voitures.filter(v => v.humain).forEach(v => { v.abandon = true; v.fin = null; });
+      if(course.phase === 'feux'){ course.phase = 'course'; $('lights').hidden = true; }
+      terminerCourse();
+      return;
+    }
+    if(!confirm('Quitter cette course ? Elle n\'est pas courue : vous la retrouverez au classement général.')) return;
+    cancelAnimationFrame(raf); course = null; tr = null; traces = [];
+    try{ screen.orientation.unlock(); }catch(e){}
+    afficherChamp();
+    return;
+  }
   const enJeu = (course && course.phase !== 'fini') || (tr && tr.pts.length) || traces.some(t => t && t.length);
   if(enJeu && !confirm('Abandonner la partie ? Elle ne comptera pas pour les records.')) return;
   cancelAnimationFrame(raf); course = null; tr = null; traces = [];
