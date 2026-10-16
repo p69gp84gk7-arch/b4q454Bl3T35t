@@ -149,10 +149,17 @@ L'adhérence limite la vitesse dans les virages et l'accélération en sortie. E
 Météo : Sec, Averse (la pluie arrive pendant la course, entre 30 et 65 % de la distance), Pluie, Déluge, ou Surprise (tirée en arrivant sur le circuit).
 
 - **Grille de départ** : une fois les trajectoires tracées, la grille montre la météo du circuit (pour une averse, le tour où la pluie est attendue). Chaque joueur y choisit ses pneus, avec le conseil de l'ingénieur.
-- **Usure** : pendant la course, une jauge sous le Boost montre l'usure des pneus de chaque joueur. Elle va du vert au rouge, en continu au fil du tour. Le classement donne l'usure de toutes les voitures.
-  100 % correspond à la durée de vie du pneu : environ 3 tours pour les Tendres (qui chutent alors brutalement), 5 pour les Mediums et 15 pour les Durs.
-  Pour les Intermédiaires, c'est 3 tours au sec et 10 sous la pluie ; pour les Pluie, 2,5 tours au sec et 14 sous la pluie.
-  La grille de départ indique la durée de vie du pneu choisi avec la météo du jour.
+- **Usure des 4 pneus** : pendant la course, le panneau de chaque joueur montre l'usure de chaque pneu (AVG, AVD, ARG, ARD), du vert au rouge. 100 % correspond à la fin de vie du pneu. Le classement donne, pour toutes les voitures, l'usure du pneu le plus abîmé.
+  L'usure avance avec la distance, et plus vite :
+  - dans les virages pris près de la limite : surtout les pneus extérieurs, et l'avant plus que l'arrière ;
+  - en accélérant (arrière) et en freinant fort (avant) ;
+  - **sur les vibreurs** : les deux pneus du côté du vibreur s'usent environ 4 fois plus vite ; le panneau affiche « vibreur ! » ;
+  - dans l'herbe : les quatre pneus.
+  L'adhérence dépend de l'usure moyenne des quatre pneus. Elle chute (Tendres, Mediums) dès qu'un pneu est au bout.
+  En simulation, une trajectoire propre à fond use les pneus d'environ une durée de vie par tour (de 0,8 à 1) ; une trajectoire collée aux bords, sur les vibreurs, use de 50 à 65 % plus vite.
+  Durées de vie : environ 3 tours pour les Tendres, 5 pour les Mediums, 15 pour les Durs ; Intermédiaires 3 tours au sec et 10 sous la pluie ; Pluie 2,5 tours au sec et 14 sous la pluie.
+  **La difficulté règle la vitesse d'usure** : ×0,6 à 0 % (Facile), ×1 à 50 %, ×1,4 à 100 % (Expert). Le menu l'indique sous le curseur.
+  La grille de départ donne la durée de vie du pneu choisi avec la météo du jour.
 - **Stand** : pendant la course, le bouton 🔧 Stand permet de choisir de nouveaux pneus. Le changement se fait au prochain passage de la ligne : arrêt de 3 s, pneus neufs (l'usure repart de zéro). Un nouveau toucher annule.
   Les adversaires (sauf en Facile) s'arrêtent aussi quand le changement leur fait gagner du temps sur les tours restants, par exemple quand la pluie arrive. La pluie s'affiche sur la piste et les voitures soulèvent des gerbes d'eau. Le classement montre les pneus de chacun, et un message prévient quand les pneus d'un joueur chutent.
 
