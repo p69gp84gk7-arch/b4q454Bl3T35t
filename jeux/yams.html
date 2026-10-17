@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Yam's · DesDés</title>
-<meta name="theme-color" content="#F7FAFE">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="DesDés">
 <link rel="manifest" href="../manifest.webmanifest">
@@ -14,12 +14,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie (rien de flou derrière) */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
 :root{
   --paper:#F7FAFE; --grid:#C4D5EA; --ink:#1E3A8A; --ui:#26324A; --muted:#6B7A93;
   --margin:#D2453C; --band:#E6EEF8; --band-strong:#D4E2F3; --hit:#FFF5C2; --overlay:rgba(20,30,50,.45);
   --sheet:#FFFFFF; --libre:rgba(255,214,102,.16); --libre-fort:rgba(255,214,102,.42); --libre-bord:#E9B949;
   box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px);
+  padding-top:var(--barre-statut);
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme: dark){
@@ -181,6 +185,7 @@ tr.gap th.cat{border-right-color:var(--margin)}
 </style>
 </head>
 <body>
+<div class="barre-statut" aria-hidden="true"></div>
 <div class="wrap">
   <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">DesDés</a>
   <header>
@@ -242,7 +247,7 @@ tr.gap th.cat{border-right-color:var(--margin)}
   </div>
 </div>
 
-<script src="sauvegarde.js?v=71"></script>
+<script src="sauvegarde.js?v=72"></script>
 <script>
 const MAX = 10;
 const UPPER = [1,2,3,4,5,6].map(f => ({key:'n'+f, label:'Total de '+f, short:String(f), type:'upper', face:f, help:'Somme des '+f}));
@@ -511,7 +516,7 @@ if('serviceWorker' in navigator) window.addEventListener('load', () => navigator
 // Nouvelle version installée : on recharge une fois, pour que la page et ses scripts soient de la même version
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
 </script>
-<script src="ia.js?v=71"></script>
-<script src="plateau.js?v=71" data-jeu="yams"></script>
+<script src="ia.js?v=72"></script>
+<script src="plateau.js?v=72" data-jeu="yams"></script>
 </body>
 </html>

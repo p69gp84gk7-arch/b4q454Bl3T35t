@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Nivoculteur · DesDés</title>
-<meta name="theme-color" content="#0B1426">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="DesDés">
 <link rel="manifest" href="../../manifest.webmanifest">
@@ -14,8 +14,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Saira+Condensed:wght@600;800&display=swap" rel="stylesheet">
 <style>
-:root{ --marge-haut:env(safe-area-inset-top, 0px); }
-@media (pointer:coarse){ :root{ --marge-haut:max(env(safe-area-inset-top, 0px), 40px); } }
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie (rien de flou derrière) */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --marge-haut:var(--barre-statut); }
 :root{
   --nuit:#0B1426; --nuit-2:#13213D; --texte:#EAF2FF; --doux:rgba(234,242,255,.7);
   --verre:rgba(11,20,38,.84); --bord:rgba(234,242,255,.16);
@@ -148,6 +151,7 @@ table.bilan .moins{ color:#FF8A96; } table.bilan .plus{ color:#7FE0A8; }
 </style>
 </head>
 <body>
+<div class="barre-statut" aria-hidden="true"></div>
 <canvas id="carte" aria-label="La carte du domaine"></canvas>
 
 <div class="haut" id="haut" hidden>
@@ -221,7 +225,9 @@ table.bilan .moins{ color:#FF8A96; } table.bilan .plus{ color:#7FE0A8; }
   <div class="tete"><h2>❔ Comment jouer</h2><button class="btn or" id="bFermerAide">✕</button></div>
   <div class="corps aide">
     <h3>🎯 Le but</h3>
-    <p>Mettre assez de neige sur la piste choisie (en m³) en un nombre de nuits donné. Chaque m³ tombé sur une piste rapporte <b>20 €</b> le matin ; la neige qui tombe dans la forêt est perdue. 1, 2 ou 3 étoiles à 100, 125 et 150 % de l'objectif.</p>
+    <p>Mettre assez de neige sur la piste choisie (en m³) en un nombre de nuits donné. Chaque m³ tombé sur une piste rapporte <b>20 €</b> le matin ; la neige qui tombe dans la forêt est perdue. Dès que l'objectif est atteint, la piste est terminée et on passe à la suivante.</p>
+    <h3>⭐ Les étoiles et les points</h3>
+    <p>La piste est découpée en tronçons, marqués par des pastilles le long du bord : <b>vertes</b> quand le tronçon a assez de neige, jaunes s'il en a un peu, grises s'il n'en a pas ; le jour, un anneau <b>rouge</b> signale un tronçon où aucun canon ne fait tomber sa neige. Le but est d'enneiger <b>toute la piste</b>, pas seulement le bas : ★ objectif atteint ; ★★ piste enneigée sur au moins 75 % de sa longueur ; ★★★ enneigée sur 90 %, avec en plus une nuit d'avance, ou 25 % du budget restant, ou 130 % de l'objectif. Les points comptent la neige mise, la longueur enneigée, les nuits d'avance et le budget restant.</p>
     <h3>🏗️ Le jour : construire</h3>
     <ul>
       <li><b>Eau + câble</b> (le plus courant) : touchez la salle des machines ou un regard, puis l'endroit où poser le nouveau regard : la tranchée et le regard sont posés ensemble, avec un ventilateur V8. On enchaîne d'un regard au suivant. <b>Eau</b> ou <b>Câble</b> seuls pour compléter (les départs électriques jaunes donnent du courant).</li>
@@ -240,10 +246,10 @@ table.bilan .moins{ color:#FF8A96; } table.bilan .plus{ color:#7FE0A8; }
   </div>
 </section>
 
-<script src="js/config.js?v=71"></script>
-<script src="js/domaine.js?v=71"></script>
-<script src="js/simulation.js?v=71"></script>
-<script src="js/carte.js?v=71"></script>
-<script src="js/jeu.js?v=71"></script>
+<script src="js/config.js?v=72"></script>
+<script src="js/domaine.js?v=72"></script>
+<script src="js/simulation.js?v=72"></script>
+<script src="js/carte.js?v=72"></script>
+<script src="js/jeu.js?v=72"></script>
 </body>
 </html>

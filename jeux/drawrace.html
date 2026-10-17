@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Draw Race · DesDés</title>
-<meta name="theme-color" content="#F1EADA">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="DesDés">
 <link rel="manifest" href="../manifest.webmanifest">
@@ -14,8 +14,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Kalam:wght@700&display=swap" rel="stylesheet">
 <style>
-:root{ --marge-haut:env(safe-area-inset-top, 0px); }
-@media (pointer:coarse){ :root{ --marge-haut:max(env(safe-area-inset-top, 0px), 40px); } }
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie (rien de flou derrière) */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --marge-haut:var(--barre-statut); }
 :root{
   --paper:#F1EADA; --paper-2:#E6DCC4; --ink:#1F1F1F; --muted:#6B6456; --red:#D7263D; --gold:#E9B949; --green:#2E9E5B;
   --card:#FFFDF7; --line:rgba(31,31,31,.14);
@@ -238,6 +241,7 @@ tr.me td{ font-weight:800; }
 </style>
 </head>
 <body>
+<div class="barre-statut" aria-hidden="true"></div>
 
 <!-- Menu -->
 <main class="page" id="menu">
@@ -364,8 +368,8 @@ tr.me td{ font-weight:800; }
   </div>
 </main>
 
-<script src="drawrace/circuits.js?v=71"></script>
-<script src="drawrace/piste.js?v=71"></script>
+<script src="drawrace/circuits.js?v=72"></script>
+<script src="drawrace/piste.js?v=72"></script>
 <script>
 const P = window.Piste;
 // Garde-fou : page et scripts de versions différentes (ancien cache) → on recharge une fois depuis le réseau

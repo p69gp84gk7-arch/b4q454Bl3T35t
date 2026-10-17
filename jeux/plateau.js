@@ -28,7 +28,7 @@
 .pl-ov{ --pl-bg:#123A2C; --pl-felt:#1F5C47; --pl-rim:#0C261D; --pl-felt-img:none;
   --pl-die:#F7F3E8; --pl-die-edge:#1A1A1A; --pl-pip:#1A1A1A; --pl-one:#C8372D;
   position:fixed; inset:0; z-index:60; display:flex; flex-direction:column; gap:10px;
-  padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px));
+  padding:calc(12px + var(--barre-statut, env(safe-area-inset-top,0px))) 16px calc(14px + env(safe-area-inset-bottom,0px));
   background:var(--pl-bg); color:#F7F3E8; font-family:inherit; }
 .pl-ov[data-tapis="casino"]{ --pl-bg:#4A1016; --pl-felt:#7A1C24; --pl-rim:#3B0C10; --pl-die:#FFFFFF; }
 .pl-ov[data-tapis="bleu"]{ --pl-bg:#10294A; --pl-felt:#1D4E89; --pl-rim:#0C2340; }

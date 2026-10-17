@@ -156,6 +156,19 @@ function dessinerCarte(S){
     if(c && !c.pret){ g.fillStyle = '#F2C230'; g.font = `800 ${r * 1.4}px sans-serif`; g.textAlign = 'center'; g.fillText('!', n.x + r * 1.1, n.y - r * .6); }
     if(cam.z > 1.1 || choisi){ g.font = `700 ${Math.max(3, 11 * px)}px "Saira Condensed", sans-serif`; g.textAlign = 'center'; g.lineWidth = 3 * px; g.strokeStyle = 'rgba(10,20,40,.85)'; g.strokeText(n.id, n.x, n.y - r * 1.3); g.fillStyle = '#fff'; g.fillText(n.id, n.x, n.y - r * 1.3); }
   }
+  // la piste découpée en tronçons de 25 m : un repère par tronçon au bord de la piste
+  // (vert = assez de neige, jaune = un peu, gris = rien ; cerclé de blanc le jour = un canon y envoie sa neige)
+  if(S.troncons){
+    const p = dom.pistes[0], n = p.troncons;
+    for(let k = 0; k < n; k++){
+      const L = (k + .5) / n * p.longueur; let i = 1; while(i < p.cumul.length - 1 && p.cumul[i] < L) i++;
+      const [x, y] = p.points[i], nr = normale(p.points, i), q = S.troncons.neige[k] || 0, r = Math.max(1.6, 5 * px);
+      const cx = x - nr[0] * (p.largeur / 2 + r + 1.5), cy = y - nr[1] * (p.largeur / 2 + r + 1.5);
+      g.fillStyle = q >= 1 ? '#38D07A' : q > .05 ? '#F2C230' : 'rgba(120,135,160,.85)';
+      g.beginPath(); g.arc(cx, cy, r, 0, 6.29); g.fill();
+      if(S.troncons.equipe){ g.strokeStyle = S.troncons.equipe.has(k) ? '#FFFFFF' : 'rgba(224,74,74,.9)'; g.lineWidth = Math.max(.5, 1.8 * px); g.stroke(); }
+    }
+  }
   // point de départ choisi pour une tranchée
   if(S.depart){ const n = noeud(res, S.depart); if(n){ g.strokeStyle = '#E9B949'; g.lineWidth = Math.max(.8, 2.5 * px); g.beginPath(); g.arc(n.x, n.y, Math.max(5, 12 * px) + Math.sin(t * 5) * px * 2, 0, 6.29); g.stroke(); } }
   g.restore();

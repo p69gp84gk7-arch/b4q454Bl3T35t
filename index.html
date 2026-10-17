@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DesDés</title>
 <meta name="description" content="Nos jeux : carnets de score du 10 000 et du Yam's, quiz de géographie, course Draw Race, Nivoculteur.">
-<meta name="theme-color" content="#123A2C">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="DesDés">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
@@ -16,12 +16,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Kalam:wght@700&family=Audiowide&family=Saira+Condensed:wght@800&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie (rien de flou derrière) */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
 :root{
   --felt:#1F5C47; --felt-dark:#123A2C; --ivory:#F7F3E8; --ink:#1A1A1A;
   --red:#C8372D; --gold:#E9B949; --line:rgba(247,243,232,.18); --muted:rgba(247,243,232,.72);
   --paper:#F7FAFE; --grid:#C4D5EA; --blue:#1E3A8A; --margin:#D2453C; --paper-muted:#56657E; --grid-soft:rgba(160,187,220,.45);
   box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-top:var(--barre-statut); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){ --felt:#173F31; --felt-dark:#0C261D; --paper:#E9EEF6; }
@@ -155,6 +159,7 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
 </style>
 </head>
 <body>
+<div class="barre-statut" aria-hidden="true"></div>
 <main>
   <header>
     <img src="logo.svg" alt="">
@@ -292,8 +297,8 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
   <footer id="installHint">Astuce : ajoutez DesDés à l'écran d'accueil pour l'ouvrir comme une application. Tous les jeux marchent ensuite sans réseau.</footer>
 </main>
 
-<script src="jeux/drawrace/circuits.js?v=71"></script>
-<script src="jeux/sauvegarde.js?v=71"></script>
+<script src="jeux/drawrace/circuits.js?v=72"></script>
+<script src="jeux/sauvegarde.js?v=72"></script>
 <script>
 const fmt = n => n.toLocaleString('fr-FR');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
