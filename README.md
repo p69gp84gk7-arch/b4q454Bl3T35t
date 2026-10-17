@@ -14,6 +14,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Draw Race** : course de monoplaces dont on dessine la trajectoire, 20 circuits inspirés de la F1, pneus, météo et arrêts au stand ; modes Arcade et Championnat | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 | **Nivoculteur** : construire et faire tourner le réseau de neige de culture d'une station, en 3D (en construction) | `jeux/nivoculteur/index.html` | 1 |
 | **Fusée Rythme** : piloter une fusée à gauche et à droite au rythme d'un morceau (fourni ou pris dans vos fichiers) et éviter les points ; la partie dure le temps de la musique | `jeux/fusee.html` | 1 |
+| **Dameuse de nuit** : damer une piste vue du dessus avant l'ouverture, avec la lame, la fraise et le treuil ; 8 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -260,6 +261,20 @@ Jeu d'adresse musical, inspiré de Rhythm Rocket (iPhone, 2012) : on choisit un 
 - **Difficultés** : Facile, Normal, Difficile (vitesse, écart entre les points, marge pour frôler).
 - **Records** : par morceau et par difficulté, dans `fusee-records` ; vos fichiers joués restent dans la liste (il faut rechoisir le fichier pour rejouer). La difficulté choisie est gardée dans `fusee-niveau`.
 
+## Dameuse de nuit
+
+Jeu d'adresse sur le métier de dameur : la station ferme, il faut damer une piste avant l'ouverture. Vue du dessus, de nuit (seuls les phares, les projecteurs arrière et quelques lumières éclairent). Tout est dans `jeux/dameuse.html` (canvas 2D).
+
+- **Conduite** : joystick qui apparaît sous le pouce (n'importe où à gauche de l'écran) ; la dameuse tourne vers la direction poussée et avance d'autant plus vite que le joystick est poussé loin (18 km/h au plus) ; pour un demi-tour, elle pivote sur place. Clavier : flèches ou ZQSD/WASD, L (lame), F (fraise), T (treuil), Échap (pause).
+- **Le terrain** : une grille de cases de 1 m qui garde l'écart d'épaisseur de neige (bosses, creux, manques où la terre apparaît, tas de neige de culture près des enneigeurs, champs de bosses) et la qualité du damage de chaque case.
+- **La fraise** (arrière, 6,4 m) : en marche avant, elle dame et laisse le velours (des rayures dans le sens de la marche). Qualité parfaite jusqu'à 14 km/h, moins bonne au-delà ; médiocre sur une bosse ou un creux de plus de 10 cm (elle aplanit un peu à chaque passage).
+- **La lame** (avant, 5,6 m) : baissée, elle rabote ce qui dépasse et charge la neige (capacité limitée, affichée autour du bouton), puis remplit les creux et les manques et étale le reste sur le plat. Relevée chargée, elle laisse un tas. Elle remue la neige : il faut repasser la fraise derrière.
+- **Le treuil** : dans les murs (34 à 60 % selon la piste), sans treuil la dameuse ne remonte pas, et au-delà de 42 % elle glisse vers le bas. Au pied du mur ou dedans, on accroche le treuil à l'ancrage du haut (câble de 320 m au plus).
+- **Gasoil** : la conduite, la fraise, la lame et le treuil consomment ; le plein se fait arrêté sur l'aire du garage, en bas.
+- **Obstacles** : enneigeurs (perches) en bord de piste et sapins ; hors piste, la neige profonde ralentit. Les jalons de balisage, à la couleur de la piste, brillent dans la nuit.
+- **Fin de nuit** à 5 h 30 (la durée dépend de la surface de la piste), ou plus tôt depuis la pause. Score : surface damée × qualité (jusqu'à 1 000), moins les bosses et manques restants, plus le temps restant (si au moins 80 % est damé), le gasoil restant et le retour au garage, moins les accrochages (enneigeur −40, sapin −15) et une panne sèche (−150). Étoiles : 60 %, 80 %, et 92 % avec presque plus de bosses.
+- **Pistes** : 2 vertes, 2 bleues, 2 rouges, 2 noires, toujours les mêmes ; un **défi du jour** différent chaque jour (même piste pour tout le monde ce jour-là). Records et étoiles dans `dameuse-records`, son du moteur dans `dameuse-son`. La mini-carte montre ce qui est damé.
+
 ## Mise en ligne
 
 Le site est fait de fichiers statiques, sans installation ni compilation.
@@ -295,6 +310,7 @@ jeux/drawrace.html     jeu Draw Race
 jeux/drawrace/         circuits et géométrie de Draw Race
 jeux/nivoculteur/      jeu Nivoculteur (page, Three.js, CLAUDE.md)
 jeux/fusee.html        jeu Fusée Rythme
+jeux/dameuse.html      jeu Dameuse de nuit
 logo.svg               logo (source vectorielle)
 icons/                 icônes de l'application (192, 512, masquable, Apple)
 manifest.webmanifest   description de l'application installable
