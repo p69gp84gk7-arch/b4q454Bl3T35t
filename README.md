@@ -15,6 +15,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Nivoculteur** : construire et faire tourner le réseau de neige de culture d'une station, en 3D (en construction) | `jeux/nivoculteur/index.html` | 1 |
 | **Fusée Rythme** : piloter une fusée à gauche et à droite au rythme d'un morceau (fourni ou pris dans vos fichiers) et éviter les points ; la partie dure le temps de la musique | `jeux/fusee.html` | 1 |
 | **Dameuse de nuit** : damer une piste vue du dessus avant l'ouverture, avec la lame, la fraise et le treuil ; 8 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
+| **Freeride** : ski ou snowboard hors-piste vu du dessus ; fuir une avalanche sans fin, 7 descentes à étoiles, 3 slaloms chronométrés et un défi du jour | `jeux/freeride.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -275,6 +276,20 @@ Jeu d'adresse sur le métier de dameur : la station ferme, il faut damer une pis
 - **Fin de nuit** à 5 h 30 (la durée dépend de la surface de la piste), ou plus tôt depuis la pause. Score : surface damée × qualité (jusqu'à 1 000), moins les bosses et manques restants, plus le temps restant (si au moins 80 % est damé), le gasoil restant et le retour au garage, moins les accrochages (enneigeur −40, sapin −15) et une panne sèche (−150). Étoiles : 60 %, 80 %, et 92 % avec presque plus de bosses.
 - **Pistes** : 2 vertes, 2 bleues, 2 rouges, 2 noires, toujours les mêmes ; un **défi du jour** différent chaque jour (même piste pour tout le monde ce jour-là). Records et étoiles dans `dameuse-records`, son du moteur dans `dameuse-son`. La mini-carte montre ce qui est damé.
 
+## Freeride
+
+Jeu de glisse vu du dessus, en plongée (les sapins et les rochers ont de la hauteur, le skieur passe derrière eux). Tout est dans `jeux/freeride.html` (canvas 2D).
+
+- **Commandes** : poser le doigt n'importe où et glisser à gauche ou à droite ; plus on décale, plus on coupe la pente (jusqu'à 83°), ce qui ralentit ; au-delà d'environ 60°, ça dérape et freine fort. Lâcher : on file tout droit. Touche rapide sans glisser : petit saut (ollie), qui passe les souches, les petits cailloux et les crevasses. En l'air, chaque touche lance un 360 (1 s à ski, 0,85 s en snowboard) : il faut l'avoir fini avant de toucher la neige et atterrir à peu près face à la pente, sinon c'est la chute. Clavier : flèches et espace.
+- **Vitesse** : la pente pousse, l'air et la neige freinent (environ 70 km/h au plus). Ski : tourne plus vite et accroche mieux ; snowboard : glisse un peu mieux et tourne plus vite en l'air.
+- **Le terrain** : une « ligne sûre » serpente dans chaque descente, jamais bouchée. Sections : clairière, forêt (claire, normale, dense), tremplins, rochers et souches, couloir entre deux parois, barre rocheuse (de 4 à 8 m, avec une ou deux rampes de neige pour passer sans sauter), champ de bosses, glacier (crevasses, séracs). Sapins, gros rochers et séracs font chuter (1,3 s, le combo retombe à ×1) ; une crevasse fait chuter et reculer.
+- **Points** : la vitesse rapporte un peu ; chaque saut rapporte selon le temps en l'air, les 360 (300 chacun), la hauteur d'une barre sautée (90 par mètre) et une réception propre (+25 %), multiplié par le combo (jusqu'à ×5, il monte à chaque figure réussie) ; les flocons ❄ rapportent 50 × combo. Un petit saut sans figure ne rapporte rien.
+- **Sans fin** : la montagne se construit au fur et à mesure, de plus en plus dense et variée. Une avalanche part 70 m derrière et accélère (de 13,5 à 27 m/s) ; la jauge du haut montre si elle se rapproche. Record de points et de distance.
+- **Descentes** : 7 parcours fixes (Première trace, Sous les mélèzes, Le Couloir, Les Barres, Champ de bosses, Le Glacier, Big Mountain). 1 étoile à l'arrivée, 2 avec la moitié des flocons, 3 avec 85 %.
+- **Slalom** : piste damée avec filets ; passer entre les deux piquets de chaque porte, porte manquée +5 s, piquet touché : on ralentit. Géant, Spécial et Super-G (avec deux tremplins). 3 étoiles sous un temps de référence, 2 jusqu'à 15 % de plus.
+- **Défi du jour** : une descente de 6 sections tirées au sort à partir de la date (la même pour tout le monde ce jour-là).
+- **Records** dans `freeride-records`, engin choisi dans `freeride-engin`, son (vent, carres, grondement de l'avalanche) dans `freeride-son`.
+
 ## Mise en ligne
 
 Le site est fait de fichiers statiques, sans installation ni compilation.
@@ -311,6 +326,7 @@ jeux/drawrace/         circuits et géométrie de Draw Race
 jeux/nivoculteur/      jeu Nivoculteur (page, Three.js, CLAUDE.md)
 jeux/fusee.html        jeu Fusée Rythme
 jeux/dameuse.html      jeu Dameuse de nuit
+jeux/freeride.html     jeu Freeride
 logo.svg               logo (source vectorielle)
 icons/                 icônes de l'application (192, 512, masquable, Apple)
 manifest.webmanifest   description de l'application installable

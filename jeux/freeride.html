@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Freeride · DesDés</title>
+<meta name="theme-color" content="#E9F1FA">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DesDés">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --neige:#EEF4FB; --ciel:#DCE8F5; --encre:#13233A; --doux:#5A6B85; --ligne:rgba(19,35,58,.14); --carte:rgba(255,255,255,.88);
+  --orange:#FF6A2B; --bleu:#1F6FE0; --rouge:#E23B3B; --or:#F2A900; --glace:#8FD3F0;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --neige:#EEF4FB; } }
+:root[data-theme="dark"]{ --neige:#EEF4FB; }
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; height:100%; overflow:hidden; background:var(--neige); color:var(--encre);
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+button{ font:inherit; color:inherit; cursor:pointer; }
+#cv{ position:fixed; left:0; top:0; width:100vw; height:100vh; height:100lvh; display:block; touch-action:none; }
+.bebas{ font-family:"Bebas Neue", "Bricolage Grotesque", sans-serif; font-weight:400; }
+
+/* Pendant la partie */
+.hud{ position:fixed; left:0; right:0; top:0; z-index:3; pointer-events:none;
+  padding:calc(8px + env(safe-area-inset-top, 0px)) 10px 0; display:flex; align-items:flex-start; gap:8px; }
+.hud[hidden]{ display:none; }
+.bloc{ background:rgba(255,255,255,.82); border:1px solid var(--ligne); border-radius:12px; padding:3px 10px 4px; line-height:1; box-shadow:0 2px 8px rgba(19,35,58,.08); }
+.bloc small{ display:block; font-size:.6rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--doux); margin-bottom:2px; }
+.bloc b{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:1.6rem; letter-spacing:.02em; }
+.bloc .combo{ color:var(--orange); }
+.hud .pause{ margin-left:auto; pointer-events:auto; width:40px; height:40px; border-radius:12px; border:1px solid var(--ligne); background:rgba(255,255,255,.85); font-size:1rem; }
+.jauge{ position:fixed; left:10px; right:10px; top:calc(60px + env(safe-area-inset-top, 0px)); z-index:3; height:6px; border-radius:3px; background:rgba(19,35,58,.12); pointer-events:none; overflow:hidden; }
+.jauge[hidden]{ display:none; }
+.jauge i{ display:block; height:100%; width:0; background:var(--bleu); border-radius:3px; }
+.jauge.avalanche i{ background:linear-gradient(90deg, #fff, var(--rouge)); }
+.annonce{ position:fixed; left:0; right:0; top:34%; z-index:3; text-align:center; pointer-events:none; font-family:"Bebas Neue", sans-serif; font-size:2.6rem; letter-spacing:.03em; color:var(--encre); text-shadow:0 2px 0 #fff, 0 0 18px #fff; transition:opacity .25s; }
+.annonce small{ display:block; font-size:1.3rem; color:var(--orange); }
+.aide-doigt{ position:fixed; left:50%; transform:translateX(-50%); width:min(88vw, 420px); bottom:calc(24px + env(safe-area-inset-bottom, 0px)); z-index:3; text-align:center; pointer-events:none; color:var(--encre); font-weight:600; font-size:.86rem; line-height:1.35; background:rgba(255,255,255,.88); border:1px solid var(--ligne); border-radius:12px; padding:7px 10px; transition:opacity .6s; }
+
+/* Écrans */
+.ecran{ position:fixed; inset:0; z-index:6; display:flex; align-items:flex-start; justify-content:center; overflow:auto;
+  padding:calc(16px + env(safe-area-inset-top, 0px)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(233,241,250,.86); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+.ecran[hidden]{ display:none; }
+.boite{ width:min(100%, 540px); display:flex; flex-direction:column; gap:14px; }
+.tete{ display:flex; align-items:center; gap:8px; }
+.tete a, .tete button{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:12px; padding:6px 12px; font-weight:700; background:#fff; }
+.tete .droite{ margin-left:auto; }
+h1{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:clamp(3.4rem, 17vw, 4.6rem); line-height:.85; margin:6px 0 0; letter-spacing:.01em; color:var(--encre); }
+h1 span{ color:var(--orange); }
+.sous{ margin:0; color:var(--doux); line-height:1.4; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:18px; padding:14px; box-shadow:0 4px 16px rgba(19,35,58,.06); }
+.carte h2{ margin:0 0 8px; font-size:.8rem; text-transform:uppercase; letter-spacing:.1em; color:var(--doux); font-weight:700; }
+.engins{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.engins button{ border:2px solid var(--ligne); background:#fff; border-radius:14px; padding:10px; font-weight:800; font-size:1rem; }
+.engins button.actif{ border-color:var(--orange); background:#FFF1EA; }
+.ligne{ width:100%; display:flex; align-items:center; gap:12px; text-align:left; border:1px solid var(--ligne); background:#fff; border-radius:14px; padding:10px 12px; margin-top:6px; }
+.ligne .ico{ width:42px; height:42px; border-radius:12px; flex:none; display:grid; place-items:center; font-size:1.35rem; }
+.ligne b{ display:block; }
+.ligne small{ color:var(--doux); line-height:1.3; display:block; }
+.ligne .rec{ margin-left:auto; text-align:right; flex:none; }
+.ligne .rec .et{ color:var(--or); font-size:1.05rem; letter-spacing:.05em; display:block; }
+.ligne .rec em{ font-style:normal; font-family:"Bebas Neue", sans-serif; font-size:1.3rem; display:block; line-height:1; }
+.ligne .rec small{ font-size:.7rem; }
+.vedette{ border:2px solid var(--orange); background:linear-gradient(100deg, #FFF1EA, #fff 65%); }
+.aide h3{ margin:12px 0 4px; font-size:1rem; }
+.aide p, .aide li{ color:var(--doux); line-height:1.45; font-size:.92rem; margin:0 0 4px; }
+.aide ul{ margin:0; padding-left:18px; }
+.aide b{ color:var(--encre); }
+.gros{ width:100%; border:none; border-radius:16px; padding:14px; font-weight:800; font-size:1.05rem; color:#fff; background:var(--orange); box-shadow:0 8px 22px rgba(255,106,43,.3); }
+.sec{ border:1.5px solid var(--ligne); background:#fff; border-radius:14px; padding:12px; font-weight:700; }
+.btns{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.resultat{ font-family:"Bebas Neue", sans-serif; font-size:4rem; line-height:.9; text-align:center; margin:0; }
+.resultat small{ display:block; font-size:1.2rem; color:var(--doux); letter-spacing:.04em; }
+.etoiles{ text-align:center; font-size:2rem; letter-spacing:.15em; color:var(--or); margin:0; }
+.record{ text-align:center; color:var(--orange); font-weight:800; margin:0; }
+.detail{ width:100%; border-collapse:collapse; font-size:.92rem; }
+.detail td{ padding:6px 2px; border-bottom:1px solid var(--ligne); }
+.detail td:last-child{ text-align:right; font-weight:800; }
+.detail tr:last-child td{ border-bottom:none; }
+.centre{ text-align:center; }
+</style>
+</head>
+<body>
+<canvas id="cv" aria-label="La pente vue du dessus"></canvas>
+<div class="hud" id="hud" hidden>
+  <div class="bloc"><small id="hScoreN">Score</small><b id="hScore">0</b></div>
+  <div class="bloc"><small>Combo</small><b class="combo" id="hCombo">×1</b></div>
+  <div class="bloc"><small id="hInfoN">km/h</small><b id="hInfo">0</b></div>
+  <button class="pause" id="bPause" aria-label="Pause">⏸</button>
+</div>
+<div class="jauge" id="jauge" hidden><i id="jaugeI"></i></div>
+<div class="annonce" id="annonce"></div>
+<div class="aide-doigt" id="aideDoigt">Glissez le doigt à gauche ou à droite pour tourner · lâchez pour filer · touchez vite pour sauter</div>
+
+<section class="ecran" id="eMenu">
+  <div class="boite">
+    <div class="tete"><a href="../index.html">‹ DesDés</a><button class="droite" id="bSon">🔊</button><button id="bAide">❔ Aide</button></div>
+    <div>
+      <h1>Free<span>ride</span></h1>
+      <p class="sous">Hors-piste, poudreuse, barres rocheuses et tremplins. Glissez le doigt pour tourner, touchez pour sauter, enchaînez les figures.</p>
+    </div>
+    <div class="carte">
+      <h2>Votre engin</h2>
+      <div class="engins" id="engins"><button data-e="ski">⛷️ Ski</button><button data-e="board">🏂 Snowboard</button></div>
+    </div>
+    <div class="carte">
+      <h2>Défi du jour</h2>
+      <div id="lDefi"></div>
+    </div>
+    <div class="carte">
+      <h2>Sans fin</h2>
+      <div id="lInfini"></div>
+    </div>
+    <div class="carte">
+      <h2>Descentes</h2>
+      <div id="lDescentes"></div>
+    </div>
+    <div class="carte">
+      <h2>Slalom chronométré</h2>
+      <div id="lSlalom"></div>
+    </div>
+  </div>
+</section>
+
+<section class="ecran" id="eAide" hidden>
+  <div class="boite aide">
+    <div class="tete"><button id="bAideRetour">‹ Retour</button></div>
+    <h1>Com<span>ment</span> jouer</h1>
+    <div class="carte">
+      <h3>☝️ Diriger</h3>
+      <p>Posez le doigt n'importe où et <b>glissez à gauche ou à droite</b> : plus vous décalez, plus vous coupez la pente (et moins vous allez vite). <b>Lâchez</b> : vous filez tout schuss. Au clavier : flèches gauche / droite, espace pour sauter.</p>
+      <h3>🦘 Sauter et figures</h3>
+      <ul>
+        <li>Une <b>touche rapide</b> (sans glisser) fait un petit saut : il passe au-dessus des souches, des petits cailloux et des crevasses.</li>
+        <li>Les <b>tremplins</b>, les <b>bosses</b> et les <b>barres rocheuses</b> vous envoient en l'air.</li>
+        <li>En l'air, chaque touche lance un <b>360</b>. Il faut avoir fini de tourner avant de toucher la neige, et atterrir à peu près face à la pente, sinon c'est la chute.</li>
+        <li>Les figures enchaînées sans tomber montent le <b>combo</b> (jusqu'à ×5).</li>
+      </ul>
+      <h3>⚠️ Dangers</h3>
+      <p>Sapins et gros rochers : chute. Les petits obstacles se sautent. Les <b>crevasses</b> (glacier) se franchissent en sautant. Une <b>barre rocheuse</b> se saute en entier (gros bonus) ou se contourne par une rampe de neige.</p>
+      <h3>🎮 Les modes</h3>
+      <ul>
+        <li><b>Sans fin</b> : la montagne ne s'arrête jamais et devient de plus en plus dense. Une <b>avalanche</b> part derrière vous et accélère : si elle vous rattrape, c'est fini.</li>
+        <li><b>Descentes</b> : des parcours avec une arrivée. 1 étoile à l'arrivée, 2 et 3 selon les flocons ❄ ramassés.</li>
+        <li><b>Slalom</b> : passez entre les deux piquets de chaque porte. Porte manquée : +5 s. Étoiles selon le temps.</li>
+        <li><b>Défi du jour</b> : une descente nouvelle chaque jour.</li>
+      </ul>
+      <h3>⛷️ Ski ou 🏂 snowboard</h3>
+      <p>Les skis tournent plus vite et accrochent mieux ; le snowboard flotte mieux dans la poudreuse (un peu plus rapide) et tourne plus vite en l'air.</p>
+    </div>
+  </div>
+</section>
+
+<section class="ecran" id="ePause" hidden>
+  <div class="boite" style="margin-top:18vh">
+    <p class="resultat" style="font-size:3rem">Pause</p>
+    <button class="gros" id="bReprendre">▶ Reprendre</button>
+    <div class="btns"><button class="sec" id="bRecommencer">↻ Recommencer</button><button class="sec" id="bQuitter">Quitter</button></div>
+  </div>
+</section>
+
+<section class="ecran" id="eFin" hidden>
+  <div class="boite" style="margin-top:5vh">
+    <p class="sous centre" id="fTitre"></p>
+    <p class="etoiles" id="fEtoiles"></p>
+    <p class="resultat" id="fScore">0</p>
+    <p class="record" id="fRecord"></p>
+    <div class="carte"><table class="detail" id="fDetail"></table></div>
+    <div class="btns"><button class="gros" id="bRejouer">↻ Rejouer</button><button class="sec" id="bMenu">Menu</button></div>
+  </div>
+</section>
+
+<script>
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
+const fmtN = n => Math.round(n).toLocaleString('fr-FR');
+const fmtT = s => `${Math.floor(s / 60)}:${(s % 60).toFixed(2).padStart(5, '0')}`;
+const alea = s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const jour = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
+/* ---------- Les parcours ---------- */
+// Une descente = une suite de sections (forêt, tremplins, couloir, barre rocheuse, bosses, glacier…)
+const DESCENTES = [
+  { id:'premiere', n:'Première trace', ico:'🌲', c:'#2E9E5B', d:'Poudreuse, quelques sapins et des tremplins', L:520, dens:.45, sections:['clairiere', 'foret_l', 'kickers', 'clairiere', 'bosses_l'] },
+  { id:'melezes', n:'Sous les mélèzes', ico:'🌲', c:'#2E7D4F', d:'Une forêt de plus en plus serrée', L:620, dens:.6, sections:['foret_l', 'foret', 'clairiere', 'foret_dense', 'kickers'] },
+  { id:'couloir', n:'Le Couloir', ico:'🪨', c:'#7A6E66', d:'Un couloir étroit entre les rochers', L:620, dens:.65, sections:['clairiere', 'couloir', 'rochers', 'couloir', 'kickers'] },
+  { id:'barres', n:'Les Barres', ico:'⛰️', c:'#5E6A7D', d:'Barres rocheuses à sauter ou à contourner', L:700, dens:.65, sections:['clairiere', 'barre', 'kickers', 'barre', 'rochers', 'barre'] },
+  { id:'bosses', n:'Champ de bosses', ico:'〰️', c:'#2C6FD6', d:'Des bosses partout : sauts en série', L:600, dens:.7, sections:['bosses', 'kickers', 'bosses', 'foret_l', 'bosses'] },
+  { id:'glacier', n:'Le Glacier', ico:'🧊', c:'#3BA7D9', d:'Crevasses et séracs : sautez au bon moment', L:720, dens:.7, glacier:true, sections:['glacier', 'seracs', 'glacier', 'barre', 'glacier'] },
+  { id:'bigmountain', n:'Big Mountain', ico:'🏔️', c:'#D63A2F', d:'Tout à la fois, en grand', L:900, dens:.9, sections:['kickers', 'foret', 'barre', 'couloir', 'bosses', 'rochers', 'barre', 'kickers'] },
+];
+const SLALOMS = [
+  { id:'geant', n:'Géant de la Combe', ico:'🚩', d:'Portes larges, grandes courbes', L:620, ecart:20, larg:8, decal:6.5, vref:12.4 },
+  { id:'special', n:'Spécial du Stade', ico:'🚩', d:'Portes serrées, virages courts', L:420, ecart:12, larg:5, decal:4.2, vref:9.8 },
+  { id:'superg', n:'Super-G des Crêtes', ico:'🚩', d:'Long, rapide, quelques tremplins', L:900, ecart:30, larg:10, decal:8.5, vref:15, sauts:true },
+];
+function defiDuJour(){
+  const d = new Date(), seed = d.getFullYear() * 1000 + Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5), R = alea(seed);
+  const types = ['clairiere', 'foret', 'kickers', 'rochers', 'barre', 'bosses', 'couloir', 'glacier', 'foret_dense'];
+  const sections = Array.from({ length:6 }, (_, i) => i === 0 ? 'clairiere' : types[Math.floor(R() * types.length)]);
+  return { id:'defi-' + jour(), defi:true, n:'Défi du jour', ico:'📅', c:'#FF6A2B', d:`${new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' })}`, L:700, dens:.6 + R() * .3, seed, sections };
+}
+
+/* ---------- Génération de la montagne ----------
+   x : de gauche à droite (m), y : vers le bas de la pente (m). Une « ligne sûre » serpente : rien ne la bouche. */
+const BORD = 22;
+function nouveauMonde(mode, def, seed){
+  const R = alea(seed), ph = [R() * 6.3, R() * 6.3, R() * 6.3];
+  const M = { mode, def, R, objets:[], flocons:[], portes:[], barres:[], fin:Infinity, bord:BORD, glacier:!!(def && def.glacier), genere:0, nFlocons:0 };
+  M.sure = y => clamp(8.5 * Math.sin(y / 47 + ph[0]) + 3.5 * Math.sin(y / 19 + ph[1]) + 2 * Math.sin(y / 9 + ph[2]), -BORD + 7, BORD - 7);
+  if(mode === 'slalom'){ M.bord = 15; M.sure = () => 0; }
+  return M;
+}
+const ajouter = (M, o) => { M.objets.push(o); };
+const loinDeLaLigne = (M, x, y, m) => Math.abs(x - M.sure(y)) > m;
+function arbres(M, y0, y1, n, R){
+  for(let k = 0; k < n; k++){
+    const y = y0 + R() * (y1 - y0), x = (R() * 2 - 1) * (M.bord - 1);
+    if(!loinDeLaLigne(M, x, y, 3.6)) continue;
+    ajouter(M, { t:'arbre', x, y, r:.9 + R() * .9, v:R() });
+  }
+}
+function bords(M, y0, y1, R){
+  // sapins (ou séracs) serrés au-delà des bords
+  for(let y = y0; y < y1; y += 2.6) for(const s of [-1, 1]){
+    const x = s * (M.bord + .5 + R() * 6);
+    ajouter(M, M.glacier ? { t:'rocher', glace:true, x, y:y + R() * 2, r:1.4 + R() * 1.4, v:R() } : { t:'arbre', x, y:y + R() * 2, r:1 + R() * .9, v:R() });
+  }
+}
+function flocons(M, y0, y1, pas, R, dec = 0){
+  for(let y = y0 + pas / 2; y < y1; y += pas){ M.flocons.push({ x:M.sure(y) + dec + (R() - .5) * 2, y, pris:false }); M.nFlocons++; }
+}
+function kicker(M, x, y, p){ ajouter(M, { t:'kicker', x, y, w:4.2, l:4 + 2 * p, p }); }
+function section(M, type, y0, y1, dens){
+  const R = M.R, L = y1 - y0, n = (k) => Math.round(k * L / 100 * (.5 + dens));
+  if(M.mode !== 'slalom') bords(M, y0, y1, R);
+  switch(type){
+    case 'clairiere': arbres(M, y0, y1, n(9), R); for(let y = y0 + 30; y < y1 - 10; y += 55 + R() * 30) kicker(M, M.sure(y) + (R() - .5) * 4, y, .6 + R() * .5); flocons(M, y0, y1, 12, R); break;
+    case 'foret_l': arbres(M, y0, y1, n(18), R); flocons(M, y0, y1, 14, R); break;
+    case 'foret': arbres(M, y0, y1, n(30), R); flocons(M, y0, y1, 12, R); break;
+    case 'foret_dense': arbres(M, y0, y1, n(48), R); flocons(M, y0, y1, 10, R); break;
+    case 'kickers':
+      arbres(M, y0, y1, n(8), R);
+      for(let y = y0 + 15; y < y1 - 15; y += 26 + R() * 10){ const x = M.sure(y); kicker(M, x, y, .8 + R() * .7); M.flocons.push({ x:x + M.sure(y + 9) - M.sure(y), y:y + 9, pris:false }); M.nFlocons++; }
+      break;
+    case 'rochers':
+      arbres(M, y0, y1, n(6), R);
+      for(let k = 0; k < n(16); k++){ const y = y0 + R() * L, x = (R() * 2 - 1) * (M.bord - 1); if(!loinDeLaLigne(M, x, y, 3.2)) continue; const gros = R() < .55; ajouter(M, { t:'rocher', x, y, r:gros ? 1.3 + R() * 1.6 : .45 + R() * .3, bas:!gros, v:R() }); }
+      for(let k = 0; k < n(5); k++){ const y = y0 + R() * L, x = M.sure(y) + (R() - .5) * 2; ajouter(M, { t:'souche', x, y, r:.45, bas:true, v:R() }); }
+      flocons(M, y0, y1, 11, R);
+      break;
+    case 'couloir':
+      // parois de rochers de part et d'autre de la ligne sûre, le couloir se resserre au milieu
+      for(let y = y0; y < y1; y += 1.8){
+        const u = (y - y0) / L, demi = 6.5 + 7 * Math.abs(u - .5) * 2;
+        for(const s of [-1, 1]){ const x = M.sure(y) + s * (demi + R() * 1.2); for(let e = 0; e < 3; e++) ajouter(M, { t:'rocher', x:x + s * e * 2.4, y:y + R(), r:1 + R() * 1.1, v:R() }); }
+      }
+      flocons(M, y0, y1, 9, R);
+      break;
+    case 'barre': {
+      arbres(M, y0, y0 + L * .25, n(5), R);
+      const yb = y0 + L * .45, h = 4 + R() * 4 * (.5 + dens), xs = M.sure(yb), trous = [[xs - 3.2, xs + 3.2]];
+      if(R() < .5){ const x2 = clamp(xs + (R() < .5 ? -1 : 1) * (9 + R() * 6), -M.bord + 4, M.bord - 4); trous.push([x2 - 2.6, x2 + 2.6]); }
+      M.barres.push({ y:yb, h, trous });
+      // des flocons en l'air, pour ceux qui sautent la barre
+      for(const dx of [-8, 8]){ const x = clamp(xs + dx, -M.bord + 3, M.bord - 3); for(let k = 1; k <= 3; k++){ M.flocons.push({ x, y:yb + 3 + k * 4, pris:false }); M.nFlocons++; } }
+      arbres(M, yb + 26, y1, n(6), R);
+      break;
+    }
+    case 'bosses': case 'bosses_l':
+      for(let y = y0 + 4; y < y1 - 4; y += 4.2) for(let x = -M.bord + 2 + (Math.floor(y / 4.2) % 2) * 2.1; x < M.bord - 2; x += 4.2) if(R() < (type === 'bosses' ? .85 : .5)) ajouter(M, { t:'bosse', x:x + (R() - .5), y:y + (R() - .5), r:1.6 });
+      arbres(M, y0, y1, n(type === 'bosses' ? 5 : 8), R);
+      flocons(M, y0, y1, 10, R);
+      break;
+    case 'glacier':
+      for(let k = 0; k < n(14); k++){ const y = y0 + R() * L, x = (R() * 2 - 1) * (M.bord - 2), w = 3 + R() * 6; if(!loinDeLaLigne(M, x, y, w / 2 + 1.5) && R() < .65) continue; ajouter(M, { t:'crevasse', x, y, w, h:.8 + R() * .9 }); }
+      for(let k = 0; k < n(4); k++){ const y = y0 + R() * L, x = (R() * 2 - 1) * (M.bord - 2); if(loinDeLaLigne(M, x, y, 3.5)) ajouter(M, { t:'rocher', glace:true, x, y, r:1.2 + R() * 1.5, v:R() }); }
+      flocons(M, y0, y1, 11, R);
+      break;
+    case 'seracs':
+      for(let k = 0; k < n(16); k++){ const y = y0 + R() * L, x = (R() * 2 - 1) * (M.bord - 1); if(loinDeLaLigne(M, x, y, 3.4)) ajouter(M, { t:'rocher', glace:true, x, y, r:1.2 + R() * 2, v:R() }); }
+      for(let y = y0 + 20; y < y1 - 10; y += 45) kicker(M, M.sure(y), y, 1);
+      flocons(M, y0, y1, 10, R);
+      break;
+  }
+}
+function construireDescente(M, def){
+  const n = def.sections.length, L = def.L;
+  for(let k = 0; k < n; k++) section(M, def.sections[k], 20 + k * L / n, 20 + (k + 1) * L / n, def.dens);
+  bords(M, -40, 20, M.R); bords(M, 20 + L, 80 + L, M.R);
+  M.fin = 20 + L; M.genere = Infinity;
+  trier(M);
+}
+function construireSlalom(M, def){
+  const R = M.R;
+  let cote = R() < .5 ? -1 : 1;
+  for(let y = 40; y < def.L - 10; y += def.ecart * (.85 + R() * .3)){
+    const x = cote * def.decal * (.6 + R() * .4);
+    M.portes.push({ y, x, w:def.larg, c:cote < 0 ? 'rouge' : 'bleue', etat:0 });
+    cote = -cote;
+  }
+  if(def.sauts) for(const f of [.35, .7]){ const y = def.L * f; ajouter(M, { t:'kicker', x:0, y, w:12, l:5, p:.7 }); }
+  M.fin = def.L + 10; M.genere = Infinity;
+  trier(M);
+}
+// Sans fin : la montagne se construit au fur et à mesure, de plus en plus dense
+const TYPES_INFINI = ['clairiere', 'foret_l', 'kickers', 'foret', 'rochers', 'bosses_l', 'barre', 'couloir', 'foret_dense', 'glacier', 'bosses'];
+function genererInfini(M, jusqua){
+  while(M.genere < jusqua){
+    const y0 = M.genere, dens = Math.min(1, y0 / 2600), L = 70 + M.R() * 40;
+    let type;
+    if(y0 < 60) type = 'clairiere';
+    else { const max = Math.min(TYPES_INFINI.length, 3 + Math.floor(y0 / 280)); type = TYPES_INFINI[Math.floor(M.R() * max)]; }
+    M.glacier = type === 'glacier';
+    section(M, type, y0, y0 + L, .25 + .75 * dens);
+    M.glacier = false;
+    M.genere = y0 + L;
+  }
+  trier(M);
+}
+function trier(M){ M.objets.sort((a, b) => a.y - b.y); M.flocons.sort((a, b) => a.y - b.y); }
+const premierApres = (liste, y) => { let a = 0, b = liste.length; while(a < b){ const m = (a + b) >> 1; if(liste[m].y < y) a = m + 1; else b = m; } return a; };
+
+/* ---------- Son : vent selon la vitesse, grondement de l'avalanche ---------- */
+let AC = null, sons = null, son = lire('freeride-son', true);
+function audio(){
+  if(AC || !son) return;
+  try{
+    try{ if(navigator.audioSession) navigator.audioSession.type = 'ambient'; }catch(e){}
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    const lg = AC.sampleRate * 2, bb = AC.createBuffer(1, lg, AC.sampleRate), d = bb.getChannelData(0); for(let i = 0; i < lg; i++) d[i] = Math.random() * 2 - 1;
+    const chaine = (type, f, q) => { const s = AC.createBufferSource(); s.buffer = bb; s.loop = true; const fl = AC.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const gn = AC.createGain(); gn.gain.value = 0; s.connect(fl); fl.connect(gn); gn.connect(AC.destination); s.start(); return { gn, fl }; };
+    sons = { vent:chaine('bandpass', 900, .6), carre:chaine('highpass', 2500, .7), gronde:chaine('lowpass', 110, 1) };
+  }catch(e){ AC = null; }
+}
+function majSon(v, carre, gronde){
+  if(!sons) return;
+  const t = AC.currentTime, actif = partie && !partie.pause && !partie.fin && son;
+  sons.vent.gn.gain.setTargetAtTime(actif ? Math.min(.06, v / 22 * .05) : 0, t, .15); sons.vent.fl.frequency.setTargetAtTime(500 + v * 45, t, .2);
+  sons.carre.gn.gain.setTargetAtTime(actif ? carre * .035 : 0, t, .06);
+  sons.gronde.gn.gain.setTargetAtTime(actif ? gronde * .5 : 0, t, .3);
+}
+function bruitCourt(f, duree, vol){
+  if(!AC || !son) return;
+  const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+  o.type = 'sine'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * .5, t + duree);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + duree);
+  o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + duree + .05);
+}
+
+/* ---------- La partie ---------- */
+let engin = lire('freeride-engin', 'ski'); if(!['ski', 'board'].includes(engin)) engin = 'ski';
+let partie = null, raf = 0, dernierLancement = null;
+const doigt = { id:null, x0:0, y0:0, t0:0, bouge:false, dx:0 }, touches = new Set();
+
+function lancer(mode, def){
+  dernierLancement = [mode, def];
+  const seed = mode === 'infini' ? (Date.now() & 0xffffff) : (def.seed || [...def.id].reduce((s, c) => s * 31 + c.charCodeAt(0) | 0, 7));
+  const M = nouveauMonde(mode, def, seed);
+  if(mode === 'slalom') construireSlalom(M, def);
+  else if(mode === 'infini') genererInfini(M, 200);
+  else construireDescente(M, def);
+  partie = { mode, def, M, x:M.sure(0), y:0, th:0, thv:0, v:4, z:0, vz:0, air:false, tAir:0, tours:0, spin:0, spinV:0, chute:0, invul:0,
+    score:0, combo:1, figures:0, chutes:0, prisF:0, portesOk:0, portesKo:0, t:0, fin:false, pause:false, traces:[], part:[], textes:[],
+    av:mode === 'infini' ? -70 : null, avV:0, dernier:performance.now(), majHud:0, camX:M.sure(0), meilleurSaut:0, depart:false };
+  ['eMenu', 'eAide', 'eFin', 'ePause'].forEach(id => $(id).hidden = true);
+  $('hud').hidden = false; $('jauge').hidden = false;
+  $('jauge').classList.toggle('avalanche', mode === 'infini');
+  $('hScoreN').textContent = mode === 'slalom' ? 'Temps' : 'Score';
+  $('hInfoN').textContent = mode === 'slalom' ? 'Portes' : mode === 'infini' ? 'Distance' : 'Flocons';
+  $('aideDoigt').style.opacity = 1;
+  audio(); if(AC && AC.state === 'suspended') AC.resume();
+  annoncer(mode === 'slalom' ? def.n : mode === 'infini' ? 'Sans fin' : def.n, mode === 'infini' ? 'Attention à l\'avalanche !' : mode === 'slalom' ? 'Passez entre les piquets' : '', 1.8);
+  cancelAnimationFrame(raf); raf = requestAnimationFrame(boucle);
+}
+let annonceT = 0;
+function annoncer(txt, sous = '', duree = 1.2){ $('annonce').innerHTML = esc(txt) + (sous ? `<small>${esc(sous)}</small>` : ''); $('annonce').style.opacity = 1; annonceT = duree; }
+function texte(P, txt, c = '#13233A', gros = false){ P.textes.push({ x:P.x, y:P.y - 2, txt, c, vie:1.3, gros }); }
+
+function chuter(P, raison){
+  if(P.chute > 0 || P.invul > 0) return;
+  P.chute = 1.3; P.chutes++; P.combo = 1; P.v *= .15; P.air = false; P.z = 0; P.vz = 0; P.spin = 0; P.spinV = 0; P.tours = 0;
+  texte(P, raison, '#E23B3B', true); bruitCourt(90, .35, .35);
+  if(navigator.vibrate) navigator.vibrate(90);
+  for(let k = 0; k < 18; k++) P.part.push({ x:P.x, y:P.y, vx:(Math.random() - .5) * 8, vy:(Math.random() - .5) * 8 + P.v * .3, vie:.8 + Math.random() * .5, r:.15 + Math.random() * .25 });
+}
+function decoller(P, vz, raison){
+  if(P.air) { P.vz = Math.max(P.vz, vz); return; }
+  P.air = true; P.vz = vz; P.tAir = 0; P.tours = 0; P.spin = 0; P.spinV = 0; P.hautDep = P.z; P.raisonAir = raison;
+}
+function atterrir(P){
+  const tAir = P.tAir, tourne = P.spinV !== 0;
+  P.air = false; P.z = 0; P.vz = 0;
+  if(tourne){ chuter(P, 'Réception ratée !'); return; }
+  if(Math.abs(P.th) > 1.05){ chuter(P, 'Réception de travers !'); return; }
+  bruitCourt(160, .12, .2);
+  // un petit saut (ou une bosse) sans figure ne rapporte rien
+  if((tAir < .45 || P.raisonAir === 'ollie') && !P.tours && !P.drop){ P.drop = 0; return; }
+  // Les points du saut : temps en l'air, 360, hauteur de la barre sautée, réception propre
+  let pts = Math.round(tAir * 220) + P.tours * 300 + Math.round((P.drop || 0) * 90);
+  const propre = Math.abs(P.th) < .3;
+  if(propre) pts = Math.round(pts * 1.25);
+  pts = Math.round(pts * P.combo / 10) * 10;
+  const nom = (P.drop ? `Drop ${P.drop.toFixed(0)} m` : P.tours ? `${360 * P.tours}` : tAir > 1.1 ? 'Gros saut' : 'Saut') + (P.tours && P.drop ? ` + ${360 * P.tours}` : '');
+  if(P.mode !== 'slalom'){ P.score += pts; texte(P, `${nom} ! +${fmtN(pts)}${propre ? ' ✓' : ''}`, '#FF6A2B', true); }
+  P.figures++; P.combo = Math.min(5, P.combo + (P.tours || P.drop || tAir > .9 ? .5 : .25));
+  P.meilleurSaut = Math.max(P.meilleurSaut, pts);
+  P.drop = 0;
+}
+function sautCourt(P){
+  if(P.fin || P.pause) return;
+  if(P.chute > 0) return;
+  if(P.air){
+    // un 360 de plus, s'il reste le temps
+    if(P.spinV === 0){ P.spinV = (engin === 'board' ? 2.35 : 2) * Math.PI; P.spin = 0; }
+    else P.tourDePlus = true;
+    return;
+  }
+  decoller(P, 3.7, 'ollie');
+}
+function boucle(now){
+  const P = partie; if(!P) return;
+  const dt = Math.min(.05, (now - P.dernier) / 1000); P.dernier = now;
+  if(!P.pause && !P.fin) maj(P, dt);
+  dessiner(P, dt);
+  raf = requestAnimationFrame(boucle);
+}
+function maj(P, dt){
+  const M = P.M;
+  P.t += dt; P.invul = Math.max(0, P.invul - dt);
+  if(P.mode === 'infini'){
+    genererInfini(M, P.y + 160);
+    // on oublie ce qui est loin derrière
+    if(M.objets.length > 1500 && M.objets[0].y < P.y - 90){ const k = premierApres(M.objets, P.y - 80); M.objets.splice(0, k); M.flocons.splice(0, premierApres(M.flocons, P.y - 80)); M.barres = M.barres.filter(b => b.y > P.y - 80); }
+  }
+  // Direction voulue : le doigt (ou les flèches) ; lâché, on file tout droit
+  let cible = 0;
+  if(doigt.id !== null) cible = clamp(doigt.dx / 70, -1, 1) * 1.45;
+  else { if(touches.has('ArrowLeft')) cible -= 1.3; if(touches.has('ArrowRight')) cible += 1.3; }
+  if(P.chute > 0){
+    P.chute -= dt; P.v = Math.max(0, P.v - 12 * dt);
+    if(P.chute <= 0){ P.th = 0; P.v = 3; P.invul = 1.2; }
+  } else if(!P.air){
+    const vir = engin === 'ski' ? 3.5 : 2.9, avant = P.th;
+    P.th += clamp(cible - P.th, -vir * dt, vir * dt);
+    P.thv = (P.th - avant) / dt;
+  } else P.th += clamp(cible - P.th, -.8 * dt, .8 * dt);
+  // Vitesse : la pente pousse, l'air et la neige freinent ; couper la pente ralentit, travers = dérapage
+  if(P.chute <= 0){
+    const G = M.glacier ? 5.6 : 5.2, mu = engin === 'board' ? .45 : .6, ath = Math.abs(P.th);
+    let a = G * Math.cos(P.th) - .0125 * P.v * P.v - mu;
+    if(ath > 1.05 && !P.air) a -= 9 * (ath - 1.05);
+    if(engin === 'ski' && ath > .5 && !P.air) a += .25;     // les carres accrochent mieux
+    P.v = clamp(P.v + a * dt, P.y < 3 ? 3 : 0, 30);
+  }
+  const vx = Math.sin(P.th) * P.v, vy = Math.cos(P.th) * P.v, yAvant = P.y;
+  P.x += vx * dt; P.y += vy * dt;
+  // Bords : on ne peut pas sortir de la zone
+  const lim = M.bord + (M.mode === 'slalom' ? -.6 : 6);
+  if(Math.abs(P.x) > lim){ P.x = Math.sign(P.x) * lim; if(M.mode === 'slalom'){ P.v *= .6; P.th *= -.4; texte(P, 'Filet !', '#E23B3B'); } }
+  // En l'air
+  if(P.air){
+    P.tAir += dt; P.vz -= 9.8 * dt; P.z += P.vz * dt;
+    if(P.spinV){ P.spin += P.spinV * dt; if(P.spin >= 2 * Math.PI){ P.tours++; P.spin = 0; P.spinV = P.tourDePlus ? P.spinV : 0; P.tourDePlus = false; } }
+    if(P.z <= 0) atterrir(P);
+  }
+  // Barres rocheuses : en passant le bord, le sol se dérobe
+  for(const b of M.barres){
+    if(yAvant < b.y && P.y >= b.y && P.chute <= 0){
+      const dansTrou = b.trous.some(([a, c]) => P.x > a && P.x < c);
+      if(!dansTrou){ if(!P.air) decoller(P, 1.2, 'barre'); P.z += b.h; P.drop = b.h; annoncer('Drop !', `${b.h.toFixed(0)} m`, .8); }
+    }
+  }
+  // Obstacles
+  if(P.chute <= 0){
+    const i0 = premierApres(M.objets, P.y - 6);
+    for(let i = i0; i < M.objets.length; i++){
+      const o = M.objets[i]; if(o.y > P.y + 6) break;
+      const dx = P.x - o.x, dy = P.y - o.y, d = Math.hypot(dx, dy);
+      if(o.t === 'arbre' || o.t === 'rocher' || o.t === 'souche'){
+        const r = (o.t === 'arbre' ? o.r * .55 : o.r * .85) + .35;
+        if(d < r){
+          if(o.bas && P.z > .35) continue;           // sauté par-dessus
+          if(P.invul > 0){ P.x += dx / (d || 1) * (r - d); continue; }
+          chuter(P, o.t === 'arbre' ? 'Sapin !' : o.glace ? 'Sérac !' : o.t === 'souche' ? 'Souche !' : 'Rocher !');
+          P.x += dx / (d || 1) * (r - d + .3);
+        }
+      } else if(o.t === 'kicker'){
+        if(!P.air && yAvant < o.y && P.y >= o.y && Math.abs(P.x - o.x) < o.w / 2) decoller(P, 2.4 + P.v * .3 * o.p, 'kicker');
+      } else if(o.t === 'bosse'){
+        if(!P.air && yAvant < o.y && P.y >= o.y && Math.abs(dx) < o.r * .8 && P.v > 7) decoller(P, P.v * .14, 'bosse');
+      } else if(o.t === 'crevasse'){
+        if(!P.air && Math.abs(dx) < o.w / 2 && Math.abs(dy) < o.h / 2 && P.invul <= 0){ chuter(P, 'Crevasse !'); P.y = o.y - o.h / 2 - 2.5; P.chute = 2; if(P.mode !== 'slalom') P.score = Math.max(0, P.score - 200); }
+      }
+    }
+  }
+  // Flocons
+  const fi = premierApres(M.flocons, P.y - 3);
+  for(let i = fi; i < M.flocons.length; i++){
+    const f = M.flocons[i]; if(f.y > P.y + 3) break;
+    if(!f.pris && Math.hypot(P.x - f.x, P.y - f.y) < 1.6 && P.chute <= 0){ f.pris = true; P.prisF++; const pts = Math.round(50 * P.combo / 10) * 10; P.score += pts; bruitCourt(1400, .1, .08); }
+  }
+  // Portes de slalom
+  for(const pt of M.portes){
+    if(pt.etat === 0 && yAvant < pt.y && P.y >= pt.y){
+      if(Math.abs(P.x - pt.x) < pt.w / 2){ pt.etat = 1; P.portesOk++; bruitCourt(900, .08, .08); }
+      else { pt.etat = 2; P.portesKo++; texte(P, 'Porte manquée ! +5 s', '#E23B3B', true); if(navigator.vibrate) navigator.vibrate(40); }
+    }
+    if(pt.etat !== 3) for(const s of [-1, 1]){ const px = pt.x + s * pt.w / 2; if(Math.hypot(P.x - px, P.y - pt.y) < .5 && !P.air){ P.v *= .85; pt.touche = 1; } }
+  }
+  // Points de glisse (descentes et sans fin) : la vitesse rapporte un peu
+  if(P.mode !== 'slalom' && P.chute <= 0) P.score += P.v * dt * 1.5;
+  // Poudreuse soulevée dans les virages
+  const carre = !P.air && P.chute <= 0 ? clamp(Math.abs(P.thv) / 3 + (Math.abs(P.th) > .9 ? .5 : 0), 0, 1) * clamp(P.v / 12, 0, 1) : 0;
+  if(carre > .2 && Math.random() < carre){
+    const s = Math.sign(P.thv || P.th);
+    P.part.push({ x:P.x - s * Math.cos(P.th) * .6, y:P.y + .4, vx:-s * (2 + Math.random() * 3) * Math.cos(P.th) + vx * .3, vy:vy * .4 + (Math.random() - .5) * 2, vie:.5 + Math.random() * .4, r:.12 + Math.random() * .22 });
+  }
+  // Traces dans la neige
+  if(!P.air && P.chute <= 0){ const der = P.traces[P.traces.length - 1]; if(!der || Math.hypot(der.x - P.x, der.y - P.y) > .35) P.traces.push({ x:P.x, y:P.y, th:P.th }); }
+  else if(P.traces.length && P.traces[P.traces.length - 1]) P.traces.push(null);
+  while(P.traces.length && (!P.traces[0] || P.traces[0].y < P.y - 70)) P.traces.shift();
+  // Avalanche
+  let gronde = 0;
+  if(P.av !== null){
+    if(P.t > 4){ P.avV = Math.min(27, 13.5 + P.t * .055); P.av += P.avV * dt; }
+    const ecart = P.y - P.av; gronde = clamp(1 - ecart / 80, 0, 1);
+    if(ecart < 0){ P.fin = true; annoncer('Avalanche !', 'Elle vous a rattrapé', 2); setTimeout(finir, 1400); }
+  }
+  majSon(P.v, carre, gronde);
+  // Arrivée
+  if(P.y >= M.fin && !P.fin){ P.fin = true; annoncer('Arrivée !', '', 1.5); setTimeout(finir, 900); }
+  if(P.t > 2.5 && doigt.id !== null) $('aideDoigt').style.opacity = 0;
+  if(annonceT > 0){ annonceT -= dt; if(annonceT <= 0) $('annonce').style.opacity = 0; }
+}
+
+/* ---------- Dessin ---------- */
+if(!CanvasRenderingContext2D.prototype.roundRect) CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h){ this.rect(x, y, w, h); };
+const cv = $('cv'), g = cv.getContext('2d');
+let W = 0, Hh = 0, DPR = 1, motifNeige = null;
+function taille(){ DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; Hh = innerHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(Hh * DPR); }
+addEventListener('resize', taille); taille();
+(function(){
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'), R = alea(5);
+  // taches douces, recopiées de l'autre côté des bords pour que le motif se raccorde sans couture
+  for(let k = 0; k < 70; k++){ const px = R() * 256, py = R() * 256, r = 10 + R() * 40, a = .05 + R() * .06;
+    for(const ex of [-256, 0, 256]) for(const ey of [-256, 0, 256]){ const cx = px + ex, cy = py + ey; if(cx + r < 0 || cx - r > 256 || cy + r < 0 || cy - r > 256) continue; const gr = x.createRadialGradient(cx, cy, 0, cx, cy, r); gr.addColorStop(0, `rgba(150,180,215,${a})`); gr.addColorStop(1, 'rgba(150,180,215,0)'); x.fillStyle = gr; x.fillRect(cx - r, cy - r, 2 * r, 2 * r); } }
+  for(let k = 0; k < 160; k++){ x.fillStyle = `rgba(255,255,255,${.5 + R() * .5})`; x.fillRect(R() * 256, R() * 256, 1.2, 1.2); }
+  motifNeige = g.createPattern(c, 'repeat');
+})();
+function dessinerSapin(o){
+  const r = o.r * 1.5;
+  g.fillStyle = 'rgba(70,95,140,.22)'; g.beginPath(); g.ellipse(o.x + r * .55, o.y + r * .35, r * 1.05, r * .7, .5, 0, 6.29); g.fill();
+  // plusieurs étages, décalés vers le haut : effet de hauteur vu en plongée
+  const etages = [[1, 0, '#1E5A43'], [.75, -.45, '#25694F'], [.5, -.85, '#2F7A5C'], [.26, -1.15, '#3A8A6A']];
+  for(const [k, dy, c] of etages){
+    g.fillStyle = c; g.beginPath();
+    for(let n = 0; n < 14; n++){ const a = n * Math.PI / 7 + o.v, rr = (n % 2 ? .72 : 1) * r * k; g.lineTo(o.x + Math.cos(a) * rr, o.y + dy * r * .5 + Math.sin(a) * rr * .9); }
+    g.closePath(); g.fill();
+  }
+  g.fillStyle = 'rgba(255,255,255,.85)'; g.beginPath(); g.arc(o.x - r * .3, o.y - r * .35, r * .18, 0, 6.29); g.arc(o.x + r * .25, o.y - r * .05, r * .14, 0, 6.29); g.arc(o.x - r * .05, o.y - r * .62, r * .1, 0, 6.29); g.fill();
+}
+function dessinerRocher(o){
+  const r = o.r;
+  g.fillStyle = 'rgba(70,95,140,.25)'; g.beginPath(); g.ellipse(o.x + r * .5, o.y + r * .4, r * 1.1, r * .7, .4, 0, 6.29); g.fill();
+  g.fillStyle = o.glace ? '#7FC6E6' : o.t === 'souche' ? '#6B4A35' : '#6E737C';
+  g.beginPath(); for(let n = 0; n < 7; n++){ const a = n * 2 * Math.PI / 7 + o.v * 3, rr = r * (.8 + .25 * Math.sin(n * 2.3 + o.v * 9)); g.lineTo(o.x + Math.cos(a) * rr, o.y + Math.sin(a) * rr * .85); } g.closePath(); g.fill();
+  g.fillStyle = o.glace ? '#BDE7F7' : o.t === 'souche' ? '#9C7354' : '#8F949D';
+  g.beginPath(); g.ellipse(o.x - r * .2, o.y - r * .25, r * .55, r * .4, -.4, 0, 6.29); g.fill();
+  if(o.t !== 'souche'){ g.fillStyle = 'rgba(255,255,255,.92)'; g.beginPath(); g.ellipse(o.x - r * .25, o.y - r * .45, r * .5, r * .22, -.3, 0, 6.29); g.fill(); }
+}
+function dessinerKicker(o){
+  const x0 = o.x - o.w / 2, gr = g.createLinearGradient(0, o.y - o.l, 0, o.y);
+  gr.addColorStop(0, 'rgba(214,228,243,.35)'); gr.addColorStop(.7, '#F4F8FD'); gr.addColorStop(1, '#FFFFFF');
+  g.fillStyle = gr; g.beginPath(); g.moveTo(x0 + .5, o.y - o.l); g.lineTo(x0 + o.w - .5, o.y - o.l); g.lineTo(x0 + o.w, o.y); g.lineTo(x0, o.y); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(80,110,160,.28)'; g.beginPath(); g.moveTo(x0, o.y); g.lineTo(x0 + o.w, o.y); g.lineTo(x0 + o.w - .4, o.y + 2.2); g.lineTo(x0 + .4, o.y + 2.2); g.closePath(); g.fill();
+  g.strokeStyle = '#FF6A2B'; g.lineWidth = .14; g.beginPath(); g.moveTo(x0, o.y); g.lineTo(x0 + o.w, o.y); g.stroke();
+}
+function dessinerBosse(o){
+  const gr = g.createRadialGradient(o.x - .5, o.y - .5, .1, o.x, o.y, o.r);
+  gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(.6, 'rgba(225,235,248,.6)'); gr.addColorStop(1, 'rgba(160,185,220,0)');
+  g.fillStyle = gr; g.beginPath(); g.arc(o.x, o.y, o.r, 0, 6.29); g.fill();
+  g.fillStyle = 'rgba(110,140,185,.22)'; g.beginPath(); g.ellipse(o.x + .45, o.y + .55, o.r * .7, o.r * .45, .4, 0, 6.29); g.fill();
+}
+function dessinerCrevasse(o){
+  const gr = g.createLinearGradient(0, o.y - o.h / 2, 0, o.y + o.h / 2);
+  gr.addColorStop(0, '#0E3550'); gr.addColorStop(.5, '#1F6E95'); gr.addColorStop(1, '#5DB5DA');
+  g.fillStyle = gr; g.beginPath(); g.ellipse(o.x, o.y, o.w / 2, o.h / 2, 0, 0, 6.29); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = .18; g.stroke();
+}
+function dessinerBarre(b, x0, x1){
+  const h = 1.6 + b.h * .25;
+  g.fillStyle = 'rgba(70,95,140,.25)'; g.fillRect(x0, b.y + h, x1 - x0, 3 + b.h * .5);
+  g.fillStyle = '#5B6069'; g.fillRect(x0, b.y, x1 - x0, h);
+  g.fillStyle = '#747A84'; for(let x = Math.floor(x0); x < x1; x += 1.7) g.fillRect(x, b.y + .3 + ((x * 7) % 3) * .2, .9, h - .6);
+  g.fillStyle = '#FFFFFF'; g.fillRect(x0, b.y - .25, x1 - x0, .5);
+  // les rampes de neige pour passer sans sauter
+  for(const [a, c] of b.trous){
+    const gr = g.createLinearGradient(0, b.y - .5, 0, b.y + h + 2); gr.addColorStop(0, '#FFFFFF'); gr.addColorStop(1, '#DCE7F4');
+    g.fillStyle = gr; g.fillRect(a, b.y - .5, c - a, h + 2.5);
+    g.fillStyle = '#2E9E5B'; g.font = '700 1.3px sans-serif'; g.textAlign = 'center'; g.fillText('▼', (a + c) / 2, b.y - .9);
+  }
+  g.fillStyle = '#E23B3B'; g.font = '800 1.5px "Bebas Neue", sans-serif'; g.textAlign = 'center';
+  for(let x = x0 + 6; x < x1 - 3; x += 14) if(!b.trous.some(([a, c]) => x > a - 2 && x < c + 2)) g.fillText(`▼ ${b.h.toFixed(0)} M`, x, b.y - .8);
+}
+function dessinerFlocon(f, t){
+  g.save(); g.translate(f.x, f.y - .3 - Math.sin(t * 3 + f.x) * .15); g.rotate(t * .8);
+  g.strokeStyle = '#2F8FD8'; g.lineWidth = .16; g.lineCap = 'round';
+  for(let k = 0; k < 3; k++){ g.rotate(Math.PI / 3); g.beginPath(); g.moveTo(-.55, 0); g.lineTo(.55, 0); g.moveTo(.3, 0); g.lineTo(.45, .15); g.moveTo(.3, 0); g.lineTo(.45, -.15); g.moveTo(-.3, 0); g.lineTo(-.45, .15); g.moveTo(-.3, 0); g.lineTo(-.45, -.15); g.stroke(); }
+  g.restore();
+}
+function dessinerPorte(pt){
+  const c = pt.c === 'rouge' ? '#E23B3B' : '#1F6FE0';
+  for(const s of [-1, 1]){
+    const x = pt.x + s * pt.w / 2;
+    g.fillStyle = 'rgba(70,95,140,.25)'; g.beginPath(); g.ellipse(x + .5, pt.y + .3, .5, .2, .4, 0, 6.29); g.fill();
+    g.fillStyle = c; g.fillRect(x - .1, pt.y - 1.6, .2, 1.6);
+    g.beginPath(); g.moveTo(x, pt.y - 1.6); g.lineTo(x - s * 1.1, pt.y - 1.3); g.lineTo(x, pt.y - .9); g.closePath(); g.fill();
+  }
+  if(pt.etat === 1){ g.fillStyle = 'rgba(46,158,91,.8)'; g.font = '700 1.2px sans-serif'; g.textAlign = 'center'; g.fillText('✓', pt.x, pt.y - .2); }
+  else if(pt.etat === 0){ g.strokeStyle = 'rgba(19,35,58,.15)'; g.lineWidth = .08; g.setLineDash([.4, .4]); g.beginPath(); g.moveTo(pt.x - pt.w / 2, pt.y); g.lineTo(pt.x + pt.w / 2, pt.y); g.stroke(); g.setLineDash([]); }
+}
+function dessinerSkieur(P, t){
+  const z = P.z, ombre = .3 + z * .45;
+  g.fillStyle = `rgba(60,85,130,${clamp(.32 - z * .03, .1, .32)})`; g.beginPath(); g.ellipse(P.x + ombre, P.y + ombre * .6, 1, .6, -P.th, 0, 6.29); g.fill();
+  g.save(); g.translate(P.x, P.y - z * .55);
+  const ech = 1 + z * .05; g.scale(ech * 1.9, ech * 1.9);
+  if(P.chute > 0){
+    g.rotate(P.chute * 8);
+    g.fillStyle = '#FF6A2B'; g.beginPath(); g.ellipse(0, 0, .5, .3, 0, 0, 6.29); g.fill();
+    g.strokeStyle = '#13233A'; g.lineWidth = .1; g.beginPath(); g.moveTo(-.8, .3); g.lineTo(.6, -.5); g.moveTo(-.5, -.6); g.lineTo(.8, .4); g.stroke();
+    g.restore(); return;
+  }
+  g.rotate(-P.th + (P.spin || 0));
+  if(engin === 'ski'){
+    g.fillStyle = '#13233A'; for(const s of [-.17, .17]){ g.beginPath(); g.roundRect(s - .05, -.7, .1, 1.5, .05); g.fill(); }
+    g.fillStyle = '#FF6A2B'; for(const s of [-.17, .17]){ g.fillRect(s - .05, .62, .1, .12); }
+    // bâtons
+    g.strokeStyle = '#5A6B85'; g.lineWidth = .05; g.beginPath(); g.moveTo(-.38, -.05); g.lineTo(-.48, -.55); g.moveTo(.38, -.05); g.lineTo(.48, -.55); g.stroke();
+    // corps (vu de dessus) : épaules perpendiculaires aux skis
+    g.fillStyle = '#FF6A2B'; g.beginPath(); g.ellipse(0, .05, .36, .2, 0, 0, 6.29); g.fill();
+    g.fillStyle = '#1F6FE0'; g.beginPath(); g.ellipse(0, .25, .22, .14, 0, 0, 6.29); g.fill();
+  } else {
+    g.fillStyle = '#13233A'; g.beginPath(); g.roundRect(-.16, -.75, .32, 1.5, .16); g.fill();
+    g.fillStyle = '#1F6FE0'; g.fillRect(-.16, -.2, .32, .06); g.fillRect(-.16, .25, .32, .06);
+    // corps de profil sur la planche : épaules dans l'axe de la planche
+    g.fillStyle = '#FF6A2B'; g.beginPath(); g.ellipse(0, .02, .2, .4, 0, 0, 6.29); g.fill();
+    g.strokeStyle = '#FF6A2B'; g.lineWidth = .1; g.beginPath(); g.moveTo(-.15, -.25); g.lineTo(-.42, -.1); g.moveTo(.15, .3); g.lineTo(.42, .12); g.stroke();
+  }
+  g.fillStyle = '#F2F5F9'; g.beginPath(); g.arc(0, -.08, .15, 0, 6.29); g.fill();
+  g.fillStyle = '#13233A'; g.fillRect(-.12, -.2, .24, .07);
+  g.restore();
+}
+function dessiner(P, dt){
+  const M = P.M, t = performance.now() / 1000;
+  const L0 = Math.min(W, Hh * .62), S = clamp(L0 / (24 + P.v * .55), L0 / 42, L0 / 22);
+  P.camX += (P.x * .8 - P.camX) * Math.min(1, dt * 3);
+  const ox = W / 2 - P.camX * S, oy = Hh * .3 - (P.y - P.z * .3) * S;
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g.fillStyle = M.glacier ? '#E2F0F8' : '#EEF4FB'; g.fillRect(0, 0, W, Hh);
+  g.save(); g.translate(ox % 256 - 256, oy % 256 - 256); g.fillStyle = motifNeige; g.fillRect(0, 0, W + 512, Hh + 512); g.restore();
+  g.save(); g.translate(ox, oy); g.scale(S, S);
+  const y0 = (-oy) / S - 6, y1 = (Hh - oy) / S + 6, x0 = -ox / S - 4, x1 = (W - ox) / S + 4;
+  // piste de slalom : bords damés et filets
+  if(M.mode === 'slalom'){
+    g.fillStyle = 'rgba(205,220,240,.55)'; g.fillRect(-M.bord, y0, M.bord * 2, y1 - y0);
+    g.fillStyle = 'rgba(255,255,255,.35)'; for(let x = -M.bord + .5; x < M.bord; x += 1.2) g.fillRect(x, y0, .5, y1 - y0);
+    for(const s of [-1, 1]){ g.strokeStyle = '#FF6A2B'; g.lineWidth = .18; g.beginPath(); g.moveTo(s * M.bord, y0); g.lineTo(s * M.bord, y1); g.stroke(); g.fillStyle = '#13233A'; for(let y = Math.ceil(y0 / 6) * 6; y < y1; y += 6) g.fillRect(s * M.bord - .1, y, .2, .2); }
+    if(y0 < 2){ g.fillStyle = '#13233A'; g.fillRect(-M.bord, 1.5, M.bord * 2, .3); }
+  }
+  // traces
+  g.strokeStyle = 'rgba(120,150,195,.45)'; g.lineWidth = engin === 'ski' ? .09 : .3; g.lineCap = 'round';
+  for(const s of engin === 'ski' ? [-.17, .17] : [0]){
+    g.beginPath(); let ouvert = false;
+    for(const p of P.traces){ if(!p){ ouvert = false; continue; } const x = p.x + Math.cos(p.th) * s, y = p.y - Math.sin(p.th) * s; if(!ouvert){ g.moveTo(x, y); ouvert = true; } else g.lineTo(x, y); }
+    g.stroke();
+  }
+  // au sol : bosses, crevasses, tremplins, barres
+  const i0 = premierApres(M.objets, y0), visibles = [];
+  for(let i = i0; i < M.objets.length; i++){
+    const o = M.objets[i]; if(o.y > y1 + 4) break; if(o.x < x0 - 4 || o.x > x1 + 4) continue;
+    if(o.t === 'bosse') dessinerBosse(o); else if(o.t === 'crevasse') dessinerCrevasse(o); else if(o.t === 'kicker') dessinerKicker(o); else visibles.push(o);
+  }
+  for(const b of M.barres) if(b.y > y0 - 10 && b.y < y1) dessinerBarre(b, Math.max(x0, -M.bord - 30), Math.min(x1, M.bord + 30));
+  for(const pt of M.portes) if(pt.y > y0 && pt.y < y1) dessinerPorte(pt);
+  if(M.fin < y1 && M.fin > y0){
+    g.fillStyle = '#13233A'; for(let x = -M.bord; x < M.bord; x += 1) g.fillRect(x, M.fin + ((x + 100) % 2 ? 0 : .5), 1, .5);
+    g.fillStyle = '#FF6A2B'; g.font = '400 2.6px "Bebas Neue", sans-serif'; g.textAlign = 'center'; g.fillText('ARRIVÉE', M.sure(M.fin), M.fin - 1);
+  }
+  const fi = premierApres(M.flocons, y0);
+  for(let i = fi; i < M.flocons.length; i++){ const f = M.flocons[i]; if(f.y > y1) break; if(!f.pris) dessinerFlocon(f, t); }
+  // en hauteur, triés de haut en bas : sapins, rochers… et le skieur au bon endroit
+  visibles.push({ t:'skieur', y:P.y + .2 });
+  visibles.sort((a, b) => a.y - b.y);
+  for(const o of visibles){ if(o.t === 'skieur') dessinerSkieur(P, t); else if(o.t === 'arbre') dessinerSapin(o); else dessinerRocher(o); }
+  // poudreuse
+  P.part = P.part.filter(p => (p.vie -= dt) > 0);
+  g.fillStyle = '#FFFFFF';
+  for(const p of P.part){ p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .93; p.vy *= .93; g.globalAlpha = Math.min(1, p.vie * 2); g.beginPath(); g.arc(p.x, p.y, p.r, 0, 6.29); g.fill(); }
+  g.globalAlpha = 1;
+  // avalanche
+  if(P.av !== null && P.av > y0 - 10){
+    const ya = P.av, gr = g.createLinearGradient(0, ya - 30, 0, ya + 2);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.8, 'rgba(240,245,252,.95)'); gr.addColorStop(1, 'rgba(240,245,252,0)');
+    g.fillStyle = gr; g.fillRect(x0 - 5, y0 - 10, x1 - x0 + 10, ya - y0 + 12);
+    g.fillStyle = 'rgba(255,255,255,.95)';
+    for(let x = Math.floor(x0 / 3) * 3; x < x1; x += 3){ const r = 2 + Math.sin(x * 1.7 + t * 5) * .8; g.beginPath(); g.arc(x, ya - .5 + Math.sin(x * .9 + t * 7) * .6, r, 0, 6.29); g.fill(); }
+    g.fillStyle = 'rgba(150,170,200,.35)'; for(let x = Math.floor(x0 / 4) * 4; x < x1; x += 4) { g.beginPath(); g.arc(x + 1, ya - 2.5 + Math.sin(x + t * 4), 1.2, 0, 6.29); g.fill(); }
+  }
+  // textes
+  P.textes = P.textes.filter(e => (e.vie -= dt) > 0);
+  g.textAlign = 'center';
+  for(const e of P.textes){
+    e.y -= 3 * dt; g.globalAlpha = Math.min(1, e.vie * 1.6);
+    g.font = `400 ${((e.gros ? 26 : 20) / S).toFixed(2)}px "Bebas Neue", sans-serif`;
+    g.lineWidth = 4 / S; g.strokeStyle = '#fff'; g.strokeText(e.txt, e.x, e.y); g.fillStyle = e.c; g.fillText(e.txt, e.x, e.y);
+  }
+  g.globalAlpha = 1;
+  g.restore();
+  // Compteurs
+  P.majHud -= dt;
+  if(P.majHud <= 0){
+    P.majHud = .1;
+    $('hCombo').textContent = '×' + (P.combo % 1 ? P.combo.toFixed(1).replace('.', ',') : P.combo);
+    if(P.mode === 'slalom'){
+      $('hScore').textContent = fmtT(P.t + 5 * P.portesKo);
+      $('hInfo').textContent = `${P.portesOk + P.portesKo}/${M.portes.length}`;
+      $('jaugeI').style.width = clamp(P.y / M.fin, 0, 1) * 100 + '%';
+    } else {
+      $('hScore').textContent = fmtN(P.score);
+      if(P.mode === 'infini'){
+        $('hInfo').textContent = Math.round(P.y) + ' m';
+        $('jaugeI').style.width = clamp(1 - (P.y - P.av) / 120, 0, 1) * 100 + '%';
+      } else {
+        $('hInfo').textContent = `${P.prisF}/${M.nFlocons}`;
+        $('jaugeI').style.width = clamp(P.y / M.fin, 0, 1) * 100 + '%';
+      }
+    }
+  }
+}
+
+/* ---------- Fin, records ---------- */
+function finir(){
+  const P = partie; if(!P || P.fini) return;
+  P.fini = true; P.fin = true; majSon(0, 0, 0);
+  const rec = lire('freeride-records', {});
+  rec.infini = rec.infini || { score:0, dist:0, parties:0 }; rec.descentes = rec.descentes || {}; rec.slalom = rec.slalom || {};
+  let lignes = [], etoiles = -1, titre = '', grand = '', recTxt = '';
+  const commun = [['Sauts et figures', P.figures], ['Chutes', P.chutes]];
+  if(P.mode === 'infini'){
+    const r = rec.infini, nv = P.score > r.score;
+    r.parties++; if(nv) r.score = Math.round(P.score); r.dist = Math.max(r.dist, Math.round(P.y));
+    titre = 'Sans fin · rattrapé par l\'avalanche'; grand = fmtN(P.score);
+    lignes = [['Distance', Math.round(P.y) + ' m'], ...commun, ['Plus beau saut', fmtN(P.meilleurSaut) + ' pts']];
+    recTxt = nv && r.parties > 1 ? '🏆 Nouveau record !' : r.parties > 1 ? `Record : ${fmtN(r.score)} · ${fmtN(r.dist)} m` : '';
+    rec.dernier = { mode:'infini', n:'Sans fin', score:Math.round(P.score) };
+  } else if(P.mode === 'slalom'){
+    const def = P.def, temps = P.t + 5 * P.portesKo, par = def.L / def.vref;
+    etoiles = temps <= par ? 3 : temps <= par * 1.15 ? 2 : 1;
+    const r = rec.slalom[def.id] || { temps:0, etoiles:0, parties:0 }, nv = !r.temps || temps < r.temps;
+    r.parties++; if(nv) r.temps = +temps.toFixed(2); r.etoiles = Math.max(r.etoiles, etoiles); rec.slalom[def.id] = r;
+    titre = def.n; grand = fmtT(temps);
+    lignes = [['Temps de course', fmtT(P.t)], ['Portes passées', `${P.portesOk} / ${P.M.portes.length}`], ['Portes manquées', `${P.portesKo} (+${5 * P.portesKo} s)`], ['Chutes', P.chutes], ['3 étoiles en', fmtT(par)]];
+    recTxt = nv && r.parties > 1 ? '🏆 Nouveau record !' : r.parties > 1 ? `Record : ${fmtT(r.temps)}` : '';
+    rec.dernier = { mode:'slalom', n:def.n, temps:+temps.toFixed(2), etoiles };
+  } else {
+    const def = P.def, part = P.M.nFlocons ? P.prisF / P.M.nFlocons : 1;
+    etoiles = part >= .85 ? 3 : part >= .5 ? 2 : 1;
+    const r = rec.descentes[def.id] || { score:0, etoiles:0, parties:0 }, nv = P.score > r.score;
+    r.parties++; if(nv) r.score = Math.round(P.score); r.etoiles = Math.max(r.etoiles, etoiles); r.n = def.n; rec.descentes[def.id] = r;
+    titre = def.defi ? `Défi du jour · ${def.d}` : def.n; grand = fmtN(P.score);
+    lignes = [['Flocons ramassés', `${P.prisF} / ${P.M.nFlocons}`], ['Temps', fmtT(P.t)], ...commun, ['Plus beau saut', fmtN(P.meilleurSaut) + ' pts']];
+    recTxt = nv && r.parties > 1 ? '🏆 Nouveau record !' : r.parties > 1 ? `Record : ${fmtN(r.score)}` : '';
+    rec.dernier = { mode:'descente', n:def.defi ? 'Défi du jour' : def.n, score:Math.round(P.score), etoiles };
+  }
+  rec.dernier.engin = engin; ecrire('freeride-records', rec);
+  $('fTitre').textContent = titre;
+  $('fEtoiles').textContent = etoiles < 0 ? '' : '★'.repeat(etoiles) + '☆'.repeat(3 - etoiles);
+  $('fScore').innerHTML = esc(grand) + `<small>${P.mode === 'slalom' ? 'temps (pénalités comprises)' : 'points'}</small>`;
+  $('fRecord').textContent = recTxt;
+  $('fDetail').innerHTML = lignes.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('');
+  $('hud').hidden = $('jauge').hidden = true; $('annonce').style.opacity = 0;
+  $('eFin').hidden = false;
+}
+function quitter(){
+  partie = null; cancelAnimationFrame(raf); majSon(0, 0, 0);
+  $('hud').hidden = $('jauge').hidden = true; $('annonce').style.opacity = 0;
+  ['ePause', 'eFin'].forEach(id => $(id).hidden = true);
+  menu();
+}
+function pause(){ if(!partie || partie.fin) return; partie.pause = true; majSon(0, 0, 0); $('ePause').hidden = false; }
+function reprendre(){ if(!partie) return; partie.pause = false; partie.dernier = performance.now(); $('ePause').hidden = true; }
+
+/* ---------- Menu ---------- */
+const etoilesTxt = n => `<span class="et">${'★'.repeat(n)}${'☆'.repeat(3 - n)}</span>`;
+function menu(){
+  const rec = lire('freeride-records', {}), ds = rec.descentes || {}, sl = rec.slalom || {}, inf = rec.infini;
+  document.querySelectorAll('#engins button').forEach(b => b.classList.toggle('actif', b.dataset.e === engin));
+  const d = defiDuJour(), rd = ds[d.id];
+  $('lDefi').innerHTML = `<button class="ligne vedette" data-defi="1"><span class="ico" style="background:#FFE3D6">📅</span><span><b>${esc(d.d)}</b><small>${d.sections.length} sections · ${d.L} m</small></span><span class="rec">${rd ? etoilesTxt(rd.etoiles) + `<small>${fmtN(rd.score)} pts</small>` : '<small>à faire</small>'}</span></button>`;
+  $('lInfini').innerHTML = `<button class="ligne" data-infini="1"><span class="ico" style="background:#E6EEF8">🌨️</span><span><b>Fuir l'avalanche</b><small>La montagne sans fin, de plus en plus dense</small></span><span class="rec">${inf && inf.parties ? `<em>${fmtN(inf.score)}</em><small>${fmtN(inf.dist)} m</small>` : '<small>jamais joué</small>'}</span></button>`;
+  $('lDescentes').innerHTML = DESCENTES.map(x => { const r = ds[x.id]; return `<button class="ligne" data-desc="${x.id}"><span class="ico" style="background:${x.c}22">${x.ico}</span><span><b>${esc(x.n)}</b><small>${esc(x.d)} · ${x.L} m</small></span><span class="rec">${r ? etoilesTxt(r.etoiles) + `<small>${fmtN(r.score)} pts</small>` : '<small>à faire</small>'}</span></button>`; }).join('');
+  $('lSlalom').innerHTML = SLALOMS.map(x => { const r = sl[x.id]; return `<button class="ligne" data-slalom="${x.id}"><span class="ico" style="background:#FDE3E3">${x.ico}</span><span><b>${esc(x.n)}</b><small>${esc(x.d)} · ${x.L} m</small></span><span class="rec">${r ? etoilesTxt(r.etoiles) + `<small>${fmtT(r.temps)}</small>` : '<small>à faire</small>'}</span></button>`; }).join('');
+  $('bSon').textContent = son ? '🔊' : '🔇';
+  $('eMenu').hidden = false;
+}
+
+/* ---------- Commandes ---------- */
+cv.addEventListener('pointerdown', e => {
+  if(!partie || doigt.id !== null) return;
+  try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+  Object.assign(doigt, { id:e.pointerId, x0:e.clientX, y0:e.clientY, t0:performance.now(), bouge:false, dx:0 });
+  if(partie.air) sautCourt(partie);
+});
+cv.addEventListener('pointermove', e => {
+  if(e.pointerId !== doigt.id) return;
+  doigt.dx = e.clientX - doigt.x0;
+  if(Math.abs(doigt.dx) > 10 || Math.abs(e.clientY - doigt.y0) > 14) doigt.bouge = true;
+});
+const lacher = e => {
+  if(e.pointerId !== doigt.id) return;
+  const court = !doigt.bouge && performance.now() - doigt.t0 < 230;
+  doigt.id = null; doigt.dx = 0;
+  if(court && partie && !partie.air) sautCourt(partie);
+};
+cv.addEventListener('pointerup', lacher); cv.addEventListener('pointercancel', lacher);
+cv.addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('keydown', e => {
+  touches.add(e.code);
+  if(e.code === 'Space'){ e.preventDefault(); if(partie && !e.repeat) sautCourt(partie); }
+  if(e.code === 'Escape' || e.code === 'KeyP'){ if(partie && !partie.pause) pause(); else reprendre(); }
+  if(e.code.startsWith('Arrow')) e.preventDefault();
+});
+addEventListener('keyup', e => touches.delete(e.code));
+document.addEventListener('visibilitychange', () => { if(document.hidden) pause(); });
+$('bPause').onclick = pause; $('bReprendre').onclick = reprendre; $('bQuitter').onclick = quitter;
+$('bRecommencer').onclick = () => { $('ePause').hidden = true; if(dernierLancement) lancer(dernierLancement[0], dernierLancement[1].defi ? defiDuJour() : dernierLancement[1]); };
+$('bRejouer').onclick = () => { $('eFin').hidden = true; if(dernierLancement) lancer(dernierLancement[0], dernierLancement[1] && dernierLancement[1].defi ? defiDuJour() : dernierLancement[1]); };
+$('bMenu').onclick = quitter;
+$('bAide').onclick = () => { $('eMenu').hidden = true; $('eAide').hidden = false; };
+$('bAideRetour').onclick = () => { $('eAide').hidden = true; $('eMenu').hidden = false; };
+$('bSon').onclick = () => { son = !son; ecrire('freeride-son', son); $('bSon').textContent = son ? '🔊' : '🔇'; };
+$('engins').onclick = e => { const b = e.target.closest('[data-e]'); if(!b) return; engin = b.dataset.e; ecrire('freeride-engin', engin); menu(); };
+$('eMenu').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  if(b.dataset.defi) lancer('descente', defiDuJour());
+  else if(b.dataset.infini) lancer('infini', { id:'infini', n:'Sans fin' });
+  else if(b.dataset.desc) lancer('descente', DESCENTES.find(x => x.id === b.dataset.desc));
+  else if(b.dataset.slalom) lancer('slalom', SLALOMS.find(x => x.id === b.dataset.slalom));
+});
+
+// Fond du menu : la montagne qui défile doucement
+const fondMenu = nouveauMonde('descente', DESCENTES[0], 3); construireDescente(fondMenu, DESCENTES[0]);
+let yMenu = 0, dernierMenu = performance.now();
+(function animMenu(now){
+  if(!partie){
+    const dt = Math.min(.05, (now - dernierMenu) / 1000); yMenu = (yMenu + dt * 6) % 480;
+    const faux = { M:fondMenu, x:fondMenu.sure(yMenu + 30), y:yMenu, z:0, th:0, v:6, camX:0, traces:[], part:[], textes:[], av:null, chute:0, spin:0, majHud:1e9, mode:'menu' };
+    dessinerFond(faux, dt);
+  }
+  dernierMenu = now;
+  requestAnimationFrame(animMenu);
+})(performance.now());
+function dessinerFond(F, dt){
+  const M = F.M, S = Math.min(W, Hh * .62) / 30, ox = W / 2, oy = Hh * .3 - F.y * S, t = performance.now() / 1000;
+  g.setTransform(DPR, 0, 0, DPR, 0, 0); g.fillStyle = '#EEF4FB'; g.fillRect(0, 0, W, Hh);
+  g.save(); g.translate(ox % 256 - 256, oy % 256 - 256); g.fillStyle = motifNeige; g.fillRect(0, 0, W + 512, Hh + 512); g.restore();
+  g.save(); g.translate(ox, oy); g.scale(S, S);
+  const y0 = -oy / S - 6, y1 = (Hh - oy) / S + 6, v = [];
+  for(let i = premierApres(M.objets, y0); i < M.objets.length && M.objets[i].y < y1; i++){ const o = M.objets[i]; if(o.t === 'kicker') dessinerKicker(o); else if(o.t === 'bosse') dessinerBosse(o); else if(o.t !== 'crevasse') v.push(o); }
+  for(const o of v){ if(o.t === 'arbre') dessinerSapin(o); else dessinerRocher(o); }
+  g.restore();
+}
+menu();
+window.Freeride = { lancer, DESCENTES, SLALOMS, defiDuJour, get partie(){ return partie; }, doigt, sautCourt, finir, nouveauMonde, construireDescente };
+
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
+})();
+</script>
+</body>
+</html>

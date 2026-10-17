@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Kalam:wght@700&family=Audiowide&family=Saira+Condensed:wght@800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Kalam:wght@700&family=Audiowide&family=Saira+Condensed:wght@800&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
 :root{
   --felt:#1F5C47; --felt-dark:#123A2C; --ivory:#F7F3E8; --ink:#1A1A1A;
@@ -112,6 +112,16 @@ h2{ font-size:.85rem; font-weight:600; text-transform:uppercase; letter-spacing:
 .gdameuse .status b{ color:#EEF3FB; }
 .gdameuse .go{ background:#FFB020; color:#1A1204; }
 .gdameuse .corner{ position:absolute; right:-4px; top:2px; width:100px; height:76px; }
+
+/* Carte Freeride : poudreuse au soleil */
+.gfreeride{ background:#EEF4FB; color:#13233A; border:1.5px solid rgba(19,35,58,.14);
+  background-image:radial-gradient(circle at 85% 5%, rgba(255,255,255,1), transparent 45%), linear-gradient(160deg, transparent 55%, rgba(143,175,215,.25)); }
+.gfreeride .title{ font-family:"Bebas Neue", "Bricolage Grotesque", sans-serif; font-weight:400; font-size:2.7rem; line-height:.9; letter-spacing:.01em; }
+.gfreeride .title span{ color:#FF6A2B; }
+.gfreeride .desc, .gfreeride .status{ color:#5A6B85; }
+.gfreeride .status b{ color:#13233A; }
+.gfreeride .go{ background:#FF6A2B; color:#fff; }
+.gfreeride .corner{ position:absolute; right:0; top:2px; width:100px; height:80px; }
 
 /* Carte Nivoculteur : nuit en montagne */
 .gnivo{ background:#0B1426; color:#EAF2FF; border:1.5px solid rgba(169,196,240,.35);
@@ -240,6 +250,21 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
       <span class="go">Jouer</span>
     </a>
 
+    <a class="game gfreeride" href="jeux/freeride.html">
+      <svg class="corner" viewBox="0 0 100 80" aria-hidden="true">
+        <path d="M30 4 C 60 14, 20 30, 52 42 S 40 70, 70 78" fill="none" stroke="#9FB6D6" stroke-width="1.4" stroke-dasharray="0"/>
+        <path d="M34 4 C 64 14, 24 30, 56 42 S 44 70, 74 78" fill="none" stroke="#9FB6D6" stroke-width="1.4"/>
+        <g transform="translate(76 22)"><path d="M0 -12 L9 6 L-9 6 Z" fill="#1E5A43"/><path d="M0 -17 L6 -4 L-6 -4 Z" fill="#2F7A5C"/><circle cx="-2" cy="-6" r="1.6" fill="#fff"/></g>
+        <g transform="translate(14 56)"><path d="M0 -9 L7 5 L-7 5 Z" fill="#25694F"/><circle cx="1" cy="-2" r="1.3" fill="#fff"/></g>
+        <g transform="translate(53 43) rotate(-25)"><rect x="-1.4" y="-8" width="1.2" height="16" rx=".6" fill="#13233A"/><rect x=".6" y="-8" width="1.2" height="16" rx=".6" fill="#13233A"/><ellipse cx="0" cy="0" rx="4.4" ry="2.6" fill="#FF6A2B"/><circle cx="0" cy="-.6" r="1.8" fill="#F2F5F9"/></g>
+        <g fill="#fff"><circle cx="44" cy="40" r="2"/><circle cx="40" cy="44" r="1.4"/><circle cx="46" cy="47" r="1.2"/></g>
+      </svg>
+      <p class="title">Free<span>ride</span></p>
+      <p class="desc">Ski ou snowboard en poudreuse, vu du dessus : glissez le doigt pour tourner, sautez barres et tremplins, enchaînez les 360. Fuyez l'avalanche, 7 descentes, 3 slaloms et un défi par jour.</p>
+      <p class="status" id="stfreeride"><b>Pas encore joué</b>Première descente : Première trace.</p>
+      <span class="go">Jouer</span>
+    </a>
+
     <a class="game gnivo" href="jeux/nivoculteur/index.html">
       <svg class="corner" viewBox="0 0 92 70" aria-hidden="true">
         <g fill="#F4F7FF"><circle cx="14" cy="18" r="2.2"/><circle cx="24" cy="10" r="1.6"/><circle cx="8" cy="30" r="1.8"/><circle cx="22" cy="26" r="2.4"/><circle cx="32" cy="18" r="1.5"/><circle cx="16" cy="40" r="1.4"/></g>
@@ -267,8 +292,8 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
   <footer id="installHint">Astuce : ajoutez DesDés à l'écran d'accueil pour l'ouvrir comme une application. Tous les jeux marchent ensuite sans réseau.</footer>
 </main>
 
-<script src="jeux/drawrace/circuits.js?v=62"></script>
-<script src="jeux/sauvegarde.js?v=62"></script>
+<script src="jeux/drawrace/circuits.js?v=63"></script>
+<script src="jeux/sauvegarde.js?v=63"></script>
 <script>
 const fmt = n => n.toLocaleString('fr-FR');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -399,7 +424,16 @@ function showDameuse(){
   const etoiles = Object.keys(p).filter(k => !k.startsWith('defi-')).reduce((s, k) => s + (p[k].etoiles || 0), 0);
   el.innerHTML = `<b>${esc(der.nom)} · ${'★'.repeat(der.etoiles)}${'☆'.repeat(3 - der.etoiles)}</b>Record ${der.best.toLocaleString('fr-FR')} points · ${etoiles} étoile${etoiles > 1 ? 's' : ''} sur 24`;
 }
-function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showNivo(); showFusee(); showDameuse(); }
+/* Freeride : la dernière descente et le record sans fin (clé partagée avec jeux/freeride.html) */
+function showFreeride(){
+  const r = read('freeride-records') || {}, el = document.getElementById('stfreeride'), d = r.dernier;
+  if(!d){ el.innerHTML = '<b>Pas encore joué</b>Première descente : Première trace.'; return; }
+  const et = d.etoiles != null ? ' · ' + '★'.repeat(d.etoiles) + '☆'.repeat(3 - d.etoiles) : '';
+  const val = d.mode === 'slalom' ? `${Math.floor(d.temps / 60)}:${(d.temps % 60).toFixed(2).padStart(5, '0')}` : `${(d.score || 0).toLocaleString('fr-FR')} points`;
+  const inf = r.infini && r.infini.parties ? ` · sans fin : ${r.infini.dist.toLocaleString('fr-FR')} m` : '';
+  el.innerHTML = `<b>${esc(d.n)}${et}</b>${d.engin === 'board' ? '🏂' : '⛷️'} ${val}${inf}`;
+}
+function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showNivo(); showFusee(); showDameuse(); showFreeride(); }
 refresh();
 DesDesSauvegarde.boutons(document.getElementById('sauve'));
 // Retour depuis un jeu (cache de navigation) : remettre les états à jour
