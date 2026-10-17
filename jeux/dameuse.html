@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Dameuse de nuit · DesDés</title>
-<meta name="theme-color" content="#0A1120">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="DesDés">
 <link rel="manifest" href="../manifest.webmanifest">
@@ -14,8 +14,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
-:root{ --marge-haut:env(safe-area-inset-top, 0px); }
-@media (pointer:coarse){ :root{ --marge-haut:max(env(safe-area-inset-top, 0px), 40px); } }
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie (rien de flou derrière) */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --marge-haut:var(--barre-statut); }
 :root{
   --nuit:#0A1120; --nuit-2:#121C33; --carte:rgba(18,28,51,.9); --ligne:rgba(170,190,230,.2);
   --texte:#EEF3FB; --doux:#9EADC8; --ambre:#FFB020; --neige:#E9EFF8; --rouge:#E04A3A; --vert:#57C98A; --bleu:#4D8DF0;
@@ -117,6 +120,7 @@ h1 em{ font-style:normal; color:var(--ambre); }
 </style>
 </head>
 <body>
+<div class="barre-statut" aria-hidden="true"></div>
 <canvas id="cv" aria-label="La piste vue du dessus"></canvas>
 <div class="hud" id="hud" hidden>
   <div class="pastille"><small>Chrono</small><span id="hHeure">0:00</span></div>

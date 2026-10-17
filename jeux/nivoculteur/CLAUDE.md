@@ -12,7 +12,7 @@ Avancer étape par étape : proposer un plan court, attendre la validation, puis
 La version 3D (Three.js, carrière, tutoriels, exploitation de station, tracé de pistes, remontées, dameuses, commerces) a été **remplacée** par une version 2D plus simple, « comme pour les dameuses, mais pour les canons à neige ».
 Choix validés : remplacer la 3D ; **réseau complet** à construire (tranchées, regards, canons) ; **plusieurs nuits** par partie ; la nuit vivante : **température humide, vent qui tourne, pannes, salle des machines** ; une **vue d'ensemble des canons** comme une carte pour les démarrer et les arrêter facilement.
 
-Boucle : un **domaine tiré au sort** (taille au choix) avec un objectif (m³ sur les pistes en N nuits) et un budget → **le jour** on construit → **la nuit** on produit (froid, vent, pression) → **le matin** le bilan (la neige sur piste est payée) → nuit suivante → **étoiles** à la fin.
+Boucle : une **piste de Luchon-Superbagnères** au choix avec un objectif (m³ sur la piste en N nuits) et un budget → **le jour** on construit → **la nuit** on produit (froid, vent, pression) → **le matin** le bilan (la neige sur piste est payée) → nuit suivante, jusqu'à l'objectif → **étoiles et points** (longueur de piste enneigée, nuits d'avance, budget restant) → piste suivante.
 
 ## Règles techniques
 
@@ -20,7 +20,7 @@ Boucle : un **domaine tiré au sort** (taille au choix) avec un objectif (m³ su
 - Dessin en **canvas 2D** ; aucune image externe.
 - Commandes : **un doigt = déplacer la carte**, deux doigts = zoomer (molette à la souris), **toucher court = action**.
 - Page adaptée au téléphone (portrait d'abord) et à l'ordinateur. Chaque texte reste dans sa capsule (vérifier à 360, 390, 430, 768 et 1 280 px).
-- Sauvegarde dans `localStorage` (try/catch), clés préfixées `nivo-` : `nivo-partie` (le réseau complet, `version: 2`, avec `taille` et `graine` du domaine), `nivo-records` (étoiles et meilleur % par taille). L'accueil DesDés lit ces deux clés.
+- Sauvegarde dans `localStorage` (try/catch), clés préfixées `nivo-` : `nivo-partie` (le réseau complet, `version: 2`, avec `taille` et `graine` du domaine), `nivo-records` (par piste : étoiles, points, meilleur %, parties). L'accueil DesDés lit ces deux clés.
 - **Toute l'interface est en français.** **Débits en m³/h**, pressions en bar, températures en °C humides.
 - Unité : 1 m. x de gauche à droite, y du haut du domaine (sommet) vers le bas (front de neige). Le haut de la carte est le nord. Une direction `dir` (radians) : 0 = vers le bas de la carte, vecteur (sin dir, cos dir).
 
@@ -54,7 +54,7 @@ Tester la simulation sans navigateur : concaténer `config.js`, `domaine.js` et 
 
 - `creerDomaine(id, graine)` : la carte fait la largeur de la piste + 230 m ; la piste serpente du haut vers le front de neige (95 m presque plats en bas, salle des machines et retenue) ; la forme change à chaque partie (graine), pas les dimensions. 1 départ électrique (2 au-delà de 450 m), forêt autour. Bas du domaine vers 1 440 m.
 - **Tranchées moins chères** (le rendement ne suffisait pas) : eau 380 €/m, câble 250 €/m, commune 450 €/m ; dans une tranchée existante : eau 180, câble 70 €/m.
-- Équilibrage vérifié avec un joueur simulé (V8 sur trépied tous les 35 m de part et d'autre de la piste, réinvestit, ne réoriente pas) : 95 à 135 % de l'objectif selon la météo (environ 120 % en moyenne) ; en réorientant au vent et en passant aux V9 / V10 et aux tours, les 3 étoiles (150 %) sont jouables.
+- Équilibrage vérifié avec un joueur simulé (V8 sur trépied tous les 35 m de part et d'autre de la piste, réinvestit, ne réoriente pas) : 95 à 135 % de l'objectif selon la météo (environ 120 % en moyenne) ; en réorientant au vent et en passant aux V9 / V10 et aux tours, on dépasse largement l'objectif. Avec les étoiles à la couverture, ce joueur simulé (canons posés depuis le bas) atteint l'objectif en 4 nuits avec 42 à 88 % de la piste enneigée : surtout 1 ★, parfois 2 ★ ; il faut équiper le haut de la piste pour les 3 ★.
 - Records par piste dans `nivo-records` ; une ancienne partie (petit / moyen / grand domaine) ne se reprend pas.
 
 ## Écran (allégé à la demande de l'utilisateur : « trop d'infos, les mettre dans un menu »)
@@ -106,7 +106,13 @@ Bouton 🏭 (ou toucher la salle) : pompes (automatiques pour l'instant), pressi
 
 ## Fin de partie
 
-Après la dernière nuit : étoiles à 100, 125 et 150 % de l'objectif (`CONFIG.etoiles`), budget restant, record par taille ; « Nouveau domaine ».
+La partie s'arrête dès que l'objectif est atteint (`res.reussi = true`), ou à la dernière nuit en échec. `resultat(dom, res)` (simulation.js) donne les étoiles, les points et les critères :
+
+- **Tronçons** : la piste est découpée en `troncons` (≈ 25 m, au moins 4) ; `tronconSous(dom, x, y)` (domaine.js) trouve le tronçon sous un point de chute, la nuit ajoute la neige de chaque canon à `res.troncons`. `couverture()` : un tronçon compte s'il a au moins 40 % de sa part (objectif / n). `equipement()` : tronçons où tombe la neige d'un canon prêt (part > 30 %).
+- **Étoiles** : ★ objectif atteint ; ★★ couverture ≥ 75 % ; ★★★ couverture ≥ 90 % et (une nuit d'avance, ou budget ≥ 25 % du départ, ou ≥ 130 % de l'objectif). But : des canons sur toute la piste, pas concentrés en bas. `CONFIG.etoiles` n'est plus utilisé.
+- **Points** : neige min(150 %) × 1 000, couverture × 1 000, 800 par nuit d'avance, budget / 100 ; 0 en échec.
+- **Écran de fin** (jeu.js `montrerFin`) : étoiles, points, record, détail, critères ✅/⬜, « Voir la carte », « Rejouer », « Piste suivante : … » (ordre de `CONFIG.domaines`). `nivo-records[piste] = { etoiles, points, meilleur, parties }`.
+- **Carte** : pastilles des tronçons le long du bord de la piste (vert / jaune / gris), anneau blanc ou rouge le jour selon l'équipement (carte.js).
 
 ## Plan et avancement
 

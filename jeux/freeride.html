@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Freeride · DesDés</title>
-<meta name="theme-color" content="#E9F1FA">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="DesDés">
 <link rel="manifest" href="../manifest.webmanifest">
@@ -14,8 +14,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
-:root{ --marge-haut:env(safe-area-inset-top, 0px); }
-@media (pointer:coarse){ :root{ --marge-haut:max(env(safe-area-inset-top, 0px), 40px); } }
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie (rien de flou derrière) */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --marge-haut:var(--barre-statut); }
 :root{
   --neige:#EEF4FB; --ciel:#DCE8F5; --encre:#13233A; --doux:#5A6B85; --ligne:rgba(19,35,58,.14); --carte:rgba(255,255,255,.88);
   --orange:#FF6A2B; --bleu:#1F6FE0; --rouge:#E23B3B; --or:#F2A900; --glace:#8FD3F0;
@@ -44,6 +47,10 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 .jauge.avalanche i{ background:linear-gradient(90deg, #fff, var(--rouge)); }
 .annonce{ position:fixed; left:0; right:0; top:34%; z-index:3; text-align:center; pointer-events:none; font-family:"Bebas Neue", sans-serif; font-size:2.6rem; letter-spacing:.03em; color:var(--encre); text-shadow:0 2px 0 #fff, 0 0 18px #fff; transition:opacity .25s; }
 .annonce small{ display:block; font-size:1.3rem; color:var(--orange); }
+.schema{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:3px; margin:8px 0; font-size:.8rem; font-weight:700; text-align:center; }
+.schema span{ border:1px solid var(--ligne); border-radius:6px; padding:9px 2px; background:rgba(31,111,224,.06); }
+.schema .bas{ background:rgba(255,106,43,.1); }
+.schema .vide{ border:0; background:none; }
 .aide-doigt{ position:fixed; left:50%; transform:translateX(-50%); width:min(88vw, 420px); bottom:calc(24px + env(safe-area-inset-bottom, 0px)); z-index:3; text-align:center; pointer-events:none; color:var(--encre); font-weight:600; font-size:.86rem; line-height:1.35; background:rgba(255,255,255,.88); border:1px solid var(--ligne); border-radius:12px; padding:7px 10px; transition:opacity .6s; }
 
 /* Écrans */
@@ -96,6 +103,7 @@ h1 span{ color:var(--orange); }
 </style>
 </head>
 <body>
+<div class="barre-statut" aria-hidden="true"></div>
 <canvas id="cv" aria-label="La pente vue du dessus"></canvas>
 <div class="hud" id="hud" hidden>
   <div class="bloc"><small id="hScoreN">Score</small><b id="hScore">0</b></div>
@@ -105,7 +113,7 @@ h1 span{ color:var(--orange); }
 </div>
 <div class="jauge" id="jauge" hidden><i id="jaugeI"></i></div>
 <div class="annonce" id="annonce"></div>
-<div class="aide-doigt" id="aideDoigt">Touchez à gauche ou à droite pour tourner · en bas au milieu pour sauter · en l'air, les 4 coins font des figures, le bas au milieu un 360</div>
+<div class="aide-doigt" id="aideDoigt">Touchez à gauche ou à droite pour tourner · en bas au milieu pour sauter · en l'air, 6 zones font des figures (3 en haut, 3 au milieu), le bas au milieu un 360</div>
 
 <section class="ecran" id="eMenu">
   <div class="boite">
@@ -150,14 +158,14 @@ h1 span{ color:var(--orange); }
     <h1>Com<span>ment</span> jouer</h1>
     <div class="carte">
       <h3>☝️ Diriger</h3>
-      <p>Touchez la <b>moitié gauche ou droite</b> de l'écran : le skieur tourne de ce côté, d'autant plus que vous restez appuyé (il coupe la pente et ralentit). <b>Lâchez</b> : il se remet dans la pente et file tout schuss. Au clavier : flèches gauche / droite, espace (saut / 360), Q E Z C ou 1 2 3 4 (les figures).</p>
+      <p>Touchez la <b>moitié gauche ou droite</b> de l'écran : le skieur tourne de ce côté, d'autant plus que vous restez appuyé (il coupe la pente et ralentit). <b>Lâchez</b> : il se remet dans la pente et file tout schuss. Au clavier : flèches gauche / droite, espace (saut / 360), Q W E / A S D ou 1 à 6 (les figures, rangée du haut puis du milieu).</p>
       <p>L'écran a une zone <b>en bas au milieu</b> : au sol, elle fait un petit saut ; en l'air, un 360. Rien n'est affiché, c'est l'écran entier qui sert de manette :</p>
-      <p style="font-family:monospace;line-height:1.3;color:var(--encre)">┌───────────┬───────────┐<br>│ Backflip&nbsp;&nbsp;│ Frontflip │<br>├───────────┼───────────┤<br>│ Mute grab │ Indy grab │<br>│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;┌─────┴─────┐&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br>│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│ saut/360&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br>└─────┴───────────┴─────┘</p>
+      <div class="schema"><span>Backflip</span><span>Truck driver</span><span>Frontflip</span><span>Mute</span><span>Safety</span><span>Japan</span><span class="vide"></span><span class="bas">saut / 360</span><span class="vide"></span></div>
       <h3>🦘 Sauter et figures</h3>
       <ul>
         <li>La zone <b>en bas au milieu</b> fait un petit saut : il passe au-dessus des souches, des petits cailloux et des crevasses.</li>
         <li>Les <b>tremplins</b>, les <b>bosses</b> et les <b>barres rocheuses</b> vous envoient en l'air.</li>
-        <li>En l'air, chaque coin de l'écran lance une figure : en haut <b>backflip</b> (à gauche) et <b>frontflip</b> (à droite), 500 points ; en bas <b>mute grab</b> et <b>indy grab</b>, 200 points ; en bas au milieu un <b>360</b>, 300 points (on peut le combiner avec une autre figure). Il faut avoir fini avant de toucher la neige, et atterrir à peu près face à la pente, sinon c'est la chute.</li>
+        <li>En l'air, l'écran est découpé en six zones. En haut : <b>backflip</b> (à gauche) et <b>frontflip</b> (à droite), 500 points, et au milieu le <b>truck driver</b> (chaque main tient l'avant de son ski, 250 points). Au milieu de l'écran : <b>mute</b> (skis croisés, la main droite tient la carre extérieure du ski gauche, 200 points), <b>safety</b> (la main droite sous la chaussure droite, 150 points) et <b>japan</b> (le ski droit replié derrière l'autre jambe, la main gauche passe sous le genou et tient la carre intérieure, 300 points). En snowboard : nose grab, mute, indy et japan. En bas au milieu un <b>360</b>, 300 points (on peut le combiner avec une autre figure). Il faut avoir fini avant de toucher la neige, et atterrir à peu près face à la pente, sinon c'est la chute.</li>
         <li>Les figures enchaînées sans tomber montent le <b>combo</b> (jusqu'à ×5).</li>
       </ul>
       <h3>⚠️ Dangers</h3>
@@ -420,6 +428,7 @@ function decoller(P, vz, raison){
 function atterrir(P){
   const tAir = P.tAir, tourne = P.spinV !== 0 || !!P.fig;
   P.air = false; P.z = 0; P.vz = 0;
+  if(P.anim) P.anim.recep = clamp(tAir * .8, .3, 1);
   if(tourne){ chuter(P, 'Réception ratée !'); return; }
   if(Math.abs(P.th) > 1.05){ chuter(P, 'Réception de travers !'); return; }
   bruitCourt(160, .12, .2);
@@ -432,7 +441,7 @@ function atterrir(P){
   pts = Math.round(pts * P.combo / 10) * 10;
   const morceaux = [];
   if(P.drop) morceaux.push(`Drop ${P.drop.toFixed(0)} m`);
-  for(const f of P.figs) morceaux.push(FIGURES[f].n);
+  for(const f of P.figs) morceaux.push(nomFig(f));
   if(P.tours) morceaux.push(`${360 * P.tours}`);
   const nom = morceaux.length ? morceaux.join(' + ') : tAir > 1.1 ? 'Gros saut' : 'Saut';
   if(P.mode !== 'slalom'){ P.score += pts; texte(P, `${nom} ! +${fmtN(pts)}${propre ? ' ✓' : ''}`, '#FF6A2B', true); }
@@ -440,11 +449,12 @@ function atterrir(P){
   P.meilleurSaut = Math.max(P.meilleurSaut, pts);
   P.drop = 0;
 }
-// Les figures, une par coin de l'écran (en l'air)
+// Les figures, en l'air : trois zones en haut de l'écran, trois au milieu (nb : le nom en snowboard)
 const FIGURES = {
-  hg:{ n:'Backflip', dur:.95, pts:500, flip:-1 }, hd:{ n:'Frontflip', dur:.9, pts:500, flip:1 },
-  bg:{ n:'Mute grab', dur:.5, pts:200, grab:-1 }, bd:{ n:'Indy grab', dur:.5, pts:200, grab:1 },
+  hg:{ n:'Backflip', dur:.95, pts:500, flip:-1 }, hm:{ n:'Truck driver', nb:'Nose grab', dur:.6, pts:250, grab:'truck' }, hd:{ n:'Frontflip', dur:.9, pts:500, flip:1 },
+  mg:{ n:'Mute grab', dur:.55, pts:200, grab:'mute' }, mm:{ n:'Safety grab', nb:'Indy grab', dur:.5, pts:150, grab:'safety' }, md:{ n:'Japan grab', dur:.65, pts:300, grab:'japan' },
 };
+const nomFig = k => engin === 'board' && FIGURES[k].nb || FIGURES[k].n;
 function figure(P, k){
   if(!P || P.fin || P.pause || P.chute > 0 || !P.air || P.fig) return;
   P.fig = { k, t:0 };
@@ -459,6 +469,21 @@ function sautCourt(P){
     return;
   }
   decoller(P, 3.7, 'ollie');
+}
+// Les mouvements du skieur au sol : il s'incline dans le virage (plus il va vite, plus il penche), plie les jambes,
+// garde le buste face à la pente, plante le bâton à l'intérieur au début de chaque virage, se met en œuf en schuss
+function animer(P, dt){
+  const A = P.anim || (P.anim = { ...MVT0, recep:0, sens:0, tPlant:9 }), k = Math.min(1, dt * 7);
+  A.air = P.air; A.recep = Math.max(0, A.recep - dt * 2.2);
+  A.tPlant += dt; A.plant = A.tPlant < .45 ? Math.sin(A.tPlant / .45 * Math.PI) : 0;
+  if(P.air || P.chute > 0){ A.incl -= A.incl * k; A.ctr -= A.ctr * k; A.tuck = 0; return; }
+  A.incl += (clamp(-Math.atan(P.v * P.thv / 9.8) * .8, -.75, .75) - A.incl) * k;
+  A.ctr += (-P.th * .55 - A.ctr) * k;
+  A.tuck += ((P.v > 16 && Math.abs(A.incl) < .12 ? 1 : 0) - A.tuck) * Math.min(1, dt * 3);
+  A.flex += (.18 + Math.abs(A.incl) * .55 + A.recep * .55 - A.flex) * k;
+  const sens = Math.abs(P.thv) > .7 ? Math.sign(P.thv) : 0;
+  if(sens && sens !== A.sens && A.tPlant > .3){ A.cote = -sens; A.tPlant = 0; }
+  if(sens) A.sens = sens; else if(Math.abs(P.thv) < .15) A.sens = 0;
 }
 function boucle(now){
   const P = partie; if(!P) return;
@@ -488,6 +513,7 @@ function maj(P, dt){
     else P.th += clamp(-P.th, -.9 * dt, .9 * dt);    // au lâcher, il revient doucement dans la pente
     P.thv = (P.th - avant) / dt;
   } else if(dir) P.th = clamp(P.th + dir * .8 * dt, -1.45, 1.45);
+  animer(P, dt);
   // Vitesse : la pente pousse, l'air et la neige freinent ; couper la pente ralentit, travers = dérapage
   if(P.chute <= 0){
     const G = M.glacier ? 5.6 : 5.2, mu = engin === 'board' ? .45 : .6, ath = Math.abs(P.th);
@@ -505,7 +531,7 @@ function maj(P, dt){
   if(P.air){
     P.tAir += dt; P.vz -= 9.8 * dt; P.z += P.vz * dt;
     if(P.spinV){ P.spin += P.spinV * dt; if(P.spin >= 2 * Math.PI){ P.tours++; P.spin = 0; P.spinV = P.tourDePlus ? P.spinV : 0; P.tourDePlus = false; } }
-    if(P.fig){ P.fig.t += dt; if(P.fig.t >= FIGURES[P.fig.k].dur){ P.figs.push(P.fig.k); texte(P, FIGURES[P.fig.k].n + ' !', '#1F6FE0'); P.fig = null; } }
+    if(P.fig){ P.fig.t += dt; if(P.fig.t >= FIGURES[P.fig.k].dur){ P.figs.push(P.fig.k); texte(P, nomFig(P.fig.k) + ' !', '#1F6FE0'); P.fig = null; } }
     if(P.z <= 0) atterrir(P);
   }
   // Barres rocheuses : en passant le bord, le sol se dérobe
@@ -672,53 +698,101 @@ const PLANCHES = [
 ];
 let tenue = lire('freeride-tenue', { t:0, s:0 });
 if(!TENUES[tenue.t]) tenue.t = 0; if(!PLANCHES[tenue.s]) tenue.s = 0;
-// Le skieur en 3D (de petites pièces projetées en vue plongeante) : on voit les flips, les grabs, les 360
-// Repère du corps : X sur le côté, Y vers l'avant (sens de la glisse), Z vers le haut (m)
-function poseSkieur(F, u, eng = engin){
+// Le skieur en 3D (de petites pièces projetées en vue plongeante) : on voit les flips, les grabs, les 360, les virages
+// Repère du corps : X sur le côté (vers sa droite), Y vers l'avant (sens de la glisse), Z vers le haut (m)
+// m : le mouvement au sol (inclinaison dans le virage, flexion, buste face à la pente, planté de bâton, position de recherche de vitesse)
+const MVT0 = { incl:0, flex:.25, ctr:0, plant:0, cote:1, tuck:0, air:false };
+function poseSkieur(F, u, eng = engin, m = MVT0){
   const S = [], board = eng === 'board', T = TENUES[tenue.t], K = PLANCHES[tenue.s];
-  // grab : il se ramasse (genoux à la poitrine), attrape, puis se détend avant la réception
-  const c = F && F.grab ? Math.min(1, u / .3, (1 - u) / .25) : 0;
-  const mute = c > 0 && F.k === 'bg', indy = c > 0 && F.k === 'bd';
-  const pied = .08 + .5 * c, hanche = .86 - .12 * c, penche = .22 * c;
+  // grab : il se ramasse, attrape, puis se détend avant la réception
+  const c = F && F.grab ? Math.min(1, u / .3, (1 - u) / .25) : 0, G = c > 0 ? F.grab : '';
   const seg = (a, b, l, col) => S.push({ a, b, l, c:col });
-  const cou = [0, (board ? 0 : .06) + penche, hanche + .52 - .1 * c];
-  let mainA = null, mainB = null;                    // mains qui attrapent (gauche, droite)
+  const add = (a, b, k = 1) => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
+  const mix = (a, b, k) => add(a, add(b, a, -1), k);
+  // une articulation (genou, coude) entre deux points : deux os de longueur l, pliée du côté « vers »
+  const plier = (a, b, l, vers) => {
+    const d = add(b, a, -1), n = Math.hypot(...d) || 1, k = (vers[0] * d[0] + vers[1] * d[1] + vers[2] * d[2]) / (n * n);
+    const p = add(vers, d, -k), np = Math.hypot(...p) || 1;
+    return add(mix(a, b, .5), p, Math.sqrt(Math.max(0, l * l - n * n / 4)) / np);
+  };
+  const tourner = ([x, y, z], pf, rr, yw) => {
+    [y, z] = [y * Math.cos(pf) + z * Math.sin(pf), z * Math.cos(pf) - y * Math.sin(pf)];   // penché en avant
+    [x, z] = [x * Math.cos(rr) + z * Math.sin(rr), z * Math.cos(rr) - x * Math.sin(rr)];   // incliné sur le côté
+    return [x * Math.cos(yw) - y * Math.sin(yw), x * Math.sin(yw) + y * Math.cos(yw), z]; // buste tourné
+  };
+  const air = m.air || c > 0, tuck = air ? 0 : m.tuck, flex = air ? .3 : clamp(m.flex + .4 * tuck, 0, 1), incl = air ? 0 : m.incl;
+  const lever = { mute:.4, safety:.4, japan:.28, truck:.48 }[G] || 0;     // les pieds remontent vers les mains
+  const pz = .08 + (air ? .1 : 0) + lever * c, hz = .8 - .3 * flex - .06 * c;
+  const Pd = {}, Or = {}, cible = {};
+  const dir = o => [Math.sin(o[0]) * Math.cos(o[1]), Math.cos(o[0]) * Math.cos(o[1]), Math.sin(o[1])];
+  let H, pf, rr, yw;
   if(!board){
-    // skis : au mute grab ils se croisent en X juste devant les chaussures ; la main gauche attrape le croisement
-    const alpha = mute ? .8 * c : 0, croix = alpha ? .13 / Math.sin(alpha) : 0;
-    for(const s of [-1, 1]){
-      const x = s * .13;
-      const pt = Y => [x - s * Y * Math.sin(alpha), Y * Math.cos(alpha), pied];   // la spatule part vers l'autre ski
-      const queue = pt(-.72), spatule = pt(.85); spatule[2] += .08;
-      seg(queue, spatule, .09, K.c);
-      seg([queue[0] + (spatule[0] - queue[0]) * .1, queue[1] + (spatule[1] - queue[1]) * .1, pied + .005], [queue[0] + (spatule[0] - queue[0]) * .22, queue[1] + (spatule[1] - queue[1]) * .22, pied + .01], .095, K.b);
-      const genou = [x * 1.15, .22 + .12 * c, .45 + .42 * c];
-      seg([x, 0, pied + .05], genou, .14, T.pantalon);
-      seg(genou, [x * .8, -.04 * c, hanche], .16, T.pantalon);
-      if(indy && s === 1) mainB = [x + .07, .05, pied + .03];                       // indy : main droite sous la chaussure, côté extérieur
-    }
-    if(mute) mainA = [0, croix * Math.cos(alpha), pied + .04];
+    // au sol : le pied intérieur au virage avance un peu ; les hanches partent vers l'intérieur, le buste reste plus droit (angulation)
+    const dev = clamp(incl / .4, -1, 1);
+    for(const s of [-1, 1]){ Pd[s] = [s * .13, s * dev > 0 ? .07 * Math.abs(dev) : -.03 * Math.abs(dev), pz]; Or[s] = [0, G === 'truck' ? .25 * c : 0]; }
+    if(G === 'mute'){ Or[-1][0] = .75 * c; Or[1][0] = -.75 * c; }                                        // skis croisés en X
+    if(G === 'japan'){ Pd[1] = add(Pd[1], [-.24 * c, -.3 * c, .3 * c]); Or[1] = [-.6 * c, -.3 * c]; }   // ski droit replié derrière l'autre jambe
+    H = [Math.sin(incl) * hz * .75, -.05 * flex - .04 * c, .08 + hz * Math.cos(incl) + (air ? .06 : 0)];
+    pf = air ? .25 + ({ mute:.5, safety:.45, japan:.4, truck:.6 }[G] || 0) * c : .12 + .35 * flex + .4 * tuck;
+    rr = incl * .45; yw = m.ctr + (G === 'mute' ? .35 * c : 0);
+    if(G === 'safety') cible[1] = add(Pd[1], [.08, .02, .02]);                           // main droite sous la chaussure droite, carre extérieure
+    if(G === 'mute') cible[1] = add(add(Pd[-1], dir(Or[-1]), .3), [-.07, 0, .02]);       // main droite sur la carre extérieure du ski gauche, devant la fixation
+    if(G === 'japan') cible[-1] = add(Pd[1], [-.07, 0, .02]);                            // main gauche sous le genou, carre intérieure du ski droit
+    if(G === 'truck') for(const s of [-1, 1]) cible[s] = add(add(Pd[s], dir(Or[s]), .55), [0, 0, .04]);   // chaque main tient l'avant de son ski
   } else {
-    // planche dans l'axe de la glisse, le rider de profil (face au côté +X) ; il attrape le bord des orteils entre les fixations
-    seg([0, -.74, pied - .02], [0, .74, pied - .02], .3, K.c);
-    seg([0, -.74, pied - .01], [0, -.6, pied - .01], .31, K.b); seg([0, .6, pied - .01], [0, .74, pied - .01], .31, K.b);
-    for(const s of [-1, 1]){ const genou = [.16 + .1 * c, s * .25, .45 + .4 * c]; seg([0, s * .24, pied + .04], genou, .14, T.pantalon); seg(genou, [-.02, s * .1, hanche], .16, T.pantalon); }
-    if(mute) mainB = [.16, .06, pied + .02];            // main avant
-    if(indy) mainA = [.16, -.06, pied + .02];           // main arrière
-    cou[0] += penche; cou[1] = 0;
+    // planche dans l'axe de la glisse, le rider de profil (face au côté +X), pied avant en +Y
+    for(const s of [-1, 1]) Pd[s] = [0, s * .24, pz - (s < 0 ? .08 * lever * c : 0)];
+    if(G === 'japan'){ Pd[1][2] += .12 * c; for(const s of [-1, 1]) Pd[s][0] -= .15 * c; }
+    if(G === 'truck') Pd[-1][2] += .16 * c;
+    H = [Math.sin(incl) * hz - .08 * flex, 0, .08 + hz * Math.cos(incl) + (air ? .06 : 0)];
+    pf = 0; rr = .1 + .3 * flex + incl * .45 + .55 * c; yw = 0;
+    const sur = (y, x = .15) => add(mix(Pd[-1], Pd[1], (y + .24) / .48), [x, 0, .02]);   // un point de la planche (x = .15 : carre côté orteils)
+    if(G === 'mute') cible[1] = sur(.06);           // main avant, entre les fixations
+    if(G === 'safety') cible[-1] = sur(-.06);       // indy : main arrière, entre les fixations
+    if(G === 'japan') cible[1] = sur(.36);          // main avant devant le pied avant, genou avant replié
+    if(G === 'truck') cible[1] = sur(.72, 0);       // nose grab : la main tient le nez
   }
-  seg([0, -.03 * c, hanche], cou, .34, T.veste);
+  // skis ou planche
+  if(!board) for(const s of [-1, 1]){
+    const d = dir(Or[s]), queue = add(Pd[s], d, -.72), spatule = add(add(Pd[s], d, .85), [0, 0, .08]);
+    seg(queue, spatule, .09, K.c); seg(add(Pd[s], d, -.16), add(add(Pd[s], d, .13), [0, 0, .005]), .095, K.b);
+  } else {
+    const d = add(Pd[1], Pd[-1], -1), n = Math.hypot(...d), q = add(Pd[-1], d, -.5 / n), ne = add(Pd[1], d, .5 / n);
+    seg(q, ne, .3, K.c); seg(q, mix(q, ne, .1), .31, K.b); seg(mix(ne, q, .1), ne, .31, K.b);
+  }
+  // jambes : les genoux plient vers l'avant (vers les orteils en snowboard)
   for(const s of [-1, 1]){
-    const epaule = board ? [cou[0], s * .2, cou[2] - .04] : [s * .2, cou[1], cou[2] - .04];
-    const cible = s < 0 ? mainA : mainB;
-    const main = cible || (board ? [.15, s * .5, hanche + .18] : [s * .34, .3 + penche, hanche + .12]);
-    // le coude plie quand la main descend attraper
-    const coude = cible ? [(epaule[0] + main[0]) / 2 + (board ? .14 : s * .14), (epaule[1] + main[1]) / 2 + .05, (epaule[2] + main[2]) / 2 + .05] : null;
-    if(coude){ seg(epaule, coude, .1, T.veste); seg(coude, main, .095, T.veste); } else seg(epaule, main, .1, T.veste);
-    S.push({ point:main, r:.07, c:'#20283A' });
-    if(!board && !cible) seg(main, [s * .42, -.32, .02], .03, '#5A6B85');
+    const h = add(H, board ? [0, s * .1, 0] : [s * .1, 0, 0]), pied = add(Pd[s], [0, 0, .05]);
+    const genou = plier(pied, h, .43, board ? [1, 0, .15] : [Math.sin(incl) * .5, 1, .1]);
+    seg(pied, genou, .14, T.pantalon); seg(genou, h, .16, T.pantalon);
   }
-  S.push({ point:[cou[0], cou[1] + .02, cou[2] + .18], r:.15, c:T.casque, visiere:true });
+  // buste, bras, bâtons, tête
+  const corps = p => add(H, tourner(p, pf, rr, yw));
+  seg(corps([0, -.02, 0]), corps([0, 0, .5]), .34, T.veste);
+  for(const s of [-1, 1]){
+    const epaule = corps(board ? [0, s * .2, .45] : [s * .2, 0, .45]);
+    let libre;                                           // la main quand elle n'attrape rien (repère du buste)
+    if(board) libre = air ? [.1, s * .55, .35] : [.15, s * .45, .16];
+    else if(air) libre = [s * .5, .12, .42];
+    else {
+      libre = mix([s * .33, .3, .2], [s * .13, .42, .22], tuck);
+      if(s === m.cote) libre = add(libre, [0, .12, -.12], m.plant);    // le bras avance pour planter le bâton
+    }
+    const lib = corps(libre), main = cible[s] ? mix(lib, cible[s], c) : lib;
+    const coude = plier(epaule, main, .32, board ? [-.4, s, -.3] : [s, -.5, -.3]);
+    seg(epaule, coude, .1, T.veste); seg(coude, main, .095, T.veste);
+    S.push({ point:main, r:.07, c:'#20283A' });
+    if(!board){
+      let pointe;
+      if(air) pointe = add(main, [s * .06, -.75, -.35]);
+      else {
+        pointe = mix([main[0] + s * .1, main[1] - .5, .03], add(main, [s * .05, -1, .12]), tuck);       // bâton qui traîne, ou sous le bras en schuss
+        if(s === m.cote) pointe = mix(pointe, [main[0] + s * .1, main[1] + .38, .03], m.plant);       // planté devant, à l'intérieur du virage
+      }
+      seg(main, pointe, .03, '#5A6B85');
+    }
+  }
+  S.push({ point:corps([0, .04, .68]), r:.15, c:T.casque, visiere:true });
   return S;
 }
 // Dessine un personnage (pose, flip, 360, direction) à l'origine du contexte, en mètres
@@ -751,7 +825,7 @@ function dessinerSkieur(P, t){
   const flip = P.chute > 0 ? P.chute * 7 : F && F.flip ? F.flip * u * 2 * Math.PI : 0;
   const tourne = P.chute > 0 ? P.chute * 3 : (P.spin || 0);
   g.save(); g.translate(P.x, P.y - z * .55);
-  dessinerPersonnage(g, poseSkieur(F, u), P.th, flip, tourne, 1.55 * (1 + z * .04));
+  dessinerPersonnage(g, poseSkieur(F, u, engin, P.chute > 0 ? MVT0 : P.anim || MVT0), P.th, flip, tourne, 1.55 * (1 + z * .04));
   g.restore();
 }
 function dessiner(P, dt){
@@ -915,7 +989,8 @@ function menu(){
 // en l'air, les quatre coins = les figures. Rien n'est affiché.
 function zone(x, y){
   if(x > W * .3 && x < W * .7 && y > Hh * .64) return 'c';
-  return (y < Hh / 2 ? 'h' : 'b') + (x < W / 2 ? 'g' : 'd');
+  if(!partie || !partie.air) return x < W / 2 ? 'g' : 'd';
+  return (y < Hh * .36 ? 'h' : 'm') + (x < W / 3 ? 'g' : x < W * 2 / 3 ? 'm' : 'd');
 }
 cv.addEventListener('pointerdown', e => {
   const P = partie; if(!P) return;
@@ -923,7 +998,7 @@ cv.addEventListener('pointerdown', e => {
   const z = zone(e.clientX, e.clientY);
   if(z === 'c'){ sautCourt(P); doigts.set(e.pointerId, 'c'); return; }
   if(P.air){ figure(P, z); doigts.set(e.pointerId, 'f'); return; }
-  doigts.delete(e.pointerId); doigts.set(e.pointerId, z[1]);
+  doigts.delete(e.pointerId); doigts.set(e.pointerId, z);
 });
 cv.addEventListener('pointermove', e => {
   const v = doigts.get(e.pointerId); if(v !== 'g' && v !== 'd') return;
@@ -935,7 +1010,7 @@ cv.addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('keydown', e => {
   touches.add(e.code);
   if(e.code === 'Space'){ e.preventDefault(); if(partie && !e.repeat) sautCourt(partie); }
-  const fk = { KeyQ:'hg', Digit1:'hg', KeyE:'hd', Digit2:'hd', KeyZ:'bg', Digit3:'bg', KeyC:'bd', Digit4:'bd' }[e.code];
+  const fk = { KeyQ:'hg', Digit1:'hg', KeyW:'hm', Digit2:'hm', KeyE:'hd', Digit3:'hd', KeyA:'mg', Digit4:'mg', KeyS:'mm', Digit5:'mm', KeyD:'md', Digit6:'md' }[e.code];
   if(fk && partie && !e.repeat) figure(partie, fk);
   if(e.code === 'Escape' || e.code === 'KeyP'){ if(partie && !partie.pause) pause(); else reprendre(); }
   if(e.code.startsWith('Arrow')) e.preventDefault();
@@ -955,9 +1030,9 @@ $('choixPlanche').onclick = e => { const b = e.target.closest('[data-s]'); if(!b
 (function apercu(now){
   const c = $('apercu'); if(c && !$('eMenu').hidden){
     const x = c.getContext('2d'), t = now / 1000; x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, 180, 180);
-    const cycle = t % 6, F = cycle > 3.5 && cycle < 5 ? FIGURES[Math.floor(t / 6) % 2 ? 'bg' : 'bd'] : null, u = F ? (cycle - 3.5) / 1.5 : 0;
+    const cycle = t % 6, F = cycle > 3.5 && cycle < 5 ? FIGURES[['mg', 'mm', 'md', 'hm'][Math.floor(t / 6) % 4]] : null, u = F ? (cycle - 3.5) / 1.5 : 0;
     x.fillStyle = 'rgba(60,85,130,.18)'; x.beginPath(); x.ellipse(92, 128, 34, 14, 0, 0, 6.29); x.fill();
-    x.translate(90, 112 - (F ? Math.sin(u * Math.PI) * 18 : 0)); dessinerPersonnage(x, poseSkieur(F, u), t * .8, 0, 0, 44);
+    x.translate(90, 112 - (F ? Math.sin(u * Math.PI) * 18 : 0)); dessinerPersonnage(x, poseSkieur(F, u, engin, F ? { ...MVT0, air:true } : MVT0), t * .8, 0, 0, 44);
   }
   requestAnimationFrame(apercu);
 })(performance.now());
@@ -992,7 +1067,7 @@ function dessinerFond(F, dt){
   g.restore();
 }
 menu();
-window.Freeride = { lancer, DESCENTES, SLALOMS, defiDuJour, get partie(){ return partie; }, doigts, sautCourt, figure, finir, nouveauMonde, construireDescente };
+window.Freeride = { lancer, DESCENTES, SLALOMS, defiDuJour, get partie(){ return partie; }, doigts, sautCourt, figure, finir, nouveauMonde, construireDescente, FIGURES, MVT0, poseSkieur, dessinerPersonnage, setEngin:e => { engin = e; } };
 
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });

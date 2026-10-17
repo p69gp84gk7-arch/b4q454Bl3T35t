@@ -45,7 +45,9 @@ function creerDomaine(taille, graine){
   }
   let l = 0; for(let i = 1; i < pts.length; i++) l += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
   const dz = relief(pts[0][0], pts[0][1]) - relief(pts[pts.length - 1][0], pts[pts.length - 1][1]);
-  const pistes = [{ nom:D.nom, points:pts, largeur:larg, longueur:Math.round(l), pente:Math.round(dz / l * 100), couleur:D.couleur }];
+  // la piste est découpée en tronçons de 25 m (du haut vers le bas) pour voir si elle est enneigée partout
+  const cumul = [0]; for(let i = 1; i < pts.length; i++) cumul.push(cumul[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const pistes = [{ nom:D.nom, points:pts, cumul, troncons:Math.max(4, Math.round(l / 25)), largeur:larg, longueur:Math.round(l), pente:Math.round(dz / l * 100), couleur:D.couleur }];
   const n = 1;
   // Salle des machines et retenue sur le front de neige
   const xs = W * (.3 + R() * .4), salle = { x:xs, y:H - 42, w:20, h:13 };
@@ -78,6 +80,12 @@ function creerDomaine(taille, graine){
 function pisteSous(dom, x, y){
   for(const p of dom.pistes) if(distancePolyligne(p.points, x, y) <= p.largeur / 2) return p;
   return null;
+}
+// Le tronçon de piste (0 = en haut) le plus proche d'un point
+function tronconSous(dom, x, y){
+  const p = dom.pistes[0]; let best = 0, d = Infinity;
+  for(let i = 0; i < p.points.length; i++){ const e = Math.hypot(p.points[i][0] - x, p.points[i][1] - y); if(e < d){ d = e; best = i; } }
+  return Math.min(p.troncons - 1, Math.floor(p.cumul[best] / p.longueur * p.troncons));
 }
 // Direction (radians, 0 = vers le bas de l'écran) vers le point de piste le plus proche
 function directionVersPiste(dom, x, y){

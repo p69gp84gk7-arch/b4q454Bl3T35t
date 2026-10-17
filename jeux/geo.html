@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Géographie · DesDés</title>
-<meta name="theme-color" content="#0F3B57">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="DesDés">
 <link rel="manifest" href="../manifest.webmanifest">
@@ -14,12 +14,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie (rien de flou derrière) */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
 :root{
   --ocean:#0F3B57; --ocean-dark:#0A2A3F; --ivory:#F7F3E8; --ink:#1A1A1A; --muted:rgba(247,243,232,.72);
   --line:rgba(247,243,232,.2); --gold:#E9B949; --red:#C8372D; --green:#2E9E5B;
   --sea:#A9CFE6; --land:#F4EFE1; --land-out:#D5DCE2; --border:#6F7D8C;
   box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-top:var(--barre-statut); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){ --ocean:#0B2E45; --ocean-dark:#071E2E; --sea:#8FB9D3; }
@@ -65,7 +69,7 @@ tr.me td{ color:var(--gold); font-weight:700; }
 
 /* ---------- Partie ---------- */
 .game{ position:fixed; inset:0; display:flex; flex-direction:column; gap:10px;
-  padding:calc(10px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px)); background:var(--ocean); }
+  padding:calc(10px + var(--barre-statut)) 12px calc(12px + env(safe-area-inset-bottom,0px)); background:var(--ocean); }
 .bar{ display:flex; align-items:center; gap:8px; }
 .quit{ padding:8px 12px; background:transparent; color:var(--ivory); border:1.5px solid var(--line); font-weight:600; }
 .stats{ margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
@@ -148,6 +152,7 @@ tr.me td{ color:var(--gold); font-weight:700; }
 </style>
 </head>
 <body>
+<div class="barre-statut" aria-hidden="true"></div>
 
 <!-- Menu -->
 <main class="page" id="menu">
@@ -244,8 +249,8 @@ tr.me td{ color:var(--gold); font-weight:700; }
   <div class="row"><button class="back" id="toMenu">Menu</button><button class="again" id="again">Rejouer</button></div>
 </main>
 
-<script src="geo/monde.js?v=71"></script>
-<script src="sauvegarde.js?v=71"></script>
+<script src="geo/monde.js?v=72"></script>
+<script src="sauvegarde.js?v=72"></script>
 <script>
 const G = window.GEO;
 const $ = id => document.getElementById(id);
@@ -301,7 +306,7 @@ function charger(fichier){
   if(!fichier) return Promise.resolve();
   return charges[fichier] = charges[fichier] || new Promise((ok, ko) => {
     const s = document.createElement('script');
-    s.src = fichier + '?v=71'; s.onload = ok;   // même numéro de version que les autres scripts
+    s.src = fichier + '?v=72'; s.onload = ok;   // même numéro de version que les autres scripts
     s.onerror = () => { delete charges[fichier]; ko(new Error('Carte introuvable : vérifiez la connexion.')); };
     document.head.append(s);
   });

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Fusée Rythme · DesDés</title>
-<meta name="theme-color" content="#070B1F">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="DesDés">
 <link rel="manifest" href="../manifest.webmanifest">
@@ -14,8 +14,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
-:root{ --marge-haut:env(safe-area-inset-top, 0px); }
-@media (pointer:coarse){ :root{ --marge-haut:max(env(safe-area-inset-top, 0px), 40px); } }
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie (rien de flou derrière) */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --marge-haut:var(--barre-statut); }
 :root{
   --nuit:#070B1F; --nuit-2:#0F1638; --carte:rgba(22,30,72,.86); --ligne:rgba(150,170,255,.18);
   --texte:#EAF0FF; --doux:#9FAAD6; --rose:#FF4FA3; --cyan:#3FE0FF; --or:#FFD54F; --vert:#5BE38E;
@@ -90,6 +93,7 @@ h1{ font-family:"Audiowide", sans-serif; font-weight:400; font-size:clamp(2rem, 
 </style>
 </head>
 <body>
+<div class="barre-statut" aria-hidden="true"></div>
 <canvas id="cv" aria-label="La course de la fusée"></canvas>
 <div class="barre" id="barre" hidden><i id="barreI"></i></div>
 <div class="hud" id="hud" hidden>

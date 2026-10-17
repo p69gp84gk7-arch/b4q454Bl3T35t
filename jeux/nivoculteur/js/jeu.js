@@ -13,6 +13,7 @@ const heureDe = u => { const h = 18 + 12 * Math.min(1, u); return `${String(Math
 
 let dom = null, res = null, meteo = null, reg = null;
 let phase = 'menu', outil = null, depart = null, selection = null, apercu = null, vitesse = 1, historique = [];
+let troncons = null, aRecalculerTroncons = 0;
 let tNuit = 0, aRecalculer = true, depuisRecalcul = 0, dernier = performance.now(), majHud = 0, majVues = 0;
 
 /* ---------- Messages ---------- */
@@ -64,6 +65,7 @@ function ouvrirInfos(){
     ${nuit && reg ? `<p>Maintenant : <b>${degC(reg.T)}</b> en bas du domaine, vent <b>${reg.vent.force < 1 ? 'calme' : 'du ' + nomVent(reg.vent.dir) + ', ' + Math.round(reg.vent.force) + ' km/h'}</b>.</p>` : ''}
     <p>En haut du domaine, il fait <b>${(CONFIG.temperature.gradient * dom.den / 100).toFixed(1).replace('.', ',')} °C</b> de moins. Neige : rien au-dessus de −2 °C, la moitié à −4 °C, tout à −7 °C.</p>
     <p>Retenue : <b>${fmt(res.retenue.volume)} / ${fmt(dom.retenue.max)} m³</b> · objectif <b>${fmt(dom.objectif)} m³</b> en ${dom.nuits} nuits.</p>
+    <p>Piste équipée (des canons tout du long) : <b>${Math.round(equipement(dom, res).ratio * 100)} %</b> · enneigée sur toute sa longueur : <b>${Math.round(couverture(dom, res).ratio * 100)} %</b>. Pour 2 et 3 étoiles, il faut de la neige sur 75 puis 90 % de la piste, pas seulement en bas.</p>
     <div class="actions"><button class="btn" id="iSalle">🏭 Courbe de la nuit</button></div>`);
   $('iSalle').onclick = () => { fermerPanneau(); ouvrirSalle(); };
 }
@@ -328,22 +330,33 @@ function terminerNuit(){
     </table>
     <p>Total sur les pistes : <b>${fmt(res.neigePiste)} / ${fmt(dom.objectif)} m³</b> (${Math.round(res.neigePiste / dom.objectif * 100)} %) · nuit ${res.nuit}/${dom.nuits}</p>
     ${b.debloques.length ? `<p>🔓 Débloqué : <b>${b.debloques.map(k => CATALOGUE[k].nom).join(', ')}</b></p>` : ''}
-    <div class="actions"><button class="btn or" id="bSuite">${res.fini ? 'Voir le résultat' : '☀️ Journée suivante'}</button></div>`);
+    ${res.reussi ? '<p>🏆 <b>Objectif atteint : la piste est terminée !</b></p>' : ''}
+    <div class="actions"><button class="btn or" id="bSuite">${res.fini ? (res.reussi ? '🏆 Résultat et étoiles' : 'Voir le résultat') : '☀️ Journée suivante'}</button></div>`);
   $('bSuite').onclick = () => { fermerPanneau(); if(res.fini){ phase = 'fin'; montrerFin(); } else commencerJour(); };
 }
 function montrerFin(){
   majBarre();
-  const e = etoiles(dom, res), f = res.neigePiste / dom.objectif;
-  const rec = lire('nivo-records', {}), r = rec[res.taille] || { etoiles:0, meilleur:0, parties:0 };
-  if(!res.compte){ r.parties++; r.etoiles = Math.max(r.etoiles, e); r.meilleur = Math.max(r.meilleur, Math.round(f * 100)); rec[res.taille] = r; ecrire('nivo-records', rec); res.compte = true; sauver(); }
-  ouvrirPanneau(`<h3>${e ? '🏆 Objectif atteint !' : 'Objectif manqué'}</h3>
-    <p style="text-align:center;font-size:2rem;color:var(--or);letter-spacing:.15em;margin:6px 0">${'★'.repeat(e)}${'☆'.repeat(3 - e)}</p>
-    <p><b>${fmt(res.neigePiste)} m³</b> sur la piste pour un objectif de ${fmt(dom.objectif)} m³ (${Math.round(f * 100)} %), en ${dom.nuits} nuits.</p>
-    <p>Budget restant : <b>${keur(res.budget)}</b> · ${res.noeuds.filter(n => n.type === 'regard').length} canons posés · ${fmt(res.neigeTotale)} m³ produits en tout.</p>
-    <p>2 étoiles à 125 %, 3 étoiles à 150 % de l'objectif.</p>
-    <div class="actions"><button class="btn" id="bVoirCarte">Voir la carte</button><button class="btn or" id="bNouveau">Autre piste</button></div>`);
+  const R = resultat(dom, res), ids = Object.keys(CONFIG.domaines), suivante = ids[ids.indexOf(res.taille) + 1];
+  const rec = lire('nivo-records', {}), r = rec[res.taille] || { etoiles:0, points:0, meilleur:0, parties:0 };
+  let record = false;
+  if(!res.compte){
+    r.parties++; r.etoiles = Math.max(r.etoiles, R.etoiles); r.meilleur = Math.max(r.meilleur || 0, Math.round(res.neigePiste / dom.objectif * 100));
+    if(R.points > (r.points || 0)){ r.points = R.points; record = r.parties > 1; }
+    rec[res.taille] = r; ecrire('nivo-records', rec); res.compte = true; sauver();
+  }
+  ouvrirPanneau(`<h3>${res.reussi ? '🏆 Piste enneigée !' : '❌ Objectif manqué'}</h3>
+    <p style="text-align:center;font-size:2.1rem;color:var(--or);letter-spacing:.15em;margin:4px 0">${'★'.repeat(R.etoiles)}${'☆'.repeat(3 - R.etoiles)}</p>
+    <p style="text-align:center;margin:0 0 6px"><b style="font-size:1.5rem;font-family:'Saira Condensed',sans-serif">${fmt(R.points)} points</b>${record ? ' · 🏆 record' : r.points ? ` · record ${fmt(r.points)}` : ''}</p>
+    <p><b>${fmt(res.neigePiste)} m³</b> sur ${esc(dom.pistes[0].nom)} pour un objectif de ${fmt(dom.objectif)} m³, en ${res.nuit} nuit${res.nuit > 1 ? 's' : ''} sur ${dom.nuits}.</p>
+    ${res.reussi ? `<table class="bilan">${R.lignes.map(([n, v]) => `<tr><td>${esc(n)}</td><td class="plus">+${fmt(v)}</td></tr>`).join('')}</table>` : ''}
+    <p style="margin-top:6px">${R.criteres.map(c => `${c.ok ? '✅' : '⬜'} ${esc(c.txt)}`).join('<br>')}</p>
+    <div class="actions"><button class="btn" id="bVoirCarte">Voir la carte</button>
+      ${res.reussi ? `<button class="btn" id="bRejouer">↻ Rejouer</button>${suivante ? `<button class="btn or" id="bSuivante">Piste suivante : ${esc(CONFIG.domaines[suivante].nom)} ›</button>` : '<button class="btn or" id="bNouveau">Toutes les pistes</button>'}`
+        : `<button class="btn" id="bNouveau">Autre piste</button><button class="btn or" id="bRejouer">↻ Recommencer</button>`}</div>`);
   $('bVoirCarte').onclick = fermerPanneau;
-  $('bNouveau').onclick = () => { fermerPanneau(); menu(); };
+  if($('bNouveau')) $('bNouveau').onclick = () => { fermerPanneau(); menu(); };
+  if($('bRejouer')) $('bRejouer').onclick = () => { fermerPanneau(); nouvellePartie(res.taille); };
+  if($('bSuivante')) $('bSuivante').onclick = () => { fermerPanneau(); nouvellePartie(suivante); };
 }
 
 /* ---------- La vue d'ensemble des canons ---------- */
@@ -417,7 +430,8 @@ function majCanons(){
   const cs = (t, v, col = '') => `<div class="cpt"><small>${t}</small><b style="color:${col}">${v}</b></div>`;
   $('resumeCanons').innerHTML = cs('En marche', compte.marche, '#38D07A') + cs('Arrêtés', compte.arret, '#E04A4A') + cs('En défaut', compte.defaut + compte.chaud, '#F2C230') +
     cs(nuit ? 'Production' : 'Production maxi', fmt(nuit ? reg.production : reg.canons.reduce((s, c) => s + (c.ouvert ? CATALOGUE[c.modele].neige * c.fP : 0), 0)) + ' m³/h') +
-    cs('Débit d\'eau', fmt(reg.debit) + ' m³/h') + cs('Départ salle', reg.pDepart.toFixed(0) + ' bar') + (nuit ? cs('Temp. en bas', degC(reg.T)) : '');
+    cs('Débit d\'eau', fmt(reg.debit) + ' m³/h') + cs('Départ salle', reg.pDepart.toFixed(0) + ' bar') + (nuit ? cs('Temp. en bas', degC(reg.T)) : '') +
+    cs('Piste équipée', Math.round(equipement(dom, res).ratio * 100) + ' %');
 }
 document.querySelectorAll('[data-tous]').forEach(b => b.onclick = () => {
   for(const n of res.noeuds) if(n.type === 'regard') n.canon.mode = b.dataset.tous;
@@ -560,7 +574,9 @@ function boucle(now){
     if(Math.abs(elan.vx) + Math.abs(elan.vy) > .02){ cam.x -= elan.vx * dt * 1000 / cam.z; cam.y -= elan.vy * dt * 1000 / cam.z; const f = Math.exp(-dt * 5); elan.vx *= f; elan.vy *= f; borneVue(); }
     if(phase === 'nuit') avancer(dt);
     else if(aRecalculer){ reg = calculer(); aRecalculer = false; }
-    dessinerCarte({ dom, res, reg, nuit:phase === 'nuit', selection, depart, apercu, zones:phase === 'nuit' });
+    if(aRecalculerTroncons <= 0){ aRecalculerTroncons = .5; troncons = { neige:couverture(dom, res).troncons, equipe:phase === 'jour' ? equipement(dom, res).vus : null }; }
+    aRecalculerTroncons -= dt;
+    dessinerCarte({ dom, res, reg, nuit:phase === 'nuit', selection, depart, apercu, zones:phase === 'nuit', troncons });
     majHud -= dt; if(majHud <= 0){ majHud = .15; majCompteurs(); document.documentElement.style.setProperty('--h-haut', $('haut').offsetHeight + 'px'); }
     majVues -= dt; if(majVues <= 0){ majVues = .25; majCanons(); majSalle(); if(panneauMaj) panneauMaj(); }
   }

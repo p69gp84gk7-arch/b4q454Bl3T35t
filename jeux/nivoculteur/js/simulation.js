@@ -10,7 +10,7 @@ function creerReseau(dom){
     noeuds:[{ id:'pompage', type:'pompage', x:dom.salle.x + (dom.retenue.x > dom.salle.x ? 10 : -10), y:dom.salle.y - dom.salle.h / 2 - 2 },
       ...dom.departs.map(d => ({ id:d.id, type:'elec', x:d.x, y:d.y, nom:d.nom }))],
     tranchees:[], budget:dom.budget, nuit:0, numero:0,
-    neigePiste:0, neigeTotale:0, parPiste:{}, tas:[], bilans:[],
+    neigePiste:0, neigeTotale:0, parPiste:{}, tas:[], bilans:[], troncons:new Array(dom.pistes[0].troncons).fill(0),
     retenue:{ volume:dom.retenue.max, remplissage:CONFIG.retenue.remplissageJour },
     fini:false
   };
@@ -197,7 +197,7 @@ function partSurPiste(dom, x, y, rayon){
 function regime(dom, res, meteo, u){
   const cp = CONFIG.pompage, eau = alimentes(res, 'eau'), elec = alimentes(res, 'cable'), L = longueursEau(res);
   const pomp = noeud(res, 'pompage'), altSalle = dom.alt(pomp.x, pomp.y);
-  const jour = u === null, T = jour ? null : temperature(meteo, u), vent = jour ? { force:0, dir:0 } : ventA(meteo, u);
+  const jour = u === null || !meteo, T = jour ? null : temperature(meteo, u), vent = jour ? { force:0, dir:0 } : ventA(meteo, u);
   const sec = res.retenue.volume <= 0;
   const canons = res.noeuds.filter(n => n.type === 'regard').map(n => {
     const c = n.canon, pret = eau.has(n.id) && elec.has(n.id);
@@ -258,6 +258,7 @@ function avancerNuit(dom, res, reg, dt){
     const v = c.production * h;
     N.neige += v; N.piste += v * c.part; N.hors += v * (1 - c.part);
     for(const k in c.par) N.parPiste[k] = (N.parPiste[k] || 0) + v * c.par[k];
+    if(c.part > 0 && res.troncons) res.troncons[tronconSous(dom, c.chute.x, c.chute.y)] += v * c.part;
     deposer(res, c.chute.x, c.chute.y, c.chute.rayon, v);
   }
 }
@@ -285,10 +286,42 @@ function finNuit(dom, res){
   for(const k in b.parPiste) b.parPiste[k] = Math.round(b.parPiste[k]);
   res.bilans.push(b);
   delete res.enCours;
-  if(res.nuit >= dom.nuits) res.fini = true;
+  // l'objectif est atteint : la piste est finie (on passe à la suivante) ; sinon, après la dernière nuit, c'est raté
+  if(res.neigePiste >= dom.objectif){ res.fini = true; res.reussi = true; }
+  else if(res.nuit >= dom.nuits){ res.fini = true; res.reussi = false; }
   return b;
 }
-function etoiles(dom, res){ const f = res.neigePiste / dom.objectif; return CONFIG.etoiles.filter(s => f >= s).length; }
+// Couverture : part des tronçons de 25 m de la piste qui ont reçu assez de neige (40 % de leur part de l'objectif)
+function couverture(dom, res){
+  const t = res.troncons || [], n = t.length || 1, seuil = dom.objectif / n * .4;
+  return { ratio:t.filter(v => v >= seuil).length / n, troncons:t.map(v => Math.min(1, v / seuil)), seuil };
+}
+// Équipement (le jour, sans vent) : part des tronçons où tombe la neige d'au moins un canon raccordé
+function equipement(dom, res){
+  const r = regime(dom, res, null, null), n = dom.pistes[0].troncons, vus = new Set();
+  for(const c of r.canons) if(c.pret && c.part > .3) vus.add(tronconSous(dom, c.chute.x, c.chute.y));
+  return { ratio:vus.size / n, vus };
+}
+// Résultat d'une piste terminée : points et étoiles (objectif, couverture, nuits d'avance, budget restant, neige en plus)
+function resultat(dom, res){
+  const D = CONFIG.domaines[res.taille], cv = couverture(dom, res).ratio, restantes = Math.max(0, dom.nuits - res.nuit);
+  const f = res.neigePiste / dom.objectif, budget = Math.max(0, res.budget) / D.budget;
+  const lignes = [
+    ['Neige sur la piste (' + Math.round(f * 100) + ' % de l\'objectif)', Math.round(Math.min(1.5, f) * 1000)],
+    ['Piste enneigée sur toute sa longueur (' + Math.round(cv * 100) + ' %)', Math.round(cv * 1000)],
+    ['Nuits d\'avance (' + restantes + ')', restantes * 800],
+    ['Budget restant (' + Math.round(budget * 100) + ' % du départ)', Math.round(Math.max(0, res.budget) / 100)],
+  ];
+  const points = res.reussi ? lignes.reduce((s, l) => s + l[1], 0) : 0;
+  const criteres = [
+    { ok:res.reussi, txt:'Objectif atteint' },
+    { ok:cv >= .75, txt:'Piste enneigée sur au moins 75 % de sa longueur' },
+    { ok:cv >= .9 && (restantes >= 1 || budget >= .25 || f >= 1.3), txt:'Enneigée sur 90 %, et une nuit d\'avance ou 25 % du budget restant ou 130 % de l\'objectif' },
+  ];
+  const etoiles = !res.reussi ? 0 : criteres[2].ok && criteres[1].ok ? 3 : criteres[1].ok ? 2 : 1;
+  return { lignes, points, etoiles, criteres, couverture:cv, restantes };
+}
+function etoiles(dom, res){ return resultat(dom, res).etoiles; }
 
 /* ---------- Vérifications (index.html?test, ou Node) ---------- */
 function testsSimulation(){
@@ -340,6 +373,12 @@ function testsSimulation(){
   verif('une nuit produit de la neige', b.neige > 100 && b.piste > 0 && res.tas.length > 0);
   verif('la neige sur piste rapporte', b.gain === Math.round(b.piste * 20) || Math.abs(b.gain - b.piste * 20) <= 20);
   verif('la retenue a servi puis s\'est remplie', res.retenue.volume <= dom.retenue.max);
+  verif('des tronçons de piste reçoivent de la neige', res.troncons.some(v => v > 0) && couverture(dom, res).ratio > 0);
+  verif('équipement : le canon couvre au moins un tronçon', equipement(dom, res).ratio > 0);
+  const R0 = resultat(dom, res); verif('pas d\'étoile sans objectif', R0.etoiles === 0 && !res.reussi);
+  res.neigePiste = dom.objectif; res.reussi = true; res.troncons = res.troncons.map(() => dom.objectif); 
+  const R1 = resultat(dom, res); verif('objectif + piste enneigée partout + nuits d\'avance : 3 étoiles', R1.etoiles === 3 && R1.points > 2000);
+  res.troncons = res.troncons.map((v, i) => i < res.troncons.length / 2 ? 0 : v); verif('neige seulement en bas : 1 étoile', resultat(dom, res).etoiles === 1);
   const d = demonter(res, n.id);
   verif('démonter rend de l\'argent et retire les tranchées', d.rendu > 0 && !res.tranchees.some(t => t.a === n.id || t.b === n.id));
   return { ok, ko };
