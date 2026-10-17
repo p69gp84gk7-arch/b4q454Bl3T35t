@@ -14,11 +14,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Kalam:wght@700&display=swap" rel="stylesheet">
 <style>
+:root{ --marge-haut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --marge-haut:max(env(safe-area-inset-top, 0px), 40px); } }
 :root{
   --paper:#F1EADA; --paper-2:#E6DCC4; --ink:#1F1F1F; --muted:#6B6456; --red:#D7263D; --gold:#E9B949; --green:#2E9E5B;
   --card:#FFFDF7; --line:rgba(31,31,31,.14);
   box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-top:var(--marge-haut); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){ --paper:#E9E1CE; --paper-2:#DCD0B4; }
@@ -103,7 +105,7 @@ h2{ font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:
 
 /* ---------- Jeu (tracé et course) ---------- */
 .stage-wrap{ position:fixed; inset:0; display:grid; grid-template-columns:minmax(0,1fr) clamp(170px, 24vw, 250px); gap:10px; background:var(--paper);
-  padding:calc(6px + env(safe-area-inset-top,0px)) calc(8px + env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) calc(8px + env(safe-area-inset-left,0px)); }
+  padding:calc(6px + var(--marge-haut)) calc(8px + env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) calc(8px + env(safe-area-inset-left,0px)); }
 .side{ display:flex; flex-direction:column; gap:8px; min-height:0; overflow-y:auto; padding:2px 4px 4px 0; }
 .side-top{ display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap; }
 .quit{ padding:8px 12px; background:var(--card); border:2px solid var(--ink); font-weight:800; box-shadow:2px 2px 0 var(--ink); }
@@ -157,7 +159,7 @@ h2{ font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:
 
 /* Grille de départ : météo et pneus */
 .grille{ position:absolute; inset:0; z-index:6; background:rgba(241,234,218,.96); overflow:auto; display:flex; justify-content:center;
-  padding:calc(10px + env(safe-area-inset-top,0px)) 14px calc(12px + env(safe-area-inset-bottom,0px)); }
+  padding:calc(10px + var(--marge-haut)) 14px calc(12px + env(safe-area-inset-bottom,0px)); }
 .grille-in{ width:min(640px, 100%); display:flex; flex-direction:column; gap:10px; }
 .grille-t{ margin:4px 0 0; }
 .meteo-carte{ display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--card); border:2px solid var(--ink); border-radius:14px; box-shadow:2px 3px 0 var(--ink); }
@@ -362,8 +364,8 @@ tr.me td{ font-weight:800; }
   </div>
 </main>
 
-<script src="drawrace/circuits.js?v=70"></script>
-<script src="drawrace/piste.js?v=70"></script>
+<script src="drawrace/circuits.js?v=71"></script>
+<script src="drawrace/piste.js?v=71"></script>
 <script>
 const P = window.Piste;
 // Garde-fou : page et scripts de versions différentes (ancien cache) → on recharge une fois depuis le réseau

@@ -38,17 +38,18 @@ Tester la simulation sans navigateur : concaténer `config.js`, `domaine.js` et 
 
 ## Les pistes (une piste par partie, `CONFIG.domaines`) — demande de l'utilisateur
 
-« Pas le budget pour faire plusieurs pistes en 5 jours » : comme dans la Dameuse, on choisit **une piste** à enneiger, plus ou moins grande. Noms des pistes de **Luchon-Superbagnères** (couleurs à confirmer par l'utilisateur, sauf les Marmottes bleue, le Gouron et le Bois des Coqs noirs, trouvés en ligne).
+« Pas le budget pour faire plusieurs pistes en 5 jours » : comme dans la Dameuse, on choisit **une piste** à enneiger, plus ou moins grande. Noms et couleurs des pistes de **Luchon-Superbagnères**, couleurs confirmées par l'utilisateur (Baby, piste des débutants du Téchous, est supposée verte).
 
 | Piste | Couleur | Longueur × largeur | Dénivelé | Budget | Objectif |
 |---|---|---|---|---|---|
-| Le Renard | verte | 330 × 30 m | 55–70 m | 200 k€ | 4 900 m³ en 4 nuits |
-| Les Violettes | verte | 420 × 34 m | 75–95 m | 250 k€ | 6 400 m³ en 4 nuits |
+| Baby | verte | 260 × 30 m | 35–45 m | 170 k€ | 4 000 m³ en 4 nuits |
+| Le Renard | bleue | 330 × 30 m | 80–95 m | 200 k€ | 4 900 m³ en 4 nuits |
 | Le Lac | bleue | 500 × 34 m | 120–140 m | 300 k€ | 10 500 m³ en 5 nuits |
 | Les Marmottes | bleue | 680 × 38 m | 170–200 m | 400 k€ | 14 000 m³ en 5 nuits |
 | Hount Estrete | rouge | 520 × 32 m | 170–190 m | 330 k€ | 11 500 m³ en 5 nuits |
 | Lafforgue | rouge | 620 × 34 m | 200–230 m | 380 k€ | 13 000 m³ en 5 nuits |
 | Le Gouron | noire | 480 × 30 m | 200–230 m | 330 k€ | 11 000 m³ en 5 nuits |
+| Les Violettes | noire | 420 × 32 m | 165–185 m | 300 k€ | 10 700 m³ en 5 nuits |
 | Le Bois des Coqs | noire | 600 × 32 m | 250–280 m | 400 k€ | 15 000 m³ en 6 nuits |
 
 - `creerDomaine(id, graine)` : la carte fait la largeur de la piste + 230 m ; la piste serpente du haut vers le front de neige (95 m presque plats en bas, salle des machines et retenue) ; la forme change à chaque partie (graine), pas les dimensions. 1 départ électrique (2 au-delà de 450 m), forêt autour. Bas du domaine vers 1 440 m.
@@ -61,6 +62,7 @@ Tester la simulation sans navigateur : concaténer `config.js`, `domaine.js` et 
 - **Haut** : ← DesDés, nom du domaine, ☰ Menu ; 4 compteurs : Budget, Neige sur les pistes (barre), Nuit (ou l'heure la nuit), **Météo ▾** (température et vent ; touché : la prévision détaillée, la température en haut, la retenue).
 - **Bas** : une seule rangée — 🔧 Construire (ouvre un tiroir avec les outils et ↶ Annuler), 🗺 Canons, 🏭 Salle, 🌙 Nuit (×1 / ×3 / ×10 et la barre de la nuit pendant la nuit). L'outil en main est rappelé dans une puce bleue (avec ✕ pour le ranger). Un seul message à la fois sur téléphone, juste au-dessus des boutons.
 - **☰ Menu** : Météo et infos, Voir toute la carte, Comment jouer, Domaines (changer de partie).
+- **Marge du haut** : sur téléphone, au moins 40 px en haut de l'écran (`--marge-haut`), pour que les compteurs ne passent pas sous la barre d'état floutée.
 - **Carte** : glisser un doigt (avec élan au lâcher), pincer à deux doigts (zoom autour des doigts, et le milieu des doigts entraîne la carte), molette ; boutons ＋ − ⌖ à droite. Un toucher compte comme une action s'il bouge de moins de 12 px.
 
 ## Construction (le jour)

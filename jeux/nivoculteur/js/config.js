@@ -90,13 +90,14 @@ const CONFIG = {
   // --- Les pistes à enneiger (noms des pistes de Luchon-Superbagnères) : une piste par partie ---
   // longueur, largeur, denivele : m · budget : € au départ · nuits · objectif : m³ sur la piste · retenue : m³
   domaines: {
-    renard:       { nom: 'Le Renard', couleur: 'verte', longueur: 330, largeur: 30, denivele: [55, 70], budget: 200000, nuits: 4, objectif: 4900, retenue: 6000 },
-    violettes:    { nom: 'Les Violettes', couleur: 'verte', longueur: 420, largeur: 34, denivele: [75, 95], budget: 250000, nuits: 4, objectif: 6400, retenue: 7000 },
+    baby:         { nom: 'Baby', couleur: 'verte', longueur: 260, largeur: 30, denivele: [35, 45], budget: 170000, nuits: 4, objectif: 4000, retenue: 5000 },
+    renard:       { nom: 'Le Renard', couleur: 'bleue', longueur: 330, largeur: 30, denivele: [80, 95], budget: 200000, nuits: 4, objectif: 4900, retenue: 6000 },
     lac:          { nom: 'Le Lac', couleur: 'bleue', longueur: 500, largeur: 34, denivele: [120, 140], budget: 300000, nuits: 5, objectif: 10500, retenue: 8000 },
     marmottes:    { nom: 'Les Marmottes', couleur: 'bleue', longueur: 680, largeur: 38, denivele: [170, 200], budget: 400000, nuits: 5, objectif: 14000, retenue: 10000 },
     hountestrete: { nom: 'Hount Estrete', couleur: 'rouge', longueur: 520, largeur: 32, denivele: [170, 190], budget: 330000, nuits: 5, objectif: 11500, retenue: 8000 },
     lafforgue:    { nom: 'Lafforgue', couleur: 'rouge', longueur: 620, largeur: 34, denivele: [200, 230], budget: 380000, nuits: 5, objectif: 13000, retenue: 9000 },
     gouron:       { nom: 'Le Gouron', couleur: 'noire', longueur: 480, largeur: 30, denivele: [200, 230], budget: 330000, nuits: 5, objectif: 11000, retenue: 8000 },
+    violettes:    { nom: 'Les Violettes', couleur: 'noire', longueur: 420, largeur: 32, denivele: [165, 185], budget: 300000, nuits: 5, objectif: 10700, retenue: 7000 },
     boiscoqs:     { nom: 'Le Bois des Coqs', couleur: 'noire', longueur: 600, largeur: 32, denivele: [250, 280], budget: 400000, nuits: 6, objectif: 15000, retenue: 9000 }
   },
   etoiles: [1, 1.25, 1.5]   // part de l'objectif pour 1, 2 et 3 étoiles

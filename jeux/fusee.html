@@ -14,6 +14,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
+:root{ --marge-haut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --marge-haut:max(env(safe-area-inset-top, 0px), 40px); } }
 :root{
   --nuit:#070B1F; --nuit-2:#0F1638; --carte:rgba(22,30,72,.86); --ligne:rgba(150,170,255,.18);
   --texte:#EAF0FF; --doux:#9FAAD6; --rose:#FF4FA3; --cyan:#3FE0FF; --or:#FFD54F; --vert:#5BE38E;
@@ -27,7 +29,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 #cv{ position:fixed; left:0; top:0; width:100vw; height:100vh; height:100lvh; display:block; touch-action:none; }
 
 /* Pendant la partie */
-.hud{ position:fixed; left:0; right:0; top:0; padding:calc(8px + env(safe-area-inset-top, 0px)) 12px 0; display:flex; align-items:center; gap:10px; pointer-events:none; z-index:3; }
+.hud{ position:fixed; left:0; right:0; top:0; padding:calc(8px + var(--marge-haut)) 12px 0; display:flex; align-items:center; gap:10px; pointer-events:none; z-index:3; }
 .hud[hidden]{ display:none; }
 .hud .score{ font-family:"Audiowide", sans-serif; font-size:1.5rem; letter-spacing:.04em; text-shadow:0 0 12px rgba(63,224,255,.6); }
 .hud .mult{ font-family:"Audiowide", sans-serif; font-size:1rem; color:var(--or); text-shadow:0 0 10px rgba(255,213,79,.6); }
@@ -41,7 +43,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 
 /* Écrans */
 .ecran{ position:fixed; inset:0; z-index:6; display:flex; align-items:flex-start; justify-content:center; overflow:auto;
-  padding:calc(16px + env(safe-area-inset-top, 0px)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(7,11,31,.72); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+  padding:calc(16px + var(--marge-haut)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(7,11,31,.72); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
 .ecran[hidden]{ display:none; }
 .boite{ width:min(100%, 520px); display:flex; flex-direction:column; gap:14px; }
 .tete{ display:flex; align-items:center; gap:10px; }

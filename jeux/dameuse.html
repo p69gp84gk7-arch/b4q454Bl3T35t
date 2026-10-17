@@ -14,6 +14,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
+:root{ --marge-haut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --marge-haut:max(env(safe-area-inset-top, 0px), 40px); } }
 :root{
   --nuit:#0A1120; --nuit-2:#121C33; --carte:rgba(18,28,51,.9); --ligne:rgba(170,190,230,.2);
   --texte:#EEF3FB; --doux:#9EADC8; --ambre:#FFB020; --neige:#E9EFF8; --rouge:#E04A3A; --vert:#57C98A; --bleu:#4D8DF0;
@@ -29,7 +31,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 
 /* Pendant la partie */
 .hud{ position:fixed; left:0; right:0; top:0; z-index:3; pointer-events:none;
-  padding:calc(8px + env(safe-area-inset-top, 0px)) 10px 0; display:flex; align-items:center; gap:8px; }
+  padding:calc(8px + var(--marge-haut)) 10px 0; display:flex; align-items:center; gap:8px; }
 .hud[hidden]{ display:none; }
 .pastille{ background:rgba(10,17,32,.72); border:1px solid var(--ligne); border-radius:12px; padding:4px 9px; font-family:"Saira Condensed", sans-serif; font-weight:700; font-size:1.05rem; line-height:1.15; white-space:nowrap; }
 .pastille small{ display:block; font-size:.62rem; font-weight:500; color:var(--doux); text-transform:uppercase; letter-spacing:.08em; }
@@ -37,7 +39,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 .carbu i{ display:block; height:6px; border-radius:3px; background:rgba(255,255,255,.12); margin-top:3px; overflow:hidden; }
 .carbu i b{ display:block; height:100%; width:100%; background:var(--vert); }
 .hud .pause{ margin-left:auto; pointer-events:auto; width:40px; height:40px; border-radius:12px; border:1px solid var(--ligne); background:rgba(10,17,32,.72); font-size:1.05rem; }
-#mini{ position:fixed; right:10px; top:calc(58px + env(safe-area-inset-top, 0px)); z-index:3; border-radius:8px; border:1px solid var(--ligne); background:rgba(10,17,32,.6); pointer-events:none; }
+#mini{ position:fixed; right:10px; top:calc(58px + var(--marge-haut)); z-index:3; border-radius:8px; border:1px solid var(--ligne); background:rgba(10,17,32,.6); pointer-events:none; }
 #mini[hidden]{ display:none; }
 #mini{ pointer-events:auto; cursor:pointer; }
 .miniEt{ position:fixed; right:10px; z-index:3; font-family:"Saira Condensed", sans-serif; font-weight:700; font-size:.68rem; letter-spacing:.06em; color:var(--doux); background:rgba(10,17,32,.72); border:1px solid var(--ligne); border-radius:7px; padding:1px 6px; pointer-events:none; }
@@ -49,7 +51,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 .legende span{ display:flex; align-items:center; gap:7px; color:var(--doux); }
 .legende i{ width:16px; height:12px; border-radius:3px; flex:none; border:1px solid rgba(255,255,255,.25); }
 .legende b{ color:var(--texte); font-family:"Saira Condensed", sans-serif; font-size:1rem; }
-.conseil{ position:fixed; left:50%; transform:translateX(-50%); top:calc(60px + env(safe-area-inset-top, 0px)); z-index:3; max-width:min(78vw, 420px);
+.conseil{ position:fixed; left:50%; transform:translateX(-50%); top:calc(60px + var(--marge-haut)); z-index:3; max-width:min(78vw, 420px);
   background:rgba(10,17,32,.85); border:1px solid rgba(255,176,32,.45); color:var(--texte); border-radius:12px; padding:7px 11px; font-size:.85rem; line-height:1.3; text-align:center; pointer-events:none; transition:opacity .3s; }
 .conseil[hidden]{ display:none; }
 .outils{ position:fixed; left:10px; top:50%; transform:translateY(-35%); z-index:3; display:flex; flex-direction:column; gap:12px; align-items:center; }
@@ -76,7 +78,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 
 /* Écrans */
 .ecran{ position:fixed; inset:0; z-index:6; display:flex; align-items:flex-start; justify-content:center; overflow:auto;
-  padding:calc(16px + env(safe-area-inset-top, 0px)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(6,10,20,.8); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+  padding:calc(16px + var(--marge-haut)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(6,10,20,.8); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
 .ecran[hidden]{ display:none; }
 .boite{ width:min(100%, 540px); display:flex; flex-direction:column; gap:14px; }
 .tete{ display:flex; align-items:center; gap:10px; }
@@ -225,17 +227,18 @@ const angle = a => { while(a > Math.PI) a -= 2 * Math.PI; while(a < -Math.PI) a 
 const COULEURS = { verte:'#2E9E5B', bleue:'#2C6FD6', rouge:'#D63A2F', noire:'#16181D' };
 // L : longueur (m), w : largeur (m), murs : { f : position (part de la longueur), l : longueur (m), s : pente }
 const PISTES = [
-  { id:'renard', n:'Le Renard', c:'verte', L:150, w:24, seed:11, courbe:.3, bosses:.45, manques:1, piles:2, murs:[] },
-  { id:'violettes', n:'Les Violettes', c:'verte', L:170, w:22, seed:23, courbe:1, bosses:.55, manques:2, piles:2, murs:[] },
+  { id:'baby', n:'Baby', c:'verte', L:150, w:24, seed:11, courbe:.3, bosses:.45, manques:1, piles:2, murs:[] },
+  { id:'renard', n:'Le Renard', c:'bleue', L:175, w:24, seed:23, courbe:1, bosses:.65, manques:2, piles:2, murs:[] },
   { id:'lac', n:'Le Lac', c:'bleue', L:190, w:27, seed:37, courbe:.6, bosses:.8, manques:2, piles:3, champ:true, murs:[] },
   { id:'marmottes', n:'Les Marmottes', c:'bleue', L:205, w:30, seed:41, courbe:.8, bosses:.9, manques:3, piles:4, murs:[{ f:.5, l:26, s:.34 }] },
   { id:'hountestrete', n:'Hount Estrete', c:'rouge', L:215, w:28, seed:53, courbe:.7, bosses:1.05, manques:3, piles:4, murs:[{ f:.38, l:38, s:.46 }] },
   { id:'lafforgue', n:'Lafforgue', c:'rouge', L:230, w:30, seed:67, courbe:1, bosses:1.15, manques:4, piles:5, champ:true, murs:[{ f:.62, l:34, s:.48 }] },
   { id:'gouron', n:'Le Gouron', c:'noire', L:240, w:29, seed:71, courbe:.6, bosses:1.3, manques:4, piles:5, murs:[{ f:.22, l:42, s:.56 }, { f:.66, l:36, s:.52 }] },
+  { id:'violettes', n:'Les Violettes', c:'noire', L:225, w:28, seed:97, courbe:.8, bosses:1.4, manques:4, piles:5, champ:true, murs:[{ f:.5, l:46, s:.55 }] },
   { id:'boiscoqs', n:'Le Bois des Coqs', c:'noire', L:260, w:32, seed:89, courbe:.9, bosses:1.5, manques:5, piles:6, champ:true, murs:[{ f:.42, l:64, s:.6 }] },
 ];
 // Noms des pistes de Luchon-Superbagnères (secteurs Téchous, Lac et Céciré)
-const NOMS_DEFI = ['Les Sarrats', 'Les Biches', 'Les Gentianes', 'Le Tétras', 'Les Isards', 'La Traversée des Marmottes', 'Baby'];
+const NOMS_DEFI = ['Les Sarrats', 'Les Biches', 'Les Gentianes', 'Le Tétras', 'Les Isards', 'La Traversée des Marmottes', 'Le Céciré'];
 function defiDuJour(){
   const d = new Date(), cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const seed = d.getFullYear() * 1000 + Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5), R = alea(seed);
@@ -801,7 +804,7 @@ function preparerMini(){
   const c = $('mini'); miniEch = Math.min(170 / T.H, 64 / T.W);
   c.width = Math.round(T.W * miniEch * 2); c.height = Math.round(T.H * miniEch * 2);
   c.style.width = c.width / 2 + 'px'; c.style.height = c.height / 2 + 'px';
-  $('miniEt').style.top = `calc(${62 + c.height / 2}px + env(safe-area-inset-top, 0px))`;
+  $('miniEt').style.top = `calc(${62 + c.height / 2}px + var(--marge-haut))`;
   miniImg = document.createElement('canvas'); miniImg.width = T.W; miniImg.height = T.H;
 }
 function dessinerMini(P){

@@ -14,6 +14,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Saira+Condensed:wght@600;800&display=swap" rel="stylesheet">
 <style>
+:root{ --marge-haut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --marge-haut:max(env(safe-area-inset-top, 0px), 40px); } }
 :root{
   --nuit:#0B1426; --nuit-2:#13213D; --texte:#EAF2FF; --doux:rgba(234,242,255,.7);
   --verre:rgba(11,20,38,.84); --bord:rgba(234,242,255,.16);
@@ -30,7 +32,7 @@ button:disabled{ opacity:.4; cursor:default; }
 
 /* ---------- Haut : titre et compteurs ---------- */
 .haut{ position:fixed; top:0; left:0; right:0; z-index:5; pointer-events:none;
-  padding:calc(env(safe-area-inset-top, 0px) + 8px) 10px 14px; background:linear-gradient(rgba(5,11,28,.88), rgba(5,11,28,0)); }
+  padding:calc(var(--marge-haut) + 8px) 10px 14px; background:linear-gradient(rgba(5,11,28,.88), rgba(5,11,28,0)); }
 .haut > *{ pointer-events:auto; }
 .ligne{ display:flex; align-items:center; gap:8px; }
 .home{ color:var(--doux); text-decoration:none; font-weight:600; font-size:.9rem; padding:7px 10px; border-radius:10px; background:var(--verre); border:1px solid var(--bord); white-space:nowrap; }
@@ -108,7 +110,7 @@ table.bilan .moins{ color:#FF8A96; } table.bilan .plus{ color:#7FE0A8; }
 
 /* ---------- Écrans : vue des canons, salle des machines, menu ---------- */
 .ecran{ position:fixed; inset:0; z-index:9; background:rgba(6,12,26,.97); display:flex; flex-direction:column; overflow:hidden;
-  padding:calc(env(safe-area-inset-top, 0px) + 10px) 10px calc(env(safe-area-inset-bottom, 0px) + 10px); }
+  padding:calc(var(--marge-haut) + 10px) 10px calc(env(safe-area-inset-bottom, 0px) + 10px); }
 .ecran .tete{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .ecran .tete h2{ margin:0; font-size:1.15rem; flex:1; min-width:150px; }
 .ecran .corps{ flex:1; overflow:auto; margin-top:8px; position:relative; }
@@ -238,10 +240,10 @@ table.bilan .moins{ color:#FF8A96; } table.bilan .plus{ color:#7FE0A8; }
   </div>
 </section>
 
-<script src="js/config.js?v=70"></script>
-<script src="js/domaine.js?v=70"></script>
-<script src="js/simulation.js?v=70"></script>
-<script src="js/carte.js?v=70"></script>
-<script src="js/jeu.js?v=70"></script>
+<script src="js/config.js?v=71"></script>
+<script src="js/domaine.js?v=71"></script>
+<script src="js/simulation.js?v=71"></script>
+<script src="js/carte.js?v=71"></script>
+<script src="js/jeu.js?v=71"></script>
 </body>
 </html>

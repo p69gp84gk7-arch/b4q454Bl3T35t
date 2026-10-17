@@ -298,7 +298,7 @@ function testsSimulation(){
     const d1 = creerDomaine(t, 1234), d2 = creerDomaine(t, 1234);
     verif(`${t} : même graine = même domaine`, d1.nom === d2.nom && d1.pistes.length === d2.pistes.length && Math.abs(d1.alt(50, 60) - d2.alt(50, 60)) < 1e-9);
     verif(`${t} : des pistes`, d1.pistes.length >= 1 && d1.pistes.every(p => p.points.length > 10));
-    verif(`${t} : le haut est plus haut que le bas`, d1.alt(d1.W / 2, 30) > d1.alt(d1.W / 2, d1.front) + 40);
+    verif(`${t} : le haut est plus haut que le bas`, d1.alt(d1.W / 2, 30) > d1.alt(d1.W / 2, d1.front) + 25);
     verif(`${t} : la salle n'est pas sur la retenue`, Math.hypot(d1.salle.x - d1.retenue.x, d1.salle.y - d1.retenue.y) > d1.retenue.r + 10);
   }
   const dom = creerDomaine('marmottes', 42), res = creerReseau(dom);
