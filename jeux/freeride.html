@@ -60,6 +60,12 @@ h1 span{ color:var(--orange); }
 .engins{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .engins button{ border:2px solid var(--ligne); background:#fff; border-radius:14px; padding:10px; font-weight:800; font-size:1rem; }
 .engins button.actif{ border-color:var(--orange); background:#FFF1EA; }
+.tenue{ display:flex; gap:12px; align-items:center; margin-top:10px; }
+.tenue canvas{ width:90px; height:90px; flex:none; border-radius:14px; background:linear-gradient(#F6F9FC, #E3ECF6); border:1px solid var(--ligne); }
+.tenue small{ display:block; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--doux); margin:2px 0 4px; }
+.pastilles{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+.pastilles button{ width:30px; height:30px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1.5px var(--ligne); padding:0; }
+.pastilles button.actif{ box-shadow:0 0 0 2.5px var(--orange); }
 .ligne{ width:100%; display:flex; align-items:center; gap:12px; text-align:left; border:1px solid var(--ligne); background:#fff; border-radius:14px; padding:10px 12px; margin-top:6px; }
 .ligne .ico{ width:42px; height:42px; border-radius:12px; flex:none; display:grid; place-items:center; font-size:1.35rem; }
 .ligne b{ display:block; }
@@ -109,6 +115,13 @@ h1 span{ color:var(--orange); }
     <div class="carte">
       <h2>Votre engin</h2>
       <div class="engins" id="engins"><button data-e="ski">⛷️ Ski</button><button data-e="board">🏂 Snowboard</button></div>
+      <div class="tenue">
+        <canvas id="apercu" width="180" height="180"></canvas>
+        <div>
+          <small>Tenue</small><div class="pastilles" id="choixTenue"></div>
+          <small id="nomPlanches">Skis</small><div class="pastilles" id="choixPlanche"></div>
+        </div>
+      </div>
     </div>
     <div class="carte">
       <h2>Défi du jour</h2>
@@ -642,71 +655,101 @@ function dessinerPorte(pt){
   if(pt.etat === 1){ g.fillStyle = 'rgba(46,158,91,.8)'; g.font = '700 1.2px sans-serif'; g.textAlign = 'center'; g.fillText('✓', pt.x, pt.y - .2); }
   else if(pt.etat === 0){ g.strokeStyle = 'rgba(19,35,58,.15)'; g.lineWidth = .08; g.setLineDash([.4, .4]); g.beginPath(); g.moveTo(pt.x - pt.w / 2, pt.y); g.lineTo(pt.x + pt.w / 2, pt.y); g.stroke(); g.setLineDash([]); }
 }
+// Tenues et skis au choix (gardés dans freeride-tenue)
+const TENUES = [
+  { n:'Orange', veste:'#FF6A2B', pantalon:'#1F6FE0', casque:'#F2F5F9' },
+  { n:'Glacier', veste:'#2BB3E8', pantalon:'#13233A', casque:'#FFFFFF' },
+  { n:'Forêt', veste:'#2E8B57', pantalon:'#3A3A3A', casque:'#E8E2C8' },
+  { n:'Rouge', veste:'#D7263D', pantalon:'#F2F5F9', casque:'#13233A' },
+  { n:'Violet', veste:'#8E44AD', pantalon:'#F2A900', casque:'#F2F5F9' },
+  { n:'Nuit', veste:'#1B1E24', pantalon:'#5A6B85', casque:'#FF6A2B' },
+];
+const PLANCHES = [
+  { n:'Noir', c:'#13233A', b:'#FF6A2B' }, { n:'Blanc', c:'#F7F9FC', b:'#1F6FE0' }, { n:'Jaune', c:'#F2C230', b:'#13233A' },
+  { n:'Rouge', c:'#D7263D', b:'#F7F9FC' }, { n:'Bleu', c:'#1F6FE0', b:'#F2C230' }, { n:'Vert', c:'#2EB872', b:'#13233A' },
+];
+let tenue = lire('freeride-tenue', { t:0, s:0 });
+if(!TENUES[tenue.t]) tenue.t = 0; if(!PLANCHES[tenue.s]) tenue.s = 0;
 // Le skieur en 3D (de petites pièces projetées en vue plongeante) : on voit les flips, les grabs, les 360
 // Repère du corps : X sur le côté, Y vers l'avant (sens de la glisse), Z vers le haut (m)
-function poseSkieur(F, u, chute){
-  const S = [], board = engin === 'board';
-  const grab = F && F.grab ? Math.sin(Math.min(1, u * 1.6) * Math.PI / 2) * (u > .8 ? (1 - u) / .2 : 1) : 0;   // se ramasser puis se détendre
-  const mute = F && F.k === 'bg', indy = F && F.k === 'bd';
-  const pied = .08 + grab * .32, genouZ = .45 + grab * .2, hanche = .86 - grab * .12;
-  const seg = (a, b, l, c) => S.push({ a, b, l, c });
-  const VESTE = '#FF6A2B', PANT = '#1F6FE0', NOIR = '#13233A', GANT = '#20283A';
+function poseSkieur(F, u, eng = engin){
+  const S = [], board = eng === 'board', T = TENUES[tenue.t], K = PLANCHES[tenue.s];
+  // grab : il se ramasse (genoux à la poitrine), attrape, puis se détend avant la réception
+  const c = F && F.grab ? Math.min(1, u / .3, (1 - u) / .25) : 0;
+  const mute = c > 0 && F.k === 'bg', indy = c > 0 && F.k === 'bd';
+  const pied = .08 + .5 * c, hanche = .86 - .12 * c, penche = .22 * c;
+  const seg = (a, b, l, col) => S.push({ a, b, l, c:col });
+  const cou = [0, (board ? 0 : .06) + penche, hanche + .52 - .1 * c];
+  let mainA = null, mainB = null;                    // mains qui attrapent (gauche, droite)
   if(!board){
-    // skis : au mute grab, ils se croisent devant (pointes en X)
+    // skis : au mute grab ils se croisent en X juste devant les chaussures ; la main gauche attrape le croisement
+    const alpha = mute ? .8 * c : 0, croix = alpha ? .13 / Math.sin(alpha) : 0;
     for(const s of [-1, 1]){
-      const x = s * .13, croise = mute ? -s * .62 * grab : 0, ca = Math.cos(croise), sa = Math.sin(croise);
-      const rot = (X, Y) => [x + (X - x) * ca - Y * sa, (X - x) * sa + Y * ca];
-      const [tx, ty] = rot(x, -.72), [px, py] = rot(x, .85);
-      seg([tx, ty, pied - .05], [px, py, pied + .05], .09, NOIR);
-      seg([x, .02, pied], [x * 1.1, .2 + grab * .15, genouZ], .14, PANT);
-      seg([x * 1.1, .2 + grab * .15, genouZ], [x * .8, 0, hanche], .16, PANT);
+      const x = s * .13;
+      const pt = Y => [x - s * Y * Math.sin(alpha), Y * Math.cos(alpha), pied];   // la spatule part vers l'autre ski
+      const queue = pt(-.72), spatule = pt(.85); spatule[2] += .08;
+      seg(queue, spatule, .09, K.c);
+      seg([queue[0] + (spatule[0] - queue[0]) * .1, queue[1] + (spatule[1] - queue[1]) * .1, pied + .005], [queue[0] + (spatule[0] - queue[0]) * .22, queue[1] + (spatule[1] - queue[1]) * .22, pied + .01], .095, K.b);
+      const genou = [x * 1.15, .22 + .12 * c, .45 + .42 * c];
+      seg([x, 0, pied + .05], genou, .14, T.pantalon);
+      seg(genou, [x * .8, -.04 * c, hanche], .16, T.pantalon);
+      if(indy && s === 1) mainB = [x + .07, .05, pied + .03];                       // indy : main droite sous la chaussure, côté extérieur
     }
+    if(mute) mainA = [0, croix * Math.cos(alpha), pied + .04];
   } else {
-    seg([0, -.72, pied - .02], [0, .72, pied - .02], .3, NOIR);
-    for(const s of [-1, 1]){ seg([0, s * .24, pied], [.12, s * .26, genouZ], .14, PANT); seg([.12, s * .26, genouZ], [0, s * .1, hanche], .16, PANT); }
+    // planche dans l'axe de la glisse, le rider de profil (face au côté +X) ; il attrape le bord des orteils entre les fixations
+    seg([0, -.74, pied - .02], [0, .74, pied - .02], .3, K.c);
+    seg([0, -.74, pied - .01], [0, -.6, pied - .01], .31, K.b); seg([0, .6, pied - .01], [0, .74, pied - .01], .31, K.b);
+    for(const s of [-1, 1]){ const genou = [.16 + .1 * c, s * .25, .45 + .4 * c]; seg([0, s * .24, pied + .04], genou, .14, T.pantalon); seg(genou, [-.02, s * .1, hanche], .16, T.pantalon); }
+    if(mute) mainB = [.16, .06, pied + .02];            // main avant
+    if(indy) mainA = [.16, -.06, pied + .02];           // main arrière
+    cou[0] += penche; cou[1] = 0;
   }
-  // buste, tête, bras
-  const cou = [0, board ? 0 : .08, hanche + .55 - grab * .1];
-  seg([0, 0, hanche], cou, .34, VESTE);
-  const tete = [cou[0], cou[1] + .02, cou[2] + .18];
+  seg([0, -.03 * c, hanche], cou, .34, T.veste);
   for(const s of [-1, 1]){
-    const epaule = board ? [0, s * .2, cou[2] - .04] : [s * .2, cou[1], cou[2] - .04];
-    let main = board ? [.18, s * .48, hanche + .15] : [s * .34, .3, hanche + .12];
-    if(mute && s === 1) main = [.05, .55, pied + .1];               // la main attrape les skis croisés
-    if(indy && s === -1) main = board ? [.1, .1, pied + .08] : [-.13, .25, pied + .1];
-    seg(epaule, main, .1, VESTE);
-    S.push({ point:main, r:.07, c:GANT });
-    if(!board && !(mute && s === 1) && !(indy && s === -1)) seg(main, [s * .42, -.32, .02], .03, '#5A6B85');
+    const epaule = board ? [cou[0], s * .2, cou[2] - .04] : [s * .2, cou[1], cou[2] - .04];
+    const cible = s < 0 ? mainA : mainB;
+    const main = cible || (board ? [.15, s * .5, hanche + .18] : [s * .34, .3 + penche, hanche + .12]);
+    // le coude plie quand la main descend attraper
+    const coude = cible ? [(epaule[0] + main[0]) / 2 + (board ? .14 : s * .14), (epaule[1] + main[1]) / 2 + .05, (epaule[2] + main[2]) / 2 + .05] : null;
+    if(coude){ seg(epaule, coude, .1, T.veste); seg(coude, main, .095, T.veste); } else seg(epaule, main, .1, T.veste);
+    S.push({ point:main, r:.07, c:'#20283A' });
+    if(!board && !cible) seg(main, [s * .42, -.32, .02], .03, '#5A6B85');
   }
-  S.push({ point:tete, r:.15, c:'#F2F5F9', visiere:true });
+  S.push({ point:[cou[0], cou[1] + .02, cou[2] + .18], r:.15, c:T.casque, visiere:true });
   return S;
+}
+// Dessine un personnage (pose, flip, 360, direction) à l'origine du contexte, en mètres
+function dessinerPersonnage(c, pose, th, flip, tourne, ech){
+  const cf = Math.cos(flip), sf = Math.sin(flip), cs = Math.cos(tourne), ss = Math.sin(tourne);
+  const fx = Math.sin(th), fy = Math.cos(th), rx = -Math.cos(th), ry = Math.sin(th), C = .8;
+  const proj = ([X, Y, Z]) => {
+    const y1 = Y * cf + (Z - C) * sf, z1 = C - Y * sf + (Z - C) * cf;            // flip autour de l'axe des épaules
+    const x2 = X * cs - y1 * ss, y2 = X * ss + y1 * cs;                        // 360 autour de la verticale
+    const wx = x2 * rx + y2 * fx, wy = x2 * ry + y2 * fy;
+    return [wx, wy - z1 * .62, wy * .5 + z1];                                    // vue plongeante ; profondeur pour l'ordre de dessin
+  };
+  const pieces = pose.map(p => {
+    if(p.point){ const q = proj(p.point); return { ...p, q, d:q[2] + .05 }; }
+    const a = proj(p.a), b = proj(p.b); return { ...p, qa:a, qb:b, d:(a[2] + b[2]) / 2 };
+  }).sort((a, b) => a.d - b.d);
+  c.save(); c.scale(ech, ech); c.lineCap = 'round';
+  for(const p of pieces){
+    if(p.point){
+      c.fillStyle = p.c; c.beginPath(); c.arc(p.q[0], p.q[1], p.r, 0, 6.29); c.fill();
+      if(p.visiere){ c.fillStyle = '#13233A'; c.beginPath(); c.arc(p.q[0], p.q[1], p.r * .62, -.2, Math.PI + .2); c.fill(); c.strokeStyle = 'rgba(19,35,58,.6)'; c.lineWidth = .025; c.beginPath(); c.arc(p.q[0], p.q[1], p.r, 0, 6.29); c.stroke(); }
+    } else { c.strokeStyle = p.c; c.lineWidth = p.l; c.beginPath(); c.moveTo(p.qa[0], p.qa[1]); c.lineTo(p.qb[0], p.qb[1]); c.stroke(); }
+  }
+  c.restore();
 }
 function dessinerSkieur(P, t){
   const z = P.z, ombre = .3 + z * .45;
-  g.fillStyle = `rgba(60,85,130,${clamp(.32 - z * .03, .1, .32)})`; g.beginPath(); g.ellipse(P.x + ombre, P.y + ombre * .6, 1, .6, -P.th, 0, 6.29); g.fill();
+  g.fillStyle = `rgba(60,85,130,${clamp(.32 - z * .03, .1, .32)})`; g.beginPath(); g.ellipse(P.x + ombre, P.y + ombre * .6, .75, .45, -P.th, 0, 6.29); g.fill();
   const F = P.chute > 0 ? null : P.fig && FIGURES[P.fig.k], u = F ? clamp(P.fig.t / F.dur, 0, 1) : 0;
-  // les rotations : flip autour de l'axe des épaules, 360 autour de la verticale, puis la direction de la glisse
   const flip = P.chute > 0 ? P.chute * 7 : F && F.flip ? F.flip * u * 2 * Math.PI : 0;
-  const tourne = P.chute > 0 ? P.chute * 3 : (P.spin || 0), cf = Math.cos(flip), sf = Math.sin(flip), cs = Math.cos(tourne), ss = Math.sin(tourne);
-  const fx = Math.sin(P.th), fy = Math.cos(P.th), rx = -Math.cos(P.th), ry = Math.sin(P.th), C = .8;
-  const proj = ([X, Y, Z]) => {
-    let y1 = Y * cf + (Z - C) * sf, z1 = C - Y * sf + (Z - C) * cf;            // flip (arrière si F.flip < 0)
-    const x2 = X * cs - y1 * ss, y2 = X * ss + y1 * cs;                        // 360
-    const wx = x2 * rx + y2 * fx, wy = x2 * ry + y2 * fy;
-    return [wx, wy - z1 * .62, wy * .5 + z1];                                    // vue plongeante : le haut monte à l'écran ; profondeur
-  };
-  const pieces = poseSkieur(F, u, P.chute > 0).map(p => {
-    if(p.point){ const q = proj(p.point); return { ...p, q, d:q[2] }; }
-    const a = proj(p.a), b = proj(p.b); return { ...p, qa:a, qb:b, d:(a[2] + b[2]) / 2 };
-  }).sort((a, b) => a.d - b.d);
-  g.save(); g.translate(P.x, P.y - z * .55); const ech = 2.3 * (1 + z * .04); g.scale(ech, ech);
-  g.lineCap = 'round';
-  for(const p of pieces){
-    if(p.point){
-      g.fillStyle = p.c; g.beginPath(); g.arc(p.q[0], p.q[1], p.r, 0, 6.29); g.fill();
-      if(p.visiere){ g.fillStyle = '#13233A'; g.beginPath(); g.arc(p.q[0], p.q[1], p.r * .62, -.2, Math.PI + .2); g.fill(); g.strokeStyle = 'rgba(19,35,58,.6)'; g.lineWidth = .025; g.beginPath(); g.arc(p.q[0], p.q[1], p.r, 0, 6.29); g.stroke(); }
-    } else { g.strokeStyle = p.c; g.lineWidth = p.l; g.beginPath(); g.moveTo(p.qa[0], p.qa[1]); g.lineTo(p.qb[0], p.qb[1]); g.stroke(); }
-  }
+  const tourne = P.chute > 0 ? P.chute * 3 : (P.spin || 0);
+  g.save(); g.translate(P.x, P.y - z * .55);
+  dessinerPersonnage(g, poseSkieur(F, u), P.th, flip, tourne, 1.55 * (1 + z * .04));
   g.restore();
 }
 function dessiner(P, dt){
@@ -853,6 +896,9 @@ const etoilesTxt = n => `<span class="et">${'★'.repeat(n)}${'☆'.repeat(3 - n
 function menu(){
   const rec = lire('freeride-records', {}), ds = rec.descentes || {}, sl = rec.slalom || {}, inf = rec.infini;
   document.querySelectorAll('#engins button').forEach(b => b.classList.toggle('actif', b.dataset.e === engin));
+  $('choixTenue').innerHTML = TENUES.map((x, i) => `<button data-t="${i}" title="${x.n}" class="${i === tenue.t ? 'actif' : ''}" style="background:linear-gradient(135deg, ${x.veste} 0 55%, ${x.pantalon} 55%)"></button>`).join('');
+  $('choixPlanche').innerHTML = PLANCHES.map((x, i) => `<button data-s="${i}" title="${x.n}" class="${i === tenue.s ? 'actif' : ''}" style="background:linear-gradient(135deg, ${x.c} 0 65%, ${x.b} 65%)"></button>`).join('');
+  $('nomPlanches').textContent = engin === 'ski' ? 'Skis' : 'Planche';
   const d = defiDuJour(), rd = ds[d.id];
   $('lDefi').innerHTML = `<button class="ligne vedette" data-defi="1"><span class="ico" style="background:#FFE3D6">📅</span><span><b>${esc(d.d)}</b><small>${d.sections.length} sections · ${d.L} m</small></span><span class="rec">${rd ? etoilesTxt(rd.etoiles) + `<small>${fmtN(rd.score)} pts</small>` : '<small>à faire</small>'}</span></button>`;
   $('lInfini').innerHTML = `<button class="ligne" data-infini="1"><span class="ico" style="background:#E6EEF8">🌨️</span><span><b>Fuir l'avalanche</b><small>La montagne sans fin, de plus en plus dense</small></span><span class="rec">${inf && inf.parties ? `<em>${fmtN(inf.score)}</em><small>${fmtN(inf.dist)} m</small>` : '<small>jamais joué</small>'}</span></button>`;
@@ -901,6 +947,18 @@ $('bMenu').onclick = quitter;
 $('bAide').onclick = () => { $('eMenu').hidden = true; $('eAide').hidden = false; };
 $('bAideRetour').onclick = () => { $('eAide').hidden = true; $('eMenu').hidden = false; };
 $('bSon').onclick = () => { son = !son; ecrire('freeride-son', son); $('bSon').textContent = son ? '🔊' : '🔇'; };
+$('choixTenue').onclick = e => { const b = e.target.closest('[data-t]'); if(!b) return; tenue.t = +b.dataset.t; ecrire('freeride-tenue', tenue); menu(); };
+$('choixPlanche').onclick = e => { const b = e.target.closest('[data-s]'); if(!b) return; tenue.s = +b.dataset.s; ecrire('freeride-tenue', tenue); menu(); };
+// Aperçu du personnage qui tourne sur lui-même, avec un grab de temps en temps
+(function apercu(now){
+  const c = $('apercu'); if(c && !$('eMenu').hidden){
+    const x = c.getContext('2d'), t = now / 1000; x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, 180, 180);
+    const cycle = t % 6, F = cycle > 3.5 && cycle < 5 ? FIGURES[Math.floor(t / 6) % 2 ? 'bg' : 'bd'] : null, u = F ? (cycle - 3.5) / 1.5 : 0;
+    x.fillStyle = 'rgba(60,85,130,.18)'; x.beginPath(); x.ellipse(92, 128, 34, 14, 0, 0, 6.29); x.fill();
+    x.translate(90, 112 - (F ? Math.sin(u * Math.PI) * 18 : 0)); dessinerPersonnage(x, poseSkieur(F, u), t * .8, 0, 0, 44);
+  }
+  requestAnimationFrame(apercu);
+})(performance.now());
 $('engins').onclick = e => { const b = e.target.closest('[data-e]'); if(!b) return; engin = b.dataset.e; ecrire('freeride-engin', engin); menu(); };
 $('eMenu').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;

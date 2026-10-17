@@ -51,10 +51,17 @@ Un domaine se reconstruit toujours à l'identique à partir de sa taille et de s
 - Forêt partout ailleurs (décor). Départs électriques : 1 à 2 à mi-hauteur ; la **salle a son propre départ** (on tire « eau + câble » depuis la salle).
 - Équilibrage vérifié avec un joueur simulé (canons V8 sur trépied tous les 35 m le long des pistes, en réinvestissant, sans réorienter) : 80 à 160 % de l'objectif selon la météo, 120 % en moyenne.
 
+## Écran (allégé à la demande de l'utilisateur : « trop d'infos, les mettre dans un menu »)
+
+- **Haut** : ← DesDés, nom du domaine, ☰ Menu ; 4 compteurs : Budget, Neige sur les pistes (barre), Nuit (ou l'heure la nuit), **Météo ▾** (température et vent ; touché : la prévision détaillée, la température en haut, la retenue).
+- **Bas** : une seule rangée — 🔧 Construire (ouvre un tiroir avec les outils et ↶ Annuler), 🗺 Canons, 🏭 Salle, 🌙 Nuit (×1 / ×3 / ×10 et la barre de la nuit pendant la nuit). L'outil en main est rappelé dans une puce bleue (avec ✕ pour le ranger). Un seul message à la fois sur téléphone, juste au-dessus des boutons.
+- **☰ Menu** : Météo et infos, Voir toute la carte, Comment jouer, Domaines (changer de partie).
+- **Carte** : glisser un doigt (avec élan au lâcher), pincer à deux doigts (zoom autour des doigts, et le milieu des doigts entraîne la carte), molette ; boutons ＋ − ⌖ à droite. Un toucher compte comme une action s'il bouge de moins de 12 px.
+
 ## Construction (le jour)
 
 - Coûts (`CONFIG.couts`) : tranchée eau seule 750 €/m, câble seul 550 €/m, **commune eau + câble 900 €/m**, dans une tranchée déjà creusée : eau 350, câble 150 €/m ; regard 5 000 € + enneigeur ; reprise d'un enneigeur remplacé 50 % ; démontage : 50 % du regard et de l'enneigeur, 25 % des tranchées.
-- Outils : **Eau + câble** (le plus courant), **Eau**, **Câble**, **+ Regard**, **Démonter**, **↶** (annule la dernière action du jour, l'argent revient ; l'historique est vidé au lancement de la nuit).
+- Outils (tiroir 🔧 Construire) : **Eau + câble** (le plus courant), **Eau**, **Câble**, **+ Regard**, **Démonter**, **↶** (annule la dernière action du jour, l'argent revient ; l'historique est vidé au lancement de la nuit).
   On touche un point de départ (salle, départ ⚡ pour le câble, regard), puis un regard ou un endroit libre (nouveau regard, avec choix de l'enneigeur et du support dans le devis) ; après validation, le départ devient le nouveau regard (on enchaîne). Tranchées en ligne droite, pas à travers la retenue ; regards à 12 m les uns des autres au moins.
 - Un canon a besoin de l'**eau** (depuis la salle) et de l'**électricité** (salle ou départ électrique). Un « ! » jaune signale un regard incomplet.
 - Toucher un canon (sans outil) ouvre sa **fiche** (panneau du bas) : état et raison, pression (prévue le jour) avec jauge, production, part de neige sur la piste, altitude (le jour) ou température sur place (la nuit), **mode** (Auto / Marche / Arrêt), **orientation** (curseur −180 à 180°, bouton « Vers la piste »), changement d'enneigeur et de support (le jour), Démonter. La zone où tombe sa neige est dessinée (verte, jaune ou rouge selon la part sur la piste).

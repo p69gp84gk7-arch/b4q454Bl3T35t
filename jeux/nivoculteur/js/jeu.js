@@ -16,10 +16,10 @@ let phase = 'menu', outil = null, depart = null, selection = null, apercu = null
 let tNuit = 0, aRecalculer = true, depuisRecalcul = 0, dernier = performance.now(), majHud = 0, majVues = 0;
 
 /* ---------- Messages ---------- */
-function message(txt, type = 'info', duree = 4500){
+function message(txt, type = 'info', duree = 3800){
   const m = document.createElement('div'); m.className = 'message ' + type; m.textContent = txt;
   const box = $('messages'); box.appendChild(m);
-  while(box.children.length > (innerWidth < 700 ? 2 : 3)) box.firstChild.remove();
+  while(box.children.length > (innerWidth < 700 ? 1 : 2)) box.firstChild.remove();
   setTimeout(() => { m.classList.add('sortie'); setTimeout(() => m.remove(), 450); }, duree);
 }
 
@@ -29,7 +29,7 @@ function nouvellePartie(taille){
   const graine = (Date.now() ^ Math.floor(Math.random() * 1e9)) & 0x7fffffff;
   dom = creerDomaine(taille, graine); res = creerReseau(dom); res.nom = dom.nom;
   sauver(); entrerJeu();
-  message(`${dom.nom} : ${fmt(dom.objectif)} m³ à mettre sur les pistes en ${dom.nuits} nuits. Commencez par tirer « Eau + câble » depuis la salle des machines.`, 'info', 9000);
+  message(`Objectif : ${fmt(dom.objectif)} m³ sur les pistes en ${dom.nuits} nuits. Ouvrez 🔧 Construire.`, 'info', 6000);
 }
 function reprendre(){
   const r = lire('nivo-partie', null);
@@ -51,26 +51,50 @@ function commencerJour(){
   phase = 'jour'; meteo = meteoNuit(dom, res.nuit + 1); aRecalculer = true;
   majBarre(); prevoir();
 }
-function prevoir(){
+function textePrevision(){
   const v = meteo.sautes[0], fin = meteo.sautes[meteo.sautes.length - 1];
-  message(`Prévision de la nuit ${res.nuit + 1} : ${degC(meteo.soir)} à 18 h, ${degC(meteo.min)} vers 4 h${meteo.redoux ? ', redoux possible vers ' + heureDe(meteo.redoux.t) : ''}. Vent ${v.force ? 'du ' + nomVent(v.dir) + ' ' + v.force + ' km/h' : 'calme'}${meteo.sautes.length > 1 ? `, puis ${fin.force ? 'du ' + nomVent(fin.dir) + ' ' + fin.force + ' km/h' : 'calme'}` : ''}.`, 'info', 8000);
+  return `${degC(meteo.soir)} à 18 h, ${degC(meteo.min)} vers 4 h${meteo.redoux ? ', redoux possible vers ' + heureDe(meteo.redoux.t) : ''}. Vent ${v.force ? 'du ' + nomVent(v.dir) + ' ' + v.force + ' km/h' : 'calme'}${meteo.sautes.length > 1 ? `, puis ${fin.force ? 'du ' + nomVent(fin.dir) + ' ' + fin.force + ' km/h' : 'calme'}` : ''}.`;
+}
+function prevoir(){ message(`Nuit ${res.nuit + 1} : ${degC(meteo.soir)} → ${degC(meteo.min)}. Détails : Météo ▾`, 'info', 4000); }
+// Les infos (touche Météo) : prévision détaillée, température et vent du moment, retenue
+function ouvrirInfos(){
+  const nuit = phase === 'nuit';
+  ouvrirPanneau(`<h3>🌡️ Météo et infos<button class="fermer">✕</button></h3>
+    <p><b>Nuit ${nuit ? res.numero : res.nuit + 1}</b> : ${esc(textePrevision())}</p>
+    ${nuit && reg ? `<p>Maintenant : <b>${degC(reg.T)}</b> en bas du domaine, vent <b>${reg.vent.force < 1 ? 'calme' : 'du ' + nomVent(reg.vent.dir) + ', ' + Math.round(reg.vent.force) + ' km/h'}</b>.</p>` : ''}
+    <p>En haut du domaine, il fait <b>${(CONFIG.temperature.gradient * dom.den / 100).toFixed(1).replace('.', ',')} °C</b> de moins. Neige : rien au-dessus de −2 °C, la moitié à −4 °C, tout à −7 °C.</p>
+    <p>Retenue : <b>${fmt(res.retenue.volume)} / ${fmt(dom.retenue.max)} m³</b> · objectif <b>${fmt(dom.objectif)} m³</b> en ${dom.nuits} nuits.</p>
+    <div class="actions"><button class="btn" id="iSalle">🏭 Courbe de la nuit</button></div>`);
+  $('iSalle').onclick = () => { fermerPanneau(); ouvrirSalle(); };
+}
+function ouvrirMenuJeu(){
+  ouvrirPanneau(`<h3>☰ Menu<button class="fermer">✕</button></h3>
+    <div class="actions" style="justify-content:stretch;flex-direction:column">
+      <button class="btn" id="mInfos">🌡️ Météo et infos</button>
+      <button class="btn" id="mCentre">⌖ Voir toute la carte</button>
+      <button class="btn" id="mAide">❔ Comment jouer</button>
+      <button class="btn or" id="mDomaines">🏔️ Domaines (changer de partie)</button>
+    </div>`);
+  $('mInfos').onclick = ouvrirInfos; $('mCentre').onclick = () => { fermerPanneau(); ajusterVue(dom); };
+  $('mAide').onclick = () => { fermerPanneau(); $('eAide').hidden = false; };
+  $('mDomaines').onclick = () => { if(phase === 'nuit'){ message('Attendez la fin de la nuit.', 'attention'); return; } fermerPanneau(); menu(); };
 }
 
 /* ---------- Barre du bas et compteurs ---------- */
 function majBarre(){
   const jour = phase === 'jour';
-  $('rangOutils').hidden = !jour;
+  $('bConstruire').hidden = !jour; if(!jour) $('tiroir').hidden = true;
+  $('bConstruire').classList.toggle('actif', !$('tiroir').hidden);
   document.querySelectorAll('[data-outil]').forEach(b => b.classList.toggle('actif', b.dataset.outil === outil));
   $('bAnnuler').disabled = !historique.length;
+  $('zoom').hidden = phase === 'menu';
   $('bNuit').hidden = !jour; $('bVitesse').hidden = phase !== 'nuit'; $('progression').hidden = phase !== 'nuit';
   $('bVitesse').textContent = '×' + vitesse;
-  const c = $('consigne');
-  const txt = !jour ? '' : outil === 'eaucable' || outil === 'eau' || outil === 'cable' ?
-    (depart ? `Touchez un regard pour le raccorder, ou un endroit libre pour y poser un nouveau regard. (Retoucher ${depart} : changer de départ)` :
-      `Touchez le point de départ : la salle des machines${outil !== 'eau' ? ', un départ électrique ⚡' : ''} ou un regard.`) :
-    outil === 'regard' ? 'Touchez l\'endroit où poser un regard seul (à raccorder ensuite).' :
-    outil === 'demonter' ? 'Touchez un regard ou une tranchée à démonter (une part du prix est rendue).' : '';
-  c.textContent = txt; c.hidden = !txt;
+  // l'outil en main, rappelé en une ligne
+  const nom = { eaucable:'💧⚡ Eau + câble', eau:'💧 Eau', cable:'⚡ Câble', regard:'＋ Regard', demonter:'✂ Démonter' }[outil];
+  const txt = !jour || !outil ? '' : outil === 'regard' ? 'touchez où poser le regard' : outil === 'demonter' ? 'touchez un regard ou une tranchée' :
+    depart ? `depuis ${depart === 'pompage' ? 'la salle' : depart} : touchez la suite` : 'touchez la salle, un regard' + (outil !== 'eau' ? ' ou un départ ⚡' : '');
+  $('puceTxt').innerHTML = txt ? `<b>${nom}</b> · ${txt}` : ''; $('puce').hidden = !txt;
 }
 function majCompteurs(){
   const nuit = phase === 'nuit', N = res.enCours;
@@ -81,12 +105,10 @@ function majCompteurs(){
   $('cNeigeB').style.background = neige >= dom.objectif ? 'var(--or)' : 'var(--ok)';
   $('cHeureN').textContent = nuit ? `Nuit ${res.numero}/${dom.nuits}` : 'Nuit';
   $('cHeure').textContent = nuit ? heureDe(tNuit / CONFIG.nuit.duree) : `${Math.min(res.nuit + 1, dom.nuits)}/${dom.nuits}`;
-  $('cTemp').textContent = nuit && reg ? degC(reg.T) : `${Math.round(meteo.soir)}/${Math.round(meteo.min)}°`;
+  $('cTemp').textContent = nuit && reg ? degC(reg.T).replace(' °C', '°') : `${Math.round(meteo.min)}°`;
   $('cTemp').style.color = nuit && reg ? (reg.T >= CONFIG.temperature.debut ? '#FF8A96' : reg.T <= CONFIG.temperature.pleine ? '#8FC2FF' : '') : '';
   const v = nuit && reg ? reg.vent : meteo.sautes[0];
   $('cVent').innerHTML = v.force < 1 ? 'calme' : `<span class="fleche" style="transform:rotate(${-v.dir}rad)">↓</span> ${Math.round(v.force)}`;
-  $('cRetenue').textContent = Math.round(res.retenue.volume / dom.retenue.max * 100) + ' %';
-  $('cRetenue').style.color = res.retenue.volume <= 0 ? '#FF8A96' : '';
   $('tSous').textContent = nuit ? `Nuit ${res.numero} · ${reg ? fmt(reg.production) + ' m³/h' : ''}` : phase === 'fin' ? 'Partie terminée' : `Jour ${res.nuit + 1} · construire, puis lancer la nuit`;
   if(nuit) $('progressionI').style.width = (tNuit / CONFIG.nuit.duree * 100) + '%';
 }
@@ -473,41 +495,59 @@ function menu(){
 }
 
 /* ---------- Commandes de la carte : un doigt = déplacer, deux doigts = zoomer, toucher court = action ---------- */
-const doigts = new Map(); let geste = null;
+const doigts = new Map(); let geste = null; const elan = { vx:0, vy:0 };
 cv.addEventListener('pointerdown', e => {
   if(phase === 'menu') return;
   try{ cv.setPointerCapture(e.pointerId); }catch(err){}
-  doigts.set(e.pointerId, { x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, t0:performance.now() });
-  if(doigts.size === 2){ const [a, b] = [...doigts.values()]; geste = { d:Math.hypot(a.x - b.x, a.y - b.y), z:cam.z }; }
+  elan.vx = elan.vy = 0;
+  doigts.set(e.pointerId, { x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, t0:performance.now(), t:performance.now(), vx:0, vy:0 });
+  if(doigts.size === 2){ const [a, b] = [...doigts.values()]; geste = { d:Math.hypot(a.x - b.x, a.y - b.y) || 1, mx:(a.x + b.x) / 2, my:(a.y + b.y) / 2 }; a.bouge = b.bouge = true; }
+  if(!$('tiroir').hidden){ $('tiroir').hidden = true; majBarre(); }
 });
 cv.addEventListener('pointermove', e => {
   const d = doigts.get(e.pointerId); if(!d) return;
-  const dx = e.clientX - d.x, dy = e.clientY - d.y; d.x = e.clientX; d.y = e.clientY;
-  if(doigts.size === 1){ if(Math.hypot(d.x - d.x0, d.y - d.y0) > 8) d.bouge = true; if(d.bouge){ cam.x -= dx / cam.z; cam.y -= dy / cam.z; borneVue(); } }
-  else if(doigts.size === 2 && geste){
-    const [a, b] = [...doigts.values()], dist = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-    const [wx, wy] = versMonde(mx, my); cam.z = borne(geste.z * dist / geste.d, .4, 8); const [wx2, wy2] = versMonde(mx, my);
-    cam.x += wx - wx2; cam.y += wy - wy2; a.bouge = b.bouge = true; borneVue();
+  const now = performance.now(), dx = e.clientX - d.x, dy = e.clientY - d.y, dtm = Math.max(1, now - d.t);
+  d.x = e.clientX; d.y = e.clientY; d.t = now;
+  if(doigts.size === 1){
+    if(Math.hypot(d.x - d.x0, d.y - d.y0) > 12) d.bouge = true;
+    if(d.bouge){ cam.x -= dx / cam.z; cam.y -= dy / cam.z; d.vx = d.vx * .6 + dx / dtm * .4; d.vy = d.vy * .6 + dy / dtm * .4; borneVue(); }
+  } else if(doigts.size === 2 && geste){
+    // deux doigts : on zoome autour du milieu, et le milieu entraîne la carte
+    const [a, b] = [...doigts.values()], dist = Math.hypot(a.x - b.x, a.y - b.y) || 1, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const [wx, wy] = versMonde(geste.mx, geste.my);
+    cam.z = borne(cam.z * dist / geste.d, .4, 8);
+    cam.x = wx - (mx - LW / 2) / cam.z; cam.y = wy - (my - LH / 2) / cam.z;
+    geste.d = dist; geste.mx = mx; geste.my = my; borneVue();
   }
 });
 const lacher = e => {
   const d = doigts.get(e.pointerId); if(!d) return;
-  doigts.delete(e.pointerId); if(doigts.size < 2) geste = null;
-  if(!d.bouge && doigts.size === 0 && performance.now() - d.t0 < 500){ const [x, y] = versMonde(e.clientX, e.clientY); toucher(x, y); }
+  doigts.delete(e.pointerId);
+  if(doigts.size === 1){ const [r] = [...doigts.values()]; r.x0 = r.x; r.y0 = r.y; r.bouge = true; }
+  if(doigts.size < 2) geste = null;
+  if(doigts.size === 0){
+    if(!d.bouge && performance.now() - d.t0 < 500){ const [x, y] = versMonde(e.clientX, e.clientY); toucher(x, y); }
+    else if(d.bouge && performance.now() - d.t < 80){ elan.vx = d.vx; elan.vy = d.vy; }      // lâché en glissant : la carte continue sur son élan
+  }
 };
-cv.addEventListener('pointerup', lacher); cv.addEventListener('pointercancel', e => doigts.delete(e.pointerId));
+cv.addEventListener('pointerup', lacher); cv.addEventListener('pointercancel', e => { doigts.delete(e.pointerId); if(doigts.size < 2) geste = null; });
 cv.addEventListener('wheel', e => { e.preventDefault(); const [wx, wy] = versMonde(e.clientX, e.clientY); cam.z = borne(cam.z * Math.exp(-e.deltaY * .0015), .4, 8); const [wx2, wy2] = versMonde(e.clientX, e.clientY); cam.x += wx - wx2; cam.y += wy - wy2; borneVue(); }, { passive:false });
 function borneVue(){ if(!dom) return; cam.x = borne(cam.x, 0, dom.W); cam.y = borne(cam.y, 0, dom.H); }
 addEventListener('resize', () => { tailleCarte(); if(!$('eCanons').hidden) construirePlan(); });
 
 /* ---------- Boutons ---------- */
-document.querySelectorAll('[data-outil]').forEach(b => b.onclick = () => { outil = outil === b.dataset.outil ? null : b.dataset.outil; depart = null; apercu = null; selection = null; fermerPanneau(); majBarre(); });
+document.querySelectorAll('[data-outil]').forEach(b => b.onclick = () => { outil = outil === b.dataset.outil ? null : b.dataset.outil; depart = null; apercu = null; selection = null; fermerPanneau(); $('tiroir').hidden = true; majBarre(); });
+$('bConstruire').onclick = () => { $('tiroir').hidden = !$('tiroir').hidden; majBarre(); };
+$('puceFermer').onclick = () => { outil = null; depart = null; apercu = null; fermerPanneau(); majBarre(); };
+$('bMeteo').onclick = ouvrirInfos;
+const zoomer = f => { cam.z = borne(cam.z * f, .4, 8); borneVue(); };
+$('zPlus').onclick = () => zoomer(1.5); $('zMoins').onclick = () => zoomer(1 / 1.5); $('zCentre').onclick = () => ajusterVue(dom);
 $('bAnnuler').onclick = annuler;
 $('bNuit').onclick = lancerNuit;
 $('bVitesse').onclick = () => { const v = CONFIG.nuit.vitesses; vitesse = v[(v.indexOf(vitesse) + 1) % v.length]; majBarre(); };
 $('bCanons').onclick = ouvrirCanons; $('bFermerCanons').onclick = () => $('eCanons').hidden = true;
 $('bSalle').onclick = ouvrirSalle; $('bFermerSalle').onclick = () => $('eSalle').hidden = true;
-$('bMenu').onclick = () => { if(phase === 'nuit'){ message('Attendez la fin de la nuit pour revenir au menu.', 'attention'); return; } menu(); };
+$('bMenu').onclick = ouvrirMenuJeu;
 $('bRetourJeu').onclick = () => { $('eMenu').hidden = true; $('haut').hidden = $('bas').hidden = false; phase = res.fini ? 'fin' : 'jour'; majBarre(); };
 $('bAide').onclick = () => { $('eAide').hidden = false; };
 $('bFermerAide').onclick = () => { $('eAide').hidden = true; };
@@ -517,6 +557,7 @@ document.addEventListener('visibilitychange', () => { if(document.hidden) sauver
 function boucle(now){
   const dt = Math.min(.1, (now - dernier) / 1000); dernier = now;
   if(dom && res && phase !== 'menu'){
+    if(Math.abs(elan.vx) + Math.abs(elan.vy) > .02){ cam.x -= elan.vx * dt * 1000 / cam.z; cam.y -= elan.vy * dt * 1000 / cam.z; const f = Math.exp(-dt * 5); elan.vx *= f; elan.vy *= f; borneVue(); }
     if(phase === 'nuit') avancer(dt);
     else if(aRecalculer){ reg = calculer(); aRecalculer = false; }
     dessinerCarte({ dom, res, reg, nuit:phase === 'nuit', selection, depart, apercu, zones:phase === 'nuit' });
