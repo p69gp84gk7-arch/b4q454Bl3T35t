@@ -276,8 +276,8 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
         <path d="M62 44 L60 66 M58 66 h10" stroke="#EAF2FF" stroke-width="3" stroke-linecap="round" fill="none"/>
       </svg>
       <p class="title">Nivoculteur</p>
-      <p class="desc">Construisez le réseau de neige de culture d'une station et enneigez les pistes avant l'ouverture. En 3D.</p>
-      <p class="status" id="stnivo"><b>Pas encore joué</b>Niveau 1 : la salle de pompage.</p>
+      <p class="desc">Un domaine tiré au sort : creusez les tranchées, posez les canons, puis produisez la nuit selon le froid et le vent. Vue de dessus, salle des machines et plan des canons.</p>
+      <p class="status" id="stnivo"><b>Pas encore joué</b>Un domaine au hasard, un budget, quelques nuits.</p>
       <span class="go">Jouer</span>
     </a>
   </nav>
@@ -292,8 +292,8 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
   <footer id="installHint">Astuce : ajoutez DesDés à l'écran d'accueil pour l'ouvrir comme une application. Tous les jeux marchent ensuite sans réseau.</footer>
 </main>
 
-<script src="jeux/drawrace/circuits.js?v=65"></script>
-<script src="jeux/sauvegarde.js?v=65"></script>
+<script src="jeux/drawrace/circuits.js?v=67"></script>
+<script src="jeux/sauvegarde.js?v=67"></script>
 <script>
 const fmt = n => n.toLocaleString('fr-FR');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -384,29 +384,14 @@ function showDraw(){
   const s = r.temps / 1000, m = Math.floor(s / 60);
   el.innerHTML = `<b>Record · ${esc(c)}</b>${m}:${(s - m * 60).toFixed(2).padStart(5, '0')} par ${esc(r.nom)}`;
 }
-/* Nivoculteur : dernier niveau joué et partie en cours (clés partagées avec jeux/nivoculteur) */
-const NIVO_NIVEAUX = { pompage: { n: 1, nom: 'La salle de pompage', prod: true }, reseau: { n: 2, nom: 'Construire le réseau', prod: false },
-  air: { n: 3, nom: 'Les perches et l\'air comprimé', prod: false }, pannes: { n: 4, nom: 'Les pannes et les réparations', prod: false },
-  bac: { n: null, nom: 'Bac à sable', prod: false }, carriere: { n: null, nom: 'Carrière', prod: false },
-  exploitation: { n: null, nom: 'Exploitation', prod: false } };
+/* Nivoculteur : la partie en cours (domaine, nuit, neige) et les étoiles (clés partagées avec jeux/nivoculteur) */
+const NIVO_DOMAINES = { petit: { nom: 'Petit domaine', nuits: 5, objectif: 7000 }, moyen: { nom: 'Domaine moyen', nuits: 5, objectif: 12000 }, grand: { nom: 'Grand domaine', nuits: 6, objectif: 20000 } };
 function showNivo(){
-  const p = read('nivo-progression') || {}, el = document.getElementById('stnivo');
-  const reussis = Object.keys(p.niveaux || {}).filter(k => p.niveaux[k] && p.niveaux[k].reussi).length;
-  const id = p.dernier, niv = NIVO_NIVEAUX[id];
-  if(!niv){ el.innerHTML = '<b>Pas encore joué</b>Niveau 1 : la salle de pompage.'; return; }
-  const partie = read(`nivo-partie-${id}`), r = partie && partie.reseau;
-  if(id === 'exploitation'){
-    const x = r && r.exploitation;
-    el.innerHTML = `<b>Exploitation${x ? ` · saison ${x.saison}, jour ${x.jour}` : ''}</b>` + (x ? `Réputation ${Math.round(x.reputation * 100)} % · ${fmt(Math.round(r.budget))} €` : 'Nouvelle station');
-    return;
-  }
-  if(id === 'carriere'){
-    el.innerHTML = `<b>Carrière · ${r && r.carriere ? `étape ${r.carriere.etape + 1} / 20` : 'nouvelle station'}</b>` + (r ? `Prochaine nuit n° ${r.nuit} · ${fmt(Math.round(r.neigePiste))} m³ sur les pistes` : '');
-    return;
-  }
-  const fait = r ? Math.round(niv.prod ? r.neigeTotale : r.neigePiste) : 0;
-  el.innerHTML = `<b>${niv.n ? `Niveau ${niv.n} · ` : ''}${esc(niv.nom)}</b>` + (r ? `Prochaine nuit n° ${r.nuit} · ${fmt(fait)} m³` : 'Nouvelle partie') +
-    (reussis ? ` · ${plural(reussis, 'niveau')} réussi${reussis > 1 ? 's' : ''}` : '');
+  const p = read('nivo-partie'), rec = read('nivo-records') || {}, el = document.getElementById('stnivo');
+  const etoiles = Object.values(rec).reduce((s, r) => s + (r.etoiles || 0), 0);
+  const D = p && p.version === 2 && NIVO_DOMAINES[p.taille];
+  if(D && !p.fini){ el.innerHTML = `<b>${esc(p.nom || D.nom)} · nuit ${p.nuit + 1}/${D.nuits}</b>${fmt(Math.round(p.neigePiste))} / ${fmt(D.objectif)} m³ sur les pistes`; return; }
+  el.innerHTML = etoiles ? `<b>${etoiles} étoile${etoiles > 1 ? 's' : ''} sur 9</b>Nouveau domaine au hasard : petit, moyen ou grand.` : '<b>Pas encore joué</b>Un domaine au hasard, un budget, quelques nuits.';
 }
 /* Fusée Rythme : le dernier morceau joué et son record (clé partagée avec jeux/fusee.html) */
 function showFusee(){

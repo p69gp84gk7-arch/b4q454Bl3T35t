@@ -42,15 +42,12 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 .conseil{ position:fixed; left:50%; transform:translateX(-50%); top:calc(60px + env(safe-area-inset-top, 0px)); z-index:3; max-width:min(78vw, 420px);
   background:rgba(10,17,32,.85); border:1px solid rgba(255,176,32,.45); color:var(--texte); border-radius:12px; padding:7px 11px; font-size:.85rem; line-height:1.3; text-align:center; pointer-events:none; transition:opacity .3s; }
 .conseil[hidden]{ display:none; }
-.outils{ position:fixed; left:12px; bottom:calc(98px + env(safe-area-inset-bottom, 0px)); z-index:3; display:flex; gap:10px; align-items:center; }
+.outils{ position:fixed; left:10px; top:50%; transform:translateY(-35%); z-index:3; display:flex; flex-direction:column; gap:12px; align-items:center; }
+.repere{ position:fixed; bottom:calc(14px + env(safe-area-inset-bottom, 0px)); z-index:2; pointer-events:none; font-family:"Saira Condensed", sans-serif; font-weight:800; font-size:.8rem; letter-spacing:.1em; color:rgba(238,243,251,.45); }
+.repere[hidden]{ display:none; }
 .outils[hidden], .commande[hidden]{ display:none; }
-/* Direction (chenilles) en bas à gauche, curseur de vitesse en bas à droite */
+/* Curseur de vitesse en bas à droite */
 .commande{ position:fixed; z-index:3; touch-action:none; border:2px solid rgba(255,255,255,.22); background:rgba(10,17,32,.72); border-radius:18px; }
-.direction{ left:12px; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); width:min(48vw, 200px); height:68px; }
-.direction::before, .direction::after{ position:absolute; top:50%; transform:translateY(-50%); font-size:1.1rem; color:var(--doux); pointer-events:none; }
-.direction::before{ content:"◀"; left:12px; } .direction::after{ content:"▶"; right:12px; }
-.direction i{ position:absolute; top:6px; bottom:6px; width:52px; left:calc(50% - 26px); border-radius:13px; background:var(--ambre); box-shadow:0 2px 10px rgba(0,0,0,.4); pointer-events:none;
-  display:grid; place-items:center; font-style:normal; font-family:"Saira Condensed", sans-serif; font-weight:800; font-size:.62rem; letter-spacing:.06em; color:#1A1204; }
 .gaz{ right:12px; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); width:76px; height:min(38vh, 240px); }
 .gaz .rail{ position:absolute; left:50%; top:24px; bottom:24px; width:6px; margin-left:-3px; border-radius:3px; background:linear-gradient(var(--vert) 0 50%, var(--rouge) 50% 100%); opacity:.55; pointer-events:none; }
 .gaz .zero{ position:absolute; left:10px; right:10px; top:50%; height:2px; margin-top:-1px; background:rgba(255,255,255,.5); pointer-events:none; }
@@ -123,7 +120,7 @@ h1 em{ font-style:normal; color:var(--ambre); }
   <button class="outil" id="bLame"><i class="charge" id="lameCharge"></i><span>▬</span>LAME</button>
   <button class="outil" id="bFraise"><span>≋</span>FRAISE</button>
 </div>
-<div class="commande direction" id="direction" hidden><i id="directionI">CHENILLES</i></div>
+<div class="repere" id="repereG" style="left:16px" hidden>◀ TOUCHER : GAUCHE</div><div class="repere" id="repereD" style="right:100px" hidden>DROITE ▶</div>
 <div class="commande gaz" id="gaz" hidden><span class="et av">AVANT</span><span class="rail"></span><span class="zero"></span><b id="gazB">0<small>km/h</small></b><span class="et ar">ARRIÈRE</span></div>
 
 <section class="ecran" id="eMenu">
@@ -152,14 +149,14 @@ h1 em{ font-style:normal; color:var(--ambre); }
     <div class="carte">
       <h3>🕹️ Conduire</h3>
       <p>À droite, le <b>curseur de vitesse</b> : poussez-le vers le haut pour la marche avant, vers le bas pour la marche arrière (moins rapide). Il reste où vous le laissez ; au milieu, la dameuse s'arrête.</p>
-      <p>En bas à gauche, la <b>commande des chenilles</b> : glissez à gauche ou à droite pour tourner (même à l'arrêt, elle pivote sur place) ; lâchez, elle va tout droit. Au clavier : flèches haut / bas pour la vitesse, gauche / droite pour tourner, L / F / T pour les outils.</p>
+      <p>Pour tourner, <b>touchez la moitié gauche ou droite de l'écran</b> et restez appuyé : la dameuse tourne de ce côté (même à l'arrêt, elle pivote sur place) ; lâchez, elle va tout droit. Les outils (treuil, lame, fraise) sont en colonne sur le côté gauche. Au clavier : flèches haut / bas pour la vitesse, gauche / droite pour tourner, L / F / T pour les outils.</p>
       <h3>≋ La fraise (à l'arrière)</h3>
       <p>Allumez-la et roulez en marche avant : elle laisse le <b>velours</b> (les rayures). Le damage est parfait à <b>14 km/h ou moins</b> ; plus vite, il est moins beau. Sur une bosse ou un creux, la fraise ne fait qu'un damage médiocre (elle aplanit un peu à chaque passage).</p>
       <h3>▬ La lame (à l'avant)</h3>
       <ul>
         <li>Baissée, elle <b>rabote les bosses</b> et les tas de neige : la neige s'accumule devant la lame (l'anneau blanc montre sa charge).</li>
-        <li>Elle <b>remplit les creux</b> et les <b>manques</b> (zones brunes où la terre apparaît) avec la neige qu'elle pousse, et l'étale peu à peu sur le plat.</li>
-        <li>Si vous la relevez chargée, elle laisse un tas sur place.</li>
+        <li>Chargée, elle se vide d'elle-même dans les <b>creux</b> et les <b>manques</b> (zones brunes où la terre apparaît) qu'elle croise, et étale le reste peu à peu sur le plat.</li>
+        <li>Si vous la relevez chargée, la neige comble d'abord les creux et les manques autour de l'avant de la dameuse (les plus profonds d'abord) ; le reste fait un tas.</li>
         <li>Les gros <b>tas blancs</b> près des enneigeurs sont de la neige de culture fraîche : étalez-la vers les manques.</li>
       </ul>
       <h3>⚓ Le treuil</h3>
@@ -404,11 +401,11 @@ function demarrer(def){
     conso:100 / (.38 * duree), sommeQ:0, accrochages:{ enneigeur:0, arbre:0 }, choc:0, textes:[], fin:false, pause:false, panne:false,
     prevG:null, prevD:null, chenille:0, conseils:{}, conseil:null, conseilT:0, plein:0, dernier:performance.now(), majHud:0, majMini:0, secousse:0 };
   ['eMenu', 'eAide', 'eFin', 'ePause'].forEach(id => $(id).hidden = true);
-  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('direction').hidden = $('gaz').hidden = false;
-  regler('gaz', 0); regler('dir', 0);
+  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('repereG').hidden = $('repereD').hidden = $('gaz').hidden = false;
+  regler('gaz', 0); doigtsDir.clear(); commande.dir = 0;
   majOutils(); preparerMini();
   audio(); if(AC && AC.state === 'suspended') AC.resume();
-  conseiller('depart', 'Curseur de droite : vitesse (haut = avant, bas = arrière). En bas à gauche : les chenilles pour tourner. Montez au sommet, puis damez fraise allumée, pas plus de 14 km/h.', 7);
+  conseiller('depart', 'Curseur de droite : vitesse (haut = avant, bas = arrière). Touchez la gauche ou la droite de l\'écran pour tourner. Montez au sommet, puis damez fraise allumée, pas plus de 14 km/h.', 7);
   cancelAnimationFrame(raf); raf = requestAnimationFrame(boucle);
 }
 function conseiller(cle, txt, duree = 4.5, max = 1){
@@ -446,7 +443,7 @@ function lameAction(P, dt){
         if(h > 8){ const m = Math.min(h - 3, taux); const k2 = caseDe(i + .5 + Math.sin(P.a) * 1.6, j + .5 - Math.cos(P.a) * 1.6); if(k2 >= 0 && (T.etat[k2] === 1 || T.etat[k2] === 3)){ T.h[k2] += m; dh = -m; repeindre.push(k2 % T.W, Math.floor(k2 / T.W)); pousse = true; } }
       } else { dh = -Math.min(h - 3, taux, libre); P.charge -= dh; }
     }
-    else if(h < -3 && P.charge > 0){ dh = Math.min(-h - 3 + 3, taux, P.charge); P.charge -= dh; }
+    else if(h < -1 && P.charge > 0){ dh = Math.min(-h, taux * 2.4, P.charge); P.charge -= dh; }      // creux et manques : la lame s'y vide d'elle-même, vite
     else if(P.charge > 0 && h < 4){ dh = Math.min(4 - h, taux * .25, P.charge); P.charge -= dh; }
     if(Math.abs(dh) > .05){
       T.h[k] += dh;
@@ -454,17 +451,33 @@ function lameAction(P, dt){
       repeindre.push(i, j);
     }
   });
+  // la neige qui déborde de la lame tombe dans les creux juste devant et sur les côtés
+  if(P.charge > 0) sousRect(P, 4.9, 6.4, 1.8, (k, i, j) => {
+    if((T.etat[k] !== 1 && T.etat[k] !== 3) || T.h[k] >= -1) return;
+    const dh = Math.min(-T.h[k], taux * 2, P.charge); if(dh <= .05) return;
+    T.h[k] += dh; P.charge -= dh; if(T.q[k] > 0){ if(T.etat[k] === 1) P.sommeQ -= T.q[k]; T.q[k] = 0; } repeindre.push(i, j);
+  });
   for(let n = 0; n < repeindre.length; n += 2) peindreCase(repeindre[n], repeindre[n + 1]);
   return pousse;
 }
-// Relever la lame chargée : la neige reste en tas devant
+// Relever la lame chargée : la neige comble d'abord les creux et les manques autour de l'avant (les plus profonds d'abord),
+// et ce qui reste fait un tas devant la lame
 function deposerCharge(P){
   if(P.charge < 1) return;
-  const cases = []; sousRect(P, 4.6, 5.6, 2.2, k => { if(T.etat[k] === 1 || T.etat[k] === 3) cases.push(k); });
-  if(!cases.length){ P.charge = 0; return; }
-  const part = P.charge / cases.length;
-  for(const k of cases){ T.h[k] += part; if(T.q[k] > 0){ if(T.etat[k] === 1) P.sommeQ -= T.q[k]; T.q[k] = 0; } }
-  for(const k of cases) peindreCase(k % T.W, Math.floor(k / T.W));
+  const touches = new Set(), ux = Math.sin(P.a), uy = -Math.cos(P.a), cx = P.x + ux * 4.4, cy = P.y + uy * 4.4;
+  const autour = [];
+  for(let j = Math.floor(cy - 6); j <= cy + 6; j++) for(let i = Math.floor(cx - 6); i <= cx + 6; i++){
+    const k = caseDe(i + .5, j + .5); if(k < 0 || (T.etat[k] !== 1 && T.etat[k] !== 3)) continue;
+    if(Math.hypot(i + .5 - cx, j + .5 - cy) <= 6 && T.h[k] < -1) autour.push(k);
+  }
+  autour.sort((a, b) => T.h[a] - T.h[b]);
+  for(const k of autour){ if(P.charge <= 0) break; const dh = Math.min(-T.h[k], P.charge); T.h[k] += dh; P.charge -= dh; touches.add(k); }
+  if(P.charge > 1){
+    const cases = []; sousRect(P, 4.6, 5.6, 2.2, k => { if(T.etat[k] === 1 || T.etat[k] === 3) cases.push(k); });
+    const part = cases.length ? P.charge / cases.length : 0;
+    for(const k of cases){ T.h[k] += part; touches.add(k); }
+  }
+  for(const k of touches){ if(T.q[k] > 0){ if(T.etat[k] === 1) P.sommeQ -= T.q[k]; T.q[k] = 0; } peindreCase(k % T.W, Math.floor(k / T.W)); }
   P.charge = 0;
 }
 function fraiseAction(P, dt, glisse){
@@ -800,12 +813,12 @@ function finir(){
   $('fScore').textContent = fmtN(b.total);
   $('fRecord').textContent = nouveau && r.parties > 1 ? '🏆 Nouveau record !' : r.parties > 1 ? `Record : ${fmtN(r.best)}` : '';
   $('fDetail').innerHTML = b.lignes.map(([n, v0]) => { const v = Math.round(v0) || 0; return `<tr><td>${esc(n)}</td><td class="${v < 0 ? 'moins' : ''}">${v > 0 ? '+' : ''}${fmtN(v)}</td></tr>`; }).join('') + `<tr class="total"><td>Total</td><td>${fmtN(b.total)}</td></tr>`;
-  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('conseil').hidden = $('direction').hidden = $('gaz').hidden = true; $('ePause').hidden = true;
+  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('conseil').hidden = $('repereG').hidden = $('repereD').hidden = $('gaz').hidden = true; $('ePause').hidden = true;
   setTimeout(() => { $('eFin').hidden = false; }, 300);
 }
 function quitter(){
   partie = null; cancelAnimationFrame(raf); majSon(0, false);
-  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('conseil').hidden = $('direction').hidden = $('gaz').hidden = true;
+  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('conseil').hidden = $('repereG').hidden = $('repereD').hidden = $('gaz').hidden = true;
   ['ePause', 'eFin'].forEach(id => $(id).hidden = true);
   menu();
 }
@@ -833,19 +846,21 @@ function menu(){
 // Curseur de vitesse : il reste où on le laisse (cran d'arrêt au milieu) ; commande des chenilles : revient au centre
 function regler(quoi, v){
   if(quoi === 'gaz'){ commande.gaz = Math.abs(v) < .08 ? 0 : clamp(v, -1, 1); $('gazB').style.top = (50 - commande.gaz * 50 * .78) + '%'; }
-  else { commande.dir = clamp(v, -1, 1); $('directionI').style.left = `calc(50% - 26px + ${commande.dir} * (50% - 32px))`; }
+  else commande.dir = clamp(v, -1, 1);
 }
-const zoneGaz = $('gaz'), zoneDir = $('direction');
+const zoneGaz = $('gaz');
 const lireGaz = e => { const r = zoneGaz.getBoundingClientRect(); regler('gaz', -((e.clientY - r.top) / r.height - .5) * 2 / .78); };
-const lireDir = e => { const r = zoneDir.getBoundingClientRect(); regler('dir', ((e.clientX - r.left) / r.width - .5) * 2 / .7); };
 zoneGaz.addEventListener('pointerdown', e => { e.preventDefault(); commande.idGaz = e.pointerId; try{ zoneGaz.setPointerCapture(e.pointerId); }catch(err){} lireGaz(e); });
 zoneGaz.addEventListener('pointermove', e => { if(e.pointerId === commande.idGaz) lireGaz(e); });
 const lacherGaz = e => { if(e.pointerId === commande.idGaz) commande.idGaz = null; };
 zoneGaz.addEventListener('pointerup', lacherGaz); zoneGaz.addEventListener('pointercancel', lacherGaz);
-zoneDir.addEventListener('pointerdown', e => { e.preventDefault(); commande.idDir = e.pointerId; try{ zoneDir.setPointerCapture(e.pointerId); }catch(err){} lireDir(e); });
-zoneDir.addEventListener('pointermove', e => { if(e.pointerId === commande.idDir) lireDir(e); });
-const lacherDir = e => { if(e.pointerId === commande.idDir){ commande.idDir = null; regler('dir', 0); } };
-zoneDir.addEventListener('pointerup', lacherDir); zoneDir.addEventListener('pointercancel', lacherDir);
+// Tourner : toucher la moitié gauche ou droite de l'écran (le dernier doigt posé décide)
+const doigtsDir = new Map();
+const majDir = () => { let d = 0; for(const v of doigtsDir.values()) d = v; commande.dir = d; };
+cv.addEventListener('pointerdown', e => { if(!partie) return; try{ cv.setPointerCapture(e.pointerId); }catch(err){} doigtsDir.delete(e.pointerId); doigtsDir.set(e.pointerId, e.clientX < W / 2 ? -1 : 1); majDir(); });
+cv.addEventListener('pointermove', e => { if(!doigtsDir.has(e.pointerId)) return; const v = e.clientX < W / 2 ? -1 : 1; if(doigtsDir.get(e.pointerId) !== v){ doigtsDir.delete(e.pointerId); doigtsDir.set(e.pointerId, v); majDir(); } });
+const lacherDir = e => { if(doigtsDir.delete(e.pointerId)) majDir(); };
+cv.addEventListener('pointerup', lacherDir); cv.addEventListener('pointercancel', lacherDir);
 cv.addEventListener('contextmenu', e => e.preventDefault());
 function basculerLame(){ const P = partie; if(!P || P.fin) return; if(P.lame) deposerCharge(P); P.lame = !P.lame; majOutils(); }
 function basculerFraise(){ const P = partie; if(!P || P.fin) return; P.fraise = !P.fraise; P.prevG = null; majOutils(); }
