@@ -470,7 +470,7 @@ function maj(P, dt){
   } else if(!P.air){
     const vir = engin === 'ski' ? 2.4 : 2, avant = P.th;
     if(dir) P.th = clamp(P.th + dir * (dir * P.th < 0 ? vir * 1.6 : vir) * dt, -1.45, 1.45);
-    else P.th += clamp(-P.th, -2.2 * dt, 2.2 * dt);
+    else P.th += clamp(-P.th, -.9 * dt, .9 * dt);    // au lâcher, il revient doucement dans la pente
     P.thv = (P.th - avant) / dt;
   } else if(dir) P.th = clamp(P.th + dir * .8 * dt, -1.45, 1.45);
   // Vitesse : la pente pousse, l'air et la neige freinent ; couper la pente ralentit, travers = dérapage
@@ -642,40 +642,71 @@ function dessinerPorte(pt){
   if(pt.etat === 1){ g.fillStyle = 'rgba(46,158,91,.8)'; g.font = '700 1.2px sans-serif'; g.textAlign = 'center'; g.fillText('✓', pt.x, pt.y - .2); }
   else if(pt.etat === 0){ g.strokeStyle = 'rgba(19,35,58,.15)'; g.lineWidth = .08; g.setLineDash([.4, .4]); g.beginPath(); g.moveTo(pt.x - pt.w / 2, pt.y); g.lineTo(pt.x + pt.w / 2, pt.y); g.stroke(); g.setLineDash([]); }
 }
+// Le skieur en 3D (de petites pièces projetées en vue plongeante) : on voit les flips, les grabs, les 360
+// Repère du corps : X sur le côté, Y vers l'avant (sens de la glisse), Z vers le haut (m)
+function poseSkieur(F, u, chute){
+  const S = [], board = engin === 'board';
+  const grab = F && F.grab ? Math.sin(Math.min(1, u * 1.6) * Math.PI / 2) * (u > .8 ? (1 - u) / .2 : 1) : 0;   // se ramasser puis se détendre
+  const mute = F && F.k === 'bg', indy = F && F.k === 'bd';
+  const pied = .08 + grab * .32, genouZ = .45 + grab * .2, hanche = .86 - grab * .12;
+  const seg = (a, b, l, c) => S.push({ a, b, l, c });
+  const VESTE = '#FF6A2B', PANT = '#1F6FE0', NOIR = '#13233A', GANT = '#20283A';
+  if(!board){
+    // skis : au mute grab, ils se croisent devant (pointes en X)
+    for(const s of [-1, 1]){
+      const x = s * .13, croise = mute ? -s * .62 * grab : 0, ca = Math.cos(croise), sa = Math.sin(croise);
+      const rot = (X, Y) => [x + (X - x) * ca - Y * sa, (X - x) * sa + Y * ca];
+      const [tx, ty] = rot(x, -.72), [px, py] = rot(x, .85);
+      seg([tx, ty, pied - .05], [px, py, pied + .05], .09, NOIR);
+      seg([x, .02, pied], [x * 1.1, .2 + grab * .15, genouZ], .14, PANT);
+      seg([x * 1.1, .2 + grab * .15, genouZ], [x * .8, 0, hanche], .16, PANT);
+    }
+  } else {
+    seg([0, -.72, pied - .02], [0, .72, pied - .02], .3, NOIR);
+    for(const s of [-1, 1]){ seg([0, s * .24, pied], [.12, s * .26, genouZ], .14, PANT); seg([.12, s * .26, genouZ], [0, s * .1, hanche], .16, PANT); }
+  }
+  // buste, tête, bras
+  const cou = [0, board ? 0 : .08, hanche + .55 - grab * .1];
+  seg([0, 0, hanche], cou, .34, VESTE);
+  const tete = [cou[0], cou[1] + .02, cou[2] + .18];
+  for(const s of [-1, 1]){
+    const epaule = board ? [0, s * .2, cou[2] - .04] : [s * .2, cou[1], cou[2] - .04];
+    let main = board ? [.18, s * .48, hanche + .15] : [s * .34, .3, hanche + .12];
+    if(mute && s === 1) main = [.05, .55, pied + .1];               // la main attrape les skis croisés
+    if(indy && s === -1) main = board ? [.1, .1, pied + .08] : [-.13, .25, pied + .1];
+    seg(epaule, main, .1, VESTE);
+    S.push({ point:main, r:.07, c:GANT });
+    if(!board && !(mute && s === 1) && !(indy && s === -1)) seg(main, [s * .42, -.32, .02], .03, '#5A6B85');
+  }
+  S.push({ point:tete, r:.15, c:'#F2F5F9', visiere:true });
+  return S;
+}
 function dessinerSkieur(P, t){
   const z = P.z, ombre = .3 + z * .45;
   g.fillStyle = `rgba(60,85,130,${clamp(.32 - z * .03, .1, .32)})`; g.beginPath(); g.ellipse(P.x + ombre, P.y + ombre * .6, 1, .6, -P.th, 0, 6.29); g.fill();
-  g.save(); g.translate(P.x, P.y - z * .55);
-  const ech = 1 + z * .05; g.scale(ech * 1.9, ech * 1.9);
-  if(P.chute > 0){
-    g.rotate(P.chute * 8);
-    g.fillStyle = '#FF6A2B'; g.beginPath(); g.ellipse(0, 0, .5, .3, 0, 0, 6.29); g.fill();
-    g.strokeStyle = '#13233A'; g.lineWidth = .1; g.beginPath(); g.moveTo(-.8, .3); g.lineTo(.6, -.5); g.moveTo(-.5, -.6); g.lineTo(.8, .4); g.stroke();
-    g.restore(); return;
+  const F = P.chute > 0 ? null : P.fig && FIGURES[P.fig.k], u = F ? clamp(P.fig.t / F.dur, 0, 1) : 0;
+  // les rotations : flip autour de l'axe des épaules, 360 autour de la verticale, puis la direction de la glisse
+  const flip = P.chute > 0 ? P.chute * 7 : F && F.flip ? F.flip * u * 2 * Math.PI : 0;
+  const tourne = P.chute > 0 ? P.chute * 3 : (P.spin || 0), cf = Math.cos(flip), sf = Math.sin(flip), cs = Math.cos(tourne), ss = Math.sin(tourne);
+  const fx = Math.sin(P.th), fy = Math.cos(P.th), rx = -Math.cos(P.th), ry = Math.sin(P.th), C = .8;
+  const proj = ([X, Y, Z]) => {
+    let y1 = Y * cf + (Z - C) * sf, z1 = C - Y * sf + (Z - C) * cf;            // flip (arrière si F.flip < 0)
+    const x2 = X * cs - y1 * ss, y2 = X * ss + y1 * cs;                        // 360
+    const wx = x2 * rx + y2 * fx, wy = x2 * ry + y2 * fy;
+    return [wx, wy - z1 * .62, wy * .5 + z1];                                    // vue plongeante : le haut monte à l'écran ; profondeur
+  };
+  const pieces = poseSkieur(F, u, P.chute > 0).map(p => {
+    if(p.point){ const q = proj(p.point); return { ...p, q, d:q[2] }; }
+    const a = proj(p.a), b = proj(p.b); return { ...p, qa:a, qb:b, d:(a[2] + b[2]) / 2 };
+  }).sort((a, b) => a.d - b.d);
+  g.save(); g.translate(P.x, P.y - z * .55); const ech = 2.3 * (1 + z * .04); g.scale(ech, ech);
+  g.lineCap = 'round';
+  for(const p of pieces){
+    if(p.point){
+      g.fillStyle = p.c; g.beginPath(); g.arc(p.q[0], p.q[1], p.r, 0, 6.29); g.fill();
+      if(p.visiere){ g.fillStyle = '#13233A'; g.beginPath(); g.arc(p.q[0], p.q[1], p.r * .62, -.2, Math.PI + .2); g.fill(); g.strokeStyle = 'rgba(19,35,58,.6)'; g.lineWidth = .025; g.beginPath(); g.arc(p.q[0], p.q[1], p.r, 0, 6.29); g.stroke(); }
+    } else { g.strokeStyle = p.c; g.lineWidth = p.l; g.beginPath(); g.moveTo(p.qa[0], p.qa[1]); g.lineTo(p.qb[0], p.qb[1]); g.stroke(); }
   }
-  g.rotate(-P.th + (P.spin || 0));
-  // flip : le skieur bascule (vu de dessus, il s'écrase puis se retourne) ; grab : il se ramasse et attrape sa planche ou ses skis
-  const F = P.fig && FIGURES[P.fig.k], u = F ? clamp(P.fig.t / F.dur, 0, 1) : 0;
-  if(F && F.flip){ const c = Math.cos(u * 2 * Math.PI); g.scale(1, Math.sign(c) * Math.max(.18, Math.abs(c))); }
-  if(F && F.grab) g.scale(.86, .86);
-  if(engin === 'ski'){
-    g.fillStyle = '#13233A'; for(const s of [-.17, .17]){ g.beginPath(); g.roundRect(s - .05, -.7, .1, 1.5, .05); g.fill(); }
-    g.fillStyle = '#FF6A2B'; for(const s of [-.17, .17]){ g.fillRect(s - .05, .62, .1, .12); }
-    // bâtons
-    g.strokeStyle = '#5A6B85'; g.lineWidth = .05; g.beginPath(); g.moveTo(-.38, -.05); g.lineTo(-.48, -.55); g.moveTo(.38, -.05); g.lineTo(.48, -.55); g.stroke();
-    // corps (vu de dessus) : épaules perpendiculaires aux skis
-    g.fillStyle = '#FF6A2B'; g.beginPath(); g.ellipse(0, .05, .36, .2, 0, 0, 6.29); g.fill();
-    g.fillStyle = '#1F6FE0'; g.beginPath(); g.ellipse(0, .25, .22, .14, 0, 0, 6.29); g.fill();
-  } else {
-    g.fillStyle = '#13233A'; g.beginPath(); g.roundRect(-.16, -.75, .32, 1.5, .16); g.fill();
-    g.fillStyle = '#1F6FE0'; g.fillRect(-.16, -.2, .32, .06); g.fillRect(-.16, .25, .32, .06);
-    // corps de profil sur la planche : épaules dans l'axe de la planche
-    g.fillStyle = '#FF6A2B'; g.beginPath(); g.ellipse(0, .02, .2, .4, 0, 0, 6.29); g.fill();
-    g.strokeStyle = '#FF6A2B'; g.lineWidth = .1; g.beginPath(); g.moveTo(-.15, -.25); g.lineTo(-.42, -.1); g.moveTo(.15, .3); g.lineTo(.42, .12); g.stroke();
-  }
-  if(F && F.grab){ g.fillStyle = '#13233A'; g.beginPath(); g.arc(F.grab * .22, F.grab > 0 ? -.45 : .45, .1, 0, 6.29); g.fill(); g.strokeStyle = '#FF6A2B'; g.lineWidth = .09; g.beginPath(); g.moveTo(F.grab * .18, .05); g.lineTo(F.grab * .22, F.grab > 0 ? -.4 : .4); g.stroke(); }
-  g.fillStyle = '#F2F5F9'; g.beginPath(); g.arc(0, -.08, .15, 0, 6.29); g.fill();
-  g.fillStyle = '#13233A'; g.fillRect(-.12, -.2, .24, .07);
   g.restore();
 }
 function dessiner(P, dt){
