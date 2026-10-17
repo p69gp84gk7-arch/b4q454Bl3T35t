@@ -1,7 +1,7 @@
 /* DesDés : fonctionnement hors ligne.
    Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement,
    ainsi que le numéro ?v= des scripts dans les pages (outils/version.sh fait les deux). */
-const VERSION = 'desdes-v61';
+const VERSION = 'desdes-v62';
 const FONTS = 'desdes-fonts';
 const SHELL = [
   './',
@@ -18,6 +18,7 @@ const SHELL = [
   'jeux/drawrace/circuits.js',
   'jeux/drawrace/piste.js',
   'jeux/fusee.html',
+  'jeux/dameuse.html',
   'jeux/nivoculteur/index.html',
   'jeux/nivoculteur/three.min.js',
   'jeux/nivoculteur/js/config.js',
