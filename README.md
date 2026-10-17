@@ -12,7 +12,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Yam's** : feuille de marque classique, bonus à 63 | `jeux/yams.html` | 1 à 10 |
 | **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), défi du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
 | **Draw Race** : course de monoplaces dont on dessine la trajectoire, 20 circuits inspirés de la F1, pneus, météo et arrêts au stand ; modes Arcade et Championnat | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
-| **Nivoculteur** : construire et faire tourner le réseau de neige de culture d'une station, en 3D (en construction) | `jeux/nivoculteur/index.html` | 1 |
+| **Nivoculteur** : sur un domaine tiré au sort, construire le réseau de neige de culture et produire la nuit selon le froid et le vent, en 2D vu de dessus | `jeux/nivoculteur/index.html` | 1 |
 | **Fusée Rythme** : piloter une fusée à gauche et à droite au rythme d'un morceau (fourni ou pris dans vos fichiers) et éviter les points ; la partie dure le temps de la musique | `jeux/fusee.html` | 1 |
 | **Dameuse de nuit** : damer une piste vue du dessus avant l'ouverture, avec la lame, la fraise et le treuil ; 8 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
 | **Freeride** : ski ou snowboard hors-piste vu du dessus ; fuir une avalanche sans fin, 7 descentes à étoiles, 3 slaloms chronométrés et un défi du jour | `jeux/freeride.html` | 1 |
@@ -231,22 +231,16 @@ Les circuits sont dans `jeux/drawrace/circuits.js` (points de passage et décor)
 
 ## Nivoculteur
 
-Jeu 3D (Three.js) sur le métier de nivoculteur : construire le réseau (regards, canons, conduites, câbles) avec un budget, produire la neige la nuit, gagner de l'argent avec la neige tombée sur la piste.
-Il est construit étape par étape ; le projet, les règles et l'avancement sont décrits dans `jeux/nivoculteur/CLAUDE.md`.
+Jeu de gestion sur le métier de nivoculteur, **en 2D, vu de dessus** (la version 3D a été remplacée) : un domaine tiré au sort, un budget, quelques nuits pour mettre assez de neige sur les pistes. Le projet, les règles et l'avancement sont décrits dans `jeux/nivoculteur/CLAUDE.md`.
 
-- La page `jeux/nivoculteur/index.html` charge les scripts du dossier `jeux/nivoculteur/js/` ; le jeu s'ouvre aussi seul, en double-cliquant sur la page, sur un ordinateur (garder le dossier entier).
-- `three.min.js` (Three.js 0.149.0, licence MIT) est posé à côté pour jouer sans internet.
-- Tous les chiffres réglables (prix, pressions, débits, durées, vent) sont dans `js/config.js` (`CONFIG`, catalogue des enneigeurs et supports), les niveaux dans `js/niveaux.js`.
-- Nuits (3 min = 12 h, vitesse ×1 / ×3 / ×10) : « Lancer la nuit » (barre du bas ou poste de travail) fait produire les canons prêts ; le vent déporte la neige, seule la neige tombée sur la piste rapporte ; la retenue se vide. Toucher un regard ouvre sa fiche, à gauche sur grand écran ou en volet du bas sur téléphone, et centre la vue sur le canon (curseurs de direction et d'inclinaison, jauge de pression, remplacement de l'enneigeur). Quand l'objectif est atteint, une dameuse prépare la piste.
-- Barre du bas rangée en trois menus : Construire (outils du réseau, pistes, télésièges), Gestion (poste de travail, administration), Affichage (vue sous-sol, infos des canons, recentrer, options) ; l'outil en main est rappelé au-dessus de la barre.
-- Poste de travail (menu Gestion, ou toucher l'écran du pupitre dans la salle de pompage) : pompes en automatique ou en manuel, vanne principale, pressions, alarmes, et marche/arrêt de chaque canon.
-- Grand domaine (carrière et bac à sable) : deux fois plus large, versant doux à gauche et raide à droite ; on y trace des pistes (couleur selon la pente) et on pose des télésièges, qu'on peut mettre en marche. La neige se paie une fois damée : le matin, la dameuse sort du garage et étale les tas ; une dameuse plus grosse étale plus mais coûte cher.
-- Exploitation : faire tourner toute la station, saison après saison (neige la nuit, damage le matin, skieurs la journée) ; Administration (prix du forfait, personnel par métier, gazole des dameuses) ; pannes des télésièges ; but : la meilleure satisfaction des clients. La station des Deux Vallons part de zéro (2 M€) : un front de neige plat délimité en bleu, deux vallons (un doux pour les débutants, un raide avec un mur noir), un domaine bordé de piquets orange ; on y pose télésièges et téléskis (leur arrivée devient un plateau), on trace gratuitement des pistes terrassées qui peuvent se rejoindre (jonctions), et on ouvre des commerces (location, restaurant, école de ski, bar, magasin, garderie, puis l'hôtel) qui se débloquent au fil de la saison. Une journée de ski dure 5 minutes (9 h → 17 h). L'argent vient des forfaits, des commerces et des secours sur piste (plus de blessés sur les pistes faciles, mais un secours y est moins bien payé que sur une rouge ou une noire).
-- Carrière : une station qui grandit en 20 étapes (réseau et argent gardés) ; chaque étape demande des m³ sur les pistes et des recettes en un nombre de nuits, et débloque du matériel (pompes, canons, tours, compresseur, perches), puis viennent les pannes.
-- Tutoriels : un menu permet de choisir le niveau 1 (la salle de pompage : pompes et vanne à la main, sans coup de bélier) le niveau 2 (construire le réseau) le niveau 3 (les perches et l'air comprimé : outil « Air » depuis le compresseur, compresseur piloté au poste, électricité facturée chaque nuit) le niveau 4 (les pannes : fuites, moteurs, buses gelées, disjoncteurs, pompes, à réparer depuis le poste de travail), ou le bac à sable (tout débloqué ; outils Piste et Remontée pour tracer ses pistes et poser des télésièges ; bouton Options : argent illimité ou non, vent, pannes et leurs types, eau et électricité payantes ou non). Les pannes en cours s'affichent dans le coin en haut à droite. L'eau remise chaque jour dans la retenue est payante. La partie et les niveaux réussis sont gardés sur l'appareil (clés `nivo-partie-…` et `nivo-progression`). Les débits sont en m³/h.
-- Modifier : démonter un canon ou un départ ajouté (une partie de l'argent revient), retirer une conduite ou un câble, déplacer un regard, ajouter un départ électrique ; tout s'annule. Objectifs en haut à gauche, compteurs dans un bandeau repliable en haut.
-- Construction : outils « + Regard », « Eau » (depuis la salle de pompage ou un regard alimenté), « Électricité » (depuis un départ électrique près des bâtiments ou un regard alimenté) ; un devis s'affiche avant chaque achat (tranchée commune moins chère, pression prévue) ; vue sous-sol, annuler, tout effacer.
-- `index.html?test` affiche les vérifications de la simulation ; `index.html?modeles` (bouton « Modèles 3D ») montre chaque modèle 3D seul : ventilateurs, perches, regard, salle de pompage, compresseur d'air, dameuses, garage, armoire électrique.
+- La page `jeux/nivoculteur/index.html` charge les scripts de `jeux/nivoculteur/js/` (`config.js`, `domaine.js`, `simulation.js`, `carte.js`, `jeu.js`) ; elle s'ouvre aussi seule en double-cliquant (garder le dossier entier). Tous les chiffres réglables sont dans `js/config.js`.
+- **Domaines** : petit (1 ou 2 pistes, 7 000 m³ en 5 nuits, 450 k€), moyen (2 pistes, 12 000 m³ en 5 nuits, 700 k€), grand (2 ou 3 pistes, 20 000 m³ en 6 nuits, 1 M€). Relief avec courbes de niveau, pistes déjà tracées (couleur selon la pente), forêt, salle des machines et retenue sur le front de neige, départs électriques.
+- **Le jour, construire** : « Eau + câble » depuis la salle (qui a son départ électrique) ou un regard, puis un regard existant ou un endroit libre (nouveau regard avec son ventilateur) ; « Eau », « Câble » (depuis un départ ⚡), « + Regard », « Démonter », ↶ annuler. Devis avant chaque achat. Fiche d'un canon : mode, orientation, pression prévue, part de neige sur la piste, changement d'enneigeur (V8, puis V9 et V10 débloqués à 5 000 et 15 000 m³) et de support (trépied, tour, tour haute).
+- **La nuit** (3 min = 18 h → 6 h, ×1 / ×3 / ×10) : la température humide (prévue la veille, plus froide en altitude) décide de la production : rien au-dessus de −2 °C, la moitié à −4 °C, tout à −7 °C ; redoux possibles. Le vent tourne pendant la nuit et déporte la neige ; seule la neige tombée sur une piste rapporte (20 €/m³). Canons en auto (démarrent seuls sous −2 °C), en marche (même au chaud : de l'eau, pas de neige) ou à l'arrêt. Pression = pompes − longueur − montée − débit demandé : trop de canons ouverts et les plus défavorisés se ferment.
+- **Vue des canons** (🗺) : tous les canons sur un plan du domaine, avec leur état, leur pression, leur production ; démarrer, arrêter, mettre en auto un canon ou tous d'un coup.
+- **Salle des machines** (🏭, ou toucher la salle) : les 3 pompes (en automatique pour l'instant), la pression et le débit de départ, la retenue et son remplissage payant, la courbe de température de la nuit, le vent.
+- **Bilan** chaque matin (neige produite, sur les pistes, perdue, électricité, eau) et **étoiles** à la fin (100, 125 et 150 % de l'objectif). Partie en cours dans `nivo-partie`, étoiles dans `nivo-records`.
+- `index.html?test` affiche les vérifications de la simulation (33).
 
 ## Fusée Rythme
 
@@ -323,7 +317,7 @@ jeux/geo/              données de la carte et drapeaux
 outils/                script qui fabrique les données de géographie
 jeux/drawrace.html     jeu Draw Race
 jeux/drawrace/         circuits et géométrie de Draw Race
-jeux/nivoculteur/      jeu Nivoculteur (page, Three.js, CLAUDE.md)
+jeux/nivoculteur/      jeu Nivoculteur (page, scripts js/, CLAUDE.md)
 jeux/fusee.html        jeu Fusée Rythme
 jeux/dameuse.html      jeu Dameuse de nuit
 jeux/freeride.html     jeu Freeride

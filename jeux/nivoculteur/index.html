@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Nivoculteur · DesDés</title>
 <meta name="theme-color" content="#0B1426">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,412 +12,229 @@
 <link rel="apple-touch-icon" href="../../icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Saira+Condensed:wght@600;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --nuit:#0B1426; --nuit-2:#13213D; --texte:#EAF2FF; --doux:rgba(234,242,255,.68);
-  --verre:rgba(11,20,38,.72); --bord:rgba(234,242,255,.16);
-  --info:#2F6FDE; --ok:#2E9E5B; --attention:#E58A1F; --alarme:#D7263D; --or:#E9B949;
+  --nuit:#0B1426; --nuit-2:#13213D; --texte:#EAF2FF; --doux:rgba(234,242,255,.7);
+  --verre:rgba(11,20,38,.84); --bord:rgba(234,242,255,.16);
+  --info:#2F6FDE; --ok:#2E9E5B; --attention:#E58A1F; --alarme:#D7263D; --or:#E9B949; --eau:#3D8BFF; --cable:#F2C230;
 }
 *,*::before,*::after{ box-sizing:border-box; }
 html,body{ margin:0; height:100%; overflow:hidden; background:var(--nuit); color:var(--texte);
-  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-user-select:none; user-select:none; }
-button{ font:inherit; color:inherit; cursor:pointer; border:0; }
-button:focus-visible, a:focus-visible{ outline:3px solid var(--or); outline-offset:2px; }
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+button{ font:inherit; color:inherit; cursor:pointer; border:0; background:none; }
+button:disabled{ opacity:.4; cursor:default; }
 [hidden]{ display:none !important; }
+.num{ font-family:"Saira Condensed", "Bricolage Grotesque", sans-serif; font-variant-numeric:tabular-nums; }
+#carte{ position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
 
-#scene{ position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
-
-/* ---------- Bandeau du haut ---------- */
-.haut{ position:fixed; top:0; left:0; right:0; display:flex; flex-direction:column; align-items:stretch; gap:6px; z-index:5;
-  padding:calc(env(safe-area-inset-top, 0px) + 10px) calc(env(safe-area-inset-right, 0px) + 12px) 18px calc(env(safe-area-inset-left, 0px) + 12px);
-  background:linear-gradient(rgba(5,11,28,.85), rgba(5,11,28,0)); pointer-events:none; }
-.ligne-haut{ display:flex; align-items:center; gap:8px; }
-.ligne-haut > *, .bandeau > *{ pointer-events:auto; }
-/* Bandeau des compteurs, sous le titre (repliable) */
-.bandeau{ display:flex; justify-content:center; align-items:flex-start; gap:6px; }
-.bandeau .compteurs{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
-.bandeau .replier{ align-self:center; padding:6px 9px; border-radius:10px; background:var(--verre); border:1px solid var(--bord); color:var(--doux); font:inherit; font-size:.8rem; cursor:pointer; white-space:nowrap; }
-.bandeau.replie .compteurs{ display:none; }
-.home{ display:inline-flex; align-items:center; gap:6px; color:var(--doux); text-decoration:none; font-weight:600; font-size:.95rem;
-  padding:8px 10px; border-radius:10px; background:var(--verre); border:1px solid var(--bord); white-space:nowrap; }
-.home::before{ content:"←"; }
-.home:hover{ color:var(--texte); }
+/* ---------- Haut : titre et compteurs ---------- */
+.haut{ position:fixed; top:0; left:0; right:0; z-index:5; pointer-events:none;
+  padding:calc(env(safe-area-inset-top, 0px) + 8px) 10px 14px; background:linear-gradient(rgba(5,11,28,.88), rgba(5,11,28,0)); }
+.haut > *{ pointer-events:auto; }
+.ligne{ display:flex; align-items:center; gap:8px; }
+.home{ color:var(--doux); text-decoration:none; font-weight:600; font-size:.9rem; padding:7px 10px; border-radius:10px; background:var(--verre); border:1px solid var(--bord); white-space:nowrap; }
 .titre{ flex:1; min-width:0; line-height:1.1; }
-.titre b{ display:block; font-size:1.25rem; font-weight:800; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.titre span{ display:block; font-size:.82rem; color:var(--doux); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.bouton{ padding:9px 12px; border-radius:10px; background:var(--verre); border:1px solid var(--bord); font-weight:600; font-size:.9rem; white-space:nowrap; text-decoration:none; color:var(--texte); }
-.bouton:hover{ background:rgba(47,111,222,.35); }
-.bouton.actif{ background:#2F6FDE; border-color:#2F6FDE; }
+.titre b{ display:block; font-size:1.1rem; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.titre span{ display:block; font-size:.78rem; color:var(--doux); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bouton{ padding:8px 11px; border-radius:10px; background:var(--verre); border:1px solid var(--bord); font-weight:700; font-size:.88rem; white-space:nowrap; }
+.compteurs{ display:flex; gap:4px; justify-content:center; margin-top:7px; }
+.cpt{ flex:1 1 0; max-width:120px; min-width:0; padding:4px 3px; border-radius:10px; background:var(--verre); border:1px solid var(--bord); text-align:center; line-height:1.1; }
+.cpt small{ display:block; font-size:.6rem; text-transform:uppercase; letter-spacing:.07em; color:var(--doux); white-space:nowrap; }
+.cpt b{ font-family:"Saira Condensed", sans-serif; font-size:.98rem; white-space:nowrap; }
+.cpt i{ display:block; height:4px; border-radius:2px; background:rgba(255,255,255,.12); margin-top:3px; overflow:hidden; }
+.cpt i em{ display:block; height:100%; background:var(--ok); }
+.fleche{ display:inline-block; }
 
-/* ---------- Messages (bleu = info, vert = OK, orange = attention, rouge = alarme) ---------- */
-#messages{ position:fixed; left:50%; transform:translateX(-50%); top:var(--h-haut, 66px); z-index:6;
-  width:min(520px, calc(100% - 24px)); display:flex; flex-direction:column; gap:6px; pointer-events:none; }
-.message{ padding:9px 12px; border-radius:10px; font-size:.92rem; line-height:1.3; background:var(--verre);
-  border-left:5px solid var(--info); box-shadow:0 6px 18px rgba(0,0,0,.35); transition:opacity .4s ease, transform .4s ease; }
-.message.ok{ border-left-color:var(--ok); }
-.message.attention{ border-left-color:var(--attention); }
-.message.alarme{ border-left-color:var(--alarme); background:rgba(80,10,20,.82); }
+/* ---------- Messages ---------- */
+#messages{ position:fixed; left:50%; transform:translateX(-50%); top:var(--h-haut, 100px); z-index:6;
+  width:min(500px, calc(100% - 20px)); display:flex; flex-direction:column; gap:6px; pointer-events:none; }
+.message{ padding:8px 12px; border-radius:10px; font-size:.88rem; line-height:1.3; background:var(--verre); border-left:5px solid var(--info);
+  box-shadow:0 6px 18px rgba(0,0,0,.35); transition:opacity .4s, transform .4s; }
+.message.ok{ border-left-color:var(--ok); } .message.attention{ border-left-color:var(--attention); }
+.message.alarme{ border-left-color:var(--alarme); background:rgba(80,10,20,.88); }
 .message.sortie{ opacity:0; transform:translateY(-6px); }
 
-/* ---------- Barre du bas ---------- */
-.bas{ position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;
-  padding:18px calc(env(safe-area-inset-right, 0px) + 12px) calc(env(safe-area-inset-bottom, 0px) + 10px) calc(env(safe-area-inset-left, 0px) + 12px);
-  background:linear-gradient(rgba(5,11,28,0), rgba(5,11,28,.85)); pointer-events:none; }
+/* ---------- Bas : outils et nuit ---------- */
+.bas{ position:fixed; left:0; right:0; bottom:0; z-index:5; display:flex; flex-direction:column; align-items:center; gap:6px; pointer-events:none;
+  padding:16px 8px calc(env(safe-area-inset-bottom, 0px) + 8px); background:linear-gradient(rgba(5,11,28,0), rgba(5,11,28,.88)); }
 .bas > *{ pointer-events:auto; }
-.stat{ min-width:96px; padding:7px 12px; border-radius:12px; background:var(--verre); border:1px solid var(--bord); text-align:center; }
-.stat > span{ display:block; white-space:nowrap; font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--doux); }
-.stat b{ display:block; font-size:1.05rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
-/* ---------- Construction : consigne, devis, outils ---------- */
-.bas.jeu{ flex-direction:column; align-items:center; gap:6px; }
-.bas .rang{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:760px; }
-.consigne{ max-width:min(560px, 100%); padding:7px 12px; border-radius:10px; font-size:.88rem; line-height:1.3; text-align:center;
-  background:var(--verre); border:1px solid var(--bord); color:var(--texte); }
-.devis{ width:min(520px, 100%); padding:10px 12px; border-radius:12px; background:rgba(11,20,38,.94); border:1px solid var(--or); box-shadow:0 8px 22px rgba(0,0,0,.4); }
-.devis .tete{ display:flex; justify-content:space-between; gap:10px; font-weight:800; font-size:1rem; }
-.devis ul{ margin:6px 0 8px; padding-left:18px; font-size:.86rem; line-height:1.35; color:var(--doux); }
-.devis .refus{ color:#FF8A96; font-weight:700; font-size:.88rem; margin:0 0 8px; }
-.devis .actions{ display:flex; gap:8px; justify-content:flex-end; }
-.devis .actions .bouton:first-child{ background:var(--ok); border-color:var(--ok); }
-.devis .actions .bouton:disabled{ opacity:.45; cursor:default; }
-.outils .bouton{ font-size:.86rem; padding:8px 11px; }
-.outils .bouton:disabled{ opacity:.4; cursor:default; }
-.outil.actif[data-outil="regard"]{ background:#E58A1F; border-color:#E58A1F; }
-.outil.actif[data-outil="eau"]{ background:#2F6FDE; border-color:#2F6FDE; }
-.outil.actif[data-outil="cable"]{ background:#E9B949; border-color:#E9B949; color:#1C1F25; }
-.outil.actif[data-outil="depart"]{ background:#E9B949; border-color:#E9B949; color:#1C1F25; }
-.outil.actif[data-outil="demonter"]{ background:#D7263D; border-color:#D7263D; }
-.devis .choix-retrait{ display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 8px; }
-.outil.actif[data-outil="piste"]{ background:#2E9E5B; border-color:#2E9E5B; }
-.outil.actif[data-outil="remontee"]{ background:#7A5638; border-color:#7A5638; }
-.outil.actif[data-outil="commerce"]{ background:#B8860B; border-color:#B8860B; }
-#choixTrace .bouton.petit{ padding:5px 10px; font-size:.82rem; }
-#choixTrace .pastille-couleur{ padding:3px 9px; border-radius:999px; font-weight:700; font-size:.8rem; color:#fff; white-space:nowrap; }
-#choixTrace .pastille-couleur.verte{ background:#2E9E5B; } #choixTrace .pastille-couleur.bleue{ background:#2F6FDE; }
-#choixTrace .pastille-couleur.rouge{ background:#D7263D; } #choixTrace .pastille-couleur.noire{ background:#1A1A1A; border:1px solid #888; }
-#choixTrace .bouton.vert{ background:var(--ok); border-color:var(--ok); }
-#choixTrace .depart-ok{ color:#7FE0A0; font-weight:600; } #choixTrace .depart-non{ color:#FFB27A; font-weight:600; }
-#choixTrace .bouton:disabled{ opacity:.45; }
-.outil.actif[data-outil="air"]{ background:#E8EDF5; border-color:#E8EDF5; color:#1C1F25; }
-#sousSol.actif{ background:#5C6B86; border-color:#9FB0CF; }
-.bouton.nuit{ background:#2E9E5B; border-color:#2E9E5B; }
-#accelerer.actif{ background:#E9B949; border-color:#E9B949; color:#1C1F25; }
-/* Tiroirs de la barre du bas (Construire, Gestion, Affichage) */
-.tiroir{ width:min(560px, 100%); padding:8px 10px 10px; border-radius:14px; background:rgba(11,20,38,.94); border:1px solid var(--bord);
-  box-shadow:0 8px 22px rgba(0,0,0,.4); display:flex; flex-direction:column; gap:6px; }
-.groupe-tiroir{ display:flex; flex-direction:column; align-items:center; gap:6px; }
-.titre-tiroir{ font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#7FB2FF; text-align:center; }
-.menu-tiroir.actif{ background:#2F6FDE; border-color:#2F6FDE; }
-.bouton.danger, .devis .actions .bouton.danger:first-child{ background:var(--verre); color:#FF9AA5; border-color:rgba(215,38,61,.5); }
-#annuler{ min-width:40px; font-size:1.05rem; padding-top:6px; padding-bottom:6px; }
-.puce-outil{ display:inline-flex; align-items:center; gap:8px; padding:4px 5px 4px 12px; border-radius:999px; background:var(--verre); border:1px solid var(--or);
-  font-weight:600; font-size:.84rem; white-space:nowrap; max-width:100%; }
-.puce-outil > span{ overflow:hidden; text-overflow:ellipsis; }
-.puce-outil button{ width:26px; height:26px; border-radius:50%; background:rgba(234,242,255,.12); font-size:.8rem; line-height:1; flex:none; }
-.en-nuit .construction{ display:none; }
-.stat b em{ font-style:normal; }
-.stat b .fleche{ width:15px; height:15px; vertical-align:-2px; transition:transform .3s ease; color:#9FD0FF; }
-.choix{ align-items:center; font-size:.82rem; color:var(--doux); }
-.choix label{ display:inline-flex; align-items:center; gap:5px; }
-.choix select{ font:inherit; color:var(--texte); background:var(--verre); border:1px solid var(--bord); border-radius:8px; padding:5px 6px; max-width:min(300px, 62vw); }
-.choix select option:disabled{ color:#7B8494; }
-.devis .ligne{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:6px 0; font-size:.88rem; }
-.devis .ligne b{ min-width:44px; text-align:center; font-variant-numeric:tabular-nums; }
-.devis .petit{ padding:5px 10px; font-size:.85rem; }
-/* Fiche d'un canon : panneau à gauche sur grand écran, volet qui monte du bas sur téléphone */
-.devis.fiche{ position:fixed; z-index:15; overflow:auto; overscroll-behavior:contain; }
-@media (min-width:700px) and (orientation:landscape){
-  .devis.fiche{ left:calc(env(safe-area-inset-left, 0px) + 12px); top:var(--h-haut, 64px); width:min(380px, 42vw); max-height:calc(100dvh - var(--h-haut, 64px) - 14px); animation:ficheGauche .25s ease-out; }
-}
-@media not all and (min-width:700px) and (orientation:landscape){
-  .devis.fiche{ left:0; right:0; bottom:0; width:auto; max-height:56dvh; border-radius:18px 18px 0 0; border-bottom:0;
-    padding:6px 14px calc(env(safe-area-inset-bottom, 0px) + 12px); animation:ficheBas .28s ease-out; }
-  .devis.fiche::before{ content:''; display:block; width:44px; height:5px; border-radius:3px; background:#3A4A66; margin:2px auto 8px; }
-}
-@keyframes ficheGauche{ from{ transform:translateX(-110%); } to{ transform:none; } }
-@keyframes ficheBas{ from{ transform:translateY(100%); } to{ transform:none; } }
-.devis.fiche .choix select{ flex:1 1 140px; min-width:0; max-width:100%; }
-.devis .aide{ margin:4px 0 0; font-size:.8rem; line-height:1.3; color:var(--doux); }
-.devis .ligne.panne{ justify-content:space-between; padding:6px 9px; border-radius:8px; background:rgba(255,210,58,.12); border-left:4px solid #FFD23A; }
-.devis .reglage-fiche input{ flex:1 1 140px; min-width:0; height:28px; accent-color:#E9B949; }
-.devis .mesure{ flex:1 1 auto; }
-.devis .fermer{ background:none; border:0; color:var(--doux); font-size:1.3rem; line-height:1; padding:0 4px; cursor:pointer; }
+.rang{ display:flex; gap:5px; flex-wrap:wrap; justify-content:center; }
+.outil{ padding:7px 9px; border-radius:11px; background:var(--verre); border:1px solid var(--bord); font-weight:700; font-size:.82rem; white-space:nowrap; line-height:1.15; }
+.outil.actif{ background:var(--info); border-color:#7FA8FF; }
+.outil.grand{ background:var(--or); color:#1D1504; border-color:var(--or); font-weight:800; padding:8px 14px; }
+.consigne{ max-width:min(520px, 100%); padding:6px 11px; border-radius:10px; font-size:.84rem; line-height:1.3; text-align:center; background:var(--verre); border:1px solid var(--bord); }
+.progression{ width:min(420px, 92vw); height:6px; border-radius:3px; background:rgba(255,255,255,.12); overflow:hidden; }
+.progression i{ display:block; height:100%; width:0; background:linear-gradient(90deg, #7FA8FF, #E9B949); }
 
-/* ---------- Vitrine des modèles ---------- */
-.vitrine{ flex-direction:column; align-items:center; gap:8px; }
-.vitrine .rang{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:760px; }
-.vitrine .rang .bouton{ font-size:.85rem; padding:8px 10px; }
-.vitrine .options .bouton{ background:rgba(233,185,73,.16); border-color:rgba(233,185,73,.45); }
+/* ---------- Panneau du bas (devis, fiche d'un canon, bilan) ---------- */
+.panneau{ position:fixed; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom, 0px) + 8px); z-index:8;
+  width:min(520px, calc(100% - 16px)); max-height:min(72vh, 640px); overflow:auto; padding:12px 14px; border-radius:16px;
+  background:rgba(11,20,38,.97); border:1px solid rgba(233,185,73,.55); box-shadow:0 12px 30px rgba(0,0,0,.5); }
+.panneau h3{ margin:0 0 6px; font-size:1.05rem; display:flex; align-items:center; gap:8px; }
+.panneau h3 .fermer{ margin-left:auto; width:32px; height:32px; border-radius:9px; background:rgba(255,255,255,.08); font-size:1.1rem; }
+.panneau p{ margin:4px 0; font-size:.88rem; line-height:1.4; color:var(--doux); }
+.panneau p b{ color:var(--texte); }
+.panneau .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap; }
+.panneau .refus{ color:#FF8A96; font-weight:700; }
+.btn{ padding:9px 14px; border-radius:11px; font-weight:800; background:rgba(255,255,255,.1); border:1px solid var(--bord); }
+.btn.ok{ background:var(--ok); border-color:var(--ok); }
+.btn.or{ background:var(--or); color:#1D1504; border-color:var(--or); }
+.btn.rouge{ background:rgba(215,38,61,.25); border-color:rgba(215,38,61,.6); }
+.choix{ display:flex; gap:5px; flex-wrap:wrap; margin:6px 0; }
+.choix button{ padding:7px 10px; border-radius:10px; background:rgba(255,255,255,.07); border:1.5px solid var(--bord); font-weight:700; font-size:.84rem; }
+.choix button.actif{ border-color:var(--or); background:rgba(233,185,73,.18); }
+.choix button small{ display:block; font-weight:500; font-size:.7rem; color:var(--doux); }
+.grille2{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0; }
+.case{ background:rgba(255,255,255,.05); border-radius:10px; padding:6px 9px; }
+.case small{ display:block; font-size:.66rem; text-transform:uppercase; letter-spacing:.06em; color:var(--doux); }
+.case b{ font-family:"Saira Condensed", sans-serif; font-size:1.1rem; }
+.jauge{ position:relative; height:12px; border-radius:6px; margin:6px 0 2px; overflow:hidden; }
+.jauge i{ position:absolute; top:-3px; bottom:-3px; width:3px; margin-left:-1px; background:#fff; box-shadow:0 0 4px #000; }
+.etat{ display:inline-block; width:11px; height:11px; border-radius:50%; flex:none; }
+.etat.marche{ background:#38D07A; } .etat.arret{ background:#E04A4A; } .etat.defaut, .etat.chaud{ background:#F2C230; }
+input[type=range]{ width:100%; accent-color:var(--or); }
+table.bilan{ width:100%; border-collapse:collapse; font-size:.9rem; margin:6px 0; }
+table.bilan td{ padding:5px 2px; border-bottom:1px solid var(--bord); }
+table.bilan td:last-child{ text-align:right; font-family:"Saira Condensed", sans-serif; font-size:1.02rem; }
+table.bilan .moins{ color:#FF8A96; } table.bilan .plus{ color:#7FE0A8; }
 
-/* ---------- Poste de travail (écran de supervision) ---------- */
-.poste{ position:fixed; z-index:20; inset:calc(env(safe-area-inset-top, 0px) + 8px) 8px calc(env(safe-area-inset-bottom, 0px) + 8px);
-  max-width:1000px; margin:0 auto; overflow:auto; padding:12px 14px; border-radius:14px; background:#07111E; border:2px solid #2B3B55;
-  box-shadow:0 20px 50px rgba(0,0,0,.6); font-variant-numeric:tabular-nums; }
-.poste .tete{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
-.poste h2{ margin:0; font-size:1.1rem; }
-.poste h3{ margin:0 0 8px; font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; color:#7FB2FF; }
-.poste .fermer{ background:none; border:0; color:var(--doux); font-size:1.6rem; line-height:1; padding:0 6px; cursor:pointer; }
-.poste .disposition{ display:grid; gap:10px; grid-template-columns:minmax(0, 1fr) minmax(300px, 400px); align-items:start; margin-top:10px; }
-.poste .grille{ display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); min-width:0; }
-.poste .colonne{ position:sticky; top:0; max-height:calc(100dvh - 90px); overflow:auto; }
-@media (max-width:820px){ .poste .disposition{ grid-template-columns:minmax(0, 1fr); } .poste .colonne{ position:static; max-height:none; overflow:visible; } }
-.poste .bloc{ background:#0D1B2E; border:1px solid #22324A; border-radius:12px; padding:10px 12px; min-width:0; }
-.poste .ligne{ display:flex; align-items:center; gap:6px 8px; flex-wrap:wrap; margin:6px 0; font-size:.88rem; }
-.poste .pompe{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid #1A2A40; font-size:.9rem; }
-.poste .led{ width:12px; height:12px; border-radius:50%; flex:none; box-shadow:0 0 6px currentColor; }
-.poste .val{ min-width:46px; text-align:center; }
-.poste .reglage{ display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
-.poste .pastille{ display:inline-block; padding:3px 9px; border-radius:999px; background:#13243B; border:1px solid #22324A; font-size:.8rem; white-space:nowrap; }
-.poste .pastille.vert{ background:rgba(46,158,91,.25); border-color:#2E9E5B; }
-.poste .bouton.petit{ padding:5px 10px; font-size:.82rem; }
-.poste .seg{ display:inline-flex; border:1px solid #2B3B55; border-radius:10px; overflow:hidden; }
-.poste .seg button{ padding:6px 12px; background:none; font-size:.85rem; font-weight:600; }
-.poste .seg .actif{ background:#2F6FDE; }
-.poste .seg.large{ display:flex; width:100%; }
-.poste .seg.large button{ flex:1 1 0; min-width:0; padding:6px 2px; white-space:nowrap; }
-.poste .aide, .poste .vide{ margin:6px 0 0; font-size:.8rem; color:var(--doux); }
-.poste .alarme{ margin:0 0 6px; padding:6px 9px; border-radius:8px; font-size:.84rem; line-height:1.3; border-left:4px solid var(--attention); background:rgba(229,138,31,.12); }
-.poste .alarme.rouge{ border-left-color:var(--alarme); background:rgba(215,38,61,.18); }
-.poste .canons{ display:grid; gap:6px; }
-.poste .canon{ padding:7px 9px; background:#0A1626; border:1px solid #22324A; border-radius:10px; min-width:0; }
-.poste .canon .entete, .poste .canon .pied{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; }
-.poste .canon .nom{ flex:1 1 110px; min-width:0; line-height:1.15; }
-.poste .canon .pied{ margin-top:2px; }
-.poste .canon .nom small{ display:block; color:var(--doux); font-size:.75rem; }
-.poste .canon .actions{ display:flex; gap:6px; margin-left:auto; }
-
-/* Curseur de la vanne */
-.poste .curseur{ width:100%; margin:4px 0 2px; accent-color:#2F6FDE; height:28px; }
-.poste .pastille.orange{ background:rgba(229,138,31,.22); border-color:#E58A1F; }
-.poste .pastille.rouge{ background:rgba(215,38,61,.2); border-color:#D7263D; }
-.poste .bouton.vert{ background:var(--ok); border-color:var(--ok); }
-.poste .resume{ margin:0 0 8px; }
-/* Pannes en cours : coin en haut à droite */
-.coin-pannes{ position:fixed; z-index:12; top:var(--h-haut, 62px); right:calc(env(safe-area-inset-right, 0px) + 12px);
-  width:min(300px, calc(100vw - 24px)); max-height:calc(100dvh - 240px); overflow:auto; border-radius:12px;
-  background:rgba(11,20,38,.94); border:1px solid #E58A1F; box-shadow:0 8px 22px rgba(0,0,0,.4); }
-@media (max-width:480px){ #ouvrirOptions .txt{ display:none; } }
-.coin-pannes.replie{ width:auto; max-width:calc(100vw - 24px); }
-/* Petit écran : les messages passent sous le coin des pannes */
-@media (max-width:699px){ body.avec-pannes #messages, body.avec-objectifs #messages{ top:calc(var(--h-haut, 66px) + 46px); } }
-/* Objectifs : coin en haut à gauche (repliable) */
-.coin-objectifs{ position:fixed; z-index:12; top:var(--h-haut, 62px); left:calc(env(safe-area-inset-left, 0px) + 12px);
-  width:min(290px, calc(100vw - 24px)); max-height:calc(100dvh - 260px); overflow:auto; border-radius:12px;
-  background:rgba(11,20,38,.94); border:1px solid #2F6FDE; box-shadow:0 8px 22px rgba(0,0,0,.4); }
-.coin-objectifs.replie{ width:auto; }
-.coin-objectifs .entete{ display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; background:rgba(47,111,222,.18); border:0; color:var(--texte);
-  font:inherit; font-size:.9rem; text-align:left; cursor:pointer; }
-.coin-objectifs .entete small{ color:var(--doux); font-size:.75rem; }
-.coin-objectifs .entete .fleche{ margin-left:auto; color:var(--doux); }
-.coin-objectifs ul{ list-style:none; margin:0; padding:6px 12px 10px; }
-.coin-objectifs li{ display:flex; gap:8px; align-items:flex-start; padding:5px 0; font-size:.85rem; line-height:1.25; }
-.coin-objectifs li .coche{ flex:none; width:18px; height:18px; border-radius:50%; border:2px solid #4E586B; display:grid; place-items:center; font-size:.7rem; margin-top:1px; }
-.coin-objectifs li.fait .coche{ background:#2E9E5B; border-color:#2E9E5B; color:#fff; }
-.coin-objectifs li.fait .texte{ color:var(--doux); }
-.coin-objectifs li .texte{ flex:1; min-width:0; }
-.coin-objectifs li small{ display:block; color:var(--doux); font-size:.75rem; }
-.coin-objectifs .barre{ display:block; height:6px; margin-top:4px; border-radius:3px; background:#13243B; overflow:hidden; }
-.coin-objectifs .barre i{ display:block; height:100%; background:#2F6FDE; }
-.coin-objectifs li.fait .barre i{ background:#2E9E5B; }
-.coin-pannes .entete{ display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; background:rgba(229,138,31,.18); border:0; color:var(--texte);
-  font:inherit; font-size:.9rem; text-align:left; cursor:pointer; }
-.coin-pannes .entete .icone{ color:#FFD23A; font-size:1.1rem; }
-.coin-pannes .entete small{ color:var(--doux); font-size:.75rem; }
-.coin-pannes .entete .fleche{ margin-left:auto; color:var(--doux); }
-.coin-pannes .liste{ padding:4px 10px 8px; }
-.coin-pannes .item{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:7px 0; border-bottom:1px solid #1A2A40; font-size:.85rem; }
-.coin-pannes .item:last-child{ border-bottom:0; }
-.coin-pannes .nom{ flex:1 1 100%; min-width:0; line-height:1.2; border-left:4px solid #FFD23A; padding-left:7px; }
-.coin-pannes .item.repare .nom{ border-left-color:#2F6FDE; }
-.coin-pannes .nom small{ display:block; color:var(--doux); font-size:.75rem; }
-.coin-pannes .nom .equipe{ color:#7FB2FF; }
-.coin-pannes .actions{ display:flex; gap:6px; margin-left:auto; }
-.coin-pannes .bouton.petit{ padding:5px 9px; font-size:.8rem; }
-/* Options du bac à sable */
-.options{ max-width:920px; z-index:25; }
-.admin{ max-width:1000px; z-index:25; }
-.admin .metiers, .admin .commerces{ display:grid; gap:4px; }
-.admin .metier{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; padding:6px 0; border-bottom:1px solid #1A2A40; font-size:.88rem; }
-.admin .metier .nom{ flex:1 1 200px; min-width:0; line-height:1.2; }
-.admin .metier .nom small{ display:block; color:var(--doux); font-size:.75rem; }
-.mesure .crit, .admin .mesure > span:first-child:not(.jauge){ flex:0 0 150px; min-width:0; font-size:.82rem; color:var(--doux); }
-@media (max-width:480px){ .mesure .crit, .admin .mesure > span:first-child:not(.jauge){ flex-basis:110px; } }
-.admin .reglage-bac input{ flex:1 1 140px; min-width:0; height:28px; accent-color:#E9B949; }
-.admin .reglage-bac b{ min-width:52px; text-align:right; }
-.options .grille{ margin-top:10px; }
-.options .seg.large{ margin:4px 0; }
-.options .types{ display:flex; flex-wrap:wrap; gap:6px; }
-.options .bascule{ opacity:.55; }
-.options .bascule.actif{ opacity:1; background:#2F6FDE; border-color:#2F6FDE; }
-.options .ligne b{ min-width:58px; text-align:right; white-space:nowrap; }
-.options .reglage-bac{ flex-wrap:nowrap; }
-.poste .reglage-bac input{ flex:1 1 120px; min-width:0; height:28px; accent-color:#E9B949; }
-.poste .panne{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; padding:7px 0; border-bottom:1px solid #1A2A40; font-size:.88rem; }
-.poste .panne .nom{ flex:1 1 140px; min-width:0; line-height:1.15; }
-.poste .panne .nom small{ display:block; color:var(--doux); font-size:.75rem; }
-.poste .panne .actions{ display:flex; gap:6px; margin-left:auto; }
-/* Jauges de pression */
-.mesure{ display:flex; align-items:center; gap:8px; margin:6px 0 2px; min-width:0; }
-.mesure b{ min-width:52px; text-align:right; font-size:.85rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
-.jauge{ position:relative; display:block; flex:1 1 auto; min-width:90px; height:10px; border-radius:5px; background:#13243B; }
-.jauge span{ position:absolute; top:0; bottom:0; opacity:.85; }
-.jauge span:first-child{ border-radius:5px 0 0 5px; }
-.jauge span:nth-last-child(1), .jauge span:nth-last-child(2):has(+ i){ border-radius:0 5px 5px 0; }
-.jauge .bon{ background:#2E9E5B; } .jauge .moyen{ background:#E58A1F; } .jauge .mauvais{ background:#D7263D; }
-.jauge i{ position:absolute; top:-4px; width:4px; height:18px; margin-left:-2px; background:#FFFFFF; border-radius:2px; box-shadow:0 0 0 1px #0B1426, 0 0 6px rgba(255,255,255,.6); transition:left .25s; }
-.graduations{ display:flex; justify-content:space-between; font-size:.7rem; color:var(--doux); margin-bottom:4px; }
-/* Menu des niveaux */
-.menu{ max-width:720px; z-index:25; }
-.menu .groupe{ margin:16px 0 6px; font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; color:#7FB2FF; }
-.menu .intro{ margin:6px 0 12px; color:var(--doux); font-size:.92rem; line-height:1.4; }
-.menu .niveaux{ display:grid; gap:10px; }
-.menu .niveau{ display:flex; gap:12px; padding:12px; background:#0D1B2E; border:1px solid #22324A; border-radius:14px; }
-.menu .niveau.ferme{ opacity:.55; }
-.menu .num{ flex:none; width:44px; height:44px; border-radius:12px; display:grid; place-items:center; font-weight:800; font-size:1.3rem; background:#13243B; border:1px solid #2B3B55; }
-.menu .corps{ min-width:0; flex:1; }
-.menu h3{ margin:0 0 4px; font-size:1.05rem; text-transform:none; letter-spacing:0; color:var(--texte); }
-.menu .corps p{ margin:0 0 6px; font-size:.86rem; line-height:1.35; color:var(--doux); }
-.menu .etat{ color:#9FD0FF !important; font-weight:600; }
-.menu .actions{ display:flex; gap:8px; flex-wrap:wrap; }
-.menu .bouton.vert{ background:#2E9E5B; border-color:#2E9E5B; }
-.menu .bas-menu{ margin-top:12px; justify-content:center; }
-.sans-construction .construction:not(#lancerNuit){ display:none; }
-
-/* ---------- Panneaux (mode test, erreur) ---------- */
-.panneau{ position:fixed; inset:calc(env(safe-area-inset-top, 0px) + 64px) 12px auto; margin:0 auto; max-width:560px;
-  max-height:calc(100% - 160px); overflow:auto; padding:14px 16px; border-radius:14px;
-  background:rgba(11,20,38,.94); border:1px solid var(--bord); box-shadow:0 12px 30px rgba(0,0,0,.45); -webkit-user-select:text; user-select:text; }
-.panneau h2{ margin:0 0 8px; font-size:1.1rem; }
-.panneau ul{ list-style:none; margin:0 0 10px; padding:0; }
-.panneau li{ display:flex; gap:8px; padding:5px 0; border-bottom:1px solid var(--bord); font-size:.9rem; line-height:1.3; }
-.panneau li:last-child{ border-bottom:0; }
-.panneau .etat{ flex:none; width:58px; font-weight:800; }
-.panneau .etat.ok{ color:#6BD68F; } .panneau .etat.ko{ color:#FF6B7A; }
-.panneau small{ display:block; color:var(--doux); }
-.panneau .resume{ font-weight:800; margin:4px 0 10px; }
-@media (max-width:480px){
-  .stat{ min-width:auto; flex:1 1 auto; padding:6px 8px; } .stat b{ font-size:.95rem; white-space:nowrap; }
-  .titre b{ font-size:1.1rem; }
-  .outils .bouton{ font-size:.8rem; padding:7px 8px; }
-  .menu-tiroir .ico{ display:none; }
-  .bas .rang{ gap:4px; }
-  .stat{ padding:5px 4px; } .stat > span{ font-size:.58rem; letter-spacing:.02em; } .stat b{ font-size:.8rem; }
-  .stat .obj{ display:none; }
-  .haut .bouton{ padding:8px 9px; font-size:.82rem; }
-  .vitrine .rang .bouton{ font-size:.8rem; padding:7px 8px; }
-}
-@media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+/* ---------- Écrans : vue des canons, salle des machines, menu ---------- */
+.ecran{ position:fixed; inset:0; z-index:9; background:rgba(6,12,26,.97); display:flex; flex-direction:column; overflow:hidden;
+  padding:calc(env(safe-area-inset-top, 0px) + 10px) 10px calc(env(safe-area-inset-bottom, 0px) + 10px); }
+.ecran .tete{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.ecran .tete h2{ margin:0; font-size:1.15rem; flex:1; min-width:150px; }
+.ecran .corps{ flex:1; overflow:auto; margin-top:8px; position:relative; }
+.resume{ display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
+.resume .cpt{ flex:0 1 auto; max-width:none; padding:4px 8px; }
+#plan{ position:relative; margin:0 auto; }
+#plan canvas{ position:absolute; left:0; top:0; }
+.vignette{ position:absolute; width:76px; padding:3px 5px 4px; border-radius:9px; background:rgba(16,28,52,.95); border:1.5px solid var(--bord);
+  font-size:.7rem; line-height:1.15; text-align:left; box-shadow:0 3px 8px rgba(0,0,0,.4); }
+.vignette b{ display:flex; align-items:center; gap:4px; font-size:.82rem; }
+.vignette b em{ margin-left:auto; font-style:normal; font-size:.62rem; padding:1px 4px; border-radius:5px; background:rgba(255,255,255,.12); }
+.vignette span{ display:block; color:var(--doux); white-space:nowrap; font-family:"Saira Condensed", sans-serif; font-size:.78rem; }
+.vignette.marche{ border-color:#38D07A; } .vignette.arret{ border-color:#E04A4A; } .vignette.defaut, .vignette.chaud{ border-color:#F2C230; }
+.vignette.choisie{ outline:2px solid var(--or); z-index:3; }
+.menuVignette{ position:absolute; z-index:4; display:flex; gap:4px; padding:5px; border-radius:11px; background:rgba(11,20,38,.98); border:1px solid var(--or); box-shadow:0 6px 16px rgba(0,0,0,.5); }
+.menuVignette button{ padding:7px 9px; border-radius:9px; background:rgba(255,255,255,.08); font-weight:800; font-size:.8rem; }
+.menuVignette button.actif{ background:var(--or); color:#1D1504; }
+.blocs{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:10px; }
+.bloc{ background:rgba(255,255,255,.05); border:1px solid var(--bord); border-radius:14px; padding:10px 12px; }
+.bloc h4{ margin:0 0 6px; font-size:.82rem; text-transform:uppercase; letter-spacing:.08em; color:var(--doux); }
+.pompes{ display:flex; gap:8px; }
+.pompe{ flex:1; text-align:center; padding:8px 4px; border-radius:11px; background:rgba(255,255,255,.05); border:1.5px solid var(--bord); font-size:.78rem; }
+.pompe .rond{ width:34px; height:34px; border-radius:50%; margin:0 auto 4px; border:3px solid #555; display:grid; place-items:center; font-weight:800; }
+.pompe.on .rond{ border-color:#38D07A; color:#38D07A; animation:tourne 1.2s linear infinite; }
+@keyframes tourne{ to{ transform:rotate(360deg); } }
+.menu-boite{ width:min(560px, 100%); margin:0 auto; display:flex; flex-direction:column; gap:12px; padding-bottom:20px; }
+.menu-boite h1{ margin:6px 0 0; font-size:clamp(2.2rem, 10vw, 3rem); font-weight:800; line-height:.95; }
+.menu-boite h1 span{ color:#8FC2FF; }
+.carteMenu{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:12px; border-radius:14px; background:rgba(255,255,255,.06); border:1.5px solid var(--bord); }
+.carteMenu.reprise{ border-color:var(--or); background:rgba(233,185,73,.1); }
+.carteMenu .ico{ width:46px; height:46px; border-radius:12px; display:grid; place-items:center; font-size:1.5rem; background:rgba(143,194,255,.15); flex:none; }
+.carteMenu b{ display:block; } .carteMenu small{ color:var(--doux); display:block; line-height:1.3; }
+.carteMenu .droite{ margin-left:auto; text-align:right; flex:none; color:var(--or); font-family:"Saira Condensed", sans-serif; }
+.aide h3{ margin:12px 0 4px; } .aide p, .aide li{ color:var(--doux); line-height:1.45; font-size:.92rem; } .aide b{ color:var(--texte); }
 </style>
 </head>
 <body>
-<canvas id="scene" aria-label="Vue 3D de la station"></canvas>
+<canvas id="carte" aria-label="La carte du domaine"></canvas>
 
-<header class="haut" id="haut">
-  <div class="ligne-haut">
-    <a class="home" href="../../index.html">DesDés</a>
-    <div class="titre"><b id="titre">Nivoculteur</b><span id="sousTitre">Découverte du terrain</span></div>
-    <button class="bouton" id="ouvrirMenu" type="button">Menu</button>
-    <a class="bouton" id="lienModeles" href="index.html?modeles" hidden>Modèles 3D</a>
-    <a class="bouton" id="lienTerrain" href="index.html" hidden>Terrain</a>
-    <button class="bouton" id="recentrerVue" type="button" hidden>Recentrer</button>
+<div class="haut" id="haut" hidden>
+  <div class="ligne">
+    <a class="home" href="../../index.html">← DesDés</a>
+    <div class="titre"><b id="tNom">Domaine</b><span id="tSous"></span></div>
+    <button class="bouton" id="bMenu">Menu</button>
   </div>
-  <div class="bandeau" id="bandeau" hidden>
-    <div class="rang compteurs">
-      <div class="stat"><span>Budget</span><b id="hudBudget">—</b></div>
-      <div class="stat"><span>Nuit</span><b id="hudNuit">—</b></div>
-      <div class="stat"><span id="hudNeigeTitre">Neige piste</span><b id="hudNeige">—</b></div>
-      <div class="stat"><span>Vent</span><b><svg id="flecheVent" class="fleche" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1 L16.5 11 H11.5 V19 H8.5 V11 H3.5 Z" fill="currentColor"/></svg> <em id="hudVentForce">—</em></b></div>
-      <div class="stat"><span>Retenue</span><b id="hudRetenue">—</b></div>
-    </div>
-    <button class="replier" id="replierBandeau" type="button" aria-expanded="true" aria-label="Replier les compteurs">▴</button>
+  <div class="compteurs">
+    <div class="cpt"><small>Budget</small><b id="cBudget">0</b></div>
+    <div class="cpt" style="flex-grow:1.5;max-width:150px"><small>Neige pistes</small><b id="cNeige">0</b><i><em id="cNeigeB"></em></i></div>
+    <div class="cpt"><small id="cHeureN">Nuit</small><b id="cHeure">1/5</b></div>
+    <div class="cpt"><small>Temp.</small><b id="cTemp">–</b></div>
+    <div class="cpt"><small>Vent</small><b id="cVent">–</b></div>
+    <div class="cpt"><small>Retenue</small><b id="cRetenue">100 %</b></div>
   </div>
-</header>
+</div>
+<div id="messages"></div>
 
-<div id="messages" aria-live="polite"></div>
-
-<footer class="bas jeu" id="barreJeu">
+<div class="bas" id="bas" hidden>
   <div class="consigne" id="consigne" hidden></div>
-  <div class="devis" id="devis" hidden></div>
-  <div class="rang choix" id="choixEnneigeur" hidden>
-    <label>Enneigeur <select id="choixModele"></select></label>
-    <label>Support <select id="choixSupport"></select></label>
-    <span id="choixPrix"></span>
+  <div class="progression" id="progression" hidden><i id="progressionI"></i></div>
+  <div class="rang" id="rangOutils">
+    <button class="outil" data-outil="eaucable">💧⚡ Eau + câble</button>
+    <button class="outil" data-outil="eau">💧 Eau</button>
+    <button class="outil" data-outil="cable">⚡ Câble</button>
+    <button class="outil" data-outil="regard">＋ Regard</button>
+    <button class="outil" data-outil="demonter">✂ Démonter</button>
+    <button class="outil" id="bAnnuler" title="Annuler la dernière action">↶</button>
   </div>
-  <div class="rang choix" id="choixTrace" hidden></div>
-  <!-- Menus de la barre : un seul tiroir ouvert à la fois, refermé dès qu'on choisit quelque chose -->
-  <div class="tiroir" id="tiroir" hidden>
-    <div class="groupe-tiroir" data-groupe="construire" hidden>
-      <div class="titre-tiroir">Réseau de neige</div>
-      <div class="rang outils">
-        <button class="bouton outil construction" type="button" data-outil="regard">+ Regard</button>
-        <button class="bouton outil construction" type="button" data-outil="eau">Eau</button>
-        <button class="bouton outil construction" type="button" data-outil="cable">Électricité</button>
-        <button class="bouton outil construction" type="button" data-outil="air" hidden>Air</button>
-        <button class="bouton outil construction" type="button" data-outil="depart">+ Départ élec</button>
-        <button class="bouton outil construction" type="button" data-outil="demonter">Démonter</button>
-      </div>
-      <div class="titre-tiroir" id="titreDomaine">Domaine skiable</div>
-      <div class="rang outils" id="rangDomaine">
-        <button class="bouton outil construction" type="button" data-outil="piste" hidden>Tracer une piste</button>
-        <button class="bouton outil construction" type="button" data-outil="remontee" hidden>Poser une remontée</button>
-        <button class="bouton outil construction" type="button" data-outil="commerce" hidden>Ouvrir un commerce</button>
-      </div>
-      <div class="rang outils"><button class="bouton construction danger" type="button" id="effacer">Tout effacer</button></div>
+  <div class="rang">
+    <button class="outil" id="bCanons">🗺 Canons</button>
+    <button class="outil" id="bSalle">🏭 Salle des machines</button>
+    <button class="outil grand" id="bNuit">🌙 Lancer la nuit</button>
+    <button class="outil" id="bVitesse" hidden>×1</button>
+  </div>
+</div>
+
+<div class="panneau" id="panneau" hidden></div>
+
+<section class="ecran" id="eCanons" hidden>
+  <div class="tete">
+    <h2>🗺 Les canons</h2>
+    <button class="btn" data-tous="auto">Tout en auto</button>
+    <button class="btn" data-tous="marche">Tout démarrer</button>
+    <button class="btn" data-tous="arret">Tout arrêter</button>
+    <button class="btn or" id="bFermerCanons">✕</button>
+  </div>
+  <div class="resume" id="resumeCanons"></div>
+  <div class="corps" id="corpsCanons"><div id="plan"><canvas id="planFond"></canvas></div></div>
+</section>
+
+<section class="ecran" id="eSalle" hidden>
+  <div class="tete"><h2>🏭 Salle des machines</h2><button class="btn or" id="bFermerSalle">✕</button></div>
+  <div class="corps"><div class="blocs" id="blocsSalle"></div></div>
+</section>
+
+<section class="ecran" id="eMenu" hidden>
+  <div class="corps">
+    <div class="menu-boite">
+      <div class="ligne"><a class="home" href="../../index.html">← DesDés</a><button class="bouton" id="bAide" style="margin-left:auto">❔ Comment jouer</button><button class="bouton" id="bRetourJeu" hidden>Retour au jeu</button></div>
+      <h1>Nivo<span>culteur</span></h1>
+      <p style="margin:0;color:var(--doux);line-height:1.4">Un domaine tiré au sort, un budget, quelques nuits : construisez le réseau de neige de culture et mettez assez de neige sur les pistes.</p>
+      <div id="menuReprise"></div>
+      <div id="menuDomaines" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
-    <div class="groupe-tiroir" data-groupe="gestion" hidden>
-      <div class="rang outils">
-        <button class="bouton" type="button" id="ouvrirPoste">Poste de travail</button>
-        <button class="bouton" type="button" id="ouvrirAdmin" hidden>Administration</button>
-      </div>
-    </div>
-    <div class="groupe-tiroir" data-groupe="affichage" hidden>
-      <div class="rang outils">
-        <button class="bouton construction" type="button" id="sousSol">Vue sous-sol</button>
-        <button class="bouton" type="button" id="infosCanons">Masquer infos canons</button>
-        <button class="bouton" type="button" id="recentrer">Recentrer la vue</button>
-        <button class="bouton" id="ouvrirOptions" type="button" hidden>⚙ Options du bac à sable</button>
-      </div>
-    </div>
   </div>
-  <div class="rang" id="rangOutilActif" hidden>
-    <span class="puce-outil" id="outilActif"><span id="outilActifNom"></span><button type="button" id="quitterOutil" aria-label="Ranger l'outil">✕</button></span>
+</section>
+
+<section class="ecran" id="eAide" hidden>
+  <div class="tete"><h2>❔ Comment jouer</h2><button class="btn or" id="bFermerAide">✕</button></div>
+  <div class="corps aide">
+    <h3>🎯 Le but</h3>
+    <p>Mettre assez de neige sur les pistes du domaine (en m³) en un nombre de nuits donné. Chaque m³ tombé sur une piste rapporte <b>20 €</b> le matin ; la neige qui tombe dans la forêt est perdue. 1, 2 ou 3 étoiles à 100, 125 et 150 % de l'objectif.</p>
+    <h3>🏗️ Le jour : construire</h3>
+    <ul>
+      <li><b>Eau + câble</b> (le plus courant) : touchez la salle des machines ou un regard, puis l'endroit où poser le nouveau regard : la tranchée et le regard sont posés ensemble, avec un ventilateur V8. On enchaîne d'un regard au suivant. <b>Eau</b> ou <b>Câble</b> seuls pour compléter (les départs électriques jaunes donnent du courant).</li>
+      <li>Un canon a besoin de l'<b>eau</b> (depuis la salle) et de l'<b>électricité</b> (depuis la salle ou un départ électrique).</li>
+      <li>Touchez un canon pour sa <b>fiche</b> : changer d'enneigeur (V9 et V10 se débloquent avec la neige faite), de support (une tour envoie plus loin, mais le vent déporte plus), l'orienter, le démonter.</li>
+      <li>Déplacer la carte : un doigt ; zoomer : deux doigts (ou la molette). ↶ annule la dernière action de la journée.</li>
+    </ul>
+    <h3>🌙 La nuit : produire</h3>
+    <ul>
+      <li>La <b>température humide</b> décide de tout : pas de neige au-dessus de −2 °C, la moitié à −4 °C, tout à −7 °C et plus froid. En haut du domaine il fait plus froid (0,6 °C par 100 m). Elle baisse le soir, est la plus basse vers 4 h, et un redoux peut arriver.</li>
+      <li>En <b>auto</b>, un canon démarre seul sous −2 °C et s'arrête au-dessus. En <b>marche</b>, il tourne même au chaud (il fait de l'eau, pas de neige). En <b>arrêt</b>, il ne tourne pas.</li>
+      <li>Le <b>vent</b> tourne pendant la nuit : réorientez les canons (fiche) pour que la neige tombe sur la piste.</li>
+      <li>La <b>pression</b> baisse avec la longueur de conduite, la montée et le nombre de canons ouverts. Trop de canons : les plus défavorisés se ferment faute de pression. La <b>salle des machines</b> montre les pompes, la pression de départ, la retenue (qui se vide la nuit et se remplit le jour) et la courbe de température.</li>
+      <li>La <b>vue des canons</b> (🗺) montre tous les canons sur un plan : démarrer, arrêter ou mettre en auto d'un geste.</li>
+    </ul>
   </div>
-  <div class="rang outils principal">
-    <button class="bouton menu-tiroir construction" type="button" data-tiroir="construire" aria-expanded="false"><span class="ico" aria-hidden="true">🛠 </span>Construire<span class="ico" aria-hidden="true"> ▾</span></button>
-    <button class="bouton menu-tiroir" type="button" data-tiroir="gestion" aria-expanded="false"><span class="ico" aria-hidden="true">📋 </span>Gestion<span class="ico" aria-hidden="true"> ▾</span></button>
-    <button class="bouton menu-tiroir" type="button" data-tiroir="affichage" aria-expanded="false"><span class="ico" aria-hidden="true">👁 </span>Affichage<span class="ico" aria-hidden="true"> ▾</span></button>
-    <button class="bouton construction" type="button" id="annuler" disabled aria-label="Annuler la dernière action" title="Annuler la dernière action">↶</button>
-    <button class="bouton nuit construction" type="button" id="lancerNuit">Lancer la nuit</button>
-    <button class="bouton" type="button" id="accelerer" hidden>Accélérer ×3</button>
-  </div>
-</footer>
+</section>
 
-<footer class="bas vitrine" id="barreVitrine" hidden>
-  <div class="rang options" id="vitrineOptions"></div>
-  <div class="rang" id="vitrineModeles"></div>
-</footer>
-
-<section class="poste" id="poste" hidden aria-label="Poste de travail"></section>
-<section class="poste menu" id="menu" hidden aria-label="Menu des niveaux"></section>
-<section class="poste options" id="options" hidden aria-label="Options du bac à sable"></section>
-<section class="poste admin" id="admin" hidden aria-label="Administration de la station"></section>
-<aside class="coin-pannes" id="pannesCoin" hidden aria-label="Pannes en cours"></aside>
-<aside class="coin-objectifs" id="objectifsCoin" hidden aria-label="Objectifs"></aside>
-<section class="panneau" id="panneauTests" hidden></section>
-<section class="panneau" id="panneauErreur" hidden></section>
-
-<!-- Three.js : d'abord la copie posée à côté de cette page (pour jouer sans internet), sinon par internet -->
-<script src="three.min.js?v=65"></script>
-<script>window.THREE || document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"><\/script>');</script>
-
-<script src="js/config.js?v=65"></script>
-<script src="js/niveaux.js?v=65"></script>
-<script src="js/simulation.js?v=65"></script>
-<script src="js/modeles.js?v=65"></script>
-<script src="js/effets.js?v=65"></script>
-<script src="js/interface.js?v=65"></script>
-<script src="js/jeu.js?v=65"></script>
-<script src="js/vitrine.js?v=65"></script>
-<script src="js/demarrage.js?v=65"></script>
+<script src="js/config.js?v=66"></script>
+<script src="js/domaine.js?v=66"></script>
+<script src="js/simulation.js?v=66"></script>
+<script src="js/carte.js?v=66"></script>
+<script src="js/jeu.js?v=66"></script>
 </body>
 </html>
