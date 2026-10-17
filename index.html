@@ -246,7 +246,7 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
       </svg>
       <p class="title">Dameuse <span>de nuit</span></p>
       <p class="desc">Damez la piste avant l'ouverture : lame pour raboter les bosses et étaler la neige de culture, fraise pour le velours, treuil dans les murs. 8 pistes et un défi par jour.</p>
-      <p class="status" id="stdameuse"><b>Pas encore joué</b>Première piste : Les Marmottes (verte).</p>
+      <p class="status" id="stdameuse"><b>Pas encore joué</b>Première piste : Baby (verte).</p>
       <span class="go">Jouer</span>
     </a>
 
@@ -276,8 +276,8 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
         <path d="M62 44 L60 66 M58 66 h10" stroke="#EAF2FF" stroke-width="3" stroke-linecap="round" fill="none"/>
       </svg>
       <p class="title">Nivoculteur</p>
-      <p class="desc">Un domaine tiré au sort : creusez les tranchées, posez les canons, puis produisez la nuit selon le froid et le vent. Vue de dessus, salle des machines et plan des canons.</p>
-      <p class="status" id="stnivo"><b>Pas encore joué</b>Un domaine au hasard, un budget, quelques nuits.</p>
+      <p class="desc">Une piste de Luchon-Superbagnères à enneiger : creusez les tranchées, posez les canons, puis produisez la nuit selon le froid et le vent. Vue de dessus, salle des machines et plan des canons.</p>
+      <p class="status" id="stnivo"><b>Pas encore joué</b>9 pistes de Luchon-Superbagnères à enneiger.</p>
       <span class="go">Jouer</span>
     </a>
   </nav>
@@ -292,8 +292,8 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
   <footer id="installHint">Astuce : ajoutez DesDés à l'écran d'accueil pour l'ouvrir comme une application. Tous les jeux marchent ensuite sans réseau.</footer>
 </main>
 
-<script src="jeux/drawrace/circuits.js?v=68"></script>
-<script src="jeux/sauvegarde.js?v=68"></script>
+<script src="jeux/drawrace/circuits.js?v=71"></script>
+<script src="jeux/sauvegarde.js?v=71"></script>
 <script>
 const fmt = n => n.toLocaleString('fr-FR');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -385,13 +385,15 @@ function showDraw(){
   el.innerHTML = `<b>Record · ${esc(c)}</b>${m}:${(s - m * 60).toFixed(2).padStart(5, '0')} par ${esc(r.nom)}`;
 }
 /* Nivoculteur : la partie en cours (domaine, nuit, neige) et les étoiles (clés partagées avec jeux/nivoculteur) */
-const NIVO_DOMAINES = { petit: { nom: 'Petit domaine', nuits: 5, objectif: 7000 }, moyen: { nom: 'Domaine moyen', nuits: 5, objectif: 12000 }, grand: { nom: 'Grand domaine', nuits: 6, objectif: 20000 } };
+const NIVO_DOMAINES = { baby: { nom: 'Baby', nuits: 4, objectif: 4000 }, renard: { nom: 'Le Renard', nuits: 4, objectif: 4900 }, lac: { nom: 'Le Lac', nuits: 5, objectif: 10500 },
+  marmottes: { nom: 'Les Marmottes', nuits: 5, objectif: 14000 }, hountestrete: { nom: 'Hount Estrete', nuits: 5, objectif: 11500 }, lafforgue: { nom: 'Lafforgue', nuits: 5, objectif: 13000 },
+  gouron: { nom: 'Le Gouron', nuits: 5, objectif: 11000 }, violettes: { nom: 'Les Violettes', nuits: 5, objectif: 10700 }, boiscoqs: { nom: 'Le Bois des Coqs', nuits: 6, objectif: 15000 } };
 function showNivo(){
   const p = read('nivo-partie'), rec = read('nivo-records') || {}, el = document.getElementById('stnivo');
   const etoiles = Object.values(rec).reduce((s, r) => s + (r.etoiles || 0), 0);
   const D = p && p.version === 2 && NIVO_DOMAINES[p.taille];
   if(D && !p.fini){ el.innerHTML = `<b>${esc(p.nom || D.nom)} · nuit ${p.nuit + 1}/${D.nuits}</b>${fmt(Math.round(p.neigePiste))} / ${fmt(D.objectif)} m³ sur les pistes`; return; }
-  el.innerHTML = etoiles ? `<b>${etoiles} étoile${etoiles > 1 ? 's' : ''} sur 9</b>Nouveau domaine au hasard : petit, moyen ou grand.` : '<b>Pas encore joué</b>Un domaine au hasard, un budget, quelques nuits.';
+  el.innerHTML = etoiles ? `<b>${etoiles} étoile${etoiles > 1 ? 's' : ''} sur 27</b>9 pistes de Luchon-Superbagnères à enneiger.` : '<b>Pas encore joué</b>9 pistes de Luchon-Superbagnères à enneiger.';
 }
 /* Fusée Rythme : le dernier morceau joué et son record (clé partagée avec jeux/fusee.html) */
 function showFusee(){
@@ -405,7 +407,7 @@ function showFusee(){
 function showDameuse(){
   const r = read('dameuse-records') || {}, p = r.pistes || {}, el = document.getElementById('stdameuse');
   const der = p[r.dernier];
-  if(!der){ el.innerHTML = '<b>Pas encore joué</b>Première piste : Les Marmottes (verte).'; return; }
+  if(!der){ el.innerHTML = '<b>Pas encore joué</b>Première piste : Baby (verte).'; return; }
   const etoiles = Object.keys(p).filter(k => !k.startsWith('defi-')).reduce((s, k) => s + (p[k].etoiles || 0), 0);
   el.innerHTML = `<b>${esc(der.nom)} · ${'★'.repeat(der.etoiles)}${'☆'.repeat(3 - der.etoiles)}</b>Record ${der.best.toLocaleString('fr-FR')} points · ${etoiles} étoile${etoiles > 1 ? 's' : ''} sur 24`;
 }

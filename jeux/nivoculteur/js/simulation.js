@@ -294,14 +294,14 @@ function etoiles(dom, res){ const f = res.neigePiste / dom.objectif; return CONF
 function testsSimulation(){
   const ok = [], ko = [];
   const verif = (nom, cond) => (cond ? ok : ko).push(nom);
-  for(const t of ['petit', 'moyen', 'grand']){
+  for(const t of Object.keys(CONFIG.domaines)){
     const d1 = creerDomaine(t, 1234), d2 = creerDomaine(t, 1234);
     verif(`${t} : même graine = même domaine`, d1.nom === d2.nom && d1.pistes.length === d2.pistes.length && Math.abs(d1.alt(50, 60) - d2.alt(50, 60)) < 1e-9);
     verif(`${t} : des pistes`, d1.pistes.length >= 1 && d1.pistes.every(p => p.points.length > 10));
-    verif(`${t} : le haut est plus haut que le bas`, d1.alt(d1.W / 2, 30) > d1.alt(d1.W / 2, d1.front) + 80);
+    verif(`${t} : le haut est plus haut que le bas`, d1.alt(d1.W / 2, 30) > d1.alt(d1.W / 2, d1.front) + 25);
     verif(`${t} : la salle n'est pas sur la retenue`, Math.hypot(d1.salle.x - d1.retenue.x, d1.salle.y - d1.retenue.y) > d1.retenue.r + 10);
   }
-  const dom = creerDomaine('petit', 42), res = creerReseau(dom);
+  const dom = creerDomaine('marmottes', 42), res = creerReseau(dom);
   const p = dom.pistes[0], q = p.points[Math.floor(p.points.length * .6)];
   const x = q[0] + p.largeur / 2 + 6, y = q[1];
   verif('regard posable au bord de la piste', !refusRegard(dom, res, x, y));
@@ -310,7 +310,7 @@ function testsSimulation(){
   verif('canon tourné vers la piste', Math.abs(n.canon.dir) <= Math.PI);
   verif('trop près refusé', !!refusRegard(dom, res, x + 3, y));
   const dv = devisTranchee(dom, res, noeud(res, 'pompage'), n, { eau:true, cable:true });
-  verif('devis tranchée commune', dv.prix === Math.round(dv.longueur ? Math.hypot(noeud(res, 'pompage').x - x, noeud(res, 'pompage').y - y) * 900 : 0));
+  verif('devis tranchée commune', dv.prix === Math.round(dv.longueur ? Math.hypot(noeud(res, 'pompage').x - x, noeud(res, 'pompage').y - y) * CONFIG.couts.trancheeCommune : 0));
   ajouterTranchee(res, 'pompage', n.id, { eau:true, cable:false });
   verif('sans câble : pas prêt', !etatRegard(res, n.id).pret);
   ajouterTranchee(res, 'pompage', n.id, { eau:false, cable:true });

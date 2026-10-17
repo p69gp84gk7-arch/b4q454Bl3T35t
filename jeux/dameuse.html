@@ -14,6 +14,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
+:root{ --marge-haut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --marge-haut:max(env(safe-area-inset-top, 0px), 40px); } }
 :root{
   --nuit:#0A1120; --nuit-2:#121C33; --carte:rgba(18,28,51,.9); --ligne:rgba(170,190,230,.2);
   --texte:#EEF3FB; --doux:#9EADC8; --ambre:#FFB020; --neige:#E9EFF8; --rouge:#E04A3A; --vert:#57C98A; --bleu:#4D8DF0;
@@ -29,7 +31,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 
 /* Pendant la partie */
 .hud{ position:fixed; left:0; right:0; top:0; z-index:3; pointer-events:none;
-  padding:calc(8px + env(safe-area-inset-top, 0px)) 10px 0; display:flex; align-items:center; gap:8px; }
+  padding:calc(8px + var(--marge-haut)) 10px 0; display:flex; align-items:center; gap:8px; }
 .hud[hidden]{ display:none; }
 .pastille{ background:rgba(10,17,32,.72); border:1px solid var(--ligne); border-radius:12px; padding:4px 9px; font-family:"Saira Condensed", sans-serif; font-weight:700; font-size:1.05rem; line-height:1.15; white-space:nowrap; }
 .pastille small{ display:block; font-size:.62rem; font-weight:500; color:var(--doux); text-transform:uppercase; letter-spacing:.08em; }
@@ -37,9 +39,19 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 .carbu i{ display:block; height:6px; border-radius:3px; background:rgba(255,255,255,.12); margin-top:3px; overflow:hidden; }
 .carbu i b{ display:block; height:100%; width:100%; background:var(--vert); }
 .hud .pause{ margin-left:auto; pointer-events:auto; width:40px; height:40px; border-radius:12px; border:1px solid var(--ligne); background:rgba(10,17,32,.72); font-size:1.05rem; }
-#mini{ position:fixed; right:10px; top:calc(58px + env(safe-area-inset-top, 0px)); z-index:3; border-radius:8px; border:1px solid var(--ligne); background:rgba(10,17,32,.6); pointer-events:none; }
+#mini{ position:fixed; right:10px; top:calc(58px + var(--marge-haut)); z-index:3; border-radius:8px; border:1px solid var(--ligne); background:rgba(10,17,32,.6); pointer-events:none; }
 #mini[hidden]{ display:none; }
-.conseil{ position:fixed; left:50%; transform:translateX(-50%); top:calc(60px + env(safe-area-inset-top, 0px)); z-index:3; max-width:min(78vw, 420px);
+#mini{ pointer-events:auto; cursor:pointer; }
+.miniEt{ position:fixed; right:10px; z-index:3; font-family:"Saira Condensed", sans-serif; font-weight:700; font-size:.68rem; letter-spacing:.06em; color:var(--doux); background:rgba(10,17,32,.72); border:1px solid var(--ligne); border-radius:7px; padding:1px 6px; pointer-events:none; }
+.miniEt[hidden]{ display:none; }
+/* Carte des épaisseurs de neige */
+.carteNeige{ display:flex; gap:12px; align-items:flex-start; justify-content:center; flex-wrap:wrap; }
+.carteNeige canvas{ border-radius:10px; border:1px solid var(--ligne); background:#0B1424; max-height:62vh; }
+.legende{ display:flex; flex-direction:column; gap:4px; font-size:.82rem; min-width:150px; }
+.legende span{ display:flex; align-items:center; gap:7px; color:var(--doux); }
+.legende i{ width:16px; height:12px; border-radius:3px; flex:none; border:1px solid rgba(255,255,255,.25); }
+.legende b{ color:var(--texte); font-family:"Saira Condensed", sans-serif; font-size:1rem; }
+.conseil{ position:fixed; left:50%; transform:translateX(-50%); top:calc(60px + var(--marge-haut)); z-index:3; max-width:min(78vw, 420px);
   background:rgba(10,17,32,.85); border:1px solid rgba(255,176,32,.45); color:var(--texte); border-radius:12px; padding:7px 11px; font-size:.85rem; line-height:1.3; text-align:center; pointer-events:none; transition:opacity .3s; }
 .conseil[hidden]{ display:none; }
 .outils{ position:fixed; left:10px; top:50%; transform:translateY(-35%); z-index:3; display:flex; flex-direction:column; gap:12px; align-items:center; }
@@ -66,7 +78,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 
 /* Écrans */
 .ecran{ position:fixed; inset:0; z-index:6; display:flex; align-items:flex-start; justify-content:center; overflow:auto;
-  padding:calc(16px + env(safe-area-inset-top, 0px)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(6,10,20,.8); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+  padding:calc(16px + var(--marge-haut)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(6,10,20,.8); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
 .ecran[hidden]{ display:none; }
 .boite{ width:min(100%, 540px); display:flex; flex-direction:column; gap:14px; }
 .tete{ display:flex; align-items:center; gap:10px; }
@@ -107,13 +119,15 @@ h1 em{ font-style:normal; color:var(--ambre); }
 <body>
 <canvas id="cv" aria-label="La piste vue du dessus"></canvas>
 <div class="hud" id="hud" hidden>
-  <div class="pastille"><small>Heure</small><span id="hHeure">21:00</span></div>
+  <div class="pastille"><small>Chrono</small><span id="hHeure">0:00</span></div>
   <div class="pastille"><small>Damé</small><span id="hDame">0 %</span></div>
   <div class="pastille carbu"><small>Gasoil</small><span id="hCarbu">100 %</span><i><b id="hCarbuB"></b></i></div>
   <div class="pastille"><small>Lame</small><span id="hLame">0 %</span></div>
-  <button class="pause" id="bPause" aria-label="Pause">⏸</button>
+  <button class="pause" id="bFin" hidden style="width:auto;padding:0 10px;font-weight:800;background:var(--ambre);color:#1A1204">🏁 Fin</button>
+  <button class="pause" id="bPause" aria-label="Pause" style="margin-left:6px">⏸</button>
 </div>
-<canvas id="mini" width="60" height="180" hidden></canvas>
+<canvas id="mini" width="60" height="180" hidden title="Carte des épaisseurs de neige"></canvas>
+<div class="miniEt" id="miniEt" hidden>📊 ÉPAISSEURS</div>
 <div class="conseil" id="conseil" hidden></div>
 <div class="outils" id="outils" hidden>
   <button class="outil" id="bTreuil" disabled><span>⚓</span>TREUIL</button>
@@ -163,9 +177,17 @@ h1 em{ font-style:normal; color:var(--ambre); }
       <p>Les <b>murs</b> (pente indiquée en pourcentage) sont trop raides pour remonter sans treuil : la dameuse patine et glisse. Au pied ou dans le mur, accrochez le treuil (le câble est déjà en place au point d'ancrage en haut), puis décrochez-le une fois en haut.</p>
       <h3>⛽ Gasoil et obstacles</h3>
       <p>La fraise, la lame et le treuil consomment. Le plein se fait sur l'aire du <b>garage</b>, en bas (arrêtez-vous dessus). Évitez les <b>enneigeurs</b> (perches) et les sapins : chaque accrochage coûte des points. Hors piste, la neige profonde ralentit.</p>
-      <h3>🏁 Fin de nuit</h3>
-      <p>La nuit se termine à 5 h 30. Le score compte la <b>surface damée</b> et sa qualité, les bosses et manques restants, le temps et le gasoil restants, les accrochages, et un bonus si vous rentrez au garage. 1 à 3 étoiles selon la surface bien damée. Pour finir plus tôt : ⏸ puis « Terminer la nuit ».</p>
+      <h3>🏁 Le chrono</h3>
+      <p>Pas de limite de temps : un <b>chrono</b> tourne. Quand vous avez fini, rentrez au garage et touchez <b>🏁 Fin</b> (ou ⏸ puis « Terminer »). Le score compte la <b>surface damée</b> et sa qualité, les bosses et manques restants, la <b>rapidité</b> (si au moins 80 % est damé, par rapport à un temps de référence), le gasoil restant, les accrochages, et un bonus si vous rentrez au garage. 1 à 3 étoiles selon la surface bien damée.</p>
     </div>
+  </div>
+</section>
+
+<section class="ecran" id="eCarte" hidden>
+  <div class="boite" style="width:min(100%, 640px)">
+    <div class="tete"><h1 style="font-size:1.9rem;margin:0">📊 Épaisseur <em>de neige</em></h1><button class="droite" id="bFermerCarte">✕ Fermer</button></div>
+    <p class="sous" style="font-size:.86rem">Épaisseur de neige sur la piste (bonne épaisseur : 30 à 50 cm). La partie est en pause pendant que vous regardez.</p>
+    <div class="carteNeige"><canvas id="cvNeige"></canvas><div class="legende" id="legende"></div></div>
   </div>
 </section>
 
@@ -173,7 +195,8 @@ h1 em{ font-style:normal; color:var(--ambre); }
   <div class="boite" style="margin-top:16vh">
     <p class="resultat" style="font-size:2.2rem">Pause</p>
     <button class="gros" id="bReprendre">▶ Reprendre</button>
-    <div class="btns"><button class="sec" id="bTerminer">🏁 Terminer la nuit</button><button class="sec" id="bQuitter">Quitter</button></div>
+    <button class="sec" id="bCarte">📊 Carte des épaisseurs de neige</button>
+    <div class="btns"><button class="sec" id="bTerminer">🏁 Terminer</button><button class="sec" id="bQuitter">Quitter</button></div>
   </div>
 </section>
 
@@ -204,16 +227,18 @@ const angle = a => { while(a > Math.PI) a -= 2 * Math.PI; while(a < -Math.PI) a 
 const COULEURS = { verte:'#2E9E5B', bleue:'#2C6FD6', rouge:'#D63A2F', noire:'#16181D' };
 // L : longueur (m), w : largeur (m), murs : { f : position (part de la longueur), l : longueur (m), s : pente }
 const PISTES = [
-  { id:'marmottes', n:'Les Marmottes', c:'verte', L:150, w:24, seed:11, courbe:.3, bosses:.45, manques:1, piles:2, murs:[] },
-  { id:'petitbois', n:'Le Petit Bois', c:'verte', L:170, w:22, seed:23, courbe:1, bosses:.55, manques:2, piles:2, murs:[] },
-  { id:'ecureuil', n:"L'Écureuil", c:'bleue', L:190, w:27, seed:37, courbe:.6, bosses:.8, manques:2, piles:3, champ:true, murs:[] },
-  { id:'combe', n:'La Combe', c:'bleue', L:205, w:30, seed:41, courbe:.8, bosses:.9, manques:3, piles:4, murs:[{ f:.5, l:26, s:.34 }] },
-  { id:'chamois', n:'Le Chamois', c:'rouge', L:215, w:28, seed:53, courbe:.7, bosses:1.05, manques:3, piles:4, murs:[{ f:.38, l:38, s:.46 }] },
-  { id:'cretes', n:'Les Crêtes', c:'rouge', L:230, w:30, seed:67, courbe:1, bosses:1.15, manques:4, piles:5, champ:true, murs:[{ f:.62, l:34, s:.48 }] },
-  { id:'mur', n:'Le Mur', c:'noire', L:240, w:29, seed:71, courbe:.6, bosses:1.3, manques:4, piles:5, murs:[{ f:.22, l:42, s:.56 }, { f:.66, l:36, s:.52 }] },
-  { id:'facenord', n:'La Face Nord', c:'noire', L:260, w:32, seed:89, courbe:.9, bosses:1.5, manques:5, piles:6, champ:true, murs:[{ f:.42, l:64, s:.6 }] },
+  { id:'baby', n:'Baby', c:'verte', L:150, w:24, seed:11, courbe:.3, bosses:.45, manques:1, piles:2, murs:[] },
+  { id:'renard', n:'Le Renard', c:'bleue', L:175, w:24, seed:23, courbe:1, bosses:.65, manques:2, piles:2, murs:[] },
+  { id:'lac', n:'Le Lac', c:'bleue', L:190, w:27, seed:37, courbe:.6, bosses:.8, manques:2, piles:3, champ:true, murs:[] },
+  { id:'marmottes', n:'Les Marmottes', c:'bleue', L:205, w:30, seed:41, courbe:.8, bosses:.9, manques:3, piles:4, murs:[{ f:.5, l:26, s:.34 }] },
+  { id:'hountestrete', n:'Hount Estrete', c:'rouge', L:215, w:28, seed:53, courbe:.7, bosses:1.05, manques:3, piles:4, murs:[{ f:.38, l:38, s:.46 }] },
+  { id:'lafforgue', n:'Lafforgue', c:'rouge', L:230, w:30, seed:67, courbe:1, bosses:1.15, manques:4, piles:5, champ:true, murs:[{ f:.62, l:34, s:.48 }] },
+  { id:'gouron', n:'Le Gouron', c:'noire', L:240, w:29, seed:71, courbe:.6, bosses:1.3, manques:4, piles:5, murs:[{ f:.22, l:42, s:.56 }, { f:.66, l:36, s:.52 }] },
+  { id:'violettes', n:'Les Violettes', c:'noire', L:225, w:28, seed:97, courbe:.8, bosses:1.4, manques:4, piles:5, champ:true, murs:[{ f:.5, l:46, s:.55 }] },
+  { id:'boiscoqs', n:'Le Bois des Coqs', c:'noire', L:260, w:32, seed:89, courbe:.9, bosses:1.5, manques:5, piles:6, champ:true, murs:[{ f:.42, l:64, s:.6 }] },
 ];
-const NOMS_DEFI = ['La Grande Combe', 'Le Lièvre Blanc', 'Les Mélèzes', 'Le Col', 'La Crête du Loup', 'Le Bouquetin', 'Les Lagopèdes'];
+// Noms des pistes de Luchon-Superbagnères (secteurs Téchous, Lac et Céciré)
+const NOMS_DEFI = ['Les Sarrats', 'Les Biches', 'Les Gentianes', 'Le Tétras', 'Les Isards', 'La Traversée des Marmottes', 'Le Céciré'];
 function defiDuJour(){
   const d = new Date(), cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const seed = d.getFullYear() * 1000 + Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5), R = alea(seed);
@@ -289,7 +314,8 @@ function genPiste(def){
   // chaque canon a produit son tas, étiré par le vent (plus il y a de canons, plus il y a de neige à étaler)
   const vent = R() * 6.3;
   for(const e of enneigeurs){
-    const y = e.y + 3 + R() * 4, x = xc(y) - e.cote * (lw(y) / 2 - 6 - R() * 2);
+    // sous la tête de la perche (elle penche de 5,7 m au-dessus de la piste)
+    const x = e.x - e.cote * 5.7 + (R() - .5), y = e.y - 1.2 + R() * 2;
     bosse(x, y, 120 + R() * 50, 4.4 + R() * 1.6);
     for(let n = 1; n <= 2; n++) bosse(x + Math.cos(vent) * n * 4.5 - e.cote * n, y + Math.abs(Math.sin(vent)) * n * 4.5, 70 + R() * 30, 3.2 + R());
     piles.push([x, y]);
@@ -388,7 +414,7 @@ function majSon(regime, fraise){
 const VMAX = 5;                 // 18 km/h
 const BON = 14 / 3.6;           // au-delà de 14 km/h, le damage est moins beau
 const CAP = 4000;               // capacité de la lame (cm × m²) ; pleine, elle pousse le surplus devant elle
-const FIN_NUIT = 8.5;           // de 21 h à 5 h 30
+// plus de limite de temps : un chrono ; P.duree sert de temps de référence (rapidité) et règle la consommation de gasoil
 let partie = null, raf = 0, pisteCourante = null;
 const commande = { dir:0, gaz:0, idDir:null, idGaz:null }, touches = new Set();
 
@@ -397,11 +423,11 @@ function demarrer(def){
   T = genPiste(def); preparerImage();
   const d = T.depart;
   const duree = clamp(T.n / (6.4 * 3.4) * 1.35 + 45, 150, 540);
-  partie = { x:d.x, y:d.y, a:d.a, v:0, lame:false, fraise:false, treuil:null, charge:0, carbu:100, t:0, duree,
+  partie = { x:d.x, y:d.y, a:d.a, v:0, lame:false, fraise:false, treuil:null, charge:0, vidage:0, carbu:100, t:0, duree,
     conso:100 / (.38 * duree), sommeQ:0, accrochages:{ enneigeur:0, arbre:0 }, choc:0, textes:[], fin:false, pause:false, panne:false,
     prevG:null, prevD:null, chenille:0, conseils:{}, conseil:null, conseilT:0, plein:0, dernier:performance.now(), majHud:0, majMini:0, secousse:0 };
   ['eMenu', 'eAide', 'eFin', 'ePause'].forEach(id => $(id).hidden = true);
-  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('repereG').hidden = $('repereD').hidden = $('gaz').hidden = false;
+  $('miniEt').hidden = false; $('hud').hidden = $('outils').hidden = $('mini').hidden = $('repereG').hidden = $('repereD').hidden = $('gaz').hidden = false; $('bFin').hidden = true;
   regler('gaz', 0); doigtsDir.clear(); commande.dir = 0;
   majOutils(); preparerMini();
   audio(); if(AC && AC.state === 'suspended') AC.resume();
@@ -462,8 +488,9 @@ function lameAction(P, dt){
 }
 // Relever la lame chargée : la neige comble d'abord les creux et les manques autour de l'avant (les plus profonds d'abord),
 // et ce qui reste fait un tas devant la lame
-function deposerCharge(P){
-  if(P.charge < 1) return;
+function deposerCharge(P, quantite = P.charge){
+  if(P.charge < 1 || quantite <= 0) return;
+  const total = P.charge; P.charge = Math.min(P.charge, quantite);   // on ne dépose que cette quantité
   const touches = new Set(), ux = Math.sin(P.a), uy = -Math.cos(P.a), cx = P.x + ux * 4.4, cy = P.y + uy * 4.4;
   const autour = [];
   for(let j = Math.floor(cy - 6); j <= cy + 6; j++) for(let i = Math.floor(cx - 6); i <= cx + 6; i++){
@@ -478,7 +505,7 @@ function deposerCharge(P){
     for(const k of cases){ T.h[k] += part; touches.add(k); }
   }
   for(const k of touches){ if(T.q[k] > 0){ if(T.etat[k] === 1) P.sommeQ -= T.q[k]; T.q[k] = 0; } peindreCase(k % T.W, Math.floor(k / T.W)); }
-  P.charge = 0;
+  P.charge = total - Math.min(total, quantite);
 }
 function fraiseAction(P, dt, glisse){
   const vit = Math.abs(P.v), qv = clamp(1 - (vit - BON) / 2.2, .35, 1) * (glisse ? .7 : 1);
@@ -580,6 +607,13 @@ function maj(P, dt){
   if(P.treuil){ const an = P.treuil, d = Math.hypot(P.x - an.x, P.y - an.y); if(d > 320){ P.x = an.x + (P.x - an.x) / d * 320; P.y = an.y + (P.y - an.y) / d * 320; P.v = 0; } }
   collisions(P);
   P.chenille += P.v * dt;
+  // La lame qui se relève se vide peu à peu
+  if(P.vidage > 0){
+    const part = Math.min(1, dt / P.vidage);
+    if(P.charge > 0) deposerCharge(P, P.charge * part + (P.vidage <= dt ? P.charge : 0));
+    P.vidage = Math.max(0, P.vidage - dt);
+    if(P.vidage === 0 && P.charge > 0) deposerCharge(P);
+  }
   // Outils
   P.poussee = false;
   if(P.lame && P.v > .2){ P.poussee = lameAction(P, dt); if(P.poussee) conseiller('lamepleine', 'Lame pleine : déposez la neige dans les creux et les manques (zones brunes), ou relevez la lame pour laisser un tas.', 5, 2); }
@@ -599,9 +633,13 @@ function maj(P, dt){
   if(P.carbu <= 0){ P.carbu = 0; P.panne = true; P.textes.push({ x:P.x, y:P.y - 4, txt:'Panne sèche !', c:'#FF8C7A', vie:2.5 }); setTimeout(() => finir(), 1800); P.fin = true; }
   majSon(regime, P.fraise && P.v > .25);
   P.conseilT -= dt; if(P.conseilT <= 0 && !$('conseil').hidden) $('conseil').hidden = true;
-  if(P.t >= P.duree) finir();
+  // au garage, on peut arrêter le chrono
+  const auGarage = P.sommeQ / T.n > .05 && Math.hypot(P.x - (T.aire.x + T.aire.w / 2), P.y - (T.aire.y + T.aire.h / 2)) < 12;
+  if(auGarage !== P.auGarage){ P.auGarage = auGarage; $('bFin').hidden = !auGarage; }
+  if(P.sommeQ / T.n > .95) conseiller('fini', 'Piste presque toute damée : rentrez au garage et touchez 🏁 Fin pour arrêter le chrono.', 6, 1);
 }
-function heure(P){ const h = 21 + FIN_NUIT * clamp(P.t / P.duree, 0, 1); return `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`; }
+const chrono = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+function heure(P){ return chrono(P.t); }
 
 /* ---------- Dessin ---------- */
 if(!CanvasRenderingContext2D.prototype.roundRect) CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h){ this.rect(x, y, w, h); };
@@ -650,7 +688,8 @@ function dessinerDameuse(c, P, t){
   // gyrophare
   const gyro = Math.sin(t * 9) > 0; c.fillStyle = gyro ? '#FFB020' : '#7A5410'; c.beginPath(); c.arc(0, -.8, .28, 0, 6.29); c.fill();
   // lame (à l'avant) : plus sombre et posée quand elle est baissée
-  c.fillStyle = P.lame ? '#9AA3B2' : '#C2C9D4'; c.fillRect(-2.8, -3.75, 5.6, .55);
+  const basse = P.lame || P.vidage > 0;
+  c.fillStyle = P.lame ? '#9AA3B2' : P.vidage > 0 ? '#AEB6C3' : '#C2C9D4'; c.fillRect(-2.8, -3.75, 5.6, .55);
   c.fillStyle = P.lame ? '#F2B233' : '#B28A2E'; c.fillRect(-2.8, -3.82, 5.6, .14);
   c.strokeStyle = '#59606E'; c.lineWidth = .12; c.beginPath(); c.moveTo(-1.2, -3.2); c.lineTo(-1, -2.4); c.moveTo(1.2, -3.2); c.lineTo(1, -2.4); c.stroke();
   if(P.charge > 20){
@@ -765,6 +804,7 @@ function preparerMini(){
   const c = $('mini'); miniEch = Math.min(170 / T.H, 64 / T.W);
   c.width = Math.round(T.W * miniEch * 2); c.height = Math.round(T.H * miniEch * 2);
   c.style.width = c.width / 2 + 'px'; c.style.height = c.height / 2 + 'px';
+  $('miniEt').style.top = `calc(${62 + c.height / 2}px + var(--marge-haut))`;
   miniImg = document.createElement('canvas'); miniImg.width = T.W; miniImg.height = T.H;
 }
 function dessinerMini(P){
@@ -788,7 +828,7 @@ function bilan(P){
   const lignes = [
     ['Surface damée (' + Math.round(dame * 100) + ' %)', Math.round(dame * 1000)],
     ['Bosses et manques restants (' + (fracB * 100).toFixed(1) + ' %)', -Math.round(Math.min(250, fracB * 1500))],
-    ['Temps restant', dame >= .8 ? Math.round(clamp(1 - P.t / P.duree, 0, 1) * 150) : 0],
+    [`Rapidité (${chrono(P.t)}, référence ${chrono(P.duree)})`, dame >= .8 ? Math.round(clamp((P.duree * 1.3 - P.t) / P.duree, 0, 1) * 250) : 0],
     ['Gasoil restant', P.panne || dame < .5 ? 0 : Math.round(P.carbu)],
     ['Enneigeurs accrochés (' + P.accrochages.enneigeur + ')', -40 * P.accrochages.enneigeur],
     ['Sapins touchés (' + P.accrochages.arbre + ')', -15 * P.accrochages.arbre],
@@ -813,15 +853,55 @@ function finir(){
   $('fScore').textContent = fmtN(b.total);
   $('fRecord').textContent = nouveau && r.parties > 1 ? '🏆 Nouveau record !' : r.parties > 1 ? `Record : ${fmtN(r.best)}` : '';
   $('fDetail').innerHTML = b.lignes.map(([n, v0]) => { const v = Math.round(v0) || 0; return `<tr><td>${esc(n)}</td><td class="${v < 0 ? 'moins' : ''}">${v > 0 ? '+' : ''}${fmtN(v)}</td></tr>`; }).join('') + `<tr class="total"><td>Total</td><td>${fmtN(b.total)}</td></tr>`;
-  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('conseil').hidden = $('repereG').hidden = $('repereD').hidden = $('gaz').hidden = true; $('ePause').hidden = true;
+  $('miniEt').hidden = $('eCarte').hidden = true; $('hud').hidden = $('outils').hidden = $('mini').hidden = $('conseil').hidden = $('repereG').hidden = $('repereD').hidden = $('gaz').hidden = true; $('ePause').hidden = true;
   setTimeout(() => { $('eFin').hidden = false; }, 300);
 }
 function quitter(){
   partie = null; cancelAnimationFrame(raf); majSon(0, false);
-  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('conseil').hidden = $('repereG').hidden = $('repereD').hidden = $('gaz').hidden = true;
+  $('miniEt').hidden = $('eCarte').hidden = true; $('hud').hidden = $('outils').hidden = $('mini').hidden = $('conseil').hidden = $('repereG').hidden = $('repereD').hidden = $('gaz').hidden = true;
   ['ePause', 'eFin'].forEach(id => $(id).hidden = true);
   menu();
 }
+/* ---------- Carte des épaisseurs de neige ----------
+   h est l'écart à la bonne épaisseur : on affiche l'épaisseur réelle = 40 cm + h */
+const EP_BASE = 40;
+const CLASSES_EP = [
+  { max:10, c:[122,82,55], n:'Manque (terre)' }, { max:25, c:[214,96,58], n:'Trop mince' }, { max:30, c:[240,180,70], n:'Un peu mince' },
+  { max:50, c:[70,190,120], n:'Bonne épaisseur' }, { max:70, c:[110,170,235], n:'Un peu épaisse (bosse)' }, { max:110, c:[150,120,230], n:'Trop épaisse (bosse)' },
+  { max:1e9, c:[245,245,255], n:'Tas de neige' } ];
+const classeEp = h => { const e = EP_BASE + h; for(const k of CLASSES_EP) if(e < k.max) return k; return CLASSES_EP[CLASSES_EP.length - 1]; };
+function ouvrirCarte(){
+  const P = partie; if(!P) return;
+  if(!P.fin){ P.pause = true; majSon(0, false); }
+  $('ePause').hidden = true; $('eCarte').hidden = false;
+  // l'image : une case de 1 m = un pixel, agrandie
+  const c = $('cvNeige'), x = c.getContext('2d'), maxH = Math.min(innerHeight * .62, 560), maxW = Math.min(innerWidth - 40, 420);
+  const e = Math.max(1, Math.min(maxW / T.W, maxH / T.H)), w = Math.round(T.W * e), h = Math.round(T.H * e), d = Math.min(2, devicePixelRatio || 1);
+  c.width = w * d; c.height = h * d; c.style.width = w + 'px'; c.style.height = h + 'px';
+  const im = document.createElement('canvas'); im.width = T.W; im.height = T.H;
+  const ix = im.getContext('2d'), id = ix.createImageData(T.W, T.H), px = id.data, compte = new Map(CLASSES_EP.map(k => [k, 0]));
+  let n = 0, somme = 0;
+  for(let k = 0; k < T.W * T.H; k++){
+    const p = k * 4, et = T.etat[k];
+    if(et === 1){ const cl = classeEp(T.h[k]); px[p] = cl.c[0]; px[p + 1] = cl.c[1]; px[p + 2] = cl.c[2]; px[p + 3] = 255; compte.set(cl, compte.get(cl) + 1); n++; somme += EP_BASE + T.h[k]; }
+    else if(et === 3){ px[p] = 60; px[p + 1] = 72; px[p + 2] = 96; px[p + 3] = 255; }
+    else { px[p] = 22; px[p + 1] = 34; px[p + 2] = 52; px[p + 3] = 255; }
+  }
+  ix.putImageData(id, 0, 0);
+  x.setTransform(d, 0, 0, d, 0, 0); x.imageSmoothingEnabled = e < 3; x.drawImage(im, 0, 0, w, h);
+  // la dameuse
+  x.fillStyle = '#FFB020'; x.strokeStyle = '#000'; x.lineWidth = 1.5;
+  x.save(); x.translate(P.x * e, P.y * e); x.rotate(P.a); x.beginPath(); x.moveTo(0, -9); x.lineTo(6, 6); x.lineTo(-6, 6); x.closePath(); x.fill(); x.stroke(); x.restore();
+  // les perches
+  x.fillStyle = '#FFFFFF'; for(const o of T.enneigeurs){ x.beginPath(); x.arc(o.x * e, o.y * e, 2.5, 0, 6.29); x.fill(); }
+  const pc = v => (v / n * 100).toFixed(1).replace('.', ',') + ' %';
+  $('legende').innerHTML = CLASSES_EP.slice().reverse().map((k, i, arr) => { const bas = arr[i + 1] ? arr[i + 1].max : 0;
+      return `<span><i style="background:rgb(${k.c.join(',')})"></i>${k.n} <small style="opacity:.7">${k.max > 1e8 ? `> ${bas} cm` : `${bas}–${k.max} cm`}</small><b style="margin-left:auto">${pc(compte.get(k))}</b></span>`; }).join('') +
+    `<span style="margin-top:6px">Épaisseur moyenne <b style="margin-left:auto">${Math.round(somme / n)} cm</b></span>` +
+    `<span>Surface damée <b style="margin-left:auto">${Math.floor(P.sommeQ / T.n * 100)} %</b></span>` +
+    `<span><i style="background:#FFB020;border-color:#000"></i>la dameuse · <i style="background:#fff;border-radius:50%;width:8px;height:8px"></i>perches</span>`;
+}
+function fermerCarte(){ $('eCarte').hidden = true; if(partie && !partie.fin) reprendre(); }
 function pause(){ if(!partie || partie.fin) return; partie.pause = true; majSon(0, false); $('ePause').hidden = false; }
 function reprendre(){ if(!partie) return; partie.pause = false; partie.dernier = performance.now(); $('ePause').hidden = true; }
 
@@ -862,7 +942,13 @@ cv.addEventListener('pointermove', e => { if(!doigtsDir.has(e.pointerId)) return
 const lacherDir = e => { if(doigtsDir.delete(e.pointerId)) majDir(); };
 cv.addEventListener('pointerup', lacherDir); cv.addEventListener('pointercancel', lacherDir);
 cv.addEventListener('contextmenu', e => e.preventDefault());
-function basculerLame(){ const P = partie; if(!P || P.fin) return; if(P.lame) deposerCharge(P); P.lame = !P.lame; majOutils(); }
+// Relever la lame : elle monte en 1,5 s et se vide peu à peu (dans les creux d'abord) ; la rebaisser arrête de la vider
+function basculerLame(){
+  const P = partie; if(!P || P.fin) return;
+  if(P.lame){ P.lame = false; P.vidage = P.charge > 1 ? 1.5 : 0; }
+  else { P.lame = true; P.vidage = 0; }
+  majOutils();
+}
 function basculerFraise(){ const P = partie; if(!P || P.fin) return; P.fraise = !P.fraise; P.prevG = null; majOutils(); }
 function basculerTreuil(){
   const P = partie; if(!P || P.fin) return;
@@ -878,12 +964,13 @@ addEventListener('keydown', e => {
   if(partie && (e.code === 'ArrowUp' || e.code === 'KeyW')) regler('gaz', commande.gaz + .1);
   if(partie && (e.code === 'ArrowDown' || e.code === 'KeyS')) regler('gaz', commande.gaz - .1);
   if(e.code === 'KeyL') basculerLame(); if(e.code === 'KeyF') basculerFraise(); if(e.code === 'KeyT') basculerTreuil();
+  if(e.code === 'Escape' && !$('eCarte').hidden){ fermerCarte(); return; }
   if(e.code === 'Escape' || e.code === 'KeyP'){ if(partie && !partie.pause) pause(); else reprendre(); }
   if(e.code.startsWith('Arrow')) e.preventDefault();
 });
 addEventListener('keyup', e => touches.delete(e.code));
 document.addEventListener('visibilitychange', () => { if(document.hidden) pause(); });
-$('bPause').onclick = pause; $('bReprendre').onclick = reprendre; $('bQuitter').onclick = quitter;
+$('bPause').onclick = pause; $('bCarte').onclick = ouvrirCarte; $('bFermerCarte').onclick = fermerCarte; $('mini').onclick = ouvrirCarte; $('bFin').onclick = () => { if(partie && !partie.fin) finir(); }; $('bReprendre').onclick = reprendre; $('bQuitter').onclick = quitter;
 $('bTerminer').onclick = () => { $('ePause').hidden = true; if(partie){ partie.pause = false; finir(); } };
 $('bRejouer').onclick = () => { $('eFin').hidden = true; if(pisteCourante) demarrer(pisteCourante.defi ? defiDuJour() : pisteCourante); };
 $('bMenu').onclick = quitter;

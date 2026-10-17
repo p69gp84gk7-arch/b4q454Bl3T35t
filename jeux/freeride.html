@@ -14,6 +14,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
+:root{ --marge-haut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --marge-haut:max(env(safe-area-inset-top, 0px), 40px); } }
 :root{
   --neige:#EEF4FB; --ciel:#DCE8F5; --encre:#13233A; --doux:#5A6B85; --ligne:rgba(19,35,58,.14); --carte:rgba(255,255,255,.88);
   --orange:#FF6A2B; --bleu:#1F6FE0; --rouge:#E23B3B; --or:#F2A900; --glace:#8FD3F0;
@@ -29,14 +31,14 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 
 /* Pendant la partie */
 .hud{ position:fixed; left:0; right:0; top:0; z-index:3; pointer-events:none;
-  padding:calc(8px + env(safe-area-inset-top, 0px)) 10px 0; display:flex; align-items:flex-start; gap:8px; }
+  padding:calc(8px + var(--marge-haut)) 10px 0; display:flex; align-items:flex-start; gap:8px; }
 .hud[hidden]{ display:none; }
 .bloc{ background:rgba(255,255,255,.82); border:1px solid var(--ligne); border-radius:12px; padding:3px 10px 4px; line-height:1; box-shadow:0 2px 8px rgba(19,35,58,.08); }
 .bloc small{ display:block; font-size:.6rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--doux); margin-bottom:2px; }
 .bloc b{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:1.6rem; letter-spacing:.02em; }
 .bloc .combo{ color:var(--orange); }
 .hud .pause{ margin-left:auto; pointer-events:auto; width:40px; height:40px; border-radius:12px; border:1px solid var(--ligne); background:rgba(255,255,255,.85); font-size:1rem; }
-.jauge{ position:fixed; left:10px; right:10px; top:calc(60px + env(safe-area-inset-top, 0px)); z-index:3; height:6px; border-radius:3px; background:rgba(19,35,58,.12); pointer-events:none; overflow:hidden; }
+.jauge{ position:fixed; left:10px; right:10px; top:calc(60px + var(--marge-haut)); z-index:3; height:6px; border-radius:3px; background:rgba(19,35,58,.12); pointer-events:none; overflow:hidden; }
 .jauge[hidden]{ display:none; }
 .jauge i{ display:block; height:100%; width:0; background:var(--bleu); border-radius:3px; }
 .jauge.avalanche i{ background:linear-gradient(90deg, #fff, var(--rouge)); }
@@ -46,7 +48,7 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 
 /* Écrans */
 .ecran{ position:fixed; inset:0; z-index:6; display:flex; align-items:flex-start; justify-content:center; overflow:auto;
-  padding:calc(16px + env(safe-area-inset-top, 0px)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(233,241,250,.86); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+  padding:calc(16px + var(--marge-haut)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(233,241,250,.86); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
 .ecran[hidden]{ display:none; }
 .boite{ width:min(100%, 540px); display:flex; flex-direction:column; gap:14px; }
 .tete{ display:flex; align-items:center; gap:8px; }

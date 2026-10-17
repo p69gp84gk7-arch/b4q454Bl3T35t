@@ -29,11 +29,11 @@ function nouvellePartie(taille){
   const graine = (Date.now() ^ Math.floor(Math.random() * 1e9)) & 0x7fffffff;
   dom = creerDomaine(taille, graine); res = creerReseau(dom); res.nom = dom.nom;
   sauver(); entrerJeu();
-  message(`Objectif : ${fmt(dom.objectif)} m³ sur les pistes en ${dom.nuits} nuits. Ouvrez 🔧 Construire.`, 'info', 6000);
+  message(`Objectif : ${fmt(dom.objectif)} m³ sur la piste en ${dom.nuits} nuits. Ouvrez 🔧 Construire.`, 'info', 6000);
 }
 function reprendre(){
   const r = lire('nivo-partie', null);
-  if(!r || r.version !== 2){ return menu(); }
+  if(!r || r.version !== 2 || !CONFIG.domaines[r.taille]){ return menu(); }
   res = r; dom = creerDomaine(res.taille, res.graine);
   entrerJeu();
 }
@@ -73,7 +73,7 @@ function ouvrirMenuJeu(){
       <button class="btn" id="mInfos">🌡️ Météo et infos</button>
       <button class="btn" id="mCentre">⌖ Voir toute la carte</button>
       <button class="btn" id="mAide">❔ Comment jouer</button>
-      <button class="btn or" id="mDomaines">🏔️ Domaines (changer de partie)</button>
+      <button class="btn or" id="mDomaines">🏔️ Les pistes (changer de partie)</button>
     </div>`);
   $('mInfos').onclick = ouvrirInfos; $('mCentre').onclick = () => { fermerPanneau(); ajusterVue(dom); };
   $('mAide').onclick = () => { fermerPanneau(); $('eAide').hidden = false; };
@@ -338,10 +338,10 @@ function montrerFin(){
   if(!res.compte){ r.parties++; r.etoiles = Math.max(r.etoiles, e); r.meilleur = Math.max(r.meilleur, Math.round(f * 100)); rec[res.taille] = r; ecrire('nivo-records', rec); res.compte = true; sauver(); }
   ouvrirPanneau(`<h3>${e ? '🏆 Objectif atteint !' : 'Objectif manqué'}</h3>
     <p style="text-align:center;font-size:2rem;color:var(--or);letter-spacing:.15em;margin:6px 0">${'★'.repeat(e)}${'☆'.repeat(3 - e)}</p>
-    <p><b>${fmt(res.neigePiste)} m³</b> sur les pistes pour un objectif de ${fmt(dom.objectif)} m³ (${Math.round(f * 100)} %), en ${dom.nuits} nuits.</p>
+    <p><b>${fmt(res.neigePiste)} m³</b> sur la piste pour un objectif de ${fmt(dom.objectif)} m³ (${Math.round(f * 100)} %), en ${dom.nuits} nuits.</p>
     <p>Budget restant : <b>${keur(res.budget)}</b> · ${res.noeuds.filter(n => n.type === 'regard').length} canons posés · ${fmt(res.neigeTotale)} m³ produits en tout.</p>
     <p>2 étoiles à 125 %, 3 étoiles à 150 % de l'objectif.</p>
-    <div class="actions"><button class="btn" id="bVoirCarte">Voir la carte</button><button class="btn or" id="bNouveau">Nouveau domaine</button></div>`);
+    <div class="actions"><button class="btn" id="bVoirCarte">Voir la carte</button><button class="btn or" id="bNouveau">Autre piste</button></div>`);
   $('bVoirCarte').onclick = fermerPanneau;
   $('bNouveau').onclick = () => { fermerPanneau(); menu(); };
 }
@@ -481,15 +481,15 @@ function menu(){
   phase = 'menu'; fermerPanneau();
   $('haut').hidden = $('bas').hidden = true; ['eCanons', 'eSalle', 'eAide'].forEach(id => $(id).hidden = true);
   const p = lire('nivo-partie', null), rec = lire('nivo-records', {});
-  $('menuReprise').innerHTML = p && p.version === 2 && !p.fini ? `<button class="carteMenu reprise" id="bReprendre"><span class="ico">▶</span><span><b>Reprendre : ${esc(p.nom || 'domaine')}</b><small>${CONFIG.domaines[p.taille].nom} · nuit ${p.nuit + 1}/${CONFIG.domaines[p.taille].nuits} · ${fmt(p.neigePiste)} / ${fmt(CONFIG.domaines[p.taille].objectif)} m³ · ${keur(p.budget)}</small></span></button>` : '';
-  $('menuDomaines').innerHTML = '<p style="margin:6px 0 0;color:var(--doux);font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700">Nouveau domaine au hasard</p>' +
+  $('menuReprise').innerHTML = p && p.version === 2 && !p.fini && CONFIG.domaines[p.taille] ? `<button class="carteMenu reprise" id="bReprendre"><span class="ico">▶</span><span><b>Reprendre : ${esc((CONFIG.domaines[p.taille] || {}).nom || p.nom || 'piste')}</b><small>nuit ${p.nuit + 1}/${CONFIG.domaines[p.taille].nuits} · ${fmt(p.neigePiste)} / ${fmt(CONFIG.domaines[p.taille].objectif)} m³ · ${keur(p.budget)}</small></span></button>` : '';
+  $('menuDomaines').innerHTML = '<p style="margin:6px 0 0;color:var(--doux);font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700">Luchon-Superbagnères · une piste à enneiger</p>' +
     Object.entries(CONFIG.domaines).map(([k, D]) => { const r = rec[k];
-      return `<button class="carteMenu" data-taille="${k}"><span class="ico">${{ petit:'⛷️', moyen:'🏔️', grand:'🗻' }[k]}</span><span><b>${D.nom}</b><small>${D.pistes[0] === D.pistes[1] ? D.pistes[0] : D.pistes.join(' ou ')} pistes · ${fmt(D.objectif)} m³ en ${D.nuits} nuits · ${keur(D.budget)}</small></span><span class="droite">${r ? '★'.repeat(r.etoiles) + '☆'.repeat(3 - r.etoiles) + `<br><small>${r.meilleur} %</small>` : ''}</span></button>`; }).join('');
+      return `<button class="carteMenu" data-taille="${k}"><span class="ico" style="background:${COULEURS_PISTES[D.couleur]};color:#fff;font-weight:800;border:2px solid rgba(255,255,255,.8)">${D.couleur[0].toUpperCase()}</span><span><b>${esc(D.nom)}</b><small>${D.couleur} · ${D.longueur} m × ${D.largeur} m · ${fmt(D.objectif)} m³ en ${D.nuits} nuits · ${keur(D.budget)}</small></span><span class="droite">${r ? '★'.repeat(r.etoiles) + '☆'.repeat(3 - r.etoiles) + `<br><small>${r.meilleur} %</small>` : ''}</span></button>`; }).join('');
   $('eMenu').hidden = false;
-  $('bRetourJeu').hidden = !(res && dom && !res.fini && p && p.graine === res.graine);
+  $('bRetourJeu').hidden = !(res && dom && !res.fini && p && p.graine === res.graine && CONFIG.domaines[p.taille]);
   if($('bReprendre')) $('bReprendre').onclick = reprendre;
   $('menuDomaines').querySelectorAll('[data-taille]').forEach(b => b.onclick = () => {
-    if(p && p.version === 2 && !p.fini && !confirm('Une partie est en cours. La remplacer par un nouveau domaine ?')) return;
+    if(p && p.version === 2 && !p.fini && CONFIG.domaines[p.taille] && !confirm('Une partie est en cours. La remplacer ?')) return;
     nouvellePartie(b.dataset.taille);
   });
 }

@@ -16,7 +16,7 @@ const versMonde = (sx, sy) => [(sx - LW / 2) / cam.z + cam.x, (sy - LH / 2) / ca
 // Toute la carte dans l'écran (en laissant la place du haut et du bas)
 function ajusterVue(dom){
   // la carte entière entre les compteurs (en haut, ~100 px) et les boutons (en bas, ~160 px sur téléphone)
-  const haut = 100, bas = 85;
+  const haut = (document.getElementById('haut').offsetHeight || 100) + 4, bas = 85;
   cam.z = Math.min(LW / (dom.W + 16), (LH - haut - bas) / (dom.H + 16));
   cam.x = dom.W / 2; cam.y = dom.H / 2 + (bas - haut) / 2 / cam.z;
 }
