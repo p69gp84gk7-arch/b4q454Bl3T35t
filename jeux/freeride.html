@@ -97,14 +97,14 @@ h1 span{ color:var(--orange); }
 </div>
 <div class="jauge" id="jauge" hidden><i id="jaugeI"></i></div>
 <div class="annonce" id="annonce"></div>
-<div class="aide-doigt" id="aideDoigt">Glissez le doigt à gauche ou à droite pour tourner · lâchez pour filer · touchez vite pour sauter</div>
+<div class="aide-doigt" id="aideDoigt">Touchez à gauche ou à droite pour tourner · en bas au milieu pour sauter · en l'air, les 4 coins font des figures, le bas au milieu un 360</div>
 
 <section class="ecran" id="eMenu">
   <div class="boite">
     <div class="tete"><a href="../index.html">‹ DesDés</a><button class="droite" id="bSon">🔊</button><button id="bAide">❔ Aide</button></div>
     <div>
       <h1>Free<span>ride</span></h1>
-      <p class="sous">Hors-piste, poudreuse, barres rocheuses et tremplins. Glissez le doigt pour tourner, touchez pour sauter, enchaînez les figures.</p>
+      <p class="sous">Hors-piste, poudreuse, barres rocheuses et tremplins. Touchez à gauche ou à droite pour tourner, sautez, et faites des figures en l'air.</p>
     </div>
     <div class="carte">
       <h2>Votre engin</h2>
@@ -135,12 +135,14 @@ h1 span{ color:var(--orange); }
     <h1>Com<span>ment</span> jouer</h1>
     <div class="carte">
       <h3>☝️ Diriger</h3>
-      <p>Posez le doigt n'importe où et <b>glissez à gauche ou à droite</b> : plus vous décalez, plus vous coupez la pente (et moins vous allez vite). <b>Lâchez</b> : vous filez tout schuss. Au clavier : flèches gauche / droite, espace pour sauter.</p>
+      <p>Touchez la <b>moitié gauche ou droite</b> de l'écran : le skieur tourne de ce côté, d'autant plus que vous restez appuyé (il coupe la pente et ralentit). <b>Lâchez</b> : il se remet dans la pente et file tout schuss. Au clavier : flèches gauche / droite, espace (saut / 360), Q E Z C ou 1 2 3 4 (les figures).</p>
+      <p>L'écran a une zone <b>en bas au milieu</b> : au sol, elle fait un petit saut ; en l'air, un 360. Rien n'est affiché, c'est l'écran entier qui sert de manette :</p>
+      <p style="font-family:monospace;line-height:1.3;color:var(--encre)">┌───────────┬───────────┐<br>│ Backflip&nbsp;&nbsp;│ Frontflip │<br>├───────────┼───────────┤<br>│ Mute grab │ Indy grab │<br>│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;┌─────┴─────┐&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br>│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│ saut/360&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br>└─────┴───────────┴─────┘</p>
       <h3>🦘 Sauter et figures</h3>
       <ul>
-        <li>Une <b>touche rapide</b> (sans glisser) fait un petit saut : il passe au-dessus des souches, des petits cailloux et des crevasses.</li>
+        <li>La zone <b>en bas au milieu</b> fait un petit saut : il passe au-dessus des souches, des petits cailloux et des crevasses.</li>
         <li>Les <b>tremplins</b>, les <b>bosses</b> et les <b>barres rocheuses</b> vous envoient en l'air.</li>
-        <li>En l'air, chaque touche lance un <b>360</b>. Il faut avoir fini de tourner avant de toucher la neige, et atterrir à peu près face à la pente, sinon c'est la chute.</li>
+        <li>En l'air, chaque coin de l'écran lance une figure : en haut <b>backflip</b> (à gauche) et <b>frontflip</b> (à droite), 500 points ; en bas <b>mute grab</b> et <b>indy grab</b>, 200 points ; en bas au milieu un <b>360</b>, 300 points (on peut le combiner avec une autre figure). Il faut avoir fini avant de toucher la neige, et atterrir à peu près face à la pente, sinon c'est la chute.</li>
         <li>Les figures enchaînées sans tomber montent le <b>combo</b> (jusqu'à ×5).</li>
       </ul>
       <h3>⚠️ Dangers</h3>
@@ -363,7 +365,7 @@ function bruitCourt(f, duree, vol){
 /* ---------- La partie ---------- */
 let engin = lire('freeride-engin', 'ski'); if(!['ski', 'board'].includes(engin)) engin = 'ski';
 let partie = null, raf = 0, dernierLancement = null;
-const doigt = { id:null, x0:0, y0:0, t0:0, bouge:false, dx:0 }, touches = new Set();
+const doigts = new Map(), touches = new Set();
 
 function lancer(mode, def){
   dernierLancement = [mode, def];
@@ -372,7 +374,7 @@ function lancer(mode, def){
   if(mode === 'slalom') construireSlalom(M, def);
   else if(mode === 'infini') genererInfini(M, 200);
   else construireDescente(M, def);
-  partie = { mode, def, M, x:M.sure(0), y:0, th:0, thv:0, v:4, z:0, vz:0, air:false, tAir:0, tours:0, spin:0, spinV:0, chute:0, invul:0,
+  partie = { mode, def, M, x:M.sure(0), y:0, th:0, thv:0, v:4, z:0, vz:0, air:false, tAir:0, tours:0, spin:0, spinV:0, fig:null, figs:[], chute:0, invul:0,
     score:0, combo:1, figures:0, chutes:0, prisF:0, portesOk:0, portesKo:0, t:0, fin:false, pause:false, traces:[], part:[], textes:[],
     av:mode === 'infini' ? -70 : null, avV:0, dernier:performance.now(), majHud:0, camX:M.sure(0), meilleurSaut:0, depart:false };
   ['eMenu', 'eAide', 'eFin', 'ePause'].forEach(id => $(id).hidden = true);
@@ -391,33 +393,46 @@ function texte(P, txt, c = '#13233A', gros = false){ P.textes.push({ x:P.x, y:P.
 
 function chuter(P, raison){
   if(P.chute > 0 || P.invul > 0) return;
-  P.chute = 1.3; P.chutes++; P.combo = 1; P.v *= .15; P.air = false; P.z = 0; P.vz = 0; P.spin = 0; P.spinV = 0; P.tours = 0;
+  P.chute = 1.3; P.chutes++; P.combo = 1; P.v *= .15; P.air = false; P.z = 0; P.vz = 0; P.spin = 0; P.spinV = 0; P.tours = 0; P.fig = null; P.figs = [];
   texte(P, raison, '#E23B3B', true); bruitCourt(90, .35, .35);
   if(navigator.vibrate) navigator.vibrate(90);
   for(let k = 0; k < 18; k++) P.part.push({ x:P.x, y:P.y, vx:(Math.random() - .5) * 8, vy:(Math.random() - .5) * 8 + P.v * .3, vie:.8 + Math.random() * .5, r:.15 + Math.random() * .25 });
 }
 function decoller(P, vz, raison){
   if(P.air) { P.vz = Math.max(P.vz, vz); return; }
-  P.air = true; P.vz = vz; P.tAir = 0; P.tours = 0; P.spin = 0; P.spinV = 0; P.hautDep = P.z; P.raisonAir = raison;
+  P.air = true; P.vz = vz; P.tAir = 0; P.tours = 0; P.spin = 0; P.spinV = 0; P.fig = null; P.figs = []; P.hautDep = P.z; P.raisonAir = raison;
 }
 function atterrir(P){
-  const tAir = P.tAir, tourne = P.spinV !== 0;
+  const tAir = P.tAir, tourne = P.spinV !== 0 || !!P.fig;
   P.air = false; P.z = 0; P.vz = 0;
   if(tourne){ chuter(P, 'Réception ratée !'); return; }
   if(Math.abs(P.th) > 1.05){ chuter(P, 'Réception de travers !'); return; }
   bruitCourt(160, .12, .2);
   // un petit saut (ou une bosse) sans figure ne rapporte rien
-  if((tAir < .45 || P.raisonAir === 'ollie') && !P.tours && !P.drop){ P.drop = 0; return; }
+  if((tAir < .45 || P.raisonAir === 'ollie') && !P.tours && !P.drop && !P.figs.length){ P.drop = 0; return; }
   // Les points du saut : temps en l'air, 360, hauteur de la barre sautée, réception propre
-  let pts = Math.round(tAir * 220) + P.tours * 300 + Math.round((P.drop || 0) * 90);
+  let pts = Math.round(tAir * 220) + P.tours * 300 + Math.round((P.drop || 0) * 90) + P.figs.reduce((s, f) => s + FIGURES[f].pts, 0);
   const propre = Math.abs(P.th) < .3;
   if(propre) pts = Math.round(pts * 1.25);
   pts = Math.round(pts * P.combo / 10) * 10;
-  const nom = (P.drop ? `Drop ${P.drop.toFixed(0)} m` : P.tours ? `${360 * P.tours}` : tAir > 1.1 ? 'Gros saut' : 'Saut') + (P.tours && P.drop ? ` + ${360 * P.tours}` : '');
+  const morceaux = [];
+  if(P.drop) morceaux.push(`Drop ${P.drop.toFixed(0)} m`);
+  for(const f of P.figs) morceaux.push(FIGURES[f].n);
+  if(P.tours) morceaux.push(`${360 * P.tours}`);
+  const nom = morceaux.length ? morceaux.join(' + ') : tAir > 1.1 ? 'Gros saut' : 'Saut';
   if(P.mode !== 'slalom'){ P.score += pts; texte(P, `${nom} ! +${fmtN(pts)}${propre ? ' ✓' : ''}`, '#FF6A2B', true); }
-  P.figures++; P.combo = Math.min(5, P.combo + (P.tours || P.drop || tAir > .9 ? .5 : .25));
+  P.figures++; P.combo = Math.min(5, P.combo + (P.tours || P.drop || P.figs.length || tAir > .9 ? .5 : .25));
   P.meilleurSaut = Math.max(P.meilleurSaut, pts);
   P.drop = 0;
+}
+// Les figures, une par coin de l'écran (en l'air)
+const FIGURES = {
+  hg:{ n:'Backflip', dur:.95, pts:500, flip:-1 }, hd:{ n:'Frontflip', dur:.9, pts:500, flip:1 },
+  bg:{ n:'Mute grab', dur:.5, pts:200, grab:-1 }, bd:{ n:'Indy grab', dur:.5, pts:200, grab:1 },
+};
+function figure(P, k){
+  if(!P || P.fin || P.pause || P.chute > 0 || !P.air || P.fig) return;
+  P.fig = { k, t:0 };
 }
 function sautCourt(P){
   if(P.fin || P.pause) return;
@@ -445,18 +460,19 @@ function maj(P, dt){
     // on oublie ce qui est loin derrière
     if(M.objets.length > 1500 && M.objets[0].y < P.y - 90){ const k = premierApres(M.objets, P.y - 80); M.objets.splice(0, k); M.flocons.splice(0, premierApres(M.flocons, P.y - 80)); M.barres = M.barres.filter(b => b.y > P.y - 80); }
   }
-  // Direction voulue : le doigt (ou les flèches) ; lâché, on file tout droit
-  let cible = 0;
-  if(doigt.id !== null) cible = clamp(doigt.dx / 70, -1, 1) * 1.45;
-  else { if(touches.has('ArrowLeft')) cible -= 1.3; if(touches.has('ArrowRight')) cible += 1.3; }
+  // Direction : on maintient la gauche ou la droite de l'écran (ou les flèches) ; lâché, on revient dans la pente
+  let dir = 0;
+  for(const v of doigts.values()) if(v === 'g' || v === 'd') dir = v === 'g' ? -1 : 1;
+  if(!dir){ if(touches.has('ArrowLeft')) dir = -1; if(touches.has('ArrowRight')) dir = 1; }
   if(P.chute > 0){
     P.chute -= dt; P.v = Math.max(0, P.v - 12 * dt);
     if(P.chute <= 0){ P.th = 0; P.v = 3; P.invul = 1.2; }
   } else if(!P.air){
-    const vir = engin === 'ski' ? 3.5 : 2.9, avant = P.th;
-    P.th += clamp(cible - P.th, -vir * dt, vir * dt);
+    const vir = engin === 'ski' ? 2.4 : 2, avant = P.th;
+    if(dir) P.th = clamp(P.th + dir * (dir * P.th < 0 ? vir * 1.6 : vir) * dt, -1.45, 1.45);
+    else P.th += clamp(-P.th, -2.2 * dt, 2.2 * dt);
     P.thv = (P.th - avant) / dt;
-  } else P.th += clamp(cible - P.th, -.8 * dt, .8 * dt);
+  } else if(dir) P.th = clamp(P.th + dir * .8 * dt, -1.45, 1.45);
   // Vitesse : la pente pousse, l'air et la neige freinent ; couper la pente ralentit, travers = dérapage
   if(P.chute <= 0){
     const G = M.glacier ? 5.6 : 5.2, mu = engin === 'board' ? .45 : .6, ath = Math.abs(P.th);
@@ -474,6 +490,7 @@ function maj(P, dt){
   if(P.air){
     P.tAir += dt; P.vz -= 9.8 * dt; P.z += P.vz * dt;
     if(P.spinV){ P.spin += P.spinV * dt; if(P.spin >= 2 * Math.PI){ P.tours++; P.spin = 0; P.spinV = P.tourDePlus ? P.spinV : 0; P.tourDePlus = false; } }
+    if(P.fig){ P.fig.t += dt; if(P.fig.t >= FIGURES[P.fig.k].dur){ P.figs.push(P.fig.k); texte(P, FIGURES[P.fig.k].n + ' !', '#1F6FE0'); P.fig = null; } }
     if(P.z <= 0) atterrir(P);
   }
   // Barres rocheuses : en passant le bord, le sol se dérobe
@@ -542,24 +559,17 @@ function maj(P, dt){
   majSon(P.v, carre, gronde);
   // Arrivée
   if(P.y >= M.fin && !P.fin){ P.fin = true; annoncer('Arrivée !', '', 1.5); setTimeout(finir, 900); }
-  if(P.t > 2.5 && doigt.id !== null) $('aideDoigt').style.opacity = 0;
+  if(P.t > 6) $('aideDoigt').style.opacity = 0;
   if(annonceT > 0){ annonceT -= dt; if(annonceT <= 0) $('annonce').style.opacity = 0; }
 }
 
 /* ---------- Dessin ---------- */
 if(!CanvasRenderingContext2D.prototype.roundRect) CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h){ this.rect(x, y, w, h); };
 const cv = $('cv'), g = cv.getContext('2d');
-let W = 0, Hh = 0, DPR = 1, motifNeige = null;
+let W = 0, Hh = 0, DPR = 1;
 function taille(){ DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; Hh = innerHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(Hh * DPR); }
 addEventListener('resize', taille); taille();
-(function(){
-  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'), R = alea(5);
-  // taches douces, recopiées de l'autre côté des bords pour que le motif se raccorde sans couture
-  for(let k = 0; k < 70; k++){ const px = R() * 256, py = R() * 256, r = 10 + R() * 40, a = .05 + R() * .06;
-    for(const ex of [-256, 0, 256]) for(const ey of [-256, 0, 256]){ const cx = px + ex, cy = py + ey; if(cx + r < 0 || cx - r > 256 || cy + r < 0 || cy - r > 256) continue; const gr = x.createRadialGradient(cx, cy, 0, cx, cy, r); gr.addColorStop(0, `rgba(150,180,215,${a})`); gr.addColorStop(1, 'rgba(150,180,215,0)'); x.fillStyle = gr; x.fillRect(cx - r, cy - r, 2 * r, 2 * r); } }
-  for(let k = 0; k < 160; k++){ x.fillStyle = `rgba(255,255,255,${.5 + R() * .5})`; x.fillRect(R() * 256, R() * 256, 1.2, 1.2); }
-  motifNeige = g.createPattern(c, 'repeat');
-})();
+
 function dessinerSapin(o){
   const r = o.r * 1.5;
   g.fillStyle = 'rgba(70,95,140,.22)'; g.beginPath(); g.ellipse(o.x + r * .55, o.y + r * .35, r * 1.05, r * .7, .5, 0, 6.29); g.fill();
@@ -644,6 +654,10 @@ function dessinerSkieur(P, t){
     g.restore(); return;
   }
   g.rotate(-P.th + (P.spin || 0));
+  // flip : le skieur bascule (vu de dessus, il s'écrase puis se retourne) ; grab : il se ramasse et attrape sa planche ou ses skis
+  const F = P.fig && FIGURES[P.fig.k], u = F ? clamp(P.fig.t / F.dur, 0, 1) : 0;
+  if(F && F.flip){ const c = Math.cos(u * 2 * Math.PI); g.scale(1, Math.sign(c) * Math.max(.18, Math.abs(c))); }
+  if(F && F.grab) g.scale(.86, .86);
   if(engin === 'ski'){
     g.fillStyle = '#13233A'; for(const s of [-.17, .17]){ g.beginPath(); g.roundRect(s - .05, -.7, .1, 1.5, .05); g.fill(); }
     g.fillStyle = '#FF6A2B'; for(const s of [-.17, .17]){ g.fillRect(s - .05, .62, .1, .12); }
@@ -659,6 +673,7 @@ function dessinerSkieur(P, t){
     g.fillStyle = '#FF6A2B'; g.beginPath(); g.ellipse(0, .02, .2, .4, 0, 0, 6.29); g.fill();
     g.strokeStyle = '#FF6A2B'; g.lineWidth = .1; g.beginPath(); g.moveTo(-.15, -.25); g.lineTo(-.42, -.1); g.moveTo(.15, .3); g.lineTo(.42, .12); g.stroke();
   }
+  if(F && F.grab){ g.fillStyle = '#13233A'; g.beginPath(); g.arc(F.grab * .22, F.grab > 0 ? -.45 : .45, .1, 0, 6.29); g.fill(); g.strokeStyle = '#FF6A2B'; g.lineWidth = .09; g.beginPath(); g.moveTo(F.grab * .18, .05); g.lineTo(F.grab * .22, F.grab > 0 ? -.4 : .4); g.stroke(); }
   g.fillStyle = '#F2F5F9'; g.beginPath(); g.arc(0, -.08, .15, 0, 6.29); g.fill();
   g.fillStyle = '#13233A'; g.fillRect(-.12, -.2, .24, .07);
   g.restore();
@@ -669,8 +684,7 @@ function dessiner(P, dt){
   P.camX += (P.x * .8 - P.camX) * Math.min(1, dt * 3);
   const ox = W / 2 - P.camX * S, oy = Hh * .3 - (P.y - P.z * .3) * S;
   g.setTransform(DPR, 0, 0, DPR, 0, 0);
-  g.fillStyle = M.glacier ? '#E2F0F8' : '#EEF4FB'; g.fillRect(0, 0, W, Hh);
-  g.save(); g.translate(ox % 256 - 256, oy % 256 - 256); g.fillStyle = motifNeige; g.fillRect(0, 0, W + 512, Hh + 512); g.restore();
+  g.fillStyle = M.glacier ? '#EAF4FA' : '#F6F9FC'; g.fillRect(0, 0, W, Hh);
   g.save(); g.translate(ox, oy); g.scale(S, S);
   const y0 = (-oy) / S - 6, y1 = (Hh - oy) / S + 6, x0 = -ox / S - 4, x1 = (W - ox) / S + 4;
   // piste de slalom : bords damés et filets
@@ -818,28 +832,32 @@ function menu(){
 }
 
 /* ---------- Commandes ---------- */
+// L'écran entier sert de manette : moitié gauche / droite = tourner ; en bas au milieu = saut (au sol) ou 360 (en l'air) ;
+// en l'air, les quatre coins = les figures. Rien n'est affiché.
+function zone(x, y){
+  if(x > W * .3 && x < W * .7 && y > Hh * .64) return 'c';
+  return (y < Hh / 2 ? 'h' : 'b') + (x < W / 2 ? 'g' : 'd');
+}
 cv.addEventListener('pointerdown', e => {
-  if(!partie || doigt.id !== null) return;
+  const P = partie; if(!P) return;
   try{ cv.setPointerCapture(e.pointerId); }catch(err){}
-  Object.assign(doigt, { id:e.pointerId, x0:e.clientX, y0:e.clientY, t0:performance.now(), bouge:false, dx:0 });
-  if(partie.air) sautCourt(partie);
+  const z = zone(e.clientX, e.clientY);
+  if(z === 'c'){ sautCourt(P); doigts.set(e.pointerId, 'c'); return; }
+  if(P.air){ figure(P, z); doigts.set(e.pointerId, 'f'); return; }
+  doigts.delete(e.pointerId); doigts.set(e.pointerId, z[1]);
 });
 cv.addEventListener('pointermove', e => {
-  if(e.pointerId !== doigt.id) return;
-  doigt.dx = e.clientX - doigt.x0;
-  if(Math.abs(doigt.dx) > 10 || Math.abs(e.clientY - doigt.y0) > 14) doigt.bouge = true;
+  const v = doigts.get(e.pointerId); if(v !== 'g' && v !== 'd') return;
+  const c = e.clientX < W / 2 ? 'g' : 'd'; if(c !== v){ doigts.delete(e.pointerId); doigts.set(e.pointerId, c); }
 });
-const lacher = e => {
-  if(e.pointerId !== doigt.id) return;
-  const court = !doigt.bouge && performance.now() - doigt.t0 < 230;
-  doigt.id = null; doigt.dx = 0;
-  if(court && partie && !partie.air) sautCourt(partie);
-};
+const lacher = e => doigts.delete(e.pointerId);
 cv.addEventListener('pointerup', lacher); cv.addEventListener('pointercancel', lacher);
 cv.addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('keydown', e => {
   touches.add(e.code);
   if(e.code === 'Space'){ e.preventDefault(); if(partie && !e.repeat) sautCourt(partie); }
+  const fk = { KeyQ:'hg', Digit1:'hg', KeyE:'hd', Digit2:'hd', KeyZ:'bg', Digit3:'bg', KeyC:'bd', Digit4:'bd' }[e.code];
+  if(fk && partie && !e.repeat) figure(partie, fk);
   if(e.code === 'Escape' || e.code === 'KeyP'){ if(partie && !partie.pause) pause(); else reprendre(); }
   if(e.code.startsWith('Arrow')) e.preventDefault();
 });
@@ -875,8 +893,7 @@ let yMenu = 0, dernierMenu = performance.now();
 })(performance.now());
 function dessinerFond(F, dt){
   const M = F.M, S = Math.min(W, Hh * .62) / 30, ox = W / 2, oy = Hh * .3 - F.y * S, t = performance.now() / 1000;
-  g.setTransform(DPR, 0, 0, DPR, 0, 0); g.fillStyle = '#EEF4FB'; g.fillRect(0, 0, W, Hh);
-  g.save(); g.translate(ox % 256 - 256, oy % 256 - 256); g.fillStyle = motifNeige; g.fillRect(0, 0, W + 512, Hh + 512); g.restore();
+  g.setTransform(DPR, 0, 0, DPR, 0, 0); g.fillStyle = '#F6F9FC'; g.fillRect(0, 0, W, Hh);
   g.save(); g.translate(ox, oy); g.scale(S, S);
   const y0 = -oy / S - 6, y1 = (Hh - oy) / S + 6, v = [];
   for(let i = premierApres(M.objets, y0); i < M.objets.length && M.objets[i].y < y1; i++){ const o = M.objets[i]; if(o.t === 'kicker') dessinerKicker(o); else if(o.t === 'bosse') dessinerBosse(o); else if(o.t !== 'crevasse') v.push(o); }
@@ -884,7 +901,7 @@ function dessinerFond(F, dt){
   g.restore();
 }
 menu();
-window.Freeride = { lancer, DESCENTES, SLALOMS, defiDuJour, get partie(){ return partie; }, doigt, sautCourt, finir, nouveauMonde, construireDescente };
+window.Freeride = { lancer, DESCENTES, SLALOMS, defiDuJour, get partie(){ return partie; }, doigts, sautCourt, figure, finir, nouveauMonde, construireDescente };
 
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
