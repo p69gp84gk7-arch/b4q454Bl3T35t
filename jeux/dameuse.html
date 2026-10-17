@@ -42,15 +42,30 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 .conseil{ position:fixed; left:50%; transform:translateX(-50%); top:calc(60px + env(safe-area-inset-top, 0px)); z-index:3; max-width:min(78vw, 420px);
   background:rgba(10,17,32,.85); border:1px solid rgba(255,176,32,.45); color:var(--texte); border-radius:12px; padding:7px 11px; font-size:.85rem; line-height:1.3; text-align:center; pointer-events:none; transition:opacity .3s; }
 .conseil[hidden]{ display:none; }
-.outils{ position:fixed; right:12px; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); z-index:3; display:flex; flex-direction:column; gap:12px; align-items:center; }
-.outils[hidden]{ display:none; }
-.outil{ width:70px; height:70px; border-radius:50%; border:2px solid rgba(255,255,255,.25); background:rgba(10,17,32,.78); display:grid; place-items:center; touch-action:none;
+.outils{ position:fixed; left:12px; bottom:calc(98px + env(safe-area-inset-bottom, 0px)); z-index:3; display:flex; gap:10px; align-items:center; }
+.outils[hidden], .commande[hidden]{ display:none; }
+/* Direction (chenilles) en bas à gauche, curseur de vitesse en bas à droite */
+.commande{ position:fixed; z-index:3; touch-action:none; border:2px solid rgba(255,255,255,.22); background:rgba(10,17,32,.72); border-radius:18px; }
+.direction{ left:12px; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); width:min(48vw, 200px); height:68px; }
+.direction::before, .direction::after{ position:absolute; top:50%; transform:translateY(-50%); font-size:1.1rem; color:var(--doux); pointer-events:none; }
+.direction::before{ content:"◀"; left:12px; } .direction::after{ content:"▶"; right:12px; }
+.direction i{ position:absolute; top:6px; bottom:6px; width:52px; left:calc(50% - 26px); border-radius:13px; background:var(--ambre); box-shadow:0 2px 10px rgba(0,0,0,.4); pointer-events:none;
+  display:grid; place-items:center; font-style:normal; font-family:"Saira Condensed", sans-serif; font-weight:800; font-size:.62rem; letter-spacing:.06em; color:#1A1204; }
+.gaz{ right:12px; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); width:76px; height:min(38vh, 240px); }
+.gaz .rail{ position:absolute; left:50%; top:24px; bottom:24px; width:6px; margin-left:-3px; border-radius:3px; background:linear-gradient(var(--vert) 0 50%, var(--rouge) 50% 100%); opacity:.55; pointer-events:none; }
+.gaz .zero{ position:absolute; left:10px; right:10px; top:50%; height:2px; margin-top:-1px; background:rgba(255,255,255,.5); pointer-events:none; }
+.gaz .et{ position:absolute; left:0; right:0; text-align:center; font-family:"Saira Condensed", sans-serif; font-weight:800; font-size:.72rem; letter-spacing:.08em; pointer-events:none; }
+.gaz .av{ top:4px; color:var(--vert); } .gaz .ar{ bottom:4px; color:#FF8C7A; }
+.gaz b{ position:absolute; left:6px; right:6px; height:46px; margin-top:-23px; top:50%; border-radius:12px; background:var(--ambre); color:#1A1204; display:grid; place-items:center; pointer-events:none;
+  font-family:"Saira Condensed", sans-serif; font-weight:800; font-size:1.15rem; line-height:1; box-shadow:0 2px 10px rgba(0,0,0,.4); }
+.gaz b small{ display:block; font-size:.58rem; font-weight:700; letter-spacing:.06em; }
+.outil{ width:60px; height:60px; border-radius:50%; border:2px solid rgba(255,255,255,.25); background:rgba(10,17,32,.78); display:grid; place-items:center; touch-action:none;
   font-family:"Saira Condensed", sans-serif; font-weight:800; font-size:.86rem; letter-spacing:.04em; position:relative; }
-.outil span{ display:block; font-size:1.3rem; line-height:1; margin-bottom:1px; }
+.outil span{ display:block; font-size:1.15rem; line-height:1; margin-bottom:1px; }
 .outil.actif{ border-color:var(--ambre); background:rgba(255,176,32,.25); color:#fff; box-shadow:0 0 0 3px rgba(255,176,32,.2); }
 .outil:disabled{ opacity:.35; }
 .outil .charge{ position:absolute; inset:-6px; border-radius:50%; pointer-events:none;
-  background:conic-gradient(var(--neige) calc(var(--c, 0) * 1%), transparent 0); -webkit-mask:radial-gradient(circle, transparent 37px, #000 38px); mask:radial-gradient(circle, transparent 37px, #000 38px); opacity:.85; }
+  background:conic-gradient(var(--neige) calc(var(--c, 0) * 1%), transparent 0); -webkit-mask:radial-gradient(circle, transparent 32px, #000 33px); mask:radial-gradient(circle, transparent 32px, #000 33px); opacity:.9; }
 
 /* Écrans */
 .ecran{ position:fixed; inset:0; z-index:6; display:flex; align-items:flex-start; justify-content:center; overflow:auto;
@@ -98,7 +113,7 @@ h1 em{ font-style:normal; color:var(--ambre); }
   <div class="pastille"><small>Heure</small><span id="hHeure">21:00</span></div>
   <div class="pastille"><small>Damé</small><span id="hDame">0 %</span></div>
   <div class="pastille carbu"><small>Gasoil</small><span id="hCarbu">100 %</span><i><b id="hCarbuB"></b></i></div>
-  <div class="pastille"><small>km/h</small><span id="hVit">0</span></div>
+  <div class="pastille"><small>Lame</small><span id="hLame">0 %</span></div>
   <button class="pause" id="bPause" aria-label="Pause">⏸</button>
 </div>
 <canvas id="mini" width="60" height="180" hidden></canvas>
@@ -108,6 +123,8 @@ h1 em{ font-style:normal; color:var(--ambre); }
   <button class="outil" id="bLame"><i class="charge" id="lameCharge"></i><span>▬</span>LAME</button>
   <button class="outil" id="bFraise"><span>≋</span>FRAISE</button>
 </div>
+<div class="commande direction" id="direction" hidden><i id="directionI">CHENILLES</i></div>
+<div class="commande gaz" id="gaz" hidden><span class="et av">AVANT</span><span class="rail"></span><span class="zero"></span><b id="gazB">0<small>km/h</small></b><span class="et ar">ARRIÈRE</span></div>
 
 <section class="ecran" id="eMenu">
   <div class="boite">
@@ -134,7 +151,8 @@ h1 em{ font-style:normal; color:var(--ambre); }
     <h1>Comment <em>jouer</em></h1>
     <div class="carte">
       <h3>🕹️ Conduire</h3>
-      <p>Posez le pouce n'importe où à gauche de l'écran : un <b>joystick</b> apparaît. Poussez dans la direction voulue : la dameuse tourne puis avance (plus vous poussez loin, plus elle va vite). Pour un demi-tour, elle <b>pivote sur place</b> avant de repartir. Au clavier : flèches, et L / F / T pour les outils.</p>
+      <p>À droite, le <b>curseur de vitesse</b> : poussez-le vers le haut pour la marche avant, vers le bas pour la marche arrière (moins rapide). Il reste où vous le laissez ; au milieu, la dameuse s'arrête.</p>
+      <p>En bas à gauche, la <b>commande des chenilles</b> : glissez à gauche ou à droite pour tourner (même à l'arrêt, elle pivote sur place) ; lâchez, elle va tout droit. Au clavier : flèches haut / bas pour la vitesse, gauche / droite pour tourner, L / F / T pour les outils.</p>
       <h3>≋ La fraise (à l'arrière)</h3>
       <p>Allumez-la et roulez en marche avant : elle laisse le <b>velours</b> (les rayures). Le damage est parfait à <b>14 km/h ou moins</b> ; plus vite, il est moins beau. Sur une bosse ou un creux, la fraise ne fait qu'un damage médiocre (elle aplanit un peu à chaque passage).</p>
       <h3>▬ La lame (à l'avant)</h3>
@@ -271,12 +289,18 @@ function genPiste(def){
     enneigeurs.push({ x:xc(y) + cote * (lw(y) / 2 + .9), y, cote, r:.8, t:'enneigeur', ph:R() * 6 });
     cote = -cote;
   }
-  const choix = enneigeurs.slice().sort(() => R() - .5).slice(0, def.piles);
-  for(const e of choix){ const y = e.y + 3 + R() * 4, x = xc(y) - e.cote * (lw(y) / 2 - 5 - R() * 2); bosse(x, y, 80 + R() * 45, 3.4 + R() * 1.8); piles.push([x, y]); }
+  // chaque canon a produit son tas, étiré par le vent (plus il y a de canons, plus il y a de neige à étaler)
+  const vent = R() * 6.3;
+  for(const e of enneigeurs){
+    const y = e.y + 3 + R() * 4, x = xc(y) - e.cote * (lw(y) / 2 - 6 - R() * 2);
+    bosse(x, y, 120 + R() * 50, 4.4 + R() * 1.6);
+    for(let n = 1; n <= 2; n++) bosse(x + Math.cos(vent) * n * 4.5 - e.cote * n, y + Math.abs(Math.sin(vent)) * n * 4.5, 70 + R() * 30, 3.2 + R());
+    piles.push([x, y]);
+  }
   // Assez de neige pour remplir les creux : on ajoute un tas si besoin
   const bilan = () => { let p = 0, m = 0; for(let k = 0; k < N; k++) if(etat[k] === 1){ if(h[k] > 10) p += h[k] - 10; if(h[k] < -10) m += -h[k] - 10; } return [p, m]; };
   for(let essai = 0; essai < 4; essai++){ const [p, m] = bilan(); if(m < p * .8) break; const [x, y] = auHasard(6); bosse(x, y, 90 + R() * 30, 4); piles.push([x, y]); }
-  for(let k = 0; k < N; k++) if(etat[k] === 1) h[k] = clamp(h[k] + bruit[k] * 7, -60, 160);
+  for(let k = 0; k < N; k++) if(etat[k] === 1) h[k] = clamp(h[k] + bruit[k] * 7, -60, 240);
   // Sapins hors piste
   const arbres = [];
   const libre = (x, y, d) => { for(let a = 0; a < 8; a++){ const i = Math.floor(x + Math.cos(a * .785) * d), j = Math.floor(y + Math.sin(a * .785) * d); if(i >= 0 && j >= 0 && i < Wd && j < H && etat[j * Wd + i]) return false; } return true; };
@@ -301,10 +325,10 @@ function couleurCase(k){
   if(e === 0) return [172 + b * 10, 186 + b * 10, 206 + b * 8];
   if(e === 3) return [196 + b * 6, 205 + b * 6, 220 + b * 5];
   const hh = T.h[k], W = T.W;
-  const ombre = ((T.h[k - W - 1] || 0) - (T.h[k + W + 1] || 0)) * .9;
+  const ombre = ((T.h[k - W - 1] || 0) - (T.h[k + W + 1] || 0)) * (hh > 30 ? 1.5 : .9);
   let r = 200 + b * 8 + ombre, g = 210 + b * 8 + ombre, bl = 226 + b * 6 + ombre;
   if(hh < -20){ const t = clamp((-hh - 20) / 20, 0, 1); r += (112 - r) * t; g += (98 - g) * t; bl += (86 - bl) * t; }
-  if(hh > 30){ const t = clamp((hh - 30) / 50, 0, .85); r += (246 - r) * t; g += (249 - g) * t; bl += (255 - bl) * t; }
+  if(hh > 25){ const t = clamp((hh - 25) / 45, 0, .9); r += (250 - r) * t; g += (252 - g) * t; bl += (255 - bl) * t; }
   return [r, g, bl];
 }
 // La neige remuée par la lame : on recolore la case (et ses voisines, pour le relief) et on efface le velours dessus
@@ -366,10 +390,10 @@ function majSon(regime, fraise){
 /* ---------- La partie ---------- */
 const VMAX = 5;                 // 18 km/h
 const BON = 14 / 3.6;           // au-delà de 14 km/h, le damage est moins beau
-const CAP = 3200;               // capacité de la lame (cm × m²)
+const CAP = 4000;               // capacité de la lame (cm × m²) ; pleine, elle pousse le surplus devant elle
 const FIN_NUIT = 8.5;           // de 21 h à 5 h 30
 let partie = null, raf = 0, pisteCourante = null;
-const stick = { x:0, y:0, actif:false, id:null, cx:0, cy:0, px:0, py:0 }, touches = new Set();
+const commande = { dir:0, gaz:0, idDir:null, idGaz:null }, touches = new Set();
 
 function demarrer(def){
   pisteCourante = def;
@@ -380,10 +404,11 @@ function demarrer(def){
     conso:100 / (.38 * duree), sommeQ:0, accrochages:{ enneigeur:0, arbre:0 }, choc:0, textes:[], fin:false, pause:false, panne:false,
     prevG:null, prevD:null, chenille:0, conseils:{}, conseil:null, conseilT:0, plein:0, dernier:performance.now(), majHud:0, majMini:0, secousse:0 };
   ['eMenu', 'eAide', 'eFin', 'ePause'].forEach(id => $(id).hidden = true);
-  $('hud').hidden = $('outils').hidden = $('mini').hidden = false;
+  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('direction').hidden = $('gaz').hidden = false;
+  regler('gaz', 0); regler('dir', 0);
   majOutils(); preparerMini();
   audio(); if(AC && AC.state === 'suspended') AC.resume();
-  conseiller('depart', 'Rejoignez le haut de la piste, puis damez en descendant et en remontant. Fraise allumée, pas plus de 14 km/h.', 6);
+  conseiller('depart', 'Curseur de droite : vitesse (haut = avant, bas = arrière). En bas à gauche : les chenilles pour tourner. Montez au sommet, puis damez fraise allumée, pas plus de 14 km/h.', 7);
   cancelAnimationFrame(raf); raf = requestAnimationFrame(boucle);
 }
 function conseiller(cle, txt, duree = 4.5, max = 1){
@@ -414,7 +439,13 @@ function lameAction(P, dt){
   sousRect(P, 3.9, 5.6, 1.1, (k, i, j) => {
     if(T.etat[k] !== 1 && T.etat[k] !== 3) return;
     const h = T.h[k]; let dh = 0;
-    if(h > 3){ const libre = CAP - P.charge; if(libre <= 0){ pousse = h > 15; return; } dh = -Math.min(h - 3, taux, libre); P.charge -= dh; }
+    if(h > 3){
+      const libre = CAP - P.charge;
+      if(libre <= 0){
+        // lame pleine : la neige roule devant la lame (on pousse le tas)
+        if(h > 8){ const m = Math.min(h - 3, taux); const k2 = caseDe(i + .5 + Math.sin(P.a) * 1.6, j + .5 - Math.cos(P.a) * 1.6); if(k2 >= 0 && (T.etat[k2] === 1 || T.etat[k2] === 3)){ T.h[k2] += m; dh = -m; repeindre.push(k2 % T.W, Math.floor(k2 / T.W)); pousse = true; } }
+      } else { dh = -Math.min(h - 3, taux, libre); P.charge -= dh; }
+    }
     else if(h < -3 && P.charge > 0){ dh = Math.min(-h - 3 + 3, taux, P.charge); P.charge -= dh; }
     else if(P.charge > 0 && h < 4){ dh = Math.min(4 - h, taux * .25, P.charge); P.charge -= dh; }
     if(Math.abs(dh) > .05){
@@ -504,25 +535,18 @@ function boucle(now){
   dessiner(P, dt);
   raf = requestAnimationFrame(boucle);
 }
-function lireStick(){
-  if(stick.actif) return [stick.x, stick.y];
-  let x = 0, y = 0;
-  if(touches.has('ArrowLeft') || touches.has('KeyA')) x -= 1; if(touches.has('ArrowRight') || touches.has('KeyD')) x += 1;
-  if(touches.has('ArrowUp') || touches.has('KeyW')) y -= 1; if(touches.has('ArrowDown') || touches.has('KeyS')) y += 1;
-  const n = Math.hypot(x, y); return n ? [x / n, y / n] : [0, 0];
-}
 function maj(P, dt){
   P.t += dt; P.choc = Math.max(0, P.choc - dt); P.secousse = Math.max(0, P.secousse - dt);
-  // Commandes : la dameuse pivote vers la direction du joystick, puis avance ; vers l'arrière : marche arrière
-  const [sx, sy] = lireStick(), m = Math.min(1, Math.hypot(sx, sy));
+  // Commandes : les chenilles font tourner (même à l'arrêt), le curseur règle la vitesse (avant / arrière)
+  const dir = commande.dir || ((touches.has('ArrowRight') || touches.has('KeyD') ? 1 : 0) - (touches.has('ArrowLeft') || touches.has('KeyA') ? 1 : 0));
+  const m = Math.abs(commande.gaz) > .1 || dir ? 1 : 0;
   const k = caseDe(P.x, P.y), e = k >= 0 ? T.etat[k] : 0, j = clamp(Math.floor(P.y), 0, T.H - 1), s = T.pente[j];
   let cible = 0, enPente = 1;
   if(P.panne){ cible = 0; }
-  else if(m > .15){
-    const voulu = Math.atan2(sx, -sy), diff = angle(voulu - P.a);
-    // grand écart d'angle : elle pivote sur place (comme une vraie dameuse), puis repart
-    P.a = angle(P.a + clamp(diff, -1.5 * dt, 1.5 * dt));
-    cible = Math.abs(diff) > 1.2 ? 0 : m * VMAX * Math.cos(diff) ** 1.5;
+  else {
+    // en marche arrière, la dameuse tourne dans le même sens que les chenilles le lui demandent
+    P.a = angle(P.a + dir * (1.15 - .25 * Math.min(1, Math.abs(P.v) / VMAX)) * dt);
+    cible = commande.gaz >= 0 ? commande.gaz * VMAX : commande.gaz * VMAX * .45;
   }
   let vmax = VMAX;
   if(P.lame) vmax *= .82;
@@ -532,7 +556,7 @@ function maj(P, dt){
   if(!P.treuil && s > .32 && monte){ enPente = clamp(1 - (s - .32) / .12, 0, 1); vmax *= enPente; }
   if(P.treuil) vmax *= .85;
   if(P.poussee) vmax *= .55;
-  cible = clamp(cible, 0, vmax);
+  cible = clamp(cible, -vmax * .45, vmax);
   const acc = Math.abs(cible) > Math.abs(P.v) ? 2.2 : 4.5;
   P.v += clamp(cible - P.v, -acc * dt, acc * dt);
   // Sans treuil, dans un mur trop raide, la dameuse glisse vers le bas
@@ -616,7 +640,16 @@ function dessinerDameuse(c, P, t){
   c.fillStyle = P.lame ? '#9AA3B2' : '#C2C9D4'; c.fillRect(-2.8, -3.75, 5.6, .55);
   c.fillStyle = P.lame ? '#F2B233' : '#B28A2E'; c.fillRect(-2.8, -3.82, 5.6, .14);
   c.strokeStyle = '#59606E'; c.lineWidth = .12; c.beginPath(); c.moveTo(-1.2, -3.2); c.lineTo(-1, -2.4); c.moveTo(1.2, -3.2); c.lineTo(1, -2.4); c.stroke();
-  if(P.charge > 20){ const f = P.charge / CAP; c.fillStyle = '#F4F7FC'; c.beginPath(); c.ellipse(0, -3.85 - .5 * f, 2.7 * Math.min(1, .4 + f), .3 + .9 * f, 0, Math.PI, 0); c.fill(); }
+  if(P.charge > 20){
+    // le bourrelet de neige poussé par la lame : plus il y en a, plus il est gros
+    const f = Math.min(1, P.charge / CAP), prof = .7 + 2.8 * f, larg = 3 * Math.min(1, .5 + f * .8);
+    c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(.25, -3.8 - prof * .45, larg + .2, prof * .55 + .15, 0, 0, 6.29); c.fill();
+    const gr = c.createRadialGradient(-.6, -3.9 - prof * .7, .2, 0, -3.9 - prof * .4, larg);
+    gr.addColorStop(0, '#FFFFFF'); gr.addColorStop(.65, '#E6EEF9'); gr.addColorStop(1, '#B9C9E0');
+    c.fillStyle = gr; c.beginPath(); c.ellipse(0, -3.85 - prof * .45, larg, prof * .55, 0, 0, 6.29); c.fill();
+    c.strokeStyle = 'rgba(120,145,185,.7)'; c.lineWidth = .08; c.stroke();
+    if(P.poussee){ c.fillStyle = 'rgba(255,255,255,.85)'; for(let n = 0; n < 5; n++){ const a = Math.random() * Math.PI; c.beginPath(); c.arc(Math.cos(a) * larg, -3.85 - prof * .45 - Math.sin(a) * prof * .6, .12 + Math.random() * .15, 0, 6.29); c.fill(); } }
+  }
   // phares
   c.fillStyle = '#FFF3C4'; c.fillRect(-1.2, -2.45, .45, .18); c.fillRect(.75, -2.45, .45, .18);
   c.restore();
@@ -695,11 +728,6 @@ function dessiner(P, dt){
   for(const e of P.textes){ e.y -= 2 * dt; g.globalAlpha = Math.min(1, e.vie * 1.5); g.fillStyle = e.c; g.fillText(e.txt, e.x, e.y); }
   g.globalAlpha = 1;
   g.restore();
-  // joystick
-  if(stick.actif){
-    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2; g.beginPath(); g.arc(stick.cx, stick.cy, 56, 0, 6.29); g.stroke();
-    g.fillStyle = 'rgba(255,176,32,.55)'; g.beginPath(); g.arc(stick.cx + stick.x * 56, stick.cy + stick.y * 56, 24, 0, 6.29); g.fill();
-  }
   // Compteurs (10 fois par seconde)
   P.majHud -= dt;
   if(P.majHud <= 0){
@@ -708,8 +736,10 @@ function dessiner(P, dt){
     $('hDame').textContent = Math.floor(P.sommeQ / T.n * 100) + ' %';
     $('hCarbu').textContent = Math.ceil(P.carbu) + ' %';
     $('hCarbuB').style.width = P.carbu + '%'; $('hCarbuB').style.background = P.carbu < 20 ? 'var(--rouge)' : P.carbu < 40 ? 'var(--ambre)' : 'var(--vert)';
-    $('hVit').textContent = Math.round(Math.abs(P.v) * 3.6);
-    $('hVit').style.color = P.fraise && P.v > BON + .1 ? 'var(--rouge)' : '';
+    $('hLame').textContent = Math.round(P.charge / CAP * 100) + ' %';
+    $('hLame').style.color = P.charge >= CAP ? 'var(--ambre)' : '';
+    $('gazB').innerHTML = `${P.v < -.05 ? '−' : ''}${Math.round(Math.abs(P.v) * 3.6)}<small>${P.v < -.05 ? 'km/h AR' : 'km/h'}</small>`;
+    $('gazB').style.background = P.fraise && P.v > BON + .1 ? 'var(--rouge)' : '';
     const an = ancreProche(P); $('bTreuil').disabled = !P.treuil && !an;
     majOutils();
   }
@@ -770,12 +800,12 @@ function finir(){
   $('fScore').textContent = fmtN(b.total);
   $('fRecord').textContent = nouveau && r.parties > 1 ? '🏆 Nouveau record !' : r.parties > 1 ? `Record : ${fmtN(r.best)}` : '';
   $('fDetail').innerHTML = b.lignes.map(([n, v0]) => { const v = Math.round(v0) || 0; return `<tr><td>${esc(n)}</td><td class="${v < 0 ? 'moins' : ''}">${v > 0 ? '+' : ''}${fmtN(v)}</td></tr>`; }).join('') + `<tr class="total"><td>Total</td><td>${fmtN(b.total)}</td></tr>`;
-  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('conseil').hidden = true; $('ePause').hidden = true;
+  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('conseil').hidden = $('direction').hidden = $('gaz').hidden = true; $('ePause').hidden = true;
   setTimeout(() => { $('eFin').hidden = false; }, 300);
 }
 function quitter(){
   partie = null; cancelAnimationFrame(raf); majSon(0, false);
-  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('conseil').hidden = true;
+  $('hud').hidden = $('outils').hidden = $('mini').hidden = $('conseil').hidden = $('direction').hidden = $('gaz').hidden = true;
   ['ePause', 'eFin'].forEach(id => $(id).hidden = true);
   menu();
 }
@@ -800,20 +830,22 @@ function menu(){
 }
 
 /* ---------- Commandes ---------- */
-cv.addEventListener('pointerdown', e => {
-  if(!partie || stick.actif) return;
-  if(e.clientX > W * .62 && e.clientY > Hh - 270) return;
-  try{ cv.setPointerCapture(e.pointerId); }catch(err){}
-  Object.assign(stick, { actif:true, id:e.pointerId, cx:e.clientX, cy:e.clientY, x:0, y:0 });
-});
-cv.addEventListener('pointermove', e => {
-  if(!stick.actif || e.pointerId !== stick.id) return;
-  let dx = (e.clientX - stick.cx) / 56, dy = (e.clientY - stick.cy) / 56; const n = Math.hypot(dx, dy);
-  if(n > 1){ stick.cx += (e.clientX - stick.cx) * (1 - 1 / n) * .5; stick.cy += (e.clientY - stick.cy) * (1 - 1 / n) * .5; dx /= n; dy /= n; }
-  stick.x = dx; stick.y = dy;
-});
-const lacher = e => { if(e.pointerId === stick.id){ stick.actif = false; stick.id = null; stick.x = stick.y = 0; } };
-cv.addEventListener('pointerup', lacher); cv.addEventListener('pointercancel', lacher);
+// Curseur de vitesse : il reste où on le laisse (cran d'arrêt au milieu) ; commande des chenilles : revient au centre
+function regler(quoi, v){
+  if(quoi === 'gaz'){ commande.gaz = Math.abs(v) < .08 ? 0 : clamp(v, -1, 1); $('gazB').style.top = (50 - commande.gaz * 50 * .78) + '%'; }
+  else { commande.dir = clamp(v, -1, 1); $('directionI').style.left = `calc(50% - 26px + ${commande.dir} * (50% - 32px))`; }
+}
+const zoneGaz = $('gaz'), zoneDir = $('direction');
+const lireGaz = e => { const r = zoneGaz.getBoundingClientRect(); regler('gaz', -((e.clientY - r.top) / r.height - .5) * 2 / .78); };
+const lireDir = e => { const r = zoneDir.getBoundingClientRect(); regler('dir', ((e.clientX - r.left) / r.width - .5) * 2 / .7); };
+zoneGaz.addEventListener('pointerdown', e => { e.preventDefault(); commande.idGaz = e.pointerId; try{ zoneGaz.setPointerCapture(e.pointerId); }catch(err){} lireGaz(e); });
+zoneGaz.addEventListener('pointermove', e => { if(e.pointerId === commande.idGaz) lireGaz(e); });
+const lacherGaz = e => { if(e.pointerId === commande.idGaz) commande.idGaz = null; };
+zoneGaz.addEventListener('pointerup', lacherGaz); zoneGaz.addEventListener('pointercancel', lacherGaz);
+zoneDir.addEventListener('pointerdown', e => { e.preventDefault(); commande.idDir = e.pointerId; try{ zoneDir.setPointerCapture(e.pointerId); }catch(err){} lireDir(e); });
+zoneDir.addEventListener('pointermove', e => { if(e.pointerId === commande.idDir) lireDir(e); });
+const lacherDir = e => { if(e.pointerId === commande.idDir){ commande.idDir = null; regler('dir', 0); } };
+zoneDir.addEventListener('pointerup', lacherDir); zoneDir.addEventListener('pointercancel', lacherDir);
 cv.addEventListener('contextmenu', e => e.preventDefault());
 function basculerLame(){ const P = partie; if(!P || P.fin) return; if(P.lame) deposerCharge(P); P.lame = !P.lame; majOutils(); }
 function basculerFraise(){ const P = partie; if(!P || P.fin) return; P.fraise = !P.fraise; P.prevG = null; majOutils(); }
@@ -828,6 +860,8 @@ $('bFraise').addEventListener('pointerdown', e => { e.preventDefault(); basculer
 $('bTreuil').addEventListener('pointerdown', e => { e.preventDefault(); basculerTreuil(); });
 addEventListener('keydown', e => {
   touches.add(e.code);
+  if(partie && (e.code === 'ArrowUp' || e.code === 'KeyW')) regler('gaz', commande.gaz + .1);
+  if(partie && (e.code === 'ArrowDown' || e.code === 'KeyS')) regler('gaz', commande.gaz - .1);
   if(e.code === 'KeyL') basculerLame(); if(e.code === 'KeyF') basculerFraise(); if(e.code === 'KeyT') basculerTreuil();
   if(e.code === 'Escape' || e.code === 'KeyP'){ if(partie && !partie.pause) pause(); else reprendre(); }
   if(e.code.startsWith('Arrow')) e.preventDefault();
@@ -860,7 +894,7 @@ let tMenu = 0, dernierMenu = performance.now();
   requestAnimationFrame(animMenu);
 })(performance.now());
 menu();
-window.Dameuse = { PISTES, genPiste, defiDuJour, demarrer, get partie(){ return partie; }, get terrain(){ return T; }, stick, finir, bilan, basculerLame, basculerFraise, basculerTreuil };
+window.Dameuse = { PISTES, genPiste, defiDuJour, demarrer, get partie(){ return partie; }, get terrain(){ return T; }, commande, regler, finir, bilan, basculerLame, basculerFraise, basculerTreuil };
 
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
