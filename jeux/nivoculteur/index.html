@@ -47,8 +47,14 @@ button:disabled{ opacity:.4; cursor:default; }
 .fleche{ display:inline-block; }
 
 /* ---------- Messages ---------- */
-#messages{ position:fixed; left:50%; transform:translateX(-50%); top:var(--h-haut, 100px); z-index:6;
-  width:min(500px, calc(100% - 20px)); display:flex; flex-direction:column; gap:6px; pointer-events:none; }
+#messages{ width:min(500px, 100%); display:flex; flex-direction:column; gap:6px; pointer-events:none; }
+#messages:empty{ display:none; }
+.meteo{ cursor:pointer; color:inherit; font:inherit; }
+.puce{ display:flex; align-items:center; gap:8px; max-width:min(520px, 100%); padding:5px 6px 5px 12px; border-radius:12px; background:rgba(47,111,222,.92); font-size:.84rem; line-height:1.25; }
+.puce button{ flex:none; width:30px; height:30px; border-radius:9px; background:rgba(0,0,0,.25); font-weight:800; }
+.tiroir{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:min(560px, 100%); padding:8px; border-radius:14px; background:rgba(11,20,38,.95); border:1px solid var(--bord); }
+.zoom{ position:fixed; right:10px; top:50%; transform:translateY(-50%); z-index:5; display:flex; flex-direction:column; gap:6px; }
+.zoom button{ width:40px; height:40px; border-radius:12px; background:var(--verre); border:1px solid var(--bord); font-size:1.2rem; font-weight:800; }
 .message{ padding:8px 12px; border-radius:10px; font-size:.88rem; line-height:1.3; background:var(--verre); border-left:5px solid var(--info);
   box-shadow:0 6px 18px rgba(0,0,0,.35); transition:opacity .4s, transform .4s; }
 .message.ok{ border-left-color:var(--ok); } .message.attention{ border-left-color:var(--attention); }
@@ -62,7 +68,8 @@ button:disabled{ opacity:.4; cursor:default; }
 .rang{ display:flex; gap:5px; flex-wrap:wrap; justify-content:center; }
 .outil{ padding:7px 9px; border-radius:11px; background:var(--verre); border:1px solid var(--bord); font-weight:700; font-size:.82rem; white-space:nowrap; line-height:1.15; }
 .outil.actif{ background:var(--info); border-color:#7FA8FF; }
-.outil.grand{ background:var(--or); color:#1D1504; border-color:var(--or); font-weight:800; padding:8px 14px; }
+.outil.grand{ background:var(--or); color:#1D1504; border-color:var(--or); font-weight:800; }
+.bas > .rang:last-child{ flex-wrap:nowrap; }
 .consigne{ max-width:min(520px, 100%); padding:6px 11px; border-radius:10px; font-size:.84rem; line-height:1.3; text-align:center; background:var(--verre); border:1px solid var(--bord); }
 .progression{ width:min(420px, 92vw); height:6px; border-radius:3px; background:rgba(255,255,255,.12); overflow:hidden; }
 .progression i{ display:block; height:100%; width:0; background:linear-gradient(90deg, #7FA8FF, #E9B949); }
@@ -145,34 +152,34 @@ table.bilan .moins{ color:#FF8A96; } table.bilan .plus{ color:#7FE0A8; }
   <div class="ligne">
     <a class="home" href="../../index.html">← DesDés</a>
     <div class="titre"><b id="tNom">Domaine</b><span id="tSous"></span></div>
-    <button class="bouton" id="bMenu">Menu</button>
+    <button class="bouton" id="bMenu">☰ Menu</button>
   </div>
   <div class="compteurs">
     <div class="cpt"><small>Budget</small><b id="cBudget">0</b></div>
     <div class="cpt" style="flex-grow:1.5;max-width:150px"><small>Neige pistes</small><b id="cNeige">0</b><i><em id="cNeigeB"></em></i></div>
     <div class="cpt"><small id="cHeureN">Nuit</small><b id="cHeure">1/5</b></div>
-    <div class="cpt"><small>Temp.</small><b id="cTemp">–</b></div>
-    <div class="cpt"><small>Vent</small><b id="cVent">–</b></div>
-    <div class="cpt"><small>Retenue</small><b id="cRetenue">100 %</b></div>
+    <button class="cpt meteo" id="bMeteo"><small>Météo ▾</small><b><span id="cTemp">–</span> <span id="cVent">–</span></b></button>
   </div>
 </div>
-<div id="messages"></div>
 
+<div class="zoom" id="zoom" hidden><button id="zPlus" aria-label="Zoomer">＋</button><button id="zMoins" aria-label="Dézoomer">−</button><button id="zCentre" aria-label="Toute la carte">⌖</button></div>
 <div class="bas" id="bas" hidden>
-  <div class="consigne" id="consigne" hidden></div>
-  <div class="progression" id="progression" hidden><i id="progressionI"></i></div>
-  <div class="rang" id="rangOutils">
+  <div id="messages"></div>
+  <div class="puce" id="puce" hidden><span id="puceTxt"></span><button id="puceFermer" aria-label="Ranger l'outil">✕</button></div>
+  <div class="tiroir" id="tiroir" hidden>
     <button class="outil" data-outil="eaucable">💧⚡ Eau + câble</button>
     <button class="outil" data-outil="eau">💧 Eau</button>
     <button class="outil" data-outil="cable">⚡ Câble</button>
     <button class="outil" data-outil="regard">＋ Regard</button>
     <button class="outil" data-outil="demonter">✂ Démonter</button>
-    <button class="outil" id="bAnnuler" title="Annuler la dernière action">↶</button>
+    <button class="outil" id="bAnnuler" title="Annuler la dernière action">↶ Annuler</button>
   </div>
+  <div class="progression" id="progression" hidden><i id="progressionI"></i></div>
   <div class="rang">
+    <button class="outil" id="bConstruire">🔧 Construire</button>
     <button class="outil" id="bCanons">🗺 Canons</button>
-    <button class="outil" id="bSalle">🏭 Salle des machines</button>
-    <button class="outil grand" id="bNuit">🌙 Lancer la nuit</button>
+    <button class="outil" id="bSalle">🏭 Salle</button>
+    <button class="outil grand" id="bNuit">🌙 Nuit</button>
     <button class="outil" id="bVitesse" hidden>×1</button>
   </div>
 </div>
@@ -231,10 +238,10 @@ table.bilan .moins{ color:#FF8A96; } table.bilan .plus{ color:#7FE0A8; }
   </div>
 </section>
 
-<script src="js/config.js?v=67"></script>
-<script src="js/domaine.js?v=67"></script>
-<script src="js/simulation.js?v=67"></script>
-<script src="js/carte.js?v=67"></script>
-<script src="js/jeu.js?v=67"></script>
+<script src="js/config.js?v=68"></script>
+<script src="js/domaine.js?v=68"></script>
+<script src="js/simulation.js?v=68"></script>
+<script src="js/carte.js?v=68"></script>
+<script src="js/jeu.js?v=68"></script>
 </body>
 </html>
