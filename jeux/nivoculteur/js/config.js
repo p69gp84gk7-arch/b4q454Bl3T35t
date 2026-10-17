@@ -9,12 +9,13 @@
 const CONFIG = {
   // --- Coûts de construction, en euros ---
   couts: {
-    trancheeEau: 750,       // € par mètre de tranchée avec une conduite d'eau seule
-    trancheeCable: 550,     // € par mètre de tranchée avec un câble électrique seul
-    trancheeCommune: 900,   // € par mètre de tranchée commune eau + câble (on ne creuse qu'une fois)
-    trancheeAir: 650,       // € par mètre de tranchée avec une conduite d'air comprimé seule (étape 2)
+    // (prix baissés à la demande de l'utilisateur : le rendement ne suffisait pas)
+    trancheeEau: 380,       // € par mètre de tranchée avec une conduite d'eau seule
+    trancheeCable: 250,     // € par mètre de tranchée avec un câble électrique seul
+    trancheeCommune: 450,   // € par mètre de tranchée commune eau + câble (on ne creuse qu'une fois)
+    trancheeAir: 320,       // € par mètre de tranchée avec une conduite d'air comprimé seule (étape 2)
     // Dans une tranchée déjà creusée (pour un autre réseau), on ne paie que la pose du nouveau réseau, par mètre :
-    ajout: { eau: 350, cable: 150, air: 200 },
+    ajout: { eau: 180, cable: 70, air: 100 },
     regard: 5000,           // € pour un regard (chambre béton, vanne) ; l'enneigeur se paie en plus (CATALOGUE)
     reprise: 0.5,           // quand on remplace un enneigeur, l'ancien est repris à cette part de son prix
     revente: 0.5,           // quand on démonte un regard (et son enneigeur) : part du prix rendue
@@ -86,13 +87,17 @@ const CONFIG = {
     ecartRegards: 12        // m : distance minimale entre deux regards
   },
 
-  // --- Domaines tirés au sort ---
-  // taille : [largeur, hauteur] du domaine (m) · denivele : m entre le bas et le haut · pistes : nombre
-  // budget : € au départ · nuits : nombre de nuits pour atteindre l'objectif · objectif : m³ sur les pistes
+  // --- Les pistes à enneiger (noms des pistes de Luchon-Superbagnères) : une piste par partie ---
+  // longueur, largeur, denivele : m · budget : € au départ · nuits · objectif : m³ sur la piste · retenue : m³
   domaines: {
-    petit: { nom: 'Petit domaine', taille: [340, 520], denivele: [110, 190], pistes: [1, 2], budget: 450000, nuits: 5, objectif: 7000, retenue: 10000 },
-    moyen: { nom: 'Domaine moyen', taille: [440, 640], denivele: [150, 250], pistes: [2, 2], budget: 700000, nuits: 5, objectif: 12000, retenue: 13000 },
-    grand: { nom: 'Grand domaine', taille: [540, 760], denivele: [190, 300], pistes: [2, 3], budget: 1000000, nuits: 6, objectif: 20000, retenue: 16000 }
+    renard:       { nom: 'Le Renard', couleur: 'verte', longueur: 330, largeur: 30, denivele: [55, 70], budget: 200000, nuits: 4, objectif: 4900, retenue: 6000 },
+    violettes:    { nom: 'Les Violettes', couleur: 'verte', longueur: 420, largeur: 34, denivele: [75, 95], budget: 250000, nuits: 4, objectif: 6400, retenue: 7000 },
+    lac:          { nom: 'Le Lac', couleur: 'bleue', longueur: 500, largeur: 34, denivele: [120, 140], budget: 300000, nuits: 5, objectif: 10500, retenue: 8000 },
+    marmottes:    { nom: 'Les Marmottes', couleur: 'bleue', longueur: 680, largeur: 38, denivele: [170, 200], budget: 400000, nuits: 5, objectif: 14000, retenue: 10000 },
+    hountestrete: { nom: 'Hount Estrete', couleur: 'rouge', longueur: 520, largeur: 32, denivele: [170, 190], budget: 330000, nuits: 5, objectif: 11500, retenue: 8000 },
+    lafforgue:    { nom: 'Lafforgue', couleur: 'rouge', longueur: 620, largeur: 34, denivele: [200, 230], budget: 380000, nuits: 5, objectif: 13000, retenue: 9000 },
+    gouron:       { nom: 'Le Gouron', couleur: 'noire', longueur: 480, largeur: 30, denivele: [200, 230], budget: 330000, nuits: 5, objectif: 11000, retenue: 8000 },
+    boiscoqs:     { nom: 'Le Bois des Coqs', couleur: 'noire', longueur: 600, largeur: 32, denivele: [250, 280], budget: 400000, nuits: 6, objectif: 15000, retenue: 9000 }
   },
   etoiles: [1, 1.25, 1.5]   // part de l'objectif pour 1, 2 et 3 étoiles
 };
