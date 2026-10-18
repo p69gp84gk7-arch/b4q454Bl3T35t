@@ -1,7 +1,7 @@
 {
-  "name": "DesDés",
-  "short_name": "DesDés",
-  "description": "Nos jeux : carnets de score du 10 000 et du Yam's, quiz de géographie, course Draw Race, Nivoculteur.",
+  "name": "Altitude",
+  "short_name": "Altitude",
+  "description": "Nos jeux de dés et de montagne : carnets du 10 000 et du Yam's, quiz de géographie, Draw Race, Nivoculteur, Dameuse, Freeride, Fusée Rythme.",
   "lang": "fr",
   "dir": "ltr",
   "id": "./",

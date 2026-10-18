@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>10 000 · DesDés</title>
+<title>10 000 · Altitude</title>
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="DesDés">
+<meta name="apple-mobile-web-app-title" content="Altitude">
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="icon" href="../logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
@@ -174,7 +174,7 @@ td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-n
 <body>
 <div class="barre-statut" aria-hidden="true"></div>
 <main>
-  <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">DesDés</a>
+  <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">Altitude</a>
   <h1>10 000</h1>
   <p class="sub">Le carton de score, de 2 à 15 joueurs.</p>
 
@@ -277,7 +277,7 @@ td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-n
 </div>
 <button class="btn btn-gold fiche-suiv" id="ficheSuiv" hidden>Joueur suivant →</button>
 
-<script src="sauvegarde.js?v=77"></script>
+<script src="sauvegarde.js?v=78"></script>
 <script>
 const MAX = 15, GOAL = 10000, KEY = 'score10000';
 let state = { players: [], turn: 0, turnPts: 0, turnLog: [], history: [], started: false };
@@ -689,7 +689,7 @@ if('serviceWorker' in navigator) window.addEventListener('load', () => navigator
 // Nouvelle version installée : on recharge une fois, pour que la page et ses scripts soient de la même version
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
 </script>
-<script src="ia.js?v=77"></script>
-<script src="plateau.js?v=77" data-jeu="10000"></script>
+<script src="ia.js?v=78"></script>
+<script src="plateau.js?v=78" data-jeu="10000"></script>
 </body>
 </html>
