@@ -19,7 +19,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Dameuse de nuit** : damer une piste vue du dessus avant l'ouverture, avec la lame, la fraise et le treuil ; 8 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
 | **Freeride** : ski ou snowboard hors-piste vu du dessus ; fuir une avalanche sans fin, 7 descentes à étoiles, 4 snowparks (kickers, boxes, rails), 3 slaloms chronométrés et un défi du jour | `jeux/freeride.html` | 1 |
 | **Tour de contrôle** : guider les avions du doigt jusqu'à la piste de leur couleur sans qu'ils se touchent ; 4 aérodromes | `jeux/tour.html` | 1 |
-| **Tir au panier** : viser au doigt (la trajectoire s'affiche jusqu'à l'apogée) et marquer un maximum de paniers en 60 secondes ; bonus (feu, balle ×3, panier large) en allumant la planche, 8 ballons à débloquer, 7 thèmes, mode gaucher | `jeux/panier.html` | 1 |
+| **Tir au panier** : viser au doigt (la trajectoire s'affiche jusqu'à l'apogée) et marquer un maximum de paniers en 1 minute 30 ; bonus (feu, balle ×3, panier large) en allumant la planche, 8 ballons à débloquer, 7 thèmes, mode gaucher | `jeux/panier.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -329,7 +329,7 @@ Jeu de basket tout simple, vu de côté, dans l'esprit des petits jeux de tir au
 - **Progression** : le panier ne bouge jamais ; après chaque tir, un nouveau ballon apparaît ailleurs, toujours à la même hauteur (1,6 m), de plus en plus loin (1,9 à 8 m). La caméra zoome selon la distance entre le ballon et le panier.
 - **Ballons** (`BALLES`) : basket, tennis, ballon de plage, football, boule de bowling, boule de neige, boule à facettes, ballon en or (+1 point par panier). Chacun a sa taille (rayon), sa masse (freinage par l'air et rebonds), sa rapidité (le temps passe plus ou moins vite pour lui) et son rebond. Ils se débloquent avec les **points cumulés** contre la montre (0, 300, 800, 1 600, 3 000, 5 000, 8 000, 12 000) et se choisissent dans le menu, avec leurs jauges.
 - **Thèmes** (`THEMES`, au choix dans le menu) : Nuit, Plage, Néon, Montagne, Forêt, Coucher de soleil, Bonbon (fond uni, petit motif, couleurs du cercle, de la planche et du filet). **Sens du jeu** : droitier (panier à droite) ou gaucher (panier à gauche, tout est inversé).
-- **Modes** : contre la montre (60 s, décompte 3-2-1, buzzer) et entraînement (sans chrono, ne compte pas pour débloquer). **Aide à la visée** (réglage) : la trajectoire du tir précédent reste en pointillés. Un doigt animé montre le geste à la toute première partie.
+- **Modes** : contre la montre (1 min 30, `DUREE`, décompte 3-2-1, buzzer) et entraînement (sans chrono, ne compte pas pour débloquer). **Aide à la visée** (réglage) : la trajectoire du tir précédent reste en pointillés. Un doigt animé montre le geste à la toute première partie.
 - **Données** : record, parties, paniers, points cumulés et dernière partie dans `panier-records` ; ballon choisi `panier-ballon`, thème `panier-theme`, sens `panier-gaucher`, aide `panier-trace`, son `panier-son`. Pour les essais, `Panier.tir(x, y, vx, vy)` simule un tir dans la console.
 
 ## Mise en ligne
