@@ -65,7 +65,7 @@ function ouvrirInfos(){
     ${nuit && reg ? `<p>Maintenant : <b>${degC(reg.T)}</b> en bas du domaine, vent <b>${reg.vent.force < 1 ? 'calme' : 'du ' + nomVent(reg.vent.dir) + ', ' + Math.round(reg.vent.force) + ' km/h'}</b>.</p>` : ''}
     <p>En haut du domaine, il fait <b>${(CONFIG.temperature.gradient * dom.den / 100).toFixed(1).replace('.', ',')} °C</b> de moins. Neige : rien au-dessus de −2 °C, la moitié à −4 °C, tout à −7 °C.</p>
     <p>Retenue : <b>${fmt(res.retenue.volume)} / ${fmt(dom.retenue.max)} m³</b> · objectif <b>${fmt(dom.objectif)} m³</b> en ${dom.nuits} nuits.</p>
-    <p>Piste équipée (des canons tout du long) : <b>${Math.round(equipement(dom, res).ratio * 100)} %</b> · enneigée sur toute sa longueur : <b>${Math.round(couverture(dom, res).ratio * 100)} %</b>. Pour 2 et 3 étoiles, il faut de la neige sur 75 puis 90 % de la piste, pas seulement en bas.</p>
+    <p>Piste équipée (des canons tout du long) : <b>${Math.round(equipement(dom, res).ratio * 100)} %</b> · zones en vert : <b>${Math.round(couverture(dom, res).ratio * 100)} %</b>. Étoiles : ★ objectif de neige ; ★★ toutes les zones de la piste en vert ; ★★★ en plus 130 % de l'objectif et 20 % du budget restant.</p>
     <div class="actions"><button class="btn" id="iSalle">🏭 Courbe de la nuit</button></div>`);
   $('iSalle').onclick = () => { fermerPanneau(); ouvrirSalle(); };
 }
@@ -314,6 +314,7 @@ function avancer(dt){
 }
 function terminerNuit(){
   const b = finNuit(dom, res); avancer.sec = false; derniereT = dernierVent = null;
+  const R = resultat(dom, res);
   phase = 'bilan'; vitesse = 1; sauver(); majBarre(); reg = null;
   const ligne = (n, v, cls = '') => `<tr><td>${n}</td><td class="${cls}">${v}</td></tr>`;
   ouvrirPanneau(`<h3>☀️ Bilan de la nuit ${b.nuit}</h3>
@@ -330,9 +331,14 @@ function terminerNuit(){
     </table>
     <p>Total sur les pistes : <b>${fmt(res.neigePiste)} / ${fmt(dom.objectif)} m³</b> (${Math.round(res.neigePiste / dom.objectif * 100)} %) · nuit ${res.nuit}/${dom.nuits}</p>
     ${b.debloques.length ? `<p>🔓 Débloqué : <b>${b.debloques.map(k => CATALOGUE[k].nom).join(', ')}</b></p>` : ''}
-    ${res.reussi ? '<p>🏆 <b>Objectif atteint : la piste est terminée !</b></p>' : ''}
-    <div class="actions"><button class="btn or" id="bSuite">${res.fini ? (res.reussi ? '🏆 Résultat et étoiles' : 'Voir le résultat') : '☀️ Journée suivante'}</button></div>`);
-  $('bSuite').onclick = () => { fermerPanneau(); if(res.fini){ phase = 'fin'; montrerFin(); } else commencerJour(); };
+    ${res.reussi && !res.fini ? `<p>🏆 <b>Objectif atteint !</b> En terminant maintenant : <b style="color:var(--or)">${'★'.repeat(R.etoiles)}${'☆'.repeat(3 - R.etoiles)}</b><br>${R.criteres.map(c => `${c.ok ? '✅' : '⬜'} ${esc(c.txt)}`).join('<br>')}</p>
+      <p>Vous pouvez continuer une nuit de plus pour viser plus d'étoiles (toutes les zones en vert, 130 % de l'objectif), mais chaque nuit d'avance rapporte aussi des points.</p>` : ''}
+    <div class="actions">${res.reussi && !res.fini
+      ? `<button class="btn" id="bContinuer">☀️ Continuer (nuit ${res.nuit + 1}/${dom.nuits})</button><button class="btn or" id="bTerminer">🏆 Terminer la piste</button>`
+      : `<button class="btn or" id="bSuite">${res.fini ? (res.reussi ? '🏆 Résultat et étoiles' : 'Voir le résultat') : '☀️ Journée suivante'}</button>`}</div>`);
+  if($('bSuite')) $('bSuite').onclick = () => { fermerPanneau(); if(res.fini){ phase = 'fin'; montrerFin(); } else commencerJour(); };
+  if($('bContinuer')) $('bContinuer').onclick = () => { fermerPanneau(); commencerJour(); };
+  if($('bTerminer')) $('bTerminer').onclick = () => { fermerPanneau(); res.fini = true; sauver(); phase = 'fin'; montrerFin(); };
 }
 function montrerFin(){
   majBarre();
