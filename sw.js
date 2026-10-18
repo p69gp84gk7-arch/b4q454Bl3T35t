@@ -1,7 +1,7 @@
 /* Altitude Arcade : fonctionnement hors ligne.
    Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement,
    ainsi que le numéro ?v= des scripts dans les pages (outils/version.sh fait les deux). */
-const VERSION = 'desdes-v80';
+const VERSION = 'desdes-v81';
 const FONTS = 'desdes-fonts';
 const SHELL = [
   './',
@@ -28,10 +28,12 @@ const SHELL = [
   'jeux/nivoculteur/js/jeu.js',
   'logo.svg',
   'manifest.webmanifest',
-  'icons/icon-192.png',
-  'icons/icon-512.png',
-  'icons/icon-maskable-512.png',
-  'icons/apple-touch-icon.png'
+  'icons/altitude-152.png',
+  'icons/altitude-167.png',
+  'icons/altitude-180.png',
+  'icons/altitude-192.png',
+  'icons/altitude-512.png',
+  'icons/altitude-maskable-512.png'
 ];
 
 // Drapeaux : la liste est lue dans les données de la carte (codes "c":"xx" des pays et des États)

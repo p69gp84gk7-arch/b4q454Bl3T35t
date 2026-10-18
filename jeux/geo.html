@@ -9,7 +9,10 @@
 <meta name="apple-mobile-web-app-title" content="Altitude Arcade">
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="icon" href="../logo.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../icons/altitude-180.png">
+<link rel="apple-touch-icon" sizes="167x167" href="../icons/altitude-167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="../icons/altitude-152.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
@@ -249,8 +252,8 @@ tr.me td{ color:var(--gold); font-weight:700; }
   <div class="row"><button class="back" id="toMenu">Menu</button><button class="again" id="again">Rejouer</button></div>
 </main>
 
-<script src="geo/monde.js?v=80"></script>
-<script src="sauvegarde.js?v=80"></script>
+<script src="geo/monde.js?v=81"></script>
+<script src="sauvegarde.js?v=81"></script>
 <script>
 const G = window.GEO;
 const $ = id => document.getElementById(id);
@@ -306,7 +309,7 @@ function charger(fichier){
   if(!fichier) return Promise.resolve();
   return charges[fichier] = charges[fichier] || new Promise((ok, ko) => {
     const s = document.createElement('script');
-    s.src = fichier + '?v=80'; s.onload = ok;   // même numéro de version que les autres scripts
+    s.src = fichier + '?v=81'; s.onload = ok;   // même numéro de version que les autres scripts
     s.onerror = () => { delete charges[fichier]; ko(new Error('Carte introuvable : vérifiez la connexion.')); };
     document.head.append(s);
   });
