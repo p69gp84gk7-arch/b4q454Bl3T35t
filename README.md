@@ -19,7 +19,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Dameuse de nuit** : damer une piste vue du dessus avant l'ouverture, avec la lame, la fraise et le treuil ; 8 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
 | **Freeride** : ski ou snowboard hors-piste vu du dessus ; fuir une avalanche sans fin, 7 descentes à étoiles, 4 snowparks (kickers, boxes, rails), 3 slaloms chronométrés et un défi du jour | `jeux/freeride.html` | 1 |
 | **Tour de contrôle** : guider les avions du doigt jusqu'à la piste de leur couleur sans qu'ils se touchent ; 4 aérodromes | `jeux/tour.html` | 1 |
-| **Tir au panier** : lancer le ballon d'un geste du doigt et marquer un maximum de paniers en 60 secondes, vue de côté | `jeux/panier.html` | 1 |
+| **Tir au panier** : lancer le ballon d'un geste du doigt et marquer un maximum de paniers en 60 secondes ; juste le ballon, le panier et un fond uni | `jeux/panier.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -320,13 +320,13 @@ Jeu de contrôle aérien vu du ciel, dans l'esprit des jeux où l'on trace la ro
 
 ## Tir au panier
 
-Jeu de basket vu de côté, dans l'esprit des petits jeux de tir au panier sur téléphone (dessins, nom et textes originaux).
+Jeu de basket tout simple, vu de côté, dans l'esprit des petits jeux de tir au panier sur téléphone (dessins, nom et textes originaux) : seulement le ballon, le panier et un fond uni (sa couleur change à chaque niveau), avec le score en grand et en transparence au milieu.
 
 - **Le tir** : on pose le doigt n'importe où, on glisse vite vers le panier et on lève le doigt. La direction du geste (sur les 45 dernières millisecondes au moins) donne l'angle, sa vitesse donne la force (environ 0,0056 m/s par pixel/s, de 3 à 15,5 m/s). Un geste vers le bas ne tire pas.
 - **Aide au tir**, comme dans les jeux d'arcade : si la force est à moins de 35 % de la bonne force pour l'angle choisi, elle est corrigée en partie (beaucoup au début, de moins en moins avec le niveau) ; et le ballon qui retombe juste au-dessus du cercle est légèrement attiré vers le milieu (`AIMANT`). Avec un geste juste à ±10 % et un angle à ±8°, on réussit environ un tir sur trois.
-- **La physique** (pas de 1/480 s) : pesanteur, un peu de freinage de l'air ; le cercle vu de côté est deux points (avant et arrière, 45 cm d'écart), la planche, son bras et le poteau sont des segments ; rebonds avec perte d'énergie, frottement et rotation du ballon ; le filet freine et recentre le ballon. Un panier compte quand le centre du ballon passe le cercle en descendant, entre l'avant et l'arrière.
+- **La physique** (pas de 1/480 s) : pesanteur, un peu de freinage de l'air ; le cercle vu de côté est deux points (avant et arrière, 45 cm d'écart), la planche est un segment ; rebonds avec perte d'énergie, frottement et rotation du ballon ; le filet freine et recentre le ballon. Un panier compte quand le centre du ballon passe le cercle en descendant, entre l'avant et l'arrière.
 - **Points** : 2, ou 3 au-delà de 6,75 m ; +1 pour un « tout filet » (sans toucher le cercle ni la planche), qui ajoute aussi 2 secondes. **En feu** après 3 paniers de suite : points doublés jusqu'au prochain raté.
-- **Progression** : après chaque tir, le joueur court se placer ailleurs, de plus en plus loin (1,9 m au début, jusqu'à 8 m). Tous les 6 paniers, un niveau : le panier monte et descend, puis se déplace aussi d'un côté à l'autre. La caméra zoome pour montrer en entier le tireur et le panier.
+- **Progression** : après chaque tir, un nouveau ballon apparaît (en grossissant) ailleurs, de plus en plus loin (1,9 m au début, jusqu'à 8 m) et à une hauteur variable ; « 3 PTS » s'affiche au-dessus quand il est derrière la ligne des 3 points. Tous les 6 paniers, un niveau : le panier monte et descend, puis se déplace aussi d'un côté à l'autre, et le fond change de couleur. La caméra zoome pour montrer en entier le ballon et le panier.
 - **Modes** : contre la montre (60 s, décompte 3-2-1, buzzer) et entraînement (sans chrono). **Aide à la visée** (réglage) : la trajectoire du tir précédent reste en pointillés. Un doigt animé montre le geste à la toute première partie.
 - **Données** : record, nombre de parties et de paniers, dernière partie dans `panier-records` ; aide à la visée dans `panier-trace` ; son dans `panier-son`. Pour les essais, `Panier.tir(x, vx, vy)` simule un tir dans la console.
 
