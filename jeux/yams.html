@@ -9,7 +9,10 @@
 <meta name="apple-mobile-web-app-title" content="Altitude Arcade">
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="icon" href="../logo.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../icons/altitude-180.png">
+<link rel="apple-touch-icon" sizes="167x167" href="../icons/altitude-167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="../icons/altitude-152.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
@@ -247,7 +250,7 @@ tr.gap th.cat{border-right-color:var(--margin)}
   </div>
 </div>
 
-<script src="sauvegarde.js?v=80"></script>
+<script src="sauvegarde.js?v=81"></script>
 <script>
 const MAX = 10;
 const UPPER = [1,2,3,4,5,6].map(f => ({key:'n'+f, label:'Total de '+f, short:String(f), type:'upper', face:f, help:'Somme des '+f}));
@@ -516,7 +519,7 @@ if('serviceWorker' in navigator) window.addEventListener('load', () => navigator
 // Nouvelle version installée : on recharge une fois, pour que la page et ses scripts soient de la même version
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
 </script>
-<script src="ia.js?v=80"></script>
-<script src="plateau.js?v=80" data-jeu="yams"></script>
+<script src="ia.js?v=81"></script>
+<script src="plateau.js?v=81" data-jeu="yams"></script>
 </body>
 </html>
