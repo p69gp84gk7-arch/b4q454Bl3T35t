@@ -19,6 +19,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Dameuse de nuit** : damer une piste vue du dessus avant l'ouverture, avec la lame, la fraise et le treuil ; 8 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
 | **Freeride** : ski ou snowboard hors-piste vu du dessus ; fuir une avalanche sans fin, 7 descentes à étoiles, 4 snowparks (kickers, boxes, rails), 3 slaloms chronométrés et un défi du jour | `jeux/freeride.html` | 1 |
 | **Tour de contrôle** : guider les avions du doigt jusqu'à la piste de leur couleur sans qu'ils se touchent ; 4 aérodromes | `jeux/tour.html` | 1 |
+| **Olympiades** : épreuves d'athlétisme et de sports d'hiver vues de côté, comme sur les bornes d'arcade (tapoter vite pour courir, appuyer au bon moment pour sauter ou lancer) ; 11 épreuves d'été, 7 d'hiver, robots et qualifications | `jeux/olympiades.html` | 1 à 4 (chacun son tour, + robots) |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -317,6 +318,18 @@ Jeu de contrôle aérien vu du ciel, dans l'esprit des jeux où l'on trace la ro
 - **Aérodromes** (`CARTES`, monde de 1 200 × 750, tourné d'un quart de tour en portrait) : La Vallée (champs, deux pistes, une hélistation), Le Porte-avions (en mer, pistes sur le pont du navire), L'Altiport (montagne enneigée, petite piste en pente et grande piste dans la vallée), Le Lac (hydravions en plus).
 - **Records** par aérodrome dans `tour-records` (meilleur score, parties, total ; `dernier` pour l'accueil), son dans `tour-son`.
 
+## Olympiades
+
+Jeu d'épreuves sportives vues de côté, dans l'esprit des bornes d'arcade où l'on tapote deux boutons à toute vitesse (dessins, noms et textes originaux, sans anneaux ni nom officiel).
+
+- **Commandes** : trois gros boutons en bas de l'écran. ◀ et ▶ se tapotent **en alternance** (deux fois le même ne compte pas) : chaque appui valable ajoute de la vitesse, d'autant moins qu'on approche de la vitesse maximale (`elan`), et on ralentit dès qu'on arrête. Le bouton rouge fait l'action de l'épreuve (son nom change : SAUTER, LANCER, PLONGER…) ; pour les sauts et les lancers, on le **maintient** pour faire monter l'angle et on le **lâche** au bon angle (un arc vert montre l'angle idéal). Au clavier : flèches gauche et droite (ou A/D), espace. En paysage sur un téléphone, les boutons passent dans les coins.
+- **Été** (`ETE`) : 100 m, 110 m haies (sauter avant chaque haie, une haie heurtée ralentit), saut en longueur et triple saut (planche : au-delà, c'est « mordu » ; trois appuis rythmés pour le triple), saut en hauteur et à la perche (la barre monte ; 3 échecs de suite et c'est fini ; la perche se plante au butoir et se lâche quand elle est redevenue droite), javelot (ligne à ne pas franchir), poids (3 s pour remplir la jauge de force), marteau (faire tourner, lâcher dans le secteur vert), 50 m nage libre (plonger au signal, respirer quand c'est indiqué, sinon « la tasse »), tir à l'arc (3 flèches, cible vue de face, vent à compenser, l'arc tremble moins bien tendu mais le bras fatigue).
+- **Hiver** (`HIVER`) : saut à ski (rester groupé sur la piste d'élan, lâcher au bord du tremplin, garder l'équilibre en vol, appuyer à la réception pour le télémark ; deux sauts, points additionnés), descente (groupé pour aller vite, mais se relever avant les bosses et dans les virages), slalom (◀ pour les portes rouges, ▶ pour les bleues ; +3 s par porte manquée), bobsleigh et luge (pousser, monter, puis rester au milieu de la piste dans les virages ; chaque choc contre le mur ralentit), patinage 500 m (pousser en rythme : ni trop vite, ni trop lentement), biathlon (ski, 5 tirs avec le cœur qui fait trembler le viseur, +10 s par cible manquée).
+- **Départs** des courses, de la natation et du patinage : « À vos marques », « Prêts… » puis le signal après un temps au hasard ; partir avant = faux départ, deux = disqualifié. Dans les courses, les robots courent dans les couloirs du fond.
+- **Modes** : *Compétition* d'été ou d'hiver (choix des épreuves, 1 à 4 joueurs sur le même téléphone chacun son tour avec leurs noms, robots facile / moyen / fort qui complètent le plateau à 4) ; points 10, 8, 6, 5… selon la place, médailles, classement final (ex æquo si mêmes points et médailles). *Qualifications* (option) : un minimum par épreuve (`qual`), en dessous le joueur est éliminé pour la suite. *Épreuve libre* : une épreuve contre trois robots. Sauts et lancers : 3 essais, le meilleur compte.
+- **Réglage** : chaque épreuve a un minimum (`qual`) et une très belle performance (`ref`) ; un robot réussit entre les deux selon son niveau, avec un peu de hasard (`perfRobot`). Les valeurs ont été réglées en faisant jouer chaque épreuve par un joueur simulé (`Olymp.simuler`, dans la console) à 6, 8,5 et 11 appuis par seconde.
+- **Records** par épreuve dans `olymp-records`, réglages de la compétition dans `olymp-config`, dernière épreuve pour l'accueil dans `olymp-dernier`, son dans `olymp-son`.
+
 ## Mise en ligne
 
 Le site est fait de fichiers statiques, sans installation ni compilation.
@@ -355,6 +368,7 @@ jeux/fusee.html        jeu Fusée Rythme
 jeux/dameuse.html      jeu Dameuse de nuit
 jeux/freeride.html     jeu Freeride
 jeux/tour.html         jeu Tour de contrôle
+jeux/olympiades.html   jeu Olympiades
 logo.svg               logo (source vectorielle)
 apple-touch-icon.png   icône de l'écran d'accueil de l'iPhone (180 px, pleine) ; elle est aussi écrite dans chaque page (lien apple-touch-icon en data:image/png;base64), recopiée par outils/icone.sh après un changement de logo
 icons/                 icônes du manifeste, fichiers altitude-*.png (192, 512, masquable, 180), toutes pleines (sans transparence)
