@@ -121,7 +121,7 @@ h1 span{ color:var(--orange); }
 </div>
 <div class="jauge" id="jauge" hidden><i id="jaugeI"></i></div>
 <div class="annonce" id="annonce"></div>
-<div class="aide-doigt" id="aideDoigt">Touchez à gauche ou à droite pour tourner · en bas au milieu pour sauter · en l'air et sur les rails, 6 cases font des figures (3 en haut, 3 au milieu) ; le bas de l'écran sert à s'orienter et à garder l'équilibre</div>
+<div class="aide-doigt" id="aideDoigt">Gauche / droite : tourner (vite en alternance : accélérer) · deux doigts glissés vers le bas : freiner · en bas au milieu : sauter · en l'air et sur les rails : 6 cases de figures</div>
 
 <section class="ecran" id="eMenu">
   <div class="boite">
@@ -170,7 +170,9 @@ h1 span{ color:var(--orange); }
     <h1>Com<span>ment</span> jouer</h1>
     <div class="carte">
       <h3>☝️ Diriger</h3>
-      <p>Touchez la <b>moitié gauche ou droite</b> de l'écran : le skieur tourne de ce côté, d'autant plus que vous restez appuyé (il coupe la pente et ralentit). <b>Lâchez</b> : il se remet dans la pente et file tout schuss. Au clavier : flèches gauche / droite, espace (saut), Q W E / A S D ou 1 à 6 (les figures, rangée du haut puis du milieu).</p>
+      <p>Touchez la <b>moitié gauche ou droite</b> de l'écran : le skieur tourne de ce côté, d'autant plus que vous restez appuyé (il coupe la pente et ralentit). <b>Lâchez</b> : il se remet dans la pente et file tout schuss.</p>
+      <p><b>Accélérer</b> : touchez gauche, droite, gauche, droite… rapidement (moins d'une demi-seconde entre deux) : le skieur pousse comme un patineur et prend de la vitesse, surtout quand il va doucement. <b>Freiner</b> : posez un doigt à gauche et un à droite et glissez-les ensemble vers le bas : il met les skis en travers et dérape pour freiner, tant que vous restez appuyé.</p>
+      <p>Au clavier : flèches gauche / droite, flèche du bas (freiner), espace (saut), Q W E / A S D ou 1 à 6 (les figures, rangée du haut puis du milieu).</p>
       <p>Au sol, la zone <b>en bas au milieu</b> fait un petit saut. <b>En l'air</b>, l'écran est découpé en six cases (leur nom s'affiche, on peut le cacher) ; le bas de l'écran sert à s'orienter. Les figures de chaque case se règlent dans le menu <b>🤸 Figures</b> :</p>
       <div class="schema" id="schemaAir"></div>
       <h3>🦘 Sauter et figures</h3>
@@ -183,7 +185,7 @@ h1 span{ color:var(--orange); }
         <li>Les figures enchaînées sans tomber montent le <b>combo</b> (jusqu'à ×5).</li>
       </ul>
       <h3>🛹 Snowparks</h3>
-      <p>Une piste damée avec des modules, comme dans un vrai snowpark : <b>kickers</b> (au milieu, avec leur table : le haut de la réception est marqué en bleu), <b>rollers</b> (des bosses en série), et sur les côtés des <b>boxes</b> (orange, larges et basses) et des <b>rails</b> (le rail droit en gris, le <b>kink</b> avec sa marche en rouge, l'<b>arc-en-ciel</b> en jaune).</p>
+      <p>Une piste damée avec des modules, comme dans un vrai snowpark : <b>kickers</b> (au milieu, avec leur table : le haut de la réception est marqué en bleu), et sur les côtés des <b>boxes</b> (orange, larges et basses) et des <b>rails</b> (le rail droit en gris, le <b>kink</b> avec sa marche en rouge, l'<b>arc-en-ciel</b> en jaune).</p>
       <ul>
         <li>Pour glisser sur une box ou un rail, arrivez <b>dans son axe</b>, face à la pente : vous montez dessus par la petite rampe. Le prendre par le côté, c'est la chute.</li>
         <li>Sur le module, une <b>barre d'équilibre</b> s'affiche au-dessus du skieur : quand la bille part d'un côté, touchez l'autre côté, <b>en bas de l'écran</b>, pour la ramener au milieu. Rouge au bout : déséquilibre et chute.</li>
@@ -201,7 +203,7 @@ h1 span{ color:var(--orange); }
       <ul>
         <li><b>Sans fin</b> : la montagne ne s'arrête jamais et devient de plus en plus dense. Une <b>avalanche</b> part derrière vous et accélère : si elle vous rattrape, c'est fini.</li>
         <li><b>Descentes</b> : des parcours avec une arrivée. 1 étoile à l'arrivée, 2 et 3 selon les flocons ❄ ramassés.</li>
-        <li><b>Snowparks</b> : kickers, rollers, boxes et rails ; étoiles selon les modules réussis.</li>
+        <li><b>Snowparks</b> : kickers, boxes et rails ; étoiles selon les modules réussis.</li>
         <li><b>Slalom</b> : passez entre les deux piquets de chaque porte. Porte manquée : +5 s. Étoiles selon le temps.</li>
         <li><b>Défi du jour</b> : une descente nouvelle chaque jour.</li>
       </ul>
@@ -282,11 +284,11 @@ const SLALOMS = [
   { id:'special', n:'Spécial du Stade', ico:'🚩', d:'Portes serrées, virages courts', L:420, ecart:12, larg:5, decal:4.2, vref:9.8 },
   { id:'superg', n:'Super-G des Crêtes', ico:'🚩', d:'Long, rapide, quelques tremplins', L:900, ecart:30, larg:10, decal:8.5, vref:15, sauts:true },
 ];
-// Les snowparks : piste damée avec des modules en lignes (kickers, boxes, rails, rollers) ; niv : 0 facile à 2 expert
+// Les snowparks : piste damée avec des modules en lignes (kickers, boxes, rails ; pas de bosses) ; niv : 0 facile à 2 expert
 const PARKS = [
-  { id:'park-decouverte', n:'Park Découverte', ico:'🟢', c:'#2E9E5B', d:'Petits kickers, boxes à plat et rollers', L:760, niv:0, sections:['boxes', 'kickers', 'whoops', 'ligne', 'kickers', 'boxes', 'kickers'] },
+  { id:'park-decouverte', n:'Park Découverte', ico:'🟢', c:'#2E9E5B', d:'Petits kickers et boxes à plat', L:760, niv:0, sections:['boxes', 'kickers', 'ligne', 'boxes', 'kickers', 'ligne', 'kickers'] },
   { id:'park-jib', n:'Jib Park', ico:'🔵', c:'#1F6FE0', d:'Boxes et rails en série : des slides partout', L:840, niv:1, sections:['boxes', 'rails', 'jib', 'kickers', 'rails', 'jib', 'ligne'] },
-  { id:'park-slope', n:'Slopestyle', ico:'🔴', c:'#D63A2F', d:'Rails, boxes et kickers enchaînés', L:1000, niv:1, sections:['jib', 'kickers', 'rails', 'ligne', 'whoops', 'big', 'jib', 'big'] },
+  { id:'park-slope', n:'Slopestyle', ico:'🔴', c:'#D63A2F', d:'Rails, boxes et kickers enchaînés', L:1000, niv:1, sections:['jib', 'kickers', 'rails', 'ligne', 'kickers', 'big', 'jib', 'big'] },
   { id:'park-pro', n:'Pro Line', ico:'⚫', c:'#13233A', d:'Kink, rails arc-en-ciel et big air', L:1150, niv:2, sections:['rails', 'big', 'jib', 'big', 'ligne', 'rails', 'big', 'big'] },
 ];
 // Les modules à slider : hauteur (m), largeur (m), instabilité (plus c'est haut, plus l'équilibre part vite), points
@@ -409,7 +411,7 @@ function construireSlalom(M, def){
   trier(M);
 }
 // Snowpark : les modules sont posés par rangs ; dans un rang, plusieurs modules côte à côte (on en choisit un).
-// Boxes et rails sur deux ou trois lignes (x = ±6 ou −7, 0, 7), kickers au milieu, rollers sur toute la largeur.
+// Boxes et rails sur deux ou trois lignes (x = ±6 ou −7, 0, 7), kickers au milieu.
 // Un rang compte comme réussi dès qu'un de ses modules l'est (kicker bien reçu, box ou rail glissé jusqu'au bout).
 function nouveauRang(M){ return M.nModules++; }
 function poserModule(M, forme, x, y, l, rang){ const F = FORMES[forme]; M.rails.push({ t:'rail', forme, x, y, l, h:F.h, w:F.w, ok:false, rang }); }
@@ -426,7 +428,6 @@ function sectionPark(M, type, y0, y1, niv){
     case 'ligne': for(let y = y0 + 10; y < y1 - 26; y += 36 + R() * 4){ const r = nouveauRang(M); kickerPark(M, y, entre(kick), r); for(const x of [-7, 7]){ const f = tire(jib); poserModule(M, f, x, y + 2, long(f), r); } } break;
     case 'kickers': for(let y = y0 + 10; y < y1 - 26; y += 32 + R() * 4) kickerPark(M, y, entre(kick)); break;
     case 'big': for(let y = y0 + 12; y < y1 - 32; y += 42 + R() * 4) kickerPark(M, y, entre(gros)); break;
-    case 'whoops': for(let y = y0 + 10, k = 0; y < y1 - 10 && k < 9; y += 4.4, k++) for(let x = -M.bord + 3 + (k % 2) * 2.2; x < M.bord - 2; x += 4.4) ajouter(M, { t:'bosse', x, y, r:1.7 }); break;
   }
 }
 function construirePark(M, def){
@@ -612,12 +613,15 @@ function sautCourt(P){
 function animer(P, dt){
   const A = P.anim || (P.anim = { ...MVT0, recep:0, sens:0, tPlant:9 }), k = Math.min(1, dt * 7);
   A.air = P.air; A.recep = Math.max(0, A.recep - dt * 2.2);
+  // dérapage : les skis se mettent en travers, du côté où il penchait
+  if(P.frein && !A.derap) A.derapCote = Math.sign(P.th) || 1;
+  A.derap = (A.derap || 0) + ((P.frein ? 1 : 0) - (A.derap || 0)) * Math.min(1, dt * 9);
   A.tPlant += dt; A.plant = A.tPlant < .45 ? Math.sin(A.tPlant / .45 * Math.PI) : 0;
   if(P.air || P.chute > 0){ A.incl -= A.incl * k; A.ctr -= A.ctr * k; A.tuck = 0; return; }
   A.incl += (clamp(-Math.atan(P.v * P.thv / 9.8) * .8, -.75, .75) - A.incl) * k;
   A.ctr += (-P.th * .55 - A.ctr) * k;
   A.tuck += ((P.v > 16 && Math.abs(A.incl) < .12 ? 1 : 0) - A.tuck) * Math.min(1, dt * 3);
-  A.flex += (.18 + Math.abs(A.incl) * .55 + A.recep * .55 - A.flex) * k;
+  A.flex += (.18 + Math.abs(A.incl) * .55 + A.recep * .55 + A.derap * .35 + (P.pas > 0 ? .35 : 0) - A.flex) * k;
   const sens = Math.abs(P.thv) > .7 ? Math.sign(P.thv) : 0;
   if(sens && sens !== A.sens && A.tPlant > .3){ A.cote = -sens; A.tPlant = 0; }
   if(sens) A.sens = sens; else if(Math.abs(P.thv) < .15) A.sens = 0;
@@ -687,6 +691,17 @@ function maj(P, dt){
   let dir = 0;
   for(const v of doigts.values()) if(v === 'g' || v === 'd') dir = v === 'g' ? -1 : 1;
   if(!dir){ if(touches.has('ArrowLeft')) dir = -1; if(touches.has('ArrowRight')) dir = 1; }
+  // Freinage (deux doigts glissés vers le bas, ou flèche du bas) : il dérape en travers, on ne tourne plus
+  P.frein = (freinage() || touches.has('ArrowDown')) && !P.air && !P.slide && P.chute <= 0;
+  if(P.frein) dir = 0;
+  // Pas de patineur : gauche / droite répétés vite (moins d'une demi-seconde) font accélérer, surtout à petite vitesse
+  if(dir && dir !== P.dirPrec){
+    if(P.dirPrec && P.t - P.tDir < .45 && !P.air && !P.slide && P.chute <= 0){
+      P.v = Math.min(M.vmax || 30, P.v + 1.1 * clamp(1 - P.v / 16, .15, 1)); P.pas = .25; bruitCourt(260, .05, .05);
+    }
+    P.dirPrec = dir; P.tDir = P.t;
+  }
+  P.pas = Math.max(0, (P.pas || 0) - dt);
   if(P.chute > 0){
     P.chute -= dt; P.v = Math.max(0, P.v - 12 * dt);
     if(P.chute <= 0){ P.th = 0; P.v = 3; P.invul = 1.2; }
@@ -706,6 +721,7 @@ function maj(P, dt){
     if(ath > 1.05 && !P.air) a -= 9 * (ath - 1.05);
     if(engin === 'ski' && ath > .5 && !P.air) a += .25;     // les carres accrochent mieux
     if(P.slide) a = -.8;                                     // sur un rail, on ralentit doucement
+    if(P.frein) a -= 9 * clamp(P.v / 4, .4, 1);              // dérapage : on freine fort
     P.v = clamp(P.v + a * dt, P.y < 3 ? 3 : 0, M.vmax || 30);
   }
   const vx = Math.sin(P.th) * P.v, vy = Math.cos(P.th) * P.v, yAvant = P.y, xAvant = P.x;
@@ -779,7 +795,7 @@ function maj(P, dt){
   // Points de glisse (descentes et sans fin) : la vitesse rapporte un peu
   if(P.mode !== 'slalom' && P.chute <= 0) P.score += P.v * dt * 1.5;
   // Poudreuse soulevée dans les virages
-  const carre = !P.air && P.chute <= 0 ? clamp(Math.abs(P.thv) / 3 + (Math.abs(P.th) > .9 ? .5 : 0), 0, 1) * clamp(P.v / 12, 0, 1) : 0;
+  const carre = P.frein ? clamp(P.v / 8, 0, 1) : !P.air && P.chute <= 0 ? clamp(Math.abs(P.thv) / 3 + (Math.abs(P.th) > .9 ? .5 : 0), 0, 1) * clamp(P.v / 12, 0, 1) : 0;
   if(carre > .2 && Math.random() < carre){
     const s = Math.sign(P.thv || P.th);
     P.part.push({ x:P.x - s * Math.cos(P.th) * .6, y:P.y + .4, vx:-s * (2 + Math.random() * 3) * Math.cos(P.th) + vx * .3, vy:vy * .4 + (Math.random() - .5) * 2, vie:.5 + Math.random() * .4, r:.12 + Math.random() * .22 });
@@ -1057,7 +1073,7 @@ function dessinerSkieur(P, t){
   const T = P.slide && SLIDES[P.slide.k], F = P.chute > 0 ? null : T ? (T.grab ? { grab:T.grab } : null) : P.fig && FIGURES[P.fig.k];
   const u = T ? .5 : F ? clamp(P.fig.t / F.dur, 0, 1) : 0;
   const flip = P.chute > 0 ? P.chute * 7 : P.slide ? P.slide.pf : F && F.flip ? F.flip * u * 2 * Math.PI : 0;
-  const tourne = P.chute > 0 ? P.chute * 3 : (P.spin || 0) + (P.switch ? Math.PI : 0);
+  const A = P.anim, tourne = P.chute > 0 ? P.chute * 3 : (P.spin || 0) + (P.switch ? Math.PI : 0) + (A && A.derap ? A.derap * 1.35 * A.derapCote : 0);
   g.save(); g.translate(P.x, P.y - z * .55);
   dessinerPersonnage(g, poseSkieur(F, u, engin, P.chute > 0 ? MVT0 : P.anim || MVT0), P.th, flip, tourne, 1.55 * (1 + z * .04));
   g.restore();
@@ -1271,12 +1287,21 @@ cv.addEventListener('pointerdown', e => {
   if(z === 'c'){ sautCourt(P); doigts.set(e.pointerId, 'c'); return; }
   if(z.length === 2){ figure(P, z); doigts.set(e.pointerId, 'f'); return; }
   doigts.delete(e.pointerId); doigts.set(e.pointerId, z);
+  glisses.set(e.pointerId, { y0:e.clientY, y:e.clientY });
 });
+// Freiner : un doigt à gauche et un à droite, glissés ensemble vers le bas (le skieur dérape en travers)
+const glisses = new Map();
+function freinage(){
+  let gauche = false, droite = false;
+  for(const [id, v] of doigts){ const m = glisses.get(id); if(!m || m.y - m.y0 < 28) continue; if(v === 'g') gauche = true; else if(v === 'd') droite = true; }
+  return gauche && droite;
+}
 cv.addEventListener('pointermove', e => {
   const v = doigts.get(e.pointerId); if(v !== 'g' && v !== 'd') return;
+  if(glisses.has(e.pointerId)) glisses.get(e.pointerId).y = e.clientY;
   const c = e.clientX < W / 2 ? 'g' : 'd'; if(c !== v){ doigts.delete(e.pointerId); doigts.set(e.pointerId, c); }
 });
-const lacher = e => doigts.delete(e.pointerId);
+const lacher = e => { doigts.delete(e.pointerId); glisses.delete(e.pointerId); };
 cv.addEventListener('pointerup', lacher); cv.addEventListener('pointercancel', lacher);
 cv.addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('keydown', e => {
