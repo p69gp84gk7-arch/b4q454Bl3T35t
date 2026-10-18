@@ -9,12 +9,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Altitude Arcade">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="manifest.webmanifest?v=84">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/altitude-180.png">
-<link rel="apple-touch-icon" sizes="167x167" href="icons/altitude-167.png">
-<link rel="apple-touch-icon" sizes="152x152" href="icons/altitude-152.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/altitude-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/altitude-180.png?v=84">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/altitude-167.png?v=84">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/altitude-152.png?v=84">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/altitude-192.png?v=84">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Kalam:wght@700&family=Audiowide&family=Saira+Condensed:wght@800&family=Bebas+Neue&display=swap" rel="stylesheet">
@@ -130,6 +130,17 @@ h2{ font-size:.85rem; font-weight:600; text-transform:uppercase; letter-spacing:
 .gfreeride .go{ background:#FF6A2B; color:#fff; }
 .gfreeride .corner{ position:absolute; right:0; top:2px; width:100px; height:80px; }
 
+/* Carte Tour de contrôle : l'herbe de l'aérodrome et sa piste */
+.gtour{ background:#6FA859; color:#FFF8EA; border:1.5px solid rgba(0,0,0,.15);
+  background-image:linear-gradient(45deg, rgba(255,255,255,.07) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.07) 75%), linear-gradient(45deg, rgba(255,255,255,.07) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.07) 75%);
+  background-size:48px 48px; background-position:0 0, 24px 24px; }
+.gtour .title{ font-family:"Bebas Neue", "Bricolage Grotesque", sans-serif; font-weight:400; font-size:2.6rem; line-height:.9; letter-spacing:.01em; text-shadow:0 2px 0 rgba(0,0,0,.2); }
+.gtour .title span{ color:#FFD45C; }
+.gtour .desc, .gtour .status{ color:rgba(255,248,234,.9); }
+.gtour .status b{ color:#fff; }
+.gtour .go{ background:#D9412F; color:#fff; }
+.gtour .corner{ position:absolute; right:0; top:2px; width:104px; height:80px; }
+
 /* Carte Nivoculteur : nuit en montagne */
 .gnivo{ background:#0B1426; color:#EAF2FF; border:1.5px solid rgba(169,196,240,.35);
   background-image:radial-gradient(circle at 85% 0%, rgba(201,216,255,.22), transparent 55%),
@@ -168,7 +179,7 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
     <img src="logo.svg" alt="">
     <div>
       <h1>Altitude Arcade</h1>
-      <p class="tagline">Nos jeux de dés et de montagne : carnets du Yam's et du 10 000, quiz de géographie, course à dessiner, neige de culture, dameuse de nuit, freeride…</p>
+      <p class="tagline">Nos jeux de dés et de montagne : carnets du Yam's et du 10 000, quiz de géographie, course à dessiner, neige de culture, dameuse de nuit, freeride, tour de contrôle…</p>
     </div>
   </header>
 
@@ -273,6 +284,19 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
       <span class="go">Jouer</span>
     </a>
 
+    <a class="game gtour" href="jeux/tour.html">
+      <svg class="corner" viewBox="0 0 104 80" aria-hidden="true">
+        <g transform="rotate(-24 60 52)"><rect x="18" y="44" width="78" height="16" fill="#D9412F"/><rect x="20" y="46" width="74" height="12" fill="#4A4D52"/><path d="M30 52h56" stroke="#fff" stroke-width="1.4" stroke-dasharray="6 5"/></g>
+        <path d="M20 14 C 40 10, 50 30, 40 46" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="4 4" opacity=".9"/>
+        <g transform="translate(22 14) rotate(170)"><path d="M-3 0 L-7 -12 L-3 -12 L5 -2 L5 2 L-3 12 L-7 12 Z" fill="#D9412F" stroke="#fff" stroke-width="1"/><ellipse rx="13" ry="2.6" fill="#F7F3EA" stroke="#fff" stroke-width=".8"/></g>
+        <g transform="translate(86 18) rotate(30)"><rect x="-2.5" y="-11" width="5" height="22" rx="2" fill="#F2B930" stroke="#fff" stroke-width=".8"/><ellipse rx="9" ry="2" fill="#F7F3EA"/></g>
+      </svg>
+      <p class="title">Tour de <span>contrôle</span></p>
+      <p class="desc">Les avions arrivent de partout : tracez leur route du doigt jusqu'à la piste de leur couleur, sans qu'ils se touchent. Jets, avions légers, hélicoptères et hydravions, 4 aérodromes.</p>
+      <p class="status" id="sttour"><b>Pas encore joué</b>Premier aérodrome : La Vallée.</p>
+      <span class="go">Jouer</span>
+    </a>
+
     <a class="game gnivo" href="jeux/nivoculteur/index.html">
       <svg class="corner" viewBox="0 0 92 70" aria-hidden="true">
         <g fill="#F4F7FF"><circle cx="14" cy="18" r="2.2"/><circle cx="24" cy="10" r="1.6"/><circle cx="8" cy="30" r="1.8"/><circle cx="22" cy="26" r="2.4"/><circle cx="32" cy="18" r="1.5"/><circle cx="16" cy="40" r="1.4"/></g>
@@ -300,8 +324,8 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
   <footer id="installHint">Astuce : ajoutez Altitude Arcade à l'écran d'accueil pour l'ouvrir comme une application. Tous les jeux marchent ensuite sans réseau.</footer>
 </main>
 
-<script src="jeux/drawrace/circuits.js?v=82"></script>
-<script src="jeux/sauvegarde.js?v=82"></script>
+<script src="jeux/drawrace/circuits.js?v=84"></script>
+<script src="jeux/sauvegarde.js?v=84"></script>
 <script>
 const fmt = n => n.toLocaleString('fr-FR');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -428,7 +452,13 @@ function showFreeride(){
   const inf = r.infini && r.infini.parties ? ` · sans fin : ${r.infini.dist.toLocaleString('fr-FR')} m` : '';
   el.innerHTML = `<b>${esc(d.n)}${et}</b>${d.engin === 'board' ? '🏂' : '⛷️'} ${val}${inf}`;
 }
-function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showNivo(); showFusee(); showDameuse(); showFreeride(); }
+/* Tour de contrôle : le dernier aérodrome et son record (clé partagée avec jeux/tour.html) */
+function showTour(){
+  const r = read('tour-records') || {}, el = document.getElementById('sttour'), d = r.dernier;
+  if(!d){ el.innerHTML = '<b>Pas encore joué</b>Premier aérodrome : La Vallée.'; return; }
+  el.innerHTML = `<b>${esc(d.n)}</b>Dernière partie : ${plural(d.score, 'avion')} posé${d.score > 1 ? 's' : ''} · record ${d.best}`;
+}
+function refresh(){ show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showNivo(); showFusee(); showDameuse(); showFreeride(); showTour(); }
 refresh();
 DesDesSauvegarde.boutons(document.getElementById('sauve'));
 // Retour depuis un jeu (cache de navigation) : remettre les états à jour

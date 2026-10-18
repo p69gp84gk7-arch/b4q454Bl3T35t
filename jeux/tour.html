@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Tour de contrôle · Altitude Arcade</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=84">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="../icons/altitude-180.png?v=84">
+<link rel="apple-touch-icon" sizes="167x167" href="../icons/altitude-167.png?v=84">
+<link rel="apple-touch-icon" sizes="152x152" href="../icons/altitude-152.png?v=84">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=84">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie (rien de flou derrière) */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --marge-haut:var(--barre-statut); }
+:root{
+  --fond:#F3EAD6; --carte:rgba(255,252,244,.94); --encre:#2B2420; --doux:#6E625A; --ligne:rgba(43,36,32,.14);
+  --rouge:#D9412F; --jaune:#F2B930; --bleu:#2F7FD8; --vert:#2FA766;
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; height:100%; overflow:hidden; background:#5C9A4C; color:var(--encre);
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+button{ font:inherit; color:inherit; cursor:pointer; }
+#cv{ position:fixed; left:0; top:0; width:100vw; height:100vh; height:100lvh; display:block; touch-action:none; }
+
+/* Pendant la partie */
+.hud{ position:fixed; left:0; right:0; top:0; padding:calc(8px + var(--marge-haut)) 10px 0; display:flex; align-items:center; gap:8px; pointer-events:none; z-index:3; }
+.hud[hidden]{ display:none; }
+.pastille{ background:rgba(43,36,32,.72); color:#FFF6E4; border-radius:12px; padding:4px 12px 5px; line-height:1; }
+.pastille small{ display:block; font-size:.62rem; text-transform:uppercase; letter-spacing:.08em; opacity:.8; margin-bottom:2px; }
+.pastille b{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:1.7rem; letter-spacing:.03em; }
+.hud .bouton{ pointer-events:auto; margin-left:auto; width:44px; height:44px; border-radius:12px; border:0; background:rgba(43,36,32,.72); color:#FFF6E4; font-size:1.1rem; }
+.hud .bouton + .bouton{ margin-left:0; }
+.hud .bouton.actif{ background:var(--jaune); color:#2B2420; }
+.message{ position:fixed; left:50%; top:34%; transform:translateX(-50%); z-index:3; pointer-events:none; font-family:"Bebas Neue", sans-serif; font-size:3rem; color:#fff; text-shadow:0 3px 0 rgba(43,36,32,.5), 0 0 18px rgba(0,0,0,.25); white-space:nowrap; transition:opacity .4s; }
+
+/* Écrans */
+.ecran{ position:fixed; inset:0; z-index:6; display:flex; align-items:flex-start; justify-content:center; overflow:auto;
+  padding:calc(16px + var(--marge-haut)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(243,234,214,.9); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+.ecran[hidden]{ display:none; }
+.boite{ width:min(100%, 560px); display:flex; flex-direction:column; gap:14px; }
+.tete{ display:flex; align-items:center; gap:8px; }
+.tete a, .tete button{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:12px; padding:6px 12px; font-weight:700; background:#fff; white-space:nowrap; }
+.tete .droite{ margin-left:auto; }
+h1{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:clamp(3.2rem, 15vw, 4.4rem); line-height:.85; margin:6px 0 0; letter-spacing:.01em; }
+h1 span{ color:var(--rouge); }
+.sous{ color:var(--doux); margin:6px 0 0; line-height:1.4; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:18px; padding:14px; box-shadow:0 4px 16px rgba(43,36,32,.06); }
+.carte h2{ margin:0 0 4px; font-size:.78rem; text-transform:uppercase; letter-spacing:.12em; color:var(--doux); }
+.ligne{ width:100%; display:flex; align-items:center; gap:12px; text-align:left; border:1px solid var(--ligne); background:#fff; border-radius:14px; padding:10px 12px; margin-top:8px; }
+.ligne .ico{ width:52px; height:52px; border-radius:12px; flex:none; display:block; }
+.ligne b{ display:block; font-size:1.05rem; }
+.ligne small{ display:block; color:var(--doux); line-height:1.3; }
+.ligne .rec{ margin-left:auto; text-align:right; flex:none; }
+.ligne .rec em{ font-style:normal; font-family:"Bebas Neue", sans-serif; font-size:1.5rem; display:block; line-height:1; color:var(--rouge); }
+.gros{ width:100%; border:none; border-radius:16px; padding:14px; font-weight:800; font-size:1.05rem; color:#fff; background:var(--rouge); box-shadow:0 8px 22px rgba(217,65,47,.28); }
+.sec{ border:1.5px solid var(--ligne); background:#fff; border-radius:14px; padding:12px; font-weight:700; }
+.btns{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.resultat{ font-family:"Bebas Neue", sans-serif; font-size:4.4rem; line-height:.9; text-align:center; margin:0; }
+.resultat small{ display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:.9rem; color:var(--doux); }
+.centre{ text-align:center; }
+.aide p, .aide li{ line-height:1.45; }
+.aide ul{ padding-left:20px; margin:6px 0; }
+.legende{ display:grid; grid-template-columns:auto 1fr; gap:6px 10px; align-items:center; margin-top:6px; }
+.legende i{ width:30px; height:12px; border-radius:3px; display:block; }
+</style>
+</head>
+<body>
+<div class="barre-statut" aria-hidden="true"></div>
+<canvas id="cv" aria-label="L'aérodrome vu du ciel"></canvas>
+<div class="hud" id="hud" hidden>
+  <div class="pastille"><small>Atterris</small><b id="hScore">0</b></div>
+  <div class="pastille"><small>Record</small><b id="hRecord">0</b></div>
+  <button class="bouton" id="bVite" aria-label="Accélérer">⏩</button>
+  <button class="bouton" id="bPause" aria-label="Pause">⏸</button>
+</div>
+<div class="message" id="message" style="opacity:0"></div>
+
+<section class="ecran" id="eMenu">
+  <div class="boite">
+    <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="droite" id="bSon">🔊</button><button id="bAide">❔ Aide</button></div>
+    <div>
+      <h1>Tour de <span>contrôle</span></h1>
+      <p class="sous">Les avions arrivent de partout : tracez leur route du doigt jusqu'à la bonne piste, et surtout, qu'ils ne se touchent jamais.</p>
+    </div>
+    <div class="carte">
+      <h2>Aérodromes</h2>
+      <div id="lCartes"></div>
+    </div>
+  </div>
+</section>
+
+<section class="ecran" id="eAide" hidden>
+  <div class="boite aide">
+    <div class="tete"><button id="bAideRetour">‹ Retour</button></div>
+    <h1>Com<span>ment</span> jouer</h1>
+    <div class="carte">
+      <p>Vous êtes à la tour de contrôle. Des avions entrent sur l'écran depuis les bords (un <b>!</b> annonce d'où ils arrivent). <b>Posez le doigt sur un avion et tracez sa route</b> : il la suit. Amenez-le au <b>début de la piste de sa couleur</b>, dans le sens des flèches : la route s'allume, il atterrit tout seul.</p>
+      <div class="legende">
+        <i style="background:var(--rouge)"></i><span><b>Jets</b> (rouges, rapides) : la grande piste rouge.</span>
+        <i style="background:var(--jaune)"></i><span><b>Avions légers</b> (jaunes) : la petite piste jaune.</span>
+        <i style="background:var(--bleu);border-radius:50%;width:14px;height:14px;margin-left:8px"></i><span><b>Hélicoptères</b> (bleus, lents) : l'hélistation H, de n'importe quel côté.</span>
+        <i style="background:var(--vert)"></i><span><b>Hydravions</b> (verts, au Lac) : le plan d'eau entre les bouées.</span>
+      </div>
+      <ul>
+        <li>Un avion sans route va tout droit et fait demi-tour au bord de l'écran.</li>
+        <li>Deux avions trop proches : un <b>cercle rouge</b> les entoure. S'ils se touchent, c'est fini.</li>
+        <li>On peut retracer la route d'un avion à tout moment, et guider plusieurs avions avec plusieurs doigts.</li>
+        <li>De plus en plus d'avions arrivent. ⏩ accélère le temps, ⏸ met en pause.</li>
+        <li>Un record par aérodrome : La Vallée, Le Porte-avions, L'Altiport (pistes courtes en montagne) et Le Lac (avec les hydravions).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="ecran" id="ePause" hidden>
+  <div class="boite" style="margin-top:16vh">
+    <p class="resultat" style="font-size:3rem">Pause</p>
+    <button class="gros" id="bReprendre">▶ Reprendre</button>
+    <div class="btns"><button class="sec" id="bRecommencer">↻ Recommencer</button><button class="sec" id="bQuitter">Aérodromes</button></div>
+  </div>
+</section>
+
+<section class="ecran" id="eFin" hidden>
+  <div class="boite" style="margin-top:8vh">
+    <p class="sous centre" id="fTitre"></p>
+    <p class="resultat" id="fScore">0</p>
+    <p class="centre" id="fRecord" style="font-weight:700;margin:0"></p>
+    <p class="centre sous" id="fDetail"></p>
+    <button class="gros" id="bRejouer">↻ Rejouer</button>
+    <button class="sec" id="bMenu">Aérodromes</button>
+  </div>
+</section>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const cv = $('cv'), g = cv.getContext('2d');
+const alea = s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+/* ---------- Le monde ----------
+   Un aérodrome fait 1 200 × 750 unités (paysage). En portrait, il est tourné d'un quart de tour pour remplir l'écran. */
+const W0 = 1200, H0 = 750;
+// Les appareils : piste visée, vitesse (unités/s), rayon (collisions), couleur
+const TYPES = {
+  jet:{ n:'Jet', piste:'rouge', v:46, r:22, c:'#D9412F' },
+  leger:{ n:'Avion léger', piste:'jaune', v:32, r:17, c:'#F2B930' },
+  helico:{ n:'Hélicoptère', piste:'helico', v:24, r:17, c:'#2F7FD8' },
+  hydravion:{ n:'Hydravion', piste:'eau', v:34, r:19, c:'#2FA766' },
+};
+const COUL = { rouge:'#D9412F', jaune:'#F2B930', helico:'#2F7FD8', eau:'#2FA766' };
+// Une piste : A = le seuil (on arrive par là), B = le bout ; l = largeur. Une hélistation : centre et rayon.
+const piste = (type, ax, ay, bx, by, l) => { const L = Math.hypot(bx - ax, by - ay); return { type, A:{ x:ax, y:ay }, B:{ x:bx, y:by }, l, L, ux:(bx - ax) / L, uy:(by - ay) / L }; };
+const heli = (x, y, r) => ({ type:'helico', A:{ x, y }, r });
+// le porte-avions : un pont incliné, posé au milieu de la mer
+const PA = { x:600, y:390, a:-.32 };
+const pa = (u, v) => ({ x:PA.x + u * Math.cos(PA.a) - v * Math.sin(PA.a), y:PA.y + u * Math.sin(PA.a) + v * Math.cos(PA.a) });
+const pisteLocale = (type, u0, v0, u1, v1, l) => { const a = pa(u0, v0), b = pa(u1, v1); return piste(type, a.x, a.y, b.x, b.y, l); };
+const CARTES = [
+  { id:'vallee', n:'La Vallée', d:'Champs et bosquets : deux pistes et une hélistation', fond:'#6FA859', types:{ jet:4, leger:4, helico:2 },
+    pistes:[piste('rouge', 380, 520, 790, 300, 40), piste('jaune', 760, 590, 990, 590, 30), heli(330, 230, 34)] },
+  { id:'porteavions', n:'Le Porte-avions', d:'En pleine mer, tout se passe sur le pont du navire', fond:'#3F8FCB', types:{ jet:5, leger:3, helico:2 },
+    pistes:[pisteLocale('rouge', -250, 18, 250, 18, 34), pisteLocale('jaune', -120, -40, 120, -112, 26), (() => { const c = pa(165, 52); return heli(c.x, c.y, 26); })()] },
+  { id:'altiport', n:"L'Altiport", d:'En montagne : une piste courte en pente et une grande dans la vallée', fond:'#E6EEF6', types:{ jet:3, leger:5, helico:3 },
+    pistes:[piste('jaune', 760, 250, 930, 190, 28), piste('rouge', 240, 580, 650, 530, 40), heli(990, 520, 32)] },
+  { id:'lac', n:'Le Lac', d:'Les hydravions se posent sur l\'eau, entre les bouées', fond:'#78B05E', types:{ jet:3, leger:3, helico:2, hydravion:4 },
+    pistes:[piste('eau', 470, 330, 790, 420, 34), piste('rouge', 820, 650, 1130, 560, 38), piste('jaune', 110, 560, 320, 620, 28), heli(170, 170, 30)] },
+];
+
+/* ---------- Le son (petits bips, coupables) ---------- */
+let son = lire('tour-son', true), AC = null;
+function bip(f, d, vol = .08, type = 'sine'){
+  if(!son) return;
+  try{
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;
+    o.type = type; o.frequency.value = f; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + d);
+  }catch(e){}
+}
+
+/* ---------- La partie ---------- */
+let P = null, raf = 0;
+function lancer(carte){
+  const R = alea(Date.now() & 0xffffff);
+  P = { carte, R, avions:[], annonces:[], textes:[], t:0, score:0, prochaine:1.2, vitesse:1, pause:false, fin:false, crash:null, alerteT:0, dernier:performance.now(), id:0 };
+  // deux premiers appareils, l'un après l'autre
+  annoncer(P, 0); P.prochaine = 4;
+  ['eMenu', 'eAide', 'eFin', 'ePause'].forEach(id => $(id).hidden = true);
+  $('hud').hidden = false; $('bVite').classList.remove('actif');
+  $('hRecord').textContent = (lire('tour-records', {})[carte.id] || {}).best || 0;
+  preparerFond();
+  message(carte.n, 1.6);
+  cancelAnimationFrame(raf); raf = requestAnimationFrame(boucle);
+}
+// Un appareil s'annonce au bord (le « ! ») puis entre 2,5 s plus tard, tourné vers le milieu de l'aérodrome
+function annoncer(P, delai = 2.5){
+  const R = P.R, types = Object.entries(P.carte.types), tot = types.reduce((s, [, w]) => s + w, 0);
+  let x = R() * tot, type = types[0][0]; for(const [k, w] of types){ if((x -= w) < 0){ type = k; break; } }
+  for(let essai = 0; essai < 12; essai++){
+    const cote = Math.floor(R() * 4), u = .12 + R() * .76;
+    const ex = cote === 0 ? -40 : cote === 1 ? W0 + 40 : u * W0, ey = cote === 2 ? -40 : cote === 3 ? H0 + 40 : u * H0;
+    if(P.avions.some(a => Math.hypot(a.x - ex, a.y - ey) < 180) || P.annonces.some(a => Math.hypot(a.x - ex, a.y - ey) < 180)) continue;
+    const cx = W0 * (.3 + R() * .4), cy = H0 * (.3 + R() * .4);
+    P.annonces.push({ type, x:ex, y:ey, ang:Math.atan2(cy - ey, cx - ex), t:delai, v:TYPES[type].v * (.85 + R() * .3) });
+    return;
+  }
+}
+function entrer(P, a){
+  P.avions.push({ id:++P.id, type:a.type, x:a.x, y:a.y, ang:a.ang, angV:a.ang, v:a.v, route:[], cible:null, etat:'vol', dedans:false, ech:1, t:0, rotor:0 });
+}
+function message(txt, duree = 1.2){ const m = $('message'); m.textContent = txt; m.style.opacity = 1; clearTimeout(message.t); message.t = setTimeout(() => m.style.opacity = 0, duree * 1000); }
+
+const LOUANGES = ['Bien joué !', 'Parfait !', 'Impeccable !', 'Superbe !', 'Bravo !', 'Du grand art !'];
+function maj(dt){
+  P.t += dt;
+  // de plus en plus d'appareils : un toutes les 7 s au début, toutes les 2,6 s au bout de 3 minutes
+  P.prochaine -= dt;
+  if(P.prochaine <= 0){ annoncer(P); P.prochaine = Math.max(2.6, 7 - P.t / 40) * (.8 + P.R() * .4); }
+  for(const a of P.annonces) a.t -= dt;
+  for(const a of P.annonces.filter(a => a.t <= 0)) entrer(P, a);
+  P.annonces = P.annonces.filter(a => a.t > 0);
+  for(const a of P.avions){
+    const T = TYPES[a.type]; a.t += dt; a.rotor += dt * 30;
+    if(a.etat === 'atterrit'){
+      // sur la piste : il ralentit et rapetisse (il se pose), puis disparaît
+      a.av += dt;
+      const k = clamp(a.av / a.duree, 0, 1);
+      if(a.cible.type === 'helico'){ a.ech = 1 - .45 * k; }
+      else { const v = a.v * (1 - k * .75); a.x += a.cible.ux * v * dt; a.y += a.cible.uy * v * dt; a.ang = a.angV = Math.atan2(a.cible.uy, a.cible.ux); a.ech = 1 - .45 * Math.min(1, k * 1.6); }
+      if(k >= 1){ a.fini = true; P.score++; $('hScore').textContent = P.score; bip(880, .12); setTimeout(() => bip(1320, .16), 90);
+        P.textes.push({ x:a.x, y:a.y, txt:'+1', vie:1 });
+        if(P.score % 10 === 0) message(LOUANGES[Math.floor(P.score / 10 - 1) % LOUANGES.length]); }
+      continue;
+    }
+    // suivre la route tracée, sinon tout droit
+    let pas = a.v * dt;
+    while(a.route.length && pas > 0){
+      const q = a.route[0], d = Math.hypot(q.x - a.x, q.y - a.y);
+      if(d <= pas){ a.x = q.x; a.y = q.y; pas -= d; a.route.shift(); }
+      else { a.ang = Math.atan2(q.y - a.y, q.x - a.x); a.x += Math.cos(a.ang) * pas; a.y += Math.sin(a.ang) * pas; pas = 0; }
+    }
+    if(!a.route.length && a.cible){ // au seuil de sa piste : il se pose
+      a.etat = 'atterrit'; a.av = 0; a.duree = a.cible.type === 'helico' ? 1.2 : clamp(a.cible.L * .55 / (a.v * .6), 1.4, 4); continue;
+    }
+    if(pas > 0){ a.x += Math.cos(a.ang) * pas; a.y += Math.sin(a.ang) * pas; }
+    // au bord de l'écran, il fait demi-tour
+    if(!a.dedans && a.x > 20 && a.x < W0 - 20 && a.y > 20 && a.y < H0 - 20) a.dedans = true;
+    if(a.dedans && !a.route.length){
+      const m = 18;
+      if((a.x < m && Math.cos(a.ang) < 0) || (a.x > W0 - m && Math.cos(a.ang) > 0)) a.ang = Math.PI - a.ang;
+      if((a.y < m && Math.sin(a.ang) < 0) || (a.y > H0 - m && Math.sin(a.ang) > 0)) a.ang = -a.ang;
+    }
+    // l'image tourne en douceur vers la direction suivie
+    let da = a.ang - a.angV; da = Math.atan2(Math.sin(da), Math.cos(da)); a.angV += da * Math.min(1, dt * 8);
+  }
+  P.avions = P.avions.filter(a => !a.fini);
+  // trop près : cercle rouge ; ils se touchent : c'est fini
+  const vol = P.avions.filter(a => a.etat === 'vol');
+  let alerte = false;
+  for(const a of vol) a.alerte = false;
+  for(let i = 0; i < vol.length; i++) for(let j = i + 1; j < vol.length; j++){
+    const a = vol[i], b = vol[j], d = Math.hypot(a.x - b.x, a.y - b.y), r = TYPES[a.type].r + TYPES[b.type].r;
+    if(d < r * .85){ crash(a, b); return; }
+    if(d < r * 2.4){ a.alerte = b.alerte = true; alerte = true; }
+  }
+  P.alerteT -= dt;
+  if(alerte && P.alerteT <= 0){ bip(620, .09, .05, 'square'); P.alerteT = .55; }
+  P.textes = P.textes.filter(t => (t.vie -= dt) > 0);
+}
+function crash(a, b){
+  P.fin = true; P.crash = { x:(a.x + b.x) / 2, y:(a.y + b.y) / 2, t:0, a, b };
+  bip(110, .6, .2, 'sawtooth'); if(navigator.vibrate) navigator.vibrate([80, 60, 160]);
+  for(const d of doigts.keys()) doigts.delete(d);
+  setTimeout(finir, 1700);
+}
+function finir(){
+  const rec = lire('tour-records', {}), c = P.carte, r = rec[c.id] || { best:0, parties:0, total:0 }, nv = P.score > r.best;
+  r.parties++; r.total += P.score; if(nv) r.best = P.score;
+  rec[c.id] = r; rec.dernier = { carte:c.id, n:c.n, score:P.score, best:r.best }; ecrire('tour-records', rec);
+  $('fTitre').textContent = `${c.n} · collision !`;
+  $('fScore').innerHTML = `${P.score}<small>appareil${P.score > 1 ? 's' : ''} posé${P.score > 1 ? 's' : ''}</small>`;
+  $('fRecord').textContent = nv && r.parties > 1 ? '🏆 Nouveau record !' : `Record : ${r.best}`;
+  const m = Math.floor(P.t / 60), s = Math.floor(P.t % 60);
+  $('fDetail').textContent = `${m} min ${String(s).padStart(2, '0')} s à la tour · ${r.parties} partie${r.parties > 1 ? 's' : ''} sur cet aérodrome`;
+  $('hud').hidden = true; $('eFin').hidden = false;
+}
+function boucle(now){
+  if(!P) return;
+  const dt = Math.min(.05, (now - P.dernier) / 1000); P.dernier = now;
+  if(!P.pause && !P.fin){ const n = P.vitesse; for(let k = 0; k < n; k++) maj(dt); }
+  if(P.crash) P.crash.t += dt;
+  dessiner();
+  raf = requestAnimationFrame(boucle);
+}
+
+/* ---------- Tracer les routes ----------
+   Un doigt posé sur un avion trace sa route ; elle s'arrête (et s'allume) quand elle arrive au seuil de la bonne piste. */
+const doigts = new Map();
+function versMonde(sx, sy){ return V.rot ? { x:(sy - V.oy) / V.s, y:H0 - (sx - V.ox) / V.s } : { x:(sx - V.ox) / V.s, y:(sy - V.oy) / V.s }; }
+function seuilAtteint(a, p, prec){
+  const T = TYPES[a.type];
+  for(const pi of P.carte.pistes){
+    if(pi.type !== T.piste) continue;
+    if(pi.type === 'helico'){ if(Math.hypot(p.x - pi.A.x, p.y - pi.A.y) < pi.r + 8) return pi; continue; }
+    // près du seuil et dans le sens de la piste
+    const d = Math.hypot(p.x - pi.A.x, p.y - pi.A.y), dx = p.x - prec.x, dy = p.y - prec.y, n = Math.hypot(dx, dy) || 1;
+    if(d < Math.max(34, pi.l) && (dx * pi.ux + dy * pi.uy) / n > .35) return pi;
+  }
+  return null;
+}
+cv.addEventListener('pointerdown', e => {
+  if(!P || P.pause || P.fin) return;
+  try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+  if(AC && AC.state === 'suspended') AC.resume();
+  const m = versMonde(e.clientX, e.clientY);
+  // l'appareil le plus proche du doigt (un peu de marge, les doigts sont gros)
+  let mieux = null, dm = 30 / V.s + 14;
+  for(const a of P.avions){ if(a.etat !== 'vol') continue; const d = Math.hypot(a.x - m.x, a.y - m.y); if(d < dm){ dm = d; mieux = a; } }
+  if(!mieux) return;
+  for(const [k, v] of doigts) if(v === mieux) doigts.delete(k);
+  mieux.route = []; mieux.cible = null; mieux.dernierPt = { x:mieux.x, y:mieux.y };
+  doigts.set(e.pointerId, mieux);
+});
+cv.addEventListener('pointermove', e => {
+  const a = doigts.get(e.pointerId); if(!a || a.cible || a.etat !== 'vol' || !P || P.fin) return;
+  const p = versMonde(e.clientX, e.clientY); p.x = clamp(p.x, 6, W0 - 6); p.y = clamp(p.y, 6, H0 - 6);
+  const prec = a.dernierPt, d = Math.hypot(p.x - prec.x, p.y - prec.y);
+  if(d < 7) return;
+  // des points réguliers (tous les 7 unités environ), pour une route bien lisse
+  const n = Math.ceil(d / 9);
+  for(let k = 1; k <= n; k++){
+    const q = { x:prec.x + (p.x - prec.x) * k / n, y:prec.y + (p.y - prec.y) * k / n };
+    a.route.push(q);
+    const pi = seuilAtteint(a, q, a.route[a.route.length - 2] || prec);
+    if(pi){
+      a.cible = pi; a.route.push({ x:pi.A.x, y:pi.A.y });
+      bip(1046, .08, .05); doigts.delete(e.pointerId); break;
+    }
+  }
+  a.dernierPt = p;
+});
+const lacher = e => doigts.delete(e.pointerId);
+cv.addEventListener('pointerup', lacher); cv.addEventListener('pointercancel', lacher);
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ---------- Dessin ---------- */
+let W = 0, Hh = 0, DPR = 1, V = { s:1, ox:0, oy:0, rot:false }, fond = null;
+function taille(){
+  DPR = Math.min(2, devicePixelRatio || 1); W = innerWidth; Hh = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(Hh * DPR);
+  const rot = Hh > W * 1.05, s = rot ? Math.min(W / H0, Hh / W0) : Math.min(W / W0, Hh / H0);
+  V = { s, rot, ox:(W - (rot ? H0 : W0) * s) / 2, oy:(Hh - (rot ? W0 : H0) * s) / 2 };
+  if(P) preparerFond();
+}
+addEventListener('resize', taille);
+// Le décor de l'aérodrome est dessiné une fois dans une image (à la taille de l'écran), puis recopié à chaque image
+function preparerFond(){
+  const c = P.carte, k = V.s * DPR;
+  fond = document.createElement('canvas'); fond.width = Math.ceil(W0 * k); fond.height = Math.ceil(H0 * k);
+  const f = fond.getContext('2d'); f.scale(k, k);
+  decor(f, c);
+  for(const pi of c.pistes) dessinerPiste(f, pi);
+}
+function decor(f, c){
+  const R = alea(c.id.length * 977);
+  f.fillStyle = c.fond; f.fillRect(0, 0, W0, H0);
+  if(c.id === 'vallee' || c.id === 'lac'){
+    // des champs en damier, deux verts
+    for(let y = 0; y < H0; y += 75) for(let x = 0; x < W0; x += 75) if((x / 75 + y / 75) % 2){ f.fillStyle = 'rgba(255,255,255,.07)'; f.fillRect(x, y, 75, 75); }
+    f.strokeStyle = 'rgba(255,255,255,.06)'; f.lineWidth = 2; for(let x = 0; x < W0; x += 18){ f.beginPath(); f.moveTo(x, 0); f.lineTo(x - 300, H0); f.stroke(); }
+  }
+  if(c.id === 'lac'){
+    // le lac et sa plage
+    const lac = [[380, 250], [560, 210], [760, 260], [900, 380], [880, 500], [700, 530], [520, 480], [400, 400]];
+    const forme = (d) => { f.beginPath(); lac.forEach(([x, y], i) => { const cx = 640, cy = 380, px = x + (x - cx) / 300 * d, py = y + (y - cy) / 200 * d; i ? f.lineTo(px, py) : f.moveTo(px, py); }); f.closePath(); };
+    f.lineJoin = 'round'; forme(26); f.fillStyle = '#E8D7A8'; f.fill(); forme(0); f.fillStyle = '#4C9BD3'; f.fill();
+    f.strokeStyle = 'rgba(255,255,255,.35)'; f.lineWidth = 3; for(let k = 0; k < 9; k++){ const x = 470 + R() * 360, y = 290 + R() * 180; f.beginPath(); f.arc(x, y, 14, Math.PI * 1.1, Math.PI * 1.9); f.stroke(); }
+  }
+  if(c.id === 'porteavions'){
+    // la mer : vagues claires ; puis le navire
+    f.strokeStyle = 'rgba(255,255,255,.22)'; f.lineWidth = 3;
+    for(let k = 0; k < 40; k++){ const x = R() * W0, y = R() * H0; f.beginPath(); f.arc(x, y, 12 + R() * 10, Math.PI * 1.15, Math.PI * 1.85); f.stroke(); }
+    f.fillStyle = 'rgba(255,255,255,.18)'; f.beginPath(); [[-300, 70], [-280, -40], [-200, -140], [-60, -150]].forEach(([u, v], i) => { const p = pa(u * 1.2, v * 1.2); i ? f.lineTo(p.x, p.y) : f.moveTo(p.x, p.y); }); f.fill();
+    const coque = [[-290, -46], [130, -46], [165, -150], [215, -130], [262, -30], [300, 20], [262, 82], [-260, 82], [-300, 20]];
+    f.beginPath(); coque.forEach(([u, v], i) => { const p = pa(u, v + 6); i ? f.lineTo(p.x + 8, p.y + 8) : f.moveTo(p.x + 8, p.y + 8); }); f.closePath(); f.fillStyle = 'rgba(10,30,60,.35)'; f.fill();
+    f.beginPath(); coque.forEach(([u, v], i) => { const p = pa(u, v); i ? f.lineTo(p.x, p.y) : f.moveTo(p.x, p.y); }); f.closePath(); f.fillStyle = '#5E646C'; f.fill(); f.strokeStyle = '#3E434A'; f.lineWidth = 4; f.stroke();
+    // l'îlot (la passerelle)
+    const il = [[40, 58], [120, 58], [120, 80], [40, 80]];
+    f.beginPath(); il.forEach(([u, v], i) => { const p = pa(u, v); i ? f.lineTo(p.x, p.y) : f.moveTo(p.x, p.y); }); f.closePath(); f.fillStyle = '#8A9098'; f.fill();
+  }
+  if(c.id === 'altiport'){
+    // la montagne : rochers et ombres, la neige, une vallée
+    for(let k = 0; k < 16; k++){ const x = R() * W0, y = R() * H0 * .55, r = 40 + R() * 70; f.fillStyle = 'rgba(120,140,165,.18)'; f.beginPath(); f.moveTo(x - r, y + r * .6); f.lineTo(x, y - r * .7); f.lineTo(x + r * 1.2, y + r * .6); f.fill(); f.fillStyle = 'rgba(255,255,255,.7)'; f.beginPath(); f.moveTo(x - r * .25, y - r * .25); f.lineTo(x, y - r * .7); f.lineTo(x + r * .3, y - r * .25); f.fill(); }
+    f.fillStyle = 'rgba(160,190,140,.35)'; f.beginPath(); f.moveTo(0, 470); f.bezierCurveTo(300, 430, 700, 470, 1200, 430); f.lineTo(1200, 750); f.lineTo(0, 750); f.fill();
+  }
+  // arbres (sapins en montagne)
+  const nb = c.id === 'porteavions' ? 0 : c.id === 'altiport' ? 70 : 55;
+  for(let k = 0; k < nb; k++){
+    const x = R() * W0, y = R() * H0;
+    if(c.pistes.some(p => p.type === 'helico' ? Math.hypot(x - p.A.x, y - p.A.y) < p.r + 40 : distSeg(x, y, p) < p.l / 2 + 40)) continue;
+    if(c.id === 'lac' && x > 360 && x < 920 && y > 200 && y < 550) continue;
+    for(let n = 0; n < 3; n++){
+      const tx = x + (R() - .5) * 40, ty = y + (R() - .5) * 30, r = 9 + R() * 8;
+      f.fillStyle = 'rgba(30,50,25,.25)'; f.beginPath(); f.arc(tx + 5, ty + 5, r, 0, 6.29); f.fill();
+      f.fillStyle = c.id === 'altiport' ? '#2E6B4E' : '#3E7F3A'; f.beginPath(); f.arc(tx, ty, r, 0, 6.29); f.fill();
+      f.fillStyle = c.id === 'altiport' ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.15)'; f.beginPath(); f.arc(tx - r * .3, ty - r * .3, r * .45, 0, 6.29); f.fill();
+    }
+  }
+  // un petit bâtiment (le terminal) et la tour, près de la grande piste
+  const pr = c.pistes.find(p => p.type === 'rouge');
+  if(pr && c.id !== 'porteavions'){
+    const nx = -pr.uy, ny = pr.ux, m = { x:(pr.A.x + pr.B.x) / 2 + nx * (pr.l / 2 + 46), y:(pr.A.y + pr.B.y) / 2 + ny * (pr.l / 2 + 46) };
+    f.save(); f.translate(m.x, m.y); f.rotate(Math.atan2(pr.uy, pr.ux));
+    f.fillStyle = 'rgba(0,0,0,.18)'; f.fillRect(-86, -14, 180, 46); f.fillStyle = '#B9B2A4'; f.fillRect(-90, -18, 180, 44);
+    f.fillStyle = '#D9D2C2'; for(let k = 0; k < 4; k++) f.fillRect(-80 + k * 42, -12, 34, 30);
+    f.fillStyle = '#7A746A'; f.beginPath(); f.arc(110, 4, 15, 0, 6.29); f.fill(); f.fillStyle = '#9FD3F2'; f.beginPath(); f.arc(110, 4, 9, 0, 6.29); f.fill();
+    f.restore();
+  }
+}
+function distSeg(x, y, p){ const t = clamp(((x - p.A.x) * p.ux + (y - p.A.y) * p.uy), 0, p.L); return Math.hypot(x - (p.A.x + p.ux * t), y - (p.A.y + p.uy * t)); }
+function dessinerPiste(f, p){
+  const col = COUL[p.type];
+  if(p.type === 'helico'){
+    f.fillStyle = 'rgba(0,0,0,.18)'; f.beginPath(); f.arc(p.A.x + 4, p.A.y + 4, p.r + 6, 0, 6.29); f.fill();
+    f.fillStyle = '#5A5F66'; f.beginPath(); f.arc(p.A.x, p.A.y, p.r + 6, 0, 6.29); f.fill();
+    f.strokeStyle = col; f.lineWidth = 5; f.beginPath(); f.arc(p.A.x, p.A.y, p.r, 0, 6.29); f.stroke();
+    return;   // le « H » est écrit à chaque image, toujours droit à l'écran (dessiner)
+  }
+  f.save(); f.translate(p.A.x, p.A.y); f.rotate(Math.atan2(p.uy, p.ux));
+  if(p.type === 'eau'){
+    // le plan d'eau : deux lignes de bouées et des flèches
+    for(let x = 0; x <= p.L; x += 28) for(const s of [-1, 1]){ f.fillStyle = 'rgba(0,0,0,.15)'; f.beginPath(); f.arc(x + 2, s * p.l / 2 + 2, 5, 0, 6.29); f.fill(); f.fillStyle = x % 56 ? '#fff' : col; f.beginPath(); f.arc(x, s * p.l / 2, 5, 0, 6.29); f.fill(); }
+    f.fillStyle = 'rgba(255,255,255,.55)'; for(let x = 30; x < p.L - 20; x += 60){ f.beginPath(); f.moveTo(x, -8); f.lineTo(x + 14, 0); f.lineTo(x, 8); f.closePath(); f.fill(); }
+    f.fillStyle = col; f.beginPath(); f.moveTo(-34, -14); f.lineTo(-6, 0); f.lineTo(-34, 14); f.closePath(); f.fill();
+    f.restore(); return;
+  }
+  const l = p.l;
+  f.fillStyle = 'rgba(0,0,0,.2)'; f.fillRect(4, -l / 2 + 5, p.L, l);
+  f.fillStyle = col; f.fillRect(-6, -l / 2 - 5, p.L + 12, l + 10);                // bordure de la couleur de la piste
+  f.fillStyle = '#4A4D52'; f.fillRect(0, -l / 2, p.L, l);
+  f.strokeStyle = 'rgba(255,255,255,.85)'; f.lineWidth = 2; f.strokeRect(4, -l / 2 + 4, p.L - 8, l - 8);
+  f.setLineDash([16, 14]); f.beginPath(); f.moveTo(40, 0); f.lineTo(p.L - 20, 0); f.stroke(); f.setLineDash([]);
+  // les bandes du seuil et les flèches d'approche
+  f.fillStyle = '#fff'; for(let k = -2; k <= 2; k++) f.fillRect(10, k * l / 6 - 2, 20, 4);
+  f.fillStyle = col; for(let k = 0; k < 3; k++){ const x = -24 - k * 20; f.beginPath(); f.moveTo(x - 10, -10); f.lineTo(x, 0); f.lineTo(x - 10, 10); f.lineTo(x - 4, 10); f.lineTo(x + 6, 0); f.lineTo(x - 4, -10); f.closePath(); f.globalAlpha = 1 - k * .25; f.fill(); }
+  f.globalAlpha = 1;
+  f.restore();
+}
+// ombre = true : la même silhouette, toute sombre et sans détails (l'ombre au sol)
+function dessinerAvion(c, a, ombre = false){
+  const T = TYPES[a.type], col = ombre ? 'rgba(20,30,20,.25)' : T.c, blanc = ombre ? col : '#F7F3EA';
+  c.save(); c.translate(a.x, a.y); c.rotate(a.angV); c.scale(a.ech, a.ech);
+  c.lineJoin = 'round'; c.lineWidth = 2; c.strokeStyle = '#fff';
+  const forme = (fn, fill) => { c.beginPath(); fn(); c.fillStyle = fill; c.fill(); if(!ombre) c.stroke(); };
+  if(a.type === 'jet'){
+    forme(() => { c.moveTo(-6, 0); c.lineTo(-14, -26); c.lineTo(-6, -26); c.lineTo(10, -4); c.lineTo(10, 4); c.lineTo(-6, 26); c.lineTo(-14, 26); c.closePath(); }, col);
+    forme(() => { c.moveTo(-24, 0); c.lineTo(-30, -11); c.lineTo(-25, -11); c.lineTo(-16, -2); c.lineTo(-16, 2); c.lineTo(-25, 11); c.lineTo(-30, 11); c.closePath(); }, col);
+    forme(() => { c.ellipse(0, 0, 30, 5.5, 0, 0, 6.29); }, blanc);
+    if(!ombre){ c.fillStyle = '#2B3A52'; c.beginPath(); c.ellipse(22, 0, 4, 3, 0, 0, 6.29); c.fill(); }
+  } else if(a.type === 'leger'){
+    forme(() => { c.roundRect ? c.roundRect(-5, -24, 11, 48, 4) : c.rect(-5, -24, 11, 48); }, col);
+    forme(() => { c.roundRect ? c.roundRect(-20, -9, 6, 18, 2) : c.rect(-20, -9, 6, 18); }, col);
+    forme(() => { c.ellipse(-2, 0, 20, 4.5, 0, 0, 6.29); }, blanc);
+    if(!ombre){ c.strokeStyle = 'rgba(40,40,40,.55)'; c.lineWidth = 3; c.beginPath(); const h = Math.sin(a.rotor) * 9; c.moveTo(19, -h); c.lineTo(19, h); c.stroke(); }
+  } else if(a.type === 'hydravion'){
+    c.fillStyle = ombre ? col : '#4A5560'; for(const s of [-1, 1]){ c.beginPath(); c.ellipse(0, s * 10, 18, 3.5, 0, 0, 6.29); c.fill(); }
+    forme(() => { c.roundRect ? c.roundRect(-4, -27, 12, 54, 4) : c.rect(-4, -27, 12, 54); }, col);
+    forme(() => { c.roundRect ? c.roundRect(-22, -9, 6, 18, 2) : c.rect(-22, -9, 6, 18); }, col);
+    forme(() => { c.ellipse(-2, 0, 22, 5, 0, 0, 6.29); }, blanc);
+    if(!ombre){ c.strokeStyle = 'rgba(40,40,40,.55)'; c.lineWidth = 3; c.beginPath(); const h = Math.sin(a.rotor) * 9; c.moveTo(21, -h); c.lineTo(21, h); c.stroke(); }
+  } else {
+    forme(() => { c.moveTo(-8, -2.5); c.lineTo(-30, -2); c.lineTo(-30, 2); c.lineTo(-8, 2.5); c.closePath(); }, col);
+    forme(() => { c.moveTo(-30, -8); c.lineTo(-26, -8); c.lineTo(-26, 8); c.lineTo(-30, 8); c.closePath(); }, col);
+    forme(() => { c.ellipse(2, 0, 13, 9, 0, 0, 6.29); }, col);
+    if(!ombre){ c.fillStyle = '#BFE3F7'; c.beginPath(); c.ellipse(8, 0, 6, 6.5, 0, 0, 6.29); c.fill(); }
+    // le rotor : deux pales qui tournent
+    c.strokeStyle = ombre ? col : 'rgba(30,30,30,.55)'; c.lineWidth = 3.5; c.lineCap = 'round';
+    for(const k of [0, Math.PI / 2]){ const r = a.rotor * .8 + k; c.beginPath(); c.moveTo(Math.cos(r) * -26, Math.sin(r) * -26); c.lineTo(Math.cos(r) * 26, Math.sin(r) * 26); c.stroke(); }
+    c.fillStyle = '#333'; c.beginPath(); c.arc(0, 0, 3, 0, 6.29); c.fill();
+  }
+  c.restore();
+}
+function dessiner(){
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g.fillStyle = P ? P.carte.fond : '#6FA859'; g.fillRect(0, 0, W, Hh);
+  if(!P) return;
+  g.save(); g.translate(V.ox, V.oy);
+  if(V.rot){ g.translate(H0 * V.s, 0); g.rotate(Math.PI / 2); }
+  g.scale(V.s, V.s);
+  if(fond) g.drawImage(fond, 0, 0, W0, H0);
+  const t = performance.now() / 1000;
+  // le « H » des hélistations, droit même quand l'aérodrome est tourné (portrait)
+  for(const p of P.carte.pistes) if(p.type === 'helico'){
+    g.save(); g.translate(p.A.x, p.A.y); if(V.rot) g.rotate(-Math.PI / 2);
+    g.fillStyle = '#fff'; g.font = `400 ${p.r * 1.3}px "Bebas Neue", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('H', 0, 2); g.restore();
+  }
+  // les routes tracées (pointillés, en couleur quand elles arrivent à la bonne piste)
+  for(const a of P.avions){
+    if(!a.route.length || a.etat !== 'vol') continue;
+    g.lineCap = g.lineJoin = 'round';
+    if(a.cible){ g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 7; g.setLineDash([]); g.beginPath(); g.moveTo(a.x, a.y); for(const q of a.route) g.lineTo(q.x, q.y); g.stroke(); }
+    g.strokeStyle = a.cible ? TYPES[a.type].c : 'rgba(255,255,255,.9)'; g.lineWidth = 3.5; g.setLineDash(a.cible ? [] : [10, 9]); g.lineDashOffset = -t * 20;
+    g.beginPath(); g.moveTo(a.x, a.y); for(const q of a.route) g.lineTo(q.x, q.y); g.stroke(); g.setLineDash([]);
+  }
+  // les ombres (plus loin quand l'avion vole), puis les avions
+  for(const a of P.avions){
+    const h = a.etat === 'atterrit' ? 10 * (1 - clamp(a.av / a.duree * 1.6, 0, 1)) + 2 : 12;
+    g.save(); g.translate(h, h); dessinerAvion(g, a, true); g.restore();
+  }
+  for(const a of P.avions){
+    if(a.alerte){ const r = TYPES[a.type].r * 2.4 / 2 + 14; g.fillStyle = 'rgba(217,65,47,.22)'; g.strokeStyle = 'rgba(217,65,47,.85)'; g.lineWidth = 3; g.beginPath(); g.arc(a.x, a.y, r + Math.sin(t * 10) * 2, 0, 6.29); g.fill(); g.stroke(); }
+    dessinerAvion(g, a);
+  }
+  // les annonces au bord (un « ! » de la couleur de l'appareil qui arrive)
+  for(const a of P.annonces){
+    const x = clamp(a.x, 26, W0 - 26), y = clamp(a.y, 26, H0 - 26), clig = .75 + .25 * Math.sin(t * 9);
+    g.fillStyle = `rgba(217,65,47,${clig})`; g.beginPath(); g.arc(x, y, 20, 0, 6.29); g.fill();
+    g.strokeStyle = TYPES[a.type].c; g.lineWidth = 4; g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 16, 0, 6.29); g.stroke();
+    g.save(); g.translate(x, y); if(V.rot) g.rotate(-Math.PI / 2);
+    g.fillStyle = '#fff'; g.font = '400 28px "Bebas Neue", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('!', 0, 2); g.restore();
+  }
+  // les « +1 »
+  for(const e of P.textes){
+    g.save(); g.translate(e.x, e.y - (1 - e.vie) * 40); if(V.rot) g.rotate(-Math.PI / 2); g.globalAlpha = Math.min(1, e.vie * 2);
+    g.font = '400 30px "Bebas Neue", sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = 'rgba(43,36,32,.6)'; g.strokeText(e.txt, 0, 0); g.fillStyle = '#fff'; g.fillText(e.txt, 0, 0); g.restore();
+  }
+  // la collision : deux grands cercles rouges qui clignotent
+  if(P.crash){
+    const c = P.crash;
+    for(const a of [c.a, c.b]){ g.strokeStyle = Math.sin(c.t * 14) > 0 ? '#D9412F' : '#fff'; g.lineWidth = 6; g.beginPath(); g.arc(a.x, a.y, 34 + c.t * 10, 0, 6.29); g.stroke(); }
+  }
+  g.restore();
+}
+
+/* ---------- Menu, pause ---------- */
+// une petite vignette de l'aérodrome pour le menu
+function vignette(c){
+  const x = document.createElement('canvas'); x.width = 208; x.height = 130;
+  const f = x.getContext('2d'); f.scale(208 / W0, 130 / H0);
+  decor(f, c); for(const p of c.pistes) dessinerPiste(f, p);
+  return x.toDataURL();
+}
+function menu(){
+  P = null; cancelAnimationFrame(raf); dessiner();
+  const rec = lire('tour-records', {});
+  $('lCartes').innerHTML = CARTES.map(c => { const r = rec[c.id];
+    return `<button class="ligne" data-carte="${c.id}"><img class="ico" src="${vignette(c)}" alt="" style="object-fit:cover"><span><b>${esc(c.n)}</b><small>${esc(c.d)}</small></span><span class="rec">${r ? `<em>${r.best}</em><small>record</small>` : '<small>jamais joué</small>'}</span></button>`; }).join('');
+  $('bSon').textContent = son ? '🔊' : '🔇';
+  $('hud').hidden = true; ['eAide', 'eFin', 'ePause'].forEach(id => $(id).hidden = true); $('eMenu').hidden = false;
+}
+function pause(){ if(!P || P.fin) return; P.pause = true; $('ePause').hidden = false; }
+function reprendre(){ if(!P) return; P.pause = false; P.dernier = performance.now(); $('ePause').hidden = true; }
+$('lCartes').addEventListener('click', e => { const b = e.target.closest('[data-carte]'); if(b) lancer(CARTES.find(c => c.id === b.dataset.carte)); });
+$('bPause').onclick = pause; $('bReprendre').onclick = reprendre;
+$('bVite').onclick = () => { if(!P) return; P.vitesse = P.vitesse === 1 ? 2 : 1; $('bVite').classList.toggle('actif', P.vitesse === 2); };
+$('bRecommencer').onclick = () => { const c = P.carte; lancer(c); };
+$('bQuitter').onclick = menu; $('bMenu').onclick = menu;
+$('bRejouer').onclick = () => { const c = P.carte; lancer(c); };
+$('bAide').onclick = () => { $('eMenu').hidden = true; $('eAide').hidden = false; };
+$('bAideRetour').onclick = () => { $('eAide').hidden = true; $('eMenu').hidden = false; };
+$('bSon').onclick = () => { son = !son; ecrire('tour-son', son); $('bSon').textContent = son ? '🔊' : '🔇'; };
+document.addEventListener('visibilitychange', () => { if(document.hidden) pause(); });
+addEventListener('keydown', e => { if(e.code === 'Escape' || e.code === 'KeyP'){ if(P && !P.pause) pause(); else reprendre(); } });
+
+taille(); menu();
+window.Tour = { CARTES, TYPES, get partie(){ return P; }, lancer, versMonde, get vue(){ return V; } };
+
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
+})();
+</script>
+</body>
+</html>
