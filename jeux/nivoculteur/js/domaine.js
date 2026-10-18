@@ -52,7 +52,9 @@ function creerDomaine(taille, graine){
   // Salle des machines et retenue sur le front de neige
   const xs = W * (.3 + R() * .4), salle = { x:xs, y:H - 42, w:20, h:13 };
   const rayonRetenue = Math.round(Math.sqrt(D.retenue / (Math.PI * 3.5))), cote = xs > W / 2 ? -1 : 1;
-  const retenue = { x:borne(xs + cote * (rayonRetenue + 26), rayonRetenue + 6, W - rayonRetenue - 6), y:H - 46, r:rayonRetenue, max:D.retenue };
+  // la retenue : sur le front de neige, toujours décalée sur le côté, là où il n'y a ni piste ni remontée (le télésiège est placé après, à l'écart)
+  const retenue = placerRetenue(W, H, rayonRetenue, pistes[0], salle) || { x:borne(xs + cote * (rayonRetenue + 26), rayonRetenue + 6, W - rayonRetenue - 6), y:H - 46, r:rayonRetenue };
+  retenue.max = D.retenue;
   // Départs électriques : la salle a le sien (on peut tirer eau + câble depuis la salle) ; d'autres à mi-hauteur
   const departs = [];
   const nd = D.longueur > 450 ? 2 : 1;
@@ -78,6 +80,16 @@ function creerDomaine(taille, graine){
     objectif:D.objectif, nuits:D.nuits, budget:D.budget };
   dom.alt = (x, y) => relief(x, y);
   return dom;
+}
+// La retenue : l'endroit le plus proche de la salle qui reste à l'écart de la piste (bord de la piste à plus de 30 m de l'eau)
+function placerRetenue(W, H, r, piste, salle){
+  let mieux = null;
+  for(const y of [H - 46, H - 58, H - 70]) for(let x = r + 6; x <= W - r - 6; x += 4){
+    if(y + r > H - 4 || distancePolyligne(piste.points, x, y) < piste.largeur / 2 + r + 30 || Math.hypot(salle.x - x, salle.y - y) < r + 18) continue;
+    const d = Math.hypot(salle.x - x, salle.y - y);
+    if(!mieux || d < mieux.d) mieux = { d, x, y };
+  }
+  return mieux && { x:mieux.x, y:mieux.y, r };
 }
 // Le télésiège : la ligne droite la plus proche de la piste qui reste à l'écart (piste, salle, retenue, départs, bords)
 function placerTelesiege(W, front, piste, salle, retenue, departs){
