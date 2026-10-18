@@ -342,7 +342,7 @@ jeux/fusee.html        jeu Fusée Rythme
 jeux/dameuse.html      jeu Dameuse de nuit
 jeux/freeride.html     jeu Freeride
 logo.svg               logo (source vectorielle)
-icons/                 icônes de l'application (192, 512, masquable, Apple)
+icons/                 icônes de l'application, fichiers altitude-*.png (152, 167, 180 pour Apple ; 192, 512 et masquable pour Android)
 manifest.webmanifest   description de l'application installable
 sw.js                  fonctionnement hors ligne
 ```
