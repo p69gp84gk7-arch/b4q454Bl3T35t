@@ -249,8 +249,8 @@ tr.me td{ color:var(--gold); font-weight:700; }
   <div class="row"><button class="back" id="toMenu">Menu</button><button class="again" id="again">Rejouer</button></div>
 </main>
 
-<script src="geo/monde.js?v=75"></script>
-<script src="sauvegarde.js?v=75"></script>
+<script src="geo/monde.js?v=77"></script>
+<script src="sauvegarde.js?v=77"></script>
 <script>
 const G = window.GEO;
 const $ = id => document.getElementById(id);
@@ -306,7 +306,7 @@ function charger(fichier){
   if(!fichier) return Promise.resolve();
   return charges[fichier] = charges[fichier] || new Promise((ok, ko) => {
     const s = document.createElement('script');
-    s.src = fichier + '?v=75'; s.onload = ok;   // même numéro de version que les autres scripts
+    s.src = fichier + '?v=77'; s.onload = ok;   // même numéro de version que les autres scripts
     s.onerror = () => { delete charges[fichier]; ko(new Error('Carte introuvable : vérifiez la connexion.')); };
     document.head.append(s);
   });
