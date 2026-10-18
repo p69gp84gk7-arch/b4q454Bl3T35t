@@ -95,7 +95,7 @@ tr.me td{ color:var(--gold); font-weight:700; }
 
 /* Carte */
 .mapbox{ position:relative; flex:1; min-height:0; border-radius:16px; overflow:hidden; background:var(--sea); }
-.map{ display:block; width:100%; height:100%; touch-action:none; -webkit-user-select:none; user-select:none; cursor:grab; }
+.map{ display:block; width:100%; height:100%; touch-action:none; -webkit-user-select:none; user-select:none; cursor:grab; transform-origin:0 0; }
 .map .land{ fill:var(--land); stroke:var(--border); stroke-width:.7; vector-effect:non-scaling-stroke; stroke-linejoin:round; }
 .map .land.out, .map .bg{ fill:var(--land-out); pointer-events:none; }
 .map .bg{ stroke:var(--border); stroke-width:.5; vector-effect:non-scaling-stroke; }
@@ -252,8 +252,8 @@ tr.me td{ color:var(--gold); font-weight:700; }
   <div class="row"><button class="back" id="toMenu">Menu</button><button class="again" id="again">Rejouer</button></div>
 </main>
 
-<script src="geo/monde.js?v=81"></script>
-<script src="sauvegarde.js?v=81"></script>
+<script src="geo/monde.js?v=82"></script>
+<script src="sauvegarde.js?v=82"></script>
 <script>
 const G = window.GEO;
 const $ = id => document.getElementById(id);
@@ -309,7 +309,7 @@ function charger(fichier){
   if(!fichier) return Promise.resolve();
   return charges[fichier] = charges[fichier] || new Promise((ok, ko) => {
     const s = document.createElement('script');
-    s.src = fichier + '?v=81'; s.onload = ok;   // même numéro de version que les autres scripts
+    s.src = fichier + '?v=82'; s.onload = ok;   // même numéro de version que les autres scripts
     s.onerror = () => { delete charges[fichier]; ko(new Error('Carte introuvable : vérifiez la connexion.')); };
     document.head.append(s);
   });
@@ -604,63 +604,92 @@ function fit(){
   vb = { x:vx, y:vy, w:vw, h:vh };
   apply();
 }
-function apply(){
-  const r = svg.getBoundingClientRect();
-  // Rester autour de la carte
+// Pendant un geste (glisser, pincer), la carte est seulement déplacée et agrandie comme une image (transform CSS) :
+// c'est fluide même avec beaucoup de pays ou de départements ; la vraie vue (viewBox) est posée quand on lâche.
+let geste = null;
+const rectBase = () => geste ? geste.r : svg.getBoundingClientRect();
+function borner(){
   vb.x = Math.min(Math.max(vb.x, -vb.w / 2), M.w - vb.w / 2);
   vb.y = Math.min(Math.max(vb.y, -vb.h / 2), M.h - vb.h / 2);
+}
+function apply(){
+  borner();
+  if(geste){
+    const { vb0, r } = geste, s = vb0.w / vb.w;
+    svg.style.transform = `translate(${(vb0.x - vb.x) * r.width / vb.w}px, ${(vb0.y - vb.y) * r.height / vb.h}px) scale(${s})`;
+    return;
+  }
+  const r = svg.getBoundingClientRect();
   svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
   const k = vb.w / (r.width || 1);
   svg.querySelectorAll('.mk').forEach(m => m.setAttribute('r', (7 * k).toFixed(2)));
 }
+// (pendant le geste, on montre aussi ce qui dépasse de la vue, pour ne pas voir de vide en glissant)
+function debutGeste(){ if(!geste && vb){ geste = { vb0:{ ...vb }, r:svg.getBoundingClientRect() }; svg.style.willChange = 'transform'; svg.style.overflow = 'visible'; } }
+function finGeste(){ if(!geste) return; geste = null; svg.style.transform = svg.style.willChange = svg.style.overflow = ''; apply(); }
 function zoomAt(f, px, py){
   if(!vb) return;
-  const r = svg.getBoundingClientRect();
+  const r = rectBase();
   const nw = Math.min(Math.max(vb.w * f, 12), M.w * 1.3), s = nw / vb.w;
   const mx = vb.x + (px - r.left) / r.width * vb.w, my = vb.y + (py - r.top) / r.height * vb.h;
   vb = { x:mx - (mx - vb.x) * s, y:my - (my - vb.y) * s, w:nw, h:vb.h * s };
   apply();
 }
+function deplacer(dx, dy){ const r = rectBase(); vb.x -= dx / r.width * vb.w; vb.y -= dy / r.height * vb.h; apply(); }
 const center = () => { const r = svg.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
 $('zin').onclick = () => zoomAt(1 / 1.6, ...center());
 $('zout').onclick = () => zoomAt(1.6, ...center());
 $('zfit').onclick = () => fit();
 svg.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.deltaY > 0 ? 1.2 : 1 / 1.2, e.clientX, e.clientY); }, { passive:false });
-addEventListener('resize', () => { if(g && !$('mapbox').hidden) fit(); });
+// Quand la hauteur change (barre d'adresse du téléphone qui apparaît ou disparaît, rotation), on garde la vue
+// au lieu de revenir à la carte entière : même largeur montrée, même centre
+addEventListener('resize', () => {
+  if(!g || $('mapbox').hidden || !vb || geste) return;
+  const r = svg.getBoundingClientRect(); if(!r.width || !r.height) return;
+  const cy = vb.y + vb.h / 2, nh = vb.w * r.height / r.width;
+  vb = { x:vb.x, y:cy - nh / 2, w:vb.w, h:nh }; apply();
+});
 
-// Glisser pour se déplacer, pincer pour zoomer, toucher pour répondre
+// Glisser pour se déplacer, pincer pour zoomer (et déplacer avec les deux doigts), toucher pour répondre
 const pts = new Map();
-let moved = 0, pinch = 0;
+let glisse = false, pinch = 0, milieu = null;
 const dist = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+const centre2 = () => { const [a, b] = [...pts.values()]; return { x:(a.x + b.x) / 2, y:(a.y + b.y) / 2 }; };
 svg.addEventListener('pointerdown', e => {
   svg.setPointerCapture(e.pointerId);
-  pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
-  if(pts.size === 1) moved = 0;
-  else { moved = Infinity; pinch = dist(); }
+  pts.set(e.pointerId, { x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY });
+  if(pts.size === 1) glisse = false;
+  else { glisse = true; debutGeste(); pinch = dist(); milieu = centre2(); }
 });
 svg.addEventListener('pointermove', e => {
   const p = pts.get(e.pointerId);
   if(!p || !vb) return;
-  const dx = e.clientX - p.x, dy = e.clientY - p.y;
-  p.x = e.clientX; p.y = e.clientY;
   if(pts.size === 1){
-    const r = svg.getBoundingClientRect();
-    moved += Math.abs(dx) + Math.abs(dy);
-    if(moved > 6){ vb.x -= dx / r.width * vb.w; vb.y -= dy / r.height * vb.h; apply(); }
+    // au-delà de 6 px, on glisse : la carte rattrape tout le déplacement depuis le début, le point reste sous le doigt
+    if(!glisse && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) > 6){ glisse = true; debutGeste(); }
+    if(glisse) deplacer(e.clientX - p.x, e.clientY - p.y);
+    p.x = e.clientX; p.y = e.clientY;
   } else if(pts.size === 2){
-    const d = dist(), [a, b] = [...pts.values()];
-    if(pinch) zoomAt(pinch / d, (a.x + b.x) / 2, (a.y + b.y) / 2);
-    pinch = d;
+    p.x = e.clientX; p.y = e.clientY;
+    const d = dist(), m = centre2();
+    if(pinch && d) zoomAt(pinch / d, m.x, m.y);
+    if(milieu) deplacer(m.x - milieu.x, m.y - milieu.y);
+    pinch = d; milieu = m;
   }
 });
 function release(e){
   if(!pts.delete(e.pointerId)) return;
-  if(pts.size === 0 && moved < 8 && e.type === 'pointerup'){
-    const t = document.elementFromPoint(e.clientX, e.clientY);
-    const hit = t && t.closest && t.closest('[data-c]');
-    if(hit && svg.contains(hit)) tapItem(hit.dataset.c);
+  if(pts.size === 0){
+    const tape = !glisse && e.type === 'pointerup';
+    finGeste();
+    if(tape){
+      const t = document.elementFromPoint(e.clientX, e.clientY);
+      const hit = t && t.closest && t.closest('[data-c]');
+      if(hit && svg.contains(hit)) tapItem(hit.dataset.c);
+    }
   }
-  if(pts.size < 2) pinch = 0;
+  if(pts.size < 2){ pinch = 0; milieu = null; }
+  // il reste un doigt : il continue de déplacer la carte depuis là où il est
 }
 svg.addEventListener('pointerup', release);
 svg.addEventListener('pointercancel', release);
