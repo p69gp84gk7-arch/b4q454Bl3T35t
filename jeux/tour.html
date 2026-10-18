@@ -7,12 +7,12 @@
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Altitude Arcade">
-<link rel="manifest" href="../manifest.webmanifest?v=84">
+<link rel="manifest" href="../manifest.webmanifest?v=85">
 <link rel="icon" href="../logo.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" sizes="180x180" href="../icons/altitude-180.png?v=84">
-<link rel="apple-touch-icon" sizes="167x167" href="../icons/altitude-167.png?v=84">
-<link rel="apple-touch-icon" sizes="152x152" href="../icons/altitude-152.png?v=84">
-<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=84">
+<link rel="apple-touch-icon" sizes="180x180" href="../icons/altitude-180.png?v=85">
+<link rel="apple-touch-icon" sizes="167x167" href="../icons/altitude-167.png?v=85">
+<link rel="apple-touch-icon" sizes="152x152" href="../icons/altitude-152.png?v=85">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=85">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
@@ -30,7 +30,8 @@
 html,body{ margin:0; height:100%; overflow:hidden; background:#5C9A4C; color:var(--encre);
   font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
 button{ font:inherit; color:inherit; cursor:pointer; }
-#cv{ position:fixed; left:0; top:0; width:100vw; height:100vh; height:100lvh; display:block; touch-action:none; }
+/* le dessin couvre exactement l'écran visible (sa taille est mesurée, pour que le doigt tombe juste) */
+#cv{ position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; -webkit-touch-callout:none; }
 
 /* Pendant la partie */
 .hud{ position:fixed; left:0; right:0; top:0; padding:calc(8px + var(--marge-haut)) 10px 0; display:flex; align-items:center; gap:8px; pointer-events:none; z-index:3; }
@@ -327,16 +328,27 @@ cv.addEventListener('pointerdown', e => {
   if(!P || P.pause || P.fin) return;
   try{ cv.setPointerCapture(e.pointerId); }catch(err){}
   if(AC && AC.state === 'suspended') AC.resume();
-  const m = versMonde(e.clientX, e.clientY);
-  // l'appareil le plus proche du doigt (un peu de marge, les doigts sont gros)
-  let mieux = null, dm = 30 / V.s + 14;
-  for(const a of P.avions){ if(a.etat !== 'vol') continue; const d = Math.hypot(a.x - m.x, a.y - m.y); if(d < dm){ dm = d; mieux = a; } }
-  if(!mieux) return;
-  for(const [k, v] of doigts) if(v === mieux) doigts.delete(k);
-  mieux.route = []; mieux.cible = null; mieux.dernierPt = { x:mieux.x, y:mieux.y };
-  doigts.set(e.pointerId, mieux);
+  // pas d'appareil sous le doigt : on réessaie pendant 0,35 s, le temps que le doigt glisse jusqu'à l'avion
+  if(!prendre(e.pointerId, e.clientX, e.clientY)) cherche.set(e.pointerId, performance.now());
 });
+// Prendre l'appareil le plus proche du doigt : 46 px autour de lui à l'écran (les doigts sont gros, les avions bougent)
+const cherche = new Map();
+function prendre(id, sx, sy){
+  const m = versMonde(sx, sy);
+  let mieux = null, dm = Infinity;
+  for(const a of P.avions){
+    if(a.etat !== 'vol') continue;
+    const d = Math.hypot(a.x - m.x, a.y - m.y);
+    if(d < 46 / V.s + TYPES[a.type].r && d < dm){ dm = d; mieux = a; }
+  }
+  if(!mieux) return false;
+  for(const [k, v] of doigts) if(v === mieux) doigts.delete(k);
+  mieux.route = []; mieux.cible = null; mieux.dernierPt = { x:mieux.x, y:mieux.y }; mieux.pris = performance.now();
+  doigts.set(id, mieux); cherche.delete(id);
+  return true;
+}
 cv.addEventListener('pointermove', e => {
+  if(cherche.has(e.pointerId)){ if(performance.now() - cherche.get(e.pointerId) > 350 || !P || P.fin || !prendre(e.pointerId, e.clientX, e.clientY)) return; }
   const a = doigts.get(e.pointerId); if(!a || a.cible || a.etat !== 'vol' || !P || P.fin) return;
   const p = versMonde(e.clientX, e.clientY); p.x = clamp(p.x, 6, W0 - 6); p.y = clamp(p.y, 6, H0 - 6);
   const prec = a.dernierPt, d = Math.hypot(p.x - prec.x, p.y - prec.y);
@@ -354,20 +366,20 @@ cv.addEventListener('pointermove', e => {
   }
   a.dernierPt = p;
 });
-const lacher = e => doigts.delete(e.pointerId);
+const lacher = e => { doigts.delete(e.pointerId); cherche.delete(e.pointerId); };
 cv.addEventListener('pointerup', lacher); cv.addEventListener('pointercancel', lacher);
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
 /* ---------- Dessin ---------- */
 let W = 0, Hh = 0, DPR = 1, V = { s:1, ox:0, oy:0, rot:false }, fond = null;
 function taille(){
-  DPR = Math.min(2, devicePixelRatio || 1); W = innerWidth; Hh = innerHeight;
+  DPR = Math.min(2, devicePixelRatio || 1); W = cv.clientWidth || innerWidth; Hh = cv.clientHeight || innerHeight;
   cv.width = Math.round(W * DPR); cv.height = Math.round(Hh * DPR);
   const rot = Hh > W * 1.05, s = rot ? Math.min(W / H0, Hh / W0) : Math.min(W / W0, Hh / H0);
   V = { s, rot, ox:(W - (rot ? H0 : W0) * s) / 2, oy:(Hh - (rot ? W0 : H0) * s) / 2 };
   if(P) preparerFond();
 }
-addEventListener('resize', taille);
+addEventListener('resize', taille); if(window.visualViewport) visualViewport.addEventListener('resize', taille);
 // Le décor de l'aérodrome est dessiné une fois dans une image (à la taille de l'écran), puis recopié à chaque image
 function preparerFond(){
   const c = P.carte, k = V.s * DPR;
@@ -524,6 +536,7 @@ function dessiner(){
   }
   for(const a of P.avions){
     if(a.alerte){ const r = TYPES[a.type].r * 2.4 / 2 + 14; g.fillStyle = 'rgba(217,65,47,.22)'; g.strokeStyle = 'rgba(217,65,47,.85)'; g.lineWidth = 3; g.beginPath(); g.arc(a.x, a.y, r + Math.sin(t * 10) * 2, 0, 6.29); g.fill(); g.stroke(); }
+    if([...doigts.values()].includes(a)){ g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 3; g.beginPath(); g.arc(a.x, a.y, TYPES[a.type].r + 12, 0, 6.29); g.stroke(); }
     dessinerAvion(g, a);
   }
   // les annonces au bord (un « ! » de la couleur de l'appareil qui arrive)
