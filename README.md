@@ -356,7 +356,7 @@ jeux/dameuse.html      jeu Dameuse de nuit
 jeux/freeride.html     jeu Freeride
 jeux/tour.html         jeu Tour de contrôle
 logo.svg               logo (source vectorielle)
-apple-touch-icon.png   icône de l'écran d'accueil de l'iPhone (180 px, pleine, nom standard ; aussi apple-touch-icon-precomposed.png)
+apple-touch-icon.png   icône de l'écran d'accueil de l'iPhone (180 px, pleine) ; elle est aussi écrite dans chaque page (lien apple-touch-icon en data:image/png;base64), recopiée par outils/icone.sh après un changement de logo
 icons/                 icônes du manifeste, fichiers altitude-*.png (192, 512, masquable, 180), toutes pleines (sans transparence)
 icone.html             page de test de l'icône : version du site, icône iPhone et icônes du manifeste téléchargées et affichées
 .nojekyll              le site est publié tel quel par GitHub Pages
