@@ -26,7 +26,10 @@ Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitte
 
 Une page web ne peut pas écrire seule dans les fichiers du téléphone. Le bloc **Sauvegarde dans mes fichiers** (accueil, Géographie, réglages du Yam's, bas du carnet du 10 000) a deux boutons :
 
-- **Exporter** crée un fichier `altitude-sauvegarde-AAAA-MM-JJ.json` avec toutes les parties, records et statistiques. Sur iPhone, le partage s'ouvre : choisir *Enregistrer dans Fichiers*. Ailleurs, le fichier est téléchargé.
+- **Exporter** écrit toutes les parties, records et statistiques dans un fichier qui porte **toujours le même nom**, `altitude-sauvegarde.json`, pour remplacer l'ancien au lieu d'en créer un nouveau :
+  - sur ordinateur (Chrome, Edge) et dans les navigateurs qui savent réécrire un fichier, on choisit l'endroit au premier export ; ensuite, chaque export **réécrit directement ce même fichier** (l'accès est gardé dans IndexedDB, le navigateur peut redemander l'autorisation). « Enregistrer dans un autre fichier… » permet d'en changer ;
+  - sur iPhone, le partage s'ouvre : choisir *Enregistrer dans Fichiers*, au même endroit que la dernière fois, et accepter de remplacer le fichier existant ;
+  - ailleurs, le fichier est téléchargé (le navigateur peut ajouter « (1) » au nom si l'ancien est encore dans les téléchargements).
 - **Importer** recharge un fichier exporté, après confirmation : les données de l'appareil sont remplacées.
 
 Le code est dans `jeux/sauvegarde.js`.

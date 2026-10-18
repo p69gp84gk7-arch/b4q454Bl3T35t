@@ -1,6 +1,10 @@
 /* Altitude Arcade : sauvegarde de toutes les parties, records et statistiques dans un fichier.
-   Une page web ne peut pas écrire seule dans les Fichiers du téléphone : « Exporter » ouvre le partage
-   (sur iPhone : « Enregistrer dans Fichiers ») ou télécharge le fichier ; « Importer » le recharge.
+   Le fichier porte toujours le même nom (altitude-sauvegarde.json), pour remplacer l'ancien au lieu d'en créer un nouveau :
+   - sur ordinateur (Chrome, Edge) et les navigateurs qui le permettent, on choisit le fichier une fois, puis chaque export
+     réécrit directement ce même fichier (l'accès au fichier est gardé dans IndexedDB) ;
+   - sur iPhone, une page web ne peut pas écrire seule dans Fichiers : « Exporter » ouvre le partage (« Enregistrer dans
+     Fichiers ») ; au même endroit, l'iPhone propose de remplacer le fichier existant ;
+   - sinon, le fichier est téléchargé. « Importer » recharge un fichier.
    Utilisation : <script src="sauvegarde.js"></script> puis DesDesSauvegarde.boutons(element). */
 (() => {
   // Clés de l'application dans le stockage du navigateur
@@ -19,10 +23,38 @@
     return { app:'Altitude Arcade', version:1, date:new Date().toISOString(), donnees };
   }
 
-  async function exporter(){
-    const jour = new Date().toISOString().slice(0, 10);
-    const nom = `altitude-sauvegarde-${jour}.json`;
+  // L'accès au fichier choisi (navigateurs qui savent réécrire un fichier), gardé d'une visite à l'autre
+  const NOM = 'altitude-sauvegarde.json';
+  function base(){
+    return new Promise((ok, ko) => { const r = indexedDB.open('altitude-sauvegarde', 1); r.onupgradeneeded = () => r.result.createObjectStore('acces'); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); });
+  }
+  async function acces(valeur){
+    try{
+      const db = await base();
+      return await new Promise((ok, ko) => {
+        const t = db.transaction('acces', valeur === undefined ? 'readonly' : 'readwrite'), st = t.objectStore('acces');
+        const r = valeur === undefined ? st.get('fichier') : valeur === null ? st.delete('fichier') : st.put(valeur, 'fichier');
+        r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error);
+      });
+    }catch(e){ return null; }
+  }
+  async function ecrireDans(h, texte){
+    if(h.queryPermission && await h.queryPermission({ mode:'readwrite' }) !== 'granted' && await h.requestPermission({ mode:'readwrite' }) !== 'granted') throw new Error('refusé');
+    const w = await h.createWritable(); await w.write(texte); await w.close();
+  }
+  // nouveau = true : choisir un autre fichier (ou le premier)
+  async function exporter(nouveau = false){
+    const nom = NOM;
     const texte = JSON.stringify(contenu());
+    if(window.showSaveFilePicker && window.indexedDB){
+      try{
+        let h = nouveau ? null : await acces();
+        if(h){ try{ await ecrireDans(h, texte); noter(h.name); return 'remplace'; }catch(e){ if(e && e.name === 'AbortError') return 'annule'; h = null; } }
+        h = await window.showSaveFilePicker({ suggestedName:nom, types:[{ description:'Sauvegarde Altitude Arcade', accept:{ 'application/json':['.json'] } }] });
+        await ecrireDans(h, texte); await acces(h); noter(h.name);
+        return 'fichier';
+      }catch(e){ if(e && e.name === 'AbortError') return 'annule'; }
+    }
     const fichier = new File([texte], nom, { type:'application/json' });
     try{
       if(navigator.canShare && navigator.canShare({ files:[fichier] })){
@@ -42,7 +74,7 @@
     noter();
     return 'telechargement';
   }
-  function noter(){ try{ localStorage.setItem('desdes-export', JSON.stringify(Date.now())); }catch(e){} }
+  function noter(nom){ try{ localStorage.setItem('desdes-export', JSON.stringify(Date.now())); localStorage.setItem('desdes-export-fichier', JSON.stringify(nom || '')); }catch(e){} }
 
   function lire(fichier){
     return new Promise((ok, ko) => {
@@ -95,13 +127,20 @@
 .dd-sauve p{ margin:8px 0 0; font-size:.82rem; opacity:.75; line-height:1.35; }
 </style>`);
     }
-    const maj = () => {
-      const d = dernierExport();
-      el.querySelector('p').textContent = (d ? `Dernier export : ${d.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' })}. ` : 'Jamais exporté. ') +
+    const direct = !!(window.showSaveFilePicker && window.indexedDB);
+    const maj = async (res) => {
+      const d = dernierExport(), h = direct ? await acces() : null;
+      const fait = res === 'remplace' ? `Sauvegarde réécrite dans ${h ? h.name : NOM} (l'ancienne est remplacée). ` : res === 'fichier' ? `Sauvegarde enregistrée dans ${h ? h.name : NOM} ; les prochains exports réécriront ce même fichier. ` : '';
+      const comment = direct ? (h ? `Chaque export remplace ${h.name}. ` : 'Au premier export, choisissez où enregistrer le fichier ; ensuite, il sera remplacé à chaque export. ')
+        : `Le fichier s'appelle toujours ${NOM} : enregistrez-le au même endroit et choisissez « Remplacer » pour garder un seul fichier. `;
+      el.querySelector('p').textContent = fait + (d ? `Dernier export : ${d.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' })}. ` : 'Jamais exporté. ') + comment +
         'Le fichier contient toutes les parties, records et statistiques d\'Altitude Arcade.';
+      const autre = el.querySelector('.dd-autre'); if(autre) autre.hidden = !h;
     };
-    el.innerHTML = '<div class="dd-row"><button class="dd-exp">Exporter</button><button class="dd-imp">Importer</button></div><p></p>';
-    el.querySelector('.dd-exp').onclick = async () => { await exporter(); maj(); };
+    el.innerHTML = '<div class="dd-row"><button class="dd-exp">Exporter</button><button class="dd-imp">Importer</button></div><p></p>' +
+      (direct ? '<button class="dd-autre" hidden style="margin-top:6px;padding:6px 10px;font-size:.8rem;border-width:1px">Enregistrer dans un autre fichier…</button>' : '');
+    el.querySelector('.dd-exp').onclick = async () => { maj(await exporter()); };
+    if(direct) el.querySelector('.dd-autre').onclick = async () => { maj(await exporter(true)); };
     el.querySelector('.dd-imp').onclick = () => importer();
     maj();
   }
