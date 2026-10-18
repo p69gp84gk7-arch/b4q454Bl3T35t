@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Géographie · DesDés</title>
+<title>Géographie · Altitude Arcade</title>
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="DesDés">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="icon" href="../logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
@@ -156,7 +156,7 @@ tr.me td{ color:var(--gold); font-weight:700; }
 
 <!-- Menu -->
 <main class="page" id="menu">
-  <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">DesDés</a>
+  <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">Altitude Arcade</a>
   <h1>Géographie</h1>
   <p class="sub">Drapeaux, pays, régions, départements et États américains, le plus vite possible.</p>
 
@@ -249,8 +249,8 @@ tr.me td{ color:var(--gold); font-weight:700; }
   <div class="row"><button class="back" id="toMenu">Menu</button><button class="again" id="again">Rejouer</button></div>
 </main>
 
-<script src="geo/monde.js?v=77"></script>
-<script src="sauvegarde.js?v=77"></script>
+<script src="geo/monde.js?v=80"></script>
+<script src="sauvegarde.js?v=80"></script>
 <script>
 const G = window.GEO;
 const $ = id => document.getElementById(id);
@@ -306,7 +306,7 @@ function charger(fichier){
   if(!fichier) return Promise.resolve();
   return charges[fichier] = charges[fichier] || new Promise((ok, ko) => {
     const s = document.createElement('script');
-    s.src = fichier + '?v=77'; s.onload = ok;   // même numéro de version que les autres scripts
+    s.src = fichier + '?v=80'; s.onload = ok;   // même numéro de version que les autres scripts
     s.onerror = () => { delete charges[fichier]; ko(new Error('Carte introuvable : vérifiez la connexion.')); };
     document.head.append(s);
   });

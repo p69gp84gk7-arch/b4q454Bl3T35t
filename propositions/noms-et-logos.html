@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nom et logo</title>
+<style>
+:root{ --fond:#EEF3F9; --carte:#fff; --encre:#13233A; --doux:#5A6B85; --ligne:rgba(19,35,58,.12); --orange:#FF6A2B; }
+*{ box-sizing:border-box; } body{ margin:0; background:var(--fond); color:var(--encre); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; padding:16px; }
+h1{ font-size:1.6rem; margin:4px 0 2px; } h2{ font-size:1.15rem; margin:22px 0 8px; } p.sous{ color:var(--doux); margin:0 0 6px; line-height:1.35; }
+.noms{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:8px; }
+.nom{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:10px 12px; }
+.nom b{ font-size:1.15rem; } .nom .n{ display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%; background:var(--encre); color:#fff; font-size:.8rem; font-weight:800; margin-right:8px; }
+.nom p{ margin:4px 0 0; color:var(--doux); font-size:.9rem; line-height:1.3; }
+.logos{ display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; }
+.logo{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:12px; text-align:center; }
+.logo svg.grand{ width:120px; height:120px; display:block; margin:0 auto 8px; }
+.logo .petits{ display:flex; gap:10px; justify-content:center; align-items:end; margin-bottom:6px; }
+.logo .petits svg{ width:44px; height:44px; } .logo .petits svg+svg{ width:28px; height:28px; }
+.logo svg{ border-radius:21.9%; overflow:hidden; }
+.logo b{ display:block; } .logo small{ color:var(--doux); line-height:1.25; display:block; margin-top:2px; }
+.lettre{ display:inline-grid; place-items:center; width:24px; height:24px; border-radius:7px; background:var(--orange); color:#fff; font-weight:800; font-size:.85rem; margin-bottom:6px; }
+</style></head><body>
+<h1>Nouveau nom, nouveau logo</h1>
+<p class="sous">Choisissez un nom (1 à 9) et un logo (A à F) : on peut mélanger, par exemple « 2 + B ». Les petits logos montrent à quoi ils ressemblent sur l'écran du téléphone.</p>
+
+<h2>Les noms</h2>
+<div class="noms">
+  <div class="nom"><span class="n">1</span><b>Le Refuge</b><p>Le petit chalet où l'on se retrouve pour jouer, aux dés comme sur les pistes.</p></div>
+  <div class="nom"><span class="n">2</span><b>Altitude</b><p>Court, facile à retenir, et il colle à la montagne (Nivoculteur, Dameuse, Freeride).</p></div>
+  <div class="nom"><span class="n">3</span><b>Neige &amp; Dés</b><p>Les deux familles de jeux de l'application, en trois mots.</p></div>
+  <div class="nom"><span class="n">4</span><b>Arcade 1800</b><p>Clin d'œil aux 1 800 m de Superbagnères : une salle d'arcade en haut de la station.</p></div>
+  <div class="nom"><span class="n">5</span><b>Poudreuse</b><p>La neige qu'on aime ; un nom doux et joyeux.</p></div>
+  <div class="nom"><span class="n">6</span><b>La Remontée</b><p>Comme un télésiège : on monte, on joue, on redescend… et on remonte battre son record.</p></div>
+  <div class="nom"><span class="n">7</span><b>Sommets</b><p>Chaque jeu est un sommet à atteindre (étoiles, records).</p></div>
+  <div class="nom"><span class="n">8</span><b>Flocon</b><p>Un seul mot, très court sous l'icône du téléphone.</p></div>
+  <div class="nom"><span class="n">9</span><b>Céciré</b><p>Le sommet au-dessus de Superbagnères : un nom bien de chez vous.</p></div>
+</div>
+
+<h2>Les logos</h2>
+<div class="logos">
+<!-- A : le dé enneigé -->
+<div class="logo"><span class="lettre">A</span>
+<svg class="grand" id="lA" viewBox="0 0 512 512"><defs><linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2D6BB0"/><stop offset="1" stop-color="#0E2740"/></linearGradient></defs>
+<rect width="512" height="512" rx="112" fill="url(#gA)"/>
+<g fill="#fff" opacity=".7"><circle cx="90" cy="110" r="8"/><circle cx="420" cy="90" r="6"/><circle cx="440" cy="250" r="9"/><circle cx="70" cy="300" r="6"/><circle cx="380" cy="430" r="7"/></g>
+<path d="M40 430c80-30 170-34 220-24s150 6 212-18v124H40z" fill="#E8F1FB"/>
+<g transform="rotate(-9 256 286)"><rect x="136" y="166" width="240" height="240" rx="52" fill="#F7F3E8" stroke="#13233A" stroke-width="10"/>
+<path d="M136 214c0-30 22-50 52-50h136c30 0 52 20 52 50-14 10-26 2-36 14-8 22-30 20-36 2-12-12-26 2-40-6-12 18-34 16-40 0-16-8-28 8-44-2-12 10-30 6-44-8z" fill="#fff" stroke="#13233A" stroke-width="10" stroke-linejoin="round"/>
+<g fill="#13233A"><circle cx="196" cy="276" r="18"/><circle cx="316" cy="276" r="18"/><circle cx="196" cy="356" r="18"/><circle cx="316" cy="356" r="18"/></g><circle cx="256" cy="316" r="20" fill="#E23B3B"/></g>
+</svg>
+<div class="petits" data-de="lA"></div>
+<b>Le dé enneigé</b><small>Les dés et la neige, en un seul dessin.</small></div>
+
+<!-- B : le refuge -->
+<div class="logo"><span class="lettre">B</span>
+<svg class="grand" id="lB" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#14263D"/>
+<g fill="#fff"><circle cx="96" cy="96" r="5"/><circle cx="170" cy="70" r="4"/><circle cx="420" cy="120" r="5"/><circle cx="360" cy="70" r="3"/></g>
+<path d="M0 330l150-170 90 90 70-60 202 160v162H0z" fill="#2B4A6B"/><path d="M150 160l40 46-26-6-24 22-20-18-20 10z" fill="#fff"/><path d="M310 190l48 40-22-4-26 18-18-14-24 6z" fill="#fff"/>
+<path d="M30 452c80-26 360-26 452 0v60H30z" fill="#F2F6FB"/>
+<rect x="160" y="286" width="192" height="146" fill="#8A4B2A"/><g stroke="#6C3A1F" stroke-width="5"><path d="M160 318h192M160 350h192M160 382h192M160 414h192"/></g>
+<path d="M126 300L256 182l130 118z" fill="#5A3019"/><path d="M118 304L256 176l138 128-26 8-112-102-112 102z" fill="#fff"/>
+<rect x="216" y="316" width="80" height="80" rx="12" fill="#F2C230" stroke="#13233A" stroke-width="7"/><g fill="#13233A"><circle cx="238" cy="338" r="8"/><circle cx="274" cy="338" r="8"/><circle cx="256" cy="356" r="8"/><circle cx="238" cy="374" r="8"/><circle cx="274" cy="374" r="8"/></g>
+<path d="M140 440h232" stroke="#fff" stroke-width="14" stroke-linecap="round"/>
+</svg>
+<div class="petits" data-de="lB"></div>
+<b>Le refuge</b><small>Chalet dans la nuit, la fenêtre allumée est un dé.</small></div>
+
+<!-- C : le sommet -->
+<div class="logo"><span class="lettre">C</span>
+<svg class="grand" id="lC" viewBox="0 0 512 512"><defs><linearGradient id="gC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF7A3D"/><stop offset=".6" stop-color="#FFB547"/><stop offset="1" stop-color="#FFE3A8"/></linearGradient></defs>
+<rect width="512" height="512" rx="112" fill="url(#gC)"/>
+<g transform="rotate(14 372 150)"><rect x="318" y="96" width="108" height="108" rx="24" fill="#FFF7E8" stroke="#13233A" stroke-width="8"/><g fill="#13233A"><circle cx="346" cy="124" r="10"/><circle cx="372" cy="150" r="10"/><circle cx="398" cy="176" r="10"/></g></g>
+<path d="M0 420l140-170 70 70 46-40 256 210v22H0z" fill="#3E5C82"/>
+<path d="M30 512l210-300 272 300z" fill="#1F3554"/>
+<path d="M240 212l58 82-30-14-28 24-28-24-30 14z" fill="#fff"/><path d="M140 250l36 44-22-6-14 12-16-12-24 6z" fill="#E8F1FB"/>
+</svg>
+<div class="petits" data-de="lC"></div>
+<b>Le sommet</b><small>Coucher de soleil sur la montagne, le soleil est un dé.</small></div>
+
+<!-- D : le télésiège -->
+<div class="logo"><span class="lettre">D</span>
+<svg class="grand" id="lD" viewBox="0 0 512 512"><defs><linearGradient id="gD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3B82E0"/><stop offset="1" stop-color="#1B3F80"/></linearGradient></defs>
+<rect width="512" height="512" rx="112" fill="url(#gD)"/>
+<path d="M0 470c120-40 360-40 512-10v52H0z" fill="#EEF4FB"/>
+<path d="M-10 120L522 40" stroke="#13233A" stroke-width="10"/>
+<circle cx="250" cy="82" r="16" fill="#13233A"/><path d="M250 82v160" stroke="#13233A" stroke-width="12"/>
+<path d="M150 242h200" stroke="#13233A" stroke-width="12" stroke-linecap="round"/><path d="M150 242v-50M350 242v-30" stroke="#13233A" stroke-width="10" stroke-linecap="round"/>
+<path d="M130 300h240l-10 40H140z" fill="#C7362B"/><path d="M150 300v-58M350 300v-58" stroke="#13233A" stroke-width="10"/>
+<g transform="rotate(-10 256 240)"><rect x="196" y="186" width="116" height="116" rx="24" fill="#F7F3E8" stroke="#13233A" stroke-width="8"/><g fill="#13233A"><circle cx="226" cy="216" r="11"/><circle cx="282" cy="216" r="11"/><circle cx="254" cy="244" r="11"/><circle cx="226" cy="272" r="11"/><circle cx="282" cy="272" r="11"/></g></g>
+<g fill="#fff" opacity=".75"><circle cx="90" cy="250" r="7"/><circle cx="430" cy="200" r="8"/><circle cx="400" cy="360" r="6"/><circle cx="80" cy="380" r="6"/></g>
+</svg>
+<div class="petits" data-de="lD"></div>
+<b>Le télésiège</b><small>Un dé qui monte en télésiège ; va bien avec « La Remontée ».</small></div>
+
+<!-- E : le flocon de dés -->
+<div class="logo"><span class="lettre">E</span>
+<svg class="grand" id="lE" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#0F3B57"/>
+<g stroke="#fff" stroke-width="22" stroke-linecap="round" fill="none" transform="translate(256 256)">
+<g id="bras"><path d="M0 -40V-172"/><path d="M0 -112l-40 -36M0 -112l40 -36"/></g>
+<use href="#bras" transform="rotate(60)"/><use href="#bras" transform="rotate(120)"/><use href="#bras" transform="rotate(180)"/><use href="#bras" transform="rotate(240)"/><use href="#bras" transform="rotate(300)"/></g>
+<g fill="#FF6A2B" transform="translate(256 256)"><circle cy="-190" r="20"/><circle cy="-190" r="20" transform="rotate(60)"/><circle cy="-190" r="20" transform="rotate(120)"/><circle cy="-190" r="20" transform="rotate(180)"/><circle cy="-190" r="20" transform="rotate(240)"/><circle cy="-190" r="20" transform="rotate(300)"/></g>
+<rect x="206" y="206" width="100" height="100" rx="22" fill="#F7F3E8" stroke="#0F3B57" stroke-width="8"/><circle cx="256" cy="256" r="16" fill="#E23B3B"/>
+</svg>
+<div class="petits" data-de="lE"></div>
+<b>Le flocon de dés</b><small>Un flocon avec un dé au cœur ; reste lisible tout petit.</small></div>
+
+<!-- F : le badge 1800 -->
+<div class="logo"><span class="lettre">F</span>
+<svg class="grand" id="lF" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#13233A"/>
+<circle cx="256" cy="256" r="196" fill="#F7F3E8" stroke="#FF6A2B" stroke-width="18"/>
+<clipPath id="cF"><circle cx="256" cy="256" r="186"/></clipPath>
+<g clip-path="url(#cF)"><path d="M60 330l110-120 60 60 60-80 160 140v180H60z" fill="#2F6FD0"/><path d="M290 190l40 52-22-8-20 16-18-14-22 8z" fill="#fff"/><path d="M170 210l30 36-18-4-12 10-14-10-18 4z" fill="#fff"/><path d="M60 360c80-20 300-20 400 0v120H60z" fill="#13233A"/></g>
+<text x="256" y="430" text-anchor="middle" font-family="system-ui,Arial,sans-serif" font-weight="900" font-size="92" fill="#F7F3E8" letter-spacing="4">1800</text>
+<g fill="#FF6A2B"><circle cx="190" cy="132" r="12"/><circle cx="256" cy="116" r="12"/><circle cx="322" cy="132" r="12"/></g>
+</svg>
+<div class="petits" data-de="lF"></div>
+<b>Le badge 1800</b><small>Écusson de station ; pour « Arcade 1800 » ou « Céciré ».</small></div>
+</div>
+<script>
+// les petits aperçus : des copies du grand logo, à la taille d'une icône de téléphone
+document.querySelectorAll('.petits').forEach(d => { const src = document.getElementById(d.dataset.de);
+  for(const t of [44, 28]){ const c = src.cloneNode(true); c.removeAttribute('id'); c.classList.remove('grand'); c.style.width = c.style.height = t + 'px'; d.appendChild(c); } });
+</script>
+</body></html>

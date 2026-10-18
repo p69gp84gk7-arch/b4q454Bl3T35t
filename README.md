@@ -1,4 +1,6 @@
-# DesDés
+# Altitude Arcade
+
+> L'application s'appelait **DesDés** jusqu'à la version 77, puis **Altitude** (version 78) ; elle s'appelle **Altitude Arcade** depuis la version 79. Le nom affiché et le logo ont changé, mais les clés de sauvegarde internes (`desdes-…`, `DesDesSauvegarde`) sont gardées pour ne perdre aucune partie, et les anciens fichiers de sauvegarde (« DesDés », « Altitude ») s'importent toujours. Logo : coucher de soleil sur la montagne, le soleil est un dé (`logo.svg`, icônes dans `icons/`).
 
 Plate-forme web (application installable) qui regroupe nos carnets de score de jeux de dés, un quiz de géographie, une course à dessiner, un jeu de neige de culture en 3D et un jeu de fusée en musique.
 
@@ -24,7 +26,10 @@ Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitte
 
 Une page web ne peut pas écrire seule dans les fichiers du téléphone. Le bloc **Sauvegarde dans mes fichiers** (accueil, Géographie, réglages du Yam's, bas du carnet du 10 000) a deux boutons :
 
-- **Exporter** crée un fichier `desdes-sauvegarde-AAAA-MM-JJ.json` avec toutes les parties, records et statistiques. Sur iPhone, le partage s'ouvre : choisir *Enregistrer dans Fichiers*. Ailleurs, le fichier est téléchargé.
+- **Exporter** écrit toutes les parties, records et statistiques dans un fichier qui porte **toujours le même nom**, `altitude-sauvegarde.json`, pour remplacer l'ancien au lieu d'en créer un nouveau :
+  - sur ordinateur (Chrome, Edge) et dans les navigateurs qui savent réécrire un fichier, on choisit l'endroit au premier export ; ensuite, chaque export **réécrit directement ce même fichier** (l'accès est gardé dans IndexedDB, le navigateur peut redemander l'autorisation). « Enregistrer dans un autre fichier… » permet d'en changer ;
+  - sur iPhone, le partage s'ouvre : choisir *Enregistrer dans Fichiers*, au même endroit que la dernière fois, et accepter de remplacer le fichier existant ;
+  - ailleurs, le fichier est téléchargé (le navigateur peut ajouter « (1) » au nom si l'ancien est encore dans les téléchargements).
 - **Importer** recharge un fichier exporté, après confirmation : les données de l'appareil sont remplacées.
 
 Le code est dans `jeux/sauvegarde.js`.
@@ -135,7 +140,7 @@ Deux modes de jeu, au choix en haut du menu :
   - *Abandonner* pendant une course donne 0 point, et les autres finissent la course ;
   - pendant le tracé, on retourne au classement sans pénalité, et la course reste à faire ;
   - *Abandonner le championnat* (sur l'écran du classement ou au menu) efface le championnat en cours.
-- **Sauvegarde** : le championnat est gardé sur l'appareil. On peut quitter et reprendre plus tard : le menu propose *Continuer*. L'accueil de DesDés affiche la course et la place.
+- **Sauvegarde** : le championnat est gardé sur l'appareil. On peut quitter et reprendre plus tard : le menu propose *Continuer*. L'accueil d'Altitude Arcade affiche la course et la place.
 - **Fin** : classement final et champion. Un **palmarès** garde les derniers championnats (date, nombre de courses, difficulté, place, points).
 
 Le jeu se joue le téléphone à l'horizontale (un message le demande en vertical), pour des pistes plus larges.

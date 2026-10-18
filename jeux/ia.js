@@ -1,4 +1,4 @@
-/* DesDés : calculs des robots et des conseils, pour le Yam's et le 10 000. Aucun affichage ici.
+/* Altitude Arcade : calculs des robots et des conseils, pour le Yam's et le 10 000. Aucun affichage ici.
    - YamsIA.conseil : dés à garder et chances de faire chaque figure (calcul exact sur les lancers restants).
    - YamsIA.garder / YamsIA.choisir : décisions du robot (facile, moyen, fort).
    - DixMilleIA : dés à mettre de côté, garder les points ou relancer, reprendre les points du précédent. */

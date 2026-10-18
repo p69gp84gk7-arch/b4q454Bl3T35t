@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Yam's · DesDés</title>
+<title>Yam's · Altitude Arcade</title>
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="DesDés">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="icon" href="../logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
@@ -187,7 +187,7 @@ tr.gap th.cat{border-right-color:var(--margin)}
 <body>
 <div class="barre-statut" aria-hidden="true"></div>
 <div class="wrap">
-  <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">DesDés</a>
+  <a class="home" href="../index.html"><img src="../logo.svg" alt="" width="26" height="26">Altitude Arcade</a>
   <header>
     <h1><span>🎲</span>Feuille de Yam's</h1>
     <div class="controls">
@@ -247,7 +247,7 @@ tr.gap th.cat{border-right-color:var(--margin)}
   </div>
 </div>
 
-<script src="sauvegarde.js?v=77"></script>
+<script src="sauvegarde.js?v=80"></script>
 <script>
 const MAX = 10;
 const UPPER = [1,2,3,4,5,6].map(f => ({key:'n'+f, label:'Total de '+f, short:String(f), type:'upper', face:f, help:'Somme des '+f}));
@@ -516,7 +516,7 @@ if('serviceWorker' in navigator) window.addEventListener('load', () => navigator
 // Nouvelle version installée : on recharge une fois, pour que la page et ses scripts soient de la même version
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
 </script>
-<script src="ia.js?v=77"></script>
-<script src="plateau.js?v=77" data-jeu="yams"></script>
+<script src="ia.js?v=80"></script>
+<script src="plateau.js?v=80" data-jeu="yams"></script>
 </body>
 </html>

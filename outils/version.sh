@@ -1,5 +1,5 @@
 #!/bin/sh
-# Nouvelle version de DesDés : change VERSION dans sw.js et le numéro ?v= des scripts dans les pages,
+# Nouvelle version d'Altitude Arcade : change VERSION dans sw.js et le numéro ?v= des scripts dans les pages,
 # pour que les téléphones prennent les nouveaux fichiers (et jamais un mélange d'ancien et de nouveau).
 # Usage (à la racine du dépôt) : sh outils/version.sh
 set -e

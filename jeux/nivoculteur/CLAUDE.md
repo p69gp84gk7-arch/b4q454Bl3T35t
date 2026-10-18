@@ -1,7 +1,7 @@
 # Nivoculteur — jeu de neige de culture (version 2D)
 
 Jeu de gestion sur le métier de nivoculteur (technicien de production de neige de culture), **en 2D, vu de dessus, carte à plat**.
-Il fait partie de la plate-forme DesDés (carte `.gnivo` sur l'accueil `../../index.html`), mais s'ouvre aussi seul en double-cliquant sur `index.html`.
+Il fait partie de la plate-forme Altitude Arcade (carte `.gnivo` sur l'accueil `../../index.html`), mais s'ouvre aussi seul en double-cliquant sur `index.html`.
 
 L'utilisateur est nivoculteur de métier, pas développeur : le jeu doit être crédible techniquement mais simple à jouer.
 Expliquer les choix simplement, sans jargon non expliqué, et **demander avant toute décision importante**.
@@ -20,7 +20,7 @@ Boucle : une **piste de Luchon-Superbagnères** au choix avec un objectif (m³ s
 - Dessin en **canvas 2D** ; aucune image externe.
 - Commandes : **un doigt = déplacer la carte**, deux doigts = zoomer (molette à la souris), **toucher court = action**.
 - Page adaptée au téléphone (portrait d'abord) et à l'ordinateur. Chaque texte reste dans sa capsule (vérifier à 360, 390, 430, 768 et 1 280 px).
-- Sauvegarde dans `localStorage` (try/catch), clés préfixées `nivo-` : `nivo-partie` (le réseau complet, `version: 2`, avec `taille` et `graine` du domaine), `nivo-records` (par piste : étoiles, points, meilleur %, parties). L'accueil DesDés lit ces deux clés.
+- Sauvegarde dans `localStorage` (try/catch), clés préfixées `nivo-` : `nivo-partie` (le réseau complet, `version: 2`, avec `taille` et `graine` du domaine), `nivo-records` (par piste : étoiles, points, meilleur %, parties). L'accueil Altitude Arcade lit ces deux clés.
 - **Toute l'interface est en français.** **Débits en m³/h**, pressions en bar, températures en °C humides.
 - Unité : 1 m. x de gauche à droite, y du haut du domaine (sommet) vers le bas (front de neige). Le haut de la carte est le nord. Une direction `dir` (radians) : 0 = vers le bas de la carte, vecteur (sin dir, cos dir).
 
@@ -61,7 +61,7 @@ Tester la simulation sans navigateur : concaténer `config.js`, `domaine.js` et 
 
 ## Écran (allégé à la demande de l'utilisateur : « trop d'infos, les mettre dans un menu »)
 
-- **Haut** : ← DesDés, nom du domaine, ☰ Menu ; 4 compteurs : Budget, Neige sur les pistes (barre), Nuit (ou l'heure la nuit), **Météo ▾** (température et vent ; touché : la prévision détaillée, la température en haut, la retenue).
+- **Haut** : ← Altitude Arcade, nom du domaine, ☰ Menu ; 4 compteurs : Budget, Neige sur les pistes (barre), Nuit (ou l'heure la nuit), **Météo ▾** (température et vent ; touché : la prévision détaillée, la température en haut, la retenue).
 - **Bas** : une seule rangée — 🔧 Construire (ouvre un tiroir avec les outils et ↶ Annuler), 🗺 Canons, 🏭 Salle, 🌙 Nuit (×1 / ×3 / ×10 et la barre de la nuit pendant la nuit). L'outil en main est rappelé dans une puce bleue (avec ✕ pour le ranger). Un seul message à la fois sur téléphone, juste au-dessus des boutons.
 - **☰ Menu** : Météo et infos, Voir toute la carte, Comment jouer, Domaines (changer de partie).
 - **Marge du haut** : sur téléphone, au moins 40 px en haut de l'écran (`--marge-haut`), pour que les compteurs ne passent pas sous la barre d'état floutée.
