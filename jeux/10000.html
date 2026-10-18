@@ -7,12 +7,12 @@
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Altitude Arcade">
-<link rel="manifest" href="../manifest.webmanifest?v=83">
+<link rel="manifest" href="../manifest.webmanifest?v=84">
 <link rel="icon" href="../logo.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" sizes="180x180" href="../icons/altitude-180.png?v=83">
-<link rel="apple-touch-icon" sizes="167x167" href="../icons/altitude-167.png?v=83">
-<link rel="apple-touch-icon" sizes="152x152" href="../icons/altitude-152.png?v=83">
-<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=83">
+<link rel="apple-touch-icon" sizes="180x180" href="../icons/altitude-180.png?v=84">
+<link rel="apple-touch-icon" sizes="167x167" href="../icons/altitude-167.png?v=84">
+<link rel="apple-touch-icon" sizes="152x152" href="../icons/altitude-152.png?v=84">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=84">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
@@ -280,7 +280,7 @@ td:last-child{ text-align:right; font-weight:600; font-variant-numeric:tabular-n
 </div>
 <button class="btn btn-gold fiche-suiv" id="ficheSuiv" hidden>Joueur suivant →</button>
 
-<script src="sauvegarde.js?v=83"></script>
+<script src="sauvegarde.js?v=84"></script>
 <script>
 const MAX = 15, GOAL = 10000, KEY = 'score10000';
 let state = { players: [], turn: 0, turnPts: 0, turnLog: [], history: [], started: false };
@@ -692,7 +692,7 @@ if('serviceWorker' in navigator) window.addEventListener('load', () => navigator
 // Nouvelle version installée : on recharge une fois, pour que la page et ses scripts soient de la même version
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
 </script>
-<script src="ia.js?v=83"></script>
-<script src="plateau.js?v=83" data-jeu="10000"></script>
+<script src="ia.js?v=84"></script>
+<script src="plateau.js?v=84" data-jeu="10000"></script>
 </body>
 </html>

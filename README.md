@@ -18,6 +18,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Fusée Rythme** : piloter une fusée à gauche et à droite au rythme d'un morceau (fourni ou pris dans vos fichiers) et éviter les points ; la partie dure le temps de la musique | `jeux/fusee.html` | 1 |
 | **Dameuse de nuit** : damer une piste vue du dessus avant l'ouverture, avec la lame, la fraise et le treuil ; 8 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
 | **Freeride** : ski ou snowboard hors-piste vu du dessus ; fuir une avalanche sans fin, 7 descentes à étoiles, 4 snowparks (kickers, boxes, rails), 3 slaloms chronométrés et un défi du jour | `jeux/freeride.html` | 1 |
+| **Tour de contrôle** : guider les avions du doigt jusqu'à la piste de leur couleur sans qu'ils se touchent ; 4 aérodromes | `jeux/tour.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -305,6 +306,17 @@ Jeu de glisse vu du dessus, en plongée (les sapins et les rochers ont de la hau
 - **Tenue** : 6 tenues (veste, pantalon, casque) et 6 couleurs de skis ou de planche, au choix dans le menu avec un aperçu du personnage qui tourne et fait un grab ; gardé dans `freeride-tenue`. Aux grabs, les mains attrapent vraiment les skis ou la planche (voir les six figures ci-dessus) ; l'aperçu du menu enchaîne mute, safety, japan et truck driver.
 - **Records** dans `freeride-records`, engin choisi dans `freeride-engin`, son (vent, carres, grondement de l'avalanche) dans `freeride-son`.
 
+## Tour de contrôle
+
+Jeu de contrôle aérien vu du ciel, dans l'esprit des jeux où l'on trace la route des avions au doigt (dessins, aérodromes et textes originaux).
+
+- **Le but** : des appareils entrent par les bords (un **!** de leur couleur annonce d'où, 2,5 s avant). On pose le doigt sur un appareil et on trace sa route ; il la suit à vitesse constante. Arrivée au **seuil de la piste de sa couleur, dans le sens des flèches** (ou sur l'hélistation, de n'importe quel côté), la route s'allume de la couleur de l'appareil : il se posera tout seul (il ralentit et rapetisse sur la piste), +1. Sans route, un appareil va tout droit et fait demi-tour au bord de l'écran. On peut retracer une route à tout moment et guider plusieurs appareils avec plusieurs doigts.
+- **Appareils** (`TYPES`) : jets rouges (rapides, grande piste rouge), avions légers jaunes (petite piste jaune), hélicoptères bleus (lents, hélistation H), hydravions verts (plan d'eau entre les bouées, au Lac).
+- **Danger** : deux appareils trop proches (moins de 2,4 fois leurs rayons) sont entourés d'un cercle rouge, avec un bip ; s'ils se touchent, collision : la partie s'arrête.
+- **Difficulté** : un appareil toutes les 7 s au début, de plus en plus souvent jusqu'à toutes les 2,6 s (vers 3 min). ⏩ double la vitesse, ⏸ pause (aussi quand on quitte l'application). Un mot d'encouragement tous les 10 appareils posés.
+- **Aérodromes** (`CARTES`, monde de 1 200 × 750, tourné d'un quart de tour en portrait) : La Vallée (champs, deux pistes, une hélistation), Le Porte-avions (en mer, pistes sur le pont du navire), L'Altiport (montagne enneigée, petite piste en pente et grande piste dans la vallée), Le Lac (hydravions en plus).
+- **Records** par aérodrome dans `tour-records` (meilleur score, parties, total ; `dernier` pour l'accueil), son dans `tour-son`.
+
 ## Mise en ligne
 
 Le site est fait de fichiers statiques, sans installation ni compilation.
@@ -342,6 +354,7 @@ jeux/nivoculteur/      jeu Nivoculteur (page, scripts js/, CLAUDE.md)
 jeux/fusee.html        jeu Fusée Rythme
 jeux/dameuse.html      jeu Dameuse de nuit
 jeux/freeride.html     jeu Freeride
+jeux/tour.html         jeu Tour de contrôle
 logo.svg               logo (source vectorielle)
 icons/                 icônes de l'application, fichiers altitude-*.png (152, 167, 180 pour Apple ; 192, 512 et masquable pour Android)
 manifest.webmanifest   description de l'application installable
