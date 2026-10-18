@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Tir au panier · Altitude Arcade</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=91">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=91">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie (rien de flou derrière) */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --marge-haut:var(--barre-statut); }
+:root{ --encre:#1C2433; --doux:#667085; --ligne:rgba(28,36,51,.13); --orange:#F26B1D; --carte:rgba(255,255,255,.96); }
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; height:100%; overflow:hidden; background:#1B2540; color:var(--encre);
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+button{ font:inherit; color:inherit; cursor:pointer; }
+/* le dessin couvre exactement l'écran visible (sa taille est mesurée) */
+#cv{ position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; -webkit-touch-callout:none; }
+.hud{ position:fixed; left:0; right:0; top:0; padding:calc(8px + var(--marge-haut)) 10px 0; display:flex; align-items:flex-start; gap:8px; pointer-events:none; z-index:3; }
+.hud[hidden]{ display:none; }
+.pastille{ background:rgba(20,26,40,.8); color:#fff; border-radius:12px; padding:5px 12px 6px; line-height:1.05; }
+.pastille small{ display:block; font-size:.62rem; text-transform:uppercase; letter-spacing:.08em; opacity:.8; }
+.pastille b{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:1.7rem; letter-spacing:.03em; }
+.pastille.feu{ background:linear-gradient(#FF8A1E, #D7263D); }
+.hud .bouton{ pointer-events:auto; margin-left:auto; width:44px; height:44px; flex:none; border-radius:12px; border:0; background:rgba(20,26,40,.8); color:#fff; font-size:1.1rem; }
+.ecran{ position:fixed; inset:0; z-index:6; display:flex; align-items:flex-start; justify-content:center; overflow:auto;
+  padding:calc(16px + var(--marge-haut)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(244,241,234,.93); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+.ecran[hidden]{ display:none; }
+.boite{ width:min(100%, 520px); display:flex; flex-direction:column; gap:14px; }
+.tete{ display:flex; align-items:center; gap:8px; }
+.tete a, .tete button{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:12px; padding:6px 12px; font-weight:700; background:#fff; white-space:nowrap; }
+.tete .droite{ margin-left:auto; }
+h1{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:clamp(3.2rem, 15vw, 4.6rem); line-height:.85; margin:6px 0 0; letter-spacing:.01em; }
+h1 span{ color:var(--orange); }
+h2{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:2.2rem; line-height:1; margin:0; }
+.sous{ color:var(--doux); margin:4px 0 0; line-height:1.4; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:18px; padding:14px; box-shadow:0 4px 16px rgba(28,36,51,.06); }
+.carte h3{ margin:0 0 6px; font-size:.78rem; text-transform:uppercase; letter-spacing:.12em; color:var(--doux); }
+.gros{ width:100%; border:none; border-radius:16px; padding:15px; font-weight:800; font-size:1.1rem; color:#fff; background:var(--orange); box-shadow:0 8px 22px rgba(242,107,29,.3); }
+.sec{ width:100%; border:1.5px solid var(--ligne); background:#fff; border-radius:14px; padding:12px; font-weight:700; }
+.choix{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.choix button{ border:1.5px solid var(--ligne); background:#fff; border-radius:999px; padding:8px 14px; font-weight:700; }
+.choix button.actif{ border-color:var(--orange); background:rgba(242,107,29,.12); }
+.stats{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; text-align:center; }
+.stats div{ background:#fff; border:1px solid var(--ligne); border-radius:14px; padding:8px 4px; }
+.stats b{ display:block; font-family:"Bebas Neue", sans-serif; font-size:1.9rem; font-weight:400; line-height:1; }
+.stats small{ color:var(--doux); font-size:.75rem; font-weight:700; }
+.grand{ font-family:"Bebas Neue", sans-serif; font-size:4.4rem; line-height:.9; text-align:center; margin:0; color:var(--orange); }
+.grand small{ display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:.95rem; color:var(--doux); font-weight:700; }
+.centre{ text-align:center; }
+.aide p, .aide li{ line-height:1.45; } .aide ul{ padding-left:20px; margin:6px 0; }
+</style>
+</head>
+<body>
+<div class="barre-statut" aria-hidden="true"></div>
+<canvas id="cv" aria-label="Le ballon et le panier"></canvas>
+<div class="hud" id="hud" hidden>
+  <div class="pastille"><small>Score</small><b id="hScore">0</b></div>
+  <div class="pastille" id="hTempsP"><small id="hTempsN">Temps</small><b id="hTemps">60</b></div>
+  <div class="pastille" id="hSerieP"><small>Série</small><b id="hSerie">0</b></div>
+  <button class="bouton" id="bPause" aria-label="Pause">⏸</button>
+</div>
+
+<section class="ecran" id="eMenu">
+  <div class="boite">
+    <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="droite" id="bSon">🔊</button><button id="bAide">❔ Aide</button></div>
+    <div>
+      <h1>Tir au <span>panier</span></h1>
+      <p class="sous">Lancez le ballon d'un geste du doigt et marquez un maximum de paniers en 60 secondes. Le panier se met à bouger, les tirs s'allongent : visez juste !</p>
+    </div>
+    <div class="carte centre" id="mRecord"></div>
+    <button class="gros" id="bChrono">🏀 Contre la montre (60 s)</button>
+    <button class="sec" id="bLibre">Entraînement (sans chrono)</button>
+    <div class="carte">
+      <h3>Aide à la visée</h3>
+      <div class="choix" id="cTrace"></div>
+      <p class="sous" style="font-size:.85rem">La trajectoire du tir précédent reste dessinée en pointillés : on corrige plus facilement le suivant.</p>
+    </div>
+  </div>
+</section>
+
+<section class="ecran" id="eFin" hidden>
+  <div class="boite" style="margin-top:4vh">
+    <div class="carte">
+      <p class="grand" id="fScore">0<small>points</small></p>
+      <p class="centre" id="fNote" style="font-weight:800;margin:8px 0 12px"></p>
+      <div class="stats">
+        <div><b id="fPaniers">0</b><small>paniers</small></div>
+        <div><b id="fReussite">0 %</b><small>réussite</small></div>
+        <div><b id="fSerie">0</b><small>meilleure série</small></div>
+        <div><b id="fFilet">0</b><small>tout filet</small></div>
+        <div><b id="fTrois">0</b><small>à 3 points</small></div>
+        <div><b id="fRecord">0</b><small>record</small></div>
+      </div>
+    </div>
+    <button class="gros" id="bRejouer">↻ Rejouer</button>
+    <button class="sec" id="bFinMenu">Menu</button>
+  </div>
+</section>
+
+<section class="ecran" id="ePause" hidden>
+  <div class="boite" style="margin-top:16vh">
+    <p class="grand" style="color:var(--encre)">Pause</p>
+    <button class="gros" id="bReprendre">▶ Reprendre</button>
+    <button class="sec" id="bRecommencer">↻ Recommencer</button>
+    <button class="sec" id="bQuitter">Quitter</button>
+  </div>
+</section>
+
+<section class="ecran" id="eAide" hidden>
+  <div class="boite aide">
+    <div class="tete"><button id="bAideRetour">‹ Retour</button></div>
+    <h1>Com<span>ment</span> jouer</h1>
+    <div class="carte">
+      <ul>
+        <li><b>Tirer</b> : posez le doigt n'importe où, puis lancez d'un geste vif vers le panier et levez le doigt. La direction du geste donne la direction du tir, sa vitesse donne la force. Pour un tir lointain : un geste plus rapide et plus vers le haut.</li>
+        <li>Le ballon rebondit sur le cercle, la planche et le parquet, comme un vrai.</li>
+        <li><b>Points</b> : 2 points par panier, 3 derrière la ligne à 3 points (6,75 m) ; <b>+1</b> pour un panier « tout filet » (sans toucher le cercle ni la planche), qui rapporte aussi <b>2 secondes</b> de plus.</li>
+        <li><b>En feu</b> : après 3 paniers de suite, le ballon prend feu et les points comptent double, jusqu'au prochain raté.</li>
+        <li>Après chaque tir, un nouveau ballon apparaît ailleurs. Plus vous marquez, plus les tirs sont lointains, plus le panier bouge (de haut en bas, puis d'un côté à l'autre), et la couleur du fond change à chaque niveau. « 3 PTS » s'affiche au-dessus d'un ballon placé derrière la ligne des 3 points.</li>
+        <li>L'<b>aide à la visée</b> (dans le menu) garde dessinée la trajectoire du tir précédent.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const hasard = (a, b) => a + Math.random() * (b - a);
+const cv = $('cv');
+let g = cv.getContext('2d'), W = 0, Hh = 0, DPR = 1, TEMPS = 0;
+
+/* ---------- Le son ---------- */
+let son = lire('panier-son', true), AC = null;
+function bip(f, d, vol = .08, type = 'square'){
+  if(!son || window.PANIER_MUET) return;
+  try{
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), gg = AC.createGain(), t = AC.currentTime;
+    o.type = type; o.frequency.value = f; gg.gain.setValueAtTime(vol, t); gg.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(gg); gg.connect(AC.destination); o.start(t); o.stop(t + d);
+  }catch(e){}
+}
+// le filet : un souffle de bruit
+function souffle(){
+  if(!son || !AC || window.PANIER_MUET) return;
+  try{ const n = AC.sampleRate * .25, b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0); for(let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n) ** 2;
+    const s = AC.createBufferSource(), f = AC.createBiquadFilter(), gg = AC.createGain(); f.type = 'highpass'; f.frequency.value = 1500; gg.gain.value = .25; s.buffer = b; s.connect(f); f.connect(gg); gg.connect(AC.destination); s.start(); }catch(e){}
+}
+
+/* ---------- Le terrain, vu de côté ----------
+   Le monde en mètres : x vers la droite (0 = la planche du panier), y vers le haut (0 = le parquet).
+   À l'écran : la planche près du bord droit, le parquet vers le bas. */
+const V = { s:50 };
+let FY = 0, BX = 0;
+const X = x => BX + x * V.s, Y = y => FY - y * V.s;
+const portrait = () => Hh > W;
+function taille(){
+  DPR = Math.min(2, devicePixelRatio || 1); W = cv.clientWidth || innerWidth; Hh = cv.clientHeight || innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(Hh * DPR);
+  FY = Math.round(Hh * (portrait() ? .8 : .88));
+  V.s = echelleCible(); BX = W - V.s * 1.05;
+}
+const gauche = () => -BX / V.s;          // le bord gauche de l'écran, en mètres
+// la caméra : on zoome pour voir le tireur et le panier en entier (du parquet au haut de la planche)
+let HAUTZ = 100;
+function echelleCible(){
+  const xj = P ? Math.min(P.joueur.x, P.joueur.cible) : -4.6, span = 1.05 - (xj - .9);
+  return clamp(Math.min((FY - HAUTZ - 12) / 4.35, W / span), 26, 150);
+}
+function suivreCamera(dt){ V.s += (echelleCible() - V.s) * Math.min(1, dt * 3); BX = W - V.s * 1.05; }
+addEventListener('resize', taille); if(window.visualViewport) visualViewport.addEventListener('resize', taille);
+
+/* ---------- Le décor : un fond uni, qui change de couleur à chaque niveau ---------- */
+const FONDS = [['#2B3A67', '#1E2A4D'], ['#1F6F5C', '#154F42'], ['#7A3B69', '#5A2A4D'], ['#B5562C', '#8A3F1F'], ['#2E4057', '#1F2C3D'], ['#5C3D99', '#432B72'], ['#2F7F9E', '#215C73']];
+function decor(){
+  const [fond, sol] = FONDS[(P ? P.niveau : 0) % FONDS.length];
+  g.fillStyle = fond; g.fillRect(0, 0, W, Hh);
+  // le score, en grand et en transparence, au milieu
+  if(P){ g.fillStyle = 'rgba(255,255,255,.08)'; g.font = `400 ${Math.round(Math.min(W, Hh) * .45)}px "Bebas Neue", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(P.score, W / 2, (HAUTZ + FY) / 2); g.textAlign = 'left'; g.textBaseline = 'alphabetic'; }
+  g.fillStyle = sol; g.fillRect(0, FY, W, Hh - FY);
+}
+
+/* ---------- Le panier : planche, cercle, filet ; il bouge avec le niveau ---------- */
+const R = .12;                        // le rayon du ballon (en m)
+const H = { x:0, y:3.05, filet:0 };   // x : la planche ; y : la hauteur du cercle
+const CERCLE = { av:-.6, ar:-.15 };   // l'avant et l'arrière du cercle, par rapport à la planche
+const centreCercle = () => H.x + (CERCLE.av + CERCLE.ar) / 2;
+let AIMANT = 9;
+function bougerPanier(t){
+  const n = P.niveau;
+  H.y = 3.05 + (n >= 1 ? Math.sin(t * (.6 + n * .15)) * Math.min(.7, .3 + n * .12) : 0);
+  H.x = n >= 3 ? -(1 + Math.sin(t * (.35 + n * .05))) * Math.min(1.4, .5 + (n - 3) * .25) : 0;
+}
+function dessinPanier(){
+  // la planche (vue de côté : une plaque fine) et son petit support
+  g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = V.s * .06; g.lineCap = 'round'; g.beginPath(); g.moveTo(X(H.x), Y(H.y + .35)); g.lineTo(X(H.x + .45), Y(H.y + .35)); g.stroke();
+  g.fillStyle = '#FFFFFF'; g.fillRect(X(H.x) - V.s * .035, Y(H.y + .95), V.s * .07, V.s * 1.1);
+}
+function dessinCercle(devant){
+  const xa = X(H.x + CERCLE.av), xr = X(H.x + CERCLE.ar), y = Y(H.y);
+  if(!devant){
+    // le filet : des mailles, qui se balancent quand le ballon passe
+    const bas = Y(H.y - .45), r0 = (xr - xa) / 2, cx = (xa + xr) / 2, f = H.filet;
+    g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = Math.max(1, V.s * .02);
+    for(let k = 0; k <= 6; k++){ const u = k / 6, xt = xa + (xr - xa) * u, xb = cx - r0 * .62 + r0 * 1.24 * u + Math.sin(TEMPS * 18 + k) * f * V.s * .06;
+      g.beginPath(); g.moveTo(xt, y); g.quadraticCurveTo((xt + xb) / 2 + f * V.s * .05, (y + bas) / 2 + f * V.s * .1, xb, bas + f * V.s * .12); g.stroke(); }
+    for(let k = 1; k <= 3; k++){ const v = k / 3.4, yy = y + (bas - y) * v + f * V.s * .1 * v, rr = r0 * (1 - .38 * v); g.beginPath(); g.moveTo(cx - rr, yy); g.lineTo(cx + rr, yy); g.stroke(); }
+    // l'arrière du cercle (derrière le ballon)
+    g.strokeStyle = '#B9450C'; g.lineWidth = Math.max(2, V.s * .05); g.beginPath(); g.ellipse((xa + xr) / 2, y, (xr - xa) / 2, V.s * .06, 0, Math.PI, 2 * Math.PI); g.stroke();
+    g.beginPath(); g.moveTo(xr, y); g.lineTo(X(H.x), y); g.stroke();
+  } else {
+    g.strokeStyle = '#F26B1D'; g.lineWidth = Math.max(2.5, V.s * .06); g.beginPath(); g.ellipse((xa + xr) / 2, y, (xr - xa) / 2, V.s * .06, 0, 0, Math.PI); g.stroke();
+  }
+}
+
+/* ---------- Le ballon ---------- */
+function dessinBallon(b){
+  const x = X(b.x), y = Y(b.y), r = R * V.s;
+  // l'ombre sur le parquet
+  const k = clamp(1 - b.y / 5, .2, 1); g.fillStyle = `rgba(0,0,0,${.25 * k * b.alpha})`; g.beginPath(); g.ellipse(x, Y(0) + 3, r * 1.1 * k, r * .25 * k, 0, 0, 6.29); g.fill();
+  g.save(); g.globalAlpha = b.alpha;
+  if(b.feu){ for(let i = 0; i < 6; i++){ const a = Math.random() * 6.28, d = r * hasard(.6, 1.3); g.fillStyle = `rgba(255,${Math.round(hasard(80, 200))},20,${hasard(.3, .7)})`; g.beginPath(); g.arc(x - b.vx * .012 * V.s * Math.random() + Math.cos(a) * d * .5, y + b.vy * .012 * V.s * Math.random() + Math.sin(a) * d * .5 - r * .3, r * hasard(.3, .7), 0, 6.29); g.fill(); } }
+  const gr = g.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r); gr.addColorStop(0, '#FFA65C'); gr.addColorStop(.7, '#E8681E'); gr.addColorStop(1, '#A8430C');
+  g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.29); g.fill();
+  // les coutures, qui tournent avec le ballon
+  g.save(); g.beginPath(); g.arc(x, y, r, 0, 6.29); g.clip(); g.translate(x, y); g.rotate(b.rot);
+  g.strokeStyle = 'rgba(30,15,5,.8)'; g.lineWidth = Math.max(1, r * .1);
+  g.beginPath(); g.moveTo(-r, 0); g.lineTo(r, 0); g.moveTo(0, -r); g.lineTo(0, r); g.stroke();
+  g.beginPath(); g.ellipse(-r * 1.05, 0, r * .55, r * 1.1, 0, -1.2, 1.2); g.stroke(); g.beginPath(); g.ellipse(r * 1.05, 0, r * .55, r * 1.1, 0, Math.PI - 1.2, Math.PI + 1.2); g.stroke();
+  g.restore(); g.restore();
+}
+// le choc du ballon contre un point (le cercle) ou un segment (la planche) : il rebondit
+function choc(b, px, py, rad, e, quoi){
+  const dx = b.x - px, dy = b.y - py, d = Math.hypot(dx, dy), m = R + rad;
+  if(d >= m || d < 1e-6) return false;
+  const nx = dx / d, ny = dy / d; b.x = px + nx * m; b.y = py + ny * m;
+  const vn = b.vx * nx + b.vy * ny;
+  if(vn < 0){ const tx = -ny, ty = nx, vt = b.vx * tx + b.vy * ty;
+    b.vx = -vn * e * nx + vt * .88 * tx; b.vy = -vn * e * ny + vt * .88 * ty; b.w = vt / R;
+    if(-vn > .8){ b.touche = true; if(TEMPS - (b.dernierSon || 0) > .08){ b.dernierSon = TEMPS; quoi === 'cercle' ? bip(380 + Math.random() * 80, .07, .07, 'triangle') : bip(140, .06, .09, 'triangle'); } } }
+  return true;
+}
+function chocSegment(b, ax, ay, bx, by, rad, e, quoi){
+  const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy, u = clamp(((b.x - ax) * dx + (b.y - ay) * dy) / L2, 0, 1);
+  return choc(b, ax + dx * u, ay + dy * u, rad, e, quoi);
+}
+function pas(b, h){
+  b.vy -= 9.81 * h; b.vx *= 1 - .03 * h; b.vy *= 1 - .03 * h;
+  const y0 = b.y; b.x += b.vx * h; b.y += b.vy * h; b.rot += b.w * h;
+  // un petit coup de pouce : le ballon qui retombe juste au-dessus du cercle est un peu attiré vers le milieu
+  if(b.vy < 0 && b.y > H.y && b.y < H.y + .9 && Math.abs(b.x - centreCercle()) < .55) b.vx += (centreCercle() - b.x) * AIMANT * h;
+  // le cercle (deux points vus de côté), la planche, le bras de la planche
+  choc(b, H.x + CERCLE.av, H.y, .022, .55, 'cercle'); choc(b, H.x + CERCLE.ar, H.y, .022, .55, 'cercle');
+  chocSegment(b, H.x + CERCLE.ar, H.y, H.x, H.y, .02, .55, 'cercle');
+  chocSegment(b, H.x, H.y - .15, H.x, H.y + .95, .035, .62, 'planche');
+  // le panier : le centre du ballon passe le cercle en descendant, entre l'avant et l'arrière
+  if(!b.compte && y0 >= H.y && b.y < H.y && b.vy < 0 && b.x > H.x + CERCLE.av + .03 && b.x < H.x + CERCLE.ar - .03) panier(b);
+  // dans le filet : il freine le ballon et le recentre
+  if(b.compte && b.y < H.y && b.y > H.y - .5 && Math.abs(b.x - centreCercle()) < .3){ b.vx += (centreCercle() - b.x) * 20 * h; b.vx *= 1 - 6 * h; b.vy *= 1 - 4 * h; }
+  // le parquet
+  if(b.y < R){ b.y = R; if(b.vy < 0){ if(b.vy < -1.2) bip(90, .06, .1, 'sine'); b.vy = -b.vy * .74; b.vx *= .86; b.w = b.vx / R; if(b.vy < .5) b.vy = 0; } }
+}
+
+/* ---------- La partie ---------- */
+// P : la partie en cours ; mode 'chrono' (60 s) ou 'libre'
+let P = null, jeu = false;
+const REC = lire('panier-records', { best:0, parties:0, paniers:0 });
+let trace = lire('panier-trace', true);
+function nouvellePartie(mode){
+  P = { mode, score:0, temps:mode === 'chrono' ? 60 : Infinity, paniers:0, tirs:0, serie:0, serieMax:0, filets:0, trois:0, niveau:0, feu:false,
+    balles:[], joueur:{ x:-4.6, cible:-4.6, y:1.8, pret:false, app:0 }, textes:[], decompte:mode === 'chrono' ? 3.2 : .01, t:0, fini:false, finT:0, dernierTrace:[], traceEnCours:null, astuce:!REC.parties };
+  placerJoueur(true);
+  jeu = true; cacherTout(); $('hud').hidden = false; $('hTempsP').hidden = mode !== 'chrono'; majHud();
+  HAUTZ = $('hud').getBoundingClientRect().bottom + (portrait() ? 30 : 6); V.s = echelleCible(); BX = W - V.s * 1.05;
+  if(AC && AC.state === 'suspended') AC.resume();
+}
+// le ballon suivant apparaît ailleurs : de plus en plus loin (et plus ou moins haut) quand on marque
+function placerJoueur(debut){
+  // la distance au panier : de 1,9 m au début jusqu'à 8 m (la caméra recule pour tout montrer)
+  const J = P.joueur, loin = Math.min(8, 3.4 + P.paniers * .22), pres = 1.9 + Math.min(1.5, P.paniers * .05);
+  let x = J.x;
+  for(let n = 0; n < 20 && (debut ? n < 1 : Math.abs(x - J.x) < .8); n++) x = centreCercle() - hasard(pres, Math.max(pres + .5, loin));
+  J.x = J.cible = x; J.y = debut ? 1.8 : hasard(1, Math.min(2.9, 1.6 + P.paniers * .08)); J.pret = false; J.app = 0;
+}
+const mains = J => ({ x:J.x, y:J.y });
+function tirer(vx, vy){
+  const J = P.joueur; if(!J.pret || P.fini || P.decompte > 0 || !isFinite(vx) || !isFinite(vy)) return;
+  const m = mains(J);
+  // l'aide au tir (comme dans les jeux d'arcade) : si la force est à peu près bonne pour l'angle choisi, elle est corrigée en partie
+  const th = Math.atan2(vy, vx), v0 = Math.hypot(vx, vy), dx = centreCercle() - m.x, dy = H.y + .08 - m.y, den = 2 * Math.cos(th) ** 2 * (dx * Math.tan(th) - dy);
+  if(den > 0 && Math.cos(th) > 0){ const vi = Math.sqrt(9.81 * dx * dx / den), e = v0 / vi - 1;
+    if(Math.abs(e) < .35){ const k = clamp(.78 - P.niveau * .05, .45, .78) * (1 - Math.abs(e) / .35 * .5), v1 = v0 + (vi - v0) * k; vx = Math.cos(th) * v1; vy = Math.sin(th) * v1; } }
+  const b = { x:m.x, y:m.y, vx, vy, rot:0, w:-vx / R * .3, touche:false, compte:false, depart:J.x, age:0, alpha:1, feu:P.feu, chemin:[[m.x, m.y]] };
+  P.balles.push(b); P.tirs++; J.pret = false; J.app = 0; P.traceEnCours = b; P.astuce = false;
+  bip(220, .05, .05, 'sine');
+  J.attente = .45;   // puis le ballon suivant apparaît ailleurs
+}
+const troisPoints = b => centreCercle() - b.depart > 6.75;
+function panier(b){
+  b.compte = true; P.paniers++; P.serie++; P.serieMax = Math.max(P.serieMax, P.serie); H.filet = 1;
+  const filet = !b.touche, trois = troisPoints(b);
+  let pts = (trois ? 3 : 2) + (filet ? 1 : 0); if(P.feu) pts *= 2;
+  P.score += pts; if(filet){ P.filets++; if(P.mode === 'chrono') P.temps += 2; } if(trois) P.trois++;
+  if(P.serie === 3 && !P.feu){ P.feu = true; dire('EN FEU ! 🔥', 'points doublés', '#FF8A1E'); bip(660, .1, .06); bip(880, .15, .06); }
+  dire(`+${pts}`, filet ? 'tout filet !' + (P.mode === 'chrono' ? ' +2 s' : '') : trois ? '3 points' : '', filet ? '#2EBE64' : '#FFFFFF', X(centreCercle()), Y(H.y + .9));
+  souffle(); bip(filet ? 1046 : 784, .12, .05, 'sine');
+  P.niveau = Math.floor(P.paniers / 6);
+  majHud();
+}
+function rate(b){ if(b.compte || b.rate) return; b.rate = true; if(P.serie || P.feu){ P.serie = 0; if(P.feu) dire('Le feu s\'éteint', '', '#9AA3AF'); P.feu = false; majHud(); } }
+// les textes qui apparaissent (points, séries)
+function dire(t, sous, coul = '#fff', x = W / 2, y = Hh * .35){ P.textes.push({ t, sous, coul, x, y, vie:1.3 }); }
+function majHud(){
+  $('hScore').textContent = P.score; $('hTemps').textContent = P.mode === 'chrono' ? Math.ceil(Math.max(0, P.temps)) : '∞';
+  $('hSerie').textContent = P.serie + (P.feu ? ' 🔥' : ''); $('hSerieP').classList.toggle('feu', P.feu);
+}
+function majPartie(dt){
+  P.t += dt; bougerPanier(P.t); H.filet = Math.max(0, H.filet - dt * 1.5);
+  if(P.decompte > 0){ const avant = Math.ceil(P.decompte); P.decompte -= dt; if(Math.ceil(P.decompte) !== avant && P.decompte > 0) bip(520, .1, .07); if(P.decompte <= 0 && P.mode === 'chrono'){ bip(1040, .3, .08); } }
+  else if(P.mode === 'chrono' && !P.fini){ const avant = Math.ceil(P.temps); P.temps -= dt; if(Math.ceil(P.temps) !== avant){ majHud(); if(P.temps < 5.5 && P.temps > 0) bip(700, .05, .05); }
+    if(P.temps <= 0){ P.temps = 0; P.fini = true; bip(160, .9, .12, 'sawtooth'); dire('FIN !', '', '#fff'); majHud(); } }
+  // le ballon suivant : il apparaît (en grossissant), puis on peut le lancer
+  const J = P.joueur;
+  if(J.attente > 0){ J.attente -= dt; if(J.attente <= 0 && !P.fini) placerJoueur(false); }
+  else if(J.app < 1){ J.app = Math.min(1, J.app + dt * 5); if(J.app >= 1 && !P.fini) J.pret = true; }
+  // les ballons
+  for(const b of P.balles){
+    for(let k = 0; k < 8; k++) pas(b, dt / 8);
+    b.age += dt; if(b === P.traceEnCours && b.age < 3 && !b.sol) b.chemin.push([b.x, b.y]);
+    if(b.y <= R + .01 && Math.abs(b.vy) < .1) b.sol = true;
+    if(b.sol || b.age > 3.5 || b.x < gauche() - 1 || b.x > 2.5){ if(!b.compte) rate(b); }
+    if(b.age > 3.5 || b.x < gauche() - 1) b.alpha -= dt * 2;
+  }
+  // la trace du dernier tir (pour l'aide à la visée)
+  if(P.traceEnCours && (P.traceEnCours.sol || P.traceEnCours.age > 2.5 || P.traceEnCours.compte && P.traceEnCours.y < H.y - .5)){ P.dernierTrace = P.traceEnCours.chemin; P.traceEnCours = null; }
+  P.balles = P.balles.filter(b => b.alpha > 0);
+  P.textes = P.textes.filter(t => (t.vie -= dt) > 0);
+  if(P.fini){ P.finT += dt; if(P.finT > 2.2 && !P.balles.some(b => b.age < 2.5)) finPartie(); }
+}
+function dessinPartie(){
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  decor();
+  dessinPanier();
+  dessinCercle(false);
+  // la trace du tir précédent
+  if(trace && P.dernierTrace.length > 2){ g.strokeStyle = 'rgba(255,255,255,.45)'; g.lineWidth = 2; g.setLineDash([5, 7]); g.beginPath(); P.dernierTrace.forEach(([x, y], i) => i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y))); g.stroke(); g.setLineDash([]); }
+  // le ballon à lancer : il flotte, entouré d'un cercle qui palpite ; « 3 PTS » quand il est loin
+  const J = P.joueur, m = mains(J);
+  if(J.attente <= 0 && !P.fini){ const k = J.app, ry = Math.sin(TEMPS * 3) * .03;
+    if(J.pret){ g.strokeStyle = `rgba(255,255,255,${.25 + .2 * Math.sin(TEMPS * 6)})`; g.lineWidth = 2; g.beginPath(); g.arc(X(m.x), Y(m.y + ry), R * V.s * (1.6 + .15 * Math.sin(TEMPS * 6)), 0, 6.29); g.stroke(); }
+    g.save(); g.translate(X(m.x), Y(m.y + ry)); g.scale(k, k); g.translate(-X(m.x), -Y(m.y + ry));
+    dessinBallon({ x:m.x, y:m.y + ry, rot:0, alpha:1, feu:P.feu, vx:0, vy:0 }); g.restore();
+    if(J.pret && centreCercle() - J.x > 6.75){ g.fillStyle = '#F2C230'; g.font = `800 ${Math.round(clamp(V.s * .28, 11, 16))}px "Bricolage Grotesque", sans-serif`; g.textAlign = 'center'; g.fillText('3 PTS', X(m.x), Y(m.y) - R * V.s * 2.2); g.textAlign = 'left'; } }
+  for(const b of P.balles) dessinBallon(b);
+  dessinCercle(true);
+  // le décompte, l'astuce, les textes
+  if(P.decompte > 0 && P.mode === 'chrono') texte(String(Math.ceil(P.decompte)), '', W / 2, Hh * .4, 1, '#fff', 110);
+  if(P.astuce && J.pret && P.decompte <= 0) astuce(m);
+  for(const t of P.textes) texte(t.t, t.sous, t.x, t.y - (1.3 - t.vie) * 50, Math.min(1, t.vie * 2), t.coul, 60);
+}
+function texte(t, sous, x, y, a, coul, taille){
+  g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.font = `400 ${taille}px "Bebas Neue", sans-serif`; g.lineWidth = 6; g.strokeStyle = 'rgba(10,15,30,.7)'; g.strokeText(t, x, y); g.fillStyle = coul; g.fillText(t, x, y);
+  if(sous){ g.font = '800 17px "Bricolage Grotesque", sans-serif'; g.lineWidth = 4; g.strokeText(sous, x, y + 26); g.fillStyle = '#fff'; g.fillText(sous, x, y + 26); }
+  g.restore();
+}
+// la première fois : un doigt montre le geste (du ballon vers le haut, en direction du panier)
+function astuce(m){
+  const k = (TEMPS % 1.6) / 1.1, x0 = X(m.x) + 20, y0 = Y(m.y) + 70, x1 = x0 + V.s * 1.6, y1 = y0 - V.s * 2.4;
+  if(k <= 1){ const x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k;
+    g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 4; g.setLineDash([6, 6]); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x, y); g.stroke(); g.setLineDash([]);
+    g.font = '40px sans-serif'; g.textAlign = 'center'; g.fillText('👆', x, y + 20); g.textAlign = 'left'; }
+  texte('Lancez d\'un geste vers le panier', 'posez le doigt, glissez vite, levez le doigt', W / 2, HAUTZ + 30, 1, '#F2C230', portrait() ? 34 : 28);
+}
+function finPartie(){
+  jeu = false; $('hud').hidden = true;
+  const nouveau = P.mode === 'chrono' && P.score > REC.best;
+  if(P.mode === 'chrono'){ REC.parties++; REC.paniers += P.paniers; if(nouveau) REC.best = P.score; REC.dernier = { score:P.score, paniers:P.paniers }; ecrire('panier-records', REC); }
+  $('fScore').innerHTML = `${P.score}<small>points${P.mode === 'libre' ? ' (entraînement)' : ''}</small>`;
+  $('fNote').textContent = nouveau ? '🏆 Nouveau record !' : P.mode === 'chrono' ? `Record : ${REC.best} points` : '';
+  $('fPaniers').textContent = P.paniers; $('fReussite').textContent = P.tirs ? Math.round(P.paniers / P.tirs * 100) + ' %' : '–';
+  $('fSerie').textContent = P.serieMax; $('fFilet').textContent = P.filets; $('fTrois').textContent = P.trois; $('fRecord').textContent = REC.best;
+  cacherTout(); $('eFin').hidden = false;
+}
+
+/* ---------- Le geste : poser le doigt, glisser vite, lever ---------- */
+let geste = null;
+cv.addEventListener('pointerdown', e => { if(!jeu || !P || $('ePause').hidden === false) return; e.preventDefault(); geste = { id:e.pointerId, pts:[[e.clientX, e.clientY, performance.now()]] }; try{ cv.setPointerCapture(e.pointerId); }catch(err){} if(AC && AC.state === 'suspended') AC.resume(); });
+cv.addEventListener('pointermove', e => { if(geste && e.pointerId === geste.id){ geste.pts.push([e.clientX, e.clientY, performance.now()]); if(geste.pts.length > 40) geste.pts.shift(); } });
+function finGeste(e){
+  if(!geste || e.pointerId !== geste.id) return;
+  const pts = geste.pts, t1 = performance.now(), der = pts[pts.length - 1]; geste = null;
+  if(e.clientX !== der[0] || e.clientY !== der[1]) pts.push([e.clientX, e.clientY, t1]);
+  // la vitesse du doigt à la fin du geste : depuis le dernier point vieux d'au moins 45 ms
+  const b = pts[pts.length - 1]; let a = pts[0];
+  for(const p of pts) if(b[2] - p[2] >= 45) a = p;
+  const dt = Math.max(16, b[2] - a[2]) / 1000, vx = (b[0] - a[0]) / dt, vy = (b[1] - a[1]) / dt, v = Math.hypot(vx, vy);
+  if(v < 300 || Math.hypot(b[0] - pts[0][0], b[1] - pts[0][1]) < 25) return;
+  if(vy > 0) return;   // un geste vers le bas ne tire pas
+  const vit = clamp(v * .0056, 3, 15.5);
+  tirer(vx / v * vit, -vy / v * vit);
+}
+cv.addEventListener('pointerup', finGeste); cv.addEventListener('pointercancel', () => { geste = null; });
+
+/* ---------- La boucle, les menus ---------- */
+let avant = performance.now();
+function boucle(now){
+  requestAnimationFrame(boucle);
+  const dt = Math.min(.05, (now - avant) / 1000); avant = now; TEMPS = now / 1000;
+  if(jeu && P){ if($('ePause').hidden){ majPartie(dt); suivreCamera(dt); } dessinPartie(); }
+  else if(!$('eMenu').hidden && !P){ g.setTransform(DPR, 0, 0, DPR, 0, 0); V.s = echelleCible(); BX = W - V.s * 1.05; decor(); dessinPanier(); dessinCercle(false); dessinCercle(true); }
+}
+function cacherTout(){ ['eMenu', 'eFin', 'ePause', 'eAide'].forEach(id => $(id).hidden = true); }
+function menu(){
+  jeu = false; P = null; H.x = 0; H.y = 3.05; $('hud').hidden = true;
+  $('mRecord').innerHTML = REC.parties ? `<b style="font-size:1.6rem;font-family:'Bebas Neue',sans-serif;font-weight:400">Record : ${REC.best} points</b><br><small class="sous">${REC.parties} partie${REC.parties > 1 ? 's' : ''} · ${REC.paniers} paniers en tout</small>` : '<b>Pas encore de record</b><br><small class="sous">60 secondes pour marquer un maximum de points.</small>';
+  $('cTrace').innerHTML = `<button data-t="1" class="${trace ? 'actif' : ''}">Trace du tir précédent</button><button data-t="0" class="${!trace ? 'actif' : ''}">Sans aide</button>`;
+  $('bSon').textContent = son ? '🔊' : '🔇';
+  cacherTout(); $('eMenu').hidden = false;
+}
+$('cTrace').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; trace = b.dataset.t === '1'; ecrire('panier-trace', trace); menu(); });
+$('bChrono').onclick = () => nouvellePartie('chrono');
+$('bLibre').onclick = () => nouvellePartie('libre');
+$('bRejouer').onclick = () => nouvellePartie(P ? P.mode : 'chrono');
+$('bFinMenu').onclick = menu;
+function pause(){ if(!jeu || !P) return; if(P.mode === 'libre'){ $('bQuitter').textContent = 'Terminer'; } else $('bQuitter').textContent = 'Quitter'; $('ePause').hidden = false; }
+$('bPause').onclick = pause;
+$('bReprendre').onclick = () => { $('ePause').hidden = true; avant = performance.now(); };
+$('bRecommencer').onclick = () => nouvellePartie(P.mode);
+$('bQuitter').onclick = () => { if(P && P.mode === 'libre'){ $('ePause').hidden = true; finPartie(); } else menu(); };
+$('bAide').onclick = () => { cacherTout(); $('eAide').hidden = false; };
+$('bAideRetour').onclick = menu;
+$('bSon').onclick = () => { son = !son; ecrire('panier-son', son); $('bSon').textContent = son ? '🔊' : '🔇'; };
+addEventListener('keydown', e => { if(e.code === 'Escape' || e.code === 'KeyP') pause(); });
+document.addEventListener('visibilitychange', () => { if(document.hidden && jeu) pause(); });
+
+taille(); menu(); requestAnimationFrame(boucle);
+
+/* ---------- Pour les essais automatiques : un tir simulé (sans dessin) ----------
+   Panier.tir(x, vx, vy) : part de (x, 2.32), renvoie 'panier', 'filet' ou 'rate'. */
+window.Panier = {
+  tir(x, vx, vy, hy = 3.05){
+    const b = { x:x + .18, y:2.32, vx, vy, rot:0, w:0, touche:false, compte:false, depart:x, age:0, alpha:1 };
+    const sauve = { ...H }; H.x = 0; H.y = hy; window.PANIER_MUET = true;
+    for(let n = 0; n < 240 * 4 && b.y > -1 && !b.compte; n++) pasTest(b, 1 / 240);
+    H.x = sauve.x; H.y = sauve.y; window.PANIER_MUET = false;
+    return b.compte ? (b.touche ? 'panier' : 'filet') : 'rate';
+  },
+  get P(){ return P; }, nouvellePartie, tirer, centreCercle, set aimant(v){ AIMANT = v; }, pas:dt => majPartie(dt)
+};
+// le même pas que pas(), mais sans compter de points (pour les essais)
+function pasTest(b, h){
+  b.vy -= 9.81 * h; b.vx *= 1 - .03 * h; b.vy *= 1 - .03 * h;
+  if(b.vy < 0 && b.y > H.y && b.y < H.y + .9 && Math.abs(b.x - centreCercle()) < .55) b.vx += (centreCercle() - b.x) * AIMANT * h;
+  const y0 = b.y; b.x += b.vx * h; b.y += b.vy * h;
+  choc(b, H.x + CERCLE.av, H.y, .022, .55, 'cercle'); choc(b, H.x + CERCLE.ar, H.y, .022, .55, 'cercle');
+  chocSegment(b, H.x + CERCLE.ar, H.y, H.x, H.y, .02, .55, 'cercle'); chocSegment(b, H.x, H.y - .15, H.x, H.y + .95, .035, .62, 'planche');
+  if(!b.compte && y0 >= H.y && b.y < H.y && b.vy < 0 && b.x > H.x + CERCLE.av + .03 && b.x < H.x + CERCLE.ar - .03) b.compte = true;
+  if(b.y < R){ b.y = R; if(b.vy < 0){ b.vy = -b.vy * .74; b.vx *= .86; } }
+}
+
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
+})();
+</script>
+</body>
+</html>
