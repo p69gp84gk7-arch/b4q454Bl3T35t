@@ -57,6 +57,34 @@ function preparerFond(dom){
   // la forêt
   for(const [x, y, r] of dom.sapins){ f.fillStyle = 'rgba(60,80,110,.18)'; f.beginPath(); f.arc(x + .8, y + .8, r, 0, 6.29); f.fill(); }
   for(const [x, y, r] of dom.sapins){ f.fillStyle = '#2C5C46'; f.beginPath(); f.arc(x, y, r, 0, 6.29); f.fill(); f.fillStyle = '#3B7A5D'; f.beginPath(); f.arc(x - r * .25, y - r * .25, r * .55, 0, 6.29); f.fill(); }
+  // le télésiège, à l'arrêt : la saignée dans la forêt, les gares, les pylônes, le câble et les sièges immobiles
+  const T = dom.telesiege;
+  if(T){
+    const ux = (T.haut.x - T.bas.x) / T.longueur, uy = (T.haut.y - T.bas.y) / T.longueur, nx = -uy, ny = ux, e = 2.2;
+    f.lineCap = 'butt';
+    for(const s of [-e, e]){
+      f.strokeStyle = 'rgba(40,55,80,.18)'; f.lineWidth = .35; f.beginPath(); f.moveTo(T.bas.x + nx * s + 1.5, T.bas.y + ny * s + 1.5); f.lineTo(T.haut.x + nx * s + 1.5, T.haut.y + ny * s + 1.5); f.stroke();
+    }
+    for(const p of T.pylones){ f.fillStyle = 'rgba(40,55,80,.25)'; f.fillRect(p.x + .6, p.y + .6, 1.6, 1.6); f.fillStyle = '#5E6B80'; f.fillRect(p.x - .8, p.y - .8, 1.6, 1.6);
+      f.strokeStyle = '#4A566A'; f.lineWidth = .7; f.beginPath(); f.moveTo(p.x - nx * (e + .9), p.y - ny * (e + .9)); f.lineTo(p.x + nx * (e + .9), p.y + ny * (e + .9)); f.stroke(); }
+    for(const s of [-e, e]){ f.strokeStyle = '#3E4A5E'; f.lineWidth = .3; f.beginPath(); f.moveTo(T.bas.x + nx * s, T.bas.y + ny * s); f.lineTo(T.haut.x + nx * s, T.haut.y + ny * s); f.stroke(); }
+    for(let d = 9, k = 0; d < T.longueur - 9; d += 11, k++){
+      const s = k % 2 ? e : -e, x = T.bas.x + ux * d + nx * s, y = T.bas.y + uy * d + ny * s;
+      f.fillStyle = 'rgba(40,55,80,.22)'; f.fillRect(x - .2, y + .6, 2.2, 1.1);
+      f.fillStyle = k % 3 ? '#C7362B' : '#2F6FD0'; f.save(); f.translate(x, y); f.rotate(Math.atan2(uy, ux) + Math.PI / 2); f.fillRect(-1.1, -.55, 2.2, 1.1); f.restore();
+    }
+    for(const [G, nom] of [[T.bas, 'GARE AVAL'], [T.haut, 'GARE AMONT']]){
+      f.fillStyle = 'rgba(40,55,80,.3)'; f.beginPath(); f.arc(G.x + 1, G.y + 1, 4.4, 0, 6.29); f.fill();
+      f.fillStyle = '#8796AD'; f.beginPath(); f.arc(G.x, G.y, 4.4, 0, 6.29); f.fill();
+      f.strokeStyle = '#3E4A5E'; f.lineWidth = .5; f.beginPath(); f.arc(G.x, G.y, e, 0, 6.29); f.stroke();
+      f.font = '700 3px "Bricolage Grotesque", sans-serif'; f.textAlign = 'center'; f.lineWidth = 1.4; f.strokeStyle = 'rgba(255,255,255,.85)';
+      const ty = G === T.haut ? G.y + 8.5 : G.y - 6.5; f.strokeText(nom, G.x, ty); f.fillStyle = '#3E4A5E'; f.fillText(nom, G.x, ty);
+    }
+    const m = T.pylones[Math.floor(T.pylones.length / 2)] || T.bas;
+    f.save(); f.translate(m.x + nx * 7, m.y + ny * 7); f.rotate(Math.atan2(uy, ux) + (uy < 0 ? Math.PI / 2 : -Math.PI / 2));
+    f.font = '700 3.4px "Bricolage Grotesque", sans-serif'; f.textAlign = 'center'; f.lineWidth = 1.4; f.strokeStyle = 'rgba(255,255,255,.85)'; f.strokeText('Télésiège (à l\'arrêt)', 0, 0); f.fillStyle = '#3E4A5E'; f.fillText('Télésiège (à l\'arrêt)', 0, 0);
+    f.restore();
+  }
   // noms des pistes, en haut
   for(const p of dom.pistes){
     const [x, y] = p.points[2];
