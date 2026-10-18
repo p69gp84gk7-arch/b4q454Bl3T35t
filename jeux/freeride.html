@@ -51,6 +51,14 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 .schema span{ border:1px solid var(--ligne); border-radius:6px; padding:9px 2px; background:rgba(31,111,224,.06); }
 .schema .bas{ background:rgba(255,106,43,.1); }
 .schema .vide{ border:0; background:none; }
+.reglage{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin:8px 0 4px; }
+.reglage select{ width:100%; min-width:0; font:inherit; font-size:.8rem; font-weight:700; color:var(--encre); border:1.5px solid var(--ligne); border-radius:10px; padding:10px 14px 10px 4px; text-align:center; text-align-last:center;
+  -webkit-appearance:none; appearance:none; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0h10L5 6z' fill='%235A6B85'/%3E%3C/svg%3E") no-repeat right 6px center; }
+.reglage .bas{ grid-column:1 / -1; text-align:center; font-size:.78rem; font-weight:700; color:#5A6B85; border:1.5px dashed var(--ligne); border-radius:10px; padding:8px; }
+.catalogue{ margin:6px 0 0; padding-left:18px; font-size:.86rem; line-height:1.35; }
+.catalogue li{ margin:3px 0; }
+.coche{ display:flex; gap:10px; align-items:center; font-weight:600; margin:4px 0 10px; }
+.coche input{ width:22px; height:22px; accent-color:#FF6A2B; }
 .aide-doigt{ position:fixed; left:50%; transform:translateX(-50%); width:min(88vw, 420px); bottom:calc(24px + env(safe-area-inset-bottom, 0px)); z-index:3; text-align:center; pointer-events:none; color:var(--encre); font-weight:600; font-size:.86rem; line-height:1.35; background:rgba(255,255,255,.88); border:1px solid var(--ligne); border-radius:12px; padding:7px 10px; transition:opacity .6s; }
 
 /* Écrans */
@@ -58,8 +66,8 @@ button{ font:inherit; color:inherit; cursor:pointer; }
   padding:calc(16px + var(--marge-haut)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:rgba(233,241,250,.86); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
 .ecran[hidden]{ display:none; }
 .boite{ width:min(100%, 540px); display:flex; flex-direction:column; gap:14px; }
-.tete{ display:flex; align-items:center; gap:8px; }
-.tete a, .tete button{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:12px; padding:6px 12px; font-weight:700; background:#fff; }
+.tete{ display:flex; align-items:center; gap:6px; }
+.tete a, .tete button{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:12px; padding:6px 10px; font-weight:700; background:#fff; white-space:nowrap; }
 .tete .droite{ margin-left:auto; }
 h1{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:clamp(3.4rem, 17vw, 4.6rem); line-height:.85; margin:6px 0 0; letter-spacing:.01em; color:var(--encre); }
 h1 span{ color:var(--orange); }
@@ -113,11 +121,11 @@ h1 span{ color:var(--orange); }
 </div>
 <div class="jauge" id="jauge" hidden><i id="jaugeI"></i></div>
 <div class="annonce" id="annonce"></div>
-<div class="aide-doigt" id="aideDoigt">Touchez à gauche ou à droite pour tourner · en bas au milieu pour sauter · en l'air, 6 zones font des figures (3 en haut, 3 au milieu), le bas au milieu un 360</div>
+<div class="aide-doigt" id="aideDoigt">Touchez à gauche ou à droite pour tourner · en bas au milieu pour sauter · en l'air et sur les rails, 6 cases font des figures (3 en haut, 3 au milieu) ; le bas de l'écran sert à s'orienter et à garder l'équilibre</div>
 
 <section class="ecran" id="eMenu">
   <div class="boite">
-    <div class="tete"><a href="../index.html">‹ DesDés</a><button class="droite" id="bSon">🔊</button><button id="bAide">❔ Aide</button></div>
+    <div class="tete"><a href="../index.html">‹ DesDés</a><button class="droite" id="bSon">🔊</button><button id="bFigures">🤸 Figures</button><button id="bAide">❔ Aide</button></div>
     <div>
       <h1>Free<span>ride</span></h1>
       <p class="sous">Hors-piste, poudreuse, barres rocheuses, tremplins et snowparks. Touchez à gauche ou à droite pour tourner, sautez, et faites des figures en l'air.</p>
@@ -162,24 +170,30 @@ h1 span{ color:var(--orange); }
     <h1>Com<span>ment</span> jouer</h1>
     <div class="carte">
       <h3>☝️ Diriger</h3>
-      <p>Touchez la <b>moitié gauche ou droite</b> de l'écran : le skieur tourne de ce côté, d'autant plus que vous restez appuyé (il coupe la pente et ralentit). <b>Lâchez</b> : il se remet dans la pente et file tout schuss. Au clavier : flèches gauche / droite, espace (saut / 360), Q W E / A S D ou 1 à 6 (les figures, rangée du haut puis du milieu).</p>
-      <p>L'écran a une zone <b>en bas au milieu</b> : au sol, elle fait un petit saut ; en l'air, un 360. Rien n'est affiché, c'est l'écran entier qui sert de manette :</p>
-      <div class="schema"><span>Backflip</span><span>Truck driver</span><span>Frontflip</span><span>Mute</span><span>Safety</span><span>Japan</span><span class="vide"></span><span class="bas">saut / 360</span><span class="vide"></span></div>
+      <p>Touchez la <b>moitié gauche ou droite</b> de l'écran : le skieur tourne de ce côté, d'autant plus que vous restez appuyé (il coupe la pente et ralentit). <b>Lâchez</b> : il se remet dans la pente et file tout schuss. Au clavier : flèches gauche / droite, espace (saut), Q W E / A S D ou 1 à 6 (les figures, rangée du haut puis du milieu).</p>
+      <p>Au sol, la zone <b>en bas au milieu</b> fait un petit saut. <b>En l'air</b>, l'écran est découpé en six cases (leur nom s'affiche, on peut le cacher) ; le bas de l'écran sert à s'orienter. Les figures de chaque case se règlent dans le menu <b>🤸 Figures</b> :</p>
+      <div class="schema" id="schemaAir"></div>
       <h3>🦘 Sauter et figures</h3>
       <ul>
         <li>La zone <b>en bas au milieu</b> fait un petit saut : il passe au-dessus des souches, des petits cailloux et des crevasses.</li>
         <li>Les <b>tremplins</b>, les <b>bosses</b> et les <b>barres rocheuses</b> vous envoient en l'air.</li>
-        <li>En l'air, l'écran est découpé en six zones. En haut : <b>backflip</b> (à gauche) et <b>frontflip</b> (à droite), 500 points, et au milieu le <b>truck driver</b> (chaque main tient l'avant de son ski, 250 points). Au milieu de l'écran : <b>mute</b> (skis croisés, la main droite tient la carre extérieure du ski gauche, 200 points), <b>safety</b> (la main droite sous la chaussure droite, 150 points) et <b>japan</b> (le ski droit replié derrière l'autre jambe, la main gauche passe sous le genou et tient la carre intérieure, 300 points). En snowboard : nose grab, mute, indy et japan. En bas au milieu un <b>360</b>, 300 points (on peut le combiner avec une autre figure). Il faut avoir fini avant de toucher la neige, et atterrir à peu près face à la pente, sinon c'est la chute.</li>
+        <li>Par défaut : en haut <b>backflip</b>, <b>360</b> et <b>frontflip</b> (500, 300 et 500 points) ; au milieu <b>mute</b> (skis croisés, la main droite tient la carre extérieure du ski gauche, 200 points), <b>180</b> (150 points) et <b>japan</b> (le ski droit replié derrière l'autre jambe, la main gauche passe sous le genou et tient la carre intérieure, 300 points). On peut aussi choisir 540, safety (indy en snowboard) et truck driver (nose grab).</li>
+        <li>Une rotation et un grab ou un flip se combinent ; deux rotations s'ajoutent (360 puis 180 = 540). Il faut avoir fini avant de toucher la neige, et atterrir à peu près face à la pente, sinon c'est la chute.</li>
+        <li><b>Switch</b> : après un 180 ou un 540, on atterrit en marche arrière et on continue à skier en switch. Une figure partie en switch rapporte 20 % de plus ; un autre 180 remet dans le bon sens.</li>
         <li>Les figures enchaînées sans tomber montent le <b>combo</b> (jusqu'à ×5).</li>
       </ul>
       <h3>🛹 Snowparks</h3>
       <p>Une piste damée avec des modules, comme dans un vrai snowpark : <b>kickers</b> (au milieu, avec leur table : le haut de la réception est marqué en bleu), <b>rollers</b> (des bosses en série), et sur les côtés des <b>boxes</b> (orange, larges et basses) et des <b>rails</b> (le rail droit en gris, le <b>kink</b> avec sa marche en rouge, l'<b>arc-en-ciel</b> en jaune).</p>
       <ul>
         <li>Pour glisser sur une box ou un rail, arrivez <b>dans son axe</b>, face à la pente : vous montez dessus par la petite rampe. Le prendre par le côté, c'est la chute.</li>
-        <li>Sur le module, une <b>barre d'équilibre</b> s'affiche au-dessus du skieur : quand la bille part d'un côté, touchez l'autre côté de l'écran pour la ramener au milieu. Rouge au bout : déséquilibre et chute.</li>
-        <li>La zone <b>en bas au milieu</b> met les skis (ou la planche) <b>en travers</b> : c'est un <b>boardslide</b>, qui rapporte plus qu'un 50-50 (skis dans l'axe). La retoucher les remet dans l'axe (un <b>swap</b>, en bonus).</li>
-        <li>Au bout du module, on saute : il reste le temps d'un grab ou d'un 360. Les points comptent la longueur glissée, le module (le kink et l'arc-en-ciel valent plus), le boardslide et le combo.</li>
-        <li>Étoiles : 1 à l'arrivée, 2 avec la moitié des <b>modules réussis</b> (kicker bien reçu, box ou rail glissé jusqu'au bout), 3 avec 85 %. Quatre parks, du vert au noir : Découverte, Jib Park, Slopestyle et Pro Line.</li>
+        <li>Sur le module, une <b>barre d'équilibre</b> s'affiche au-dessus du skieur : quand la bille part d'un côté, touchez l'autre côté, <b>en bas de l'écran</b>, pour la ramener au milieu. Rouge au bout : déséquilibre et chute.</li>
+        <li>On monte toujours en <b>50-50</b> (skis dans l'axe). Les six cases font les <b>figures de slide</b> (réglables dans 🤸 Figures). Par défaut :</li>
+      </ul>
+      <div class="schema" id="schemaRail"></div>
+      <ul>
+        <li>Changer de figure en glissant est un <b>switch-up</b> (+60). Boardslide et lipslide mettent les skis en travers, nose et tail press penchent le skieur sur les spatules ou les talons, le 180 le fait finir en switch.</li>
+        <li>Au bout du module, on saute : il reste le temps d'un grab ou d'une rotation. Les points comptent la longueur glissée, la figure, le module (le kink et l'arc-en-ciel valent plus), les switch-ups et le combo.</li>
+        <li>Les modules sont posés par <b>rangs</b>, côte à côte : on en choisit un par rang. Étoiles : 1 à l'arrivée, 2 avec la moitié des rangs réussis (kicker bien reçu, box ou rail glissé jusqu'au bout), 3 avec 85 %. Quatre parks, du vert au noir : Découverte, Jib Park, Slopestyle et Pro Line.</li>
       </ul>
       <h3>⚠️ Dangers</h3>
       <p>Sapins et gros rochers : chute. Les petits obstacles se sautent. Les <b>crevasses</b> (glacier) se franchissent en sautant. Une <b>barre rocheuse</b> se saute en entier (gros bonus) ou se contourne par une rampe de neige.</p>
@@ -201,7 +215,30 @@ h1 span{ color:var(--orange); }
   <div class="boite" style="margin-top:18vh">
     <p class="resultat" style="font-size:3rem">Pause</p>
     <button class="gros" id="bReprendre">▶ Reprendre</button>
+    <button class="sec" id="bFiguresPause" style="width:100%;margin-top:10px">🤸 Régler les figures</button>
     <div class="btns"><button class="sec" id="bRecommencer">↻ Recommencer</button><button class="sec" id="bQuitter">Quitter</button></div>
+  </div>
+</section>
+
+<section class="ecran" id="eFigures" hidden>
+  <div class="boite aide">
+    <div class="tete"><button id="bFiguresRetour">‹ Retour</button><button class="droite" id="rDefaut">Par défaut</button></div>
+    <h1>Fi<span>gures</span></h1>
+    <div class="carte">
+      <h3>🤸 En l'air</h3>
+      <p>Les six cases sont placées comme sur l'écran pendant un saut : trois en haut, trois au milieu. Choisissez la figure de chaque case.</p>
+      <div class="reglage" id="rAir"></div>
+      <ul class="catalogue" id="lAir"></ul>
+    </div>
+    <div class="carte">
+      <h3>🛹 Sur les boxes et les rails</h3>
+      <p>Mêmes cases pendant un slide. On commence toujours en 50-50 ; toucher une autre case change de figure en glissant (un <b>switch-up</b>, +60 points).</p>
+      <div class="reglage" id="rRail"></div>
+      <ul class="catalogue" id="lRail"></ul>
+    </div>
+    <div class="carte">
+      <label class="coche"><input type="checkbox" id="rZones"> Afficher le nom des figures dans les cases pendant le saut et le slide</label>
+    </div>
   </div>
 </section>
 
@@ -247,10 +284,10 @@ const SLALOMS = [
 ];
 // Les snowparks : piste damée avec des modules en lignes (kickers, boxes, rails, rollers) ; niv : 0 facile à 2 expert
 const PARKS = [
-  { id:'park-decouverte', n:'Park Découverte', ico:'🟢', c:'#2E9E5B', d:'Petits kickers, boxes à plat et rollers', L:430, niv:0, sections:['boxes', 'kickers', 'whoops', 'boxes', 'kickers'] },
-  { id:'park-jib', n:'Jib Park', ico:'🔵', c:'#1F6FE0', d:'Boxes et rails en série : des slides partout', L:500, niv:1, sections:['boxes', 'rails', 'jib', 'whoops', 'rails', 'jib'] },
-  { id:'park-slope', n:'Slopestyle', ico:'🔴', c:'#D63A2F', d:'Rails, boxes et kickers enchaînés', L:640, niv:1, sections:['jib', 'kickers', 'rails', 'kickers', 'whoops', 'big'] },
-  { id:'park-pro', n:'Pro Line', ico:'⚫', c:'#13233A', d:'Kink, rails arc-en-ciel et big air', L:720, niv:2, sections:['rails', 'big', 'jib', 'big', 'rails', 'big'] },
+  { id:'park-decouverte', n:'Park Découverte', ico:'🟢', c:'#2E9E5B', d:'Petits kickers, boxes à plat et rollers', L:760, niv:0, sections:['boxes', 'kickers', 'whoops', 'ligne', 'kickers', 'boxes', 'kickers'] },
+  { id:'park-jib', n:'Jib Park', ico:'🔵', c:'#1F6FE0', d:'Boxes et rails en série : des slides partout', L:840, niv:1, sections:['boxes', 'rails', 'jib', 'kickers', 'rails', 'jib', 'ligne'] },
+  { id:'park-slope', n:'Slopestyle', ico:'🔴', c:'#D63A2F', d:'Rails, boxes et kickers enchaînés', L:1000, niv:1, sections:['jib', 'kickers', 'rails', 'ligne', 'whoops', 'big', 'jib', 'big'] },
+  { id:'park-pro', n:'Pro Line', ico:'⚫', c:'#13233A', d:'Kink, rails arc-en-ciel et big air', L:1150, niv:2, sections:['rails', 'big', 'jib', 'big', 'ligne', 'rails', 'big', 'big'] },
 ];
 // Les modules à slider : hauteur (m), largeur (m), instabilité (plus c'est haut, plus l'équilibre part vite), points
 const FORMES = {
@@ -276,7 +313,7 @@ function nouveauMonde(mode, def, seed){
   const M = { mode, def, R, objets:[], flocons:[], portes:[], barres:[], rails:[], fin:Infinity, bord:BORD, glacier:!!(def && def.glacier), genere:0, nFlocons:0, nModules:0 };
   M.sure = y => clamp(8.5 * Math.sin(y / 47 + ph[0]) + 3.5 * Math.sin(y / 19 + ph[1]) + 2 * Math.sin(y / 9 + ph[2]), -BORD + 7, BORD - 7);
   if(mode === 'slalom'){ M.bord = 15; M.sure = () => 0; M.filet = true; }
-  if(mode === 'park'){ M.bord = 16; M.sure = () => 0; M.filet = true; M.G = 4.6; }
+  if(mode === 'park'){ M.bord = 16; M.sure = () => 0; M.filet = true; M.G = 4.6; M.vmax = 13.5; }
   return M;
 }
 const ajouter = (M, o) => { M.objets.push(o); };
@@ -371,21 +408,25 @@ function construireSlalom(M, def){
   M.fin = def.L + 10; M.genere = Infinity;
   trier(M);
 }
-// Snowpark : les boxes et rails sur deux lignes (x = ±6), les kickers au milieu, les rollers sur toute la largeur
-function poserModule(M, forme, x, y, l){ const F = FORMES[forme]; M.rails.push({ t:'rail', forme, x, y, l, h:F.h, w:F.w, ok:false }); M.nModules++; }
-function kickerPark(M, y, p){ ajouter(M, { t:'kicker', x:0, y, w:5.5, l:4 + 2 * p, p, park:true, table:3 + p * 5 }); M.nModules++; }
+// Snowpark : les modules sont posés par rangs ; dans un rang, plusieurs modules côte à côte (on en choisit un).
+// Boxes et rails sur deux ou trois lignes (x = ±6 ou −7, 0, 7), kickers au milieu, rollers sur toute la largeur.
+// Un rang compte comme réussi dès qu'un de ses modules l'est (kicker bien reçu, box ou rail glissé jusqu'au bout).
+function nouveauRang(M){ return M.nModules++; }
+function poserModule(M, forme, x, y, l, rang){ const F = FORMES[forme]; M.rails.push({ t:'rail', forme, x, y, l, h:F.h, w:F.w, ok:false, rang }); }
+function kickerPark(M, y, p, rang = nouveauRang(M)){ ajouter(M, { t:'kicker', x:0, y, w:5.5, l:4 + 2 * p, p, park:true, table:3 + p * 5, rang }); }
 function sectionPark(M, type, y0, y1, niv){
   const R = M.R, jib = [['box'], ['box', 'rail', 'kink'], ['rail', 'kink', 'arc']][niv], tire = l => l[Math.floor(R() * l.length)];
-  const rails = niv ? jib.filter(f => f !== 'box') : jib;
+  const rails = niv ? jib.filter(f => f !== 'box') : jib, long = f => (f === 'box' ? 11 : f === 'kink' ? 14 : 12) + R() * 3;
+  const kick = [[.8, .95], [1, 1.2], [1.2, 1.45]][niv], gros = [[1.05, 1.25], [1.3, 1.55], [1.5, 1.8]][niv], entre = ([a, b]) => a + R() * (b - a);
   bords(M, y0, y1, R);
-  let c = R() < .5 ? -1 : 1;
   switch(type){
-    case 'boxes': for(let y = y0 + 8; y < y1 - 14; y += 15 + R() * 4, c = -c) poserModule(M, 'box', c * 6, y, 8 + R() * 3); break;
-    case 'rails': for(let y = y0 + 8; y < y1 - 16; y += 17 + R() * 4, c = -c) poserModule(M, tire(rails), c * 6, y, 9 + R() * 4); break;
-    case 'jib': for(let y = y0 + 8; y < y1 - 22; y += 20 + R() * 4){ poserModule(M, tire(jib), -6, y, 8 + R() * 4); poserModule(M, tire(jib), 6, y + 9, 8 + R() * 4); } break;
-    case 'kickers': for(let y = y0 + 10; y < y1 - 24; y += 34 + R() * 6) kickerPark(M, y, [.5, .75, .9][niv] + R() * .15); break;
-    case 'big': for(let y = y0 + 12; y < y1 - 30; y += 46 + R() * 6) kickerPark(M, y, [.9, 1.2, 1.5][niv] + R() * .15); break;
-    case 'whoops': for(let y = y0 + 10, k = 0; y < y1 - 10 && k < 7; y += 4.4, k++) for(let x = -M.bord + 3 + (k % 2) * 2.2; x < M.bord - 2; x += 4.4) ajouter(M, { t:'bosse', x, y, r:1.7 }); break;
+    case 'boxes': for(let y = y0 + 8; y < y1 - 18; y += 24 + R() * 4){ const r = nouveauRang(M); for(const x of [-6, 6]) poserModule(M, 'box', x, y + R() * 3, long('box'), r); } break;
+    case 'rails': for(let y = y0 + 8; y < y1 - 20; y += 26 + R() * 4){ const r = nouveauRang(M); for(const x of [-6, 6]){ const f = tire(rails); poserModule(M, f, x, y + R() * 3, long(f), r); } } break;
+    case 'jib': for(let y = y0 + 8; y < y1 - 20; y += 26 + R() * 4){ const r = nouveauRang(M); for(const x of [-7, 0, 7]){ const f = tire(jib); poserModule(M, f, x, y + R() * 3, long(f), r); } } break;
+    case 'ligne': for(let y = y0 + 10; y < y1 - 26; y += 36 + R() * 4){ const r = nouveauRang(M); kickerPark(M, y, entre(kick), r); for(const x of [-7, 7]){ const f = tire(jib); poserModule(M, f, x, y + 2, long(f), r); } } break;
+    case 'kickers': for(let y = y0 + 10; y < y1 - 26; y += 32 + R() * 4) kickerPark(M, y, entre(kick)); break;
+    case 'big': for(let y = y0 + 12; y < y1 - 32; y += 42 + R() * 4) kickerPark(M, y, entre(gros)); break;
+    case 'whoops': for(let y = y0 + 10, k = 0; y < y1 - 10 && k < 9; y += 4.4, k++) for(let x = -M.bord + 3 + (k % 2) * 2.2; x < M.bord - 2; x += 4.4) ajouter(M, { t:'bosse', x, y, r:1.7 }); break;
   }
 }
 function construirePark(M, def){
@@ -453,10 +494,10 @@ function lancer(mode, def){
   else if(mode === 'park') construirePark(M, def);
   else if(mode === 'infini') genererInfini(M, 200);
   else construireDescente(M, def);
-  partie = { mode, def, M, x:M.sure(0), y:0, th:0, thv:0, v:4, z:0, vz:0, air:false, tAir:0, tours:0, spin:0, spinV:0, fig:null, figs:[], chute:0, invul:0,
+  partie = { mode, def, M, x:M.sure(0), y:0, th:0, thv:0, v:4, z:0, vz:0, air:false, tAir:0, degres:0, spin:0, spinV:0, spinCible:0, switch:false, switchDep:false, fig:null, figs:[], chute:0, invul:0,
     score:0, combo:1, figures:0, chutes:0, prisF:0, portesOk:0, portesKo:0, t:0, fin:false, pause:false, traces:[], part:[], textes:[],
     av:mode === 'infini' ? -70 : null, avV:0, dernier:performance.now(), majHud:0, camX:M.sure(0), meilleurSaut:0, depart:false,
-    slide:null, depuis:null, modOk:0, slides:0 };
+    slide:null, depuis:null, modOk:0, rangs:new Set(), slides:0 };
   ['eMenu', 'eAide', 'eFin', 'ePause'].forEach(id => $(id).hidden = true);
   $('hud').hidden = false; $('jauge').hidden = false;
   $('jauge').classList.toggle('avalanche', mode === 'infini');
@@ -473,15 +514,15 @@ function texte(P, txt, c = '#13233A', gros = false){ P.textes.push({ x:P.x, y:P.
 
 function chuter(P, raison){
   if(P.chute > 0 || P.invul > 0) return;
-  P.chute = 1.3; P.chutes++; P.combo = 1; P.v *= .15; P.air = false; P.z = 0; P.vz = 0; P.spin = 0; P.spinV = 0; P.tours = 0; P.fig = null; P.figs = [];
-  P.slide = null; P.depuis = null; P.spinRetour = false;
+  P.chute = 1.3; P.chutes++; P.combo = 1; P.v *= .15; P.air = false; P.z = 0; P.vz = 0; P.spin = 0; P.spinV = 0; P.degres = 0; P.fig = null; P.figs = [];
+  P.slide = null; P.depuis = null; P.spinRetour = false; P.switch = false;
   texte(P, raison, '#E23B3B', true); bruitCourt(90, .35, .35);
   if(navigator.vibrate) navigator.vibrate(90);
   for(let k = 0; k < 18; k++) P.part.push({ x:P.x, y:P.y, vx:(Math.random() - .5) * 8, vy:(Math.random() - .5) * 8 + P.v * .3, vie:.8 + Math.random() * .5, r:.15 + Math.random() * .25 });
 }
 function decoller(P, vz, raison){
   if(P.air) { P.vz = Math.max(P.vz, vz); return; }
-  P.air = true; P.vz = vz; P.tAir = 0; P.tours = 0; P.spin = 0; P.spinV = 0; P.fig = null; P.figs = []; P.hautDep = P.z; P.raisonAir = raison;
+  P.air = true; P.vz = vz; P.tAir = 0; P.degres = 0; P.switchDep = P.switch; P.spin = 0; P.spinV = 0; P.fig = null; P.figs = []; P.hautDep = P.z; P.raisonAir = raison;
 }
 function atterrir(P){
   const tAir = P.tAir, tourne = P.spinV !== 0 || !!P.fig;
@@ -491,45 +532,79 @@ function atterrir(P){
   if(Math.abs(P.th) > 1.05){ chuter(P, 'Réception de travers !'); return; }
   if(P.spinRetour){ P.spin = 0; P.spinRetour = false; }
   // snowpark : un kicker sauté et bien reçu compte comme module réussi
-  if(P.depuis){ if(!P.depuis.ok){ P.depuis.ok = true; P.modOk++; } P.depuis = null; }
+  if(P.depuis){ valider(P, P.depuis); P.depuis = null; }
   bruitCourt(160, .12, .2);
   // un petit saut (ou une bosse) sans figure ne rapporte rien
-  if((tAir < .45 || P.raisonAir === 'ollie' || P.raisonAir === 'rail') && !P.tours && !P.drop && !P.figs.length){ P.drop = 0; return; }
+  if((tAir < .45 || P.raisonAir === 'ollie' || P.raisonAir === 'rail') && !P.degres && !P.drop && !P.figs.length){ P.drop = 0; return; }
   // Les points du saut : temps en l'air, 360, hauteur de la barre sautée, réception propre
-  let pts = Math.round(tAir * 220) + P.tours * 300 + Math.round((P.drop || 0) * 90) + P.figs.reduce((s, f) => s + FIGURES[f].pts, 0);
+  let pts = Math.round(tAir * 220) + P.degres / 180 * 150 + Math.round((P.drop || 0) * 90) + P.figs.reduce((s, f) => s + FIGURES[f].pts, 0);
   const propre = Math.abs(P.th) < .3;
   if(propre) pts = Math.round(pts * 1.25);
+  if(P.switchDep) pts = Math.round(pts * 1.2);     // parti en switch : plus dur, plus de points
   pts = Math.round(pts * P.combo / 10) * 10;
   const morceaux = [];
   if(P.drop) morceaux.push(`Drop ${P.drop.toFixed(0)} m`);
   for(const f of P.figs) morceaux.push(nomFig(f));
-  if(P.tours) morceaux.push(`${360 * P.tours}`);
+  if(P.degres) morceaux.push(String(P.degres));
+  if(P.switchDep && morceaux.length) morceaux[0] = 'Switch ' + morceaux[0];
   const nom = morceaux.length ? morceaux.join(' + ') : tAir > 1.1 ? 'Gros saut' : 'Saut';
   if(P.mode !== 'slalom'){ P.score += pts; texte(P, `${nom} ! +${fmtN(pts)}${propre ? ' ✓' : ''}`, '#FF6A2B', true); }
-  P.figures++; P.combo = Math.min(5, P.combo + (P.tours || P.drop || P.figs.length || tAir > .9 ? .5 : .25));
+  if(P.degres && P.degres % 360) texte(P, 'en switch', '#1F6FE0');
+  P.figures++; P.combo = Math.min(5, P.combo + (P.degres || P.drop || P.figs.length || tAir > .9 ? .5 : .25));
   P.meilleurSaut = Math.max(P.meilleurSaut, pts);
   P.drop = 0;
 }
-// Les figures, en l'air : trois zones en haut de l'écran, trois au milieu (nb : le nom en snowboard)
+// Les figures en l'air (nb : le nom en snowboard) ; rot = demi-tours à plat (180 = 1, 360 = 2, 540 = 3)
 const FIGURES = {
-  hg:{ n:'Backflip', dur:.95, pts:500, flip:-1 }, hm:{ n:'Truck driver', nb:'Nose grab', dur:.6, pts:250, grab:'truck' }, hd:{ n:'Frontflip', dur:.9, pts:500, flip:1 },
-  mg:{ n:'Mute grab', dur:.55, pts:200, grab:'mute' }, mm:{ n:'Safety grab', nb:'Indy grab', dur:.5, pts:150, grab:'safety' }, md:{ n:'Japan grab', dur:.65, pts:300, grab:'japan' },
+  backflip:{ n:'Backflip', dur:.95, pts:500, flip:-1, d:'salto arrière' },
+  frontflip:{ n:'Frontflip', dur:.9, pts:500, flip:1, d:'salto avant' },
+  r180:{ n:'180', rot:1, d:'demi-tour à plat : on atterrit en switch (en marche arrière)' },
+  r360:{ n:'360', rot:2, d:'un tour complet à plat' },
+  r540:{ n:'540', rot:3, d:'un tour et demi : on atterrit en switch' },
+  mute:{ n:'Mute grab', dur:.55, pts:200, grab:'mute', d:'skis croisés, la main droite tient la carre extérieure du ski gauche' },
+  japan:{ n:'Japan grab', dur:.65, pts:300, grab:'japan', d:'ski droit replié derrière, la main gauche passe sous le genou et tient la carre intérieure' },
+  safety:{ n:'Safety grab', nb:'Indy grab', dur:.5, pts:150, grab:'safety', d:'la main droite sous la chaussure droite (indy en snowboard)' },
+  truck:{ n:'Truck driver', nb:'Nose grab', dur:.6, pts:250, grab:'truck', d:'chaque main tient l\'avant de son ski, comme un volant (nose grab en snowboard)' },
 };
+// Les figures sur une box ou un rail : rot = rotation sur le module, pf = penché (press), grab = grab tenu,
+// mult = points par mètre glissé, inst = l'équilibre part plus vite
+const SLIDES = {
+  f5050:{ n:'50-50', rot:0, mult:1, inst:1, d:'skis dans l\'axe du module' },
+  board:{ n:'Boardslide', rot:Math.PI / 2, mult:1.6, inst:1.1, d:'skis (ou planche) en travers du module' },
+  lip:{ n:'Lipslide', rot:-Math.PI / 2, mult:1.8, inst:1.25, d:'en travers aussi, mais tourné de l\'autre côté' },
+  nose:{ n:'Nose press', pf:.32, mult:1.5, inst:1.2, d:'sur les spatules, les talons levés' },
+  tail:{ n:'Tail press', pf:-.32, mult:1.5, inst:1.2, d:'sur les talons, les spatules levées' },
+  s180:{ n:'180', rot:Math.PI, mult:1.7, inst:1.2, bonus:100, d:'demi-tour sur le module : on le finit en switch' },
+  mute:{ n:'Mute', grab:'mute', mult:1.7, inst:1.3, d:'skis croisés et la main sur la carre, en glissant' },
+  safety:{ n:'Safety', nb:'Indy', grab:'safety', mult:1.5, inst:1.2, d:'la main sous la chaussure, en glissant' },
+};
+// Les six cases de l'écran (h = en haut, m = au milieu ; g, m, d = gauche, milieu, droite), réglables dans le menu « Figures »
+const ZONES = ['hg', 'hm', 'hd', 'mg', 'mm', 'md'];
+const CASES0 = { air:{ hg:'backflip', hm:'r360', hd:'frontflip', mg:'mute', mm:'r180', md:'japan' }, rail:{ hg:'board', hm:'nose', hd:'lip', mg:'tail', mm:'f5050', md:'s180' }, zones:true };
+let cases = lire('freeride-figures', null);
+if(!cases || typeof cases !== 'object' || !cases.air || !cases.rail) cases = JSON.parse(JSON.stringify(CASES0));
+for(const z of ZONES){ if(!FIGURES[cases.air[z]]) cases.air[z] = CASES0.air[z]; if(!SLIDES[cases.rail[z]]) cases.rail[z] = CASES0.rail[z]; }
+if(cases.zones === undefined) cases.zones = true;
 const nomFig = k => engin === 'board' && FIGURES[k].nb || FIGURES[k].n;
-function figure(P, k){
-  if(!P || P.fin || P.pause || P.chute > 0 || !P.air || P.fig) return;
-  P.fig = { k, t:0 };
+const nomSlide = k => engin === 'board' && SLIDES[k].nb || SLIDES[k].n;
+const courtFig = k => nomFig(k).replace(' grab', '');
+// Une case touchée en l'air ou sur un rail (z = 'hg', 'hm'… : la figure réglée pour cette case)
+function figure(P, z){
+  if(!P || P.fin || P.pause || P.chute > 0) return;
+  if(P.slide){ figureRail(P, z); return; }
+  if(!P.air) return;
+  const k = cases.air[z], F = FIGURES[k]; if(!F) return;
+  if(F.rot){ tourner(P, F.rot); P.rotK = k; return; }
+  if(!P.fig) P.fig = { k, t:0 };
 }
+// Rotation à plat : 180, 360, 540 ; touchée pendant une rotation, elle s'y ajoute (360 puis 180 = 540)
+function tourner(P, demi){
+  if(!P.spinV){ P.spin = 0; P.spinCible = demi * Math.PI; P.spinV = (engin === 'board' ? 2.35 : 2) * Math.PI; P.spinRetour = false; }
+  else P.spinCible += demi * Math.PI;
+}
+// En bas au milieu, au sol : un petit saut (ollie)
 function sautCourt(P){
-  if(P.fin || P.pause) return;
-  if(P.chute > 0) return;
-  if(P.slide){ P.slide.travers = !P.slide.travers; P.slide.swaps++; if(P.slide.travers) P.slide.vuTravers = true; return; }
-  if(P.air){
-    // un 360 de plus, s'il reste le temps
-    if(P.spinV === 0){ P.spinV = (engin === 'board' ? 2.35 : 2) * Math.PI; P.spin = 0; P.spinRetour = false; }
-    else P.tourDePlus = true;
-    return;
-  }
+  if(P.fin || P.pause || P.chute > 0 || P.air || P.slide) return;
   decoller(P, 3.7, 'ollie');
 }
 // Les mouvements du skieur au sol : il s'incline dans le virage (plus il va vite, plus il penche), plie les jambes,
@@ -547,36 +622,51 @@ function animer(P, dt){
   if(sens && sens !== A.sens && A.tPlant > .3){ A.cote = -sens; A.tPlant = 0; }
   if(sens) A.sens = sens; else if(Math.abs(P.thv) < .15) A.sens = 0;
 }
+// Snowpark : un module réussi ; le rang compte une fois
+function valider(P, o){ o.ok = true; if(!P.rangs.has(o.rang)){ P.rangs.add(o.rang); P.modOk = P.rangs.size; } }
 // Snowpark : on monte sur une box ou un rail en arrivant dans son axe, à peu près face à la pente
 function entrerRail(P, o){
   if(P.air && (P.fig || P.spinV)){ chuter(P, 'Réception ratée !'); return; }
   if(Math.abs(P.th) > .75){ chuter(P, 'Mauvaise entrée !'); return; }
-  P.air = false; P.vz = 0; P.tAir = 0; P.figs = []; P.drop = 0; P.depuis = null; P.spinRetour = false;
-  P.slide = { o, y:P.y, t:0, pts:0, rot:0, travers:false, vuTravers:false, swaps:0, bal:(Math.random() - .5) * .3, bv:(Math.random() - .5) * 1.4 };
+  P.air = false; P.vz = 0; P.tAir = 0; P.figs = []; P.drop = 0; P.depuis = null; P.spinRetour = false; P.spin = 0;
+  P.v = Math.min(P.v, 11.5);     // on arrive sur un module à vitesse raisonnable
+  P.slide = { o, y:P.y, t:0, pts:0, rot:0, base:0, pf:0, k:'f5050', tk:0, suite:['f5050'], switchDep:P.switch, bal:(Math.random() - .5) * .3, bv:(Math.random() - .5) * 1.4 };
   bruitCourt(2200, .06, .05);
 }
-// Sur le module : le skieur glisse dans l'axe ; l'équilibre part d'un côté, gauche / droite le rattrapent
+// Sur un rail, les six cases font les figures de slide réglées (changer de figure en glissant = switch-up)
+function figureRail(P, z){
+  const S = P.slide, k = cases.rail[z]; if(!SLIDES[k] || (k === S.k && k !== 's180')) return;
+  if(S.suite.length === 1 && S.t - S.tk < .25) S.suite[0] = k; else S.suite.push(k);
+  if(k === 's180') S.base = S.base ? 0 : Math.PI;      // le 180 change le sens ; les figures suivantes se font dans ce sens
+  S.k = k; S.tk = S.t;
+}
+// Sur le module : le skieur glisse dans l'axe ; l'équilibre part d'un côté, gauche / droite (en bas de l'écran) le rattrapent
 function glisser(P, dt, dir){
-  const S = P.slide, o = S.o, F = FORMES[o.forme], s = (P.y - o.y) / o.l;
+  const S = P.slide, o = S.o, F = FORMES[o.forme], T = SLIDES[S.k], s = (P.y - o.y) / o.l;
   P.x = o.x; P.th = 0; P.thv = 0;
   if(s >= 1){ sortirRail(P); return; }
   P.z = hRail(o, s); S.t += dt;
-  S.rot += ((S.travers ? Math.PI / 2 : 0) - S.rot) * Math.min(1, dt * 14); P.spin = S.rot;
-  S.bv += (S.bal * F.inst + (Math.random() - .5) * 2.4 + dir * 4.2) * dt; S.bv *= 1 - Math.min(1, dt * 1.2);
+  const k = Math.min(1, dt * 12);
+  S.rot += (S.base + (S.k === 's180' ? 0 : T.rot || 0) - S.rot) * k; S.pf += ((T.pf || 0) - S.pf) * k; P.spin = S.rot;
+  S.bv += (S.bal * F.inst * T.inst + (Math.random() - .5) * 2.4 + dir * 4.2) * dt; S.bv *= 1 - Math.min(1, dt * 1.2);
   S.bal += S.bv * dt;
-  S.pts += (P.y - S.y) * (S.travers ? 16 : 10) * F.mult; S.y = P.y;
+  S.pts += (P.y - S.y) * 10 * T.mult * F.mult; S.y = P.y;
   if(Math.abs(S.bal) > 1){ P.z = 0; P.x += Math.sign(S.bal) * (o.w / 2 + .5); P.invul = 0; chuter(P, 'Déséquilibre !'); }
 }
-// Au bout du module : les points du slide, puis un petit saut (on peut encore faire un grab ou un 360)
+// Au bout du module : les points du slide, puis un petit saut (on peut encore faire un grab ou une rotation)
 function sortirRail(P){
   const S = P.slide, o = S.o, F = FORMES[o.forme];
   P.slide = null;
-  const nom = `${S.vuTravers ? 'Boardslide' : '50-50'} sur ${F.sur}${S.swaps > 1 ? ' + swap' : ''}`;
-  const pts = Math.round((S.pts + 80 + Math.max(0, S.swaps - 1) * 60) * P.combo / 10) * 10;
+  const ups = S.suite.length - 1, bonus = S.suite.reduce((b, k) => b + (SLIDES[k].bonus || 0), 0);
+  const nom = `${S.switchDep ? 'Switch ' : ''}${S.suite.map(nomSlide).join(' → ')} sur ${F.sur}`;
+  const pts = Math.round((S.pts + 80 + ups * 60 + bonus) * (S.switchDep ? 1.2 : 1) * P.combo / 10) * 10;
   P.score += pts; texte(P, `${nom} ! +${fmtN(pts)}`, '#FF6A2B', true);
   P.figures++; P.slides++; P.combo = Math.min(5, P.combo + .5); P.meilleurSaut = Math.max(P.meilleurSaut, pts);
-  if(!o.ok){ o.ok = true; P.modOk++; }
-  decoller(P, 2.2, 'rail'); P.z = hRail(o, 1); P.spin = S.rot; P.spinRetour = S.rot > .05;
+  valider(P, o);
+  decoller(P, 2.2, 'rail'); P.z = hRail(o, 1);
+  // fini en 180 : on repart en switch ; en travers : on se remet dans l'axe en l'air
+  if(S.base){ P.switch = !P.switch; P.spin = S.rot - S.base; } else P.spin = S.rot;
+  P.spinRetour = Math.abs(P.spin) > .05;
 }
 function boucle(now){
   const P = partie; if(!P) return;
@@ -615,7 +705,8 @@ function maj(P, dt){
     let a = G * Math.cos(P.th) - .0125 * P.v * P.v - mu;
     if(ath > 1.05 && !P.air) a -= 9 * (ath - 1.05);
     if(engin === 'ski' && ath > .5 && !P.air) a += .25;     // les carres accrochent mieux
-    P.v = clamp(P.v + a * dt, P.y < 3 ? 3 : 0, 30);
+    if(P.slide) a = -.8;                                     // sur un rail, on ralentit doucement
+    P.v = clamp(P.v + a * dt, P.y < 3 ? 3 : 0, M.vmax || 30);
   }
   const vx = Math.sin(P.th) * P.v, vy = Math.cos(P.th) * P.v, yAvant = P.y, xAvant = P.x;
   P.x += vx * dt; P.y += vy * dt;
@@ -626,8 +717,9 @@ function maj(P, dt){
   // En l'air
   if(P.air){
     P.tAir += dt; P.vz -= 9.8 * dt; P.z += P.vz * dt;
-    if(P.spinV){ P.spin += P.spinV * dt; if(P.spin >= 2 * Math.PI){ P.tours++; P.spin = 0; P.spinV = P.tourDePlus ? P.spinV : 0; P.tourDePlus = false; } }
-    else if(P.spinRetour){ P.spin -= P.spin * Math.min(1, dt * 9); if(P.spin < .02){ P.spin = 0; P.spinRetour = false; } }
+    // rotation finie : un nombre impair de demi-tours fait passer en switch (ou en revenir)
+    if(P.spinV){ P.spin += P.spinV * dt; if(P.spin >= P.spinCible){ const demi = Math.round(P.spinCible / Math.PI); P.degres += demi * 180; if(demi % 2) P.switch = !P.switch; P.spin = 0; P.spinV = 0; } }
+    else if(P.spinRetour){ P.spin -= P.spin * Math.min(1, dt * 9); if(Math.abs(P.spin) < .02){ P.spin = 0; P.spinRetour = false; } }
     if(P.fig){ P.fig.t += dt; if(P.fig.t >= FIGURES[P.fig.k].dur){ P.figs.push(P.fig.k); texte(P, nomFig(P.fig.k) + ' !', '#1F6FE0'); P.fig = null; } }
     if(P.z <= 0) atterrir(P);
   }
@@ -961,9 +1053,11 @@ function dessinerPersonnage(c, pose, th, flip, tourne, ech){
 function dessinerSkieur(P, t){
   const z = P.z, ombre = .3 + z * .45;
   g.fillStyle = `rgba(60,85,130,${clamp(.32 - z * .03, .1, .32)})`; g.beginPath(); g.ellipse(P.x + ombre, P.y + ombre * .6, .75, .45, -P.th, 0, 6.29); g.fill();
-  const F = P.chute > 0 ? null : P.fig && FIGURES[P.fig.k], u = F ? clamp(P.fig.t / F.dur, 0, 1) : 0;
-  const flip = P.chute > 0 ? P.chute * 7 : F && F.flip ? F.flip * u * 2 * Math.PI : 0;
-  const tourne = P.chute > 0 ? P.chute * 3 : (P.spin || 0);
+  // sur un rail, un grab tenu (u = 0,5 : bien attrapé) ou un press (penché)
+  const T = P.slide && SLIDES[P.slide.k], F = P.chute > 0 ? null : T ? (T.grab ? { grab:T.grab } : null) : P.fig && FIGURES[P.fig.k];
+  const u = T ? .5 : F ? clamp(P.fig.t / F.dur, 0, 1) : 0;
+  const flip = P.chute > 0 ? P.chute * 7 : P.slide ? P.slide.pf : F && F.flip ? F.flip * u * 2 * Math.PI : 0;
+  const tourne = P.chute > 0 ? P.chute * 3 : (P.spin || 0) + (P.switch ? Math.PI : 0);
   g.save(); g.translate(P.x, P.y - z * .55);
   dessinerPersonnage(g, poseSkieur(F, u, engin, P.chute > 0 ? MVT0 : P.anim || MVT0), P.th, flip, tourne, 1.55 * (1 + z * .04));
   g.restore();
@@ -1042,6 +1136,22 @@ function dessiner(P, dt){
   }
   g.globalAlpha = 1;
   g.restore();
+  // En l'air et sur un rail : le nom des six figures dans leurs cases (réglable dans le menu Figures)
+  if(cases.zones && (P.air || P.slide) && P.chute <= 0 && !P.fin){
+    g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 13px "Bricolage Grotesque", system-ui, sans-serif';
+    for(const z of ZONES){
+      const x = W * ({ g:.5, m:1.5, d:2.5 }[z[1]]) / 3, y = z[0] === 'h' ? Math.max(Hh * .2, 140) : Hh * .52;
+      const k = P.slide ? cases.rail[z] : cases.air[z], txt = P.slide ? nomSlide(k) : courtFig(k);
+      const actif = P.slide ? P.slide.k === k : (P.fig && P.fig.k === k) || (P.spinV && P.rotK === k);
+      const lw = g.measureText(txt).width + 16;
+      g.globalAlpha = actif ? .9 : .55; g.fillStyle = actif ? '#FF6A2B' : 'rgba(255,255,255,.85)';
+      g.beginPath(); g.roundRect(x - lw / 2, y - 12, lw, 24, 12); g.fill();
+      g.fillStyle = actif ? '#fff' : '#13233A'; g.fillText(txt, x, y + 1);
+    }
+    g.globalAlpha = .5; g.fillStyle = '#13233A'; g.font = '700 12px "Bricolage Grotesque", system-ui, sans-serif';
+    g.fillText(P.slide ? '◀  équilibre  ▶' : '◀  s\'orienter  ▶', W / 2, Hh * .8);
+    g.restore();
+  }
   // Compteurs
   P.majHud -= dt;
   if(P.majHud <= 0){
@@ -1124,7 +1234,7 @@ function quitter(){
   menu();
 }
 function pause(){ if(!partie || partie.fin) return; partie.pause = true; majSon(0, 0, 0); $('ePause').hidden = false; }
-function reprendre(){ if(!partie) return; partie.pause = false; partie.dernier = performance.now(); $('ePause').hidden = true; }
+function reprendre(){ if(!partie) return; partie.pause = false; partie.dernier = performance.now(); $("ePause").hidden = $("eFigures").hidden = true; }
 
 /* ---------- Menu ---------- */
 const etoilesTxt = n => `<span class="et">${'★'.repeat(n)}${'☆'.repeat(3 - n)}</span>`;
@@ -1145,11 +1255,13 @@ function menu(){
 }
 
 /* ---------- Commandes ---------- */
-// L'écran entier sert de manette : moitié gauche / droite = tourner ; en bas au milieu = saut (au sol) ou 360 (en l'air) ;
-// en l'air, les quatre coins = les figures. Rien n'est affiché.
+// L'écran entier sert de manette : au sol, moitié gauche / droite = tourner, en bas au milieu = petit saut.
+// En l'air et sur un rail : six cases (trois en haut, trois au milieu) = les figures réglées ; le bas de l'écran,
+// gauche / droite = s'orienter en l'air, garder l'équilibre sur le rail.
 function zone(x, y){
-  if(x > W * .3 && x < W * .7 && y > Hh * .64) return 'c';
-  if(!partie || !partie.air) return x < W / 2 ? 'g' : 'd';
+  const P = partie, bas = y > Hh * .66, figures = P && (P.air || P.slide);
+  if(bas && !figures && x > W * .3 && x < W * .7) return 'c';
+  if(!figures || bas) return x < W / 2 ? 'g' : 'd';
   return (y < Hh * .36 ? 'h' : 'm') + (x < W / 3 ? 'g' : x < W * 2 / 3 ? 'm' : 'd');
 }
 cv.addEventListener('pointerdown', e => {
@@ -1157,7 +1269,7 @@ cv.addEventListener('pointerdown', e => {
   try{ cv.setPointerCapture(e.pointerId); }catch(err){}
   const z = zone(e.clientX, e.clientY);
   if(z === 'c'){ sautCourt(P); doigts.set(e.pointerId, 'c'); return; }
-  if(P.air){ figure(P, z); doigts.set(e.pointerId, 'f'); return; }
+  if(z.length === 2){ figure(P, z); doigts.set(e.pointerId, 'f'); return; }
   doigts.delete(e.pointerId); doigts.set(e.pointerId, z);
 });
 cv.addEventListener('pointermove', e => {
@@ -1181,7 +1293,35 @@ $('bPause').onclick = pause; $('bReprendre').onclick = reprendre; $('bQuitter').
 $('bRecommencer').onclick = () => { $('ePause').hidden = true; if(dernierLancement) lancer(dernierLancement[0], dernierLancement[1].defi ? defiDuJour() : dernierLancement[1]); };
 $('bRejouer').onclick = () => { $('eFin').hidden = true; if(dernierLancement) lancer(dernierLancement[0], dernierLancement[1] && dernierLancement[1].defi ? defiDuJour() : dernierLancement[1]); };
 $('bMenu').onclick = quitter;
-$('bAide').onclick = () => { $('eMenu').hidden = true; $('eAide').hidden = false; };
+$('bAide').onclick = () => { remplirSchemas(); $('eMenu').hidden = true; $('eAide').hidden = false; };
+// Les schémas de l'aide : les six cases, telles qu'elles sont réglées
+function remplirSchemas(){
+  const bas = '<span class="vide"></span><span class="bas">◀ s\'orienter ▶</span><span class="vide"></span>';
+  $('schemaAir').innerHTML = ZONES.map(z => `<span>${esc(courtFig(cases.air[z]))}</span>`).join('') + bas;
+  $('schemaRail').innerHTML = ZONES.map(z => `<span>${esc(nomSlide(cases.rail[z]))}</span>`).join('') + bas.replace('s\'orienter', 'équilibre');
+}
+// L'écran « Figures » : une liste déroulante par case, et la liste des figures possibles
+let figuresDepuis = 'eMenu';
+function ouvrirFigures(depuis){
+  figuresDepuis = depuis; $(depuis).hidden = true;
+  const liste = (T, nom, z, type) => `<select data-z="${z}" data-type="${type}" aria-label="Case ${z}">${Object.keys(T).map(k => `<option value="${k}"${cases[type][z] === k ? ' selected' : ''}>${esc(nom(k).replace(' grab', ''))}</option>`).join('')}</select>`;
+  $('rAir').innerHTML = ZONES.map(z => liste(FIGURES, nomFig, z, 'air')).join('') + '<span class="bas">en bas : ◀ s\'orienter ▶</span>';
+  $('rRail').innerHTML = ZONES.map(z => liste(SLIDES, nomSlide, z, 'rail')).join('') + '<span class="bas">en bas : ◀ équilibre ▶</span>';
+  $('lAir').innerHTML = Object.keys(FIGURES).map(k => { const F = FIGURES[k]; return `<li><b>${esc(nomFig(k))}</b> : ${esc(F.d)} · ${F.rot ? F.rot * 150 : F.pts} points</li>`; }).join('');
+  $('lRail').innerHTML = Object.keys(SLIDES).map(k => { const F = SLIDES[k]; return `<li><b>${esc(nomSlide(k))}</b> : ${esc(F.d)} · ×${String(F.mult).replace('.', ',')} par mètre${F.bonus ? ` + ${F.bonus}` : ''}</li>`; }).join('');
+  $('rZones').checked = cases.zones;
+  $('eFigures').hidden = false;
+}
+$('eFigures').addEventListener('change', e => {
+  const t = e.target;
+  if(t.id === 'rZones') cases.zones = t.checked;
+  else if(t.dataset.z) cases[t.dataset.type][t.dataset.z] = t.value;
+  ecrire('freeride-figures', cases);
+});
+$('rDefaut').onclick = () => { cases = JSON.parse(JSON.stringify(CASES0)); ecrire('freeride-figures', cases); ouvrirFigures(figuresDepuis); };
+$('bFigures').onclick = () => ouvrirFigures('eMenu');
+$('bFiguresPause').onclick = () => ouvrirFigures('ePause');
+$('bFiguresRetour').onclick = () => { $('eFigures').hidden = true; $(figuresDepuis).hidden = false; };
 $('bAideRetour').onclick = () => { $('eAide').hidden = true; $('eMenu').hidden = false; };
 $('bSon').onclick = () => { son = !son; ecrire('freeride-son', son); $('bSon').textContent = son ? '🔊' : '🔇'; };
 $('choixTenue').onclick = e => { const b = e.target.closest('[data-t]'); if(!b) return; tenue.t = +b.dataset.t; ecrire('freeride-tenue', tenue); menu(); };
@@ -1190,7 +1330,7 @@ $('choixPlanche').onclick = e => { const b = e.target.closest('[data-s]'); if(!b
 (function apercu(now){
   const c = $('apercu'); if(c && !$('eMenu').hidden){
     const x = c.getContext('2d'), t = now / 1000; x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, 180, 180);
-    const cycle = t % 6, F = cycle > 3.5 && cycle < 5 ? FIGURES[['mg', 'mm', 'md', 'hm'][Math.floor(t / 6) % 4]] : null, u = F ? (cycle - 3.5) / 1.5 : 0;
+    const cycle = t % 6, F = cycle > 3.5 && cycle < 5 ? FIGURES[['mute', 'safety', 'japan', 'truck'][Math.floor(t / 6) % 4]] : null, u = F ? (cycle - 3.5) / 1.5 : 0;
     x.fillStyle = 'rgba(60,85,130,.18)'; x.beginPath(); x.ellipse(92, 128, 34, 14, 0, 0, 6.29); x.fill();
     x.translate(90, 112 - (F ? Math.sin(u * Math.PI) * 18 : 0)); dessinerPersonnage(x, poseSkieur(F, u, engin, F ? { ...MVT0, air:true } : MVT0), t * .8, 0, 0, 44);
   }
@@ -1228,7 +1368,7 @@ function dessinerFond(F, dt){
   g.restore();
 }
 menu();
-window.Freeride = { lancer, DESCENTES, SLALOMS, PARKS, FORMES, defiDuJour, get partie(){ return partie; }, doigts, sautCourt, figure, finir, nouveauMonde, construireDescente, FIGURES, MVT0, poseSkieur, dessinerPersonnage, setEngin:e => { engin = e; } };
+window.Freeride = { lancer, DESCENTES, SLALOMS, PARKS, FORMES, SLIDES, get cases(){ return cases; }, defiDuJour, get partie(){ return partie; }, doigts, sautCourt, figure, finir, nouveauMonde, construireDescente, FIGURES, MVT0, poseSkieur, dessinerPersonnage, setEngin:e => { engin = e; } };
 
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
