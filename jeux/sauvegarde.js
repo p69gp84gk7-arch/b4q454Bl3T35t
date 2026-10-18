@@ -1,4 +1,4 @@
-/* Altitude : sauvegarde de toutes les parties, records et statistiques dans un fichier.
+/* Altitude Arcade : sauvegarde de toutes les parties, records et statistiques dans un fichier.
    Une page web ne peut pas écrire seule dans les Fichiers du téléphone : « Exporter » ouvre le partage
    (sur iPhone : « Enregistrer dans Fichiers ») ou télécharge le fichier ; « Importer » le recharge.
    Utilisation : <script src="sauvegarde.js"></script> puis DesDesSauvegarde.boutons(element). */
@@ -16,7 +16,7 @@
   function contenu(){
     const donnees = {};
     for(const k of cles()) try{ donnees[k] = localStorage.getItem(k); }catch(e){}
-    return { app:'Altitude', version:1, date:new Date().toISOString(), donnees };
+    return { app:'Altitude Arcade', version:1, date:new Date().toISOString(), donnees };
   }
 
   async function exporter(){
@@ -26,7 +26,7 @@
     const fichier = new File([texte], nom, { type:'application/json' });
     try{
       if(navigator.canShare && navigator.canShare({ files:[fichier] })){
-        await navigator.share({ files:[fichier], title:'Sauvegarde Altitude' });
+        await navigator.share({ files:[fichier], title:'Sauvegarde Altitude Arcade' });
         noter();
         return 'partage';
       }
@@ -47,7 +47,7 @@
   function lire(fichier){
     return new Promise((ok, ko) => {
       const r = new FileReader();
-      r.onload = () => { try{ ok(JSON.parse(r.result)); }catch(e){ ko(new Error('Ce fichier n\'est pas une sauvegarde Altitude.')); } };
+      r.onload = () => { try{ ok(JSON.parse(r.result)); }catch(e){ ko(new Error('Ce fichier n\'est pas une sauvegarde Altitude Arcade.')); } };
       r.onerror = () => ko(new Error('Lecture du fichier impossible.'));
       r.readAsText(fichier);
     });
@@ -64,7 +64,7 @@
         if(!f) return resolve(false);
         try{
           const s = await lire(f);
-          if(!s || (s.app !== 'Altitude' && s.app !== 'DesDés') || !s.donnees) throw new Error('Ce fichier n\'est pas une sauvegarde Altitude.');
+          if(!s || !['Altitude Arcade', 'Altitude', 'DesDés'].includes(s.app) || !s.donnees) throw new Error('Ce fichier n\'est pas une sauvegarde Altitude Arcade.');
           const n = Object.keys(s.donnees).filter(nos).length;
           const quand = s.date ? new Date(s.date).toLocaleString('fr-FR', { dateStyle:'long', timeStyle:'short' }) : 'date inconnue';
           if(!confirm(`Restaurer la sauvegarde du ${quand} (${n} élément${n > 1 ? 's' : ''}) ?\nLes parties, records et statistiques de cet appareil seront remplacés.`)) return resolve(false);
@@ -98,7 +98,7 @@
     const maj = () => {
       const d = dernierExport();
       el.querySelector('p').textContent = (d ? `Dernier export : ${d.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' })}. ` : 'Jamais exporté. ') +
-        'Le fichier contient toutes les parties, records et statistiques d\'Altitude.';
+        'Le fichier contient toutes les parties, records et statistiques d\'Altitude Arcade.';
     };
     el.innerHTML = '<div class="dd-row"><button class="dd-exp">Exporter</button><button class="dd-imp">Importer</button></div><p></p>';
     el.querySelector('.dd-exp').onclick = async () => { await exporter(); maj(); };

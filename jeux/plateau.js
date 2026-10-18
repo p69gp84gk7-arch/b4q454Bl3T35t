@@ -1,4 +1,4 @@
-/* Altitude : plateau de 5 dés, lancés en glissant le doigt sur le tapis.
+/* Altitude Arcade : plateau de 5 dés, lancés en glissant le doigt sur le tapis.
    Utilisation : <script src="plateau.js" data-jeu="yams"></script> (ou data-jeu="10000").
    - Yam's : 3 lancers au plus, on garde les dés de son choix entre deux lancers.
    - 10 000 : lancers sans limite ; les dés mis de côté restent de côté jusqu'à la fin du tour.

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="t">
-  <title id="t">Altitude</title>
-  <!-- Altitude : coucher de soleil sur la montagne, le soleil est un dé -->
+  <title id="t">Altitude Arcade</title>
+  <!-- Altitude Arcade : coucher de soleil sur la montagne, le soleil est un dé -->
   <defs>
     <linearGradient id="ciel" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#FF7A3D"/><stop offset=".6" stop-color="#FFB547"/><stop offset="1" stop-color="#FFE3A8"/>

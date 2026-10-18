@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Freeride · Altitude</title>
+<title>Freeride · Altitude Arcade</title>
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Altitude">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="icon" href="../logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
@@ -87,6 +87,8 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 .tete{ display:flex; align-items:center; gap:6px; }
 .tete a, .tete button{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:12px; padding:6px 10px; font-weight:700; background:#fff; white-space:nowrap; }
 .tete .droite{ margin-left:auto; }
+/* petit écran : les boutons du haut gardent seulement leur icône, pour laisser la place au nom de l'application */
+@media (max-width:420px){ .tete .txt{ display:none; } .tete button{ padding:6px 9px; } }
 h1{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:clamp(3.4rem, 17vw, 4.6rem); line-height:.85; margin:6px 0 0; letter-spacing:.01em; color:var(--encre); }
 h1 span{ color:var(--orange); }
 .sous{ margin:0; color:var(--doux); line-height:1.4; }
@@ -143,7 +145,7 @@ h1 span{ color:var(--orange); }
 
 <section class="ecran" id="eMenu">
   <div class="boite">
-    <div class="tete"><a href="../index.html">‹ Altitude</a><button class="droite" id="bSon">🔊</button><button id="bFigures">🤸 Figures</button><button id="bAide">❔ Aide</button></div>
+    <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="droite" id="bSon">🔊</button><button id="bFigures" aria-label="Figures">🤸<span class="txt"> Figures</span></button><button id="bAide" aria-label="Aide">❔<span class="txt"> Aide</span></button></div>
     <div>
       <h1>Free<span>ride</span></h1>
       <p class="sous">Hors-piste, poudreuse, barres rocheuses, tremplins et snowparks. Touchez à gauche ou à droite pour tourner, sautez, et faites des figures en l'air.</p>
