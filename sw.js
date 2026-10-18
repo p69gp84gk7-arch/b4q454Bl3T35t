@@ -1,7 +1,7 @@
 /* Altitude Arcade : fonctionnement hors ligne.
    Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement,
    ainsi que le numéro ?v= des scripts dans les pages (outils/version.sh fait les deux). */
-const VERSION = 'desdes-v85';
+const VERSION = 'desdes-v86';
 const FONTS = 'desdes-fonts';
 const SHELL = [
   './',
@@ -29,6 +29,7 @@ const SHELL = [
   'jeux/nivoculteur/js/jeu.js',
   'logo.svg',
   'manifest.webmanifest',
+  'apple-touch-icon.png',
   'icons/altitude-152.png',
   'icons/altitude-167.png',
   'icons/altitude-180.png',
@@ -80,6 +81,9 @@ self.addEventListener('fetch', e => {
     return;
   }
   if(url.origin !== location.origin) return;
+  // L'icône de l'écran d'accueil, les icônes et le manifeste : toujours demandés directement au site
+  // (le téléphone les lit au moment d'« Ajouter à l'écran d'accueil »)
+  if(/apple-touch-icon|\/icons\/|manifest\.webmanifest/.test(url.pathname)) return;
 
   // Images (drapeaux, icônes) : cache d'abord, elles ne changent pas
   if(/\.(svg|png|jpe?g|webp)$/i.test(url.pathname) && req.mode !== 'navigate'){

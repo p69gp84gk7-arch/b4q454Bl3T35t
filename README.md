@@ -356,7 +356,10 @@ jeux/dameuse.html      jeu Dameuse de nuit
 jeux/freeride.html     jeu Freeride
 jeux/tour.html         jeu Tour de contrôle
 logo.svg               logo (source vectorielle)
-icons/                 icônes de l'application, fichiers altitude-*.png (152, 167, 180 pour Apple ; 192, 512 et masquable pour Android)
+apple-touch-icon.png   icône de l'écran d'accueil de l'iPhone (180 px, pleine, nom standard ; aussi apple-touch-icon-precomposed.png)
+icons/                 icônes du manifeste, fichiers altitude-*.png (192, 512, masquable, 180), toutes pleines (sans transparence)
+icone.html             page de test de l'icône : version du site, icône iPhone et icônes du manifeste téléchargées et affichées
+.nojekyll              le site est publié tel quel par GitHub Pages
 manifest.webmanifest   description de l'application installable
 sw.js                  fonctionnement hors ligne
 ```

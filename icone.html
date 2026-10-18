@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Test de l'icône · Altitude Arcade</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest?v=86">
+<style>
+  body{ margin:0; padding:calc(16px + env(safe-area-inset-top, 0px)) 16px 24px; font-family:system-ui, -apple-system, sans-serif; background:#F3EAD6; color:#2B2420; }
+  h1{ font-size:1.4rem; margin:0 0 6px; }
+  p{ line-height:1.4; margin:6px 0; }
+  .l{ display:flex; gap:10px; align-items:center; background:#fff; border-radius:12px; padding:8px 10px; margin:8px 0; border:1px solid rgba(0,0,0,.1); }
+  .l img{ width:48px; height:48px; border-radius:11px; background:#ddd; flex:none; object-fit:cover; }
+  .l b{ display:block; font-size:.95rem; } .l small{ display:block; color:#6E625A; word-break:break-all; }
+  .ok{ color:#2FA766; } .ko{ color:#D9412F; }
+</style>
+</head>
+<body>
+<h1>Test de l'icône</h1>
+<p>Cette page vérifie que le téléphone reçoit bien les fichiers de l'icône. Faites une capture d'écran et envoyez-la.</p>
+<div id="res"></div>
+<script>
+(async () => {
+  const res = document.getElementById('res');
+  const ligne = (ok, titre, detail, img) => res.insertAdjacentHTML('beforeend', `<div class="l">${img ? `<img src="${img}" alt="">` : ''}<span><b class="${ok ? 'ok' : 'ko'}">${ok ? '✅' : '❌'} ${titre}</b><small>${detail}</small></span></div>`);
+  // la version du site
+  try{ const t = await (await fetch('sw.js', { cache:'no-store' })).text(); const v = (t.match(/VERSION = '([^']+)'/) || [])[1]; ligne(!!v, 'Version du site : ' + (v || 'inconnue'), location.href); }
+  catch(e){ ligne(false, 'Version du site', String(e)); }
+  // chaque image : téléchargée sans cache, puis affichée
+  const tester = async (u, titre) => {
+    try{
+      const r = await fetch(u, { cache:'no-store' }), b = await r.blob(), url = URL.createObjectURL(b);
+      const dims = await new Promise(ok => { const i = new Image(); i.onload = () => ok(i.naturalWidth + ' × ' + i.naturalHeight); i.onerror = () => ok(null); i.src = url; });
+      ligne(r.ok && !!dims, titre, `${u} · ${r.status} · ${r.headers.get('content-type')} · ${b.size} octets · ${dims || 'image illisible'}`, url);
+    }catch(e){ ligne(false, titre, u + ' · ' + e); }
+  };
+  const lien = document.querySelector('link[rel="apple-touch-icon"]').getAttribute('href');
+  await tester(lien, 'Icône iPhone (apple-touch-icon)');
+  // le manifeste et ses icônes
+  try{
+    const r = await fetch('manifest.webmanifest', { cache:'no-store' }), m = await r.json();
+    ligne(r.ok, `Manifeste : « ${m.name} »`, `${r.status} · ${r.headers.get('content-type')} · couleur ${m.theme_color} · ${m.icons.length} icônes`);
+    for(const i of m.icons) await tester(i.src, `Icône du manifeste ${i.sizes} (${i.purpose})`);
+  }catch(e){ ligne(false, 'Manifeste', String(e)); }
+  // le mode hors ligne
+  const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+  ligne(true, 'Mode hors ligne : ' + (sw ? 'actif' : 'pas encore actif'), sw ? sw.scriptURL : 'normal à la première visite');
+  ligne(true, 'Ouvert comme application : ' + (navigator.standalone || matchMedia('(display-mode: standalone)').matches ? 'oui' : 'non (dans Safari)'), navigator.userAgent);
+})();
+</script>
+</body>
+</html>
