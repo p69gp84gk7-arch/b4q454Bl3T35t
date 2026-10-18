@@ -286,9 +286,10 @@ function finNuit(dom, res){
   for(const k in b.parPiste) b.parPiste[k] = Math.round(b.parPiste[k]);
   res.bilans.push(b);
   delete res.enCours;
-  // l'objectif est atteint : la piste est finie (on passe à la suivante) ; sinon, après la dernière nuit, c'est raté
-  if(res.neigePiste >= dom.objectif){ res.fini = true; res.reussi = true; }
-  else if(res.nuit >= dom.nuits){ res.fini = true; res.reussi = false; }
+  // l'objectif est atteint : on peut terminer la piste (ou continuer pour viser plus d'étoiles) ;
+  // après la dernière nuit, la partie s'arrête (réussie ou ratée)
+  if(res.neigePiste >= dom.objectif) res.reussi = true;
+  if(res.nuit >= dom.nuits){ res.fini = true; res.reussi = res.neigePiste >= dom.objectif; }
   return b;
 }
 // Couverture : part des tronçons de 25 m de la piste qui ont reçu assez de neige (40 % de leur part de l'objectif)
@@ -302,23 +303,25 @@ function equipement(dom, res){
   for(const c of r.canons) if(c.pret && c.part > .3) vus.add(tronconSous(dom, c.chute.x, c.chute.y));
   return { ratio:vus.size / n, vus };
 }
-// Résultat d'une piste terminée : points et étoiles (objectif, couverture, nuits d'avance, budget restant, neige en plus)
+// Résultat d'une piste terminée : étoiles (★ objectif, ★★ toutes les zones vertes, ★★★ 130 % de l'objectif et 20 % du budget)
+// et points (neige, couverture, nuits d'avance, budget restant)
 function resultat(dom, res){
   const D = CONFIG.domaines[res.taille], cv = couverture(dom, res).ratio, restantes = Math.max(0, dom.nuits - res.nuit);
   const f = res.neigePiste / dom.objectif, budget = Math.max(0, res.budget) / D.budget;
   const lignes = [
     ['Neige sur la piste (' + Math.round(f * 100) + ' % de l\'objectif)', Math.round(Math.min(1.5, f) * 1000)],
-    ['Piste enneigée sur toute sa longueur (' + Math.round(cv * 100) + ' %)', Math.round(cv * 1000)],
+    ['Zones de la piste en vert (' + Math.round(cv * 100) + ' %)', Math.round(cv * 1000)],
     ['Nuits d\'avance (' + restantes + ')', restantes * 800],
     ['Budget restant (' + Math.round(budget * 100) + ' % du départ)', Math.round(Math.max(0, res.budget) / 100)],
   ];
   const points = res.reussi ? lignes.reduce((s, l) => s + l[1], 0) : 0;
   const criteres = [
-    { ok:res.reussi, txt:'Objectif atteint' },
-    { ok:cv >= .75, txt:'Piste enneigée sur au moins 75 % de sa longueur' },
-    { ok:cv >= .9 && (restantes >= 1 || budget >= .25 || f >= 1.3), txt:'Enneigée sur 90 %, et une nuit d\'avance ou 25 % du budget restant ou 130 % de l\'objectif' },
+    { ok:res.reussi, txt:'Objectif de neige atteint (' + Math.round(f * 100) + ' %)' },
+    { ok:cv >= 1, txt:'Toutes les zones de la piste en vert (' + Math.round(cv * 100) + ' %)' },
+    { ok:f >= 1.3 && budget >= .2, txt:'130 % de l\'objectif et 20 % du budget restant (' + Math.round(budget * 100) + ' %)' },
   ];
-  const etoiles = !res.reussi ? 0 : criteres[2].ok && criteres[1].ok ? 3 : criteres[1].ok ? 2 : 1;
+  // chaque étoile demande aussi les précédentes
+  const etoiles = !criteres[0].ok ? 0 : !criteres[1].ok ? 1 : !criteres[2].ok ? 2 : 3;
   return { lignes, points, etoiles, criteres, couverture:cv, restantes };
 }
 function etoiles(dom, res){ return resultat(dom, res).etoiles; }
@@ -377,7 +380,12 @@ function testsSimulation(){
   verif('équipement : le canon couvre au moins un tronçon', equipement(dom, res).ratio > 0);
   const R0 = resultat(dom, res); verif('pas d\'étoile sans objectif', R0.etoiles === 0 && !res.reussi);
   res.neigePiste = dom.objectif; res.reussi = true; res.troncons = res.troncons.map(() => dom.objectif); 
-  const R1 = resultat(dom, res); verif('objectif + piste enneigée partout + nuits d\'avance : 3 étoiles', R1.etoiles === 3 && R1.points > 2000);
+  const R1 = resultat(dom, res); verif('objectif + toutes les zones vertes : 2 étoiles', R1.etoiles === 2 && R1.points > 2000);
+  res.neigePiste = dom.objectif * 1.3; res.budget = CONFIG.domaines[res.taille].budget * .2;
+  verif('130 % + 20 % du budget + tout vert : 3 étoiles', resultat(dom, res).etoiles === 3);
+  res.budget = CONFIG.domaines[res.taille].budget * .15; verif('budget sous 20 % : 2 étoiles', resultat(dom, res).etoiles === 2);
+  res.budget = CONFIG.domaines[res.taille].budget * .3; res.troncons[0] = 0; verif('une zone pas verte : 1 étoile même à 130 %', resultat(dom, res).etoiles === 1);
+  res.troncons[0] = dom.objectif; res.neigePiste = dom.objectif;
   res.troncons = res.troncons.map((v, i) => i < res.troncons.length / 2 ? 0 : v); verif('neige seulement en bas : 1 étoile', resultat(dom, res).etoiles === 1);
   const d = demonter(res, n.id);
   verif('démonter rend de l\'argent et retire les tranchées', d.rendu > 0 && !res.tranchees.some(t => t.a === n.id || t.b === n.id));

@@ -12,7 +12,7 @@ Avancer étape par étape : proposer un plan court, attendre la validation, puis
 La version 3D (Three.js, carrière, tutoriels, exploitation de station, tracé de pistes, remontées, dameuses, commerces) a été **remplacée** par une version 2D plus simple, « comme pour les dameuses, mais pour les canons à neige ».
 Choix validés : remplacer la 3D ; **réseau complet** à construire (tranchées, regards, canons) ; **plusieurs nuits** par partie ; la nuit vivante : **température humide, vent qui tourne, pannes, salle des machines** ; une **vue d'ensemble des canons** comme une carte pour les démarrer et les arrêter facilement.
 
-Boucle : une **piste de Luchon-Superbagnères** au choix avec un objectif (m³ sur la piste en N nuits) et un budget → **le jour** on construit → **la nuit** on produit (froid, vent, pression) → **le matin** le bilan (la neige sur piste est payée) → nuit suivante, jusqu'à l'objectif → **étoiles et points** (longueur de piste enneigée, nuits d'avance, budget restant) → piste suivante.
+Boucle : une **piste de Luchon-Superbagnères** au choix avec un objectif (m³ sur la piste en N nuits) et un budget → **le jour** on construit → **la nuit** on produit (froid, vent, pression) → **le matin** le bilan (la neige sur piste est payée) → nuit suivante, jusqu'à l'objectif → terminer (ou continuer pour plus d'étoiles) → **étoiles et points** (zones en vert, neige en plus, budget restant) → piste suivante.
 
 ## Règles techniques
 
@@ -34,7 +34,7 @@ Boucle : une **piste de Luchon-Superbagnères** au choix avec un objectif (m³ s
 | `js/carte.js` | dessin de la carte (image du terrain préparée une fois, puis réseau, canons, jets, tas, nuit) et caméra |
 | `js/jeu.js` | écrans, outils, fiche d'un canon, vue des canons, salle des machines, nuit, bilan, menu, sauvegarde, boucle |
 
-Tester la simulation sans navigateur : concaténer `config.js`, `domaine.js` et `simulation.js` puis appeler `testsSimulation()` avec Node. Dans le navigateur : `index.html?test` (33 vérifications).
+Tester la simulation sans navigateur : concaténer `config.js`, `domaine.js` et `simulation.js` puis appeler `testsSimulation()` avec Node. Dans le navigateur : `index.html?test` (65 vérifications).
 
 ## Les pistes (une piste par partie, `CONFIG.domaines`) — demande de l'utilisateur
 
@@ -54,7 +54,7 @@ Tester la simulation sans navigateur : concaténer `config.js`, `domaine.js` et 
 
 - `creerDomaine(id, graine)` : la carte fait la largeur de la piste + 230 m ; la piste serpente du haut vers le front de neige (95 m presque plats en bas, salle des machines et retenue) ; la forme change à chaque partie (graine), pas les dimensions. 1 départ électrique (2 au-delà de 450 m), forêt autour. Bas du domaine vers 1 440 m.
 - **Tranchées moins chères** (le rendement ne suffisait pas) : eau 380 €/m, câble 250 €/m, commune 450 €/m ; dans une tranchée existante : eau 180, câble 70 €/m.
-- Équilibrage vérifié avec un joueur simulé (V8 sur trépied tous les 35 m de part et d'autre de la piste, réinvestit, ne réoriente pas) : 95 à 135 % de l'objectif selon la météo (environ 120 % en moyenne) ; en réorientant au vent et en passant aux V9 / V10 et aux tours, on dépasse largement l'objectif. Avec les étoiles à la couverture, ce joueur simulé (canons posés depuis le bas) atteint l'objectif en 4 nuits avec 42 à 88 % de la piste enneigée : surtout 1 ★, parfois 2 ★ ; il faut équiper le haut de la piste pour les 3 ★.
+- Équilibrage vérifié avec un joueur simulé (V8 sur trépied tous les 35 m de part et d'autre de la piste, réinvestit, ne réoriente pas) : 95 à 135 % de l'objectif selon la météo (environ 120 % en moyenne) ; en réorientant au vent et en passant aux V9 / V10 et aux tours, on dépasse largement l'objectif. Ce joueur simulé (canons posés depuis le bas) atteint l'objectif en 4 nuits avec 42 à 88 % de la piste enneigée : 1 ★ ; il faut équiper le haut de la piste pour la 2e ★, et dépenser peu pour la 3e.
 - Records par piste dans `nivo-records` ; une ancienne partie (petit / moyen / grand domaine) ne se reprend pas.
 
 ## Écran (allégé à la demande de l'utilisateur : « trop d'infos, les mettre dans un menu »)
@@ -106,10 +106,10 @@ Bouton 🏭 (ou toucher la salle) : pompes (automatiques pour l'instant), pressi
 
 ## Fin de partie
 
-La partie s'arrête dès que l'objectif est atteint (`res.reussi = true`), ou à la dernière nuit en échec. `resultat(dom, res)` (simulation.js) donne les étoiles, les points et les critères :
+Quand l'objectif est atteint (`res.reussi = true`), le bilan du matin montre les étoiles obtenues en terminant maintenant et propose **« Terminer la piste »** (`res.fini = true`) ou **« Continuer »** une nuit de plus (pour viser ★★ / ★★★). Après la dernière nuit, la partie s'arrête (réussie ou ratée). `resultat(dom, res)` (simulation.js) donne les étoiles, les points et les critères :
 
 - **Tronçons** : la piste est découpée en `troncons` (≈ 25 m, au moins 4) ; `tronconSous(dom, x, y)` (domaine.js) trouve le tronçon sous un point de chute, la nuit ajoute la neige de chaque canon à `res.troncons`. `couverture()` : un tronçon compte s'il a au moins 40 % de sa part (objectif / n). `equipement()` : tronçons où tombe la neige d'un canon prêt (part > 30 %).
-- **Étoiles** : ★ objectif atteint ; ★★ couverture ≥ 75 % ; ★★★ couverture ≥ 90 % et (une nuit d'avance, ou budget ≥ 25 % du départ, ou ≥ 130 % de l'objectif). But : des canons sur toute la piste, pas concentrés en bas. `CONFIG.etoiles` n'est plus utilisé.
+- **Étoiles** (règle de l'utilisateur) : ★ objectif de m³ atteint ; ★★ en plus **toutes les zones en vert** (couverture 100 %) ; ★★★ en plus **≥ 130 % de l'objectif et ≥ 20 % du budget de départ restant**. Chaque étoile demande les précédentes. But : des canons sur toute la piste, pas concentrés en bas. `CONFIG.etoiles` n'est plus utilisé.
 - **Points** : neige min(150 %) × 1 000, couverture × 1 000, 800 par nuit d'avance, budget / 100 ; 0 en échec.
 - **Écran de fin** (jeu.js `montrerFin`) : étoiles, points, record, détail, critères ✅/⬜, « Voir la carte », « Rejouer », « Piste suivante : … » (ordre de `CONFIG.domaines`). `nivo-records[piste] = { etoiles, points, meilleur, parties }`.
 - **Carte** : pastilles des tronçons le long du bord de la piste (vert / jaune / gris), anneau blanc ou rouge le jour selon l'équipement (carte.js).

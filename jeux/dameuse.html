@@ -137,6 +137,7 @@ h1 em{ font-style:normal; color:var(--ambre); }
   <button class="outil" id="bTreuil" disabled><span>⚓</span>TREUIL</button>
   <button class="outil" id="bLame"><i class="charge" id="lameCharge"></i><span>▬</span>LAME</button>
   <button class="outil" id="bFraise"><span>≋</span>FRAISE</button>
+  <button class="outil" id="bRadar" aria-label="Radar : épaisseur de neige dans les phares"><span>📡</span>RADAR</button>
 </div>
 <div class="repere" id="repereG" style="left:16px" hidden>◀ TOUCHER : GAUCHE</div><div class="repere" id="repereD" style="right:100px" hidden>DROITE ▶</div>
 <div class="commande gaz" id="gaz" hidden><span class="et av">AVANT</span><span class="rail"></span><span class="zero"></span><b id="gazB">0<small>km/h</small></b><span class="et ar">ARRIÈRE</span></div>
@@ -167,7 +168,7 @@ h1 em{ font-style:normal; color:var(--ambre); }
     <div class="carte">
       <h3>🕹️ Conduire</h3>
       <p>À droite, le <b>curseur de vitesse</b> : poussez-le vers le haut pour la marche avant, vers le bas pour la marche arrière (moins rapide). Il reste où vous le laissez ; au milieu, la dameuse s'arrête.</p>
-      <p>Pour tourner, <b>touchez la moitié gauche ou droite de l'écran</b> et restez appuyé : la dameuse tourne de ce côté (même à l'arrêt, elle pivote sur place) ; lâchez, elle va tout droit. Les outils (treuil, lame, fraise) sont en colonne sur le côté gauche. Au clavier : flèches haut / bas pour la vitesse, gauche / droite pour tourner, L / F / T pour les outils.</p>
+      <p>Pour tourner, <b>touchez la moitié gauche ou droite de l'écran</b> et restez appuyé : la dameuse tourne de ce côté (même à l'arrêt, elle pivote sur place) ; lâchez, elle va tout droit. Les outils (treuil, lame, fraise, radar) sont en colonne sur le côté gauche. Au clavier : flèches haut / bas pour la vitesse, gauche / droite pour tourner, L / F / T / R pour les outils.</p>
       <h3>≋ La fraise (à l'arrière)</h3>
       <p>Allumez-la et roulez en marche avant : elle laisse le <b>velours</b> (les rayures). Le damage est parfait à <b>14 km/h ou moins</b> ; plus vite, il est moins beau. Sur une bosse ou un creux, la fraise ne fait qu'un damage médiocre (elle aplanit un peu à chaque passage).</p>
       <h3>▬ La lame (à l'avant)</h3>
@@ -179,6 +180,8 @@ h1 em{ font-style:normal; color:var(--ambre); }
       </ul>
       <h3>⚓ Le treuil</h3>
       <p>Les <b>murs</b> (pente indiquée en pourcentage) sont trop raides pour remonter sans treuil : la dameuse patine et glisse. Au pied ou dans le mur, accrochez le treuil (le câble est déjà en place au point d'ancrage en haut), puis décrochez-le une fois en haut.</p>
+      <h3>📡 Le radar</h3>
+      <p>Comme l'écran de mesure de neige des vraies dameuses : le bouton <b>📡 Radar</b> affiche l'épaisseur de neige <b>dans le faisceau des phares</b>, avec les couleurs de la carte des épaisseurs : vert = bonne épaisseur (30 à 50 cm), jaune et orange = trop mince, marron = manque, bleu et violet = trop épais, blanc = tas. Touchez-le encore pour l'éteindre.</p>
       <h3>⛽ Gasoil et obstacles</h3>
       <p>La fraise, la lame et le treuil consomment. Le plein se fait sur l'aire du <b>garage</b>, en bas (arrêtez-vous dessus). Évitez les <b>enneigeurs</b> (perches) et les sapins : chaque accrochage coûte des points. Hors piste, la neige profonde ralentit.</p>
       <h3>🏁 Le chrono</h3>
@@ -429,7 +432,7 @@ function demarrer(def){
   const duree = clamp(T.n / (6.4 * 3.4) * 1.35 + 45, 150, 540);
   partie = { x:d.x, y:d.y, a:d.a, v:0, lame:false, fraise:false, treuil:null, charge:0, vidage:0, carbu:100, t:0, duree,
     conso:100 / (.38 * duree), sommeQ:0, accrochages:{ enneigeur:0, arbre:0 }, choc:0, textes:[], fin:false, pause:false, panne:false,
-    prevG:null, prevD:null, chenille:0, conseils:{}, conseil:null, conseilT:0, plein:0, dernier:performance.now(), majHud:0, majMini:0, secousse:0 };
+    prevG:null, prevD:null, chenille:0, conseils:{}, conseil:null, conseilT:0, plein:0, dernier:performance.now(), majHud:0, majMini:0, majRadar:0, secousse:0 };
   ['eMenu', 'eAide', 'eFin', 'ePause'].forEach(id => $(id).hidden = true);
   $('miniEt').hidden = false; $('hud').hidden = $('outils').hidden = $('mini').hidden = $('repereG').hidden = $('repereD').hidden = $('gaz').hidden = false; $('bFin').hidden = true;
   regler('gaz', 0); doigtsDir.clear(); commande.dir = 0;
@@ -447,7 +450,7 @@ function conseiller(cle, txt, duree = 4.5, max = 1){
 }
 function majOutils(){
   const P = partie; if(!P) return;
-  $('bLame').classList.toggle('actif', P.lame); $('bFraise').classList.toggle('actif', P.fraise); $('bTreuil').classList.toggle('actif', !!P.treuil);
+  $('bLame').classList.toggle('actif', P.lame); $('bFraise').classList.toggle('actif', P.fraise); $('bTreuil').classList.toggle('actif', !!P.treuil); $('bRadar').classList.toggle('actif', radar);
   $('lameCharge').style.setProperty('--c', Math.round(P.charge / CAP * 100));
 }
 const caseDe = (x, y) => { const i = Math.floor(x), j = Math.floor(y); return i < 0 || j < 0 || i >= T.W || j >= T.H ? -1 : j * T.W + i; };
@@ -767,6 +770,19 @@ function dessiner(P, dt){
   gr2.addColorStop(0, 'rgba(255,214,140,.14)'); gr2.addColorStop(1, 'rgba(255,214,140,0)');
   g.fillStyle = gr2; g.beginPath(); g.moveTo(fx2, fy2); g.arc(fx2, fy2, R * 2, P.a - Math.PI / 2 - .6, P.a - Math.PI / 2 + .6); g.closePath(); g.fill();
   g.restore();
+  // le radar : les couleurs de l'épaisseur de neige, affichées sur la neige dans le faisceau des phares
+  if(radar){
+    P.majRadar -= dt; if(P.majRadar <= 0){ P.majRadar = .25; peindreRadar(); }
+    const cx = P.x + ux * 2.4, cy = P.y + uy * 2.4, a0 = P.a - Math.PI / 2 - .6, a1 = P.a - Math.PI / 2 + .6;
+    g.save(); g.translate(ox, oy); g.scale(S, S);
+    g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, 42, a0, a1); g.closePath();
+    g.save(); g.clip(); g.globalAlpha = .62; g.imageSmoothingEnabled = false; g.drawImage(rad, 0, 0, T.W, T.H); g.restore();
+    // le bord du faisceau et une ligne de balayage, comme sur l'écran de la cabine
+    g.strokeStyle = 'rgba(124,255,178,.55)'; g.lineWidth = Math.max(.12, 1.2 / S); g.stroke();
+    const b = a0 + (t * .9 % 1) * (a1 - a0);
+    g.strokeStyle = 'rgba(124,255,178,.35)'; g.lineWidth = Math.max(.15, 2 / S); g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(b) * 42, cy + Math.sin(b) * 42); g.stroke();
+    g.restore();
+  }
   // la dameuse, les petites lumières, les textes
   g.save(); g.translate(ox, oy); g.scale(S, S);
   // le câble du treuil, tendu entre l'ancrage et l'arrière de la dameuse
@@ -905,6 +921,23 @@ function ouvrirCarte(){
     `<span>Surface damée <b style="margin-left:auto">${Math.floor(P.sommeQ / T.n * 100)} %</b></span>` +
     `<span><i style="background:#FFB020;border-color:#000"></i>la dameuse · <i style="background:#fff;border-radius:50%;width:8px;height:8px"></i>perches</span>`;
 }
+// Le radar (bouton 📡) : une image de la piste, un pixel par case de 1 m, aux couleurs de la carte des épaisseurs
+const rad = document.createElement('canvas'), rctx = rad.getContext('2d');
+let radar = lire('dameuse-radar', false), radData = null;
+function peindreRadar(){
+  if(rad.width !== T.W || rad.height !== T.H || !radData){ rad.width = T.W; rad.height = T.H; radData = rctx.createImageData(T.W, T.H); }
+  const px = radData.data;
+  for(let k = 0; k < T.W * T.H; k++){
+    const p = k * 4;
+    if(T.etat[k] === 1){ const cl = classeEp(T.h[k]); px[p] = cl.c[0]; px[p + 1] = cl.c[1]; px[p + 2] = cl.c[2]; px[p + 3] = 255; }
+    else px[p + 3] = 0;
+  }
+  rctx.putImageData(radData, 0, 0);
+}
+function basculerRadar(){
+  radar = !radar; ecrire('dameuse-radar', radar);
+  if(partie){ partie.majRadar = 0; majOutils(); if(radar) conseiller('radar', 'Radar : vert = bonne épaisseur, jaune et orange = trop mince, marron = manque, bleu et violet = trop épais, blanc = tas.', 6); }
+}
 function fermerCarte(){ $('eCarte').hidden = true; if(partie && !partie.fin) reprendre(); }
 function pause(){ if(!partie || partie.fin) return; partie.pause = true; majSon(0, false); $('ePause').hidden = false; }
 function reprendre(){ if(!partie) return; partie.pause = false; partie.dernier = performance.now(); $('ePause').hidden = true; }
@@ -963,11 +996,12 @@ function basculerTreuil(){
 $('bLame').addEventListener('pointerdown', e => { e.preventDefault(); basculerLame(); });
 $('bFraise').addEventListener('pointerdown', e => { e.preventDefault(); basculerFraise(); });
 $('bTreuil').addEventListener('pointerdown', e => { e.preventDefault(); basculerTreuil(); });
+$('bRadar').addEventListener('pointerdown', e => { e.preventDefault(); basculerRadar(); });
 addEventListener('keydown', e => {
   touches.add(e.code);
   if(partie && (e.code === 'ArrowUp' || e.code === 'KeyW')) regler('gaz', commande.gaz + .1);
   if(partie && (e.code === 'ArrowDown' || e.code === 'KeyS')) regler('gaz', commande.gaz - .1);
-  if(e.code === 'KeyL') basculerLame(); if(e.code === 'KeyF') basculerFraise(); if(e.code === 'KeyT') basculerTreuil();
+  if(e.code === 'KeyL') basculerLame(); if(e.code === 'KeyF') basculerFraise(); if(e.code === 'KeyT') basculerTreuil(); if(e.code === 'KeyR' && partie) basculerRadar();
   if(e.code === 'Escape' && !$('eCarte').hidden){ fermerCarte(); return; }
   if(e.code === 'Escape' || e.code === 'KeyP'){ if(partie && !partie.pause) pause(); else reprendre(); }
   if(e.code.startsWith('Arrow')) e.preventDefault();

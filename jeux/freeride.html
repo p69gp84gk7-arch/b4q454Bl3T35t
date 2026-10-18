@@ -120,7 +120,7 @@ h1 span{ color:var(--orange); }
     <div class="tete"><a href="../index.html">‹ DesDés</a><button class="droite" id="bSon">🔊</button><button id="bAide">❔ Aide</button></div>
     <div>
       <h1>Free<span>ride</span></h1>
-      <p class="sous">Hors-piste, poudreuse, barres rocheuses et tremplins. Touchez à gauche ou à droite pour tourner, sautez, et faites des figures en l'air.</p>
+      <p class="sous">Hors-piste, poudreuse, barres rocheuses, tremplins et snowparks. Touchez à gauche ou à droite pour tourner, sautez, et faites des figures en l'air.</p>
     </div>
     <div class="carte">
       <h2>Votre engin</h2>
@@ -146,6 +146,10 @@ h1 span{ color:var(--orange); }
       <div id="lDescentes"></div>
     </div>
     <div class="carte">
+      <h2>Snowparks</h2>
+      <div id="lParks"></div>
+    </div>
+    <div class="carte">
       <h2>Slalom chronométré</h2>
       <div id="lSlalom"></div>
     </div>
@@ -168,12 +172,22 @@ h1 span{ color:var(--orange); }
         <li>En l'air, l'écran est découpé en six zones. En haut : <b>backflip</b> (à gauche) et <b>frontflip</b> (à droite), 500 points, et au milieu le <b>truck driver</b> (chaque main tient l'avant de son ski, 250 points). Au milieu de l'écran : <b>mute</b> (skis croisés, la main droite tient la carre extérieure du ski gauche, 200 points), <b>safety</b> (la main droite sous la chaussure droite, 150 points) et <b>japan</b> (le ski droit replié derrière l'autre jambe, la main gauche passe sous le genou et tient la carre intérieure, 300 points). En snowboard : nose grab, mute, indy et japan. En bas au milieu un <b>360</b>, 300 points (on peut le combiner avec une autre figure). Il faut avoir fini avant de toucher la neige, et atterrir à peu près face à la pente, sinon c'est la chute.</li>
         <li>Les figures enchaînées sans tomber montent le <b>combo</b> (jusqu'à ×5).</li>
       </ul>
+      <h3>🛹 Snowparks</h3>
+      <p>Une piste damée avec des modules, comme dans un vrai snowpark : <b>kickers</b> (au milieu, avec leur table : le haut de la réception est marqué en bleu), <b>rollers</b> (des bosses en série), et sur les côtés des <b>boxes</b> (orange, larges et basses) et des <b>rails</b> (le rail droit en gris, le <b>kink</b> avec sa marche en rouge, l'<b>arc-en-ciel</b> en jaune).</p>
+      <ul>
+        <li>Pour glisser sur une box ou un rail, arrivez <b>dans son axe</b>, face à la pente : vous montez dessus par la petite rampe. Le prendre par le côté, c'est la chute.</li>
+        <li>Sur le module, une <b>barre d'équilibre</b> s'affiche au-dessus du skieur : quand la bille part d'un côté, touchez l'autre côté de l'écran pour la ramener au milieu. Rouge au bout : déséquilibre et chute.</li>
+        <li>La zone <b>en bas au milieu</b> met les skis (ou la planche) <b>en travers</b> : c'est un <b>boardslide</b>, qui rapporte plus qu'un 50-50 (skis dans l'axe). La retoucher les remet dans l'axe (un <b>swap</b>, en bonus).</li>
+        <li>Au bout du module, on saute : il reste le temps d'un grab ou d'un 360. Les points comptent la longueur glissée, le module (le kink et l'arc-en-ciel valent plus), le boardslide et le combo.</li>
+        <li>Étoiles : 1 à l'arrivée, 2 avec la moitié des <b>modules réussis</b> (kicker bien reçu, box ou rail glissé jusqu'au bout), 3 avec 85 %. Quatre parks, du vert au noir : Découverte, Jib Park, Slopestyle et Pro Line.</li>
+      </ul>
       <h3>⚠️ Dangers</h3>
       <p>Sapins et gros rochers : chute. Les petits obstacles se sautent. Les <b>crevasses</b> (glacier) se franchissent en sautant. Une <b>barre rocheuse</b> se saute en entier (gros bonus) ou se contourne par une rampe de neige.</p>
       <h3>🎮 Les modes</h3>
       <ul>
         <li><b>Sans fin</b> : la montagne ne s'arrête jamais et devient de plus en plus dense. Une <b>avalanche</b> part derrière vous et accélère : si elle vous rattrape, c'est fini.</li>
         <li><b>Descentes</b> : des parcours avec une arrivée. 1 étoile à l'arrivée, 2 et 3 selon les flocons ❄ ramassés.</li>
+        <li><b>Snowparks</b> : kickers, rollers, boxes et rails ; étoiles selon les modules réussis.</li>
         <li><b>Slalom</b> : passez entre les deux piquets de chaque porte. Porte manquée : +5 s. Étoiles selon le temps.</li>
         <li><b>Défi du jour</b> : une descente nouvelle chaque jour.</li>
       </ul>
@@ -231,6 +245,22 @@ const SLALOMS = [
   { id:'special', n:'Spécial du Stade', ico:'🚩', d:'Portes serrées, virages courts', L:420, ecart:12, larg:5, decal:4.2, vref:9.8 },
   { id:'superg', n:'Super-G des Crêtes', ico:'🚩', d:'Long, rapide, quelques tremplins', L:900, ecart:30, larg:10, decal:8.5, vref:15, sauts:true },
 ];
+// Les snowparks : piste damée avec des modules en lignes (kickers, boxes, rails, rollers) ; niv : 0 facile à 2 expert
+const PARKS = [
+  { id:'park-decouverte', n:'Park Découverte', ico:'🟢', c:'#2E9E5B', d:'Petits kickers, boxes à plat et rollers', L:430, niv:0, sections:['boxes', 'kickers', 'whoops', 'boxes', 'kickers'] },
+  { id:'park-jib', n:'Jib Park', ico:'🔵', c:'#1F6FE0', d:'Boxes et rails en série : des slides partout', L:500, niv:1, sections:['boxes', 'rails', 'jib', 'whoops', 'rails', 'jib'] },
+  { id:'park-slope', n:'Slopestyle', ico:'🔴', c:'#D63A2F', d:'Rails, boxes et kickers enchaînés', L:640, niv:1, sections:['jib', 'kickers', 'rails', 'kickers', 'whoops', 'big'] },
+  { id:'park-pro', n:'Pro Line', ico:'⚫', c:'#13233A', d:'Kink, rails arc-en-ciel et big air', L:720, niv:2, sections:['rails', 'big', 'jib', 'big', 'rails', 'big'] },
+];
+// Les modules à slider : hauteur (m), largeur (m), instabilité (plus c'est haut, plus l'équilibre part vite), points
+const FORMES = {
+  box:{ n:'Box', sur:'la box', h:.45, w:.7, inst:1.4, mult:1 },
+  rail:{ n:'Rail', sur:'le rail', h:.7, w:.14, inst:2.2, mult:1.3 },
+  kink:{ n:'Kink rail', sur:'le kink', h:.6, w:.14, inst:2.9, mult:1.6 },
+  arc:{ n:'Rail arc-en-ciel', sur:'l\'arc-en-ciel', h:.5, w:.14, inst:2.7, mult:1.6 },
+};
+// Hauteur du module à la part s de sa longueur (0 = début, 1 = fin) : l'arc monte puis redescend, le kink a une marche
+const hRail = (o, s) => { s = clamp(s, 0, 1); return o.h + (o.forme === 'arc' ? .7 * Math.sin(Math.PI * s) : o.forme === 'kink' ? (s < .4 ? .45 : s < .7 ? .45 * (1 - (s - .4) / .3) : 0) : 0); };
 function defiDuJour(){
   const d = new Date(), seed = d.getFullYear() * 1000 + Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5), R = alea(seed);
   const types = ['clairiere', 'foret', 'kickers', 'rochers', 'barre', 'bosses', 'couloir', 'glacier', 'foret_dense'];
@@ -243,9 +273,10 @@ function defiDuJour(){
 const BORD = 22;
 function nouveauMonde(mode, def, seed){
   const R = alea(seed), ph = [R() * 6.3, R() * 6.3, R() * 6.3];
-  const M = { mode, def, R, objets:[], flocons:[], portes:[], barres:[], fin:Infinity, bord:BORD, glacier:!!(def && def.glacier), genere:0, nFlocons:0 };
+  const M = { mode, def, R, objets:[], flocons:[], portes:[], barres:[], rails:[], fin:Infinity, bord:BORD, glacier:!!(def && def.glacier), genere:0, nFlocons:0, nModules:0 };
   M.sure = y => clamp(8.5 * Math.sin(y / 47 + ph[0]) + 3.5 * Math.sin(y / 19 + ph[1]) + 2 * Math.sin(y / 9 + ph[2]), -BORD + 7, BORD - 7);
-  if(mode === 'slalom'){ M.bord = 15; M.sure = () => 0; }
+  if(mode === 'slalom'){ M.bord = 15; M.sure = () => 0; M.filet = true; }
+  if(mode === 'park'){ M.bord = 16; M.sure = () => 0; M.filet = true; M.G = 4.6; }
   return M;
 }
 const ajouter = (M, o) => { M.objets.push(o); };
@@ -340,6 +371,30 @@ function construireSlalom(M, def){
   M.fin = def.L + 10; M.genere = Infinity;
   trier(M);
 }
+// Snowpark : les boxes et rails sur deux lignes (x = ±6), les kickers au milieu, les rollers sur toute la largeur
+function poserModule(M, forme, x, y, l){ const F = FORMES[forme]; M.rails.push({ t:'rail', forme, x, y, l, h:F.h, w:F.w, ok:false }); M.nModules++; }
+function kickerPark(M, y, p){ ajouter(M, { t:'kicker', x:0, y, w:5.5, l:4 + 2 * p, p, park:true, table:3 + p * 5 }); M.nModules++; }
+function sectionPark(M, type, y0, y1, niv){
+  const R = M.R, jib = [['box'], ['box', 'rail', 'kink'], ['rail', 'kink', 'arc']][niv], tire = l => l[Math.floor(R() * l.length)];
+  const rails = niv ? jib.filter(f => f !== 'box') : jib;
+  bords(M, y0, y1, R);
+  let c = R() < .5 ? -1 : 1;
+  switch(type){
+    case 'boxes': for(let y = y0 + 8; y < y1 - 14; y += 15 + R() * 4, c = -c) poserModule(M, 'box', c * 6, y, 8 + R() * 3); break;
+    case 'rails': for(let y = y0 + 8; y < y1 - 16; y += 17 + R() * 4, c = -c) poserModule(M, tire(rails), c * 6, y, 9 + R() * 4); break;
+    case 'jib': for(let y = y0 + 8; y < y1 - 22; y += 20 + R() * 4){ poserModule(M, tire(jib), -6, y, 8 + R() * 4); poserModule(M, tire(jib), 6, y + 9, 8 + R() * 4); } break;
+    case 'kickers': for(let y = y0 + 10; y < y1 - 24; y += 34 + R() * 6) kickerPark(M, y, [.5, .75, .9][niv] + R() * .15); break;
+    case 'big': for(let y = y0 + 12; y < y1 - 30; y += 46 + R() * 6) kickerPark(M, y, [.9, 1.2, 1.5][niv] + R() * .15); break;
+    case 'whoops': for(let y = y0 + 10, k = 0; y < y1 - 10 && k < 7; y += 4.4, k++) for(let x = -M.bord + 3 + (k % 2) * 2.2; x < M.bord - 2; x += 4.4) ajouter(M, { t:'bosse', x, y, r:1.7 }); break;
+  }
+}
+function construirePark(M, def){
+  const n = def.sections.length, L = def.L;
+  for(let k = 0; k < n; k++) sectionPark(M, def.sections[k], 20 + k * L / n, 20 + (k + 1) * L / n, def.niv);
+  bords(M, -40, 20, M.R); bords(M, 20 + L, 80 + L, M.R);
+  M.fin = 20 + L; M.genere = Infinity;
+  trier(M); M.rails.sort((a, b) => a.y - b.y);
+}
 // Sans fin : la montagne se construit au fur et à mesure, de plus en plus dense
 const TYPES_INFINI = ['clairiere', 'foret_l', 'kickers', 'foret', 'rochers', 'bosses_l', 'barre', 'couloir', 'foret_dense', 'glacier', 'bosses'];
 function genererInfini(M, jusqua){
@@ -395,19 +450,21 @@ function lancer(mode, def){
   const seed = mode === 'infini' ? (Date.now() & 0xffffff) : (def.seed || [...def.id].reduce((s, c) => s * 31 + c.charCodeAt(0) | 0, 7));
   const M = nouveauMonde(mode, def, seed);
   if(mode === 'slalom') construireSlalom(M, def);
+  else if(mode === 'park') construirePark(M, def);
   else if(mode === 'infini') genererInfini(M, 200);
   else construireDescente(M, def);
   partie = { mode, def, M, x:M.sure(0), y:0, th:0, thv:0, v:4, z:0, vz:0, air:false, tAir:0, tours:0, spin:0, spinV:0, fig:null, figs:[], chute:0, invul:0,
     score:0, combo:1, figures:0, chutes:0, prisF:0, portesOk:0, portesKo:0, t:0, fin:false, pause:false, traces:[], part:[], textes:[],
-    av:mode === 'infini' ? -70 : null, avV:0, dernier:performance.now(), majHud:0, camX:M.sure(0), meilleurSaut:0, depart:false };
+    av:mode === 'infini' ? -70 : null, avV:0, dernier:performance.now(), majHud:0, camX:M.sure(0), meilleurSaut:0, depart:false,
+    slide:null, depuis:null, modOk:0, slides:0 };
   ['eMenu', 'eAide', 'eFin', 'ePause'].forEach(id => $(id).hidden = true);
   $('hud').hidden = false; $('jauge').hidden = false;
   $('jauge').classList.toggle('avalanche', mode === 'infini');
   $('hScoreN').textContent = mode === 'slalom' ? 'Temps' : 'Score';
-  $('hInfoN').textContent = mode === 'slalom' ? 'Portes' : mode === 'infini' ? 'Distance' : 'Flocons';
+  $('hInfoN').textContent = mode === 'slalom' ? 'Portes' : mode === 'infini' ? 'Distance' : mode === 'park' ? 'Modules' : 'Flocons';
   $('aideDoigt').style.opacity = 1;
   audio(); if(AC && AC.state === 'suspended') AC.resume();
-  annoncer(mode === 'slalom' ? def.n : mode === 'infini' ? 'Sans fin' : def.n, mode === 'infini' ? 'Attention à l\'avalanche !' : mode === 'slalom' ? 'Passez entre les piquets' : '', 1.8);
+  annoncer(mode === 'slalom' ? def.n : mode === 'infini' ? 'Sans fin' : def.n, mode === 'infini' ? 'Attention à l\'avalanche !' : mode === 'slalom' ? 'Passez entre les piquets' : mode === 'park' ? 'Kickers, boxes et rails' : '', 1.8);
   cancelAnimationFrame(raf); raf = requestAnimationFrame(boucle);
 }
 let annonceT = 0;
@@ -417,6 +474,7 @@ function texte(P, txt, c = '#13233A', gros = false){ P.textes.push({ x:P.x, y:P.
 function chuter(P, raison){
   if(P.chute > 0 || P.invul > 0) return;
   P.chute = 1.3; P.chutes++; P.combo = 1; P.v *= .15; P.air = false; P.z = 0; P.vz = 0; P.spin = 0; P.spinV = 0; P.tours = 0; P.fig = null; P.figs = [];
+  P.slide = null; P.depuis = null; P.spinRetour = false;
   texte(P, raison, '#E23B3B', true); bruitCourt(90, .35, .35);
   if(navigator.vibrate) navigator.vibrate(90);
   for(let k = 0; k < 18; k++) P.part.push({ x:P.x, y:P.y, vx:(Math.random() - .5) * 8, vy:(Math.random() - .5) * 8 + P.v * .3, vie:.8 + Math.random() * .5, r:.15 + Math.random() * .25 });
@@ -431,9 +489,12 @@ function atterrir(P){
   if(P.anim) P.anim.recep = clamp(tAir * .8, .3, 1);
   if(tourne){ chuter(P, 'Réception ratée !'); return; }
   if(Math.abs(P.th) > 1.05){ chuter(P, 'Réception de travers !'); return; }
+  if(P.spinRetour){ P.spin = 0; P.spinRetour = false; }
+  // snowpark : un kicker sauté et bien reçu compte comme module réussi
+  if(P.depuis){ if(!P.depuis.ok){ P.depuis.ok = true; P.modOk++; } P.depuis = null; }
   bruitCourt(160, .12, .2);
   // un petit saut (ou une bosse) sans figure ne rapporte rien
-  if((tAir < .45 || P.raisonAir === 'ollie') && !P.tours && !P.drop && !P.figs.length){ P.drop = 0; return; }
+  if((tAir < .45 || P.raisonAir === 'ollie' || P.raisonAir === 'rail') && !P.tours && !P.drop && !P.figs.length){ P.drop = 0; return; }
   // Les points du saut : temps en l'air, 360, hauteur de la barre sautée, réception propre
   let pts = Math.round(tAir * 220) + P.tours * 300 + Math.round((P.drop || 0) * 90) + P.figs.reduce((s, f) => s + FIGURES[f].pts, 0);
   const propre = Math.abs(P.th) < .3;
@@ -462,9 +523,10 @@ function figure(P, k){
 function sautCourt(P){
   if(P.fin || P.pause) return;
   if(P.chute > 0) return;
+  if(P.slide){ P.slide.travers = !P.slide.travers; P.slide.swaps++; if(P.slide.travers) P.slide.vuTravers = true; return; }
   if(P.air){
     // un 360 de plus, s'il reste le temps
-    if(P.spinV === 0){ P.spinV = (engin === 'board' ? 2.35 : 2) * Math.PI; P.spin = 0; }
+    if(P.spinV === 0){ P.spinV = (engin === 'board' ? 2.35 : 2) * Math.PI; P.spin = 0; P.spinRetour = false; }
     else P.tourDePlus = true;
     return;
   }
@@ -484,6 +546,37 @@ function animer(P, dt){
   const sens = Math.abs(P.thv) > .7 ? Math.sign(P.thv) : 0;
   if(sens && sens !== A.sens && A.tPlant > .3){ A.cote = -sens; A.tPlant = 0; }
   if(sens) A.sens = sens; else if(Math.abs(P.thv) < .15) A.sens = 0;
+}
+// Snowpark : on monte sur une box ou un rail en arrivant dans son axe, à peu près face à la pente
+function entrerRail(P, o){
+  if(P.air && (P.fig || P.spinV)){ chuter(P, 'Réception ratée !'); return; }
+  if(Math.abs(P.th) > .75){ chuter(P, 'Mauvaise entrée !'); return; }
+  P.air = false; P.vz = 0; P.tAir = 0; P.figs = []; P.drop = 0; P.depuis = null; P.spinRetour = false;
+  P.slide = { o, y:P.y, t:0, pts:0, rot:0, travers:false, vuTravers:false, swaps:0, bal:(Math.random() - .5) * .3, bv:(Math.random() - .5) * 1.4 };
+  bruitCourt(2200, .06, .05);
+}
+// Sur le module : le skieur glisse dans l'axe ; l'équilibre part d'un côté, gauche / droite le rattrapent
+function glisser(P, dt, dir){
+  const S = P.slide, o = S.o, F = FORMES[o.forme], s = (P.y - o.y) / o.l;
+  P.x = o.x; P.th = 0; P.thv = 0;
+  if(s >= 1){ sortirRail(P); return; }
+  P.z = hRail(o, s); S.t += dt;
+  S.rot += ((S.travers ? Math.PI / 2 : 0) - S.rot) * Math.min(1, dt * 14); P.spin = S.rot;
+  S.bv += (S.bal * F.inst + (Math.random() - .5) * 2.4 + dir * 4.2) * dt; S.bv *= 1 - Math.min(1, dt * 1.2);
+  S.bal += S.bv * dt;
+  S.pts += (P.y - S.y) * (S.travers ? 16 : 10) * F.mult; S.y = P.y;
+  if(Math.abs(S.bal) > 1){ P.z = 0; P.x += Math.sign(S.bal) * (o.w / 2 + .5); P.invul = 0; chuter(P, 'Déséquilibre !'); }
+}
+// Au bout du module : les points du slide, puis un petit saut (on peut encore faire un grab ou un 360)
+function sortirRail(P){
+  const S = P.slide, o = S.o, F = FORMES[o.forme];
+  P.slide = null;
+  const nom = `${S.vuTravers ? 'Boardslide' : '50-50'} sur ${F.sur}${S.swaps > 1 ? ' + swap' : ''}`;
+  const pts = Math.round((S.pts + 80 + Math.max(0, S.swaps - 1) * 60) * P.combo / 10) * 10;
+  P.score += pts; texte(P, `${nom} ! +${fmtN(pts)}`, '#FF6A2B', true);
+  P.figures++; P.slides++; P.combo = Math.min(5, P.combo + .5); P.meilleurSaut = Math.max(P.meilleurSaut, pts);
+  if(!o.ok){ o.ok = true; P.modOk++; }
+  decoller(P, 2.2, 'rail'); P.z = hRail(o, 1); P.spin = S.rot; P.spinRetour = S.rot > .05;
 }
 function boucle(now){
   const P = partie; if(!P) return;
@@ -507,6 +600,8 @@ function maj(P, dt){
   if(P.chute > 0){
     P.chute -= dt; P.v = Math.max(0, P.v - 12 * dt);
     if(P.chute <= 0){ P.th = 0; P.v = 3; P.invul = 1.2; }
+  } else if(P.slide){
+    // sur un rail : gauche / droite servent à l'équilibre (voir glisser)
   } else if(!P.air){
     const vir = engin === 'ski' ? 2.4 : 2, avant = P.th;
     if(dir) P.th = clamp(P.th + dir * (dir * P.th < 0 ? vir * 1.6 : vir) * dt, -1.45, 1.45);
@@ -516,21 +611,23 @@ function maj(P, dt){
   animer(P, dt);
   // Vitesse : la pente pousse, l'air et la neige freinent ; couper la pente ralentit, travers = dérapage
   if(P.chute <= 0){
-    const G = M.glacier ? 5.6 : 5.2, mu = engin === 'board' ? .45 : .6, ath = Math.abs(P.th);
+    const G = M.glacier ? 5.6 : M.G || 5.2, mu = engin === 'board' ? .45 : .6, ath = Math.abs(P.th);
     let a = G * Math.cos(P.th) - .0125 * P.v * P.v - mu;
     if(ath > 1.05 && !P.air) a -= 9 * (ath - 1.05);
     if(engin === 'ski' && ath > .5 && !P.air) a += .25;     // les carres accrochent mieux
     P.v = clamp(P.v + a * dt, P.y < 3 ? 3 : 0, 30);
   }
-  const vx = Math.sin(P.th) * P.v, vy = Math.cos(P.th) * P.v, yAvant = P.y;
+  const vx = Math.sin(P.th) * P.v, vy = Math.cos(P.th) * P.v, yAvant = P.y, xAvant = P.x;
   P.x += vx * dt; P.y += vy * dt;
+  if(P.slide) glisser(P, dt, dir);
   // Bords : on ne peut pas sortir de la zone
-  const lim = M.bord + (M.mode === 'slalom' ? -.6 : 6);
-  if(Math.abs(P.x) > lim){ P.x = Math.sign(P.x) * lim; if(M.mode === 'slalom'){ P.v *= .6; P.th *= -.4; texte(P, 'Filet !', '#E23B3B'); } }
+  const lim = M.bord + (M.filet ? -.6 : 6);
+  if(Math.abs(P.x) > lim){ P.x = Math.sign(P.x) * lim; if(M.filet){ P.v *= .6; P.th *= -.4; texte(P, 'Filet !', '#E23B3B'); } }
   // En l'air
   if(P.air){
     P.tAir += dt; P.vz -= 9.8 * dt; P.z += P.vz * dt;
     if(P.spinV){ P.spin += P.spinV * dt; if(P.spin >= 2 * Math.PI){ P.tours++; P.spin = 0; P.spinV = P.tourDePlus ? P.spinV : 0; P.tourDePlus = false; } }
+    else if(P.spinRetour){ P.spin -= P.spin * Math.min(1, dt * 9); if(P.spin < .02){ P.spin = 0; P.spinRetour = false; } }
     if(P.fig){ P.fig.t += dt; if(P.fig.t >= FIGURES[P.fig.k].dur){ P.figs.push(P.fig.k); texte(P, nomFig(P.fig.k) + ' !', '#1F6FE0'); P.fig = null; } }
     if(P.z <= 0) atterrir(P);
   }
@@ -542,7 +639,7 @@ function maj(P, dt){
     }
   }
   // Obstacles
-  if(P.chute <= 0){
+  if(P.chute <= 0 && !P.slide){
     const i0 = premierApres(M.objets, P.y - 6);
     for(let i = i0; i < M.objets.length; i++){
       const o = M.objets[i]; if(o.y > P.y + 6) break;
@@ -556,12 +653,21 @@ function maj(P, dt){
           P.x += dx / (d || 1) * (r - d + .3);
         }
       } else if(o.t === 'kicker'){
-        if(!P.air && yAvant < o.y && P.y >= o.y && Math.abs(P.x - o.x) < o.w / 2) decoller(P, 2.4 + P.v * .3 * o.p, 'kicker');
+        if(!P.air && yAvant < o.y && P.y >= o.y && Math.abs(P.x - o.x) < o.w / 2){ decoller(P, 2.4 + P.v * .3 * o.p, 'kicker'); if(o.park) P.depuis = o; }
       } else if(o.t === 'bosse'){
         if(!P.air && yAvant < o.y && P.y >= o.y && Math.abs(dx) < o.r * .8 && P.v > 7) decoller(P, P.v * .14, 'bosse');
       } else if(o.t === 'crevasse'){
         if(!P.air && Math.abs(dx) < o.w / 2 && Math.abs(dy) < o.h / 2 && P.invul <= 0){ chuter(P, 'Crevasse !'); P.y = o.y - o.h / 2 - 2.5; P.chute = 2; if(P.mode !== 'slalom') P.score = Math.max(0, P.score - 200); }
       }
+    }
+  }
+  // Snowpark : monter sur une box ou un rail en arrivant dans son axe ; le prendre par le côté, c'est la chute
+  if(M.rails.length && !P.slide && P.chute <= 0){
+    for(const o of M.rails){
+      if(o.y > P.y + 2) break;
+      if(o.y + o.l < yAvant - 1) continue;
+      if(yAvant < o.y && P.y >= o.y && P.z < .9 && Math.abs(P.x - o.x) < o.w / 2 + .5){ entrerRail(P, o); break; }
+      if(P.z < o.h + .2 && P.invul <= 0 && P.y > o.y && P.y < o.y + o.l && (P.x - o.x) * (xAvant - o.x) < 0){ P.x = o.x + Math.sign(xAvant - o.x) * (o.w / 2 + .6); chuter(P, o.forme === 'box' ? 'Box !' : 'Rail !'); break; }
     }
   }
   // Flocons
@@ -587,7 +693,7 @@ function maj(P, dt){
     P.part.push({ x:P.x - s * Math.cos(P.th) * .6, y:P.y + .4, vx:-s * (2 + Math.random() * 3) * Math.cos(P.th) + vx * .3, vy:vy * .4 + (Math.random() - .5) * 2, vie:.5 + Math.random() * .4, r:.12 + Math.random() * .22 });
   }
   // Traces dans la neige
-  if(!P.air && P.chute <= 0){ const der = P.traces[P.traces.length - 1]; if(!der || Math.hypot(der.x - P.x, der.y - P.y) > .35) P.traces.push({ x:P.x, y:P.y, th:P.th }); }
+  if(!P.air && P.chute <= 0 && !P.slide){ const der = P.traces[P.traces.length - 1]; if(!der || Math.hypot(der.x - P.x, der.y - P.y) > .35) P.traces.push({ x:P.x, y:P.y, th:P.th }); }
   else if(P.traces.length && P.traces[P.traces.length - 1]) P.traces.push(null);
   while(P.traces.length && (!P.traces[0] || P.traces[0].y < P.y - 70)) P.traces.shift();
   // Avalanche
@@ -633,11 +739,45 @@ function dessinerRocher(o){
   if(o.t !== 'souche'){ g.fillStyle = 'rgba(255,255,255,.92)'; g.beginPath(); g.ellipse(o.x - r * .25, o.y - r * .45, r * .5, r * .22, -.3, 0, 6.29); g.fill(); }
 }
 function dessinerKicker(o){
+  // snowpark : la table (le plat après le kicker) et le haut de la réception, marqué en bleu
+  if(o.park){
+    const x0 = o.x - o.w / 2;
+    g.fillStyle = 'rgba(214,228,243,.55)'; g.fillRect(x0 - .3, o.y, o.w + .6, o.table);
+    g.strokeStyle = 'rgba(31,111,224,.55)'; g.lineWidth = .12; g.setLineDash([.5, .4]); g.beginPath(); g.moveTo(x0 - .3, o.y + o.table); g.lineTo(x0 + o.w + .3, o.y + o.table); g.stroke(); g.setLineDash([]);
+    g.fillStyle = 'rgba(80,110,160,.18)'; g.fillRect(x0 - .3, o.y + o.table, o.w + .6, 1.6);
+  }
   const x0 = o.x - o.w / 2, gr = g.createLinearGradient(0, o.y - o.l, 0, o.y);
   gr.addColorStop(0, 'rgba(214,228,243,.35)'); gr.addColorStop(.7, '#F4F8FD'); gr.addColorStop(1, '#FFFFFF');
   g.fillStyle = gr; g.beginPath(); g.moveTo(x0 + .5, o.y - o.l); g.lineTo(x0 + o.w - .5, o.y - o.l); g.lineTo(x0 + o.w, o.y); g.lineTo(x0, o.y); g.closePath(); g.fill();
   g.fillStyle = 'rgba(80,110,160,.28)'; g.beginPath(); g.moveTo(x0, o.y); g.lineTo(x0 + o.w, o.y); g.lineTo(x0 + o.w - .4, o.y + 2.2); g.lineTo(x0 + .4, o.y + 2.2); g.closePath(); g.fill();
   g.strokeStyle = '#FF6A2B'; g.lineWidth = .14; g.beginPath(); g.moveTo(x0, o.y); g.lineTo(x0 + o.w, o.y); g.stroke();
+}
+// Box ou rail vu en plongée : un point à la hauteur h est dessiné h × 0,55 plus haut, comme le skieur
+function dessinerRail(o){
+  const F = FORMES[o.forme], n = 16, h0 = hRail(o, 0), pts = [];
+  for(let k = 0; k <= n; k++){ const s = k / n, y = o.y + s * o.l; pts.push([y, y - hRail(o, s) * .55]); }
+  // la rampe de neige qui monte au module
+  const gr = g.createLinearGradient(0, o.y - 2.8, 0, o.y); gr.addColorStop(0, 'rgba(230,238,248,.4)'); gr.addColorStop(1, '#FFFFFF');
+  g.fillStyle = gr; g.beginPath(); g.moveTo(o.x - .5, o.y - 2.8); g.lineTo(o.x + .5, o.y - 2.8); g.lineTo(o.x + Math.max(.5, o.w / 2 + .1), o.y - h0 * .55); g.lineTo(o.x - Math.max(.5, o.w / 2 + .1), o.y - h0 * .55); g.closePath(); g.fill();
+  // l'ombre au sol
+  g.fillStyle = 'rgba(60,85,130,.22)'; g.fillRect(o.x - o.w / 2 + .25, o.y + .2, o.w + .15, o.l);
+  if(o.forme === 'box'){
+    g.fillStyle = '#9AA6B8'; g.beginPath(); g.moveTo(o.x + o.w / 2, pts[0][1]);
+    for(const [y, yh] of pts) g.lineTo(o.x + o.w / 2, yh);
+    g.lineTo(o.x + o.w / 2, o.y + o.l); g.lineTo(o.x - o.w / 2, o.y + o.l); g.lineTo(o.x - o.w / 2, pts[n][1]); g.closePath(); g.fill();
+    g.fillStyle = '#FF6A2B'; g.fillRect(o.x - o.w / 2, pts[0][1], o.w, pts[n][1] - pts[0][1]);
+    g.fillStyle = 'rgba(255,255,255,.85)'; for(let y = pts[0][1] + 1; y < pts[n][1] - .5; y += 2.2) g.fillRect(o.x - o.w / 2, y, o.w, .5);
+    g.strokeStyle = '#13233A'; g.lineWidth = .06; g.strokeRect(o.x - o.w / 2, pts[0][1], o.w, pts[n][1] - pts[0][1]);
+  } else {
+    // les pieds, puis le tube
+    g.strokeStyle = '#4E5868'; g.lineWidth = .12;
+    for(let k = 0; k <= n; k += 4){ const [y, yh] = pts[k]; g.beginPath(); g.moveTo(o.x, y); g.lineTo(o.x, yh); g.stroke(); }
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    g.strokeStyle = '#3E4756'; g.lineWidth = .24; g.beginPath(); pts.forEach(([y, yh], k) => k ? g.lineTo(o.x, yh) : g.moveTo(o.x, yh)); g.stroke();
+    g.strokeStyle = o.forme === 'arc' ? '#F2C230' : o.forme === 'kink' ? '#E23B3B' : '#C9D2DE'; g.lineWidth = .13; g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = .04; g.stroke();
+  }
+  if(o.ok){ g.fillStyle = 'rgba(46,158,91,.85)'; g.font = '700 1.1px sans-serif'; g.textAlign = 'center'; g.fillText('✓', o.x + o.w / 2 + .9, o.y + o.l / 2); }
 }
 function dessinerBosse(o){
   const gr = g.createRadialGradient(o.x - .5, o.y - .5, .1, o.x, o.y, o.r);
@@ -827,6 +967,13 @@ function dessinerSkieur(P, t){
   g.save(); g.translate(P.x, P.y - z * .55);
   dessinerPersonnage(g, poseSkieur(F, u, engin, P.chute > 0 ? MVT0 : P.anim || MVT0), P.th, flip, tourne, 1.55 * (1 + z * .04));
   g.restore();
+  // sur un rail : la barre d'équilibre au-dessus du skieur
+  if(P.slide){
+    const b = P.slide.bal, y = P.y - z * .55 - 3.4, a = Math.abs(b);
+    g.fillStyle = 'rgba(19,35,58,.6)'; g.beginPath(); g.roundRect(P.x - 1.6, y - .2, 3.2, .4, .2); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.7)'; g.fillRect(P.x - .03, y - .3, .06, .6);
+    g.fillStyle = a < .5 ? '#38D07A' : a < .8 ? '#F2C230' : '#E23B3B'; g.beginPath(); g.arc(P.x + clamp(b, -1, 1) * 1.5, y, .3, 0, 6.29); g.fill();
+  }
 }
 function dessiner(P, dt){
   const M = P.M, t = performance.now() / 1000;
@@ -838,11 +985,12 @@ function dessiner(P, dt){
   g.save(); g.translate(ox, oy); g.scale(S, S);
   const y0 = (-oy) / S - 6, y1 = (Hh - oy) / S + 6, x0 = -ox / S - 4, x1 = (W - ox) / S + 4;
   // piste de slalom : bords damés et filets
-  if(M.mode === 'slalom'){
+  if(M.filet){
     g.fillStyle = 'rgba(205,220,240,.55)'; g.fillRect(-M.bord, y0, M.bord * 2, y1 - y0);
     g.fillStyle = 'rgba(255,255,255,.35)'; for(let x = -M.bord + .5; x < M.bord; x += 1.2) g.fillRect(x, y0, .5, y1 - y0);
     for(const s of [-1, 1]){ g.strokeStyle = '#FF6A2B'; g.lineWidth = .18; g.beginPath(); g.moveTo(s * M.bord, y0); g.lineTo(s * M.bord, y1); g.stroke(); g.fillStyle = '#13233A'; for(let y = Math.ceil(y0 / 6) * 6; y < y1; y += 6) g.fillRect(s * M.bord - .1, y, .2, .2); }
     if(y0 < 2){ g.fillStyle = '#13233A'; g.fillRect(-M.bord, 1.5, M.bord * 2, .3); }
+    if(M.mode === 'park' && y0 < 14){ g.fillStyle = M.def.c; g.font = '400 3.4px "Bebas Neue", sans-serif'; g.textAlign = 'center'; g.fillText('SNOWPARK', 0, 9); g.font = '400 1.8px "Bebas Neue", sans-serif'; g.fillText(M.def.n.toUpperCase(), 0, 11.2); }
   }
   // traces
   g.strokeStyle = 'rgba(120,150,195,.45)'; g.lineWidth = engin === 'ski' ? .09 : .3; g.lineCap = 'round';
@@ -857,6 +1005,7 @@ function dessiner(P, dt){
     const o = M.objets[i]; if(o.y > y1 + 4) break; if(o.x < x0 - 4 || o.x > x1 + 4) continue;
     if(o.t === 'bosse') dessinerBosse(o); else if(o.t === 'crevasse') dessinerCrevasse(o); else if(o.t === 'kicker') dessinerKicker(o); else visibles.push(o);
   }
+  for(const o of M.rails) if(o.y < y1 + 3 && o.y + o.l > y0 && o.x > x0 - 2 && o.x < x1 + 2) visibles.push(o);
   for(const b of M.barres) if(b.y > y0 - 10 && b.y < y1) dessinerBarre(b, Math.max(x0, -M.bord - 30), Math.min(x1, M.bord + 30));
   for(const pt of M.portes) if(pt.y > y0 && pt.y < y1) dessinerPorte(pt);
   if(M.fin < y1 && M.fin > y0){
@@ -868,7 +1017,7 @@ function dessiner(P, dt){
   // en hauteur, triés de haut en bas : sapins, rochers… et le skieur au bon endroit
   visibles.push({ t:'skieur', y:P.y + .2 });
   visibles.sort((a, b) => a.y - b.y);
-  for(const o of visibles){ if(o.t === 'skieur') dessinerSkieur(P, t); else if(o.t === 'arbre') dessinerSapin(o); else dessinerRocher(o); }
+  for(const o of visibles){ if(o.t === 'skieur') dessinerSkieur(P, t); else if(o.t === 'arbre') dessinerSapin(o); else if(o.t === 'rail') dessinerRail(o); else dessinerRocher(o); }
   // poudreuse
   P.part = P.part.filter(p => (p.vie -= dt) > 0);
   g.fillStyle = '#FFFFFF';
@@ -908,7 +1057,7 @@ function dessiner(P, dt){
         $('hInfo').textContent = Math.round(P.y) + ' m';
         $('jaugeI').style.width = clamp(1 - (P.y - P.av) / 120, 0, 1) * 100 + '%';
       } else {
-        $('hInfo').textContent = `${P.prisF}/${M.nFlocons}`;
+        $('hInfo').textContent = P.mode === 'park' ? `${P.modOk}/${M.nModules}` : `${P.prisF}/${M.nFlocons}`;
         $('jaugeI').style.width = clamp(P.y / M.fin, 0, 1) * 100 + '%';
       }
     }
@@ -920,7 +1069,7 @@ function finir(){
   const P = partie; if(!P || P.fini) return;
   P.fini = true; P.fin = true; majSon(0, 0, 0);
   const rec = lire('freeride-records', {});
-  rec.infini = rec.infini || { score:0, dist:0, parties:0 }; rec.descentes = rec.descentes || {}; rec.slalom = rec.slalom || {};
+  rec.infini = rec.infini || { score:0, dist:0, parties:0 }; rec.descentes = rec.descentes || {}; rec.slalom = rec.slalom || {}; rec.parks = rec.parks || {};
   let lignes = [], etoiles = -1, titre = '', grand = '', recTxt = '';
   const commun = [['Sauts et figures', P.figures], ['Chutes', P.chutes]];
   if(P.mode === 'infini'){
@@ -939,6 +1088,16 @@ function finir(){
     lignes = [['Temps de course', fmtT(P.t)], ['Portes passées', `${P.portesOk} / ${P.M.portes.length}`], ['Portes manquées', `${P.portesKo} (+${5 * P.portesKo} s)`], ['Chutes', P.chutes], ['3 étoiles en', fmtT(par)]];
     recTxt = nv && r.parties > 1 ? '🏆 Nouveau record !' : r.parties > 1 ? `Record : ${fmtT(r.temps)}` : '';
     rec.dernier = { mode:'slalom', n:def.n, temps:+temps.toFixed(2), etoiles };
+  } else if(P.mode === 'park'){
+    // snowpark : 1 étoile à l'arrivée, 2 avec la moitié des modules réussis (kicker bien reçu, box ou rail glissé jusqu'au bout), 3 avec 85 %
+    const def = P.def, part = P.M.nModules ? P.modOk / P.M.nModules : 1;
+    etoiles = part >= .85 ? 3 : part >= .5 ? 2 : 1;
+    const r = rec.parks[def.id] || { score:0, etoiles:0, parties:0 }, nv = P.score > r.score;
+    r.parties++; if(nv) r.score = Math.round(P.score); r.etoiles = Math.max(r.etoiles, etoiles); r.n = def.n; rec.parks[def.id] = r;
+    titre = def.n; grand = fmtN(P.score);
+    lignes = [['Modules réussis', `${P.modOk} / ${P.M.nModules}`], ['Slides (boxes et rails)', P.slides], ['Temps', fmtT(P.t)], ...commun, ['Plus beau saut ou slide', fmtN(P.meilleurSaut) + ' pts']];
+    recTxt = nv && r.parties > 1 ? '🏆 Nouveau record !' : r.parties > 1 ? `Record : ${fmtN(r.score)}` : '';
+    rec.dernier = { mode:'park', n:def.n, score:Math.round(P.score), etoiles };
   } else {
     const def = P.def, part = P.M.nFlocons ? P.prisF / P.M.nFlocons : 1;
     etoiles = part >= .85 ? 3 : part >= .5 ? 2 : 1;
@@ -970,7 +1129,7 @@ function reprendre(){ if(!partie) return; partie.pause = false; partie.dernier =
 /* ---------- Menu ---------- */
 const etoilesTxt = n => `<span class="et">${'★'.repeat(n)}${'☆'.repeat(3 - n)}</span>`;
 function menu(){
-  const rec = lire('freeride-records', {}), ds = rec.descentes || {}, sl = rec.slalom || {}, inf = rec.infini;
+  const rec = lire('freeride-records', {}), ds = rec.descentes || {}, sl = rec.slalom || {}, pk = rec.parks || {}, inf = rec.infini;
   document.querySelectorAll('#engins button').forEach(b => b.classList.toggle('actif', b.dataset.e === engin));
   $('choixTenue').innerHTML = TENUES.map((x, i) => `<button data-t="${i}" title="${x.n}" class="${i === tenue.t ? 'actif' : ''}" style="background:linear-gradient(135deg, ${x.veste} 0 55%, ${x.pantalon} 55%)"></button>`).join('');
   $('choixPlanche').innerHTML = PLANCHES.map((x, i) => `<button data-s="${i}" title="${x.n}" class="${i === tenue.s ? 'actif' : ''}" style="background:linear-gradient(135deg, ${x.c} 0 65%, ${x.b} 65%)"></button>`).join('');
@@ -980,6 +1139,7 @@ function menu(){
   $('lInfini').innerHTML = `<button class="ligne" data-infini="1"><span class="ico" style="background:#E6EEF8">🌨️</span><span><b>Fuir l'avalanche</b><small>La montagne sans fin, de plus en plus dense</small></span><span class="rec">${inf && inf.parties ? `<em>${fmtN(inf.score)}</em><small>${fmtN(inf.dist)} m</small>` : '<small>jamais joué</small>'}</span></button>`;
   $('lDescentes').innerHTML = DESCENTES.map(x => { const r = ds[x.id]; return `<button class="ligne" data-desc="${x.id}"><span class="ico" style="background:${x.c}22">${x.ico}</span><span><b>${esc(x.n)}</b><small>${esc(x.d)} · ${x.L} m</small></span><span class="rec">${r ? etoilesTxt(r.etoiles) + `<small>${fmtN(r.score)} pts</small>` : '<small>à faire</small>'}</span></button>`; }).join('');
   $('lSlalom').innerHTML = SLALOMS.map(x => { const r = sl[x.id]; return `<button class="ligne" data-slalom="${x.id}"><span class="ico" style="background:#FDE3E3">${x.ico}</span><span><b>${esc(x.n)}</b><small>${esc(x.d)} · ${x.L} m</small></span><span class="rec">${r ? etoilesTxt(r.etoiles) + `<small>${fmtT(r.temps)}</small>` : '<small>à faire</small>'}</span></button>`; }).join('');
+  $('lParks').innerHTML = PARKS.map(x => { const r = pk[x.id]; return `<button class="ligne" data-park="${x.id}"><span class="ico" style="background:${x.c}22">${x.ico}</span><span><b>${esc(x.n)}</b><small>${esc(x.d)} · ${x.L} m</small></span><span class="rec">${r ? etoilesTxt(r.etoiles) + `<small>${fmtN(r.score)} pts</small>` : '<small>à faire</small>'}</span></button>`; }).join('');
   $('bSon').textContent = son ? '🔊' : '🔇';
   $('eMenu').hidden = false;
 }
@@ -1043,6 +1203,7 @@ $('eMenu').addEventListener('click', e => {
   else if(b.dataset.infini) lancer('infini', { id:'infini', n:'Sans fin' });
   else if(b.dataset.desc) lancer('descente', DESCENTES.find(x => x.id === b.dataset.desc));
   else if(b.dataset.slalom) lancer('slalom', SLALOMS.find(x => x.id === b.dataset.slalom));
+  else if(b.dataset.park) lancer('park', PARKS.find(x => x.id === b.dataset.park));
 });
 
 // Fond du menu : la montagne qui défile doucement
@@ -1067,7 +1228,7 @@ function dessinerFond(F, dt){
   g.restore();
 }
 menu();
-window.Freeride = { lancer, DESCENTES, SLALOMS, defiDuJour, get partie(){ return partie; }, doigts, sautCourt, figure, finir, nouveauMonde, construireDescente, FIGURES, MVT0, poseSkieur, dessinerPersonnage, setEngin:e => { engin = e; } };
+window.Freeride = { lancer, DESCENTES, SLALOMS, PARKS, FORMES, defiDuJour, get partie(){ return partie; }, doigts, sautCourt, figure, finir, nouveauMonde, construireDescente, FIGURES, MVT0, poseSkieur, dessinerPersonnage, setEngin:e => { engin = e; } };
 
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
