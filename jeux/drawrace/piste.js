@@ -89,10 +89,11 @@ window.Piste = (() => {
     return { i:((best % n) + n) % n, j:best, d:Math.sqrt(bd) };
   }
 
-  // Vitesses le long d'une trajectoire : demande (par point), limite en virage (adhérence × m), freinages
+  // Vitesses le long d'une trajectoire : demande (par point), limite en virage (adhérence × m), freinages.
+  // m : un nombre, ou une adhérence par point (le rallye : elle change avec le sol)
   function vitesses(pts, demande, m = 1, kappa = courbure(pts)){
     const n = pts.length;
-    const grip = kappa.map(k => Math.min(VMAX, Math.sqrt(GRIP * m / Math.max(k, 1e-5))));
+    const grip = kappa.map((k, i) => Math.min(VMAX, Math.sqrt(GRIP * (typeof m === 'number' ? m : m[i]) / Math.max(k, 1e-5))));
     const v = grip.map((gv, i) => Math.min(gv, demande[i]));
     for(let pass = 0; pass < 2; pass++)
       for(let i = n - 1; i >= 0; i--){ const nx = v[(i + 1) % n]; v[i] = Math.min(v[i], Math.sqrt(nx * nx + 2 * 520 * STEP)); }
