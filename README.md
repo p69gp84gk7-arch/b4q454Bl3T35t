@@ -13,10 +13,10 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **10 000** : ouverture à 1 000, croix (effacées dès qu'on note des points ou le −500 du 1er lancer), reprises, pénalités ; il faut finir à 10 000 pile, dépasser donne une croix, et on ne peut pas reprendre des points qui mèneraient à 10 000 ou plus | `jeux/10000.html` | 2 à 15 |
 | **Yam's** : feuille de marque classique, bonus à 63 | `jeux/yams.html` | 1 à 10 |
 | **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), défi du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
-| **Draw Race** : course de monoplaces dont on dessine la trajectoire, 20 circuits inspirés de la F1, pneus, météo et arrêts au stand ; modes Arcade et Championnat | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
+| **Draw Race** : course dont on dessine la trajectoire ; Formule (monoplaces, 20 circuits inspirés de la F1) ou Rallye (voitures de rallye, 12 circuits de terre, neige, gravier et goudron), pneus, météo et arrêts au stand ; modes Arcade et Championnat | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 | **Nivoculteur** : sur un domaine tiré au sort, construire le réseau de neige de culture et produire la nuit selon le froid et le vent, en 2D vu de dessus | `jeux/nivoculteur/index.html` | 1 |
 | **Fusée Rythme** : piloter une fusée à gauche et à droite au rythme d'un morceau (fourni ou pris dans vos fichiers) et éviter les points ; la partie dure le temps de la musique | `jeux/fusee.html` | 1 |
-| **Dameuse de nuit** : damer une piste vue du dessus avant l'ouverture, avec la lame, la fraise et le treuil ; 8 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
+| **Dameuse de nuit** : damer une piste vue du dessus avant l'ouverture, avec la lame, la fraise et le treuil ; 6 dameuses inspirées de vraies machines, 9 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
 | **Freeride** : ski ou snowboard hors-piste vu du dessus ; fuir une avalanche sans fin, 7 descentes à étoiles, 4 snowparks (kickers, boxes, rails), 3 slaloms chronométrés et un défi du jour | `jeux/freeride.html` | 1 |
 | **Tour de contrôle** : guider les avions du doigt jusqu'à la piste de leur couleur sans qu'ils se touchent ; 11 sortes d'appareils (avions de chasse, de ligne, hélicoptères militaires…), 8 aérodromes, 4 niveaux | `jeux/tour.html` | 1 |
 | **Tir au panier** : viser au doigt (on place le sommet de la courbe) et marquer un maximum de paniers en 1 minute 30 ; bonus (feu, balle ×3, panier large) en allumant la planche, 10 balles inventées à débloquer, 7 thèmes, mode gaucher | `jeux/panier.html` | 1 |
@@ -148,6 +148,27 @@ Deux modes de jeu, au choix en haut du menu :
 
 Le jeu se joue le téléphone à l'horizontale (un message le demande en vertical), pour des pistes plus larges.
 
+**Pendant le tracé et la course**, toutes les informations sont dans le bandeau sombre du haut (à la place du bandeau noir) : Abandonner, le circuit, la météo, le chrono, la vitesse du doigt, le classement en petites pastilles, les messages, et pendant le tracé les boutons Effacer et C'est parti. Le circuit prend toute la largeur dessous. Boost et Stand sont de gros boutons ronds dans les coins, un coin par joueur (joueur 1 en bas à droite, 2 en bas à gauche, 3 en haut à droite, 4 en haut à gauche) ; à 3 ou 4 joueurs, les panneaux sont plus petits, sans le détail de l'usure des pneus (le classement donne la lettre des pneus).
+
+### Rallye
+
+Deuxième catégorie, au choix tout en haut du menu (🏎 Formule ou 🚙 Rallye), avec les mêmes modes (Arcade, Championnat), la même difficulté et la même météo.
+
+- **Voitures de rallye** vues de dessus : caisse courte et large, livrée à bandes sur le capot, toit avec son numéro, grand aileron, rampe de quatre phares, bavettes.
+- **12 circuits** fermés façon rallye (`jeux/drawrace/rallye.js`), inspirés des grands rallyes : Le Chili (gravier), La Suède (neige), Les Mille Lacs (gravier très rapide), Le Safari (terre rouge), Le Portugal (terre), La Sardaigne (gravier), Le Pays de Galles (terre et gravier), Le Japon (goudron), La Catalogne (goudron et terre), Monte-Carlo (épingles, goudron et plaques de neige), L'Acropole (gravier, virages lents), La Corse (goudron, virages sans fin).
+- **Les sols** (`SOLS`) : goudron, terre, gravier, neige, par morceaux du tour (`sols`). Chaque morceau a sa couleur, son bord (talus de terre, murs de neige), ses ornières et ses cailloux ; vibreurs seulement sur le goudron. Les voitures soulèvent la poussière ou la neige.
+- **Pneus** (`PNEUS_R`) : Asphalte (A), Terre (T), Neige (N, cloutés) et Pluie (P). L'adhérence dépend du sol et du pneu, en chaque point de la piste (`gripSol`) :
+
+  | Sol | Asphalte | Terre | Neige | Pluie |
+  | --- | --- | --- | --- | --- |
+  | Goudron | 1 | 0,84 | 0,72 | 0,9 |
+  | Terre | 0,64 | 0,86 | 0,72 | 0,74 |
+  | Gravier | 0,6 | 0,82 | 0,7 | 0,68 |
+  | Neige | 0,38 | 0,52 | 0,8 | 0,45 |
+
+  La pluie fait perdre de l'adhérence (beaucoup sur le goudron, un peu sur la terre et le gravier, presque pas sur la neige), sauf en pneus Pluie. Durées de vie : 4 tours (Asphalte), 5 (Terre, Pluie), 6 (Neige). Le conseil de l'ingénieur et les adversaires tiennent compte de la part de chaque sol dans le tour.
+- **Pilotes du championnat** : 12 noms inspirés de grands pilotes de rallye (Sébastien Loebb, Sébastien Ogiée, Kalle Rovanperra, Thierry Neuvil, Ott Tanakka, Elfyn Evance, Colin McRaie, Tommi Mäkinan, Petter Solbergh, Marcus Grönholmm, Didier Auriolle, Walter Röhrll). Un championnat en cours par catégorie (`drawrace-championnat`, `drawrace-championnat-rallye`) ; le palmarès est commun (🚙 devant les championnats de rallye).
+
 1. En Arcade, on choisit :
    - le nombre de joueurs (1 à 4, sur le même appareil), la couleur et les **pneus** de chaque monoplace ;
    - la difficulté des adversaires avec un **curseur** de 0 à 100 % (Facile, Normal, Difficile, Expert, et tous les réglages entre deux) et la **météo** ;
@@ -233,7 +254,11 @@ Météo : Sec, Averse (la pluie arrive pendant la course, entre 30 et 65 % de la
 ### Décors
 
 Chaque circuit a un paysage : montagne avec sapins et névés, parc, campagne et champs, collines d'oliviers, forêt, sapins, désert, dunes et mer, ville, ville de nuit (néons, lampadaires), cerisiers et grande roue, île au milieu de l'eau, lac, port avec bateaux, prairie.
-On trouve aussi des tribunes avec le public le long de la ligne droite et des stands en face.
+On trouve aussi des tribunes avec le public le long de la ligne droite et des stands en face. Pour le rallye : la neige (sapins et névés) et la savane (acacias).
+
+### Circuits redessinés
+
+Pour plus de difficulté, sept circuits ont reçu des chicanes et des enchaînements plus serrés (environ une seconde de plus au tour) : L'Aérodrome, Le Parc royal (deux chicanes), Le Lac, Les Néons, Le Désert, L'Île (chicane finale) et La Citadelle. Leurs records repartent de zéro (version `v:2` du circuit, clé `parc~v2` dans `drawrace-records`).
 Les décors sont placés automatiquement loin de la piste, toujours au même endroit pour un circuit donné.
 Les circuits sont dans `jeux/drawrace/circuits.js` (points de passage et décor), la géométrie et la trajectoire de course dans `jeux/drawrace/piste.js`.
 
@@ -272,10 +297,23 @@ Jeu d'adresse musical, inspiré de Rhythm Rocket (iPhone, 2012) : on choisit un 
 
 Jeu d'adresse sur le métier de dameur : la station ferme, il faut damer une piste avant l'ouverture. Vue du dessus, de nuit (seuls les phares, les projecteurs arrière et quelques lumières éclairent). Tout est dans `jeux/dameuse.html` (canvas 2D).
 
-- **Conduite** : à droite, un curseur de vitesse vertical qui reste où on le laisse (vers le haut : marche avant jusqu'à 18 km/h ; vers le bas : marche arrière, à 45 % de la vitesse ; cran d'arrêt au milieu ; il affiche la vitesse). Pour tourner, on touche la moitié gauche ou droite de l'écran et on reste appuyé (66° par seconde, un peu moins vite à pleine vitesse ; elle pivote aussi à l'arrêt) ; lâcher : tout droit. Les boutons Treuil, Lame et Fraise sont en colonne sur le côté gauche. Clavier : flèches haut / bas (vitesse), gauche / droite (tourner), L (lame), F (fraise), T (treuil), Échap (pause).
+- **Les dameuses** (`MODELES`, au choix dans le menu avec une vignette et des jauges ; gardée dans `dameuse-modele`) : six machines aux noms inventés, inspirées de vraies dameuses.
+
+  | Dameuse | Inspirée de | Fraise | Lame | Vitesse | Sans treuil | Gasoil | Particularités |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | Marmotte 100 | petites dameuses de 100 ch (type PistenBully 100) | 4,4 m | 4,2 m | 21 km/h | 30 % | −35 % | petite, très agile, petite lame |
+  | Chamois 400 | type PistenBully 400 | 5,6 m | 5 m | 19,5 km/h | 31 % | −18 % | polyvalente |
+  | Ours 600 | type PistenBully 600 | 6,4 m | 5,6 m | 18 km/h | 32 % | normal | la référence (celle d'avant) |
+  | Grand Loup | type Prinoth Leitwolf | 6,6 m | 6 m | 18,5 km/h | 36 % | +10 % | forte dans les pentes |
+  | Bison | type Prinoth Bison | 6,2 m | 6,2 m | 17 km/h | 33 % | +15 % | lame énorme (capacité × 1,5), pour les snowparks |
+  | Polaire 800 W | type PistenBully 600 Polar W | 7 m | 6,4 m | 16,5 km/h | 38 % | +30 % | la géante à treuil, la plus large, treuil le plus rapide, tourne lentement |
+
+  La taille (`k`) règle les chenilles, les collisions, les traces et la place des outils ; la largeur de la fraise et de la lame est celle du tableau. Le record d'une piste garde le nom de la dameuse qui l'a fait.
+- **Le dessin de la dameuse** (vue du dessus, `dessinerDameuse`) : chenilles à barrettes en aluminium qui défilent, châssis et garde-boue, capot moteur à grilles avec pot d'échappement, feux arrière et nom du modèle, cabine vitrée (pare-brise, vitres latérales), toit avec climatisation, rampe de cinq phares, gyrophare, antenne, rétroviseurs, échelle et main courante jaunes ; sur le pont arrière, le tambour et le bras du treuil, qui pivote vers l'ancrage quand le treuil est accroché (le câble part du bout du bras) ; devant, la lame à ailes inclinées, ses vérins et son cadre de poussée, la bande d'usure jaune quand elle est baissée ; derrière, la fraise (carter à nervures, flancs) et le peigne finisseur en caoutchouc, avec la neige projetée quand elle tourne.
+- **Conduite** : à droite, un curseur de vitesse vertical qui reste où on le laisse (vers le haut : marche avant jusqu'à 18 km/h avec l'Ours 600, selon la dameuse ; vers le bas : marche arrière, à 45 % de la vitesse ; cran d'arrêt au milieu ; il affiche la vitesse). Pour tourner, on touche la moitié gauche ou droite de l'écran et on reste appuyé (66° par seconde, un peu moins vite à pleine vitesse ; elle pivote aussi à l'arrêt) ; lâcher : tout droit. Les boutons Treuil, Lame et Fraise sont en colonne sur le côté gauche. Clavier : flèches haut / bas (vitesse), gauche / droite (tourner), L (lame), F (fraise), T (treuil), Échap (pause).
 - **Le terrain** : une grille de cases de 1 m qui garde l'écart d'épaisseur de neige (bosses, creux, manques où la terre apparaît, champs de bosses) et la qualité du damage de chaque case. Chaque perche a produit un gros tas de neige de culture (1,2 à 1,7 m) juste sous sa tête, étiré par le vent en deux tas plus petits : c'est la réserve de neige à étaler, bien blanche et en relief.
-- **La fraise** (arrière, 6,4 m) : en marche avant, elle dame et laisse le velours (des rayures dans le sens de la marche). Qualité parfaite jusqu'à 14 km/h, moins bonne au-delà ; médiocre sur une bosse ou un creux de plus de 10 cm (elle aplanit un peu à chaque passage).
-- **La lame** (avant, 5,6 m) : baissée, elle rabote ce qui dépasse et charge la neige ; chargée, elle se vide d'elle-même, vite, dans les creux et les manques qu'elle croise (et juste devant elle), puis étale le reste sur le plat. La charge se voit : un bourrelet de neige devant la lame qui grossit, un anneau autour du bouton et le compteur « Lame » en haut. Pleine, elle pousse le tas devant elle (la dameuse ralentit). Relevée chargée, elle monte en 1,5 s et se vide peu à peu ; sa neige comble d'abord les creux et les manques dans un rayon de 6 m autour de l'avant (les plus profonds d'abord), le reste fait un tas. Elle remue la neige : il faut repasser la fraise derrière.
+- **La fraise** (arrière, 6,4 m sur l'Ours 600) : en marche avant, elle dame et laisse le velours (des rayures dans le sens de la marche). Qualité parfaite jusqu'à 14 km/h, moins bonne au-delà ; médiocre sur une bosse ou un creux de plus de 10 cm (elle aplanit un peu à chaque passage).
+- **La lame** (avant, 5,6 m sur l'Ours 600) : baissée, elle rabote ce qui dépasse et charge la neige ; chargée, elle se vide d'elle-même, vite, dans les creux et les manques qu'elle croise (et juste devant elle), puis étale le reste sur le plat. La charge se voit : un bourrelet de neige devant la lame qui grossit, un anneau autour du bouton et le compteur « Lame » en haut. Pleine, elle pousse le tas devant elle (la dameuse ralentit). Relevée chargée, elle monte en 1,5 s et se vide peu à peu ; sa neige comble d'abord les creux et les manques dans un rayon de 6 m autour de l'avant (les plus profonds d'abord), le reste fait un tas. Elle remue la neige : il faut repasser la fraise derrière.
 - **Le treuil** : dans les murs (34 à 60 % selon la piste), sans treuil la dameuse ne remonte pas, et au-delà de 42 % elle glisse vers le bas. Au pied du mur ou dedans, on accroche le treuil à l'ancrage du haut (câble de 320 m au plus).
 - **Gasoil** : la conduite, la fraise, la lame et le treuil consomment ; le plein se fait arrêté sur l'aire du garage, en bas.
 - **Obstacles** : enneigeurs (perches) en bord de piste et sapins ; hors piste, la neige profonde ralentit. Les jalons de balisage, à la couleur de la piste, brillent dans la nuit.
@@ -304,6 +342,7 @@ Jeu de glisse vu du dessus, en plongée (les sapins et les rochers ont de la hau
 - **Figures sur les rails** (`SLIDES`, points par mètre glissé × la forme du module) : 50-50 (×1, on commence toujours ainsi), boardslide (×1,6, en travers), lipslide (×1,8, en travers de l'autre côté), nose press (×1,5, penché sur les spatules), tail press (×1,5, sur les talons), 180 (×1,7, +100 ; il change le sens : les figures suivantes se font en switch et on finit en switch), mute et safety (indy) tenus en glissant (×1,7 et ×1,5). Six cases par défaut : en haut boardslide, nose press, lipslide ; au milieu tail press, 50-50, 180. Changer de figure en glissant = switch-up (+60). Points : (longueur × figure × forme + 80 + switch-ups + bonus) × combo, ×1,2 en switch ; le nom affiché enchaîne les figures (« 50-50 → Boardslide → Nose press sur le kink »). Au bout, petit saut : un grab ou une rotation reste possible. Étoiles : 1 à l'arrivée, 2 avec la moitié des rangs réussis (kicker bien reçu, box ou rail glissé jusqu'au bout), 3 avec 85 %. Records dans `freeride-records.parks`.
 - **Slalom** : piste damée avec filets ; passer entre les deux piquets de chaque porte, porte manquée +5 s, piquet touché : on ralentit. Géant, Spécial et Super-G (avec deux tremplins). 3 étoiles sous un temps de référence, 2 jusqu'à 15 % de plus.
 - **Défi du jour** : une descente de 6 sections tirées au sort à partir de la date (la même pour tout le monde ce jour-là).
+- **Le personnage** : silhouette freeride, en tenue large : veste longue sur les hanches avec son col, pantalon baggy qui tombe sur les chaussures, gros bras et gants, sac à dos, casque et masque.
 - **Tenue** : 6 tenues (veste, pantalon, casque) et 6 couleurs de skis ou de planche, au choix dans le menu avec un aperçu du personnage qui tourne et fait un grab ; gardé dans `freeride-tenue`. Aux grabs, les mains attrapent vraiment les skis ou la planche (voir les six figures ci-dessus) ; l'aperçu du menu enchaîne mute, safety, japan et truck driver.
 - **Records** dans `freeride-records`, engin choisi dans `freeride-engin`, son (vent, carres, grondement de l'avalanche) dans `freeride-son`.
 
@@ -319,6 +358,7 @@ Jeu de contrôle aérien vu du ciel, dans l'esprit des jeux où l'on trace la ro
   - verts, plan d'eau : hydravions, bombardiers d'eau (deux hélices, flotteurs au bout des ailes).
 - **Danger** : deux appareils trop proches (moins de 2,4 fois leurs rayons) sont entourés d'un cercle rouge, avec un bip ; s'ils se touchent, collision : la partie s'arrête.
 - **Niveaux** (`NIVEAUX`, au choix dans le menu, retenu dans `tour-niveau`) : Facile (un appareil toutes les 9 s au début, jusqu'à 3,6 s ; vitesse × 0,85), Normal (7 s → 2,6 s vers 3 min), Difficile (5,5 s → 2,1 s ; × 1,12), Expert (4,5 s → 1,7 s ; × 1,25). ⏩ double la vitesse, ⏸ pause (aussi quand on quitte l'application). Un mot d'encouragement tous les 10 appareils posés.
+- **Les pistes près des bords** : toutes les pistes, leurs approches et les hélistations sont à bonne distance des bords de l'écran et des coins du tableau de bord.
 - **Aérodromes** (`CARTES`, monde de 1 200 × 750, tourné d'un quart de tour en portrait) : La Vallée (champs, deux pistes, une hélistation), Le Porte-avions (en mer, pistes sur le pont du navire), L'Altiport (montagne enneigée, petite piste en pente et grande piste dans la vallée), Le Lac (hydravions et bombardiers d'eau en plus), Le Grand Aéroport (deux grandes pistes parallèles en sens contraires, aérogare et avions garés, beaucoup d'avions de ligne), La Base aérienne (terre sèche, abris bétonnés et hangars ; avions de chasse, cargo, drones, hélicoptères militaires), L'Île (piste sur l'île, plan d'eau en mer, hélistation sur un yacht, palmiers), La Ville (rues et immeubles, trois hélistations sur les toits, petit aéroport en bordure). Le porte-avions reçoit les appareils militaires : avions de chasse, avions radar, hélicoptères militaires et drones.
 - **Records** par aérodrome et par niveau dans `tour-records` (clé `vallee` pour le niveau Normal, `vallee@expert` pour les autres ; meilleur score, parties, total ; `dernier` pour l'accueil), son dans `tour-son`.
 
@@ -334,6 +374,8 @@ Jeu de basket tout simple, vu de côté, dans l'esprit des petits jeux de tir au
 - **Balles** (`BALLES`) : la balle de basket pour commencer, puis des balles inventées : Orbe (boule de lumière), Bulle (énorme et légère, irisée, elle flotte), Comète (minuscule et très rapide, traîne de glace), Gelée (molle, elle s'écrase et ne rebondit presque pas), Météorite (pierre brûlante très lourde, fissures de lave), Pixel (en gros carrés, tourne par quarts de tour), Atome (nerveuse et très rebondissante, électrons qui tournent), Planète (grosse et lourde, avec son anneau), Œil (regarde toujours le panier et cligne), Étoile dorée (rapide, +1 point par panier). Chacune a sa taille (rayon), sa masse (les légères se laissent plus attirer par le cercle), son freinage par l'air, sa rapidité (le temps passe plus ou moins vite pour elle) et son rebond ; certaines laissent une traîne et s'écrasent au choc. Elles se débloquent avec les **points cumulés** contre la montre (basket 0, puis 300, 800, 1 600, 2 600, 4 000, 6 000, 8 500, 12 000, 16 000, 21 000) et se choisissent dans le menu, avec leurs jauges.
 - **Thèmes** (`THEMES`, au choix dans le menu) : Espace, Néon, Aurore, Océan, Lave, Cyber, Glace (ciel en dégradé, motif lumineux, couleur de l'anneau et des cases allumées). **Sens du jeu** : droitier (panier à droite) ou gaucher (panier à gauche, tout est inversé).
 - **Paysage sur téléphone** : plus de bandeau noir en haut, le tableau de bord passe en colonne sur le côté opposé au panier, et la taille de l'écran est vérifiée à chaque image (après une rotation, rien n'est écrasé).
+- **Le bonus de la dernière balle** : quand le temps d'un bonus finit, la balle déjà lancée le garde jusqu'au bout (feu : points doublés ; ×3 ; panier large), et la balle qui attendait d'être lancée (déjà affichée avec le bonus) le garde aussi pour son tir (`bonusBalle`, `tir.bonus`).
+- **La dernière balle** : à la fin du chrono, la balle en vol compte encore, et la balle prête peut encore être lancée (« Dernière balle ! », 5 secondes pour tirer).
 - **Modes** : contre la montre (1 min 30, `DUREE`, décompte 3-2-1, buzzer) et entraînement (sans chrono, ne compte pas pour débloquer). Un doigt animé montre le geste à la toute première partie.
 - **Sons** (`SON`) : doux et accordés, sans bips : souffle au lancer, tintement léger du cercle, son mat de la planche, une note par case allumée, petit accord à chaque panier (plus aigu avec le multiplicateur), scintillement pour un tout filet, arpège pour un bonus, compte à rebours et fin en accords.
 - **Données** : record, parties, paniers, points cumulés et dernière partie dans `panier-records` ; ballon choisi `panier-ballon`, thème `panier-theme`, sens `panier-gaucher`, son `panier-son`. Pour les essais, `Panier.tir(x, y, vx, vy)` simule un tir dans la console.
