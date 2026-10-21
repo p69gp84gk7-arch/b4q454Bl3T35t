@@ -148,7 +148,7 @@ Deux modes de jeu, au choix en haut du menu :
 
 Le jeu se joue le téléphone à l'horizontale (un message le demande en vertical), pour des pistes plus larges.
 
-**Pendant le tracé et la course**, toutes les informations sont dans le bandeau sombre du haut (à la place du bandeau noir) : Abandonner, le circuit, la météo, le chrono, la vitesse du doigt, le classement en petites pastilles, les messages, et pendant le tracé les boutons Effacer et C'est parti. Le circuit prend toute la largeur dessous. Boost et Stand sont de gros boutons ronds dans les coins, un coin par joueur (joueur 1 en bas à droite, 2 en bas à gauche, 3 en haut à droite, 4 en haut à gauche) ; à 3 ou 4 joueurs, les panneaux sont plus petits, sans le détail de l'usure des pneus (le classement donne la lettre des pneus).
+**Pendant le tracé et la course**, toutes les informations sont dans le bandeau sombre du haut (à la place du bandeau noir) : Abandonner, le circuit, la météo, le chrono, la vitesse du doigt, le classement en petites pastilles (les trois premières lettres de chaque pilote, en capitales ; J1, J2… pour un joueur sans nom), les messages, et pendant le tracé les boutons Effacer et C'est parti. Le circuit prend toute la largeur dessous. Boost et Stand sont de gros boutons ronds dans les coins, un coin par joueur (joueur 1 en bas à droite, 2 en bas à gauche, 3 en haut à droite, 4 en haut à gauche) ; à 3 ou 4 joueurs, les panneaux sont plus petits, sans le détail de l'usure des pneus (le classement donne la lettre des pneus).
 
 ### Rallye
 
@@ -156,14 +156,14 @@ Deuxième catégorie, au choix tout en haut du menu (🏎 Formule ou 🚙 Rallye
 
 - **Voitures de rallye** vues de dessus : caisse courte et large, livrée à bandes sur le capot, toit avec son numéro, grand aileron, rampe de quatre phares, bavettes.
 - **12 circuits** fermés façon rallye (`jeux/drawrace/rallye.js`), inspirés des grands rallyes : Le Chili (gravier), La Suède (neige), Les Mille Lacs (gravier très rapide), Le Safari (terre rouge), Le Portugal (terre), La Sardaigne (gravier), Le Pays de Galles (terre et gravier), Le Japon (goudron), La Catalogne (goudron et terre), Monte-Carlo (épingles, goudron et plaques de neige), L'Acropole (gravier, virages lents), La Corse (goudron, virages sans fin).
-- **Les sols** (`SOLS`) : goudron, terre, gravier, neige, par morceaux du tour (`sols`). Chaque morceau a sa couleur, son bord (talus de terre, murs de neige), ses ornières et ses cailloux ; vibreurs seulement sur le goudron. Les voitures soulèvent la poussière ou la neige.
+- **Les sols** (`SOLS`) : goudron, terre, gravier, neige, par morceaux du tour (`sols`). Chaque morceau a sa couleur, son bord (talus de terre, murs de neige), ses ornières et ses cailloux ; vibreurs seulement sur le goudron. Les voitures soulèvent la poussière ou la neige. **Sur la terre et le gravier, elles glissent** dans les virages, d'autant plus qu'elles les prennent près de la limite (dès la moitié de la vitesse possible) : elles se mettent en travers, perdent un peu de vitesse et soulèvent un nuage de poussière (sans message d'alerte : c'est normal sur ces sols).
 - **Pneus** (`PNEUS_R`) : Asphalte (A), Terre (T), Neige (N, cloutés) et Pluie (P). L'adhérence dépend du sol et du pneu, en chaque point de la piste (`gripSol`) :
 
   | Sol | Asphalte | Terre | Neige | Pluie |
   | --- | --- | --- | --- | --- |
   | Goudron | 1 | 0,84 | 0,72 | 0,9 |
-  | Terre | 0,64 | 0,86 | 0,72 | 0,74 |
-  | Gravier | 0,6 | 0,82 | 0,7 | 0,68 |
+  | Terre | 0,6 | 0,82 | 0,68 | 0,7 |
+  | Gravier | 0,56 | 0,78 | 0,66 | 0,64 |
   | Neige | 0,38 | 0,52 | 0,8 | 0,45 |
 
   La pluie fait perdre de l'adhérence (beaucoup sur le goudron, un peu sur la terre et le gravier, presque pas sur la neige), sauf en pneus Pluie. Durées de vie : 4 tours (Asphalte), 5 (Terre, Pluie), 6 (Neige). Le conseil de l'ingénieur et les adversaires tiennent compte de la part de chaque sol dans le tour.
