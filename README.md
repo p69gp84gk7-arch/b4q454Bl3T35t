@@ -20,6 +20,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Freeride** : ski ou snowboard hors-piste vu du dessus ; fuir une avalanche sans fin, 7 descentes à étoiles, 4 snowparks (kickers, boxes, rails), 3 slaloms chronométrés et un défi du jour | `jeux/freeride.html` | 1 |
 | **Tour de contrôle** : guider les avions du doigt jusqu'à la piste de leur couleur sans qu'ils se touchent ; 11 sortes d'appareils (avions de chasse, de ligne, hélicoptères militaires…), 8 aérodromes, 4 niveaux | `jeux/tour.html` | 1 |
 | **Tir au panier** : viser au doigt (on place le sommet de la courbe) et marquer un maximum de paniers en 1 minute 30 ; bonus (feu, balle ×3, panier large) en allumant la planche, 10 balles inventées à débloquer, 7 thèmes, mode gaucher | `jeux/panier.html` | 1 |
+| **Tables au sommet** : apprendre les tables de multiplication de 1 à 10 (niveau CM1) en grimpant la montagne : leçon avec dessins et astuces, table dans l'ordre puis dans le désordre, entraînement, défi chrono, tableau des progrès | `jeux/tables.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -380,6 +381,23 @@ Jeu de basket tout simple, vu de côté, dans l'esprit des petits jeux de tir au
 - **Sons** (`SON`) : doux et accordés, sans bips : souffle au lancer, tintement léger du cercle, son mat de la planche, une note par case allumée, petit accord à chaque panier (plus aigu avec le multiplicateur), scintillement pour un tout filet, arpège pour un bonus, compte à rebours et fin en accords.
 - **Données** : record, parties, paniers, points cumulés et dernière partie dans `panier-records` ; ballon choisi `panier-ballon`, thème `panier-theme`, sens `panier-gaucher`, son `panier-son`. Pour les essais, `Panier.tir(x, y, vx, vy)` simule un tir dans la console.
 
+## Tables au sommet
+
+Jeu pour apprendre les tables de multiplication de 1 à 10, pour un élève de CM1, avec des mots simples. Chaque table est un sommet de la montagne ; un petit grimpeur monte à chaque bonne réponse et plante son drapeau au sommet. Tout est dans `jeux/tables.html`.
+
+- **Apprendre une table** (toucher un sommet) : trois étapes, cochées une fois faites.
+  1. *Je découvre la table* : une leçon en 4 pages. Multiplier, c'est ajouter plusieurs fois le même nombre (3 rangées de flocons, l'addition, puis l'écriture « 7 × 3 ») ; une page à explorer (− et + pour changer le nombre de rangées, la bande « on compte de 7 en 7 ») ; l'astuce de la table (`ASTUCES_TABLE`) et « 7 × 3 = 3 × 7 » ; la table complète (on passe d'une ligne à la suivante en ajoutant le nombre).
+  2. *Je monte la table* : les 10 multiplications dans l'ordre, avec 4 réponses au choix.
+  3. *Je mélange* : les mêmes dans le désordre (parfois retournées : 3 × 7 ou 7 × 3). Une étape est validée avec 2 étoiles ou plus.
+- **S'entraîner** : 15 multiplications des tables choisies, à taper sur un grand pavé de chiffres (ou au clavier). Elles sont tirées selon ce que l'enfant sait : celles à revoir et jamais vues reviennent plus souvent (`POIDS`).
+- **Défi chrono** : le plus de bonnes réponses en 1 minute, sur le pavé ; record gardé.
+- **Erreurs** : une explication s'affiche (le résultat, « 7 × 3, c'est 3 fois 7 : 7 + 7 + 7 », le dessin des rangées de flocons, l'astuce la plus facile pour cette multiplication, et l'autre sens), puis la multiplication revient une fois à la fin de la série. Le bouton 💡 *Un coup de pouce* montre le dessin et une piste sans donner la réponse (une réponse trouvée avec le coup de pouce ne compte pas comme sue).
+- **Astuces** (`astuce`) : × 1 ne change rien ; × 10, un 0 à droite ; × 2, le double ; × 5, la moitié de × 10 ; × 4, le double du double ; × 9, × 10 moins une fois (et les chiffres font 9) ; × 3, le double plus une fois ; × 8, le double trois fois ; × 6, × 5 plus une fois ; × 7, × 5 plus × 2 ; 56 = 7 × 8 (5, 6, 7, 8) ; les carrés.
+- **Mes progrès** : la grille de Pythagore colorée (je sais, presque, à revoir, pas encore vue) ; toucher une case ouvre son explication. Une barre par table. Une multiplication est *sue* après 3 bonnes réponses de suite (3 × 7 et 7 × 3 comptent ensemble) ; une erreur la remet à revoir. Les étoiles d'un sommet : 4, 7 et 10 multiplications sues sur 10.
+- **Pour les parents** : une fiche qui explique le fonctionnement.
+- **Son et voix** : petits sons doux (🔊) ; 🗣️ lit les questions et les réponses à voix haute (synthèse vocale en français, si l'appareil le permet).
+- **Données** : `tables-progres` (multiplications, étapes, record, tables choisies, dernière série), `tables-son`, `tables-voix` ; comprises dans la sauvegarde d'Altitude Arcade. L'accueil affiche le nombre de tables au sommet et le record.
+
 ## Mise en ligne
 
 Le site est fait de fichiers statiques, sans installation ni compilation.
@@ -419,6 +437,7 @@ jeux/dameuse.html      jeu Dameuse de nuit
 jeux/freeride.html     jeu Freeride
 jeux/tour.html         jeu Tour de contrôle
 jeux/panier.html       jeu Tir au panier
+jeux/tables.html       jeu Tables au sommet (tables de multiplication)
 logo.svg               logo (source vectorielle)
 apple-touch-icon.png   icône de l'écran d'accueil de l'iPhone (180 px, pleine) ; elle est aussi écrite dans chaque page (lien apple-touch-icon en data:image/png;base64), recopiée par outils/icone.sh après un changement de logo
 icons/                 icônes du manifeste, fichiers altitude-*.png (192, 512, masquable, 180), toutes pleines (sans transparence)
