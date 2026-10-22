@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Tables au sommet · Altitude Arcade</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=104">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=104">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie (rien de flou derrière) */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --marge-haut:var(--barre-statut); }
+:root{
+  --ciel:#E3F1FF; --ciel-2:#C9E3FB; --encre:#16324F; --doux:#5A7491; --carte:#FFFFFF; --ligne:rgba(22,50,79,.13);
+  --bleu:#2F7BEA; --vert:#2EA05E; --orange:#F2A33A; --rouge:#E2574C; --gris:#D5DEE8; --or:#F5B82E;
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; min-height:100%; }
+body{ background:linear-gradient(180deg, var(--ciel) 0, #F4F9FF 70%); background-attachment:fixed; color:var(--encre);
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-tap-highlight-color:transparent; }
+button{ font:inherit; color:inherit; cursor:pointer; border:0; }
+.nb{ font-family:"Baloo 2", "Bricolage Grotesque", sans-serif; font-weight:800; }
+[hidden]{ display:none !important; }
+.page{ max-width:560px; margin:0 auto; padding:calc(14px + var(--marge-haut)) 16px calc(28px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; gap:14px; }
+.tete{ display:flex; align-items:center; gap:8px; }
+.tete a, .tete button{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:12px; padding:7px 12px; font-weight:700; background:#fff; white-space:nowrap; }
+.tete .droite{ margin-left:auto; }
+h1{ font-family:"Baloo 2", sans-serif; font-weight:800; font-size:clamp(2.4rem, 11vw, 3.2rem); line-height:.95; margin:4px 0 0; }
+h1 span{ color:var(--bleu); }
+h2{ font-family:"Baloo 2", sans-serif; font-weight:800; font-size:1.5rem; margin:0; line-height:1.1; }
+.sous{ color:var(--doux); margin:4px 0 0; line-height:1.4; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:20px; padding:14px; box-shadow:0 6px 18px rgba(22,50,79,.07); }
+.carte > h3{ margin:0 0 8px; font-size:.8rem; text-transform:uppercase; letter-spacing:.1em; color:var(--doux); }
+.gros{ width:100%; border-radius:16px; padding:15px; font-weight:800; font-size:1.1rem; color:#fff; background:var(--bleu); box-shadow:0 6px 0 #1E5BB8; }
+.gros:active{ transform:translateY(3px); box-shadow:0 3px 0 #1E5BB8; }
+.gros.vert{ background:var(--vert); box-shadow:0 6px 0 #1F7A45; }
+.sec{ width:100%; border-radius:14px; padding:12px; font-weight:700; background:#fff; border:1.5px solid var(--ligne); }
+.btns{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.modes{ display:grid; grid-template-columns:1fr; gap:10px; }
+.mode{ display:flex; align-items:center; gap:12px; text-align:left; padding:12px 14px; border-radius:16px; background:#fff; border:1.5px solid var(--ligne); box-shadow:0 4px 0 rgba(22,50,79,.08); }
+.mode .ico{ font-size:1.9rem; width:44px; text-align:center; flex:none; }
+.mode b{ display:block; font-size:1.08rem; }
+.mode small{ color:var(--doux); line-height:1.3; display:block; }
+
+/* La montagne des tables : 10 sommets */
+.sommets{ display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; }
+.sommet{ position:relative; aspect-ratio:1 / 1.05; border-radius:14px; background:linear-gradient(180deg, #F7FBFF, #E4EEF8); border:1.5px solid var(--ligne); padding:0; overflow:hidden; }
+.sommet svg{ position:absolute; inset:0; width:100%; height:100%; }
+.sommet .t{ position:absolute; left:0; right:0; bottom:16px; text-align:center; font-family:"Baloo 2", sans-serif; font-weight:800; font-size:1.25rem; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); }
+.sommet .e{ position:absolute; left:0; right:0; bottom:2px; text-align:center; font-size:.68rem; letter-spacing:.05em; color:var(--or); }
+.sommet .e i{ font-style:normal; color:#B9C6D3; }
+
+/* Écran d'une table */
+.etapes{ display:flex; flex-direction:column; gap:10px; }
+.etape{ display:flex; align-items:center; gap:12px; text-align:left; padding:12px 14px; border-radius:16px; background:#fff; border:1.5px solid var(--ligne); }
+.etape .n{ width:38px; height:38px; border-radius:50%; display:grid; place-items:center; background:var(--ciel-2); font-weight:800; flex:none; font-family:"Baloo 2", sans-serif; font-size:1.2rem; }
+.etape.fait .n{ background:var(--vert); color:#fff; }
+.etape b{ display:block; }
+.etape small{ color:var(--doux); }
+.ligneTable{ display:grid; grid-template-columns:repeat(2, 1fr); gap:6px 14px; font-family:"Baloo 2", sans-serif; font-weight:600; font-size:1.25rem; }
+.ligneTable span b{ color:var(--bleu); }
+
+/* La leçon */
+.lecon p{ line-height:1.5; margin:6px 0; font-size:1.06rem; }
+p.grand, .grand{ font-family:"Baloo 2", sans-serif; font-weight:800; font-size:1.8rem; text-align:center; margin:8px 0; }
+.grand b{ color:var(--bleu); }
+.astuce{ background:#FFF6DD; border:1.5px solid #F5D27A; border-radius:14px; padding:10px 12px; line-height:1.45; }
+.astuce b{ color:#9A6400; }
+.dessin{ display:block; width:100%; height:auto; margin:6px 0; }
+.reglage{ display:flex; align-items:center; justify-content:center; gap:14px; margin:6px 0; }
+.reglage button{ width:52px; height:52px; border-radius:50%; background:var(--bleu); color:#fff; font-size:1.6rem; font-weight:800; box-shadow:0 4px 0 #1E5BB8; }
+.reglage output{ font-family:"Baloo 2", sans-serif; font-weight:800; font-size:1.6rem; min-width:120px; text-align:center; }
+.bande{ display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin:6px 0; }
+.bande span{ min-width:40px; padding:4px 6px; border-radius:10px; background:var(--ciel); text-align:center; font-family:"Baloo 2", sans-serif; font-weight:800; font-size:1.05rem; }
+.bande span.on{ background:var(--bleu); color:#fff; }
+.points{ display:flex; justify-content:center; gap:7px; margin:4px 0 0; }
+.points i{ width:10px; height:10px; border-radius:50%; background:var(--gris); }
+.points i.on{ background:var(--bleu); }
+.nav{ display:grid; grid-template-columns:1fr 1.4fr; gap:10px; }
+
+/* Les questions */
+.jeu{ min-height:100vh; min-height:100dvh; }
+.haut{ display:flex; align-items:center; gap:8px; }
+.haut .compte{ margin-left:auto; font-weight:800; font-family:"Baloo 2", sans-serif; font-size:1.15rem; }
+.montagne{ display:block; width:100%; height:auto; border-radius:18px; background:linear-gradient(180deg, #CFE6FF, #EEF6FF); border:1px solid var(--ligne); }
+.chrono{ height:12px; border-radius:6px; background:var(--gris); overflow:hidden; }
+.chrono i{ display:block; height:100%; width:100%; background:linear-gradient(90deg, var(--vert), var(--orange)); }
+.question{ text-align:center; font-family:"Baloo 2", sans-serif; font-weight:800; font-size:clamp(3rem, 17vw, 4.6rem); line-height:1; margin:6px 0 2px; }
+.question .rep{ display:inline-block; min-width:1.6em; padding:0 .15em; border-bottom:5px solid var(--bleu); color:var(--bleu); }
+.question .rep.vide{ color:#B9C6D3; }
+.choix{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.choix button{ padding:16px 0; border-radius:18px; background:#fff; border:2px solid var(--ligne); font-family:"Baloo 2", sans-serif; font-weight:800; font-size:2.2rem; box-shadow:0 5px 0 rgba(22,50,79,.12); }
+.choix button.bon{ background:var(--vert); color:#fff; border-color:var(--vert); }
+.choix button.faux{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
+.pave{ display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+.pave button{ padding:12px 0; border-radius:16px; background:#fff; border:2px solid var(--ligne); font-family:"Baloo 2", sans-serif; font-weight:800; font-size:2rem; box-shadow:0 5px 0 rgba(22,50,79,.12); }
+.pave button:active, .choix button:active{ transform:translateY(3px); box-shadow:0 2px 0 rgba(22,50,79,.12); }
+.pave .ok{ background:var(--vert); color:#fff; border-color:var(--vert); }
+.pave .ef{ background:#F3F6FA; }
+.aideBtn{ align-self:center; padding:8px 16px; border-radius:999px; background:#FFF6DD; border:1.5px solid #F5D27A; font-weight:800; }
+.retour{ border-radius:18px; padding:14px; line-height:1.45; }
+.retour.bien{ background:#E3F6EA; border:1.5px solid #8FD3A8; }
+.retour.mal{ background:#FDECEA; border:1.5px solid #F2A69F; }
+.retour .titre{ font-family:"Baloo 2", sans-serif; font-weight:800; font-size:1.5rem; margin:0 0 4px; }
+.retour.bien .titre{ color:var(--vert); }
+.retour.mal .titre{ color:var(--rouge); }
+.retour p{ margin:4px 0; }
+
+/* Fin */
+.etoiles{ text-align:center; font-size:3rem; letter-spacing:.1em; color:var(--or); margin:0; }
+.etoiles i{ font-style:normal; color:#C9D3DE; }
+.score{ text-align:center; font-family:"Baloo 2", sans-serif; font-weight:800; font-size:2.2rem; margin:0; }
+.liste{ margin:0; padding-left:18px; line-height:1.6; }
+
+/* Choisir les tables */
+.puces{ display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; }
+.puces button{ padding:10px 0; border-radius:14px; background:#fff; border:2px solid var(--ligne); font-family:"Baloo 2", sans-serif; font-weight:800; font-size:1.3rem; }
+.puces button.on{ background:var(--bleu); color:#fff; border-color:var(--bleu); }
+
+/* Tableau de progrès (grille de Pythagore) */
+.grille{ display:grid; grid-template-columns:repeat(11, 1fr); gap:3px; }
+.grille span, .grille button{ aspect-ratio:1; display:grid; place-items:center; border-radius:6px; font-family:"Baloo 2", sans-serif; font-weight:800; font-size:clamp(.7rem, 3.4vw, 1rem); padding:0; }
+.grille .en{ background:var(--encre); color:#fff; }
+.grille .c0{ background:var(--gris); color:#6C7F94; }
+.grille .c1{ background:#F7C2BC; color:#8E241B; }
+.grille .c2{ background:#FBD9A0; color:#7A4A00; }
+.grille .c3{ background:#9EDDB7; color:#0E5A30; }
+.legende{ display:flex; flex-wrap:wrap; gap:6px 14px; font-size:.86rem; color:var(--doux); margin-top:8px; }
+.legende i{ display:inline-block; width:14px; height:14px; border-radius:4px; vertical-align:-2px; margin-right:5px; }
+.barres{ display:flex; flex-direction:column; gap:6px; }
+.barres div{ display:grid; grid-template-columns:74px 1fr 42px; align-items:center; gap:8px; font-weight:700; font-size:.92rem; }
+.barres em{ height:10px; border-radius:5px; background:linear-gradient(90deg, var(--vert) var(--v), var(--gris) var(--v)); }
+
+/* Fenêtre d'explication */
+.voile{ position:fixed; inset:0; z-index:10; background:rgba(22,50,79,.45); display:flex; align-items:flex-end; justify-content:center; padding:16px; }
+.fenetre{ width:min(100%, 520px); max-height:86vh; overflow:auto; background:#fff; border-radius:22px; padding:16px; display:flex; flex-direction:column; gap:10px; box-shadow:0 20px 50px rgba(0,0,0,.25); margin-bottom:env(safe-area-inset-bottom, 0px); }
+.fenetre h2{ font-size:1.7rem; }
+.parents p, .parents li{ line-height:1.5; color:var(--encre); }
+.parents ul{ padding-left:20px; margin:4px 0; }
+</style>
+</head>
+<body>
+<div class="barre-statut" aria-hidden="true"></div>
+
+<!-- Menu -->
+<main class="page" id="eMenu">
+  <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="droite" id="bVoix" title="Lire les questions à voix haute">🗣️</button><button id="bSon">🔊</button></div>
+  <div>
+    <h1>Tables <span>au sommet</span></h1>
+    <p class="sous">Apprends tes tables de multiplication en grimpant la montagne : chaque table est un sommet. Réussis toutes ses multiplications pour planter ton drapeau tout en haut !</p>
+  </div>
+  <div class="carte">
+    <h3>Apprendre une table</h3>
+    <div class="sommets" id="lSommets"></div>
+  </div>
+  <div class="modes">
+    <button class="mode" id="bEntrainer"><span class="ico">🧗</span><span><b>S'entraîner</b><small>Des multiplications mélangées, sans chrono. Celles que tu rates reviennent plus souvent.</small></span></button>
+    <button class="mode" id="bChrono"><span class="ico">⏱️</span><span><b>Défi chrono</b><small>Le plus de bonnes réponses en 1 minute.</small><small id="mRecord"></small></span></button>
+    <button class="mode" id="bProgres"><span class="ico">📊</span><span><b>Mes progrès</b><small>Le grand tableau : ce que tu sais déjà, et ce qu'il reste à travailler.</small></span></button>
+    <button class="mode" id="bParents"><span class="ico">👨‍👩‍👧</span><span><b>Pour les parents</b><small>Comment fonctionne le jeu.</small></span></button>
+  </div>
+</main>
+
+<!-- Une table : la leçon et les deux étapes de questions -->
+<main class="page" id="eTable" hidden>
+  <div class="tete"><button id="bTableRetour">‹ La montagne</button></div>
+  <h1 id="tTitre"></h1>
+  <p class="sous" id="tSous"></p>
+  <div class="etapes" id="tEtapes"></div>
+  <div class="carte"><h3>Toute la table</h3><div class="ligneTable" id="tLigne"></div></div>
+</main>
+
+<!-- La leçon, page par page -->
+<main class="page" id="eLecon" hidden>
+  <div class="tete"><button id="bLeconRetour">‹ La table</button><span class="droite nb" id="lPage" style="color:var(--doux)"></span></div>
+  <div class="carte lecon" id="lContenu"></div>
+  <div class="points" id="lPoints"></div>
+  <div class="nav"><button class="sec" id="lPrec">‹ Avant</button><button class="gros" id="lSuiv">Suite ›</button></div>
+</main>
+
+<!-- Choisir les tables (entraînement et défi) -->
+<main class="page" id="eChoix" hidden>
+  <div class="tete"><button id="bChoixRetour">‹ La montagne</button></div>
+  <h1 id="cTitre"></h1>
+  <p class="sous" id="cSous"></p>
+  <div class="carte">
+    <h3>Quelles tables ?</h3>
+    <div class="puces" id="cPuces"></div>
+    <div class="btns" style="margin-top:10px"><button class="sec" id="cToutes">Toutes</button><button class="sec" id="cAucune">Aucune</button></div>
+  </div>
+  <button class="gros vert" id="cGo">C'est parti !</button>
+</main>
+
+<!-- Les questions -->
+<main class="page jeu" id="eJeu" hidden>
+  <div class="haut"><button class="sec" id="bJeuQuitter" style="width:auto;padding:8px 12px">✕</button><span class="nb" id="jMode" style="font-size:1.1rem"></span><span class="compte" id="jCompte"></span></div>
+  <svg class="montagne" id="jMontagne" viewBox="0 0 320 120" aria-hidden="true"></svg>
+  <div class="chrono" id="jChrono" hidden><i id="jChronoB"></i></div>
+  <p class="question" id="jQuestion"></p>
+  <div class="choix" id="jChoix" hidden></div>
+  <div class="pave" id="jPave" hidden></div>
+  <button class="aideBtn" id="jAide">💡 Un coup de pouce</button>
+  <div class="retour" id="jRetour" hidden></div>
+</main>
+
+<!-- Fin d'une série -->
+<main class="page" id="eFin" hidden>
+  <div class="carte" style="display:flex;flex-direction:column;gap:10px;align-items:stretch">
+    <p class="etoiles" id="fEtoiles"></p>
+    <p class="score" id="fScore"></p>
+    <p class="sous" id="fTexte" style="text-align:center"></p>
+    <div id="fRevoir"></div>
+  </div>
+  <button class="gros" id="fRejouer">↻ Encore une fois</button>
+  <button class="gros vert" id="fSuite" hidden></button>
+  <button class="sec" id="fMenu">La montagne</button>
+</main>
+
+<!-- Mes progrès -->
+<main class="page" id="eProgres" hidden>
+  <div class="tete"><button id="bProgresRetour">‹ La montagne</button></div>
+  <h1>Mes <span>progrès</span></h1>
+  <p class="sous">Touche une case pour voir l'explication de la multiplication.</p>
+  <div class="carte">
+    <div class="grille" id="pGrille"></div>
+    <div class="legende"><span><i style="background:#9EDDB7"></i>je sais</span><span><i style="background:#FBD9A0"></i>presque</span><span><i style="background:#F7C2BC"></i>à revoir</span><span><i style="background:var(--gris)"></i>pas encore vue</span></div>
+  </div>
+  <div class="carte"><h3>Table par table</h3><div class="barres" id="pBarres"></div></div>
+  <button class="sec" id="pEffacer">Tout recommencer à zéro</button>
+</main>
+
+<!-- Fenêtre : explication d'une multiplication, ou aide pour les parents -->
+<div class="voile" id="voile" hidden><div class="fenetre" id="fenetre"></div></div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const melanger = a => { for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const hasard = n => Math.floor(Math.random() * n);
+
+/* ---------- Les progrès ----------
+   Pour chaque multiplication (rangée par ses deux nombres, du plus petit au plus grand : 3 × 7 et 7 × 3 vont ensemble) :
+   ok, ko : bonnes et mauvaises réponses ; serie : bonnes réponses de suite. 3 de suite : « je sais ». */
+const PROG = Object.assign({ faits:{}, etapes:{}, record:0, tablesChoisies:[2, 3, 4, 5], dernier:null }, lire('tables-progres', {}));
+const sauver = () => ecrire('tables-progres', PROG);
+const cle = (a, b) => a < b ? `${a}x${b}` : `${b}x${a}`;
+const fait = (a, b) => PROG.faits[cle(a, b)] || { ok:0, ko:0, serie:0 };
+// 0 : pas encore vue ; 1 : à revoir ; 2 : presque ; 3 : je sais
+const niveau = (a, b) => { const f = fait(a, b); return f.serie >= 3 ? 3 : f.serie >= 1 ? 2 : f.ko > 0 ? 1 : 0; };
+function noter(a, b, bon){
+  const k = cle(a, b), f = PROG.faits[k] || { ok:0, ko:0, serie:0 };
+  if(bon){ f.ok++; f.serie++; } else { f.ko++; f.serie = 0; }
+  PROG.faits[k] = f; sauver();
+}
+const sues = n => { let s = 0; for(let k = 1; k <= 10; k++) if(niveau(n, k) === 3) s++; return s; };
+const etoilesTable = n => { const s = sues(n); return s >= 10 ? 3 : s >= 7 ? 2 : s >= 4 ? 1 : 0; };
+
+/* ---------- Le son et la voix ---------- */
+let son = lire('tables-son', true), voix = lire('tables-voix', false), AC = null;
+function note(f, d, delai = 0, vol = .06){
+  if(!son) return;
+  try{ AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if(AC.state === 'suspended') AC.resume();
+    const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime + delai;
+    o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + d + .02); }catch(e){}
+}
+const SONS = { bon:() => { note(660, .15); note(880, .22, .09); }, faux:() => { note(300, .25, 0, .05); note(240, .3, .12, .05); },
+  sommet:() => [523, 659, 784, 1046].forEach((f, i) => note(f, .3, i * .12)), clic:() => note(500, .05, 0, .03) };
+function dire(txt){
+  if(!voix || !window.speechSynthesis) return;
+  try{ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(txt); u.lang = 'fr-FR'; u.rate = .95; speechSynthesis.speak(u); }catch(e){}
+}
+const enMots = (a, b) => `${a} fois ${b}`;
+
+/* ---------- Les dessins ---------- */
+// b rangées de a flocons (groupés par 5 pour compter plus vite) : on voit « b fois a »
+function dessinGroupes(a, b, couleur = '#2F7BEA'){
+  const r = 7, pas = 18, trou = 8, larg = a * pas + Math.floor((a - 1) / 5) * trou + 70, haut = b * (pas + 4) + 8;
+  let svg = `<svg class="dessin" viewBox="0 0 ${larg} ${haut}" style="max-height:${Math.min(320, haut * 1.4)}px" aria-hidden="true">`;
+  for(let j = 0; j < b; j++){
+    const y = 4 + j * (pas + 4) + pas / 2;
+    svg += `<rect x="2" y="${y - pas / 2 - 1}" width="${larg - 64}" height="${pas + 2}" rx="${pas / 2}" fill="${j % 2 ? '#EAF3FF' : '#DCEBFF'}"/>`;
+    for(let i = 0; i < a; i++){ const x = 4 + r + i * pas + Math.floor(i / 5) * trou; svg += `<circle cx="${x}" cy="${y}" r="${r}" fill="${couleur}"/><path d="M${x} ${y - 4.5}v9M${x - 3.9} ${y - 2.25}l7.8 4.5M${x - 3.9} ${y + 2.25}l7.8 -4.5" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>`; }
+    svg += `<text x="${larg - 58}" y="${y + 5}" font-family="Baloo 2, sans-serif" font-weight="800" font-size="14" fill="#5A7491">${(j + 1) * a}</text>`;
+  }
+  return svg + '</svg>';
+}
+// Le petit grimpeur sur la montagne : p de 0 (en bas) à 1 (au sommet)
+const CHEMIN = [[30, 108], [92, 96], [70, 84], [134, 72], [112, 60], [170, 48], [150, 37], [196, 26], [182, 18], [208, 12]];
+function pointChemin(p){
+  const L = []; let tot = 0; for(let i = 1; i < CHEMIN.length; i++){ const d = Math.hypot(CHEMIN[i][0] - CHEMIN[i - 1][0], CHEMIN[i][1] - CHEMIN[i - 1][1]); L.push(d); tot += d; }
+  let s = Math.max(0, Math.min(1, p)) * tot;
+  for(let i = 0; i < L.length; i++){ if(s <= L[i]){ const u = s / L[i], a = CHEMIN[i], b = CHEMIN[i + 1]; return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]; } s -= L[i]; }
+  return CHEMIN[CHEMIN.length - 1];
+}
+function dessinMontagne(p, drapeau, texte = ''){
+  const [x, y] = pointChemin(p);
+  return `<defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8FA7C2"/><stop offset="1" stop-color="#5C7A9C"/></linearGradient></defs>
+    <path d="M-10 120 L60 70 L100 88 L160 40 L208 8 L262 52 L300 40 L340 120 Z" fill="#B9CCE0"/>
+    <path d="M10 120 L120 60 L208 6 L300 120 Z" fill="url(#mg)"/>
+    <path d="M208 6 L180 24 L192 27 L200 22 L210 30 L222 24 L232 28 Z" fill="#fff"/>
+    <path d="M0 120 L40 112 L90 116 L140 110 L200 116 L260 108 L320 114 L320 120 Z" fill="#fff"/>
+    <polyline points="${CHEMIN.map(q => q.join(',')).join(' ')}" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 4" opacity=".8"/>
+    <g transform="translate(208 6)"><line x1="0" y1="0" x2="0" y2="-2" stroke="#16324F"/>${drapeau ? '<path d="M0 -2 V-22 M0 -22 L16 -17 L0 -12" fill="#E2574C" stroke="#16324F" stroke-width="1.5" stroke-linejoin="round"/>' : ''}</g>
+    <g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})">
+      <ellipse cx="0" cy="1" rx="6" ry="2" fill="rgba(0,0,0,.2)"/>
+      <rect x="-3.2" y="-10" width="6.4" height="8" rx="2.5" fill="#E2574C"/><rect x="-4.4" y="-10" width="3" height="6" rx="1.2" fill="#2F7BEA"/>
+      <line x1="-2" y1="-2" x2="-3" y2="1" stroke="#16324F" stroke-width="2" stroke-linecap="round"/><line x1="2" y1="-2" x2="3" y2="1" stroke="#16324F" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="0" cy="-13" r="3.4" fill="#F6C9A0"/><path d="M-3.6 -14 A3.6 3.6 0 0 1 3.6 -14 Z" fill="#F5B82E"/>
+    </g>
+    ${texte ? `<text x="12" y="20" font-family="Baloo 2, sans-serif" font-weight="800" font-size="16" fill="#16324F">${texte}</text>` : ''}`;
+}
+// Un sommet du menu (sa hauteur grandit avec la table)
+function dessinSommet(n, et){
+  const h = 20 + n * 3.2, neige = et === 3;
+  return `<svg viewBox="0 0 60 64" preserveAspectRatio="none" aria-hidden="true"><path d="M0 64 L30 ${64 - h - 14} L60 64 Z" fill="${et ? '#5C7A9C' : '#9AB0C8'}"/>
+    <path d="M30 ${64 - h - 14} L22 ${64 - h} L27 ${64 - h + 2} L31 ${64 - h - 3} L35 ${64 - h + 2} L39 ${64 - h} Z" fill="#fff"/>
+    ${neige ? `<path d="M30 ${64 - h - 14} V${64 - h - 28} L42 ${64 - h - 24} L30 ${64 - h - 20}" fill="#E2574C" stroke="#16324F" stroke-width="1.4" stroke-linejoin="round"/>` : ''}</svg>`;
+}
+
+/* ---------- Les explications, avec des mots simples ---------- */
+// L'astuce qui marche le mieux pour a × b : on choisit le nombre qui a l'astuce la plus facile
+const ORDRE_ASTUCES = [1, 10, 2, 5, 4, 9, 3, 8, 6, 7];
+function astuce(a, b){
+  const r = a * b;
+  if(a * b === 56) return `<b>Astuce :</b> 5, 6, 7, 8 → <b>56 = 7 × 8</b>. Les quatre chiffres se suivent !`;
+  if(a === b && a > 2) return `<b>Astuce :</b> ${a} × ${a}, c'est un <b>carré</b> : ${a} rangées de ${a}, ça fait un carré de ${r} flocons. Les carrés se retiennent bien par cœur.`;
+  const t = ORDRE_ASTUCES.find(x => x === a || x === b), n = t === a ? b : a;
+  switch(t){
+    case 1: return `<b>Astuce :</b> multiplier par 1 ne change rien. ${n} × 1 = <b>${n}</b>.`;
+    case 10: return `<b>Astuce :</b> pour multiplier par 10, on écrit un <b>0</b> à droite du nombre : ${n} → <b>${n}0</b>.`;
+    case 2: return `<b>Astuce :</b> × 2, c'est le <b>double</b> : ${n} + ${n} = <b>${r}</b>.`;
+    case 5: return `<b>Astuce :</b> × 5, c'est la <b>moitié de × 10</b> : ${n} × 10 = ${n * 10}, et la moitié de ${n * 10}, c'est <b>${r}</b>. Les résultats de la table de 5 finissent toujours par 0 ou par 5.`;
+    case 4: return `<b>Astuce :</b> × 4, c'est le <b>double du double</b> : le double de ${n}, c'est ${2 * n}, et le double de ${2 * n}, c'est <b>${r}</b>.`;
+    case 9: return `<b>Astuce :</b> × 9, c'est <b>× 10, moins une fois</b> le nombre : ${n} × 10 = ${n * 10}, puis ${n * 10} − ${n} = <b>${r}</b>.${n > 1 ? ` Vérifie : ${String(r).split('').join(' + ')} = 9.` : ''}`;
+    case 3: return `<b>Astuce :</b> × 3, c'est le <b>double, plus encore une fois</b> : ${n} + ${n} = ${2 * n}, puis ${2 * n} + ${n} = <b>${r}</b>.`;
+    case 8: return `<b>Astuce :</b> × 8, c'est <b>le double, trois fois de suite</b> : ${n} → ${2 * n} → ${4 * n} → <b>${r}</b>.`;
+    case 6: return `<b>Astuce :</b> × 6, c'est <b>× 5, plus une fois</b> : ${n} × 5 = ${5 * n}, puis ${5 * n} + ${n} = <b>${r}</b>.`;
+    case 7: return `<b>Astuce :</b> × 7, c'est <b>× 5 plus × 2</b> : ${n} × 5 = ${5 * n} et ${n} × 2 = ${2 * n}, donc ${5 * n} + ${2 * n} = <b>${r}</b>.`;
+  }
+  return '';
+}
+// a × b expliqué : b fois a (l'addition et le dessin), l'astuce, et l'autre sens
+function explication(a, b, avecDessin = true){
+  const r = a * b, add = b <= 6 ? Array(b).fill(a).join(' + ') + ` = ${r}` : '';
+  return `<p class="grand nb">${a} × ${b} = <b>${r}</b></p>
+    <p>${a} × ${b}, c'est <b>${b} fois ${a}</b>${add ? ` : ${add}` : ` : ${b} rangées de ${a}`}.</p>
+    ${avecDessin ? dessinGroupes(a, b) : ''}
+    <p class="astuce">${astuce(a, b)}</p>
+    ${a !== b ? `<p>Et dans l'autre sens, c'est pareil : ${b} × ${a} = <b>${r}</b>.</p>` : ''}`;
+}
+function fenetre(html){ $('fenetre').innerHTML = html + '<button class="gros" id="fFermer">J\'ai compris</button>'; $('voile').hidden = false; $('fFermer').onclick = fermer; }
+function fermer(){ $('voile').hidden = true; }
+$('voile').addEventListener('click', e => { if(e.target === $('voile')) fermer(); });
+
+/* ---------- Les écrans ---------- */
+const ECRANS = ['eMenu', 'eTable', 'eLecon', 'eChoix', 'eJeu', 'eFin', 'eProgres'];
+function montrer(id){ ECRANS.forEach(e => $(e).hidden = e !== id); window.scrollTo(0, 0); }
+
+function menu(){
+  montrer('eMenu'); arreterChrono();
+  $('lSommets').innerHTML = Array.from({ length:10 }, (_, i) => { const n = i + 1, et = etoilesTable(n);
+    return `<button class="sommet" data-n="${n}" aria-label="Table de ${n}">${dessinSommet(n, et)}<span class="t">× ${n}</span><span class="e">${'★'.repeat(et)}<i>${'★'.repeat(3 - et)}</i></span></button>`; }).join('');
+  $('mRecord').textContent = PROG.record ? `Ton record : ${PROG.record} bonnes réponses` : '';
+  $('bSon').textContent = son ? '🔊' : '🔇'; $('bVoix').style.opacity = voix ? 1 : .45;
+}
+$('lSommets').onclick = e => { const b = e.target.closest('[data-n]'); if(b){ SONS.clic(); ouvrirTable(+b.dataset.n); } };
+$('bSon').onclick = () => { son = !son; ecrire('tables-son', son); menu(); };
+$('bVoix').onclick = () => { voix = !voix; ecrire('tables-voix', voix); menu(); if(voix) dire('Je lirai les questions à voix haute.'); };
+
+/* ---------- Une table ---------- */
+let tableN = 2;
+const ETAPES = [
+  { n:'Je découvre la table', d:'Une petite leçon avec des dessins et l\'astuce de la table.' },
+  { n:'Je monte la table', d:'Les 10 multiplications dans l\'ordre, avec un petit choix de réponses.' },
+  { n:'Je mélange', d:'Les mêmes, dans le désordre. Plante ton drapeau au sommet !' },
+];
+function ouvrirTable(n){
+  tableN = n; montrer('eTable');
+  const et = PROG.etapes[n] || [], s = sues(n);
+  $('tTitre').innerHTML = `La table de <span>${n}</span>`;
+  $('tSous').textContent = s >= 10 ? 'Tu connais toute cette table, bravo ! Tu peux t\'entraîner encore pour la garder en tête.' : `Tu sais déjà ${s} multiplication${s > 1 ? 's' : ''} sur 10 de cette table.`;
+  $('tEtapes').innerHTML = ETAPES.map((e, i) => `<button class="etape${et[i] ? ' fait' : ''}" data-e="${i}"><span class="n">${et[i] ? '✓' : i + 1}</span><span><b>${e.n}</b><small>${e.d}</small></span></button>`).join('');
+  $('tLigne').innerHTML = Array.from({ length:10 }, (_, i) => `<span>${n} × ${i + 1} = <b>${n * (i + 1)}</b></span>`).join('');
+}
+$('tEtapes').onclick = e => { const b = e.target.closest('[data-e]'); if(!b) return; SONS.clic(); const i = +b.dataset.e; if(i === 0) ouvrirLecon(tableN); else lancer(i === 1 ? 'ordre' : 'melange', [tableN]); };
+$('bTableRetour').onclick = menu;
+const finirEtape = (n, i) => { PROG.etapes[n] = PROG.etapes[n] || []; PROG.etapes[n][i] = true; sauver(); };
+
+/* ---------- La leçon : 4 pages ---------- */
+let page = 0, kExplore = 3;
+const ASTUCES_TABLE = {
+  1: 'Multiplier par 1 ne change rien : <b>1 × 7 = 7</b>. C\'est la table la plus facile !',
+  2: '× 2, c\'est le <b>double</b> : on ajoute le nombre à lui-même. <b>2 × 8 = 8 + 8 = 16</b>. Tous les résultats sont des nombres pairs (ils finissent par 0, 2, 4, 6 ou 8).',
+  3: '× 3, c\'est le <b>double, plus encore une fois</b>. <b>3 × 7</b> : le double de 7, c\'est 14, et 14 + 7 = <b>21</b>.',
+  4: '× 4, c\'est le <b>double du double</b>. <b>4 × 6</b> : le double de 6, c\'est 12, et le double de 12, c\'est <b>24</b>.',
+  5: '× 5, c\'est la <b>moitié de × 10</b>. <b>5 × 8</b> : 8 × 10 = 80, la moitié de 80, c\'est <b>40</b>. Les résultats finissent toujours par <b>0 ou 5</b>.',
+  6: '× 6, c\'est <b>× 5, plus une fois</b>. <b>6 × 7</b> : 5 × 7 = 35, et 35 + 7 = <b>42</b>. Et avec un nombre pair, le résultat finit par le même chiffre : 6 × <b>2</b> = 1<b>2</b>, 6 × <b>4</b> = 2<b>4</b>, 6 × <b>6</b> = 3<b>6</b>, 6 × <b>8</b> = 4<b>8</b>.',
+  7: 'La table de 7 est la plus difficile, mais tu en connais déjà presque tout grâce aux autres tables ! Astuce : <b>× 7 = × 5 plus × 2</b>. <b>7 × 6</b> : 5 × 6 = 30, 2 × 6 = 12, et 30 + 12 = <b>42</b>. Et retiens : 5, 6, 7, 8 → <b>56 = 7 × 8</b>.',
+  8: '× 8, c\'est <b>le double, trois fois de suite</b>. <b>8 × 6</b> : 6 → 12 → 24 → <b>48</b>.',
+  9: '× 9, c\'est <b>× 10, moins une fois</b>. <b>9 × 7</b> : 7 × 10 = 70, et 70 − 7 = <b>63</b>. Regarde les résultats : le chiffre des dizaines monte (0, 1, 2, 3…), celui des unités descend (9, 8, 7…), et les deux chiffres ajoutés font toujours <b>9</b> : 6 + 3 = 9 !',
+  10: '× 10, on écrit un <b>0 à droite</b> du nombre. <b>10 × 7 = 70</b>.',
+};
+function contenuLecon(n){
+  const k = kExplore, r = n * k;
+  return [
+    `<h2>Multiplier, c'est quoi ?</h2>
+     <p>Multiplier, c'est <b>ajouter plusieurs fois le même nombre</b>.</p>
+     <p>Regarde : voici <b>3 rangées de ${n} flocons</b>.</p>${dessinGroupes(n, 3)}
+     <p class="grand nb">${n} + ${n} + ${n} = <b>${n * 3}</b></p>
+     <p>Au lieu d'écrire ${n} + ${n} + ${n}, on écrit <b>${n} × 3</b> et on dit « ${n} fois 3 ». C'est plus court !</p>`,
+    `<h2>À toi d'explorer</h2>
+     <p>Change le nombre de rangées avec − et + :</p>
+     <div class="reglage"><button id="kMoins" aria-label="Une rangée de moins">−</button><output class="nb">${n} × ${k}</output><button id="kPlus" aria-label="Une rangée de plus">+</button></div>
+     ${dessinGroupes(n, k)}
+     <p class="grand nb">${n} × ${k} = <b>${r}</b></p>
+     <p>On compte de <b>${n} en ${n}</b>, en sautant de rangée en rangée :</p>
+     <div class="bande">${Array.from({ length:10 }, (_, i) => `<span class="${i < k ? 'on' : ''}">${n * (i + 1)}</span>`).join('')}</div>`,
+    `<h2>L'astuce de la table de ${n}</h2>
+     <p class="astuce">${ASTUCES_TABLE[n]}</p>
+     <p>Et un secret qui marche pour toutes les tables : <b>${n} × 7 = 7 × ${n}</b>. On peut retourner une multiplication, le résultat ne change pas.</p>
+     ${n !== 7 ? `${dessinGroupes(7, n, '#2EA05E')}<p>Ici, ${n} rangées de 7, ou 7 rangées de ${n} : c'est toujours <b>${7 * n}</b> flocons.</p>` : ''}`,
+    `<h2>Toute la table de ${n}</h2>
+     <div class="ligneTable" style="margin:8px 0">${Array.from({ length:10 }, (_, i) => `<span>${n} × ${i + 1} = <b>${n * (i + 1)}</b></span>`).join('')}</div>
+     <p>Pour passer d'une ligne à la suivante, on ajoute <b>${n}</b> : ${n} × 4 = ${n * 4}, donc ${n} × 5 = ${n * 4} + ${n} = <b>${n * 5}</b>.</p>
+     <p>Prêt ? Maintenant, on grimpe ! 🧗</p>`,
+  ];
+}
+function ouvrirLecon(n){ page = 0; kExplore = 3; montrer('eLecon'); afficherLecon(); }
+function afficherLecon(){
+  const pages = contenuLecon(tableN);
+  $('lContenu').innerHTML = pages[page];
+  $('lPage').textContent = `Table de ${tableN} · ${page + 1} / ${pages.length}`;
+  $('lPoints').innerHTML = pages.map((_, i) => `<i class="${i === page ? 'on' : ''}"></i>`).join('');
+  $('lPrec').disabled = page === 0; $('lPrec').style.opacity = page === 0 ? .4 : 1;
+  $('lSuiv').textContent = page === pages.length - 1 ? 'Je monte la table 🧗' : 'Suite ›';
+  if(page === 1){ $('kMoins').onclick = () => { kExplore = Math.max(1, kExplore - 1); SONS.clic(); afficherLecon(); }; $('kPlus').onclick = () => { kExplore = Math.min(10, kExplore + 1); SONS.clic(); afficherLecon(); }; }
+}
+$('lPrec').onclick = () => { if(page > 0){ page--; afficherLecon(); window.scrollTo(0, 0); } };
+$('lSuiv').onclick = () => { const nb = contenuLecon(tableN).length; if(page < nb - 1){ page++; afficherLecon(); window.scrollTo(0, 0); } else { finirEtape(tableN, 0); lancer('ordre', [tableN]); } };
+$('bLeconRetour').onclick = () => ouvrirTable(tableN);
+
+/* ---------- Choisir les tables ---------- */
+let modeChoisi = 'entrainement';
+function ouvrirChoix(mode){
+  modeChoisi = mode; montrer('eChoix');
+  $('cTitre').innerHTML = mode === 'chrono' ? 'Défi <span>chrono</span>' : 'S\'<span>entraîner</span>';
+  $('cSous').textContent = mode === 'chrono' ? '1 minute pour donner le plus de bonnes réponses. Tape le résultat sur le pavé, puis OK.' : '15 multiplications mélangées, sans chrono. Tape le résultat sur le pavé, puis OK.';
+  majPuces();
+}
+function majPuces(){ $('cPuces').innerHTML = Array.from({ length:10 }, (_, i) => `<button class="${PROG.tablesChoisies.includes(i + 1) ? 'on' : ''}" data-n="${i + 1}">${i + 1}</button>`).join(''); $('cGo').disabled = !PROG.tablesChoisies.length; $('cGo').style.opacity = PROG.tablesChoisies.length ? 1 : .5; }
+$('cPuces').onclick = e => { const b = e.target.closest('[data-n]'); if(!b) return; const n = +b.dataset.n, L = PROG.tablesChoisies; const i = L.indexOf(n); if(i >= 0) L.splice(i, 1); else L.push(n); L.sort((a, b) => a - b); sauver(); SONS.clic(); majPuces(); };
+$('cToutes').onclick = () => { PROG.tablesChoisies = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; sauver(); majPuces(); };
+$('cAucune').onclick = () => { PROG.tablesChoisies = []; sauver(); majPuces(); };
+$('cGo').onclick = () => { if(PROG.tablesChoisies.length) lancer(modeChoisi, PROG.tablesChoisies.slice()); };
+$('bChoixRetour').onclick = menu;
+$('bEntrainer').onclick = () => ouvrirChoix('entrainement');
+$('bChrono').onclick = () => ouvrirChoix('chrono');
+
+/* ---------- Les questions ----------
+   ordre : la table dans l'ordre (choix parmi 4) ; melange : dans le désordre (choix parmi 4) ;
+   entrainement : 15 questions tirées selon ce qu'on sait (pavé) ; chrono : 1 minute (pavé). Une erreur revient à la fin de la série. */
+let S = null, minuteur = 0;
+const POIDS = [3, 5, 3, 1];      // pas encore vue, à revoir, presque, je sais
+function tirer(tables, nb){
+  const tous = []; for(const t of tables) for(let k = 1; k <= 10; k++) tous.push([t, k]);
+  const out = [];
+  while(out.length < nb){
+    let tot = 0; const w = tous.map(([t, k]) => { const p = POIDS[niveau(t, k)] * (out.length && out[out.length - 1].a * out[out.length - 1].b === t * k ? 0 : 1); tot += p; return p; });
+    let x = Math.random() * tot, i = 0; while(i < w.length - 1 && (x -= w[i]) > 0) i++;
+    const [t, k] = tous[i]; out.push(Math.random() < .5 ? { a:t, b:k } : { a:k, b:t });
+  }
+  return out;
+}
+function lancer(mode, tables){
+  arreterChrono();
+  let qs;
+  if(mode === 'ordre') qs = Array.from({ length:10 }, (_, i) => ({ a:tables[0], b:i + 1 }));
+  else if(mode === 'melange') qs = melanger(Array.from({ length:10 }, (_, i) => Math.random() < .5 ? { a:tables[0], b:i + 1 } : { a:i + 1, b:tables[0] }));
+  else qs = tirer(tables, mode === 'chrono' ? 120 : 15);
+  S = { mode, tables, qs, i:0, bons:0, total:0, fautes:[], refaites:new Set(), saisie:'', attend:false, t0:performance.now(), fin:0, avecAide:mode !== 'chrono' };
+  montrer('eJeu');
+  $('jMode').textContent = mode === 'ordre' ? `Je monte la table de ${tables[0]}` : mode === 'melange' ? `Table de ${tables[0]} en désordre` : mode === 'chrono' ? 'Défi chrono' : 'Entraînement';
+  $('jChrono').hidden = mode !== 'chrono'; $('jAide').hidden = mode === 'chrono';
+  const qcm = mode === 'ordre' || mode === 'melange';
+  $('jChoix').hidden = !qcm; $('jPave').hidden = qcm;
+  if(!qcm) $('jPave').innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button data-k="${n}">${n}</button>`).join('') + '<button class="ef" data-k="⌫" aria-label="Effacer">⌫</button><button data-k="0">0</button><button class="ok" data-k="ok">OK</button>';
+  if(mode === 'chrono'){ S.fin = performance.now() + 60000; minuteur = requestAnimationFrame(tic); }
+  poser();
+}
+// 4 réponses possibles : la bonne et des erreurs vraisemblables (une rangée de plus ou de moins, l'addition…)
+function propositions(a, b){
+  const r = a * b, set = new Set([r]);
+  const idees = melanger([a * (b + 1), a * (b - 1), (a + 1) * b, (a - 1) * b, a + b, r + 10, r - 10, +String(r).split('').reverse().join(''), r + 1, r - 1, r + 2]);
+  for(const x of idees){ if(set.size >= 4) break; if(x > 0 && x <= 110 && !set.has(x)) set.add(x); }
+  while(set.size < 4) set.add(r + set.size * 3);
+  return melanger([...set]);
+}
+function poser(){
+  const q = S.qs[S.i]; S.saisie = ''; S.attend = false; S.aide = false;
+  $('jRetour').hidden = true; $('jRetour').className = 'retour';
+  $('jQuestion').innerHTML = `${q.a} × ${q.b} = <span class="rep vide" id="jRep">?</span>`;
+  if(!$('jChoix').hidden) $('jChoix').innerHTML = propositions(q.a, q.b).map(x => `<button data-v="${x}">${x}</button>`).join('');
+  majHaut();
+  dire(`${enMots(q.a, q.b)} ?`);
+}
+function majHaut(){
+  const n = S.mode === 'chrono' ? Math.min(1, S.bons / 30) : S.i / S.qs.length;
+  $('jMontagne').innerHTML = dessinMontagne(n, false, S.mode === 'chrono' ? `${S.bons} ✓` : '');
+  $('jCompte').textContent = S.mode === 'chrono' ? `${S.bons} bonne${S.bons > 1 ? 's' : ''} réponse${S.bons > 1 ? 's' : ''}` : `${Math.min(S.i + 1, S.qs.length)} / ${S.qs.length}`;
+}
+const BRAVO = ['Bravo !', 'Super !', 'Génial !', 'Bien joué !', 'Exact !', 'Parfait !', 'Tu grimpes !'];
+function repondre(v){
+  if(S.attend) return;
+  const q = S.qs[S.i], r = q.a * q.b, bon = v === r;
+  S.attend = true; S.total++;
+  // une multiplication déjà ratée dans la série ne compte qu'une fois dans les progrès ; avec l'aide, la bonne réponse ne compte pas comme sue
+  if(!(bon && S.aide)) noter(q.a, q.b, bon);
+  $('jRep').textContent = v; $('jRep').classList.remove('vide');
+  if(!$('jChoix').hidden) $('jChoix').querySelectorAll('button').forEach(b => { if(+b.dataset.v === r) b.classList.add('bon'); else if(+b.dataset.v === v) b.classList.add('faux'); });
+  if(bon){
+    S.bons++; SONS.bon();
+    $('jRetour').className = 'retour bien'; $('jRetour').hidden = S.mode === 'chrono';
+    $('jRetour').innerHTML = `<p class="titre">${BRAVO[hasard(BRAVO.length)]}</p><p class="nb" style="font-size:1.3rem">${q.a} × ${q.b} = ${r}</p>`;
+    dire(`${BRAVO[hasard(BRAVO.length)]} ${enMots(q.a, q.b)}, ${r}.`);
+    setTimeout(suivante, S.mode === 'chrono' ? 250 : 900);
+  } else {
+    SONS.faux();
+    S.fautes.push(q);
+    // elle reviendra à la fin de la série (une fois)
+    const k = `${q.a}x${q.b}`; if(S.mode !== 'chrono' && !S.refaites.has(k)){ S.refaites.add(k); S.qs.push({ a:q.a, b:q.b }); }
+    if(S.mode === 'chrono'){
+      $('jRetour').className = 'retour mal'; $('jRetour').hidden = false;
+      $('jRetour').innerHTML = `<p class="titre">Oups…</p><p class="nb" style="font-size:1.3rem">${q.a} × ${q.b} = ${r}</p>`;
+      setTimeout(suivante, 1300); return;
+    }
+    $('jRetour').className = 'retour mal'; $('jRetour').hidden = false;
+    $('jRetour').innerHTML = `<p class="titre">Pas tout à fait…</p>${explication(q.a, q.b, q.a * q.b <= 60)}<p>Cette multiplication reviendra un peu plus tard.</p><button class="gros" id="jContinuer">Continuer</button>`;
+    dire(`Non. ${enMots(q.a, q.b)}, ${r}.`);
+    $('jContinuer').onclick = suivante;
+    $('jRetour').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+}
+function suivante(){
+  if(!S) return;
+  S.i++;
+  if(S.mode === 'chrono' && performance.now() >= S.fin) return terminer();
+  if(S.i >= S.qs.length){ if(S.mode === 'chrono'){ S.qs.push(...tirer(S.tables, 60)); } else return terminer(); }
+  poser(); window.scrollTo(0, 0);
+}
+function tic(now){
+  if(!S || S.mode !== 'chrono') return;
+  const reste = Math.max(0, S.fin - now);
+  $('jChronoB').style.width = (reste / 600) + '%';
+  if(reste <= 0){ if(!S.attend) terminer(); else setTimeout(() => S && S.mode === 'chrono' && terminer(), 300); return; }
+  minuteur = requestAnimationFrame(tic);
+}
+function arreterChrono(){ cancelAnimationFrame(minuteur); }
+// le pavé : chiffres, effacer, OK (aussi au clavier)
+function touche(k){
+  if(!S || S.attend || $('jPave').hidden) return;
+  if(k === 'ok'){ if(S.saisie) repondre(+S.saisie); return; }
+  if(k === '⌫') S.saisie = S.saisie.slice(0, -1); else if(S.saisie.length < 3) S.saisie += k;
+  $('jRep').textContent = S.saisie || '?'; $('jRep').classList.toggle('vide', !S.saisie);
+  SONS.clic();
+}
+$('jPave').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if(b) touche(b.dataset.k); });
+$('jChoix').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if(b && S && !S.attend) repondre(+b.dataset.v); });
+addEventListener('keydown', e => {
+  if($('eJeu').hidden || !S) return;
+  if(/^[0-9]$/.test(e.key)) touche(e.key); else if(e.key === 'Backspace') touche('⌫'); else if(e.key === 'Enter'){ if(S.attend && !$('jRetour').hidden && $('jContinuer')) suivante(); else touche('ok'); }
+});
+$('jAide').onclick = () => { if(!S || S.attend) return; const q = S.qs[S.i]; S.aide = true; fenetre(`<h2>Un coup de pouce</h2>${indice(q.a, q.b)}`); };
+// le coup de pouce ne donne pas la réponse : il montre le dessin et le chemin pour la trouver
+function indice(a, b){
+  const t = ORDRE_ASTUCES.find(x => x === a || x === b), n = t === a ? b : a;
+  const piste = { 1:`Multiplier par 1 ne change rien.`, 10:`Pour × 10, écris un 0 à droite de ${n}.`, 2:`× 2, c'est le double : ${n} + ${n}.`, 5:`× 5, c'est la moitié de × 10. Combien font ${n} × 10 ? Prends-en la moitié.`,
+    4:`× 4, c'est le double du double : le double de ${n}, puis encore le double.`, 9:`× 9 : calcule ${n} × 10, puis enlève ${n}.`, 3:`× 3 : le double de ${n}, plus encore ${n}.`, 8:`× 8 : le double de ${n}, trois fois de suite.`,
+    6:`× 6 : ${n} × 5, plus encore ${n}.`, 7:`× 7 : ${n} × 5, plus ${n} × 2.` }[t];
+  return `<p>${a} × ${b}, c'est <b>${b} rangées de ${a}</b>. Compte de ${a} en ${a} :</p>${dessinGroupes(a, b)}<p class="astuce"><b>Piste :</b> ${piste}</p>`;
+}
+$('bJeuQuitter').onclick = () => { arreterChrono(); S = null; menu(); };
+
+/* ---------- La fin d'une série ---------- */
+function terminer(){
+  arreterChrono();
+  const s = S; if(!s) return; S = null;
+  montrer('eFin');
+  const premiers = s.mode === 'chrono' ? s.total : s.qs.length - s.refaites.size;   // questions de départ
+  const justesDuPremierCoup = premiers - s.refaites.size;
+  let et;
+  if(s.mode === 'chrono'){
+    const nouveau = s.bons > PROG.record; if(nouveau){ PROG.record = s.bons; sauver(); }
+    et = s.bons >= 25 ? 3 : s.bons >= 15 ? 2 : s.bons >= 8 ? 1 : 0;
+    $('fScore').textContent = `${s.bons} bonne${s.bons > 1 ? 's' : ''} réponse${s.bons > 1 ? 's' : ''}`;
+    $('fTexte').textContent = nouveau && s.bons ? '🏆 Nouveau record !' : `Ton record : ${PROG.record}`;
+  } else {
+    const taux = justesDuPremierCoup / premiers;
+    et = taux >= .95 ? 3 : taux >= .75 ? 2 : taux >= .5 ? 1 : 0;
+    $('fScore').textContent = `${justesDuPremierCoup} / ${premiers} du premier coup`;
+    $('fTexte').textContent = et === 3 ? 'Tu es au sommet ! 🚩' : et === 2 ? 'Très bien, tu y es presque !' : et === 1 ? 'Bien ! Encore un peu d\'entraînement.' : 'Courage, chaque essai te fait progresser.';
+    if((s.mode === 'ordre' || s.mode === 'melange') && et >= 2) finirEtape(s.tables[0], s.mode === 'ordre' ? 1 : 2);
+  }
+  if(et === 3) SONS.sommet();
+  $('fEtoiles').innerHTML = '★'.repeat(et) + `<i>${'★'.repeat(3 - et)}</i>`;
+  const revoir = [...new Map(s.fautes.map(q => [cle(q.a, q.b), q])).values()];
+  $('fRevoir').innerHTML = revoir.length ? `<h3 style="margin:4px 0;font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:var(--doux)">À revoir</h3><ul class="liste nb" style="font-size:1.2rem">${revoir.map(q => `<li>${q.a} × ${q.b} = ${q.a * q.b}</li>`).join('')}</ul>` : '<p class="sous" style="text-align:center">Aucune erreur !</p>';
+  $('fRejouer').onclick = () => lancer(s.mode, s.tables);
+  const suite = s.mode === 'ordre' ? ['Je mélange la table ›', () => lancer('melange', s.tables)] : s.mode === 'melange' && s.tables[0] < 10 ? [`La table de ${s.tables[0] + 1} ›`, () => ouvrirTable(s.tables[0] + 1)] : null;
+  $('fSuite').hidden = !suite; if(suite){ $('fSuite').textContent = suite[0]; $('fSuite').onclick = suite[1]; }
+  PROG.dernier = { mode:s.mode, tables:s.tables, bons:s.bons, total:s.total, date:Date.now() }; sauver();
+  dire($('fTexte').textContent);
+}
+$('fMenu').onclick = menu;
+
+/* ---------- Mes progrès ---------- */
+function ouvrirProgres(){
+  montrer('eProgres');
+  let h = '<span class="en">×</span>' + Array.from({ length:10 }, (_, i) => `<span class="en">${i + 1}</span>`).join('');
+  for(let a = 1; a <= 10; a++){ h += `<span class="en">${a}</span>`; for(let b = 1; b <= 10; b++) h += `<button class="c${niveau(a, b)}" data-a="${a}" data-b="${b}" aria-label="${a} fois ${b}">${a * b}</button>`; }
+  $('pGrille').innerHTML = h;
+  $('pBarres').innerHTML = Array.from({ length:10 }, (_, i) => { const n = i + 1, s = sues(n); return `<div><span>Table ${n}</span><em style="--v:${s * 10}%"></em><span>${s}/10</span></div>`; }).join('');
+}
+$('pGrille').onclick = e => { const b = e.target.closest('[data-a]'); if(b) fenetre(explication(+b.dataset.a, +b.dataset.b)); };
+$('bProgres').onclick = ouvrirProgres;
+$('bProgresRetour').onclick = menu;
+$('pEffacer').onclick = () => { if(!confirm('Effacer tous les progrès et le record ?')) return; PROG.faits = {}; PROG.etapes = {}; PROG.record = 0; sauver(); ouvrirProgres(); };
+$('bParents').onclick = () => fenetre(`<div class="parents"><h2>Pour les parents</h2>
+  <p>Le jeu suit la progression de CM1 : comprendre ce qu'est une multiplication, puis mémoriser les tables de 1 à 10.</p>
+  <ul>
+    <li><b>Apprendre une table</b> : une petite leçon (l'addition répétée, des rangées de flocons à compter, l'astuce de la table, le fait que 3 × 7 = 7 × 3), puis la table dans l'ordre, puis dans le désordre, avec 4 réponses au choix.</li>
+    <li><b>S'entraîner</b> : 15 multiplications des tables choisies, à taper sur le pavé. Le jeu repose plus souvent celles qui ne sont pas encore sues.</li>
+    <li><b>Défi chrono</b> : le plus de bonnes réponses en 1 minute.</li>
+    <li>Une multiplication est <b>sue</b> après 3 bonnes réponses de suite (3 × 7 et 7 × 3 comptent ensemble). Une erreur la remet à revoir.</li>
+    <li>En cas d'erreur, l'enfant voit une explication (le dessin, l'astuce, la bonne réponse) et la multiplication revient plus tard dans la série. Le bouton 💡 donne un coup de pouce sans donner la réponse.</li>
+    <li>🗣️ lit les questions à voix haute (si l'appareil le permet).</li>
+  </ul>
+  <p>Les progrès restent sur l'appareil, et sont compris dans la sauvegarde d'Altitude Arcade.</p></div>`);
+
+menu();
+window.Tables = { get S(){ return S; }, PROG, lancer, repondre, touche, explication, niveau, ouvrirTable, ouvrirLecon, ouvrirProgres, menu, terminer };
+
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
+})();
+</script>
+</body>
+</html>
