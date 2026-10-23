@@ -21,6 +21,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Tour de contrôle** : guider les avions du doigt jusqu'à la piste de leur couleur sans qu'ils se touchent ; 11 sortes d'appareils (avions de chasse, de ligne, hélicoptères militaires…), 8 aérodromes, 4 niveaux | `jeux/tour.html` | 1 |
 | **Tir au panier** : viser au doigt (on place le sommet de la courbe) et marquer un maximum de paniers en 1 minute 30 ; bonus (feu, balle ×3, panier large) en allumant la planche, 10 balles inventées à débloquer, 7 thèmes, mode gaucher | `jeux/panier.html` | 1 |
 | **Tables au sommet** : apprendre les tables de multiplication de 1 à 10 (niveau CM1) en grimpant la montagne : leçon avec dessins et astuces, table dans l'ordre puis dans le désordre, entraînement, défi chrono, tableau des progrès | `jeux/tables.html` | 1 |
+| **Les aventures de Pépin** : jeu de plateforme en pixels dans l'esprit des grands classiques 2D (personnages, dessins et musiques originaux) ; Pépin le plombier-montagnard traverse 4 mondes et 16 niveaux (prairie, grotte, cimes, lac, neiges, volcan, châteaux du Yéti) ; blocs mystère, cèpes, piments de feu, étoile, tuyaux secrets ; manette à l'écran | `jeux/pepin.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -398,6 +399,19 @@ Jeu pour apprendre les tables de multiplication de 1 à 10, pour un élève de C
 - **Son et voix** : petits sons doux (🔊) ; 🗣️ lit les questions et les réponses à voix haute (synthèse vocale en français, si l'appareil le permet).
 - **Données** : `tables-progres` (multiplications, étapes, record, tables choisies, dernière série), `tables-son`, `tables-voix` ; comprises dans la sauvegarde d'Altitude Arcade. L'accueil affiche le nombre de tables au sommet et le record.
 
+## Les aventures de Pépin
+
+Jeu de plateforme en 2D, vu de côté, dans l'esprit des grands jeux de console 8 bits : on court vers la droite, on saute sur les ennemis, on tape les blocs par en dessous. Tout est original (le héros, les ennemis, les dessins en pixels, les sons et les musiques) : aucun personnage, dessin ni musique d'un jeu existant n'est repris. Fichiers : `jeux/pepin.html` (page, menus, manette), `jeux/pepin/sprites.js` (tous les dessins, faits en pixels dans le code), `jeux/pepin/niveaux.js` (les 16 niveaux), `jeux/pepin/moteur.js` (le jeu).
+
+- **Le héros** : Pépin, plombier-montagnard (casque rouge, salopette bleue). Petit, il meurt au premier coup ; avec le **cèpe** il grandit (casse les briques, encaisse un coup) ; avec le **piment** il lance des boules de feu (B) ; l'**étoile des neiges** le rend invincible un moment ; le **cœur vert** donne une vie. 100 pièces = une vie.
+- **Les ennemis** : marmotton (on l'écrase), hérisson (il se met en boule, on peut pousser la boule pour renverser les autres ; le rouge fait demi-tour au bord du vide), scarabée (carapace, insensible au feu), chardon (sort des tuyaux), choucas (vole en vagues), truites (sautent hors de l'eau ou nagent), canons à boules de neige, barres de feu et bulles de lave dans les châteaux, et le **Yéti** au bout de chaque château : on lui lance des boules de feu, ou on passe derrière lui pour tirer le levier qui fait tomber le pont.
+- **Les mondes** : 1 Les Alpages (prairie, grotte, cimes des sapins, château), 2 Le Lac (bord du lac, sous l'eau à la nage, pontons avec truites, château), 3 Les Neiges (station avec glace qui glisse, grotte de glace, téléphérique, château), 4 Le Volcan (nuit sur les sommets, grotte de lave, au-dessus des nuages, repaire du Yéti). Il y a des tuyaux vers des salles bonus pleines de pièces, des blocs cachés, des briques à pièces, un point de reprise au milieu de chaque niveau et le mât à drapeau (plus on l'attrape haut, plus on gagne de points ; le temps restant devient des points).
+- **Commandes** : manette à l'écran (◀ ▶ marcher, ▼ s'accroupir / entrer dans un tuyau, B courir et lancer, A sauter : plus on tient, plus on saute haut ; en courant on saute plus loin). Le doigt peut glisser d'une flèche à l'autre. Au clavier : flèches, X ou Espace (sauter), Z ou Maj (courir), Échap (pause). Un saut demandé un peu avant de toucher le sol, ou juste après avoir quitté un bord, compte quand même. Les nuages, ponts et cimes des sapins se traversent par en dessous.
+- **Écran** : le monde fait toujours 240 pixels de haut (15 rangées de tuiles de 16 pixels) ; à l'horizontale, il remplit l'écran et la manette est par-dessus ; à la verticale, le jeu est en haut et la manette en dessous.
+- **Construire un niveau** (`niveaux.js`) : chaque niveau appelle quelques ordres (`construireZone` dans `moteur.js`) : `sol`, `plafond`, `ligne(x, y, motif)` (b brique, ? bloc mystère, ! bloc pouvoir, * étoile, v bloc caché vie…), `rect`, `escalier`, `tuyau` (avec chardon, ou vers une autre zone), `ennemi`, `sapin`, `nuage`, `pont`, `plateforme` (qui bouge, monte, tombe, ou cabine de téléphérique), `lave`, `eau`, `barreFeu`, `canon`, `drapeau`, `boss`, `mi` (point de reprise).
+- **Tests** : `Pepin.instantane()` et `Pepin.restaurer()` photographient la partie et y reviennent, `Pepin.maj()` avance d'une image ; un robot qui essaie plusieurs gestes et revient en arrière a vérifié que chaque niveau peut se finir.
+- **Données** : `pepin-progres` (niveaux réussis, niveau débloqué, meilleur score), `pepin-son`, `pepin-musique` ; comprises dans la sauvegarde d'Altitude Arcade. L'accueil affiche les niveaux réussis et le meilleur score.
+
 ## Mise en ligne
 
 Le site est fait de fichiers statiques, sans installation ni compilation.
@@ -438,6 +452,8 @@ jeux/freeride.html     jeu Freeride
 jeux/tour.html         jeu Tour de contrôle
 jeux/panier.html       jeu Tir au panier
 jeux/tables.html       jeu Tables au sommet (tables de multiplication)
+jeux/pepin.html        jeu Les aventures de Pépin (page et menus)
+jeux/pepin/            dessins (sprites.js), niveaux (niveaux.js) et moteur (moteur.js) de Pépin
 logo.svg               logo (source vectorielle)
 apple-touch-icon.png   icône de l'écran d'accueil de l'iPhone (180 px, pleine) ; elle est aussi écrite dans chaque page (lien apple-touch-icon en data:image/png;base64), recopiée par outils/icone.sh après un changement de logo
 icons/                 icônes du manifeste, fichiers altitude-*.png (192, 512, masquable, 180), toutes pleines (sans transparence)
