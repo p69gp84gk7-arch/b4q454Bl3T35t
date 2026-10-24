@@ -17,6 +17,7 @@ window.AltitudeScores = (() => {
     tour:{ vallee:'La Vallée', porteavions:'Le Porte-avions', lac:'Le Lac', aeroport:'Le Grand Aéroport', base:'La Base aérienne', ville:'La Ville', altiport:'L’Altiport', ile:'L’Île' },
     tourNiv:{ facile:'Facile', normal:'Normal', difficile:'Difficile', expert:'Expert' },
     slalom:{ geant:'Géant de la Combe', special:'Spécial du Stade', superg:'Super-G des Crêtes' },
+    telesiege:{ clarines:'Les Clarines', marmottes:'Les Marmottes', couloir:'Le Grand Couloir', bulles:'Les Bulles', express:'Sommet Express' },
     nivo:{ baby:'Baby', renard:'Le Renard', lac:'Le Lac', marmottes:'Les Marmottes', hountestrete:'Hount Estrete', lafforgue:'Lafforgue', gouron:'Le Gouron', violettes:'Les Violettes', boiscoqs:'Le Bois des Coqs' },
     geoJeu:{ drapeaux:'Drapeaux', carte:'Carte', melange:'Mélange', numeros:'Numéros', placer:'Placer' },
     geoZone:{ monde:'Monde', europe:'Europe', afrique:'Afrique', asie:'Asie', amnord:'Amérique du Nord', amsud:'Amérique du Sud', oceanie:'Océanie', france:'France', tout:'', om:'Outre-mer' },
@@ -160,6 +161,13 @@ window.AltitudeScores = (() => {
       if(qr && qr.bac && qr.bac.seul) ep('quiz', 'bac', 'Petit bac · meilleure manche en solo', qr.bac.seul, `${qr.bac.seul} pts`);
       const mil = Object.values((qr && qr.millions) || {}).reduce((s, v) => s + v, 0);
       J.quiz.stats = { 'Questions répondues':(qs && qs.repondu) || 0, 'Bonnes réponses':pct((qs && qs.justes) || 0, (qs && qs.repondu) || 0), 'Fois millionnaire':mil };
+    }
+    // Chef de quai : chaque télésiège
+    const ts = lire('telesiege-records'), tc = lire('telesiege-caisse');
+    if(ts && ts.journees){
+      jeu('telesiege', 'Chef de quai', '🚡');
+      for(const [id, r] of Object.entries(ts.appareils || {})) ep('telesiege', id, NOMS.telesiege[id] || id, r.score || 0, `${fmt(r.score || 0)} pts${r.etoiles ? ' · ' + '★'.repeat(r.etoiles) : ''}`);
+      J.telesiege.stats = { 'Journées':ts.journees, 'Skieurs montés':fmt(ts.montes || 0), 'Journées 3 étoiles':ts.etoiles3 || 0, 'Caisse':fmt(tc ? tc.argent : 0) + ' €' };
     }
     // Nivoculteur : chaque domaine
     const nv = lire('nivo-records') || {};
