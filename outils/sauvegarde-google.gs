@@ -1,4 +1,7 @@
 /* Altitude Arcade : le serveur de sauvegarde en ligne, dans un Google Sheet.
+   En service, ce fichier n'est plus collé dans Apps Script : c'est outils/chargeur-google.gs qui y est collé,
+   et qui lit ce fichier sur GitHub (branche main). Une modification d'ici arrive donc toute seule dans les 10 minutes
+   après la fusion dans main. Les explications ci-dessous restent valables pour le coller directement.
    Ce programme est un projet Apps Script à part (« Altitude Arcade – serveur de sauvegarde » dans le Google Drive),
    qui écrit dans le tableur indiqué par ID_TABLEUR. On peut aussi le coller dans le tableur lui-même (Extensions › Apps Script,
    avec ID_TABLEUR vide). Pour le publier : Déployer › Nouveau déploiement › type « Application Web » :
