@@ -8,7 +8,7 @@
    Utilisation : <script src="sauvegarde.js"></script><script src="compte.js"></script> (sauvegarde.js donne la liste des clés). */
 (() => {
   // L'adresse de l'application Web du Google Sheet (Déployer › Application Web, elle finit par /exec)
-  const SERVEUR_DEFAUT = '';
+  const SERVEUR_DEFAUT = 'https://script.google.com/macros/s/AKfycbzf7DWHImB7JDzsvKzvSRz62OqQ0GaCvFyT1BUQ60aUK4miT_BE9qdnshtzWtuva7MN7g/exec';
   const lireLS = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
   const ecrireLS = (k, v) => { try{ if(v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
   const serveur = () => lireLS('compte-serveur', '') || SERVEUR_DEFAUT;   // « compte-serveur » : pour les essais
