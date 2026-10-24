@@ -162,6 +162,15 @@ window.AltitudeScores = (() => {
       const mil = Object.values((qr && qr.millions) || {}).reduce((s, v) => s + v, 0);
       J.quiz.stats = { 'Questions répondues':(qs && qs.repondu) || 0, 'Bonnes réponses':pct((qs && qs.justes) || 0, (qs && qs.repondu) || 0), 'Fois millionnaire':mil };
     }
+    // Paddock : la carrière de directeur d'écurie
+    const pk = lire('paddock-records');
+    if(pk && pk.gp){
+      jeu('paddock', 'Paddock', '🏎️');
+      ep('paddock', 'victoires', 'Victoires en Grand Prix', pk.victoires || 0, `${pk.victoires || 0} victoire${pk.victoires > 1 ? 's' : ''}`);
+      if(pk.saisons) ep('paddock', 'place', 'Meilleure place chez les constructeurs', 11 - (pk.meilleurePlace || 10), `${pk.meilleurePlace || 10}e`);
+      ep('paddock', 'podiums', 'Podiums', pk.podiums || 0, `${pk.podiums || 0}`);
+      J.paddock.stats = { 'Grands Prix':pk.gp, 'Points':pk.points || 0, 'Titres constructeurs':pk.titresC || 0, 'Titres pilotes':pk.titresP || 0, 'Pole positions':pk.poles || 0 };
+    }
     // Blocs : le marathon
     const bl = lire('blocs-records');
     if(bl && bl.parties){

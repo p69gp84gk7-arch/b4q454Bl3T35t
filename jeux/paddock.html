@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Paddock · Altitude Arcade</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=119">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=119">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+@media (orientation:landscape) and (max-height:600px){ :root{ --barre-statut:env(safe-area-inset-top, 0px); } }
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --fond:#0E0F13; --carte:#191B22; --carte2:#22252E; --ligne:rgba(255,255,255,.1); --encre:#F3F4F7; --doux:#9EA3B0; --rouge:#E10600; --or:#FFC93C; --vert:#2BD47D; --bleu:#3FA9F5; }
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; min-height:100%; background:var(--fond); color:var(--encre); font-family:"Titillium Web", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-tap-highlight-color:transparent; }
+body{ padding-top:var(--barre-statut); }
+button{ font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; }
+.ecran[hidden]{ display:none !important; }
+.page{ max-width:760px; margin:0 auto; padding:12px 14px calc(30px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; gap:12px; }
+h1{ font-weight:900; font-style:italic; font-size:clamp(2.8rem, 14vw, 4.4rem); line-height:.9; margin:10px 0 0; letter-spacing:-.01em; text-transform:uppercase; }
+h1 span{ color:var(--rouge); }
+h2{ font-weight:900; font-style:italic; font-size:1.6rem; margin:0; text-transform:uppercase; line-height:1; }
+h3{ margin:0 0 8px; font-size:.78rem; text-transform:uppercase; letter-spacing:.14em; color:var(--doux); font-weight:700; }
+.sous{ color:var(--doux); margin:0; line-height:1.4; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:12px; }
+.btn{ border:none; border-radius:10px; padding:12px 14px; font-weight:700; background:var(--carte2); color:var(--encre); border:1px solid var(--ligne); }
+.btn.rouge{ background:var(--rouge); border-color:var(--rouge); color:#fff; }
+.btn.vert{ background:#17914F; border-color:#17914F; color:#fff; }
+.btn.gros{ width:100%; padding:15px; font-size:1.1rem; font-weight:900; font-style:italic; text-transform:uppercase; letter-spacing:.03em; }
+.btn:disabled{ opacity:.4; }
+.btn.petit{ padding:7px 10px; font-size:.85rem; border-radius:8px; }
+.tete{ display:flex; align-items:center; gap:8px; }
+.tete a, .tete .btn{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:10px; padding:6px 12px; font-weight:700; background:var(--carte); white-space:nowrap; }
+.tete .droite{ margin-left:auto; }
+.rayure{ height:6px; border-radius:3px; }
+.equipes{ display:grid; gap:10px; }
+.equipe{ display:grid; grid-template-columns:86px 1fr; gap:12px; align-items:center; text-align:left; background:var(--carte); border:2px solid var(--ligne); border-radius:14px; padding:10px; color:var(--encre); }
+.equipe.actif{ border-color:var(--or); }
+.equipe canvas{ width:86px; height:44px; }
+.equipe b{ font-size:1.1rem; } .equipe small{ display:block; color:var(--doux); line-height:1.3; }
+input[type=text]{ width:100%; font:inherit; font-size:1.05rem; padding:10px 12px; border-radius:10px; border:1px solid var(--ligne); background:#0B0C10; color:var(--encre); }
+/* le QG */
+.bandeau{ position:sticky; top:var(--barre-statut); z-index:5; background:rgba(14,15,19,.96); border-bottom:1px solid var(--ligne); }
+.bandeau .haut{ max-width:760px; margin:0 auto; display:flex; align-items:center; gap:10px; padding:8px 14px 6px; }
+.bandeau .nom{ font-weight:900; font-style:italic; text-transform:uppercase; line-height:1; font-size:1.05rem; }
+.bandeau .nom small{ display:block; font-style:normal; font-weight:600; text-transform:none; color:var(--doux); font-size:.75rem; margin-top:2px; }
+.bandeau .argent{ margin-left:auto; text-align:right; font-weight:900; line-height:1; font-size:1.15rem; color:var(--vert); white-space:nowrap; flex:none; }
+.bandeau .argent.neg{ color:#FF6B6B; }
+.bandeau .argent small{ display:block; font-weight:600; color:var(--doux); font-size:.7rem; }
+.bandeau a{ color:var(--encre); text-decoration:none; border:1px solid var(--ligne); border-radius:8px; padding:4px 8px; font-weight:700; font-size:.85rem; }
+.onglets{ max-width:760px; margin:0 auto; display:flex; gap:4px; overflow-x:auto; padding:0 10px 8px; scrollbar-width:none; }
+.onglets::-webkit-scrollbar{ display:none; }
+.onglets button{ flex:none; border:1px solid var(--ligne); background:var(--carte); color:var(--doux); border-radius:999px; padding:6px 12px; font-weight:700; font-size:.88rem; }
+.onglets button.actif{ background:var(--rouge); border-color:var(--rouge); color:#fff; }
+.prochain{ display:grid; grid-template-columns:1fr 150px; gap:12px; align-items:center; }
+.prochain canvas{ width:150px; height:90px; border-radius:8px; background:#2A2E38; }
+.prochain b{ font-size:1.25rem; font-weight:900; font-style:italic; text-transform:uppercase; display:block; line-height:1.05; }
+.infos{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.infos span{ background:var(--carte2); border-radius:999px; padding:3px 9px; font-size:.82rem; font-weight:600; }
+.messages{ display:flex; flex-direction:column; gap:6px; max-height:260px; overflow:auto; }
+.messages p{ margin:0; padding:7px 10px; border-radius:9px; background:var(--carte2); font-size:.9rem; line-height:1.35; border-left:4px solid var(--bleu); }
+.messages p.bon{ border-color:var(--vert); } .messages p.mal{ border-color:#FF6B6B; }
+table.tab{ width:100%; border-collapse:collapse; font-size:.92rem; }
+.tab td, .tab th{ padding:6px 4px; border-bottom:1px solid var(--ligne); text-align:left; }
+.tab th{ color:var(--doux); font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; font-weight:700; }
+.tab td.n{ text-align:right; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.tab tr.moi td{ background:rgba(255,201,60,.12); }
+.coul{ display:inline-block; width:5px; height:16px; border-radius:2px; vertical-align:middle; margin-right:6px; }
+.stats4{ display:grid; gap:10px; }
+.stat{ display:grid; grid-template-columns:132px 1fr auto; gap:10px; align-items:center; }
+.stat .barre{ position:relative; height:14px; border-radius:7px; background:#0B0C10; overflow:hidden; }
+.stat .barre i{ position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg, #7A0300, var(--rouge)); border-radius:7px; }
+.stat .barre em{ position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--or); }
+.stat .barre u{ position:absolute; top:-2px; bottom:-2px; width:2px; background:#fff; opacity:.5; }
+.stat b{ font-variant-numeric:tabular-nums; }
+.legende{ font-size:.78rem; color:var(--doux); }
+.projets{ display:grid; gap:8px; }
+.projet{ display:grid; grid-template-columns:34px 1fr auto; gap:10px; align-items:center; background:var(--carte2); border-radius:10px; padding:9px 10px; }
+.projet .ico{ font-size:1.4rem; text-align:center; }
+.projet small{ display:block; color:var(--doux); font-size:.8rem; line-height:1.25; }
+.pilote{ display:grid; grid-template-columns:1fr auto; gap:6px 10px; background:var(--carte2); border-radius:12px; padding:10px; }
+.pilote b{ font-size:1.08rem; } .pilote small{ color:var(--doux); }
+.notes{ grid-column:1 / -1; display:grid; grid-template-columns:repeat(6, 1fr); gap:4px; text-align:center; }
+.notes span{ background:#0B0C10; border-radius:7px; padding:3px 0; font-size:.72rem; color:var(--doux); line-height:1.15; }
+.notes b{ display:block; font-size:1rem; color:var(--encre); }
+.actions{ grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:6px; }
+.marche{ display:grid; gap:8px; }
+.offre{ display:grid; grid-template-columns:34px 1fr auto; gap:10px; align-items:center; background:var(--carte2); border-radius:12px; padding:10px; }
+.offre .ico{ font-size:1.5rem; text-align:center; }
+.offre small{ display:block; color:var(--doux); line-height:1.3; }
+.slot{ border:1px dashed rgba(255,255,255,.25); border-radius:12px; padding:10px; color:var(--doux); }
+.etoiles{ color:var(--or); letter-spacing:.05em; }
+/* la personnalisation de l'écurie : nom, couleurs, logo */
+.perso{ display:flex; flex-direction:column; gap:10px; }
+.apercuE{ display:flex; align-items:center; gap:12px; background:var(--carte2); border-radius:12px; padding:10px; }
+.apercuE canvas{ width:120px; height:56px; flex:none; border-radius:8px; }
+.roundel{ width:54px; height:54px; flex:none; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.7rem; border:4px solid; }
+.apercuE b{ font-weight:900; font-style:italic; text-transform:uppercase; font-size:1.1rem; line-height:1.05; }
+.perso label{ font-size:.75rem; text-transform:uppercase; letter-spacing:.12em; color:var(--doux); font-weight:700; }
+.palette{ display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.palette button{ width:34px; height:34px; border-radius:50%; border:3px solid rgba(255,255,255,.15); padding:0; }
+.palette button.actif{ border-color:#fff; box-shadow:0 0 0 3px var(--or); }
+.logos{ display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.logos button{ width:44px; height:44px; border-radius:12px; font-size:1.4rem; background:var(--carte2); border:2px solid var(--ligne); padding:0; }
+.logos button.actif{ border-color:var(--or); background:rgba(255,201,60,.18); }
+.logo{ margin-right:4px; }
+/* le week-end */
+.grille{ display:grid; gap:4px; }
+.grille div{ display:grid; grid-template-columns:30px 6px 1fr auto; gap:8px; align-items:center; padding:5px 8px; border-radius:8px; background:var(--carte2); font-size:.92rem; }
+.grille div.moi{ background:rgba(255,201,60,.16); }
+.choixp{ display:flex; gap:6px; flex-wrap:wrap; }
+.choixp button{ border:1px solid var(--ligne); background:var(--carte2); border-radius:9px; padding:7px 10px; font-weight:700; color:var(--encre); }
+.choixp button.actif{ border-color:var(--or); background:rgba(255,201,60,.15); }
+.pneu{ display:inline-flex; width:22px; height:22px; border-radius:50%; border:3px solid #333; background:#111; color:#fff; align-items:center; justify-content:center; font-size:.62rem; font-weight:900; vertical-align:middle; }
+/* la course */
+#eCourse{ position:fixed; inset:0; top:var(--barre-statut); display:grid; grid-template-rows:auto auto 1fr; background:#0B0C10; }
+.cbar{ display:flex; align-items:center; gap:6px; padding:5px 8px; background:#000; }
+.cbar .titre{ font-weight:900; font-style:italic; text-transform:uppercase; font-size:.95rem; line-height:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.cbar .titre small{ display:block; font-style:normal; font-weight:600; color:var(--doux); font-size:.72rem; text-transform:none; }
+.cbar .vit{ margin-left:auto; display:flex; gap:3px; flex:none; }
+.cbar .vit button{ border:1px solid #333; background:#1A1C22; color:#fff; border-radius:7px; padding:5px 8px; font-weight:800; font-size:.82rem; }
+.cbar .vit button.actif{ background:var(--rouge); border-color:var(--rouge); }
+.zone{ position:relative; min-height:0; aspect-ratio:5 / 3; max-height:48vh; width:100%; }
+#cvC{ display:block; width:100%; height:100%; }
+.bandeauC{ position:absolute; left:8px; right:8px; top:6px; display:flex; flex-direction:column; gap:3px; pointer-events:none; align-items:flex-start; }
+.bandeauC div{ background:rgba(0,0,0,.72); color:#fff; padding:3px 9px; border-radius:8px; font-size:.82rem; font-weight:600; max-width:100%; }
+.bandeauC div.sc{ background:#F2B90C; color:#000; font-weight:900; }
+.bandeauC div.bon{ border-left:4px solid var(--vert); } .bandeauC div.mal{ border-left:4px solid #FF6B6B; } .bandeauC div.conseil{ border-left:4px solid var(--bleu); }
+.cbas{ display:grid; grid-template-columns:1fr; grid-template-rows:auto 1fr; min-height:0; }
+.pilotesC{ display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:6px; }
+.pc{ background:var(--carte); border-radius:12px; padding:7px; display:flex; flex-direction:column; gap:5px; border-top:4px solid var(--c, #fff); min-width:0; }
+.pc .l1{ display:flex; align-items:center; gap:6px; }
+.pc .l1 b{ font-size:1.25rem; font-weight:900; font-style:italic; }
+.pc .l1 span{ font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pc .l1 em{ margin-left:auto; font-style:normal; color:var(--doux); font-size:.8rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.pc .l2{ display:flex; align-items:center; gap:6px; font-size:.82rem; }
+.pc .us{ flex:1; height:7px; border-radius:4px; background:#0B0C10; overflow:hidden; } .pc .us i{ display:block; height:100%; background:var(--vert); }
+.pc .modes{ display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; }
+.pc .modes button, .pc .stand button, .pc .ligne3 button{ border:1px solid #333; background:#22252E; border-radius:8px; padding:6px 0; font-weight:800; font-size:.9rem; color:#fff; }
+.pc .modes button.actif{ background:var(--rouge); border-color:var(--rouge); }
+.pc .ligne3{ display:grid; grid-template-columns:1fr auto; gap:4px; }
+.pc .ligne3 button.actif{ background:#17914F; border-color:#17914F; }
+.pc .ligne3 .auto{ padding:6px 9px; }
+.pc .stand{ display:grid; grid-template-columns:repeat(5, 1fr); gap:3px; }
+.pc .stand[hidden]{ display:none; }
+.pc .stand button{ padding:5px 0; } .pc .stand button.actif{ outline:2px solid var(--or); }
+.pc .cons{ font-size:.75rem; color:#9FD4FF; line-height:1.2; min-height:1.2em; }
+.pc.out{ opacity:.55; }
+.tour{ overflow:auto; padding:0 6px 8px; min-height:0; }
+.tour table{ width:100%; border-collapse:collapse; font-size:.86rem; }
+.tour td{ padding:3px 4px; border-bottom:1px solid rgba(255,255,255,.06); white-space:nowrap; }
+.tour td.e{ text-align:right; font-variant-numeric:tabular-nums; color:var(--doux); }
+.tour tr.moi td{ background:rgba(255,201,60,.14); color:#fff; }
+.tour tr.out td{ opacity:.45; }
+.tour .pt{ display:inline-block; width:10px; height:10px; border-radius:50%; border:2px solid #333; vertical-align:middle; }
+@media (orientation:landscape){
+  #eCourse{ grid-template-rows:auto 1fr; grid-template-columns:1fr clamp(250px, 32vw, 340px); }
+  .cbar{ grid-column:1 / -1; }
+  .zone{ grid-row:2; grid-column:1; aspect-ratio:auto; max-height:none; height:100%; }
+  .cbas{ grid-row:2; grid-column:2; grid-template-rows:auto 1fr; border-left:1px solid #222; }
+  .pilotesC{ grid-template-columns:1fr; }
+}
+@media (orientation:landscape) and (max-height:500px){
+  .pilotesC{ grid-template-columns:1fr 1fr; gap:4px; padding:4px; }
+  .pc{ padding:5px; gap:3px; } .pc .l1 b{ font-size:1rem; } .pc .l1 em{ display:none; }
+  .pc .modes button, .pc .ligne3 button{ padding:4px 0; font-size:.78rem; }
+  .pc .cons{ display:none; }
+  .tour table{ font-size:.78rem; }
+}
+.fini{ position:fixed; inset:0; z-index:9; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; }
+.fini[hidden]{ display:none; }
+.fini .carte{ text-align:center; max-width:340px; }
+.podium{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; align-items:end; text-align:center; }
+.podium div{ background:var(--carte2); border-radius:10px 10px 0 0; padding:8px 4px; font-weight:700; font-size:.85rem; }
+.podium div b{ display:block; font-size:1.6rem; font-weight:900; font-style:italic; }
+.bilan td:last-child{ text-align:right; font-weight:800; white-space:nowrap; }
+.plus{ color:var(--vert); } .moins{ color:#FF7B7B; }
+.aide li{ line-height:1.5; margin-bottom:6px; } .aide ul{ padding-left:20px; margin:0; } .aide b{ color:#fff; }
+</style>
+</head>
+<body>
+<div class="barre-statut" aria-hidden="true"></div>
+
+<!-- L'accueil -->
+<section class="ecran" id="eAccueil">
+  <div class="page">
+    <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="btn droite" id="bAide">❔ Aide</button></div>
+    <h1>Pad<span>dock</span></h1>
+    <p class="sous">Tu prends la tête d'une petite écurie de Formule 1. Développe la voiture, choisis tes pilotes, trouve des sponsors, puis donne les ordres pendant les courses en direct. Saison après saison, vise le titre !</p>
+    <button class="btn gros vert" id="bContinuer" hidden>▶ Continuer la carrière</button>
+    <div class="carte" id="nouvelle">
+      <h3>Nouvelle carrière</h3>
+      <p class="sous" style="margin-bottom:8px">Choisis ton écurie (les trois plus petites du plateau) :</p>
+      <div class="equipes" id="lEquipes"></div>
+      <h3 style="margin-top:14px">Personnalise ton écurie</h3>
+      <div id="persoNouvelle"></div>
+      <h3 style="margin-top:14px">Ton nom de directeur</h3>
+      <input type="text" id="iNom" maxlength="24" placeholder="Ton nom">
+      <button class="btn gros rouge" id="bNouvelle" style="margin-top:12px">🏁 Commencer la carrière</button>
+    </div>
+    <p class="sous" id="aRecords"></p>
+  </div>
+</section>
+
+<!-- Le QG de l'écurie -->
+<section class="ecran" id="eQG" hidden>
+  <div class="bandeau">
+    <div class="haut"><a href="#" id="bQuitterQG">‹</a><span class="rayure" id="qRayure" style="width:6px;height:34px"></span><div class="nom" id="qNom"></div><div class="argent" id="qArgent"></div></div>
+    <nav class="onglets" id="qOnglets">
+      <button data-o="gp" class="actif">🏁 Grand Prix</button><button data-o="classements">🏆 Classements</button><button data-o="voiture">🔧 Voiture</button>
+      <button data-o="pilotes">👤 Pilotes</button><button data-o="personnel">👷 Personnel</button><button data-o="sponsors">💼 Sponsors</button><button data-o="finances">💰 Finances</button><button data-o="ecurie">🎨 Écurie</button>
+    </nav>
+  </div>
+  <div class="page" id="qContenu"></div>
+</section>
+
+<!-- Le week-end : qualifications -->
+<section class="ecran" id="eWeekend" hidden>
+  <div class="page" id="wContenu"></div>
+</section>
+
+<!-- La course en direct -->
+<section class="ecran" id="eCourse" hidden>
+  <div class="cbar"><div class="titre" id="cTitre"></div>
+    <div class="vit" id="cVit"><button data-v="0">⏸</button><button data-v="1" class="actif">×1</button><button data-v="2">×2</button><button data-v="4">×4</button><button data-v="fin">⏩</button></div></div>
+  <div class="zone" id="cZone"><canvas id="cvC"></canvas><div class="bandeauC" id="cInfos"></div></div>
+  <div class="cbas"><div class="pilotesC" id="cPilotes"></div><div class="tour" id="cTour"></div></div>
+  <div class="fini" id="cFini" hidden><div class="carte"><h2>🏁 Arrivée</h2><p class="sous" id="cFiniTxt" style="margin:8px 0 12px"></p><button class="btn gros rouge" id="bVoirResultats">Voir les résultats</button></div></div>
+</section>
+
+<!-- Le résultat du Grand Prix -->
+<section class="ecran" id="eResultat" hidden>
+  <div class="page" id="rContenu"></div>
+</section>
+
+<!-- La fin de saison et le mercato -->
+<section class="ecran" id="eSaison" hidden>
+  <div class="page" id="sContenu"></div>
+</section>
+
+<!-- L'aide -->
+<section class="ecran" id="eAide" hidden>
+  <div class="page aide">
+    <div class="tete"><button class="btn" id="bAideRetour">‹ Retour</button></div>
+    <h2>Comment jouer</h2>
+    <div class="carte"><h3>Le principe</h3><ul>
+      <li>Tu diriges une petite écurie (des écuries et des pilotes inventés, qui ressemblent aux vrais). Une saison compte <b>12 Grands Prix</b> sur les circuits de Draw Race ; la carrière continue de saison en saison.</li>
+      <li>La <b>direction</b> te donne un objectif : une place au championnat des constructeurs. Le réussir fait monter ta <b>réputation</b> : meilleurs sponsors, meilleurs pilotes.</li>
+    </ul></div>
+    <div class="carte"><h3>Entre les courses (le QG)</h3><ul>
+      <li><b>Voiture</b> : 4 parties (moteur, aérodynamique, châssis, fiabilité). Un projet coûte de l'argent et la pièce arrive 1 ou 2 Grands Prix plus tard. Le moteur compte plus sur les circuits rapides, l'aéro sur les circuits sinueux.</li>
+      <li><b>Pilotes</b> : vitesse, régularité (moins d'erreurs), pneus (moins d'usure), dépassement, pluie, et le moral (les bons résultats le font monter). On peut engager un pilote libre pendant la saison ; au mercato de fin de saison, on peut aussi prendre ceux des autres écuries dont le contrat se termine.</li>
+      <li><b>Personnel</b> : directeur technique (améliorations), ingénieur de course (rythme, conseils, météo), chef mécanicien (arrêts au stand, fiabilité).</li>
+      <li><b>Sponsors</b> : un principal et deux secondaires. Ils paient à chaque Grand Prix, avec une prime si leur objectif est atteint. Ils changent chaque saison.</li>
+      <li><b>Finances</b> : sponsors et prime de fin de saison (selon la place chez les constructeurs) ; salaires, usine, projets et réparations.</li>
+    </ul></div>
+    <div class="carte"><h3>Le week-end</h3><ul>
+      <li><b>Qualifications</b> : un tour lancé, prudent ou risqué (plus rapide, mais une erreur est possible). Elles donnent la grille de départ. Choisis aussi les pneus de départ.</li>
+      <li><b>La course en direct</b> : pour chacun de tes pilotes, choisis le rythme (🐢 économie, 🏁 normal, 🔥 attaque : plus vite mais les pneus s'usent plus et le risque d'erreur monte) et appelle-le au <b>stand</b> en choisissant ses pneus : tendres (rapides, s'usent vite), mediums, durs (lents, durent longtemps), intermédiaires (piste humide), pluie (grosse pluie). 🤖 Auto : l'ingénieur décide à ta place.</li>
+      <li>Les dépassements se font dans les lignes droites, avec l'aspiration à moins d'une seconde. Règle : sur piste sèche, chaque pilote doit utiliser deux types de pneus secs, sinon 30 secondes de pénalité. Une sortie de piste peut faire sortir la <b>voiture de sécurité</b> : tout le monde ralentit, c'est le bon moment pour s'arrêter.</li>
+      <li>Points : 25, 18, 15, 12, 10, 8, 6, 4, 2, 1 du 1er au 10e. Les boutons ×1, ×2, ×4 accélèrent la course, ⏩ va directement à l'arrivée.</li>
+    </ul></div>
+  </div>
+</section>
+<script src="drawrace/piste.js?v=119"></script>
+<script src="drawrace/circuits.js?v=119"></script>
+<script src="paddock/monde.js?v=119"></script>
+<script src="paddock/course.js?v=119"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const hasard = (a, b) => a + Math.random() * (b - a);
+const M = window.PaddockMonde, Co = window.PaddockCourse;
+const virg = (n, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toLocaleString('fr-FR', { minimumFractionDigits:0, maximumFractionDigits:d });
+const meur = n => `${n < 0 ? '−' : ''}${virg(Math.abs(n), 1)} M€`;
+const court = p => p.nom.split(' ').slice(1).join(' ').replace(/[^A-Za-zÀ-ÿ]/g, '').slice(0, 3).toUpperCase();
+const etoiles = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+const coul = e => `<span class="coul" style="background:${e.c1};box-shadow:inset -2px 0 0 ${e.c2}"></span>${e.logo ? `<span class="logo">${e.logo}</span>` : ''}`;
+const ECRANS = ['eAccueil', 'eQG', 'eWeekend', 'eCourse', 'eResultat', 'eSaison', 'eAide'];
+function montrer(id){ ECRANS.forEach(e => $(e).hidden = e !== id); window.scrollTo(0, 0); }
+
+let C = lire('paddock-carriere', null);
+if(C && C.v !== 1) C = null;
+function sauver(){
+  if(!C) return;
+  ecrire('paddock-carriere', C);
+  const E = C.ecuries[C.joueur];
+  ecrire('paddock-records', { ...C.records, saisons:C.historique.length, ecurie:E.nom, saison:C.saison, gpJoues:C.records.gp, argent:C.argent });
+}
+
+/* ---------- L'accueil ---------- */
+let choixEquipe = 'etoile', perso = null;
+// l'éditeur de l'écurie : aperçu (voiture et logo), nom, couleurs, logo. etat = { nom, c1, c2, logo }
+function editeurEcurie(box, etat, change){
+  box.innerHTML = `<div class="perso"><div class="apercuE"><canvas></canvas><span class="roundel"></span><b></b></div>
+    <div><label>Nom de l'écurie</label><input type="text" maxlength="28" class="pNom"></div>
+    <div><label>Couleur principale</label><div class="palette" data-k="c1"></div></div>
+    <div><label>Couleur secondaire</label><div class="palette" data-k="c2"></div></div>
+    <div><label>Logo</label><div class="logos"></div></div></div>`;
+  const maj = () => {
+    dessinerVoiture(box.querySelector('canvas'), etat, 120, 56);
+    const r = box.querySelector('.roundel'); r.textContent = etat.logo; r.style.background = etat.c1; r.style.borderColor = etat.c2;
+    box.querySelector('.apercuE b').textContent = etat.nom || '—';
+    box.querySelectorAll('.palette').forEach(p => [...p.children].forEach(b => b.classList.toggle('actif', b.dataset.c === etat[p.dataset.k])));
+    [...box.querySelector('.logos').children].forEach(b => b.classList.toggle('actif', b.textContent === etat.logo));
+  };
+  box.querySelectorAll('.palette').forEach(p => { p.innerHTML = M.COULEURS.map(c => `<button data-c="${c}" style="background:${c}" aria-label="Couleur"></button>`).join('');
+    p.onclick = e => { const b = e.target.closest('button'); if(!b) return; etat[p.dataset.k] = b.dataset.c; maj(); change(etat); }; });
+  const lg = box.querySelector('.logos'); lg.innerHTML = M.LOGOS.map(l => `<button>${l}</button>`).join('');
+  lg.onclick = e => { const b = e.target.closest('button'); if(!b) return; etat.logo = b.textContent; maj(); change(etat); };
+  const nom = box.querySelector('.pNom'); nom.value = etat.nom;
+  nom.oninput = () => { etat.nom = nom.value; box.querySelector('.apercuE b').textContent = etat.nom || '—'; };
+  nom.onchange = () => change(etat);
+  maj();
+}
+function accueil(){
+  montrer('eAccueil');
+  $('bContinuer').hidden = !C;
+  if(C){ const E = C.ecuries[C.joueur]; $('bContinuer').textContent = `▶ Continuer : ${E.nom}, saison ${C.saison} (GP ${Math.min(C.gp + 1, 12)}/12)`; }
+  const box = $('lEquipes'); box.innerHTML = '';
+  for(const id of M.PETITES){
+    const e = M.ECURIES.find(x => x.id === id);
+    const b = document.createElement('button'); b.className = 'equipe' + (id === choixEquipe ? ' actif' : '');
+    const cv = document.createElement('canvas'); dessinerVoiture(cv, e);
+    const d = document.createElement('div');
+    const perf = Math.round(M.perfVoiture(e));
+    d.innerHTML = `<b>${esc(e.nom)}</b><small>Voiture ${perf}/100 · budget ${e.budget} M€ · prestige ${e.prestige}</small><small>Pilotes : ${e.pilotes.map(nomPilote).join(' et ')}</small>`;
+    b.append(cv, d); b.onclick = () => { choixEquipe = id; perso = null; accueil(); };
+    box.append(b);
+  }
+  const base = M.ECURIES.find(x => x.id === choixEquipe);
+  if(!perso) perso = { nom:base.nom, c1:base.c1, c2:base.c2, logo:base.logo };
+  editeurEcurie($('persoNouvelle'), perso, () => {});
+  const pseudo = (lire('compte-session', null) || {}).pseudo;
+  if(!$('iNom').value) $('iNom').value = pseudo || '';
+  const r = lire('paddock-records', null);
+  $('aRecords').textContent = r && r.gp ? `Carrière : ${r.gp} Grands Prix, ${r.victoires} victoire${r.victoires > 1 ? 's' : ''}, ${r.podiums} podium${r.podiums > 1 ? 's' : ''}, ${r.titresC} titre${r.titresC > 1 ? 's' : ''} constructeurs.` : '';
+}
+function nomPilote(id){ return M.NOMS_PILOTES[id] || id; }
+function dessinerVoiture(cv, e, w = 86, h = 44){
+  const d = Math.min(2, devicePixelRatio || 1); cv.width = w * d; cv.height = h * d;
+  const g = cv.getContext('2d'); g.scale(d, d);
+  g.fillStyle = '#2A2E38'; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(255,255,255,.12)'; for(let x = 0; x < w; x += 12) g.fillRect(x, h / 2 - 1, 6, 2);
+  Co.voiture(g, w / 2, h / 2, 0, e.c1, e.c2, 2.6);
+}
+$('bNouvelle').onclick = () => {
+  if(C && !confirm('Commencer une nouvelle carrière ? La carrière en cours sera remplacée.')) return;
+  C = M.nouvelleCarriere(choixEquipe, $('iNom').value.trim() || 'Directeur', perso);
+  sauver(); qg('gp');
+};
+$('bContinuer').onclick = () => qg('gp');
+$('bAide').onclick = () => montrer('eAide');
+$('bAideRetour').onclick = accueil;
+
+/* ---------- Le QG ---------- */
+let onglet = 'gp';
+function qg(o = onglet){
+  onglet = o; montrer('eQG');
+  qgBandeau();
+  [...$('qOnglets').children].forEach(b => b.classList.toggle('actif', b.dataset.o === o));
+  ({ gp:ongletGP, classements:ongletClassements, voiture:ongletVoiture, pilotes:ongletPilotes, personnel:ongletPersonnel, sponsors:ongletSponsors, finances:ongletFinances, ecurie:ongletEcurie })[o]();
+}
+function qgBandeau(){
+  const E = C.ecuries[C.joueur];
+  $('qRayure').style.background = `linear-gradient(${E.c1} 60%, ${E.c2} 60%)`;
+  const place = M.classementConstructeurs(C).findIndex(e => e.id === C.joueur) + 1;
+  $('qNom').innerHTML = `${E.logo ? E.logo + ' ' : ''}${esc(E.nom)}<small>Saison ${C.saison} · ${C.gp < 12 ? `GP ${C.gp + 1}/12` : 'saison finie'} · ${place}e (objectif ${C.objectif}e) · réputation ${Math.round(C.reputation)}</small>`;
+  $('qArgent').innerHTML = `${meur(C.argent)}<small>en caisse</small>`; $('qArgent').classList.toggle('neg', C.argent < 0);
+}
+$('qOnglets').onclick = e => { const b = e.target.closest('button'); if(b) qg(b.dataset.o); };
+$('bQuitterQG').onclick = e => { e.preventDefault(); accueil(); };
+function apercuCircuit(cv, circ){
+  const d = Math.min(2, devicePixelRatio || 1), w = 150, h = 90; cv.width = w * d; cv.height = h * d;
+  const g = cv.getContext('2d'); g.scale(d, d); g.fillStyle = '#2A2E38'; g.fillRect(0, 0, w, h);
+  const P = window.Piste, pts = P.construire(circ).pts, e = Math.min((w - 12) / P.W, (h - 12) / P.H), ox = (w - P.W * e) / 2, oy = (h - P.H * e) / 2;
+  g.strokeStyle = '#fff'; g.lineWidth = 4; g.lineJoin = 'round'; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(ox + p[0] * e, oy + p[1] * e) : g.moveTo(ox + p[0] * e, oy + p[1] * e)); g.closePath(); g.stroke();
+  g.strokeStyle = '#E10600'; g.lineWidth = 2; g.stroke();
+  g.fillStyle = '#FFC93C'; g.beginPath(); g.arc(ox + pts[0][0] * e, oy + pts[0][1] * e, 4, 0, 7); g.fill();
+}
+function nbTours(circ){ const T = Co.circuitCourse(circ); return Math.round(clamp(165 / T.tempsTour, 12, 22)); }
+function ongletGP(){
+  const box = $('qContenu'); box.innerHTML = '';
+  const E = C.ecuries[C.joueur];
+  if(C.phase === 'finSaison' || C.phase === 'mercato'){
+    box.innerHTML = `<div class="carte"><h3>Fin de la saison ${C.saison}</h3><p class="sous">Les 12 Grands Prix sont terminés.</p><button class="btn gros rouge" id="bBilan" style="margin-top:10px">${C.phase === 'mercato' ? '📝 Mercato et saison suivante' : '🏆 Bilan de la saison'}</button></div>`;
+    $('bBilan').onclick = finDeSaison;
+  } else {
+    const gp = C.calendrier[C.gp], circ = M.circuit(gp.id), car = M.caractere(circ);
+    const d = document.createElement('div'); d.className = 'carte';
+    const type = car.puissance > .42 ? 'circuit rapide : le moteur compte beaucoup' : car.puissance < .28 ? 'circuit sinueux : l\'aérodynamique compte beaucoup' : 'circuit équilibré';
+    d.innerHTML = `<h3>Prochain Grand Prix · ${C.gp + 1}/12</h3><div class="prochain"><div><b>GP ${esc(circ.n)}</b><span class="sous">${esc(circ.inspi)}</span>
+      <div class="infos"><span>${nbTours(circ)} tours</span><span>${type}</span><span>${prevision(gp)}</span></div></div><canvas id="qApercu"></canvas></div>
+      <button class="btn gros rouge" id="bWeekend" style="margin-top:12px">🏎️ Aller au circuit</button>`;
+    box.append(d); apercuCircuit($('qApercu'), circ);
+    $('bWeekend').onclick = weekend;
+    const alertes = [];
+    if(!C.sponsors[0]) alertes.push('💼 Pas encore de sponsor principal : va dans l\'onglet Sponsors pour en signer un.');
+    if(C.argent < 0) alertes.push('⚠️ La caisse est vide : il faut des sponsors, ou moins de dépenses.');
+    if(C.gp === 0 && !C.projets.length) alertes.push('🔧 Pense à lancer un projet d\'amélioration (onglet Voiture).');
+    if(alertes.length){ const a = document.createElement('div'); a.className = 'carte'; a.innerHTML = `<h3>À faire</h3>${alertes.map(t => `<p class="sous" style="margin:4px 0">${t}</p>`).join('')}`; box.append(a); }
+  }
+  // le dernier résultat
+  const dernier = C.calendrier.slice(0, C.gp).reverse().find(g => g.resultat);
+  if(dernier){
+    const r = dernier.resultat, mes = r.classement.filter(x => x.ecurie === C.joueur);
+    const d2 = document.createElement('div'); d2.className = 'carte';
+    d2.innerHTML = `<h3>Dernier Grand Prix : ${esc(M.circuit(dernier.id).n)}</h3><p class="sous">Vainqueur : <b>${esc(C.pilotes[r.classement[0].pilote].nom)}</b> (${esc(C.ecuries[r.classement[0].ecurie].nom)}). Tes pilotes : ${mes.map(x => `${esc(C.pilotes[x.pilote].nom)} ${x.abandon ? 'abandon' : x.place + 'e'}`).join(', ')}.</p>`;
+    box.append(d2);
+  }
+  const m = document.createElement('div'); m.className = 'carte';
+  m.innerHTML = `<h3>Messages</h3><div class="messages">${C.messages.slice(0, 15).map(x => `<p class="${x.type}">${esc(x.txt)}</p>`).join('')}</div>`;
+  box.append(m);
+}
+function prevision(gp){
+  const ing = C.personnel.course.niv, pct = Math.round(gp.pluie * 100);
+  if(gp.meteo && ing >= 4) return gp.meteo.pluie ? (gp.meteo.debut < 1 ? '🌧️ pluie dès le départ' : '🌦️ pluie en cours de course') : '☀️ sec (prévision sûre)';
+  return pct >= 25 ? `🌦️ risque de pluie ${pct} %` : pct >= 10 ? `⛅ risque de pluie ${pct} %` : '☀️ temps sec';
+}
+function ongletClassements(){
+  const box = $('qContenu');
+  const cons = M.classementConstructeurs(C), pil = M.classementPilotes(C).slice(0, 20);
+  box.innerHTML = `<div class="carte"><h3>Constructeurs</h3><table class="tab"><tr><th>#</th><th>Écurie</th><th class="n">V.</th><th class="n">Pts</th></tr>
+    ${cons.map((e, i) => `<tr class="${e.id === C.joueur ? 'moi' : ''}"><td>${i + 1}</td><td>${coul(e)}${esc(e.nom)}</td><td class="n">${e.victoires}</td><td class="n">${e.points}</td></tr>`).join('')}</table></div>
+    <div class="carte"><h3>Pilotes</h3><table class="tab"><tr><th>#</th><th>Pilote</th><th class="n">Pts</th></tr>
+    ${pil.map((p, i) => { const e = C.ecuries[p.ecurie] || { c1:'#555', c2:'#555', nom:'—' }; return `<tr class="${p.ecurie === C.joueur ? 'moi' : ''}"><td>${i + 1}</td><td>${coul(e)}${p.drapeau} ${esc(p.nom)} <small class="legende">${esc(e.nom)}</small></td><td class="n">${p.points}</td></tr>`; }).join('')}</table></div>
+    <div class="carte"><h3>Calendrier ${C.saison}</h3><table class="tab">${C.calendrier.map((g, i) => { const circ = M.circuit(g.id), r = g.resultat;
+      const mes = r ? r.classement.filter(x => x.ecurie === C.joueur).map(x => x.abandon ? 'ab.' : x.place + 'e').join(' · ') : '';
+      return `<tr class="${i === C.gp ? 'moi' : ''}"><td>${i + 1}</td><td>GP ${esc(circ.n)}</td><td>${r ? `🏆 ${esc(court(C.pilotes[r.classement[0].pilote]))}` : i === C.gp ? 'prochain' : ''}</td><td class="n">${mes}</td></tr>`; }).join('')}</table></div>
+    ${C.historique.length ? `<div class="carte"><h3>Saisons précédentes</h3><table class="tab">${C.historique.map(h => `<tr><td>${h.saison}</td><td>${h.place}e (objectif ${h.objectif}e) ${h.reussi ? '✅' : '❌'}</td><td class="n">${h.points} pts</td><td class="n">${h.victoires} V.</td></tr>`).join('')}</table></div>` : ''}`;
+}
+function ongletVoiture(){
+  const box = $('qContenu'), E = C.ecuries[C.joueur], tous = Object.values(C.ecuries);
+  const lignes = Object.entries(M.DOMAINES).map(([dom, D]) => {
+    const best = Math.max(...tous.map(e => e[dom])), moy = tous.reduce((s, e) => s + e[dom], 0) / tous.length;
+    const x = v => clamp((v - 70) / 30 * 100, 0, 100);
+    return `<div class="stat"><span>${D.ico} ${D.nom}</span><div class="barre"><i style="width:${x(E[dom])}%"></i><u style="left:${x(moy)}%"></u><em style="left:${x(best)}%"></em></div><b>${virg(E[dom])}</b></div>`;
+  }).join('');
+  const rang = tous.sort((a, b) => M.perfVoiture(b) - M.perfVoiture(a)).findIndex(e => e.id === C.joueur) + 1;
+  box.innerHTML = `<div class="carte"><h3>Ta voiture · ${rang}e du plateau</h3><div class="stats4">${lignes}</div><p class="legende" style="margin:8px 0 0">Trait jaune : la meilleure écurie · trait blanc : la moyenne. Les autres écuries progressent aussi pendant la saison, selon leur budget.</p></div>
+    <div class="carte"><h3>Projets d'amélioration</h3><p class="sous" style="margin-bottom:8px">Directeur technique ${etoiles(C.personnel.technique.niv)} : ${C.personnel.technique.niv >= 4 ? 'pièce prête au prochain Grand Prix' : 'pièce prête dans 2 Grands Prix'}. Caisse : <b>${meur(C.argent)}</b>.</p><div class="projets" id="lProjets"></div></div>`;
+  const l = $('lProjets');
+  for(const [dom, D] of Object.entries(M.DOMAINES)){
+    const enCours = C.projets.find(p => p.dom === dom), cout = M.coutProjet(C, dom);
+    const el = document.createElement('div'); el.className = 'projet';
+    el.innerHTML = `<span class="ico">${D.ico}</span><div><b>${D.nom}</b><small>${D.aide}${enCours ? ` · en cours : +${virg(enCours.gain)} au GP ${enCours.fin + 1}` : ''}</small></div>`;
+    const b = document.createElement('button'); b.className = 'btn petit rouge';
+    b.textContent = enCours ? 'En cours' : `Lancer · ${meur(cout)}`; b.disabled = !!enCours || C.argent < cout || C.phase !== 'saison';
+    b.onclick = () => { const r = M.lancerProjet(C, dom); if(r.msg) M.message(C, '🔧 ' + r.msg); sauver(); qg('voiture'); };
+    el.append(b); l.append(el);
+  }
+}
+function carteNotes(p){
+  const n = [['VIT', p.vitesse], ['RÉG', p.regularite], ['PNEU', p.pneus], ['DÉP', p.depassement], ['PLUIE', p.pluie], ['MORAL', Math.round(p.moral)]];
+  return `<div class="notes">${n.map(([a, b]) => `<span>${a}<b>${b}</b></span>`).join('')}</div>`;
+}
+function ongletPilotes(){
+  const box = $('qContenu'), E = C.ecuries[C.joueur], mes = E.pilotes.map(id => C.pilotes[id]);
+  box.innerHTML = `<div class="carte"><h3>Tes pilotes</h3><div class="marche" id="lMes"></div></div>
+    <div class="carte"><h3>Pilotes libres</h3><p class="sous" style="margin-bottom:8px">Pendant la saison, on peut engager un pilote sans volant (il faut payer la moitié du salaire du pilote remplacé). Au mercato de fin de saison, les pilotes des autres écuries en fin de contrat sont aussi disponibles.</p><div class="marche" id="lMarche"></div></div>`;
+  for(const p of mes){
+    const el = document.createElement('div'); el.className = 'pilote';
+    el.innerHTML = `<div><b>${p.drapeau} ${esc(p.nom)}</b><br><small>${p.age} ans · ${virg(p.salaire)} M€ par saison · contrat jusqu'en ${p.fin} · ${p.points} pts cette saison</small></div><div class="etoiles">${'★'.repeat(Math.round((M.noteGlobale(p) - 70) / 6))}</div>${carteNotes(p)}`;
+    const act = document.createElement('div'); act.className = 'actions';
+    const dem = M.demande(C, p);
+    const b = document.createElement('button'); b.className = 'btn petit'; b.textContent = `Prolonger de 2 ans (${virg(dem)} M€/saison)`;
+    b.onclick = () => { const r = M.prolonger(C, p.id, 2); if(r.msg) M.message(C, '✍️ ' + r.msg, 'bon'); sauver(); qg('pilotes'); };
+    act.append(b); el.append(act); $('lMes').append(el);
+  }
+  const libres = M.marche(C).slice(0, 12);
+  if(!libres.length) $('lMarche').innerHTML = '<p class="sous">Aucun pilote libre pour le moment.</p>';
+  for(const p of libres) $('lMarche').append(cartePiloteMarche(p, () => qg('pilotes')));
+}
+function cartePiloteMarche(p, apres){
+  const E = C.ecuries[C.joueur], dem = M.demande(C, p);
+  const el = document.createElement('div'); el.className = 'pilote';
+  const eq = p.ecurie ? C.ecuries[p.ecurie].nom : 'sans volant';
+  el.innerHTML = `<div><b>${p.drapeau} ${esc(p.nom)}</b><br><small>${p.age} ans · ${esc(eq)} · demande ${virg(dem)} M€ par saison${p.junior ? ' · jeune espoir' : ''}</small></div><div class="etoiles">${'★'.repeat(Math.max(1, Math.round((M.noteGlobale(p) - 70) / 6)))}</div>${carteNotes(p)}`;
+  const act = document.createElement('div'); act.className = 'actions';
+  for(const id of E.pilotes){
+    const r = C.pilotes[id], b = document.createElement('button'); b.className = 'btn petit rouge'; b.textContent = `Remplacer ${court(r)}`;
+    b.onclick = () => { if(!confirm(`Engager ${p.nom} à la place de ${r.nom} ?`)) return; const res = M.engager(C, p.id, r.id, 2); alert(res.msg); if(res.ok) M.message(C, '✍️ ' + res.msg, 'bon'); sauver(); apres(); };
+    act.append(b);
+  }
+  el.append(act); return el;
+}
+function ongletPersonnel(){
+  const box = $('qContenu'); box.innerHTML = '';
+  for(const [poste, Pd] of Object.entries(M.POSTES)){
+    const e = C.personnel[poste], d = document.createElement('div'); d.className = 'carte';
+    d.innerHTML = `<h3>${Pd.ico} ${Pd.nom}</h3><p style="margin:0"><b>${e.drapeau} ${esc(e.nom)}</b> <span class="etoiles">${etoiles(e.niv)}</span> · ${virg(e.salaire)} M€ par saison</p><p class="sous" style="margin:4px 0 8px">${Pd.role}</p><div class="marche"></div>`;
+    const l = d.querySelector('.marche');
+    C.candidats[poste].forEach((c, i) => {
+      const el = document.createElement('div'); el.className = 'offre';
+      const prime = Math.round(c.salaire * .2 * 10) / 10 + Math.round(e.salaire * .25 * 10) / 10;
+      el.innerHTML = `<span class="ico">${c.drapeau}</span><div><b>${esc(c.nom)}</b> <span class="etoiles">${etoiles(c.niv)}</span><small>${virg(c.salaire)} M€ par saison · à payer tout de suite : ${virg(prime)} M€</small></div>`;
+      const b = document.createElement('button'); b.className = 'btn petit'; b.textContent = 'Embaucher'; b.disabled = C.argent < prime;
+      b.onclick = () => { const r = M.embaucher(C, poste, i); if(r.msg) M.message(C, '👷 ' + r.msg, r.ok ? 'bon' : 'mal'); if(!r.ok) alert(r.msg); sauver(); qg('personnel'); };
+      el.append(b); l.append(el);
+    });
+    box.append(d);
+  }
+}
+function ongletSponsors(){
+  const box = $('qContenu');
+  const slot = (s, titre) => s ? `<div class="offre"><span class="ico">${s.ico}</span><div><b>${esc(s.nom)}</b> <small>${titre} · ${virg(s.parGP, 2)} M€ par Grand Prix · prime ${virg(s.bonus, 2)} M€ si ${esc(s.txtObjectif)}</small></div><span></span></div>` : `<div class="slot">${titre} : place libre</div>`;
+  box.innerHTML = `<div class="carte"><h3>Tes sponsors (saison ${C.saison})</h3><div class="marche">${slot(C.sponsors[0], 'Principal')}${slot(C.sponsors[1], 'Secondaire')}${slot(C.sponsors[2], 'Secondaire')}</div></div>
+    <div class="carte"><h3>Offres</h3><p class="sous" style="margin-bottom:8px">Réputation ${Math.round(C.reputation)} : plus elle est haute, plus les sponsors paient. Un contrat dure jusqu'à la fin de la saison.</p><div class="marche" id="lOffres"></div></div>`;
+  C.offres.forEach((o, i) => {
+    const el = document.createElement('div'); el.className = 'offre';
+    el.innerHTML = `<span class="ico">${o.ico}</span><div><b>${esc(o.nom)}</b> <small>${o.principal ? 'Sponsor principal' : 'Sponsor secondaire'} · ${virg(o.parGP, 2)} M€ par Grand Prix · prime de ${virg(o.bonus, 2)} M€ si ${esc(o.txtObjectif)}</small></div>`;
+    const libre = o.principal ? !C.sponsors[0] : (!C.sponsors[1] || !C.sponsors[2]);
+    const b = document.createElement('button'); b.className = 'btn petit vert'; b.textContent = 'Signer'; b.disabled = !libre;
+    b.onclick = () => { const r = M.signerSponsor(C, i); if(r.msg) M.message(C, '💼 ' + r.msg, r.ok ? 'bon' : 'mal'); sauver(); qg('sponsors'); };
+    el.append(b); $('lOffres').append(el);
+  });
+  if(!C.offres.length) $('lOffres').innerHTML = '<p class="sous">Pas d\'autre offre pour le moment.</p>';
+}
+function ongletEcurie(){
+  const E = C.ecuries[C.joueur], box = $('qContenu');
+  box.innerHTML = '<div class="carte"><h3>Ton écurie</h3><p class="sous" style="margin-bottom:10px">Change quand tu veux le nom, les couleurs de la voiture et le logo. C\'est gratuit !</p><div id="persoQG"></div></div>';
+  editeurEcurie($('persoQG'), { nom:E.nom, c1:E.c1, c2:E.c2, logo:E.logo || '⭐' }, etat => {
+    M.personnaliser(C, etat); sauver();
+    qgBandeau();
+  });
+}
+function ongletFinances(){
+  const E = C.ecuries[C.joueur];
+  const salP = E.pilotes.reduce((s, id) => s + C.pilotes[id].salaire, 0), salE = Object.values(C.personnel).reduce((s, e) => s + e.salaire, 0);
+  const spons = C.sponsors.filter(Boolean).reduce((s, x) => s + x.parGP, 0);
+  const lignes = C.finances.slice().reverse().slice(0, 40);
+  $('qContenu').innerHTML = `<div class="carte"><h3>Par Grand Prix</h3><table class="tab bilan">
+    <tr><td>💼 Sponsors (hors primes)</td><td class="plus">+${meur(spons)}</td></tr>
+    <tr><td>👤 Salaires des pilotes (${meur(salP)} par saison)</td><td class="moins">−${meur(salP / 12)}</td></tr>
+    <tr><td>👷 Salaires du personnel (${meur(salE)} par saison)</td><td class="moins">−${meur(salE / 12)}</td></tr>
+    <tr><td>🏭 Usine et transport</td><td class="moins">−0,6 M€</td></tr></table>
+    <p class="sous" style="margin-top:8px">En fin de saison, une prime selon la place chez les constructeurs : de ${M.PRIMES[0]} M€ (1er) à ${M.PRIMES[9]} M€ (10e).</p></div>
+    <div class="carte"><h3>Dernières opérations</h3><table class="tab bilan">${lignes.map(f => `<tr><td>${esc(f.txt)} <small class="legende">${f.saison} · GP ${f.gp + (f.txt.startsWith('🏆') ? 0 : 1)}</small></td><td class="${f.montant >= 0 ? 'plus' : 'moins'}">${f.montant >= 0 ? '+' : ''}${meur(f.montant)}</td></tr>`).join('') || '<tr><td>Rien pour le moment.</td></tr>'}</table></div>`;
+}
+
+/* ---------- Le week-end : préparation et qualifications ---------- */
+let R = null, choixQ = {}, pneusDepart = {};
+function voituresCourse(circ){
+  const car = M.caractere(circ), liste = [];
+  for(const e of Object.values(C.ecuries)){
+    const moi = e.id === C.joueur, ing = moi ? C.personnel.course.niv : clamp(Math.round(1 + e.budget / 35), 1, 5), mec = moi ? C.personnel.mecanos.niv : clamp(Math.round(1 + e.budget / 40), 1, 5);
+    for(const pid of e.pilotes){
+      const p = C.pilotes[pid];
+      liste.push({ id:pid, nom:p.nom, court:court(p), ecurie:e.id, c1:e.c1, c2:e.c2, logo:moi ? e.logo : null, joueur:moi,
+        base:1 + (M.perfVoiture(e, car) - 86) * .0011 + (p.vitesse - 86) * .0008 + (ing - 3) * .0012 + (p.moral - 70) * .00008,
+        regularite:p.regularite, pneus:p.pneus + (moi ? (ing - 3) * 2 : 0), depassement:p.depassement, pluie:p.pluie, fiabilite:Math.min(99, e.fiabilite + (mec - 3) * 1.5), mecanos:mec, ingenieur:ing });
+    }
+  }
+  return liste;
+}
+function weekend(){
+  const gp = C.calendrier[C.gp], circ = M.circuit(gp.id);
+  const tours = nbTours(circ);
+  if(!gp.meteo){ const pluie = Math.random() < gp.pluie; gp.meteo = { pluie, debut:hasard(-1.5, tours - 3), duree:hasard(2, 9), force:hasard(.35, 1) }; sauver(); }
+  R = Co.preparer({ circuit:circ, voitures:voituresCourse(circ), tours, meteo:gp.meteo });
+  choixQ = {}; pneusDepart = {};
+  const mes = C.ecuries[C.joueur].pilotes.map(id => C.pilotes[id]);
+  mes.forEach(p => { choixQ[p.id] = 'prudent'; pneusDepart[p.id] = 'M'; });
+  montrer('eWeekend'); pageQualifs(circ, mes);
+}
+function pageQualifs(circ, mes){
+  const box = $('wContenu');
+  const humide = Co.mouille(R, 0) > .25;
+  box.innerHTML = `<div class="tete"><button class="btn" id="wRetour">‹ QG</button></div>
+    <h2>GP ${esc(circ.n)}</h2><p class="sous">${esc(circ.inspi)} · ${R.tours} tours · ${prevision(C.calendrier[C.gp])}${humide ? ' · la piste est mouillée' : ''}</p>
+    <div class="carte"><h3>Qualifications : un tour lancé</h3><p class="sous" style="margin-bottom:8px">Prudent : peu de risque d'erreur. Risqué : plus rapide, mais une erreur peut coûter cher.</p><div id="wChoix"></div></div>
+    <button class="btn gros rouge" id="wQualif">⏱️ Lancer les qualifications</button>`;
+  const ch = $('wChoix');
+  for(const p of mes){
+    const d = document.createElement('div'); d.style.margin = '8px 0';
+    d.innerHTML = `<b>${p.drapeau} ${esc(p.nom)}</b><div class="choixp" data-q="${p.id}" style="margin-top:4px"><button data-v="prudent">🛡️ Prudent</button><button data-v="risque">⚡ Risqué</button></div>
+      <div class="choixp" data-p="${p.id}" style="margin-top:6px">${['S', 'M', 'H'].map(k => `<button data-v="${k}"><span class="pneu" style="border-color:${Co.PNEUS[k].col}">${Co.PNEUS[k].court}</span> ${Co.PNEUS[k].nom}</button>`).join('')}</div>`;
+    ch.append(d);
+  }
+  const maj = () => {
+    ch.querySelectorAll('[data-q]').forEach(g => [...g.children].forEach(b => b.classList.toggle('actif', b.dataset.v === choixQ[g.dataset.q])));
+    ch.querySelectorAll('[data-p]').forEach(g => [...g.children].forEach(b => { b.classList.toggle('actif', b.dataset.v === pneusDepart[g.dataset.p]); b.disabled = humide; }));
+  };
+  ch.onclick = e => { const b = e.target.closest('button'); if(!b) return; const g = b.parentElement; if(g.dataset.q) choixQ[g.dataset.q] = b.dataset.v; if(g.dataset.p) pneusDepart[g.dataset.p] = b.dataset.v; maj(); };
+  maj();
+  $('wRetour').onclick = () => qg('gp');
+  $('wQualif').onclick = () => {
+    const res = Co.qualifier(R, choixQ);
+    for(const v of R.voitures) if(v.joueur) v.pneuDepart = pneusDepart[v.id];
+    box.innerHTML = `<h2>Grille de départ</h2><p class="sous">GP ${esc(circ.n)} · pole position pour <b>${esc(R.voitures.find(v => v.id === res[0].id).nom)}</b> en ${res[0].affiche}</p>
+      <div class="carte"><div class="grille">${res.map(r => { const v = R.voitures.find(x => x.id === r.id), e = C.ecuries[v.ecurie];
+        return `<div class="${v.joueur ? 'moi' : ''}"><b>${r.place}</b><span class="coul" style="background:${e.c1}"></span><span>${esc(v.nom)}${r.erreur && v.joueur ? ' <small class="moins">(erreur)</small>' : ''}</span><span class="legende">${r.place === 1 ? r.affiche : '+' + virg(r.ecart, 3)}</span></div>`; }).join('')}</div></div>
+      <button class="btn gros rouge" id="wDepart">🚦 Départ de la course</button>`;
+    $('wDepart').onclick = course;
+    window.scrollTo(0, 0);
+  };
+}
+
+/* ---------- La course en direct ---------- */
+let vitesseC = 1, fondC = null, tailleC = '', dernierMaj = 0, avantC = 0, boucleC = null, standOuvert = {};
+function course(){
+  montrer('eCourse'); vitesseC = 1; standOuvert = {};
+  [...$('cVit').children].forEach(b => b.classList.toggle('actif', b.dataset.v === '1'));
+  $('cFini').hidden = true;
+  construirePilotesC();
+  tailleC = ''; avantC = performance.now();
+  cancelAnimationFrame(boucleC); boucleC = requestAnimationFrame(boucleCourse);
+}
+function boucleCourse(now){
+  if($('eCourse').hidden) return;
+  const dt = Math.min(.05, (now - avantC) / 1000); avantC = now;
+  if(R.phase !== 'fin' && vitesseC > 0){ let r = dt * vitesseC; while(r > 1e-6){ const h = Math.min(r, 1 / 30); Co.pas(R, h); r -= h; } }
+  dessinerCourse();
+  if(now - dernierMaj > 160){ dernierMaj = now; majCourse(); }
+  if(R.phase === 'fin' && $('cFini').hidden) arrivee();
+  boucleC = requestAnimationFrame(boucleCourse);
+}
+function dessinerCourse(){
+  const zone = $('cZone'), cv = $('cvC'), w = zone.clientWidth, h = zone.clientHeight, d = Math.min(2, devicePixelRatio || 1);
+  if(w < 10 || h < 10) return;
+  const t = w + 'x' + h;
+  if(t !== tailleC){ tailleC = t; cv.width = Math.round(w * d); cv.height = Math.round(h * d); fondC = Co.fond(R, w, h, d); }
+  Co.dessiner(R, cv.getContext('2d'), w, h, d, fondC);
+}
+function construirePilotesC(){
+  const box = $('cPilotes'); box.innerHTML = '';
+  for(const v of R.voitures.filter(x => x.joueur)){
+    const e = C.ecuries[v.ecurie], el = document.createElement('div'); el.className = 'pc'; el.dataset.id = v.id; el.style.setProperty('--c', e.c2);
+    el.innerHTML = `<div class="l1"><b class="pos">P–</b><span>${esc(v.nom)}</span><em class="ec"></em></div>
+      <div class="l2"><span class="pneu"></span><div class="us"><i></i></div><small class="u"></small></div>
+      <div class="modes">${Object.entries(Co.MODES).map(([k, m]) => `<button data-m="${k}" title="${m.nom}">${m.ico}</button>`).join('')}</div>
+      <div class="ligne3"><button class="bstand">🔧 Stand</button><button class="auto" title="Stratégie automatique">🤖</button></div>
+      <div class="stand" hidden>${Object.entries(Co.PNEUS).map(([k, p]) => `<button data-p="${k}" title="${p.nom}"><span class="pneu" style="border-color:${p.col}">${p.court}</span></button>`).join('')}</div>
+      <div class="cons"></div>`;
+    el.onclick = ev => {
+      const b = ev.target.closest('button'); if(!b) return;
+      if(b.dataset.m){ v.mode = b.dataset.m; }
+      else if(b.classList.contains('bstand')){ if(v.demande){ v.demande = null; standOuvert[v.id] = false; } else standOuvert[v.id] = !standOuvert[v.id]; }
+      else if(b.classList.contains('auto')){ v.auto = !v.auto; }
+      else if(b.dataset.p){ v.demande = b.dataset.p; standOuvert[v.id] = false; }
+      majCourse();
+    };
+    box.append(el);
+  }
+}
+function majCourse(){
+  const gp = C.calendrier[C.gp], circ = M.circuit(gp.id), ord = Co.ordre(R), w = Co.mouille(R);
+  const tete = ord[0].v, tourAff = Math.min(R.tours, Math.max(1, tete.tour + (tete.etat === 'fini' ? 0 : 1)));
+  $('cTitre').innerHTML = `GP ${esc(circ.n)}<small>${R.phase === 'grille' ? 'Les feux…' : `Tour ${tourAff}/${R.tours}`} · ${w > .6 ? '🌧️ grosse pluie' : w > .25 ? '🌦️ piste humide' : w > .05 ? '🌦️ quelques gouttes' : '☀️ sec'}${R.sc ? ' · 🚨 voiture de sécurité' : ''}</small>`;
+  // les messages récents
+  const recents = R.evenements.filter(e => R.t - e.t < 6 || (R.phase === 'grille')).slice(0, 3);
+  $('cInfos').innerHTML = (R.sc ? '<div class="sc">🚨 VOITURE DE SÉCURITÉ</div>' : '') + (R.phase === 'grille' ? `<div>🚦 ${'🔴'.repeat(Math.min(5, Math.floor(R.feux / .6)))}</div>` : '') + recents.map(e => `<div class="${e.type}">${esc(e.txt)}</div>`).join('');
+  // le classement
+  $('cTour').innerHTML = `<table>${ord.map(o => { const v = o.v, e = C.ecuries[v.ecurie];
+    return `<tr class="${v.joueur ? 'moi' : ''} ${v.etat === 'abandon' ? 'out' : ''}"><td>${o.place}</td><td><span class="coul" style="background:${e.c1};height:12px"></span>${esc(v.court)}</td><td><span class="pt" style="border-color:${Co.PNEUS[v.pneu].col}"></span>${v.etat === 'stand' ? ' 🔧' : ''}</td><td class="e">${o.ecart}</td></tr>`; }).join('')}</table>`;
+  // nos pilotes
+  for(const el of $('cPilotes').children){
+    const v = R.voitures.find(x => x.id === el.dataset.id), o = ord.find(x => x.v === v);
+    el.classList.toggle('out', v.etat === 'abandon');
+    el.querySelector('.pos').textContent = v.etat === 'abandon' ? 'AB' : 'P' + o.place;
+    el.querySelector('.ec').textContent = v.etat === 'abandon' ? v.abandon : o.ecart;
+    const pn = el.querySelector('.l2 .pneu'); pn.textContent = Co.PNEUS[v.pneu].court; pn.style.borderColor = Co.PNEUS[v.pneu].col;
+    const u = clamp(v.usure, 0, 1); el.querySelector('.us i').style.width = (100 - u * 100) + '%'; el.querySelector('.us i').style.background = u > .75 ? '#FF4D4D' : u > .55 ? '#FFC93C' : '#2BD47D';
+    el.querySelector('.u').textContent = `${Math.round((1 - u) * 100)} %` + (v.arrets ? ` · ${v.arrets} arrêt${v.arrets > 1 ? 's' : ''}` : '');
+    el.querySelectorAll('.modes button').forEach(b => b.classList.toggle('actif', b.dataset.m === v.mode));
+    const bs = el.querySelector('.bstand');
+    bs.textContent = v.etat === 'stand' ? '🔧 Au stand…' : v.demande ? `🔧 Rentre : ${Co.PNEUS[v.demande].nom} (annuler)` : '🔧 Stand';
+    bs.classList.toggle('actif', !!v.demande);
+    el.querySelector('.auto').classList.toggle('actif', v.auto);
+    el.querySelector('.stand').hidden = !standOuvert[v.id] || !!v.demande || v.etat !== 'course';
+    el.querySelector('.cons').textContent = R.alertes[v.id] && v.etat === 'course' && !v.demande ? '🎧 ' + R.alertes[v.id] : v.auto ? '🤖 L\'ingénieur gère la stratégie' : '';
+  }
+}
+$('cVit').onclick = e => {
+  const b = e.target.closest('button'); if(!b) return;
+  if(b.dataset.v === 'fin'){ if(!confirm('Aller directement à l\'arrivée ?')) return; for(const v of R.voitures) if(v.joueur) v.auto = true; Co.simulerFin(R); majCourse(); return; }
+  vitesseC = +b.dataset.v; [...$('cVit').children].forEach(x => x.classList.toggle('actif', x === b));
+};
+function arrivee(){
+  const res = Co.resultat(R), mes = res.filter(r => R.voitures.find(v => v.id === r.pilote).joueur);
+  $('cFiniTxt').innerHTML = `Vainqueur : <b>${esc(res[0].nom)}</b>.<br>${mes.map(r => `${esc(r.nom)} : ${r.abandon ? 'abandon' : r.place + 'e'}`).join(' · ')}`;
+  $('cFini').hidden = false;
+}
+$('bVoirResultats').onclick = () => { cancelAnimationFrame(boucleC); resultats(); };
+
+/* ---------- Les résultats ---------- */
+function resultats(){
+  const gp = C.calendrier[C.gp], circ = M.circuit(gp.id);
+  const res = Co.resultat(R), pole = R.qualifs ? R.qualifs[0].id : null, mt = R.meilleurTour;
+  const bilan = M.appliquerResultat(C, { classement:res, pole, meilleurTour:mt ? mt.id : null });
+  if(C.sponsors.some(s => !s)) M.genererOffres(C);
+  sauver();
+  const pts = i => i < 10 ? M.POINTS[i] : 0;
+  const top3 = res.slice(0, 3);
+  $('rContenu').innerHTML = `<h2>GP ${esc(circ.n)} : résultats</h2>
+    <div class="podium">${[1, 0, 2].map(i => { const r = top3[i]; if(!r) return '<div></div>'; const e = C.ecuries[r.ecurie]; return `<div style="height:${[120, 96, 80][i]}px;border-top:4px solid ${e.c1}"><b>${i + 1}</b>${esc(r.nom)}<br><small class="legende">${esc(e.nom)}</small></div>`; }).join('')}</div>
+    <div class="carte"><h3>Ton Grand Prix</h3><table class="tab bilan">${bilan.lignes.map(([t, m]) => `<tr><td>${esc(t)}</td><td class="${m >= 0 ? 'plus' : 'moins'}">${m >= 0 ? '+' : ''}${meur(m)}</td></tr>`).join('')}
+      <tr><td><b>Total</b> · ${bilan.points} point${bilan.points > 1 ? 's' : ''} pour l'écurie</td><td class="${bilan.argent >= 0 ? 'plus' : 'moins'}"><b>${bilan.argent >= 0 ? '+' : ''}${meur(bilan.argent)}</b></td></tr></table></div>
+    <div class="carte"><h3>Classement de la course</h3><table class="tab">${res.map((r, i) => { const e = C.ecuries[r.ecurie]; const moi = r.ecurie === C.joueur;
+      return `<tr class="${moi ? 'moi' : ''}"><td>${r.abandon ? 'AB' : r.place}</td><td>${coul(e)}${esc(r.nom)}${r.penalite ? ` <small class="moins">${esc(r.penalite)}</small>` : ''}${mt && mt.id === r.pilote ? ' <small title="Meilleur tour">⏱️</small>' : ''}</td><td class="n legende">${esc(r.ecart)}</td><td class="n">${r.abandon ? '' : pts(i) ? '+' + pts(i) : ''}</td></tr>`; }).join('')}</table>
+      <p class="legende" style="margin:8px 0 0">${mt ? `⏱️ Meilleur tour : ${esc(R.voitures.find(v => v.id === mt.id).nom)} en ${Co.chrono(mt.temps * Co.K)}` : ''}</p></div>
+    <button class="btn gros rouge" id="rSuite">${C.phase === 'finSaison' ? '🏆 Bilan de la saison' : '‹ Retour au QG'}</button>`;
+  $('rSuite').onclick = () => C.phase === 'finSaison' ? finDeSaison() : qg('gp');
+  montrer('eResultat');
+}
+
+/* ---------- La fin de saison et le mercato ---------- */
+function finDeSaison(){
+  if(C.phase === 'finSaison'){ M.finSaison(C); sauver(); }
+  const s = C.resumeSaison || C.historique[C.historique.length - 1], E = C.ecuries[C.joueur];
+  const champ = s.champion ? C.pilotes[s.champion] : null;
+  const box = $('sContenu');
+  box.innerHTML = `<h2>Saison ${s.saison} : le bilan</h2>
+    <div class="carte"><p class="sous" style="color:var(--encre);font-size:1.1rem"><b>${E.nom}</b> finit <b>${s.place}e</b> du championnat des constructeurs avec ${s.points} points (objectif : ${s.objectif}e) ${s.reussi ? '✅ objectif atteint, la direction est ravie !' : '❌ la direction est déçue.'}</p>
+      <p class="sous" style="margin-top:6px">🏆 Champion du monde : <b>${champ ? esc(champ.nom) : '—'}</b> (${champ ? esc(C.ecuries[s.championEcurie].nom) : ''}) · constructeurs : <b>${esc(C.ecuries[s.constructeur].nom)}</b>${s.titreP || s.titreC ? ' · 🎉 c\'est toi !' : ''}</p>
+      <p class="sous" style="margin-top:6px">💰 Prime de fin de saison : <b class="plus">+${meur(s.prime)}</b> · caisse : ${meur(C.argent)}</p></div>
+    <div class="carte"><h3>Constructeurs ${s.saison}</h3><table class="tab">${s.classementC.map(([id, p], i) => `<tr class="${id === C.joueur ? 'moi' : ''}"><td>${i + 1}</td><td>${coul(C.ecuries[id])}${esc(C.ecuries[id].nom)}</td><td class="n">${p}</td></tr>`).join('')}</table></div>
+    <h2 style="margin-top:6px">Mercato</h2>
+    <div class="carte"><h3>Tes pilotes</h3><p class="sous" style="margin-bottom:8px">Un pilote en fin de contrat qui n'est pas prolongé quittera l'écurie, et sera remplacé par un pilote libre.</p><div class="marche" id="sMes"></div></div>
+    <div class="carte"><h3>Pilotes disponibles</h3><p class="sous" style="margin-bottom:8px">Pilotes libres et pilotes des autres écuries en fin de contrat. Les meilleurs demandent plus quand la réputation de l'écurie est faible (réputation : ${Math.round(C.reputation)}).</p><div class="marche" id="sMarche"></div></div>
+    <button class="btn gros rouge" id="sSuivante">🏁 Commencer la saison ${C.saison + 1}</button>`;
+  for(const id of E.pilotes){
+    const p = C.pilotes[id], el = document.createElement('div'); el.className = 'pilote';
+    const fini = p.fin <= C.saison, dem = M.demande(C, p);
+    el.innerHTML = `<div><b>${p.drapeau} ${esc(p.nom)}</b><br><small>${p.age} ans · ${p.points} pts · ${fini ? `<span class="moins">contrat terminé</span>` : `contrat jusqu'en ${p.fin}`}</small></div><div class="etoiles">${'★'.repeat(Math.max(1, Math.round((M.noteGlobale(p) - 70) / 6)))}</div>${carteNotes(p)}`;
+    const act = document.createElement('div'); act.className = 'actions';
+    for(const ans of [1, 2, 3]){ const b = document.createElement('button'); b.className = 'btn petit' + (fini ? ' vert' : ''); b.textContent = `Prolonger ${ans} an${ans > 1 ? 's' : ''} (${virg(dem)} M€/saison)`;
+      b.onclick = () => { const r = M.prolonger(C, p.id, ans); if(r.msg) M.message(C, '✍️ ' + r.msg, 'bon'); sauver(); finDeSaison(); }; act.append(b); }
+    el.append(act); $('sMes').append(el);
+  }
+  for(const p of M.marche(C).slice(0, 14)) $('sMarche').append(cartePiloteMarche(p, finDeSaison));
+  $('sSuivante').onclick = () => {
+    const partent = E.pilotes.map(id => C.pilotes[id]).filter(p => p.fin <= C.saison);
+    if(partent.length && !confirm(`${partent.map(p => p.nom).join(' et ')} ${partent.length > 1 ? 'vont' : 'va'} partir (contrat terminé). Continuer ?`)) return;
+    M.nouvelleSaison(C); sauver(); qg('gp');
+  };
+  montrer('eSaison');
+}
+
+addEventListener('resize', () => { tailleC = ''; });
+window.Paddock = { get C(){ return C; }, get R(){ return R; }, qg, weekend, course, resultats, finDeSaison, accueil, M, Co, voituresCourse, nouvelle:(id = 'etoile') => { C = M.nouvelleCarriere(id, 'Test'); sauver(); qg('gp'); } };
+accueil();
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
+})();
+</script>
+<script src="sauvegarde.js?v=119"></script>
+<script src="compte.js?v=119"></script>
+</body>
+</html>
