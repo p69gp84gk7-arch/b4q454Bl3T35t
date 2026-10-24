@@ -1,6 +1,7 @@
 /* Altitude Arcade : le serveur de sauvegarde en ligne, dans un Google Sheet.
-   À coller dans le Google Sheet : menu Extensions › Apps Script, remplacer tout le contenu de Code.gs par ce fichier,
-   enregistrer, puis Déployer › Nouveau déploiement › type « Application Web » :
+   Ce programme est un projet Apps Script à part (« Altitude Arcade – serveur de sauvegarde » dans le Google Drive),
+   qui écrit dans le tableur indiqué par ID_TABLEUR. On peut aussi le coller dans le tableur lui-même (Extensions › Apps Script,
+   avec ID_TABLEUR vide). Pour le publier : Déployer › Nouveau déploiement › type « Application Web » :
      - Exécuter en tant que : moi ;
      - Qui peut accéder : tout le monde.
    Copier l'adresse de l'application Web (elle finit par /exec) : c'est elle que l'application utilise.
@@ -12,6 +13,10 @@
      - Suivi : où en est chaque joueur dans chaque jeu (le même texte que sur l'accueil de l'application).
      - Données : les sauvegardes elles-mêmes (une ligne par joueur et par élément) ; à ne pas modifier à la main.
      - Journal : les connexions et créations de comptes. */
+
+// L'identifiant du Google Sheet (dans son adresse, entre /d/ et /edit). Vide : le tableur auquel ce programme est attaché.
+const ID_TABLEUR = '1srSXeOBSVfuUba5E1aXXga-64ZCXfufxMQh9gp67dGw';
+const classeur = () => ID_TABLEUR ? SpreadsheetApp.openById(ID_TABLEUR) : SpreadsheetApp.getActiveSpreadsheet();
 
 const ONGLETS = { comptes:'Comptes', suivi:'Suivi', donnees:'Données', journal:'Journal' };
 const ENTETES = {
@@ -47,7 +52,7 @@ function doPost(e){
 function reponse(obj){ return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
 
 function onglet(nom){
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = classeur();
   let f = ss.getSheetByName(nom);
   if(!f){
     f = ss.insertSheet(nom);

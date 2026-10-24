@@ -91,8 +91,8 @@ Chaque joueur peut avoir un **compte** (pseudo + code secret à 4 chiffres). Une
 
 - **Le serveur** : `outils/sauvegarde-google.gs`, un petit programme Apps Script collé dans le Google Sheet et publié comme « Application Web ». Son adresse (elle finit par `/exec`) se met dans `SERVEUR_DEFAUT` en haut de `jeux/compte.js`. Tant qu'elle est vide, l'application ne montre rien de la sauvegarde en ligne.
 - **Installer** :
-  1. ouvrir le Google Sheet, menu *Extensions › Apps Script* ;
-  2. remplacer le contenu de `Code.gs` par celui de `outils/sauvegarde-google.gs`, enregistrer ;
+  1. ouvrir le Google Sheet, menu *Extensions › Apps Script* (le fichier « Altitude Arcade – programme à coller dans Apps Script.txt », à côté du tableur dans le Drive, contient le même texte) ;
+  2. remplacer le contenu de `Code.gs` par celui de `outils/sauvegarde-google.gs`, enregistrer (`ID_TABLEUR`, en haut, désigne le tableur « Altitude arcade » ; vide, c'est le tableur où le programme est collé) ;
   3. *Déployer › Nouveau déploiement*, type *Application Web*, « Exécuter en tant que : moi », « Qui peut accéder : Tout le monde », *Déployer*, accepter les autorisations ;
   4. copier l'adresse de l'application Web dans `jeux/compte.js`.
   Après une modification du programme : *Déployer › Gérer les déploiements*, crayon, *Version : nouvelle version* (l'adresse reste la même).
