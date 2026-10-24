@@ -45,7 +45,7 @@ window.PEPIN_NIVEAUX = (() => {
       B.rect(44, 9, 4, 1, 'b'); B.ligne(44, 5, 'bbbb'); B.pieces(44, 8, 4); B.ligne(45, 9, 'bpbb'.slice(1));
       B.rect(52, 7, 2, 6, 'b'); B.rect(56, 5, 2, 8, 'b'); B.pieces(56, 4, 2); B.ennemi('herisson', 60); B.ennemi('marmotton', 64);
       B.ligne(62, 9, 'bbbbbb'); B.ligne(62, 6, 'bbVbbb'); B.pieces(63, 8, 4);
-      B.tuyau(70, 3, { chardon:true }); B.tuyau(75, 4, { chardon:true });
+      B.tuyau(70, 3, { chardon:true }); B.tuyau(75, 3);
       B.ligne(86, 9, 'b?bb'); B.ennemi('marmotton', 90); B.ennemi('marmotton', 92); B.mi(86);
       B.rect(98, 5, 6, 2, 'b'); B.pieces(98, 4, 6); B.ligne(100, 9, 'h'); B.ennemi('scarabee', 102);
       B.tuyau(108, 3); B.tuyau(113, 2, { chardon:true }); B.ennemi('scarabee', 118); B.ennemi('herisson', 122);
@@ -56,7 +56,7 @@ window.PEPIN_NIVEAUX = (() => {
     },
     zones:{ sortie:sortie('plaine') } },
 
-  { id:'1-3', nom:'Les Cimes', theme:'ciel', temps:300, largeur:170,
+  { id:'1-3', nom:'Les Cimes', theme:'ciel', temps:400, largeur:170,
     construire(B){
       B.sol(0, 15);
       B.sapin(18, 11, 4); B.sapin(24, 8, 5); B.pieces(25, 6, 3); B.sapin(31, 5, 4); B.ennemi('herissonRouge', 32, 4);
@@ -72,7 +72,7 @@ window.PEPIN_NIVEAUX = (() => {
       B.sol(141, 169); B.escalier(145, 5); B.rect(150, 8, 1, 5, 'd'); B.drapeau(158);
     } },
 
-  { id:'1-4', nom:'Le Château du Yéti', theme:'chateau', temps:300, largeur:150, merci:'Merci Pépin ! Mais la marmotte de la vallée est dans un autre château…',
+  { id:'1-4', nom:'Le Château du Yéti', theme:'chateau', temps:400, largeur:150, merci:'Merci Pépin ! Mais la marmotte de la vallée est dans un autre château…',
     construire(B){
       B.rect(0, 2, 150, 1, 'P'); B.rect(0, 9, 14, 6, 'P'); B.depart(2, 8); B.rect(0, 3, 4, 3, 'P');
       B.lave(14, 17, 2); B.rect(18, 9, 12, 6, 'P'); B.barreFeu(24, 6, 6, 1);
@@ -113,7 +113,7 @@ window.PEPIN_NIVEAUX = (() => {
       B.ennemi('truite', 146, 7); B.rect(152, 2, 18, 9, 'w'); B.tuyau(150, 2, { cote:{ fin:true } });
     } },
 
-  { id:'2-3', nom:'Les Pontons', theme:'plaine', temps:300, largeur:190,
+  { id:'2-3', nom:'Les Pontons', theme:'plaine', temps:400, largeur:190,
     construire(B){
       B.sol(0, 12); B.eau(13, 175, 13); B.eau(13, 175, 14);
       B.pont(13, 22, 9); B.pont(25, 33, 7); B.pont(36, 44, 9); B.pont(47, 52, 6); B.pont(55, 66, 9);
@@ -124,7 +124,7 @@ window.PEPIN_NIVEAUX = (() => {
       B.pont(159, 175, 9); B.sol(176, 189); B.drapeau(181);
     } },
 
-  { id:'2-4', nom:'Le Château du Lac', theme:'chateau', temps:300, largeur:160, merci:'Merci Pépin ! Le Yéti s\'est enfui vers les neiges…',
+  { id:'2-4', nom:'Le Château du Lac', theme:'chateau', temps:400, largeur:160, merci:'Merci Pépin ! Le Yéti s\'est enfui vers les neiges…',
     construire(B){
       B.rect(0, 2, 160, 1, 'P'); B.rect(0, 9, 10, 6, 'P'); B.depart(2, 8);
       B.lave(10, 14, 2); B.lavaSaut(12); B.rect(15, 9, 6, 6, 'P'); B.lave(21, 25, 2); B.lavaSaut(23); B.rect(26, 9, 10, 6, 'P');
@@ -169,7 +169,7 @@ window.PEPIN_NIVEAUX = (() => {
     },
     zones:{ sortie:sortie('neige') } },
 
-  { id:'3-3', nom:'Le Téléphérique', theme:'neige', temps:300, largeur:190, ciel:'#BEE4FF',
+  { id:'3-3', nom:'Le Téléphérique', theme:'neige', temps:400, largeur:190, ciel:'#BEE4FF',
     construire(B){
       B.sol(0, 16); B.escalier(10, 3, 1, 'g');
       B.plateforme(16, 10, { type:'cable', w:2, amp:7, cabine:true, vit:1.2 }); B.sapin(27, 8, 5); B.pieces(28, 6, 3); B.ennemi('herissonRouge', 28, 7);
@@ -177,13 +177,13 @@ window.PEPIN_NIVEAUX = (() => {
       B.plateforme(51, 9, { type:'h', w:3, amp:3 }); B.sapin(59, 7, 6); B.ligne(60, 3, '?!?'); B.ennemi('marmotton', 61, 6); B.ennemi('marmotton', 63, 6); B.mi(59);
       B.plateforme(66, 7, { type:'cable', w:2, amp:7, cabine:true, vit:1 }); B.ennemi('choucas', 80, 3); B.sapin(77, 8, 6);
       B.plateforme(85, 8, { type:'chute', w:3 }); B.plateforme(90, 7, { type:'chute', w:3 }); B.sapin(95, 9, 5); B.ennemi('herissonRouge', 96, 8);
-      B.plateforme(101, 8, { type:'cable', w:2, amp:10, cabine:true, vit:1.1 }); B.ennemi('choucas', 108, 6); B.sapin(116, 6, 4); B.ligne(117, 2, 'e');
+      B.plateforme(101, 8, { type:'cable', w:2, amp:10, cabine:true, vit:1.1 }); B.ennemi('choucas', 108, 6); B.sapin(114, 6, 6); B.ligne(117, 2, 'e');
       B.plateforme(121, 8, { type:'v', w:3, amp:3 }); B.sapin(126, 10, 5); B.ennemi('marmotton', 128, 9);
       B.plateforme(132, 9, { type:'cable', w:2, amp:10, cabine:true, vit:1 }); B.sapin(146, 8, 5); B.pieces(147, 6, 4);
       B.sol(153, 189); B.escalier(158, 5, 1, 'g'); B.rect(163, 8, 1, 5, 'g'); B.drapeau(171);
     } },
 
-  { id:'3-4', nom:'Le Château de Glace', theme:'chateau', temps:300, largeur:170, merci:'Merci Pépin ! Le Yéti a fui vers le volcan… courage, c\'est le dernier monde !',
+  { id:'3-4', nom:'Le Château de Glace', theme:'chateau', temps:400, largeur:170, merci:'Merci Pépin ! Le Yéti a fui vers le volcan… courage, c\'est le dernier monde !',
     construire(B){
       B.rect(0, 2, 170, 1, 'P'); B.rect(0, 9, 12, 6, 'P'); B.depart(2, 8);
       B.lave(12, 18, 2); B.plateforme(13, 9, { type:'v', w:2, amp:2 }); B.lavaSaut(16); B.rect(19, 9, 8, 6, 'P'); B.barreFeu(23, 5, 7, 1);
@@ -222,7 +222,7 @@ window.PEPIN_NIVEAUX = (() => {
     },
     zones:{ sortie:sortie('nuit') } },
 
-  { id:'4-3', nom:'Au-dessus des Nuages', theme:'ciel', temps:300, largeur:180, ciel:'#2A2E6E',
+  { id:'4-3', nom:'Au-dessus des Nuages', theme:'ciel', temps:400, largeur:180, ciel:'#2A2E6E',
     construire(B){
       B.sol(0, 12); B.nuage(15, 10, 4); B.nuage(21, 8, 3); B.ennemi('choucas', 26, 5); B.nuage(26, 6, 4); B.pieces(26, 4, 4);
       B.plateforme(32, 8, { type:'h', w:2, amp:3 }); B.nuage(40, 9, 5); B.ennemi('herissonRouge', 41, 8); B.ligne(42, 5, '!');
