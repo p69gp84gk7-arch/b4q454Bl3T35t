@@ -4,6 +4,7 @@
    dans une ligne droite. Les temps affichés sont multipliés par K pour ressembler à de vrais temps de Formule 1. */
 window.PaddockCourse = (() => {
   const P = window.Piste;
+  const PI = Math.PI;
   const K = 8.5;                                   // 1 seconde de jeu = 8,5 secondes « réelles » affichées
   const NC = 24;                                   // points de chronométrage par tour (pour les écarts)
   const ECART_MIN = 21;                            // distance minimale derrière une voiture (unités)
@@ -32,16 +33,60 @@ window.PaddockCourse = (() => {
 
   /* ---------- Le circuit prêt pour la course ---------- */
   const CACHE = {};
+  const LARG = 54;                                 // largeur de la piste dans Paddock (plus étroite que dans Draw Race)
+  const RETREC = .66;                              // la trajectoire idéale de Draw Race, rapprochée du centre d'autant
+  const ENTREE = .055, SORTIE = .05;               // la voie des stands : sur les derniers et les premiers mètres du tour
+  const lisse = t => t * t * (3 - 2 * t);
   function circuitCourse(c){
     if(CACHE[c.id]) return CACHE[c.id];
-    const piste = P.construire(c), ideale = P.trajectoireIdeale(piste);
+    const piste = P.construire(c), dr = P.trajectoireIdeale(piste), C = piste.pts;
+    const ideale = C.map((p, i) => [p[0] + (dr[i][0] - p[0]) * RETREC, p[1] + (dr[i][1] - p[1]) * RETREC]);
     const pts = P.resample(ideale, P.STEP, true), n = pts.length;
     const { v } = P.vitesses(pts, new Array(n).fill(P.VMAX));
     const cap = pts.map((p, i) => { const q = pts[(i + 1) % n]; return Math.atan2(q[1] - p[1], q[0] - p[0]); });
-    // la ligne centrale (pour la voie des stands et le dessin) et la normale de la trajectoire
-    const kappa = P.courbure(piste.pts), virage = kappa.reduce((s, k) => s + k, 0) / kappa.length;
-    return CACHE[c.id] = { c, piste, pts, v, cap, n, L:n * P.STEP, tempsTour:P.tempsTour(v), abrasion:clamp(.85 + virage * 60, .85, 1.2) };
+    const kappa = P.courbure(C), virage = kappa.reduce((s, k) => s + k, 0) / kappa.length;
+    return CACHE[c.id] = { c, piste, kappa, pts, v, cap, n, L:n * P.STEP, tempsTour:P.tempsTour(v), abrasion:clamp(.85 + virage * 60, .85, 1.2), stands:voieStands(piste) };
   }
+  // la voie des stands : parallèle à la ligne droite des stands, avec une entrée et une sortie en douceur,
+  // du côté où il y a le plus de place (sans toucher une autre partie du circuit)
+  function voieStands(piste){
+    const C = piste.pts, n = C.length;
+    // des normales lissées (pas de pointes dans les virages)
+    const nor = C.map((_, i) => { let x = 0, y = 0; for(let d = -6; d <= 6; d++){ const a = piste.cap[(i + d + n) % n]; x += -Math.sin(a); y += Math.cos(a); } const l = Math.hypot(x, y) || 1; return [x / l, y / l]; });
+    const nE = Math.round(n * ENTREE), nS = Math.round(n * SORTIE), tot = nE + nS;
+    const essai = (cote, plein) => {
+      const pts = [], offs = [];
+      let mauvais = 0;
+      for(let k = -nE; k <= nS; k++){
+        const i = (k + n) % n, t = (k + nE) / tot;
+        const o = plein * (t < .3 ? lisse(t / .3) : t > .7 ? lisse((1 - t) / .3) : 1);
+        const q = [C[i][0] + nor[i][0] * cote * o, C[i][1] + nor[i][1] * cote * o];
+        pts.push(q); offs.push(o);
+        if(q[0] < 6 || q[0] > P.W - 6 || q[1] < 6 || q[1] > P.H - 6) mauvais += .3;
+        for(let m = 0; m < n; m += 2){
+          const dk = Math.min(Math.abs(m - i), n - Math.abs(m - i)); if(dk < 30) continue;
+          if(Math.hypot(C[m][0] - q[0], C[m][1] - q[1]) < LARG / 2 + 30 + o * .2){ mauvais++; break; }
+        }
+      }
+      // on préfère l'extérieur du circuit (plus de place pour les garages)
+      const dehors = pts.reduce((t, q, j) => { const i = ((j - nE) + n) % n; return t + Math.hypot(q[0] - cx, q[1] - cy) - Math.hypot(C[i][0] - cx, C[i][1] - cy); }, 0) / pts.length;
+      return { cote, plein, pts, offs, mauvais, dehors };
+    };
+    const cx = C.reduce((t, p) => t + p[0], 0) / n, cy = C.reduce((t, p) => t + p[1], 0) / n;
+    let best = null;
+    for(const plein of [LARG / 2 + 24, LARG / 2 + 17]) for(const cote of [1, -1]){ const e = essai(cote, plein);
+      if(!best || e.mauvais < best.mauvais - .01 || (Math.abs(e.mauvais - best.mauvais) <= .01 && e.plein === best.plein && e.dehors > best.dehors)) best = e; }
+    return { ...best, nE, nS, tot, nor };
+  }
+  // le point de la voie des stands à l'indice k (de -nE à nS), interpolé
+  function pointStand(S, k){
+    const j = clamp(k + S.nE, 0, S.tot), a = Math.floor(j), b = Math.min(S.tot, a + 1), f = j - a;
+    const p = S.pts[a], q = S.pts[b];
+    return { x:p[0] + (q[0] - p[0]) * f, y:p[1] + (q[1] - p[1]) * f, a:Math.atan2(q[1] - p[1], q[0] - p[0]) || 0 };
+  }
+  // où en est une voiture sur la voie des stands (en indices de la ligne centrale)
+  function kStand(T, v){ const L = T.L, f = (((v.s % L) + L) % L) / L; return (f > .5 ? f - 1 : f) * T.piste.pts.length; }
+  const boxDe = (T, v) => { const S = T.stands; return -S.nE + S.tot * (.3 + .4 * (v.box ?? 0) / 9); };
 
   /* ---------- Préparer une course ---------- */
   // voitures : [{ id, nom, court, ecurie, c1, c2, joueur, base, regularite, pneus, depassement, pluie, fiabilite, mecanos, ingenieur }]
@@ -52,6 +97,10 @@ window.PaddockCourse = (() => {
       ecart:0, penalite:0, fin:null, abandon:null, degats:0, cp:0, aspi:0, grille:0 })),
       passages:new Map(), evenements:[], sc:null, drapeau:false, meilleurTour:null, arrives:0, alertes:{} };
     R.wetMax = 0;
+    const equipes = [...new Set(voitures.map(v => v.ecurie))];
+    R.equipes = equipes;
+    R.couleursEquipes = Object.fromEntries(voitures.map(v => [v.ecurie, [v.c1, v.c2]]));
+    for(const v of R.voitures) v.box = equipes.indexOf(v.ecurie);
     return R;
   }
   const mouille = (R, t = R.t) => {
@@ -256,21 +305,19 @@ window.PaddockCourse = (() => {
   }
   const choix = t => t[Math.floor(Math.random() * t.length)];
   function abandon(R, v, raison){
-    v.etat = 'abandon'; v.abandon = raison; v.vit = 0; v.latCible = -54; v.lat = -54;
+    v.etat = 'abandon'; v.abandon = raison; v.vit = 0; v.latCible = -(LARG / 2 + 14); v.lat = v.latCible;
     evenement(R, `❌ Abandon de ${v.nom} : ${raison}`, v.joueur ? 'mal' : '');
   }
-  // la voie des stands : sur les derniers et les premiers mètres du tour
-  const ENTREE = .055, SORTIE = .05;
   function entreeStand(R, v, avant){
     if(!v.demande || v.etat !== 'course' || R.drapeau) return;
     const L = R.T.L, a = ((avant % L) + L) % L, b = ((v.s % L) + L) % L, seuil = L * (1 - ENTREE);
     if(a < seuil && b >= seuil && v.s > L * .5){
-      v.etat = 'stand'; v.arret = { phase:'voie', t:0 }; v.latCible = 46; v.depasse = null;
+      v.etat = 'stand'; v.arret = { phase:'voie', t:0 }; v.latCible = 0; v.depasse = null;
     }
   }
   function stand(R, v, dt){
-    const L = R.T.L, pos = ((v.s % L) + L) % L, a = v.arret;
-    if(a.phase === 'voie' && pos < L * .5){
+    const T = R.T, a = v.arret, k = kStand(T, v);
+    if(a.phase === 'voie' && k >= boxDe(T, v) && k < T.stands.nS){
       // devant son garage : on change les pneus
       const ratage = Math.random() < .09 - v.mecanos * .015;
       a.phase = 'arret'; a.t = 0; a.duree = (hasard(2.1, 2.7) - v.mecanos * .12 + (ratage ? hasard(2, 5) : 0)) / K;
@@ -284,8 +331,8 @@ window.PaddockCourse = (() => {
         a.phase = 'sortie';
         if(v.joueur || R.voitures.indexOf(v) < 3) evenement(R, `${v.court} : arrêt en ${(a.duree * K).toFixed(1).replace('.', ',')} s, ${PNEUS[ancien].nom.toLowerCase()} → ${PNEUS[v.pneu].nom.toLowerCase()}`, v.joueur ? 'stand' : '');
       }
-    } else if(a.phase === 'sortie' && pos > L * SORTIE && pos < L * .5){
-      v.etat = 'course'; v.arret = null; v.latCible = 0;
+    } else if(a.phase !== 'arret' && k >= T.stands.nS - 1 && k < T.stands.nS + 40){
+      v.etat = 'course'; v.arret = null; v.latCible = 0; v.lat = 0;
     }
   }
   function evenement(R, txt, type = ''){
@@ -338,49 +385,143 @@ window.PaddockCourse = (() => {
   /* ---------- Le dessin ---------- */
   const SOLS = { parc:'#DCE9C4', campagne:'#DDE8B8', collines:'#E4E3B6', foret:'#CBE0B2', sapins:'#C9DDB8', desert:'#EAD8AA', dunes:'#EFE3BE', ville:'#D9D3C8', nuit:'#27304A',
     japon:'#DDEBC8', fleuve:'#D6E8C0', lac:'#D9EBC4', mer:'#E6DECB', montagne:'#D3DFC4', prairie:'#E6DFB2', neige:'#F4F7FB', savane:'#E2C48A' };
+  // hasard reproductible (le même décor à chaque course sur un circuit)
+  function hasardDe(txt){ let h = 2166136261; for(const ch of txt) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return () => { h = Math.imul(h ^ h >>> 15, 2246822507); h = Math.imul(h ^ h >>> 13, 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967296; }; }
   function fond(R, largeur, hauteur, dpr){
-    const T = R.T, c = T.c, off = document.createElement('canvas');
+    const T = R.T, c = T.c, C = T.piste.pts, n = C.length, S = T.stands, off = document.createElement('canvas');
     off.width = Math.round(largeur * dpr); off.height = Math.round(hauteur * dpr);
-    const o = off.getContext('2d'), e = Math.min(largeur / P.W, hauteur / P.H);
+    const o = off.getContext('2d'), e = Math.min(largeur / P.W, hauteur / P.H), rnd = hasardDe(c.id);
     o.setTransform(e * dpr, 0, 0, e * dpr, (largeur - P.W * e) / 2 * dpr, (hauteur - P.H * e) / 2 * dpr);
-    o.fillStyle = SOLS[c.decor] || '#DCE9C4'; o.fillRect(-200, -200, P.W + 400, P.H + 400);
-    // des taches d'herbe
-    o.fillStyle = 'rgba(0,0,0,.035)'; for(let i = 0; i < 70; i++){ o.beginPath(); o.arc((i * 137) % P.W, (i * 251) % P.H, 10 + (i * 7) % 30, 0, 7); o.fill(); }
-    const chemin = () => { o.beginPath(); T.piste.pts.forEach((p, i) => i ? o.lineTo(p[0], p[1]) : o.moveTo(p[0], p[1])); o.closePath(); };
+    const nuit = c.decor === 'nuit', sol = SOLS[c.decor] || '#DCE9C4';
+    o.fillStyle = sol; o.fillRect(-400, -400, P.W + 800, P.H + 800);
+    // l'herbe tondue en bandes, et quelques taches
+    o.fillStyle = nuit ? 'rgba(255,255,255,.02)' : 'rgba(0,0,0,.025)';
+    for(let x = -400; x < P.W + 400; x += 60) o.fillRect(x, -400, 30, P.H + 800);
+    const chemin = (pts, ferme = true) => { o.beginPath(); pts.forEach((p, i) => i ? o.lineTo(p[0], p[1]) : o.moveTo(p[0], p[1])); if(ferme) o.closePath(); };
+    const morceaux = (seuil, marge) => {
+      // les portions de circuit où ça tourne (pour les vibreurs et les bacs à gravier)
+      const res = []; let cur = null;
+      for(let i = 0; i <= n; i++){ const k = T.kappa[i % n], dans = k > seuil;
+        if(dans && !cur) cur = [i]; else if(!dans && cur){ res.push([cur[0] - marge, i + marge]); cur = null; } }
+      if(cur) res.push([cur[0] - marge, n + marge]);
+      return res.map(([a, b]) => { const l = []; for(let i = a; i <= b; i++) l.push(C[((i % n) + n) % n]); return l; });
+    };
     o.lineJoin = 'round'; o.lineCap = 'round';
-    // la voie des stands : sur le côté, avant et après la ligne
-    const n = T.n, voie = [];
-    for(let k = -Math.round(n * ENTREE); k <= Math.round(n * SORTIE); k++){ const i = (k + n) % n, a = T.cap[i]; voie.push([T.pts[i][0] - Math.sin(a) * 46, T.pts[i][1] + Math.cos(a) * 46]); }
-    o.strokeStyle = '#8D8A84'; o.lineWidth = 20; o.beginPath(); voie.forEach((p, i) => i ? o.lineTo(p[0], p[1]) : o.moveTo(p[0], p[1])); o.stroke();
-    o.strokeStyle = 'rgba(255,255,255,.6)'; o.lineWidth = 1.2; o.setLineDash([6, 6]); o.stroke(); o.setLineDash([]);
-    // les garages
-    for(let k = -6; k <= 6; k++){ const i = (k * 3 + n) % n, a = T.cap[i]; o.fillStyle = k % 2 ? '#5D6670' : '#6B747E'; o.save(); o.translate(T.pts[i][0] - Math.sin(a) * 62, T.pts[i][1] + Math.cos(a) * 62); o.rotate(a); o.fillRect(-6, -6, 12, 12); o.restore(); }
-    // la piste
-    chemin(); o.strokeStyle = '#1F1F1F'; o.lineWidth = P.LARGEUR + 10; o.stroke();
-    chemin(); o.strokeStyle = c.decor === 'nuit' ? '#8E8A83' : '#A7A39A'; o.lineWidth = P.LARGEUR; o.stroke();
-    // les vibreurs dans les virages
-    const kap = P.courbure(T.piste.pts), m = T.piste.pts.length;
-    for(let i = 0; i < m; i += 2){
-      if(kap[i] < .006) continue;
-      const p = T.piste.pts[i], a = T.piste.cap[i];
-      for(const cote of [-1, 1]){ o.fillStyle = (Math.floor(i / 4) % 2) ? '#D7263D' : '#FFFFFF'; o.save(); o.translate(p[0] - Math.sin(a) * cote * (P.LARGEUR / 2 + 1), p[1] + Math.cos(a) * cote * (P.LARGEUR / 2 + 1)); o.rotate(a); o.fillRect(-4, -3, 8, 6); o.restore(); }
+    // les dégagements en herbe claire, puis les bacs à gravier à l'extérieur des virages
+    chemin(C); o.strokeStyle = nuit ? '#2E3854' : 'rgba(255,255,255,.22)'; o.lineWidth = LARG + 70; o.stroke();
+    for(const m of morceaux(.0075, 6)){ chemin(m, false); o.strokeStyle = nuit ? '#4A4636' : '#E3D3A4'; o.lineWidth = LARG + 56; o.stroke(); }
+    // la voie des stands : la route, ses bords, le muret entre la piste et la voie
+    const voie = S.pts, nor = S.nor, cote = S.cote;
+    chemin(voie, false); o.strokeStyle = '#1F1F1F'; o.lineWidth = 22; o.stroke();
+    chemin(voie, false); o.strokeStyle = nuit ? '#77736C' : '#9C988F'; o.lineWidth = 18; o.stroke();
+    // les garages, un par écurie, dans la partie droite de la voie
+    const eq = R.equipes || [];
+    const plein = [];
+    for(let k = -S.nE; k <= S.nS; k++){ const j = k + S.nE; if(S.offs[j] > S.plein * .98) plein.push(k); }
+    if(plein.length > 4){
+      const kA = plein[0], kB = plein[plein.length - 1];
+      // le bâtiment des stands, derrière les garages
+      const bande = (d1, d2, ka, kb) => { const pts = []; for(let k = ka; k <= kb; k++){ const i = (k + n) % n; pts.push([C[i][0] + nor[i][0] * cote * d1, C[i][1] + nor[i][1] * cote * d1]); }
+        for(let k = kb; k >= ka; k--){ const i = (k + n) % n; pts.push([C[i][0] + nor[i][0] * cote * d2, C[i][1] + nor[i][1] * cote * d2]); } return pts; };
+      chemin(bande(S.plein + 10, S.plein + 32, kA, kB)); o.fillStyle = nuit ? '#3B4150' : '#C9CDD3'; o.fill(); o.strokeStyle = '#555B66'; o.lineWidth = 1.2; o.stroke();
+      chemin(bande(S.plein + 26, S.plein + 32, kA, kB)); o.fillStyle = nuit ? '#262A35' : '#8D939C'; o.fill();
+      // un garage coloré par écurie
+      const nb = Math.max(1, eq.length);
+      for(let g = 0; g < nb; g++){
+        const ka = kA + (kB - kA) * (g + .08) / nb, kb = kA + (kB - kA) * (g + .92) / nb;
+        const coul = R.couleursEquipes && R.couleursEquipes[eq[g]] ? R.couleursEquipes[eq[g]] : ['#888', '#ccc'];
+        chemin(bande(S.plein + 11, S.plein + 25, Math.round(ka), Math.round(kb))); o.fillStyle = coul[0]; o.fill();
+        chemin(bande(S.plein + 11, S.plein + 14, Math.round(ka), Math.round(kb))); o.fillStyle = coul[1]; o.fill();
+        // l'emplacement d'arrêt devant le garage
+        const kbox = -S.nE + S.tot * (.3 + .4 * g / 9), q = pointStand(S, kbox);
+        o.save(); o.translate(q.x, q.y); o.rotate(q.a); o.strokeStyle = coul[0]; o.lineWidth = 1.6; o.strokeRect(-9, -6, 18, 12); o.restore();
+      }
+      // le muret des stands
+      chemin(bande(LARG / 2 + 5, LARG / 2 + 8, kA - 6, kB + 6)); o.fillStyle = '#EDEDED'; o.fill(); o.strokeStyle = '#6A6A6A'; o.lineWidth = .8; o.stroke();
     }
-    // la ligne de départ en damier
-    const p0 = T.piste.pts[0], a0 = T.piste.cap[0];
+    chemin(voie, false); o.strokeStyle = 'rgba(255,255,255,.75)'; o.lineWidth = 1; o.setLineDash([5, 5]); o.stroke(); o.setLineDash([]);
+    // la piste : le bord sombre, les vibreurs (une bande continue des deux côtés), puis le bitume par-dessus
+    chemin(C); o.strokeStyle = '#1F1F1F'; o.lineWidth = LARG + 14; o.stroke();
+    for(const m of morceaux(.0075, 3)){
+      chemin(m, false); o.lineCap = 'butt'; o.strokeStyle = '#FFFFFF'; o.lineWidth = LARG + 10; o.stroke();
+      o.setLineDash([7, 7]); o.strokeStyle = '#D7263D'; o.stroke(); o.setLineDash([]); o.lineCap = 'round';
+    }
+    chemin(C); o.strokeStyle = nuit ? '#8E8A83' : '#A7A39A'; o.lineWidth = LARG; o.stroke();
+    // les lignes blanches au bord de la piste
+    chemin(C); o.strokeStyle = 'rgba(255,255,255,.55)'; o.lineWidth = LARG - 3; o.stroke();
+    chemin(C); o.strokeStyle = nuit ? '#8E8A83' : '#A7A39A'; o.lineWidth = LARG - 5.5; o.stroke();
+    // un peu de gomme sur la trajectoire
+    chemin(T.pts); o.strokeStyle = 'rgba(40,40,40,.12)'; o.lineWidth = 9; o.stroke();
+    // la grille de départ (20 emplacements) et la ligne en damier
+    for(let g = 0; g < 20; g++){
+      const sDist = -g * 26 - 12, pos = ((sDist % T.L) + T.L) % T.L, i = Math.floor(pos / P.STEP) % T.n, a = T.cap[i], lat = g % 2 ? 11 : -11;
+      const x = T.pts[i][0] - Math.sin(a) * lat, y = T.pts[i][1] + Math.cos(a) * lat;
+      o.save(); o.translate(x, y); o.rotate(a); o.strokeStyle = 'rgba(255,255,255,.85)'; o.lineWidth = 1.2;
+      o.beginPath(); o.moveTo(9, -6); o.lineTo(11, -6); o.lineTo(11, 6); o.lineTo(9, 6); o.stroke(); o.restore();
+    }
+    const p0 = C[0], a0 = T.piste.cap[0];
     o.save(); o.translate(p0[0], p0[1]); o.rotate(a0);
-    for(let j = -5; j < 5; j++) for(let k = 0; k < 2; k++){ o.fillStyle = (j + k) % 2 ? '#111' : '#fff'; o.fillRect(k * 4 - 4, j * 8, 4, 8); }
+    for(let j = -Math.ceil(LARG / 12); j < Math.ceil(LARG / 12); j++) for(let k = 0; k < 2; k++){ if(Math.abs(j * 6 + 3) > LARG / 2) continue; o.fillStyle = (j + k) % 2 ? '#111' : '#fff'; o.fillRect(k * 4 - 4, j * 6, 4, 6); }
     o.restore();
+    // la tribune principale, face aux stands : des gradins colorés et un toit
+    {
+      const ka = -Math.round(S.nE * .45), kb = Math.round(S.nS * .45);
+      const ligne = d => { const pts = []; for(let k = ka; k <= kb; k++){ const i = (k + n) % n; pts.push([C[i][0] - S.nor[i][0] * S.cote * d, C[i][1] - S.nor[i][1] * S.cote * d]); } return pts; };
+      const mil = ligne(LARG / 2 + 30);
+      const libre = mil.every(q => { if(q[0] < 0 || q[0] > P.W || q[1] < 0 || q[1] > P.H) return false; for(let m = 0; m < n; m += 3){ const dk = Math.min(m, n - m); if(dk < S.nE + 12) continue; if(Math.hypot(C[m][0] - q[0], C[m][1] - q[1]) < LARG / 2 + 26) return false; } return true; });
+      if(libre && mil.length > 6){
+        o.lineCap = 'butt';
+        chemin(mil, false); o.strokeStyle = '#4F5A6A'; o.lineWidth = 20; o.stroke();
+        [['#E63946', 23], ['#F4F4F4', 27.5], ['#2D7FD3', 32]].forEach(([col, d]) => { chemin(ligne(LARG / 2 + d), false); o.strokeStyle = col; o.lineWidth = 3; o.setLineDash([1.6, 1.2]); o.stroke(); o.setLineDash([]); });
+        chemin(ligne(LARG / 2 + 38), false); o.strokeStyle = '#D9DDE3'; o.lineWidth = 4; o.stroke();
+        o.lineCap = 'round';
+      }
+    }
+    // des arbres, loin de la piste et des stands
+    const proche = (x, y, d) => { for(let m = 0; m < n; m += 3) if(Math.hypot(C[m][0] - x, C[m][1] - y) < d) return true; for(const q of voie) if(Math.hypot(q[0] - x, q[1] - y) < d + 30) return true; return false; };
+    let nbArbres = { desert:14, dunes:18, ville:20, nuit:16, neige:60, foret:110, sapins:100, montagne:80 }[c.decor] ?? 70;
+    for(let t = 0, essais = nbArbres * 3; t < essais && t < 400; t++){
+      const x = rnd() * (P.W + 60) - 30, y = rnd() * (P.H + 60) - 30, r = 7 + rnd() * 9;
+      if(proche(x, y, LARG / 2 + 40 + r)) continue;
+      if(--nbArbres < 0) break;
+      o.fillStyle = 'rgba(0,0,0,.18)'; o.beginPath(); o.arc(x + r * .4, y + r * .4, r, 0, 7); o.fill();
+      const sapin = ['sapins', 'montagne', 'neige'].includes(c.decor), palmier = ['desert', 'dunes', 'mer'].includes(c.decor);
+      o.fillStyle = sapin ? '#2F5E3A' : palmier ? '#5E8C3A' : nuit ? '#1F3A2E' : '#3E7D45'; o.beginPath(); o.arc(x, y, r, 0, 7); o.fill();
+      o.fillStyle = sapin ? '#3E7A4C' : palmier ? '#79A84A' : nuit ? '#2A4C3B' : '#56A15C'; o.beginPath(); o.arc(x - r * .25, y - r * .25, r * .6, 0, 7); o.fill();
+    }
     return off;
   }
+  // une Formule 1 vue du dessus (longueur 26 unités, l'avant vers +x)
   function voiture(g, x, y, a, c1, c2, k = 1){
     g.save(); g.translate(x, y); g.rotate(a); g.scale(k, k);
-    g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.ellipse(1, 1.5, 12, 6.5, 0, 0, 7); g.fill();
-    g.fillStyle = '#151515';
-    g.fillRect(-9, -7, 5, 3.2); g.fillRect(-9, 3.8, 5, 3.2); g.fillRect(5, -6.5, 4.2, 2.8); g.fillRect(5, 3.7, 4.2, 2.8);
-    g.fillStyle = c1; g.beginPath(); g.moveTo(-10, -3.4); g.lineTo(3, -3.4); g.lineTo(11, -1.4); g.lineTo(11, 1.4); g.lineTo(3, 3.4); g.lineTo(-10, 3.4); g.closePath(); g.fill();
-    g.fillStyle = c2; g.fillRect(-11.5, -5.5, 2.6, 11); g.fillRect(10.4, -5, 2.2, 10); g.fillRect(-6, -1, 12, 2);
-    g.fillStyle = '#1A1A1A'; g.beginPath(); g.ellipse(-1, 0, 2.6, 1.8, 0, 0, 7); g.fill();
-    g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = .7; g.strokeRect(-10, -3.4, 21, 6.8);
+    g.lineJoin = 'round';
+    g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(1.5, 1.8, 13.5, 7, 0, 0, 7); g.fill();
+    const rect = (x0, y0, w, h, c, r = .8) => { g.beginPath(); g.roundRect ? g.roundRect(x0, y0, w, h, r) : g.rect(x0, y0, w, h); g.fillStyle = c; g.fill(); };
+    // les roues (arrière plus larges), avec les jantes
+    for(const [cx, cy, l, w] of [[-8.5, -6.8, 5.6, 3.4], [-8.5, 6.8, 5.6, 3.4], [7.6, -6.3, 4.6, 2.8], [7.6, 6.3, 4.6, 2.8]]){
+      rect(cx - l / 2, cy - w / 2, l, w, '#141414', 1.2); g.fillStyle = '#8A8A8A'; g.fillRect(cx - l / 2 + 1, cy - .35, l - 2, .7);
+    }
+    // les bras de suspension
+    g.strokeStyle = '#2A2A2A'; g.lineWidth = .7;
+    g.beginPath(); g.moveTo(-8.5, -5); g.lineTo(-5, -2); g.moveTo(-8.5, 5); g.lineTo(-5, 2); g.moveTo(7.6, -5); g.lineTo(4, -1.4); g.moveTo(7.6, 5); g.lineTo(4, 1.4); g.stroke();
+    // le fond plat
+    g.fillStyle = '#262626'; g.beginPath(); g.moveTo(-11, -4.6); g.lineTo(-3, -5.6); g.lineTo(4, -3.4); g.lineTo(4, 3.4); g.lineTo(-3, 5.6); g.lineTo(-11, 4.6); g.closePath(); g.fill();
+    // l'aileron arrière (les dérives à la couleur secondaire)
+    rect(-13.5, -5.8, 3, 11.6, c1, .6); rect(-13.6, -6.2, 3.2, 1.2, c2, .3); rect(-13.6, 5, 3.2, 1.2, c2, .3);
+    // les pontons et la coque
+    g.fillStyle = c1; g.beginPath(); g.moveTo(-10.5, -2.2); g.lineTo(-6, -4.6); g.lineTo(-1, -4.6); g.lineTo(2, -2.2); g.lineTo(10.5, -1.1); g.lineTo(12, 0); g.lineTo(10.5, 1.1); g.lineTo(2, 2.2); g.lineTo(-1, 4.6); g.lineTo(-6, 4.6); g.lineTo(-10.5, 2.2); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = .5; g.stroke();
+    // les bandes de couleur secondaire
+    g.fillStyle = c2; g.fillRect(-6, -4.5, 4.5, 1.1); g.fillRect(-6, 3.4, 4.5, 1.1); g.fillRect(2, -.45, 8.5, .9);
+    // le capot moteur et l'arceau
+    g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(-6, 0, 4.2, 1.6, 0, 0, 7); g.fill();
+    // le cockpit, le casque et le halo
+    g.fillStyle = '#121212'; g.beginPath(); g.ellipse(-.6, 0, 2.6, 1.7, 0, 0, 7); g.fill();
+    g.fillStyle = c2; g.beginPath(); g.arc(-.9, 0, 1.15, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.7)'; g.fillRect(-.3, -.35, .5, .7);
+    g.strokeStyle = '#3A3A3A'; g.lineWidth = .8; g.beginPath(); g.ellipse(0, 0, 2.9, 2, 0, -1.8, 1.8); g.stroke();
+    // l'aileron avant
+    rect(11.2, -6.6, 2.4, 13.2, c2, .6); rect(11.4, -6.8, 2.2, 1.4, c1, .3); rect(11.4, 5.4, 2.2, 1.4, c1, .3);
     g.restore();
   }
   // dessiner la course dans un rectangle (cadre 1000 × 600 ajusté), avec le fond déjà préparé
@@ -393,13 +534,21 @@ window.PaddockCourse = (() => {
     const ordreVoitures = R.voitures.slice().sort((a, b) => (a.joueur ? 1 : 0) - (b.joueur ? 1 : 0));
     for(const v of ordreVoitures){
       const pos = ((v.s % T.L) + T.L) % T.L, i = Math.floor(pos / P.STEP) % T.n, f = (pos / P.STEP) % 1;
-      const p = T.pts[i], q = T.pts[(i + 1) % T.n], a = T.cap[i];
-      const lat = v.etat === 'abandon' ? -54 : v.lat;
-      const x = p[0] + (q[0] - p[0]) * f - Math.sin(a) * lat, y = p[1] + (q[1] - p[1]) * f + Math.cos(a) * lat;
+      const p = T.pts[i], q = T.pts[(i + 1) % T.n];
+      let a = T.cap[i];
+      const lat = v.lat;
+      let x = p[0] + (q[0] - p[0]) * f - Math.sin(a) * lat, y = p[1] + (q[1] - p[1]) * f + Math.cos(a) * lat;
+      if(v.etat === 'stand'){
+        // sur la voie des stands : on glisse de la trajectoire vers la voie, puis on la suit
+        const S = T.stands, k = kStand(T, v), j = clamp(k + S.nE, 0, S.tot), m = pointStand(S, k);
+        const b = clamp(Math.min(j, S.tot - j) / (S.tot * .12), 0, 1);
+        x = x + (m.x - x) * b; y = y + (m.y - y) * b;
+        let da = m.a - a; while(da > PI) da -= 2 * PI; while(da < -PI) da += 2 * PI; a += da * b;
+      }
       v.x = x; v.y = y;
       if(v.joueur){ g.strokeStyle = '#FFD23F'; g.lineWidth = 3; g.beginPath(); g.arc(x, y, 15, 0, 7); g.stroke(); }
       g.globalAlpha = v.etat === 'abandon' ? .55 : 1;
-      voiture(g, x, y, a, v.c1, v.c2, .95);
+      voiture(g, x, y, a, v.c1, v.c2, .92);
       g.globalAlpha = 1;
     }
     // les noms courts
