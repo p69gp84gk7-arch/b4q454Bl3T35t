@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Le Grand Quiz · Altitude Arcade</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=111">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=111">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie (rien de flou derrière) */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --marge-haut:var(--barre-statut); }
+:root{
+  --nuit:#0B1640; --nuit-2:#1A0F45; --carte:rgba(255,255,255,.07); --ligne:rgba(255,255,255,.16); --texte:#F4F1FF; --doux:#B9B6E3;
+  --or:#F6C445; --or-2:#B98A17; --orange:#F39A2E; --vert:#2FB36B; --rouge:#E5484D; --bleu:#3B6FE0; --violet:#7B4DE0;
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; min-height:100%; }
+html{ background:var(--nuit-2); }
+body{ background:radial-gradient(ellipse at 50% -10%, #2B2A7A 0, var(--nuit) 45%, var(--nuit-2) 100%); background-attachment:fixed; color:var(--texte);
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-tap-highlight-color:transparent; }
+button{ font:inherit; color:inherit; border:0; cursor:pointer; }
+.page{ max-width:760px; margin:0 auto; padding:calc(14px + var(--marge-haut)) 16px calc(28px + env(safe-area-inset-bottom, 0px)); }
+.page[hidden]{ display:none; }
+.tete{ display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+.tete a, .tete .bt-l{ color:var(--texte); text-decoration:none; padding:7px 12px; border:1.5px solid var(--ligne); border-radius:12px; font-weight:700; background:transparent; white-space:nowrap; }
+.tete .droite{ margin-left:auto; }
+h1{ font-family:"Bebas Neue", "Bricolage Grotesque", sans-serif; font-weight:400; font-size:clamp(3rem, 14vw, 4.6rem); line-height:.9; margin:6px 0 4px; letter-spacing:.02em;
+  background:linear-gradient(180deg, #FFF3C2, var(--or) 55%, var(--or-2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.sous{ color:var(--doux); margin:0 0 18px; line-height:1.4; }
+h2{ font-size:.82rem; text-transform:uppercase; letter-spacing:.09em; color:var(--doux); margin:20px 0 9px; font-weight:700; }
+.choix{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+.puce{ padding:11px 8px; border-radius:14px; background:var(--carte); border:1.5px solid var(--ligne); font-weight:800; line-height:1.15; text-align:center; }
+.puce small{ display:block; font-weight:500; color:var(--doux); font-size:.75rem; margin-top:2px; }
+.puce[aria-pressed="true"]{ background:linear-gradient(180deg, #FFE08A, var(--or)); color:#2A1D00; border-color:var(--or); }
+.puce[aria-pressed="true"] small{ color:#5A4300; }
+.modes{ display:grid; gap:12px; }
+.mode{ display:flex; align-items:center; gap:14px; padding:16px; border-radius:18px; text-align:left; background:linear-gradient(135deg, rgba(123,77,224,.35), rgba(59,111,224,.25)); border:1.5px solid var(--ligne); box-shadow:0 8px 22px rgba(0,0,0,.25); }
+.mode .ico{ font-size:2.3rem; line-height:1; }
+.mode b{ display:block; font-size:1.2rem; }
+.mode small{ display:block; color:var(--doux); line-height:1.35; margin-top:2px; }
+.mode .rec{ display:block; color:var(--or); font-weight:700; margin-top:4px; font-size:.86rem; }
+.ligne-stats{ color:var(--doux); font-size:.88rem; line-height:1.5; }
+.bt{ padding:13px 16px; border-radius:14px; font-weight:800; font-size:1.02rem; }
+.bt.or{ background:linear-gradient(180deg, #FFE08A, var(--or)); color:#2A1D00; box-shadow:0 4px 0 var(--or-2); }
+.bt.or:active{ transform:translateY(2px); box-shadow:0 2px 0 var(--or-2); }
+.bt.vide{ background:transparent; border:1.5px solid var(--ligne); }
+.bt:disabled{ opacity:.4; }
+.rangee{ display:flex; gap:10px; flex-wrap:wrap; }
+.rangee .bt{ flex:1; }
+
+/* L'échelle */
+.plateau{ display:grid; gap:14px; }
+@media (min-width:760px){ .plateau{ grid-template-columns:1fr 210px; align-items:start; } }
+.echelle{ display:flex; flex-direction:column-reverse; gap:3px; padding:8px; border-radius:16px; background:rgba(0,0,0,.25); border:1.5px solid var(--ligne); }
+.echelle div{ display:flex; justify-content:space-between; padding:3px 10px; border-radius:8px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--doux); font-size:.9rem; }
+.echelle div.palier{ color:#fff; }
+.echelle div.fait{ color:var(--or); }
+.echelle div.ici{ background:var(--orange); color:#1B0F00; }
+@media (max-width:759px){ .echelle{ flex-direction:row; flex-wrap:nowrap; overflow-x:auto; padding:6px; scrollbar-width:none; }
+  .echelle div{ flex:none; flex-direction:column; align-items:center; padding:4px 7px; font-size:.72rem; min-width:46px; }
+  .echelle div span:first-child{ font-size:.66rem; opacity:.8; } }
+.gain{ display:flex; justify-content:space-between; align-items:center; gap:10px; color:var(--doux); font-weight:700; font-size:.95rem; }
+.gain b{ color:var(--or); font-size:1.1rem; }
+.question{ padding:18px 16px; border-radius:18px; text-align:center; font-size:clamp(1.1rem, 4.6vw, 1.45rem); font-weight:700; line-height:1.3;
+  background:linear-gradient(180deg, #18266B, #0F1A4E); border:2px solid #6E7DD8; box-shadow:0 0 22px rgba(110,125,216,.35); min-height:96px; display:grid; place-items:center; }
+.question small{ display:block; font-size:.78rem; color:var(--doux); font-weight:600; margin-bottom:6px; text-transform:uppercase; letter-spacing:.08em; }
+.reponses{ display:grid; gap:10px; }
+@media (min-width:560px){ .reponses{ grid-template-columns:1fr 1fr; } }
+.rep{ display:flex; align-items:center; gap:10px; padding:13px 14px; border-radius:999px; text-align:left; font-weight:700; font-size:1.02rem; line-height:1.2;
+  background:linear-gradient(180deg, #1B2A78, #111C55); border:2px solid #6E7DD8; min-height:56px; transition:background .2s, transform .1s; }
+.rep .l{ color:var(--or); font-weight:800; flex:none; }
+.rep:active{ transform:scale(.98); }
+.rep.choisie{ background:linear-gradient(180deg, #FFB547, var(--orange)); color:#1B0F00; border-color:#FFD38A; }
+.rep.choisie .l{ color:#1B0F00; }
+.rep.bonne{ background:linear-gradient(180deg, #4CD98B, var(--vert)); color:#002811; border-color:#A8F0C6; }
+.rep.bonne .l{ color:#002811; }
+.rep.fausse{ background:linear-gradient(180deg, #F27A7E, var(--rouge)); color:#2A0002; border-color:#FFC2C4; }
+.rep.cachee{ visibility:hidden; }
+.rep.clignote{ animation:clignote .35s 4 alternate; }
+@keyframes clignote{ to{ filter:brightness(1.5); } }
+.jokers{ display:flex; gap:10px; align-items:stretch; }
+.joker{ padding:10px 14px; border-radius:14px; background:var(--carte); border:1.5px solid var(--or); color:var(--or); font-weight:800; }
+.joker:disabled{ border-color:var(--ligne); color:var(--doux); text-decoration:line-through; opacity:.6; }
+.stop{ margin-left:auto; }
+.message{ text-align:center; min-height:1.4em; font-weight:700; margin:0; }
+.message.ok{ color:#8BF0B5; } .message.ko{ color:#FFA9AC; }
+
+/* Série rapide */
+.chrono{ height:10px; border-radius:99px; background:rgba(255,255,255,.12); overflow:hidden; }
+.chrono i{ display:block; height:100%; width:100%; background:linear-gradient(90deg, var(--vert), var(--or), var(--rouge)); transform-origin:left; }
+.score-serie{ display:flex; justify-content:space-between; font-weight:800; font-variant-numeric:tabular-nums; }
+.score-serie b{ color:var(--or); }
+
+/* Petit bac */
+.joueurs{ display:grid; gap:8px; }
+.joueur{ display:flex; gap:8px; }
+.joueur input, .grille input{ flex:1; min-width:0; font:inherit; font-size:1.05rem; padding:11px 12px; border-radius:12px; border:0; background:#F4F1FF; color:#1A1340; }
+.joueur button{ padding:0 14px; border-radius:12px; background:var(--carte); border:1.5px solid var(--ligne); font-weight:800; }
+.cats{ display:flex; flex-wrap:wrap; gap:8px; }
+.cats .puce{ padding:9px 12px; }
+.lettre{ font-family:"Bebas Neue", sans-serif; font-size:7rem; line-height:1; text-align:center; color:var(--or); margin:10px 0; text-shadow:0 6px 30px rgba(246,196,69,.45); }
+.grille{ display:grid; gap:10px; }
+.grille label{ display:grid; gap:4px; font-weight:700; color:var(--doux); }
+.grille label span b{ color:var(--texte); }
+.bandeau{ position:sticky; top:var(--marge-haut); z-index:5; display:flex; align-items:center; gap:12px; padding:10px 0; background:linear-gradient(180deg, var(--nuit) 70%, transparent); }
+.bandeau .petite-lettre{ font-family:"Bebas Neue", sans-serif; font-size:2.8rem; color:var(--or); line-height:1; }
+.bandeau .temps{ margin-left:auto; font-weight:800; font-variant-numeric:tabular-nums; font-size:1.3rem; }
+.bandeau .temps.urgent{ color:var(--rouge); }
+table{ width:100%; border-collapse:collapse; }
+th, td{ padding:7px 6px; border-bottom:1px solid var(--ligne); text-align:left; vertical-align:top; font-size:.95rem; }
+th{ color:var(--doux); font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; }
+td.pts, th.pts{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.mot{ display:inline-flex; align-items:center; gap:6px; padding:4px 9px; border-radius:10px; font-weight:700; background:var(--carte); border:1.5px solid var(--ligne); text-align:left; }
+.mot.ok{ border-color:var(--vert); } .mot.ok::before{ content:'✓'; color:var(--vert); }
+.mot.main{ border-color:var(--or); } .mot.main::before{ content:'✋'; }
+.mot.non{ border-color:var(--rouge); opacity:.75; text-decoration:line-through; } .mot.non::before{ content:'✕'; color:var(--rouge); }
+.mot.vide{ opacity:.45; }
+.mot.doute{ border-style:dashed; border-color:var(--or); } .mot.doute::before{ content:'?'; color:var(--or); font-weight:800; }
+.aide-bac{ color:var(--doux); font-size:.88rem; line-height:1.45; }
+
+/* Fin */
+.fin{ text-align:center; }
+.gros{ font-family:"Bebas Neue", sans-serif; font-size:clamp(3.4rem, 16vw, 5.5rem); line-height:1; color:var(--or); margin:8px 0; }
+.badge{ display:inline-block; padding:6px 14px; border-radius:999px; background:var(--or); color:#2A1D00; font-weight:800; margin:6px 0; }
+.revoir{ text-align:left; margin-top:12px; }
+.revoir p{ margin:0 0 8px; padding:10px 12px; border-radius:12px; background:var(--carte); line-height:1.35; }
+.revoir p b{ color:var(--vert); }
+.confettis{ position:fixed; inset:0; pointer-events:none; z-index:20; }
+@media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="barre-statut" aria-hidden="true"></div>
+
+<!-- Accueil du quiz -->
+<main class="page" id="pMenu">
+  <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="bt-l droite" id="bSon">🔊</button></div>
+  <h1>Le Grand Quiz</h1>
+  <p class="sous">Des questions de culture générale à trois niveaux, l'échelle des 15 questions jusqu'au million, la série rapide contre la montre, et le petit bac à jouer seul ou à plusieurs.</p>
+
+  <h2>Niveau</h2>
+  <div class="choix" id="niveaux">
+    <button class="puce" data-niv="junior">Junior<small>8 – 12 ans</small></button>
+    <button class="puce" data-niv="ado">Ado<small>12 – 16 ans</small></button>
+    <button class="puce" data-niv="adulte">Adulte<small>culture générale</small></button>
+  </div>
+  <h2>Thèmes</h2>
+  <div class="choix" id="themes">
+    <button class="puce" data-th="classiques">📚 Classiques<small>histoire, géo, sciences, arts</small></button>
+    <button class="puce" data-th="loisirs">🎬 Loisirs<small>sport, cinéma, musique, jeux</small></button>
+    <button class="puce" data-th="quotidien">🍎 Vie quotidienne<small>animaux, cuisine, langue, corps</small></button>
+  </div>
+
+  <h2>Jouer</h2>
+  <div class="modes">
+    <button class="mode" id="mEchelle"><span class="ico">🏆</span><span><b>L'échelle des 15 questions</b><small>De plus en plus dur, jusqu'à 1 million de points. Paliers sûrs à la 5e et à la 10e question, un joker 50/50, et on peut s'arrêter pour garder ses gains.</small><span class="rec" id="recEchelle"></span></span></button>
+    <button class="mode" id="mSerie"><span class="ico">⏱️</span><span><b>Série rapide</b><small>10 questions, 15 secondes chacune : plus on répond vite, plus on marque de points.</small><span class="rec" id="recSerie"></span></span></button>
+    <button class="mode" id="mBac"><span class="ico">✏️</span><span><b>Petit bac</b><small>Une lettre, des catégories, un chrono. Seul (l'appli vérifie les mots) ou à plusieurs sur le même téléphone.</small><span class="rec" id="recBac"></span></span></button>
+  </div>
+  <h2>Mes réponses</h2>
+  <p class="ligne-stats" id="stats"></p>
+</main>
+
+<!-- L'échelle -->
+<main class="page" id="pEchelle" hidden>
+  <div class="tete"><button class="bt-l" id="eQuitter">‹ Arrêter</button><span class="droite ligne-stats" id="eNiveau"></span></div>
+  <div class="plateau">
+    <div style="display:grid; gap:12px">
+      <div class="gain"><span id="eEtape"></span><span>En jeu : <b id="eEnJeu"></b></span></div>
+      <div class="question" id="eQuestion"></div>
+      <div class="reponses" id="eReponses"></div>
+      <p class="message" id="eMessage"></p>
+      <div class="jokers">
+        <button class="joker" id="j5050">50 : 50</button>
+        <button class="bt vide stop" id="eStop">Je m'arrête</button>
+        <button class="bt or" id="eSuite" hidden>Question suivante ▶</button>
+      </div>
+    </div>
+    <div class="echelle" id="eEchelle"></div>
+  </div>
+</main>
+
+<!-- La série rapide -->
+<main class="page" id="pSerie" hidden>
+  <div class="tete"><button class="bt-l" id="sQuitter">‹ Arrêter</button><span class="droite ligne-stats" id="sNiveau"></span></div>
+  <div style="display:grid; gap:12px">
+    <div class="score-serie"><span id="sEtape"></span><span>Score : <b id="sScore">0</b></span></div>
+    <div class="chrono"><i id="sChrono"></i></div>
+    <div class="question" id="sQuestion"></div>
+    <div class="reponses" id="sReponses"></div>
+    <p class="message" id="sMessage"></p>
+  </div>
+</main>
+
+<!-- Petit bac : réglages -->
+<main class="page" id="pBac" hidden>
+  <div class="tete"><button class="bt-l" id="bRetour">‹ Menu</button></div>
+  <h1 style="font-size:3.2rem">Petit bac</h1>
+  <p class="sous">On tire une lettre ; il faut trouver un mot qui commence par cette lettre dans chaque catégorie, avant la fin du chrono.</p>
+  <h2>Joueurs (chacun son tour sur le téléphone)</h2>
+  <div class="joueurs" id="bJoueurs"></div>
+  <button class="bt vide" id="bAjout" style="margin-top:8px">+ Ajouter un joueur</button>
+  <h2>Catégories (4 au moins)</h2>
+  <div class="cats" id="bCats"></div>
+  <h2>Temps pour remplir la grille</h2>
+  <div class="choix" id="bTemps" style="grid-template-columns:repeat(4, 1fr)"></div>
+  <h2>Nombre de manches</h2>
+  <div class="choix" id="bManches" style="grid-template-columns:repeat(4, 1fr)"></div>
+  <h2>Lettres</h2>
+  <div class="choix" id="bLettres" style="grid-template-columns:1fr 1fr">
+    <button class="puce" data-l="faciles">Lettres faciles<small>sans K, Q, W, X, Y, Z</small></button>
+    <button class="puce" data-l="toutes">Toutes les lettres<small>plus difficile</small></button>
+  </div>
+  <p class="aide-bac">Seul : un mot de la liste de l'appli rapporte 10 points ; un mot qu'elle ne connaît pas peut être accepté à la main (5 points). À plusieurs : on vérifie ensemble les mots inconnus ; un mot valable rapporte 10 points, ou 5 si un autre joueur a trouvé le même.</p>
+  <button class="bt or" id="bJouer" style="width:100%; margin-top:14px">▶ Tirer la lettre</button>
+</main>
+
+<!-- Petit bac : tour d'un joueur -->
+<main class="page" id="pBacJeu" hidden>
+  <div id="bPasse" hidden style="text-align:center; margin-top:14vh">
+    <p class="sous" id="bManche"></p>
+    <h1 id="bQui" style="font-size:3rem"></h1>
+    <p class="sous">Passe le téléphone : les autres ne doivent pas regarder !</p>
+    <div class="lettre" id="bLettre"></div>
+    <button class="bt or" id="bGo" style="min-width:60%">C'est parti !</button>
+  </div>
+  <div id="bGrille" hidden>
+    <div class="bandeau"><span class="petite-lettre" id="bLettre2"></span><span id="bQui2" style="font-weight:800"></span><span class="temps" id="bTempsReste"></span></div>
+    <div class="grille" id="bChamps"></div>
+    <button class="bt or" id="bStop" style="width:100%; margin-top:16px">STOP ! J'ai fini</button>
+  </div>
+</main>
+
+<!-- Petit bac : correction -->
+<main class="page" id="pBacCorr" hidden>
+  <div class="tete"><button class="bt-l" id="cQuitter">‹ Menu</button><span class="droite ligne-stats" id="cManche"></span></div>
+  <h2 id="cTitre"></h2>
+  <p class="aide-bac" id="cAide"></p>
+  <div id="cTable"></div>
+  <h2>Scores</h2>
+  <div id="cScores"></div>
+  <button class="bt or" id="cSuite" style="width:100%; margin-top:14px"></button>
+</main>
+
+<!-- Fin de partie -->
+<main class="page fin" id="pFin" hidden>
+  <h2 id="fMode" style="margin-top:8vh"></h2>
+  <div class="gros" id="fScore"></div>
+  <p class="sous" id="fTexte"></p>
+  <div id="fBadge"></div>
+  <div class="revoir" id="fRevoir"></div>
+  <div class="rangee" style="margin-top:16px"><button class="bt vide" id="fMenu">Menu</button><button class="bt or" id="fRejouer">Rejouer</button></div>
+</main>
+<canvas class="confettis" id="confettis" hidden></canvas>
+
+<script src="quiz/junior.js?v=111"></script>
+<script src="quiz/ado.js?v=111"></script>
+<script src="quiz/adulte.js?v=111"></script>
+<script src="quiz/mots.js?v=111"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const melange = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fmt = n => Math.round(n).toLocaleString('fr-FR');
+const QQ = window.QUIZ_QUESTIONS, MOTS = window.QUIZ_MOTS;
+const NIVEAUX = { junior:'Junior', ado:'Ado', adulte:'Adulte' };
+const GROUPES = { classiques:['hi', 'ge', 'sc', 'ar'], loisirs:['sp', 'ci', 'mu', 'jv'], quotidien:['an', 'cu', 'la', 'co'] };
+const NOMS_THEMES = { hi:'Histoire', ge:'Géographie', sc:'Sciences', ar:'Arts et lettres', sp:'Sport', ci:'Cinéma', mu:'Musique', jv:'Jeux', an:'Animaux', cu:'Cuisine', la:'Langue française', co:'Corps humain' };
+const GAINS = [100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000, 500000, 1000000];
+const PALIERS = [4, 9];   // les questions 5 et 10 (comptées à partir de 0)
+
+/* ---------- Réglages, records, statistiques ---------- */
+const reglages = Object.assign({ niveau:'junior', themes:['classiques', 'loisirs', 'quotidien'] }, lire('quiz-reglages', {}));
+const records = () => Object.assign({ echelle:{}, millions:{}, serie:{}, bac:{} }, lire('quiz-records', {}));
+const stats = () => Object.assign({ repondu:0, justes:0, parTheme:{} }, lire('quiz-stats', {}));
+function noterReponse(q, juste){
+  const s = stats(); s.repondu++; if(juste) s.justes++;
+  const t = s.parTheme[q.t] = s.parTheme[q.t] || [0, 0]; t[0]++; if(juste) t[1]++;
+  ecrire('quiz-stats', s);
+}
+// Les questions déjà vues reviennent le plus tard possible
+const empreinte = s => { let h = 5381; for(let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
+const vues = lire('quiz-vus', {});
+const sauverVues = () => ecrire('quiz-vus', vues);
+function banque(){
+  const themes = reglages.themes.flatMap(g => GROUPES[g]);
+  return (QQ[reglages.niveau] || []).filter(q => themes.includes(q[0])).map(q => ({ t:q[0], d:q[1], q:q[2], bonne:q[3], fausses:q.slice(4), id:reglages.niveau[0] + empreinte(q[2]) }));
+}
+function tirer(liste, d, deja){
+  // la difficulté voulue d'abord, puis les plus proches ; parmi elles, les moins vues
+  for(let ecart = 0; ecart <= 4; ecart++){
+    const ok = liste.filter(q => Math.abs(q.d - d) === ecart && !deja.has(q.id));
+    if(!ok.length) continue;
+    const min = Math.min(...ok.map(q => vues[q.id] || 0));
+    const choix = ok.filter(q => (vues[q.id] || 0) === min);
+    const q = choix[Math.floor(Math.random() * choix.length)];
+    deja.add(q.id); vues[q.id] = (vues[q.id] || 0) + 1;
+    return q;
+  }
+  return null;
+}
+
+/* ---------- Le son ---------- */
+let son = lire('quiz-son', true), AC = null;
+function note(f, d, { type = 'sine', vol = .08, delai = 0, glisse = 0 } = {}){
+  if(!son) return;
+  try{
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if(AC.state === 'suspended') AC.resume();
+    const t = AC.currentTime + delai, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if(glisse) o.frequency.exponentialRampToValueAtTime(f + glisse, t + d);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + d + .05);
+  }catch(e){}
+}
+const SONS = {
+  choix:() => note(392, .5, { type:'triangle', vol:.06 }),
+  bonne:() => [523, 659, 784, 1047].forEach((f, i) => note(f, .35, { type:'triangle', delai:i * .09 })),
+  fausse:() => { note(196, .6, { type:'sawtooth', vol:.05 }); note(185, .6, { type:'sawtooth', vol:.05, delai:.05 }); },
+  joker:() => note(880, .3, { glisse:-400 }),
+  tic:() => note(1200, .05, { type:'square', vol:.025 }),
+  million:() => [523, 659, 784, 1047, 784, 1047, 1319, 1568].forEach((f, i) => note(f, .4, { type:'triangle', delai:i * .14, vol:.08 })),
+  lettre:() => [440, 554, 659, 880].forEach((f, i) => note(f, .25, { delai:i * .07 })),
+};
+$('bSon').onclick = () => { son = !son; ecrire('quiz-son', son); $('bSon').textContent = son ? '🔊' : '🔇'; };
+
+/* ---------- Les écrans ---------- */
+const PAGES = ['pMenu', 'pEchelle', 'pSerie', 'pBac', 'pBacJeu', 'pBacCorr', 'pFin'];
+function montrer(id){ PAGES.forEach(p => $(p).hidden = p !== id); scrollTo(0, 0); }
+function menu(){
+  clearInterval(serie.minuteur); clearInterval(bac.minuteur);
+  document.querySelectorAll('#niveaux .puce').forEach(b => b.setAttribute('aria-pressed', b.dataset.niv === reglages.niveau));
+  document.querySelectorAll('#themes .puce').forEach(b => b.setAttribute('aria-pressed', reglages.themes.includes(b.dataset.th)));
+  const r = records(), n = reglages.niveau;
+  $('recEchelle').textContent = r.echelle[n] ? `Record ${NIVEAUX[n]} : ${fmt(r.echelle[n])} points` + (r.millions[n] ? ` · 🏆 ${r.millions[n]} fois millionnaire` : '') : '';
+  $('recSerie').textContent = r.serie[n] ? `Record ${NIVEAUX[n]} : ${fmt(r.serie[n])} points` : '';
+  $('recBac').textContent = r.bac.seul ? `Meilleure manche en solo : ${r.bac.seul} points` : '';
+  const s = stats();
+  $('stats').textContent = s.repondu ? `${fmt(s.repondu)} questions répondues, ${Math.round(s.justes / s.repondu * 100)} % de bonnes réponses. ` + (() => {
+    const t = Object.entries(s.parTheme).filter(([, v]) => v[0] >= 5).sort((a, b) => b[1][1] / b[1][0] - a[1][1] / a[1][0]);
+    return t.length >= 2 ? `Point fort : ${NOMS_THEMES[t[0][0]]}. À travailler : ${NOMS_THEMES[t[t.length - 1][0]]}.` : '';
+  })() : 'Pas encore de réponses : à toi de jouer !';
+  $('bSon').textContent = son ? '🔊' : '🔇';
+  montrer('pMenu');
+}
+$('niveaux').onclick = e => { const b = e.target.closest('[data-niv]'); if(!b) return; reglages.niveau = b.dataset.niv; ecrire('quiz-reglages', reglages); menu(); };
+$('themes').onclick = e => {
+  const b = e.target.closest('[data-th]'); if(!b) return;
+  const t = b.dataset.th, i = reglages.themes.indexOf(t);
+  if(i >= 0){ if(reglages.themes.length > 1) reglages.themes.splice(i, 1); } else reglages.themes.push(t);
+  ecrire('quiz-reglages', reglages); menu();
+};
+
+// Une question à quatre réponses (dans le conteneur donné)
+function afficherQuestion(q, zoneQ, zoneR, etiquette){
+  q.ordre = melange([q.bonne, ...q.fausses]);
+  zoneQ.innerHTML = `<div><small>${esc(etiquette)}</small>${esc(q.q)}</div>`;
+  zoneR.innerHTML = q.ordre.map((r, i) => `<button class="rep" data-i="${i}"><span class="l">${'ABCD'[i]} :</span><span>${esc(r)}</span></button>`).join('');
+}
+const boutonDe = (zone, texte) => [...zone.querySelectorAll('.rep')].find(b => b.lastChild.textContent === texte);
+
+/* ---------- L'échelle des 15 questions ---------- */
+const ech = {};
+function debutEchelle(){
+  const liste = banque();
+  if(liste.length < 15){ alert('Pas assez de questions avec ces thèmes : ajoute un thème.'); return; }
+  Object.assign(ech, { liste, deja:new Set(), i:0, joker:true, verrou:false, rates:[] });
+  $('eNiveau').textContent = `${NIVEAUX[reglages.niveau]} · ${reglages.themes.length === 3 ? 'tous thèmes' : reglages.themes.map(t => ({ classiques:'Classiques', loisirs:'Loisirs', quotidien:'Vie quotidienne' }[t])).join(', ')}`;
+  $('j5050').disabled = false;
+  montrer('pEchelle');
+  questionEchelle();
+}
+const palierAtteint = i => { let g = 0; for(const p of PALIERS) if(i > p) g = GAINS[p]; return g; };
+function dessinerEchelle(){
+  $('eEchelle').innerHTML = GAINS.map((g, k) => `<div class="${PALIERS.includes(k) ? 'palier ' : ''}${k < ech.i ? 'fait ' : ''}${k === ech.i ? 'ici' : ''}"><span>${k + 1}</span><span>${fmt(g)}</span></div>`).join('');
+  const ici = $('eEchelle').querySelector('.ici'); if(ici && ici.scrollIntoView && innerWidth < 760) ici.scrollIntoView({ inline:'center', block:'nearest' });
+}
+function questionEchelle(){
+  ech.q = tirer(ech.liste, Math.ceil((ech.i + 1) / 3), ech.deja); sauverVues();
+  ech.verrou = false;
+  dessinerEchelle();
+  $('eEtape').textContent = `Question ${ech.i + 1} / 15` + (PALIERS.includes(ech.i) ? ' · palier' : '');
+  $('eEnJeu').textContent = `${fmt(GAINS[ech.i])} points`;
+  afficherQuestion(ech.q, $('eQuestion'), $('eReponses'), NOMS_THEMES[ech.q.t]);
+  $('eMessage').textContent = ''; $('eMessage').className = 'message';
+  $('eSuite').hidden = true; $('eStop').hidden = false; $('j5050').hidden = false;
+  $('eStop').textContent = ech.i ? `Je m'arrête (${fmt(GAINS[ech.i - 1])} pts)` : 'Je m\'arrête';
+  $('eStop').disabled = !ech.i;
+}
+$('eReponses').onclick = e => {
+  const b = e.target.closest('.rep'); if(!b || ech.verrou || b.classList.contains('cachee')) return;
+  ech.verrou = true; SONS.choix();
+  b.classList.add('choisie');
+  $('eStop').hidden = true; $('j5050').hidden = true;
+  const juste = b.lastChild.textContent === ech.q.bonne;
+  setTimeout(() => {
+    noterReponse(ech.q, juste);
+    const bonne = boutonDe($('eReponses'), ech.q.bonne);
+    b.classList.remove('choisie'); bonne.classList.add('bonne', 'clignote');
+    if(juste){
+      SONS.bonne();
+      if(ech.i === 14){ return setTimeout(() => finEchelle(GAINS[14], true), 1300); }
+      $('eMessage').className = 'message ok';
+      $('eMessage').textContent = `Bravo ! ${fmt(GAINS[ech.i])} points` + (PALIERS.includes(ech.i) ? ' : palier atteint, ces points sont à toi !' : '');
+      $('eSuite').hidden = false;
+    } else {
+      SONS.fausse(); b.classList.add('fausse'); ech.rates.push(ech.q);
+      $('eMessage').className = 'message ko'; $('eMessage').textContent = `Dommage ! La bonne réponse était : ${ech.q.bonne}`;
+      setTimeout(() => finEchelle(palierAtteint(ech.i), false), 2200);
+    }
+  }, 1300);
+};
+$('eSuite').onclick = () => { ech.i++; questionEchelle(); };
+$('j5050').onclick = () => {
+  if(!ech.joker || ech.verrou) return;
+  ech.joker = false; $('j5050').disabled = true; SONS.joker();
+  melange(ech.q.fausses).slice(0, 2).forEach(f => boutonDe($('eReponses'), f).classList.add('cachee'));
+};
+$('eStop').onclick = () => { if(!ech.i || ech.verrou) return; if(confirm(`Tu t'arrêtes et tu gardes ${fmt(GAINS[ech.i - 1])} points ?`)) finEchelle(GAINS[ech.i - 1], false, true); };
+$('eQuitter').onclick = () => { if(confirm('Arrêter la partie ? Elle ne comptera pas.')) menu(); };
+function finEchelle(gain, million, arret){
+  const r = records(), n = reglages.niveau, nouveau = gain > (r.echelle[n] || 0);
+  if(nouveau) r.echelle[n] = gain;
+  if(million) r.millions[n] = (r.millions[n] || 0) + 1;
+  ecrire('quiz-records', r);
+  ecrire('quiz-dernier', { mode:'echelle', niveau:n, score:gain, date:Date.now() });
+  $('fMode').textContent = `L'échelle · ${NIVEAUX[n]}`;
+  $('fScore').textContent = `${fmt(gain)} pts`;
+  $('fTexte').textContent = million ? 'MILLIONNAIRE ! Les 15 questions sans faute !' : arret ? `Sage décision : tu t'arrêtes à la question ${ech.i + 1}.` : gain ? `Tu repars avec ton palier.` : 'Pas de palier atteint cette fois… la prochaine sera la bonne !';
+  $('fBadge').innerHTML = million ? '<span class="badge">🏆 1 000 000 de points</span>' : nouveau && gain ? '<span class="badge">Nouveau record !</span>' : '';
+  $('fRevoir').innerHTML = ech.rates.map(q => `<p>${esc(q.q)}<br>Réponse : <b>${esc(q.bonne)}</b></p>`).join('');
+  fin.rejouer = debutEchelle;
+  montrer('pFin');
+  if(million){ SONS.million(); confettis(); }
+}
+
+/* ---------- La série rapide ---------- */
+const serie = { minuteur:0 };
+const DUREE = 15;
+function debutSerie(){
+  const liste = banque();
+  if(liste.length < 10){ alert('Pas assez de questions avec ces thèmes : ajoute un thème.'); return; }
+  Object.assign(serie, { liste, deja:new Set(), i:0, score:0, suite:0, rates:[], justes:0 });
+  $('sNiveau').textContent = NIVEAUX[reglages.niveau];
+  montrer('pSerie');
+  questionSerie();
+}
+function questionSerie(){
+  const d = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5][serie.i];
+  serie.q = tirer(serie.liste, d, serie.deja); sauverVues();
+  serie.verrou = false;
+  $('sEtape').textContent = `Question ${serie.i + 1} / 10` + (serie.suite >= 2 ? ` · 🔥 ${serie.suite} d'affilée` : '');
+  $('sScore').textContent = fmt(serie.score);
+  afficherQuestion(serie.q, $('sQuestion'), $('sReponses'), NOMS_THEMES[serie.q.t]);
+  $('sMessage').textContent = ''; $('sMessage').className = 'message';
+  serie.t0 = performance.now();
+  clearInterval(serie.minuteur);
+  let dernier = DUREE;
+  serie.minuteur = setInterval(() => {
+    const reste = DUREE - (performance.now() - serie.t0) / 1000;
+    $('sChrono').style.transform = `scaleX(${Math.max(0, reste / DUREE)})`;
+    if(reste <= 5 && Math.ceil(reste) < dernier){ dernier = Math.ceil(reste); SONS.tic(); }
+    if(reste <= 0) repondreSerie(null);
+  }, 50);
+}
+function repondreSerie(b){
+  if(serie.verrou) return;
+  serie.verrou = true; clearInterval(serie.minuteur);
+  const reste = Math.max(0, DUREE - (performance.now() - serie.t0) / 1000);
+  const juste = !!b && b.lastChild.textContent === serie.q.bonne;
+  noterReponse(serie.q, juste);
+  boutonDe($('sReponses'), serie.q.bonne).classList.add('bonne');
+  if(juste){
+    serie.suite++; serie.justes++;
+    const pts = Math.round(100 + reste * 10) * (serie.suite >= 3 ? 2 : 1);
+    serie.score += pts; SONS.bonne();
+    $('sMessage').className = 'message ok'; $('sMessage').textContent = `+${pts} points` + (serie.suite >= 3 ? ' (série ×2 !)' : '');
+  } else {
+    serie.suite = 0; serie.rates.push(serie.q); SONS.fausse();
+    if(b) b.classList.add('fausse');
+    $('sMessage').className = 'message ko'; $('sMessage').textContent = b ? `Raté ! C'était : ${serie.q.bonne}` : `Temps écoulé ! C'était : ${serie.q.bonne}`;
+  }
+  $('sScore').textContent = fmt(serie.score);
+  setTimeout(() => { serie.i++; if(serie.i >= 10) finSerie(); else questionSerie(); }, juste ? 1000 : 1900);
+}
+$('sReponses').onclick = e => { const b = e.target.closest('.rep'); if(b) repondreSerie(b); };
+$('sQuitter').onclick = () => { if(confirm('Arrêter la série ? Elle ne comptera pas.')){ clearInterval(serie.minuteur); menu(); } };
+function finSerie(){
+  const r = records(), n = reglages.niveau, nouveau = serie.score > (r.serie[n] || 0);
+  if(nouveau) r.serie[n] = serie.score;
+  ecrire('quiz-records', r);
+  ecrire('quiz-dernier', { mode:'serie', niveau:n, score:serie.score, justes:serie.justes, date:Date.now() });
+  $('fMode').textContent = `Série rapide · ${NIVEAUX[n]}`;
+  $('fScore').textContent = `${fmt(serie.score)} pts`;
+  $('fTexte').textContent = `${serie.justes} bonne${serie.justes > 1 ? 's' : ''} réponse${serie.justes > 1 ? 's' : ''} sur 10.`;
+  $('fBadge').innerHTML = nouveau && serie.score ? '<span class="badge">Nouveau record !</span>' : '';
+  $('fRevoir').innerHTML = serie.rates.map(q => `<p>${esc(q.q)}<br>Réponse : <b>${esc(q.bonne)}</b></p>`).join('');
+  fin.rejouer = debutSerie;
+  montrer('pFin');
+  if(serie.justes === 10) confettis();
+}
+
+/* ---------- Le petit bac ---------- */
+const sansAccent = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const normaliser = s => sansAccent(String(s).trim()).replace(/[’']/g, ' ').replace(/^(le|la|les|un|une|des|l|du|de la)\s+/, '').replace(/[-\s]+/g, ' ').trim();
+const singulier = s => s.replace(/(aux)$/, 'al').replace(/(eaux|eux|oux)$/, m => m.slice(0, -1)).replace(/s$/, '');
+const INDEX = {};
+for(const [k, c] of Object.entries(MOTS)){ INDEX[k] = new Set(); for(const m of c.mots.split('|')){ const n = normaliser(m); INDEX[k].add(n); INDEX[k].add(singulier(n)); } }
+const connu = (cat, mot) => { const n = normaliser(mot); return INDEX[cat].has(n) || INDEX[cat].has(singulier(n)); };
+const commencePar = (mot, l) => normaliser(mot).charAt(0) === sansAccent(l);
+const bac = Object.assign({ joueurs:[''], cats:['prenom', 'animal', 'pays', 'ville', 'fruitleg', 'metier', 'sport', 'objet'], temps:120, manches:3, lettres:'faciles' }, lire('quiz-bac', {}), { minuteur:0 });
+const sauverBac = () => ecrire('quiz-bac', { joueurs:bac.joueurs, cats:bac.cats, temps:bac.temps, manches:bac.manches, lettres:bac.lettres });
+function reglagesBac(){
+  if(!bac.joueurs.length) bac.joueurs = [''];
+  const pseudo = (() => { try{ const s = JSON.parse(localStorage.getItem('compte-session')); return s && s.pseudo; }catch(e){ return ''; } })();
+  if(!bac.joueurs[0] && pseudo) bac.joueurs[0] = pseudo;
+  $('bJoueurs').innerHTML = bac.joueurs.map((j, i) => `<div class="joueur"><input data-j="${i}" value="${esc(j)}" maxlength="16" placeholder="Joueur ${i + 1}">${bac.joueurs.length > 1 ? `<button data-suppr="${i}" aria-label="Retirer">✕</button>` : ''}</div>`).join('');
+  $('bAjout').hidden = bac.joueurs.length >= 6;
+  $('bCats').innerHTML = Object.entries(MOTS).map(([k, c]) => `<button class="puce" data-cat="${k}" aria-pressed="${bac.cats.includes(k)}">${c.ico} ${esc(c.n)}</button>`).join('');
+  $('bTemps').innerHTML = [[60, '1 min'], [120, '2 min'], [180, '3 min'], [0, 'Sans limite']].map(([v, t]) => `<button class="puce" data-t="${v}" aria-pressed="${bac.temps === v}">${t}</button>`).join('');
+  $('bManches').innerHTML = [1, 3, 5, 8].map(v => `<button class="puce" data-m="${v}" aria-pressed="${bac.manches === v}">${v}</button>`).join('');
+  document.querySelectorAll('#bLettres .puce').forEach(b => b.setAttribute('aria-pressed', b.dataset.l === bac.lettres));
+  $('bJouer').disabled = bac.cats.length < 4;
+  montrer('pBac');
+}
+$('bJoueurs').addEventListener('input', e => { const i = e.target.dataset.j; if(i != null){ bac.joueurs[+i] = e.target.value.trim(); sauverBac(); } });
+$('bJoueurs').addEventListener('click', e => { const b = e.target.closest('[data-suppr]'); if(b){ bac.joueurs.splice(+b.dataset.suppr, 1); sauverBac(); reglagesBac(); } });
+$('bAjout').onclick = () => { bac.joueurs.push(''); sauverBac(); reglagesBac(); setTimeout(() => { const l = $('bJoueurs').querySelectorAll('input'); l[l.length - 1].focus(); }, 30); };
+$('bCats').onclick = e => { const b = e.target.closest('[data-cat]'); if(!b) return; const k = b.dataset.cat, i = bac.cats.indexOf(k); if(i >= 0) bac.cats.splice(i, 1); else bac.cats.push(k); sauverBac(); reglagesBac(); };
+$('bTemps').onclick = e => { const b = e.target.closest('[data-t]'); if(b){ bac.temps = +b.dataset.t; sauverBac(); reglagesBac(); } };
+$('bManches').onclick = e => { const b = e.target.closest('[data-m]'); if(b){ bac.manches = +b.dataset.m; sauverBac(); reglagesBac(); } };
+$('bLettres').onclick = e => { const b = e.target.closest('[data-l]'); if(b){ bac.lettres = b.dataset.l; sauverBac(); reglagesBac(); } };
+$('bRetour').onclick = menu;
+const nomJoueur = i => bac.joueurs[i] || `Joueur ${i + 1}`;
+function debutBac(){
+  bac.partie = { manche:0, scores:bac.joueurs.map(() => 0), lettresVues:[], cats:bac.cats.slice() };
+  mancheBac();
+}
+function mancheBac(){
+  const p = bac.partie;
+  const alpha = bac.lettres === 'faciles' ? 'ABCDEFGHIJLMNOPRSTUV' : 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const libres = [...alpha].filter(l => !p.lettresVues.includes(l));
+  p.lettre = libres[Math.floor(Math.random() * libres.length)];
+  p.lettresVues.push(p.lettre);
+  p.reponses = bac.joueurs.map(() => ({}));
+  p.tour = 0;
+  passeBac();
+}
+function passeBac(){
+  const p = bac.partie;
+  $('bPasse').hidden = false; $('bGrille').hidden = true;
+  $('bManche').textContent = `Manche ${p.manche + 1} / ${bac.manches}`;
+  $('bQui').textContent = bac.joueurs.length > 1 ? `À ${nomJoueur(p.tour)} !` : 'La lettre est…';
+  $('bLettre').textContent = '?';
+  $('bGo').hidden = true;
+  montrer('pBacJeu');
+  // la lettre « roule » puis s'arrête
+  let n = 0; const alpha = 'ABCDEFGHIJLMNOPRSTUV';
+  const roule = setInterval(() => { $('bLettre').textContent = alpha[Math.floor(Math.random() * alpha.length)]; SONS.tic(); if(++n > 14){ clearInterval(roule); $('bLettre').textContent = p.lettre; SONS.lettre(); $('bGo').hidden = false; } }, 70);
+}
+$('bGo').onclick = () => {
+  const p = bac.partie;
+  $('bPasse').hidden = true; $('bGrille').hidden = false;
+  $('bLettre2').textContent = p.lettre; $('bQui2').textContent = bac.joueurs.length > 1 ? nomJoueur(p.tour) : '';
+  $('bChamps').innerHTML = p.cats.map(k => `<label><span>${MOTS[k].ico} <b>${esc(MOTS[k].n)}</b></span><input data-cat="${k}" autocomplete="off" autocapitalize="sentences" spellcheck="false" placeholder="${p.lettre}…"></label>`).join('');
+  scrollTo(0, 0);
+  setTimeout(() => { const i = $('bChamps').querySelector('input'); if(i) i.focus(); }, 50);
+  clearInterval(bac.minuteur);
+  const t0 = performance.now();
+  const maj = () => {
+    if(!bac.temps){ $('bTempsReste').textContent = '∞'; return; }
+    const reste = Math.ceil(bac.temps - (performance.now() - t0) / 1000);
+    $('bTempsReste').textContent = `${Math.floor(Math.max(0, reste) / 60)}:${String(Math.max(0, reste) % 60).padStart(2, '0')}`;
+    $('bTempsReste').classList.toggle('urgent', reste <= 10);
+    if(reste <= 10 && reste > 0) SONS.tic();
+    if(reste <= 0) finTourBac();
+  };
+  maj(); bac.minuteur = setInterval(maj, 1000);
+};
+$('bChamps').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); const l = [...$('bChamps').querySelectorAll('input')], i = l.indexOf(e.target); if(l[i + 1]) l[i + 1].focus(); else e.target.blur(); } });
+$('bStop').onclick = () => finTourBac();
+function finTourBac(){
+  clearInterval(bac.minuteur);
+  const p = bac.partie;
+  $('bChamps').querySelectorAll('input').forEach(i => { p.reponses[p.tour][i.dataset.cat] = i.value.trim(); });
+  if(p.tour < bac.joueurs.length - 1){ p.tour++; passeBac(); }
+  else correctionBac();
+}
+// Chaque mot : ok (dans la liste), doute (inconnu, à décider), non (mauvaise lettre), vide
+function correctionBac(){
+  const p = bac.partie;
+  p.etat = p.reponses.map(rep => Object.fromEntries(p.cats.map(k => {
+    const m = rep[k] || '';
+    return [k, !m ? 'vide' : !commencePar(m, p.lettre) ? 'non' : connu(k, m) ? 'ok' : 'doute'];
+  })));
+  dessinerCorrection();
+  montrer('pBacCorr');
+}
+function pointsManche(){
+  const p = bac.partie, seul = bac.joueurs.length === 1;
+  return bac.joueurs.map((_, j) => p.cats.reduce((s, k) => {
+    const e = p.etat[j][k];
+    if(e === 'ok' || e === 'main'){
+      if(seul) return s + (e === 'ok' ? 10 : 5);
+      const n = normaliser(p.reponses[j][k]);
+      const pareil = bac.joueurs.some((_, o) => o !== j && ['ok', 'main'].includes(p.etat[o][k]) && singulier(normaliser(p.reponses[o][k])) === singulier(n));
+      return s + (pareil ? 5 : 10);
+    }
+    return s;
+  }, 0));
+}
+function dessinerCorrection(){
+  const p = bac.partie, seul = bac.joueurs.length === 1;
+  $('cManche').textContent = `Manche ${p.manche + 1} / ${bac.manches} · lettre ${p.lettre}`;
+  $('cTitre').textContent = 'La correction';
+  $('cAide').textContent = seul ? 'Les mots en pointillés ne sont pas dans la liste de l\'appli : touche-les pour les accepter (5 points) si tu es sûr qu\'ils sont justes.'
+    : 'Les mots en pointillés ne sont pas dans la liste de l\'appli : décidez ensemble ! Touchez un mot pour l\'accepter ou le refuser.';
+  const pts = pointsManche();
+  $('cTable').innerHTML = '<table><tr><th>Catégorie</th>' + bac.joueurs.map((_, j) => `<th>${esc(nomJoueur(j))}</th>`).join('') + '</tr>' +
+    p.cats.map(k => `<tr><td>${MOTS[k].ico} ${esc(MOTS[k].n)}</td>` + bac.joueurs.map((_, j) => {
+      const e = p.etat[j][k], m = p.reponses[j][k] || '—';
+      return `<td><button class="mot ${e === 'main' ? 'main' : e}" data-j="${j}" data-k="${k}" ${['vide'].includes(e) ? 'disabled' : ''}>${esc(m)}</button></td>`;
+    }).join('') + '</tr>').join('') +
+    '<tr><th>Points</th>' + pts.map(x => `<th>${x}</th>`).join('') + '</tr></table>';
+  $('cScores').innerHTML = '<table>' + bac.joueurs.map((_, j) => [j, p.scores[j] + pts[j]]).sort((a, b) => b[1] - a[1]).map(([j, s], r) => `<tr><td>${r + 1}. ${esc(nomJoueur(j))}</td><td class="pts">${s} pts</td></tr>`).join('') + '</table>';
+  $('cSuite').textContent = p.manche + 1 >= bac.manches ? 'Voir le classement final ▶' : 'Manche suivante ▶';
+}
+$('cTable').onclick = e => {
+  const b = e.target.closest('.mot'); if(!b || b.disabled) return;
+  const p = bac.partie, j = +b.dataset.j, k = b.dataset.k, e0 = p.etat[j][k];
+  // on fait tourner : doute → accepté → refusé → accepté… (un mot de la liste peut être refusé par les joueurs)
+  p.etat[j][k] = e0 === 'doute' ? 'main' : e0 === 'main' ? 'non' : e0 === 'ok' ? 'non' : commencePar(p.reponses[j][k], p.lettre) ? (connu(k, p.reponses[j][k]) ? 'ok' : 'main') : 'non';
+  dessinerCorrection();
+};
+$('cSuite').onclick = () => {
+  const p = bac.partie, pts = pointsManche();
+  pts.forEach((x, j) => p.scores[j] += x);
+  if(bac.joueurs.length === 1){ const r = records(); if(pts[0] > (r.bac.seul || 0)){ r.bac.seul = pts[0]; ecrire('quiz-records', r); } }
+  p.manche++;
+  if(p.manche < bac.manches) return mancheBac();
+  const classe = bac.joueurs.map((_, j) => [j, p.scores[j]]).sort((a, b) => b[1] - a[1]);
+  ecrire('quiz-dernier', { mode:'bac', gagnant:nomJoueur(classe[0][0]), score:classe[0][1], joueurs:bac.joueurs.length, date:Date.now() });
+  $('fMode').textContent = 'Petit bac';
+  $('fScore').textContent = `${classe[0][1]} pts`;
+  $('fTexte').textContent = bac.joueurs.length > 1 ? `${nomJoueur(classe[0][0])} gagne la partie !` : `En ${bac.manches} manche${bac.manches > 1 ? 's' : ''}, sur ${bac.manches * p.cats.length * 10} points possibles.`;
+  $('fBadge').innerHTML = '';
+  $('fRevoir').innerHTML = bac.joueurs.length > 1 ? '<table>' + classe.map(([j, s], r) => `<tr><td>${['🥇', '🥈', '🥉'][r] || (r + 1) + '.'} ${esc(nomJoueur(j))}</td><td class="pts">${s} pts</td></tr>`).join('') + '</table>' : '';
+  fin.rejouer = debutBac;
+  montrer('pFin'); confettis();
+};
+$('cQuitter').onclick = () => { if(confirm('Arrêter la partie de petit bac ?')) menu(); };
+$('bJouer').onclick = () => { bac.joueurs = bac.joueurs.map(j => j.trim()); sauverBac(); debutBac(); };
+
+/* ---------- Fin, confettis ---------- */
+const fin = { rejouer:null };
+$('fMenu').onclick = menu;
+$('fRejouer').onclick = () => fin.rejouer && fin.rejouer();
+$('mEchelle').onclick = debutEchelle;
+$('mSerie').onclick = debutSerie;
+$('mBac').onclick = reglagesBac;
+function confettis(){
+  const cv = $('confettis'), g = cv.getContext('2d'); cv.hidden = false;
+  cv.width = innerWidth; cv.height = innerHeight;
+  const P = Array.from({ length:140 }, () => ({ x:Math.random() * cv.width, y:-20 - Math.random() * cv.height * .5, vx:(Math.random() - .5) * 3, vy:2 + Math.random() * 3, r:Math.random() * 6.28, c:['#F6C445', '#E5484D', '#2FB36B', '#3B6FE0', '#7B4DE0', '#fff'][Math.floor(Math.random() * 6)] }));
+  let t = 0;
+  (function anim(){
+    g.clearRect(0, 0, cv.width, cv.height);
+    for(const p of P){ p.x += p.vx; p.y += p.vy; p.r += .1; g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.fillStyle = p.c; g.fillRect(-4, -2, 8, 4); g.restore(); }
+    if(++t < 220) requestAnimationFrame(anim); else cv.hidden = true;
+  })();
+}
+
+menu();
+window.Quiz = { banque, reglages, connu, normaliser, INDEX };
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
+})();
+</script>
+<script src="sauvegarde.js?v=111"></script>
+<script src="compte.js?v=111"></script>
+</body>
+</html>

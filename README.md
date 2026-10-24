@@ -22,6 +22,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Tir au panier** : viser au doigt (on place le sommet de la courbe) et marquer un maximum de paniers en 1 minute 30 ; bonus (feu, balle ×3, panier large) en allumant la planche, 10 balles inventées à débloquer, 7 thèmes, mode gaucher | `jeux/panier.html` | 1 |
 | **Tables au sommet** : apprendre les tables de multiplication de 1 à 10 (niveau CM1) en grimpant la montagne : leçon avec dessins et astuces, table dans l'ordre puis dans le désordre, entraînement, défi chrono, tableau des progrès | `jeux/tables.html` | 1 |
 | **Les aventures de Pépin** : jeu de plateforme en pixels dans l'esprit des grands classiques 2D (personnages, dessins et musiques originaux) ; Pépin le plombier-montagnard traverse 4 mondes et 16 niveaux (prairie, grotte, cimes, lac, neiges, volcan, châteaux du Yéti) ; blocs mystère, cèpes, piments de feu, étoile, tuyaux secrets ; manette à l'écran | `jeux/pepin.html` | 1 |
+| **Le Grand Quiz** : culture générale à trois niveaux (Junior, Ado, Adulte), près de 800 questions sur 12 thèmes ; l'échelle des 15 questions jusqu'au million (paliers, joker 50/50), la série rapide contre la montre, et le petit bac seul ou à plusieurs | `jeux/quiz.html` | 1 à 6 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
 Chaque partie est enregistrée dans le navigateur de l'appareil : on peut quitter un jeu et le reprendre plus tard.
@@ -84,6 +85,16 @@ Les dés ne se chevauchent jamais sur le tapis : après chaque lancer, ceux qui 
   - au 10 000, il atteint 10 000 en 39, 36 et 34 tours en moyenne.
 
 Le plateau repart de zéro dès qu'un score est noté dans le carnet. Le code est dans `jeux/plateau.js`, partagé par les deux jeux.
+
+## Le Grand Quiz
+
+Quiz de culture générale, tout dans `jeux/quiz.html` ; les questions sont dans `jeux/quiz/junior.js`, `ado.js` et `adulte.js`, les mots du petit bac dans `jeux/quiz/mots.js`.
+
+- **Niveaux et thèmes** : Junior (8-12 ans, 248 questions), Ado (12-16 ans, 271) et Adulte (279). Douze thèmes en trois familles qu'on coche ou décoche : *Classiques* (histoire, géographie, sciences, arts et lettres), *Loisirs* (sport, cinéma, musique, jeux) et *Vie quotidienne* (animaux, cuisine, langue française, corps humain). Une question s'écrit `[thème, difficulté 1 à 5, question, bonne réponse, trois mauvaises]` ; les réponses sont mélangées à l'affichage. Les questions déjà vues reviennent le plus tard possible (`quiz-vus`).
+- **L'échelle des 15 questions** : de plus en plus difficiles (trois questions par degré de difficulté), de 100 à 1 000 000 de points (`GAINS`). Paliers sûrs à la 5e (1 000) et à la 10e question (32 000) ; une erreur fait retomber au dernier palier. Un joker 50/50 retire deux mauvaises réponses ; « Je m'arrête » garde les gains. La réponse choisie s'allume en orange, puis la bonne en vert.
+- **Série rapide** : 10 questions de difficulté croissante, 15 secondes chacune ; 100 points plus 10 par seconde restante, doublés à partir de 3 bonnes réponses d'affilée.
+- **Petit bac** : de 1 à 6 joueurs sur le même téléphone, chacun son tour (on passe le téléphone). On choisit les catégories (12 au choix : prénom, animal, pays, ville, fruit ou légume, métier, sport, vêtement, couleur, instrument, plat ou aliment, objet de la maison), le temps (1, 2, 3 minutes ou sans limite), le nombre de manches et les lettres (faciles ou toutes). La lettre est tirée sans revenir dans la partie. À la correction, un mot de la liste de l'appli est validé tout seul (la comparaison ignore majuscules, accents, tirets, article et pluriel) ; un mot inconnu est en pointillés : seul, on peut l'accepter à la main (5 points au lieu de 10) ; à plusieurs, on décide ensemble en touchant les mots (un mot valable vaut 10 points, ou 5 si un autre joueur a le même).
+- **Données** : `quiz-reglages` (niveau, thèmes), `quiz-records` (meilleur gain de l'échelle et nombre de millions par niveau, record de la série, meilleure manche de petit bac en solo), `quiz-stats` (réponses, bonnes réponses, par thème : l'accueil du quiz en tire le point fort et le thème à travailler), `quiz-vus`, `quiz-bac` (joueurs et réglages), `quiz-dernier`, `quiz-son` ; dans la sauvegarde d'Altitude Arcade et dans l'onglet Suivi du tableur.
 
 ## Sauvegarde en ligne (Google Sheet)
 
@@ -479,6 +490,8 @@ jeux/tour.html         jeu Tour de contrôle
 jeux/panier.html       jeu Tir au panier
 jeux/tables.html       jeu Tables au sommet (tables de multiplication)
 jeux/pepin.html        jeu Les aventures de Pépin (page et menus)
+jeux/quiz.html         jeu Le Grand Quiz (échelle, série rapide, petit bac)
+jeux/quiz/             questions (junior.js, ado.js, adulte.js) et mots du petit bac (mots.js)
 jeux/pepin/            dessins (sprites.js), niveaux (niveaux.js) et moteur (moteur.js) de Pépin
 logo.svg               logo (source vectorielle)
 apple-touch-icon.png   icône de l'écran d'accueil de l'iPhone (180 px, pleine) ; elle est aussi écrite dans chaque page (lien apple-touch-icon en data:image/png;base64), recopiée par outils/icone.sh après un changement de logo
