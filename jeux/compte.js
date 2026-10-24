@@ -65,11 +65,11 @@
   }
 
   // Envoyer ce qui a changé ici (et, depuis l'accueil, le résumé lisible pour l'onglet Suivi)
-  async function envoyer(resume = null){
+  async function envoyer(resume = null, scores = null){
     const s = session(); if(!s) return 0;
     const { donnees, suppr } = changementsLocaux();
-    if(!Object.keys(donnees).length && !suppr.length && !resume) return 0;
-    const j = await appel({ action:'ecrire', pseudo:s.pseudo, jeton:s.jeton, donnees, suppr, resume });
+    if(!Object.keys(donnees).length && !suppr.length && !resume && !scores) return 0;
+    const j = await appel({ action:'ecrire', pseudo:s.pseudo, jeton:s.jeton, donnees, suppr, resume, scores });
     const sync = lireLS('compte-sync', {});
     for(const [k, d] of Object.entries(donnees)) if(valeur(k) === d.v) sync[k] = { h:empreinte(d.v), t:d.t };
     for(const k of suppr) delete sync[k];
@@ -86,7 +86,7 @@
     enCours = (async () => {
       try{
         const recus = opts.envoyerSeulement ? 0 : await recuperer();
-        const envoyes = await envoyer(opts.resume || null);
+        const envoyes = await envoyer(opts.resume || null, opts.scores || null);
         signaler('ok');
         return { recus, envoyes };
       }catch(e){
@@ -150,7 +150,23 @@
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', demarrer); else setTimeout(demarrer, 0);
 
+  // Le classement : les scores de tous les joueurs (gardés sur l'appareil pour les voir aussi hors ligne)
+  async function classement(){
+    const s = session(); if(!s) throw new Error('Connecte-toi pour voir le classement.');
+    try{
+      const j = await appel({ action:'classement', pseudo:s.pseudo, jeton:s.jeton });
+      ecrireLS('compte-classement', { joueurs:j.joueurs, heure:j.heure || Date.now() });
+      return { joueurs:j.joueurs, heure:j.heure || Date.now(), frais:true };
+    }catch(e){
+      const garde = lireLS('compte-classement', null);
+      if(/Action inconnue/.test(e.message)) e.message = 'Le programme du tableur doit être mis à jour pour le classement.';
+      if(garde) return Object.assign(garde, { frais:false, erreur:e.message });
+      throw e;
+    }
+  }
+
   window.AltitudeCompte = {
+    classement,
     session, serveur, actif:() => !!serveur(), connecter, deconnecter, synchroniser,
     derniere:() => lireLS('compte-derniere', null), etat:() => etat, surChangement:f => ecouteurs.push(f),
   };

@@ -1,7 +1,7 @@
 /* Altitude Arcade : fonctionnement hors ligne.
    Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement,
    ainsi que le numéro ?v= des scripts dans les pages (outils/version.sh fait les deux). */
-const VERSION = 'desdes-v111';
+const VERSION = 'desdes-v112';
 const FONTS = 'desdes-fonts';
 const SHELL = [
   './',
@@ -28,6 +28,8 @@ const SHELL = [
   'jeux/tables.html',
   'jeux/pepin.html',
   'jeux/quiz.html',
+  'jeux/classement.html',
+  'jeux/scores.js',
   'jeux/quiz/junior.js',
   'jeux/quiz/ado.js',
   'jeux/quiz/adulte.js',

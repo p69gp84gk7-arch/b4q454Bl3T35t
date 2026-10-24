@@ -12,18 +12,20 @@
        pour le déconnecter de tous ses appareils, ou supprimer la ligne pour supprimer le compte.
      - Suivi : où en est chaque joueur dans chaque jeu (le même texte que sur l'accueil de l'application).
      - Données : les sauvegardes elles-mêmes (une ligne par joueur et par élément) ; à ne pas modifier à la main.
-     - Journal : les connexions et créations de comptes. */
+     - Journal : les connexions et créations de comptes.
+     - Classement : les meilleurs scores de chaque joueur, jeu par jeu, pour le classement de tous les joueurs (à ne pas modifier). */
 
 // L'identifiant du Google Sheet (dans son adresse, entre /d/ et /edit). Vide : le tableur auquel ce programme est attaché.
 const ID_TABLEUR = '1srSXeOBSVfuUba5E1aXXga-64ZCXfufxMQh9gp67dGw';
 const classeur = () => ID_TABLEUR ? SpreadsheetApp.openById(ID_TABLEUR) : SpreadsheetApp.getActiveSpreadsheet();
 
-const ONGLETS = { comptes:'Comptes', suivi:'Suivi', donnees:'Données', journal:'Journal' };
+const ONGLETS = { comptes:'Comptes', suivi:'Suivi', donnees:'Données', journal:'Journal', classement:'Classement' };
 const ENTETES = {
   Comptes:['Pseudo', 'Code', 'Actif', 'Créé le', 'Dernière visite', 'Appareil', 'Jeton'],
   Suivi:['Pseudo', 'Mis à jour'],
   'Données':['Pseudo', 'Clé', 'Modifié (ms)', 'Modifié le', 'Valeur…'],
   Journal:['Date', 'Pseudo', 'Évènement'],
+  Classement:['Pseudo', 'Jeu', 'Mis à jour', 'Scores'],
 };
 const MORCEAU = 40000;          // une cellule contient au plus 50 000 caractères : les longues sauvegardes sont coupées
 const ESSAIS_MAX = 6;           // essais de code ratés avant d'attendre 10 minutes
@@ -43,6 +45,7 @@ function doPost(e){
     if(!compte.ok) return reponse(compte);
     if(req.action === 'lire') return reponse(lire(compte.pseudo));
     if(req.action === 'ecrire') return reponse(ecrire(compte.pseudo, req));
+    if(req.action === 'classement') return reponse(classement());
     return reponse({ ok:false, erreur:'Action inconnue.' });
   }catch(err){
     return reponse({ ok:false, erreur:'Erreur du serveur : ' + err.message });
@@ -142,6 +145,7 @@ function ecrire(pseudo, req){
   const suppr = (req.suppr || []).map(String).filter(c => lignes[c]).map(c => lignes[c]).sort((a, b) => b - a);
   for(const l of suppr) f.deleteRow(l);
   if(req.resume) suivi(pseudo, req.resume);
+  if(req.scores) scores(pseudo, req.scores);
   return { ok:true, ecrits:n, effaces:suppr.length, heure:maintenant };
 }
 
@@ -156,4 +160,28 @@ function suivi(pseudo, resume){
   if(!ligne) ligne = f.getLastRow() + 1;
   const rangee = entetes.map((h, j) => j === 0 ? pseudo : j === 1 ? new Date() : (h in resume ? String(resume[h]).slice(0, 500) : (v[ligne - 1] ? v[ligne - 1][j] : '')));
   f.getRange(ligne, 1, 1, rangee.length).setValues([rangee]);
+}
+
+/* ---------- Classement : les scores de chaque joueur, une ligne par joueur et par jeu ---------- */
+function scores(pseudo, parJeu){
+  const f = onglet(ONGLETS.classement), v = f.getDataRange().getValues(), lignes = {};
+  for(let i = 1; i < v.length; i++) if(norm(v[i][0]) === norm(pseudo)) lignes[String(v[i][1])] = i + 1;
+  for(const jeu of Object.keys(parJeu)){
+    const texte = '~' + JSON.stringify(parJeu[jeu]).slice(0, 45000);
+    const ligne = lignes[jeu] || f.getLastRow() + 1; lignes[jeu] = ligne;
+    f.getRange(ligne, 4).setNumberFormat('@');
+    f.getRange(ligne, 1, 1, 4).setValues([[pseudo, jeu, new Date(), texte]]);
+  }
+}
+// Les scores de tous les joueurs dont le compte est actif
+function classement(){
+  const comptes = onglet(ONGLETS.comptes).getDataRange().getValues().slice(1).filter(l => l[0] && norm(l[2]) !== 'non');
+  const actifs = {}; comptes.forEach(l => { actifs[norm(l[0])] = String(l[0]); });
+  const v = onglet(ONGLETS.classement).getDataRange().getValues(), joueurs = {};
+  for(let i = 1; i < v.length; i++){
+    const p = actifs[norm(v[i][0])]; if(!p) continue;
+    const t = String(v[i][3] || ''); if(!t) continue;
+    try{ (joueurs[p] = joueurs[p] || {})[String(v[i][1])] = JSON.parse(t.charAt(0) === '~' ? t.slice(1) : t); }catch(err){}
+  }
+  return { ok:true, joueurs, heure:Date.now() };
 }
