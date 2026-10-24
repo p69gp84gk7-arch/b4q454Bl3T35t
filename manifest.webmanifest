@@ -12,20 +12,20 @@
   "background_color": "#1F3554",
   "theme_color": "#1F3554",
   "icons": [
-    { "src": "icons/altitude-192.png?v=109", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/altitude-512.png?v=109", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/altitude-maskable-512.png?v=109", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/altitude-180.png?v=109", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+    { "src": "icons/altitude-192.png?v=110", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/altitude-512.png?v=110", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/altitude-maskable-512.png?v=110", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/altitude-180.png?v=110", "sizes": "180x180", "type": "image/png", "purpose": "any" }
   ],
   "shortcuts": [
-    { "name": "10 000", "url": "jeux/10000.html", "icons": [{ "src": "icons/altitude-192.png?v=109", "sizes": "192x192" }] },
-    { "name": "Yam's", "url": "jeux/yams.html", "icons": [{ "src": "icons/altitude-192.png?v=109", "sizes": "192x192" }] },
-    { "name": "Géographie", "url": "jeux/geo.html", "icons": [{ "src": "icons/altitude-192.png?v=109", "sizes": "192x192" }] },
-    { "name": "Draw Race", "url": "jeux/drawrace.html", "icons": [{ "src": "icons/altitude-192.png?v=109", "sizes": "192x192" }] },
-    { "name": "Tour de contrôle", "url": "jeux/tour.html", "icons": [{ "src": "icons/altitude-192.png?v=109", "sizes": "192x192" }] },
-    { "name": "Tables au sommet", "url": "jeux/tables.html", "icons": [{ "src": "icons/altitude-192.png?v=109", "sizes": "192x192" }] },
-    { "name": "Les aventures de Pépin", "url": "jeux/pepin.html", "icons": [{ "src": "icons/altitude-192.png?v=109", "sizes": "192x192" }] },
-    { "name": "Tir au panier", "url": "jeux/panier.html", "icons": [{ "src": "icons/altitude-192.png?v=109", "sizes": "192x192" }] },
-    { "name": "Nivoculteur", "url": "jeux/nivoculteur/index.html", "icons": [{ "src": "icons/altitude-192.png?v=109", "sizes": "192x192" }] }
+    { "name": "10 000", "url": "jeux/10000.html", "icons": [{ "src": "icons/altitude-192.png?v=110", "sizes": "192x192" }] },
+    { "name": "Yam's", "url": "jeux/yams.html", "icons": [{ "src": "icons/altitude-192.png?v=110", "sizes": "192x192" }] },
+    { "name": "Géographie", "url": "jeux/geo.html", "icons": [{ "src": "icons/altitude-192.png?v=110", "sizes": "192x192" }] },
+    { "name": "Draw Race", "url": "jeux/drawrace.html", "icons": [{ "src": "icons/altitude-192.png?v=110", "sizes": "192x192" }] },
+    { "name": "Tour de contrôle", "url": "jeux/tour.html", "icons": [{ "src": "icons/altitude-192.png?v=110", "sizes": "192x192" }] },
+    { "name": "Tables au sommet", "url": "jeux/tables.html", "icons": [{ "src": "icons/altitude-192.png?v=110", "sizes": "192x192" }] },
+    { "name": "Les aventures de Pépin", "url": "jeux/pepin.html", "icons": [{ "src": "icons/altitude-192.png?v=110", "sizes": "192x192" }] },
+    { "name": "Tir au panier", "url": "jeux/panier.html", "icons": [{ "src": "icons/altitude-192.png?v=110", "sizes": "192x192" }] },
+    { "name": "Nivoculteur", "url": "jeux/nivoculteur/index.html", "icons": [{ "src": "icons/altitude-192.png?v=110", "sizes": "192x192" }] }
   ]
 }
