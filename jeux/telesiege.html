@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Chef de quai · Altitude Arcade</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=116">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=116">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+@media (orientation:landscape) and (max-height:600px){ :root{ --barre-statut:env(safe-area-inset-top, 0px); } }
+/* bandeau noir sous l'heure, le réseau et la batterie */
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --encre:#F2F7FF; --doux:#A9BAD6; --ligne:rgba(255,255,255,.16); --acc:#FF9F1C; --acc2:#3EC6FF; --carte:rgba(255,255,255,.07); --rouge:#E5383B; --vert:#2DC26B; }
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; height:100%; overflow:hidden; background:#DDE8F2; color:var(--encre);
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+button{ font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; }
+#cv{ position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; -webkit-touch-callout:none; }
+
+/* le tableau de bord, en haut */
+.hud{ position:fixed; left:0; right:0; top:var(--barre-statut); padding:6px 56px 0 6px; display:flex; flex-wrap:wrap; gap:4px; z-index:3; pointer-events:none; }
+.hud[hidden], .cmd[hidden]{ display:none; }
+.pastille{ background:rgba(12,28,54,.78); border:1px solid rgba(255,255,255,.18); color:#fff; border-radius:11px; padding:3px 6px 4px; line-height:1.05; min-width:0; }
+.pastille small{ display:block; font-size:.56rem; text-transform:uppercase; letter-spacing:.1em; opacity:.75; }
+.pastille b{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:1.05rem; letter-spacing:.03em; white-space:nowrap; }
+.pastille.jaune{ border-color:#FFC93C; box-shadow:0 0 10px rgba(255,201,60,.5); }
+.pastille.rouge{ border-color:#FF4D4F; background:rgba(120,10,16,.85); box-shadow:0 0 12px rgba(255,60,60,.6); }
+.pastille .prev{ font-family:"Bricolage Grotesque", sans-serif; font-size:.62rem; font-weight:700; opacity:.85; margin-left:3px; }
+.hud .bouton{ pointer-events:auto; position:absolute; right:6px; top:6px; width:44px; height:44px; border-radius:12px; border:1px solid rgba(255,255,255,.2); background:rgba(12,28,54,.78); color:#fff; font-size:1.05rem; }
+
+/* les messages */
+#alerte{ position:fixed; left:50%; transform:translateX(-50%); top:calc(var(--barre-statut) + 52px); z-index:4; max-width:min(92vw, 460px); text-align:center; font-size:.9rem;
+  background:#C1121F; color:#fff; font-weight:800; padding:6px 12px; border-radius:12px; box-shadow:0 6px 20px rgba(120,0,0,.45); pointer-events:none; animation:clignote .7s infinite alternate; }
+#alerte.orange{ background:#E07A00; box-shadow:0 6px 20px rgba(140,70,0,.4); }
+#alerte[hidden]{ display:none; }
+@keyframes clignote{ from{ filter:brightness(1); } to{ filter:brightness(1.25); } }
+#toast{ position:fixed; left:50%; transform:translateX(-50%); top:calc(var(--barre-statut) + 88px); z-index:4; display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none; width:min(92vw, 460px); }
+#toast div{ background:rgba(12,28,54,.86); color:#fff; font-weight:700; font-size:.8rem; line-height:1.3; padding:4px 10px; border-radius:10px; text-align:center; animation:entre .25s ease-out; }
+#toast div.bon{ background:rgba(20,110,60,.92); }
+#toast div.mal{ background:rgba(150,20,30,.92); }
+@keyframes entre{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:none; } }
+
+/* les commandes : vitesse et arrêt à gauche, portillons et file solo à droite */
+.cmd{ position:fixed; bottom:calc(8px + env(safe-area-inset-bottom, 0px)); width:calc(50% - 12px); display:flex; flex-direction:column; gap:7px; z-index:3; }
+#cmdG{ left:8px; } #cmdD{ right:8px; }
+.vit{ display:grid; grid-template-columns:44px 1fr 44px; gap:5px; align-items:stretch; }
+.vit button{ height:46px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(12,28,54,.86); color:#fff; font-size:1.6rem; font-weight:800; line-height:1; }
+.jauge{ position:relative; border-radius:12px; background:rgba(12,28,54,.86); border:1px solid rgba(255,255,255,.2); display:flex; align-items:flex-end; gap:3px; padding:6px 7px 18px; }
+.jauge i{ flex:1; border-radius:3px; background:rgba(255,255,255,.14); }
+.jauge i:nth-child(1){ height:30%; } .jauge i:nth-child(2){ height:45%; } .jauge i:nth-child(3){ height:60%; } .jauge i:nth-child(4){ height:78%; } .jauge i:nth-child(5){ height:100%; }
+.jauge i.on{ background:linear-gradient(#FFD166, #FF9F1C); box-shadow:0 0 6px rgba(255,159,28,.6); }
+.jauge i.danger{ background:linear-gradient(#FF7B7B, #E5383B); }
+.jauge span{ position:absolute; left:0; right:0; bottom:2px; text-align:center; font-size:.68rem; font-weight:800; color:#fff; white-space:nowrap; }
+.stop{ height:62px; border-radius:16px; border:3px solid #7A0B12; background:radial-gradient(circle at 50% 35%, #FF5A5F, #C1121F 70%); color:#fff; font-weight:800; font-size:1.25rem; letter-spacing:.06em; box-shadow:0 4px 0 #6A0A10, 0 8px 18px rgba(0,0,0,.3); }
+.stop.marche{ border-color:#0C5A2E; background:radial-gradient(circle at 50% 35%, #4BE08A, #17924B 70%); box-shadow:0 4px 0 #0A4A26, 0 8px 18px rgba(0,0,0,.3); }
+.stop.attend{ filter:grayscale(.6) brightness(.85); }
+.stop.pret{ animation:pulse .8s infinite alternate; }
+@keyframes pulse{ from{ transform:scale(1); } to{ transform:scale(1.04); box-shadow:0 4px 0 #0A4A26, 0 0 22px rgba(75,224,138,.9); } }
+.solo{ height:46px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(12,28,54,.86); color:#fff; font-weight:800; font-size:1rem; display:flex; align-items:center; justify-content:center; gap:8px; }
+.solo span{ background:#3EC6FF; color:#03263A; border-radius:999px; padding:0 8px; font-size:.9rem; }
+.solo.envie{ border-color:#3EC6FF; box-shadow:0 0 14px rgba(62,198,255,.7); }
+.solo:disabled{ opacity:.55; }
+.porte{ height:62px; border-radius:16px; border:3px solid #8A4B00; background:linear-gradient(#FFC94A, #FF9F1C); color:#3A1D00; font-weight:800; font-size:1.2rem; box-shadow:0 4px 0 #7A4200, 0 8px 18px rgba(0,0,0,.3); }
+.porte.auto{ background:linear-gradient(#D7E3EE, #A9BCCD); border-color:#5E7287; color:#24364A; box-shadow:0 4px 0 #4D5F72; font-size:.95rem; }
+.porte:active, .stop:active, .solo:active, .vit button:active{ transform:translateY(2px); }
+/* en paysage : les commandes en colonne de chaque côté du quai */
+@media (orientation:landscape){
+  .cmd{ width:clamp(118px, 15vw, 170px); top:calc(var(--barre-statut) + 58px); justify-content:flex-end; }
+  .hud{ padding-right:56px; }
+  #alerte{ top:calc(var(--barre-statut) + 50px); }
+  #toast{ top:calc(var(--barre-statut) + 6px); left:auto; right:58px; transform:none; width:max(180px, calc(100% - 480px)); align-items:flex-end; }
+  #toast div:nth-child(n+2){ display:none; }
+  .vit{ grid-template-columns:1fr 1fr; } .jauge{ grid-column:1 / -1; order:-1; height:46px; }
+  .stop, .porte{ height:72px; }
+}
+@media (orientation:landscape) and (max-height:430px){
+  .pastille b{ font-size:1.1rem; } .pastille{ padding:2px 7px 3px; min-width:48px; }
+  .stop, .porte{ height:60px; } .vit button, .solo{ height:42px; } .jauge{ height:42px; }
+}
+
+/* le dépannage */
+.panne{ position:fixed; left:50%; transform:translateX(-50%); top:calc(var(--barre-statut) + 60px); z-index:5; width:min(94vw, 440px);
+  background:rgba(14,26,46,.96); border:2px solid #FFB020; border-radius:18px; padding:12px; box-shadow:0 12px 40px rgba(0,0,0,.45); color:#fff; }
+.panne[hidden]{ display:none; }
+.panne .ptete{ display:flex; flex-direction:column; gap:2px; margin-bottom:10px; }
+.panne .ptete b{ font-size:1.05rem; color:#FFC94A; }
+.panne .ptete span{ font-size:.9rem; color:#D4DEEE; line-height:1.35; }
+.pjeu{ display:flex; flex-direction:column; gap:10px; align-items:stretch; }
+.pboutons{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
+.pboutons button{ min-width:54px; height:48px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08); font-weight:800; font-size:1rem; }
+.pboutons button.bon{ background:#17924B; border-color:#4BE08A; }
+.pboutons button.mal{ background:#8A1520; border-color:#FF6B6B; }
+.disj{ display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; }
+.disj button{ height:74px; border-radius:10px; border:2px solid #56657A; background:#2A3546; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:5px 0; font-size:.68rem; font-weight:800; color:#C9D4E3; }
+.disj button i{ width:22px; height:34px; border-radius:5px; background:#161D28; position:relative; display:block; }
+.disj button i::after{ content:""; position:absolute; left:3px; right:3px; height:14px; border-radius:3px; top:3px; background:#2DC26B; box-shadow:0 0 8px rgba(45,194,107,.8); }
+.disj button.off i::after{ top:auto; bottom:3px; background:#E5383B; box-shadow:0 0 8px rgba(229,56,59,.8); }
+.disj button.off{ border-color:#E5383B; }
+.manometre{ height:26px; border-radius:13px; background:#161D28; border:1px solid #56657A; position:relative; overflow:hidden; }
+.manometre .zone{ position:absolute; top:0; bottom:0; background:rgba(45,194,107,.35); border-left:2px solid #2DC26B; border-right:2px solid #2DC26B; }
+.manometre .niv{ position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg, #3EC6FF, #FFC94A 70%, #E5383B); }
+.pgros{ height:58px; border-radius:14px; border:none; font-weight:800; font-size:1.1rem; background:linear-gradient(#FFC94A, #FF9F1C); color:#3A1D00; }
+.pgros:disabled{ opacity:.45; }
+.pgros.vert{ background:linear-gradient(#4BE08A, #17924B); color:#fff; }
+.barre{ height:14px; border-radius:7px; background:#161D28; overflow:hidden; } .barre i{ display:block; height:100%; width:0; background:linear-gradient(90deg, #3EC6FF, #4BE08A); }
+.glace{ height:90px; border-radius:14px; position:relative; overflow:hidden; background:linear-gradient(#5D7A99, #2A3E57); display:flex; align-items:center; justify-content:center; font-size:2.2rem; }
+.glace i{ position:absolute; inset:0; background:linear-gradient(135deg, rgba(235,248,255,.95), rgba(190,225,250,.9)); }
+.pnote{ font-size:.85rem; color:#D4DEEE; text-align:center; min-height:1.2em; }
+
+/* les écrans */
+.ecran{ position:fixed; inset:0; z-index:6; display:flex; align-items:flex-start; justify-content:center; overflow:auto;
+  padding:calc(16px + var(--barre-statut)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:linear-gradient(rgba(10,26,52,.9), rgba(16,44,82,.88)); }
+.ecran[hidden]{ display:none; }
+.boite{ width:min(100%, 560px); display:flex; flex-direction:column; gap:14px; }
+.tete{ display:flex; align-items:center; gap:8px; }
+.tete a, .tete button{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:12px; padding:6px 12px; font-weight:700; background:rgba(255,255,255,.07); white-space:nowrap; }
+.tete .droite{ margin-left:auto; }
+h1{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:clamp(3.2rem, 15vw, 4.6rem); line-height:.85; margin:6px 0 0; letter-spacing:.02em; }
+h1 span{ color:var(--acc); }
+h2{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:2.2rem; line-height:1; margin:0; }
+.sous{ color:var(--doux); margin:4px 0 0; line-height:1.4; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:18px; padding:14px; }
+.carte h3{ margin:0 0 6px; font-size:.74rem; text-transform:uppercase; letter-spacing:.16em; color:var(--doux); }
+.carte h3:not(:first-child){ margin-top:14px; }
+.gros{ width:100%; border:none; border-radius:16px; padding:15px; font-weight:800; font-size:1.1rem; color:#3A1D00; background:linear-gradient(#FFC94A, #FF9F1C); box-shadow:0 4px 0 #7A4200, 0 10px 24px rgba(0,0,0,.3); }
+.sec{ width:100%; border:1px solid var(--ligne); background:rgba(255,255,255,.07); border-radius:14px; padding:12px; font-weight:700; color:var(--encre); }
+.choix{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.choix button{ border:1px solid var(--ligne); background:rgba(255,255,255,.05); border-radius:999px; padding:8px 13px; font-weight:700; color:var(--encre); }
+.choix button.actif{ border-color:var(--acc); background:rgba(255,159,28,.18); box-shadow:0 0 12px rgba(255,159,28,.35); }
+.appareils{ display:grid; gap:8px; }
+.app{ display:grid; grid-template-columns:62px 1fr; gap:10px; align-items:center; text-align:left; border:1px solid var(--ligne); background:rgba(255,255,255,.05); border-radius:16px; padding:9px 10px; color:var(--encre); }
+.app.actif{ border-color:var(--acc); background:rgba(255,159,28,.14); box-shadow:0 0 14px rgba(255,159,28,.3); }
+.app canvas{ width:62px; height:52px; }
+.app b{ display:block; font-size:1.05rem; } .app small{ display:block; color:var(--doux); font-size:.8rem; line-height:1.3; }
+.app em{ font-style:normal; font-size:.74rem; font-weight:800; color:#FFC94A; }
+.caisse{ display:flex; align-items:center; gap:10px; }
+.caisse b{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:2rem; color:#FFC94A; line-height:1; }
+.caisse .sec{ width:auto; margin-left:auto; }
+.amelios{ display:grid; gap:8px; }
+.amelio{ display:grid; grid-template-columns:36px 1fr auto; gap:10px; align-items:center; border:1px solid var(--ligne); background:rgba(255,255,255,.05); border-radius:14px; padding:10px; }
+.amelio .ico{ font-size:1.6rem; text-align:center; }
+.amelio b{ display:block; } .amelio small{ display:block; color:var(--doux); font-size:.8rem; line-height:1.3; }
+.amelio button{ border:none; border-radius:12px; padding:9px 12px; font-weight:800; background:linear-gradient(#FFC94A, #FF9F1C); color:#3A1D00; white-space:nowrap; }
+.amelio button:disabled{ background:rgba(255,255,255,.12); color:var(--doux); }
+.amelio.achete{ border-color:rgba(45,194,107,.6); background:rgba(45,194,107,.1); }
+.amelio .ok{ color:#4BE08A; font-weight:800; white-space:nowrap; }
+.stats{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; text-align:center; }
+.stats div{ background:rgba(255,255,255,.06); border:1px solid var(--ligne); border-radius:14px; padding:8px 4px; }
+.stats b{ display:block; font-family:"Bebas Neue", sans-serif; font-size:1.8rem; font-weight:400; line-height:1; }
+.stats small{ color:var(--doux); font-size:.72rem; font-weight:700; }
+.grand{ font-family:"Bebas Neue", sans-serif; font-size:4.2rem; line-height:.9; text-align:center; margin:0; color:#FFC94A; }
+.grand small{ display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:.95rem; color:var(--doux); font-weight:700; }
+.etoiles{ text-align:center; font-size:2.2rem; letter-spacing:.1em; margin:0; }
+.etoiles i{ font-style:normal; opacity:.25; } .etoiles i.on{ opacity:1; text-shadow:0 0 12px rgba(255,201,74,.8); }
+.compte{ width:100%; border-collapse:collapse; font-size:.92rem; }
+.compte td{ padding:4px 2px; border-bottom:1px solid rgba(255,255,255,.08); }
+.compte td:last-child{ text-align:right; font-weight:800; white-space:nowrap; }
+.compte tr.total td{ border-bottom:none; font-size:1.05rem; color:#FFC94A; padding-top:8px; }
+.plus{ color:#4BE08A; } .moins{ color:#FF8A8A; }
+.centre{ text-align:center; }
+.aide p, .aide li{ line-height:1.45; } .aide ul{ padding-left:20px; margin:6px 0; } .aide b{ color:#fff; }
+</style>
+</head>
+<body>
+<div class="barre-statut" aria-hidden="true"></div>
+<canvas id="cv" aria-label="Le quai du télésiège vu du dessus"></canvas>
+
+<div class="hud" id="hud" hidden>
+  <div class="pastille"><small>Heure</small><b id="hHeure">9:00</b></div>
+  <div class="pastille"><small>Montés</small><b id="hMontes">0</b></div>
+  <div class="pastille" id="hFileP"><small>Attente</small><b id="hFile">0 min</b></div>
+  <div class="pastille" id="hVentP"><small>Vent</small><b id="hVent">0</b></div>
+  <div class="pastille"><small>Points</small><b id="hPoints">0</b></div>
+  <button class="bouton" id="bPause" aria-label="Pause">⏸</button>
+</div>
+<div id="alerte" hidden></div>
+<div id="toast"></div>
+
+<div class="cmd" id="cmdG" hidden>
+  <div class="vit"><button id="bMoins" aria-label="Ralentir">−</button><div class="jauge" id="jVit"><i></i><i></i><i></i><i></i><i></i><span id="lVit">4 · 2,3 m/s</span></div><button id="bPlus" aria-label="Accélérer">+</button></div>
+  <button class="stop" id="bStop">STOP</button>
+</div>
+<div class="cmd" id="cmdD" hidden>
+  <button class="solo" id="bSolo">👤 Solo <span id="nSolo">0</span></button>
+  <button class="porte" id="bPorte">🚧 Portillons</button>
+</div>
+
+<div class="panne" id="panne" hidden>
+  <div class="ptete"><b id="pTitre">Panne</b><span id="pTexte"></span></div>
+  <div class="pjeu" id="pJeu"></div>
+</div>
+
+<section class="ecran" id="eMenu">
+  <div class="boite">
+    <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="droite" id="bSon">🔊</button><button id="bAide">❔ Aide</button></div>
+    <div>
+      <h1>Chef de <span>quai</span></h1>
+      <p class="sous">Une journée au départ du télésiège : remplis les sièges, règle la vitesse, surveille le vent et les enfants, répare les pannes. Les skieurs comptent sur toi !</p>
+    </div>
+    <div class="carte caisse"><span>💰</span><div><small class="sous" style="margin:0">La caisse des remontées</small><br><b id="mCaisse">0 €</b></div><button class="sec" id="bAtelier">🔧 Atelier</button></div>
+    <div class="carte">
+      <h3>Le télésiège</h3><div class="appareils" id="cApp"></div>
+      <h3>Fréquentation</h3><div class="choix" id="cFreq"></div>
+      <h3>Météo</h3><div class="choix" id="cMeteo"></div>
+    </div>
+    <button class="gros" id="bJouer">🚡 Commencer la journée</button>
+    <p class="sous centre" id="mRecord"></p>
+  </div>
+</section>
+
+<section class="ecran" id="eAtelier" hidden>
+  <div class="boite">
+    <div class="tete"><button id="bAtelierRetour">‹ Retour</button></div>
+    <h2>L'atelier</h2>
+    <div class="carte caisse"><span>💰</span><div><small class="sous" style="margin:0">Caisse</small><br><b id="aCaisse">0 €</b></div></div>
+    <p class="sous" style="margin:0">L'argent gagné chaque journée sert à améliorer la station. Les améliorations servent sur tous les télésièges.</p>
+    <div class="amelios" id="lAmelios"></div>
+  </div>
+</section>
+
+<section class="ecran" id="eFin" hidden>
+  <div class="boite">
+    <h2 class="centre" id="fTitre">Fin de journée</h2>
+    <p class="etoiles" id="fEtoiles"></p>
+    <div class="carte">
+      <p class="grand" id="fPoints">0<small>points</small></p>
+      <p class="centre" id="fNote" style="font-weight:800;margin:8px 0 12px"></p>
+      <div class="stats" id="fStats"></div>
+    </div>
+    <div class="carte"><h3>La caisse de la journée</h3><table class="compte" id="fCompte"></table></div>
+    <button class="gros" id="bRejouer">↻ Rejouer cette journée</button>
+    <button class="sec" id="bFinAtelier">🔧 Atelier</button>
+    <button class="sec" id="bFinMenu">Menu</button>
+  </div>
+</section>
+
+<section class="ecran" id="ePause" hidden>
+  <div class="boite" style="margin-top:14vh">
+    <p class="grand">Pause</p>
+    <button class="gros" id="bReprendre">▶ Reprendre</button>
+    <button class="sec" id="bRecommencer">↻ Recommencer la journée</button>
+    <button class="sec" id="bQuitter">Quitter (la journée ne compte pas)</button>
+  </div>
+</section>
+
+<section class="ecran" id="eAide" hidden>
+  <div class="boite aide">
+    <div class="tete"><button id="bAideRetour">‹ Retour</button></div>
+    <h1>Com<span>ment</span> jouer</h1>
+    <div class="carte">
+      <ul>
+        <li>Tu vois le quai d'en haut. Les sièges descendent à gauche, tournent autour de la <b>grande roue</b> et repartent vers le haut à droite. Les skieurs attendent dans la file en bas, puis derrière les <b>portillons</b>.</li>
+        <li><b>🚧 Portillons</b> : dès qu'un siège vient d'emmener les skieurs (le feu des portillons passe au vert), ouvre ! Les skieurs avancent jusqu'à la <b>ligne rouge</b> et le siège suivant les prend. Trop tard, le siège arrive avant eux et les fait tomber. Trop tôt, ça bouscule ceux qui attendent encore.</li>
+        <li><b>👤 Solo</b> : une famille de trois sur un siège de quatre, il reste une place vide. La file solo (à droite) sert à compléter les places vides : touche Solo avant d'ouvrir. Un siège plein rapporte un bonus.</li>
+        <li><b>Vitesse</b> (− et +) : plus vite, la file d'attente fond ; mais les enfants, les débutants et les snowboarders tombent plus souvent. Ralentis pour eux (un panneau te prévient), puis réaccélère.</li>
+        <li><b>STOP</b> : un skieur à terre sur la ligne ? Arrête tout de suite, avant que le siège suivant n'arrive ! Un agent le relève, puis appuie sur <b>Démarrer</b>. Pareil pour un enfant mal assis (⚠️ sur le siège) : arrête avant qu'il ne sorte de la gare.</li>
+        <li><b>Le vent</b> (en haut) : au-dessus du premier seuil, vitesse 2 au maximum ; au-dessus du deuxième, il faut arrêter le télésiège jusqu'à ce que ça se calme.</li>
+        <li><b>Les pannes</b> : le télésiège s'arrête tout seul. Fais le dépannage (disjoncteur, frein, câble, anémomètre, pince), puis redémarre. Pendant ce temps, la file grossit !</li>
+        <li><b>La journée</b> dure de 9 h à 16 h 30 (5 minutes). Points : skieurs montés, sièges pleins, attente courte (😀) ; on perd des points pour les chutes, les accidents et les skieurs qui partent fâchés. Jusqu'à 3 étoiles.</li>
+        <li><b>La caisse</b> : chaque skieur monté rapporte 6 €. On paye les salaires, l'électricité et les réparations. Avec le bénéfice, l'<b>atelier</b> vend des améliorations : tapis d'embarquement, portillons automatiques, agent de quai, hôtesse de la file solo, maintenance, anémomètre au sommet…</li>
+        <li>Au clavier : Espace pour les portillons, S pour Solo, flèches haut et bas pour la vitesse, Entrée pour Stop ou Démarrer, Échap pour la pause.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const hasard = (a, b) => a + Math.random() * (b - a);
+const choisir = t => t[Math.floor(Math.random() * t.length)];
+const fixe = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const fmt = n => Math.round(n).toLocaleString('fr-FR');
+const euros = n => (n < 0 ? '−' : '') + fmt(Math.abs(n)) + ' €';
+const virgule = n => n.toFixed(1).replace('.', ',');
+const PI = Math.PI;
+const cv = $('cv');
+let g = cv.getContext('2d'), W = 0, Hh = 0, DPR = 1;
+
+/* ---------- Les télésièges ----------
+   places : sièges par chaise ; vit : les 5 vitesses du câble (m/s) ; I : secondes entre deux sièges à la vitesse 4 ;
+   R : rayon de la grande roue (m) ; s : écart entre deux sièges sur la ligne (m) ; r : ralentissement dans la gare (débrayables) ;
+   vent : [vitesse 2 au maximum au-dessus de…, arrêt obligatoire au-dessus de…] en km/h ; pannes : nombre moyen par journée */
+const APPAREILS = [
+  { id:'clarines', nom:'Les Clarines', places:2, debray:false, vit:[1.0, 1.4, 1.8, 2.2, 2.5], I:2.6, R:2.0, s:6.5, vent:[45, 60], pannes:2.4, couleur:'#D9472B', annee:1972,
+    desc:'Le vieux 2 places à pince fixe : simple et lent, mais il tombe souvent en panne.' },
+  { id:'marmottes', nom:'Les Marmottes', places:4, debray:false, vit:[1.2, 1.6, 2.0, 2.3, 2.6], I:3.4, R:2.6, s:8, vent:[50, 65], pannes:1.6, couleur:'#2D7FD3', annee:1994,
+    desc:'4 places à pince fixe : on embarque à la vitesse du câble, attention aux enfants !' },
+  { id:'couloir', nom:'Le Grand Couloir', places:6, debray:true, vit:[2, 3, 4, 5, 6], I:3.6, R:3.2, s:18, r:.22, vent:[55, 70], pannes:1.2, couleur:'#F2A516', annee:2008,
+    desc:'6 places débrayable : les sièges ralentissent dans la gare, l\'embarquement est doux et le débit énorme.' },
+  { id:'bulles', nom:'Les Bulles', places:6, debray:true, bulles:true, vit:[2, 3, 4, 5, 6], I:3.6, R:3.2, s:18, r:.22, vent:[48, 62], pannes:1.2, couleur:'#7B48D6', annee:2016,
+    desc:'6 places débrayable à bulles et sièges chauffants : les skieurs adorent quand il neige, mais les bulles prennent le vent.' },
+  { id:'express', nom:'Sommet Express', places:8, debray:true, bulles:true, vit:[2.2, 3.2, 4.3, 5.5, 6], I:4.1, R:3.9, s:20, r:.22, vent:[50, 65], pannes:1.0, couleur:'#16A57B', annee:2023,
+    desc:'Le 8 places débrayable à bulles, le plus gros de la station : 8 places à remplir à chaque siège !' },
+];
+const NOMINAL = 3;                     // la vitesse « normale » (la 4e)
+const FREQS = [
+  { id:'calme', nom:'🙂 Calme', k:.55, esf:1 },
+  { id:'normale', nom:'🎿 Normale', k:.8, esf:2 },
+  { id:'vacances', nom:'🎉 Vacances', k:1.1, esf:4 },
+];
+// base et variations du vent (km/h), rafales, neige (0 à 1), brouillard, foule, bonus de points
+const METEOS = [
+  { id:'beau', nom:'☀️ Grand beau', base:8, amp:5, rafales:[0, 1], fort:15, neige:0, brume:0, foule:1.1, bonus:1 },
+  { id:'variable', nom:'⛅ Variable', base:17, amp:9, rafales:[1, 3], fort:26, neige:.35, brume:.05, foule:1, bonus:1.1 },
+  { id:'neige', nom:'🌨️ Neige', base:14, amp:7, rafales:[1, 2], fort:22, neige:1, brume:.12, foule:.85, bonus:1.15 },
+  { id:'vent', nom:'💨 Vent', base:30, amp:10, rafales:[3, 4], fort:32, neige:.2, brume:.04, foule:.9, bonus:1.25 },
+  { id:'tempete', nom:'⛈️ Tempête', base:38, amp:12, rafales:[3, 5], fort:38, neige:1, brume:.25, foule:.7, bonus:1.5 },
+];
+const AMELIOS = [
+  { id:'tapis', ico:'🟦', nom:'Tapis d\'embarquement', prix:4500, desc:'Le tapis roulant amène tout le monde à la ligne à la même vitesse : les enfants et les débutants ne traînent plus, et les chutes à l\'embarquement sont divisées par deux.' },
+  { id:'portillons', ico:'🚧', nom:'Portillons automatiques', prix:5000, desc:'Ils s\'ouvrent tout seuls dès que la ligne est libre. Tu peux te concentrer sur la vitesse, la file solo et la sécurité.' },
+  { id:'agent', ico:'🦺', nom:'Agent de quai', prix:2500, salaire:150, desc:'Un deuxième agent sur le quai : il relève les skieurs deux fois plus vite et aide enfants et débutants (chutes −25 %, enfants mal assis −40 %). Salaire : 150 € par journée.' },
+  { id:'hotesse', ico:'🙋', nom:'Hôtesse de la file solo', prix:2000, salaire:120, desc:'Elle complète toute seule les places vides avec la file solo. Salaire : 120 € par journée.' },
+  { id:'maint1', ico:'🔧', nom:'Maintenance préventive (1)', prix:2000, desc:'Graissage et contrôles chaque matin : 25 % de pannes en moins.' },
+  { id:'maint2', ico:'🔩', nom:'Maintenance préventive (2)', prix:3500, apres:'maint1', desc:'Pièces changées avant l\'usure : encore 25 % de pannes en moins.' },
+  { id:'maint3', ico:'⚙️', nom:'Grande révision', prix:5000, apres:'maint2', desc:'Révision complète de l\'appareil : encore 25 % de pannes en moins.' },
+  { id:'anemo', ico:'🌬️', nom:'Anémomètre au sommet', prix:1800, desc:'Il voit arriver les rafales : le vent prévu dans 20 secondes s\'affiche à côté du vent actuel.' },
+  { id:'cabane', ico:'☕', nom:'Musique et vin chaud dans la file', prix:1500, desc:'Les skieurs patientent 40 % plus longtemps avant de partir fâchés.' },
+  { id:'ecran', ico:'📺', nom:'Écran du temps d\'attente', prix:1200, desc:'Quand on sait combien de temps on attend, on râle moins : l\'attente ressentie baisse de 20 %.' },
+];
+// chaque type de skieur : vitesse de marche (m/s), chute de base, vitesse d'embarquement confortable (m/s), chute en plus par m/s au-dessus
+const TYPES = {
+  adulte:{ marche:2.0, base:.01, conf:2.4, k:.15 },
+  snow:{ marche:1.5, base:.025, conf:2.2, k:.22 },
+  enfant:{ marche:1.45, base:.03, conf:1.8, k:.3 },
+  debutant:{ marche:1.2, base:.04, conf:1.7, k:.35 },
+  moniteur:{ marche:2.2, base:.004, conf:2.6, k:.1 },
+};
+const VESTES = ['#E63946', '#F4A261', '#2A9D8F', '#264653', '#E9C46A', '#8E44AD', '#1D70B8', '#FF6FB5', '#2ECC71', '#F39C12', '#34495E', '#00A6A6', '#6C5CE7', '#D35400'];
+const CASQUES = ['#1E1E1E', '#F5F5F5', '#E63946', '#1D70B8', '#F1C40F', '#7F8C8D', '#2ECC71', '#FF6FB5'];
+const SKIS = ['#111', '#E74C3C', '#3498DB', '#F1C40F', '#ECF0F1', '#9B59B6', '#16A085'];
+const DUREE = 300;                     // une journée : 5 minutes, de 9 h à 16 h 30
+const MIN_PAR_S = .25;                 // l'attente affichée : 4 secondes de jeu = 1 minute
+const PRIX_SKIEUR = 6;                 // part du forfait par skieur monté
+
+/* ---------- La sauvegarde ---------- */
+let caisse = lire('telesiege-caisse', null);
+if(!caisse || typeof caisse.argent !== 'number') caisse = { argent:1500, achats:{} };
+const a = id => !!caisse.achats[id];
+const reglages = Object.assign({ app:'marmottes', freq:'normale', meteo:'beau' }, lire('telesiege-reglages', {}));
+let REC = lire('telesiege-records', null) || { appareils:{}, journees:0, montes:0, etoiles3:0, meilleurBenefice:null };
+const sauver = () => { ecrire('telesiege-caisse', caisse); ecrire('telesiege-records', REC); };
+
+/* ---------- Le son : doux, des bips accordés et des souffles ---------- */
+let son = lire('telesiege-son', true), AC = null, MAITRE = null, VENT_G = null;
+function audio(){
+  if(!son || window.TELESIEGE_MUET) return null;
+  try{ if(!AC){ AC = new (window.AudioContext || window.webkitAudioContext)(); const comp = AC.createDynamicsCompressor(); MAITRE = AC.createGain(); MAITRE.gain.value = .7; MAITRE.connect(comp); comp.connect(AC.destination); }
+    if(AC.state === 'suspended') AC.resume(); return AC; }catch(e){ return null; }
+}
+function note(f, d, { type = 'sine', vol = .05, glisse = 0, delai = 0 } = {}){
+  const ac = audio(); if(!ac) return;
+  const t = ac.currentTime + delai, o = ac.createOscillator(), gn = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if(glisse) o.frequency.linearRampToValueAtTime(Math.max(30, f + glisse), t + d);
+  gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(vol, t + .008); gn.gain.exponentialRampToValueAtTime(.0005, t + d);
+  o.connect(gn); gn.connect(MAITRE); o.start(t); o.stop(t + d + .05);
+}
+let BRUIT = null;
+function souffle(d, { vol = .05, f = 1200, q = .8, delai = 0 } = {}){
+  const ac = audio(); if(!ac) return;
+  if(!BRUIT){ BRUIT = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const c = BRUIT.getChannelData(0); for(let i = 0; i < c.length; i++) c[i] = Math.random() * 2 - 1; }
+  const t = ac.currentTime + delai, s = ac.createBufferSource(), fi = ac.createBiquadFilter(), gn = ac.createGain();
+  s.buffer = BRUIT; fi.type = 'bandpass'; fi.frequency.value = f; fi.Q.value = q;
+  gn.gain.setValueAtTime(vol, t); gn.gain.exponentialRampToValueAtTime(.0005, t + d);
+  s.connect(fi); fi.connect(gn); gn.connect(MAITRE); s.start(t); s.stop(t + d + .05);
+}
+function ventSon(kmh){
+  const ac = AC; if(!ac || !son) return;
+  if(!VENT_G){
+    if(!BRUIT) souffle(.01, { vol:.0001 });
+    const s = ac.createBufferSource(), fi = ac.createBiquadFilter(); VENT_G = ac.createGain();
+    s.buffer = BRUIT; s.loop = true; fi.type = 'lowpass'; fi.frequency.value = 500; VENT_G.gain.value = 0;
+    s.connect(fi); fi.connect(VENT_G); VENT_G.connect(MAITRE); s.start();
+  }
+  VENT_G.gain.setTargetAtTime(J && !J.pause && !J.fini ? clamp((kmh - 15) / 70, 0, 1) * .05 : 0, ac.currentTime, .4);
+}
+const SONS = {
+  porte(){ souffle(.09, { vol:.09, f:2400, q:2 }); note(320, .07, { type:'square', vol:.025 }); },
+  siege(){ note(170, .09, { type:'triangle', vol:.05 }); note(120, .12, { type:'sine', vol:.04, delai:.05 }); },
+  plein(){ note(784, .12, { vol:.04 }); note(1046, .18, { vol:.04, delai:.08 }); },
+  chute(){ note(520, .35, { type:'triangle', vol:.06, glisse:-330 }); souffle(.25, { vol:.08, f:600 }); },
+  alarme(){ note(880, .16, { type:'square', vol:.03 }); note(660, .16, { type:'square', vol:.03, delai:.18 }); },
+  stop(){ note(220, .6, { type:'sawtooth', vol:.03, glisse:-150 }); },
+  marche(){ note(90, .7, { type:'sawtooth', vol:.025, glisse:120 }); },
+  bien(){ note(660, .1, { vol:.04 }); note(880, .1, { vol:.04, delai:.09 }); note(1175, .2, { vol:.04, delai:.18 }); },
+  erreur(){ note(196, .22, { type:'square', vol:.035 }); },
+  clic(){ note(1200, .04, { type:'square', vol:.02 }); },
+  piece(){ note(1318, .08, { vol:.04 }); note(1760, .14, { vol:.035, delai:.07 }); },
+  panne(){ for(let i = 0; i < 3; i++){ note(440, .2, { type:'square', vol:.035, delai:i * .45 }); note(330, .2, { type:'square', vol:.035, delai:i * .45 + .22 }); } },
+};
+
+/* ---------- La géométrie du quai (en mètres, vers la montagne = y positif) ---------- */
+let A = APPAREILS[1], L = null;
+function geometrie(A){
+  const n = A.places, E = .62, w = n * E + .34, R = A.R, H = 70;
+  const yL = R + 3.4, yG = yL - 2.3, yR = yG - 1.0, yZ = yR - 1.1, Ys = yL + 5.5, r = A.debray ? A.r : 1;
+  const Lp = 2 * H + PI * R + 2 * R;
+  const u0 = H - Ys, Ls = 2 * Ys + PI * R;                       // la partie lente (gare) d'un débrayable
+  const Lq = A.debray ? Lp - Ls + Ls / r : Lp;
+  const N = Math.max(4, Math.round(Lq / A.s)), sp = Lq / N;
+  const uVersQ = u => !A.debray || u < u0 ? u : u < u0 + Ls ? u0 + (u - u0) / r : u - Ls + Ls / r;
+  const qVersU = q => !A.debray || q < u0 ? q : q < u0 + Ls / r ? u0 + (q - u0) * r : q - Ls / r + Ls;
+  const xa = -R - w / 2 - .1, xb = R + w / 2 + .1, xS = xb + 1.0;
+  const yM = -R - 1.4, PAS = 1.25;
+  // le chemin de la file : en serpentin sur 4 allées, la tête près des portillons
+  const chemin = [];
+  for(let j = 0; j < 4; j++){ const y = yM - j * PAS; if(j % 2 === 0){ chemin.push([xb - .3, y], [xa + .3, y]); } else { chemin.push([xa + .3, y], [xb - .3, y]); } }
+  const longs = [0]; for(let i = 1; i < chemin.length; i++) longs.push(longs[i - 1] + Math.hypot(chemin[i][0] - chemin[i - 1][0], chemin[i][1] - chemin[i - 1][1]));
+  const G = { n, E, w, R, H, yL, yG, yR, yZ, Ys, r, Lp, Lq, N, sp, uVersQ, qVersU, xa, xb, xS, yM, PAS, chemin, longs, longFile:longs[longs.length - 1],
+    slotX:i => R + (i - (n - 1) / 2) * E,
+    x0:xa - .6, x1:xS + 3.6, y0:yM - 3 * PAS - 1.1, yEss:yL + 7.5,
+    qLigne:uVersQ(H + PI * R + yL), qSortie:uVersQ(H + PI * R + yL + 7), qSki:uVersQ(H + PI * R + yL + 9), qHaut:uVersQ(2 * H + PI * R),
+    cabine:{ x0:xS + .5, x1:xS + 3.2, y0:yL - 1.4, y1:yL + 1.6 }, pylone:yL + 10, maison:{ x:xS + .4, y:yL - .9 } };
+  G.vNom = sp / A.I;
+  return G;
+}
+function pos(u){
+  const { R, H } = L;
+  if(u < H) return { x:-R, y:H - u, a:-PI / 2, seg:0 };
+  u -= H; if(u < PI * R){ const th = PI + u / R; return { x:R * Math.cos(th), y:R * Math.sin(th), a:th + PI / 2, seg:1 }; }
+  u -= PI * R; if(u < H) return { x:R, y:u, a:PI / 2, seg:2 };
+  u -= H; return { x:R - u, y:H, a:PI, seg:3 };
+}
+function pointFile(d){
+  const C = L.chemin, Lg = L.longs;
+  if(d >= L.longFile){ const p = C[C.length - 1], q = C[C.length - 2], dx = p[0] - q[0], k = d - L.longFile; return { x:p[0] + Math.sign(dx) * k, y:p[1], hors:true, a:dx > 0 ? 0 : PI }; }
+  let i = 1; while(i < Lg.length - 1 && Lg[i] < d) i++;
+  const t = (d - Lg[i - 1]) / Math.max(1e-6, Lg[i] - Lg[i - 1]), p = C[i - 1], q = C[i];
+  return { x:p[0] + (q[0] - p[0]) * t, y:p[1] + (q[1] - p[1]) * t, a:Math.atan2(q[1] - p[1], q[0] - p[0]) + PI, hors:false };
+}
+const vJeu = niv => L.vNom * A.vit[niv] / A.vit[NOMINAL];
+
+/* ---------- La journée ---------- */
+let J = null, idSkieur = 0;
+function nouveauSkieur(type, extra = {}){
+  const s = { id:++idSkieur, type, x:0, y:0, a:PI / 2, tx:0, ty:0, etat:'file', ta:J.t, veste:choisir(VESTES), casque:choisir(CASQUES), ski:choisir(SKIS), slot:-1, ...extra };
+  if(type === 'moniteur'){ s.veste = '#C1121F'; s.casque = '#C1121F'; }
+  if(s.esf){ s.veste = '#E8433A'; }
+  if(type === 'debutant'){ s.ski = '#8A9099'; }
+  return s;
+}
+function nouvelleJournee(){
+  A = APPAREILS.find(x => x.id === reglages.app) || APPAREILS[1];
+  L = geometrie(A); idSkieur = 0;
+  const M = METEOS.find(m => m.id === reglages.meteo) || METEOS[0], F = FREQS.find(f => f.id === reglages.freq) || FREQS[1];
+  J = { A, M, F, t:0, pause:false, fini:false,
+    points:0, montes:0, pleins:0, chaises:0, sieges:0, pris:0, chutes:0, accidents:0, chutesSiege:0, sauvetages:0, tropTot:0, partis:0, skisRendus:0, pannes:0, arrets:0, ventFaute:0,
+    satSomme:0, attenteSomme:0, energie:0, prochain:0, groupes:0,
+    file:[], solo:[], sas:Array(L.n).fill(null), rang:Array(L.n).fill(null), ligne:Array(L.n).fill(null), aTerre:[], partants:[], skis:[], flots:[],
+    chaisesL:[], Q:0, v:vJeu(NOMINAL), niveau:NOMINAL, marche:true, urgence:false, porteT:9, porteOuverte:0,
+    vent:null, ventVu:0, ventMal:0, ventStop:0, panne:null, agent:{ x:L.maison.x, y:L.maison.y, a:PI, mission:null, t:0 },
+    alarmeT:0, msgs:{}, tuto:!lire('telesiege-tuto', false), tutoVu:{}, debut:performance.now() };
+  for(let k = 0; k < L.N; k++) J.chaisesL.push({ k, num:k + 1, q:(k * L.sp) % L.Lq, pass:Array(L.n).fill(null), mal:null, ski:false });
+  // le vent de la journée : une base, des ondulations et des rafales
+  const ph = [hasard(0, 9), hasard(0, 9), hasard(0, 9)], raf = [];
+  const nr = Math.round(hasard(M.rafales[0], M.rafales[1] + .99));
+  for(let i = 0; i < nr; i++) raf.push({ t:hasard(25, DUREE - 25), d:hasard(14, 34), h:M.fort * hasard(.7, 1.15) });
+  const derive = hasard(-4, 6) * (M.id === 'tempete' ? 1.6 : 1);
+  J.vent = t => {
+    let v = M.base + derive * t / DUREE + M.amp * (.55 * Math.sin(t / 23 + ph[0]) + .3 * Math.sin(t / 9.3 + ph[1]) + .15 * Math.sin(t / 3.7 + ph[2]));
+    for(const r of raf){ const x = (t - r.t) / (r.d / 2); if(Math.abs(x) < 1.6) v += r.h * Math.exp(-x * x * 1.6); }
+    return Math.max(0, v);
+  };
+  // les pannes prévues
+  const maint = (a('maint1') ? 1 : 0) + (a('maint2') ? 1 : 0) + (a('maint3') ? 1 : 0);
+  const moy = A.pannes * (1 - .25 * maint) * (M.neige > .5 ? 1.15 : 1);
+  let np = 0; { let p = Math.exp(-moy), s = p, u = Math.random(); while(u > s && np < 6){ np++; p *= moy / np; s += p; } }
+  J.pannesPrevues = Array.from({ length:np }, () => hasard(DUREE * .12, DUREE * .88)).sort((x, y) => x - y);
+  // les cours de l'école de ski : le matin et l'après-midi
+  J.esf = []; for(let i = 0; i < F.esf; i++) J.esf.push(i % 2 === 0 ? hasard(28, 60) : hasard(170, 200));
+  J.esf.sort((x, y) => x - y);
+  // quelques skieurs déjà là à l'ouverture
+  for(let i = 0; i < Math.round(6 * F.k * M.foule + L.n); i++) arriveeGroupe(true);
+  placerFile(true);
+}
+const heure = t => { const m = 540 + t / DUREE * 450; return `${Math.floor(m / 60)}:${String(Math.floor(m % 60)).padStart(2, '0')}`; };
+// l'affluence au fil de la journée (1 = la capacité normale du télésiège)
+const PROFIL = [.75, 1.05, 1.15, 1.05, .95, .8, .55, .45, .6, .95, 1.1, 1.0, .85, .65, .4, .2];
+function affluence(t){ const x = t / DUREE * 15, i = Math.floor(clamp(x, 0, 14.999)), f = x - i; return PROFIL[i] * (1 - f) + PROFIL[Math.min(15, i + 1)] * f; }
+function arriveeGroupe(initial = false){
+  const r = Math.random(); let types;
+  if(r < .22) types = ['adulte'];
+  else if(r < .31) types = ['snow'];
+  else if(r < .47) types = ['adulte', 'adulte'];
+  else if(r < .53) types = ['adulte', 'snow'];
+  else if(r < .58) types = ['snow', 'snow'];
+  else if(r < .72){ types = ['adulte', 'adulte', 'enfant']; if(Math.random() < .5) types.push('enfant'); }
+  else if(r < .80) types = ['adulte', 'adulte', 'adulte'];
+  else if(r < .88) types = ['debutant', 'debutant'];
+  else if(r < .94) types = ['adulte', 'enfant'];
+  else types = ['debutant'];
+  ajouterGroupe(types.map(t => nouveauSkieur(t)), initial);
+}
+function ajouterGroupe(membres, initial){
+  J.groupes++;
+  const gid = J.groupes;
+  membres.forEach(s => { s.g = gid; const p = pointFile(L.longFile + 3 + Math.random() * 2); s.x = p.x; s.y = p.y; s.a = p.a; if(initial){ s.ta = -hasard(0, 8); } });
+  if(membres.length === 1 && J.solo.length < 8 && Math.random() < .7){ const s = membres[0]; s.etat = 'solo'; s.x = L.xS + 1.5; s.y = L.y0; J.solo.push(s); return; }
+  J.file.push({ id:gid, membres });
+}
+function coursESF(){
+  const n = Math.round(hasard(6, 8.4)), m = [];
+  for(let i = 0; i < n; i++) m.push(nouveauSkieur('enfant', { esf:true }));
+  m.push(nouveauSkieur('moniteur', { esf:true }));
+  ajouterGroupe(m, false);
+  toast('🎿 Un cours de ski arrive : des enfants, pense à ralentir !');
+}
+// les skieurs de la file avancent vers leur place
+function placerFile(direct = false){
+  let i = 0;
+  for(const gr of J.file) for(const s of gr.membres){
+    const p = pointFile(i * .82 + .1); s.tx = p.x; s.ty = p.y; s.ta2 = p.a; s.hors = p.hors; if(direct){ s.x = p.x; s.y = p.y; s.a = p.a; } i++;
+  }
+  J.solo.forEach((s, k) => { s.tx = L.xS; s.ty = L.yR - k * .82; s.hors = k > 9; });
+}
+const nbFile = () => J.file.reduce((n, gr) => n + gr.membres.length, 0);
+
+/* ---------- La rangée derrière les portillons, et la zone d'attente juste derrière ---------- */
+function remplirRang(){
+  const n = L.n;
+  // dès que la rangée est partie, la zone d'attente avance derrière les portillons
+  if(!J.rang.some(Boolean) && J.sas.some(Boolean)){ for(let i = 0; i < n; i++) if(J.sas[i]){ mettreAuRang(J.sas[i], i); J.sas[i] = null; } }
+  // la file remplit la zone d'attente, groupe par groupe
+  while(J.file.length){
+    const libres = []; for(let i = 0; i < n; i++) if(!J.sas[i]) libres.push(i);
+    if(!libres.length) break;
+    const gr = J.file[0], m = gr.membres;
+    if(m.length <= libres.length){
+      // les membres d'un groupe restent côte à côte si possible
+      let deb = -1; for(let i = 0; i + m.length <= n; i++){ let ok = true; for(let j = 0; j < m.length; j++) if(J.sas[i + j]) ok = false; if(ok){ deb = i; break; } }
+      const places = deb >= 0 ? Array.from({ length:m.length }, (_, j) => deb + j) : libres.slice(0, m.length);
+      m.splice(0, m.length).forEach((s, j) => mettreAuSas(s, places[j]));
+      J.file.shift();
+    } else if(m.length > n){
+      // un groupe plus grand qu'un siège (cours de ski) se partage
+      m.splice(0, libres.length).forEach((s, j) => mettreAuSas(s, libres[j]));
+      if(!m.length) J.file.shift();
+      break;
+    } else break;
+  }
+  if(a('hotesse')) completerSolo(true);
+}
+function mettreAuSas(s, i){ s.etat = 'sas'; s.slot = i; J.sas[i] = s; s.tx = L.slotX(i); s.ty = L.yZ; }
+function mettreAuRang(s, i){ s.etat = 'rang'; s.slot = i; J.rang[i] = s; s.tx = L.slotX(i); s.ty = L.yR; }
+// des places libres dans une rangée commencée : la file solo peut les compléter
+const placesLibres = () => J.rang.some(Boolean) && J.rang.some(x => !x);
+function completerSolo(auto = false){
+  if(auto && !placesLibres()) return 0;
+  let n = 0;
+  for(let i = 0; i < L.n && J.solo.length; i++) if(!J.rang[i]){ const s = J.solo.shift(); mettreAuRang(s, i); n++; }
+  if(n){ if(!auto) SONS.clic(); placerFile(); }
+  return n;
+}
+function ligneOccupee(){ return J.ligne.some(Boolean); }
+function ouvrirPortillons(auto = false){
+  if(!J || J.fini || J.pause) return;
+  if(!J.rang.some(Boolean)) return;
+  if(J.aTerre.length){
+    if(!auto){ SONS.erreur(); toast('Un skieur est à terre : arrête d\'abord le télésiège !', 'mal'); }
+    return;
+  }
+  if(ligneOccupee()){
+    if(auto) return;
+    J.tropTot++; ajouterPoints(-10); SONS.erreur(); flot(L.R, L.yG + .5, 'Trop tôt !', '#FF6B6B');
+    toast('Trop tôt ! Attends le feu vert : le siège doit d\'abord emmener ceux de la ligne.', 'mal'); return;
+  }
+  for(let i = 0; i < L.n; i++){ const s = J.rang[i]; if(!s) continue; s.etat = 'avance'; s.tx = L.slotX(i); s.ty = L.yL; J.ligne[i] = s; J.rang[i] = null; }
+  J.porteT = 0; SONS.porte(); tutoriel('ouvert');
+  remplirRang(); placerFile();
+}
+
+/* ---------- Les chutes, l'embarquement ---------- */
+function probaChute(s, tard){
+  const T = TYPES[s.type], vb = A.vit[J.niveau] * (J.v / Math.max(.01, vJeu(J.niveau))) * (A.debray ? A.r : 1);
+  const conf = T.conf * (A.debray ? .6 : 1);
+  let p = T.base * (A.debray ? .6 : 1) + Math.max(0, vb - conf) * T.k;
+  if(tard) p += A.debray ? .1 : .2;
+  if(a('tapis')) p *= .5;
+  if(a('agent') && (s.type === 'enfant' || s.type === 'debutant')) p *= .75;
+  if(J.M.neige > .5) p *= 1.2;
+  return clamp(p, 0, .9);
+}
+// vitesse d'embarquement au-dessus de ce qui convient à ce type de skieur
+function tropRapidePour(type){ const T = TYPES[type]; return A.vit[J.niveau] * (A.debray ? A.r : 1) > T.conf * (A.debray ? .6 : 1) + .05; }
+function chute(s, pourquoi){
+  const i = J.ligne.indexOf(s); if(i >= 0) J.ligne[i] = null;
+  s.etat = 'aTerre'; s.chuteA = hasard(-1.2, 1.2); s.tAterre = J.t; s.y = Math.min(s.y + .25, L.yL + .35);
+  J.aTerre.push(s); J.chutes++; ajouterPoints(-20); SONS.chute();
+  flot(s.x, s.y + .6, pourquoi === 'fauche' ? 'Fauché !' : 'Chute !', '#FF6B6B');
+  if(pourquoi === 'fauche') toast('Le siège est arrivé avant le skieur : ouvre les portillons plus tôt !');
+  else if(tropRapidePour(s.type)) toast(`${{ enfant:'Un enfant', debutant:'Un débutant', snow:'Un snowboarder', adulte:'Un skieur', moniteur:'Le moniteur' }[s.type]} est tombé : trop vite pour lui !`);
+  tutoriel('chute');
+}
+function embarquement(ch){
+  // un skieur à terre sur la ligne : le siège le heurte
+  for(const s of J.aTerre.slice()){
+    if(!s.evacue && Math.abs(s.x - L.R) < L.w / 2 + .35 && s.y > L.yG - .2 && s.y < L.yL + 1.2) accident(s);
+  }
+  const avaitDemande = J.file.length || J.solo.length || J.sas.some(Boolean) || J.rang.some(Boolean) || J.ligne.some(Boolean);
+  let pris = 0;
+  const tol = A.debray ? 1.1 : .45;
+  for(let i = 0; i < L.n; i++){
+    const s = J.ligne[i]; if(!s) continue;
+    const reste = Math.hypot(s.tx - s.x, s.ty - s.y);
+    if(s.etat === 'ligne' || reste <= tol){
+      s.tard = s.etat !== 'ligne';
+      if(Math.random() < probaChute(s, s.tard)){ chute(s, 'embarquement'); continue; }
+      ch.pass[i] = s; s.etat = 'assis'; J.ligne[i] = null; pris++;
+      const att = (J.t - s.ta) * MIN_PAR_S * (a('ecran') ? .8 : 1);
+      const sat = att < 4 ? 2 : att < 8 ? 1 : att < 13 ? 0 : att < 20 ? -1 : -2;
+      J.satSomme += sat; J.attenteSomme += att; J.montes++; ajouterPoints(10 + 3 * sat + (A.bulles && J.M.neige > .5 ? 3 : 0));
+    } else if(reste <= 1.6) chute(s, 'fauche');
+    else { if(!J.msgs.rate || J.t - J.msgs.rate > 8){ J.msgs.rate = J.t; toast('Trop tard : siège raté, ils prendront le suivant. Ouvre plus tôt !'); } flot(s.x, s.y + .5, 'Raté', '#FFC94A'); }
+  }
+  if(pris || avaitDemande){ J.chaises++; J.sieges += L.n; J.pris += pris; }
+  if(pris === L.n){ J.pleins++; ajouterPoints(10); flot(L.R, L.yL + 1.4, 'Plein ! +10', '#FFC94A'); SONS.plein(); }
+  else if(pris){ SONS.siege(); if(pris < L.n && J.solo.length) tutoriel('vide'); }
+  // un enfant ou un débutant peut s'asseoir de travers
+  if(pris && ch.pass.some(s => s && (s.type === 'enfant' || s.type === 'debutant'))){
+    const fragile = ch.pass.filter(s => s && (s.type === 'enfant' || s.type === 'debutant'));
+    let p = .035 * (fragile.some(s => tropRapidePour(s.type)) ? 2 : 1) * (a('agent') ? .6 : 1);
+    if(Math.random() < p){ const s = choisir(fragile); ch.mal = { slot:ch.pass.indexOf(s), t:J.t, regle:false }; SONS.alarme(); }
+  }
+  if(pris && Math.random() < .02) ch.ski = true;
+}
+function accident(s){
+  J.accidents++; ajouterPoints(-250); s.evacue = J.t;
+  J.marche = false; J.urgence = true; SONS.chute(); SONS.alarme();
+  flot(s.x, s.y + .8, 'Accident !', '#FF4D4F');
+  toast('🚑 Accident : le siège a heurté le skieur à terre ! Il fallait faire STOP.', 'mal');
+}
+function sortieGare(ch){
+  if(ch.mal && !ch.mal.regle){
+    const s = ch.pass[ch.mal.slot];
+    if(s){ ch.pass[ch.mal.slot] = null; J.montes--; J.chutesSiege++; ajouterPoints(-150); s.etat = 'filet'; s.x = L.R + (ch.mal.slot - (L.n - 1) / 2) * L.E; s.y = L.yL + 7.5; s.tFilet = J.t; J.partants.push(s);
+      SONS.chute(); toast('😮 L\'enfant a glissé, le filet l\'a rattrapé. Il fallait faire STOP !', 'mal'); }
+    ch.mal = null;
+  }
+}
+function skiPerdu(ch){
+  if(!ch.ski) return; ch.ski = false;
+  const p = pos(L.qVersU(ch.q));
+  J.skis.push({ x:p.x + hasard(-1.2, 1.2), y:p.y + hasard(.5, 3), a:hasard(0, PI), t:J.t, c:choisir(SKIS) });
+  toast('🎿 Un ski est tombé d\'un siège : touche-le pour le ramasser !');
+}
+
+/* ---------- Les points, les messages ---------- */
+function ajouterPoints(n){ J.points += Math.round(n * (n > 0 ? J.M.bonus : 1)); }
+function flot(x, y, txt, col){ const n = J.flots.filter(f => f.t < .5 && Math.abs(f.x - x) < 3 && Math.abs(f.y - y) < 1.5).length; J.flots.push({ x, y:y + n * .9, txt, col, t:0 }); }
+let toastId = 0;
+function toast(txt, cls = ''){
+  const box = $('toast');
+  if([...box.children].some(d => d.textContent === txt)) return;
+  const el = document.createElement('div'); el.textContent = txt; if(cls) el.className = cls; box.prepend(el); while(box.children.length > 2) box.lastChild.remove();
+  const id = ++toastId; el.dataset.id = id; setTimeout(() => el.remove(), cls ? 4200 : 3400);
+}
+const TUTO = {
+  debut:'Feu vert aux portillons ? Touche 🚧 Portillons : les skieurs vont à la ligne rouge.',
+  ouvert:'Bravo ! Le siège suivant les prend. Rouvre dès que le feu repasse au vert.',
+  vide:'Place vide ? Avant d\'ouvrir, touche 👤 Solo pour la compléter.',
+  enfants:'Des enfants : ralentis avec − pour qu\'ils ne tombent pas.',
+  chute:'Skieur à terre : STOP tout de suite ! L\'agent le relève, puis Démarrer.',
+};
+function tutoriel(cle){
+  if(!J || !J.tuto || J.tutoVu[cle]) return;
+  J.tutoVu[cle] = true; toast('💡 ' + TUTO[cle]);
+}
+
+/* ---------- Un pas de la simulation ---------- */
+function pas(h){
+  J.t += h;
+  const t = J.t;
+  // les arrivées
+  const fin = t > DUREE * 435 / 450;                // plus d'arrivées après 16 h 15
+  if(!fin){
+    const lambda = (L.n / A.I) * J.F.k * J.M.foule * affluence(t) / 1.92;   // groupes par seconde (1,92 skieur par groupe en moyenne)
+    J.prochain -= h * lambda;
+    while(J.prochain <= 0){ arriveeGroupe(); J.prochain += -Math.log(1 - Math.random()); }
+  }
+  while(J.esf.length && t >= J.esf[0]){ J.esf.shift(); coursESF(); }
+  // la patience : au-delà de 30 minutes (40 % de plus avec la musique), certains repartent
+  const maxAtt = 30 * (a('cabane') ? 1.4 : 1) * (a('ecran') ? 1.15 : 1) / MIN_PAR_S;
+  for(let gi = J.file.length - 1; gi >= 1; gi--){
+    const gr = J.file[gi];
+    if(t - gr.membres[0].ta > maxAtt && Math.random() < h * .25){
+      J.file.splice(gi, 1); J.partis += gr.membres.length; ajouterPoints(-15 * gr.membres.length);
+      gr.membres.forEach(s => { s.etat = 'part'; s.tPart = t; s.tx = s.x + 12; s.ty = s.y - 3; J.partants.push(s); });
+      if(!J.msgs.partis || t - J.msgs.partis > 12){ J.msgs.partis = t; toast('😠 Des skieurs en ont assez d\'attendre et s\'en vont.', 'mal'); }
+    }
+  }
+  // le vent
+  const vent = J.vent(t); J.ventVu = vent;
+  verifierVent(h, vent);
+  // les pannes
+  if(!J.panne && J.pannesPrevues.length && t >= J.pannesPrevues[0] && J.v > vJeu(J.niveau) * .5){ J.pannesPrevues.shift(); declencherPanne(); }
+  // la vitesse du câble
+  const cible = J.marche ? vJeu(J.niveau) : 0;
+  const montee = L.vNom / 1.4, freinage = L.vNom / (J.urgence ? .45 : .9);
+  if(J.v < cible) J.v = Math.min(cible, J.v + montee * h); else J.v = Math.max(cible, J.v - freinage * h);
+  J.energie += (J.v / L.vNom) * h;
+  // les sièges avancent
+  J.Q = (J.Q + J.v * h) % L.Lq;
+  const passe = (x, y, c) => x <= y ? (x < c && c <= y) : (x < c || c <= y);
+  for(const ch of J.chaisesL){
+    const q = (J.Q + ch.k * L.sp) % L.Lq, avant = ch.q; ch.q = q;
+    if(avant === q) continue;
+    if(passe(avant, q, L.qLigne)) embarquement(ch);
+    if(passe(avant, q, L.qSortie)) sortieGare(ch);
+    if(passe(avant, q, L.qSki)) skiPerdu(ch);
+    if(passe(avant, q, L.qHaut)){ ch.pass.fill(null); ch.mal = null; }
+  }
+  // les portillons
+  J.porteT += h;
+  if(a('portillons') && !ligneOccupee() && J.rang.some(Boolean) && J.porteT > .6 && J.marche && J.v > .2) ouvrirPortillons(true);
+  remplirRang(); placerFile();
+  // les dépannages qui durent
+  if(J.panne && J.panne.majFrein) J.panne.majFrein(h);
+  if(J.panne && J.panne.majTravail) J.panne.majTravail(h);
+  // les skieurs bougent
+  bougerSkieurs(h);
+  // l'agent
+  majAgent(h);
+  // le tutoriel
+  if(J.tuto){
+    if(t > 1.5) tutoriel('debut');
+    if(J.rang.some(s => s && (s.type === 'enfant')) && tropRapidePour('enfant')) tutoriel('enfants');
+  }
+  // les petits textes qui montent
+  for(const f of J.flots) f.t += h;
+  J.flots = J.flots.filter(f => f.t < 1.6);
+  J.skis = J.skis.filter(s => t - s.t < 45);
+  if(t >= DUREE) finJournee();
+}
+function bougerSkieurs(h){
+  const bouge = (s, v) => {
+    const dx = s.tx - s.x, dy = s.ty - s.y, d = Math.hypot(dx, dy);
+    if(d < 1e-3) return true;
+    const k = Math.min(1, v * h / d); s.x += dx * k; s.y += dy * k;
+    if(d > .05){ const ang = Math.atan2(dy, dx); let da = ang - s.a; while(da > PI) da -= 2 * PI; while(da < -PI) da += 2 * PI; s.a += da * Math.min(1, h * 8); }
+    return d <= v * h;
+  };
+  for(const gr of J.file) for(const s of gr.membres){ if(bouge(s, 1.6)) { let da = s.ta2 - s.a; while(da > PI) da -= 2 * PI; while(da < -PI) da += 2 * PI; s.a += da * Math.min(1, h * 5); } }
+  for(const s of J.solo) if(bouge(s, 1.7)) s.a += (PI / 2 - s.a) * Math.min(1, h * 5);
+  for(const s of J.sas) if(s && bouge(s, 2.4)) s.a += (PI / 2 - s.a) * Math.min(1, h * 6);
+  for(const s of J.rang) if(s && bouge(s, Math.max(1.8, TYPES[s.type].marche))) s.a += (PI / 2 - s.a) * Math.min(1, h * 6);
+  for(let i = 0; i < L.n; i++){
+    const s = J.ligne[i]; if(!s) continue;
+    const v = a('tapis') ? 2.1 : TYPES[s.type].marche;
+    if(bouge(s, v)){ s.etat = 'ligne'; s.a += (PI / 2 - s.a) * Math.min(1, h * 6); }
+  }
+  for(const s of J.partants){
+    if(s.etat === 'part') bouge(s, 1.4);
+  }
+  J.partants = J.partants.filter(s => (s.etat === 'part' && J.t - s.tPart < 9) || (s.etat === 'filet' && J.t - s.tFilet < 4));
+  // les accidentés partent avec les pisteurs
+  J.aTerre = J.aTerre.filter(s => !(s.evacue && J.t - s.evacue > 3.2));
+}
+// l'agent va relever les skieurs à terre et rasseoir les enfants mal assis, quand le télésiège est arrêté
+function majAgent(h){
+  const ag = J.agent, arret = J.v < .05;
+  if(!ag.mission){
+    const s = J.aTerre.find(x => !x.evacue);
+    const ch = J.chaisesL.find(c => c.mal && !c.mal.regle);
+    if(arret && s) ag.mission = { type:'relever', s };
+    else if(arret && ch) ag.mission = { type:'rasseoir', ch };
+    ag.t = 0;
+  }
+  let cx = L.maison.x, cy = L.maison.y;
+  const m = ag.mission;
+  if(m){
+    if(m.type === 'relever'){ cx = m.s.x + .55; cy = m.s.y - .3; if(!J.aTerre.includes(m.s) || m.s.evacue){ ag.mission = null; } }
+    else { const p = pos(L.qVersU(m.ch.q)); cx = p.x + L.w / 2 + .5; cy = p.y; if(!m.ch.mal){ ag.mission = null; } }
+  }
+  const dx = cx - ag.x, dy = cy - ag.y, d = Math.hypot(dx, dy), v = a('agent') ? 4.5 : 3;
+  if(d > .05){ const k = Math.min(1, v * h / d); ag.x += dx * k; ag.y += dy * k; ag.a = Math.atan2(dy, dx); }
+  if(m && ag.mission && d < .15){
+    if(!arret){ ag.t = 0; return; }
+    ag.t += h;
+    const besoin = m.type === 'relever' ? (a('agent') ? .8 : 1.6) : 1.5;
+    if(ag.t >= besoin){
+      if(m.type === 'relever'){
+        const s = m.s; J.aTerre.splice(J.aTerre.indexOf(s), 1); s.etat = 'solo'; s.chuteA = 0; J.solo.unshift(s); placerFile();
+        J.sauvetages++; ajouterPoints(15); flot(s.x, s.y + .7, 'Relevé ! +15', '#4BE08A'); SONS.bien();
+        if(!J.aTerre.some(x => !x.evacue)) toast('Skieur relevé (il passe dans la file solo). Tu peux redémarrer !', 'bon');
+      } else {
+        m.ch.mal.regle = true; J.sauvetages++; ajouterPoints(30); const p = pos(L.qVersU(m.ch.q)); flot(p.x, p.y + .8, 'Bien vu ! +30', '#4BE08A'); SONS.bien();
+        m.ch.mal = null; toast('Bien vu ! L\'enfant est bien assis. Tu peux redémarrer.', 'bon');
+      }
+      ag.mission = null;
+    }
+  }
+}
+
+/* ---------- Le vent ---------- */
+function verifierVent(h, vent){
+  const [lent, arret] = A.vent;
+  const tourne = J.v > vJeu(0) * .3;
+  if(vent > arret && tourne){
+    J.ventStop += h;
+    if(!J.msgs.ventArret){ J.msgs.ventArret = true; SONS.alarme(); toast(`💨 Vent à ${Math.round(vent)} km/h : il faut arrêter le télésiège (STOP) !`, 'mal'); }
+    if(J.ventStop > 4){
+      J.ventStop = 0; J.accidents++; ajouterPoints(-300); J.marche = false; J.urgence = true; J.ventFaute++;
+      toast('💥 Le vent a jeté un siège contre un pylône ! Inspection de la ligne.', 'mal');
+      declencherPanne('inspection');
+    }
+  } else J.ventStop = Math.max(0, J.ventStop - h);
+  if(vent <= arret - 3) J.msgs.ventArret = false;
+  if(vent > lent && J.niveau > 1 && tourne && vent <= arret){
+    J.ventMal += h;
+    if(!J.msgs.ventLent){ J.msgs.ventLent = true; SONS.alarme(); toast(`💨 Vent à ${Math.round(vent)} km/h : passe en vitesse 2 au maximum !`, 'mal'); }
+    if(J.ventMal > 3){ ajouterPoints(-8 * h); J.ventFaute += h / 10; }
+  } else J.ventMal = 0;
+  if(vent <= lent - 3) J.msgs.ventLent = false;
+}
+
+/* ---------- Les commandes ---------- */
+function vitesse(d){
+  if(!J || J.fini) return;
+  const n = clamp(J.niveau + d, 0, 4); if(n === J.niveau) return;
+  J.niveau = n; SONS.clic();
+}
+function stopMarche(){
+  if(!J || J.fini || J.pause) return;
+  if(J.marche){ J.marche = false; J.urgence = false; J.arrets++; SONS.stop(); return; }
+  const raison = raisonPasDemarrer();
+  if(raison){ SONS.erreur(); toast(raison, 'mal'); return; }
+  J.marche = true; J.urgence = false; SONS.marche();
+}
+function raisonPasDemarrer(){
+  if(J.panne) return 'La panne n\'est pas encore réparée.';
+  if(J.aTerre.some(s => !s.evacue)) return 'Un skieur est encore à terre sur le quai : attends que l\'agent le relève.';
+  if(J.aTerre.length) return 'Les pisteurs s\'occupent du blessé, encore un instant.';
+  if(J.chaisesL.some(c => c.mal && !c.mal.regle)) return 'L\'agent rassoit l\'enfant, encore un instant.';
+  if(J.ventVu > A.vent[1]) return `Le vent souffle à ${Math.round(J.ventVu)} km/h : trop fort pour repartir (seuil ${A.vent[1]} km/h).`;
+  return '';
+}
+
+/* ---------- Les pannes et les dépannages ---------- */
+const PANNES = {
+  disjoncteur:{ titre:'⚡ Défaut moteur', texte:'Un disjoncteur a sauté dans l\'armoire électrique. Remets-le en marche (le rouge), puis réarme.' },
+  frein:{ titre:'🛑 Défaut de frein', texte:'La pression du frein de secours est trop basse. Pompe (appuie longtemps) jusqu\'à la zone verte, ni trop ni trop peu.' },
+  cable:{ titre:'🪢 Sortie de câble', texte:'' },
+  anemometre:{ titre:'🧊 Anémomètre givré', texte:'L\'anémomètre est couvert de glace : on ne sait plus quelle force a le vent. Gratte la glace !' },
+  pince:{ titre:'🔩 Défaut de pince', texte:'' },
+  inspection:{ titre:'🔍 Inspection de la ligne', texte:'Après le choc, les pisteurs vérifient tous les pylônes. Patience…' },
+};
+function declencherPanne(type){
+  if(J.panne) return;
+  if(!type){ const t = ['disjoncteur', 'frein', 'cable', 'anemometre']; if(A.debray) t.push('pince', 'pince'); if(J.M.neige > .5) t.push('anemometre'); type = choisir(t); }
+  J.panne = { type, t:J.t };
+  J.marche = false; J.urgence = true; J.pannes++;
+  SONS.panne();
+  ouvrirDepannage();
+}
+function finPanne(){
+  if(!J.panne) return;
+  J.panne = null; $('panne').hidden = true; SONS.bien();
+  toast('🔧 Réparé ! Appuie sur Démarrer.', 'bon');
+}
+function ouvrirDepannage(){
+  const P = J.panne, D = PANNES[P.type], box = $('pJeu');
+  $('pTitre').textContent = D.titre; box.innerHTML = '';
+  let texte = D.texte;
+  if(P.type === 'disjoncteur'){
+    const n = 8, mauvais = Math.floor(Math.random() * n), etat = Array(n).fill(true); etat[mauvais] = false;
+    const grille = document.createElement('div'); grille.className = 'disj';
+    const ok = document.createElement('button'); ok.className = 'pgros'; ok.textContent = 'Réarmer l\'armoire'; ok.disabled = true;
+    const noteEl = document.createElement('p'); noteEl.className = 'pnote';
+    const maj = () => { [...grille.children].forEach((b, i) => b.classList.toggle('off', !etat[i])); ok.disabled = etat.some(x => !x); };
+    const noms = ['Moteur', 'Frein', 'Pompe', 'Éclairage', 'Portillons', 'Chauffage', 'Sécurité', 'Freinage'];
+    for(let i = 0; i < n; i++){ const b = document.createElement('button'); b.innerHTML = `<i></i>${noms[i]}`; b.onclick = () => { if(etat[i]){ etat[i] = false; noteEl.textContent = 'Oups, celui-là marchait : il a sauté aussi !'; SONS.erreur(); } else { etat[i] = true; noteEl.textContent = ''; SONS.clic(); } maj(); }; grille.append(b); }
+    ok.onclick = () => finPanne();
+    box.append(grille, noteEl, ok); maj();
+  } else if(P.type === 'frein'){
+    const mano = document.createElement('div'); mano.className = 'manometre'; mano.innerHTML = '<div class="zone" style="left:62%;width:16%"></div><div class="niv"></div>';
+    const pompe = document.createElement('button'); pompe.className = 'pgros'; pompe.textContent = '💪 Pomper (garder appuyé)';
+    const ok = document.createElement('button'); ok.className = 'pgros vert'; ok.textContent = 'Valider la pression'; ok.disabled = true;
+    const noteEl = document.createElement('p'); noteEl.className = 'pnote';
+    let p = .25, appui = false;
+    const fin = () => { appui = false; };
+    pompe.onpointerdown = e => { e.preventDefault(); appui = true; }; pompe.onpointerup = fin; pompe.onpointerleave = fin; pompe.onpointercancel = fin;
+    P.majFrein = h => {
+      if(appui) p += h * .32; else p = Math.max(.1, p - h * .03);
+      if(p > .93){ p = .3; appui = false; noteEl.textContent = 'Psschhh ! Trop de pression, la soupape s\'est ouverte. Recommence plus doucement.'; SONS.erreur(); }
+      mano.lastChild.style.width = (p * 100).toFixed(1) + '%';
+      ok.disabled = !(p >= .62 && p <= .78) || appui;
+      if(!ok.disabled && !noteEl.dataset.ok){ noteEl.textContent = 'Parfait, la pression est bonne : valide !'; }
+    };
+    ok.onclick = () => finPanne();
+    box.append(mano, pompe, noteEl, ok); P.majFrein(0);
+  } else if(P.type === 'cable' || P.type === 'pince'){
+    const cable = P.type === 'cable';
+    const nb = cable ? 8 : 6, bon = cable ? 1 + Math.floor(Math.random() * nb) : J.chaisesL[Math.floor(Math.random() * J.chaisesL.length)].num;
+    texte = cable ? `Le capteur signale une sortie de câble au pylône n° ${bon}. Envoie l'équipe au bon pylône.` : `Le test des pinces signale un serrage trop faible sur le siège n° ${bon}. Envoie ce siège au garage.`;
+    const nums = cable ? Array.from({ length:nb }, (_, i) => i + 1) : (() => { const s = new Set([bon]); while(s.size < nb) s.add(1 + Math.floor(Math.random() * L.N)); return [...s].sort((x, y) => x - y); })();
+    const rangee = document.createElement('div'); rangee.className = 'pboutons';
+    const barre = document.createElement('div'); barre.className = 'barre'; barre.innerHTML = '<i></i>'; barre.hidden = true;
+    const noteEl = document.createElement('p'); noteEl.className = 'pnote';
+    let bloque = 0;
+    nums.forEach(nm => { const b = document.createElement('button'); b.textContent = (cable ? '🗼 ' : '🪑 ') + nm; b.onclick = () => {
+      if(P.travail != null || J.t < bloque) return;
+      if(nm === bon){ b.classList.add('bon'); P.travail = 0; P.duree = cable ? 4.5 : 3; barre.hidden = false; noteEl.textContent = cable ? 'L\'équipe monte au pylône et remet le câble dans les galets…' : 'Le siège part au garage…'; SONS.clic(); }
+      else { b.classList.add('mal'); bloque = J.t + 1.2; noteEl.textContent = cable ? `Rien à signaler au pylône n° ${nm}.` : `Le siège n° ${nm} va très bien.`; SONS.erreur(); }
+    }; rangee.append(b); });
+    P.majTravail = h => { if(P.travail == null) return; P.travail += h; barre.firstChild.style.width = clamp(P.travail / P.duree * 100, 0, 100) + '%'; if(P.travail >= P.duree) finPanne(); };
+    box.append(rangee, barre, noteEl);
+  } else if(P.type === 'anemometre'){
+    const gl = document.createElement('div'); gl.className = 'glace'; gl.innerHTML = '🌬️<i></i>';
+    const b = document.createElement('button'); b.className = 'pgros'; b.textContent = '🧤 Gratter la glace';
+    let n = 0; const total = 12;
+    b.onclick = () => { n++; gl.lastChild.style.opacity = String(1 - n / total); souffle(.08, { vol:.05, f:3000, q:3 }); if(n >= total) finPanne(); };
+    box.append(gl, b);
+  } else if(P.type === 'inspection'){
+    const barre = document.createElement('div'); barre.className = 'barre'; barre.innerHTML = '<i></i>';
+    P.travail = 0; P.duree = 8;
+    P.majTravail = h => { P.travail += h; barre.firstChild.style.width = clamp(P.travail / P.duree * 100, 0, 100) + '%'; if(P.travail >= P.duree) finPanne(); };
+    box.append(barre);
+  }
+  $('pTexte').textContent = texte;
+  $('panne').hidden = false;
+}
+
+/* ---------- La fin de la journée ---------- */
+function etoilesDe(st){
+  let e = 0;
+  if(st.eff >= .6 && J.accidents <= 2) e = 1;
+  if(st.eff >= .78 && J.accidents === 0) e = 2;
+  if(st.eff >= .9 && J.accidents === 0 && J.chutesSiege === 0 && st.sat >= .5 && J.partis <= J.montes * .05) e = 3;
+  return e;
+}
+function finJournee(){
+  if(J.fini) return;
+  J.fini = true; J.marche = false; $('panne').hidden = true;
+  const enBas = nbFile() + J.solo.length + J.sas.filter(Boolean).length + J.rang.filter(Boolean).length + J.ligne.filter(Boolean).length;
+  const arrives = J.montes + J.partis + enBas;
+  const st = { eff:arrives ? J.montes / arrives : 1, sat:J.montes ? J.satSomme / J.montes : 0, att:J.montes ? J.attenteSomme / J.montes : 0, remplissage:J.sieges ? J.pris / J.sieges : 0, enBas };
+  const etoiles = etoilesDe(st);
+  // la caisse
+  const recette = J.montes * PRIX_SKIEUR;
+  const salaires = 150 + 30 * L.n + (a('agent') ? 150 : 0) + (a('hotesse') ? 120 : 0);
+  const energie = Math.round(J.energie * .3 * Math.pow(L.n / 4, .7) + 30);
+  const reparations = J.pannes * 100;
+  const assurance = J.accidents * 400 + J.chutesSiege * 200;
+  const prime = etoiles === 3 ? 300 : 0;
+  const benefice = recette - salaires - energie - reparations - assurance + prime;
+  caisse.argent = Math.max(0, caisse.argent + benefice);
+  // les records
+  REC.journees++; REC.montes += J.montes; if(etoiles === 3) REC.etoiles3++;
+  if(REC.meilleurBenefice == null || benefice > REC.meilleurBenefice) REC.meilleurBenefice = benefice;
+  const r = REC.appareils[A.id] || {};
+  const record = !r.score || J.points > r.score;
+  REC.appareils[A.id] = { score:Math.max(r.score || 0, J.points), etoiles:Math.max(r.etoiles || 0, etoiles), montes:Math.max(r.montes || 0, J.montes), journees:(r.journees || 0) + 1,
+    ...(record ? { date:Date.now(), freq:J.F.id, meteo:J.M.id } : { date:r.date, freq:r.freq, meteo:r.meteo }) };
+  ecrire('telesiege-dernier', { app:A.id, points:J.points, montes:J.montes, etoiles, benefice, date:Date.now() });
+  if(J.tuto) ecrire('telesiege-tuto', true);
+  sauver();
+  // l'écran du bilan
+  cacherJeu();
+  $('fTitre').textContent = `${A.nom} · fin de journée`;
+  $('fEtoiles').innerHTML = [0, 1, 2].map(i => `<i class="${i < etoiles ? 'on' : ''}">★</i>`).join('');
+  $('fPoints').innerHTML = `${fmt(J.points)}<small>points${J.M.bonus > 1 ? ` (météo ×${String(J.M.bonus).replace('.', ',')})` : ''}</small>`;
+  const notes = ['Journée difficile… les skieurs ont beaucoup attendu.', 'Pas mal ! Une étoile.', 'Belle journée de chef de quai !', 'Journée parfaite ! La direction t\'offre une prime de 300 €.'];
+  $('fNote').textContent = (record ? '🏆 Nouveau record sur ce télésiège ! ' : '') + notes[etoiles];
+  const smiley = st.sat >= 1.3 ? '😀' : st.sat >= .5 ? '🙂' : st.sat >= -.3 ? '😐' : st.sat >= -1 ? '😕' : '😠';
+  $('fStats').innerHTML = [
+    [fmt(J.montes), 'skieurs montés'], [Math.round(st.remplissage * 100) + ' %', 'places remplies'], [J.pleins, 'sièges pleins'],
+    [smiley + ' ' + Math.round(st.att) + ' min', 'attente moyenne'], [J.chutes, 'chutes'], [J.accidents + J.chutesSiege, 'accidents'],
+    [J.sauvetages, 'sauvetages'], [J.partis, 'partis fâchés'], [J.pannes, 'pannes'],
+  ].map(([v, l]) => `<div><b>${v}</b><small>${l}</small></div>`).join('');
+  const lignes = [['🎟️ Forfaits (' + fmt(J.montes) + ' × ' + PRIX_SKIEUR + ' €)', recette], ['👷 Salaires', -salaires], ['⚡ Électricité', -energie]];
+  if(reparations) lignes.push(['🔧 Réparations', -reparations]);
+  if(assurance) lignes.push(['🚑 Assurance (accidents)', -assurance]);
+  if(prime) lignes.push(['🎁 Prime de la direction', prime]);
+  $('fCompte').innerHTML = lignes.map(([l, v]) => `<tr><td>${l}</td><td class="${v >= 0 ? 'plus' : 'moins'}">${v >= 0 ? '+' : ''}${euros(v)}</td></tr>`).join('')
+    + `<tr class="total"><td>Bénéfice de la journée</td><td>${benefice >= 0 ? '+' : ''}${euros(benefice)}</td></tr><tr><td>💰 Caisse</td><td>${euros(caisse.argent)}</td></tr>`;
+  $('eFin').hidden = false;
+  SONS.piece();
+}
+
+/* ---------- Le dessin ---------- */
+let VUE = { sc:30, rot:false, e:0, f:0 };
+function taille(){
+  DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; Hh = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(Hh * DPR);
+  cadrer();
+}
+function cadrer(){
+  if(!L) return;
+  const hud = $('hud'), cg = $('cmdG'), cd = $('cmdD');
+  const enJeu = !hud.hidden;
+  const hb = enJeu ? hud.getBoundingClientRect().bottom : 0;
+  const rg = cg.getBoundingClientRect(), rd = cd.getBoundingClientRect();
+  const rot = W > Hh;
+  let vx0 = 0, vx1 = W, vy0 = hb + 4, vy1 = Hh;
+  if(enJeu){ if(rot){ vx0 = rg.right + 6; vx1 = rd.left - 6; } else vy1 = Math.min(rg.top, rd.top) - 6; }
+  const wx = L.x1 - L.x0, wy = L.yEss - L.y0, xc = (L.x0 + L.x1) / 2;
+  let sc;
+  if(!rot){ sc = Math.min((vx1 - vx0) / wx, (vy1 - vy0) / wy, 70); VUE = { sc, rot, a:sc, b:0, c:0, d:-sc, e:(vx0 + vx1) / 2 - xc * sc, f:vy1 + L.y0 * sc }; }
+  else { sc = Math.min((vy1 - vy0) / wx, (vx1 - vx0) / wy, 70); VUE = { sc, rot, a:0, b:sc, c:sc, d:0, e:vx0 + 4 - L.y0 * sc, f:(vy0 + vy1) / 2 - xc * sc }; }
+}
+const ecranDe = (x, y) => ({ x:VUE.a * x + VUE.c * y + VUE.e, y:VUE.b * x + VUE.d * y + VUE.f });
+const mondeDe = (sx, sy) => VUE.rot ? { x:(sy - VUE.f) / VUE.sc, y:(sx - VUE.e) / VUE.sc } : { x:(sx - VUE.e) / VUE.sc, y:(VUE.f - sy) / VUE.sc };
+function monde(){ g.setTransform(VUE.a * DPR, VUE.b * DPR, VUE.c * DPR, VUE.d * DPR, VUE.e * DPR, VUE.f * DPR); }
+function ecran(){ g.setTransform(DPR, 0, 0, DPR, 0, 0); }
+function rr(x, y, w, h, r){ g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h); }
+function disque(x, y, r){ g.beginPath(); g.arc(x, y, r, 0, 2 * PI); }
+
+// le décor fixe : arbres, traces
+let DECOR = null;
+function decor(){
+  const arbres = [];
+  for(let i = 0; i < 70; i++){
+    const y = L.y0 - 4 + fixe(i * 3.1) * 46;
+    const cote = fixe(i * 7.7) < .5;
+    let x = cote ? L.x0 - 1 - fixe(i * 1.3) * 7 : L.x1 + .5 + fixe(i * 2.9) * 7;
+    if(y > L.yL + 4.5 && fixe(i * 5.3) < .45) x = cote ? -L.R - L.w / 2 - 2.5 - fixe(i * 4.1) * 6 : L.R + L.w / 2 + 2.5 + fixe(i * 6.1) * 6;
+    if(x > L.cabine.x0 - 1 && x < L.cabine.x1 + 1 && y > L.cabine.y0 - 1 && y < L.cabine.y1 + 1) continue;
+    if(y < L.y0 + 1 && x > L.x0 && x < L.x1) continue;
+    arbres.push({ x, y, r:.9 + fixe(i * 9.1) * 1.1, t:fixe(i * 11.3) });
+  }
+  DECOR = { arbres };
+}
+function dessinerSol(){
+  // la neige
+  g.fillStyle = '#EEF4FA'; g.fillRect(-80, -60, 200, 200);
+  // la piste damée à gauche, avec ses côtes de velours
+  const xp = -L.R - L.w / 2 - 1.2;
+  g.fillStyle = '#E6EEF7'; g.fillRect(xp - 40, L.yL + 3, 40, 80);
+  g.strokeStyle = 'rgba(160,185,215,.35)'; g.lineWidth = .05;
+  for(let x = xp - 40; x < xp; x += .35){ g.beginPath(); g.moveTo(x, L.yL + 3); g.lineTo(x, L.yL + 80); g.stroke(); }
+  // les traces de ski
+  g.strokeStyle = 'rgba(150,175,205,.35)'; g.lineWidth = .06;
+  for(let i = 0; i < 8; i++){ const x0 = xp - 2 - fixe(i * 3.3) * 12; g.beginPath(); g.moveTo(x0, L.yL + 40); for(let y = L.yL + 40; y > L.yL + 3; y -= 1) g.lineTo(x0 + Math.sin(y * .5 + i) * .8, y); g.stroke(); }
+  // l'aire de la file : neige tassée
+  g.fillStyle = '#DCE6F1'; rr(L.xa - .5, L.y0 + .2, L.xb - L.xa + 1, L.yM - L.y0 + .4, .6); g.fill();
+  // les cordes de la file
+  g.strokeStyle = '#2D7FD3'; g.lineWidth = .07;
+  for(let j = 0; j <= 4; j++){
+    const y = L.yM + L.PAS / 2 - j * L.PAS;
+    let xd = L.xa - .3, xf = L.xb + .3;
+    if(j > 0 && j < 4){ if(j % 2 === 1) xf = L.xb - 1.1; else xd = L.xa + 1.1; }
+    g.beginPath(); g.moveTo(xd, y); g.lineTo(xf, y); g.stroke();
+    g.fillStyle = '#1B3A5C'; for(let x = xd; x <= xf + .01; x += (xf - xd) / Math.max(1, Math.round((xf - xd) / 2.2))){ disque(x, y, .09); g.fill(); }
+  }
+  // la file solo
+  g.fillStyle = '#DCE6F1'; rr(L.xS - .55, L.y0 + .2, 1.1, L.yR - L.y0 + .3, .5); g.fill();
+  g.strokeStyle = '#3EC6FF'; g.lineWidth = .07;
+  for(const dx of [-.55, .55]){ g.beginPath(); g.moveTo(L.xS + dx, L.y0 + .3); g.lineTo(L.xS + dx, L.yR - .4); g.stroke(); }
+  // le quai : le tapis de caoutchouc
+  const qx0 = L.R - L.w / 2 - .6, qx1 = L.R + L.w / 2 + .6;
+  g.fillStyle = '#5B6B80'; rr(qx0, L.yZ - .7, qx1 - qx0, L.yL + 1.1 - L.yZ + .7, .25); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.06)'; for(let y = L.yZ - .6; y < L.yL + 1; y += .3) g.fillRect(qx0 + .05, y, qx1 - qx0 - .1, .04);
+  if(a('tapis')){ g.fillStyle = '#2C4A73'; rr(qx0 + .25, L.yG + .1, qx1 - qx0 - .5, L.yL - L.yG - .15, .15); g.fill(); g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = .04; for(let y = L.yG + .3 + (J ? (J.t * 1.2) % .4 : 0); y < L.yL - .1; y += .4){ g.beginPath(); g.moveTo(qx0 + .35, y); g.lineTo(qx1 - .35, y); g.stroke(); } }
+  // les places sur la ligne
+  for(let i = 0; i < L.n; i++){ g.fillStyle = 'rgba(62,198,255,.55)'; rr(L.slotX(i) - .22, L.yL - .3, .44, .5, .08); g.fill(); }
+  // la ligne rouge d'embarquement
+  g.fillStyle = '#E5383B'; g.fillRect(qx0 + .1, L.yL + .22, qx1 - qx0 - .2, .16);
+  // la ligne d'arrêt du portillon (pointillés jaunes)
+  g.fillStyle = '#FFC94A'; for(let x = qx0 + .15; x < qx1 - .2; x += .4) g.fillRect(x, L.yR + .45, .22, .08);
+}
+function ombre(fn, dx = .45, dy = -.6){ g.save(); g.translate(dx, dy); g.globalAlpha = .16; fn(true); g.restore(); }
+function dessinerPortillons(){
+  const libre = !ligneOccupee(), ouvre = clamp(1 - Math.abs(J.porteT - .35) / .35, 0, 1);
+  for(let i = 0; i < L.n; i++){
+    const x = L.slotX(i) - L.E / 2 + .04, y = L.yG;
+    g.fillStyle = '#2A3546'; rr(x - .07, y - .07, .14, .14, .03); g.fill();
+    // le bras jaune et noir, qui pivote quand il s'ouvre
+    g.save(); g.translate(x, y); g.rotate(ouvre * PI * .45);
+    g.fillStyle = '#FFC94A'; rr(0, -.05, L.E - .1, .1, .04); g.fill();
+    g.fillStyle = '#1E1E1E'; for(let k = .08; k < L.E - .12; k += .16) g.fillRect(k, -.05, .07, .1);
+    g.restore();
+  }
+  // les feux du portillon
+  const xf = L.slotX(L.n - 1) + L.E / 2 + .25;
+  g.fillStyle = '#1E2632'; rr(xf - .16, L.yG - .26, .32, .52, .08); g.fill();
+  g.fillStyle = libre ? '#2DC26B' : '#4A1F22'; disque(xf, L.yG + .1, .1); g.fill();
+  g.fillStyle = libre ? '#1F3A28' : '#E5383B'; disque(xf, L.yG - .12, .1); g.fill();
+  if(libre){ g.fillStyle = 'rgba(45,194,107,.35)'; disque(xf, L.yG + .1, .22); g.fill(); }
+}
+function dessinerSkieur(s, ombreSeule){
+  g.save(); g.translate(s.x, s.y);
+  let ang = s.a - PI / 2;
+  if(s.etat === 'aTerre') ang += s.chuteA;
+  g.rotate(ang);
+  const k = s.type === 'enfant' ? .74 : 1; g.scale(k, k);
+  if(ombreSeule){ g.fillStyle = '#000'; disque(0, 0, .34); g.fill(); g.restore(); return; }
+  if(s.etat === 'aTerre'){ g.globalAlpha = s.evacue ? clamp(1 - (J.t - s.evacue) / 3.2, 0, 1) : 1; }
+  // les skis ou la planche
+  if(s.type === 'snow'){ g.fillStyle = s.ski; rr(-.2, -.62, .4, 1.24, .2); g.fill(); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(-.18, -.22, .36, .07); g.fillRect(-.18, .15, .36, .07); }
+  else { g.fillStyle = s.ski; rr(-.22, -.42, .12, 1.15, .05); g.fill(); rr(.1, -.42, .12, 1.15, .05); g.fill();
+    g.strokeStyle = '#4A5160'; g.lineWidth = .045; g.beginPath(); g.moveTo(-.36, .05); g.lineTo(-.42, -.38); g.moveTo(.36, .05); g.lineTo(.42, -.38); g.stroke(); }
+  // le corps (épaules) et le casque
+  if(s.type === 'snow'){ g.rotate(PI / 2); }
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(0, -.05, .33, .22, 0, 0, 2 * PI); g.fill();
+  g.fillStyle = s.veste; g.beginPath(); g.ellipse(0, -.03, .31, .2, 0, 0, 2 * PI); g.fill();
+  if(s.esf && s.type === 'enfant'){ g.fillStyle = '#FFE14D'; g.beginPath(); g.ellipse(0, -.03, .2, .14, 0, 0, 2 * PI); g.fill(); }
+  if(s.type === 'moniteur'){ g.fillStyle = '#fff'; g.fillRect(-.31, -.07, .62, .07); }
+  if(s.type === 'debutant'){ g.fillStyle = '#7CD957'; disque(.17, -.09, .08); g.fill(); }
+  g.fillStyle = s.casque; disque(0, .03, .16); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.35)'; disque(-.05, .07, .055); g.fill();
+  // le masque vers l'avant
+  if(s.etat !== 'aTerre'){ g.fillStyle = '#FF9F1C'; rr(-.11, .12, .22, .06, .03); g.fill(); }
+  g.restore();
+  if(s.etat === 'aTerre' && !s.evacue){
+    // des petites étoiles qui tournent
+    const tt = J.t * 4;
+    for(let i = 0; i < 3; i++){ g.fillStyle = '#FFC94A'; disque(s.x + Math.cos(tt + i * 2.1) * .45, s.y + Math.sin(tt + i * 2.1) * .45, .07); g.fill(); }
+  }
+}
+function dessinerAgent(){
+  const ag = J.agent;
+  g.save(); g.translate(ag.x, ag.y); g.rotate(ag.a - PI / 2);
+  g.fillStyle = 'rgba(0,0,0,.15)'; disque(.35, -.5, .3); g.fill();
+  g.fillStyle = '#1E2632'; g.fillRect(-.16, -.25, .12, .3); g.fillRect(.04, -.25, .12, .3);
+  g.fillStyle = '#FF7A00'; g.beginPath(); g.ellipse(0, 0, .28, .18, 0, 0, 2 * PI); g.fill();
+  g.fillStyle = '#D9F99D'; g.fillRect(-.28, -.03, .56, .05);
+  g.fillStyle = '#222'; disque(0, .04, .13); g.fill();
+  g.restore();
+}
+function dessinerChaise(ch, ombreSeule){
+  const u = L.qVersU(ch.q), p = pos(u);
+  if(p.seg === 3 || (p.seg === 0 && p.y > 40) || (p.seg === 2 && p.y > 40)) return;
+  const enGare = p.seg === 1 || p.y < L.Ys;
+  const occupe = ch.pass.some(Boolean);
+  const vent = J.ventVu, balance = (p.seg === 2 || p.seg === 0) && p.y > L.Ys ? Math.sin(J.t * 1.7 + ch.k) * clamp((vent - 25) / 50, 0, 1) * .12 : 0;
+  g.save(); g.translate(p.x, p.y); g.rotate(p.a - PI / 2 + balance);
+  const w = L.w;
+  if(ombreSeule){ g.fillStyle = '#000'; rr(-w / 2, -.45, w, .95, .2); g.fill(); g.restore(); return; }
+  // le dossier, le siège, les accoudoirs
+  g.fillStyle = '#2B3442'; rr(-w / 2, -.48, w, .2, .08); g.fill();
+  g.fillStyle = A.couleur; rr(-w / 2 + .04, -.3, w - .08, .55, .12); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.18)'; for(let i = 1; i < L.n; i++){ g.fillRect(-w / 2 + .17 + i * L.E - .015, -.28, .03, .5); }
+  g.fillStyle = '#2B3442'; g.fillRect(-w / 2 - .04, -.35, .08, .6); g.fillRect(w / 2 - .04, -.35, .08, .6);
+  // les passagers
+  for(let i = 0; i < L.n; i++){
+    const s = ch.pass[i]; if(!s) continue;
+    const x = (i - (L.n - 1) / 2) * L.E, k = s.type === 'enfant' ? .74 : 1;
+    g.fillStyle = s.ski; if(s.type === 'snow'){ rr(x - .14, .15, .28, .9 * k, .1); g.fill(); } else { rr(x - .14, .2, .08, 1.05 * k, .03); g.fill(); rr(x + .06, .2, .08, 1.05 * k, .03); g.fill(); }
+    g.fillStyle = s.veste; g.beginPath(); g.ellipse(x, -.05, .25 * k, .17 * k, 0, 0, 2 * PI); g.fill();
+    g.fillStyle = s.casque; disque(x, -.02, .13 * k); g.fill();
+    if(ch.mal && ch.mal.slot === i && !ch.mal.regle && Math.sin(J.t * 12) > 0){ g.strokeStyle = '#FF3B30'; g.lineWidth = .08; disque(x, 0, .42); g.stroke(); }
+  }
+  // le garde-corps, baissé hors de la gare quand il y a du monde
+  const baisse = occupe && p.seg === 2 && p.y > L.yL + 2;
+  g.fillStyle = '#9AA6B6';
+  if(baisse){ g.fillRect(-w / 2 + .05, .5, w - .1, .07); g.fillRect(-w / 2 + .05, .25, .06, .3); g.fillRect(w / 2 - .11, .25, .06, .3); }
+  else g.fillRect(-w / 2 + .05, -.6, w - .1, .06);
+  // la bulle, fermée hors de la gare
+  if(A.bulles && !enGare){
+    g.fillStyle = occupe ? 'rgba(90,60,200,.42)' : 'rgba(110,80,210,.32)'; rr(-w / 2 - .08, -.55, w + .16, 1.25, .45); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = .04; g.beginPath(); g.moveTo(-w / 2 + .2, .5); g.lineTo(w / 2 - .4, .5); g.stroke();
+  }
+  // la suspente et la pince sur le câble
+  g.fillStyle = '#1E2632'; g.fillRect(-.04, -.55, .08, .2); rr(-.13, -.62, .26, .14, .04); g.fill();
+  g.restore();
+  // le numéro du siège (et l'alerte)
+  if(ch.mal && !ch.mal.regle){ const e = ecranDe(p.x, p.y); ecran(); g.font = '800 18px system-ui'; g.textAlign = 'center'; g.fillText('⚠️', e.x, e.y - VUE.sc * .9); monde(); }
+}
+function dessinerCabine(){
+  const c = L.cabine, mx = (c.x0 + c.x1) / 2, my = (c.y0 + c.y1) / 2;
+  g.fillStyle = 'rgba(0,0,0,.16)'; rr(c.x0 + .45, c.y0 - .6, c.x1 - c.x0, c.y1 - c.y0, .2); g.fill();
+  // les murs en bois, la porte et la grande vitre tournée vers le quai
+  g.fillStyle = '#8B5A33'; rr(c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0, .15); g.fill();
+  // le toit en tôle rouge, avec un peu de neige au faîte
+  g.fillStyle = '#A3322B'; rr(c.x0 + .12, c.y0 + .12, c.x1 - c.x0 - .24, c.y1 - c.y0 - .24, .1); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = .04;
+  for(let x = c.x0 + .35; x < c.x1 - .2; x += .3){ g.beginPath(); g.moveTo(x, c.y0 + .15); g.lineTo(x, c.y1 - .15); g.stroke(); }
+  g.fillStyle = 'rgba(255,255,255,.92)'; rr(c.x0 + .14, my - .22, c.x1 - c.x0 - .28, .44, .2); g.fill();
+  g.fillStyle = '#9FD8FF'; g.fillRect(c.x0 - .06, c.y0 + .35, .14, c.y1 - c.y0 - .7);
+  g.fillStyle = '#5A3A20'; g.fillRect(c.x0 + .35, c.y0 - .06, .55, .12);
+  // le gyrophare
+  const alarme = J.panne || J.aTerre.length || J.chaisesL.some(x => x.mal && !x.mal.regle) || J.ventVu > A.vent[0];
+  const gx = c.x1 - .5, gy = c.y1 - .5;
+  g.fillStyle = alarme ? '#FF8A00' : '#6E4A2A'; disque(gx, gy, .17); g.fill();
+  if(alarme){ const t = J.t * 6; g.fillStyle = 'rgba(255,170,0,.35)'; g.beginPath(); g.moveTo(gx, gy); g.arc(gx, gy, 1.2, t, t + .7); g.fill(); }
+  // l'antenne de l'anémomètre
+  g.fillStyle = '#2B3442'; disque(c.x0 + .5, c.y1 - .45, .1); g.fill();
+  const t = J.t * (2 + J.ventVu / 8);
+  g.strokeStyle = '#2B3442'; g.lineWidth = .05;
+  for(let k = 0; k < 3; k++){ const a2 = t + k * 2.09; g.beginPath(); g.moveTo(c.x0 + .5, c.y1 - .45); g.lineTo(c.x0 + .5 + Math.cos(a2) * .32, c.y1 - .45 + Math.sin(a2) * .32); g.stroke(); }
+}
+function dessinerPylone(y, ombreSeule){
+  const R = L.R, e = R + .9;
+  if(ombreSeule){ g.fillStyle = '#000'; g.fillRect(-e, y - .15, 2 * e, .3); g.fillRect(-.4, y - .4, .8, .8); return; }
+  g.fillStyle = '#5E6B7B'; g.fillRect(-.35, y - .35, .7, .7);
+  g.fillStyle = '#7C8A9B'; g.fillRect(-e, y - .14, 2 * e, .28);
+  for(const x of [-R, R]){ g.fillStyle = '#2B3442'; rr(x - .28, y - .75, .56, 1.5, .1); g.fill(); g.fillStyle = '#9AA6B6'; for(let k = -2; k <= 2; k++){ disque(x, y + k * .28, .1); g.fill(); } }
+}
+function dessinerArbres(ombreSeule){
+  for(const t of DECOR.arbres){
+    if(ombreSeule){ g.fillStyle = '#000'; disque(t.x + .5 * t.r, t.y - .7 * t.r, t.r * .95); g.fill(); continue; }
+    g.fillStyle = '#1F5A3C'; disque(t.x, t.y, t.r); g.fill();
+    g.fillStyle = '#2E7A50'; disque(t.x - t.r * .15, t.y + t.r * .1, t.r * .68); g.fill();
+    g.fillStyle = '#F4F8FC'; disque(t.x - t.r * .25, t.y + t.r * .22, t.r * .35); g.fill();
+    g.fillStyle = '#3E8E5E'; disque(t.x - t.r * .05, t.y + t.r * .02, t.r * .2); g.fill();
+  }
+}
+function dessinerRoue(){
+  const R = L.R, ang = (J.Q / R) % (2 * PI);
+  // les poutres de la gare
+  g.fillStyle = 'rgba(70,82,100,.55)';
+  g.fillRect(-R - .9, -.25, 2 * R + 1.8, .5);
+  for(const x of [-R - .9, R + .9]){ g.fillStyle = '#4B5768'; g.fillRect(x - .25, -.4, .5, .8); }
+  g.save(); g.globalAlpha = .55;
+  g.strokeStyle = '#3D4A5C'; g.lineWidth = .3; disque(0, 0, R); g.stroke();
+  g.lineWidth = .1; for(let i = 0; i < 6; i++){ const t = ang + i * PI / 3; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(t) * R, Math.sin(t) * R); g.stroke(); }
+  g.fillStyle = '#2B3442'; disque(0, 0, .45); g.fill();
+  g.restore();
+}
+function dessinerCables(){
+  g.strokeStyle = 'rgba(30,38,50,.35)'; g.lineWidth = .05;
+  g.beginPath(); g.moveTo(-L.R, 0); g.lineTo(-L.R, L.Ys); g.moveTo(L.R, 0); g.lineTo(L.R, L.Ys); g.stroke();
+  g.strokeStyle = 'rgba(30,38,50,.85)'; g.lineWidth = .07;
+  g.beginPath(); g.moveTo(-L.R, L.Ys); g.lineTo(-L.R, 60); g.moveTo(L.R, L.Ys); g.lineTo(L.R, 60); g.stroke();
+}
+function dessiner(){
+  ecran(); g.fillStyle = '#EEF4FA'; g.fillRect(0, 0, W, Hh);
+  if(!J || !L) return;
+  monde();
+  dessinerSol();
+  // les ombres
+  g.save(); g.globalAlpha = 1;
+  ombre(() => { dessinerArbres(true); }, 0, 0);
+  ombre(() => { for(const ch of J.chaisesL) dessinerChaise(ch, true); dessinerPylone(L.pylone, true); }, .55, -.8);
+  g.restore();
+  // les skis perdus
+  for(const s of J.skis){ g.save(); g.translate(s.x, s.y); g.rotate(s.a); g.fillStyle = s.c; rr(-.05, -.75, .1, 1.5, .04); g.fill(); g.restore();
+    if(Math.sin(J.t * 6) > 0){ g.strokeStyle = 'rgba(255,201,74,.9)'; g.lineWidth = .06; disque(s.x, s.y, .9); g.stroke(); } }
+  dessinerPortillons();
+  // les skieurs, de l'arrière vers l'avant
+  for(const s of J.partants) if(s.etat === 'part'){ g.globalAlpha = clamp(1 - (J.t - s.tPart) / 9, 0, 1); dessinerSkieur(s); g.globalAlpha = 1; }
+  for(const gr of J.file) for(const s of gr.membres) if(!s.hors) dessinerSkieur(s);
+  for(const s of J.solo) if(!s.hors) dessinerSkieur(s);
+  for(const s of J.sas) if(s) dessinerSkieur(s);
+  for(const s of J.rang) if(s) dessinerSkieur(s);
+  for(const s of J.ligne) if(s) dessinerSkieur(s);
+  for(const s of J.aTerre) dessinerSkieur(s);
+  for(const s of J.aTerre) if(s.evacue){ g.fillStyle = '#FF7A00'; rr(s.x - .45, s.y - .9, .9, 1.8, .4); g.globalAlpha = .7; g.fill(); g.globalAlpha = 1; }
+  dessinerAgent();
+  dessinerCabine();
+  dessinerCables();
+  for(const ch of J.chaisesL) dessinerChaise(ch);
+  dessinerPylone(L.pylone);
+  dessinerRoue();
+  dessinerArbres();
+  // le filet de sécurité sous la sortie de gare
+  for(const s of J.partants) if(s.etat === 'filet'){ g.fillStyle = 'rgba(40,40,40,.25)'; rr(L.R - L.w / 2 - .3, L.yL + 6.5, L.w + .6, 2, .2); g.fill(); dessinerSkieur(s); }
+  // la neige qui tombe et le brouillard
+  ecran();
+  const M = J.M;
+  if(M.neige > 0){
+    const n = Math.round(90 * M.neige), vent = J.ventVu;
+    g.fillStyle = 'rgba(255,255,255,.85)';
+    for(let i = 0; i < n; i++){
+      const vx = 18 + vent * 2.2, vy = 50 + fixe(i * 1.7) * 40;
+      const x = ((fixe(i * 3.3) * W + J.t * vx) % (W + 20)) - 10, y = ((fixe(i * 5.9) * Hh + J.t * vy) % (Hh + 20)) - 10;
+      g.beginPath(); g.arc(x, y, 1 + fixe(i * 7.1) * 2, 0, 2 * PI); g.fill();
+    }
+  }
+  if(M.brume > 0){ g.fillStyle = `rgba(235,242,250,${M.brume})`; g.fillRect(0, 0, W, Hh); }
+  // les étiquettes
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  const etiquette = (x, y, txt, fond = 'rgba(12,28,54,.82)', col = '#fff', taille = 12) => {
+    const e = ecranDe(x, y); g.font = `800 ${taille}px "Bricolage Grotesque", system-ui, sans-serif`;
+    const lw = g.measureText(txt).width + 12; g.fillStyle = fond; rr(e.x - lw / 2, e.y - taille * .85, lw, taille * 1.7, 8); g.fill(); g.fillStyle = col; g.fillText(txt, e.x, e.y + .5);
+  };
+  etiquette(L.xS, L.y0 + .6, 'SOLO', 'rgba(62,198,255,.9)', '#03263A', 11);
+  const nf = J.file.reduce((n, gr) => n + gr.membres.filter(s => s.hors).length, 0);
+  if(nf) etiquette(L.xb - .5, L.y0 + .5, `+${nf} dans la file`, 'rgba(12,28,54,.82)', '#fff', 11);
+  // les conseils au-dessus de la rangée
+  const enfants = J.rang.concat(J.ligne).some(s => s && (s.type === 'enfant' || s.type === 'debutant') && tropRapidePour(s.type));
+  if(enfants) etiquette(L.R, L.yZ - 1.2, '🧒 Ralentis pour eux !', 'rgba(229,56,59,.92)');
+  else if(!a('hotesse') && J.solo.length && placesLibres()) etiquette(L.R, L.yZ - 1.2, '👤 Place libre : Solo !', 'rgba(62,198,255,.92)', '#03263A');
+  // les petits textes qui montent
+  for(const f of J.flots){ const e = ecranDe(f.x, f.y); g.globalAlpha = clamp(1.6 - f.t, 0, 1); g.font = '800 15px "Bricolage Grotesque", system-ui'; g.fillStyle = 'rgba(0,0,0,.5)'; g.fillText(f.txt, e.x + 1, e.y - f.t * 30 + 1); g.fillStyle = f.col; g.fillText(f.txt, e.x, e.y - f.t * 30); g.globalAlpha = 1; }
+}
+
+/* ---------- Le tableau de bord ---------- */
+const HUDV = {};
+function majTexte(id, v){ if(HUDV[id] !== v){ HUDV[id] = v; $(id).textContent = v; } }
+function majHud(dt){
+  if(!J || J.fini) return;
+  majTexte('hHeure', heure(J.t));
+  majTexte('hMontes', fmt(J.montes));
+  majTexte('hPoints', fmt(J.points));
+  const enFile = nbFile() + J.solo.length;
+  const debit = L.n / (L.sp / Math.max(.3, vJeu(J.niveau)));
+  const att = Math.round(enFile / Math.max(.2, debit) * MIN_PAR_S * (a('ecran') ? .8 : 1));
+  const sm = att < 4 ? '😀' : att < 8 ? '🙂' : att < 13 ? '😐' : att < 20 ? '😕' : '😠';
+  majTexte('hFile', `${sm} ${att} min`);
+  $('hFileP').classList.toggle('rouge', att >= 20);
+  const v = Math.round(J.ventVu);
+  const givre = J.panne && J.panne.type === 'anemometre';
+  let txt = givre ? '-- km/h' : `${v} km/h`;
+  if(a('anemo') && !givre){ const f = Math.round(Math.max(...[5, 10, 15, 20].map(d => J.vent(J.t + d)))); txt += f > v + 4 ? ` ↗${f}` : f < v - 4 ? ` ↘${f}` : ''; }
+  majTexte('hVent', txt);
+  $('hVentP').classList.toggle('jaune', v > A.vent[0] && v <= A.vent[1]);
+  $('hVentP').classList.toggle('rouge', v > A.vent[1]);
+  // la vitesse
+  const lent = J.ventVu > A.vent[0];
+  [...$('jVit').children].forEach((el, i) => { if(el.tagName !== 'I') return; el.classList.toggle('on', i <= J.niveau); el.classList.toggle('danger', i <= J.niveau && i > 1 && lent); });
+  majTexte('lVit', `${J.niveau + 1} · ${virgule(A.vit[J.niveau] * (J.v / Math.max(.01, vJeu(J.niveau))))} m/s`);
+  // arrêt / démarrer
+  const b = $('bStop');
+  const arret = !J.marche;
+  b.classList.toggle('marche', arret);
+  const raison = arret ? raisonPasDemarrer() : '';
+  b.classList.toggle('attend', arret && !!raison);
+  b.classList.toggle('pret', arret && !raison && J.v < .05);
+  majTexte('bStop', arret ? (J.v > .05 ? 'Arrêt…' : '▶ Démarrer') : 'STOP');
+  majTexte('nSolo', String(J.solo.length));
+  $('bSolo').disabled = !J.solo.length || !J.rang.some(x => !x);
+  $('bSolo').classList.toggle('envie', !a('hotesse') && J.solo.length > 0 && placesLibres());
+  const auto = a('portillons'); $('bPorte').classList.toggle('auto', auto); majTexte('bPorte', auto ? '🚧 Portillons auto' : '🚧 Portillons');
+  // l'alerte en cours (la plus urgente)
+  let al = '', cls = '';
+  if(J.aTerre.some(s => !s.evacue)) al = J.v > .05 ? '🛑 Skieur à terre : STOP !' : '🦺 L\'agent relève le skieur…';
+  else if(J.chaisesL.some(c => c.mal && !c.mal.regle)) al = J.v > .05 ? '⚠️ Enfant mal assis : STOP !' : '🦺 L\'agent rassoit l\'enfant…';
+  else if(J.panne) { al = '🔧 Panne : dépannage en cours'; cls = 'orange'; }
+  else if(J.ventVu > A.vent[1] && J.v > .05) al = '💨 Vent trop fort : STOP !';
+  else if(J.ventVu > A.vent[1]) { al = `💨 Vent à ${v} km/h : on attend que ça se calme (moins de ${A.vent[1]})`; cls = 'orange'; }
+  else if(J.ventVu > A.vent[0] && J.niveau > 1) { al = '💨 Vent fort : vitesse 2 au maximum !'; cls = 'orange'; }
+  const el = $('alerte');
+  if(al){ majTexte('alerte', al); el.className = cls; el.hidden = false; } else el.hidden = true;
+  // l'alarme sonne tant qu'il faut agir
+  if(al && !cls && J.v > .05){ J.alarmeT -= dt; if(J.alarmeT <= 0){ J.alarmeT = .9; SONS.alarme(); } }
+  ventSon(J.ventVu);
+}
+
+/* ---------- La boucle ---------- */
+let avant = performance.now();
+function boucle(now){
+  const dt = Math.min(.05, (now - avant) / 1000); avant = now;
+  if(J && !J.pause && !J.fini){ let r = dt; while(r > 1e-6){ const h = Math.min(r, 1 / 60); pas(h); r -= h; } }
+  dessiner();
+  if(J && !J.pause) majHud(dt);
+  requestAnimationFrame(boucle);
+}
+
+/* ---------- Le toucher ---------- */
+cv.addEventListener('pointerdown', e => {
+  if(!J || J.fini || J.pause) return;
+  const m = mondeDe(e.clientX, e.clientY);
+  // un ski perdu ?
+  const ski = J.skis.find(s => Math.hypot(s.x - m.x, s.y - m.y) < 1.3);
+  if(ski){ J.skis.splice(J.skis.indexOf(ski), 1); J.skisRendus++; ajouterPoints(15); flot(ski.x, ski.y + .6, 'Ski rendu ! +15', '#4BE08A'); SONS.piece(); return; }
+  // le quai : ouvrir les portillons
+  if(m.x > L.R - L.w / 2 - 1 && m.x < L.R + L.w / 2 + 1 && m.y > L.yR - 1.6 && m.y < L.yL + .6){ if(!a('portillons')) ouvrirPortillons(); return; }
+  // la file solo : compléter
+  if(Math.abs(m.x - L.xS) < 1 && m.y < L.yR + .5 && m.y > L.y0) completerSolo();
+});
+
+/* ---------- Les écrans ---------- */
+const ECRANS = ['eMenu', 'eAtelier', 'eFin', 'ePause', 'eAide'];
+function cacherTout(){ ECRANS.forEach(id => $(id).hidden = true); }
+function montrerJeu(o){ $('hud').hidden = !o; $('cmdG').hidden = !o; $('cmdD').hidden = !o; if(!o){ $('alerte').hidden = true; $('panne').hidden = true; $('toast').innerHTML = ''; } cadrer(); }
+function cacherJeu(){ montrerJeu(false); }
+function apercu(cvs, A){
+  const c = cvs.getContext('2d'), d = Math.min(2, window.devicePixelRatio || 1); cvs.width = 62 * d; cvs.height = 52 * d; c.scale(d, d);
+  c.fillStyle = '#DDE8F2'; c.beginPath(); c.roundRect ? c.roundRect(0, 0, 62, 52, 10) : c.rect(0, 0, 62, 52); c.fill();
+  c.strokeStyle = '#2B3442'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(0, 12); c.lineTo(62, 6); c.stroke();
+  const w = 8 + A.places * 5, x = 31 - w / 2;
+  c.strokeStyle = '#2B3442'; c.lineWidth = 2; c.beginPath(); c.moveTo(31, 9); c.lineTo(31, 26); c.stroke();
+  if(A.bulles){ c.fillStyle = 'rgba(123,72,214,.35)'; c.beginPath(); c.ellipse(31, 34, w / 2 + 5, 15, 0, PI, 2 * PI); c.fill(); }
+  c.fillStyle = A.couleur; c.fillRect(x, 26, w, 8); c.fillRect(x, 34, w, 4);
+  c.fillStyle = '#2B3442'; c.fillRect(x - 2, 24, 2, 16); c.fillRect(x + w, 24, 2, 16);
+  for(let i = 0; i < A.places; i++){ c.fillStyle = VESTES[i % VESTES.length]; c.beginPath(); c.arc(x + 2.5 + i * (w - 5) / Math.max(1, A.places - 1), 24, 2.4, 0, 2 * PI); c.fill(); }
+}
+function menu(){
+  J = null; cacherTout(); cacherJeu();
+  $('mCaisse').textContent = euros(caisse.argent);
+  const box = $('cApp'); box.innerHTML = '';
+  for(const ap of APPAREILS){
+    const r = REC.appareils[ap.id];
+    const b = document.createElement('button'); b.className = 'app' + (ap.id === reglages.app ? ' actif' : '');
+    const cvs = document.createElement('canvas'); apercu(cvs, ap);
+    const info = document.createElement('div');
+    const debit = Math.round(ap.places * 3600 / (ap.I * 2) / 50) * 50;
+    info.innerHTML = `<b>${esc(ap.nom)}</b><small>${esc(ap.desc)}</small><em>${ap.places} places · ${ap.debray ? 'débrayable' : 'pince fixe'} · ${fmt(debit)} skieurs/h${r ? ` · record ${fmt(r.score)} ${'★'.repeat(r.etoiles || 0)}` : ''}</em>`;
+    b.append(cvs, info);
+    b.onclick = () => { reglages.app = ap.id; ecrire('telesiege-reglages', reglages); menu(); };
+    box.append(b);
+  }
+  $('cFreq').innerHTML = FREQS.map(f => `<button data-f="${f.id}" class="${f.id === reglages.freq ? 'actif' : ''}">${f.nom}</button>`).join('');
+  $('cMeteo').innerHTML = METEOS.map(m => `<button data-m="${m.id}" class="${m.id === reglages.meteo ? 'actif' : ''}">${m.nom}${m.bonus > 1 ? ` <small>×${String(m.bonus).replace('.', ',')}</small>` : ''}</button>`).join('');
+  const der = lire('telesiege-dernier', null);
+  $('mRecord').textContent = REC.journees ? `${REC.journees} journée${REC.journees > 1 ? 's' : ''} de travail · ${fmt(REC.montes)} skieurs montés${der ? ` · dernière journée : ${fmt(der.points)} points` : ''}` : 'Première journée : le tutoriel t\'aidera pas à pas.';
+  $('eMenu').hidden = false;
+}
+$('cFreq').onclick = e => { const b = e.target.closest('button'); if(!b) return; reglages.freq = b.dataset.f; ecrire('telesiege-reglages', reglages); menu(); };
+$('cMeteo').onclick = e => { const b = e.target.closest('button'); if(!b) return; reglages.meteo = b.dataset.m; ecrire('telesiege-reglages', reglages); menu(); };
+function atelier(){
+  cacherTout();
+  $('aCaisse').textContent = euros(caisse.argent);
+  const box = $('lAmelios'); box.innerHTML = '';
+  for(const am of AMELIOS){
+    if(am.apres && !a(am.apres)) continue;
+    const el = document.createElement('div'); el.className = 'amelio' + (a(am.id) ? ' achete' : '');
+    el.innerHTML = `<span class="ico">${am.ico}</span><div><b>${esc(am.nom)}</b><small>${esc(am.desc)}</small></div>`;
+    if(a(am.id)){ const s = document.createElement('span'); s.className = 'ok'; s.textContent = '✓ Acheté'; el.append(s); }
+    else { const b = document.createElement('button'); b.textContent = euros(am.prix); b.disabled = caisse.argent < am.prix; b.onclick = () => { if(caisse.argent < am.prix) return; caisse.argent -= am.prix; caisse.achats[am.id] = Date.now(); sauver(); SONS.piece(); atelier(); }; el.append(b); }
+    box.append(el);
+  }
+  $('eAtelier').hidden = false;
+}
+function jouer(){
+  audio();
+  cacherTout();
+  nouvelleJournee(); decor();
+  montrerJeu(true); taille();
+  avant = performance.now();
+  if(J.tuto) toast('Bienvenue au départ du télésiège ! Il est 9 h.');
+}
+function pause(){ if(!J || J.fini) return; J.pause = true; $('ePause').hidden = false; }
+$('bJouer').onclick = jouer;
+$('bRejouer').onclick = jouer;
+$('bAtelier').onclick = atelier;
+$('bFinAtelier').onclick = atelier;
+$('bAtelierRetour').onclick = menu;
+$('bFinMenu').onclick = menu;
+$('bPause').onclick = pause;
+$('bReprendre').onclick = () => { $('ePause').hidden = true; J.pause = false; avant = performance.now(); };
+$('bRecommencer').onclick = jouer;
+$('bQuitter').onclick = menu;
+$('bAide').onclick = () => { cacherTout(); $('eAide').hidden = false; };
+$('bAideRetour').onclick = menu;
+$('bSon').onclick = () => { son = !son; ecrire('telesiege-son', son); $('bSon').textContent = son ? '🔊' : '🔇'; if(!son && VENT_G) VENT_G.gain.value = 0; };
+$('bSon').textContent = son ? '🔊' : '🔇';
+// les commandes : réagir dès le contact du doigt
+const appui = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); audio(); fn(); });
+appui('bPorte', () => { if(J && a('portillons')){ toast('Les portillons s\'ouvrent tout seuls (portillons automatiques).'); return; } ouvrirPortillons(); });
+appui('bSolo', () => { if(J && !J.fini && !J.pause) completerSolo(); });
+appui('bMoins', () => vitesse(-1));
+appui('bPlus', () => vitesse(1));
+appui('bStop', stopMarche);
+addEventListener('keydown', e => {
+  if(!J || J.fini){ return; }
+  if(e.code === 'Escape' || e.code === 'KeyP'){ if(J.pause){ $('bReprendre').click(); } else pause(); return; }
+  if(J.pause) return;
+  if(e.code === 'Space'){ e.preventDefault(); ouvrirPortillons(); }
+  else if(e.code === 'KeyS') completerSolo();
+  else if(e.code === 'ArrowUp' || e.code === 'NumpadAdd' || e.key === '+'){ e.preventDefault(); vitesse(1); }
+  else if(e.code === 'ArrowDown' || e.code === 'NumpadSubtract' || e.key === '-'){ e.preventDefault(); vitesse(-1); }
+  else if(e.code === 'Enter' || e.code === 'KeyX'){ e.preventDefault(); stopMarche(); }
+});
+document.addEventListener('visibilitychange', () => { if(document.hidden && J && !J.fini) pause(); });
+addEventListener('resize', taille);
+
+taille(); menu(); requestAnimationFrame(boucle);
+
+/* ---------- Pour les essais automatiques ---------- */
+window.Telesiege = {
+  get J(){ return J; }, get L(){ return L; }, get A(){ return A; }, pas:dt => { let r = dt; while(r > 1e-6){ const h = Math.min(r, 1 / 60); if(J && !J.fini) pas(h); r -= h; } },
+  jouer, menu, atelier, ouvrirPortillons, completerSolo, vitesse, stopMarche, declencherPanne, finPanne, reglages, caisse, REC, APPAREILS, mondeDe, ecranDe, tropRapidePour, probaChute
+};
+
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
+})();
+</script>
+<script src="sauvegarde.js?v=116"></script>
+<script src="compte.js?v=116"></script>
+</body>
+</html>
