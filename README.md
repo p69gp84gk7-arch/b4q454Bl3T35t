@@ -122,7 +122,7 @@ Chaque joueur peut avoir un **compte** (pseudo + code secret à 4 chiffres). Une
 
 Page `jeux/classement.html`, ouverte par le bouton **🏆 Classement** dans le bandeau du compte sur l'accueil (il faut être connecté).
 
-- **Chaque épreuve a son classement** : chaque circuit de Draw Race (course et meilleur tour), chaque piste de la Dameuse, chaque télésiège de Chef de quai, le marathon de Blocs, chaque niveau de Pépin, de la Tour de contrôle, de Tables au sommet, chaque chanson de Fusée Rythme, chaque mode de Géographie, du Grand Quiz, de Freeride, du Tir au panier, du Yam's, du 10 000 et de Nivoculteur. Pour chaque épreuve, les joueurs sont rangés du meilleur au moins bon (🥇🥈🥉), la ligne du joueur connecté est en couleur.
+- **Chaque épreuve a son classement** : chaque circuit de Draw Race (course et meilleur tour), chaque piste de la Dameuse, chaque télésiège de Chef de quai, le marathon de Blocs, la carrière de Paddock, chaque niveau de Pépin, de la Tour de contrôle, de Tables au sommet, chaque chanson de Fusée Rythme, chaque mode de Géographie, du Grand Quiz, de Freeride, du Tir au panier, du Yam's, du 10 000 et de Nivoculteur. Pour chaque épreuve, les joueurs sont rangés du meilleur au moins bon (🥇🥈🥉), la ligne du joueur connecté est en couleur.
 - **Tableau d'honneur** : en haut, le nombre de premières, deuxièmes et troisièmes places de chaque joueur (seulement sur les épreuves jouées par au moins deux joueurs).
 - **Statistiques** : sous les épreuves de chaque jeu, un tableau pour se comparer (parties jouées, victoires, étoiles, niveaux réussis…), la meilleure valeur en doré.
 - **Comment ça marche** : `jeux/scores.js` lit les records rangés sur l'appareil et en tire, pour chaque jeu, les épreuves et les statistiques du joueur. L'accueil les envoie au tableur à chaque passage (avec le résumé de l'onglet Suivi), dans l'onglet *Classement* (une ligne par joueur et par jeu). La page du classement demande au tableur les scores de tous les comptes actifs (un compte bloqué n'apparaît plus) ; elle garde la dernière réponse pour s'afficher même sans réseau.
@@ -463,6 +463,18 @@ Jeu de plateforme en 2D, vu de côté, dans l'esprit des grands jeux de console 
 - **Tests** : `Pepin.instantane()` et `Pepin.restaurer()` photographient la partie et y reviennent, `Pepin.maj()` avance d'une image ; un robot qui essaie plusieurs gestes et revient en arrière a vérifié que chaque niveau peut se finir.
 - **Données** : `pepin-progres` (niveaux réussis, niveau débloqué, meilleur score), `pepin-son`, `pepin-musique` ; comprises dans la sauvegarde d'Altitude Arcade. L'accueil affiche les niveaux réussis et le meilleur score.
 
+## Paddock
+
+Le jeu de gestion d'écurie de Formule 1, dans `jeux/paddock.html` (les écrans), `jeux/paddock/monde.js` (écuries, pilotes, personnel, sponsors, argent, saisons) et `jeux/paddock/course.js` (la course en direct). Les courses ont lieu sur les 20 circuits de Draw Race (`jeux/drawrace/circuits.js` et `piste.js`). Écuries, pilotes, personnel et sponsors sont inventés, ressemblants mais sans vrais noms ni vraies marques.
+
+- **La carrière** : on choisit l'une des trois plus petites écuries (Équipe des Alpes, Étoile US, Trèfle Vert), on peut changer son **nom, ses deux couleurs et son logo** (au départ, et quand on veut dans l'onglet 🎨 Écurie du QG). Une saison compte 12 Grands Prix tirés parmi les 20 circuits ; la carrière continue de saison en saison. La direction fixe une place à atteindre chez les constructeurs ; la **réputation** monte avec les résultats et attire de meilleurs sponsors et pilotes.
+- **Le QG** (entre les courses) : Grand Prix (prochaine course, messages), Classements (pilotes, constructeurs, calendrier, saisons passées), Voiture (moteur, aérodynamique, châssis, fiabilité, comparés à la meilleure écurie et à la moyenne ; projets d'amélioration payants, prêts 1 ou 2 Grands Prix plus tard, avec des gains de plus en plus petits quand la pièce est déjà bonne), Pilotes (notes, moral, contrats, pilotes libres), Personnel (directeur technique, ingénieur de course, chef mécanicien, de 1 à 5 étoiles), Sponsors (un principal, deux secondaires, payés à chaque Grand Prix, avec une prime si leur objectif est atteint), Finances. Les autres écuries progressent aussi selon leur budget.
+- **Le circuit compte** : la part des grandes lignes droites donne plus de poids au moteur ou à l'aérodynamique.
+- **Le week-end** : qualifications sur un tour (prudent ou risqué), choix des pneus de départ, puis la **course en direct** vue du dessus (environ 3 minutes à ×1 ; ×2, ×4, ou directement l'arrivée). Pour chacun de ses pilotes : le rythme (économie, normal, attaque), l'appel au stand avec le choix des pneus (tendres, mediums, durs, intermédiaires, pluie), ou la stratégie automatique. Les dépassements se font dans les lignes droites (aspiration à moins d'une seconde) ; l'usure des pneus, la pluie qui arrive et repart, les crevaisons, les pannes (fiabilité), les sorties de piste et la voiture de sécurité changent la course. Règle : sur piste sèche, deux types de pneus secs obligatoires (sinon 30 secondes de pénalité). L'ingénieur donne des conseils (pneus usés, pluie annoncée plus tôt avec un meilleur ingénieur). Les temps affichés sont 8,5 fois ceux du jeu, pour ressembler à de vrais temps.
+- **Les points** : 25, 18, 15, 12, 10, 8, 6, 4, 2, 1 du 1er au 10e. En fin de saison, une prime selon la place chez les constructeurs (60 M€ au 1er, 16 M€ au 10e), puis le **mercato** : prolonger ses pilotes, ou engager des pilotes libres et ceux des autres écuries en fin de contrat (ils demandent plus quand la réputation est faible). Les pilotes vieillissent (les jeunes progressent vers leur potentiel), les plus âgés prennent leur retraite, de jeunes espoirs arrivent, et les voitures se rapprochent un peu (nouveau règlement).
+- **Données** : `paddock-carriere` (toute la carrière) et `paddock-records` (résumé : Grands Prix, victoires, podiums, poles, points, titres, meilleure place). Le classement a trois épreuves (victoires, meilleure place chez les constructeurs, podiums).
+- **Essais** : `window.Paddock` (carrière, week-end, course) ; des saisons entières ont été simulées pour régler le rythme des voitures, l'usure des pneus, les abandons, l'argent et la progression d'une petite écurie (il faut environ trois saisons de bonne gestion pour rattraper les meilleures voitures).
+
 ## Blocs
 
 Le grand classique des blocs qui tombent (façon Tetris, refait de zéro), tout dans `jeux/blocs.html`, look console rétro (police pixel « Press Start 2P », blocs en relief, fond étoilé).
@@ -539,6 +551,8 @@ jeux/pepin.html        jeu Les aventures de Pépin (page et menus)
 jeux/quiz.html         jeu Le Grand Quiz (échelle, série rapide, petit bac)
 jeux/telesiege.html    jeu Chef de quai (le départ d'un télésiège vu du dessus)
 jeux/blocs.html        jeu Blocs (les blocs qui tombent, marathon sans fin)
+jeux/paddock.html      jeu Paddock (gestion d'écurie de Formule 1)
+jeux/paddock/          le monde (monde.js) et la course en direct (course.js) de Paddock
 jeux/quiz/             questions (junior.js, ado.js, adulte.js) et mots du petit bac (mots.js)
 jeux/pepin/            dessins (sprites.js), niveaux (niveaux.js) et moteur (moteur.js) de Pépin
 logo.svg               logo (source vectorielle)
