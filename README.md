@@ -12,7 +12,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | --- | --- | --- |
 | **10 000** : ouverture à 1 000, croix (effacées dès qu'on note des points ou le −500 du 1er lancer), reprises, pénalités ; il faut finir à 10 000 pile, dépasser donne une croix, et on ne peut pas reprendre des points qui mèneraient à 10 000 ou plus | `jeux/10000.html` | 2 à 15 |
 | **Yam's** : feuille de marque classique, bonus à 63 | `jeux/yams.html` | 1 à 10 |
-| **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), défi du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
+| **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), placer des villes et monuments au plus près (points selon les km), défis du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
 | **Draw Race** : course dont on dessine la trajectoire ; Formule (monoplaces, 20 circuits inspirés de la F1) ou Rallye (voitures de rallye, 12 circuits de terre, neige, gravier et goudron), pneus, météo et arrêts au stand ; modes Arcade et Championnat | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 | **Nivoculteur** : sur un domaine tiré au sort, construire le réseau de neige de culture et produire la nuit selon le froid et le vent, en 2D vu de dessus | `jeux/nivoculteur/index.html` | 1 |
 | **Fusée Rythme** : piloter une fusée à gauche et à droite au rythme d'un morceau (fourni ou pris dans vos fichiers) et éviter les points ; la partie dure le temps de la musique | `jeux/fusee.html` | 1 |
@@ -106,6 +106,9 @@ Les jeux proposés :
   Seul le premier essai du jour compte. Le nombre de jours d'affilée est affiché.
 - **Statistiques** : parties jouées, pourcentage de réponses justes du premier coup, et une liste **À revoir** des pays et départements les plus souvent ratés (un élément sort de la liste quand on le trouve du premier coup).
 - **Carte** : un nom de pays ; il faut le toucher sur la carte (on peut zoomer en pinçant ou avec les boutons, et se déplacer en glissant). Trois essais par pays, puis la réponse s'affiche. Les tout petits pays ont un repère rond pour pouvoir les toucher.
+- **Placer** (pays du monde et départements) : un lieu célèbre à placer sur la carte : grandes villes, monuments, sites naturels, et en France aussi des stations de ski (165 lieux dans le monde, 106 en France, dans `jeux/geo/lieux.js`). On touche la carte pour poser l'épingle (on peut la déplacer), puis **Valider** : la bonne place s'affiche avec un trait, la distance à vol d'oiseau en km et les points. 10 lieux par partie, **5000 points** chacun au plus : 5000 tout près (moins de 25 km dans le monde, 3 km en France), puis la moitié tous les 300 km dans le monde (50 km en France), 0 au-delà de 4000 km (600 km en France). Dans le monde, on peut choisir un continent ; en France, c'est toute la métropole, sur la carte des départements. Les records se comptent en points.
+- **Défi des lieux** : 10 lieux à placer, les mêmes pour tout le monde ce jour-là (6 dans le monde, 4 en France), avec son propre nombre de jours d'affilée.
+- **Les kilomètres** : `lieux.js` refait les calculs des deux projections de la carte (Natural Earth pour le monde, conique conforme de Lambert pour la France, avec l'échelle et le décalage de `outils/construire-geo.mjs`) dans les deux sens : du lieu vers la carte, et du point touché vers sa latitude et sa longitude ; la distance se calcule ensuite sur la sphère terrestre (formule de haversine). Les deux sens ont été comparés à d3-geo (écart nul) et chaque lieu a été vérifié dans son pays ou son département.
 - **Déplacer la carte** : un doigt glisse (le point touché reste sous le doigt), deux doigts zooment et déplacent en même temps, boutons + − ⤢. Pendant le geste, la carte est seulement déplacée comme une image (fluide même avec les 101 départements) ; la vue est posée au lâcher. Quand la hauteur de l'écran change (barre d'adresse, rotation), la vue est gardée au lieu de revenir à la carte entière.
 
 Le chrono tourne pendant toute la partie. Les 5 meilleurs résultats de chaque jeu et de chaque zone sont gardés sur l'appareil (score du premier coup, puis temps).
@@ -113,7 +116,7 @@ Le chrono tourne pendant toute la partie. Les 5 meilleurs résultats de chaque j
 La carte du monde rattache à leur pays les morceaux que la source sépare : l'Australie avec les îles Ashmore-et-Cartier, le Somaliland avec la Somalie, et Chypre du Nord avec Chypre.
 Avant ce correctif, l'Australie était presque invisible et la corne de l'Afrique fausse.
 
-Les données (`jeux/geo/monde.js`, `france.js`, `usa.js`, `drapeaux/` et `drapeaux-us/`) sont produites par `outils/construire-geo.mjs`.
+Les données (`jeux/geo/monde.js`, `france.js`, `usa.js`, `drapeaux/` et `drapeaux-us/`) sont produites par `outils/construire-geo.mjs`. La liste des lieux à placer (`jeux/geo/lieux.js`) est écrite à la main ; si les cartes sont reconstruites avec un autre cadrage, il faut y recopier l'échelle et le décalage des projections, que le script affiche.
 Sources : IGN Admin Express via france-geojson (Licence ouverte), U.S. Census Bureau via us-atlas (domaine public), drapeaux des États us-state-flags (ISC), Natural Earth via world-atlas (domaine public), mledoze/countries via world-countries (licence ODbL), drapeaux flag-icons (licence MIT), noms français du CLDR.
 
 ## Draw Race
