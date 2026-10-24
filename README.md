@@ -102,11 +102,11 @@ Chaque joueur peut avoir un **compte** (pseudo + code secret à 4 chiffres). Une
 
 - **Le serveur** : `outils/sauvegarde-google.gs`, un petit programme Apps Script collé dans le Google Sheet et publié comme « Application Web ». Son adresse (elle finit par `/exec`) se met dans `SERVEUR_DEFAUT` en haut de `jeux/compte.js`. Tant qu'elle est vide, l'application ne montre rien de la sauvegarde en ligne.
 - **Installer** :
-  1. ouvrir le Google Sheet, menu *Extensions › Apps Script* (le fichier « Altitude Arcade – programme à coller dans Apps Script (version …).txt », dans le Drive, contient le même texte ; prendre la version la plus récente) ;
-  2. remplacer le contenu de `Code.gs` par celui de `outils/sauvegarde-google.gs`, enregistrer (`ID_TABLEUR`, en haut, désigne le tableur « Altitude arcade » ; vide, c'est le tableur où le programme est collé) ;
-  3. *Déployer › Nouveau déploiement*, type *Application Web*, « Exécuter en tant que : moi », « Qui peut accéder : Tout le monde », *Déployer*, accepter les autorisations ;
+  1. ouvrir le projet Apps Script du serveur (ou, dans le Google Sheet, *Extensions › Apps Script*) ;
+  2. remplacer tout le contenu de `Code.gs` par celui de `outils/chargeur-google.gs` (le fichier « Altitude Arcade – CHARGEUR à coller dans Apps Script.txt », dans le Drive, contient le même texte), enregistrer ;
+  3. *Déployer › Nouveau déploiement*, type *Application Web*, « Exécuter en tant que : moi », « Qui peut accéder : Tout le monde », *Déployer*, accepter les autorisations (le tableur et « se connecter à un service externe ») ; pour un déploiement qui existe déjà : *Déployer › Gérer les déploiements*, crayon, *Version : nouvelle version* (l'adresse reste la même) ;
   4. copier l'adresse de l'application Web dans `jeux/compte.js`.
-  Après une modification du programme : *Déployer › Gérer les déploiements*, crayon, *Version : nouvelle version* (l'adresse reste la même).
+- **Le chargeur** : `outils/chargeur-google.gs` ne fait que lire le vrai programme, `outils/sauvegarde-google.gs`, sur GitHub (branche main, le dépôt est public), et le faire tourner. Une modification du serveur arrive donc toute seule au plus tard 10 minutes après la fusion dans main, sans rien recoller ni republier ; pour la prendre tout de suite, ouvrir l'adresse de l'application Web suivie de `?maj=1`. Le chargeur garde une copie du dernier programme lu (propriétés du script) : si GitHub ne répond pas, le serveur continue avec elle, et un programme qui contient une erreur n'est jamais pris. Attention : le programme tourne avec le compte Google du propriétaire, donc seules des personnes de confiance doivent pouvoir modifier la branche main. `ID_TABLEUR`, en haut de `outils/sauvegarde-google.gs`, désigne le tableur « Altitude arcade ».
 - **Le tableur** (onglets créés tout seuls) :
   - *Comptes* : pseudo, code, actif (oui / non), création, dernière visite, appareil, jeton. On peut changer un code, bloquer un compte (*non*), effacer le jeton pour déconnecter tous ses appareils, ou supprimer la ligne.
   - *Suivi* : une ligne par joueur, une colonne par jeu, avec le même texte que sur l'accueil (niveaux réussis, records…), mis à jour à chaque passage sur l'accueil.
@@ -116,7 +116,7 @@ Chaque joueur peut avoir un **compte** (pseudo + code secret à 4 chiffres). Une
 - **Connexion** (accueil) : la fenêtre s'ouvre à la première visite (« Plus tard » la cache 3 jours). Un pseudo inconnu crée le compte ; un pseudo connu demande le bon code (les majuscules ne comptent pas). Après 6 codes faux, il faut attendre 10 minutes. En se connectant, les parties du compte remplacent celles de l'appareil, et ce qui n'existe pas encore en ligne est envoyé. Se déconnecter envoie tout puis efface les parties de l'appareil (pratique quand plusieurs enfants partagent un téléphone).
 - **Synchronisation** (`jeux/compte.js`, chargé par toutes les pages après `sauvegarde.js`) : à l'ouverture d'une page, on récupère ce qui a changé ailleurs (si des parties arrivent juste à l'ouverture, la page se recharge une fois) ; ensuite on envoie ce qui a changé toutes les 20 secondes et en quittant la page. Chaque élément garde l'empreinte de sa dernière version envoyée ou reçue (`compte-sync`) : on sait ainsi ce qui a changé de chaque côté ; si un élément a changé des deux côtés, celui de l'appareil gagne. Les clés `compte-*` restent sur l'appareil.
 - **Sécurité** : l'adresse du serveur est visible dans le code du site ; le code à 4 chiffres empêche de jouer sur le compte d'un autre, mais ce n'est pas un coffre-fort : on n'y met que des parties de jeux.
-- **Essais** : `outils/sauvegarde-google.gs` a été essayé hors de Google avec un faux tableur qui imite le vrai (codes à zéros, nombres, formules, longues valeurs, comptes bloqués), puis l'application entière avec deux « téléphones » sur le même compte.
+- **Essais** : le chargeur a été essayé avec GitHub qui répond, GitHub en panne (copie de secours) et un programme cassé (refusé) ; `outils/sauvegarde-google.gs` a été essayé hors de Google avec un faux tableur qui imite le vrai (codes à zéros, nombres, formules, longues valeurs, comptes bloqués), puis l'application entière avec deux « téléphones » sur le même compte.
 
 ## Classement et statistiques
 
@@ -127,7 +127,7 @@ Page `jeux/classement.html`, ouverte par le bouton **🏆 Classement** dans le b
 - **Statistiques** : sous les épreuves de chaque jeu, un tableau pour se comparer (parties jouées, victoires, étoiles, niveaux réussis…), la meilleure valeur en doré.
 - **Comment ça marche** : `jeux/scores.js` lit les records rangés sur l'appareil et en tire, pour chaque jeu, les épreuves et les statistiques du joueur. L'accueil les envoie au tableur à chaque passage (avec le résumé de l'onglet Suivi), dans l'onglet *Classement* (une ligne par joueur et par jeu). La page du classement demande au tableur les scores de tous les comptes actifs (un compte bloqué n'apparaît plus) ; elle garde la dernière réponse pour s'afficher même sans réseau.
 - **Le nom du joueur** : quand on est connecté, le pseudo du compte est mis tout seul comme nom de joueur dans la Géographie, Draw Race, le Yam's et le 10 000 (on peut toujours le changer).
-- Le classement demande la version du programme du tableur qui connaît l'action « classement » : après une mise à jour de `outils/sauvegarde-google.gs`, le recoller dans Apps Script et publier une nouvelle version.
+- Le classement demande la version du programme du tableur qui connaît l'action « classement » (elle arrive toute seule par le chargeur une fois la branche fusionnée dans main).
 
 ## Géographie
 
@@ -494,7 +494,8 @@ jeux/sauvegarde.js     export et import de toutes les données dans un fichier
 jeux/compte.js         compte du joueur et sauvegarde en ligne dans le Google Sheet
 jeux/scores.js         records et statistiques de chaque jeu, pour le classement
 jeux/classement.html   classement de tous les joueurs, épreuve par épreuve, et statistiques
-outils/sauvegarde-google.gs  le programme à coller dans le Google Sheet (Apps Script)
+outils/sauvegarde-google.gs  le programme du serveur (Apps Script), lu sur GitHub par le chargeur
+outils/chargeur-google.gs    le chargeur, seul texte collé dans Apps Script
 jeux/geo.html          jeu de géographie
 jeux/geo/              données de la carte et drapeaux
 outils/                scripts : données de géographie, version, icône
