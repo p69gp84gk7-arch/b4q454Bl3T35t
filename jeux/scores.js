@@ -162,6 +162,14 @@ window.AltitudeScores = (() => {
       const mil = Object.values((qr && qr.millions) || {}).reduce((s, v) => s + v, 0);
       J.quiz.stats = { 'Questions répondues':(qs && qs.repondu) || 0, 'Bonnes réponses':pct((qs && qs.justes) || 0, (qs && qs.repondu) || 0), 'Fois millionnaire':mil };
     }
+    // Blocs : le marathon
+    const bl = lire('blocs-records');
+    if(bl && bl.parties){
+      jeu('blocs', 'Blocs', '🧱');
+      ep('blocs', 'marathon', 'Marathon · meilleur score', bl.best || 0, `${fmt(bl.best || 0)} pts`);
+      ep('blocs', 'niveau', 'Marathon · niveau atteint', bl.niveauMax || 0, `niveau ${bl.niveauMax || 0}`);
+      J.blocs.stats = { 'Parties':bl.parties, 'Lignes':fmt(bl.lignes || 0), 'Blocs (4 lignes)':bl.blocs || 0, 'Meilleure partie (lignes)':bl.lignesMax || 0 };
+    }
     // Chef de quai : chaque télésiège
     const ts = lire('telesiege-records'), tc = lire('telesiege-caisse');
     if(ts && ts.journees){

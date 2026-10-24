@@ -122,7 +122,7 @@ Chaque joueur peut avoir un **compte** (pseudo + code secret à 4 chiffres). Une
 
 Page `jeux/classement.html`, ouverte par le bouton **🏆 Classement** dans le bandeau du compte sur l'accueil (il faut être connecté).
 
-- **Chaque épreuve a son classement** : chaque circuit de Draw Race (course et meilleur tour), chaque piste de la Dameuse, chaque télésiège de Chef de quai, chaque niveau de Pépin, de la Tour de contrôle, de Tables au sommet, chaque chanson de Fusée Rythme, chaque mode de Géographie, du Grand Quiz, de Freeride, du Tir au panier, du Yam's, du 10 000 et de Nivoculteur. Pour chaque épreuve, les joueurs sont rangés du meilleur au moins bon (🥇🥈🥉), la ligne du joueur connecté est en couleur.
+- **Chaque épreuve a son classement** : chaque circuit de Draw Race (course et meilleur tour), chaque piste de la Dameuse, chaque télésiège de Chef de quai, le marathon de Blocs, chaque niveau de Pépin, de la Tour de contrôle, de Tables au sommet, chaque chanson de Fusée Rythme, chaque mode de Géographie, du Grand Quiz, de Freeride, du Tir au panier, du Yam's, du 10 000 et de Nivoculteur. Pour chaque épreuve, les joueurs sont rangés du meilleur au moins bon (🥇🥈🥉), la ligne du joueur connecté est en couleur.
 - **Tableau d'honneur** : en haut, le nombre de premières, deuxièmes et troisièmes places de chaque joueur (seulement sur les épreuves jouées par au moins deux joueurs).
 - **Statistiques** : sous les épreuves de chaque jeu, un tableau pour se comparer (parties jouées, victoires, étoiles, niveaux réussis…), la meilleure valeur en doré.
 - **Comment ça marche** : `jeux/scores.js` lit les records rangés sur l'appareil et en tire, pour chaque jeu, les épreuves et les statistiques du joueur. L'accueil les envoie au tableur à chaque passage (avec le résumé de l'onglet Suivi), dans l'onglet *Classement* (une ligne par joueur et par jeu). La page du classement demande au tableur les scores de tous les comptes actifs (un compte bloqué n'apparaît plus) ; elle garde la dernière réponse pour s'afficher même sans réseau.
@@ -463,6 +463,17 @@ Jeu de plateforme en 2D, vu de côté, dans l'esprit des grands jeux de console 
 - **Tests** : `Pepin.instantane()` et `Pepin.restaurer()` photographient la partie et y reviennent, `Pepin.maj()` avance d'une image ; un robot qui essaie plusieurs gestes et revient en arrière a vérifié que chaque niveau peut se finir.
 - **Données** : `pepin-progres` (niveaux réussis, niveau débloqué, meilleur score), `pepin-son`, `pepin-musique` ; comprises dans la sauvegarde d'Altitude Arcade. L'accueil affiche les niveaux réussis et le meilleur score.
 
+## Blocs
+
+Le grand classique des blocs qui tombent (façon Tetris, refait de zéro), tout dans `jeux/blocs.html`, look console rétro (police pixel « Press Start 2P », blocs en relief, fond étoilé).
+
+- **Les règles** : puits de 10 × 20 cases (plus 2 rangées cachées au-dessus), les 7 pièces tirées par sacs de 7 (chaque pièce revient au moins une fois tous les 7), rotation et décalages contre les murs selon le système officiel, ombre de la pièce, 3 pièces suivantes, réserve (une fois par pièce), délai de pose d'une demi-seconde (remis à zéro par un mouvement, 15 fois au plus).
+- **Le marathon sans fin** : le niveau N demande 5 × N lignes (5, 10, 15…). La vitesse de chute suit la formule officielle (1 seconde par rangée au niveau 1, 0,36 au niveau 5, 0,06 au niveau 10, instantanée à partir du niveau 20). Niveau de départ au choix : 1, 3, 5, 8, 10 ou 15.
+- **Les points** : 100, 300, 500, 800 × le niveau pour 1 à 4 lignes ; 4 lignes d'un coup s'appellent un « BLOC », et deux BLOCS de suite valent 50 % de plus ; combo (des lignes à chaque pièce de suite) : 50 × combo × niveau ; 1 point par case de descente rapide, 2 par case de chute directe.
+- **Les gestes** (le jeu se joue tout au doigt) : toucher = tourner (deux doigts : dans l'autre sens) ; glisser à gauche ou à droite = la pièce suit case par case ; glisser doucement vers le bas = descente rapide ; lancer vers le bas = chute directe ; lancer vers le haut ou toucher la case RÉSERVE = réserve. Au clavier : flèches, haut ou X, Z, espace, C, Échap.
+- **Le son** : effets façon console et la musique d'un vieil air populaire russe (domaine public), mélodie en ondes carrées et basse, qui accélère avec le niveau ; musique et effets se coupent séparément.
+- **Données** : `blocs-records` (meilleur score, niveau et lignes, parties, lignes et BLOCS au total, 5 meilleures parties), `blocs-partie` (la partie en cours, gardée à la pause, en quittant ou en fermant l'appli : on la reprend depuis le menu), `blocs-reglages`, `blocs-dernier`. Le classement a deux épreuves (meilleur score, niveau atteint).
+
 ## Chef de quai
 
 Le jeu de remontée mécanique, tout dans `jeux/telesiege.html` : on est chef de quai au départ d'un télésiège, vu du dessus, pendant une journée de 9 h à 16 h 30 (5 minutes de jeu).
@@ -527,6 +538,7 @@ jeux/tables.html       jeu Tables au sommet (tables de multiplication)
 jeux/pepin.html        jeu Les aventures de Pépin (page et menus)
 jeux/quiz.html         jeu Le Grand Quiz (échelle, série rapide, petit bac)
 jeux/telesiege.html    jeu Chef de quai (le départ d'un télésiège vu du dessus)
+jeux/blocs.html        jeu Blocs (les blocs qui tombent, marathon sans fin)
 jeux/quiz/             questions (junior.js, ado.js, adulte.js) et mots du petit bac (mots.js)
 jeux/pepin/            dessins (sprites.js), niveaux (niveaux.js) et moteur (moteur.js) de Pépin
 logo.svg               logo (source vectorielle)
