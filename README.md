@@ -129,6 +129,11 @@ Page `jeux/classement.html`, ouverte par le bouton **🏆 Classement** dans le b
 - **Le nom du joueur** : quand on est connecté, le pseudo du compte est mis tout seul comme nom de joueur dans la Géographie, Draw Race, le Yam's et le 10 000 (on peut toujours le changer).
 - Le classement demande la version du programme du tableur qui connaît l'action « classement » (elle arrive toute seule par le chargeur une fois la branche fusionnée dans main).
 
+## Le classement dans chaque jeu, et le carrousel
+
+- **Dans chaque jeu**, un bouton **🏆 Classement** (juste le trophée sur un écran étroit), à côté du lien vers l'accueil, ouvre le classement de tous les joueurs pour ce jeu seulement : chaque épreuve avec les médailles, et les statistiques pour se comparer. C'est `jeux/classement-jeu.js`, chargé par chaque jeu après `compte.js` : il reconnaît le jeu par le nom de sa page, charge `scores.js` au besoin, montre d'abord le dernier classement gardé puis demande au tableur le classement à jour (après avoir envoyé ses propres scores). Sans compte, il montre seulement ses scores sur l'appareil. Un lien mène au classement de tous les jeux.
+- **Le carrousel** : dans la fenêtre du profil (bouton Compte de l'accueil), « Présentation des jeux sur l'accueil » : **liste** (comme avant) ou **carrousel** (une grande carte à la fois, on glisse du doigt ; flèches, points et le nom du jeu dessous). Deux petits boutons ☰ et 🎠, à côté de « Choisir un jeu », font la même chose. Le choix (`desdes-presentation`) et le dernier jeu regardé (`desdes-carrousel`) sont gardés, et suivent le compte d'un téléphone à l'autre.
+
 ## Géographie
 
 Quatre terrains de jeu :
@@ -532,6 +537,7 @@ jeux/ia.js             robots et conseils (Yam's, 10 000)
 jeux/sauvegarde.js     export et import de toutes les données dans un fichier
 jeux/compte.js         compte du joueur et sauvegarde en ligne dans le Google Sheet
 jeux/scores.js         records et statistiques de chaque jeu, pour le classement
+jeux/classement-jeu.js le bouton 🏆 et la fenêtre du classement dans chaque jeu
 jeux/classement.html   classement de tous les joueurs, épreuve par épreuve, et statistiques
 outils/sauvegarde-google.gs  le programme du serveur (Apps Script), lu sur GitHub par le chargeur
 outils/chargeur-google.gs    le chargeur, seul texte collé dans Apps Script
