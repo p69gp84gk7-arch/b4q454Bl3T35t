@@ -145,5 +145,5 @@
     maj();
   }
 
-  window.DesDesSauvegarde = { exporter, importer, boutons, cles };
+  window.DesDesSauvegarde = { exporter, importer, boutons, cles, nos };
 })();

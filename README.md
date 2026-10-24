@@ -12,7 +12,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | --- | --- | --- |
 | **10 000** : ouverture à 1 000, croix (effacées dès qu'on note des points ou le −500 du 1er lancer), reprises, pénalités ; il faut finir à 10 000 pile, dépasser donne une croix, et on ne peut pas reprendre des points qui mèneraient à 10 000 ou plus | `jeux/10000.html` | 2 à 15 |
 | **Yam's** : feuille de marque classique, bonus à 63 | `jeux/yams.html` | 1 à 10 |
-| **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), défi du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
+| **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), placer des villes et monuments au plus près (points selon les km), défis du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
 | **Draw Race** : course dont on dessine la trajectoire ; Formule (monoplaces, 20 circuits inspirés de la F1) ou Rallye (voitures de rallye, 12 circuits de terre, neige, gravier et goudron), pneus, météo et arrêts au stand ; modes Arcade et Championnat | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 | **Nivoculteur** : sur un domaine tiré au sort, construire le réseau de neige de culture et produire la nuit selon le froid et le vent, en 2D vu de dessus | `jeux/nivoculteur/index.html` | 1 |
 | **Fusée Rythme** : piloter une fusée à gauche et à droite au rythme d'un morceau (fourni ou pris dans vos fichiers) et éviter les points ; la partie dure le temps de la musique | `jeux/fusee.html` | 1 |
@@ -85,6 +85,27 @@ Les dés ne se chevauchent jamais sur le tapis : après chaque lancer, ceux qui 
 
 Le plateau repart de zéro dès qu'un score est noté dans le carnet. Le code est dans `jeux/plateau.js`, partagé par les deux jeux.
 
+## Sauvegarde en ligne (Google Sheet)
+
+Chaque joueur peut avoir un **compte** (pseudo + code secret à 4 chiffres). Une fois connecté, ses parties, records et statistiques sont sauvegardés tout seuls dans un Google Sheet, et reviennent sur n'importe quel téléphone où il se connecte. Sans compte, tout marche comme avant (sur l'appareil seulement, avec l'export et l'import de fichier).
+
+- **Le serveur** : `outils/sauvegarde-google.gs`, un petit programme Apps Script collé dans le Google Sheet et publié comme « Application Web ». Son adresse (elle finit par `/exec`) se met dans `SERVEUR_DEFAUT` en haut de `jeux/compte.js`. Tant qu'elle est vide, l'application ne montre rien de la sauvegarde en ligne.
+- **Installer** :
+  1. ouvrir le Google Sheet, menu *Extensions › Apps Script* (le fichier « Altitude Arcade – programme à coller dans Apps Script.txt », à côté du tableur dans le Drive, contient le même texte) ;
+  2. remplacer le contenu de `Code.gs` par celui de `outils/sauvegarde-google.gs`, enregistrer (`ID_TABLEUR`, en haut, désigne le tableur « Altitude arcade » ; vide, c'est le tableur où le programme est collé) ;
+  3. *Déployer › Nouveau déploiement*, type *Application Web*, « Exécuter en tant que : moi », « Qui peut accéder : Tout le monde », *Déployer*, accepter les autorisations ;
+  4. copier l'adresse de l'application Web dans `jeux/compte.js`.
+  Après une modification du programme : *Déployer › Gérer les déploiements*, crayon, *Version : nouvelle version* (l'adresse reste la même).
+- **Le tableur** (onglets créés tout seuls) :
+  - *Comptes* : pseudo, code, actif (oui / non), création, dernière visite, appareil, jeton. On peut changer un code, bloquer un compte (*non*), effacer le jeton pour déconnecter tous ses appareils, ou supprimer la ligne.
+  - *Suivi* : une ligne par joueur, une colonne par jeu, avec le même texte que sur l'accueil (niveaux réussis, records…), mis à jour à chaque passage sur l'accueil.
+  - *Données* : les sauvegardes (une ligne par joueur et par élément du stockage ; les longues valeurs sont coupées en morceaux de 40 000 caractères, chacun précédé de « ~ » pour que le tableur n'en fasse jamais un nombre ou une formule). À ne pas modifier à la main.
+  - *Journal* : créations de comptes, connexions, codes faux.
+- **Connexion** (accueil) : la fenêtre s'ouvre à la première visite (« Plus tard » la cache 3 jours). Un pseudo inconnu crée le compte ; un pseudo connu demande le bon code (les majuscules ne comptent pas). Après 6 codes faux, il faut attendre 10 minutes. En se connectant, les parties du compte remplacent celles de l'appareil, et ce qui n'existe pas encore en ligne est envoyé. Se déconnecter envoie tout puis efface les parties de l'appareil (pratique quand plusieurs enfants partagent un téléphone).
+- **Synchronisation** (`jeux/compte.js`, chargé par toutes les pages après `sauvegarde.js`) : à l'ouverture d'une page, on récupère ce qui a changé ailleurs (si des parties arrivent juste à l'ouverture, la page se recharge une fois) ; ensuite on envoie ce qui a changé toutes les 20 secondes et en quittant la page. Chaque élément garde l'empreinte de sa dernière version envoyée ou reçue (`compte-sync`) : on sait ainsi ce qui a changé de chaque côté ; si un élément a changé des deux côtés, celui de l'appareil gagne. Les clés `compte-*` restent sur l'appareil.
+- **Sécurité** : l'adresse du serveur est visible dans le code du site ; le code à 4 chiffres empêche de jouer sur le compte d'un autre, mais ce n'est pas un coffre-fort : on n'y met que des parties de jeux.
+- **Essais** : `outils/sauvegarde-google.gs` a été essayé hors de Google avec un faux tableur qui imite le vrai (codes à zéros, nombres, formules, longues valeurs, comptes bloqués), puis l'application entière avec deux « téléphones » sur le même compte.
+
 ## Géographie
 
 Quatre terrains de jeu :
@@ -106,6 +127,9 @@ Les jeux proposés :
   Seul le premier essai du jour compte. Le nombre de jours d'affilée est affiché.
 - **Statistiques** : parties jouées, pourcentage de réponses justes du premier coup, et une liste **À revoir** des pays et départements les plus souvent ratés (un élément sort de la liste quand on le trouve du premier coup).
 - **Carte** : un nom de pays ; il faut le toucher sur la carte (on peut zoomer en pinçant ou avec les boutons, et se déplacer en glissant). Trois essais par pays, puis la réponse s'affiche. Les tout petits pays ont un repère rond pour pouvoir les toucher.
+- **Placer** (pays du monde et départements) : un lieu célèbre à placer sur la carte : grandes villes, monuments, sites naturels, et en France aussi des stations de ski (165 lieux dans le monde, 106 en France, dans `jeux/geo/lieux.js`). On touche la carte pour poser l'épingle (on peut la déplacer), puis **Valider** : la bonne place s'affiche avec un trait, la distance à vol d'oiseau en km et les points. 10 lieux par partie, **5000 points** chacun au plus : 5000 tout près (moins de 25 km dans le monde, 3 km en France), puis la moitié tous les 300 km dans le monde (50 km en France), 0 au-delà de 4000 km (600 km en France). Dans le monde, on peut choisir un continent ; en France, c'est toute la métropole, sur la carte des départements. Les records se comptent en points.
+- **Défi des lieux** : 10 lieux à placer, les mêmes pour tout le monde ce jour-là (6 dans le monde, 4 en France), avec son propre nombre de jours d'affilée.
+- **Les kilomètres** : `lieux.js` refait les calculs des deux projections de la carte (Natural Earth pour le monde, conique conforme de Lambert pour la France, avec l'échelle et le décalage de `outils/construire-geo.mjs`) dans les deux sens : du lieu vers la carte, et du point touché vers sa latitude et sa longitude ; la distance se calcule ensuite sur la sphère terrestre (formule de haversine). Les deux sens ont été comparés à d3-geo (écart nul) et chaque lieu a été vérifié dans son pays ou son département.
 - **Déplacer la carte** : un doigt glisse (le point touché reste sous le doigt), deux doigts zooment et déplacent en même temps, boutons + − ⤢. Pendant le geste, la carte est seulement déplacée comme une image (fluide même avec les 101 départements) ; la vue est posée au lâcher. Quand la hauteur de l'écran change (barre d'adresse, rotation), la vue est gardée au lieu de revenir à la carte entière.
 
 Le chrono tourne pendant toute la partie. Les 5 meilleurs résultats de chaque jeu et de chaque zone sont gardés sur l'appareil (score du premier coup, puis temps).
@@ -113,7 +137,7 @@ Le chrono tourne pendant toute la partie. Les 5 meilleurs résultats de chaque j
 La carte du monde rattache à leur pays les morceaux que la source sépare : l'Australie avec les îles Ashmore-et-Cartier, le Somaliland avec la Somalie, et Chypre du Nord avec Chypre.
 Avant ce correctif, l'Australie était presque invisible et la corne de l'Afrique fausse.
 
-Les données (`jeux/geo/monde.js`, `france.js`, `usa.js`, `drapeaux/` et `drapeaux-us/`) sont produites par `outils/construire-geo.mjs`.
+Les données (`jeux/geo/monde.js`, `france.js`, `usa.js`, `drapeaux/` et `drapeaux-us/`) sont produites par `outils/construire-geo.mjs`. La liste des lieux à placer (`jeux/geo/lieux.js`) est écrite à la main ; si les cartes sont reconstruites avec un autre cadrage, il faut y recopier l'échelle et le décalage des projections, que le script affiche.
 Sources : IGN Admin Express via france-geojson (Licence ouverte), U.S. Census Bureau via us-atlas (domaine public), drapeaux des États us-state-flags (ISC), Natural Earth via world-atlas (domaine public), mledoze/countries via world-countries (licence ODbL), drapeaux flag-icons (licence MIT), noms français du CLDR.
 
 ## Draw Race
@@ -440,6 +464,8 @@ jeux/yams.html         feuille de Yam's
 jeux/plateau.js        plateau de 5 dés à lancer, commun aux deux jeux
 jeux/ia.js             robots et conseils (Yam's, 10 000)
 jeux/sauvegarde.js     export et import de toutes les données dans un fichier
+jeux/compte.js         compte du joueur et sauvegarde en ligne dans le Google Sheet
+outils/sauvegarde-google.gs  le programme à coller dans le Google Sheet (Apps Script)
 jeux/geo.html          jeu de géographie
 jeux/geo/              données de la carte et drapeaux
 outils/                scripts : données de géographie, version, icône

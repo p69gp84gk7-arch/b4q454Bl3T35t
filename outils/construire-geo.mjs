@@ -117,6 +117,8 @@ const zones = {
 };
 ecrire('jeux/geo/monde.js', 'GEO', { w:W, h:H, zones, countries, others });
 console.log('pays', countries.length, '| H', H);
+// à recopier dans jeux/geo/lieux.js (mode Placer) si ces nombres changent
+console.log('projection monde : échelle', proj.scale(), 'décalage', proj.translate());
 
 /* ---------- France : métropole à droite, outre-mer en encarts à gauche ---------- */
 // Simplification commune (les frontières partagées restent jointives)
@@ -131,6 +133,7 @@ const DOM = ['971', '972', '973', '974', '976'];      // départements d'outre-m
 const FW = 1000, FH = 860, COL = 190;
 const metro = { type:'FeatureCollection', features:deps.filter(f => !DOM.includes(f.properties.code)) };
 const projMetro = geoConicConformal().parallels([44, 49]).rotate([-3, 0]).fitExtent([[COL + 20, 10], [FW - 10, FH - 10]], metro);
+console.log('projection France : échelle', projMetro.scale(), 'décalage', projMetro.translate());
 // Un encart par département d'outre-mer, empilés dans la colonne de gauche
 const cadres = [], projDom = {};
 const hCadre = (FH - 10 * (DOM.length + 1)) / DOM.length;
