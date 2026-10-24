@@ -102,7 +102,7 @@ Chaque joueur peut avoir un **compte** (pseudo + code secret à 4 chiffres). Une
 
 - **Le serveur** : `outils/sauvegarde-google.gs`, un petit programme Apps Script collé dans le Google Sheet et publié comme « Application Web ». Son adresse (elle finit par `/exec`) se met dans `SERVEUR_DEFAUT` en haut de `jeux/compte.js`. Tant qu'elle est vide, l'application ne montre rien de la sauvegarde en ligne.
 - **Installer** :
-  1. ouvrir le Google Sheet, menu *Extensions › Apps Script* (le fichier « Altitude Arcade – programme à coller dans Apps Script.txt », à côté du tableur dans le Drive, contient le même texte) ;
+  1. ouvrir le Google Sheet, menu *Extensions › Apps Script* (le fichier « Altitude Arcade – programme à coller dans Apps Script (version …).txt », dans le Drive, contient le même texte ; prendre la version la plus récente) ;
   2. remplacer le contenu de `Code.gs` par celui de `outils/sauvegarde-google.gs`, enregistrer (`ID_TABLEUR`, en haut, désigne le tableur « Altitude arcade » ; vide, c'est le tableur où le programme est collé) ;
   3. *Déployer › Nouveau déploiement*, type *Application Web*, « Exécuter en tant que : moi », « Qui peut accéder : Tout le monde », *Déployer*, accepter les autorisations ;
   4. copier l'adresse de l'application Web dans `jeux/compte.js`.
@@ -111,11 +111,23 @@ Chaque joueur peut avoir un **compte** (pseudo + code secret à 4 chiffres). Une
   - *Comptes* : pseudo, code, actif (oui / non), création, dernière visite, appareil, jeton. On peut changer un code, bloquer un compte (*non*), effacer le jeton pour déconnecter tous ses appareils, ou supprimer la ligne.
   - *Suivi* : une ligne par joueur, une colonne par jeu, avec le même texte que sur l'accueil (niveaux réussis, records…), mis à jour à chaque passage sur l'accueil.
   - *Données* : les sauvegardes (une ligne par joueur et par élément du stockage ; les longues valeurs sont coupées en morceaux de 40 000 caractères, chacun précédé de « ~ » pour que le tableur n'en fasse jamais un nombre ou une formule). À ne pas modifier à la main.
+  - *Classement* : une ligne par joueur et par jeu, avec ses meilleurs scores et ses statistiques (voir « Classement et statistiques »). À ne pas modifier à la main.
   - *Journal* : créations de comptes, connexions, codes faux.
 - **Connexion** (accueil) : la fenêtre s'ouvre à la première visite (« Plus tard » la cache 3 jours). Un pseudo inconnu crée le compte ; un pseudo connu demande le bon code (les majuscules ne comptent pas). Après 6 codes faux, il faut attendre 10 minutes. En se connectant, les parties du compte remplacent celles de l'appareil, et ce qui n'existe pas encore en ligne est envoyé. Se déconnecter envoie tout puis efface les parties de l'appareil (pratique quand plusieurs enfants partagent un téléphone).
 - **Synchronisation** (`jeux/compte.js`, chargé par toutes les pages après `sauvegarde.js`) : à l'ouverture d'une page, on récupère ce qui a changé ailleurs (si des parties arrivent juste à l'ouverture, la page se recharge une fois) ; ensuite on envoie ce qui a changé toutes les 20 secondes et en quittant la page. Chaque élément garde l'empreinte de sa dernière version envoyée ou reçue (`compte-sync`) : on sait ainsi ce qui a changé de chaque côté ; si un élément a changé des deux côtés, celui de l'appareil gagne. Les clés `compte-*` restent sur l'appareil.
 - **Sécurité** : l'adresse du serveur est visible dans le code du site ; le code à 4 chiffres empêche de jouer sur le compte d'un autre, mais ce n'est pas un coffre-fort : on n'y met que des parties de jeux.
 - **Essais** : `outils/sauvegarde-google.gs` a été essayé hors de Google avec un faux tableur qui imite le vrai (codes à zéros, nombres, formules, longues valeurs, comptes bloqués), puis l'application entière avec deux « téléphones » sur le même compte.
+
+## Classement et statistiques
+
+Page `jeux/classement.html`, ouverte par le bouton **🏆 Classement** dans le bandeau du compte sur l'accueil (il faut être connecté).
+
+- **Chaque épreuve a son classement** : chaque circuit de Draw Race (course et meilleur tour), chaque piste de la Dameuse, chaque niveau de Pépin, de la Tour de contrôle, de Tables au sommet, chaque chanson de Fusée Rythme, chaque mode de Géographie, du Grand Quiz, de Freeride, du Tir au panier, du Yam's, du 10 000 et de Nivoculteur. Pour chaque épreuve, les joueurs sont rangés du meilleur au moins bon (🥇🥈🥉), la ligne du joueur connecté est en couleur.
+- **Tableau d'honneur** : en haut, le nombre de premières, deuxièmes et troisièmes places de chaque joueur (seulement sur les épreuves jouées par au moins deux joueurs).
+- **Statistiques** : sous les épreuves de chaque jeu, un tableau pour se comparer (parties jouées, victoires, étoiles, niveaux réussis…), la meilleure valeur en doré.
+- **Comment ça marche** : `jeux/scores.js` lit les records rangés sur l'appareil et en tire, pour chaque jeu, les épreuves et les statistiques du joueur. L'accueil les envoie au tableur à chaque passage (avec le résumé de l'onglet Suivi), dans l'onglet *Classement* (une ligne par joueur et par jeu). La page du classement demande au tableur les scores de tous les comptes actifs (un compte bloqué n'apparaît plus) ; elle garde la dernière réponse pour s'afficher même sans réseau.
+- **Le nom du joueur** : quand on est connecté, le pseudo du compte est mis tout seul comme nom de joueur dans la Géographie, Draw Race, le Yam's et le 10 000 (on peut toujours le changer).
+- Le classement demande la version du programme du tableur qui connaît l'action « classement » : après une mise à jour de `outils/sauvegarde-google.gs`, le recoller dans Apps Script et publier une nouvelle version.
 
 ## Géographie
 
@@ -186,6 +198,10 @@ Deux modes de jeu, au choix en haut du menu :
 Le jeu se joue le téléphone à l'horizontale (un message le demande en vertical), pour des pistes plus larges.
 
 **Pendant le tracé et la course**, toutes les informations sont dans le bandeau sombre du haut (à la place du bandeau noir) : Abandonner, le circuit, la météo, le chrono, la vitesse du doigt, le classement en petites pastilles (les trois premières lettres de chaque pilote, en capitales ; J1, J2… pour un joueur sans nom), les messages, et pendant le tracé les boutons Effacer et C'est parti. Le circuit prend toute la largeur dessous. Boost et Stand sont de gros boutons ronds dans les coins, un coin par joueur (joueur 1 en bas à droite, 2 en bas à gauche, 3 en haut à droite, 4 en haut à gauche) ; à 3 ou 4 joueurs, les panneaux sont plus petits, sans le détail de l'usure des pneus (le classement donne la lettre des pneus).
+
+**À plusieurs, où est mon bouton Boost ?** Sur la grille de départ, chaque joueur voit un petit écran avec son coin allumé (« Tes boutons ⚡ Boost et 🔧 Stand : en bas à droite de l'écran »). Pendant les feux, les quatre coins s'allument à la couleur de leur pilote avec son nom et une main (👇 ou 👆) qui montre le bouton, pendant 4 secondes et demie.
+
+**Toutes les tailles d'écran** : sur un petit téléphone à l'horizontale, le bandeau du haut se resserre (pastilles plus petites, la météo et la vitesse du doigt cachées) pour que les 4 pilotes tiennent ; les boutons « Départ » restent entre les coins des Boost (sur deux lignes à 3 ou 4 joueurs). En portrait, le jeu demande de tourner le téléphone.
 
 ### Rallye
 
@@ -476,6 +492,8 @@ jeux/plateau.js        plateau de 5 dés à lancer, commun aux deux jeux
 jeux/ia.js             robots et conseils (Yam's, 10 000)
 jeux/sauvegarde.js     export et import de toutes les données dans un fichier
 jeux/compte.js         compte du joueur et sauvegarde en ligne dans le Google Sheet
+jeux/scores.js         records et statistiques de chaque jeu, pour le classement
+jeux/classement.html   classement de tous les joueurs, épreuve par épreuve, et statistiques
 outils/sauvegarde-google.gs  le programme à coller dans le Google Sheet (Apps Script)
 jeux/geo.html          jeu de géographie
 jeux/geo/              données de la carte et drapeaux
