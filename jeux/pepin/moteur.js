@@ -86,7 +86,7 @@ const PROG = Object.assign({ debloque:0, meilleur:0, faits:{} }, lire('pepin-pro
 const sauver = () => ecrire('pepin-progres', PROG);
 const etat = { mode:'titre', niv:0, vies:3, pieces:0, score:0, temps:400, tAcc:0, mi:false, minuteur:0, texte:'' };
 let ZONES = null, Z = null, J = null, E = [], PARTS = [], PLATS = [], camX = 0, VW = 256, frame = 0, bumps = [];
-const PH = { accMarche:.055, accCourse:.085, maxMarche:1.45, maxCourse:2.55, frein:.075, freinGlace:.012, derape:.17, saut:4.15, gMonte:.165, gChute:.48, maxChute:4.6 };
+const PH = { accMarche:.055, accCourse:.085, maxMarche:1.45, maxAuto:2.1, maxCourse:2.55, frein:.075, freinGlace:.012, derape:.17, saut:4.85, gMonte:.165, gChute:.48, maxChute:4.6 };
 
 function preparerNiveau(i){
   const d = NIVEAUX[i];
@@ -275,11 +275,14 @@ function majJoueur(){
   // marcher, courir, déraper ; sur la glace, on glisse
   const dessous = tuile(Math.floor((J.x + J.w / 2) / T), Math.floor((J.y + J.h + 1) / T)), glace = J.sol && dessous === TL.GLACE;
   let dir = (K.droite ? 1 : 0) - (K.gauche ? 1 : 0); if(J.accroupi) dir = 0;
-  const max = eau ? 1.1 : K.course ? PH.maxCourse : PH.maxMarche, acc = (eau ? .04 : K.course ? PH.accCourse : PH.accMarche) * (glace ? .4 : 1);
+  // la course se fait toute seule : en gardant le doigt sur la flèche, Pépin prend de l'élan (B le fait courir encore plus vite)
+  if(!dir || (J.sol && Math.sign(J.vx) === -dir)) J.elan = 0; else if(J.sol) J.elan = Math.min(60, (J.elan || 0) + 1);
+  const auto = J.elan > 30;
+  const max = eau ? 1.1 : K.course ? PH.maxCourse : auto ? PH.maxAuto : PH.maxMarche, acc = (eau ? .04 : K.course || auto ? PH.accCourse : PH.accMarche) * (glace ? .4 : 1);
   J.derape = false;
   if(dir){
     if(Math.sign(J.vx) === -dir && J.sol && !eau){ J.vx += dir * PH.derape * (glace ? .2 : 1); J.derape = Math.abs(J.vx) > .4; }
-    else J.vx += dir * acc;
+    else { const avant = Math.abs(J.vx); J.vx += dir * acc; if(Math.abs(J.vx) > max) J.vx = Math.sign(J.vx) * Math.max(max, Math.min(Math.abs(J.vx), avant - .06)); }
     if(J.sol || eau || Math.abs(J.vx) < .2) J.dir = dir;
     if(Math.abs(J.vx) > max) J.vx = Math.sign(J.vx) * Math.max(max, Math.abs(J.vx) - .06);
   } else if(J.sol){ const f = glace ? PH.freinGlace : J.accroupi ? .1 : PH.frein; J.vx = Math.abs(J.vx) <= f ? 0 : J.vx - Math.sign(J.vx) * f; }
@@ -290,7 +293,7 @@ function majJoueur(){
   } else {
     // un saut demandé juste avant de toucher le sol, ou juste après avoir quitté un bord, compte quand même
     J.tampon = sautPresse ? 7 : Math.max(0, (J.tampon || 0) - 1); J.coyote = J.sol ? 6 : Math.max(0, (J.coyote || 0) - 1);
-    if(J.tampon && (J.sol || J.coyote) && J.vy >= 0){ J.vy = -(PH.saut + Math.abs(J.vx) * .3); J.sol = false; J.plat = null; J.tampon = 0; J.coyote = 0; J.taille ? SON.saut() : SON.petitSaut(); }
+    if(J.tampon && (J.sol || J.coyote) && J.vy >= 0){ J.vy = -(PH.saut + Math.abs(J.vx) * .15); J.sol = false; J.plat = null; J.tampon = 0; J.coyote = 0; J.taille ? SON.saut() : SON.petitSaut(); }
     J.vy = Math.min(J.vy + (J.vy < 0 && K.saut ? PH.gMonte : PH.gChute), PH.maxChute);
   }
   // boules de feu (avec le piment)
@@ -588,7 +591,7 @@ function maj(){
   if(etat.mode === 'intro'){ if(--etat.minuteur <= 0){ etat.mode = 'jeu'; musique(musiqueZone()); } return; }
   if(etat.mode === 'mort'){
     J.mortT++; if(J.mortT > 30){ J.vy += .25; J.y += J.vy; }
-    if(--etat.minuteur <= 0){ etat.vies--; if(etat.vies <= 0) return finEcran('PARTIE TERMINÉE', `Score : ${etat.score} points.`, 'Recommencer le monde', () => commencer(NIVEAUX.findIndex(n => n.id === NIVEAUX[etat.niv].id[0] + '-1'))); lancerNiveau(etat.niv); }
+    if(--etat.minuteur <= 0){ etat.vies--; if(etat.vies <= 0) return finEcran('PARTIE TERMINÉE', `Score : ${etat.score} points.`, 'Recommencer ce niveau', () => commencer(etat.niv)); lancerNiveau(etat.niv); }
     return;
   }
   if(etat.mode === 'tuyau'){
@@ -821,7 +824,7 @@ function titre(){
   ecran('eTitre');
 }
 const NOMS_MONDES = ['Les Alpages', 'Le Lac', 'Les Neiges', 'Le Volcan'];
-function commencer(i){ etat.vies = 3; etat.pieces = 0; etat.score = 0; etat.mi = false; J = null; ecran(null); audio(); lancerNiveau(i); }
+function commencer(i){ etat.vies = 5; etat.pieces = 0; etat.score = 0; etat.mi = false; J = null; ecran(null); audio(); lancerNiveau(i); }
 function finEcran(t, txt, bouton, action){ etat.mode = 'fin'; musique(null); $('fTitre').textContent = t; $('fTexte').textContent = txt; $('fBouton').textContent = bouton; $('fBouton').onclick = () => { ecran(null); action(); }; ecran('eFin'); }
 function pause(){ if(etat.mode !== 'jeu') return; etat.avantPause = etat.mode; etat.mode = 'pause'; ecran('ePause'); }
 function reprendre(){ if(etat.mode !== 'pause') return; etat.mode = etat.avantPause || 'jeu'; ecran(null); if(AC) musT = AC.currentTime + .05; }
