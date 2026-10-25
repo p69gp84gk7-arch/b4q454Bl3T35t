@@ -206,10 +206,17 @@ function ongletVoiture(){
   const pl = M.depensesPieces(C);
   box.innerHTML = `<div class="carte"><h3>Ta voiture · ${rang}e du plateau</h3><div class="stats4">${lignes}</div><p class="legende" style="margin:8px 0 0">Trait jaune : la meilleure écurie · trait blanc : la moyenne. Les autres écuries progressent aussi, selon leur budget.</p></div>
     ${C.reglages.plafond ? `<div class="carte"><h3>Plafond budgétaire ${C.saison}</h3><div class="jauge ${pl > M.PLAFOND * .85 ? 'rouge' : ''}"><i style="width:${clamp(pl / M.PLAFOND * 100, 0, 100)}%"></i></div><p class="sous" style="margin-top:6px">${meur(pl)} dépensés sur ${M.PLAFOND} M€ (conception et fabrication des pièces).</p></div>` : ''}
-    <div class="carte"><h3>Les pièces</h3><p class="sous" style="margin-bottom:8px">Directeur technique ${etoiles(C.personnel.technique.niv)}. 1) Lance la conception d'une nouvelle version. 2) Une fois conçue, fabrique-la : une par voiture (et une de réserve en cas d'accident).</p><div class="projets" id="lPieces"></div></div>
-    <div class="carte"><h3>🛠️ Fiabilisation</h3><p class="sous" id="tFiab" style="margin-bottom:8px"></p><button class="btn petit rouge" id="bFiab"></button></div>`;
+    <div class="carte"><h3>Les pièces : touche une partie de la voiture</h3><p class="sous" style="margin-bottom:8px">Directeur technique ${etoiles(C.personnel.technique.niv)}. 1) Lance la conception d'une nouvelle version. 2) Une fois conçue, fabrique-la : une par voiture (et une de réserve en cas d'accident).</p>
+      <div class="atelierV"><div class="schemaV">${schemaVoiture(E)}<p class="legende" style="margin:4px 0 0;text-align:center">✏️ en conception · 🏭 en fabrication · ⚠️ conçue, à fabriquer</p></div><div id="lPieces"></div></div></div>`;
+  $('qContenu').querySelector('.schemaV').onclick = e => { const z = e.target.closest('[data-p]'); if(!z) return; selPiece = z.dataset.p; qg('voiture'); };
   const l = $('lPieces');
+  if(selPiece === 'fiab'){
+    const el = document.createElement('div'); el.className = 'piece';
+    el.innerHTML = `<div class="t"><span style="font-size:1.3rem">🛠️</span><b>Fiabilisation</b><small>moteur, boîte, électronique</small></div><p class="sous" id="tFiab"></p><div class="act"><button class="btn petit rouge" id="bFiab"></button></div>`;
+    l.append(el);
+  }
   for(const [type, P] of Object.entries(M.PIECES)){
+    if(type !== selPiece) continue;
     const pc = C.pieces[type], derniere = pc.gens[pc.gens.length - 1], el = document.createElement('div'); el.className = 'piece';
     const enFab = (C.fabrications || []).filter(f => f.type === type);
     const stock = Object.entries(pc.stock).filter(([, n]) => n > 0).map(([g, n]) => `v${g} ×${n}`).join(', ');
@@ -240,10 +247,45 @@ function ongletVoiture(){
     }
     l.append(el);
   }
+  if(selPiece !== 'fiab') return;
   const cf = M.coutFiabilisation(C);
   $('tFiab').textContent = C.fiabilisation ? `En cours : +${virg(C.fiabilisation.gain)} de fiabilité au prochain Grand Prix.` : `Moins de pannes en course. Fiabilité actuelle : ${virg(V[0].fiabilite)}.`;
   $('bFiab').textContent = C.fiabilisation ? 'En cours' : `Lancer · ${meur(cf)}`; $('bFiab').disabled = !!C.fiabilisation || C.argent < cf || C.phase !== 'saison';
   $('bFiab').onclick = () => { const r = M.lancerFiabilisation(C); if(r.msg) M.message(C, '🛠️ ' + r.msg); if(!r.ok) alert(r.msg); sauver(); qg('voiture'); };
+}
+// la voiture vue de dessus (le nez en haut) : chaque partie se touche pour voir sa pièce
+let selPiece = 'avant';
+function schemaVoiture(E){
+  const etat = type => {
+    if(type === 'fiab') return C.fiabilisation ? '✏️' : '';
+    const pc = C.pieces[type], n = pc.gens.length - 1;
+    if(pc.conception) return '✏️';
+    if((C.fabrications || []).some(f => f.type === type)) return '🏭';
+    if(n > 0 && ![0, 1].some(i => (C.montage[i][type] || 0) === n) && !(pc.stock[n] > 0)) return '⚠️';
+    return '';
+  };
+  const ver = type => { if(type === 'fiab') return virg(M.voitureDe(C, 0).fiabilite, 0); const g = Math.max(C.montage[0][type] || 0, C.montage[1][type] || 0); return g ? 'v' + g : 'base'; };
+  const zone = (type, forme) => `<g data-p="${type}" class="zp ${selPiece === type ? 'sel' : ''}">${forme}</g>`;
+  const etiquette = (type, x, y, nom, cote) => { const e = etat(type), dx = cote === 'g' ? -1 : 1;
+    const L = 92, bx = cote === 'g' ? x - 18 - L : x + 18, cx = bx + L / 2;
+    return `<g data-p="${type}" class="et ${selPiece === type ? 'sel' : ''}"><line x1="${x}" y1="${y}" x2="${x + dx * 18}" y2="${y}"/><rect x="${bx}" y="${y - 17}" width="${L}" height="34" rx="8"/><text x="${cx}" y="${y - 2}">${nom}</text><text class="v" x="${cx}" y="${y + 12}">${ver(type)} ${e}</text></g>`; };
+  const c1 = E.c1, c2 = E.c2;
+  return `<svg viewBox="-108 0 416 380" role="img" aria-label="La voiture vue de dessus">
+    <ellipse cx="100" cy="195" rx="78" ry="175" fill="rgba(255,255,255,.03)"/>
+    ${zone('suspension', `<g class="roues"><rect x="30" y="62" width="26" height="50" rx="7"/><rect x="144" y="62" width="26" height="50" rx="7"/><rect x="24" y="250" width="32" height="62" rx="8"/><rect x="144" y="250" width="32" height="62" rx="8"/></g>
+      <g class="bras"><line x1="56" y1="80" x2="88" y2="96"/><line x1="56" y1="96" x2="88" y2="112"/><line x1="144" y1="80" x2="112" y2="96"/><line x1="144" y1="96" x2="112" y2="112"/><line x1="56" y1="270" x2="80" y2="258"/><line x1="56" y1="290" x2="80" y2="282"/><line x1="144" y1="270" x2="120" y2="258"/><line x1="144" y1="290" x2="120" y2="282"/></g>`)}
+    ${zone('fond', `<path d="M64 140 L136 140 L150 170 L150 245 L128 300 L72 300 L50 245 L50 170 Z" fill="#20232B" stroke="#4A4F5C" stroke-width="2"/>`)}
+    <path d="M86 112 L114 112 L132 150 L136 236 L118 262 L82 262 L64 236 L68 150 Z" fill="${c1}" stroke="rgba(0,0,0,.5)" stroke-width="1.5"/>
+    <path d="M70 172 L84 168 L84 228 L70 230 Z M130 172 L116 168 L116 228 L130 230 Z" fill="${c2}" opacity=".9"/>
+    <ellipse cx="100" cy="152" rx="13" ry="20" fill="#111"/><circle cx="100" cy="150" r="7" fill="${c2}"/>
+    <path d="M86 150 Q100 128 114 150" fill="none" stroke="#3A3A3A" stroke-width="4"/>
+    ${zone('moteur', `<path d="M88 178 L112 178 L110 262 L90 262 Z" class="capot" fill="${c1}" stroke="#000" stroke-width="1"/><rect x="94" y="196" width="12" height="42" rx="3" fill="rgba(0,0,0,.35)"/>`)}
+    ${zone('fiab', `<rect x="90" y="266" width="20" height="30" rx="4" fill="#5A5F6B" stroke="#222"/>`)}
+    ${zone('avant', `<path d="M92 112 L96 40 L104 40 L108 112 Z" fill="${c1}" stroke="rgba(0,0,0,.5)"/><rect x="26" y="22" width="148" height="18" rx="5" fill="${c2}" stroke="#000" stroke-width="1"/><rect x="26" y="18" width="10" height="26" rx="2" fill="${c1}"/><rect x="164" y="18" width="10" height="26" rx="2" fill="${c1}"/>`)}
+    ${zone('arriere', `<rect x="44" y="326" width="112" height="22" rx="5" fill="${c1}" stroke="#000" stroke-width="1"/><rect x="44" y="322" width="10" height="32" rx="2" fill="${c2}"/><rect x="146" y="322" width="10" height="32" rx="2" fill="${c2}"/><line x1="100" y1="300" x2="100" y2="326" stroke="#222" stroke-width="4"/>`)}
+    ${etiquette('avant', 26, 31, 'Aileron av.', 'g')}${etiquette('suspension', 170, 87, 'Suspension', 'd')}${etiquette('fond', 50, 205, 'Fond plat', 'g')}
+    ${etiquette('moteur', 150, 205, 'Moteur', 'd')}${etiquette('fiab', 56, 281, 'Fiabilité', 'g')}${etiquette('arriere', 156, 337, 'Aileron arr.', 'd')}
+  </svg>`;
 }
 const niveaux = (n, tr) => `<span class="niv">${[1, 2, 3, 4, 5].map(k => `<i class="${k <= n ? 'on' : tr && k === n + 1 ? 'tr' : ''}"></i>`).join('')}</span>`;
 function ongletUsine(){
