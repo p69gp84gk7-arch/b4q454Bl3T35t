@@ -172,6 +172,13 @@ window.AltitudeScores = (() => {
       J.paddock.stats = { 'Grands Prix':pk.gp, 'Points':pk.points || 0, 'Titres constructeurs':pk.titresC || 0, 'Titres pilotes':pk.titresP || 0, 'Pole positions':pk.poles || 0 };
     }
     // Blocs : le marathon
+    const nu = lire('nuancier-records');
+    if(nu && nu.parties){
+      jeu('nuancier', 'Nuancier', '🎨');
+      ep('nuancier', 'score', 'Meilleure partie (10 couleurs)', nu.best || 0, `${String(nu.best || 0).replace('.', ',')} / 100`);
+      ep('nuancier', 'parfaits', 'Couleurs parfaites', nu.parfaits || 0, `${nu.parfaits || 0} parfaite${nu.parfaits > 1 ? 's' : ''}`);
+      J.nuancier.stats = { 'Parties':nu.parties, 'Couleurs trouvées':nu.couleurs || 0, 'Note moyenne':((nu.total || 0) / Math.max(1, nu.couleurs || 0)).toFixed(1).replace('.', ',') + ' / 10' };
+    }
     const bl = lire('blocs-records');
     if(bl && bl.parties){
       jeu('blocs', 'Blocs', '🧱');

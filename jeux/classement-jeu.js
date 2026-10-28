@@ -7,7 +7,7 @@
   const ici = document.currentScript ? document.currentScript.src : '';
   const base = ici.slice(0, ici.lastIndexOf('/') + 1);               // le dossier jeux/
   const PAGES = { '10000':'10000', yams:'yams', geo:'geo', drawrace:'drawrace', fusee:'fusee', dameuse:'dameuse', freeride:'freeride', tour:'tour', panier:'panier',
-    tables:'tables', pepin:'pepin', quiz:'quiz', telesiege:'telesiege', blocs:'blocs', paddock:'paddock' };
+    tables:'tables', pepin:'pepin', quiz:'quiz', telesiege:'telesiege', blocs:'blocs', paddock:'paddock', nuancier:'nuancier' };
   const chemin = location.pathname, fichier = chemin.split('/').pop().replace(/\.html$/, '');
   const JEU = /nivoculteur\//.test(chemin) ? 'nivo' : PAGES[fichier];
   if(!JEU) return;
