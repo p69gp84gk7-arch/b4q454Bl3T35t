@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Nuancier · Altitude Arcade</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=127">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=127">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+@media (orientation:landscape) and (max-height:600px){ :root{ --barre-statut:env(safe-area-inset-top, 0px); } }
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+/* un fond gris neutre : les couleurs se jugent mieux */
+:root{ --fond:#202124; --carte:#2B2C30; --carte2:#36373C; --ligne:rgba(255,255,255,.12); --encre:#F2F2F4; --doux:#A9AAB2; --or:#FFC93C; --vert:#3DDC84; --rouge:#FF6464; }
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; min-height:100%; background:var(--fond); color:var(--encre); font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-tap-highlight-color:transparent; }
+body{ padding-top:var(--barre-statut); }
+button{ font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; }
+.ecran[hidden]{ display:none !important; }
+.page{ max-width:720px; margin:0 auto; padding:12px 14px calc(24px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; gap:12px; }
+.tete{ display:flex; align-items:center; gap:8px; }
+.tete a, .tete .btn{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:10px; padding:6px 12px; font-weight:700; background:var(--carte); white-space:nowrap; }
+.tete .droite{ margin-left:auto; }
+h1{ margin:6px 0 0; font-family:"Bebas Neue", "Bricolage Grotesque", sans-serif; font-weight:400; font-size:clamp(3rem, 16vw, 4.6rem); line-height:.9; letter-spacing:.02em; }
+h1 span{ display:inline-block; }
+h2{ margin:0; font-size:1.3rem; }
+h3{ margin:0 0 8px; font-size:.76rem; text-transform:uppercase; letter-spacing:.14em; color:var(--doux); }
+.sous{ color:var(--doux); margin:0; line-height:1.45; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:16px; padding:14px; }
+.btn{ border:1px solid var(--ligne); background:var(--carte2); border-radius:12px; padding:11px 14px; font-weight:800; }
+.btn.gros{ width:100%; padding:16px; font-size:1.15rem; background:linear-gradient(90deg, #FF5F6D, #FFC371); border:none; color:#1B1B1B; }
+.btn.vert{ background:var(--vert); border-color:var(--vert); color:#0B2A17; }
+.chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.chips button{ border:1px solid var(--ligne); background:var(--carte2); border-radius:999px; padding:7px 13px; font-weight:700; }
+.chips button.actif{ background:var(--encre); color:#1B1B1B; }
+.stats{ display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; text-align:center; }
+.stats div{ background:var(--carte2); border-radius:12px; padding:8px 4px; }
+.stats b{ display:block; font-size:1.3rem; } .stats small{ color:var(--doux); font-size:.72rem; }
+.apercus{ display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; }
+.apercus svg{ width:100%; height:auto; border-radius:10px; display:block; }
+/* le jeu */
+#eJeu .page{ gap:8px; padding-top:8px; }
+.bandeau{ display:flex; align-items:center; gap:8px; font-weight:800; }
+.bandeau .q{ font-size:.95rem; } .bandeau .sc{ margin-left:auto; color:var(--or); font-size:1.05rem; }
+.points{ display:flex; gap:3px; }
+.points i{ width:16px; height:6px; border-radius:3px; background:var(--carte2); }
+.points i.fait{ background:var(--vert); } .points i.ici{ background:var(--or); }
+.jeu{ display:grid; gap:10px; grid-template-columns:minmax(0, 1fr); }
+.jeu > div{ min-width:0; }
+@media (orientation:landscape) and (min-width:640px){ .jeu{ grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); align-items:start; } }
+.illu{ position:relative; background:var(--carte); border-radius:18px; padding:8px; border:1px solid var(--ligne); }
+.illu svg{ width:100%; height:auto; max-height:34vh; display:block; margin:0 auto; border-radius:12px; }
+@media (orientation:landscape){ .illu svg{ max-height:calc(100vh - var(--barre-statut) - 120px); } }
+.illu .zone-ici{ animation:clignote 1.2s ease-in-out 2; }
+@keyframes clignote{ 50%{ opacity:.35; } }
+.question{ text-align:center; }
+.question small{ display:block; color:var(--doux); font-weight:600; }
+.question b{ font-size:1.25rem; }
+.outil[hidden]{ display:none; }
+.outil{ display:flex; flex-direction:column; gap:8px; background:var(--carte); border:1px solid var(--ligne); border-radius:18px; padding:10px; }
+.spectre{ position:relative; touch-action:none; border-radius:12px; }
+.spectre canvas{ border-radius:12px; }
+.spectre canvas{ display:block; width:100%; height:clamp(110px, 22vh, 200px); }
+.rond{ position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 2px #000, 0 2px 6px rgba(0,0,0,.5); pointer-events:none; }
+.lum{ position:relative; height:38px; touch-action:none; border-radius:12px; }
+.lum canvas{ display:block; width:100%; height:38px; border-radius:12px; }
+.lum .rond{ top:50%; }
+.lum label{ position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:.72rem; font-weight:800; pointer-events:none; mix-blend-mode:difference; color:#fff; }
+.affiner{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; }
+.affiner div{ display:flex; align-items:center; justify-content:space-between; background:var(--carte2); border-radius:10px; padding:2px; }
+.affiner span{ font-size:.7rem; color:var(--doux); font-weight:700; }
+.affiner button{ width:30px; flex:none; height:30px; border:none; background:transparent; font-size:1.1rem; font-weight:900; border-radius:8px; }
+.affiner button:active{ background:rgba(255,255,255,.12); }
+.valider{ display:flex; gap:8px; align-items:center; }
+.echantillon{ width:56px; height:48px; border-radius:12px; border:2px solid rgba(255,255,255,.25); flex:none; }
+.valider .btn{ flex:1; padding:14px; font-size:1.1rem; }
+/* le résultat d'une couleur */
+.verdict{ display:flex; flex-direction:column; gap:10px; background:var(--carte); border:1px solid var(--ligne); border-radius:18px; padding:12px; }
+.verdict[hidden]{ display:none; }
+.compare{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.compare div{ border-radius:14px; height:74px; display:flex; align-items:flex-end; padding:6px 10px; font-weight:800; font-size:.85rem; }
+.note{ display:flex; align-items:baseline; gap:10px; }
+.note b{ font-size:2rem; } .note span{ font-weight:800; font-size:1.1rem; }
+/* la fin */
+.total{ text-align:center; }
+.total b{ display:block; font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:5rem; line-height:1; color:var(--or); }
+.recap{ display:grid; gap:6px; }
+.recap div{ display:grid; grid-template-columns:44px 1fr 34px 34px 46px; gap:8px; align-items:center; background:var(--carte2); border-radius:12px; padding:6px; font-size:.85rem; }
+.recap svg{ width:44px; height:44px; border-radius:8px; }
+.recap i{ display:block; width:34px; height:34px; border-radius:8px; border:1px solid rgba(255,255,255,.2); }
+.recap b{ text-align:right; }
+.affiner span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (orientation:landscape) and (max-height:500px){
+  #eJeu .page{ padding-top:4px; gap:4px; }
+  .spectre canvas{ height:28vh; } .lum, .lum canvas{ height:30px; } .question b{ font-size:1.05rem; }
+  .valider .btn{ padding:9px; font-size:1rem; } .echantillon{ height:38px; } .outil{ gap:6px; padding:8px; }
+}
+.aide li{ line-height:1.5; margin-bottom:6px; } .aide ul{ padding-left:20px; margin:0; }
+</style>
+</head>
+<body>
+<div class="barre-statut" aria-hidden="true"></div>
+
+<!-- L'accueil -->
+<section class="ecran" id="eAccueil">
+  <div class="page">
+    <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="btn droite" id="bAide">❔ Règles</button></div>
+    <h1 id="titre"></h1>
+    <p class="sous">La casquette de Mario, Pikachu, le rouge de Coca-Cola, le vert de Spotify, le taxi de New York… Tu connais ces couleurs par cœur ? La couleur a disparu de l'image : retrouve-la de mémoire avec le spectre et la luminosité. 10 couleurs par partie, chacune notée sur 10.</p>
+    <div class="carte"><h3>Les images</h3><div class="chips" id="cCat"></div></div>
+    <button class="btn gros" id="bJouer">▶ Nouvelle partie · 10 couleurs</button>
+    <div class="carte" id="cRecords"></div>
+    <div class="carte"><h3>Quelques images du jeu</h3><div class="apercus" id="cApercus"></div></div>
+  </div>
+</section>
+
+<!-- La partie -->
+<section class="ecran" id="eJeu" hidden>
+  <div class="page">
+    <div class="tete"><button class="btn" id="bQuitter">‹ Arrêter</button><div class="points" id="jPoints"></div></div>
+    <div class="bandeau"><span class="q" id="jQ"></span><span class="sc" id="jScore"></span></div>
+    <div class="jeu">
+      <div class="illu" id="jIllu"></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="question"><small id="jNom"></small><b id="jZone"></b></div>
+        <div class="outil" id="jOutil">
+          <div class="spectre" id="jSpectre"><canvas id="cvSpectre"></canvas><div class="rond" id="rSpectre"></div></div>
+          <div class="lum" id="jLum"><canvas id="cvLum"></canvas><label>LUMINOSITÉ</label><div class="rond" id="rLum"></div></div>
+          <div class="affiner">
+            <div><button data-a="h" data-d="-2">‹</button><span>Teinte</span><button data-a="h" data-d="2">›</button></div>
+            <div><button data-a="s" data-d="-2">‹</button><span>Couleur</span><button data-a="s" data-d="2">›</button></div>
+            <div><button data-a="l" data-d="-1">‹</button><span>Lumière</span><button data-a="l" data-d="1">›</button></div>
+          </div>
+          <div class="valider"><span class="echantillon" id="jEch"></span><button class="btn vert" id="bValider">✔ C'est cette couleur !</button></div>
+        </div>
+        <div class="verdict" id="jVerdict" hidden>
+          <div class="note"><b id="vNote"></b><span id="vTexte"></span></div>
+          <div class="compare"><div id="vMoi">Ta couleur</div><div id="vVraie">La vraie couleur</div></div>
+          <button class="btn gros" id="bSuite">Suivante ▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- La fin -->
+<section class="ecran" id="eFin" hidden>
+  <div class="page">
+    <div class="total"><h3>Ton score</h3><b id="fScore"></b><p class="sous" id="fTexte"></p></div>
+    <div class="carte"><h3>Tes 10 couleurs</h3><div class="recap" id="fRecap"></div><p class="sous" style="margin-top:8px;font-size:.8rem">À gauche ta couleur, à droite la vraie.</p></div>
+    <button class="btn gros" id="bRejouer">↻ Rejouer</button>
+    <button class="btn" id="bMenu">Menu</button>
+  </div>
+</section>
+
+<!-- Les règles -->
+<section class="ecran" id="eAide" hidden>
+  <div class="page aide">
+    <div class="tete"><button class="btn" id="bAideRetour">‹ Retour</button></div>
+    <h2>Comment jouer</h2>
+    <div class="carte"><ul>
+      <li>Une image s'affiche (un personnage, un logo ou un objet très connu), mais une partie a perdu sa couleur : c'est elle qui clignote.</li>
+      <li>Retrouve sa couleur <b>de mémoire</b> : touche ou glisse sur le <b>spectre</b> (les teintes de gauche à droite, des couleurs vives en haut aux couleurs grises en bas), puis règle la <b>luminosité</b> (du noir au blanc). La partie de l'image prend ta couleur en direct.</li>
+      <li>Les petites flèches affinent la teinte, la couleur et la lumière, pas à pas.</li>
+      <li>Quand tu es sûr, valide : la vraie couleur apparaît, avec ta note sur 10. Plus tu es proche, plus tu marques (l'écart est mesuré comme l'œil voit les couleurs). 10 couleurs par partie : 100 points au maximum.</li>
+    </ul></div>
+  </div>
+</section>
+<script src="nuancier/images.js?v=127"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const virg = (n, d = 1) => n.toFixed(d).replace('.', ',');
+const IMAGES = window.NUANCIER_IMAGES;
+const CATS = { tout:'Tout', perso:'Personnages', logo:'Logos et marques', objet:'Objets et lieux' };
+const ECRANS = ['eAccueil', 'eJeu', 'eFin', 'eAide'];
+const montrer = id => { ECRANS.forEach(e => $(e).hidden = e !== id); scrollTo(0, 0); };
+
+/* ---------- Les couleurs : HSL, hexadécimal, et l'écart vu par l'œil (CIE ΔE 2000) ---------- */
+function hslHex(h, s, l){
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+  return '#' + [f(0), f(8), f(4)].map(x => Math.round(x * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+function lab(hex){
+  const [r, g, b] = hexRgb(hex).map(v => { v /= 255; return v > .04045 ? ((v + .055) / 1.055) ** 2.4 : v / 12.92; });
+  let x = (r * .4124 + g * .3576 + b * .1805) / .95047, y = r * .2126 + g * .7152 + b * .0722, z = (r * .0193 + g * .1192 + b * .9505) / 1.08883;
+  const f = t => t > .008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116;
+  x = f(x); y = f(y); z = f(z);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+function deltaE(h1, h2){
+  const [L1, a1, b1] = lab(h1), [L2, a2, b2] = lab(h2), rad = Math.PI / 180;
+  const C1 = Math.hypot(a1, b1), C2 = Math.hypot(a2, b2), Cm = (C1 + C2) / 2, G = .5 * (1 - Math.sqrt(Cm ** 7 / (Cm ** 7 + 25 ** 7)));
+  const a1p = a1 * (1 + G), a2p = a2 * (1 + G), C1p = Math.hypot(a1p, b1), C2p = Math.hypot(a2p, b2);
+  const hp = (b, a) => { if(!a && !b) return 0; const h = Math.atan2(b, a) / rad; return h < 0 ? h + 360 : h; };
+  const h1p = hp(b1, a1p), h2p = hp(b2, a2p);
+  const dL = L2 - L1, dC = C2p - C1p;
+  let dh = 0; if(C1p * C2p){ dh = h2p - h1p; if(dh > 180) dh -= 360; else if(dh < -180) dh += 360; }
+  const dH = 2 * Math.sqrt(C1p * C2p) * Math.sin(dh / 2 * rad);
+  const Lm = (L1 + L2) / 2, Cmp = (C1p + C2p) / 2;
+  let hm = h1p + h2p; if(C1p * C2p){ hm = Math.abs(h1p - h2p) > 180 ? (h1p + h2p + (h1p + h2p < 360 ? 360 : -360)) / 2 : (h1p + h2p) / 2; }
+  const T = 1 - .17 * Math.cos((hm - 30) * rad) + .24 * Math.cos(2 * hm * rad) + .32 * Math.cos((3 * hm + 6) * rad) - .2 * Math.cos((4 * hm - 63) * rad);
+  const SL = 1 + .015 * (Lm - 50) ** 2 / Math.sqrt(20 + (Lm - 50) ** 2), SC = 1 + .045 * Cmp, SH = 1 + .015 * Cmp * T;
+  const RT = -2 * Math.sqrt(Cmp ** 7 / (Cmp ** 7 + 25 ** 7)) * Math.sin(60 * Math.exp(-(((hm - 275) / 25) ** 2)) * rad);
+  return Math.sqrt((dL / SL) ** 2 + (dC / SC) ** 2 + (dH / SH) ** 2 + RT * (dC / SC) * (dH / SH));
+}
+// la note sur 10 : 10 jusqu'à un écart de 1 (invisible à l'œil), puis elle baisse doucement
+const noteDe = dE => Math.round(10 * Math.exp(-Math.max(0, dE - 1) / 12) * 10) / 10;
+const verdictDe = n => n >= 9.5 ? '🎯 Parfait !' : n >= 8 ? '🤩 Excellent !' : n >= 6 ? '😀 Très proche' : n >= 4 ? '🙂 Pas mal' : n >= 2 ? '😬 Un peu loin' : '🙈 Raté…';
+
+/* ---------- Les images ---------- */
+// le SVG d'une image : les zones prennent leur vraie couleur, sauf « vise » qui prend la couleur donnée
+function svgDe(im, vise = null, coul = null, classe = ''){
+  let s = im.svg;
+  for(const [k, [, c]] of Object.entries(im.zones)) s = s.split('$' + k).join(k === vise ? (coul || '#808080') : c);
+  return `<svg viewBox="0 0 200 200" class="${classe}" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
+}
+
+/* ---------- Les records ---------- */
+let REC = Object.assign({ best:0, parties:0, total:0, couleurs:0, parfaits:0, top:[] }, lire('nuancier-records', {}));
+let reglages = Object.assign({ cat:'tout' }, lire('nuancier-reglages', {}));
+
+/* ---------- L'accueil ---------- */
+function accueil(){
+  montrer('eAccueil');
+  $('titre').innerHTML = [...'NUANCIER'].map((c, i) => `<span style="color:${hslHex(i * 45, 85, 62)}">${c}</span>`).join('');
+  $('cCat').innerHTML = Object.entries(CATS).map(([k, n]) => `<button data-c="${k}" class="${k === reglages.cat ? 'actif' : ''}">${n} <small>(${k === 'tout' ? IMAGES.length : IMAGES.filter(i => i.cat === k).length})</small></button>`).join('');
+  const moy = REC.couleurs ? REC.total / REC.couleurs : 0;
+  $('cRecords').innerHTML = `<h3>Tes records</h3><div class="stats"><div><b>${REC.best ? virg(REC.best) : '—'}</b><small>meilleur score / 100</small></div><div><b>${REC.parties}</b><small>parties</small></div><div><b>${REC.couleurs ? virg(moy) : '—'}</b><small>note moyenne / 10</small></div><div><b>${REC.parfaits}</b><small>couleurs parfaites</small></div></div>`;
+  const ex = IMAGES.filter((_, i) => i % 7 === 0).slice(0, 6);
+  $('cApercus').innerHTML = ex.map(im => svgDe(im)).join('');
+}
+$('cCat').onclick = e => { const b = e.target.closest('[data-c]'); if(!b) return; reglages.cat = b.dataset.c; ecrire('nuancier-reglages', reglages); accueil(); };
+$('bAide').onclick = () => montrer('eAide');
+$('bAideRetour').onclick = accueil;
+
+/* ---------- La partie ---------- */
+let P = null;
+const melange = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function nouvellePartie(){
+  const vues = lire('nuancier-vues', []);
+  // les images pas vues récemment d'abord, une seule zone par image
+  const liste = IMAGES.filter(im => reglages.cat === 'tout' || im.cat === reglages.cat);
+  const tri = melange(liste).sort((a, b) => (vues.indexOf(a.id) >= 0 ? 1 : 0) - (vues.indexOf(b.id) >= 0 ? 1 : 0));
+  const tours = tri.slice(0, 10).map(im => { const ks = Object.keys(im.zones); return { im, k:ks[Math.floor(Math.random() * ks.length)] }; });
+  while(tours.length < 10){ const im = liste[Math.floor(Math.random() * liste.length)], ks = Object.keys(im.zones); tours.push({ im, k:ks[Math.floor(Math.random() * ks.length)] }); }
+  ecrire('nuancier-vues', [...tours.map(t => t.im.id), ...vues.filter(v => !tours.some(t => t.im.id === v))].slice(0, 30));
+  P = { tours, i:0, score:0, res:[] };
+  montrer('eJeu');
+  tour();
+}
+// la couleur choisie : teinte (0-360), couleur (saturation 0-100), lumière (0-100)
+const C = { h:0, s:0, l:50 };
+const hexChoisi = () => hslHex(C.h, C.s, C.l);
+function tour(){
+  const t = P.tours[P.i];
+  C.h = Math.floor(Math.random() * 360); C.s = 0; C.l = 50;     // on part d'un gris neutre
+  $('jQ').textContent = `Couleur ${P.i + 1} / 10`;
+  $('jScore').textContent = `${virg(P.score)} pts`;
+  $('jPoints').innerHTML = P.tours.map((_, k) => `<i class="${k < P.i ? 'fait' : k === P.i ? 'ici' : ''}"></i>`).join('');
+  $('jNom').textContent = t.im.n;
+  $('jZone').textContent = t.im.zones[t.k][0];
+  $('jOutil').hidden = false; $('jVerdict').hidden = true;
+  dessinerSpectre(); majCouleur();
+  // la zone à trouver clignote un peu au début
+  $('jIllu').querySelectorAll('[fill="' + hexChoisi() + '"], [stroke="' + hexChoisi() + '"]').forEach(el => el.classList.add('zone-ici'));
+}
+function majCouleur(){
+  const t = P.tours[P.i], hex = hexChoisi();
+  $('jIllu').innerHTML = svgDe(t.im, t.k, hex);
+  $('jEch').style.background = hex;
+  const sp = $('cvSpectre'), lu = $('cvLum');
+  $('rSpectre').style.left = (C.h / 360 * 100) + '%'; $('rSpectre').style.top = ((100 - C.s) / 100 * 100) + '%'; $('rSpectre').style.background = hex;
+  $('rLum').style.left = C.l + '%'; $('rLum').style.background = hex;
+  dessinerLum();
+}
+// le spectre : teinte de gauche à droite, couleur vive en haut, grise en bas, à la luminosité choisie
+let dernierL = -1;
+function dessinerSpectre(){
+  const cv = $('cvSpectre'), w = 360, h = 100;
+  if(cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; dernierL = -1; }
+  if(dernierL === C.l) return; dernierL = C.l;
+  const g = cv.getContext('2d'), img = g.createImageData(w, h), d = img.data;
+  for(let y = 0; y < h; y++) for(let x = 0; x < w; x++){
+    const [r, gg, b] = hexRgb(hslHex(x, 100 - y, C.l)), k = (y * w + x) * 4;
+    d[k] = r; d[k + 1] = gg; d[k + 2] = b; d[k + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+}
+function dessinerLum(){
+  const cv = $('cvLum'), w = 300, h = 10;
+  if(cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+  const g = cv.getContext('2d'), gr = g.createLinearGradient(0, 0, w, 0);
+  for(let k = 0; k <= 10; k++) gr.addColorStop(k / 10, hslHex(C.h, C.s, k * 10));
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+}
+// toucher et glisser sur le spectre ou la luminosité
+function glisser(el, fn){
+  let actif = false;
+  const lireP = e => { const r = el.getBoundingClientRect(); fn(clamp((e.clientX - r.left) / r.width, 0, 1), clamp((e.clientY - r.top) / r.height, 0, 1)); };
+  el.addEventListener('pointerdown', e => { if(!$('jVerdict').hidden) return; actif = true; try{ el.setPointerCapture(e.pointerId); }catch(err){} lireP(e); e.preventDefault(); });
+  el.addEventListener('pointermove', e => { if(actif) lireP(e); });
+  el.addEventListener('pointerup', () => actif = false); el.addEventListener('pointercancel', () => actif = false);
+}
+glisser($('jSpectre'), (x, y) => { C.h = Math.round(x * 359); C.s = Math.round((1 - y) * 100); majCouleur(); });
+glisser($('jLum'), x => { C.l = Math.round(x * 100); dessinerSpectre(); majCouleur(); });
+document.querySelector('.affiner').onclick = e => {
+  const b = e.target.closest('button'); if(!b || !$('jVerdict').hidden) return;
+  const a = b.dataset.a, d = +b.dataset.d;
+  if(a === 'h') C.h = (C.h + d + 360) % 360; else C[a] = clamp(C[a] + d, 0, 100);
+  if(a === 'l') dessinerSpectre();
+  majCouleur();
+};
+$('bValider').onclick = () => {
+  const t = P.tours[P.i], vraie = t.im.zones[t.k][1], moi = hexChoisi(), dE = deltaE(moi, vraie), n = noteDe(dE);
+  P.score = Math.round((P.score + n) * 10) / 10; P.res.push({ id:t.im.id, k:t.k, moi, vraie, n });
+  $('jOutil').hidden = true; $('jVerdict').hidden = false;
+  $('vNote').textContent = virg(n) + ' / 10'; $('vTexte').textContent = verdictDe(n);
+  $('vMoi').style.background = moi; $('vVraie').style.background = vraie;
+  for(const [el, c] of [[$('vMoi'), moi], [$('vVraie'), vraie]]) el.style.color = lab(c)[0] > 60 ? '#111' : '#fff';
+  $('jScore').textContent = `${virg(P.score)} pts`;
+  // la vraie couleur revient sur l'image
+  $('jIllu').innerHTML = svgDe(t.im);
+  $('bSuite').textContent = P.i < 9 ? 'Suivante ▶' : 'Voir mon score ▶';
+  son(n);
+};
+$('bSuite').onclick = () => { P.i++; if(P.i < 10) tour(); else fin(); };
+$('bQuitter').onclick = () => { if(confirm('Arrêter la partie ? Elle ne comptera pas.')) accueil(); };
+function fin(){
+  const s = P.score, record = s > REC.best;
+  REC.parties++; REC.total = Math.round((REC.total + s) * 10) / 10; REC.couleurs += 10; REC.parfaits += P.res.filter(r => r.n >= 9.5).length;
+  if(record) REC.best = s;
+  REC.top = [...REC.top, { s, d:Date.now() }].sort((a, b) => b.s - a.s).slice(0, 5);
+  ecrire('nuancier-records', REC);
+  ecrire('nuancier-dernier', { score:s, date:Date.now() });
+  $('fScore').textContent = virg(s);
+  $('fTexte').textContent = (record ? '🏆 Nouveau record ! ' : '') + (s >= 85 ? 'Un œil de peintre !' : s >= 70 ? 'Belle mémoire des couleurs !' : s >= 50 ? 'Pas mal du tout.' : 'Les couleurs, ça se travaille : rejoue !');
+  $('fRecap').innerHTML = P.res.map(r => { const im = IMAGES.find(i => i.id === r.id);
+    return `<div>${svgDe(im)}<span>${esc(im.n)}<br><small style="color:var(--doux)">${esc(im.zones[r.k][0])}</small></span><i style="background:${r.moi}"></i><i style="background:${r.vraie}"></i><b>${virg(r.n)}</b></div>`; }).join('');
+  montrer('eFin');
+}
+$('bJouer').onclick = nouvellePartie;
+$('bRejouer').onclick = nouvellePartie;
+$('bMenu').onclick = accueil;
+
+/* ---------- Un petit son au verdict ---------- */
+let AC = null;
+function son(n){
+  try{
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const notes = n >= 9.5 ? [523, 659, 784, 1047] : n >= 6 ? [523, 659, 784] : n >= 3 ? [440, 523] : [330, 262];
+    notes.forEach((f, i) => { const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime + i * .09;
+      o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.12, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + .25);
+      o.connect(g).connect(AC.destination); o.start(t); o.stop(t + .3); });
+  }catch(e){}
+}
+
+window.Nuancier = { IMAGES, deltaE, noteDe, hslHex, get P(){ return P; }, C, majCouleur, nouvellePartie };
+accueil();
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
+})();
+</script>
+<script src="sauvegarde.js?v=127"></script>
+<script src="compte.js?v=127"></script>
+<script src="classement-jeu.js?v=127"></script>
+</body>
+</html>
