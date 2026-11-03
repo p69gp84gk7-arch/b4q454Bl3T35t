@@ -23,6 +23,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Tables au sommet** : apprendre les tables de multiplication de 1 à 10 (niveau CM1) en grimpant la montagne : leçon avec dessins et astuces, table dans l'ordre puis dans le désordre, entraînement, défi chrono, tableau des progrès | `jeux/tables.html` | 1 |
 | **Les aventures de Pépin** : jeu de plateforme en pixels dans l'esprit des grands classiques 2D (personnages, dessins et musiques originaux) ; Pépin le plombier-montagnard traverse 4 mondes et 16 niveaux (prairie, grotte, cimes, lac, neiges, volcan, châteaux du Yéti) ; blocs mystère, cèpes, piments de feu, étoile, tuyaux secrets ; manette à l'écran | `jeux/pepin.html` | 1 |
 | **Le Grand Quiz** : culture générale à trois niveaux (Junior, Ado, Adulte), près de 800 questions sur 12 thèmes ; l'échelle des 15 questions jusqu'au million (une erreur n'arrête pas la partie, joker 50/50), la série rapide contre la montre, et le petit bac seul ou à plusieurs | `jeux/quiz.html` | 1 à 6 |
+| **Rock Altitude** : jeu de guitare rythmique : les notes arrivent sur un manche en 3D (style dessin animé), on les joue sur 3 boutons (Facile) ou 4 (Moyen, Difficile) ; 8 morceaux composés pour le jeu et joués par l'application (pop rock, blues, folk, funk, rock, hard rock, punk, métal), ou ses propres MP3 (notes fabriquées en écoutant le morceau) ; notes longues, accords, multiplicateur, mode Star, jauge du public | `jeux/rock.html` |
 | **Nuancier** : la couleur a disparu d'une partie de l'image (Mario, Pikachu, Coca-Cola, Spotify, le taxi de New York…) : il faut la retrouver de mémoire avec un spectre de couleurs et la luminosité ; 119 images, 10 couleurs par partie notées sur 10 | `jeux/nuancier.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
@@ -354,7 +355,7 @@ Jeu d'adresse musical, inspiré de Rhythm Rocket (iPhone, 2012) : on choisit un 
 
 ## Dameuse de nuit
 
-Jeu d'adresse sur le métier de dameur : la station ferme, il faut damer une piste avant l'ouverture. De nuit (seuls les phares, les projecteurs arrière et quelques lumières éclairent), en 3D derrière la dameuse ou vue du dessus. Le jeu est dans `jeux/dameuse.html` (canvas 2D), la vue 3D dans `jeux/dameuse/vue3d.js` (avec Three.js r149, licence MIT, copié dans `jeux/dameuse/three.min.js` pour marcher hors ligne).
+Jeu d'adresse sur le métier de dameur : la station ferme, il faut damer une piste avant l'ouverture. De nuit (seuls les phares, les projecteurs arrière et quelques lumières éclairent), en 3D derrière la dameuse ou vue du dessus. Le jeu est dans `jeux/dameuse.html` (canvas 2D), la vue 3D dans `jeux/dameuse/vue3d.js` (avec Three.js r149, licence MIT, copié dans `jeux/commun/three.min.js` pour marcher hors ligne).
 
 - **La vue 3D** (par défaut ; le bouton 🗺️ 2D / 🎥 3D change de vue, gardée dans `dameuse-vue`) : la même grille que la vue du dessus, en relief. L'altitude vient de la pente de chaque rangée (les murs se voient), la neige ajoute son épaisseur (bosses, creux, tas de neige de culture, mis à jour autour de la lame pendant qu'on pousse), le hors-piste remonte sur les côtés. La neige est peinte avec les images de la vue du dessus (couleur, velours de la fraise, aire de plein, lignes des murs, radar dans le faisceau des phares). Style dessin animé (ombrage en tons, contours noirs) : dameuse en 3D (chenilles, cabine, rampe de phares et gyrophare, lame qui se lève et son bourrelet de neige, fraise et sa gerbe, bras du treuil qui suit le câble), sapins enneigés, enneigeurs penchés avec leur lampe verte, jalons, ancres, garage éclairé, étoiles et lune. Lumières : les phares (projecteur avant), les projecteurs arrière et le garage. Les commandes sont les mêmes ; la caméra suit la dameuse et se règle avec les boutons du bas (⟲ ⟳ tourner, ▲ ▼ lever et baisser, − + zoom, double-toucher pour recentrer ; clavier J, K, U, N, C, V, molette). Si l'appareil n'a pas la 3D, le jeu reste en vue du dessus.
 
@@ -486,6 +487,19 @@ Le jeu de gestion d'écurie de Formule 1, façon jeu de manager : `jeux/paddock.
 - **Données** : `paddock-carriere` (toute la carrière, y compris le week-end en cours ; une carrière de la première version est convertie : ses courses restantes passent sur les nouveaux circuits), `paddock-records` (résumé : Grands Prix, victoires, podiums, poles, points, titres, meilleure place), `paddock-zoom` et `paddock-pageT` (zoom et page du tableau préférés). Le classement a trois épreuves (victoires, meilleure place chez les constructeurs, podiums).
 - **Essais** : `window.Paddock` (carrière, week-end, séances, course) ; des courses et des séances ont été simulées sur les 24 circuits (temps au tour, écarts, arrêts, abandons), et des saisons entières pour régler l'argent, les pièces, l'usine et la confiance de la direction.
 
+## Rock Altitude
+
+Le jeu de guitare rythmique : `jeux/rock.html` (menus, partie, points), `jeux/rock/son.js` (le groupe, en Web Audio), `jeux/rock/morceaux.js` (les morceaux et leur arrangement), `jeux/rock/partition.js` (les notes à jouer, et l'écoute des MP3), `jeux/rock/manche.js` (le manche en 3D, avec Three.js r149 de `jeux/commun/three.min.js`, partagé avec la Dameuse).
+
+- **Les morceaux** (`ROCK_MORCEAUX.LISTE`) : 8 morceaux composés pour le jeu, du plus facile au plus dur : Nuit d'été (pop rock), Blues de minuit (blues balancé), La gigue du samedi soir (folk, au violon), Funky groove (funk), Premier riff (rock), Moteur en feu (hard rock), Plein gaz (punk), Orage d'acier (métal). Un morceau : tempo, tonalité, sons (guitare saturée, crunch ou claire, violon, piano, orgue), styles de batterie, de guitare rythmique et de basse, des phrases de guitare solo (« degré:durée », en demi-tons et en doubles croches) et des sections (une mesure par accord). `verifier()` contrôle que chaque phrase tombe juste.
+- **Le groupe** (`son.js`) : batterie (grosse caisse, caisse claire, charleston, cymbale, toms, tambourin), basse, guitare rythmique (accords, jeu étouffé), claviers et guitare solo, tous synthétisés, programmés un peu à l'avance sur l'horloge audio. Chaque note de la guitare solo a son propre volume : ratée, elle se coupe (et une fausse note sonne), comme dans les jeux de guitare. Pour les MP3, la musique baisse un instant.
+- **Les partitions** (`partition.js`) : la guitare solo devient des notes ; la bande suit la hauteur (plus aigu = plus à droite, par rapport aux notes voisines). Facile : 3 bandes, au plus une note par temps (deux temps sur les morceaux rapides), vue 2,1 s ; Moyen : 4 bandes, une note par demi-temps ; Difficile : 4 bandes, une note par quart de temps, des accords sur les notes tenues en début de mesure, vue 1,35 s. Les notes tenues au moins 2 temps (Facile) ou 1,5 temps deviennent des notes longues.
+- **Les MP3** : le fichier est gardé sur l'appareil (IndexedDB `rock-altitude`). Le jeu l'écoute : l'énergie des graves, des médiums et des aigus image par image, les attaques (ce qui monte), le tempo (autocorrélation, de 70 à 180 battements par minute), la phase des temps ; les notes tombent sur les attaques fortes de la grille (croches, doubles croches en Difficile), la bande selon les aigus ; notes longues quand le son tient sans nouvelle attaque.
+- **Les points** : 50 par note × le multiplicateur (×2 à 10 notes de suite, ×3 à 20, ×4 à 30), des points tant qu'on tient une note longue. Les phrases « étoile » (notes blanches) toutes réussies remplissent la jauge étoile de 25 % ; à moitié pleine, ⭐ STAR (ou Espace) double les points jusqu'à ce qu'elle se vide (32 temps pour une jauge pleine).
+- **Le public** : la jauge monte de 2 % par note réussie, baisse à chaque note ratée (3,5 %, 5,5 % ou 7 % selon la difficulté) et un peu à chaque coup dans le vide (sauf en Facile). Vide : le public hue et le morceau s'arrête.
+- **Les étoiles** : 5 à partir de 95 % de notes réussies, 4 à 85 %, 3 à 70 %, 2 à 50 %, sinon 1. Records par morceau et par difficulté dans `rock-records`, réglages (difficulté, décalage audio) dans `rock-reglages`. Le décalage (−200 à +200 ms) corrige un retard du son (casque Bluetooth).
+- **Les commandes** : les boutons de couleur en bas, placés juste sous les bandes du manche (plusieurs doigts à la fois) ; au clavier Q S D F (ou 1 2 3 4), Espace (Star), Échap (pause).
+
 ## Nuancier
 
 Un jeu de mémoire des couleurs : `jeux/nuancier.html` (le jeu) et `jeux/nuancier/images.js` (les illustrations).
@@ -567,7 +581,7 @@ jeux/drawrace/         circuits et géométrie de Draw Race
 jeux/nivoculteur/      jeu Nivoculteur (page, scripts js/, CLAUDE.md)
 jeux/fusee.html        jeu Fusée Rythme
 jeux/dameuse.html      jeu Dameuse de nuit
-jeux/dameuse/          la vue 3D de la Dameuse (vue3d.js) et Three.js (three.min.js)
+jeux/dameuse/          la vue 3D de la Dameuse (vue3d.js)
 jeux/freeride.html     jeu Freeride
 jeux/tour.html         jeu Tour de contrôle
 jeux/panier.html       jeu Tir au panier
@@ -576,6 +590,9 @@ jeux/pepin.html        jeu Les aventures de Pépin (page et menus)
 jeux/quiz.html         jeu Le Grand Quiz (échelle, série rapide, petit bac)
 jeux/telesiege.html    jeu Chef de quai (le départ d'un télésiège vu du dessus)
 jeux/blocs.html        jeu Blocs (les blocs qui tombent, marathon sans fin)
+jeux/rock.html         jeu Rock Altitude (guitare rythmique)
+jeux/rock/             le groupe (son.js), les morceaux (morceaux.js), les partitions (partition.js) et le manche 3D (manche.js)
+jeux/commun/           Three.js (three.min.js), pour les vues 3D (Rock Altitude, Dameuse)
 jeux/nuancier.html     jeu Nuancier (retrouver les couleurs de mémoire)
 jeux/nuancier/         les illustrations du Nuancier (images.js)
 jeux/paddock.html      jeu Paddock (gestion d'écurie de Formule 1)

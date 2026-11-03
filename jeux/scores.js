@@ -172,6 +172,14 @@ window.AltitudeScores = (() => {
       J.paddock.stats = { 'Grands Prix':pk.gp, 'Points':pk.points || 0, 'Titres constructeurs':pk.titresC || 0, 'Titres pilotes':pk.titresP || 0, 'Pole positions':pk.poles || 0 };
     }
     // Blocs : le marathon
+    // Rock Altitude : les étoiles et le meilleur score
+    const rk = lire('rock-records');
+    if(rk && rk.parties){
+      jeu('rock', 'Rock Altitude', '🎸');
+      ep('rock', 'score', 'Meilleur score sur un morceau', rk.meilleur || 0, `${rk.meilleur || 0} points`);
+      ep('rock', 'etoiles', 'Étoiles gagnées', rk.etoiles || 0, `${rk.etoiles || 0} ★`);
+      J.rock.stats = { 'Morceaux joués':rk.parties, 'Notes réussies':rk.notes || 0 };
+    }
     const nu = lire('nuancier-records');
     if(nu && nu.parties){
       jeu('nuancier', 'Nuancier', '🎨');

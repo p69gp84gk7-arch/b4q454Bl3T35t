@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Rock Altitude · Altitude Arcade</title>
+<meta name="theme-color" content="#120B24">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=135">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=135">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+@media (orientation:landscape) and (max-height:600px){ :root{ --barre-statut:env(safe-area-inset-top, 0px); } }
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --fond:#120B24; --carte:#1E1538; --carte2:#2A1F4A; --ligne:rgba(255,255,255,.14); --encre:#F6F2FF; --doux:#B6A9D8; --or:#FFC93C; --vert:#2ECC40; --rouge:#FF4136; --jaune:#FFDC00; --bleu:#2F86E8; --rose:#FF4FD8; }
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; height:100%; background:var(--fond); color:var(--encre); font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-tap-highlight-color:transparent; overscroll-behavior:none; }
+body{ padding-top:var(--barre-statut); }
+button{ font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; }
+[hidden]{ display:none !important; }
+.page{ max-width:720px; margin:0 auto; padding:12px 14px calc(24px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; gap:12px; }
+.tete{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.tete a, .tete .btn{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:10px; padding:6px 12px; font-weight:700; background:var(--carte); white-space:nowrap; }
+.tete .droite{ margin-left:auto; }
+h1{ margin:6px 0 0; font-family:"Bebas Neue", "Bricolage Grotesque", sans-serif; font-weight:900; font-size:clamp(2.8rem, 15vw, 5rem); line-height:.88; letter-spacing:.01em; font-style:italic; transform:skewX(-6deg);
+  background:linear-gradient(180deg, #FFF07A, #FF8A3C 55%, #FF3C7A); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(3px 3px 0 #1E1E1E); }
+h2{ margin:0; font-size:1.25rem; }
+h3{ margin:0 0 8px; font-size:.76rem; text-transform:uppercase; letter-spacing:.14em; color:var(--doux); }
+.sous{ color:var(--doux); margin:0; line-height:1.45; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:16px; padding:14px; }
+.btn{ border:1px solid var(--ligne); background:var(--carte2); border-radius:12px; padding:11px 14px; font-weight:800; }
+.btn.gros{ width:100%; padding:16px; font-size:1.15rem; background:linear-gradient(90deg, #FF8A3C, #FF3C7A); border:none; color:#fff; }
+.diffs{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+.diffs button{ border:2px solid var(--ligne); background:var(--carte2); border-radius:14px; padding:10px 6px; font-weight:800; text-align:center; }
+.diffs button small{ display:block; font-weight:600; color:var(--doux); font-size:.72rem; }
+.diffs button.actif{ border-color:var(--or); background:rgba(255,201,60,.16); }
+.morceau{ width:100%; display:flex; align-items:center; gap:12px; text-align:left; border:1px solid var(--ligne); background:rgba(0,0,0,.2); border-radius:14px; padding:10px 12px; margin-top:6px; }
+.morceau .num{ width:40px; height:40px; border-radius:10px; flex:none; display:grid; place-items:center; font-weight:900; font-size:1.1rem; background:linear-gradient(135deg, #FF8A3C, #FF3C7A); color:#fff; }
+.morceau .num.mp3{ background:linear-gradient(135deg, #2F86E8, #7C4DFF); }
+.morceau b{ display:block; } .morceau small{ color:var(--doux); }
+.morceau .rec{ margin-left:auto; text-align:right; flex:none; font-weight:800; }
+.morceau .rec .et{ color:var(--or); letter-spacing:.05em; display:block; }
+.morceau .rec small{ font-size:.72rem; }
+.morceau .sup{ border:none; background:none; color:var(--doux); font-size:1.1rem; padding:4px 6px; }
+.reglage{ display:flex; align-items:center; gap:10px; } .reglage input{ flex:1; }
+.aide li{ line-height:1.5; margin-bottom:6px; color:var(--doux); } .aide b{ color:var(--encre); } .aide ul{ padding-left:20px; margin:0; }
+
+/* ---------- Le jeu ---------- */
+#eJeu{ position:fixed; inset:0; top:var(--barre-statut); overflow:hidden; background:#120B24; touch-action:none; user-select:none; -webkit-user-select:none; }
+#cv3d{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.hud{ position:absolute; left:0; right:0; top:0; display:flex; gap:8px; align-items:flex-start; padding:8px 10px; pointer-events:none; }
+.pastille{ background:rgba(18,11,36,.72); border:1.5px solid rgba(255,255,255,.18); border-radius:12px; padding:4px 10px; font-weight:800; color:#fff; white-space:nowrap; }
+.pastille small{ display:block; font-size:.6rem; color:#CFC3EE; letter-spacing:.1em; text-transform:uppercase; font-weight:700; }
+.pastille b{ font-size:1.2rem; }
+#hMult{ font-family:"Bebas Neue", sans-serif; font-size:1.9rem; line-height:1; padding:4px 12px; }
+#hMult.m2{ color:#FFB347; } #hMult.m3{ color:#7CFF6B; } #hMult.m4{ color:#D07CFF; } #hMult.star{ color:#6FD0FF; text-shadow:0 0 12px #6FD0FF; }
+.hud .droite{ margin-left:auto; pointer-events:auto; }
+.rond{ width:42px; height:42px; border-radius:50%; border:2px solid rgba(255,255,255,.3); background:rgba(18,11,36,.72); color:#fff; font-size:1.1rem; display:grid; place-items:center; padding:0; }
+.progres{ position:absolute; left:10px; right:10px; top:calc(62px); height:4px; border-radius:2px; background:rgba(255,255,255,.12); overflow:hidden; pointer-events:none; }
+.progres i{ display:block; height:100%; width:0; background:linear-gradient(90deg, #FF8A3C, #FF3C7A); }
+/* la jauge du public (à gauche) et la jauge étoile (à droite) */
+.jauge{ position:absolute; top:84px; width:18px; height:min(36vh, 240px); border-radius:9px; border:2px solid rgba(255,255,255,.3); background:rgba(18,11,36,.7); overflow:hidden; pointer-events:none; }
+.jauge i{ position:absolute; left:0; right:0; bottom:0; height:50%; }
+#jPublic{ left:10px; } #jPublic i{ background:linear-gradient(0deg, #FF4136, #FFDC00 50%, #2ECC40); }
+#jEtoile{ right:10px; } #jEtoile i{ background:linear-gradient(0deg, #2F86E8, #9FE6FF); }
+.jauge + small, .etJ{ position:absolute; top:calc(84px + min(36vh, 240px) + 4px); font-size:.62rem; font-weight:800; letter-spacing:.06em; color:#CFC3EE; pointer-events:none; }
+#etPublic{ left:6px; } #etEtoile{ right:4px; }
+#bStar{ position:absolute; right:6px; top:calc(84px + min(36vh, 240px) + 22px); border:3px solid #fff; border-radius:16px; background:linear-gradient(135deg, #2F86E8, #9FE6FF); color:#0B1A3A; font-weight:900; padding:8px 10px; box-shadow:0 0 18px #6FD0FF; animation:pulse .8s infinite alternate; }
+@keyframes pulse{ to{ transform:scale(1.08); } }
+/* les boutons des bandes */
+.boutons{ position:absolute; left:0; right:0; bottom:0; height:calc(110px + env(safe-area-inset-bottom, 0px)); }
+.bouton{ position:absolute; bottom:calc(14px + env(safe-area-inset-bottom, 0px)); height:84px; border-radius:22px; border:4px solid rgba(0,0,0,.55); box-shadow:0 6px 0 rgba(0,0,0,.45), inset 0 -8px 0 rgba(0,0,0,.18); touch-action:none; padding:0; opacity:.92; }
+.bouton.appui{ transform:translateY(4px); box-shadow:0 2px 0 rgba(0,0,0,.45), inset 0 0 22px rgba(255,255,255,.65); opacity:1; }
+.message{ position:absolute; left:50%; top:30%; transform:translate(-50%, -50%); font-family:"Bebas Neue", sans-serif; font-size:clamp(2rem, 10vw, 3.6rem); font-weight:900; color:#fff; text-shadow:3px 3px 0 #1E1E1E, 0 0 22px rgba(255,79,216,.7); pointer-events:none; text-align:center; white-space:nowrap; }
+.message.petit{ font-size:clamp(1.3rem, 6vw, 2rem); }
+.fenetre{ position:absolute; inset:0; background:rgba(8,4,20,.72); display:flex; align-items:center; justify-content:center; padding:14px; z-index:5; }
+.fenetre .boite{ width:min(100%, 480px); max-height:100%; overflow:auto; background:var(--carte); border:1px solid var(--ligne); border-radius:18px; padding:18px; box-shadow:0 18px 50px rgba(0,0,0,.5); display:flex; flex-direction:column; gap:10px; text-align:center; }
+.etoiles{ font-size:2.2rem; letter-spacing:.12em; color:var(--or); }
+.score{ font-family:"Bebas Neue", sans-serif; font-size:3.6rem; line-height:1; }
+.stats{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; } .stats b{ display:block; font-size:1.3rem; } .stats small{ color:var(--doux); font-size:.72rem; }
+@media (orientation:landscape) and (max-height:500px){
+  .bouton{ height:64px; } .boutons{ height:calc(84px + env(safe-area-inset-bottom, 0px)); } .jauge{ height:28vh; top:74px; } .progres{ top:56px; }
+  .jauge + small, .etJ{ top:calc(74px + 28vh + 4px); } #bStar{ top:calc(74px + 28vh + 20px); }
+}
+</style>
+</head>
+<body>
+<div class="barre-statut" aria-hidden="true"></div>
+
+<section class="ecran" id="eMenu">
+  <div class="page">
+    <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="btn droite" id="bAide">❔ Règles</button></div>
+    <h1>ROCK ALTITUDE</h1>
+    <p class="sous">Prends ta guitare : les notes arrivent sur le manche, joue-les au bon moment sur les boutons de couleur. Garde le public avec toi jusqu'au bout du morceau !</p>
+    <div class="carte"><h3>Difficulté</h3><div class="diffs" id="lDiffs"></div></div>
+    <div class="carte"><h3>Les morceaux</h3><div id="lMorceaux"></div></div>
+    <div class="carte"><h3>Mes musiques</h3>
+      <p class="sous" style="font-size:.88rem">Choisis un fichier MP3 de ton téléphone : le jeu écoute le morceau et fabrique les notes tout seul. Il reste sur cet appareil.</p>
+      <div id="lMp3"></div>
+      <label class="btn" style="display:block;text-align:center;margin-top:8px;cursor:pointer">➕ Ajouter une musique<input type="file" id="fichier" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden></label>
+    </div>
+    <div class="carte"><h3>Réglages</h3>
+      <div class="reglage"><span>⏱️ Décalage</span><input type="range" id="calib" min="-200" max="200" step="10"><b id="calibV">0 ms</b></div>
+      <p class="sous" style="font-size:.82rem;margin-top:6px">Si les notes semblent arriver en retard par rapport au son (casque Bluetooth…), avance le curseur vers la droite.</p>
+    </div>
+  </div>
+</section>
+
+<section class="ecran" id="eAide" hidden>
+  <div class="page aide">
+    <div class="tete"><button class="btn" id="bAideRetour">‹ Retour</button></div>
+    <h2>Comment jouer</h2>
+    <div class="carte"><ul>
+      <li><b>Les notes</b> arrivent sur le manche. Touche le bouton de la même couleur quand la note passe sur l'anneau. Si tu la rates, la guitare se tait et le public râle.</li>
+      <li><b>Les notes longues</b> ont une queue : garde le doigt appuyé jusqu'au bout pour gagner plus de points.</li>
+      <li><b>Les accords</b> (en Difficile) : deux notes en même temps, appuie sur les deux boutons.</li>
+      <li><b>Le multiplicateur</b> : 10 notes de suite sans rater, les points comptent double (×2), puis ×3 à 20 et ×4 à 30. Une note ratée, et on repart à ×1.</li>
+      <li><b>⭐ Le mode Star</b> : réussis toutes les notes blanches d'une phrase, la jauge bleue (à droite) se remplit. À moitié pleine, touche <b>⭐ STAR</b> : les points sont doublés et le public t'adore, tant que la jauge n'est pas vide.</li>
+      <li><b>Le public</b> (la jauge à gauche) : il monte quand tu joues bien et baisse quand tu rates. S'il est vide, il te hue et le morceau s'arrête.</li>
+      <li><b>Les difficultés</b> : Facile (3 boutons, moins de notes, plus lent), Moyen (4 boutons), Difficile (4 boutons, toutes les notes, des accords, plus rapide).</li>
+      <li><b>Au clavier</b> : Q S D F (ou 1 2 3 4) pour les boutons, Espace pour le mode Star, Échap pour la pause.</li>
+      <li><b>Tes musiques</b> : ajoute un MP3, le jeu fabrique les notes en écoutant le morceau (les coups forts, les graves et les aigus). C'est moins précis qu'un morceau du jeu, mais ça marche avec toutes les musiques !</li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="ecran" id="eJeu" hidden>
+  <canvas id="cv3d"></canvas>
+  <div class="hud">
+    <div class="pastille"><small>Score</small><b id="hScore">0</b></div>
+    <div class="pastille" id="hMult">×1</div>
+    <div class="pastille"><small>Série</small><b id="hSerie">0</b></div>
+    <button class="rond droite" id="bPause" aria-label="Pause">⏸</button>
+  </div>
+  <div class="progres"><i id="hProgres"></i></div>
+  <div class="jauge" id="jPublic"><i></i></div><small class="etJ" id="etPublic">PUBLIC</small>
+  <div class="jauge" id="jEtoile"><i style="height:0"></i></div><small class="etJ" id="etEtoile">STAR</small>
+  <button id="bStar" hidden>⭐ STAR</button>
+  <div class="message" id="message" hidden></div>
+  <div class="boutons" id="boutons"></div>
+  <div class="fenetre" id="fPause" hidden><div class="boite">
+    <h2>⏸ Pause</h2>
+    <button class="btn gros" id="bReprendre">▶ Reprendre</button>
+    <button class="btn" id="bRecommencer">↻ Recommencer le morceau</button>
+    <button class="btn" id="bQuitter">‹ Quitter</button>
+  </div></div>
+  <div class="fenetre" id="fFin" hidden><div class="boite" id="finContenu"></div></div>
+</section>
+<div class="fenetre" id="fAnalyse" style="position:fixed" hidden><div class="boite"><h2>🎧 J'écoute ta musique…</h2><p class="sous" id="analyseTxt">Je cherche le tempo et les coups forts pour placer les notes.</p></div></div>
+<script src="commun/three.min.js?v=135"></script>
+<script src="rock/son.js?v=135"></script>
+<script src="rock/morceaux.js?v=135"></script>
+<script src="rock/partition.js?v=135"></script>
+<script src="rock/manche.js?v=135"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = n => Math.round(n).toLocaleString('fr-FR');
+const SON = window.ROCK_SON, MOR = window.ROCK_MORCEAUX, PAR = window.ROCK_PARTITION, MAN = window.ROCK_MANCHE;
+const ECRANS = ['eMenu', 'eAide', 'eJeu'];
+const montrer = id => { ECRANS.forEach(e => $(e).hidden = e !== id); if(id !== 'eJeu') scrollTo(0, 0); };
+let reglages = Object.assign({ diff:'facile', calib:0 }, lire('rock-reglages', {}));
+let REC = Object.assign({ morceaux:{}, parties:0, notes:0, etoiles:0, meilleur:0 }, lire('rock-records', {}));
+const sauverReglages = () => ecrire('rock-reglages', reglages);
+
+/* ---------- Mes musiques : gardées dans le téléphone (IndexedDB) ---------- */
+const BD = (() => {
+  let db = null;
+  const ouvrir = () => new Promise((ok, ko) => { if(db) return ok(db); const r = indexedDB.open('rock-altitude', 1); r.onupgradeneeded = () => r.result.createObjectStore('musiques', { keyPath:'id', autoIncrement:true }); r.onsuccess = () => ok(db = r.result); r.onerror = () => ko(r.error); });
+  const tx = async (mode, f) => { const d = await ouvrir(); return new Promise((ok, ko) => { const t = d.transaction('musiques', mode), s = t.objectStore('musiques'), r = f(s); t.oncomplete = () => ok(r && r.result); t.onerror = () => ko(t.error); }); };
+  return { liste:() => tx('readonly', s => s.getAll()), ajouter:m => tx('readwrite', s => s.add(m)), lire:id => tx('readonly', s => s.get(id)), suppr:id => tx('readwrite', s => s.delete(id)) };
+})();
+
+/* ---------- Le menu ---------- */
+const cleRec = (id, d) => `${id}|${d}`;
+function etoilesTxt(n){ return '★'.repeat(n) + '☆'.repeat(5 - n); }
+async function menu(){
+  montrer('eMenu');
+  $('lDiffs').innerHTML = Object.entries(PAR.DIFF).map(([k, D]) => `<button data-d="${k}" class="${reglages.diff === k ? 'actif' : ''}">${D.nom}<small>${D.voies} boutons</small></button>`).join('');
+  $('lMorceaux').innerHTML = MOR.LISTE.map((m, i) => {
+    const r = REC.morceaux[cleRec(m.id, reglages.diff)];
+    return `<button class="morceau" data-m="${m.id}"><span class="num">${i + 1}</span><span><b>${esc(m.n)}</b><small>${esc(m.style)} · ${'🎸'.repeat(m.niveau)}</small></span>
+      <span class="rec">${r ? `<span class="et">${etoilesTxt(r.etoiles)}</span><small>${fmt(r.best)} pts</small>` : '<small>pas encore joué</small>'}</span></button>`;
+  }).join('');
+  $('calib').value = reglages.calib; $('calibV').textContent = `${reglages.calib} ms`;
+  try{
+    const L = await BD.liste();
+    $('lMp3').innerHTML = L.length ? L.map(m => { const r = REC.morceaux[cleRec('mp3:' + m.nom, reglages.diff)];
+      return `<div class="morceau" data-mp3="${m.id}" role="button" tabindex="0"><span class="num mp3">♪</span><span style="min-width:0;overflow:hidden"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.nom)}</b><small>${(m.taille / 1048576).toFixed(1).replace('.', ',')} Mo</small></span>
+        <span class="rec">${r ? `<span class="et">${etoilesTxt(r.etoiles)}</span><small>${fmt(r.best)} pts</small>` : ''}</span><button class="sup" data-sup="${m.id}" aria-label="Supprimer">🗑️</button></div>`; }).join('')
+      : '<p class="sous" style="font-size:.85rem;margin:6px 0 0">Aucune musique pour l\'instant.</p>';
+  }catch(e){ $('lMp3').innerHTML = '<p class="sous">Les musiques ne peuvent pas être gardées sur cet appareil.</p>'; }
+}
+$('lDiffs').onclick = e => { const b = e.target.closest('[data-d]'); if(!b) return; reglages.diff = b.dataset.d; sauverReglages(); menu(); };
+$('lMorceaux').onclick = e => { const b = e.target.closest('[data-m]'); if(!b) return; jouerMorceau(MOR.LISTE.find(m => m.id === b.dataset.m)); };
+$('lMp3').onclick = async e => {
+  const s = e.target.closest('[data-sup]');
+  if(s){ e.stopPropagation(); if(confirm('Supprimer cette musique du jeu ?')){ await BD.suppr(+s.dataset.sup); menu(); } return; }
+  const b = e.target.closest('[data-mp3]'); if(!b) return;
+  const m = await BD.lire(+b.dataset.mp3); if(m) jouerMp3(m.nom, m.blob);
+};
+$('fichier').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if(!f) return;
+  const nom = f.name.replace(/\.[^.]+$/, '');
+  try{ await BD.ajouter({ nom, taille:f.size, blob:f }); }catch(err){}
+  jouerMp3(nom, f);
+};
+$('calib').oninput = () => { reglages.calib = +$('calib').value; $('calibV').textContent = `${reglages.calib} ms`; sauverReglages(); };
+$('bAide').onclick = () => montrer('eAide');
+$('bAideRetour').onclick = menu;
+
+/* ---------- Une partie ---------- */
+let G = null, raf = 0, horloge = 0;
+const DIFF = () => PAR.DIFF[reglages.diff];
+function jouerMorceau(m){
+  SON.init();
+  const arr = MOR.arranger(m), part = PAR.depuisMorceau(m, arr, reglages.diff);
+  const beat = 60 / m.bpm;
+  demarrer({ titre:m.n, cle:m.id, m, arr, part, beat, phase:0, duree:PAR.temps(arr.beats, m.bpm, m.swing) });
+}
+async function jouerMp3(nom, blob){
+  const AC = SON.init();
+  $('fAnalyse').hidden = false; $('analyseTxt').textContent = 'Je cherche le tempo et les coups forts pour placer les notes.';
+  try{
+    const buf = await AC.decodeAudioData(await blob.arrayBuffer());
+    await new Promise(r => setTimeout(r, 30));
+    const part = PAR.analyser(buf, reglages.diff);
+    $('fAnalyse').hidden = true;
+    if(part.notes.length < 10){ alert('Je n\'arrive pas à trouver assez de notes dans cette musique. Essaie un morceau plus rythmé !'); return; }
+    demarrer({ titre:nom, cle:'mp3:' + nom, mp3:buf, part, beat:part.beat, phase:part.t0, duree:part.duree });
+  }catch(err){ $('fAnalyse').hidden = true; alert('Je n\'arrive pas à lire ce fichier. Essaie un MP3.'); }
+}
+function demarrer(o){
+  const D = DIFF(), AC = SON.init();
+  if(AC.state === 'suspended') AC.resume();
+  montrer('eJeu');
+  if(!MAN.init($('cv3d'))){ alert('La 3D ne marche pas sur cet appareil.'); menu(); return; }
+  MAN.preparer(D.voies, D.vue);
+  taille();
+  const notes = o.part.notes; notes.forEach(n => { n.etat = 0; n.tenue = false; });
+  const decompte = 4 * o.beat;
+  G = Object.assign(o, { D, notes, t0:AC.currentTime + .6 + decompte, ev:0, so:0, debut:0, score:0, serie:0, meilleure:0, reussies:0, ratees:0, faux:0,
+    public:.5, etoile:0, star:false, appuis:new Array(D.voies).fill(false), tenues:new Array(D.voies).fill(null), gains:[], phrases:{}, fin:false, pause:false, tMsg:0 });
+  // les phrases étoile : combien de notes, combien réussies
+  for(const n of notes) if(n.etoile){ const k = (n.sec ?? 'm') + ':' + Math.floor((n.b || 0) / 8); n.phr = k; (G.phrases[k] = G.phrases[k] || { n:0, ok:0, rate:false, fin:0 }).n++; G.phrases[k].fin = Math.max(G.phrases[k].fin, n.t + n.long); }
+  // le décompte : 4 coups de baguettes
+  for(let k = 4; k >= 1; k--){ SON.tambourin(G.t0 - k * o.beat, 1.4); SON.charley(G.t0 - k * o.beat, false, 1.3); }
+  if(o.mp3){ const s = AC.createBufferSource(); s.buffer = o.mp3; s.connect(SON.bus.mp3); s.start(G.t0); G.source = s; SON.bus.mp3.gain.value = 1; }
+  boutons();
+  message('3 · 2 · 1…', decompte + .3);
+  clearInterval(horloge); horloge = setInterval(programmer, 30);
+  cancelAnimationFrame(raf); raf = requestAnimationFrame(boucle);
+  majHud();
+}
+// la latence : le son sort un peu après qu'on l'a programmé
+const latence = () => { const AC = SON.AC; return (AC.outputLatency || AC.baseLatency || 0) + reglages.calib / 1000; };
+const tJeu = () => SON.AC.currentTime - latence() - G.t0;
+// programmer les notes du groupe un peu à l'avance
+function programmer(){
+  if(!G || G.fin || G.pause || G.mp3) return;
+  const AC = SON.AC, lim = AC.currentTime + .3, m = G.m, bpm = m.bpm, sw = m.swing || 0, B = 60 / bpm, ev = G.arr.ev, so = G.arr.solo;
+  const T = b => G.t0 + PAR.temps(b, bpm, sw);
+  while(G.ev < ev.length){
+    const e = ev[G.ev], t = T(e.b); if(t > lim) break; G.ev++;
+    if(t < AC.currentTime - .05) continue;
+    switch(e.type){
+      case 'grosse': SON.grosse(t, e.v ?? 1); break; case 'caisse': SON.caisse(t, e.v ?? 1); break; case 'charley': SON.charley(t, e.ouvert, e.v ?? 1); break;
+      case 'cymbale': SON.cymbale(t); break; case 'tambourin': SON.tambourin(t, e.v ?? 1); break; case 'tom': SON.tom(t, e.m); break;
+      case 'accord': SON.accord(t, e.notes, e.dur * B, e.son, e.etouffe, e.v ?? 1); break; case 'basse': SON.basse(t, e.m, e.dur * B, e.v ?? 1); break;
+      case 'piano': SON.piano(t, e.notes, e.dur * B); break; case 'orgue': SON.orgue(t, e.notes, e.dur * B); break;
+    }
+  }
+  while(G.so < so.length){
+    const n = so[G.so], t = T(n.b); if(t > lim) break;
+    if(t >= AC.currentTime - .05) G.gains[G.so] = SON.solo(t, n.m, PAR.temps(n.b + n.dur, bpm, sw) - PAR.temps(n.b, bpm, sw), m.son.solo);
+    G.so++;
+  }
+}
+// une note ratée : la guitare se tait (ou la musique baisse un instant, pour les MP3)
+function couperSolo(n){
+  if(G.mp3){ const g = SON.bus.mp3.gain, t = SON.AC.currentTime; g.cancelScheduledValues(t); g.setTargetAtTime(.45, t, .02); g.setTargetAtTime(1, t + .25, .1); return; }
+  SON.couper(G.gains[n.solo]);
+}
+
+/* ---------- Les boutons ---------- */
+function boutons(){
+  const D = G.D, couls = MAN.couleurs(), el = $('boutons');
+  el.innerHTML = Array.from({ length:D.voies }, (_, v) => `<button class="bouton" data-v="${v}" style="background:#${couls[v].toString(16).padStart(6, '0')}" aria-label="Bouton ${v + 1}"></button>`).join('');
+  placerBoutons();
+}
+function placerBoutons(){
+  if(!G) return;
+  const el = $('boutons'), W = el.clientWidth, pos = MAN.ecranVoies($('eJeu').clientWidth, $('eJeu').clientHeight); if(!pos) return;
+  const ecart = pos.length > 1 ? pos[1][0] - pos[0][0] : 100, larg = clamp(ecart - 8, 56, 130);
+  // les boutons sous les bandes, sans sortir de l'écran
+  const gauche = clamp(pos[0][0] - larg / 2, 6, W), droite = clamp(pos[pos.length - 1][0] + larg / 2, 0, W - 6), pas = (droite - gauche - larg) / Math.max(1, pos.length - 1);
+  el.querySelectorAll('.bouton').forEach((b, v) => { b.style.width = larg + 'px'; b.style.left = (gauche + v * pas) + 'px'; });
+}
+const doigts = new Map();
+$('boutons').addEventListener('pointerdown', e => { const b = e.target.closest('[data-v]'); if(!b || !G) return; e.preventDefault(); try{ b.setPointerCapture(e.pointerId); }catch(err){} doigts.set(e.pointerId, +b.dataset.v); appuyer(+b.dataset.v); });
+const lacherDoigt = e => { if(!doigts.has(e.pointerId)) return; const v = doigts.get(e.pointerId); doigts.delete(e.pointerId); if(![...doigts.values()].includes(v)) relacher(v); };
+$('boutons').addEventListener('pointerup', lacherDoigt); $('boutons').addEventListener('pointercancel', lacherDoigt);
+$('boutons').addEventListener('contextmenu', e => e.preventDefault());
+const TOUCHES = { KeyA:0, KeyS:1, KeyD:2, KeyF:3, Digit1:0, Digit2:1, Digit3:2, Digit4:3, KeyQ:0 };
+addEventListener('keydown', e => {
+  if(!G || $('eJeu').hidden) return;
+  if(e.code === 'Escape'){ G.pause ? reprendre() : pause(); return; }
+  if(e.code === 'Space'){ e.preventDefault(); activerStar(); return; }
+  const v = TOUCHES[e.code]; if(v === undefined || v >= G.D.voies || e.repeat) return; e.preventDefault(); appuyer(v);
+});
+addEventListener('keyup', e => { if(!G) return; const v = TOUCHES[e.code]; if(v !== undefined && v < G.D.voies) relacher(v); });
+
+/* ---------- Jouer une note ---------- */
+function appuyer(v){
+  if(!G || G.fin || G.pause) return;
+  G.appuis[v] = true; majBoutons();
+  const t = tJeu(), F = G.D.fenetre;
+  // la note la plus proche dans cette bande, pas encore jouée
+  let best = null;
+  for(let i = G.debut; i < G.notes.length; i++){ const n = G.notes[i]; if(n.t > t + F) break; if(n.etat || n.v !== v) continue; if(Math.abs(n.t - t) <= F && (!best || Math.abs(n.t - t) < Math.abs(best.t - t))) best = n; }
+  if(best) reussir(best, t);
+  else {
+    // un coup dans le vide : la série s'arrête (sauf en Facile)
+    SON.fausse();
+    if(G.D.nom !== 'Facile'){ G.serie = 0; G.public = Math.max(0, G.public - .015); G.faux++; }
+    majHud();
+  }
+}
+function relacher(v){
+  if(!G) return; G.appuis[v] = false; majBoutons();
+  const n = G.tenues[v];
+  if(n){ G.tenues[v] = null; n.tenue = false; if(tJeu() < n.t + n.long - .12){ n.casse = true; couperSolo(n); } }
+}
+function reussir(n, t){
+  n.etat = 1; G.reussies++; G.serie++; G.meilleure = Math.max(G.meilleure, G.serie);
+  G.score += 50 * mult();
+  G.public = Math.min(1, G.public + (G.star ? .035 : .02));
+  MAN.feu(n.v, 1);
+  if(n.long > 0){ n.tenue = true; G.tenues[n.v] = n; }
+  if(n.etoile){ const p = G.phrases[n.phr]; p.ok++; if(p.ok === p.n && !p.rate){ G.etoile = Math.min(1, G.etoile + .25); message('⭐ Phrase étoile !', 1, true); SON.bip([[880, 0], [1320, .07]], .06); } }
+  if(G.serie % 50 === 0) message(`Série de ${G.serie} !`, 1.2, true);
+  majHud();
+}
+function rater(n){
+  n.etat = 2; G.ratees++; G.serie = 0;
+  G.public = Math.max(0, G.public - G.D.perte);
+  couperSolo(n);
+  if(n.etoile){ const p = G.phrases[n.phr]; p.rate = true; }
+  majHud();
+}
+const mult = () => (1 + Math.min(3, Math.floor(G.serie / 10))) * (G.star ? 2 : 1);
+function activerStar(){
+  if(!G || G.star || G.etoile < .5 || G.fin || G.pause) return;
+  G.star = true; message('⭐ STAR !', 1.2); SON.applaudir(); SON.bip([[523, 0], [659, .08], [784, .16], [1047, .24]], .08); majHud();
+}
+$('bStar').addEventListener('pointerdown', e => { e.preventDefault(); activerStar(); });
+
+/* ---------- La boucle ---------- */
+let dernier = 0;
+function boucle(now){
+  raf = requestAnimationFrame(boucle);
+  if(!G) return;
+  const dt = Math.min(.05, (now - (dernier || now)) / 1000); dernier = now;
+  if(G.pause){ return; }
+  programmer();
+  const t = tJeu(), F = G.D.fenetre;
+  if(!G.fin){
+    // les notes passées sans être jouées
+    for(let i = G.debut; i < G.notes.length; i++){ const n = G.notes[i]; if(n.t > t - F) break; if(n.etat === 0) rater(n); }
+    // les notes longues tenues : des points tant qu'on tient
+    for(let v = 0; v < G.tenues.length; v++){ const n = G.tenues[v]; if(!n) continue; if(t >= n.t + n.long){ G.tenues[v] = null; n.tenue = false; G.score += 20 * mult(); } else G.score += dt / G.beat * 25 * mult(); }
+    while(G.debut < G.notes.length && G.notes[G.debut].etat && G.notes[G.debut].t + G.notes[G.debut].long < t - .5) G.debut++;
+    // le mode Star se vide (la jauge pleine dure 32 temps)
+    if(G.star){ G.etoile -= dt / G.beat / 32; if(G.etoile <= 0){ G.etoile = 0; G.star = false; majHud(); } }
+    // le public a craqué
+    if(G.public <= 0) echec();
+    else if(t > G.duree + 1.2 && G.debut >= G.notes.length - 0) finMorceau();
+  }
+  MAN.rendu(t, G.notes, { appuis:G.appuis, mult:Math.min(4, 1 + Math.floor(G.serie / 10)), star:G.star, beat:G.beat, phase:G.phase, public:G.public, debut:G.debut }, dt);
+  $('hProgres').style.width = clamp(t / G.duree * 100, 0, 100) + '%';
+  $('jPublic').firstElementChild.style.height = (G.public * 100) + '%';
+  $('jEtoile').firstElementChild.style.height = (G.etoile * 100) + '%';
+  $('bStar').hidden = !(G.etoile >= .5 && !G.star && !G.fin);
+  $('hScore').textContent = fmt(G.score);
+  if(G.tMsg > 0){ G.tMsg -= dt; if(G.tMsg <= 0) $('message').hidden = true; }
+}
+function majHud(){
+  if(!G) return;
+  const m = mult(), el = $('hMult'); el.textContent = '×' + m; el.className = 'pastille' + (G.star ? ' star' : m >= 2 ? ' m' + Math.min(4, m) : '');
+  $('hSerie').textContent = G.serie;
+}
+function majBoutons(){ $('boutons').querySelectorAll('.bouton').forEach((b, v) => b.classList.toggle('appui', !!G.appuis[v])); }
+function message(txt, duree = 1, petit = false){ const el = $('message'); el.textContent = txt; el.className = 'message' + (petit ? ' petit' : ''); el.hidden = false; if(G) G.tMsg = duree; }
+
+/* ---------- La fin ---------- */
+function arreterSon(){
+  clearInterval(horloge);
+  if(G && G.source) try{ G.source.stop(); }catch(e){}
+  if(G) G.gains.forEach(g => SON.couper(g));
+}
+function echec(){
+  G.fin = true; arreterSon(); SON.huees();
+  REC.parties++; ecrire('rock-records', REC);
+  $('finContenu').innerHTML = `<div style="font-size:3rem">😱</div><h2>Le public t'a hué !</h2><p class="sous">${esc(G.titre)} · ${G.D.nom}</p>
+    <p class="sous">Tu as tenu ${Math.round(clamp(tJeu() / G.duree, 0, 1) * 100)} % du morceau. Réessaie, ou choisis une difficulté plus facile.</p>
+    <button class="btn gros" id="bRejouer">↻ Réessayer</button><button class="btn" id="bMenuFin">Menu</button>`;
+  $('fFin').hidden = false; branchFin();
+}
+function finMorceau(){
+  G.fin = true; arreterSon();
+  const total = G.notes.length, pct = total ? G.reussies / total : 0, et = pct >= .95 ? 5 : pct >= .85 ? 4 : pct >= .7 ? 3 : pct >= .5 ? 2 : 1;
+  const cle = cleRec(G.cle, reglages.diff), r = REC.morceaux[cle] || { best:0, etoiles:0, pct:0, fois:0 };
+  const record = G.score > r.best;
+  r.fois++; if(record) r.best = Math.round(G.score); r.etoiles = Math.max(r.etoiles, et); r.pct = Math.max(r.pct, pct); r.serie = Math.max(r.serie || 0, G.meilleure); r.nom = G.titre;
+  REC.morceaux[cle] = r; REC.parties++; REC.notes += G.reussies; REC.meilleur = Math.max(REC.meilleur, Math.round(G.score));
+  REC.etoiles = Object.values(REC.morceaux).reduce((a, x) => a + (x.etoiles || 0), 0);
+  ecrire('rock-records', REC);
+  SON.applaudir();
+  $('finContenu').innerHTML = `<div class="etoiles">${etoilesTxt(et)}</div><h2>${esc(G.titre)}</h2><p class="sous">${G.D.nom}</p>
+    <div class="score">${fmt(G.score)}</div>${record && r.fois > 1 ? '<p style="color:var(--or);font-weight:800;margin:0">🏆 Nouveau record !</p>' : ''}
+    <div class="stats"><div><b>${Math.round(pct * 100)} %</b><small>notes réussies</small></div><div><b>${G.meilleure}</b><small>plus longue série</small></div><div><b>${G.reussies} / ${total}</b><small>notes</small></div></div>
+    <button class="btn gros" id="bRejouer">↻ Rejouer</button><button class="btn" id="bMenuFin">Menu</button>`;
+  $('fFin').hidden = false; branchFin();
+}
+function branchFin(){
+  const o = { titre:G.titre, cle:G.cle, m:G.m, mp3:G.mp3 };
+  $('bRejouer').onclick = () => { $('fFin').hidden = true; relancer(o); };
+  $('bMenuFin').onclick = () => { $('fFin').hidden = true; quitter(); };
+}
+function relancer(o){ if(o.m) jouerMorceau(o.m); else if(o.mp3){ const part = PAR.analyser(o.mp3, reglages.diff); demarrer({ titre:o.titre, cle:o.cle, mp3:o.mp3, part, beat:part.beat, phase:part.t0, duree:part.duree }); } }
+function quitter(){ if(G){ G.fin = true; arreterSon(); } G = null; cancelAnimationFrame(raf); menu(); }
+
+/* ---------- La pause ---------- */
+function pause(){ if(!G || G.fin || G.pause) return; G.pause = true; SON.AC.suspend(); $('fPause').hidden = false; }
+function reprendre(){ if(!G) return; $('fPause').hidden = true; SON.AC.resume().then(() => { if(G) G.pause = false; }); }
+$('bPause').onclick = pause; $('bReprendre').onclick = reprendre;
+$('bRecommencer').onclick = () => { const o = { titre:G.titre, cle:G.cle, m:G.m, mp3:G.mp3 }; $('fPause').hidden = true; G.fin = true; arreterSon(); SON.AC.resume().then(() => relancer(o)); };
+$('bQuitter').onclick = () => { $('fPause').hidden = true; SON.AC.resume(); quitter(); };
+document.addEventListener('visibilitychange', () => { if(document.hidden) pause(); });
+
+function taille(){ const el = $('eJeu'); if(el.hidden) return; const w = el.clientWidth, h = el.clientHeight, b = $('boutons').offsetHeight || 100; MAN.taille(w, h, w > h ? b * .8 : b * .1); placerBoutons(); }
+addEventListener('resize', taille);
+
+window.Rock = { get G(){ return G; }, MOR, PAR, SON, jouerMorceau, appuyer, relacher, tJeu:() => G ? tJeu() : 0, reglages, activerStar };
+menu();
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
+})();
+</script>
+<script src="sauvegarde.js?v=135"></script>
+<script src="compte.js?v=135"></script>
+<script src="classement-jeu.js?v=135"></script>
+</body>
+</html>
