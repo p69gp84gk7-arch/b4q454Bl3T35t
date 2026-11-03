@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Baroudeur · Altitude Arcade</title>
+<meta name="theme-color" content="#14202B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=131">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=131">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+@media (orientation:landscape) and (max-height:600px){ :root{ --barre-statut:env(safe-area-inset-top, 0px); } }
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --fond:#14202B; --carte:#1E2D3A; --carte2:#28394A; --ligne:rgba(255,255,255,.14); --encre:#F4F1EA; --doux:#A9B6C2; --or:#FFC93C; --vert:#3DDC84; --rouge:#FF6464; }
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; height:100%; background:var(--fond); color:var(--encre); font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-tap-highlight-color:transparent; overscroll-behavior:none; }
+body{ padding-top:var(--barre-statut); }
+button{ font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; }
+[hidden]{ display:none !important; }
+.ecran{ min-height:100%; }
+.page{ max-width:720px; margin:0 auto; padding:12px 14px calc(24px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; gap:12px; }
+.tete{ display:flex; align-items:center; gap:8px; }
+.tete a, .tete .btn{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:10px; padding:6px 12px; font-weight:700; background:var(--carte); white-space:nowrap; }
+.tete .droite{ margin-left:auto; }
+h1{ margin:6px 0 0; font-family:"Bebas Neue", "Bricolage Grotesque", sans-serif; font-weight:400; font-size:clamp(2.6rem, 14vw, 5rem); line-height:.88; letter-spacing:.02em; color:#FFC93C; text-shadow:3px 3px 0 #B5523B, 6px 6px 0 #1E1E1E; }
+h2{ margin:0; font-size:1.3rem; }
+h3{ margin:0 0 8px; font-size:.76rem; text-transform:uppercase; letter-spacing:.14em; color:var(--doux); }
+.sous{ color:var(--doux); margin:0; line-height:1.45; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:16px; padding:14px; }
+.btn{ border:1px solid var(--ligne); background:var(--carte2); border-radius:12px; padding:11px 14px; font-weight:800; }
+.btn.gros{ width:100%; padding:16px; font-size:1.15rem; background:linear-gradient(90deg, #FFB23C, #FF7A3C); border:none; color:#1B1B1B; }
+.btn.vert{ background:var(--vert); border-color:var(--vert); color:#0B2A17; }
+.stats{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; text-align:center; }
+.stats b{ display:block; font-size:1.35rem; } .stats small{ color:var(--doux); font-size:.72rem; }
+.regions{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+.regions div{ border-radius:12px; padding:10px; font-size:.88rem; line-height:1.35; border:1px solid var(--ligne); }
+.regions b{ display:block; font-size:1rem; }
+.aide li{ line-height:1.5; margin-bottom:6px; } .aide ul{ padding-left:20px; margin:0; }
+#apercu{ width:100%; border-radius:14px; aspect-ratio:1; image-rendering:auto; border:1px solid var(--ligne); }
+
+/* ---------- Le jeu ---------- */
+#eJeu{ position:fixed; inset:0; top:var(--barre-statut); min-height:0; overflow:hidden; background:#9FD8F7; touch-action:none; user-select:none; -webkit-user-select:none; }
+#cv3d{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.hud{ position:absolute; left:0; right:0; top:0; display:flex; gap:6px; align-items:flex-start; padding:8px; pointer-events:none; }
+.pastille{ background:rgba(20,32,43,.78); border:1.5px solid rgba(255,255,255,.18); border-radius:12px; padding:5px 10px; font-weight:800; color:#fff; pointer-events:auto; white-space:nowrap; }
+.pastille small{ display:block; font-size:.62rem; color:#C9D4DE; letter-spacing:.08em; text-transform:uppercase; font-weight:700; }
+.pastille b{ font-size:1.15rem; }
+#hOr b{ color:var(--or); }
+.gauche{ display:flex; flex-direction:column; gap:6px; }
+.rangee{ display:flex; gap:6px; }
+.jauges{ display:grid; grid-template-columns:repeat(2, auto); gap:4px 8px; background:rgba(20,32,43,.78); border:1.5px solid rgba(255,255,255,.18); border-radius:12px; padding:6px 9px; width:max-content; }
+.jauge{ display:flex; align-items:center; gap:4px; font-size:.85rem; } .jauge div{ width:46px; height:8px; border-radius:4px; background:rgba(255,255,255,.18); overflow:hidden; }
+.jauge i{ display:block; height:100%; width:100%; background:#3DDC84; border-radius:4px; } .jauge.bas i{ background:#FFC93C; } .jauge.vide i{ background:#FF5A4A; } .jauge.vide{ animation:clignote .8s infinite; }
+@keyframes clignote{ 50%{ opacity:.45; } }
+#hCrev{ grid-column:1 / -1; font-size:.75rem; font-weight:800; color:#FF8A7A; }
+#bCoffre{ pointer-events:auto; }
+.objets{ display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:8px; margin:10px 0; }
+.objet{ border:1.5px solid var(--ligne); border-radius:12px; padding:8px; background:var(--carte2); text-align:center; font-size:.82rem; line-height:1.25; display:flex; flex-direction:column; gap:4px; align-items:center; }
+.objet .e{ font-size:1.8rem; } .objet small{ color:var(--doux); } .objet .btn{ padding:6px 8px; font-size:.8rem; width:100%; }
+.objet.vide{ opacity:.35; border-style:dashed; }
+.place{ font-size:.85rem; color:var(--doux); }
+.boutonsHaut{ margin-left:auto; display:flex; flex-direction:column; gap:6px; align-items:flex-end; pointer-events:auto; }
+.rond{ width:46px; height:46px; border-radius:50%; border:2px solid rgba(255,255,255,.3); background:rgba(20,32,43,.78); color:#fff; font-size:1.25rem; display:grid; place-items:center; padding:0; }
+#mini{ width:118px; height:118px; border-radius:50%; border:3px solid rgba(255,255,255,.85); box-shadow:0 2px 10px rgba(0,0,0,.35); background:#2a3a48; pointer-events:auto; }
+.coinHaut{ display:flex; gap:6px; align-items:flex-start; }
+.vitesse{ position:absolute; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom, 0px)); background:rgba(20,32,43,.7); border-radius:14px; padding:4px 14px; color:#fff; font-weight:800; text-align:center; pointer-events:none; }
+.vitesse b{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:2rem; line-height:1; display:block; }
+.vitesse small{ font-size:.65rem; color:#C9D4DE; }
+/* le joystick */
+#zoneJoy{ position:absolute; left:0; bottom:0; width:58%; height:55%; }
+.joy{ position:absolute; left:calc(22px + env(safe-area-inset-left, 0px)); bottom:calc(22px + env(safe-area-inset-bottom, 0px)); width:124px; height:124px; border-radius:50%; background:rgba(255,255,255,.16); border:3px solid rgba(255,255,255,.55); pointer-events:none; }
+.joy i{ position:absolute; left:50%; top:50%; width:56px; height:56px; margin:-28px 0 0 -28px; border-radius:50%; background:rgba(255,255,255,.9); box-shadow:0 3px 10px rgba(0,0,0,.3); }
+.joy.repos{ opacity:.45; }
+/* les actions à droite */
+.actions{ position:absolute; right:calc(12px + env(safe-area-inset-right, 0px)); bottom:calc(16px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; gap:10px; align-items:flex-end; }
+.action{ border:3px solid #1E1E1E; border-radius:18px; padding:14px 18px; font-weight:900; font-size:1.1rem; color:#1E1E1E; background:#FFC93C; box-shadow:0 5px 0 #1E1E1E; }
+.action.bleu{ background:#7FD3F0; } .action.rouge{ background:#FF8A7A; }
+.action:active{ transform:translateY(3px); box-shadow:0 2px 0 #1E1E1E; }
+.barreFouille{ position:absolute; left:50%; top:42%; transform:translate(-50%, -50%); width:min(70vw, 320px); background:rgba(20,32,43,.85); border-radius:14px; padding:12px; text-align:center; font-weight:800; color:#fff; }
+.barreFouille div{ height:12px; border-radius:6px; background:rgba(255,255,255,.2); overflow:hidden; margin-top:8px; } .barreFouille i{ display:block; height:100%; width:0; background:var(--or); }
+.toasts{ position:absolute; left:50%; top:calc(var(--hautHud, 70px) + 6px); transform:translateX(-50%); display:flex; flex-direction:column; gap:6px; align-items:center; pointer-events:none; width:min(92vw, 460px); }
+.toast{ background:rgba(20,32,43,.9); color:#fff; border-radius:12px; padding:8px 14px; font-weight:700; text-align:center; animation:apparait .25s ease-out; border:1.5px solid rgba(255,255,255,.15); }
+.toast.or{ border-color:var(--or); } .toast.mal{ border-color:var(--rouge); }
+@keyframes apparait{ from{ opacity:0; transform:translateY(-8px); } }
+/* les fenêtres par-dessus le jeu */
+.fenetre{ position:absolute; inset:0; background:rgba(8,14,20,.6); display:flex; align-items:center; justify-content:center; padding:14px; z-index:5; }
+.fenetre .boite{ width:min(100%, 520px); max-height:100%; overflow:auto; background:var(--carte); border:1px solid var(--ligne); border-radius:18px; padding:16px; box-shadow:0 18px 50px rgba(0,0,0,.5); }
+.fenetre h2{ margin-bottom:10px; }
+.ligneAm{ display:flex; gap:10px; align-items:center; padding:10px 0; border-top:1px solid var(--ligne); }
+.ligneAm .ico{ font-size:1.7rem; width:40px; text-align:center; } .ligneAm .txt{ flex:1; min-width:0; } .ligneAm .txt small{ color:var(--doux); display:block; line-height:1.3; }
+.niv{ display:inline-flex; gap:3px; margin-left:6px; vertical-align:middle; } .niv i{ width:14px; height:6px; border-radius:3px; background:rgba(255,255,255,.2); } .niv i.ok{ background:var(--or); }
+.peintures{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+.peintures button{ width:42px; height:42px; border-radius:50%; border:3px solid rgba(255,255,255,.25); position:relative; padding:0; }
+.peintures button.choisie{ border-color:#fff; box-shadow:0 0 0 3px var(--or); }
+.peintures button small{ position:absolute; left:50%; bottom:-16px; transform:translateX(-50%); font-size:.62rem; color:var(--or); font-weight:800; white-space:nowrap; }
+.grandeCarte{ position:relative; width:100%; aspect-ratio:1; max-height:70vh; margin:0 auto; }
+.grandeCarte canvas{ width:100%; height:100%; border-radius:12px; display:block; }
+.legende{ display:flex; flex-wrap:wrap; gap:6px 12px; font-size:.8rem; color:var(--doux); margin-top:8px; } .legende i{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
+.trouve{ text-align:center; } .trouve .gros{ font-size:3rem; } .trouve b.or{ color:var(--or); font-size:1.6rem; display:block; }
+.rare{ margin-top:10px; padding:12px; border-radius:14px; background:linear-gradient(135deg, rgba(255,201,60,.25), rgba(255,122,60,.2)); border:2px solid var(--or); }
+@media (orientation:landscape) and (max-height:500px){
+  #mini{ width:92px; height:92px; } .rond{ width:40px; height:40px; font-size:1.05rem; }
+  .action{ padding:10px 14px; font-size:1rem; } .pastille b{ font-size:1rem; } #zoneJoy{ height:70%; } .joy{ width:110px; height:110px; bottom:calc(14px + env(safe-area-inset-bottom, 0px)); }
+}
+</style>
+</head>
+<body>
+<div class="barre-statut" aria-hidden="true"></div>
+
+<!-- L'accueil -->
+<section class="ecran" id="eAccueil">
+  <div class="page">
+    <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="btn droite" id="bAide">❔ Règles</button></div>
+    <h1>BAROUDEUR</h1>
+    <p class="sous">Prends le volant de ton vieux 4x4 et pars explorer la région : campagne, forêt, montagne, désert. Surveille l'essence, l'huile et le radiateur, et fouille les 24 maisons abandonnées : jerricans, outils, objets anciens à revendre, or et pièces rares pour ton 4x4. Certaines sont faciles d'accès… d'autres beaucoup moins !</p>
+    <button class="btn gros" id="bJouer">🚙 Partir à l'aventure</button>
+    <button class="btn" id="bNouvelle" hidden>Recommencer une nouvelle aventure</button>
+    <div class="carte" id="cProgres"></div>
+    <div class="carte"><h3>La région</h3>
+      <div class="regions">
+        <div style="background:rgba(124,195,91,.16)"><b>🌾 La campagne</b>Le garage, des fermes faciles à trouver, quelques buttes.</div>
+        <div style="background:rgba(78,143,58,.2)"><b>🌲 La forêt</b>De l'autre côté de la rivière : passe par un des deux gués.</div>
+        <div style="background:rgba(244,247,250,.12)"><b>🏔️ La montagne</b>Le lac, des chalets, de la neige qui glisse tout en haut.</div>
+        <div style="background:rgba(233,199,123,.16)"><b>🏜️ Le désert</b>Les dunes de sable, le canyon et les mesas.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Les règles -->
+<section class="ecran" id="eAide" hidden>
+  <div class="page aide">
+    <div class="tete"><button class="btn" id="bAideRetour">‹ Retour</button></div>
+    <h2>Comment jouer</h2>
+    <div class="carte"><ul>
+      <li><b>Conduire</b> : le joystick est en bas à gauche. Pose le pouce dessus et pousse-le vers où tu veux aller : vers le haut pour avancer, sur le côté pour tourner, vers le bas pour freiner puis reculer. Au clavier : flèches ou Z Q S D.</li>
+      <li><b>Les maisons abandonnées</b> : un losange flotte au-dessus de chacune. Sa couleur dit la difficulté pour l'atteindre : 🟢 facile, 🔵 moyen, 🔴 difficile, ⚫ très difficile. Arrête-toi juste devant et touche <b>🔍 Fouiller</b>.</li>
+      <li><b>L'or</b> : des pièces d'or sont semées partout, roule dessus pour les ramasser. Les maisons en cachent aussi, et les plus dures beaucoup plus.</li>
+      <li><b>Le tableau de bord</b> (en haut à gauche) : ⛽ l'essence, 🛢️ l'huile, 🌡️ la température du moteur, 🔧 l'état du 4x4. L'essence baisse en roulant, surtout à fond ; l'huile et l'eau du radiateur s'usent peu à peu. Sans essence, c'est la panne sèche. Sans eau, le moteur surchauffe et perd sa puissance (rouler dans la rivière le refroidit). Sans huile, il s'abîme. Les chocs abîment aussi le 4x4, et les rochers peuvent faire crever une roue.</li>
+      <li><b>🎒 Le coffre</b> : dans les maisons on trouve des jerricans, des bidons d'huile et d'eau, des roues de secours, des caisses à outils, et des objets anciens (radio, montre, tableau, bijoux…) à revendre au garage. Le coffre a 8 places : choisis ce que tu prends, le reste t'attend dans la maison (son losange devient plus petit). Les objets utiles s'utilisent depuis le coffre, n'importe où.</li>
+      <li><b>⛽ Les vieilles stations-service</b> (losange orange) : arrête-toi à la pompe et touche <b>Pomper</b>. Il reste un fond de cuve (18 litres), qui revient au bout de 4 minutes.</li>
+      <li><b>Le garage</b> (au sud du centre, avec l'enseigne jaune) : arrête-toi devant et touche <b>🔧 Garage</b> pour faire le plein, la vidange, remplir le radiateur, réparer, vendre tes objets, acheter des jerricans et des roues, améliorer le moteur, les pneus, les suspensions, le coffre et le réservoir, ou repeindre le 4x4.</li>
+      <li><b>Les pièces rares</b> sont cachées dans certaines maisons et ouvrent de nouveaux endroits : 🤿 le <b>snorkel</b> pour l'eau profonde (le lac, la rivière), 🛞 les <b>pneus sable</b> pour les dunes, ⛓️ les <b>chaînes</b> pour la neige, 🔥 le <b>moteur V8</b> pour les pentes les plus raides.</li>
+      <li><b>L'eau</b> : sans snorkel, si l'eau monte trop haut, le moteur se noie et la dépanneuse te ramène en arrière. Passe la rivière aux <b>gués</b>, là où elle est peu profonde.</li>
+      <li><b>Sur le toit ?</b> Touche <b>🔄 Remettre</b> pour retomber sur tes roues. Perdu ou en panne ? La <b>🗺️ carte</b> montre tout ce que tu as découvert, et la dépanneuse peut te ramener au garage avec un peu d'essence (20 pièces d'or, gratuit si tu n'en as pas assez).</li>
+      <li>La partie est sauvegardée toute seule : tu reprends là où tu t'es arrêté.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- Le jeu -->
+<section class="ecran" id="eJeu" hidden>
+  <canvas id="cv3d"></canvas>
+  <div id="zoneJoy"><div class="joy repos" id="joy"><i></i></div></div>
+  <div class="hud" id="hud">
+    <div class="gauche">
+      <div class="rangee"><div class="pastille" id="hOr"><small>Or</small><b>0</b></div><div class="pastille" id="hMaisons"><small>Maisons</small><b>0 / 24</b></div><button class="pastille" id="bCoffre"><small>Coffre</small><b id="hCoffre">🎒 0/8</b></button></div>
+      <div class="jauges"><div class="jauge" id="jEss" title="Essence"><span>⛽</span><div><i></i></div></div><div class="jauge" id="jHuile" title="Huile"><span>🛢️</span><div><i></i></div></div>
+        <div class="jauge" id="jEau" title="Radiateur"><span>🌡️</span><div><i></i></div></div><div class="jauge" id="jEtat" title="État du 4x4"><span>🔧</span><div><i></i></div></div><span id="hCrev" hidden>💥 Roue crevée !</span></div>
+    </div>
+    <div class="boutonsHaut">
+      <div class="coinHaut"><div style="display:flex;flex-direction:column;gap:6px"><button class="rond" id="bPause" aria-label="Pause">⏸</button><button class="rond" id="bCarte" aria-label="Carte">🗺️</button><button class="rond" id="bCam" aria-label="Caméra">🎥</button></div><canvas id="mini" width="236" height="236"></canvas></div>
+    </div>
+  </div>
+  <div class="toasts" id="toasts"></div>
+  <div class="vitesse"><b id="hVit">0</b><small>km/h</small></div>
+  <div class="actions">
+    <button class="action rouge" id="bRemettre" hidden>🔄 Remettre</button>
+    <button class="action bleu" id="bGarage" hidden>🔧 Garage</button>
+    <button class="action" id="bPomper" hidden>⛽ Pomper</button>
+    <button class="action" id="bFouiller" hidden>🔍 Fouiller</button>
+  </div>
+  <div class="barreFouille" id="fouille" hidden>🔍 Fouille en cours…<div><i id="fouilleBarre"></i></div></div>
+
+  <!-- Le garage -->
+  <div class="fenetre" id="fGarage" hidden><div class="boite">
+    <h2>🔧 Le garage</h2>
+    <p class="sous">Tu as <b id="gOr" style="color:var(--or)">0</b> pièces d'or.</p>
+    <div id="gAmelio"></div>
+    <div class="ligneAm" style="display:block"><b>🛠️ L'atelier</b><div id="gServices" style="margin-top:6px"></div></div>
+    <div class="ligneAm" style="display:block"><b>💰 Vendre</b> <small style="color:var(--doux)">(les objets de ton coffre)</small><div class="objets" id="gVente"></div></div>
+    <div class="ligneAm" style="display:block"><b>🛒 Acheter</b><div class="objets" id="gAchat"></div></div>
+    <div class="ligneAm" style="display:block"><b>🎨 La peinture</b><div class="peintures" id="gPeint"></div><div style="height:14px"></div></div>
+    <div class="ligneAm" style="display:block"><b>🧰 Les pièces rares</b><div id="gRares" style="margin-top:6px"></div></div>
+    <button class="btn gros" id="bGarageFin" style="margin-top:10px">Repartir</button>
+  </div></div>
+  <!-- Le coffre -->
+  <div class="fenetre" id="fCoffre" hidden><div class="boite">
+    <h2>🎒 Le coffre</h2><p class="place" id="cPlace"></p>
+    <div class="objets" id="cObjets"></div>
+    <p class="sous" style="font-size:.85rem">Les objets utiles s'utilisent n'importe où. Les autres se revendent au garage.</p>
+    <button class="btn gros" id="bCoffreFin" style="margin-top:10px">Fermer</button>
+  </div></div>
+  <!-- Les objets trouvés -->
+  <div class="fenetre" id="fObjets" hidden><div class="boite" id="oContenu"></div></div>
+  <!-- La carte -->
+  <div class="fenetre" id="fCarte" hidden><div class="boite">
+    <h2>🗺️ La carte</h2>
+    <div class="grandeCarte"><canvas id="grandeCarte" width="1000" height="1000"></canvas></div>
+    <div class="legende"><span><i style="background:#FFD23F"></i>Garage</span><span><i style="background:#2FB04F"></i>Facile</span><span><i style="background:#1F6FD6"></i>Moyen</span><span><i style="background:#E0322B"></i>Difficile</span><span><i style="background:#202020;border:1px solid #888"></i>Très difficile</span><span>✔ fouillée · ? pas encore découverte</span></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" id="bDepanneuse" style="flex:1">🚛 Dépanneuse : retour au garage</button><button class="btn vert" id="bCarteFin" style="flex:1">Fermer</button></div>
+  </div></div>
+  <!-- La pause -->
+  <div class="fenetre" id="fPause" hidden><div class="boite">
+    <h2>⏸ Pause</h2>
+    <div class="stats" id="pStats" style="margin:10px 0"></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn gros" id="bReprendre">▶ Reprendre</button>
+      <button class="btn" id="bSon">🔊 Son : oui</button>
+      <button class="btn" id="bAideJeu">❔ Règles</button>
+      <button class="btn" id="bQuitter">‹ Quitter (la partie est sauvegardée)</button>
+    </div>
+  </div></div>
+  <!-- La fin -->
+  <div class="fenetre" id="fFin" hidden><div class="boite trouve" id="finContenu"></div></div>
+</section>
+<script src="baroudeur/three.min.js?v=131"></script>
+<script src="baroudeur/monde.js?v=131"></script>
+<script src="baroudeur/scene.js?v=131"></script>
+<script src="baroudeur/vehicule.js?v=131"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = n => Math.round(n).toLocaleString('fr-FR');
+const M = window.BAROUDEUR_MONDE, SC = window.BAROUDEUR_SCENE, VH = window.BAROUDEUR_VEHICULE;
+const ECRANS = ['eAccueil', 'eAide', 'eJeu'];
+let ecranAvantAide = 'eAccueil';
+const montrer = id => { ECRANS.forEach(e => $(e).hidden = e !== id); if(id !== 'eJeu') scrollTo(0, 0); };
+
+/* ---------- Les améliorations du garage ---------- */
+const AMELIO = {
+  moteur:{ nom:'Moteur', ico:'⚙️', prix:[40, 90, 160], desc:'Plus de force pour grimper et plus de vitesse.' },
+  pneus:{ nom:'Pneus', ico:'🛞', prix:[30, 70, 130], desc:'Plus d\'adhérence partout : on glisse moins, on grimpe plus raide.' },
+  susp:{ nom:'Suspensions', ico:'🌀', prix:[30, 70, 130], desc:'Plus de débattement : les bosses et les rochers passent mieux.' },
+  coffre:{ nom:'Galerie de toit', ico:'🧳', prix:[50, 110], desc:'+2 places dans le coffre à chaque niveau.' },
+  reservoir:{ nom:'Grand réservoir', ico:'⛽', prix:[60], desc:'+25 litres d\'essence : on va plus loin.' },
+};
+const OBJ = M.OBJETS;
+const PRIX_ACHAT = { jerrican:12, huile:6, eau:3, roue:15, outils:15 };
+const places = () => 8 + 2 * S.amelio.coffre, essenceMax = () => 45 + 25 * S.amelio.reservoir;
+const CUVE = 240;                       // une station se remplit en 4 minutes de jeu
+const PEINTURES = [
+  { c:'#E0322B', nom:'Rouge', prix:0 }, { c:'#2F7FD0', nom:'Bleu', prix:20 }, { c:'#3F9E4F', nom:'Vert', prix:20 }, { c:'#F2C230', nom:'Jaune', prix:20 },
+  { c:'#F2F2F2', nom:'Blanc', prix:20 }, { c:'#FF7A1A', nom:'Orange', prix:30 }, { c:'#2A2A2A', nom:'Noir', prix:30 }, { c:'#8E5BD0', nom:'Violet', prix:40 },
+  { c:'#7A8F5A', nom:'Kaki', prix:40 }, { c:'#FF6FB5', nom:'Rose', prix:50 },
+];
+const COUL_N = ['', '#2FB04F', '#1F6FD6', '#E0322B', '#202020'], NOM_N = ['', 'facile', 'moyen', 'difficile', 'très difficile'];
+
+/* ---------- La sauvegarde ---------- */
+const NOUVELLE = () => ({ or:0, orTotal:0, prises:[], fouillees:[], decouvertes:[], pieces:{}, amelio:{ moteur:0, pneus:0, susp:0, coffre:0, reservoir:0 }, peinture:'#E0322B', peintures:['#E0322B'],
+  pos:null, temps:0, km:0, fini:false, debut:Date.now(),
+  essence:45, huile:1, eau:1, temp:.2, etat:1, crevee:-1, coffre:['jerrican', 'roue'], restes:{}, stations:{}, vendus:0 });
+let S = lire('baroudeur-partie', null);
+if(S){ const am = Object.assign(NOUVELLE().amelio, S.amelio); S = Object.assign(NOUVELLE(), S); S.amelio = am; }
+let REC = Object.assign({ parties:0, maisons:0, orTotal:0, finies:0, meilleurTemps:0 }, lire('baroudeur-records', {}));
+let reglages = Object.assign({ son:true, cam:0 }, lire('baroudeur-reglages', {}));
+function sauver(){
+  if(!S) return;
+  if(V) S.pos = [V.p.x, V.p.z, VH.cap(V)];
+  ecrire('baroudeur-partie', S);
+  REC.maisons = Math.max(REC.maisons, S.fouillees.length); REC.orTotal = Math.max(REC.orTotal, S.orTotal);
+  ecrire('baroudeur-records', REC);
+}
+let surchauffe = false;
+const reglagesV = () => {
+  const a = S.amelio, v8 = !!S.pieces.v8;
+  // le moteur s'essouffle : sans essence, abîmé, en surchauffe ou sans huile
+  const forme = (S.essence > 0 ? 1 : 0) * (.55 + .45 * S.etat) * (surchauffe ? .35 : 1) * (S.huile < .08 ? .65 : 1);
+  return { crevee:S.crevee, forme, force:9500 * (1 + .13 * a.moteur) * (v8 ? 1.55 : 1) * forme, vmax:17 + 1.6 * a.moteur + (v8 ? 3 : 0), grip:1 + .07 * a.pneus,
+    k:26000 * (1 + .08 * a.susp), c:2400 * (1 + .25 * a.susp), course:.4 + .06 * a.susp, snorkel:!!S.pieces.snorkel, sable:!!S.pieces.sable, chaines:!!S.pieces.chaines };
+};
+
+/* ---------- L'accueil ---------- */
+function accueil(){
+  montrer('eAccueil');
+  arreterBoucle();
+  const enCours = S && !S.fini && (S.fouillees.length || S.orTotal || S.temps > 20);
+  $('bJouer').textContent = enCours ? '▶ Continuer l\'aventure' : '🚙 Partir à l\'aventure';
+  $('bNouvelle').hidden = !enCours && !(S && S.fini);
+  const p = S || NOUVELLE(), nb = Object.keys(p.pieces).length;
+  $('cProgres').innerHTML = `<h3>${enCours ? 'Ton aventure' : 'Tes records'}</h3><div class="stats">
+    <div><b>${p.fouillees.length} / 24</b><small>maisons fouillées</small></div><div><b>${fmt(p.orTotal)}</b><small>pièces d'or trouvées</small></div>
+    <div><b>${nb} / 4</b><small>pièces rares</small></div><div><b>${(p.km || 0).toFixed(1).replace('.', ',')}</b><small>km parcourus</small></div></div>
+    ${REC.finies ? `<p class="sous" style="margin-top:10px">🏆 Aventure terminée ${REC.finies} fois · meilleur temps ${duree(REC.meilleurTemps)}</p>` : ''}`;
+}
+const duree = s => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60; return h ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min ${String(s % 60).padStart(2, '0')}`; };
+const charger = f => { if(renderer){ f(); return; } $('bJouer').textContent = '⏳ Chargement du monde…'; setTimeout(f, 40); };
+$('bJouer').onclick = () => { if(!S || S.fini){ S = NOUVELLE(); REC.parties++; } charger(demarrer); };
+$('bNouvelle').onclick = () => { if(!confirm('Recommencer une nouvelle aventure ? L\'aventure en cours sera perdue.')) return; S = NOUVELLE(); REC.parties++; sauver(); charger(demarrer); };
+$('bAide').onclick = () => { ecranAvantAide = 'eAccueil'; montrer('eAide'); };
+
+/* ---------- Le monde en 3D (construit une seule fois) ---------- */
+let renderer = null, scene = null, camera = null, MONDE3D = null, V = null;
+function construire(){
+  if(renderer) return;
+  renderer = new THREE.WebGLRenderer({ canvas:$('cv3d'), antialias:true, powerPreference:'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.6));
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(62, 1, .5, 520);
+  MONDE3D = SC.construire(THREE, scene);
+  V = VH.creer(THREE, scene, S.peinture);
+  carteImg = M.dessinerCarte(document.createElement('canvas'));
+  addEventListener('resize', taille);
+}
+function taille(){
+  if(!renderer) return;
+  const el = $('eJeu'), w = el.clientWidth, h = el.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w < h ? 70 : 58; camera.updateProjectionMatrix();
+  document.documentElement.style.setProperty('--hautHud', $('hud').offsetHeight + 'px');
+}
+
+/* ---------- Démarrer une partie ---------- */
+let prises = null, depuisSur = [], tSur = 0;
+function demarrer(){
+  montrer('eJeu');
+  construire();
+  taille();
+  V.peint.color.set(S.peinture);
+  prises = M.OR.map((_, k) => S.prises.includes(k));
+  if(S.pos) VH.placer(V, S.pos[0], S.pos[1], S.pos[2]);
+  else VH.placer(V, M.GARAGE.x, M.GARAGE.z + 14, 0);
+  depuisSur = [[V.p.x, V.p.z, VH.cap(V)]];
+  majReperes(); majHud(); majCoffre(); joyRepos();
+  camInit = true;
+  sauver();
+  lancerBoucle();
+  if(!S.temps) setTimeout(() => { toast('🚙 Pousse le joystick (à gauche) pour rouler. Les losanges montrent les maisons abandonnées !'); setTimeout(() => toast('⛽ Surveille l\'essence, l\'huile et la température (en haut à gauche) !'), 4500); }, 600);
+}
+
+/* ---------- Les commandes : joystick et clavier ---------- */
+const CMD = { gaz:0, dir:0 }, JOY = { id:null, x0:0, y0:0, jx:0, jy:0 }, TOUCHES = new Set();
+const joy = $('joy'), zone = $('zoneJoy');
+// le joystick est fixe, en bas à gauche : on touche n'importe où dans ce coin, la manette part de son centre
+function joyRepos(){ joy.classList.add('repos'); joy.firstElementChild.style.transform = ''; }
+function joyBouger(e){
+  let dx = e.clientX - JOY.x0, dy = e.clientY - JOY.y0;
+  const d = Math.hypot(dx, dy), max = 55; if(d > max){ dx *= max / d; dy *= max / d; }
+  JOY.jx = dx / max; JOY.jy = -dy / max;
+  joy.firstElementChild.style.transform = `translate(${dx}px, ${dy}px)`;
+}
+zone.addEventListener('pointerdown', e => {
+  if(JOY.id !== null) return;
+  JOY.id = e.pointerId; zone.setPointerCapture(e.pointerId);
+  const r = joy.getBoundingClientRect(); JOY.x0 = r.left + r.width / 2; JOY.y0 = r.top + r.height / 2;
+  joy.classList.remove('repos'); joyBouger(e);
+  demarrerSon();
+});
+zone.addEventListener('pointermove', e => { if(e.pointerId === JOY.id) joyBouger(e); });
+const lacher = e => { if(e.pointerId !== JOY.id) return; JOY.id = null; JOY.jx = JOY.jy = 0; joyRepos(); };
+zone.addEventListener('pointerup', lacher); zone.addEventListener('pointercancel', lacher);
+addEventListener('keydown', e => {
+  if($('eJeu').hidden) return;
+  const k = e.key.toLowerCase(); TOUCHES.add(k);
+  if(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  if(k === ' ' || k === 'enter'){ if(!$('bFouiller').hidden) $('bFouiller').click(); else if(!$('bGarage').hidden) $('bGarage').click(); }
+  if(k === 'r' && !$('bRemettre').hidden) remettre();
+  if(k === 'm') $('bCarte').click();
+  if(k === 'escape') $('bPause').click();
+  demarrerSon();
+});
+addEventListener('keyup', e => TOUCHES.delete(e.key.toLowerCase()));
+addEventListener('blur', () => TOUCHES.clear());
+// le joystick : on pousse vers où on veut aller (avancer, tourner, reculer)
+function lireCommandes(){
+  let jx = JOY.jx, jy = JOY.jy;
+  const t = k => TOUCHES.has(k);
+  const kx = (t('arrowright') || t('d') ? 1 : 0) - (t('arrowleft') || t('q') || t('a') ? 1 : 0), ky = (t('arrowup') || t('z') || t('w') ? 1 : 0) - (t('arrowdown') || t('s') ? 1 : 0);
+  if(kx || ky){ CMD.gaz = ky; CMD.dir = -kx; return; }
+  const mag = Math.min(1, Math.hypot(jx, jy));
+  if(mag < .15){ CMD.gaz = 0; CMD.dir = 0; return; }
+  const a = Math.atan2(jx, jy);                                   // 0 = vers le haut, positif vers la droite
+  if(Math.abs(a) <= Math.PI * .62){ CMD.gaz = mag * Math.max(.35, Math.cos(a * .8)); CMD.dir = -clamp(a / (Math.PI / 2.3), -1, 1); }
+  else { CMD.gaz = -mag; CMD.dir = -Math.sign(a) * clamp((Math.PI - Math.abs(a)) / (Math.PI / 2.3), 0, 1); }
+}
+
+/* ---------- La boucle ---------- */
+let enMarche = false, dernier = 0, reste = 0, pause = false, raf = 0, temps = 0;
+function lancerBoucle(){ if(enMarche) return; enMarche = true; pause = false; dernier = performance.now(); raf = requestAnimationFrame(boucle); }
+function arreterBoucle(){ enMarche = false; cancelAnimationFrame(raf); couperSon(); }
+const DT = 1 / 180;
+function boucle(now){
+  if(!enMarche) return;
+  raf = requestAnimationFrame(boucle);
+  let dt = Math.min(.1, (now - dernier) / 1000); dernier = now;
+  if(pause || fenetreOuverte()){ dt = 0; }
+  lireCommandes();
+  if(fouille) CMD.gaz = CMD.dir = 0;
+  const o = reglagesV(), obst = obstacles;
+  reste += dt;
+  const p0x = V.p.x, p0z = V.p.z;
+  while(reste >= DT){ VH.pas(V, DT, CMD, o, obst); reste -= DT; }
+  if(dt){
+    temps += dt; S.temps += dt;
+    S.km += Math.hypot(V.p.x - p0x, V.p.z - p0z) / 1000;
+    jeu(dt, o);
+  }
+  V.crevee = S.crevee; V.snorkel.visible = !!S.pieces.snorkel;
+  VH.dessiner(V);
+  for(const st of M.STATIONS) st.rep.visible = stationPrete(st);
+  MONDE3D.pieces.maj(now / 1000, prises);
+  for(const h of MONDE3D.maisons) if(h.rep.visible){ h.rep.rotation.y = now / 700; h.rep.position.y = h.m.y + 11 + Math.sin(now / 500 + h.m.x) * .5; }
+  for(const n of MONDE3D.nuages){ n.position.x += dt * 2; if(n.position.x > 650) n.position.x = -650; }
+  bougerCamera(dt);
+  renderer.render(scene, camera);
+  dessinerMini();
+  sonMoteur(dt);
+}
+// les obstacles près de la voiture : le décor, plus les maisons et le garage
+function obstacles(x, z){
+  const L = M.obstaclesPres(x, z);
+  for(const m of M.MAISONS) if(Math.abs(m.x - x) < 20 && Math.abs(m.z - z) < 20) L.push({ x:m.x, z:m.z, r:4.6, type:'maison' });
+  for(const st of M.STATIONS) if(Math.abs(st.x - x) < 20 && Math.abs(st.z - z) < 20){ const a = SC.orientation(st), c = Math.cos(a), sn = Math.sin(a);
+    L.push({ x:st.x - sn * 5.5, z:st.z - c * 5.5, r:3, type:'station' }, { x:st.x, z:st.z, r:1.2, type:'pompe' }); }
+  const G = M.GARAGE; if(Math.abs(G.x - x) < 30 && Math.abs(G.z - z) < 30) L.push({ x:G.x, z:G.z - 8, r:6.6, type:'garage' });
+  return L;
+}
+
+/* ---------- La caméra ---------- */
+const DIST_CAM = [[10, 4.2], [15, 7], [6.5, 2.6]];
+let camInit = true, capCam = 0;
+const camPos = new THREE.Vector3(), camVise = new THREE.Vector3();
+function bougerCamera(dt){
+  const cap = VH.cap(V), vf = VH.vitesse(V);
+  // la caméra reste derrière l'avant du 4x4 (même en marche arrière)
+  let d = cap - capCam; while(d > Math.PI) d -= 2 * Math.PI; while(d < -Math.PI) d += 2 * Math.PI;
+  capCam += camInit ? d : d * Math.min(1, dt * (2 + Math.abs(vf) * .12));
+  const [dist, haut] = DIST_CAM[reglages.cam % DIST_CAM.length];
+  const cible = new THREE.Vector3(V.p.x - Math.sin(capCam) * dist, V.p.y + haut, V.p.z - Math.cos(capCam) * dist);
+  const sol = Math.max(M.hauteur(cible.x, cible.z), M.W) + 1.6; if(cible.y < sol) cible.y = sol;
+  if(camInit){ camPos.copy(cible); camVise.copy(V.p); camInit = false; }
+  camPos.lerp(cible, 1 - Math.exp(-dt * 5));
+  const sol2 = Math.max(M.hauteur(camPos.x, camPos.z), M.W) + 1.2; if(camPos.y < sol2) camPos.y = sol2;
+  camVise.lerp(new THREE.Vector3(V.p.x, V.p.y + 1.2, V.p.z), 1 - Math.exp(-dt * 10));
+  camera.position.copy(camPos); camera.lookAt(camVise);
+}
+$('bCam').onclick = () => { reglages.cam = (reglages.cam + 1) % DIST_CAM.length; ecrire('baroudeur-reglages', reglages); toast(['🎥 Caméra normale', '🎥 Caméra de loin', '🎥 Caméra de près'][reglages.cam]); };
+
+/* ---------- Ce qui se passe en jouant ---------- */
+let tAuDos = 0, tCoince = 0, tNoye = 0, tSauve = 0, procheMaison = null, procheGarage = false, fouille = null, conseils = {};
+function jeu(dt, o){
+  const vit = Math.abs(VH.vitesse(V)), haut = VH.haut(V);
+  // les pièces d'or
+  for(let k = 0; k < M.OR.length; k++){
+    if(prises[k]) continue;
+    const [x, z] = M.OR[k]; if(Math.abs(x - V.p.x) > 3 || Math.abs(z - V.p.z) > 3) continue;
+    if(Math.hypot(x - V.p.x, z - V.p.z) < 2.6 && Math.abs(MONDE3D.pieces.ys[k] - V.p.y) < 3.5){ prises[k] = true; S.prises.push(k); gagnerOr(1); sonPiece(); }
+  }
+  // les maisons découvertes (vues à moins de 160 m)
+  for(const m of M.MAISONS) if(!S.decouvertes.includes(m.id) && Math.hypot(m.x - V.p.x, m.z - V.p.z) < 160){ S.decouvertes.push(m.id); }
+  // près d'une maison pas encore fouillée ?
+  procheMaison = null;
+  for(const m of M.MAISONS){ if(S.fouillees.includes(m.id) && !(S.restes[m.id] || []).length) continue; const d = Math.hypot(m.x - V.p.x, m.z - V.p.z); if(d < 12.5 && Math.abs(V.p.y - m.y) < 6){ procheMaison = m; break; } }
+  procheGarage = Math.hypot(M.GARAGE.x - V.p.x, M.GARAGE.z + 2 - V.p.z) < 17;
+  const arrete = vit < 2.2;
+  $('bFouiller').hidden = !(procheMaison && arrete && !fouille);
+  if(procheMaison) $('bFouiller').textContent = S.fouillees.includes(procheMaison.id) ? '🎒 Reprendre les objets' : '🔍 Fouiller';
+  procheStation = null;
+  for(const st of M.STATIONS) if(Math.hypot(st.x - V.p.x, st.z - V.p.z) < 10) procheStation = st;
+  $('bPomper').hidden = !(procheStation && arrete);
+  if(procheMaison && !arrete && !conseils['stop-' + procheMaison.id]){ conseils['stop-' + procheMaison.id] = true; toast(`🏚️ ${procheMaison.nom} : arrête-toi pour fouiller !`); }
+  $('bGarage').hidden = !(procheGarage && arrete);
+  // la fouille en cours
+  if(fouille){
+    if(vit > 3 || !procheMaison || procheMaison.id !== fouille.m.id){ fouille = null; $('fouille').hidden = true; toast('La fouille est interrompue : reste bien arrêté.', 'mal'); }
+    else { fouille.t += dt; $('fouilleBarre').style.width = Math.min(100, fouille.t / 2.2 * 100) + '%'; if(fouille.t >= 2.2) finFouille(fouille.m); }
+  }
+  // sur le toit ou coincé
+  tAuDos = haut < .4 ? tAuDos + dt : 0;
+  tCoince = (V.auSol < 2 && vit < 1 && Math.abs(CMD.gaz) > .3) ? tCoince + dt : Math.max(0, tCoince - dt);
+  $('bRemettre').hidden = !(tAuDos > 1.2 || tCoince > 2.5);
+  // l'eau : sans snorkel, le moteur se noie
+  const prof = V.prof || 0, limite = o.snorkel ? 1.9 : .85;
+  if(prof > limite && V.p.y - (M.W - prof) < 2.2){ tNoye += dt; if(tNoye > .7){ tNoye = 0; noyade(o.snorkel); } }
+  else tNoye = Math.max(0, tNoye - dt);
+  if(prof > .55 && !o.snorkel && !conseils.eau){ conseils.eau = true; toast('🌊 Attention, l\'eau monte ! Sans snorkel, le moteur va se noyer. Cherche le gué.'); }
+  // les conseils selon le sol
+  const sol = M.surface(V.p.x, V.p.z);
+  if(sol === 4 && !o.sable && vit < 4 && CMD.gaz > .5 && !conseils.sable){ conseils.sable = true; toast('🏜️ Tu t\'enfonces dans le sable ! Il te faudrait des pneus sable.'); }
+  if(sol === 3 && !o.chaines && V.patine > .4 && !conseils.neige){ conseils.neige = true; toast('❄️ Ça glisse sur la neige ! Des chaînes t\'aideraient à monter.'); }
+  if(V.choc > .45 && !V.dejaChoc){ V.dejaChoc = true; sonChoc(V.choc); choc(V.choc); } if(V.choc < .2) V.dejaChoc = false;
+  usure(dt, vit, sol, o);
+  // les endroits sûrs (pour la dépanneuse)
+  tSauve += dt;
+  if(tSauve > 1){ tSauve = 0; if(prof < .05 && haut > .8 && V.auSol >= 3){ depuisSur.push([V.p.x, V.p.z, VH.cap(V)]); if(depuisSur.length > 12) depuisSur.shift(); } }
+  tSave += dt; if(tSave > 5){ tSave = 0; sauver(); }
+  majHud(vit);
+}
+let tSave = 0;
+/* ---------- L'essence et l'entretien ---------- */
+let procheStation = null, tPanne = 0;
+function usure(dt, vit, sol, o){
+  const gaz = Math.abs(CMD.gaz), regime = V.regime || 0, v8 = S.pieces.v8 ? 1.3 : 1;
+  // l'essence : un peu au ralenti, beaucoup à fond
+  if(S.essence > 0){
+    S.essence = Math.max(0, S.essence - dt * (.008 + .14 * gaz * (.6 + .4 * regime)) * v8);
+    if(S.essence === 0){ toast('⛽ Panne sèche ! Utilise un jerrican (🎒 Coffre) ou appelle la dépanneuse (🗺️ Carte).', 'mal'); sonChoc(.4); }
+    else if(S.essence < 8 && !conseils.essence){ conseils.essence = true; toast('⛽ Il reste moins de 8 litres d\'essence : trouve un jerrican ou une station !', 'mal'); }
+  }
+  if(S.essence > 8) conseils.essence = false;
+  // l'huile s'use avec les kilomètres ; sans huile, le moteur s'abîme
+  S.huile = Math.max(0, S.huile - dt * .0006 * (.3 + regime));
+  if(S.huile < .08){ S.etat = Math.max(.1, S.etat - dt * .002 * regime); if(!conseils.huile){ conseils.huile = true; toast('🛢️ Plus d\'huile : le moteur s\'abîme ! Mets un bidon d\'huile.', 'mal'); } }
+  else if(S.huile > .2) conseils.huile = false;
+  // le radiateur perd de l'eau ; sans eau, ça chauffe
+  S.eau = Math.max(0, S.eau - dt * .0011 * (.2 + regime));
+  const chauffe = (.15 + regime * .85) * (1.25 - S.eau);
+  S.temp += (chauffe - S.temp) * dt * .06;
+  if(V.prof > .4) S.temp = Math.max(0, S.temp - dt * .1);                 // l'eau de la rivière refroidit
+  if(!surchauffe && S.temp > 1){ surchauffe = true; toast('🌡️ Surchauffe ! Le moteur perd sa puissance. Mets de l\'eau dans le radiateur, ou roule doucement.', 'mal'); }
+  if(surchauffe && S.temp < .75){ surchauffe = false; toast('🌡️ Le moteur a refroidi.'); }
+  // les crevaisons : sur les rochers, à vive allure
+  if(S.crevee < 0 && (sol === 2 || sol === 7) && vit > 7 && Math.random() < dt * .006 * (1 - S.amelio.pneus * .22) * (vit / 10)) crever();
+}
+function choc(f){
+  S.etat = Math.max(.1, S.etat - f * .07);
+  if(S.crevee < 0 && f > .55 && Math.random() < f * .3 * (1 - S.amelio.pneus * .2)) crever();
+}
+function crever(){
+  S.crevee = Math.floor(Math.random() * 4);
+  toast('💥 Crevaison ! Utilise une roue de secours (🎒 Coffre) ou rentre au garage.', 'mal'); sonChoc(.8);
+}
+const stationPrete = st => S.temps - (S.stations[st.id] ?? -1e9) >= CUVE;
+$('bPomper').onclick = () => {
+  const st = procheStation; if(!st) return;
+  if(!stationPrete(st)){ toast(`⛽ La cuve de ${st.nom} est vide. Elle se remplit encore pendant ${Math.ceil((CUVE - (S.temps - S.stations[st.id])) / 60)} min.`); return; }
+  const max = essenceMax(); if(S.essence >= max - .5){ toast('⛽ Le réservoir est déjà plein.'); return; }
+  const l = Math.min(18, max - S.essence); S.essence += l; S.stations[st.id] = S.temps;
+  toast(`⛽ +${Math.round(l)} litres : la vieille pompe avait encore un fond de cuve !`, 'or'); sonTresor(false); sauver();
+};
+function remettre(){
+  const c = VH.cap(V); VH.placer(V, V.p.x, V.p.z, c); tAuDos = tCoince = 0; $('bRemettre').hidden = true; sonClic();
+}
+$('bRemettre').onclick = remettre;
+function noyade(){
+  sonChoc(1);
+  const p = depuisSur.length > 3 ? depuisSur[depuisSur.length - 4] : depuisSur[0] || [M.GARAGE.x, M.GARAGE.z + 14, 0];
+  VH.placer(V, p[0], p[1], p[2]); camInit = true;
+  toast('💦 Le moteur a pris l\'eau ! La dépanneuse t\'a ramené au sec. Il faudrait un snorkel pour passer ici.', 'mal');
+}
+function gagnerOr(n){ S.or += n; S.orTotal += n; }
+
+/* ---------- Fouiller une maison ---------- */
+$('bFouiller').onclick = () => { if(!procheMaison || fouille) return; fouille = { m:procheMaison, t:0 }; $('fouille').hidden = false; $('fouilleBarre').style.width = '0'; $('bFouiller').hidden = true; sonClic(); };
+function finFouille(m){
+  fouille = null; $('fouille').hidden = true;
+  // une maison déjà fouillée : on vient reprendre les objets laissés
+  if(S.fouillees.includes(m.id)){ proposerObjets(m, `<div class="gros">🎒</div><h2>${m.nom}</h2><p class="sous">Les objets que tu avais laissés sont toujours là.</p>`); return; }
+  S.fouillees.push(m.id);
+  gagnerOr(m.or);
+  S.restes[m.id] = m.butin.slice();
+  let rare = '';
+  if(m.piece && !S.pieces[m.piece]){ S.pieces[m.piece] = true; const P = M.PIECES[m.piece]; rare = `<div class="rare"><div class="gros">${P.ico}</div><b>Pièce rare : ${P.nom} !</b><p class="sous">${P.desc} Elle est montée tout de suite sur le 4x4.</p></div>`; }
+  proposerObjets(m, `<div class="gros">${m.tresor ? '💎' : '🪙'}</div><h2>${m.nom}</h2>
+    <p class="sous">Maison <b style="color:${m.n === 4 ? '#ddd' : COUL_N[m.n]}">${NOM_N[m.n]}</b> · ${S.fouillees.length} / 24 fouillées</p>
+    <b class="or">+${m.or} pièces d'or${m.tresor ? ' : un trésor !' : ''}</b>${rare}`);
+  sonTresor(!!rare || m.tresor);
+  sauver();
+}
+// les objets trouvés : on prend ce qu'on veut (le coffre a une place limitée), le reste attend dans la maison
+function proposerObjets(m, entete){
+  const dessiner = () => {
+    const L = S.restes[m.id] || [], libre = places() - S.coffre.length;
+    $('oContenu').innerHTML = `<div class="trouve">${entete}</div>
+      <h3 style="margin-top:12px">Les objets trouvés · coffre ${S.coffre.length} / ${places()}</h3>
+      ${L.length ? `<div class="objets">${L.map((k, i) => `<div class="objet"><span class="e">${OBJ[k].ico}</span><b>${OBJ[k].nom}</b><small>${OBJ[k].u ? OBJ[k].desc : `se revend 🪙 ${OBJ[k].prix}`}</small>
+        <button class="btn ${libre > 0 ? 'vert' : ''}" data-i="${i}" ${libre > 0 ? '' : 'disabled style="opacity:.5"'}>Prendre</button></div>`).join('')}</div>` : '<p class="sous">Tu as tout pris.</p>'}
+      ${L.length && libre <= 0 ? '<p class="sous" style="color:var(--rouge)">Le coffre est plein ! Fais de la place (🎒) ou reviens plus tard : les objets restent ici.</p>' : ''}
+      <div style="display:flex;gap:8px;margin-top:10px">${L.length && libre > 0 ? '<button class="btn" id="oTout" style="flex:1">Tout prendre</button>' : ''}<button class="btn gros" id="oFin" style="flex:1">Repartir</button></div>`;
+    $('oContenu').querySelectorAll('[data-i]').forEach(b => b.onclick = () => { prendre(m, +b.dataset.i); dessiner(); });
+    if($('oTout')) $('oTout').onclick = () => { while((S.restes[m.id] || []).length && S.coffre.length < places()) prendre(m, 0); dessiner(); };
+    $('oFin').onclick = () => { fermer(); majReperes(); sauver(); if(S.fouillees.length >= 24 && !S.fini) fin(); };
+  };
+  dessiner(); fenetre('fObjets');
+}
+function prendre(m, i){ const L = S.restes[m.id]; if(!L || S.coffre.length >= places()) return; S.coffre.push(L.splice(i, 1)[0]); sonClic(); majCoffre(); }
+// les repères au-dessus des maisons : plein pour une maison pas fouillée, petit s'il reste des objets
+function majReperes(){
+  for(const h of MONDE3D.maisons){ const f = S.fouillees.includes(h.m.id), r = (S.restes[h.m.id] || []).length;
+    h.rep.visible = !f || r > 0; h.rep.scale.setScalar(f ? .5 : 1); }
+}
+/* ---------- Le coffre ---------- */
+function majCoffre(){ $('hCoffre').textContent = `🎒 ${S.coffre.length}/${places()}`; }
+$('bCoffre').onclick = () => { dessinerCoffre(); fenetre('fCoffre'); };
+$('bCoffreFin').onclick = fermer;
+function dessinerCoffre(){
+  $('cPlace').textContent = `${S.coffre.length} / ${places()} places · ⛽ ${Math.round(S.essence)} / ${essenceMax()} L · 🛢️ ${Math.round(S.huile * 100)} % · 💧 ${Math.round(S.eau * 100)} % · 🔧 ${Math.round(S.etat * 100)} %${S.crevee >= 0 ? ' · 💥 roue crevée' : ''}`;
+  const cases = S.coffre.map((k, i) => `<div class="objet"><span class="e">${OBJ[k].ico}</span><b>${OBJ[k].nom}</b><small>${OBJ[k].u ? OBJ[k].desc : `se revend 🪙 ${OBJ[k].prix}`}</small>
+    ${OBJ[k].u ? `<button class="btn vert" data-u="${i}">Utiliser</button>` : ''}<button class="btn" data-j="${i}">Jeter</button></div>`);
+  for(let i = S.coffre.length; i < places(); i++) cases.push('<div class="objet vide"><span class="e">·</span><small>vide</small></div>');
+  $('cObjets').innerHTML = cases.join('');
+  $('cObjets').querySelectorAll('[data-u]').forEach(b => b.onclick = () => { if(utiliser(S.coffre[+b.dataset.u])){ S.coffre.splice(+b.dataset.u, 1); majCoffre(); sauver(); } dessinerCoffre(); });
+  $('cObjets').querySelectorAll('[data-j]').forEach(b => b.onclick = () => { if(!confirm(`Jeter : ${OBJ[S.coffre[+b.dataset.j]].nom} ?`)) return; S.coffre.splice(+b.dataset.j, 1); majCoffre(); sauver(); dessinerCoffre(); });
+}
+function utiliser(k){
+  const u = OBJ[k].u;
+  if(u === 'essence'){ const max = essenceMax(); if(S.essence > max - 2){ toast('⛽ Le réservoir est déjà plein.'); return false; } S.essence = Math.min(max, S.essence + 20); toast('⛽ +20 litres dans le réservoir.', 'or'); }
+  if(u === 'huile'){ if(S.huile > .95){ toast('🛢️ Le niveau d\'huile est bon.'); return false; } S.huile = Math.min(1, S.huile + .5); toast('🛢️ De l\'huile neuve dans le moteur.', 'or'); }
+  if(u === 'eau'){ if(S.eau > .95){ toast('💧 Le radiateur est plein.'); return false; } S.eau = Math.min(1, S.eau + .6); S.temp = Math.min(S.temp, .6); toast('💧 Le radiateur est rempli.', 'or'); }
+  if(u === 'roue'){ if(S.crevee < 0){ toast('🛞 Aucune roue n\'est crevée.'); return false; } S.crevee = -1; toast('🛞 La roue est changée !', 'or'); }
+  if(u === 'outils'){ if(S.etat > .97){ toast('🧰 Le 4x4 est en parfait état.'); return false; } S.etat = Math.min(1, S.etat + .4); toast('🧰 Le 4x4 est réparé (+40 %).', 'or'); }
+  sonClic(); return true;
+}
+function fin(){
+  S.fini = true; REC.finies++; REC.meilleurTemps = REC.meilleurTemps ? Math.min(REC.meilleurTemps, S.temps) : S.temps; sauver();
+  $('finContenu').innerHTML = `<div class="gros">🏆</div><h2>Toutes les maisons sont fouillées !</h2>
+    <p class="sous">Bravo, baroudeur ! Tu as exploré toute la région.</p>
+    <div class="stats" style="margin:12px 0"><div><b>${fmt(S.orTotal)}</b><small>pièces d'or</small></div><div><b>${duree(S.temps)}</b><small>de jeu</small></div><div><b>${S.km.toFixed(1).replace('.', ',')}</b><small>km</small></div><div><b>${S.prises.length}</b><small>pièces ramassées</small></div></div>
+    <button class="btn gros" id="bFinOk">Continuer à rouler</button><button class="btn" id="bFinMenu" style="width:100%;margin-top:8px">Menu</button>`;
+  fenetre('fFin');
+  $('bFinOk').onclick = fermer; $('bFinMenu').onclick = () => { fermer(); sauver(); accueil(); };
+}
+
+/* ---------- Le garage ---------- */
+$('bGarage').onclick = () => { garageOuvrir(); };
+function garageOuvrir(){
+  $('gOr').textContent = fmt(S.or);
+  $('gAmelio').innerHTML = Object.entries(AMELIO).map(([k, A]) => {
+    const n = S.amelio[k], prix = A.prix[n];
+    return `<div class="ligneAm"><span class="ico">${A.ico}</span><div class="txt"><b>${A.nom}</b><span class="niv">${A.prix.map((_, i) => `<i class="${i < n ? 'ok' : ''}"></i>`).join('')}</span><small>${A.desc}</small></div>
+      ${prix === undefined ? '<b style="color:var(--vert)">Au maximum</b>' : `<button class="btn ${S.or >= prix ? 'vert' : ''}" data-am="${k}" ${S.or >= prix ? '' : 'disabled style="opacity:.5"'}>🪙 ${prix}</button>`}</div>`;
+  }).join('');
+  const serv = [
+    ['plein', '⛽', `Faire le plein (${Math.round(S.essence)} / ${essenceMax()} L)`, Math.ceil((essenceMax() - S.essence) / 3), essenceMax() - S.essence > 1],
+    ['vidange', '🛢️', `Vidange (huile ${Math.round(S.huile * 100)} %)`, 8, S.huile < .95],
+    ['radiateur', '💧', `Remplir le radiateur (${Math.round(S.eau * 100)} %)`, 3, S.eau < .95],
+    ['reparer', '🔧', `Réparer le 4x4 (${Math.round(S.etat * 100)} %)`, Math.ceil((1 - S.etat) * 100 / 4), S.etat < .99],
+    ['roue', '🛞', 'Changer la roue crevée', 12, S.crevee >= 0],
+  ];
+  $('gServices').innerHTML = serv.map(([k, ico, t, prix, utile]) => `<div style="display:flex;align-items:center;gap:8px;margin:5px 0;${utile ? '' : 'opacity:.45'}"><span style="font-size:1.2rem">${ico}</span><span style="flex:1">${t}</span>
+    ${utile ? `<button class="btn ${S.or >= prix ? 'vert' : ''}" data-s="${k}" data-prix="${prix}" ${S.or >= prix ? '' : 'disabled style="opacity:.5"'}>🪙 ${prix}</button>` : '<small style="color:var(--vert)">✔</small>'}</div>`).join('');
+  $('gVente').innerHTML = S.coffre.length ? S.coffre.map((k, i) => `<div class="objet"><span class="e">${OBJ[k].ico}</span><b>${OBJ[k].nom}</b><button class="btn vert" data-v="${i}">Vendre 🪙 ${OBJ[k].prix}</button></div>`).join('') : '<p class="sous">Ton coffre est vide.</p>';
+  $('gAchat').innerHTML = Object.entries(PRIX_ACHAT).map(([k, prix]) => `<div class="objet"><span class="e">${OBJ[k].ico}</span><b>${OBJ[k].nom}</b><button class="btn ${S.or >= prix && S.coffre.length < places() ? 'vert' : ''}" data-a="${k}" ${S.or >= prix && S.coffre.length < places() ? '' : 'disabled style="opacity:.5"'}>🪙 ${prix}</button></div>`).join('');
+  $('gPeint').innerHTML = PEINTURES.map(p => { const a = S.peintures.includes(p.c); return `<button data-p="${p.c}" style="background:${p.c}" class="${S.peinture === p.c ? 'choisie' : ''}" aria-label="${p.nom}">${a ? '' : `<small>🪙${p.prix}</small>`}</button>`; }).join('');
+  $('gRares').innerHTML = Object.entries(M.PIECES).map(([k, P]) => `<div style="display:flex;gap:8px;align-items:center;margin:4px 0;${S.pieces[k] ? '' : 'opacity:.45'}"><span style="font-size:1.3rem">${P.ico}</span><span><b>${P.nom}</b>${S.pieces[k] ? ' ✔' : ' : pas encore trouvée'}<br><small style="color:var(--doux)">${P.desc}</small></span></div>`).join('');
+  fenetre('fGarage');
+}
+$('gAmelio').onclick = e => { const b = e.target.closest('[data-am]'); if(!b) return; const k = b.dataset.am, prix = AMELIO[k].prix[S.amelio[k]]; if(prix === undefined || S.or < prix) return;
+  S.or -= prix; S.amelio[k]++; if(k === 'reservoir') S.essence += 25; majCoffre(); sonTresor(false); sauver(); garageOuvrir(); };
+$('gPeint').onclick = e => { const b = e.target.closest('[data-p]'); if(!b) return; const c = b.dataset.p, P = PEINTURES.find(p => p.c === c);
+  if(!S.peintures.includes(c)){ if(S.or < P.prix){ toast(`Il te faut ${P.prix} pièces d'or pour cette peinture.`, 'mal'); return; } S.or -= P.prix; S.peintures.push(c); }
+  S.peinture = c; V.peint.color.set(c); sonClic(); sauver(); garageOuvrir(); };
+$('bGarageFin').onclick = fermer;
+$('gServices').onclick = e => { const b = e.target.closest('[data-s]'); if(!b) return; const prix = +b.dataset.prix; if(S.or < prix) return; S.or -= prix;
+  ({ plein:() => S.essence = essenceMax(), vidange:() => S.huile = 1, radiateur:() => { S.eau = 1; S.temp = Math.min(S.temp, .4); }, reparer:() => S.etat = 1, roue:() => S.crevee = -1 })[b.dataset.s]();
+  sonClic(); sauver(); garageOuvrir(); };
+$('gVente').onclick = e => { const b = e.target.closest('[data-v]'); if(!b) return; const k = S.coffre.splice(+b.dataset.v, 1)[0]; gagnerOr(OBJ[k].prix); S.vendus++; bip([[784, 0], [1047, .08]], 'square', .05, .14); majCoffre(); sauver(); garageOuvrir(); };
+$('gAchat').onclick = e => { const b = e.target.closest('[data-a]'); if(!b) return; const k = b.dataset.a, prix = PRIX_ACHAT[k]; if(S.or < prix || S.coffre.length >= places()) return; S.or -= prix; S.coffre.push(k); sonClic(); majCoffre(); sauver(); garageOuvrir(); };
+
+/* ---------- Les fenêtres ---------- */
+const FENETRES = ['fGarage', 'fCarte', 'fPause', 'fFin', 'fCoffre', 'fObjets'];
+const fenetreOuverte = () => FENETRES.some(f => !$(f).hidden);
+function fenetre(id){ FENETRES.forEach(f => $(f).hidden = f !== id); JOY.id = null; JOY.jx = JOY.jy = 0; joyRepos(); }
+function fermer(){ FENETRES.forEach(f => $(f).hidden = true); dernier = performance.now(); }
+$('bPause').onclick = () => {
+  $('pStats').innerHTML = `<div><b>${S.fouillees.length} / 24</b><small>maisons</small></div><div><b>${fmt(S.orTotal)}</b><small>or trouvé</small></div><div><b>${S.prises.length} / ${M.OR.length}</b><small>pièces semées</small></div><div><b>${duree(S.temps)}</b><small>de jeu</small></div>`;
+  $('bSon').textContent = reglages.son ? '🔊 Son : oui' : '🔇 Son : non';
+  fenetre('fPause'); sauver();
+};
+$('bReprendre').onclick = fermer;
+$('bSon').onclick = () => { reglages.son = !reglages.son; ecrire('baroudeur-reglages', reglages); $('bSon').textContent = reglages.son ? '🔊 Son : oui' : '🔇 Son : non'; if(!reglages.son) couperSon(); };
+$('bAideJeu').onclick = () => { fermer(); ecranAvantAide = 'eJeu'; arreterBoucle(); montrer('eAide'); };
+$('bQuitter').onclick = () => { fermer(); sauver(); accueil(); };
+// au retour de l'aide pendant une partie, on relance la boucle
+$('bAideRetour').onclick = () => { if(ecranAvantAide === 'eJeu'){ montrer('eJeu'); taille(); lancerBoucle(); fenetre('fPause'); } else accueil(); };
+
+/* ---------- La carte ---------- */
+let carteImg = null;
+$('bCarte').onclick = () => { dessinerGrandeCarte(); fenetre('fCarte'); };
+$('bCarteFin').onclick = fermer;
+$('bDepanneuse').onclick = () => {
+  const prix = S.or >= 20 ? 20 : 0; S.or -= prix; if(S.essence < 8) S.essence = 8;
+  VH.placer(V, M.GARAGE.x, M.GARAGE.z + 14, 0); camInit = true; depuisSur = [[V.p.x, V.p.z, 0]]; fermer();
+  toast(prix ? '🚛 La dépanneuse t\'a ramené au garage (20 pièces d\'or).' : '🚛 La dépanneuse t\'a ramené au garage. Pour cette fois, c\'est gratuit !'); sauver();
+};
+function dessinerGrandeCarte(){
+  const cv = $('grandeCarte'), g = cv.getContext('2d'), n = cv.width, k = n / M.TAILLE, P = v => (v + M.DEMI) * k;
+  g.drawImage(carteImg, 0, 0, n, n);
+  // les noms des régions
+  g.font = 'bold 26px system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(30,30,30,.45)';
+  [['MONTAGNE', 0, -440], ['FORÊT', -330, 120], ['DÉSERT', 360, 200], ['CAMPAGNE', 40, 140]].forEach(([t, x, z]) => g.fillText(t, P(x), P(z)));
+  // le garage
+  g.fillStyle = '#FFD23F'; g.strokeStyle = '#1E1E1E'; g.lineWidth = 3; g.beginPath(); g.rect(P(M.GARAGE.x) - 12, P(M.GARAGE.z - 8) - 12, 24, 24); g.fill(); g.stroke();
+  g.fillStyle = '#1E1E1E'; g.font = 'bold 16px system-ui'; g.fillText('🔧', P(M.GARAGE.x), P(M.GARAGE.z - 8) + 6);
+  // les maisons
+  for(const m of M.MAISONS){
+    const x = P(m.x), z = P(m.z), vue = S.decouvertes.includes(m.id), faite = S.fouillees.includes(m.id);
+    if(!vue){ g.fillStyle = 'rgba(30,30,30,.35)'; g.beginPath(); g.arc(x, z, 10, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 16px system-ui'; g.fillText('?', x, z + 6); continue; }
+    g.fillStyle = COUL_N[m.n]; g.strokeStyle = '#fff'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(x, z - 14); g.lineTo(x + 11, z); g.lineTo(x, z + 14); g.lineTo(x - 11, z); g.closePath(); g.fill(); g.stroke();
+    if(faite){ g.fillStyle = '#fff'; g.font = 'bold 18px system-ui'; g.fillText('✔', x, z + 7); }
+    else if(m.piece && !S.pieces[m.piece] || m.tresor){ g.font = '14px system-ui'; g.fillText(m.tresor ? '💎' : '⭐', x + 16, z - 10); }
+  }
+  // le 4x4
+  const c = VH.cap(V); g.save(); g.translate(P(V.p.x), P(V.p.z)); g.rotate(-c + Math.PI);
+  g.fillStyle = '#FF3B3B'; g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, -16); g.lineTo(11, 12); g.lineTo(0, 6); g.lineTo(-11, 12); g.closePath(); g.fill(); g.stroke(); g.restore();
+}
+// la mini-carte : tournée pour que l'avant du 4x4 soit en haut
+function dessinerMini(){
+  const cv = $('mini'), g = cv.getContext('2d'), n = cv.width, k = carteImg.width / M.TAILLE, zoom = n / 2 / 110;   // 110 m de rayon
+  g.save(); g.clearRect(0, 0, n, n); g.beginPath(); g.arc(n / 2, n / 2, n / 2, 0, 7); g.clip();
+  g.fillStyle = '#9FD8F7'; g.fillRect(0, 0, n, n);
+  const c = VH.cap(V);
+  g.translate(n / 2, n / 2); g.rotate(c + Math.PI); g.scale(zoom, zoom); g.translate(-V.p.x, -V.p.z);
+  g.drawImage(carteImg, -M.DEMI, -M.DEMI, M.TAILLE, M.TAILLE);
+  for(const m of M.MAISONS){ if(S.fouillees.includes(m.id)) continue; if(Math.abs(m.x - V.p.x) > 170 || Math.abs(m.z - V.p.z) > 170) continue;
+    g.fillStyle = COUL_N[m.n]; g.strokeStyle = '#fff'; g.lineWidth = 2 / zoom; g.beginPath(); g.arc(m.x, m.z, 7 / zoom, 0, 7); g.fill(); g.stroke(); }
+  g.fillStyle = '#FFD23F'; g.fillRect(M.GARAGE.x - 6 / zoom, M.GARAGE.z - 8 - 6 / zoom, 12 / zoom, 12 / zoom);
+  g.restore();
+  // les maisons hors de la mini-carte : une flèche sur le bord vers la plus proche pas fouillée
+  let best = null, bd = 1e9;
+  for(const m of M.MAISONS){ if(S.fouillees.includes(m.id)) continue; const d = Math.hypot(m.x - V.p.x, m.z - V.p.z); if(d < bd){ bd = d; best = m; } }
+  if(best && bd > 110){
+    const a = Math.atan2(best.x - V.p.x, best.z - V.p.z) - c, r = n / 2 - 12;
+    const x = n / 2 - Math.sin(a) * r, y = n / 2 - Math.cos(a) * r;
+    g.fillStyle = COUL_N[best.n]; g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); g.stroke();
+  }
+  // le 4x4 au centre
+  g.fillStyle = '#FF3B3B'; g.strokeStyle = '#fff'; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(n / 2, n / 2 - 13); g.lineTo(n / 2 + 9, n / 2 + 10); g.lineTo(n / 2, n / 2 + 5); g.lineTo(n / 2 - 9, n / 2 + 10); g.closePath(); g.fill(); g.stroke();
+}
+
+/* ---------- L'affichage ---------- */
+let dernierHud = '';
+function majHud(vit = 0){
+  const t = `${S.or}|${S.fouillees.length}|${Math.round(vit * 3.6)}|${Math.round(S.essence * 2)}|${Math.round(S.huile * 50)}|${Math.round(S.temp * 50)}|${Math.round(S.etat * 50)}|${S.crevee}`;
+  if(t === dernierHud) return; dernierHud = t;
+  $('hOr').lastElementChild.textContent = fmt(S.or);
+  $('hMaisons').lastElementChild.textContent = `${S.fouillees.length} / 24`;
+  $('hVit').textContent = Math.round(vit * 3.6);
+  jauge('jEss', S.essence / essenceMax(), .2, .08); jauge('jHuile', S.huile, .2, .08); jauge('jEtat', S.etat, .45, .25);
+  jauge('jEau', 1 - clamp(S.temp, 0, 1), .25, .08);
+  $('hCrev').hidden = S.crevee < 0;
+}
+function jauge(id, v, bas = .25, vide = .1){ const el = $(id); el.querySelector('i').style.width = Math.round(clamp(v, 0, 1) * 100) + '%'; el.classList.toggle('bas', v < bas && v >= vide); el.classList.toggle('vide', v < vide); }
+function toast(t, cls = ''){
+  const el = document.createElement('div'); el.className = 'toast ' + cls; el.textContent = t; $('toasts').appendChild(el);
+  while($('toasts').children.length > 3) $('toasts').firstElementChild.remove();
+  setTimeout(() => el.remove(), 4200);
+}
+
+/* ---------- Les sons ---------- */
+let AC = null, MOT = null;
+function demarrerSon(){
+  if(!reglages.son) return;
+  try{
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if(AC.state === 'suspended') AC.resume();
+    if(!MOT){
+      const o = AC.createOscillator(), o2 = AC.createOscillator(), f = AC.createBiquadFilter(), g = AC.createGain();
+      o.type = 'sawtooth'; o2.type = 'square'; f.type = 'lowpass'; f.frequency.value = 420; g.gain.value = 0;
+      o.connect(f); o2.connect(f); f.connect(g).connect(AC.destination); o.start(); o2.start();
+      MOT = { o, o2, g, f };
+    }
+  }catch(e){}
+}
+function sonMoteur(dt){
+  if(!MOT || !AC) return;
+  const r = V.regime || 0, ok = reglages.son && enMarche && !pause && !fenetreOuverte() && !$('eJeu').hidden;
+  const t = AC.currentTime;
+  MOT.o.frequency.setTargetAtTime(38 + r * 70 + V.patine * 20, t, .08); MOT.o2.frequency.setTargetAtTime(19 + r * 35, t, .08);
+  MOT.g.gain.setTargetAtTime(ok ? .035 + r * .035 : 0, t, .1);
+}
+function couperSon(){ if(MOT && AC) MOT.g.gain.setTargetAtTime(0, AC.currentTime, .05); }
+function bip(notes, type = 'triangle', vol = .1, dur = .18){
+  if(!reglages.son || !AC) return;
+  notes.forEach(([f, d], i) => { const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime + d;
+    o.type = type; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .015); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + dur + .05); });
+}
+const sonPiece = () => bip([[988, 0], [1319, .07]], 'square', .05, .12);
+const sonClic = () => bip([[660, 0]], 'triangle', .06, .08);
+const sonTresor = grand => bip(grand ? [[523, 0], [659, .1], [784, .2], [1047, .3], [1319, .42]] : [[523, 0], [659, .09], [784, .18]], 'triangle', .12, .3);
+function sonChoc(f){
+  if(!reglages.son || !AC) return;
+  const n = AC.sampleRate * .25, b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0);
+  for(let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+  const s = AC.createBufferSource(), g = AC.createGain(), fl = AC.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = 700;
+  s.buffer = b; g.gain.value = .25 * f; s.connect(fl).connect(g).connect(AC.destination); s.start();
+}
+
+document.addEventListener('visibilitychange', () => { if(document.hidden){ sauver(); couperSon(); if(!$('eJeu').hidden && !fenetreOuverte()) $('bPause').click(); } });
+addEventListener('pagehide', sauver);
+
+window.Baroudeur = { get S(){ return S; }, get V(){ return V; }, get CMD(){ return CMD; }, M, VH, demarrer, accueil, reglagesV, finFouille, sauver,
+  get procheMaison(){ return procheMaison; }, get camera(){ return camera; }, set joy(v){ JOY.jx = v[0]; JOY.jy = v[1]; } };
+joyRepos();
+accueil();
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
+})();
+</script>
+<script src="sauvegarde.js?v=131"></script>
+<script src="compte.js?v=131"></script>
+<script src="classement-jeu.js?v=131"></script>
+</body>
+</html>
