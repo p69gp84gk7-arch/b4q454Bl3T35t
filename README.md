@@ -538,7 +538,8 @@ Une fois ouvert une première fois, il fonctionne aussi sans réseau : toutes le
 2. Y ajouter le lien de retour `<a class="home" href="../index.html">…</a>` et les balises du manifeste, comme dans les deux carnets existants.
 3. Ajouter sa carte dans `index.html`.
 4. Ajouter le fichier à la liste `SHELL` de `sw.js`.
-5. À chaque mise à jour, lancer `sh outils/version.sh` : il change `VERSION` dans `sw.js` et le numéro `?v=` des scripts dans toutes les pages.
+5. Ajouter une ligne en haut de `jeux/nouveautes.js` (nouveau jeu ou mise à jour, avec le numéro de la nouvelle version et le lien du jeu) : à l'ouverture de l'accueil, la fenêtre « Quoi de neuf ? » montre ce qui est plus récent que la dernière visite sur l'appareil (`altitude-nouveautes-vu`), avec un bouton « Jouer ▶ » vers le jeu, ou Fermer. Elle attend que la fenêtre de connexion soit fermée ; la première fois, elle montre les dernières nouveautés. Le bouton « 🎉 Quoi de neuf ? » de l'accueil la rouvre (avec un point rouge s'il reste des nouveautés pas vues).
+6. À chaque mise à jour, lancer `sh outils/version.sh` : il change `VERSION` dans `sw.js` et le numéro `?v=` des scripts dans toutes les pages.
    Sans cela, un téléphone peut garder d'anciens scripts avec une nouvelle page. C'est ce qui bloquait le comptage des tours de Draw Race : l'ancien `piste.js` était utilisé avec la nouvelle page.
    Les pages et les scripts sont pris sur le réseau d'abord (le cache ne sert que hors ligne). Seules les images passent d'abord par le cache.
    Quand une nouvelle version s'installe, la page se recharge une fois d'elle-même.
