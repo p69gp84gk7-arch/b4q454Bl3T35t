@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:136, type:'maj', jeu:'Rock Altitude', ico:'🎸', lien:'jeux/rock.html',
+    txt:'De vrais instruments ! Les morceaux sont joués avec des guitares, une basse, une batterie, un piano, un orgue et un violon enregistrés.' },
   { v:135, type:'maj', jeu:'Rock Altitude', ico:'🎸', lien:'jeux/rock.html',
     txt:'Les morceaux changent de nom : Nuit d\'été, Blues de minuit, La gigue du samedi soir, Funky groove, Premier riff, Moteur en feu, Plein gaz et Orage d\'acier.' },
   { v:134, type:'nouveau', jeu:'Rock Altitude', ico:'🎸', lien:'jeux/rock.html',

@@ -7,11 +7,12 @@ window.ROCK_SON = (() => {
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 
   function courbe(k){ const n = 2048, c = new Float32Array(n); for(let i = 0; i < n; i++){ const x = i / (n - 1) * 2 - 1; c[i] = Math.tanh(k * x) / Math.tanh(k); } return c; }
-  function init(){
-    if(AC) return AC;
-    AC = new (window.AudioContext || window.webkitAudioContext)({ latencyHint:'interactive' });
+  function init(ctx){
+    if(AC && !ctx) return AC;
+    AC = ctx || new (window.AudioContext || window.webkitAudioContext)({ latencyHint:'interactive' });
+    for(const k in ECH) delete ECH[k];
     const comp = AC.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = .004; comp.release.value = .2;
-    maitre = AC.createGain(); maitre.gain.value = .85; maitre.connect(comp).connect(AC.destination);
+    maitre = AC.createGain(); maitre.gain.value = .6; maitre.connect(comp).connect(AC.destination);
     bruit = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const d = bruit.getChannelData(0); for(let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     const filtre = (type, f, q = .7) => { const b = AC.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; };
     const gain = v => { const g = AC.createGain(); g.gain.value = v; return g; };
@@ -31,8 +32,39 @@ window.ROCK_SON = (() => {
     B.orgue = chaine(gain(1), filtre('lowpass', 2600), gain(.18), maitre);
     B.sfx = chaine(gain(1), maitre);
     B.mp3 = chaine(gain(1), maitre);
+    // les vrais instruments (enregistrés) : pas de distorsion ajoutée, ils sont déjà joués comme il faut
+    B.eBatt = chaine(gain(.33), maitre);
+    B.eBasse = chaine(gain(1), filtre('lowpass', 2500), gain(2.3), maitre);
+    B.eRyt = chaine(gain(1), filtre('highpass', 90), filtre('lowpass', 6500), gain(3.4), maitre);
+    const eSolo = gain(4); B.eSolo = chaine(gain(1), filtre('highpass', 120), eSolo); eSolo.connect(maitre); eSolo.connect(echo);
+    B.eClav = chaine(gain(1), gain(3), maitre);
     return AC;
   }
+
+  /* ---------- Les vrais instruments : des notes enregistrées (une toutes les trois demi-tons), jouées plus ou moins vite pour les autres ---------- */
+  const ECH = {};                       // ECH[nom] = [{ m, buf }] ou, pour la batterie, { grosse:buf, … }
+  async function charger(noms, base){
+    await Promise.all(noms.filter(n => n && !ECH[n]).map(async nom => {
+      const r = await fetch(base + nom + '.json'); if(!r.ok) throw new Error(nom);
+      const j = await r.json(), dec = async b64 => { const bin = atob(b64), u = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return AC.decodeAudioData(u.buffer); };
+      if(nom === 'batterie'){ const o = {}; for(const [k, v] of Object.entries(j)) o[k] = await dec(v); ECH[nom] = o; }
+      else { const L = []; for(const [m, v] of Object.entries(j)) L.push({ m:+m, buf:await dec(v) }); L.sort((a, b) => a.m - b.m); ECH[nom] = L; }
+    }));
+  }
+  const pret = nom => !!ECH[nom];
+  // joue un son enregistré : t (début), d (durée tenue), vol, dest ; renvoie { src, g }
+  function lecture(buf, t, rate, d, vol, dest, rel = .08, att = .003){
+    const s = AC.createBufferSource(), g = AC.createGain(); s.buffer = buf; s.playbackRate.value = rate; s.connect(g); g.connect(dest);
+    const fin = t + Math.max(.03, d);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + att); g.gain.setValueAtTime(vol, fin); g.gain.setTargetAtTime(0, fin, rel);
+    s.start(t); s.stop(fin + rel * 6 + .05); return { s, g };
+  }
+  function note(nom, m, t, d, vol, dest, rel, att){
+    const L = ECH[nom]; let best = L[0];
+    for(const x of L) if(Math.abs(x.m - m) < Math.abs(best.m - m)) best = x;
+    return lecture(best.buf, t, Math.pow(2, (m - best.m) / 12), d, vol, dest, rel, att);
+  }
+  const INSTR = { sature:'disto', crunch:'crunch', clair:'clair', violon:'violon' };
   const env = (g, t, a, v, d, s, fin, r = .06) => {
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + a);
     g.gain.setTargetAtTime(v * s, t + a, d); g.gain.setValueAtTime(v * s, Math.max(t + a, fin)); g.gain.setTargetAtTime(0, Math.max(t + a, fin), r);
@@ -41,22 +73,27 @@ window.ROCK_SON = (() => {
   function bruitSrc(t, dur, dest){ const s = AC.createBufferSource(); s.buffer = bruit; s.connect(dest); s.start(t, Math.random() * .5, dur + .05); return s; }
 
   /* ---------- La batterie ---------- */
+  const batt = (k, t, v, d = 2) => { const b = ECH.batterie; if(!b) return false; lecture(b[k], t, 1, d, v, B.eBatt, .05); return true; };
   function grosse(t, v = 1){
+    if(batt('grosse', t, 1.1 * v)) return;
     const g = AC.createGain(); g.connect(B.batt); env(g, t, .002, 1.1 * v, .09, 0, t + .3, .05);
     const o = AC.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + .12); o.connect(g); o.start(t); o.stop(t + .45);
     const c = AC.createGain(); c.connect(B.batt); env(c, t, .001, .25 * v, .01, 0, t + .02, .01); bruitSrc(t, .03, c);
   }
   function caisse(t, v = 1){
+    if(batt('caisse', t, .85 * v)) return;
     const g = AC.createGain(), f = AC.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1200; f.connect(g); g.connect(B.batt);
     env(g, t, .001, .7 * v, .06, 0, t + .2, .06); bruitSrc(t, .3, f);
     const c = AC.createGain(); c.connect(B.batt); env(c, t, .001, .5 * v, .04, 0, t + .1, .04);
     const o = AC.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(210, t); o.frequency.exponentialRampToValueAtTime(140, t + .08); o.connect(c); o.start(t); o.stop(t + .3);
   }
   function charley(t, ouvert = false, v = 1){
+    if(batt(ouvert ? 'charleyO' : 'charley', t, (ouvert ? .35 : .45) * v, ouvert ? .5 : .2)) return;
     const g = AC.createGain(), f = AC.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7500; f.connect(g); g.connect(B.batt);
     env(g, t, .001, .28 * v, ouvert ? .12 : .025, 0, t + (ouvert ? .35 : .06), .03); bruitSrc(t, ouvert ? .5 : .1, f);
   }
   function cymbale(t, v = 1){
+    if(batt('cymbale', t, .55 * v, 2.5)) return;
     const g = AC.createGain(), f = AC.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 5000; f.connect(g); g.connect(B.batt);
     env(g, t, .002, .35 * v, .5, 0, t + 1.4, .4); bruitSrc(t, 1.8, f);
   }
@@ -65,12 +102,14 @@ window.ROCK_SON = (() => {
     env(g, t, .002, .35 * v, .05, 0, t + .12, .04); bruitSrc(t, .2, f);
   }
   function tom(t, m, v = 1){
+    if(batt(m >= 48 ? 'tomH' : m >= 42 ? 'tomM' : 'tomB', t, .8 * v)) return;
     const g = AC.createGain(); g.connect(B.batt); env(g, t, .002, .7 * v, .12, 0, t + .3, .08);
     const o = AC.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(mtof(m) * 1.6, t); o.frequency.exponentialRampToValueAtTime(mtof(m), t + .1); o.connect(g); o.start(t); o.stop(t + .5);
   }
 
   /* ---------- La basse ---------- */
   function basse(t, m, dur, v = 1){
+    if(pret('basse')){ note('basse', m, t, dur * .92, .85 * v, B.eBasse, .05); return; }
     const g = AC.createGain(), f = AC.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 3;
     f.frequency.setValueAtTime(1400, t); f.frequency.setTargetAtTime(380, t, .08); f.connect(g); g.connect(B.basse);
     const fin = t + dur * .92; env(g, t, .004, .55 * v, .25, .7, fin, .04);
@@ -80,6 +119,14 @@ window.ROCK_SON = (() => {
   /* ---------- Les guitares et les claviers ---------- */
   // son : 'sature', 'crunch', 'clair' ; etouffe : jeu étouffé de la paume (court et sourd)
   function accord(t, notes, dur, son = 'sature', etouffe = false, v = 1){
+    const nom = INSTR[son];
+    if(pret(nom)){
+      // jeu étouffé : court et plus sourd
+      let dest = B.eRyt; if(etouffe){ const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = son === 'clair' ? 1800 : 1300; f.connect(B.eRyt); dest = f; }
+      const vol = (son === 'clair' ? .5 : .38) * v / Math.sqrt(notes.length) * 1.5 * (etouffe ? 1.5 : 1), d = etouffe ? Math.min(dur, .11) : dur * .95;
+      notes.forEach((m, i) => note(nom, m, t + i * (son === 'clair' ? .011 : .004), d, vol, dest, etouffe ? .03 : .07));
+      return;
+    }
     const bus = son === 'clair' ? B.rythClair : B.rythSat, g = AC.createGain(), f = AC.createBiquadFilter(); f.type = 'lowpass';
     f.frequency.value = etouffe ? (son === 'clair' ? 1100 : 700) : son === 'crunch' ? 2600 : 4200; f.connect(g); g.connect(bus);
     const fin = t + (etouffe ? Math.min(dur, .12) : dur * .95);
@@ -88,6 +135,7 @@ window.ROCK_SON = (() => {
     notes.forEach((m, i) => { const tt = t + i * (son === 'clair' ? .012 : .004); osc(son === 'clair' ? 'triangle' : 'sawtooth', mtof(m), tt, fin, f, (i % 2 ? 7 : -7)); if(son !== 'clair') osc('sawtooth', mtof(m), tt, fin, f, i % 2 ? -12 : 12); else osc('sawtooth', mtof(m), tt, fin, f, 4).frequency.value = mtof(m); });
   }
   function piano(t, notes, dur, v = 1){
+    if(pret('piano')){ notes.forEach((m, i) => note('piano', m, t + i * .006, dur, .32 * v, B.eClav, .3)); return; }
     notes.forEach((m, i) => {
       const g = AC.createGain(); g.connect(B.piano); const fin = t + dur;
       env(g, t + i * .006, .003, .32 * v, .5, .15, fin, .25);
@@ -95,11 +143,20 @@ window.ROCK_SON = (() => {
     });
   }
   function orgue(t, notes, dur, v = 1){
+    if(pret('orgue')){ notes.forEach(m => note('orgue', m, t, dur * .95, .2 * v, B.eClav, .08, .02)); return; }
     const g = AC.createGain(); g.connect(B.orgue); const fin = t + dur * .95; env(g, t, .01, .3 * v, .5, 1, fin, .06);
     notes.forEach(m => { osc('sine', mtof(m), t, fin, g); osc('sine', mtof(m) * 2, t, fin, g); osc('sine', mtof(m) * 3, t, fin, g, 4); });
   }
   // la guitare solo (ou le violon) : la note a son propre volume (rendu), pour pouvoir la couper si elle est ratée
   function solo(t, m, dur, son = 'sature', v = 1){
+    const nom = INSTR[son];
+    if(pret(nom)){
+      const coupe = AC.createGain(); coupe.connect(B.eSolo);
+      const { s } = note(nom, m, t, Math.max(.08, dur * .96), (son === 'violon' ? .7 : son === 'clair' ? .75 : .6) * v, coupe, .07, son === 'violon' ? .04 : .003);
+      // un vibrato sur les notes longues
+      if(dur > .35){ const lfo = AC.createOscillator(), lg = AC.createGain(); lfo.frequency.value = son === 'violon' ? 5.5 : 5.8; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(son === 'violon' ? 16 : 24, t + Math.min(.5, dur * .6)); lfo.connect(lg).connect(s.detune); lfo.start(t); lfo.stop(t + dur + .3); }
+      return coupe;
+    }
     const bus = son === 'clair' ? B.leadClair : son === 'violon' ? B.violon : B.leadSat;
     const coupe = AC.createGain(); coupe.connect(bus);
     const g = AC.createGain(); g.connect(coupe);
@@ -134,5 +191,5 @@ window.ROCK_SON = (() => {
   }
   function volume(v){ if(maitre) maitre.gain.value = v; }
 
-  return { init, get AC(){ return AC; }, get bus(){ return B; }, mtof, grosse, caisse, charley, cymbale, tambourin, tom, basse, accord, piano, orgue, solo, couper, fausse, bip, huees, applaudir, volume };
+  return { init, charger, pret, get AC(){ return AC; }, get bus(){ return B; }, mtof, grosse, caisse, charley, cymbale, tambourin, tom, basse, accord, piano, orgue, solo, couper, fausse, bip, huees, applaudir, volume };
 })();

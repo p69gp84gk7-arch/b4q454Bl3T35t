@@ -1,7 +1,7 @@
 /* Altitude Arcade : fonctionnement hors ligne.
    Changer VERSION à chaque mise à jour des fichiers pour forcer le rafraîchissement,
    ainsi que le numéro ?v= des scripts dans les pages (outils/version.sh fait les deux). */
-const VERSION = 'desdes-v135';
+const VERSION = 'desdes-v136';
 const FONTS = 'desdes-fonts';
 const SHELL = [
   './',
@@ -39,6 +39,14 @@ const SHELL = [
   'jeux/rock/morceaux.js',
   'jeux/rock/partition.js',
   'jeux/rock/manche.js',
+  'jeux/rock/sons/batterie.json',
+  'jeux/rock/sons/basse.json',
+  'jeux/rock/sons/disto.json',
+  'jeux/rock/sons/crunch.json',
+  'jeux/rock/sons/clair.json',
+  'jeux/rock/sons/violon.json',
+  'jeux/rock/sons/piano.json',
+  'jeux/rock/sons/orgue.json',
   'jeux/nuancier.html',
   'jeux/nuancier/images.js',
   'jeux/paddock.html',
