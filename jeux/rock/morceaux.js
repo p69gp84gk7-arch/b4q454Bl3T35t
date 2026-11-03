@@ -112,7 +112,7 @@ window.ROCK_MORCEAUX = (() => {
         for(let p = 0; p < 16; p++){
           const b = bm + p / 4;
           if(s.fin && k === n - 1){ if(p === 0){ ajout(b, 'grosse'); ajout(b, 'cymbale'); } continue; }
-          if(batt.K[p] === 'x') ajout(b, 'grosse');
+          if(batt.K[p] === 'x') ajout(b, 'grosse', { v:m.batt === 'metal' && p % 4 ? .55 : 1 });
           const sn = derniere && p >= 4 ? ROULEMENT[p] : batt.S[p];
           if(sn === 'x') ajout(b, 'caisse'); else if(sn === 'g') ajout(b, 'caisse', { v:.35 });
           if(batt.H && batt.H[p] !== '.' && !(derniere && p >= 12)) ajout(b, 'charley', { ouvert:batt.H[p] === 'o', v:p % 4 ? .7 : 1 });
