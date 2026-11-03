@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:135, type:'maj', jeu:'Rock Altitude', ico:'🎸', lien:'jeux/rock.html',
+    txt:'Les morceaux changent de nom : Nuit d\'été, Blues de minuit, La gigue du samedi soir, Funky groove, Premier riff, Moteur en feu, Plein gaz et Orage d\'acier.' },
   { v:134, type:'nouveau', jeu:'Rock Altitude', ico:'🎸', lien:'jeux/rock.html',
     txt:'Nouveau jeu dans l\'esprit des jeux de guitare : les notes arrivent sur un manche en 3D, joue-les au bon moment sur 3 ou 4 boutons. 8 morceaux composés pour le jeu, ou tes propres MP3. Notes longues, accords, multiplicateur, mode Star et un public à garder avec toi !' },
   { v:132, type:'maj', jeu:'Dameuse de nuit', ico:'🚜', lien:'jeux/dameuse.html',

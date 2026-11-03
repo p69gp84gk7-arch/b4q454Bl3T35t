@@ -6,7 +6,7 @@
 window.ROCK_MORCEAUX = (() => {
   'use strict';
   const M = [
-    { id:'ciel', n:'Ciel de neige', style:'Pop rock', niveau:1, bpm:108, cle:48, oct:24, son:{ solo:'crunch', ryt:'crunch', clav:'piano' }, batt:'pop', ryt:'pop', basse:'pop',
+    { id:'ciel', n:'Nuit d\'été', style:'Pop rock', niveau:1, bpm:108, cle:48, oct:24, son:{ solo:'crunch', ryt:'crunch', clav:'piano' }, batt:'pop', ryt:'pop', basse:'pop',
       motifs:{
         A:'4:4 4:2 2:2 0:4 2:4  4:4 7:4 4:8', B:'9:4 7:2 4:2 7:4 4:4  2:4 0:2 2:2 -:8',
         C:'12:6 11:2 9:4 7:4  9:4 7:4 5:4 4:4', D:'4:4 5:4 7:4 9:4  7:16', F:'12:8 11:8  12:16' },
@@ -14,7 +14,7 @@ window.ROCK_MORCEAUX = (() => {
         { acc:'C G Am F', solo:null, clav:true }, { acc:'C G Am F C G Am F', solo:'A B A B' }, { acc:'F G C Am F G C C', solo:'C D C D', etoile:true },
         { acc:'C G Am F C G Am F', solo:'A B A B' }, { acc:'F G C Am F G C C', solo:'C D C F', etoile:true }, { acc:'C C', solo:null, fin:true } ] },
 
-    { id:'blues', n:'Blues du refuge', style:'Blues', niveau:2, bpm:82, cle:45, oct:24, swing:1, son:{ solo:'crunch', ryt:'crunch', clav:'orgue' }, batt:'shuffle', ryt:'shuffle', basse:'marche',
+    { id:'blues', n:'Blues de minuit', style:'Blues', niveau:2, bpm:82, cle:45, oct:24, swing:1, son:{ solo:'crunch', ryt:'crunch', clav:'orgue' }, batt:'shuffle', ryt:'shuffle', basse:'marche',
       motifs:{
         A:'12:4 10:2 12:2 -:4 10:2 7:2  10:2 7:2 5:2 3:2 0:8', B:'15:2 12:2 10:4 12:4 -:4  10:2 12:2 10:2 7:2 6:2 5:2 3:4', C:'12:12 10:4  7:16',
         D:'12:2 15:2 12:2 10:2 12:2 10:2 7:2 10:2  7:2 5:2 3:2 5:2 3:2 0:2 3:4', E:'0:2 3:2 5:2 6:2 7:4 10:4  12:2 10:2 12:2 15:2 17:8' },
@@ -23,7 +23,7 @@ window.ROCK_MORCEAUX = (() => {
         { acc:'A7 A7 A7 A7 D7 D7 A7 A7 E7 D7 A7 E7', solo:'D E D C E A', etoile:true }, { acc:'A7 A7 A7 A7 D7 D7 A7 A7 E7 D7 A7 E7', solo:'A B C A E C', clav:true, etoile:true },
         { acc:'A7 A7', solo:null, fin:true } ] },
 
-    { id:'bourree', n:'La bourrée du berger', style:'Folk de montagne', niveau:2, bpm:126, cle:50, oct:12, son:{ solo:'violon', ryt:'clair', clav:'orgue' }, batt:'folk', ryt:'folk', basse:'folk',
+    { id:'bourree', n:'La gigue du samedi soir', style:'Folk', niveau:2, bpm:126, cle:50, oct:12, son:{ solo:'violon', ryt:'clair', clav:'orgue' }, batt:'folk', ryt:'folk', basse:'folk',
       motifs:{
         A:'0:2 2:2 4:2 5:2 7:4 4:4  5:2 4:2 2:2 0:2 2:8', B:'7:2 9:2 7:2 5:2 4:4 7:4  9:4 11:2 12:2 7:8',
         C:'12:4 11:2 9:2 7:4 9:4  7:2 5:2 4:2 2:2 0:8', D:'0:1 2:1 4:1 5:1 7:2 5:2 4:2 2:2 0:4  7:1 9:1 11:1 12:1 11:2 9:2 7:4 4:4', F:'0:16 -:16' },
@@ -31,7 +31,7 @@ window.ROCK_MORCEAUX = (() => {
         { acc:'D D', solo:null }, { acc:'D G A D D G A D', solo:'A B A B' }, { acc:'G D A D G D A D', solo:'C D C D', etoile:true, clav:true },
         { acc:'D G A D D G A D', solo:'A B A B' }, { acc:'G D A D G D A D', solo:'C D C D', etoile:true, clav:true }, { acc:'D D', solo:'F', fin:true } ] },
 
-    { id:'funk', n:'Funk des marmottes', style:'Funk', niveau:3, bpm:102, cle:40, oct:24, son:{ solo:'clair', ryt:'clair', clav:'orgue' }, batt:'funk', ryt:'funk', basse:'funk',
+    { id:'funk', n:'Funky groove', style:'Funk', niveau:3, bpm:102, cle:40, oct:24, son:{ solo:'clair', ryt:'clair', clav:'orgue' }, batt:'funk', ryt:'funk', basse:'funk',
       motifs:{
         A:'12:1 -:1 12:1 10:1 12:2 -:2 7:1 -:1 10:2 12:2 -:2  15:1 -:1 15:2 12:1 10:1 12:2 -:4 7:2 10:2', B:'7:2 -:2 7:2 10:2 -:2 12:2 10:2 7:2  5:4 7:2 -:2 3:2 5:2 0:4',
         C:'19:4 17:2 15:2 17:4 15:2 12:2  15:8 12:8', F:'12:2 -:2 10:2 12:2 -:8  0:16' },
@@ -48,7 +48,7 @@ window.ROCK_MORCEAUX = (() => {
         { acc:'E5 E5', solo:null, ryt:'tenu' }, { acc:'E5 E5 D5 A5 E5 E5 D5 A5', solo:'A A A A' }, { acc:'G5 A5 G5 A5 G5 A5 B5 B5', solo:'B B B C', etoile:true },
         { acc:'E5 E5 D5 A5 E5 E5 D5 A5', solo:'A A A A' }, { acc:'G5 A5 G5 A5 G5 A5 B5 B5', solo:'B C B C', etoile:true }, { acc:'E5 E5', solo:'F', fin:true, ryt:'tenu' } ] },
 
-    { id:'tourmalet', n:'Col du Tourmalet', style:'Hard rock', niveau:4, bpm:122, cle:45, oct:24, son:{ solo:'sature', ryt:'sature' }, batt:'rock', ryt:'croches', basse:'croches',
+    { id:'tourmalet', n:'Moteur en feu', style:'Hard rock', niveau:4, bpm:122, cle:45, oct:24, son:{ solo:'sature', ryt:'sature' }, batt:'rock', ryt:'croches', basse:'croches',
       motifs:{
         A:'0:2 0:2 12:2 0:2 10:2 0:2 7:2 5:2  0:2 0:2 3:2 5:2 7:4 5:4', B:'12:4 12:4 15:4 12:4  10:6 7:2 10:8', C:'7:4 8:4 10:4 12:4  15:4 12:4 10:8',
         D:'12:1 15:1 17:1 15:1 12:1 15:1 17:1 15:1 12:2 10:2 12:4  17:2 15:2 12:2 10:2 12:8', F:'0:16  0:16' },
@@ -57,7 +57,7 @@ window.ROCK_MORCEAUX = (() => {
         { acc:'A5 G5 F5 G5 A5 G5 F5 G5', solo:'D D D D', etoile:true }, { acc:'A5 A5 C5 D5 A5 A5 C5 D5', solo:'A A A A' }, { acc:'F5 G5 A5 A5 F5 G5 A5 A5', solo:'B C B C', etoile:true },
         { acc:'A5 A5', solo:'F', fin:true, ryt:'tenu' } ] },
 
-    { id:'telesiege', n:'Télésiège express', style:'Punk', niveau:4, bpm:168, cle:38, oct:24, son:{ solo:'sature', ryt:'sature' }, batt:'punk', ryt:'punk', basse:'croches',
+    { id:'telesiege', n:'Plein gaz', style:'Punk', niveau:4, bpm:168, cle:38, oct:24, son:{ solo:'sature', ryt:'sature' }, batt:'punk', ryt:'punk', basse:'croches',
       motifs:{
         A:'12:4 12:2 14:2 16:4 14:4  12:4 9:4 7:8', B:'16:4 16:4 19:4 16:4  14:4 12:4 14:8', C:'0:2 0:2 7:2 0:2 5:2 0:2 7:2 9:2  7:2 5:2 7:2 9:2 12:8', F:'12:8 7:8  0:16' },
       sections:[
@@ -65,7 +65,7 @@ window.ROCK_MORCEAUX = (() => {
         { acc:'D5 D5 G5 G5 D5 D5 G5 G5', solo:'C C C C' }, { acc:'D5 G5 A5 D5 D5 G5 A5 D5', solo:'A A A A' }, { acc:'B5 G5 D5 A5 B5 G5 D5 A5 B5 G5 D5 A5', solo:'B B B B B B', etoile:true },
         { acc:'D5 D5', solo:'F', fin:true } ] },
 
-    { id:'avalanche', n:'Avalanche', style:'Métal', niveau:5, bpm:150, cle:40, oct:12, son:{ solo:'sature', ryt:'sature' }, batt:'metal', ryt:'galop', basse:'galop',
+    { id:'avalanche', n:'Orage d\'acier', style:'Métal', niveau:5, bpm:150, cle:40, oct:12, son:{ solo:'sature', ryt:'sature' }, batt:'metal', ryt:'galop', basse:'galop',
       motifs:{
         A:'0:1 0:1 0:2 0:1 0:1 0:2 1:2 0:2 3:2 2:2  0:1 0:1 0:2 0:1 0:1 0:2 5:2 3:2 1:4', B:'12:4 15:4 17:4 15:4  19:4 17:4 15:8',
         C:'12:1 15:1 17:1 19:1 17:1 15:1 12:1 15:1 17:1 19:1 22:1 19:1 17:1 15:1 17:2  24:4 22:2 19:2 17:4 15:4', D:'0:8 1:8  0:16' },
