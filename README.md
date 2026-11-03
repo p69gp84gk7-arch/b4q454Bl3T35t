@@ -16,14 +16,13 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Draw Race** : course dont on dessine la trajectoire ; Formule (monoplaces, 20 circuits inspirés de la F1) ou Rallye (voitures de rallye, 12 circuits de terre, neige, gravier et goudron), pneus, météo et arrêts au stand ; modes Arcade et Championnat | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 | **Nivoculteur** : sur un domaine tiré au sort, construire le réseau de neige de culture et produire la nuit selon le froid et le vent, en 2D vu de dessus | `jeux/nivoculteur/index.html` | 1 |
 | **Fusée Rythme** : piloter une fusée à gauche et à droite au rythme d'un morceau (fourni ou pris dans vos fichiers) et éviter les points ; la partie dure le temps de la musique | `jeux/fusee.html` | 1 |
-| **Dameuse de nuit** : damer une piste vue du dessus avant l'ouverture, avec la lame, la fraise et le treuil ; 6 dameuses inspirées de vraies machines, 9 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
+| **Dameuse de nuit** : damer une piste avant l'ouverture, en 3D derrière la dameuse (caméra réglable) ou vue du dessus, avec la lame, la fraise et le treuil ; 6 dameuses inspirées de vraies machines, 9 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
 | **Freeride** : ski ou snowboard hors-piste vu du dessus ; fuir une avalanche sans fin, 7 descentes à étoiles, 4 snowparks (kickers, boxes, rails), 3 slaloms chronométrés et un défi du jour | `jeux/freeride.html` | 1 |
 | **Tour de contrôle** : guider les avions du doigt jusqu'à la piste de leur couleur sans qu'ils se touchent ; 11 sortes d'appareils (avions de chasse, de ligne, hélicoptères militaires…), 8 aérodromes, 4 niveaux | `jeux/tour.html` | 1 |
 | **Tir au panier** : viser au doigt (on place le sommet de la courbe) et marquer un maximum de paniers en 1 minute 30 ; bonus (feu, balle ×3, panier large) en allumant la planche, 10 balles inventées à débloquer, 7 thèmes, mode gaucher | `jeux/panier.html` | 1 |
 | **Tables au sommet** : apprendre les tables de multiplication de 1 à 10 (niveau CM1) en grimpant la montagne : leçon avec dessins et astuces, table dans l'ordre puis dans le désordre, entraînement, défi chrono, tableau des progrès | `jeux/tables.html` | 1 |
 | **Les aventures de Pépin** : jeu de plateforme en pixels dans l'esprit des grands classiques 2D (personnages, dessins et musiques originaux) ; Pépin le plombier-montagnard traverse 4 mondes et 16 niveaux (prairie, grotte, cimes, lac, neiges, volcan, châteaux du Yéti) ; blocs mystère, cèpes, piments de feu, étoile, tuyaux secrets ; manette à l'écran | `jeux/pepin.html` | 1 |
 | **Le Grand Quiz** : culture générale à trois niveaux (Junior, Ado, Adulte), près de 800 questions sur 12 thèmes ; l'échelle des 15 questions jusqu'au million (une erreur n'arrête pas la partie, joker 50/50), la série rapide contre la montre, et le petit bac seul ou à plusieurs | `jeux/quiz.html` | 1 à 6 |
-| **Baroudeur** : un vieux 4x4 en 3D (style dessin animé, contours noirs) dans une région d'1 km² à explorer librement : campagne, forêt derrière la rivière, montagne enneigée avec son lac, désert avec canyon et mesas ; essence, huile, radiateur, crevaisons et chocs à surveiller ; 24 maisons abandonnées à fouiller (or, jerricans, outils, objets anciens à revendre, 4 pièces rares qui ouvrent de nouveaux endroits), 4 vieilles stations-service, un garage pour réparer, vendre et améliorer ; joystick sous le pouce | `jeux/baroudeur.html` |
 | **Nuancier** : la couleur a disparu d'une partie de l'image (Mario, Pikachu, Coca-Cola, Spotify, le taxi de New York…) : il faut la retrouver de mémoire avec un spectre de couleurs et la luminosité ; 119 images, 10 couleurs par partie notées sur 10 | `jeux/nuancier.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
@@ -355,7 +354,9 @@ Jeu d'adresse musical, inspiré de Rhythm Rocket (iPhone, 2012) : on choisit un 
 
 ## Dameuse de nuit
 
-Jeu d'adresse sur le métier de dameur : la station ferme, il faut damer une piste avant l'ouverture. Vue du dessus, de nuit (seuls les phares, les projecteurs arrière et quelques lumières éclairent). Tout est dans `jeux/dameuse.html` (canvas 2D).
+Jeu d'adresse sur le métier de dameur : la station ferme, il faut damer une piste avant l'ouverture. De nuit (seuls les phares, les projecteurs arrière et quelques lumières éclairent), en 3D derrière la dameuse ou vue du dessus. Le jeu est dans `jeux/dameuse.html` (canvas 2D), la vue 3D dans `jeux/dameuse/vue3d.js` (avec Three.js r149, licence MIT, copié dans `jeux/dameuse/three.min.js` pour marcher hors ligne).
+
+- **La vue 3D** (par défaut ; le bouton 🗺️ 2D / 🎥 3D change de vue, gardée dans `dameuse-vue`) : la même grille que la vue du dessus, en relief. L'altitude vient de la pente de chaque rangée (les murs se voient), la neige ajoute son épaisseur (bosses, creux, tas de neige de culture, mis à jour autour de la lame pendant qu'on pousse), le hors-piste remonte sur les côtés. La neige est peinte avec les images de la vue du dessus (couleur, velours de la fraise, aire de plein, lignes des murs, radar dans le faisceau des phares). Style dessin animé (ombrage en tons, contours noirs) : dameuse en 3D (chenilles, cabine, rampe de phares et gyrophare, lame qui se lève et son bourrelet de neige, fraise et sa gerbe, bras du treuil qui suit le câble), sapins enneigés, enneigeurs penchés avec leur lampe verte, jalons, ancres, garage éclairé, étoiles et lune. Lumières : les phares (projecteur avant), les projecteurs arrière et le garage. Les commandes sont les mêmes ; la caméra suit la dameuse et se règle avec les boutons du bas (⟲ ⟳ tourner, ▲ ▼ lever et baisser, − + zoom, double-toucher pour recentrer ; clavier J, K, U, N, C, V, molette). Si l'appareil n'a pas la 3D, le jeu reste en vue du dessus.
 
 - **Les dameuses** (`MODELES`, au choix dans le menu avec une vignette et des jauges ; gardée dans `dameuse-modele`) : six machines aux noms inventés, inspirées de vraies dameuses.
 
@@ -485,22 +486,6 @@ Le jeu de gestion d'écurie de Formule 1, façon jeu de manager : `jeux/paddock.
 - **Données** : `paddock-carriere` (toute la carrière, y compris le week-end en cours ; une carrière de la première version est convertie : ses courses restantes passent sur les nouveaux circuits), `paddock-records` (résumé : Grands Prix, victoires, podiums, poles, points, titres, meilleure place), `paddock-zoom` et `paddock-pageT` (zoom et page du tableau préférés). Le classement a trois épreuves (victoires, meilleure place chez les constructeurs, podiums).
 - **Essais** : `window.Paddock` (carrière, week-end, séances, course) ; des courses et des séances ont été simulées sur les 24 circuits (temps au tour, écarts, arrêts, abandons), et des saisons entières pour régler l'argent, les pièces, l'usine et la confiance de la direction.
 
-## Baroudeur
-
-Le jeu d'exploration en 4x4, en 3D avec Three.js (r149, licence MIT, copié dans `jeux/baroudeur/three.min.js` pour marcher hors ligne).
-
-- **Le monde** (`baroudeur/monde.js`) : 1000 × 1000 m, le nord vers les z négatifs. Le relief est calculé une fois sur une grille de 4 m (bruit, crêtes, buttes, sommets, mesas avec leur rampe, canyon, cratère, lac et île, rivière creusée avec deux gués, bords qui remontent) ; la voiture lit la même grille, avec les mêmes triangles que l'affichage. Chaque point de la grille a un sol : herbe, piste, roche, neige, sable, galets, forêt, roche rouge. Tout est tiré d'une graine fixe : le monde est toujours le même, et la sauvegarde n'a qu'à noter ce qui a été pris.
-- **Les régions** : la campagne au centre (le garage, des fermes faciles), la forêt à l'ouest derrière la rivière (gués peu profonds), la montagne au nord (neige au-dessus de 78 m environ, le lac et son île), le désert à l'est (sable, canyon, deux mesas). Des pistes en terre relient le garage aux régions.
-- **Les maisons** (`MAISONS`) : 24 maisons abandonnées (ferme, cabane, chalet, ranch), de difficulté 1 à 4 (losange vert, bleu, rouge, noir au-dessus). Chacune donne de l'or et un butin fixe (`butin`, tiré au hasard une fois) : des objets utiles (jerrican, bidons d'huile et d'eau, roue de secours, caisse à outils) et des objets anciens à revendre (de la lampe à pétrole au coffret à bijoux, plus beaux dans les maisons difficiles). Quatre maisons cachent une pièce rare : le **snorkel** (eau profonde jusqu'à 1,9 m au lieu de 0,85 m), les **pneus sable** (le sable ne freine plus), les **chaînes** (adhérence sur la neige), le **moteur V8** (+55 % de force). Trois maisons sont des trésors (l'île du lac, le sommet, la mesa).
-- **Le 4x4** (`baroudeur/vehicule.js`) : un solide (position, vitesse, orientation, rotation) et quatre roues-ressorts amortis, quatre roues motrices, calculés 180 fois par seconde. Chaque pneu accroche selon le sol (tableau `SOL` : adhérence et résistance au roulement), avec un cercle de frottement (on patine, on glisse). La caisse touche le sol par ses coins (tonneaux), une stabilisation l'aide à rester parallèle au sol. L'eau freine ; les arbres, rochers, maisons et stations repoussent le 4x4 (une grille de cases de 16 m).
-- **L'entretien** : l'essence baisse en roulant (beaucoup plus à fond ; 45 litres, 70 avec le grand réservoir), l'huile et l'eau du radiateur s'usent peu à peu. Sans eau, la température monte et le moteur surchauffe (35 % de force) ; rouler dans l'eau le refroidit. Sans huile, le moteur s'abîme. Les chocs abîment le 4x4 (la force baisse jusqu'à 55 %) et les rochers peuvent faire crever une roue (elle accroche moins et le 4x4 penche). Sans essence, c'est la panne sèche.
-- **Le coffre** : 8 places (10 et 12 avec la galerie de toit). Après une fouille, on choisit ce qu'on prend ; le reste attend dans la maison (`restes`), qui garde un petit losange. Les objets utiles s'utilisent depuis le coffre, partout.
-- **Les stations-service** (`STATIONS`) : 4 vieilles stations, la pompe donne 18 litres puis se remplit en 4 minutes de jeu.
-- **Le garage** : faire le plein (1 pièce d'or pour 3 litres), vidange, radiateur, réparation, roue crevée, vente des objets, achat de jerricans, bidons, roues et outils, améliorations (moteur, pneus, suspensions, galerie de toit, grand réservoir) et peintures. La dépanneuse (depuis la carte) ramène au garage avec un peu d'essence (20 pièces d'or, gratuit si on n'a pas assez). Si le moteur se noie, elle ramène en arrière, au sec.
-- **Les commandes** : un joystick fixe en bas à gauche (on peut toucher n'importe où dans ce coin) : on le pousse vers où on veut aller (vers le bas : frein puis marche arrière). Au clavier : flèches ou ZQSD, Espace pour fouiller, R pour remettre sur les roues, M pour la carte. Trois caméras (normale, de loin, de près), une mini-carte tournante et une grande carte (les maisons apparaissent quand on passe à moins de 160 m).
-- **La sauvegarde** : `baroudeur-partie` (or, objets, maisons fouillées, pièces d'or ramassées, état du 4x4, position…), `baroudeur-records`, `baroudeur-reglages`. Le classement compte les maisons fouillées et l'or trouvé.
-- **Le dessin** (`baroudeur/scene.js`) : formes simples fusionnées par objet, couleurs par sommet, ombrage en trois tons (`MeshToonMaterial`) et contour noir (la même forme un peu plus grande, retournée) ; le terrain en 25 morceaux, le décor (sapins, arbres, rochers, cactus) en séries (`InstancedMesh`).
-
 ## Nuancier
 
 Un jeu de mémoire des couleurs : `jeux/nuancier.html` (le jeu) et `jeux/nuancier/images.js` (les illustrations).
@@ -553,7 +538,8 @@ Une fois ouvert une première fois, il fonctionne aussi sans réseau : toutes le
 2. Y ajouter le lien de retour `<a class="home" href="../index.html">…</a>` et les balises du manifeste, comme dans les deux carnets existants.
 3. Ajouter sa carte dans `index.html`.
 4. Ajouter le fichier à la liste `SHELL` de `sw.js`.
-5. À chaque mise à jour, lancer `sh outils/version.sh` : il change `VERSION` dans `sw.js` et le numéro `?v=` des scripts dans toutes les pages.
+5. Ajouter une ligne en haut de `jeux/nouveautes.js` (nouveau jeu ou mise à jour, avec le numéro de la nouvelle version et le lien du jeu) : à l'ouverture de l'accueil, la fenêtre « Quoi de neuf ? » montre ce qui est plus récent que la dernière visite sur l'appareil (`altitude-nouveautes-vu`), avec un bouton « Jouer ▶ » vers le jeu, ou Fermer. Elle attend que la fenêtre de connexion soit fermée ; la première fois, elle montre les dernières nouveautés. Le bouton « 🎉 Quoi de neuf ? » de l'accueil la rouvre (avec un point rouge s'il reste des nouveautés pas vues).
+6. À chaque mise à jour, lancer `sh outils/version.sh` : il change `VERSION` dans `sw.js` et le numéro `?v=` des scripts dans toutes les pages.
    Sans cela, un téléphone peut garder d'anciens scripts avec une nouvelle page. C'est ce qui bloquait le comptage des tours de Draw Race : l'ancien `piste.js` était utilisé avec la nouvelle page.
    Les pages et les scripts sont pris sur le réseau d'abord (le cache ne sert que hors ligne). Seules les images passent d'abord par le cache.
    Quand une nouvelle version s'installe, la page se recharge une fois d'elle-même.
@@ -581,6 +567,7 @@ jeux/drawrace/         circuits et géométrie de Draw Race
 jeux/nivoculteur/      jeu Nivoculteur (page, scripts js/, CLAUDE.md)
 jeux/fusee.html        jeu Fusée Rythme
 jeux/dameuse.html      jeu Dameuse de nuit
+jeux/dameuse/          la vue 3D de la Dameuse (vue3d.js) et Three.js (three.min.js)
 jeux/freeride.html     jeu Freeride
 jeux/tour.html         jeu Tour de contrôle
 jeux/panier.html       jeu Tir au panier
@@ -589,8 +576,6 @@ jeux/pepin.html        jeu Les aventures de Pépin (page et menus)
 jeux/quiz.html         jeu Le Grand Quiz (échelle, série rapide, petit bac)
 jeux/telesiege.html    jeu Chef de quai (le départ d'un télésiège vu du dessus)
 jeux/blocs.html        jeu Blocs (les blocs qui tombent, marathon sans fin)
-jeux/baroudeur.html    jeu Baroudeur (exploration en 4x4 en 3D)
-jeux/baroudeur/        le monde (monde.js), la scène 3D (scene.js), le 4x4 (vehicule.js) et Three.js (three.min.js)
 jeux/nuancier.html     jeu Nuancier (retrouver les couleurs de mémoire)
 jeux/nuancier/         les illustrations du Nuancier (images.js)
 jeux/paddock.html      jeu Paddock (gestion d'écurie de Formule 1)

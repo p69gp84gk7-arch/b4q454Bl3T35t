@@ -172,14 +172,6 @@ window.AltitudeScores = (() => {
       J.paddock.stats = { 'Grands Prix':pk.gp, 'Points':pk.points || 0, 'Titres constructeurs':pk.titresC || 0, 'Titres pilotes':pk.titresP || 0, 'Pole positions':pk.poles || 0 };
     }
     // Blocs : le marathon
-    // Baroudeur : l'exploration en 4x4
-    const br = lire('baroudeur-partie'), brR = lire('baroudeur-records');
-    if(br && br.temps > 5){
-      jeu('baroudeur', 'Baroudeur', '🚙');
-      ep('baroudeur', 'maisons', 'Maisons fouillées', Math.max(br.fouillees.length, brR ? brR.maisons || 0 : 0), `${Math.max(br.fouillees.length, brR ? brR.maisons || 0 : 0)} / 24`);
-      ep('baroudeur', 'or', 'Or trouvé', Math.max(br.orTotal || 0, brR ? brR.orTotal || 0 : 0), `${Math.max(br.orTotal || 0, brR ? brR.orTotal || 0 : 0)} pièces`);
-      J.baroudeur.stats = { 'Kilomètres':(br.km || 0).toFixed(1).replace('.', ','), 'Pièces rares':Object.keys(br.pieces || {}).length + ' / 4', 'Temps de jeu':Math.round((br.temps || 0) / 60) + ' min', 'Aventures terminées':brR ? brR.finies || 0 : 0 };
-    }
     const nu = lire('nuancier-records');
     if(nu && nu.parties){
       jeu('nuancier', 'Nuancier', '🎨');
