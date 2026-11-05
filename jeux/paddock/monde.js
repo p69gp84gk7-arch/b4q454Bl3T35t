@@ -1,5 +1,5 @@
-/* Paddock : le monde du jeu de gestion d'écurie.
-   Écuries, pilotes, personnel et sponsors sont inventés (ressemblants, pas de vrais noms ni de vraies marques).
+/* Paddock : le monde du jeu de gestion d'écurie (saison 2026, nouveau règlement).
+   Écuries et pilotes : les vrais (l'application est privée) ; personnel et sponsors sont inventés.
    Tout l'état d'une carrière tient dans un seul objet (C), gardé dans « paddock-carriere ». */
 window.PaddockMonde = (() => {
   const hasard = (a, b) => a + Math.random() * (b - a);
@@ -7,52 +7,69 @@ window.PaddockMonde = (() => {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const arrondi = (v, n = 1) => Math.round(v * 10 ** n) / 10 ** n;
 
-  /* ---------- Les 10 écuries (stats de la voiture sur 100, budget en M€ par saison, prestige sur 100) ---------- */
+  /* ---------- Les motoristes 2026 : puissance (thermique + électrique 50/50), fiabilité, part électrique bien gérée ---------- */
+  const MOTORISTES = {
+    mercedes:{ nom:'Mercedes', p:95, f:90, elec:93, usine:'fleches' },
+    ferrari:{ nom:'Ferrari', p:92, f:86, elec:89, usine:'cavallino' },
+    honda:{ nom:'Honda', p:90, f:84, elec:91, usine:'emeraude' },
+    redbull:{ nom:'Red Bull Ford', p:88, f:81, elec:88, usine:'taureau' },
+    audi:{ nom:'Audi', p:86, f:80, elec:86, usine:'trefle' },
+  };
+
+  /* ---------- Les 11 écuries de 2026 (les identifiants restent ceux des versions précédentes du jeu)
+     stats de la voiture sur 100, budget en M€ par saison, prestige sur 100, motoriste ---------- */
   const ECURIES = [
-    { id:'taureau', logo:'🐂', nom:'Taureau Rouge Racing', court:'TAU', c1:'#1B2A5C', c2:'#E4002B', moteur:91, aero:93, chassis:90, fiabilite:88, budget:140, prestige:95, pilotes:['verstapin', 'tsunodo'] },
-    { id:'cavallino', logo:'🐎', nom:'Scuderia Cavallino', court:'CAV', c1:'#D40000', c2:'#FFE100', moteur:92, aero:90, chassis:89, fiabilite:84, budget:140, prestige:98, pilotes:['leclaire', 'hamiltown'] },
-    { id:'papaye', logo:'🍊', nom:'Papaye Racing', court:'PAP', c1:'#FF8000', c2:'#1E2328', moteur:90, aero:94, chassis:91, fiabilite:89, budget:135, prestige:88, pilotes:['norrish', 'piastrino'] },
-    { id:'fleches', logo:'🏹', nom:'Flèches d\'Argent', court:'FLA', c1:'#00A19C', c2:'#C8CCCE', moteur:93, aero:89, chassis:89, fiabilite:90, budget:138, prestige:92, pilotes:['russelle', 'antonello'] },
-    { id:'emeraude', logo:'💎', nom:'Émeraude Martin', court:'EME', c1:'#005A4E', c2:'#CEDC00', moteur:87, aero:86, chassis:86, fiabilite:86, budget:120, prestige:70, pilotes:['alonsso', 'strolle'] },
-    { id:'guillaume', logo:'🔷', nom:'Guillaume Racing', court:'GUI', c1:'#00265A', c2:'#2EA8E8', moteur:89, aero:84, chassis:85, fiabilite:85, budget:100, prestige:62, pilotes:['albonne', 'sainze'] },
-    { id:'veau', logo:'🐮', nom:'Petits Taureaux', court:'PTA', c1:'#F2F4F8', c2:'#1434CB', moteur:88, aero:85, chassis:85, fiabilite:84, budget:95, prestige:55, pilotes:['lawsonne', 'hadjard'] },
-    { id:'alpes', logo:'🏔️', nom:'Équipe des Alpes', court:'ALP', c1:'#0093CC', c2:'#FF87BC', moteur:84, aero:83, chassis:83, fiabilite:80, budget:85, prestige:50, pilotes:['gaslight', 'doohann'] },
-    { id:'etoile', logo:'⭐', nom:'Étoile US', court:'ETO', c1:'#EDEDED', c2:'#B6000F', moteur:86, aero:82, chassis:82, fiabilite:82, budget:75, prestige:40, pilotes:['ocone', 'bierman'] },
-    { id:'trefle', logo:'🍀', nom:'Trèfle Vert', court:'TRE', c1:'#1DCB3C', c2:'#111111', moteur:85, aero:81, chassis:82, fiabilite:83, budget:70, prestige:38, pilotes:['hulkenbourg', 'bortoletto'] },
+    { id:'taureau', logo:'🐂', nom:'Red Bull Racing', court:'RBR', c1:'#1B2A5C', c2:'#E4002B', motoriste:'redbull', moteur:88, aero:92, chassis:90, fiabilite:82, budget:140, prestige:94, pilotes:['verstapin', 'hadjard'] },
+    { id:'cavallino', logo:'🐎', nom:'Scuderia Ferrari', court:'FER', c1:'#DC0000', c2:'#FFF200', motoriste:'ferrari', moteur:92, aero:91, chassis:90, fiabilite:86, budget:140, prestige:98, pilotes:['leclaire', 'hamiltown'] },
+    { id:'papaye', logo:'🟠', nom:'McLaren', court:'MCL', c1:'#FF8000', c2:'#1E2328', motoriste:'mercedes', moteur:94, aero:93, chassis:92, fiabilite:89, budget:138, prestige:92, pilotes:['norrish', 'piastrino'] },
+    { id:'fleches', logo:'⭐', nom:'Mercedes-AMG', court:'MER', c1:'#2B2E33', c2:'#00D2BE', motoriste:'mercedes', moteur:95, aero:92, chassis:91, fiabilite:90, budget:140, prestige:93, pilotes:['russelle', 'antonello'] },
+    { id:'emeraude', logo:'🪽', nom:'Aston Martin', court:'AMR', c1:'#00594F', c2:'#CEDC00', motoriste:'honda', moteur:90, aero:89, chassis:87, fiabilite:83, budget:132, prestige:76, pilotes:['alonsso', 'strolle'] },
+    { id:'guillaume', logo:'🔷', nom:'Williams', court:'WIL', c1:'#00265A', c2:'#64C4FF', motoriste:'mercedes', moteur:93, aero:86, chassis:86, fiabilite:87, budget:105, prestige:64, pilotes:['albonne', 'sainze'] },
+    { id:'veau', logo:'🐃', nom:'Racing Bulls', court:'RB', c1:'#F2F4F8', c2:'#1634CB', motoriste:'redbull', moteur:87, aero:85, chassis:85, fiabilite:81, budget:95, prestige:55, pilotes:['lawsonne', 'lindbloom'] },
+    { id:'alpes', logo:'🔺', nom:'Alpine', court:'ALP', c1:'#0093CC', c2:'#FF87BC', motoriste:'mercedes', moteur:93, aero:84, chassis:84, fiabilite:86, budget:90, prestige:52, pilotes:['gaslight', 'colapinta'] },
+    { id:'etoile', logo:'🦅', nom:'Haas', court:'HAA', c1:'#E8E8E8', c2:'#DA291C', motoriste:'ferrari', moteur:91, aero:84, chassis:84, fiabilite:84, budget:80, prestige:45, pilotes:['ocone', 'bierman'] },
+    { id:'trefle', logo:'⭕', nom:'Audi', court:'AUD', c1:'#B7BBC0', c2:'#F50537', motoriste:'audi', moteur:86, aero:84, chassis:84, fiabilite:80, budget:118, prestige:56, pilotes:['hulkenbourg', 'bortoletto'] },
+    { id:'cadillac', logo:'🛡️', nom:'Cadillac', court:'CAD', c1:'#121212', c2:'#E8E8E8', motoriste:'ferrari', moteur:91, aero:81, chassis:81, fiabilite:81, budget:110, prestige:40, pilotes:['peres', 'bottass'] },
   ];
-  const PETITES = ['alpes', 'etoile', 'trefle'];       // le joueur commence avec l'une d'elles
+  const PETITES = ['guillaume', 'alpes', 'etoile', 'trefle', 'cadillac'];       // le joueur commence avec l'une d'elles
+  // l'écurie d'usine du motoriste peut concevoir son unité de puissance ; les clientes reçoivent celle du motoriste
+  const usineMoteur = e => MOTORISTES[e.motoriste] && MOTORISTES[e.motoriste].usine === e.id;
 
   /* ---------- Les pilotes : âge, vitesse, régularité, pneus (gestion), dépassement, pluie, salaire (M€ par saison), potentiel ---------- */
   const PILOTES = [
-    ['verstapin', 'Max Verstapin', '🇳🇱', 27, 97, 92, 90, 96, 98, 50, 97],
-    ['tsunodo', 'Yuki Tsunodo', '🇯🇵', 25, 87, 80, 82, 87, 84, 5, 88],
-    ['leclaire', 'Charles Leclaire', '🇲🇨', 27, 95, 87, 86, 90, 88, 30, 95],
-    ['hamiltown', 'Lewis Hamiltown', '🇬🇧', 40, 91, 92, 93, 92, 94, 45, 91],
-    ['norrish', 'Lando Norrish', '🇬🇧', 26, 94, 88, 88, 90, 89, 25, 95],
-    ['piastrino', 'Oscar Piastrino', '🇦🇺', 24, 94, 92, 90, 88, 86, 15, 96],
-    ['russelle', 'George Russelle', '🇬🇧', 27, 93, 90, 89, 89, 90, 20, 93],
-    ['antonello', 'Kimi Antonello', '🇮🇹', 19, 88, 80, 82, 86, 85, 4, 95],
-    ['alonsso', 'Fernando Alonsso', '🇪🇸', 43, 89, 93, 94, 95, 93, 22, 89],
-    ['strolle', 'Lance Strolle', '🇨🇦', 26, 82, 80, 84, 82, 86, 10, 83],
-    ['albonne', 'Alex Albonne', '🇹🇭', 29, 88, 89, 88, 86, 86, 8, 88],
-    ['sainze', 'Carlos Sainze', '🇪🇸', 30, 91, 91, 90, 89, 88, 12, 91],
-    ['lawsonne', 'Liam Lawsonne', '🇳🇿', 23, 84, 80, 80, 85, 82, 2, 88],
-    ['hadjard', 'Isack Hadjard', '🇫🇷', 20, 86, 80, 81, 84, 82, 1.5, 92],
-    ['gaslight', 'Pierre Gaslight', '🇫🇷', 29, 88, 87, 86, 87, 87, 10, 88],
-    ['doohann', 'Jack Doohann', '🇦🇺', 22, 80, 76, 79, 80, 78, 2, 86],
-    ['ocone', 'Esteban Ocone', '🇫🇷', 28, 86, 85, 86, 86, 87, 6, 86],
-    ['bierman', 'Oliver Bierman', '🇬🇧', 20, 83, 78, 80, 83, 80, 1.5, 91],
-    ['hulkenbourg', 'Nico Hulkenbourg', '🇩🇪', 37, 86, 90, 88, 84, 87, 6, 86],
-    ['bortoletto', 'Gabriel Bortoletto', '🇧🇷', 20, 83, 80, 81, 82, 80, 1.5, 91],
-    // sans volant au départ
-    ['bottass', 'Valtteri Bottass', '🇫🇮', 35, 87, 91, 89, 83, 86, 6, 87],
-    ['peres', 'Sergio Perès', '🇲🇽', 35, 85, 84, 92, 88, 83, 8, 85],
-    ['colapinta', 'Franco Colapinta', '🇦🇷', 22, 81, 75, 79, 83, 79, 1, 87],
-    ['drugovitch', 'Felipe Drugovitch', '🇧🇷', 25, 80, 82, 80, 78, 79, 1, 82],
-    ['pourchet', 'Théo Pourchet', '🇫🇷', 22, 81, 80, 80, 79, 80, .8, 88],
-    ['iwasaki', 'Ayumu Iwasaki', '🇯🇵', 24, 80, 79, 79, 80, 79, .7, 85],
-    ['lindbloom', 'Arvid Lindbloom', '🇬🇧', 18, 78, 74, 76, 80, 75, .5, 93],
-    ['vestie', 'Frederik Vestie', '🇩🇰', 23, 79, 80, 79, 77, 80, .6, 84],
+    ['verstapin', 'Max Verstappen', '🇳🇱', 28, 97, 92, 90, 96, 98, 50, 97],
+    ['hadjard', 'Isack Hadjar', '🇫🇷', 21, 88, 82, 82, 85, 84, 3, 93],
+    ['leclaire', 'Charles Leclerc', '🇲🇨', 28, 94, 87, 86, 90, 88, 30, 95],
+    ['hamiltown', 'Lewis Hamilton', '🇬🇧', 41, 89, 91, 92, 91, 94, 45, 90],
+    ['norrish', 'Lando Norris', '🇬🇧', 26, 95, 89, 88, 90, 89, 30, 96],
+    ['piastrino', 'Oscar Piastri', '🇦🇺', 25, 93, 91, 90, 88, 86, 18, 96],
+    ['russelle', 'George Russell', '🇬🇧', 28, 93, 91, 89, 89, 90, 22, 93],
+    ['antonello', 'Kimi Antonelli', '🇮🇹', 19, 89, 81, 83, 86, 85, 5, 96],
+    ['alonsso', 'Fernando Alonso', '🇪🇸', 44, 88, 93, 94, 95, 93, 22, 88],
+    ['strolle', 'Lance Stroll', '🇨🇦', 27, 82, 80, 84, 82, 86, 10, 83],
+    ['albonne', 'Alexander Albon', '🇹🇭', 30, 88, 89, 88, 86, 86, 9, 88],
+    ['sainze', 'Carlos Sainz', '🇪🇸', 31, 90, 91, 90, 89, 88, 12, 90],
+    ['lawsonne', 'Liam Lawson', '🇳🇿', 24, 85, 81, 81, 86, 82, 2, 88],
+    ['lindbloom', 'Arvid Lindblad', '🇬🇧', 18, 80, 75, 77, 81, 76, .8, 94],
+    ['gaslight', 'Pierre Gasly', '🇫🇷', 30, 88, 87, 86, 87, 87, 10, 88],
+    ['colapinta', 'Franco Colapinto', '🇦🇷', 22, 82, 76, 79, 83, 79, 1.5, 87],
+    ['ocone', 'Esteban Ocon', '🇫🇷', 29, 86, 85, 86, 86, 87, 6, 86],
+    ['bierman', 'Oliver Bearman', '🇬🇧', 20, 86, 80, 81, 84, 81, 2, 92],
+    ['hulkenbourg', 'Nico Hülkenberg', '🇩🇪', 38, 86, 90, 88, 84, 87, 6, 86],
+    ['bortoletto', 'Gabriel Bortoleto', '🇧🇷', 21, 85, 82, 82, 83, 81, 2, 92],
+    ['peres', 'Sergio Pérez', '🇲🇽', 36, 85, 84, 92, 88, 83, 8, 85],
+    ['bottass', 'Valtteri Bottas', '🇫🇮', 36, 86, 91, 89, 83, 86, 6, 86],
+    // sans volant au départ (pilotes de réserve)
+    ['tsunodo', 'Yuki Tsunoda', '🇯🇵', 26, 86, 80, 82, 87, 84, 4, 87],
+    ['doohann', 'Jack Doohan', '🇦🇺', 23, 80, 76, 79, 80, 78, 1.5, 85],
+    ['zhou', 'Zhou Guanyu', '🇨🇳', 27, 82, 85, 84, 80, 81, 1.5, 83],
+    ['drugovitch', 'Felipe Drugovich', '🇧🇷', 26, 80, 82, 80, 78, 79, 1, 82],
+    ['pourchet', 'Théo Pourchaire', '🇫🇷', 22, 81, 80, 80, 79, 80, .8, 88],
+    ['iwasaki', 'Ayumu Iwasa', '🇯🇵', 24, 80, 79, 79, 80, 79, .7, 85],
+    ['vestie', 'Frederik Vesti', '🇩🇰', 24, 79, 80, 79, 77, 80, .6, 84],
+    ['crawford', 'Jak Crawford', '🇺🇸', 21, 79, 77, 78, 80, 77, .6, 88],
+    ['fornaroli', 'Leonardo Fornaroli', '🇮🇹', 21, 79, 80, 79, 78, 78, .5, 88],
+    ['dunne', 'Alex Dunne', '🇮🇪', 20, 78, 75, 77, 81, 76, .5, 90],
   ];
   const PRENOMS = ['Lucas', 'Noah', 'Mateo', 'Elias', 'Léo', 'Hugo', 'Arthur', 'Nathan', 'Gabriel', 'Tom', 'Jules', 'Sacha', 'Enzo', 'Ethan', 'Milo', 'Théo', 'Rafael', 'Oscar', 'Liam', 'Adam', 'Kenzo', 'Nils', 'Paolo', 'Kai'];
   const NOMS = ['Marchetti', 'Dubreuil', 'Kowalski', 'Andersen', 'Moreau', 'Fontaine', 'Lindqvist', 'Costa', 'Verbeek', 'Nakamura', 'Schreiber', 'Roussel', 'Delacroix', 'Ivanov', 'Okafor', 'Bianchi', 'Hartmann', 'Lambert', 'Silva', 'Novak', 'Ferreira', 'Mercier', 'Tanaka', 'Olsen'];
@@ -68,12 +85,25 @@ window.PaddockMonde = (() => {
   const SALAIRE_POSTE = [0, 1, 2, 3.5, 5.5, 8];                     // M€ par saison selon les étoiles
   const employe = (niv, nom = nomAuHasard()) => ({ nom, niv, salaire:SALAIRE_POSTE[niv], drapeau:choisir(DRAPEAUX) });
 
-  /* ---------- Les sponsors (marques inventées) ---------- */
+  /* ---------- Les sponsors (marques inventées) : [nom, icône, secteur] ---------- */
   const MARQUES = [
-    ['Carbu Max', '⛽'], ['Pneus Volcan', '🌋'], ['Fusée Cola', '🥤'], ['Banque des Cimes', '🏦'], ['Montres Alpina', '⌚'], ['Fromagerie du Col', '🧀'],
-    ['Télécom Azur', '📡'], ['Café Grimpette', '☕'], ['Assurances Sereno', '🛡️'], ['Pâtes Turbo', '🍝'], ['Glaces Polaires', '🍦'], ['Lunettes Horizon', '🕶️'],
-    ['Énergie Soleil', '☀️'], ['Chocolat Sommet', '🍫'], ['Vélos Éclair', '🚲'], ['Jeux Pixel', '🎮'], ['Parfums Brise', '🌸'], ['Transports Comète', '🚚'],
+    ['Carbu Max', '⛽', 'energie'], ['Énergie Soleil', '☀️', 'energie'], ['Pétroles Boréal', '🛢️', 'energie'],
+    ['Banque des Cimes', '🏦', 'banque'], ['Crédit Lumière', '💳', 'banque'], ['Assurances Sereno', '🛡️', 'banque'],
+    ['Fusée Cola', '🥤', 'boisson'], ['Café Grimpette', '☕', 'boisson'], ['Boisson Volt', '⚡', 'boisson'],
+    ['Montres Alpina', '⌚', 'luxe'], ['Parfums Brise', '🌸', 'luxe'], ['Lunettes Horizon', '🕶️', 'luxe'],
+    ['Télécom Azur', '📡', 'tech'], ['Jeux Pixel', '🎮', 'tech'], ['Nuage Data', '☁️', 'tech'], ['Robots Atlas', '🤖', 'tech'],
+    ['Fromagerie du Col', '🧀', 'alimentation'], ['Pâtes Turbo', '🍝', 'alimentation'], ['Chocolat Sommet', '🍫', 'alimentation'], ['Glaces Polaires', '🍦', 'alimentation'],
+    ['Pneus Volcan', '🌋', 'auto'], ['Vélos Éclair', '🚲', 'auto'], ['Transports Comète', '🚚', 'auto'], ['Huiles Titan', '🛠️', 'auto'],
+    ['Avions Cirrus', '✈️', 'voyage'], ['Hôtels Panorama', '🏨', 'voyage'],
   ];
+  const SECTEURS = { energie:'énergie', banque:'banque et assurance', boisson:'boissons', luxe:'luxe', tech:'technologie', alimentation:'alimentation', auto:'automobile', voyage:'voyage' };
+  // les emplacements sur la voiture : k = ce qu'ils valent (le sponsor titre vaut le plus)
+  const EMPLACEMENTS = {
+    titre:{ nom:'Sponsor titre', ico:'👑', k:2.2 }, pontons:{ nom:'Pontons', ico:'🟥', k:1.1 }, arriere:{ nom:'Aileron arrière', ico:'🟦', k:.9 },
+    nez:{ nom:'Nez', ico:'🔺', k:.65 }, avant:{ nom:'Aileron avant', ico:'🔻', k:.5 }, halo:{ nom:'Halo', ico:'⭕', k:.35 }, tenues:{ nom:'Casques et combinaisons', ico:'🧥', k:.3 },
+  };
+  // la clause si l'objectif de la saison est manqué : k = ce que le sponsor accepte de payer en plus
+  const PENALITES = { aucune:{ nom:'Aucune', txt:'pas de pénalité', k:-.08 }, baisse:{ nom:'Baisse', txt:'25 % de moins la saison suivante', k:.05 }, rupture:{ nom:'Rupture', txt:'le sponsor peut partir', k:.12 } };
   const OBJECTIFS = [
     { id:'finir', txt:'les deux voitures à l\'arrivée', bonus:.4 },
     { id:'points', txt:'une voiture dans les points (top 10)', bonus:.6 },
@@ -83,7 +113,7 @@ window.PaddockMonde = (() => {
     { id:'devant', txt:'battre l\'écurie rivale', bonus:.7 },
   ];
   const POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
-  const PRIMES = [60, 52, 45, 40, 35, 30, 26, 22, 19, 16];          // M€ en fin de saison selon la place des constructeurs
+  const PRIMES = [60, 52, 45, 40, 35, 30, 26, 22, 19, 16, 14];          // M€ en fin de saison selon la place des constructeurs
 
   /* ---------- Les circuits : les 24 du calendrier (circuits.js), avec leur caractère ---------- */
   function circuits(){ return window.PADDOCK_CIRCUITS || []; }
@@ -164,7 +194,17 @@ window.PaddockMonde = (() => {
     fond:{ nom:'Fond plat', ico:'⬛', dom:{ aero:.25, chassis:.4 }, inst:'soufflerie', base:2 },
     suspension:{ nom:'Suspension', ico:'🌀', dom:{ chassis:.6 }, inst:'atelier', base:1.5 },
     moteur:{ nom:'Unité de puissance', ico:'⚙️', dom:{ moteur:1 }, inst:'banc', base:2.5 },
+    pontons:{ nom:'Pontons et refroidissement', ico:'🌬️', dom:{ aero:.15, moteur:.15 }, inst:'soufflerie', base:1.5 },
   };
+  // le curseur de compromis de chaque pièce : à gauche, ce qui aide sur les circuits lents et sinueux ; à droite, sur les circuits rapides
+  const COMPROMIS = {
+    avant:['Appui', 'Faible traînée'], arriere:['Appui', 'Faible traînée'], fond:['Appui à basse vitesse', 'Appui à haute vitesse'],
+    suspension:['Virages lents, vibreurs', 'Virages rapides'], moteur:['Couple, relances', 'Puissance en pointe'], pontons:['Refroidissement (fiable)', 'Pontons fins (aéro)'],
+  };
+  // la soufflerie et la simulation (CFD) servent aux pièces aérodynamiques ; le règlement en donne plus aux derniers du championnat
+  const AERO = ['avant', 'arriere', 'fond', 'pontons', 'suspension'];
+  const SPECS = { poly:{ nom:'Polyvalente', aide:'Le même effet sur tous les circuits.' }, appui:{ nom:'Gros appui', aide:'Pour les circuits lents (Monaco, Hongrie, Singapour…) : bien plus efficace là, moins ailleurs.' },
+    vitesse:{ nom:'Faible traînée', aide:'Pour les circuits rapides (Monza, Spa, Las Vegas, Bakou…) : bien plus efficace là, moins ailleurs.' } };
   const AMBITIONS = {
     prudente:{ nom:'Prudente', cout:1, duree:1, gain:[2, 3.2], risque:0, aide:'Petit gain, prête vite, sans risque.' },
     normale:{ nom:'Normale', cout:1.6, duree:2, gain:[3, 5], risque:.08, aide:'Bon gain, un petit risque de déception.' },
@@ -176,12 +216,27 @@ window.PaddockMonde = (() => {
   const multInstallation = (C, k) => .75 + .1 * C.installations[k].niv;
   function piecesVides(){ return Object.fromEntries(Object.keys(PIECES).map(k => [k, { gens:[{ n:0, gain:0 }], stock:{}, conception:null }])); }
   // le gain d'une génération de pièce
-  const gainGen = (C, type, n) => (C.pieces[type].gens.find(g => g.n === n) || { gain:0 }).gain;
+  const genDe = (C, type, n) => C.pieces[type].gens.find(g => g.n === n) || { gain:0 };
+  // l'efficacité d'une version de pièce sur un circuit : son compromis (o, de -1 lent à +1 rapide) et sa spécialité
+  function facteurCircuit(g, puissance){
+    if(puissance == null || !g.n) return 1;
+    const x = clamp((puissance - .45) / .2, -1, 1);                 // -1 circuit lent, +1 circuit rapide
+    let f = 1 + .3 * (g.o || 0) * x;
+    if(g.spec === 'appui') f *= x < -.3 ? 1.5 : x > .3 ? .6 : .9;
+    if(g.spec === 'vitesse') f *= x > .3 ? 1.5 : x < -.3 ? .6 : .9;
+    return f;
+  }
+  const gainGen = (C, type, n, puissance) => { const g = genDe(C, type, n); return g.gain * facteurCircuit(g, puissance); };
   // la voiture d'un pilote (place 0 ou 1) : la base de l'écurie plus les pièces montées
-  function voitureDe(C, place){
+  // circ : le circuit (pour l'effet des compromis et des spécialités) ; sans circuit, l'effet moyen
+  function voitureDe(C, place, circ = null){
     const E = ecurieJoueur(C), V = { moteur:E.moteur, aero:E.aero, chassis:E.chassis, fiabilite:E.fiabilite };
-    const m = C.montage[place] || {};
-    for(const [type, P] of Object.entries(PIECES)) for(const [dom, w] of Object.entries(P.dom)) V[dom] = arrondi(V[dom] + gainGen(C, type, m[type] || 0) * w, 1);
+    const m = C.montage[place] || {}, pu = circ ? caractere(circ).puissance : null;
+    for(const [type, P] of Object.entries(PIECES)){
+      const g = genDe(C, type, m[type] || 0);
+      for(const [dom, w] of Object.entries(P.dom)) V[dom] = arrondi(V[dom] + gainGen(C, type, m[type] || 0, pu) * w, 1);
+      if(g.fiab) V.fiabilite = arrondi(V.fiabilite + g.fiab, 1);
+    }
     V.fiabilite = arrondi(Math.min(99, V.fiabilite + (C.installations.qualite.niv - 1) * .8), 1);
     for(const k of Object.keys(V)) V[k] = Math.min(99.5, V[k]);
     return V;
@@ -193,26 +248,84 @@ window.PaddockMonde = (() => {
     return arrondi(PIECES[type].base * AMBITIONS[amb].cout * (1 + faits * .12), 1);
   }
   const coutFabrication = (C, type) => arrondi(PIECES[type].base * .25 * (1.25 - .1 * C.installations.atelier.niv), 2);
-  function lancerConception(C, type, amb){
+  /* ---------- Les heures de soufflerie et de simulation (ATR) : par moitié de saison, selon la place au championnat ---------- */
+  const ATR = { souffl:40, cfd:160 };
+  function coeffATR(rang, n = ECURIES.length){ return arrondi(.7 + (rang - 1) / Math.max(1, n - 1) * .45, 3); }   // 1er : 70 %, dernier : 115 %
+  function nouvelleATR(C){
+    const cons = classementConstructeurs(C), joue = cons.some(e => e.points > 0);
+    const rang = joue ? cons.findIndex(e => e.id === C.joueur) + 1 : (C.historique && C.historique.length ? C.historique[C.historique.length - 1].place : rangVoiture(C, { wM:.33, wA:.37, wC:.3 }));
+    const k = coeffATR(rang);
+    C.atr = { periode:C.gp < Math.ceil(((C.calendrier || []).length || 24) / 2) ? 1 : 2, rang, k, souffl:Math.round(ATR.souffl * k), cfd:Math.round(ATR.cfd * k), restS:Math.round(ATR.souffl * k), restC:Math.round(ATR.cfd * k), saison:C.saison };
+  }
+  // l'effet des heures sur le gain (rendements décroissants)
+  const effetHeures = (h, cfd) => .55 + .45 * (1 - Math.exp(-(h / 12 + cfd / 45)));
+  // les réglages d'une conception : o (-1..1 compromis), a (0..1 performance plutôt que fiabilité), r (0..1 limite du règlement), spec, h (soufflerie), cfd
+  const REGLAGE_DEFAUT = { o:0, a:.5, r:.3, spec:'poly', h:0, cfd:0 };
+  function estimerConception(C, type, amb, reg){
+    const A = AMBITIONS[amb], P = PIECES[type], t = C.personnel.technique.niv, aero = AERO.includes(type);
+    const R = { ...REGLAGE_DEFAUT, ...reg }, heures = aero ? effetHeures(R.h, R.cfd) : .85;
+    const domPrincipal = Object.entries(P.dom).sort((a, b) => b[1] - a[1])[0][0];
+    const k = (.75 + .12 * t) * multInstallation(C, P.inst) * rendement(ecurieJoueur(C)[domPrincipal]) * (.8 + .4 * R.a) * (1 + .3 * Math.max(0, R.r - .3) / .7) * heures;
+    const deception = clamp(A.risque * (1.5 - heures), 0, .5);
+    const illegal = R.r > .55 ? Math.min(.75, Math.pow((R.r - .55) / .45, 1.4) * .75) : 0;
+    return { min:arrondi(A.gain[0] * k, 2), max:arrondi(A.gain[1] * k, 2), k, deception, illegal, fiab:arrondi((.5 - R.a) * 3, 1), duree:Math.max(1, A.duree - (t >= 4 ? 1 : 0)), cout:coutConception(C, type, amb), reg:R };
+  }
+  function lancerConception(C, type, amb, reg = {}){
     const pc = C.pieces[type];
     if(pc.conception) return { ok:false, msg:'Une conception est déjà en cours pour cette pièce.' };
-    const cout = coutConception(C, type, amb), A = AMBITIONS[amb];
+    if(type === 'moteur' && !usineMoteur(ecurieJoueur(C))) return { ok:false, msg:`Ton unité de puissance vient de ${MOTORISTES[ecurieJoueur(C).motoriste].nom} : c'est le motoriste qui la fait évoluer.` };
+    const est = estimerConception(C, type, amb, reg), cout = est.cout, A = AMBITIONS[amb], R = est.reg;
     if(C.argent < cout) return { ok:false, msg:'Pas assez d\'argent.' };
     if(!plafondOk(C, cout)) return { ok:false, msg:`Le plafond budgétaire (${PLAFOND} M€ par saison) serait dépassé.` };
-    const t = C.personnel.technique.niv, P = PIECES[type];
-    const domPrincipal = Object.entries(P.dom).sort((a, b) => b[1] - a[1])[0][0];
-    let gain = hasard(...A.gain) * (.75 + .12 * t) * multInstallation(C, P.inst) * rendement(ecurieJoueur(C)[domPrincipal]);
-    const rate = Math.random() < A.risque;
+    if(AERO.includes(type) && (R.h > C.atr.restS || R.cfd > C.atr.restC)) return { ok:false, msg:'Il ne reste pas assez d\'heures de soufflerie ou de simulation pour cette période.' };
+    let gain = hasard(est.min, est.max);
+    const rate = Math.random() < est.deception;
     if(rate) gain *= .35;
-    const duree = Math.max(1, A.duree - (t >= 4 ? 1 : 0));
+    const illegal = Math.random() < est.illegal;
+    if(AERO.includes(type)){ C.atr.restS -= R.h; C.atr.restC -= R.cfd; }
     C.argent = arrondi(C.argent - cout, 2); C.plafondDepenses = arrondi((C.plafondDepenses || 0) + cout, 2);
-    pc.conception = { amb, gain:arrondi(gain, 2), rate, fin:C.gp + duree, saison:C.saison, cout };
+    pc.conception = { amb, gain:arrondi(gain, 2), rate, fin:C.gp + est.duree, saison:C.saison, cout, o:R.o, a:R.a, r:R.r, spec:R.spec, fiab:est.fiab, illegal };
     C.conceptions = C.conceptions || {}; C.conceptions[type] = (C.conceptions[type] || 0) + 1;
-    C.finances.push({ saison:C.saison, gp:C.gp, txt:`Conception : ${P.nom}`, montant:-cout });
-    return { ok:true, msg:`Conception lancée : ${P.nom} (${A.nom.toLowerCase()}), prête dans ${duree} Grand${duree > 1 ? 's' : ''} Prix.` };
+    C.finances.push({ saison:C.saison, gp:C.gp, txt:`Conception : ${PIECES[type].nom}`, montant:-cout });
+    return { ok:true, msg:`Conception lancée : ${PIECES[type].nom} (${A.nom.toLowerCase()}${R.spec !== 'poly' ? ', ' + SPECS[R.spec].nom.toLowerCase() : ''}), prête dans ${est.duree} Grand${est.duree > 1 ? 's' : ''} Prix.` };
+  }
+  /* ---------- Le conseil du directeur technique ---------- */
+  function conseilIngenieur(C, type, amb = 'normale'){
+    const E = ecurieJoueur(C), P = PIECES[type], A = AMBITIONS[amb], t = C.personnel.technique.niv;
+    const duree = Math.max(1, A.duree - (t >= 4 ? 1 : 0)), prochains = C.calendrier.slice(C.gp + duree, C.gp + duree + 5).map(g => ({ g, c:circuit(g.id) }));
+    const pu = prochains.map(x => caractere(x.c).puissance), moy = pu.length ? pu.reduce((a, b) => a + b, 0) / pu.length : .45;
+    const lents = prochains.filter((x, i) => pu[i] < .39), rapides = prochains.filter((x, i) => pu[i] > .51);
+    const lignes = [], reg = { ...REGLAGE_DEFAUT };
+    reg.o = arrondi(clamp((moy - .45) * 6, -1, 1), 1);
+    const nomsC = L => L.slice(0, 3).map(x => x.g.nom).join(', ');
+    if(!prochains.length) lignes.push('C\'est la fin de la saison : une pièce polyvalente servira surtout l\'an prochain… elle ne comptera pas, la voiture repart de zéro.');
+    else if(reg.o <= -.3) lignes.push(`Les prochains circuits sont plutôt lents et sinueux (${nomsC(lents.length ? lents : prochains)}) : oriente vers « ${COMPROMIS[type][0].toLowerCase()} ».`);
+    else if(reg.o >= .3) lignes.push(`Les prochains circuits sont plutôt rapides (${nomsC(rapides.length ? rapides : prochains)}) : oriente vers « ${COMPROMIS[type][1].toLowerCase()} ».`);
+    else lignes.push('Les prochains circuits sont variés : reste au milieu, une pièce équilibrée.');
+    if(type !== 'moteur' && type !== 'suspension' && type !== 'pontons'){
+      if(lents.length >= 3){ reg.spec = 'appui'; lignes.push(`${lents.length} circuits lents arrivent : une version « gros appui » rapporterait gros.`); }
+      else if(rapides.length >= 3){ reg.spec = 'vitesse'; lignes.push(`${rapides.length} circuits rapides arrivent : une version « faible traînée » rapporterait gros.`); }
+    }
+    // le point faible de la voiture, face aux 5 meilleures
+    const top = classementConstructeurs(C).filter(e => e.id !== C.joueur).slice(0, 5), V = voitureDe(C, 0);
+    const ecarts = ['moteur', 'aero', 'chassis', 'fiabilite'].map(d => [d, top.reduce((s, e) => s + e[d], 0) / top.length - V[d]]).sort((a, b) => b[1] - a[1]);
+    const [dF, eF] = ecarts[0];
+    if(eF > .5) lignes.push(`Notre point faible : ${DOMAINES[dF].nom.toLowerCase()} (${String(arrondi(eF, 1)).replace('.', ',')} de retard sur le top 5).${P.dom[dF] ? ' Cette pièce tombe bien.' : ''}`);
+    const fiabRetard = ecarts.find(x => x[0] === 'fiabilite')[1];
+    reg.a = fiabRetard > 2 ? .3 : fiabRetard > 0 ? .45 : .65;
+    lignes.push(reg.a < .45 ? 'On casse trop : je pencherais vers la fiabilité.' : reg.a > .55 ? 'La voiture est fiable : on peut pousser la performance.' : 'Garde un bon équilibre entre performance et fiabilité.');
+    reg.r = C.confiance < 40 ? .25 : .4;
+    lignes.push(`Pour la limite du règlement, je ne dépasserais pas ${Math.round((reg.r + .15) * 100)} % : au-delà de 55 %, la FIA peut trouver la pièce non conforme.`);
+    if(AERO.includes(type)){
+      const parts = Math.max(1, AERO.filter(k => !C.pieces[k].conception).length - 1);
+      reg.h = Math.max(0, Math.min(C.atr.restS, Math.round(C.atr.souffl / Math.min(4, parts + 1)))); reg.cfd = Math.max(0, Math.min(C.atr.restC, Math.round(C.atr.cfd / Math.min(4, parts + 1))));
+      lignes.push(`Soufflerie : je mettrais ${reg.h} h sur ${C.atr.restS} h restantes, et ${reg.cfd} unités de simulation sur ${C.atr.restC}.`);
+    }
+    return { lignes, reg };
   }
   // fabriquer des exemplaires d'une génération (ils arrivent au Grand Prix suivant, ou tout de suite avec un bon atelier)
   function fabriquer(C, type, n, nb = 1){
+    if(genDe(C, type, n).interdite) return { ok:false, msg:'Cette version est interdite par la FIA.' };
     const cout = arrondi(coutFabrication(C, type) * nb, 2), P = PIECES[type];
     if(C.argent < cout) return { ok:false, msg:'Pas assez d\'argent.' };
     if(!plafondOk(C, cout)) return { ok:false, msg:`Le plafond budgétaire (${PLAFOND} M€ par saison) serait dépassé.` };
@@ -245,7 +358,7 @@ window.PaddockMonde = (() => {
     for(const [type, pc] of Object.entries(C.pieces)){
       const cc = pc.conception; if(!cc || C.gp < cc.fin) continue;
       const n = pc.gens.length;
-      pc.gens.push({ n, gain:cc.gain }); pc.conception = null;
+      pc.gens.push({ n, gain:cc.gain, o:cc.o || 0, a:cc.a ?? .5, r:cc.r ?? 0, spec:cc.spec || 'poly', fiab:cc.fiab || 0, illegal:!!cc.illegal }); pc.conception = null;
       message(C, `${PIECES[type].ico} ${PIECES[type].nom} v${n} conçue (+${String(cc.gain).replace('.', ',')})${cc.rate ? ' : décevante, la soufflerie s\'est trompée.' : '.'} Il faut maintenant la fabriquer (onglet Voiture).`, cc.rate ? 'mal' : 'bon');
     }
     for(const f of (C.fabrications || []).filter(f => C.gp >= f.fin)){ ranger(C, f.type, f.n, f.nb); message(C, `${PIECES[f.type].ico} ${f.nb} ${PIECES[f.type].nom.toLowerCase()} v${f.n} livré${f.nb > 1 ? 's' : ''}.`, 'bon'); }
@@ -266,6 +379,12 @@ window.PaddockMonde = (() => {
     C.finances.push({ saison:C.saison, gp:C.gp, txt:'Fiabilisation', montant:-cout });
     return { ok:true, msg:'Fiabilisation lancée : prête au prochain Grand Prix.' };
   }
+  // une version interdite : enlevée des voitures et de la réserve, remplacée par la meilleure version permise
+  function retirerVersion(C, type, n){
+    const pc = C.pieces[type]; delete pc.stock[n];
+    const permise = () => Object.keys(pc.stock).map(Number).filter(g => pc.stock[g] > 0 && !genDe(C, type, g).interdite).sort((a, b) => b - a)[0];
+    for(const i of [0, 1]) if((C.montage[i][type] || 0) === n){ const d = permise(); if(d){ pc.stock[d]--; if(!pc.stock[d]) delete pc.stock[d]; C.montage[i][type] = d; } else C.montage[i][type] = 0; }
+  }
   // un accident casse une pièce : on prend la meilleure de la réserve, sinon l'ancienne
   function casse(C, place){
     const types = ['avant', 'arriere', 'fond', 'suspension'], type = choisir(types), pc = C.pieces[type];
@@ -279,9 +398,9 @@ window.PaddockMonde = (() => {
   /* ---------- Une nouvelle carrière ---------- */
   function nouvelleCarriere(idEcurie, directeur, perso = null, reglages = null){
     const R = { ...reglagesDefaut(), ...(reglages || {}) };
-    const C = { v:2, saison:2026, gp:0, directeur:directeur || 'Directeur', joueur:idEcurie, debut:Date.now(), reglages:R,
-      ecuries:{}, pilotes:{}, personnel:{}, candidats:{}, sponsors:[null, null, null], offres:[], messages:[],
-      finances:[], historique:[], records:{ gp:0, victoires:0, podiums:0, poles:0, points:0, titresP:0, titresC:0, meilleurePlace:10 }, phase:'saison' };
+    const C = { v:3, saison:2026, gp:0, directeur:directeur || 'Directeur', joueur:idEcurie, debut:Date.now(), reglages:R,
+      ecuries:{}, pilotes:{}, personnel:{}, candidats:{}, contrats:contratsVides(), offres:[], messages:[],
+      finances:[], historique:[], records:{ gp:0, victoires:0, podiums:0, poles:0, points:0, titresP:0, titresC:0, meilleurePlace:11 }, phase:'saison' };
     for(const e of ECURIES) C.ecuries[e.id] = { ...JSON.parse(JSON.stringify(e)), points:0, victoires:0, budgetDev:0 };
     for(const p of PILOTES){
       const [id, nom, drapeau, age, vitesse, regularite, pneus, depassement, pluie, salaire, potentiel] = p;
@@ -298,9 +417,10 @@ window.PaddockMonde = (() => {
     completer(C);
     genererCandidats(C);
     nouveauCalendrier(C);
+    nouvelleATR(C);
     C.objectif = objectifDirection(C);
-    genererOffres(C);
-    message(C, `Bienvenue chez ${E.nom}, ${C.directeur} ! La direction attend une ${C.objectif}e place au championnat des constructeurs. Commence par signer un sponsor principal, puis lance la conception de nouvelles pièces (onglet Voiture).`);
+    genererOffres(C, true);
+    message(C, `Bienvenue chez ${E.nom}, ${C.directeur} ! La direction attend une ${C.objectif}e place au championnat des constructeurs. Commence par négocier un sponsor titre (onglet Sponsors), puis lance la conception de nouvelles pièces (onglet Voiture).`);
     return C;
   }
   // ce qui manque à une carrière (nouvelle, ou d'une version précédente du jeu)
@@ -309,9 +429,49 @@ window.PaddockMonde = (() => {
     if(C.confiance == null) C.confiance = 60;
     if(!C.installations) C.installations = Object.fromEntries(Object.keys(INSTALLATIONS).map(k => [k, { niv:1, travaux:null }]));
     if(!C.pieces) C.pieces = piecesVides();
+    for(const [k, v] of Object.entries(piecesVides())) if(!C.pieces[k]) C.pieces[k] = v;
     if(!C.montage) C.montage = [{}, {}];
     if(C.plafondDepenses == null) C.plafondDepenses = 0;
     delete C.projets; delete C.projetsFaits;
+    if(!C.motoristes) C.motoristes = JSON.parse(JSON.stringify(MOTORISTES));
+    for(const e of ECURIES) if(C.ecuries[e.id] && !C.ecuries[e.id].motoriste) C.ecuries[e.id].motoriste = e.motoriste;
+    if(!C.atr && C.calendrier) nouvelleATR(C);
+    // les anciens sponsors (3 places, un an) deviennent des contrats d'un an
+    if(!C.contrats){
+      C.contrats = contratsVides();
+      const anc = Array.isArray(C.sponsors) ? C.sponsors : [];
+      ['titre', 'pontons', 'arriere'].forEach((e, i) => { const s = anc[i]; if(!s) return;
+        C.contrats[e] = { nom:s.nom, ico:s.ico, secteur:(MARQUES.find(m => m[0] === s.nom) || [0, 0, 'auto'])[2], empl:e, debut:C.saison, fin:C.saison, duree:1, parGP:s.parGP, signature:0,
+          objectif:s.objectif, rivale:s.rivale, txtObjectif:s.txtObjectif, prime:s.bonus || 0, exclusif:false, penalite:'aucune', option:false, objSaison:ECURIES.length, satisfaction:60, reneg:null }; });
+      delete C.sponsors; C.offres = [];
+      if(C.calendrier && C.reputation != null) genererOffres(C, true);
+    }
+  }
+  // les noms des versions précédentes (inventés) : remplacés par les vrais en 2026
+  const ANCIENS = { taureau:'Taureau Rouge Racing', cavallino:'Scuderia Cavallino', papaye:'Papaye Racing', fleches:'Flèches d\'Argent', emeraude:'Émeraude Martin', guillaume:'Guillaume Racing',
+    veau:'Petits Taureaux', alpes:'Équipe des Alpes', etoile:'Étoile US', trefle:'Trèfle Vert' };
+  const ANCIENS_P = { verstapin:'Max Verstapin', tsunodo:'Yuki Tsunodo', leclaire:'Charles Leclaire', hamiltown:'Lewis Hamiltown', norrish:'Lando Norrish', piastrino:'Oscar Piastrino', russelle:'George Russelle',
+    antonello:'Kimi Antonello', alonsso:'Fernando Alonsso', strolle:'Lance Strolle', albonne:'Alex Albonne', sainze:'Carlos Sainze', lawsonne:'Liam Lawsonne', hadjard:'Isack Hadjard', gaslight:'Pierre Gaslight',
+    doohann:'Jack Doohann', ocone:'Esteban Ocone', bierman:'Oliver Bierman', hulkenbourg:'Nico Hulkenbourg', bortoletto:'Gabriel Bortoletto', bottass:'Valtteri Bottass', peres:'Sergio Perès',
+    colapinta:'Franco Colapinta', drugovitch:'Felipe Drugovitch', pourchet:'Théo Pourchet', iwasaki:'Ayumu Iwasaki', lindbloom:'Arvid Lindbloom', vestie:'Frederik Vestie' };
+  // une carrière d'avant 2026 : les vrais noms, les motoristes, et la nouvelle écurie Cadillac
+  function vers2026(C){
+    for(const e of ECURIES){
+      const E = C.ecuries[e.id];
+      if(!E){ C.ecuries[e.id] = { ...JSON.parse(JSON.stringify(e)), pilotes:[], points:0, victoires:0, budgetDev:0 }; continue; }
+      if(e.id !== C.joueur || E.nom === ANCIENS[e.id]){ E.nom = e.nom; E.court = e.court; E.c1 = e.c1; E.c2 = e.c2; E.logo = e.logo; }
+      E.motoriste = e.motoriste;
+    }
+    for(const p of PILOTES){
+      const [id, nom, drapeau, age, vitesse, regularite, pneus, depassement, pluie, salaire, potentiel] = p, P = C.pilotes[id];
+      if(P){ if(P.nom === ANCIENS_P[id]) P.nom = nom; continue; }
+      C.pilotes[id] = { id, nom, drapeau, age, vitesse, regularite, pneus, depassement, pluie, salaire, potentiel, moral:70, ecurie:null, fin:null, points:0, carriere:{ gp:0, victoires:0, podiums:0, points:0, titres:0 } };
+    }
+    // Cadillac prend deux pilotes libres (Pérez et Bottas s'ils le sont)
+    const cad = C.ecuries.cadillac;
+    for(const id of ['peres', 'bottass']){ const P = C.pilotes[id]; if(cad.pilotes.length < 2 && P && !P.ecurie && !P.retraite){ P.ecurie = 'cadillac'; P.fin = C.saison + 1; cad.pilotes.push(id); } }
+    remplir(C, 'cadillac');
+    C.motoristes = JSON.parse(JSON.stringify(MOTORISTES));
   }
   // une carrière de la première version : les circuits de Draw Race sont remplacés par les nouveaux
   function migrer(C){
@@ -323,7 +483,8 @@ window.PaddockMonde = (() => {
       C.reglages.nbGP = C.calendrier.length;
       C.v = 2;
     }
-    if(C.v !== 2) return null;
+    if(C.v === 2){ completer(C); vers2026(C); C.v = 3; message(C, '🆕 Nouveau règlement 2026 : 11 écuries (arrivée de Cadillac, Audi), aéro active, mode dépassement, moteurs 50 % électriques. Les vrais noms sont arrivés !'); }
+    if(C.v !== 3) return null;
     completer(C);
     return C;
   }
@@ -341,7 +502,7 @@ window.PaddockMonde = (() => {
   // l'objectif de la saison : la place de la voiture dans le plateau (un peu mieux si l'écurie a du prestige)
   function objectifDirection(C){
     const rang = rangVoiture(C, { wM:.33, wA:.37, wC:.3 });
-    return clamp(rang - (C.reputation > 75 ? 1 : 0), 1, 10);
+    return clamp(rang - (C.reputation > 75 ? 1 : 0), 1, ECURIES.length);
   }
 
   /* ---------- La voiture ---------- */
@@ -354,8 +515,8 @@ window.PaddockMonde = (() => {
   }
   function perfVoiture(e, car = { wM:.33, wA:.37, wC:.3 }){ return e.moteur * car.wM + e.aero * car.wA + e.chassis * car.wC; }
   // la place attendue de l'écurie du joueur (d'après les voitures)
-  function rangVoiture(C, car){
-    const moi = [0, 1].map(i => perfVoiture(voitureDe(C, i), car)).reduce((a, b) => a + b) / 2;
+  function rangVoiture(C, car, circ = null){
+    const moi = [0, 1].map(i => perfVoiture(voitureDe(C, i, circ), car)).reduce((a, b) => a + b) / 2;
     return Object.values(C.ecuries).filter(e => e.id !== C.joueur && perfVoiture(e, car) > moi).length + 1;
   }
   // les autres écuries progressent aussi, selon leur budget (et la difficulté)
@@ -364,7 +525,14 @@ window.PaddockMonde = (() => {
     for(const e of Object.values(C.ecuries)){
       if(e.id === C.joueur) continue;
       const k = e.budget / 140 * k0;
-      for(const dom of ['moteur', 'aero', 'chassis', 'fiabilite']) if(Math.random() < .45) e[dom] = arrondi(Math.min(99, e[dom] + hasard(0, .8) * k * rendement(e[dom])), 1);
+      for(const dom of ['aero', 'chassis', 'fiabilite']) if(Math.random() < .45) e[dom] = arrondi(Math.min(99, e[dom] + hasard(0, .8) * k * rendement(e[dom])), 1);
+    }
+    // les motoristes font évoluer leur unité de puissance : toutes leurs écuries en profitent (le joueur aussi)
+    for(const [k, Mo] of Object.entries(C.motoristes || {})){
+      if(Math.random() > .5) continue;
+      const dp = arrondi(hasard(0, .7) * k0 * rendement(Mo.p), 2), df = arrondi(hasard(0, .5) * k0 * rendement(Mo.f), 2);
+      Mo.p = arrondi(Math.min(99, Mo.p + dp), 2); Mo.f = arrondi(Math.min(99, Mo.f + df), 2);
+      for(const e of Object.values(C.ecuries)) if(e.motoriste === k){ e.moteur = arrondi(Math.min(99, e.moteur + dp), 2); e.fiabilite = arrondi(Math.min(99, e.fiabilite + df * .5), 2); }
     }
   }
 
@@ -379,7 +547,7 @@ window.PaddockMonde = (() => {
     { id:'finir', txt:'les deux voitures à l\'arrivée', ok:mes => mes.every(r => !r.abandon) },
   ];
   function objectifCourse(C){
-    const c = circuit(C.calendrier[C.gp].id), r = rangVoiture(C, caractere(c));
+    const c = circuit(C.calendrier[C.gp].id), r = rangVoiture(C, caractere(c), c);
     return r <= 1 ? 'podium' : r <= 2 ? 'top5' : r <= 3 ? 'deuxpoints' : r <= 5 ? 'points' : r <= 7 ? 'top12' : r <= 9 ? 'top15' : 'finir';
   }
   const humeur = conf => conf >= 80 ? 'ravie' : conf >= 60 ? 'confiante' : conf >= 40 ? 'inquiète' : conf >= 20 ? 'très mécontente' : 'prête à te renvoyer';
@@ -410,31 +578,164 @@ window.PaddockMonde = (() => {
     return { ok:true, msg:`${cand.nom} devient ${POSTES[poste].nom.toLowerCase()} (${'★'.repeat(cand.niv)}).` };
   }
 
-  /* ---------- Les sponsors ---------- */
-  function genererOffres(C){
-    const rep = C.reputation, prises = C.sponsors.filter(Boolean).map(s => s.nom);
-    const libres = MARQUES.filter(m => !prises.includes(m[0])).sort(() => Math.random() - .5);
-    C.offres = [];
-    const rivale = rivaleDe(C);
-    for(let i = 0; i < 6 && libres.length; i++){
-      const [nom, ico] = libres.shift(), principal = i < 2;
-      const base = principal ? .7 + rep / 45 : .2 + rep / 140;
-      let objectifs = OBJECTIFS.filter(o => rep > 60 || !['podium', 'top5'].includes(o.id) || Math.random() < .3);
-      const o = choisir(objectifs);
-      C.offres.push({ nom, ico, principal, parGP:arrondi(base * hasard(.85, 1.2) * parGP(C), 2), objectif:o.id, txtObjectif:o.id === 'devant' ? `finir devant ${C.ecuries[rivale].nom}` : o.txt,
-        bonus:arrondi(o.bonus * (principal ? 1.6 : 1) * (.6 + rep / 110) * parGP(C), 2), rivale });
+  /* ---------- Les sponsors : contrats, négociation, clauses ---------- */
+  const contratsVides = () => Object.fromEntries(Object.keys(EMPLACEMENTS).map(k => [k, null]));
+  const contratsActifs = C => Object.values(C.contrats || {}).filter(Boolean);
+  const valeurEmpl = (C, empl) => (.2 + C.reputation / 170) * EMPLACEMENTS[empl].k * parGP(C);
+  const txtObjectifSponsor = (C, id, rivale) => id === 'devant' ? `finir devant ${C.ecuries[rivale] ? C.ecuries[rivale].nom : 'l\'écurie rivale'}` : (OBJECTIFS.find(o => o.id === id) || OBJECTIFS[0]).txt;
+  const primeObjectif = (C, empl, id) => arrondi((OBJECTIFS.find(o => o.id === id) || OBJECTIFS[0]).bonus * EMPLACEMENTS[empl].k * .7 * (.6 + C.reputation / 110) * parGP(C), 2);
+  const objectifsPossibles = C => OBJECTIFS.filter(o => C.reputation > 60 || !['podium', 'top5'].includes(o.id) || Math.random() < .3).sort(() => Math.random() - .5).slice(0, 3).map(o => o.id);
+  // une offre : ce que le sponsor propose et ce qu'il aime (durée, exclusivité, clause), avec sa patience
+  function nouvelleOffre(C, empl, [nom, ico, secteur], plus = {}){
+    return { nom, ico, secteur, empl, base:arrondi(valeurEmpl(C, empl) * hasard(.85, 1.2), 2), rivale:rivaleDe(C), objectifs:objectifsPossibles(C),
+      pref:{ duree:choisir([1, 2, 2, 3]), exclusif:Math.random() < .45, penalite:choisir(['baisse', 'rupture', 'rupture', 'aucune']) },
+      seuil:Math.round(hasard(50, 68)), patience:3, expire:C.gp + 5, objSaison:clamp((C.objectif || 6) + choisir([0, 1, 1, 2]), 1, ECURIES.length), ...plus };
+  }
+  function genererOffres(C, depart = false){
+    if(!C.contrats) return;
+    C.offres = (depart ? [] : (C.offres || [])).filter(o => o.expire > C.gp && (o.renouv || o.renego ? C.contrats[o.empl] && C.contrats[o.empl].nom === o.nom : !C.contrats[o.empl]));
+    const pris = new Set([...contratsActifs(C).map(c => c.nom), ...C.offres.map(o => o.nom)]);
+    const bloques = new Set(contratsActifs(C).filter(c => c.exclusif).map(c => c.secteur));
+    const libres = MARQUES.filter(m => !pris.has(m[0]) && !bloques.has(m[2])).sort(() => Math.random() - .5);
+    for(const e of Object.keys(EMPLACEMENTS)){
+      if(C.contrats[e]) continue;
+      const deja = C.offres.filter(o => o.empl === e).length;
+      for(let i = deja; i < 2 && libres.length; i++) if(depart || (i === 0 ? Math.random() < .7 : Math.random() < .3)) C.offres.push(nouvelleOffre(C, e, libres.shift()));
     }
   }
   function rivaleDe(C){
     const tri = Object.values(C.ecuries).sort((a, b) => perfVoiture(b) - perfVoiture(a)), i = tri.findIndex(e => e.id === C.joueur);
     return (tri[i - 1] || tri[i + 1]).id;
   }
-  function signerSponsor(C, i){
-    const o = C.offres[i]; if(!o) return { ok:false };
-    const slot = o.principal ? 0 : (C.sponsors[1] ? (C.sponsors[2] ? -1 : 2) : 1);
-    if(slot < 0 || (o.principal && C.sponsors[0])) return { ok:false, msg:o.principal ? 'Tu as déjà un sponsor principal.' : 'Les deux places de sponsors secondaires sont prises.' };
-    C.sponsors[slot] = { ...o, signe:C.saison }; C.offres.splice(i, 1);
-    return { ok:true, msg:`${o.ico} ${o.nom} rejoint l'écurie : ${String(o.parGP).replace('.', ',')} M€ par Grand Prix.` };
+  // la proposition de départ : ce que le sponsor aime
+  const propositionDefaut = (C, o) => ({ duree:o.pref.duree, parGP:o.base, signature:0, objectif:o.objectifs[0], exclusif:o.pref.exclusif, penalite:o.pref.penalite, option:false });
+  // ce que le sponsor accepte de payer par Grand Prix avec ces clauses
+  const valeurJuste = (o, P) => o.base * (1 + PENALITES[P.penalite].k + (P.exclusif ? (o.pref.exclusif ? .15 : .08) : 0) - (P.option ? .04 : 0));
+  // l'intérêt du sponsor pour la proposition, de 0 à 100 ; il signe au-dessus de son seuil (caché, entre 50 et 68)
+  function interet(C, o, P){
+    const n = C.calendrier.length, r = (P.parGP * n + P.signature / P.duree) / (valeurJuste(o, P) * n);
+    let i = 100 - Math.max(0, r - 1) * 260 + Math.max(0, 1 - r) * 60;
+    i -= Math.abs(P.duree - o.pref.duree) * 9;
+    if(o.pref.exclusif && !P.exclusif) i -= 14;
+    if(o.pref.penalite !== 'aucune' && P.penalite === 'aucune') i -= 12;
+    if(P.option) i -= 5;
+    return clamp(Math.round(i + (o.bonusInteret || 0)), 0, 100);
+  }
+  function conflitSecteur(C, o, P){
+    for(const [e, c] of Object.entries(C.contrats)){
+      if(!c || e === o.empl || c.secteur !== o.secteur) continue;
+      if(c.exclusif) return `${c.ico} ${c.nom} a l'exclusivité du secteur ${SECTEURS[c.secteur]} : impossible de signer ${o.nom}.`;
+      if(P.exclusif) return `Tu as déjà ${c.ico} ${c.nom} dans le secteur ${SECTEURS[c.secteur]} : impossible de promettre l'exclusivité à ${o.nom}.`;
+    }
+    return null;
+  }
+  function proposer(C, idx, P){
+    const o = C.offres[idx]; if(!o) return { ok:false, msg:'' };
+    const conflit = conflitSecteur(C, o, P); if(conflit) return { ok:false, msg:conflit };
+    if(!o.renouv && !o.renego && C.contrats[o.empl]) return { ok:false, msg:`L'emplacement ${EMPLACEMENTS[o.empl].nom.toLowerCase()} est déjà pris.` };
+    const i = interet(C, o, P);
+    if(i >= o.seuil){ const msg = signerContrat(C, o, P); C.offres.splice(idx, 1); return { ok:true, msg }; }
+    o.patience--;
+    if(o.patience <= 0){
+      C.offres.splice(idx, 1);
+      if(o.renego && C.contrats[o.empl]) C.contrats[o.empl].satisfaction = clamp(C.contrats[o.empl].satisfaction - 10, 0, 100);
+      return { ok:false, fin:true, msg:`${o.ico} ${o.nom} arrête les discussions${o.renego ? ' : le contrat actuel continue, mais le sponsor est déçu' : ''}.` };
+    }
+    o.contre = contreOffre(C, o, P);
+    return { ok:false, msg:`${o.ico} ${o.nom} refuse (${i} % d'intérêt) et fait une contre-proposition. Encore ${o.patience} essai${o.patience > 1 ? 's' : ''}.` };
+  }
+  // la contre-proposition : le sponsor garde tes clauses et baisse les montants
+  function contreOffre(C, o, P){
+    const Q = { ...P };
+    for(let k = 0; k < 80 && interet(C, o, Q) < o.seuil + 3; k++){
+      if(Q.signature > 0) Q.signature = arrondi(Math.max(0, Q.signature - .5), 1);
+      else Q.parGP = arrondi(Q.parGP * .97, 2);
+    }
+    return Q;
+  }
+  function accepterContre(C, idx){
+    const o = C.offres[idx]; if(!o || !o.contre) return { ok:false, msg:'' };
+    const conflit = conflitSecteur(C, o, o.contre); if(conflit) return { ok:false, msg:conflit };
+    const msg = signerContrat(C, o, o.contre); C.offres.splice(idx, 1); return { ok:true, msg };
+  }
+  function signerContrat(C, o, P){
+    const ancien = C.contrats[o.empl], debut = o.renouv ? C.saison + 1 : C.saison;
+    const c = { nom:o.nom, ico:o.ico, secteur:o.secteur, empl:o.empl, debut, fin:debut + P.duree - 1, duree:P.duree, parGP:arrondi(P.parGP, 2), signature:arrondi(P.signature, 1),
+      objectif:P.objectif, rivale:o.rivale, txtObjectif:txtObjectifSponsor(C, P.objectif, o.rivale), prime:primeObjectif(C, o.empl, P.objectif),
+      exclusif:P.exclusif, penalite:P.penalite, option:P.option, objSaison:o.objSaison, satisfaction:ancien && (o.renouv || o.renego) ? ancien.satisfaction : 60, reneg:ancien ? ancien.reneg : null };
+    if(o.renouv && ancien) ancien.suite = c; else C.contrats[o.empl] = c;
+    if(c.signature){ C.argent = arrondi(C.argent + c.signature, 2); C.finances.push({ saison:C.saison, gp:C.gp, txt:`${c.ico} Prime de signature ${c.nom}`, montant:c.signature }); }
+    const quand = c.duree > 1 ? `de ${c.debut} à ${c.fin}` : `pour la saison ${c.debut}`;
+    return `${c.ico} ${c.nom} ${o.renouv ? 'renouvelle' : o.renego ? 'signe un nouveau contrat' : 'signe'} ${quand} (${EMPLACEMENTS[o.empl].nom.toLowerCase()}) : ${String(c.parGP).replace('.', ',')} M€ par Grand Prix${c.signature ? ` et ${String(c.signature).replace('.', ',')} M€ à la signature` : ''}.`;
+  }
+  // renouveler (dernière saison du contrat) ou renégocier (en cours de contrat, si le sponsor est content)
+  function ouvrirNegociation(C, empl){
+    const c = C.contrats[empl]; if(!c) return { ok:false, msg:'' };
+    const renouv = c.fin === C.saison;
+    if(renouv && c.suite) return { ok:false, msg:'Le contrat est déjà renouvelé.' };
+    if(!renouv && c.satisfaction < 65) return { ok:false, msg:`${c.nom} n'est pas assez content pour renégocier (satisfaction ${Math.round(c.satisfaction)}, il faut 65).` };
+    if(!renouv && c.reneg === C.saison) return { ok:false, msg:'Une seule renégociation par saison.' };
+    if(!renouv) c.reneg = C.saison;
+    const i = C.offres.findIndex(o => o.nom === c.nom); if(i >= 0) return { ok:true, idx:i };
+    const o = nouvelleOffre(C, empl, [c.nom, c.ico, c.secteur], { renouv, renego:!renouv, expire:renouv ? C.calendrier.length + 1 : C.gp + 2,
+      bonusInteret:Math.round((c.satisfaction - 50) / 3), objSaison:clamp((C.objectif || 6) + choisir([0, 1]), 1, ECURIES.length) });
+    o.base = arrondi(Math.max(o.base, c.parGP * (.9 + c.satisfaction / 400)), 2); o.pref.exclusif = c.exclusif || o.pref.exclusif;
+    C.offres.unshift(o);
+    return { ok:true, idx:0 };
+  }
+  function leverOption(C, empl){
+    const c = C.contrats[empl]; if(!c || !c.option || c.fin !== C.saison || c.suite) return { ok:false, msg:'' };
+    c.fin++; c.option = false;
+    return { ok:true, msg:`${c.ico} Option levée : ${c.nom} reste jusqu'en ${c.fin} aux mêmes conditions.` };
+  }
+  // rompre un contrat : une indemnité de 25 % de l'argent garanti qui reste
+  function indemniteSponsor(C, empl){
+    const c = C.contrats[empl]; if(!c) return 0;
+    const restants = Math.max(0, C.calendrier.length - C.gp) + Math.max(0, c.fin - C.saison) * C.calendrier.length;
+    return arrondi(c.parGP * restants * .25, 1);
+  }
+  function rompreSponsor(C, empl){
+    const c = C.contrats[empl]; if(!c) return { ok:false, msg:'' };
+    const ind = indemniteSponsor(C, empl);
+    C.argent = arrondi(C.argent - ind, 2); C.finances.push({ saison:C.saison, gp:C.gp, txt:`${c.ico} Indemnité de rupture ${c.nom}`, montant:-ind });
+    C.contrats[empl] = null; C.reputation = clamp(C.reputation - 2, 10, 100);
+    C.offres = C.offres.filter(o => o.nom !== c.nom);
+    genererOffres(C);
+    return { ok:true, msg:`${c.ico} Contrat rompu avec ${c.nom} : indemnité de ${String(ind).replace('.', ',')} M€.` };
+  }
+  // en fin de saison : l'objectif de la saison de chaque contrat, avec sa clause
+  function bilanSponsors(C, place){
+    const lignes = [];
+    for(const [e, c] of Object.entries(C.contrats)){
+      if(!c) continue;
+      if(place <= c.objSaison){
+        const p = arrondi(c.parGP * 3, 2); C.argent = arrondi(C.argent + p, 2);
+        C.finances.push({ saison:C.saison, gp:C.gp, txt:`${c.ico} Prime de saison ${c.nom}`, montant:p });
+        c.satisfaction = clamp(c.satisfaction + 15, 0, 100);
+        lignes.push({ ok:true, txt:`${c.ico} ${c.nom} : objectif ${c.objSaison}e atteint, prime de ${String(p).replace('.', ',')} M€` });
+        continue;
+      }
+      c.satisfaction = clamp(c.satisfaction - 15, 0, 100);
+      let suite = 'pas de pénalité';
+      if(c.fin > C.saison && c.penalite === 'baisse'){ c.parGP = arrondi(c.parGP * .75, 2); suite = `baisse de 25 %, ${String(c.parGP).replace('.', ',')} M€ par GP`; }
+      else if(c.fin > C.saison && c.penalite === 'rupture'){
+        if(c.satisfaction < 60){ C.contrats[e] = null; suite = 'le sponsor part (clause de rupture)'; message(C, `${c.ico} ${c.nom} quitte l'écurie : l'objectif de la saison est manqué.`, 'mal'); }
+        else suite = 'le sponsor reste, mais il est moins content';
+      }
+      else if(c.fin <= C.saison) suite = 'fin du contrat';
+      lignes.push({ ok:false, txt:`${c.ico} ${c.nom} : objectif ${c.objSaison}e manqué, ${suite}` });
+    }
+    return lignes;
+  }
+  // au début d'une saison : les contrats finis s'arrêtent, les renouvellements commencent
+  function sponsorsNouvelleSaison(C){
+    for(const e of Object.keys(EMPLACEMENTS)){
+      const c = C.contrats[e]; if(!c || c.fin >= C.saison) continue;
+      if(c.suite) C.contrats[e] = c.suite;
+      else { C.contrats[e] = null; message(C, `${c.ico} Le contrat avec ${c.nom} (${EMPLACEMENTS[e].nom.toLowerCase()}) est terminé.`); }
+    }
+    for(const c of contratsActifs(C)) if(c.objectif === 'devant'){ c.rivale = rivaleDe(C); c.txtObjectif = txtObjectifSponsor(C, 'devant', c.rivale); }
+    genererOffres(C, true);
   }
   function objectifAtteint(C, s, res){
     const mes = res.classement.filter(r => r.ecurie === C.joueur);
@@ -452,10 +753,28 @@ window.PaddockMonde = (() => {
   /* ---------- Après un Grand Prix ---------- */
   // res.classement : [{ pilote, ecurie, place, abandon, accident, degats, arrets }], res.pole, res.meilleurTour
   function appliquerResultat(C, res){
-    const E = ecurieJoueur(C), bilan = { points:0, argent:0, lignes:[], casse:[] };
+    const E = ecurieJoueur(C), bilan = { points:0, argent:0, lignes:[], casse:[], fia:[] };
     const gpInfo = C.calendrier[C.gp], k = parGP(C);
+    // le contrôle technique de la FIA : une pièce poussée au-delà du règlement peut être déclarée non conforme
     for(const r of res.classement){
-      const p = C.pilotes[r.pilote], pts = !r.abandon && r.place <= 10 ? POINTS[r.place - 1] : 0;
+      if(r.ecurie !== C.joueur || r.abandon) continue;
+      const place = E.pilotes.indexOf(r.pilote); if(place < 0) continue;
+      for(const type of Object.keys(PIECES)){
+        const n = C.montage[place][type] || 0, g = genDe(C, type, n);
+        if(!g.illegal || g.interdite) continue;
+        if(Math.random() < (r.place <= 5 ? .3 : .15)){
+          r.dsq = true; r.abandon = true; g.interdite = true;
+          const amende = arrondi(.5 + .1 * C.reputation / 10, 1);
+          bilan.argent -= amende; bilan.lignes.push([`🚨 Amende FIA (${PIECES[type].nom.toLowerCase()} v${n})`, -amende]);
+          bilan.fia.push(`${C.pilotes[r.pilote].nom} est disqualifié : ${PIECES[type].nom.toLowerCase()} v${n} non conforme.`);
+          retirerVersion(C, type, n);
+          message(C, `🚨 Contrôle FIA : ${PIECES[type].nom} v${n} non conforme ! ${C.pilotes[r.pilote].nom} est disqualifié et la pièce est interdite.`, 'mal');
+          break;
+        }
+      }
+    }
+    for(const r of res.classement){
+      const p = C.pilotes[r.pilote], pts = !r.abandon && !r.dsq && r.place <= 10 ? POINTS[r.place - 1] : 0;
       p.points += pts; C.ecuries[r.ecurie].points += pts; p.carriere.gp++; p.carriere.points += pts;
       if(r.place === 1 && !r.abandon){ p.carriere.victoires++; C.ecuries[r.ecurie].victoires++; }
       if(r.place <= 3 && !r.abandon) p.carriere.podiums++;
@@ -472,9 +791,10 @@ window.PaddockMonde = (() => {
     }
     if(res.pole && C.pilotes[res.pole] && C.pilotes[res.pole].ecurie === C.joueur) C.records.poles++;
     C.records.points += bilan.points; C.records.gp++;
-    for(const s of C.sponsors.filter(Boolean)){
+    for(const s of contratsActifs(C)){
       bilan.argent += s.parGP; bilan.lignes.push([`${s.ico} ${s.nom}`, s.parGP]);
-      if(objectifAtteint(C, s, res)){ bilan.argent += s.bonus; bilan.lignes.push([`${s.ico} Prime : ${s.txtObjectif}`, s.bonus]); }
+      if(objectifAtteint(C, s, res)){ bilan.argent += s.prime; bilan.lignes.push([`${s.ico} Prime : ${s.txtObjectif}`, s.prime]); s.satisfaction = clamp(s.satisfaction + 5, 0, 100); }
+      else s.satisfaction = clamp(s.satisfaction - 3, 0, 100);
     }
     const salaires = arrondi((pilotesDe(C, C.joueur).reduce((t, p) => t + p.salaire, 0) + Object.values(C.personnel).reduce((t, e) => t + e.salaire, 0)) / 12 * k, 2);
     bilan.argent -= salaires; bilan.lignes.push(['👷 Salaires (pilotes et personnel)', -salaires]);
@@ -493,9 +813,10 @@ window.PaddockMonde = (() => {
     bilan.confiance = arrondi(C.confiance - avant, 1);
     const place = classementConstructeurs(C).findIndex(e => e.id === C.joueur) + 1;
     C.reputation = clamp(C.reputation + ((bilan.points >= 10 ? 2 : bilan.points > 0 ? 1 : 0) + (place <= C.objectif ? .5 : -.5)) * k, 10, 100);
-    gpInfo.resultat = { classement:res.classement.map(r => ({ pilote:r.pilote, ecurie:r.ecurie, place:r.place, abandon:r.abandon })), pole:res.pole, meilleurTour:res.meilleurTour, objectif:bilan.reussi };
+    gpInfo.resultat = { classement:res.classement.map(r => ({ pilote:r.pilote, ecurie:r.ecurie, place:r.place, abandon:r.abandon, dsq:!!r.dsq })), pole:res.pole, meilleurTour:res.meilleurTour, objectif:bilan.reussi };
     C.gp++;
     C.weekend = null;
+    if(C.gp === Math.ceil(C.calendrier.length / 2) && C.gp < C.calendrier.length){ nouvelleATR(C); message(C, `🌀 Nouvelle période d'essais aérodynamiques : ${C.atr.souffl} h de soufflerie et ${C.atr.cfd} unités de simulation (${Math.round(C.atr.k * 100)} % de la base, ${C.atr.rang}e au championnat).`); }
     terminerTravaux(C);
     avancerUsine(C);
     developpementIA(C);
@@ -526,9 +847,10 @@ window.PaddockMonde = (() => {
     C.confiance = clamp(C.confiance + (reussi ? 12 + (C.objectif - place) * 3 : -(place - C.objectif) * 5) + (C.argent < 0 ? -10 : 0), 0, 100);
     const renvoye = C.confiance < 20;
     const resume = { saison:C.saison, place, points:ecurieJoueur(C).points, prime, objectif:C.objectif, reussi, champion:champion ? champion.id : null, championEcurie:champion ? champion.ecurie : null, constructeur:cons[0].id, titreP, titreC,
-      victoires:ecurieJoueur(C).victoires, classementC:cons.map(e => [e.id, e.points]), classementP:pil.slice(0, 10).map(p => [p.id, p.points]), confiance:Math.round(C.confiance), renvoye };
+      victoires:ecurieJoueur(C).victoires, classementC:cons.map(e => [e.id, e.points]), classementP:pil.map(p => [p.id, p.points, p.ecurie]), confiance:Math.round(C.confiance), renvoye };
     C.historique.push(resume);
     C.phase = renvoye ? 'renvoi' : 'mercato';
+    resume.sponsors = bilanSponsors(C, place);
     C.resumeSaison = resume;
     return resume;
   }
@@ -627,27 +949,28 @@ window.PaddockMonde = (() => {
     const cons = classementConstructeurs(C);
     for(const e of Object.values(C.ecuries)){
       for(const dom of ['moteur', 'aero', 'chassis', 'fiabilite']) e[dom] = arrondi(e[dom] + (86 - e[dom]) * .2, 1);
+      if(!e.motoriste) e.motoriste = 'ferrari';
       const rang = cons.findIndex(x => x.id === e.id);
       if(e.id !== C.joueur) e.budget = clamp(Math.round(e.budget + (5 - rang) * 2 + hasard(-3, 3)), 60, 145);
       e.prestige = clamp(Math.round(e.prestige + (5 - rang) * 1.5), 20, 100);
       e.points = 0; e.victoires = 0;
     }
+    for(const Mo of Object.values(C.motoristes || {})){ Mo.p = arrondi(Mo.p + (88 - Mo.p) * .2, 2); Mo.f = arrondi(Mo.f + (86 - Mo.f) * .2, 2); }
     C.gp = 0; C.phase = 'saison'; C.weekend = null;
-    // les sponsors finissent avec la saison
-    C.sponsors = [null, null, null];
-    nouveauCalendrier(C); genererOffres(C); genererCandidats(C);
+    nouveauCalendrier(C); genererCandidats(C); nouvelleATR(C);
     C.objectif = objectifDirection(C);
-    message(C, `Saison ${C.saison} : la direction vise une ${C.objectif}e place chez les constructeurs. Nouvelle voiture : pense à concevoir de nouvelles pièces, et à signer de nouveaux sponsors !`);
+    sponsorsNouvelleSaison(C);
+    message(C, `Saison ${C.saison} : la direction vise une ${C.objectif}e place chez les constructeurs. Nouvelle voiture : pense à concevoir de nouvelles pièces, et à renouveler ou trouver des sponsors !`);
     C.resumeSaison = null;
     return ancienne;
   }
 
   const NOMS_PILOTES = Object.fromEntries(PILOTES.map(p => [p[0], p[1]]));
-  return { COULEURS, LOGOS, personnaliser, NOMS_PILOTES, ECURIES, PETITES, POSTES, DOMAINES, POINTS, PRIMES, nouvelleCarriere, migrer, completer, circuits, circuit, caractere, perfVoiture,
-    genererOffres, signerSponsor, embaucher, appliquerResultat, classementPilotes, classementConstructeurs, finSaison, marche, demande, engager, prolonger,
+  return { MOTORISTES, usineMoteur, COULEURS, LOGOS, personnaliser, NOMS_PILOTES, ECURIES, PETITES, POSTES, DOMAINES, POINTS, PRIMES, nouvelleCarriere, migrer, completer, circuits, circuit, caractere, perfVoiture,
+    genererOffres, EMPLACEMENTS, SECTEURS, PENALITES, OBJECTIFS, contratsActifs, txtObjectifSponsor, primeObjectif, propositionDefaut, interet, proposer, accepterContre, ouvrirNegociation, leverOption, indemniteSponsor, rompreSponsor, embaucher, appliquerResultat, classementPilotes, classementConstructeurs, finSaison, marche, demande, engager, prolonger,
     nouvelleSaison, noteGlobale, pilotesDe, ecurieJoueur, message, rivaleDe, objectifAtteint, arrondi,
     REGLAGES_SAISON, reglagesDefaut, nbTours, parGP, choisirCircuits, nouveauCalendrier, PANNES, PLAFOND, depensesPieces,
     INSTALLATIONS, coutInstallation, dureeInstallation, ameliorerInstallation, entretien,
-    PIECES, AMBITIONS, voitureDe, coutConception, coutFabrication, lancerConception, fabriquer, monterPiece, gainGen, coutFiabilisation, lancerFiabilisation,
+    PIECES, AMBITIONS, COMPROMIS, SPECS, AERO, estimerConception, conseilIngenieur, facteurCircuit, genDe, REGLAGE_DEFAUT, nouvelleATR, coeffATR, voitureDe, coutConception, coutFabrication, lancerConception, fabriquer, monterPiece, gainGen, coutFiabilisation, lancerFiabilisation,
     rangVoiture, OBJ_COURSE, objectifCourse, humeur, demanderRallonge };
 })();
