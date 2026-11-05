@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:138, type:'maj', jeu:'Paddock', ico:'🏎️', lien:'jeux/paddock.html',
+    txt:'Nouveau dessin de la voiture au QG : une vraie F1 2026 vue de dessus, avec ses vraies proportions, des formes arrondies, des reflets, le halo, les rétroviseurs, les bras de suspension et le diffuseur.' },
   { v:137, type:'maj', jeu:'Paddock', ico:'🏎️', lien:'jeux/paddock.html',
     txt:'Saison 2026 ! Les 11 vraies écuries (avec Cadillac et Audi) et les vrais pilotes, le nouveau règlement (aéro active, mode dépassement), un schéma détaillé de la voiture avec les pontons, des réglages pour concevoir chaque pièce (compromis, soufflerie, risque de pièce non conforme, conseils de l\'ingénieur), des contrats de sponsors à négocier avec leurs clauses, et le classement des pilotes au bilan de la saison.' },
   { v:136, type:'maj', jeu:'Rock Altitude', ico:'🎸', lien:'jeux/rock.html',

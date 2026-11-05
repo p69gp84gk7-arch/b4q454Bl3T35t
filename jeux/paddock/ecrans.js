@@ -306,44 +306,67 @@ function schemaVoiture(E){
   const ver = type => { if(type === 'fiab') return virg(M.voitureDe(C, 0).fiabilite, 0); const g = Math.max(C.montage[0][type] || 0, C.montage[1][type] || 0); return g ? 'v' + g : 'base'; };
   const zone = (type, forme) => `<g data-p="${type}" class="zp ${selPiece === type ? 'sel' : ''}">${forme}</g>`;
   // étiquette dans une colonne à gauche ou à droite, reliée à la pièce par un trait
-  const etiquette = (type, px, py, ly, nom, cote) => { const e = etat(type), L = 92, bx = cote === 'g' ? -100 : 208, cx = bx + L / 2, lx = cote === 'g' ? bx + L : bx;
-    return `<g data-p="${type}" class="et ${selPiece === type ? 'sel' : ''}"><line x1="${px}" y1="${py}" x2="${lx}" y2="${ly}"/><circle cx="${px}" cy="${py}" r="2.6"/><rect x="${bx}" y="${ly - 17}" width="${L}" height="34" rx="8"/><text x="${cx}" y="${ly - 2}">${nom}</text><text class="v" x="${cx}" y="${ly + 12}">${ver(type)} ${e}</text></g>`; };
-  const c1 = E.c1, c2 = E.c2, sym = d => d.replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g, (m, x, y) => `${200 - x} ${y}`);
-  const deux = (d, att) => `<path d="${d}" ${att}/><path d="${sym(d)}" ${att}/>`;
-  const bras = (a, b) => `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/><line x1="${200 - a[0]}" y1="${a[1]}" x2="${200 - b[0]}" y2="${b[1]}"/>`;
-  const pneu = (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7"/><line class="sculpt" x1="${x + 4}" y1="${y + h * .3}" x2="${x + w - 4}" y2="${y + h * .3}"/><line class="sculpt" x1="${x + 4}" y1="${y + h * .7}" x2="${x + w - 4}" y2="${y + h * .7}"/>`;
-  return `<svg viewBox="-108 0 416 372" role="img" aria-label="La voiture 2026 vue de dessus">
-    <ellipse cx="100" cy="190" rx="84" ry="178" fill="rgba(255,255,255,.03)"/>
-    ${zone('fond', `<path d="M62 148 L138 148 L152 176 L155 238 L141 262 L134 316 L66 316 L59 262 L45 238 L48 176 Z" fill="#1A1C22" stroke="#4A4F5C" stroke-width="2"/>
-      ${deux('M50 186 L54 184 L56 232 L51 236 Z', 'fill="#2C3039"')}
-      <g class="lignes"><line x1="80" y1="300" x2="78" y2="316"/><line x1="92" y1="300" x2="91" y2="316"/><line x1="108" y1="300" x2="109" y2="316"/><line x1="120" y1="300" x2="122" y2="316"/></g>`)}
-    ${zone('suspension', `<g class="bras">${bras([54, 74], [90, 100])}${bras([54, 96], [90, 118])}${bras([54, 86], [88, 128])}${bras([56, 268], [86, 262])}${bras([56, 302], [86, 296])}${bras([56, 286], [88, 306])}</g>
-      <g class="roues">${pneu(32, 60, 22, 48)}${pneu(146, 60, 22, 48)}${pneu(28, 254, 28, 60)}${pneu(144, 254, 28, 60)}</g>`)}
-    ${zone('avant', `<path d="M93 118 L94.5 52 Q100 38 105.5 52 L107 118 Z" fill="${c1}" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/>
-      <path d="M40 44 Q100 35 160 44 L160 51 Q100 42 40 51 Z" fill="#2A2D35" stroke="#000" stroke-width=".8"/>
-      <path d="M41 36 Q100 27 159 36 L159 41 Q100 32 41 41 Z" fill="${c2}" stroke="#000" stroke-width=".8"/>
-      <path d="M44 28 Q100 20 156 28 L156 32 Q100 24 44 32 Z" fill="${c2}" opacity=".75" stroke="#000" stroke-width=".8"/>
-      <rect x="34" y="18" width="7" height="36" rx="2" fill="${c1}" stroke="#000" stroke-width=".8"/><rect x="159" y="18" width="7" height="36" rx="2" fill="${c1}" stroke="#000" stroke-width=".8"/>`)}
-    <path d="M90 116 L110 116 L117 150 L117 182 L83 182 L83 150 Z" fill="${c1}" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/>
-    ${zone('pontons', `${deux('M84 168 L64 174 Q57 176 58 186 L60 232 Q66 254 88 264 Z', `fill="${c1}" stroke="rgba(0,0,0,.55)" stroke-width="1.2"`)}
-      ${deux('M59 178 L77 173 L78 181 L60 186 Z', 'fill="#08090C"')}
-      ${deux('M65 196 L80 192 L82 238 L69 232 Z', `fill="${c2}" opacity=".85"`)}
-      ${deux('M63 238 L68 240 L68 246 L64 244 Z', 'fill="#08090C" opacity=".7"')}`)}
-    <g class="retro"><line x1="83" y1="160" x2="70" y2="156"/><line x1="117" y1="160" x2="130" y2="156"/></g>
-    <rect x="62" y="151" width="10" height="7" rx="2" fill="${c2}" stroke="#000" stroke-width=".8"/><rect x="128" y="151" width="10" height="7" rx="2" fill="${c2}" stroke="#000" stroke-width=".8"/>
-    ${zone('moteur', `<path d="M86 176 L114 176 L113 230 L107 292 L93 292 L87 230 Z" fill="${c1}" stroke="#000" stroke-width="1"/>
-      <line x1="100" y1="196" x2="100" y2="288" stroke="${c2}" stroke-width="3"/>
-      <ellipse cx="100" cy="184" rx="7" ry="5" fill="#08090C"/>
-      <rect x="91" y="246" width="5" height="16" rx="2" fill="rgba(0,0,0,.45)"/><rect x="104" y="246" width="5" height="16" rx="2" fill="rgba(0,0,0,.45)"/>`)}
-    <ellipse cx="100" cy="154" rx="11" ry="18" fill="#08090C"/><circle cx="100" cy="159" r="6.5" fill="${c2}" stroke="#000" stroke-width=".8"/><rect x="96" y="156" width="8" height="3" rx="1" fill="#111"/>
-    <path d="M88 166 Q87 136 100 133 Q113 136 112 166" fill="none" stroke="#2E2E33" stroke-width="3.6" stroke-linecap="round"/><line x1="100" y1="133" x2="100" y2="124" stroke="#2E2E33" stroke-width="3.2" stroke-linecap="round"/>
-    ${zone('fiab', `<rect x="92" y="290" width="16" height="26" rx="3" fill="#5A5F6B" stroke="#222"/><rect x="96" y="294" width="8" height="8" rx="1.5" fill="#3A3E47"/><rect x="97" y="317" width="6" height="4" rx="1" fill="#E10600"/>`)}
-    ${zone('arriere', `<line x1="100" y1="316" x2="100" y2="330" stroke="#222" stroke-width="4"/>
-      <rect x="52" y="338" width="96" height="12" rx="3" fill="${c1}" stroke="#000" stroke-width="1"/>
-      <rect x="52" y="327" width="96" height="9" rx="3" fill="${c2}" stroke="#000" stroke-width="1"/>
-      <rect x="46" y="322" width="7" height="34" rx="2" fill="${c2}" stroke="#000" stroke-width=".8"/><rect x="147" y="322" width="7" height="34" rx="2" fill="${c2}" stroke="#000" stroke-width=".8"/>`)}
-    ${etiquette('avant', 37, 42, 38, 'Aileron av.', 'g')}${etiquette('pontons', 60, 196, 150, 'Pontons', 'g')}${etiquette('fond', 47, 226, 250, 'Fond plat', 'g')}${etiquette('fiab', 92, 303, 334, 'Fiabilité', 'g')}
-    ${etiquette('suspension', 168, 84, 84, 'Suspension', 'd')}${etiquette('moteur', 110, 214, 200, 'Moteur', 'd')}${etiquette('arriere', 153, 344, 334, 'Aileron arr.', 'd')}
+  const etiquette = (type, px, py, ly, nom, cote) => { const e = etat(type), L = 110, bx = cote === 'g' ? -226 : 116, cx = bx + L / 2, lx = cote === 'g' ? bx + L : bx;
+    return `<g data-p="${type}" class="et ${selPiece === type ? 'sel' : ''}"><line x1="${px}" y1="${py}" x2="${lx}" y2="${ly}"/><circle cx="${px}" cy="${py}" r="3"/><rect x="${bx}" y="${ly - 21}" width="${L}" height="42" rx="10"/><text x="${cx}" y="${ly - 3}">${nom}</text><text class="v" x="${cx}" y="${ly + 15}">${ver(type)} ${e}</text></g>`; };
+  const c1 = E.c1, c2 = E.c2;
+  // la moitié gauche, recopiée en miroir pour la droite
+  const deux = m => `${m}<g transform="scale(-1 1)">${m}</g>`;
+  // une forme aux couleurs de l'écurie, avec son reflet (relief)
+  const carrosserie = (d, fill, reflet = 'reflet') => `<path class="c" d="${d}" fill="${fill}" stroke="rgba(0,0,0,.6)" stroke-width="1"/><path d="${d}" fill="url(#${reflet})"/>`;
+  // un pneu vu de dessus : la bande de roulement et le liseré jaune du flanc
+  const pneu = (x, y, w, h) => `<rect class="c" x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="url(#pneu)" stroke="#000" stroke-width="1"/>
+    <line x1="${x + 2.5}" y1="${y + 14}" x2="${x + 2.5}" y2="${y + h - 14}" stroke="#E8C200" stroke-width="1.4" opacity=".8"/><line x1="${x + w - 2.5}" y1="${y + 14}" x2="${x + w - 2.5}" y2="${y + h - 14}" stroke="#E8C200" stroke-width="1.4" opacity=".8"/>`;
+  const nez = 'M-7 6 C-9 30 -12 62 -17 100 L17 100 C12 62 9 30 7 6 Q0 1 -7 6 Z';
+  const coque = 'M-17 99 C-20 140 -26 168 -30 196 L-30 252 L30 252 L30 196 C26 168 20 140 17 99 Z';
+  const ponton = 'M-29 204 L-50 209 C-68 213 -76 225 -76 246 C-75 292 -60 342 -33 396 L-22 398 C-25 330 -28 270 -29 204 Z';
+  const capot = 'M-30 248 C-30 282 -26 332 -17 400 C-13 422 -10 440 -8 456 L8 456 C10 440 13 422 17 400 C26 332 30 282 30 248 Z';
+  return `<svg viewBox="-228 -10 456 548" role="img" aria-label="La voiture 2026 vue de dessus">
+    <defs>
+      <linearGradient id="pneu" x1="0" x2="1"><stop offset="0" stop-color="#060606"/><stop offset=".35" stop-color="#242424"/><stop offset=".5" stop-color="#2E2E2E"/><stop offset=".65" stop-color="#242424"/><stop offset="1" stop-color="#060606"/></linearGradient>
+      <linearGradient id="reflet" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".45"/><stop offset=".3" stop-color="#fff" stop-opacity=".06"/><stop offset=".5" stop-color="#fff" stop-opacity=".26"/><stop offset=".7" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></linearGradient>
+      <linearGradient id="refletP" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".5"/><stop offset=".55" stop-color="#fff" stop-opacity=".12"/><stop offset=".85" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#000" stop-opacity=".15"/></linearGradient>
+      <linearGradient id="refletA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></linearGradient>
+      <radialGradient id="casque" cx=".38" cy=".35" r=".7"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".4"/></radialGradient>
+      <filter id="flou" x="-20%" y="-10%" width="140%" height="120%"><feGaussianBlur stdDeviation="7"/></filter>
+    </defs>
+    <rect x="-90" y="14" width="180" height="500" rx="70" fill="#000" opacity=".45" filter="url(#flou)"/>
+    ${zone('fond', `<path class="c" d="M-30 150 C-55 158 -78 176 -82 202 L-84 360 C-84 380 -70 392 -52 398 L-50 456 L50 456 L52 398 C70 392 84 380 84 360 L82 202 C78 176 55 158 30 150 Z" fill="#15171C" stroke="#3E434F" stroke-width="1.5"/>
+      ${deux('<path d="M-79 212 C-81 260 -82 320 -81 356" fill="none" stroke="#2F333D" stroke-width="3"/><path d="M-74 222 L-77 232 M-74 262 L-77 272 M-74 302 L-77 312" stroke="#3E434F" stroke-width="1.5"/>')}
+      <path d="M-50 404 L50 404 L50 456 L-50 456 Z" fill="#0D0E12"/>
+      <g stroke="#3E434F" stroke-width="1.6">${[-38, -19, 0, 19, 38].map(x => `<line x1="${x * .9}" y1="406" x2="${x}" y2="456"/>`).join('')}</g>`)}
+    ${zone('suspension', `${deux(`<g class="bras"><line x1="-63" y1="90" x2="-17" y2="80"/><line x1="-63" y1="93" x2="-17" y2="114"/><line x1="-63" y1="104" x2="-19" y2="96"/><line x1="-63" y1="108" x2="-19" y2="124"/><line x1="-62" y1="98" x2="-21" y2="140" class="fin"/>
+        <line x1="-56" y1="430" x2="-14" y2="418"/><line x1="-56" y1="434" x2="-14" y2="452"/><line x1="-56" y1="444" x2="-12" y2="466"/></g>
+        <line x1="-58" y1="437" x2="-10" y2="439" stroke="#3A3C42" stroke-width="5" stroke-linecap="round"/>
+        <rect x="-66" y="80" width="5" height="30" rx="2" fill="#1B1D22"/>
+        ${pneu(-95, 59, 30, 72)}${pneu(-95, 399, 37, 72)}`)}`)}
+    ${zone('avant', `${deux(`<path class="c" d="M0 14 C-30 14 -60 10 -86 4 L-86 16 C-60 22 -30 26 0 26 Z" fill="#1A1C22" stroke="#000" stroke-width=".8"/>
+        ${carrosserie('M0 28 C-30 28 -60 22 -86 18 L-86 26 C-60 31 -30 35 0 35 Z', c1, 'refletA')}
+        ${carrosserie('M-12 37 C-36 37 -60 31 -86 28 L-86 34 C-60 39 -36 43 -12 43 Z', c2, 'refletA')}
+        <path class="c" d="M-86 -1 L-81 -1 C-79 14 -79 30 -81 47 L-88 47 C-90 30 -89 12 -86 -1 Z" fill="${c1}" stroke="#000" stroke-width=".8"/>`)}
+      ${carrosserie(nez, c1)}<path d="M-3 10 C-4 40 -6 70 -8 99 L8 99 C6 70 4 40 3 10 Z" fill="${c2}" opacity=".9"/>`)}
+    ${carrosserie(coque, c1)}
+    ${zone('pontons', `${deux(`${carrosserie(ponton, c1, 'refletP')}
+        <path d="M-36 206 L-53 211 C-63 214 -68 220 -69 227 L-38 223 Z" fill="#050608"/>
+        <path d="M-36 238 C-56 240 -68 258 -67 280 C-66 300 -60 322 -50 345 L-44 344 C-52 320 -58 298 -58 280 C-58 262 -50 250 -36 248 Z" fill="${c2}" opacity=".92"/>
+        <g stroke="#08090B" stroke-width="1.6" stroke-linecap="round"><line x1="-46" y1="352" x2="-40" y2="352"/><line x1="-44" y1="360" x2="-38" y2="360"/><line x1="-42" y1="368" x2="-36" y2="368"/></g>
+        <line x1="-29" y1="204" x2="-49" y2="200" stroke="#1E2026" stroke-width="2.4"/><ellipse class="c" cx="-57" cy="200" rx="10" ry="4.5" fill="${c1}" stroke="#000" stroke-width=".8"/>`)}`)}
+    ${zone('moteur', `${carrosserie(capot, c1)}
+      <path d="M0 272 L0 446" stroke="${c2}" stroke-width="3"/>
+      <path d="M-12 256 C-12 250 12 250 12 256 L10 270 L-10 270 Z" fill="${c1}" stroke="#000" stroke-width=".8"/><ellipse cx="0" cy="260" rx="8.5" ry="5.5" fill="#050608"/>
+      <rect x="-6" y="250" width="12" height="3.5" rx="1" fill="#FFD400"/><ellipse cx="0" cy="458" rx="4" ry="3" fill="#4A4D55"/>`)}
+    <path d="M-20 188 C-23 206 -23 236 -18 256 L18 256 C23 236 23 206 20 188 Q0 178 -20 188 Z" fill="#06070A"/>
+    <rect x="-9" y="196" width="18" height="5" rx="2" fill="#2C2E33"/>
+    <circle cx="0" cy="229" r="11.5" fill="${c2}" stroke="#000" stroke-width=".8"/><path d="M-9 222 Q0 216 9 222 L8 226 Q0 221 -8 226 Z" fill="#111"/><circle cx="0" cy="229" r="11.5" fill="url(#casque)"/>
+    <path d="M-19 252 C-25 222 -21 191 0 186 C21 191 25 222 19 252" fill="none" stroke="#1C1E23" stroke-width="5.5" stroke-linecap="round"/>
+    <path d="M-17 250 C-22 222 -19 194 0 189 C19 194 22 222 17 250" fill="none" stroke="#3A3D45" stroke-width="1.2"/>
+    <line x1="0" y1="186" x2="0" y2="166" stroke="#1C1E23" stroke-width="5" stroke-linecap="round"/>
+    ${zone('fiab', `<path class="c" d="M-9 456 L9 456 L7 482 L-7 482 Z" fill="#4A4F5C" stroke="#111" stroke-width="1"/><rect x="-4.5" y="482" width="9" height="4.5" rx="1" fill="#E10600"/>`)}
+    ${zone('arriere', `<line x1="0" y1="476" x2="0" y2="488" stroke="#1C1E23" stroke-width="4"/>
+      ${carrosserie('M-49 498 C-20 495 20 495 49 498 L49 511 C20 508 -20 508 -49 511 Z', c1, 'refletA')}
+      ${carrosserie('M-49 485 C-20 483 20 483 49 485 L49 495 C20 493 -20 493 -49 495 Z', c2, 'refletA')}
+      ${deux(`<path class="c" d="M-55 478 L-49 478 L-49 520 C-51 525 -54 525 -56 520 Z" fill="${c1}" stroke="#000" stroke-width=".8"/>`)}`)}
+    ${etiquette('avant', -78, 24, 28, 'Aileron av.', 'g')}${etiquette('pontons', -70, 262, 210, 'Pontons', 'g')}${etiquette('fond', -82, 330, 330, 'Fond plat', 'g')}${etiquette('fiab', -8, 470, 505, 'Fiabilité', 'g')}
+    ${etiquette('suspension', 80, 95, 95, 'Suspension', 'd')}${etiquette('moteur', 14, 330, 290, 'Moteur', 'd')}${etiquette('arriere', 52, 505, 505, 'Aileron arr.', 'd')}
   </svg>`;
 }
 const niveaux = (n, tr) => `<span class="niv">${[1, 2, 3, 4, 5].map(k => `<i class="${k <= n ? 'on' : tr && k === n + 1 ? 'tr' : ''}"></i>`).join('')}</span>`;
