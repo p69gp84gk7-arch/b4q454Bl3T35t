@@ -30,7 +30,11 @@ window.PaddockCourse = (() => {
   const JEUX = { S:6, M:3, H:2, I:4, P:3 };
   const MODES = { eco:{ nom:'Économie', ico:'🐢', rythme:-.006, usure:.7, risque:.6 }, normal:{ nom:'Normal', ico:'🏁', rythme:0, usure:1, risque:1 }, attaque:{ nom:'Attaque', ico:'🔥', rythme:.006, usure:1.4, risque:1.7 } };
   // la batterie : flux = charge gagnée (ou perdue) par tour
-  const ERS = { recharge:{ nom:'Recharge', ico:'🔋', rythme:-.004, flux:.45, dep:1 }, normal:{ nom:'Normal', ico:'⚡', rythme:0, flux:0, dep:1 }, boost:{ nom:'Dépassement', ico:'🚀', rythme:.0075, flux:-1.1, dep:1.7 } };
+  // règlement 2026 : moteur à moitié électrique (batterie plus importante) ; le mode dépassement (« manual override »)
+  // donne toute sa puissance électrique à moins d'une seconde de la voiture de devant, sinon il ne fait que vider la batterie plus vite
+  const ERS = { recharge:{ nom:'Recharge', ico:'🔋', rythme:-.005, flux:.55, dep:1 }, normal:{ nom:'Normal', ico:'⚡', rythme:0, flux:0, dep:1 },
+    boost:{ nom:'Mode dépassement', ico:'🚀', rythme:.0085, flux:-1.3, dep:1.8, loin:{ rythme:.0035, dep:1.15 } } };
+  const UNE_SECONDE = 1;
   const perteUsure = u => u < .45 ? u * .006 : .0027 + (u - .45) ** 2 * .09 + (u > 1 ? .05 : 0);
   function rythmeMeteo(type, w){
     if(type === 'I') return -Math.abs(w - .45) * .06 - (w < .2 ? (.2 - w) * .2 : 0);
@@ -272,7 +276,7 @@ window.PaddockCourse = (() => {
         v.prog.shift();
         if(S.type !== 'EL' && v.prog.length === 0 && v.meilleur && !v.joueur){
           // sûr de passer ? alors on garde des pneus
-          const rang = classementSeance(R).findIndex(x => x.v === v) + 1, lim = S.type === 'Q1' ? 15 : S.type === 'Q2' ? 10 : 99;
+          const rang = classementSeance(R).findIndex(x => x.v === v) + 1, lim = S.type === 'Q1' ? 16 : S.type === 'Q2' ? 10 : 99;
           if(rang <= lim - 4 && Math.random() < .5) continue;
         }
         const neufs = v.jeux.filter(j => j.t === 'S' && j.u === 0).length;
@@ -510,7 +514,7 @@ window.PaddockCourse = (() => {
       v.i = i;
       // la batterie
       if(v.ers === 'boost' && v.batt <= 0){ v.ers = 'normal'; if(v.joueur) evenement(R, `🔋 ${v.court} : batterie vide`, 'conseil'); }
-      const E = ERS[v.ers];
+      const E0 = ERS[v.ers], E = v.ers === 'boost' && !v.uneSeconde ? Object.assign({}, E0, E0.loin) : E0;
       v.batt = clamp(v.batt + E.flux / (T.tempsTour * 1.05) * dt * (R.sc ? 0 : 1) + (R.sc ? .04 * dt : 0), 0, 1);
       // l'essence : la voiture est plus lourde en début de course
       const essence = .028 * clamp(1 - v.tour / R.tours, 0, 1);
@@ -533,13 +537,14 @@ window.PaddockCourse = (() => {
         if(v.depasse.t > 2.2){ v.depasse = null; v.latCible = 0; }
         else { v.cible *= 1.01; continue; }
       }
-      const droite = T.v[v.i ?? 0] > P.VMAX * .86, uneSeconde = v.vit / R.K;
-      // l'aspiration et le DRS dans les lignes droites, à moins d'une seconde
-      if(!R.sc && droite && d < uneSeconde && v.tour >= 1) v.cible *= 1.013;
+      const droite = T.v[v.i ?? 0] > P.VMAX * .86, uneSeconde = v.vit / R.K * UNE_SECONDE;
+      // à moins d'une seconde : le mode dépassement est permis ; dans les lignes droites, l'aspiration (l'aéro active, elle, sert à tout le monde)
+      v.uneSeconde = d < uneSeconde && v.tour >= 1;
+      if(!R.sc && droite && v.uneSeconde) v.cible *= 1.007;
       if(d < ECART_MIN + 14){
         const plusVite = v.cible > devant.cible * 1.004;
         if(!R.sc && droite && plusVite && d < ECART_MIN + 10){
-          const chance = clamp((v.cible / devant.cible - 1) * 90 * (v.depassement / devant.depassement) ** 2 * ERS[v.ers].dep / (devant.batt > 0 && devant.ers === 'boost' ? 1.5 : 1), 0, 4) * dt;
+          const chance = clamp((v.cible / devant.cible - 1) * 90 * (v.depassement / devant.depassement) ** 2 * (v.ers === 'boost' && !v.uneSeconde ? ERS.boost.loin.dep : ERS[v.ers].dep) / (devant.batt > 0 && devant.ers === 'boost' ? 1.5 : 1), 0, 4) * dt;
           if(Math.random() < chance){ v.depasse = { cible:devant.id, t:0 }; v.latCible = Math.random() < .5 ? -5.5 : 5.5; if(v.joueur || devant.joueur || k <= 3) evenement(R, `${v.court} dépasse ${devant.court}`, v.joueur ? 'bon' : devant.joueur ? 'mal' : ''); continue; }
         }
         if(d < ECART_MIN) v.cible = Math.min(v.cible, devant.vit * (d < ECART_MIN - 4 ? .9 : 1));

@@ -133,7 +133,7 @@ function qgBandeau(){
   const E = C.ecuries[C.joueur];
   $('qRayure').style.background = `linear-gradient(${E.c1} 60%, ${E.c2} 60%)`;
   const place = M.classementConstructeurs(C).findIndex(e => e.id === C.joueur) + 1;
-  $('qNom').innerHTML = `${E.logo ? E.logo + ' ' : ''}${esc(E.nom)}<small>Saison ${C.saison} · ${C.gp < nbGP() ? `GP ${C.gp + 1}/${nbGP()}` : 'saison finie'} · ${place}e (objectif ${C.objectif}e) · confiance ${Math.round(C.confiance)}</small>`;
+  $('qNom').innerHTML = `${E.logo ? E.logo + ' ' : ''}${esc(E.nom)}${C.contrats && C.contrats.titre ? ` <span class="titreS">${C.contrats.titre.ico} ${esc(C.contrats.titre.nom)}</span>` : ''}<small>Saison ${C.saison} · ${C.gp < nbGP() ? `GP ${C.gp + 1}/${nbGP()}` : 'saison finie'} · ${place}e (objectif ${C.objectif}e) · confiance ${Math.round(C.confiance)}</small>`;
   $('qArgent').innerHTML = `${meur(C.argent)}<small>en caisse</small>`; $('qArgent').classList.toggle('neg', C.argent < 0);
 }
 $('qOnglets').onclick = e => { const b = e.target.closest('button'); if(b) qg(b.dataset.o); };
@@ -155,7 +155,8 @@ function ongletGP(){
     box.append(d); Co.apercu($('qApercu'), circ, 150, 90, '#2A2E38');
     $('bWeekend').onclick = weekend;
     const alertes = [];
-    if(!C.sponsors[0]) alertes.push('💼 Pas encore de sponsor principal : va dans l\'onglet Sponsors pour en signer un.');
+    if(!C.contrats.titre) alertes.push('💼 Pas encore de sponsor titre : va dans l\'onglet Sponsors pour en négocier un.');
+    { const fin = M.contratsActifs(C).filter(c => c.fin === C.saison && !c.suite).length; if(fin && C.gp >= nbGP() - 4) alertes.push(`✍️ ${fin} contrat${fin > 1 ? 's' : ''} de sponsor fini${fin > 1 ? 'ssent' : 't'} cette saison : pense à renouveler (onglet Sponsors).`); }
     if(C.argent < 0) alertes.push('⚠️ La caisse est vide : il faut des sponsors, ou moins de dépenses.');
     if(!Object.values(C.pieces).some(p => p.conception) && !C.fabrications?.length && C.gp < nbGP() - 1) alertes.push('🔧 Aucune pièce en conception : lance-en une dans l\'onglet Voiture.');
     const afab = Object.entries(C.pieces).filter(([t, p]) => p.gens.length > 1 && ![0, 1].some(i => (C.montage[i][t] || 0) === p.gens.length - 1) && !(p.stock[p.gens.length - 1] > 0) && !(C.fabrications || []).some(f => f.type === t && f.n === p.gens.length - 1));
@@ -206,6 +207,9 @@ function ongletVoiture(){
   const pl = M.depensesPieces(C);
   box.innerHTML = `<div class="carte"><h3>Ta voiture · ${rang}e du plateau</h3><div class="stats4">${lignes}</div><p class="legende" style="margin:8px 0 0">Trait jaune : la meilleure écurie · trait blanc : la moyenne. Les autres écuries progressent aussi, selon leur budget.</p></div>
     ${C.reglages.plafond ? `<div class="carte"><h3>Plafond budgétaire ${C.saison}</h3><div class="jauge ${pl > M.PLAFOND * .85 ? 'rouge' : ''}"><i style="width:${clamp(pl / M.PLAFOND * 100, 0, 100)}%"></i></div><p class="sous" style="margin-top:6px">${meur(pl)} dépensés sur ${M.PLAFOND} M€ (conception et fabrication des pièces).</p></div>` : ''}
+    <div class="carte"><h3>Essais aérodynamiques · période ${C.atr.periode}</h3><p class="sous">Le règlement limite la soufflerie et la simulation (CFD) : ${Math.round(C.atr.k * 100)} % de la base pour la ${C.atr.rang}e place (le 1er a 70 %, le dernier 115 %). Recalculé à mi-saison.</p>
+      <div class="atr"><span>🌀 Soufflerie</span><div class="jauge"><i style="width:${C.atr.souffl ? C.atr.restS / C.atr.souffl * 100 : 0}%"></i></div><b>${C.atr.restS} / ${C.atr.souffl} h</b></div>
+      <div class="atr"><span>💻 Simulation</span><div class="jauge"><i style="width:${C.atr.cfd ? C.atr.restC / C.atr.cfd * 100 : 0}%"></i></div><b>${C.atr.restC} / ${C.atr.cfd}</b></div></div>
     <div class="carte"><h3>Les pièces : touche une partie de la voiture</h3><p class="sous" style="margin-bottom:8px">Directeur technique ${etoiles(C.personnel.technique.niv)}. 1) Lance la conception d'une nouvelle version. 2) Une fois conçue, fabrique-la : une par voiture (et une de réserve en cas d'accident).</p>
       <div class="atelierV"><div class="schemaV">${schemaVoiture(E)}<p class="legende" style="margin:4px 0 0;text-align:center">✏️ en conception · 🏭 en fabrication · ⚠️ conçue, à fabriquer</p></div><div id="lPieces"></div></div></div>`;
   $('qContenu').querySelector('.schemaV').onclick = e => { const z = e.target.closest('[data-p]'); if(!z) return; selPiece = z.dataset.p; qg('voiture'); };
@@ -223,18 +227,19 @@ function ongletVoiture(){
     const doms = Object.entries(P.dom).map(([d, w]) => `${M.DOMAINES[d].nom.toLowerCase()} ${Math.round(w * 100)} %`).join(', ');
     el.innerHTML = `<div class="t"><span style="font-size:1.3rem">${P.ico}</span><b>${P.nom}</b><small>compte pour : ${doms}</small></div>
       <div class="mont">${[0, 1].map(i => { const g = C.montage[i][type] || 0; return `<div>${esc(pil[i] ? court(pil[i]) : '—')} : <b>${g ? 'v' + g : 'base'}</b> ${g ? `(+${virg(M.gainGen(C, type, g), 2)})` : ''}</div>`; }).join('')}</div>
+      ${pc.gens.length > 1 ? `<div class="versions">${pc.gens.slice(1).map(g => `<span class="${g.interdite ? 'interdite' : ''}">v${g.n} +${virg(g.gain, 1)}${g.spec && g.spec !== 'poly' ? ' · ' + M.SPECS[g.spec].nom.toLowerCase() : ''}${g.o ? ` · ${g.o < 0 ? '◀' : '▶'} ${esc(M.COMPROMIS[type][g.o < 0 ? 0 : 1].toLowerCase())}` : ''}${g.fiab ? ` · fiab. ${g.fiab > 0 ? '+' : ''}${virg(g.fiab, 1)}` : ''}${g.r > .55 ? ' · ⚠️ limite' : ''}${g.interdite ? ' · 🚫 interdite' : ''}</span>`).join('')}</div>` : ''}
       <small class="legende">${stock ? `Réserve : ${stock}` : 'Pas de pièce de réserve'}${enFab.length ? ` · en fabrication : ${enFab.map(f => `v${f.n} ×${f.nb}`).join(', ')}` : ''}${pc.conception ? ` · <b style="color:var(--or)">conception en cours</b> : prête au GP ${pc.conception.fin + 1}` : ''}</small>
       <div class="act"></div>`;
     const act = el.querySelector('.act');
-    if(!pc.conception && C.phase === 'saison'){
-      for(const [k, A] of Object.entries(M.AMBITIONS)){
-        const cout = M.coutConception(C, type, k), b = document.createElement('button'); b.className = 'btn petit'; b.title = A.aide;
-        b.innerHTML = `✏️ ${A.nom} · ${meur(cout)}`; b.disabled = C.argent < cout;
-        b.onclick = () => { if(!confirm(`Conception ${A.nom.toLowerCase()} : ${P.nom}\n${A.aide}\nCoût : ${meur(cout)}. On y va ?`)) return; const r = M.lancerConception(C, type, k); if(r.msg) M.message(C, '✏️ ' + r.msg, r.ok ? 'info' : 'mal'); if(!r.ok) alert(r.msg); sauver(); qg('voiture'); };
-        act.append(b);
-      }
+    if(type === 'moteur' && !M.usineMoteur(E)){
+      el.insertAdjacentHTML('beforeend', `<p class="sous" style="margin-top:6px">⚙️ Moteur client <b>${esc(M.MOTORISTES[E.motoriste].nom)}</b> : c'est le motoriste qui fait évoluer l'unité de puissance, pour toutes ses écuries (la tienne aussi).</p>`);
+    } else if(!pc.conception && C.phase === 'saison'){
+      const b = document.createElement('button'); b.className = 'btn petit rouge'; b.textContent = concep && concep.type === type ? '✖ Fermer la conception' : '✏️ Concevoir une nouvelle version';
+      b.onclick = () => { concep = concep && concep.type === type ? null : nouvelleConcep(type); qg('voiture'); };
+      act.append(b);
     }
-    if(derniere.n > 0 && C.phase === 'saison'){
+    if(concep && concep.type === type && !pc.conception) el.append(panneauConception(type));
+    if(derniere.n > 0 && C.phase === 'saison' && !derniere.interdite){
       const cf = M.coutFabrication(C, type);
       for(const nb of [1, 2, 3]){ const b = document.createElement('button'); b.className = 'btn petit vert'; b.textContent = `🏭 v${derniere.n} ×${nb} · ${meur(cf * nb)}`; b.disabled = C.argent < cf * nb;
         b.onclick = () => { const r = M.fabriquer(C, type, derniere.n, nb); if(r.msg) M.message(C, '🏭 ' + r.msg, r.ok ? 'bon' : 'mal'); if(!r.ok) alert(r.msg); sauver(); qg('voiture'); }; act.append(b); }
@@ -254,11 +259,45 @@ function ongletVoiture(){
   $('bFiab').onclick = () => { const r = M.lancerFiabilisation(C); if(r.msg) M.message(C, '🛠️ ' + r.msg); if(!r.ok) alert(r.msg); sauver(); qg('voiture'); };
 }
 // la voiture vue de dessus (le nez en haut) : chaque partie se touche pour voir sa pièce
-let selPiece = 'avant';
+let selPiece = 'avant', concep = null;
+/* ---------- La conception d'une pièce : les réglages, l'estimation, le conseil du directeur technique ---------- */
+function nouvelleConcep(type){ return { type, amb:'normale', reg:{ ...M.REGLAGE_DEFAUT, h:M.AERO.includes(type) ? Math.min(C.atr.restS, 10) : 0, cfd:M.AERO.includes(type) ? Math.min(C.atr.restC, 40) : 0 } }; }
+function panneauConception(type){
+  const P = M.PIECES[type], R = concep.reg, aero = M.AERO.includes(type), specOk = ['avant', 'arriere', 'fond'].includes(type);
+  const est = M.estimerConception(C, type, concep.amb, R), cons = M.conseilIngenieur(C, type, concep.amb), [g, d] = M.COMPROMIS[type];
+  const pct = v => Math.round(v * 100) + ' %';
+  // les prochains circuits où la pièce sera bonne
+  const prochains = C.calendrier.slice(C.gp + est.duree, C.gp + est.duree + 6).map(gp => { const c = M.circuit(gp.id), f = M.facteurCircuit({ n:1, o:R.o, spec:R.spec }, M.caractere(c).puissance); return `<span class="${f > 1.05 ? 'plus' : f < .95 ? 'moins' : ''}">${esc(gp.nom)} ×${virgF(f, 2)}</span>`; }).join(' · ');
+  const el = document.createElement('div'); el.className = 'concep';
+  el.innerHTML = `<h4>✏️ Conception : ${esc(P.nom)}</h4>
+    <div class="ligneC"><span>Ambition</span><div class="choix">${Object.entries(M.AMBITIONS).map(([k, A]) => `<button data-amb="${k}" class="${concep.amb === k ? 'actif' : ''}" title="${esc(A.aide)}">${A.nom}</button>`).join('')}</div></div>
+    <div class="ligneC"><span>Compromis</span><div class="curseur"><small>${esc(g)}</small><input type="range" min="-100" max="100" step="10" data-r="o" value="${Math.round(R.o * 100)}"><small>${esc(d)}</small></div></div>
+    <div class="ligneC"><span>Priorité</span><div class="curseur"><small>Fiabilité</small><input type="range" min="0" max="100" step="5" data-r="a" value="${Math.round(R.a * 100)}"><small>Performance</small></div></div>
+    <div class="ligneC"><span>Règlement</span><div class="curseur"><small>Prudent</small><input type="range" min="0" max="100" step="5" data-r="r" value="${Math.round(R.r * 100)}" class="${R.r > .55 ? 'danger' : ''}"><small>À la limite</small></div></div>
+    ${specOk ? `<div class="ligneC"><span>Spécialité</span><div class="choix">${Object.entries(M.SPECS).map(([k, S]) => `<button data-spec="${k}" class="${R.spec === k ? 'actif' : ''}" title="${esc(S.aide)}">${S.nom}</button>`).join('')}</div></div>` : ''}
+    ${aero ? `<div class="ligneC"><span>🌀 Soufflerie</span><div class="curseur"><input type="range" min="0" max="${C.atr.restS}" step="1" data-r="h" value="${R.h}"><b>${R.h} h</b><small>/ ${C.atr.restS} h</small></div></div>
+      <div class="ligneC"><span>💻 Simulation</span><div class="curseur"><input type="range" min="0" max="${C.atr.restC}" step="5" data-r="cfd" value="${R.cfd}"><b>${R.cfd}</b><small>/ ${C.atr.restC}</small></div></div>` : ''}
+    <div class="estim"><div><b>+${virg(est.min, 1)} à +${virg(est.max, 1)}</b><small>gain</small></div><div><b>${est.duree} GP</b><small>délai</small></div><div><b>${meur(est.cout)}</b><small>coût</small></div>
+      <div><b class="${est.deception > .1 ? 'moins' : ''}">${pct(est.deception)}</b><small>risque de déception</small></div><div><b class="${est.illegal > 0 ? 'moins' : ''}">${pct(est.illegal)}</b><small>risque non conforme</small></div><div><b class="${est.fiab < 0 ? 'moins' : est.fiab > 0 ? 'plus' : ''}">${est.fiab > 0 ? '+' : ''}${virg(est.fiab, 1)}</b><small>fiabilité</small></div></div>
+    ${prochains ? `<p class="legende" style="margin:6px 0">Efficacité sur les prochains circuits : ${prochains}</p>` : ''}
+    <div class="conseil"><b>💡 ${esc(C.personnel.technique.nom)}, directeur technique ${etoiles(C.personnel.technique.niv)}</b>${cons.lignes.map(l => `<p>${esc(l)}</p>`).join('')}<button class="btn petit" data-conseil="1">Suivre ses conseils</button></div>
+    <button class="btn rouge" data-lancer="1" ${C.argent < est.cout ? 'disabled' : ''}>🚀 Lancer la conception · ${meur(est.cout)}</button>`;
+  const maj = () => qg('voiture');
+  el.querySelectorAll('[data-amb]').forEach(b => b.onclick = () => { concep.amb = b.dataset.amb; maj(); });
+  el.querySelectorAll('[data-spec]').forEach(b => b.onclick = () => { R.spec = b.dataset.spec; maj(); });
+  el.querySelectorAll('input[data-r]').forEach(i => i.onchange = () => { const k = i.dataset.r, v = +i.value; R[k] = k === 'h' || k === 'cfd' ? v : v / 100; maj(); });
+  el.querySelector('[data-conseil]').onclick = () => { Object.assign(R, cons.reg); if(!specOk) R.spec = 'poly'; maj(); };
+  el.querySelector('[data-lancer]').onclick = () => {
+    if(est.illegal > 0 && !confirm(`Attention : ${pct(est.illegal)} de risque que la FIA trouve la pièce non conforme (disqualification, amende, pièce interdite). On y va quand même ?`)) return;
+    const r = M.lancerConception(C, type, concep.amb, R); if(r.msg) M.message(C, '✏️ ' + r.msg, r.ok ? 'info' : 'mal'); if(!r.ok) alert(r.msg); else concep = null; sauver(); maj();
+  };
+  return el;
+}
 function schemaVoiture(E){
   const etat = type => {
     if(type === 'fiab') return C.fiabilisation ? '✏️' : '';
-    const pc = C.pieces[type], n = pc.gens.length - 1;
+    const pc = C.pieces[type]; if(!pc) return '';
+    const n = pc.gens.length - 1;
     if(pc.conception) return '✏️';
     if((C.fabrications || []).some(f => f.type === type)) return '🏭';
     if(n > 0 && ![0, 1].some(i => (C.montage[i][type] || 0) === n) && !(pc.stock[n] > 0)) return '⚠️';
@@ -266,25 +305,45 @@ function schemaVoiture(E){
   };
   const ver = type => { if(type === 'fiab') return virg(M.voitureDe(C, 0).fiabilite, 0); const g = Math.max(C.montage[0][type] || 0, C.montage[1][type] || 0); return g ? 'v' + g : 'base'; };
   const zone = (type, forme) => `<g data-p="${type}" class="zp ${selPiece === type ? 'sel' : ''}">${forme}</g>`;
-  const etiquette = (type, x, y, nom, cote) => { const e = etat(type), dx = cote === 'g' ? -1 : 1;
-    const L = 92, bx = cote === 'g' ? x - 18 - L : x + 18, cx = bx + L / 2;
-    return `<g data-p="${type}" class="et ${selPiece === type ? 'sel' : ''}"><line x1="${x}" y1="${y}" x2="${x + dx * 18}" y2="${y}"/><rect x="${bx}" y="${y - 17}" width="${L}" height="34" rx="8"/><text x="${cx}" y="${y - 2}">${nom}</text><text class="v" x="${cx}" y="${y + 12}">${ver(type)} ${e}</text></g>`; };
-  const c1 = E.c1, c2 = E.c2;
-  return `<svg viewBox="-108 0 416 380" role="img" aria-label="La voiture vue de dessus">
-    <ellipse cx="100" cy="195" rx="78" ry="175" fill="rgba(255,255,255,.03)"/>
-    ${zone('suspension', `<g class="roues"><rect x="30" y="62" width="26" height="50" rx="7"/><rect x="144" y="62" width="26" height="50" rx="7"/><rect x="24" y="250" width="32" height="62" rx="8"/><rect x="144" y="250" width="32" height="62" rx="8"/></g>
-      <g class="bras"><line x1="56" y1="80" x2="88" y2="96"/><line x1="56" y1="96" x2="88" y2="112"/><line x1="144" y1="80" x2="112" y2="96"/><line x1="144" y1="96" x2="112" y2="112"/><line x1="56" y1="270" x2="80" y2="258"/><line x1="56" y1="290" x2="80" y2="282"/><line x1="144" y1="270" x2="120" y2="258"/><line x1="144" y1="290" x2="120" y2="282"/></g>`)}
-    ${zone('fond', `<path d="M64 140 L136 140 L150 170 L150 245 L128 300 L72 300 L50 245 L50 170 Z" fill="#20232B" stroke="#4A4F5C" stroke-width="2"/>`)}
-    <path d="M86 112 L114 112 L132 150 L136 236 L118 262 L82 262 L64 236 L68 150 Z" fill="${c1}" stroke="rgba(0,0,0,.5)" stroke-width="1.5"/>
-    <path d="M70 172 L84 168 L84 228 L70 230 Z M130 172 L116 168 L116 228 L130 230 Z" fill="${c2}" opacity=".9"/>
-    <ellipse cx="100" cy="152" rx="13" ry="20" fill="#111"/><circle cx="100" cy="150" r="7" fill="${c2}"/>
-    <path d="M86 150 Q100 128 114 150" fill="none" stroke="#3A3A3A" stroke-width="4"/>
-    ${zone('moteur', `<path d="M88 178 L112 178 L110 262 L90 262 Z" class="capot" fill="${c1}" stroke="#000" stroke-width="1"/><rect x="94" y="196" width="12" height="42" rx="3" fill="rgba(0,0,0,.35)"/>`)}
-    ${zone('fiab', `<rect x="90" y="266" width="20" height="30" rx="4" fill="#5A5F6B" stroke="#222"/>`)}
-    ${zone('avant', `<path d="M92 112 L96 40 L104 40 L108 112 Z" fill="${c1}" stroke="rgba(0,0,0,.5)"/><rect x="26" y="22" width="148" height="18" rx="5" fill="${c2}" stroke="#000" stroke-width="1"/><rect x="26" y="18" width="10" height="26" rx="2" fill="${c1}"/><rect x="164" y="18" width="10" height="26" rx="2" fill="${c1}"/>`)}
-    ${zone('arriere', `<rect x="44" y="326" width="112" height="22" rx="5" fill="${c1}" stroke="#000" stroke-width="1"/><rect x="44" y="322" width="10" height="32" rx="2" fill="${c2}"/><rect x="146" y="322" width="10" height="32" rx="2" fill="${c2}"/><line x1="100" y1="300" x2="100" y2="326" stroke="#222" stroke-width="4"/>`)}
-    ${etiquette('avant', 26, 31, 'Aileron av.', 'g')}${etiquette('suspension', 170, 87, 'Suspension', 'd')}${etiquette('fond', 50, 205, 'Fond plat', 'g')}
-    ${etiquette('moteur', 150, 205, 'Moteur', 'd')}${etiquette('fiab', 56, 281, 'Fiabilité', 'g')}${etiquette('arriere', 156, 337, 'Aileron arr.', 'd')}
+  // étiquette dans une colonne à gauche ou à droite, reliée à la pièce par un trait
+  const etiquette = (type, px, py, ly, nom, cote) => { const e = etat(type), L = 92, bx = cote === 'g' ? -100 : 208, cx = bx + L / 2, lx = cote === 'g' ? bx + L : bx;
+    return `<g data-p="${type}" class="et ${selPiece === type ? 'sel' : ''}"><line x1="${px}" y1="${py}" x2="${lx}" y2="${ly}"/><circle cx="${px}" cy="${py}" r="2.6"/><rect x="${bx}" y="${ly - 17}" width="${L}" height="34" rx="8"/><text x="${cx}" y="${ly - 2}">${nom}</text><text class="v" x="${cx}" y="${ly + 12}">${ver(type)} ${e}</text></g>`; };
+  const c1 = E.c1, c2 = E.c2, sym = d => d.replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g, (m, x, y) => `${200 - x} ${y}`);
+  const deux = (d, att) => `<path d="${d}" ${att}/><path d="${sym(d)}" ${att}/>`;
+  const bras = (a, b) => `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/><line x1="${200 - a[0]}" y1="${a[1]}" x2="${200 - b[0]}" y2="${b[1]}"/>`;
+  const pneu = (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7"/><line class="sculpt" x1="${x + 4}" y1="${y + h * .3}" x2="${x + w - 4}" y2="${y + h * .3}"/><line class="sculpt" x1="${x + 4}" y1="${y + h * .7}" x2="${x + w - 4}" y2="${y + h * .7}"/>`;
+  return `<svg viewBox="-108 0 416 372" role="img" aria-label="La voiture 2026 vue de dessus">
+    <ellipse cx="100" cy="190" rx="84" ry="178" fill="rgba(255,255,255,.03)"/>
+    ${zone('fond', `<path d="M62 148 L138 148 L152 176 L155 238 L141 262 L134 316 L66 316 L59 262 L45 238 L48 176 Z" fill="#1A1C22" stroke="#4A4F5C" stroke-width="2"/>
+      ${deux('M50 186 L54 184 L56 232 L51 236 Z', 'fill="#2C3039"')}
+      <g class="lignes"><line x1="80" y1="300" x2="78" y2="316"/><line x1="92" y1="300" x2="91" y2="316"/><line x1="108" y1="300" x2="109" y2="316"/><line x1="120" y1="300" x2="122" y2="316"/></g>`)}
+    ${zone('suspension', `<g class="bras">${bras([54, 74], [90, 100])}${bras([54, 96], [90, 118])}${bras([54, 86], [88, 128])}${bras([56, 268], [86, 262])}${bras([56, 302], [86, 296])}${bras([56, 286], [88, 306])}</g>
+      <g class="roues">${pneu(32, 60, 22, 48)}${pneu(146, 60, 22, 48)}${pneu(28, 254, 28, 60)}${pneu(144, 254, 28, 60)}</g>`)}
+    ${zone('avant', `<path d="M93 118 L94.5 52 Q100 38 105.5 52 L107 118 Z" fill="${c1}" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/>
+      <path d="M40 44 Q100 35 160 44 L160 51 Q100 42 40 51 Z" fill="#2A2D35" stroke="#000" stroke-width=".8"/>
+      <path d="M41 36 Q100 27 159 36 L159 41 Q100 32 41 41 Z" fill="${c2}" stroke="#000" stroke-width=".8"/>
+      <path d="M44 28 Q100 20 156 28 L156 32 Q100 24 44 32 Z" fill="${c2}" opacity=".75" stroke="#000" stroke-width=".8"/>
+      <rect x="34" y="18" width="7" height="36" rx="2" fill="${c1}" stroke="#000" stroke-width=".8"/><rect x="159" y="18" width="7" height="36" rx="2" fill="${c1}" stroke="#000" stroke-width=".8"/>`)}
+    <path d="M90 116 L110 116 L117 150 L117 182 L83 182 L83 150 Z" fill="${c1}" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/>
+    ${zone('pontons', `${deux('M84 168 L64 174 Q57 176 58 186 L60 232 Q66 254 88 264 Z', `fill="${c1}" stroke="rgba(0,0,0,.55)" stroke-width="1.2"`)}
+      ${deux('M59 178 L77 173 L78 181 L60 186 Z', 'fill="#08090C"')}
+      ${deux('M65 196 L80 192 L82 238 L69 232 Z', `fill="${c2}" opacity=".85"`)}
+      ${deux('M63 238 L68 240 L68 246 L64 244 Z', 'fill="#08090C" opacity=".7"')}`)}
+    <g class="retro"><line x1="83" y1="160" x2="70" y2="156"/><line x1="117" y1="160" x2="130" y2="156"/></g>
+    <rect x="62" y="151" width="10" height="7" rx="2" fill="${c2}" stroke="#000" stroke-width=".8"/><rect x="128" y="151" width="10" height="7" rx="2" fill="${c2}" stroke="#000" stroke-width=".8"/>
+    ${zone('moteur', `<path d="M86 176 L114 176 L113 230 L107 292 L93 292 L87 230 Z" fill="${c1}" stroke="#000" stroke-width="1"/>
+      <line x1="100" y1="196" x2="100" y2="288" stroke="${c2}" stroke-width="3"/>
+      <ellipse cx="100" cy="184" rx="7" ry="5" fill="#08090C"/>
+      <rect x="91" y="246" width="5" height="16" rx="2" fill="rgba(0,0,0,.45)"/><rect x="104" y="246" width="5" height="16" rx="2" fill="rgba(0,0,0,.45)"/>`)}
+    <ellipse cx="100" cy="154" rx="11" ry="18" fill="#08090C"/><circle cx="100" cy="159" r="6.5" fill="${c2}" stroke="#000" stroke-width=".8"/><rect x="96" y="156" width="8" height="3" rx="1" fill="#111"/>
+    <path d="M88 166 Q87 136 100 133 Q113 136 112 166" fill="none" stroke="#2E2E33" stroke-width="3.6" stroke-linecap="round"/><line x1="100" y1="133" x2="100" y2="124" stroke="#2E2E33" stroke-width="3.2" stroke-linecap="round"/>
+    ${zone('fiab', `<rect x="92" y="290" width="16" height="26" rx="3" fill="#5A5F6B" stroke="#222"/><rect x="96" y="294" width="8" height="8" rx="1.5" fill="#3A3E47"/><rect x="97" y="317" width="6" height="4" rx="1" fill="#E10600"/>`)}
+    ${zone('arriere', `<line x1="100" y1="316" x2="100" y2="330" stroke="#222" stroke-width="4"/>
+      <rect x="52" y="338" width="96" height="12" rx="3" fill="${c1}" stroke="#000" stroke-width="1"/>
+      <rect x="52" y="327" width="96" height="9" rx="3" fill="${c2}" stroke="#000" stroke-width="1"/>
+      <rect x="46" y="322" width="7" height="34" rx="2" fill="${c2}" stroke="#000" stroke-width=".8"/><rect x="147" y="322" width="7" height="34" rx="2" fill="${c2}" stroke="#000" stroke-width=".8"/>`)}
+    ${etiquette('avant', 37, 42, 38, 'Aileron av.', 'g')}${etiquette('pontons', 60, 196, 150, 'Pontons', 'g')}${etiquette('fond', 47, 226, 250, 'Fond plat', 'g')}${etiquette('fiab', 92, 303, 334, 'Fiabilité', 'g')}
+    ${etiquette('suspension', 168, 84, 84, 'Suspension', 'd')}${etiquette('moteur', 110, 214, 200, 'Moteur', 'd')}${etiquette('arriere', 153, 344, 334, 'Aileron arr.', 'd')}
   </svg>`;
 }
 const niveaux = (n, tr) => `<span class="niv">${[1, 2, 3, 4, 5].map(k => `<i class="${k <= n ? 'on' : tr && k === n + 1 ? 'tr' : ''}"></i>`).join('')}</span>`;
@@ -367,20 +426,91 @@ function ongletPersonnel(){
     box.append(d);
   }
 }
+let nego = null;   // la négociation ouverte : { nom, P }
+const humeurSponsor = i => i >= 75 ? 'ravi' : i >= 62 ? 'intéressé' : i >= 50 ? 'hésitant' : i >= 30 ? 'réticent' : 'refuse';
+const patience = n => `<span class="patience" title="Patience">${[1, 2, 3].map(k => k <= n ? '●' : '○').join('')}</span>`;
 function ongletSponsors(){
-  const box = $('qContenu');
-  const slot = (s, titre) => s ? `<div class="offre"><span class="ico">${s.ico}</span><div><b>${esc(s.nom)}</b> <small>${titre} · ${virg(s.parGP, 2)} M€ par Grand Prix · prime ${virg(s.bonus, 2)} M€ si ${esc(s.txtObjectif)}</small></div><span></span></div>` : `<div class="slot">${titre} : place libre</div>`;
-  box.innerHTML = `<div class="carte"><h3>Tes sponsors (saison ${C.saison})</h3><div class="marche">${slot(C.sponsors[0], 'Principal')}${slot(C.sponsors[1], 'Secondaire')}${slot(C.sponsors[2], 'Secondaire')}</div></div>
-    <div class="carte"><h3>Offres</h3><p class="sous" style="margin-bottom:8px">Réputation ${Math.round(C.reputation)} : plus elle est haute, plus les sponsors paient. Un contrat dure jusqu'à la fin de la saison.</p><div class="marche" id="lOffres"></div></div>`;
+  const box = $('qContenu'), n = nbGP(), E = M.EMPLACEMENTS;
+  const total = M.contratsActifs(C).reduce((t, c) => t + c.parGP, 0);
+  box.innerHTML = `<div class="carte"><h3>Tes contrats (saison ${C.saison})</h3><p class="sous" style="margin-bottom:8px">${meur(total)} garantis par Grand Prix. Réputation ${Math.round(C.reputation)} : plus elle est haute, plus les sponsors paient.</p><div class="marche" id="lContrats"></div></div>
+    <div class="carte"><h3>Offres</h3><p class="sous" style="margin-bottom:8px">Négocie la durée, l'argent et les clauses. Un sponsor perd patience après 3 propositions refusées, et une offre ne reste pas éternellement.</p><div class="marche" id="lOffres"></div></div>`;
+  for(const [e, S] of Object.entries(E)){
+    const c = C.contrats[e], el = document.createElement('div');
+    if(!c){ const nb = C.offres.filter(o => o.empl === e && !o.renouv && !o.renego).length; el.className = 'slot'; el.textContent = `${S.ico} ${S.nom} : place libre${nb ? ` · ${nb} offre${nb > 1 ? 's' : ''}` : ''}`; $('lContrats').append(el); continue; }
+    const derniere = c.fin === C.saison, rest = c.fin - C.saison + 1;
+    el.className = 'contrat';
+    el.innerHTML = `<div class="tete"><span class="ico">${c.ico}</span><div><b>${esc(c.nom)}</b><small>${S.ico} ${S.nom} · ${M.SECTEURS[c.secteur]} · ${derniere ? '<span class="moins">dernière saison</span>' : `jusqu'en ${c.fin} (${rest} saisons)`}</small></div></div>
+      <small>💶 ${virg(c.parGP, 2)} M€ par Grand Prix · prime de ${virg(c.prime, 2)} M€ si ${esc(c.txtObjectif)}</small>
+      <small>🎯 Objectif de saison : ${c.objSaison}e ou mieux chez les constructeurs (prime de ${meur(c.parGP * 3)}) · si manqué : ${M.PENALITES[c.penalite].txt}</small>
+      ${c.exclusif || c.option ? `<small>${c.exclusif ? `🔒 Exclusivité ${M.SECTEURS[c.secteur]}` : ''}${c.exclusif && c.option ? ' · ' : ''}${c.option ? '🔁 Option de prolongation d\'un an' : ''}</small>` : ''}
+      ${c.suite ? `<small class="plus">✅ Renouvelé : ${virg(c.suite.parGP, 2)} M€ par GP jusqu'en ${c.suite.fin}</small>` : ''}
+      <div class="confi"><small>Satisfaction</small><div class="jauge ${c.satisfaction < 40 ? 'rouge' : ''}"><i style="width:${c.satisfaction}%"></i></div><span>${Math.round(c.satisfaction)}</span></div>
+      <div class="actions"></div>`;
+    const act = el.querySelector('.actions'), bouton = (txt, cls, f, off) => { const b = document.createElement('button'); b.className = 'btn petit ' + cls; b.textContent = txt; b.disabled = !!off; b.onclick = f; act.append(b); };
+    const ouvrir = () => { const r = M.ouvrirNegociation(C, e); if(!r.ok){ if(r.msg) alert(r.msg); return; } const o = C.offres[r.idx]; nego = { nom:o.nom, P:M.propositionDefaut(C, o) }; sauver(); qg('sponsors'); };
+    if(derniere && !c.suite){
+      if(c.option) bouton('🔁 Lever l\'option (+1 an)', 'vert', () => { const r = M.leverOption(C, e); if(r.msg) M.message(C, r.msg, 'bon'); sauver(); qg('sponsors'); });
+      bouton('✍️ Renouveler', 'vert', ouvrir);
+    } else if(!derniere) bouton('💬 Renégocier', '', ouvrir, c.satisfaction < 65 || c.reneg === C.saison);
+    const ind = M.indemniteSponsor(C, e);
+    bouton(`✂️ Rompre (${meur(ind)})`, 'rouge', () => { if(!confirm(`Rompre le contrat avec ${c.nom} ? Il faut payer une indemnité de ${meur(ind)}, et la réputation baisse un peu.`)) return; const r = M.rompreSponsor(C, e); if(r.msg) M.message(C, r.msg, 'mal'); sauver(); qg('sponsors'); });
+    $('lContrats').append(el);
+  }
   C.offres.forEach((o, i) => {
     const el = document.createElement('div'); el.className = 'offre';
-    el.innerHTML = `<span class="ico">${o.ico}</span><div><b>${esc(o.nom)}</b> <small>${o.principal ? 'Sponsor principal' : 'Sponsor secondaire'} · ${virg(o.parGP, 2)} M€ par Grand Prix · prime de ${virg(o.bonus, 2)} M€ si ${esc(o.txtObjectif)}</small></div>`;
-    const libre = o.principal ? !C.sponsors[0] : (!C.sponsors[1] || !C.sponsors[2]);
-    const b = document.createElement('button'); b.className = 'btn petit vert'; b.textContent = 'Signer'; b.disabled = !libre;
-    b.onclick = () => { const r = M.signerSponsor(C, i); if(r.msg) M.message(C, '💼 ' + r.msg, r.ok ? 'bon' : 'mal'); sauver(); qg('sponsors'); };
+    const S = E[o.empl], pris = !o.renouv && !o.renego && C.contrats[o.empl], reste = o.expire - C.gp;
+    el.innerHTML = `<span class="ico">${o.ico}</span><div><b>${esc(o.nom)}</b> ${patience(o.patience)}<small>${o.renouv ? '✍️ Renouvellement · ' : o.renego ? '💬 Renégociation · ' : ''}${S.ico} ${S.nom} · ${M.SECTEURS[o.secteur]} · environ ${virg(o.base, 2)} M€ par GP</small>
+      <small>Souhaite : ${o.pref.duree} saison${o.pref.duree > 1 ? 's' : ''}${o.pref.exclusif ? ', l\'exclusivité' : ''}${o.pref.penalite !== 'aucune' ? `, une clause « ${M.PENALITES[o.pref.penalite].nom.toLowerCase()} »` : ''} · ${o.renouv ? 'jusqu\'à la fin de la saison' : `encore ${reste} GP`}</small></div>`;
+    const b = document.createElement('button'); b.className = 'btn petit vert'; b.textContent = nego && nego.nom === o.nom ? 'Fermer' : 'Négocier'; b.disabled = !!pris;
+    b.onclick = () => { nego = nego && nego.nom === o.nom ? null : { nom:o.nom, P:M.propositionDefaut(C, o) }; qg('sponsors'); };
     el.append(b); $('lOffres').append(el);
+    if(nego && nego.nom === o.nom) $('lOffres').append(panneauNego(o, i));
   });
-  if(!C.offres.length) $('lOffres').innerHTML = '<p class="sous">Pas d\'autre offre pour le moment.</p>';
+  if(!C.offres.length) $('lOffres').innerHTML = '<p class="sous">Pas d\'offre pour le moment. De nouvelles arrivent après les Grands Prix, quand une place est libre.</p>';
+}
+function panneauNego(o, idx){
+  const P = nego.P, n = nbGP(), base = o.base, maxSig = Math.max(1, Math.round(base * n * .6));
+  const el = document.createElement('div'); el.className = 'concep nego';
+  const pref = v => v ? ' ⭐' : '';
+  el.innerHTML = `<h4>🤝 Négociation avec ${esc(o.nom)} ${patience(o.patience)}</h4>
+    <div class="ligneC"><span>Durée</span><div class="choix">${[1, 2, 3].map(d => `<button data-duree="${d}" class="${P.duree === d ? 'actif' : ''}">${d} saison${d > 1 ? 's' : ''}${pref(o.pref.duree === d)}</button>`).join('')}</div></div>
+    <div class="ligneC"><span>Par GP</span><div class="curseur"><input type="range" min="${Math.round(base * 50)}" max="${Math.round(base * 160)}" step="1" data-n="parGP" value="${Math.round(P.parGP * 100)}"><b data-v="parGP"></b></div></div>
+    <div class="ligneC"><span>Signature</span><div class="curseur"><input type="range" min="0" max="${maxSig * 10}" step="5" data-n="signature" value="${Math.round(P.signature * 10)}"><b data-v="signature"></b></div></div>
+    <div class="ligneC"><span>Prime de course</span><div class="choix">${o.objectifs.map(id => `<button data-obj="${id}" class="${P.objectif === id ? 'actif' : ''}">${esc(M.txtObjectifSponsor(C, id, o.rivale))} · ${virg(M.primeObjectif(C, o.empl, id), 2)} M€</button>`).join('')}</div></div>
+    <div class="ligneC"><span>Exclusivité</span><div class="choix"><button data-excl="1" class="${P.exclusif ? 'actif' : ''}">Oui, seul en ${M.SECTEURS[o.secteur]}${pref(o.pref.exclusif)}</button><button data-excl="0" class="${!P.exclusif ? 'actif' : ''}">Non${pref(!o.pref.exclusif)}</button></div></div>
+    <div class="ligneC"><span>Si objectif ${o.objSaison}e manqué</span><div class="choix">${Object.entries(M.PENALITES).map(([k, Pe]) => `<button data-pen="${k}" class="${P.penalite === k ? 'actif' : ''}" title="${esc(Pe.txt)}">${Pe.nom}${pref(o.pref.penalite === k)}</button>`).join('')}</div></div>
+    <div class="ligneC"><span>Option +1 an</span><div class="choix"><button data-opt="1" class="${P.option ? 'actif' : ''}">Oui, pour l'écurie</button><button data-opt="0" class="${!P.option ? 'actif' : ''}">Non</button></div></div>
+    <p class="legende" style="margin:0">⭐ ce que le sponsor préfère · Baisse : ${M.PENALITES.baisse.txt} · Rupture : ${M.PENALITES.rupture.txt} (il paie plus).</p>
+    <div class="estim"><div><b data-v="saison"></b><small>par saison</small></div><div><b data-v="total"></b><small>sur tout le contrat</small></div><div><b data-v="humeur"></b><small>le sponsor</small></div></div>
+    <div class="confi"><small>Intérêt</small><div class="jauge"><i data-v="jauge"></i></div><span data-v="pct"></span></div>
+    ${o.contre ? `<div class="conseil"><b>📩 Contre-proposition de ${esc(o.nom)}</b><p>${virg(o.contre.parGP, 2)} M€ par GP${o.contre.signature ? ` et ${virg(o.contre.signature, 1)} M€ à la signature` : ''}, ${o.contre.duree} saison${o.contre.duree > 1 ? 's' : ''}, mêmes clauses que ta proposition.</p><button class="btn petit vert" data-contre="1">✅ Accepter</button> <button class="btn petit" data-reprendre="1">Reprendre ses chiffres</button></div>` : ''}
+    <button class="btn rouge" data-proposer="1">📨 Proposer</button>`;
+  const maj = () => {
+    const i = M.interet(C, o, P), parSaison = P.parGP * n + P.signature / P.duree;
+    el.querySelector('[data-v="parGP"]').textContent = `${virg(P.parGP, 2)} M€`;
+    el.querySelector('[data-v="signature"]').textContent = `${virg(P.signature, 1)} M€`;
+    el.querySelector('[data-v="saison"]').textContent = meur(parSaison);
+    el.querySelector('[data-v="total"]').textContent = meur(P.parGP * n * P.duree + P.signature);
+    el.querySelector('[data-v="humeur"]').textContent = humeurSponsor(i);
+    el.querySelector('[data-v="jauge"]').style.width = i + '%';
+    el.querySelector('.nego .confi .jauge').classList.toggle('rouge', i < 50);
+    el.querySelector('[data-v="pct"]').textContent = i + ' %';
+  };
+  const refaire = () => qg('sponsors');
+  el.querySelectorAll('[data-duree]').forEach(b => b.onclick = () => { P.duree = +b.dataset.duree; refaire(); });
+  el.querySelectorAll('[data-obj]').forEach(b => b.onclick = () => { P.objectif = b.dataset.obj; refaire(); });
+  el.querySelectorAll('[data-excl]').forEach(b => b.onclick = () => { P.exclusif = b.dataset.excl === '1'; refaire(); });
+  el.querySelectorAll('[data-pen]').forEach(b => b.onclick = () => { P.penalite = b.dataset.pen; refaire(); });
+  el.querySelectorAll('[data-opt]').forEach(b => b.onclick = () => { P.option = b.dataset.opt === '1'; refaire(); });
+  el.querySelectorAll('input[data-n]').forEach(inp => inp.oninput = () => { P[inp.dataset.n] = inp.dataset.n === 'parGP' ? +inp.value / 100 : +inp.value / 10; maj(); });
+  const fini = r => { if(r.msg) M.message(C, '💼 ' + r.msg, r.ok ? 'bon' : 'mal'); if(r.ok || r.fin) nego = null; if(!r.ok) alert(r.msg); sauver(); refaire(); };
+  el.querySelector('[data-proposer]').onclick = () => fini(M.proposer(C, idx, { ...P }));
+  if(o.contre){
+    el.querySelector('[data-contre]').onclick = () => fini(M.accepterContre(C, idx));
+    el.querySelector('[data-reprendre]').onclick = () => { Object.assign(P, o.contre); refaire(); };
+  }
+  setTimeout(maj);
+  return el;
 }
 function ongletEcurie(){
   const E = C.ecuries[C.joueur], box = $('qContenu');
@@ -390,14 +520,14 @@ function ongletEcurie(){
 function ongletFinances(){
   const E = C.ecuries[C.joueur], k = M.parGP(C);
   const salP = E.pilotes.reduce((s, id) => s + C.pilotes[id].salaire, 0), salE = Object.values(C.personnel).reduce((s, e) => s + e.salaire, 0);
-  const spons = C.sponsors.filter(Boolean).reduce((s, x) => s + x.parGP, 0);
+  const spons = M.contratsActifs(C).reduce((s, x) => s + x.parGP, 0);
   const lignes = C.finances.slice().reverse().slice(0, 40);
   $('qContenu').innerHTML = `<div class="carte"><h3>Par Grand Prix (${nbGP()} dans la saison)</h3><table class="tab bilan">
     <tr><td>💼 Sponsors (hors primes)</td><td class="plus">+${meur(spons)}</td></tr>
     <tr><td>👤 Salaires des pilotes (${meur(salP)} par saison)</td><td class="moins">−${meur(salP / 12 * k)}</td></tr>
     <tr><td>👷 Salaires du personnel (${meur(salE)} par saison)</td><td class="moins">−${meur(salE / 12 * k)}</td></tr>
     <tr><td>🏭 Usine, entretien des installations et transport</td><td class="moins">−${meur(.6 * k + M.entretien(C))}</td></tr></table>
-    <p class="sous" style="margin-top:8px">En fin de saison, une prime selon la place chez les constructeurs : de ${M.PRIMES[0]} M€ (1er) à ${M.PRIMES[9]} M€ (10e). Les pièces, les travaux et les embauches se paient tout de suite.</p></div>
+    <p class="sous" style="margin-top:8px">En fin de saison, une prime selon la place chez les constructeurs : de ${M.PRIMES[0]} M€ (1er) à ${M.PRIMES[M.PRIMES.length - 1]} M€ (${M.PRIMES.length}e). Les pièces, les travaux et les embauches se paient tout de suite.</p></div>
     <div class="carte"><h3>Dernières opérations</h3><table class="tab bilan">${lignes.map(f => `<tr><td>${esc(f.txt)} <small class="legende">${f.saison} · GP ${f.gp + (f.txt.startsWith('🏆') ? 0 : 1)}</small></td><td class="${f.montant >= 0 ? 'plus' : 'moins'}">${f.montant >= 0 ? '+' : ''}${meur(f.montant)}</td></tr>`).join('') || '<tr><td>Rien pour le moment.</td></tr>'}</table></div>`;
 }
 
@@ -451,7 +581,7 @@ function pageWeekend(){
     <div class="etapes">
       ${C.reglages.essais ? etape('EL', '🔧', 'Essais libres · 1 h', et === 'EL' ? 'Règle la voiture : fais rouler tes pilotes, écoute leurs avis.' : `Confiance des pilotes : ${confTxt}`,
         et === 'EL' ? '<span style="display:flex;flex-direction:column;gap:4px"><button class="btn petit rouge" id="wEL">▶ En piste</button><button class="btn petit" id="wELpasse">⏩ Passer</button></span>' : '') : ''}
-      ${etape('Q', '⏱️', C.reglages.qualifs === 'direct' ? 'Qualifications · Q1, Q2, Q3' : 'Qualifications rapides', et === 'Q' ? 'Les 5 derniers sont éliminés en Q1, puis en Q2. Le Q3 donne les 10 premières places.' : grille ? `Sur la grille : ${grille}` : '',
+      ${etape('Q', '⏱️', C.reglages.qualifs === 'direct' ? 'Qualifications · Q1, Q2, Q3' : 'Qualifications rapides', et === 'Q' ? 'Les 6 derniers sont éliminés en Q1, puis en Q2. Le Q3 donne les 10 premières places.' : grille ? `Sur la grille : ${grille}` : '',
         et === 'Q' ? `<button class="btn petit rouge" id="wQ">▶ ${C.reglages.qualifs === 'direct' ? 'Q1' : 'Lancer'}</button>` : '')}
       ${etape('course', '🏁', 'La course', et === 'course' ? 'Choisis les pneus de départ de chaque pilote.' : '', et === 'course' ? '<button class="btn petit rouge" id="wCourse">🚦 Départ</button>' : '')}
     </div>
@@ -531,7 +661,7 @@ function voituresCourse(circ){
   for(const e of Object.values(C.ecuries)){
     const moi = e.id === C.joueur, ing = moi ? C.personnel.course.niv : clamp(Math.round(1 + e.budget / 35), 1, 5), mec = moi ? C.personnel.mecanos.niv : clamp(Math.round(1 + e.budget / 40), 1, 5);
     e.pilotes.forEach((pid, place) => {
-      const p = C.pilotes[pid], V = moi ? M.voitureDe(C, place) : e;
+      const p = C.pilotes[pid], V = moi ? M.voitureDe(C, place, circ) : e;
       let reglage = clamp(.6 + e.budget / 140 * .25 + (((pid.charCodeAt(0) + C.gp * 7) % 10) - 5) * .012, .5, .95), carrossage = 0;
       if(moi && W && W.reg[pid]){ const ideal = Co.reglageIdeal(circ, pid); reglage = Co.confiance(W.reg[pid], ideal); carrossage = (W.reg[pid].carr - ideal.carr) / 50; }
       liste.push({ id:pid, nom:p.nom, court:court(p), ecurie:e.id, c1:e.c1, c2:e.c2, logo:moi ? e.logo : null, joueur:moi,
@@ -545,7 +675,7 @@ function voituresCourse(circ){
 const optionsCourse = () => ({ pannes:M.PANNES[C.reglages.pannes] || 1, sc:C.reglages.sc !== false });
 function lancerSeance(type){
   const gp = C.calendrier[C.gp], circ = M.circuit(gp.id);
-  const participants = type === 'Q2' ? W.q.Q1.slice(0, 15).map(x => x[0]) : type === 'Q3' ? W.q.Q2.slice(0, 10).map(x => x[0]) : null;
+  const participants = type === 'Q2' ? W.q.Q1.slice(0, 16).map(x => x[0]) : type === 'Q3' ? W.q.Q2.slice(0, 10).map(x => x[0]) : null;
   R = Co.preparer({ circuit:circ, voitures:voituresCourse(circ), tours:M.nbTours(C, circ), meteo:gp.meteo, options:optionsCourse(),
     seance:{ type, minutes:DUREES[type], participants, w:type === 'EL' ? gp.meteo.el : gp.meteo.q } });
   R.onGarage = (v, run) => {
@@ -707,7 +837,7 @@ function majTableau(){
     else { tete = '<th class="e">Grille</th><th class="e">+/−</th>'; corps = ord.map(o => { const g = o.v.grille - o.place;
       return ligneT(o, `<td class="e">${o.v.grille}</td><td class="e ${g > 0 ? 'gain' : g < 0 ? 'perte' : ''}">${g > 0 ? '▲ ' + g : g < 0 ? '▼ ' + -g : '='}</td>`); }).join(''); }
   } else {
-    const coupe = modeC === 'Q1' ? 15 : modeC === 'Q2' ? 10 : 0;
+    const coupe = modeC === 'Q1' ? 16 : modeC === 'Q2' ? 10 : 0;
     if(nom === 'Temps'){ tete = '<th class="e">Meilleur</th><th class="e">Écart</th>'; corps = ord.map(o => ligneT(o, `<td class="e ${R.meilleurTour && R.meilleurTour.id === o.v.id ? 'violet' : ''}">${tps(o.temps)}</td><td class="e">${o.place === 1 || o.temps == null ? '' : '+' + virgF(o.ecart * R.K, 3)}</td>`, coupe && o.place === coupe + 1 ? 'coupe' : '')).join(''); }
     else if(nom === 'Piste'){ tete = '<th>Où</th><th>Pneu</th><th class="e">Tours</th>'; corps = ord.map(o => { const v = o.v;
       return ligneT(o, `<td style="font-size:.74rem">${etatSeance(v)}</td><td>${v.etat === 'garage' || v.etat === 'elimine' ? '' : `<span class="pt" style="border-color:${Co.PNEUS[v.pneu].col}"></span>`}</td><td class="e">${v.toursFaits || 0}</td>`, coupe && o.place === coupe + 1 ? 'coupe' : ''); }).join(''); }
@@ -724,7 +854,7 @@ function majPiste(){
     $('cHorl').hidden = true;
   } else {
     const s = R.seance, m = Math.floor(s.reste / 60), sec = Math.floor(s.reste % 60);
-    $('cTitre').innerHTML = `${NOMS_SEANCE[modeC]}<small>${esc(gpNom(gp))} · ${ciel(w)}${modeC !== 'EL' ? ` · ${modeC === 'Q3' ? 'pour la pole' : 'les 5 derniers éliminés'}` : ''}</small>`;
+    $('cTitre').innerHTML = `${NOMS_SEANCE[modeC]}<small>${esc(gpNom(gp))} · ${ciel(w)}${modeC !== 'EL' ? ` · ${modeC === 'Q3' ? 'pour la pole' : 'les 6 derniers éliminés'}` : ''}</small>`;
     $('cHorl').hidden = false; $('cHorl').textContent = R.drapeau ? '🏁' : `${m}:${String(sec).padStart(2, '0')}`; $('cHorl').classList.toggle('fin', s.reste < 120);
   }
   const recents = R.evenements.filter(e => R.t - e.t < 6 || R.phase === 'grille').slice(0, 3);
@@ -742,7 +872,7 @@ function majPiste(){
       el.querySelector('.ec').textContent = v.etat === 'abandon' ? v.abandon : o.place === 1 ? o.ecart : `${o.inter} s sur ${dv.v.court}`;
       el.querySelector('.u').textContent = `${Math.round((1 - u) * 100)} % · ${v.agePneu || 0} t.` + (v.arrets ? ` · ${v.arrets} arrêt${v.arrets > 1 ? 's' : ''}` : '');
       el.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('actif', b.dataset.m === v.mode));
-      el.querySelectorAll('[data-e]').forEach(b => b.classList.toggle('actif', b.dataset.e === v.ers));
+      el.querySelectorAll('[data-e]').forEach(b => { b.classList.toggle('actif', b.dataset.e === v.ers); b.classList.toggle('pret', b.dataset.e === 'boost' && !!v.uneSeconde); });
       el.querySelector('.batt i').style.width = Math.round(v.batt * 100) + '%';
       const bs = el.querySelector('.bstand');
       bs.textContent = v.etat === 'stand' ? '🔧 Au stand…' : v.demande ? `🔧 Rentre : ${Co.PNEUS[v.demande].nom} (annuler)` : '🔧 Stand';
@@ -753,7 +883,7 @@ function majPiste(){
       el.querySelector('.prev').textContent = pr ? `🔮 S'il s'arrête : P${pr.place}${pr.devant ? `, à ${virgF(pr.ecartDevant)} s de ${pr.devant}` : ''}${pr.derriere ? ` (${pr.derriere} à ${virgF(pr.ecartDerriere)} s)` : ''}` : '';
       el.querySelector('.cons').textContent = R.alertes[v.id] && v.etat === 'course' && !v.demande ? '🎧 ' + R.alertes[v.id] : v.auto ? '🤖 L\'ingénieur gère la stratégie et la batterie' : '';
     } else {
-      const s = selS[v.id], coupe = modeC === 'Q1' ? 15 : modeC === 'Q2' ? 10 : 99;
+      const s = selS[v.id], coupe = modeC === 'Q1' ? 16 : modeC === 'Q2' ? 10 : 99;
       el.classList.toggle('out', v.etat === 'elimine');
       el.querySelector('.pos').textContent = v.etat === 'elimine' ? '—' : 'P' + o.place;
       el.querySelector('.ec').innerHTML = v.meilleur ? `${tps(v.meilleur)}${o.place > coupe ? ' <span class="danger">éliminé ?</span>' : ''}` : (v.etat === 'elimine' ? '' : 'pas de temps');
@@ -794,7 +924,7 @@ function finSeance(){
     $('bFiniOk').onclick = () => { $('cFini').hidden = true; cancelAnimationFrame(boucleC); pageWeekend(); };
   } else {
     W.q[type] = ord.map(o => [o.v.id, o.temps]);
-    const coupe = type === 'Q1' ? 15 : type === 'Q2' ? 10 : 0;
+    const coupe = type === 'Q1' ? 16 : type === 'Q2' ? 10 : 0;
     if(type !== 'Q3'){
       const elim = ord.slice(coupe);
       const mesElim = elim.filter(o => o.v.joueur), mesPasses = ord.slice(0, coupe).filter(o => o.v.joueur);
@@ -827,7 +957,7 @@ function resultats(){
   const gp = C.calendrier[C.gp];
   const res = Co.resultat(R), pole = W && W.pole ? W.pole : null, mt = R.meilleurTour;
   const bilan = M.appliquerResultat(C, { classement:res, pole, meilleurTour:mt ? mt.id : null });
-  if(C.sponsors.some(s => !s)) M.genererOffres(C);
+  M.genererOffres(C);
   sauver();
   const pts = i => i < 10 ? M.POINTS[i] : 0, top3 = res.slice(0, 3);
   $('rContenu').innerHTML = `<h2>${esc(gpNom(gp))} : résultats</h2>
@@ -856,7 +986,10 @@ function finDeSaison(){
       <p class="sous" style="margin-top:6px">🤝 Confiance de la direction : <b>${s.confiance ?? Math.round(C.confiance)}</b>/100 (${M.humeur(C.confiance)})</p>
       <p class="sous" style="margin-top:6px">🏆 Champion du monde : <b>${champ ? esc(champ.nom) : '—'}</b> (${champ ? esc(C.ecuries[s.championEcurie].nom) : ''}) · constructeurs : <b>${esc(C.ecuries[s.constructeur].nom)}</b>${s.titreP || s.titreC ? ' · 🎉 c\'est toi !' : ''}</p>
       <p class="sous" style="margin-top:6px">💰 Prime de fin de saison : <b class="plus">+${meur(s.prime)}</b> · caisse : ${meur(C.argent)}</p></div>
-    <div class="carte"><h3>Constructeurs ${s.saison}</h3><table class="tab">${s.classementC.map(([id, p], i) => `<tr class="${id === C.joueur ? 'moi' : ''}"><td>${i + 1}</td><td>${coul(C.ecuries[id])}${esc(C.ecuries[id].nom)}</td><td class="n">${p}</td></tr>`).join('')}</table></div>`;
+    ${s.sponsors && s.sponsors.length ? `<div class="carte"><h3>Les objectifs des sponsors</h3>${s.sponsors.map(l => `<p class="sous ${l.ok ? 'plus' : 'moins'}" style="margin:3px 0">${l.ok ? '✅' : '❌'} ${esc(l.txt)}</p>`).join('')}</div>` : ''}
+    <div class="carte"><h3>Constructeurs ${s.saison}</h3><table class="tab">${s.classementC.map(([id, p], i) => `<tr class="${id === C.joueur ? 'moi' : ''}"><td>${i + 1}</td><td>${coul(C.ecuries[id])}${esc(C.ecuries[id].nom)}</td><td class="n">${p}</td></tr>`).join('')}</table></div>
+    <div class="carte"><h3>Pilotes ${s.saison}</h3><table class="tab">${(s.classementP || []).map(([id, p, eq], i) => { const pi = C.pilotes[id], e = C.ecuries[eq || (pi && pi.ecurie)] || { c1:'#555', c2:'#555', nom:'—' };
+      return `<tr class="${e.id === C.joueur ? 'moi' : ''}"><td>${i + 1}</td><td>${coul(e)}${pi ? pi.drapeau + ' ' + esc(pi.nom) : esc(id)} <small class="legende">${esc(e.nom)}</small></td><td class="n">${p}</td></tr>`; }).join('')}</table></div>`;
   if(C.phase === 'renvoi'){
     box.innerHTML = `${bilan}<div class="carte" style="border-color:var(--rouge)"><h2>Tu es renvoyé !</h2><p class="sous" style="margin-top:8px">La direction n'a plus confiance en toi. Ta carrière chez ${esc(E.nom)} s'arrête après ${C.records.gp} Grands Prix, ${C.records.victoires} victoire${C.records.victoires > 1 ? 's' : ''} et ${C.records.podiums} podium${C.records.podiums > 1 ? 's' : ''}. Une autre écurie te donnera ta chance !</p>
       <button class="btn gros rouge" id="sNouvelle" style="margin-top:10px">🏁 Nouvelle carrière</button></div>`;
