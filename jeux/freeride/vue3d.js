@@ -14,6 +14,7 @@ window.FREERIDE_3D = (() => {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const lisse = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
   const alea = s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const rgb = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; };
   const premier = (l, y) => { let a = 0, b = l.length; while(a < b){ const m = (a + b) >> 1; if(l[m].y < y) a = m + 1; else b = m; } return a; };
   let T3 = null, R = null, scene = null, cam = null, ok = false;
   let DEGRADE = null, DEGRADE_N = null, CONTOUR = null, matSol = null, matNeige = null, GEO = null, texFlocon = null;
@@ -83,7 +84,8 @@ window.FREERIDE_3D = (() => {
   // les formes qui servent partout (sapins, rochers…), faites une seule fois
   function preparerFormes(){
     GEO = { matCouleurs:toon({ vertexColors:true }) };
-    matSol = new T3.MeshBasicMaterial({ vertexColors:true });
+    matSol = new T3.MeshBasicMaterial({ vertexColors:true, polygonOffset:true, polygonOffsetFactor:1, polygonOffsetUnits:1 });
+    GEO.arete = new T3.LineBasicMaterial({ color:0x13233A });
     matNeige = matSol;
     const sapin = [
       { f:'cyl', d:[.22, .3, 1.4, 6], c:0x4A3222, p:[0, .7, 0] },
@@ -97,6 +99,10 @@ window.FREERIDE_3D = (() => {
     GEO.paroi = fusion(paroi); GEO.paroiC = fusion(paroi, .05);
     const souche = [{ f:'cyl', d:[.42, .5, .55, 8], c:0x6B4A35, p:[0, .2, 0] }, { f:'cyl', d:[.46, .44, .12, 8], c:0xF4F8FC, p:[0, .52, 0] }];
     GEO.souche = fusion(souche); GEO.soucheC = fusion(souche, .05);
+    // le contour dépasse un peu plus en haut, pour se voir même de la caméra basse
+    const profil = e => { const p = []; for(let k = 0; k <= 10; k++){ const d = 1 - k / 10; p.push(new T3.Vector2(d * (1 + e) + (e ? .02 : 0), (1 - d * d) * (1 + e * .7) + (e ? 1.9 * e * (1 - d) : 0))); } return p; };
+    const dome = e => { const g = new T3.LatheGeometry(profil(e), 18).toNonIndexed(); const n = g.attributes.position.count, c = new Float32Array(n * 3).fill(1); g.setAttribute('color', new T3.BufferAttribute(c, 3)); return g; };
+    GEO.dome = dome(0); GEO.domeC = dome(.07);
     GEO.flocon = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
       x.translate(32, 32); x.lineCap = 'round';
       for(const [w, col] of [[9, 'rgba(255,255,255,.95)'], [4.5, '#2F8FD8']]){ x.strokeStyle = col; x.lineWidth = w;
@@ -129,7 +135,8 @@ window.FREERIDE_3D = (() => {
     return b.h * (marche - (bord * (1 - w) + rampe * w));
   }
   function corrBarres(x, y){ let s = 0; for(let i = Math.max(0, premier(drops, y - 8)); i < drops.length && drops[i].y < y + 5; i++) s += corrBarre(drops[i], x, y); return s; }
-  const bump = (o, x, y) => { const d2 = ((x - o.x) ** 2 + (y - o.y) ** 2) / (o.r * o.r); return d2 < 1 ? .55 * (1 - d2) ** 2 : 0; };
+  const hBosse = o => .35 + .15 * (o.g ?? 1);
+  const bump = (o, x, y) => { const d2 = ((x - o.x) ** 2 + (y - o.y) ** 2) / (o.r * o.r); return d2 < 1 ? hBosse(o) * (1 - d2) : 0; };
   function bosses(x, y){ let m = 0; const O = M.objets; for(let i = premier(O, y - 1.7); i < O.length && O[i].y < y + 1.7; i++){ const o = O[i]; if(o.t === 'bosse') m = Math.max(m, bump(o, x, y)); } return m; }
   const solT = (x, y) => base(x, y) + corrBarres(x, y) + bosses(x, y);         // la neige
   const hKick = o => .2 * o.l + .15;
@@ -202,28 +209,34 @@ window.FREERIDE_3D = (() => {
   }
   function serie(ch, g, gc, liste, regler, couleur){
     if(!liste.length) return;
-    const im = new T3.InstancedMesh(g, GEO.matCouleurs, liste.length), ic = new T3.InstancedMesh(gc, CONTOUR, liste.length);
+    // (une matière à part pour les séries teintées : le programme du dessin n'est pas le même)
+    const im = new T3.InstancedMesh(g, couleur ? (GEO.matTeinte || (GEO.matTeinte = toon({ vertexColors:true }))) : GEO.matCouleurs, liste.length), ic = new T3.InstancedMesh(gc, CONTOUR, liste.length);
     const m = new T3.Matrix4(), q = new T3.Quaternion(), v = new T3.Vector3(), s = new T3.Vector3(), Y = new T3.Vector3(0, 1, 0), c = new T3.Color();
     liste.forEach((it, k) => { regler(it, v, q, s, Y); m.compose(v, q, s); im.setMatrixAt(k, m); ic.setMatrixAt(k, m); if(couleur){ c.set(couleur(it)); im.setColorAt(k, c); } });
     ch.gr.add(im, ic); ch.inst.push(im, ic);
   }
   // un bloc de neige (ou une box) posé sur la pente : dessus = sol + haut(y), sur toute la largeur [x0, x1]
-  function bloc(ch, x0, x1, ya, yb, n, haut, couleur = [.96, .975, 1], devant = true){
-    const pos = [], P = (x, y, h) => [x, h, y];
+  function bloc(ch, x0, x1, ya, yb, n, haut, couleur = [.96, .975, 1], devant = true, cote = couleur){
+    const pos = [], cols = [], P = (x, y, h) => [x, h, y];
     const top = [], bas = [];
     for(let k = 0; k <= n; k++){ const y = ya + (yb - ya) * k / n; top.push([0, 1, 2].map(i => { const x = x0 + (x1 - x0) * i / 2; return P(x, y, solT(x, y) + haut(y)); })); bas.push([x0, x1].map(x => P(x, y, solT(x, y) - .3))); }
-    const quad = (a, b, c, d) => pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+    let cc = couleur;
+    const quad = (a, b, c, d) => { pos.push(...a, ...b, ...c, ...a, ...c, ...d); for(let i = 0; i < 6; i++) cols.push(cc); };
     for(let k = 0; k < n; k++){
+      cc = couleur;
       for(let i = 0; i < 2; i++) quad(top[k][i], top[k + 1][i], top[k + 1][i + 1], top[k][i + 1]);
+      cc = cote;
       quad(bas[k][0], bas[k + 1][0], top[k + 1][0], top[k][0]);          // le côté gauche
       quad(top[k][2], top[k + 1][2], bas[k + 1][1], bas[k][1]);          // le côté droit
     }
+    cc = cote;
     if(devant){ const t = top[n], b = bas[n]; quad(t[0], t[1], [t[1][0], b[0][1], t[1][2]], b[0]); quad(t[1], t[2], b[1], [t[1][0], b[1][1], t[1][2]]); }
     const g = new T3.BufferGeometry(); g.setAttribute('position', new T3.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
     const nn = g.attributes.normal.array, col = new Float32Array(nn.length);
-    for(let k = 0; k < nn.length; k += 3) teinte(couleur, ton(nn[k], nn[k + 1], nn[k + 2]), col, k);
+    for(let k = 0; k < nn.length; k += 3) teinte(cols[k / 3], ton(nn[k], nn[k + 1], nn[k + 2]), col, k);
     g.setAttribute('color', new T3.BufferAttribute(col, 3));
-    ch.geos.push(g); const me = new T3.Mesh(g, matSol); ch.gr.add(me); return me;
+    const ar = new T3.EdgesGeometry(g, 28); ch.geos.push(g, ar);
+    const me = new T3.Mesh(g, matSol); ch.gr.add(me, new T3.LineSegments(ar, GEO.arete)); return me;
   }
   function construire(k){
     const ch = { gr:new T3.Group(), geos:[], inst:[], mats:[] }, y0 = k * CH, y1 = y0 + CH, B = M.bord, XW = B + 46;
@@ -232,16 +245,10 @@ window.FREERIDE_3D = (() => {
     for(let x = -XW; x < -(B + 8) - .01; x += DXG) xs.push(x);
     for(let x = -(B + 8); x < B + 8 - .01; x += DXF) xs.push(x);
     for(let x = B + 8; x <= XW + .01; x += DXG) xs.push(x);
-    const nx = xs.length, ny = Math.round(CH / DY), H = new Float32Array(nx * (ny + 3)), BM = new Float32Array(nx * (ny + 3));
+    const nx = xs.length, ny = Math.round(CH / DY), H = new Float32Array(nx * (ny + 3));
     const yj = j => y0 + j * DY;                                // j de -1 à ny + 1 (une rangée de plus de chaque côté, pour les normales)
     for(let j = -1; j <= ny + 1; j++) for(let i = 0; i < nx; i++) H[(j + 1) * nx + i] = base(xs[i], yj(j)) + corrBarres(xs[i], yj(j));
     const O = M.objets;
-    for(let n = premier(O, y0 - 3); n < O.length && O[n].y < y1 + 3; n++){
-      const o = O[n]; if(o.t !== 'bosse') continue;
-      for(let j = Math.max(-1, Math.floor((o.y - o.r - y0) / DY)); j <= Math.min(ny + 1, Math.ceil((o.y + o.r - y0) / DY)); j++)
-        for(let i = 0; i < nx; i++){ if(Math.abs(xs[i] - o.x) >= o.r) continue; const q = (j + 1) * nx + i; BM[q] = Math.max(BM[q], bump(o, xs[i], yj(j))); }
-    }
-    for(let q = 0; q < H.length; q++) H[q] += BM[q];
     const N = nx * (ny + 1), pos = new Float32Array(N * 3), nor = new Float32Array(N * 3), col = new Float32Array(N * 3), idx = [];
     const R0 = alea(k * 7919 + 13), glacier = !!(M.def && M.def.glacier);
     for(let j = 0; j <= ny; j++) for(let i = 0; i < nx; i++){
@@ -260,12 +267,13 @@ window.FREERIDE_3D = (() => {
     g.setAttribute('position', new T3.BufferAttribute(pos, 3)); g.setAttribute('normal', new T3.BufferAttribute(nor, 3)); g.setAttribute('color', new T3.BufferAttribute(col, 3)); g.setIndex(idx);
     g.computeBoundingSphere(); ch.geos.push(g); ch.gr.add(new T3.Mesh(g, matSol));
     // les objets de la tranche
-    const sapins = [], rochers = [], souches = [];
+    const sapins = [], rochers = [], souches = [], dosses = [];
     for(let n = premier(O, y0); n < O.length && O[n].y < y1; n++){
       const o = O[n];
       if(o.t === 'arbre') sapins.push(o);
       else if(o.t === 'rocher') rochers.push(o);
       else if(o.t === 'souche') souches.push(o);
+      else if(o.t === 'bosse') dosses.push(o);
       else if(o.t === 'kicker') tremplin(ch, o);
       else if(o.t === 'crevasse') crevasse(ch, o);
     }
@@ -273,6 +281,8 @@ window.FREERIDE_3D = (() => {
     for(let n = 0; n < 34; n++){ const s = R0() < .5 ? -1 : 1, x = s * (B + 8 + R0() * 38), y = y0 + R0() * CH; sapins.push({ x, y, r:1 + R0() * 1.1, v:R0() }); }
     serie(ch, GEO.sapin, GEO.sapinC, sapins, (o, v, q, s, Y) => { v.set(o.x, solT(o.x, o.y) - .2, o.y); q.setFromAxisAngle(Y, o.v * 6.3); const t = o.r * .8; s.set(t, t * (1 + o.v * .3), t); });
     serie(ch, GEO.rocher, GEO.rocherC, rochers, (o, v, q, s, Y) => { v.set(o.x, solT(o.x, o.y) - .15 * o.r, o.y); q.setFromAxisAngle(Y, o.v * 6.3); s.set(o.r, o.r * (o.bas ? .8 : 1.15), o.r); }, o => o.glace ? 0xA9DDF5 : 0xFFFFFF);
+    // les bosses : un dôme à la couleur de sa difficulté, avec un contour foncé
+    serie(ch, GEO.dome, GEO.domeC, dosses, (o, v, q, s) => { v.set(o.x, base(o.x, o.y) + corrBarres(o.x, o.y) + .01, o.y); s.set(o.r, hBosse(o), o.r); }, o => J.GRADES[J.grade(o)].moyen);
     serie(ch, GEO.souche, GEO.soucheC, souches, (o, v, q, s, Y) => { v.set(o.x, solT(o.x, o.y), o.y); q.setFromAxisAngle(Y, o.v * 6); s.set(1, 1, 1); });
     // les barres rocheuses : une paroi de blocs, des fanions verts aux passages
     for(const b of drops){
@@ -307,12 +317,14 @@ window.FREERIDE_3D = (() => {
     scene.add(ch.gr); chunks.set(k, ch);
   }
   function tremplin(ch, o){
-    const H = hKick(o), x0 = o.x - o.w / 2, x1 = o.x + o.w / 2;
-    bloc(ch, x0, x1, o.y - o.l, o.y, 10, y => H * Math.pow(clamp((y - o.y + o.l) / o.l, 0, 1), 1.6));
-    const lev = [{ f:'boite', d:[o.w, .1, .14], c:0xFF6A2B, p:[o.x, solT(o.x, o.y) + H + .03, o.y - .06] }];
+    const H = hKick(o), x0 = o.x - o.w / 2, x1 = o.x + o.w / 2, G = J.GRADES[J.grade(o)], gc = rgb(G.c), gl = rgb(G.clair), gm = rgb(G.moyen);
+    bloc(ch, x0, x1, o.y - o.l, o.y, 10, y => H * Math.pow(clamp((y - o.y + o.l) / o.l, 0, 1), 1.6), gl, true, gc);
+    // une bande plus foncée sur le dessus, avant la lèvre
+    bloc(ch, x0 + .02, x1 - .02, o.y - o.l * .45, o.y - .02, 5, y => H * Math.pow(clamp((y - o.y + o.l) / o.l, 0, 1), 1.6) + .015, gm, false);
+    const lev = [{ f:'boite', d:[o.w + .1, .22, .2], c:new T3.Color(G.c).getHex(), p:[o.x, solT(o.x, o.y) + H + .08, o.y - .09] }];
     if(o.park){
       const T = o.table, L = H * 2.6;
-      bloc(ch, x0 - .3, x1 + .3, o.y + .06, o.y + T + L, 12, y => y <= o.y + T ? H * .8 : H * .8 * (1 - lisse((y - o.y - T) / L)), undefined, false);
+      bloc(ch, x0 - .3, x1 + .3, o.y + .06, o.y + T + L, 12, y => y <= o.y + T ? H * .8 : H * .8 * (1 - lisse((y - o.y - T) / L)), [.96, .975, 1], false, gc);
       lev.push({ f:'boite', d:[o.w + .6, .06, .14], c:0x1F6FE0, p:[o.x, solT(o.x, o.y + T) + H * .8 + .04, o.y + T] });
     }
     objet(ch, lev, .02);
@@ -330,12 +342,12 @@ window.FREERIDE_3D = (() => {
     // la rampe de neige qui monte au module
     bloc(ch, o.x - larg, o.x + larg, o.y - 2.8, o.y, 3, y => Hr(0) * (y - o.y + 2.8) / 2.8, undefined, false);
     if(o.forme === 'box'){
-      bloc(ch, o.x - o.w / 2, o.x + o.w / 2, o.y, o.y + o.l, 8, y => Hr((y - o.y) / o.l), [1, .45, .2]);
+      bloc(ch, o.x - o.w / 2, o.x + o.w / 2, o.y, o.y + o.l, 8, y => Hr((y - o.y) / o.l), rgb(J.GRADES[J.grade(o)].c));
       const bandes = []; for(let y = o.y + 1; y < o.y + o.l - .5; y += 2.2) bandes.push({ f:'boite', d:[o.w + .02, .03, .5], c:0xFFFFFF, p:[o.x, base(o.x, y) + Hr((y - o.y) / o.l) + .01, y] });
       objet(ch, bandes, .01);
       return;
     }
-    const c = o.forme === 'arc' ? 0xF2C230 : o.forme === 'kink' ? 0xE23B3B : 0xC9D2DE, n = 16, pts = [], pcs = [];
+    const c = new T3.Color(J.GRADES[J.grade(o)].c).getHex(), n = 16, pts = [], pcs = [];
     for(let k = 0; k <= n; k++){ const s = k / n, y = o.y + s * o.l; pts.push(new T3.Vector3(o.x, base(o.x, y) + Hr(s), y)); }
     for(let k = 0; k < n; k++) pcs.push(tube(pts[k], pts[k + 1], .075, c));
     for(let k = 0; k <= n; k += 4){ const p = pts[k]; pcs.push(tube(new T3.Vector3(p.x, base(p.x, p.z) - .1, p.z), p, .045, 0x4E5868)); }
