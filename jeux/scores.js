@@ -172,6 +172,24 @@ window.AltitudeScores = (() => {
       J.paddock.stats = { 'Grands Prix':pk.gp, 'Points':pk.points || 0, 'Titres constructeurs':pk.titresC || 0, 'Titres pilotes':pk.titresP || 0, 'Pole positions':pk.poles || 0 };
     }
     // Blocs : le marathon
+    // Le Buteur : le record en 60 secondes, le meilleur défi du jour, la meilleure série
+    const ru = lire('rugby-records');
+    if(ru && ru.chrono && (ru.chrono.parties || ru.defiMeilleur)){
+      jeu('rugby', 'Le Buteur', '🏉'); const c = ru.chrono;
+      if(c.parties) ep('rugby', 'chrono', '60 secondes', c.meilleur, `${c.meilleur} points`);
+      if(ru.defiMeilleur) ep('rugby', 'defi', 'Meilleur défi du jour', ru.defiMeilleur, `${ru.defiMeilleur} points`);
+      if(c.serie) ep('rugby', 'serie', 'Meilleure série', c.serie, `${c.serie} à la suite`);
+      J.rugby.stats = { 'Parties':c.parties || 0, 'Transformations réussies':c.reussies || 0, 'Réussite':c.tentees ? Math.round(c.reussies / c.tentees * 100) + ' %' : '—', 'Plus longue':(c.plusLongue || 0) + ' m' };
+    }
+    // Billard : les victoires contre le robot (par jeu et par niveau) et la meilleure série au billard français
+    const bi = lire('billard-records');
+    if(bi && (bi.pool || bi.carambole)){
+      jeu('billard', 'Billard', '🎱');
+      const NIV = { facile:'facile', moyen:'moyen', expert:'expert' }, NJ = { pool:'Pool', carambole:'Billard français' };
+      for(const k of ['pool', 'carambole']) for(const n of Object.keys(NIV)){ const v = ((bi[k] || {}).v || {})[n]; if(v) ep('billard', `${k}:${n}`, `${NJ[k]} · victoires contre le robot ${n}`, v, `${v} victoire${v > 1 ? 's' : ''}`); }
+      if(bi.carambole && bi.carambole.serie) ep('billard', 'serie', 'Billard français · meilleure série', bi.carambole.serie, `${bi.carambole.serie} points`);
+      J.billard.stats = { 'Parties de pool':(bi.pool || {}).parties || 0, 'Parties de billard français':(bi.carambole || {}).parties || 0, 'Parties à deux':bi.deux || 0 };
+    }
     // Flèche d'or : chaque concours, chaque parcours, les cibles mobiles et le meilleur défi du jour
     const ar = lire('arc-records');
     if(ar && ar.parties){

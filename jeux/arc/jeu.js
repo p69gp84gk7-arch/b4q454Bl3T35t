@@ -50,6 +50,36 @@ normRec();
 const etoilesTot = () => Object.values(rec.concours).reduce((s, r) => s + (r.etoiles || 0), 0) + Object.values(rec.parcours).reduce((s, r) => s + (r.etoiles || 0), 0) + (rec.mobiles.etoiles || 0);
 let arcId = ARCS[rec.arc] && etoilesTot() >= ARCS[rec.arc].etoiles ? rec.arc : 'droit';
 
+/* ---------- Le gyroscope : tourner ou pencher l'appareil affine la visée quand l'arc est bandé ----------
+   On additionne la vitesse de rotation (devicemotion, en degrés par seconde) : autour de l'axe « haut » de l'écran pour la gauche
+   et la droite, autour de l'axe « droite » de l'écran pour la hauteur ; l'appareil peut être tenu en hauteur ou en largeur. */
+let gyro = lire('arc-gyro', false), gyroVu = false;
+function surMouvement(e){
+  const r = e.rotationRate; if(!r || r.beta == null) return;
+  gyroVu = true;
+  if(!gyro || !P || P.phase !== 'bande' || P.pause) return;
+  const dt = clamp((e.interval > 1 ? e.interval / 1000 : e.interval) || .016, .001, .1), ang = (screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0;
+  let lacet, tangage;                         // en degrés par seconde : tourner à gauche, lever
+  if(ang === 90){ lacet = r.beta; tangage = -r.gamma; }
+  else if(ang === -90 || ang === 270){ lacet = -r.beta; tangage = r.gamma; }
+  else { lacet = r.gamma; tangage = r.beta; }
+  const mort = v => Math.abs(v) < .4 ? 0 : v, k = Math.PI / 180 * .7 * dt;   // un peu moins que le vrai mouvement, pour être précis
+  P.yaw -= mort(lacet) * k; P.pitch = clamp(P.pitch + mort(tangage) * k, -.6, .8);
+}
+async function activerGyro(){
+  try{
+    if(window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function'){
+      const r = await DeviceMotionEvent.requestPermission();
+      if(r !== 'granted'){ alert('Sans l\'accès aux mouvements, le gyroscope ne peut pas servir à viser.'); return false; }
+    }
+  }catch(e){}
+  if(!window.DeviceMotionEvent){ alert('Cet appareil n\'a pas de gyroscope.'); return false; }
+  addEventListener('devicemotion', surMouvement);
+  setTimeout(() => { if(gyro && !gyroVu) $('gyroTxt').textContent = 'Aucun mouvement reçu : cet appareil n\'a peut-être pas de gyroscope.'; }, 1500);
+  return true;
+}
+if(gyro) addEventListener('devicemotion', surMouvement);       // (sur iPhone, il faudra redemander l'accès d'un toucher sur le bouton)
+
 /* ---------- Le son ---------- */
 let AC = null, son = lire('arc-son', true);
 function audio(){ if(AC || !son) return; try{ try{ if(navigator.audioSession) navigator.audioSession.type = 'ambient'; }catch(e){} AC = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ AC = null; } }
@@ -608,6 +638,7 @@ function menu(){
   $('totEt').textContent = `★ ${tot}`;
   $('arcs').innerHTML = Object.entries(ARCS).map(([id, A]) => `<button data-arc="${id}" class="${id === arcId ? 'actif' : ''}" ${tot < A.etoiles ? 'disabled' : ''}>${A.ico} ${A.n}<small>${tot < A.etoiles ? `🔒 ${A.etoiles} ★` : `${A.v} m/s`}</small></button>`).join('');
   $('arcTxt').textContent = ARCS[arcId].d;
+  $('gyroEtat').textContent = gyro ? 'Oui' : 'Non'; $('bGyro').classList.toggle('vedette', gyro);
   const d = defiDuJour(), rd = rec.defi && rec.defi.jour === jour() ? rec.defi : null;
   $('lDefi').innerHTML = `<button class="ligne vedette" data-defi="1"><span class="ico" style="background:#FFF0C2">📅</span><span><b>${esc(d.date)}</b><small>${d.volees.map(v => v.d + ' m').join(' · ')} · 3 volées de 3 flèches</small></span><span class="rec">${rd ? etoilesTxt(rd.etoiles) + `<small>${rd.score} pts</small>` : '<small>à faire</small>'}</span></button>`;
   $('lConcours').innerHTML = CONCOURS.map((c, i) => {
@@ -624,8 +655,9 @@ function menu(){
   $('eMenu').hidden = false;
   dessinerFondMenu();
 }
-$('eMenu').addEventListener('click', e => {
+$('eMenu').addEventListener('click', async e => {
   const b = e.target.closest('button'); if(!b || b.disabled) return;
+  if(b.id === 'bGyro'){ if(!gyro){ if(!(await activerGyro())) return; gyro = true; } else gyro = false; ecrire('arc-gyro', gyro); menu(); return; }
   if(b.dataset.arc){ arcId = b.dataset.arc; rec.arc = arcId; ecrire('arc-records', rec); menu(); return; }
   if(b.dataset.defi) lancer('defi', defiDuJour());
   else if(b.dataset.concours) lancer('concours', CONCOURS[+b.dataset.concours]);
@@ -654,7 +686,7 @@ cv.addEventListener('pointerdown', e => {
   if(P.phase === 'vol'){ P.passer = true; return; }
   if(doigt) return;
   try{ cv.setPointerCapture(e.pointerId); }catch(err){}
-  if(commencer(e.clientX, e.clientY, e.pointerId)) audio();
+  if(commencer(e.clientX, e.clientY, e.pointerId)){ audio(); if(gyro && !gyroVu && window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') DeviceMotionEvent.requestPermission().catch(() => {}); }
 });
 cv.addEventListener('pointermove', e => { if(doigt && e.pointerId === doigt.id) bouger(e.clientX, e.clientY); });
 const fin = e => { if(doigt && e.pointerId === doigt.id) lacher(); };
