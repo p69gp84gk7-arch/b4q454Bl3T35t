@@ -6,7 +6,7 @@ window.RUGBY_3D = (() => {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const alea = s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   let T3 = null, R = null, scene = null, cam = null, ok = false, DEGRADE = null, CONTOUR = null, MAT = null, L = 1, H = 1, temps = 0;
-  let ballon = null, tee = null, axe = null, joueur = null, drapeaux = [], public_ = null;
+  let ballon = null, tee = null, axe = null, axeRef = null, drapeaux = [], public_ = null;
   const toon = o => new T3.MeshToonMaterial(Object.assign({ gradientMap:DEGRADE }, o));
   function geom(f, d, e = 0){
     switch(f){
@@ -80,7 +80,7 @@ window.RUGBY_3D = (() => {
     // les poteaux en H, avec leurs protections
     scene.add(objet([
       { f:'cyl', d:[.09, .09, 14, 10], c:0xFFFFFF, p:[-2.8, 7, 0] }, { f:'cyl', d:[.09, .09, 14, 10], c:0xFFFFFF, p:[2.8, 7, 0] },
-      { f:'cyl', d:[.07, .07, 5.6, 10], c:0xFFFFFF, p:[0, 3, 0], r:[0, 0, Math.PI / 2] },
+      { f:'cyl', d:[.11, .11, 5.6, 10], c:0xFFFFFF, p:[0, 3, 0], r:[0, 0, Math.PI / 2] },
       { f:'cyl', d:[.36, .36, 2.1, 12], c:0x1F5FAE, p:[-2.8, 1.05, 0] }, { f:'cyl', d:[.36, .36, 2.1, 12], c:0x1F5FAE, p:[2.8, 1.05, 0] },
       { f:'cyl', d:[.37, .37, .35, 12], c:0xE23B3B, p:[-2.8, 1.5, 0] }, { f:'cyl', d:[.37, .37, .35, 12], c:0xE23B3B, p:[2.8, 1.5, 0] },
     ], .03));
@@ -111,19 +111,37 @@ window.RUGBY_3D = (() => {
       const ca = new T3.Mesh(new T3.ConeGeometry(Rr * .36, Hm * .36, 7), new T3.MeshBasicMaterial({ color:0xF5F8FC, fog:false }));
       ca.position.set(mo.position.x, Hm * .82 - 40 + 1, mo.position.z); scene.add(ca);
     }
-    // le ballon (ovale, avec ses bandes), le tee, la ligne de l'axe
-    ballon = objet([
-      { f:'boule', d:[1, 2], c:0xF7F5EE, s:[.1, .1, .15] },
-      { f:'cyl', d:[.101, .101, .02, 16], c:0xE23B3B, r:[Math.PI / 2, 0, 0], p:[0, 0, .07], s:[1, 1, 1] }, { f:'cyl', d:[.101, .101, .02, 16], c:0xE23B3B, r:[Math.PI / 2, 0, 0], p:[0, 0, -.07] },
-      { f:'boite', d:[.02, .005, .08], c:0x1B2A40, p:[0, .1, 0] },
-    ], .008);
+    // le ballon ovale (30 cm de long, 19 de large), debout sur son tee ; son grand axe est l'axe y du ballon
+    ballon = new T3.Group();
+    ballon.add(new T3.Mesh(ovale(0), MAT), new T3.Mesh(ovale(.009), CONTOUR));
     scene.add(ballon);
     tee = objet([{ f:'cone', d:[.09, .12, 10], c:0xFF6A2B, p:[0, .06, 0] }], .01); scene.add(tee);
+    // l'axe de frappe (pointillés blancs, tournés par le joueur) et l'axe des poteaux (trait jaune fin, fixe)
     const ga = new T3.PlaneGeometry(.12, 1); ga.translate(0, .5, 0); ga.rotateX(-Math.PI / 2);
     axe = new T3.Group();
-    for(let k = 0; k < 12; k++){ const s = new T3.Mesh(ga, new T3.MeshBasicMaterial({ color:0xFFFFFF, transparent:true, opacity:.75 - k * .05, depthWrite:false })); s.position.z = -(1.2 + k * 1.6); s.position.y = .02; axe.add(s); }
+    for(let k = 0; k < 14; k++){ const s = new T3.Mesh(ga, new T3.MeshBasicMaterial({ color:0xFFFFFF, transparent:true, opacity:.85 - k * .05, depthWrite:false })); s.position.z = -(.45 + k * 1.4); s.position.y = .025; axe.add(s); }
     scene.add(axe);
-    joueur = buteur(); scene.add(joueur.gr);
+    const gr = new T3.PlaneGeometry(.05, 1); gr.translate(0, .5, 0); gr.rotateX(-Math.PI / 2);
+    axeRef = new T3.Mesh(gr, new T3.MeshBasicMaterial({ color:0xFFD94A, transparent:true, opacity:.7, depthWrite:false })); axeRef.position.y = .02;
+    scene.add(axeRef);
+  }
+  // le ballon : un tour au profil ovale un peu pointu (r = R·(1 − u²)^0,72), quatre panneaux avec leurs coutures, deux bandes rouges, un logo
+  function ovale(e){
+    const pts = [], N = 26, Lo = .15 + e, Ra = .095 + e;
+    for(let i = 0; i <= N; i++){ const u = -1 + 2 * i / N; pts.push(new T3.Vector2(Math.max(.002, Ra * Math.pow(Math.max(0, 1 - u * u), .72)), u * Lo)); }
+    const g = new T3.LatheGeometry(pts, 48).toNonIndexed(); g.computeVertexNormals();
+    const a = g.attributes.position.array, col = [], c = new T3.Color(), DEC = Math.PI / 48;   // coutures au milieu d'une colonne
+    for(let i = 0; i < a.length; i += 9){
+      // le milieu de la case (anneau et colonne), pour que les bandes et les coutures soient bien droites
+      const ys = [a[i + 1], a[i + 4], a[i + 7]], an = [0, 3, 6].map(k => Math.atan2(a[i + k + 2], a[i + k]));
+      const dif = an.map(v => { let d = v - an[0]; while(d > Math.PI) d -= 2 * Math.PI; while(d < -Math.PI) d += 2 * Math.PI; return d; });
+      const y = (Math.min(...ys) + Math.max(...ys)) / 2, ang = an[0] + (Math.min(...dif) + Math.max(...dif)) / 2, u = Math.abs(y) / Lo;
+      const couture = Math.abs(Math.sin(2 * (ang - DEC))) < .06 && u < .93, logo = Math.abs(y) < .04 && Math.abs(Math.sin((ang - 1.2) / 2)) < .16;
+      c.set(couture ? 0xA9A28F : (u > .5 && u < .64) || u > .88 ? 0xE23B3B : logo ? 0x1F5FAE : 0xF7F5EE);
+      for(let k = 0; k < 3; k++) col.push(c.r, c.g, c.b);
+    }
+    g.setAttribute('color', new T3.Float32BufferAttribute(col, 3));
+    return g;
   }
   // un drapeau en haut d'un poteau, qui flotte dans le sens du vent
   function drapeau(x, y, z, coul){
@@ -131,39 +149,21 @@ window.RUGBY_3D = (() => {
     const m = new T3.Mesh(g, new T3.MeshToonMaterial({ color:coul, gradientMap:DEGRADE, side:T3.DoubleSide }));
     m.position.set(x, y - .35, z); scene.add(m); drapeaux.push({ m, base:g.attributes.position.array.slice() });
   }
-  // le buteur : maillot, short, chaussettes, tête ; il prend son élan puis frappe
-  function buteur(){
-    const gr = new T3.Group(), corps = objet([
-      { f:'boite', d:[.46, .55, .26], c:0xE23B3B, p:[0, 1.32, 0] }, { f:'boite', d:[.46, .12, .27], c:0xFFFFFF, p:[0, 1.5, 0] },
-      { f:'boite', d:[.44, .26, .27], c:0x13233A, p:[0, .95, 0] },
-      { f:'boule', d:[.15, 1], c:0xE8B48A, p:[0, 1.78, 0] }, { f:'boule', d:[.155, 1], c:0x4A3222, p:[0, 1.83, -.02], s:[1, .55, 1] },
-      { f:'cyl', d:[.06, .05, .6, 6], c:0xE23B3B, p:[-.3, 1.28, 0], r:[0, 0, .25] }, { f:'cyl', d:[.06, .05, .6, 6], c:0xE23B3B, p:[.3, 1.28, 0], r:[0, 0, -.25] },
-    ], .02);
-    gr.add(corps);
-    const jambe = () => { const j = new T3.Group(); j.add(objet([{ f:'cyl', d:[.075, .06, .5, 6], c:0xE8B48A, p:[0, -.25, 0] }, { f:'cyl', d:[.07, .07, .32, 6], c:0x1F5FAE, p:[0, -.6, 0] }, { f:'boite', d:[.11, .08, .26], c:0x1B1B1B, p:[0, -.8, -.06] }], .015)); j.position.y = .84; return j; };
-    const jg = jambe(), jd = jambe(); jg.position.x = -.12; jd.position.x = .12; gr.add(jg, jd);
-    return { gr, jg, jd };
-  }
-  // placer le ballon et le buteur (en retrait, de biais) ; l'axe part du ballon dans la direction a (0 = vers les poteaux, en -z)
-  function placer(x, z, a){
-    ballon.position.set(x, .26, z); ballon.rotation.set(-.25, a, 0, 'YXZ');
+  // placer le ballon sur son tee, penché vers l'avant dans l'axe de frappe a (0 = vers les poteaux, en -z) ;
+  // aRef : l'axe des poteaux (le trait jaune va du ballon jusqu'à la ligne des poteaux)
+  const PENCHE = -.42;
+  function placer(x, z, a, aRef = a){
+    ballon.position.set(x, .27, z); ballon.rotation.set(PENCHE, -a, 0, 'YXZ');
     tee.position.set(x, 0, z); tee.visible = true;
-    axe.position.set(x, 0, z); axe.rotation.y = -a; axe.visible = true;
-    elan(0, x, z, a);
+    majAxe(x, z, a, aRef); montrerAxe(true);
   }
-  // l'élan : u de 0 (en retrait) à 1 (au ballon) ; jambe qui frappe
-  function elan(u, x, z, a, frappe = 0){
-    const dx = Math.sin(a), dz = -Math.cos(a), px = -dz, pz = dx;          // devant, et sur le côté
-    const recul = 2.2 * (1 - u), cote = -1.25 * (1 - u) - .35;
-    joueur.gr.position.set(x - dx * (recul + .5) + px * cote, 0, z - dz * (recul + .5) + pz * cote);
-    joueur.gr.rotation.y = Math.atan2(-dx, -dz) + (1 - u) * -.5;
-    const course = Math.sin(u * 14) * .6 * (u < .95 ? 1 : 0);
-    joueur.jg.rotation.x = course; joueur.jd.rotation.x = -course - frappe * 1.6;
-    joueur.gr.position.y = Math.abs(Math.sin(u * 14)) * .06;
+  function majAxe(x, z, a, aRef = a){
+    axe.position.set(x, 0, z); axe.rotation.y = -a;
+    axeRef.position.set(x, .02, z); axeRef.rotation.y = -aRef; axeRef.scale.z = Math.hypot(x, z);
   }
-  function majAxe(x, z, a){ axe.position.set(x, 0, z); axe.rotation.y = -a; }
-  function montrerAxe(v){ axe.visible = v; }
-  function majBallon(p, rot){ ballon.position.set(...p); ballon.rotation.set(rot[0], rot[1], rot[2], 'YXZ'); }
+  function montrerAxe(v){ axe.visible = axeRef.visible = v; }
+  // le ballon en vol : il tourne par-dessus lui-même (tourne) dans l'axe a
+  function majBallon(p, a, tourne){ ballon.position.set(...p); ballon.rotation.set(PENCHE - tourne, -a, 0, 'YXZ'); }
   function cacherTee(){ tee.visible = false; }
   function regarder(p, cible, fov){ cam.position.set(...p); if(fov) cam.fov = fov; cam.updateProjectionMatrix(); cam.lookAt(...cible); }
   function rendu(dt, vent, joie = 0){
@@ -188,5 +188,5 @@ window.RUGBY_3D = (() => {
     const v = new T3.Vector3(x, y, z).project(cam); if(v.z > 1) return null;
     return [(v.x + 1) / 2 * L, (1 - v.y) / 2 * H];
   }
-  return { init, taille, placer, elan, majAxe, montrerAxe, majBallon, cacherTee, regarder, rendu, ecran, get ok(){ return ok; } };
+  return { init, taille, placer, majAxe, montrerAxe, majBallon, cacherTee, regarder, rendu, ecran, get ok(){ return ok; } };
 })();

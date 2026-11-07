@@ -13,7 +13,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '
 const virg = (n, k = 1) => n.toFixed(k).replace('.', ',');
 const alea = s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const jour = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-const S3 = window.RUGBY_3D, G = 9.81, DUREE = 60, ELEV = 34 * Math.PI / 180, AIR = .0045, DEMI = 2.8, BARRE = 3;
+const S3 = window.RUGBY_3D, AXE_MAX = .45, POUSSE = .35, G = 9.81, DUREE = 60, ELEV = 34 * Math.PI / 180, AIR = .0045, DEMI = 2.8, BARRE = 3;
 
 /* ---------- Le son ---------- */
 let AC = null, son = lire('rugby-son', true);
@@ -64,9 +64,9 @@ function nouveauCoup(){
   const vf = Math.round(R() * Math.min(9, 2.5 + k * .9) * 10) / 10, va = R() * Math.PI * 2;
   P.x0 = Math.round(cote * 2) / 2; P.z0 = clamp(dist, 12, 48); P.vent = [Math.cos(va) * vf, Math.sin(va) * vf]; P.ventF = vf;
   P.axeVrai = Math.atan2(-P.x0, P.z0);                         // vers le milieu des poteaux
-  P.axe = P.axeVrai + (R() - .5) * .35;                         // le ballon est posé un peu de travers : à toi de caler l'axe
-  P.phase = 'axe'; P.tElan = 0; P.vol = null; P.res = null;
-  S3.placer(P.x0, P.z0, P.axe); S3.montrerAxe(true);
+  P.axe = P.axeVrai;                                            // l'axe de frappe part droit sur les poteaux : à toi de le décaler contre le vent
+  P.phase = 'axe'; P.vol = null; P.res = null;
+  S3.placer(P.x0, P.z0, P.axe, P.axeVrai);
   P.camA = P.axe; P.cam = null;
   majHud();
 }
@@ -76,7 +76,8 @@ const valeur = () => Math.round(2 * (1 + (P.z0 - 15) / 30 + Math.abs(P.x0) / 30 
 /* ---------- Taper ---------- */
 function taper(force, devie){
   if(P.phase !== 'axe') return;
-  P.force = force; P.devie = devie; P.phase = 'elan'; P.tElan = 0; S3.montrerAxe(false);
+  P.force = force; P.devie = devie; S3.montrerAxe(false);
+  partir();
 }
 function partir(){
   const v0 = 13 + 18 * P.force, a = P.axe + P.devie, dx = Math.sin(a), dz = -Math.cos(a);
@@ -89,7 +90,7 @@ function voler(dt){
     const h = Math.min(1 / 240, s), a = f.p.slice();
     const rx = f.v[0] - P.vent[0], ry = f.v[1], rz = f.v[2] - P.vent[1], rv = Math.hypot(rx, ry, rz);
     // l'air freine le ballon (par rapport au vent), et le vent le pousse un peu en plus (le ballon ovale prend le vent)
-    f.v[0] += (-AIR * rv * rx + .08 * P.vent[0]) * h; f.v[1] -= (G + AIR * rv * ry) * h; f.v[2] += (-AIR * rv * rz + .08 * P.vent[1]) * h;
+    f.v[0] += (-AIR * rv * rx + POUSSE * P.vent[0]) * h; f.v[1] -= (G + AIR * rv * ry) * h; f.v[2] += (-AIR * rv * rz + POUSSE * P.vent[1]) * h;
     f.p[0] += f.v[0] * h; f.p[1] += f.v[1] * h; f.p[2] += f.v[2] * h; f.t += h;
     // le passage de la ligne des poteaux
     if(!P.res && a[2] > 0 && f.p[2] <= 0){
@@ -108,7 +109,7 @@ function voler(dt){
     }
   }
   f.tourne += dt * 9;
-  S3.majBallon(f.p, [f.tourne, f.a, 0]);
+  S3.majBallon(f.p, f.a, f.tourne);
   if(P.res){ f.apres += dt; if(f.apres > 1.5) apresCoup(); }
 }
 function resultat(ok, txt){
@@ -141,13 +142,8 @@ function maj(dt){
   if(P.temps > 0){ P.temps = Math.max(0, P.temps - dt); if(P.temps <= 0){ sons.sifflet(); if(P.phase === 'axe'){ finir(); return; } } }
   if(P.phase === 'axe'){
     if(clavier.gauche) P.axe -= dt * .35; if(clavier.droite) P.axe += dt * .35;
-    S3.majAxe(P.x0, P.z0, P.axe); S3.placer(P.x0, P.z0, P.axe);
-  }
-  if(P.phase === 'elan'){
-    P.tElan += dt;
-    const u = Math.min(1, P.tElan / .55);
-    S3.elan(u, P.x0, P.z0, P.axe, u > .85 ? (u - .85) / .15 : 0);
-    if(u >= 1) partir();
+    P.axe = clamp(P.axe, P.axeVrai - AXE_MAX, P.axeVrai + AXE_MAX);
+    S3.placer(P.x0, P.z0, P.axe, P.axeVrai);
   }
   if(P.phase === 'vol') voler(dt);
   P.joie = Math.max(0, P.joie - dt);
@@ -156,16 +152,20 @@ function maj(dt){
 }
 // la caméra : derrière le ballon, dans l'axe ; pendant le vol, elle suit le ballon
 function camera(dt){
+  // dans l'axe des poteaux, juste derrière le ballon ; le regard baisse pour que le ballon soit en bas de l'écran (à 78 %, 82 % en paysage)
+  const a = P.axeVrai, dx = Math.sin(a), dz = -Math.cos(a), fov = W < Hh ? 64 : 50;
+  const vise = [P.x0 - dx * 2.4, 1.2, P.z0 - dz * 2.4];
+  const tangage = Math.atan((1.2 - .27) / 2.4) - Math.atan((W < Hh ? .56 : .64) * Math.tan(fov / 2 * Math.PI / 180));
   if(P.phase === 'vol' && P.vol){
-    const f = P.vol, hv = Math.hypot(f.v[0], f.v[2]) || 1, dx = f.v[0] / hv, dz = f.v[2] / hv;
-    const cible = [f.p[0] - dx * 7, Math.max(1.6, f.p[1] + 1.6), f.p[2] - dz * 7];
-    if(!P.cam) P.cam = cible.slice();
-    const k = Math.min(1, dt * (P.res ? 1.2 : 4)); for(let i = 0; i < 3; i++) P.cam[i] += (cible[i] - P.cam[i]) * k;
-    S3.regarder(P.cam, [f.p[0], f.p[1], f.p[2]]);
+    // pendant le vol : la caméra regarde le ballon, monte un peu et le suit de loin (toujours dans l'axe des poteaux)
+    const f = P.vol, d = Math.max(0, (f.p[0] - P.x0) * dx + (f.p[2] - P.z0) * dz), av = Math.max(0, d - 12) * .6;
+    const cible = [vise[0] + dx * av, 1.2 + Math.min(1.6, d * .06), vise[2] + dz * av];
+    if(!P.cam) P.cam = vise.slice();
+    const k = Math.min(1, dt * 3); for(let i = 0; i < 3; i++) P.cam[i] += (cible[i] - P.cam[i]) * k;
+    S3.regarder(P.cam, [f.p[0], Math.max(f.p[1], P.cam[1] - 1), f.p[2]]);
     return;
   }
-  const a = P.axe, dx = Math.sin(a), dz = -Math.cos(a);
-  S3.regarder([P.x0 - dx * 8, 2.3, P.z0 - dz * 8], [P.x0 + dx * 30, 2.4, P.z0 + dz * 30]);
+  S3.regarder(vise, [vise[0] + dx * 30, 1.2 - 30 * Math.tan(tangage), vise[2] + dz * 30]);
 }
 
 /* ---------- Le dessin par-dessus : le vent, le geste, les flèches de l'axe ---------- */
@@ -180,7 +180,7 @@ function dessiner(dt){
   S3.rendu(dt, P.vent, P.joie);
   g.setTransform(DPR, 0, 0, DPR, 0, 0); g.clearRect(0, 0, W, Hh);
   // le vent : une flèche vue d'en haut (le haut = vers les poteaux, dans l'axe)
-  const y0 = 70 + hautStatut, cx = W / 2, a = P.axe, fx = Math.sin(a), fz = -Math.cos(a), rx = -fz, rz = fx;
+  const large = W > Hh * 1.2, y0 = (large ? 12 : 70) + hautStatut, cx = large ? W - 160 : W / 2, a = P.axeVrai, fx = Math.sin(a), fz = -Math.cos(a), rx = -fz, rz = fx;
   const av = P.vent[0] * fx + P.vent[1] * fz, cote = P.vent[0] * rx + P.vent[1] * rz, ang = Math.atan2(cote, av);
   g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.roundRect(cx - 92, y0, 184, 54, 16); g.fill();
   g.save(); g.translate(cx - 62, y0 + 27);
@@ -191,12 +191,16 @@ function dessiner(dt){
   g.font = '600 12px "Bricolage Grotesque", sans-serif'; g.fillStyle = '#5C6E60';
   g.fillText(`${Math.round(Math.hypot(P.x0, P.z0))} m · ${P.x0 ? `${Math.abs(P.x0)} m ${P.x0 < 0 ? 'à gauche' : 'à droite'}` : 'en face'}`, cx - 36, y0 + 42);
   if(P.phase === 'axe'){
+    // l'axe de frappe par rapport à l'axe des poteaux
+    const ec = Math.round((P.axe - P.axeVrai) * 180 / Math.PI);
+    g.textAlign = 'center'; g.font = '800 14px "Bricolage Grotesque", sans-serif';
+    texteFond(ec ? `axe : ${Math.abs(ec)}° ${ec < 0 ? 'à gauche' : 'à droite'} des poteaux` : 'axe : droit sur les poteaux', cx, y0 + 80);
     // la zone du geste, et l'aide
     g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(0, zoneTir(), W, Hh - zoneTir());
     g.strokeStyle = 'rgba(255,255,255,.35)'; g.setLineDash([8, 8]); g.lineWidth = 2; g.beginPath(); g.moveTo(0, zoneTir()); g.lineTo(W, zoneTir()); g.stroke(); g.setLineDash([]);
     g.textAlign = 'center'; g.font = '800 14px "Bricolage Grotesque", sans-serif';
-    texteFond('◀ glisse ici pour caler l\'axe ▶', cx, zoneTir() - 22);
-    texteFond('glisse vers le haut depuis ici pour taper', cx, Hh - 100);
+    texteFond('◀ glisse ici pour caler l\'axe ▶', W / 2, zoneTir() - 22);
+    texteFond('glisse le ballon vers le haut pour taper', W / 2, zoneTir() + 30);
   }
   // le geste en cours : la trace du doigt, et la force
   if(geste && P.phase === 'axe'){
@@ -224,7 +228,7 @@ cv.addEventListener('pointerdown', e => {
 });
 cv.addEventListener('pointermove', e => {
   if(geste && e.pointerId === geste.id){ geste.x = e.clientX; geste.y = e.clientY; geste.pts.push([e.clientX, e.clientY]); if(geste.pts.length > 40) geste.pts.shift(); return; }
-  if(axeDoigt && e.pointerId === axeDoigt.id && P && P.phase === 'axe'){ P.axe = clamp(P.axe + (e.clientX - axeDoigt.x) * .0025, P.axeVrai - .9, P.axeVrai + .9); axeDoigt.x = e.clientX; }
+  if(axeDoigt && e.pointerId === axeDoigt.id && P && P.phase === 'axe'){ P.axe = clamp(P.axe + (e.clientX - axeDoigt.x) * .0012, P.axeVrai - AXE_MAX, P.axeVrai + AXE_MAX); axeDoigt.x = e.clientX; }
 });
 const lacher = e => {
   if(axeDoigt && e.pointerId === axeDoigt.id) axeDoigt = null;
@@ -293,7 +297,7 @@ function menu(){
   $('recTxt').textContent = r.tentees ? `${r.reussies} transformations réussies sur ${r.tentees} · meilleure série ${r.serie || 0} · plus longue ${r.plusLongue || 0} m` : '';
   $('bSon').textContent = son ? '🔊' : '🔇';
   $('eMenu').hidden = false;
-  if(S3 && S3.init($('cv3d'))){ S3.taille(W, Hh); S3.placer(-8, 30, Math.atan2(8, 30)); S3.regarder([-12, 2.5, 38], [0, 3, 0]); S3.rendu(0, [3, 1]); }
+  if(S3 && S3.init($('cv3d'))){ S3.taille(W, Hh); S3.placer(-8, 30, Math.atan2(8, 30)); S3.montrerAxe(false); S3.regarder([-12, 2.5, 38], [0, 3, 0]); S3.rendu(0, [3, 1]); }
 }
 $('eMenu').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if(b) lancer(b.dataset.mode); });
 $('bSon').onclick = () => { son = !son; ecrire('rugby-son', son); $('bSon').textContent = son ? '🔊' : '🔇'; if(son) audio(); };

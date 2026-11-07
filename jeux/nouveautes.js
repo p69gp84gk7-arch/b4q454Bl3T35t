@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:146, type:'maj', jeu:'Le Buteur', ico:'🏉', lien:'jeux/rugby.html',
+    txt:'Plus de buteur à l\'écran : on voit le vrai ballon ovale au premier plan, les poteaux et le stade. Glisse le ballon vers le haut, il part tout de suite. L\'axe part droit sur les poteaux (trait jaune) : décale-le pour contrer le vent.' },
   { v:145, type:'nouveau', jeu:'Le Buteur', ico:'🏉', lien:'jeux/rugby.html',
     txt:'Nouveau jeu : des transformations de rugby en 3D contre la montre. Cale l\'axe, puis glisse le doigt vers le haut pour taper entre les poteaux. Places et vent au hasard, le plus de points en 60 secondes, et un défi du jour !' },
   { v:144, type:'nouveau', jeu:'Billard', ico:'🎱', lien:'jeux/billard.html',
