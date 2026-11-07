@@ -172,6 +172,17 @@ window.AltitudeScores = (() => {
       J.paddock.stats = { 'Grands Prix':pk.gp, 'Points':pk.points || 0, 'Titres constructeurs':pk.titresC || 0, 'Titres pilotes':pk.titresP || 0, 'Pole positions':pk.poles || 0 };
     }
     // Blocs : le marathon
+    // Flèche d'or : chaque concours, chaque parcours, les cibles mobiles et le meilleur défi du jour
+    const ar = lire('arc-records');
+    if(ar && ar.parties){
+      jeu('arc', 'Flèche d\'or', '🏹');
+      for(const [d, r] of Object.entries(ar.concours || {})) if(r.parties) ep('arc', 'c' + d, `Concours ${d} m`, r.score, `${r.score} / 90`);
+      const NP = { marmottes:'Le Bois des Marmottes', chamois:'La Crête des Chamois' };
+      for(const [id, r] of Object.entries(ar.parcours || {})) if(r.parties) ep('arc', 'p:' + id, `Parcours · ${NP[id] || id}`, r.score, `${r.score} points`);
+      if(ar.mobiles && ar.mobiles.parties) ep('arc', 'mobiles', 'Cibles mobiles', ar.mobiles.score, `${ar.mobiles.score} points`);
+      if(ar.defiMeilleur) ep('arc', 'defi', 'Meilleur défi du jour', ar.defiMeilleur, `${ar.defiMeilleur} / 90`);
+      J.arc.stats = { 'Parties jouées':ar.parties, 'Flèches tirées':ar.fleches || 0, 'Dans le 10':ar.dix || 0, 'X (plein centre)':ar.x || 0 };
+    }
     // Rock Altitude : les étoiles et le meilleur score
     const rk = lire('rock-records');
     if(rk && rk.parties){
