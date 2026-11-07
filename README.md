@@ -23,7 +23,8 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Tables au sommet** : apprendre les tables de multiplication de 1 à 10 (niveau CM1) en grimpant la montagne : leçon avec dessins et astuces, table dans l'ordre puis dans le désordre, entraînement, défi chrono, tableau des progrès | `jeux/tables.html` | 1 |
 | **Les aventures de Pépin** : jeu de plateforme en pixels dans l'esprit des grands classiques 2D (personnages, dessins et musiques originaux) ; Pépin le plombier-montagnard traverse 4 mondes et 16 niveaux (prairie, grotte, cimes, lac, neiges, volcan, châteaux du Yéti) ; blocs mystère, cèpes, piments de feu, étoile, tuyaux secrets ; manette à l'écran | `jeux/pepin.html` | 1 |
 | **Le Grand Quiz** : culture générale à trois niveaux (Junior, Ado, Adulte), près de 800 questions sur 12 thèmes ; l'échelle des 15 questions jusqu'au million (une erreur n'arrête pas la partie, joker 50/50), la série rapide contre la montre, et le petit bac seul ou à plusieurs | `jeux/quiz.html` | 1 à 6 |
-| **Rock Altitude** : jeu de guitare rythmique : les notes arrivent sur un manche en 3D (style dessin animé), on les joue sur 3 boutons (Facile) ou 4 (Moyen, Difficile) ; 8 morceaux composés pour le jeu et joués par l'application (pop rock, blues, folk, funk, rock, hard rock, punk, métal), ou ses propres MP3 (notes fabriquées en écoutant le morceau) ; notes longues, accords, multiplicateur, mode Star, jauge du public | `jeux/rock.html` |
+| **Flèche d'or** : tir à l'arc en 3D (style dessin animé) : tirer le doigt vers le bas pour bander, viser, lâcher ; concours à 18, 30, 50 et 70 m (3 volées de 3 flèches), parcours en montagne (animaux-cibles à des distances inconnues, repères de distance dans le viseur), cibles mobiles (60 s), défi du jour ; vent, chute de la flèche, tremblement, 3 arcs à débloquer | `jeux/arc.html` | 1 |
+| **Rock Altitude** : jeu de guitare rythmique : les notes arrivent sur un manche en 3D (style dessin animé), on les joue sur 3 boutons (Facile) ou 4 (Moyen, Difficile) ; 8 morceaux composés pour le jeu et joués par l'application (pop rock, blues, folk, funk, rock, hard rock, punk, métal), ou ses propres MP3 (notes fabriquées en écoutant le morceau) ; notes longues, accords, multiplicateur, mode Star, jauge du public | `jeux/rock.html` | 1 |
 | **Nuancier** : la couleur a disparu d'une partie de l'image (Mario, Pikachu, Coca-Cola, Spotify, le taxi de New York…) : il faut la retrouver de mémoire avec un spectre de couleurs et la luminosité ; 119 images, 10 couleurs par partie notées sur 10 | `jeux/nuancier.html` | 1 |
 
 La page d'accueil (`index.html`) permet de choisir un carnet et indique si une partie est en cours (qui mène, à qui c'est le tour).
@@ -491,6 +492,23 @@ Le jeu de gestion d'écurie de Formule 1, façon jeu de manager : `jeux/paddock.
 - **Données** : `paddock-carriere` (toute la carrière, y compris le week-end en cours ; une carrière de la première version est convertie : ses courses restantes passent sur les nouveaux circuits), `paddock-records` (résumé : Grands Prix, victoires, podiums, poles, points, titres, meilleure place), `paddock-zoom` et `paddock-pageT` (zoom et page du tableau préférés). Le classement a trois épreuves (victoires, meilleure place chez les constructeurs, podiums).
 - **Essais** : `window.Paddock` (carrière, week-end, séances, course) ; des courses et des séances ont été simulées sur les 24 circuits (temps au tour, écarts, arrêts, abandons), et des saisons entières pour régler l'argent, les pièces, l'usine et la confiance de la direction.
 
+## Flèche d'or
+
+Jeu de tir à l'arc en 3D : `jeux/arc.html` (la page), `jeux/arc/jeu.js` (règles, commandes, vol des flèches, points, menus) et `jeux/arc/scene.js` (la scène Three.js, en style dessin animé comme la Dameuse : ombrage en tons, contours foncés ; prairie d'alpage, sapins et feuillus, montagnes au loin, drapeaux qui flottent selon le vent). L'archer est en (0, sol, 0) et tire vers -Z ; le dessin 2D par-dessus montre l'arc (poignée, branches, corde tirée, flèche), le viseur, le vent et les textes.
+
+- **Le geste** : poser le doigt et le tirer vers le bas (20 % de la hauteur de l'écran = arc bandé, « Prêt ! », petite vibration) ; la vue zoome comme dans un viseur ; ensuite le doigt vise (une hauteur d'écran = 60 % du champ de vue) ; lever le doigt tire. Lâché avant d'être bandé, l'arc tire mou (35 à 100 % de la vitesse) ; tout de suite (moins de 20 %), il ne tire pas. Au clavier : Espace maintenu pour bander, flèches pour viser, Espace relâché pour tirer.
+- **Le tremblement** : de petites oscillations et la respiration (0,06° environ, × l'arc), qui grandissent de 45 % par seconde au-delà de 4 s bandé (« Tu fatigues… lâche ! »), plus une petite dispersion au départ de la flèche.
+- **Le vol** : la flèche part à la vitesse de l'arc, tombe (9,81 m/s²) et le vent la pousse sur le côté (accélération 0,12 × (vent − vitesse de côté)) ; pas de calcul de 1/240 s ; elle se plante dans la cible, l'animal, la butte ou le sol. Une caméra la suit, au ralenti dans les 7 derniers mètres (toucher l'écran pour passer), puis montre l'impact de près.
+- **Le viseur** : réglé pour la distance du concours (on vise le centre) ; dans le parcours et les cibles mobiles, réglé à 20 m avec des repères de 10 à 50 m (calculés avec la vitesse de l'arc : plus loin, le repère est plus bas). Arc droit : un point ; arc classique : un anneau et sa fibre verte ; arc à poulies : une loupe et un point rouge.
+- **Les arcs** : arc droit (48 m/s, le plus de tremblement), arc classique (62 m/s, 5 étoiles), arc à poulies (88 m/s, le plus stable, zoom ×1,6, 12 étoiles).
+- **Concours** : 18 m (face de 40 cm, vent jusqu'à 1,5 m/s), 30 m (80 cm, 3 m/s), 50 m (122 cm, 4,5 m/s), 70 m (122 cm, 6 m/s) ; 3 volées de 3 flèches (90 points), anneaux de 1 à 10 et le X ; bilan de chaque volée avec la cible et les impacts ; étoiles à 55, 72 et 84 ; une étoile ouvre la distance suivante.
+- **Parcours en montagne** : Le Bois des Marmottes (8 animaux, 10 à 28 m, terrain doux) et La Crête des Chamois (10 animaux, 18 à 48 m, montées et descentes), toujours les mêmes postes ; marmotte, lièvre, renard, chamois, sanglier, bouquetin, cerf, ours, de profil, avec leur zone vitale dessinée ; petit cercle 10, grand cercle 8, le reste de l'animal 5 ; deuxième flèche si la première rate (7, 5, 3) ; la distance est donnée après ; étoiles à 50, 70 et 85 % des points.
+- **Cibles mobiles** : 60 s ; ballons qui montent (10 points), plateaux qui traversent (30), cible qui glisse sur son rail à 18 m (anneau × 2), de plus en plus vite ; combo ×1,5 puis ×2… jusqu'à ×3, remis à ×1 par un raté ; étoiles à 150, 300 et 450 points.
+- **Défi du jour** : trois distances (de 20 à 60 m) et leurs vents, tirés au sort avec la date (les mêmes pour tout le monde).
+- **Sons** (Web Audio) : la corde, le sifflement de la flèche, l'impact, le ballon qui éclate, le plateau qui casse, un carillon et « Dix ! » (synthèse vocale) dans le 10.
+- **Données** : `arc-records` (concours par distance, parcours, cibles mobiles : record, étoiles, parties ; défi du jour ; flèches tirées, dans le 10, X ; arc choisi ; dernière partie), `arc-son`. Le classement a une épreuve par concours, par parcours, les cibles mobiles et le meilleur défi.
+- **Essais** : `window.FlecheOr` (lancer, partie, finir…) et `window.ARC_3D`.
+
 ## Rock Altitude
 
 Le jeu de guitare rythmique : `jeux/rock.html` (menus, partie, points), `jeux/rock/son.js` (le groupe, en Web Audio), `jeux/rock/morceaux.js` (les morceaux et leur arrangement), `jeux/rock/partition.js` (les notes à jouer, et l'écoute des MP3), `jeux/rock/manche.js` (le manche en 3D, avec Three.js r149 de `jeux/commun/three.min.js`, partagé avec la Dameuse).
@@ -595,6 +613,8 @@ jeux/pepin.html        jeu Les aventures de Pépin (page et menus)
 jeux/quiz.html         jeu Le Grand Quiz (échelle, série rapide, petit bac)
 jeux/telesiege.html    jeu Chef de quai (le départ d'un télésiège vu du dessus)
 jeux/blocs.html        jeu Blocs (les blocs qui tombent, marathon sans fin)
+jeux/arc.html          jeu Flèche d'or (tir à l'arc)
+jeux/arc/              la scène 3D (scene.js) et le jeu (jeu.js) de Flèche d'or
 jeux/rock.html         jeu Rock Altitude (guitare rythmique)
 jeux/rock/             le groupe (son.js), les morceaux (morceaux.js), les partitions (partition.js) et le manche 3D (manche.js)
 jeux/commun/           Three.js (three.min.js), pour les vues 3D (Rock Altitude, Dameuse)
