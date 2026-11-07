@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:144, type:'nouveau', jeu:'Billard', ico:'🎱', lien:'jeux/billard.html',
+    txt:'Nouveau jeu : le billard vu de dessus, au pool 8 boules ou au billard français. La trajectoire de la blanche et le début de celle de la boule touchée s\'affichent ; effets (rétro, coulé, à gauche, à droite), réglage fin, contre un robot à 3 niveaux ou à deux.' },
   { v:143, type:'maj', jeu:'Flèche d\'or', ico:'🏹', lien:'jeux/arc.html',
     txt:'Viser avec le gyroscope : active-le dans le menu, puis, l\'arc bandé, tourne ou penche un peu le téléphone ou la tablette pour affiner la visée.' },
   { v:142, type:'maj', jeu:'Flèche d\'or', ico:'🏹', lien:'jeux/arc.html',
