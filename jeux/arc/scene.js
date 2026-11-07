@@ -277,11 +277,27 @@ window.ARC_3D = (() => {
   function retirer(gr){ if(gr) scene.remove(gr); }
 
   /* ---------- Les flèches ---------- */
+  // une flèche fine (8 mm, 76 cm), sa pointe, son encoche, et trois plumes en forme d'aile, posées à 120° autour du tube
+  let plumeG = null;
   function fleche(coul = 0xFF6A2B){
     const gr = new T3.Group();
-    const P = [{ f:'cyl', d:[.012, .012, .76, 6], c:0x2A2E36, p:[0, 0, 0], r:[Math.PI / 2, 0, 0] }, { f:'cone', d:[.02, .07, 6], c:0xC9CFD8, p:[0, 0, -.41], r:[-Math.PI / 2, 0, 0] }];
-    for(let k = 0; k < 3; k++){ const a = k * 2.094; P.push({ f:'boite', d:[.004, .05, .12], c:k ? coul : 0xFFFFFF, p:[Math.cos(a) * .03, Math.sin(a) * .03, .3], r:[0, 0, a] }); }
-    gr.add(objet(P, .006));
+    gr.add(objet([
+      { f:'cyl', d:[.004, .004, .74, 6], c:0x2A2E36, r:[Math.PI / 2, 0, 0] },
+      { f:'cone', d:[.0055, .028, 6], c:0xC9CFD8, p:[0, 0, -.384], r:[-Math.PI / 2, 0, 0] },
+      { f:'cyl', d:[.0045, .0045, .02, 6], c:0xFFC93C, p:[0, 0, .375], r:[Math.PI / 2, 0, 0] },
+    ], .0018));
+    if(!plumeG){
+      // le profil d'une plume : basse à l'arrière, elle monte puis s'arrondit vers l'avant (8 cm de long, 1,6 cm de haut)
+      const f = new T3.Shape(); f.moveTo(0, 0); f.lineTo(.08, 0); f.quadraticCurveTo(.075, .016, .03, .016); f.quadraticCurveTo(.008, .016, 0, .009); f.lineTo(0, 0);
+      plumeG = new T3.ShapeGeometry(f, 4);
+    }
+    for(let k = 0; k < 3; k++){
+      const m = new T3.Mesh(plumeG, new T3.MeshToonMaterial({ color:k ? coul : 0xFFFFFF, gradientMap:DEGRADE, side:T3.DoubleSide }));
+      // la plume part du tube (rayon 4 mm), à plat le long de la flèche ; l'arrière vers l'encoche (+z)
+      const piv = new T3.Group(); piv.rotation.z = k * 2.094;
+      m.rotation.set(0, Math.PI / 2, 0); m.position.set(0, .004, .355);
+      piv.add(m); gr.add(piv);
+    }
     scene.add(gr); fleches.push(gr); return gr;
   }
   // place une flèche : pointe en p, dans la direction d

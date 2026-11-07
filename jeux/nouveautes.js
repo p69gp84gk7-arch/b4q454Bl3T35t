@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:142, type:'maj', jeu:'Flèche d\'or', ico:'🏹', lien:'jeux/arc.html',
+    txt:'Viser est plus facile : le doigt vise dès qu\'il est posé, et il suffit de le tirer un peu vers le bas pour bander. L\'arc bandé sort de l\'écran pour laisser le viseur, et les flèches sont plus fines, avec de vraies plumes.' },
   { v:141, type:'nouveau', jeu:'Flèche d\'or', ico:'🏹', lien:'jeux/arc.html',
     txt:'Nouveau jeu de tir à l\'arc en 3D : tire le doigt vers le bas pour bander l\'arc, vise et lâche. Concours de 18 à 70 m, parcours en montagne avec des animaux à des distances inconnues, cibles mobiles et défi du jour. Le vent pousse la flèche, l\'arc tremble si on attend trop, et trois arcs à débloquer !' },
   { v:140, type:'maj', jeu:'Freeride', ico:'⛷️', lien:'jeux/freeride.html',

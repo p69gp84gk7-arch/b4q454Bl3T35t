@@ -144,17 +144,18 @@ function commencer(x, y, id){
   doigt = { id, x0:x, y0:y, x, y }; P.phase = 'bande'; P.tension = 0; P.plein = false; P.tPlein = 0; P.aide = false;
   return true;
 }
+const TIRAGE = () => Math.max(60, Hh * .1);     // tirer le doigt de 10 % de l'écran vers le bas bande l'arc
 function bouger(x, y){
   if(!doigt || !P || P.phase !== 'bande') return;
   const dx = x - doigt.x, dy = y - doigt.y; doigt.x = x; doigt.y = y;
+  // le doigt vise tout de suite de gauche à droite (une hauteur d'écran = tout le champ de vue) ;
+  // vers le bas, il bande d'abord l'arc, puis, une fois bandé, il vise aussi en hauteur
+  const k = (cam.fov * Math.PI / 180) / Hh * .9;
+  P.yaw += dx * k;
   if(!P.plein){
-    P.tension = clamp((y - doigt.y0) / (Hh * .2), 0, 1);
+    P.tension = clamp(Math.max(P.tension, (y - doigt.y0) / TIRAGE()), 0, 1);
     if(P.tension >= 1){ P.plein = true; P.tPlein = 0; sons.pret(); if(navigator.vibrate) navigator.vibrate(12); }
-  } else {
-    // bandé : le doigt vise (une hauteur d'écran = 60 % du champ de vue)
-    const k = (cam.fov * Math.PI / 180) / Hh * .6;
-    P.yaw += dx * k; P.pitch = clamp(P.pitch - dy * k, -.6, .8);
-  }
+  } else P.pitch = clamp(P.pitch - dy * k, -.6, .8);
 }
 function lacher(){
   if(!P || P.phase !== 'bande'){ doigt = null; return; }
@@ -466,7 +467,7 @@ function dessinerArc(){
     g.fillStyle = '#FF2D2D'; g.beginPath(); g.arc(cx, cy, 3.2, 0, 7); g.fill();
   } else if(arcId === 'classique'){
     g.strokeStyle = 'rgba(20,24,30,.85)'; g.lineWidth = 4; g.beginPath(); g.arc(cx, cy, 15, 0, 7); g.stroke();
-    g.strokeStyle = 'rgba(20,24,30,.85)'; g.lineWidth = 4; g.beginPath(); g.moveTo(cx - 15, cy); g.lineTo(cx - W * .2, cy + 4); g.stroke();
+    if(t < .7){ g.strokeStyle = 'rgba(20,24,30,.85)'; g.lineWidth = 4; g.beginPath(); g.moveTo(cx - 15, cy); g.lineTo(cx - W * .2, cy + 4); g.stroke(); }
     g.fillStyle = '#7CFF4F'; g.beginPath(); g.arc(cx, cy, 3, 0, 7); g.fill(); g.strokeStyle = '#13233A'; g.lineWidth = 1; g.stroke();
   } else {
     g.strokeStyle = 'rgba(20,24,30,.8)'; g.lineWidth = 2.5; g.beginPath(); g.arc(cx, cy, 9, 0, 7); g.stroke();
@@ -487,7 +488,10 @@ function dessinerArc(){
     }
     g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText('20 m', cx + 24, cy - 6); g.fillStyle = '#13233A'; g.fillText('20 m', cx + 24, cy - 6);
   }
-  // l'arc : la poignée à gauche du viseur, les branches qui partent hors de l'écran, la corde tirée vers soi
+  // l'arc : la poignée à gauche du viseur, les branches qui partent hors de l'écran, la corde tirée vers soi ;
+  // en le bandant, on le lève devant soi : il sort de l'écran et il ne reste que le viseur
+  const sortie = t * t * (3 - 2 * t);
+  g.translate(-sortie * W * .75, sortie * Hh * .55);
   const bx = cx - W * .2, hb = Hh * .62, tir = t * W * .32;
   const haut = [bx - W * .07 + t * W * .02, cy - hb], bas = [bx - W * .07 + t * W * .02, cy + hb];
   g.lineWidth = 15; g.strokeStyle = A.c2; g.beginPath(); g.moveTo(...haut); g.quadraticCurveTo(bx + W * .06 - t * W * .03, cy - hb * .45, bx, cy - 40); g.moveTo(...bas); g.quadraticCurveTo(bx + W * .06 - t * W * .03, cy + hb * .45, bx, cy + 40); g.stroke();
@@ -507,13 +511,13 @@ function dessinerArc(){
   g.restore();
   // la jauge pour bander, ou l'aide
   if(P.phase === 'bande' && !P.plein && doigt){
-    const L = Hh * .2;
+    const L = TIRAGE();
     g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 10; g.lineCap = 'round'; g.beginPath(); g.moveTo(doigt.x0, doigt.y0); g.lineTo(doigt.x0, doigt.y0 + L); g.stroke();
     g.strokeStyle = '#E8A817'; g.lineWidth = 6; g.beginPath(); g.moveTo(doigt.x0, doigt.y0); g.lineTo(doigt.x0, doigt.y0 + L * P.tension); g.stroke();
     g.font = '700 14px "Bricolage Grotesque", sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = '#fff'; g.strokeText('tire vers le bas', doigt.x0, doigt.y0 - 14); g.fillStyle = '#1D2A20'; g.fillText('tire vers le bas', doigt.x0, doigt.y0 - 14);
   }
   g.textAlign = 'center'; g.font = '800 15px "Bricolage Grotesque", sans-serif';
-  const msg = P.phase === 'pret' ? (P.aide ? 'Pose le doigt et tire vers le bas pour bander l\'arc' : '') : P.plein ? (P.tPlein > 4 ? 'Tu fatigues… lâche !' : P.tPlein < .8 ? 'Prêt ! Vise, puis lâche' : '') : '';
+  const msg = P.phase === 'pret' ? (P.aide ? 'Pose le doigt et tire vers le bas pour bander l\'arc' : '') : P.plein ? (P.tPlein > 4 ? 'Tu fatigues… lâche !' : P.tPlein < 2.5 ? 'Glisse le doigt pour viser, lève-le pour tirer' : '') : '';
   if(msg){ const w = g.measureText(msg).width + 24; g.fillStyle = P.tPlein > 4 && P.plein ? 'rgba(226,59,59,.92)' : 'rgba(255,255,255,.9)'; g.beginPath(); g.roundRect(W / 2 - w / 2, Hh - 92, w, 32, 16); g.fill(); g.fillStyle = P.tPlein > 4 && P.plein ? '#fff' : '#1D2A20'; g.fillText(msg, W / 2, Hh - 71); }
 }
 // le vent, en haut : sa force et son sens (et la distance quand elle est connue)
