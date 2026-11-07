@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:143, type:'maj', jeu:'Flèche d\'or', ico:'🏹', lien:'jeux/arc.html',
+    txt:'Viser avec le gyroscope : active-le dans le menu, puis, l\'arc bandé, tourne ou penche un peu le téléphone ou la tablette pour affiner la visée.' },
   { v:142, type:'maj', jeu:'Flèche d\'or', ico:'🏹', lien:'jeux/arc.html',
     txt:'Viser est plus facile : le doigt vise dès qu\'il est posé, et il suffit de le tirer un peu vers le bas pour bander. L\'arc bandé sort de l\'écran pour laisser le viseur, et les flèches sont plus fines, avec de vraies plumes.' },
   { v:141, type:'nouveau', jeu:'Flèche d\'or', ico:'🏹', lien:'jeux/arc.html',
