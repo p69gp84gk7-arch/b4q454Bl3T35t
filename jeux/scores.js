@@ -174,10 +174,14 @@ window.AltitudeScores = (() => {
     // Blocs : le marathon
     // Le Buteur : le record en 60 secondes, le meilleur défi du jour, la meilleure série
     const ru = lire('rugby-records');
-    if(ru && ru.chrono && (ru.chrono.parties || ru.defiMeilleur)){
+    if(ru && ru.chrono && ru.chrono.tentees){
       jeu('rugby', 'Le Buteur', '🏉'); const c = ru.chrono;
       if(c.parties) ep('rugby', 'chrono', '60 secondes', c.meilleur, `${c.meilleur} points`);
       if(ru.defiMeilleur) ep('rugby', 'defi', 'Meilleur défi du jour', ru.defiMeilleur, `${ru.defiMeilleur} points`);
+      // les mini-jeux
+      const mj = (k, n, f) => { const q = ru[k]; if(q && q.parties) ep('rugby', k, n, q.meilleur, f(q.meilleur)); };
+      mj('distance', 'Record de distance', v => `${v} m`); mj('mortsubite', 'Mort subite', v => `${v} réussie${v > 1 ? 's' : ''} à la suite`);
+      mj('pleincentre', 'Plein centre', v => `${v} points sur 100`); mj('tempete', 'Tempête', v => `${v} points`);
       if(c.serie) ep('rugby', 'serie', 'Meilleure série', c.serie, `${c.serie} à la suite`);
       J.rugby.stats = { 'Parties':c.parties || 0, 'Transformations réussies':c.reussies || 0, 'Réussite':c.tentees ? Math.round(c.reussies / c.tentees * 100) + ' %' : '—', 'Plus longue':(c.plusLongue || 0) + ' m' };
     }

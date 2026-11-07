@@ -6,7 +6,7 @@ window.RUGBY_3D = (() => {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const alea = s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   let T3 = null, R = null, scene = null, cam = null, ok = false, DEGRADE = null, CONTOUR = null, MAT = null, L = 1, H = 1, temps = 0;
-  let ballon = null, tee = null, axe = null, axeRef = null, drapeaux = [], public_ = null;
+  let ballon = null, tee = null, axe = null, axeRef = null, cible = null, drapeaux = [], public_ = null;
   const toon = o => new T3.MeshToonMaterial(Object.assign({ gradientMap:DEGRADE }, o));
   function geom(f, d, e = 0){
     switch(f){
@@ -124,6 +124,13 @@ window.RUGBY_3D = (() => {
     const gr = new T3.PlaneGeometry(.05, 1); gr.translate(0, .5, 0); gr.rotateX(-Math.PI / 2);
     axeRef = new T3.Mesh(gr, new T3.MeshBasicMaterial({ color:0xFFD94A, transparent:true, opacity:.7, depthWrite:false })); axeRef.position.y = .02;
     scene.add(axeRef);
+    // la cible de « Plein centre » : trois bandes entre les poteaux, au-dessus de la barre (10 points au milieu)
+    cible = new T3.Group();
+    for(const [x1, x2, coul, op] of [[-.6, .6, 0xFFC93C, .5], [.6, 1.6, 0xFF8A3C, .32], [-1.6, -.6, 0xFF8A3C, .32], [1.6, 2.7, 0xFFFFFF, .2], [-2.7, -1.6, 0xFFFFFF, .2]]){
+      const m = new T3.Mesh(new T3.PlaneGeometry(x2 - x1, 7), new T3.MeshBasicMaterial({ color:coul, transparent:true, opacity:op, depthWrite:false, side:T3.DoubleSide }));
+      m.position.set((x1 + x2) / 2, 3.15 + 3.5, 0); cible.add(m);
+    }
+    cible.visible = false; scene.add(cible);
   }
   // le ballon : un tour au profil ovale un peu pointu (r = R·(1 − u²)^0,72), quatre panneaux avec leurs coutures, deux bandes rouges, un logo
   function ovale(e){
@@ -155,13 +162,14 @@ window.RUGBY_3D = (() => {
   function placer(x, z, a, aRef = a){
     ballon.position.set(x, .27, z); ballon.rotation.set(PENCHE, -a, 0, 'YXZ');
     tee.position.set(x, 0, z); tee.visible = true;
-    majAxe(x, z, a, aRef); montrerAxe(true);
+    majAxe(x, z, a, aRef);
   }
   function majAxe(x, z, a, aRef = a){
     axe.position.set(x, 0, z); axe.rotation.y = -a;
     axeRef.position.set(x, .02, z); axeRef.rotation.y = -aRef; axeRef.scale.z = Math.hypot(x, z);
   }
   function montrerAxe(v){ axe.visible = axeRef.visible = v; }
+  function montrerCible(v){ cible.visible = v; }
   // le ballon en vol : il tourne par-dessus lui-même (tourne) dans l'axe a
   function majBallon(p, a, tourne){ ballon.position.set(...p); ballon.rotation.set(PENCHE - tourne, -a, 0, 'YXZ'); }
   function cacherTee(){ tee.visible = false; }
@@ -188,5 +196,5 @@ window.RUGBY_3D = (() => {
     const v = new T3.Vector3(x, y, z).project(cam); if(v.z > 1) return null;
     return [(v.x + 1) / 2 * L, (1 - v.y) / 2 * H];
   }
-  return { init, taille, placer, majAxe, montrerAxe, majBallon, cacherTee, regarder, rendu, ecran, get ok(){ return ok; } };
+  return { init, taille, placer, majAxe, montrerAxe, montrerCible, majBallon, cacherTee, regarder, rendu, ecran, get ok(){ return ok; } };
 })();

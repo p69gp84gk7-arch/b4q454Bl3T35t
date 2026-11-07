@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:147, type:'maj', jeu:'Le Buteur', ico:'🏉', lien:'jeux/rugby.html',
+    txt:'Plus besoin de viser : le ballon part dans la direction de ton geste, et plus ton doigt va vite, plus il part loin. Et 4 mini-jeux : record de distance, mort subite, plein centre et tempête !' },
   { v:146, type:'maj', jeu:'Le Buteur', ico:'🏉', lien:'jeux/rugby.html',
     txt:'Plus de buteur à l\'écran : on voit le vrai ballon ovale au premier plan, les poteaux et le stade. Glisse le ballon vers le haut, il part tout de suite. L\'axe part droit sur les poteaux (trait jaune) : décale-le pour contrer le vent.' },
   { v:145, type:'nouveau', jeu:'Le Buteur', ico:'🏉', lien:'jeux/rugby.html',
