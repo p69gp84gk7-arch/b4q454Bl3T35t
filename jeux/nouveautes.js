@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:139, type:'maj', jeu:'Freeride', ico:'⛷️', lien:'jeux/freeride.html',
+    txt:'Freeride passe en 3D ! La caméra suit le skieur de derrière, au ras de la pente, dans le style de la Dameuse : sapins, barres rocheuses, tremplins, rails, slalom et avalanche. Le bouton en haut (ou le menu) ramène la vue du dessus.' },
   { v:138, type:'maj', jeu:'Paddock', ico:'🏎️', lien:'jeux/paddock.html',
     txt:'Nouveau dessin de la voiture au QG : une vraie F1 2026 vue de dessus, avec ses vraies proportions, des formes arrondies, des reflets, le halo, les rétroviseurs, les bras de suspension et le diffuseur.' },
   { v:137, type:'maj', jeu:'Paddock', ico:'🏎️', lien:'jeux/paddock.html',
