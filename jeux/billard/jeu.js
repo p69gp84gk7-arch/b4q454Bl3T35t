@@ -370,7 +370,9 @@ function dessinerBoule(q){
 function dessinerPrevision(){
   // la ligne suit le vrai trajet de la blanche : avec la force choisie (ou une force moyenne tant qu'on n'a pas tiré la queue) et l'effet
   const T = G.T, R = T.R, id = blanche(), choisie = G.robotVise ? G.robotVise.v : G.force > .03 ? vitesse(G.force) : 0;
-  const P = Ph.prevoir(T, id, G.angle, choisie || vitesse(.6), G.effet.a, G.effet.b);
+  // au billard français, on voit plus loin : 4 bandes avant la première boule, puis la blanche encore 1,2 m (2 bandes) ou jusqu'à la boule suivante
+  const caro = G.jeu === 'carambole';
+  const P = Ph.prevoir(T, id, G.angle, choisie || vitesse(.6), G.effet.a, G.effet.b, caro ? 4 : 3, caro ? { long:1.2, bandes:2 } : null);
   g.save(); g.lineWidth = .0045; g.strokeStyle = 'rgba(255,255,255,.85)'; g.setLineDash([.018, .012]); g.lineJoin = 'round';
   g.beginPath(); P.points.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); g.setLineDash([]);
   // là où la blanche s'arrête (quand la force est choisie)
@@ -385,7 +387,9 @@ function dessinerPrevision(){
     g.fillStyle = g.strokeStyle; const ax = ob.x + r.dirCible[0] * lc, ay = ob.y + r.dirCible[1] * lc, px = -r.dirCible[1], py = r.dirCible[0];
     g.beginPath(); g.moveTo(ax + r.dirCible[0] * .02, ay + r.dirCible[1] * .02); g.lineTo(ax + px * .012, ay + py * .012); g.lineTo(ax - px * .012, ay - py * .012); g.fill();
     // et la direction de la blanche après le choc
-    g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = .003; g.setLineDash([.01, .01]); g.beginPath(); r.apres.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); g.setLineDash([]);
+    g.strokeStyle = 'rgba(255,255,255,.65)'; g.lineWidth = .0035; g.setLineDash([.01, .01]); g.beginPath(); r.apres.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); g.setLineDash([]);
+    // la blanche arrive sur la boule suivante (billard français) : un cercle là aussi
+    if(r.deuxieme){ g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = .003; g.beginPath(); g.arc(r.deuxieme.ghost[0], r.deuxieme.ghost[1], R, 0, 7); g.stroke(); }
   }
   g.restore();
 }

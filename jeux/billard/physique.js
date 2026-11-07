@@ -114,7 +114,8 @@ window.BILLARD_PHYS = (() => {
   }
   // la prévision : on fait vraiment rouler la blanche (seule, avec la même physique, la même vitesse et le même effet que le coup)
   // jusqu'à la première boule touchée, une poche, la 3e bande ou l'arrêt : la ligne suit donc le vrai trajet, rebonds compris
-  function prevoir(T, id, angle, v0 = 3, a = 0, b = 0, maxBandes = 3){
+  // suite : jusqu'où suivre la blanche après la première boule touchée ({ long en m, bandes }) ; sinon, juste le début de son chemin
+  function prevoir(T, id, angle, v0 = 3, a = 0, b = 0, maxBandes = 3, suite = null){
     const q0 = T.b.find(x => x.id === id), R = T.R, dt = 1 / 600;
     const S = { ...T, b:[{ ...q0, vx:0, vy:0, wx:0, wy:0, s:0 }] }, q = S.b[0], autres = T.b.filter(o => !o.dedans && o !== q0);
     frapper(S, id, angle, v0, a, b);
@@ -143,9 +144,19 @@ window.BILLARD_PHYS = (() => {
         res = { boule:cible.id, ghost:[gx, gy], cible:[cible.x, cible.y], dirCible:[ox, oy], dirBlanche:[cx / cl, cy / cl], force:dot, apres:[[gx, gy]] };
         // et le début de son vrai chemin après le choc (il se courbe avec le coulé ou le rétro)
         q.x = gx; q.y = gy; q.vx = ux - J * vl * ox; q.vy = uy - J * vl * oy;
-        const lb = .1 + .12 * (1 - dot); let fait = 0, ax = gx, ay = gy;
-        for(let k = 0; k < 6000 && fait < lb && enMouvement(S) && !q.dedans; k++){
-          const n0 = ev.bandes.length; pas(S, dt, ev, id); fait += Math.hypot(q.x - ax, q.y - ay); ax = q.x; ay = q.y;
+        const lb = suite ? suite.long : .1 + .12 * (1 - dot), bMax = suite ? suite.bandes : 9, b0 = ev.bandesBlanche, reste = autres.filter(o => o !== cible);
+        let fait = 0, ax = gx, ay = gy;
+        for(let k = 0; k < 18000 && fait < lb && ev.bandesBlanche - b0 < bMax && enMouvement(S) && !q.dedans; k++){
+          const n0 = ev.bandes.length, sx = q.x, sy = q.y; pas(S, dt, ev, id); fait += Math.hypot(q.x - ax, q.y - ay); ax = q.x; ay = q.y;
+          // (en suivant plus loin) la blanche arrive sur une autre boule : on s'arrête au contact
+          if(suite){
+            const o = reste.find(o => Math.hypot(q.x - o.x, q.y - o.y) < 2 * R);
+            if(o){
+              const zx = q.x - sx, zy = q.y - sy, fx = sx - o.x, fy = sy - o.y, A = zx * zx + zy * zy || 1e-14, B = fx * zx + fy * zy, D = Math.max(0, B * B - A * (fx * fx + fy * fy - 4 * R * R));
+              const u = clamp((-B - Math.sqrt(D)) / A, 0, 1); q.x = sx + zx * u; q.y = sy + zy * u;
+              res.deuxieme = { boule:o.id, ghost:[q.x, q.y] }; break;
+            }
+          }
           if(k % 6 === 0 || ev.bandes.length > n0) res.apres.push([q.x, q.y]);
         }
         res.apres.push([q.x, q.y]);
