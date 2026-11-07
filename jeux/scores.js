@@ -172,6 +172,15 @@ window.AltitudeScores = (() => {
       J.paddock.stats = { 'Grands Prix':pk.gp, 'Points':pk.points || 0, 'Titres constructeurs':pk.titresC || 0, 'Titres pilotes':pk.titresP || 0, 'Pole positions':pk.poles || 0 };
     }
     // Blocs : le marathon
+    // Le Buteur : le record en 60 secondes, le meilleur défi du jour, la meilleure série
+    const ru = lire('rugby-records');
+    if(ru && ru.chrono && (ru.chrono.parties || ru.defiMeilleur)){
+      jeu('rugby', 'Le Buteur', '🏉'); const c = ru.chrono;
+      if(c.parties) ep('rugby', 'chrono', '60 secondes', c.meilleur, `${c.meilleur} points`);
+      if(ru.defiMeilleur) ep('rugby', 'defi', 'Meilleur défi du jour', ru.defiMeilleur, `${ru.defiMeilleur} points`);
+      if(c.serie) ep('rugby', 'serie', 'Meilleure série', c.serie, `${c.serie} à la suite`);
+      J.rugby.stats = { 'Parties':c.parties || 0, 'Transformations réussies':c.reussies || 0, 'Réussite':c.tentees ? Math.round(c.reussies / c.tentees * 100) + ' %' : '—', 'Plus longue':(c.plusLongue || 0) + ' m' };
+    }
     // Billard : les victoires contre le robot (par jeu et par niveau) et la meilleure série au billard français
     const bi = lire('billard-records');
     if(bi && (bi.pool || bi.carambole)){

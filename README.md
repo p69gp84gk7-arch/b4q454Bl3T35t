@@ -23,6 +23,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Tables au sommet** : apprendre les tables de multiplication de 1 à 10 (niveau CM1) en grimpant la montagne : leçon avec dessins et astuces, table dans l'ordre puis dans le désordre, entraînement, défi chrono, tableau des progrès | `jeux/tables.html` | 1 |
 | **Les aventures de Pépin** : jeu de plateforme en pixels dans l'esprit des grands classiques 2D (personnages, dessins et musiques originaux) ; Pépin le plombier-montagnard traverse 4 mondes et 16 niveaux (prairie, grotte, cimes, lac, neiges, volcan, châteaux du Yéti) ; blocs mystère, cèpes, piments de feu, étoile, tuyaux secrets ; manette à l'écran | `jeux/pepin.html` | 1 |
 | **Le Grand Quiz** : culture générale à trois niveaux (Junior, Ado, Adulte), près de 800 questions sur 12 thèmes ; l'échelle des 15 questions jusqu'au million (une erreur n'arrête pas la partie, joker 50/50), la série rapide contre la montre, et le petit bac seul ou à plusieurs | `jeux/quiz.html` | 1 à 6 |
+| **Le Buteur** : transformations de rugby en 3D (derrière le buteur) ; caler l'axe, glisser vers le haut pour taper ; places et vent au hasard, de plus en plus difficiles ; le plus de points en 60 secondes, défi du jour | `jeux/rugby.html` | 1 |
 | **Billard** : vu de dessus, pool 8 boules (15 boules, 6 poches) ou billard français (3 boules, en 15 points) ; trajectoire de la blanche et début de celle de la boule touchée, effets (rétro, coulé, latéral), réglage fin (◀ ▶, molette), force en tirant la queue ; contre un robot à 3 niveaux ou à deux | `jeux/billard.html` | 1 ou 2 |
 | **Flèche d'or** : tir à l'arc en 3D (style dessin animé) : tirer le doigt vers le bas pour bander, viser, lâcher ; concours à 18, 30, 50 et 70 m (3 volées de 3 flèches), parcours en montagne (animaux-cibles à des distances inconnues, repères de distance dans le viseur), cibles mobiles (60 s), défi du jour ; vent, chute de la flèche, tremblement, 3 arcs à débloquer | `jeux/arc.html` | 1 |
 | **Rock Altitude** : jeu de guitare rythmique : les notes arrivent sur un manche en 3D (style dessin animé), on les joue sur 3 boutons (Facile) ou 4 (Moyen, Difficile) ; 8 morceaux composés pour le jeu et joués par l'application (pop rock, blues, folk, funk, rock, hard rock, punk, métal), ou ses propres MP3 (notes fabriquées en écoutant le morceau) ; notes longues, accords, multiplicateur, mode Star, jauge du public | `jeux/rock.html` | 1 |
@@ -493,6 +494,20 @@ Le jeu de gestion d'écurie de Formule 1, façon jeu de manager : `jeux/paddock.
 - **Données** : `paddock-carriere` (toute la carrière, y compris le week-end en cours ; une carrière de la première version est convertie : ses courses restantes passent sur les nouveaux circuits), `paddock-records` (résumé : Grands Prix, victoires, podiums, poles, points, titres, meilleure place), `paddock-zoom` et `paddock-pageT` (zoom et page du tableau préférés). Le classement a trois épreuves (victoires, meilleure place chez les constructeurs, podiums).
 - **Essais** : `window.Paddock` (carrière, week-end, séances, course) ; des courses et des séances ont été simulées sur les 24 circuits (temps au tour, écarts, arrêts, abandons), et des saisons entières pour régler l'argent, les pièces, l'usine et la confiance de la direction.
 
+## Le Buteur
+
+Des transformations de rugby en 3D : `jeux/rugby.html` (la page), `jeux/rugby/scene.js` (le stade en Three.js, style dessin animé : pelouse tondue et ses lignes, poteaux en H avec leurs protections et leurs drapeaux qui flottent selon le vent, tribunes et public qui saute quand ça passe, montagnes au loin, le buteur qui prend son élan) et `jeux/rugby/jeu.js` (le jeu). Repère : poteaux en (0, 0, 0), le terrain vers +z ; on tape vers -z.
+
+- **Une transformation** : le ballon est posé à une place au hasard (de 2 à 32 m de côté, de 12 à 48 m de la ligne, de plus en plus difficile au fil des coups), avec un vent au hasard (jusqu'à 9 m/s, dans toutes les directions) ; le ballon est posé un peu de travers.
+- **Caler l'axe** : glisser le doigt dans le haut de l'écran (0,14° par pixel), ◀ ▶ (plus vite en restant appuyé) ou les flèches du clavier ; la caméra et les pointillés au sol suivent l'axe. En haut, la flèche du vent vue d'en haut (vers le haut : vers les poteaux), sa force, la distance et le côté.
+- **Taper** : glisser vers le haut depuis le bas de l'écran (sous 60 % de la hauteur) ; la force vient de la longueur du geste (38 % de l'écran = coup normal, jusqu'à 115 %) et un peu de sa vitesse ; le biais du geste dévie le coup (jusqu'à 6°). Le ballon part à 13 à 34 m/s, à 34° ; au clavier, maintenir Espace puis relâcher.
+- **Le vol** : pesanteur, frottement de l'air (0,0045 × v², par rapport au vent) et poussée du vent (0,08 × vent) ; le ballon tourne sur lui-même ; une caméra le suit. Il doit passer entre les poteaux (5,6 m) au-dessus de la barre (3 m) ; poteaux et barre le renvoient.
+- **Les points** : 2 × (1 + (distance − 15) / 30 + côté / 30 + vent / 18), arrondi ; +1 à partir de 3 réussies à la suite. Le chrono de 60 s tourne tout le temps ; le dernier coup en l'air compte.
+- **Défi du jour** : les places et les vents tirés au sort avec la date.
+- **Sons** (Web Audio) : sifflet, coup de pied, poteau, la joie ou le « oh » du public.
+- **Données** : `rugby-records` (60 secondes : record, parties, réussies, tentées, meilleure série, plus longue ; défi du jour ; dernière partie), `rugby-son`.
+- **Essais** : `window.Buteur` (lancer, partie, taper, finir) et `window.RUGBY_3D`.
+
 ## Billard
 
 Le billard vu de dessus : `jeux/billard.html` (la page), `jeux/billard/physique.js` (la physique) et `jeux/billard/jeu.js` (règles, robot, dessin, commandes). Le repère de la table est en mètres (x le long de la grande bande, y en travers) ; en hauteur, la table est dessinée tournée d'un quart de tour.
@@ -629,6 +644,8 @@ jeux/pepin.html        jeu Les aventures de Pépin (page et menus)
 jeux/quiz.html         jeu Le Grand Quiz (échelle, série rapide, petit bac)
 jeux/telesiege.html    jeu Chef de quai (le départ d'un télésiège vu du dessus)
 jeux/blocs.html        jeu Blocs (les blocs qui tombent, marathon sans fin)
+jeux/rugby.html        jeu Le Buteur (transformations de rugby)
+jeux/rugby/            la scène 3D (scene.js) et le jeu (jeu.js) du Buteur
 jeux/billard.html      jeu Billard (pool 8 boules et billard français)
 jeux/billard/          la physique (physique.js) et le jeu (jeu.js) du Billard
 jeux/arc.html          jeu Flèche d'or (tir à l'arc)
