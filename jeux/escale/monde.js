@@ -44,6 +44,10 @@ window.ESCALE_MONDE = (() => {
     long:[['New York', 'JFK'], ['Montréal', 'YUL'], ['Dubaï', 'DXB'], ['Doha', 'DOH'], ['Tokyo', 'HND'], ['Singapour', 'SIN'], ['São Paulo', 'GRU'], ['Los Angeles', 'LAX'], ['Johannesburg', 'JNB'], ['Bangkok', 'BKK'], ['Pointe-à-Pitre', 'PTP'], ['La Réunion', 'RUN'], ['Hong Kong', 'HKG'], ['Mexico', 'MEX'], ['Séoul', 'ICN'], ['Sydney', 'SYD']],
   };
 
+  // les vols vers ces villes restent en France : pas de contrôle des passeports ni de douane
+  const NATIONAL = ['Paris', 'Lyon', 'Nantes', 'Bordeaux', 'Toulouse', 'Marseille', 'Nice', 'Pointe-à-Pitre', 'La Réunion'];
+  const international = ville => !NATIONAL.includes(ville);
+
   /* ---------- Les compagnies (inventées) ---------- */
   // c1 : la dérive et la bande ; c2 : la deuxième couleur ; c3 : les moteurs ; avions : ceux qu'elle fait voler
   const COMPAGNIES = {
@@ -73,11 +77,11 @@ window.ESCALE_MONDE = (() => {
       portes:[{ taille:'S', passerelle:false }, { taille:'M', passerelle:false }], vehicules:{ carburant:1, repas:1, bagages:1, nettoyage:1, tech:1, bus:1, degivrage:1 } },
     portazur:{ nom:'Port-Azur', ico:'🏖️', decor:'mer', desc:'Un aéroport au bord de la mer, plein de touristes qui dépensent dans les boutiques. Piste plus longue : jusqu\'aux gros porteurs.',
       piste:1050, tailleMax:'L', portesMax:10, neige:0, commerce:1.35, argent:0, deblocage:{ niveau:7, prix:1500000 }, compagnies:['azur', 'soleo', 'sirocco', 'vega', 'boreal', 'capella', 'alpair'], heures:[5, 23],
-      terminal:{ l:7, h:4, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'comptoir'], [3, 0, 'securite'], [4, 0, 'securite'], [5, 0, 'tapis'], [6, 0, 'tapis'], [0, 3, 'salle'], [1, 3, 'salle'], [2, 3, 'salle'], [3, 3, 'cafe'], [6, 3, 'toilettes']] },
+      terminal:{ l:7, h:4, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'comptoir'], [3, 0, 'securite'], [4, 0, 'securite'], [5, 0, 'tapis'], [6, 0, 'tapis'], [6, 1, 'douane'], [3, 1, 'passeports'], [0, 3, 'salle'], [1, 3, 'salle'], [2, 3, 'salle'], [3, 3, 'cafe'], [6, 3, 'toilettes']] },
       portes:[{ taille:'M', passerelle:true }, { taille:'M', passerelle:false }, { taille:'L', passerelle:false }], vehicules:{ carburant:2, repas:1, bagages:2, nettoyage:1, tech:1, bus:1, degivrage:0 } },
     grandval:{ nom:'Grand-Val', ico:'🏙️', decor:'ville', desc:'La grande métropole : long-courriers, très gros porteurs et voyageurs d\'affaires qui veulent des salons. Le plus gros trafic.',
       piste:1350, tailleMax:'XL', portesMax:14, neige:.08, commerce:1.6, argent:0, deblocage:{ niveau:13, prix:6000000 }, compagnies:['orion', 'vega', 'boreal', 'azur', 'capella', 'sirocco', 'soleo', 'alpair'], heures:[0, 24],
-      terminal:{ l:9, h:5, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'comptoir'], [3, 0, 'comptoir'], [4, 0, 'securite'], [5, 0, 'securite'], [6, 0, 'securite'], [7, 0, 'tapis'], [8, 0, 'tapis'], [0, 4, 'salle'], [1, 4, 'salle'], [2, 4, 'salle'], [3, 4, 'salle'], [4, 4, 'restaurant'], [5, 4, 'boutique'], [8, 4, 'toilettes']] },
+      terminal:{ l:9, h:5, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'comptoir'], [3, 0, 'comptoir'], [4, 0, 'securite'], [5, 0, 'securite'], [6, 0, 'securite'], [7, 0, 'tapis'], [8, 0, 'tapis'], [8, 1, 'douane'], [7, 1, 'douane'], [4, 1, 'passeports'], [5, 1, 'passeports'], [0, 4, 'salle'], [1, 4, 'salle'], [2, 4, 'salle'], [3, 4, 'salle'], [4, 4, 'restaurant'], [5, 4, 'boutique'], [8, 4, 'toilettes']] },
       portes:[{ taille:'M', passerelle:true }, { taille:'M', passerelle:true }, { taille:'L', passerelle:true }, { taille:'XL', passerelle:false }], vehicules:{ carburant:2, repas:2, bagages:2, nettoyage:2, tech:2, bus:1, degivrage:1 } },
   };
   const ORDRE_AEROPORTS = ['colblanc', 'portazur', 'grandval'];
@@ -98,7 +102,9 @@ window.ESCALE_MONDE = (() => {
   // zone : 'ville' (avant la sécurité) ou 'piste' (après) ; cap : capacité (comptoirs, postes, places, clients…) par niveau
   const MODULES = {
     comptoir:{ nom:'Enregistrement', ico:'🛄', prix:20000, coul:'#4F7CAC', cap:2, zone:'ville', desc:'2 comptoirs d\'enregistrement et de dépôt des bagages.' },
-    securite:{ nom:'Contrôle de sûreté', ico:'🛂', prix:40000, coul:'#7A5C99', cap:1, zone:'ville', desc:'Un poste de contrôle (portique et tapis à rayons X).' },
+    securite:{ nom:'Contrôle de sûreté', ico:'🔍', prix:40000, coul:'#7A5C99', cap:1, zone:'ville', desc:'Un poste de contrôle (portique et tapis à rayons X).' },
+    passeports:{ nom:'Contrôle des passeports', ico:'🛂', prix:35000, coul:'#3D5A80', cap:2, zone:'ville', niv:2, depart:true, desc:'Départs : la police aux frontières contrôle les passeports des vols internationaux (2 guichets).' },
+    douane:{ nom:'Douane', ico:'🛃', prix:30000, coul:'#2A9D8F', cap:2, zone:'ville', niv:2, arrivee:true, desc:'Arrivées : les passagers des vols internationaux passent la douane avant de sortir.' },
     tapis:{ nom:'Tapis à bagages', ico:'🎒', prix:30000, coul:'#5A8F7B', cap:1, zone:'ville', desc:'Les passagers à l\'arrivée y récupèrent leurs bagages.' },
     salle:{ nom:'Salle d\'attente', ico:'💺', prix:15000, coul:'#8D99AE', cap:50, zone:'piste', desc:'50 sièges pour attendre l\'embarquement.' },
     boutique:{ nom:'Boutique', ico:'🛍️', prix:30000, coul:'#E07A5F', cap:25, zone:'piste', depense:.55, desc:'Les passagers dépensent en attendant : ça rapporte.' },
@@ -242,12 +248,14 @@ window.ESCALE_MONDE = (() => {
 
   /* ---------- Le terminal : les capacités ---------- */
   function capacites(A){
-    const c = { comptoirs:0, postes:0, tapis:0, places:0, toilettes:0, jeux:0, salon:0, deco:0, commerce:[], restaurant:0, cafe:0 };
+    const c = { passeports:0, douane:0, comptoirs:0, postes:0, tapis:0, places:0, toilettes:0, jeux:0, salon:0, deco:0, commerce:[], restaurant:0, cafe:0 };
     for(const m of A.terminal.modules){
       const M = MODULES[m.type], f = facteurNiv(m.niv);
       if(m.type === 'comptoir') c.comptoirs += M.cap * f;
       else if(m.type === 'securite') c.postes += M.cap * f;
       else if(m.type === 'tapis') c.tapis += f;
+      else if(m.type === 'passeports') c.passeports += M.cap * f;
+      else if(m.type === 'douane') c.douane += M.cap * f;
       else if(m.type === 'salle') c.places += M.cap * f;
       else if(m.type === 'toilettes') c.toilettes += f;
       else if(m.type === 'jeux') c.jeux += f;
@@ -362,7 +370,7 @@ window.ESCALE_MONDE = (() => {
         // le retard à l'arrivée (vent, retard au départ de l'autre aéroport…)
         const r = Math.random(), retardArr = r < .72 ? hasard(-4, 3) : r < .94 ? hasard(5, 20) : hasard(25, 55);
         A.vols.push({ id:'v' + (P.idSuivant++), contrat:c.id, num:c.num, comp:c.comp, avion:c.avion, ville:c.ville, code:c.code, rayon:c.rayon, porte:c.porte, tArr, tDep, tArrReel:tArr + retardArr,
-          paxArr:Math.round(c.paxArr * hasard(.9, 1.05)), paxDep:Math.round(c.paxDep * hasard(.92, 1.05)), revenu:c.revenu, penalite:c.penalite, xp:c.xp,
+          intl:international(c.ville), paxArr:Math.round(c.paxArr * hasard(.9, 1.05)), paxDep:Math.round(c.paxDep * hasard(.92, 1.05)), revenu:c.revenu, penalite:c.penalite, xp:c.xp,
           etat:'prevu', t0:0, duree:0, taches:null, arrivesTerm:0, airside:0, embarques:0, manques:0, attente:0, inconfort:0, depense:0, retard:0, satisf:null, tDebarq:null, tBagages:null });
       }
     }
@@ -500,11 +508,14 @@ window.ESCALE_MONDE = (() => {
       ajouterFile(A.qSecu, v.id, n * .4); ajouterFile(A.qCheck, v.id, n * .6);
     }
     const vols = new Map(A.vols.map(v => [v.id, v]));
+    A.qPass = A.qPass || [];
     // l'attente dans les files
-    for(const q of [A.qCheck, A.qSecu]) for(const e of q){ const v = vols.get(e.v); if(v) v.attente += e.n * dt; }
+    for(const q of [A.qCheck, A.qSecu, A.qPass]) for(const e of q){ const v = vols.get(e.v); if(v) v.attente += e.n * dt; }
     // l'enregistrement, puis le contrôle de sûreté
     servir(A.qCheck, cap.comptoirs * .55 * dt, (id, n) => ajouterFile(A.qSecu, id, n));
-    servir(A.qSecu, cap.postes * 1.4 * dt, (id, n) => { const v = vols.get(id); if(v) v.airside += n; });
+    // après la sûreté, les vols internationaux passent les passeports (sans guichet, un seul policier très lent)
+    servir(A.qSecu, cap.postes * 1.4 * dt, (id, n) => { const v = vols.get(id); if(!v) return; if(v.intl) ajouterFile(A.qPass, id, n); else v.airside += n; });
+    servir(A.qPass, (cap.passeports ? cap.passeports * 1.2 : .45) * dt, (id, n) => { const v = vols.get(id); if(v) v.airside += n; });
     // côté pistes : les places assises, et les commerces
     const airside = A.vols.reduce((s, v) => s + v.airside, 0);
     const debout = Math.max(0, airside - cap.places);
@@ -513,7 +524,7 @@ window.ESCALE_MONDE = (() => {
     const gain = clients * depParClient * dt * D.commerce;
     if(airside > 0) for(const v of A.vols){ if(v.airside <= 0) continue; const part = v.airside / airside; v.inconfort += debout * part * dt; v.depense += gain * part; }
     A.jourStats.commerce += gain; P.argent += gain;
-    A.capAffiche = { airside, debout, clients, check:fileTotal(A.qCheck), secu:fileTotal(A.qSecu) };
+    A.capAffiche = { airside, debout, clients, check:fileTotal(A.qCheck), secu:fileTotal(A.qSecu), pass:fileTotal(A.qPass) };
   }
   function ajouterFile(q, id, n){ if(n <= 0) return; const d = q[q.length - 1]; if(d && d.v === id) d.n += n; else q.push({ v:id, n }); }
   function servir(q, capacite, sortie){
@@ -523,7 +534,7 @@ window.ESCALE_MONDE = (() => {
     }
   }
   const fileTotal = q => q.reduce((s, e) => s + e.n, 0);
-  function retirerDesFiles(A, v){ for(const q of [A.qCheck, A.qSecu]) for(let i = q.length - 1; i >= 0; i--) if(q[i].v === v.id) q.splice(i, 1); }
+  function retirerDesFiles(A, v){ for(const q of [A.qCheck, A.qSecu, A.qPass || []]) for(let i = q.length - 1; i >= 0; i--) if(q[i].v === v.id) q.splice(i, 1); }
 
   /* ---------- Le départ : argent, satisfaction, confiance ---------- */
   function depart(P, A, v){
@@ -540,7 +551,9 @@ window.ESCALE_MONDE = (() => {
     sDep -= v.manques / n * 70;
     // l'arrivée : l'attente des bagages
     const attB = v.tBagages != null && v.tDebarq != null ? Math.max(0, v.tBagages - v.tDebarq) + (cap.tapis ? 0 : 25) : 10;
-    const sArr = 92 - Math.max(0, attB - 8) * 1.5;
+    // les vols internationaux passent la douane (sans douane, très longue attente)
+    const attD = v.intl ? (cap.douane ? v.paxArr / (cap.douane * 3) : 25) : 0;
+    const sArr = 92 - Math.max(0, attB - 8) * 1.5 - Math.max(0, attD - 6) * 1.2;
     v.satisf = Math.round(clamp(sDep * .65 + clamp(sArr, 0, 100) * .35, 0, 100));
     // l'argent : le contrat (redevances), moins les pénalités de retard
     const tranches = v.retard > 5 ? Math.ceil((v.retard - 5) / 15) : 0, pen = tranches * v.penalite;
@@ -704,7 +717,7 @@ window.ESCALE_MONDE = (() => {
   function resume(P){ return { niveau:niveauDe(P.xp), xp:P.xp, vols:P.stats.vols, pax:P.stats.pax, meilleureJournee:P.stats.meilleureJournee, aeroports:Object.keys(P.aeroports).length, jours:P.stats.jours, argent:Math.round(P.argent) }; }
 
   return { JOUR, TAILLES, AVIONS, RAYONS, VILLES, COMPAGNIES, LIVREES, AEROPORTS, ORDRE_AEROPORTS, VEHICULES, MODULES, TACHES, ORDRE_TACHES, RECOMPENSES, PALIERS, OBJECTIFS, NIV_MAX,
-    hm, euros, jourDe, minuteDe, xpNiveau, niveauDe, xpConfiance, paliersAtteints, texteRecompense, tailleOk, facteurNiv, prixAmelioration, prixPasserelle, prixAgrandir, prixAmeliorationVehicules,
+    international, NATIONAL, hm, euros, jourDe, minuteDe, xpNiveau, niveauDe, xpConfiance, paliersAtteints, texteRecompense, tailleOk, facteurNiv, prixAmelioration, prixPasserelle, prixAgrandir, prixAmeliorationVehicules,
     nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
     acheterPorte, acheterPasserelle, agrandirPorte, acheterVehicule, ameliorerVehicule, construire, ameliorerModule, vendreModule, deplacerModule, agrandirTerminal,
     recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, resume, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };

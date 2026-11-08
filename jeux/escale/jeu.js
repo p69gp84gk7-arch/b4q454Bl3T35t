@@ -333,6 +333,9 @@ function pTerminal(box, complet){
   if(!cap.toilettes) manque.push('des toilettes'); if(!cap.cafe && !cap.restaurant) manque.push('un café ou un restaurant'); if(!cap.tapis) manque.push('un tapis à bagages');
   if(ca.airside > cap.places) manque.push(`des sièges (${Math.round(ca.airside - cap.places)} passagers debout)`);
   if(!cap.salon && A.contrats.some(c => c.rayon === 'long')) manque.push('un salon VIP pour les long-courriers');
+  const intl = A.contrats.some(c => M.international(c.ville));
+  if(intl && !cap.passeports) manque.push('un contrôle des passeports pour les vols internationaux (sinon de très longues files)');
+  if(intl && !cap.douane) manque.push('une douane pour les arrivées internationales');
   if(!complet && box.querySelector('#plan2d')){
     // mise à jour légère : les chiffres et le dessin
     const st = box.querySelector('#tStats'); if(st) st.innerHTML = statsTerminal(cap, ca, J);
@@ -361,7 +364,7 @@ function pTerminal(box, complet){
   $('tAgr').onclick = () => action(M.agrandirTerminal(P, A), () => rafraichirPanneau(true));
 }
 function statsTerminal(cap, ca, J){
-  return `<div><b>${Math.round(ca.check)}</b>à l'enregistrement (${Math.round(cap.comptoirs)} comptoirs)</div><div><b>${Math.round(ca.secu)}</b>aux contrôles (${Math.round(cap.postes * 10) / 10} postes)</div>
+  return `<div><b>${Math.round(ca.check)}</b>à l'enregistrement (${Math.round(cap.comptoirs)} comptoirs)</div><div><b>${Math.round(ca.secu)}</b>à la sûreté (${Math.round(cap.postes * 10) / 10} postes)</div><div><b>${Math.round(ca.pass || 0)}</b>aux passeports (${Math.round(cap.passeports)} guichets)</div>
     <div><b>${Math.round(ca.airside)}/${Math.round(cap.places)}</b>en salle / sièges</div><div><b>${court(J.commerce)}</b>de commerces aujourd'hui</div>`;
 }
 function afficherSel(){
@@ -399,7 +402,7 @@ function dessinerPlan(){
   animPlan += .016;
   const ca = A.capAffiche || { check:0, secu:0, airside:0 }, coul = ['#E5383B', '#1B6EC2', '#2BA84A', '#FB8500', '#6A4C93', '#14233A'];
   const file = (type, n) => { const ms = T.modules.filter(m => m.type === type); if(!ms.length) return; const k = Math.min(60, Math.round(n)); for(let i = 0; i < k; i++){ const m = ms[i % ms.length], j = Math.floor(i / ms.length); point(g, m.x * cell + cell * .5 + Math.sin(i * 7.3) * cell * .12, h - m.y * ch - 4 - j * 4.5, coul[i % 6]); } };
-  file('comptoir', ca.check); file('securite', ca.secu);
+  file('comptoir', ca.check); file('securite', ca.secu); file('passeports', ca.pass || 0);
   const zones = T.modules.filter(m => M.MODULES[m.type].zone === 'piste'), k = Math.min(90, Math.round(ca.airside / 2));
   for(let i = 0; i < k && zones.length; i++){ const m = zones[(i * 7) % zones.length], a = animPlan * (.3 + (i % 5) * .1) + i; point(g, m.x * cell + cell / 2 + Math.cos(a) * cell * .3, h - (m.y + .5) * ch + Math.sin(a * 1.3) * ch * .3, coul[i % 6]); }
 }
