@@ -172,6 +172,15 @@ window.AltitudeScores = (() => {
       J.paddock.stats = { 'Grands Prix':pk.gp, 'Points':pk.points || 0, 'Titres constructeurs':pk.titresC || 0, 'Titres pilotes':pk.titresP || 0, 'Pole positions':pk.poles || 0 };
     }
     // Blocs : le marathon
+    // Escale : le niveau, les passagers, la meilleure journée
+    const es = lire('escale-records');
+    if(es && es.vols){
+      jeu('escale', 'Escale', '✈️');
+      ep('escale', 'niveau', 'Niveau atteint', es.niveau, `niveau ${es.niveau}`);
+      ep('escale', 'pax', 'Passagers accueillis', es.pax, `${es.pax.toLocaleString('fr-FR')} passagers`);
+      if(es.meilleureJournee > 0) ep('escale', 'journee', 'Meilleure journée', Math.round(es.meilleureJournee), `${Math.round(es.meilleureJournee).toLocaleString('fr-FR')} €`);
+      J.escale.stats = { 'Vols':es.vols, 'Aéroports':es.aeroports, 'Jours':es.jours };
+    }
     // Le Buteur : le record en 60 secondes, le meilleur défi du jour, la meilleure série
     const ru = lire('rugby-records');
     if(ru && ru.chrono && ru.chrono.tentees){
