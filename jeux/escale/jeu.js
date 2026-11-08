@@ -164,7 +164,7 @@ function majCarteVol(){
       const T = M.TACHES[k], pc = clamp(x.fait / x.total, 0, 1);
       let st = '';
       if(x.etat === 'fini') st = 'Terminé';
-      else if(x.etat === 'encours') st = k === 'embarquement' && v.airside < 1 ? 'Attend les passagers' : `${Math.round(x.fait)}/${Math.round(x.total)}`;
+      else if(x.etat === 'encours') st = k === 'embarquement' && v.airside < 1 ? 'Attend les passagers' : k === 'carburant' && x.vide ? '<span class="mal">Cuve vide !</span>' : `${Math.round(x.fait)}/${Math.round(x.total)}`;
       else if(x.etat === 'route') st = 'Véhicule en route';
       else if(x.manque) st = `<span class="mal">Pas de ${M.VEHICULES[x.veh].nom.split(' ')[0].toLowerCase()} libre</span>`;
       else if(T.avant && A.t < v.tDep - T.avant) st = `À ${hm(v.tDep - T.avant)}`;
@@ -174,6 +174,7 @@ function majCarteVol(){
     const reste = v.tDep - A.t;
     corps += `<div class="leg">${reste > 0 ? `Départ dans ${Math.round(reste)} min` : `<b style="color:var(--rouge)">En retard de ${Math.round(-reste)} min</b>`} · ${Math.round(v.airside)} passagers à la porte</div>`;
   }
+  if(v.factures) corps += `<div>💶 Services facturés à ${esc(C.nom)} : <b>${court(v.factures)}</b></div>`;
   if(v.satisf != null) corps += `<div>Satisfaction : <b>${v.satisf} %</b>${v.retard > 5 ? ` · retard ${Math.round(v.retard)} min` : ' · à l\'heure'}</div>`;
   el.innerHTML = `<div class="t" style="background:${C.c1}"><div><b>${esc(v.num)}</b><small>${esc(C.nom)} · ${esc(AV.nom)}</small></div><button id="cvSuivre">🎯</button><button id="cvFermer">✕</button></div><div class="c">${corps}</div>`;
   el.hidden = false; $('toasts').hidden = true;
@@ -219,8 +220,8 @@ function pPlanning(box, complet){
   if(placement){ const c = A.contrats.find(x => x.id === placement); h += `<p class="leg"><b>Touche une porte</b> (ligne verte) dans la zone orange pour programmer ${esc(c.num)} : arrivée entre ${hm(c.fenetre[0])} et ${hm(c.fenetre[1])}, escale de ${c.rot} min. <button class="btn" id="plAnnuler">Annuler</button></p>`; }
   h += `<div class="planning" id="planning"><div class="grille" style="width:${46 + 1440 * PX_MIN}px">${grille()}</div></div>`;
   if(selContrat){ const c = A.contrats.find(x => x.id === selContrat); if(c) h += `<div class="bloc">${carteContrat(c, false)}</div>`; else selContrat = null; }
-  h += `<div class="bloc"><h3>Aujourd'hui</h3><div class="stats"><div><b>${J.vols}</b>vols partis</div><div><b>${J.retards}</b>retards</div><div><b>${court(J.revenus + J.commerce - J.penalites)}</b>gagnés</div><div><b>${J.nSatisf ? Math.round(J.satisf / J.nSatisf) + ' %' : '—'}</b>satisfaction</div></div>
-    ${b ? `<h3 style="margin-top:6px">Hier (jour ${b.jour})</h3><p class="leg">${b.vols} vols · ${b.retards} retards · redevances ${court(b.revenus)} · commerces ${court(b.commerce)} · pénalités ${court(b.penalites)} · entretien ${court(b.depenses)} · <b>${b.net >= 0 ? '+' : ''}${court(b.net)}</b>${b.satisf != null ? ` · satisfaction ${b.satisf} %` : ''}</p>` : ''}</div>`;
+  h += `<div class="bloc"><h3>Aujourd'hui</h3><div class="stats"><div><b>${J.vols}</b>vols partis</div><div><b>${J.retards}</b>retards</div><div><b>${court(J.revenus + J.commerce + J.services - J.penalites - J.achats)}</b>gagnés</div><div><b>${J.nSatisf ? Math.round(J.satisf / J.nSatisf) + ' %' : '—'}</b>satisfaction</div></div>
+    ${b ? `<h3 style="margin-top:6px">Hier (jour ${b.jour})</h3><p class="leg">${b.vols} vols · ${b.retards} retards · redevances ${court(b.revenus)} · services ${court(b.services || 0)} · commerces ${court(b.commerce)} · carburant acheté ${court(b.achats || 0)} · pénalités ${court(b.penalites)} · entretien ${court(b.depenses)} · <b>${b.net >= 0 ? '+' : ''}${court(b.net)}</b>${b.satisf != null ? ` · satisfaction ${b.satisf} %` : ''}</p>` : ''}</div>`;
   box.innerHTML = h;
   const pl = $('planning');
   if(complet){ const m = M.minuteDe(A.t); pl.scrollLeft = Math.max(0, m * PX_MIN - 60); if(placement){ const c = A.contrats.find(x => x.id === placement); pl.scrollLeft = Math.max(0, c.fenetre[0] * PX_MIN - 40); } }
@@ -307,12 +308,65 @@ function pCompagnies(box){
 }
 
 /* ----- Le sol : portes et véhicules ----- */
+const ONGLETS_SOL = () => ongletsHtml('sol', [['veh', '🚚 Véhicules et portes'], ['carbu', '⛽ Carburant'], ['services', '💶 Services']]);
+const litres = n => `${Math.round(n).toLocaleString('fr-FR')} L`;
+const prixL = p => `${p.toFixed(2).replace('.', ',')} €/L`;
+// la cuve à carburant : le stock, le prix du jour, les camions-citernes, la commande automatique
+function pCarbu(box){
+  const C = A.carbu, cap = M.capCuve(C), route = M.enRoute(C), J = A.jourStats, b = A.bilanJour;
+  const hier = C.histo.length > 1 ? C.histo[C.histo.length - 2] : C.prix, tend = C.prix - hier;
+  const cout = n => Math.round(n * M.CAMION * C.prix + n * M.LIVRAISON);
+  const place = Math.floor((cap - C.stock - route) / M.CAMION + 1e-9);
+  // la consommation : celle d'hier, sinon une estimation d'après les contrats
+  const conso = b && b.litres ? b.litres : A.contrats.filter(c => c.porte != null).reduce((t, c) => t + M.AVIONS[c.avion].carbu, 0);
+  const tient = conso > 0 ? C.stock / conso * 24 : null;
+  const pc = C.stock / cap, prochain = C.commandes[0];
+  // la courbe du prix sur 14 jours, avec le prix de revente aux compagnies
+  const Wc = 300, Hc = 70, mn = .45, mx = 1, X = i => 8 + i / Math.max(1, C.histo.length - 1) * (Wc - 16), Y = p => Hc - 6 - (p - mn) / (mx - mn) * (Hc - 12);
+  const courbe = `<svg viewBox="0 0 ${Wc} ${Hc}" class="courbe"><line x1="0" x2="${Wc}" y1="${Y(.85)}" y2="${Y(.85)}" stroke="#2BA84A" stroke-dasharray="4 3"/><text x="${Wc - 4}" y="${Y(.85) - 3}" text-anchor="end" fill="#2BA84A" font-size="9">revente 0,85</text>
+    <polyline fill="none" stroke="#FB8500" stroke-width="2.5" points="${C.histo.map((p, i) => `${X(i)},${Y(p)}`).join(' ')}"/>${C.histo.map((p, i) => `<circle cx="${X(i)}" cy="${Y(p)}" r="${i === C.histo.length - 1 ? 4 : 2}" fill="#FB8500"/>`).join('')}</svg>`;
+  let h = ONGLETS_SOL() + `<div class="bloc"><h3>🛢️ Cuve à carburant · niveau ${C.niv}</h3>
+    <div class="jauge${pc < .15 ? ' basse' : ''}"><i style="width:${pc * 100}%"></i><u style="width:${Math.min(1, (C.stock + route) / cap) * 100}%"></u>${C.auto.on ? `<s style="left:${C.auto.seuil * 100}%"></s>` : ''}<span>${litres(C.stock)} / ${litres(cap)}</span></div>
+    <p class="leg">${route ? `🚚 ${C.commandes.length} camion${C.commandes.length > 1 ? 's' : ''}-citerne${C.commandes.length > 1 ? 's' : ''} en route (${litres(route)}), le prochain arrive à ${hm(prochain.t)}.` : 'Aucun camion-citerne en route.'}
+    ${tient != null ? ` La cuve tient environ <b>${tient >= 48 ? Math.round(tient / 24) + ' jours' : Math.round(tient) + ' h'}</b> (${litres(conso)} par jour).` : ''}</p>
+    ${pc < .15 ? '<p class="leg mal">⚠️ La cuve est presque vide : sans carburant, les avions attendent et partent en retard.</p>' : ''}</div>
+  <div class="bloc"><h3>Prix d'achat du kérosène</h3>
+    <p class="leg">Aujourd'hui : <b style="font-size:1.05rem">${prixL(C.prix)}</b> ${Math.abs(tend) < .002 ? '=' : tend > 0 ? '<b style="color:var(--rouge)">▲</b>' : '<b style="color:var(--vert)">▼</b>'} (hier ${prixL(hier)}). Tu le revends <b>0,85 €/L</b> aux compagnies : achète quand il est bas !</p>
+    ${courbe}<p class="leg">Les 14 derniers jours. Chaque camion-citerne apporte ${litres(M.CAMION)} (livraison ${court(M.LIVRAISON)}), le premier arrive ${M.DELAI_CAMION / 60} h après la commande.</p>
+    <div class="ligneB">${[1, 5].map(n => `<button class="btn prim" data-cmd="${n}" ${place < n || P.argent < cout(n) ? 'disabled' : ''}>+${n} camion${n > 1 ? 's' : ''} · ${court(cout(n))}</button>`).join('')}${place > 1 ? `<button class="btn bleu" data-cmd="${place}" ${P.argent < cout(place) ? 'disabled' : ''}>Remplir (${place}) · ${court(cout(place))}</button>` : ''}</div>
+    ${place < 1 ? '<p class="leg">La cuve est pleine (camions en route compris).</p>' : ''}</div>
+  <div class="bloc"><h3>🤖 Commande automatique</h3>
+    <p class="leg">Quand le stock (avec les camions en route) passe sous le seuil, des camions sont commandés pour remplir la cuve, au prix du jour.</p>
+    <div class="ligneB"><button class="btn ${C.auto.on ? 'prim' : ''}" id="cAuto">${C.auto.on ? '✅ Activée' : '⏸️ Désactivée'}</button>${[.2, .35, .5].map(x => `<button class="btn ${C.auto.seuil === x ? 'bleu' : ''}" data-seuil="${x}">Seuil ${Math.round(x * 100)} %</button>`).join('')}</div></div>
+  <div class="bloc"><h3>Agrandir la cuve</h3>${C.niv < M.CUVE_MAX ? `<p class="leg">Niveau ${C.niv + 1} : ${litres(M.CUVE.cap[C.niv + 1])}. Une grande cuve permet d'acheter beaucoup quand le prix est bas.</p><button class="btn prim" id="cAgr" ${P.argent < M.CUVE.prix[C.niv + 1] ? 'disabled' : ''}>Niveau ${C.niv + 1} · ${court(M.CUVE.prix[C.niv + 1])}</button>` : '<p class="leg">La cuve est au niveau maximum.</p>'}
+    <p class="leg">Aujourd'hui : ${litres(J.litres)} vendus (${court(J.detail.carburant || 0)}), ${court(J.achats)} d'achats.${b ? ` Hier : ${litres(b.litres || 0)} vendus, ${court(b.achats || 0)} d'achats.` : ''}</p></div>`;
+  box.innerHTML = h;
+  brancherOnglets(box, 'sol');
+  box.querySelectorAll('[data-cmd]').forEach(e => e.onclick = () => action(M.commanderCarbu(P, A, +e.dataset.cmd)));
+  box.querySelectorAll('[data-seuil]').forEach(e => e.onclick = () => { C.auto.seuil = +e.dataset.seuil; sauver(); rafraichirPanneau(); });
+  $('cAuto').onclick = () => { C.auto.on = !C.auto.on; sauver(); rafraichirPanneau(); };
+  if($('cAgr')) $('cAgr').onclick = () => action(M.agrandirCuve(P, A));
+}
+// les services facturés aux compagnies : les tarifs et ce qu'ils rapportent
+function pServices(box){
+  const J = A.jourStats, b = A.bilanJour, ordre = ['carburant', 'repas', 'nettoyage', 'inspection', 'dechargement', 'chargement', 'debarquement', 'embarquement', 'degivrage'];
+  const nom = k => k === 'debarquement' ? 'Bus (débarquement)' : k === 'embarquement' ? 'Bus (embarquement)' : M.TACHES[k].nom;
+  let h = ONGLETS_SOL() + `<div class="bloc"><h3>💶 Services facturés aux compagnies</h3><p class="leg">En plus du prix du contrat (les redevances), chaque compagnie paie les services faits sur son avion pendant l'escale, à prix fixe. Plus de véhicules, c'est plus d'escales servies à temps.</p>
+    <table class="tarifs"><tr><th>Service</th><th>Tarif</th><th>Auj.</th><th>Hier</th></tr>${ordre.filter(k => k !== 'degivrage' || M.AEROPORTS[A.id].neige).map(k => `<tr><td>${M.TACHES[k].ico} ${nom(k)}</td><td>${M.TARIFS[k].txt}</td><td>${court(J.detail[k] || 0)}</td><td>${b && b.detail ? court(b.detail[k] || 0) : '—'}</td></tr>`).join('')}
+    <tr class="total"><td>Total</td><td></td><td>${court(J.services)}</td><td>${b ? court(b.services || 0) : '—'}</td></tr></table>
+    <p class="leg">Le carburant vendu vient de ta cuve : achète-le moins cher que 0,85 €/L pour gagner de l'argent (⛽ Carburant). Aujourd'hui, ${court(J.achats)} de carburant acheté.</p></div>`;
+  box.innerHTML = h;
+  brancherOnglets(box, 'sol');
+}
 function pSol(box){
+  const so = sousOnglet.sol || 'veh';
+  if(so === 'carbu') return pCarbu(box);
+  if(so === 'services') return pServices(box);
   const D = M.AEROPORTS[A.id];
   // ce qui attend un véhicule en ce moment
   const manques = {};
   for(const v of A.vols) if(v.taches) for(const x of Object.values(v.taches)) if(x.manque && x.etat === 'attente') manques[x.veh] = (manques[x.veh] || 0) + 1;
-  let h = `<div class="bloc"><h3>Véhicules de piste</h3>${Object.keys(manques).length ? `<p class="leg mal">⚠️ En attente d'un véhicule : ${Object.entries(manques).map(([k, n]) => `${n} × ${M.VEHICULES[k].nom.toLowerCase()}`).join(', ')}.</p>` : '<p class="leg">Les véhicules vont de leur dépôt aux avions. Plus il y en a, moins les escales attendent ; leur niveau les rend plus rapides.</p>'}`;
+  let h = ONGLETS_SOL() + `<div class="bloc"><h3>Véhicules de piste</h3>${Object.keys(manques).length ? `<p class="leg mal">⚠️ En attente d'un véhicule : ${Object.entries(manques).map(([k, n]) => `${n} × ${M.VEHICULES[k].nom.toLowerCase()}`).join(', ')}.</p>` : '<p class="leg">Les véhicules vont de leur dépôt aux avions. Plus il y en a, moins les escales attendent ; leur niveau les rend plus rapides.</p>'}`;
   for(const [k, V] of Object.entries(M.VEHICULES)){
     if(k === 'degivrage' && !D.neige) continue;
     const us = A.unites.filter(u => u.type === k), occ = us.filter(u => u.etat !== 'libre').length, niv = (A.vehicules[k] || { niv:1 }).niv;
@@ -332,6 +386,7 @@ function pSol(box){
   } else h += '<p class="leg">Toutes les portes possibles ici sont construites.</p>';
   h += `<p class="leg">Ici, la piste accepte jusqu'aux avions ${D.tailleMax} · ${A.portes.length}/${D.portesMax} portes.</p></div>`;
   box.innerHTML = h;
+  brancherOnglets(box, 'sol');
   box.querySelectorAll('[data-veh]').forEach(b => b.onclick = () => action(M.acheterVehicule(P, A, b.dataset.veh)));
   box.querySelectorAll('[data-amv]').forEach(b => b.onclick = () => action(M.ameliorerVehicule(P, A, b.dataset.amv)));
   box.querySelectorAll('[data-pas]').forEach(b => b.onclick = () => action(M.acheterPasserelle(P, A, +b.dataset.pas)));

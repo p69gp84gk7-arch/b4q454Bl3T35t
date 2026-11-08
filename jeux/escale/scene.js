@@ -11,6 +11,7 @@ window.ESCALE_3D = (() => {
   let monde = null, cleMonde = '', ciel = null, soleil = null, hemi = null, vitres = null, lampes = null, neige = null, toit = null;
   let interieur = null, cleInt = '', foule = null, tetes = null, tSim = null, coupe = false;
   const agents = [], files = { check:[], secu:[], pass:[] };
+  let cuveG = null, cleCuve = '', jaugeCuve = null, citernes = [];
   const avions = new Map(), vehicules = new Map(), modeles = new Map(), passerelles = [];
   const vue = { x:0, z:-95, dist:380, cap:Math.PI + .45, incl:.9, suivi:null };
 
@@ -188,8 +189,7 @@ window.ESCALE_3D = (() => {
     // le dépôt des véhicules (un hangar), la station de carburant
     const dep = objet([{ f:'boite', d:[46, 12, 30], p:[0, 6, 18], c:0xD9C9A3 }, { f:'boite', d:[48, 1.2, 32], p:[0, 12.6, 18], c:0x7F8C8D }, { f:'boite', d:[20, 9, .4], p:[0, 4.5, 2.9], c:0x5C6672 }], .2);
     dep.position.set(P.depot.x, 0, P.depot.z + 10); monde.add(dep);
-    const cuves = []; for(let k = 0; k < 3; k++) cuves.push({ f:'cyl', d:[7, 7, 9, 16], p:[k * 17, 4.5, 0], c:0xF2F2EE }, { f:'cyl', d:[7.2, 7.2, .8, 16], p:[k * 17, 9.2, 0], c:0xC9CED6 });
-    const cu = objet(cuves, .2); cu.position.set(P.carburant.x, 0, P.carburant.z + 40); monde.add(cu);
+    cleCuve = '';                                                    // les cuves sont construites dans majCuve (selon leur niveau)
     // côté ville : la route, le parking et ses voitures
     const route = []; route.push({ f:'boite', d:[tl + 300, .1, 16], p:[cx, .02, T.z1 + 20], c:0x4A4F57 }, { f:'boite', d:[tl + 60, .1, 70], p:[cx, .02, T.z1 + 70], c:0x5A5F67 });
     for(let k = 0; k < tl + 60; k += 6) route.push({ f:'boite', d:[.25, .02, 12], p:[T.x0 - 30 + k, .1, T.z1 + 58], c:0xFFFFFF }, { f:'boite', d:[.25, .02, 12], p:[T.x0 - 30 + k, .1, T.z1 + 82], c:0xFFFFFF });
@@ -380,12 +380,46 @@ window.ESCALE_3D = (() => {
   // où se met chaque véhicule autour de l'avion (côté droit de l'avion, vu de la piste ; l'avion a le nez vers l'aérogare)
   const PLACE_TACHE = { carburant:[.95, .05], repas:[.8, -.25], bagages:[.6, .3], nettoyage:[.7, -.12], tech:[.35, .1], bus:[1.2, -.18], degivrage:[1.1, .42] };
 
+  /* ---------- La cuve à carburant (une cuve de plus par niveau, une jauge) et les camions-citernes ---------- */
+  function majCuve(A, Pl){
+    const C = A.carbu; if(!C) return;
+    const n = C.niv + 1, x0 = Pl.carburant.x, z0 = Pl.carburant.z + 40;
+    if(cleCuve !== A.id + n){
+      cleCuve = A.id + n;
+      if(cuveG){ monde.remove(cuveG); cuveG.traverse(o => { if(o.geometry) o.geometry.dispose(); }); }
+      const p = [{ f:'boite', d:[n * 17 + 12, .3, 30], p:[(n - 1) * 8.5, .15, 2], c:0xA9B0B8 }];
+      for(let k = 0; k < n; k++) p.push({ f:'cyl', d:[7, 7, 9, 16], p:[k * 17, 4.5, 0], c:0xF2F2EE }, { f:'cyl', d:[7.2, 7.2, .8, 16], p:[k * 17, 9.2, 0], c:0xC9CED6 }, { f:'boite', d:[14.5, .4, .4], p:[k * 17, 4.6, 7.1], c:0xF2C230 });
+      p.push({ f:'boite', d:[n * 17, .8, .8], p:[(n - 1) * 8.5, .6, 9], c:0x8C949F });                // le tuyau
+      p.push({ f:'boite', d:[720, .12, 9], p:[350, .06, 19], c:0x5A5F67 });                       // la route des camions-citernes
+      p.push({ f:'boite', d:[3.2, 12.4, 1], p:[-9, 6.2, 6], c:0x3A3F47 });                          // le support de la jauge
+      cuveG = objet(p, .2); cuveG.position.set(x0, 0, z0); monde.add(cuveG);
+      jaugeCuve = new T3.Mesh(new T3.BoxGeometry(2.2, 11.6, .4), new T3.MeshBasicMaterial({ color:0xFB8500 })); jaugeCuve.geometry.translate(0, 5.8, 0);
+      jaugeCuve.position.set(-9, .4, 6.6); cuveG.add(jaugeCuve);
+    }
+    const pc = clamp(C.stock / M.capCuve(C), .001, 1);
+    jaugeCuve.scale.y = pc; jaugeCuve.material.color.setHex(pc < .15 ? 0xE5383B : 0xFB8500);
+    // les camions-citernes qui arrivent dans les 25 dernières minutes avant leur livraison
+    const proches = C.commandes.filter(c => c.t - A.t < 25).slice(0, 4);
+    while(citernes.length < proches.length){
+      const pc2 = [{ f:'boite', d:[2.4, 2.4, 2.4], p:[0, 1.6, 7.2], c:0xD7263D }, { f:'boite', d:[2.2, .9, 1.2], p:[0, 2.2, 8.2], c:0x2A3442 }, { f:'cyl', d:[1.35, 1.35, 10, 14], p:[0, 2.1, .6], r:[Math.PI / 2, 0, 0], c:0xE9ECEF },
+        { f:'boite', d:[2.5, .5, 15], p:[0, .65, 2.6], c:0x3A3F47 }, { f:'boite', d:[2.8, .5, .2], p:[0, 2.1, 5.7], c:0xF2C230 }];
+      for(const zz of [7.4, 1.5, -2.5]) pc2.push({ f:'cyl', d:[.5, .5, 2.7, 8], p:[0, .5, zz], r:[0, 0, Math.PI / 2], c:0x1E2430 });
+      const o = objet(pc2, .08); scene.add(o); citernes.push(o);
+    }
+    citernes.forEach((o, i) => {
+      const c = proches[i]; o.visible = !!c && monde.visible !== false; if(!c) return;
+      const u = clamp(1 - (c.t - A.t) / 25, 0, 1), xa = x0 + 700, xb = x0 + (C.niv) * 8.5 + i * 0;
+      o.position.set(lerp(xa, xb, u), 0, z0 + 19 + i * 0); o.rotation.y = -Math.PI / 2;
+    });
+  }
+
   /* ---------- Chaque image ---------- */
   function maj(A, P, dtReel){
     if(!ok) return;
     construire(A);
     const Pl = M.plan(A), t = A.t, mn = M.minuteDe(t);
     lumiere(mn, A.meteo);
+    majCuve(A, Pl);
     if(neige){ neige.visible = A.meteo === 'neige'; if(neige.visible){ const a = neige.geometry.attributes.position.array; for(let i = 1; i < a.length; i += 3){ a[i] -= dtReel * 22; if(a[i] < 0) a[i] += 300; } neige.geometry.attributes.position.needsUpdate = true; } }
     // les avions
     const vus = new Set();
