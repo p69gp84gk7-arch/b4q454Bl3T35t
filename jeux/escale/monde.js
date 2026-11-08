@@ -173,16 +173,71 @@ window.ESCALE_MONDE = (() => {
   function nouvelAeroport(P, id){
     const D = AEROPORTS[id];
     const A = { id, t:5.5 * 60, portes:D.portes.map((g, i) => ({ ...g, nom:nomPorte(i) })), vehicules:{}, unites:[], terminal:{ l:D.terminal.l, h:D.terminal.h, modules:D.terminal.modules.map(([x, y, type]) => ({ x, y, type, niv:1 })) },
-      contrats:[], offres:[], vols:[], journal:[], qCheck:[], qSecu:[], pisteLibre:0, meteo:'beau', reputation:70, jourStats:nouveauJour(), historique:[], dernierJour:0, toasts:[] };
+      contrats:[], offres:[], vols:[], journal:[], qCheck:[], qSecu:[], pisteLibre:0, meteo:'beau', reputation:70, jourStats:nouveauJour(), historique:[], dernierJour:0, toasts:[], carbu:nouvelleCuve(id) };
     for(const [k, n] of Object.entries(D.vehicules)){ A.vehicules[k] = { niv:1 }; for(let i = 0; i < n; i++) A.unites.push(nouvelleUnite(A, k)); }
     meteoDuJour(A); genererOffres(P, A, 4);
     return A;
   }
   const nomPorte = i => (i < 8 ? 'A' : 'B') + String((i % 8) + 1).padStart(2, '0');
-  const nouveauJour = () => ({ vols:0, retards:0, minutesRetard:0, revenus:0, commerce:0, penalites:0, depenses:0, pax:0, satisf:0, nSatisf:0, manques:0 });
+  const nouveauJour = () => ({ vols:0, retards:0, minutesRetard:0, revenus:0, commerce:0, services:0, detail:{}, achats:0, litres:0, penalites:0, depenses:0, pax:0, satisf:0, nSatisf:0, manques:0 });
   function nouvelleUnite(A, type){ const n = A.unites.filter(u => u.type === type).length; return { id:type + n, type, n, etat:'libre', vol:null, tache:null, t0:0, duree:0 }; }
   const jourDe = t => Math.floor(t / JOUR) + 1;
   const minuteDe = t => ((t % JOUR) + JOUR) % JOUR;
+
+  /* ---------- La cuve à carburant et les services facturés aux compagnies ---------- */
+  // la cuve : 5 niveaux (capacité en litres, prix pour y monter) ; le kérosène arrive par camions-citernes de 35 000 L
+  const CUVE = { cap:[0, 60000, 150000, 400000, 1000000, 2500000], prix:[0, 0, 80000, 220000, 600000, 1500000] };
+  const CUVE_MAX = 5, CAMION = 35000, LIVRAISON = 300, DELAI_CAMION = 60, ECART_CAMIONS = 8, PRIX_MOYEN = .7;
+  const CUVE_DEPART = { colblanc:1, portazur:3, grandval:4 };
+  // les tarifs des services (fixes) : ce que la compagnie paie à l'aéroport en plus du contrat
+  const TARIFS = {
+    carburant:{ txt:'0,85 € le litre', f:x => x.total * .85 },
+    repas:{ txt:'4 € le plateau', f:x => x.total * 4 },
+    nettoyage:{ txt:'100 à 600 € selon l\'avion', f:(x, t) => [100, 200, 400, 600][t] },
+    inspection:{ txt:'150 à 650 € selon l\'avion', f:(x, t) => [150, 250, 450, 650][t] },
+    dechargement:{ txt:'1 € le bagage', f:x => x.total }, chargement:{ txt:'1 € le bagage', f:x => x.total },
+    debarquement:{ txt:'1 € le passager (en bus)', f:x => x.veh ? x.total : 0 }, embarquement:{ txt:'1 € le passager (en bus)', f:x => x.veh ? x.total : 0 },
+    degivrage:{ txt:'600 à 3 200 € selon l\'avion', f:(x, t) => [600, 1100, 2200, 3200][t] },
+  };
+  const facture = (A, v, k, x) => TARIFS[k] ? Math.round(TARIFS[k].f(x, TAILLES[AVIONS[v.avion].taille].ordre)) : 0;
+  function nouvelleCuve(id){ const niv = CUVE_DEPART[id] || 1; return { niv, stock:Math.round(CUVE.cap[niv] * .7), prix:PRIX_MOYEN, histo:[PRIX_MOYEN], commandes:[], auto:{ on:false, seuil:.3 } }; }
+  // le prix d'achat du kérosène change chaque jour (il revient doucement vers la moyenne)
+  function prixDuJour(A){
+    const C = A.carbu; let p = C.prix * (1 + (Math.random() + Math.random() + Math.random() - 1.5) * .09) + (PRIX_MOYEN - C.prix) * .18;
+    C.prix = Math.round(clamp(p, .48, .98) * 1000) / 1000; C.histo.push(C.prix); if(C.histo.length > 14) C.histo.shift();
+  }
+  const enRoute = C => C.commandes.reduce((t, c) => t + c.l, 0);
+  const capCuve = C => CUVE.cap[C.niv];
+  // commander des camions-citernes (au prix du jour) ; on ne dépasse pas la place libre dans la cuve
+  function commanderCarbu(P, A, camions, auto){
+    const C = A.carbu, place = capCuve(C) - C.stock - enRoute(C);
+    camions = Math.min(camions, Math.floor(place / CAMION + 1e-9));
+    if(camions <= 0) return 'La cuve n\'a plus assez de place (camions déjà en route compris).';
+    const cout = l => Math.round(l * C.prix + (l / CAMION) * LIVRAISON);
+    while(camions > 0 && P.argent < cout(camions * CAMION)) camions--;
+    if(camions <= 0) return 'Pas assez d\'argent pour un camion-citerne.';
+    const c = cout(camions * CAMION); P.argent -= c; A.jourStats.achats += c;
+    let t = Math.max(A.t + DELAI_CAMION, ...C.commandes.map(x => x.t + ECART_CAMIONS));
+    for(let i = 0; i < camions; i++){ C.commandes.push({ l:CAMION, t, prix:C.prix }); t += ECART_CAMIONS; }
+    journal(A, `${auto ? '🤖 Commande automatique' : '🛢️ Commande'} : ${camions} camion${camions > 1 ? 's' : ''}-citerne${camions > 1 ? 's' : ''} (${(camions * CAMION).toLocaleString('fr-FR')} L à ${C.prix.toFixed(2).replace('.', ',')} €/L) : ${euros(c)}.`, '');
+    return null;
+  }
+  // chaque instant : les camions arrivés vident leur citerne ; la commande automatique sous le seuil
+  function cuve(P, A){
+    const C = A.carbu;
+    while(C.commandes.length && C.commandes[0].t <= A.t){ const c = C.commandes.shift(); C.stock = Math.min(capCuve(C), C.stock + c.l); }
+    if(C.auto.on && C.stock + enRoute(C) < C.auto.seuil * capCuve(C) && A.t - (C.dernierAuto ?? -99) > 5){
+      C.dernierAuto = A.t;
+      const n = Math.floor((capCuve(C) - C.stock - enRoute(C)) / CAMION);
+      if(n > 0){ const e = commanderCarbu(P, A, n, true); if(e && A.t - (C.alerteAuto ?? -999) > 120){ C.alerteAuto = A.t; journal(A, `🤖 Commande automatique impossible : ${e}`, 'mal'); } }
+    }
+    if(C.stock < capCuve(C) * .12 && !C.commandes.length && A.t - (C.alerteBas ?? -999) > 180){ C.alerteBas = A.t; journal(A, '⛽ La cuve est presque vide : pense à commander du carburant.', 'mal'); }
+  }
+  function agrandirCuve(P, A){
+    const C = A.carbu; if(C.niv >= CUVE_MAX) return 'La cuve est déjà au maximum.';
+    const prix = CUVE.prix[C.niv + 1]; if(!payer(P, prix)) return 'Pas assez d\'argent.';
+    C.niv++; journal(A, `🛢️ La cuve passe au niveau ${C.niv} : ${capCuve(C).toLocaleString('fr-FR')} litres.`, 'bon'); return null;
+  }
 
   /* ---------- Le plan de l'aéroport (en mètres) ---------- */
   // x le long de la piste (les avions atterrissent et décollent vers +x), z vers la ville (+z) ; la piste est en z = -PISTE_Z
@@ -384,6 +439,7 @@ window.ESCALE_MONDE = (() => {
     passagers(P, A, dt);
     repartir(A);
     for(const u of A.unites) avancerUnite(A, u);
+    cuve(P, A);
     if(A.offres.length) A.offres = A.offres.filter(o => o.expire > A.t);
   }
   const VOLS_VISIBLES = ['approche', 'atterrissage', 'roulageArr', 'attentePoste', 'escale', 'repousse', 'roulageDep', 'attentePiste', 'decollage', 'parti'];
@@ -444,11 +500,17 @@ window.ESCALE_MONDE = (() => {
         // 15 minutes après l'heure, on part sans les retardataires
         if(A.t >= v.tDep + 15 && enRoute > .5){ v.manques += enRoute; retirerDesFiles(A, v); journal(A, `😡 ${v.num} part sans ${Math.round(enRoute)} passager${enRoute >= 1.5 ? 's' : ''} bloqué${enRoute >= 1.5 ? 's' : ''} aux contrôles !`, 'mal'); }
         x.fait = v.embarques; x.total = Math.max(1, v.paxDep - v.manques);
-        if(v.airside < .01 && v.paxDep - v.embarques - v.manques < .5) finTache(A, v, k, x);
+        if(v.airside < .01 && v.paxDep - v.embarques - v.manques < .5) finTache(A, v, k, x, P);
+      } else if(k === 'carburant'){
+        // le carburant vient de la cuve de l'aéroport : si elle est vide, le camion attend
+        const C = A.carbu, besoin = Math.min(vit * dt, x.total - x.fait), l = Math.min(besoin, C.stock);
+        C.stock -= l; x.fait += l; x.vide = l < besoin - 1e-6;
+        if(x.vide && A.t - (C.alerteVide ?? -99) > 30){ C.alerteVide = A.t; journal(A, `⛽ La cuve est vide ! ${v.num} attend son carburant : commande un camion-citerne (🚚 Sol › Carburant).`, 'mal'); }
+        if(x.fait >= x.total - 1e-6) finTache(A, v, k, x, P);
       } else {
         x.fait = Math.min(x.total, x.fait + vit * dt);
         if(k === 'debarquement') v.debarquesPax = x.fait;
-        if(x.fait >= x.total) finTache(A, v, k, x);
+        if(x.fait >= x.total) finTache(A, v, k, x, P);
       }
     }
     if(Object.values(v.taches).every(x => x.etat === 'fini') && A.t >= v.tDep - .01){
@@ -457,8 +519,11 @@ window.ESCALE_MONDE = (() => {
       depart(P, A, v);
     }
   }
-  function finTache(A, v, k, x){
+  function finTache(A, v, k, x, P){
     x.etat = 'fini'; x.fin = A.t; x.fait = x.total;
+    // la facture du service à la compagnie (prix fixes)
+    const m = facture(A, v, k, x);
+    if(m > 0 && P){ P.argent += m; const J = A.jourStats; J.services += m; J.detail[k] = (J.detail[k] || 0) + m; if(k === 'carburant') J.litres += x.total; v.factures = (v.factures || 0) + m; x.facture = m; }
     if(x.unite){ const u = A.unites.find(y => y.id === x.unite); if(u){ u.etat = 'retour'; u.t0 = A.t; u.duree = trajetUnite(A, u, v.porte); } x.unite = null; }
     if(k === 'debarquement') v.tDebarq = A.t;
     if(k === 'dechargement') v.tBagages = A.t + 4;
@@ -598,7 +663,7 @@ window.ESCALE_MONDE = (() => {
     entretien = Math.round(entretien);
     P.argent -= entretien; J.depenses += entretien;
     const satisf = J.nSatisf ? Math.round(J.satisf / J.nSatisf) : null;
-    const bilan = { jour:jourDe(A.t) - 1, ...J, satisf, net:Math.round(J.revenus + J.commerce - J.penalites - J.depenses) };
+    const bilan = { jour:jourDe(A.t) - 1, ...J, satisf, net:Math.round(J.revenus + J.commerce + J.services - J.penalites - J.depenses - J.achats) };
     A.historique.unshift(bilan); A.historique.length = Math.min(A.historique.length, 14);
     if(satisf != null && J.nSatisf >= 3) P.stats.meilleureSatisf = Math.max(P.stats.meilleureSatisf, satisf);
     P.stats.meilleureJournee = Math.max(P.stats.meilleureJournee, bilan.net); P.stats.jours++;
@@ -611,7 +676,7 @@ window.ESCALE_MONDE = (() => {
       if(c.joursRestants <= 0 && !A.vols.some(v => v.contrat === c.id)){ journal(A, `📄 Fin du contrat ${c.num} (${COMPAGNIES[c.comp].nom}). La compagnie te propose de le renouveler.`, ''); renouvellement(P, A, c); }
     }
     A.contrats = A.contrats.filter(c => c.joursRestants > 0 || A.vols.some(v => v.contrat === c.id));
-    meteoDuJour(A);
+    meteoDuJour(A); prixDuJour(A);
     if(A.meteo === 'neige') journal(A, '❄️ Il neige aujourd\'hui : les avions doivent être dégivrés avant de partir.', 'mal');
     // de nouvelles offres
     const n = clamp(2 + Math.floor(A.portes.length / 2) + (A.reputation > 80 ? 1 : 0) - Math.floor(A.offres.length / 2), 1, 6);
@@ -713,12 +778,17 @@ window.ESCALE_MONDE = (() => {
   }
 
   // la migration d'une sauvegarde (rien pour l'instant) et le résumé pour l'accueil et les classements
-  const migrer = P => P && P.v === 1 ? P : null;
+  function migrer(P){
+    if(!P || P.v !== 1) return null;
+    // les parties d'avant la cuve à carburant et les factures de services
+    for(const A of Object.values(P.aeroports)){ if(!A.carbu) A.carbu = nouvelleCuve(A.id); const J = A.jourStats; if(J.services == null) Object.assign(J, { services:0, detail:{}, achats:0, litres:0 }); }
+    return P;
+  }
   function resume(P){ return { niveau:niveauDe(P.xp), xp:P.xp, vols:P.stats.vols, pax:P.stats.pax, meilleureJournee:P.stats.meilleureJournee, aeroports:Object.keys(P.aeroports).length, jours:P.stats.jours, argent:Math.round(P.argent) }; }
 
   return { JOUR, TAILLES, AVIONS, RAYONS, VILLES, COMPAGNIES, LIVREES, AEROPORTS, ORDRE_AEROPORTS, VEHICULES, MODULES, TACHES, ORDRE_TACHES, RECOMPENSES, PALIERS, OBJECTIFS, NIV_MAX,
     international, NATIONAL, hm, euros, jourDe, minuteDe, xpNiveau, niveauDe, xpConfiance, paliersAtteints, texteRecompense, tailleOk, facteurNiv, prixAmelioration, prixPasserelle, prixAgrandir, prixAmeliorationVehicules,
     nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
     acheterPorte, acheterPasserelle, agrandirPorte, acheterVehicule, ameliorerVehicule, construire, ameliorerModule, vendreModule, deplacerModule, agrandirTerminal,
-    recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, resume, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };
+    recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, CUVE, CUVE_MAX, CAMION, LIVRAISON, DELAI_CAMION, TARIFS, commanderCarbu, agrandirCuve, enRoute, capCuve, facture, resume, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };
 })();
