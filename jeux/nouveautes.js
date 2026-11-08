@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:155, type:'maj', jeu:'Escale', ico:'✈️', lien:'jeux/escale.html',
+    txt:'Des panneaux plus discrets dans le terminal : les numéros des portes et les panneaux Départs et Arrivées sont plus petits.' },
   { v:154, type:'maj', jeu:'Escale', ico:'✈️', lien:'jeux/escale.html',
     txt:'Des portes d\'embarquement détaillées (numéro, comptoir, sièges), des panneaux Départs et Arrivées, et deux nouveaux espaces : le contrôle des passeports au départ et la douane à l\'arrivée pour les vols internationaux.' },
   { v:153, type:'maj', jeu:'Escale', ico:'✈️', lien:'jeux/escale.html',

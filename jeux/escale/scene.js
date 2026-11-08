@@ -711,19 +711,19 @@ window.ESCALE_3D = (() => {
       // une cloison basse entre deux portes
       pieces.push({ f:'boite', d:[.3, 1.2 * e, JETEE * .5], p:[gx + lz / 2 + 1, .6 + .6 * e, T.z0 + JETEE * .3], c:0xBFC5CC });
       // le numéro : peint au sol, et sur un panneau suspendu
-      const num = new T3.Mesh(new T3.PlaneGeometry(11, 5.5), new T3.MeshBasicMaterial({ map:texteCache(g.nom, '#FFB703', '#14233A'), transparent:true }));
+      const num = new T3.Mesh(new T3.PlaneGeometry(6, 3), new T3.MeshBasicMaterial({ map:texteCache(g.nom, '#FFB703', '#14233A'), transparent:true }));
       num.rotation.x = -Math.PI / 2; num.rotation.z = Math.PI; num.position.set(gx - 1, .72, z0 + 4.2); interieur.add(num);
-      const pan = new T3.Mesh(new T3.PlaneGeometry(12, 4.8), new T3.MeshBasicMaterial({ map:texteCache(`Porte ${g.nom}${g.passerelle ? '' : ' · bus'}`, '#14233A', '#FFB703'), side:T3.DoubleSide }));
-      pan.position.set(gx, 9, z0 + 5); pan.lookAt(gx, 15, z0 - 4); interieur.add(pan);
+      const pan = new T3.Mesh(new T3.PlaneGeometry(6.5, 2.6), new T3.MeshBasicMaterial({ map:texteCache(`Porte ${g.nom}${g.passerelle ? '' : ' · bus'}`, '#14233A', '#FFB703'), side:T3.DoubleSide }));
+      pan.position.set(gx, 7, z0 + 4.5); pan.lookAt(gx, 13, z0 - 4.5); interieur.add(pan);
     });
     // les grands panneaux « Départs » et « Arrivées » au-dessus des espaces de chaque côté
     for(const m of A.terminal.modules){
       const Mo = M.MODULES[m.type], dep = ['comptoir', 'securite', 'passeports'].includes(m.type), arr = ['tapis', 'douane'].includes(m.type);
       if(!dep && !arr) continue;
       const c = G.centre(m.x, m.y), txt = dep ? `DÉPARTS · ${Mo.nom}` : `ARRIVÉES · ${Mo.nom}`;
-      const pan = new T3.Mesh(new T3.PlaneGeometry(Math.min(G.cw * .95, 24), 4.2), new T3.MeshBasicMaterial({ map:texteCache(txt, dep ? '#FFB703' : '#2A9D8F', dep ? '#14233A' : '#FFFFFF', 1024), side:T3.DoubleSide }));
-      pan.position.set(c.x, 10, c.z); pan.lookAt(c.x, 16, c.z - 9); interieur.add(pan);
-      pieces.push({ f:'cyl', d:[.06, .06, 3, 4], p:[c.x - Math.min(G.cw * .95, 24) * .4, 12.8, c.z], c:0x5C6672 }, { f:'cyl', d:[.06, .06, 3, 4], p:[c.x + Math.min(G.cw * .95, 24) * .4, 12.8, c.z], c:0x5C6672 });
+      const pan = new T3.Mesh(new T3.PlaneGeometry(Math.min(G.cw * .6, 12), 2.2), new T3.MeshBasicMaterial({ map:texteCache(txt, dep ? '#FFB703' : '#2A9D8F', dep ? '#14233A' : '#FFFFFF', 1024), side:T3.DoubleSide }));
+      pan.position.set(c.x, 8, c.z); pan.lookAt(c.x, 14, c.z - 9); interieur.add(pan);
+      pieces.push({ f:'cyl', d:[.06, .06, 3, 4], p:[c.x - Math.min(G.cw * .6, 12) * .4, 10.4, c.z], c:0x5C6672 }, { f:'cyl', d:[.06, .06, 3, 4], p:[c.x + Math.min(G.cw * .6, 12) * .4, 10.4, c.z], c:0x5C6672 });
     }
     interieur.add(new T3.Mesh(fusion(sol), MAT));
     if(pieces.length) interieur.add(objet(pieces, .08));
