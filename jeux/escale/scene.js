@@ -481,49 +481,165 @@ window.ESCALE_3D = (() => {
     return { T, l, h, cw, cd, centre:(x, y) => ({ x:T.x1 - MARGE_X - (x + .5) * cw, z:T.z1 - MARGE_Z - (y + .5) * cd }) };
   }
   const clair = c => new T3.Color(c).lerp(new T3.Color(0xFFFFFF), .55).getHex();
-  // le mobilier de chaque construction (autour du centre de sa case)
+  // la file d'attente devant les comptoirs et les portiques : des rangées en serpentin (5 personnes par rangée)
+  const FILE_PAS_X = 1.8, FILE_PAS_Z = 1.95, FILE_RANGEES = 4;
+  const baseFile = (type, cd) => -cd * (type === 'comptoir' ? .3 : .2) + 2 * ECH_P;
+  const posFile = (type, cd, rangee, k) => ({ x:(rangee % 2 ? -1 : 1) * (k - 2) * FILE_PAS_X, z:baseFile(type, cd) + rangee * FILE_PAS_Z });
+  // les petits éléments qui reviennent partout
+  const PEAU = 0xE0AC69;
+  const agent = (x, z, c, e) => [{ f:'cyl', d:[.32 * e, .4 * e, 1.25 * e, 8], p:[x, .95 * e, z], c }, { f:'boule', d:[.27 * e, 1], p:[x, 1.85 * e, z], c:PEAU }, { f:'cyl', d:[.3 * e, .3 * e, .12 * e, 8], p:[x, 2.1 * e, z], c }];
+  const poteau = (x, z, e) => [{ f:'cyl', d:[.09 * e, .09 * e, 1 * e, 6], p:[x, .5 * e, z], c:0xB9BEC6 }, { f:'cyl', d:[.25 * e, .25 * e, .08, 8], p:[x, .04, z], c:0x5C6672 }];
+  const sangle = (x1, x2, z, e, c = 0x1B4E8C) => ({ f:'boite', d:[Math.abs(x2 - x1), .16 * e, .05], p:[(x1 + x2) / 2, .85 * e, z], c });
+  const poubelle = (x, z, e) => [{ f:'cyl', d:[.35 * e, .3 * e, .9 * e, 8], p:[x, .45 * e, z], c:0x5C6672 }, { f:'cyl', d:[.37 * e, .37 * e, .1 * e, 8], p:[x, .92 * e, z], c:0x2BA84A }];
+  const ecran = (x, z, e, c = 0x14233A) => [{ f:'cyl', d:[.1 * e, .1 * e, 2.6 * e, 6], p:[x, 1.3 * e, z], c:0x8C949F }, { f:'boite', d:[2.2 * e, 1.2 * e, .15 * e], p:[x, 2.9 * e, z], c }, { f:'boite', d:[1.9 * e, .14 * e, .05], p:[x, 3.15 * e, z + .1 * e], c:0xFFB703 }, { f:'boite', d:[1.9 * e, .1 * e, .05], p:[x, 2.85 * e, z + .1 * e], c:0x8ECAE6 }, { f:'boite', d:[1.9 * e, .1 * e, .05], p:[x, 2.6 * e, z + .1 * e], c:0x8ECAE6 }];
+  const plante = (x, z, e) => [{ f:'cyl', d:[.45 * e, .35 * e, .7 * e, 8], p:[x, .35 * e, z], c:0xB07D62 }, { f:'boule', d:[.75 * e, 1], p:[x, 1.25 * e, z], c:0x4E8F3E }];
+  // des cloisons autour de la case, avec une ouverture au milieu de certains côtés (vers la ville +z, vers les pistes -z, sur les côtés x)
+  function cloisons(w, d, h, c, ouv, larg = .4, vitre = null){
+    const p = [], ep = .25;
+    const cote = (cx, cz, long, axeX, ouvert) => {
+      const seg = ouvert ? (long * (1 - larg)) / 2 : long;
+      const parts = ouvert ? [-(long - seg) / 2, (long - seg) / 2] : [0];
+      for(const o of parts){
+        const x = axeX ? cx + o : cx, z = axeX ? cz : cz + o;
+        p.push({ f:'boite', d:axeX ? [seg, h * .35, ep] : [ep, h * .35, seg], p:[x, h * .175, z], c });                           // le soubassement
+        p.push({ f:'boite', d:axeX ? [seg, h * .65, ep * .4] : [ep * .4, h * .65, seg], p:[x, h * .675, z], c:vitre ?? c });       // la vitre (ou le mur)
+        p.push({ f:'boite', d:axeX ? [seg, .15, ep * 1.2] : [ep * 1.2, .15, seg], p:[x, h, z], c:0x5C6672 });                   // le cadre en haut
+      }
+    };
+    cote(0, d / 2, w, true, ouv.includes('+z')); cote(0, -d / 2, w, true, ouv.includes('-z'));
+    cote(w / 2, 0, d, false, ouv.includes('+x')); cote(-w / 2, 0, d, false, ouv.includes('-x'));
+    return p;
+  }
+  // l'enseigne au-dessus de l'entrée (une bande de couleur, un pictogramme en relief)
+  const enseigne = (z, w, h, c, e) => [{ f:'boite', d:[w * .42, .9 * e, .35], p:[0, h + .5 * e, z], c }, { f:'boite', d:[w * .42 - .6, .25 * e, .38], p:[0, h + .5 * e, z], c:0xFFFFFF }];
+  // le mobilier de chaque construction (autour du centre de sa case, -z vers les pistes, +z vers la ville)
   function mobilier(type, niv, cw, cd){
-    const p = [], e = ECH_P, w = cw * .8, d = cd * .8, n = Math.max(2, Math.floor(w / (4 * e)));
+    const p = [], e = ECH_P, w = cw * .86, d = cd * .86, n = Math.max(2, Math.floor(w / (4 * e))), H = 2.6 * e, coul = M.MODULES[type].coul;
+    const files = (t, col) => {
+      // les barrières à sangle qui dessinent le serpentin de la file
+      const xMax = 2 * FILE_PAS_X + FILE_PAS_X * .6;
+      for(let r = 0; r <= FILE_RANGEES; r++){
+        const z = baseFile(t, cd) + (r - .5) * FILE_PAS_Z, gauche = r % 2 === 0;
+        const x1 = r === 0 || r === FILE_RANGEES ? -xMax : gauche ? -xMax + FILE_PAS_X * 1.1 : -xMax, x2 = r === 0 || r === FILE_RANGEES ? xMax : gauche ? xMax : xMax - FILE_PAS_X * 1.1;
+        if(r === 0) continue;
+        p.push(...poteau(x1, z, e), ...poteau(x2, z, e), sangle(x1, x2, z, e, col));
+      }
+      p.push(...poteau(-xMax, baseFile(t, cd) - .5 * FILE_PAS_Z, e), ...poteau(xMax, baseFile(t, cd) - .5 * FILE_PAS_Z, e));
+    };
     switch(type){
-      case 'comptoir':
-        // les comptoirs du côté des pistes de la case, les passagers arrivent du côté ville
-        for(let k = 0; k < n; k++){ const x = -w / 2 + (k + .5) * w / n; p.push({ f:'boite', d:[w / n * .7, 1.1 * e, 1.1 * e], p:[x, .55 * e, -d * .3], c:0x4F7CAC }, { f:'boite', d:[.8, .7, .1], p:[x, 1.5 * e, -d * .3], c:0x1E2A38 }); }
-        p.push({ f:'boite', d:[w, .4, .9], p:[0, .2, -d * .3 - 1.4 * e], c:0x5C6672 }, { f:'boite', d:[w * .9, 2.4, .25], p:[0, 3.2 * e, -d * .45], c:0x2F5E8E });
+      case 'comptoir': {
+        // les comptoirs, les agents derrière, le tapis des bagages, le mur aux couleurs, la file à sangles
+        const zC = -cd * .3 + .3;
+        for(let k = 0; k < n; k++){
+          const x = -w / 2 + (k + .5) * w / n;
+          p.push({ f:'boite', d:[w / n * .62, 1.1 * e, 1.1 * e], p:[x, .55 * e, zC], c:0xE9EDF2 }, { f:'boite', d:[w / n * .62, .15, 1.2 * e], p:[x, 1.12 * e, zC], c:0x4F7CAC });
+          p.push({ f:'boite', d:[.7 * e, .5 * e, .05], p:[x - .4 * e, 1.5 * e, zC + .2 * e], r:[-.3, 0, 0], c:0x1E2A38 }, { f:'boite', d:[.9 * e, .3 * e, .9 * e], p:[x + w / n * .4, .15 * e, zC + .2 * e], c:0x5C6672 });
+          p.push(...agent(x, zC - 1.2 * e, 0x1B4E8C, e));
+          p.push({ f:'boite', d:[.6 * e, .9 * e, .12], p:[x, 3.1 * e, zC - .1], c:0x14233A }, { f:'boite', d:[.5 * e, .2 * e, .14], p:[x, 3.3 * e, zC - .1], c:0x51CF66 });
+        }
+        p.push({ f:'boite', d:[w, .5 * e, 1.1 * e], p:[0, .25 * e, zC - 2.3 * e], c:0x3A3F47 }, { f:'boite', d:[w, 3.4 * e, .3], p:[0, 1.7 * e, zC - 3 * e], c:0x2F5E8E }, { f:'boite', d:[w * .5, .6 * e, .32], p:[0, 3 * e, zC - 2.98 * e], c:0xFFB703 });
+        files('comptoir', 0x1B4E8C);
+        p.push(...ecran(w / 2 - 1.5 * e, d * .4, e), ...plante(-w / 2 + 1.2 * e, d * .4, e), ...poubelle(-w / 2 + 3 * e, d * .42, e));
         break;
-      case 'securite':
-        for(let k = 0; k < Math.min(3, niv + 1); k++){ const x = -w / 3 + k * w / 3; p.push({ f:'boite', d:[.3, 2.4 * e, .3], p:[x - 1.1 * e, 1.2 * e, -d * .2], c:0x7A5C99 }, { f:'boite', d:[.3, 2.4 * e, .3], p:[x + 1.1 * e, 1.2 * e, -d * .2], c:0x7A5C99 }, { f:'boite', d:[2.5 * e, .35, .4], p:[x, 2.4 * e, -d * .2], c:0x7A5C99 }, { f:'boite', d:[1 * e, .9 * e, 3 * e], p:[x + 2.4 * e, .45 * e, -d * .2], c:0x3A3F47 }); }
+      }
+      case 'securite': {
+        // les portiques, les tapis à rayons X et les bacs, les agents, la cloison vitrée côté pistes, la file
+        const zS = -cd * .2;
+        const voies = Math.min(3, niv + 1);
+        for(let k = 0; k < voies; k++){
+          const x = (k - (voies - 1) / 2) * Math.min(w / voies, 7 * e);
+          p.push({ f:'boite', d:[.3, 2.4 * e, .4], p:[x - 1 * e, 1.2 * e, zS], c:0x7A5C99 }, { f:'boite', d:[.3, 2.4 * e, .4], p:[x + 1 * e, 1.2 * e, zS], c:0x7A5C99 }, { f:'boite', d:[2.3 * e, .4, .45], p:[x, 2.4 * e, zS], c:0x7A5C99 });
+          p.push({ f:'boite', d:[1.3 * e, 1.2 * e, 1.6 * e], p:[x + 2.3 * e, .9 * e, zS], c:0xD9DEE4 }, { f:'boite', d:[.9 * e, .5 * e, 4.6 * e], p:[x + 2.3 * e, .45 * e, zS], c:0x3A3F47 });
+          for(let b = 0; b < 3; b++) p.push({ f:'boite', d:[.8 * e, .15 * e, .6 * e], p:[x + 2.3 * e, .78 * e, zS + 1.5 * e - b * .9 * e], c:0x8C949F });
+          p.push(...agent(x - 2 * e, zS - 1.2 * e, 0x2A2D43, e), ...agent(x + 3.6 * e, zS - .6 * e, 0x2A2D43, e));
+        }
+        p.push(...cloisons(w, d, H, 0xE6E8EC, ['+z', '-z'], .7, 0xBFD9EA));
+        files('securite', 0x7A5C99);
+        p.push({ f:'boite', d:[w * .4, .8 * e, .3], p:[0, H + .5 * e, d / 2], c:0x7A5C99 }, { f:'boite', d:[w * .4 - .6, .22 * e, .32], p:[0, H + .5 * e, d / 2], c:0xFFFFFF });
         break;
-      case 'tapis':
-        p.push({ f:'cyl', d:[Math.min(w, d) * .32, Math.min(w, d) * .32, .9 * e, 24], p:[0, .45 * e, 0], c:0x3A3F47 }, { f:'cyl', d:[Math.min(w, d) * .2, Math.min(w, d) * .2, 1.1 * e, 20], p:[0, .55 * e, 0], c:0x9AA2AE });
-        for(let k = 0; k < 8; k++){ const a = k / 8 * Math.PI * 2, r = Math.min(w, d) * .27; p.push({ f:'boite', d:[1 * e, .6 * e, .7 * e], p:[Math.cos(a) * r, 1.1 * e, Math.sin(a) * r], r:[0, -a, 0], c:[0xD7263D, 0x1B98E0, 0xF2C230, 0x2BA84A][k % 4] }); }
+      }
+      case 'tapis': {
+        const r0 = Math.min(w, d) * .3;
+        p.push({ f:'cyl', d:[r0, r0, .9 * e, 28], p:[0, .45 * e, 0], c:0x3A3F47 }, { f:'cyl', d:[r0 * .68, r0 * .68, 1.15 * e, 24], p:[0, .58 * e, 0], c:0x9AA2AE }, { f:'cyl', d:[.3 * e, .3 * e, 3 * e, 8], p:[0, 1.5 * e, 0], c:0x8C949F });
+        p.push({ f:'boite', d:[2.6 * e, 1.1 * e, .2 * e], p:[0, 3.4 * e, 0], c:0x14233A }, { f:'boite', d:[2.2 * e, .25 * e, .22 * e], p:[0, 3.6 * e, 0], c:0xFFB703 });
+        for(let k = 0; k < 10; k++){ const a = k / 10 * Math.PI * 2, r = r0 * .84; p.push({ f:'boite', d:[1 * e, .6 * e, .7 * e], p:[Math.cos(a) * r, 1.1 * e, Math.sin(a) * r], r:[0, -a, 0], c:[0xD7263D, 0x1B98E0, 0xF2C230, 0x2BA84A, 0x14233A][k % 5] }); }
+        // les chariots à bagages rangés
+        for(let k = 0; k < 4; k++) p.push({ f:'boite', d:[.9 * e, .5 * e, 1.6 * e], p:[w / 2 - 1 * e, .5 * e, -d / 2 + 1.2 * e + k * .5 * e], c:0xB9BEC6 });
+        p.push(...poubelle(-w / 2 + 1 * e, d / 2 - 1 * e, e));
         break;
-      case 'salle':
-        for(let r = 0; r < 3; r++) for(let k = 0; k < n; k++){ const x = -w / 2 + (k + .5) * w / n, z = -d * .3 + r * d * .3; p.push({ f:'boite', d:[w / n * .85, .5 * e, .8 * e], p:[x, .5 * e, z], c:0x2F6FB5 }, { f:'boite', d:[w / n * .85, .8 * e, .2 * e], p:[x, .9 * e, z + .45 * e], c:0x2F6FB5 }); }
+      }
+      case 'salle': {
+        // des rangées de sièges dos à dos, un écran des départs, des poubelles, une moquette
+        p.push({ f:'boite', d:[w * .95, .08, d * .9], p:[0, .04, 0], c:0x7D8CA3 });
+        const rangs = Math.max(2, Math.min(4, Math.floor(d / (3.4 * e))));
+        for(let r = 0; r < rangs; r++) for(let k = 0; k < n; k++){
+          const x = -w / 2 + (k + .5) * w / n, z = -d * .32 + r * (d * .62 / Math.max(1, rangs - 1));
+          for(const sens of [-1, 1]){ p.push({ f:'boite', d:[w / n * .84, .45 * e, .75 * e], p:[x, .45 * e, z + sens * .45 * e], c:0x2F6FB5 }, { f:'boite', d:[w / n * .84, .75 * e, .16 * e], p:[x, .95 * e, z], c:0x24558C }); }
+          for(let a = 0; a < 4; a++) p.push({ f:'boite', d:[.12 * e, .55 * e, 1.7 * e], p:[x - w / n * .42 + a * w / n * .28, .55 * e, z], c:0x5C6672 });
+        }
+        p.push(...ecran(-w / 2 + 1.4 * e, -d / 2 + .8 * e, e), ...poubelle(w / 2 - .9 * e, -d / 2 + .9 * e, e), ...poubelle(w / 2 - .9 * e, d / 2 - .9 * e, e));
         break;
-      case 'boutique':
-        p.push({ f:'boite', d:[w, 2.2 * e, .9 * e], p:[0, 1.1 * e, d * .4], c:0xE07A5F }, { f:'boite', d:[.9 * e, 2.2 * e, d], p:[-w * .45, 1.1 * e, 0], c:0xE07A5F }, { f:'boite', d:[2 * e, 1.1 * e, 1 * e], p:[w * .2, .55 * e, -d * .1], c:0xF4F1DE });
-        for(let k = 0; k < 6; k++) p.push({ f:'boite', d:[.7 * e, .5 * e, .5 * e], p:[-w * .4 + k * w * .16, 2.4 * e, d * .4], c:[0xF2C230, 0x1B98E0, 0x2BA84A][k % 3] });
+      }
+      case 'boutique': {
+        // une vitrine avec son entrée, l'enseigne, les étagères et la caisse
+        p.push(...cloisons(w, d, H, 0xE07A5F, ['+z'], .35, 0xBFD9EA), ...enseigne(d / 2, w, H, coul, e));
+        for(let r = 0; r < 2; r++){ const z = -d * .25 + r * d * .28; p.push({ f:'boite', d:[w * .55, 1.8 * e, .8 * e], p:[-w * .1, .9 * e, z], c:0xF4F1DE }); for(let k = 0; k < 6; k++) p.push({ f:'boite', d:[.6 * e, .45 * e, .5 * e], p:[-w * .1 - w * .22 + k * w * .09, 1.95 * e, z], c:[0xF2C230, 0x1B98E0, 0x2BA84A, 0xD7263D][k % 4] }); }
+        p.push({ f:'boite', d:[.8 * e, 2.4 * e, d * .75], p:[-w / 2 + .7 * e, 1.2 * e, -d * .05], c:0xF4F1DE });
+        p.push({ f:'boite', d:[2.4 * e, 1.1 * e, 1 * e], p:[w * .3, .55 * e, d * .2], c:0x6B4A2F }, { f:'boite', d:[.5 * e, .4 * e, .4 * e], p:[w * .3, 1.3 * e, d * .2], c:0x1E2A38 }, ...agent(w * .3, d * .2 - 1.1 * e, coul, e));
+        p.push(...plante(w * .42, d / 2 + .9 * e, e), ...plante(-w * .42, d / 2 + .9 * e, e));
         break;
-      case 'cafe': case 'restaurant':
-        p.push({ f:'boite', d:[w * .6, 1.1 * e, 1 * e], p:[0, .55 * e, d * .38], c:type === 'cafe' ? 0x8B5A3C : 0xB5835A });
-        for(let k = 0; k < (type === 'cafe' ? 4 : 6); k++){ const x = -w * .32 + (k % 3) * w * .32, z = -d * .25 + Math.floor(k / 3) * d * .3; p.push({ f:'cyl', d:[.9 * e, .9 * e, .12, 12], p:[x, 1 * e, z], c:0xF4F1DE }, { f:'cyl', d:[.12, .12, 1 * e, 6], p:[x, .5 * e, z], c:0x3A3F47 }); }
+      }
+      case 'cafe': case 'restaurant': {
+        // un muret bas avec des jardinières, le comptoir et sa machine, les tables, les chaises, le menu
+        const resto = type === 'restaurant';
+        p.push({ f:'boite', d:[w * .95, .08, d * .9], p:[0, .04, 0], c:resto ? 0xC9A27E : 0xA9785A });
+        p.push(...cloisons(w, d, 1.3 * e, resto ? 0x8B5A3C : 0x6B4A2F, ['+z', '-x'], .35));
+        for(let k = 0; k < 4; k++) p.push({ f:'boule', d:[.45 * e, 0], p:[-w / 2 + .3 + k * w / 4 + w / 8, 1.5 * e, -d / 2], c:0x4E8F3E });
+        p.push({ f:'boite', d:[w * .55, 1.15 * e, 1 * e], p:[w * .1, .58 * e, -d * .36], c:resto ? 0xB5835A : 0x8B5A3C }, { f:'boite', d:[w * .55, .12, 1.15 * e], p:[w * .1, 1.18 * e, -d * .36], c:0xF4F1DE });
+        p.push({ f:'boite', d:[.8 * e, .9 * e, .6 * e], p:[w * .25, 1.65 * e, -d * .38], c:0x3A3F47 }, ...agent(w * .05, -d * .36 - 1.1 * e, 0xF4F1DE, e));
+        p.push({ f:'boite', d:[w * .4, 1.2 * e, .15], p:[w * .1, 3 * e, -d / 2 + .1], c:0x14233A }, { f:'boite', d:[w * .36, .2 * e, .17], p:[w * .1, 3.3 * e, -d / 2 + .1], c:coul });
+        const nb = resto ? 6 : 5;
+        for(let k = 0; k < nb; k++){
+          const x = -w * .3 + (k % 3) * w * .3, z = -d * .02 + Math.floor(k / 3) * d * .3;
+          p.push({ f:'cyl', d:[.85 * e, .85 * e, .1, 14], p:[x, 1 * e, z], c:resto ? 0xFFFFFF : 0xF4F1DE }, { f:'cyl', d:[.1, .1, 1 * e, 6], p:[x, .5 * e, z], c:0x3A3F47 });
+          for(const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]].slice(0, resto ? 4 : 2)) p.push({ f:'boite', d:[.55 * e, .55 * e, .55 * e], p:[x + dx * 1.15 * e, .3 * e, z + dz * 1.15 * e], c:resto ? 0x8B2E2E : 0x2A6F4D });
+        }
         break;
-      case 'toilettes':
-        p.push({ f:'boite', d:[w * .7, 3 * e, d * .6], p:[0, 1.5 * e, 0], c:0x9DB4C0 }, { f:'boite', d:[1 * e, 2 * e, .1], p:[-w * .15, 1 * e, -d * .3 - .05], c:0x1B6EC2 }, { f:'boite', d:[1 * e, 2 * e, .1], p:[w * .15, 1 * e, -d * .3 - .05], c:0xE5383B });
+      }
+      case 'toilettes': {
+        p.push(...cloisons(w * .8, d * .7, 3 * e, 0x9DB4C0, [], .3));
+        p.push({ f:'boite', d:[w * .8, .15, d * .7], p:[0, 3 * e, 0], c:0x8C949F });
+        p.push({ f:'boite', d:[1.1 * e, 2.2 * e, .1], p:[-w * .18, 1.1 * e, d * .35 + .1], c:0x1B6EC2 }, { f:'boite', d:[1.1 * e, 2.2 * e, .1], p:[w * .18, 1.1 * e, d * .35 + .1], c:0xE5383B });
+        p.push({ f:'boite', d:[.8 * e, .8 * e, .12], p:[-w * .18, 2.8 * e, d * .35 + .15], c:0xFFFFFF }, { f:'boite', d:[.8 * e, .8 * e, .12], p:[w * .18, 2.8 * e, d * .35 + .15], c:0xFFFFFF });
+        p.push({ f:'boite', d:[1.4 * e, .8 * e, .15], p:[0, 3.6 * e, d * .35 + .1], c:0x1B4E8C });
         break;
-      case 'jeux':
-        p.push({ f:'boite', d:[1.6 * e, 1.6 * e, 1.6 * e], p:[-w * .2, .8 * e, 0], c:0xF2C230 }, { f:'boule', d:[1 * e, 1], p:[w * .15, 1 * e, -d * .15], c:0xE5383B }, { f:'boite', d:[1 * e, 2.4 * e, 1 * e], p:[w * .25, 1.2 * e, d * .2], c:0x2BA84A }, { f:'boite', d:[3 * e, .3, 1 * e], p:[w * .05, 1.1 * e, d * .2], r:[0, 0, .4], c:0x1B98E0 });
+      }
+      case 'jeux': {
+        // un tapis mou, une barrière colorée, des cubes, un toboggan, une balle géante
+        p.push({ f:'boite', d:[w * .85, .14, d * .8], p:[0, .07, 0], c:0x8ECAE6 });
+        p.push(...cloisons(w * .85, d * .8, 1 * e, 0xF2CC8F, ['+z'], .3));
+        p.push({ f:'boite', d:[1.6 * e, 1.6 * e, 1.6 * e], p:[-w * .22, .8 * e, -d * .1], c:0xF2C230 }, { f:'boite', d:[1.1 * e, 1.1 * e, 1.1 * e], p:[-w * .22, 2.15 * e, -d * .1], c:0x2BA84A }, { f:'boule', d:[1 * e, 1], p:[w * .15, 1 * e, -d * .18], c:0xE5383B });
+        p.push({ f:'boite', d:[1 * e, 2.6 * e, 1 * e], p:[w * .25, 1.3 * e, d * .15], c:0x2BA84A }, { f:'boite', d:[3.2 * e, .3, 1 * e], p:[w * .07, 1.2 * e, d * .15], r:[0, 0, .55], c:0x1B98E0 });
         break;
-      case 'salon':
-        p.push({ f:'boite', d:[w * .85, .15, d * .8], p:[0, .08, 0], c:0x7D5A44 });
-        for(let k = 0; k < 4; k++){ const x = (k % 2 ? 1 : -1) * w * .22, z = (k < 2 ? -1 : 1) * d * .18; p.push({ f:'boite', d:[2.4 * e, .7 * e, 1 * e], p:[x, .35 * e, z], c:0x2A2D43 }, { f:'boite', d:[2.4 * e, .7 * e, .3 * e], p:[x, .9 * e, z + .5 * e], c:0x2A2D43 }); }
+      }
+      case 'salon': {
+        // un salon fermé (vitré), un tapis, des canapés, un bar
+        p.push({ f:'boite', d:[w * .95, .1, d * .9], p:[0, .05, 0], c:0x5B4636 });
+        p.push(...cloisons(w, d, H, 0x2A2D43, ['+z'], .3, 0x8FA6BF), ...enseigne(d / 2, w, H, 0xD4AF37, e));
+        for(let k = 0; k < 4; k++){ const x = (k % 2 ? 1 : -1) * w * .22, z = (k < 2 ? -1 : 1) * d * .16; p.push({ f:'boite', d:[2.4 * e, .7 * e, 1 * e], p:[x, .35 * e, z], c:0x3D405B }, { f:'boite', d:[2.4 * e, .7 * e, .3 * e], p:[x, .9 * e, z + .5 * e], c:0x3D405B }, { f:'cyl', d:[.6 * e, .6 * e, .6 * e, 10], p:[x, .3 * e, z - 1.3 * e], c:0xD4AF37 }); }
+        p.push({ f:'boite', d:[w * .4, 1.1 * e, .9 * e], p:[0, .55 * e, -d * .38], c:0xD4AF37 }, ...plante(-w * .4, -d * .38, e), ...plante(w * .4, -d * .38, e));
         break;
+      }
       case 'plantes':
-        for(let k = 0; k < 3; k++){ const x = (k - 1) * w * .28; p.push({ f:'cyl', d:[.6 * e, .45 * e, .8 * e, 8], p:[x, .4 * e, 0], c:0xB07D62 }, { f:'boule', d:[1 * e, 1], p:[x, 1.6 * e, 0], c:0x4E8F3E }); }
+        for(let k = 0; k < 3; k++){ const x = (k - 1) * w * .28; p.push({ f:'boite', d:[1.6 * e, .8 * e, 1.6 * e], p:[x, .4 * e, 0], c:0xB07D62 }, { f:'boule', d:[1 * e, 1], p:[x, 1.7 * e, 0], c:0x4E8F3E }, { f:'boule', d:[.6 * e, 1], p:[x + .5 * e, 2.4 * e, .2], c:0x5FA35A }); }
+        p.push({ f:'boite', d:[3 * e, .5 * e, .8 * e], p:[0, .45 * e, d * .3], c:0x8B5A3C });
         break;
-      case 'fontaine':
-        p.push({ f:'cyl', d:[Math.min(w, d) * .3, Math.min(w, d) * .32, .7 * e, 20], p:[0, .35 * e, 0], c:0xD9DEE4 }, { f:'cyl', d:[Math.min(w, d) * .26, Math.min(w, d) * .26, .1, 20], p:[0, .72 * e, 0], c:0x5FB8E6 }, { f:'cyl', d:[.4 * e, .5 * e, 2.4 * e, 8], p:[0, 1.2 * e, 0], c:0xD9DEE4 });
+      case 'fontaine': {
+        const r0 = Math.min(w, d) * .3;
+        p.push({ f:'cyl', d:[r0, r0 * 1.05, .7 * e, 24], p:[0, .35 * e, 0], c:0xD9DEE4 }, { f:'cyl', d:[r0 * .88, r0 * .88, .1, 24], p:[0, .72 * e, 0], c:0x5FB8E6 }, { f:'cyl', d:[.4 * e, .5 * e, 2.4 * e, 8], p:[0, 1.2 * e, 0], c:0xD9DEE4 }, { f:'cyl', d:[1 * e, .6 * e, .3 * e, 12], p:[0, 2.5 * e, 0], c:0xD9DEE4 }, { f:'boule', d:[.5 * e, 1], p:[0, 2.9 * e, 0], c:0x8ECAE6 });
+        for(let k = 0; k < 4; k++){ const a = k * Math.PI / 2 + .4; p.push({ f:'boite', d:[2.4 * e, .5 * e, .8 * e], p:[Math.cos(a) * (r0 + 1.6 * e), .4 * e, Math.sin(a) * (r0 + 1.6 * e)], r:[0, -a + Math.PI / 2, 0], c:0x8B5A3C }); }
         break;
+      }
     }
     return p;
   }
@@ -567,9 +683,9 @@ window.ESCALE_3D = (() => {
     const ms = A.terminal.modules.filter(m => m.type === type), c0 = ms.length ? null : entree(G);
     if(!ms.length) return { x:c0.x, z:G.T.z1 - 6 - rang * .4 };
     const m = ms[rang % ms.length], j = Math.floor(rang / ms.length), c = G.centre(m.x, m.y);
-    // la file part du comptoir (ou du portique) vers le côté ville, en serpentin
-    const rangee = Math.floor(j / 5), k = j % 5, sens = rangee % 2 ? -1 : 1;
-    return { x:c.x + sens * (k - 2) * 1.5 * ECH_P * .8, z:c.z - G.cd * (type === 'comptoir' ? .3 : .2) + (2 + rangee * 1.3) * ECH_P };
+    // la file part du comptoir (ou du portique) vers le côté ville, en serpentin entre les sangles
+    const rangee = Math.floor(j / 5), k = j % 5, q = posFile(type, G.cd, rangee, k);
+    return { x:c.x + q.x, z:c.z + q.z };
   }
   function placeAttente(A, G){
     const ms = A.terminal.modules.filter(m => AIRSIDE.includes(m.type));
