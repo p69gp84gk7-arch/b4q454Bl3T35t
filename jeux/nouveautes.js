@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:156, type:'maj', jeu:'Escale', ico:'🛂', lien:'jeux/escale.html',
+    txt:'Des mini-jeux de contrôle en 3D : touche un poste de passeports, de sûreté ou de douane dans le terminal et prends la place de l\'agent. Vérifie les papiers et tamponne, repère les objets interdits aux rayons X, fouille les valises à l\'arrivée (avec le chien renifleur). 3 minutes par service, et tes records.' },
   { v:155, type:'maj', jeu:'Escale', ico:'✈️', lien:'jeux/escale.html',
     txt:'Des panneaux plus discrets dans le terminal : les numéros des portes et les panneaux Départs et Arrivées sont plus petits.' },
   { v:154, type:'maj', jeu:'Escale', ico:'✈️', lien:'jeux/escale.html',
