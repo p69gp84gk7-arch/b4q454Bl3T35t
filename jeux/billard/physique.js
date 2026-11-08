@@ -112,40 +112,62 @@ window.BILLARD_PHYS = (() => {
     for(let t = 0; t < max && enMouvement(T); t += dt) pas(T, dt, ev, idBlanche);
     return ev;
   }
-  // la prévision : la blanche part dans cette direction ; où touche-t-elle (une boule, ou une bande puis la suite) ?
-  function prevoir(T, id, angle, b = 0){
-    const q = T.b.find(x => x.id === id), R = T.R, dx = Math.cos(angle), dy = Math.sin(angle);
-    const points = [[q.x, q.y]];
-    let x = q.x, y = q.y, ux = dx, uy = dy, res = null;
-    for(let rebond = 0; rebond < 3 && !res; rebond++){
-      let tMin = 9, cible = null;
-      for(const o of T.b){
-        if(o.dedans || o === q) continue;
-        const fx = x - o.x, fy = y - o.y, B = fx * ux + fy * uy, C = fx * fx + fy * fy - 4 * R * R, D = B * B - C;
+  // la prévision : on fait vraiment rouler la blanche (seule, avec la même physique, la même vitesse et le même effet que le coup)
+  // jusqu'à la première boule touchée, une poche, la 3e bande ou l'arrêt : la ligne suit donc le vrai trajet, rebonds compris
+  // suite : jusqu'où suivre la blanche après la première boule touchée ({ long en m, bandes }) ; sinon, juste le début de son chemin
+  function prevoir(T, id, angle, v0 = 3, a = 0, b = 0, maxBandes = 3, suite = null){
+    const q0 = T.b.find(x => x.id === id), R = T.R, dt = 1 / 600;
+    const S = { ...T, b:[{ ...q0, vx:0, vy:0, wx:0, wy:0, s:0 }] }, q = S.b[0], autres = T.b.filter(o => !o.dedans && o !== q0);
+    frapper(S, id, angle, v0, a, b);
+    const ev = evenements(), points = [[q.x, q.y]];
+    let res = null, arret = null, poche = false, lx = q.x, ly = q.y;
+    for(let t = 0; t < 30; t += dt){
+      const px = q.x, py = q.y, ux = q.vx, uy = q.vy, nb = ev.bandes.length;
+      pas(S, dt, ev, id);
+      if(q.dedans){ points.push([q.x, q.y]); poche = true; break; }
+      // une boule sur le chemin : on recule jusqu'au contact exact (le centre de la blanche à 2R de l'autre)
+      let tMin = 2, cible = null;
+      const mx = q.x - px, my = q.y - py;
+      for(const o of autres){
+        const fx = px - o.x, fy = py - o.y, A = mx * mx + my * my; if(A < 1e-14) continue;
+        const B = fx * mx + fy * my, C = fx * fx + fy * fy - 4 * R * R, D = B * B - A * C;
         if(D < 0) continue;
-        const t = -B - Math.sqrt(D); if(t > 1e-6 && t < tMin){ tMin = t; cible = o; }
+        const u = (-B - Math.sqrt(D)) / A; if(u >= -1e-9 && u <= 1 && u < tMin){ tMin = u; cible = o; }
       }
-      // les bandes (on prend le rectangle où roule le centre de la boule)
-      let tb = 9, nx = 0, ny = 0;
-      const lim = [[R, -1, 0], [T.L - R, 1, 0], [R, 0, -1], [T.l - R, 0, 1]];
-      for(const [v, ax, ay] of lim){
-        const c = ax ? (v - x) / ux : (v - y) / uy; if(!(c > 1e-6) || !isFinite(c)) continue;
-        if(c < tb){ tb = c; nx = -ax; ny = -ay; }
-      }
-      if(cible && tMin <= tb){
-        const gx = x + ux * tMin, gy = y + uy * tMin; points.push([gx, gy]);
+      if(cible){
+        const gx = px + mx * tMin, gy = py + my * tMin; points.push([gx, gy]);
+        const vl = Math.hypot(ux, uy) || 1, dx = ux / vl, dy = uy / vl;
         let ox = cible.x - gx, oy = cible.y - gy; const ol = Math.hypot(ox, oy); ox /= ol; oy /= ol;
-        // la blanche part sur la tangente (bille arrêtée), plus ou moins vers l'avant (coulé) ou l'arrière (rétro)
-        const dot = ux * ox + uy * oy; let tx = ux - dot * ox, ty = uy - dot * oy; const tl = Math.hypot(tx, ty);
-        if(tl > 1e-3){ tx /= tl; ty /= tl; } else { tx = 0; ty = 0; }
-        let cx = tx * tl + ox * dot * b * .9, cy = ty * tl + oy * dot * b * .9; const cl = Math.hypot(cx, cy) || 1;
-        res = { boule:cible.id, ghost:[gx, gy], cible:[cible.x, cible.y], dirCible:[ox, oy], dirBlanche:[cx / cl, cy / cl], force:dot };
-      } else {
-        x += ux * tb; y += uy * tb; points.push([x, y]);
-        if(nx) ux = -ux; else uy = -uy;
+        // la blanche après le choc : elle garde sa rotation, puis le tapis la fait partir entre la tangente et l'avant (coulé) ou l'arrière (rétro)
+        const dot = dx * ox + dy * oy, J = (1 + CHOC) / 2 * dot;
+        let cx = 2.5 * (dx - J * ox) + q.wx / vl, cy = 2.5 * (dy - J * oy) + q.wy / vl; const cl = Math.hypot(cx, cy) || 1;
+        res = { boule:cible.id, ghost:[gx, gy], cible:[cible.x, cible.y], dirCible:[ox, oy], dirBlanche:[cx / cl, cy / cl], force:dot, apres:[[gx, gy]] };
+        // et le début de son vrai chemin après le choc (il se courbe avec le coulé ou le rétro)
+        q.x = gx; q.y = gy; q.vx = ux - J * vl * ox; q.vy = uy - J * vl * oy;
+        const lb = suite ? suite.long : .1 + .12 * (1 - dot), bMax = suite ? suite.bandes : 9, b0 = ev.bandesBlanche, reste = autres.filter(o => o !== cible);
+        let fait = 0, ax = gx, ay = gy;
+        for(let k = 0; k < 18000 && fait < lb && ev.bandesBlanche - b0 < bMax && enMouvement(S) && !q.dedans; k++){
+          const n0 = ev.bandes.length, sx = q.x, sy = q.y; pas(S, dt, ev, id); fait += Math.hypot(q.x - ax, q.y - ay); ax = q.x; ay = q.y;
+          // (en suivant plus loin) la blanche arrive sur une autre boule : on s'arrête au contact
+          if(suite){
+            const o = reste.find(o => Math.hypot(q.x - o.x, q.y - o.y) < 2 * R);
+            if(o){
+              const zx = q.x - sx, zy = q.y - sy, fx = sx - o.x, fy = sy - o.y, A = zx * zx + zy * zy || 1e-14, B = fx * zx + fy * zy, D = Math.max(0, B * B - A * (fx * fx + fy * fy - 4 * R * R));
+              const u = clamp((-B - Math.sqrt(D)) / A, 0, 1); q.x = sx + zx * u; q.y = sy + zy * u;
+              res.deuxieme = { boule:o.id, ghost:[q.x, q.y] }; break;
+            }
+          }
+          if(k % 6 === 0 || ev.bandes.length > n0) res.apres.push([q.x, q.y]);
+        }
+        res.apres.push([q.x, q.y]);
+        break;
       }
+      // les rebonds sur les bandes : un point à chaque fois ; entre deux, un point tous les 2 cm (la courbe après la bande)
+      if(ev.bandes.length > nb || Math.hypot(q.x - lx, q.y - ly) > .02){ points.push([q.x, q.y]); lx = q.x; ly = q.y; }
+      if(ev.bandesBlanche >= maxBandes){ break; }
+      if(!enMouvement(S)){ points.push([q.x, q.y]); arret = [q.x, q.y]; break; }
     }
-    return { points, res };
+    return { points, res, arret, poche };
   }
   return { TABLES, table, cloner, frapper, pas, simuler, prevoir, enMouvement, evenements };
 })();
