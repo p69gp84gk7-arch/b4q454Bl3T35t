@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Escale · Altitude Arcade</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=151">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=151">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+@media (orientation:landscape) and (max-height:600px){ :root{ --barre-statut:env(safe-area-inset-top, 0px); } }
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --nuit:#0F1E36; --nuit2:#18304F; --carte:#F7F9FC; --encre:#14233A; --doux:#5D6E87; --ligne:rgba(20,35,58,.12); --ambre:#FFB703; --orange:#FB8500; --ciel:#8ECAE6; --bleu:#1B6EC2; --vert:#2BA84A; --rouge:#E5383B; }
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; height:100%; overflow:hidden; background:#0F1E36; color:var(--encre);
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+button{ font:inherit; color:inherit; cursor:pointer; }
+button:disabled{ opacity:.45; cursor:default; }
+#cv3d{ position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+/* la barre du haut */
+.hud{ position:fixed; left:0; right:0; top:var(--barre-statut); z-index:4; display:flex; align-items:center; gap:6px; padding:7px 8px; background:linear-gradient(180deg, rgba(15,30,54,.92), rgba(15,30,54,.78)); color:#fff; }
+.hud[hidden]{ display:none; }
+.hud .rond{ flex:none; width:38px; height:38px; border-radius:12px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); font-size:1.05rem; }
+.hud .info{ min-width:0; flex:1; line-height:1.05; overflow:hidden; }
+.hud .info b{ display:block; font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:1.35rem; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hud .info small{ font-size:.74rem; color:#BFD3EA; white-space:nowrap; }
+.hud .argent{ flex:none; text-align:right; line-height:1.05; }
+.hud .argent b{ display:block; font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:1.35rem; color:#8CE99A; white-space:nowrap; }
+.hud .argent small{ font-size:.7rem; color:#BFD3EA; white-space:nowrap; }
+.hud .argent b.neg{ color:#FF8787; }
+.vitesses{ display:flex; gap:3px; flex:none; }
+.vitesses button{ width:34px; height:34px; border-radius:10px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:#fff; font-size:.78rem; font-weight:800; padding:0; }
+.vitesses button.actif{ background:var(--ambre); border-color:var(--ambre); color:#14233A; }
+.xp{ position:fixed; left:0; right:0; top:calc(var(--barre-statut) + 52px); height:4px; z-index:4; background:rgba(15,30,54,.6); pointer-events:none; }
+.xp i{ display:block; height:100%; width:0; background:linear-gradient(90deg, var(--ambre), var(--orange)); transition:width .4s; }
+/* l'objectif en cours et les messages */
+.objectif{ position:fixed; left:8px; bottom:calc(66px + env(safe-area-inset-bottom, 0px)); z-index:3; max-width:min(70vw, 360px); background:rgba(255,255,255,.93); border:1px solid var(--ligne); border-left:4px solid var(--ambre); border-radius:12px; padding:6px 10px; font-size:.8rem; line-height:1.25; box-shadow:0 4px 14px rgba(0,0,0,.15); }
+.objectif[hidden]{ display:none; }
+.objectif b{ color:var(--orange); }
+.toasts{ position:fixed; right:8px; top:calc(var(--barre-statut) + 62px); z-index:5; display:flex; flex-direction:column; gap:4px; align-items:flex-end; pointer-events:none; max-width:min(72vw, 340px); }
+.toasts[hidden]{ display:none; }
+.toast{ background:rgba(15,30,54,.9); color:#fff; border-radius:10px; padding:5px 9px; font-size:.72rem; line-height:1.3; box-shadow:0 4px 14px rgba(0,0,0,.25); border-left:4px solid var(--ciel); animation:entre .3s ease-out; }
+.toast.mal{ border-left-color:var(--rouge); } .toast.bon{ border-left-color:#51CF66; } .toast.cadeau{ border-left-color:var(--ambre); } .toast.jour{ border-left-color:#B197FC; }
+@keyframes entre{ from{ transform:translateX(30px); opacity:0; } to{ transform:none; opacity:1; } }
+/* la carte de l'avion choisi */
+.carteVol{ position:fixed; left:8px; top:calc(var(--barre-statut) + 62px); z-index:4; width:min(300px, calc(100vw - 16px)); background:rgba(255,255,255,.96); border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.25); overflow:hidden; font-size:.8rem; }
+.carteVol[hidden]{ display:none; }
+.carteVol .t{ display:flex; align-items:center; gap:8px; padding:7px 9px; color:#fff; }
+.carteVol .t b{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:1.4rem; letter-spacing:.03em; line-height:1; }
+.carteVol .t small{ display:block; font-size:.72rem; opacity:.9; }
+.carteVol .t button{ margin-left:auto; border:none; background:rgba(255,255,255,.22); color:#fff; border-radius:8px; padding:4px 8px; font-weight:800; }
+.carteVol .t button + button{ margin-left:0; }
+.carteVol .c{ padding:7px 9px 9px; display:flex; flex-direction:column; gap:4px; }
+.carteVol .etat{ font-weight:700; }
+.tache{ display:grid; grid-template-columns:20px 1fr 56px; gap:6px; align-items:center; }
+.tache .barre{ height:15px; border-radius:5px; background:#E3E8EF; position:relative; overflow:hidden; }
+.tache .barre i{ position:absolute; inset:0 auto 0 0; background:var(--ambre); }
+.tache .barre i.fini{ background:#51CF66; }
+.tache .barre span{ position:absolute; inset:0; padding-left:6px; font-size:.68rem; font-weight:700; line-height:15px; white-space:nowrap; }
+.tache small{ font-size:.66rem; color:var(--doux); text-align:right; line-height:1.1; }
+.tache small.mal{ color:var(--rouge); font-weight:700; }
+/* les onglets du bas */
+.onglets{ position:fixed; left:0; right:0; bottom:0; z-index:4; display:grid; grid-template-columns:repeat(6, 1fr); gap:2px; padding:5px 5px calc(5px + env(safe-area-inset-bottom, 0px)); background:rgba(15,30,54,.94); }
+.onglets[hidden]{ display:none; }
+.onglets button{ border:none; background:transparent; color:#D6E4F5; border-radius:10px; padding:5px 0 4px; font-size:1.15rem; line-height:1.1; position:relative; }
+.onglets button small{ display:block; font-size:.62rem; font-weight:700; }
+.onglets button.actif{ background:rgba(255,183,3,.2); color:#fff; }
+.onglets button .pastille{ position:absolute; top:2px; right:calc(50% - 22px); min-width:17px; height:17px; border-radius:9px; background:var(--rouge); color:#fff; font-size:.62rem; font-weight:800; line-height:17px; padding:0 4px; }
+.cam{ position:fixed; right:8px; bottom:calc(64px + env(safe-area-inset-bottom, 0px)); z-index:3; display:flex; flex-direction:column; gap:5px; }
+.cam[hidden]{ display:none; }
+.cam button{ width:40px; height:40px; border-radius:12px; border:1px solid var(--ligne); background:rgba(255,255,255,.9); font-size:1.05rem; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+/* le panneau (en bas en hauteur, à droite en largeur) */
+.panneau{ position:fixed; left:0; right:0; bottom:calc(58px + env(safe-area-inset-bottom, 0px)); height:min(62vh, 640px); z-index:5; background:var(--carte); border-radius:18px 18px 0 0; box-shadow:0 -10px 30px rgba(0,0,0,.25); display:flex; flex-direction:column; }
+.panneau[hidden]{ display:none; }
+@media (orientation:landscape){ .panneau{ left:auto; top:calc(var(--barre-statut) + 56px); height:auto; width:min(460px, 56vw); border-radius:18px 0 0 18px; } }
+.pTete{ display:flex; align-items:center; gap:8px; padding:10px 12px 6px; }
+.pTete h2{ margin:0; font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:1.6rem; letter-spacing:.02em; }
+.pTete button{ margin-left:auto; border:1px solid var(--ligne); background:#fff; border-radius:10px; padding:5px 10px; font-weight:800; }
+.pCorps{ overflow:auto; padding:0 12px 14px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch; }
+.pCorps > *, .bloc > *{ flex-shrink:0; }
+.sousOng{ display:flex; gap:5px; flex-wrap:wrap; }
+.sousOng button{ border:1px solid var(--ligne); background:#fff; border-radius:999px; padding:5px 11px; font-weight:700; font-size:.82rem; }
+.sousOng button.actif{ background:var(--nuit); color:#fff; border-color:var(--nuit); }
+.bloc{ background:#fff; border:1px solid var(--ligne); border-radius:14px; padding:10px; display:flex; flex-direction:column; gap:6px; }
+.bloc h3{ margin:0; font-size:.74rem; text-transform:uppercase; letter-spacing:.09em; color:var(--doux); }
+.leg{ font-size:.78rem; color:var(--doux); margin:0; line-height:1.35; }
+.leg.mal{ color:var(--rouge); font-weight:600; }
+.btn{ border:1px solid var(--ligne); background:#fff; border-radius:10px; padding:7px 10px; font-weight:700; font-size:.84rem; }
+.btn.prim{ background:var(--ambre); border-color:var(--ambre); color:#14233A; }
+.btn.bleu{ background:var(--bleu); border-color:var(--bleu); color:#fff; }
+.btn.rouge{ background:#fff; border-color:var(--rouge); color:var(--rouge); }
+.ligneB{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+/* une offre, un contrat */
+.offre{ background:#fff; border:1px solid var(--ligne); border-radius:14px; overflow:hidden; }
+.offre .h{ display:flex; align-items:center; gap:8px; padding:7px 10px; color:#fff; }
+.offre .h b{ font-weight:800; }
+.offre .h span{ margin-left:auto; font-family:"Bebas Neue", sans-serif; font-size:1.2rem; letter-spacing:.03em; }
+.offre .c{ padding:8px 10px; display:grid; grid-template-columns:1fr 1fr; gap:3px 10px; font-size:.8rem; }
+.offre .c div small{ display:block; color:var(--doux); font-size:.66rem; text-transform:uppercase; letter-spacing:.05em; }
+.offre .c div b{ font-size:.86rem; }
+.offre .p{ padding:0 10px 9px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.offre .p .leg{ flex-basis:100%; }
+/* le planning */
+.planning{ overflow-x:auto; border:1px solid var(--ligne); border-radius:12px; background:#fff; position:relative; -webkit-overflow-scrolling:touch; }
+.grille{ position:relative; }
+.grille .heures{ position:sticky; top:0; height:20px; background:#EEF2F7; border-bottom:1px solid var(--ligne); }
+.grille .heures span{ position:absolute; top:3px; font-size:.64rem; font-weight:700; color:var(--doux); transform:translateX(-50%); }
+.grille .rang{ position:relative; height:46px; border-bottom:1px solid var(--ligne); background:repeating-linear-gradient(90deg, transparent 0 59px, rgba(20,35,58,.06) 59px 60px); }
+.grille .rang.ok{ background-color:rgba(81,207,102,.06); }
+.grille .nomP{ position:sticky; left:0; z-index:2; display:inline-flex; flex-direction:column; justify-content:center; width:46px; height:45px; background:#F4F6FA; border-right:1px solid var(--ligne); font-size:.7rem; font-weight:800; text-align:center; line-height:1.1; }
+.grille .nomP small{ font-weight:600; color:var(--doux); font-size:.6rem; }
+.grille .fen{ position:absolute; top:0; bottom:0; background:rgba(255,183,3,.22); border-left:2px dashed var(--orange); border-right:2px dashed var(--orange); pointer-events:none; }
+.grille .vol{ position:absolute; top:5px; height:35px; border-radius:7px; color:#fff; font-size:.64rem; line-height:1.15; padding:2px 5px; overflow:hidden; white-space:nowrap; border:1px solid rgba(0,0,0,.2); box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.grille .vol b{ display:block; font-size:.72rem; }
+.grille .vol.retard{ outline:2px solid var(--rouge); }
+.grille .vol.sel{ outline:3px solid var(--ambre); }
+.grille .maint{ position:absolute; top:0; bottom:0; width:2px; background:var(--rouge); z-index:1; pointer-events:none; }
+/* le terminal */
+.plan2d{ width:100%; border-radius:12px; background:#DDE3EA; display:block; touch-action:manipulation; }
+.palette{ display:grid; grid-template-columns:repeat(auto-fill, minmax(78px, 1fr)); gap:5px; }
+.palette button{ border:1px solid var(--ligne); background:#fff; border-radius:10px; padding:5px 3px; font-size:.66rem; font-weight:700; line-height:1.15; }
+.palette button span{ display:block; font-size:1.3rem; }
+.palette button small{ display:block; color:var(--doux); font-weight:600; }
+.palette button.actif{ outline:3px solid var(--ambre); }
+.stats{ display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:6px; }
+.stats div{ background:#F4F6FA; border-radius:10px; padding:6px 8px; font-size:.72rem; color:var(--doux); }
+.stats div b{ display:block; font-size:1.05rem; color:var(--encre); }
+/* les listes (sol, hangar, aéroports) */
+.item{ display:grid; grid-template-columns:40px 1fr auto; gap:9px; align-items:center; background:#fff; border:1px solid var(--ligne); border-radius:12px; padding:8px; }
+.item .ico{ width:40px; height:40px; border-radius:11px; display:grid; place-items:center; font-size:1.3rem; background:#EEF2F7; }
+.item b{ display:block; font-size:.88rem; }
+.item small{ display:block; color:var(--doux); font-size:.74rem; line-height:1.3; }
+.item .act{ display:flex; flex-direction:column; gap:4px; align-items:stretch; }
+.item .act .btn{ padding:5px 8px; font-size:.74rem; white-space:nowrap; }
+.item.verrou{ opacity:.6; }
+.passe{ display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; }
+.passe .r{ flex:none; width:92px; border-radius:10px; border:1px solid var(--ligne); background:#F4F6FA; padding:6px; font-size:.66rem; text-align:center; line-height:1.2; display:flex; flex-direction:column; gap:4px; }
+.passe .r b{ font-size:.8rem; }
+.passe .r.pris{ background:#EBFBEE; border-color:#B2F2BB; }
+.passe .r.pret{ background:#FFF3BF; border-color:var(--ambre); }
+.jauge{ height:8px; border-radius:4px; background:#E3E8EF; overflow:hidden; }
+.jauge i{ display:block; height:100%; background:var(--ambre); }
+.apercu{ width:100%; height:190px; border-radius:12px; background:linear-gradient(180deg, #DCE6F0, #F4F7FA); display:block; }
+/* les écrans (accueil, aide) */
+.ecran{ position:fixed; inset:0; z-index:8; overflow:auto; display:flex; justify-content:center; align-items:flex-start;
+  padding:calc(16px + var(--barre-statut)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background:linear-gradient(180deg, rgba(15,30,54,.82), rgba(15,30,54,.94)); color:#fff; }
+.ecran[hidden]{ display:none; }
+.boite{ width:min(100%, 520px); display:flex; flex-direction:column; gap:14px; }
+.tete{ display:flex; align-items:center; gap:6px; }
+.tete a, .tete button{ text-decoration:none; color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:12px; padding:6px 10px; font-weight:700; background:rgba(255,255,255,.08); white-space:nowrap; }
+.tete .droite{ margin-left:auto; }
+h1{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:clamp(3.6rem, 18vw, 5rem); line-height:.85; margin:6px 0 0; letter-spacing:.02em; }
+h1 span{ color:var(--ambre); }
+.sous{ margin:0; color:#C8D6E8; line-height:1.4; }
+.carteE{ background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:14px; }
+.carteE h2{ margin:0 0 8px; font-size:.76rem; text-transform:uppercase; letter-spacing:.1em; color:#9FB4CF; }
+.gros{ width:100%; border:none; border-radius:16px; padding:14px; font-weight:800; font-size:1.05rem; color:#14233A; background:var(--ambre); box-shadow:0 8px 22px rgba(255,183,3,.3); }
+.sec{ width:100%; border:1.5px solid rgba(255,255,255,.25); background:rgba(255,255,255,.06); color:#fff; border-radius:14px; padding:12px; font-weight:700; }
+.aide h3{ margin:12px 0 4px; font-size:1rem; color:var(--ambre); }
+.aide p, .aide li{ color:#D6E2F0; line-height:1.45; font-size:.92rem; margin:0 0 4px; }
+.aide ul{ margin:0; padding-left:18px; } .aide b{ color:#fff; }
+.objList{ display:flex; flex-direction:column; gap:5px; }
+.objList div{ display:flex; gap:8px; align-items:center; font-size:.82rem; padding:6px 8px; border-radius:9px; background:#F4F6FA; }
+.objList div.fait{ background:#EBFBEE; color:#2B8A3E; }
+.objList div span{ margin-left:auto; font-weight:700; white-space:nowrap; }
+.chargement{ position:fixed; inset:0; display:grid; place-items:center; color:#fff; font-size:1.1rem; z-index:1; }
+.chargement[hidden]{ display:none; }
+</style>
+</head>
+<body>
+<div class="barre-statut" aria-hidden="true"></div>
+<div class="chargement" id="chargement">✈️ Préparation de l'aéroport…</div>
+<canvas id="cv3d" aria-label="L'aéroport en 3D"></canvas>
+<div class="hud" id="hud" hidden>
+  <button class="rond" id="bMenu" aria-label="Menu">☰</button>
+  <div class="info"><b id="hNom">Col-Blanc</b><small id="hHeure">Jour 1 · 05:30</small></div>
+  <div class="argent"><b id="hArgent">0 €</b><small id="hNiv">Niveau 1</small></div>
+  <div class="vitesses" id="hVit"><button data-v="0" aria-label="Pause">⏸</button><button data-v="1" aria-label="Vitesse normale">▶</button><button data-v="4" aria-label="Vitesse ×4">×4</button><button data-v="12" aria-label="Vitesse ×12">×12</button></div>
+</div>
+<div class="xp" id="xp" hidden><i id="xpBarre"></i></div>
+<div class="objectif" id="objectif" hidden></div>
+<div class="toasts" id="toasts"></div>
+<div class="carteVol" id="carteVol" hidden></div>
+<div class="cam" id="cam" hidden><button id="cPlus" aria-label="Zoomer">＋</button><button id="cMoins" aria-label="Dézoomer">－</button><button id="cTourne" aria-label="Tourner">⟳</button><button id="cCentre" aria-label="Recentrer">🎯</button></div>
+<nav class="onglets" id="onglets" hidden>
+  <button data-p="planning">✈️<small>Planning</small></button>
+  <button data-p="compagnies">🤝<small>Compagnies</small></button>
+  <button data-p="sol">🚚<small>Sol</small></button>
+  <button data-p="terminal">🏢<small>Terminal</small></button>
+  <button data-p="hangar">🛩️<small>Hangar</small></button>
+  <button data-p="aeroports">🗺️<small>Aéroports</small></button>
+</nav>
+<section class="panneau" id="panneau" hidden><div class="pTete"><h2 id="pTitre"></h2><button id="pFermer">✕ Fermer</button></div><div class="pCorps" id="pCorps"></div></section>
+<section class="ecran" id="eAccueil" hidden>
+  <div class="boite">
+    <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="droite" id="bAide">❔ Aide</button></div>
+    <div><h1>Es<span>cale</span></h1><p class="sous">Construis et dirige ton aéroport : programme les vols des compagnies, fais tourner les avions au sol, soigne les passagers dans le terminal. Du petit altiport de montagne à la grande métropole.</p></div>
+    <div class="carteE" id="aReprise"></div>
+    <button class="gros" id="bJouer">✈️ Jouer</button>
+    <button class="sec" id="bNouvelle">Nouvelle partie</button>
+  </div>
+</section>
+<section class="ecran" id="eAide" hidden>
+  <div class="boite aide">
+    <div class="tete"><button id="bAideRetour">‹ Retour</button></div>
+    <h1>Com<span>ment</span> jouer</h1>
+    <div class="carteE">
+      <h3>✈️ Le principe</h3>
+      <p>Les compagnies aériennes te proposent des <b>contrats</b> : un vol qui vient chaque jour, avec un avion, une ville et une fenêtre d'arrivée. Tu le <b>programmes</b> sur une porte. Chaque jour, l'avion atterrit, roule jusqu'à sa porte, fait son escale, puis repart. Chaque vol rapporte de l'argent ; un retard coûte une pénalité.</p>
+      <h3>📅 Le planning (✈️)</h3>
+      <p>Une ligne par porte, sur 24 heures. Touche un contrat « à programmer », puis touche une porte à l'heure voulue (dans la zone orange : la fenêtre de la compagnie), ou laisse faire « Placer tout seul ». Un avion occupe la porte pendant son escale : deux vols ne peuvent pas se chevaucher. La porte doit être assez grande pour l'avion (S, M, L, XL).</p>
+      <h3>🚚 Les opérations au sol</h3>
+      <p>Pendant l'escale : débarquement, déchargement des bagages, inspection, nettoyage, repas, carburant, chargement des bagages, embarquement (et dégivrage quand il neige). Chacune a besoin d'un véhicule : s'il n'y en a pas de libre, elle attend et l'avion risque de partir en retard. Touche un avion pour voir où en est son escale. Achète des véhicules et améliore-les (plus rapides). Une <b>passerelle</b> évite le bus et va plus vite.</p>
+      <h3>🏢 Le terminal et les passagers</h3>
+      <p>Les passagers arrivent 2 h 30 à 50 min avant leur vol : enregistrement, contrôle de sûreté, puis attente. Trop d'attente, pas assez de sièges, pas de toilettes ou de café : ils sont mécontents. S'ils sont encore aux contrôles 15 minutes après l'heure, l'avion part sans eux ! Les boutiques, cafés et restaurants rapportent de l'argent. Touche une case vide pour construire, une construction pour l'améliorer, la déplacer ou la vendre.</p>
+      <h3>🤝 Les compagnies</h3>
+      <p>Chaque vol à l'heure, avec des passagers contents, augmente la <b>confiance</b> de la compagnie. À chaque palier, une récompense : de l'argent, un véhicule, un bonus sur ses vols, de nouvelles livrées pour ses avions (choisies dans le Hangar). Un contrat fini peut être renouvelé, un peu mieux payé.</p>
+      <h3>⭐ La progression</h3>
+      <p>Chaque vol donne de l'expérience : les niveaux débloquent de plus gros avions et de nouvelles constructions. Avec assez d'argent et d'expérience, débloque Port-Azur (au bord de la mer) puis Grand-Val (la métropole, avec ses très gros porteurs).</p>
+      <h3>🎮 Les commandes</h3>
+      <p>Glisse un doigt pour te déplacer, pince pour zoomer, tourne à deux doigts (ou ⟳). Touche un avion pour le suivre. En haut : pause et vitesse du temps (la nuit, passe en ×12).</p>
+    </div>
+  </div>
+</section>
+<script src="commun/three.min.js?v=151"></script>
+<script src="escale/monde.js?v=151"></script>
+<script src="escale/scene.js?v=151"></script>
+<script src="escale/jeu.js?v=151"></script>
+<script src="sauvegarde.js?v=151"></script>
+<script src="compte.js?v=151"></script>
+<script src="classement-jeu.js?v=151"></script>
+</body>
+</html>

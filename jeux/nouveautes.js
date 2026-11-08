@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:151, type:'nouveau', jeu:'Escale', ico:'✈️', lien:'jeux/escale.html',
+    txt:'Nouveau jeu : dirige ton aéroport en 3D ! Signe des contrats avec les compagnies, programme les vols sur tes portes, fais tourner les avions au sol et aménage le terminal pour des passagers contents. De l\'altiport de Col-Blanc à la métropole de Grand-Val.' },
   { v:150, type:'maj', jeu:'Paddock', ico:'🏎️', lien:'jeux/paddock.html',
     txt:'Stratégie de pneus : météo prévue tour par tour, usure des pneus mesurée en essais libres, propositions de l\'ingénieur que tu peux modifier. En course, il applique ta stratégie et ne la change que si c\'est nécessaire.' },
   { v:149, type:'maj', jeu:'Billard', ico:'🎱', lien:'jeux/billard.html',
