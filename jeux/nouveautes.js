@@ -3,6 +3,14 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:155, type:'maj', jeu:'Escale', ico:'✈️', lien:'jeux/escale.html',
+    txt:'Des panneaux plus discrets dans le terminal : les numéros des portes et les panneaux Départs et Arrivées sont plus petits.' },
+  { v:154, type:'maj', jeu:'Escale', ico:'✈️', lien:'jeux/escale.html',
+    txt:'Des portes d\'embarquement détaillées (numéro, comptoir, sièges), des panneaux Départs et Arrivées, et deux nouveaux espaces : le contrôle des passeports au départ et la douane à l\'arrivée pour les vols internationaux.' },
+  { v:153, type:'maj', jeu:'Escale', ico:'✈️', lien:'jeux/escale.html',
+    txt:'Un terminal plus détaillé : files d\'attente entre des poteaux à sangle, contrôles vitrés avec leurs agents, boutiques et salon en vitrine avec enseigne, cafés et restaurants avec muret, tables et chaises, écrans des départs…' },
+  { v:152, type:'maj', jeu:'Escale', ico:'✈️', lien:'jeux/escale.html',
+    txt:'Les passagers en 3D ! Zoome sur l\'aérogare : le toit s\'enlève et tu vois tes constructions et la foule qui fait la queue, attend, embarque ou récupère ses bagages.' },
   { v:151, type:'nouveau', jeu:'Escale', ico:'✈️', lien:'jeux/escale.html',
     txt:'Nouveau jeu : dirige ton aéroport en 3D ! Signe des contrats avec les compagnies, programme les vols sur tes portes, fais tourner les avions au sol et aménage le terminal pour des passagers contents. De l\'altiport de Col-Blanc à la métropole de Grand-Val.' },
   { v:150, type:'maj', jeu:'Paddock', ico:'🏎️', lien:'jeux/paddock.html',
