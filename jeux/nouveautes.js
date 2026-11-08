@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:161, type:'maj', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html',
+    txt:'La carte peut suivre ton orientation : touche le bouton ▲N et elle tourne avec toi (ta direction toujours vers le haut, grâce à la boussole ou à ton sens de marche). Touche-le encore pour remettre le nord en haut.' },
   { v:160, type:'maj', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html',
     txt:'Les pièces et les objets sont maintenant posés sur les chemins, les sentiers et les petites rues (d\'après OpenStreetMap), et plus sur les toits ou dans les jardins : on peut tous les atteindre.' },
   { v:159, type:'nouveau', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html',

@@ -38,11 +38,56 @@ const estRamasse = id => S.ramasses.ids.includes(id);
 
 /* ---------- La carte ---------- */
 const depart = S.dernierePos || { lat:46.6, lon:2.4 };
-const carte = L.map('carte', { zoomControl:false, attributionControl:true, zoomSnap:.5 }).setView([depart.lat, depart.lon], S.dernierePos ? 16 : 6);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · Wikipédia' }).addTo(carte);
+/* La carte peut tourner avec le téléphone (ta direction vers le haut). Leaflet ne sait pas tourner : la carte est un carré
+   aussi grand que la diagonale de l'écran, centré, qu'on fait tourner en CSS ; les icônes tournent dans l'autre sens pour
+   rester droites, et les touchers sont « détournés » avant que Leaflet les lise. Pendant la rotation, la carte suit le joueur
+   (on ne la fait pas glisser au doigt) et le zoom se fait autour du centre. */
+let cote = 0, relevement = 0, orienter = !!lire('arpenteur-reglages', {}).orienter;
+function tailleCarte(){
+  cote = Math.ceil(Math.hypot(innerWidth, innerHeight)) + 4;
+  const c = $('carte'); c.style.width = c.style.height = `${cote}px`; c.style.left = `${(innerWidth - cote) / 2}px`; c.style.top = `${(innerHeight - cote) / 2}px`;
+}
+tailleCarte();
+L.Map.include({ mouseEventToContainerPoint(e){
+  const r = this._container.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2), a = relevement * Math.PI / 180;
+  return L.point(cote / 2 + dx * Math.cos(a) - dy * Math.sin(a), cote / 2 + dx * Math.sin(a) + dy * Math.cos(a));
+} });
+const carte = L.map('carte', { zoomControl:false, attributionControl:false, zoomSnap:.5 }).setView([depart.lat, depart.lon], S.dernierePos ? 16 : 6);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(carte);
+addEventListener('resize', () => { tailleCarte(); carte.invalidateSize(); });
+// d'un point de la carte à un point de l'écran (la carte peut être tournée)
+function versEcran(ll){
+  const p = carte.latLngToContainerPoint(ll), dx = p.x - cote / 2, dy = p.y - cote / 2, a = -relevement * Math.PI / 180;
+  return { x:innerWidth / 2 + dx * Math.cos(a) - dy * Math.sin(a), y:innerHeight / 2 + dx * Math.sin(a) + dy * Math.cos(a) };
+}
 let suivre = true;
 carte.on('dragstart', () => { suivre = false; $('bCentre').classList.remove('actif'); });
 $('bCentre').onclick = () => { suivre = true; $('bCentre').classList.add('actif'); if(pos) carte.setView([pos.lat, pos.lon], Math.max(carte.getZoom(), 16)); };
+// le bouton boussole : carte orientée vers le nord, ou qui suit ta direction
+function appliquerOrientation(){
+  $('bOrient').classList.toggle('actif', orienter);
+  carte.options.touchZoom = carte.options.scrollWheelZoom = orienter ? 'center' : true;
+  if(orienter){ carte.dragging.disable(); suivre = true; $('bCentre').classList.add('actif'); if(pos) carte.setView([pos.lat, pos.lon], carte.getZoom(), { animate:false }); }
+  else carte.dragging.enable();
+}
+$('bOrient').onclick = () => {
+  orienter = !orienter; ecrire('arpenteur-reglages', { ...lire('arpenteur-reglages', {}), orienter });
+  if(orienter){ ecouterBoussole(); toast(capActuel() == null ? '🧭 La carte tournera dans ton sens de marche (ou avec la boussole du téléphone).' : '🧭 La carte suit ta direction.', '', 3000); }
+  else toast('🧭 Carte orientée vers le nord.', '', 2000);
+  appliquerOrientation();
+};
+// la rotation suit le cap doucement (et revient vers le nord quand on la coupe)
+function boucleOrientation(){
+  requestAnimationFrame(boucleOrientation);
+  const c = capActuel(), cible = orienter && c != null ? c : orienter ? relevement : 0;
+  const d = ((cible - relevement + 540) % 360) - 180;
+  if(Math.abs(d) < .05 && Math.abs(relevement - cible) < .05) return;
+  relevement = (relevement + d * .12 + 360) % 360; if(Math.abs(d) < .3) relevement = cible;
+  const el = $('carte'); el.style.transform = relevement ? `rotate(${-relevement}deg)` : ''; el.style.setProperty('--contre', `${relevement}deg`);
+  $('nord').style.transform = `rotate(${-relevement}deg)`;
+  majCap();
+}
+requestAnimationFrame(boucleOrientation);
 $('bPlus').onclick = () => carte.zoomIn(); $('bMoins').onclick = () => carte.zoomOut();
 const icone = (html, cls, taille) => L.divIcon({ className:'', html:`<div class="mk ${cls}">${html}</div>`, iconSize:[taille, taille], iconAnchor:[taille / 2, taille / 2] });
 const moi = L.marker([depart.lat, depart.lon], { icon:L.divIcon({ className:'', html:'<div class="moi"><i id="moiCap"></i></div>', iconSize:[22, 22], iconAnchor:[11, 11] }), interactive:false, zIndexOffset:1000 });
@@ -50,7 +95,7 @@ const precision = L.circle([depart.lat, depart.lon], { radius:20, color:'#2F80C8
 const trace = L.polyline([], { color:'#F28C28', weight:5, opacity:.85 });
 
 /* ---------- La position (GPS, ou le mode essai) ---------- */
-let dernierRoutes = null;
+let dernierRoutes = null, dernierSens = null;
 let pos = null, dernier = null, montre = null, capBoussole = null, capMarche = null, trop = false;
 function demarrerGps(){
   if(!navigator.geolocation){ etatGps('📡 Pas de GPS sur cet appareil', 'mal'); return; }
@@ -66,6 +111,8 @@ function nouvellePosition(lat, lon, acc, t){
   moi.setLatLng([lat, lon]); precision.setLatLng([lat, lon]).setRadius(acc);
   if(premier){ moi.addTo(carte); precision.addTo(carte); carte.setView([lat, lon], 17); }
   else if(suivre) carte.panTo([lat, lon], { animate:true, duration:.5 });
+  // le sens de la marche (pour la flèche et la carte orientée, quand le téléphone n'a pas de boussole)
+  if(acc <= 40){ if(!dernierSens) dernierSens = { lat, lon }; else if(O.distance(dernierSens.lat, dernierSens.lon, lat, lon) >= Math.max(6, acc * .5)){ capMarche = O.cap(dernierSens.lat, dernierSens.lon, lat, lon); dernierSens = { lat, lon }; } }
   // la distance : seulement pendant une sortie, avec un GPS assez précis, et pas en voiture
   trop = false;
   if(sortie && acc <= 40){
@@ -73,7 +120,6 @@ function nouvellePosition(lat, lon, acc, t){
     else {
       const d = O.distance(dernier.lat, dernier.lon, lat, lon), dt = Math.max(.5, (t - dernier.t) / 1000);
       if(d >= Math.max(4, acc * .4)){
-        capMarche = O.cap(dernier.lat, dernier.lon, lat, lon);
         if(d / dt <= VITESSE_MAX){
           sortie.metres += d; S.metres += d; S.reste += d;
           sortie.trace.push([+lat.toFixed(6), +lon.toFixed(6)]); trace.addLatLng([lat, lon]);
@@ -90,7 +136,8 @@ function nouvellePosition(lat, lon, acc, t){
   majSortie();
 }
 // la direction du joueur : la boussole si on l'a, sinon le sens de la marche
-function majCap(){ const c = capBoussole ?? capMarche, e = document.getElementById('moiCap'); if(e){ e.style.display = c == null ? 'none' : ''; if(c != null) e.style.transform = `rotate(${c}deg)`; } }
+const capActuel = () => capBoussole != null && performance.now() - dernierCapping < 3000 ? capBoussole : capMarche;
+function majCap(){ const c = capActuel(), e = document.getElementById('moiCap'); if(e){ e.style.display = c == null ? 'none' : ''; if(c != null) e.style.transform = `rotate(${c}deg)`; } }   // la flèche est dans la carte, qui tourne déjà de −relèvement
 
 // le mode essai : on marche (5 m/s) dans une direction, ou vers un point touché sur la carte
 let essaiDir = null, essaiCible = null, essaiTimer = null;
@@ -116,7 +163,7 @@ function gagner(n, ou, txt){
   if(n <= 0) return;
   const niv0 = O.niveauDe(S.points);
   S.points += n; if(sortie) sortie.points += n;
-  if(ou){ const p = carte.latLngToContainerPoint(ou), e = document.createElement('div'); e.className = 'gain'; e.textContent = `+${n}${txt ? ' ' + txt : ''}`; e.style.left = `${p.x - 20}px`; e.style.top = `${p.y - 30}px`; document.body.append(e); setTimeout(() => e.remove(), 1200); }
+  if(ou){ const p = versEcran(ou), e = document.createElement('div'); e.className = 'gain'; e.textContent = `+${n}${txt ? ' ' + txt : ''}`; e.style.left = `${p.x - 20}px`; e.style.top = `${p.y - 30}px`; document.body.append(e); setTimeout(() => e.remove(), 1200); }
   const niv1 = O.niveauDe(S.points);
   if(niv1 > niv0) toast(`⭐ Niveau ${niv1} : ${O.titre(niv1)} !`, 'or', 5000);
   majHud();
@@ -279,7 +326,7 @@ async function chercherLieux(force){
     for(const l of neufs) if(!lieux.some(x => x.pageid === l.pageid)) lieux.push(l);
     for(const l of lieux){
       if(marqueursLieux.has(l.pageid)) continue;
-      const vu = !!S.lieux[l.pageid], m = L.marker([l.lat, l.lon], { icon:L.divIcon({ className:'', html:`<div class="mk lieu${vu ? ' vu' : ''}"><span>${vu ? '✓' : '🏛️'}</span></div>`, iconSize:[30, 30], iconAnchor:[15, 30] }), zIndexOffset:300, title:l.titre });
+      const vu = !!S.lieux[l.pageid], m = L.marker([l.lat, l.lon], { icon:L.divIcon({ className:'', html:`<div class="mk lieu${vu ? ' vu' : ''}"><span>${vu ? '✓' : '🏛️'}</span></div>`, iconSize:[30, 30], iconAnchor:[15, 15] }), zIndexOffset:300, title:l.titre });
       m.on('click', e => { L.DomEvent.preventDefault(e.originalEvent); ficheLieu(l); });
       m.addTo(carte); marqueursLieux.set(l.pageid, m);
     }
@@ -320,7 +367,7 @@ async function visiter(l){
   if(sortie) sortie.lieux.push(l.titre);
   gagner(O.PTS.visite, [l.lat, l.lon]);
   toast(`📸 ${l.titre} : visité ! Carte postale ajoutée à ton carnet. +${O.PTS.visite}`, 'or', 4500);
-  const m = marqueursLieux.get(l.pageid); if(m) m.setIcon(L.divIcon({ className:'', html:'<div class="mk lieu vu"><span>✓</span></div>', iconSize:[30, 30], iconAnchor:[15, 30] }));
+  const m = marqueursLieux.get(l.pageid); if(m) m.setIcon(L.divIcon({ className:'', html:'<div class="mk lieu vu"><span>✓</span></div>', iconSize:[30, 30], iconAnchor:[15, 15] }));
   if(ficheLieuOuverte && ficheLieuOuverte.l === l) ficheLieuOuverte.majVisite();
   sauver();
 }
@@ -447,7 +494,9 @@ function surOrientation(e){
   if(e.beta != null) inclinaison = e.beta;
   if(!arOuverte) majCap();
 }
+let ecoute = false;
 async function ecouterBoussole(){
+  if(ecoute) return; ecoute = true;
   try{ if(typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); }catch(e){}
   if('ondeviceorientationabsolute' in window) addEventListener('deviceorientationabsolute', surOrientation);
   else addEventListener('deviceorientation', surOrientation);
@@ -527,6 +576,7 @@ function accueil(){
   $('bPartir').textContent = S.enCours ? '🧭 Reprendre la sortie en cours' : '🧭 Partir explorer';
 }
 function entrer(){
+  appliquerOrientation(); if(orienter) ecouterBoussole();
   $('eAccueil').hidden = true;
   for(const id of ['hud', 'xp', 'sortie', 'cotes', 'barre']) $(id).hidden = false;
   carte.invalidateSize(); majHud();
@@ -551,5 +601,5 @@ accueil();
 if(new URLSearchParams(location.search).has('essai')) $('bEssai').click();
 
 // pour les essais automatiques
-window.Arpenteur = { O, carte, segments, tuilesRoutes, aimanter, get S(){ return S; }, get pos(){ return pos; }, get lieux(){ return lieux; }, get sortie(){ return sortie; }, nouvellePosition, ramasser, marqueurs, ficheLieu, visiter, lancerSortie, finirSortie, ouvrirAr, fermerAr, set cap(c){ capManuel = c; } };
+window.Arpenteur = { O, carte, versEcran, get relevement(){ return relevement; }, get essaiCible(){ return essaiCible; }, segments, tuilesRoutes, aimanter, get S(){ return S; }, get pos(){ return pos; }, get lieux(){ return lieux; }, get sortie(){ return sortie; }, nouvellePosition, ramasser, marqueurs, ficheLieu, visiter, lancerSortie, finirSortie, ouvrirAr, fermerAr, set cap(c){ capManuel = c; } };
 })();
