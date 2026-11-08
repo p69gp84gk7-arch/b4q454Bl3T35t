@@ -515,7 +515,7 @@ window.ESCALE_MONDE = (() => {
     servir(A.qCheck, cap.comptoirs * .55 * dt, (id, n) => ajouterFile(A.qSecu, id, n));
     // après la sûreté, les vols internationaux passent les passeports (sans guichet, un seul policier très lent)
     servir(A.qSecu, cap.postes * 1.4 * dt, (id, n) => { const v = vols.get(id); if(!v) return; if(v.intl) ajouterFile(A.qPass, id, n); else v.airside += n; });
-    servir(A.qPass, (cap.passeports ? cap.passeports * 1.2 : .45) * dt, (id, n) => { const v = vols.get(id); if(v) v.airside += n; });
+    servir(A.qPass, (cap.passeports ? cap.passeports * 2 : .5) * dt, (id, n) => { const v = vols.get(id); if(v) v.airside += n; });
     // côté pistes : les places assises, et les commerces
     const airside = A.vols.reduce((s, v) => s + v.airside, 0);
     const debout = Math.max(0, airside - cap.places);
