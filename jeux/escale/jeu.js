@@ -2,7 +2,7 @@
    terminal, hangar, aéroports. La simulation est dans escale/monde.js, la 3D dans escale/scene.js. */
 (() => {
 'use strict';
-const M = window.ESCALE_MONDE, S3 = window.ESCALE_3D;
+const M = window.ESCALE_MONDE, S3 = window.ESCALE_3D, C = window.ESCALE_CONTROLE;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -54,7 +54,7 @@ function jouer(){
   fermerPanneau(); majHud(true);
 }
 function changerAeroport(id){ sauver(); P.actuel = id; A = A_(); S3.centrer(A); selVol = null; $('carteVol').hidden = true; majHud(true); ouvrir('aeroports'); }
-function taille(){ const w = innerWidth, h = innerHeight; S3.taille(w, h); }
+function taille(){ const w = innerWidth, h = innerHeight; S3.taille(w, h); C.taille(w, h); }
 addEventListener('resize', taille); if(window.visualViewport) visualViewport.addEventListener('resize', taille);
 
 /* ---------- La boucle ---------- */
@@ -63,6 +63,7 @@ function boucle(now){
   requestAnimationFrame(boucle);
   const dt = Math.min(.1, (now - avant) / 1000); avant = now;
   if(!enJeu || !A) return;
+  if(C.actif){ C.maj(dt); return; }                 // un mini-jeu de contrôle est ouvert : l'aéroport est en pause
   // la simulation, par petits pas
   let mins = dt * vitesse / SEC_PAR_MIN;
   while(mins > 1e-6){ const d = Math.min(.25, mins); M.pas(P, A, d); mins -= d; }
@@ -116,7 +117,7 @@ const doigts = new Map(); let geste = null;
 const cv = $('cv3d');
 cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); doigts.set(e.pointerId, { x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, t0:performance.now() }); if(doigts.size === 2) geste = etat2(); });
 cv.addEventListener('pointermove', e => {
-  const d = doigts.get(e.pointerId); if(!d) return;
+  const d = doigts.get(e.pointerId); if(!d || C.actif) return;
   const px = d.x, py = d.y; d.x = e.clientX; d.y = e.clientY;
   if(doigts.size === 1) S3.deplacer(d.x - px, d.y - py);
   else if(doigts.size === 2 && geste){ const g = etat2(); S3.zoomer(geste.dist / Math.max(20, g.dist)); S3.tourner(g.ang - geste.ang); geste = g; }
@@ -127,11 +128,24 @@ const lacher = e => {
   if(d && doigts.size === 0 && Math.hypot(d.x - d.x0, d.y - d.y0) < 8 && performance.now() - d.t0 < 400) toucher(d.x, d.y);
 };
 cv.addEventListener('pointerup', lacher); cv.addEventListener('pointercancel', e => { doigts.delete(e.pointerId); geste = null; });
-cv.addEventListener('wheel', e => { e.preventDefault(); S3.zoomer(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive:false });
+cv.addEventListener('wheel', e => { e.preventDefault(); if(C.actif) return; S3.zoomer(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive:false });
 function etat2(){ const [a, b] = [...doigts.values()]; return { dist:Math.hypot(a.x - b.x, a.y - b.y), ang:Math.atan2(b.y - a.y, b.x - a.x) }; }
-function toucher(x, y){ const id = S3.choisir(x, y); if(id){ selVol = id; S3.suivre(id); majCarteVol(); majObjectif(); } else if(selVol){ fermerCarteVol(); } }
+function toucher(x, y){
+  if(C.actif){ C.toucher(x, y); return; }
+  const id = S3.choisir(x, y); if(id){ selVol = id; S3.suivre(id); majCarteVol(); majObjectif(); return; }
+  const m = S3.choisirModule(x, y, A);
+  if(m && CONTROLES.includes(m.type)){ lancerControle(m.type); return; }
+  if(selVol) fermerCarteVol();
+}
+/* ---------- Les mini-jeux de contrôle (passeports, rayons X, douane) : l'aéroport se met en pause ---------- */
+const CONTROLES = ['passeports', 'securite', 'douane'];
+function lancerControle(type){
+  fermerPanneau(); if(selVol) fermerCarteVol(); sauver();
+  montrerJeu(false);
+  if(!C.ouvrir(type, () => { montrerJeu(true); majHud(); majObjectif(); avant = performance.now(); })) montrerJeu(true);
+}
 $('cPlus').onclick = () => S3.zoomer(1 / 1.35); $('cMoins').onclick = () => S3.zoomer(1.35); $('cTourne').onclick = () => S3.tourner(Math.PI / 4); $('cCentre').onclick = () => { S3.centrer(A); };
-addEventListener('keydown', e => { if(!enJeu) return; if(e.key === ' '){ vitesse = vitesse ? 0 : 1; majVitesse(); e.preventDefault(); } });
+addEventListener('keydown', e => { if(!enJeu || C.actif) return; if(e.key === ' '){ vitesse = vitesse ? 0 : 1; majVitesse(); e.preventDefault(); } });
 
 /* ---------- La carte de l'avion choisi ---------- */
 const ETATS = { prevu:'Pas encore là', approche:'🛬 En approche', atterrissage:'🛬 Atterrissage', roulageArr:'🛞 Roule vers sa porte', attentePoste:'⏳ Attend que sa porte se libère', escale:'🔧 Escale à la porte',
@@ -371,9 +385,10 @@ function afficherSel(){
   const el = $('tSel'); if(!el) return;
   if(!selModule || !A.terminal.modules.includes(selModule)){ el.innerHTML = ''; return; }
   const m = selModule, Mo = M.MODULES[m.type], pa = m.niv < M.NIV_MAX ? M.prixAmelioration(Mo.prix, m.niv) : null;
-  el.innerHTML = `<div class="item"><span class="ico">${Mo.ico}</span><div><b>${esc(Mo.nom)} · niveau ${m.niv}</b><small>${esc(Mo.desc)}</small></div><div class="act">${pa ? `<button class="btn prim" id="tAm" ${P.argent < pa ? 'disabled' : ''}>Niveau ${m.niv + 1} · ${court(pa)}</button>` : ''}<button class="btn" id="tDep">Déplacer</button><button class="btn rouge" id="tVend">Vendre (+${court(Mo.prix * .5)})</button></div></div>`;
+  el.innerHTML = `<div class="item"><span class="ico">${Mo.ico}</span><div><b>${esc(Mo.nom)} · niveau ${m.niv}</b><small>${esc(Mo.desc)}</small></div><div class="act">${pa ? `<button class="btn prim" id="tAm" ${P.argent < pa ? 'disabled' : ''}>Niveau ${m.niv + 1} · ${court(pa)}</button>` : ''}${CONTROLES.includes(m.type) ? '<button class="btn prim" id="tJouer">🎮 Jouer au contrôle</button>' : ''}<button class="btn" id="tDep">Déplacer</button><button class="btn rouge" id="tVend">Vendre (+${court(Mo.prix * .5)})</button></div></div>`;
   if($('tAm')) $('tAm').onclick = () => action(M.ameliorerModule(P, A, m), () => rafraichirPanneau(true));
   $('tDep').onclick = () => { deplace = m; rafraichirPanneau(true); };
+  if($('tJouer')) $('tJouer').onclick = () => lancerControle(m.type);
   $('tVend').onclick = () => { if(confirm(`Vendre ${Mo.nom.toLowerCase()} ?`)){ M.vendreModule(P, A, m); selModule = null; sauver(); majHud(); rafraichirPanneau(true); } };
 }
 // le plan du terminal, vu de dessus, avec des passagers qui se promènent
@@ -460,7 +475,7 @@ function pMenu(box){
 }
 
 /* ---------- Pour les essais ---------- */
-window.Escale = { get P(){ return P; }, get A(){ return A; }, M, S3, jouer, ouvrir, fermerPanneau, accueil, sauver, voir:id => { selVol = id; S3.suivre(id); majCarteVol(); }, changerAeroport, set vitesse(v){ vitesse = v; majVitesse(); }, nouvelle:() => { P = M.nouvellePartie(); sauver(); jouer(); } };
+window.Escale = { get P(){ return P; }, get A(){ return A; }, M, S3, C, lancerControle, jouer, ouvrir, fermerPanneau, accueil, sauver, voir:id => { selVol = id; S3.suivre(id); majCarteVol(); }, changerAeroport, set vitesse(v){ vitesse = v; majVitesse(); }, nouvelle:() => { P = M.nouvellePartie(); sauver(); jouer(); } };
 accueil();
 if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
 if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });

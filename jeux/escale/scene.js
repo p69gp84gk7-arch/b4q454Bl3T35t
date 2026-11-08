@@ -910,6 +910,16 @@ window.ESCALE_3D = (() => {
     }
     return best;
   }
+  // toucher l'écran : quel poste du terminal (seulement quand on voit l'intérieur) ?
+  function choisirModule(sx, sy, A){
+    if(!ok || !coupe) return null;
+    const r = rc(); r.setFromCamera(new T3.Vector2(sx / L * 2 - 1, -(sy / H) * 2 + 1), cam);
+    const pt = new T3.Vector3(); if(!r.ray.intersectPlane(new T3.Plane(new T3.Vector3(0, 1, 0), -.7), pt)) return null;
+    const G = grilleT(A, M.plan(A));
+    return A.terminal.modules.find(m => { const c = G.centre(m.x, m.y); return Math.abs(pt.x - c.x) < G.cw / 2 && Math.abs(pt.z - c.z) < G.cd / 2; }) || null;
+  }
+  // les outils de dessin, prêtés aux mini-jeux de contrôle (même moteur, même style)
+  const kit = () => ok ? { T3, R, objet, fusion, MAT, CONTOUR, get L(){ return L; }, get H(){ return H; } } : null;
   function suivre(id){ vue.suivi = id; if(id) vue.dist = Math.min(vue.dist, 300); }
   function rendu(){ if(ok) R.render(scene, cam); }
 
@@ -936,5 +946,5 @@ window.ESCALE_3D = (() => {
     RA.render(SA, CA);
   }
 
-  return { init, taille, maj, rendu, choisir, suivre, deplacer, zoomer, tourner, centrer, apercu, vue, get ok(){ return ok; }, get agents(){ return agents.length; }, _debug:() => ({ avions:[...avions].map(([id, a]) => ({ id, x:Math.round(a.obj.position.x), y:Math.round(a.obj.position.y), z:Math.round(a.obj.position.z), vis:a.obj.visible, enfants:a.corps.children.length, dansScene:!!a.obj.parent })), cam:cam.position.toArray().map(Math.round), vue:{ ...vue } }) };
+  return { init, taille, maj, rendu, choisir, choisirModule, kit, suivre, deplacer, zoomer, tourner, centrer, apercu, vue, get ok(){ return ok; }, get agents(){ return agents.length; }, _debug:() => ({ avions:[...avions].map(([id, a]) => ({ id, x:Math.round(a.obj.position.x), y:Math.round(a.obj.position.y), z:Math.round(a.obj.position.z), vis:a.obj.visible, enfants:a.corps.children.length, dansScene:!!a.obj.parent })), cam:cam.position.toArray().map(Math.round), vue:{ ...vue } }) };
 })();
