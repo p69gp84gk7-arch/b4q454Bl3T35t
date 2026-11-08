@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:160, type:'maj', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html',
+    txt:'Les pièces et les objets sont maintenant posés sur les chemins, les sentiers et les petites rues (d\'après OpenStreetMap), et plus sur les toits ou dans les jardins : on peut tous les atteindre.' },
   { v:159, type:'nouveau', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html',
     txt:'Nouveau jeu : Arpenteur ! Sors marcher, courir ou rouler avec ton téléphone : ramasse des pièces et des objets rares autour de toi sur la carte ou en vue caméra (AR), visite les lieux du coin avec leurs fiches Wikipédia, et gagne des points à chaque kilomètre. Un mode essai permet de découvrir le jeu sans bouger.' },
   { v:158, type:'maj', jeu:'Escale', ico:'⛽', lien:'jeux/escale.html',

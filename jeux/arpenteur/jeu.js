@@ -50,6 +50,7 @@ const precision = L.circle([depart.lat, depart.lon], { radius:20, color:'#2F80C8
 const trace = L.polyline([], { color:'#F28C28', weight:5, opacity:.85 });
 
 /* ---------- La position (GPS, ou le mode essai) ---------- */
+let dernierRoutes = null;
 let pos = null, dernier = null, montre = null, capBoussole = null, capMarche = null, trop = false;
 function demarrerGps(){
   if(!navigator.geolocation){ etatGps('📡 Pas de GPS sur cet appareil', 'mal'); return; }
@@ -84,6 +85,7 @@ function nouvellePosition(lat, lon, acc, t){
   }
   etatGps(acc > 40 ? `📡 GPS imprécis (±${Math.round(acc)} m)` : trop ? '🚗 Trop rapide : ça ne compte pas' : `📡 GPS ±${Math.round(acc)} m`, acc > 40 || trop ? 'mal' : 'bon');
   majCap();
+  if(!dernierRoutes || O.distance(dernierRoutes.lat, dernierRoutes.lon, lat, lon) > 400){ dernierRoutes = { lat, lon }; chargerRoutes(); }
   semer(); ramasserAutour(); chercherLieux();
   majSortie();
 }
@@ -127,6 +129,89 @@ function majHud(){
   $('xpBarre').style.width = `${clamp((S.points - a) / (b - a), 0, 1) * 100}%`;
 }
 
+/* ---------- Les routes et les chemins (OpenStreetMap, par l'API Overpass) : les objets y sont posés ---------- */
+// Sans ça, une pièce pourrait tomber sur un toit ou dans un jardin privé. Les routes sont chargées par tuiles de 0,02°
+// (environ 2 km) ; chaque objet glisse vers le chemin le plus proche (à 150 m au plus ; sinon, en pleine nature, il reste où il est).
+// Les chemins pour piétons et vélos sont préférés aux petites rues ; les grandes routes, les autoroutes, les tunnels et
+// les voies privées sont exclus.
+const TUILE_R = .02, GR = .004, AIMANT_MAX = 150;
+const PIETONS = ['footway', 'path', 'pedestrian', 'cycleway', 'track', 'steps', 'bridleway', 'living_street'];
+const RUES = ['residential', 'service', 'unclassified', 'tertiary'];
+const tuilesRoutes = new Map();      // clé → { etat:'charge'|'ok'|'erreur', t }
+const segments = new Map();          // case de la grille (0,004°) → [[lat1, lon1, lat2, lon2, piéton ?]]
+const cleTuile = (lat, lon) => `${Math.floor(lat / TUILE_R)}:${Math.floor(lon / TUILE_R)}`;
+const etatRoutes = (lat, lon) => (tuilesRoutes.get(cleTuile(lat, lon)) || {}).etat;
+function ajouterSegment(a, b, pieton){
+  const s = [a.lat, a.lon, b.lat, b.lon, pieton];
+  for(let gy = Math.floor(Math.min(a.lat, b.lat) / GR); gy <= Math.floor(Math.max(a.lat, b.lat) / GR); gy++)
+    for(let gx = Math.floor(Math.min(a.lon, b.lon) / GR); gx <= Math.floor(Math.max(a.lon, b.lon) / GR); gx++){
+      const k = gy + ':' + gx; if(!segments.has(k)) segments.set(k, []); segments.get(k).push(s);
+    }
+}
+// une seule demande à la fois (le service Overpass limite le nombre de demandes simultanées), la plus proche d'abord
+const fileRoutes = []; let routesEnCours = false;
+async function suivanteTuile(){
+  if(routesEnCours || !fileRoutes.length) return;
+  if(pos) fileRoutes.sort((a, b) => Math.hypot(a[0] + .5 - pos.lat / TUILE_R, a[1] + .5 - pos.lon / TUILE_R) - Math.hypot(b[0] + .5 - pos.lat / TUILE_R, b[1] + .5 - pos.lon / TUILE_R));
+  routesEnCours = true; const [ty, tx] = fileRoutes.shift();
+  await chargerTuile(ty, tx);
+  routesEnCours = false; suivanteTuile();
+}
+function demanderTuile(ty, tx){
+  const cle = ty + ':' + tx, e = tuilesRoutes.get(cle);
+  if(e && (e.etat !== 'erreur' || Date.now() - e.t < 60000)) return;
+  if(fileRoutes.some(f => f[0] === ty && f[1] === tx)) return;
+  if(!e) tuilesRoutes.set(cle, { etat:'charge', t:Date.now() });
+  fileRoutes.push([ty, tx]); suivanteTuile();
+}
+async function chargerTuile(ty, tx){
+  const cle = ty + ':' + tx;
+  tuilesRoutes.set(cle, { etat:'charge', t:Date.now() });
+  const s = ty * TUILE_R, w = tx * TUILE_R, n = s + TUILE_R, est = w + TUILE_R;
+  const q = `[out:json][timeout:25];way["highway"~"^(${[...PIETONS, ...RUES].join('|')})$"]["access"!~"^(private|no)$"]["tunnel"!~"^(yes|building_passage)$"](${s},${w},${n},${est});out geom;`;
+  try{
+    const r = await fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q));
+    if(!r.ok) throw new Error('overpass ' + r.status);
+    const j = await r.json();
+    for(const el of j.elements || []){
+      if(!el.geometry) continue;
+      const pieton = PIETONS.includes(el.tags && el.tags.highway);
+      for(let i = 1; i < el.geometry.length; i++) ajouterSegment(el.geometry[i - 1], el.geometry[i], pieton);
+    }
+    tuilesRoutes.set(cle, { etat:'ok', t:Date.now() });
+  }catch(err){ tuilesRoutes.set(cle, { etat:'erreur', t:Date.now() }); setTimeout(chargerRoutes, 65000); }
+  semer(true);
+}
+// les tuiles autour du joueur (dans 1 km)
+function chargerRoutes(){
+  if(!pos) return;
+  const d = .01, ty0 = Math.floor((pos.lat - d) / TUILE_R), ty1 = Math.floor((pos.lat + d) / TUILE_R), dl = d / Math.cos(pos.lat * Math.PI / 180), tx0 = Math.floor((pos.lon - dl) / TUILE_R), tx1 = Math.floor((pos.lon + dl) / TUILE_R);
+  for(let ty = ty0; ty <= ty1; ty++) for(let tx = tx0; tx <= tx1; tx++) demanderTuile(ty, tx);
+}
+// le point le plus proche sur un chemin (les petites rues comptent 12 m de plus : on préfère les chemins)
+function aimanter(lat, lon, graine){
+  const kx = Math.cos(lat * Math.PI / 180) * 111320, ky = 110540, gy = Math.floor(lat / GR), gx = Math.floor(lon / GR), vus = new Set();
+  let best = null, bd = Infinity;
+  for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++) for(const s of segments.get((gy + dy) + ':' + (gx + dx)) || []){
+    if(vus.has(s)) continue; vus.add(s);
+    const ax = (s[1] - lon) * kx, ay = (s[0] - lat) * ky, bx = (s[3] - lon) * kx, by = (s[2] - lat) * ky, vx = bx - ax, vy = by - ay, l2 = vx * vx + vy * vy;
+    const t = l2 ? clamp(-(ax * vx + ay * vy) / l2, 0, 1) : 0, px = ax + t * vx, py = ay + t * vy, d = Math.hypot(px, py) + (s[4] ? 0 : 12);
+    if(d < bd){ bd = d; best = { s, t, l:Math.sqrt(l2) }; }
+  }
+  if(!best || bd > AIMANT_MAX + 12) return null;
+  // un petit décalage le long du chemin (toujours le même pour un objet), pour que deux objets voisins ne se superposent pas
+  const { s, l } = best, dec = l > 1 ? ((O.hache(graine) % 21) - 10) / l : 0, t = clamp(best.t + dec, 0, 1);
+  return { lat:s[0] + (s[2] - s[0]) * t, lon:s[1] + (s[3] - s[1]) * t };
+}
+// poser un objet sur un chemin, si les routes de sa tuile sont chargées
+function poser(it){
+  if(it.pose) return false;
+  if(etatRoutes(it.lat, it.lon) !== 'ok') return false;        // pas encore chargé (ou pas de réseau) : il reste où il est pour l'instant
+  const q = aimanter(it.lat, it.lon, it.id); it.pose = q ? 'chemin' : 'libre';
+  if(q){ it.lat = q.lat; it.lon = q.lon; }
+  return !!q;
+}
+
 /* ---------- Les pièces et les objets autour de soi ---------- */
 const marqueurs = new Map();    // id → { it, m }
 let dernierSemis = null;
@@ -137,15 +222,20 @@ function itemsAutour(){
 }
 function semer(force){
   if(!pos) return;
+  // au début, on attend (6 s au plus) les chemins autour de soi, pour ne pas voir les objets sauter des toits vers les rues
+  const e = etatRoutes(pos.lat, pos.lon), t = (tuilesRoutes.get(cleTuile(pos.lat, pos.lon)) || {}).t || 0;
+  if((!e || e === 'charge') && Date.now() - t < 6000){ if(!e) chargerRoutes(); setTimeout(() => semer(true), 1500); return; }
   if(!force && dernierSemis && O.distance(dernierSemis.lat, dernierSemis.lon, pos.lat, pos.lon) < 60 && dernierSemis.jour === O.jourDe()) return;
   dernierSemis = { lat:pos.lat, lon:pos.lon, jour:O.jourDe() };
   const l = itemsAutour(), vus = new Set();
   for(const it of l){
     vus.add(it.id);
-    if(marqueurs.has(it.id)) continue;
+    const x = marqueurs.has(it.id) && marqueurs.get(it.id);
+    if(x){ if(poser(x.it)) x.m.setLatLng([x.it.lat, x.it.lon]); continue; }
+    poser(it);
     const o = it.objet && O.TOUS[it.objet];
     const m = L.marker([it.lat, it.lon], { icon:it.type === 'piece' ? icone('🪙', 'piece', 24) : L.divIcon({ className:'', html:`<div class="mk objet" style="--c:${O.RARETES[o.rar].coul}">${o.ico}</div>`, iconSize:[34, 34], iconAnchor:[17, 17] }), zIndexOffset:it.type === 'objet' ? 500 : 0 });
-    m.on('click', e => { L.DomEvent.preventDefault(e.originalEvent); ramasser(it); });
+    m.on('click', ev => { L.DomEvent.preventDefault(ev.originalEvent); ramasser(it); });
     m.addTo(carte); marqueurs.set(it.id, { it, m });
   }
   for(const [id, x] of marqueurs) if(!vus.has(id)){ carte.removeLayer(x.m); marqueurs.delete(id); }
@@ -461,5 +551,5 @@ accueil();
 if(new URLSearchParams(location.search).has('essai')) $('bEssai').click();
 
 // pour les essais automatiques
-window.Arpenteur = { O, carte, get S(){ return S; }, get pos(){ return pos; }, get lieux(){ return lieux; }, get sortie(){ return sortie; }, nouvellePosition, ramasser, marqueurs, ficheLieu, visiter, lancerSortie, finirSortie, ouvrirAr, fermerAr, set cap(c){ capManuel = c; } };
+window.Arpenteur = { O, carte, segments, tuilesRoutes, aimanter, get S(){ return S; }, get pos(){ return pos; }, get lieux(){ return lieux; }, get sortie(){ return sortie; }, nouvellePosition, ramasser, marqueurs, ficheLieu, visiter, lancerSortie, finirSortie, ouvrirAr, fermerAr, set cap(c){ capManuel = c; } };
 })();
