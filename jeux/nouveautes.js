@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:162, type:'maj', jeu:'Escale', ico:'🧳', lien:'jeux/escale.html',
+    txt:'Un terminal plus grand : 5 rangées, de larges allées et des petits objets à poser (bancs, plantes, poubelles, écrans, distributeurs…), directement dans la vue 3D. Toucher l\'aéroport ouvre le bon menu (une boutique, le sol, les cuves, une porte). Nouveau mini-jeu : le tri des bagages au comptoir d\'enregistrement. Et une jauge de carburant qui clignote quand la cuve est presque vide, et des hélices qui tournent enfin sur leur moteur !' },
   { v:161, type:'maj', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html',
     txt:'La carte peut suivre ton orientation : touche le bouton ▲N et elle tourne avec toi (ta direction toujours vers le haut, grâce à la boussole ou à ton sens de marche). Touche-le encore pour remettre le nord en haut.' },
   { v:160, type:'maj', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html',

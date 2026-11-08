@@ -41,7 +41,7 @@ $('bJouer').onclick = () => { if(!P){ P = M.nouvellePartie(); sauver(); } jouer(
 $('bNouvelle').onclick = () => { if(!confirm('Recommencer une nouvelle partie ? La partie en cours sera perdue.')) return; P = M.nouvellePartie(); sauver(); jouer(); };
 $('bAide').onclick = () => { $('eAide').hidden = false; $('eAccueil').hidden = true; };
 $('bAideRetour').onclick = () => { $('eAide').hidden = true; if(enJeu) return; $('eAccueil').hidden = false; };
-function montrerJeu(v){ for(const id of ['hud', 'onglets', 'cam', 'xp']) $(id).hidden = !v; if(!v){ $('panneau').hidden = true; $('carteVol').hidden = true; $('objectif').hidden = true; } }
+function montrerJeu(v){ for(const id of ['hud', 'onglets', 'cam', 'xp', 'hCarbu']) $(id).hidden = !v; if(!v){ $('panneau').hidden = true; $('carteVol').hidden = true; $('objectif').hidden = true; } }
 
 /* ---------- Jouer ---------- */
 function jouer(){
@@ -67,6 +67,7 @@ function boucle(now){
   // la simulation, par petits pas
   let mins = dt * vitesse / SEC_PAR_MIN;
   while(mins > 1e-6){ const d = Math.min(.25, mins); M.pas(P, A, d); mins -= d; }
+  S3.surbrillance(A, modePlacement());
   S3.maj(A, P, dt); S3.rendu();
   tHud += dt; tPanneau += dt; tObj += dt;
   if(tHud > .2){ tHud = 0; majHud(); toasts(); if(selVol) majCarteVol(); }
@@ -77,6 +78,8 @@ requestAnimationFrame(boucle);
 
 /* ---------- La barre du haut ---------- */
 const METEO = { beau:'☀️', nuages:'⛅', neige:'❄️' };
+let alerteCarbu = false;
+$('hCarbu').onclick = () => { sousOnglet.sol = 'carbu'; ouvrir('sol'); };
 function majHud(){
   const D = M.AEROPORTS[A.id], t = A.t, mn = M.minuteDe(t), nuit = mn < 360 || mn > 1230;
   $('hNom').textContent = `${D.ico} ${D.nom}`;
@@ -84,6 +87,12 @@ function majHud(){
   const b = $('hArgent'); b.textContent = court(P.argent); b.classList.toggle('neg', P.argent < 0);
   const niv = M.niveauDe(P.xp), x0 = M.xpNiveau(niv), x1 = M.xpNiveau(niv + 1);
   $('hNiv').textContent = `⭐ Niveau ${niv}`;
+  // la jauge de la cuve : elle clignote en rouge sous 15 % (ou sous 25 % sans camion en route)
+  const C = A.carbu, pc = C.stock / M.capCuve(C), bas = pc < .15 || (pc < .25 && !C.commandes.length);
+  $('hCarbuNiv').style.width = `${Math.round(pc * 100)}%`; $('hCarbuTxt').textContent = `⛽ ${Math.round(pc * 100)} %`; $('hCarbu').classList.toggle('bas', bas);
+  $('hCarbu').title = `Cuve : ${Math.round(C.stock).toLocaleString('fr-FR')} L (${Math.round(pc * 100)} %)`;
+  if(bas && !alerteCarbu){ alerteCarbu = true; A.toasts.push({ txt:`⛽ Cuve à ${Math.round(pc * 100)} % : commande du carburant (touche la jauge ⛽).`, type:'mal' }); }
+  if(!bas) alerteCarbu = false;
   $('xpBarre').style.width = `${clamp((P.xp - x0) / (x1 - x0), 0, 1) * 100}%`;
   // les pastilles : récompenses à recevoir, contrats à programmer, offres
   const pastille = (p, n) => { const b = document.querySelector(`.onglets [data-p="${p}"]`); let s = b.querySelector('.pastille'); if(n > 0){ if(!s){ s = document.createElement('span'); s.className = 'pastille'; b.append(s); } s.textContent = n; } else if(s) s.remove(); };
@@ -132,16 +141,32 @@ cv.addEventListener('wheel', e => { e.preventDefault(); if(C.actif) return; S3.z
 function etat2(){ const [a, b] = [...doigts.values()]; return { dist:Math.hypot(a.x - b.x, a.y - b.y), ang:Math.atan2(b.y - a.y, b.x - a.x) }; }
 function toucher(x, y){
   if(C.actif){ C.toucher(x, y); return; }
-  const id = S3.choisir(x, y); if(id){ selVol = id; S3.suivre(id); majCarteVol(); majObjectif(); return; }
-  const m = S3.choisirModule(x, y, A);
-  if(m && CONTROLES.includes(m.type)){ lancerControle(m.type); return; }
-  if(selVol) fermerCarteVol();
+  const enPlacement = panneau === 'terminal' && (outil || deplace);
+  if(!enPlacement){ const id = S3.choisir(x, y); if(id){ selVol = id; S3.suivre(id); majCarteVol(); majObjectif(); return; } }
+  const c = S3.cibler(x, y, A); if(!c) return;
+  // en train de construire, de poser ou de déplacer : on le fait là où on touche
+  if(enPlacement){ if(c.zone === 'case') agirCase(c); else alerte(S3.coupe ? 'Touche une case du terminal (en vert).' : 'Zoome sur le terminal pour voir ses cases.'); return; }
+  if(selVol){ fermerCarteVol(); return; }
+  if(c.zone === 'case'){
+    const m = A.terminal.modules.find(o => o.x === c.x && o.y === c.y);
+    if(m && POSTES_JEU[m.type]){ lancerControle(m.type); return; }
+    if(panneau !== 'terminal') ouvrir('terminal');
+    selectionner(c); rafraichirPanneau(true); return;
+  }
+  // ailleurs : le menu qui correspond à ce qu'on a touché (toucher encore le même endroit le referme)
+  const cible = { terminal:['terminal'], jetee:['planning'], porte:['planning'], piste:['planning'], carburant:['sol', 'carbu'], depot:['sol', 'veh'], sol:['sol', 'veh'], tour:['menu'] }[c.zone];
+  if(!cible) return;
+  if(panneau === cible[0] && (!cible[1] || sousOnglet.sol === cible[1])){ fermerPanneau(); return; }
+  if(cible[1]) sousOnglet.sol = cible[1];
+  ouvrir(cible[0]);
 }
 /* ---------- Les mini-jeux de contrôle (passeports, rayons X, douane) : l'aéroport se met en pause ---------- */
 const CONTROLES = ['passeports', 'securite', 'douane'];
+const POSTES_JEU = { passeports:'passeports', securite:'securite', douane:'douane', comptoir:'bagages' };
 function lancerControle(type){
   fermerPanneau(); if(selVol) fermerCarteVol(); sauver();
   montrerJeu(false);
+  type = POSTES_JEU[type] || type;
   if(!C.ouvrir(type, () => { montrerJeu(true); majHud(); majObjectif(); avant = performance.now(); })) montrerJeu(true);
 }
 $('cPlus').onclick = () => S3.zoomer(1 / 1.35); $('cMoins').onclick = () => S3.zoomer(1.35); $('cTourne').onclick = () => S3.tourner(Math.PI / 4); $('cCentre').onclick = () => { S3.centrer(A); };
@@ -189,10 +214,10 @@ $('pFermer').onclick = () => fermerPanneau();
 function ouvrir(p){
   panneau = p; $('panneau').hidden = false; $('pTitre').textContent = TITRES[p];
   [...document.querySelectorAll('.onglets button')].forEach(b => b.classList.toggle('actif', b.dataset.p === p));
-  placement = null; selModule = null; outil = null;
+  placement = null; selModule = null; selPetit = null; outil = null; deplace = null; $('panneau').classList.remove('compact');
   rafraichirPanneau(true); majObjectif();
 }
-function fermerPanneau(){ panneau = null; $('panneau').hidden = true; [...document.querySelectorAll('.onglets button')].forEach(b => b.classList.remove('actif')); placement = null; majObjectif(); }
+function fermerPanneau(){ panneau = null; $('panneau').hidden = true; outil = null; deplace = null; $('panneau').classList.remove('compact'); [...document.querySelectorAll('.onglets button')].forEach(b => b.classList.remove('actif')); placement = null; majObjectif(); }
 function rafraichirPanneau(complet = false){
   if(!panneau) return;
   const f = { planning:pPlanning, compagnies:pCompagnies, sol:pSol, terminal:pTerminal, hangar:pHangar, aeroports:pAeroports, menu:pMenu }[panneau];
@@ -395,7 +420,30 @@ function pSol(box){
 }
 
 /* ----- Le terminal : le plan, les constructions, les passagers ----- */
-let selModule = null, outil = null, deplace = null;
+let selModule = null, selPetit = null, outil = null, deplace = null;
+const estPetit = o => !!o && (A.terminal.petits || []).includes(o);
+// choisir ce qu'il y a sur une case (une construction, sinon un petit objet de la petite case touchée)
+function selectionner(c){
+  selModule = A.terminal.modules.find(o => o.x === c.x && o.y === c.y) || null;
+  selPetit = selModule ? null : (A.terminal.petits || []).find(p => p.x === c.qx && p.y === c.qy) || null;
+}
+// construire, poser ou déplacer sur la case touchée (dans la vue 3D ou sur le plan)
+function agirCase(c){
+  if(deplace){
+    const petit = estPetit(deplace), err = petit ? M.deplacerPetit(A, deplace, c.qx, c.qy) : M.deplacerModule(A, deplace, c.x, c.y);
+    if(!alerte(err)){ if(petit) selPetit = deplace; else selModule = deplace; deplace = null; sauver(); }
+    rafraichirPanneau(true); return true;
+  }
+  if(outil && outil.startsWith('p:')){
+    const t = outil.slice(2), O = M.PETITS[t];
+    action(M.poserPetit(P, A, c.qx, c.qy, t), () => A.toasts.push({ txt:`${O.ico} ${O.nom} posé (${court(O.prix)}). Touche une autre case pour en poser un autre.`, type:'bon' }));
+    rafraichirPanneau(true); return true;
+  }
+  if(outil){ action(M.construire(P, A, c.x, c.y, outil), () => { selModule = A.terminal.modules.find(o => o.x === c.x && o.y === c.y); selPetit = null; outil = null; }); rafraichirPanneau(true); return true; }
+  return false;
+}
+// pendant un placement, les cases libres s'allument en vert dans la vue 3D
+function modePlacement(){ if(panneau !== 'terminal') return null; if(outil) return outil.startsWith('p:') ? 'petit' : 'module'; if(deplace) return estPetit(deplace) ? 'petit' : 'module'; return null; }
 function pTerminal(box, complet){
   const cap = M.capacites(A), ca = A.capAffiche || { airside:0, check:0, secu:0 }, J = A.jourStats;
   const manque = [];
@@ -405,42 +453,71 @@ function pTerminal(box, complet){
   const intl = A.contrats.some(c => M.international(c.ville));
   if(intl && !cap.passeports) manque.push('un contrôle des passeports pour les vols internationaux (sinon de très longues files)');
   if(intl && !cap.douane) manque.push('une douane pour les arrivées internationales');
+  // en train de placer : le panneau se réduit à un bandeau pour laisser voir la vue 3D
+  const placer = outil || deplace;
+  $('panneau').classList.toggle('compact', !!placer);
+  if(placer){
+    if(!complet && box.querySelector('#tPlacer')) return;
+    const petit = outil ? outil.startsWith('p:') : estPetit(deplace), O = outil ? (petit ? M.PETITS[outil.slice(2)] : M.MODULES[outil]) : petit ? M.PETITS[deplace.type] : M.MODULES[deplace.type];
+    box.innerHTML = `<div class="bloc" id="tPlacer"><div class="item"><span class="ico">${O.ico}</span><div><b>${deplace ? 'Déplacer : ' : ''}${esc(O.nom)}</b><small>${deplace ? 'Touche la nouvelle place' : `${court(O.prix)} · touche une ${petit ? 'petite case' : 'case'} verte`} dans la vue 3D${petit && !deplace ? ' (tu peux en poser plusieurs)' : ''}.</small></div><div class="act"><button class="btn" id="tPlan">🗺️ Plan</button><button class="btn rouge" id="tAnnuler">✕ ${petit && !deplace ? 'Terminé' : 'Annuler'}</button></div></div></div>`
+      + (planOuvert ? '<canvas class="plan2d" id="plan2d"></canvas>' : '');
+    $('tAnnuler').onclick = () => { outil = null; deplace = null; rafraichirPanneau(true); };
+    $('tPlan').onclick = () => { planOuvert = !planOuvert; rafraichirPanneau(true); };
+    if(planOuvert){ dessinerPlan(); brancherPlan(); }
+    // la vue 3D se met sur le terminal (on doit voir l'intérieur)
+    if(!S3.coupe) voirTerminal();
+    return;
+  }
   if(!complet && box.querySelector('#plan2d')){
     // mise à jour légère : les chiffres et le dessin
     const st = box.querySelector('#tStats'); if(st) st.innerHTML = statsTerminal(cap, ca, J);
     dessinerPlan(); return;
   }
+  const verrou = Mo => Mo.niv && M.niveauDe(P.xp) < Mo.niv;
   let h = `<div class="stats" id="tStats">${statsTerminal(cap, ca, J)}</div>
     ${manque.length ? `<p class="leg mal">⚠️ Il manque ${manque.join(', ')}.</p>` : ''}
     <canvas class="plan2d" id="plan2d"></canvas>
-    <p class="leg" id="tAide">${deplace ? 'Touche la case où déplacer la construction.' : outil ? `Touche une case vide pour construire : ${M.MODULES[outil].nom.toLowerCase()}.` : 'Touche une case vide pour construire, ou une construction pour l\'améliorer.'} En bas : côté ville (enregistrement, contrôles, bagages) ; en haut : côté pistes.</p>
+    <p class="leg" id="tAide">Choisis une construction ou un petit objet ci-dessous, puis touche sa place directement dans la vue 3D (ou sur ce plan). Touche une construction pour l'améliorer. En bas du plan : côté ville (enregistrement, contrôles, bagages) ; en haut : côté pistes. Entre les constructions, les allées sont découpées en petites cases pour les petits objets.</p>
     <div id="tSel"></div>
-    <div class="bloc"><h3>Construire</h3><div class="palette">${Object.entries(M.MODULES).map(([k, Mo]) => { const verrou = Mo.niv && M.niveauDe(P.xp) < Mo.niv;
-      return `<button data-outil="${k}" class="${outil === k ? 'actif' : ''}" ${verrou || P.argent < Mo.prix ? 'disabled' : ''}><span>${Mo.ico}</span>${esc(Mo.nom)}<small>${verrou ? `niveau ${Mo.niv}` : court(Mo.prix)}</small></button>`; }).join('')}</div>
-      <button class="btn" id="tAgr" ${P.argent < M.prixAgrandir(A) ? 'disabled' : ''}>↔️ Agrandir le terminal · ${court(M.prixAgrandir(A))}</button></div>`;
+    <div class="bloc"><h3>Construire</h3><div class="palette">${Object.entries(M.MODULES).map(([k, Mo]) => `<button data-outil="${k}" ${verrou(Mo) || P.argent < Mo.prix ? 'disabled' : ''}><span>${Mo.ico}</span>${esc(Mo.nom)}<small>${verrou(Mo) ? `niveau ${Mo.niv}` : court(Mo.prix)}</small></button>`).join('')}</div>
+      <button class="btn" id="tAgr" ${P.argent < M.prixAgrandir(A) ? 'disabled' : ''}>↔️ Agrandir le terminal · ${court(M.prixAgrandir(A))}</button></div>
+    <div class="bloc"><h3>Petits objets (dans les allées)</h3><div class="palette">${Object.entries(M.PETITS).map(([k, O]) => `<button data-outil="p:${k}" ${P.argent < O.prix ? 'disabled' : ''} title="${esc(O.desc)}"><span>${O.ico}</span>${esc(O.nom)}<small>${court(O.prix)}</small></button>`).join('')}</div>
+      <p class="leg">Bancs : 6 places assises. Poubelles : un terminal propre (environ une pour 6 cases). Plantes, écrans, bornes, fontaines : un peu plus de satisfaction. Distributeurs : un peu d'argent.</p></div>`;
   box.innerHTML = h;
-  dessinerPlan(); afficherSel();
-  const cvp = $('plan2d');
-  cvp.onclick = e => {
-    const r = cvp.getBoundingClientRect(), T = A.terminal, cw = r.width / T.l, ch = r.height / T.h, x = Math.floor((e.clientX - r.left) / cw), y = T.h - 1 - Math.floor((e.clientY - r.top) / ch);
-    const m = A.terminal.modules.find(o => o.x === x && o.y === y);
-    if(deplace){ if(!alerte(M.deplacerModule(A, deplace, x, y))){ deplace = null; sauver(); } rafraichirPanneau(true); return; }
-    if(m){ selModule = m; outil = null; rafraichirPanneau(true); return; }
-    if(outil){ action(M.construire(P, A, x, y, outil), () => { selModule = A.terminal.modules.find(o => o.x === x && o.y === y); outil = null; }); rafraichirPanneau(true); return; }
-    selModule = null; rafraichirPanneau(true);
-  };
-  box.querySelectorAll('[data-outil]').forEach(b => b.onclick = () => { outil = outil === b.dataset.outil ? null : b.dataset.outil; selModule = null; rafraichirPanneau(true); });
+  dessinerPlan(); afficherSel(); brancherPlan();
+  box.querySelectorAll('[data-outil]').forEach(b => b.onclick = () => { outil = b.dataset.outil; selModule = selPetit = null; rafraichirPanneau(true); });
   $('tAgr').onclick = () => action(M.agrandirTerminal(P, A), () => rafraichirPanneau(true));
 }
+let planOuvert = false;
+// toucher le plan 2D : la case et la petite case touchées
+function brancherPlan(){
+  const cvp = $('plan2d'); if(!cvp) return;
+  cvp.onclick = e => {
+    const r = cvp.getBoundingClientRect(), T = A.terminal, fx = (e.clientX - r.left) / r.width * T.l, fy = T.h - (e.clientY - r.top) / r.height * T.h;
+    const c = { x:Math.floor(fx), y:Math.floor(fy), qx:Math.floor(fx * 2), qy:Math.floor(fy * 2) };
+    if(c.x < 0 || c.y < 0 || c.x >= T.l || c.y >= T.h) return;
+    if(agirCase(c)) return;
+    selectionner(c); rafraichirPanneau(true);
+  };
+}
+// placer la caméra au-dessus du terminal (assez près pour voir l'intérieur)
+function voirTerminal(){ const Pl = M.plan(A), T = Pl.terminal; S3.vue.x = (T.x0 + T.x1) / 2; S3.vue.z = (T.z0 + T.z1) / 2 + 12; S3.vue.dist = Math.min(380, Math.max(180, (T.x1 - T.x0) * 1.3)); S3.vue.suivi = null; }
 function statsTerminal(cap, ca, J){
   return `<div><b>${Math.round(ca.check)}</b>à l'enregistrement (${Math.round(cap.comptoirs)} comptoirs)</div><div><b>${Math.round(ca.secu)}</b>à la sûreté (${Math.round(cap.postes * 10) / 10} postes)</div><div><b>${Math.round(ca.pass || 0)}</b>aux passeports (${Math.round(cap.passeports)} guichets)</div>
     <div><b>${Math.round(ca.airside)}/${Math.round(cap.places)}</b>en salle / sièges</div><div><b>${court(J.commerce)}</b>de commerces aujourd'hui</div>`;
 }
 function afficherSel(){
   const el = $('tSel'); if(!el) return;
+  if(selPetit && estPetit(selPetit)){
+    const p = selPetit, O = M.PETITS[p.type];
+    el.innerHTML = `<div class="item"><span class="ico">${O.ico}</span><div><b>${esc(O.nom)}</b><small>${esc(O.desc)}</small></div><div class="act"><button class="btn" id="tDepP">Déplacer</button><button class="btn rouge" id="tRet">Enlever (+${court(O.prix * .5)})</button></div></div>`;
+    $('tDepP').onclick = () => { deplace = p; rafraichirPanneau(true); };
+    $('tRet').onclick = () => { M.retirerPetit(P, A, p); selPetit = null; sauver(); majHud(); rafraichirPanneau(true); };
+    return;
+  }
   if(!selModule || !A.terminal.modules.includes(selModule)){ el.innerHTML = ''; return; }
   const m = selModule, Mo = M.MODULES[m.type], pa = m.niv < M.NIV_MAX ? M.prixAmelioration(Mo.prix, m.niv) : null;
-  el.innerHTML = `<div class="item"><span class="ico">${Mo.ico}</span><div><b>${esc(Mo.nom)} · niveau ${m.niv}</b><small>${esc(Mo.desc)}</small></div><div class="act">${pa ? `<button class="btn prim" id="tAm" ${P.argent < pa ? 'disabled' : ''}>Niveau ${m.niv + 1} · ${court(pa)}</button>` : ''}${CONTROLES.includes(m.type) ? '<button class="btn prim" id="tJouer">🎮 Jouer au contrôle</button>' : ''}<button class="btn" id="tDep">Déplacer</button><button class="btn rouge" id="tVend">Vendre (+${court(Mo.prix * .5)})</button></div></div>`;
+  el.innerHTML = `<div class="item"><span class="ico">${Mo.ico}</span><div><b>${esc(Mo.nom)} · niveau ${m.niv}</b><small>${esc(Mo.desc)}</small></div><div class="act">${pa ? `<button class="btn prim" id="tAm" ${P.argent < pa ? 'disabled' : ''}>Niveau ${m.niv + 1} · ${court(pa)}</button>` : ''}${POSTES_JEU[m.type] ? `<button class="btn prim" id="tJouer">🎮 ${m.type === 'comptoir' ? 'Trier les bagages' : 'Jouer au contrôle'}</button>` : ''}<button class="btn" id="tDep">Déplacer</button><button class="btn rouge" id="tVend">Vendre (+${court(Mo.prix * .5)})</button></div></div>`;
   if($('tAm')) $('tAm').onclick = () => action(M.ameliorerModule(P, A, m), () => rafraichirPanneau(true));
   $('tDep').onclick = () => { deplace = m; rafraichirPanneau(true); };
   if($('tJouer')) $('tJouer').onclick = () => lancerControle(m.type);
@@ -467,7 +544,18 @@ function dessinerPlan(){
     g.font = `${Math.min(cell, ch) * .38}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(Mo.ico, x + cell / 2, y + ch / 2 - ch * .08);
     g.fillStyle = '#fff'; g.font = `800 ${Math.max(8, cell * .11)}px sans-serif`; g.fillText('★'.repeat(m.niv), x + cell / 2, y + ch * .8);
   }
-  if(outil){ g.fillStyle = 'rgba(255,183,3,.12)'; for(let x = 0; x < T.l; x++) for(let y = 0; y < T.h; y++) if(!T.modules.some(m => m.x === x && m.y === y)){ g.fillRect(x * cell + 4, h - (y + 1) * ch + 4, cell - 8, ch - 8); } }
+  // les petites cases des allées (en pointillé), les petits objets
+  g.strokeStyle = 'rgba(20,35,58,.12)'; g.lineWidth = 1; g.setLineDash([2, 3]);
+  for(let x = 0; x < T.l; x++) for(let y = 0; y < T.h; y++) if(!T.modules.some(m => m.x === x && m.y === y)){ g.beginPath(); g.moveTo(x * cell + cell / 2, h - (y + 1) * ch + 3); g.lineTo(x * cell + cell / 2, h - y * ch - 3); g.moveTo(x * cell + 3, h - (y + .5) * ch); g.lineTo(x * cell + cell - 3, h - (y + .5) * ch); g.stroke(); }
+  g.setLineDash([]);
+  for(const q of T.petits || []){
+    const x = q.x * cell / 2, y = h - (q.y + 1) * ch / 2;
+    if(selPetit === q || deplace === q){ g.strokeStyle = '#FFB703'; g.lineWidth = 3; arrondi(g, x + 2, y + 2, cell / 2 - 4, ch / 2 - 4, 6); g.stroke(); }
+    g.font = `${Math.min(cell, ch) * .26}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(M.PETITS[q.type].ico, x + cell / 4, y + ch / 4);
+  }
+  const mode = modePlacement();
+  if(mode === 'module'){ g.fillStyle = 'rgba(81,207,102,.22)'; for(let x = 0; x < T.l; x++) for(let y = 0; y < T.h; y++) if(!T.modules.some(m => m.x === x && m.y === y) && !M.petitsDansCase(A, x, y).length) g.fillRect(x * cell + 4, h - (y + 1) * ch + 4, cell - 8, ch - 8); }
+  if(mode === 'petit'){ g.fillStyle = 'rgba(81,207,102,.25)'; for(let x = 0; x < T.l * 2; x++) for(let y = 0; y < T.h * 2; y++) if(!M.libreQuart(A, x, y)) g.fillRect(x * cell / 2 + 3, h - (y + 1) * ch / 2 + 3, cell / 2 - 6, ch / 2 - 6); }
   // les passagers : des points en file devant l'enregistrement et les contrôles, et dans la zone d'attente
   animPlan += .016;
   const ca = A.capAffiche || { check:0, secu:0, airside:0 }, coul = ['#E5383B', '#1B6EC2', '#2BA84A', '#FB8500', '#6A4C93', '#14233A'];
