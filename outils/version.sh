@@ -8,7 +8,7 @@ ancien=$(sed -n "s/^const VERSION = 'desdes-v\([0-9]*\)';/\1/p" sw.js)
 nouveau=$((ancien + 1))
 sed -i "s/^const VERSION = 'desdes-v$ancien';/const VERSION = 'desdes-v$nouveau';/" sw.js
 for f in index.html icone.html jeux/*.html jeux/nivoculteur/index.html; do
-  sed -i "s/\.js?v=$ancien\"/.js?v=$nouveau\"/g; s/\.webmanifest?v=$ancien\"/.webmanifest?v=$nouveau\"/g; s/\.png?v=$ancien\"/.png?v=$nouveau\"/g; s/fichier + '?v=$ancien'/fichier + '?v=$nouveau'/" "$f"
+  sed -i "s/\.js?v=$ancien\"/.js?v=$nouveau\"/g; s/\.css?v=$ancien\"/.css?v=$nouveau\"/g; s/\.webmanifest?v=$ancien\"/.webmanifest?v=$nouveau\"/g; s/\.png?v=$ancien\"/.png?v=$nouveau\"/g; s/fichier + '?v=$ancien'/fichier + '?v=$nouveau'/" "$f"
 done
 # les icônes du manifeste aussi (le téléphone les recharge à chaque version)
 sed -i "s/\.png?v=$ancien\"/.png?v=$nouveau\"/g" manifest.webmanifest

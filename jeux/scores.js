@@ -181,6 +181,15 @@ window.AltitudeScores = (() => {
       if(es.meilleureJournee > 0) ep('escale', 'journee', 'Meilleure journée', Math.round(es.meilleureJournee), `${Math.round(es.meilleureJournee).toLocaleString('fr-FR')} €`);
       J.escale.stats = { 'Vols':es.vols, 'Aéroports':es.aeroports, 'Jours':es.jours };
     }
+    // Arpenteur : les points, les kilomètres, la collection
+    const ap = lire('arpenteur-records');
+    if(ap && ap.dernier && (ap.points || ap.km)){
+      jeu('arpenteur', 'Arpenteur', '🧭');
+      ep('arpenteur', 'points', 'Points d\'explorateur', ap.points, `${ap.points.toLocaleString('fr-FR')} points`);
+      if(ap.km) ep('arpenteur', 'km', 'Kilomètres parcourus', Math.round(ap.km * 10), `${String(ap.km).replace('.', ',')} km`);
+      if(ap.objets) ep('arpenteur', 'objets', 'Objets de la collection', ap.objets, `${ap.objets}/30 objets`);
+      J.arpenteur.stats = { 'Sorties':ap.sorties, 'Pièces':ap.pieces, 'Lieux visités':ap.lieux, 'Niveau':ap.niveau };
+    }
     // Le Buteur : le record en 60 secondes, le meilleur défi du jour, la meilleure série
     const ru = lire('rugby-records');
     if(ru && ru.chrono && ru.chrono.tentees){
