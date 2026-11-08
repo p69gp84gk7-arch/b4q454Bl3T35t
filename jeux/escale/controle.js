@@ -89,6 +89,12 @@ function photo(g, t, x, y, w, h){
   g.restore();
 }
 
+// une étiquette qui fait toujours face à la caméra
+function etiquette(txt, coul = '#14233A', fond = '#FFFFFF'){
+  const t = toile(320, 80); rr(t.g, 3, 3, 314, 74, 18); t.g.fillStyle = fond; t.g.fill(); t.g.strokeStyle = coul; t.g.lineWidth = 5; t.g.stroke(); ecrit(t.g, txt, 160, 42, 40, coul, 900, 'center', 290);
+  const s = new T3.Sprite(new T3.SpriteMaterial({ map:t.tex, depthTest:false })); s.scale.set(.2, .05, 1); s.renderOrder = 20; return s;
+}
+
 /* ---------- Les documents posés sur le guichet (on les touche pour les lire en grand) ---------- */
 function doc(t, w, h, pos, rot, parent){
   const m = plan(w, h, t.tex); m.position.set(...pos); m.rotation.set(...rot); parent.add(m);
@@ -157,7 +163,22 @@ function accueillir(type){
   const G = JEUX[type], R = lire('escale-controle', {})[type];
   J = null; boutons([]); consigne(''); ui.msg.className = 'mMsg';
   carte(`<h2>${G.ico} ${G.titre}</h2>${G.regles}<p class="mRec">${R ? `🏆 Ton record : <b>${R.best}</b> points (${R.parties} service${R.parties > 1 ? 's' : ''})` : 'Un service dure 3 minutes. 3 erreurs, et c\'est fini.'}</p>`,
-    [{ t:'▶️ Prendre mon poste', cls:'prim', fn:() => commencer(type) }, { t:'↩️ Retour à l\'aéroport', fn:() => fermer() }]);
+    [{ t:'▶️ Prendre mon poste', cls:'prim', fn:() => commencer(type) }, ...autrePoste(), { t:'↩️ Retour à l\'aéroport', fn:() => fermer() }]);
+}
+// aux départs, on choisit son poste de travail : passeports, rayons X ou portique
+const POSTES_DEPART = ['passeports', 'securite', 'portique'];
+let choix = false;
+const autrePoste = () => choix ? [{ t:'🔄 Changer de poste', fn:choisirPoste }] : [];
+function changer(type){
+  for(const k in JEUX) JEUX[k].cacher();
+  enCours = type; JEUX[type].montrer(); for(const d of docs) d.cible = false;
+  ui.titre.textContent = `${JEUX[type].ico} ${JEUX[type].titre}`; cadrer(1);
+}
+function choisirPoste(){
+  J = null; boutons([]); consigne(''); ui.msg.className = 'mMsg';
+  const tous = lire('escale-controle', {});
+  carte(`<h2>👮 Choisis ton poste</h2><p>Où veux-tu travailler pour ce service ?</p>`,
+    [...POSTES_DEPART.map(t => ({ t:`${JEUX[t].ico} ${JEUX[t].titre}${tous[t] ? ` · 🏆 ${tous[t].best}` : ''}`, cls:'choix', fn:() => { changer(t); accueillir(t); } })), { t:'↩️ Retour à l\'aéroport', fn:() => fermer() }]);
 }
 function commencer(type){
   ui.carte.hidden = true;
@@ -177,7 +198,7 @@ function finir(pourquoi){
   const R = noter(), record = J.score > R.best;
   const G = JEUX[J.type];
   setTimeout(() => carte(`<h2>${G.ico} Fin du service</h2><p>${pourquoi}</p><p class="mGros">⭐ ${J.score} points</p><p>${J.bons} contrôle${J.bons > 1 ? 's' : ''} réussi${J.bons > 1 ? 's' : ''} sur ${J.total}.</p><p class="mRec">${record ? '🏆 <b>Nouveau record !</b>' : `🏆 Record : <b>${R.best}</b>`}</p>`,
-    [{ t:'🔁 Rejouer', cls:'prim', fn:() => commencer(J.type) }, { t:'↩️ Retour à l\'aéroport', fn:() => fermer() }]), 900);
+    [{ t:'🔁 Rejouer', cls:'prim', fn:() => commencer(J.type) }, ...autrePoste(), { t:'↩️ Retour à l\'aéroport', fn:() => fermer() }]), 900);
 }
 
 /* ---------- Le décor commun ---------- */
@@ -584,7 +605,154 @@ JEUX.securite = (() => {
 })();
 
 /* =====================================================================================================
-   3) LA DOUANE (arrivées)
+   3) LE PORTIQUE DE CONTRÔLE (sûreté) : le portique sonne ? On passe le détecteur à main sur le voyageur.
+   ===================================================================================================== */
+JEUX.portique = (() => {
+  let gr = null, pax = null, lampe = null, baton = null, led = null, reglesT = null, etat = 'vide', tEtat = 0, tDecide = 0, scan = null;
+  const ZONES = {
+    tete:{ nom:'la tête', p:[0, 1.66, 0], d:[.34, .34, .32] }, torse:{ nom:'le torse', p:[0, 1.16, 0], d:[.36, .48, .34] },
+    brasG:{ nom:'un bras', p:[.27, 1.05, 0], d:[.16, .62, .2] }, brasD:{ nom:'un bras', p:[-.27, 1.05, 0], d:[.16, .62, .2] },
+    taille:{ nom:'la ceinture', p:[0, .84, 0], d:[.4, .16, .34] }, jambeG:{ nom:'une jambe', p:[.08, .46, 0], d:[.16, .6, .32] },
+    jambeD:{ nom:'une jambe', p:[-.08, .46, 0], d:[.16, .6, .32] }, pieds:{ nom:'les chaussures', p:[0, .07, .04], d:[.4, .16, .36] },
+  };
+  // les objets en métal : permis (le voyageur les a oubliés sur lui) ou interdits (cachés)
+  const METAL = {
+    ceinture:{ nom:'Boucle de ceinture', zones:['taille'] }, cles:{ nom:'Clés', zones:['jambeG', 'jambeD'] }, pieces:{ nom:'Pièces de monnaie', zones:['jambeG', 'jambeD'] },
+    montre:{ nom:'Montre', zones:['brasG', 'brasD'] }, telephone:{ nom:'Téléphone oublié', zones:['torse', 'jambeG', 'jambeD'] }, barrette:{ nom:'Barrette', zones:['tete'] },
+    coques:{ nom:'Chaussures de sécurité', zones:['pieds'] }, collier:{ nom:'Collier', zones:['torse'] },
+    couteau:{ nom:'Couteau', interdit:true, zones:['pieds', 'jambeG', 'jambeD', 'torse'] }, ciseaux:{ nom:'Ciseaux', interdit:true, zones:['torse', 'jambeG'] },
+    cutter:{ nom:'Cutter', interdit:true, zones:['brasG', 'brasD', 'jambeD'] }, tournevis:{ nom:'Tournevis', interdit:true, zones:['torse', 'jambeD', 'pieds'] },
+  };
+  const PERMIS = Object.keys(METAL).filter(k => !METAL[k].interdit), INTERDITS = Object.keys(METAL).filter(k => METAL[k].interdit);
+  const COUL = { eteint:0x5C6672, vert:0x51CF66, rouge:0xE5383B };
+  function construire(){
+    gr = new T3.Group(); lumieres(gr); sol(gr, 0xD5DAE2, 0xE2E6EC);
+    mur(gr, -5, 0xE6E8EC, 'Contrôle de sûreté · Portique', '#7A5C99');
+    // le portique (deux montants, la traverse, le voyant), le tapis de sol, le tapis à bagages sur le côté
+    gr.add(bloc([{ f:'boite', d:[.16, 2.2, .5], p:[-.5, 1.1, -1.2], c:0x7A5C99 }, { f:'boite', d:[.16, 2.2, .5], p:[.5, 1.1, -1.2], c:0x7A5C99 }, { f:'boite', d:[1.16, .22, .52], p:[0, 2.3, -1.2], c:0x7A5C99 },
+      { f:'boite', d:[.02, 1.9, .3], p:[-.41, 1.05, -1.2], c:0x9C86B8 }, { f:'boite', d:[.02, 1.9, .3], p:[.41, 1.05, -1.2], c:0x9C86B8 },
+      { f:'boite', d:[1, .02, 3.4], p:[0, .01, -1.2], c:0x3A3F47 },
+      { f:'boite', d:[.7, .7, 5], p:[-1.7, .35, -1.6], c:0x5C6672 }, { f:'boite', d:[.62, .06, 5], p:[-1.7, .72, -1.6], c:0x2A2D33 }, { f:'boite', d:[.8, .5, .9], p:[-1.7, .95, -1.4], c:0xD9DEE4 },
+      { f:'boite', d:[.5, .1, .4], p:[-1.7, .8, .2], c:0x8C949F }, { f:'boite', d:[.5, .1, .4], p:[-1.7, .8, -.3], c:0x8C949F }], .015));
+    lampe = new T3.Mesh(new T3.BoxGeometry(.5, .1, .06), new T3.MeshBasicMaterial({ color:COUL.eteint })); lampe.position.set(0, 2.3, -.93); gr.add(lampe);
+    figurants(gr, 3, -2.6, -4, -.3, .3);
+    const ag = personne({ peau:0x8D5524, cheveux:0, coupe:'court', lunettes:false, barbe:false, haut:0x2A2D43 }); ag.position.set(1.3, 0, -1.6); ag.rotation.y = -.9; gr.add(ag);
+    // le détecteur à main (dans ta main, en bas de l'écran) et son voyant
+    baton = new T3.Group();
+    baton.add(bloc([{ f:'cyl', d:[.025, .025, .2, 8], p:[0, -.12, 0], c:0x1B1B1B }, { f:'boite', d:[.08, .26, .025], p:[0, .1, 0], c:0x14233A }, { f:'boite', d:[.06, .22, .03], p:[0, .1, 0], c:0xF2C230 }], .006));
+    led = new T3.Mesh(new T3.SphereGeometry(.016, 10, 8), new T3.MeshBasicMaterial({ color:COUL.eteint })); led.position.set(0, -.03, .02); baton.add(led);
+    gr.add(baton);
+    reglesT = doc(toile(512, 600), .3, .352, [-.52, 1.82, -.94], [0, 0, 0], gr);
+    scene.add(gr);
+  }
+  const REPOS = [.3, .75, .8];
+  function dessinerRegles(){
+    const t = reglesT.t, g = t.g;
+    g.fillStyle = '#FFFDF4'; g.fillRect(0, 0, t.w, t.h); g.fillStyle = '#7A5C99'; g.fillRect(0, 0, t.w, 92);
+    ecrit(g, '🚶 Le portique', 256, 48, 40, '#FFFFFF', 900, 'center', 480);
+    let y = 140;
+    for(const l of ['Voyant vert : il passe.', 'Ça sonne (rouge) : passe le', 'détecteur sur lui, trouve', 'tout le métal.']){ ecrit(g, l, 26, y, 28, '#14233A', 700); y += 38; }
+    y += 14; ecrit(g, 'Interdit sur soi :', 26, y, 30, '#C1121F', 900); y += 44;
+    for(const k of INTERDITS){ ecrit(g, `• ${METAL[k].nom}`, 40, y, 28, '#14233A', 800); y += 38; }
+    ecrit(g, 'Le reste (clés, ceinture…) : OK', 26, y + 14, 25, '#2BA84A', 800, 'left', 470);
+    t.tex.needsUpdate = true;
+  }
+  function nouveau(){
+    const tr = traits(), objets = [];
+    if(Math.random() < .62){
+      const nb = Math.random() < .7 ? 1 : 2, pris = new Set();
+      for(let i = 0; i < nb; i++){
+        const k = Math.random() < (J.n < 3 ? .3 : .42) ? piocher(INTERDITS) : piocher(PERMIS.filter(x => !pris.has(x)));
+        const libres = METAL[k].zones.filter(z => !objets.some(o => o.zone === z)); if(!libres.length) continue;
+        pris.add(k); objets.push({ k, zone:piocher(libres), trouve:false });
+      }
+    }
+    if(pax){ jeter(pax.obj); for(const z of pax.zones){ const i = cliquables.indexOf(z); if(i >= 0) cliquables.splice(i, 1); } }
+    const obj = personne(tr); obj.position.set(0, 0, -3); gr.add(obj);
+    // les zones du corps qu'on peut toucher (invisibles)
+    const zones = [];
+    for(const [id, Z] of Object.entries(ZONES)){
+      const m = new T3.Mesh(new T3.BoxGeometry(...Z.d), new T3.MeshBasicMaterial({ visible:false })); m.position.set(...Z.p); obj.add(m);
+      m.userData.clic = () => scanner(id); zones.push(m); cliquables.push(m);
+    }
+    pax = { obj, objets, zones, vus:new Set(), sonne:objets.length > 0 };
+    lampe.material.color.setHex(COUL.eteint); led.material.color.setHex(COUL.eteint);
+    marcher(obj, 0, -3, 0, -.15, 2.2); etat = 'marche'; tEtat = 0; boutons([]);
+  }
+  // passer le détecteur sur une zone du corps
+  function scanner(id){
+    if(etat !== 'decide' || scan) return;
+    const w = pax.obj.localToWorld(new T3.Vector3(...ZONES[id].p)); w.z += .26;
+    scan = { id, t:0, de:baton.position.clone(), vers:w };
+  }
+  function finScan(id){
+    pax.vus.add(id);
+    const o = pax.objets.find(o => o.zone === id);
+    if(o){
+      led.material.color.setHex(COUL.rouge);
+      if(!o.trouve){
+        o.trouve = true; const M_ = METAL[o.k], et = etiquette(M_.nom + (M_.interdit ? ' !' : ''), M_.interdit ? '#C1121F' : '#1B6EC2', M_.interdit ? '#FFE3E3' : '#FFFFFF');
+        et.position.set(ZONES[id].p[0] + (ZONES[id].p[0] > .1 ? .14 : ZONES[id].p[0] < -.1 ? -.14 : 0), ZONES[id].p[1] + .04, .3); et.scale.set(.42, .105, 1); pax.obj.add(et);
+        dire(M_.interdit ? `🔊 Bip bip ! ${M_.nom} caché${/[sx]$/.test(M_.nom) ? 's' : ''} sur ${ZONES[id].nom} !` : `🔊 Bip ! ${M_.nom} : c'est autorisé.`, M_.interdit ? 'ko' : 'info', 2.6);
+      }
+    } else { led.material.color.setHex(COUL.vert); dire(`Rien sur ${ZONES[id].nom}.`, 'info', 1.4); }
+  }
+  function decider(passe){
+    if(etat !== 'decide') return;
+    const reste = pax.objets.filter(o => !o.trouve), danger = pax.objets.filter(o => METAL[o.k].interdit), rapide = Math.max(0, Math.round(50 - tDecide * 3));
+    const noms = l => l.map(o => METAL[o.k].nom.toLowerCase()).join(' et ');
+    if(passe){
+      if(danger.length) faute(danger.every(o => o.trouve) ? `Tu as trouvé : ${noms(danger)}, et tu l'as laissé passer !` : `Il cachait : ${noms(danger)} (sur ${ZONES[danger[0].zone].nom}) !`);
+      else if(reste.length){ J.total++; points(-30, `Le portique sonne encore : tu n'as pas trouvé ${noms(reste)}.`, 'ko'); }
+      else bon((pax.sonne ? 100 : 60) + rapide, pax.sonne ? 'Tout le métal est trouvé, rien d\'interdit : il peut passer.' : 'Voyant vert, il passe. Au suivant !');
+    } else {
+      if(!danger.length) faute(pax.sonne ? `Rien d'interdit sur lui (${noms(pax.objets)}) : il fallait le laisser passer.` : 'Le portique n\'a pas sonné : rien à fouiller.');
+      else if(danger.every(o => o.trouve)) bon(120 + rapide, `Bien joué, ${noms(danger)} confisqué${danger.length > 1 ? 's' : ''} !`);
+      else bon(50, `La fouille a trouvé : ${noms(danger)}. La prochaine fois, trouve-le avec le détecteur.`);
+    }
+    if(J.fini) return;
+    etat = 'part'; tEtat = 0; boutons([]); pax.cote = passe ? 1 : -1;
+    marcher(pax.obj, pax.obj.position.x, pax.obj.position.z, passe ? 2.6 : -2.4, passe ? -.6 : .2, 1.3);
+  }
+  return {
+    ico:'🚶', titre:'Portique de contrôle',
+    regles:`<p>Les voyageurs passent sous le portique. <b>Voyant vert</b> : ils passent. <b>Ça sonne</b> : à toi de jouer avec le détecteur à main.</p><ul><li>👆 Touche une partie du corps (tête, torse, bras, ceinture, jambes, chaussures) pour y passer le détecteur.</li><li>🔊 Il bipe s'il y a du métal : clés, ceinture, montre… c'est permis. Couteau, ciseaux, cutter, tournevis : <b>interdit</b>.</li><li>✅ Laisse passer quand tout le métal est trouvé, 🚨 mets de côté s'il cache un objet interdit.</li></ul>`,
+    camera:asp => asp < .9 ? recul([0, 1.18, -.3], [0, .3, 2.4], 56, asp, 1.35, 3.6) : recul([0, 1.3, -.4], [0, .25, 2.4], 50, asp, 1.6, 3.2),
+    montrer(){ if(!gr) construire(); gr.visible = true; },
+    cacher(){ if(gr) gr.visible = false; },
+    debut(){ dessinerRegles(); if(pax){ jeter(pax.obj); pax = null; } baton.position.set(...REPOS); scan = null; nouveau(); consigne('Ça sonne ? Touche le voyageur pour passer le détecteur, puis décide.'); },
+    maj(dt){
+      if(!pax) return;
+      tEtat += dt; majMarche(pax.obj, dt);
+      // le passage sous le portique : le voyant s'allume quand il est dessous
+      if(etat === 'marche'){
+        if(pax.obj.position.z > -1.4 && lampe.material.color.getHex() === COUL.eteint){ lampe.material.color.setHex(pax.sonne ? COUL.rouge : COUL.vert); if(pax.sonne) dire('🔊 BIIIP ! Le portique sonne.', 'ko', 2); }
+        if(!pax.obj.userData.marche){
+          etat = 'decide'; tDecide = 0;
+          boutons(pax.sonne ? [{ t:'🚨 Mettre de côté', cls:'rouge', fn:() => decider(false) }, { t:'✅ Laisser passer', cls:'vert', fn:() => decider(true) }] : [{ t:'✅ Au suivant', cls:'vert', fn:() => decider(true) }]);
+        }
+      }
+      if(etat === 'decide'){
+        tDecide += dt;
+        if(pax.sonne) lampe.material.color.setHex(Math.floor(tEtat * 3) % 2 ? COUL.rouge : 0x8E2A2C);
+      }
+      // le détecteur glisse jusqu'à la zone touchée, bipe, puis revient doucement
+      if(scan){
+        scan.t += dt; const u = clamp(scan.t / .3, 0, 1);
+        baton.position.lerpVectors(scan.de, scan.vers, lisse(u)); baton.rotation.z = Math.sin(scan.t * 30) * .15 * u;
+        if(scan.t >= .45){ finScan(scan.id); scan = null; }
+      } else if(etat !== 'decide' || tDecide > 0){ baton.rotation.z *= .8; }
+      if(etat === 'part'){
+        baton.position.lerp(new T3.Vector3(...REPOS), clamp(dt * 4, 0, 1)); led.material.color.setHex(COUL.eteint);
+        if(!pax.obj.userData.marche && J && !J.fini){ J.n++; nouveau(); }
+      }
+    },
+    _etat:() => pax && { objets:pax.objets, sonne:pax.sonne, etat, zones:Object.fromEntries(Object.entries(ZONES).map(([id, Z]) => [id, pax.obj.localToWorld(new T3.Vector3(...Z.p)).toArray()])) },
+  };
+})();
+
+/* =====================================================================================================
+   4) LA DOUANE (arrivées)
    ===================================================================================================== */
 JEUX.douane = (() => {
   let gr = null, pax = null, valise = null, chien = null, bulle = null, declT = null, reglesT = null, etat = 'vide', tEtat = 0, objets3d = [], fouille = false;
@@ -616,10 +784,6 @@ JEUX.douane = (() => {
       case 'parfum': return [{ f:'boite', d:[.06, .09, .04], p:[0, .045, 0], c:0xBFD9EA }, { f:'cyl', d:[.015, .015, .03, 8], p:[0, .105, 0], c:0xD4AF37 }];
       default: return [{ f:'boite', d:[.1, .1, .1], p:[0, .05, 0], c }, { f:'boule', d:[.04, 1], p:[0, .13, 0], c:0xFFB703 }];
     }
-  }
-  function etiquette(txt, coul = '#14233A', fond = '#FFFFFF'){
-    const t = toile(320, 80); rr(t.g, 3, 3, 314, 74, 18); t.g.fillStyle = fond; t.g.fill(); t.g.strokeStyle = coul; t.g.lineWidth = 5; t.g.stroke(); ecrit(t.g, txt, 160, 42, 40, coul, 900, 'center', 290);
-    const s = new T3.Sprite(new T3.SpriteMaterial({ map:t.tex, depthTest:false })); s.scale.set(.2, .05, 1); s.renderOrder = 20; return s;
   }
   function chienModele(assis){
     const B = 0x9C6B3C, F = 0x6B4226;
@@ -826,13 +990,10 @@ function ouvrirJeu(type, fin){
   T3 = K.T3;
   if(!scene){ scene = new T3.Scene(); scene.background = new T3.Color(0x2A3F5F); cam = new T3.PerspectiveCamera(50, 1, .03, 60); }
   creerUi();
-  for(const k in JEUX) JEUX[k].cacher();
-  enCours = type; quitter = fin; actif = true;
-  JEUX[type].montrer();
-  ui.el.hidden = false; ui.titre.textContent = `${JEUX[type].ico} ${JEUX[type].titre}`;
-  // les documents et les zones touchables de ce poste seulement
-  taille(K.L, K.H); cadrer(1);
-  accueillir(type);
+  quitter = fin; actif = true; ui.el.hidden = false; taille(K.L, K.H);
+  choix = POSTES_DEPART.includes(type);
+  changer(type);
+  if(choix) choisirPoste(); else accueillir(type);
   return true;
 }
 function fermer(){
