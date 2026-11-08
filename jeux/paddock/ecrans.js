@@ -570,13 +570,14 @@ function weekend(){
   }
   if(!C.weekend || C.weekend.gp !== C.gp){
     const largeur = 100 - 14 * C.installations.simulateur.niv;
-    W = C.weekend = { gp:C.gp, etape:C.reglages.essais ? 'EL' : 'Q', reg:{}, connu:{}, conf:{}, retours:{}, jeux:{}, toursEL:{}, grille:null, q:{}, pneusDepart:{}, objectif:M.objectifCourse(C) };
+    W = C.weekend = { gp:C.gp, etape:C.reglages.essais ? 'EL' : 'Q', reg:{}, connu:{}, conf:{}, retours:{}, jeux:{}, toursEL:{}, grille:null, q:{}, pneusDepart:{}, objectif:M.objectifCourse(C), usureMes:{}, strat:{} };
     gp.objectif = W.objectif;
     for(const p of mesPilotes()){
       W.connu[p.id] = Co.connaissanceDepart(circ, p.id, largeur);
       W.reg[p.id] = { av:50, ar:50, susp:50, haut:50, carr:50 };
       W.jeux[p.id] = Object.entries(Co.JEUX).flatMap(([t, nb]) => Array.from({ length:nb }, () => ({ t, u:0 })));
       W.pneusDepart[p.id] = 'M';
+      W.usureMes[p.id] = Object.fromEntries(Object.keys(Co.PNEUS).map(k => [k, { tours:0, z:zUsure() }]));
       if(!C.reglages.essais){
         // pas d'essais libres : l'ingénieur règle la voiture d'après le simulateur
         Co.retourPilote(circ, p.id, W.reg[p.id], W.connu[p.id], 4, qualiteRetour(p));
@@ -600,16 +601,17 @@ function pageWeekend(){
   box.innerHTML = `<div class="tete"><button class="btn" id="wRetour">‹ QG</button></div>
     <div class="wkTete"><div><h2>${esc(gpNom(gp))}</h2><p class="sous">${esc(circ.n)} · ${esc(circ.inspi)} · ${(circ.metres / 1000).toFixed(3).replace('.', ',')} km · ${M.nbTours(C, circ)} tours</p>
       <div class="infos"><span>${typeCircuit(circ)}</span><span>🤝 objectif : ${esc(txtObjectif(W.objectif))}</span></div>
-      <div class="meteoS" style="margin-top:8px">${C.reglages.essais ? `<span>Essais : ${ciel(m.el)}</span>` : ''}<span>Qualifs : ${ciel(m.q)}</span><span>Course : ${prevision(gp)}</span></div></div><canvas id="wApercu"></canvas></div>
+      <div class="meteoS" style="margin-top:8px">${C.reglages.essais ? `<span>Essais : ${ciel(m.el)}</span>` : ''}<span>Qualifs : ${ciel(m.q)}</span><span>Course : ${(pm => `${pm >= .6 ? '🌧️' : pm >= .25 ? '🌦️' : '☀️'} risque de pluie ${Math.round(pm * 100)} %`)(Math.max(0, ...prevCourse().map(x => x.p)))}</span></div></div><canvas id="wApercu"></canvas></div>
     <div class="etapes">
       ${C.reglages.essais ? etape('EL', '🔧', 'Essais libres · 1 h', et === 'EL' ? 'Règle la voiture : fais rouler tes pilotes, écoute leurs avis.' : `Confiance des pilotes : ${confTxt}`,
         et === 'EL' ? '<span style="display:flex;flex-direction:column;gap:4px"><button class="btn petit rouge" id="wEL">▶ En piste</button><button class="btn petit" id="wELpasse">⏩ Passer</button></span>' : '') : ''}
       ${etape('Q', '⏱️', C.reglages.qualifs === 'direct' ? 'Qualifications · Q1, Q2, Q3' : 'Qualifications rapides', et === 'Q' ? 'Les 6 derniers sont éliminés en Q1, puis en Q2. Le Q3 donne les 10 premières places.' : grille ? `Sur la grille : ${grille}` : '',
         et === 'Q' ? `<button class="btn petit rouge" id="wQ">▶ ${C.reglages.qualifs === 'direct' ? 'Q1' : 'Lancer'}</button>` : '')}
-      ${etape('course', '🏁', 'La course', et === 'course' ? 'Choisis les pneus de départ de chaque pilote.' : '', et === 'course' ? '<button class="btn petit rouge" id="wCourse">🚦 Départ</button>' : '')}
+      ${etape('course', '🏁', 'La course', et === 'course' ? 'Vérifie la stratégie de pneus de chaque pilote, plus bas.' : '', et === 'course' ? '<button class="btn petit rouge" id="wCourse">🚦 Départ</button>' : '')}
     </div>
     <div class="carte"><h3>Réglages de la voiture</h3><div id="wRegl" class="marche"></div>${et !== 'EL' && C.reglages.essais ? '<p class="legende" style="margin:6px 0 0">Après les essais libres, les réglages ne bougent plus (parc fermé).</p>' : ''}</div>
-    ${et === 'course' ? `<div class="carte"><h3>Pneus de départ</h3><div id="wPneus"></div></div>` : ''}
+    <div class="carte"><h3>Météo de la course, tour par tour</h3><div id="wMeteo"></div></div>
+    ${et === 'course' ? `<div class="carte"><h3>📋 Stratégie de course</h3><div id="wStrat"></div></div>` : ''}
     ${W.grille ? `<div class="carte"><h3>La grille de départ</h3><div class="grille">${W.grille.map((id, i) => { const p = C.pilotes[id], e = C.ecuries[p.ecurie];
       return `<div class="${p.ecurie === C.joueur ? 'moi' : ''}"><b>${i + 1}</b><span class="coul" style="background:${e.c1}"></span><span>${esc(p.nom)}</span><span class="legende">${W.tempsQ && W.tempsQ[id] ? W.tempsQ[id] : ''}</span></div>`; }).join('')}</div></div>` : ''}`;
   Co.apercu($('wApercu'), circ, 280, 168, '#1A1E25');
@@ -622,13 +624,12 @@ function pageWeekend(){
     b.onclick = () => ouvrirReglages(p.id, et === 'EL', pageWeekend);
     d.append(b); $('wRegl').append(d);
   }
+  $('wMeteo').innerHTML = htmlMeteo(prevCourse()) + `<p class="legende" style="margin:6px 0 0">${legendeMeteo()}</p>`;
   if(et === 'course'){
-    const humide = Co.pneuPluie(gp.meteo.pluie && gp.meteo.debut < 0 ? gp.meteo.force : 0);
-    $('wPneus').innerHTML = mes.map(p => `<div style="margin:6px 0"><b>${p.drapeau} ${esc(p.nom)}</b><div class="choixp" data-p="${p.id}" style="margin-top:4px">${['S', 'M', 'H'].map(k => {
-      const neufs = W.jeux[p.id].filter(j => j.t === k && !j.u).length; return `<button data-v="${k}" ${humide ? 'disabled' : ''}>${pneuHtml(k)} ${Co.PNEUS[k].nom} <small class="legende">${neufs} neuf${neufs > 1 ? 's' : ''}</small></button>`; }).join('')}</div></div>`).join('') + (humide ? '<p class="sous">La piste est mouillée : départ en pneus pluie ou intermédiaires.</p>' : '');
-    const maj = () => $('wPneus').querySelectorAll('[data-p]').forEach(g => [...g.children].forEach(b => b.classList.toggle('actif', b.dataset.v === W.pneusDepart[g.dataset.p])));
-    $('wPneus').onclick = e => { const b = e.target.closest('button'); if(!b) return; W.pneusDepart[b.parentElement.dataset.p] = b.dataset.v; maj(); };
-    maj();
+    assurerStrat();
+    $('wStrat').innerHTML = mes.map(p => { const st = stratDe(p.id); return `<div class="stratP"><div class="h"><b>${p.drapeau} ${esc(p.nom)}</b><button class="btn petit" data-p="${p.id}">✏️ Modifier</button></div>${st ? barreStrat(st.relais, M.nbTours(C, circ)) + `<small class="legende">${esc(texteStrat(st.relais))}</small>` : '<small class="legende">Pas de stratégie possible (plus de pneus ?)</small>'}</div>`; }).join('')
+      + '<p class="legende" style="margin:6px 0 0">L\'ingénieur applique la stratégie pendant la course. Il ne la change que si c\'est nécessaire (pluie, piste qui sèche, pneus qui s\'usent trop vite, voiture de sécurité juste avant l\'arrêt prévu).</p>';
+    $('wStrat').querySelectorAll('[data-p]').forEach(b => b.onclick = () => ouvrirStrategie(b.dataset.p));
     $('wCourse').onclick = lancerCourse;
   }
   if($('wEL')) $('wEL').onclick = () => lancerSeance('EL');
@@ -678,6 +679,114 @@ function appliquerReglage(pid){
 }
 $('vRegl').onclick = e => { if(e.target === $('vRegl')){ $('vRegl').hidden = true; if(!$('eWeekend').hidden) pageWeekend(); } };
 
+/* ---------- La stratégie de pneus ---------- */
+const zUsure = () => (Math.random() + Math.random() + Math.random() - 1.5) * 2;
+function assurerStrat(){
+  if(!W) return;
+  W.usureMes = W.usureMes || {}; W.strat = W.strat || {};
+  for(const p of mesPilotes()) if(!W.usureMes[p.id]) W.usureMes[p.id] = Object.fromEntries(Object.keys(Co.PNEUS).map(k => [k, { tours:0, z:zUsure() }]));
+}
+const circGP = () => M.circuit(C.calendrier[C.gp].id);
+// la prévision de l'ingénieur, tour par tour (vue depuis le tour « depuis »)
+function prevCourse(depuis = 0){
+  const gp = C.calendrier[C.gp], tours = M.nbTours(C, circGP());
+  if(!W.bruitMeteo){ W.bruitMeteo = Co.bruitPrevision(gp.meteo, tours, gp.pluie, C.personnel.course.niv); sauver(); }
+  return Co.previsionMeteo(gp.meteo, tours, W.bruitMeteo, C.personnel.course.niv, depuis);
+}
+function htmlMeteo(prev){
+  return `<div class="meteoT">${prev.map(x => `<span style="background:${x.p < .08 ? '#2A2E38' : `rgba(63,169,245,${(.18 + x.p * .82).toFixed(2)})`}" title="Tour ${x.tour} : ${Math.round(x.p * 100)} % de risque de pluie"></span>`).join('')}</div>
+    <div class="meteoN">${prev.map(x => `<span>${x.tour === 1 || x.tour % 5 === 0 ? x.tour : ''}</span>`).join('')}</div><p class="sous" style="margin:6px 0 0">${resumeMeteo(prev)}</p>`;
+}
+function resumeMeteo(prev){
+  const pm = Math.max(0, ...prev.map(x => x.p));
+  if(pm < .15) return '☀️ Pas de pluie prévue pendant la course.';
+  const l = prev.filter(x => x.p >= pm * .6), a = l[0].tour, b = l[l.length - 1].tour, fort = Math.max(...l.map(x => x.w)) > .65;
+  return `${pm >= .6 ? '🌧️' : '🌦️'} ${a === 1 ? 'Pluie au départ' : 'Pluie possible'}${a === 1 ? (b < prev.length ? `, jusqu'au tour ${b} environ` : ' et toute la course') : ` du tour ${a} au tour ${b} environ`} : risque ${Math.round(pm * 100)} %${fort ? ', grosse pluie' : ''}.`;
+}
+const legendeMeteo = () => `En bleu, le risque de pluie à chaque tour. Prévision de ton ingénieur de course (${etoiles(C.personnel.course.niv)}) : plus il est bon, plus elle est juste. Elle s'affine pendant la course, quand la pluie approche.`;
+// l'usure par tour de chaque type de pneus pour ce pilote : ce qu'en sait l'ingénieur (mesurée en essais libres, sinon estimée au simulateur)
+function usuresPilote(pid){
+  const circ = circGP(), tours = M.nbTours(C, circ), T = Co.circuitCourse(circ), v = voituresCourse(circ).find(x => x.id === pid);
+  const s0 = .3 - .04 * C.installations.simulateur.niv, res = {};
+  for(const k of Object.keys(Co.PNEUS)){
+    const m = W.usureMes[pid][k], vraie = Co.usureParTour({ tours, T }, { pneus:v.pneus, mode:'normal', carrossage:v.carrossage }, k), sig = s0 / (1 + .45 * m.tours);
+    res[k] = { parTour:vraie * (1 + clamp(m.z, -2.5, 2.5) * sig), marge:1.6 * sig, tours:m.tours };
+  }
+  return res;
+}
+function propositions(pid){
+  const circ = circGP(), tours = M.nbTours(C, circ), u = usuresPilote(pid), us = Object.fromEntries(Object.entries(u).map(([k, x]) => [k, x.parTour])), prev = prevCourse();
+  return { props:Co.proposerStrategies(circ, tours, W.jeux[pid], us, prev), u, us, tours, circ, prev };
+}
+function stratDe(pid){
+  if(W.strat[pid]) return W.strat[pid];
+  const { props } = propositions(pid); if(!props.length) return null;
+  W.strat[pid] = { relais:props[0].relais.map(r => ({ pneu:r.pneu, fin:r.fin })) }; sauver();
+  return W.strat[pid];
+}
+// l'usure de départ de chaque relais : le train le moins usé qui reste (null s'il n'y en a plus)
+function trainsU(pid, relais){ const pris = new Set(); return relais.map(r => { const j = W.jeux[pid].filter(x => x.t === r.pneu && !pris.has(x)).sort((a, b) => a.u - b.u)[0]; if(!j) return null; pris.add(j); return j.u; }); }
+const COUL_TXT = { S:'#fff', M:'#1A1A1A', H:'#1A1A1A', I:'#fff', P:'#fff' };
+const barreStrat = (relais, tours) => `<div class="sbarre">${relais.map((r, i) => { const d = i ? relais[i - 1].fin : 0, P = Co.PNEUS[r.pneu];
+  return `<span style="width:${(r.fin - d) / tours * 100}%;background:${P.col};color:${COUL_TXT[r.pneu]}" title="${P.nom} : tours ${d + 1} à ${r.fin}">${P.court}${r.fin - d >= 4 ? `<small>${r.fin - d} t.</small>` : ''}</span>`; }).join('')}</div>`;
+const nbArrets = relais => relais.length === 1 ? 'Sans arrêt' : `${relais.length - 1} arrêt${relais.length > 2 ? 's' : ''}`;
+const texteStrat = relais => `${nbArrets(relais)} · ${relais.map((r, i) => `${Co.PNEUS[r.pneu].nom}${i < relais.length - 1 ? ` jusqu'au tour ${r.fin}` : ''}`).join(' → ')}`;
+const duree = t => `${Math.floor(t / 60)} min ${String(Math.round(t % 60)).padStart(2, '0')} s`;
+// l'éditeur de la stratégie d'un pilote : la météo, l'usure des pneus, les propositions de l'ingénieur, et les relais
+function ouvrirStrategie(pid){
+  const p = C.pilotes[pid], f = $('fRegl'), { props, u, us, tours, circ, prev } = propositions(pid);
+  const st = { relais:(stratDe(pid) || props[0] || { relais:[{ pneu:'M', fin:tours }] }).relais.map(r => ({ pneu:r.pneu, fin:r.fin })) };
+  const secs = props.filter(x => !x.pluie), meilleurSec = secs.length ? Math.min(...secs.map(x => x.temps)) : null;
+  const pmax = Math.max(0, ...prev.map(x => x.p)), pluieDe = relais => relais.some(r => !Co.PNEUS[r.pneu].sec) ? prev.map(x => x.p >= Math.max(.2, pmax * .7) ? x.w : 0) : null;
+  const dessiner = () => {
+    const rel = st.relais, n = rel.length, u0 = trainsU(pid, rel), mouilles = pluieDe(rel);
+    const est = Co.estimerStrategie(circ, tours, rel.map((r, i) => ({ ...r, u0:u0[i] ?? 0 })), us, mouilles);
+    const alertes = [];
+    est.relais.forEach((r, i) => {
+      if(u0[i] == null) alertes.push(`❌ Relais ${i + 1} : plus de train de ${Co.PNEUS[r.pneu].nom.toLowerCase()} !`);
+      if(r.usureFin > 1) alertes.push(`⚠️ Relais ${i + 1} : pneus usés à ${Math.round(r.usureFin * 100)} % à la fin, risque de crevaison !`);
+      else if(r.usureFin > Co.LIM_USURE) alertes.push(`⚠️ Relais ${i + 1} : pneus très usés à la fin (${Math.round(r.usureFin * 100)} %), on perd du temps.`);
+    });
+    if(!mouilles && new Set(rel.map(r => r.pneu)).size < 2) alertes.push('⚠️ Règle : sur piste sèche, il faut utiliser deux types de pneus secs (sinon 30 s de pénalité).');
+    const choisie = props.findIndex(x => x.relais.length === n && x.relais.every((r, i) => r.pneu === rel[i].pneu && r.fin === rel[i].fin));
+    f.innerHTML = `<div class="tete"><h2 style="font-size:1.2rem">📋 ${esc(p.nom)}</h2><button class="btn petit droite" id="stFermer">✕ Fermer</button></div>
+      <h4 class="stT">🌦️ La météo prévue</h4>${htmlMeteo(prev)}<p class="legende" style="margin:0">${legendeMeteo()}</p>
+      <h4 class="stT">🛞 L'usure des pneus</h4>
+      <table class="tab usS">${['S', 'M', 'H', 'I', 'P'].map(k => { const x = u[k], neufs = W.jeux[pid].filter(j => j.t === k && !j.u).length, tous = W.jeux[pid].filter(j => j.t === k).length, vie = Math.max(1, Math.floor(Co.LIM_USURE / (x.parTour * Co.USURE_COURSE)));
+        return `<tr><td>${pneuHtml(k)} ${Co.PNEUS[k].nom}</td><td class="n"><b>${virgF(x.parTour * Co.USURE_COURSE * 100)} %</b>/tour<br><small class="legende">± ${virgF(x.marge * x.parTour * Co.USURE_COURSE * 100)} %</small></td><td><small class="legende">${x.tours ? `mesurée en essais (${Math.round(x.tours)} tour${x.tours >= 2 ? 's' : ''})` : 'estimée au simulateur'}<br>≈ ${vie} tours · ${neufs} neuf${neufs > 1 ? 's' : ''} / ${tous}</small></td></tr>`; }).join('')}</table>
+      <p class="legende" style="margin:0">Fais rouler chaque type de pneus en essais libres : l'usure est mesurée, et la marge d'erreur se réduit à chaque tour.</p>
+      <h4 class="stT">🎧 Les propositions de l'ingénieur</h4>
+      <div class="propS">${props.map((x, i) => `<button data-prop="${i}" class="${i === choisie ? 'actif' : ''}"><b>${i === 0 ? '⭐ ' : ''}${nbArrets(x.relais)}${x.pluie ? ' · 🌧️ avec la pluie prévue' : ''}</b>${barreStrat(x.relais, tours)}<small class="legende">${esc(texteStrat(x.relais))}</small><small>${x.pluie ? `si la pluie vient : ≈ ${duree(x.temps)}` : `≈ ${duree(x.temps)}${meilleurSec != null && x.temps - meilleurSec > .05 ? ` · +${virgF(x.temps - meilleurSec)} s` : ' · la plus rapide sur le sec'}`}</small></button>`).join('') || '<p class="sous">Pas de proposition : il manque des pneus.</p>'}</div>
+      <h4 class="stT">✏️ Ta stratégie</h4>
+      ${barreStrat(rel, tours)}${htmlMeteo(prev).split('<p')[0]}
+      ${est.relais.map((r, i) => `<div class="relS" data-i="${i}"><div class="h"><b>Relais ${i + 1}</b><small class="legende">tours ${r.debut} à ${r.fin} · ${r.fin - r.debut + 1} tours · usure à la fin <b class="${r.usureFin > 1 ? 'moins' : r.usureFin > Co.LIM_USURE ? 'orange' : 'plus'}">${Math.round(r.usureFin * 100)} %</b>${u0[i] ? ` (train déjà usé à ${Math.round(u0[i] * 100)} %)` : ''}</small>${n > 1 ? '<button class="x" data-x="1" title="Enlever ce relais">✕</button>' : ''}</div>
+        <div class="choixp">${['S', 'M', 'H', 'I', 'P'].map(k => `<button data-p="${k}" class="${r.pneu === k ? 'actif' : ''}">${pneuHtml(k)} <small>${Co.PNEUS[k].court === 'T' ? 'Tendres' : Co.PNEUS[k].nom}</small></button>`).join('')}</div>
+        ${i < n - 1 ? `<div class="arretS">🔧 Arrêt à la fin du tour <button data-d="-1">−</button><b>${r.fin}</b><button data-d="1">+</button></div>` : ''}</div>`).join('')}
+      <button class="btn" id="stAjout">➕ Ajouter un arrêt</button>
+      <div class="totS"><b>Temps estimé : ≈ ${duree(est.temps)}</b>${mouilles ? ' <small class="legende">(avec la pluie prévue)</small>' : meilleurSec != null && est.temps - meilleurSec > .05 ? ` <small class="legende">(+${virgF(est.temps - meilleurSec)} s sur la meilleure proposition)</small>` : ''}</div>
+      ${alertes.map(a => `<p class="sous moins" style="margin:0">${a}</p>`).join('')}
+      <button class="btn gros rouge" id="stOk">✅ Valider cette stratégie</button>`;
+    f.querySelector('#stFermer').onclick = () => { $('vRegl').hidden = true; pageWeekend(); };
+    f.querySelector('#stOk').onclick = () => { W.strat[pid] = { relais:st.relais.map(r => ({ pneu:r.pneu, fin:r.fin })) }; sauver(); $('vRegl').hidden = true; pageWeekend(); };
+    f.querySelectorAll('[data-prop]').forEach(b => b.onclick = () => { st.relais = props[+b.dataset.prop].relais.map(r => ({ pneu:r.pneu, fin:r.fin })); dessiner(); });
+    f.querySelectorAll('.relS').forEach(el => {
+      const i = +el.dataset.i;
+      el.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { rel[i].pneu = b.dataset.p; dessiner(); });
+      el.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { rel[i].fin = clamp(rel[i].fin + +b.dataset.d, (i ? rel[i - 1].fin : 0) + 1, rel[i + 1].fin - 1); dessiner(); });
+      const x = el.querySelector('[data-x]'); if(x) x.onclick = () => { if(i === n - 1) rel[i - 1].fin = tours; rel.splice(i, 1); dessiner(); };
+    });
+    f.querySelector('#stAjout').onclick = () => {
+      // on coupe le plus long relais en deux
+      let k = 0, lg = 0; rel.forEach((r, i) => { const l = r.fin - (i ? rel[i - 1].fin : 0); if(l > lg){ lg = l; k = i; } });
+      if(lg < 2) return;
+      const debut = k ? rel[k - 1].fin : 0, autre = { S:'M', M:'H', H:'M', I:'I', P:'P' }[rel[k].pneu];
+      rel.splice(k, 0, { pneu:rel[k].pneu, fin:debut + Math.floor(lg / 2) }); rel[k + 1].pneu = autre; dessiner();
+    };
+  };
+  dessiner();
+  $('vRegl').hidden = false; f.scrollTop = 0;
+}
+
 // les voitures du plateau pour une séance ou la course
 function voituresCourse(circ){
   const car = M.caractere(circ), liste = [];
@@ -705,6 +814,8 @@ function lancerSeance(type){
     if(!v.joueur || type !== 'EL' || !run || !run.tours) return;
     const p = C.pilotes[v.id], res = Co.retourPilote(circ, v.id, W.reg[v.id], W.connu[v.id], run.tours, qualiteRetour(p));
     W.retours[v.id] = res.lignes; W.conf[v.id] = res.confiance; W.toursEL[v.id] = (W.toursEL[v.id] || 0) + run.tours;
+    // l'usure des pneus, mesurée pendant ces tours (moins sûre sur piste humide avec des pneus secs)
+    assurerStrat(); const mes = W.usureMes[v.id][v.pneu]; mes.tours += run.tours * (Co.PNEUS[v.pneu].sec && R.seance.w > .25 ? .5 : 1); delete W.strat[v.id];
     const pire = res.lignes.slice().sort((a, b) => a.note - b.note)[0];
     R.evenements.unshift({ txt:`🎧 ${v.court} (confiance ${Math.round(res.confiance * 100)} %) : « ${pire.txt} »`, type:'conseil', t:R.t });
     sauver();
@@ -724,7 +835,8 @@ function lancerCourse(){
   const gp = C.calendrier[C.gp], circ = M.circuit(gp.id);
   R = Co.preparer({ circuit:circ, voitures:voituresCourse(circ), tours:M.nbTours(C, circ), meteo:gp.meteo, options:optionsCourse() });
   Co.placerGrille(R, W.grille);
-  for(const v of R.voitures) if(v.joueur) v.pneuDepart = W.pneusDepart[v.id];
+  assurerStrat();
+  for(const v of R.voitures) if(v.joueur){ const st = stratDe(v.id); if(st) Co.donnerPlan(v, st.relais); else v.pneuDepart = W.pneusDepart[v.id]; }
   modeC = 'course'; ouvrirPiste();
 }
 
@@ -785,9 +897,9 @@ function construirePilotesC(){
       el.innerHTML = `<div class="l1"><b class="pos">P–</b><span>${esc(v.nom)}</span><em class="ec"></em></div>
         <div class="l2"><span class="pneu"></span><div class="us"><i></i></div><small class="u"></small><span title="Batterie">🔋</span><div class="batt" style="width:34px"><i></i></div></div>
         <div class="cmd">${Object.entries(Co.MODES).map(([k, m]) => `<button data-m="${k}" title="Rythme : ${m.nom}">${m.ico}</button>`).join('')}${Object.entries(Co.ERS).map(([k, m]) => `<button data-e="${k}" title="Batterie : ${m.nom}" class="e">${m.ico}</button>`).join('')}</div>
-        <div class="ligne3"><button class="bstand">🔧 Stand</button><button class="auto" title="Stratégie automatique">🤖</button></div>
+        <div class="ligne3"><button class="bstand">🔧 Stand</button><button class="planB" title="L'ingénieur suit ta stratégie">📋</button><button class="auto" title="Tout automatique (batterie comprise)">🤖</button></div>
         <div class="stand" hidden>${Object.entries(Co.PNEUS).map(([k, p]) => `<button data-p="${k}" title="${p.nom}"><span class="pneu" style="border-color:${p.col}">${p.court}</span></button>`).join('')}</div>
-        <div class="prev"></div><div class="cons"></div>`;
+        <div class="plan"></div><div class="prev"></div><div class="cons"></div>`;
     } else {
       const choixTours = modeC === 'EL' ? [3, 5, 8] : [1, 2, 3];
       el.innerHTML = `<div class="l1"><b class="pos">P–</b><span>${esc(v.nom)}</span><em class="ec"></em></div>
@@ -802,7 +914,8 @@ function construirePilotesC(){
       if(modeC === 'course'){
         if(b.dataset.m) v.mode = b.dataset.m;
         else if(b.dataset.e){ v.ers = b.dataset.e; }
-        else if(b.classList.contains('bstand')){ if(v.demande){ v.demande = null; standOuvert[v.id] = false; } else standOuvert[v.id] = !standOuvert[v.id]; }
+        else if(b.classList.contains('bstand')){ if(v.demande){ if(v.demandePlan) Co.reporterArret(R, v); v.demande = null; standOuvert[v.id] = false; } else standOuvert[v.id] = !standOuvert[v.id]; }
+        else if(b.classList.contains('planB')){ if(v.strat) v.suitPlan = !v.suitPlan; }
         else if(b.classList.contains('auto')) v.auto = !v.auto;
         else if(b.dataset.p){ v.demande = b.dataset.p; standOuvert[v.id] = false; }
       } else {
@@ -873,7 +986,7 @@ function majPiste(){
   const gp = C.calendrier[C.gp], ord = Co.ordre(R), w = Co.mouille(R);
   if(modeC === 'course'){
     const tete = ord[0].v, tourAff = Math.min(R.tours, Math.max(1, tete.tour + (tete.etat === 'fini' ? 0 : 1)));
-    $('cTitre').innerHTML = `${esc(gpNom(gp))}<small>${R.phase === 'grille' ? 'Les feux…' : `Tour ${tourAff}/${R.tours}`} · ${w > .6 ? '🌧️ grosse pluie' : w > .25 ? '🌦️ piste humide' : w > .05 ? '🌦️ quelques gouttes' : '☀️ sec'}${R.sc ? ' · 🚨 voiture de sécurité' : ''}</small>`;
+    $('cTitre').innerHTML = `${esc(gpNom(gp))}<small>${R.phase === 'grille' ? 'Les feux…' : `Tour ${tourAff}/${R.tours}`} · ${w > .6 ? '🌧️ grosse pluie' : w > .25 ? '🌦️ piste humide' : w > .05 ? '🌦️ quelques gouttes' : '☀️ sec'}${R.sc ? ' · 🚨 voiture de sécurité' : ''}${R.phase === 'course' && W ? prochainePluie(tete.tour, w) : ''}</small>`;
     $('cHorl').hidden = true;
   } else {
     const s = R.seance, m = Math.floor(s.reste / 60), sec = Math.floor(s.reste % 60);
@@ -904,7 +1017,10 @@ function majPiste(){
       el.querySelector('.stand').hidden = !standOuvert[v.id] || !!v.demande || v.etat !== 'course';
       const pr = Co.prevoirArret(R, v);
       el.querySelector('.prev').textContent = pr ? `🔮 S'il s'arrête : P${pr.place}${pr.devant ? `, à ${virgF(pr.ecartDevant)} s de ${pr.devant}` : ''}${pr.derriere ? ` (${pr.derriere} à ${virgF(pr.ecartDerriere)} s)` : ''}` : '';
-      el.querySelector('.cons').textContent = R.alertes[v.id] && v.etat === 'course' && !v.demande ? '🎧 ' + R.alertes[v.id] : v.auto ? '🤖 L\'ingénieur gère la stratégie et la batterie' : '';
+      const ep = Co.etatPlan(R, v), bp = el.querySelector('.planB');
+      bp.disabled = !ep; bp.classList.toggle('actif', !!ep && ep.suit);
+      el.querySelector('.plan').textContent = !ep || v.etat === 'abandon' ? '' : !ep.suit ? '📋 Stratégie en pause : touche 📋 pour que l\'ingénieur la reprenne' : ep.prochain ? `📋 Arrêt prévu au tour ${ep.prochain.tour} → ${Co.PNEUS[ep.prochain.pneu].nom.toLowerCase()}${ep.prochain.dans > 0 ? ` (dans ${ep.prochain.dans} tour${ep.prochain.dans > 1 ? 's' : ''})` : ''}` : '📋 Plus d\'arrêt prévu : jusqu\'à l\'arrivée';
+      el.querySelector('.cons').textContent = R.alertes[v.id] && v.etat === 'course' && !v.demande ? '🎧 ' + R.alertes[v.id] : v.auto ? (ep && ep.suit ? '🤖 L\'ingénieur suit ta stratégie et gère la batterie' : '🤖 L\'ingénieur gère la stratégie et la batterie') : '';
     } else {
       const s = selS[v.id], coupe = modeC === 'Q1' ? 16 : modeC === 'Q2' ? 10 : 99;
       el.classList.toggle('out', v.etat === 'elimine');
@@ -936,6 +1052,12 @@ $('cVit').onclick = e => {
   }
   vitesseC = +b.dataset.v; [...$('cVit').children].forEach(x => x.classList.toggle('actif', x === b));
 };
+// la prévision pendant la course : la prochaine pluie, ou la fin de la pluie
+function prochainePluie(tour, w){
+  const prev = prevCourse(tour).filter(x => x.tour > tour);
+  if(w > .25){ const f = prev.find(x => x.p < .3); return f ? ` · ☀️ fin de pluie prévue tour ${f.tour}` : ''; }
+  const x = prev.slice(0, 12).find(x => x.p >= .4); return x ? ` · 🌦️ pluie prévue tour ${x.tour} (${Math.round(x.p * 100)} %)` : '';
+}
 // la fin d'une séance
 function finSeance(){
   const ord = Co.classementSeance(R), type = modeC, carte = $('cFiniCarte');
@@ -943,7 +1065,9 @@ function finSeance(){
   const nomP = o => `${o.v.joueur ? '<b>' : ''}${esc(o.v.nom)}${o.v.joueur ? '</b>' : ''}`;
   if(type === 'EL'){
     W.etape = 'Q';
-    carte.innerHTML = `<h2>🔧 Fin des essais libres</h2><p class="sous" style="margin:8px 0">${mesPilotes().map(p => `${esc(p.nom)} : ${W.conf[p.id] != null ? `confiance ${Math.round(W.conf[p.id] * 100)} %` : 'pas de réglage essayé'}, ${(ord.find(o => o.v.id === p.id) || {}).place || '–'}e temps`).join('<br>')}</p><button class="btn gros rouge" id="bFiniOk">Retour au week-end</button>`;
+    assurerStrat();
+    const mesU = pid => { const u = usuresPilote(pid), l = Object.keys(Co.PNEUS).filter(k => u[k].tours > 0); return l.length ? `usure mesurée : ${l.map(k => `${Co.PNEUS[k].nom.toLowerCase()} ${virgF(u[k].parTour * Co.USURE_COURSE * 100)} %/tour`).join(', ')}` : 'aucune usure de pneus mesurée'; };
+    carte.innerHTML = `<h2>🔧 Fin des essais libres</h2><p class="sous" style="margin:8px 0">${mesPilotes().map(p => `${esc(p.nom)} : ${W.conf[p.id] != null ? `confiance ${Math.round(W.conf[p.id] * 100)} %` : 'pas de réglage essayé'}, ${(ord.find(o => o.v.id === p.id) || {}).place || '–'}e temps ; ${mesU(p.id)}`).join('<br>')}</p><button class="btn gros rouge" id="bFiniOk">Retour au week-end</button>`;
     $('bFiniOk').onclick = () => { $('cFini').hidden = true; cancelAnimationFrame(boucleC); pageWeekend(); };
   } else {
     W.q[type] = ord.map(o => [o.v.id, o.temps]);

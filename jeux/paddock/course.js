@@ -483,6 +483,7 @@ window.PaddockCourse = (() => {
   // les conseils de l'ingénieur pour nos pilotes
   function conseil(R, v){
     if(v.auto || v.demande || v.etat !== 'course') return null;
+    if(v.strat && v.suitPlan) return v.batt < .1 && v.ers === 'boost' ? 'Batterie vide : repasse en mode normal ou recharge.' : null;
     const w = mouille(R), reste = toursRestants(R, v), prevu = mouille(R, R.t + R.T.tempsTour * (1 + v.ingenieur * .6));
     if(PNEUS[v.pneu].sec && w > .3) return 'La piste est mouillée : rentre pour des intermédiaires !';
     if(!PNEUS[v.pneu].sec && w < .15 && reste > 1) return 'La piste sèche : rentre pour des pneus secs !';
@@ -501,7 +502,7 @@ window.PaddockCourse = (() => {
     R.wetMax = Math.max(R.wetMax, w);
     if(R.phase === 'grille'){
       R.feux += dt;
-      if(R.feux >= 3.2){ R.phase = 'course'; R.t = 0; for(const v of R.voitures){ v.etat = 'course'; monter(v, choisirPneusDepart(R, v)); v.utilises.add(v.pneu); v.retard = hasard(0, .35) * (1.1 - v.regularite / 100) * 3; v.dernierPassage = 0; v.debutSect = 0; } evenement(R, 'Départ !'); }
+      if(R.feux >= 3.2){ R.phase = 'course'; R.t = 0; for(const v of R.voitures){ v.etat = 'course'; monter(v, choisirPneusDepart(R, v)); v.utilises.add(v.pneu); if(v.strat && v.strat.relais[0].pneu !== v.pneu){ v.strat.relais[0].pneu = v.pneu; if(!PNEUS[v.pneu].sec) evenement(R, `🎧 ${v.court} : piste mouillée au départ, on part en ${nomPneu(v.pneu)}.`, 'conseil'); } v.retard = hasard(0, .35) * (1.1 - v.regularite / 100) * 3; v.dernierPassage = 0; v.debutSect = 0; } evenement(R, 'Départ !'); }
       else return;
     }
     const leader = R.voitures.filter(v => v.etat === 'course' || v.etat === 'stand').sort((a, b) => b.s - a.s)[0];
@@ -588,7 +589,9 @@ window.PaddockCourse = (() => {
       if(!R.drapeau && v.tour >= R.tours){ R.drapeau = true; evenement(R, `🏁 ${v.nom} gagne la course !`, v.joueur ? 'bon' : ''); }
       if(R.drapeau && v.etat === 'course'){ v.etat = 'fini'; v.fin = tl; R.arrives++; v.place = R.arrives; return; }
       incidents(R, v);
-      if(v.auto) strategieAuto(R, v);
+      if(v.pneuTour === v.pneu && v.uTour != null && !R.sc) v.usureTour = v.usure - v.uTour;
+      v.uTour = v.usure; v.pneuTour = v.pneu;
+      if(v.strat && v.suitPlan) strategiePlan(R, v); else if(v.auto) strategieAuto(R, v);
       if(v.joueur){ const c = conseil(R, v); if(c && R.alertes[v.id] !== c){ R.alertes[v.id] = c; evenement(R, `🎧 ${v.court} : ${c}`, 'conseil'); } }
     }
   }
@@ -596,7 +599,7 @@ window.PaddockCourse = (() => {
     const parSeconde = usureParTour(R, v, v.pneu) * usureMeteo(v.pneu, w) / (R.T.tempsTour * 1.05);
     v.usure += parSeconde * dt * (R.sc ? .3 : 1);
     if(v.usure > 1.05 && Math.random() < dt * .25 && !v.crevaison){
-      v.crevaison = true; v.demande = v.demande || choixSec(R, v, toursRestants(R, v)); v.usure = 1.6; v.degats += .2; evenement(R, `💥 Crevaison pour ${v.nom} !`, v.joueur ? 'mal' : '');
+      v.crevaison = true; v.demande = v.demande || (v.strat && v.suitPlan && v.strat.relais[v.strat.i + 1] && PNEUS[v.strat.relais[v.strat.i + 1].pneu].sec === PNEUS[v.pneu].sec ? v.strat.relais[v.strat.i + 1].pneu : choixSec(R, v, toursRestants(R, v))); v.usure = 1.6; v.degats += .2; evenement(R, `💥 Crevaison pour ${v.nom} !`, v.joueur ? 'mal' : '');
     }
   }
   function incidents(R, v){
@@ -631,13 +634,199 @@ window.PaddockCourse = (() => {
       a.t += dt;
       if(a.t >= a.duree){
         const ancien = v.pneu;
-        monter(v, v.demande); v.utilises.add(v.pneu); v.crevaison = false; v.demande = null; v.arrets++; v.seuilUsure = null;
+        monter(v, v.demande); v.utilises.add(v.pneu); v.crevaison = false; v.demande = null; v.arrets++; v.seuilUsure = null; v.usureTour = null; v.pneuTour = null;
+        if(v.strat) apresArret(R, v);
         a.phase = 'sortie';
         if(v.joueur || R.voitures.indexOf(v) < 3) evenement(R, `${v.court} : arrêt en ${virg(a.duree * R.K)} s, ${PNEUS[ancien].nom.toLowerCase()} → ${PNEUS[v.pneu].nom.toLowerCase()}`, v.joueur ? 'stand' : '');
       }
     } else if(a.phase !== 'arret' && k >= T.stands.nS - 1 && k < T.stands.nS + 40){
       v.etat = 'course'; v.arret = null; v.latCible = 0; v.lat = 0;
     }
+  }
+
+  /* ---------- La stratégie de pneus ---------- */
+  // un tour de course dure à peu près le temps de référence : en « tours de météo » (ceux de mouille), le tour k finit vers k × LAP_X
+  const LAP_X = .93, USURE_COURSE = .955;          // mesuré : en course, un tour use 95,5 % de l'usure théorique (usureParTour)
+  const marche = z => 1 / (1 + Math.exp(-1.7 * z));
+  // le bruit de la prévision, tiré une fois par week-end ; risque : le risque de pluie du circuit ; niv : l'ingénieur de course (1 à 5)
+  function bruitPrevision(meteo, tours, risque, niv){
+    const s = 6 - niv;
+    return { dD:gauss() * s * .9, dF:gauss() * s * .9, dI:gauss() * .05 * s,
+      faux:meteo && !meteo.pluie && Math.random() < risque * (1 - niv / 6) * 1.6 ? { debut:hasard(1, Math.max(2, tours - 3)), duree:hasard(2, 7), p:hasard(.2, .45) } : null };
+  }
+  // la prévision tour par tour : [{ tour, p (chance de pluie), w (piste mouillée s'il pleut) }], vue depuis le tour « depuis » :
+  // plus le tour est proche, plus elle est juste (et plus l'ingénieur est bon, plus elle l'est de loin)
+  function previsionMeteo(meteo, tours, bruit, niv, depuis = 0){
+    const res = [], sig = (6 - niv) * .55 + .4, conf = .45 + niv * .1;
+    for(let k = 1; k <= tours; k++){
+      const prox = clamp((k - depuis) / 10, .12, 1), s = sig * prox, c = 1 - (1 - conf) * prox, x = (k - .5) * LAP_X;
+      let p = 0, w = 0;
+      if(meteo && meteo.pluie){
+        const a = meteo.debut + bruit.dD * prox, b = meteo.debut + meteo.duree + Math.max(bruit.dF * prox, -meteo.duree * .7);
+        p = c * marche((x - a) / s) * (1 - marche((x - b) / s)); w = clamp(meteo.force + bruit.dI * prox, .3, 1);
+      }
+      if(bruit && bruit.faux){ const f = bruit.faux, pf = f.p * prox * marche((x - f.debut) / s) * (1 - marche((x - f.debut - f.duree) / s)); if(pf > p){ p = pf; w = .5; } }
+      res.push({ tour:k, p, w });
+    }
+    return res;
+  }
+  // le temps estimé d'une stratégie (en vrais secondes) et l'usure au bout de chaque relais
+  // relais : [{ pneu, fin, u0 }] ; usures : usure par tour de chaque type (piste sèche) ; mouilles : piste mouillée prévue à chaque tour
+  // (depart : le premier tour compté, pour estimer un morceau de course)
+  function estimerStrategie(c, tours, relais, usures, mouilles = null, depart = 1){
+    const T = circuitCourse(c), T0 = T.tempsTour * T.K, pit = (T.pertePit + 2.4 / T.K) * T.K;
+    let t = 0, debut = depart; const out = [];
+    relais.forEach((r, i) => {
+      let u = r.u0 || 0;
+      for(let k = debut; k <= r.fin; k++){
+        const w = mouilles ? mouilles[k - 1] || 0 : 0, essence = .028 * clamp(1 - (k - 1) / tours, 0, 1);
+        t += T0 / (1 + PNEUS[r.pneu].rythme + rythmeMeteo(r.pneu, w) - perteUsure(u) - w * .09 - essence);
+        u += usures[r.pneu] * usureMeteo(r.pneu, w) * USURE_COURSE;
+      }
+      out.push({ ...r, debut, usureFin:u });
+      if(i < relais.length - 1) t += pit;
+      debut = r.fin + 1;
+    });
+    return { temps:t, relais:out };
+  }
+  const LIM_USURE = .85;
+  // les trains de pneus pour une suite de relais : à chaque fois le moins usé qui reste (null s'il en manque)
+  function trains(jeux, seq){
+    const pris = new Set(), u0 = [];
+    for(const p of seq){
+      const j = jeux.filter(x => x.t === p && !pris.has(x)).sort((a, b) => a.u - b.u)[0];
+      if(!j) return null; pris.add(j); u0.push(j.u);
+    }
+    return u0;
+  }
+  // les meilleurs relais secs pour les tours debut à fin (n relais) : { relais, temps } ; deuxTypes : la règle des deux types de pneus secs
+  function remplirSec(c, tours, jeux, usures, debut, fin, n, deuxTypes, exclure = []){
+    const types = ['S', 'M', 'H'], res = [];
+    const seqs = n === 1 ? types.map(a => [a]) : n === 2 ? types.flatMap(a => types.map(b => [a, b])) : types.flatMap(a => types.flatMap(b => types.map(d => [a, b, d])));
+    for(const seq of seqs){
+      if(deuxTypes && new Set(seq).size < 2) continue;
+      const u0 = trains(jeux, seq); if(!u0) continue;
+      const arrets = [];
+      if(n === 1) arrets.push([]);
+      else if(n === 2) for(let a = debut; a < fin; a++) arrets.push([a]);
+      else for(let a = debut; a < fin - 1; a++) for(let b = a + 1; b < fin; b++) arrets.push([a, b]);
+      let best = null;
+      for(const st of arrets){
+        const fins = [...st, fin], relais = seq.map((p, i) => ({ pneu:p, fin:fins[i], u0:u0[i] }));
+        const e = estimerStrategie(c, tours, relais, usures, null, debut);
+        if(e.relais.some(r => r.usureFin > LIM_USURE)) continue;
+        if(!best || e.temps < best.temps) best = { relais, temps:e.temps, cle:seq.join('') };
+      }
+      if(best && !exclure.includes(best.cle)) res.push(best);
+    }
+    return res.sort((a, b) => a.temps - b.temps);
+  }
+  // les propositions de l'ingénieur : [{ type, relais:[{ pneu, fin, u0 }], temps, pluie:{ debut, fin } | null }]
+  function proposerStrategies(c, tours, jeux, usures, prev){
+    const props = [], pMax = Math.max(0, ...prev.map(x => x.p));
+    const ajouter = (type, relais, pluie = null) => {
+      if(!relais || !relais.length) return;
+      // deux relais de suite avec le même pneu pluie : un seul
+      const r = relais.filter(x => x.fin >= 1).reduce((l, x) => { const d = l[l.length - 1]; if(d && d.pneu === x.pneu && !PNEUS[x.pneu].sec) d.fin = x.fin; else l.push({ ...x }); return l; }, []);
+      r[r.length - 1].fin = tours;
+      const u0 = trains(jeux, r.map(x => x.pneu)); if(!u0) return; r.forEach((x, i) => x.u0 = u0[i]);
+      const cle = r.map(x => x.pneu + x.fin).join();
+      if(props.some(p => p.cle === cle)) return;
+      props.push({ type, relais:r, temps:estimerStrategie(c, tours, r, usures, pluie ? mouilles : null).temps, pluie, cle });
+    };
+    // la pluie prévue : les tours où elle est probable
+    const seuil = Math.max(.2, pMax * .7), mouilleT = prev.map(x => x.p >= seuil);
+    const a = mouilleT.indexOf(true) + 1, b = a ? (mouilleT.indexOf(false, a - 1) === -1 ? tours : mouilleT.indexOf(false, a - 1)) : 0;
+    const mouilles = prev.map(x => x.p >= seuil ? x.w : 0);
+    const wetP = a ? (Math.max(...prev.slice(a - 1, b).map(x => x.w)) > .65 ? 'P' : 'I') : null;
+    const planPluie = type => {
+      const relais = [];
+      if(a > 1){ const avant = remplirSec(c, tours, jeux, usures, 1, a - 1, 1, false)[0] || remplirSec(c, tours, jeux, usures, 1, a - 1, 2, false)[0]; if(!avant) return; relais.push(...avant.relais); }
+      relais.push({ pneu:wetP, fin:b });
+      if(b < tours){ const apres = remplirSec(c, tours, jeux, usures, b + 1, tours, 1, false)[0] || remplirSec(c, tours, jeux, usures, b + 1, tours, 2, false)[0]; if(!apres) return; relais.push(...apres.relais); }
+      ajouter(type, relais, { debut:a, fin:b });
+    };
+    if(a === 1 && pMax > .6){
+      // la pluie au départ : on part en pneus pluie, puis les pneus secs quand la piste sèche
+      planPluie('pluieDepart');
+      if(b < tours - 3){ const apres = remplirSec(c, tours, jeux, usures, b + 1, tours, 2, false)[0]; if(apres) ajouter('pluieDepart2', [{ pneu:wetP, fin:b }, ...apres.relais], { debut:a, fin:b }); }
+    } else {
+      if(a && pMax >= .5) planPluie('pluie');
+      const un = remplirSec(c, tours, jeux, usures, 1, tours, 2, true), deux = remplirSec(c, tours, jeux, usures, 1, tours, 3, true);
+      if(un[0]) ajouter('un', un[0].relais);
+      if(deux[0]) ajouter('deux', deux[0].relais);
+      if(a && pMax >= .25 && pMax < .5) planPluie('pluie');
+      if(props.length < 3 && un[1]) ajouter('un', un[1].relais);
+      if(!props.length){ const seul = remplirSec(c, tours, jeux, usures, 1, tours, 1, false)[0]; if(seul) ajouter('zero', seul.relais); }
+    }
+    return props;
+  }
+
+  // la stratégie en course (nos pilotes) : v.strat = { relais:[{ pneu, fin }], i (le relais en cours) } ; v.suitPlan : l'ingénieur l'applique
+  function donnerPlan(v, relais){ v.strat = { relais:relais.map(r => ({ pneu:r.pneu, fin:r.fin })), i:0 }; v.suitPlan = true; v.pneuDepart = relais[0].pneu; }
+  const nomPneu = p => p === 'P' ? 'pneus pluie' : PNEUS[p].nom.toLowerCase();
+  function direPlan(R, v, txt){ R.alertes[v.id] = txt; evenement(R, `🎧 ${v.court} : ${txt}`, 'conseil'); }
+  // le plan d'abord ; on ne s'en écarte que si c'est nécessaire (pluie, piste qui sèche, pneus qui ne tiendront pas, voiture de sécurité près de l'arrêt prévu)
+  function strategiePlan(R, v){
+    const S = v.strat; if(!S || v.demande || v.etat !== 'course') return;
+    const rel = S.relais, r = rel[S.i], prochain = rel[S.i + 1], reste = toursRestants(R, v), w = mouille(R), sec = PNEUS[v.pneu].sec;
+    if(reste <= 1) return;
+    const demander = (pneu, prevu, txt) => { v.demande = pneu; v.demandePlan = { prevu }; if(txt) direPlan(R, v, txt); };
+    // la pluie est là alors qu'on est en pneus secs
+    if(sec && w > .3){
+      if(prochain && !PNEUS[prochain.pneu].sec) return demander(w > .7 ? 'P' : prochain.pneu, true, v.tour >= r.fin - 2 ? `La pluie est là : on passe aux ${nomPneu(w > .7 ? 'P' : prochain.pneu)}, comme prévu.` : `Plan adapté : la pluie arrive plus tôt que prévu, on passe aux ${nomPneu(w > .7 ? 'P' : prochain.pneu)}.`);
+      return demander(w > .7 ? 'P' : 'I', false, `Plan adapté : la pluie arrive, on rentre pour des ${nomPneu(w > .7 ? 'P' : 'I')}.`);
+    }
+    if(v.pneu === 'I' && w > .8) return demander('P', false, 'Plan adapté : grosse pluie, on passe aux pneus pluie.');
+    if(v.pneu === 'P' && w < .45 && reste > 2) return demander('I', false, 'Plan adapté : la pluie se calme, on passe aux intermédiaires.');
+    // la piste sèche alors qu'on est en pneus pluie
+    if(!sec && w < .15){
+      if(prochain && PNEUS[prochain.pneu].sec) return demander(prochain.pneu, true, v.tour >= r.fin - 2 ? `La piste sèche : on passe aux ${nomPneu(prochain.pneu)}, comme prévu.` : `Plan adapté : la piste sèche plus tôt que prévu, on passe aux ${nomPneu(prochain.pneu)}.`);
+      return demander(choixSec(R, v, reste), false, 'Plan adapté : la piste sèche, on remet des pneus secs.');
+    }
+    // l'arrêt prévu
+    if(prochain && v.tour >= r.fin - 1){
+      const pneu = prochain.pneu;
+      // le plan prévoyait la pluie, mais elle n'est pas là (ou l'inverse) : on attend
+      if(!PNEUS[pneu].sec && w < .2 && v.usure < .7){ r.fin = Math.min(R.tours - 1, v.tour + 2); prochain.fin = Math.max(prochain.fin, r.fin + 1); if(!S.attentePluie){ S.attentePluie = true; direPlan(R, v, 'La pluie prévue n\'est pas encore là : on reste en pneus secs.'); } return; }
+      if(PNEUS[pneu].sec && !sec && w > .25){ r.fin = Math.min(R.tours - 1, v.tour + 2); prochain.fin = Math.max(prochain.fin, r.fin + 1); if(!S.attenteSec){ S.attenteSec = true; direPlan(R, v, 'La piste est encore mouillée : on garde les pneus pluie.'); } return; }
+      return demander(PNEUS[pneu].sec || w > .25 ? pneu : choixSec(R, v, reste), true, `Arrêt prévu : on rentre pour des ${nomPneu(PNEUS[pneu].sec || w > .25 ? pneu : choixSec(R, v, reste))}.`);
+    }
+    // les pneus ne tiendront pas jusqu'à l'arrêt prévu (ou l'arrivée) : on avance l'arrêt, ou on en ajoute un
+    const parTour = v.usureTour || usureParTour(R, v, v.pneu) * usureMeteo(v.pneu, w) * USURE_COURSE;
+    if(v.usure + parTour * 1.5 > .95){
+      if(prochain) return demander(prochain.pneu, true, 'Plan adapté : les pneus s\'usent plus vite que prévu, on avance l\'arrêt.');
+      return demander(choixSec(R, v, reste), false, 'Plan adapté : les pneus ne tiendront pas jusqu\'à l\'arrivée, un arrêt de plus.');
+    }
+    // la voiture de sécurité, juste avant l'arrêt prévu : on l'avance (il coûte moins de temps)
+    if(R.sc && prochain && r.fin - v.tour <= 3) return demander(prochain.pneu, true, 'Voiture de sécurité : on avance l\'arrêt prévu, il coûte moins de temps.');
+    // la règle des deux types de pneus secs, si le plan a été changé
+    if(sec && R.wetMax < .3 && reste === 2 && !prochain && secsUtilises(v) < 2) return demander(v.pneu === 'S' ? 'M' : 'S', false, 'Règle des deux types de pneus secs : un dernier arrêt obligatoire.');
+  }
+  // après un arrêt : le plan suit (arrêt prévu, en avance ou en retard), ou un relais est ajouté ; puis le plan reprend
+  function apresArret(R, v){
+    const S = v.strat; if(!S){ v.demandePlan = null; return; }
+    const rel = S.relais, i = S.i, Ls = clamp(Math.round(v.s / R.T.L), 1, R.tours - 1), mont = v.pneu, prevu = v.demandePlan && v.demandePlan.prevu;
+    const ancienneFin = rel[i].fin; rel[i].fin = Ls;
+    if(rel[i + 1] && (prevu || rel[i + 1].pneu === mont)){ S.i = i + 1; rel[S.i].pneu = mont; }
+    else { rel.splice(i + 1, 0, { pneu:mont, fin:rel[i + 1] ? Math.max(Ls + 1, ancienneFin) : R.tours }); S.i = i + 1; }
+    // des fins dans l'ordre, la dernière à l'arrivée
+    for(let k = S.i; k < rel.length; k++) rel[k].fin = Math.max(rel[k].fin, rel[k - 1].fin + 1);
+    while(rel.length - 1 > S.i && rel[rel.length - 2].fin >= R.tours) rel.pop();
+    rel[rel.length - 1].fin = R.tours;
+    S.attentePluie = S.attenteSec = false; v.demandePlan = null;
+  }
+  // on annule un arrêt demandé par le plan : il est repoussé d'un tour
+  function reporterArret(R, v){
+    const S = v.strat; if(!S || !v.demandePlan) return; const r = S.relais[S.i];
+    if(S.relais[S.i + 1]){ r.fin = Math.min(R.tours - 1, Math.max(r.fin, v.tour + 2)); S.relais[S.i + 1].fin = Math.max(S.relais[S.i + 1].fin, r.fin + 1); }
+    v.demandePlan = null;
+  }
+  // ce que prévoit le plan, pour l'affichage
+  function etatPlan(R, v){
+    const S = v.strat; if(!S) return null;
+    const r = S.relais[S.i], pr = S.relais[S.i + 1];
+    return { suit:v.suitPlan !== false, prochain:pr ? { tour:r.fin, pneu:pr.pneu, dans:r.fin - v.tour } : null, relais:S.relais, i:S.i };
   }
   function evenement(R, txt, type = ''){
     const leader = R.voitures.reduce((m, v) => Math.max(m, v.tour), 0);
@@ -932,5 +1121,5 @@ window.PaddockCourse = (() => {
 
   return { K:8, PNEUS, JEUX, MODES, ERS, REGLAGES, preparer, demarrerSeance, sortir, rentrer, pas, ordre, classementSeance, simulerSeance, qualifRapide, placerGrille, resultat, simulerFin,
     mouille, dessiner, chrono, circuitCourse, usureParTour, voiture, secsUtilises, prevoirArret, reglageIdeal, confiance, bonusReglage, connaissanceDepart, retourPilote, voitureEn, apercu,
-    fond:() => null, pneuPluie };
+    fond:() => null, pneuPluie, perteUsure, bruitPrevision, previsionMeteo, estimerStrategie, proposerStrategies, donnerPlan, reporterArret, etatPlan, LIM_USURE, USURE_COURSE };
 })();

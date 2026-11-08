@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:150, type:'maj', jeu:'Paddock', ico:'🏎️', lien:'jeux/paddock.html',
+    txt:'Stratégie de pneus : météo prévue tour par tour, usure des pneus mesurée en essais libres, propositions de l\'ingénieur que tu peux modifier. En course, il applique ta stratégie et ne la change que si c\'est nécessaire.' },
   { v:149, type:'maj', jeu:'Billard', ico:'🎱', lien:'jeux/billard.html',
     txt:'Au billard français, la ligne de visée va plus loin : jusqu\'à 4 bandes, puis le chemin de ta boule après la première bille, avec un cercle si elle arrive sur la troisième.' },
   { v:148, type:'maj', jeu:'Billard', ico:'🎱', lien:'jeux/billard.html',
