@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:159, type:'nouveau', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html',
+    txt:'Nouveau jeu : Arpenteur ! Sors marcher, courir ou rouler avec ton téléphone : ramasse des pièces et des objets rares autour de toi sur la carte ou en vue caméra (AR), visite les lieux du coin avec leurs fiches Wikipédia, et gagne des points à chaque kilomètre. Un mode essai permet de découvrir le jeu sans bouger.' },
   { v:158, type:'maj', jeu:'Escale', ico:'⛽', lien:'jeux/escale.html',
     txt:'Les compagnies paient maintenant chaque service fait sur leur avion : carburant, repas, nettoyage, inspection, bagages, bus, dégivrage. Et une cuve à carburant à gérer (🚚 Sol › Carburant) : achète le kérosène par camions-citernes quand le prix du jour est bas, revends-le 0,85 €/L, agrandis la cuve, ou active la commande automatique. Cuve vide = avions en retard !' },
   { v:157, type:'maj', jeu:'Escale', ico:'🚶', lien:'jeux/escale.html',

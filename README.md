@@ -23,6 +23,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **Tables au sommet** : apprendre les tables de multiplication de 1 à 10 (niveau CM1) en grimpant la montagne : leçon avec dessins et astuces, table dans l'ordre puis dans le désordre, entraînement, défi chrono, tableau des progrès | `jeux/tables.html` | 1 |
 | **Les aventures de Pépin** : jeu de plateforme en pixels dans l'esprit des grands classiques 2D (personnages, dessins et musiques originaux) ; Pépin le plombier-montagnard traverse 4 mondes et 16 niveaux (prairie, grotte, cimes, lac, neiges, volcan, châteaux du Yéti) ; blocs mystère, cèpes, piments de feu, étoile, tuyaux secrets ; manette à l'écran | `jeux/pepin.html` | 1 |
 | **Le Grand Quiz** : culture générale à trois niveaux (Junior, Ado, Adulte), près de 800 questions sur 12 thèmes ; l'échelle des 15 questions jusqu'au million (une erreur n'arrête pas la partie, joker 50/50), la série rapide contre la montre, et le petit bac seul ou à plusieurs | `jeux/quiz.html` | 1 à 6 |
+| **Arpenteur** : jeu de sortie avec le GPS : carte OpenStreetMap, pièces et objets rares à ramasser autour de soi (deux albums, 4 raretés), vue AR (caméra + boussole), lieux Wikipédia à visiter (fiches, carnet de cartes postales), points pour chaque 10 m parcourus, journal des sorties, mode essai | `jeux/arpenteur.html` | 1 |
 | **Escale** : gestion d'aéroport en 3D ; contrats des compagnies, planning des portes sur 24 h, opérations au sol avec des véhicules, terminal à aménager (files d'attente, satisfaction, commerces), confiance des compagnies et livrées, 3 aéroports inventés (Col-Blanc, Port-Azur, Grand-Val) | `jeux/escale.html` | 1 |
 | **Le Buteur** : transformations de rugby en 3D (derrière le ballon) ; glisser vers le haut dans la direction du coup, la vitesse du doigt donne la force ; places et vent au hasard ; 60 secondes, défi du jour, mini-jeux (record de distance, mort subite, plein centre, tempête) | `jeux/rugby.html` | 1 |
 | **Billard** : vu de dessus, pool 8 boules (15 boules, 6 poches) ou billard français (3 boules, en 15 points) ; trajectoire de la blanche et début de celle de la boule touchée, effets (rétro, coulé, latéral), réglage fin (◀ ▶, molette), force en tirant la queue ; contre un robot à 3 niveaux ou à deux | `jeux/billard.html` | 1 ou 2 |
@@ -497,6 +498,19 @@ Le jeu de gestion d'écurie de Formule 1, façon jeu de manager : `jeux/paddock.
 - **Données** : `paddock-carriere` (toute la carrière, y compris le week-end en cours ; une carrière de la première version est convertie : ses courses restantes passent sur les nouveaux circuits), `paddock-records` (résumé : Grands Prix, victoires, podiums, poles, points, titres, meilleure place), `paddock-zoom` et `paddock-pageT` (zoom et page du tableau préférés). Le classement a trois épreuves (victoires, meilleure place chez les constructeurs, podiums).
 - **Essais** : `window.Paddock` (carrière, week-end, séances, course) ; des courses et des séances ont été simulées sur les 24 circuits (temps au tour, écarts, arrêts, abandons), et des saisons entières pour régler l'argent, les pièces, l'usine et la confiance de la direction.
 
+## Arpenteur
+
+Un jeu de sortie (marche, course, vélo) avec la position GPS : `jeux/arpenteur.html` (la page et l'aide), `jeux/arpenteur/objets.js` (les albums, les raretés, les points, les cases où sont semés les objets ; tourne aussi avec Node) et `jeux/arpenteur/jeu.js` (la carte, le GPS, les sorties, Wikipédia, la vue AR). La carte utilise **Leaflet 1.9.4** (copié dans `jeux/commun/leaflet/`, licence BSD-2) et les tuiles **OpenStreetMap** (il faut du réseau ; attribution affichée).
+
+- **La position** : `watchPosition` haute précision. Pendant une **sortie** (▶️), chaque déplacement d'au moins 4 m (et 40 % de la précision) est compté si la précision est meilleure que 40 m et la vitesse sous 8,5 m/s (environ 30 km/h : au-delà, on pense à une voiture et rien ne compte). 1 point tous les 10 m. L'écran est gardé allumé (Wake Lock) pendant la sortie ; une sortie restée ouverte se reprend si la page est rouverte dans les 6 h.
+- **Les pièces et les objets** : le monde est découpé en cases d'environ 170 m ; chaque case reçoit chaque jour 2 à 4 pièces et, une fois sur cinq environ, un objet ; le tirage dépend de la case et de la date (mêmes endroits toute la journée, nouveaux le lendemain). Les pièces se ramassent toutes seules à moins de 25 m (+ jusqu'à 20 m selon la précision du GPS) : +10 points ; les objets se touchent (carte ou AR) : commun 25, rare 75, épique 200, légendaire 500 points (probabilités 60, 28, 10, 2 %), +50 si c'est la première fois. Deux albums de 15 objets : **Nature et montagne** et **Trésors et patrimoine**, chaque objet avec une petite fiche.
+- **Les lieux** : les pages Wikipédia géolocalisées dans 10 km (API `geosearch` de fr.wikipedia.org, rechargée tous les 2,5 km) sont des épingles ; leur fiche vient de l'API REST `page/summary` (texte, image, lien, licence CC BY-SA citée). À moins de 80 m, « Visiter » donne +50 points et une carte postale dans le carnet. Chaque lieu cache chaque jour un trésor du patrimoine, à 25 m de son épingle.
+- **La vue AR** : la caméra arrière (`getUserMedia`), la boussole (`deviceorientationabsolute`, ou `webkitCompassHeading` sur iPhone après autorisation) et l'inclinaison placent les objets à moins de 160 m dans leur direction (taille selon la distance), les lieux proches au-dessus de l'horizon, et un radar. Sans boussole, on tourne en glissant le doigt ; sans caméra, un fond de paysage.
+- **Les niveaux** : seuil du niveau n = 300 × (n − 1)^1,55 points ; titres de Promeneur à Légende des sentiers.
+- **Le mode essai** : sans GPS, départ à Chamonix (ou à la dernière position), on marche avec les flèches ou en touchant la carte ; rien n'est gardé.
+- **Données** : `arpenteur-partie` (points, distance, pièces, objets, lieux visités, 100 dernières sorties avec leur trace simplifiée, ce qui a été ramassé aujourd'hui, sortie en cours), `arpenteur-records` (résumé pour l'accueil et le classement : points, km, objets, lieux, sorties). Classement : points, kilomètres, objets de la collection.
+- **Essais** : `window.Arpenteur` (position, ramassage, lieux, sorties) ; les essais automatiques simulent le GPS et les réponses de la carte et de Wikipédia.
+
 ## Escale
 
 Un jeu de gestion d'aéroport en 3D (dans le genre des simulateurs d'aéroport, avec ses propres règles et ses propres dessins) : `jeux/escale.html` (la page), `jeux/escale/monde.js` (la simulation, sans dessin), `jeux/escale/scene.js` (la 3D Three.js, en style dessin animé), `jeux/escale/controle.js` (les mini-jeux de contrôle) et `jeux/escale/jeu.js` (la boucle, les commandes et les panneaux).
@@ -665,6 +679,9 @@ jeux/pepin.html        jeu Les aventures de Pépin (page et menus)
 jeux/quiz.html         jeu Le Grand Quiz (échelle, série rapide, petit bac)
 jeux/telesiege.html    jeu Chef de quai (le départ d'un télésiège vu du dessus)
 jeux/blocs.html        jeu Blocs (les blocs qui tombent, marathon sans fin)
+jeux/arpenteur.html    jeu Arpenteur (sorties avec le GPS, carte, AR, Wikipédia)
+jeux/arpenteur/        les objets et les points (objets.js) et le jeu (jeu.js) d'Arpenteur
+jeux/commun/leaflet/   la bibliothèque de cartes Leaflet (pour Arpenteur)
 jeux/escale.html       jeu Escale (gestion d'aéroport en 3D)
 jeux/escale/           la simulation (monde.js), la 3D (scene.js), les mini-jeux de contrôle (controle.js) et le jeu (jeu.js) d'Escale
 jeux/rugby.html        jeu Le Buteur (transformations de rugby)
