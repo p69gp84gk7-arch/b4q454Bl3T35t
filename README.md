@@ -13,7 +13,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **10 000** : ouverture à 1 000, croix (effacées dès qu'on note des points ou le −500 du 1er lancer), reprises, pénalités ; il faut finir à 10 000 pile, dépasser donne une croix, et on ne peut pas reprendre des points qui mèneraient à 10 000 ou plus | `jeux/10000.html` | 2 à 15 |
 | **Yam's** : feuille de marque classique, bonus à 63 | `jeux/yams.html` | 1 à 10 |
 | **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), placer des villes et monuments au plus près (points selon les km), défis du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
-| **Draw Race** : course dont on dessine la trajectoire ; Formule (monoplaces, 20 circuits inspirés de la F1) ou Rallye (voitures de rallye, 12 circuits de terre, neige, gravier et goudron), pneus, météo et arrêts au stand ; modes Arcade, Championnat, Fantôme, Défis, Élimination, Endurance et Défi du jour | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
+| **Draw Race** : course dont on dessine la trajectoire ; Formule (monoplaces, 20 circuits inspirés de la F1), Rallye (voitures de rallye, 12 circuits de terre, neige, gravier et goudron), Prototypes (endurance, 12 circuits) ou Tourisme (12 circuits) ; création de ses propres circuits ; pneus, météo et arrêts au stand ; modes Arcade, Championnat, Fantôme, Défis, Élimination, Endurance et Défi du jour | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 | **Nivoculteur** : sur un domaine tiré au sort, construire le réseau de neige de culture et produire la nuit selon le froid et le vent, en 2D vu de dessus | `jeux/nivoculteur/index.html` | 1 |
 | **Fusée Rythme** : piloter une fusée à gauche et à droite au rythme d'un morceau (fourni ou pris dans vos fichiers) et éviter les points ; la partie dure le temps de la musique | `jeux/fusee.html` | 1 |
 | **Dameuse de nuit** : damer une piste avant l'ouverture, en 3D derrière la dameuse (caméra réglable) ou vue du dessus, avec la lame, la fraise et le treuil ; 6 dameuses inspirées de vraies machines, 9 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
@@ -177,6 +177,26 @@ Les données (`jeux/geo/monde.js`, `france.js`, `usa.js`, `drapeaux/` et `drapea
 Sources : IGN Admin Express via france-geojson (Licence ouverte), U.S. Census Bureau via us-atlas (domaine public), drapeaux des États us-state-flags (ISC), Natural Earth via world-atlas (domaine public), mledoze/countries via world-countries (licence ODbL), drapeaux flag-icons (licence MIT), noms français du CLDR.
 
 ## Draw Race
+
+### Catégories de véhicules
+
+Quatre catégories, chacune avec ses circuits, ses pilotes, son championnat (`drawrace-championnat`, `drawrace-championnat-rallye`, `-endurance`, `-tourisme`) et ses records :
+
+- **🏎 Formule** et **🚙 Rallye** : comme avant.
+- **🌙 Prototypes** (les voitures des courses d'endurance) : 6 circuits à eux (`jeux/drawrace/categories.js` : La Sarthe, Le Grand Ovale, Les Marais, Le Volcan, L'Algarve, La Forêt verte), plus 6 circuits de Formule (`SELECTION_ENDURANCE`). Très rapides en ligne droite (vitesse de pointe × 1,07), un peu moins d'adhérence en virage (× 0,93), pneus qui s'usent deux fois moins vite. Pilotes aux noms inspirés des grands pilotes d'endurance.
+- **🚗 Tourisme** : 6 circuits à eux (Le Port de Guia, Le Vieux Bourg, Les Collines, Le Plateau, La Puszta, Le Boulevard), plus 6 circuits de Formule (`SELECTION_TOURISME`). Plus lentes (× 0,8), moins d'adhérence (× 0,82), freinages plus longs (× 0,72), accélérations plus molles, pneus qui s'usent plus vite (× 1,35) ; les adversaires sont très proches les uns des autres (écarts de vitesse réduits). Pilotes aux noms inspirés des pilotes de tourisme.
+
+La conduite de chaque catégorie est dans `VEHICULES` ; `Piste.regler({ vmax, grip, frein })` change la vitesse de pointe, l'adhérence et le freinage de toute la géométrie (trajectoires, vitesse du doigt, adversaires). Les circuits de Formule repris dans une autre catégorie sont des copies (`prefixe` « end: » ou « tou: ») : leurs records, fantômes, étoiles et tours choisis sont à part (`cleBase`, `idCat`). Chaque catégorie a son dessin de voiture (`voitureProto`, `voitureTourisme`).
+
+### Les circuits du joueur
+
+Au-dessus du carrousel des circuits, on choisit entre les circuits officiels de la catégorie et **« Circuits de (nom du joueur) »**. Le bouton **➕ Créer un circuit** ouvre l'éditeur (à l'horizontale) :
+
+1. **Tracer** la boucle au doigt, d'un seul trait : elle est lissée, fermée, gardée dans le cadre, et ramenée à des points de passage tous les 70 environ (`edPoints`). La ligne de départ est au début du trait, la course dans le sens du trait.
+2. **Retoucher** : chaque point se déplace au doigt ; 🏁 déplace la ligne de départ au point suivant, ⇄ inverse le sens, ✏️ redessine. Les endroits où la piste se touche sont entourés de rouge (`edVerifier` : deux morceaux éloignés le long du tracé, à moins d'une largeur de piste, et pas en croisement franc comme au Huit) ; on peut quand même enregistrer.
+3. **Régler** : nom, décor (17 au choix), nombre de tours (2 à 8), sol en Rallye ; la difficulté (1 à 5 points) est calculée d'après le temps passé à freiner et à tourner.
+
+Les circuits sont gardés dans `drawrace-perso` ; chacun est construit dans chaque catégorie (`construirePerso` ; en Rallye avec le sol choisi). Ils se jouent avec toutes les voitures, dans tous les modes sauf le Championnat et le Défi du jour ; ils ont leurs records, fantômes et étoiles (ils ne vont pas au classement de tous les joueurs). ✏️ Retoucher un circuit le fait repartir de zéro (records, fantômes, étoiles, temps cible : `oublierCircuit`), 🗑 Supprimer aussi.
 
 Sept modes de jeu, au choix en haut du menu (les réglages affichés changent avec le mode, `regles()` donne ceux de la course) :
 
