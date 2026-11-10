@@ -73,11 +73,11 @@ window.ESCALE_MONDE = (() => {
   const AEROPORTS = {
     colblanc:{ nom:'Col-Blanc', ico:'🏔️', decor:'montagne', desc:'Un petit altiport au pied des pistes de ski. Piste courte : avions régionaux et moyen-courriers. La neige oblige souvent à dégivrer les avions.',
       piste:760, tailleMax:'M', portesMax:7, neige:.35, commerce:1, argent:250000, deblocage:null, compagnies:['alpair', 'azur', 'soleo', 'boreal', 'capella', 'sirocco'], heures:[5, 22],
-      terminal:{ l:5, h:3, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'securite'], [3, 0, 'tapis'], [0, 2, 'salle'], [1, 2, 'salle'], [4, 2, 'toilettes']] },
+      terminal:{ l:5, h:5, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'securite'], [3, 0, 'tapis'], [0, 4, 'salle'], [1, 4, 'salle'], [4, 4, 'toilettes']], petits:[[4, 6, 'plante'], [5, 6, 'poubelle'], [4, 7, 'banc'], [5, 7, 'banc']] },
       portes:[{ taille:'S', passerelle:false }, { taille:'M', passerelle:false }], vehicules:{ carburant:1, repas:1, bagages:1, nettoyage:1, tech:1, bus:1, degivrage:1 } },
     portazur:{ nom:'Port-Azur', ico:'🏖️', decor:'mer', desc:'Un aéroport au bord de la mer, plein de touristes qui dépensent dans les boutiques. Piste plus longue : jusqu\'aux gros porteurs.',
       piste:1050, tailleMax:'L', portesMax:10, neige:0, commerce:1.35, argent:0, deblocage:{ niveau:7, prix:1500000 }, compagnies:['azur', 'soleo', 'sirocco', 'vega', 'boreal', 'capella', 'alpair'], heures:[5, 23],
-      terminal:{ l:7, h:4, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'comptoir'], [3, 0, 'securite'], [4, 0, 'securite'], [5, 0, 'tapis'], [6, 0, 'tapis'], [6, 1, 'douane'], [3, 1, 'passeports'], [0, 3, 'salle'], [1, 3, 'salle'], [2, 3, 'salle'], [3, 3, 'cafe'], [6, 3, 'toilettes']] },
+      terminal:{ l:7, h:5, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'comptoir'], [3, 0, 'securite'], [4, 0, 'securite'], [5, 0, 'tapis'], [6, 0, 'tapis'], [6, 1, 'douane'], [3, 1, 'passeports'], [0, 4, 'salle'], [1, 4, 'salle'], [2, 4, 'salle'], [3, 4, 'cafe'], [6, 4, 'toilettes']], petits:[[8, 6, 'plante'], [9, 6, 'poubelle'], [8, 7, 'ecran'], [9, 7, 'banc']] },
       portes:[{ taille:'M', passerelle:true }, { taille:'M', passerelle:false }, { taille:'L', passerelle:false }], vehicules:{ carburant:2, repas:1, bagages:2, nettoyage:1, tech:1, bus:1, degivrage:0 } },
     grandval:{ nom:'Grand-Val', ico:'🏙️', decor:'ville', desc:'La grande métropole : long-courriers, très gros porteurs et voyageurs d\'affaires qui veulent des salons. Le plus gros trafic.',
       piste:1350, tailleMax:'XL', portesMax:14, neige:.08, commerce:1.6, argent:0, deblocage:{ niveau:13, prix:6000000 }, compagnies:['orion', 'vega', 'boreal', 'azur', 'capella', 'sirocco', 'soleo', 'alpair'], heures:[0, 24],
@@ -116,6 +116,18 @@ window.ESCALE_MONDE = (() => {
     plantes:{ nom:'Plantes', ico:'🪴', prix:3000, coul:'#81B29A', cap:1, zone:'piste', deco:1, desc:'Décoration : un peu plus de satisfaction.' },
     fontaine:{ nom:'Fontaine', ico:'⛲', prix:12000, coul:'#8ECAE6', cap:1, zone:'piste', deco:2, niv:2, desc:'Décoration : plus de satisfaction.' },
   };
+
+  // les petits objets, posés dans les petites cases (4 par case de la grille) entre les constructions
+  const PETITS = {
+    plante:{ nom:'Plante en pot', ico:'🪴', prix:800, deco:.25, desc:'Un peu de vert : un peu plus de satisfaction.' },
+    banc:{ nom:'Banc', ico:'🪑', prix:1200, places:6, desc:'6 places assises de plus.' },
+    poubelle:{ nom:'Poubelle', ico:'🗑️', prix:500, proprete:1, desc:'Un terminal propre rend les passagers plus contents.' },
+    ecran:{ nom:'Écran des vols', ico:'📺', prix:2500, deco:.35, desc:'Les passagers voient leur porte et l\'heure : moins de stress.' },
+    distributeur:{ nom:'Distributeur', ico:'🥤', prix:3500, commerce:{ cap:4, dep:.25 }, desc:'Boissons et friandises : ça rapporte un peu.' },
+    borne:{ nom:'Borne de recharge', ico:'🔌', prix:2000, deco:.3, desc:'Pour recharger son téléphone : les passagers adorent.' },
+    eau:{ nom:'Fontaine à eau', ico:'🚰', prix:1500, deco:.2, desc:'De l\'eau fraîche gratuite.' },
+  };
+  const RANG_T = 12.5;                                                // la profondeur d'une rangée du terminal (m)
 
   /* ---------- Les opérations au sol pendant l'escale ---------- */
   // veh : le véhicule (null : la passerelle suffit) ; apres : ce qui doit être fini avant ; avant : pas plus tôt que N min avant le départ
@@ -165,21 +177,21 @@ window.ESCALE_MONDE = (() => {
 
   /* ---------- Une nouvelle partie ---------- */
   function nouvellePartie(){
-    const P = { v:1, xp:0, argent:AEROPORTS.colblanc.argent, actuel:'colblanc', aeroports:{}, compagnies:{}, livrees:{}, objectifs:[], stats:{ vols:0, pax:0, aLHeure:0, retards:0, achatsVehicules:0, meilleureSatisf:0, meilleureJournee:0, jours:0 }, idSuivant:1 };
+    const P = { v:1, xp:0, argent:AEROPORTS.colblanc.argent, actuel:'colblanc', aeroports:{}, compagnies:{}, livrees:{}, objectifs:[], banque:{ prets:[], note:60, rembourses:0, reports:0, interets:0 }, stats:{ vols:0, pax:0, aLHeure:0, retards:0, achatsVehicules:0, meilleureSatisf:0, meilleureJournee:0, jours:0 }, idSuivant:1 };
     for(const k of Object.keys(COMPAGNIES)){ P.compagnies[k] = { xp:0, pris:[] }; P.livrees[k] = { choisie:'base', dispo:['base'] }; }
     P.aeroports.colblanc = nouvelAeroport(P, 'colblanc');
     return P;
   }
   function nouvelAeroport(P, id){
     const D = AEROPORTS[id];
-    const A = { id, t:5.5 * 60, portes:D.portes.map((g, i) => ({ ...g, nom:nomPorte(i) })), vehicules:{}, unites:[], terminal:{ l:D.terminal.l, h:D.terminal.h, modules:D.terminal.modules.map(([x, y, type]) => ({ x, y, type, niv:1 })) },
+    const A = { id, t:5.5 * 60, portes:D.portes.map((g, i) => ({ ...g, nom:nomPorte(i) })), vehicules:{}, unites:[], terminal:{ l:D.terminal.l, h:D.terminal.h, modules:D.terminal.modules.map(([x, y, type]) => ({ x, y, type, niv:1 })), petits:(D.terminal.petits || []).map(([x, y, type]) => ({ x, y, type })) },
       contrats:[], offres:[], vols:[], journal:[], qCheck:[], qSecu:[], pisteLibre:0, meteo:'beau', reputation:70, jourStats:nouveauJour(), historique:[], dernierJour:0, toasts:[], carbu:nouvelleCuve(id) };
     for(const [k, n] of Object.entries(D.vehicules)){ A.vehicules[k] = { niv:1 }; for(let i = 0; i < n; i++) A.unites.push(nouvelleUnite(A, k)); }
     meteoDuJour(A); genererOffres(P, A, 4);
     return A;
   }
   const nomPorte = i => (i < 8 ? 'A' : 'B') + String((i % 8) + 1).padStart(2, '0');
-  const nouveauJour = () => ({ vols:0, retards:0, minutesRetard:0, revenus:0, commerce:0, services:0, detail:{}, achats:0, litres:0, penalites:0, depenses:0, pax:0, satisf:0, nSatisf:0, manques:0 });
+  const nouveauJour = () => ({ vols:0, retards:0, minutesRetard:0, revenus:0, commerce:0, services:0, detail:{}, achats:0, litres:0, penalites:0, depenses:0, credit:0, pax:0, satisf:0, nSatisf:0, manques:0 });
   function nouvelleUnite(A, type){ const n = A.unites.filter(u => u.type === type).length; return { id:type + n, type, n, etat:'libre', vol:null, tache:null, t0:0, duree:0 }; }
   const jourDe = t => Math.floor(t / JOUR) + 1;
   const minuteDe = t => ((t % JOUR) + JOUR) % JOUR;
@@ -245,14 +257,14 @@ window.ESCALE_MONDE = (() => {
   const PISTE_Z = -300, TAXI_Z = -236, VOIE_P = -150, FACADE_Z = -26, SERVICE_Z = -126;
   const CACHE_PLAN = new Map();
   function plan(A){
-    const D = AEROPORTS[A.id], cle = A.id + ':' + A.portes.map(g => g.taille + (g.passerelle ? 'p' : '')).join(',');
+    const D = AEROPORTS[A.id], cle = A.id + ':' + A.terminal.h + ':' + A.portes.map(g => g.taille + (g.passerelle ? 'p' : '')).join(',');
     if(CACHE_PLAN.has(cle)) return CACHE_PLAN.get(cle);
     // les postes, de gauche à droite
     let x = 0; const postes = A.portes.map(g => { const w = TAILLES[g.taille].largeur + 8, cx = x + w / 2; x += w; return { cx, w, taille:g.taille, passerelle:g.passerelle }; });
     const largeur = x, dx = -largeur / 2 + 40;
     // A01 à droite de l'aérogare vue des pistes (les numéros se lisent de gauche à droite depuis la piste)
     postes.forEach(p => { p.cx = largeur - p.cx + dx; p.nezZ = FACADE_Z - 8; });
-    const terminal = { x0:dx - 30, x1:dx + largeur + 10, z0:FACADE_Z, z1:FACADE_Z + 58 };
+    const terminal = { x0:dx - 30, x1:dx + largeur + 10, z0:FACADE_Z, z1:FACADE_Z + 20 + A.terminal.h * RANG_T };   // la jetée (15 m), 5 m de marge, puis les rangées
     const piste = { x0:-D.piste / 2, x1:D.piste / 2, z:PISTE_Z, largeur:45 };
     // les bretelles entre la piste et la voie parallèle, et entre la voie parallèle et la voie des postes
     const bretelles = []; for(let bx = piste.x0 + 60; bx <= piste.x1 - 40; bx += 170) bretelles.push(Math.round(bx));
@@ -303,7 +315,8 @@ window.ESCALE_MONDE = (() => {
 
   /* ---------- Le terminal : les capacités ---------- */
   function capacites(A){
-    const c = { passeports:0, douane:0, comptoirs:0, postes:0, tapis:0, places:0, toilettes:0, jeux:0, salon:0, deco:0, commerce:[], restaurant:0, cafe:0 };
+    const c = { passeports:0, douane:0, comptoirs:0, postes:0, tapis:0, places:0, toilettes:0, jeux:0, salon:0, deco:0, proprete:0, commerce:[], restaurant:0, cafe:0 };
+    for(const p of A.terminal.petits || []){ const O = PETITS[p.type]; if(O.places) c.places += O.places; if(O.deco) c.deco += O.deco; if(O.proprete) c.proprete += O.proprete; if(O.commerce) c.commerce.push({ ...O.commerce }); }
     for(const m of A.terminal.modules){
       const M = MODULES[m.type], f = facteurNiv(m.niv);
       if(m.type === 'comptoir') c.comptoirs += M.cap * f;
@@ -611,7 +624,7 @@ window.ESCALE_MONDE = (() => {
     if(!cap.toilettes) sDep -= 12;
     if(!cap.cafe && !cap.restaurant) sDep -= 7;
     if(v.rayon === 'long' && !cap.salon) sDep -= 8;
-    sDep += Math.min(5, cap.jeux * 2.5) + Math.min(6, cap.deco * 1.2) + (cap.restaurant ? 2 : 0) + (cap.salon && v.rayon === 'long' ? 4 : 0);
+    sDep += Math.min(5, cap.jeux * 2.5) + Math.min(8, cap.deco * 1.2) + 3 * Math.min(1, cap.proprete / Math.max(2, Math.ceil(A.terminal.l * A.terminal.h / 6))) + (cap.restaurant ? 2 : 0) + (cap.salon && v.rayon === 'long' ? 4 : 0);
     sDep -= Math.max(0, v.retard - 5) * .7;
     sDep -= v.manques / n * 70;
     // l'arrivée : l'attente des bagages
@@ -662,6 +675,7 @@ window.ESCALE_MONDE = (() => {
     for(const m of A.terminal.modules) entretien += MODULES[m.type].prix * .006 * m.niv;
     entretien = Math.round(entretien);
     P.argent -= entretien; J.depenses += entretien;
+    echeances(P, A);
     const satisf = J.nSatisf ? Math.round(J.satisf / J.nSatisf) : null;
     const bilan = { jour:jourDe(A.t) - 1, ...J, satisf, net:Math.round(J.revenus + J.commerce + J.services - J.penalites - J.depenses - J.achats) };
     A.historique.unshift(bilan); A.historique.length = Math.min(A.historique.length, 14);
@@ -736,6 +750,7 @@ window.ESCALE_MONDE = (() => {
     if(M.niv && niveauDe(P.xp) < M.niv) return `Disponible au niveau ${M.niv}.`;
     if(A.terminal.modules.some(m => m.x === x && m.y === y)) return 'Case occupée.';
     if(x < 0 || y < 0 || x >= A.terminal.l || y >= A.terminal.h) return 'Hors du terminal.';
+    if(petitsDansCase(A, x, y).length) return 'Il y a des petits objets sur cette case : enlève-les d\'abord.';
     if(!payer(P, M.prix)) return 'Pas assez d\'argent.';
     A.terminal.modules.push({ x, y, type, niv:1 }); return null;
   }
@@ -745,8 +760,24 @@ window.ESCALE_MONDE = (() => {
     m.niv++; return null;
   }
   function vendreModule(P, A, m){ A.terminal.modules = A.terminal.modules.filter(x => x !== m); P.argent += Math.round(MODULES[m.type].prix * .5); }
-  function deplacerModule(A, m, x, y){ if(A.terminal.modules.some(o => o !== m && o.x === x && o.y === y) || x < 0 || y < 0 || x >= A.terminal.l || y >= A.terminal.h) return 'Case occupée.'; m.x = x; m.y = y; return null; }
-  const prixAgrandir = A => Math.round(40000 * A.terminal.l * (A.terminal.h / 3));
+  function deplacerModule(A, m, x, y){ if(A.terminal.modules.some(o => o !== m && o.x === x && o.y === y) || x < 0 || y < 0 || x >= A.terminal.l || y >= A.terminal.h) return 'Case occupée.'; if(petitsDansCase(A, x, y).length) return 'Il y a des petits objets sur cette case.'; m.x = x; m.y = y; return null; }
+  // les petits objets : une petite case = un quart de case (x de 0 à 2l − 1, y de 0 à 2h − 1)
+  const petitsDansCase = (A, x, y) => (A.terminal.petits || []).filter(p => Math.floor(p.x / 2) === x && Math.floor(p.y / 2) === y);
+  function libreQuart(A, x, y){
+    const T = A.terminal;
+    if(x < 0 || y < 0 || x >= T.l * 2 || y >= T.h * 2) return 'Hors du terminal.';
+    if(T.modules.some(m => m.x === Math.floor(x / 2) && m.y === Math.floor(y / 2))) return 'Une construction occupe cette case.';
+    if((T.petits || []).some(p => p.x === x && p.y === y)) return 'Petite case occupée.';
+    return null;
+  }
+  function poserPetit(P, A, x, y, type){
+    const e = libreQuart(A, x, y); if(e) return e;
+    if(!payer(P, PETITS[type].prix)) return 'Pas assez d\'argent.';
+    (A.terminal.petits = A.terminal.petits || []).push({ x, y, type }); return null;
+  }
+  function retirerPetit(P, A, p){ A.terminal.petits = A.terminal.petits.filter(q => q !== p); P.argent += Math.round(PETITS[p.type].prix * .5); }
+  function deplacerPetit(A, p, x, y){ const e = libreQuart(A, x, y); if(e) return e; p.x = x; p.y = y; return null; }
+  const prixAgrandir = A => Math.round(40000 * A.terminal.l * (A.terminal.h / 5));
   function agrandirTerminal(P, A){ if(A.terminal.l >= 14) return 'Le terminal est déjà très grand.'; if(!payer(P, prixAgrandir(A))) return 'Pas assez d\'argent.'; A.terminal.l++; return null; }
 
   /* ---------- Les compagnies : le passe de confiance ---------- */
@@ -770,6 +801,62 @@ window.ESCALE_MONDE = (() => {
     return null;
   }
 
+  /* ---------- La banque : les prêts ----------
+     On emprunte un montant sur 7, 14 ou 30 jours. Les intérêts sont fixés au départ (taux selon la durée, la note de la banque
+     et la satisfaction de l'aéroport). Chaque fin de journée, une échéance est prélevée ; si l'argent manque, elle est reportée
+     au lendemain avec un petit surcoût (3 %) et la note baisse un peu. */
+  const BANQUE = { durees:{ 7:.03, 14:.05, 30:.09 }, maxPrets:3, mini:10000, surcout:.03 };
+  function banque(P){ if(!P.banque) P.banque = { prets:[], note:60, rembourses:0, reports:0, interets:0 }; return P.banque; }
+  const dette = P => banque(P).prets.reduce((s, p) => s + p.reste, 0);
+  const lettreNote = n => n >= 85 ? 'A+' : n >= 70 ? 'A' : n >= 55 ? 'B' : n >= 40 ? 'C' : 'D';
+  // la moyenne du bénéfice des derniers jours (7 au plus) de l'aéroport
+  const moyenneNet = A => { const h = A.historique.slice(0, 7); return h.length ? h.reduce((s, b) => s + b.net, 0) / h.length : 0; };
+  function plafond(P, A){
+    const B = banque(P), niv = niveauDe(P.xp);
+    const brut = (100000 + niv * 50000 + Math.max(0, moyenneNet(A)) * 10) * (.5 + B.note / 100);
+    return Math.max(0, Math.floor((brut - dette(P)) / 1000) * 1000);
+  }
+  function tauxPret(P, A, duree){
+    const B = banque(P);
+    return clamp(BANQUE.durees[duree] + (60 - B.note) * .0005 - (A.reputation - 60) * .0003, .01, .2);
+  }
+  function emprunter(P, A, montant, duree){
+    const B = banque(P); montant = Math.round(montant / 1000) * 1000;
+    if(!BANQUE.durees[duree]) return 'Durée inconnue.';
+    if(B.prets.length >= BANQUE.maxPrets) return `Déjà ${BANQUE.maxPrets} prêts en cours : rembourses-en un d'abord.`;
+    if(montant < BANQUE.mini) return `Le plus petit prêt est de ${euros(BANQUE.mini)}.`;
+    if(montant > plafond(P, A)) return `La banque ne prête pas plus de ${euros(plafond(P, A))} pour l'instant.`;
+    const taux = tauxPret(P, A, duree), interets = Math.round(montant * taux), total = montant + interets;
+    B.prets.push({ id:'b' + (P.idSuivant++), montant, duree, taux, interets, total, reste:total, ech:Math.ceil(total / duree), du:0, jours:duree, debut:jourDe(A.t), retards:0 });
+    P.argent += montant;
+    journal(A, `🏦 Prêt de ${euros(montant)} sur ${duree} jours (intérêts ${euros(interets)}, ${euros(Math.ceil(total / duree))} par jour).`, 'bon');
+    return null;
+  }
+  // rembourser tout de suite : on économise la moitié des intérêts qui restent
+  function prixRachat(p){ const frac = p.reste / p.total; return Math.max(0, p.reste - Math.round(p.interets * frac * .5)); }
+  function rembourser(P, A, id){
+    const B = banque(P), p = B.prets.find(x => x.id === id); if(!p) return 'Prêt introuvable.';
+    const prix = prixRachat(p); if(P.argent < prix) return 'Pas assez d\'argent pour tout rembourser.';
+    P.argent -= prix; A.jourStats.credit = (A.jourStats.credit || 0) + prix; B.interets += Math.max(0, prix - p.montant * p.reste / p.total);
+    B.prets = B.prets.filter(x => x !== p); B.rembourses++; B.note = clamp(B.note + 5, 0, 100);
+    journal(A, `🏦 Prêt remboursé en avance (${euros(prix)}). La banque te fait plus confiance.`, 'bon');
+    return null;
+  }
+  // chaque fin de journée : les échéances
+  function echeances(P, A){
+    const B = banque(P), J = A.jourStats;
+    for(const p of B.prets.slice()){
+      p.du = Math.min(p.reste, p.du + p.ech);
+      if(P.argent >= p.du){
+        P.argent -= p.du; p.reste -= p.du; J.credit = (J.credit || 0) + p.du; B.interets += p.du * p.interets / p.total; p.du = 0; p.jours = Math.ceil(p.reste / p.ech);
+        if(p.reste <= 0){ B.prets = B.prets.filter(x => x !== p); B.rembourses++; B.note = clamp(B.note + (p.retards ? 2 : 6), 0, 100); journal(A, `🏦 Prêt de ${euros(p.montant)} entièrement remboursé${p.retards ? '' : ', sans aucun report'} : la banque te fait plus confiance.`, 'bon'); }
+      } else {
+        const s = Math.max(50, Math.round(p.du * BANQUE.surcout)); p.du += s; p.reste += s; p.total += s; p.retards++; B.reports++; B.note = clamp(B.note - 3, 0, 100);
+        journal(A, `🏦 Pas assez d'argent pour l'échéance du prêt : elle est reportée à demain (+${euros(s)}).`, 'mal');
+      }
+    }
+  }
+
   /* ---------- Les objectifs ---------- */
   function verifierObjectifs(P, A){
     const faits = [];
@@ -782,6 +869,10 @@ window.ESCALE_MONDE = (() => {
     if(!P || P.v !== 1) return null;
     // les parties d'avant la cuve à carburant et les factures de services
     for(const A of Object.values(P.aeroports)){ if(!A.carbu) A.carbu = nouvelleCuve(A.id); const J = A.jourStats; if(J.services == null) Object.assign(J, { services:0, detail:{}, achats:0, litres:0 }); }
+    // les terminaux d'avant les 5 rangées et les petits objets (les nouvelles rangées s'ajoutent côté pistes)
+    for(const A of Object.values(P.aeroports)){ if(A.terminal.h < 5) A.terminal.h = 5; if(!A.terminal.petits) A.terminal.petits = []; }
+    // les parties d'avant la banque
+    banque(P);
     return P;
   }
   function resume(P){ return { niveau:niveauDe(P.xp), xp:P.xp, vols:P.stats.vols, pax:P.stats.pax, meilleureJournee:P.stats.meilleureJournee, aeroports:Object.keys(P.aeroports).length, jours:P.stats.jours, argent:Math.round(P.argent) }; }
@@ -790,5 +881,5 @@ window.ESCALE_MONDE = (() => {
     international, NATIONAL, hm, euros, jourDe, minuteDe, xpNiveau, niveauDe, xpConfiance, paliersAtteints, texteRecompense, tailleOk, facteurNiv, prixAmelioration, prixPasserelle, prixAgrandir, prixAmeliorationVehicules,
     nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
     acheterPorte, acheterPasserelle, agrandirPorte, acheterVehicule, ameliorerVehicule, construire, ameliorerModule, vendreModule, deplacerModule, agrandirTerminal,
-    recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, CUVE, CUVE_MAX, CAMION, LIVRAISON, DELAI_CAMION, TARIFS, commanderCarbu, agrandirCuve, enRoute, capCuve, facture, resume, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };
+    recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, PETITS, RANG_T, poserPetit, retirerPetit, deplacerPetit, libreQuart, petitsDansCase, CUVE, CUVE_MAX, CAMION, LIVRAISON, DELAI_CAMION, TARIFS, commanderCarbu, agrandirCuve, enRoute, capCuve, facture, resume, BANQUE, banque, dette, lettreNote, moyenneNet, plafond, tauxPret, emprunter, prixRachat, rembourser, echeances, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };
 })();

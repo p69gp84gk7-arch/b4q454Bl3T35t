@@ -140,8 +140,8 @@ let tMsg = 0;
 function dire(txt, type = 'info', duree = 2.8){ ui.msg.textContent = txt; ui.msg.className = 'mMsg vu ' + type; tMsg = duree; }
 function consigne(txt){ ui.consigne.textContent = txt; ui.consigne.hidden = !txt; }
 function boutons(l){
-  ui.bas.innerHTML = '';
-  for(const b of l){ const e = document.createElement('button'); e.className = 'mBtn ' + (b.cls || ''); e.textContent = b.t; e.onclick = () => { if(J && !J.fini) b.fn(); }; ui.bas.append(e); }
+  ui.bas.innerHTML = ''; ui.bas.classList.toggle('nombreux', l.length > 3);
+  for(const b of l){ const e = document.createElement('button'); e.className = 'mBtn ' + (b.cls || ''); e.textContent = b.t; if(b.style) e.style.cssText = b.style; e.onclick = () => { if(J && !J.fini) b.fn(); }; ui.bas.append(e); }
 }
 function majHaut(){
   ui.temps.textContent = `⏱ ${Math.floor(J.temps / 60)}:${String(Math.floor(J.temps % 60)).padStart(2, '0')}`;
@@ -979,6 +979,130 @@ JEUX.douane = (() => {
       }
     },
     _etat:() => pax && { ...pax.v, aSaisir:aSaisir(pax.v), etat, objets:objets3d.map(o => ({ k:o.k, saisi:o.saisi, p:o.zone.getWorldPosition(new T3.Vector3()).toArray() })) },
+  };
+})();
+
+/* =====================================================================================================
+   5) LE TRI DES BAGAGES (enregistrement) : chaque valise part sur la voie de sa couleur
+   ===================================================================================================== */
+JEUX.bagages = (() => {
+  let gr = null, voiesG = null, sacs = [], n = 0, tSpawn = 0, serie = 0, nVoies = 0, voies = [];
+  const COULEURS = [['rouge', 0xE5383B, '#E5383B', 'Paris'], ['bleu', 0x1B6EC2, '#1B6EC2', 'Rome'], ['vert', 0x2BA84A, '#2BA84A', 'Lisbonne'], ['jaune', 0xF2C230, '#E0A800', 'Tokyo'], ['violet', 0x8E4FD8, '#8E4FD8', 'New York']];
+  const Z0 = -7, ZJ = 0, ZF = 3.6;                 // le départ au comptoir, la jonction, le bout des voies
+  // les voies du moment : 3 couleurs, puis 4, puis 5 ; la voie « hors format » arrive au 7e bagage
+  function voiesDu(n){ const c = n < 8 ? 3 : n < 16 ? 4 : 5, l = COULEURS.slice(0, c).map(([id, , css, ville], i) => ({ id, css, ville, i })); if(n >= 6) l.push({ id:'hors', css:'#5C6672', ville:'Hors format' }); return l; }
+  function construire(){
+    gr = new T3.Group(); lumieres(gr); sol(gr, 0xD5DAE2, 0xE2E6EC);
+    mur(gr, -9.5, 0xE6E8EC, 'Enregistrement · Tri des bagages', '#4F7CAC');
+    // le comptoir au fond, l'agent, les voyageurs en file
+    gr.add(bloc([{ f:'boite', d:[3.2, 1.1, 1], p:[0, .55, Z0 - .6], c:0xE9EDF2 }, { f:'boite', d:[3.3, .12, 1.1], p:[0, 1.12, Z0 - .6], c:0x4F7CAC }, { f:'boite', d:[.8, .5, .05], p:[-.8, 1.5, Z0 - .4], r:[-.3, 0, 0], c:0x1E2A38 }], .02));
+    const ag = personne({ peau:0xE0AC69, cheveux:1, coupe:'long', lunettes:false, barbe:false, haut:0x1B4E8C }); ag.position.set(-.8, 0, Z0 - 1.4); gr.add(ag);
+    figurants(gr, 4, Z0 - 1.6, Z0 - 4, 1.2, 2.4);
+    // le tapis principal, du comptoir à la jonction
+    const p = [{ f:'boite', d:[1, .55, -Z0 + .6], p:[0, .275, (Z0 + ZJ) / 2], c:0x5C6672 }, { f:'boite', d:[.9, .06, -Z0 + .6], p:[0, .58, (Z0 + ZJ) / 2], c:0x2A2D33 }];
+    for(let z = Z0; z < ZJ; z += .5) p.push({ f:'boite', d:[.9, .065, .03], p:[0, .585, z], c:0x3A3F47 });
+    p.push({ f:'boite', d:[9.6, .55, 1.1], p:[0, .275, ZJ + .3], c:0x5C6672 }, { f:'boite', d:[9.5, .06, 1], p:[0, .58, ZJ + .3], c:0x2A2D33 });
+    p.push({ f:'boite', d:[.9, .5, .7], p:[0, .25, ZJ + 1.4], c:0x3A3F47 }, { f:'boite', d:[.95, .08, .75], p:[0, .5, ZJ + 1.4], c:0xE5383B });   // le bac des bagages perdus
+    gr.add(bloc(p, .015));
+    scene.add(gr);
+  }
+  const posVoie = (i, k) => { const g = Math.floor(k / 2), cote = i < g ? -1 : 1, j = cote < 0 ? g - i : i - g + 1; return cote * (.5 + (j - .5) * 1.05 + .05); };
+  // les voies : un petit tapis vers toi, un portique de sa couleur avec le nom de la ville, un chariot au bout
+  function construireVoies(){
+    jeter(voiesG); voiesG = new T3.Group(); gr.add(voiesG);
+    voies.forEach((v, i) => {
+      const x = posVoie(i, voies.length), c = v.id === 'hors' ? 0x5C6672 : COULEURS.find(k => k[0] === v.id)[1];
+      v.x = x;
+      voiesG.add(bloc([{ f:'boite', d:[.9, .5, ZF - ZJ - .6], p:[x, .25, (ZJ + .9 + ZF) / 2], c:0x5C6672 }, { f:'boite', d:[.8, .06, ZF - ZJ - .6], p:[x, .53, (ZJ + .9 + ZF) / 2], c:0x2A2D33 },
+        { f:'boite', d:[.08, 1.6, .08], p:[x - .48, 1.3, ZJ + 1.1], c }, { f:'boite', d:[.08, 1.6, .08], p:[x + .48, 1.3, ZJ + 1.1], c }, { f:'boite', d:[1.05, .14, .1], p:[x, 2.1, ZJ + 1.1], c },
+        { f:'boite', d:[.95, .55, .9], p:[x, .5, ZF + .55], c }, { f:'cyl', d:[.1, .1, .9, 8], p:[x, .1, ZF + .55], r:[0, 0, Math.PI / 2], c:0x1E2430 }], .012));
+      const t = toile(256, 96); rr(t.g, 3, 3, 250, 90, 16); t.g.fillStyle = v.css; t.g.fill(); ecrit(t.g, v.ville, 128, 50, 40, '#FFFFFF', 900, 'center', 236);
+      const pan = plan(1.05, .4, t.tex); pan.position.set(x, 2.45, ZJ + 1.12); voiesG.add(pan);
+      const zone = new T3.Mesh(new T3.BoxGeometry(1.1, 2.6, ZF - ZJ), new T3.MeshBasicMaterial({ visible:false })); zone.position.set(x, 1.2, (ZJ + 1 + ZF) / 2); voiesG.add(zone);
+      zone.userData.clic = () => aiguiller(v.id); v.zone = zone; cliquables.push(zone);
+    });
+  }
+  function majVoies(){
+    const l = voiesDu(n);
+    if(l.length === voies.length) return false;
+    for(const v of voies){ const i = cliquables.indexOf(v.zone); if(i >= 0) cliquables.splice(i, 1); }
+    voies = l; construireVoies();
+    boutons([...voies.map(v => ({ t:v.id === 'hors' ? '📦 Hors format' : v.ville, style:`background:${v.css};color:#fff`, fn:() => aiguiller(v.id) })), ...(n >= 10 ? [{ t:'⛔ Trop lourd', cls:'rouge', fn:() => aiguiller('refus') }] : [])]);
+    return true;
+  }
+  // un nouveau bagage : une valise de couleur, parfois hors format (skis, guitare), parfois trop lourde
+  function nouveau(){
+    const r = Math.random(), couleurs = voies.filter(v => v.id !== 'hors');
+    let type = 'valise', coul = piocher(couleurs).id, poids = entier(8, 23);
+    if(n >= 6 && r < .16){ type = piocher(['skis', 'guitare', 'poussette']); coul = 'hors'; }
+    else if(n >= 10 && r < .3){ poids = entier(26, 38); }
+    const c = coul === 'hors' ? 0x2A2D33 : COULEURS.find(k => k[0] === coul)[1], o = new T3.Group();
+    if(type === 'valise') o.add(bloc([{ f:'boite', d:[.55, .38, .32], p:[0, .19, 0], c }, { f:'boite', d:[.2, .06, .04], p:[0, .41, 0], c:0x2A2D33 }, { f:'boite', d:[.57, .04, .34], p:[0, .2, 0], c:0x2A2D33 }], .012));
+    else if(type === 'skis') o.add(bloc([{ f:'boite', d:[.28, .2, 1.6], p:[0, .1, 0], c:0x14233A }, { f:'boite', d:[.29, .04, 1.4], p:[0, .2, 0], c:0xF2C230 }], .012));
+    else if(type === 'guitare') o.add(bloc([{ f:'boule', d:[.3, 1], p:[0, .12, .25], s:[1, .4, 1.1], c:0x1B1B1B }, { f:'boite', d:[.14, .14, .7], p:[0, .1, -.3], c:0x1B1B1B }], .012));
+    else o.add(bloc([{ f:'boite', d:[.5, .3, .8], p:[0, .2, 0], c:0x5C6672 }, { f:'cyl', d:[.12, .12, .55, 8], p:[0, .1, .3], r:[0, 0, Math.PI / 2], c:0x1E2430 }, { f:'cyl', d:[.12, .12, .55, 8], p:[0, .1, -.3], r:[0, 0, Math.PI / 2], c:0x1E2430 }], .012));
+    const lourd = poids > 23, et = etiquette(type === 'valise' ? `${poids} kg` : 'Hors format', lourd ? '#C1121F' : '#14233A', lourd ? '#FFE3E3' : '#FFFFFF'); et.position.set(0, .8, 0); et.scale.set(1, .25, 1); o.add(et);
+    o.scale.setScalar(1.35);
+    o.position.set(0, .6, Z0); gr.add(o);
+    sacs.push({ o, coul, poids, lourd, type, voie:null, etat:'tapis', t:0, vitesse:clamp(1.6 + n * .05, 1.6, 3.3) });
+    n++;
+  }
+  // le joueur choisit une voie : elle vaut pour le bagage le plus proche de la jonction
+  function aiguiller(id){
+    const s = sacs.filter(x => x.etat === 'tapis' && x.voie == null).sort((a, b) => b.o.position.z - a.o.position.z)[0];
+    if(!s) return;
+    s.voie = id;
+    if(id === 'refus'){ s.etat = 'refus'; s.t = 0; juger(s); return; }
+    const v = voies.find(x => x.id === id); s.marque = etiquette(v.ville, v.css); s.marque.position.set(0, 1.1, 0); s.marque.scale.set(.8, .2, 1); s.o.add(s.marque);
+  }
+  function juger(s){
+    const nom = s.type === 'valise' ? `la valise ${{ rouge:'rouge', bleu:'bleue', vert:'verte', jaune:'jaune', violet:'violette' }[s.coul] || ''}` : s.type === 'skis' ? 'le sac de skis' : s.type === 'guitare' ? 'la guitare' : 'la poussette';
+    if(s.voie === 'refus'){
+      if(s.lourd){ serie++; bon(60 + Math.min(40, serie * 4), `Refusée : ${s.poids} kg, c'est trop lourd (23 kg au plus).`); }
+      else { serie = 0; faute(`Cette valise ne pesait que ${s.poids} kg : il fallait l'envoyer vers ${s.coul === 'hors' ? 'le hors format' : 'sa couleur'}.`); }
+      return;
+    }
+    if(s.voie == null){ serie = 0; faute(`Bagage perdu : personne n'a aiguillé ${nom} !`); return; }
+    if(s.lourd){ serie = 0; faute(`${s.poids} kg : trop lourd ! Il fallait le refuser (⛔).`); return; }
+    if(s.voie === s.coul){ serie++; bon(40 + Math.min(40, serie * 4), serie >= 5 ? `Série de ${serie} !` : 'Bonne voie !'); }
+    else { serie = 0; const v = voies.find(x => x.id === s.voie); faute(`${nom[0].toUpperCase() + nom.slice(1)} est partie vers ${v ? v.ville : '?'} !`); }
+  }
+  return {
+    ico:'🧳', titre:'Tri des bagages',
+    regles:`<p>Les bagages enregistrés arrivent sur le tapis. Envoie chacun sur la <b>voie de sa couleur</b> avant qu'il arrive à la jonction.</p><ul><li>👆 Touche le bouton de la couleur (ou la voie dans la vue 3D) : c'est pour le bagage le plus avancé.</li><li>📦 Skis, guitares, poussettes : voie <b>Hors format</b>.</li><li>⛔ Plus de 23 kg : <b>refuse</b> le bagage (regarde son étiquette).</li><li>⚡ Ça accélère, et de nouvelles voies arrivent. Les séries rapportent plus.</li></ul>`,
+    camera:asp => asp < .9 ? recul([0, .6, -.4], [0, 1.9, 1.15], 58, asp, 9.2, 9) : recul([0, .3, -1.9], [0, 1.9, 1.2], 50, asp, 8.5, 11),
+    montrer(){ if(!gr) construire(); gr.visible = true; },
+    cacher(){ if(gr) gr.visible = false; },
+    debut(){
+      for(const s of sacs) jeter(s.o); sacs = []; n = 0; tSpawn = 0; serie = 0;
+      for(const v of voies){ const i = cliquables.indexOf(v.zone); if(i >= 0) cliquables.splice(i, 1); } voies = [];
+      majVoies(); nouveau(); consigne('Envoie chaque bagage sur la voie de sa couleur.');
+    },
+    maj(dt){
+      tSpawn += dt;
+      const ecart = clamp(3.2 - n * .07, 1.25, 3.2);
+      if(tSpawn > ecart && sacs.filter(s => s.etat === 'tapis').length < 5){ tSpawn = 0; if(majVoies()){ const neuves = voies.length; dire(`🆕 Nouvelle voie ! ${neuves} voies maintenant.`, 'info', 2.5); } if(n === 10) dire('⛔ Attention aux bagages de plus de 23 kg : refuse-les !', 'info', 3.5); nouveau(); }
+      for(const s of sacs){
+        s.t += dt;
+        const p = s.o.position;
+        if(s.etat === 'tapis'){
+          p.z += s.vitesse * dt;
+          if(p.z >= ZJ + .3){
+            p.z = ZJ + .3;
+            if(s.voie && s.voie !== 'refus'){ s.etat = 'voie'; s.t = 0; s.x0 = p.x; }
+            else { s.etat = 'perdu'; s.t = 0; juger(s); }
+          }
+        } else if(s.etat === 'voie'){
+          const v = voies.find(x => x.id === s.voie), u = clamp(s.t / .35, 0, 1);
+          if(u < 1) p.x = lerp(s.x0, v ? v.x : 0, lisse(u));
+          else { p.x = v ? v.x : 0; p.z += 2.6 * dt; if(p.z >= ZF){ s.etat = 'fini'; juger(s); } }
+        } else if(s.etat === 'perdu'){ p.z = lerp(ZJ + .3, ZJ + 1.4, clamp(s.t / .4, 0, 1)); p.y = .6 - clamp((s.t - .3) / .4, 0, 1) * .3; if(s.t > .8) s.etat = 'fini'; }
+        else if(s.etat === 'refus'){ p.y = .6 + s.t * 2.5; s.o.rotation.y += dt * 6; if(s.t > .6) s.etat = 'fini'; }
+      }
+      for(const s of sacs) if(s.etat === 'fini'){ jeter(s.o); }
+      sacs = sacs.filter(s => s.etat !== 'fini');
+    },
+    _etat:() => ({ sacs:sacs.map(s => ({ coul:s.coul, lourd:s.lourd, type:s.type, z:s.o.position.z, voie:s.voie, etat:s.etat })), voies:voies.map(v => v.id), n }),
   };
 })();
 

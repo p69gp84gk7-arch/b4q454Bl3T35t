@@ -3,6 +3,14 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:163, type:'maj', jeu:'Escale', ico:'🏦', lien:'jeux/escale.html',
+    txt:'La banque : touche ton argent en haut pour emprunter sur 7, 14 ou 30 jours et financer une porte, le terminal, la cuve ou un nouvel aéroport. Une échéance est prélevée chaque soir ; ta note et la satisfaction des passagers font baisser le taux.' },
+  { v:162, type:'maj', jeu:'Escale', ico:'🧳', lien:'jeux/escale.html',
+    txt:'Un terminal plus grand : 5 rangées, de larges allées et des petits objets à poser (bancs, plantes, poubelles, écrans, distributeurs…), directement dans la vue 3D. Toucher l\'aéroport ouvre le bon menu (une boutique, le sol, les cuves, une porte). Nouveau mini-jeu : le tri des bagages au comptoir d\'enregistrement. Et une jauge de carburant qui clignote quand la cuve est presque vide, et des hélices qui tournent enfin sur leur moteur !' },
+  { v:161, type:'maj', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html',
+    txt:'La carte peut suivre ton orientation : touche le bouton ▲N et elle tourne avec toi (ta direction toujours vers le haut, grâce à la boussole ou à ton sens de marche). Touche-le encore pour remettre le nord en haut.' },
+  { v:160, type:'maj', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html',
+    txt:'Les pièces et les objets sont maintenant posés sur les chemins, les sentiers et les petites rues (d\'après OpenStreetMap), et plus sur les toits ou dans les jardins : on peut tous les atteindre.' },
   { v:159, type:'nouveau', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html',
     txt:'Nouveau jeu : Arpenteur ! Sors marcher, courir ou rouler avec ton téléphone : ramasse des pièces et des objets rares autour de toi sur la carte ou en vue caméra (AR), visite les lieux du coin avec leurs fiches Wikipédia, et gagne des points à chaque kilomètre. Un mode essai permet de découvrir le jeu sans bouger.' },
   { v:158, type:'maj', jeu:'Escale', ico:'⛽', lien:'jeux/escale.html',

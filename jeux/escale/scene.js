@@ -336,9 +336,9 @@ window.ESCALE_3D = (() => {
     // les hélices (elles tournent)
     let helices = null;
     if(A.moteurs === 'helices'){
-      const hp = [];
-      for(const s of [1, -1]){ const ex = s * (r + (env / 2) * .22), ez = zAile + corde / 2 + corde * .55 + corde * .52; for(let b = 0; b < 6; b++) hp.push({ f:'boite', d:[.25, r * 1.5, .08], p:[ex, yAile - r * .15, ez], r:[0, 0, b * Math.PI / 3], c:0x22262E }); }
-      helices = fusion(hp);
+      // une hélice centrée sur son moyeu (elle tourne sur elle-même), posée devant chaque moteur
+      const hp = []; for(let b = 0; b < 6; b++) hp.push({ f:'boite', d:[.25, r * 1.5, .08], p:[0, 0, 0], r:[0, 0, b * Math.PI / 3], c:0x22262E });
+      helices = { geo:fusion(hp), pos:[1, -1].map(s => [s * (r + (env / 2) * .22), yAile - r * .15, zAile + corde / 2 + corde * .55 + corde * .52]) };
     }
     const m = { geo, geoC, helices, r, lg };
     modeles.set(cle, m);
@@ -349,7 +349,7 @@ window.ESCALE_3D = (() => {
     const md = modeleAvion(v.avion, v.comp, liv);
     const g = new T3.Group(), corps = new T3.Group();
     corps.add(new T3.Mesh(md.geo, MAT), new T3.Mesh(md.geoC, CONTOUR));
-    let helices = null; if(md.helices){ helices = new T3.Mesh(md.helices, MAT); corps.add(helices); }
+    const helices = creerHelices(md); if(helices) corps.add(helices);
     g.add(corps);
     // l'ombre (un disque sombre posé au sol)
     const ombre = new T3.Mesh(new T3.CircleGeometry(1, 20), new T3.MeshBasicMaterial({ color:0x000000, transparent:true, opacity:.12, depthWrite:false }));
@@ -361,6 +361,13 @@ window.ESCALE_3D = (() => {
     return { obj:g, corps, ombre, helices, md, liv };
   }
 
+  // les hélices : un groupe, une hélice par moteur, chacune tourne autour de son propre axe
+  function creerHelices(md){
+    if(!md.helices) return null;
+    const g = new T3.Group();
+    for(const p of md.helices.pos){ const h = new T3.Mesh(md.helices.geo, MAT); h.position.set(...p); g.add(h); }
+    return g;
+  }
   /* ---------- Les véhicules ---------- */
   const MODELES_V = {
     carburant:() => [{ f:'boite', d:[2.4, 2.2, 2.2], p:[0, 1.5, 3.4], c:0xF4F4F0 }, { f:'cyl', d:[1.25, 1.25, 5.2, 12], p:[0, 1.9, -.6], r:[Math.PI / 2, 0, 0], c:0xF2C230 }, { f:'boite', d:[2.4, .5, 7.6], p:[0, .55, .4], c:0x3A3F47 }],
@@ -455,7 +462,7 @@ window.ESCALE_3D = (() => {
       o.obj.position.set(pos.x, 0, pos.z); o.obj.rotation.y = Math.PI / 2 - pos.cap;
     }
     for(const [id, o] of vehicules) if(!A.unites.some(u => u.id === id)){ scene.remove(o.obj); vehicules.delete(id); }
-    for(const [, a] of avions) if(a.helices) a.helices.rotation.z += dtReel * 30;
+    for(const [, a] of avions) if(a.helices) for(const h of a.helices.children) h.rotation.z += dtReel * 30;
     majInterieur(A, Pl, dtReel);
     camera(A, Pl, dtReel);
   }
@@ -511,9 +518,27 @@ window.ESCALE_3D = (() => {
   // les cases du plan (A.terminal) posées dans l'aérogare : la case x = 0 à gauche vue des pistes, la ligne y = 0 côté ville
   // MARGE_Z : côté ville ; JETEE : la bande le long de la façade côté pistes, où sont les portes d'embarquement
   const MARGE_X = 7, MARGE_Z = 5, JETEE = 15, ECH_P = 1.5;          // les passagers et le mobilier sont un peu grossis pour être vus de loin
+  // la grille du terminal : pw × pd le pas d'une case, cw × cd la place d'une construction (le reste fait les allées),
+  // et les petites cases (un quart de case) pour les petits objets
+  const ALLEE = 3.6;
   function grilleT(A, Pl){
-    const T = Pl.terminal, l = A.terminal.l, h = A.terminal.h, cw = (T.x1 - T.x0 - 2 * MARGE_X) / l, cd = (T.z1 - T.z0 - MARGE_Z - JETEE) / h;
-    return { T, l, h, cw, cd, centre:(x, y) => ({ x:T.x1 - MARGE_X - (x + .5) * cw, z:T.z1 - MARGE_Z - (y + .5) * cd }) };
+    const T = Pl.terminal, l = A.terminal.l, h = A.terminal.h, pw = (T.x1 - T.x0 - 2 * MARGE_X) / l, pd = (T.z1 - T.z0 - MARGE_Z - JETEE) / h;
+    return { T, l, h, pw, pd, cw:pw - ALLEE, cd:pd - ALLEE, centre:(x, y) => ({ x:T.x1 - MARGE_X - (x + .5) * pw, z:T.z1 - MARGE_Z - (y + .5) * pd }),
+      quart:(x, y) => ({ x:T.x1 - MARGE_X - (x + .5) * pw / 2, z:T.z1 - MARGE_Z - (y + .5) * pd / 2 }) };
+  }
+  // les petits objets (autour de leur centre)
+  function petitObjet(type, e){
+    switch(type){
+      case 'plante': return plante(0, 0, e * 1.1);
+      case 'banc': return [{ f:'boite', d:[2.6 * e, .18 * e, .8 * e], p:[0, .5 * e, 0], c:0x8B5A3C }, { f:'boite', d:[2.6 * e, .6 * e, .14 * e], p:[0, .85 * e, -.36 * e], c:0x8B5A3C },
+        { f:'boite', d:[.14 * e, .5 * e, .7 * e], p:[-1.1 * e, .25 * e, 0], c:0x3A3F47 }, { f:'boite', d:[.14 * e, .5 * e, .7 * e], p:[1.1 * e, .25 * e, 0], c:0x3A3F47 }];
+      case 'poubelle': return poubelle(0, 0, e);
+      case 'ecran': return ecran(0, 0, e);
+      case 'distributeur': return [{ f:'boite', d:[1.2 * e, 2.2 * e, .9 * e], p:[0, 1.1 * e, 0], c:0xD7263D }, { f:'boite', d:[.8 * e, 1.3 * e, .05], p:[-.12 * e, 1.35 * e, .46 * e], c:0x8ECAE6 }, { f:'boite', d:[.2 * e, .5 * e, .06], p:[.42 * e, 1.3 * e, .46 * e], c:0x14233A }];
+      case 'borne': return [{ f:'cyl', d:[.25 * e, .3 * e, 1.3 * e, 8], p:[0, .65 * e, 0], c:0xE9EDF2 }, { f:'boite', d:[.6 * e, .45 * e, .2 * e], p:[0, 1.45 * e, 0], c:0x14233A }, { f:'boite', d:[.45 * e, .25 * e, .05], p:[0, 1.47 * e, .11 * e], c:0x51CF66 }];
+      case 'eau': return [{ f:'boite', d:[.8 * e, 1.1 * e, .6 * e], p:[0, .55 * e, 0], c:0xF4F4F0 }, { f:'boite', d:[.7 * e, .12 * e, .5 * e], p:[0, 1.16 * e, 0], c:0x8C949F }, { f:'cyl', d:[.08 * e, .08 * e, .3 * e, 6], p:[0, 1.35 * e, -.1 * e], c:0x1B98E0 }];
+    }
+    return [];
   }
   const clair = c => new T3.Color(c).lerp(new T3.Color(0xFFFFFF), .55).getHex();
   // la file d'attente devant les comptoirs et les portiques : des rangées en serpentin (5 personnes par rangée)
@@ -706,14 +731,18 @@ window.ESCALE_3D = (() => {
     return p;
   }
   function construireInterieur(A, Pl){
-    const cle = A.terminal.l + 'x' + A.terminal.h + ':' + A.terminal.modules.map(m => m.type + m.x + m.y + m.niv).join(',') + '|' + A.portes.map(g => g.nom + g.taille + (g.passerelle ? 'p' : '')).join(',');
+    const cle = A.terminal.l + 'x' + A.terminal.h + ':' + A.terminal.modules.map(m => m.type + m.x + m.y + m.niv).join(',') + '|' + (A.terminal.petits || []).map(p => p.type + p.x + '.' + p.y).join(',') + '|' + A.portes.map(g => g.nom + g.taille + (g.passerelle ? 'p' : '')).join(',');
     if(cle === cleInt && interieur) return;
     cleInt = cle;
     if(interieur){ monde.remove(interieur); interieur.traverse(o => { if(o.geometry) o.geometry.dispose(); }); }
     const G = grilleT(A, Pl), pieces = [], sol = [];
     // le carrelage, la ligne jaune de la sûreté (entre la rangée côté ville et le reste)
-    for(let x = 0; x < G.l; x++) for(let y = 0; y < G.h; y++){ const c = G.centre(x, y); sol.push({ f:'boite', d:[G.cw - .4, .1, G.cd - .4], p:[c.x, .55, c.z], c:(x + y) % 2 ? 0xE9EDF2 : 0xDDE3EA }); }
-    sol.push({ f:'boite', d:[G.T.x1 - G.T.x0 - 2 * MARGE_X, .12, .6], p:[(G.T.x0 + G.T.x1) / 2, .62, G.T.z1 - MARGE_Z - G.cd], c:0xFFB703 });
+    // les allées (un sol clair et chaud) et le carrelage de chaque case
+    sol.push({ f:'boite', d:[G.T.x1 - G.T.x0 - 2 * MARGE_X + 2, .08, G.pd * G.h + 2], p:[(G.T.x0 + G.T.x1) / 2, .52, G.T.z1 - MARGE_Z - G.pd * G.h / 2], c:0xF1ECE2 });
+    for(let x = 0; x < G.l; x++) for(let y = 0; y < G.h; y++){ const c = G.centre(x, y); sol.push({ f:'boite', d:[G.cw + .6, .1, G.cd + .6], p:[c.x, .55, c.z], c:(x + y) % 2 ? 0xE9EDF2 : 0xDDE3EA }); }
+    sol.push({ f:'boite', d:[G.T.x1 - G.T.x0 - 2 * MARGE_X, .12, .6], p:[(G.T.x0 + G.T.x1) / 2, .62, G.T.z1 - MARGE_Z - G.pd], c:0xFFB703 });
+    // les petits objets, dans leur petite case
+    for(const q of A.terminal.petits || []){ const c = G.quart(q.x, q.y); for(const o of petitObjet(q.type, ECH_P)){ o.p = [o.p[0] + c.x, o.p[1] + .6, o.p[2] + c.z]; pieces.push(o); } }
     for(const m of A.terminal.modules){
       const c = G.centre(m.x, m.y);
       sol.push({ f:'boite', d:[G.cw - 1.2, .12, G.cd - 1.2], p:[c.x, .64, c.z], c:clair(M.MODULES[m.type].coul) });
@@ -950,7 +979,41 @@ window.ESCALE_3D = (() => {
     const r = rc(); r.setFromCamera(new T3.Vector2(sx / L * 2 - 1, -(sy / H) * 2 + 1), cam);
     const pt = new T3.Vector3(); if(!r.ray.intersectPlane(new T3.Plane(new T3.Vector3(0, 1, 0), -.7), pt)) return null;
     const G = grilleT(A, M.plan(A));
-    return A.terminal.modules.find(m => { const c = G.centre(m.x, m.y); return Math.abs(pt.x - c.x) < G.cw / 2 && Math.abs(pt.z - c.z) < G.cd / 2; }) || null;
+    return A.terminal.modules.find(m => { const c = G.centre(m.x, m.y); return Math.abs(pt.x - c.x) < G.pw / 2 && Math.abs(pt.z - c.z) < G.pd / 2; }) || null;
+  }
+  // toucher l'écran : quel endroit de l'aéroport ? (une case ou une petite case du terminal, une porte, les cuves, le dépôt…)
+  function cibler(sx, sy, A){
+    if(!ok) return null;
+    const r = rc(); r.setFromCamera(new T3.Vector2(sx / L * 2 - 1, -(sy / H) * 2 + 1), cam);
+    const Pl = M.plan(A), T = Pl.terminal, pt = new T3.Vector3();
+    if(r.ray.intersectPlane(new T3.Plane(new T3.Vector3(0, 1, 0), coupe ? -.7 : -14), pt) && pt.x > T.x0 && pt.x < T.x1 && pt.z > T.z0 && pt.z < T.z1){
+      if(!coupe) return { zone:'terminal' };
+      const G = grilleT(A, Pl), fx = (T.x1 - MARGE_X - pt.x) / G.pw, fy = (T.z1 - MARGE_Z - pt.z) / G.pd;
+      if(pt.z < T.z0 + JETEE){ let best = 0; Pl.postes.forEach((p, i) => { if(Math.abs(p.cx - pt.x) < Math.abs(Pl.postes[best].cx - pt.x)) best = i; }); return { zone:'jetee', porte:best }; }
+      if(fx < 0 || fy < 0 || fx >= G.l || fy >= G.h) return { zone:'terminal' };
+      return { zone:'case', x:Math.floor(fx), y:Math.floor(fy), qx:Math.floor(fx * 2), qy:Math.floor(fy * 2) };
+    }
+    if(!r.ray.intersectPlane(new T3.Plane(new T3.Vector3(0, 1, 0), 0), pt)) return null;
+    const D = Pl.depot, Cb = Pl.carburant, n = A.carbu ? A.carbu.niv + 1 : 3;
+    if(Math.abs(pt.x - D.x) < 30 && Math.abs(pt.z - (D.z + 28)) < 24) return { zone:'depot' };
+    if(pt.x > Cb.x - 22 && pt.x < Cb.x + (n - 1) * 17 + 14 && Math.abs(pt.z - (Cb.z + 42)) < 22) return { zone:'carburant' };
+    if(Math.hypot(pt.x - Pl.tour.x, pt.z - Pl.tour.z) < 14) return { zone:'tour' };
+    for(let i = 0; i < Pl.postes.length; i++){ const p = Pl.postes[i]; if(Math.abs(pt.x - p.cx) < p.w / 2 && pt.z < T.z0 && pt.z > p.nezZ - 80) return { zone:'porte', porte:i }; }
+    if(Math.abs(pt.z - Pl.piste.z) < 40 && pt.x > Pl.piste.x0 - 20 && pt.x < Pl.piste.x1 + 20) return { zone:'piste' };
+    return { zone:'sol' };
+  }
+  // pendant un placement : les cases (ou petites cases) libres s'allument en vert
+  let surb = null, cleSurb = '';
+  function surbrillance(A, mode){
+    const cle = mode ? mode + ':' + A.terminal.l + ':' + A.terminal.modules.map(m => m.x + '.' + m.y).join(',') + ':' + (A.terminal.petits || []).map(p => p.x + '.' + p.y).join(',') : '';
+    if(cle === cleSurb) return; cleSurb = cle;
+    if(surb){ scene.remove(surb); surb.geometry.dispose(); surb = null; }
+    if(!mode || !ok) return;
+    const G = grilleT(A, M.plan(A)), rects = [];
+    if(mode === 'module'){ for(let x = 0; x < G.l; x++) for(let y = 0; y < G.h; y++) if(!A.terminal.modules.some(m => m.x === x && m.y === y) && !M.petitsDansCase(A, x, y).length){ const c = G.centre(x, y); rects.push({ f:'boite', d:[G.cw, .1, G.cd], p:[c.x, 1, c.z], c:0x51CF66 }); } }
+    else for(let x = 0; x < G.l * 2; x++) for(let y = 0; y < G.h * 2; y++) if(!M.libreQuart(A, x, y)){ const c = G.quart(x, y); rects.push({ f:'boite', d:[G.pw / 2 - .9, .1, G.pd / 2 - .9], p:[c.x, 1, c.z], c:0x51CF66 }); }
+    if(!rects.length) return;
+    surb = new T3.Mesh(fusion(rects), new T3.MeshBasicMaterial({ vertexColors:true, transparent:true, opacity:.38, depthWrite:false })); surb.renderOrder = 5; scene.add(surb);
   }
   // les outils de dessin, prêtés aux mini-jeux de contrôle (même moteur, même style)
   const kit = () => ok ? { T3, R, objet, fusion, MAT, CONTOUR, get L(){ return L; }, get H(){ return H; } } : null;
@@ -972,7 +1035,7 @@ window.ESCALE_3D = (() => {
     const cle = type + comp + livree;
     if(cle !== cleA){
       if(objA) SA.remove(objA);
-      const md = modeleAvion(type, comp, livree); objA = new T3.Group(); const c = new T3.Group(); c.add(new T3.Mesh(md.geo, MAT), new T3.Mesh(md.geoC, CONTOUR)); if(md.helices) c.add(new T3.Mesh(md.helices, MAT)); c.position.y = md.r * 1.5; objA.add(c); SA.add(objA); cleA = cle;
+      const md = modeleAvion(type, comp, livree); objA = new T3.Group(); const c = new T3.Group(); c.add(new T3.Mesh(md.geo, MAT), new T3.Mesh(md.geoC, CONTOUR)); if(md.helices) c.add(creerHelices(md)); c.position.y = md.r * 1.5; objA.add(c); SA.add(objA); cleA = cle;
       objA.userData.lg = md.lg;
     }
     objA.rotation.y = angle;
@@ -980,5 +1043,5 @@ window.ESCALE_3D = (() => {
     RA.render(SA, CA);
   }
 
-  return { init, taille, maj, rendu, choisir, choisirModule, kit, suivre, deplacer, zoomer, tourner, centrer, apercu, vue, get ok(){ return ok; }, get agents(){ return agents.length; }, _debug:() => ({ avions:[...avions].map(([id, a]) => ({ id, x:Math.round(a.obj.position.x), y:Math.round(a.obj.position.y), z:Math.round(a.obj.position.z), vis:a.obj.visible, enfants:a.corps.children.length, dansScene:!!a.obj.parent })), cam:cam.position.toArray().map(Math.round), vue:{ ...vue } }) };
+  return { init, taille, maj, rendu, choisir, choisirModule, cibler, surbrillance, get coupe(){ return coupe; }, kit, suivre, deplacer, zoomer, tourner, centrer, apercu, vue, get ok(){ return ok; }, get agents(){ return agents.length; }, _debug:() => ({ avions:[...avions].map(([id, a]) => ({ id, x:Math.round(a.obj.position.x), y:Math.round(a.obj.position.y), z:Math.round(a.obj.position.z), vis:a.obj.visible, enfants:a.corps.children.length, dansScene:!!a.obj.parent })), cam:cam.position.toArray().map(Math.round), vue:{ ...vue } }) };
 })();
