@@ -9,6 +9,7 @@ window.ESCALE_3D = (() => {
   const alea = s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   let T3 = null, R = null, scene = null, cam = null, ok = false, DEGRADE = null, CONTOUR = null, MAT = null, MATB = null, L = 1, H = 1;
   let monde = null, cleMonde = '', ciel = null, soleil = null, hemi = null, vitres = null, lampes = null, neige = null, toit = null;
+  let plafonniers = null, lampesTerm = [];                           // l'éclairage de l'aérogare, la nuit
   let interieur = null, cleInt = '', foule = null, tetes = null, tSim = null, coupe = false;
   const agents = [], files = { check:[], secu:[], pass:[] };
   let cuveG = null, cleCuve = '', jaugeCuve = null, citernes = [];
@@ -168,6 +169,26 @@ window.ESCALE_3D = (() => {
     ];
     for(let k = 0; k < Math.floor(tl / 40); k++) toitP.push({ f:'boite', d:[6, 2.4, 5], p:[T.x0 + 20 + k * 40 + rnd() * 10, 17.6, cz + (rnd() - .5) * 20], c:0xB4BBC4 });
     toit = objet(toitP, .25); monde.add(toit);
+    /* L'éclairage de l'aérogare. La nuit, quand on zoome et que le toit s'enlève, l'intérieur
+       n'était éclairé que par le peu de lune qui reste : on ne voyait plus ni les comptoirs ni la
+       foule. Deux choses, donc : des bandeaux lumineux suspendus au plafond, qu'on voit dès que le
+       toit est retiré, et quelques lampes douces qui éclairent vraiment le sol, les constructions
+       et les passagers. Les lampes restent dans la scène en permanence (changer leur nombre
+       obligerait la carte graphique à tout recompiler) : seule leur force varie avec l'heure. */
+    const neons = [], rangs = Math.max(2, Math.round(tz / 16));
+    for(let r = 0; r < rangs; r++){
+      const nz = T.z0 + (r + .5) * tz / rangs;
+      for(let bx = T.x0 + 8; bx < T.x1 - 6; bx += 16) neons.push({ f:'boite', d:[11, .5, 1.1], p:[bx + 5.5, 10.4, nz], c:0xFFF6E2 });
+    }
+    plafonniers = new T3.Mesh(fusion(neons), new T3.MeshBasicMaterial({ vertexColors:true, transparent:true, opacity:.2, depthWrite:false }));
+    monde.add(plafonniers);
+    lampesTerm = [];
+    const nLampes = Math.max(2, Math.min(5, Math.round(tl / 90)));
+    for(let k = 0; k < nLampes; k++){
+      const pl = new T3.PointLight(0xFFE7BE, 0, tl / nLampes + tz + 60, 1.4);
+      pl.position.set(T.x0 + (k + .5) * tl / nLampes, 11, cz);
+      monde.add(pl); lampesTerm.push(pl);
+    }
     // la façade vitrée (elle s'allume la nuit, et devient transparente quand on regarde dedans)
     vitres = new T3.MeshToonMaterial({ color:0x3E8EDB, gradientMap:DEGRADE, emissive:0x000000, transparent:true, opacity:1, side:T3.DoubleSide });
     const ctex = document.createElement('canvas'); ctex.width = 512; ctex.height = 64; const xt = ctex.getContext('2d'); xt.fillStyle = '#fff'; xt.fillRect(0, 0, 512, 64); xt.fillStyle = 'rgba(30,50,80,.55)'; for(let k = 0; k < 512; k += 16) xt.fillRect(k, 0, 2, 64); xt.fillRect(0, 30, 512, 2);
@@ -941,6 +962,7 @@ window.ESCALE_3D = (() => {
     const T = Pl.terminal, dedans = vue.dist < 470 && vue.x > T.x0 - 260 && vue.x < T.x1 + 260;
     if(dedans !== coupe){ coupe = dedans; toit.visible = !dedans; vitres.opacity = dedans ? .28 : 1; vitres.depthWrite = !dedans; }
     interieur.visible = foule.visible = tetes.visible = dedans;
+    if(plafonniers) plafonniers.visible = dedans;                    // sous le toit, ils seraient cachés
     // la simulation des passagers tourne toujours (pour que la foule soit prête quand on regarde)
     majFoule(A, Pl, dtReel);
   }
@@ -957,6 +979,10 @@ window.ESCALE_3D = (() => {
     const nuit = 1 - jour;
     if(vitres){ vitres.emissive.setRGB(.9 * nuit, .75 * nuit, .4 * nuit); }
     if(lampes) lampes.material.opacity = .15 + .85 * nuit;
+    // l'aérogare : les bandeaux s'allument au crépuscule, les lampes avec eux
+    if(plafonniers) plafonniers.material.opacity = .18 + .8 * nuit;
+    // assez pour lire le terminal, pas assez pour effacer la nuit : minuit ne doit pas ressembler à midi
+    for(const pl of lampesTerm) pl.intensity = .8 * nuit;
   }
 
   /* ---------- La caméra ---------- */
