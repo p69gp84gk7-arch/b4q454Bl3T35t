@@ -214,7 +214,7 @@ window.ESCALE_MONDE = (() => {
   function nouvelAeroport(P, id){
     const D = AEROPORTS[id];
     const A = { id, t:5.5 * 60, portes:D.portes.map((g, i) => ({ ...g, nom:nomPorte(i) })), vehicules:{}, unites:[], terminal:{ l:D.terminal.l, h:D.terminal.h, modules:D.terminal.modules.map(([x, y, type]) => ({ x, y, type, niv:1 })), petits:(D.terminal.petits || []).map(([x, y, type]) => ({ x, y, type })) },
-      hangars:{}, personnel:{ entretien:1 }, contrats:[], offres:[], vols:[], journal:[], qCheck:[], qSecu:[], pisteLibre:0, meteo:'beau', reputation:70, jourStats:nouveauJour(), historique:[], dernierJour:0, toasts:[], carbu:nouvelleCuve(id) };
+      hangars:{}, personnel:{ entretien:1 }, pistes:1, pistesLibres:[0, 0], contrats:[], offres:[], vols:[], journal:[], qCheck:[], qSecu:[], pisteLibre:0, meteo:'beau', reputation:70, jourStats:nouveauJour(), historique:[], dernierJour:0, toasts:[], carbu:nouvelleCuve(id) };
     for(const [k, n] of Object.entries(D.vehicules)){ A.vehicules[k] = { niv:1 }; for(let i = 0; i < n; i++) A.unites.push(nouvelleUnite(A, k)); }
     meteoDuJour(A); genererOffres(P, A, 4);
     return A;
@@ -284,6 +284,7 @@ window.ESCALE_MONDE = (() => {
   // x le long de la piste (les avions atterrissent et décollent vers +x), z vers la ville (+z) ; la piste est en z = -PISTE_Z
   // les postes sont devant l'aérogare (z ≈ -40), l'avion nez vers l'aérogare ; une voie de circulation longe les postes (z = VOIE_P)
   const PISTE_Z = -300, TAXI_Z = -236, VOIE_P = -150, FACADE_Z = -26, SERVICE_Z = -126;
+  const ECART_PISTES = 120;                                          // la distance entre les deux pistes (m)
   const CACHE_PLAN = new Map();
   function plan(A){
     const D = AEROPORTS[A.id], cle = A.id + ':' + A.terminal.h + ':' + A.portes.map(g => g.taille + (g.passerelle ? 'p' : '')).join(',');
@@ -294,30 +295,34 @@ window.ESCALE_MONDE = (() => {
     // A01 à droite de l'aérogare vue des pistes (les numéros se lisent de gauche à droite depuis la piste)
     postes.forEach(p => { p.cx = largeur - p.cx + dx; p.nezZ = FACADE_Z - 8; });
     const terminal = { x0:dx - 30, x1:dx + largeur + 10, z0:FACADE_Z, z1:FACADE_Z + 20 + A.terminal.h * RANG_T };   // la jetée (15 m), 5 m de marge, puis les rangées
+    // la piste principale, et la seconde quand elle est construite (parallèle, plus loin du terminal :
+    // ses bretelles traversent la première, comme dans un vrai aéroport à pistes parallèles)
     const piste = { x0:-D.piste / 2, x1:D.piste / 2, z:PISTE_Z, largeur:45 };
+    const pistes = [piste, { x0:-D.piste / 2, x1:D.piste / 2, z:PISTE_Z - ECART_PISTES, largeur:45 }];
     // les bretelles entre la piste et la voie parallèle, et entre la voie parallèle et la voie des postes
     const bretelles = []; for(let bx = piste.x0 + 60; bx <= piste.x1 - 40; bx += 170) bretelles.push(Math.round(bx));
     const liens = [terminal.x0 - 70, terminal.x1 + 70];             // de la voie parallèle à la voie des postes
     const depot = { x:terminal.x1 + 120, z:-95 };                   // le dépôt des véhicules de piste
     // les hangars s'alignent derrière le dépôt, le long de la route de service
     const hangars = hangarsOuvrables({ id:A.id }).map((k, i) => ({ k, x:depot.x + 60 + i * 56, z:depot.z + 10 }));
-    const P = { postes, terminal, piste, bretelles, liens, depot, hangars, tour:{ x:terminal.x0 - 90, z:20 }, carburant:{ x:terminal.x1 + 210, z:-30 } };
-    // les trajets des avions
+    const P = { postes, terminal, piste, pistes, bretelles, liens, depot, hangars, tour:{ x:terminal.x0 - 90, z:20 }, carburant:{ x:terminal.x1 + 210, z:-30 } };
+    // les trajets des avions : un jeu par piste (le même chemin, mais vers l'autre bande)
     const pisteSortie = x => bretelles.find(b => b >= x) ?? bretelles[bretelles.length - 1];
-    P.trajets = postes.map((p, i) => {
+    P.trajets = pistes.map(pi => postes.map((p, i) => {
+      const pz = pi.z;
       const lienArr = liens.reduce((m, l) => Math.abs(l - p.cx) < Math.abs(m - p.cx) ? l : m, liens[0]);
-      const toucher = piste.x0 + 90, sortie = pisteSortie(piste.x0 + D.piste * .55);
+      const toucher = pi.x0 + 90, sortie = pisteSortie(pi.x0 + D.piste * .55);
       const enPoste = [p.cx, p.nezZ - AVIONS_LONG_MAX(p.taille) / 2];
       // l'arrivée : du toucher des roues jusqu'au poste (le nez vers l'aérogare)
-      const arr = lisser([[toucher, PISTE_Z], [sortie - 60, PISTE_Z], [sortie, PISTE_Z + 20], [sortie, TAXI_Z], [lienArr + (lienArr < sortie ? 30 : -30), TAXI_Z], [lienArr, TAXI_Z + 20], [lienArr, VOIE_P], [p.cx + (p.cx > lienArr ? -40 : 40), VOIE_P], [p.cx, VOIE_P + 25], enPoste], 3);
+      const arr = lisser([[toucher, pz], [sortie - 60, pz], [sortie, pz + 20], [sortie, TAXI_Z], [lienArr + (lienArr < sortie ? 30 : -30), TAXI_Z], [lienArr, TAXI_Z + 20], [lienArr, VOIE_P], [p.cx + (p.cx > lienArr ? -40 : 40), VOIE_P], [p.cx, VOIE_P + 25], enPoste], 3);
       // le repoussage : en arrière jusqu'à la voie des postes (le nez tourné vers la piste de départ)
       const pousse = lisser([enPoste, [p.cx, VOIE_P + 15], [p.cx + 25, VOIE_P]], 2);
-      // le départ : vers le seuil de piste (on décolle vers +x depuis piste.x0)
+      // le départ : vers le seuil de piste (on décolle vers +x depuis pi.x0)
       const lienDep = liens[0];
-      const dep = lisser([[p.cx + 25, VOIE_P], [lienDep + 30, VOIE_P], [lienDep, VOIE_P - 20], [lienDep, TAXI_Z + 20], [lienDep - 30, TAXI_Z], [piste.x0 + 50, TAXI_Z], [piste.x0 + 20, TAXI_Z - 20], [piste.x0 + 20, PISTE_Z + 25], [piste.x0 + 45, PISTE_Z]], 3);
+      const dep = lisser([[p.cx + 25, VOIE_P], [lienDep + 30, VOIE_P], [lienDep, VOIE_P - 20], [lienDep, TAXI_Z + 20], [lienDep - 30, TAXI_Z], [pi.x0 + 50, TAXI_Z], [pi.x0 + 20, TAXI_Z - 20], [pi.x0 + 20, pz + 25], [pi.x0 + 45, pz]], 3);
       const A2 = avecLongueurs(arr); A2.roule = sortie - 60 - toucher;      // la partie sur la piste (le freinage)
-      return { arr:A2, pousse:avecLongueurs(pousse), dep:avecLongueurs(dep), attente:[lienArr, TAXI_Z], toucher };
-    });
+      return { arr:A2, pousse:avecLongueurs(pousse), dep:avecLongueurs(dep), attente:[lienArr, TAXI_Z], toucher, z:pz };
+    }));
     // les trajets des véhicules : du dépôt au poste (par la route de service derrière les avions, z = -60)
     P.service = postes.map(p => avecLongueurs(lisser([[depot.x, depot.z], [depot.x - 25, SERVICE_Z], [p.cx + p.w * .42, SERVICE_Z], [p.cx + p.w * .36, -78]], 2)));
     CACHE_PLAN.set(cle, P);
@@ -618,11 +623,15 @@ window.ESCALE_MONDE = (() => {
   const VOLS_VISIBLES = ['approche', 'atterrissage', 'roulageArr', 'attentePoste', 'escale', 'repousse', 'roulageDep', 'attentePiste', 'decollage', 'parti'];
   function phase(v, etat, t0, duree){ v.etat = etat; v.t0 = t0; v.duree = duree; }
   function avancerVol(P, A, v, dt){
-    const t = A.t, Pl = plan(A), tr = Pl.trajets[v.porte];
+    const t = A.t, Pl = plan(A), tr = trajetDe(Pl, v);
     switch(v.etat){
       case 'prevu':
         // l'approche commence 6 minutes avant l'atterrissage ; on réserve la piste
-        if(t >= v.tArrReel - 6){ const tPose = Math.max(v.tArrReel, A.pisteLibre + .4); A.pisteLibre = tPose + 1.3; phase(v, 'approche', t, tPose - t); }
+        if(t >= v.tArrReel - 6){
+          const l = pistesLibres(A), k = pisteLaPlusTot(A), tPose = Math.max(v.tArrReel, l[k] + .4);
+          l[k] = tPose + 1.3; A.pisteLibre = l[k]; v.piste = k;
+          phase(v, 'approche', t, tPose - t);
+        }
         break;
       case 'approche': if(t >= v.t0 + v.duree) phase(v, 'atterrissage', t, 1.2); break;
       case 'atterrissage':
@@ -639,15 +648,25 @@ window.ESCALE_MONDE = (() => {
         break;
       case 'escale': escale(P, A, v); break;
       case 'repousse':
-        if(t >= v.t0 + v.duree){ A.portes[v.porte].occupe = null; phase(v, 'roulageDep', t, tr.dep.total / VITESSE_ROULAGE); }
+        if(t >= v.t0 + v.duree){
+          // on choisit la piste du départ dès le repoussage : c'est elle qu'on roule rejoindre
+          A.portes[v.porte].occupe = null; v.piste = pisteLaPlusTot(A);
+          phase(v, 'roulageDep', t, trajetDe(Pl, v).dep.total / VITESSE_ROULAGE);
+        }
         break;
       case 'roulageDep':
-        if(t >= v.t0 + v.duree){ const tDec = Math.max(t, A.pisteLibre); A.pisteLibre = tDec + 1.3; phase(v, 'attentePiste', t, tDec - t); }
+        if(t >= v.t0 + v.duree){
+          const l = pistesLibres(A), k = pisteLaPlusTot(A), tDec = Math.max(t, l[k]);
+          l[k] = tDec + 1.3; A.pisteLibre = l[k]; v.piste = k;
+          phase(v, 'attentePiste', t, tDec - t);
+        }
         break;
       case 'attentePiste': if(t >= v.t0 + v.duree) phase(v, 'decollage', t, 1.8); break;
       case 'decollage': if(t >= v.t0 + v.duree) phase(v, 'parti', t, 0); break;
     }
   }
+  // le trajet de ce vol : celui de la piste qu'il utilise
+  const trajetDe = (Pl, v) => Pl.trajets[Math.min(v.piste || 0, Pl.trajets.length - 1)][v.porte];
   const posteLibre = (A, v) => !A.portes[v.porte].occupe || A.portes[v.porte].occupe === v.id || !A.vols.some(x => x.id === A.portes[v.porte].occupe);
   function debutEscale(A, v){
     const g = A.portes[v.porte];
@@ -962,6 +981,30 @@ window.ESCALE_MONDE = (() => {
     return null;
   }
 
+  /* ---------- La seconde piste ----------
+     Avec une seule bande, tout le monde fait la queue : un avion la garde 1,3 minute, à l'atterrissage
+     comme au décollage, et les autres attendent leur tour en l'air ou au point d'attente. Une seconde
+     piste double le passage : chaque mouvement prend la bande qui se libère le plus tôt.
+     Elle coûte cher et demande de la place : le prix suit la longueur de piste de l'aéroport. */
+  const PISTES_MAX = 2;
+  const prixPiste = A => Math.round(AEROPORTS[A.id].piste * 2200 / 50000) * 50000;
+  const nbPistes = A => A.pistes || 1;
+  function pistesLibres(A){ if(!A.pistesLibres) A.pistesLibres = Array.from({ length:PISTES_MAX }, () => A.pisteLibre || 0); return A.pistesLibres; }
+  // la piste qui se libère le plus tôt (parmi celles qui existent)
+  function pisteLaPlusTot(A){
+    const l = pistesLibres(A); let k = 0;
+    for(let i = 1; i < nbPistes(A); i++) if(l[i] < l[k]) k = i;
+    return k;
+  }
+  function acheterPiste(P, A){
+    if(nbPistes(A) >= PISTES_MAX) return 'Il n\'y a pas la place pour une troisième piste.';
+    if(niveauDe(P.xp) < 8) return 'Disponible au niveau 8.';
+    if(!payer(P, prixPiste(A))) return 'Pas assez d\'argent.';
+    A.pistes = nbPistes(A) + 1; pistesLibres(A);
+    journal(A, `🛬 Seconde piste ouverte : deux avions peuvent décoller ou atterrir en même temps, les attentes en l'air disparaissent.`, 'bon');
+    return null;
+  }
+
   /* ---------- Les compagnies : le passe de confiance ---------- */
   function recevoir(P, A, comp, k){
     const C = P.compagnies[comp];
@@ -1066,6 +1109,8 @@ window.ESCALE_MONDE = (() => {
     }
     // les parties d'avant les toilettes qui se salissent : un agent offert pour commencer
     for(const A of Object.values(P.aeroports)){ personnel(A); if(!A.personnel.entretien) A.personnel.entretien = 1; }
+    // les parties d'avant la seconde piste
+    for(const A of Object.values(P.aeroports)){ if(!A.pistes) A.pistes = 1; pistesLibres(A); }
     // les parties d'avant la banque
     banque(P);
     return P;
@@ -1074,7 +1119,7 @@ window.ESCALE_MONDE = (() => {
 
   return { JOUR, TAILLES, AVIONS, RAYONS, VILLES, COMPAGNIES, LIVREES, AEROPORTS, ORDRE_AEROPORTS, VEHICULES, MODULES, TACHES, ORDRE_TACHES, RECOMPENSES, PALIERS, OBJECTIFS, NIV_MAX,
     international, NATIONAL, hm, euros, jourDe, minuteDe, xpNiveau, niveauDe, xpConfiance, paliersAtteints, texteRecompense, tailleOk, facteurNiv, prixAmelioration, prixPasserelle, prixAgrandir, prixAmeliorationVehicules,
-    portesMax, terminalMax, HANGARS, SANS_HANGAR, hangarDe, aHangar, maxVehicules, nivMaxVehicule, construireHangar, hangarsOuvrables, ENTRETIEN, personnel, menage, propreteWC, avantSale, nbToilettes, vitesseSalissure, vitesseMenage, salete, embaucher, licencier, nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
+    portesMax, terminalMax, PISTES_MAX, prixPiste, nbPistes, acheterPiste, trajetDe, ECART_PISTES, HANGARS, SANS_HANGAR, hangarDe, aHangar, maxVehicules, nivMaxVehicule, construireHangar, hangarsOuvrables, ENTRETIEN, personnel, menage, propreteWC, avantSale, nbToilettes, vitesseSalissure, vitesseMenage, salete, embaucher, licencier, nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
     creneaux, tranchesLibres, NEGOS, chanceNego, negocier,
     acheterPorte, acheterPasserelle, agrandirPorte, acheterVehicule, ameliorerVehicule, construire, ameliorerModule, vendreModule, deplacerModule, agrandirTerminal,
     recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, PETITS, RANG_T, poserPetit, retirerPetit, deplacerPetit, libreQuart, petitsDansCase, CUVE, CUVE_MAX, CAMION, LIVRAISON, DELAI_CAMION, TARIFS, commanderCarbu, agrandirCuve, enRoute, capCuve, facture, resume, BANQUE, banque, dette, lettreNote, moyenneNet, plafond, tauxPret, emprunter, prixRachat, rembourser, echeances, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };

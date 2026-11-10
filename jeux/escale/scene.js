@@ -107,7 +107,7 @@ window.ESCALE_3D = (() => {
   /* ---------- Construire l'aéroport ---------- */
   function construire(A){
     const P = M.plan(A), D = M.AEROPORTS[A.id], cle = A.id + ':' + A.portes.map(g => g.taille + (g.passerelle ? 'p' : '')).join(',')
-      + '|' + (P.hangars || []).map(x => x.k + ((A.hangars || {})[x.k] ? '1' : '0')).join(',');
+      + '|' + (P.hangars || []).map(x => x.k + ((A.hangars || {})[x.k] ? '1' : '0')).join(',') + '|p' + M.nbPistes(A);
     if(cle === cleMonde) return; cleMonde = cle;
     if(monde){ scene.remove(monde); monde.traverse(o => { if(o.geometry) o.geometry.dispose(); }); }
     for(const [, a] of avions){ scene.remove(a.obj); scene.remove(a.ombre); } avions.clear();
@@ -119,16 +119,20 @@ window.ESCALE_3D = (() => {
     // le sol
     const sol = plat(9000, 9000, couleurSol, -.2); monde.add(sol);
     // l'aire de l'aéroport (herbe plus claire, tondue)
-    const aire = plat(P.piste.x1 - P.piste.x0 + 500, 700, decor === 'montagne' ? 0x9CC484 : 0xA7CB86, -.1); aire.position.set(0, -.1, -130); monde.add(aire);
+    const aire = plat(P.piste.x1 - P.piste.x0 + 500, 700 + (M.nbPistes(A) - 1) * M.ECART_PISTES, decor === 'montagne' ? 0x9CC484 : 0xA7CB86, -.1);
+    aire.position.set(0, -.1, -130 - (M.nbPistes(A) - 1) * M.ECART_PISTES / 2); monde.add(aire);
     // la piste
-    const piste = new T3.Mesh(new T3.PlaneGeometry(P.piste.x1 - P.piste.x0, P.piste.largeur), new T3.MeshToonMaterial({ map:texturePiste(P.piste.x1 - P.piste.x0), gradientMap:DEGRADE }));
-    piste.rotation.x = -Math.PI / 2; piste.position.set(0, .05, P.piste.z); monde.add(piste);
+    for(let k = 0; k < M.nbPistes(A); k++){
+      const pi = P.pistes[k];
+      const piste = new T3.Mesh(new T3.PlaneGeometry(pi.x1 - pi.x0, pi.largeur), new T3.MeshToonMaterial({ map:texturePiste(pi.x1 - pi.x0), gradientMap:DEGRADE }));
+      piste.rotation.x = -Math.PI / 2; piste.position.set(0, .05, pi.z); monde.add(piste);
+    }
     // les voies de circulation (asphalte) et leurs lignes jaunes
     const asphalte = [], jaune = [];
     const voie = (x1, z1, x2, z2, l = 23) => { const dx = x2 - x1, dz = z2 - z1, lg = Math.hypot(dx, dz), a = Math.atan2(dx, dz); asphalte.push({ f:'boite', d:[l, .1, lg + l], p:[(x1 + x2) / 2, .02, (z1 + z2) / 2], r:[0, a, 0], c:0x50555E }); jaune.push({ f:'boite', d:[.5, .02, lg], p:[(x1 + x2) / 2, .1, (z1 + z2) / 2], r:[0, a, 0], c:0xF2C230 }); };
     voie(P.piste.x0 + 20, M.TAXI_Z, P.piste.x1 - 20, M.TAXI_Z);
-    for(const b of P.bretelles) voie(b, P.piste.z + 10, b, M.TAXI_Z);
-    voie(P.piste.x0 + 20, P.piste.z + 10, P.piste.x0 + 20, M.TAXI_Z);
+    for(const b of P.bretelles) voie(b, P.pistes[M.nbPistes(A) - 1].z + 10, b, M.TAXI_Z);
+    voie(P.piste.x0 + 20, P.pistes[M.nbPistes(A) - 1].z + 10, P.piste.x0 + 20, M.TAXI_Z);
     for(const l of P.liens) voie(l, M.TAXI_Z, l, M.VOIE_P);
     // l'aire de stationnement (béton clair), la voie des postes, la route de service
     // le béton va jusqu'au dernier hangar : sans cela, ils seraient posés sur l'herbe
@@ -213,7 +217,7 @@ window.ESCALE_3D = (() => {
     if(voitures.length) monde.add(new T3.Mesh(fusion(voitures), MAT));
     // les feux de piste (ils brillent la nuit)
     const pts = [];
-    for(let x = P.piste.x0; x <= P.piste.x1; x += 30){ pts.push(x, .6, P.piste.z - 23, x, .6, P.piste.z + 23); }
+    for(let k = 0; k < M.nbPistes(A); k++) for(let x = P.pistes[k].x0; x <= P.pistes[k].x1; x += 30){ pts.push(x, .6, P.pistes[k].z - 23, x, .6, P.pistes[k].z + 23); }
     for(let x = P.piste.x0 + 20; x <= P.piste.x1 - 20; x += 25) pts.push(x, .4, M.TAXI_Z - 12, x, .4, M.TAXI_Z + 12);
     const gl = new T3.BufferGeometry(); gl.setAttribute('position', new T3.Float32BufferAttribute(pts, 3));
     const colL = []; for(let k = 0; k < pts.length / 3; k++){ const piste_ = pts[k * 3 + 2] < M.TAXI_Z - 20; colL.push(piste_ ? 1 : .2, piste_ ? .95 : .45, piste_ ? .8 : 1); }
@@ -230,7 +234,10 @@ window.ESCALE_3D = (() => {
     const arbres = [], loin = [];
     const arbre = (x, z, s, sapin) => sapin ? arbres.push({ f:'cone', d:[3 * s, 11 * s, 7], p:[x, 6 * s, z], c:0x2F6B3F }, { f:'cyl', d:[.6 * s, .6 * s, 2 * s, 5], p:[x, .8 * s, z], c:0x6B4A2F })
       : arbres.push({ f:'boule', d:[4 * s, 0], p:[x, 5 * s, z], c:0x4E8F3E }, { f:'cyl', d:[.6 * s, .7 * s, 3 * s, 5], p:[x, 1.5 * s, z], c:0x6B4A2F });
-    const libre = (x, z) => !(z > P.piste.z - 60 && z < 160 && x > P.piste.x0 - 120 && x < P.piste.x1 + 120);
+    // on dégage aussi la place de la seconde piste, construite ou non : sinon des arbres
+    // pousseraient là où elle doit s'ouvrir, et ils y resteraient
+    const zLoin = P.pistes[P.pistes.length - 1].z;
+    const libre = (x, z) => !(z > zLoin - 60 && z < 160 && x > P.piste.x0 - 120 && x < P.piste.x1 + 120);
     for(let k = 0; k < 420; k++){ const x = (rnd() - .5) * 2600, z = (rnd() - .5) * 1800 - 100; if(libre(x, z)) arbre(x, z, .8 + rnd() * .8, decor === 'montagne' || (decor === 'ville' && rnd() < .3)); }
     if(decor === 'montagne'){
       // les montagnes enneigées tout autour
@@ -482,7 +489,7 @@ window.ESCALE_3D = (() => {
   }
   // la position d'un avion selon sa phase
   function positionAvion(A, Pl, v, t){
-    const tr = Pl.trajets[v.porte], u = v.duree > 0 ? clamp((t - v.t0) / v.duree, 0, 1) : 1;
+    const tr = M.trajetDe(Pl, v), pz = tr.z, u = v.duree > 0 ? clamp((t - v.t0) / v.duree, 0, 1) : 1;
     // au poste, le nez touche la ligne d'arrêt quelle que soit la longueur de l'avion
     const g = A.portes[v.porte], dNez = ({ S:36, M:45, L:67, XL:74 })[g.taille] / 2 - M.AVIONS[v.avion].longueur / 2;
     const sur = (trj, s) => M.surTrajet(trj, s);
@@ -490,7 +497,7 @@ window.ESCALE_3D = (() => {
       case 'approche': {
         // la descente vers la piste (pente d'environ 4°), d'autant plus loin qu'il reste du temps
         const reste = Math.max(0, v.t0 + v.duree - t), d = reste * 420, x = tr.toucher - d;
-        return { x, y:d * .07, z:Pl.piste.z, cap:0, tangage:.05 };
+        return { x, y:d * .07, z:pz, cap:0, tangage:.05 };
       }
       case 'atterrissage': { const s = tr.arr.roule * (1 - (1 - u) * (1 - u)); return { ...sur(tr.arr, s), y:0 }; }
       case 'roulageArr': {
@@ -507,7 +514,7 @@ window.ESCALE_3D = (() => {
         const p0 = sur(tr.dep, tr.dep.total), tau = v.etat === 'parti' ? 1.8 + (t - v.t0) : (t - v.t0);
         if(tau < .15){ const p = sur(tr.dep, tr.dep.total - 35 + 35 * tau / .15); return { ...p, y:0 }; }
         const tt = tau - .15, roule = Math.min(tt, .85), dist = 560 * roule * roule + (tt > .85 ? (tt - .85) * 960 : 0), y = tt > .85 ? Math.pow(tt - .85, 1.25) * 240 : 0;
-        return { x:p0.x + dist, y, z:Pl.piste.z, cap:0, tangage:tt > .85 ? Math.min(.2, (tt - .85) * .45) : 0 };
+        return { x:p0.x + dist, y, z:pz, cap:0, tangage:tt > .85 ? Math.min(.2, (tt - .85) * .45) : 0 };
       }
     }
     return null;
@@ -960,7 +967,7 @@ window.ESCALE_3D = (() => {
       if(a){ vue.x += (a.obj.position.x - vue.x) * k; vue.z += (a.obj.position.z - vue.z) * k; } else vue.suivi = null;
     }
     const lim = Pl.piste.x1 - Pl.piste.x0;
-    vue.x = clamp(vue.x, Pl.piste.x0 - 300, Pl.piste.x1 + 300); vue.z = clamp(vue.z, Pl.piste.z - 300, 200);
+    vue.x = clamp(vue.x, Pl.piste.x0 - 300, Pl.piste.x1 + 300); vue.z = clamp(vue.z, Pl.pistes[Pl.pistes.length - 1].z - 300, 200);
     vue.dist = clamp(vue.dist, 70, Math.max(900, lim * 1.15));
     const incl = clamp(vue.incl - (520 - vue.dist) / 2600, .55, 1.25);
     cam.position.set(vue.x + Math.sin(vue.cap) * Math.cos(incl) * vue.dist, Math.sin(incl) * vue.dist, vue.z + Math.cos(vue.cap) * Math.cos(incl) * vue.dist);
@@ -1014,7 +1021,7 @@ window.ESCALE_3D = (() => {
     if(pt.x > Cb.x - 22 && pt.x < Cb.x + (n - 1) * 17 + 14 && Math.abs(pt.z - (Cb.z + 42)) < 22) return { zone:'carburant' };
     if(Math.hypot(pt.x - Pl.tour.x, pt.z - Pl.tour.z) < 14) return { zone:'tour' };
     for(let i = 0; i < Pl.postes.length; i++){ const p = Pl.postes[i]; if(Math.abs(pt.x - p.cx) < p.w / 2 && pt.z < T.z0 && pt.z > p.nezZ - 80) return { zone:'porte', porte:i }; }
-    if(Math.abs(pt.z - Pl.piste.z) < 40 && pt.x > Pl.piste.x0 - 20 && pt.x < Pl.piste.x1 + 20) return { zone:'piste' };
+    for(let k = 0; k < M.nbPistes(A); k++) if(Math.abs(pt.z - Pl.pistes[k].z) < 40 && pt.x > Pl.piste.x0 - 20 && pt.x < Pl.piste.x1 + 20) return { zone:'piste' };
     return { zone:'sol' };
   }
   // pendant un placement : les cases (ou petites cases) libres s'allument en vert

@@ -524,8 +524,16 @@ function pSol(box){
   } else if(A.portes.length >= D.portesMax) h += '<p class="leg">Toutes les portes possibles ici sont construites.</p>';
   else h += `<p class="leg mal">La façade du terminal est pleine. <b>Agrandis le terminal</b> (🏢 Terminal, ${court(M.prixAgrandir(A))}) : deux portes de plus à chaque fois.</p>`;
   h += `<p class="leg">Ici, la piste accepte jusqu'aux avions ${D.tailleMax} · ${A.portes.length}/${maxP} portes ouvertes${maxP < D.portesMax ? ` (${D.portesMax} possibles en agrandissant le terminal)` : ''}.</p></div>`;
+  // les pistes : la file d'attente en l'air et au point d'attente vient de là
+  const np = M.nbPistes(A), attente = A.vols.filter(v => v.etat === 'approche' && v.t0 + v.duree - A.t > 6.5).length + A.vols.filter(v => v.etat === 'attentePiste').length;
+  h += `<div class="bloc"><h3>🛬 Pistes</h3><p class="leg">${np} piste${np > 1 ? 's' : ''} de ${D.piste} m. Un avion garde la piste 1 min 20 à l'atterrissage comme au décollage ; les suivants attendent, en l'air ou au point d'attente.${attente ? ` <b class="mal">${attente} avion${attente > 1 ? 's' : ''} en attente en ce moment.</b>` : ''}</p>
+    ${np < M.PISTES_MAX
+      ? `<p class="leg">Une seconde piste, parallèle, double le passage : chaque mouvement prend la bande qui se libère le plus tôt. Il faut le niveau 8.</p>
+         <button class="btn prim" id="sPiste" ${P.argent < M.prixPiste(A) || M.niveauDe(P.xp) < 8 ? 'disabled' : ''}>🛬 Construire une seconde piste · ${court(M.prixPiste(A))}${M.niveauDe(P.xp) < 8 ? ' · niveau 8' : ''}</button>`
+      : '<p class="leg">Les deux pistes sont construites : c\'est le maximum ici.</p>'}</div>`;
   box.innerHTML = h;
   brancherOnglets(box, 'sol');
+  if($('sPiste')) $('sPiste').onclick = () => action(M.acheterPiste(P, A), () => rafraichirPanneau(true));
   box.querySelectorAll('[data-hangar]').forEach(b => b.onclick = () => action(M.construireHangar(P, A, b.dataset.hangar), () => rafraichirPanneau(true)));
   box.querySelectorAll('[data-veh]').forEach(b => b.onclick = () => action(M.acheterVehicule(P, A, b.dataset.veh)));
   box.querySelectorAll('[data-amv]').forEach(b => b.onclick = () => action(M.ameliorerVehicule(P, A, b.dataset.amv)));
@@ -758,6 +766,7 @@ function projets(){
   const g = A.portes.findIndex(x => !x.passerelle); if(g >= 0 && niv >= 2) l.push({ k:'passerelle', ico:'🌉', nom:`Passerelle porte ${A.portes[g].nom}`, prix:M.prixPasserelle(A.portes[g].taille), faire:() => M.acheterPasserelle(P, A, g) });
   if(A.terminal.l < M.terminalMax) l.push({ k:'terminal', ico:'🏢', nom:`Agrandir le terminal${M.portesMax(A) < D.portesMax ? ' (2 portes de plus)' : ''}`, prix:M.prixAgrandir(A), faire:() => M.agrandirTerminal(P, A) });
   if(A.carbu.niv < M.CUVE_MAX) l.push({ k:'cuve', ico:'🛢️', nom:`Cuve à carburant niveau ${A.carbu.niv + 1}`, prix:M.CUVE.prix[A.carbu.niv + 1], faire:() => M.agrandirCuve(P, A) });
+  if(M.nbPistes(A) < M.PISTES_MAX && niv >= 8) l.push({ k:'piste', ico:'🛬', nom:'Seconde piste', prix:M.prixPiste(A), faire:() => M.acheterPiste(P, A) });
   const hg = M.hangarsOuvrables(A).find(k => !(A.hangars || {})[k]);
   if(hg) l.push({ k:'hangar', ico:M.HANGARS[hg].ico, nom:M.HANGARS[hg].nom, prix:M.HANGARS[hg].prix, faire:() => M.construireHangar(P, A, hg) });
   const suiv = M.ORDRE_AEROPORTS.find(id => !P.aeroports[id]);
