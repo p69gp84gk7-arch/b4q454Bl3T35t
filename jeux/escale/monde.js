@@ -561,6 +561,17 @@ window.ESCALE_MONDE = (() => {
     for(const i of portes) for(let arr = c.fenetre[0]; arr <= c.fenetre[1]; arr += 5) if(!verifier(A, c, i, arr)) return { porte:i, arr };
     return null;
   }
+  // les tranches d'heures libres pour ce contrat sur cette porte, dans sa fenêtre : [[debut, fin], …]
+  // (une tranche va de la première à la dernière heure d'arrivée possible, de 5 en 5 minutes)
+  function tranchesLibres(A, c, porte){
+    const out = []; let debut = null;
+    for(let arr = c.fenetre[0]; arr <= c.fenetre[1] + 5; arr += 5){
+      const ok = arr <= c.fenetre[1] && !verifier(A, c, porte, arr);
+      if(ok && debut == null) debut = arr;
+      if(!ok && debut != null){ out.push([debut, arr - 5]); debut = null; }
+    }
+    return out;
+  }
   // déprogrammer (le contrat reste à programmer) ou rompre (pénalité)
   function deprogrammer(A, id){ const c = A.contrats.find(x => x.id === id); if(c && !A.vols.some(v => v.contrat === c.id && v.etat !== 'parti')){ c.porte = null; c.arr = null; return true; } return false; }
   function rompre(P, A, id){
@@ -1064,7 +1075,7 @@ window.ESCALE_MONDE = (() => {
   return { JOUR, TAILLES, AVIONS, RAYONS, VILLES, COMPAGNIES, LIVREES, AEROPORTS, ORDRE_AEROPORTS, VEHICULES, MODULES, TACHES, ORDRE_TACHES, RECOMPENSES, PALIERS, OBJECTIFS, NIV_MAX,
     international, NATIONAL, hm, euros, jourDe, minuteDe, xpNiveau, niveauDe, xpConfiance, paliersAtteints, texteRecompense, tailleOk, facteurNiv, prixAmelioration, prixPasserelle, prixAgrandir, prixAmeliorationVehicules,
     portesMax, terminalMax, HANGARS, SANS_HANGAR, hangarDe, aHangar, maxVehicules, nivMaxVehicule, construireHangar, hangarsOuvrables, ENTRETIEN, personnel, menage, propreteWC, avantSale, nbToilettes, vitesseSalissure, vitesseMenage, salete, embaucher, licencier, nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
-    creneaux, NEGOS, chanceNego, negocier,
+    creneaux, tranchesLibres, NEGOS, chanceNego, negocier,
     acheterPorte, acheterPasserelle, agrandirPorte, acheterVehicule, ameliorerVehicule, construire, ameliorerModule, vendreModule, deplacerModule, agrandirTerminal,
     recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, PETITS, RANG_T, poserPetit, retirerPetit, deplacerPetit, libreQuart, petitsDansCase, CUVE, CUVE_MAX, CAMION, LIVRAISON, DELAI_CAMION, TARIFS, commanderCarbu, agrandirCuve, enRoute, capCuve, facture, resume, BANQUE, banque, dette, lettreNote, moyenneNet, plafond, tauxPret, emprunter, prixRachat, rembourser, echeances, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };
 })();

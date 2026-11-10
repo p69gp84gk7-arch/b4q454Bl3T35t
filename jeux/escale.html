@@ -143,6 +143,20 @@ button:disabled{ opacity:.45; cursor:default; }
 .grille .vol b{ display:block; font-size:.72rem; }
 .grille .vol.retard{ outline:2px solid var(--rouge); }
 .grille .vol.sel{ outline:3px solid var(--ambre); }
+/* glisser un vol : les places libres en vert, le bloc qu'on tient, l'etiquette qui suit le doigt */
+.grille .libre{ position:absolute; top:3px; bottom:3px; background:rgba(43,168,74,.20); border:1px dashed rgba(43,168,74,.75); border-radius:6px; pointer-events:none; }
+.grille .vol[data-bouge]{ cursor:grab; touch-action:none; }
+.grille .vol.prise{ cursor:grabbing; opacity:.9; transform:scale(1.04); box-shadow:0 6px 16px rgba(0,0,0,.35); z-index:3; }
+.grille .vol.prise.refus{ outline:3px solid var(--rouge); }
+.grille .vol.fige{ opacity:.78; }
+.plEtiq{ position:fixed; z-index:60; transform:translateX(-50%); background:var(--nuit); color:#fff; border-radius:10px; padding:5px 9px; font-size:.74rem; pointer-events:none; box-shadow:0 4px 14px rgba(0,0,0,.35); text-align:center; }
+.plEtiq small{ display:block; color:#FFB703; font-size:.68rem; }
+.plEtiq small.ok{ color:#8CE99A; }
+/* regler un vol deja place */
+.reglage{ padding:0 10px 8px; display:flex; flex-direction:column; gap:5px; }
+.reglage > small{ color:var(--doux); font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; }
+.reglage .btn{ padding:5px 8px; font-size:.78rem; }
+.reglage select.edit{ border:1px solid var(--ligne); border-radius:9px; padding:5px 8px; font-weight:700; font-size:.8rem; background:#fff; }
 .grille .maint{ position:absolute; top:0; bottom:0; width:2px; background:var(--rouge); z-index:1; pointer-events:none; }
 /* le terminal */
 .plan2d{ width:100%; border-radius:12px; background:#DDE3EA; display:block; touch-action:manipulation; }

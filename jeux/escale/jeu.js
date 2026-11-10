@@ -72,7 +72,7 @@ function boucle(now){
   tHud += dt; tPanneau += dt; tObj += dt;
   if(tHud > .2){ tHud = 0; majHud(); toasts(); if(selVol) majCarteVol(); }
   if(tObj > 1){ tObj = 0; M.verifierObjectifs(P, A); majObjectif(); }
-  if(tPanneau > 1 && panneau && PANNEAUX_VIVANTS.includes(panneau)){ tPanneau = 0; rafraichirPanneau(); }
+  if(tPanneau > 1 && panneau && PANNEAUX_VIVANTS.includes(panneau) && !glisse){ tPanneau = 0; rafraichirPanneau(); }
 }
 requestAnimationFrame(boucle);
 
@@ -243,7 +243,8 @@ function pPlanning(box, complet){
   let h = '';
   if(aProg.length) h += `<div class="bloc"><h3>À programmer (${aProg.length})</h3>${aProg.map(c => carteContrat(c, true)).join('')}</div>`;
   else if(!A.contrats.length) h += `<p class="leg">Pas encore de vol. Va dans 🤝 Compagnies pour accepter un contrat.</p>`;
-  if(placement){ const c = A.contrats.find(x => x.id === placement); h += `<p class="leg"><b>Touche une porte</b> (ligne verte) dans la zone orange pour programmer ${esc(c.num)} : arrivée entre ${hm(c.fenetre[0])} et ${hm(c.fenetre[1])}, escale de ${c.rot} min. <button class="btn" id="plAnnuler">Annuler</button></p>`; }
+  if(placement){ const c = A.contrats.find(x => x.id === placement); h += `<p class="leg"><b>Touche une place verte</b> pour poser ${esc(c.num)} : arrivée entre ${hm(c.fenetre[0])} et ${hm(c.fenetre[1])}, escale de ${c.rot} min. Le vert, c'est ce qui est libre ; l'orange, ce que la compagnie accepte. <button class="btn" id="plAnnuler">Annuler</button></p>`; }
+  else if(A.contrats.some(c => c.porte != null)) h += `<p class="leg">Glisse un vol dans la grille pour le déplacer — d'une heure à l'autre, d'une porte à l'autre. Touche-le pour le régler à la minute.</p>`;
   h += `<div class="planning" id="planning"><div class="grille" style="width:${46 + 1440 * PX_MIN}px">${grille()}</div></div>`;
   if(selContrat){ const c = A.contrats.find(x => x.id === selContrat); if(c) h += `<div class="bloc">${carteContrat(c, false)}</div>`; else selContrat = null; }
   h += `<div class="bloc"><h3>Aujourd'hui</h3><div class="stats"><div><b>${J.vols}</b>vols partis</div><div><b>${J.retards}</b>retards</div><div><b>${court(J.revenus + J.commerce + J.services - J.penalites - J.achats)}</b>gagnés</div><div><b>${J.nSatisf ? Math.round(J.satisf / J.nSatisf) + ' %' : '—'}</b>satisfaction</div></div>
@@ -256,7 +257,18 @@ function pPlanning(box, complet){
   box.querySelectorAll('[data-deprog]').forEach(b => b.onclick = () => { if(!M.deprogrammer(A, b.dataset.deprog)) alerte('Un vol de ce contrat est déjà en route : attends qu\'il soit reparti.'); else { selContrat = null; rafraichirPanneau(); } });
   box.querySelectorAll('[data-rompre]').forEach(b => b.onclick = () => { const c = A.contrats.find(x => x.id === b.dataset.rompre); if(confirm(`Rompre le contrat ${c.num} ? Pénalité : ${court(c.revenu * 2)}, et la compagnie te fera moins confiance.`)) action(M.rompre(P, A, c.id), () => { selContrat = null; }); });
   if($('plAnnuler')) $('plAnnuler').onclick = () => { placement = null; rafraichirPanneau(); };
-  pl.querySelectorAll('.vol').forEach(el => el.onclick = e => { e.stopPropagation(); selContrat = el.dataset.c; placement = null; rafraichirPanneau(); });
+  pl.querySelectorAll('.vol.fige').forEach(el => el.onclick = e => { e.stopPropagation(); selContrat = el.dataset.c; placement = null; rafraichirPanneau(); });
+  brancherGlisse(pl);
+  // le réglage fin d'un vol déjà placé : avancer, reculer, changer de porte
+  box.querySelectorAll('[data-decal]').forEach(b => b.onclick = () => {
+    const [id, d] = b.dataset.decal.split(':'), c = A.contrats.find(x => x.id === id);
+    action(M.placer(A, id, c.porte, c.arr + +d));
+  });
+  box.querySelectorAll('[data-vers]').forEach(s => s.onchange = () => {
+    const [id] = s.dataset.vers.split(':'), c = A.contrats.find(x => x.id === id);
+    action(M.placer(A, id, +s.value, c.arr));
+  });
+  box.querySelectorAll('[data-bouger]').forEach(b => b.onclick = () => { placement = b.dataset.bouger; selContrat = b.dataset.bouger; rafraichirPanneau(true); });
   pl.querySelectorAll('.rang').forEach(el => el.onclick = e => {
     if(!placement) return;
     const r = el.getBoundingClientRect(), x = e.clientX - r.left - 46, arr = Math.round(x / PX_MIN / 5) * 5, c = A.contrats.find(y => y.id === placement);
@@ -268,16 +280,22 @@ function pPlanning(box, complet){
 }
 function grille(){
   let h = `<div class="heures">${Array.from({ length:24 }, (_, k) => `<span style="left:${46 + k * 60 * PX_MIN}px">${String(k).padStart(2, '0')}h</span>`).join('')}</div>`;
+  // celui qu'on est en train de placer ou de déplacer : sa fenêtre en orange, ses places libres en vert
   const cPl = placement ? A.contrats.find(x => x.id === placement) : null;
   A.portes.forEach((g, i) => {
     const ok = cPl && M.tailleOk(g.taille, cPl.avion);
     h += `<div class="rang ${ok ? 'ok' : ''}" data-porte="${i}"><span class="nomP">${g.nom}<small>${g.taille}${g.passerelle ? ' 🌉' : ''}</small></span>`;
-    if(ok) h += `<div class="fen" style="left:${46 + cPl.fenetre[0] * PX_MIN}px;width:${(cPl.fenetre[1] - cPl.fenetre[0] + cPl.rot) * PX_MIN}px"></div>`;
+    if(ok){
+      h += `<div class="fen" style="left:${46 + cPl.fenetre[0] * PX_MIN}px;width:${(cPl.fenetre[1] - cPl.fenetre[0] + cPl.rot) * PX_MIN}px"></div>`;
+      for(const [d0, d1] of M.tranchesLibres(A, cPl, i))
+        h += `<div class="libre" style="left:${46 + d0 * PX_MIN}px;width:${(d1 - d0 + cPl.rot) * PX_MIN}px"></div>`;
+    }
     for(const c of A.contrats.filter(x => x.porte === i)){
       const vol = A.vols.find(v => v.contrat === c.id && v.etat !== 'parti'), retard = vol && vol.tDep < A.t && vol.etat === 'escale';
+      const fige = A.vols.some(v => v.contrat === c.id && v.etat !== 'parti' && v.etat !== 'prevu');
       for(const d of [0, -1440, 1440]){
         const x0 = c.arr + d, x1 = c.arr + c.rot + d; if(x1 < 0 || x0 > 1440) continue;
-        h += `<div class="vol ${retard ? 'retard' : ''} ${selContrat === c.id ? 'sel' : ''}" data-c="${c.id}" style="left:${46 + Math.max(0, x0) * PX_MIN}px;width:${(Math.min(1440, x1) - Math.max(0, x0)) * PX_MIN}px;background:${COULEUR(c.comp)}"><b>${esc(c.num)}</b>${hm(c.arr)}–${hm(c.arr + c.rot)} · ${esc(c.code)}</div>`;
+        h += `<div class="vol ${retard ? 'retard' : ''} ${selContrat === c.id ? 'sel' : ''} ${fige ? 'fige' : ''}" data-c="${c.id}" ${fige ? '' : 'data-bouge="1"'} title="${fige ? 'Un avion de ce vol est là : on ne le déplace plus' : 'Glisse-le pour le déplacer'}" style="left:${46 + Math.max(0, x0) * PX_MIN}px;width:${(Math.min(1440, x1) - Math.max(0, x0)) * PX_MIN}px;background:${COULEUR(c.comp)}"><b>${esc(c.num)}</b>${hm(c.arr)}–${hm(c.arr + c.rot)} · ${esc(c.code)}</div>`;
       }
     }
     h += '</div>';
@@ -285,13 +303,74 @@ function grille(){
   h += `<div class="maint" style="left:${46 + M.minuteDe(A.t) * PX_MIN}px"></div>`;
   return h;
 }
+/* ---------- Glisser un vol dans le planning ----------
+   On attrape son bloc et on le pose ailleurs : une autre heure, une autre porte. Tant qu'on le tient,
+   le planning ne se rafraîchit pas (il effacerait le bloc sous le doigt) et une étiquette suit le doigt
+   pour dire l'heure visée et, si ça ne passe pas, pourquoi. Un vol dont l'avion est déjà là ne bouge plus. */
+let glisse = null;
+function brancherGlisse(pl){
+  pl.querySelectorAll('.vol[data-bouge]').forEach(el => {
+    el.addEventListener('pointerdown', e => {
+      const c = A.contrats.find(x => x.id === el.dataset.c); if(!c) return;
+      el.setPointerCapture(e.pointerId);
+      const r = el.getBoundingClientRect();
+      glisse = { c, el, dx:e.clientX - r.left, x0:e.clientX, y0:e.clientY, bouge:false, porte:c.porte, arr:c.arr, err:null };
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', e => {
+      if(!glisse || glisse.el !== el) return;
+      if(!glisse.bouge && Math.hypot(e.clientX - glisse.x0, e.clientY - glisse.y0) < 6) return;
+      glisse.bouge = true; el.classList.add('prise');
+      const rang = [...pl.querySelectorAll('.rang')].find(r => { const b = r.getBoundingClientRect(); return e.clientY >= b.top && e.clientY <= b.bottom; });
+      if(rang) glisse.porte = +rang.dataset.porte;
+      const b = pl.querySelector('.grille').getBoundingClientRect();
+      glisse.arr = clamp(Math.round((e.clientX - glisse.dx - b.left - 46) / PX_MIN / 5) * 5, 0, 1435);
+      glisse.err = M.verifier(A, glisse.c, glisse.porte, glisse.arr);
+      // le bloc suit le doigt, et change de ligne
+      el.style.left = `${46 + glisse.arr * PX_MIN}px`;
+      el.classList.toggle('refus', !!glisse.err);
+      const cible = pl.querySelector(`.rang[data-porte="${glisse.porte}"]`);
+      if(cible && el.parentElement !== cible) cible.append(el);
+      etiquetteGlisse(e.clientX, e.clientY);
+    });
+    const poser = e => {
+      if(!glisse || glisse.el !== el) return;
+      const g = glisse; glisse = null; cacherEtiquette();
+      if(!g.bouge){ selContrat = g.c.id; placement = null; rafraichirPanneau(); return; }
+      const err = M.placer(A, g.c.id, g.porte, g.arr);
+      if(err) alerte(err); else { selContrat = g.c.id; sauver(); }
+      rafraichirPanneau(true);
+    };
+    el.addEventListener('pointerup', poser);
+    el.addEventListener('pointercancel', () => { glisse = null; cacherEtiquette(); rafraichirPanneau(true); });
+  });
+}
+function etiquetteGlisse(x, y){
+  let e = $('plEtiq');
+  if(!e){ e = document.createElement('div'); e.id = 'plEtiq'; e.className = 'plEtiq'; document.body.append(e); }
+  const g = glisse; if(!g) return;
+  e.innerHTML = `<b>${A.portes[g.porte].nom} · ${hm(g.arr)}–${hm(g.arr + g.c.rot)}</b>${g.err ? `<small>${esc(g.err)}</small>` : '<small class="ok">on peut poser ici</small>'}`;
+  e.style.left = `${clamp(x, 80, innerWidth - 80)}px`; e.style.top = `${Math.max(40, y - 54)}px`; e.hidden = false;
+}
+function cacherEtiquette(){ const e = $('plEtiq'); if(e) e.hidden = true; }
+// régler un vol déjà placé sans viser dans la grille : quelques minutes de plus ou de moins, une autre porte
+function reglageHtml(c){
+  if(A.vols.some(v => v.contrat === c.id && v.etat !== 'parti' && v.etat !== 'prevu'))
+    return '<p class="leg" style="padding:0 10px 6px">Son avion est là : ce vol ne se déplace plus aujourd\'hui.</p>';
+  const bouton = d => { const err = M.verifier(A, c, c.porte, c.arr + d); return `<button class="btn" data-decal="${c.id}:${d}" ${err ? 'disabled title="' + esc(err) + '"' : ''}>${d > 0 ? '+' : '−'}${Math.abs(d)} min</button>`; };
+  const portes = A.portes.map((g, i) => ({ g, i })).filter(({ g, i }) => i === c.porte || (M.tailleOk(g.taille, c.avion) && !M.verifier(A, c, i, c.arr)));
+  return `<div class="reglage"><small>Régler ce vol</small><div class="ligneB">${bouton(-30)}${bouton(-15)}${bouton(-5)}${bouton(5)}${bouton(15)}${bouton(30)}</div>
+    <div class="ligneB"><span class="leg">Porte</span><select class="edit" data-vers="${c.id}">${portes.map(({ g, i }) => `<option value="${i}" ${i === c.porte ? 'selected' : ''}>${esc(g.nom)} · ${g.taille}${g.passerelle ? ' 🌉' : ''}</option>`).join('')}</select>
+      <span class="leg">${portes.length > 1 ? 'Les portes libres à cette heure-là.' : 'Aucune autre porte libre à cette heure.'}</span></div></div>`;
+}
 function carteContrat(c, aProg){
   const C = M.COMPAGNIES[c.comp], AV = M.AVIONS[c.avion], peut = A.portes.some(g => M.tailleOk(g.taille, c.avion));
   return `<div class="offre"><div class="h" style="background:${C.c1}">${C.ico} <b>${esc(c.num)}</b> ${esc(C.nom)}<span>${court(c.revenu)}/vol</span></div>
     <div class="c"><div><small>Avion</small><b>${esc(AV.nom)} (${AV.taille})</b></div><div><small>${c.porte != null ? 'Porte' : 'Arrivée voulue'}</small><b>${c.porte != null ? `${A.portes[c.porte].nom} · ${hm(c.arr)}–${hm(c.arr + c.rot)}` : `${hm(c.fenetre[0])}–${hm(c.fenetre[1])}`}</b></div>
     <div><small>Ligne</small><b>${esc(c.ville)} (${esc(c.code)})</b></div><div><small>Escale</small><b>${c.rot} min · ${c.paxDep} pax</b></div>
     <div><small>Contrat</small><b>${c.joursRestants} jour${c.joursRestants > 1 ? 's' : ''} restant${c.joursRestants > 1 ? 's' : ''}</b></div><div><small>Retard</small><b>−${court(c.penalite)} / 15 min</b></div></div>
-    <div class="p">${aProg ? `<button class="btn prim" data-auto="${c.id}">Placer tout seul</button><button class="btn" data-choisir="${c.id}">Choisir porte et heure</button>${peut ? '' : '<p class="leg mal">Aucune porte assez grande : agrandis-en une (🚚 Sol).</p>'}` : `<button class="btn" data-deprog="${c.id}">Déprogrammer</button><button class="btn rouge" data-rompre="${c.id}">Rompre le contrat</button>`}</div></div>`;
+    ${aProg ? '' : reglageHtml(c)}
+    <div class="p">${aProg ? `<button class="btn prim" data-auto="${c.id}">Placer tout seul</button><button class="btn" data-choisir="${c.id}">Choisir porte et heure</button>${peut ? '' : '<p class="leg mal">Aucune porte assez grande : agrandis-en une (🚚 Sol).</p>'}` : `<button class="btn" data-bouger="${c.id}">🖐️ Déplacer dans la grille</button><button class="btn" data-deprog="${c.id}">Déprogrammer</button><button class="btn rouge" data-rompre="${c.id}">Rompre le contrat</button>`}</div></div>`;
 }
 
 /* ----- Les compagnies : offres, contrats, confiance ----- */
