@@ -106,7 +106,8 @@ window.ESCALE_3D = (() => {
 
   /* ---------- Construire l'aéroport ---------- */
   function construire(A){
-    const P = M.plan(A), D = M.AEROPORTS[A.id], cle = A.id + ':' + A.portes.map(g => g.taille + (g.passerelle ? 'p' : '')).join(',');
+    const P = M.plan(A), D = M.AEROPORTS[A.id], cle = A.id + ':' + A.portes.map(g => g.taille + (g.passerelle ? 'p' : '')).join(',')
+      + '|' + (P.hangars || []).map(x => x.k + ((A.hangars || {})[x.k] ? '1' : '0')).join(',');
     if(cle === cleMonde) return; cleMonde = cle;
     if(monde){ scene.remove(monde); monde.traverse(o => { if(o.geometry) o.geometry.dispose(); }); }
     for(const [, a] of avions){ scene.remove(a.obj); scene.remove(a.ombre); } avions.clear();
@@ -130,7 +131,8 @@ window.ESCALE_3D = (() => {
     voie(P.piste.x0 + 20, P.piste.z + 10, P.piste.x0 + 20, M.TAXI_Z);
     for(const l of P.liens) voie(l, M.TAXI_Z, l, M.VOIE_P);
     // l'aire de stationnement (béton clair), la voie des postes, la route de service
-    const ax0 = P.liens[0] - 30, ax1 = P.depot.x + 70;
+    // le béton va jusqu'au dernier hangar : sans cela, ils seraient posés sur l'herbe
+    const ax0 = P.liens[0] - 30, ax1 = Math.max(P.depot.x + 70, ...(P.hangars || []).map(g => g.x + 32));
     asphalte.push({ f:'boite', d:[ax1 - ax0, .08, M.FACADE_Z - M.VOIE_P + 22], p:[(ax0 + ax1) / 2, .01, (M.FACADE_Z + M.VOIE_P - 22) / 2], c:0x9DA2A8 });
     jaune.push({ f:'boite', d:[P.liens[1] - P.liens[0], .02, .5], p:[(P.liens[0] + P.liens[1]) / 2, .11, M.VOIE_P], c:0xF2C230 });
     jaune.push({ f:'boite', d:[P.depot.x - P.liens[0], .02, .35], p:[(P.liens[0] + P.depot.x) / 2, .11, M.SERVICE_Z - 4], c:0xFFFFFF });
@@ -189,6 +191,18 @@ window.ESCALE_3D = (() => {
     // le dépôt des véhicules (un hangar), la station de carburant
     const dep = objet([{ f:'boite', d:[46, 12, 30], p:[0, 6, 18], c:0xD9C9A3 }, { f:'boite', d:[48, 1.2, 32], p:[0, 12.6, 18], c:0x7F8C8D }, { f:'boite', d:[20, 9, .4], p:[0, 4.5, 2.9], c:0x5C6672 }], .2);
     dep.position.set(P.depot.x, 0, P.depot.z + 10); monde.add(dep);
+    // les hangars : construits, ils ont leur enseigne et leur porte ; pas encore construits, c'est
+    // un terrain vague avec un panneau de chantier, pour qu'on voie la place qui les attend
+    for(const hg of P.hangars || []){
+      const H = M.HANGARS[hg.k], bati = !!(A.hangars || {})[hg.k];
+      const b = bati
+        ? objet([{ f:'boite', d:[44, 11, 26], p:[0, 5.5, 0], c:0xCFCFC4 }, { f:'boite', d:[46, 1.1, 28], p:[0, 11.6, 0], c:0x6F7A86 },
+                 { f:'boite', d:[18, 8.5, .4], p:[0, 4.2, -13.1], c:0x4E5862 }, { f:'boite', d:[44, .1, 10], p:[0, .05, -18], c:0x8A9096 }], .2)
+        : objet([{ f:'boite', d:[44, .1, 26], p:[0, .05, 0], c:0x9A9478 }, { f:'boite', d:[.6, 4, .6], p:[-6, 2, -13], c:0x7A6A4A }, { f:'boite', d:[.6, 4, .6], p:[6, 2, -13], c:0x7A6A4A }], .2);
+      b.position.set(hg.x, 0, hg.z); monde.add(b);
+      const pan = new T3.Mesh(new T3.PlaneGeometry(26, 6.5), new T3.MeshBasicMaterial({ map:texteCache(H.ico + ' ' + H.nom, bati ? '#14233A' : '#9A6B1F', bati ? '#FFB703' : '#FFF3D6', 1024), side:T3.DoubleSide, transparent:true }));
+      pan.position.set(hg.x, bati ? 14.5 : 5.2, hg.z - 13.4); monde.add(pan);
+    }
     cleCuve = '';                                                    // les cuves sont construites dans majCuve (selon leur niveau)
     // côté ville : la route, le parking et ses voitures
     const route = []; route.push({ f:'boite', d:[tl + 300, .1, 16], p:[cx, .02, T.z1 + 20], c:0x4A4F57 }, { f:'boite', d:[tl + 60, .1, 70], p:[cx, .02, T.z1 + 70], c:0x5A5F67 });
@@ -996,6 +1010,7 @@ window.ESCALE_3D = (() => {
     if(!r.ray.intersectPlane(new T3.Plane(new T3.Vector3(0, 1, 0), 0), pt)) return null;
     const D = Pl.depot, Cb = Pl.carburant, n = A.carbu ? A.carbu.niv + 1 : 3;
     if(Math.abs(pt.x - D.x) < 30 && Math.abs(pt.z - (D.z + 28)) < 24) return { zone:'depot' };
+    for(const hg of Pl.hangars || []) if(Math.abs(pt.x - hg.x) < 24 && Math.abs(pt.z - hg.z) < 16) return { zone:'hangar', hangar:hg.k };
     if(pt.x > Cb.x - 22 && pt.x < Cb.x + (n - 1) * 17 + 14 && Math.abs(pt.z - (Cb.z + 42)) < 22) return { zone:'carburant' };
     if(Math.hypot(pt.x - Pl.tour.x, pt.z - Pl.tour.z) < 14) return { zone:'tour' };
     for(let i = 0; i < Pl.postes.length; i++){ const p = Pl.postes[i]; if(Math.abs(pt.x - p.cx) < p.w / 2 && pt.z < T.z0 && pt.z > p.nezZ - 80) return { zone:'porte', porte:i }; }

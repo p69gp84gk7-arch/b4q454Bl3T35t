@@ -155,7 +155,7 @@ function toucher(x, y){
     selectionner(c); rafraichirPanneau(true); return;
   }
   // ailleurs : le menu qui correspond à ce qu'on a touché (toucher encore le même endroit le referme)
-  const cible = { terminal:['terminal'], jetee:['planning'], porte:['planning'], piste:['planning'], carburant:['sol', 'carbu'], depot:['sol', 'veh'], sol:['sol', 'veh'], tour:['menu'] }[c.zone];
+  const cible = { terminal:['terminal'], jetee:['planning'], porte:['planning'], piste:['planning'], carburant:['sol', 'carbu'], depot:['sol', 'veh'], hangar:['sol', 'veh'], sol:['sol', 'veh'], tour:['menu'] }[c.zone];
   if(!cible) return;
   if(panneau === cible[0] && (!cible[1] || sousOnglet.sol === cible[1])){ fermerPanneau(); return; }
   if(cible[1]) sousOnglet.sol = cible[1];
@@ -295,19 +295,33 @@ function carteContrat(c, aProg){
 }
 
 /* ----- Les compagnies : offres, contrats, confiance ----- */
+// négocier une offre : une demande à la fois, avec les chances que ça passe affichées d'avance
+function negoHtml(o){
+  const faites = Object.keys(M.NEGOS).filter(k => o[`nego_${k}`]);
+  const reste = Object.entries(M.NEGOS).filter(([k]) => !o[`nego_${k}`]);
+  return `<div class="nego"><small>🤝 Négocier${faites.length ? ` · obtenu : ${faites.map(k => M.NEGOS[k].nom.toLowerCase()).join(', ')}` : ''}</small>
+    ${reste.length ? `<div class="ligneB">${reste.map(([k, N]) => `<button class="btn" data-nego="${o.id}:${k}">${N.ico} ${esc(N.nom)}<small>${Math.round(M.chanceNego(P, A, o, k) * 100)} %</small></button>`).join('')}</div>`
+      : '<p class="leg">Tu as déjà tout obtenu sur ce vol.</p>'}</div>`;
+}
 function pCompagnies(box){
   const so = sousOnglet.comp || 'offres';
   let h = ongletsHtml('comp', [['offres', `Offres (${A.offres.length})`], ['contrats', `Mes contrats (${A.contrats.length})`], ['confiance', `Confiance${M.aRecevoir(P) ? ` 🎁${M.aRecevoir(P)}` : ''}`]]);
   if(so === 'offres'){
     if(!A.offres.length) h += '<p class="leg">Pas d\'offre pour l\'instant : de nouvelles arrivent chaque matin.</p>';
     for(const o of A.offres){
-      const C = M.COMPAGNIES[o.comp], AV = M.AVIONS[o.avion], peut = A.portes.some(g => M.tailleOk(g.taille, o.avion)), reste = Math.max(0, Math.ceil((o.expire - A.t) / 60));
+      const C = M.COMPAGNIES[o.comp], AV = M.AVIONS[o.avion], reste = Math.max(0, Math.ceil((o.expire - A.t) / 60));
+      // avant de signer : est-ce que ce vol rentre dans le planning ?
+      const cr = M.creneaux(A, o);
+      const dispo = cr.n
+        ? `<p class="leg bon">✅ <b>${cr.n} créneau${cr.n > 1 ? 'x' : ''} libre${cr.n > 1 ? 's' : ''}</b> pour ce vol — le premier porte ${esc(A.portes[cr.premier.porte].nom)} à ${hm(cr.premier.arr)}.</p>`
+        : `<p class="leg mal">⚠️ <b>Aucun créneau libre.</b> ${esc(cr.raison)}</p>`;
       h += `<div class="offre"><div class="h" style="background:${C.c1}">${C.ico} <b>${esc(C.nom)}</b>${o.renouvele ? ' · renouvellement' : ''}<span>${court(o.revenu)}/vol</span></div>
         <div class="c"><div><small>Vol</small><b>${esc(o.num)} · ${esc(o.ville)} (${esc(o.code)})</b></div><div><small>Avion</small><b>${esc(AV.nom)} · porte ${AV.taille}</b></div>
         <div><small>Arrivée voulue</small><b>${hm(o.fenetre[0])}–${hm(o.fenetre[1])}</b></div><div><small>Escale</small><b>${o.rot} min · ${M.RAYONS[o.rayon].nom.toLowerCase()}</b></div>
         <div><small>Passagers</small><b>${o.paxArr} à l'arrivée · ${o.paxDep} au départ</b></div><div><small>Durée</small><b>${o.jours} jours · ${court(o.revenu * o.jours)} en tout</b></div>
         <div><small>Pénalité de retard</small><b>${court(o.penalite)} / 15 min</b></div><div><small>Offre valable</small><b>${reste} h</b></div></div>
-        <div class="p"><button class="btn prim" data-acc="${o.id}">✅ Accepter</button><button class="btn" data-ref="${o.id}">Refuser</button>${peut ? '' : '<p class="leg mal">Aucune de tes portes n\'est assez grande pour cet avion.</p>'}</div></div>`;
+        ${dispo}${negoHtml(o)}
+        <div class="p"><button class="btn prim" data-acc="${o.id}">✅ Accepter</button><button class="btn" data-ref="${o.id}">Refuser</button></div></div>`;
     }
   } else if(so === 'contrats'){
     if(!A.contrats.length) h += '<p class="leg">Aucun contrat : accepte une offre.</p>';
@@ -324,6 +338,14 @@ function pCompagnies(box){
     }
   }
   box.innerHTML = h; brancherOnglets(box, 'comp');
+  box.querySelectorAll('[data-nego]').forEach(b => b.onclick = () => {
+    const [id, k] = b.dataset.nego.split(':'), o = A.offres.find(x => x.id === id);
+    const nom = M.COMPAGNIES[o.comp].nom, chance = Math.round(M.chanceNego(P, A, o, k) * 100);
+    if(!confirm(`Demander à ${nom} : ${M.NEGOS[k].txt} ?\n\nEnviron ${chance} % de chances que ça passe. Chaque demande de plus sur ce vol passe moins bien, et à la troisième de trop la compagnie retire son offre.`)) return;
+    const r = M.negocier(P, A, id, k);
+    if(r.err){ alerte(r.err); return; }
+    sauver(); rafraichirPanneau(true); majHud();
+  });
   box.querySelectorAll('[data-acc]').forEach(b => b.onclick = () => { const c = M.accepter(P, A, b.dataset.acc); sauver(); if(c && c.porte == null){ ouvrir('planning'); } else rafraichirPanneau(); majHud(); });
   box.querySelectorAll('[data-ref]').forEach(b => b.onclick = () => { M.refuser(A, b.dataset.ref); rafraichirPanneau(); majHud(); });
   box.querySelectorAll('[data-rec]').forEach(b => b.onclick = () => { const [k, n] = b.dataset.rec.split(':'); action(M.recevoir(P, A, k, +n), () => A.toasts.push({ txt:`🎁 ${M.COMPAGNIES[k].nom} : ${M.texteRecompense(M.RECOMPENSES[n - 1])}`, type:'cadeau' })); });
@@ -392,27 +414,40 @@ function pSol(box){
   // ce qui attend un véhicule en ce moment
   const manques = {};
   for(const v of A.vols) if(v.taches) for(const x of Object.values(v.taches)) if(x.manque && x.etat === 'attente') manques[x.veh] = (manques[x.veh] || 0) + 1;
-  let h = ONGLETS_SOL() + `<div class="bloc"><h3>Véhicules de piste</h3>${Object.keys(manques).length ? `<p class="leg mal">⚠️ En attente d'un véhicule : ${Object.entries(manques).map(([k, n]) => `${n} × ${M.VEHICULES[k].nom.toLowerCase()}`).join(', ')}.</p>` : '<p class="leg">Les véhicules vont de leur dépôt aux avions. Plus il y en a, moins les escales attendent ; leur niveau les rend plus rapides.</p>'}`;
-  for(const [k, V] of Object.entries(M.VEHICULES)){
-    if(k === 'degivrage' && !D.neige) continue;
-    const us = A.unites.filter(u => u.type === k), occ = us.filter(u => u.etat !== 'libre').length, niv = (A.vehicules[k] || { niv:1 }).niv;
-    const pa = A.vehicules[k] && niv < M.NIV_MAX ? M.prixAmeliorationVehicules(A, k) : null;
-    h += `<div class="item"><span class="ico">${V.ico}</span><div><b>${V.nom}</b><small>${us.length} au total · ${occ} occupé${occ > 1 ? 's' : ''} · niveau ${niv}${manques[k] ? ` · <b style="color:var(--rouge)">${manques[k]} en attente</b>` : ''}</small></div>
-      <div class="act"><button class="btn prim" data-veh="${k}" ${P.argent < V.prix ? 'disabled' : ''}>+1 · ${court(V.prix)}</button>${pa ? `<button class="btn" data-amv="${k}" ${P.argent < pa ? 'disabled' : ''}>Niv ${niv + 1} · ${court(pa)}</button>` : ''}</div></div>`;
+  let h = ONGLETS_SOL() + (Object.keys(manques).length ? `<p class="leg mal">⚠️ En attente d'un véhicule : ${Object.entries(manques).map(([k, n]) => `${n} × ${M.VEHICULES[k].nom.toLowerCase()}`).join(', ')}.</p>` : '');
+  // chaque bâtiment abrite sa famille de véhicules, et c'est là qu'on les gère
+  for(const [k, H] of Object.entries(M.HANGARS)){
+    const vehs = H.veh.filter(t => t !== 'degivrage' || D.neige);
+    if(!vehs.length) continue;
+    const bati = H.prix === 0 || (A.hangars || {})[k];
+    h += `<div class="bloc hangar ${bati ? '' : 'aFaire'}"><h3>${H.ico} ${esc(H.nom)}${bati ? '' : ' · à construire'}</h3><p class="leg">${esc(H.desc)}</p>`;
+    if(!bati) h += `<p class="leg">Sans lui, ces véhicules restent dehors : <b>2 au plus</b> et pas d'amélioration. Avec, jusqu'à 6, améliorables, et un cinquième d'entretien en moins.</p>
+      <button class="btn prim" data-hangar="${k}" ${P.argent < H.prix ? 'disabled' : ''}>🏗️ Construire · ${court(H.prix)}</button>`;
+    for(const t of vehs){
+      const V = M.VEHICULES[t], us = A.unites.filter(u => u.type === t), occ = us.filter(u => u.etat !== 'libre').length;
+      const niv = (A.vehicules[t] || { niv:1 }).niv, maxV = M.maxVehicules(A, t), nivMax = M.nivMaxVehicule(A, t);
+      const pa = A.vehicules[t] && niv < nivMax ? M.prixAmeliorationVehicules(A, t) : null;
+      h += `<div class="item"><span class="ico">${V.ico}</span><div><b>${V.nom}</b><small>${us.length}/${maxV} · ${occ} occupé${occ > 1 ? 's' : ''} · niveau ${niv}${niv >= nivMax && nivMax < M.NIV_MAX ? ' (max sans hangar)' : ''}${manques[t] ? ` · <b style="color:var(--rouge)">${manques[t]} en attente</b>` : ''}</small></div>
+        <div class="act"><button class="btn prim" data-veh="${t}" ${P.argent < V.prix || us.length >= maxV ? 'disabled' : ''}>+1 · ${court(V.prix)}</button>${pa ? `<button class="btn" data-amv="${t}" ${P.argent < pa ? 'disabled' : ''}>Niv ${niv + 1} · ${court(pa)}</button>` : ''}</div></div>`;
+    }
+    h += '</div>';
   }
-  h += '</div><div class="bloc"><h3>Portes d\'embarquement</h3><p class="leg">S : avions régionaux · M : moyen-courriers · L : gros porteurs · XL : très gros porteurs. Sans passerelle, un bus emmène les passagers (plus lent).</p>';
+  h += '<div class="bloc"><h3>Portes d\'embarquement</h3><p class="leg">S : avions régionaux · M : moyen-courriers · L : gros porteurs · XL : très gros porteurs. Sans passerelle, un bus emmène les passagers (plus lent).</p>';
   A.portes.forEach((g, i) => {
     const suiv = Object.keys(M.TAILLES).find(k => M.TAILLES[k].ordre === M.TAILLES[g.taille].ordre + 1), peutAgr = suiv && M.TAILLES[suiv].ordre <= M.TAILLES[D.tailleMax].ordre;
     const nb = A.contrats.filter(c => c.porte === i).length;
     h += `<div class="item"><span class="ico">${g.passerelle ? '🌉' : '🚌'}</span><div><b>Porte ${g.nom} · ${g.taille}</b><small>${M.TAILLES[g.taille].nom}${g.passerelle ? ', passerelle' : ', bus et escalier'} · ${nb} vol${nb > 1 ? 's' : ''} par jour</small></div>
       <div class="act">${g.passerelle ? '' : `<button class="btn" data-pas="${i}" ${P.argent < M.prixPasserelle(g.taille) ? 'disabled' : ''}>🌉 Passerelle · ${court(M.prixPasserelle(g.taille))}</button>`}${peutAgr ? `<button class="btn" data-agr="${i}">Agrandir en ${suiv} · ${court(Math.round((M.TAILLES[suiv].prix - M.TAILLES[g.taille].prix) * 1.1))}</button>` : ''}</div></div>`;
   });
-  if(A.portes.length < D.portesMax){
+  const maxP = M.portesMax(A);
+  if(A.portes.length < maxP){
     h += `<div class="ligneB">${Object.keys(M.TAILLES).filter(k => M.TAILLES[k].ordre <= M.TAILLES[D.tailleMax].ordre).map(k => `<button class="btn prim" data-porte="${k}" ${P.argent < M.TAILLES[k].prix ? 'disabled' : ''}>+ Porte ${k} · ${court(M.TAILLES[k].prix)}</button>`).join('')}</div>`;
-  } else h += '<p class="leg">Toutes les portes possibles ici sont construites.</p>';
-  h += `<p class="leg">Ici, la piste accepte jusqu'aux avions ${D.tailleMax} · ${A.portes.length}/${D.portesMax} portes.</p></div>`;
+  } else if(A.portes.length >= D.portesMax) h += '<p class="leg">Toutes les portes possibles ici sont construites.</p>';
+  else h += `<p class="leg mal">La façade du terminal est pleine. <b>Agrandis le terminal</b> (🏢 Terminal, ${court(M.prixAgrandir(A))}) : deux portes de plus à chaque fois.</p>`;
+  h += `<p class="leg">Ici, la piste accepte jusqu'aux avions ${D.tailleMax} · ${A.portes.length}/${maxP} portes ouvertes${maxP < D.portesMax ? ` (${D.portesMax} possibles en agrandissant le terminal)` : ''}.</p></div>`;
   box.innerHTML = h;
   brancherOnglets(box, 'sol');
+  box.querySelectorAll('[data-hangar]').forEach(b => b.onclick = () => action(M.construireHangar(P, A, b.dataset.hangar), () => rafraichirPanneau(true)));
   box.querySelectorAll('[data-veh]').forEach(b => b.onclick = () => action(M.acheterVehicule(P, A, b.dataset.veh)));
   box.querySelectorAll('[data-amv]').forEach(b => b.onclick = () => action(M.ameliorerVehicule(P, A, b.dataset.amv)));
   box.querySelectorAll('[data-pas]').forEach(b => b.onclick = () => action(M.acheterPasserelle(P, A, +b.dataset.pas)));
@@ -480,14 +515,39 @@ function pTerminal(box, complet){
     <canvas class="plan2d" id="plan2d"></canvas>
     <p class="leg" id="tAide">Choisis une construction ou un petit objet ci-dessous, puis touche sa place directement dans la vue 3D (ou sur ce plan). Touche une construction pour l'améliorer. En bas du plan : côté ville (enregistrement, contrôles, bagages) ; en haut : côté pistes. Entre les constructions, les allées sont découpées en petites cases pour les petits objets.</p>
     <div id="tSel"></div>
+    ${blocEntretien()}
     <div class="bloc"><h3>Construire</h3><div class="palette">${Object.entries(M.MODULES).map(([k, Mo]) => `<button data-outil="${k}" ${verrou(Mo) || P.argent < Mo.prix ? 'disabled' : ''}><span>${Mo.ico}</span>${esc(Mo.nom)}<small>${verrou(Mo) ? `niveau ${Mo.niv}` : court(Mo.prix)}</small></button>`).join('')}</div>
-      <button class="btn" id="tAgr" ${P.argent < M.prixAgrandir(A) ? 'disabled' : ''}>↔️ Agrandir le terminal · ${court(M.prixAgrandir(A))}</button></div>
+      ${A.terminal.l < M.terminalMax
+        ? `<button class="btn" id="tAgr" ${P.argent < M.prixAgrandir(A) ? 'disabled' : ''}>↔️ Agrandir le terminal · ${court(M.prixAgrandir(A))}</button>
+           <p class="leg">Une case de large en plus${M.portesMax(A) < M.AEROPORTS[A.id].portesMax ? ', <b>deux portes d\'embarquement de plus</b> à construire (🚚 Sol)' : ''}. Chaque agrandissement coûte 35 % de plus que le précédent.</p>`
+        : '<p class="leg">Le terminal est à sa taille maximale.</p>'}</div>
     <div class="bloc"><h3>Petits objets (dans les allées)</h3><div class="palette">${Object.entries(M.PETITS).map(([k, O]) => `<button data-outil="p:${k}" ${P.argent < O.prix ? 'disabled' : ''} title="${esc(O.desc)}"><span>${O.ico}</span>${esc(O.nom)}<small>${court(O.prix)}</small></button>`).join('')}</div>
       <p class="leg">Bancs : 6 places assises. Poubelles : un terminal propre (environ une pour 6 cases). Plantes, écrans, bornes, fontaines : un peu plus de satisfaction. Distributeurs : un peu d'argent.</p></div>`;
   box.innerHTML = h;
   dessinerPlan(); afficherSel(); brancherPlan();
   box.querySelectorAll('[data-outil]').forEach(b => b.onclick = () => { outil = b.dataset.outil; selModule = selPetit = null; rafraichirPanneau(true); });
-  $('tAgr').onclick = () => action(M.agrandirTerminal(P, A), () => rafraichirPanneau(true));
+  if($('tAgr')) $('tAgr').onclick = () => action(M.agrandirTerminal(P, A), () => rafraichirPanneau(true));
+  if($('tEmb')) $('tEmb').onclick = () => action(M.embaucher(P, A), () => rafraichirPanneau(true));
+  if($('tLic')) $('tLic').onclick = () => action(M.licencier(A), () => rafraichirPanneau(true));
+}
+// le ménage : l'état des blocs de toilettes et les agents d'entretien
+function blocEntretien(){
+  const wc = A.terminal.modules.filter(x => x.type === 'toilettes'), Pe = M.personnel(A), E = M.ENTRETIEN;
+  if(!wc.length) return `<div class="bloc"><h3>🚻 Toilettes et ménage</h3><p class="leg mal">Pas de toilettes dans ton terminal : les passagers le prennent très mal. Construis-en au moins un bloc.</p></div>`;
+  const tenue = M.vitesseMenage(A) >= M.vitesseSalissure(A) * wc.length;
+  const presse = wc.map(m => M.avantSale(A, m)).filter(x => x != null).sort((a, b) => a - b)[0];
+  const barres = wc.map((m, i) => {
+    const pr = Math.round((1 - M.salete(m) / 100) * 100), reste = M.avantSale(A, m);
+    const coul = pr >= 60 ? 'var(--vert)' : pr >= 35 ? 'var(--orange)' : 'var(--rouge)';
+    return `<div class="wc"><b>Bloc ${i + 1}</b><div class="jauge"><i style="width:${pr}%;background:${coul}"></i><span>${pr} % propre</span></div>
+      <small>${reste === 0 ? 'sales' : reste == null ? 'tenues propres' : `sales dans ${reste} min`}</small></div>`;
+  }).join('');
+  return `<div class="bloc"><h3>🚻 Toilettes et ménage</h3>${barres}
+    <p class="leg${tenue ? '' : ' mal'}">${Pe.entretien} agent${Pe.entretien > 1 ? 's' : ''} d'entretien · ${court(Pe.entretien * E.salaire)} de salaire par jour.
+      ${tenue ? 'Ils suivent le rythme : les toilettes restent propres.' : presse != null ? `Ils ne suivent pas : le premier bloc sera sale dans <b>${presse} min</b>. Embauche pour allonger ce délai.` : 'Ils ne suivent pas le rythme.'}</p>
+    <div class="ligneB"><button class="btn prim" id="tEmb" ${P.argent < E.embauche || Pe.entretien >= E.max ? 'disabled' : ''}>🧹 Embaucher · ${court(E.embauche)}</button>
+      ${Pe.entretien ? '<button class="btn rouge" id="tLic">Licencier un agent</button>' : ''}
+      <span class="leg">Chaque agent nettoie ${E.vitesse} points de saleté par minute, en commençant par le bloc le plus sale.</span></div></div>`;
 }
 let planOuvert = false;
 // toucher le plan 2D : la case et la petite case touchées
@@ -518,7 +578,8 @@ function afficherSel(){
   }
   if(!selModule || !A.terminal.modules.includes(selModule)){ el.innerHTML = ''; return; }
   const m = selModule, Mo = M.MODULES[m.type], pa = m.niv < M.NIV_MAX ? M.prixAmelioration(Mo.prix, m.niv) : null;
-  el.innerHTML = `<div class="item"><span class="ico">${Mo.ico}</span><div><b>${esc(Mo.nom)} · niveau ${m.niv}</b><small>${esc(Mo.desc)}</small></div><div class="act">${pa ? `<button class="btn prim" id="tAm" ${P.argent < pa ? 'disabled' : ''}>Niveau ${m.niv + 1} · ${court(pa)}</button>` : ''}${POSTES_JEU[m.type] ? `<button class="btn prim" id="tJouer">🎮 ${m.type === 'comptoir' ? 'Trier les bagages' : 'Jouer au contrôle'}</button>` : ''}<button class="btn" id="tDep">Déplacer</button><button class="btn rouge" id="tVend">Vendre (+${court(Mo.prix * .5)})</button></div></div>`;
+  const etatWC = m.type === 'toilettes' ? ` · ${Math.round(100 - M.salete(m))} % propre${M.avantSale(A, m) === 0 ? ', <b class="mal">à nettoyer</b>' : M.avantSale(A, m) == null ? '' : `, sales dans ${M.avantSale(A, m)} min`}` : '';
+  el.innerHTML = `<div class="item"><span class="ico">${Mo.ico}</span><div><b>${esc(Mo.nom)} · niveau ${m.niv}</b><small>${esc(Mo.desc)}${etatWC}</small></div><div class="act">${pa ? `<button class="btn prim" id="tAm" ${P.argent < pa ? 'disabled' : ''}>Niveau ${m.niv + 1} · ${court(pa)}</button>` : ''}${POSTES_JEU[m.type] ? `<button class="btn prim" id="tJouer">🎮 ${m.type === 'comptoir' ? 'Trier les bagages' : 'Jouer au contrôle'}</button>` : ''}<button class="btn" id="tDep">Déplacer</button><button class="btn rouge" id="tVend">Vendre (+${court(Mo.prix * .5)})</button></div></div>`;
   if($('tAm')) $('tAm').onclick = () => action(M.ameliorerModule(P, A, m), () => rafraichirPanneau(true));
   $('tDep').onclick = () => { deplace = m; rafraichirPanneau(true); };
   if($('tJouer')) $('tJouer').onclick = () => lancerControle(m.type);
@@ -614,10 +675,12 @@ const bq = { montant:null, duree:14 };
 // les gros achats possibles ici, pour les financer avec un prêt
 function projets(){
   const D = M.AEROPORTS[A.id], niv = M.niveauDe(P.xp), l = [];
-  if(A.portes.length < D.portesMax){ const t = D.tailleMax; l.push({ k:'porte', ico:'🚪', nom:`Nouvelle porte (${M.TAILLES[t].nom.toLowerCase()})`, prix:M.TAILLES[t].prix, faire:() => M.acheterPorte(P, A, t) }); }
+  if(A.portes.length < M.portesMax(A)){ const t = D.tailleMax; l.push({ k:'porte', ico:'🚪', nom:`Nouvelle porte (${M.TAILLES[t].nom.toLowerCase()})`, prix:M.TAILLES[t].prix, faire:() => M.acheterPorte(P, A, t) }); }
   const g = A.portes.findIndex(x => !x.passerelle); if(g >= 0 && niv >= 2) l.push({ k:'passerelle', ico:'🌉', nom:`Passerelle porte ${A.portes[g].nom}`, prix:M.prixPasserelle(A.portes[g].taille), faire:() => M.acheterPasserelle(P, A, g) });
-  if(A.terminal.l < 14) l.push({ k:'terminal', ico:'🏢', nom:'Agrandir le terminal', prix:M.prixAgrandir(A), faire:() => M.agrandirTerminal(P, A) });
+  if(A.terminal.l < M.terminalMax) l.push({ k:'terminal', ico:'🏢', nom:`Agrandir le terminal${M.portesMax(A) < D.portesMax ? ' (2 portes de plus)' : ''}`, prix:M.prixAgrandir(A), faire:() => M.agrandirTerminal(P, A) });
   if(A.carbu.niv < M.CUVE_MAX) l.push({ k:'cuve', ico:'🛢️', nom:`Cuve à carburant niveau ${A.carbu.niv + 1}`, prix:M.CUVE.prix[A.carbu.niv + 1], faire:() => M.agrandirCuve(P, A) });
+  const hg = M.hangarsOuvrables(A).find(k => !(A.hangars || {})[k]);
+  if(hg) l.push({ k:'hangar', ico:M.HANGARS[hg].ico, nom:M.HANGARS[hg].nom, prix:M.HANGARS[hg].prix, faire:() => M.construireHangar(P, A, hg) });
   const suiv = M.ORDRE_AEROPORTS.find(id => !P.aeroports[id]);
   if(suiv && niv >= M.AEROPORTS[suiv].deblocage.niveau) l.push({ k:'aeroport', ico:M.AEROPORTS[suiv].ico, nom:`Débloquer ${M.AEROPORTS[suiv].nom}`, prix:M.AEROPORTS[suiv].deblocage.prix, faire:() => M.debloquer(P, suiv), apres:() => changerAeroport(suiv) });
   return l;

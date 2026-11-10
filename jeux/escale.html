@@ -103,6 +103,17 @@ button:disabled{ opacity:.45; cursor:default; }
 .bloc h3{ margin:0; font-size:.74rem; text-transform:uppercase; letter-spacing:.09em; color:var(--doux); }
 .leg{ font-size:.78rem; color:var(--doux); margin:0; line-height:1.35; }
 .leg.mal{ color:var(--rouge); font-weight:600; }
+.leg.bon{ color:var(--vert); font-weight:600; }
+/* l'etat d'un bloc de toilettes */
+.wc{ display:flex; align-items:center; gap:8px; font-size:.78rem; }
+.wc b{ flex:none; min-width:52px; }
+.wc .jauge{ flex:1; margin:0; }
+.wc small{ flex:none; color:var(--doux); min-width:96px; text-align:right; }
+/* negocier une offre : les demandes possibles, avec leurs chances */
+.nego{ padding:0 10px 8px; display:flex; flex-direction:column; gap:5px; }
+.nego > small{ color:var(--doux); font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; }
+.nego .btn{ display:flex; align-items:center; gap:5px; font-size:.78rem; padding:5px 9px; }
+.nego .btn small{ color:var(--doux); font-weight:800; }
 .btn{ border:1px solid var(--ligne); background:#fff; border-radius:10px; padding:7px 10px; font-weight:700; font-size:.84rem; }
 .btn.prim{ background:var(--ambre); border-color:var(--ambre); color:#14233A; }
 .btn.bleu{ background:var(--bleu); border-color:var(--bleu); color:#fff; }
