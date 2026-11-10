@@ -68,24 +68,38 @@ window.AltitudeScores = (() => {
     }
     // Draw Race : le meilleur temps de course et le meilleur tour sur chaque circuit
     const dr = lire('drawrace-records') || {}, pal = lire('drawrace-palmares') || [];
-    const circuits = [...(window.CIRCUITS || []), ...(window.CIRCUITS_RALLYE || [])];
+    const circuits = [...(window.CIRCUITS || []), ...(window.CIRCUITS_RALLYE || []), ...(window.CIRCUITS_ENDURANCE || []), ...(window.CIRCUITS_TOURISME || [])];
+    const perso = new Set((lire('drawrace-perso') || []).map(c => c.id));
     let courses = 0;
     for(const [cle, r] of Object.entries(dr)){
       const miens = (r.courses || []).filter(c => estMoi(c.nom, pseudo)); if(!miens.length) continue;
+      // clé du circuit : la catégorie (« end: » Prototypes, « tou: » Tourisme, « r: » un circuit du joueur en rallye), son identifiant,
+      // « ~v2 » pour un circuit redessiné, puis « -3t » si le nombre de tours a changé
+      const m = cle.match(/^(?:(end|tou|r):)?(.+?)(?:~v\d+)?(?:-(\d+)t)?$/), c = circuits.find(x => x.id === m[2]);
+      courses += miens.length;
+      if(perso.has(m[2])) continue;          // les circuits créés par le joueur ne se comparent pas avec les autres
       if(!J.drawrace) jeu('drawrace', 'Draw Race', '🏎️');
-      // clé du circuit : son identifiant, puis « -3t » si le nombre de tours a changé, puis « ~v2 » pour un circuit redessiné
-      const m = cle.match(/^(.*?)(?:-(\d+)t)?(?:~v\d+)?$/), c = circuits.find(x => x.id === m[1]);
-      const nom = (c ? c.n : m[1]) + (m[2] ? ` (${m[2]} tours)` : '');
+      const nom = (c ? c.n : m[2]) + (m[1] === 'end' ? ' · Prototypes' : m[1] === 'tou' ? ' · Tourisme' : '') + (m[3] ? ` (${m[3]} tours)` : '');
       const best = Math.min(...miens.map(c => c.temps));
       ep('drawrace', cle, nom, best, temps(best), -1);
       if(r.tour && estMoi(r.tour.nom, pseudo)) ep('drawrace', cle + ':tour', nom + ' · meilleur tour', r.tour.temps, temps(r.tour.temps), -1);
-      courses += miens.length;
     }
     const titres = pal.filter(p => p.place === 1).length;
-    if(J.drawrace || pal.length){
+    // le défi du jour (Formule et Rallye) : le meilleur temps du joueur aujourd'hui ; les étoiles des défis
+    const dj = lire('drawrace-jour') || {}, d0 = new Date(), auj = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, '0')}-${String(d0.getDate()).padStart(2, '0')}`;
+    const etoiles = Object.values(lire('drawrace-etoiles') || {}).reduce((n, e) => n + (e || []).filter(Boolean).length, 0);
+    for(const [cat, D] of Object.entries(dj)){
+      if(!D || !D.cle || !D.cle.endsWith(auj)) continue;
+      const miens = (D.temps || []).filter(r => estMoi(r.nom, pseudo)); if(!miens.length) continue;
+      if(!J.drawrace) jeu('drawrace', 'Draw Race', '🏎️');
+      const best = Math.min(...miens.map(r => r.temps));
+      ep('drawrace', `jour-${D.cle}`, `📅 Défi du jour ${{ rallye:'Rallye', endurance:'Prototypes', tourisme:'Tourisme' }[cat] || 'Formule'} (${d0.toLocaleDateString('fr-FR', { day:'numeric', month:'long' })})`, best, temps(best), -1);
+    }
+    if(J.drawrace || pal.length || etoiles){
       if(!J.drawrace) jeu('drawrace', 'Draw Race', '🏎️');
       if(pal.length) ep('drawrace', 'championnats', 'Championnats gagnés', titres, fmt(titres));
-      J.drawrace.stats = { 'Circuits courus':Object.keys(J.drawrace.epreuves).filter(k => !k.includes(':') && k !== 'championnats').length, 'Courses (dans les records)':courses, 'Championnats terminés':pal.length, 'Championnats gagnés':titres };
+      if(etoiles) ep('drawrace', 'etoiles', '⭐ Étoiles des défis', etoiles, `${etoiles} ⭐`);
+      J.drawrace.stats = { 'Circuits courus':Object.keys(J.drawrace.epreuves).filter(k => !k.endsWith(':tour') && !['championnats', 'etoiles'].includes(k) && !k.startsWith('jour-')).length, 'Courses (dans les records)':courses, 'Championnats terminés':pal.length, 'Championnats gagnés':titres, 'Étoiles des défis':etoiles };
     }
     // Fusée Rythme : les morceaux fournis (les fichiers de chacun ne se comparent pas)
     const fr = lire('fusee-records') || {};

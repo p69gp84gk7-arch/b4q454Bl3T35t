@@ -13,7 +13,7 @@ Plate-forme web (application installable) qui regroupe nos carnets de score de j
 | **10 000** : ouverture à 1 000, croix (effacées dès qu'on note des points ou le −500 du 1er lancer), reprises, pénalités ; il faut finir à 10 000 pile, dépasser donne une croix, et on ne peut pas reprendre des points qui mèneraient à 10 000 ou plus | `jeux/10000.html` | 2 à 15 |
 | **Yam's** : feuille de marque classique, bonus à 63 | `jeux/yams.html` | 1 à 10 |
 | **Géographie** : drapeaux et cartes (pays, régions et départements français, États américains), placer des villes et monuments au plus près (points selon les km), défis du jour, chrono, records et statistiques | `jeux/geo.html` | 1 |
-| **Draw Race** : course dont on dessine la trajectoire ; Formule (monoplaces, 20 circuits inspirés de la F1) ou Rallye (voitures de rallye, 12 circuits de terre, neige, gravier et goudron), pneus, météo et arrêts au stand ; modes Arcade et Championnat | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
+| **Draw Race** : course dont on dessine la trajectoire ; Formule (monoplaces, 20 circuits inspirés de la F1), Rallye (voitures de rallye, 12 circuits de terre, neige, gravier et goudron), Prototypes (endurance, 12 circuits) ou Tourisme (12 circuits) ; création de ses propres circuits ; pneus, météo et arrêts au stand ; modes Arcade, Championnat, Fantôme, Défis, Élimination, Endurance et Défi du jour | `jeux/drawrace.html` | 1 à 4 (+ adversaires) |
 | **Nivoculteur** : sur un domaine tiré au sort, construire le réseau de neige de culture et produire la nuit selon le froid et le vent, en 2D vu de dessus | `jeux/nivoculteur/index.html` | 1 |
 | **Fusée Rythme** : piloter une fusée à gauche et à droite au rythme d'un morceau (fourni ou pris dans vos fichiers) et éviter les points ; la partie dure le temps de la musique | `jeux/fusee.html` | 1 |
 | **Dameuse de nuit** : damer une piste avant l'ouverture, en 3D derrière la dameuse (caméra réglable) ou vue du dessus, avec la lame, la fraise et le treuil ; 6 dameuses inspirées de vraies machines, 9 pistes et un défi du jour | `jeux/dameuse.html` | 1 |
@@ -178,10 +178,35 @@ Sources : IGN Admin Express via france-geojson (Licence ouverte), U.S. Census Bu
 
 ## Draw Race
 
-Deux modes de jeu, au choix en haut du menu :
+### Catégories de véhicules
+
+Quatre catégories, chacune avec ses circuits, ses pilotes, son championnat (`drawrace-championnat`, `drawrace-championnat-rallye`, `-endurance`, `-tourisme`) et ses records :
+
+- **🏎 Formule** et **🚙 Rallye** : comme avant.
+- **🌙 Prototypes** (les voitures des courses d'endurance) : 6 circuits à eux (`jeux/drawrace/categories.js` : La Sarthe, Le Grand Ovale, Les Marais, Le Volcan, L'Algarve, La Forêt verte), plus 6 circuits de Formule (`SELECTION_ENDURANCE`). Très rapides en ligne droite (vitesse de pointe × 1,07), un peu moins d'adhérence en virage (× 0,93), pneus qui s'usent deux fois moins vite. Pilotes aux noms inspirés des grands pilotes d'endurance.
+- **🚗 Tourisme** : 6 circuits à eux (Le Port de Guia, Le Vieux Bourg, Les Collines, Le Plateau, La Puszta, Le Boulevard), plus 6 circuits de Formule (`SELECTION_TOURISME`). Plus lentes (× 0,8), moins d'adhérence (× 0,82), freinages plus longs (× 0,72), accélérations plus molles, pneus qui s'usent plus vite (× 1,35) ; les adversaires sont très proches les uns des autres (écarts de vitesse réduits). Pilotes aux noms inspirés des pilotes de tourisme.
+
+La conduite de chaque catégorie est dans `VEHICULES` ; `Piste.regler({ vmax, grip, frein })` change la vitesse de pointe, l'adhérence et le freinage de toute la géométrie (trajectoires, vitesse du doigt, adversaires). Les circuits de Formule repris dans une autre catégorie sont des copies (`prefixe` « end: » ou « tou: ») : leurs records, fantômes, étoiles et tours choisis sont à part (`cleBase`, `idCat`). Chaque catégorie a son dessin de voiture (`voitureProto`, `voitureTourisme`).
+
+### Les circuits du joueur
+
+Au-dessus du carrousel des circuits, on choisit entre les circuits officiels de la catégorie et **« Circuits de (nom du joueur) »**. Le bouton **➕ Créer un circuit** ouvre l'éditeur (à l'horizontale) :
+
+1. **Tracer** la boucle au doigt, d'un seul trait : elle est lissée, fermée, gardée dans le cadre, et ramenée à des points de passage tous les 70 environ (`edPoints`). La ligne de départ est au début du trait, la course dans le sens du trait.
+2. **Retoucher** : chaque point se déplace au doigt ; 🏁 déplace la ligne de départ au point suivant, ⇄ inverse le sens, ✏️ redessine. Les endroits où la piste se touche sont entourés de rouge (`edVerifier` : deux morceaux éloignés le long du tracé, à moins d'une largeur de piste, et pas en croisement franc comme au Huit) ; on peut quand même enregistrer.
+3. **Régler** : nom, décor (17 au choix), nombre de tours (2 à 8), sol en Rallye ; la difficulté (1 à 5 points) est calculée d'après le temps passé à freiner et à tourner.
+
+Les circuits sont gardés dans `drawrace-perso` ; chacun est construit dans chaque catégorie (`construirePerso` ; en Rallye avec le sol choisi). Ils se jouent avec toutes les voitures, dans tous les modes sauf le Championnat et le Défi du jour ; ils ont leurs records, fantômes et étoiles (ils ne vont pas au classement de tous les joueurs). ✏️ Retoucher un circuit le fait repartir de zéro (records, fantômes, étoiles, temps cible : `oublierCircuit`), 🗑 Supprimer aussi.
+
+Sept modes de jeu, au choix en haut du menu (les réglages affichés changent avec le mode, `regles()` donne ceux de la course) :
 
 - **Arcade** : une course, de 1 à 4 joueurs sur le même appareil, contre des adversaires. Tout se règle : circuit, nombre de tours, difficulté, météo.
 - **Championnat** : un joueur seul contre 5 pilotes, course après course.
+- **👻 Fantôme** : seul en piste, sur piste sèche, contre le fantôme du meilleur temps du circuit (pour ce nombre de tours). Le fantôme est une voiture transparente qui refait la course du record ; à côté du chrono, l'écart en direct (vert : en avance, rouge : en retard), calculé à la même progression dans la course. Les temps comptent dans les records habituels. Chaque course d'un humain est enregistrée (une position toutes les 0,1 s : `v.rec`) ; le meilleur temps arrivé, dans tous les modes qui comptent pour les records, devient le fantôme s'il est meilleur que l'ancien (clé `drawrace-fantome-<circuit>`, une par circuit et nombre de tours).
+- **⭐ Défis** : sur chaque circuit, 3 défis contre 3 adversaires à 40 %, piste sèche, nombre de tours habituel : gagner la course, finir sans sortie de piste, battre le temps cible (`tempsCible` : course simulée d'un adversaire à 45 %, sans erreur ni hasard, gardée dans `drawrace-cibles`). Chaque défi réussi donne une étoile pour toujours (`drawrace-etoiles`) ; les étoiles s'affichent sur les cartes des circuits. Les temps comptent dans les records.
+- **💥 Élimination** : seul contre 5 pilotes, 5 tours. Quand tous les pilotes encore en course sauf un ont fini un tour, le dernier est éliminé (`eliminer`) ; au dernier tour, le premier à passer la ligne gagne. Si le joueur est éliminé, la course des autres est simulée d'un coup. Pas de records.
+- **⏱ Endurance** : 10, 15 ou 20 tours. Chaque joueur trace un seul tour, répété toute la course. La météo change 1 à 3 fois (`planMeteo`, appliqué quand la tête de course arrive à chaque moment prévu) ; 2 arrêts au stand obligatoires, 10 s de pénalité par arrêt manquant (les adversaires font les leurs, `arretsObligatoires`). Pas de records.
+- **📅 Défi du jour** : chaque jour, un circuit, une météo (et le moment de l'averse), la difficulté des adversaires et le nombre de tours tirés d'après la date et la catégorie (`defiDuJour`), les mêmes sur tous les téléphones. Autant d'essais qu'on veut : le meilleur temps de chaque pilote du jour est gardé (`drawrace-jour`) et envoyé au classement de tous les joueurs (épreuve « Défi du jour » du jour dans `scores.js`).
 
 ### Championnat
 
@@ -314,7 +339,7 @@ Météo : Sec, Averse (la pluie arrive pendant la course, entre 30 et 65 % de la
   Durées de vie : environ 3 tours pour les Tendres, 5 pour les Mediums, 15 pour les Durs ; Intermédiaires 3 tours au sec et 10 sous la pluie ; Pluie 2,5 tours au sec et 14 sous la pluie.
   **La difficulté règle la vitesse d'usure** : ×0,6 à 0 % (Facile), ×1 à 50 %, ×1,4 à 100 % (Expert). Le menu l'indique sous le curseur.
   La grille de départ donne la durée de vie du pneu choisi avec la météo du jour.
-- **Stand** : pendant la course, le bouton 🔧 Stand permet de choisir de nouveaux pneus. Le changement se fait au prochain passage de la ligne : arrêt de 3 s, pneus neufs (l'usure repart de zéro). Un nouveau toucher annule.
+- **Stand** : pendant la course, le bouton 🔧 Stand permet de choisir de nouveaux pneus. Le changement se fait au prochain passage de la ligne : l'arrêt coûte environ 1/15 du meilleur tour de la voiture (`dureeArret` : 1/15 du tour moins 0,1 s de relance, entre 0,3 et 3 s), pneus neufs (l'usure repart de zéro). Un nouveau toucher annule.
   Les adversaires (sauf en Facile) s'arrêtent aussi quand le changement leur fait gagner du temps sur les tours restants, par exemple quand la pluie arrive. La pluie s'affiche sur la piste et les voitures soulèvent des gerbes d'eau. Le classement montre les pneus de chacun, et un message prévient quand les pneus d'un joueur chutent.
 
 ### Décors

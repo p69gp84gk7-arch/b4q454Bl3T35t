@@ -3,8 +3,10 @@ window.Piste = (() => {
   const W = 1000, H = 600;          // cadre des circuits
   const LARGEUR = 80;              // largeur de la piste
   const STEP = 4;                  // un point tous les 4 unités le long des lignes
-  const VMAX = 340;                // vitesse maximale (unités par seconde)
-  const GRIP = 230;                // adhérence : vitesse limite en virage = √(GRIP / courbure)
+  // Vitesse maximale (unités par seconde), adhérence (vitesse limite en virage = √(GRIP / courbure)) et freinage :
+  // ceux de la monoplace, changés par regler() pour les autres véhicules (prototypes d'endurance, voitures de tourisme)
+  let VMAX = 340, GRIP = 230, FREIN = 520;
+  function regler(o = {}){ VMAX = 340 * (o.vmax || 1); GRIP = 230 * (o.grip || 1); FREIN = 520 * (o.frein || 1); }
 
   // Courbe de Catmull-Rom (centripète) passant par les points de passage, boucle fermée
   function spline(p){
@@ -96,7 +98,7 @@ window.Piste = (() => {
     const grip = kappa.map((k, i) => Math.min(VMAX, Math.sqrt(GRIP * (typeof m === 'number' ? m : m[i]) / Math.max(k, 1e-5))));
     const v = grip.map((gv, i) => Math.min(gv, demande[i]));
     for(let pass = 0; pass < 2; pass++)
-      for(let i = n - 1; i >= 0; i--){ const nx = v[(i + 1) % n]; v[i] = Math.min(v[i], Math.sqrt(nx * nx + 2 * 520 * STEP)); }
+      for(let i = n - 1; i >= 0; i--){ const nx = v[(i + 1) % n]; v[i] = Math.min(v[i], Math.sqrt(nx * nx + 2 * FREIN * STEP)); }
     return { v, grip };
   }
   const tempsTour = v => v.reduce((s, x) => s + STEP / Math.max(x, 1), 0);
@@ -128,6 +130,6 @@ window.Piste = (() => {
     return c.ideale = best;
   }
 
-  return { W, H, LARGEUR, STEP, VMAX, GRIP, spline, resample, courbure, lisser, vitesseVirage, construire, plusProche,
+  return { W, H, LARGEUR, STEP, get VMAX(){ return VMAX; }, get GRIP(){ return GRIP; }, regler, spline, resample, courbure, lisser, vitesseVirage, construire, plusProche,
            vitesses, tempsTour, trajectoireIdeale };
 })();
