@@ -82,10 +82,21 @@ window.AltitudeScores = (() => {
       courses += miens.length;
     }
     const titres = pal.filter(p => p.place === 1).length;
-    if(J.drawrace || pal.length){
+    // le défi du jour (Formule et Rallye) : le meilleur temps du joueur aujourd'hui ; les étoiles des défis
+    const dj = lire('drawrace-jour') || {}, d0 = new Date(), auj = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, '0')}-${String(d0.getDate()).padStart(2, '0')}`;
+    const etoiles = Object.values(lire('drawrace-etoiles') || {}).reduce((n, e) => n + (e || []).filter(Boolean).length, 0);
+    for(const [cat, D] of Object.entries(dj)){
+      if(!D || !D.cle || !D.cle.endsWith(auj)) continue;
+      const miens = (D.temps || []).filter(r => estMoi(r.nom, pseudo)); if(!miens.length) continue;
+      if(!J.drawrace) jeu('drawrace', 'Draw Race', '🏎️');
+      const best = Math.min(...miens.map(r => r.temps));
+      ep('drawrace', `jour-${D.cle}`, `📅 Défi du jour ${cat === 'rallye' ? 'Rallye' : 'Formule'} (${d0.toLocaleDateString('fr-FR', { day:'numeric', month:'long' })})`, best, temps(best), -1);
+    }
+    if(J.drawrace || pal.length || etoiles){
       if(!J.drawrace) jeu('drawrace', 'Draw Race', '🏎️');
       if(pal.length) ep('drawrace', 'championnats', 'Championnats gagnés', titres, fmt(titres));
-      J.drawrace.stats = { 'Circuits courus':Object.keys(J.drawrace.epreuves).filter(k => !k.includes(':') && k !== 'championnats').length, 'Courses (dans les records)':courses, 'Championnats terminés':pal.length, 'Championnats gagnés':titres };
+      if(etoiles) ep('drawrace', 'etoiles', '⭐ Étoiles des défis', etoiles, `${etoiles} ⭐`);
+      J.drawrace.stats = { 'Circuits courus':Object.keys(J.drawrace.epreuves).filter(k => !k.includes(':') && !['championnats', 'etoiles'].includes(k) && !k.startsWith('jour-')).length, 'Courses (dans les records)':courses, 'Championnats terminés':pal.length, 'Championnats gagnés':titres, 'Étoiles des défis':etoiles };
     }
     // Fusée Rythme : les morceaux fournis (les fichiers de chacun ne se comparent pas)
     const fr = lire('fusee-records') || {};

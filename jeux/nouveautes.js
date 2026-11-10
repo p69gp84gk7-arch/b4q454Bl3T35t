@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:164, type:'maj', jeu:'Draw Race', ico:'👻', lien:'jeux/drawrace.html',
+    txt:'5 nouveaux modes : 👻 Fantôme (battre le fantôme du record, avec l\'écart en direct), ⭐ Défis (3 étoiles à gagner par circuit), 💥 Élimination, ⏱ Endurance (météo changeante, 2 arrêts obligatoires) et 📅 Défi du jour. Les arrêts au stand sont bien plus courts : environ 1/15 d\'un tour.' },
   { v:163, type:'maj', jeu:'Escale', ico:'🏦', lien:'jeux/escale.html',
     txt:'La banque : touche ton argent en haut pour emprunter sur 7, 14 ou 30 jours et financer une porte, le terminal, la cuve ou un nouvel aéroport. Une échéance est prélevée chaque soir ; ta note et la satisfaction des passagers font baisser le taux.' },
   { v:162, type:'maj', jeu:'Escale', ico:'🧳', lien:'jeux/escale.html',
