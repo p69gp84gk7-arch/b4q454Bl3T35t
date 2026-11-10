@@ -9,6 +9,7 @@ window.ESCALE_3D = (() => {
   const alea = s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   let T3 = null, R = null, scene = null, cam = null, ok = false, DEGRADE = null, CONTOUR = null, MAT = null, MATB = null, L = 1, H = 1;
   let monde = null, cleMonde = '', ciel = null, soleil = null, hemi = null, vitres = null, lampes = null, neige = null, toit = null;
+  let plafonniers = null, lampesTerm = [];                           // l'éclairage de l'aérogare, la nuit
   let interieur = null, cleInt = '', foule = null, tetes = null, tSim = null, coupe = false;
   const agents = [], files = { check:[], secu:[], pass:[] };
   let cuveG = null, cleCuve = '', jaugeCuve = null, citernes = [];
@@ -106,7 +107,8 @@ window.ESCALE_3D = (() => {
 
   /* ---------- Construire l'aéroport ---------- */
   function construire(A){
-    const P = M.plan(A), D = M.AEROPORTS[A.id], cle = A.id + ':' + A.portes.map(g => g.taille + (g.passerelle ? 'p' : '')).join(',');
+    const P = M.plan(A), D = M.AEROPORTS[A.id], cle = A.id + ':' + A.portes.map(g => g.taille + (g.passerelle ? 'p' : '')).join(',')
+      + '|' + (P.hangars || []).map(x => x.k + ((A.hangars || {})[x.k] ? '1' : '0')).join(',') + '|p' + M.nbPistes(A);
     if(cle === cleMonde) return; cleMonde = cle;
     if(monde){ scene.remove(monde); monde.traverse(o => { if(o.geometry) o.geometry.dispose(); }); }
     for(const [, a] of avions){ scene.remove(a.obj); scene.remove(a.ombre); } avions.clear();
@@ -118,19 +120,24 @@ window.ESCALE_3D = (() => {
     // le sol
     const sol = plat(9000, 9000, couleurSol, -.2); monde.add(sol);
     // l'aire de l'aéroport (herbe plus claire, tondue)
-    const aire = plat(P.piste.x1 - P.piste.x0 + 500, 700, decor === 'montagne' ? 0x9CC484 : 0xA7CB86, -.1); aire.position.set(0, -.1, -130); monde.add(aire);
+    const aire = plat(P.piste.x1 - P.piste.x0 + 500, 700 + (M.nbPistes(A) - 1) * M.ECART_PISTES, decor === 'montagne' ? 0x9CC484 : 0xA7CB86, -.1);
+    aire.position.set(0, -.1, -130 - (M.nbPistes(A) - 1) * M.ECART_PISTES / 2); monde.add(aire);
     // la piste
-    const piste = new T3.Mesh(new T3.PlaneGeometry(P.piste.x1 - P.piste.x0, P.piste.largeur), new T3.MeshToonMaterial({ map:texturePiste(P.piste.x1 - P.piste.x0), gradientMap:DEGRADE }));
-    piste.rotation.x = -Math.PI / 2; piste.position.set(0, .05, P.piste.z); monde.add(piste);
+    for(let k = 0; k < M.nbPistes(A); k++){
+      const pi = P.pistes[k];
+      const piste = new T3.Mesh(new T3.PlaneGeometry(pi.x1 - pi.x0, pi.largeur), new T3.MeshToonMaterial({ map:texturePiste(pi.x1 - pi.x0), gradientMap:DEGRADE }));
+      piste.rotation.x = -Math.PI / 2; piste.position.set(0, .05, pi.z); monde.add(piste);
+    }
     // les voies de circulation (asphalte) et leurs lignes jaunes
     const asphalte = [], jaune = [];
     const voie = (x1, z1, x2, z2, l = 23) => { const dx = x2 - x1, dz = z2 - z1, lg = Math.hypot(dx, dz), a = Math.atan2(dx, dz); asphalte.push({ f:'boite', d:[l, .1, lg + l], p:[(x1 + x2) / 2, .02, (z1 + z2) / 2], r:[0, a, 0], c:0x50555E }); jaune.push({ f:'boite', d:[.5, .02, lg], p:[(x1 + x2) / 2, .1, (z1 + z2) / 2], r:[0, a, 0], c:0xF2C230 }); };
     voie(P.piste.x0 + 20, M.TAXI_Z, P.piste.x1 - 20, M.TAXI_Z);
-    for(const b of P.bretelles) voie(b, P.piste.z + 10, b, M.TAXI_Z);
-    voie(P.piste.x0 + 20, P.piste.z + 10, P.piste.x0 + 20, M.TAXI_Z);
+    for(const b of P.bretelles) voie(b, P.pistes[M.nbPistes(A) - 1].z + 10, b, M.TAXI_Z);
+    voie(P.piste.x0 + 20, P.pistes[M.nbPistes(A) - 1].z + 10, P.piste.x0 + 20, M.TAXI_Z);
     for(const l of P.liens) voie(l, M.TAXI_Z, l, M.VOIE_P);
     // l'aire de stationnement (béton clair), la voie des postes, la route de service
-    const ax0 = P.liens[0] - 30, ax1 = P.depot.x + 70;
+    // le béton va jusqu'au dernier hangar : sans cela, ils seraient posés sur l'herbe
+    const ax0 = P.liens[0] - 30, ax1 = Math.max(P.depot.x + 70, ...(P.hangars || []).map(g => g.x + 32));
     asphalte.push({ f:'boite', d:[ax1 - ax0, .08, M.FACADE_Z - M.VOIE_P + 22], p:[(ax0 + ax1) / 2, .01, (M.FACADE_Z + M.VOIE_P - 22) / 2], c:0x9DA2A8 });
     jaune.push({ f:'boite', d:[P.liens[1] - P.liens[0], .02, .5], p:[(P.liens[0] + P.liens[1]) / 2, .11, M.VOIE_P], c:0xF2C230 });
     jaune.push({ f:'boite', d:[P.depot.x - P.liens[0], .02, .35], p:[(P.liens[0] + P.depot.x) / 2, .11, M.SERVICE_Z - 4], c:0xFFFFFF });
@@ -162,6 +169,26 @@ window.ESCALE_3D = (() => {
     ];
     for(let k = 0; k < Math.floor(tl / 40); k++) toitP.push({ f:'boite', d:[6, 2.4, 5], p:[T.x0 + 20 + k * 40 + rnd() * 10, 17.6, cz + (rnd() - .5) * 20], c:0xB4BBC4 });
     toit = objet(toitP, .25); monde.add(toit);
+    /* L'éclairage de l'aérogare. La nuit, quand on zoome et que le toit s'enlève, l'intérieur
+       n'était éclairé que par le peu de lune qui reste : on ne voyait plus ni les comptoirs ni la
+       foule. Deux choses, donc : des bandeaux lumineux suspendus au plafond, qu'on voit dès que le
+       toit est retiré, et quelques lampes douces qui éclairent vraiment le sol, les constructions
+       et les passagers. Les lampes restent dans la scène en permanence (changer leur nombre
+       obligerait la carte graphique à tout recompiler) : seule leur force varie avec l'heure. */
+    const neons = [], rangs = Math.max(2, Math.round(tz / 16));
+    for(let r = 0; r < rangs; r++){
+      const nz = T.z0 + (r + .5) * tz / rangs;
+      for(let bx = T.x0 + 8; bx < T.x1 - 6; bx += 16) neons.push({ f:'boite', d:[11, .5, 1.1], p:[bx + 5.5, 10.4, nz], c:0xFFF6E2 });
+    }
+    plafonniers = new T3.Mesh(fusion(neons), new T3.MeshBasicMaterial({ vertexColors:true, transparent:true, opacity:.2, depthWrite:false }));
+    monde.add(plafonniers);
+    lampesTerm = [];
+    const nLampes = Math.max(2, Math.min(5, Math.round(tl / 90)));
+    for(let k = 0; k < nLampes; k++){
+      const pl = new T3.PointLight(0xFFE7BE, 0, tl / nLampes + tz + 60, 1.4);
+      pl.position.set(T.x0 + (k + .5) * tl / nLampes, 11, cz);
+      monde.add(pl); lampesTerm.push(pl);
+    }
     // la façade vitrée (elle s'allume la nuit, et devient transparente quand on regarde dedans)
     vitres = new T3.MeshToonMaterial({ color:0x3E8EDB, gradientMap:DEGRADE, emissive:0x000000, transparent:true, opacity:1, side:T3.DoubleSide });
     const ctex = document.createElement('canvas'); ctex.width = 512; ctex.height = 64; const xt = ctex.getContext('2d'); xt.fillStyle = '#fff'; xt.fillRect(0, 0, 512, 64); xt.fillStyle = 'rgba(30,50,80,.55)'; for(let k = 0; k < 512; k += 16) xt.fillRect(k, 0, 2, 64); xt.fillRect(0, 30, 512, 2);
@@ -189,6 +216,18 @@ window.ESCALE_3D = (() => {
     // le dépôt des véhicules (un hangar), la station de carburant
     const dep = objet([{ f:'boite', d:[46, 12, 30], p:[0, 6, 18], c:0xD9C9A3 }, { f:'boite', d:[48, 1.2, 32], p:[0, 12.6, 18], c:0x7F8C8D }, { f:'boite', d:[20, 9, .4], p:[0, 4.5, 2.9], c:0x5C6672 }], .2);
     dep.position.set(P.depot.x, 0, P.depot.z + 10); monde.add(dep);
+    // les hangars : construits, ils ont leur enseigne et leur porte ; pas encore construits, c'est
+    // un terrain vague avec un panneau de chantier, pour qu'on voie la place qui les attend
+    for(const hg of P.hangars || []){
+      const H = M.HANGARS[hg.k], bati = !!(A.hangars || {})[hg.k];
+      const b = bati
+        ? objet([{ f:'boite', d:[44, 11, 26], p:[0, 5.5, 0], c:0xCFCFC4 }, { f:'boite', d:[46, 1.1, 28], p:[0, 11.6, 0], c:0x6F7A86 },
+                 { f:'boite', d:[18, 8.5, .4], p:[0, 4.2, -13.1], c:0x4E5862 }, { f:'boite', d:[44, .1, 10], p:[0, .05, -18], c:0x8A9096 }], .2)
+        : objet([{ f:'boite', d:[44, .1, 26], p:[0, .05, 0], c:0x9A9478 }, { f:'boite', d:[.6, 4, .6], p:[-6, 2, -13], c:0x7A6A4A }, { f:'boite', d:[.6, 4, .6], p:[6, 2, -13], c:0x7A6A4A }], .2);
+      b.position.set(hg.x, 0, hg.z); monde.add(b);
+      const pan = new T3.Mesh(new T3.PlaneGeometry(26, 6.5), new T3.MeshBasicMaterial({ map:texteCache(H.ico + ' ' + H.nom, bati ? '#14233A' : '#9A6B1F', bati ? '#FFB703' : '#FFF3D6', 1024), side:T3.DoubleSide, transparent:true }));
+      pan.position.set(hg.x, bati ? 14.5 : 5.2, hg.z - 13.4); monde.add(pan);
+    }
     cleCuve = '';                                                    // les cuves sont construites dans majCuve (selon leur niveau)
     // côté ville : la route, le parking et ses voitures
     const route = []; route.push({ f:'boite', d:[tl + 300, .1, 16], p:[cx, .02, T.z1 + 20], c:0x4A4F57 }, { f:'boite', d:[tl + 60, .1, 70], p:[cx, .02, T.z1 + 70], c:0x5A5F67 });
@@ -199,7 +238,7 @@ window.ESCALE_3D = (() => {
     if(voitures.length) monde.add(new T3.Mesh(fusion(voitures), MAT));
     // les feux de piste (ils brillent la nuit)
     const pts = [];
-    for(let x = P.piste.x0; x <= P.piste.x1; x += 30){ pts.push(x, .6, P.piste.z - 23, x, .6, P.piste.z + 23); }
+    for(let k = 0; k < M.nbPistes(A); k++) for(let x = P.pistes[k].x0; x <= P.pistes[k].x1; x += 30){ pts.push(x, .6, P.pistes[k].z - 23, x, .6, P.pistes[k].z + 23); }
     for(let x = P.piste.x0 + 20; x <= P.piste.x1 - 20; x += 25) pts.push(x, .4, M.TAXI_Z - 12, x, .4, M.TAXI_Z + 12);
     const gl = new T3.BufferGeometry(); gl.setAttribute('position', new T3.Float32BufferAttribute(pts, 3));
     const colL = []; for(let k = 0; k < pts.length / 3; k++){ const piste_ = pts[k * 3 + 2] < M.TAXI_Z - 20; colL.push(piste_ ? 1 : .2, piste_ ? .95 : .45, piste_ ? .8 : 1); }
@@ -216,7 +255,10 @@ window.ESCALE_3D = (() => {
     const arbres = [], loin = [];
     const arbre = (x, z, s, sapin) => sapin ? arbres.push({ f:'cone', d:[3 * s, 11 * s, 7], p:[x, 6 * s, z], c:0x2F6B3F }, { f:'cyl', d:[.6 * s, .6 * s, 2 * s, 5], p:[x, .8 * s, z], c:0x6B4A2F })
       : arbres.push({ f:'boule', d:[4 * s, 0], p:[x, 5 * s, z], c:0x4E8F3E }, { f:'cyl', d:[.6 * s, .7 * s, 3 * s, 5], p:[x, 1.5 * s, z], c:0x6B4A2F });
-    const libre = (x, z) => !(z > P.piste.z - 60 && z < 160 && x > P.piste.x0 - 120 && x < P.piste.x1 + 120);
+    // on dégage aussi la place de la seconde piste, construite ou non : sinon des arbres
+    // pousseraient là où elle doit s'ouvrir, et ils y resteraient
+    const zLoin = P.pistes[P.pistes.length - 1].z;
+    const libre = (x, z) => !(z > zLoin - 60 && z < 160 && x > P.piste.x0 - 120 && x < P.piste.x1 + 120);
     for(let k = 0; k < 420; k++){ const x = (rnd() - .5) * 2600, z = (rnd() - .5) * 1800 - 100; if(libre(x, z)) arbre(x, z, .8 + rnd() * .8, decor === 'montagne' || (decor === 'ville' && rnd() < .3)); }
     if(decor === 'montagne'){
       // les montagnes enneigées tout autour
@@ -468,7 +510,7 @@ window.ESCALE_3D = (() => {
   }
   // la position d'un avion selon sa phase
   function positionAvion(A, Pl, v, t){
-    const tr = Pl.trajets[v.porte], u = v.duree > 0 ? clamp((t - v.t0) / v.duree, 0, 1) : 1;
+    const tr = M.trajetDe(Pl, v), pz = tr.z, u = v.duree > 0 ? clamp((t - v.t0) / v.duree, 0, 1) : 1;
     // au poste, le nez touche la ligne d'arrêt quelle que soit la longueur de l'avion
     const g = A.portes[v.porte], dNez = ({ S:36, M:45, L:67, XL:74 })[g.taille] / 2 - M.AVIONS[v.avion].longueur / 2;
     const sur = (trj, s) => M.surTrajet(trj, s);
@@ -476,7 +518,7 @@ window.ESCALE_3D = (() => {
       case 'approche': {
         // la descente vers la piste (pente d'environ 4°), d'autant plus loin qu'il reste du temps
         const reste = Math.max(0, v.t0 + v.duree - t), d = reste * 420, x = tr.toucher - d;
-        return { x, y:d * .07, z:Pl.piste.z, cap:0, tangage:.05 };
+        return { x, y:d * .07, z:pz, cap:0, tangage:.05 };
       }
       case 'atterrissage': { const s = tr.arr.roule * (1 - (1 - u) * (1 - u)); return { ...sur(tr.arr, s), y:0 }; }
       case 'roulageArr': {
@@ -493,7 +535,7 @@ window.ESCALE_3D = (() => {
         const p0 = sur(tr.dep, tr.dep.total), tau = v.etat === 'parti' ? 1.8 + (t - v.t0) : (t - v.t0);
         if(tau < .15){ const p = sur(tr.dep, tr.dep.total - 35 + 35 * tau / .15); return { ...p, y:0 }; }
         const tt = tau - .15, roule = Math.min(tt, .85), dist = 560 * roule * roule + (tt > .85 ? (tt - .85) * 960 : 0), y = tt > .85 ? Math.pow(tt - .85, 1.25) * 240 : 0;
-        return { x:p0.x + dist, y, z:Pl.piste.z, cap:0, tangage:tt > .85 ? Math.min(.2, (tt - .85) * .45) : 0 };
+        return { x:p0.x + dist, y, z:pz, cap:0, tangage:tt > .85 ? Math.min(.2, (tt - .85) * .45) : 0 };
       }
     }
     return null;
@@ -920,6 +962,7 @@ window.ESCALE_3D = (() => {
     const T = Pl.terminal, dedans = vue.dist < 470 && vue.x > T.x0 - 260 && vue.x < T.x1 + 260;
     if(dedans !== coupe){ coupe = dedans; toit.visible = !dedans; vitres.opacity = dedans ? .28 : 1; vitres.depthWrite = !dedans; }
     interieur.visible = foule.visible = tetes.visible = dedans;
+    if(plafonniers) plafonniers.visible = dedans;                    // sous le toit, ils seraient cachés
     // la simulation des passagers tourne toujours (pour que la foule soit prête quand on regarde)
     majFoule(A, Pl, dtReel);
   }
@@ -936,6 +979,10 @@ window.ESCALE_3D = (() => {
     const nuit = 1 - jour;
     if(vitres){ vitres.emissive.setRGB(.9 * nuit, .75 * nuit, .4 * nuit); }
     if(lampes) lampes.material.opacity = .15 + .85 * nuit;
+    // l'aérogare : les bandeaux s'allument au crépuscule, les lampes avec eux
+    if(plafonniers) plafonniers.material.opacity = .18 + .8 * nuit;
+    // assez pour lire le terminal, pas assez pour effacer la nuit : minuit ne doit pas ressembler à midi
+    for(const pl of lampesTerm) pl.intensity = .8 * nuit;
   }
 
   /* ---------- La caméra ---------- */
@@ -946,7 +993,7 @@ window.ESCALE_3D = (() => {
       if(a){ vue.x += (a.obj.position.x - vue.x) * k; vue.z += (a.obj.position.z - vue.z) * k; } else vue.suivi = null;
     }
     const lim = Pl.piste.x1 - Pl.piste.x0;
-    vue.x = clamp(vue.x, Pl.piste.x0 - 300, Pl.piste.x1 + 300); vue.z = clamp(vue.z, Pl.piste.z - 300, 200);
+    vue.x = clamp(vue.x, Pl.piste.x0 - 300, Pl.piste.x1 + 300); vue.z = clamp(vue.z, Pl.pistes[Pl.pistes.length - 1].z - 300, 200);
     vue.dist = clamp(vue.dist, 70, Math.max(900, lim * 1.15));
     const incl = clamp(vue.incl - (520 - vue.dist) / 2600, .55, 1.25);
     cam.position.set(vue.x + Math.sin(vue.cap) * Math.cos(incl) * vue.dist, Math.sin(incl) * vue.dist, vue.z + Math.cos(vue.cap) * Math.cos(incl) * vue.dist);
@@ -996,10 +1043,11 @@ window.ESCALE_3D = (() => {
     if(!r.ray.intersectPlane(new T3.Plane(new T3.Vector3(0, 1, 0), 0), pt)) return null;
     const D = Pl.depot, Cb = Pl.carburant, n = A.carbu ? A.carbu.niv + 1 : 3;
     if(Math.abs(pt.x - D.x) < 30 && Math.abs(pt.z - (D.z + 28)) < 24) return { zone:'depot' };
+    for(const hg of Pl.hangars || []) if(Math.abs(pt.x - hg.x) < 24 && Math.abs(pt.z - hg.z) < 16) return { zone:'hangar', hangar:hg.k };
     if(pt.x > Cb.x - 22 && pt.x < Cb.x + (n - 1) * 17 + 14 && Math.abs(pt.z - (Cb.z + 42)) < 22) return { zone:'carburant' };
     if(Math.hypot(pt.x - Pl.tour.x, pt.z - Pl.tour.z) < 14) return { zone:'tour' };
     for(let i = 0; i < Pl.postes.length; i++){ const p = Pl.postes[i]; if(Math.abs(pt.x - p.cx) < p.w / 2 && pt.z < T.z0 && pt.z > p.nezZ - 80) return { zone:'porte', porte:i }; }
-    if(Math.abs(pt.z - Pl.piste.z) < 40 && pt.x > Pl.piste.x0 - 20 && pt.x < Pl.piste.x1 + 20) return { zone:'piste' };
+    for(let k = 0; k < M.nbPistes(A); k++) if(Math.abs(pt.z - Pl.pistes[k].z) < 40 && pt.x > Pl.piste.x0 - 20 && pt.x < Pl.piste.x1 + 20) return { zone:'piste' };
     return { zone:'sol' };
   }
   // pendant un placement : les cases (ou petites cases) libres s'allument en vert
