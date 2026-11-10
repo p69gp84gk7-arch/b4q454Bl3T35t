@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:163, type:'maj', jeu:'Escale', ico:'🏦', lien:'jeux/escale.html',
+    txt:'La banque : touche ton argent en haut pour emprunter sur 7, 14 ou 30 jours et financer une porte, le terminal, la cuve ou un nouvel aéroport. Une échéance est prélevée chaque soir ; ta note et la satisfaction des passagers font baisser le taux.' },
   { v:162, type:'maj', jeu:'Escale', ico:'🧳', lien:'jeux/escale.html',
     txt:'Un terminal plus grand : 5 rangées, de larges allées et des petits objets à poser (bancs, plantes, poubelles, écrans, distributeurs…), directement dans la vue 3D. Toucher l\'aéroport ouvre le bon menu (une boutique, le sol, les cuves, une porte). Nouveau mini-jeu : le tri des bagages au comptoir d\'enregistrement. Et une jauge de carburant qui clignote quand la cuve est presque vide, et des hélices qui tournent enfin sur leur moteur !' },
   { v:161, type:'maj', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html',

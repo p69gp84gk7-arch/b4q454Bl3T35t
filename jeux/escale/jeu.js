@@ -86,7 +86,7 @@ function majHud(){
   $('hHeure').textContent = `J${M.jourDe(t)} ${hm(t)} ${nuit ? '🌙' : METEO[A.meteo]} 😊${Math.round(A.reputation)}%`;
   const b = $('hArgent'); b.textContent = court(P.argent); b.classList.toggle('neg', P.argent < 0);
   const niv = M.niveauDe(P.xp), x0 = M.xpNiveau(niv), x1 = M.xpNiveau(niv + 1);
-  $('hNiv').textContent = `⭐ Niveau ${niv}`;
+  $('hNiv').textContent = `⭐ Niveau ${niv}${M.banque(P).prets.length ? ' · 🏦' : ''}`;
   // la jauge de la cuve : elle clignote en rouge sous 15 % (ou sous 25 % sans camion en route)
   const C = A.carbu, pc = C.stock / M.capCuve(C), bas = pc < .15 || (pc < .25 && !C.commandes.length);
   $('hCarbuNiv').style.width = `${Math.round(pc * 100)}%`; $('hCarbuTxt').textContent = `⛽ ${Math.round(pc * 100)} %`; $('hCarbu').classList.toggle('bas', bas);
@@ -102,6 +102,7 @@ function majHud(){
 function majVitesse(){ [...$('hVit').children].forEach(b => b.classList.toggle('actif', +b.dataset.v === vitesse)); }
 $('hVit').onclick = e => { const b = e.target.closest('button'); if(!b) return; vitesse = +b.dataset.v; majVitesse(); };
 $('bMenu').onclick = () => ouvrir('menu');
+document.querySelector('.hud .argent').onclick = () => { if(panneau === 'banque') fermerPanneau(); else ouvrir('banque'); };
 let toastsVus = [];
 function toasts(){
   if(!A.toasts.length) return;
@@ -207,7 +208,7 @@ function majCarteVol(){
 }
 
 /* ---------- Les panneaux ---------- */
-const TITRES = { planning:'Planning des portes', compagnies:'Compagnies', sol:'Opérations au sol', terminal:'Terminal', hangar:'Hangar', aeroports:'Aéroports', menu:'Menu' };
+const TITRES = { planning:'Planning des portes', compagnies:'Compagnies', sol:'Opérations au sol', terminal:'Terminal', hangar:'Hangar', aeroports:'Aéroports', menu:'Menu', banque:'Banque' };
 const PANNEAUX_VIVANTS = ['planning', 'sol', 'terminal'];
 document.querySelector('.onglets').onclick = e => { const b = e.target.closest('button'); if(!b) return; if(panneau === b.dataset.p) fermerPanneau(); else ouvrir(b.dataset.p); };
 $('pFermer').onclick = () => fermerPanneau();
@@ -220,7 +221,7 @@ function ouvrir(p){
 function fermerPanneau(){ panneau = null; $('panneau').hidden = true; outil = null; deplace = null; $('panneau').classList.remove('compact'); [...document.querySelectorAll('.onglets button')].forEach(b => b.classList.remove('actif')); placement = null; majObjectif(); }
 function rafraichirPanneau(complet = false){
   if(!panneau) return;
-  const f = { planning:pPlanning, compagnies:pCompagnies, sol:pSol, terminal:pTerminal, hangar:pHangar, aeroports:pAeroports, menu:pMenu }[panneau];
+  const f = { planning:pPlanning, compagnies:pCompagnies, sol:pSol, terminal:pTerminal, hangar:pHangar, aeroports:pAeroports, menu:pMenu, banque:pBanque }[panneau];
   const box = $('pCorps'), haut = box.scrollTop;
   // garder la position du planning (défilement horizontal)
   const pl = box.querySelector('.planning'), gauche = pl ? pl.scrollLeft : null;
@@ -230,7 +231,7 @@ function rafraichirPanneau(complet = false){
 }
 const ongletsHtml = (cle, l) => `<div class="sousOng">${l.map(([k, n]) => `<button data-so="${k}" class="${(sousOnglet[cle] || l[0][0]) === k ? 'actif' : ''}">${n}</button>`).join('')}</div>`;
 function brancherOnglets(box, cle){ box.querySelectorAll('[data-so]').forEach(b => b.onclick = () => { sousOnglet[cle] = b.dataset.so; rafraichirPanneau(true); }); }
-function alerte(err){ if(err){ A.toasts.push({ txt:'⚠️ ' + err, type:'mal' }); toasts(); return true; } return false; }
+function alerte(err){ if(err){ if(/^Pas assez d'argent/.test(err) && panneau !== 'banque' && M.plafond(P, A) >= M.BANQUE.mini) err += ' Touche ton argent en haut pour emprunter à la 🏦 banque.'; A.toasts.push({ txt:'⚠️ ' + err, type:'mal' }); toasts(); return true; } return false; }
 const action = (err, apres = () => {}) => { if(!alerte(err)){ apres(); majHud(); rafraichirPanneau(); sauver(); } };
 
 /* ----- Le planning ----- */
@@ -246,7 +247,7 @@ function pPlanning(box, complet){
   h += `<div class="planning" id="planning"><div class="grille" style="width:${46 + 1440 * PX_MIN}px">${grille()}</div></div>`;
   if(selContrat){ const c = A.contrats.find(x => x.id === selContrat); if(c) h += `<div class="bloc">${carteContrat(c, false)}</div>`; else selContrat = null; }
   h += `<div class="bloc"><h3>Aujourd'hui</h3><div class="stats"><div><b>${J.vols}</b>vols partis</div><div><b>${J.retards}</b>retards</div><div><b>${court(J.revenus + J.commerce + J.services - J.penalites - J.achats)}</b>gagnés</div><div><b>${J.nSatisf ? Math.round(J.satisf / J.nSatisf) + ' %' : '—'}</b>satisfaction</div></div>
-    ${b ? `<h3 style="margin-top:6px">Hier (jour ${b.jour})</h3><p class="leg">${b.vols} vols · ${b.retards} retards · redevances ${court(b.revenus)} · services ${court(b.services || 0)} · commerces ${court(b.commerce)} · carburant acheté ${court(b.achats || 0)} · pénalités ${court(b.penalites)} · entretien ${court(b.depenses)} · <b>${b.net >= 0 ? '+' : ''}${court(b.net)}</b>${b.satisf != null ? ` · satisfaction ${b.satisf} %` : ''}</p>` : ''}</div>`;
+    ${b ? `<h3 style="margin-top:6px">Hier (jour ${b.jour})</h3><p class="leg">${b.vols} vols · ${b.retards} retards · redevances ${court(b.revenus)} · services ${court(b.services || 0)} · commerces ${court(b.commerce)} · carburant acheté ${court(b.achats || 0)} · pénalités ${court(b.penalites)} · entretien ${court(b.depenses)}${b.credit ? ` · 🏦 prêts ${court(b.credit)}` : ''} · <b>${b.net >= 0 ? '+' : ''}${court(b.net)}</b>${b.satisf != null ? ` · satisfaction ${b.satisf} %` : ''}</p>` : ''}</div>`;
   box.innerHTML = h;
   const pl = $('planning');
   if(complet){ const m = M.minuteDe(A.t); pl.scrollLeft = Math.max(0, m * PX_MIN - 60); if(placement){ const c = A.contrats.find(x => x.id === placement); pl.scrollLeft = Math.max(0, c.fenetre[0] * PX_MIN - 40); } }
@@ -608,11 +609,63 @@ function pAeroports(box){
   box.querySelectorAll('[data-deb]').forEach(b => b.onclick = () => { const D = M.AEROPORTS[b.dataset.deb]; if(!confirm(`Débloquer ${D.nom} pour ${court(D.deblocage.prix)} ?`)) return; const err = M.debloquer(P, b.dataset.deb); if(!alerte(err)){ sauver(); changerAeroport(b.dataset.deb); } });
 }
 
+/* ----- La banque : emprunter, financer un investissement, rembourser ----- */
+const bq = { montant:null, duree:14 };
+// les gros achats possibles ici, pour les financer avec un prêt
+function projets(){
+  const D = M.AEROPORTS[A.id], niv = M.niveauDe(P.xp), l = [];
+  if(A.portes.length < D.portesMax){ const t = D.tailleMax; l.push({ k:'porte', ico:'🚪', nom:`Nouvelle porte (${M.TAILLES[t].nom.toLowerCase()})`, prix:M.TAILLES[t].prix, faire:() => M.acheterPorte(P, A, t) }); }
+  const g = A.portes.findIndex(x => !x.passerelle); if(g >= 0 && niv >= 2) l.push({ k:'passerelle', ico:'🌉', nom:`Passerelle porte ${A.portes[g].nom}`, prix:M.prixPasserelle(A.portes[g].taille), faire:() => M.acheterPasserelle(P, A, g) });
+  if(A.terminal.l < 14) l.push({ k:'terminal', ico:'🏢', nom:'Agrandir le terminal', prix:M.prixAgrandir(A), faire:() => M.agrandirTerminal(P, A) });
+  if(A.carbu.niv < M.CUVE_MAX) l.push({ k:'cuve', ico:'🛢️', nom:`Cuve à carburant niveau ${A.carbu.niv + 1}`, prix:M.CUVE.prix[A.carbu.niv + 1], faire:() => M.agrandirCuve(P, A) });
+  const suiv = M.ORDRE_AEROPORTS.find(id => !P.aeroports[id]);
+  if(suiv && niv >= M.AEROPORTS[suiv].deblocage.niveau) l.push({ k:'aeroport', ico:M.AEROPORTS[suiv].ico, nom:`Débloquer ${M.AEROPORTS[suiv].nom}`, prix:M.AEROPORTS[suiv].deblocage.prix, faire:() => M.debloquer(P, suiv), apres:() => changerAeroport(suiv) });
+  return l;
+}
+function pBanque(box){
+  const B = M.banque(P), dette = M.dette(P), plaf = M.plafond(P, A), moy = M.moyenneNet(A), plein = B.prets.length >= M.BANQUE.maxPrets;
+  const peut = !plein && plaf >= M.BANQUE.mini;
+  if(bq.montant == null || bq.montant > plaf) bq.montant = Math.max(M.BANQUE.mini, Math.min(plaf, Math.round(plaf / 2 / 5000) * 5000));
+  const taux = d => M.tauxPret(P, A, d), resumePret = () => { const i = Math.round(bq.montant * taux(bq.duree)), t = bq.montant + i; return `Tu reçois <b>${court(bq.montant)}</b> tout de suite. Tu rembourses <b>${court(t)}</b> (dont ${court(i)} d'intérêts) : <b>${court(Math.ceil(t / bq.duree))} par jour</b> pendant ${bq.duree} jours, prélevés chaque soir.`; };
+  let h = `<div class="bloc"><h3>🏦 La banque de l'aéroport</h3><div class="stats"><div><b>${court(P.argent)}</b>en caisse</div><div><b>${court(dette)}</b>à rembourser</div><div><b>${M.lettreNote(B.note)}</b>ta note</div><div><b>${court(plaf)}</b>prêt possible</div></div>
+    <p class="leg">La banque prête selon ton niveau et le bénéfice moyen de tes derniers jours ici (${moy >= 0 ? '+' : ''}${court(Math.round(moy))} par jour). Ta note monte quand tu rembourses, elle baisse quand une échéance est reportée. Bonne note et passagers contents = taux plus bas.</p></div>`;
+  // un nouveau prêt
+  h += `<div class="bloc"><h3>Nouveau prêt</h3>`;
+  if(plein) h += `<p class="leg">Tu as déjà ${M.BANQUE.maxPrets} prêts en cours : rembourses-en un pour emprunter encore.</p>`;
+  else if(!peut) h += `<p class="leg">La banque ne peut pas te prêter plus pour l'instant. Rembourse tes prêts ou gagne plus d'argent chaque jour.</p>`;
+  else h += `<div class="montant"><b id="bMont">${court(bq.montant)}</b><input type="range" id="bRange" min="${M.BANQUE.mini}" max="${plaf}" step="1000" value="${bq.montant}"></div>
+    <div class="ligneB">${[7, 14, 30].map(d => `<button class="btn ${bq.duree === d ? 'bleu' : ''}" data-duree="${d}">${d} jours · ${(taux(d) * 100).toLocaleString('fr-FR', { maximumFractionDigits:1 })} %</button>`).join('')}</div>
+    <p class="leg" id="bResume">${resumePret()}</p><button class="btn prim" id="bEmprunter">🏦 Emprunter ${court(bq.montant)}</button>`;
+  h += '</div>';
+  // financer un investissement
+  const pr = projets();
+  if(pr.length) h += `<div class="bloc"><h3>Financer un investissement</h3><p class="leg">Il te manque de l'argent pour un gros achat ? La banque prête ce qui manque (sur ${bq.duree} jours) et l'achat est fait tout de suite.</p>
+    ${pr.map(o => { const manque = Math.max(0, o.prix - Math.max(0, P.argent)), emp = manque ? Math.max(M.BANQUE.mini, Math.ceil(manque / 1000) * 1000) : 0;
+      return `<div class="item projet"><span class="ico">${o.ico}</span><div><b>${esc(o.nom)}</b><small>${court(o.prix)}${manque ? ` · il manque ${court(manque)}` : ' · tu as assez d\'argent'}</small>${manque && peut && emp > plaf ? '<small class="mal">La banque ne prête pas autant pour l\'instant.</small>' : ''}</div><div class="act">${manque ? `<button class="btn prim" data-fin="${o.k}" ${!peut || emp > plaf ? 'disabled' : ''}>Emprunter ${court(emp)} et acheter</button>` : `<button class="btn" data-ach="${o.k}">Acheter</button>`}</div></div>`; }).join('')}</div>`;
+  // les prêts en cours
+  h += `<div class="bloc"><h3>Mes prêts (${B.prets.length}/${M.BANQUE.maxPrets})</h3>${B.prets.map(p => { const fait = 1 - p.reste / p.total, rachat = M.prixRachat(p);
+    return `<div class="pret"><div class="jauge"><i style="width:${fait * 100}%"></i><span>${court(p.montant)} sur ${p.duree} j · reste ${court(p.reste)}</span></div>
+      <p class="leg">${court(p.ech)} par jour · ${p.jours} jour${p.jours > 1 ? 's' : ''} restant${p.jours > 1 ? 's' : ''} · taux ${(p.taux * 100).toLocaleString('fr-FR', { maximumFractionDigits:1 })} %${p.du ? ` · <b class="mal">${court(p.du)} à payer ce soir (reporté)</b>` : ''}${p.retards ? ` · ${p.retards} report${p.retards > 1 ? 's' : ''}` : ''}</p>
+      <button class="btn" data-remb="${p.id}" ${P.argent < rachat ? 'disabled' : ''}>Tout rembourser · ${court(rachat)}</button></div>`; }).join('') || '<p class="leg">Aucun prêt en cours.</p>'}
+    <p class="leg">Rembourser en avance fait économiser la moitié des intérêts qui restent. Si l'argent manque un soir, l'échéance est reportée au lendemain avec 3 % de plus.${B.rembourses ? ` Déjà ${B.rembourses} prêt${B.rembourses > 1 ? 's' : ''} remboursé${B.rembourses > 1 ? 's' : ''}, ${court(Math.round(B.interets))} d'intérêts payés.` : ''}</p></div>`;
+  box.innerHTML = h;
+  const r = $('bRange');
+  if(r) r.oninput = () => { bq.montant = +r.value; $('bMont').textContent = court(bq.montant); $('bResume').innerHTML = resumePret(); $('bEmprunter').textContent = `🏦 Emprunter ${court(bq.montant)}`; };
+  box.querySelectorAll('[data-duree]').forEach(b => b.onclick = () => { bq.duree = +b.dataset.duree; rafraichirPanneau(); });
+  if($('bEmprunter')) $('bEmprunter').onclick = () => action(M.emprunter(P, A, bq.montant, bq.duree), () => { bq.montant = null; });
+  box.querySelectorAll('[data-remb]').forEach(b => b.onclick = () => action(M.rembourser(P, A, b.dataset.remb)));
+  const lancer = (o, emp) => { if(emp){ const err = M.emprunter(P, A, emp, bq.duree); if(alerte(err)) return; } const err = o.faire(); if(alerte(err)){ majHud(); rafraichirPanneau(); sauver(); return; } A.toasts.push({ txt:`✅ ${o.nom} : c'est fait !`, type:'bon' }); toasts(); majHud(); sauver(); if(o.apres) o.apres(); else rafraichirPanneau(); };
+  box.querySelectorAll('[data-fin]').forEach(b => b.onclick = () => { const o = pr.find(x => x.k === b.dataset.fin), manque = Math.max(0, o.prix - Math.max(0, P.argent)), emp = Math.max(M.BANQUE.mini, Math.ceil(manque / 1000) * 1000);
+    if(confirm(`Emprunter ${court(emp)} sur ${bq.duree} jours (taux ${(taux(bq.duree) * 100).toLocaleString('fr-FR', { maximumFractionDigits:1 })} %) pour : ${o.nom} ?`)) lancer(o, emp); });
+  box.querySelectorAll('[data-ach]').forEach(b => b.onclick = () => lancer(pr.find(x => x.k === b.dataset.ach), 0));
+}
+
 /* ----- Le menu : objectifs, aide, quitter ----- */
 function pMenu(box){
   box.innerHTML = `<div class="bloc"><h3>Objectifs</h3><div class="objList">${M.OBJECTIFS.map(o => `<div class="${P.objectifs.includes(o.id) ? 'fait' : ''}">${P.objectifs.includes(o.id) ? '✅' : '🎯'} ${esc(o.txt)}<span>+${court(o.gain)}</span></div>`).join('')}</div></div>
     <div class="bloc"><h3>Le journal</h3>${A.journal.slice(0, 25).map(j => `<p class="leg">${hm(j.t)} · ${esc(j.txt)}</p>`).join('') || '<p class="leg">Rien pour l\'instant.</p>'}</div>
-    <div class="ligneB"><button class="btn" id="mAide">❔ Aide</button><button class="btn" id="mQuitter">‹ Quitter (sauvegardé)</button></div>`;
+    <div class="ligneB"><button class="btn bleu" id="mBanque">🏦 Banque</button><button class="btn" id="mAide">❔ Aide</button><button class="btn" id="mQuitter">‹ Quitter (sauvegardé)</button></div>`;
+  $('mBanque').onclick = () => ouvrir('banque');
   $('mAide').onclick = () => { $('eAide').hidden = false; vitesse = 0; majVitesse(); };
   $('mQuitter').onclick = () => { sauver(); accueil(); };
 }

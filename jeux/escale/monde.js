@@ -177,7 +177,7 @@ window.ESCALE_MONDE = (() => {
 
   /* ---------- Une nouvelle partie ---------- */
   function nouvellePartie(){
-    const P = { v:1, xp:0, argent:AEROPORTS.colblanc.argent, actuel:'colblanc', aeroports:{}, compagnies:{}, livrees:{}, objectifs:[], stats:{ vols:0, pax:0, aLHeure:0, retards:0, achatsVehicules:0, meilleureSatisf:0, meilleureJournee:0, jours:0 }, idSuivant:1 };
+    const P = { v:1, xp:0, argent:AEROPORTS.colblanc.argent, actuel:'colblanc', aeroports:{}, compagnies:{}, livrees:{}, objectifs:[], banque:{ prets:[], note:60, rembourses:0, reports:0, interets:0 }, stats:{ vols:0, pax:0, aLHeure:0, retards:0, achatsVehicules:0, meilleureSatisf:0, meilleureJournee:0, jours:0 }, idSuivant:1 };
     for(const k of Object.keys(COMPAGNIES)){ P.compagnies[k] = { xp:0, pris:[] }; P.livrees[k] = { choisie:'base', dispo:['base'] }; }
     P.aeroports.colblanc = nouvelAeroport(P, 'colblanc');
     return P;
@@ -191,7 +191,7 @@ window.ESCALE_MONDE = (() => {
     return A;
   }
   const nomPorte = i => (i < 8 ? 'A' : 'B') + String((i % 8) + 1).padStart(2, '0');
-  const nouveauJour = () => ({ vols:0, retards:0, minutesRetard:0, revenus:0, commerce:0, services:0, detail:{}, achats:0, litres:0, penalites:0, depenses:0, pax:0, satisf:0, nSatisf:0, manques:0 });
+  const nouveauJour = () => ({ vols:0, retards:0, minutesRetard:0, revenus:0, commerce:0, services:0, detail:{}, achats:0, litres:0, penalites:0, depenses:0, credit:0, pax:0, satisf:0, nSatisf:0, manques:0 });
   function nouvelleUnite(A, type){ const n = A.unites.filter(u => u.type === type).length; return { id:type + n, type, n, etat:'libre', vol:null, tache:null, t0:0, duree:0 }; }
   const jourDe = t => Math.floor(t / JOUR) + 1;
   const minuteDe = t => ((t % JOUR) + JOUR) % JOUR;
@@ -675,6 +675,7 @@ window.ESCALE_MONDE = (() => {
     for(const m of A.terminal.modules) entretien += MODULES[m.type].prix * .006 * m.niv;
     entretien = Math.round(entretien);
     P.argent -= entretien; J.depenses += entretien;
+    echeances(P, A);
     const satisf = J.nSatisf ? Math.round(J.satisf / J.nSatisf) : null;
     const bilan = { jour:jourDe(A.t) - 1, ...J, satisf, net:Math.round(J.revenus + J.commerce + J.services - J.penalites - J.depenses - J.achats) };
     A.historique.unshift(bilan); A.historique.length = Math.min(A.historique.length, 14);
@@ -800,6 +801,62 @@ window.ESCALE_MONDE = (() => {
     return null;
   }
 
+  /* ---------- La banque : les prêts ----------
+     On emprunte un montant sur 7, 14 ou 30 jours. Les intérêts sont fixés au départ (taux selon la durée, la note de la banque
+     et la satisfaction de l'aéroport). Chaque fin de journée, une échéance est prélevée ; si l'argent manque, elle est reportée
+     au lendemain avec un petit surcoût (3 %) et la note baisse un peu. */
+  const BANQUE = { durees:{ 7:.03, 14:.05, 30:.09 }, maxPrets:3, mini:10000, surcout:.03 };
+  function banque(P){ if(!P.banque) P.banque = { prets:[], note:60, rembourses:0, reports:0, interets:0 }; return P.banque; }
+  const dette = P => banque(P).prets.reduce((s, p) => s + p.reste, 0);
+  const lettreNote = n => n >= 85 ? 'A+' : n >= 70 ? 'A' : n >= 55 ? 'B' : n >= 40 ? 'C' : 'D';
+  // la moyenne du bénéfice des derniers jours (7 au plus) de l'aéroport
+  const moyenneNet = A => { const h = A.historique.slice(0, 7); return h.length ? h.reduce((s, b) => s + b.net, 0) / h.length : 0; };
+  function plafond(P, A){
+    const B = banque(P), niv = niveauDe(P.xp);
+    const brut = (100000 + niv * 50000 + Math.max(0, moyenneNet(A)) * 10) * (.5 + B.note / 100);
+    return Math.max(0, Math.floor((brut - dette(P)) / 1000) * 1000);
+  }
+  function tauxPret(P, A, duree){
+    const B = banque(P);
+    return clamp(BANQUE.durees[duree] + (60 - B.note) * .0005 - (A.reputation - 60) * .0003, .01, .2);
+  }
+  function emprunter(P, A, montant, duree){
+    const B = banque(P); montant = Math.round(montant / 1000) * 1000;
+    if(!BANQUE.durees[duree]) return 'Durée inconnue.';
+    if(B.prets.length >= BANQUE.maxPrets) return `Déjà ${BANQUE.maxPrets} prêts en cours : rembourses-en un d'abord.`;
+    if(montant < BANQUE.mini) return `Le plus petit prêt est de ${euros(BANQUE.mini)}.`;
+    if(montant > plafond(P, A)) return `La banque ne prête pas plus de ${euros(plafond(P, A))} pour l'instant.`;
+    const taux = tauxPret(P, A, duree), interets = Math.round(montant * taux), total = montant + interets;
+    B.prets.push({ id:'b' + (P.idSuivant++), montant, duree, taux, interets, total, reste:total, ech:Math.ceil(total / duree), du:0, jours:duree, debut:jourDe(A.t), retards:0 });
+    P.argent += montant;
+    journal(A, `🏦 Prêt de ${euros(montant)} sur ${duree} jours (intérêts ${euros(interets)}, ${euros(Math.ceil(total / duree))} par jour).`, 'bon');
+    return null;
+  }
+  // rembourser tout de suite : on économise la moitié des intérêts qui restent
+  function prixRachat(p){ const frac = p.reste / p.total; return Math.max(0, p.reste - Math.round(p.interets * frac * .5)); }
+  function rembourser(P, A, id){
+    const B = banque(P), p = B.prets.find(x => x.id === id); if(!p) return 'Prêt introuvable.';
+    const prix = prixRachat(p); if(P.argent < prix) return 'Pas assez d\'argent pour tout rembourser.';
+    P.argent -= prix; A.jourStats.credit = (A.jourStats.credit || 0) + prix; B.interets += Math.max(0, prix - p.montant * p.reste / p.total);
+    B.prets = B.prets.filter(x => x !== p); B.rembourses++; B.note = clamp(B.note + 5, 0, 100);
+    journal(A, `🏦 Prêt remboursé en avance (${euros(prix)}). La banque te fait plus confiance.`, 'bon');
+    return null;
+  }
+  // chaque fin de journée : les échéances
+  function echeances(P, A){
+    const B = banque(P), J = A.jourStats;
+    for(const p of B.prets.slice()){
+      p.du = Math.min(p.reste, p.du + p.ech);
+      if(P.argent >= p.du){
+        P.argent -= p.du; p.reste -= p.du; J.credit = (J.credit || 0) + p.du; B.interets += p.du * p.interets / p.total; p.du = 0; p.jours = Math.ceil(p.reste / p.ech);
+        if(p.reste <= 0){ B.prets = B.prets.filter(x => x !== p); B.rembourses++; B.note = clamp(B.note + (p.retards ? 2 : 6), 0, 100); journal(A, `🏦 Prêt de ${euros(p.montant)} entièrement remboursé${p.retards ? '' : ', sans aucun report'} : la banque te fait plus confiance.`, 'bon'); }
+      } else {
+        const s = Math.max(50, Math.round(p.du * BANQUE.surcout)); p.du += s; p.reste += s; p.total += s; p.retards++; B.reports++; B.note = clamp(B.note - 3, 0, 100);
+        journal(A, `🏦 Pas assez d'argent pour l'échéance du prêt : elle est reportée à demain (+${euros(s)}).`, 'mal');
+      }
+    }
+  }
+
   /* ---------- Les objectifs ---------- */
   function verifierObjectifs(P, A){
     const faits = [];
@@ -814,6 +871,8 @@ window.ESCALE_MONDE = (() => {
     for(const A of Object.values(P.aeroports)){ if(!A.carbu) A.carbu = nouvelleCuve(A.id); const J = A.jourStats; if(J.services == null) Object.assign(J, { services:0, detail:{}, achats:0, litres:0 }); }
     // les terminaux d'avant les 5 rangées et les petits objets (les nouvelles rangées s'ajoutent côté pistes)
     for(const A of Object.values(P.aeroports)){ if(A.terminal.h < 5) A.terminal.h = 5; if(!A.terminal.petits) A.terminal.petits = []; }
+    // les parties d'avant la banque
+    banque(P);
     return P;
   }
   function resume(P){ return { niveau:niveauDe(P.xp), xp:P.xp, vols:P.stats.vols, pax:P.stats.pax, meilleureJournee:P.stats.meilleureJournee, aeroports:Object.keys(P.aeroports).length, jours:P.stats.jours, argent:Math.round(P.argent) }; }
@@ -822,5 +881,5 @@ window.ESCALE_MONDE = (() => {
     international, NATIONAL, hm, euros, jourDe, minuteDe, xpNiveau, niveauDe, xpConfiance, paliersAtteints, texteRecompense, tailleOk, facteurNiv, prixAmelioration, prixPasserelle, prixAgrandir, prixAmeliorationVehicules,
     nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
     acheterPorte, acheterPasserelle, agrandirPorte, acheterVehicule, ameliorerVehicule, construire, ameliorerModule, vendreModule, deplacerModule, agrandirTerminal,
-    recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, PETITS, RANG_T, poserPetit, retirerPetit, deplacerPetit, libreQuart, petitsDansCase, CUVE, CUVE_MAX, CAMION, LIVRAISON, DELAI_CAMION, TARIFS, commanderCarbu, agrandirCuve, enRoute, capCuve, facture, resume, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };
+    recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, PETITS, RANG_T, poserPetit, retirerPetit, deplacerPetit, libreQuart, petitsDansCase, CUVE, CUVE_MAX, CAMION, LIVRAISON, DELAI_CAMION, TARIFS, commanderCarbu, agrandirCuve, enRoute, capCuve, facture, resume, BANQUE, banque, dette, lettreNote, moyenneNet, plafond, tauxPret, emprunter, prixRachat, rembourser, echeances, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };
 })();
