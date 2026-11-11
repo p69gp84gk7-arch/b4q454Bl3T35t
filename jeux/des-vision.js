@@ -1,5 +1,6 @@
 /* Altitude Arcade : lecture des dés sur une image (caméra ou photo), sans bibliothèque.
    DesVision.analyser(petite, grande, memo) → { plateau, des, hors, message, rPoint, biais }
+   (memo.max : le nombre de dés au plus ; memo.plateauSeul : chercher seulement sur le plateau)
    - petite : l'image réduite (environ 480 px de large) pour repérer le plateau ;
      grande : la même image plus fine (960 à 1280 px) pour trouver les points ; memo : ce qu'on a appris à l'image d'avant.
    Méthode « les points d'abord » (elle ne dépend ni de la couleur des dés ni de celle du plateau) :
@@ -385,6 +386,9 @@
     // vu de biais : toutes les faces du dessus sont écrasées de la même façon (le plan de la table).
     // La déformation la plus fréquente des points donne ce plan ; les points d'une autre forme (faces de côté) sont écartés,
     // et les positions sont « redressées » comme si on regardait d'en haut.
+    // memo.plateauSeul : on ne cherche les dés que sur le plateau (ce qui est autour, bois, tapis de table, est ignoré)
+    const plateau = chercherPlateau(petite);
+    if(memo.plateauSeul && plateau) points = points.filter(p => dedansPoly(plateau.contour, p.x / k, p.y / k));
     const P = plan(points, W, H);
     points = points.filter(p => P.accord(p));
     // les doublons (une tache entière et son cœur recoupé) : on garde le plus gros
@@ -442,8 +446,7 @@
     des = des.filter(d => d.v >= 3 || d.bord >= (d.v === 1 ? .35 : .12));
     // pas plus de dés que dans le jeu (5 au Yam's et au 10 000) : les plus sûrs
     if(memo.max && des.length > memo.max) des = des.sort((a, b) => b.score - a.score).slice(0, memo.max);
-    // 4. le plateau : dessus, les dés lancés ; à côté, les dés gardés ou mis de côté
-    const plateau = chercherPlateau(petite);
+    // 4. le plateau (repéré au début) : dessus, les dés lancés ; à côté, les dés gardés ou mis de côté
     // la taille des points, pour l'image suivante : seulement celle des vrais dés (pas celle des grains du tapis)
     const rVrais = des.filter(d => d.v >= 2).flatMap(d => d.pts.map(p => p.r)).sort((a, b) => a - b);
     const res = { plateau, des:[], hors:[], rPoint:rVrais.length ? rVrais[rVrais.length >> 1] : 0, biais:P.A > 1 ? Math.round(Math.acos(1 / P.A) * 180 / Math.PI) : 0 };

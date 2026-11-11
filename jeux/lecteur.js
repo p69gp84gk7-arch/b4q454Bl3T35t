@@ -3,7 +3,9 @@
    après ia.js (conseils) et la page du jeu (window.plateauJeu : la feuille de score).
    - La caméra filme le plateau en continu : le plateau est repéré (contour vert), chaque dé est encadré avec sa valeur.
      Quand les dés ne bougent plus pendant un instant, la lecture compte comme un lancer.
-   - Les dés posés hors du plateau ne sont pas lus : au Yam's ce sont les dés gardés, au 10 000 ceux mis de côté.
+   - Seul le plateau est lu : ce qui l'entoure est assombri et ignoré (au Yam's, les dés gardés y sont posés ; au 10 000, ceux mis de côté).
+   - Chaque lancer lu attend d'être validé (✓ Valider, après correction si besoin, ou ↻ Relire) ; le lancer suivant n'est lu
+     qu'une fois les dés relancés.
    - Yam's : le numéro du lancer se compte tout seul (corrigeable), les dés à garder sont encadrés en jaune, avec les chances
      de chaque figure et la case conseillée ; un toucher note le score dans la feuille.
    - 10 000 : les points du lancer, les dés à mettre de côté (en jaune), les chances de marquer encore en relançant,
@@ -107,6 +109,8 @@
   let brut = null;              // la dernière analyse (positions en direct)
   let lecture = null;           // le dernier lancer retenu : { des:[{cx,cy,cote,angle,v}], sig, source }
   let pile = [], vignette = null, bouge = false;
+  // depuis le dernier lancer validé : les dés ont-ils bougé ? (sinon, la même lecture n'est pas un nouveau lancer)
+  let aBouge = false, dernierSig = null;
   // Yam's : le tour en cours
   const Y = { lancer:0, gardes:[], joueur:null, choix:[], fini:true, conseil:null, main:[] };
   // 10 000 : la sélection des dés à mettre de côté, et si le lancer a déjà été noté
@@ -216,7 +220,7 @@
     // les dés bougent encore ?
     const vg = V.vignette(img), mvt = V.ecart(vg, vignette); vignette = vg;
     bouge = !estPhoto && mvt > 12;          // un téléphone tenu à la main bouge un peu : seuls les dés qui roulent comptent
-    if(bouge){ pile = []; etat.textContent = 'Les dés roulent…'; dessiner(); return; }
+    if(bouge){ pile = []; aBouge = true; etat.textContent = 'Les dés roulent…'; dessiner(); return; }
     const L = estPhoto ? Math.min(GRANDE, w) : largeurFine(w);
     grande.width = L; grande.height = Math.round(L * h / w);
     gg.drawImage(src, 0, 0, grande.width, grande.height);
@@ -224,7 +228,8 @@
     // (5 dés au Yam's comme au 10 000 : jamais plus)
     // (une analyse sur 4 cherche à toutes les tailles : la taille retenue ne peut pas rester bloquée sur une fausse)
     nbAnalyses++;
-    const m = memo.rSource && !estPhoto && nbAnalyses % 4 ? { r:memo.rSource * L / w, max:NB_DES } : { max:NB_DES };
+    // (seulement sur le plateau : le bois, la table, les dés posés à côté ne sont pas lus)
+    const m = memo.rSource && !estPhoto && nbAnalyses % 4 ? { r:memo.rSource * L / w, max:NB_DES, plateauSeul:true } : { max:NB_DES, plateauSeul:true };
     const a = { w, L, estPhoto, pw:petite.width, ph:petite.height };
     if(travail && !estPhoto){
       enCours = true; attente = a; idCalcul++;
@@ -239,18 +244,33 @@
     const sig = r.des.length + ':' + r.des.map(d => d.v || 0).sort().join('');
     etat.textContent = r.message || `${r.des.length} dé${r.des.length > 1 ? 's' : ''}${r.plateau ? ' sur le plateau' : ''}${r.hors && r.hors.length ? ` · ${r.hors.length} à côté` : ''}${r.biais ? ` · vu de biais (${r.biais}°)` : ''}.`;
     if(a.estPhoto){ retenir(r, sig); return; }
-    // une lecture est retenue quand elle reste la même pendant 3 analyses de suite
+    // une lecture est retenue quand elle reste la même pendant 3 analyses de suite ; pas tant que la précédente attend
+    // d'être validée, et seulement si les dés ont été relancés (ils ont bougé, ou ce n'est plus la même lecture)
     pile.push(sig); if(pile.length > 3) pile.shift();
-    if(r.des.length && pile.length === 3 && pile.every(s => s === sig) && (!lecture || lecture.sig !== sig)) retenir(r, sig);
+    const enAttente = lecture && !lecture.valide;
+    if(r.des.length && pile.length === 3 && pile.every(s => s === sig) && !enAttente && (aBouge || sig !== dernierSig) && (!lecture || lecture.sig !== sig || aBouge)) retenir(r, sig);
     else if(lecture && lecture.sig === sig) lecture.des.forEach((d, i) => { const b = r.des[i]; if(b){ d.cx = b.cx; d.cy = b.cy; d.angle = b.angle; d.cote = b.cote; d.coins = b.coins; } });
     dessiner();
   }
-  // Un nouveau lancer
+  // Un nouveau lancer lu : il attend d'être validé
   function retenir(r, sig){
-    lecture = { des:r.des.map(d => ({ cx:d.cx, cy:d.cy, cote:d.cote, angle:d.angle, coins:d.coins, v:d.v })), hors:(r.hors || []).map(d => ({ ...d })), sig, w:r.w, h:r.h };
+    lecture = { des:r.des.map(d => ({ cx:d.cx, cy:d.cy, cote:d.cote, angle:d.angle, coins:d.coins, v:d.v })), hors:(r.hors || []).map(d => ({ ...d })), sig, w:r.w, h:r.h, valide:false };
+    aBouge = false; choixPanneau = -1;
     if(navigator.vibrate) navigator.vibrate(15);
+    afficherPanneau(); dessiner();
+  }
+  // ✓ Valider : le lancer compte (Yam's : numéro du lancer, dés gardés ; conseils)
+  function valider(){
+    if(!lecture || lecture.valide || lecture.des.some(d => !d.v)) return;
+    lecture.valide = true; aBouge = false; dernierSig = lecture.sig;
     if(JEU === 'yams') nouveauLancerYams(); else { D.fait = false; D.choix = []; }
     calculer(); afficherPanneau(); dessiner();
+  }
+  // ↻ Relire : on oublie cette lecture, la suivante (dés immobiles) la remplace
+  function relire(){
+    lecture = null; pile = []; aBouge = true; choixPanneau = -1;
+    if(fige && !photo){ fige = false; majFiger(); if(flux) video.play().catch(() => {}); }
+    afficherPanneau(); dessiner();
   }
 
   /* ---------- Photo prise ou choisie ---------- */
@@ -280,6 +300,9 @@
     const r = brut; if(!r) return;
     const k = c.w / r.w, X = x => c.x + x * k, Yy = y => c.y + y * k;
     if(r.plateau){
+      // autour du plateau : assombri (rien n'y est lu)
+      dg.save(); dg.fillStyle = 'rgba(8,10,14,.68)'; dg.beginPath(); dg.rect(0, 0, W, H);
+      r.plateau.contour.forEach((p, i) => i ? dg.lineTo(X(p[0]), Yy(p[1])) : dg.moveTo(X(p[0]), Yy(p[1]))); dg.closePath(); dg.fill('evenodd'); dg.restore();
       dg.save(); dg.setLineDash([10, 7]); dg.lineWidth = 2.5; dg.strokeStyle = 'rgba(80,230,140,.9)'; dg.beginPath();
       r.plateau.contour.forEach((p, i) => i ? dg.lineTo(X(p[0]), Yy(p[1])) : dg.moveTo(X(p[0]), Yy(p[1]))); dg.closePath(); dg.stroke(); dg.restore();
     }
@@ -324,7 +347,7 @@
   // les dés du plateau à encadrer en jaune : à garder (Yam's) ou à mettre de côté (10 000)
   function desJaunes(des){
     const out = new Set();
-    if(!lecture || des !== lecture.des) return out;
+    if(!lecture || !lecture.valide || des !== lecture.des) return out;
     if(JEU === 'yams'){
       const n = Y.gardes.length;
       Y.choix.forEach((on, i) => { if(on && i >= n) out.add(i - n); });
@@ -357,8 +380,8 @@
       if(v < 0) return;
       if(d){ if(v === 0) lecture.des.splice(i, 1); else d.v = v; }
       else { const cote = lecture.des.length ? lecture.des.reduce((s, x) => s + x.cote, 0) / lecture.des.length : lecture.w / 12; lecture.des.push({ cx:x, cy:y, cote, angle:0, v }); }
-      if(JEU === 'yams') majMainYams(); else { D.choix = []; D.fait = false; }
-      calculer(); afficherPanneau(); dessiner();
+      if(lecture.valide){ if(JEU === 'yams') majMainYams(); else { D.choix = []; D.fait = false; } calculer(); }
+      afficherPanneau(); dessiner();
     };
   }
 
@@ -423,14 +446,40 @@
   function afficherPanneau(){
     const j = jeu();
     if(!lecture){
-      panneau.innerHTML = `<p class="lc-aide">Posez les dés sur le plateau et filmez-les, d'en haut ou de biais (jusqu'à 45° environ, le téléphone tenu droit) : le plateau est entouré en vert, chaque dé encadré avec sa valeur.
-        ${JEU === 'yams' ? 'Les dés que vous gardez se posent <b>hors du plateau</b> : le lecteur sait alors qu\'ils sont gardés.' : 'Les dés mis de côté se posent <b>hors du plateau</b>.'}
-        Un dé mal lu ? Touchez-le pour corriger sa valeur.</p>`;
+      panneau.innerHTML = `<p class="lc-aide">Lancez les dés sur le plateau et filmez-les, d'en haut ou de biais (jusqu'à 45° environ, le téléphone tenu droit) : le plateau est entouré en vert, et seul le plateau est lu (autour, l'image est assombrie). Chaque dé est encadré avec sa valeur.
+        ${JEU === 'yams' ? 'Les dés que vous gardez se posent <b>hors du plateau</b>.' : 'Les dés mis de côté se posent <b>hors du plateau</b>.'}
+        Chaque lancer lu attend votre <b>✓ Valider</b> : un dé mal lu se corrige d'un toucher avant.</p>`;
       return;
     }
     const inconnus = lecture.des.filter(d => !d.v).length;
-    if(JEU === 'yams') panneauYams(j, inconnus); else panneau10000(j, inconnus);
+    if(!lecture.valide) panneauValider(inconnus);
+    else if(JEU === 'yams') panneauYams(j, inconnus); else panneau10000(j, inconnus);
     panneau.querySelectorAll('[data-act]').forEach(b => b.onclick = () => action(b.dataset.act, b));
+  }
+  // Avant validation : les dés lus, à vérifier (un toucher sur un dé pour corriger sa valeur)
+  let choixPanneau = -1;
+  function panneauValider(inconnus){
+    const vals = lecture.des.map(d => d.v), n = vals.length;
+    let h = `<p class="lc-conseil">🎲 <b>${n} dé${n > 1 ? 's' : ''} lu${n > 1 ? 's' : ''} sur le plateau : vérifiez</b>, puis validez.`;
+    if(JEU === 'yams'){
+      const suivant = Y.fini || Y.lancer === 0 || Y.lancer >= 3 ? 1 : Y.lancer + 1;
+      h += `<br>Ce sera le lancer ${suivant} / 3${suivant > 1 && n < 5 ? ` (les ${5 - n} autres dés sont ceux gardés)` : ''}.`;
+    }
+    h += '</p>';
+    h += `<div class="lc-main">${vals.map((v, i) => puce(v, i === choixPanneau ? 'choisi' : '', i === choixPanneau ? 'corriger' : '', i)).join('')}</div>`;
+    if(choixPanneau >= 0) h += `<div class="lc-ligne lc-corr">${[1, 2, 3, 4, 5, 6].map(v => `<button class="lc-de" data-v="${v}" aria-label="${v}">${FACES[v]}</button>`).join('')}<button class="lc-btn gris" data-v="0">Pas un dé</button></div>`;
+    if(JEU === 'yams' && (Y.fini || Y.lancer === 0 || Y.lancer >= 3) && n !== 5) h += `<p class="lc-aide">⚠️ Il faut 5 dés pour un premier lancer : touchez l'image pour ajouter un dé oublié.</p>`;
+    if(inconnus) h += `<p class="lc-aide">⚠️ ${inconnus} dé${inconnus > 1 ? 's' : ''} sans valeur (en rouge) : touchez-le pour la donner.</p>`;
+    h += `<div class="lc-ligne"><button class="lc-btn vert" data-act="valider"${inconnus || !n ? ' disabled' : ''}>✓ Valider</button><button class="lc-btn gris" data-act="relire">↻ Relire</button></div>`;
+    h += '<p class="lc-aide">Un dé mal lu ? Touchez-le, ici ou sur l\'image. ↻ Relire oublie cette lecture et regarde à nouveau.</p>';
+    panneau.innerHTML = h;
+    panneau.querySelectorAll('.lc-main .lc-de').forEach(b => b.onclick = () => { const i = +b.dataset.i; choixPanneau = choixPanneau === i ? -1 : i; afficherPanneau(); });
+    panneau.querySelectorAll('.lc-corr [data-v]').forEach(b => b.onclick = () => {
+      const v = +b.dataset.v, i = choixPanneau; choixPanneau = -1;
+      if(i < 0 || !lecture.des[i]) return;
+      if(v === 0) lecture.des.splice(i, 1); else lecture.des[i].v = v;
+      afficherPanneau(); dessiner();
+    });
   }
   function puce(v, cls, legende, i){ return `<button class="lc-de ${v ? '' : 'inconnu'} ${cls}" data-i="${i}" aria-label="${v || 'inconnu'}">${v ? FACES[v] : '?'}${legende ? `<small>${legende}</small>` : ''}</button>`; }
 
@@ -508,9 +557,11 @@
   function annoncer(t){ toast.textContent = t; toast.hidden = false; clearTimeout(annoncer.t); annoncer.t = setTimeout(() => { toast.hidden = true; }, 1800); }
   function action(a, b){
     const j = jeu();
+    if(a === 'valider') return valider();
+    if(a === 'relire') return relire();
     if(a === 'moins') return changerLancer(-1);
     if(a === 'plus') return changerLancer(1);
-    if(a === 'tour'){ Y.fini = true; Y.lancer = 0; Y.gardes = []; Y.main = []; Y.choix = []; lecture = null; pile = []; if(j) Y.joueur = j.nextPlayer(); afficherPanneau(); dessiner(); return; }
+    if(a === 'tour'){ Y.fini = true; Y.lancer = 0; Y.gardes = []; Y.main = []; Y.choix = []; lecture = null; pile = []; dernierSig = null; if(j) Y.joueur = j.nextPlayer(); afficherPanneau(); dessiner(); return; }
     if(a === 'noter' && j){
       const v = b.dataset.v === 'x' ? 'x' : +b.dataset.v;
       j.note(Y.joueur, b.dataset.key, v);
@@ -527,5 +578,5 @@
     afficherPanneau(); dessiner();
   }
 
-  window.lecteurDes = { ouvrir, fermer, lirePhoto, get lecture(){ return lecture; }, get yams(){ return Y; } };
+  window.lecteurDes = { ouvrir, fermer, lirePhoto, valider, relire, get lecture(){ return lecture; }, get yams(){ return Y; } };
 })();
