@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:171, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
+    txt:'Lecteur de dés : seul le plateau est lu (autour, l\'image est assombrie), et chaque lancer attend votre ✓ Valider (corrigez un dé d\'un toucher avant, ou ↻ Relire). Le lancer suivant n\'est lu qu\'une fois les dés relancés.' },
   { v:170, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
     txt:'Lecteur de dés : il ne voit plus de faux dés dans le grain du tapis ou du bois (un dé doit avoir un bord), jamais plus de 5 dés, et il ne reste plus bloqué à chercher des points de la mauvaise taille.' },
   { v:169, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
