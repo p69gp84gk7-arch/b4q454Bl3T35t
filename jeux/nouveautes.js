@@ -3,18 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
-  { v:172, type:'maj', jeu:"Yam's", ico:'🏦', lien:'jeux/yams.html',
-    txt:'Lecteur de dés : une banque pour les dés gardés. Après avoir validé un lancer, touchez un dé pour le mettre en banque pour les lancers suivants (ou 🏦 pour prendre ceux conseillés), et touchez-le dans la banque pour le remettre en jeu. Au lancer suivant, les dés de la banque sont décomptés de la lecture, même s\'ils sont restés sur le plateau.' },
-  { v:171, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
-    txt:'Lecteur de dés : seul le plateau est lu (autour, l\'image est assombrie), et chaque lancer attend votre ✓ Valider (corrigez un dé d\'un toucher avant, ou ↻ Relire). Le lancer suivant n\'est lu qu\'une fois les dés relancés.' },
-  { v:170, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
-    txt:'Lecteur de dés : il ne voit plus de faux dés dans le grain du tapis ou du bois (un dé doit avoir un bord), jamais plus de 5 dés, et il ne reste plus bloqué à chercher des points de la mauvaise taille.' },
-  { v:169, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
-    txt:'Le lecteur de dés lit aussi les dés filmés de biais (jusqu\'à 45° environ, téléphone tenu droit) : plus besoin de tenir le téléphone au-dessus du plateau. Il tient compte de la perspective, oublie les faces de côté des dés, et dessine chaque cadre en perspective.' },
-  { v:168, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
-    txt:'Le lecteur de dés lit bien mieux : il part des points des dés, et marche avec des dés de toutes les couleurs (blancs, noirs, verts à points jaunes…), même sur un tapis de la même couleur, malgré les reflets ou une photo un peu de biais. Il est plus rapide, choisit la caméra grand angle (📐 pour en changer), et 📤 partage l\'image si un dé est mal lu.' },
-  { v:167, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
-    txt:'Jouez avec de vrais dés : le bouton 📷 Lire les dés filme le plateau, encadre chaque dé avec sa valeur et lit aussi les dés gardés posés à côté. Au Yam\'s : le lancer compté tout seul, les dés à garder en jaune, les chances de chaque figure et la meilleure case, notée d\'un toucher. Au 10 000 : les points du lancer, les dés à mettre de côté, les chances de marquer encore ou de tout perdre, et le conseil relancer ou garder. Un dé mal lu se corrige d\'un toucher.' },
+  { v:173, type:'maj', jeu:"Yam's et 10 000", ico:'🎲', lien:'jeux/yams.html',
+    txt:'Le lecteur de dés à la caméra est retiré : on note les dés à la main, comme avant.' },
   { v:166, type:'maj', jeu:'Escale', ico:'🛬', lien:'jeux/escale.html',
     txt:'Sept nouveautés pour faire grandir l\'aéroport. Les portes d\'embarquement s\'ouvrent en agrandissant le terminal (deux par case, et chaque agrandissement coûte 35 % de plus). Avant de signer, chaque offre dit combien de créneaux libres elle trouve, et où ; on peut négocier avec la compagnie : être mieux payé, plus de souplesse horaire, un contrat plus long, moins de pénalité. Dans le planning, on attrape un vol et on le pose ailleurs, les places libres en vert, ou on le règle à la minute. Des hangars à construire (cuisine du catering, atelier technique, hangar hiver) : chacun est le menu de ses véhicules, et sans lui ils restent dehors. Les toilettes se salissent : embauche des agents d\'entretien et surveille le compte à rebours. Et une seconde piste à acheter, pour que deux avions décollent ou atterrissent en même temps. Enfin, l\'aérogare s\'éclaire la nuit : bandeaux lumineux au plafond et lumière chaude sur le sol, pour voir ses comptoirs et sa foule après le coucher du soleil.' },
   { v:165, type:'maj', jeu:'Draw Race', ico:'✏️', lien:'jeux/drawrace.html',
