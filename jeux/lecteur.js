@@ -20,7 +20,7 @@
   const pct = p => p >= .995 ? '100 %' : p < .01 ? '< 1 %' : Math.round(p * 100) + ' %';
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
   const jeu = () => window.plateauJeu || null;
-  const PETITE = 480, GRANDE = 960;                 // largeur des images analysées (repérage, puis lecture des points)
+  const PETITE = 480, GRANDE = 1280;                 // largeur des images analysées (repérage, puis lecture des points)
 
   /* ---------- Styles ---------- */
   const css = `
@@ -88,7 +88,8 @@
   const ov = document.createElement('div');
   ov.className = 'lc-ov'; ov.hidden = true; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Lecteur de dés');
   ov.innerHTML = `<div class="lc-haut"><h2>📷 Lecteur de dés</h2>
-      <button class="lc-figer" aria-pressed="false">⏸ Figer</button><button class="lc-lampe" hidden aria-pressed="false">🔦</button>
+      <button class="lc-figer" aria-pressed="false">⏸ Figer</button><button class="lc-camera" hidden>📐 Caméra</button><button class="lc-lampe" hidden aria-pressed="false">🔦</button>
+      <button class="lc-partager" aria-label="Partager l'image" title="Partager l'image (pour signaler une mauvaise lecture)">📤</button>
       <label>🖼 Photo<input type="file" accept="image/*" class="lc-fichier"></label><button class="lc-fermer" aria-label="Fermer">✕</button></div>
     <div class="lc-corps"><div class="lc-vue"><video playsinline muted></video><canvas></canvas><p class="lc-etat"></p>
       <div class="lc-choix" hidden></div><div class="lc-toast" hidden></div></div>
@@ -111,18 +112,52 @@
   const D = { choix:[], fait:false };
 
   /* ---------- La caméra ---------- */
-  async function demarrerCamera(){
-    if(flux) return true;
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ etat.textContent = 'Pas de caméra ici : utilisez 🖼 Photo.'; return false; }
+  // Les caméras arrière : on préfère la grand angle (le plateau entre plus facilement dans l'image) ;
+  // le bouton 📐 passe à la suivante, et le choix est gardé
+  let cameras = [], camera = null;
+  const lireChoix = () => { try{ return localStorage.getItem('lecteur-camera') || ''; }catch(e){ return ''; } };
+  const nomCamera = c => /ultra|grand.?angle|0[.,]5/i.test(c.label) ? 'Grand angle' : /t[ée]l[ée]|tele/i.test(c.label) ? 'Téléobjectif' : /wide|grand/i.test(c.label) ? 'Grand angle' : 'Caméra ' + (cameras.indexOf(c) + 1);
+  async function listerCameras(){
     try{
-      flux = await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1280 }, height:{ ideal:720 } } });
-    }catch(e){ etat.textContent = 'La caméra n\'est pas autorisée : autorisez-la dans les réglages du navigateur, ou utilisez 🖼 Photo.'; return false; }
+      const l = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+      const arriere = l.filter(d => !/front|avant|user|facetime/i.test(d.label));
+      cameras = arriere.length ? arriere : l;
+    }catch(e){ cameras = []; }
+    q('.lc-camera').hidden = cameras.length < 2;
+  }
+  async function demarrerCamera(id){
+    if(flux && !id) return true;
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ etat.textContent = 'Pas de caméra ici : utilisez 🖼 Photo.'; return false; }
+    if(flux) arreterCamera();
+    try{
+      const v = { width:{ ideal:1920 }, height:{ ideal:1080 } };
+      if(id) v.deviceId = { exact:id }; else v.facingMode = { ideal:'environment' };
+      flux = await navigator.mediaDevices.getUserMedia({ audio:false, video:v });
+    }catch(e){ if(id){ try{ localStorage.removeItem('lecteur-camera'); }catch(err){} return demarrerCamera(); } etat.textContent = 'La caméra n\'est pas autorisée : autorisez-la dans les réglages du navigateur, ou utilisez 🖼 Photo.'; return false; }
     video.srcObject = flux; await video.play().catch(() => {});
     piste = flux.getVideoTracks()[0];
     const cap = piste && piste.getCapabilities ? piste.getCapabilities() : {};
     q('.lc-lampe').hidden = !cap.torch;
+    // certains téléphones donnent le grand angle par le zoom (0,5×)
+    if(cap.zoom && cap.zoom.min < 1){ try{ await piste.applyConstraints({ advanced:[{ zoom:cap.zoom.min }] }); }catch(e){} }
+    camera = (piste.getSettings && piste.getSettings().deviceId) || null;
+    // la première fois : les noms des caméras ne sont connus qu'une fois la caméra autorisée ; on passe à la grand angle
+    if(!cameras.length){
+      await listerCameras();
+      const garde = lireChoix(), gr = cameras.find(c => nomCamera(c) === 'Grand angle');
+      const voulue = cameras.find(c => c.deviceId === garde) || gr;
+      if(!id && voulue && voulue.deviceId !== camera) return demarrerCamera(voulue.deviceId);
+    }
+    const c = cameras.find(x => x.deviceId === camera); q('.lc-camera').textContent = '📐 ' + (c ? nomCamera(c) : 'Caméra');
+    memo = {};
     return true;
   }
+  q('.lc-camera').onclick = async () => {
+    if(cameras.length < 2) return;
+    const i = cameras.findIndex(c => c.deviceId === camera), suiv = cameras[(i + 1) % cameras.length];
+    try{ localStorage.setItem('lecteur-camera', suiv.deviceId); }catch(e){}
+    etat.textContent = 'Changement de caméra…'; await demarrerCamera(suiv.deviceId);
+  };
   function arreterCamera(){ if(flux) flux.getTracks().forEach(t => t.stop()); flux = null; piste = null; video.srcObject = null; }
   q('.lc-lampe').onclick = async e => { const b = e.currentTarget, on = b.getAttribute('aria-pressed') !== 'true'; try{ await piste.applyConstraints({ advanced:[{ torch:on }] }); b.setAttribute('aria-pressed', String(on)); }catch(err){} };
 
@@ -131,7 +166,7 @@
     etat.textContent = 'Démarrage de la caméra…';
     if(JEU === 'yams' && Y.joueur == null && jeu()) Y.joueur = jeu().nextPlayer();
     afficherPanneau();
-    if(await demarrerCamera()){ etat.textContent = 'Visez le plateau, les dés bien visibles, le téléphone au-dessus.'; }
+    if(await demarrerCamera()){ etat.textContent = 'Visez le plateau d\'en haut, les dés bien éclairés.'; }
     cancelAnimationFrame(boucle); boucle = requestAnimationFrame(tour);
   }
   function fermer(){ ouvert = false; ov.hidden = true; arreterCamera(); cancelAnimationFrame(boucle); choix.hidden = true; }
@@ -140,13 +175,37 @@
   function majFiger(){ const b = q('.lc-figer'); b.setAttribute('aria-pressed', String(fige)); b.textContent = fige ? '▶ Reprendre' : '⏸ Figer'; }
   q('.lc-figer').onclick = () => { fige = !fige; if(!fige){ photo = null; choix.hidden = true; if(flux) video.play().catch(() => {}); pile = []; } else video.pause(); majFiger(); dessiner(); };
 
-  /* ---------- L'analyse, plusieurs fois par seconde ---------- */
+  /* ---------- Partager l'image (pour signaler une mauvaise lecture) ---------- */
+  q('.lc-partager').onclick = () => {
+    const src = photo || video, w = photo ? photo.naturalWidth : video.videoWidth, h = photo ? photo.naturalHeight : video.videoHeight;
+    if(!w) return;
+    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(src, 0, 0, w, h);
+    c.toBlob(async b => {
+      const f = new File([b], `des-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.jpg`, { type:'image/jpeg' });
+      if(navigator.canShare && navigator.canShare({ files:[f] })){ try{ await navigator.share({ files:[f], title:'Dés mal lus' }); return; }catch(e){ if(e.name === 'AbortError') return; } }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = f.name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    }, 'image/jpeg', .92);
+  };
+
+  /* ---------- L'analyse, à part (worker) : l'image reste fluide ---------- */
+  let travail = null, enCours = false, memo = {}, idCalcul = 0, attente = null;
+  try{
+    const base = (document.currentScript && document.currentScript.src) || location.href;
+    travail = new Worker(new URL('des-vision.js' + (base.split('?')[1] ? '?' + base.split('?')[1] : ''), base));
+    travail.onmessage = e => { if(e.data.id !== idCalcul || !attente) return; const a = attente; attente = null; enCours = false; finir(e.data.res, a); };
+    travail.onerror = () => { travail = null; enCours = false; };
+  }catch(e){ travail = null; }
   function tour(t){
     if(!ouvert) return;
     boucle = requestAnimationFrame(tour);
-    if(fige || !flux || video.readyState < 2 || t - dernierCalcul < 160){ return; }
+    if(fige || !flux || video.readyState < 2 || enCours || t - dernierCalcul < 90){ return; }
     dernierCalcul = t;
     analyserSource(video, video.videoWidth, video.videoHeight, false);
+  }
+  // la finesse de l'image fine : juste assez pour que les points fassent environ 5 pixels de rayon
+  function largeurFine(w){
+    if(!memo.rSource) return Math.min(GRANDE, w);
+    return Math.round(Math.max(640, Math.min(GRANDE, w, w * 5.5 / memo.rSource)));
   }
   function analyserSource(src, w, h, estPhoto){
     if(!w || !h) return;
@@ -157,17 +216,28 @@
     const vg = V.vignette(img), mvt = V.ecart(vg, vignette); vignette = vg;
     bouge = !estPhoto && mvt > 12;          // un téléphone tenu à la main bouge un peu : seuls les dés qui roulent comptent
     if(bouge){ pile = []; etat.textContent = 'Les dés roulent…'; dessiner(); return; }
-    grande.width = Math.min(GRANDE, w); grande.height = Math.round(grande.width * h / w);
+    const L = estPhoto ? Math.min(GRANDE, w) : largeurFine(w);
+    grande.width = L; grande.height = Math.round(L * h / w);
     gg.drawImage(src, 0, 0, grande.width, grande.height);
-    const r = V.analyser(img, grande.width > PETITE ? gg.getImageData(0, 0, grande.width, grande.height) : null);
-    r.w = petite.width; r.h = petite.height;
-    brut = r;
+    const gr = gg.getImageData(0, 0, grande.width, grande.height);
+    const m = memo.rSource && !estPhoto ? { r:memo.rSource * L / w } : {};
+    const a = { w, L, estPhoto, pw:petite.width, ph:petite.height };
+    if(travail && !estPhoto){
+      enCours = true; attente = a; idCalcul++;
+      travail.postMessage({ id:idCalcul, petite:img, grande:gr, memo:m }, [img.data.buffer, gr.data.buffer]);
+    } else finir(V.analyser(img, gr, m), a);
+  }
+  function finir(r, a){
+    if(!ouvert || (fige && !a.estPhoto)) return;
+    r.w = a.pw; r.h = a.ph; brut = r;
+    if(r.rPoint) memo.rSource = r.rPoint * a.w / a.L;          // le rayon des points, en pixels de la caméra
+    else if(!r.des.length) memo = {};
     const sig = r.des.length + ':' + r.des.map(d => d.v || 0).sort().join('');
-    etat.textContent = !r.plateau ? r.message : !r.des.length ? 'Plateau repéré : lancez les dés dessus.' : r.message || `${r.des.length} dé${r.des.length > 1 ? 's' : ''} sur le plateau.`;
-    if(estPhoto){ retenir(r, sig); return; }
-    // une lecture est retenue quand elle reste la même pendant 4 analyses (environ 0,6 s)
-    pile.push(sig); if(pile.length > 4) pile.shift();
-    if(r.des.length && pile.length === 4 && pile.every(s => s === sig) && (!lecture || lecture.sig !== sig)) retenir(r, sig);
+    etat.textContent = r.message || `${r.des.length} dé${r.des.length > 1 ? 's' : ''}${r.plateau ? ' sur le plateau' : ''}${r.hors && r.hors.length ? ` · ${r.hors.length} à côté` : ''}.`;
+    if(a.estPhoto){ retenir(r, sig); return; }
+    // une lecture est retenue quand elle reste la même pendant 3 analyses de suite
+    pile.push(sig); if(pile.length > 3) pile.shift();
+    if(r.des.length && pile.length === 3 && pile.every(s => s === sig) && (!lecture || lecture.sig !== sig)) retenir(r, sig);
     else if(lecture && lecture.sig === sig) lecture.des.forEach((d, i) => { const b = r.des[i]; if(b){ d.cx = b.cx; d.cy = b.cy; d.angle = b.angle; d.cote = b.cote; } });
     dessiner();
   }

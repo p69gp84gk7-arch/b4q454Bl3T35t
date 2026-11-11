@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:168, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
+    txt:'Le lecteur de dés lit bien mieux : il part des points des dés, et marche avec des dés de toutes les couleurs (blancs, noirs, verts à points jaunes…), même sur un tapis de la même couleur, malgré les reflets ou une photo un peu de biais. Il est plus rapide, choisit la caméra grand angle (📐 pour en changer), et 📤 partage l\'image si un dé est mal lu.' },
   { v:167, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
     txt:'Jouez avec de vrais dés : le bouton 📷 Lire les dés filme le plateau, encadre chaque dé avec sa valeur et lit aussi les dés gardés posés à côté. Au Yam\'s : le lancer compté tout seul, les dés à garder en jaune, les chances de chaque figure et la meilleure case, notée d\'un toucher. Au 10 000 : les points du lancer, les dés à mettre de côté, les chances de marquer encore ou de tout perdre, et le conseil relancer ou garder. Un dé mal lu se corrige d\'un toucher.' },
   { v:166, type:'maj', jeu:'Escale', ico:'🛬', lien:'jeux/escale.html',
