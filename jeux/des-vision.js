@@ -424,9 +424,29 @@
       const sv = dw * P.sensVers(o.cx, o.cy);
       return sv > c * .3 && sv < c * 1.6 && Math.abs(du) < c * .85 && d.sorte === o.sorte && memeFace(d.face, o.face, .6) && lum(d.face) < lum(o.face) * .96 && colles(o, d);
     }));
+    // un dé a un bord : un peu au-delà de sa face, ce n'est plus la face (le tapis, une face de côté, l'ombre).
+    // Les taches du feutre ou du bois, elles, sont entourées de la même matière partout.
+    for(const d of des){
+      let vus = 0, autres = 0;
+      for(const f of [.78, .95]) for(let t = 0; t < 24; t++){
+        const a = t / 24 * Math.PI * 2, o = P.image(Math.cos(a) * d.cote * f, Math.sin(a) * d.cote * f, d.e, d.cx, d.cy), x = Math.round(d.cx + o[0]), y = Math.round(d.cy + o[1]);
+        if(x < 0 || y < 0 || x >= W || y >= H) continue;
+        const i = (y * W + x) * 4, c = [q[i], q[i + 1], q[i + 2]]; vus++;
+        if(!memeFace(c, d.face, .25)) autres++;
+      }
+      d.bord = vus ? autres / vus : 0;
+      d.score = d.bord + .12 * Math.min(d.v, 4) + .2 * Math.min(1.5, d.pts.reduce((s, p) => s + p.contraste, 0) / d.v / Math.max(1, cMed));
+    }
+    // (un dé de la couleur du tapis n'a pour bord que son ombre et ses faces de côté : à partir de 3 points bien rangés, c'est un dé)
+    const bords = memo.debug ? des.map(d => [d.v, +d.bord.toFixed(2), Math.round(d.cote), d.face.map(Math.round)]) : null;
+    des = des.filter(d => d.v >= 3 || d.bord >= (d.v === 1 ? .35 : .12));
+    // pas plus de dés que dans le jeu (5 au Yam's et au 10 000) : les plus sûrs
+    if(memo.max && des.length > memo.max) des = des.sort((a, b) => b.score - a.score).slice(0, memo.max);
     // 4. le plateau : dessus, les dés lancés ; à côté, les dés gardés ou mis de côté
     const plateau = chercherPlateau(petite);
-    const res = { plateau, des:[], hors:[], rPoint:r0 || memo.r || 0, biais:P.A > 1 ? Math.round(Math.acos(1 / P.A) * 180 / Math.PI) : 0 };
+    // la taille des points, pour l'image suivante : seulement celle des vrais dés (pas celle des grains du tapis)
+    const rVrais = des.filter(d => d.v >= 2).flatMap(d => d.pts.map(p => p.r)).sort((a, b) => a - b);
+    const res = { plateau, des:[], hors:[], rPoint:rVrais.length ? rVrais[rVrais.length >> 1] : 0, biais:P.A > 1 ? Math.round(Math.acos(1 / P.A) * 180 / Math.PI) : 0 };
     for(const d of des){
       // le cadre du dé : un carré vu de dessus, remis en perspective sur l'image
       const coins = d.coins.map(q => [q[0] / k, q[1] / k]), aire = Math.abs(coins.reduce((s, q, i) => { const o = coins[(i + 1) % 4]; return s + q[0] * o[1] - o[0] * q[1]; }, 0) / 2);
@@ -434,7 +454,7 @@
       if(!plateau || dedansPoly(plateau.contour, de.cx, de.cy)) res.des.push(de); else res.hors.push(de);
     }
     res.des.sort((a, b) => a.cx - b.cx); res.hors.sort((a, b) => a.cx - b.cx);
-    if(memo.debug) res.debug = { journal, faces:points.map(p => p.face.map(Math.round).join(',')), points:points.map(p => ({ x:p.x / k, y:p.y / k, r:p.r / k, sorte:p.sorte, c:Math.round(p.contraste), al:+p.allonge.toFixed(2) })), rMed:rMed / k, A:P.A, V:P.V, groupes:groupes.map(g => g.map(p => points.indexOf(p))) };
+    if(memo.debug) res.debug = { journal, faces:points.map(p => p.face.map(Math.round).join(',')), points:points.map(p => ({ x:p.x / k, y:p.y / k, r:p.r / k, sorte:p.sorte, c:Math.round(p.contraste), al:+p.allonge.toFixed(2) })), rMed:rMed / k, A:P.A, V:P.V, groupes:groupes.map(g => g.map(p => points.indexOf(p))), bords };
     res.message = !res.des.length ? (plateau ? 'Plateau repéré : je ne vois pas encore de dé dessus.' : 'Je cherche les dés : visez-les d\'en haut, bien éclairés.') : '';
     return res;
   }
