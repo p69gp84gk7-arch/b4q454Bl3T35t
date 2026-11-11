@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:172, type:'maj', jeu:"Yam's", ico:'🏦', lien:'jeux/yams.html',
+    txt:'Lecteur de dés : une banque pour les dés gardés. Après avoir validé un lancer, touchez un dé pour le mettre en banque pour les lancers suivants (ou 🏦 pour prendre ceux conseillés), et touchez-le dans la banque pour le remettre en jeu. Au lancer suivant, les dés de la banque sont décomptés de la lecture, même s\'ils sont restés sur le plateau.' },
   { v:171, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
     txt:'Lecteur de dés : seul le plateau est lu (autour, l\'image est assombrie), et chaque lancer attend votre ✓ Valider (corrigez un dé d\'un toucher avant, ou ↻ Relire). Le lancer suivant n\'est lu qu\'une fois les dés relancés.' },
   { v:170, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
