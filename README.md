@@ -93,6 +93,19 @@ Les dés ne se chevauchent jamais sur le tapis : après chaque lancer, ceux qui 
 
 Le plateau repart de zéro dès qu'un score est noté dans le carnet. Le code est dans `jeux/plateau.js`, partagé par les deux jeux.
 
+## Lecteur de dés (caméra)
+
+Pour jouer avec de vrais dés : le bouton **📷 Lire les dés** (en bas à gauche du Yam's et du 10 000) ouvre la caméra arrière. On filme le plateau d'en haut ; tout se lit sur le téléphone, sans réseau ni bibliothèque.
+
+- **Le plateau** (`jeux/des-vision.js`, `DesVision.analyser`) : la couleur la plus fréquente au centre de l'image, corrigée morceau par morceau (en trois passes, pour suivre un éclairage inégal) ; la plus grande zone de cette couleur est le plateau, entouré en vert.
+- **Les dés** : les « trous » du plateau, de taille et de forme raisonnables ; un trou deux fois plus grand que les autres (dés collés) est coupé en deux. Chaque dé est encadré (cadre tourné comme le dé : plus petit rectangle qui contient son contour).
+- **Les points** : lus sur une image deux fois plus fine (960 px). À l'intérieur de la face (sans les coins arrondis), un seuil d'Otsu sépare clair et foncé ; les points sont la couleur minoritaire (points foncés sur dé clair, ou l'inverse). On compte les taches qui ne touchent pas le bord ; si elles ont une taille anormale (flou), on regarde plutôt lesquelles des 9 places possibles d'un point sont occupées (`parPlaces`).
+- **Les dés hors du plateau** : même couleur et même taille que les dés lus sur le plateau, posés à côté. Au Yam's, ce sont les dés gardés ; au 10 000, ceux mis de côté (cadre pointillé bleu).
+- **En direct** : l'image est analysée environ 6 fois par seconde ; quand les dés bougent, rien n'est lu. Une lecture est retenue comme un lancer quand elle reste la même pendant 4 analyses (environ 0,6 s). « ⏸ Figer » arrête l'image ; toucher un dé permet de corriger sa valeur (ou de dire que ce n'est pas un dé), toucher ailleurs ajoute un dé oublié. « 🖼 Photo » lit une photo prise ou choisie. 🔦 allume la lampe si le téléphone le permet.
+- **Yam's** : le lancer (1 à 3) se compte tout seul (corrigeable par − / +) ; un lancer de 5 dés après le 3e, ou après une case notée, commence un nouveau tour (joueur suivant). Les dés gardés sont ceux vus hors du plateau (sinon ceux choisis au lancer d'avant). Les dés à garder conseillés sont encadrés en jaune (`YamsIA.conseil`), avec les chances de chaque figure à la fin du tour ; les cases rapportent leurs points, la meilleure a une ★, un toucher note dans la feuille (ou raye une case).
+- **10 000** : les points possibles du lancer, les dés à mettre de côté (en jaune, `DixMilleIA.deCote`, au choix en touchant les dés), les chances de marquer encore en relançant les dés restants (calcul exact sur toutes les combinaisons) et le risque de tout perdre, le conseil relancer ou garder (`DixMilleIA.garderPoints`, ouverture à 1 000 comprise). Un toucher ajoute les points au tour, garde les points, ou note le raté. Le double avec les 2 derniers dés (sauf 1 et 5) annonce la relance obligatoire des 5 dés.
+- **Conditions** : un plateau de couleur unie (feutrine verte, bleue, rouge, ardoise…), des dés de couleur différente du plateau, avec des points bien contrastés (foncés sur dés clairs ou clairs sur dés foncés), qui ne touchent pas le bord du plateau. Testé sur des images de synthèse (plateaux de 5 couleurs, dés tournés, collés, petits ou flous, éclairage inégal, dés gardés posés à côté) : de 94 à 100 % de lectures exactes selon les cas.
+
 ## Le Grand Quiz
 
 Quiz de culture générale, tout dans `jeux/quiz.html` ; les questions sont dans `jeux/quiz/junior.js`, `ado.js` et `adulte.js`, les mots du petit bac dans `jeux/quiz/mots.js`.
@@ -685,6 +698,8 @@ index.html             accueil : choix du jeu
 jeux/10000.html        carnet du 10 000
 jeux/yams.html         feuille de Yam's
 jeux/plateau.js        plateau de 5 dés à lancer, commun aux deux jeux
+jeux/des-vision.js     lecture des dés sur une image (plateau, dés, points), sans bibliothèque
+jeux/lecteur.js        lecteur de dés à la caméra (Yam's et 10 000) : cadres, conseils, notes dans la feuille
 jeux/ia.js             robots et conseils (Yam's, 10 000)
 jeux/sauvegarde.js     export et import de toutes les données dans un fichier
 jeux/compte.js         compte du joueur et sauvegarde en ligne dans le Google Sheet
