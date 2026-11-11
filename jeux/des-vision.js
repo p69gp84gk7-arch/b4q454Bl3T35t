@@ -1,47 +1,52 @@
 /* Altitude Arcade : lecture des dés sur une image (caméra ou photo), sans bibliothèque.
-   DesVision.analyser(image) → { plateau, des, message }
-   - image : { width, height, data } (ImageData, RVBA), de préférence petite (environ 480 px de large).
-   - Le plateau (piste de dés) : la grande surface de couleur unie au centre de l'image. Sa couleur est celle qui revient
-     le plus au centre ; elle est ensuite corrigée par morceaux (un plateau est souvent plus éclairé d'un côté).
-   - Les dés : les « trous » du plateau (ce qui n'a pas sa couleur et qu'il entoure). Deux dés collés font un seul trou
-     deux fois plus grand : il est coupé en deux (regroupement des points en k paquets).
-   - Les points d'un dé : à l'intérieur du dé (sans les bords), on sépare clair et foncé (seuil d'Otsu) ;
-     les points sont la couleur la moins présente (points foncés sur dé clair, ou points clairs sur dé foncé).
-   Les dés posés hors du plateau ne sont pas lus : au Yam's ce sont les dés gardés, au 10 000 ceux mis de côté. */
+   DesVision.analyser(petite, grande, memo) → { plateau, des, hors, message, rPoint, biais }
+   - petite : l'image réduite (environ 480 px de large) pour repérer le plateau ;
+     grande : la même image plus fine (960 à 1280 px) pour trouver les points ; memo : ce qu'on a appris à l'image d'avant.
+   Méthode « les points d'abord » (elle ne dépend ni de la couleur des dés ni de celle du plateau) :
+   1. Les points candidats : de petites taches rondes, bien plus foncées (ou plus claires) que leur voisinage,
+      entourées d'un anneau de couleur unie (la face du dé). Points foncés sur dé clair, ou points clairs sur dé foncé
+      (dé noir à points blancs, dé vert à points jaunes…).
+   2. Les points d'un même dé : proches (moins d'un côté de dé), de la même sorte, autour de la même couleur de face,
+      et reliés par la face (le trait de l'un à l'autre reste sur la couleur de la face : il ne traverse ni bord ni tapis).
+   3. Les faces de côté : un petit groupe collé à un dé, sur une face plus sombre, est oublié.
+   Photo prise de biais : les points deviennent des ovales, de plus en plus écrasés au loin et penchés vers le point de fuite.
+   Le point de fuite qui explique le mieux leurs formes donne, en chaque endroit, la largeur et la profondeur de la table :
+   les distances sont mesurées « vues de dessus », et les faces avant (juste devant le dessus d'un dé) sont oubliées.
+   4. Le plateau (la grande surface de couleur unie) sert seulement à trier : les dés dessus sont lancés,
+      les dés posés à côté sont gardés (Yam's) ou mis de côté (10 000).
+   Dans un « worker » (calcul hors de la page), reçoit { petite, grande, memo } et renvoie le résultat. */
 (() => {
   'use strict';
   const BLOC = 24;                                   // taille des morceaux pour la couleur locale du plateau
 
-  // Étiquetage des zones d'un masque (4 voisins) : renvoie les étiquettes (0 : hors masque) et la taille de chaque zone
-  function zones(masque, W, H, huit = false){
-    const lab = new Int32Array(W * H), tailles = [0], pile = new Int32Array(W * H);
+  // Étiquetage des zones d'un masque : renvoie les étiquettes (0 : hors masque) et la taille de chaque zone
+  // (les grands tableaux sont gardés d'une image à l'autre : moins de travail pour le ramasse-miettes)
+  let tamponLab = null, tamponPile = null;
+  function zones(masque, W, H, huit = false, garder = false){
+    if(!tamponPile || tamponPile.length < W * H){ tamponPile = new Int32Array(W * H); tamponLab = new Int32Array(W * H); }
+    const lab = garder ? new Int32Array(W * H) : (tamponLab.fill(0, 0, W * H), tamponLab.length === W * H ? tamponLab : tamponLab.subarray(0, W * H)), tailles = [0], pile = tamponPile;
     let n = 0;
     for(let i = 0; i < W * H; i++){
       if(!masque[i] || lab[i]) continue;
       n++; let sp = 0, t = 0; pile[sp++] = i; lab[i] = n;
       while(sp){
         const k = pile[--sp], x = k % W, y = (k - x) / W; t++;
-        const voisin = j => { if(masque[j] && !lab[j]){ lab[j] = n; pile[sp++] = j; } };
-        if(x > 0) voisin(k - 1); if(x < W - 1) voisin(k + 1); if(y > 0) voisin(k - W); if(y < H - 1) voisin(k + W);
-        if(huit){ if(x > 0 && y > 0) voisin(k - W - 1); if(x < W - 1 && y > 0) voisin(k - W + 1); if(x > 0 && y < H - 1) voisin(k + W - 1); if(x < W - 1 && y < H - 1) voisin(k + W + 1); }
+        if(x > 0 && masque[k - 1] && !lab[k - 1]){ lab[k - 1] = n; pile[sp++] = k - 1; }
+        if(x < W - 1 && masque[k + 1] && !lab[k + 1]){ lab[k + 1] = n; pile[sp++] = k + 1; }
+        if(y > 0 && masque[k - W] && !lab[k - W]){ lab[k - W] = n; pile[sp++] = k - W; }
+        if(y < H - 1 && masque[k + W] && !lab[k + W]){ lab[k + W] = n; pile[sp++] = k + W; }
+        if(huit){
+          if(x > 0 && y > 0 && masque[k - W - 1] && !lab[k - W - 1]){ lab[k - W - 1] = n; pile[sp++] = k - W - 1; }
+          if(x < W - 1 && y > 0 && masque[k - W + 1] && !lab[k - W + 1]){ lab[k - W + 1] = n; pile[sp++] = k - W + 1; }
+          if(x > 0 && y < H - 1 && masque[k + W - 1] && !lab[k + W - 1]){ lab[k + W - 1] = n; pile[sp++] = k + W - 1; }
+          if(x < W - 1 && y < H - 1 && masque[k + W + 1] && !lab[k + W + 1]){ lab[k + W + 1] = n; pile[sp++] = k + W + 1; }
+        }
       }
       tailles.push(t);
     }
     return { lab, tailles, n };
   }
-  // Seuil d'Otsu sur des valeurs de 0 à 255 : celui qui sépare le mieux deux groupes
-  function otsu(vals){
-    const h = new Float64Array(256); for(const v of vals) h[v | 0]++;
-    const tot = vals.length; let somme = 0; for(let i = 0; i < 256; i++) somme += i * h[i];
-    let sB = 0, wB = 0, best = 0, seuil = 128;
-    for(let t = 0; t < 256; t++){
-      wB += h[t]; if(!wB) continue; const wF = tot - wB; if(!wF) break;
-      sB += t * h[t]; const mB = sB / wB, mF = (somme - sB) / wF, v = wB * wF * (mB - mF) * (mB - mF);
-      if(v > best){ best = v; seuil = t; }
-    }
-    return seuil;
-  }
-  // Enveloppe convexe (pour dessiner le contour du plateau)
+  // Enveloppe convexe (contour du plateau) et point dedans
   function enveloppe(pts){
     pts = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
     const croix = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
@@ -50,137 +55,19 @@
     for(let i = pts.length - 1; i >= 0; i--){ const p = pts[i]; while(haut.length >= 2 && croix(haut[haut.length - 2], haut[haut.length - 1], p) <= 0) haut.pop(); haut.push(p); }
     return bas.slice(0, -1).concat(haut.slice(0, -1));
   }
-  // Position, taille et angle d'un groupe de pixels (moments)
-  function forme(px, W){
-    let sx = 0, sy = 0; for(const k of px){ sx += k % W; sy += (k / W) | 0; }
-    const cx = sx / px.length, cy = sy / px.length;
-    let a = 0, b = 0, c = 0; for(const k of px){ const dx = k % W - cx, dy = ((k / W) | 0) - cy; a += dx * dx; b += dx * dy; c += dy * dy; }
-    a /= px.length; b /= px.length; c /= px.length;
-    const d = Math.sqrt((a - c) * (a - c) + 4 * b * b), l1 = (a + c + d) / 2, l2 = (a + c - d) / 2;
-    return { cx, cy, angle:.5 * Math.atan2(2 * b, a - c), allonge:Math.sqrt(l1 / Math.max(l2, 1e-6)), cote:Math.sqrt(px.length) };
-  }
-  // Couper un groupe de pixels en k paquets (dés collés)
-  function couper(px, k, W){
-    const pts = px.map(i => [i % W, (i / W) | 0]);
-    let c = [];
-    // départ : les points les plus éloignés les uns des autres
-    c.push(pts[0]);
-    while(c.length < k){ let best = null, bd = -1; for(const p of pts){ const d = Math.min(...c.map(q => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2)); if(d > bd){ bd = d; best = p; } } c.push(best); }
-    let groupe = new Int32Array(pts.length);
-    for(let it = 0; it < 12; it++){
-      pts.forEach((p, i) => { let b = 0, bd = Infinity; c.forEach((q, j) => { const d = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2; if(d < bd){ bd = d; b = j; } }); groupe[i] = b; });
-      c = c.map((_, j) => { let x = 0, y = 0, n = 0; pts.forEach((p, i) => { if(groupe[i] === j){ x += p[0]; y += p[1]; n++; } }); return n ? [x / n, y / n] : c[j]; });
-    }
-    return c.map((_, j) => px.filter((_, i) => groupe[i] === j)).filter(g => g.length);
+  function dedansPoly(poly, x, y){
+    let ok = false;
+    for(let i = 0, j = poly.length - 1; i < poly.length; j = i++){ const [xi, yi] = poly[i], [xj, yj] = poly[j]; if((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) ok = !ok; }
+    return ok;
   }
 
-  // Orientation d'un dé : l'angle (modulo 90°) du plus petit rectangle qui contient son contour
-  function carre(px, W){
-    const ici = new Set(px), bord = [];
-    for(const k of px) if(!ici.has(k - 1) || !ici.has(k + 1) || !ici.has(k - W) || !ici.has(k + W)) bord.push([k % W, (k / W) | 0]);
-    const env = enveloppe(bord);
-    let best = null;
-    for(let deg = 0; deg < 90; deg += 2){
-      const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
-      let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
-      for(const [x, y] of env){ const u = x * c + y * s, v = -x * s + y * c; if(u < u0) u0 = u; if(u > u1) u1 = u; if(v < v0) v0 = v; if(v > v1) v1 = v; }
-      const aire = (u1 - u0 + 1) * (v1 - v0 + 1);
-      if(!best || aire < best.aire){ const um = (u0 + u1) / 2, vm = (v0 + v1) / 2; best = { aire, angle:a, cote:Math.sqrt(aire), cx:um * c - vm * s, cy:um * s + vm * c }; }
-    }
-    return best;
-  }
-  /* Lecture par emplacements (sûre même si l'image est floue) : sur la face, les points ne peuvent être qu'à 9 places
-     (centre, 4 coins, 4 milieux des côtés). On regarde lesquelles sont de la couleur des points. */
-  function parPlaces(src, k, c, seuil, foncesSontPoints){
-    const { gris, W, H } = src, q = c.cote * k * .27, rr = Math.max(1, c.cote * k * .055), ca = Math.cos(c.angle), sa = Math.sin(c.angle);
-    const place = (i, j) => {
-      const x0 = c.cx * k + (i * ca - j * sa) * q, y0 = c.cy * k + (i * sa + j * ca) * q;
-      let n = 0, oui = 0;
-      for(let y = Math.round(y0 - rr); y <= y0 + rr; y++) for(let x = Math.round(x0 - rr); x <= x0 + rr; x++){
-        if(x < 0 || y < 0 || x >= W || y >= H || (x - x0) ** 2 + (y - y0) ** 2 > rr * rr) continue;
-        n++; const v = gris[y * W + x]; if(foncesSontPoints ? v <= seuil : v > seuil) oui++;
-      }
-      return n && oui / n > .5;
-    };
-    const centre = place(0, 0), coins = [place(-1, -1), place(1, -1), place(1, 1), place(-1, 1)], milieux = [place(-1, 0), place(1, 0), place(0, -1), place(0, 1)];
-    const nc = coins.filter(Boolean).length, nmh = milieux[0] + milieux[1], nmv = milieux[2] + milieux[3];
-    const diag = (coins[0] && coins[2]) || (coins[1] && coins[3]);
-    if(nc === 0 && centre && !nmh && !nmv) return 1;
-    if(nc === 2 && diag && !nmh && !nmv) return centre ? 3 : 2;
-    if(nc === 4 && !centre && ((nmh === 2 && !nmv) || (nmv === 2 && !nmh))) return 6;
-    if(nc === 4 && !nmh && !nmv) return centre ? 5 : 4;
-    return null;
-  }
-
-  // Les points d'un dé : on compte les taches de la couleur minoritaire à l'intérieur
-  function lireDe(px, W, H, gris, haute){
-    const c = carre(px, W);
-    // avec l'image en haute définition : on lit l'intérieur du carré du dé (sans ses bords arrondis)
-    if(haute){
-      const k = haute.W / W, cote = c.cote * k * .84, ca = Math.cos(c.angle), sa = Math.sin(c.angle), x0 = c.cx * k, y0 = c.cy * k, R = c.cote * k * .53;
-      const dedans = [];
-      for(let y = Math.max(0, Math.floor(y0 - R)); y <= Math.min(haute.H - 1, y0 + R); y++) for(let x = Math.max(0, Math.floor(x0 - R)); x <= Math.min(haute.W - 1, x0 + R); x++){
-        const u = (x - x0) * ca + (y - y0) * sa, v = -(x - x0) * sa + (y - y0) * ca;
-        // la face sans ses coins arrondis (le flou les assombrit)
-        if(Math.abs(u) <= cote / 2 && Math.abs(v) <= cote / 2 && u * u + v * v <= R * R) dedans.push(y * haute.W + x);
-      }
-      return lirePoints(dedans, haute.W, haute.H, haute.gris, cote * cote / .7056, { ...c }, k, haute);
-    }
-    const ici = new Uint8Array(W * H); for(const k of px) ici[k] = 1;
-    // distance au bord du dé (en pixels), pour laisser de côté le bord arrondi et l'ombre
-    const dist = new Int16Array(W * H).fill(-1), file = [];
-    for(const k of px){ const x = k % W; if(x === 0 || x === W - 1 || !ici[k - 1] || !ici[k + 1] || !ici[k - W] || !ici[k + W]){ dist[k] = 0; file.push(k); } }
-    for(let q = 0; q < file.length; q++){ const k = file[q]; for(const j of [k - 1, k + 1, k - W, k + W]) if(j >= 0 && j < W * H && ici[j] && dist[j] < 0){ dist[j] = dist[k] + 1; file.push(j); } }
-    const f = forme(px, W), marge = Math.max(1, Math.round(f.cote * .07));
-    const dedans = px.filter(k => dist[k] >= marge);
-    return lirePoints(dedans, W, H, gris, px.length, c, 1, { gris, W, H });
-  }
-  // dedans : les pixels de la face (sans le bord) ; aire : celle du dé entier ; c : son carré (dans l'image réduite) ; k : l'agrandissement
-  function lirePoints(dedans, W, H, gris, aire, c, k, src){
-    if(dedans.length < 12) return { v:null };
-    const vals = dedans.map(i => gris[i]), s = otsu(vals);
-    let nb = 0, sb = 0, sh = 0; for(const v of vals){ if(v <= s){ nb++; sb += v; } else sh += v; }
-    const nh = vals.length - nb, mb = nb ? sb / nb : 0, mh = nh ? sh / nh : 0;
-    if(mh - mb < 30) return { v:null };   // pas assez de contraste : pas de points visibles
-    const foncesSontPoints = nb <= nh;
-    // les taches, dans une petite image autour du dé
-    let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
-    for(const i of dedans){ const x = i % W, y = (i / W) | 0; if(x < x0) x0 = x; if(x > x1) x1 = x; if(y < y0) y0 = y; if(y > y1) y1 = y; }
-    const w = x1 - x0 + 1, h = y1 - y0 + 1, masque = new Uint8Array(w * h), face = new Uint8Array(w * h);
-    for(const i of dedans) face[(((i / W) | 0) - y0) * w + (i % W - x0)] = 1;
-    for(const i of dedans){ const v = gris[i]; if(foncesSontPoints ? v <= s : v > s) masque[(((i / W) | 0) - y0) * w + (i % W - x0)] = 1; }
-    const z = zones(masque, w, h, true);
-    // une tache qui touche le bord de la face est une ombre ou un reflet, pas un point
-    const auBord = new Uint8Array(z.n + 1);
-    for(let i = 0; i < w * h; i++){ const n = z.lab[i]; if(!n) continue; const x = i % w; if(x === 0 || x === w - 1 || i < w || i >= w * (h - 1) || !face[i - 1] || !face[i + 1] || !face[i - w] || !face[i + w]) auBord[n] = 1; }
-    const taches = [];
-    for(let n = 1; n <= z.n; n++){
-      const t = z.tailles[n];
-      if(auBord[n] || t < Math.max(2, aire * .004) || t > aire * .16) continue;
-      taches.push({ n, t });
-    }
-    const somme = new Map(taches.map(x => [x.n, [0, 0, 0]]));
-    for(let i = 0; i < w * h; i++){ const q = somme.get(z.lab[i]); if(q){ q[0] += i % w + x0; q[1] += ((i / w) | 0) + y0; q[2]++; } }
-    const pts = taches.map(x => { const q = somme.get(x.n); return [q[0] / q[2] / k, q[1] / q[2] / k]; });
-    // deux lectures : les taches comptées, et les emplacements des points ; si les taches sont d'une taille anormale
-    // (points collés par le flou), ce sont les emplacements qui décident
-    const places = parPlaces(src, k, c, s, foncesSontPoints);
-    const normal = aire * .045, sures = taches.length >= 1 && taches.length <= 6 && taches.every(x => x.t < normal * 1.9);
-    const v = sures ? (places && places !== taches.length && taches.some(x => x.t > normal * 1.3) ? places : taches.length) : places;
-    return { v, points:pts, clair:!foncesSontPoints, angle:c.angle, fond:foncesSontPoints ? mh : mb };
-  }
-
-  function analyser(img, grande){
-    const W = img.width, H = img.height, N = W * H, d = img.data;
-    // l'image en haute définition (facultative) : pour lire les points de près
-    let haute = null;
-    if(grande && grande.width > W){ const g2 = new Uint8Array(grande.width * grande.height), q = grande.data; for(let i = 0, j = 0; i < g2.length; i++, j += 4) g2[i] = .299 * q[j] + .587 * q[j + 1] + .114 * q[j + 2]; haute = { gris:g2, W:grande.width, H:grande.height }; }
-    const gris = new Uint8Array(N), cr = new Float32Array(N), cg = new Float32Array(N), lum = new Float32Array(N);
-    for(let i = 0, j = 0; i < N; i++, j += 4){
-      const r = d[j], g = d[j + 1], b = d[j + 2], s = r + g + b + 1;
-      lum[i] = .299 * r + .587 * g + .114 * b; gris[i] = lum[i]; cr[i] = r / s; cg[i] = g / s;
-    }
-    // 1. La couleur du plateau : la plus fréquente au centre de l'image
+  /* ---------- Le plateau (image réduite) ---------- */
+  function chercherPlateau(img){
+    // une image de 240 px suffit pour trier les dés (et c'est quatre fois plus rapide)
+    const pas = Math.max(1, Math.floor(img.width / 240)), W = Math.floor(img.width / pas), H = Math.floor(img.height / pas), N = W * H, d = img.data;
+    const cr = new Float32Array(N), cg = new Float32Array(N), lum = new Float32Array(N);
+    for(let y = 0; y < H; y++) for(let x = 0; x < W; x++){ const i = y * W + x, j = (y * pas * img.width + x * pas) * 4, r = d[j], g = d[j + 1], b = d[j + 2], s = r + g + b + 1; lum[i] = .299 * r + .587 * g + .114 * b; cr[i] = r / s; cg[i] = g / s; }
+    // la couleur la plus fréquente au centre de l'image
     const Q = 20, histo = new Map();
     for(let y = Math.round(H * .2); y < H * .8; y += 2) for(let x = Math.round(W * .2); x < W * .8; x += 2){
       const i = y * W + x, cle = Math.min(Q - 1, cr[i] * Q * 1.5 | 0) * 4096 + Math.min(Q - 1, cg[i] * Q * 1.5 | 0) * 64 + Math.min(15, lum[i] / 16 | 0);
@@ -188,98 +75,368 @@
     }
     let mode = 0, mv = -1; for(const [k, v] of histo) if(v > mv){ mv = v; mode = k; }
     const mr = ((mode / 4096 | 0) + .5) / Q / 1.5, mg = ((mode / 64 | 0) % 64 + .5) / Q / 1.5, ml = (mode % 64 + .5) * 16;
-    // 2. Le plateau : couleur proche (la teinte compte plus que la lumière : ombres et reflets restent du plateau)
-    const dans = (i, r0, g0, l0) => Math.hypot((cr[i] - r0) / .055, (cg[i] - g0) / .055, (lum[i] - l0) / (.42 * l0 + 26)) < 1;
+    const dans = (i, r0, g0, l0) => { const a = (cr[i] - r0) / .055, b = (cg[i] - g0) / .055, c = (lum[i] - l0) / (.42 * l0 + 26); return a * a + b * b + c * c < 1; };
     let masque = new Uint8Array(N);
     for(let i = 0; i < N; i++) masque[i] = dans(i, mr, mg, ml) ? 1 : 0;
-    // la couleur corrigée morceau par morceau (le plateau est rarement éclairé partout pareil)
-    // (en trois passes : à chaque passe, le plateau gagne les coins plus sombres ou plus clairs voisins)
-    const bx = Math.ceil(W / BLOC), by = Math.ceil(H / BLOC);
+    // corrigée morceau par morceau, en trois passes (un plateau est rarement éclairé partout pareil)
+    const BL = Math.max(8, Math.round(BLOC / pas)), bx = Math.ceil(W / BL), by = Math.ceil(H / BL);
     for(let passe = 0; passe < 3; passe++){
-    const ref = [];
-    for(let j = 0; j < by; j++) for(let k = 0; k < bx; k++){
-      let n = 0, sr = 0, sg = 0, sl = 0;
-      for(let y = j * BLOC; y < Math.min(H, (j + 1) * BLOC); y++) for(let x = k * BLOC; x < Math.min(W, (k + 1) * BLOC); x++){ const i = y * W + x; if(masque[i]){ n++; sr += cr[i]; sg += cg[i]; sl += lum[i]; } }
-      ref.push(n > BLOC * BLOC * .25 ? [sr / n, sg / n, sl / n] : null);
+      const ref = [];
+      for(let j = 0; j < by; j++) for(let k = 0; k < bx; k++){
+        let n = 0, sr = 0, sg = 0, sl = 0;
+        for(let y = j * BL; y < Math.min(H, (j + 1) * BL); y++) for(let x = k * BL; x < Math.min(W, (k + 1) * BL); x++){ const i = y * W + x; if(masque[i]){ n++; sr += cr[i]; sg += cg[i]; sl += lum[i]; } }
+        ref.push(n > BL * BL * .25 ? [sr / n, sg / n, sl / n] : null);
+      }
+      // la référence de chaque morceau : la sienne, sinon celle d'un voisin, sinon la couleur générale
+      const refs = ref.map((q, idx) => {
+        if(q) return q;
+        const j = (idx / bx) | 0, k = idx % bx;
+        for(const [a, b] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]]){ if(j + a < 0 || j + a >= by || k + b < 0 || k + b >= bx) continue; const v = ref[(j + a) * bx + k + b]; if(v) return v; }
+        return [mr, mg, ml];
+      });
+      for(let y = 0; y < H; y++){ const j = Math.min(by - 1, y / BL | 0); for(let x = 0; x < W; x++){ const q = refs[j * bx + Math.min(bx - 1, x / BL | 0)], i = y * W + x; masque[i] = dans(i, q[0], q[1], q[2]) ? 1 : 0; } }
     }
-    for(let i = 0; i < N; i++){
-      const x = i % W, y = (i / W) | 0, k = Math.min(bx - 1, x / BLOC | 0), j = Math.min(by - 1, y / BLOC | 0);
-      // la référence du morceau, sinon celle d'un voisin, sinon la couleur générale
-      let r = ref[j * bx + k];
-      if(!r) for(const [a, b] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]]){ const q = ref[(j + a) * bx + k + b]; if(j + a >= 0 && j + a < by && k + b >= 0 && k + b < bx && q){ r = q; break; } }
-      masque[i] = dans(i, ...(r || [mr, mg, ml])) ? 1 : 0;
-    }
-    }
-    // nettoyage : un pixel suit la majorité de ses 8 voisins
     const net = new Uint8Array(N);
     for(let y = 1; y < H - 1; y++) for(let x = 1; x < W - 1; x++){ const i = y * W + x; let s = 0; for(let a = -1; a <= 1; a++) for(let b = -1; b <= 1; b++) s += masque[i + a * W + b]; net[i] = s >= 5 ? 1 : 0; }
     masque = net;
-    // 3. Le plateau est la plus grande zone de cette couleur
     const zp = zones(masque, W, H);
     let pl = 0; for(let n = 1; n <= zp.n; n++) if(!pl || zp.tailles[n] > zp.tailles[pl]) pl = n;
-    if(!pl || zp.tailles[pl] < N * .12) return { plateau:null, des:[], message:'Je ne trouve pas le plateau : visez une piste de dés de couleur unie, bien éclairée.' };
+    if(!pl || zp.tailles[pl] < N * .12) return null;
     const bord = [];
-    for(let y = 0; y < H; y += 2){ let a = -1, b = -1; for(let x = 0; x < W; x++) if(zp.lab[y * W + x] === pl){ if(a < 0) a = x; b = x; } if(a >= 0){ bord.push([a, y], [b, y]); } }
-    const plateau = { contour:enveloppe(bord), aire:zp.tailles[pl] };
-    // 4. Les trous du plateau : tout ce qui n'est pas plateau, ne touche pas le bord de l'image et est entouré par le plateau
-    const autre = new Uint8Array(N); for(let i = 0; i < N; i++) autre[i] = zp.lab[i] === pl ? 0 : 1;
-    const zt = zones(autre, W, H);
-    const px = Array.from({ length:zt.n + 1 }, () => []), touche = new Uint8Array(zt.n + 1), voisPl = new Int32Array(zt.n + 1), voisAutre = new Int32Array(zt.n + 1);
-    for(let i = 0; i < N; i++){
-      const n = zt.lab[i]; if(!n) continue;
-      px[n].push(i);
-      const x = i % W, y = (i / W) | 0;
-      if(x === 0 || y === 0 || x === W - 1 || y === H - 1){ touche[n] = 1; continue; }
-      for(const j of [i - 1, i + 1, i - W, i + W]){ const m = zt.lab[j]; if(m === n) continue; if(zp.lab[j] === pl) voisPl[n]++; else voisAutre[n]++; }
+    for(let y = 0; y < H; y++){ let a = -1, b = -1; for(let x = 0; x < W; x++) if(zp.lab[y * W + x] === pl){ if(a < 0) a = x; b = x; } if(a >= 0) bord.push([a * pas, y * pas], [(b + 1) * pas, y * pas]); }
+    return { contour:enveloppe(bord), aire:zp.tailles[pl] * pas * pas };
+  }
+
+  // Une tache est-elle un point de dé ? (renvoie { forme:true } si seulement sa forme ne va pas)
+  function evaluer(G, st, sorte){
+    const { W, H, gris, rgb } = G, { a, bw, bh, cx, cy, gp } = st, r = Math.sqrt(a / Math.PI);
+    // rond ou allongé (moments) : un reflet, ou un point vu de biais sur une face de côté, est allongé
+    // vu de biais, un point rond devient un ovale (jusqu'à 3 fois plus long que large vers 70°) : on garde sa forme
+    const dd = Math.sqrt((st.vxx - st.vyy) ** 2 + 4 * st.vxy * st.vxy), l1 = (st.vxx + st.vyy + dd) / 2, l2 = Math.max(1e-6, (st.vxx + st.vyy - dd) / 2), allonge = Math.sqrt(l1 / l2);
+    if(a / (bw * bh) < .38 || allonge > 3) return { forme:true };
+    const ori = .5 * Math.atan2(2 * st.vxy, st.vxx - st.vyy), Rmaj = Math.max(r, 2 * Math.sqrt(l1)), Rmin = Math.max(.8, 2 * Math.sqrt(l2));
+    const ux = Math.cos(ori), uy = Math.sin(ori);
+    // l'anneau autour : la face du dé, de couleur unie et bien différente du point
+    // (près d'un bord, une partie de l'anneau peut déborder : on garde les deux tiers qui se ressemblent)
+    const ech = [];
+    for(const f of [1.45, 1.9]) for(let t = 0; t < 20; t++){
+      // l'anneau suit la forme du point (un ovale vu de biais)
+      const ang = t / 20 * Math.PI * 2, A = (f * Rmaj + 1) * Math.cos(ang), B = (f * Rmin + 1) * Math.sin(ang), xx = Math.round(cx + A * ux - B * uy), yy = Math.round(cy + A * uy + B * ux);
+      if(xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+      ech.push(yy * W + xx);
     }
-    const minA = Math.max(40, plateau.aire * .0018), maxA = plateau.aire * .12;
-    let cand = []; const trous = new Uint8Array(zt.n + 1);
-    for(let n = 1; n <= zt.n; n++){
-      if(touche[n] || px[n].length < minA || px[n].length > maxA * 2.6) continue;
-      if(voisPl[n] < (voisPl[n] + voisAutre[n]) * .7) continue;
-      cand.push(px[n]); trous[n] = 1;
-    }
-    // 5. Les dés collés : un trou bien plus grand que les autres est coupé en plusieurs dés
-    const aires = cand.map(c => c.length).filter(a => a <= maxA).sort((a, b) => a - b);
-    const med = aires.length ? aires[aires.length >> 1] : 0;
-    const des = [];
-    for(const c of cand){
-      const k = med ? Math.round(c.length / med) : 1, f = forme(c, W);
-      const groupes = med && k >= 2 && (c.length > med * 1.6 || f.allonge > 1.7) ? couper(c, Math.min(5, Math.max(2, k)), W) : [c];
-      for(const g of groupes){
-        if(g.length > maxA) continue;
-        const fg = forme(g, W);
-        if(fg.allonge > 2.2) continue;                                       // trop allongé : pas un dé
-        const l = lireDe(g, W, H, gris, haute);
-        des.push({ cx:fg.cx, cy:fg.cy, cote:fg.cote, angle:l.angle ?? fg.angle, v:l.v, points:l.points || [], clair:!!l.clair, fond:l.fond });
+    if(ech.length < 30) return null;
+    const vs = ech.map(i => gris[i]).sort((x, y) => x - y), med = vs[vs.length >> 1], contraste = sorte * (med - gp);
+    if(contraste < 26) return null;
+    const tol = Math.max(14, contraste * .3), bons = ech.filter(i => Math.abs(gris[i] - med) <= tol);
+    if(bons.length < ech.length * .66) return null;
+    let R = 0, Gc = 0, B = 0, ma = 0; for(const i of bons){ R += rgb[i * 4]; Gc += rgb[i * 4 + 1]; B += rgb[i * 4 + 2]; ma += gris[i]; }
+    const n2 = bons.length; ma /= n2;
+    // la vraie taille du point : les pixels plus proches du point que de la face (le seuil ne garde que son cœur)
+    const mi = (ma + gp) / 2, Rz = Rmaj * 2 + 2; let aire = 0;
+    for(let yy = Math.max(0, Math.round(cy - Rz)); yy <= Math.min(H - 1, cy + Rz); yy++) for(let xx = Math.max(0, Math.round(cx - Rz)); xx <= Math.min(W - 1, cx + Rz); xx++)
+      if((xx - cx) ** 2 + (yy - cy) ** 2 <= Rz * Rz && sorte * (mi - gris[yy * W + xx]) > 0) aire++;
+    const rv = Math.max(r, Math.sqrt(aire / Math.PI));
+    return { x:cx, y:cy, r:rv, maj:rv * Math.sqrt(allonge), sorte, face:[R / n2, Gc / n2, B / n2], fg:ma, contraste:sorte * (ma - gp), allonge, ori };
+  }
+
+  /* ---------- 1. Les points candidats (image fine) ---------- */
+  function chercherPoints(G, demi){
+    const { W, H, gris, rgb } = G, N = W * H;
+    // la moyenne de chaque voisinage (image intégrale)
+    const I = new Float64Array((W + 1) * (H + 1));
+    for(let y = 0; y < H; y++){ let s = 0; for(let x = 0; x < W; x++){ s += gris[y * W + x]; I[(y + 1) * (W + 1) + x + 1] = I[y * (W + 1) + x + 1] + s; } }
+    const fonce = new Uint8Array(N), clair = new Uint8Array(N);
+    for(let y = 0; y < H; y++){
+      const y0 = Math.max(0, y - demi), y1 = Math.min(H, y + demi + 1);
+      for(let x = 0; x < W; x++){
+        const x0 = Math.max(0, x - demi), x1 = Math.min(W, x + demi + 1);
+        const m = (I[y1 * (W + 1) + x1] - I[y0 * (W + 1) + x1] - I[y1 * (W + 1) + x0] + I[y0 * (W + 1) + x0]) / ((x1 - x0) * (y1 - y0));
+        const i = y * W + x, g = gris[i], e = Math.max(16, m * .17);
+        if(g < m - e) fonce[i] = 1; else if(g > m + e) clair[i] = 1;
       }
     }
-    des.sort((a, b) => a.cx - b.cx);
-    const lus = des.filter(x => x.v).length;
-    // 6. Les dés posés hors du plateau (gardés ou mis de côté) : même couleur et même taille que les dés lus sur le plateau
-    const hors = [];
-    const lusOk = des.filter(x => x.v && x.fond != null);
-    if(lusOk.length){
-      const fond = lusOk.reduce((a, x) => a + x.fond, 0) / lusOk.length, taille = lusOk.reduce((a, x) => a + x.cote * x.cote, 0) / lusOk.length;
-      // la teinte des dés : celle des pixels clairs (ou foncés) de leur face
-      let sr = 0, sg = 0, n = 0;
-      for(const x of lusOk){ const R = x.cote * .3; for(let y = Math.round(x.cy - R); y <= x.cy + R; y++) for(let xx = Math.round(x.cx - R); xx <= x.cx + R; xx++){ const i = y * W + xx; if(i >= 0 && i < N && Math.abs(gris[i] - fond) < 22){ sr += cr[i]; sg += cg[i]; n++; } } }
-      if(n){
-        const r0 = sr / n, g0 = sg / n, m = new Uint8Array(N);
-        for(let i = 0; i < N; i++) if(zp.lab[i] !== pl && !trous[zt.lab[i]] && Math.hypot((cr[i] - r0) / .045, (cg[i] - g0) / .045, (gris[i] - fond) / 38) < 1) m[i] = 1;
-        const zh = zones(m, W, H);
-        const pxh = Array.from({ length:zh.n + 1 }, () => []); for(let i = 0; i < N; i++) if(zh.lab[i]) pxh[zh.lab[i]].push(i);
-        for(let k = 1; k <= zh.n; k++){
-          const g = pxh[k]; if(g.length < taille * .45 || g.length > taille * 1.9) continue;
-          const fg = forme(g, W), cc = carre(g, W);
-          if(fg.allonge > 1.6 || g.length < cc.aire * .62) continue;               // pas assez carré
-          const l = lireDe(g, W, H, gris, haute);
-          if(l.v) hors.push({ cx:fg.cx, cy:fg.cy, cote:fg.cote, angle:l.angle ?? fg.angle, v:l.v });
+    const points = [];
+    for(const [masque, sorte] of [[fonce, 1], [clair, -1]]){
+      const z = zones(masque, W, H, true), n = z.n;
+      const x0 = new Int32Array(n + 1).fill(1e9), x1 = new Int32Array(n + 1).fill(-1), y0 = new Int32Array(n + 1).fill(1e9), y1 = new Int32Array(n + 1).fill(-1);
+      const sx = new Float64Array(n + 1), sy = new Float64Array(n + 1), sg = new Float64Array(n + 1), sxx = new Float64Array(n + 1), syy = new Float64Array(n + 1), sxy = new Float64Array(n + 1);
+      for(let i = 0; i < N; i++){
+        const k = z.lab[i]; if(!k) continue;
+        const x = i % W, y = (i / W) | 0;
+        if(x < x0[k]) x0[k] = x; if(x > x1[k]) x1[k] = x; if(y < y0[k]) y0[k] = y; if(y > y1[k]) y1[k] = y;
+        sx[k] += x; sy[k] += y; sg[k] += gris[i]; sxx[k] += x * x; syy[k] += y * y; sxy[k] += x * y;
+      }
+      const amax = (demi * 1.15) ** 2, recouper = [];
+      for(let k = 1; k <= n; k++){
+        const a = z.tailles[k]; if(a < 5 || a > amax) continue;
+        const cx = sx[k] / a, cy = sy[k] / a;
+        const st = { a, bw:x1[k] - x0[k] + 1, bh:y1[k] - y0[k] + 1, cx, cy, gp:sg[k] / a, vxx:sxx[k] / a - cx * cx + 1 / 12, vyy:syy[k] / a - cy * cy + 1 / 12, vxy:sxy[k] / a - cx * cy };
+        const p = evaluer(G, st, sorte);
+        if(p && !p.forme) points.push(p);
+        // pas assez rond : un point collé à un reflet ? (un ovale peut aussi être un point vu de biais : on garde les deux)
+        const dd = Math.sqrt((st.vxx - st.vyy) ** 2 + 4 * st.vxy * st.vxy), al = Math.sqrt((st.vxx + st.vyy + dd) / Math.max(1e-6, st.vxx + st.vyy - dd));
+        if(a >= 12 && (al > 1.4 || a / (st.bw * st.bh) < .45)) recouper.push(k);
+      }
+      // un point collé à un reflet (ou à une ombre) : on ne garde que le cœur le plus net de la tache, et on regarde à nouveau
+      if(recouper.length){
+        const px = new Map(recouper.map(k => [k, []]));
+        for(let i = 0; i < N; i++){ const l = px.get(z.lab[i]); if(l) l.push(i); }
+        for(const l of px.values()){
+          const vs = l.map(i => gris[i]), mn = Math.min(...vs), mx = Math.max(...vs);
+          const coeur = new Set(l.filter(i => sorte < 0 ? gris[i] >= mn + (mx - mn) * .6 : gris[i] <= mn + (mx - mn) * .4));
+          for(const dep of coeur){
+            const pile = [dep], sous = []; coeur.delete(dep);
+            while(pile.length){ const q = pile.pop(); sous.push(q); for(const v of [q - 1, q + 1, q - W, q + W, q - W - 1, q - W + 1, q + W - 1, q + W + 1]) if(coeur.has(v)){ coeur.delete(v); pile.push(v); } }
+            if(sous.length < 5) continue;
+            let a = sous.length, Sx = 0, Sy = 0, Sg = 0, Sxx = 0, Syy = 0, Sxy = 0, X0 = 1e9, X1 = -1, Y0 = 1e9, Y1 = -1;
+            for(const q of sous){ const x = q % W, y = (q / W) | 0; Sx += x; Sy += y; Sg += gris[q]; Sxx += x * x; Syy += y * y; Sxy += x * y; X0 = Math.min(X0, x); X1 = Math.max(X1, x); Y0 = Math.min(Y0, y); Y1 = Math.max(Y1, y); }
+            const cx = Sx / a, cy = Sy / a, p = evaluer(G, { a, bw:X1 - X0 + 1, bh:Y1 - Y0 + 1, cx, cy, gp:Sg / a, vxx:Sxx / a - cx * cx + 1 / 12, vyy:Syy / a - cy * cy + 1 / 12, vxy:Sxy / a - cx * cy }, sorte);
+            if(p && !p.forme) points.push(p);
+          }
         }
-        hors.sort((a, b) => a.cx - b.cx);
       }
     }
-    return { plateau, des, hors, message:des.length ? (lus < des.length ? `${lus} dé${lus > 1 ? 's' : ''} lu${lus > 1 ? 's' : ''} sur ${des.length} : touchez un dé pour corriger.` : '') : 'Plateau repéré, mais pas de dé dessus.' };
+    return points;
+  }
+
+  /* ---------- 2. Les points d'un même dé ---------- */
+  const ecartCouleur = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  // même couleur de face ? la teinte compte plus que la lumière (une face est souvent plus éclairée d'un côté)
+  const memeFace = (c, f, tolL = .38) => {
+    const sc = c[0] + c[1] + c[2] + 1, sf = f[0] + f[1] + f[2] + 1, lc = .299 * c[0] + .587 * c[1] + .114 * c[2], lf = .299 * f[0] + .587 * f[1] + .114 * f[2];
+    return Math.hypot((c[0] / sc - f[0] / sf) / .06, (c[1] / sc - f[1] / sf) / .06, (lc - lf) / (tolL * lf + tolL * 58)) < 1;
+  };
+  const lum = c => .299 * c[0] + .587 * c[1] + .114 * c[2];
+  // un reflet : la couleur de la face mélangée à du blanc (même dose de blanc sur les trois couleurs)
+  const reflet = (c, f) => { const t = [0, 1, 2].map(k => (c[k] - f[k]) / (256 - f[k])); const m = (t[0] + t[1] + t[2]) / 3; return m > .08 && Math.max(...t) - Math.min(...t) < .22; };
+  function regrouper(G, points, P, journal){
+    const { W, H, rgb } = G, n = points.length;
+    // deux points sur la même face : proches, même sorte, même couleur autour, et le trait de l'un à l'autre reste sur la face
+    const surFace = (a, b) => {
+      // la distance « vue de dessus » (redressée) ; le trait, lui, se suit sur l'image
+      // (la taille du dé et l'écrasement sont ceux des deux points : en perspective, un dé lointain est plus petit et plus écrasé)
+      const e = Math.sqrt(P.ecr(a) * P.ecr(b)), q = P.dessus(b.x - a.x, b.y - a.y, e, (a.x + b.x) / 2, (a.y + b.y) / 2), dr = Math.hypot(q[0], q[1]), d = Math.hypot(a.x - b.x, a.y - b.y);
+      const S = 6 * (a.maj + b.maj);
+      // autour des deux points, la même face : même teinte et presque la même lumière (une face de côté est plus sombre)
+      const ji = journal ? [points.indexOf(a), points.indexOf(b)] : null;
+      const la = lum(a.face), lb = lum(b.face), memeLum = P.A === 1 || Math.abs(la - lb) < Math.max(9, .07 * Math.max(la, lb));
+      // (les points d'une même face ont à peu près le même contraste : une tache pâle collée à un point n'en est pas un autre)
+      const memeContraste = Math.min(a.contraste, b.contraste) > Math.max(a.contraste, b.contraste) * .4;
+      if(dr > S * .95 || a.sorte !== b.sorte || !memeLum || !memeContraste || !memeFace(a.face, b.face, .14)){ if(journal && dr < S * 1.3) journal.push([...ji, dr > S * .95 ? 'loin ' + Math.round(dr) + '/' + Math.round(S) : 'face ' + a.face.map(Math.round) + ' ' + b.face.map(Math.round)]); return false; }
+      const pas = Math.max(1, d / 24); let vus = 0, bons = 0, lmin = 1e9, lmax = -1;
+      const saut = Math.max(20, lum(a.face) * .17);
+      for(let t = 0; t <= d; t += pas){
+        const x = a.x + (b.x - a.x) * t / d, y = a.y + (b.y - a.y) * t / d, u = t / d;
+        if(points.some(p => Math.hypot(p.x - x, p.y - y) < p.maj * 1.6 + 1.5)) continue;   // sur un point ou son halo flou (la face continue dessous)
+        const i = (Math.round(y) * W + Math.round(x)) * 4; vus++;
+        // la couleur attendue glisse de celle d'un point à celle de l'autre (dégradé de lumière)
+        const face = [a.face[0] * (1 - u) + b.face[0] * u, a.face[1] * (1 - u) + b.face[1] * u, a.face[2] * (1 - u) + b.face[2] * u];
+        // un reflet (blanc presque pur) compte comme la face : il est posé dessus
+        const c = [rgb[i], rgb[i + 1], rgb[i + 2]];
+        if(memeFace(c, face) || reflet(c, face)) bons++;
+        // une marche de lumière : le trait passe l'arête entre deux faces (le dessus et un côté)
+        // (l'écart total le long du trait : une arête floue s'étale sur plusieurs pixels)
+        if(!reflet(c, face)){ const l = lum(c); lmin = Math.min(lmin, l); lmax = Math.max(lmax, l); if(lmax - lmin > saut){ if(journal) journal.push([...ji, 'saut ' + Math.round(lmin) + '-' + Math.round(lmax)]); return false; } }
+      }
+      if(journal) journal.push([...ji, 'trait ' + (bons / Math.max(1, vus)).toFixed(2)]);
+      return vus < 3 || bons / vus > .75;
+    };
+    const lien = Array.from({ length:n }, () => new Uint8Array(n));
+    const paires = [];
+    for(let i = 0; i < n; i++) for(let j = i + 1; j < n; j++) if(surFace(points[i], points[j])){ lien[i][j] = lien[j][i] = 1; paires.push([Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y) / (points[i].maj + points[j].maj), i, j]); }
+    paires.sort((a, b) => a[0] - b[0]);
+    // regroupement : deux groupes s'unissent seulement si tous leurs points sont deux à deux sur la même face
+    const groupe = points.map((_, i) => i), membres = points.map((_, i) => [i]);
+    for(const [, i, j] of paires){
+      const a = groupe[i], b = groupe[j]; if(a === b) continue;
+      if(membres[a].length + membres[b].length > 6) continue;
+      if(!membres[a].every(p => membres[b].every(q => lien[p][q]))) continue;
+      for(const q of membres[b]){ groupe[q] = a; membres[a].push(q); } membres[b] = [];
+    }
+    return membres.filter(m => m.length).map(m => m.map(i => points[i]));
+  }
+
+  /* ---------- Le plan de la table (photo prise de biais) ---------- */
+  // Vu de biais, chaque point rond devient un ovale. Sur une vraie photo, la forme change d'un bout à l'autre de l'image :
+  // en un endroit, la largeur de la table reste dans le sens de l'horizon, et la profondeur file vers le point de fuite
+  // (au-dessus de l'image), raccourcie. Un point rond devient l'ovale de ce petit carré penché.
+  // On cherche le point de fuite qui explique le plus de points, puis l'écrasement habituel A.
+  // Forme d'un ovale (allongement, direction) → sa matrice de covariance (à l'échelle près)
+  const cov = p => { const l = p.allonge * p.allonge, c = Math.cos(p.ori), s = Math.sin(p.ori); return [l * c * c + s * s, (l - 1) * c * s, l * s * s + c * c]; };
+  // l'ovale vu comme un carré écrasé : Σ ≈ α·L·Lᵀ + β·D·Dᵀ (L : la largeur, D : la profondeur) → l'écrasement √(α/β) et l'écart au modèle
+  function ajuster(S, L, D){
+    const k = (L[0] * D[0] + L[1] * D[1]) ** 2, sl = L[0] * L[0] * S[0] + 2 * L[0] * L[1] * S[1] + L[1] * L[1] * S[2], sd = D[0] * D[0] * S[0] + 2 * D[0] * D[1] * S[1] + D[1] * D[1] * S[2];
+    const det = 1 - k * k; if(det < 1e-3) return { e:1, err:1 };
+    const al = (sl - k * sd) / det, be = (sd - k * sl) / det;
+    if(al <= 0 || be <= 0) return { e:1, err:1 };
+    const r0 = S[0] - al * L[0] * L[0] - be * D[0] * D[0], r1 = S[1] - al * L[0] * L[1] - be * D[0] * D[1], r2 = S[2] - al * L[1] * L[1] - be * D[1] * D[1];
+    return { e:Math.sqrt(al / be), err:Math.sqrt(r0 * r0 + 2 * r1 * r1 + r2 * r2) / Math.sqrt(S[0] * S[0] + 2 * S[1] * S[1] + S[2] * S[2]) };
+  }
+  function plan(points, W, H){
+    // (une même tache vue aux deux échelles ne vote qu'une fois)
+    const cand = [];
+    for(const p of points) if(p.allonge >= 1.12 && !cand.some(o => Math.hypot(o.x - p.x, o.y - p.y) < Math.min(o.r, p.r))) cand.push(p);
+    // les hypothèses : un point de fuite au-dessus de l'image (plus ou moins loin, un peu à gauche ou à droite : le téléphone est
+    // tenu à peu près droit), ou une profondeur partout parallèle
+    const hyp = [];
+    for(const kk of [.25, .4, .6, .85, 1.2, 1.7, 2.5, 4, 7]) for(let i = -10; i <= 10; i++){
+      const V = [W / 2 + i * .1 * W * kk, -H * kk];
+      if(Math.abs(Math.atan2(V[0] - W / 2, H / 2 - V[1])) < .45) hyp.push({ V });
+    }
+    for(let i = -9; i <= 9; i++) hyp.push({ phi:i * .05 });
+    for(const h of hyp){
+      if(h.V){ const lx = H / 2 - h.V[1], ly = -(W / 2 - h.V[0]), n = Math.hypot(lx, ly); h.L = [lx / n, ly / n]; }
+      else h.L = [Math.cos(h.phi), Math.sin(h.phi)];
+    }
+    // en (x, y) : la largeur L et la profondeur D (vers l'objectif)
+    const axes = (h, x, y) => { if(!h.V) return [h.L, [-h.L[1], h.L[0]]]; const dx = x - h.V[0], dy = y - h.V[1], n = Math.hypot(dx, dy); return [h.L, [dx / n, dy / n]]; };
+    let best = null, bs = 0;
+    for(const h of hyp){
+      let sc = 0; for(const p of cand){ const [L, D] = axes(h, p.x, p.y), f = ajuster(cov(p), L, D); if(f.err < .2 && f.e > 1.08) sc += 1 - f.err / .2; }
+      if(sc > bs){ bs = sc; best = h; }
+    }
+    let A = 1;
+    if(best){
+      const bons = cand.map(p => { const [L, D] = axes(best, p.x, p.y); return ajuster(cov(p), L, D); }).filter(f => f.err < .25 && f.e > 1.08).map(f => f.e).sort((a, b) => a - b);
+      // vu de biais seulement si une bonne part des points a cette forme (de dessus, les points sont ronds)
+      const ronds = points.filter((p, i) => p.allonge < 1.12 && !points.slice(0, i).some(o => Math.hypot(o.x - p.x, o.y - p.y) < Math.min(o.r, p.r))).length;
+      if(bons.length >= Math.max(3, cand.length * .4, ronds)) A = bons[bons.length >> 1];
+    }
+    if(A < 1.12){ A = 1; best = hyp.find(h => h.phi === 0); }
+    // l'écrasement propre à un point (plus fort au loin) ; s'il n'a pas la forme attendue (face de côté), celui de la table
+    const ecr = p => {
+      if(A === 1) return 1;
+      if(p._e == null){ const [L, D] = axes(best, p.x, p.y), f = ajuster(cov(p), L, D); p._e = f.err < .25 ? Math.max(1, Math.min(4, f.e)) : A; p._err = f.err; }
+      return p._e;
+    };
+    const la = Math.log(A);
+    return {
+      A, V:best.V || null, ori:Math.atan2(best.L[1], best.L[0]),
+      // un point a-t-il la forme des points des faces du dessus, à cet endroit de l'image ? (avec de la marge : l'écrasement change avec la distance)
+      forme:p => { if(A === 1) return Math.log(p.allonge); ecr(p); return p._err + Math.abs(Math.log(p._e) - la) * .5; },
+      accord(p){ return A === 1 ? p.allonge < 1.52 : this.forme(p) < .25 + la * .35; },
+      // un écart sur l'image → vu de dessus (la profondeur rallongée), et retour ; a : l'écrasement local ; (x, y) : où sur l'image
+      dessus:(dx, dy, a, x, y) => { const [L, D] = axes(best, x, y), det = L[0] * D[1] - L[1] * D[0]; return [(dx * D[1] - dy * D[0]) / det, (L[0] * dy - L[1] * dx) / det * a]; },
+      image:(u, w, a, x, y) => { const [L, D] = axes(best, x, y); w /= a; return [u * L[0] + w * D[0], u * L[1] + w * D[1]]; },
+      ecr,
+      // le sens « vers l'objectif » : la profondeur D le donne déjà
+      sensVers:() => 1,
+    };
+  }
+
+  /* ---------- 3. Un groupe de points → un dé ---------- */
+  function deDuGroupe(pts, P){
+    const n = pts.length, mx = pts.reduce((s, p) => s + p.x, 0) / n, my = pts.reduce((s, p) => s + p.y, 0) / n;
+    // vu de dessus, autour du centre des points (avec l'écrasement propre à ce dé)
+    const e = Math.exp(pts.reduce((s, p) => s + Math.log(P.ecr(p)), 0) / n), S = 12 * pts.reduce((s, p) => s + p.maj, 0) / n;
+    const R = pts.map(p => P.dessus(p.x - mx, p.y - my, e, mx, my));
+    let angle = 0, cote = S;
+    if(n >= 2){
+      // l'écart le plus court entre deux points donne la direction des côtés (sauf 2 et 3 : en diagonale)
+      let best = null, loin = null;
+      for(let i = 0; i < n; i++) for(let j = i + 1; j < n; j++){
+        const d = Math.hypot(R[i][0] - R[j][0], R[i][1] - R[j][1]), a = Math.atan2(R[j][1] - R[i][1], R[j][0] - R[i][0]);
+        if(!best || d < best.d) best = { d, a }; if(!loin || d > loin.d) loin = { d, a };
+      }
+      if(n <= 3){ angle = loin.a - Math.PI / 4; cote = loin.d / .735; }
+      else if(n === 5){ angle = best.a - Math.PI / 4; cote = best.d / .368; }   // le 5 : le plus court va du centre à un coin
+      else { angle = best.a; cote = n === 6 ? best.d / .26 : best.d / .52; }
+      cote = Math.max(S * .6, Math.min(S * 1.5, cote));
+    }
+    angle = ((angle % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2);
+    const ca = Math.cos(angle), sa = Math.sin(angle), h = cote / 2;
+    const coins = [[-h, -h], [h, -h], [h, h], [-h, h]].map(([u, w]) => { const q = P.image(u * ca - w * sa, u * sa + w * ca, e, mx, my); return [mx + q[0], my + q[1]]; });
+    const fg = pts.reduce((s, p) => s + p.fg, 0) / n, allonge = pts.reduce((s, p) => s + p.allonge, 0) / n, r = pts.reduce((s, p) => s + p.maj, 0) / n;
+    return { cx:mx, cy:my, cote, e, angle, coins, v:n, pts, fg, allonge, r, sorte:pts[0].sorte, face:pts[0].face };
+  }
+  // Un seul point : est-ce bien un dé (le 1) ? La face doit l'entourer tout autour, assez loin.
+  function vraiUn(G, d, rMed, P){
+    const { W, H, rgb } = G, p = d.pts[0], S = 12 * p.maj / 1.25;      // le point du 1 est plus gros que les autres
+    if(p.maj < rMed * .95) return false;
+    let vus = 0, bons = 0;
+    for(let t = 0; t < 20; t++){
+      const a = t / 20 * Math.PI * 2, q = P.image(Math.cos(a) * S * .3, Math.sin(a) * S * .3, P.ecr(p), p.x, p.y), x = Math.round(p.x + q[0]), y = Math.round(p.y + q[1]);
+      if(x < 0 || y < 0 || x >= W || y >= H) continue; vus++;
+      const i = (y * W + x) * 4, c = [rgb[i], rgb[i + 1], rgb[i + 2]]; if(memeFace(c, p.face) || reflet(c, p.face)) bons++;
+    }
+    return vus >= 16 && bons / vus > .75;
+  }
+
+  /* ---------- L'analyse complète ---------- */
+  function analyser(petite, grande, memo = {}){
+    const img = grande && grande.width >= petite.width ? grande : petite;
+    const W = img.width, H = img.height, N = W * H, gris = new Uint8Array(N), q = img.data;
+    for(let i = 0, j = 0; i < N; i++, j += 4) gris[i] = .299 * q[j] + .587 * q[j + 1] + .114 * q[j + 2];
+    const G = { W, H, gris, rgb:q }, k = W / petite.width;
+    // 1. les points : à l'échelle de la dernière image, sinon à deux échelles
+    let points = [];
+    const essais = memo.r ? [Math.round(Math.max(5, Math.min(70, memo.r * 3.6)))] : [Math.round(W * .013), Math.round(W * .03)];
+    for(const demi of essais){
+      // un doublon presque au même endroit : on garde le plus rond (une tache « point + reflet » contre son cœur recoupé)
+      for(const p of chercherPoints(G, Math.max(5, demi))){
+        const k = points.findIndex(o => Math.hypot(o.x - p.x, o.y - p.y) < Math.min(o.r, p.r) * .6 && Math.abs(o.r - p.r) < Math.min(o.r, p.r) * .2);
+        if(k < 0) points.push(p); else if(p.allonge < points[k].allonge - .3) points[k] = p;
+      }
+    }
+    // les points d'une taille à part (miettes, taches) sont écartés ; le 1 peut être plus gros
+    const rs0 = points.map(p => p.r).sort((a, b) => a - b), r0 = rs0.length ? rs0[rs0.length >> 1] : 0;
+    points = points.filter(p => p.r > r0 * .5 && p.r < r0 * 2.8);
+    // vu de biais : toutes les faces du dessus sont écrasées de la même façon (le plan de la table).
+    // La déformation la plus fréquente des points donne ce plan ; les points d'une autre forme (faces de côté) sont écartés,
+    // et les positions sont « redressées » comme si on regardait d'en haut.
+    const P = plan(points, W, H);
+    points = points.filter(p => P.accord(p));
+    // les doublons (une tache entière et son cœur recoupé) : on garde le plus gros
+    // (d'abord ceux qui ont le mieux la forme des points du dessus, puis le plus gros)
+    points.sort((a, b) => Math.round(P.forme(a) * 6) - Math.round(P.forme(b) * 6) || b.r - a.r);
+    points = points.filter((p, i) => !points.slice(0, i).some(o => Math.hypot(o.x - p.x, o.y - p.y) < o.maj * .9));
+    // les taches bien plus pâles que les autres points (une ombre, un grain du tapis) ne sont pas des points
+    const cs = points.map(p => p.contraste).sort((a, b) => a - b), cMed = cs.length ? cs[cs.length >> 1] : 0;
+    points = points.filter(p => p.contraste > cMed * .3);
+    const rs = points.map(p => p.maj).sort((a, b) => a - b), rMed = rs.length ? rs[rs.length >> 1] : 0;
+    // 2. les groupes, 3. les dés (le côté d'un dé : environ 12 rayons de point)
+    const journal = memo.debug ? [] : null;
+    const groupes = regrouper(G, points, P, journal); let des = groupes.map(g => deDuGroupe(g, P)).filter(d => d.v <= 6);
+    des = des.filter(d => d.v > 1 || (d.pts[0].contraste > cMed * .5 && vraiUn(G, d, rMed, P)));
+    // l'écart entre deux dés, vu de dessus : [le long, dans le sens écrasé]
+    const ecart = (o, d) => P.dessus(d.cx - o.cx, d.cy - o.cy, Math.sqrt(o.e * d.e), o.cx, o.cy);
+    // les faces de côté : un groupe collé à un autre dé, sur une face plus sombre ou aux points écrasés, est oublié
+    des = des.filter(d => !des.some(o => { if(o === d) return false; const q = ecart(o, d), c = (o.cote + d.cote) / 2, dist = Math.hypot(q[0], q[1]);
+      return (dist < c * .95 && (d.fg < o.fg * .93 || d.allonge > o.allonge + .25 || (d.v < o.v && d.r < o.r * .85))) || (dist < c * 1.3 && d.fg < o.fg * .88); }));
+    // deux groupes sur le même dé : entre les deux, la couleur du dé partout (pas le tapis)
+    const colles = (o, d) => {
+      let vus = 0, bons = 0;
+      for(let t = .15; t < .9; t += .05){
+        const x = o.cx + (d.cx - o.cx) * t, y = o.cy + (d.cy - o.cy) * t;
+        if([...o.pts, ...d.pts].some(p => Math.hypot(p.x - x, p.y - y) < p.maj * 1.6 + 1.5)) continue;
+        const i = (Math.round(y) * W + Math.round(x)) * 4, c = [q[i], q[i + 1], q[i + 2]]; vus++;
+        if(memeFace(c, o.face, 1.2) || memeFace(c, d.face, 1.2) || reflet(c, o.face)) bons++;
+      }
+      return vus < 3 || bons / vus > .8;
+    };
+    // vu de biais : la face avant d'un dé est juste devant sa face du dessus (vers l'objectif, dans le sens écrasé),
+    // à un côté de distance, plus sombre ou plus écrasée ; on l'oublie
+    if(P.A > 1) des = des.filter(d => !des.some(o => {
+      if(o === d) return false;
+      const q = ecart(o, d), du = q[0], dw = q[1], c = (o.cote + d.cote) / 2;
+      // (un dé tourné montre deux faces de côté, en avant à gauche et à droite ; éclairées d'en haut, elles sont plus sombres que le dessus)
+      const sv = dw * P.sensVers(o.cx, o.cy);
+      return sv > c * .3 && sv < c * 1.6 && Math.abs(du) < c * .85 && d.sorte === o.sorte && memeFace(d.face, o.face, .6) && lum(d.face) < lum(o.face) * .96 && colles(o, d);
+    }));
+    // 4. le plateau : dessus, les dés lancés ; à côté, les dés gardés ou mis de côté
+    const plateau = chercherPlateau(petite);
+    const res = { plateau, des:[], hors:[], rPoint:r0 || memo.r || 0, biais:P.A > 1 ? Math.round(Math.acos(1 / P.A) * 180 / Math.PI) : 0 };
+    for(const d of des){
+      // le cadre du dé : un carré vu de dessus, remis en perspective sur l'image
+      const coins = d.coins.map(q => [q[0] / k, q[1] / k]), aire = Math.abs(coins.reduce((s, q, i) => { const o = coins[(i + 1) % 4]; return s + q[0] * o[1] - o[0] * q[1]; }, 0) / 2);
+      const de = { cx:d.cx / k, cy:d.cy / k, cote:Math.sqrt(aire), angle:P.A > 1 ? 0 : d.angle, coins, v:d.v, points:d.pts.map(p => [p.x / k, p.y / k]) };
+      if(!plateau || dedansPoly(plateau.contour, de.cx, de.cy)) res.des.push(de); else res.hors.push(de);
+    }
+    res.des.sort((a, b) => a.cx - b.cx); res.hors.sort((a, b) => a.cx - b.cx);
+    if(memo.debug) res.debug = { journal, faces:points.map(p => p.face.map(Math.round).join(',')), points:points.map(p => ({ x:p.x / k, y:p.y / k, r:p.r / k, sorte:p.sorte, c:Math.round(p.contraste), al:+p.allonge.toFixed(2) })), rMed:rMed / k, A:P.A, V:P.V, groupes:groupes.map(g => g.map(p => points.indexOf(p))) };
+    res.message = !res.des.length ? (plateau ? 'Plateau repéré : je ne vois pas encore de dé dessus.' : 'Je cherche les dés : visez-les d\'en haut, bien éclairés.') : '';
+    return res;
   }
 
   // Mouvement entre deux images : moyenne des écarts sur une petite vignette
@@ -290,5 +447,8 @@
   }
   const ecart = (a, b) => { if(!a || !b || a.length !== b.length) return 999; let s = 0; for(let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]); return s / a.length; };
 
-  window.DesVision = { analyser, vignette, ecart };
+  const api = { analyser, vignette, ecart };
+  if(typeof window !== 'undefined') window.DesVision = api;
+  // dans un worker : le calcul se fait à part, l'écran reste fluide
+  else if(typeof self !== 'undefined') self.onmessage = e => { const { petite, grande, memo, id } = e.data; let res; try{ res = analyser(petite, grande, memo); }catch(err){ res = { erreur:String(err), des:[], hors:[] }; } self.postMessage({ id, res }); };
 })();
