@@ -6,7 +6,8 @@
    - Seul le plateau est lu : ce qui l'entoure est assombri et ignoré (au Yam's, les dés gardés y sont posés ; au 10 000, ceux mis de côté).
    - Chaque lancer lu attend d'être validé (✓ Valider, après correction si besoin, ou ↻ Relire) ; le lancer suivant n'est lu
      qu'une fois les dés relancés.
-   - Yam's : le numéro du lancer se compte tout seul (corrigeable), les dés à garder sont encadrés en jaune, avec les chances
+   - Yam's : le numéro du lancer se compte tout seul (corrigeable) ; les dés gardés vont dans la banque pour les 3 lancers du joueur
+     (et peuvent être remis en jeu), ils sont décomptés de la lecture suivante ; les dés à garder conseillés sont en jaune, avec les chances
      de chaque figure et la case conseillée ; un toucher note le score dans la feuille.
    - 10 000 : les points du lancer, les dés à mettre de côté (en jaune), les chances de marquer encore en relançant,
      le conseil relancer ou garder ; un toucher ajoute les points au tour ou note le tour.
@@ -59,6 +60,8 @@
 .lc-de{ position:relative; width:46px; height:46px; border-radius:10px; border:2px solid rgba(255,255,255,.25); background:#F7F3E8; color:#1A1A1A;
   font-size:2.1rem; line-height:40px; text-align:center; cursor:pointer; padding:0; }
 .lc-de.garde{ background:#C9CED6; }
+.lc-rang{ display:flex; flex-direction:column; gap:4px; }
+.lc-rang > b{ font-size:.82rem; color:#C9D2E3; }
 .lc-de.choisi{ box-shadow:0 0 0 3px #FFE066, 0 0 12px 2px rgba(255,224,102,.7); border-color:#FFE066; }
 .lc-de small{ position:absolute; left:50%; top:100%; margin-top:1px; line-height:1.2; transform:translateX(-50%); font-size:.6rem; font-weight:800; color:#C9D2E3; white-space:nowrap; }
 .lc-de.inconnu{ background:#F4C7C3; font-size:1.3rem; font-weight:800; }
@@ -112,7 +115,11 @@
   // depuis le dernier lancer validé : les dés ont-ils bougé ? (sinon, la même lecture n'est pas un nouveau lancer)
   let aBouge = false, dernierSig = null;
   // Yam's : le tour en cours
-  const Y = { lancer:0, gardes:[], joueur:null, choix:[], fini:true, conseil:null, main:[] };
+  // banque : les dés mis de côté pour les lancers suivants du joueur (des dés lus, avec leur place sur l'image) ;
+  // remis : les dés sortis de la banque pendant ce lancer (ils comptent encore, et seront relancés)
+  const Y = { lancer:0, banque:[], remis:[], joueur:null, fini:true, conseil:null, conseilles:new Set(), main:[] };
+  const nouveauTourYams = () => Y.fini || Y.lancer === 0 || Y.lancer >= 3;
+  const jeuYams = () => lecture ? [...lecture.des.filter(d => !Y.banque.includes(d)), ...Y.remis] : Y.remis.slice();
   // 10 000 : la sélection des dés à mettre de côté, et si le lancer a déjà été noté
   const D = { choix:[], fait:false };
 
@@ -249,15 +256,33 @@
     pile.push(sig); if(pile.length > 3) pile.shift();
     const enAttente = lecture && !lecture.valide;
     if(r.des.length && pile.length === 3 && pile.every(s => s === sig) && !enAttente && (aBouge || sig !== dernierSig) && (!lecture || lecture.sig !== sig || aBouge)) retenir(r, sig);
-    else if(lecture && lecture.sig === sig) lecture.des.forEach((d, i) => { const b = r.des[i]; if(b){ d.cx = b.cx; d.cy = b.cy; d.angle = b.angle; d.cote = b.cote; d.coins = b.coins; } });
+    else if(lecture && lecture.sig === sig) [...lecture.des, ...lecture.hors].forEach(d => {
+      // (le dé le plus proche de même valeur : les dés de la banque ont pu être retirés de la lecture)
+      let b = null, m = d.cote; for(const x of r.des){ const e = Math.hypot(x.cx - d.cx, x.cy - d.cy); if(x.v === d.v && e < m){ m = e; b = x; } }
+      if(b){ d.cx = b.cx; d.cy = b.cy; d.angle = b.angle; d.cote = b.cote; d.coins = b.coins; }
+    });
     dessiner();
   }
   // Un nouveau lancer lu : il attend d'être validé
   function retenir(r, sig){
     lecture = { des:r.des.map(d => ({ cx:d.cx, cy:d.cy, cote:d.cote, angle:d.angle, coins:d.coins, v:d.v })), hors:(r.hors || []).map(d => ({ ...d })), sig, w:r.w, h:r.h, valide:false };
     aBouge = false; choixPanneau = -1;
+    if(JEU === 'yams' && !nouveauTourYams()) decompterBanque();
     if(navigator.vibrate) navigator.vibrate(15);
     afficherPanneau(); dessiner();
+  }
+  // Yam's : les dés de la banque restés en vue sur le plateau ne sont pas relancés : on les retire de la lecture
+  // (d'abord ceux restés à leur place, puis ceux de même valeur), pour ne garder que les dés lancés
+  function decompterBanque(){
+    const besoin = 5 - Y.banque.length; if(lecture.des.length <= besoin) return;
+    const reste = Y.banque.slice(), retires = [];
+    for(const pass of [0, 1]) for(let k = reste.length - 1; k >= 0 && lecture.des.length - retires.length > besoin; k--){
+      const b = reste[k]; let best = -1, m = pass ? Infinity : (b.cote || 0) * .8;
+      lecture.des.forEach((d, i) => { if(retires.includes(i) || d.v !== b.v || b.cx == null && !pass) return; const e = b.cx == null ? 0 : Math.hypot(d.cx - b.cx, d.cy - b.cy); if(e < m){ m = e; best = i; } });
+      if(best >= 0){ retires.push(best); reste.splice(k, 1); }
+    }
+    lecture.hors.push(...retires.map(i => ({ ...lecture.des[i], banque:true })));
+    lecture.des = lecture.des.filter((_, i) => !retires.includes(i));
   }
   // ✓ Valider : le lancer compte (Yam's : numéro du lancer, dés gardés ; conseils)
   function valider(){
@@ -320,7 +345,9 @@
       dg.beginPath(); dg.roundRect ? dg.roundRect(-s / 2, -s / 2, s, s, s * .18) : dg.rect(-s / 2, -s / 2, s, s); dg.restore();
       return Yy(d.cy) - s / 2;
     };
-    hors.forEach(d => {
+    // les dés hors du jeu (posés à côté, ou en banque au Yam's) : cadre pointillé bleu
+    const enBanque = d => JEU === 'yams' && lecture && lecture.valide && Y.banque.includes(d);
+    [...hors, ...des.filter(enBanque)].forEach(d => {
       dg.save(); dg.setLineDash([6, 5]); dg.lineWidth = 2.5; dg.strokeStyle = '#7FB2FF';
       const haut = cadre(d); dg.stroke(); dg.restore();
       const tx = X(d.cx), ty = haut - 11;
@@ -329,6 +356,7 @@
     });
     const jaunes = desJaunes(des);
     des.forEach((d, i) => {
+      if(enBanque(d)) return;
       dg.save();
       dg.lineWidth = jaunes.has(i) ? 4.5 : 2.5;
       dg.strokeStyle = !d.v ? '#FF5A4E' : jaunes.has(i) ? '#FFE066' : 'rgba(255,255,255,.9)';
@@ -349,8 +377,7 @@
     const out = new Set();
     if(!lecture || !lecture.valide || des !== lecture.des) return out;
     if(JEU === 'yams'){
-      const n = Y.gardes.length;
-      Y.choix.forEach((on, i) => { if(on && i >= n) out.add(i - n); });
+      des.forEach((d, i) => { if(Y.conseilles.has(d)) out.add(i); });
     } else D.choix.forEach((on, i) => { if(on) out.add(i); });
     return out;
   }
@@ -387,25 +414,23 @@
 
   /* ---------- Yam's ---------- */
   function nouveauLancerYams(){
-    const k = lecture.des.length;
-    if(Y.fini || Y.lancer === 0 || Y.lancer >= 3){
-      // un nouveau tour : le joueur suivant
-      Y.lancer = 1; Y.gardes = []; Y.fini = false;
+    if(nouveauTourYams()){
+      // un nouveau tour : le joueur suivant, banque vide
+      Y.lancer = 1; Y.banque = []; Y.fini = false;
       if(jeu()) Y.joueur = jeu().nextPlayer();
-    } else {
-      Y.lancer++;
-      // les dés gardés : ceux qu'on voit posés hors du plateau, s'il y en a juste assez ;
-      // sinon ceux qu'on avait choisis (en jaune) au lancer d'avant, autant qu'il en manque sur le plateau
-      const manque = Math.max(0, 5 - k), vus = lecture.hors.map(d => d.v);
-      if(manque && vus.length === manque) Y.gardes = vus;
-      else {
-        const avant = Y.main.slice(), choisis = avant.filter((_, i) => Y.choix[i]), autres = avant.filter((_, i) => !Y.choix[i]);
-        Y.gardes = [...choisis, ...autres].slice(0, manque);
-      }
-    }
+    } else Y.lancer++;
+    Y.remis = [];
     majMainYams();
   }
-  function majMainYams(){ Y.main = [...Y.gardes, ...lecture.des.map(d => d.v)].slice(0, 5); Y.choix = []; }
+  // la main : la banque, puis les dés lancés (et ceux remis en jeu)
+  function majMainYams(){ Y.main = [...Y.banque, ...jeuYams()].map(d => d.v).slice(0, 5); Y.conseilles = new Set(); }
+  // mettre un dé lancé en banque, ou remettre en jeu un dé de la banque
+  function basculer(d){
+    const i = Y.banque.indexOf(d);
+    if(i >= 0){ Y.banque.splice(i, 1); if(!lecture || !lecture.des.includes(d)) Y.remis.push(d); }
+    else { const k = Y.remis.indexOf(d); if(k >= 0) Y.remis.splice(k, 1); Y.banque.push(d); }
+    majMainYams(); calculer(); afficherPanneau(); dessiner();
+  }
   function changerLancer(d){ Y.lancer = Math.max(1, Math.min(3, Y.lancer + d)); calculer(); afficherPanneau(); dessiner(); }
 
   /* ---------- 10 000 : les chances de marquer en relançant n dés (calcul exact) ---------- */
@@ -426,11 +451,13 @@
         const e = j.etat(Y.joueur);
         if(e.ouvertes.length) Y.conseil = YamsIA.conseil(Y.main, 3 - Y.lancer, e.ouvertes, e.haut);
       }
-      // les dés à garder conseillés, en jaune : d'abord ceux déjà gardés, puis ceux du plateau
-      if(!Y.choix.length && Y.conseil && Y.lancer < 3 && Y.conseil.garde.length < 5){
-        const reste = Y.conseil.garde.slice(); Y.choix = Y.main.map(() => false);
-        Y.main.forEach((v, i) => { if(i < Y.gardes.length){ const k = reste.indexOf(v); if(k >= 0){ reste.splice(k, 1); Y.choix[i] = true; } } });
-        Y.main.forEach((v, i) => { if(i >= Y.gardes.length && !Y.choix[i]){ const k = reste.indexOf(v); if(k >= 0){ reste.splice(k, 1); Y.choix[i] = true; } } });
+      // les dés à garder conseillés : d'abord ceux de la banque, puis les dés lancés ; en jaune, ceux qui ne sont pas encore en banque
+      Y.conseilles = new Set(); Y.conseilBanque = null;
+      if(Y.conseil && Y.lancer < 3 && Y.conseil.garde.length < 5){
+        const reste = Y.conseil.garde.slice(), choisis = [];
+        for(const d of [...Y.banque, ...jeuYams()]){ const k = reste.indexOf(d.v); if(k >= 0){ reste.splice(k, 1); choisis.push(d); } }
+        Y.conseilBanque = choisis;
+        choisis.forEach(d => { if(!Y.banque.includes(d)) Y.conseilles.add(d); });
       }
     } else {
       const vals = lecture.des.map(d => d.v);
@@ -462,13 +489,14 @@
     const vals = lecture.des.map(d => d.v), n = vals.length;
     let h = `<p class="lc-conseil">🎲 <b>${n} dé${n > 1 ? 's' : ''} lu${n > 1 ? 's' : ''} sur le plateau : vérifiez</b>, puis validez.`;
     if(JEU === 'yams'){
-      const suivant = Y.fini || Y.lancer === 0 || Y.lancer >= 3 ? 1 : Y.lancer + 1;
-      h += `<br>Ce sera le lancer ${suivant} / 3${suivant > 1 && n < 5 ? ` (les ${5 - n} autres dés sont ceux gardés)` : ''}.`;
+      const suivant = nouveauTourYams() ? 1 : Y.lancer + 1, nb = suivant > 1 ? Y.banque.length : 0, vus = lecture.hors.filter(d => d.banque).length;
+      h += `<br>Ce sera le lancer ${suivant} / 3${nb ? ` : ${5 - nb} dé${5 - nb > 1 ? 's' : ''} relancé${5 - nb > 1 ? 's' : ''}, ${nb} en banque (${Y.banque.map(d => FACES[d.v]).join(' ')})` : ''}.`;
+      if(vus) h += `<br><small>${vus} dé${vus > 1 ? 's' : ''} de la banque vu${vus > 1 ? 's' : ''} sur le plateau : décompté${vus > 1 ? 's' : ''} de la lecture.</small>`;
     }
     h += '</p>';
     h += `<div class="lc-main">${vals.map((v, i) => puce(v, i === choixPanneau ? 'choisi' : '', i === choixPanneau ? 'corriger' : '', i)).join('')}</div>`;
     if(choixPanneau >= 0) h += `<div class="lc-ligne lc-corr">${[1, 2, 3, 4, 5, 6].map(v => `<button class="lc-de" data-v="${v}" aria-label="${v}">${FACES[v]}</button>`).join('')}<button class="lc-btn gris" data-v="0">Pas un dé</button></div>`;
-    if(JEU === 'yams' && (Y.fini || Y.lancer === 0 || Y.lancer >= 3) && n !== 5) h += `<p class="lc-aide">⚠️ Il faut 5 dés pour un premier lancer : touchez l'image pour ajouter un dé oublié.</p>`;
+    if(JEU === 'yams'){ const att = nouveauTourYams() ? 5 : 5 - Y.banque.length; if(n !== att) h += `<p class="lc-aide">⚠️ J'attends ${att} dé${att > 1 ? 's' : ''} lancé${att > 1 ? 's' : ''}${att < 5 ? ` (5 moins ${5 - att} en banque)` : ''} : touchez l'image pour ajouter un dé oublié, ou un dé en trop pour l'enlever.</p>`; }
     if(inconnus) h += `<p class="lc-aide">⚠️ ${inconnus} dé${inconnus > 1 ? 's' : ''} sans valeur (en rouge) : touchez-le pour la donner.</p>`;
     h += `<div class="lc-ligne"><button class="lc-btn vert" data-act="valider"${inconnus || !n ? ' disabled' : ''}>✓ Valider</button><button class="lc-btn gris" data-act="relire">↻ Relire</button></div>`;
     h += '<p class="lc-aide">Un dé mal lu ? Touchez-le, ici ou sur l\'image. ↻ Relire oublie cette lecture et regarde à nouveau.</p>';
@@ -489,17 +517,21 @@
     h += `<div class="lc-ligne">${noms.length ? `<select class="lc-joueur" aria-label="Joueur">${noms.map((n, i) => `<option value="${i}"${i === Y.joueur ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>` : ''}
       <span class="lc-cpt"><button data-act="moins" aria-label="Lancer précédent">−</button><b>Lancer ${Y.lancer} / 3</b><button data-act="plus" aria-label="Lancer suivant">+</button></span>
       <button class="lc-btn gris" data-act="tour">Nouveau tour</button></div>`;
-    h += `<div class="lc-main">${Y.main.map((v, i) => puce(v, (i < Y.gardes.length ? 'garde ' : '') + (Y.choix[i] ? 'choisi' : ''), i < Y.gardes.length ? 'gardé' : Y.choix[i] ? 'garder' : '', i)).join('')}</div>`;
-    if(lecture.des.length + Y.gardes.length !== 5) h += `<p class="lc-aide">⚠️ Je vois ${lecture.des.length} dé${lecture.des.length > 1 ? 's' : ''} sur le plateau${Y.gardes.length ? ` et ${Y.gardes.length} gardé${Y.gardes.length > 1 ? 's' : ''}` : ''} : il en faut 5. Écartez les dés qui se touchent, ou touchez l'image pour ajouter un dé.</p>`;
+    const jeuD = jeuYams(), enJeu = Y.lancer < 3;
+    h += `<div class="lc-rang"><b>🏦 Banque</b>${Y.banque.length ? `<div class="lc-main">${Y.banque.map((d, i) => puce(d.v, 'garde', enJeu ? 'remettre' : '', 'b' + i)).join('')}</div>` : `<span class="lc-aide">${enJeu ? 'vide : touchez un dé lancé pour le garder' : 'vide'}</span>`}</div>`;
+    h += `<div class="lc-rang"><b>🎲 Lancé${jeuD.length > 1 ? 's' : ''}</b><div class="lc-main">${jeuD.map((d, i) => puce(d.v, Y.conseilles.has(d) ? 'choisi' : '', enJeu ? (Y.conseilles.has(d) ? 'à garder' : 'garder') : '', 'j' + i)).join('')}</div></div>`;
+    if(Y.main.length !== 5) h += `<p class="lc-aide">⚠️ ${Y.main.length} dé${Y.main.length > 1 ? 's' : ''} en tout (banque et lancés) : il en faut 5. Touchez l'image pour ajouter un dé oublié.</p>`;
     if(inconnus) h += `<p class="lc-aide">⚠️ ${inconnus} dé${inconnus > 1 ? 's' : ''} mal lu${inconnus > 1 ? 's' : ''} (en rouge) : touchez-le pour donner sa valeur.</p>`;
     const c = Y.conseil, complet = Y.main.length === 5 && Y.main.every(Boolean);
     if(complet){
       const somme = Y.main.reduce((a, b) => a + b, 0);
       if(c && Y.lancer < 3 && c.garde.length < 5){
         const n = 5 - c.garde.length, r = 3 - Y.lancer;
-        h += `<p class="lc-conseil">💡 <b>Garder ${c.garde.length ? c.garde.map(v => FACES[v]).join(' ') : 'aucun dé'}</b> (encadrés en jaune) et relancer ${n} dé${n > 1 ? 's' : ''} (${r} lancer${r > 1 ? 's' : ''} restant${r > 1 ? 's' : ''}).` +
+        const dejaBon = Y.conseilBanque && Y.conseilBanque.length === Y.banque.length && Y.conseilBanque.every(d => Y.banque.includes(d));
+        h += `<p class="lc-conseil">💡 <b>Garder ${c.garde.length ? c.garde.map(v => FACES[v]).join(' ') : 'aucun dé'}</b> (en jaune) et relancer ${n} dé${n > 1 ? 's' : ''} (${r} lancer${r > 1 ? 's' : ''} restant${r > 1 ? 's' : ''}).` +
+          (dejaBon ? ' ✅ C\'est la banque.' : `<br><button class="lc-btn" data-act="banqueConseil">🏦 Mettre en banque ${c.garde.length ? c.garde.map(v => FACES[v]).join(' ') : '(vider la banque)'}</button>`) +
           (c.probas.length ? `<br>Chances à la fin du tour : ${c.probas.slice(0, 6).map(x => `<span class="lc-pct">${esc(x.label)} ${pct(x.p)}</span>`).join('')}` : '') +
-          `<br><small>Touchez un dé ci-dessus pour choisir vous-même ceux que vous gardez ; posez-les hors du plateau avant de relancer.</small></p>`;
+          `<br><small>Touchez un dé lancé pour le mettre en banque, un dé de la banque pour le remettre en jeu. Relancez ensuite les autres (les dés de la banque peuvent rester à côté du plateau).</small></p>`;
       } else if(c) h += `<p class="lc-conseil">💡 <b>${Y.lancer < 3 ? 'Ne plus relancer : ' : ''}noter ${esc(nomCase(c.case))}</b> (★). Total des dés : ${somme}.</p>`;
       if(j && Y.joueur != null){
         const opts = j.options(Y.main, Y.joueur), bons = opts.filter(o => o.pts > 0), best = c && (Y.lancer >= 3 || c.garde.length === 5) ? c.case : null;
@@ -511,8 +543,8 @@
       }
     }
     panneau.innerHTML = h;
-    const sel = panneau.querySelector('.lc-joueur'); if(sel) sel.onchange = () => { Y.joueur = +sel.value; Y.choix = []; calculer(); afficherPanneau(); dessiner(); };
-    panneau.querySelectorAll('.lc-de').forEach(b => b.onclick = () => { const i = +b.dataset.i; if(!Y.choix.length) Y.choix = Y.main.map(() => false); Y.choix[i] = !Y.choix[i]; afficherPanneau(); dessiner(); });
+    const sel = panneau.querySelector('.lc-joueur'); if(sel) sel.onchange = () => { Y.joueur = +sel.value; calculer(); afficherPanneau(); dessiner(); };
+    if(enJeu) panneau.querySelectorAll('.lc-de').forEach(b => b.onclick = () => { const id = b.dataset.i, d = id[0] === 'b' ? Y.banque[+id.slice(1)] : jeuD[+id.slice(1)]; if(d) basculer(d); });
   }
   const nomCase = k => (window.YamsIA && YamsIA.NOMS[k]) || k;
 
@@ -559,14 +591,19 @@
     const j = jeu();
     if(a === 'valider') return valider();
     if(a === 'relire') return relire();
+    if(a === 'banqueConseil' && Y.conseilBanque){
+      for(const d of Y.banque.slice()) if(!Y.conseilBanque.includes(d)){ Y.banque.splice(Y.banque.indexOf(d), 1); if(!lecture || !lecture.des.includes(d)) Y.remis.push(d); }
+      for(const d of Y.conseilBanque) if(!Y.banque.includes(d)){ const k = Y.remis.indexOf(d); if(k >= 0) Y.remis.splice(k, 1); Y.banque.push(d); }
+      majMainYams(); calculer(); afficherPanneau(); dessiner(); return;
+    }
     if(a === 'moins') return changerLancer(-1);
     if(a === 'plus') return changerLancer(1);
-    if(a === 'tour'){ Y.fini = true; Y.lancer = 0; Y.gardes = []; Y.main = []; Y.choix = []; lecture = null; pile = []; dernierSig = null; if(j) Y.joueur = j.nextPlayer(); afficherPanneau(); dessiner(); return; }
+    if(a === 'tour'){ Y.fini = true; Y.lancer = 0; Y.banque = []; Y.remis = []; Y.main = []; Y.conseilles = new Set(); lecture = null; pile = []; dernierSig = null; if(j) Y.joueur = j.nextPlayer(); afficherPanneau(); dessiner(); return; }
     if(a === 'noter' && j){
       const v = b.dataset.v === 'x' ? 'x' : +b.dataset.v;
       j.note(Y.joueur, b.dataset.key, v);
       annoncer(`Noté : ${nomCase(b.dataset.key)} ${v === 'x' ? 'rayé' : v} pour ${j.players()[Y.joueur]}`);
-      Y.fini = true; Y.main = []; Y.gardes = []; Y.choix = []; Y.lancer = 0; Y.joueur = j.nextPlayer(); lecture = null;
+      Y.fini = true; Y.main = []; Y.banque = []; Y.remis = []; Y.conseilles = new Set(); Y.lancer = 0; Y.joueur = j.nextPlayer(); lecture = null;
       afficherPanneau(); dessiner(); return;
     }
     if(!j) return;
