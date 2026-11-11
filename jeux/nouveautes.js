@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:169, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
+    txt:'Le lecteur de dés lit aussi les dés filmés de biais (jusqu\'à 45° environ, téléphone tenu droit) : plus besoin de tenir le téléphone au-dessus du plateau. Il tient compte de la perspective, oublie les faces de côté des dés, et dessine chaque cadre en perspective.' },
   { v:168, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',
     txt:'Le lecteur de dés lit bien mieux : il part des points des dés, et marche avec des dés de toutes les couleurs (blancs, noirs, verts à points jaunes…), même sur un tapis de la même couleur, malgré les reflets ou une photo un peu de biais. Il est plus rapide, choisit la caméra grand angle (📐 pour en changer), et 📤 partage l\'image si un dé est mal lu.' },
   { v:167, type:'maj', jeu:"Yam's et 10 000", ico:'📷', lien:'jeux/yams.html',

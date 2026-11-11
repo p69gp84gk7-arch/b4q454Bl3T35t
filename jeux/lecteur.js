@@ -166,7 +166,7 @@
     etat.textContent = 'Démarrage de la caméra…';
     if(JEU === 'yams' && Y.joueur == null && jeu()) Y.joueur = jeu().nextPlayer();
     afficherPanneau();
-    if(await demarrerCamera()){ etat.textContent = 'Visez le plateau d\'en haut, les dés bien éclairés.'; }
+    if(await demarrerCamera()){ etat.textContent = 'Visez le plateau, d\'en haut ou de biais, les dés bien éclairés.'; }
     cancelAnimationFrame(boucle); boucle = requestAnimationFrame(tour);
   }
   function fermer(){ ouvert = false; ov.hidden = true; arreterCamera(); cancelAnimationFrame(boucle); choix.hidden = true; }
@@ -233,17 +233,17 @@
     if(r.rPoint) memo.rSource = r.rPoint * a.w / a.L;          // le rayon des points, en pixels de la caméra
     else if(!r.des.length) memo = {};
     const sig = r.des.length + ':' + r.des.map(d => d.v || 0).sort().join('');
-    etat.textContent = r.message || `${r.des.length} dé${r.des.length > 1 ? 's' : ''}${r.plateau ? ' sur le plateau' : ''}${r.hors && r.hors.length ? ` · ${r.hors.length} à côté` : ''}.`;
+    etat.textContent = r.message || `${r.des.length} dé${r.des.length > 1 ? 's' : ''}${r.plateau ? ' sur le plateau' : ''}${r.hors && r.hors.length ? ` · ${r.hors.length} à côté` : ''}${r.biais ? ` · vu de biais (${r.biais}°)` : ''}.`;
     if(a.estPhoto){ retenir(r, sig); return; }
     // une lecture est retenue quand elle reste la même pendant 3 analyses de suite
     pile.push(sig); if(pile.length > 3) pile.shift();
     if(r.des.length && pile.length === 3 && pile.every(s => s === sig) && (!lecture || lecture.sig !== sig)) retenir(r, sig);
-    else if(lecture && lecture.sig === sig) lecture.des.forEach((d, i) => { const b = r.des[i]; if(b){ d.cx = b.cx; d.cy = b.cy; d.angle = b.angle; d.cote = b.cote; } });
+    else if(lecture && lecture.sig === sig) lecture.des.forEach((d, i) => { const b = r.des[i]; if(b){ d.cx = b.cx; d.cy = b.cy; d.angle = b.angle; d.cote = b.cote; d.coins = b.coins; } });
     dessiner();
   }
   // Un nouveau lancer
   function retenir(r, sig){
-    lecture = { des:r.des.map(d => ({ cx:d.cx, cy:d.cy, cote:d.cote, angle:d.angle, v:d.v })), hors:(r.hors || []).map(d => ({ ...d })), sig, w:r.w, h:r.h };
+    lecture = { des:r.des.map(d => ({ cx:d.cx, cy:d.cy, cote:d.cote, angle:d.angle, coins:d.coins, v:d.v })), hors:(r.hors || []).map(d => ({ ...d })), sig, w:r.w, h:r.h };
     if(navigator.vibrate) navigator.vibrate(15);
     if(JEU === 'yams') nouveauLancerYams(); else { D.fait = false; D.choix = []; }
     calculer(); afficherPanneau(); dessiner();
@@ -282,25 +282,34 @@
     const des = lecture && (fige || lecture.sig === sigDe(r)) ? lecture.des : r.des.map(d => ({ ...d }));
     // les dés posés hors du plateau (gardés, ou mis de côté) : cadre pointillé bleu
     const hors = lecture && (fige || lecture.sig === sigDe(r)) ? lecture.hors : r.hors || [];
-    hors.forEach(d => {
+    // le cadre d'un dé : le carré du dessus, en perspective si la photo est prise de biais (ses 4 coins), un peu agrandi
+    const cadre = d => {
+      if(d.coins && r.biais){
+        dg.beginPath(); d.coins.forEach((p, i) => { const x = X(d.cx + (p[0] - d.cx) * 1.12), y = Yy(d.cy + (p[1] - d.cy) * 1.12); i ? dg.lineTo(x, y) : dg.moveTo(x, y); }); dg.closePath();
+        return Math.min(...d.coins.map(p => Yy(d.cy + (p[1] - d.cy) * 1.12)));
+      }
       const s = d.cote * k * 1.08;
-      dg.save(); dg.translate(X(d.cx), Yy(d.cy)); dg.rotate(d.angle || 0); dg.setLineDash([6, 5]); dg.lineWidth = 2.5; dg.strokeStyle = '#7FB2FF';
-      dg.beginPath(); dg.roundRect ? dg.roundRect(-s / 2, -s / 2, s, s, s * .18) : dg.rect(-s / 2, -s / 2, s, s); dg.stroke(); dg.restore();
-      const tx = X(d.cx), ty = Yy(d.cy) - s / 2 - 11;
+      dg.save(); dg.translate(X(d.cx), Yy(d.cy)); dg.rotate(d.angle || 0);
+      dg.beginPath(); dg.roundRect ? dg.roundRect(-s / 2, -s / 2, s, s, s * .18) : dg.rect(-s / 2, -s / 2, s, s); dg.restore();
+      return Yy(d.cy) - s / 2;
+    };
+    hors.forEach(d => {
+      dg.save(); dg.setLineDash([6, 5]); dg.lineWidth = 2.5; dg.strokeStyle = '#7FB2FF';
+      const haut = cadre(d); dg.stroke(); dg.restore();
+      const tx = X(d.cx), ty = haut - 11;
       dg.fillStyle = '#7FB2FF'; dg.beginPath(); dg.arc(tx, ty, 9, 0, Math.PI * 2); dg.fill();
       dg.fillStyle = '#0E1116'; dg.font = 'bold 12px system-ui, sans-serif'; dg.textAlign = 'center'; dg.textBaseline = 'middle'; dg.fillText(d.v, tx, ty + 1);
     });
     const jaunes = desJaunes(des);
     des.forEach((d, i) => {
-      const s = d.cote * k * 1.08;
-      dg.save(); dg.translate(X(d.cx), Yy(d.cy)); dg.rotate(d.angle || 0);
+      dg.save();
       dg.lineWidth = jaunes.has(i) ? 4.5 : 2.5;
       dg.strokeStyle = !d.v ? '#FF5A4E' : jaunes.has(i) ? '#FFE066' : 'rgba(255,255,255,.9)';
       if(jaunes.has(i)){ dg.shadowColor = 'rgba(255,224,102,.9)'; dg.shadowBlur = 12; }
-      dg.beginPath(); dg.roundRect ? dg.roundRect(-s / 2, -s / 2, s, s, s * .18) : dg.rect(-s / 2, -s / 2, s, s); dg.stroke();
+      const haut = cadre(d); dg.stroke();
       dg.restore();
       // l'étiquette : la valeur lue
-      const tx = X(d.cx), ty = Yy(d.cy) - s / 2 - 13;
+      const tx = X(d.cx), ty = haut - 13;
       dg.fillStyle = !d.v ? '#FF5A4E' : jaunes.has(i) ? '#FFE066' : 'rgba(20,24,32,.85)';
       dg.beginPath(); dg.arc(tx, ty, 11, 0, Math.PI * 2); dg.fill();
       dg.fillStyle = !d.v || jaunes.has(i) ? '#1A1A1A' : '#fff'; dg.font = 'bold 14px system-ui, sans-serif'; dg.textAlign = 'center'; dg.textBaseline = 'middle';
@@ -410,7 +419,7 @@
   function afficherPanneau(){
     const j = jeu();
     if(!lecture){
-      panneau.innerHTML = `<p class="lc-aide">Posez les dés sur le plateau et tenez le téléphone au-dessus : le plateau est entouré en vert, chaque dé encadré avec sa valeur.
+      panneau.innerHTML = `<p class="lc-aide">Posez les dés sur le plateau et filmez-les, d'en haut ou de biais (jusqu'à 45° environ, le téléphone tenu droit) : le plateau est entouré en vert, chaque dé encadré avec sa valeur.
         ${JEU === 'yams' ? 'Les dés que vous gardez se posent <b>hors du plateau</b> : le lecteur sait alors qu\'ils sont gardés.' : 'Les dés mis de côté se posent <b>hors du plateau</b>.'}
         Un dé mal lu ? Touchez-le pour corriger sa valeur.</p>`;
       return;
