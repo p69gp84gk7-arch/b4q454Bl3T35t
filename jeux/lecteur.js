@@ -20,6 +20,7 @@
   const pct = p => p >= .995 ? '100 %' : p < .01 ? '< 1 %' : Math.round(p * 100) + ' %';
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
   const jeu = () => window.plateauJeu || null;
+  const NB_DES = 5;
   const PETITE = 480, GRANDE = 1280;                 // largeur des images analysées (repérage, puis lecture des points)
 
   /* ---------- Styles ---------- */
@@ -188,7 +189,7 @@
   };
 
   /* ---------- L'analyse, à part (worker) : l'image reste fluide ---------- */
-  let travail = null, enCours = false, memo = {}, idCalcul = 0, attente = null;
+  let travail = null, enCours = false, memo = {}, idCalcul = 0, attente = null, nbAnalyses = 0;
   try{
     const base = (document.currentScript && document.currentScript.src) || location.href;
     travail = new Worker(new URL('des-vision.js' + (base.split('?')[1] ? '?' + base.split('?')[1] : ''), base));
@@ -220,7 +221,10 @@
     grande.width = L; grande.height = Math.round(L * h / w);
     gg.drawImage(src, 0, 0, grande.width, grande.height);
     const gr = gg.getImageData(0, 0, grande.width, grande.height);
-    const m = memo.rSource && !estPhoto ? { r:memo.rSource * L / w } : {};
+    // (5 dés au Yam's comme au 10 000 : jamais plus)
+    // (une analyse sur 4 cherche à toutes les tailles : la taille retenue ne peut pas rester bloquée sur une fausse)
+    nbAnalyses++;
+    const m = memo.rSource && !estPhoto && nbAnalyses % 4 ? { r:memo.rSource * L / w, max:NB_DES } : { max:NB_DES };
     const a = { w, L, estPhoto, pw:petite.width, ph:petite.height };
     if(travail && !estPhoto){
       enCours = true; attente = a; idCalcul++;
@@ -230,8 +234,8 @@
   function finir(r, a){
     if(!ouvert || (fige && !a.estPhoto)) return;
     r.w = a.pw; r.h = a.ph; brut = r;
-    if(r.rPoint) memo.rSource = r.rPoint * a.w / a.L;          // le rayon des points, en pixels de la caméra
-    else if(!r.des.length) memo = {};
+    // le rayon des points des vrais dés, en pixels de la caméra ; sans dé sûr, on cherche à nouveau à toutes les tailles
+    if(r.rPoint) memo.rSource = r.rPoint * a.w / a.L; else memo = {};
     const sig = r.des.length + ':' + r.des.map(d => d.v || 0).sort().join('');
     etat.textContent = r.message || `${r.des.length} dé${r.des.length > 1 ? 's' : ''}${r.plateau ? ' sur le plateau' : ''}${r.hors && r.hors.length ? ` · ${r.hors.length} à côté` : ''}${r.biais ? ` · vu de biais (${r.biais}°)` : ''}.`;
     if(a.estPhoto){ retenir(r, sig); return; }
