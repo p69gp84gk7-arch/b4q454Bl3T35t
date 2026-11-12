@@ -1,4 +1,4 @@
-/* Toise : les silhouettes (dessinées pour le jeu, en aplats) et leur vraie taille.
+/* Quelle taille ? : les silhouettes (dessinées pour le jeu, en aplats) et leur vraie taille.
    Un objet : id ; n (le nom, avec son article) ; de (« de la tour Eiffel », pour la question) ; cat ;
    t : la taille en mètres ; dim : ce qu'on mesure ('h' la hauteur, 'l' la longueur ou la largeur) ;
    w, h : la boîte du dessin (le dessin la remplit : la dimension mesurée fait exactement w ou h) ; c : la couleur ;

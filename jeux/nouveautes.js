@@ -3,7 +3,7 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
-  { v:183, type:'nouveau', jeu:'Toise', ico:'📏', lien:'jeux/toise.html',
+  { v:183, type:'nouveau', jeu:'Quelle taille ?', ico:'📏', lien:'jeux/toise.html',
     txt:'Un nouveau jeu de coup d\'œil : devine la vraie taille d\'une silhouette (tour Eiffel, baleine bleue, Airbus, canette, dameuse…) posée à côté d\'une autre. 66 silhouettes, 10 devinettes de plus en plus trompeuses : même échelle, à la règle, deux échelles, puis à la loupe. Réponse au curseur, note sur 10.' },
   { v:183, type:'maj', jeu:'Nuancier', ico:'🦸', lien:'jeux/nuancier.html',
     txt:'41 nouveaux personnages : Dark Vador, Yoda, Harry Potter, Batman, Iron Man, Captain America, Goku, Naruto, Luffy, Totoro, Astérix, Tintin, Bluey, Ladybug… (160 images, avec une nouvelle catégorie « Héros de films, séries et mangas »). La note est plus sévère : il faut être vraiment tout près pour avoir 8 ou 9. Les records repartent de zéro.' },
