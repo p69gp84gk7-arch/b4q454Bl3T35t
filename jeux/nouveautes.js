@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:180, type:'maj', jeu:'Dichotomie', ico:'🗺', lien:'jeux/panne.html',
+    txt:'La carte se déplace et se zoome mieux : elle ne saute plus quand on touche un canon, le zoom à deux doigts suit les doigts. 3 kits de réparation par partie.' },
   { v:179, type:'maj', jeu:'Dichotomie', ico:'🔓', lien:'jeux/panne.html',
     txt:'Un parcours à difficulté graduelle : les 15 pannes, de la plus simple à la plus sournoise (Débutant, Confirmé, Sournois, Expert). Chaque panne réussie débloque la suivante.' },
   { v:178, type:'maj', jeu:'Dichotomie', ico:'🫥', lien:'jeux/panne.html',

@@ -278,8 +278,8 @@
     if(types[0] === 'expert2' || types[0] === 'expert3'){ const l = SOURNOISES.slice(), n = types[0] === 'expert3' ? 3 : 2; types = []; while(types.length < n) types.push(l.splice(Math.floor(r() * l.length), 1)[0]); }
     for(const t of types){ const p = tirerPanne(t, r, E.pannes); if(Array.isArray(p)) E.pannes.push(...p); else if(p){ p.genre = t; E.pannes.push(p); } }
     E.optimum = E.pannes.reduce((s, p) => s + optimum(p), 0);
-    // le stock de pièces : celles qu'il faut, plus une de secours de chaque
-    E.stock = { cartes:1 + E.pannes.filter(p => p.type === 'contaminant' || p.type === 'passeplat').length, kits:1 + E.pannes.filter(p => ['cableDia', 'cableElec', 'court', 'parasite'].includes(p.type)).length };
+    // le stock de pièces : les cartes qu'il faut plus une de secours, et 3 kits de réparation
+    E.stock = { cartes:1 + E.pannes.filter(p => p.type === 'contaminant' || p.type === 'passeplat').length, kits:Math.max(3, E.pannes.filter(p => ['cableDia', 'cableElec', 'court', 'parasite'].includes(p.type)).length) };
     stabiliser(E);
     return { E, niveau:niv, graine, types };
   }

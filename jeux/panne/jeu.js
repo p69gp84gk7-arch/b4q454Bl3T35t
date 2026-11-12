@@ -326,7 +326,9 @@
   function dessiner(){
     if($('eJeu').hidden || !P) return;
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
-    const C = S.calculer(P.E), elec = P.vue === 'elec', r = Math.max(3.2, Math.min(9, V.s * 9)), lbl = V.s > .55;
+    const cle = [P.E.t, P.gestes, P.E.off.size, P.E.debr.size, P.E.ouv.size, P.E.depOuv.size, P.E.disj.size, P.E.pannes.filter(p => p.repare).length, P.revele].join();
+    if(!P.cacheC || P.cacheC.cle !== cle) P.cacheC = { cle, C:S.calculer(P.E) };
+    const C = P.cacheC.C, elec = P.vue === 'elec', r = Math.max(3.2, Math.min(9, V.s * 9)), lbl = V.s > .55;
     g.lineCap = 'round'; g.lineJoin = 'round';
     // les tracés des câbles (fond)
     g.strokeStyle = 'rgba(160,190,230,.10)'; g.lineWidth = 1.2; S.R.traces.forEach(trait);
@@ -394,7 +396,7 @@
       : '<span><i style="background:#2FD47A"></i>tension mesurée</span><span><i style="background:#1A2233;border:2px solid #FFD23F"></i>pas de tension</span><span><i style="background:#55657C"></i>pas mesuré</span><span>tirets : tronçon ouvert</span>'; }
   $('vDia').onclick = () => { P.vue = 'dia'; majVues(); dessiner(); if(!P.sel || P.sel.type === 'cable'){ P.sel = null; panneau(); } };
   $('vElec').onclick = () => { P.vue = 'elec'; majVues(); dessiner(); if(!P.sel) panneau(); };
-  const zoomA = (f, cx, cy) => { const s = Math.min(40, Math.max(.05, V.s * f)); f = s / V.s; V.tx = cx - (cx - V.tx) * f; V.ty = cy - (cy - V.ty) * f; V.s = s; dessiner(); };
+  const zoomA = (f, cx, cy) => { const s = Math.min(40, Math.max(.05, V.s * f)); f = s / V.s; V.tx = cx - (cx - V.tx) * f; V.ty = cy - (cy - V.ty) * f; V.s = s; redessiner(); };
   $('zPlus').onclick = () => zoomA(1.5, W / 2, H / 2); $('zMoins').onclick = () => zoomA(1 / 1.5, W / 2, H / 2); $('zTout').onclick = ajuster;
   // distance d'un point à un tracé (en pixels)
   function distTrait(px, py, pts){
@@ -419,20 +421,43 @@
     P.sel = best; panneau(); dessiner();
     if(best && window.matchMedia('(orientation:portrait)').matches) $('panneau').scrollTop = 0;
   }
-  // un doigt : déplacer ; deux doigts : zoomer ; toucher court : choisir
+  // un doigt : déplacer ; deux doigts : zoomer (et déplacer en même temps) ; toucher court : choisir
   const pts = new Map(); let geste = null;
-  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
-    const r = cv.getBoundingClientRect();
-    if(pts.size === 1) geste = { pan:true, x:e.clientX, y:e.clientY, tx:V.tx, ty:V.ty, bouge:false, t:Date.now(), r };
-    else if(pts.size === 2){ const [a, b] = [...pts.values()]; geste = { pinch:true, d:Math.hypot(a.x - b.x, a.y - b.y) || 1, s:V.s, mx:(a.x + b.x) / 2 - r.left, my:(a.y + b.y) / 2 - r.top, tx:V.tx, ty:V.ty, bouge:true }; } });
-  cv.addEventListener('pointermove', e => { if(!pts.has(e.pointerId) || !geste) return; pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
-    if(geste.pinch && pts.size >= 2){ const [a, b] = [...pts.values()], s = Math.min(40, Math.max(.05, geste.s * Math.hypot(a.x - b.x, a.y - b.y) / geste.d)), wx = (geste.mx - geste.tx) / geste.s, wy = (geste.my - geste.ty) / geste.s;
-      V.s = s; V.tx = geste.mx - wx * s; V.ty = geste.my - wy * s; dessiner(); }
-    else if(geste.pan){ const dx = e.clientX - geste.x, dy = e.clientY - geste.y; if(Math.hypot(dx, dy) > 8) geste.bouge = true; if(geste.bouge){ V.tx = geste.tx + dx; V.ty = geste.ty + dy; dessiner(); } } });
-  const fin = e => { if(!pts.has(e.pointerId)) return; pts.delete(e.pointerId);
-    if(geste && geste.pan && !geste.bouge && e.type === 'pointerup' && Date.now() - geste.t < 600){ const r = cv.getBoundingClientRect(); toucher(e.clientX - r.left, e.clientY - r.top); }
-    if(pts.size === 1){ const [a] = [...pts.values()]; geste = { pan:true, x:a.x, y:a.y, tx:V.tx, ty:V.ty, bouge:true }; } else if(!pts.size) geste = null; };
-  cv.addEventListener('pointerup', fin); cv.addEventListener('pointercancel', fin);
+  const local = p => { const r = cv.getBoundingClientRect(); return { x:p.x - r.left, y:p.y - r.top }; };
+  // (re)commence un geste avec les doigts posés : la carte suit les doigts depuis cet instant
+  function nouveauGeste(tap){
+    const l = [...pts.values()];
+    if(l.length >= 2){
+      const a = local(l[0]), b = local(l[1]), m = { x:(a.x + b.x) / 2, y:(a.y + b.y) / 2 };
+      geste = { pinch:true, d:Math.hypot(a.x - b.x, a.y - b.y) || 1, s:V.s, wx:(m.x - V.tx) / V.s, wy:(m.y - V.ty) / V.s, bouge:true };
+    } else if(l.length === 1){ const a = local(l[0]); geste = { pan:true, x:a.x, y:a.y, tx:V.tx, ty:V.ty, bouge:!tap, t:Date.now() }; }
+    else geste = null;
+  }
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); try{ cv.setPointerCapture(e.pointerId); }catch(err){} pts.set(e.pointerId, { x:e.clientX, y:e.clientY }); nouveauGeste(pts.size === 1); });
+  cv.addEventListener('pointermove', e => {
+    if(!pts.has(e.pointerId) || !geste) return; pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    const l = [...pts.values()];
+    if(geste.pinch && l.length >= 2){
+      const a = local(l[0]), b = local(l[1]), m = { x:(a.x + b.x) / 2, y:(a.y + b.y) / 2 };
+      const s = Math.min(40, Math.max(.05, geste.s * Math.hypot(a.x - b.x, a.y - b.y) / geste.d));
+      V.s = s; V.tx = m.x - geste.wx * s; V.ty = m.y - geste.wy * s; redessiner();
+    } else if(geste.pan){
+      const a = local(l[0]), dx = a.x - geste.x, dy = a.y - geste.y;
+      if(Math.hypot(dx, dy) > 8) geste.bouge = true;
+      if(geste.bouge){ V.tx = geste.tx + dx; V.ty = geste.ty + dy; redessiner(); }
+    }
+  });
+  const fin = e => {
+    if(!pts.has(e.pointerId)) return;
+    const tap = geste && geste.pan && !geste.bouge && e.type === 'pointerup' && Date.now() - geste.t < 600;
+    pts.delete(e.pointerId);
+    if(tap){ const p = local({ x:e.clientX, y:e.clientY }); toucher(p.x, p.y); }
+    nouveauGeste(false);                          // le doigt qui reste continue de déplacer la carte, sans sauter
+  };
+  cv.addEventListener('pointerup', fin); cv.addEventListener('pointercancel', fin); cv.addEventListener('lostpointercapture', fin);
+  // pendant un geste, on redessine au plus une fois par image
+  let aDessiner = false;
+  function redessiner(){ if(aDessiner) return; aDessiner = true; requestAnimationFrame(() => { aDessiner = false; dessiner(); }); }
   cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomA(Math.exp(-e.deltaY * .0015), e.clientX - r.left, e.clientY - r.top); }, { passive:false });
   // la carte change de taille (panneau, rotation) : on garde le même centre
   let cadre = false;
@@ -444,7 +469,7 @@
   }).observe($('carteBox'));
 
   /* ---------- démarrage ---------- */
-  window.Panne = { get P(){ return P; }, demarrer, G, accueil, toucher, S, chrono, choisir:o => { P.sel = o; panneau(); dessiner(); } };
+  window.Panne = { get P(){ return P; }, vue:() => ({ ...V }), demarrer, G, accueil, toucher, S, chrono, choisir:o => { P.sel = o; panneau(); dessiner(); } };
   if(/[?&]test\b/.test(location.search)){ document.body.innerHTML = `<pre style="padding:16px;color:#EAF1FB;white-space:pre-wrap">${S.tests().join('\n')}</pre>`; return; }
   accueil();
   if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
