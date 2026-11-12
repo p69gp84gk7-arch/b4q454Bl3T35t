@@ -1108,7 +1108,7 @@ function poseSkieur(F, u, eng = engin, m = MVT0){
   const S = [], board = eng === 'board', T = TENUES[tenue.t], K = PLANCHES[tenue.s];
   // grab : il se ramasse, attrape, puis se détend avant la réception
   const c = F && F.grab ? Math.min(1, u / .3, (1 - u) / .25) : 0, G = c > 0 ? F.grab : '';
-  const seg = (a, b, l, col) => S.push({ a, b, l, c:col });
+  const seg = (a, b, l, col, plat) => S.push(plat ? { a, b, l, c:col, plat } : { a, b, l, c:col });   // plat : [largeur, épaisseur] (la 3D en fait une planche)
   const add = (a, b, k = 1) => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
   const mix = (a, b, k) => add(a, add(b, a, -1), k);
   // une articulation (genou, coude) entre deux points : deux os de longueur l, pliée du côté « vers »
@@ -1156,11 +1156,14 @@ function poseSkieur(F, u, eng = engin, m = MVT0){
   }
   // skis ou planche
   if(!board) for(const s of [-1, 1]){
-    const d = dir(Or[s]), queue = add(Pd[s], d, -.72), spatule = add(add(Pd[s], d, .85), [0, 0, .08]);
-    seg(queue, spatule, .09, K.c); seg(add(Pd[s], d, -.16), add(add(Pd[s], d, .13), [0, 0, .005]), .095, K.b);
+    const d = dir(Or[s]), queue = add(Pd[s], d, -.72), pointe = add(Pd[s], d, .66), spatule = add(add(Pd[s], d, .85), [0, 0, .08]);
+    seg(queue, pointe, .09, K.c, [.085, .022]); seg(pointe, spatule, .09, K.c, [.08, .022]);                   // le ski, la spatule relevée
+    seg(add(Pd[s], d, -.16), add(add(Pd[s], d, .13), [0, 0, .005]), .095, K.b, [.07, .05]);                     // la fixation
+    seg(add(add(Pd[s], d, -.14), [0, 0, .1]), add(add(Pd[s], d, .14), [0, 0, .1]), .12, '#2B3344', [.115, .16]);   // la chaussure
   } else {
     const d = add(Pd[1], Pd[-1], -1), n = Math.hypot(...d), q = add(Pd[-1], d, -.5 / n), ne = add(Pd[1], d, .5 / n);
-    seg(q, ne, .3, K.c); seg(q, mix(q, ne, .1), .31, K.b); seg(mix(ne, q, .1), ne, .31, K.b);
+    seg(q, ne, .3, K.c, [.27, .03]); seg(q, mix(q, ne, .1), .31, K.b, [.28, .035]); seg(mix(ne, q, .1), ne, .31, K.b, [.28, .035]);
+    for(const s of [-1, 1]) seg(add(Pd[s], [-.12, 0, .1]), add(Pd[s], [.12, 0, .1]), .12, '#2B3344', [.12, .16]);   // les chaussures, en travers
   }
   // jambes : les genoux plient vers l'avant (vers les orteils en snowboard) ; un pantalon large, qui tombe sur les chaussures
   for(const s of [-1, 1]){
@@ -1197,6 +1200,7 @@ function poseSkieur(F, u, eng = engin, m = MVT0){
         if(s === m.cote) pointe = mix(pointe, [main[0] + s * .1, main[1] + .38, .03], m.plant);       // planté devant, à l'intérieur du virage
       }
       seg(main, pointe, .03, '#5A6B85');
+      S.push({ point:mix(main, pointe, .9), r:.045, c:'#2A3140', rondelle:true });                              // la rondelle du bâton
     }
   }
   S.push({ point:corps([0, .04, .7]), r:.16, c:T.casque, visiere:true });
