@@ -3,6 +3,14 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:182, type:'maj', jeu:'Dameuse de nuit', ico:'⚓', lien:'jeux/dameuse.html',
+    txt:'En 3D, une dameuse bien plus détaillée (crampons qui défilent, gyrophare qui tourne, conducteur dans la cabine) et un vrai treuil : tourelle qui pivote vers l\'ancre, tambour qui tourne, flèche en treillis, câble tendu qui pend à l\'arrêt. Les ancres ont une balise : verte à portée, orange accrochée. Et la neige vole : gerbe de la fraise, chenilles, bout de la lame, flocons qui tombent.' },
+  { v:182, type:'maj', jeu:'Freeride', ico:'🎿', lien:'jeux/freeride.html',
+    txt:'En 3D, le skieur est plus détaillé (skis plats à spatule relevée, fixations, rondelles des bâtons, masque orange) et soulève la neige dans les virages ; une gerbe de poudreuse part à chaque réception.' },
+  { v:182, type:'maj', jeu:'Rock Altitude', ico:'🎸', lien:'jeux/rock.html',
+    txt:'Un son plus réaliste : réverbération de salle, guitare rythmique doublée à gauche et à droite, batterie placée comme sur scène, et un groupe qui joue de façon plus « humaine ».' },
+  { v:182, type:'maj', jeu:'Fusée Rythme', ico:'🚀', lien:'jeux/fusee.html',
+    txt:'Les 14 morceaux sont joués avec de vrais instruments enregistrés (batterie, basse, guitare saturée, piano, cordes), en stéréo et avec une salle.' },
   { v:181, type:'maj', jeu:'Dichotomie', ico:'🛒', lien:'jeux/panne.html',
     txt:'On peut acheter des pièces : touchez le stock (💳 · 🧰 🛒) en haut pour une carte de dialogue ou un kit de plus, gratuitement. Si le stock est vide au moment d\'une réparation, le jeu propose d\'en acheter une.' },
   { v:180, type:'maj', jeu:'Dichotomie', ico:'🗺', lien:'jeux/panne.html',

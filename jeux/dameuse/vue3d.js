@@ -8,7 +8,8 @@ window.DAMEUSE_3D = (() => {
   let T3 = null, R = null, scene = null, cam = null, ok = false, cv3 = null;
   let DEGRADE = null, CONTOUR = null;
   let T = null, piste = null, ALT = null, BANC = null, HC = null, geo = null, texCv = null, texCtx = null, tex = null;
-  let garageMats = [], dam = null, phareAv = null, phareAr = null, lumGarage = null, cable = null, gyroMat = null, lampes = [];
+  let garageMats = [], dam = null, phareAv = null, phareAr = null, lumGarage = null, cable = null, gyroMat = null, lampes = [], balises = [];
+  const NCABLE = 32;
   const camCtl = { yaw:0, pitch:.42, dist:17, cap:0, x:0, y:0, z:0, init:true };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -20,6 +21,7 @@ window.DAMEUSE_3D = (() => {
       case 'cyl': return new T3.CylinderGeometry(d[0] + e, d[1] + e, d[2] + 2 * e, d[3] || 10);
       case 'cone': return new T3.ConeGeometry(d[0] + e, d[1] + 2 * e, d[2] || 8);
       case 'boule': return new T3.IcosahedronGeometry(d[0] + e, d[1] || 0);
+      case 'tore': return new T3.TorusGeometry(d[0], d[1] + e, 6, d[2] || 14);
       case 'demi': return new T3.CylinderGeometry(d[0] + e, d[1] + e, d[2] + 2 * e, d[3] || 12, 1, false, 0, Math.PI);   // un demi-cylindre (capot de fraise)
     }
   }
@@ -220,10 +222,21 @@ window.DAMEUSE_3D = (() => {
       lampe.position.set(tete.position.x, tete.position.y + .85, tete.position.z); scene.add(lampe);
       lampes.push({ m:lm, ph:e.ph });
     }
-    // les ancres du treuil
+    // les ancres du treuil : un socle en béton, un poteau à bandes réfléchissantes, l'anneau où s'accroche le câble,
+    // un fanion et une balise (verte : à portée ; orange : le câble y est accroché)
+    balises = [];
     for(const an of T.ancres){
-      const g = objet([{ f:'cyl', d:[.25, .3, 1.6, 8], c:0x2A303B, p:[0, .8, 0] }, { f:'cyl', d:[.45, .45, .18, 12], c:0xF2B233, p:[0, 1.65, 0] }], .05);
+      const g = objet([
+        { f:'boite', d:[1.5, .7, 1.5], c:0x9097A0, p:[0, .05, 0] }, { f:'boite', d:[1.1, .12, 1.1], c:0x7C838D, p:[0, .45, 0] },
+        { f:'cyl', d:[.22, .28, 1.5, 8], c:0x2A303B, p:[0, 1.2, 0] },
+        { f:'cyl', d:[.25, .25, .14, 8], c:0xE8432F, p:[0, 1.15, 0] }, { f:'cyl', d:[.25, .25, .14, 8], c:0xF4F6F9, p:[0, 1.32, 0] }, { f:'cyl', d:[.25, .25, .14, 8], c:0xE8432F, p:[0, 1.49, 0] },
+        { f:'cyl', d:[.36, .36, .12, 12], c:0xF2B233, p:[0, 1.98, 0] }, { f:'tore', d:[.24, .06, 12], c:0xF2B233, p:[0, 2.3, 0] },
+        { f:'cyl', d:[.04, .04, 2.6, 5], c:0x30353E, p:[.5, 1.7, .5] }, { f:'boite', d:[.03, .45, .7], c:0xFF7A1A, p:[.5, 2.75, .85] },
+      ], .05);
       g.position.set(an.x, hauteur(an.x, an.y), an.y); scene.add(g);
+      const m = new T3.MeshBasicMaterial({ color:0x3A4048 }), b = new T3.Mesh(new T3.SphereGeometry(.16, 10, 8), m);
+      b.position.set(an.x + .5, hauteur(an.x, an.y) + 3.1, an.y + .5); scene.add(b);
+      balises.push({ an, m });
     }
     // le garage et sa lumière
     const ga = T.garage, gx = ga.x + ga.w / 2, gz = ga.y + ga.h / 2, gh = hauteur(gx, gz);
@@ -242,9 +255,9 @@ window.DAMEUSE_3D = (() => {
     const ens = new T3.Mesh(new T3.PlaneGeometry(7, 1.3), new T3.MeshBasicMaterial({ map:new T3.CanvasTexture(cvE) }));
     ens.position.set(gx, gh + 5.3, gz - ga.h / 2 - .12); ens.rotation.y = Math.PI; scene.add(ens);
     lumGarage = new T3.PointLight(0xFFD8A0, 1.3, 36, 1.2); lumGarage.position.set(gx, gh + 7, gz - ga.h / 2 - 5); scene.add(lumGarage);
-    // le câble du treuil
-    cable = new T3.Line(new T3.BufferGeometry().setFromPoints([new T3.Vector3(), new T3.Vector3()]), new T3.LineBasicMaterial({ color:0xE1E8F2 }));
-    cable.visible = false; scene.add(cable);
+    // le câble du treuil : une suite de petits tronçons d'acier, qui pend un peu quand il n'est pas tendu et se pose sur la neige
+    const cg = new T3.CylinderGeometry(.055, .055, 1, 5); cg.translate(0, .5, 0);
+    cable = new T3.InstancedMesh(cg, toon({ color:0xB9C2CE }), NCABLE); cable.frustumCulled = false; cable.visible = false; scene.add(cable);
     // les étoiles
     const n = 500, st = new Float32Array(n * 3);
     for(let k = 0; k < n; k++){ const a = Math.random() * 6.283, b = Math.random() * .9 + .08, r = 420; st[k * 3] = T.W / 2 + Math.cos(a) * Math.cos(b) * r; st[k * 3 + 1] = Math.sin(b) * r; st[k * 3 + 2] = T.H / 2 + Math.sin(a) * Math.cos(b) * r; }
@@ -319,11 +332,40 @@ window.DAMEUSE_3D = (() => {
     // les crampons des chenilles : ils font le tour de la bande, à la vitesse de la chenille (chacune la sienne en virage)
     const NC = 30, crampons = new T3.InstancedMesh(new T3.BoxGeometry(1.14, .1, .17), toon({ color:ACIER }), 2 * NC);
     crampons.frustumCulled = false; corps.add(crampons);
-    // le treuil : le tambour et le bras qui pivote vers l'ancrage
-    const tambour = objet([{ f:'cyl', d:[.35, .35, 1.4, 12], c:GRIS, r:[0, 0, Math.PI / 2] }], .04);
-    tambour.position.set(0, 2.55 * k, -1.6 * k); gr.add(tambour);
-    const bras = new T3.Group(); bras.position.set(0, 2.6 * k, -1.6 * k);
-    bras.add(objet([{ f:'boite', d:[.3, .25, 2.4 * k], c:0x5A606B, p:[0, .15, 1.2 * k] }, { f:'cyl', d:[.14, .14, .3, 8], c:JAUNE, p:[0, .15, 2.4 * k], r:[0, 0, Math.PI / 2] }], .04));
+    // le treuil, sur le capot : une tourelle qui pivote vers l'ancrage (couronne, carter, tambour où le câble est enroulé),
+    // et sa flèche en treillis, avec la poulie au bout d'où part le câble (repère de la tourelle : +z vers la flèche)
+    const bras = new T3.Group(); bras.position.set(0, 2.4 * k, -1.6 * k);
+    const z0 = .25 * k, y0 = .5 * k, LB = 2.5 * k, HB = .95 * k, lf = Math.hypot(LB - z0, HB - y0), af = Math.atan2(HB - y0, LB - z0);
+    const le = (u, x, dy = 0) => ({ p:[x, y0 + (HB - y0) * u + dy, z0 + (LB - z0) * u] });                       // un point de la flèche
+    const flec = [];
+    for(const x of [-.2 * k, .2 * k]) flec.push({ f:'boite', d:[.09 * k, .1 * k, lf], c:ACIER, ...le(.5, x), r:[-af, 0, 0] });     // les deux longerons
+    flec.push({ f:'boite', d:[.08 * k, .08 * k, lf * .9], c:ACIER, ...le(.47, 0, .26 * k), r:[-af, 0, 0] });                       // la membrure du haut
+    for(let i = 1; i < 6; i++){ const u = i / 6;                                                                                     // le treillis
+      flec.push({ f:'boite', d:[.42 * k, .05 * k, .05 * k], c:0x6B7380, ...le(u, 0) });
+      for(const sx of [-1, 1]) flec.push({ f:'boite', d:[.04 * k, .32 * k, .04 * k], c:0x6B7380, ...le(u, sx * .1 * k, .13 * k), r:[0, 0, sx * .6] }); }
+    const brin = Math.atan2(LB, HB + .2 * k - .74 * k), lb = Math.hypot(LB, HB + .2 * k - .74 * k);
+    bras.add(objet([
+      { f:'cyl', d:[.62 * k, .68 * k, .16 * k, 18], c:GRIS, p:[0, .08 * k, 0] },                                                      // la couronne
+      { f:'boite', d:[.12 * k, .72 * k, 1 * k], c:M.coul, p:[.58 * k, .48 * k, -.05 * k] }, { f:'boite', d:[.12 * k, .72 * k, 1 * k], c:M.coul, p:[-.58 * k, .48 * k, -.05 * k] },   // les flasques du carter
+      { f:'boite', d:[1.3 * k, .1 * k, .45 * k], c:M.coul, p:[0, .86 * k, -.3 * k] },                                                // le capot du tambour
+      { f:'boite', d:[1 * k, .35 * k, .3 * k], c:0x2A2F38, p:[0, .3 * k, -.42 * k] },                                                 // le moteur hydraulique
+      { f:'cyl', d:[.07 * k, .07 * k, 1.28 * k, 8], c:0xD9DEE6, p:[0, .45 * k, 0], r:[0, 0, Math.PI / 2] },                           // l'axe
+      ...flec,
+      { f:'cyl', d:[.035 * k, .035 * k, lb, 5], c:0xB9C2CE, p:[0, (.74 * k + HB + .2 * k) / 2, LB / 2], r:[brin, 0, 0] },             // le câble le long de la flèche
+      { f:'boite', d:[.06 * k, .5 * k, .5 * k], c:JAUNE, p:[.13 * k, HB, LB] }, { f:'boite', d:[.06 * k, .5 * k, .5 * k], c:JAUNE, p:[-.13 * k, HB, LB] },   // la chape de la poulie
+    ], .035));
+    // le tambour : il tourne quand le câble s'enroule ou se déroule (des repères jaunes pour le voir tourner)
+    const tambour = objet([
+      { f:'cyl', d:[.27 * k, .27 * k, .9 * k, 16], c:0x5C6470, r:[0, 0, Math.PI / 2] },
+      ...[-.36, -.24, -.12, 0, .12, .24, .36].map(x => ({ f:'cyl', d:[.29 * k, .29 * k, .05 * k, 16], c:0x9AA3AF, p:[x * k, 0, 0], r:[0, 0, Math.PI / 2] })),
+      { f:'cyl', d:[.4 * k, .4 * k, .06 * k, 16], c:GRIS, p:[.47 * k, 0, 0], r:[0, 0, Math.PI / 2] }, { f:'cyl', d:[.4 * k, .4 * k, .06 * k, 16], c:GRIS, p:[-.47 * k, 0, 0], r:[0, 0, Math.PI / 2] },
+      { f:'boite', d:[.08 * k, .14 * k, .3 * k], c:JAUNE, p:[.51 * k, .2 * k, 0] }, { f:'boite', d:[.08 * k, .14 * k, .3 * k], c:JAUNE, p:[-.51 * k, -.2 * k, 0] },
+    ], .03);
+    tambour.position.set(0, .45 * k, 0); bras.add(tambour);
+    const poulie = objet([{ f:'cyl', d:[.22 * k, .22 * k, .14 * k, 14], c:0x3B414C, r:[0, 0, Math.PI / 2] }, { f:'boite', d:[.16 * k, .06 * k, .4 * k], c:JAUNE }], .03);
+    poulie.position.set(0, HB, LB); bras.add(poulie);
+    const boutCable = new T3.Object3D(); boutCable.position.set(0, HB - .05 * k, LB + .22 * k); bras.add(boutCable);
+    bras.rotation.y = Math.PI;
     gr.add(bras);
     // la lame, devant (largeur réelle) : bombée, avec ses nervures, ses ailes, ses bras et ses vérins
     const lame = new T3.Group();
@@ -360,7 +402,7 @@ window.DAMEUSE_3D = (() => {
     const cibleAv = new T3.Object3D(); cibleAv.position.set(0, 0, 26); gr.add(cibleAv); phareAv.target = cibleAv;
     phareAr = new T3.SpotLight(0xFFF1D6, 1.6, 26, 1, .6, 1); phareAr.position.set(0, 3.4 * k, -1.8 * k); gr.add(phareAr);
     const cibleAr = new T3.Object3D(); cibleAr.position.set(0, 0, -9); gr.add(cibleAr); phareAr.target = cibleAr;
-    return { gr, bras, lame, bourrelet, fraise, miroir, crampons, NC, chenilles:[0, 0], M, tilt:{ x:0, z:0 }, hauteur:0 };
+    return { gr, bras, lame, bourrelet, fraise, miroir, crampons, NC, chenilles:[0, 0], tambour, poulie, boutCable, tension:0, lCable:null, M, tilt:{ x:0, z:0 }, hauteur:0 };
   }
   // un crampon à la distance s le long de la chenille (le tour : dessus, l'avant arrondi, dessous, l'arrière arrondi)
   const CH = { L:4.6, R:.5, y:.52 }, TOUR = 2 * CH.L + 2 * Math.PI * CH.R;
@@ -474,14 +516,38 @@ window.DAMEUSE_3D = (() => {
       if(chute.pos[j + 1] < camCtl.y - 18) chute.pos[j + 1] += 30;
     }
     chute.pts.geometry.attributes.position.needsUpdate = true;
-    dam.bras.rotation.y = -o.angleTreuil(P);
-    // le câble du treuil
+    // le treuil : la tourelle pivote (sans à-coup) vers l'ancrage
+    let db = -o.angleTreuil(P) - dam.bras.rotation.y; while(db > Math.PI) db -= 2 * Math.PI; while(db < -Math.PI) db += 2 * Math.PI;
+    dam.bras.rotation.y += db * Math.min(1, dt * (P.treuil ? 5 : 2.5));
+    // le câble : de la poulie à l'anneau de l'ancre ; tendu quand la dameuse tire, il pend et touche la neige quand elle s'arrête
     if(P.treuil){
-      const b = o.boutTreuil(P), pts = cable.geometry.attributes.position.array;
-      pts[0] = P.treuil.x; pts[1] = hauteur(P.treuil.x, P.treuil.y) + 1.65; pts[2] = P.treuil.y;
-      pts[3] = b[0]; pts[4] = dam.hauteur + 2.75 * k; pts[5] = b[1];
-      cable.geometry.attributes.position.needsUpdate = true; cable.geometry.computeBoundingSphere(); cable.visible = true;
-    } else cable.visible = false;
+      dam.gr.updateMatrixWorld();
+      const a = dam.boutCable.getWorldPosition(new T3.Vector3()), an = P.treuil, b = new T3.Vector3(an.x, hauteur(an.x, an.y) + 2.3, an.y);
+      const lg = a.distanceTo(b), tire = vit > .3 && !(P.v < 0);
+      dam.tension += ((tire ? 1 : .25) - dam.tension) * Math.min(1, dt * (tire ? 3 : 1.2));
+      // le tambour et la poulie tournent quand le câble s'enroule ou se déroule
+      if(dam.lCable != null){ const dl = lg - dam.lCable; dam.tambour.rotation.x += dl / (.29 * k); dam.poulie.rotation.x -= dl / (.22 * k); }
+      dam.lCable = lg;
+      const fl = lg * (.004 + .03 * (1 - dam.tension)), vib = dam.tension > .7 ? vit * .012 : 0, q = new T3.Quaternion(), Y = new T3.Vector3(0, 1, 0), mtx = new T3.Matrix4(), un = new T3.Vector3(1, 1, 1);
+      const pts = [];
+      let sol = -1;
+      for(let i = 0; i <= NCABLE; i++){
+        const u = i / NCABLE, p = a.clone().lerp(b, u);
+        p.y -= 4 * fl * u * (1 - u) - Math.sin(t * 31 + u * 9) * vib * Math.sin(Math.PI * u);
+        const hs = hauteur(p.x, p.z) + .07; if(p.y < hs){ p.y = hs; if(sol < 0) sol = i; }
+        pts.push(p);
+      }
+      for(let i = 0; i < NCABLE; i++){
+        const d = pts[i + 1].clone().sub(pts[i]), l = d.length();
+        q.setFromUnitVectors(Y, d.divideScalar(l || 1)); mtx.compose(pts[i], q, un.set(1, l, 1)); cable.setMatrixAt(i, mtx);
+      }
+      cable.instanceMatrix.needsUpdate = true; cable.visible = true;
+      // là où le câble frotte la neige, il la soulève
+      if(sol >= 0 && vit > .4 && Math.random() < dt * 14){ const p = pts[sol]; emettre(projections, p.x, p.y, p.z, (Math.random() - .5) * 1.2, .6 + Math.random(), (Math.random() - .5) * 1.2, .5); }
+    } else { cable.visible = false; dam.lCable = null; dam.tension = 0; }
+    // les balises des ancres : orange (clignote) si le câble y est accroché, verte si elle est à portée
+    const portee = !P.treuil && o.ancreProche ? o.ancreProche(P) : null;
+    for(const bl of balises) bl.m.color.setHex(P.treuil === bl.an ? (Math.sin(t * 9) > 0 ? 0xFF9A2A : 0x6A3A10) : portee === bl.an ? (Math.sin(t * 5) > 0 ? 0x7CFF6A : 0x2A5A24) : 0x3A4048);
     // les lumières qui clignotent
     dam.miroir.parent.rotation.y = t * 7;                                  // le gyrophare tourne
     gyroMat.color.setHex(Math.cos(t * 7) > -.3 ? 0xFFB020 : 0xA66A10);
