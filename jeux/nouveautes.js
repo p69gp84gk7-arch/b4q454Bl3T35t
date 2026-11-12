@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:174, type:'nouveau', jeu:'Dichotomie', ico:'📡', lien:'jeux/panne.html',
+    txt:'Nouveau jeu : la recherche de panne sur le vrai réseau de canons de Superbagnères. Un canon brouille sa ligne, un transfo saute, un câble est coupé… La supervision montre qui ne communique plus : allez sur place, ouvrez des interrupteurs, mesurez, réarmez, et trouvez la panne par dichotomie avant le lever du jour. 8 pannes, des étoiles pour les meilleurs dépanneurs.' },
   { v:173, type:'maj', jeu:"Yam's et 10 000", ico:'🎲', lien:'jeux/yams.html',
     txt:'Le lecteur de dés à la caméra est retiré : on note les dés à la main, comme avant.' },
   { v:166, type:'maj', jeu:'Escale', ico:'🛬', lien:'jeux/escale.html',

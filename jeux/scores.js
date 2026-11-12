@@ -141,6 +141,14 @@ window.AltitudeScores = (() => {
       for(const [k, r] of cartes){ const [c, n = 'normal'] = k.split('@'); ep('tour', k, `${NOMS.tour[c] || c} · ${NOMS.tourNiv[n] || n}`, r.best, `${fmt(r.best)} avions`); }
       J.tour.stats = { 'Parties jouées':cartes.reduce((s, [, r]) => s + (r.parties || 0), 0), 'Avions posés':cartes.reduce((s, [, r]) => s + (r.total || 0), 0) };
     }
+    // Dichotomie (recherche de panne)
+    const dp = lire('panne-records');
+    if(dp && dp.parties){
+      jeu('panne', 'Dichotomie', '📡');
+      const NOMSP = { dialogue:'La liaison arrachée', aval:'Le bavard', ligne:'La ligne brouillée', elec:'Le câble électrique', court:'Le transfo qui saute', intermittent:'La panne fantôme', double:'Double peine', mystere:'Panne mystère' };
+      for(const [id, r] of Object.entries(dp.niveaux || {})) if(r.reussies) ep('panne', id, NOMSP[id] || id, (r.etoiles || 0) * 1000 + Math.max(0, 999 - (r.gestes || 0) * 10), `${'★'.repeat(r.etoiles || 0)} · ${r.gestes} geste${r.gestes > 1 ? 's' : ''} · ${r.minutes} min`);
+      J.panne.stats = { 'Nuits':dp.parties, 'Pannes réparées':dp.reussies || 0, 'Étoiles':Object.values(dp.niveaux || {}).reduce((s, r) => s + (r.etoiles || 0), 0) };
+    }
     // Tir au panier
     const pn = lire('panier-records');
     if(pn && pn.parties){
