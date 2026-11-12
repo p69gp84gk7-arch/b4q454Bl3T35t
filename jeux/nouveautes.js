@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:176, type:'maj', jeu:'Dichotomie', ico:'⏱', lien:'jeux/panne.html',
+    txt:'Plus de temps de trajet ni de durée des gestes : tout se fait tout de suite, et un chrono tourne de l\'alarme à la réparation. Nouveau : le défi du jour, la même panne pour tout le monde chaque jour.' },
   { v:175, type:'maj', jeu:'Dichotomie', ico:'📡', lien:'jeux/panne.html',
     txt:'Le dialogue de la ligne Lac 1, Marmottes 65… part maintenant de la salle des machines 1, comme sur le vrai réseau.' },
   { v:174, type:'nouveau', jeu:'Dichotomie', ico:'📡', lien:'jeux/panne.html',

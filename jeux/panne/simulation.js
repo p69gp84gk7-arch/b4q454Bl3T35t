@@ -35,10 +35,10 @@
   }
   const enPanne = (E, type, cle) => E.pannes.some(p => !p.repare && p.type === type && (p.k === cle || p.canon === cle));
 
-  // une panne intermittente : un horaire de marche / arrêt tiré au hasard (en minutes depuis le début)
+  // une panne intermittente : un horaire de marche / arrêt tiré au hasard (en secondes depuis le début de la partie)
   function horaire(graine){
     const r = alea(graine), h = []; let t = 0, on = true;
-    while(t < 600){ const d = on ? 4 + Math.floor(r() * 9) : 2 + Math.floor(r() * 5); h.push([t, t + d, on]); t += d; on = !on; }
+    while(t < 7200){ const d = on ? 20 + Math.floor(r() * 40) : 8 + Math.floor(r() * 18); h.push([t, t + d, on]); t += d; on = !on; }
     return h;
   }
   const actif = (p, t) => { if(!p.intermittent) return true; const s = p.horaire.find(x => t >= x[0] && t < x[1]); return s ? s[2] : true; };
@@ -170,14 +170,14 @@
 
   // Les niveaux
   const NIVEAUX = [
-    { id:'dialogue', nom:'La liaison arrachée', texte:'Une liaison de dialogue a été coupée (une dameuse, un rongeur…). Trouvez-la et réparez-la.', types:['dialogue'], minutes:90 },
-    { id:'aval', nom:'Le bavard', texte:'Un canon brouille le dialogue de tous ceux qui sont après lui. Lui semble aller bien…', types:['aval'], minutes:90 },
-    { id:'ligne', nom:'La ligne brouillée', texte:'Un canon contaminant brouille toute sa ligne, avant et après lui. Coupez au milieu, regardez ce qui revient : la dichotomie.', types:['ligne'], minutes:120 },
-    { id:'elec', nom:'Le câble électrique', texte:'Un câble électrique est coupé : les canons d’après n’ont plus de courant, et bloquent le dialogue. Mesurez la tension pour trouver où.', types:['elec'], minutes:120 },
-    { id:'court', nom:'Le transfo qui saute', texte:'Un canon en court-circuit fait disjoncter son transfo, qui redisjoncte au réarmement. Ouvrez des tronçons de câble pour l’isoler.', types:['court'], minutes:120 },
-    { id:'intermittent', nom:'La panne fantôme', texte:'Un canon contaminant qui brouille sa ligne… de temps en temps. Observez bien avant de conclure.', types:['intermittent'], minutes:150 },
-    { id:'double', nom:'Double peine', texte:'Deux pannes en même temps, de deux sortes différentes.', types:['double'], minutes:180 },
-    { id:'mystere', nom:'Panne mystère', texte:'Une panne au hasard parmi toutes les sortes. À vous de deviner laquelle.', types:['mystere'], minutes:150 },
+    { id:'dialogue', nom:'La liaison arrachée', texte:'Une liaison de dialogue a été coupée (une dameuse, un rongeur…). Trouvez-la et réparez-la.', types:['dialogue'] },
+    { id:'aval', nom:'Le bavard', texte:'Un canon brouille le dialogue de tous ceux qui sont après lui. Lui semble aller bien…', types:['aval'] },
+    { id:'ligne', nom:'La ligne brouillée', texte:'Un canon contaminant brouille toute sa ligne, avant et après lui. Coupez au milieu, regardez ce qui revient : la dichotomie.', types:['ligne'] },
+    { id:'elec', nom:'Le câble électrique', texte:'Un câble électrique est coupé : les canons d’après n’ont plus de courant, et bloquent le dialogue. Mesurez la tension pour trouver où.', types:['elec'] },
+    { id:'court', nom:'Le transfo qui saute', texte:'Un canon en court-circuit fait disjoncter son transfo, qui redisjoncte au réarmement. Ouvrez des tronçons de câble pour l’isoler.', types:['court'] },
+    { id:'intermittent', nom:'La panne fantôme', texte:'Un canon contaminant qui brouille sa ligne… de temps en temps : la supervision bouge toute seule. Observez bien avant de conclure.', types:['intermittent'] },
+    { id:'double', nom:'Double peine', texte:'Deux pannes en même temps, de deux sortes différentes.', types:['double'] },
+    { id:'mystere', nom:'Panne mystère', texte:'Une panne au hasard parmi toutes les sortes. À vous de deviner laquelle.', types:['mystere'] },
   ];
   function nouvellePartie(niveauId, graine){
     graine = graine || Math.floor(Math.random() * 1e9);
@@ -189,6 +189,16 @@
     E.optimum = E.pannes.reduce((s, p) => s + optimum(p), 0);
     stabiliser(E);
     return { E, niveau:niv, graine, types };
+  }
+
+  // Le défi du jour : la même panne pour tout le monde ce jour-là (la sorte et la panne viennent de la date)
+  const SORTES_DEFI = ['ligne', 'elec', 'court', 'aval', 'intermittent', 'dialogue', 'double'];
+  function defiDuJour(date){
+    date = date || new Date();
+    const cle = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const jour = Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 864e5);
+    const P = nouvellePartie(SORTES_DEFI[jour % SORTES_DEFI.length], (Math.imul(jour, 2654435761) >>> 0) % 1e9 + 1);
+    P.defi = cle; return P;
   }
 
   // Tout est réparé et tout communique ?
@@ -221,5 +231,5 @@
   }
 
   window.PanneSim = { R, ek, CANONS, PAR_ID, VRAIS, LIAISONS, CABLES, L_PAR_K, C_PAR_K, DEPARTS, D_PAR_ID, TETES, LIAISONS_DE, CABLES_DE, ORIGINE, TYPES, NIVEAUX,
-    nouvelEtat, courant, stabiliser, calculer, diagnostic, actif, nouvellePartie, toutVa, optimum, versDe, tests };
+    nouvelEtat, courant, stabiliser, calculer, diagnostic, actif, nouvellePartie, defiDuJour, toutVa, optimum, versDe, tests };
 })();

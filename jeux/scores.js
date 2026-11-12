@@ -146,8 +146,8 @@ window.AltitudeScores = (() => {
     if(dp && dp.parties){
       jeu('panne', 'Dichotomie', '📡');
       const NOMSP = { dialogue:'La liaison arrachée', aval:'Le bavard', ligne:'La ligne brouillée', elec:'Le câble électrique', court:'Le transfo qui saute', intermittent:'La panne fantôme', double:'Double peine', mystere:'Panne mystère' };
-      for(const [id, r] of Object.entries(dp.niveaux || {})) if(r.reussies) ep('panne', id, NOMSP[id] || id, (r.etoiles || 0) * 1000 + Math.max(0, 999 - (r.gestes || 0) * 10), `${'★'.repeat(r.etoiles || 0)} · ${r.gestes} geste${r.gestes > 1 ? 's' : ''} · ${r.minutes} min`);
-      J.panne.stats = { 'Nuits':dp.parties, 'Pannes réparées':dp.reussies || 0, 'Étoiles':Object.values(dp.niveaux || {}).reduce((s, r) => s + (r.etoiles || 0), 0) };
+      for(const [id, r] of Object.entries(dp.niveaux || {})) if(r.reussies) ep('panne', id, NOMSP[id] || id, (r.etoiles || 0) * 100000 + Math.max(0, 999 - (r.gestes || 0)) * 100 + Math.max(0, 99 - Math.floor((r.temps || 5940) / 60)), `${'★'.repeat(r.etoiles || 0)} · ${r.gestes} geste${r.gestes > 1 ? 's' : ''}${r.temps != null ? ` · ${Math.floor(r.temps / 60)}:${String(r.temps % 60).padStart(2, '0')}` : ''}`);
+      J.panne.stats = { 'Parties':dp.parties, 'Pannes réparées':dp.reussies || 0, 'Défis du jour réussis':dp.defisReussis || 0, 'Étoiles':Object.values(dp.niveaux || {}).reduce((s, r) => s + (r.etoiles || 0), 0) };
     }
     // Tir au panier
     const pn = lire('panier-records');

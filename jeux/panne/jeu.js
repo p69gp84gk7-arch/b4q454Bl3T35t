@@ -8,11 +8,8 @@
   const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
   const fmt = n => Math.round(n).toLocaleString('fr-FR');
   const pl = (n, m, p) => `${fmt(n)} ${n > 1 ? (p || m + 's') : m}`;
-  const DEBUT = 21 * 60;                                  // la panne arrive à 21 h
-  const heure = t => { const m = DEBUT + Math.round(t); return `${Math.floor(m / 60) % 24} h ${String(m % 60).padStart(2, '0')}`; };
-  const VITESSE = 300;                                    // m par minute (motoneige, avec les détours)
-  const DUREE = { mesure:3, inter:1, liaison:2, troncon:2, voir:2, transfo:2, carte:15, court:20, cable:30, attendre:5 };
-  const DEBIT = 20;                                       // m³/h de neige par canon arrêté
+  // le chrono (en secondes) : 1:05, ou 1 h 02:05
+  const chrono = t => { t = Math.max(0, Math.floor(t)); const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, sec = String(t % 60).padStart(2, '0'); return h ? `${h} h ${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`; };
   const NB = S.VRAIS.length;
   const nomC = id => { const c = S.PAR_ID[id]; return c ? (c.zone === 'SDM' ? c.nom : c.nom) : id; };
   const zoneC = id => { const c = S.PAR_ID[id]; return c ? c.zone.charAt(0).toUpperCase() + c.zone.slice(1) : ''; };
@@ -29,12 +26,17 @@
   function accueil(){
     ecran('eAccueil');
     const n = REC.niveaux;
-    $('cRecords').innerHTML = `<h3>Tes records</h3><div class="stats"><div><b>${etoilesTotal()}</b><small>étoiles / ${S.NIVEAUX.length * 3}</small></div><div><b>${REC.reussies}</b><small>pannes réparées</small></div><div><b>${REC.parties}</b><small>nuits</small></div><div><b>${REC.parties ? Math.round(100 * REC.reussies / REC.parties) + ' %' : '—'}</b><small>de réussite</small></div></div>`;
+    $('cRecords').innerHTML = `<h3>Tes records</h3><div class="stats"><div><b>${etoilesTotal()}</b><small>étoiles / ${S.NIVEAUX.length * 3}</small></div><div><b>${REC.reussies}</b><small>pannes réparées</small></div><div><b>${REC.parties}</b><small>parties</small></div><div><b>${REC.parties ? Math.round(100 * REC.reussies / REC.parties) + ' %' : '—'}</b><small>de réussite</small></div></div>`;
+    const D = S.defiDuJour(), fait = (REC.defis || {})[D.defi];
+    $('cDefi').innerHTML = `<h3>🗓 Défi du jour</h3><p class="sous">La même panne pour tout le monde aujourd'hui (une panne mystère, qui change chaque jour).</p>
+      ${fait ? `<p class="sous" style="margin-top:6px">✅ Réussi : <b style="color:var(--or)">${'★'.repeat(fait.etoiles)}${'☆'.repeat(3 - fait.etoiles)}</b> · ${pl(fait.gestes, 'geste')} · ⏱ ${chrono(fait.temps)}</p>` : ''}
+      <button class="btn gros" id="bDefi" style="margin-top:10px">${fait ? '↻ Rejouer le défi du jour' : '▶ Jouer le défi du jour'}</button>`;
+    $('bDefi').onclick = () => demarrer(null, true);
     $('cNiveaux').innerHTML = S.NIVEAUX.map((v, i) => {
       const r = n[v.id] || {}, ico = { dialogue:'✂️', aval:'📡', ligne:'📡', elec:'🔌', court:'⚡', intermittent:'〰️', double:'✌️', mystere:'❓' }[v.id];
       return `<button class="niv" data-n="${v.id}"><b>${ico} ${i + 1}. ${esc(v.nom)}</b><small>${esc(v.texte)}</small>
         <span class="et">${'★'.repeat(r.etoiles || 0)}${'☆'.repeat(3 - (r.etoiles || 0))}</span>
-        <span class="rec">${r.reussies ? `Meilleur : ${pl(r.gestes, 'geste')} · ${r.minutes} min · ${fmt(r.neige)} m³ perdus` : `Nuit de ${Math.floor(v.minutes / 60)} h${v.minutes % 60 ? ' ' + (v.minutes % 60) : ''}`}</span></button>`;
+        <span class="rec">${r.reussies ? `Meilleur : ${pl(r.gestes, 'geste')}${r.temps != null ? ` · ⏱ ${chrono(r.temps)}` : ''}` : 'Pas encore réussi'}</span></button>`;
     }).join('');
   }
   $('cNiveaux').onclick = e => { const b = e.target.closest('[data-n]'); if(b) demarrer(b.dataset.n); };
@@ -43,35 +45,37 @@
 
   /* ---------- la partie ---------- */
   let P = null;
-  function demarrer(nivId){
-    const p = S.nouvellePartie(nivId), sdm = S.PAR_ID['SDM/SDM1'];
-    P = Object.assign(p, { tech:{ x:sdm.x, y:sdm.y }, gestes:0, faux:0, mesures:0, neige:0, vus:{}, diag:{}, journal:[], fini:false, sel:null, vue:'dia', revele:false });
-    const C = S.calculer(P.E);
-    journal(`🚨 <b>Alarme supervision</b> : ${pl(NB - C.parlent.size, 'canon')} ne communiquent plus. Le technicien part de la salle des machines 1.`);
+  function demarrer(nivId, defi){
+    const p = defi ? S.defiDuJour() : S.nouvellePartie(nivId);
+    if(defi) p.niveau = { id:'defi', nom:'Défi du jour' };
+    P = Object.assign(p, { gestes:0, faux:0, mesures:0, vus:{}, diag:{}, journal:[], fini:false, sel:null, vue:'dia', revele:false, t0:Date.now() });
+    const C = S.calculer(P.E); P.dernierN = C.parlent.size;
+    journal(`🚨 <b>Alarme supervision</b> : ${pl(NB - C.parlent.size, 'canon')} ne communiquent plus. Le chrono est lancé !`);
     cadre = false; ecran('eJeu'); majVues(); panneau(); etat(); requestAnimationFrame(ajuster);
   }
-  function journal(t, cls){ P.journal.unshift({ t:P.E.t, h:`<b>${heure(P.E.t)}</b> · ${t}`, cls }); if(P.journal.length > 80) P.journal.pop(); }
+  function journal(t, cls){ P.journal.unshift({ t:P.E.t, h:`<b>${chrono(P.E.t)}</b> · ${t}`, cls }); if(P.journal.length > 80) P.journal.pop(); }
   let tToast = 0;
   function toast(t){ const e = $('toast'); e.innerHTML = t; e.hidden = false; clearTimeout(tToast); tToast = setTimeout(() => e.hidden = true, 2600); }
   const parlent = () => S.calculer(P.E).parlent;
-  // le temps passe : la neige perdue par les canons arrêtés
-  function avancer(min){
-    for(let i = 0; i < min; i++){ P.neige += (NB - parlent().size) * DEBIT / 60; P.E.t++; if(P.E.t >= P.niveau.minutes) return false; }
-    return true;
-  }
-  // Un geste : le trajet jusqu'au lieu, puis le geste lui-même
-  function agir(ou, min, compte, faire){
+  // le chrono tourne : il s'affiche, et la supervision suit les pannes intermittentes en direct
+  const temps = () => (Date.now() - P.t0) / 1000;
+  setInterval(() => {
+    if(!P || P.fini || P.revele || $('eJeu').hidden) return;
+    P.E.t = temps(); $('jChrono').textContent = `⏱ ${chrono(P.E.t)}`;
+    const n = parlent().size;
+    if(n !== P.dernierN){ journal(`📡 La supervision change : <b>${n}</b> / ${NB} (${n > P.dernierN ? '+' : ''}${n - P.dernierN})`); P.dernierN = n; etat(); if(!P.sel) panneau(); dessiner(); }
+  }, 500);
+  // Un geste : il se fait tout de suite
+  function agir(compte, faire){
     if(!P || P.fini || P.revele) return;
-    const d = Math.hypot(ou.x - P.tech.x, ou.y - P.tech.y) * 1.25, trajet = d < 8 ? 0 : Math.max(1, Math.round(d / VITESSE));
+    P.E.t = temps();
     const avant = parlent().size;
-    if(!avancer(trajet + min)) return finir(false);
-    P.tech = { x:ou.x, y:ou.y };
     const r = faire() || {};
     const disj = S.stabiliser(P.E);
     if(compte) P.gestes++;
     const apres = parlent().size, diff = apres - avant;
     const suite = r.sansSupervision ? '' : ` → <b>${apres}</b> / ${NB}${diff ? ` (${diff > 0 ? '+' : ''}${diff})` : ''}`;
-    journal(`${r.texte}${trajet ? ` <span>(trajet ${trajet} min)</span>` : ''}${suite}`, r.cls);
+    journal(`${r.texte}${suite}`, r.cls); P.dernierN = apres;
     disj.forEach(dp => { P.vus[dp] = { t:P.E.t, etat:'disjoncté' }; journal(`💥 <b>${esc(S.D_PAR_ID[dp].nom)} a disjoncté !</b>`, 'mal'); });
     toast((disj.length ? `💥 ${esc(S.D_PAR_ID[disj[0]].nom)} a disjoncté ! ` : '') + (r.toast || r.texte) + (r.sansSupervision ? '' : ` · ${apres} / ${NB}`));
     if(S.toutVa(P.E)) return finir(true);
@@ -81,64 +85,73 @@
 
   /* ---------- les gestes ---------- */
   const G = {
-    mesurer:id => agir(S.PAR_ID[id], DUREE.mesure, true, () => {
+    mesurer:id => agir(true, () => {
       P.mesures++; const d = S.diagnostic(P.E, id); P.diag[id] = Object.assign({ t:P.E.t }, d);
       return { texte:`🔍 Mesure au ${nomCanon(id)} : tension <b>${d.tension}</b>, ${d.dialogue}`, sansSupervision:true, toast:`Tension ${d.tension} · ${d.dialogue}` };
     }),
-    inter:id => { const ouvrir = !P.E.off.has(id); agir(S.PAR_ID[id], DUREE.inter, ouvrir, () => { if(ouvrir) P.E.off.add(id); else P.E.off.delete(id); delete P.diag[id]; return { texte:`${ouvrir ? '⭘ Interrupteur ouvert' : '⏺ Interrupteur refermé'} au ${nomCanon(id)}` }; }); },
-    liaison:(k, ou) => { const deb = !P.E.debr.has(k), l = S.L_PAR_K[k]; agir(ou ? posDe(ou) : proche(l.a, l.b), DUREE.liaison, deb, () => { if(deb) P.E.debr.add(k); else P.E.debr.delete(k); return { texte:`${deb ? '✂ Liaison débranchée' : '🔗 Liaison rebranchée'} ${nomC(l.a)} – ${nomC(l.b)}` }; }); },
-    troncon:(k, ou) => { const ouv = !P.E.ouv.has(k), c = S.C_PAR_K[k]; agir(ou ? posDe(ou) : proche(c.a, c.b), DUREE.troncon, ouv, () => { if(ouv) P.E.ouv.add(k); else P.E.ouv.delete(k); return { texte:`${ouv ? '⭘ Tronçon électrique ouvert' : '⏺ Tronçon électrique refermé'} ${nomLien(c)}` }; }); },
-    voir:d => agir(S.D_PAR_ID[d], DUREE.voir, true, () => { const e = etatTransfo(d); P.vus[d] = { t:P.E.t, etat:e }; return { texte:`👀 ${esc(S.D_PAR_ID[d].nom)} : <b>${e}</b>`, sansSupervision:true, toast:`${esc(S.D_PAR_ID[d].nom)} : ${e}` }; }),
-    rearmer:d => agir(S.D_PAR_ID[d], DUREE.transfo, true, () => {
+    inter:id => { const ouvrir = !P.E.off.has(id); agir(ouvrir, () => { if(ouvrir) P.E.off.add(id); else P.E.off.delete(id); delete P.diag[id]; return { texte:`${ouvrir ? '⭘ Interrupteur ouvert' : '⏺ Interrupteur refermé'} au ${nomCanon(id)}` }; }); },
+    liaison:(k, ou) => { const deb = !P.E.debr.has(k), l = S.L_PAR_K[k]; agir(deb, () => { if(deb) P.E.debr.add(k); else P.E.debr.delete(k); return { texte:`${deb ? '✂ Liaison débranchée' : '🔗 Liaison rebranchée'} ${nomC(l.a)} – ${nomC(l.b)}` }; }); },
+    troncon:(k, ou) => { const ouv = !P.E.ouv.has(k), c = S.C_PAR_K[k]; agir(ouv, () => { if(ouv) P.E.ouv.add(k); else P.E.ouv.delete(k); return { texte:`${ouv ? '⭘ Tronçon électrique ouvert' : '⏺ Tronçon électrique refermé'} ${nomLien(c)}` }; }); },
+    voir:d => agir(true, () => { const e = etatTransfo(d); P.vus[d] = { t:P.E.t, etat:e }; return { texte:`👀 ${esc(S.D_PAR_ID[d].nom)} : <b>${e}</b>`, sansSupervision:true, toast:`${esc(S.D_PAR_ID[d].nom)} : ${e}` }; }),
+    rearmer:d => agir(true, () => {
       const avant = P.E.disj.has(d); P.E.disj.delete(d); P.E.depOuv.delete(d);
       const de = S.stabiliser(P.E); const saute = P.E.disj.has(d);
       P.vus[d] = { t:P.E.t, etat:saute ? 'disjoncté' : 'en service' };
       if(saute) return { texte:`💥 ${esc(S.D_PAR_ID[d].nom)} réarmé… <b>il redisjoncte aussitôt !</b>`, cls:'mal' };
       return { texte:avant ? `⚡ ${esc(S.D_PAR_ID[d].nom)} réarmé : <b>il tient</b>` : `⚡ ${esc(S.D_PAR_ID[d].nom)} remis en service`, cls:avant ? 'bon' : '' };
     }),
-    couper:d => agir(S.D_PAR_ID[d], DUREE.transfo, true, () => { P.E.depOuv.add(d); P.vus[d] = { t:P.E.t, etat:'coupé' }; return { texte:`⭘ ${esc(S.D_PAR_ID[d].nom)} coupé` }; }),
-    carte:id => agir(S.PAR_ID[id], DUREE.carte, true, () => {
+    couper:d => agir(true, () => { P.E.depOuv.add(d); P.vus[d] = { t:P.E.t, etat:'coupé' }; return { texte:`⭘ ${esc(S.D_PAR_ID[d].nom)} coupé` }; }),
+    carte:id => agir(true, () => {
       const p = panne('contaminant', id); if(p){ p.repare = true; p.trouve = P.E.t; return { texte:`✅ Carte de dialogue changée au ${nomCanon(id)} : <b>c'était bien elle !</b>`, cls:'bon' }; }
       P.faux++; return { texte:`❌ Carte changée au ${nomCanon(id)}… ce n'était pas elle.`, cls:'mal' };
     }),
-    court:id => agir(S.PAR_ID[id], DUREE.court, true, () => {
+    court:id => agir(true, () => {
       const p = panne('court', id); if(p){ p.repare = true; p.trouve = P.E.t; return { texte:`✅ Court-circuit réparé au ${nomCanon(id)} (réarmez le transfo)`, cls:'bon' }; }
       P.faux++; return { texte:`❌ Pas de court-circuit au ${nomCanon(id)}.`, cls:'mal' };
     }),
-    repLiaison:(k, ou) => { const l = S.L_PAR_K[k]; agir(ou ? posDe(ou) : proche(l.a, l.b), DUREE.cable, true, () => {
+    repLiaison:(k, ou) => { const l = S.L_PAR_K[k]; agir(true, () => {
       const p = panne('cableDia', k); if(p){ p.repare = true; p.trouve = P.E.t; return { texte:`✅ Liaison ${nomC(l.a)} – ${nomC(l.b)} réparée : <b>elle était coupée !</b>`, cls:'bon' }; }
       P.faux++; return { texte:`❌ Liaison ${nomC(l.a)} – ${nomC(l.b)} refaite… elle n'était pas coupée.`, cls:'mal' }; }); },
-    repCable:(k, ou) => { const c = S.C_PAR_K[k]; agir(ou ? posDe(ou) : proche(c.a, c.b), DUREE.cable, true, () => {
+    repCable:(k, ou) => { const c = S.C_PAR_K[k]; agir(true, () => {
       const p = panne('cableElec', k); if(p){ p.repare = true; p.trouve = P.E.t; return { texte:`✅ Câble électrique ${nomLien(c)} réparé : <b>il était coupé !</b>`, cls:'bon' }; }
       P.faux++; return { texte:`❌ Câble ${nomLien(c)} refait… il n'était pas coupé.`, cls:'mal' }; }); },
-    attendre:() => agir(P.tech, DUREE.attendre, false, () => ({ texte:'⏳ 5 minutes à observer la supervision' })),
     remettre:() => {
       const n = P.E.off.size + P.E.debr.size + P.E.ouv.size + P.E.depOuv.size + P.E.disj.size;
       if(!n) return;
-      agir(P.tech, Math.min(30, 2 * n), false, () => {
+      agir(false, () => {
         P.E.off.clear(); P.E.debr.clear(); P.E.ouv.clear(); P.E.depOuv.clear(); [...P.E.disj].forEach(d => P.E.disj.delete(d));
         Object.keys(P.vus).forEach(d => P.vus[d] = { t:P.E.t, etat:'réarmé' }); P.diag = {};
         return { texte:`↺ Tout remis en service (${pl(n, 'élément')} refermé${n > 1 ? 's' : ''}, transfos réarmés)` };
       });
     },
   };
-  const proche = (...ids) => ids.filter(i => !i.startsWith('src/')).map(posDe).sort((p, q) => Math.hypot(p.x - P.tech.x, p.y - P.tech.y) - Math.hypot(q.x - P.tech.x, q.y - P.tech.y))[0];
   const etatTransfo = d => P.E.depOuv.has(d) ? 'coupé' : P.E.disj.has(d) ? 'disjoncté' : 'en service';
   const nomLien = c => `${c.a.startsWith('src/') ? S.D_PAR_ID[c.a.slice(4)].nom : nomC(c.a)} – ${c.b.startsWith('src/') ? S.D_PAR_ID[c.b.slice(4)].nom : nomC(c.b)}`;
 
   /* ---------- la fin ---------- */
   function finir(ok){
-    P.fini = true; P.reussi = ok;
+    P.fini = true; P.reussi = ok; P.E.t = temps();
     const score = P.gestes + 3 * P.faux, opt = P.E.optimum;
     P.etoiles = !ok ? 0 : score <= opt + 2 ? 3 : score <= 2 * opt + 3 ? 2 : 1;
     REC.parties++; if(ok) REC.reussies++;
-    const r = REC.niveaux[P.niveau.id] = REC.niveaux[P.niveau.id] || { etoiles:0, fois:0, reussies:0 };
-    r.fois++;
-    if(ok){
-      r.reussies++; r.etoiles = Math.max(r.etoiles || 0, P.etoiles);
-      if(r.gestes == null || P.gestes < r.gestes) r.gestes = P.gestes;
-      if(r.minutes == null || P.E.t < r.minutes) r.minutes = P.E.t;
-      if(r.neige == null || P.neige < r.neige) r.neige = Math.round(P.neige);
+    const t = Math.round(P.E.t);
+    if(P.defi){
+      // le défi du jour : le meilleur résultat de la journée (les 30 derniers jours sont gardés)
+      REC.defis = REC.defis || {};
+      const d = REC.defis[P.defi];
+      if(ok){
+        if(!d) REC.defisReussis = (REC.defisReussis || 0) + 1;
+        if(!d || P.etoiles > d.etoiles || (P.etoiles === d.etoiles && (P.gestes < d.gestes || (P.gestes === d.gestes && t < d.temps)))) REC.defis[P.defi] = { etoiles:P.etoiles, gestes:P.gestes, temps:t, sorte:P.types.join('+') };
+      }
+      Object.keys(REC.defis).sort().slice(0, -30).forEach(k => delete REC.defis[k]);
+    } else {
+      const r = REC.niveaux[P.niveau.id] = REC.niveaux[P.niveau.id] || { etoiles:0, fois:0, reussies:0 };
+      r.fois++;
+      if(ok){
+        r.reussies++; r.etoiles = Math.max(r.etoiles || 0, P.etoiles);
+        if(r.gestes == null || P.gestes < r.gestes) r.gestes = P.gestes;
+        if(r.temps == null || t < r.temps) r.temps = t;
+      }
     }
     REC.dernier = { nom:P.niveau.nom, etoiles:P.etoiles, reussi:ok, gestes:P.gestes };
     ecrire('panne-records', REC);
@@ -146,7 +159,7 @@
   }
   function decrire(p){
     const C0 = (() => { const E = S.nouvelEtat(); E.pannes = [Object.assign({}, p, { repare:false, intermittent:false })]; S.stabiliser(E); return S.calculer(E); })();
-    const ok = p.repare ? ` <b class="ok">· réparée à ${heure(p.trouve)}</b>` : ' <b class="ko">· pas trouvée</b>';
+    const ok = p.repare ? ` <b class="ok">· réparée à ${chrono(p.trouve)}</b>` : ' <b class="ko">· pas trouvée</b>';
     if(p.type === 'contaminant'){
       if(p.portee === 'ligne'){ const lignes = [...new Set((S.LIAISONS_DE[p.canon] || []).map(l => l.ligne).filter(Boolean))].join(', ');
         return `📡 <b>${nomCanon(p.canon)}</b> : carte de dialogue défectueuse. Elle brouillait toute sa ligne${lignes ? ` (${esc(lignes)})` : ''}, ${pl(C0.brouille.size, 'canon')}${p.intermittent ? ', <b>par intermittence</b>' : ''}.${ok}`; }
@@ -159,30 +172,30 @@
   }
   function bilan(){
     ecran('eFin');
-    $('fTitre').textContent = P.reussi ? '✅ Panne réparée, tout communique !' : '🌅 La nuit est finie…';
+    $('fTitre').textContent = (P.defi ? '🗓 Défi du jour · ' : '') + (P.reussi ? '✅ Panne réparée, tout communique !' : '🏳 Dépannage abandonné');
     $('fEtoiles').textContent = '★'.repeat(P.etoiles) + '☆'.repeat(3 - P.etoiles);
-    $('fTexte').innerHTML = (P.reussi ? '' : 'Le jour se lève avant la fin du dépannage. ') +
+    $('fTexte').innerHTML = (P.reussi ? `En <b>⏱ ${chrono(P.E.t)}</b>. ` : '') +
       `Une bonne dichotomie : environ <b>${pl(P.E.optimum, 'geste')}</b>. Vous : <b>${pl(P.gestes, 'geste')}</b>${P.faux ? `, dont ${pl(P.faux, 'mauvaise réparation', 'mauvaises réparations')} (comptée${P.faux > 1 ? 's' : ''} triple${P.faux > 1 ? 's' : ''})` : ''}.`;
-    $('fStats').innerHTML = `<div><b>${heure(P.E.t)}</b><small>fin (${P.E.t} min)</small></div><div><b>${P.gestes}</b><small>gestes</small></div><div><b>${P.mesures}</b><small>mesures</small></div><div><b>${fmt(P.neige)}</b><small>m³ de neige perdus</small></div>`;
+    $('fStats').innerHTML = `<div><b>${chrono(P.E.t)}</b><small>chrono</small></div><div><b>${P.gestes}</b><small>gestes</small></div><div><b>${P.mesures}</b><small>mesures</small></div><div><b>${P.faux}</b><small>mauvaise${P.faux > 1 ? 's' : ''} réparation${P.faux > 1 ? 's' : ''}</small></div>`;
     $('fPanne').innerHTML = P.E.pannes.map(p => `<div>${decrire(p)}</div>`).join('');
   }
   $('bVoir').onclick = () => { P.revele = true; P.vue = P.E.pannes.some(p => p.type === 'cableElec' || p.type === 'court') ? 'elec' : 'dia'; majVues(); ecran('eJeu'); panneau(); etat(); };
-  $('bRejouer').onclick = () => demarrer(P.niveau.id);
+  $('bRejouer').onclick = () => P.defi ? demarrer(null, true) : demarrer(P.niveau.id);
   $('bMenu').onclick = () => accueil();
   $('bQuitter').onclick = () => {
     if(P.revele || P.fini){ if(P.fini) bilan(); else accueil(); return; }
-    if(confirm('Arrêter le dépannage ? La nuit comptera comme perdue.')) finir(false);
+    if(confirm('Arrêter le dépannage ? La partie comptera comme perdue.')) finir(false);
   };
 
   /* ---------- l'état et le panneau ---------- */
   function etat(){
     const n = parlent().size;
-    $('jHeure').textContent = `🕘 ${heure(P.E.t)}`;
+    $('jChrono').textContent = `⏱ ${chrono(P.E.t)}`;
     $('jGestes').textContent = pl(P.gestes, 'geste');
-    $('jNeige').textContent = `❄ ${fmt(P.neige)} m³ perdus`;
+    $('jMesures').textContent = `🔍 ${pl(P.mesures, 'mesure')}`;
     $('jLampe').classList.toggle('ko', n < NB);
     $('jCompte').textContent = `${n} / ${NB} canons communiquent`;
-    $('jSous').textContent = P.revele ? 'Les pannes sont entourées en jaune.' : n < NB ? `${pl(NB - n, 'canon')} hors communication · jour à ${heure(P.niveau.minutes)}` : 'Tout communique : vérifiez que tout est réparé.';
+    $('jSous').textContent = P.revele ? 'Les pannes sont entourées en jaune.' : n < NB ? `${pl(NB - n, 'canon')} hors communication${P.defi ? ' · défi du jour' : ''}` : 'Tout communique : vérifiez que tout est réparé.';
   }
   function bouton(txt, min, fn, cls){ return `<button class="btn ${cls || ''}" data-f="${fn}">${txt}${min ? `<span class="min">${min} min</span>` : ''}</button>`; }
   function panneau(){
@@ -194,8 +207,8 @@
     }
     if(!s){
       const ouverts = P.E.off.size + P.E.debr.size + P.E.ouv.size + P.E.depOuv.size + P.E.disj.size;
-      h = `<p class="aideJ">Touchez un <b>canon</b>, une <b>liaison</b>${P.vue === 'elec' ? ', un <b>câble électrique</b>' : ''} ou un <b>transfo ⚡</b> : le technicien 🛷 y va et vous choisissez le geste. Passez en vue <b>⚡ Électricité</b> pour les câbles et les transfos.</p>`;
-      h += `<div class="ligneA">${bouton('⏳ Attendre', DUREE.attendre, 'attendre')}${ouverts ? bouton(`↺ Tout remettre (${ouverts})`, Math.min(30, 2 * ouverts), 'remettre', 'act') : ''}</div>`;
+      h = `<p class="aideJ">Touchez un <b>canon</b>, une <b>liaison</b>${P.vue === 'elec' ? ', un <b>câble électrique</b>' : ''} ou un <b>transfo ⚡</b>, puis choisissez le geste : il se fait tout de suite. Passez en vue <b>⚡ Électricité</b> pour les câbles et les transfos.</p>`;
+      if(ouverts) h += `<div class="ligneA">${bouton(`↺ Tout remettre (${ouverts})`, 0, 'remettre', 'act')}</div>`;
       h += `<div class="sect">Journal</div><div class="journal">${P.journal.map(j => `<div class="${j.cls || ''}">${j.h}</div>`).join('')}</div>`;
       el.innerHTML = h; brancher(); return;
     }
@@ -204,38 +217,38 @@
       const id = s.id, c = S.PAR_ID[id], sdm = c.zone === 'SDM', d = P.diag[id], dep = S.ORIGINE[id];
       h += `<h2>${sdm ? '🏠 ' + esc(c.nom) : `Canon ${esc(c.nom)}`} <small>${sdm ? 'salle des machines' : `${esc(zoneC(id))} · ${MODELES[c.modele] || ''}${dep ? ' · ' + esc(S.D_PAR_ID[dep].nom) : ''}`}${S.TETES.includes(id) ? ' · tête du dialogue' : ''}</small></h2>`;
       h += `<div class="mesure">Supervision : ${C.parlent.has(id) || (sdm && C.atteint.has(id)) ? '<b class="ok">communique</b>' : '<b class="ko">ne communique plus</b>'}${P.E.off.has(id) ? ' · interrupteur <b class="vo">ouvert</b>' : ''}` +
-        (d ? `<br>Mesuré à ${heure(d.t)} : tension <b class="${d.tension === 'absente' ? 'vo' : 'ok'}">${d.tension}</b> · ${d.dialogue}` : '') + '</div>';
+        (d ? `<br>Mesuré à ${chrono(d.t)} : tension <b class="${d.tension === 'absente' ? 'vo' : 'ok'}">${d.tension}</b> · ${d.dialogue}` : '') + '</div>';
       if(!sdm){
-        h += `<div class="ligneA">${bouton('🔍 Mesurer', DUREE.mesure, `mesurer|${id}`)}${bouton(P.E.off.has(id) ? '⏺ Fermer l’interrupteur' : '⭘ Ouvrir l’interrupteur', DUREE.inter, `inter|${id}`, 'act')}</div>`;
+        h += `<div class="ligneA">${bouton('🔍 Mesurer', 0, `mesurer|${id}`)}${bouton(P.E.off.has(id) ? '⏺ Fermer l’interrupteur' : '⭘ Ouvrir l’interrupteur', 0, `inter|${id}`, 'act')}</div>`;
       }
       const ls = S.LIAISONS_DE[id] || [];
       if(ls.length){
         h += '<div class="sect">Liaisons de dialogue</div>';
         h += ls.map(l => { const o = l.a === id ? l.b : l.a, sens = S.versDe(l, o) === id ? '← de' : S.versDe(l, id) === o ? '→ vers' : '⇄';
-          return `<div class="lien"><span>${sens} ${esc(nomC(o))} <small style="color:var(--doux)">${esc(l.ligne)}</small>${P.E.debr.has(l.k) ? ' · <b style="color:var(--volt)">débranchée</b>' : ''}</span>${bouton(P.E.debr.has(l.k) ? '🔗 Rebrancher' : '✂ Débrancher', DUREE.liaison, `liaison|${l.k}|${id}`, 'act')}${bouton('🔧 Refaire', DUREE.cable, `repLiaison|${l.k}|${id}`, 'rep')}</div>`; }).join('');
+          return `<div class="lien"><span>${sens} ${esc(nomC(o))} <small style="color:var(--doux)">${esc(l.ligne)}</small>${P.E.debr.has(l.k) ? ' · <b style="color:var(--volt)">débranchée</b>' : ''}</span>${bouton(P.E.debr.has(l.k) ? '🔗 Rebrancher' : '✂ Débrancher', 0, `liaison|${l.k}|${id}`, 'act')}${bouton('🔧 Refaire', 0, `repLiaison|${l.k}|${id}`, 'rep')}</div>`; }).join('');
       }
       const cs = S.CABLES_DE[id] || [];
       if(cs.length){
         h += '<div class="sect">Câbles électriques</div>';
         h += cs.map(cb => { const o = cb.a === id ? cb.b : cb.a, nomO = o.startsWith('src/') ? S.D_PAR_ID[o.slice(4)].nom : nomC(o), sens = S.versDe(cb, o) === id ? '⚡ de' : '⚡ vers';
-          return `<div class="lien"><span>${sens} ${esc(nomO)}${P.E.ouv.has(cb.k) ? ' · <b style="color:var(--volt)">ouvert</b>' : ''}</span>${bouton(P.E.ouv.has(cb.k) ? '⏺ Fermer' : '⭘ Ouvrir', DUREE.troncon, `troncon|${cb.k}|${id}`, 'act')}${bouton('🔧 Refaire', DUREE.cable, `repCable|${cb.k}|${id}`, 'rep')}</div>`; }).join('');
+          return `<div class="lien"><span>${sens} ${esc(nomO)}${P.E.ouv.has(cb.k) ? ' · <b style="color:var(--volt)">ouvert</b>' : ''}</span>${bouton(P.E.ouv.has(cb.k) ? '⏺ Fermer' : '⭘ Ouvrir', 0, `troncon|${cb.k}|${id}`, 'act')}${bouton('🔧 Refaire', 0, `repCable|${cb.k}|${id}`, 'rep')}</div>`; }).join('');
       }
-      if(!sdm) h += `<div class="sect">Réparer le canon</div><div class="ligneA">${bouton('🔧 Changer la carte de dialogue', DUREE.carte, `carte|${id}`, 'rep')}${bouton('🔧 Réparer un court-circuit', DUREE.court, `court|${id}`, 'rep')}</div>`;
+      if(!sdm) h += `<div class="sect">Réparer le canon</div><div class="ligneA">${bouton('🔧 Changer la carte de dialogue', 0, `carte|${id}`, 'rep')}${bouton('🔧 Réparer un court-circuit', 0, `court|${id}`, 'rep')}</div>`;
     } else if(s.type === 'liaison'){
       const l = S.L_PAR_K[s.k];
       h += `<h2>Liaison de dialogue <small>${esc(nomC(l.a))} ${l.d === 'ab' ? '→' : l.d === 'ba' ? '←' : '⇄'} ${esc(nomC(l.b))} · ${esc(l.ligne)}</small></h2>`;
-      h += `<div class="ligneA">${bouton(P.E.debr.has(l.k) ? '🔗 Rebrancher' : '✂ Débrancher', DUREE.liaison, `liaison|${l.k}`, 'act')}${bouton('🔧 Refaire la liaison', DUREE.cable, `repLiaison|${l.k}`, 'rep')}</div>`;
+      h += `<div class="ligneA">${bouton(P.E.debr.has(l.k) ? '🔗 Rebrancher' : '✂ Débrancher', 0, `liaison|${l.k}`, 'act')}${bouton('🔧 Refaire la liaison', 0, `repLiaison|${l.k}`, 'rep')}</div>`;
       h += `<div class="ligneA">${bouton(`Canon ${esc(nomC(l.a))}`, 0, `voirC|${l.a}`)}${bouton(`Canon ${esc(nomC(l.b))}`, 0, `voirC|${l.b}`)}</div>`;
     } else if(s.type === 'cable'){
       const c = S.C_PAR_K[s.k];
       h += `<h2>Câble électrique <small>${esc(nomLien(c))}</small></h2>`;
-      h += `<div class="ligneA">${bouton(P.E.ouv.has(c.k) ? '⏺ Fermer le tronçon' : '⭘ Ouvrir le tronçon', DUREE.troncon, `troncon|${c.k}`, 'act')}${bouton('🔧 Refaire le câble', DUREE.cable, `repCable|${c.k}`, 'rep')}</div>`;
+      h += `<div class="ligneA">${bouton(P.E.ouv.has(c.k) ? '⏺ Fermer le tronçon' : '⭘ Ouvrir le tronçon', 0, `troncon|${c.k}`, 'act')}${bouton('🔧 Refaire le câble', 0, `repCable|${c.k}`, 'rep')}</div>`;
       h += `<div class="ligneA">${[c.a, c.b].filter(x => !x.startsWith('src/')).map(x => bouton(`Canon ${esc(nomC(x))}`, 0, `voirC|${x}`)).join('')}</div>`;
     } else if(s.type === 'transfo'){
       const d = s.id, v = P.vus[d], nb = S.VRAIS.filter(c => S.ORIGINE[c.id] === d).length;
       h += `<h2>⚡ ${esc(S.D_PAR_ID[d].nom)} <small>${pl(nb, 'canon')} alimentés en temps normal</small></h2>`;
-      h += `<div class="mesure">${v ? `Vu à ${heure(v.t)} : <b class="${v.etat === 'en service' || v.etat === 'réarmé' ? 'ok' : 'ko'}">${v.etat}</b>` : 'État : pas encore vu (allez voir sur place).'}</div>`;
-      h += `<div class="ligneA">${bouton('👀 Aller voir', DUREE.voir, `voir|${d}`)}${bouton('⚡ Réarmer', DUREE.transfo, `rearmer|${d}`, 'act')}${bouton(P.E.depOuv.has(d) ? '⚡ Remettre en service' : '⭘ Couper', DUREE.transfo, P.E.depOuv.has(d) ? `rearmer|${d}` : `couper|${d}`, 'act')}</div>`;
+      h += `<div class="mesure">${v ? `Vu à ${chrono(v.t)} : <b class="${v.etat === 'en service' || v.etat === 'réarmé' ? 'ok' : 'ko'}">${v.etat}</b>` : 'État : pas encore vu (allez voir sur place).'}</div>`;
+      h += `<div class="ligneA">${bouton('👀 Aller voir', 0, `voir|${d}`)}${bouton('⚡ Réarmer', 0, `rearmer|${d}`, 'act')}${bouton(P.E.depOuv.has(d) ? '⚡ Remettre en service' : '⭘ Couper', 0, P.E.depOuv.has(d) ? `rearmer|${d}` : `couper|${d}`, 'act')}</div>`;
     }
     h += `<div class="ligneA"><button class="btn" data-f="fermer">✕ Fermer</button></div>`;
     el.innerHTML = h; brancher();
@@ -345,8 +358,6 @@
       });
       cancelAnimationFrame(anim); anim = requestAnimationFrame(dessiner);
     }
-    // le technicien
-    g.font = '18px system-ui'; g.textAlign = 'center'; g.fillText('🛷', X(P.tech.x), Y(P.tech.y) - 10);
   }
   function majVues(){ $('vDia').setAttribute('aria-pressed', P.vue === 'dia'); $('vElec').setAttribute('aria-pressed', P.vue === 'elec');
     $('legende').innerHTML = P.vue === 'dia' ? '<span><i style="background:#2FD47A"></i>communique</span><span><i style="background:#FF4D4D"></i>ne communique plus</span><span><i style="background:#3A4352"></i>coupé</span><span>≈ brouillé (mesuré)</span>'
@@ -403,7 +414,7 @@
   }).observe($('carteBox'));
 
   /* ---------- démarrage ---------- */
-  window.Panne = { get P(){ return P; }, demarrer, G, accueil, toucher, S };
+  window.Panne = { get P(){ return P; }, demarrer, G, accueil, toucher, S, chrono };
   if(/[?&]test\b/.test(location.search)){ document.body.innerHTML = `<pre style="padding:16px;color:#EAF1FB;white-space:pre-wrap">${S.tests().join('\n')}</pre>`; return; }
   accueil();
   if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
