@@ -1,4 +1,5 @@
 /* Nuancier : les illustrations (l'application est privée, pour la famille : personnages et logos sont les vrais).
+   Catégories : 'perso' (dessins animés, jeux vidéo, bandes dessinées), 'heros' (films, séries, super-héros, mangas), 'logo', 'objet'.
    Les personnages et les objets sont dessinés pour le jeu ; les logos viennent de Simple Icons (https://simpleicons.org,
    licence CC0, les marques restent à leurs propriétaires). Chaque image est un SVG de 200 × 200 ; une zone à trouver
    s'écrit « $nom » à la place d'une couleur, et sa vraie couleur est dans « zones » (couleurs officielles des marques). */
@@ -260,7 +261,7 @@ window.NUANCIER_IMAGES = (() => {
         <circle cx="90" cy="112" r="11" fill="#fff"/><circle cx="112" cy="112" r="11" fill="#fff"/><circle cx="92" cy="114" r="2.5" fill="${T}" stroke="none"/><circle cx="114" cy="114" r="2.5" fill="${T}" stroke="none"/>
         <path d="M102 122 Q118 124 116 132 Q108 134 102 130" fill="#FED90F"/>
         <path d="M86 140 Q100 148 116 140" fill="none"/>`) },
-    { id:'spiderman', n:"Spider-Man", cat:'perso', zones:{ rouge:['Le rouge du costume', '#DF1F2D'], bleu:['Le bleu du costume', '#1B4EA0'] },
+    { id:'spiderman', n:"Spider-Man", cat:'heros', zones:{ rouge:['Le rouge du costume', '#DF1F2D'], bleu:['Le bleu du costume', '#1B4EA0'] },
       svg:fond('#CFD8E6') + g(`
         <path d="M20 200 L28 160 Q60 140 100 144 Q140 140 172 160 L180 200 Z" fill="$bleu"/>
         <path d="M66 200 L70 148 Q100 140 130 148 L134 200 Z" fill="$rouge"/>
@@ -268,7 +269,7 @@ window.NUANCIER_IMAGES = (() => {
         <path d="M52 84 Q52 18 100 18 Q148 18 148 84 Q148 140 100 146 Q52 140 52 84 Z" fill="$rouge"/>
         <path d="M100 18 L100 146 M52 84 L148 84 M62 44 L138 124 M138 44 L62 124 M70 60 Q100 52 130 60 M60 106 Q100 96 140 106 M72 130 Q100 122 128 130 M68 34 Q100 28 132 34" fill="none" stroke-width="1.5"/>
         <path d="M60 78 Q80 66 94 88 Q84 104 64 100 Z M140 78 Q120 66 106 88 Q116 104 136 100 Z" fill="#fff" stroke-width="5"/>`) },
-    { id:'hulk', n:"Hulk", cat:'perso', zones:{ peau:['Sa peau', '#5FA33A'], short:['Son short', '#6A3D9A'] },
+    { id:'hulk', n:"Hulk", cat:'heros', zones:{ peau:['Sa peau', '#5FA33A'], short:['Son short', '#6A3D9A'] },
       svg:fond('#E8E2D4') + g(`
         <path d="M6 156 Q8 100 60 92 L140 92 Q192 100 194 156 L170 162 L160 128 L150 176 L50 176 L40 128 L30 162 Z" fill="$peau"/>
         <path d="M50 176 L150 176 L156 200 L44 200 Z" fill="$short"/><path d="M70 200 L76 188 L84 200 M120 200 L126 186 L134 200" fill="none"/>
@@ -278,7 +279,7 @@ window.NUANCIER_IMAGES = (() => {
         <path d="M76 60 L96 68 M124 60 L104 68" stroke-width="5"/>
         <ellipse cx="88" cy="72" rx="6" ry="3" fill="#fff"/><ellipse cx="112" cy="72" rx="6" ry="3" fill="#fff"/>
         <path d="M84 92 L116 92 L112 86 L88 86 Z" fill="#fff"/>`) },
-    { id:'superman', n:"Superman", cat:'perso', zones:{ bleu:['Le bleu du costume', '#1352A2'], cape:['La cape', '#D8232A'] },
+    { id:'superman', n:"Superman", cat:'heros', zones:{ bleu:['Le bleu du costume', '#1352A2'], cape:['La cape', '#D8232A'] },
       svg:fond('#BFE6FF') + g(`
         <path d="M14 200 L36 70 L164 70 L186 200 Z" fill="$cape"/>
         <path d="M40 200 L46 92 Q100 70 154 92 L160 200 Z" fill="$bleu"/>
@@ -456,6 +457,424 @@ window.NUANCIER_IMAGES = (() => {
         <ellipse cx="78" cy="78" rx="12" ry="8" fill="#fff"/><ellipse cx="122" cy="78" rx="12" ry="8" fill="#fff"/>
         <circle cx="80" cy="78" r="3" fill="${T}" stroke="none"/><circle cx="120" cy="78" r="3" fill="${T}" stroke="none"/>
         <path d="M74 120 Q100 136 126 120" fill="none"/>`) },
+
+    /* ---------- Les héros de films et de séries ---------- */
+    { id:'vador', n:"Dark Vador", cat:'heros', zones:{ sabre:['Son sabre laser', '#FF2A2A'] },
+      svg:fond('#C5CCD6') + g(`
+        <path d="M168 14 L150 140" stroke="#fff" stroke-width="15" opacity=".6"/><path d="M168 14 L150 140" stroke="$sabre" stroke-width="8"/>
+        <path d="M150 140 L144 176" stroke="#8A9099" stroke-width="12"/>
+        <path d="M14 200 L36 152 Q100 130 164 152 L186 200 Z" fill="#1B1B1F"/>
+        <rect x="80" y="166" width="40" height="24" rx="3" fill="#3A3D45"/><rect x="85" y="171" width="8" height="5" fill="#E33" stroke-width="1"/><rect x="96" y="171" width="8" height="5" fill="#3A7BE0" stroke-width="1"/><rect x="107" y="171" width="8" height="5" fill="#C9CED6" stroke-width="1"/><rect x="85" y="180" width="30" height="5" fill="#8A9099" stroke-width="1"/>
+        <path d="M46 104 Q44 24 100 20 Q156 24 154 104 L170 140 L30 140 Z" fill="#1B1B1F"/>
+        <path d="M58 100 Q60 70 100 66 Q140 70 142 100 L132 148 L68 148 Z" fill="#2B2D33"/>
+        <ellipse cx="80" cy="96" rx="15" ry="11" fill="#4A4E58"/><ellipse cx="120" cy="96" rx="15" ry="11" fill="#4A4E58"/>
+        <path d="M94 110 L106 110 L100 98 Z" fill="#1B1B1F"/>
+        <path d="M84 122 L116 122 L108 148 L92 148 Z" fill="#6A6F7A"/><path d="M92 128 L92 146 M100 124 L100 147 M108 128 L108 146" fill="none" stroke-width="2"/>`) },
+    { id:'yoda', n:"Yoda", cat:'heros', zones:{ peau:['Sa peau', '#8FA65A'], robe:['Sa robe', '#C2AE8B'] },
+      svg:fond('#D5E2CE') + g(`
+        <path d="M30 200 L48 152 Q100 130 152 152 L170 200 Z" fill="$robe"/>
+        <path d="M76 146 L100 184 L124 146 Q100 138 76 146 Z" fill="#8B7A5C"/>
+        <path d="M62 84 L4 58 Q22 96 56 112 Z" fill="$peau"/><path d="M138 84 L196 58 Q178 96 144 112 Z" fill="$peau"/>
+        <path d="M54 92 Q54 50 100 48 Q146 50 146 92 Q146 140 100 146 Q54 140 54 92 Z" fill="$peau"/>
+        <path d="M74 64 Q100 56 126 64 M78 72 Q100 66 122 72" fill="none" stroke-width="2"/>
+        <ellipse cx="80" cy="94" rx="11" ry="9" fill="#fff"/><ellipse cx="120" cy="94" rx="11" ry="9" fill="#fff"/>
+        <circle cx="82" cy="95" r="5" fill="#6B5B1E" stroke="none"/><circle cx="118" cy="95" r="5" fill="#6B5B1E" stroke="none"/><circle cx="82" cy="95" r="2.2" fill="${T}" stroke="none"/><circle cx="118" cy="95" r="2.2" fill="${T}" stroke="none"/>
+        <path d="M68 84 Q80 78 92 86 M132 84 Q120 78 108 86" fill="none"/>
+        <path d="M96 106 Q100 112 104 106" fill="none"/><path d="M82 124 Q100 132 118 124" fill="none"/>`) },
+    { id:'r2d2', n:"R2-D2", cat:'heros', zones:{ bleu:['Ses parties bleues', '#1D4FA8'] },
+      svg:fond('#E7DCC6') + g(`
+        <rect x="24" y="86" width="24" height="100" rx="6" fill="#F4F6F8"/><rect x="152" y="86" width="24" height="100" rx="6" fill="#F4F6F8"/>
+        <rect x="28" y="110" width="16" height="50" fill="$bleu"/><rect x="156" y="110" width="16" height="50" fill="$bleu"/>
+        <path d="M18 186 L54 186 L58 200 L14 200 Z" fill="#C9CED6"/><path d="M146 186 L182 186 L186 200 L142 200 Z" fill="#C9CED6"/>
+        <rect x="50" y="90" width="100" height="96" fill="#F4F6F8"/>
+        <path d="M50 90 Q50 26 100 26 Q150 26 150 90 Z" fill="#C9CED6"/>
+        <path d="M62 80 L62 62 Q66 46 78 40 L84 80 Z" fill="$bleu"/><path d="M138 80 L138 62 Q134 46 122 40 L116 80 Z" fill="$bleu"/>
+        <rect x="88" y="36" width="24" height="18" rx="3" fill="$bleu"/><circle cx="100" cy="45" r="6" fill="${T}"/><circle cx="102" cy="43" r="2" fill="#fff" stroke="none"/>
+        <circle cx="100" cy="70" r="6" fill="#D7261E"/>
+        <rect x="50" y="84" width="100" height="8" fill="$bleu"/>
+        <rect x="62" y="102" width="22" height="12" fill="$bleu"/><rect x="116" y="102" width="22" height="12" fill="$bleu"/>
+        <rect x="88" y="100" width="24" height="60" fill="#E1E5EA"/><rect x="62" y="122" width="20" height="40" fill="#F4F6F8"/><rect x="118" y="122" width="20" height="40" fill="$bleu"/>
+        <path d="M60 172 L140 172" fill="none"/><rect x="92" y="108" width="16" height="6" fill="$bleu" stroke-width="1.5"/><rect x="92" y="120" width="16" height="6" fill="$bleu" stroke-width="1.5"/>`) },
+    { id:'sorcier', n:"Harry Potter", cat:'heros', zones:{ rouge:['Le rouge de son écharpe', '#AE0001'], or:["L'or de son écharpe", '#EEBA30'] },
+      svg:fond('#D3DAE6') + g(`
+        <path d="M24 200 L40 158 Q100 136 160 158 L176 200 Z" fill="#23242B"/>
+        <path d="M60 150 Q100 170 140 150 L144 168 Q100 190 56 168 Z" fill="$rouge"/>
+        <path d="M76 158 L90 163 L86 181 L72 176 Z M110 163 L124 158 L128 176 L114 181 Z" fill="$or"/>
+        <path d="M118 172 L140 166 L146 200 L122 200 Z" fill="$rouge"/><path d="M120 184 L144 180 L145 192 L121 196 Z" fill="$or"/>
+        <ellipse cx="100" cy="98" rx="40" ry="46" fill="#F9C9A0"/>
+        <path d="M58 92 Q50 40 100 36 Q150 40 142 92 Q136 66 122 70 L112 60 L102 72 L90 60 L80 72 Q64 68 58 92 Z" fill="#2A211C"/>
+        <circle cx="82" cy="100" r="13" fill="#fff" fill-opacity=".5"/><circle cx="118" cy="100" r="13" fill="#fff" fill-opacity=".5"/><path d="M95 100 L105 100 M69 98 L60 94 M131 98 L140 94" fill="none"/>
+        <circle cx="83" cy="101" r="3.5" fill="#3E7D4E" stroke="none"/><circle cx="117" cy="101" r="3.5" fill="#3E7D4E" stroke="none"/>
+        <path d="M104 62 L98 70 L104 71 L99 80" fill="none" stroke="#C0392B" stroke-width="2.5"/>
+        <path d="M88 126 Q100 134 112 126" fill="none"/>`) },
+    { id:'braqueur', n:"Un braqueur de La Casa de Papel", cat:'heros', zones:{ combi:['Sa combinaison', '#C1121F'] },
+      svg:fond('#E3E6EA') + g(`
+        <path d="M16 200 L34 162 Q100 140 166 162 L184 200 Z" fill="$combi"/><path d="M100 160 L100 200" fill="none"/>
+        <path d="M40 108 Q36 18 100 14 Q164 18 160 108 Q160 150 136 162 L64 162 Q40 150 40 108 Z" fill="$combi"/>
+        <path d="M64 98 Q62 50 100 46 Q138 50 136 98 Q136 150 100 158 Q64 150 64 98 Z" fill="#F4EBDD"/>
+        <path d="M72 78 Q82 66 94 78 M106 78 Q118 66 128 78" fill="none" stroke-width="4"/>
+        <ellipse cx="84" cy="92" rx="8" ry="6" fill="${T}"/><ellipse cx="116" cy="92" rx="8" ry="6" fill="${T}"/>
+        <path d="M100 96 L96 114 L104 114 Z" fill="#E7D9C5" stroke-width="2"/>
+        <path d="M100 122 Q84 126 72 100 M100 122 Q116 126 128 100" fill="none" stroke-width="4.5"/>
+        <path d="M90 136 Q100 141 110 136" fill="none"/>`) },
+    { id:'garde-jeu', n:"Un garde de Squid Game", cat:'heros', zones:{ combi:['Sa combinaison', '#ED1B76'] },
+      svg:fond('#DCE6E8') + g(`
+        <path d="M16 200 L34 162 Q100 140 166 162 L184 200 Z" fill="$combi"/><path d="M100 164 L100 200" fill="none"/>
+        <path d="M42 100 Q40 18 100 16 Q160 18 158 100 Q158 150 134 164 L66 164 Q42 150 42 100 Z" fill="$combi"/>
+        <path d="M62 96 Q62 46 100 44 Q138 46 138 96 Q138 142 100 150 Q62 142 62 96 Z" fill="#17171A"/>
+        <path d="M100 68 L124 112 L76 112 Z" fill="none" stroke="#fff" stroke-width="6"/>`) },
+    { id:'navi', n:"Un Na'vi, du film Avatar", cat:'heros', zones:{ peau:['Sa peau', '#4A9FD8'] },
+      svg:fond('#CDE6D5') + g(`
+        <path d="M40 60 Q30 130 36 200 L70 200 L62 90 Z" fill="#1E1E24"/><path d="M160 60 Q170 130 164 200 L130 200 L138 90 Z" fill="#1E1E24"/>
+        <path d="M40 200 L50 160 Q100 142 150 160 L160 200 Z" fill="$peau"/>
+        <path d="M58 84 L28 44 L66 64 Z" fill="$peau"/><path d="M142 84 L172 44 L134 64 Z" fill="$peau"/>
+        <path d="M56 92 Q56 38 100 36 Q144 38 144 92 Q144 134 100 156 Q56 134 56 92 Z" fill="$peau"/>
+        <path d="M58 70 Q52 30 100 26 Q148 30 142 70 Q120 44 100 46 Q80 44 58 70 Z" fill="#1E1E24"/>
+        <path d="M68 76 L78 80 M66 88 L74 90 M134 76 L124 80 M136 88 L128 90 M92 56 L96 66 M108 56 L104 66" fill="none" stroke="#2C6FA8" stroke-width="3"/>
+        <ellipse cx="80" cy="98" rx="11" ry="8" fill="#F2D94A"/><ellipse cx="120" cy="98" rx="11" ry="8" fill="#F2D94A"/><circle cx="80" cy="98" r="4" fill="${T}" stroke="none"/><circle cx="120" cy="98" r="4" fill="${T}" stroke="none"/>
+        <path d="M92 104 Q100 100 108 104 L112 122 Q100 128 88 122 Z" fill="#3F86BE"/>
+        <path d="M84 136 Q100 142 116 136" fill="none"/>
+        <circle cx="70" cy="110" r="1.5" fill="#fff" stroke="none"/><circle cx="76" cy="116" r="1.5" fill="#fff" stroke="none"/><circle cx="130" cy="110" r="1.5" fill="#fff" stroke="none"/><circle cx="124" cy="116" r="1.5" fill="#fff" stroke="none"/>`) },
+    { id:'ranger', n:"Buzz l'Éclair", cat:'heros', zones:{ vert:['Le vert de sa combinaison', '#8DC63F'], violet:['Sa cagoule', '#7B3F9E'] },
+      svg:fond('#D9D3EE') + g(`
+        <path d="M10 200 L30 150 Q100 126 170 150 L190 200 Z" fill="#F4F6F8"/>
+        <path d="M60 150 Q100 140 140 150 L134 200 L66 200 Z" fill="$vert"/>
+        <rect x="76" y="170" width="14" height="10" rx="5" fill="#D7261E"/><rect x="94" y="170" width="14" height="10" rx="5" fill="#3A7BE0"/><rect x="112" y="170" width="14" height="10" rx="5" fill="#F6CE2E"/>
+        <circle cx="100" cy="86" r="66" fill="#fff" fill-opacity=".35"/>
+        <path d="M52 92 Q50 34 100 32 Q150 34 148 92 Q148 136 124 150 L76 150 Q52 136 52 92 Z" fill="$violet"/>
+        <path d="M66 92 Q66 52 100 50 Q134 52 134 92 Q134 132 114 146 L86 146 Q66 132 66 92 Z" fill="#F9C9A0"/>
+        ${yeux(86, 114, 88, 6)}
+        <path d="M76 74 L94 78 M124 74 L106 78" stroke-width="4" fill="none"/>
+        <path d="M84 116 Q100 128 118 114" fill="none"/><path d="M96 136 Q100 132 104 136 Q100 140 96 136 Z" fill="none" stroke-width="2"/>`) },
+
+    /* ---------- Les super-héros ---------- */
+    { id:'chauve-souris', n:"Batman", cat:'heros', zones:{ jaune:["Le jaune de son emblème", '#FFD400'] },
+      svg:fond('#C9D3E3') + g(`
+        <path d="M6 200 L30 150 Q100 128 170 150 L194 200 Z" fill="#1C2230"/>
+        <path d="M44 200 L50 156 Q100 140 150 156 L156 200 Z" fill="#7A808C"/>
+        <ellipse cx="100" cy="178" rx="34" ry="17" fill="$jaune"/>
+        <path d="M70 178 Q78 168 86 174 L90 168 L94 172 L100 170 L106 172 L110 168 L114 174 Q122 168 130 178 Q122 180 118 186 Q110 182 100 190 Q90 182 82 186 Q78 180 70 178 Z" fill="${T}" stroke-width="1"/>
+        <path d="M56 96 L52 10 L78 46 Q100 38 122 46 L148 10 L144 96 Q144 140 100 146 Q56 140 56 96 Z" fill="#1C2230"/>
+        <path d="M70 108 Q100 100 130 108 L128 126 Q100 148 72 126 Z" fill="#F9C9A0"/>
+        <path d="M66 82 L92 90 L84 98 Q72 96 66 82 Z M134 82 L108 90 L116 98 Q128 96 134 82 Z" fill="#fff"/>
+        <path d="M88 126 L112 126" fill="none"/>`) },
+    { id:'armure', n:"Iron Man", cat:'heros', zones:{ rouge:['Le rouge de son armure', '#A30B0B'], or:["L'or de son masque", '#E8B923'] },
+      svg:fond('#D8DDE6') + g(`
+        <path d="M14 200 L32 156 Q100 134 168 156 L186 200 Z" fill="$rouge"/>
+        <circle cx="100" cy="182" r="14" fill="#DFF6FF"/><circle cx="100" cy="182" r="7" fill="#fff"/>
+        <path d="M50 90 Q48 22 100 20 Q152 22 150 90 L142 134 Q100 164 58 134 Z" fill="$rouge"/>
+        <path d="M66 62 Q100 44 134 62 L138 96 L128 132 Q100 150 72 132 L62 96 Z" fill="$or"/>
+        <path d="M100 48 L100 62 M72 132 L84 120 L116 120 L128 132" fill="none"/>
+        <path d="M70 90 L92 94 L90 102 L72 100 Z M130 90 L108 94 L110 102 L128 100 Z" fill="#DFF6FF"/>
+        <path d="M88 136 L112 136" fill="none"/>`) },
+    { id:'capitaine', n:"Captain America", cat:'heros', zones:{ bleu:['Le bleu de son costume', '#1F4E9C'], rouge:['Le rouge de son bouclier', '#C8102E'] },
+      svg:fond('#E6E9EE') + g(`
+        <path d="M18 200 L36 156 Q100 136 164 156 L182 200 Z" fill="$bleu"/>
+        <path d="M86 160 L90 170 L101 170 L92 177 L96 188 L86 181 L76 188 L80 177 L71 170 L82 170 Z" fill="#fff"/>
+        <path d="M54 92 Q52 28 100 26 Q148 28 146 92 Q146 120 138 130 L62 130 Q54 120 54 92 Z" fill="$bleu"/>
+        <path d="M66 106 Q100 98 134 106 L130 128 Q100 152 70 128 Z" fill="#F9C9A0"/>
+        <path d="M90 62 L100 38 L110 62 M94 54 L106 54" fill="none" stroke="#fff" stroke-width="5"/>
+        <path d="M54 72 L36 60 L40 74 L32 76 L54 88 Z M146 72 L164 60 L160 74 L168 76 L146 88 Z" fill="#fff"/>
+        <path d="M68 86 Q80 80 92 88 Q80 96 68 86 Z M132 86 Q120 80 108 88 Q120 96 132 86 Z" fill="#fff"/><circle cx="81" cy="88" r="3" fill="${T}" stroke="none"/><circle cx="119" cy="88" r="3" fill="${T}" stroke="none"/>
+        <path d="M88 126 Q100 132 112 126" fill="none"/>
+        <circle cx="158" cy="160" r="38" fill="$rouge"/><circle cx="158" cy="160" r="28" fill="#fff"/><circle cx="158" cy="160" r="19" fill="$rouge"/><circle cx="158" cy="160" r="11" fill="$bleu"/>`) },
+    { id:'amazone', n:"Wonder Woman", cat:'heros', zones:{ rouge:['Son bustier', '#C4161C'], or:['Son diadème', '#F2B90F'] },
+      svg:fond('#E9E1F0') + g(`
+        <path d="M44 70 Q28 130 34 200 L166 200 Q172 130 156 70 Z" fill="#1E1A1C"/>
+        <path d="M52 200 L58 166 Q100 150 142 166 L148 200 Z" fill="#F9C9A0"/>
+        <path d="M58 200 L62 174 Q82 186 100 176 Q118 186 138 174 L142 200 Z" fill="$rouge"/>
+        <path d="M66 176 Q84 182 100 174 Q116 182 134 176 L130 186 Q114 190 100 184 Q86 190 70 186 Z" fill="$or"/>
+        <ellipse cx="100" cy="98" rx="38" ry="46" fill="#F9C9A0"/>
+        <path d="M60 96 Q54 36 100 34 Q146 36 140 96 Q134 70 100 66 Q66 70 60 96 Z" fill="#1E1A1C"/>
+        <path d="M62 68 Q100 52 138 68 L136 80 L100 66 L64 80 Z" fill="$or"/>
+        <path d="M100 58 L102.5 64 L109 64 L104 68 L106 74 L100 70.5 L94 74 L96 68 L91 64 L97.5 64 Z" fill="#D7261E" stroke-width="1.5"/>
+        ${yeux(84, 116, 100, 5)}
+        <path d="M88 128 Q100 136 112 128" fill="#D9534F"/>`) },
+    { id:'eclair', n:"Flash", cat:'heros', zones:{ rouge:['Son costume', '#D0121A'], eclair:['Son éclair', '#FFD500'] },
+      svg:fond('#FFF1C9') + g(`
+        <path d="M18 200 L36 156 Q100 136 164 156 L182 200 Z" fill="$rouge"/>
+        <circle cx="100" cy="180" r="18" fill="#fff"/><path d="M106 164 L92 182 L100 182 L94 196 L110 176 L102 176 Z" fill="$eclair" stroke-width="2"/>
+        <path d="M52 76 L22 58 L30 74 L20 78 L54 92 Z M148 76 L178 58 L170 74 L180 78 L146 92 Z" fill="$eclair"/>
+        <path d="M54 92 Q52 28 100 26 Q148 28 146 92 Q146 122 138 132 L62 132 Q54 122 54 92 Z" fill="$rouge"/>
+        <path d="M68 108 Q100 98 132 108 L128 130 Q100 152 72 130 Z" fill="#F9C9A0"/>
+        <path d="M66 84 Q80 76 94 88 Q80 98 66 84 Z M134 84 Q120 76 106 88 Q120 98 134 84 Z" fill="#fff"/>
+        <path d="M88 128 Q100 134 112 128" fill="none"/>`) },
+    { id:'mercenaire', n:"Deadpool", cat:'heros', zones:{ rouge:['Son masque', '#B01218'] },
+      svg:fond('#DADDE2') + g(`
+        <path d="M30 30 L70 110" stroke="#8A9099" stroke-width="7"/><path d="M170 30 L130 110" stroke="#8A9099" stroke-width="7"/><path d="M26 22 L34 38 M174 22 L166 38" stroke-width="10"/>
+        <path d="M18 200 L36 158 Q100 138 164 158 L182 200 Z" fill="$rouge"/><path d="M36 158 Q60 176 64 200 M164 158 Q140 176 136 200" fill="none"/>
+        <path d="M52 92 Q50 26 100 24 Q150 26 148 92 Q148 150 100 156 Q52 150 52 92 Z" fill="$rouge"/>
+        <path d="M60 70 Q80 58 94 84 Q94 112 78 120 Q58 108 60 70 Z M140 70 Q120 58 106 84 Q106 112 122 120 Q142 108 140 70 Z" fill="#1B1B1F"/>
+        <path d="M70 88 Q80 82 88 92 Q80 100 70 88 Z M130 88 Q120 82 112 92 Q120 100 130 88 Z" fill="#fff"/>`) },
+    { id:'griffes', n:"Wolverine", cat:'heros', zones:{ jaune:['Le jaune de son costume', '#FFD21F'], bleu:['Le bleu de son costume', '#1E56B0'] },
+      svg:fond('#DCE4EE') + g(`
+        <path d="M14 200 L34 156 Q100 136 166 156 L186 200 Z" fill="$jaune"/>
+        <path d="M14 200 L34 156 Q54 150 70 152 L60 200 Z M186 200 L166 156 Q146 150 130 152 L140 200 Z" fill="$bleu"/>
+        <path d="M84 160 L100 190 L116 160" fill="none" stroke-width="4"/>
+        <path d="M56 92 Q54 34 100 32 Q146 34 144 92 Q144 122 136 132 L64 132 Q56 122 56 92 Z" fill="$jaune"/>
+        <path d="M68 108 Q100 98 132 108 L128 130 Q100 152 72 130 Z" fill="#F9C9A0"/>
+        <path d="M64 96 L34 14 L84 60 Q92 80 96 96 Q80 104 64 96 Z M136 96 L166 14 L116 60 Q108 80 104 96 Q120 104 136 96 Z" fill="#1B1B1F"/>
+        <path d="M70 84 L90 90 L84 96 Q74 94 70 84 Z M130 84 L110 90 L116 96 Q126 94 130 84 Z" fill="#fff" stroke-width="2"/>
+        <path d="M88 128 L112 128" fill="none"/>`) },
+    { id:'lanterne', n:"Green Lantern", cat:'heros', zones:{ vert:['Le vert de son costume', '#12A150'] },
+      svg:fond('#DDF3E4') + g(`
+        <path d="M16 200 L36 156 Q100 136 164 156 L184 200 Z" fill="#1B1B1F"/>
+        <path d="M56 200 L60 150 Q100 140 140 150 L144 200 Z" fill="$vert"/>
+        <circle cx="100" cy="178" r="17" fill="#fff"/><circle cx="100" cy="178" r="8" fill="none" stroke="$vert" stroke-width="4"/><path d="M90 167 L110 167 M90 189 L110 189" fill="none" stroke="$vert" stroke-width="4"/>
+        <ellipse cx="100" cy="94" rx="40" ry="46" fill="#F9C9A0"/>
+        <path d="M60 80 Q56 34 100 30 Q144 34 140 80 Q124 58 100 60 Q76 58 60 80 Z" fill="#6B4423"/>
+        <path d="M60 84 Q80 74 100 84 Q120 74 140 84 Q138 104 120 104 Q106 104 100 94 Q94 104 80 104 Q62 104 60 84 Z" fill="$vert"/>
+        <ellipse cx="82" cy="90" rx="8" ry="5" fill="#fff"/><ellipse cx="118" cy="90" rx="8" ry="5" fill="#fff"/>
+        <path d="M86 122 Q100 132 114 122" fill="none"/>`) },
+
+    /* ---------- Les mangas et les animés ---------- */
+    { id:'saiyan', n:"Son Goku", cat:'heros', zones:{ gi:['Sa tenue', '#F37A1F'], bleu:['Son tee-shirt', '#1F4FA3'] },
+      svg:fond('#D6ECFA') + g(`
+        <path d="M22 200 L40 156 Q100 136 160 156 L178 200 Z" fill="$gi"/>
+        <path d="M76 150 L100 196 L124 150 Q100 142 76 150 Z" fill="$bleu"/><path d="M86 152 L100 180 L114 152 Q100 146 86 152 Z" fill="#F9C9A0"/>
+        <path d="M60 80 L20 70 L50 54 L30 26 L66 38 L70 6 L96 32 L118 4 L128 36 L164 20 L148 52 L182 62 L142 82 Z" fill="#1E1E24"/>
+        <path d="M60 92 Q60 60 100 60 Q140 60 140 92 Q140 130 100 150 Q60 130 60 92 Z" fill="#F9C9A0"/>
+        <path d="M60 86 L80 62 L92 80 L104 60 L114 80 L130 64 L140 86 Q120 70 100 72 Q80 70 60 86 Z" fill="#1E1E24"/>
+        ${yeux(84, 116, 100, 6)}
+        <path d="M72 86 L94 90 M128 86 L106 90" fill="none" stroke-width="4"/>
+        <path d="M86 128 Q100 138 114 128" fill="none"/>`) },
+    { id:'ninja', n:"Naruto", cat:'heros', zones:{ veste:['Sa veste', '#F58220'], cheveux:['Ses cheveux', '#FFE04A'] },
+      svg:fond('#E3F1D6') + g(`
+        <path d="M20 200 L38 156 Q100 136 162 156 L180 200 Z" fill="$veste"/>
+        <path d="M76 150 Q100 166 124 150 L128 164 Q100 182 72 164 Z" fill="#F4F6F8"/>
+        <path d="M56 78 L26 60 L52 54 L40 26 L70 40 L80 10 L100 34 L122 10 L130 40 L160 26 L148 54 L174 60 L144 78 Z" fill="$cheveux"/>
+        <path d="M60 92 Q60 56 100 56 Q140 56 140 92 Q140 130 100 150 Q60 130 60 92 Z" fill="#F9C9A0"/>
+        <path d="M56 62 Q100 50 144 62 L144 82 Q100 72 56 82 Z" fill="#2B3A67"/><rect x="80" y="58" width="40" height="16" rx="3" fill="#C9CED6"/><path d="M94 67 Q100 61 104 67 Q100 71 97 68" fill="none" stroke-width="2"/>
+        ${yeux(84, 116, 100, 6)}
+        <path d="M64 108 L78 110 M64 116 L78 116 M64 124 L78 122 M136 108 L122 110 M136 116 L122 116 M136 124 L122 122" fill="none" stroke-width="2"/>
+        <path d="M84 126 Q100 140 116 126" fill="none"/>`) },
+    { id:'pirate', n:"Luffy, de One Piece", cat:'heros', zones:{ gilet:['Son gilet', '#D7261E'], chapeau:['Son chapeau de paille', '#F4D06F'] },
+      svg:fond('#CFEAF5') + g(`
+        <path d="M24 200 L42 158 Q100 140 158 158 L176 200 Z" fill="$gilet"/>
+        <path d="M78 152 L100 200 L122 152 Q100 146 78 152 Z" fill="#F9C9A0"/>
+        <ellipse cx="100" cy="104" rx="40" ry="42" fill="#F9C9A0"/>
+        <path d="M60 96 Q62 70 100 70 Q138 70 140 96 Q130 84 118 90 L108 80 L98 90 L86 80 L76 90 Q66 86 60 96 Z" fill="#1E1E24"/>
+        <ellipse cx="100" cy="66" rx="86" ry="18" fill="$chapeau"/>
+        <path d="M56 62 Q56 18 100 16 Q144 18 144 62 Q100 74 56 62 Z" fill="$chapeau"/>
+        <path d="M56 52 Q100 64 144 52 L144 62 Q100 74 56 62 Z" fill="#B5202A"/>
+        ${yeux(84, 116, 104, 6)}
+        <path d="M76 119 Q82 123 88 119" fill="none" stroke-width="2"/>
+        <path d="M76 126 Q100 152 124 126 Z" fill="#fff"/>`) },
+    { id:'esprit-foret', n:"Totoro", cat:'heros', zones:{ pelage:['Son pelage', '#7E8793'], ventre:['Son ventre', '#EDE7D3'] },
+      svg:fond('#CFE5C4') + g(`
+        <path d="M70 46 L62 8 L84 34 Z M130 46 L138 8 L116 34 Z" fill="$pelage"/>
+        <path d="M30 150 Q20 60 100 40 Q180 60 170 150 Q168 200 100 200 Q32 200 30 150 Z" fill="$pelage"/>
+        <path d="M52 156 Q50 108 100 104 Q150 108 148 156 Q146 196 100 196 Q54 196 52 156 Z" fill="$ventre"/>
+        <path d="M78 124 L86 116 L94 124 M106 124 L114 116 L122 124 M64 140 L72 132 L80 140 M92 140 L100 132 L108 140 M120 140 L128 132 L136 140" fill="none" stroke="#5A626D" stroke-width="5"/>
+        <circle cx="76" cy="76" r="10" fill="#fff"/><circle cx="124" cy="76" r="10" fill="#fff"/><circle cx="76" cy="76" r="4" fill="${T}" stroke="none"/><circle cx="124" cy="76" r="4" fill="${T}" stroke="none"/>
+        <path d="M92 82 Q100 76 108 82 Q100 88 92 82 Z" fill="${T}"/>
+        <path d="M60 90 L30 84 M60 96 L32 100 M140 90 L170 84 M140 96 L168 100" fill="none" stroke-width="2"/>`) },
+    { id:'guerriere-lune', n:"Sailor Moon", cat:'heros', zones:{ cheveux:['Ses cheveux', '#F8DC4E'], col:['Son col marin', '#2A4FA0'], noeud:['Son nœud', '#E0263A'] },
+      svg:fond('#FCE3EE') + g(`
+        <path d="M48 50 Q10 110 30 200 L52 200 Q40 120 62 70 Z M152 50 Q190 110 170 200 L148 200 Q160 120 138 70 Z" fill="$cheveux"/>
+        <circle cx="50" cy="40" r="17" fill="$cheveux"/><circle cx="150" cy="40" r="17" fill="$cheveux"/><circle cx="50" cy="40" r="6" fill="#C0392B"/><circle cx="150" cy="40" r="6" fill="#C0392B"/>
+        <path d="M34 200 L48 160 Q100 142 152 160 L166 200 Z" fill="#F4F6F8"/>
+        <path d="M48 160 Q74 150 100 190 Q126 150 152 160 L160 180 Q126 170 100 200 Q74 170 40 180 Z" fill="$col"/>
+        <path d="M100 178 L76 166 L80 192 Z M100 178 L124 166 L120 192 Z" fill="$noeud"/><circle cx="100" cy="179" r="7" fill="$noeud"/>
+        <ellipse cx="100" cy="98" rx="40" ry="44" fill="#F9C9A0"/>
+        <path d="M58 96 Q54 44 100 42 Q146 44 142 96 Q132 72 116 78 L100 62 L84 78 Q68 72 58 96 Z" fill="$cheveux"/>
+        <path d="M84 58 Q100 50 116 58" fill="none" stroke="#F2B90F" stroke-width="4"/><circle cx="100" cy="55" r="4" fill="#C0392B" stroke-width="1.5"/>
+        <ellipse cx="82" cy="102" rx="9" ry="11" fill="#fff"/><ellipse cx="118" cy="102" rx="9" ry="11" fill="#fff"/><circle cx="83" cy="104" r="5.5" fill="#3B6FD0" stroke="none"/><circle cx="117" cy="104" r="5.5" fill="#3B6FD0" stroke="none"/><circle cx="85" cy="101" r="2" fill="#fff" stroke="none"/><circle cx="119" cy="101" r="2" fill="#fff" stroke="none"/>
+        <path d="M90 128 Q100 136 110 128" fill="none"/>`) },
+    { id:'detective', n:"Détective Conan", cat:'heros', zones:{ veste:['Sa veste', '#2B56A8'], noeud:['Son nœud papillon', '#D62B2B'] },
+      svg:fond('#DCE9F5') + g(`
+        <path d="M26 200 L42 158 Q100 138 158 158 L174 200 Z" fill="$veste"/>
+        <path d="M76 152 L100 186 L124 152 Q100 144 76 152 Z" fill="#F4F6F8"/>
+        <path d="M100 168 L76 156 L80 182 Z M100 168 L124 156 L120 182 Z" fill="$noeud"/><circle cx="100" cy="169" r="6" fill="$noeud"/>
+        <ellipse cx="100" cy="98" rx="42" ry="44" fill="#F9C9A0"/>
+        <path d="M56 100 Q46 40 100 36 Q154 40 144 100 Q140 76 124 80 L112 66 L100 82 L88 66 L76 80 Q60 76 56 100 Z" fill="#2B2F3A"/><path d="M96 38 Q104 14 122 22 Q110 26 108 40 Z" fill="#2B2F3A"/>
+        <rect x="62" y="88" width="34" height="26" rx="8" fill="#fff" fill-opacity=".55"/><rect x="104" y="88" width="34" height="26" rx="8" fill="#fff" fill-opacity=".55"/><path d="M96 100 L104 100" fill="none"/>
+        <circle cx="80" cy="102" r="5" fill="#2F5FA8" stroke="none"/><circle cx="120" cy="102" r="5" fill="#2F5FA8" stroke="none"/>
+        <path d="M88 130 Q100 138 114 128" fill="none"/>`) },
+    { id:'renne', n:"Chopper, de One Piece", cat:'heros', zones:{ chapeau:['Son chapeau', '#E8628C'], nez:['Son nez', '#3A6FC4'] },
+      svg:fond('#FBE9D2') + g(`
+        <path d="M46 56 L18 30 M30 42 L14 50 M34 44 L30 22 M154 56 L182 30 M170 42 L186 50 M166 44 L170 22" fill="none" stroke="#7A4A24" stroke-width="8"/>
+        <path d="M44 200 L54 162 Q100 146 146 162 L156 200 Z" fill="#B8824E"/>
+        <ellipse cx="100" cy="122" rx="48" ry="42" fill="#B8824E"/>
+        <ellipse cx="100" cy="134" rx="30" ry="24" fill="#F1DEC2"/>
+        <ellipse cx="100" cy="76" rx="74" ry="14" fill="$chapeau"/>
+        <path d="M52 74 Q50 20 100 18 Q150 20 148 74 Q100 86 52 74 Z" fill="$chapeau"/>
+        <path d="M86 34 L114 62 M114 34 L86 62" fill="none" stroke="#fff" stroke-width="8"/>
+        <circle cx="80" cy="108" r="7" fill="${T}"/><circle cx="120" cy="108" r="7" fill="${T}"/><circle cx="82" cy="106" r="2.4" fill="#fff" stroke="none"/><circle cx="122" cy="106" r="2.4" fill="#fff" stroke="none"/>
+        <ellipse cx="100" cy="124" rx="10" ry="7" fill="$nez"/>
+        <path d="M86 142 Q100 154 114 142" fill="none"/>`) },
+    { id:'ballon-rose', n:"Rondoudou", cat:'heros', zones:{ corps:['Son corps', '#F9B8D4'], yeux:['Ses yeux', '#3FA9C9'] },
+      svg:fond('#E2F4FF') + g(`
+        <path d="M52 62 L44 18 L84 44 Z M148 62 L156 18 L116 44 Z" fill="$corps"/><path d="M56 52 L52 30 L72 44 Z M144 52 L148 30 L128 44 Z" fill="#3A3A40"/>
+        <circle cx="100" cy="116" r="74" fill="$corps"/>
+        <path d="M84 62 Q78 40 100 38 Q124 40 116 60 Q110 72 98 66 Q92 60 100 56" fill="$corps"/>
+        <circle cx="70" cy="108" r="21" fill="#fff"/><circle cx="130" cy="108" r="21" fill="#fff"/><circle cx="72" cy="110" r="14" fill="$yeux"/><circle cx="128" cy="110" r="14" fill="$yeux"/><circle cx="68" cy="104" r="5" fill="#fff" stroke="none"/><circle cx="124" cy="104" r="5" fill="#fff" stroke="none"/>
+        <path d="M90 138 Q100 146 110 138" fill="none"/>
+        <ellipse cx="60" cy="184" rx="18" ry="10" fill="$corps"/><ellipse cx="140" cy="184" rx="18" ry="10" fill="$corps"/>`) },
+    { id:'tortue-eau', n:"Carapuce", cat:'heros', zones:{ peau:['Sa peau', '#7DC3E8'], carapace:['Sa carapace', '#B5713B'] },
+      svg:fond('#E6F4D8') + g(`
+        <ellipse cx="100" cy="170" rx="56" ry="40" fill="$carapace"/><ellipse cx="100" cy="174" rx="40" ry="30" fill="#F3DFA0"/><path d="M100 146 L100 200 M64 172 L136 172" fill="none" stroke-width="2"/>
+        <path d="M44 150 L24 176 L50 172 Z M156 150 L176 176 L150 172 Z" fill="$peau"/>
+        <path d="M40 86 Q40 30 100 28 Q160 30 160 86 Q160 136 100 138 Q40 136 40 86 Z" fill="$peau"/>
+        <ellipse cx="72" cy="80" rx="13" ry="17" fill="#fff"/><ellipse cx="128" cy="80" rx="13" ry="17" fill="#fff"/><ellipse cx="75" cy="82" rx="7" ry="10" fill="#7A3B1E"/><ellipse cx="125" cy="82" rx="7" ry="10" fill="#7A3B1E"/><circle cx="77" cy="78" r="3" fill="#fff" stroke="none"/><circle cx="127" cy="78" r="3" fill="#fff" stroke="none"/>
+        <path d="M70 110 Q100 128 130 110" fill="none"/><path d="M96 98 L98 100 M104 98 L102 100" fill="none" stroke-width="2"/>`) },
+    { id:'graine', n:"Bulbizarre", cat:'heros', zones:{ peau:['Sa peau', '#7FC8B4'], bulbe:['Son bulbe', '#5FA052'] },
+      svg:fond('#F4EBD3') + g(`
+        <path d="M60 86 Q54 22 100 10 Q146 22 140 86 Q100 66 60 86 Z" fill="$bulbe"/><path d="M100 12 Q92 44 96 72 M100 12 Q108 44 104 72" fill="none" stroke-width="2"/>
+        <path d="M30 120 L22 84 L54 100 Z M170 120 L178 84 L146 100 Z" fill="$peau"/>
+        <path d="M28 140 Q28 84 100 82 Q172 84 172 140 Q172 188 100 190 Q28 188 28 140 Z" fill="$peau"/>
+        <path d="M60 100 L72 108 L60 114 Z M130 96 L146 100 L136 110 Z M92 90 L106 92 L98 100 Z" fill="#3F8F7C" stroke-width="2"/>
+        <path d="M48 128 L78 120 L80 142 Q62 148 48 128 Z M152 128 L122 120 L120 142 Q138 148 152 128 Z" fill="#fff"/><path d="M64 126 L78 122 L79 140 Q70 142 64 126 Z M136 126 L122 122 L121 140 Q130 142 136 126 Z" fill="#C0392B" stroke-width="1.5"/>
+        <path d="M66 162 Q100 180 134 162" fill="none"/><path d="M94 150 L96 152 M106 150 L104 152" fill="none" stroke-width="2"/>`) },
+    { id:'lezard-feu', n:"Salamèche", cat:'heros', zones:{ peau:['Sa peau', '#F5964B'] },
+      svg:fond('#E0F0FA') + g(`
+        <path d="M150 150 Q190 150 180 100 Q176 120 160 126 Z" fill="$peau"/>
+        <path d="M180 100 Q164 70 182 44 Q198 70 190 96 Q186 104 180 100 Z" fill="#F6C21A"/><path d="M182 96 Q176 78 184 62 Q192 80 186 96 Z" fill="#E8432F" stroke-width="1.5"/>
+        <ellipse cx="100" cy="166" rx="50" ry="40" fill="$peau"/><ellipse cx="100" cy="176" rx="32" ry="28" fill="#F9E3A4"/>
+        <path d="M44 84 Q44 26 100 24 Q156 26 156 84 Q156 128 100 132 Q44 128 44 84 Z" fill="$peau"/>
+        <ellipse cx="74" cy="76" rx="11" ry="16" fill="#fff"/><ellipse cx="126" cy="76" rx="11" ry="16" fill="#fff"/><ellipse cx="76" cy="78" rx="6" ry="10" fill="#1F6B5C"/><ellipse cx="124" cy="78" rx="6" ry="10" fill="#1F6B5C"/><circle cx="78" cy="73" r="2.6" fill="#fff" stroke="none"/><circle cx="126" cy="73" r="2.6" fill="#fff" stroke="none"/>
+        <path d="M72 106 Q100 124 128 106" fill="none"/><path d="M96 96 L98 98 M104 96 L102 98" fill="none" stroke-width="2"/>`) },
+
+    /* ---------- D'autres dessins animés et bandes dessinées ---------- */
+    { id:'chien-police', n:"Chase, de la Pat' Patrouille", cat:'perso', zones:{ uniforme:['Son uniforme', '#2B5CAB'] },
+      svg:fond('#DCEBFA') + g(`
+        <path d="M30 200 L44 160 Q100 142 156 160 L170 200 Z" fill="$uniforme"/><path d="M84 152 L100 176 L116 152 Z" fill="#F6CE2E"/>
+        <path d="M56 70 L40 22 L80 50 Z M144 70 L160 22 L120 50 Z" fill="#8A5A2B"/>
+        <path d="M50 96 Q50 50 100 48 Q150 50 150 96 Q150 140 100 152 Q50 140 50 96 Z" fill="#8A5A2B"/>
+        <path d="M70 100 Q72 72 100 84 Q128 72 130 100 Q132 134 100 148 Q68 134 70 100 Z" fill="#E7C08A"/>
+        <path d="M52 62 Q100 34 148 62 L150 74 Q100 54 50 74 Z" fill="$uniforme"/><path d="M60 58 Q100 20 140 58 Q100 44 60 58 Z" fill="$uniforme"/>
+        <path d="M100 38 L108 46 L104 56 L96 56 L92 46 Z" fill="#F6CE2E" stroke-width="2"/>
+        ${yeux(82, 118, 98, 6)}
+        <ellipse cx="100" cy="118" rx="9" ry="7" fill="${T}"/><path d="M100 125 L100 134 M86 136 Q100 144 114 136" fill="none"/>`) },
+    { id:'chienne-bleue', n:"Bluey", cat:'perso', zones:{ pelage:['Son pelage', '#6FB6E9'], fonce:['Ses taches foncées', '#2F4A86'] },
+      svg:fond('#FFF0CC') + g(`
+        <path d="M58 60 L50 10 L84 44 Z M142 60 L150 10 L116 44 Z" fill="$fonce"/>
+        <path d="M36 200 L46 164 Q100 146 154 164 L164 200 Z" fill="$pelage"/><path d="M76 200 L80 168 Q100 160 120 168 L124 200 Z" fill="#F2E3B6"/>
+        <path d="M46 92 Q46 40 100 38 Q154 40 154 92 Q154 146 100 152 Q46 146 46 92 Z" fill="$pelage"/>
+        <path d="M70 40 Q100 30 130 40 L122 66 Q100 58 78 66 Z" fill="$fonce"/>
+        <path d="M64 108 Q64 84 100 84 Q136 84 136 108 Q136 146 100 150 Q64 146 64 108 Z" fill="#F2E3B6"/>
+        <ellipse cx="80" cy="84" rx="11" ry="13" fill="#fff"/><ellipse cx="120" cy="84" rx="11" ry="13" fill="#fff"/><circle cx="82" cy="86" r="5" fill="${T}" stroke="none"/><circle cx="118" cy="86" r="5" fill="${T}" stroke="none"/>
+        <path d="M64 64 L84 68 M136 64 L116 68" fill="none" stroke="$fonce" stroke-width="6"/>
+        <ellipse cx="100" cy="106" rx="10" ry="7" fill="${T}"/><path d="M80 126 Q100 142 120 126" fill="none"/>`) },
+    { id:'coccinelle', n:"Ladybug (Miraculous)", cat:'perso', zones:{ costume:['Son costume', '#E0222B'] },
+      svg:fond('#FCE4E4') + g(`
+        <path d="M44 86 L14 110 L40 120 Z M156 86 L186 110 L160 120 Z" fill="#1C2440"/><path d="M34 100 L20 118 M166 100 L180 118" fill="none" stroke="$costume" stroke-width="6"/>
+        <path d="M30 200 L44 160 Q100 142 156 160 L170 200 Z" fill="$costume"/><circle cx="66" cy="180" r="7" fill="${T}" stroke="none"/><circle cx="134" cy="180" r="7" fill="${T}" stroke="none"/><circle cx="100" cy="188" r="7" fill="${T}" stroke="none"/><path d="M84 152 Q100 164 116 152 L112 158 Q100 168 88 158 Z" fill="${T}"/>
+        <ellipse cx="100" cy="98" rx="40" ry="44" fill="#F9C9A0"/>
+        <path d="M58 96 Q54 42 100 40 Q146 42 142 96 Q134 68 112 72 L100 60 L88 72 Q66 68 58 96 Z" fill="#1C2440"/>
+        <path d="M60 86 Q80 76 100 88 Q120 76 140 86 Q142 108 122 114 Q108 114 100 102 Q92 114 78 114 Q58 108 60 86 Z" fill="$costume"/>
+        <circle cx="70" cy="92" r="3.5" fill="${T}" stroke="none"/><circle cx="130" cy="92" r="3.5" fill="${T}" stroke="none"/><circle cx="100" cy="94" r="3" fill="${T}" stroke="none"/><circle cx="78" cy="108" r="2.6" fill="${T}" stroke="none"/><circle cx="122" cy="108" r="2.6" fill="${T}" stroke="none"/>
+        <ellipse cx="84" cy="96" rx="8" ry="6" fill="#fff"/><ellipse cx="116" cy="96" rx="8" ry="6" fill="#fff"/><circle cx="85" cy="96" r="3.6" fill="#3B8FD0" stroke="none"/><circle cx="115" cy="96" r="3.6" fill="#3B8FD0" stroke="none"/>
+        <path d="M88 128 Q100 136 112 128" fill="none"/>`) },
+    { id:'grand-chien', n:"Scooby-Doo", cat:'perso', zones:{ pelage:['Son pelage', '#B6753A'], collier:['Son collier', '#19B5B0'] },
+      svg:fond('#E4F3E0') + g(`
+        <path d="M52 70 L30 30 L74 48 Z M148 70 L170 30 L126 48 Z" fill="$pelage"/>
+        <path d="M54 200 L60 150 L140 150 L146 200 Z" fill="$pelage"/>
+        <path d="M56 152 Q100 168 144 152 L146 170 Q100 186 54 170 Z" fill="$collier"/><path d="M100 176 L110 186 L100 198 L90 186 Z" fill="#F6CE2E"/>
+        <path d="M54 84 Q54 40 100 38 Q146 40 146 84 L140 120 Q138 152 100 152 Q62 152 60 120 Z" fill="$pelage"/>
+        <ellipse cx="100" cy="126" rx="34" ry="24" fill="#D9A56A"/>
+        <ellipse cx="84" cy="76" rx="10" ry="13" fill="#fff"/><ellipse cx="116" cy="76" rx="10" ry="13" fill="#fff"/><circle cx="86" cy="80" r="4.5" fill="${T}" stroke="none"/><circle cx="114" cy="80" r="4.5" fill="${T}" stroke="none"/>
+        <path d="M72 58 L92 60 M128 58 L108 60" fill="none"/>
+        <ellipse cx="100" cy="108" rx="13" ry="9" fill="${T}"/><path d="M100 117 L100 128 M80 132 Q100 148 120 132" fill="none"/>
+        <circle cx="70" cy="46" r="4" fill="#5B3A1C" stroke="none"/><circle cx="126" cy="46" r="3" fill="#5B3A1C" stroke="none"/>`) },
+    { id:'chat-gris', n:"Tom (Tom et Jerry)", cat:'perso', zones:{ pelage:['Son pelage', '#7C8FA6'] },
+      svg:fond('#FBEFD0') + g(`
+        <path d="M54 66 L40 14 L86 40 Z M146 66 L160 14 L114 40 Z" fill="$pelage"/><path d="M58 54 L50 28 L74 42 Z M142 54 L150 28 L126 42 Z" fill="#F2A9B4" stroke-width="2"/>
+        <path d="M36 200 L48 162 Q100 146 152 162 L164 200 Z" fill="$pelage"/><path d="M80 200 L84 166 Q100 160 116 166 L120 200 Z" fill="#F4F6F8"/>
+        <path d="M40 96 Q40 40 100 38 Q160 40 160 96 Q170 126 140 140 Q100 158 60 140 Q30 126 40 96 Z" fill="$pelage"/>
+        <path d="M58 118 Q60 100 100 104 Q140 100 142 118 Q136 146 100 148 Q64 146 58 118 Z" fill="#F4F6F8"/>
+        <path d="M70 60 Q84 48 96 64 L96 96 Q82 104 70 92 Z M130 60 Q116 48 104 64 L104 96 Q118 104 130 92 Z" fill="#F6E27A"/><ellipse cx="84" cy="82" rx="5" ry="9" fill="${T}"/><ellipse cx="116" cy="82" rx="5" ry="9" fill="${T}"/>
+        <path d="M64 52 L92 56 M136 52 L108 56" fill="none" stroke-width="5"/>
+        <path d="M92 104 L108 104 L100 114 Z" fill="${T}"/><path d="M100 114 L100 124 M78 126 Q100 142 122 126" fill="none"/>
+        <path d="M58 116 L24 108 M58 124 L26 128 M142 116 L176 108 M142 124 L174 128" fill="none" stroke-width="2"/>`) },
+    { id:'petite-souris', n:"Jerry (Tom et Jerry)", cat:'perso', zones:{ pelage:['Son pelage', '#B8763B'] },
+      svg:fond('#DDEBFA') + g(`
+        <circle cx="42" cy="56" r="34" fill="$pelage"/><circle cx="158" cy="56" r="34" fill="$pelage"/><circle cx="42" cy="56" r="22" fill="#F2B9A8"/><circle cx="158" cy="56" r="22" fill="#F2B9A8"/>
+        <path d="M50 200 L58 164 Q100 150 142 164 L150 200 Z" fill="$pelage"/><path d="M82 200 L86 170 Q100 164 114 170 L118 200 Z" fill="#F1DFC2"/>
+        <path d="M48 98 Q48 50 100 48 Q152 50 152 98 Q156 136 100 156 Q44 136 48 98 Z" fill="$pelage"/>
+        <path d="M64 116 Q66 100 100 104 Q134 100 136 116 Q130 148 100 152 Q70 148 64 116 Z" fill="#F1DFC2"/>
+        <ellipse cx="84" cy="88" rx="10" ry="15" fill="#fff"/><ellipse cx="116" cy="88" rx="10" ry="15" fill="#fff"/><ellipse cx="86" cy="92" rx="5" ry="8" fill="${T}"/><ellipse cx="114" cy="92" rx="5" ry="8" fill="${T}"/>
+        <path d="M74 66 Q84 60 92 68 M126 66 Q116 60 108 68" fill="none"/>
+        <ellipse cx="100" cy="110" rx="7" ry="5" fill="${T}"/><path d="M82 126 Q100 142 118 126" fill="none"/>
+        <path d="M66 114 L40 108 M66 120 L42 126 M134 114 L160 108 M134 120 L158 126" fill="none" stroke-width="2"/>`) },
+    { id:'gaulois', n:"Astérix", cat:'perso', zones:{ pantalon:['Son pantalon', '#D7261E'], moustache:['Sa moustache', '#F5C021'] },
+      svg:fond('#E2F0D9') + g(`
+        <path d="M44 200 L50 168 L150 168 L156 200 Z" fill="$pantalon"/>
+        <path d="M40 176 L52 148 Q100 136 148 148 L160 176 Q100 164 40 176 Z" fill="#23242B"/>
+        <path d="M52 60 L8 20 Q10 60 40 84 Z M148 60 L192 20 Q190 60 160 84 Z" fill="#fff"/><path d="M30 44 L44 62 M24 56 L42 72 M170 44 L156 62 M176 56 L158 72" fill="none" stroke-width="2"/>
+        <ellipse cx="100" cy="100" rx="44" ry="42" fill="#F9C9A0"/>
+        <path d="M54 82 Q54 26 100 24 Q146 26 146 82 Q100 70 54 82 Z" fill="#C9CED6"/><path d="M52 76 Q100 62 148 76 L148 86 Q100 72 52 86 Z" fill="#9AA3AF"/>
+        ${yeux(84, 116, 98, 6)}
+        <ellipse cx="100" cy="114" rx="13" ry="11" fill="#F4B07E"/>
+        <path d="M100 120 Q70 114 46 134 Q60 148 78 138 Q92 132 100 126 Q108 132 122 138 Q140 148 154 134 Q130 114 100 120 Z" fill="$moustache"/>`) },
+    { id:'livreur-menhirs', n:"Obélix", cat:'perso', zones:{ braies:['Les rayures bleues de ses braies', '#3B6DB5'], cheveux:['Ses tresses et sa moustache', '#E0661C'] },
+      svg:fond('#DDEAF7') + g(`
+        <path d="M8 200 Q10 150 50 140 L150 140 Q190 150 192 200 Z" fill="$braies"/>
+        <path d="M34 200 L38 150 M60 200 L62 144 M86 200 L88 142 M114 200 L112 142 M140 200 L138 144 M166 200 L162 150" fill="none" stroke="#fff" stroke-width="9"/>
+        <path d="M30 150 Q100 132 170 150 L170 164 Q100 146 30 164 Z" fill="#3E8A46"/><circle cx="100" cy="154" r="11" fill="#F6CE2E"/>
+        <path d="M46 70 Q30 110 40 150 L54 150 Q48 112 58 82 Z M154 70 Q170 110 160 150 L146 150 Q152 112 142 82 Z" fill="$cheveux"/>
+        <ellipse cx="100" cy="88" rx="46" ry="46" fill="#F9C9A0"/>
+        <path d="M56 66 Q58 28 100 26 Q142 28 144 66 Q100 54 56 66 Z" fill="#C9CED6"/><path d="M66 34 Q62 14 70 6 M134 34 Q138 14 130 6" fill="none" stroke="#F4F6F8" stroke-width="7"/>
+        ${yeux(84, 116, 84, 5)}
+        <ellipse cx="100" cy="100" rx="13" ry="11" fill="#F4B07E"/>
+        <path d="M100 106 Q72 100 52 122 Q66 134 82 124 Q94 118 100 112 Q106 118 118 124 Q134 134 148 122 Q128 100 100 106 Z" fill="$cheveux"/>`) },
+    { id:'reporter', n:"Tintin", cat:'perso', zones:{ pull:['Son pull', '#6FA8DC'], houppe:['Ses cheveux', '#E09A4A'] },
+      svg:fond('#FBE9C8') + g(`
+        <path d="M26 200 L42 160 Q100 142 158 160 L174 200 Z" fill="$pull"/>
+        <path d="M74 150 L100 172 L126 150 L132 162 L100 188 L68 162 Z" fill="#F4F6F8"/>
+        <ellipse cx="100" cy="100" rx="42" ry="46" fill="#F9C9A0"/>
+        <path d="M60 84 Q58 50 92 48 Q88 30 104 14 Q120 22 112 46 Q142 50 140 84 Q120 62 100 64 Q80 62 60 84 Z" fill="$houppe"/>
+        <circle cx="84" cy="100" r="3.5" fill="${T}" stroke="none"/><circle cx="116" cy="100" r="3.5" fill="${T}" stroke="none"/>
+        <path d="M76 88 Q84 84 92 88 M108 88 Q116 84 124 88" fill="none" stroke-width="2"/>
+        <path d="M100 104 Q94 116 102 116" fill="none" stroke-width="2"/><path d="M88 130 Q100 138 112 130" fill="none"/>`) },
+    { id:'papa-fort', n:"M. Indestructible", cat:'perso', zones:{ costume:['Son costume', '#D8281E'] },
+      svg:fond('#FFE8C2') + g(`
+        <path d="M6 200 L30 150 Q100 126 170 150 L194 200 Z" fill="$costume"/>
+        <ellipse cx="100" cy="178" rx="30" ry="19" fill="#1B1B1F"/><ellipse cx="100" cy="178" rx="24" ry="14" fill="#F2A122"/>
+        <path d="M96 174 L104 174 L104 189 L96 189 Z" fill="#fff" stroke-width="1.5"/><circle cx="100" cy="169" r="3.4" fill="#fff" stroke-width="1.5"/>
+        <path d="M60 92 Q58 40 100 38 Q142 40 140 92 Q146 140 100 150 Q54 140 60 92 Z" fill="#F9C9A0"/>
+        <path d="M62 70 Q62 30 100 28 Q138 30 138 70 Q118 52 100 56 Q82 52 62 70 Z" fill="#D9A441"/>
+        <path d="M56 84 Q78 74 100 86 Q122 74 144 84 Q140 104 120 104 Q106 102 100 94 Q94 102 80 104 Q60 104 56 84 Z" fill="#1B1B1F"/>
+        <ellipse cx="80" cy="90" rx="9" ry="5" fill="#fff"/><ellipse cx="120" cy="90" rx="9" ry="5" fill="#fff"/><circle cx="81" cy="90" r="2.6" fill="${T}" stroke="none"/><circle cx="119" cy="90" r="2.6" fill="${T}" stroke="none"/>
+        <path d="M84 126 Q100 136 118 124" fill="none"/>`) },
+    { id:'reine-glace', n:"Elsa, de La Reine des neiges", cat:'perso', zones:{ robe:['Sa robe', '#7FD0E8'], cheveux:['Ses cheveux', '#F3E4A6'] },
+      svg:fond('#DCE6F7') + g(`
+        <path d="M130 60 Q168 90 150 150 Q146 180 156 200 L128 200 Q124 150 132 110 Z" fill="$cheveux"/><path d="M138 120 L150 132 M134 144 L148 156 M132 168 L146 180" fill="none" stroke-width="2"/>
+        <path d="M30 200 L46 162 Q100 146 154 162 L170 200 Z" fill="$robe"/>
+        <path d="M70 152 Q100 168 130 152 L126 164 Q100 178 74 164 Z" fill="#F9C9A0"/>
+        <ellipse cx="100" cy="98" rx="38" ry="46" fill="#F9C9A0"/>
+        <path d="M60 98 Q52 40 100 34 Q150 38 140 98 Q138 66 110 56 Q84 76 64 78 Q60 86 60 98 Z" fill="$cheveux"/>
+        <ellipse cx="84" cy="100" rx="8" ry="10" fill="#fff"/><ellipse cx="116" cy="100" rx="8" ry="10" fill="#fff"/><circle cx="85" cy="102" r="5" fill="#3B8FD0" stroke="none"/><circle cx="115" cy="102" r="5" fill="#3B8FD0" stroke="none"/>
+        <path d="M74 86 Q84 80 94 88 M106 88 Q116 80 126 86" fill="none" stroke-width="2"/>
+        <path d="M90 128 Q100 134 110 128" fill="#D9534F" stroke-width="2"/>
+        <path d="M56 176 L60 186 M52 181 L64 181 M150 176 L146 186 M142 180 L154 182" fill="none" stroke="#fff" stroke-width="2"/>`) },
+    { id:'canard-marin', n:"Donald", cat:'perso', zones:{ costume:['Son costume de marin', '#2B6FD6'], bec:['Son bec', '#F6A21A'] },
+      svg:fond('#FFF3C4') + g(`
+        <path d="M30 200 L44 160 Q100 142 156 160 L170 200 Z" fill="$costume"/>
+        <path d="M70 154 L100 186 L130 154 L138 164 L100 200 L62 164 Z" fill="#F4F6F8"/><path d="M100 176 L80 164 L84 190 Z M100 176 L120 164 L116 190 Z" fill="#D7261E"/>
+        <path d="M54 90 Q54 40 100 38 Q146 40 146 90 Q146 138 100 144 Q54 138 54 90 Z" fill="#F4F6F8"/>
+        <path d="M62 44 Q100 24 138 44 L142 56 Q100 40 58 56 Z" fill="$costume"/><path d="M70 40 Q100 4 130 40 Q100 30 70 40 Z" fill="$costume"/><path d="M118 30 L150 24 L142 44 Z" fill="${T}"/>
+        <ellipse cx="86" cy="80" rx="10" ry="16" fill="#DFF0FA"/><ellipse cx="114" cy="80" rx="10" ry="16" fill="#DFF0FA"/><ellipse cx="88" cy="86" rx="4" ry="7" fill="${T}"/><ellipse cx="112" cy="86" rx="4" ry="7" fill="${T}"/>
+        <path d="M60 110 Q100 92 140 110 Q150 126 100 136 Q50 126 60 110 Z" fill="$bec"/><path d="M64 114 Q100 126 136 114" fill="none"/>`) },
+    { id:'voiture-course', n:"Flash McQueen", cat:'perso', zones:{ carrosserie:['Sa carrosserie', '#D7261E'] },
+      svg:fond('#F6E7C8') + g(`
+        <rect x="22" y="158" width="26" height="32" rx="6" fill="#23242B"/><rect x="152" y="158" width="26" height="32" rx="6" fill="#23242B"/>
+        <path d="M22 150 Q22 120 44 112 L60 70 Q64 58 80 58 L120 58 Q136 58 140 70 L156 112 Q178 120 178 150 L178 172 L22 172 Z" fill="$carrosserie"/>
+        <path d="M62 108 L72 72 Q74 66 82 66 L118 66 Q126 66 128 72 L138 108 Z" fill="#DFF0FA"/>
+        <ellipse cx="86" cy="90" rx="12" ry="14" fill="#fff"/><ellipse cx="114" cy="90" rx="12" ry="14" fill="#fff"/><circle cx="88" cy="92" r="6" fill="#3B8FD0" stroke="none"/><circle cx="112" cy="92" r="6" fill="#3B8FD0" stroke="none"/><circle cx="88" cy="92" r="2.6" fill="${T}" stroke="none"/><circle cx="112" cy="92" r="2.6" fill="${T}" stroke="none"/>
+        <path d="M62 148 Q100 166 138 148 Q100 154 62 148 Z" fill="#fff"/>
+        <ellipse cx="42" cy="136" rx="13" ry="8" fill="#FFF3B0"/><ellipse cx="158" cy="136" rx="13" ry="8" fill="#FFF3B0"/>
+        <path d="M88 114 L114 114 L106 124 L118 124 L90 140 L98 128 L86 128 Z" fill="#F6CE2E" stroke-width="2"/>`) },
+    { id:'cow-boy', n:"Lucky Luke", cat:'perso', zones:{ chemise:['Sa chemise', '#F6CE2E'], foulard:['Son foulard', '#D7261E'] },
+      svg:fond('#F7E3C0') + g(`
+        <path d="M26 200 L42 160 Q100 142 158 160 L174 200 Z" fill="$chemise"/>
+        <path d="M26 200 L42 160 Q58 154 72 156 L80 200 Z M174 200 L158 160 Q142 154 128 156 L120 200 Z" fill="#23242B"/>
+        <path d="M70 150 Q100 166 130 150 L134 164 Q100 184 66 164 Z" fill="$foulard"/><path d="M100 172 L112 196 L92 192 Z" fill="$foulard"/>
+        <ellipse cx="100" cy="104" rx="36" ry="44" fill="#F9C9A0"/>
+        <path d="M66 96 Q62 74 78 70 L122 70 Q138 74 134 96 Q128 80 100 80 Q72 80 66 96 Z" fill="#23242B"/><path d="M96 80 Q104 88 98 96" fill="none" stroke-width="5"/>
+        <ellipse cx="100" cy="66" rx="84" ry="14" fill="#F4F6F8"/><path d="M58 62 Q56 20 80 20 Q100 30 120 20 Q144 20 142 62 Q100 72 58 62 Z" fill="#F4F6F8"/><path d="M58 52 Q100 62 142 52 L142 62 Q100 72 58 62 Z" fill="#23242B"/>
+        <circle cx="86" cy="104" r="3.5" fill="${T}" stroke="none"/><circle cx="114" cy="104" r="3.5" fill="${T}" stroke="none"/>
+        <path d="M100 108 Q94 122 104 122" fill="none" stroke-width="2"/><path d="M88 134 Q100 140 114 132" fill="none"/><path d="M112 134 L140 126" fill="none" stroke="#7FA83B" stroke-width="3"/>`) },
 
     /* ---------- Les logos et les marques (dessinés autrement) ---------- */
     { id:'arches', n:"McDonald's", cat:'logo', zones:{ arches:['Les arches dorées', '#FFC72C'], fond:['Le rouge du fond', '#DA291C'] },

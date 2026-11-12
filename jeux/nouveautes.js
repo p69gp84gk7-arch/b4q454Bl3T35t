@@ -3,6 +3,10 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:183, type:'nouveau', jeu:'Quelle taille ?', ico:'📏', lien:'jeux/toise.html',
+    txt:'Un nouveau jeu de coup d\'œil : devine la vraie taille d\'une silhouette (tour Eiffel, baleine bleue, Airbus, canette, dameuse…) posée à côté d\'une autre. 66 silhouettes, 10 devinettes de plus en plus trompeuses : même échelle, à la règle, deux échelles, puis à la loupe. Réponse au curseur, note sur 10.' },
+  { v:183, type:'maj', jeu:'Nuancier', ico:'🦸', lien:'jeux/nuancier.html',
+    txt:'41 nouveaux personnages : Dark Vador, Yoda, Harry Potter, Batman, Iron Man, Captain America, Goku, Naruto, Luffy, Totoro, Astérix, Tintin, Bluey, Ladybug… (160 images, avec une nouvelle catégorie « Héros de films, séries et mangas »). La note est plus sévère : il faut être vraiment tout près pour avoir 8 ou 9. Les records repartent de zéro.' },
   { v:182, type:'maj', jeu:'Dameuse de nuit', ico:'⚓', lien:'jeux/dameuse.html',
     txt:'En 3D, une dameuse bien plus détaillée (crampons qui défilent, gyrophare qui tourne, conducteur dans la cabine) et un vrai treuil : tourelle qui pivote vers l\'ancre, tambour qui tourne, flèche en treillis, câble tendu qui pend à l\'arrêt. Les ancres ont une balise : verte à portée, orange accrochée. Et la neige vole : gerbe de la fraise, chenilles, bout de la lame, flocons qui tombent.' },
   { v:182, type:'maj', jeu:'Freeride', ico:'🎿', lien:'jeux/freeride.html',

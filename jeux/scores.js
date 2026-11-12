@@ -253,11 +253,20 @@ window.AltitudeScores = (() => {
       ep('rock', 'etoiles', 'Étoiles gagnées', rk.etoiles || 0, `${rk.etoiles || 0} ★`);
       J.rock.stats = { 'Morceaux joués':rk.parties, 'Notes réussies':rk.notes || 0 };
     }
+    // Quelle taille ? : la meilleure partie et les tailles trouvées pile
+    const to = lire('toise-records');
+    if(to && to.parties){
+      jeu('toise', 'Quelle taille ?', '📏');
+      ep('toise', 'score', 'Meilleure partie (10 devinettes)', to.best || 0, `${String(to.best || 0).replace('.', ',')} / 100`);
+      ep('toise', 'parfaits', 'Tailles parfaites', to.parfaits || 0, `${to.parfaits || 0} parfaite${to.parfaits > 1 ? 's' : ''}`);
+      J.toise.stats = { 'Parties':to.parties, 'Devinettes':to.devinettes || 0, 'Note moyenne':((to.total || 0) / Math.max(1, to.devinettes || 0)).toFixed(1).replace('.', ',') + ' / 10' };
+    }
     const nu = lire('nuancier-records');
-    if(nu && nu.parties){
+    // (barème 2, plus sévère : les scores de l'ancien barème ne sont plus classés)
+    if(nu && nu.parties && nu.bareme === 2 && nu.couleurs){
       jeu('nuancier', 'Nuancier', '🎨');
-      ep('nuancier', 'score', 'Meilleure partie (10 couleurs)', nu.best || 0, `${String(nu.best || 0).replace('.', ',')} / 100`);
-      ep('nuancier', 'parfaits', 'Couleurs parfaites', nu.parfaits || 0, `${nu.parfaits || 0} parfaite${nu.parfaits > 1 ? 's' : ''}`);
+      ep('nuancier', 'score2', 'Meilleure partie (10 couleurs, note sévère)', nu.best || 0, `${String(nu.best || 0).replace('.', ',')} / 100`);
+      ep('nuancier', 'parfaits2', 'Couleurs parfaites', nu.parfaits || 0, `${nu.parfaits || 0} parfaite${nu.parfaits > 1 ? 's' : ''}`);
       J.nuancier.stats = { 'Parties':nu.parties, 'Couleurs trouvées':nu.couleurs || 0, 'Note moyenne':((nu.total || 0) / Math.max(1, nu.couleurs || 0)).toFixed(1).replace('.', ',') + ' / 10' };
     }
     const bl = lire('blocs-records');
