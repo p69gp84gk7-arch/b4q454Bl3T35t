@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Dichotomie · Altitude Arcade</title>
+<meta name="theme-color" content="#0C1320">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=175">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=175">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+@media (orientation:landscape) and (max-height:600px){ :root{ --barre-statut:env(safe-area-inset-top, 0px); } }
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+/* la nuit, un écran de supervision */
+:root{ --fond:#0C1320; --carte:#152033; --carte2:#1E2C44; --ligne:rgba(160,190,230,.16); --encre:#EAF1FB; --doux:#9DB0C8;
+  --ok:#2FD47A; --ko:#FF4D4D; --or:#FFC93C; --volt:#FFD23F; --bleu:#5AA9FF; --off:#7D8796; }
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; height:100%; background:var(--fond); color:var(--encre); font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-tap-highlight-color:transparent; }
+body{ padding-top:var(--barre-statut); }
+button{ font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; }
+.ecran[hidden]{ display:none !important; }
+.page{ max-width:760px; margin:0 auto; padding:12px 14px calc(24px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; gap:12px; }
+.tete{ display:flex; align-items:center; gap:8px; }
+.tete a, .tete .btn{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:10px; padding:6px 12px; font-weight:700; background:var(--carte); white-space:nowrap; }
+.tete .droite{ margin-left:auto; }
+h1{ margin:6px 0 0; font-family:"Bebas Neue", "Bricolage Grotesque", sans-serif; font-weight:400; font-size:clamp(3rem, 15vw, 4.4rem); line-height:.9; letter-spacing:.02em; }
+h1 span{ color:var(--ok); }
+h2{ margin:0; font-size:1.25rem; }
+h3{ margin:0 0 8px; font-size:.76rem; text-transform:uppercase; letter-spacing:.14em; color:var(--doux); }
+.sous{ color:var(--doux); margin:0; line-height:1.45; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:16px; padding:14px; }
+.btn{ border:1px solid var(--ligne); background:var(--carte2); border-radius:12px; padding:10px 14px; font-weight:800; }
+.btn.gros{ width:100%; padding:15px; font-size:1.1rem; background:linear-gradient(90deg, #2FD47A, #5AA9FF); border:none; color:#06121F; }
+.btn:disabled{ opacity:.45; cursor:default; }
+.stats{ display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; text-align:center; }
+.stats div{ background:var(--carte2); border-radius:12px; padding:8px 4px; min-width:0; }
+.stats b{ display:block; font-size:1.25rem; } .stats small{ color:var(--doux); font-size:.72rem; }
+.niveaux{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:8px; }
+.niv{ text-align:left; border:1px solid var(--ligne); background:var(--carte2); border-radius:14px; padding:11px 12px; display:flex; flex-direction:column; gap:4px; min-width:0; }
+.niv b{ font-size:1.02rem; } .niv small{ color:var(--doux); line-height:1.35; font-size:.82rem; }
+.niv .et{ color:var(--or); letter-spacing:.08em; font-size:.95rem; } .niv .rec{ color:var(--doux); font-size:.78rem; }
+.aide li{ line-height:1.5; margin-bottom:6px; } .aide ul{ padding-left:20px; margin:0; }
+
+/* la partie : tout l'écran */
+#eJeu{ position:fixed; inset:var(--barre-statut) 0 0 0; display:flex; flex-direction:column; }
+.jhaut{ display:flex; align-items:center; gap:8px; padding:8px 10px 4px; flex-wrap:wrap; }
+.jhaut .btn{ padding:6px 10px; font-size:.9rem; }
+.compteurs{ display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; justify-content:flex-end; }
+.compteurs span{ background:var(--carte); border:1px solid var(--ligne); border-radius:999px; padding:4px 9px; font-weight:800; font-size:.86rem; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.etat{ display:flex; align-items:center; gap:9px; padding:2px 12px 6px; }
+.lampe{ width:16px; height:16px; border-radius:50%; background:var(--ok); flex:none; box-shadow:0 0 0 4px rgba(47,212,122,.2); }
+.lampe.ko{ background:var(--ko); box-shadow:0 0 0 4px rgba(255,77,77,.22); }
+.etat b{ font-size:1.05rem; font-variant-numeric:tabular-nums; } .etat small{ color:var(--doux); font-size:.82rem; line-height:1.2; }
+.corps{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+.carteBox{ position:relative; flex:1 1 auto; min-height:180px; background:#0A101B; border-top:1px solid var(--ligne); border-bottom:1px solid var(--ligne); overflow:hidden; }
+.carteBox canvas{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
+.vues{ position:absolute; left:8px; top:8px; display:flex; background:rgba(12,19,32,.85); border:1px solid var(--ligne); border-radius:10px; padding:2px; }
+.vues button{ border:0; background:transparent; color:var(--doux); font-weight:800; font-size:.85rem; padding:6px 10px; border-radius:8px; }
+.vues button[aria-pressed="true"]{ background:var(--encre); color:#0C1320; }
+.zoom{ position:absolute; right:8px; top:8px; display:flex; flex-direction:column; gap:6px; }
+.zoom button{ width:38px; height:38px; border-radius:10px; border:1px solid var(--ligne); background:rgba(12,19,32,.85); font-weight:800; font-size:1.2rem; }
+.legende{ position:absolute; left:8px; bottom:8px; display:flex; gap:8px; flex-wrap:wrap; background:rgba(12,19,32,.82); border:1px solid var(--ligne); border-radius:10px; padding:4px 8px; font-size:.72rem; color:var(--doux); max-width:calc(100% - 16px); pointer-events:none; }
+.legende i{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:3px; vertical-align:-1px; }
+.panneau{ flex:0 0 auto; max-height:44vh; overflow:auto; padding:10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; gap:8px; }
+@media (orientation:landscape) and (min-width:700px){
+  .corps{ flex-direction:row; }
+  .panneau{ width:min(400px, 42%); max-height:none; border-left:1px solid var(--ligne); }
+}
+.panneau h2{ font-size:1.08rem; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.panneau h2 small{ color:var(--doux); font-weight:600; font-size:.8rem; }
+.panneau .ligneA{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.panneau .ligneA .btn{ padding:8px 10px; font-size:.86rem; }
+.btn .min{ color:var(--doux); font-weight:600; font-size:.75rem; margin-left:3px; }
+.btn.rep{ border-color:rgba(255,201,60,.55); background:rgba(255,201,60,.12); }
+.btn.act{ border-color:rgba(90,169,255,.55); background:rgba(90,169,255,.12); }
+.mesure{ background:var(--carte); border:1px solid var(--ligne); border-radius:10px; padding:7px 9px; font-size:.86rem; line-height:1.4; }
+.mesure b.ok{ color:var(--ok); } .mesure b.ko{ color:var(--ko); } .mesure b.vo{ color:var(--volt); }
+.sect{ font-size:.72rem; text-transform:uppercase; letter-spacing:.12em; color:var(--doux); margin-top:2px; }
+.lien{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; background:var(--carte); border:1px solid var(--ligne); border-radius:10px; padding:6px 8px; font-size:.86rem; }
+.lien > span{ flex:1 1 140px; min-width:0; }
+.lien .btn{ padding:6px 8px; font-size:.8rem; }
+.journal{ display:flex; flex-direction:column; gap:3px; font-size:.82rem; color:var(--doux); }
+.journal div{ line-height:1.35; } .journal b{ color:var(--encre); } .journal .bon{ color:var(--ok); } .journal .mal{ color:var(--ko); }
+.aideJ{ color:var(--doux); font-size:.86rem; line-height:1.45; margin:0; }
+.toast{ position:absolute; left:50%; bottom:12px; transform:translateX(-50%); max-width:calc(100% - 24px); background:#F2F6FC; color:#0C1320; font-weight:800; padding:8px 14px; border-radius:12px; text-align:center; font-size:.9rem; box-shadow:0 8px 24px rgba(0,0,0,.4); pointer-events:none; }
+.toast[hidden]{ display:none; }
+
+/* la fin */
+.total{ text-align:center; }
+.total .et{ font-size:2.6rem; color:var(--or); letter-spacing:.1em; }
+.total h2{ font-size:1.5rem; }
+.revele{ display:flex; flex-direction:column; gap:6px; }
+.revele div{ background:var(--carte2); border-radius:10px; padding:8px 10px; line-height:1.4; font-size:.92rem; }
+</style>
+</head>
+<body>
+<div class="barre-statut" aria-hidden="true"></div>
+
+<!-- L'accueil -->
+<section class="ecran" id="eAccueil">
+  <div class="page">
+    <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="btn droite" id="bAide">❔ Règles</button></div>
+    <h1>Dicho<span>tomie</span></h1>
+    <p class="sous">La supervision s'allume en rouge : des canons ne communiquent plus. Sur le vrai réseau de Superbagnères (204 canons, 6 transfos), trouvez la panne avant la fin de la nuit : un canon qui brouille la ligne, un transfo qui saute, un câble coupé… Coupez au milieu, regardez ce qui revient, recommencez : c'est la dichotomie.</p>
+    <div class="carte" id="cRecords"></div>
+    <div class="carte"><h3>Les pannes</h3><div class="niveaux" id="cNiveaux"></div></div>
+  </div>
+</section>
+
+<!-- La partie -->
+<section class="ecran" id="eJeu" hidden>
+  <div class="jhaut">
+    <button class="btn" id="bQuitter">‹ Arrêter</button>
+    <div class="compteurs"><span id="jHeure">21 h 00</span><span id="jGestes">0 geste</span><span id="jNeige">0 m³</span></div>
+  </div>
+  <div class="etat"><div class="lampe" id="jLampe"></div><div><b id="jCompte"></b><br><small id="jSous"></small></div></div>
+  <div class="corps">
+    <div class="carteBox" id="carteBox">
+      <canvas id="cv"></canvas>
+      <div class="vues"><button id="vDia" aria-pressed="true">📡 Dialogue</button><button id="vElec" aria-pressed="false">⚡ Électricité</button></div>
+      <div class="zoom"><button id="zPlus" aria-label="Zoomer">+</button><button id="zMoins" aria-label="Dézoomer">−</button><button id="zTout" aria-label="Tout voir" style="font-size:1rem">⤢</button></div>
+      <div class="legende" id="legende"></div>
+      <div class="toast" id="toast" hidden></div>
+    </div>
+    <div class="panneau" id="panneau"></div>
+  </div>
+</section>
+
+<!-- La fin -->
+<section class="ecran" id="eFin" hidden>
+  <div class="page">
+    <div class="carte total"><h2 id="fTitre"></h2><div class="et" id="fEtoiles"></div><p class="sous" id="fTexte"></p></div>
+    <div class="carte"><div class="stats" id="fStats"></div></div>
+    <div class="carte"><h3>La panne</h3><div class="revele" id="fPanne"></div></div>
+    <button class="btn" id="bVoir">🗺 Voir la panne sur la carte</button>
+    <button class="btn gros" id="bRejouer">↻ Une autre panne</button>
+    <button class="btn" id="bMenu">Menu</button>
+  </div>
+</section>
+
+<!-- Les règles -->
+<section class="ecran" id="eAide" hidden>
+  <div class="page aide">
+    <div class="tete"><button class="btn" id="bAideRetour">‹ Retour</button></div>
+    <h2>Comment jouer</h2>
+    <div class="carte"><h3>Le réseau</h3><ul>
+      <li>Le dialogue part de la <b>salle des machines 1</b> (vers Lac 1, Marmottes 65…) et du canon de tête <b>Baby 33</b> et passe de canon en canon, dans le sens des flèches. Un canon éteint (interrupteur ouvert ou sans courant) <b>bloque</b> le dialogue de tous ceux d'après.</li>
+      <li>Le courant part des <b>transfos</b> ⚡ et suit les câbles électriques (vue « Électricité »).</li>
+      <li>La <b>supervision</b> montre seulement qui communique (vert) et qui ne communique plus (rouge). Le courant, lui, ne se voit qu'en allant mesurer sur place.</li>
+    </ul></div>
+    <div class="carte"><h3>Les gestes</h3><ul>
+      <li>Touchez un canon, une liaison, un câble ou un transfo : le technicien (🛷) y va (le trajet compte), puis fait le geste. Chaque geste prend des minutes, et la nuit avance.</li>
+      <li><b>Mesurer</b> : la tension, et ce que reçoit le canon (rien, des trames brouillées…).</li>
+      <li><b>Ouvrir l'interrupteur</b> d'un canon, <b>débrancher</b> une liaison de dialogue, <b>ouvrir un tronçon</b> de câble électrique, <b>couper</b> ou <b>réarmer</b> un transfo : pour voir ce qui revient.</li>
+      <li><b>Réparer</b> (changer la carte de dialogue, réparer un câble, un court-circuit) : seulement quand vous êtes sûr ; une mauvaise réparation coûte cher.</li>
+      <li>À la fin, tout doit communiquer : refermez ce que vous avez ouvert (« Tout remettre »).</li>
+    </ul></div>
+    <div class="carte"><h3>La dichotomie</h3><ul>
+      <li>Un canon brouille toute sa ligne ? Ouvrez l'interrupteur d'un canon au <b>milieu</b> de la ligne. Si les canons d'avant reviennent, la panne est après lui ; sinon, elle est avant (ou c'est lui). Recommencez sur la bonne moitié : 20 canons se départagent en 5 coupures.</li>
+      <li>Un transfo redisjoncte ? Ouvrez un tronçon au milieu, réarmez : s'il tient, le court-circuit est après l'ouverture.</li>
+      <li>Un câble électrique coupé ? Mesurez la tension au milieu des canons éteints, puis dans la bonne moitié.</li>
+    </ul></div>
+    <div class="carte"><h3>Le score</h3><ul>
+      <li>★★★ en restant proche d'une dichotomie parfaite (le nombre de gestes est comparé), ★★ avec quelques gestes de plus, ★ si la panne est trouvée avant la fin de la nuit.</li>
+      <li>Les m³ de neige perdus comptent les canons arrêtés pendant la panne : plus vite c'est réparé, mieux c'est.</li>
+    </ul></div>
+  </div>
+</section>
+<script src="panne/reseau.js?v=175"></script>
+<script src="panne/simulation.js?v=175"></script>
+<script src="panne/jeu.js?v=175"></script>
+<script src="sauvegarde.js?v=175"></script>
+<script src="compte.js?v=175"></script>
+<script src="classement-jeu.js?v=175"></script>
+</body>
+</html>
