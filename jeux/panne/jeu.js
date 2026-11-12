@@ -219,43 +219,43 @@
       h += `<div class="mesure">Supervision : ${C.parlent.has(id) || (sdm && C.atteint.has(id)) ? '<b class="ok">communique</b>' : '<b class="ko">ne communique plus</b>'}${P.E.off.has(id) ? ' · interrupteur <b class="vo">ouvert</b>' : ''}` +
         (d ? `<br>Mesuré à ${chrono(d.t)} : tension <b class="${d.tension === 'absente' ? 'vo' : 'ok'}">${d.tension}</b> · ${d.dialogue}` : '') + '</div>';
       if(!sdm){
-        h += `<div class="ligneA">${bouton('🔍 Mesurer', 0, `mesurer|${id}`)}${bouton(P.E.off.has(id) ? '⏺ Fermer l’interrupteur' : '⭘ Ouvrir l’interrupteur', 0, `inter|${id}`, 'act')}</div>`;
+        h += `<div class="ligneA">${bouton('🔍 Mesurer', 0, `mesurer~${id}`)}${bouton(P.E.off.has(id) ? '⏺ Fermer l’interrupteur' : '⭘ Ouvrir l’interrupteur', 0, `inter~${id}`, 'act')}</div>`;
       }
       const ls = S.LIAISONS_DE[id] || [];
       if(ls.length){
         h += '<div class="sect">Liaisons de dialogue</div>';
         h += ls.map(l => { const o = l.a === id ? l.b : l.a, sens = S.versDe(l, o) === id ? '← de' : S.versDe(l, id) === o ? '→ vers' : '⇄';
-          return `<div class="lien"><span>${sens} ${esc(nomC(o))} <small style="color:var(--doux)">${esc(l.ligne)}</small>${P.E.debr.has(l.k) ? ' · <b style="color:var(--volt)">débranchée</b>' : ''}</span>${bouton(P.E.debr.has(l.k) ? '🔗 Rebrancher' : '✂ Débrancher', 0, `liaison|${l.k}|${id}`, 'act')}${bouton('🔧 Refaire', 0, `repLiaison|${l.k}|${id}`, 'rep')}</div>`; }).join('');
+          return `<div class="lien"><span>${sens} ${esc(nomC(o))} <small style="color:var(--doux)">${esc(l.ligne)}</small>${P.E.debr.has(l.k) ? ' · <b style="color:var(--volt)">débranchée</b>' : ''}</span>${bouton(P.E.debr.has(l.k) ? '🔗 Rebrancher' : '✂ Débrancher', 0, `liaison~${l.k}~${id}`, 'act')}${bouton('🔧 Refaire', 0, `repLiaison~${l.k}~${id}`, 'rep')}</div>`; }).join('');
       }
       const cs = S.CABLES_DE[id] || [];
       if(cs.length){
         h += '<div class="sect">Câbles électriques</div>';
         h += cs.map(cb => { const o = cb.a === id ? cb.b : cb.a, nomO = o.startsWith('src/') ? S.D_PAR_ID[o.slice(4)].nom : nomC(o), sens = S.versDe(cb, o) === id ? '⚡ de' : '⚡ vers';
-          return `<div class="lien"><span>${sens} ${esc(nomO)}${P.E.ouv.has(cb.k) ? ' · <b style="color:var(--volt)">ouvert</b>' : ''}</span>${bouton(P.E.ouv.has(cb.k) ? '⏺ Fermer' : '⭘ Ouvrir', 0, `troncon|${cb.k}|${id}`, 'act')}${bouton('🔧 Refaire', 0, `repCable|${cb.k}|${id}`, 'rep')}</div>`; }).join('');
+          return `<div class="lien"><span>${sens} ${esc(nomO)}${P.E.ouv.has(cb.k) ? ' · <b style="color:var(--volt)">ouvert</b>' : ''}</span>${bouton(P.E.ouv.has(cb.k) ? '⏺ Fermer' : '⭘ Ouvrir', 0, `troncon~${cb.k}~${id}`, 'act')}${bouton('🔧 Refaire', 0, `repCable~${cb.k}~${id}`, 'rep')}</div>`; }).join('');
       }
-      if(!sdm) h += `<div class="sect">Réparer le canon</div><div class="ligneA">${bouton('🔧 Changer la carte de dialogue', 0, `carte|${id}`, 'rep')}${bouton('🔧 Réparer un court-circuit', 0, `court|${id}`, 'rep')}</div>`;
+      if(!sdm) h += `<div class="sect">Réparer le canon</div><div class="ligneA">${bouton('🔧 Changer la carte de dialogue', 0, `carte~${id}`, 'rep')}${bouton('🔧 Réparer un court-circuit', 0, `court~${id}`, 'rep')}</div>`;
     } else if(s.type === 'liaison'){
       const l = S.L_PAR_K[s.k];
       h += `<h2>Liaison de dialogue <small>${esc(nomC(l.a))} ${l.d === 'ab' ? '→' : l.d === 'ba' ? '←' : '⇄'} ${esc(nomC(l.b))} · ${esc(l.ligne)}</small></h2>`;
-      h += `<div class="ligneA">${bouton(P.E.debr.has(l.k) ? '🔗 Rebrancher' : '✂ Débrancher', 0, `liaison|${l.k}`, 'act')}${bouton('🔧 Refaire la liaison', 0, `repLiaison|${l.k}`, 'rep')}</div>`;
-      h += `<div class="ligneA">${bouton(`Canon ${esc(nomC(l.a))}`, 0, `voirC|${l.a}`)}${bouton(`Canon ${esc(nomC(l.b))}`, 0, `voirC|${l.b}`)}</div>`;
+      h += `<div class="ligneA">${bouton(P.E.debr.has(l.k) ? '🔗 Rebrancher' : '✂ Débrancher', 0, `liaison~${l.k}`, 'act')}${bouton('🔧 Refaire la liaison', 0, `repLiaison~${l.k}`, 'rep')}</div>`;
+      h += `<div class="ligneA">${bouton(`Canon ${esc(nomC(l.a))}`, 0, `voirC~${l.a}`)}${bouton(`Canon ${esc(nomC(l.b))}`, 0, `voirC~${l.b}`)}</div>`;
     } else if(s.type === 'cable'){
       const c = S.C_PAR_K[s.k];
       h += `<h2>Câble électrique <small>${esc(nomLien(c))}</small></h2>`;
-      h += `<div class="ligneA">${bouton(P.E.ouv.has(c.k) ? '⏺ Fermer le tronçon' : '⭘ Ouvrir le tronçon', 0, `troncon|${c.k}`, 'act')}${bouton('🔧 Refaire le câble', 0, `repCable|${c.k}`, 'rep')}</div>`;
-      h += `<div class="ligneA">${[c.a, c.b].filter(x => !x.startsWith('src/')).map(x => bouton(`Canon ${esc(nomC(x))}`, 0, `voirC|${x}`)).join('')}</div>`;
+      h += `<div class="ligneA">${bouton(P.E.ouv.has(c.k) ? '⏺ Fermer le tronçon' : '⭘ Ouvrir le tronçon', 0, `troncon~${c.k}`, 'act')}${bouton('🔧 Refaire le câble', 0, `repCable~${c.k}`, 'rep')}</div>`;
+      h += `<div class="ligneA">${[c.a, c.b].filter(x => !x.startsWith('src/')).map(x => bouton(`Canon ${esc(nomC(x))}`, 0, `voirC~${x}`)).join('')}</div>`;
     } else if(s.type === 'transfo'){
       const d = s.id, v = P.vus[d], nb = S.VRAIS.filter(c => S.ORIGINE[c.id] === d).length;
       h += `<h2>⚡ ${esc(S.D_PAR_ID[d].nom)} <small>${pl(nb, 'canon')} alimentés en temps normal</small></h2>`;
       h += `<div class="mesure">${v ? `Vu à ${chrono(v.t)} : <b class="${v.etat === 'en service' || v.etat === 'réarmé' ? 'ok' : 'ko'}">${v.etat}</b>` : 'État : pas encore vu (allez voir sur place).'}</div>`;
-      h += `<div class="ligneA">${bouton('👀 Aller voir', 0, `voir|${d}`)}${bouton('⚡ Réarmer', 0, `rearmer|${d}`, 'act')}${bouton(P.E.depOuv.has(d) ? '⚡ Remettre en service' : '⭘ Couper', 0, P.E.depOuv.has(d) ? `rearmer|${d}` : `couper|${d}`, 'act')}</div>`;
+      h += `<div class="ligneA">${bouton('👀 Aller voir', 0, `voir~${d}`)}${bouton('⚡ Réarmer', 0, `rearmer~${d}`, 'act')}${bouton(P.E.depOuv.has(d) ? '⚡ Remettre en service' : '⭘ Couper', 0, P.E.depOuv.has(d) ? `rearmer~${d}` : `couper~${d}`, 'act')}</div>`;
     }
     h += `<div class="ligneA"><button class="btn" data-f="fermer">✕ Fermer</button></div>`;
     el.innerHTML = h; brancher();
   }
   function brancher(){
     $('panneau').querySelectorAll('[data-f]').forEach(b => b.onclick = () => {
-      const [f, a, c] = b.dataset.f.split('|');
+      const [f, a, c] = b.dataset.f.split('~');
       if(f === 'fermer'){ P.sel = null; panneau(); dessiner(); return; }
       if(f === 'bilan'){ P.revele = false; bilan(); return; }
       if(f === 'voirC'){ P.sel = { type:'canon', id:a }; panneau(); dessiner(); return; }
@@ -414,7 +414,7 @@
   }).observe($('carteBox'));
 
   /* ---------- démarrage ---------- */
-  window.Panne = { get P(){ return P; }, demarrer, G, accueil, toucher, S, chrono };
+  window.Panne = { get P(){ return P; }, demarrer, G, accueil, toucher, S, chrono, choisir:o => { P.sel = o; panneau(); dessiner(); } };
   if(/[?&]test\b/.test(location.search)){ document.body.innerHTML = `<pre style="padding:16px;color:#EAF1FB;white-space:pre-wrap">${S.tests().join('\n')}</pre>`; return; }
   accueil();
   if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
