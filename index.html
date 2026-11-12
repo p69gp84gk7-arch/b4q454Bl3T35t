@@ -250,6 +250,12 @@ h2{ font-size:.85rem; font-weight:600; text-transform:uppercase; letter-spacing:
 .gnuancier .status b{ color:#fff; }
 .gnuancier .go{ background:linear-gradient(90deg, #FF5F6D, #FFC371); color:#1B1B1B; }
 .gnuancier .corner{ position:absolute; right:10px; top:10px; width:84px; height:62px; }
+.gtoise{ background:#14212E; color:#F1F5F9; border:1.5px solid rgba(255,201,60,.35); position:relative; overflow:hidden; }
+.gtoise .title{ font-family:"Bebas Neue", "Bricolage Grotesque", sans-serif; font-weight:400; font-size:2.8rem; line-height:.9; letter-spacing:.04em; color:#FFC93C; padding-right:104px; }
+.gtoise .desc, .gtoise .status{ color:#9FB3C8; }
+.gtoise .status b{ color:#fff; }
+.gtoise .go{ background:linear-gradient(90deg, #FFC93C, #FF8A3D); color:#1B1B1B; }
+.gtoise .corner{ position:absolute; right:10px; top:10px; width:96px; height:66px; }
 .gblocs{ background:#0A0A1A; color:#F4F4FF; border:3px solid #F4F4FF; box-shadow:4px 4px 0 #000; position:relative; overflow:hidden;
   background-image:radial-gradient(rgba(255,255,255,.18) 1px, transparent 1.5px); background-size:22px 22px; }
 .gblocs .title{ font-family:"Courier New", ui-monospace, monospace; font-weight:900; font-size:2.6rem; line-height:.9; letter-spacing:.08em; padding-right:96px; }
@@ -639,6 +645,19 @@ footer{ margin-top:28px; color:var(--muted); font-size:.85rem; line-height:1.5; 
       <span class="go">Jouer</span>
     </a>
 
+    <a class="game gtoise" href="jeux/toise.html">
+      <svg class="corner" viewBox="0 0 96 66" aria-hidden="true">
+        <rect x="0" y="0" width="96" height="66" rx="9" fill="#F4EFE4"/><rect x="0" y="52" width="96" height="14" fill="#E6DECD"/><path d="M0 52 H96" stroke="#1C2B3A" stroke-width="1.5"/>
+        <g fill="#E4572E" stroke="#1C2B3A" stroke-width="1"><circle cx="16" cy="30" r="3.4"/><rect x="12.6" y="34" width="6.8" height="18" rx="2"/></g>
+        <path d="M38 52 Q46 44 49 26 Q51 14 52 6 L53 6 Q54 14 56 26 Q59 44 67 52 L61 52 Q57 43 52.5 43 Q48 43 44 52 Z" fill="#8C6A4A" stroke="#1C2B3A" stroke-width="1" stroke-linejoin="round"/>
+        <path d="M80 6 V52 M76 6 H84 M76 52 H84" stroke="#E8590C" stroke-width="2" stroke-linecap="round"/><text x="86" y="33" font-size="13" font-weight="800" fill="#E8590C" font-family="system-ui, sans-serif">?</text>
+      </svg>
+      <p class="title">TOISE</p>
+      <p class="desc">Quelle est la hauteur de la tour Eiffel ? La longueur d'une baleine bleue ? Compare les silhouettes, lis l'échelle et donne la taille avec le curseur. 66 monuments, machines, appareils et animaux ; 10 devinettes de plus en plus trompeuses, notées sur 10.</p>
+      <p class="status" id="sttoise"><b>Pas encore joué</b>Tu as le compas dans l'œil ?</p>
+      <span class="go">Jouer</span>
+    </a>
+
     <a class="game gblocs" href="jeux/blocs.html">
       <svg class="corner" viewBox="0 0 88 80" aria-hidden="true">
         <g stroke="#000" stroke-width="1.5">
@@ -1001,6 +1020,12 @@ function showNuancier(){
   if(!r || !r.parties){ el.innerHTML = '<b>Pas encore joué</b>Tu connais les couleurs par cœur ?'; return; }
   el.innerHTML = `<b>Record : ${String(r.best).replace('.', ',')} / 100</b>${plural(r.parties, 'partie')} · note moyenne ${(r.total / Math.max(1, r.couleurs)).toFixed(1).replace('.', ',')} / 10 · ${r.parfaits || 0} couleur${(r.parfaits || 0) > 1 ? 's' : ''} parfaite${(r.parfaits || 0) > 1 ? 's' : ''}`;
 }
+/* Toise : le meilleur score (clé partagée avec jeux/toise.html) */
+function showToise(){
+  const r = read('toise-records'), el = document.getElementById('sttoise');
+  if(!r || !r.parties){ el.innerHTML = '<b>Pas encore joué</b>Tu as le compas dans l\'œil ?'; return; }
+  el.innerHTML = `<b>Record : ${String(r.best).replace('.', ',')} / 100</b>${plural(r.parties, 'partie')} · note moyenne ${(r.total / Math.max(1, r.devinettes)).toFixed(1).replace('.', ',')} / 10 · ${r.parfaits || 0} taille${(r.parfaits || 0) > 1 ? 's' : ''} parfaite${(r.parfaits || 0) > 1 ? 's' : ''}`;
+}
 /* Paddock : la carrière en cours (clé partagée avec jeux/paddock.html) */
 function showPaddock(){
   const r = read('paddock-records'), el = document.getElementById('stpaddock');
@@ -1050,7 +1075,7 @@ document.getElementById('carPoints').onclick = e => { const b = e.target.closest
 document.querySelectorAll('[data-pres]').forEach(b => b.onclick = () => choisirPresentation(b.dataset.pres));
 addEventListener('resize', () => { if(nav.classList.contains('carrousel')) allerA(read('desdes-carrousel') || 0, false); });
 presentation();
-function refresh(){ presentation(); showArpenteur(); showEscale(); showRugby(); showBillard(); showArc(); showRock(); showNuancier(); showPaddock(); showBlocs(); show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showPanne(); showNivo(); showFusee(); showDameuse(); showFreeride(); showTour(); showPanier(); showTables(); showPepin(); showQuiz(); showTelesiege(); }
+function refresh(){ presentation(); showArpenteur(); showEscale(); showRugby(); showBillard(); showArc(); showRock(); showNuancier(); showToise(); showPaddock(); showBlocs(); show('10000', status10000()); show('yams', statusYams()); showGeo(); showDraw(); showPanne(); showNivo(); showFusee(); showDameuse(); showFreeride(); showTour(); showPanier(); showTables(); showPepin(); showQuiz(); showTelesiege(); }
 refresh();
 DesDesSauvegarde.boutons(document.getElementById('sauve'));
 // Retour depuis un jeu (cache de navigation) : remettre les états à jour

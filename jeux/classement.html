@@ -89,7 +89,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', 
 const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
 const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
 const C = window.AltitudeCompte;
-const ORDRE = ['quiz', 'geo', 'nuancier', 'arpenteur', 'escale', 'rugby', 'billard', 'arc', 'rock', 'tables', 'pepin', 'blocs', 'paddock', 'drawrace', 'freeride', 'dameuse', 'tour', 'telesiege', 'panier', 'fusee', 'nivo', 'yams', '10000'];
+const ORDRE = ['quiz', 'geo', 'nuancier', 'toise', 'arpenteur', 'escale', 'rugby', 'billard', 'arc', 'rock', 'tables', 'pepin', 'blocs', 'paddock', 'drawrace', 'freeride', 'dameuse', 'tour', 'telesiege', 'panier', 'fusee', 'nivo', 'yams', '10000'];
 const MEDAILLES = ['🥇', '🥈', '🥉'];
 let donnees = null, jeuChoisi = lire('compte-classement-jeu', null);
 

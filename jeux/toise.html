@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Toise · Altitude Arcade</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=182">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=182">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+@media (orientation:landscape) and (max-height:600px){ :root{ --barre-statut:env(safe-area-inset-top, 0px); } }
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+/* un bleu de plan d'architecte, et la scène sur papier crème */
+:root{ --fond:#14212E; --carte:#1E3042; --carte2:#294157; --ligne:rgba(255,255,255,.13); --encre:#F1F5F9; --doux:#9FB3C8; --or:#FFC93C; --vert:#3DDC84; --accent:#FF8A3D; --papier:#F4EFE4; --trait:#1C2B3A; }
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; min-height:100%; background:var(--fond); color:var(--encre); font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-tap-highlight-color:transparent; }
+body{ padding-top:var(--barre-statut); }
+button{ font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; }
+.ecran[hidden]{ display:none !important; }
+.page{ max-width:720px; margin:0 auto; padding:12px 14px calc(24px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; gap:12px; }
+.tete{ display:flex; align-items:center; gap:8px; }
+.tete a, .tete .btn{ text-decoration:none; color:var(--encre); border:1px solid var(--ligne); border-radius:10px; padding:6px 12px; font-weight:700; background:var(--carte); white-space:nowrap; }
+.tete .droite{ margin-left:auto; }
+h1{ margin:6px 0 0; font-family:"Bebas Neue", "Bricolage Grotesque", sans-serif; font-weight:400; font-size:clamp(3.2rem, 18vw, 5rem); line-height:.9; letter-spacing:.04em; color:var(--or); }
+.regle{ height:18px; border-top:3px solid var(--or); background:repeating-linear-gradient(90deg, var(--or) 0 2px, transparent 2px 10px) 0 0 / 100% 7px no-repeat, repeating-linear-gradient(90deg, var(--or) 0 2px, transparent 2px 50px) 0 0 / 100% 14px no-repeat; opacity:.85; }
+h2{ margin:0; font-size:1.3rem; }
+h3{ margin:0 0 8px; font-size:.76rem; text-transform:uppercase; letter-spacing:.14em; color:var(--doux); }
+.sous{ color:var(--doux); margin:0; line-height:1.45; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:16px; padding:14px; }
+.btn{ border:1px solid var(--ligne); background:var(--carte2); border-radius:12px; padding:11px 14px; font-weight:800; }
+.btn.gros{ width:100%; padding:16px; font-size:1.15rem; background:linear-gradient(90deg, #FFC93C, #FF8A3D); border:none; color:#1B1B1B; }
+.btn.vert{ background:var(--vert); border-color:var(--vert); color:#0B2A17; }
+.stats{ display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; text-align:center; }
+.stats div{ background:var(--carte2); border-radius:12px; padding:8px 4px; }
+.stats b{ display:block; font-size:1.3rem; } .stats small{ color:var(--doux); font-size:.72rem; }
+.etapes{ display:grid; gap:6px; }
+.etapes div{ display:grid; grid-template-columns:34px 1fr; gap:10px; align-items:center; background:var(--carte2); border-radius:12px; padding:8px 10px; font-size:.9rem; line-height:1.35; }
+.etapes i{ font-style:normal; font-size:1.4rem; text-align:center; }
+.etapes b{ display:block; }
+.etapes small{ color:var(--doux); }
+.apercus{ display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; }
+.apercus svg{ width:100%; height:auto; aspect-ratio:1; background:var(--papier); border-radius:10px; display:block; }
+/* les silhouettes : un fin contour, quelle que soit l'échelle */
+.obj :not([fill-opacity]):not([fill="none"]){ stroke:var(--trait); stroke-width:1; vector-effect:non-scaling-stroke; stroke-linejoin:round; }
+/* le jeu */
+#eJeu .page{ gap:8px; padding-top:8px; }
+.bandeau{ display:flex; align-items:center; gap:8px; font-weight:800; }
+.bandeau .q{ font-size:.95rem; } .bandeau .sc{ margin-left:auto; color:var(--or); font-size:1.05rem; }
+.points{ display:flex; gap:3px; margin-left:auto; }
+.points i{ width:16px; height:6px; border-radius:3px; background:var(--carte2); }
+.points i.fait{ background:var(--vert); } .points i.ici{ background:var(--or); }
+.jeu{ display:grid; gap:8px; grid-template-columns:minmax(0, 1fr); }
+.jeu > div{ min-width:0; }
+@media (orientation:landscape) and (min-width:700px){ .jeu{ grid-template-columns:minmax(0, 1.15fr) minmax(0, 1fr); align-items:start; } }
+.scene{ background:var(--papier); border-radius:16px; overflow:hidden; border:1px solid var(--ligne); }
+.scene svg{ display:block; width:100%; height:auto; max-height:46vh; }
+@media (orientation:landscape){ .scene svg{ max-height:calc(100vh - var(--barre-statut) - 150px); } }
+.scene text{ font-family:"Bricolage Grotesque", system-ui, sans-serif; font-weight:800; paint-order:stroke; stroke:var(--papier); stroke-width:3px; stroke-linejoin:round; }
+.scene text.nu{ stroke:none; }
+.legende{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.legende div{ background:var(--carte); border:1px solid var(--ligne); border-radius:12px; padding:7px 9px; font-size:.84rem; line-height:1.3; min-width:0; }
+.legende div.mys{ border-color:var(--accent); }
+.legende b{ display:block; } .legende small{ color:var(--doux); font-weight:700; }
+.legende div.mys small{ color:var(--accent); }
+.question{ text-align:center; }
+.question small{ display:block; color:var(--or); font-weight:800; font-size:.74rem; letter-spacing:.1em; text-transform:uppercase; }
+.question b{ font-size:1.12rem; line-height:1.25; display:block; }
+.question span{ display:block; color:var(--doux); font-size:.84rem; margin-top:2px; }
+.outil[hidden]{ display:none; }
+.outil{ display:flex; flex-direction:column; gap:8px; background:var(--carte); border:1px solid var(--ligne); border-radius:18px; padding:10px; }
+.valeur{ text-align:center; font-family:"Bebas Neue", "Bricolage Grotesque", sans-serif; font-size:2.7rem; line-height:1; color:var(--or); letter-spacing:.03em; }
+.curseur{ position:relative; height:54px; touch-action:none; cursor:ew-resize; }
+.curseur .rail{ position:absolute; left:14px; right:14px; top:8px; height:14px; border-radius:7px; background:linear-gradient(90deg, #3FE0F0, #3DDC84, #FFD23F, #FF8A3D, #FF5F6D); }
+.curseur .grad{ position:absolute; left:14px; right:14px; top:24px; height:26px; }
+.curseur .grad i{ position:absolute; top:0; width:2px; height:7px; margin-left:-1px; background:var(--doux); }
+.curseur .grad i.p{ height:4px; width:1px; opacity:.6; }
+.curseur .grad span{ position:absolute; top:9px; transform:translateX(-50%); font-size:.68rem; font-weight:700; color:var(--doux); white-space:nowrap; }
+.curseur .pouce{ position:absolute; top:1px; width:28px; height:28px; margin-left:-14px; border-radius:50%; background:#fff; border:4px solid var(--trait); box-shadow:0 2px 6px rgba(0,0,0,.5); pointer-events:none; }
+.affiner{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:6px; }
+.affiner button{ border:none; background:var(--carte2); border-radius:10px; padding:9px 2px; font-weight:800; font-size:.92rem; }
+.affiner button:active{ background:rgba(255,255,255,.2); }
+.outil .btn{ padding:14px; font-size:1.1rem; }
+/* le résultat d'une devinette */
+.verdict{ display:flex; flex-direction:column; gap:8px; background:var(--carte); border:1px solid var(--ligne); border-radius:18px; padding:12px; }
+.verdict[hidden]{ display:none; }
+.note{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.note b{ font-size:2rem; } .note span{ font-weight:800; font-size:1.1rem; }
+.compare{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.compare div{ border-radius:14px; padding:8px 10px; background:var(--carte2); }
+.compare small{ display:block; color:var(--doux); font-weight:700; font-size:.74rem; }
+.compare b{ font-size:1.3rem; }
+.compare div.vrai b{ color:var(--vert); } .compare div.moi b{ color:var(--accent); }
+/* la fin */
+.total{ text-align:center; }
+.total b{ display:block; font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:5rem; line-height:1; color:var(--or); }
+.recap{ display:grid; gap:6px; }
+.recap div{ display:grid; grid-template-columns:44px 1fr 46px; gap:8px; align-items:center; background:var(--carte2); border-radius:12px; padding:6px; font-size:.85rem; }
+.recap svg{ width:44px; height:44px; border-radius:8px; background:var(--papier); }
+.recap b{ text-align:right; }
+.recap small{ color:var(--doux); }
+@media (orientation:landscape) and (max-height:500px){
+  #eJeu .page{ padding-top:4px; gap:4px; }
+  .valeur{ font-size:2rem; } .outil{ gap:5px; padding:8px; } .outil .btn{ padding:9px; font-size:1rem; } .question b{ font-size:1rem; }
+}
+.aide li{ line-height:1.5; margin-bottom:6px; } .aide ul{ padding-left:20px; margin:0; }
+</style>
+</head>
+<body>
+<div class="barre-statut" aria-hidden="true"></div>
+
+<!-- L'accueil -->
+<section class="ecran" id="eAccueil">
+  <div class="page">
+    <div class="tete"><a href="../index.html">‹ Altitude Arcade</a><button class="btn droite" id="bAide">❔ Règles</button></div>
+    <div><h1>TOISE</h1><div class="regle"></div></div>
+    <p class="sous">Quelle est la hauteur de la tour Eiffel ? La longueur d'une baleine bleue ? La taille d'une canette ? Compare les silhouettes, lis l'échelle et donne la taille au plus juste avec le curseur. 10 devinettes par partie, de plus en plus trompeuses, chacune notée sur 10.</p>
+    <button class="btn gros" id="bJouer">▶ Nouvelle partie · 10 devinettes</button>
+    <div class="carte"><h3>Ça se corse pendant la partie</h3><div class="etapes" id="cEtapes"></div></div>
+    <div class="carte" id="cRecords"></div>
+    <div class="carte"><h3>Quelques silhouettes du jeu</h3><div class="apercus" id="cApercus"></div></div>
+  </div>
+</section>
+
+<!-- La partie -->
+<section class="ecran" id="eJeu" hidden>
+  <div class="page">
+    <div class="tete"><button class="btn" id="bQuitter">‹ Arrêter</button><div class="points" id="jPoints"></div></div>
+    <div class="bandeau"><span class="q" id="jQ"></span><span class="sc" id="jScore"></span></div>
+    <div class="jeu">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="scene" id="jScene"></div>
+        <div class="legende" id="jLegende"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="question"><small id="jEtape"></small><b id="jQuestion"></b><span id="jIndice"></span></div>
+        <div class="outil" id="jOutil">
+          <div class="valeur" id="jValeur"></div>
+          <div class="curseur" id="jCurseur"><div class="rail"></div><div class="grad" id="jGrad"></div><div class="pouce" id="jPouce"></div></div>
+          <div class="affiner">
+            <button data-f="0.9">− 10 %</button><button data-f="0.99">− 1 %</button><button data-f="1.01">+ 1 %</button><button data-f="1.1">+ 10 %</button>
+          </div>
+          <button class="btn vert" id="bValider">✔ C'est cette taille !</button>
+        </div>
+        <div class="verdict" id="jVerdict" hidden>
+          <div class="note"><b id="vNote"></b><span id="vTexte"></span></div>
+          <div class="compare"><div class="moi"><small>Ta réponse</small><b id="vMoi"></b></div><div class="vrai"><small>La vraie taille</small><b id="vVraie"></b></div></div>
+          <p class="sous" id="vEcart"></p>
+          <button class="btn gros" id="bSuite">Suivante ▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- La fin -->
+<section class="ecran" id="eFin" hidden>
+  <div class="page">
+    <div class="total"><h3>Ton score</h3><b id="fScore"></b><p class="sous" id="fTexte"></p></div>
+    <div class="carte"><h3>Tes 10 devinettes</h3><div class="recap" id="fRecap"></div></div>
+    <button class="btn gros" id="bRejouer">↻ Rejouer</button>
+    <button class="btn" id="bMenu">Menu</button>
+  </div>
+</section>
+
+<!-- Les règles -->
+<section class="ecran" id="eAide" hidden>
+  <div class="page aide">
+    <div class="tete"><button class="btn" id="bAideRetour">‹ Retour</button></div>
+    <h2>Comment jouer</h2>
+    <div class="carte"><ul>
+      <li>Deux silhouettes sont posées côte à côte : un monument, une machine, un appareil, un animal, une personne… Il faut donner la <b>vraie taille</b> de celle qui porte le point d'interrogation (sa hauteur ou sa longueur, selon le trait de mesure orange).</li>
+      <li>Fais glisser le <b>curseur</b> (d'un centimètre à un kilomètre), puis affine avec les boutons « ± 1 % » et « ± 10 % ». Au clavier : les flèches, puis Entrée.</li>
+      <li><b>Devinettes 1 à 3, même échelle</b> : les deux dessins sont à la même échelle et la taille de l'autre objet est écrite. Compare !</li>
+      <li><b>Devinettes 4 à 6, à la règle</b> : toujours la même échelle, mais plus de taille écrite : une petite règle en bas donne l'échelle du dessin.</li>
+      <li><b>Devinettes 7 et 8, deux échelles</b> : attention, chaque dessin a sa propre échelle et sa propre règle. Un téléphone peut paraître aussi grand qu'un paquebot…</li>
+      <li><b>Devinettes 9 et 10, à la loupe</b> : la taille de l'autre objet est écrite, mais le dessin mystère a été agrandi ou réduit (c'est écrit sur l'étiquette). Il faut compter de tête.</li>
+      <li>La note sur 10 dépend de l'écart <b>en proportion</b> : se tromper de 10 % coûte autant pour une canette que pour un gratte-ciel. À 2 % près, c'est 10 sur 10. 100 points au maximum.</li>
+    </ul></div>
+  </div>
+</section>
+<script src="toise/objets.js?v=182"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
+const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const virg = (n, d = 1) => n.toFixed(d).replace('.', ',');
+const OBJETS = window.TOISE_OBJETS;
+const ECRANS = ['eAccueil', 'eJeu', 'eFin', 'eAide'];
+const montrer = id => { ECRANS.forEach(e => $(e).hidden = e !== id); scrollTo(0, 0); };
+
+/* ---------- Les tailles ---------- */
+// trois chiffres utiles : 0,115 m ; 1,75 m ; 26,4 m ; 330 m
+const arrondi = v => { const p = Math.pow(10, 2 - Math.floor(Math.log10(v))); return Math.round(v * p) / p; };
+// l'écriture d'une taille : en centimètres sous un mètre, en mètres au-dessus, en kilomètres à partir de 1 000 m
+function ecrireTaille(m){
+  m = arrondi(m);
+  const nb = (v, d) => String(+v.toFixed(d)).replace('.', ',');
+  if(m < 1){ const cm = m * 100; return nb(cm, cm < 10 ? 2 : cm < 100 ? 1 : 0) + ' cm'; }
+  if(m >= 1000) return nb(m / 1000, 2) + ' km';
+  return nb(m, m < 10 ? 2 : m < 100 ? 1 : 0) + ' m';
+}
+// la boîte d'un objet en mètres : largeur, hauteur, et la longueur d'une unité de son dessin
+function boite(o){ const u = o.t / (o.dim === 'h' ? o.h : o.w); return { W:o.w * u, H:o.h * u, u }; }
+const plusGrand = o => { const b = boite(o); return Math.max(b.W, b.H); };
+// la note sur 10 : l'écart compte en proportion (10 % de trop pour une canette ou pour une tour, c'est pareil)
+function noteDe(moi, vraie){
+  const e = Math.abs(Math.log(moi / vraie));
+  return e <= .02 ? 10 : Math.round(100 * Math.exp(-(e - .02) / .3)) / 10;
+}
+const verdictDe = n => n >= 9.5 ? '🎯 Pile la bonne taille !' : n >= 8 ? '🤩 Quel coup d\'œil !' : n >= 6 ? '😀 Très proche' : n >= 4 ? '🙂 Pas mal' : n >= 2 ? '😬 Un peu loin' : '🙈 Raté…';
+
+/* ---------- Les étapes d'une partie : de plus en plus trompeur ---------- */
+const ETAPES = [
+  { n:'Même échelle', ico:'👀', txt:'Les deux dessins sont à la même échelle, et la taille de l\'autre objet est écrite.', indice:'Les deux dessins sont à la même échelle : compare !' },
+  { n:'À la règle', ico:'📏', txt:'Même échelle, mais plus de taille écrite : une petite règle donne l\'échelle.', indice:'Même échelle pour les deux. Sers-toi de la règle du bas.' },
+  { n:'Deux échelles', ico:'🎭', txt:'Chaque dessin a sa propre échelle et sa propre règle. Ne te fie pas à l\'autre !', indice:'Attention : chaque dessin a sa propre échelle (sa règle est dessous).' },
+  { n:'À la loupe', ico:'🔍', txt:'Le dessin mystère est agrandi ou réduit par rapport à l\'autre : il faut compter de tête.', indice:'' },
+];
+const etapeDe = i => i < 3 ? 0 : i < 6 ? 1 : i < 8 ? 2 : 3;
+const BEAUX = [2, 3, 4, 5, 10, 20, 25, 50, 100, 200, 500, 1000, 2000, 5000];
+const VB = { w:360, h:246 }, SOL = 186, MARGE = 46, CASE = { w:118, h:140 };
+const ajuste = o => { const b = boite(o); return Math.min(CASE.w / b.W, CASE.h / b.H); };   // l'échelle qui remplit une case (points par mètre)
+const melange = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+// prépare une devinette : l'objet mystère M, son voisin R, et les échelles des deux dessins (points par mètre)
+function preparer(etape, M, voisins){
+  const bm = boite(M);
+  for(const R of melange(voisins)){
+    if(R.id === M.id) continue;
+    const br = boite(R), rap = plusGrand(M) / plusGrand(R), inv = Math.random() < .5;
+    if(etape < 2){
+      // même échelle : il faut que le plus petit reste visible
+      if(rap > 12 || rap < 1 / 12) continue;
+      if(etape === 0 && !R.ref) continue;
+      const s = Math.min((VB.w - 2 * MARGE - 34) / (bm.W + br.W), 150 / Math.max(bm.H, br.H));
+      if(Math.min(plusGrand(M), plusGrand(R)) * s < 16) continue;
+      return { etape, M, R, sM:s, sR:s, inv };
+    }
+    if(etape === 2){
+      // deux échelles : deux objets de tailles très différentes, dessinés presque aussi grands
+      if(rap < 6 && rap > 1 / 6) continue;
+      return { etape, M, R, sM:ajuste(M) * (.6 + .4 * Math.random()), sR:ajuste(R) * (.6 + .4 * Math.random()), inv };
+    }
+    // à la loupe : le dessin mystère est réduit (ou agrandi) un nombre rond de fois par rapport à son voisin
+    if(rap < 3 && rap > 1 / 3) continue;
+    const sR = ajuste(R) * (.75 + .25 * Math.random()), n0 = sR / ajuste(M);
+    if(n0 >= 1){
+      const n = BEAUX.find(b => b >= n0 * .98); if(!n || n0 / n < .45) continue;
+      return { etape, M, R, sM:sR / n, sR, inv, loupe:{ sens:'reduit', n } };
+    }
+    const k0 = 1 / n0, k = BEAUX.filter(b => b <= k0 * 1.02).pop(); if(!k || k / k0 < .45) continue;
+    return { etape, M, R, sM:sR * k, sR, inv, loupe:{ sens:'agrandi', n:k } };
+  }
+  return null;
+}
+// les 10 devinettes d'une partie : les objets pas vus récemment d'abord ; un voisin n'est jamais un objet à deviner
+function tirer(){
+  const vus = lire('toise-vus', []);
+  const tri = melange(OBJETS).sort((a, b) => (vus.indexOf(a.id) >= 0 ? 1 : 0) - (vus.indexOf(b.id) >= 0 ? 1 : 0));
+  const mysteres = tri.slice(0, 10), voisins = OBJETS.filter(o => !mysteres.includes(o));
+  const tours = [], pris = new Set();
+  for(let i = 0; i < 10; i++){
+    let d = null;
+    for(const M of mysteres){ if(pris.has(M.id)) continue; d = preparer(etapeDe(i), M, voisins); if(d){ pris.add(M.id); break; } }
+    // (au cas où aucun objet restant ne convient à cette étape : une devinette à la même échelle)
+    if(!d) for(const M of mysteres){ if(pris.has(M.id)) continue; d = preparer(1, M, voisins) || preparer(2, M, voisins); if(d){ pris.add(M.id); break; } }
+    if(d) tours.push(d);
+  }
+  return tours;
+}
+
+/* ---------- Le dessin d'une devinette ---------- */
+const INK = '#1C2B3A', ORANGE = '#E8590C', VERT = '#1E8E4E';
+const dessin = (o, x, y, k) => `<g class="obj" fill="${o.c}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${k})">${o.svg}</g>`;
+// une belle valeur de règle (1, 2 ou 5 fois une puissance de dix), longue d'une quarantaine de points
+function regle(s, cible = 42){
+  let mieux = null;
+  for(let e = -3; e <= 3; e++) for(const m of [1, 2, 5]){ const v = m * Math.pow(10, e), px = v * s, ec = Math.abs(Math.log(px / cible)); if(!mieux || ec < mieux.ec) mieux = { v, px, ec }; }
+  return mieux;
+}
+// le trait de mesure d'un objet (vertical pour une hauteur, horizontal pour une longueur) et son texte
+function cote(p, aGauche, texte, coul){
+  const l = `stroke="${coul}" stroke-width="1.6" stroke-linecap="round" fill="none"`;
+  if(p.o.dim === 'h'){
+    const x = aGauche ? p.x - 8 : p.x + p.w + 8;
+    return `<path d="M${x} ${p.y} V${SOL} M${x - 3.5} ${p.y} H${x + 3.5} M${x - 3.5} ${SOL} H${x + 3.5}" ${l}/><text x="${aGauche ? x - 5 : x + 5}" y="${Math.min(SOL - 3, (p.y + SOL) / 2 + 4)}" font-size="11" fill="${coul}" text-anchor="${aGauche ? 'end' : 'start'}">${texte}</text>`;
+  }
+  const y = SOL + 9;
+  return `<path d="M${p.x} ${y} H${p.x + p.w} M${p.x} ${y - 3.5} V${y + 3.5} M${p.x + p.w} ${y - 3.5} V${y + 3.5}" ${l}/><text x="${p.x + p.w / 2}" y="${y + 13}" font-size="11" fill="${coul}" text-anchor="middle">${texte}</text>`;
+}
+const traitRegle = (xc, r) => `<path d="M${xc - r.px / 2} 228 H${xc + r.px / 2} M${xc - r.px / 2} 224 V232 M${xc + r.px / 2} 224 V232" stroke="${INK}" stroke-width="2" fill="none"/><text class="nu" x="${xc}" y="243" font-size="10.5" fill="${INK}" text-anchor="middle">${ecrireTaille(r.v)}</text>`;
+// la scène : d (la devinette), rep (la réponse du joueur, une fois validée)
+function scene(d, rep = null){
+  const place = (o, s, xc) => { const b = boite(o), w = b.W * s, h = b.H * s; return { o, s, k:s * b.u, w, h, x:xc - w / 2, y:SOL - h }; };
+  const g = d.inv ? d.M : d.R, dr = d.inv ? d.R : d.M, sg = d.inv ? d.sM : d.sR, sd = d.inv ? d.sR : d.sM;
+  let A, B;
+  if(d.etape < 2){
+    const wg = boite(g).W * sg, wd = boite(dr).W * sd, x0 = (VB.w - wg - wd - 34) / 2;
+    A = place(g, sg, x0 + wg / 2); B = place(dr, sd, x0 + wg + 34 + wd / 2);
+  } else { A = place(g, sg, 104); B = place(dr, sd, 256); }
+  const pM = d.inv ? A : B, pR = d.inv ? B : A, mGauche = d.inv;
+  let s = `<rect x="0" y="${SOL}" width="${VB.w}" height="${VB.h - SOL}" fill="#E6DECD"/><path d="M0 ${SOL} H${VB.w}" stroke="${INK}" stroke-width="1.5"/>`;
+  if(d.etape >= 2) s += `<path d="M180 14 V${VB.h - 6}" stroke="${INK}" stroke-width="1" stroke-dasharray="3 5" opacity=".45"/>`;
+  s += dessin(A.o, A.x, A.y, A.k) + dessin(B.o, B.x, B.y, B.k);
+  // l'objet voisin : sa taille écrite (même échelle, loupe) ; l'objet mystère : un point d'interrogation, puis sa vraie taille
+  if(d.etape === 0 || d.etape === 3) s += cote(pR, !mGauche, ecrireTaille(d.R.t), INK);
+  s += cote(pM, mGauche, rep ? ecrireTaille(d.M.t) : '?', rep ? VERT : ORANGE);
+  // les règles
+  if(d.etape === 1) s += traitRegle(180, regle(d.sM));
+  if(d.etape === 2) s += traitRegle(pR.x + pR.w / 2, regle(d.sR)) + traitRegle(pM.x + pM.w / 2, regle(d.sM));
+  // la loupe : une étiquette au-dessus du dessin mystère
+  if(d.loupe){ const xc = clamp(pM.x + pM.w / 2, 60, VB.w - 60), t = (d.loupe.sens === 'reduit' ? 'réduit ' : 'agrandi ') + d.loupe.n + ' fois';
+    s += `<g transform="translate(${xc} 16)"><rect x="-52" y="-11" width="104" height="20" rx="10" fill="${ORANGE}"/><text class="nu" x="0" y="4" font-size="11" fill="#fff" text-anchor="middle">🔍 ${t}</text></g>`; }
+  // la réponse du joueur : un trait en pointillé à la taille qu'il a donnée
+  if(rep){
+    if(d.M.dim === 'h'){ const y = SOL - rep * d.sM, yy = clamp(y, 6, SOL), hors = y < 6;
+      s += `<path d="M${pM.x - 10} ${yy} H${pM.x + pM.w + 10}" stroke="${ORANGE}" stroke-width="2" stroke-dasharray="5 4"/><text x="${pM.x + pM.w / 2}" y="${yy - 4 < 12 ? yy + 12 : yy - 4}" font-size="10.5" fill="${ORANGE}" text-anchor="middle">${hors ? '↑ ' : ''}toi : ${ecrireTaille(rep)}</text>`; }
+    else { const x = pM.x + rep * d.sM, xx = clamp(x, 4, VB.w - 4), hors = x > VB.w - 4;
+      s += `<path d="M${xx} ${pM.y - 10} V${SOL + 4}" stroke="${ORANGE}" stroke-width="2" stroke-dasharray="5 4"/><text x="${clamp(xx, 40, VB.w - 40)}" y="${Math.max(12, pM.y - 14)}" font-size="10.5" fill="${ORANGE}" text-anchor="middle">toi : ${ecrireTaille(rep)}${hors ? ' →' : ''}</text>`; }
+  }
+  return `<svg viewBox="0 0 ${VB.w} ${VB.h}" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
+}
+// une vignette : l'objet seul, centré
+function vignette(o){
+  const m = Math.max(o.w, o.h) * 1.16;
+  return `<svg viewBox="${(o.w - m) / 2} ${(o.h - m) / 2} ${m} ${m}" xmlns="http://www.w3.org/2000/svg"><g class="obj" fill="${o.c}">${o.svg}</g></svg>`;
+}
+
+/* ---------- Les records ---------- */
+let REC = Object.assign({ best:0, parties:0, total:0, devinettes:0, parfaits:0, top:[] }, lire('toise-records', {}));
+
+/* ---------- L'accueil ---------- */
+function accueil(){
+  montrer('eAccueil');
+  $('cEtapes').innerHTML = ETAPES.map((e, k) => `<div><i>${e.ico}</i><span><b>${['1 à 3', '4 à 6', '7 et 8', '9 et 10'][k]} · ${e.n}</b><small>${e.txt}</small></span></div>`).join('');
+  const moy = REC.devinettes ? REC.total / REC.devinettes : 0;
+  $('cRecords').innerHTML = `<h3>Tes records</h3><div class="stats"><div><b>${REC.best ? virg(REC.best) : '—'}</b><small>meilleur score / 100</small></div><div><b>${REC.parties}</b><small>parties</small></div><div><b>${REC.devinettes ? virg(moy) : '—'}</b><small>note moyenne / 10</small></div><div><b>${REC.parfaits}</b><small>tailles parfaites</small></div></div>`;
+  $('cApercus').innerHTML = melange(OBJETS).slice(0, 12).map(vignette).join('');
+}
+$('bAide').onclick = () => montrer('eAide');
+$('bAideRetour').onclick = accueil;
+
+/* ---------- La partie ---------- */
+let P = null, V = 1;                               // V : la taille choisie, en mètres
+const MINI = .01, MAXI = 1000, DEC = Math.log10(MAXI / MINI);
+function nouvellePartie(){
+  const tours = tirer();
+  ecrire('toise-vus', [...tours.map(t => t.M.id), ...lire('toise-vus', []).filter(v => !tours.some(t => t.M.id === v))].slice(0, 40));
+  P = { tours, i:0, score:0, res:[], fini:false };
+  montrer('eJeu');
+  tour();
+}
+function tour(){
+  const d = P.tours[P.i], e = ETAPES[d.etape];
+  P.fini = false;
+  V = arrondi(MINI * Math.pow(10, Math.random() * DEC));         // le curseur part d'un endroit au hasard : aucun indice
+  $('jQ').textContent = `Devinette ${P.i + 1} / ${P.tours.length}`;
+  $('jScore').textContent = `${virg(P.score)} pts`;
+  $('jPoints').innerHTML = P.tours.map((_, k) => `<i class="${k < P.i ? 'fait' : k === P.i ? 'ici' : ''}"></i>`).join('');
+  $('jEtape').textContent = `${e.ico} ${e.n}`;
+  $('jQuestion').textContent = `${d.M.q || (d.M.dim === 'h' ? 'Quelle est la hauteur' : 'Quelle est la longueur')} ${d.M.de} ?`;
+  $('jIndice').textContent = d.loupe ? `Attention : le dessin mystère est ${d.loupe.sens === 'reduit' ? 'réduit' : 'agrandi'} ${d.loupe.n} fois par rapport à l'autre.` : e.indice;
+  $('jOutil').hidden = false; $('jVerdict').hidden = true;
+  $('jScene').innerHTML = scene(d);
+  legende(d, false);
+  majValeur();
+}
+// sous la scène : le nom des deux objets, dans l'ordre du dessin
+const mesure = o => ecrireTaille(o.t) + ' ' + (o.u || (o.dim === 'h' ? 'de haut' : 'de long'));
+function legende(d, fini){
+  const voisin = `<div><b>${esc(d.R.n)}</b><small>${d.etape === 0 || d.etape === 3 || fini ? mesure(d.R) : 'pour comparer'}</small></div>`;
+  const mystere = `<div class="mys"><b>${esc(d.M.n)}</b><small>${fini ? mesure(d.M) : 'sa taille : ?'}</small></div>`;
+  $('jLegende').innerHTML = d.inv ? mystere + voisin : voisin + mystere;
+}
+function majValeur(){
+  V = clamp(V, MINI, MAXI);
+  $('jValeur').textContent = ecrireTaille(V);
+  $('jPouce').style.left = `calc(14px + (100% - 28px) * ${Math.log10(V / MINI) / DEC})`;
+}
+// les graduations du curseur : une par puissance de dix
+$('jGrad').innerHTML = [['1 cm', .01], ['10 cm', .1], ['1 m', 1], ['10 m', 10], ['100 m', 100], ['1 km', 1000]].map(([t, v]) => { const x = Math.log10(v / MINI) / DEC * 100; return `<i style="left:${x}%"></i><span style="left:${clamp(x, 4, 96)}%">${t}</span>`; }).join('')
+  + [.02, .05, .2, .5, 2, 5, 20, 50, 200, 500].map(v => `<i class="p" style="left:${Math.log10(v / MINI) / DEC * 100}%"></i>`).join('');
+{
+  const el = $('jCurseur'); let actif = false;
+  const lireP = e => { const r = el.getBoundingClientRect(), x = clamp((e.clientX - r.left - 14) / (r.width - 28), 0, 1); V = arrondi(MINI * Math.pow(10, x * DEC)); majValeur(); };
+  el.addEventListener('pointerdown', e => { if(P && P.fini) return; actif = true; try{ el.setPointerCapture(e.pointerId); }catch(err){} lireP(e); e.preventDefault(); });
+  el.addEventListener('pointermove', e => { if(actif) lireP(e); });
+  el.addEventListener('pointerup', () => actif = false); el.addEventListener('pointercancel', () => actif = false);
+}
+const affiner = f => { if(!P || P.fini) return; const a = V; V = arrondi(V * f); if(V === a) V = arrondi(a * (f > 1 ? 1.012 : .988)); majValeur(); };
+document.querySelector('.affiner').onclick = e => { const b = e.target.closest('button'); if(b) affiner(+b.dataset.f); };
+addEventListener('keydown', e => {
+  if($('eJeu').hidden) return;
+  if(e.key === 'Enter'){ e.preventDefault(); (P.fini ? $('bSuite') : $('bValider')).click(); return; }
+  const f = { ArrowLeft:.99, ArrowRight:1.01, ArrowDown:.9, ArrowUp:1.1 }[e.key];
+  if(f){ e.preventDefault(); affiner(f); }
+});
+$('bValider').onclick = () => {
+  if(P.fini) return;
+  const d = P.tours[P.i], moi = V, vraie = d.M.t, n = noteDe(moi, vraie);
+  P.fini = true;
+  P.score = Math.round((P.score + n) * 10) / 10; P.res.push({ id:d.M.id, moi, vraie, n, etape:d.etape });
+  $('jOutil').hidden = true; $('jVerdict').hidden = false;
+  $('vNote').textContent = virg(n) + ' / 10'; $('vTexte').textContent = verdictDe(n);
+  $('vMoi').textContent = ecrireTaille(moi); $('vVraie').textContent = ecrireTaille(vraie);
+  const r = moi / vraie, pc = Math.abs(r - 1) * 100;
+  $('vEcart').textContent = pc < .5 ? 'Exactement la bonne taille !' : r > 2 ? `${virg(r, r < 10 ? 1 : 0)} fois trop grand.` : r < .5 ? `${virg(1 / r, 1 / r < 10 ? 1 : 0)} fois trop petit.` : `${pc < 10 ? virg(pc) : Math.round(pc)} % trop ${r > 1 ? 'grand' : 'petit'}.`;
+  $('jScore').textContent = `${virg(P.score)} pts`;
+  $('jScene').innerHTML = scene(d, moi);
+  legende(d, true);
+  $('bSuite').textContent = P.i < P.tours.length - 1 ? 'Suivante ▶' : 'Voir mon score ▶';
+  son(n);
+};
+$('bSuite').onclick = () => { P.i++; if(P.i < P.tours.length) tour(); else fin(); };
+$('bQuitter').onclick = () => { if(confirm('Arrêter la partie ? Elle ne comptera pas.')) accueil(); };
+function fin(){
+  const s = P.score, record = s > REC.best;
+  REC.parties++; REC.total = Math.round((REC.total + s) * 10) / 10; REC.devinettes += P.res.length; REC.parfaits += P.res.filter(r => r.n >= 9.5).length;
+  if(record) REC.best = s;
+  REC.top = [...REC.top, { s, d:Date.now() }].sort((a, b) => b.s - a.s).slice(0, 5);
+  ecrire('toise-records', REC);
+  ecrire('toise-dernier', { score:s, date:Date.now() });
+  $('fScore').textContent = virg(s);
+  $('fTexte').textContent = (record ? '🏆 Nouveau record ! ' : '') + (s >= 85 ? 'Un mètre ruban à la place des yeux !' : s >= 70 ? 'Très bon coup d\'œil !' : s >= 50 ? 'Pas mal du tout.' : 'L\'œil, ça s\'entraîne : rejoue !');
+  $('fRecap').innerHTML = P.res.map(r => { const o = OBJETS.find(x => x.id === r.id);
+    return `<div>${vignette(o)}<span>${esc(o.n)}<br><small>toi : ${ecrireTaille(r.moi)} · en vrai : ${ecrireTaille(r.vraie)}</small></span><b>${virg(r.n)}</b></div>`; }).join('');
+  montrer('eFin');
+}
+$('bJouer').onclick = nouvellePartie;
+$('bRejouer').onclick = nouvellePartie;
+$('bMenu').onclick = accueil;
+
+/* ---------- Un petit son au verdict ---------- */
+let AC = null;
+function son(n){
+  try{
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const notes = n >= 9.5 ? [523, 659, 784, 1047] : n >= 6 ? [523, 659, 784] : n >= 3 ? [440, 523] : [330, 262];
+    notes.forEach((f, i) => { const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime + i * .09;
+      o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.12, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + .25);
+      o.connect(g).connect(AC.destination); o.start(t); o.stop(t + .3); });
+  }catch(e){}
+}
+
+window.Toise = { OBJETS, noteDe, ecrireTaille, tirer, preparer, scene, get P(){ return P; }, get V(){ return V; }, set V(v){ V = v; majValeur(); }, nouvellePartie };
+accueil();
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+if('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if(!window.ddRecharge){ window.ddRecharge = true; location.reload(); } });
+})();
+</script>
+<script src="sauvegarde.js?v=182"></script>
+<script src="compte.js?v=182"></script>
+<script src="classement-jeu.js?v=182"></script>
+</body>
+</html>

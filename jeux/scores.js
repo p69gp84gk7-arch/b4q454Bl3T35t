@@ -253,6 +253,14 @@ window.AltitudeScores = (() => {
       ep('rock', 'etoiles', 'Étoiles gagnées', rk.etoiles || 0, `${rk.etoiles || 0} ★`);
       J.rock.stats = { 'Morceaux joués':rk.parties, 'Notes réussies':rk.notes || 0 };
     }
+    // Toise : la meilleure partie et les tailles trouvées pile
+    const to = lire('toise-records');
+    if(to && to.parties){
+      jeu('toise', 'Toise', '📏');
+      ep('toise', 'score', 'Meilleure partie (10 devinettes)', to.best || 0, `${String(to.best || 0).replace('.', ',')} / 100`);
+      ep('toise', 'parfaits', 'Tailles parfaites', to.parfaits || 0, `${to.parfaits || 0} parfaite${to.parfaits > 1 ? 's' : ''}`);
+      J.toise.stats = { 'Parties':to.parties, 'Devinettes':to.devinettes || 0, 'Note moyenne':((to.total || 0) / Math.max(1, to.devinettes || 0)).toFixed(1).replace('.', ',') + ' / 10' };
+    }
     const nu = lire('nuancier-records');
     if(nu && nu.parties){
       jeu('nuancier', 'Nuancier', '🎨');

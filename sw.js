@@ -72,6 +72,8 @@ const SHELL = [
   'jeux/panne/reseau.js',
   'jeux/panne/simulation.js',
   'jeux/panne/jeu.js',
+  'jeux/toise.html',
+  'jeux/toise/objets.js',
   'jeux/nuancier.html',
   'jeux/nuancier/images.js',
   'jeux/paddock.html',
