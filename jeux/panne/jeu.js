@@ -54,7 +54,7 @@
   function demarrer(nivId, defi){
     const p = defi ? S.defiDuJour() : S.nouvellePartie(nivId);
     if(defi) p.niveau = { id:'defi', nom:'Défi du jour' };
-    P = Object.assign(p, { gestes:0, faux:0, mesures:0, vus:{}, diag:{}, journal:[], fini:false, sel:null, vue:'dia', revele:false, t0:Date.now() });
+    P = Object.assign(p, { gestes:0, faux:0, mesures:0, vus:{}, diag:{}, journal:[], fini:false, sel:null, vue:'dia', revele:false, t0:Date.now(), achats:0 });
     const C = S.calculer(P.E); P.dernierN = C.parlent.size;
     journal(`🚨 <b>Alarme supervision</b> : ${pl(NB - C.parlent.size, 'canon')} ne communiquent plus. Le chrono est lancé !`);
     cadre = false; ecran('eJeu'); majVues(); panneau(); etat(); requestAnimationFrame(ajuster);
@@ -89,7 +89,17 @@
   }
   // les pièces de rechange : 💳 cartes de dialogue, 🧰 kits de réparation (câble, court-circuit, blindage)
   const PIECES = { cartes:'carte de dialogue', kits:'kit de réparation' };
-  function piece(t){ if(P.E.stock[t] > 0){ P.E.stock[t]--; return true; } toast(`Plus de ${PIECES[t]} en stock !`); return false; }
+  // stock vide : on propose d'en acheter (gratuit)
+  function piece(t){
+    if(P.E.stock[t] <= 0){ if(!confirm(`Plus de ${PIECES[t]} en stock. En acheter une ?`)) return false; acheter(t, true); }
+    P.E.stock[t]--; return true;
+  }
+  function acheter(t, silence){
+    if(!P || P.fini) return;
+    P.E.stock[t]++; P.achats++;
+    journal(`🛒 ${t === 'cartes' ? '💳 Une carte de dialogue' : '🧰 Un kit de réparation'} acheté${t === 'cartes' ? 'e' : ''}`);
+    if(!silence){ toast(`🛒 +1 ${PIECES[t]}`); etat(); panneau(); }
+  }
   const panne = (type, cle) => P.E.pannes.find(p => !p.repare && p.type === type && (p.canon === cle || p.k === cle));
 
   /* ---------- les gestes ---------- */
@@ -205,7 +215,7 @@
     $('fEtoiles').textContent = '★'.repeat(P.etoiles) + '☆'.repeat(3 - P.etoiles);
     $('fTexte').innerHTML = (P.reussi ? `En <b>⏱ ${chrono(P.E.t)}</b>. ` : '') +
       `Une bonne dichotomie : environ <b>${pl(P.E.optimum, 'geste')}</b>. Vous : <b>${pl(P.gestes, 'geste')}</b>${P.faux ? `, dont ${pl(P.faux, 'mauvaise réparation', 'mauvaises réparations')} (comptée${P.faux > 1 ? 's' : ''} triple${P.faux > 1 ? 's' : ''})` : ''}.`;
-    $('fStats').innerHTML = `<div><b>${chrono(P.E.t)}</b><small>chrono</small></div><div><b>${P.gestes}</b><small>gestes</small></div><div><b>${P.mesures}</b><small>mesures</small></div><div><b>${P.faux}</b><small>mauvaise${P.faux > 1 ? 's' : ''} réparation${P.faux > 1 ? 's' : ''}</small></div>`;
+    $('fStats').innerHTML = `<div><b>${chrono(P.E.t)}</b><small>chrono</small></div><div><b>${P.gestes}</b><small>gestes</small></div><div><b>${P.mesures}</b><small>mesures${P.achats ? ` · ${P.achats} pièce${P.achats > 1 ? 's' : ''} achetée${P.achats > 1 ? 's' : ''}` : ''}</small></div><div><b>${P.faux}</b><small>mauvaise${P.faux > 1 ? 's' : ''} réparation${P.faux > 1 ? 's' : ''}</small></div>`;
     $('fPanne').innerHTML = P.E.pannes.map(p => `<div>${decrire(p)}</div>`).join('');
   }
   $('bVoir').onclick = () => { P.revele = true; P.vue = P.E.pannes.some(p => p.type === 'cableElec' || p.type === 'court') ? 'elec' : 'dia'; majVues(); ecran('eJeu'); panneau(); etat(); };
@@ -221,7 +231,7 @@
     const n = parlent().size;
     $('jChrono').textContent = `⏱ ${chrono(P.E.t)}`;
     $('jGestes').textContent = pl(P.gestes, 'geste');
-    $('jMesures').textContent = `💳 ${P.E.stock.cartes} · 🧰 ${P.E.stock.kits}`;
+    $('jMesures').textContent = `💳 ${P.E.stock.cartes} · 🧰 ${P.E.stock.kits} 🛒`;
     $('jLampe').classList.toggle('ko', n < NB);
     $('jCompte').textContent = `${n} / ${NB} canons communiquent`;
     $('jSous').textContent = P.revele ? 'Les pannes sont entourées en jaune.' : n < NB ? `${pl(NB - n, 'canon')} hors communication${P.defi ? ' · défi du jour' : ''}` : 'Tout communique : vérifiez que tout est réparé.';
@@ -273,6 +283,11 @@
       h += `<h2>Câble électrique <small>${esc(nomLien(c))}</small></h2>`;
       h += `<div class="ligneA">${bouton(P.E.ouv.has(c.k) ? '⏺ Fermer le tronçon' : '⭘ Ouvrir le tronçon', 0, `troncon~${c.k}`, 'act')}${bouton('🧰 Refaire le câble', 0, `repCable~${c.k}`, 'rep')}</div>`;
       h += `<div class="ligneA">${[c.a, c.b].filter(x => !x.startsWith('src/')).map(x => bouton(`Canon ${esc(nomC(x))}`, 0, `voirC~${x}`)).join('')}</div>`;
+    } else if(s.type === 'achat'){
+      h += `<h2>🛒 Acheter des pièces <small>gratuit, livré tout de suite</small></h2>`;
+      h += `<div class="mesure">En stock : <b>💳 ${P.E.stock.cartes}</b> carte${P.E.stock.cartes > 1 ? 's' : ''} de dialogue · <b>🧰 ${P.E.stock.kits}</b> kit${P.E.stock.kits > 1 ? 's' : ''} de réparation${P.achats ? ` · ${pl(P.achats, 'pièce')} achetée${P.achats > 1 ? 's' : ''}` : ''}</div>`;
+      h += `<div class="ligneA">${bouton('+1 💳 carte de dialogue', 0, 'acheter~cartes', 'act')}${bouton('+1 🧰 kit de réparation', 0, 'acheter~kits', 'act')}</div>`;
+      h += `<p class="aideJ">💳 cartes : changer la carte d'un canon. 🧰 kits : refaire un câble ou une liaison, blinder, réparer un court-circuit.</p>`;
     } else if(s.type === 'transfo'){
       const d = s.id, v = P.vus[d], nb = S.VRAIS.filter(c => S.ORIGINE[c.id] === d).length;
       h += `<h2>⚡ ${esc(S.D_PAR_ID[d].nom)} <small>${pl(nb, 'canon')} alimentés en temps normal</small></h2>`;
@@ -286,6 +301,7 @@
     $('panneau').querySelectorAll('[data-f]').forEach(b => b.onclick = () => {
       const [f, a, c] = b.dataset.f.split('~');
       if(f === 'fermer'){ P.sel = null; panneau(); dessiner(); return; }
+      if(f === 'acheter'){ acheter(a); return; }
       if(f === 'bilan'){ P.revele = false; bilan(); return; }
       if(f === 'voirC'){ P.sel = { type:'canon', id:a }; panneau(); dessiner(); return; }
       G[f](a, c);
@@ -375,7 +391,7 @@
       g.strokeStyle = '#5AA9FF'; g.lineWidth = 3;
       if(P.sel.type === 'canon'){ const c = S.PAR_ID[P.sel.id]; g.beginPath(); g.arc(X(c.x), Y(c.y), r + 8, 0, 7); g.stroke(); }
       else if(P.sel.type === 'transfo'){ const d = S.D_PAR_ID[P.sel.id]; g.strokeRect(X(d.x) - 14, Y(d.y) - 14, 28, 28); }
-      else { g.globalAlpha = .55; g.lineWidth = 8; trait(P.sel.type === 'liaison' ? geomL(S.L_PAR_K[P.sel.k]) : geomC(S.C_PAR_K[P.sel.k])); g.globalAlpha = 1; }
+      else if(P.sel.type === 'liaison' || P.sel.type === 'cable'){ g.globalAlpha = .55; g.lineWidth = 8; trait(P.sel.type === 'liaison' ? geomL(S.L_PAR_K[P.sel.k]) : geomC(S.C_PAR_K[P.sel.k])); g.globalAlpha = 1; }
     }
     // les pannes, à la fin
     if(P.revele){
@@ -467,6 +483,8 @@
     if(!cadre || !w0) return ajuster();
     V.tx += (W - w0) / 2; V.ty += (H - h0) / 2; dessiner();
   }).observe($('carteBox'));
+
+  $('jMesures').onclick = () => { if(!P || P.fini || P.revele) return; P.sel = { type:'achat' }; panneau(); dessiner(); $('panneau').scrollTop = 0; };
 
   /* ---------- démarrage ---------- */
   window.Panne = { get P(){ return P; }, vue:() => ({ ...V }), demarrer, G, accueil, toucher, S, chrono, choisir:o => { P.sel = o; panneau(); dessiner(); } };
