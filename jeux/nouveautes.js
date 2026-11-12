@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:177, type:'maj', jeu:'Dichotomie', ico:'🔧', lien:'jeux/panne.html',
+    txt:'Correction : les boutons Débrancher, Rebrancher, Refaire et Ouvrir / Fermer le tronçon des liaisons et des câbles fonctionnent.' },
   { v:176, type:'maj', jeu:'Dichotomie', ico:'⏱', lien:'jeux/panne.html',
     txt:'Plus de temps de trajet ni de durée des gestes : tout se fait tout de suite, et un chrono tourne de l\'alarme à la réparation. Nouveau : le défi du jour, la même panne pour tout le monde chaque jour.' },
   { v:175, type:'maj', jeu:'Dichotomie', ico:'📡', lien:'jeux/panne.html',
