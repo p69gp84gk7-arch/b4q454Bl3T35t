@@ -19,6 +19,7 @@ window.FREERIDE_3D = (() => {
   let T3 = null, R = null, scene = null, cam = null, ok = false;
   let DEGRADE = null, DEGRADE_N = null, CONTOUR = null, matSol = null, matNeige = null, GEO = null, texFlocon = null;
   let M = null, J = null, chunks = new Map(), drops = [], dropsVus = new Set();
+  let gerbe = null;
   let montagnes = null, skieur = null, ombre = null, traces = null, poudre = null, avalanche = null, flocons = [];
   const E = { vis:0, air:false, off:0, tOff:1, tAir:0, init:true, cx:0, cy:0, ch:0, yaw:0 };
 
@@ -109,9 +110,13 @@ window.FREERIDE_3D = (() => {
         for(let k = 0; k < 3; k++){ x.rotate(Math.PI / 3); x.beginPath(); x.moveTo(-24, 0); x.lineTo(24, 0); for(const s of [-1, 1]){ x.moveTo(s * 13, 0); x.lineTo(s * 20, 7); x.moveTo(s * 13, 0); x.lineTo(s * 20, -7); } x.stroke(); } }
       const t = new T3.CanvasTexture(c); return new T3.SpriteMaterial({ map:t, depthWrite:false }); })();
     // le skieur : un tube et une boule qu'on recopie pour chaque morceau du corps
-    const cyl = new T3.CylinderGeometry(1, 1, 1, 8, 1, true).toNonIndexed(), sph = new T3.SphereGeometry(1, 7, 5).toNonIndexed();
-    GEO.tp = { cp:cyl.attributes.position.array, cn:cyl.attributes.normal.array, sp:sph.attributes.position.array, sn:sph.attributes.normal.array };
-    cyl.dispose(); sph.dispose();
+    const cyl = new T3.CylinderGeometry(1, 1, 1, 8, 1, true).toNonIndexed(), sph = new T3.SphereGeometry(1, 7, 5).toNonIndexed(), boite = new T3.BoxGeometry(1, 1, 1).toNonIndexed();
+    GEO.tp = { cp:cyl.attributes.position.array, cn:cyl.attributes.normal.array, sp:sph.attributes.position.array, sn:sph.attributes.normal.array, bp:boite.attributes.position.array, bn:boite.attributes.normal.array };
+    cyl.dispose(); sph.dispose(); boite.dispose();
+    // la neige soulevée par les skis : de petits flocons doux
+    const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'), gr = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.5, 'rgba(244,248,255,.8)'); gr.addColorStop(1, 'rgba(244,248,255,0)');
+    x.fillStyle = gr; x.fillRect(0, 0, 32, 32); GEO.texPoudre = new T3.CanvasTexture(c);
   }
 
   /* ---------- Le relief ---------- */
@@ -191,6 +196,11 @@ window.FREERIDE_3D = (() => {
     traces.frustumCulled = false; traces.userData.propre = true; scene.add(traces);
     poudre = new T3.InstancedMesh(new T3.IcosahedronGeometry(1, 0), toon({ color:0xFFFFFF }), 140);
     poudre.frustumCulled = false; poudre.count = 0; poudre.userData.propre = true; scene.add(poudre);
+    // la neige soulevée par les skis (des points doux, qui retombent)
+    { const n = 900, g = new T3.BufferGeometry(), pos = new Float32Array(n * 3).fill(-9999); g.setAttribute('position', new T3.BufferAttribute(pos, 3));
+      const pts = new T3.Points(g, new T3.PointsMaterial({ map:GEO.texPoudre, size:.38, color:0xFFFFFF, transparent:true, depthWrite:false }));
+      pts.frustumCulled = false; pts.userData.propre = true; scene.add(pts);
+      gerbe = { pts, pos, v:new Float32Array(n * 3), vie:new Float32Array(n), n, i:0 }; }
     // l'avalanche : une vague de grosses boules de neige
     const ag = new T3.IcosahedronGeometry(1, 1);
     avalanche = { m:new T3.InstancedMesh(ag, toon({ color:0xF8FBFF }), 60), c:new T3.InstancedMesh(new T3.IcosahedronGeometry(1.04, 1), CONTOUR, 60) };
@@ -399,8 +409,12 @@ window.FREERIDE_3D = (() => {
     for(const p of o.pose){
       if(p.point){
         morceaux.push({ s:placer(p.point), r:p.r * ECH, c:couleur(p.c) });
-        if(p.visiere) morceaux.push({ s:placer([p.point[0], p.point[1] + p.r * .45, p.point[2] - p.r * .05]), r:p.r * .72 * ECH, c:couleur('#13233A') });
-      } else morceaux.push({ a:placer(p.a), b:placer(p.b), r:p.l / 2 * ECH, c:couleur(p.c) });
+        if(p.visiere){                                                     // le masque : la monture, puis l'écran miroir orangé
+          morceaux.push({ s:placer([p.point[0], p.point[1] + p.r * .42, p.point[2] - p.r * .05]), r:p.r * .74 * ECH, c:couleur('#13233A') });
+          morceaux.push({ s:placer([p.point[0], p.point[1] + p.r * .56, p.point[2] - p.r * .04]), r:p.r * .6 * ECH, c:couleur('#F29A38') });
+        }
+      } else if(p.plat) morceaux.push({ a:placer(p.a), b:placer(p.b), plat:[p.plat[0] * ECH, p.plat[1] * ECH], c:couleur(p.c) });
+      else morceaux.push({ a:placer(p.a), b:placer(p.b), r:p.l / 2 * ECH, c:couleur(p.c) });
     }
     remplir(skieur.m.geometry, morceaux, 0, true); remplir(skieur.c.geometry, morceaux, .025, false);
   }
@@ -412,7 +426,23 @@ window.FREERIDE_3D = (() => {
       const a = tp.sp, nn = tp.sn; if(n + a.length / 3 > max) return;
       for(let i = 0; i < a.length; i += 3){ const k = n * 3; P[k] = s[0] + a[i] * r; P[k + 1] = s[1] + a[i + 1] * r; P[k + 2] = s[2] + a[i + 2] * r; N[k] = nn[i]; N[k + 1] = nn[i + 1]; N[k + 2] = nn[i + 2]; if(avecCouleurs){ C[k] = c.r; C[k + 1] = c.g; C[k + 2] = c.b; } n++; }
     };
+    // une planche (ski, snowboard, chaussure) : une boîte le long du morceau, à plat (sa largeur reste horizontale)
+    const plaque = m => {
+      const a = tp.bp, nn = tp.bn; if(n + a.length / 3 > max) return;
+      const dx = m.b[0] - m.a[0], dy = m.b[1] - m.a[1], dz = m.b[2] - m.a[2], L = Math.hypot(dx, dy, dz) || 1e-4, d = [dx / L, dy / L, dz / L];
+      let u = [d[2], 0, -d[0]]; const lu = Math.hypot(...u); u = lu > 1e-4 ? u.map(v => v / lu) : [1, 0, 0];
+      const w = [d[1] * u[2] - d[2] * u[1], d[2] * u[0] - d[0] * u[2], d[0] * u[1] - d[1] * u[0]];
+      const mx = (m.a[0] + m.b[0]) / 2, my = (m.a[1] + m.b[1]) / 2, mz = (m.a[2] + m.b[2]) / 2, la = m.plat[0] + 2 * e, ep = m.plat[1] + 2 * e, LL = L + 2 * e;
+      for(let i = 0; i < a.length; i += 3){
+        const k = n * 3, X = a[i] * la, Y = a[i + 1] * ep, Z = a[i + 2] * LL;
+        P[k] = mx + u[0] * X + w[0] * Y + d[0] * Z; P[k + 1] = my + u[1] * X + w[1] * Y + d[1] * Z; P[k + 2] = mz + u[2] * X + w[2] * Y + d[2] * Z;
+        N[k] = u[0] * nn[i] + w[0] * nn[i + 1] + d[0] * nn[i + 2]; N[k + 1] = u[1] * nn[i] + w[1] * nn[i + 1] + d[1] * nn[i + 2]; N[k + 2] = u[2] * nn[i] + w[2] * nn[i + 1] + d[2] * nn[i + 2];
+        if(avecCouleurs){ C[k] = m.c.r; C[k + 1] = m.c.g; C[k + 2] = m.c.b; }
+        n++;
+      }
+    };
     for(const m of morceaux){
+      if(m.plat){ plaque(m); continue; }
       const r = m.r + e;
       if(m.s){ boule(m.s, r, m.c); continue; }
       const dx = m.b[0] - m.a[0], dy = m.b[1] - m.a[1], dz = m.b[2] - m.a[2], L = Math.hypot(dx, dy, dz);
@@ -436,6 +466,34 @@ window.FREERIDE_3D = (() => {
     g.attributes.position.needsUpdate = g.attributes.normal.needsUpdate = true; if(avecCouleurs) g.attributes.color.needsUpdate = true;
   }
 
+  /* ---------- La neige soulevée : aux talons des skis (plus en virage appuyé et vite), un nuage à la réception ---------- */
+  function neigeSoulevee(P, o, dt, atterrit){
+    if(!gerbe) return;
+    const G = gerbe, envoi = (x, y, z, vx, vy, vz, vie) => { const i = G.i; G.i = (G.i + 1) % G.n; G.pos.set([x, y, z], i * 3); G.v.set([vx, vy, vz], i * 3); G.vie[i] = vie; };
+    const fx = Math.sin(P.th), fz = Math.cos(P.th), rx = -Math.cos(P.th), rz = Math.sin(P.th), v = P.v || 0;
+    const incl = P.anim ? P.anim.incl || 0 : 0, cote = Math.sign(incl) || (Math.random() < .5 ? -1 : 1);
+    if(!P.air && !P.slide && !(P.chute > 0) && v > 3){
+      const n = Math.min(12, Math.round(dt * v * (3 + 22 * Math.min(1, Math.abs(incl) * 1.6)) + Math.random()));
+      for(let k = 0; k < n; k++){
+        const lat = (Math.random() - .5) * .35 * ECH, der = (.45 + Math.random() * .3) * ECH, x = P.x - fx * der + rx * lat, z = P.y - fz * der + rz * lat, h = sol(x, z) + .08;
+        const pousse = (1.2 + Math.random() * 2.2) * (.4 + Math.min(1, Math.abs(incl) * 2));    // vers l'extérieur du virage
+        envoi(x, h, z, -rx * cote * pousse + fx * v * .25 + (Math.random() - .5), .8 + Math.random() * 1.8, -rz * cote * pousse + fz * v * .25 + (Math.random() - .5), .35 + Math.random() * .4);
+      }
+    }
+    if(atterrit) for(let k = 0; k < 46; k++){                                // un nuage de poudreuse à la réception
+      const a = Math.random() * 6.283, sp = 1.5 + Math.random() * 3, h = sol(P.x, P.y) + .1;
+      envoi(P.x + Math.cos(a) * .3, h, P.y + Math.sin(a) * .3, Math.cos(a) * sp + fx * v * .3, 1 + Math.random() * 2.5, Math.sin(a) * sp + fz * v * .3, .5 + Math.random() * .5);
+    }
+    for(let i = 0; i < G.n; i++){
+      if(G.vie[i] <= 0) continue;
+      G.vie[i] -= dt; const j = i * 3;
+      if(G.vie[i] <= 0){ G.pos[j + 1] = -9999; continue; }
+      G.v[j + 1] -= 6.5 * dt; const fr = Math.max(0, 1 - 1.6 * dt); G.v[j] *= fr; G.v[j + 2] *= fr;
+      G.pos[j] += G.v[j] * dt; G.pos[j + 1] += G.v[j + 1] * dt; G.pos[j + 2] += G.v[j + 2] * dt;
+    }
+    G.pts.geometry.attributes.position.needsUpdate = true;
+  }
+
   /* ---------- Chaque image ---------- */
   function rendu(P, dt, o){
     if(!ok || !scene || !M) return;
@@ -444,6 +502,7 @@ window.FREERIDE_3D = (() => {
     // la hauteur du skieur : sur la neige au sol, sur le module en slide ; en l'air, la hauteur du jeu au-dessus du sol,
     // plus ce qu'il avait en partant (un tremplin, une bosse), qui s'efface pendant le vol
     const b = base(P.x, P.y), s = sol(P.x, P.y);
+    const atterrit = E.air && !P.air && !E.init;
     if(P.air && !E.air){ E.off = E.vis - (b + P.z); E.tOff = Math.max(.35, 2 * Math.max(P.vz, .4) / 9.8 + .05); E.tAir = 0; }
     E.air = P.air;
     let cible;
@@ -463,6 +522,7 @@ window.FREERIDE_3D = (() => {
     let n = 0;
     for(const p of P.part){ if(n >= 140) break; if(p.h0 === undefined){ p.h0 = sol(p.x, p.y); p.y0 = p.y; } const r = p.r * clamp(p.vie * 2, .2, 1); v.set(p.x, p.h0 - (p.y - p.y0) * PENTE + .25 + p.r + (1 - Math.min(1, p.vie)) * .5, p.y); sc.setScalar(r); m4.compose(v, q, sc); poudre.setMatrixAt(n++, m4); }
     poudre.count = n; poudre.instanceMatrix.needsUpdate = true;
+    neigeSoulevee(P, o, dt, atterrit);
     // les flocons à ramasser
     let nf = 0;
     for(let i = premier(M.flocons, P.y - 3); i < M.flocons.length && M.flocons[i].y < P.y + 110; i++){

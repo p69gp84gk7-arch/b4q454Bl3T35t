@@ -54,7 +54,7 @@
   function demarrer(nivId, defi){
     const p = defi ? S.defiDuJour() : S.nouvellePartie(nivId);
     if(defi) p.niveau = { id:'defi', nom:'Défi du jour' };
-    P = Object.assign(p, { gestes:0, faux:0, mesures:0, vus:{}, diag:{}, journal:[], fini:false, sel:null, vue:'dia', revele:false, t0:Date.now() });
+    P = Object.assign(p, { gestes:0, faux:0, mesures:0, vus:{}, diag:{}, journal:[], fini:false, sel:null, vue:'dia', revele:false, t0:Date.now(), achats:0 });
     const C = S.calculer(P.E); P.dernierN = C.parlent.size;
     journal(`🚨 <b>Alarme supervision</b> : ${pl(NB - C.parlent.size, 'canon')} ne communiquent plus. Le chrono est lancé !`);
     cadre = false; ecran('eJeu'); majVues(); panneau(); etat(); requestAnimationFrame(ajuster);
@@ -89,7 +89,17 @@
   }
   // les pièces de rechange : 💳 cartes de dialogue, 🧰 kits de réparation (câble, court-circuit, blindage)
   const PIECES = { cartes:'carte de dialogue', kits:'kit de réparation' };
-  function piece(t){ if(P.E.stock[t] > 0){ P.E.stock[t]--; return true; } toast(`Plus de ${PIECES[t]} en stock !`); return false; }
+  // stock vide : on propose d'en acheter (gratuit)
+  function piece(t){
+    if(P.E.stock[t] <= 0){ if(!confirm(`Plus de ${PIECES[t]} en stock. En acheter une ?`)) return false; acheter(t, true); }
+    P.E.stock[t]--; return true;
+  }
+  function acheter(t, silence){
+    if(!P || P.fini) return;
+    P.E.stock[t]++; P.achats++;
+    journal(`🛒 ${t === 'cartes' ? '💳 Une carte de dialogue' : '🧰 Un kit de réparation'} acheté${t === 'cartes' ? 'e' : ''}`);
+    if(!silence){ toast(`🛒 +1 ${PIECES[t]}`); etat(); panneau(); }
+  }
   const panne = (type, cle) => P.E.pannes.find(p => !p.repare && p.type === type && (p.canon === cle || p.k === cle));
 
   /* ---------- les gestes ---------- */
@@ -205,7 +215,7 @@
     $('fEtoiles').textContent = '★'.repeat(P.etoiles) + '☆'.repeat(3 - P.etoiles);
     $('fTexte').innerHTML = (P.reussi ? `En <b>⏱ ${chrono(P.E.t)}</b>. ` : '') +
       `Une bonne dichotomie : environ <b>${pl(P.E.optimum, 'geste')}</b>. Vous : <b>${pl(P.gestes, 'geste')}</b>${P.faux ? `, dont ${pl(P.faux, 'mauvaise réparation', 'mauvaises réparations')} (comptée${P.faux > 1 ? 's' : ''} triple${P.faux > 1 ? 's' : ''})` : ''}.`;
-    $('fStats').innerHTML = `<div><b>${chrono(P.E.t)}</b><small>chrono</small></div><div><b>${P.gestes}</b><small>gestes</small></div><div><b>${P.mesures}</b><small>mesures</small></div><div><b>${P.faux}</b><small>mauvaise${P.faux > 1 ? 's' : ''} réparation${P.faux > 1 ? 's' : ''}</small></div>`;
+    $('fStats').innerHTML = `<div><b>${chrono(P.E.t)}</b><small>chrono</small></div><div><b>${P.gestes}</b><small>gestes</small></div><div><b>${P.mesures}</b><small>mesures${P.achats ? ` · ${P.achats} pièce${P.achats > 1 ? 's' : ''} achetée${P.achats > 1 ? 's' : ''}` : ''}</small></div><div><b>${P.faux}</b><small>mauvaise${P.faux > 1 ? 's' : ''} réparation${P.faux > 1 ? 's' : ''}</small></div>`;
     $('fPanne').innerHTML = P.E.pannes.map(p => `<div>${decrire(p)}</div>`).join('');
   }
   $('bVoir').onclick = () => { P.revele = true; P.vue = P.E.pannes.some(p => p.type === 'cableElec' || p.type === 'court') ? 'elec' : 'dia'; majVues(); ecran('eJeu'); panneau(); etat(); };
@@ -221,7 +231,7 @@
     const n = parlent().size;
     $('jChrono').textContent = `⏱ ${chrono(P.E.t)}`;
     $('jGestes').textContent = pl(P.gestes, 'geste');
-    $('jMesures').textContent = `💳 ${P.E.stock.cartes} · 🧰 ${P.E.stock.kits}`;
+    $('jMesures').textContent = `💳 ${P.E.stock.cartes} · 🧰 ${P.E.stock.kits} 🛒`;
     $('jLampe').classList.toggle('ko', n < NB);
     $('jCompte').textContent = `${n} / ${NB} canons communiquent`;
     $('jSous').textContent = P.revele ? 'Les pannes sont entourées en jaune.' : n < NB ? `${pl(NB - n, 'canon')} hors communication${P.defi ? ' · défi du jour' : ''}` : 'Tout communique : vérifiez que tout est réparé.';
@@ -273,6 +283,11 @@
       h += `<h2>Câble électrique <small>${esc(nomLien(c))}</small></h2>`;
       h += `<div class="ligneA">${bouton(P.E.ouv.has(c.k) ? '⏺ Fermer le tronçon' : '⭘ Ouvrir le tronçon', 0, `troncon~${c.k}`, 'act')}${bouton('🧰 Refaire le câble', 0, `repCable~${c.k}`, 'rep')}</div>`;
       h += `<div class="ligneA">${[c.a, c.b].filter(x => !x.startsWith('src/')).map(x => bouton(`Canon ${esc(nomC(x))}`, 0, `voirC~${x}`)).join('')}</div>`;
+    } else if(s.type === 'achat'){
+      h += `<h2>🛒 Acheter des pièces <small>gratuit, livré tout de suite</small></h2>`;
+      h += `<div class="mesure">En stock : <b>💳 ${P.E.stock.cartes}</b> carte${P.E.stock.cartes > 1 ? 's' : ''} de dialogue · <b>🧰 ${P.E.stock.kits}</b> kit${P.E.stock.kits > 1 ? 's' : ''} de réparation${P.achats ? ` · ${pl(P.achats, 'pièce')} achetée${P.achats > 1 ? 's' : ''}` : ''}</div>`;
+      h += `<div class="ligneA">${bouton('+1 💳 carte de dialogue', 0, 'acheter~cartes', 'act')}${bouton('+1 🧰 kit de réparation', 0, 'acheter~kits', 'act')}</div>`;
+      h += `<p class="aideJ">💳 cartes : changer la carte d'un canon. 🧰 kits : refaire un câble ou une liaison, blinder, réparer un court-circuit.</p>`;
     } else if(s.type === 'transfo'){
       const d = s.id, v = P.vus[d], nb = S.VRAIS.filter(c => S.ORIGINE[c.id] === d).length;
       h += `<h2>⚡ ${esc(S.D_PAR_ID[d].nom)} <small>${pl(nb, 'canon')} alimentés en temps normal</small></h2>`;
@@ -286,6 +301,7 @@
     $('panneau').querySelectorAll('[data-f]').forEach(b => b.onclick = () => {
       const [f, a, c] = b.dataset.f.split('~');
       if(f === 'fermer'){ P.sel = null; panneau(); dessiner(); return; }
+      if(f === 'acheter'){ acheter(a); return; }
       if(f === 'bilan'){ P.revele = false; bilan(); return; }
       if(f === 'voirC'){ P.sel = { type:'canon', id:a }; panneau(); dessiner(); return; }
       G[f](a, c);
@@ -326,7 +342,9 @@
   function dessiner(){
     if($('eJeu').hidden || !P) return;
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
-    const C = S.calculer(P.E), elec = P.vue === 'elec', r = Math.max(3.2, Math.min(9, V.s * 9)), lbl = V.s > .55;
+    const cle = [P.E.t, P.gestes, P.E.off.size, P.E.debr.size, P.E.ouv.size, P.E.depOuv.size, P.E.disj.size, P.E.pannes.filter(p => p.repare).length, P.revele].join();
+    if(!P.cacheC || P.cacheC.cle !== cle) P.cacheC = { cle, C:S.calculer(P.E) };
+    const C = P.cacheC.C, elec = P.vue === 'elec', r = Math.max(3.2, Math.min(9, V.s * 9)), lbl = V.s > .55;
     g.lineCap = 'round'; g.lineJoin = 'round';
     // les tracés des câbles (fond)
     g.strokeStyle = 'rgba(160,190,230,.10)'; g.lineWidth = 1.2; S.R.traces.forEach(trait);
@@ -373,7 +391,7 @@
       g.strokeStyle = '#5AA9FF'; g.lineWidth = 3;
       if(P.sel.type === 'canon'){ const c = S.PAR_ID[P.sel.id]; g.beginPath(); g.arc(X(c.x), Y(c.y), r + 8, 0, 7); g.stroke(); }
       else if(P.sel.type === 'transfo'){ const d = S.D_PAR_ID[P.sel.id]; g.strokeRect(X(d.x) - 14, Y(d.y) - 14, 28, 28); }
-      else { g.globalAlpha = .55; g.lineWidth = 8; trait(P.sel.type === 'liaison' ? geomL(S.L_PAR_K[P.sel.k]) : geomC(S.C_PAR_K[P.sel.k])); g.globalAlpha = 1; }
+      else if(P.sel.type === 'liaison' || P.sel.type === 'cable'){ g.globalAlpha = .55; g.lineWidth = 8; trait(P.sel.type === 'liaison' ? geomL(S.L_PAR_K[P.sel.k]) : geomC(S.C_PAR_K[P.sel.k])); g.globalAlpha = 1; }
     }
     // les pannes, à la fin
     if(P.revele){
@@ -394,7 +412,7 @@
       : '<span><i style="background:#2FD47A"></i>tension mesurée</span><span><i style="background:#1A2233;border:2px solid #FFD23F"></i>pas de tension</span><span><i style="background:#55657C"></i>pas mesuré</span><span>tirets : tronçon ouvert</span>'; }
   $('vDia').onclick = () => { P.vue = 'dia'; majVues(); dessiner(); if(!P.sel || P.sel.type === 'cable'){ P.sel = null; panneau(); } };
   $('vElec').onclick = () => { P.vue = 'elec'; majVues(); dessiner(); if(!P.sel) panneau(); };
-  const zoomA = (f, cx, cy) => { const s = Math.min(40, Math.max(.05, V.s * f)); f = s / V.s; V.tx = cx - (cx - V.tx) * f; V.ty = cy - (cy - V.ty) * f; V.s = s; dessiner(); };
+  const zoomA = (f, cx, cy) => { const s = Math.min(40, Math.max(.05, V.s * f)); f = s / V.s; V.tx = cx - (cx - V.tx) * f; V.ty = cy - (cy - V.ty) * f; V.s = s; redessiner(); };
   $('zPlus').onclick = () => zoomA(1.5, W / 2, H / 2); $('zMoins').onclick = () => zoomA(1 / 1.5, W / 2, H / 2); $('zTout').onclick = ajuster;
   // distance d'un point à un tracé (en pixels)
   function distTrait(px, py, pts){
@@ -419,20 +437,43 @@
     P.sel = best; panneau(); dessiner();
     if(best && window.matchMedia('(orientation:portrait)').matches) $('panneau').scrollTop = 0;
   }
-  // un doigt : déplacer ; deux doigts : zoomer ; toucher court : choisir
+  // un doigt : déplacer ; deux doigts : zoomer (et déplacer en même temps) ; toucher court : choisir
   const pts = new Map(); let geste = null;
-  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
-    const r = cv.getBoundingClientRect();
-    if(pts.size === 1) geste = { pan:true, x:e.clientX, y:e.clientY, tx:V.tx, ty:V.ty, bouge:false, t:Date.now(), r };
-    else if(pts.size === 2){ const [a, b] = [...pts.values()]; geste = { pinch:true, d:Math.hypot(a.x - b.x, a.y - b.y) || 1, s:V.s, mx:(a.x + b.x) / 2 - r.left, my:(a.y + b.y) / 2 - r.top, tx:V.tx, ty:V.ty, bouge:true }; } });
-  cv.addEventListener('pointermove', e => { if(!pts.has(e.pointerId) || !geste) return; pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
-    if(geste.pinch && pts.size >= 2){ const [a, b] = [...pts.values()], s = Math.min(40, Math.max(.05, geste.s * Math.hypot(a.x - b.x, a.y - b.y) / geste.d)), wx = (geste.mx - geste.tx) / geste.s, wy = (geste.my - geste.ty) / geste.s;
-      V.s = s; V.tx = geste.mx - wx * s; V.ty = geste.my - wy * s; dessiner(); }
-    else if(geste.pan){ const dx = e.clientX - geste.x, dy = e.clientY - geste.y; if(Math.hypot(dx, dy) > 8) geste.bouge = true; if(geste.bouge){ V.tx = geste.tx + dx; V.ty = geste.ty + dy; dessiner(); } } });
-  const fin = e => { if(!pts.has(e.pointerId)) return; pts.delete(e.pointerId);
-    if(geste && geste.pan && !geste.bouge && e.type === 'pointerup' && Date.now() - geste.t < 600){ const r = cv.getBoundingClientRect(); toucher(e.clientX - r.left, e.clientY - r.top); }
-    if(pts.size === 1){ const [a] = [...pts.values()]; geste = { pan:true, x:a.x, y:a.y, tx:V.tx, ty:V.ty, bouge:true }; } else if(!pts.size) geste = null; };
-  cv.addEventListener('pointerup', fin); cv.addEventListener('pointercancel', fin);
+  const local = p => { const r = cv.getBoundingClientRect(); return { x:p.x - r.left, y:p.y - r.top }; };
+  // (re)commence un geste avec les doigts posés : la carte suit les doigts depuis cet instant
+  function nouveauGeste(tap){
+    const l = [...pts.values()];
+    if(l.length >= 2){
+      const a = local(l[0]), b = local(l[1]), m = { x:(a.x + b.x) / 2, y:(a.y + b.y) / 2 };
+      geste = { pinch:true, d:Math.hypot(a.x - b.x, a.y - b.y) || 1, s:V.s, wx:(m.x - V.tx) / V.s, wy:(m.y - V.ty) / V.s, bouge:true };
+    } else if(l.length === 1){ const a = local(l[0]); geste = { pan:true, x:a.x, y:a.y, tx:V.tx, ty:V.ty, bouge:!tap, t:Date.now() }; }
+    else geste = null;
+  }
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); try{ cv.setPointerCapture(e.pointerId); }catch(err){} pts.set(e.pointerId, { x:e.clientX, y:e.clientY }); nouveauGeste(pts.size === 1); });
+  cv.addEventListener('pointermove', e => {
+    if(!pts.has(e.pointerId) || !geste) return; pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    const l = [...pts.values()];
+    if(geste.pinch && l.length >= 2){
+      const a = local(l[0]), b = local(l[1]), m = { x:(a.x + b.x) / 2, y:(a.y + b.y) / 2 };
+      const s = Math.min(40, Math.max(.05, geste.s * Math.hypot(a.x - b.x, a.y - b.y) / geste.d));
+      V.s = s; V.tx = m.x - geste.wx * s; V.ty = m.y - geste.wy * s; redessiner();
+    } else if(geste.pan){
+      const a = local(l[0]), dx = a.x - geste.x, dy = a.y - geste.y;
+      if(Math.hypot(dx, dy) > 8) geste.bouge = true;
+      if(geste.bouge){ V.tx = geste.tx + dx; V.ty = geste.ty + dy; redessiner(); }
+    }
+  });
+  const fin = e => {
+    if(!pts.has(e.pointerId)) return;
+    const tap = geste && geste.pan && !geste.bouge && e.type === 'pointerup' && Date.now() - geste.t < 600;
+    pts.delete(e.pointerId);
+    if(tap){ const p = local({ x:e.clientX, y:e.clientY }); toucher(p.x, p.y); }
+    nouveauGeste(false);                          // le doigt qui reste continue de déplacer la carte, sans sauter
+  };
+  cv.addEventListener('pointerup', fin); cv.addEventListener('pointercancel', fin); cv.addEventListener('lostpointercapture', fin);
+  // pendant un geste, on redessine au plus une fois par image
+  let aDessiner = false;
+  function redessiner(){ if(aDessiner) return; aDessiner = true; requestAnimationFrame(() => { aDessiner = false; dessiner(); }); }
   cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomA(Math.exp(-e.deltaY * .0015), e.clientX - r.left, e.clientY - r.top); }, { passive:false });
   // la carte change de taille (panneau, rotation) : on garde le même centre
   let cadre = false;
@@ -443,8 +484,10 @@
     V.tx += (W - w0) / 2; V.ty += (H - h0) / 2; dessiner();
   }).observe($('carteBox'));
 
+  $('jMesures').onclick = () => { if(!P || P.fini || P.revele) return; P.sel = { type:'achat' }; panneau(); dessiner(); $('panneau').scrollTop = 0; };
+
   /* ---------- démarrage ---------- */
-  window.Panne = { get P(){ return P; }, demarrer, G, accueil, toucher, S, chrono, choisir:o => { P.sel = o; panneau(); dessiner(); } };
+  window.Panne = { get P(){ return P; }, vue:() => ({ ...V }), demarrer, G, accueil, toucher, S, chrono, choisir:o => { P.sel = o; panneau(); dessiner(); } };
   if(/[?&]test\b/.test(location.search)){ document.body.innerHTML = `<pre style="padding:16px;color:#EAF1FB;white-space:pre-wrap">${S.tests().join('\n')}</pre>`; return; }
   accueil();
   if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
