@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:179, type:'maj', jeu:'Dichotomie', ico:'🔓', lien:'jeux/panne.html',
+    txt:'Un parcours à difficulté graduelle : les 15 pannes, de la plus simple à la plus sournoise (Débutant, Confirmé, Sournois, Expert). Chaque panne réussie débloque la suivante.' },
   { v:178, type:'maj', jeu:'Dichotomie', ico:'🫥', lien:'jeux/panne.html',
     txt:'5 pannes sournoises : adresse en double, paire A/B inversée, câble de puissance voisin, canon passe-plat, panne cachée derrière une autre. Stock de pièces limité (💳 cartes, 🧰 kits) et deux niveaux experts. Le défi du jour peut aussi être sournois !' },
   { v:177, type:'maj', jeu:'Dichotomie', ico:'🔧', lien:'jeux/panne.html',

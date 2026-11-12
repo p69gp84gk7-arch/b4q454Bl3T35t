@@ -33,15 +33,19 @@
       <button class="btn gros" id="bDefi" style="margin-top:10px">${fait ? '↻ Rejouer le défi du jour' : '▶ Jouer le défi du jour'}</button>`;
     $('bDefi').onclick = () => demarrer(null, true);
     const carteNiv = (v, i) => {
+      if(!ouvert(i)) return `<button class="niv verrou" data-n="${v.id}" data-verrou="1"><b>🔒 ${i + 1}. ${esc(v.nom)}</b><small>Réussis « ${esc(S.NIVEAUX[i - 1].nom)} » pour débloquer cette panne.</small></button>`;
       const r = n[v.id] || {}, ico = { dialogue:'✂️', aval:'📡', ligne:'📡', elec:'🔌', court:'⚡', intermittent:'〰️', double:'✌️', mystere:'❓', adresse:'🔢', paire:'⇆', parasite:'🛡', passeplat:'🚧', cachee:'🫥', expert2:'🎓', expert3:'🏆' }[v.id];
       return `<button class="niv" data-n="${v.id}"><b>${ico} ${i + 1}. ${esc(v.nom)}</b><small>${esc(v.texte)}</small>
         <span class="et">${'★'.repeat(r.etoiles || 0)}${'☆'.repeat(3 - (r.etoiles || 0))}</span>
         <span class="rec">${r.reussies ? `Meilleur : ${pl(r.gestes, 'geste')}${r.temps != null ? ` · ⏱ ${chrono(r.temps)}` : ''}` : 'Pas encore réussi'}</span></button>`;
     };
-    const groupe = (titre, f) => `<h3 style="margin-top:6px">${titre}</h3><div class="niveaux">${S.NIVEAUX.map((v, i) => f(v) ? carteNiv(v, i) : '').join('')}</div>`;
-    $('cNiveaux').innerHTML = groupe('Les pannes', v => !v.sournoise && !v.expert) + groupe('Les pannes sournoises', v => v.sournoise) + groupe('Experts', v => v.expert);
+    const reussis = S.NIVEAUX.filter(v => (n[v.id] || {}).reussies).length;
+    $('cNiveaux').innerHTML = `<p class="sous" style="margin-bottom:6px">Le parcours, de la panne la plus simple à la plus sournoise : chaque panne réussie débloque la suivante. <b>${reussis} / ${S.NIVEAUX.length}</b> réussies.</p>` +
+      Object.entries(S.PALIERS).map(([p, titre]) => `<h3 style="margin-top:8px">${titre}</h3><div class="niveaux">${S.NIVEAUX.map((v, i) => v.palier === p ? carteNiv(v, i) : '').join('')}</div>`).join('');
   }
-  $('cNiveaux').onclick = e => { const b = e.target.closest('[data-n]'); if(b) demarrer(b.dataset.n); };
+  // un niveau est ouvert si c'est le premier, s'il a déjà été joué, ou si le précédent est réussi
+  const ouvert = i => i === 0 || !!(REC.niveaux[S.NIVEAUX[i].id] || {}).fois || !!(REC.niveaux[S.NIVEAUX[i - 1].id] || {}).reussies;
+  $('cNiveaux').onclick = e => { const b = e.target.closest('[data-n]'); if(!b) return; if(b.dataset.verrou){ b.classList.add('secoue'); setTimeout(() => b.classList.remove('secoue'), 400); return; } demarrer(b.dataset.n); };
   $('bAide').onclick = () => ecran('eAide');
   $('bAideRetour').onclick = () => accueil();
 
@@ -168,6 +172,7 @@
         if(r.temps == null || t < r.temps) r.temps = t;
       }
     }
+    { const i = S.NIVEAUX.findIndex(v => v.id === P.niveau.id); P.debloque = ok && !P.defi && i >= 0 && S.NIVEAUX[i + 1] && (REC.niveaux[P.niveau.id] || {}).reussies === 1; }
     REC.dernier = { nom:P.niveau.nom, etoiles:P.etoiles, reussi:ok, gestes:P.gestes };
     ecrire('panne-records', REC);
     bilan();
@@ -192,6 +197,10 @@
   }
   function bilan(){
     ecran('eFin');
+    // le niveau suivant du parcours, s'il est ouvert
+    const i = S.NIVEAUX.findIndex(v => v.id === P.niveau.id), suiv = !P.defi && i >= 0 && S.NIVEAUX[i + 1] && ouvert(i + 1) ? S.NIVEAUX[i + 1] : null;
+    $('bSuivant').hidden = !suiv;
+    if(suiv){ $('bSuivant').textContent = `${P.debloque ? '🔓 Débloqué : ' : 'Niveau suivant : '}${suiv.nom} ▶`; $('bSuivant').onclick = () => demarrer(suiv.id); }
     $('fTitre').textContent = (P.defi ? '🗓 Défi du jour · ' : '') + (P.reussi ? '✅ Panne réparée, tout communique !' : '🏳 Dépannage abandonné');
     $('fEtoiles').textContent = '★'.repeat(P.etoiles) + '☆'.repeat(3 - P.etoiles);
     $('fTexte').innerHTML = (P.reussi ? `En <b>⏱ ${chrono(P.E.t)}</b>. ` : '') +

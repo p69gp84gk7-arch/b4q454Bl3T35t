@@ -250,22 +250,24 @@
 
   // Les niveaux
   const SOURNOISES = ['adresse', 'paire', 'parasite', 'passeplat', 'cachee', 'ligne'];
+  // Le parcours : de la panne la plus simple à la plus sournoise ; chaque niveau se débloque en réussissant le précédent
+  const PALIERS = { debutant:'Débutant', confirme:'Confirmé', sournois:'Sournois', expert:'Expert' };
   const NIVEAUX = [
-    { id:'dialogue', nom:'La liaison arrachée', texte:'Une liaison de dialogue a été coupée (une dameuse, un rongeur…). Trouvez-la et réparez-la.', types:['dialogue'] },
-    { id:'aval', nom:'Le bavard', texte:'Un canon brouille le dialogue de tous ceux qui sont après lui. Lui semble aller bien…', types:['aval'] },
-    { id:'ligne', nom:'La ligne brouillée', texte:'Un canon contaminant brouille toute sa ligne, avant et après lui. Coupez au milieu, regardez ce qui revient : la dichotomie.', types:['ligne'] },
-    { id:'elec', nom:'Le câble électrique', texte:'Un câble électrique est coupé : les canons d’après n’ont plus de courant, et bloquent le dialogue. Mesurez la tension pour trouver où.', types:['elec'] },
-    { id:'court', nom:'Le transfo qui saute', texte:'Un canon en court-circuit fait disjoncter son transfo, qui redisjoncte au réarmement. Ouvrez des tronçons de câble pour l’isoler.', types:['court'] },
-    { id:'intermittent', nom:'La panne fantôme', texte:'Un canon contaminant qui brouille sa ligne… de temps en temps : la supervision bouge toute seule. Observez bien avant de conclure.', types:['intermittent'] },
-    { id:'double', nom:'Double peine', texte:'Deux pannes en même temps, de deux sortes différentes.', types:['double'] },
-    { id:'mystere', nom:'Panne mystère', texte:'Une panne au hasard parmi toutes les sortes. À vous de deviner laquelle.', types:['mystere'] },
-    { id:'adresse', sournoise:true, nom:'Adresse en double', texte:'Deux canons ont la même adresse : sous tension tous les deux, ils brouillent chacun leur ligne. Couper l’un ou l’autre fait tout revenir…', types:['adresse'] },
-    { id:'paire', sournoise:true, nom:'Paire inversée', texte:'Après une intervention, les fils A et B d’une liaison ont été inversés. Il y a du courant, des trames… illisibles.', types:['paire'] },
-    { id:'parasite', sournoise:true, nom:'Le câble voisin', texte:'Une liaison de dialogue longe un câble de puissance : elle est parasitée tant que ce transfo est en service.', types:['parasite'] },
-    { id:'passeplat', sournoise:true, nom:'Le passe-plat', texte:'Un canon répond très bien… mais ne relaie plus le dialogue aux suivants. On dirait une liaison coupée.', types:['passeplat'] },
-    { id:'cachee', sournoise:true, nom:'Panne cachée', texte:'Une panne en cache une autre, plus loin sur la même ligne : réparer la première ne fait pas tout revenir.', types:['cachee'] },
-    { id:'expert2', expert:true, nom:'Expert : deux sournoises', texte:'Deux pannes sournoises en même temps, peu de pièces de rechange.', types:['expert2'] },
-    { id:'expert3', expert:true, nom:'Expert : trois sournoises', texte:'Trois pannes sournoises en même temps. Pour les dépanneurs chevronnés.', types:['expert3'] },
+    { id:'dialogue', palier:'debutant', nom:'La liaison arrachée', texte:'Une liaison de dialogue a été coupée (une dameuse, un rongeur…). Trouvez-la et réparez-la.', types:['dialogue'] },
+    { id:'aval', palier:'debutant', nom:'Le bavard', texte:'Un canon brouille le dialogue de tous ceux qui sont après lui. Lui semble aller bien…', types:['aval'] },
+    { id:'elec', palier:'debutant', nom:'Le câble électrique', texte:'Un câble électrique est coupé : les canons d’après n’ont plus de courant, et bloquent le dialogue. Mesurez la tension pour trouver où.', types:['elec'] },
+    { id:'ligne', palier:'confirme', nom:'La ligne brouillée', texte:'Un canon contaminant brouille toute sa ligne, avant et après lui. Coupez au milieu, regardez ce qui revient : la dichotomie.', types:['ligne'] },
+    { id:'court', palier:'confirme', nom:'Le transfo qui saute', texte:'Un canon en court-circuit fait disjoncter son transfo, qui redisjoncte au réarmement. Ouvrez des tronçons de câble pour l’isoler.', types:['court'] },
+    { id:'passeplat', palier:'confirme', nom:'Le passe-plat', texte:'Un canon répond très bien… mais ne relaie plus le dialogue aux suivants. On dirait une liaison coupée.', types:['passeplat'] },
+    { id:'paire', palier:'confirme', nom:'Paire inversée', texte:'Après une intervention, les fils A et B d’une liaison ont été inversés. Il y a du courant, des trames… illisibles.', types:['paire'] },
+    { id:'intermittent', palier:'confirme', nom:'La panne fantôme', texte:'Un canon contaminant qui brouille sa ligne… de temps en temps : la supervision bouge toute seule. Observez bien avant de conclure.', types:['intermittent'] },
+    { id:'parasite', palier:'sournois', nom:'Le câble voisin', texte:'Une liaison de dialogue longe un câble de puissance : elle est parasitée tant que ce transfo est en service.', types:['parasite'] },
+    { id:'cachee', palier:'sournois', nom:'Panne cachée', texte:'Une panne en cache une autre, plus loin sur la même ligne : réparer la première ne fait pas tout revenir.', types:['cachee'] },
+    { id:'adresse', palier:'sournois', nom:'Adresse en double', texte:'Deux canons ont la même adresse : sous tension tous les deux, ils brouillent chacun leur ligne. Couper l’un ou l’autre fait tout revenir…', types:['adresse'] },
+    { id:'double', palier:'sournois', nom:'Double peine', texte:'Deux pannes en même temps, de deux sortes différentes.', types:['double'] },
+    { id:'mystere', palier:'sournois', nom:'Panne mystère', texte:'Une panne au hasard parmi toutes les sortes. À vous de deviner laquelle.', types:['mystere'] },
+    { id:'expert2', palier:'expert', nom:'Expert : deux sournoises', texte:'Deux pannes sournoises en même temps, peu de pièces de rechange.', types:['expert2'] },
+    { id:'expert3', palier:'expert', nom:'Expert : trois sournoises', texte:'Trois pannes sournoises en même temps. Pour les dépanneurs chevronnés.', types:['expert3'] },
   ];
   function nouvellePartie(niveauId, graine){
     graine = graine || Math.floor(Math.random() * 1e9);
@@ -334,6 +336,6 @@
     return res;
   }
 
-  window.PanneSim = { R, ek, CANONS, PAR_ID, VRAIS, LIAISONS, CABLES, L_PAR_K, C_PAR_K, DEPARTS, D_PAR_ID, TETES, LIAISONS_DE, CABLES_DE, ORIGINE, TYPES, NIVEAUX,
+  window.PanneSim = { R, ek, CANONS, PAR_ID, VRAIS, LIAISONS, CABLES, L_PAR_K, C_PAR_K, DEPARTS, D_PAR_ID, TETES, LIAISONS_DE, CABLES_DE, ORIGINE, TYPES, NIVEAUX, PALIERS,
     nouvelEtat, courant, stabiliser, calculer, diagnostic, actif, nouvellePartie, defiDuJour, toutVa, optimum, versDe, tests };
 })();
