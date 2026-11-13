@@ -255,11 +255,13 @@ window.AltitudeScores = (() => {
     }
     // Quelle taille ? : la meilleure partie et les tailles trouvées pile
     const to = lire('toise-records');
-    if(to && to.parties){
+    // (mode 2, version 184 : on étire la silhouette ; les scores du premier mode, au curseur, ne sont plus classés)
+    if(to && to.mode === 2 && (to.parties || to.defis)){
       jeu('toise', 'Quelle taille ?', '📏');
-      ep('toise', 'score', 'Meilleure partie (10 devinettes)', to.best || 0, `${String(to.best || 0).replace('.', ',')} / 100`);
-      ep('toise', 'parfaits', 'Tailles parfaites', to.parfaits || 0, `${to.parfaits || 0} parfaite${to.parfaits > 1 ? 's' : ''}`);
-      J.toise.stats = { 'Parties':to.parties, 'Devinettes':to.devinettes || 0, 'Note moyenne':((to.total || 0) / Math.max(1, to.devinettes || 0)).toFixed(1).replace('.', ',') + ' / 10' };
+      if(to.parties) ep('toise', 'partie', 'Meilleure partie (10 devinettes)', to.best || 0, `${String(to.best || 0).replace('.', ',')} / 100`);
+      if(to.defis) ep('toise', 'defi', 'Meilleur défi du jour (5 devinettes)', to.defiBest || 0, `${String(to.defiBest || 0).replace('.', ',')} / 50`);
+      ep('toise', 'tailles', 'Tailles parfaites', to.parfaits || 0, `${to.parfaits || 0} parfaite${to.parfaits > 1 ? 's' : ''}`);
+      J.toise.stats = { 'Parties':to.parties, 'Défis du jour':to.defis || 0, 'Devinettes':to.devinettes || 0, 'Note moyenne':((to.total || 0) / Math.max(1, to.devinettes || 0)).toFixed(1).replace('.', ',') + ' / 10' };
     }
     const nu = lire('nuancier-records');
     // (barème 2, plus sévère : les scores de l'ancien barème ne sont plus classés)
