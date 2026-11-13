@@ -3,6 +3,10 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:186, type:'maj', jeu:'Dichotomie', ico:'📶', lien:'jeux/panne.html',
+    txt:'Les règles suivent enfin le terrain. Un canon exclu (interrupteur ouvert) ou sans courant ne coupe plus la ligne. Les 8 répétiteurs (162, 115, 140, 98, 1, 201, 220, 318) sont sur la carte et découpent le réseau en tronçons. Un outil mesure le signal : sa force, le bruit, l\'entrée et la sortie des répétiteurs, avec un conseil à chaque mesure. « Changer le module » remplace la carte et le réadressage. Une explication sous chaque bouton, une pièce n\'est plus perdue en cas d\'erreur, et des pannes cohérentes (liaison abîmée, répétiteur en panne). Les étoiles repartent de zéro.' },
+  { v:186, type:'maj', jeu:'Nuancier', ico:'🎨', lien:'jeux/nuancier.html',
+    txt:'La note est un peu plus généreuse : on marque des points plus facilement quand la couleur est proche (environ 9 pour un écart à peine visible, 6 pour une couleur voisine).' },
   { v:185, type:'maj', jeu:'Quelle taille ?', ico:'📐', lien:'jeux/toise.html',
     txt:'Plus simple et plus lisible : on ne compare plus que deux objets, toujours en hauteur (fini l\'intrus et les longueurs), sur un quadrillage discret qui aide à compter. La partie va du plus proche (jusqu\'à 3 fois plus haut) au grand écart (10 à 20 fois).' },
   { v:184, type:'maj', jeu:'Quelle taille ?', ico:'🤏', lien:'jeux/toise.html',
