@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:184, type:'maj', jeu:'Quelle taille ?', ico:'🤏', lien:'jeux/toise.html',
+    txt:'Nouvelle façon de jouer, plus de chiffres : l\'objet mystère n\'est pas à la bonne taille, étire-le ou rétrécis-le du bout du doigt (ou avec deux doigts) jusqu\'à la bonne échelle. La vraie silhouette apparaît ensuite sous la tienne. Des pièges à la fin (un intrus dessiné à la fausse échelle, puis le grand écart), et un défi du jour de 5 devinettes, le même pour tout le monde. Les records repartent de zéro.' },
   { v:183, type:'nouveau', jeu:'Quelle taille ?', ico:'📏', lien:'jeux/toise.html',
     txt:'Un nouveau jeu de coup d\'œil : devine la vraie taille d\'une silhouette (tour Eiffel, baleine bleue, Airbus, canette, dameuse…) posée à côté d\'une autre. 66 silhouettes, 10 devinettes de plus en plus trompeuses : même échelle, à la règle, deux échelles, puis à la loupe. Réponse au curseur, note sur 10.' },
   { v:183, type:'maj', jeu:'Nuancier', ico:'🦸', lien:'jeux/nuancier.html',
