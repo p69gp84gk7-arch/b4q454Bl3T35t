@@ -142,11 +142,12 @@ window.AltitudeScores = (() => {
       J.tour.stats = { 'Parties jouées':cartes.reduce((s, [, r]) => s + (r.parties || 0), 0), 'Avions posés':cartes.reduce((s, [, r]) => s + (r.total || 0), 0) };
     }
     // Dichotomie (recherche de panne)
+    // (règles 2, version 186 : les records des anciennes règles ne sont plus classés)
     const dp = lire('panne-records');
-    if(dp && dp.parties){
+    if(dp && dp.parties && dp.regles === 2){
       jeu('panne', 'Dichotomie', '📡');
-      const NOMSP = { dialogue:'La liaison arrachée', aval:'Le bavard', ligne:'La ligne brouillée', elec:'Le câble électrique', court:'Le transfo qui saute', intermittent:'La panne fantôme', double:'Double peine', mystere:'Panne mystère', adresse:'Adresse en double', paire:'Paire inversée', parasite:'Le câble voisin', passeplat:'Le passe-plat', cachee:'Panne cachée', expert2:'Expert : deux sournoises', expert3:'Expert : trois sournoises' };
-      for(const [id, r] of Object.entries(dp.niveaux || {})) if(r.reussies) ep('panne', id, NOMSP[id] || id, (r.etoiles || 0) * 100000 + Math.max(0, 999 - (r.gestes || 0)) * 100 + Math.max(0, 99 - Math.floor((r.temps || 5940) / 60)), `${'★'.repeat(r.etoiles || 0)} · ${r.gestes} geste${r.gestes > 1 ? 's' : ''}${r.temps != null ? ` · ${Math.floor(r.temps / 60)}:${String(r.temps % 60).padStart(2, '0')}` : ''}`);
+      const NOMSP = { dialogue:'La liaison arrachée', elec:'Le câble électrique', adresse:'Adresse en double', ligne:'Le tronçon brouillé', repeteur:'Le répétiteur en panne', faible:'Le signal faible', court:'Le transfo qui saute', paire:'Paire inversée', intermittent:'La panne fantôme', parasite:'Le câble voisin', cachee:'Panne cachée', double:'Double peine', mystere:'Panne mystère', expert2:'Expert : deux sournoises', expert3:'Expert : trois sournoises' };
+      for(const [id, r] of Object.entries(dp.niveaux || {})) if(r.reussies && NOMSP[id]) ep('panne', id + '-2', NOMSP[id], (r.etoiles || 0) * 100000 + Math.max(0, 999 - (r.gestes || 0)) * 100 + Math.max(0, 99 - Math.floor((r.temps || 5940) / 60)), `${'★'.repeat(r.etoiles || 0)} · ${r.gestes} geste${r.gestes > 1 ? 's' : ''}${r.temps != null ? ` · ${Math.floor(r.temps / 60)}:${String(r.temps % 60).padStart(2, '0')}` : ''}`);
       J.panne.stats = { 'Parties':dp.parties, 'Pannes réparées':dp.reussies || 0, 'Défis du jour réussis':dp.defisReussis || 0, 'Étoiles':Object.values(dp.niveaux || {}).reduce((s, r) => s + (r.etoiles || 0), 0) };
     }
     // Tir au panier

@@ -19,6 +19,15 @@
 
   /* ---------- les records ---------- */
   let REC = Object.assign({ parties:0, reussies:0, niveaux:{} }, lire('panne-records', {}));
+  // les règles ont changé (version 186 : le signal, les répétiteurs, un canon exclu ne coupe plus la ligne) : les étoiles et les
+  // records repartent de zéro ; les niveaux déjà joués restent ouverts
+  const REGLES = 2;
+  if(REC.regles !== REGLES){
+    const avant = REC.parties;
+    for(const k in REC.niveaux) REC.niveaux[k] = { etoiles:0, fois:REC.niveaux[k].fois || 0, reussies:0 };
+    REC.defis = {}; REC.regles = REGLES; REC.reprise = !!avant;
+    if(avant) ecrire('panne-records', REC);
+  }
   const etoilesTotal = () => Object.values(REC.niveaux).reduce((s, n) => s + (n.etoiles || 0), 0);
 
   /* ---------- écrans ---------- */
@@ -27,6 +36,7 @@
     ecran('eAccueil');
     const n = REC.niveaux;
     $('cRecords').innerHTML = `<h3>Tes records</h3><div class="stats"><div><b>${etoilesTotal()}</b><small>étoiles / ${S.NIVEAUX.length * 3}</small></div><div><b>${REC.reussies}</b><small>pannes réparées</small></div><div><b>${REC.parties}</b><small>parties</small></div><div><b>${REC.parties ? Math.round(100 * REC.reussies / REC.parties) + ' %' : '—'}</b><small>de réussite</small></div></div>`;
+    if(REC.reprise) $('cRecords').innerHTML += `<p class="sous" style="font-size:.8rem;margin-top:8px">Les règles ont changé (mesure du signal, répétiteurs, un canon exclu ne coupe plus la ligne) : les étoiles repartent de zéro. Les pannes déjà ouvertes le restent.</p>`;
     const D = S.defiDuJour(), fait = (REC.defis || {})[D.defi];
     $('cDefi').innerHTML = `<h3>🗓 Défi du jour</h3><p class="sous">La même panne pour tout le monde aujourd'hui (une panne mystère, qui change chaque jour).</p>
       ${fait ? `<p class="sous" style="margin-top:6px">✅ Réussi : <b style="color:var(--or)">${'★'.repeat(fait.etoiles)}${'☆'.repeat(3 - fait.etoiles)}</b> · ${pl(fait.gestes, 'geste')} · ⏱ ${chrono(fait.temps)}</p>` : ''}
@@ -34,7 +44,7 @@
     $('bDefi').onclick = () => demarrer(null, true);
     const carteNiv = (v, i) => {
       if(!ouvert(i)) return `<button class="niv verrou" data-n="${v.id}" data-verrou="1"><b>🔒 ${i + 1}. ${esc(v.nom)}</b><small>Réussis « ${esc(S.NIVEAUX[i - 1].nom)} » pour débloquer cette panne.</small></button>`;
-      const r = n[v.id] || {}, ico = { dialogue:'✂️', aval:'📡', ligne:'📡', elec:'🔌', court:'⚡', intermittent:'〰️', double:'✌️', mystere:'❓', adresse:'🔢', paire:'⇆', parasite:'🛡', passeplat:'🚧', cachee:'🫥', expert2:'🎓', expert3:'🏆' }[v.id];
+      const r = n[v.id] || {}, ico = { dialogue:'✂️', ligne:'📡', elec:'🔌', court:'⚡', intermittent:'〰️', double:'✌️', mystere:'❓', adresse:'🔢', paire:'⇆', parasite:'🛡', repeteur:'📶', faible:'📉', cachee:'🫥', expert2:'🎓', expert3:'🏆' }[v.id];
       return `<button class="niv" data-n="${v.id}"><b>${ico} ${i + 1}. ${esc(v.nom)}</b><small>${esc(v.texte)}</small>
         <span class="et">${'★'.repeat(r.etoiles || 0)}${'☆'.repeat(3 - (r.etoiles || 0))}</span>
         <span class="rec">${r.reussies ? `Meilleur : ${pl(r.gestes, 'geste')}${r.temps != null ? ` · ⏱ ${chrono(r.temps)}` : ''}` : 'Pas encore réussi'}</span></button>`;
@@ -57,6 +67,7 @@
     P = Object.assign(p, { gestes:0, faux:0, mesures:0, vus:{}, diag:{}, journal:[], fini:false, sel:null, vue:'dia', revele:false, t0:Date.now(), achats:0 });
     const C = S.calculer(P.E); P.dernierN = C.parlent.size;
     journal(`🚨 <b>Alarme supervision</b> : ${pl(NB - C.parlent.size, 'canon')} ne communiquent plus. Le chrono est lancé !`);
+    if(!defi && p.niveau.methode) journal(`💡 <b>${esc(p.niveau.nom)}</b> : ${esc(p.niveau.methode)}`, 'bon');
     cadre = false; ecran('eJeu'); majVues(); panneau(); etat(); requestAnimationFrame(ajuster);
   }
   function journal(t, cls){ P.journal.unshift({ t:P.E.t, h:`<b>${chrono(P.E.t)}</b> · ${t}`, cls }); if(P.journal.length > 80) P.journal.pop(); }
@@ -78,6 +89,8 @@
     const avant = parlent().size;
     const r = faire() || {};
     const disj = S.stabiliser(P.E);
+    // le réseau a changé : les mesures déjà faites ne sont plus sûres (elles restent écrites, en gris)
+    if(!r.sansSupervision) Object.values(P.diag).forEach(d => d.perime = true);
     if(compte) P.gestes++;
     const apres = parlent().size, diff = apres - avant;
     const suite = r.sansSupervision ? '' : ` → <b>${apres}</b> / ${NB}${diff ? ` (${diff > 0 ? '+' : ''}${diff})` : ''}`;
@@ -87,63 +100,89 @@
     if(S.toutVa(P.E)) return finir(true);
     etat(); panneau(); dessiner();
   }
-  // les pièces de rechange : 💳 cartes de dialogue, 🧰 kits de réparation (câble, court-circuit, blindage)
-  const PIECES = { cartes:'carte de dialogue', kits:'kit de réparation' };
-  // stock vide : on propose d'en acheter (gratuit)
+  // les pièces de rechange : 💳 modules (un canon qui brouille, une adresse en double), 🧰 kits (câble, liaison, court-circuit, blindage, répétiteur)
+  const PIECES = { modules:'module', kits:'kit de réparation' };
+  // il faut une pièce en main pour tenter une réparation (stock vide : on propose d'en acheter, c'est gratuit) ;
+  // elle n'est consommée que si la réparation était la bonne
   function piece(t){
-    if(P.E.stock[t] <= 0){ if(!confirm(`Plus de ${PIECES[t]} en stock. En acheter une ?`)) return false; acheter(t, true); }
-    P.E.stock[t]--; return true;
+    if(P.E.stock[t] <= 0){ if(!confirm(`Plus de ${PIECES[t]} en stock. En acheter un ?`)) return false; acheter(t, true); }
+    return true;
   }
   function acheter(t, silence){
     if(!P || P.fini) return;
     P.E.stock[t]++; P.achats++;
-    journal(`🛒 ${t === 'cartes' ? '💳 Une carte de dialogue' : '🧰 Un kit de réparation'} acheté${t === 'cartes' ? 'e' : ''}`);
+    journal(`🛒 ${t === 'modules' ? '💳 Un module' : '🧰 Un kit de réparation'} acheté`);
     if(!silence){ toast(`🛒 +1 ${PIECES[t]}`); etat(); panneau(); }
   }
+  // une réparation : la bonne (la pièce est posée, la panne est réparée) ou une erreur (comptée triple, la pièce est gardée)
+  function reparer(p, stock, bon, mauvais){
+    if(p){ p.repare = true; p.trouve = P.E.t; if(stock) P.E.stock[stock]--; return { texte:'✅ ' + bon, cls:'bon' }; }
+    P.faux++; return { texte:'❌ ' + mauvais + (stock ? ' La pièce retourne au stock.' : ''), cls:'mal' };
+  }
   const panne = (type, cle) => P.E.pannes.find(p => !p.repare && p.type === type && (p.canon === cle || p.k === cle));
+
+  /* ---------- les mesures, en clair ---------- */
+  // le signal mesuré : « 62 % net », « 48 %, brouillé (bruit 73 %) », « absent »…
+  const lireSignal = (n, q, bruit) => q === 'absent' ? '<b class="ko">absent</b>' : q === 'net' ? `<b class="ok">${n} % net</b>` : q === 'brouillé' ? `${n} %, <b class="ko">brouillé</b>${bruit != null ? ` (bruit <b class="vo">${bruit} %</b>)` : ''}` : q === 'illisible' ? `${n} %, <b class="ko">illisible</b>` : `<b class="vo">${n} %, trop faible</b>`;
+  const lireReponse = r => ({ communique:'<b class="ok">le canon répond</b>', exclu:'canon <b class="vo">exclu du réseau</b>', 'éteint':'canon <b class="vo">sans courant</b>', conflit:'<b class="ko">adresse en double</b>', muet:'<b class="ko">le canon ne répond pas</b>' })[r];
+  // (le signal est-il bien plus bas que d'habitude à cet endroit ?)
+  const tropBas = d => d.qualite !== 'absent' && d.signal < d.normal * .75;
+  const lireMesure = d => `tension <b class="${d.tension === 'absente' ? 'vo' : 'ok'}">${d.tension}</b> · signal ${lireSignal(d.signal, d.qualite, d.bruit)}${tropBas(d) ? ` <small>(d'habitude ${d.normal} %)</small>` : ''} · ${lireReponse(d.reponse)}`
+    + (d.rep ? `<br>📶 Répétiteur : ${d.rep.courant ? 'alimenté' : '<b class="vo">sans courant</b>'} · entrée ${lireSignal(d.rep.entree, d.rep.qEntree)} · sortie ${d.rep.sortie ? '<b class="ok">100 %</b>' : '<b class="ko">rien</b>'}` : '');
+  // ce que la mesure veut dire, et où chercher ensuite
+  function conseil(d){
+    if(d.rep){
+      if(!d.rep.courant) return 'Ce répétiteur n’a pas de courant : il ne renvoie rien, et tout ce qui est après lui se tait. Cherchez côté électricité (vue ⚡).';
+      if(!d.rep.sortie && d.rep.qEntree === 'net') return 'Bon signal à l’entrée, rien à la sortie, et il a du courant : le répétiteur est en panne. Changez-le.';
+      if(!d.rep.sortie) return `Le signal qui arrive au répétiteur est ${d.rep.qEntree} : il ne peut rien renvoyer. Le défaut est avant lui, dans le tronçon d’où il reçoit.`;
+    }
+    if(d.tension === 'absente') return 'Pas de tension ici : c’est une panne de courant. Passez en vue ⚡ Électricité : allez voir le transfo (a-t-il disjoncté ?), ou cherchez où la tension s’arrête le long du câble.';
+    if(d.reponse === 'conflit') return 'Il a du courant et un bon signal, mais il répond en même temps qu’un autre canon : adresse en double. Changez son module (ou celui de l’autre).';
+    if(d.qualite === 'absent') return 'Aucun signal : la ligne est coupée avant ce canon (ou le répétiteur d’avant ne renvoie rien). Remontez vers la tête jusqu’à retrouver du signal.';
+    if(d.qualite === 'brouillé') return d.bruit >= 90 ? 'Bruit au maximum : le module fautif est ici, ou juste à côté. Excluez ce canon : si tout revient, c’est lui.' : d.bruit >= 50 ? 'Bruit fort : le fautif est proche. Mesurez de chaque côté, le bruit monte en s’approchant de lui.' : 'Bruit faible : le fautif est loin dans ce tronçon. Allez du côté où le bruit monte.';
+    if(d.qualite === 'illisible') return 'Du signal, mais illisible : une paire A/B inversée (ou un parasite) avant ce canon. Cherchez le dernier canon où le signal est encore net.';
+    if(d.qualite === 'faible') return `Signal trop faible pour être lu (d’habitude ${d.normal} % ici) : une liaison abîmée l’a affaibli avant ce canon. Cherchez où il chute d’un coup.`;
+    if(tropBas(d)) return `Le canon lit encore le signal, mais il est bien plus bas que d’habitude (${d.normal} % ici) : il a chuté avant ce canon. Remontez pour trouver où, c’est une liaison abîmée.`;
+    if(d.reponse === 'éteint') return 'Le signal passe très bien, mais ce canon n’a pas de courant : cherchez côté électricité (vue ⚡).';
+    if(d.reponse === 'exclu') return 'Canon exclu : il ne répond pas, mais la ligne continue de passer vers les suivants.';
+    return 'Tout va bien ici : le défaut est plus loin, ou sur une autre branche.';
+  }
 
   /* ---------- les gestes ---------- */
   const G = {
     mesurer:id => agir(true, () => {
       P.mesures++; const d = S.diagnostic(P.E, id); P.diag[id] = Object.assign({ t:P.E.t }, d);
-      return { texte:`🔍 Mesure au ${nomCanon(id)} : tension <b>${d.tension}</b>, ${d.dialogue}`, sansSupervision:true, toast:`Tension ${d.tension} · ${d.dialogue}` };
+      return { texte:`🔍 Mesure au ${nomCanon(id)} : ${lireMesure(d)}<br><i>💡 ${conseil(d)}</i>`, sansSupervision:true, toast:`Signal ${d.qualite === 'absent' ? 'absent' : d.signal + ' % ' + (d.qualite === 'faible' ? 'trop faible' : d.qualite)}${d.qualite === 'brouillé' ? ' · bruit ' + d.bruit + ' %' : ''}` };
     }),
-    inter:id => { const ouvrir = !P.E.off.has(id); agir(ouvrir, () => { if(ouvrir) P.E.off.add(id); else P.E.off.delete(id); delete P.diag[id]; return { texte:`${ouvrir ? '⭘ Interrupteur ouvert' : '⏺ Interrupteur refermé'} au ${nomCanon(id)}` }; }); },
-    liaison:(k, ou) => { const deb = !P.E.debr.has(k), l = S.L_PAR_K[k]; agir(deb, () => { if(deb) P.E.debr.add(k); else P.E.debr.delete(k); return { texte:`${deb ? '✂ Liaison débranchée' : '🔗 Liaison rebranchée'} ${nomC(l.a)} – ${nomC(l.b)}` }; }); },
+    inter:id => { const ouvrir = !P.E.off.has(id); agir(ouvrir, () => { if(ouvrir) P.E.off.add(id); else P.E.off.delete(id); delete P.diag[id];
+      return { texte:ouvrir ? `⭘ ${nomCanon(id)} <b>exclu du réseau</b> (interrupteur ouvert) : il ne répond plus, la ligne continue de passer` : `⏺ ${nomCanon(id)} remis sur le réseau (interrupteur refermé)` }; }); },
+    liaison:(k, ou) => { const deb = !P.E.debr.has(k), l = S.L_PAR_K[k]; agir(deb, () => { if(deb) P.E.debr.add(k); else P.E.debr.delete(k); P.diag = {};
+      return { texte:deb ? `✂ Liaison ${nomC(l.a)} – ${nomC(l.b)} <b>débranchée</b> : plus rien ne passe après elle` : `🔗 Liaison ${nomC(l.a)} – ${nomC(l.b)} rebranchée` }; }); },
     troncon:(k, ou) => { const ouv = !P.E.ouv.has(k), c = S.C_PAR_K[k]; agir(ouv, () => { if(ouv) P.E.ouv.add(k); else P.E.ouv.delete(k); return { texte:`${ouv ? '⭘ Tronçon électrique ouvert' : '⏺ Tronçon électrique refermé'} ${nomLien(c)}` }; }); },
     voir:d => agir(true, () => { const e = etatTransfo(d); P.vus[d] = { t:P.E.t, etat:e }; return { texte:`👀 ${esc(S.D_PAR_ID[d].nom)} : <b>${e}</b>`, sansSupervision:true, toast:`${esc(S.D_PAR_ID[d].nom)} : ${e}` }; }),
     rearmer:d => agir(true, () => {
       const avant = P.E.disj.has(d); P.E.disj.delete(d); P.E.depOuv.delete(d);
       const de = S.stabiliser(P.E); const saute = P.E.disj.has(d);
       P.vus[d] = { t:P.E.t, etat:saute ? 'disjoncté' : 'en service' };
-      if(saute) return { texte:`💥 ${esc(S.D_PAR_ID[d].nom)} réarmé… <b>il redisjoncte aussitôt !</b>`, cls:'mal' };
+      if(saute) return { texte:`💥 ${esc(S.D_PAR_ID[d].nom)} réarmé… <b>il redisjoncte aussitôt !</b> Un court-circuit est toujours alimenté.`, cls:'mal' };
       return { texte:avant ? `⚡ ${esc(S.D_PAR_ID[d].nom)} réarmé : <b>il tient</b>` : `⚡ ${esc(S.D_PAR_ID[d].nom)} remis en service`, cls:avant ? 'bon' : '' };
     }),
-    couper:d => agir(true, () => { P.E.depOuv.add(d); P.vus[d] = { t:P.E.t, etat:'coupé' }; return { texte:`⭘ ${esc(S.D_PAR_ID[d].nom)} coupé` }; }),
-    carte:id => { if(!P.fini && piece('cartes')) agir(true, () => {
-      const p = panne('contaminant', id) || panne('passeplat', id); if(p){ p.repare = true; p.trouve = P.E.t; return { texte:`✅ Carte de dialogue changée au ${nomCanon(id)} : <b>c'était bien elle !</b>`, cls:'bon' }; }
-      P.faux++; return { texte:`❌ Carte changée au ${nomCanon(id)}… ce n'était pas elle.`, cls:'mal' };
+    couper:d => agir(true, () => { P.E.depOuv.add(d); P.vus[d] = { t:P.E.t, etat:'coupé' }; return { texte:`⭘ ${esc(S.D_PAR_ID[d].nom)} coupé : ses canons n'ont plus de courant` }; }),
+    // changer le module d'un canon : il répare un module qui brouille son tronçon, ou une adresse en double
+    module:id => { if(!P.fini && piece('modules')) agir(true, () => {
+      const p = panne('contaminant', id), a = P.E.pannes.find(x => !x.repare && x.type === 'adresse' && x.canons.includes(id));
+      if(p) return reparer(p, 'modules', `Module changé au ${nomCanon(id)} : <b>c'était bien lui qui brouillait le tronçon !</b>`);
+      return reparer(a, 'modules', `Module changé au ${nomCanon(id)} : <b>il avait la même adresse qu'un autre canon !</b>`, `Module changé au ${nomCanon(id)}… l'ancien marchait très bien.`);
     }); },
-    adresse:id => agir(true, () => {
-      const p = P.E.pannes.find(x => !x.repare && x.type === 'adresse' && x.canons.includes(id)); if(p){ p.repare = true; p.trouve = P.E.t; return { texte:`✅ ${nomCanon(id)} réadressé : <b>il avait la même adresse qu'un autre canon !</b>`, cls:'bon' }; }
-      P.faux++; return { texte:`❌ ${nomCanon(id)} réadressé… son adresse était bonne.`, cls:'mal' };
-    }),
-    inverser:(k, ou) => { const l = S.L_PAR_K[k]; agir(true, () => {
-      const p = panne('paire', k); if(p){ p.repare = true; p.trouve = P.E.t; return { texte:`✅ Paire A/B inversée sur la liaison ${nomC(l.a)} – ${nomC(l.b)} : <b>elle était à l'envers !</b>`, cls:'bon' }; }
-      P.faux++; return { texte:`❌ Paire inversée sur ${nomC(l.a)} – ${nomC(l.b)}… elle était bien branchée (remise comme avant).`, cls:'mal' }; }); },
-    blinder:(k, ou) => { const l = S.L_PAR_K[k]; if(!P.fini && piece('kits')) agir(true, () => {
-      const p = panne('parasite', k); if(p){ p.repare = true; p.trouve = P.E.t; return { texte:`✅ Liaison ${nomC(l.a)} – ${nomC(l.b)} blindée et écartée du câble de puissance : <b>plus de parasites !</b>`, cls:'bon' }; }
-      P.faux++; return { texte:`❌ Liaison ${nomC(l.a)} – ${nomC(l.b)} blindée… elle n'était pas parasitée.`, cls:'mal' }; }); },
-    court:id => { if(!P.fini && piece('kits')) agir(true, () => {
-      const p = panne('court', id); if(p){ p.repare = true; p.trouve = P.E.t; return { texte:`✅ Court-circuit réparé au ${nomCanon(id)} (réarmez le transfo)`, cls:'bon' }; }
-      P.faux++; return { texte:`❌ Pas de court-circuit au ${nomCanon(id)}.`, cls:'mal' };
-    }); },
+    repeteur:id => { if(!P.fini && piece('kits')) agir(true, () => reparer(panne('repeteur', id), 'kits', `Répétiteur du ${nomCanon(id)} changé : <b>il ne renvoyait plus le signal !</b>`, `Répétiteur du ${nomCanon(id)} changé… l'ancien marchait très bien.`)); },
+    inverser:(k, ou) => { const l = S.L_PAR_K[k]; agir(true, () => reparer(panne('paire', k), null, `Paire A/B inversée sur la liaison ${nomC(l.a)} – ${nomC(l.b)} : <b>elle était à l'envers !</b>`, `Paire inversée sur ${nomC(l.a)} – ${nomC(l.b)}… elle était bien branchée (remise comme avant).`)); },
+    blinder:(k, ou) => { const l = S.L_PAR_K[k]; if(!P.fini && piece('kits')) agir(true, () => reparer(panne('parasite', k), 'kits', `Liaison ${nomC(l.a)} – ${nomC(l.b)} blindée et écartée du câble de puissance : <b>plus de parasites !</b>`, `Liaison ${nomC(l.a)} – ${nomC(l.b)} blindée… elle n'était pas parasitée.`)); },
+    court:id => { if(!P.fini && piece('kits')) agir(true, () => reparer(panne('court', id), 'kits', `Court-circuit réparé au ${nomCanon(id)} (réarmez le transfo)`, `Pas de court-circuit au ${nomCanon(id)}.`)); },
     repLiaison:(k, ou) => { const l = S.L_PAR_K[k]; if(!P.fini && piece('kits')) agir(true, () => {
-      const p = panne('cableDia', k); if(p){ p.repare = true; p.trouve = P.E.t; return { texte:`✅ Liaison ${nomC(l.a)} – ${nomC(l.b)} réparée : <b>elle était coupée !</b>`, cls:'bon' }; }
-      P.faux++; return { texte:`❌ Liaison ${nomC(l.a)} – ${nomC(l.b)} refaite… elle n'était pas coupée.`, cls:'mal' }; }); },
-    repCable:(k, ou) => { const c = S.C_PAR_K[k]; if(!P.fini && piece('kits')) agir(true, () => {
-      const p = panne('cableElec', k); if(p){ p.repare = true; p.trouve = P.E.t; return { texte:`✅ Câble électrique ${nomLien(c)} réparé : <b>il était coupé !</b>`, cls:'bon' }; }
-      P.faux++; return { texte:`❌ Câble ${nomLien(c)} refait… il n'était pas coupé.`, cls:'mal' }; }); },
+      const f = panne('cableFaible', k);
+      if(f) return reparer(f, 'kits', `Liaison ${nomC(l.a)} – ${nomC(l.b)} refaite : <b>elle était abîmée et affaiblissait le signal !</b>`);
+      return reparer(panne('cableDia', k), 'kits', `Liaison ${nomC(l.a)} – ${nomC(l.b)} refaite : <b>elle était coupée !</b>`, `Liaison ${nomC(l.a)} – ${nomC(l.b)} refaite… elle était en bon état.`); }); },
+    repCable:(k, ou) => { const c = S.C_PAR_K[k]; if(!P.fini && piece('kits')) agir(true, () => reparer(panne('cableElec', k), 'kits', `Câble électrique ${nomLien(c)} réparé : <b>il était coupé !</b>`, `Câble ${nomLien(c)} refait… il n'était pas coupé.`)); },
     remettre:() => {
       const n = P.E.off.size + P.E.debr.size + P.E.ouv.size + P.E.depOuv.size + P.E.disj.size;
       if(!n) return;
@@ -190,19 +229,16 @@
   function decrire(p){
     const C0 = (() => { const E = S.nouvelEtat(); E.pannes = [Object.assign({}, p, { repare:false, intermittent:false })]; S.stabiliser(E); return S.calculer(E); })();
     const ok = p.repare ? ` <b class="ok">· réparée à ${chrono(p.trouve)}</b>` : ' <b class="ko">· pas trouvée</b>';
-    if(p.type === 'contaminant'){
-      if(p.portee === 'ligne'){ const lignes = [...new Set((S.LIAISONS_DE[p.canon] || []).map(l => l.ligne).filter(Boolean))].join(', ');
-        return `📡 <b>${nomCanon(p.canon)}</b> : carte de dialogue défectueuse. Elle brouillait toute sa ligne${lignes ? ` (${esc(lignes)})` : ''}, ${pl(C0.brouille.size, 'canon')}${p.intermittent ? ', <b>par intermittence</b>' : ''}.${ok}`; }
-      return `📡 <b>${nomCanon(p.canon)}</b> : carte de dialogue défectueuse. Il communiquait, mais brouillait les ${pl(C0.brouille.size, 'canon')} d'après lui.${ok}`;
-    }
-    if(p.type === 'cableDia'){ const l = S.L_PAR_K[p.k]; return `✂️ <b>Liaison de dialogue ${nomC(l.a)} – ${nomC(l.b)}</b> (${zoneC(l.a)}) coupée.${p.cachee ? ' <i>(cachée derrière l’autre panne)</i>' : ''}${ok}`; }
-    if(p.type === 'cableElec'){ const c = S.C_PAR_K[p.k], n = S.VRAIS.filter(v => !C0.alim(v.id)).length; return `🔌 <b>Câble électrique ${nomLien(c)}</b> coupé : ${pl(n, 'canon')} sans courant.${ok}`; }
+    const cache = p.cachee ? ' <i>(cachée derrière l’autre panne)</i>' : '', muets = pl(NB - C0.parlent.size, 'canon');
+    if(p.type === 'contaminant') return `📡 <b>${nomCanon(p.canon)}</b> : son module envoyait n'importe quoi sur le câble. Il brouillait les ${pl(C0.brouille.size, 'canon')} de son tronçon${p.intermittent ? ', <b>par intermittence</b>' : ''} ; ${muets} muets en tout (changer le module).${ok}`;
+    if(p.type === 'repeteur') return `📶 <b>Répétiteur du ${nomCanon(p.canon)}</b> en panne : il ne renvoyait plus le signal, ${muets} muets après lui (changer le répétiteur).${ok}`;
+    if(p.type === 'cableDia'){ const l = S.L_PAR_K[p.k]; return `✂️ <b>Liaison de dialogue ${nomC(l.a)} – ${nomC(l.b)}</b> (${zoneC(l.a)}) coupée : plus aucun signal après elle, ${muets} muets.${cache}${ok}`; }
+    if(p.type === 'cableFaible'){ const l = S.L_PAR_K[p.k]; return `📉 <b>Liaison de dialogue ${nomC(l.a)} – ${nomC(l.b)}</b> (${zoneC(l.a)}) abîmée : le signal y perdait plus de la moitié de sa force, ${muets} trop loin pour le lire.${ok}`; }
+    if(p.type === 'cableElec'){ const c = S.C_PAR_K[p.k], n = S.VRAIS.filter(v => !C0.alim(v.id)).length; return `🔌 <b>Câble électrique ${nomLien(c)}</b> coupé : ${pl(n, 'canon')} sans courant${NB - C0.parlent.size > n ? `, dont un répétiteur : ${muets} muets en tout` : ''}.${ok}`; }
     if(p.type === 'court') return `⚡ <b>${nomCanon(p.canon)}</b> en court-circuit : ${esc(S.D_PAR_ID[S.ORIGINE[p.canon]].nom)} disjonctait.${ok}`;
-    const cache = p.cachee ? ' <i>(cachée derrière l’autre panne)</i>' : '';
-    if(p.type === 'adresse') return `🔢 <b>${nomCanon(p.canons[0])}</b> et <b>${nomCanon(p.canons[1])}</b> avaient la même adresse : ensemble sous tension, ils brouillaient chacun leur ligne.${ok}`;
-    if(p.type === 'paire'){ const l = S.L_PAR_K[p.k]; return `⇆ <b>Liaison ${nomC(l.a)} – ${nomC(l.b)}</b> (${zoneC(l.a)}) : paire A/B inversée, des trames illisibles après elle.${cache}${ok}`; }
+    if(p.type === 'adresse') return `🔢 <b>${nomCanon(p.canons[0])}</b> et <b>${nomCanon(p.canons[1])}</b> avaient la même adresse : ils répondaient en même temps et la supervision ne comprenait ni l'un ni l'autre (changer le module de l'un des deux).${ok}`;
+    if(p.type === 'paire'){ const l = S.L_PAR_K[p.k]; return `⇆ <b>Liaison ${nomC(l.a)} – ${nomC(l.b)}</b> (${zoneC(l.a)}) : paire A/B inversée, le signal était illisible après elle (${muets}).${cache}${ok}`; }
     if(p.type === 'parasite'){ const l = S.L_PAR_K[p.k]; return `🛡 <b>Liaison ${nomC(l.a)} – ${nomC(l.b)}</b> (${zoneC(l.a)}) parasitée par le câble de puissance de ${esc(S.D_PAR_ID[p.transfo].nom)} : couper ce transfo la faisait revenir.${ok}`; }
-    if(p.type === 'passeplat') return `🚧 <b>${nomCanon(p.canon)}</b> : il répondait, mais ne relayait plus le dialogue aux ${pl(S.VRAIS.length - C0.parlent.size, 'canon')} suivants (carte de dialogue).${cache}${ok}`;
     return '';
   }
   function bilan(){
@@ -218,7 +254,7 @@
     $('fStats').innerHTML = `<div><b>${chrono(P.E.t)}</b><small>chrono</small></div><div><b>${P.gestes}</b><small>gestes</small></div><div><b>${P.mesures}</b><small>mesures${P.achats ? ` · ${P.achats} pièce${P.achats > 1 ? 's' : ''} achetée${P.achats > 1 ? 's' : ''}` : ''}</small></div><div><b>${P.faux}</b><small>mauvaise${P.faux > 1 ? 's' : ''} réparation${P.faux > 1 ? 's' : ''}</small></div>`;
     $('fPanne').innerHTML = P.E.pannes.map(p => `<div>${decrire(p)}</div>`).join('');
   }
-  $('bVoir').onclick = () => { P.revele = true; P.vue = P.E.pannes.some(p => p.type === 'cableElec' || p.type === 'court') ? 'elec' : 'dia'; majVues(); ecran('eJeu'); panneau(); etat(); };
+  $('bVoir').onclick = () => { P.revele = true; P.vue = P.E.pannes.every(p => p.type === 'cableElec' || p.type === 'court') ? 'elec' : 'dia'; majVues(); ecran('eJeu'); panneau(); etat(); };
   $('bRejouer').onclick = () => P.defi ? demarrer(null, true) : demarrer(P.niveau.id);
   $('bMenu').onclick = () => accueil();
   $('bQuitter').onclick = () => {
@@ -231,12 +267,20 @@
     const n = parlent().size;
     $('jChrono').textContent = `⏱ ${chrono(P.E.t)}`;
     $('jGestes').textContent = pl(P.gestes, 'geste');
-    $('jMesures').textContent = `💳 ${P.E.stock.cartes} · 🧰 ${P.E.stock.kits} 🛒`;
+    $('jMesures').textContent = `💳 ${P.E.stock.modules} · 🧰 ${P.E.stock.kits} 🛒`;
     $('jLampe').classList.toggle('ko', n < NB);
     $('jCompte').textContent = `${n} / ${NB} canons communiquent`;
     $('jSous').textContent = P.revele ? 'Les pannes sont entourées en jaune.' : n < NB ? `${pl(NB - n, 'canon')} hors communication${P.defi ? ' · défi du jour' : ''}` : 'Tout communique : vérifiez que tout est réparé.';
   }
   function bouton(txt, min, fn, cls){ return `<button class="btn ${cls || ''}" data-f="${fn}">${txt}${min ? `<span class="min">${min} min</span>` : ''}</button>`; }
+  // une petite explication sous un geste : ce qu'il fait, à quoi il sert
+  const exp = t => `<p class="exp">${t}</p>`;
+  // les gestes sur une liaison de dialogue (dans la fiche d'un canon ou de la liaison)
+  const gestesLiaison = (l, depuis) => {
+    const a = depuis ? `~${depuis}` : '';
+    return bouton(P.E.debr.has(l.k) ? '🔗 Rebrancher' : '✂ Débrancher', 0, `liaison~${l.k}${a}`, 'act') + bouton('🧰 Refaire', 0, `repLiaison~${l.k}${a}`, 'rep') + bouton('⇆ Inverser A/B', 0, `inverser~${l.k}${a}`, 'rep') + bouton('🛡 Blinder', 0, `blinder~${l.k}${a}`, 'rep');
+  };
+  const EXP_LIAISON = exp('<b>✂ Débrancher</b> coupe la ligne ici : plus rien ne passe après. Ça sert à couper un tronçon en deux, pour voir de quel côté est le défaut (pensez à rebrancher). <b>🧰 Refaire</b> répare une liaison coupée ou abîmée. <b>⇆ Inverser A/B</b> remet les deux fils dans le bon sens. <b>🛡 Blinder</b> protège une liaison parasitée par un câble de puissance.');
   function panneau(){
     const el = $('panneau'), s = P.sel;
     let h = '';
@@ -246,53 +290,68 @@
     }
     if(!s){
       const ouverts = P.E.off.size + P.E.debr.size + P.E.ouv.size + P.E.depOuv.size + P.E.disj.size;
-      h = `<p class="aideJ">Touchez un <b>canon</b>, une <b>liaison</b>${P.vue === 'elec' ? ', un <b>câble électrique</b>' : ''} ou un <b>transfo ⚡</b>, puis choisissez le geste : il se fait tout de suite. Passez en vue <b>⚡ Électricité</b> pour les câbles et les transfos.</p>`;
-      if(ouverts) h += `<div class="ligneA">${bouton(`↺ Tout remettre (${ouverts})`, 0, 'remettre', 'act')}</div>`;
+      h = `<p class="aideJ">Touchez un <b>canon</b>, un <b>répétiteur 📶</b>, une <b>liaison</b>${P.vue === 'elec' ? ', un <b>câble électrique</b>' : ''} ou un <b>transfo ⚡</b>, puis choisissez le geste : il se fait tout de suite.</p>`;
+      h += `<details class="comment"><summary>💡 Comment chercher ?</summary><ol>
+        <li><b>Regardez la carte</b> : les canons rouges ne répondent plus. Le signal part des têtes (cercle blanc) et suit les flèches.</li>
+        <li><b>Mesurez aux répétiteurs 📶</b> autour de la zone rouge : entrée et sortie vous disent dans quel <b>tronçon</b> (entre deux répétiteurs) est le défaut.</li>
+        <li><b>Mesurez dans le tronçon</b> : là où le signal change (net → absent, faible, illisible, ou le bruit le plus fort), vous y êtes.</li>
+        <li>En cas de doute, <b>coupez en deux</b> : débranchez une liaison au milieu, ou excluez un canon, et regardez ce qui revient.</li>
+        <li><b>Réparez</b>, puis remettez tout en service.</li></ol></details>`;
+      if(ouverts) h += `<div class="ligneA">${bouton(`↺ Tout remettre (${ouverts})`, 0, 'remettre', 'act')}</div>${exp('Referme les interrupteurs, rebranche les liaisons, referme les tronçons et réarme les transfos. Ça ne compte pas comme un geste.')}`;
       h += `<div class="sect">Journal</div><div class="journal">${P.journal.map(j => `<div class="${j.cls || ''}">${j.h}</div>`).join('')}</div>`;
       el.innerHTML = h; brancher(); return;
     }
     const C = S.calculer(P.E);
     if(s.type === 'canon'){
-      const id = s.id, c = S.PAR_ID[id], sdm = c.zone === 'SDM', d = P.diag[id], dep = S.ORIGINE[id];
-      h += `<h2>${sdm ? '🏠 ' + esc(c.nom) : `Canon ${esc(c.nom)}`} <small>${sdm ? 'salle des machines' : `${esc(zoneC(id))} · ${MODELES[c.modele] || ''}${dep ? ' · ' + esc(S.D_PAR_ID[dep].nom) : ''}`}${S.TETES.includes(id) ? ' · tête du dialogue' : ''}</small></h2>`;
-      h += `<div class="mesure">Supervision : ${C.parlent.has(id) || (sdm && C.atteint.has(id)) ? '<b class="ok">communique</b>' : '<b class="ko">ne communique plus</b>'}${P.E.off.has(id) ? ' · interrupteur <b class="vo">ouvert</b>' : ''}` +
-        (d ? `<br>Mesuré à ${chrono(d.t)} : tension <b class="${d.tension === 'absente' ? 'vo' : 'ok'}">${d.tension}</b> · ${d.dialogue}${d.relais ? ` · <b class="${d.relais.startsWith('n') ? 'ko' : 'ok'}">${d.relais}</b>` : ''}` : '') + '</div>';
+      const id = s.id, c = S.PAR_ID[id], sdm = c.zone === 'SDM', d = P.diag[id], dep = S.ORIGINE[id], repet = S.REPETEURS.has(id);
+      h += `<h2>${sdm ? '🏠 ' + esc(c.nom) : `Canon ${esc(c.nom)}`}${repet ? ' 📶' : ''} <small>${sdm ? 'salle des machines' : `${esc(zoneC(id))} · ${MODELES[c.modele] || ''}${dep ? ' · ' + esc(S.D_PAR_ID[dep].nom) : ''}`}${S.TETES.includes(id) ? ' · tête du dialogue' : ''}${repet ? ' · <b style="color:var(--bleu)">répétiteur de signal</b>' : ''}</small></h2>`;
+      h += `<div class="mesure">Supervision : ${C.parlent.has(id) || (sdm && C.atteint.has(id)) ? '<b class="ok">communique</b>' : '<b class="ko">ne communique plus</b>'}${P.E.off.has(id) ? ' · <b class="vo">exclu du réseau</b> (interrupteur ouvert)' : ''}` +
+        (d ? `<br>Mesuré à ${chrono(d.t)}${d.perime ? ' <b class="vo">(avant vos derniers gestes : à refaire)</b>' : ''} : ${lireMesure(d)}${d.perime ? '' : `<br><i>💡 ${conseil(d)}</i>`}` : '') + '</div>';
+      if(repet) h += exp('📶 Ce canon porte un <b>répétiteur</b> : il relit le signal qui arrive (l’entrée) et le renvoie à 100 % (la sortie). Sans courant, en panne, ou si l’entrée est mauvaise, il ne renvoie rien et tout ce qui est après lui se tait.');
       if(!sdm){
-        h += `<div class="ligneA">${bouton('🔍 Mesurer', 0, `mesurer~${id}`)}${bouton(P.E.off.has(id) ? '⏺ Fermer l’interrupteur' : '⭘ Ouvrir l’interrupteur', 0, `inter~${id}`, 'act')}</div>`;
+        h += `<div class="ligneA">${bouton('🔍 Mesurer le signal', 0, `mesurer~${id}`)}${bouton(P.E.off.has(id) ? '⏺ Remettre sur le réseau' : '⭘ Exclure du réseau', 0, `inter~${id}`, 'act')}</div>`;
+        h += exp(`<b>🔍 Mesurer</b> ne change rien : on lit la tension, la force du signal de dialogue (100 % au départ, il s’affaiblit le long du câble), sa qualité${repet ? ', et l’entrée et la sortie du répétiteur' : ''}. <b>⭘ Exclure</b> ouvre l’interrupteur : le canon sort du réseau et ne répond plus, mais <b>la ligne continue de passer</b>. S’il brouillait ou faisait disjoncter, tout revient.`);
       }
       const ls = S.LIAISONS_DE[id] || [];
       if(ls.length){
         h += '<div class="sect">Liaisons de dialogue</div>';
         h += ls.map(l => { const o = l.a === id ? l.b : l.a, sens = S.versDe(l, o) === id ? '← de' : S.versDe(l, id) === o ? '→ vers' : '⇄';
-          return `<div class="lien"><span>${sens} ${esc(nomC(o))} <small style="color:var(--doux)">${esc(l.ligne)}</small>${P.E.debr.has(l.k) ? ' · <b style="color:var(--volt)">débranchée</b>' : ''}</span>${bouton(P.E.debr.has(l.k) ? '🔗 Rebrancher' : '✂ Débrancher', 0, `liaison~${l.k}~${id}`, 'act')}${bouton('🧰 Refaire', 0, `repLiaison~${l.k}~${id}`, 'rep')}${bouton('⇆ Inverser A/B', 0, `inverser~${l.k}~${id}`, 'rep')}${bouton('🧰 Blinder', 0, `blinder~${l.k}~${id}`, 'rep')}</div>`; }).join('');
+          return `<div class="lien"><span>${sens} ${esc(nomC(o))} <small style="color:var(--doux)">${esc(l.ligne)} · ${Math.round(S.LON[l.k])} m</small>${P.E.debr.has(l.k) ? ' · <b style="color:var(--volt)">débranchée</b>' : ''}</span>${gestesLiaison(l, id)}</div>`; }).join('');
+        h += EXP_LIAISON;
       }
       const cs = S.CABLES_DE[id] || [];
       if(cs.length){
         h += '<div class="sect">Câbles électriques</div>';
         h += cs.map(cb => { const o = cb.a === id ? cb.b : cb.a, nomO = o.startsWith('src/') ? S.D_PAR_ID[o.slice(4)].nom : nomC(o), sens = S.versDe(cb, o) === id ? '⚡ de' : '⚡ vers';
           return `<div class="lien"><span>${sens} ${esc(nomO)}${P.E.ouv.has(cb.k) ? ' · <b style="color:var(--volt)">ouvert</b>' : ''}</span>${bouton(P.E.ouv.has(cb.k) ? '⏺ Fermer' : '⭘ Ouvrir', 0, `troncon~${cb.k}~${id}`, 'act')}${bouton('🧰 Refaire', 0, `repCable~${cb.k}~${id}`, 'rep')}</div>`; }).join('');
+        h += exp('<b>⭘ Ouvrir</b> un tronçon coupe le courant de tous les canons d’après (pour isoler un court-circuit). <b>🧰 Refaire</b> répare un câble électrique coupé.');
       }
-      if(!sdm) h += `<div class="sect">Réparer le canon</div><div class="ligneA">${bouton('💳 Changer la carte de dialogue', 0, `carte~${id}`, 'rep')}${bouton('🧰 Réparer un court-circuit', 0, `court~${id}`, 'rep')}${bouton('🔢 Réadresser', 0, `adresse~${id}`, 'rep')}</div>`;
+      if(!sdm){
+        h += `<div class="sect">Réparer le canon</div><div class="ligneA">${bouton('💳 Changer le module', 0, `module~${id}`, 'rep')}${bouton('🧰 Réparer un court-circuit', 0, `court~${id}`, 'rep')}${repet ? bouton('📶 Changer le répétiteur', 0, `repeteur~${id}`, 'rep') : ''}</div>`;
+        h += exp(`<b>💳 Changer le module</b> : pour un canon qui brouille son tronçon, ou une adresse en double. <b>🧰 Court-circuit</b> : pour le canon qui fait disjoncter son transfo.${repet ? ' <b>📶 Changer le répétiteur</b> : s’il a du courant, un bon signal à l’entrée et rien à la sortie.' : ''} Une réparation au mauvais endroit compte pour trois gestes (la pièce, elle, retourne au stock).`);
+      }
     } else if(s.type === 'liaison'){
       const l = S.L_PAR_K[s.k];
-      h += `<h2>Liaison de dialogue <small>${esc(nomC(l.a))} ${l.d === 'ab' ? '→' : l.d === 'ba' ? '←' : '⇄'} ${esc(nomC(l.b))} · ${esc(l.ligne)}</small></h2>`;
-      h += `<div class="ligneA">${bouton(P.E.debr.has(l.k) ? '🔗 Rebrancher' : '✂ Débrancher', 0, `liaison~${l.k}`, 'act')}${bouton('🧰 Refaire la liaison', 0, `repLiaison~${l.k}`, 'rep')}${bouton('⇆ Inverser A/B', 0, `inverser~${l.k}`, 'rep')}${bouton('🧰 Blinder', 0, `blinder~${l.k}`, 'rep')}</div>`;
-      h += `<div class="ligneA">${bouton(`Canon ${esc(nomC(l.a))}`, 0, `voirC~${l.a}`)}${bouton(`Canon ${esc(nomC(l.b))}`, 0, `voirC~${l.b}`)}</div>`;
+      h += `<h2>Liaison de dialogue <small>${esc(nomC(l.a))} ${l.d === 'ab' ? '→' : l.d === 'ba' ? '←' : '⇄'} ${esc(nomC(l.b))} · ${esc(l.ligne)} · ${Math.round(S.LON[l.k])} m</small></h2>`;
+      h += `<div class="ligneA">${gestesLiaison(l)}</div>${EXP_LIAISON}`;
+      h += `<div class="ligneA">${bouton(`Canon ${esc(nomC(l.a))}`, 0, `voirC~${l.a}`)}${bouton(`Canon ${esc(nomC(l.b))}`, 0, `voirC~${l.b}`)}</div>${exp('Pour savoir si le signal passe par cette liaison, mesurez aux deux canons qu’elle relie.')}`;
     } else if(s.type === 'cable'){
       const c = S.C_PAR_K[s.k];
       h += `<h2>Câble électrique <small>${esc(nomLien(c))}</small></h2>`;
       h += `<div class="ligneA">${bouton(P.E.ouv.has(c.k) ? '⏺ Fermer le tronçon' : '⭘ Ouvrir le tronçon', 0, `troncon~${c.k}`, 'act')}${bouton('🧰 Refaire le câble', 0, `repCable~${c.k}`, 'rep')}</div>`;
+      h += exp('<b>⭘ Ouvrir</b> coupe le courant de tous les canons d’après ce tronçon : si le transfo tient ensuite au réarmement, le court-circuit est après l’ouverture. <b>🧰 Refaire</b> répare un câble coupé (tension présente d’un côté, absente de l’autre).');
       h += `<div class="ligneA">${[c.a, c.b].filter(x => !x.startsWith('src/')).map(x => bouton(`Canon ${esc(nomC(x))}`, 0, `voirC~${x}`)).join('')}</div>`;
     } else if(s.type === 'achat'){
       h += `<h2>🛒 Acheter des pièces <small>gratuit, livré tout de suite</small></h2>`;
-      h += `<div class="mesure">En stock : <b>💳 ${P.E.stock.cartes}</b> carte${P.E.stock.cartes > 1 ? 's' : ''} de dialogue · <b>🧰 ${P.E.stock.kits}</b> kit${P.E.stock.kits > 1 ? 's' : ''} de réparation${P.achats ? ` · ${pl(P.achats, 'pièce')} achetée${P.achats > 1 ? 's' : ''}` : ''}</div>`;
-      h += `<div class="ligneA">${bouton('+1 💳 carte de dialogue', 0, 'acheter~cartes', 'act')}${bouton('+1 🧰 kit de réparation', 0, 'acheter~kits', 'act')}</div>`;
-      h += `<p class="aideJ">💳 cartes : changer la carte d'un canon. 🧰 kits : refaire un câble ou une liaison, blinder, réparer un court-circuit.</p>`;
+      h += `<div class="mesure">En stock : <b>💳 ${P.E.stock.modules}</b> module${P.E.stock.modules > 1 ? 's' : ''} · <b>🧰 ${P.E.stock.kits}</b> kit${P.E.stock.kits > 1 ? 's' : ''} de réparation${P.achats ? ` · ${pl(P.achats, 'pièce')} achetée${P.achats > 1 ? 's' : ''}` : ''}</div>`;
+      h += `<div class="ligneA">${bouton('+1 💳 module', 0, 'acheter~modules', 'act')}${bouton('+1 🧰 kit de réparation', 0, 'acheter~kits', 'act')}</div>`;
+      h += `<p class="aideJ">💳 modules : changer le module d'un canon (il brouille, ou son adresse est en double). 🧰 kits : refaire un câble ou une liaison, blinder, réparer un court-circuit, changer un répétiteur. Une pièce n'est utilisée que si la réparation était la bonne.</p>`;
     } else if(s.type === 'transfo'){
-      const d = s.id, v = P.vus[d], nb = S.VRAIS.filter(c => S.ORIGINE[c.id] === d).length;
-      h += `<h2>⚡ ${esc(S.D_PAR_ID[d].nom)} <small>${pl(nb, 'canon')} alimentés en temps normal</small></h2>`;
+      const d = s.id, v = P.vus[d], nb = S.VRAIS.filter(c => S.ORIGINE[c.id] === d).length, reps = [...S.REPETEURS].filter(r => S.ORIGINE[r] === d).map(nomC);
+      h += `<h2>⚡ ${esc(S.D_PAR_ID[d].nom)} <small>${pl(nb, 'canon')} alimentés en temps normal${reps.length ? ` · répétiteur${reps.length > 1 ? 's' : ''} ${reps.join(', ')}` : ''}</small></h2>`;
       h += `<div class="mesure">${v ? `Vu à ${chrono(v.t)} : <b class="${v.etat === 'en service' || v.etat === 'réarmé' ? 'ok' : 'ko'}">${v.etat}</b>` : 'État : pas encore vu (allez voir sur place).'}</div>`;
       h += `<div class="ligneA">${bouton('👀 Aller voir', 0, `voir~${d}`)}${bouton('⚡ Réarmer', 0, `rearmer~${d}`, 'act')}${bouton(P.E.depOuv.has(d) ? '⚡ Remettre en service' : '⭘ Couper', 0, P.E.depOuv.has(d) ? `rearmer~${d}` : `couper~${d}`, 'act')}</div>`;
+      h += exp(`<b>👀 Aller voir</b> dit s’il est en service ou disjoncté. <b>⚡ Réarmer</b> le remet en route : s’il redisjoncte aussitôt, un court-circuit est encore alimenté. <b>⭘ Couper</b> éteint tous ses canons${reps.length ? ' (et ses répétiteurs : ce qui est après eux se tait aussi)' : ''} : utile pour démasquer un parasite.`);
     }
     h += `<div class="ligneA"><button class="btn" data-f="fermer">✕ Fermer</button></div>`;
     el.innerHTML = h; brancher();
@@ -375,7 +434,14 @@
       if(elec && d && d.tension === 'absente'){ g.strokeStyle = '#FFD23F'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); }
       if(off){ const k = r * .6; g.strokeStyle = '#EAF1FB'; g.lineWidth = 1.8; g.beginPath(); g.moveTo(x - k, y - k); g.lineTo(x + k, y + k); g.moveTo(x + k, y - k); g.lineTo(x - k, y + k); g.stroke(); }
       if(S.TETES.includes(c.id) && !elec){ g.strokeStyle = '#EAF1FB'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, r + 3.5, 0, 7); g.stroke(); }
-      if(d && !elec && d.dialogue === 'trames brouillées'){ g.fillStyle = '#FFD23F'; g.font = `bold ${Math.round(r * 1.6)}px system-ui`; g.textAlign = 'center'; g.fillText('≈', x, y - r - 2); }
+      // un répétiteur : un losange bleu autour du canon
+      if(S.REPETEURS.has(c.id)){ const q = r + 5; g.strokeStyle = '#5AA9FF'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y - q); g.lineTo(x + q, y); g.lineTo(x, y + q); g.lineTo(x - q, y); g.closePath(); g.stroke(); }
+      // le signal mesuré, écrit au-dessus du canon
+      if(d && !elec && d.signal != null){
+        const txt = d.qualite === 'absent' ? '0 %' : d.qualite === 'brouillé' ? `≈ ${d.bruit} %` : `${d.signal} %`;
+        g.font = 'bold 10px system-ui'; g.textAlign = 'center';
+        g.fillStyle = d.perime ? '#7D8796' : d.qualite === 'net' ? '#8FF0B8' : d.qualite === 'brouillé' ? '#FFD23F' : '#FF9C9C'; g.fillText(txt, x, y - r - 4);
+      }
       if(lbl || (P.sel && P.sel.id === c.id)){ g.fillStyle = 'rgba(234,241,251,.85)'; g.font = `${c.zone === 'SDM' ? 'bold ' : ''}11px system-ui`; g.textAlign = 'left'; g.fillText(c.nom, x + r + 3, y + 4); }
     });
     // les transfos
@@ -401,14 +467,14 @@
         let pt;
         if(p.canons) return p.canons.forEach(id => { const c = S.PAR_ID[id]; g.beginPath(); g.arc(X(c.x), Y(c.y), r + pulse, 0, 7); g.stroke(); });
         if(p.canon) pt = S.PAR_ID[p.canon];
-        else { const e = p.type === 'cableDia' ? S.L_PAR_K[p.k] : S.C_PAR_K[p.k], gg = p.type === 'cableDia' ? geomL(e) : geomC(e), m = gg[Math.floor(gg.length / 2)]; pt = { x:m[0], y:m[1] }; g.lineWidth = 6; trait(gg); g.lineWidth = 3; }
+        else { const elecP = p.type === 'cableElec', e = elecP ? S.C_PAR_K[p.k] : S.L_PAR_K[p.k], gg = elecP ? geomC(e) : geomL(e), m = gg[Math.floor(gg.length / 2)]; pt = { x:m[0], y:m[1] }; g.lineWidth = 6; trait(gg); g.lineWidth = 3; }
         g.beginPath(); g.arc(X(pt.x), Y(pt.y), r + pulse, 0, 7); g.stroke();
       });
       cancelAnimationFrame(anim); anim = requestAnimationFrame(dessiner);
     }
   }
   function majVues(){ $('vDia').setAttribute('aria-pressed', P.vue === 'dia'); $('vElec').setAttribute('aria-pressed', P.vue === 'elec');
-    $('legende').innerHTML = P.vue === 'dia' ? '<span><i style="background:#2FD47A"></i>communique</span><span><i style="background:#FF4D4D"></i>ne communique plus</span><span><i style="background:#3A4352"></i>coupé</span><span>≈ brouillé (mesuré)</span>'
+    $('legende').innerHTML = P.vue === 'dia' ? '<span><i style="background:#2FD47A"></i>communique</span><span><i style="background:#FF4D4D"></i>ne communique plus</span><span><i style="background:#3A4352"></i>exclu</span><span><i style="background:none;border:2px solid #5AA9FF;border-radius:0;transform:rotate(45deg) scale(.8)"></i>répétiteur</span><span>62 % : signal mesuré · ≈ bruit · gris : à refaire</span>'
       : '<span><i style="background:#2FD47A"></i>tension mesurée</span><span><i style="background:#1A2233;border:2px solid #FFD23F"></i>pas de tension</span><span><i style="background:#55657C"></i>pas mesuré</span><span>tirets : tronçon ouvert</span>'; }
   $('vDia').onclick = () => { P.vue = 'dia'; majVues(); dessiner(); if(!P.sel || P.sel.type === 'cable'){ P.sel = null; panneau(); } };
   $('vElec').onclick = () => { P.vue = 'elec'; majVues(); dessiner(); if(!P.sel) panneau(); };
@@ -478,7 +544,7 @@
   // la carte change de taille (panneau, rotation) : on garde le même centre
   let cadre = false;
   new ResizeObserver(() => {
-    if($('eJeu').hidden || !P) return;
+    if(!P || !$('eJeu') || $('eJeu').hidden) return;
     const w0 = W, h0 = H; taille();
     if(!cadre || !w0) return ajuster();
     V.tx += (W - w0) / 2; V.ty += (H - h0) / 2; dessiner();
