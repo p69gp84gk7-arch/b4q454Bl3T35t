@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:185, type:'maj', jeu:'Quelle taille ?', ico:'📐', lien:'jeux/toise.html',
+    txt:'Plus simple et plus lisible : on ne compare plus que deux objets, toujours en hauteur (fini l\'intrus et les longueurs), sur un quadrillage discret qui aide à compter. La partie va du plus proche (jusqu\'à 3 fois plus haut) au grand écart (10 à 20 fois).' },
   { v:184, type:'maj', jeu:'Quelle taille ?', ico:'🤏', lien:'jeux/toise.html',
     txt:'Nouvelle façon de jouer, plus de chiffres : l\'objet mystère n\'est pas à la bonne taille, étire-le ou rétrécis-le du bout du doigt (ou avec deux doigts) jusqu\'à la bonne échelle. La vraie silhouette apparaît ensuite sous la tienne. Des pièges à la fin (un intrus dessiné à la fausse échelle, puis le grand écart), et un défi du jour de 5 devinettes, le même pour tout le monde. Les records repartent de zéro.' },
   { v:183, type:'nouveau', jeu:'Quelle taille ?', ico:'📏', lien:'jeux/toise.html',
