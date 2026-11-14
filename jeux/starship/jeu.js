@@ -156,7 +156,7 @@ function lancer(i){
   niveauEnCours = i; const J = S.JALONS[i];
   V = S.nouveauVol(J.vol, J.equipe, {});
   msgVus = 0; bandeauMsg = null; fin = null; parts = []; vitesse = 1; enPause = false; $('bVitesse').textContent = '⏩ Vitesse ×1';
-  ecran('eVol'); tailleVol(); dernier = performance.now(); acc = 0; audio();
+  phasePrec = null; ecran('eVol'); appliquerMode(); tailleVol(); dernier = performance.now(); acc = 0; audio();
   bandeauMsg = { t:J.vol.type === 'booster' ? 'Guide-toi avec ◀ ▶ puis allume pour t\'arrêter à la hauteur des bras' : J.vol.type === 'orbite' || J.vol.type === 'vaisseau' || J.vol.type === 'mars' ? 'Tiens POUSSÉE : suis le fantôme jaune avec ◀ ▶' : 'Tiens POUSSÉE pour décoller', at:0, cls:'' };
   cancelAnimationFrame(boucle); boucle = requestAnimationFrame(tick);
 }
@@ -285,6 +285,12 @@ function jauge(x, y, w, h, v, c, titre, txt){
   g.fillStyle = '#fff'; g.font = '700 10px "Bricolage Grotesque", sans-serif'; g.textAlign = 'left'; g.fillText(titre, x + 6, y + h - 2.5); if(txt){ g.textAlign = 'right'; g.fillText(txt, x + w - 6, y + h - 2.5); }
 }
 function texteHUD(t, x, y, taille = 12, couleur = '#fff', align = 'left'){ g.font = `800 ${taille}px "Bricolage Grotesque", sans-serif`; g.textAlign = align; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,20,.75)'; g.lineJoin = 'round'; g.strokeText(t, x, y); g.fillStyle = couleur; g.fillText(t, x, y); }
+// un texte centré qui passe à la ligne s'il est trop long ; rend la hauteur prise
+function texteLong(t, x, y, taille, couleur){
+  g.font = `800 ${taille}px "Bricolage Grotesque", sans-serif`; const max = W - 30, mots = String(t).split(' '), lignes = []; let l = '';
+  for(const m of mots){ const essai = l ? l + ' ' + m : m; if(g.measureText(essai).width > max && l){ lignes.push(l); l = m; } else l = essai; }
+  lignes.push(l); lignes.forEach((ln, i) => texteHUD(ln, x, y + i * (taille + 4), taille, couleur, 'center')); return lignes.length * (taille + 4);
+}
 function dessinerHUD(sp, prog){
   const p = V.p, mars = !!sp.g && sp.g < 5, top = 10, L = 12;
   // en haut à gauche : les chiffres
@@ -313,14 +319,18 @@ function dessinerHUD(sp, prog){
   // la cible hors de l'écran, et les consignes
   if(!prog && (sp.pad || sp.tour)){ const tx = sp.tour ? sp.tour.x : sp.pad.x, dx = tx - V.x, s = echelleDe(V.y); if(Math.abs(dx) * s > W / 2 - 30){ texteHUD(`${dx > 0 ? '' : '◀ '}${sp.tour ? 'tour' : 'plateforme'} ${Math.abs(dx).toFixed(0)} m${dx > 0 ? ' ▶' : ''}`, dx > 0 ? W - 14 : 14, H * .45, 12, '#9CCBFF', dx > 0 ? 'right' : 'left'); } }
   const info = consigne(sp, prog);
-  if(info) texteHUD(info, W / 2, H - 112 - (H > 600 ? 10 : 0), 13, '#fff', 'center');
-  if(bandeauMsg && V.t - bandeauMsg.at < 4.5 || (bandeauMsg && bandeauMsg.at === 0)){ const c = bandeauMsg.cls === 'bon' ? '#7CF0B6' : bandeauMsg.cls === 'mal' ? '#FF9A9A' : '#FFE08A'; texteHUD(bandeauMsg.t, W / 2, H * .2, 15, c, 'center'); }
+  let dy = 0; if(bandeauMsg && (V.t - bandeauMsg.at < 4.5 || bandeauMsg.at === 0)){ const c = bandeauMsg.cls === 'bon' ? '#7CF0B6' : bandeauMsg.cls === 'mal' ? '#FF9A9A' : '#FFE08A'; dy = texteLong(bandeauMsg.t, W / 2, H * .17, 16, c); }
+  if(info) texteLong(info, W / 2, H * .17 + dy + 6, 14, '#fff');
   // le bouton d'action
   const b = $('bAction'); let lib = '—', ok = false;
   if(V.phase === 'programme' && V.etage === 1 && V.fenetre){ lib = 'SÉPARER'; ok = true; }
   else if(V.phase === 'vol' && sp.belly && V.atteint && !V.retourne && V.vy < -3 && V.gaz < .05){ lib = 'BASCULER'; ok = true; }
   else if(V.phase === 'plat' && V.th > 80){ lib = 'RETOURNER'; ok = true; }
   b.textContent = lib; b.disabled = !ok || !!fin;
+  if(V.phase !== phasePrec){
+    if(V.phase === 'plat') reglerPuissance(.4, 'CABRER'); else if(phasePrec === 'plat' || phasePrec === 'flip') reglerPuissance(0, 'POUSSÉE');
+    phasePrec = V.phase;
+  }
   $('bPoussee').textContent = V.phase === 'plat' ? 'CABRER' : 'POUSSÉE';
 }
 function consigne(sp, prog){
@@ -330,7 +340,7 @@ function consigne(sp, prog){
   if(sp.type === 'saut' && !V.atteint) return `Monte à ${sp.cible} m (altitude ${fmt(V.y)} m)`;
   if(sp.type === 'saut' && V.atteint && V.y > 30) return 'Penche (◀ ▶) et pose-toi sur la plateforme jaune';
   if(sp.type === 'altitude' && !V.atteint) return `Apogée prévu ${fmt(S.apogeePrevu(V))} m sur ${fmt(sp.cible)} m`;
-  if(V.phase === 'plat') return V.th < 80 ? 'Retournement à plat…' : 'Ailerons ◀ ▶ · CABRER freine mais gêne le pilotage · RETOURNE-TOI au repère bleu';
+  if(V.phase === 'plat') return V.th < 80 ? 'Retournement à plat…' : 'Ailerons ◀ ▶ · CABRER pour freiner · RETOURNE-TOI au repère bleu';
   if(V.phase === 'flip') return 'Redressement ! Prépare l\'allumage';
   if(V.phase === 'vol' && V.vy < -4) return V.y < 12 ? '' : `Allume quand tu touches la ligne verte · vitesse max au sol ${V.p.vAtterr.toFixed(0)} m/s`;
   return '';
@@ -343,6 +353,32 @@ const lie = (id, cle) => { const b = $(id), on = v => { entrees[cle] = v; b.clas
   b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', () => { if(cle !== 'action') on(false); });
   b.addEventListener('contextmenu', e => e.preventDefault()); };
 lie('bGauche', 'gauche'); lie('bDroite', 'droite'); lie('bPoussee', 'gaz'); lie('bAction', 'action');
+// les curseurs : la direction (revient au milieu) et la puissance (reste en place)
+let mode = lire('starship-commandes', window.matchMedia && matchMedia('(pointer:coarse)').matches ? 'curseurs' : 'boutons'), phasePrec = null;
+const cH = $('cH'), pH = $('pH'), cV = $('cV'), pV = $('pV'), rempl = $('remplissage'), POUCE = 88;
+const posH = v => { pH.style.transform = `translate(${v * (cH.clientWidth / 2 - POUCE / 2 - 6)}px, -50%)`; };
+const posV = v => { pV.style.top = `${(1 - v) * (cV.clientHeight - POUCE)}px`; rempl.style.height = `${v * 100}%`; };
+function reglerPuissance(v, etiquette){ if(mode === 'curseurs') entrees.cible = v; posV(v); if(etiquette) pV.textContent = etiquette; }
+function appliquerMode(){
+  document.body.classList.toggle('mode-boutons', mode === 'boutons'); $('bCommandes').textContent = `🎚 Commandes : ${mode}`;
+  if(mode === 'boutons'){ delete entrees.dir; delete entrees.cible; } else { entrees.dir = 0; entrees.cible = 0; }
+  requestAnimationFrame(() => { posH(0); posV(0); pV.textContent = 'POUSSÉE'; });
+}
+{ let idH = null;
+  const majH = x => { const r = cH.getBoundingClientRect(), m = r.width / 2 - POUCE / 2 - 6, v = clamp((x - (r.left + r.width / 2)) / m, -1, 1); entrees.dir = Math.abs(v) < .06 ? 0 : v; posH(v); };
+  cH.addEventListener('pointerdown', e => { e.preventDefault(); try{ cH.setPointerCapture(e.pointerId); }catch(x){} idH = e.pointerId; majH(e.clientX); audio(); });
+  cH.addEventListener('pointermove', e => { if(idH === e.pointerId) majH(e.clientX); });
+  const finH = e => { if(idH !== e.pointerId) return; idH = null; entrees.dir = 0; pH.style.transition = 'transform .15s'; posH(0); setTimeout(() => { pH.style.transition = ''; }, 170); };
+  cH.addEventListener('pointerup', finH); cH.addEventListener('pointercancel', finH);
+  let idV = null;
+  const majV = y => { const r = cV.getBoundingClientRect(), v = 1 - clamp((y - r.top - POUCE / 2) / (r.height - POUCE), 0, 1); reglerPuissance(v < .05 ? 0 : v); };
+  cV.addEventListener('pointerdown', e => { e.preventDefault(); try{ cV.setPointerCapture(e.pointerId); }catch(x){} idV = e.pointerId; majV(e.clientY); audio(); });
+  cV.addEventListener('pointermove', e => { if(idV === e.pointerId) majV(e.clientY); });
+  const finV = e => { if(idV === e.pointerId) idV = null; };
+  cV.addEventListener('pointerup', finV); cV.addEventListener('pointercancel', finV);
+}
+addEventListener('resize', () => { if(!$('eVol').hidden && mode === 'curseurs'){ posH(entrees.dir || 0); posV(entrees.cible || 0); } });
+$('bCommandes').onclick = () => { mode = mode === 'curseurs' ? 'boutons' : 'curseurs'; ecrire('starship-commandes', mode); appliquerMode(); };
 const touches = { ArrowLeft:'gauche', ArrowRight:'droite', ArrowUp:'gaz', ' ':'gaz', Enter:'action', ArrowDown:'action', Shift:'action' };
 addEventListener('keydown', e => { const k = touches[e.key]; if(!k || $('eVol').hidden) return; e.preventDefault(); if(k === 'action'){ if(!e.repeat) entrees.action = true; } else entrees[k] = true; });
 addEventListener('keyup', e => { const k = touches[e.key]; if(!k || k === 'action') return; entrees[k] = false; });

@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:196, type:'maj', jeu:'Starship : le programme', ico:'🎚️', lien:'jeux/starship.html', txt:"Nouvelles commandes : un grand curseur pour la direction (il revient au milieu) et un grand curseur pour la puissance (il reste où on le laisse). On peut revenir aux boutons dans le menu pause. Le bouton d'action est de nouveau en bas, entre les deux commandes." },
+  { v:195, type:'maj', jeu:'Starship : le programme', ico:'🚀', lien:'jeux/starship.html', txt:"Plus facile : marges de vitesse et d'angle bien plus larges, le vaisseau se redresse tout seul, de très grands boutons, et le bouton d'action est maintenant au centre de l'écran." },
   { v:194, type:'maj', jeu:'Starship : le programme', ico:'⭐', lien:'jeux/starship.html', txt:"Le jeu change : plus d'achats ni de semaines à gérer. Six jalons à piloter, du premier saut à Mars, avec jusqu'à trois étoiles par vol (réussir, aller vite, garder du carburant) et des mesures (chrono, carburant consommé, précision) sans aucune pénalité." },
   { v:193, type:'nouveau', jeu:'Starship : le programme', ico:'🚀', lien:'jeux/starship.html', txt:"Un nouveau jeu en deux temps, inspiré du programme Starship : à la base, tu gères les équipes, l'argent et les prototypes ; en vol, tu pilotes toi-même (saut, haute altitude, vol orbital, rattrapage du booster par la tour, retour du vaisseau, Mars). On apprend en explosant !" },
   { v:192, type:'maj', jeu:'Dichotomie', ico:'📶', lien:'', txt:"Correction : on dit « répéteur » (et non « répétiteur ») dans tout le jeu." },

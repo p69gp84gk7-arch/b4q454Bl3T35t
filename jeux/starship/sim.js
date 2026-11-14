@@ -14,29 +14,29 @@ window.STARSHIP_SIM = (() => {
     { id:'saut', court:'Saut', nom:'Le premier saut', ico:'🐸', equipe:{ moteurs:0, structure:0, bouclier:0, logiciel:0, atterrisseur:0 }, etoiles:{ temps:60, carb:0.35 },
       histoire:"Au début du programme, un petit prototype trapu, posé sur trois jambes, ne fait que de petits sauts. Chaque hop vérifie qu'un moteur sait décoller, rester stable… et se reposer.",
       txt:'Un petit prototype décolle, monte à 150 m, puis se pose sur l\'autre plateforme, à 70 m de là. Un seul essai, pas de droit à l\'erreur… ou presque.',
-      vol:{ type:'saut', cible:150, pad:{ x:70, tol:18 }, depart:{ phase:'vol' }, vent:.3, titre:'Saut à 150 m' } },
+      vol:{ type:'saut', cible:150, pad:{ x:70, tol:28 }, depart:{ phase:'vol' }, vent:.3, titre:'Saut à 150 m' } },
     { id:'altitude', court:'5 km', nom:'Haute altitude', ico:'🛰️', equipe:{ moteurs:1, structure:0, bouclier:0, logiciel:2, atterrisseur:2 }, etoiles:{ temps:130, carb:0.08 },
       histoire:'Ensuite viennent les vols plus hauts, avec la figure de style du programme : couper les moteurs, descendre à plat comme une feuille, se retourner au dernier moment et se poser.',
       txt:'Monter à 5 km, couper les moteurs, descendre « à plat » comme une feuille, se retourner au dernier moment et se poser. C\'est la figure de style du programme.',
-      vol:{ type:'altitude', cible:5000, pad:{ x:0, tol:22 }, belly:true, depart:{ phase:'vol' }, vent:.8, titre:'Vol à 5 km' } },
+      vol:{ type:'altitude', cible:5000, pad:{ x:0, tol:36 }, belly:true, depart:{ phase:'vol' }, vent:.8, titre:'Vol à 5 km' } },
     { id:'orbite', court:'Orbite', nom:'Premier vol orbital', ico:'🌍', equipe:{ moteurs:3, structure:3, bouclier:3, logiciel:3, atterrisseur:2 }, etoiles:{ temps:190, carb:0.2 },
       histoire:"Le vrai défi : un vaisseau et son propulseur géant partent vers l'orbite. Le passage de la pression maximale est le moment le plus délicat de la montée.",
       txt:'Monter jusqu\'en orbite en suivant la trajectoire (attention au passage de la pression maximale), se séparer du booster au bon moment, puis revenir : rentrée à plat, retournement, atterrissage.',
-      vol:{ type:'orbite', pad:{ x:0, tol:30 }, belly:true, depart:{ phase:'programme' }, programme:{ duree:78, etageA:.42 },
+      vol:{ type:'orbite', pad:{ x:0, tol:42 }, belly:true, depart:{ phase:'programme' }, programme:{ duree:78, etageA:.42 },
         rentree:{ y:9000, vy:-420, vx:30, x:-250, carb:.7 }, vent:.9, titre:'Vol orbital' } },
     { id:'booster', court:'Booster', nom:'Rattrapage du booster', ico:'🦾', equipe:{ moteurs:3, structure:2, bouclier:2, logiciel:5, atterrisseur:6 }, etoiles:{ temps:60, carb:0.5 },
       histoire:"Idée audacieuse : au lieu de poser le propulseur sur des jambes, la tour de lancement l'attrape en vol avec deux grands bras. Il faut arriver presque à l'arrêt, au millimètre.",
       txt:'Le propulseur redescend tout seul, droit, et doit être attrapé en vol par les bras de la tour : il faut arriver presque à l\'arrêt, pile à la hauteur des bras.',
-      vol:{ type:'booster', pad:{ x:0, tol:26 }, tour:{ x:0, y:75, tol:6, v:4.5, ang:4.5 }, depart:{ phase:'vol', x:170, y:3800, vy:-150, vx:-6, carb:.7, th:2 }, vent:.9, titre:'Rattrapage du booster' } },
+      vol:{ type:'booster', pad:{ x:0, tol:26 }, tour:{ x:0, y:75, tol:12, v:9, ang:10 }, depart:{ phase:'vol', x:170, y:3800, vy:-150, vx:-6, carb:.7, th:2 }, vent:.9, titre:'Rattrapage du booster' } },
     { id:'vaisseau', court:'Vaisseau', nom:'Rattrapage du vaisseau', ico:'🚀', equipe:{ moteurs:4, structure:4, bouclier:5, logiciel:5, atterrisseur:5 }, etoiles:{ temps:190, carb:0.2 },
       histoire:"Le grand pari de la réutilisation : rattraper aussi le vaisseau au retour de l'orbite, pour pouvoir le relancer très vite.",
       txt:'Revenir de l\'orbite, descendre à plat, se retourner et se faire attraper par la tour : le but du programme, un vaisseau réutilisable.',
-      vol:{ type:'vaisseau', pad:{ x:0, tol:20 }, tour:{ x:0, y:75, tol:4, v:3.4, ang:3.4 }, belly:true, depart:{ phase:'programme' }, programme:{ duree:84, etageA:.42 },
+      vol:{ type:'vaisseau', pad:{ x:0, tol:20 }, tour:{ x:0, y:75, tol:11, v:8, ang:9 }, belly:true, depart:{ phase:'programme' }, programme:{ duree:84, etageA:.42 },
         rentree:{ y:9000, vy:-430, vx:30, x:-260, carb:.7 }, vent:1, titre:'Retour du vaisseau' } },
     { id:'mars', court:'Mars', nom:'Cap sur Mars', ico:'🔴', equipe:{ moteurs:6, structure:6, bouclier:6, logiciel:6, atterrisseur:6 }, etoiles:{ temps:190, carb:0.2 },
       histoire:"Le but final : se poser sur une autre planète. L'air y est presque absent, donc il faut se retourner et allumer beaucoup plus tôt.",
       txt:'Atterrir sur Mars : un air presque absent (le vaisseau freine mal), une pesanteur plus faible, et pas de tour pour vous attraper. Il faut allumer tôt.',
-      vol:{ type:'mars', pad:{ x:0, tol:30 }, belly:true, g:3.71, rho:.025, depart:{ phase:'programme' }, programme:{ duree:90, etageA:.42 },
+      vol:{ type:'mars', pad:{ x:0, tol:48 }, belly:true, g:3.71, rho:.025, depart:{ phase:'programme' }, programme:{ duree:90, etageA:.42 },
         rentree:{ y:11000, vy:-380, vx:30, x:-300, carb:.8 }, vent:.4, titre:'Atterrissage sur Mars' } },
   ];
 
@@ -45,7 +45,7 @@ window.STARSHIP_SIM = (() => {
   function params(niv){
     const m = niv.moteurs, s = niv.structure, b = niv.bouclier, l = niv.logiciel, a = niv.atterrisseur;
     return { twr:1.85 + m * .07, autonomie:42 + m * 1.6 + s * 1.2, autonomieProg:60 + m * 3.2 + s * 2.2, resChaleur:55 + b * 9, resStructure:60 + s * 9, assist:l / 10,
-      vAtterr:4.2 + a * .6, angAtterr:6 + a * 1.1, tolCoef:1 + a * .06 };
+      vAtterr:9 + a * .7, angAtterr:15 + a * 1.2, tolCoef:1 + a * .06 };
   }
   const KD_V = .0003, KD_B = .00056;
   const rhoDe = (v, y) => (v.spec.rho ?? 1) * Math.exp(-Math.max(0, y) / 8000);
@@ -69,9 +69,9 @@ window.STARSHIP_SIM = (() => {
   function pas(v, e, dt){
     if(v.fini) return;
     v.t += dt;
-    const p = v.p, g = gDe(v), dir = (e.droite ? 1 : 0) - (e.gauche ? 1 : 0);
-    // la poussée : on monte en tenant le bouton, on redescend en le relâchant
-    if(v.carb > 0){ v.gaz = clamp(v.gaz + (e.gaz ? 1.3 : -1.7) * dt, 0, 1); } else v.gaz = 0;
+    const p = v.p, g = gDe(v), dir = e.dir != null ? clamp(e.dir, -1, 1) : (e.droite ? 1 : 0) - (e.gauche ? 1 : 0);
+    // la poussée : avec un curseur (e.cible, de 0 à 1), le moteur suit le curseur ; avec un bouton, on monte en le tenant et on redescend en le relâchant
+    if(v.carb > 0){ v.gaz = e.cible != null ? clamp(v.gaz + clamp(e.cible - v.gaz, -3 * dt, 2.4 * dt), 0, 1) : clamp(v.gaz + (e.gaz ? 2.2 : -3) * dt, 0, 1); } else v.gaz = 0;
     if(v.phase === 'programme') return pasProgramme(v, e, dt, dir);
     if(v.phase === 'plat' || v.phase === 'flip') return pasChute(v, e, dt, dir);
     return pasVertical(v, e, dt, dir);
@@ -88,7 +88,7 @@ window.STARSHIP_SIM = (() => {
       v.enVol = true; msg(v, 'Décollage !', 'bon');
     }
     const alpha = ((30 + 25 * p.assist) * (.25 + .75 * v.gaz)), damp = 1.4 + 2.6 * p.assist;
-    v.om += (dir * alpha - v.om * damp) * dt;
+    v.om += (dir * alpha - v.om * damp - (dir ? 0 : v.th * (2 + 3 * p.assist))) * dt;
     v.om += (Math.sin(v.t * 2.3 + v.phi) * .9) * (1 - .8 * p.assist) * dt * v.vent * Math.min(1, rho * 3);
     v.th += v.om * dt;
     if(Math.abs(v.th) > 72){ return rud(v, 'Le vaisseau a perdu le contrôle et a basculé.'); }
@@ -131,7 +131,7 @@ window.STARSHIP_SIM = (() => {
     const p = v.p, g = gDe(v), rho = rhoDe(v, v.y), sp = Math.hypot(v.vx, v.vy);
     if(v.phase === 'plat'){
       v.th = Math.min(90, v.th + 45 * dt);
-      v.attaque = clamp(v.attaque + (e.gaz ? .55 : -.45) * dt, 0, 1);
+      v.attaque = e.cible != null ? clamp(v.attaque + clamp(e.cible - v.attaque, -.6 * dt, .6 * dt), 0, 1) : clamp(v.attaque + (e.gaz ? .55 : -.45) * dt, 0, 1);
       v.gaz = 0;
       if(e.action && v.th > 80){ v.phase = 'flip'; msg(v, 'Retournement !', ''); }
       const auto = altitudeRetournement(v) * (.5 + .55 * p.assist);
