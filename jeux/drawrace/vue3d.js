@@ -357,7 +357,8 @@ window.DRAWRACE_3D = (() => {
     l.geometry.attributes.position.needsUpdate = true;
   }
   // la caméra : de dessus (exactement le cadre du dessin du tracé) ou de suivi, toujours de trois quarts
-  const PRESETS = [{ d:7.6, h:2.7, off:36, ahead:2.8, fov:54 }, { d:6.6, h:2.1, off:146, ahead:-1, fov:58 }, { d:18, h:12, off:30, ahead:5, fov:50 }];
+  // off : l'angle de la caméra autour de la voiture (0 = derrière, 180 = devant) ; lag : la caméra traîne un peu derrière (pas quand elle est devant, sinon la voiture la rattrape)
+  const PRESETS = [{ d:7.4, h:2.3, off:148, ahead:.6, fov:54, lag:false }, { d:7.6, h:2.7, off:36, ahead:2.8, fov:54, lag:true }, { d:18, h:12, off:30, ahead:5, fov:50, lag:true }];
   function majCamera(dt){
     if(vue === 'dessus' || !E.voitures.length){
       cam.fov = 30; const hh = (H / 2) / Math.tan(cam.fov * Math.PI / 360); cam.position.set(W / 2, hh, H / 2); cam.up.set(0, 0, -1); cam.lookAt(W / 2, 0, H / 2); cam.updateProjectionMatrix(); cam0.init = true; return;
@@ -368,7 +369,7 @@ window.DRAWRACE_3D = (() => {
     // le cap est lissé : la caméra balance un peu dans les virages, et la voiture reste de trois quarts
     let da = a - cam0.yaw; while(da > Math.PI) da -= 2 * Math.PI; while(da < -Math.PI) da += 2 * Math.PI;
     cam0.yaw += da * Math.min(1, dt * 5);
-    cam0.x += (x - cam0.x) * Math.min(1, dt * 9); cam0.z += (z - cam0.z) * Math.min(1, dt * 9);
+    const kp = p.lag ? 9 : 80; cam0.x += (x - cam0.x) * Math.min(1, dt * kp); cam0.z += (z - cam0.z) * Math.min(1, dt * kp);
     const fx = Math.cos(cam0.yaw), fz = Math.sin(cam0.yaw), rx = -fz, rz = fx, off = p.off * Math.PI / 180, dist = p.d + v.vit * .035;
     const bx = -Math.cos(off) * dist, sx = Math.sin(off) * dist;
     cam.position.set(cam0.x + fx * bx + rx * sx, p.h + v.vit * .01, cam0.z + fz * bx + rz * sx);
