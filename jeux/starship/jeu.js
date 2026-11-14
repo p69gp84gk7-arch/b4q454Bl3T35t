@@ -2,7 +2,7 @@
    La logique (gestion, physique du vol) est dans sim.js. */
 (() => {
 'use strict';
-const S = window.STARSHIP_SIM, $ = id => document.getElementById(id);
+const S = window.STARSHIP_SIM, BAC = window.STARSHIP_BAC, $ = id => document.getElementById(id);
 const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
 const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
@@ -14,57 +14,112 @@ let R = lire(CLE_REC, null); if(!R || R.v !== 2) R = rec0();
 try{ localStorage.removeItem('starship-partie'); }catch(e){}     // (l'ancienne version avec gestion et achats)
 const sauver = () => ecrire(CLE_REC, R);
 const rn = id => R.niveaux[id] || (R.niveaux[id] = { etoiles:0, essais:0, reussis:0, temps:null, restant:null });
-const debloque = i => i === 0 || ((R.niveaux[S.JALONS[i - 1].id] || {}).etoiles || 0) > 0;
-const totalEtoiles = () => S.JALONS.reduce((a, j) => a + ((R.niveaux[j.id] || {}).etoiles || 0), 0);
-const franchis = () => S.JALONS.filter(j => ((R.niveaux[j.id] || {}).etoiles || 0) > 0).length;
+const etoilesDe = i => ((R.niveaux[S.NIVEAUX[i].id] || {}).etoiles || 0);
+const debloque = i => i === 0 || etoilesDe(i - 1) > 0 || S.NIVEAUX.some((_, j) => j > i && etoilesDe(j) > 0);
+const totalEtoiles = () => S.NIVEAUX.reduce((a, j) => a + ((R.niveaux[j.id] || {}).etoiles || 0), 0);
+const franchis = () => S.NIVEAUX.filter(j => ((R.niveaux[j.id] || {}).etoiles || 0) > 0).length;
 const etoilesTxt = (n, max = 3) => '★'.repeat(n) + '☆'.repeat(max - n);
 let niveauEnCours = 0;
-const ecran = id => { ['eAccueil', 'eNiveaux', 'eVol'].forEach(e => $(e).hidden = e !== id); window.scrollTo(0, 0); if(id === 'eNiveaux') requestAnimationFrame(niveaux); };
+const ecran = id => { ['eAccueil', 'eNiveaux', 'eVol', 'eBacReg'].forEach(e => $(e).hidden = e !== id); window.scrollTo(0, 0); if(id === 'eNiveaux') requestAnimationFrame(niveaux); };
 const voile = (id, on) => { $(id).hidden = !on; };
 
 /* ---------- Les dessins : l'acier, la flamme, les tours ---------- */
 const rondRect = (g, x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
-// un véhicule dessiné depuis sa base (le point de contact avec le sol) : le corps monte vers −y ; th tourne autour de la base
+// Les véhicules, dessinés depuis leur base (le point de contact avec le sol) : le corps monte vers −y ; th tourne autour de la base.
+// kind : hop (le petit prototype), starship, superheavy (le propulseur), falcon9 (le premier étage), falcon2 (second étage et coiffe),
+// falconPile (les deux étages), shPile (Super Heavy + Starship), dragon (capsule sur son coffre), dragonSeul (la capsule qui rentre).
+const LARGEUR = { hop:.5, starship:.19, superheavy:.115, falcon9:.095, falcon2:.095, falconPile:.085, shPile:.085, dragon:.5, dragonSeul:.9 };
+const HAUTEUR_REELLE = { hop:9, starship:38, superheavy:70, falcon9:42, falcon2:26, falconPile:68, shPile:108, dragon:12, dragonSeul:8 };
+const gradH = (g, w, ...cs) => { const d = g.createLinearGradient(-w / 2, 0, w / 2, 0); cs.forEach((c, i) => d.addColorStop(i / (cs.length - 1), c)); return d; };
+const ACIER = ['#6E7A8C', '#F4F7FB', '#D5DBE4', '#6A7585'], BLANC = ['#AEB7C4', '#FFFFFF', '#E3E8EE', '#8F9AA9'];
+function cloches(g, w, n, ymax, h){ g.fillStyle = '#2B2F38'; for(let i = 0; i < n; i++){ const x = n === 1 ? 0 : -w * .4 + i * (w * .8 / (n - 1)); g.beginPath(); g.moveTo(x - w * .07, -1); g.lineTo(x + w * .07, -1); g.lineTo(x + w * .1, ymax * h); g.lineTo(x - w * .1, ymax * h); g.closePath(); g.fill(); } }
+function falcon9(g, w, h, o){
+  g.fillStyle = gradH(g, w, ...BLANC); rondRect(g, -w / 2, -h, w, h, w * .08); g.fill();
+  g.fillStyle = '#1B1F27'; g.fillRect(-w / 2, -h, w, h * .07); g.fillStyle = 'rgba(30,36,48,.35)'; g.fillRect(-w / 2, -h * .56, w, h * .006); g.fillRect(-w / 2, -h * .3, w, h * .006);
+  g.fillStyle = '#2B2F38'; g.fillRect(-w / 2, -h * .045, w, h * .045); cloches(g, w, 3, .03, h);
+  g.fillStyle = '#20242C'; for(const s of [-1, 1]){ g.fillRect(s > 0 ? w / 2 : -w / 2 - w * .38, -h * .9, w * .38, h * .018); }       // les ailettes de guidage
+  g.strokeStyle = '#1B1F27'; g.lineWidth = Math.max(1.5, h * .014); g.lineCap = 'round';
+  if(o.jambes){ for(const s of [-1, 1]){ g.beginPath(); g.moveTo(s * w / 2, -h * .14); g.lineTo(s * w * 1.55, h * .005); g.moveTo(s * w / 2, -h * .03); g.lineTo(s * w * 1.55, h * .005); g.stroke(); g.fillStyle = '#1B1F27'; g.fillRect(s * w * 1.55 - w * .25, h * .0, w * .5, h * .012); } }
+  else { for(const s of [-1, 1]){ g.beginPath(); g.moveTo(s * w / 2, -h * .2); g.lineTo(s * w * .62, -h * .01); g.stroke(); } }
+}
+function falcon2(g, w, h, o){
+  const n = h * .42;       // la coiffe
+  g.fillStyle = gradH(g, w, ...BLANC); g.beginPath(); g.moveTo(-w / 2, 0); g.lineTo(-w / 2, -h + n); g.bezierCurveTo(-w / 2, -h + n * .3, -w * .15, -h, 0, -h); g.bezierCurveTo(w * .15, -h, w / 2, -h + n * .3, w / 2, -h + n); g.lineTo(w / 2, 0); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(40,50,70,.3)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-w / 2, -h + n); g.lineTo(w / 2, -h + n); g.stroke();
+  g.fillStyle = '#2B2F38'; g.beginPath(); g.moveTo(-w * .18, 0); g.lineTo(w * .18, 0); g.lineTo(w * .3, h * .07); g.lineTo(-w * .3, h * .07); g.closePath(); g.fill();
+}
+function superheavy(g, w, h, o){
+  g.fillStyle = gradH(g, w, ...ACIER); rondRect(g, -w / 2, -h, w, h, w * .06); g.fill();
+  g.strokeStyle = 'rgba(40,50,70,.35)'; g.lineWidth = 1; g.beginPath(); for(let i = 1; i < 10; i++){ g.moveTo(-w / 2, -h * i / 10); g.lineTo(w / 2, -h * i / 10); } g.stroke();
+  g.fillStyle = '#14171D'; g.fillRect(-w / 2, -h, w, h * .05);                                                                        // l'anneau de séparation
+  g.fillStyle = '#2E3541'; for(const s of [-1, 1]){ g.fillRect(s > 0 ? w / 2 : -w / 2 - w * .45, -h * .93, w * .45, h * .035); }    // les ailettes de guidage
+  g.fillStyle = '#FF9A3C'; for(const s of [-1, 1]) g.fillRect(s > 0 ? w / 2 : -w / 2 - w * .12, -h * .86, w * .12, h * .012);   // les ergots d'accroche des bras de la tour
+  g.fillStyle = '#20242C'; g.fillRect(-w * .55, -h * .05, w * 1.1, h * .05); cloches(g, w * 1.1, 6, .035, h);
+}
+function starship(g, w, h, o){
+  const n = h * .22;
+  g.fillStyle = gradH(g, w, ...ACIER); g.beginPath(); g.moveTo(-w / 2, 0); g.lineTo(-w / 2, -h + n); g.bezierCurveTo(-w / 2, -h + n * .35, -w * .18, -h, 0, -h); g.bezierCurveTo(w * .18, -h, w / 2, -h + n * .35, w / 2, -h + n); g.lineTo(w / 2, 0); g.closePath(); g.fill();
+  g.save(); g.clip();
+  const t = g.createLinearGradient(w * .02, 0, w / 2, 0); t.addColorStop(0, 'rgba(14,18,28,0)'); t.addColorStop(.4, 'rgba(14,18,28,.85)'); t.addColorStop(1, 'rgba(6,8,14,.97)'); g.fillStyle = t; g.fillRect(w * .02, -h, w, h);
+  g.strokeStyle = 'rgba(150,160,180,.25)'; g.lineWidth = .7; for(let y = -h; y < 0; y += h * .04){ g.beginPath(); g.moveTo(w * .1, y); g.lineTo(w / 2, y); g.stroke(); }
+  g.strokeStyle = 'rgba(40,50,70,.35)'; g.lineWidth = 1; for(let i = 3; i < 9; i++){ g.beginPath(); g.moveTo(-w / 2, -h * i / 10); g.lineTo(0, -h * i / 10); g.stroke(); }
+  g.restore();
+  g.fillStyle = '#4C5668';
+  for(const s of [-1, 1]){                                                                                                           // ailerons avant (petits) et arrière (grands)
+    g.beginPath(); g.moveTo(s * w / 2, -h + n * 1.15); g.lineTo(s * w * 1.0, -h + n * .95); g.lineTo(s * w * 1.0, -h + n * 1.5); g.lineTo(s * w / 2, -h + n * 1.6); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(s * w / 2, -h * .24); g.lineTo(s * w * 1.45, -h * .03); g.lineTo(s * w * 1.45, h * .015); g.lineTo(s * w / 2, -h * .01); g.closePath(); g.fill();
+  }
+  cloches(g, w, 3, .03, h);
+  if(o.jambes){ g.strokeStyle = '#8E99A8'; g.lineWidth = Math.max(1.5, h * .02); g.lineCap = 'round'; for(const s of [-1, 1]){ g.beginPath(); g.moveTo(s * w * .42, -h * .14); g.lineTo(s * w * 1.1, h * .004); g.stroke(); g.fillStyle = '#5C6674'; g.fillRect(s * w * 1.1 - w * .22, 0, w * .44, h * .012); } }
+}
+function dragon(g, w, h, o){                       // la capsule sur son coffre (au décollage)
+  const hc = h * .58, ht = h * .42;
+  g.fillStyle = gradH(g, w * .9, ...BLANC); rondRect(g, -w * .46, -ht, w * .92, ht, w * .05); g.fill();
+  g.fillStyle = '#14171D'; g.fillRect(-w * .3, -ht * .75, w * .6, ht * .28);                                                     // le radiateur
+  g.fillStyle = '#20242C'; for(const s of [-1, 1]) g.fillRect(s > 0 ? w * .46 : -w * .46 - w * .5, -ht * .55, w * .5, ht * .1);   // les panneaux repliés
+  capsule(g, w, hc, { ...o, y0:-ht, chutes:0 });
+}
+function capsule(g, w, h, o){
+  g.save(); g.translate(0, o.y0 || 0);
+  g.fillStyle = gradH(g, w, ...BLANC); g.beginPath(); g.moveTo(-w * .46, 0); g.lineTo(-w * .17, -h * .94); g.quadraticCurveTo(0, -h * 1.04, w * .17, -h * .94); g.lineTo(w * .46, 0); g.closePath(); g.fill();
+  g.fillStyle = '#14171D'; g.beginPath(); g.moveTo(-w * .5, h * .04); g.lineTo(-w * .46, -h * .05); g.lineTo(w * .46, -h * .05); g.lineTo(w * .5, h * .04); g.closePath(); g.fill();   // le bouclier thermique
+  g.fillStyle = '#1B2230'; for(const x of [-.14, 0, .14]){ g.beginPath(); g.arc(w * x, -h * .5, w * .045, 0, 7); g.fill(); }
+  g.restore();
+}
+function dragonSeul(g, w, h, o){
+  capsule(g, w, h, {});
+  if(o.chaleur > .05){ const c = clamp(o.chaleur, 0, 1), r = g.createRadialGradient(0, h * .05, 2, 0, h * .12, w * (.7 + c * .5)); r.addColorStop(0, `rgba(255,${Math.round(230 - 130 * c)},${Math.round(150 - 110 * c)},${.55 + .4 * c})`); r.addColorStop(1, 'rgba(255,70,120,0)'); g.fillStyle = r; g.fillRect(-w * 1.4, -h * .1, w * 2.8, h * 1.1); }
+  if(o.chutes > 0){
+    const k = clamp(o.chutes, 0, 1), R = h * (.5 + 1.4 * k), top = -h * (1.6 + 2.2 * k);
+    g.strokeStyle = 'rgba(30,30,40,.6)'; g.lineWidth = 1; for(const x of [-1, -.5, 0, .5, 1]){ g.beginPath(); g.moveTo(0, -h * .94); g.lineTo(x * R * .9, top); g.stroke(); }
+    for(const dx of [-R * .62, R * .62]){ g.fillStyle = '#F2F2F2'; g.beginPath(); g.ellipse(dx, top, R * .72, R * .55 * (.5 + .5 * k), 0, Math.PI, 0); g.fill(); g.fillStyle = '#FF7A2B'; g.beginPath(); g.ellipse(dx, top, R * .2, R * .55 * (.5 + .5 * k), 0, Math.PI, 0); g.fill(); }
+  }
+}
 function vehicule(g, kind, bx, by, h, th, o = {}){
   g.save(); g.translate(bx, by); g.rotate(th * Math.PI / 180);
-  const w = kind === 'booster' ? h * .17 : kind === 'hop' ? h * .5 : h * .19, acier = g.createLinearGradient(-w / 2, 0, w / 2, 0);
-  acier.addColorStop(0, '#8C97A6'); acier.addColorStop(.3, '#F2F5F9'); acier.addColorStop(.55, '#D6DCE5'); acier.addColorStop(1, '#7E8997');
-  const flam = (o.gaz || 0), bas = 0;
+  const w = h * (LARGEUR[kind] || .19);
   // la flamme
-  if(flam > .02){
-    const L = h * (.28 + .5 * flam) * (.88 + Math.random() * .22), ww = w * (.55 + .35 * flam);
+  const flam = o.gaz || 0;
+  if(flam > .02 && kind !== 'dragonSeul'){
+    const wm = kind === 'superheavy' || kind === 'shPile' ? w * 1.1 : w, L = h * (.2 + .4 * flam) * (.88 + Math.random() * .22) * (kind === 'hop' ? 1.4 : 1), ww = wm * (.55 + .35 * flam);
     const d = g.createLinearGradient(0, 0, 0, L); d.addColorStop(0, 'rgba(255,255,240,.95)'); d.addColorStop(.25, 'rgba(255,196,90,.9)'); d.addColorStop(.7, 'rgba(255,100,30,.45)'); d.addColorStop(1, 'rgba(255,60,20,0)');
     g.fillStyle = d; g.beginPath(); g.moveTo(-ww / 2, -2); g.quadraticCurveTo(-ww * .5, L * .55, 0, L); g.quadraticCurveTo(ww * .5, L * .55, ww / 2, -2); g.closePath(); g.fill();
-    const r = g.createRadialGradient(0, 4, 2, 0, 4, w * 1.6); r.addColorStop(0, 'rgba(255,200,120,.45)'); r.addColorStop(1, 'rgba(255,140,60,0)'); g.fillStyle = r; g.fillRect(-w * 1.6, -w, w * 3.2, w * 3);
+    const r = g.createRadialGradient(0, 4, 2, 0, 4, wm * 1.6); r.addColorStop(0, 'rgba(255,200,120,.45)'); r.addColorStop(1, 'rgba(255,140,60,0)'); g.fillStyle = r; g.fillRect(-wm * 1.6, -wm, wm * 3.2, wm * 3);
   }
-  // les jambes d'atterrissage
-  if(o.jambes){ g.strokeStyle = '#9AA5B4'; g.lineWidth = Math.max(1.5, h * .02); g.lineCap = 'round'; for(const s of [-1, 1]){ g.beginPath(); g.moveTo(s * w * .35, -h * .1); g.lineTo(s * w * 1.05, h * .03); g.stroke(); } g.fillStyle = '#5C6674'; for(const s of [-1, 1]) g.fillRect(s * w * 1.05 - h * .035, h * .02, h * .07, h * .02); }
   if(kind === 'hop'){
-    // le petit prototype : un réservoir trapu avec un dôme, et trois jambes
     g.strokeStyle = '#8C97A6'; g.lineWidth = Math.max(2, h * .04); for(const s of [-1, 0, 1]){ g.beginPath(); g.moveTo(s * w * .3, -h * .1); g.lineTo(s * w * .62, 0); g.stroke(); }
-    g.fillStyle = acier; rondRect(g, -w / 2, -h * .88, w, h * .78, w * .1); g.fill();
-    g.beginPath(); g.moveTo(-w / 2, -h * .86); g.quadraticCurveTo(0, -h * 1.1, w / 2, -h * .86); g.closePath(); g.fill();
+    g.fillStyle = gradH(g, w, ...ACIER); rondRect(g, -w / 2, -h * .88, w, h * .78, w * .1); g.fill(); g.beginPath(); g.moveTo(-w / 2, -h * .86); g.quadraticCurveTo(0, -h * 1.1, w / 2, -h * .86); g.closePath(); g.fill();
     g.strokeStyle = 'rgba(40,50,70,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-w / 2, -h * .5); g.lineTo(w / 2, -h * .5); g.stroke();
-  } else if(kind === 'booster'){
-    g.fillStyle = acier; rondRect(g, -w / 2, -h, w, h, w * .12); g.fill();
-    g.fillStyle = '#4A5463'; g.fillRect(-w / 2, -h, w, h * .035); g.fillRect(-w / 2, -h * .62, w, h * .018);
-    // les ailerons de guidage en haut, les moteurs en bas
-    g.fillStyle = '#3C4656'; for(const s of [-1, 1]){ g.beginPath(); g.moveTo(s * w / 2, -h * .97); g.lineTo(s * w * 1.1, -h * .93); g.lineTo(s * w * 1.1, -h * .88); g.lineTo(s * w / 2, -h * .86); g.closePath(); g.fill(); }
-    g.fillStyle = '#2E3541'; for(const s of [-.3, 0, .3]){ g.beginPath(); g.moveTo(s * w - w * .12, -2); g.lineTo(s * w + w * .12, -2); g.lineTo(s * w + w * .2, h * .035); g.lineTo(s * w - w * .2, h * .035); g.closePath(); g.fill(); }
-  } else {
-    // le vaisseau : un cylindre d'acier, un nez en ogive, deux ailerons devant et deux derrière, des tuiles noires sur le ventre
-    const n = h * .22;
-    g.fillStyle = acier; g.beginPath(); g.moveTo(-w / 2, 0); g.lineTo(-w / 2, -h + n); g.bezierCurveTo(-w / 2, -h + n * .35, -w * .18, -h, 0, -h); g.bezierCurveTo(w * .18, -h, w / 2, -h + n * .35, w / 2, -h + n); g.lineTo(w / 2, 0); g.closePath(); g.fill();
-    g.save(); g.clip(); const tuiles = g.createLinearGradient(w * .05, 0, w / 2, 0); tuiles.addColorStop(0, 'rgba(20,24,36,0)'); tuiles.addColorStop(.35, 'rgba(20,24,36,.82)'); tuiles.addColorStop(1, 'rgba(8,10,18,.95)'); g.fillStyle = tuiles; g.fillRect(w * .05, -h, w, h);
-    g.strokeStyle = 'rgba(120,130,150,.28)'; g.lineWidth = .8; for(let y = -h; y < 0; y += h * .045){ g.beginPath(); g.moveTo(w * .1, y); g.lineTo(w / 2, y); g.stroke(); } g.restore();
-    g.strokeStyle = 'rgba(40,50,70,.4)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-w / 2, -h * .3); g.lineTo(w / 2, -h * .3); g.moveTo(-w / 2, -h * .62); g.lineTo(w / 2, -h * .62); g.stroke();
-    g.fillStyle = '#5E6A7C'; for(const s of [-1, 1]){
-      g.beginPath(); g.moveTo(s * w / 2, -h + n * 1.15); g.lineTo(s * w * 1.0, -h + n * 1.0); g.lineTo(s * w * 1.0, -h + n * 1.5); g.lineTo(s * w / 2, -h + n * 1.6); g.closePath(); g.fill();
-      g.beginPath(); g.moveTo(s * w / 2, -h * .22); g.lineTo(s * w * 1.35, -h * .02); g.lineTo(s * w * 1.35, h * .02); g.lineTo(s * w / 2, -h * .02); g.closePath(); g.fill();
-    }
-  }
+  } else if(kind === 'falconPile'){ falcon9(g, w, h * .68, o); g.save(); g.translate(0, -h * .68); falcon2(g, w, h * .32, o); g.restore(); }
+  else if(kind === 'shPile'){ superheavy(g, w, h * .6, o); g.save(); g.translate(0, -h * .6); starship(g, w, h * .4, {}); g.restore(); }
+  else if(kind === 'falcon9') falcon9(g, w, h, o);
+  else if(kind === 'falcon2') falcon2(g, w, h, o);
+  else if(kind === 'superheavy') superheavy(g, w, h, o);
+  else if(kind === 'dragon') dragon(g, w, h, o);
+  else if(kind === 'dragonSeul') dragonSeul(g, w, h, o);
+  else starship(g, w, h, o);
   // la chaleur de la rentrée : une lueur sur le ventre (le côté droit)
-  if(o.chaleur > .05){
+  if(o.chaleur > .05 && kind !== 'dragonSeul'){
     const c = clamp(o.chaleur, 0, 1), r = g.createLinearGradient(w * .3, 0, w * 1.6 + h * .1 * c, 0); r.addColorStop(0, `rgba(255,${Math.round(220 - 120 * c)},${Math.round(120 - 80 * c)},${.55 * c + .15})`); r.addColorStop(1, 'rgba(255,60,120,0)');
     g.fillStyle = r; g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, -h); g.lineTo(w * 1.7 + h * .1 * c, -h * .7); g.lineTo(w * 1.7 + h * .1 * c, -h * .1); g.closePath(); g.fill();
   }
@@ -92,7 +147,7 @@ function etoiles(g, W, H, t, decalage = 0, n = 70){
 
 /* ---------- La base : le dessin et les écrans de gestion ---------- */
 function dessinerBase(c, p){
-  const g = c.getContext('2d'), W = c.width, H = c.height, sol = H * .83, jalon = p ? p.jalon : 0;
+  const g = c.getContext('2d'), W = c.width, H = c.height, sol = H * .83, niveau = p ? p.niveau : 0;
   const ciel = g.createLinearGradient(0, 0, 0, sol); ciel.addColorStop(0, '#050A1C'); ciel.addColorStop(.6, '#142550'); ciel.addColorStop(1, '#3B4F8A'); g.fillStyle = ciel; g.fillRect(0, 0, W, H);
   etoiles(g, W, sol, 1, 0, 90);
   const lune = g.createRadialGradient(W * .84, H * .2, 4, W * .84, H * .2, 46); lune.addColorStop(0, 'rgba(255,245,220,.5)'); lune.addColorStop(1, 'rgba(255,245,220,0)'); g.fillStyle = lune; g.fillRect(W * .7, 0, W * .3, H * .5);
@@ -103,35 +158,34 @@ function dessinerBase(c, p){
   // la tour, la table de lancement, la pile (booster + vaisseau)
   const s = H / 210, tx = W * .64;
   g.fillStyle = '#3A4350'; g.fillRect(tx - 80 * s, sol - 8 * s, 90 * s, 8 * s);
-  tour(g, tx + 14 * s, sol, s * .95, jalon >= 3 ? { y:68, tol:5 } : null, false);
-  const bx = tx - 34 * s;
-  if(jalon >= 2){ vehicule(g, 'booster', bx, sol - 8 * s, 112 * s, 0, { jambes:false }); vehicule(g, 'ship', bx, sol - 8 * s - 112 * s, 66 * s, 0, {}); }
-  else if(jalon === 1) vehicule(g, 'ship', bx, sol - 8 * s, 62 * s, 0, {});
-  else vehicule(g, 'hop', bx, sol - 8 * s, 34 * s, 0, { jambes:true });
+  const Lv = S.NIVEAUX[p ? p.niveau : 0].vol, kind = Lv.kind || 'starship', hb = { hop:34, starship:70, superheavy:118, falcon9:100, falconPile:130, shPile:150, dragon:70, dragonSeul:60, falcon2:60 }[kind] || 80;
+  tour(g, tx + 14 * s, sol, s * .95, Lv.tour ? { y:68, tol:5 } : null, false);
+  vehicule(g, kind, tx - 34 * s, sol - 8 * s, hb * s, 0, { jambes:kind === 'hop' || kind === 'falcon9' || kind === 'starship' });
   // les prototypes prêts, alignés devant
   g.fillStyle = '#fff'; g.font = `800 ${Math.round(H * .055)}px "Bricolage Grotesque", sans-serif`; g.textAlign = 'left'; g.globalAlpha = .8; g.fillText(p && p.legende ? p.legende : '', W * .06, H * .1); g.globalAlpha = 1;
 }
 function accueil(){
-  const a = $('aStats'), n = totalEtoiles(), max = S.JALONS.length * 3;
-  a.innerHTML = `<h3>Le programme</h3><div class="stat"><div><b>${franchis()} / ${S.JALONS.length}</b>jalons franchis</div><div><b>${n} / ${max}</b>étoiles ★</div><div><b>${R.explosions}</b>explosions (on apprend !)</div></div>`;
+  const a = $('aStats'), n = totalEtoiles(), max = S.NIVEAUX.length * 3;
+  a.innerHTML = `<h3>Le programme</h3><div class="stat"><div><b>${franchis()} / ${S.NIVEAUX.length}</b>niveaux franchis</div><div><b>${n} / ${max}</b>étoiles ★</div><div><b>${R.explosions}</b>explosions (on apprend !)</div></div>`;
   $('bContinuer').textContent = R.vols ? '▶ Continuer le programme' : '▶ Commencer par le premier saut';
-  dessinerBase($('sceneAcc'), { jalon:Math.min(S.JALONS.length - 1, franchis()), legende:`${n} ★ sur ${max}` });
+  dessinerBase($('sceneAcc'), { niveau:Math.min(S.NIVEAUX.length - 1, franchis()), legende:`${n} ★ sur ${max}` });
 }
 function niveaux(){
-  const prochain = Math.min(S.JALONS.length - 1, franchis());
-  dessinerBase($('scene'), { jalon:prochain, legende:S.JALONS[prochain].nom });
-  $('bandeau').innerHTML = `<div><b>${franchis()} / ${S.JALONS.length}</b>jalons</div><div><b>${totalEtoiles()}</b>étoiles ★</div><div><b>${R.vols}</b>vols</div><div><b>${R.explosions}</b>explosions</div>`;
-  $('liste').innerHTML = S.JALONS.map((J, i) => {
-    const r = R.niveaux[J.id] || {}, ok = debloque(i);
-    return `<button class="niv ${ok ? '' : 'verrou'} ${r.etoiles ? 'fait' : ''}" data-i="${i}" ${ok ? '' : 'disabled'}><span class="ico">${ok ? J.ico : '🔒'}</span><div class="t"><small>Jalon ${i + 1}</small><b>${esc(J.nom)}</b>${r.etoiles ? `<small>Meilleur : ${r.temps ? Math.round(r.temps) + ' s' : '–'} · carburant restant ${r.restant != null ? Math.round(r.restant * 100) + ' %' : '–'}</small>` : `<small>${ok ? esc(J.vol.titre) : 'Franchis le jalon précédent'}</small>`}</div><span class="et">${etoilesTxt(r.etoiles || 0)}</span></button>`;
+  const prochain = Math.min(S.NIVEAUX.length - 1, franchis());
+  dessinerBase($('scene'), { niveau:prochain, legende:S.NIVEAUX[prochain].nom });
+  $('bandeau').innerHTML = `<div><b>${franchis()} / ${S.NIVEAUX.length}</b>niveaux</div><div><b>${totalEtoiles()}</b>étoiles ★</div><div><b>${R.vols}</b>vols</div><div><b>${R.explosions}</b>explosions</div>`;
+  let chap = '';
+  $('liste').innerHTML = S.NIVEAUX.map((J, i) => {
+    const r = R.niveaux[J.id] || {}, ok = debloque(i), titre = J.chapitre !== chap ? `<h3 style="margin:${i ? 14 : 0}px 0 8px">${esc(J.chapitre)}</h3>` : ''; chap = J.chapitre;
+    return `${titre}<button class="niv ${ok ? '' : 'verrou'} ${r.etoiles ? 'fait' : ''}" data-i="${i}" ${ok ? '' : 'disabled'}><span class="ico">${ok ? J.ico : '🔒'}</span><div class="t"><small>Niveau ${i + 1}</small><b>${esc(J.nom)}</b>${r.etoiles ? `<small>Meilleur : ${r.temps ? Math.round(r.temps) + ' s' : '–'}${J.etoiles.vimp ? '' : ` · carburant restant ${r.restant != null ? Math.round(r.restant * 100) + ' %' : '–'}`}</small>` : `<small>${ok ? esc(J.vol.titre) : 'Franchis le niveau précédent'}</small>`}</div><span class="et">${etoilesTxt(r.etoiles || 0)}</span></button>`;
   }).join('');
   $('liste').querySelectorAll('[data-i]').forEach(b => b.onclick = () => brief(+b.dataset.i));
 }
 function brief(i){
-  const J = S.JALONS[i], r = R.niveaux[J.id] || {}, fait = [r.etoiles >= 1, r.meilleurTemps || false, r.meilleurCarb || false];
+  const J = S.NIVEAUX[i], r = R.niveaux[J.id] || {}, fait = [r.etoiles >= 1, r.meilleurTemps || false, r.meilleurCarb || false];
   niveauEnCours = i;
   $('fBrief').innerHTML = `<div class="grand">${J.ico}</div><h2>${esc(J.nom)}</h2><p>${esc(J.histoire)}</p><p><b>${esc(J.txt)}</b></p>
-    <div class="crit"><div class="${fait[0] ? 'ok' : ''}">${fait[0] ? '★' : '☆'} Réussir le vol</div><div class="${fait[1] ? 'ok' : ''}">${fait[1] ? '★' : '☆'} Terminer en moins de ${J.etoiles.temps} s</div><div class="${fait[2] ? 'ok' : ''}">${fait[2] ? '★' : '☆'} Garder au moins ${Math.round(J.etoiles.carb * 100)} % de carburant</div></div>
+    <div class="crit"><div class="${fait[0] ? 'ok' : ''}">${fait[0] ? '★' : '☆'} Réussir le vol</div><div class="${fait[1] ? 'ok' : ''}">${fait[1] ? '★' : '☆'} Terminer en moins de ${J.etoiles.temps} s</div><div class="${fait[2] ? 'ok' : ''}">${fait[2] ? '★' : '☆'} ${J.etoiles.vimp ? `Arriver à moins de ${J.etoiles.vimp} m/s` : `Garder au moins ${Math.round(J.etoiles.carb * 100)} % de carburant`}</div></div>
     <p class="sous" style="font-size:.8rem">Les étoiles sont des bonus : rien n'est perdu si tu les rates, et tu peux rejouer autant que tu veux.</p>
     <button class="btn gros" id="bDecoller">🚀 Décollage</button><button class="btn" id="bBriefFermer">Retour aux niveaux</button>`;
   voile('vBrief', true); $('bDecoller').onclick = () => { voile('vBrief', false); lancer(i); }; $('bBriefFermer').onclick = () => voile('vBrief', false);
@@ -139,7 +193,7 @@ function brief(i){
 
 /* ---------- Le vol ---------- */
 const cv = $('cv'), g = cv.getContext('2d');
-let V = null, W = 0, H = 0, dpr = 1, boucle = null, dernier = 0, acc = 0, vitesse = 1, enPause = false, msgVus = 0, bandeauMsg = null, fin = null, parts = [], son = lire('starship-son', true) !== false, entrees = { gauche:false, droite:false, gaz:false, action:false };
+let V = null, B = null, W = 0, H = 0, dpr = 1, boucle = null, dernier = 0, acc = 0, vitesse = 1, enPause = false, msgVus = 0, bandeauMsg = null, fin = null, parts = [], son = lire('starship-son', true) !== false, entrees = { gauche:false, droite:false, gaz:false, action:false };
 function tailleVol(){ dpr = Math.min(2.5, window.devicePixelRatio || 1); const r = cv.getBoundingClientRect(); W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
 addEventListener('resize', () => { if(!$('eVol').hidden) tailleVol(); });
 
@@ -153,15 +207,16 @@ function bip(freq, dur = .12, vol = .08){ const ac = audio(); if(!ac) return; co
 function boum(){ const ac = audio(); if(!ac) return; const src = ac.createBufferSource(); src.buffer = bruit(ac, 1.6); const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(1800, ac.currentTime); f.frequency.exponentialRampToValueAtTime(80, ac.currentTime + 1.4); const gn = ac.createGain(); gn.gain.setValueAtTime(.5, ac.currentTime); gn.gain.exponentialRampToValueAtTime(.001, ac.currentTime + 1.5); src.connect(f); f.connect(gn); gn.connect(ac.destination); src.start(); }
 
 function lancer(i){
-  niveauEnCours = i; const J = S.JALONS[i];
+  B = null; $('bacBts').hidden = true; niveauEnCours = i; const J = S.NIVEAUX[i];
   V = S.nouveauVol(J.vol, J.equipe, {});
   msgVus = 0; bandeauMsg = null; fin = null; parts = []; vitesse = 1; enPause = false; $('bVitesse').textContent = '⏩ Vitesse ×1';
   phasePrec = null; ecran('eVol'); appliquerMode(); tailleVol(); dernier = performance.now(); acc = 0; audio();
-  bandeauMsg = { t:J.vol.type === 'booster' ? 'Guide-toi avec ◀ ▶ puis allume pour t\'arrêter à la hauteur des bras' : J.vol.type === 'orbite' || J.vol.type === 'vaisseau' || J.vol.type === 'mars' ? 'Tiens POUSSÉE : suis le fantôme jaune avec ◀ ▶' : 'Tiens POUSSÉE pour décoller', at:0, cls:'' };
+  bandeauMsg = { t:J.vol.type === 'booster' || J.vol.type === 'barge' ? 'Guide-toi avec ◀ ▶ puis allume pour t\'arrêter au bon endroit' : J.vol.type === 'dragon' ? 'Garde le bouclier au frais ; ouvre les PARACHUTES quand la capsule est assez lente' : J.vol.type === 'lune' ? 'Pas d\'air : penche (◀ ▶) et freine au moteur' : J.vol.type === 'orbite' || J.vol.type === 'vaisseau' || J.vol.type === 'mars' || J.vol.type === 'falcon' ? 'Tiens POUSSÉE : suis le fantôme jaune avec ◀ ▶' : 'Tiens POUSSÉE pour décoller', at:0, cls:'' };
   cancelAnimationFrame(boucle); boucle = requestAnimationFrame(tick);
 }
 function tick(now){
   boucle = requestAnimationFrame(tick);
+  if(B) return tickBac(now);
   if(!V) return;
   let dt = Math.min(.05, (now - dernier) / 1000); dernier = now;
   if(!enPause){
@@ -186,12 +241,12 @@ function terminaison(){
   else { bip(660, .2, .08); setTimeout(() => bip(880, .3, .08), 160); }
 }
 function particules(dt){
-  if(V && V.gaz > .15 && !fin && V.phase !== 'programme' && Math.random() < .8){ const a = V.th * Math.PI / 180; parts.push({ x:V.x - Math.sin(a) * 0, y:Math.max(0, V.y), vx:(Math.random() - .5) * 8 - Math.sin(a) * 15, vy:-(5 + Math.random() * 12) * V.gaz, vie:1.2, t:0, r:2 + Math.random() * 3 + V.gaz * 3, c:'rgba(220,226,236,.5)', g:false }); }
+  if(V && V.gaz > .15 && !fin && (V.phase !== 'programme' || V.y < 3000) && V.phase !== 'capsule' && Math.random() < .8){ const a = V.th * Math.PI / 180; parts.push({ x:V.x - Math.sin(a) * 0, y:Math.max(0, V.y), vx:(Math.random() - .5) * 8 - Math.sin(a) * 15, vy:-(5 + Math.random() * 12) * V.gaz, vie:1.2, t:0, r:2 + Math.random() * 3 + V.gaz * 3, c:'rgba(220,226,236,.5)', g:false }); }
   for(const p of parts){ p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; if(p.g) p.vy -= 9.8 * dt * 2.2; if(p.y < 0){ p.y = 0; p.vy *= -.3; p.vx *= .7; } }
   parts = parts.filter(p => p.t < p.vie);
 }
 function resultat(){
-  const J = S.JALONS[niveauEnCours], n = S.notation(V, J), r = rn(J.id);
+  const J = S.NIVEAUX[niveauEnCours], n = S.notation(V, J), r = rn(J.id);
   R.vols++; r.essais++;
   let nouveau = [];
   if(V.fini === 'succes'){
@@ -206,11 +261,11 @@ function resultat(){
   const titre = V.fini === 'succes' ? (r.reussis === 1 ? `${J.nom} : franchi !` : 'Vol réussi') : V.fini === 'partiel' ? 'Presque !' : 'Démontage rapide non planifié';
   const stats = V.fini === 'succes' ? `<div class="stat"><div><b>${n.temps.toFixed(0)} s</b>chrono</div><div><b>${Math.round(n.restant * 100)} %</b>carburant restant</div><div><b>${n.conso.toFixed(0)} s</b>de poussée pleine</div>${n.ecart != null ? `<div><b>${n.ecart.toFixed(1)} m</b>écart au centre</div><div><b>${n.vImpact.toFixed(1)} m/s</b>vitesse à l'arrivée</div><div><b>${n.angle.toFixed(1)}°</b>angle</div>` : ''}</div>` : '';
   const crit = V.fini === 'succes' ? `<div class="crit">${n.criteres.map(c => `<div class="${c.ok ? 'ok' : ''}">${c.ok ? '★' : '☆'} ${esc(c.txt)}</div>`).join('')}</div>` : '';
-  const suite = i => i < S.JALONS.length && debloque(i);
+  const suite = i => i < S.NIVEAUX.length && debloque(i);
   $('fResultat').innerHTML = `<div class="grand">${grand}</div><h2>${titre}</h2>${V.fini === 'succes' ? `<div class="etoiles">${etoilesTxt(n.etoiles)}</div>` : ''}<p><b>${esc(V.cause)}</b></p>${crit}${stats}
     ${nouveau.length ? `<div class="gain">${nouveau.map(x => `<span>✨ ${x}</span>`).join('')}</div>` : ''}
     <p>${V.fini === 'echec' ? 'En explosant, on apprend : le programme avance par essais. ' + conseilEchec(V.cause) : V.fini === 'partiel' ? 'Le vaisseau est intact : tu peux réessayer tout de suite.' : n.etoiles < 3 ? 'Les deux autres étoiles sont des bonus : rejoue si tu veux les chercher.' : 'Trois étoiles : parfait !'}</p>
-    <button class="btn gros" id="bRejouer">↻ ${V.fini === 'succes' ? 'Rejouer' : 'Réessayer'}</button>${V.fini === 'succes' && suite(niveauEnCours + 1) ? '<button class="btn vert" id="bSuivant">▶ Jalon suivant</button>' : ''}<button class="btn" id="bNiveaux">Les jalons</button>`;
+    <button class="btn gros" id="bRejouer">↻ ${V.fini === 'succes' ? 'Rejouer' : 'Réessayer'}</button>${V.fini === 'succes' && suite(niveauEnCours + 1) ? '<button class="btn vert" id="bSuivant">▶ Niveau suivant</button>' : ''}<button class="btn" id="bNiveaux">Les niveaux</button>`;
   voile('vResultat', true);
   const quitter = () => { voile('vResultat', false); V = null; cancelAnimationFrame(boucle); arreterMoteur(); };
   $('bRejouer').onclick = () => { quitter(); lancer(niveauEnCours); };
@@ -232,51 +287,71 @@ function conseilEchec(c){
 /* ---------- Le dessin du vol ---------- */
 const echelleDe = y => 3.3 / Math.pow(1 + Math.max(0, y) / 90, .72);
 const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+const TAILLE_VEH = { hop:[34, 70], starship:[56, 134], superheavy:[70, 190], falcon9:[66, 170], falcon2:[44, 100], falconPile:[100, 200], shPile:[110, 220], dragon:[50, 110], dragonSeul:[44, 90] };
+// le véhicule à dessiner selon le moment du vol (la pile avant la séparation, le vaisseau seul ensuite, la capsule qui rentre)
+function kindVisuel(sp, V){
+  if(V.phase === 'capsule') return 'dragonSeul';
+  if(sp.kindHaut) return V.phase === 'programme' && V.etage === 1 ? sp.kind : sp.kindHaut;
+  return sp.kind || 'starship';
+}
+function sol(decor, solY, s, X, camX){
+  const d = g.createLinearGradient(0, solY, 0, H);
+  if(decor === 'mer'){ d.addColorStop(0, '#2F7FC4'); d.addColorStop(1, '#0F3560'); }
+  else if(decor === 'lune'){ d.addColorStop(0, '#A3A3A9'); d.addColorStop(1, '#4B4B53'); }
+  else if(decor === 'mars'){ d.addColorStop(0, '#C26A3A'); d.addColorStop(1, '#7A3A20'); }
+  else { d.addColorStop(0, '#B9A47C'); d.addColorStop(1, '#6B5A3E'); }
+  g.fillStyle = d; g.fillRect(0, solY, W, H - solY);
+  g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, solY, W, 3);
+  if(decor === 'mer'){ g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.5; for(let j = 0; j < 4; j++){ const y = solY + 8 + j * 20 * Math.max(.5, s * .5); g.beginPath(); for(let x = 0; x <= W; x += 10) g.lineTo(x, y + Math.sin((x + camX * s * .5) / 22 + V.t * 1.4 + j) * 2.2); g.stroke(); } }
+  else if(decor === 'lune' || decor === 'mars'){ g.fillStyle = 'rgba(0,0,0,.14)'; for(let i = -8; i <= 8; i++){ const cx = X(camX + i * 90 - (camX % 90)) + ((i * 53) % 40), r = (20 + Math.abs((i * 37) % 30)) * Math.max(.6, s * .8); g.beginPath(); g.ellipse(cx, solY + 14 + ((i * 17) % 20), r, r * .22, 0, 0, 7); g.fill(); } }
+  else for(let i = -12; i <= 12; i++){ const gx = X(camX + i * 40 - (camX % 40)); g.fillStyle = 'rgba(0,0,0,.06)'; g.fillRect(gx, solY + 3, 2, H); }
+}
 function dessinerVol(){
   if(!V) return;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const sp = V.spec, mars = !!sp.g && sp.g < 5, prog = V.phase === 'programme', t = V.t;
-  // le ciel : du bleu au noir selon l'altitude
-  const altC = prog ? V.y : V.y, k = clamp(altC / (prog ? 90000 : 22000), 0, 1);
+  const sp = V.spec, mars = !!sp.g && sp.g < 5 && sp.rho !== 0, vide = sp.rho === 0, decor = sp.decor || (sp.g && sp.g < 5 ? (vide ? 'lune' : 'mars') : 'terre');
+  const prog = V.phase === 'programme', haute = prog && V.y >= 4000;
+  // le ciel : du bleu au noir selon l'altitude (noir tout de suite sur la Lune)
+  const k = vide ? 1 : clamp(V.y / (prog ? 90000 : 22000), 0, 1);
   const haut = mars ? mix([36, 18, 22], [3, 3, 8], k) : mix([40, 120, 226], [2, 4, 14], k), bas = mars ? mix([210, 130, 90], [20, 10, 14], k) : mix([170, 216, 255], [10, 20, 50], k);
   const ciel = g.createLinearGradient(0, 0, 0, H); ciel.addColorStop(0, `rgb(${haut})`); ciel.addColorStop(1, `rgb(${bas})`); g.fillStyle = ciel; g.fillRect(0, 0, W, H);
   if(k > .15) etoiles(g, W, H, clamp((k - .15) * 2, 0, 1), V.y * .002);
-  const s = prog ? 2.2 : echelleDe(V.y), gy0 = H * .84;
-  let vyScr = prog ? H * .62 : clamp(gy0 - V.y * s, H * .32, H * .76), solY = prog ? H + 400 : vyScr + V.y * s;
-  const X = x => W / 2 + (x - (prog ? 0 : V.x)) * s, camX = prog ? 0 : V.x;
-  if(prog){ // la courbure de la Terre qui s'éloigne
-    const R = W * 3, cy = H + R * (1.05 - clamp(V.jauge * 1.1, 0, 1) * .12) * 1 - H * (.12 + V.jauge * .22), terre = g.createRadialGradient(W / 2, cy, R * .94, W / 2, cy, R); terre.addColorStop(0, '#2B6FD0'); terre.addColorStop(.97, '#58A8F0'); terre.addColorStop(1, 'rgba(160,220,255,.9)');
+  if(vide){ const tx = W * .82, ty = H * .2, t = g.createRadialGradient(tx - 4, ty - 4, 2, tx, ty, 22); t.addColorStop(0, '#9CD0FF'); t.addColorStop(.6, '#2B6FD0'); t.addColorStop(1, '#173A7A'); g.fillStyle = t; g.beginPath(); g.arc(tx, ty, 22, 0, 7); g.fill(); }
+  const s = haute ? 2.2 : echelleDe(V.y), gy0 = H * .84;
+  const kind = kindVisuel(sp, V), tv = TAILLE_VEH[kind] || [56, 134], hv = clamp(HAUTEUR_REELLE[kind] * (haute ? 2.2 : s), tv[0], tv[1]);
+  const vyScr = haute ? H * .62 : clamp(gy0 - V.y * s, Math.min(H * .6, Math.max(H * .32, hv + 36)), H * .76), solY = haute ? H + 400 : vyScr + V.y * s;
+  const camX = haute ? 0 : V.x, X = x => W / 2 + (x - camX) * s;
+  if(haute){ // la courbure de la Terre qui s'éloigne
+    const R = W * 3, cy = H + R * (1.05 - clamp(V.jauge * 1.1, 0, 1) * .12) - H * (.12 + V.jauge * .22), terre = g.createRadialGradient(W / 2, cy, R * .94, W / 2, cy, R); terre.addColorStop(0, '#2B6FD0'); terre.addColorStop(.97, '#58A8F0'); terre.addColorStop(1, 'rgba(160,220,255,.9)');
     g.fillStyle = terre; g.beginPath(); g.arc(W / 2, cy, R, 0, 7); g.fill();
   }
   // les nuages (en bas, on passe à travers)
-  if(!prog && !mars){ g.fillStyle = 'rgba(255,255,255,.55)'; for(let i = 0; i < 9; i++){ const wy = 600 + i * 900, sy = vyScr + (V.y - wy) * s; if(sy < -60 || sy > H + 60) continue; const wx = ((i * 377) % 900) - 450; for(let j = 0; j < 4; j++){ g.beginPath(); g.ellipse(X(wx + j * 70) , sy + (j % 2) * 8, 70 * s + 30, 20 * s + 10, 0, 0, 7); g.fill(); } } }
-  // le sol
-  if(!prog && solY < H + 40){
-    const sol = g.createLinearGradient(0, solY, 0, H); if(mars){ sol.addColorStop(0, '#C26A3A'); sol.addColorStop(1, '#7A3A20'); } else { sol.addColorStop(0, '#B9A47C'); sol.addColorStop(1, '#6B5A3E'); }
-    g.fillStyle = sol; g.fillRect(0, solY, W, H - solY);
-    g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, solY, W, 3);
-    for(let i = -12; i <= 12; i++){ const gx = X(camX + i * 40 - (camX % 40)); g.fillStyle = 'rgba(0,0,0,.06)'; g.fillRect(gx, solY + 3, 2, H); }
-    // la plateforme ou la tour
-    if(sp.pad && !sp.tour){ const px = X(sp.pad.x), pw = sp.pad.tol * s; g.fillStyle = '#3C4452'; g.fillRect(px - pw, solY - 2 * s, pw * 2, 2 * s + 3); g.fillStyle = '#FFD23A'; g.fillRect(px - pw, solY - 2 * s, pw * 2, 2); g.fillStyle = '#fff'; g.font = `800 ${Math.max(10, 5 * s)}px sans-serif`; g.textAlign = 'center'; g.fillText('H', px, solY + 8 * s); }
+  if(!haute && !mars && !vide){ g.fillStyle = 'rgba(255,255,255,.55)'; for(let i = 0; i < 9; i++){ const wy = 600 + i * 900, sy = vyScr + (V.y - wy) * s; if(sy < -60 || sy > H + 60) continue; const wx = ((i * 377) % 900) - 450; for(let j = 0; j < 4; j++){ g.beginPath(); g.ellipse(X(wx + j * 70), sy + (j % 2) * 8, 70 * s + 30, 20 * s + 10, 0, 0, 7); g.fill(); } } }
+  // le sol, la plateforme ou la barge, la tour
+  if(!haute && solY < H + 40){
+    sol(decor, solY, s, X, camX);
+    if(sp.type === 'barge'){ const px = X(sp.pad.x), pw = sp.pad.tol * s; g.fillStyle = '#242A33'; g.fillRect(px - pw * 1.15, solY - 1 * s, pw * 2.3, 2.6 * s + 4); g.fillStyle = '#3C4656'; g.fillRect(px - pw, solY - 2.4 * s, pw * 2, 1.6 * s + 2); g.strokeStyle = '#FFD23A'; g.lineWidth = 2; g.beginPath(); g.moveTo(px - pw * .3, solY - 2.2 * s); g.lineTo(px + pw * .3, solY - .9 * s); g.moveTo(px + pw * .3, solY - 2.2 * s); g.lineTo(px - pw * .3, solY - .9 * s); g.stroke(); }
+    else if(sp.type === 'dragon'){ const bx0 = X(sp.pad.x), bw = 26 * s + 18; g.fillStyle = '#EEF1F5'; g.beginPath(); g.moveTo(bx0 - bw, solY - 3); g.lineTo(bx0 + bw, solY - 3); g.lineTo(bx0 + bw * .8, solY + 8); g.lineTo(bx0 - bw * .8, solY + 8); g.closePath(); g.fill(); g.fillStyle = '#C8CFDA'; g.fillRect(bx0 - bw * .2, solY - 14, bw * .5, 12); }
+    else if(sp.pad && !sp.tour){ const px = X(sp.pad.x), pw = sp.pad.tol * s; g.fillStyle = '#3C4452'; g.fillRect(px - pw, solY - 2 * s, pw * 2, 2 * s + 3); g.fillStyle = '#FFD23A'; g.fillRect(px - pw, solY - 2 * s, pw * 2, 2); g.fillStyle = '#fff'; g.font = `800 ${Math.max(10, 5 * s)}px sans-serif`; g.textAlign = 'center'; g.fillText('H', px, solY + 8 * s); }
     if(sp.tour){ const tx = X(sp.tour.x + 22); tour(g, tx, solY, s, sp.tour, !!(fin && fin.issue === 'succes')); g.fillStyle = '#3C4452'; g.fillRect(X(sp.tour.x - 15), solY - 1.5 * s, 38 * s, 1.5 * s + 2); }
+    if(prog && !sp.tour){ tour(g, X(34), solY, s * .9, null, false); }                                   // la tour de lancement, au décollage
     // les lignes à suivre : l'allumage et le retournement
     g.setLineDash([8, 6]); g.lineWidth = 2; g.textAlign = 'left'; g.font = '800 12px "Bricolage Grotesque", sans-serif';
-    if(V.vy < -4 && !V.fini && (V.phase === 'vol')){ const ya = S.hauteurAllumage(V); if(isFinite(ya) && ya > 0){ const ly = vyScr + (V.y - ya) * s; if(ly > 20 && ly < H){ g.strokeStyle = '#38E08A'; g.beginPath(); g.moveTo(0, ly); g.lineTo(W, ly); g.stroke(); g.fillStyle = '#38E08A'; g.fillText('ALLUME ICI', 10, ly - 6); } } }
+    if(V.vy < -4 && !V.fini && V.phase === 'vol'){ const ya = S.hauteurAllumage(V); if(isFinite(ya) && ya > 0){ const ly = vyScr + (V.y - ya) * s; if(ly > 20 && ly < H){ g.strokeStyle = '#38E08A'; g.beginPath(); g.moveTo(0, ly); g.lineTo(W, ly); g.stroke(); g.fillStyle = '#38E08A'; g.fillText('ALLUME ICI', 10, ly - 6); } } }
     if(V.phase === 'plat' && !V.fini){ const yr = S.altitudeRetournement(V); const ly = vyScr + (V.y - yr) * s; if(ly > 20 && ly < H){ g.strokeStyle = '#5AB0FF'; g.beginPath(); g.moveTo(0, ly); g.lineTo(W, ly); g.stroke(); g.fillStyle = '#9CCBFF'; g.fillText('RETOURNE-TOI ICI', 10, ly - 6); } }
     g.setLineDash([]);
   }
-  // le vaisseau (ou son fantôme)
-  const kind = sp.type === 'saut' ? 'hop' : sp.type === 'booster' ? 'booster' : 'ship', hv = kind === 'hop' ? clamp(9 * s, 34, 70) : kind === 'booster' ? clamp(70 * s, 70, 190) : clamp(38 * s, 56, 134);
-  const bx = prog ? W / 2 : W / 2, by = prog ? vyScr : vyScr;
-  if(prog){ g.globalAlpha = .45; vehicule(g, 'ship', bx + 70, by, hv, S.pitchCible(V.jauge), { gaz:0 }); g.globalAlpha = 1; g.strokeStyle = '#FFD23A'; g.setLineDash([4, 5]); g.lineWidth = 2; g.beginPath(); g.moveTo(bx + 70, by); g.lineTo(bx + 70 + Math.sin(S.pitchCible(V.jauge) * Math.PI / 180) * hv, by - Math.cos(S.pitchCible(V.jauge) * Math.PI / 180) * hv); g.stroke(); g.setLineDash([]); g.fillStyle = '#FFD23A'; g.font = '800 11px sans-serif'; g.textAlign = 'center'; g.fillText('trajectoire', bx + 70, by + 16); }
+  // le véhicule (ou son fantôme de trajectoire)
+  const bx = W / 2, by = vyScr;
+  if(haute){ const pc = S.pitchCible(V.jauge); g.globalAlpha = .45; vehicule(g, kind, bx + 90, by, hv, pc, { gaz:0 }); g.globalAlpha = 1; g.strokeStyle = '#FFD23A'; g.setLineDash([4, 5]); g.lineWidth = 2; g.beginPath(); g.moveTo(bx + 90, by); g.lineTo(bx + 90 + Math.sin(pc * Math.PI / 180) * hv, by - Math.cos(pc * Math.PI / 180) * hv); g.stroke(); g.setLineDash([]); g.fillStyle = '#FFD23A'; g.font = '800 11px sans-serif'; g.textAlign = 'center'; g.fillText('trajectoire', bx + 90, by + 16); }
   // la fumée et les débris
-  for(const p of parts){ const a = 1 - p.t / p.vie, px = prog ? bx + p.x * s : X(p.x), py = prog ? by - p.y * s : vyScr + (V.y - p.y) * s + (solY - (vyScr + V.y * s)) * 0; const sy = solY - p.y * s; g.globalAlpha = clamp(a, 0, 1) * .9; g.fillStyle = p.c; g.beginPath(); g.arc(px, prog ? py : sy, p.r * (p.g ? 1 : 1 + p.t * 1.6), 0, 7); g.fill(); }
+  for(const p of parts){ const a = 1 - p.t / p.vie, px = haute ? bx + p.x * s : X(p.x), py = haute ? by - p.y * s : solY - p.y * s; g.globalAlpha = clamp(a, 0, 1) * .9; g.fillStyle = p.c; g.beginPath(); g.arc(px, py, p.r * (p.g ? 1 : 1 + p.t * 1.6), 0, 7); g.fill(); }
   g.globalAlpha = 1;
   if(!(fin && fin.issue === 'echec')){
     let bxx = bx, byy = by, th = V.th;
-    if(!prog && sp.tour && fin && fin.issue === 'succes'){ bxx = X(sp.tour.x); byy = solY - sp.tour.y * s; th = 0; }
-    const jambes = !prog && V.phase === 'vol' && V.y < 120 && (sp.pad || sp.tour) && V.retourne !== false;
-    vehicule(g, kind, bxx, byy, hv, th, { gaz:V.gaz, chaleur:V.chaleur / V.p.resChaleur, jambes:jambes && sp.type !== 'saut' ? true : sp.type === 'saut' });
+    if(!haute && sp.tour && fin && fin.issue === 'succes'){ bxx = X(sp.tour.x); byy = solY - sp.tour.y * s; th = 0; }
+    const jambes = !haute && V.phase === 'vol' && V.y < 150 && (sp.pad || sp.tour) && V.retourne !== false;
+    vehicule(g, kind, bxx, byy, hv, th, { gaz:V.gaz, chaleur:V.chaleur / V.p.resChaleur, jambes:jambes || sp.type === 'saut', chutes:V.chute ? (V.chuteK || 0) : 0 });
   }
   dessinerHUD(sp, prog);
 }
@@ -286,10 +361,10 @@ function jauge(x, y, w, h, v, c, titre, txt){
 }
 function texteHUD(t, x, y, taille = 12, couleur = '#fff', align = 'left'){ g.font = `800 ${taille}px "Bricolage Grotesque", sans-serif`; g.textAlign = align; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,20,.75)'; g.lineJoin = 'round'; g.strokeText(t, x, y); g.fillStyle = couleur; g.fillText(t, x, y); }
 // un texte centré qui passe à la ligne s'il est trop long ; rend la hauteur prise
-function texteLong(t, x, y, taille, couleur){
-  g.font = `800 ${taille}px "Bricolage Grotesque", sans-serif`; const max = W - 30, mots = String(t).split(' '), lignes = []; let l = '';
+function texteLong(t, x, y, taille, couleur, gauche, maxL){
+  g.font = `800 ${taille}px "Bricolage Grotesque", sans-serif`; const max = maxL || W - 30, mots = String(t).split(' '), lignes = []; let l = '';
   for(const m of mots){ const essai = l ? l + ' ' + m : m; if(g.measureText(essai).width > max && l){ lignes.push(l); l = m; } else l = essai; }
-  lignes.push(l); lignes.forEach((ln, i) => texteHUD(ln, x, y + i * (taille + 4), taille, couleur, 'center')); return lignes.length * (taille + 4);
+  lignes.push(l); lignes.forEach((ln, i) => texteHUD(ln, x, y + i * (taille + 4), taille, couleur, gauche ? 'left' : 'center')); return lignes.length * (taille + 4);
 }
 function dessinerHUD(sp, prog){
   const p = V.p, mars = !!sp.g && sp.g < 5, top = 10, L = 12;
@@ -314,18 +389,20 @@ function dessinerHUD(sp, prog){
     jauge(L, top + 68, 180, 12, V.carb, V.carb < .15 ? '#FF4D4D' : '#5AB0FF', 'Carburant', `${Math.round(V.carb * 100)} %`);
     jauge(L, top + 83, 180, 11, V.gaz, '#FF8A3D', V.phase === 'plat' ? 'Cabrage' : 'Poussée');
     if(V.phase === 'plat') { g.fillStyle = 'rgba(255,138,61,.6)'; g.fillRect(L + 180 * V.attaque - 2, top + 83, 4, 11); }
-    if(V.phase === 'plat' || V.phase === 'flip' || V.chaleur > 1){ jauge(214, top + 4, Math.min(W - 230, 200), 13, V.chaleur / p.resChaleur, V.chaleur / p.resChaleur > .75 ? '#FF4D4D' : '#FFB347', 'Chaleur'); }
+    if(V.phase === 'plat' || V.phase === 'flip' || V.phase === 'capsule' || V.chaleur > 1){ jauge(214, top + 4, Math.min(W - 230, 200), 13, V.chaleur / p.resChaleur, V.chaleur / p.resChaleur > .75 ? '#FF4D4D' : '#FFB347', 'Chaleur'); }
   }
   // la cible hors de l'écran, et les consignes
   if(!prog && (sp.pad || sp.tour)){ const tx = sp.tour ? sp.tour.x : sp.pad.x, dx = tx - V.x, s = echelleDe(V.y); if(Math.abs(dx) * s > W / 2 - 30){ texteHUD(`${dx > 0 ? '' : '◀ '}${sp.tour ? 'tour' : 'plateforme'} ${Math.abs(dx).toFixed(0)} m${dx > 0 ? ' ▶' : ''}`, dx > 0 ? W - 14 : 14, H * .45, 12, '#9CCBFF', dx > 0 ? 'right' : 'left'); } }
   const info = consigne(sp, prog);
-  let dy = 0; if(bandeauMsg && (V.t - bandeauMsg.at < 4.5 || bandeauMsg.at === 0)){ const c = bandeauMsg.cls === 'bon' ? '#7CF0B6' : bandeauMsg.cls === 'mal' ? '#FF9A9A' : '#FFE08A'; dy = texteLong(bandeauMsg.t, W / 2, H * .17, 16, c); }
-  if(info) texteLong(info, W / 2, H * .17 + dy + 6, 14, '#fff');
+  let dy = 0; if(bandeauMsg && (V.t - bandeauMsg.at < 4.5 || bandeauMsg.at === 0)){ const c = bandeauMsg.cls === 'bon' ? '#7CF0B6' : bandeauMsg.cls === 'mal' ? '#FF9A9A' : '#FFE08A'; const col = W > H * 1.1;   // en paysage : les messages dans une colonne à gauche, sous les chiffres, loin du véhicule
+    dy = col ? texteLong(bandeauMsg.t, 14, 134, 14, c, true, Math.min(W * .34, 300)) : texteLong(bandeauMsg.t, W / 2, H * .17, 16, c); }
+  if(info){ const col = W > H * 1.1; if(col) texteLong(info, 14, 134 + dy + 6, 13, '#fff', true, Math.min(W * .34, 300)); else texteLong(info, W / 2, H * .17 + dy + 6, 14, '#fff'); }
   // le bouton d'action
   const b = $('bAction'); let lib = '—', ok = false;
   if(V.phase === 'programme' && V.etage === 1 && V.fenetre){ lib = 'SÉPARER'; ok = true; }
   else if(V.phase === 'vol' && sp.belly && V.atteint && !V.retourne && V.vy < -3 && V.gaz < .05){ lib = 'BASCULER'; ok = true; }
   else if(V.phase === 'plat' && V.th > 80){ lib = 'RETOURNER'; ok = true; }
+  else if(V.phase === 'capsule' && !V.chute){ lib = 'PARACHUTES'; ok = true; }
   b.textContent = lib; b.disabled = !ok || !!fin;
   if(V.phase !== phasePrec){
     if(V.phase === 'plat') reglerPuissance(.4, 'CABRER'); else if(phasePrec === 'plat' || phasePrec === 'flip') reglerPuissance(0, 'POUSSÉE');
@@ -335,6 +412,7 @@ function dessinerHUD(sp, prog){
 }
 function consigne(sp, prog){
   if(fin) return '';
+  if(V.phase === 'capsule') return V.chute ? 'Parachutes ouverts : descente en douceur (◀ ▶ pour te rapprocher du bateau)' : `Vitesse ${Math.hypot(V.vx, V.vy).toFixed(0)} m/s : ouvre les PARACHUTES sous 230 m/s, pas trop haut`;
   if(prog) return V.maxQ ? '⚠ Pression maximale : relâche la poussée !' : V.fenetre && V.etage === 1 ? 'Appuie sur SÉPARER au repère' : '';
   if(!V.enVol && V.phase === 'vol' && V.t < 60) return 'POUSSÉE : tiens le bouton pour décoller';
   if(sp.type === 'saut' && !V.atteint) return `Monte à ${sp.cible} m (altitude ${fmt(V.y)} m)`;
@@ -389,10 +467,160 @@ $('bSon').onclick = () => { son = !son; ecrire('starship-son', son); $('bSon').t
 $('bMenu').onclick = () => { accueil(); ecran('eAccueil'); };
 $('bContinuer').onclick = () => ecran('eNiveaux');
 $('bReset').onclick = () => { if(confirm('Effacer toute la progression (étoiles, records) ?')){ R = rec0(); sauver(); accueil(); } };
-$('bAbandon').onclick = () => { if(!confirm('Abandonner le vol ?')) return; voile('vPause', false); enPause = false; V.gaz = 0; V.fini = 'echec'; V.cause = 'Vol abandonné.'; terminaison(); };
+$('bAbandon').onclick = () => { if(B){ quitterBac(); ecran('eBacReg'); reglages(); return; } if(!confirm('Abandonner le vol ?')) return; voile('vPause', false); enPause = false; V.gaz = 0; V.fini = 'echec'; V.cause = 'Vol abandonné.'; terminaison(); };
 $('bAide').onclick = $('bAide2').onclick = () => voile('vAide', true); $('bAideFermer').onclick = () => voile('vAide', false);
 $('bSon').textContent = son ? '🔊 Son' : '🔇 Son coupé';
 
+/* ---------- Le bac à sable ---------- */
+const CLE_BAC = 'starship-bac';
+let cfg = Object.assign({ monde:'terre', vehicule:'falcon9', depart:'sol', vent:false, illimite:false, tour:false }, lire(CLE_BAC, {}));
+let warp = 1, debris = [], bacFin = null, bacMsgVus = 0, bacMsg = null, chK = 0, bacParts = [];
+const WARPS = [1, 4, 16, 64], SAS_LIB = { libre:'libre', tenir:'tenir le cap', prograde:'avant (trajectoire)', retro:'arrière (frein)', vertical:'vertical' };
+function reglages(){
+  if(!BAC.MONDES[cfg.monde]) cfg.monde = 'terre'; if(!BAC.VEHICULES[cfg.vehicule]) cfg.vehicule = 'falcon9';
+  const Vh = BAC.VEHICULES[cfg.vehicule];
+  const departs = Vh.departs.filter(d => cfg.monde === 'terre' || d !== 'retour'); if(!departs.includes(cfg.depart)) cfg.depart = departs[0];
+  const btn = (id, cle, lst, lib) => lst.map(k => `<button data-${id}="${k}" class="${cfg[cle] === k ? 'sel' : ''}">${lib(k)}</button>`).join('');
+  $('chMonde').innerHTML = btn('m', 'monde', Object.keys(BAC.MONDES), k => `${BAC.MONDES[k].ico} ${BAC.MONDES[k].nom}<br><small>${BAC.MONDES[k].g} m/s²${BAC.MONDES[k].rho0 ? '' : ' · sans air'}</small>`);
+  $('chVeh').innerHTML = btn('v', 'vehicule', Object.keys(BAC.VEHICULES), k => `${BAC.VEHICULES[k].ico} ${BAC.VEHICULES[k].nom}`);
+  $('txtVeh').textContent = Vh.txt + ' (' + Vh.etages.length + ' étage' + (Vh.etages.length > 1 ? 's' : '') + ')';
+  const dn = { sol:'🏗️ Au sol', orbite:'🛰️ En orbite', retour:'☄️ En descente (le retour)' };
+  $('chDep').innerHTML = btn('d', 'depart', departs, k => dn[k]);
+  $('chOpt').innerHTML = [['vent', '💨 Vent'], ['illimite', '♾️ Carburant illimité'], ['tour', '🗼 Tour à bras (rattraper)']].map(([k, l]) => `<button data-o="${k}" class="${cfg[k] ? 'sel' : ''}">${l}</button>`).join('');
+  document.querySelectorAll('#chMonde button').forEach(b => b.onclick = () => { cfg.monde = b.dataset.m; reglages(); });
+  document.querySelectorAll('#chVeh button').forEach(b => b.onclick = () => { cfg.vehicule = b.dataset.v; reglages(); });
+  document.querySelectorAll('#chDep button').forEach(b => b.onclick = () => { cfg.depart = b.dataset.d; reglages(); });
+  document.querySelectorAll('#chOpt button').forEach(b => b.onclick = () => { cfg[b.dataset.o] = !cfg[b.dataset.o]; reglages(); });
+  ecrire(CLE_BAC, cfg);
+}
+function lancerBac(){
+  V = null; B = BAC.nouveau({ monde:cfg.monde, vehicule:cfg.vehicule, depart:cfg.depart, vent:cfg.vent ? 6 : 0, illimite:cfg.illimite, tour:cfg.tour && cfg.monde === 'terre' });
+  warp = 1; debris = []; bacFin = null; bacMsgVus = 0; bacMsg = { t:cfg.depart === 'sol' ? 'Pousse le curseur de droite (POUSSÉE) pour décoller · ⏏ Étage pour larguer · 🧭 règle le cap' : cfg.depart === 'orbite' ? 'En orbite : ◀ ▶ pour tourner, POUSSÉE pour changer d\'orbite · ⏩ accélère le temps (moteur coupé)' : BAC.VEHICULES[cfg.vehicule].etages[0].bouclier === 'base' ? 'Rentrée : le FOND de la capsule (le bouclier) doit faire face au vent. Ouvre les 🪂 sous 250 m/s' : BAC.VEHICULES[cfg.vehicule].etages[0].bouclier === 'ventre' ? 'Rentrée : présente le VENTRE au vent (cap ≈ 30°), puis redresse et rallume pour te poser' : 'Retour : freine avec les moteurs (POUSSÉE) et pose-toi, jambes sorties', at:0 }; chK = 0; bacParts = []; enPause = false;
+  $('bacBts').hidden = false; $('bbWarp').textContent = '⏩ ×1'; $('bVitesse').style.display = 'none'; $('bAbandon').textContent = 'Quitter le bac à sable';
+  ecran('eVol'); appliquerMode(); tailleVol(); dernier = performance.now(); acc = 0; audio(); reglerPuissance(0);
+  cancelAnimationFrame(boucle); boucle = requestAnimationFrame(tick);
+}
+function quitterBac(){ B = null; arreterMoteur(); cancelAnimationFrame(boucle); $('bacBts').hidden = true; $('bVitesse').style.display = ''; $('bAbandon').textContent = 'Abandonner le vol'; voile('vResultat', false); voile('vPause', false); enPause = false; }
+function entreeBac(){
+  const e = { cible:entrees.cible, gaz:entrees.gaz, dir:entrees.dir };
+  if(e.dir == null) e.dir = (entrees.droite ? 1 : 0) - (entrees.gauche ? 1 : 0);
+  return e;
+}
+function tickBac(now){
+  let dt = Math.min(.05, (now - dernier) / 1000); dernier = now;
+  if(!enPause){
+    const E = BAC.etage(B), atmo = B.M.atmo, ok = B.y > Math.max(2000, atmo * .8) && B.gaz < .01 && B.etat === 'vol';
+    if(warp > 1 && !ok){ warp = 1; $('bbWarp').textContent = '⏩ ×1'; }
+    const tot = dt * (bacFin ? 1 : warp), n = Math.max(1, Math.ceil(tot / .05)), d1 = tot / n;
+    for(let i = 0; i < n && B.etat !== 'detruit'; i++) BAC.pas(B, entreeBac(), d1);
+    for(const x of debris){ x.t += tot; const a = BAC.grav(B, x.y), r = BAC.rho(B, x.y); x.vy -= a * tot; x.vx -= x.vx * Math.abs(x.vx) * r * .0008 * tot; x.vy -= x.vy * Math.abs(x.vy) * r * .0008 * tot; x.x += x.vx * tot; x.y += x.vy * tot; x.th += x.om * tot; if(x.y <= 0){ x.mort = true; for(let k = 0; k < 40; k++){ const a2 = Math.random() * 6.28, v = 6 + Math.random() * 30; bacParts.push({ x:x.x, y:2, vx:Math.cos(a2) * v, vy:Math.abs(Math.sin(a2)) * v + 4, vie:1 + Math.random(), t:0, r:2 + Math.random() * 4, c:Math.random() < .5 ? '#FFB347' : '#7A7F8A' }); } } }
+    debris = debris.filter(x => !x.mort && x.t < 400);
+    if(B.gaz > .12 && B.y < 20000 && Math.random() < .6){ const a = B.th * Math.PI / 180; bacParts.push({ x:B.x + Math.sin(a) * -2, y:Math.max(0, B.y), vx:(Math.random() - .5) * 10, vy:-5 - Math.random() * 6, vie:.8 + Math.random(), t:0, r:3 + Math.random() * 3, c:'rgba(230,230,235,.6)' }); }
+    for(const p of bacParts){ p.t += tot; p.x += p.vx * tot; p.y += p.vy * tot; if(p.y < 0){ p.y = 0; p.vy *= -.3; p.vx *= .7; } } bacParts = bacParts.filter(p => p.t < p.vie);
+    if(BAC.etage(B) && B.chutes && chK < 1) chK = Math.min(1, chK + dt / 2.5);
+    for(; bacMsgVus < B.msgs.length; bacMsgVus++){ bacMsg = { t:B.msgs[bacMsgVus].t, at:B.t, cls:B.msgs[bacMsgVus].cls }; if(B.msgs[bacMsgVus].cls === 'bon') bip(740, .14); else if(B.msgs[bacMsgVus].cls === 'mal') bip(180, .3, .1); else bip(520, .08, .05); }
+    if(moteur){ moteur.gn.gain.value = B.gaz * .22; moteur.f.frequency.value = 160 + B.gaz * 480; }
+    if(B.gaz > .02 && !moteur) demarrerMoteur(); if(B.gaz <= .02 && moteur) arreterMoteur();
+    if(B.etat === 'detruit' && !bacFin){ bacFin = { t0:now }; arreterMoteur(); boum(); for(let k = 0; k < 90; k++){ const a = Math.random() * 6.28, v = 8 + Math.random() * 50; bacParts.push({ x:B.x, y:Math.max(2, B.y + 4), vx:Math.cos(a) * v, vy:Math.sin(a) * v * .8 + 8, vie:1 + Math.random() * 1.6, t:0, r:2 + Math.random() * 5, c:['#FF6A2B', '#FFB347', '#7A7F8A', '#2B2F38'][k % 4], g:k % 3 === 0 }); } }
+    if(bacFin && now - bacFin.t0 > 1800 && !bacFin.montre){ bacFin.montre = true; finBac(); }
+  }
+  dessinerBac();
+}
+function finBac(){
+  const o = BAC.orbite(B);
+  $('fResultat').innerHTML = `<div class="grand">💥</div><h2>Vol terminé</h2><p><b>${esc(B.cause)}</b></p>
+    <div class="stat"><div><b>${B.t.toFixed(0)} s</b>de vol</div><div><b>${fmt(B.maxY / 1000)} km</b>altitude max</div><div><b>${fmt(B.maxV)} m/s</b>vitesse max</div></div>
+    <p>Dans le bac à sable, on essaie, on rate, on recommence : c'est comme ça que les ingénieurs apprennent.</p>
+    <button class="btn gros" id="bRejouer">↻ Recommencer</button><button class="btn" id="bNiveaux">🧪 Changer les réglages</button>`;
+  voile('vResultat', true);
+  $('bRejouer').onclick = () => { quitterBac(); lancerBac(); };
+  $('bNiveaux').onclick = () => { quitterBac(); ecran('eBacReg'); reglages(); };
+}
+// les boutons du bac
+$('bBac').onclick = () => { ecran('eBacReg'); reglages(); };
+$('bBacRetour').onclick = () => { accueil(); ecran('eAccueil'); };
+$('bBacGo').onclick = lancerBac;
+$('bbEtage').onclick = () => { if(!B) return; const E = BAC.etage(B), old = { ...E }; if(BAC.etageSuivant(B)) debris.push({ kind:E.kindSeul || E.kind, x:B.x, y:B.y, vx:B.vx, vy:B.vy, th:B.th, om:B.om * 6 + (Math.random() - .5) * 8, t:0, h:E.hauteur }); };
+$('bbJambes').onclick = () => { if(B) BAC.jambes(B); };
+$('bbChutes').onclick = () => { if(B) BAC.parachutes(B); };
+$('bbSas').onclick = () => { if(!B) return; const i = BAC.SAS.indexOf(B.sas); B.sas = BAC.SAS[(i + 1) % BAC.SAS.length]; if(B.sas === 'tenir') B.cap = B.th; };
+$('bbWarp').onclick = () => { if(!B) return; const E = B.y > Math.max(2000, B.M.atmo * .8) && B.gaz < .01; if(!E){ bacMsg = { t:'Accélération du temps : seulement dans le vide, moteur coupé', at:B.t, cls:'mal' }; return; } warp = WARPS[(WARPS.indexOf(warp) + 1) % WARPS.length]; $('bbWarp').textContent = `⏩ ×${warp}`; };
+addEventListener('keydown', e => { if(!B || $('eVol').hidden) return; const k = e.key.toLowerCase(); if(k === 'e') $('bbEtage').click(); else if(k === 'g') $('bbJambes').click(); else if(k === 'p') $('bbChutes').click(); else if(k === 'c') $('bbSas').click(); else if(k === 't') $('bbWarp').click(); });
+
+// le dessin du bac : le sol de près, la courbure du monde de loin, la carte d'orbite
+function carteOrbite(cx, cy, r0){
+  const M = B.M, mu = M.g * M.R * M.R, phi = B.x / M.R, rr = M.R + B.y;
+  const px = rr * Math.sin(phi), py = rr * Math.cos(phi);
+  const vxx = B.vx * Math.cos(phi) + B.vy * Math.sin(phi), vyy = -B.vx * Math.sin(phi) + B.vy * Math.cos(phi);
+  const h = px * vyy - py * vxx, v2 = vxx * vxx + vyy * vyy, ex = ((v2 - mu / rr) * px - (px * vxx + py * vyy) * vxx) / mu, ey = ((v2 - mu / rr) * py - (px * vxx + py * vyy) * vyy) / mu, e = Math.hypot(ex, ey), p = h * h / mu;
+  const o = BAC.orbite(B), rmax = Math.max(rr, o.ouverte ? rr * 1.5 : M.R + o.ap), k = (r0 - 4) / Math.min(rmax * 1.08, M.R * 6);
+  g.fillStyle = 'rgba(8,12,28,.55)'; g.beginPath(); g.arc(cx, cy, r0, 0, 7); g.fill(); g.strokeStyle = 'rgba(255,255,255,.3)'; g.lineWidth = 1.5; g.stroke();
+  g.fillStyle = M.decor === 'lune' ? '#9A9AA2' : M.decor === 'mars' ? '#C26A3A' : '#2B6FD0'; g.beginPath(); g.arc(cx, cy, Math.max(3, M.R * k), 0, 7); g.fill();
+  if(e < 1.2 && e > 1e-4){ const w = Math.atan2(ey, ex); g.strokeStyle = o.pe < 0 ? '#FF6A6A' : '#7CF0B6'; g.lineWidth = 2; g.beginPath(); let debut = false;
+    for(let a = 0; a <= 360; a += 3){ const nu = a * Math.PI / 180, den = 1 + e * Math.cos(nu); if(den <= .02) continue; const r = p / den, ang = w + (h >= 0 ? -nu : nu), x = cx + r * Math.cos(ang) * k, y = cy - r * Math.sin(ang) * k; if(Math.hypot(x - cx, y - cy) > r0 - 1) { debut = false; continue; } if(!debut){ g.moveTo(x, y); debut = true; } else g.lineTo(x, y); } g.stroke(); }
+  const vx = cx + px * k, vy = cy - py * k; g.fillStyle = '#FFD23A'; g.beginPath(); g.arc(clamp(vx, cx - r0 + 4, cx + r0 - 4), clamp(vy, cy - r0 + 4, cy + r0 - 4), 3.5, 0, 7); g.fill();
+}
+function dessinerBac(){
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const M = B.M, E = BAC.etage(B), decor = M.decor, vide = M.rho0 === 0, mars = decor === 'mars', haut = B.y >= 2500;
+  const k = vide ? 1 : clamp(B.y / (M.atmo * .6), 0, 1);
+  const c1 = mars ? mix([36, 18, 22], [3, 3, 8], k) : mix([40, 120, 226], [2, 4, 14], k), c2 = mars ? mix([210, 130, 90], [20, 10, 14], k) : mix([170, 216, 255], [10, 20, 50], k);
+  const ciel = g.createLinearGradient(0, 0, 0, H); ciel.addColorStop(0, `rgb(${c1})`); ciel.addColorStop(1, `rgb(${c2})`); g.fillStyle = ciel; g.fillRect(0, 0, W, H);
+  if(k > .15) etoiles(g, W, H, clamp((k - .15) * 2, 0, 1), B.x * .00002 + B.y * .00001);
+  const kind = E ? E.kind : 'starship', tv = TAILLE_VEH[kind] || [56, 134], real = (E && E.hauteur) || HAUTEUR_REELLE[kind] || 40;
+  const s = haut ? 1 : echelleDe(B.y), hv = haut ? tv[1] * .8 : clamp(real * s, Math.max(tv[0], tv[1] * .55), tv[1]);
+  const gy0 = H * .84, vyScr = haut ? H * .5 : clamp(gy0 - B.y * s, chK > 0 ? H * .66 : Math.min(H * .6, Math.max(H * .32, hv + 36)), H * .76), solY = haut ? H + 400 : vyScr + B.y * s, camX = B.x, X = x => W / 2 + (x - camX) * s;
+  if(haut){
+    const Rp = W * 4, mpp = M.R / Rp, drop = H * .12 + H * .5 / (1 + B.y / 40e3), cy = vyScr + drop + Rp, phi0 = B.x / mpp;
+    if(M.rho0 > 0){ const gl = g.createRadialGradient(W / 2, cy, Rp, W / 2, cy, Rp + 26 * (1 - k * .6)); gl.addColorStop(0, mars ? 'rgba(255,170,110,.75)' : 'rgba(130,190,255,.8)'); gl.addColorStop(1, 'rgba(100,160,255,0)'); g.fillStyle = gl; g.beginPath(); g.arc(W / 2, cy, Rp + 26, 0, 7); g.fill(); }
+    g.fillStyle = decor === 'lune' ? '#8A8A92' : mars ? '#B5603A' : '#2A68C8'; g.beginPath(); g.arc(W / 2, cy, Rp, 0, 7); g.fill();
+    g.save(); g.beginPath(); g.arc(W / 2, cy, Rp, 0, 7); g.clip();
+    for(let i = -40; i <= 40; i++){ const arc = (i * 140 - (phi0 % 140)) , ang = arc / Rp, px = W / 2 + Math.sin(ang) * (Rp - 4), py = cy - Math.cos(ang) * (Rp - 4); if(px < -80 || px > W + 80) continue; const j = (Math.round((phi0 - (phi0 % 140)) / 140) + i); const hsh = Math.abs(Math.sin(j * 12.9898) * 43758.5453) % 1; g.fillStyle = decor === 'terre' ? (hsh < .55 ? 'rgba(255,255,255,.55)' : 'rgba(80,150,70,.55)') : 'rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(px, py + 6 + hsh * 20, 30 + hsh * 50, 5 + hsh * 6, 0, 0, 7); g.fill(); }
+    g.restore();
+    if(B.y < 60e3 && !vide){ g.fillStyle = 'rgba(255,255,255,.25)'; }
+  } else {
+    if(!vide && !mars){ g.fillStyle = 'rgba(255,255,255,.55)'; for(let i = 0; i < 9; i++){ const wy = 600 + i * 900, sy = vyScr + (B.y - wy) * s; if(sy < -60 || sy > H + 60) continue; const wx = ((i * 377) % 900) - 450; for(let j = 0; j < 4; j++){ g.beginPath(); g.ellipse(X(wx + j * 40), sy + (j % 2) * 8, 60 * s * .5 + 20, 16, 0, 0, 7); g.fill(); } } }
+    if(solY < H + 40){
+      sol(decor, solY, s, X, camX);
+      const px = X(0), pw = 26 * s; g.fillStyle = '#3C4452'; g.fillRect(px - pw, solY - 1.6 * s, pw * 2, 1.6 * s + 3); g.fillStyle = '#FFD23A'; g.fillRect(px - pw, solY - 1.6 * s, pw * 2, 2);
+      if(B.tour){ tour(g, X(22), solY, s, { y:75, tol:12 }, B.etat === 'pose' && B.y > 10); g.fillStyle = '#3C4452'; g.fillRect(X(-15), solY - 1.5 * s, 38 * s, 1.5 * s + 2); }
+      else if(B.vehicule !== 'hop' || true){ tour(g, X(34), solY, s * .9, null, false); }
+    }
+    for(const x of debris){ const dh = clamp((x.h || 40) * s, 20, 150); vehicule(g, x.kind, X(x.x), solY - x.y * s, dh, x.th, { gaz:0 }); }
+  }
+  // les débris et la fumée
+  for(const p of bacParts){ const a = 1 - p.t / p.vie; g.globalAlpha = clamp(a, 0, 1) * .9; g.fillStyle = p.c; g.beginPath(); g.arc(haut ? W / 2 + (p.x - B.x) * .05 : X(p.x), haut ? vyScr + (B.y - p.y) * .05 : solY - p.y * s, p.r * (p.g ? 1 : 1 + p.t * 1.6), 0, 7); g.fill(); } g.globalAlpha = 1;
+  if(!(bacFin)){
+    const chaleur = B.chaleur, kd = kind;
+    vehicule(g, kd, W / 2, vyScr, hv, B.th, { gaz:B.gaz, chaleur:Math.min(1, chaleur), jambes:B.jambes, chutes:chK });
+    const sp = Math.hypot(B.vx, B.vy);
+    if(sp > 15){ const a = Math.atan2(B.vx, -B.vy) - Math.PI / 2, rr = hv * .75 + 22; g.strokeStyle = '#7CF0B6'; g.lineWidth = 2; g.beginPath(); g.arc(W / 2 + Math.cos(a) * rr, vyScr - hv * .45 + Math.sin(a) * rr, 7, 0, 7); g.stroke(); g.beginPath(); g.moveTo(W / 2 + Math.cos(a) * rr - 11, vyScr - hv * .45 + Math.sin(a) * rr); g.lineTo(W / 2 + Math.cos(a) * rr - 7, vyScr - hv * .45 + Math.sin(a) * rr); g.moveTo(W / 2 + Math.cos(a) * rr + 7, vyScr - hv * .45 + Math.sin(a) * rr); g.lineTo(W / 2 + Math.cos(a) * rr + 11, vyScr - hv * .45 + Math.sin(a) * rr); g.stroke(); }
+  }
+  hudBac(E);
+}
+function hudBac(E){
+  const M = B.M, o = BAC.orbite(B), L = 12, top = 10, sp = Math.hypot(B.vx, B.vy), m = BAC.masse(B), tw = E && E.pSol ? (B.M.rho0 > 0 && B.y < 20e3 ? E.pSol : E.pVide) / (m * BAC.grav(B, B.y)) : 0;
+  g.fillStyle = 'rgba(8,12,28,.55)'; rondRect(g, 8, top - 2, 214, 168, 12); g.fill();
+  texteHUD(`${M.ico} ${M.nom} · ${BAC.VEHICULES[B.vehicule].nom}`, L, top + 12, 12, '#FFB347');
+  texteHUD(`Altitude ${B.y >= 10000 ? (B.y / 1000).toFixed(1) + ' km' : fmt(B.y) + ' m'}`, L, top + 30, 13);
+  texteHUD(`Vitesse ${fmt(sp)} m/s`, L, top + 46, 12, '#C8D6EE'); texteHUD(`↑ ${fmt(B.vy)} · → ${fmt(B.vx)} m/s · ${B.th.toFixed(0)}°`, L, top + 61, 11, '#C8D6EE');
+  if(!o.ouverte && o.pe > -M.R) texteHUD(`Orbite ${o.pe > M.atmo ? '✔' : '✖'} périgée ${fmt(o.pe / 1000)} km · apogée ${fmt(o.ap / 1000)} km`, L, top + 76, 10, o.pe > M.atmo ? '#7CF0B6' : '#FFB3B3'); else if(o.ouverte) texteHUD('Trajectoire de libération', L, top + 76, 10, '#7CF0B6');
+  texteHUD(`Masse ${fmt(m / 1000)} t · Δv ${fmt(BAC.deltaV(B))} m/s · poussée/poids ${tw.toFixed(2)}`, L, top + 90, 10, '#9CB4D8');
+  const E0 = E || { reste:0, plein:1 };
+  jauge(L, top + 98, 196, 12, E0.plein ? E0.reste / E0.plein : 0, E0.plein && E0.reste / E0.plein < .12 ? '#FF4D4D' : '#5AB0FF', E0.nom || '—', !E0.plein ? '' : B.illimite ? '∞' : `${Math.round(E0.reste / E0.plein * 100)} %`);
+  jauge(L, top + 114, 196, 11, B.gaz, '#FF8A3D', 'Poussée', `${Math.round(B.gaz * 100)} %`);
+  jauge(L, top + 129, 196, 11, Math.min(1, B.chaleur), B.chaleur > .75 ? '#FF4D4D' : '#FFB347', 'Chaleur', B.degats > .05 ? `⚠ ${Math.round(B.degats * 100)} %` : '');
+  texteHUD(`Temps ${B.t.toFixed(0)} s · cap ${SAS_LIB[B.sas]}`, L, top + 155, 10, '#C8D6EE');
+  const col = W > H * 1.1; let dy = 0;
+  if(bacMsg && (B.t - bacMsg.at < (bacMsg.at === 0 ? 14 : 5))){ const c = bacMsg.cls === 'bon' ? '#7CF0B6' : bacMsg.cls === 'mal' ? '#FF9A9A' : '#FFE08A'; dy = col ? texteLong(bacMsg.t, 14, 196, 14, c, true, Math.min(W * .34, 300)) : texteLong(bacMsg.t, W / 2, Math.max(H * .22, 200), 15, c); }
+  if(col) carteOrbite(W - 112, top + 64, 52); else carteOrbite(W - 62, top + 124, 48);
+  // les boutons du bac
+  const R = BAC.etage(B); $('bbEtage').disabled = B.i >= B.etages.length - 1 || !!bacFin; $('bbJambes').disabled = !(R && R.jambes) || !!bacFin; $('bbJambes').classList.toggle('on', B.jambes);
+  $('bbChutes').disabled = !(R && R.chutes) || !!B.chutes || !!bacFin; $('bbChutes').classList.toggle('on', !!B.chutes); $('bbSas').textContent = `🧭 ${SAS_LIB[B.sas].split(' ')[0]}`;
+  const b = $('bAction'); b.textContent = '—'; b.disabled = true;
+  $('bPoussee').textContent = 'POUSSÉE';
+}
+
 accueil();
-window.Starship = { S, get R(){ return R; }, get V(){ return V; }, lancer, entrees, niveaux, brief };
+window.Starship = { S, BAC, get B(){ return B; }, lancerBac, cfg, S0:S, get R(){ return R; }, get V(){ return V; }, lancer, entrees, niveaux, brief };
 })();
