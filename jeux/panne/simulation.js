@@ -143,7 +143,27 @@
   }
 
   // la force normale du signal à chaque canon (réseau sain) : la mesure la rappelle, pour repérer une chute
-  const NORMAL = calculer(nouvelEtat()).niv;
+  const C_SAIN = calculer(nouvelEtat()), NORMAL = C_SAIN.niv, NORMAL_ENTREE = Object.fromEntries(Object.entries(C_SAIN.entree).map(([id, e]) => [id, e.niv]));
+  // le chemin du signal, de la tête jusqu'à un canon : [{ id, d }] avec la longueur de câble depuis la tête (pour la courbe du signal)
+  const PARENT = {}, DIST = {};
+  { const file = []; for(const h of TETES){ DIST[h] = 0; file.push(h); }
+    while(file.length){ const x = file.shift(); for(const l of LIAISONS_DE[x] || []){ const y = versDe(l, x); if(y && DIST[y] == null){ DIST[y] = DIST[x] + LON[l.k]; PARENT[y] = x; file.push(y); } } } }
+  function chemin(id){ const c = []; for(let x = id; x; x = PARENT[x]) c.unshift({ id:x, d:DIST[x] || 0 }); return c; }
+  // La mesure de continuité d'un câble (à l'ohmmètre, d'un bout à l'autre) : elle dit l'état du câble lui-même.
+  // Liaison de dialogue : bonne, coupée, abîmée (résistance trop forte) ou croisée (fils A et B inversés).
+  // Un parasite ne se voit pas à l'ohmmètre : la liaison parasitée est « bonne ».
+  const OHM_PAR_M = .19;                                  // la boucle des deux fils, en ohms par mètre
+  // (le testeur isole le câble : peu importe qu'il soit branché ou non, ou que le tronçon soit ouvert)
+  function continuite(E, k, elec){
+    if(!elec){
+      const ohms = Math.round(LON[k] * OHM_PAR_M);
+      if(enPanne(E, 'cableDia', k)) return { etat:'coupée', ohms:null, normal:ohms };
+      if(enPanne(E, 'cableFaible', k)) return { etat:'abîmée', ohms:ohms * 9 + 40, normal:ohms };
+      if(enPanne(E, 'paire', k)) return { etat:'croisée', ohms, normal:ohms };
+      return { etat:'bonne', ohms, normal:ohms };
+    }
+    return enPanne(E, 'cableElec', k) ? { etat:'coupé', ohms:null } : { etat:'bon', ohms:1 };
+  }
   // Ce qu'on mesure sur place, au canon : la tension, le signal de dialogue (sa force, sa qualité), et ce que fait le canon
   const qualiteDe = (n, brouille, lisible) => n < 1 ? 'absent' : brouille ? 'brouillé' : !lisible ? 'illisible' : n < SEUIL ? 'faible' : 'net';
   function diagnostic(E, id){
@@ -401,11 +421,14 @@
     const Cp = nouvellePartie('parasite', 779), pc = Cp.E.pannes[0], yc = boutDe(L_PAR_K[pc.k]);
     ok(diagnostic(Cp.E, yc).qualite === 'illisible', 'câble voisin : signal illisible aussi');
     Cp.E.depOuv.add(pc.transfo); ok(calculer(Cp.E).parlent.has(yc), 'câble voisin : couper le transfo fait revenir la liaison');
+    // la continuité : elle montre le câble coupé, abîmé ou croisé, et rien sur un câble sain
+    ok(continuite(Pf.E, Pf.E.pannes[0].k).etat === 'abîmée' && continuite(B.E, B.E.pannes[0].k).etat === 'croisée' && continuite(nouvelEtat(), LIAISONS[5].k).etat === 'bonne', 'continuité : câble abîmé, paire croisée, câble sain');
+    ok(chemin('hount/318').length > 5 && chemin('hount/318')[0].id === 'SDM/SDM1', `chemin du signal jusqu'au 318 : ${chemin('hount/318').length} canons depuis la salle des machines 1`);
     const Hc = nouvellePartie('cachee', 781); Hc.E.pannes[0].repare = true;
     ok(Hc.E.pannes.length === 2 && calculer(Hc.E).parlent.size < N, 'panne cachée : réparer la première ne fait pas tout revenir');
     return res;
   }
 
-  window.PanneSim = { R, ek, CANONS, PAR_ID, VRAIS, LIAISONS, CABLES, L_PAR_K, C_PAR_K, DEPARTS, D_PAR_ID, TETES, REPETEURS, LIAISONS_DE, CABLES_DE, ORIGINE, TYPES, NIVEAUX, PALIERS, SEUIL, LON,
+  window.PanneSim = { R, ek, CANONS, PAR_ID, VRAIS, LIAISONS, CABLES, L_PAR_K, C_PAR_K, DEPARTS, D_PAR_ID, TETES, REPETEURS, LIAISONS_DE, CABLES_DE, ORIGINE, TYPES, NIVEAUX, PALIERS, SEUIL, LON, NORMAL, NORMAL_ENTREE, chemin, continuite,
     nouvelEtat, courant, stabiliser, calculer, diagnostic, actif, nouvellePartie, defiDuJour, toutVa, optimum, versDe, aval, troncon, boutDe, tests };
 })();
