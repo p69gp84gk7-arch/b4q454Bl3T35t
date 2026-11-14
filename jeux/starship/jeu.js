@@ -285,6 +285,12 @@ function jauge(x, y, w, h, v, c, titre, txt){
   g.fillStyle = '#fff'; g.font = '700 10px "Bricolage Grotesque", sans-serif'; g.textAlign = 'left'; g.fillText(titre, x + 6, y + h - 2.5); if(txt){ g.textAlign = 'right'; g.fillText(txt, x + w - 6, y + h - 2.5); }
 }
 function texteHUD(t, x, y, taille = 12, couleur = '#fff', align = 'left'){ g.font = `800 ${taille}px "Bricolage Grotesque", sans-serif`; g.textAlign = align; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,20,.75)'; g.lineJoin = 'round'; g.strokeText(t, x, y); g.fillStyle = couleur; g.fillText(t, x, y); }
+// un texte centré qui passe à la ligne s'il est trop long ; rend la hauteur prise
+function texteLong(t, x, y, taille, couleur){
+  g.font = `800 ${taille}px "Bricolage Grotesque", sans-serif`; const max = W - 30, mots = String(t).split(' '), lignes = []; let l = '';
+  for(const m of mots){ const essai = l ? l + ' ' + m : m; if(g.measureText(essai).width > max && l){ lignes.push(l); l = m; } else l = essai; }
+  lignes.push(l); lignes.forEach((ln, i) => texteHUD(ln, x, y + i * (taille + 4), taille, couleur, 'center')); return lignes.length * (taille + 4);
+}
 function dessinerHUD(sp, prog){
   const p = V.p, mars = !!sp.g && sp.g < 5, top = 10, L = 12;
   // en haut à gauche : les chiffres
@@ -313,8 +319,8 @@ function dessinerHUD(sp, prog){
   // la cible hors de l'écran, et les consignes
   if(!prog && (sp.pad || sp.tour)){ const tx = sp.tour ? sp.tour.x : sp.pad.x, dx = tx - V.x, s = echelleDe(V.y); if(Math.abs(dx) * s > W / 2 - 30){ texteHUD(`${dx > 0 ? '' : '◀ '}${sp.tour ? 'tour' : 'plateforme'} ${Math.abs(dx).toFixed(0)} m${dx > 0 ? ' ▶' : ''}`, dx > 0 ? W - 14 : 14, H * .45, 12, '#9CCBFF', dx > 0 ? 'right' : 'left'); } }
   const info = consigne(sp, prog);
-  if(info) texteHUD(info, W / 2, H - 112 - (H > 600 ? 10 : 0), 13, '#fff', 'center');
-  if(bandeauMsg && V.t - bandeauMsg.at < 4.5 || (bandeauMsg && bandeauMsg.at === 0)){ const c = bandeauMsg.cls === 'bon' ? '#7CF0B6' : bandeauMsg.cls === 'mal' ? '#FF9A9A' : '#FFE08A'; texteHUD(bandeauMsg.t, W / 2, H * .2, 15, c, 'center'); }
+  let dy = 0; if(bandeauMsg && (V.t - bandeauMsg.at < 4.5 || bandeauMsg.at === 0)){ const c = bandeauMsg.cls === 'bon' ? '#7CF0B6' : bandeauMsg.cls === 'mal' ? '#FF9A9A' : '#FFE08A'; dy = texteLong(bandeauMsg.t, W / 2, H * .17, 16, c); }
+  if(info) texteLong(info, W / 2, H * .17 + dy + 6, 14, '#fff');
   // le bouton d'action
   const b = $('bAction'); let lib = '—', ok = false;
   if(V.phase === 'programme' && V.etage === 1 && V.fenetre){ lib = 'SÉPARER'; ok = true; }
@@ -330,7 +336,7 @@ function consigne(sp, prog){
   if(sp.type === 'saut' && !V.atteint) return `Monte à ${sp.cible} m (altitude ${fmt(V.y)} m)`;
   if(sp.type === 'saut' && V.atteint && V.y > 30) return 'Penche (◀ ▶) et pose-toi sur la plateforme jaune';
   if(sp.type === 'altitude' && !V.atteint) return `Apogée prévu ${fmt(S.apogeePrevu(V))} m sur ${fmt(sp.cible)} m`;
-  if(V.phase === 'plat') return V.th < 80 ? 'Retournement à plat…' : 'Ailerons ◀ ▶ · CABRER freine mais gêne le pilotage · RETOURNE-TOI au repère bleu';
+  if(V.phase === 'plat') return V.th < 80 ? 'Retournement à plat…' : 'Ailerons ◀ ▶ · CABRER pour freiner · RETOURNE-TOI au repère bleu';
   if(V.phase === 'flip') return 'Redressement ! Prépare l\'allumage';
   if(V.phase === 'vol' && V.vy < -4) return V.y < 12 ? '' : `Allume quand tu touches la ligne verte · vitesse max au sol ${V.p.vAtterr.toFixed(0)} m/s`;
   return '';
