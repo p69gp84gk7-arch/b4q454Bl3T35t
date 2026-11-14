@@ -1,14 +1,16 @@
 /* Rock Altitude : les partitions (les notes à jouer sur les bandes).
    - Pour les morceaux composés : la guitare solo devient des notes ; la bande suit la hauteur (plus aigu = plus à droite),
-     on garde moins de notes en Facile, des notes longues pour les notes tenues, des accords (deux bandes) en Difficile.
+     on garde moins de notes en Facile, des notes longues pour les notes tenues ; en Moyen et en Difficile, des doubles notes
+     (deux bandes en même temps) et des notes glissées (une note tenue qui passe sur la bande voisine : le doigt glisse).
    - Pour les musiques du joueur (MP3) : on écoute le morceau (les attaques dans les graves, les médiums et les aigus),
      on trouve le tempo, et on place les notes sur les attaques fortes, calées sur la grille des temps. */
 window.ROCK_PARTITION = (() => {
   'use strict';
   const DIFF = {
-    facile:{ nom:'Facile', voies:3, ecart:1, ecartVite:2, long:2, accords:false, vue:2.1, fenetre:.13, perte:.035 },
-    moyen:{ nom:'Moyen', voies:4, ecart:.5, ecartVite:1, long:1.5, accords:false, vue:1.7, fenetre:.11, perte:.055 },
-    difficile:{ nom:'Difficile', voies:4, ecart:.25, ecartVite:.5, long:1.5, accords:true, vue:1.35, fenetre:.095, perte:.07 },
+    // accords : la chance d'une double note sur un temps fort ; glisses : la chance qu'une note tenue soit glissée
+    facile:{ nom:'Facile', voies:3, ecart:1, ecartVite:2, long:2, accords:0, glisses:0, vue:2.1, fenetre:.13, perte:.035 },
+    moyen:{ nom:'Moyen', voies:4, ecart:.5, ecartVite:1, long:1.5, accords:.3, glisses:.6, pauseGl:6, vue:1.7, fenetre:.11, perte:.055 },
+    difficile:{ nom:'Difficile', voies:4, ecart:.25, ecartVite:.5, long:1.5, accords:.7, glisses:.7, pauseGl:4, vue:1.35, fenetre:.095, perte:.07 },
   };
   // le temps (s) d'un battement, avec le balancé (swing) des croches
   function temps(b, bpm, swing = 0){
@@ -52,10 +54,10 @@ window.ROCK_PARTITION = (() => {
       // une note longue : tenue au moins « long » temps (et pas jusqu'à la note suivante)
       let long = 0;
       if(n.dur >= D.long - 1e-6){ const fin = Math.min(n.b + n.dur, suivante ? suivante.b : 1e9) - .25; if(fin - n.b >= .75) long = temps(fin, m.bpm, m.swing) - t; }
-      const note = { t, v:vs[k], long, etoile:n.etoile, sec:n.sec, solo:n.i, b:n.b };
+      const note = { t, v:vs[k], long, etoile:n.etoile, sec:n.sec, solo:n.i, b:n.b, durS:temps(n.b + n.dur, m.bpm, m.swing) - t };
       out.push(note);
       // les accords : sur les notes appuyées (début de mesure, tenues), une deuxième bande
-      if(D.accords && n.dur >= 1 && Math.abs(n.b % 4) < 1e-6 && R() < .7){
+      if(n.dur >= 1 && Math.abs(n.b % 4) < 1e-6 && R() < D.accords){
         const v2 = note.v + (note.v >= L - 1 ? -1 : note.v === 0 ? 1 : R() < .5 ? -1 : 1);
         out.push(Object.assign({}, note, { v:v2, double:true }));
       }
@@ -65,6 +67,23 @@ window.ROCK_PARTITION = (() => {
   // les phrases « étoile » : toutes réussies, elles remplissent la jauge étoile
   function finir(notes, D){
     notes.sort((a, b) => a.t - b.t || a.v - b.v);
+    // les notes glissées : une note tenue (seule) qui passe, à mi-chemin, sur la bande voisine. De préférence vers la bande
+    // de la note suivante ; jamais vers une bande où une autre note arrive pendant ce temps.
+    // Une note suivie d'un petit silence (une demi-seconde au moins) peut devenir une note tenue pour être glissée.
+    if(D.glisses){
+      const R = graine(notes.length * 7 + D.voies); let dernierGl = -99;
+      notes.forEach((n, i) => {
+        if(n.double || (notes[i - 1] && notes[i - 1].t === n.t) || (notes[i + 1] && notes[i + 1].t === n.t)) return;
+        const apres = notes[i + 1] ? notes[i + 1].t - n.t : 2;
+        const long = n.long || (apres >= .42 ? Math.min(apres - .12, 1) : 0);
+        // (pas plus d'un glissé toutes les 6 secondes en Moyen, toutes les 4 secondes en Difficile)
+        if(long < .3 || n.t - dernierGl < D.pauseGl || R() >= D.glisses) return;
+        const suiv = notes.find(x => x.t >= n.t + long - 1e-6);
+        const v2 = suiv && suiv.v !== n.v ? n.v + Math.sign(suiv.v - n.v) : n.v === 0 ? 1 : n.v === D.voies - 1 ? n.v - 1 : n.v + (R() < .5 ? -1 : 1);
+        if(notes.some(x => x !== n && x.v === v2 && x.t > n.t - .25 && x.t < n.t + long + .15)) return;
+        n.long = long; n.gl = v2; n.tg = n.t + long * .5; dernierGl = n.t;
+      });
+    }
     notes.forEach((n, i) => { n.id = i; n.etat = 0; });
     return { notes, D };
   }
@@ -133,8 +152,8 @@ window.ROCK_PARTITION = (() => {
       const fa = Math.round(a.t * fps), fb = Math.round((s.t - beat * .3) * fps); let m = 0; for(let f = fa; f < fb; f++) m += eM[f] + eH[f]; m /= Math.max(1, fb - fa);
       if(m > (eM[fa] + eH[fa]) - 2.2) a.long = (gap - .4) * beat;
     }
-    // des accords en Difficile, sur les temps forts
-    if(D.accords){ const R = graine(notes.length * 13); const plus = []; for(const a of notes) if(Math.abs(a.b % 4) < 1e-6 && R() < .4) plus.push(Object.assign({}, a, { v:a.v >= L - 1 ? a.v - 1 : a.v + 1, double:true })); notes.push(...plus); }
+    // des doubles notes sur les temps forts
+    if(D.accords){ const R = graine(notes.length * 13); const plus = []; for(const a of notes) if(Math.abs(a.b % 4) < 1e-6 && R() < D.accords * .6) plus.push(Object.assign({}, a, { v:a.v >= L - 1 ? a.v - 1 : a.v + 1, double:true })); notes.push(...plus); }
     const out = finir(notes, D); out.bpm = bpm; out.duree = n / sr; out.beat = beat; out.t0 = t0;
     return out;
   }

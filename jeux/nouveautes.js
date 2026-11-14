@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:188, type:'maj', jeu:'Rock Altitude', ico:'🎸', lien:'jeux/rock.html',
+    txt:'En Moyen et en Difficile : des doubles notes (deux boutons en même temps) et des notes glissées. Une note glissée est une note longue dont la queue passe sur la bande voisine : garde le doigt posé et fais-le glisser sur le bouton d\'à côté.' },
   { v:187, type:'maj', jeu:'Altitude Arcade', ico:'⭐', lien:'',
     txt:'Les favoris : touchez l\'étoile en bas à droite d\'un jeu, il passe en haut de la liste.' },
   { v:186, type:'maj', jeu:'Dichotomie', ico:'📶', lien:'jeux/panne.html',

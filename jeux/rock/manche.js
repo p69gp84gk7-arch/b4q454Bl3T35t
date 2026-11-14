@@ -126,9 +126,16 @@ window.ROCK_MANCHE = (() => {
       if(n.etat === 1 && !n.long) continue;            // réussie : elle a disparu
       const z = -(n.t - t) * VIT, x = xVoie(n.v), c = n.etoile ? 0xCDEBFF : COUL[n.v];
       // la queue d'une note longue
-      if(n.long > 0 && qi < queues.length && n.etat !== 3){
-        const q = queues[qi++], z1 = -(fin - t) * VIT, z0 = n.etat === 1 ? Math.min(0, z) : z;
-        if(z0 > z1){ q.visible = true; q.scale.z = z0 - z1; q.position.set(x, .06, (z0 + z1) / 2); q.material.color.setHex(n.etat === 2 ? 0x555555 : n.tenue ? 0xFFFFFF : c); q.scale.x = n.tenue ? 1.6 + Math.sin(t * 40) * .3 : 1; }
+      if(n.long > 0 && n.etat !== 3){
+        // une note glissée : la queue passe en biais sur la bande voisine au milieu de la note
+        const D_GL = .1, x2 = n.gl != null ? xVoie(n.gl) : x;
+        const bouts = n.gl != null ? [[n.t, n.tg - D_GL, x, x], [n.tg - D_GL, n.tg + D_GL, x, x2], [n.tg + D_GL, fin, x2, x2]] : [[n.t, fin, x, x]];
+        for(const [ta, tb, xa, xb] of bouts){
+          const t0 = n.etat === 1 ? Math.max(ta, Math.min(t, tb)) : ta; if(tb - t0 < 1e-3 || qi >= queues.length) continue;
+          const q = queues[qi++], xd = xa + (xb - xa) * (t0 - ta) / (tb - ta), z0 = -(t0 - t) * VIT, z1 = -(tb - t) * VIT, dx = xb - xd, dz = z1 - z0;
+          q.visible = true; q.scale.z = Math.hypot(dx, dz); q.rotation.y = Math.atan2(dx, dz); q.position.set((xd + xb) / 2, .06, (z0 + z1) / 2);
+          q.material.color.setHex(n.etat === 2 || n.casse ? 0x555555 : n.tenue ? 0xFFFFFF : c); q.scale.x = n.tenue ? 1.6 + Math.sin(t * 40) * .3 : n.gl != null ? 1.5 : 1;
+        }
       }
       if(n.etat === 1 || pi >= pool.length) continue;
       if(z > 1.5) continue;
