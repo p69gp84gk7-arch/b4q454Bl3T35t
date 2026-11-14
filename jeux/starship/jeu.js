@@ -25,120 +25,8 @@ const voile = (id, on) => { $(id).hidden = !on; };
 
 /* ---------- Les dessins : l'acier, la flamme, les tours ---------- */
 const rondRect = (g, x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
-// Les véhicules, dessinés depuis leur base (le point de contact avec le sol) : le corps monte vers −y ; th tourne autour de la base.
-// kind : hop (le petit prototype), starship, superheavy (le propulseur), falcon9 (le premier étage), falcon2 (second étage et coiffe),
-// falconPile (les deux étages), shPile (Super Heavy + Starship), dragon (capsule sur son coffre), dragonSeul (la capsule qui rentre).
-const LARGEUR = { hop:.5, starship:.19, superheavy:.115, falcon9:.095, falcon2:.095, falconPile:.085, shPile:.085, dragon:.5, dragonSeul:.9 };
-const HAUTEUR_REELLE = { hop:9, starship:38, superheavy:70, falcon9:42, falcon2:26, falconPile:68, shPile:108, dragon:12, dragonSeul:8 };
-const gradH = (g, w, ...cs) => { const d = g.createLinearGradient(-w / 2, 0, w / 2, 0); cs.forEach((c, i) => d.addColorStop(i / (cs.length - 1), c)); return d; };
-const ACIER = ['#6E7A8C', '#F4F7FB', '#D5DBE4', '#6A7585'], BLANC = ['#AEB7C4', '#FFFFFF', '#E3E8EE', '#8F9AA9'];
-function cloches(g, w, n, ymax, h){ g.fillStyle = '#2B2F38'; for(let i = 0; i < n; i++){ const x = n === 1 ? 0 : -w * .4 + i * (w * .8 / (n - 1)); g.beginPath(); g.moveTo(x - w * .07, -1); g.lineTo(x + w * .07, -1); g.lineTo(x + w * .1, ymax * h); g.lineTo(x - w * .1, ymax * h); g.closePath(); g.fill(); } }
-function falcon9(g, w, h, o){
-  g.fillStyle = gradH(g, w, ...BLANC); rondRect(g, -w / 2, -h, w, h, w * .08); g.fill();
-  g.fillStyle = '#1B1F27'; g.fillRect(-w / 2, -h, w, h * .07); g.fillStyle = 'rgba(30,36,48,.35)'; g.fillRect(-w / 2, -h * .56, w, h * .006); g.fillRect(-w / 2, -h * .3, w, h * .006);
-  g.fillStyle = '#2B2F38'; g.fillRect(-w / 2, -h * .045, w, h * .045); cloches(g, w, 3, .03, h);
-  g.fillStyle = '#20242C'; for(const s of [-1, 1]){ g.fillRect(s > 0 ? w / 2 : -w / 2 - w * .38, -h * .9, w * .38, h * .018); }       // les ailettes de guidage
-  g.strokeStyle = '#1B1F27'; g.lineWidth = Math.max(1.5, h * .014); g.lineCap = 'round';
-  if(o.jambes){ for(const s of [-1, 1]){ g.beginPath(); g.moveTo(s * w / 2, -h * .14); g.lineTo(s * w * 1.55, h * .005); g.moveTo(s * w / 2, -h * .03); g.lineTo(s * w * 1.55, h * .005); g.stroke(); g.fillStyle = '#1B1F27'; g.fillRect(s * w * 1.55 - w * .25, h * .0, w * .5, h * .012); } }
-  else { for(const s of [-1, 1]){ g.beginPath(); g.moveTo(s * w / 2, -h * .2); g.lineTo(s * w * .62, -h * .01); g.stroke(); } }
-}
-function falcon2(g, w, h, o){
-  const n = h * .42;       // la coiffe
-  g.fillStyle = gradH(g, w, ...BLANC); g.beginPath(); g.moveTo(-w / 2, 0); g.lineTo(-w / 2, -h + n); g.bezierCurveTo(-w / 2, -h + n * .3, -w * .15, -h, 0, -h); g.bezierCurveTo(w * .15, -h, w / 2, -h + n * .3, w / 2, -h + n); g.lineTo(w / 2, 0); g.closePath(); g.fill();
-  g.strokeStyle = 'rgba(40,50,70,.3)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-w / 2, -h + n); g.lineTo(w / 2, -h + n); g.stroke();
-  g.fillStyle = '#2B2F38'; g.beginPath(); g.moveTo(-w * .18, 0); g.lineTo(w * .18, 0); g.lineTo(w * .3, h * .07); g.lineTo(-w * .3, h * .07); g.closePath(); g.fill();
-}
-function superheavy(g, w, h, o){
-  g.fillStyle = gradH(g, w, ...ACIER); rondRect(g, -w / 2, -h, w, h, w * .06); g.fill();
-  g.strokeStyle = 'rgba(40,50,70,.35)'; g.lineWidth = 1; g.beginPath(); for(let i = 1; i < 10; i++){ g.moveTo(-w / 2, -h * i / 10); g.lineTo(w / 2, -h * i / 10); } g.stroke();
-  g.fillStyle = '#14171D'; g.fillRect(-w / 2, -h, w, h * .05);                                                                        // l'anneau de séparation
-  g.fillStyle = '#2E3541'; for(const s of [-1, 1]){ g.fillRect(s > 0 ? w / 2 : -w / 2 - w * .45, -h * .93, w * .45, h * .035); }    // les ailettes de guidage
-  g.fillStyle = '#FF9A3C'; for(const s of [-1, 1]) g.fillRect(s > 0 ? w / 2 : -w / 2 - w * .12, -h * .86, w * .12, h * .012);   // les ergots d'accroche des bras de la tour
-  g.fillStyle = '#20242C'; g.fillRect(-w * .55, -h * .05, w * 1.1, h * .05); cloches(g, w * 1.1, 6, .035, h);
-}
-function starship(g, w, h, o){
-  const n = h * .22;
-  g.fillStyle = gradH(g, w, ...ACIER); g.beginPath(); g.moveTo(-w / 2, 0); g.lineTo(-w / 2, -h + n); g.bezierCurveTo(-w / 2, -h + n * .35, -w * .18, -h, 0, -h); g.bezierCurveTo(w * .18, -h, w / 2, -h + n * .35, w / 2, -h + n); g.lineTo(w / 2, 0); g.closePath(); g.fill();
-  g.save(); g.clip();
-  const t = g.createLinearGradient(w * .02, 0, w / 2, 0); t.addColorStop(0, 'rgba(14,18,28,0)'); t.addColorStop(.4, 'rgba(14,18,28,.85)'); t.addColorStop(1, 'rgba(6,8,14,.97)'); g.fillStyle = t; g.fillRect(w * .02, -h, w, h);
-  g.strokeStyle = 'rgba(150,160,180,.25)'; g.lineWidth = .7; for(let y = -h; y < 0; y += h * .04){ g.beginPath(); g.moveTo(w * .1, y); g.lineTo(w / 2, y); g.stroke(); }
-  g.strokeStyle = 'rgba(40,50,70,.35)'; g.lineWidth = 1; for(let i = 3; i < 9; i++){ g.beginPath(); g.moveTo(-w / 2, -h * i / 10); g.lineTo(0, -h * i / 10); g.stroke(); }
-  g.restore();
-  g.fillStyle = '#4C5668';
-  for(const s of [-1, 1]){                                                                                                           // ailerons avant (petits) et arrière (grands)
-    g.beginPath(); g.moveTo(s * w / 2, -h + n * 1.15); g.lineTo(s * w * 1.0, -h + n * .95); g.lineTo(s * w * 1.0, -h + n * 1.5); g.lineTo(s * w / 2, -h + n * 1.6); g.closePath(); g.fill();
-    g.beginPath(); g.moveTo(s * w / 2, -h * .24); g.lineTo(s * w * 1.45, -h * .03); g.lineTo(s * w * 1.45, h * .015); g.lineTo(s * w / 2, -h * .01); g.closePath(); g.fill();
-  }
-  cloches(g, w, 3, .03, h);
-  if(o.jambes){ g.strokeStyle = '#8E99A8'; g.lineWidth = Math.max(1.5, h * .02); g.lineCap = 'round'; for(const s of [-1, 1]){ g.beginPath(); g.moveTo(s * w * .42, -h * .14); g.lineTo(s * w * 1.1, h * .004); g.stroke(); g.fillStyle = '#5C6674'; g.fillRect(s * w * 1.1 - w * .22, 0, w * .44, h * .012); } }
-}
-function dragon(g, w, h, o){                       // la capsule sur son coffre (au décollage)
-  const hc = h * .58, ht = h * .42;
-  g.fillStyle = gradH(g, w * .9, ...BLANC); rondRect(g, -w * .46, -ht, w * .92, ht, w * .05); g.fill();
-  g.fillStyle = '#14171D'; g.fillRect(-w * .3, -ht * .75, w * .6, ht * .28);                                                     // le radiateur
-  g.fillStyle = '#20242C'; for(const s of [-1, 1]) g.fillRect(s > 0 ? w * .46 : -w * .46 - w * .5, -ht * .55, w * .5, ht * .1);   // les panneaux repliés
-  capsule(g, w, hc, { ...o, y0:-ht, chutes:0 });
-}
-function capsule(g, w, h, o){
-  g.save(); g.translate(0, o.y0 || 0);
-  g.fillStyle = gradH(g, w, ...BLANC); g.beginPath(); g.moveTo(-w * .46, 0); g.lineTo(-w * .17, -h * .94); g.quadraticCurveTo(0, -h * 1.04, w * .17, -h * .94); g.lineTo(w * .46, 0); g.closePath(); g.fill();
-  g.fillStyle = '#14171D'; g.beginPath(); g.moveTo(-w * .5, h * .04); g.lineTo(-w * .46, -h * .05); g.lineTo(w * .46, -h * .05); g.lineTo(w * .5, h * .04); g.closePath(); g.fill();   // le bouclier thermique
-  g.fillStyle = '#1B2230'; for(const x of [-.14, 0, .14]){ g.beginPath(); g.arc(w * x, -h * .5, w * .045, 0, 7); g.fill(); }
-  g.restore();
-}
-function dragonSeul(g, w, h, o){
-  capsule(g, w, h, {});
-  if(o.chaleur > .05){ const c = clamp(o.chaleur, 0, 1), r = g.createRadialGradient(0, h * .05, 2, 0, h * .12, w * (.7 + c * .5)); r.addColorStop(0, `rgba(255,${Math.round(230 - 130 * c)},${Math.round(150 - 110 * c)},${.55 + .4 * c})`); r.addColorStop(1, 'rgba(255,70,120,0)'); g.fillStyle = r; g.fillRect(-w * 1.4, -h * .1, w * 2.8, h * 1.1); }
-  if(o.chutes > 0){
-    const k = clamp(o.chutes, 0, 1), R = h * (.5 + 1.4 * k), top = -h * (1.6 + 2.2 * k);
-    g.strokeStyle = 'rgba(30,30,40,.6)'; g.lineWidth = 1; for(const x of [-1, -.5, 0, .5, 1]){ g.beginPath(); g.moveTo(0, -h * .94); g.lineTo(x * R * .9, top); g.stroke(); }
-    for(const dx of [-R * .62, R * .62]){ g.fillStyle = '#F2F2F2'; g.beginPath(); g.ellipse(dx, top, R * .72, R * .55 * (.5 + .5 * k), 0, Math.PI, 0); g.fill(); g.fillStyle = '#FF7A2B'; g.beginPath(); g.ellipse(dx, top, R * .2, R * .55 * (.5 + .5 * k), 0, Math.PI, 0); g.fill(); }
-  }
-}
-function vehicule(g, kind, bx, by, h, th, o = {}){
-  g.save(); g.translate(bx, by); g.rotate(th * Math.PI / 180);
-  const w = h * (LARGEUR[kind] || .19);
-  // la flamme
-  const flam = o.gaz || 0;
-  if(flam > .02 && kind !== 'dragonSeul'){
-    const wm = kind === 'superheavy' || kind === 'shPile' ? w * 1.1 : w, L = h * (.2 + .4 * flam) * (.88 + Math.random() * .22) * (kind === 'hop' ? 1.4 : 1), ww = wm * (.55 + .35 * flam);
-    const d = g.createLinearGradient(0, 0, 0, L); d.addColorStop(0, 'rgba(255,255,240,.95)'); d.addColorStop(.25, 'rgba(255,196,90,.9)'); d.addColorStop(.7, 'rgba(255,100,30,.45)'); d.addColorStop(1, 'rgba(255,60,20,0)');
-    g.fillStyle = d; g.beginPath(); g.moveTo(-ww / 2, -2); g.quadraticCurveTo(-ww * .5, L * .55, 0, L); g.quadraticCurveTo(ww * .5, L * .55, ww / 2, -2); g.closePath(); g.fill();
-    const r = g.createRadialGradient(0, 4, 2, 0, 4, wm * 1.6); r.addColorStop(0, 'rgba(255,200,120,.45)'); r.addColorStop(1, 'rgba(255,140,60,0)'); g.fillStyle = r; g.fillRect(-wm * 1.6, -wm, wm * 3.2, wm * 3);
-  }
-  if(kind === 'hop'){
-    g.strokeStyle = '#8C97A6'; g.lineWidth = Math.max(2, h * .04); for(const s of [-1, 0, 1]){ g.beginPath(); g.moveTo(s * w * .3, -h * .1); g.lineTo(s * w * .62, 0); g.stroke(); }
-    g.fillStyle = gradH(g, w, ...ACIER); rondRect(g, -w / 2, -h * .88, w, h * .78, w * .1); g.fill(); g.beginPath(); g.moveTo(-w / 2, -h * .86); g.quadraticCurveTo(0, -h * 1.1, w / 2, -h * .86); g.closePath(); g.fill();
-    g.strokeStyle = 'rgba(40,50,70,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-w / 2, -h * .5); g.lineTo(w / 2, -h * .5); g.stroke();
-  } else if(kind === 'falconPile'){ falcon9(g, w, h * .68, o); g.save(); g.translate(0, -h * .68); falcon2(g, w, h * .32, o); g.restore(); }
-  else if(kind === 'shPile'){ superheavy(g, w, h * .6, o); g.save(); g.translate(0, -h * .6); starship(g, w, h * .4, {}); g.restore(); }
-  else if(kind === 'falcon9') falcon9(g, w, h, o);
-  else if(kind === 'falcon2') falcon2(g, w, h, o);
-  else if(kind === 'superheavy') superheavy(g, w, h, o);
-  else if(kind === 'dragon') dragon(g, w, h, o);
-  else if(kind === 'dragonSeul') dragonSeul(g, w, h, o);
-  else starship(g, w, h, o);
-  // la chaleur de la rentrée : une lueur sur le ventre (le côté droit)
-  if(o.chaleur > .05 && kind !== 'dragonSeul'){
-    const c = clamp(o.chaleur, 0, 1), r = g.createLinearGradient(w * .3, 0, w * 1.6 + h * .1 * c, 0); r.addColorStop(0, `rgba(255,${Math.round(220 - 120 * c)},${Math.round(120 - 80 * c)},${.55 * c + .15})`); r.addColorStop(1, 'rgba(255,60,120,0)');
-    g.fillStyle = r; g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, -h); g.lineTo(w * 1.7 + h * .1 * c, -h * .7); g.lineTo(w * 1.7 + h * .1 * c, -h * .1); g.closePath(); g.fill();
-  }
-  g.restore();
-}
-// la tour de lancement : un treillis, et deux bras qui attrapent le vaisseau en vol
-function tour(g, x, sol, s, bras, fermes){
-  const larg = 7 * s, haut = 150 * s, yb = bras ? sol - bras.y * s : null;
-  g.fillStyle = '#58626F'; g.strokeStyle = '#8E99A8'; g.lineWidth = Math.max(1, s * .5);
-  g.fillRect(x - larg / 2, sol - haut, larg * .25, haut); g.fillRect(x + larg / 2 - larg * .25, sol - haut, larg * .25, haut);
-  g.beginPath(); for(let y = sol; y > sol - haut; y -= 9 * s){ g.moveTo(x - larg / 2, y); g.lineTo(x + larg / 2, y - 9 * s); g.moveTo(x + larg / 2, y); g.lineTo(x - larg / 2, y - 9 * s); } g.stroke();
-  g.fillStyle = '#FF6A2B'; g.beginPath(); g.arc(x, sol - haut - 3 * s, Math.max(2, s * 1.2), 0, 7); g.fill();
-  if(bras){
-    const ouverture = (fermes ? 0 : bras.tol) * s, y0 = yb - 3 * s, e = 3 * s;
-    g.fillStyle = '#FF9A3C'; g.fillRect(x - 38 * s, y0, 38 * s - larg / 2, e); // le bras (il part de la tour vers la gauche)
-    g.fillStyle = '#FFB86B'; g.fillRect(x - 38 * s - ouverture - 12 * s, y0 - 2 * s, 12 * s, e + 4 * s);
-    g.fillStyle = '#FF9A3C'; g.fillRect(x - 38 * s - ouverture - 12 * s, y0 + 2.5 * s, 10 * s, e);
-  }
-}
+// Les véhicules, la tour, les plateformes et les paysages sont dans dessin.js
+const D = window.STARSHIP_DESSIN, { vehicule, tour, table, barge, bateau, LARGEUR, HAUTEUR_REELLE } = D;
 function etoiles(g, W, H, t, decalage = 0, n = 70){
   g.fillStyle = '#fff';
   for(let k = 0; k < n; k++){ const x = (k * 137.3) % W, y = (((k * 71.7) % H) + decalage * (.15 + (k % 4) * .12) + H * 4) % H, r = .6 + (k % 3) * .45; g.globalAlpha = (.35 + .65 * Math.abs(Math.sin(t * .8 + k))) * t; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
@@ -294,18 +182,7 @@ function kindVisuel(sp, V){
   if(sp.kindHaut) return V.phase === 'programme' && V.etage === 1 ? sp.kind : sp.kindHaut;
   return sp.kind || 'starship';
 }
-function sol(decor, solY, s, X, camX){
-  const d = g.createLinearGradient(0, solY, 0, H);
-  if(decor === 'mer'){ d.addColorStop(0, '#2F7FC4'); d.addColorStop(1, '#0F3560'); }
-  else if(decor === 'lune'){ d.addColorStop(0, '#A3A3A9'); d.addColorStop(1, '#4B4B53'); }
-  else if(decor === 'mars'){ d.addColorStop(0, '#C26A3A'); d.addColorStop(1, '#7A3A20'); }
-  else { d.addColorStop(0, '#B9A47C'); d.addColorStop(1, '#6B5A3E'); }
-  g.fillStyle = d; g.fillRect(0, solY, W, H - solY);
-  g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, solY, W, 3);
-  if(decor === 'mer'){ g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.5; for(let j = 0; j < 4; j++){ const y = solY + 8 + j * 20 * Math.max(.5, s * .5); g.beginPath(); for(let x = 0; x <= W; x += 10) g.lineTo(x, y + Math.sin((x + camX * s * .5) / 22 + V.t * 1.4 + j) * 2.2); g.stroke(); } }
-  else if(decor === 'lune' || decor === 'mars'){ g.fillStyle = 'rgba(0,0,0,.14)'; for(let i = -8; i <= 8; i++){ const cx = X(camX + i * 90 - (camX % 90)) + ((i * 53) % 40), r = (20 + Math.abs((i * 37) % 30)) * Math.max(.6, s * .8); g.beginPath(); g.ellipse(cx, solY + 14 + ((i * 17) % 20), r, r * .22, 0, 0, 7); g.fill(); } }
-  else for(let i = -12; i <= 12; i++){ const gx = X(camX + i * 40 - (camX % 40)); g.fillStyle = 'rgba(0,0,0,.06)'; g.fillRect(gx, solY + 3, 2, H); }
-}
+const sol = (decor, solY, s, X, camX) => D.sol(g, decor, solY, s, W, H, X, camX, V ? V.t : B ? B.t : 0);
 function dessinerVol(){
   if(!V) return;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -316,9 +193,10 @@ function dessinerVol(){
   const haut = mars ? mix([36, 18, 22], [3, 3, 8], k) : mix([40, 120, 226], [2, 4, 14], k), bas = mars ? mix([210, 130, 90], [20, 10, 14], k) : mix([170, 216, 255], [10, 20, 50], k);
   const ciel = g.createLinearGradient(0, 0, 0, H); ciel.addColorStop(0, `rgb(${haut})`); ciel.addColorStop(1, `rgb(${bas})`); g.fillStyle = ciel; g.fillRect(0, 0, W, H);
   if(k > .15) etoiles(g, W, H, clamp((k - .15) * 2, 0, 1), V.y * .002);
+  if(!vide && !mars && k < .85){ g.globalAlpha = 1 - k; D.soleil(g, W * .8, H * .16, 16); g.globalAlpha = 1; }
   if(vide){ const tx = W * .82, ty = H * .2, t = g.createRadialGradient(tx - 4, ty - 4, 2, tx, ty, 22); t.addColorStop(0, '#9CD0FF'); t.addColorStop(.6, '#2B6FD0'); t.addColorStop(1, '#173A7A'); g.fillStyle = t; g.beginPath(); g.arc(tx, ty, 22, 0, 7); g.fill(); }
   const s = haute ? 2.2 : echelleDe(V.y), gy0 = H * .84;
-  const kind = kindVisuel(sp, V), tv = TAILLE_VEH[kind] || [56, 134], hv = clamp(HAUTEUR_REELLE[kind] * (haute ? 2.2 : s), tv[0], tv[1]);
+  const kind = kindVisuel(sp, V), tv = TAILLE_VEH[kind] || [56, 134], hv = clamp(HAUTEUR_REELLE[kind] * (haute ? 2.2 : s), Math.max(tv[0], tv[1] * .55), tv[1]);
   const vyScr = haute ? H * .62 : clamp(gy0 - V.y * s, Math.min(H * .6, Math.max(H * .32, hv + 36)), H * .76), solY = haute ? H + 400 : vyScr + V.y * s;
   const camX = haute ? 0 : V.x, X = x => W / 2 + (x - camX) * s;
   if(haute){ // la courbure de la Terre qui s'éloigne
@@ -326,15 +204,15 @@ function dessinerVol(){
     g.fillStyle = terre; g.beginPath(); g.arc(W / 2, cy, R, 0, 7); g.fill();
   }
   // les nuages (en bas, on passe à travers)
-  if(!haute && !mars && !vide){ g.fillStyle = 'rgba(255,255,255,.55)'; for(let i = 0; i < 9; i++){ const wy = 600 + i * 900, sy = vyScr + (V.y - wy) * s; if(sy < -60 || sy > H + 60) continue; const wx = ((i * 377) % 900) - 450; for(let j = 0; j < 4; j++){ g.beginPath(); g.ellipse(X(wx + j * 70), sy + (j % 2) * 8, 70 * s + 30, 20 * s + 10, 0, 0, 7); g.fill(); } } }
+  if(!haute && !mars && !vide){ g.fillStyle = 'rgba(255,255,255,.55)'; for(let i = 0; i < 9; i++){ const wy = 600 + i * 900, sy = vyScr + (V.y - wy) * s; if(sy < -60 || sy > H + 60) continue; const wx = ((i * 377) % 900) - 450; D.nuage(g, X(wx), sy, 70 * s + 40, i); } }
   // le sol, la plateforme ou la barge, la tour
   if(!haute && solY < H + 40){
     sol(decor, solY, s, X, camX);
-    if(sp.type === 'barge'){ const px = X(sp.pad.x), pw = sp.pad.tol * s; g.fillStyle = '#242A33'; g.fillRect(px - pw * 1.15, solY - 1 * s, pw * 2.3, 2.6 * s + 4); g.fillStyle = '#3C4656'; g.fillRect(px - pw, solY - 2.4 * s, pw * 2, 1.6 * s + 2); g.strokeStyle = '#FFD23A'; g.lineWidth = 2; g.beginPath(); g.moveTo(px - pw * .3, solY - 2.2 * s); g.lineTo(px + pw * .3, solY - .9 * s); g.moveTo(px + pw * .3, solY - 2.2 * s); g.lineTo(px - pw * .3, solY - .9 * s); g.stroke(); }
-    else if(sp.type === 'dragon'){ const bx0 = X(sp.pad.x), bw = 26 * s + 18; g.fillStyle = '#EEF1F5'; g.beginPath(); g.moveTo(bx0 - bw, solY - 3); g.lineTo(bx0 + bw, solY - 3); g.lineTo(bx0 + bw * .8, solY + 8); g.lineTo(bx0 - bw * .8, solY + 8); g.closePath(); g.fill(); g.fillStyle = '#C8CFDA'; g.fillRect(bx0 - bw * .2, solY - 14, bw * .5, 12); }
-    else if(sp.pad && !sp.tour){ const px = X(sp.pad.x), pw = sp.pad.tol * s; g.fillStyle = '#3C4452'; g.fillRect(px - pw, solY - 2 * s, pw * 2, 2 * s + 3); g.fillStyle = '#FFD23A'; g.fillRect(px - pw, solY - 2 * s, pw * 2, 2); g.fillStyle = '#fff'; g.font = `800 ${Math.max(10, 5 * s)}px sans-serif`; g.textAlign = 'center'; g.fillText('H', px, solY + 8 * s); }
-    if(sp.tour){ const tx = X(sp.tour.x + 22); tour(g, tx, solY, s, sp.tour, !!(fin && fin.issue === 'succes')); g.fillStyle = '#3C4452'; g.fillRect(X(sp.tour.x - 15), solY - 1.5 * s, 38 * s, 1.5 * s + 2); }
-    if(prog && !sp.tour){ tour(g, X(34), solY, s * .9, null, false); }                                   // la tour de lancement, au décollage
+    if(sp.type === 'barge') barge(g, X(sp.pad.x), sp.pad.tol * s, solY, s, V.t);
+    else if(sp.type === 'dragon') bateau(g, X(sp.pad.x), 26 * s + 18, solY, s, V.t);
+    else if(sp.pad && !sp.tour){ const px = X(sp.pad.x), pw = sp.pad.tol * s; table(g, px, pw, solY, s, false); g.fillStyle = '#fff'; g.font = `800 ${Math.max(10, 5 * s)}px sans-serif`; g.textAlign = 'center'; g.fillText('H', px, solY + 8 * s); }
+    if(sp.tour){ const tx = X(sp.tour.x + 22); table(g, X(sp.tour.x), 26 * s, solY, s, true); tour(g, tx, solY, s, sp.tour, !!(fin && fin.issue === 'succes'), V.t); }
+    if(prog && !sp.tour){ table(g, X(0), 24 * s, solY, s, true); tour(g, X(34), solY, s * .9, null, false, V.t); }                                   // la tour de lancement, au décollage
     // les lignes à suivre : l'allumage et le retournement
     g.setLineDash([8, 6]); g.lineWidth = 2; g.textAlign = 'left'; g.font = '800 12px "Bricolage Grotesque", sans-serif';
     if(V.vy < -4 && !V.fini && V.phase === 'vol'){ const ya = S.hauteurAllumage(V); if(isFinite(ya) && ya > 0){ const ly = vyScr + (V.y - ya) * s; if(ly > 20 && ly < H){ g.strokeStyle = '#38E08A'; g.beginPath(); g.moveTo(0, ly); g.lineTo(W, ly); g.stroke(); g.fillStyle = '#38E08A'; g.fillText('ALLUME ICI', 10, ly - 6); } } }
@@ -567,6 +445,7 @@ function dessinerBac(){
   const c1 = mars ? mix([36, 18, 22], [3, 3, 8], k) : mix([40, 120, 226], [2, 4, 14], k), c2 = mars ? mix([210, 130, 90], [20, 10, 14], k) : mix([170, 216, 255], [10, 20, 50], k);
   const ciel = g.createLinearGradient(0, 0, 0, H); ciel.addColorStop(0, `rgb(${c1})`); ciel.addColorStop(1, `rgb(${c2})`); g.fillStyle = ciel; g.fillRect(0, 0, W, H);
   if(k > .15) etoiles(g, W, H, clamp((k - .15) * 2, 0, 1), B.x * .00002 + B.y * .00001);
+  if(!vide && !mars && k < .85){ g.globalAlpha = 1 - k; D.soleil(g, W * .8, H * .16, 16); g.globalAlpha = 1; }
   const kind = E ? E.kind : 'starship', tv = TAILLE_VEH[kind] || [56, 134], real = (E && E.hauteur) || HAUTEUR_REELLE[kind] || 40;
   const s = haut ? 1 : echelleDe(B.y), hv = haut ? tv[1] * .8 : clamp(real * s, Math.max(tv[0], tv[1] * .55), tv[1]);
   const gy0 = H * .84, vyScr = haut ? H * .5 : clamp(gy0 - B.y * s, chK > 0 ? H * .66 : Math.min(H * .6, Math.max(H * .32, hv + 36)), H * .76), solY = haut ? H + 400 : vyScr + B.y * s, camX = B.x, X = x => W / 2 + (x - camX) * s;
@@ -579,12 +458,12 @@ function dessinerBac(){
     g.restore();
     if(B.y < 60e3 && !vide){ g.fillStyle = 'rgba(255,255,255,.25)'; }
   } else {
-    if(!vide && !mars){ g.fillStyle = 'rgba(255,255,255,.55)'; for(let i = 0; i < 9; i++){ const wy = 600 + i * 900, sy = vyScr + (B.y - wy) * s; if(sy < -60 || sy > H + 60) continue; const wx = ((i * 377) % 900) - 450; for(let j = 0; j < 4; j++){ g.beginPath(); g.ellipse(X(wx + j * 40), sy + (j % 2) * 8, 60 * s * .5 + 20, 16, 0, 0, 7); g.fill(); } } }
+    if(!vide && !mars){ g.fillStyle = 'rgba(255,255,255,.55)'; for(let i = 0; i < 9; i++){ const wy = 600 + i * 900, sy = vyScr + (B.y - wy) * s; if(sy < -60 || sy > H + 60) continue; const wx = ((i * 377) % 900) - 450; D.nuage(g, X(wx), sy, 60 * s * .8 + 40, i); } }
     if(solY < H + 40){
       sol(decor, solY, s, X, camX);
-      const px = X(0), pw = 26 * s; g.fillStyle = '#3C4452'; g.fillRect(px - pw, solY - 1.6 * s, pw * 2, 1.6 * s + 3); g.fillStyle = '#FFD23A'; g.fillRect(px - pw, solY - 1.6 * s, pw * 2, 2);
-      if(B.tour){ tour(g, X(22), solY, s, { y:75, tol:12 }, B.etat === 'pose' && B.y > 10); g.fillStyle = '#3C4452'; g.fillRect(X(-15), solY - 1.5 * s, 38 * s, 1.5 * s + 2); }
-      else if(B.vehicule !== 'hop' || true){ tour(g, X(34), solY, s * .9, null, false); }
+      table(g, X(0), 26 * s, solY, s, true);
+      if(B.tour){ tour(g, X(22), solY, s, { y:75, tol:12 }, B.etat === 'pose' && B.y > 10, B.t); }
+      else tour(g, X(34), solY, s * .9, null, false, B.t);
     }
     for(const x of debris){ const dh = clamp((x.h || 40) * s, 20, 150); vehicule(g, x.kind, X(x.x), solY - x.y * s, dh, x.th, { gaz:0 }); }
   }
@@ -622,5 +501,5 @@ function hudBac(E){
 }
 
 accueil();
-window.Starship = { S, BAC, get B(){ return B; }, lancerBac, cfg, S0:S, get R(){ return R; }, get V(){ return V; }, lancer, entrees, niveaux, brief };
+window.Starship = { D, vehicule, tour, S, BAC, get B(){ return B; }, lancerBac, cfg, S0:S, get R(){ return R; }, get V(){ return V; }, lancer, entrees, niveaux, brief };
 })();
