@@ -19,7 +19,7 @@
 
   /* ---------- les records ---------- */
   let REC = Object.assign({ parties:0, reussies:0, niveaux:{} }, lire('panne-records', {}));
-  // les règles ont changé (version 186 : le signal, les répétiteurs, un canon exclu ne coupe plus la ligne) : les étoiles et les
+  // les règles ont changé (version 186 : le signal, les répéteurs, un canon exclu ne coupe plus la ligne) : les étoiles et les
   // records repartent de zéro ; les niveaux déjà joués restent ouverts
   const REGLES = 2;
   if(REC.regles !== REGLES){
@@ -36,7 +36,7 @@
     ecran('eAccueil');
     const n = REC.niveaux;
     $('cRecords').innerHTML = `<h3>Tes records</h3><div class="stats"><div><b>${etoilesTotal()}</b><small>étoiles / ${S.NIVEAUX.length * 3}</small></div><div><b>${REC.reussies}</b><small>pannes réparées</small></div><div><b>${REC.parties}</b><small>parties</small></div><div><b>${REC.parties ? Math.round(100 * REC.reussies / REC.parties) + ' %' : '—'}</b><small>de réussite</small></div></div>`;
-    if(REC.reprise) $('cRecords').innerHTML += `<p class="sous" style="font-size:.8rem;margin-top:8px">Les règles ont changé (mesure du signal, répétiteurs, un canon exclu ne coupe plus la ligne) : les étoiles repartent de zéro. Les pannes déjà ouvertes le restent.</p>`;
+    if(REC.reprise) $('cRecords').innerHTML += `<p class="sous" style="font-size:.8rem;margin-top:8px">Les règles ont changé (mesure du signal, répéteurs, un canon exclu ne coupe plus la ligne) : les étoiles repartent de zéro. Les pannes déjà ouvertes le restent.</p>`;
     const D = S.defiDuJour(), fait = (REC.defis || {})[D.defi];
     $('cDefi').innerHTML = `<h3>🗓 Défi du jour</h3><p class="sous">La même panne pour tout le monde aujourd'hui (une panne mystère, qui change chaque jour).</p>
       ${fait ? `<p class="sous" style="margin-top:6px">✅ Réussi : <b style="color:var(--or)">${'★'.repeat(fait.etoiles)}${'☆'.repeat(3 - fait.etoiles)}</b> · ${pl(fait.gestes, 'geste')} · ⏱ ${chrono(fait.temps)}</p>` : ''}
@@ -100,7 +100,7 @@
     if(S.toutVa(P.E)) return finir(true);
     etat(); panneau(); dessiner();
   }
-  // les pièces de rechange : 💳 modules (un canon qui brouille, une adresse en double), 🧰 kits (câble, liaison, court-circuit, blindage, répétiteur)
+  // les pièces de rechange : 💳 modules (un canon qui brouille, une adresse en double), 🧰 kits (câble, liaison, court-circuit, blindage, répéteur)
   const PIECES = { modules:'module', kits:'kit de réparation' };
   // il faut une pièce en main pour tenter une réparation (stock vide : on propose d'en acheter, c'est gratuit) ;
   // elle n'est consommée que si la réparation était la bonne
@@ -128,7 +128,7 @@
   // (le signal est-il bien plus bas que d'habitude à cet endroit ?)
   const tropBas = d => d.qualite !== 'absent' && d.signal < d.normal * .75;
   const lireMesure = d => `tension <b class="${d.tension === 'absente' ? 'vo' : 'ok'}">${d.tension}</b> · signal ${lireSignal(d.signal, d.qualite, d.bruit)}${tropBas(d) ? ` <small>(d'habitude ${d.normal} %)</small>` : ''} · ${lireReponse(d.reponse)}`
-    + (d.rep ? `<br>📶 Répétiteur : ${d.rep.courant ? 'alimenté' : '<b class="vo">sans courant</b>'} · entrée ${lireSignal(d.rep.entree, d.rep.qEntree)} · sortie ${d.rep.sortie ? '<b class="ok">100 %</b>' : '<b class="ko">rien</b>'}` : '');
+    + (d.rep ? `<br>📶 Répéteur : ${d.rep.courant ? 'alimenté' : '<b class="vo">sans courant</b>'} · entrée ${lireSignal(d.rep.entree, d.rep.qEntree)} · sortie ${d.rep.sortie ? '<b class="ok">100 %</b>' : '<b class="ko">rien</b>'}` : '');
   // une jauge : le signal en % (trait jaune = le seuil de lecture, trait blanc = la valeur d'habitude ici)
   const jauge = (n, normal) => `<span class="jauge" role="img" aria-label="signal ${n} %"><i class="${n >= S.SEUIL ? 'bon' : 'bas'}" style="width:${Math.max(0, Math.min(100, n))}%"></i><u style="left:${S.SEUIL}%"></u>${normal != null ? `<s style="left:${Math.min(100, normal)}%"></s>` : ''}</span>`;
   // la continuité d'un câble (testeur de câble)
@@ -147,13 +147,13 @@
   // ce que la mesure veut dire, et où chercher ensuite
   function conseil(d){
     if(d.rep){
-      if(!d.rep.courant) return 'Ce répétiteur n’a pas de courant : il ne renvoie rien, et tout ce qui est après lui se tait. Cherchez côté électricité (vue ⚡).';
-      if(!d.rep.sortie && d.rep.qEntree === 'net') return 'Bon signal à l’entrée, rien à la sortie, et il a du courant : le répétiteur est en panne. Changez-le.';
-      if(!d.rep.sortie) return `Le signal qui arrive au répétiteur est ${d.rep.qEntree} : il ne peut rien renvoyer. Le défaut est avant lui, dans le tronçon d’où il reçoit.`;
+      if(!d.rep.courant) return 'Ce répéteur n’a pas de courant : il ne renvoie rien, et tout ce qui est après lui se tait. Cherchez côté électricité (vue ⚡).';
+      if(!d.rep.sortie && d.rep.qEntree === 'net') return 'Bon signal à l’entrée, rien à la sortie, et il a du courant : le répéteur est en panne. Changez-le.';
+      if(!d.rep.sortie) return `Le signal qui arrive au répéteur est ${d.rep.qEntree} : il ne peut rien renvoyer. Le défaut est avant lui, dans le tronçon d’où il reçoit.`;
     }
     if(d.tension === 'absente') return 'Pas de tension ici : c’est une panne de courant. Passez en vue ⚡ Électricité : allez voir le transfo (a-t-il disjoncté ?), ou cherchez où la tension s’arrête le long du câble.';
     if(d.reponse === 'conflit') return 'Il a du courant et un bon signal, mais il répond en même temps qu’un autre canon : adresse en double. Changez son module (ou celui de l’autre).';
-    if(d.qualite === 'absent') return 'Aucun signal : la ligne est coupée avant ce canon (ou le répétiteur d’avant ne renvoie rien). Remontez vers la tête jusqu’à retrouver du signal.';
+    if(d.qualite === 'absent') return 'Aucun signal : la ligne est coupée avant ce canon (ou le répéteur d’avant ne renvoie rien). Remontez vers la tête jusqu’à retrouver du signal.';
     if(d.qualite === 'brouillé') return d.bruit >= 90 ? 'Bruit au maximum : le module fautif est ici, ou juste à côté. Excluez ce canon : si tout revient, c’est lui.' : d.bruit >= 50 ? 'Bruit fort : le fautif est proche. Mesurez de chaque côté, le bruit monte en s’approchant de lui.' : 'Bruit faible : le fautif est loin dans ce tronçon. Allez du côté où le bruit monte.';
     if(d.qualite === 'illisible') return 'Du signal, mais illisible : une paire A/B inversée (ou un parasite) avant ce canon. Cherchez le dernier canon où le signal est encore net.';
     if(d.qualite === 'faible') return `Signal trop faible pour être lu (d’habitude ${d.normal} % ici) : une liaison abîmée l’a affaibli avant ce canon. Cherchez où il chute d’un coup.`;
@@ -194,7 +194,7 @@
       if(p) return reparer(p, 'modules', `Module changé au ${nomCanon(id)} : <b>c'était bien lui qui brouillait le tronçon !</b>`);
       return reparer(a, 'modules', `Module changé au ${nomCanon(id)} : <b>il avait la même adresse qu'un autre canon !</b>`, `Module changé au ${nomCanon(id)}… l'ancien marchait très bien.`);
     }); },
-    repeteur:id => { if(!P.fini && piece('kits')) agir(true, () => reparer(panne('repeteur', id), 'kits', `Répétiteur du ${nomCanon(id)} changé : <b>il ne renvoyait plus le signal !</b>`, `Répétiteur du ${nomCanon(id)} changé… l'ancien marchait très bien.`)); },
+    repeteur:id => { if(!P.fini && piece('kits')) agir(true, () => reparer(panne('repeteur', id), 'kits', `Répéteur du ${nomCanon(id)} changé : <b>il ne renvoyait plus le signal !</b>`, `Répéteur du ${nomCanon(id)} changé… l'ancien marchait très bien.`)); },
     inverser:(k, ou) => { const l = S.L_PAR_K[k]; agir(true, () => reparer(panne('paire', k), null, `Paire A/B inversée sur la liaison ${nomC(l.a)} – ${nomC(l.b)} : <b>elle était à l'envers !</b>`, `Paire inversée sur ${nomC(l.a)} – ${nomC(l.b)}… elle était bien branchée (remise comme avant).`)); },
     blinder:(k, ou) => { const l = S.L_PAR_K[k]; if(!P.fini && piece('kits')) agir(true, () => reparer(panne('parasite', k), 'kits', `Liaison ${nomC(l.a)} – ${nomC(l.b)} blindée et écartée du câble de puissance : <b>plus de parasites !</b>`, `Liaison ${nomC(l.a)} – ${nomC(l.b)} blindée… elle n'était pas parasitée.`)); },
     court:id => { if(!P.fini && piece('kits')) agir(true, () => reparer(panne('court', id), 'kits', `Court-circuit réparé au ${nomCanon(id)} (réarmez le transfo)`, `Pas de court-circuit au ${nomCanon(id)}.`)); },
@@ -251,10 +251,10 @@
     const ok = p.repare ? ` <b class="ok">· réparée à ${chrono(p.trouve)}</b>` : ' <b class="ko">· pas trouvée</b>';
     const cache = p.cachee ? ' <i>(cachée derrière l’autre panne)</i>' : '', muets = pl(NB - C0.parlent.size, 'canon');
     if(p.type === 'contaminant') return `📡 <b>${nomCanon(p.canon)}</b> : son module envoyait n'importe quoi sur le câble. Il brouillait les ${pl(C0.brouille.size, 'canon')} de son tronçon${p.intermittent ? ', <b>par intermittence</b>' : ''} ; ${muets} muets en tout (changer le module).${ok}`;
-    if(p.type === 'repeteur') return `📶 <b>Répétiteur du ${nomCanon(p.canon)}</b> en panne : il ne renvoyait plus le signal, ${muets} muets après lui (changer le répétiteur).${ok}`;
+    if(p.type === 'repeteur') return `📶 <b>Répéteur du ${nomCanon(p.canon)}</b> en panne : il ne renvoyait plus le signal, ${muets} muets après lui (changer le répéteur).${ok}`;
     if(p.type === 'cableDia'){ const l = S.L_PAR_K[p.k]; return `✂️ <b>Liaison de dialogue ${nomC(l.a)} – ${nomC(l.b)}</b> (${zoneC(l.a)}) coupée : plus aucun signal après elle, ${muets} muets.${cache}${ok}`; }
     if(p.type === 'cableFaible'){ const l = S.L_PAR_K[p.k]; return `📉 <b>Liaison de dialogue ${nomC(l.a)} – ${nomC(l.b)}</b> (${zoneC(l.a)}) abîmée : le signal y perdait plus de la moitié de sa force, ${muets} trop loin pour le lire.${ok}`; }
-    if(p.type === 'cableElec'){ const c = S.C_PAR_K[p.k], n = S.VRAIS.filter(v => !C0.alim(v.id)).length; return `🔌 <b>Câble électrique ${nomLien(c)}</b> coupé : ${pl(n, 'canon')} sans courant${NB - C0.parlent.size > n ? `, dont un répétiteur : ${muets} muets en tout` : ''}.${ok}`; }
+    if(p.type === 'cableElec'){ const c = S.C_PAR_K[p.k], n = S.VRAIS.filter(v => !C0.alim(v.id)).length; return `🔌 <b>Câble électrique ${nomLien(c)}</b> coupé : ${pl(n, 'canon')} sans courant${NB - C0.parlent.size > n ? `, dont un répéteur : ${muets} muets en tout` : ''}.${ok}`; }
     if(p.type === 'court') return `⚡ <b>${nomCanon(p.canon)}</b> en court-circuit : ${esc(S.D_PAR_ID[S.ORIGINE[p.canon]].nom)} disjonctait.${ok}`;
     if(p.type === 'adresse') return `🔢 <b>${nomCanon(p.canons[0])}</b> et <b>${nomCanon(p.canons[1])}</b> avaient la même adresse : ils répondaient en même temps et la supervision ne comprenait ni l'un ni l'autre (changer le module de l'un des deux).${ok}`;
     if(p.type === 'paire'){ const l = S.L_PAR_K[p.k]; return `⇆ <b>Liaison ${nomC(l.a)} – ${nomC(l.b)}</b> (${zoneC(l.a)}) : paire A/B inversée, le signal était illisible après elle (${muets}).${cache}${ok}`; }
@@ -312,14 +312,14 @@
     [0, 25, 50, 100].forEach(n => { sv += `<line x1="${g0}" x2="${Wd - g1}" y1="${y(n)}" y2="${y(n)}" class="${n === S.SEUIL ? 'seuil' : 'grille'}"/><text x="${g0 - 4}" y="${y(n) + 3}" text-anchor="end">${n}</text>`; });
     sv += `<text x="${g0 + 4}" y="${y(S.SEUIL) - 3}" class="tseuil">seuil de lecture</text>`;
     sv += `<polyline points="${norm}" class="normal"/>`;
-    ch.forEach(c => { if(S.REPETEURS.has(c.id)) sv += `<path d="M${x(c.d)} ${Ht - h1 + 3} l4 5 l-4 5 l-4 -5z" class="rpt"><title>répétiteur ${esc(nomC(c.id))}</title></path>`; });
+    ch.forEach(c => { if(S.REPETEURS.has(c.id)) sv += `<path d="M${x(c.d)} ${Ht - h1 + 3} l4 5 l-4 5 l-4 -5z" class="rpt"><title>répéteur ${esc(nomC(c.id))}</title></path>`; });
     ch.forEach(c => { const d = P.diag[c.id]; if(!d) return;
       const cl = d.qualite === 'net' ? 'ok' : d.qualite === 'absent' || d.qualite === 'illisible' ? 'ko' : 'vo';
       sv += `<circle cx="${x(c.d)}" cy="${y(d.signal)}" r="${c.id === id ? 5 : 3.6}" class="pt ${cl}${d.perime ? ' vieux' : ''}"><title>${esc(nomC(c.id))} : ${d.signal} % (${d.qualite})</title></circle>`; });
     const dernier = ch[ch.length - 1];
     sv += `<line x1="${x(dernier.d)}" x2="${x(dernier.d)}" y1="${h0}" y2="${Ht - h1}" class="ici"/>`;
     sv += `<text x="${g0}" y="${Ht - 2}" class="axe">tête</text><text x="${x(dernier.d)}" y="${Ht - 2}" text-anchor="end" class="axe">ce canon · ${fmt(dernier.d)} m de câble</text></svg>`;
-    return `<div class="sect">Courbe du signal depuis la tête</div>${sv}` + exp('<b>Pointillés</b> : la force normale du signal le long de la ligne (il s’affaiblit avec la distance, et remonte à 100 % à chaque <b>répétiteur ◆</b>). <b>Points</b> : vos mesures (vert = net, jaune = faible ou brouillé, rouge = absent ou illisible, pâle = avant vos derniers gestes). Là où les points décrochent de la courbe, le défaut est juste avant.');
+    return `<div class="sect">Courbe du signal depuis la tête</div>${sv}` + exp('<b>Pointillés</b> : la force normale du signal le long de la ligne (il s’affaiblit avec la distance, et remonte à 100 % à chaque <b>répéteur ◆</b>). <b>Points</b> : vos mesures (vert = net, jaune = faible ou brouillé, rouge = absent ou illisible, pâle = avant vos derniers gestes). Là où les points décrochent de la courbe, le défaut est juste avant.');
   }
 
   /* ---------- le regard : l'intérieur du regard du canon, dessiné ---------- */
@@ -356,10 +356,10 @@
     bloc(ins, 'in'); bloc(outs, 'out');
     if(!outs.length) v += `<text x="270" y="96" text-anchor="middle" class="rgl">fin de ligne</text>`;
     if(ins.length + outs.length > 6) v += `<text x="170" y="228" text-anchor="middle" class="rgl">… d’autres liaisons : voir la liste des gestes</text>`;
-    // le répétiteur
+    // le répéteur
     if(repet){
       const r = mes && mes.rep;
-      v += `<g class="el${sel('rep')}" data-r="rep" tabindex="0" role="button" aria-label="Répétiteur"><line x1="170" y1="46" x2="170" y2="64" class="fil" stroke="${COUL.inc}"/><rect x="118" y="12" width="104" height="36" rx="8" class="rp"/><text x="170" y="27" text-anchor="middle" class="rgt2">📶 RÉPÉTITEUR</text><text x="170" y="40" text-anchor="middle" class="rgp" fill="${r ? (r.sortie ? COUL.ok : COUL.ko) : COUL.inc}">${r ? (r.courant ? `entrée ${r.entree} % · sortie ${r.sortie ? 'ok' : 'rien'}` : 'sans courant') : 'à mesurer'}</text></g>`;
+      v += `<g class="el${sel('rep')}" data-r="rep" tabindex="0" role="button" aria-label="Répéteur"><line x1="170" y1="46" x2="170" y2="64" class="fil" stroke="${COUL.inc}"/><rect x="118" y="12" width="104" height="36" rx="8" class="rp"/><text x="170" y="27" text-anchor="middle" class="rgt2">📶 RÉPÉTEUR</text><text x="170" y="40" text-anchor="middle" class="rgp" fill="${r ? (r.sortie ? COUL.ok : COUL.ko) : COUL.inc}">${r ? (r.courant ? `entrée ${r.entree} % · sortie ${r.sortie ? 'ok' : 'rien'}` : 'sans courant') : 'à mesurer'}</text></g>`;
     }
     // le module
     v += `<g class="el${sel('module')}" data-r="module" tabindex="0" role="button" aria-label="Module du canon"><rect x="126" y="62" width="88" height="56" rx="8" class="pcb"/><rect x="146" y="76" width="30" height="22" rx="3" class="puce"/><circle cx="196" cy="74" r="5" fill="${parle ? COUL.ok : COUL.ko}"/><text x="170" y="112" text-anchor="middle" class="rgt2">MODULE</text>`;
@@ -378,7 +378,7 @@
   // les gestes de l'élément touché
   function regardActions(id){
     const rg = P.regard && P.regard.id === id ? P.regard.el : null, repet = S.REPETEURS.has(id);
-    if(!rg) return exp('👆 <b>Touchez un élément</b> du regard pour agir dessus : les <b>borniers</b> (câble de dialogue qui arrive à gauche, qui repart à droite), le <b>module</b>, l’<b>interrupteur</b> (un toucher le bascule), l’<b>alimentation</b>' + (repet ? ' ou le <b>répétiteur</b>' : '') + '.');
+    if(!rg) return exp('👆 <b>Touchez un élément</b> du regard pour agir dessus : les <b>borniers</b> (câble de dialogue qui arrive à gauche, qui repart à droite), le <b>module</b>, l’<b>interrupteur</b> (un toucher le bascule), l’<b>alimentation</b>' + (repet ? ' ou le <b>répéteur</b>' : '') + '.');
     const [t, k] = rg.split(':');
     if(t === 'in' || t === 'out'){
       const l = S.L_PAR_K[k], o = l.a === id ? l.b : l.a;
@@ -387,7 +387,7 @@
     }
     if(rg === 'module') return `<div class="mesure"><b>Module du canon</b> : il parle sur la ligne de dialogue. Le voyant est <b class="${S.calculer(P.E).parlent.has(id) ? 'ok' : 'ko'}">${S.calculer(P.E).parlent.has(id) ? 'vert : il communique' : 'rouge : il ne communique pas'}</b>.</div><div class="ligneA">${bouton('🔍 Mesurer le signal', 0, `mesurer~${id}`)}${bouton('💳 Changer le module', 0, `module~${id}`, 'rep')}</div>` + exp('<b>💳 Changer le module</b> règle un module qui brouille son tronçon, ou une adresse en double. Si le module est bon, la pièce retourne au stock mais l’essai compte pour trois gestes.');
     if(rg === 'inter') return `<div class="mesure"><b>Interrupteur</b> : ${P.E.off.has(id) ? '<b class="vo">ouvert, le canon est exclu du réseau</b>' : 'fermé, le canon est sur le réseau'}.</div><div class="ligneA">${bouton(P.E.off.has(id) ? '⏺ Refermer' : '⭘ Ouvrir (exclure)', 0, `inter~${id}`, 'act')}</div>` + exp('Ouvrir l’interrupteur sort le canon du réseau : il ne répond plus, mais <b>la ligne de dialogue continue de passer</b>. S’il brouillait ou faisait disjoncter, tout revient.');
-    if(rg === 'rep') return `<div class="ligneA">${bouton('🔍 Mesurer entrée / sortie', 0, `mesurer~${id}`)}${bouton('📶 Changer le répétiteur', 0, `repeteur~${id}`, 'rep')}</div>` + exp('Le répétiteur relit le signal à l’entrée et le renvoie à 100 % à la sortie. Du courant, un bon signal à l’entrée et rien à la sortie : changez-le.');
+    if(rg === 'rep') return `<div class="ligneA">${bouton('🔍 Mesurer entrée / sortie', 0, `mesurer~${id}`)}${bouton('📶 Changer le répéteur', 0, `repeteur~${id}`, 'rep')}</div>` + exp('Le répéteur relit le signal à l’entrée et le renvoie à 100 % à la sortie. Du courant, un bon signal à l’entrée et rien à la sortie : changez-le.');
     if(rg === 'puiss'){
       const cs = S.CABLES_DE[id] || [];
       return `<div class="mesure"><b>Alimentation</b> : ${P.diag[id] && !P.diag[id].perime ? `tension <b class="${P.diag[id].tension === 'absente' ? 'ko' : 'ok'}">${P.diag[id].tension}</b>` : 'pas encore mesurée'}.</div>`
@@ -408,10 +408,10 @@
     }
     if(!s){
       const ouverts = P.E.off.size + P.E.debr.size + P.E.ouv.size + P.E.depOuv.size + P.E.disj.size;
-      h = `<p class="aideJ">Touchez un <b>canon</b>, un <b>répétiteur 📶</b>, une <b>liaison</b>${P.vue === 'elec' ? ', un <b>câble électrique</b>' : ''} ou un <b>transfo ⚡</b>, puis choisissez le geste : il se fait tout de suite.</p>`;
+      h = `<p class="aideJ">Touchez un <b>canon</b>, un <b>répéteur 📶</b>, une <b>liaison</b>${P.vue === 'elec' ? ', un <b>câble électrique</b>' : ''} ou un <b>transfo ⚡</b>, puis choisissez le geste : il se fait tout de suite.</p>`;
       h += `<details class="comment"><summary>💡 Comment chercher ?</summary><ol>
         <li><b>Regardez la carte</b> : les canons rouges ne répondent plus. Le signal part des têtes (cercle blanc) et suit les flèches.</li>
-        <li><b>Mesurez aux répétiteurs 📶</b> autour de la zone rouge : entrée et sortie vous disent dans quel <b>tronçon</b> (entre deux répétiteurs) est le défaut.</li>
+        <li><b>Mesurez aux répéteurs 📶</b> autour de la zone rouge : entrée et sortie vous disent dans quel <b>tronçon</b> (entre deux répéteurs) est le défaut.</li>
         <li><b>Mesurez dans le tronçon</b> : là où le signal change (net → absent, faible, illisible, ou le bruit le plus fort), vous y êtes.</li>
         <li>En cas de doute, <b>coupez en deux</b> : débranchez une liaison au milieu, ou excluez un canon, et regardez ce qui revient.</li>
         <li><b>Réparez</b>, puis remettez tout en service.</li></ol></details>`;
@@ -422,15 +422,15 @@
     const C = S.calculer(P.E);
     if(s.type === 'canon'){
       const id = s.id, c = S.PAR_ID[id], sdm = c.zone === 'SDM', d = P.diag[id], dep = S.ORIGINE[id], repet = S.REPETEURS.has(id);
-      h += `<h2>${sdm ? '🏠 ' + esc(c.nom) : `Canon ${esc(c.nom)}`}${repet ? ' 📶' : ''} <small>${sdm ? 'salle des machines' : `${esc(zoneC(id))} · ${MODELES[c.modele] || ''}${dep ? ' · ' + esc(S.D_PAR_ID[dep].nom) : ''}`}${S.TETES.includes(id) ? ' · tête du dialogue' : ''}${repet ? ' · <b style="color:var(--bleu)">répétiteur de signal</b>' : ''}</small></h2>`;
+      h += `<h2>${sdm ? '🏠 ' + esc(c.nom) : `Canon ${esc(c.nom)}`}${repet ? ' 📶' : ''} <small>${sdm ? 'salle des machines' : `${esc(zoneC(id))} · ${MODELES[c.modele] || ''}${dep ? ' · ' + esc(S.D_PAR_ID[dep].nom) : ''}`}${S.TETES.includes(id) ? ' · tête du dialogue' : ''}${repet ? ' · <b style="color:var(--bleu)">répéteur de signal</b>' : ''}</small></h2>`;
       h += `<div class="mesure">Supervision : ${C.parlent.has(id) || (sdm && C.atteint.has(id)) ? '<b class="ok">communique</b>' : '<b class="ko">ne communique plus</b>'}${P.E.off.has(id) ? ' · <b class="vo">exclu du réseau</b> (interrupteur ouvert)' : ''}` +
         (d && d.qualite !== 'absent' ? `<br>${jauge(d.signal, d.normal)}` : '') + (d ? `<br>Mesuré à ${chrono(d.t)}${d.perime ? ' <b class="vo">(avant vos derniers gestes : à refaire)</b>' : ''} : ${lireMesure(d)}${d.perime ? '' : `<br><i>💡 ${conseil(d)}</i>`}` : '') + '</div>';
       if(!sdm) h += `<div class="regardBox">${regard(id)}</div>` + regardActions(id) + courbe(id);
       h += `<details class="comment" ${P.liste ? 'open' : ''} data-liste><summary>📋 Tous les gestes de ce canon (liste)</summary><div class="gestes">`;
-      if(repet) h += exp('📶 Ce canon porte un <b>répétiteur</b> : il relit le signal qui arrive (l’entrée) et le renvoie à 100 % (la sortie). Sans courant, en panne, ou si l’entrée est mauvaise, il ne renvoie rien et tout ce qui est après lui se tait.');
+      if(repet) h += exp('📶 Ce canon porte un <b>répéteur</b> : il relit le signal qui arrive (l’entrée) et le renvoie à 100 % (la sortie). Sans courant, en panne, ou si l’entrée est mauvaise, il ne renvoie rien et tout ce qui est après lui se tait.');
       if(!sdm){
         h += `<div class="ligneA">${bouton('🔍 Mesurer le signal', 0, `mesurer~${id}`)}${bouton(P.E.off.has(id) ? '⏺ Remettre sur le réseau' : '⭘ Exclure du réseau', 0, `inter~${id}`, 'act')}</div>`;
-        h += exp(`<b>🔍 Mesurer</b> ne change rien : on lit la tension, la force du signal de dialogue (100 % au départ, il s’affaiblit le long du câble), sa qualité${repet ? ', et l’entrée et la sortie du répétiteur' : ''}. <b>⭘ Exclure</b> ouvre l’interrupteur : le canon sort du réseau et ne répond plus, mais <b>la ligne continue de passer</b>. S’il brouillait ou faisait disjoncter, tout revient.`);
+        h += exp(`<b>🔍 Mesurer</b> ne change rien : on lit la tension, la force du signal de dialogue (100 % au départ, il s’affaiblit le long du câble), sa qualité${repet ? ', et l’entrée et la sortie du répéteur' : ''}. <b>⭘ Exclure</b> ouvre l’interrupteur : le canon sort du réseau et ne répond plus, mais <b>la ligne continue de passer</b>. S’il brouillait ou faisait disjoncter, tout revient.`);
       }
       const ls = S.LIAISONS_DE[id] || [];
       if(ls.length){
@@ -447,8 +447,8 @@
         h += exp('<b>⭘ Ouvrir</b> un tronçon coupe le courant de tous les canons d’après (pour isoler un court-circuit). <b>🧰 Refaire</b> répare un câble électrique coupé.');
       }
       if(!sdm){
-        h += `<div class="sect">Réparer le canon</div><div class="ligneA">${bouton('💳 Changer le module', 0, `module~${id}`, 'rep')}${bouton('🧰 Réparer un court-circuit', 0, `court~${id}`, 'rep')}${repet ? bouton('📶 Changer le répétiteur', 0, `repeteur~${id}`, 'rep') : ''}</div>`;
-        h += exp(`<b>💳 Changer le module</b> : pour un canon qui brouille son tronçon, ou une adresse en double. <b>🧰 Court-circuit</b> : pour le canon qui fait disjoncter son transfo.${repet ? ' <b>📶 Changer le répétiteur</b> : s’il a du courant, un bon signal à l’entrée et rien à la sortie.' : ''} Une réparation au mauvais endroit compte pour trois gestes (la pièce, elle, retourne au stock).`);
+        h += `<div class="sect">Réparer le canon</div><div class="ligneA">${bouton('💳 Changer le module', 0, `module~${id}`, 'rep')}${bouton('🧰 Réparer un court-circuit', 0, `court~${id}`, 'rep')}${repet ? bouton('📶 Changer le répéteur', 0, `repeteur~${id}`, 'rep') : ''}</div>`;
+        h += exp(`<b>💳 Changer le module</b> : pour un canon qui brouille son tronçon, ou une adresse en double. <b>🧰 Court-circuit</b> : pour le canon qui fait disjoncter son transfo.${repet ? ' <b>📶 Changer le répéteur</b> : s’il a du courant, un bon signal à l’entrée et rien à la sortie.' : ''} Une réparation au mauvais endroit compte pour trois gestes (la pièce, elle, retourne au stock).`);
       }
       h += '</div></details>';
     } else if(s.type === 'liaison'){
@@ -468,13 +468,13 @@
       h += `<h2>🛒 Acheter des pièces <small>gratuit, livré tout de suite</small></h2>`;
       h += `<div class="mesure">En stock : <b>💳 ${P.E.stock.modules}</b> module${P.E.stock.modules > 1 ? 's' : ''} · <b>🧰 ${P.E.stock.kits}</b> kit${P.E.stock.kits > 1 ? 's' : ''} de réparation${P.achats ? ` · ${pl(P.achats, 'pièce')} achetée${P.achats > 1 ? 's' : ''}` : ''}</div>`;
       h += `<div class="ligneA">${bouton('+1 💳 module', 0, 'acheter~modules', 'act')}${bouton('+1 🧰 kit de réparation', 0, 'acheter~kits', 'act')}</div>`;
-      h += `<p class="aideJ">💳 modules : changer le module d'un canon (il brouille, ou son adresse est en double). 🧰 kits : refaire un câble ou une liaison, blinder, réparer un court-circuit, changer un répétiteur. Une pièce n'est utilisée que si la réparation était la bonne.</p>`;
+      h += `<p class="aideJ">💳 modules : changer le module d'un canon (il brouille, ou son adresse est en double). 🧰 kits : refaire un câble ou une liaison, blinder, réparer un court-circuit, changer un répéteur. Une pièce n'est utilisée que si la réparation était la bonne.</p>`;
     } else if(s.type === 'transfo'){
       const d = s.id, v = P.vus[d], nb = S.VRAIS.filter(c => S.ORIGINE[c.id] === d).length, reps = [...S.REPETEURS].filter(r => S.ORIGINE[r] === d).map(nomC);
-      h += `<h2>⚡ ${esc(S.D_PAR_ID[d].nom)} <small>${pl(nb, 'canon')} alimentés en temps normal${reps.length ? ` · répétiteur${reps.length > 1 ? 's' : ''} ${reps.join(', ')}` : ''}</small></h2>`;
+      h += `<h2>⚡ ${esc(S.D_PAR_ID[d].nom)} <small>${pl(nb, 'canon')} alimentés en temps normal${reps.length ? ` · répéteur${reps.length > 1 ? 's' : ''} ${reps.join(', ')}` : ''}</small></h2>`;
       h += `<div class="mesure">${v ? `Vu à ${chrono(v.t)} : <b class="${v.etat === 'en service' || v.etat === 'réarmé' ? 'ok' : 'ko'}">${v.etat}</b>` : 'État : pas encore vu (allez voir sur place).'}</div>`;
       h += `<div class="ligneA">${bouton('👀 Aller voir', 0, `voir~${d}`)}${bouton('⚡ Réarmer', 0, `rearmer~${d}`, 'act')}${bouton(P.E.depOuv.has(d) ? '⚡ Remettre en service' : '⭘ Couper', 0, P.E.depOuv.has(d) ? `rearmer~${d}` : `couper~${d}`, 'act')}</div>`;
-      h += exp(`<b>👀 Aller voir</b> dit s’il est en service ou disjoncté. <b>⚡ Réarmer</b> le remet en route : s’il redisjoncte aussitôt, un court-circuit est encore alimenté. <b>⭘ Couper</b> éteint tous ses canons${reps.length ? ' (et ses répétiteurs : ce qui est après eux se tait aussi)' : ''} : utile pour démasquer un parasite.`);
+      h += exp(`<b>👀 Aller voir</b> dit s’il est en service ou disjoncté. <b>⚡ Réarmer</b> le remet en route : s’il redisjoncte aussitôt, un court-circuit est encore alimenté. <b>⭘ Couper</b> éteint tous ses canons${reps.length ? ' (et ses répéteurs : ce qui est après eux se tait aussi)' : ''} : utile pour démasquer un parasite.`);
     }
     h += `<div class="ligneA"><button class="btn" data-f="fermer">✕ Fermer</button></div>`;
     el.innerHTML = h; brancher(); el.scrollTop = haut;
@@ -561,7 +561,7 @@
       if(elec && d && d.tension === 'absente'){ g.strokeStyle = '#FFD23F'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); }
       if(off){ const k = r * .6; g.strokeStyle = '#EAF1FB'; g.lineWidth = 1.8; g.beginPath(); g.moveTo(x - k, y - k); g.lineTo(x + k, y + k); g.moveTo(x + k, y - k); g.lineTo(x - k, y + k); g.stroke(); }
       if(S.TETES.includes(c.id) && !elec){ g.strokeStyle = '#EAF1FB'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, r + 3.5, 0, 7); g.stroke(); }
-      // un répétiteur : un losange bleu autour du canon
+      // un répéteur : un losange bleu autour du canon
       if(S.REPETEURS.has(c.id)){ const q = r + 5; g.strokeStyle = '#5AA9FF'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y - q); g.lineTo(x + q, y); g.lineTo(x, y + q); g.lineTo(x - q, y); g.closePath(); g.stroke(); }
       // le signal mesuré, écrit au-dessus du canon
       if(d && !elec && d.signal != null){
@@ -601,7 +601,7 @@
     }
   }
   function majVues(){ $('vDia').setAttribute('aria-pressed', P.vue === 'dia'); $('vElec').setAttribute('aria-pressed', P.vue === 'elec');
-    $('legende').innerHTML = P.vue === 'dia' ? '<span><i style="background:#2FD47A"></i>communique</span><span><i style="background:#FF4D4D"></i>ne communique plus</span><span><i style="background:#3A4352"></i>exclu</span><span><i style="background:none;border:2px solid #5AA9FF;border-radius:0;transform:rotate(45deg) scale(.8)"></i>répétiteur</span><span>62 % : signal mesuré · ≈ bruit · gris : à refaire</span>'
+    $('legende').innerHTML = P.vue === 'dia' ? '<span><i style="background:#2FD47A"></i>communique</span><span><i style="background:#FF4D4D"></i>ne communique plus</span><span><i style="background:#3A4352"></i>exclu</span><span><i style="background:none;border:2px solid #5AA9FF;border-radius:0;transform:rotate(45deg) scale(.8)"></i>répéteur</span><span>62 % : signal mesuré · ≈ bruit · gris : à refaire</span>'
       : '<span><i style="background:#2FD47A"></i>tension mesurée</span><span><i style="background:#1A2233;border:2px solid #FFD23F"></i>pas de tension</span><span><i style="background:#55657C"></i>pas mesuré</span><span>tirets : tronçon ouvert</span>'; }
   $('vDia').onclick = () => { P.vue = 'dia'; majVues(); dessiner(); if(!P.sel || P.sel.type === 'cable'){ P.sel = null; panneau(); } };
   $('vElec').onclick = () => { P.vue = 'elec'; majVues(); dessiner(); if(!P.sel) panneau(); };

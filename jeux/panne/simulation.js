@@ -4,12 +4,12 @@
    Les règles du dialogue (version 186, d'après le terrain) :
    - Le câble de dialogue TRAVERSE les canons : un canon exclu (interrupteur ouvert) ou sans courant ne répond plus,
      mais il ne coupe pas la ligne, les suivants continuent de dialoguer.
-   - Le SIGNAL part à 100 % d'une tête et s'affaiblit le long du câble. Un RÉPÉTITEUR (canons 162, 115, 140, 98, 1, 201,
+   - Le SIGNAL part à 100 % d'une tête et s'affaiblit le long du câble. Un RÉPÉTEUR (canons 162, 115, 140, 98, 1, 201,
      220 et 318) le relit et le renvoie à 100 % : il découpe le réseau en TRONÇONS. Sans courant, en panne, ou s'il reçoit
      un signal trop faible, brouillé ou illisible, il ne renvoie rien : tout ce qui est après lui se tait.
    - Un canon répond s'il est branché, alimenté, et s'il reçoit un signal assez fort, lisible et pas brouillé.
    - Les pannes cachées : liaison coupée, liaison abîmée (elle affaiblit le signal), module qui brouille tout son tronçon
-     (parfois par intermittence), répétiteur en panne, câble électrique coupé, court-circuit (le transfo disjoncte),
+     (parfois par intermittence), répéteur en panne, câble électrique coupé, court-circuit (le transfo disjoncte),
      adresse en double (deux canons qui ne répondent plus), paire A/B inversée, câble de puissance voisin.
    Window.PanneSim expose tout pour le jeu et pour les tests (PanneSim.tests()). */
 (() => {
@@ -32,8 +32,8 @@
   // la longueur d'une liaison de dialogue, en mètres (le long de son tracé)
   const LON = {};
   LIAISONS.forEach(l => { const g = (R.geomLiaisons || {})[l.k] || [[PAR_ID[l.a].x, PAR_ID[l.a].y], [PAR_ID[l.b].x, PAR_ID[l.b].y]]; let s = 0; for(let i = 1; i < g.length; i++) s += Math.hypot(g[i][0] - g[i - 1][0], g[i][1] - g[i - 1][1]); LON[l.k] = s; });
-  // Le signal : il perd 63 % de sa force tous les PORTEE mètres ; sous SEUIL %, un canon (ou un répétiteur) ne le lit plus.
-  // (réglé sur le réseau : le canon le plus loin d'un répétiteur, à 1 960 m, reçoit encore 45 %)
+  // Le signal : il perd 63 % de sa force tous les PORTEE mètres ; sous SEUIL %, un canon (ou un répéteur) ne le lit plus.
+  // (réglé sur le réseau : le canon le plus loin d'un répéteur, à 1 960 m, reçoit encore 45 %)
   const PORTEE = 2450, SEUIL = 25, ABIME = .4, PORTEE_BRUIT = 900;
 
   /* ---------- hasard reproductible ---------- */
@@ -92,11 +92,11 @@
     // une liaison illisible : paire A/B inversée, ou parasitée par le câble de puissance d'un transfo en service
     const illisible = l => E.pannes.some(p => !p.repare && p.k === l.k && (p.type === 'paire' || (p.type === 'parasite' && transfoEnService(p.transfo))));
     const perte = l => Math.exp(-LON[l.k] / PORTEE) * (enPanne(E, 'cableFaible', l.k) ? ABIME : 1);
-    // un répétiteur marche s'il a du courant et s'il n'est pas en panne (l'interrupteur du canon ne le concerne pas)
+    // un répéteur marche s'il a du courant et s'il n'est pas en panne (l'interrupteur du canon ne le concerne pas)
     const repActif = id => REPETEURS.has(id) && alim(id) && !enPanne(E, 'repeteur', id);
 
-    // 1. Le bruit : un module défectueux brouille tout son tronçon, dans les deux sens, jusqu'aux répétiteurs.
-    //    (le canon d'un répétiteur est du côté de sa sortie ; les liaisons qui arrivent sur lui sont son entrée.
+    // 1. Le bruit : un module défectueux brouille tout son tronçon, dans les deux sens, jusqu'aux répéteurs.
+    //    (le canon d'un répéteur est du côté de sa sortie ; les liaisons qui arrivent sur lui sont son entrée.
     //    Une tête de dialogue sépare de la même façon : ce qui arrive sur la salle des machines ne repart pas sur ses départs.)
     const bruit = {}, entreeBrouillee = new Set(), separe = id => REPETEURS.has(id) || TETES.includes(id);
     for(const p of E.pannes){
@@ -107,15 +107,15 @@
         for(const l of LIAISONS_DE[x] || []){
           if(coupee(l)) continue;
           const y = l.a === x ? l.b : l.a;
-          if(separe(x) && !versDe(l, x)) continue;                                       // l'entrée du répétiteur x : un autre tronçon
-          if(separe(y) && !versDe(l, y)){ if(REPETEURS.has(y)) entreeBrouillee.add(y); continue; }   // l'entrée du répétiteur y : il ne relit plus rien
+          if(separe(x) && !versDe(l, x)) continue;                                       // l'entrée du répéteur x : un autre tronçon
+          if(separe(y) && !versDe(l, y)){ if(REPETEURS.has(y)) entreeBrouillee.add(y); continue; }   // l'entrée du répéteur y : il ne relit plus rien
           if(d[y] == null){ d[y] = d[x] + LON[l.k]; file.push(y); }
         }
       }
       for(const x in d) bruit[x] = Math.max(bruit[x] || 0, Math.exp(-d[x] / PORTEE_BRUIT));
     }
 
-    // 2. Le signal : 100 % aux têtes, il s'affaiblit le long du câble ; un répétiteur qui le lit bien le renvoie à 100 %
+    // 2. Le signal : 100 % aux têtes, il s'affaiblit le long du câble ; un répéteur qui le lit bien le renvoie à 100 %
     const niv = {}, lis = {}, entree = {}, file = [];
     for(const h of TETES){ niv[h] = 100; lis[h] = true; file.push(h); }
     while(file.length){
@@ -171,7 +171,7 @@
     const tension = !CABLES_SANS.has(id) ? 'sans câble' : C.de[id] ? 'présente' : 'absente';
     const n = C.niv[id] || 0, b = C.bruit[id] || 0;
     const reponse = E.off.has(id) ? 'exclu' : !C.alim(id) ? 'éteint' : C.conflit.has(id) ? 'conflit' : C.parlent.has(id) || (PAR_ID[id].zone === 'SDM' && C.atteint.has(id)) ? 'communique' : 'muet';
-    // le répétiteur du canon : ce qui arrive à son entrée, ce qu'il renvoie à sa sortie
+    // le répéteur du canon : ce qui arrive à son entrée, ce qu'il renvoie à sa sortie
     let rep = null;
     if(REPETEURS.has(id)){
       const e = C.entree[id] || { niv:0, lis:false };
@@ -186,7 +186,7 @@
   function aval(id){ const vu = new Set([id]), pile = [id]; while(pile.length){ const x = pile.pop(); for(const l of LIAISONS_DE[x] || []){ const y = versDe(l, x); if(y && !vu.has(y)){ vu.add(y); pile.push(y); } } } vu.delete(id); return vu; }
   const log2 = n => Math.ceil(Math.log2(Math.max(1, n)));
   const posDe = id => id.startsWith('src/') ? D_PAR_ID[id.slice(4)] : PAR_ID[id];
-  // le tronçon d'un canon : les canons entre les mêmes répétiteurs que lui (ceux qu'il brouillerait)
+  // le tronçon d'un canon : les canons entre les mêmes répéteurs que lui (ceux qu'il brouillerait)
   function troncon(id){ const E = nouvelEtat(); E.pannes = [{ type:'contaminant', canon:id }]; return calculer(E).brouille; }
   // la distance d'un point aux câbles électriques d'un transfo (les câbles longent souvent les liaisons de dialogue)
   function distTransfo(d, m){
@@ -202,7 +202,7 @@
     dialogue:{ nom:'Liaison de dialogue coupée', ico:'✂️' },
     faible:{ nom:'Liaison abîmée (signal faible)', ico:'📉' },
     ligne:{ nom:'Module qui brouille son tronçon', ico:'📡' },
-    repeteur:{ nom:'Répétiteur en panne', ico:'📶' },
+    repeteur:{ nom:'Répéteur en panne', ico:'📶' },
     elec:{ nom:'Câble électrique coupé', ico:'🔌' },
     court:{ nom:'Court-circuit', ico:'⚡' },
     intermittent:{ nom:'Brouillage intermittent', ico:'〰️' },
@@ -294,7 +294,7 @@
     }
     return null;
   }
-  // Le nombre de gestes d'une bonne recherche (pour les étoiles) : deux mesures aux répétiteurs pour trouver le tronçon,
+  // Le nombre de gestes d'une bonne recherche (pour les étoiles) : deux mesures aux répéteurs pour trouver le tronçon,
   // puis une dichotomie dans le tronçon, puis la réparation
   function optimum(p){
     const E = nouvelEtat(); E.pannes = [p]; stabiliser(E); const C = calculer(E);
@@ -315,15 +315,15 @@
   const PALIERS = { debutant:'Débutant', confirme:'Confirmé', sournois:'Sournois', expert:'Expert' };
   const NIVEAUX = [
     { id:'dialogue', palier:'debutant', nom:'La liaison arrachée', texte:'Une liaison de dialogue a été coupée (une dameuse, un rongeur…) : après elle, plus aucun signal. Mesurez le signal pour trouver où il s’arrête.', types:['dialogue'],
-      methode:'Mesurez le signal aux répétiteurs 📶 pour trouver le tronçon muet, puis au milieu du tronçon : là où le signal passe de « net » à « absent », la liaison est coupée.' },
+      methode:'Mesurez le signal aux répéteurs 📶 pour trouver le tronçon muet, puis au milieu du tronçon : là où le signal passe de « net » à « absent », la liaison est coupée.' },
     { id:'elec', palier:'debutant', nom:'Le câble électrique', texte:'Un câble électrique est coupé : les canons d’après n’ont plus de courant et ne répondent plus (mais la ligne de dialogue, elle, continue de passer).', types:['elec'],
       methode:'Passez en vue ⚡ Électricité. Mesurez la tension au milieu des canons muets : présente d’un côté, absente de l’autre, le câble coupé est entre les deux.' },
     { id:'adresse', palier:'debutant', nom:'Adresse en double', texte:'Après un changement de module, deux canons ont la même adresse : ils répondent en même temps et la supervision ne comprend ni l’un ni l’autre.', types:['adresse'],
       methode:'Deux canons muets, loin l’un de l’autre, avec du courant et un bon signal : mesurez-en un, il dira « adresse en double ». Changez le module de l’un des deux.' },
-    { id:'ligne', palier:'confirme', nom:'Le tronçon brouillé', texte:'Le module d’un canon envoie n’importe quoi sur le câble : tout son tronçon (entre deux répétiteurs) est brouillé, et tout ce qui est après aussi.', types:['ligne'],
+    { id:'ligne', palier:'confirme', nom:'Le tronçon brouillé', texte:'Le module d’un canon envoie n’importe quoi sur le câble : tout son tronçon (entre deux répéteurs) est brouillé, et tout ce qui est après aussi.', types:['ligne'],
       methode:'Mesurez le bruit : plus il est fort, plus le fautif est près. Ou coupez le tronçon en deux en débranchant une liaison : la moitié qui revient est saine. Excluez le suspect (ouvrez son interrupteur) : si tout revient, c’est lui.' },
-    { id:'repeteur', palier:'confirme', nom:'Le répétiteur en panne', texte:'Un répétiteur ne renvoie plus le signal : tout ce qui est après lui se tait, alors qu’avant lui tout va bien.', types:['repeteur'],
-      methode:'Mesurez au répétiteur 📶 juste avant les canons muets : s’il a du courant, un bon signal à l’entrée et rien à la sortie, c’est lui.' },
+    { id:'repeteur', palier:'confirme', nom:'Le répéteur en panne', texte:'Un répéteur ne renvoie plus le signal : tout ce qui est après lui se tait, alors qu’avant lui tout va bien.', types:['repeteur'],
+      methode:'Mesurez au répéteur 📶 juste avant les canons muets : s’il a du courant, un bon signal à l’entrée et rien à la sortie, c’est lui.' },
     { id:'faible', palier:'confirme', nom:'Le signal faible', texte:'Une liaison abîmée (humidité, épissure oxydée) affaiblit le signal : les canons proches répondent encore, ceux du bout de la ligne se taisent.', types:['faible'],
       methode:'Mesurez le signal le long du tronçon : il baisse doucement, puis chute d’un coup. La liaison abîmée est à l’endroit de la chute.' },
     { id:'court', palier:'confirme', nom:'Le transfo qui saute', texte:'Un canon en court-circuit fait disjoncter son transfo, qui redisjoncte au réarmement. Excluez des canons ou ouvrez des tronçons de câble pour l’isoler.', types:['court'],
@@ -339,7 +339,7 @@
     { id:'double', palier:'sournois', nom:'Double peine', texte:'Deux pannes en même temps, de deux sortes différentes.', types:['double'],
       methode:'Deux zones muettes : traitez-les l’une après l’autre, comme deux pannes simples.' },
     { id:'mystere', palier:'sournois', nom:'Panne mystère', texte:'Une panne au hasard parmi toutes les sortes. À vous de deviner laquelle.', types:['mystere'],
-      methode:'Commencez par les mesures aux répétiteurs 📶 et la tension : elles disent de quelle famille est la panne.' },
+      methode:'Commencez par les mesures aux répéteurs 📶 et la tension : elles disent de quelle famille est la panne.' },
     { id:'expert2', palier:'expert', nom:'Expert : deux sournoises', texte:'Deux pannes sournoises en même temps.', types:['expert2'], methode:'' },
     { id:'expert3', palier:'expert', nom:'Expert : trois sournoises', texte:'Trois pannes sournoises en même temps. Pour les dépanneurs chevronnés.', types:['expert3'], methode:'' },
   ];
@@ -379,7 +379,7 @@
     ok(C0.parlent.size === N, `réseau normal : ${C0.parlent.size} / ${N} canons communiquent`);
     const mini = Math.min(...VRAIS.map(c => C0.niv[c.id] || 0));
     ok(mini >= SEUIL + 10, `signal normal : le canon le plus faible reçoit ${Math.round(mini)} % (seuil ${SEUIL} %)`);
-    ok(REPETEURS.size === 8 && [...REPETEURS].every(id => PAR_ID[id]), `les ${REPETEURS.size} répétiteurs sont sur le réseau`);
+    ok(REPETEURS.size === 8 && [...REPETEURS].every(id => PAR_ID[id]), `les ${REPETEURS.size} répéteurs sont sur le réseau`);
     ok(Object.keys(ORIGINE).length >= 190, `courant normal : ${Object.keys(ORIGINE).length} canons alimentés`);
     for(const n of NIVEAUX) for(let s = 1; s <= 12; s++){
       const P = nouvellePartie(n.id, s * 7919), C = calculer(P.E);
@@ -394,16 +394,16 @@
     ok(calculer(Ex).parlent.size === N - 1, `canon ${milieu.nom} exclu (interrupteur ouvert) : lui seul se tait, la ligne passe`);
     const Pe = nouvellePartie('elec', 4242), Ce = calculer(Pe.E), sansCourant = VRAIS.filter(c => !Ce.alim(c.id));
     const muetsAvecCourant = VRAIS.filter(c => Ce.alim(c.id) && !Ce.parlent.has(c.id)), repEteints = [...REPETEURS].filter(id => !Ce.alim(id));
-    ok(sansCourant.length >= 4 && (repEteints.length > 0 || muetsAvecCourant.length === 0), `câble électrique coupé : ${sansCourant.length} canons sans courant se taisent, ${muetsAvecCourant.length} autres (${repEteints.length} répétiteur éteint)`);
+    ok(sansCourant.length >= 4 && (repEteints.length > 0 || muetsAvecCourant.length === 0), `câble électrique coupé : ${sansCourant.length} canons sans courant se taisent, ${muetsAvecCourant.length} autres (${repEteints.length} répéteur éteint)`);
     // un module qui brouille : tout son tronçon, et l'exclure fait tout revenir
     const P = nouvellePartie('ligne', 12345), c = P.E.pannes[0].canon, C1 = calculer(P.E), tr = troncon(c);
     ok([...tr].filter(x => PAR_ID[x].zone !== 'SDM').every(x => !C1.parlent.has(x)), `module qui brouille au ${PAR_ID[c].nom} : les ${tr.size} canons de son tronçon se taisent (${C1.parlent.size} / ${N})`);
     const loin = [...tr].sort((a, b) => C1.bruit[a] - C1.bruit[b])[0];
     ok(C1.bruit[c] === 1 && C1.bruit[loin] < C1.bruit[c], `le bruit est le plus fort au fautif (100 %) et baisse en s'éloignant (${Math.round(100 * C1.bruit[loin])} % au ${PAR_ID[loin].nom})`);
     P.E.off.add(c); ok(calculer(P.E).parlent.size === N - 1, 'exclure le canon fautif fait revenir tous les autres');
-    // un répétiteur en panne : rien après lui
+    // un répéteur en panne : rien après lui
     const Pr = nouvellePartie('repeteur', 99), rp = Pr.E.pannes[0].canon, Cr = calculer(Pr.E), dr = diagnostic(Pr.E, rp);
-    ok([...aval(rp)].every(x => !Cr.parlent.has(x)) && dr.rep.entree >= SEUIL && !dr.rep.sortie, `répétiteur ${PAR_ID[rp].nom} en panne : entrée ${dr.rep.entree} %, rien à la sortie, ${aval(rp).size} canons muets après lui`);
+    ok([...aval(rp)].every(x => !Cr.parlent.has(x)) && dr.rep.entree >= SEUIL && !dr.rep.sortie, `répéteur ${PAR_ID[rp].nom} en panne : entrée ${dr.rep.entree} %, rien à la sortie, ${aval(rp).size} canons muets après lui`);
     // une liaison abîmée : le signal chute, les canons les plus loin se taisent
     const Pf = nouvellePartie('faible', 31), lf = L_PAR_K[Pf.E.pannes[0].k], Cf = calculer(Pf.E), yf = boutDe(lf), xf = yf === lf.a ? lf.b : lf.a;
     ok(Cf.niv[yf] < Cf.niv[xf] * .5 && Cf.parlent.size < N, `liaison abîmée ${PAR_ID[xf].nom} – ${PAR_ID[yf].nom} : le signal chute de ${Math.round(Cf.niv[xf])} % à ${Math.round(Cf.niv[yf])} %, ${N - Cf.parlent.size} canons muets`);
