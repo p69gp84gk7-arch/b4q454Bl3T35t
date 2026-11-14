@@ -4,7 +4,7 @@
    Les objets et les points sont dans arpenteur/objets.js. */
 (() => {
 'use strict';
-const O = window.ARPENTEUR_OBJETS, L = window.L;
+const O = window.ARPENTEUR_OBJETS, QU = window.ARPENTEUR_QUETES, L = window.L;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -22,13 +22,16 @@ const ZONE = 600;                  // on sème les objets dans 600 m autour de s
 const DEPART_ESSAI = { lat:45.9237, lon:6.8694 };   // le mode essai commence à Chamonix (beaucoup de lieux Wikipédia)
 
 /* ---------- La progression ---------- */
-const nouvelle = () => ({ v:1, points:0, metres:0, reste:0, pieces:0, objets:{}, lieux:{}, sorties:[], ramasses:{ jour:'', ids:[] }, enCours:null, dernierePos:null });
+const nouvelle = () => ({ v:1, points:0, metres:0, reste:0, pieces:0, objets:{}, lieux:{}, sorties:[], ramasses:{ jour:'', ids:[] }, enCours:null, dernierePos:null, q:QU.nouvelle() });
 let S = lire('arpenteur-partie', null) || nouvelle(), essai = false;
+if(!S.q) S.q = QU.nouvelle();
+let cases = new Set(S.q.cases);          // les cases de la carte déjà découvertes (voir « La carte à découvrir »)
 function sauver(){
   if(essai) return;
+  S.q.cases = [...cases];
   ecrire('arpenteur-partie', S);
   ecrire('arpenteur-records', { points:S.points, km:Math.round(S.metres / 100) / 10, niveau:O.niveauDe(S.points), objets:Object.keys(S.objets).length, lieux:Object.keys(S.lieux).length,
-    sorties:S.sorties.length, pieces:S.pieces, meilleureSortie:S.sorties.reduce((m, s) => Math.max(m, s.metres), 0), dernier:Date.now() });
+    sorties:S.sorties.length, pieces:S.pieces, quetes:S.q.faites, coffres:S.q.coffres, medailles:new Set(S.q.medailles.map(m => m.id)).size, cases:cases.size, meilleureSortie:S.sorties.reduce((m, s) => Math.max(m, s.metres), 0), dernier:Date.now() });
 }
 setInterval(() => { if(!essai && (sortie || pos)) sauver(); }, 15000);
 addEventListener('visibilitychange', () => { if(document.hidden) sauver(); else if(sortie) garderEcran(); });
@@ -121,7 +124,7 @@ function nouvellePosition(lat, lon, acc, t){
       const d = O.distance(dernier.lat, dernier.lon, lat, lon), dt = Math.max(.5, (t - dernier.t) / 1000);
       if(d >= Math.max(4, acc * .4)){
         if(d / dt <= VITESSE_MAX){
-          sortie.metres += d; S.metres += d; S.reste += d;
+          sortie.metres += d; S.metres += d; S.reste += d; evt('metres', d);
           sortie.trace.push([+lat.toFixed(6), +lon.toFixed(6)]); trace.addLatLng([lat, lon]);
           const n = Math.floor(S.reste / 10); if(n > 0){ S.reste -= n * 10; gagner(n, null); }
         } else trop = true;
@@ -133,6 +136,7 @@ function nouvellePosition(lat, lon, acc, t){
   majCap();
   if(!dernierRoutes || O.distance(dernierRoutes.lat, dernierRoutes.lon, lat, lon) > 400){ dernierRoutes = { lat, lon }; chargerRoutes(); }
   semer(); ramasserAutour(); chercherLieux();
+  decouvrirAutour(); majTresor(); chargerCommune();
   majSortie();
 }
 // la direction du joueur : la boussole si on l'a, sinon le sens de la marche
@@ -143,7 +147,7 @@ function majCap(){ const c = capActuel(), e = document.getElementById('moiCap');
 let essaiDir = null, essaiCible = null, essaiTimer = null;
 function demarrerEssai(){
   const p = S.dernierePos || DEPART_ESSAI;
-  essai = true; S = nouvelle(); S.dernierePos = p;
+  essai = true; S = nouvelle(); S.dernierePos = p; cases = new Set(); derniereDecouverte = null; communeCourante = null;
   $('essai').hidden = false;
   nouvellePosition(p.lat, p.lon, 5, Date.now());
   essaiTimer = setInterval(() => {
@@ -299,11 +303,11 @@ function ramasser(it, auto){
   }
   S.ramasses.ids.push(it.id);
   const x = marqueurs.get(it.id); if(x){ carte.removeLayer(x.m); marqueurs.delete(it.id); }
-  if(it.type === 'piece'){ S.pieces++; if(sortie) sortie.pieces++; gagner(O.PTS.piece, [it.lat, it.lon]); }
+  if(it.type === 'piece'){ S.pieces++; if(sortie) sortie.pieces++; gagner(O.PTS.piece, [it.lat, it.lon]); evt('piece'); }
   else {
     const o = O.TOUS[it.objet], neuf = !S.objets[o.id], pts = O.RARETES[o.rar].pts + (neuf ? O.PTS.nouveau : 0);
     S.objets[o.id] = (S.objets[o.id] || 0) + 1; if(sortie) sortie.objets.push(o.id);
-    gagner(pts, [it.lat, it.lon]);
+    gagner(pts, [it.lat, it.lon]); evt('objet', 1, { rar:o.rar, album:o.album });
     toast(`${o.ico} ${o.nom} (${O.RARETES[o.rar].nom.toLowerCase()})${neuf ? ' : nouveau dans ton album !' : ''} +${pts}`, o.rar === 'commun' ? 'or' : 'rare', 4000);
     ficheObjet(o.id, true);
   }
@@ -365,7 +369,7 @@ async function visiter(l){
   let r = null; try{ r = await resume(l.titre); }catch(e){}
   S.lieux[l.pageid] = { titre:l.titre, date:Date.now(), lat:l.lat, lon:l.lon, image:r && r.image || null, desc:r && r.desc || '' };
   if(sortie) sortie.lieux.push(l.titre);
-  gagner(O.PTS.visite, [l.lat, l.lon]);
+  gagner(O.PTS.visite, [l.lat, l.lon]); evt('lieu');
   toast(`📸 ${l.titre} : visité ! Carte postale ajoutée à ton carnet. +${O.PTS.visite}`, 'or', 4500);
   const m = marqueursLieux.get(l.pageid); if(m) m.setIcon(L.divIcon({ className:'', html:'<div class="mk lieu vu"><span>✓</span></div>', iconSize:[30, 30], iconAnchor:[15, 15] }));
   if(ficheLieuOuverte && ficheLieuOuverte.l === l) ficheLieuOuverte.majVisite();
@@ -391,6 +395,7 @@ function finirSortie(){
   sortie = null; S.enCours = null; dernier = null; trace.remove();
   $('bSortie').className = 'go'; $('bSortie').innerHTML = '▶️<small>Sortie</small>';
   if(verrou){ verrou.release().catch(() => {}); verrou = null; }
+  if(s.metres >= 500) evt('sortie');
   majSortie(); sauver();
   ouvrirFiche('🏁 Sortie terminée', bilanSortie(s, true));
 }
@@ -421,7 +426,7 @@ function ficheObjet(id, trouve){
   ouvrirFiche(trouve ? '✨ Trouvé !' : O.ALBUMS[o.album].nom, `<div class="bloc"><div class="grand" style="--c:${R.coul}"><span class="ico">${n ? o.ico : '❔'}</span><div><b>${n ? esc(o.nom) : 'Pas encore trouvé'}</b><span class="rar" style="--c:${R.coul}">${R.nom} · ${R.pts} points</span><br><small class="leg">${O.ALBUMS[o.album].ico} ${O.ALBUMS[o.album].nom}${n ? ` · trouvé ${n} fois` : ''}</small></div></div>
     ${n ? `<p>${esc(o.desc)}</p>` : `<p class="leg">Continue à explorer : cet objet ${R.nom.toLowerCase() === 'commun' ? 'se trouve souvent' : 'est ' + R.nom.toLowerCase()}${o.album === 'patrimoine' ? ', et les lieux Wikipédia cachent des trésors du patrimoine' : ''}.</p>`}</div>`);
 }
-let panneau = null, sousOnglet = { album:'nature', lieux:'autour' };
+let panneau = null, sousOnglet = { album:'nature', lieux:'autour', quetes:'jour' };
 function ouvrirPanneau(p){ panneau = p; $('panneau').hidden = false; fermerFiche(); rafraichir(); }
 function fermerPanneau(){ panneau = null; $('panneau').hidden = true; }
 $('pFermer').onclick = fermerPanneau;
@@ -451,6 +456,8 @@ function rafraichir(){
     box.innerHTML = h;
     box.querySelectorAll('[data-lieu]').forEach(e => e.onclick = () => { const l = lieux.find(x => x.pageid === +e.dataset.lieu); fermerPanneau(); suivre = false; $('bCentre').classList.remove('actif'); carte.setView([l.lat, l.lon], 17); ficheLieu(l); });
     box.querySelectorAll('[data-carnet]').forEach(e => e.onclick = () => { const x = S.lieux[e.dataset.carnet]; ficheLieu({ pageid:+e.dataset.carnet, titre:x.titre, lat:x.lat, lon:x.lon }); });
+  } else if(panneau === 'quetes'){
+    panneauQuetes(box);
   } else if(panneau === 'journal'){
     $('pTitre').textContent = '📒 Mes sorties';
     const tot = S.sorties.reduce((a, s) => ({ m:a.m + s.metres, t:a.t + (s.fin - s.debut) }), { m:0, t:0 });
@@ -471,6 +478,165 @@ function montrerTrace(s){
   traceAncienne = L.polyline(s.trace, { color:'#8E4FD8', weight:4, opacity:.8, dashArray:'6 6' }).addTo(carte);
   carte.fitBounds(traceAncienne.getBounds(), { padding:[40, 40] });
 }
+
+/* ---------- Les quêtes, la chasse au trésor et la carte à découvrir ---------- */
+// un fait du jeu (une pièce, un objet, des mètres…) : il fait avancer les missions et la quête de la semaine
+function evt(type, n = 1, info = null){
+  const fini = QU.evenement(S.q, type, n, info);
+  for(const f of fini){ gagner(f.pts, null); toast(`${f.ico} ${f.titre} : +${f.pts} points !`, 'or', 5200); }
+  if(fini.length) pastilleQ();
+  if(fini.length && panneau === 'quetes') rafraichir();
+}
+function pastilleQ(){ const Q = QU.actualiser(S.q); $('pastQ').hidden = Q.vu === Q.jour; }
+setInterval(() => { if(panneau === 'quetes' && sousOnglet.quetes !== 'carte') rafraichir(); }, 2500);
+
+// --- la chasse au trésor : un coffre caché, la température et la distance
+let dernierD = null, tendCourante = 0, dernierNiveauChaleur = 0;
+function emplacementCoffre(n, graine){
+  const c = QU.placerCoffre(pos.lat, pos.lon, n, graine), q = etatRoutes(c.lat, c.lon) === 'ok' ? aimanter(c.lat, c.lon, 'coffre' + graine + n) : null;
+  return q || c;
+}
+function lancerChasse(n = 0, graine = String(Date.now())){
+  if(!pos) return toast('Il faut d\'abord ta position GPS.', 'mal');
+  const c = emplacementCoffre(n, graine);
+  S.q.tresor = { lat:c.lat, lon:c.lon, n, graine }; dernierD = null; tendCourante = 0; dernierNiveauChaleur = 0;
+  sauver(); majTresor(); if(panneau === 'quetes') rafraichir();
+}
+function majTresor(){
+  const t = S.q.tresor, chip = $('chipTresor');
+  if(!t || !pos){ chip.hidden = true; return; }
+  const d = O.distance(pos.lat, pos.lon, t.lat, t.lon);
+  if(d <= portee()) return ouvrirCoffre();
+  if(dernierD == null) dernierD = d; else if(Math.abs(d - dernierD) >= 4){ tendCourante = QU.tendance(dernierD, d); dernierD = d; }
+  const ch = QU.chaleur(d);
+  chip.hidden = false; chip.textContent = `${ch.ico} ${ch.nom} · ${km(d)}${tendCourante > 0 ? ' ▲' : tendCourante < 0 ? ' ▼' : ''}`;
+  if(ch.n === 5 && dernierNiveauChaleur < 5 && navigator.vibrate) try{ navigator.vibrate(120); }catch(e){}
+  dernierNiveauChaleur = ch.n;
+  if(panneau === 'quetes' && sousOnglet.quetes === 'tresor') rafraichir();
+}
+function ouvrirCoffre(){
+  const t = S.q.tresor; if(!t) return;
+  const b = QU.butin(t.n, t.graine), o = O.TOUS[b.objet], neuf = !S.objets[o.id], ptsO = O.RARETES[o.rar].pts + (neuf ? O.PTS.nouveau : 0), R = O.RARETES[o.rar];
+  S.q.tresor = null; S.q.coffres++;
+  S.pieces += b.pieces; if(sortie) sortie.pieces += b.pieces;
+  S.objets[o.id] = (S.objets[o.id] || 0) + 1; if(sortie) sortie.objets.push(o.id);
+  const total = b.pts + ptsO + b.pieces * O.PTS.piece;
+  gagner(total, [t.lat, t.lon]);
+  evt('tresor'); evt('objet', 1, { rar:o.rar, album:o.album });
+  ouvrirFiche('🧰 Coffre trouvé !', `<div class="bloc"><div class="grand" style="--c:${R.coul}"><span class="ico">${o.ico}</span><div><b>${esc(o.nom)}</b><span class="rar" style="--c:${R.coul}">${R.nom}</span></div></div>
+    <p>${neuf ? '✨ Nouveau dans ton album ! ' : ''}Le coffre contenait aussi <b>${b.pieces} pièces</b> et un trésor : <b>+${fmt(total)} points</b> en tout.</p>
+    <p class="leg">Coffre n° ${t.n + 1} de cette chasse. Un autre coffre vient d'être caché, un peu plus loin : la boussole chaud / froid est dans 🎯 Quêtes › Trésor (et la pastille en bas à gauche).</p></div>`);
+  lancerChasse(t.n + 1, t.graine);
+  sauver();
+}
+
+// --- la carte à découvrir : le brouillard et la commune
+let brouillardActif = lire('arpenteur-reglages', {}).brouillard !== false, derniereDecouverte = null, communeCourante = null, chargeCommune = false, dernierAppelCommune = 0;
+const calqueB = document.createElement('canvas'); calqueB.className = 'canvas-brouillard';
+carte.createPane('brouillard'); { const p = carte.getPane('brouillard'); p.style.zIndex = 350; p.style.pointerEvents = 'none'; p.appendChild(calqueB); }
+let prB = false;
+function redessinerBrouillard(){ if(prB) return; prB = true; requestAnimationFrame(() => { prB = false; dessinerBrouillard(); }); }
+function dessinerBrouillard(){
+  const z = carte.getZoom();
+  if(!brouillardActif || z < 13){ calqueB.style.display = 'none'; return; }
+  const t = carte.getSize(), W = Math.ceil(t.x * 1.6), H = Math.ceil(t.y * 1.6), ox = (W - t.x) / 2, oy = (H - t.y) / 2;
+  if(calqueB.width !== W || calqueB.height !== H){ calqueB.width = W; calqueB.height = H; }
+  calqueB.style.display = ''; calqueB.style.opacity = 1;
+  L.DomUtil.setPosition(calqueB, carte.containerPointToLayerPoint([-ox, -oy]));
+  const g = calqueB.getContext('2d'); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, W, H);
+  g.fillStyle = 'rgba(22,40,32,.62)'; g.fillRect(0, 0, W, H);
+  g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000';
+  const nw = carte.containerPointToLatLng([-ox, -oy]), se = carte.containerPointToLatLng([t.x + ox, t.y + oy]);
+  const gy0 = Math.floor(se.lat / QU.PAS_Y) - 1, gy1 = Math.floor(nw.lat / QU.PAS_Y) + 1, gx0 = Math.floor(nw.lng / QU.PAS_X) - 1, gx1 = Math.floor(se.lng / QU.PAS_X) + 1;
+  for(const k of cases){
+    const { gy, gx } = QU.deCle(k); if(gy < gy0 || gy > gy1 || gx < gx0 || gx > gx1) continue;
+    const a = carte.latLngToContainerPoint([(gy + 1) * QU.PAS_Y, gx * QU.PAS_X]), b = carte.latLngToContainerPoint([gy * QU.PAS_Y, (gx + 1) * QU.PAS_X]), x = a.x + ox, y = a.y + oy, w = b.x - a.x, h = b.y - a.y;
+    g.globalAlpha = .3; g.fillRect(x - 6, y - 6, w + 12, h + 12); g.globalAlpha = 1; g.fillRect(x - 1, y - 1, w + 2, h + 2);
+  }
+}
+carte.on('zoomstart', () => { calqueB.style.opacity = 0; });
+carte.on('moveend zoomend resize', redessinerBrouillard);
+$('bBrouillard').classList.toggle('actif', brouillardActif);
+$('bBrouillard').onclick = () => {
+  brouillardActif = !brouillardActif; $('bBrouillard').classList.toggle('actif', brouillardActif);
+  const r = lire('arpenteur-reglages', {}); r.brouillard = brouillardActif; ecrire('arpenteur-reglages', r);
+  dessinerBrouillard(); toast(brouillardActif ? '🌫️ Brouillard affiché' : '🌫️ Brouillard caché');
+};
+function decouvrirAutour(){
+  if(!pos || pos.acc > 40) return;
+  const neuves = QU.decouvrir(cases, pos.lat, pos.lon, derniereDecouverte); derniereDecouverte = { lat:pos.lat, lon:pos.lon };
+  if(!neuves.length) return;
+  neuves.forEach(k => QU.ajouterCase(S.q.communes, k));
+  gagner(neuves.length * QU.PTS_CASE, null);
+  evt('case', neuves.length); redessinerBrouillard();
+  if(panneau === 'quetes' && sousOnglet.quetes === 'carte') rafraichir();
+}
+// le contour de la commune où l'on est (Nominatim, d'après OpenStreetMap), pour le pourcentage découvert
+async function chargerCommune(){
+  if(!pos || chargeCommune) return;
+  if(communeCourante && QU.dansBbox(pos.lat, pos.lon, communeCourante.bbox) && QU.dedans(pos.lat, pos.lon, communeCourante.anneaux)) return;
+  const connue = Object.values(S.q.communes).find(c => QU.dansBbox(pos.lat, pos.lon, c.bbox) && QU.dedans(pos.lat, pos.lon, c.anneaux));
+  if(connue){ communeCourante = connue; return; }
+  if(Date.now() - dernierAppelCommune < 30000) return;
+  chargeCommune = true; dernierAppelCommune = Date.now();
+  try{
+    const j = await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${pos.lat.toFixed(5)}&lon=${pos.lon.toFixed(5)}&zoom=10&polygon_geojson=1&polygon_threshold=0.0005&accept-language=fr`)).json();
+    const g = j.geojson; if(!g || (g.type !== 'Polygon' && g.type !== 'MultiPolygon')) throw new Error('pas de contour');
+    const nom = j.name || (j.address && (j.address.village || j.address.town || j.address.city)) || 'Commune', c = QU.compter(QU.communeDe(nom, g), cases);
+    S.q.communes[nom] = c; communeCourante = c;
+    const noms = Object.keys(S.q.communes); if(noms.length > 12){ const sortir = noms.filter(x => x !== nom).sort((a, b) => S.q.communes[a].vues - S.q.communes[b].vues)[0]; delete S.q.communes[sortir]; }
+    sauver(); if(panneau === 'quetes' && sousOnglet.quetes === 'carte') rafraichir();
+  }catch(e){ setTimeout(chargerCommune, 60000); }
+  chargeCommune = false;
+}
+
+// --- la fiche « Quêtes »
+const quantite = (ev, n) => ev === 'metres' ? km(n) : String(Math.floor(n));
+const barreQ = (prog, cible) => `<div class="barreQ"><i style="width:${Math.round(100 * Math.min(1, prog / cible))}%"></i></div>`;
+function panneauQuetes(box){
+  $('pTitre').textContent = '🎯 Quêtes';
+  const Q = QU.actualiser(S.q); Q.vu = Q.jour; pastilleQ();
+  let h = onglets('quetes', [['jour', '📅 Jour'], ['semaine', '🏆 Semaine'], ['tresor', '🧭 Trésor'], ['carte', '🌫️ Carte']]);
+  const so = sousOnglet.quetes;
+  if(so === 'jour'){
+    const faites = Q.missions.filter(m => m.fait).length, serie = QU.serieActuelle(Q);
+    h += `<div class="bloc"><h3>Missions du jour · ${faites}/${Q.missions.length}</h3>` + Q.missions.map((m, i) => { const d = QU.PAR_ID[m.id];
+      return `<div class="mission ${m.fait ? 'fait' : ''}"><span class="ico">${m.fait ? '✅' : d.ico}</span><div><b>${esc(d.txt(m.cible))}</b>${barreQ(m.prog, m.cible)}<small>${m.fait ? 'Réussie !' : `${quantite(d.ev, m.prog)} / ${quantite(d.ev, m.cible)}`}</small>${!m.fait && !Q.remplace ? ` <button class="btn" style="padding:2px 8px;font-size:.72rem" data-remp="${i}">↻ Changer</button>` : ''}</div><span class="pts">+${m.pts}</span></div>`; }).join('')
+      + `<p class="leg">${faites === Q.missions.length ? '🌟 Les 3 missions sont réussies, bravo ! Reviens demain pour de nouvelles missions.' : `Réussis les trois : <b>+${QU.BONUS_JOUR} points</b> de bonus. ${Q.remplace ? 'Tu as déjà changé une mission aujourd\'hui.' : 'Une mission impossible aujourd\'hui ? Tu peux en changer une (une seule fois par jour).'}`}</p>
+      <p class="leg">🔥 Série : <b>${serie}</b> jour${serie > 1 ? 's' : ''} de suite${serie ? ' (+20 points de bonus par jour de série, jusqu\'à +100)' : ' : réussis les 3 missions aujourd\'hui pour la lancer'}.</p></div>`;
+  } else if(so === 'semaine'){
+    const H2 = Q.hebdo, d = QU.HEBDO_PAR_ID[H2.id];
+    h += `<div class="bloc"><h3>La grande quête de la semaine</h3><div class="mission ${H2.fait ? 'fait' : ''}"><span class="ico">${H2.fait ? '🏅' : d.ico}</span><div><b>${esc(d.nom)}</b><small>${esc(d.txt)}</small></div><span class="pts">+${d.pts}</span></div>`
+      + H2.buts.map((b, i) => `<div class="mission ${b.prog >= b.cible ? 'fait' : ''}" style="padding:4px 2px"><div><b style="font-weight:700">${b.prog >= b.cible ? '✅ ' : ''}${esc(d.buts[i][2])}</b>${barreQ(b.prog, b.cible)}<small>${quantite(b.ev, b.prog)} / ${quantite(b.ev, b.cible)}</small></div></div>`).join('')
+      + `<p class="leg">${H2.fait ? '🏅 Réussie ! La médaille « ' + esc(d.medaille) + ' » est dans ta collection. Une nouvelle quête arrive lundi.' : 'Les deux buts se font au fil de la semaine, quand tu veux. À la clé : des points et la médaille « ' + esc(d.medaille) + ' ». Une nouvelle quête arrive lundi.'}</p></div>`
+      + `<div class="bloc"><h3>Ma collection de médailles · ${new Set(Q.medailles.map(m => m.id)).size}/${QU.HEBDOS.length}</h3><div class="medailles">${QU.HEBDOS.map(x => { const n = Q.medailles.filter(m => m.id === x.id).length; return `<div class="${n ? 'gagnee' : ''}"><b>${x.ico}</b>${esc(x.medaille)}${n > 1 ? ' ×' + n : ''}</div>`; }).join('')}</div></div>`;
+  } else if(so === 'tresor'){
+    const t = Q.tresor;
+    if(!t) h += `<div class="bloc"><h3>Chasse au trésor</h3><p>Un <b>coffre est caché</b> près de toi (à 200–300 m), <b>sans point sur la carte</b>. Marche et fie-toi à la boussole <b>chaud / froid</b> : l'indicateur te dit si tu t'approches, et la distance qui reste. À moins de ${QU.PORTEE_COFFRE} m, il s'ouvre : des points, des pièces et un objet au moins rare. Ensuite, un autre coffre se cache un peu plus loin.</p><button class="btn prim" id="bChasse">🧭 Lancer la chasse</button><p class="leg">${Q.coffres} coffre${Q.coffres > 1 ? 's' : ''} trouvé${Q.coffres > 1 ? 's' : ''} en tout.</p></div>`;
+    else {
+      const d = pos ? O.distance(pos.lat, pos.lon, t.lat, t.lon) : null, ch = d == null ? null : QU.chaleur(d);
+      h += `<div class="bloc therm"><h3>Chasse au trésor · coffre n° ${t.n + 1}</h3>${ch ? `<span class="emo">${ch.ico}</span><span class="nom">${ch.nom}</span><span class="dist">à ${km(d)}</span><div class="thermo" role="img" aria-label="${ch.nom}"><i style="left:${Math.round(ch.pc * 100)}%"></i></div>
+        <p class="leg">${tendCourante > 0 ? '▲ Tu te rapproches, continue !' : tendCourante < 0 ? '▼ Tu t\'éloignes… essaie une autre direction.' : 'Avance un peu : je te dirai si tu te rapproches ou si tu t\'éloignes.'}</p>` : '<p class="leg">En attente de ta position GPS…</p>'}
+        <p class="leg">Le coffre n'est pas sur la carte : c'est toi qui le cherches. Pas de flèche non plus : un seul indice, la température.</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center"><button class="btn" id="bChange">↻ Changer de coffre</button><button class="btn" id="bAbandon">✕ Arrêter la chasse</button></div></div>`;
+    }
+  } else {
+    const c = communeCourante, nb = cases.size, ha = QU.hectares(cases), pc = c ? QU.pourcent(c) : 0, R = 48, C = 2 * Math.PI * R;
+    h += `<div class="bloc"><h3>Carte découverte</h3>${c ? `<svg class="anneau" width="130" height="130" viewBox="0 0 130 130" role="img" aria-label="${pc.toFixed(1)} % de ${esc(c.nom)}"><circle class="fond" cx="65" cy="65" r="${R}"/><circle class="val" cx="65" cy="65" r="${R}" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - Math.min(1, pc / 100))}" transform="rotate(-90 65 65)"/><text x="65" y="74" text-anchor="middle">${pc < 10 ? pc.toLocaleString('fr-FR', { maximumFractionDigits:1, minimumFractionDigits:1 }) : Math.round(pc)} %</text></svg>
+      <p style="text-align:center;margin:0"><b>${esc(c.nom)}</b> : ${fmt(c.vues)} cases sur ${fmt(c.total)} découvertes</p>` : `<p class="leg">${pos ? '📡 Le contour de ta commune n\'est pas encore chargé (il faut du réseau).' : 'En attente de ta position GPS…'}</p>`}
+      <div class="stats"><div><b>${fmt(nb)}</b>cases levées</div><div><b>${fmt(ha)}</b>hectares</div><div><b>${Object.keys(S.q.communes).length}</b>commune${Object.keys(S.q.communes).length > 1 ? 's' : ''}</div></div>
+      <p class="leg">Le brouillard se lève là où tu passes (une case = environ 100 m sur 100 m, +1 point la première fois). Le bouton 🌫️ sur la carte le cache ou le montre.</p></div>`;
+    const autres = Object.values(S.q.communes).filter(x => x !== c).sort((a, b) => QU.pourcent(b) - QU.pourcent(a));
+    if(autres.length) h += `<div class="bloc"><h3>Mes autres communes</h3>${autres.map(x => `<div class="item"><span class="ico">🗺️</span><div><b>${esc(x.nom)}</b><small>${QU.pourcent(x).toLocaleString('fr-FR', { maximumFractionDigits:1 })} % · ${fmt(x.vues)} cases</small></div></div>`).join('')}</div>`;
+  }
+  box.innerHTML = h;
+  box.querySelectorAll('[data-remp]').forEach(b => b.onclick = () => { if(QU.remplacer(S.q, +b.dataset.remp)){ sauver(); rafraichir(); } });
+  if($('bChasse')) $('bChasse').onclick = () => lancerChasse();
+  if($('bChange')) $('bChange').onclick = () => { if(confirm('Cacher le coffre ailleurs ?')) lancerChasse(S.q.tresor.n, String(Date.now())); };
+  if($('bAbandon')) $('bAbandon').onclick = () => { if(confirm('Arrêter la chasse ? Le coffre disparaît.')){ S.q.tresor = null; sauver(); majTresor(); rafraichir(); } };
+}
+$('bQuetes').onclick = () => panneau === 'quetes' ? fermerPanneau() : ouvrirPanneau('quetes');
+$('chipTresor').onclick = () => { sousOnglet.quetes = 'tresor'; ouvrirPanneau('quetes'); };
 
 /* ---------- Les messages ---------- */
 function toast(txt, type = '', ms = 3200){
@@ -579,7 +745,7 @@ function entrer(){
   appliquerOrientation(); if(orienter) ecouterBoussole();
   $('eAccueil').hidden = true;
   for(const id of ['hud', 'xp', 'sortie', 'cotes', 'barre']) $(id).hidden = false;
-  carte.invalidateSize(); majHud();
+  carte.invalidateSize(); majHud(); pastilleQ(); redessinerBrouillard();
 }
 $('bPartir').onclick = () => {
   entrer(); demarrerGps();

@@ -20,6 +20,7 @@ window.PEPIN_NIVEAUX = (() => {
   { id:'1-1', nom:'La Prairie', theme:'plaine', temps:400, largeur:212,
     construire(B){
       B.sol(0, 68); B.sol(71, 86); B.sol(90, 152); B.sol(155, 211);
+      B.texte(4, 5, '◀ ▶ POUR MARCHER'); B.texte(14, 6, 'A : SAUTER'); B.texte(30, 6, '▼ SUR UN TUYAU : ENTRER'); B.texte(11, 3, 'TAPE LES BLOCS ? PAR DESSOUS');
       B.ligne(16, 9, '?'); B.ligne(20, 9, 'b!b?b'); B.ligne(22, 5, '?');
       B.ennemi('marmotton', 22);
       B.tuyau(28, 2); B.tuyau(38, 3); B.ennemi('marmotton', 40); B.tuyau(46, 3, { vers:{ zone:'bonus', x:2, y:3 } }); B.ennemi('marmotton', 51); B.ennemi('marmotton', 53);
@@ -36,25 +37,23 @@ window.PEPIN_NIVEAUX = (() => {
     },
     zones:{ bonus:salleBonus({ zone:'principal', x:163.5, y:10, monte:true }) } },
 
-  { id:'1-2', nom:'La Grotte', theme:'souterrain', temps:400, largeur:170,
+  // La grotte : un sol presque plat, de petits escaliers (3 marches au plus), des trous de 3 cases au plus ; aucune marche plus haute que 3 cases,
+  // donc on ne peut pas se retrouver coincé dans un creux (voir outils/pepin-analyse.js)
+  { id:'1-2', nom:'La Grotte', theme:'souterrain', temps:400, largeur:150,
     construire(B){
-      B.sol(0, 79); B.sol(84, 129); B.sol(140, 169); B.plafond(5, 152, 3); B.rect(0, 2, 1, 11, 'b');
-      B.ligne(10, 9, '?!???'); B.ennemi('marmotton', 16); B.ennemi('marmotton', 18);
-      B.rect(24, 10, 1, 3, 'b'); B.rect(26, 8, 1, 5, 'b'); B.rect(28, 6, 1, 7, 'b'); B.ligne(29, 6, 'bbbb'); B.pieces(29, 5, 4);
-      B.rect(34, 6, 1, 7, 'b'); B.ennemi('scarabee', 38); B.ennemi('scarabee', 41);
-      B.rect(44, 9, 4, 1, 'b'); B.ligne(44, 5, 'bbbb'); B.pieces(44, 8, 4); B.ligne(45, 9, 'bpbb'.slice(1));
-      B.rect(52, 7, 2, 6, 'b'); B.rect(56, 5, 2, 8, 'b'); B.pieces(56, 4, 2); B.ennemi('herisson', 60); B.ennemi('marmotton', 64);
-      B.ligne(62, 9, 'bbbbbb'); B.ligne(62, 6, 'bbVbbb'); B.pieces(63, 8, 4);
-      B.tuyau(70, 3, { chardon:true }); B.tuyau(75, 3);
-      B.ligne(86, 9, 'b?bb'); B.ennemi('marmotton', 90); B.ennemi('marmotton', 92); B.mi(86);
-      B.rect(98, 5, 6, 2, 'b'); B.pieces(98, 4, 6); B.ligne(100, 9, 'h'); B.ennemi('scarabee', 102);
-      B.tuyau(108, 3); B.tuyau(113, 2, { chardon:true }); B.ennemi('scarabee', 118); B.ennemi('herisson', 122);
-      B.plateforme(131, 8, { type:'monte', w:3 }); B.plateforme(131, 1, { type:'monte', w:3 }); B.plateforme(136, 4, { type:'descend', w:3 }); B.plateforme(136, 11, { type:'descend', w:3 });
-      B.escalier(141, 4); B.rect(145, 9, 3, 4, 'd');
-      B.rect(153, 2, 17, 11, 'b'); B.tuyau(151, 2, { cote:{ zone:'sortie', x:2.5, y:10, monte:true } });
-      B.pieces(148, 7, 2);
+      B.sol(0, 44); B.sol(48, 89); B.sol(93, 149); B.plafond(5, 132, 3); B.rect(0, 2, 1, 11, 'b');
+      B.texte(3, 5, 'LA GROTTE'); B.ligne(10, 9, '?!?'); B.ennemi('marmotton', 17); B.ennemi('marmotton', 20);
+      B.escalier(25, 3); B.pieces(25, 8, 3); B.escalier(30, 3, -1);
+      B.ligne(36, 9, 'bpb'); B.rect(38, 10, 1, 1, 'b'); B.pieces(40, 8, 2);
+      B.pieces(45, 9, 3); B.ennemi('scarabee', 52);
+      B.tuyau(58, 3, { vers:{ zone:'bonus', x:2, y:3 } }); B.ligne(64, 9, 'b?b'); B.ennemi('marmotton', 67); B.mi(66);
+      B.rect(72, 10, 6, 1, 'b'); B.pieces(72, 8, 6); B.tuyau(82, 2); B.ennemi('scarabee', 85);
+      B.pieces(90, 9, 3); B.ligne(97, 9, 'bVb'); B.ennemi('herisson', 100); B.ennemi('marmotton', 104);
+      B.escalier(108, 3); B.escalier(112, 3, -1); B.pieces(109, 8, 3);
+      B.ligne(118, 9, 'b?b'); B.ennemi('scarabee', 122); B.pieces(125, 10, 3);
+      B.rect(133, 2, 17, 11, 'b'); B.tuyau(131, 2, { cote:{ zone:'sortie', x:2.5, y:10, monte:true } });
     },
-    zones:{ sortie:sortie('plaine') } },
+    zones:{ bonus:salleBonus({ zone:'principal', x:82.5, y:10, monte:true }), sortie:sortie('plaine') } },
 
   { id:'1-3', nom:'Les Cimes', theme:'ciel', temps:400, largeur:170,
     construire(B){
@@ -62,11 +61,11 @@ window.PEPIN_NIVEAUX = (() => {
       B.sapin(18, 11, 4); B.sapin(24, 8, 5); B.pieces(25, 6, 3); B.sapin(31, 5, 4); B.ennemi('herissonRouge', 32, 4);
       B.sapin(37, 9, 6); B.pieces(38, 7, 4); B.ennemi('marmotton', 40, 8);
       B.sapin(46, 11, 3); B.plateforme(50, 9, { type:'h', w:3, amp:2 }); B.sapin(56, 8, 5); B.ligne(57, 4, '!');
-      B.sapin(63, 10, 4); B.ennemi('choucas', 68, 6); B.sapin(69, 7, 3); B.pieces(70, 5, 2); B.mi(63);
+      B.sapin(63, 10, 4); B.sapin(69, 7, 3); B.pieces(70, 5, 2); B.mi(63);
       B.plateforme(75, 8, { type:'v', w:3, amp:2 }); B.sapin(80, 9, 6); B.ennemi('herissonRouge', 82, 8);
-      B.sapin(88, 6, 4); B.pieces(88, 4, 4); B.sapin(94, 10, 3); B.ennemi('choucas', 98, 5);
+      B.sapin(88, 6, 4); B.pieces(88, 4, 4); B.sapin(94, 10, 3); 
       B.plateforme(99, 8, { type:'h', w:3, amp:3 }); B.sapin(107, 7, 5); B.ennemi('marmotton', 109, 6);
-      B.sapin(114, 11, 3); B.sapin(119, 8, 4); B.ligne(120, 4, '?'); B.ennemi('choucas', 124, 7);
+      B.sapin(114, 11, 3); B.sapin(119, 8, 4); B.ligne(120, 4, '?'); 
       B.plateforme(124, 7, { type:'chute', w:3 }); B.plateforme(129, 9, { type:'chute', w:3 });
       B.sapin(134, 10, 5); B.pieces(135, 8, 3);
       B.sol(141, 169); B.escalier(145, 5); B.rect(150, 8, 1, 5, 'd'); B.drapeau(158);
@@ -75,8 +74,8 @@ window.PEPIN_NIVEAUX = (() => {
   { id:'1-4', nom:'Le Château du Yéti', theme:'chateau', temps:400, largeur:150, merci:'Merci Pépin ! Mais la marmotte de la vallée est dans un autre château…',
     construire(B){
       B.rect(0, 2, 150, 1, 'P'); B.rect(0, 9, 14, 6, 'P'); B.depart(2, 8); B.rect(0, 3, 4, 3, 'P');
-      B.lave(14, 17, 2); B.rect(18, 9, 12, 6, 'P'); B.barreFeu(24, 6, 6, 1);
-      B.lave(30, 34, 2); B.lavaSaut(32); B.rect(35, 9, 14, 6, 'P'); B.rect(38, 3, 8, 2, 'P'); B.ligne(41, 6, '!'); B.ennemi('marmotton', 44, 8);
+      B.lave(14, 17, 2); B.rect(18, 9, 12, 6, 'P');
+      B.lave(30, 34, 2); B.rect(32, 10, 1, 1, 'P'); B.rect(35, 9, 14, 6, 'P'); B.rect(38, 3, 8, 2, 'P'); B.ligne(41, 6, '!'); B.ennemi('marmotton', 44, 8);
       B.rect(49, 11, 18, 4, 'P'); B.barreFeu(55, 10, 5, -1); B.barreFeu(62, 10, 5, 1); B.rect(49, 3, 18, 4, 'P'); B.mi(49);
       B.rect(67, 9, 8, 6, 'P'); B.lave(75, 79, 2); B.lavaSaut(77); B.rect(80, 9, 10, 6, 'P'); B.barreFeu(85, 5, 6, 1);
       B.boss(90, 103, 5); B.rect(104, 9, 46, 6, 'P'); B.rect(108, 3, 42, 3, 'P');
@@ -161,9 +160,9 @@ window.PEPIN_NIVEAUX = (() => {
       B.tuyau(40, 2, { chardon:true, bas:11 }); B.ligne(46, 8, 'gggggg'); B.ligne(46, 5, 'gpggVg'); B.ennemi('herisson', 48, 7);
       B.tuyau(55, 3, { chardon:true, bas:11 });
       B.ligne(66, 9, 'b?b'); B.ennemi('scarabee', 70); B.ennemi('scarabee', 72); B.mi(70);
-      B.rect(76, 10, 8, 3, 'g'); B.pieces(76, 8, 8); B.rect(86, 7, 2, 6, 'g'); B.rect(90, 5, 2, 8, 'g'); B.ennemi('herissonRouge', 94);
+      B.rect(76, 10, 8, 3, 'g'); B.pieces(76, 8, 8); B.rect(86, 10, 2, 3, 'g'); B.rect(90, 8, 2, 5, 'g'); B.ennemi('herissonRouge', 94);
       B.tuyau(100, 3, { chardon:true }); B.tuyau(106, 4, { chardon:true }); B.tuyau(112, 3, { chardon:true });
-      B.plateforme(121, 6, { type:'monte', w:3 }); B.plateforme(121, 13, { type:'monte', w:3 });
+      B.plateforme(122, 11, { type:'h', w:3, amp:1 });
       B.ennemi('scarabee', 132); B.ennemi('scarabee', 135); B.ligne(138, 9, '?*?'); B.escalier(146, 4, 1, 'g'); B.rect(150, 9, 3, 4, 'g');
       B.rect(167, 2, 13, 11, 'g'); B.tuyau(165, 2, { cote:{ zone:'sortie', x:2.5, y:10, monte:true } });
     },
@@ -212,12 +211,12 @@ window.PEPIN_NIVEAUX = (() => {
     construire(B){
       B.sol(0, 20); B.lave(21, 26, 2); B.lavaSaut(23); B.sol(27, 50); B.lave(51, 58, 2); B.lavaSaut(53); B.lavaSaut(56); B.sol(59, 95); B.lave(96, 104, 2); B.lavaSaut(99); B.sol(105, 140); B.lave(141, 150, 2); B.lavaSaut(144); B.lavaSaut(148); B.sol(151, 179);
       B.plafond(5, 165, 3); B.rect(0, 2, 1, 11, 'b');
-      B.ligne(8, 9, '?!?'); B.ennemi('scarabee', 14); B.plateforme(22, 9, { type:'h', w:2, amp:1 }); B.ennemi('marmotton', 32); B.ennemi('marmotton', 34);
-      B.barreFeu(38, 9, 5, 1); B.ligne(44, 6, 'bbbbb'); B.pieces(44, 5, 5); B.plateforme(52, 8, { type:'h', w:2, amp:2 }); B.mi(60);
+      B.ligne(8, 9, '?!?'); B.ennemi('scarabee', 14); B.plateforme(22, 11, { type:'h', w:3, amp:1 }); B.ennemi('marmotton', 32); B.ennemi('marmotton', 34);
+      B.barreFeu(38, 9, 5, 1); B.ligne(44, 6, 'bbbbb'); B.pieces(44, 5, 5); B.plateforme(53, 11, { type:'h', w:3, amp:1 }); B.mi(60);
       B.ennemi('scarabee', 64); B.ennemi('scarabee', 66); B.barreFeu(70, 8, 6, -1); B.tuyau(76, 3, { chardon:true }); B.ligne(82, 9, 'b*b'); B.ennemi('herissonRouge', 88);
-      B.plateforme(97, 9, { type:'chute', w:2 }); B.plateforme(101, 8, { type:'chute', w:2 }); B.ennemi('scarabee', 110); B.barreFeu(114, 9, 6, 1); B.barreFeu(122, 6, 6, -1);
+      B.plateforme(97, 11, { type:'chute', w:3 }); B.plateforme(101, 11, { type:'chute', w:3 }); B.ennemi('scarabee', 110); B.barreFeu(114, 9, 6, 1); B.barreFeu(122, 6, 6, -1);
       B.ligne(118, 9, 'p'); B.ennemi('herisson', 126); B.ennemi('herisson', 129); B.tuyau(134, 3, { chardon:true });
-      B.plateforme(142, 8, { type:'v', w:2, amp:2 }); B.plateforme(146, 7, { type:'h', w:2, amp:1 }); B.ennemi('scarabee', 156);
+      B.plateforme(142, 10, { type:'v', w:3, amp:1 }); B.plateforme(146, 11, { type:'h', w:3, amp:1 }); B.ennemi('scarabee', 156);
       B.rect(167, 2, 13, 11, 'b'); B.tuyau(165, 2, { cote:{ zone:'sortie', x:2.5, y:10, monte:true } });
     },
     zones:{ sortie:sortie('nuit') } },
