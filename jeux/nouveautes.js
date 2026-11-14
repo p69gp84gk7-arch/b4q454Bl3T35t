@@ -3,6 +3,7 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:194, type:'maj', jeu:'Starship : le programme', ico:'⭐', lien:'jeux/starship.html', txt:"Le jeu change : plus d'achats ni de semaines à gérer. Six jalons à piloter, du premier saut à Mars, avec jusqu'à trois étoiles par vol (réussir, aller vite, garder du carburant) et des mesures (chrono, carburant consommé, précision) sans aucune pénalité." },
   { v:193, type:'nouveau', jeu:'Starship : le programme', ico:'🚀', lien:'jeux/starship.html', txt:"Un nouveau jeu en deux temps, inspiré du programme Starship : à la base, tu gères les équipes, l'argent et les prototypes ; en vol, tu pilotes toi-même (saut, haute altitude, vol orbital, rattrapage du booster par la tour, retour du vaisseau, Mars). On apprend en explosant !" },
   { v:192, type:'maj', jeu:'Dichotomie', ico:'📶', lien:'', txt:"Correction : on dit « répéteur » (et non « répétiteur ») dans tout le jeu." },
   { v:191, type:'maj', jeu:'Les aventures de Pépin', ico:'🍄', lien:'jeux/pepin.html', txt:"Un nouveau look « dessin animé » lisse (plus de gros pixels : décors en plusieurs plans, dégradés, ombres) et des niveaux plus simples et plus progressifs : la Grotte (niveau 2) est refaite sans creux où l'on reste bloqué, le premier niveau explique les commandes, et le saut est un peu plus haut." },

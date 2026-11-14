@@ -264,13 +264,14 @@ window.AltitudeScores = (() => {
       ep('toise', 'tailles', 'Tailles parfaites', to.parfaits || 0, `${to.parfaits || 0} parfaite${to.parfaits > 1 ? 's' : ''}`);
       J.toise.stats = { 'Parties':to.parties, 'Défis du jour':to.defis || 0, 'Devinettes':to.devinettes || 0, 'Note moyenne':((to.total || 0) / Math.max(1, to.devinettes || 0)).toFixed(1).replace('.', ',') + ' / 10' };
     }
-    // Starship : jusqu'où le programme est allé, et les vols réussis
+    // Starship : les étoiles gagnées et les jalons franchis
     const st = lire('starship-records');
-    if(st && st.vols){
+    if(st && st.v === 2 && st.vols){
+      const ni = Object.values(st.niveaux || {}), et = ni.reduce((a, n) => a + (n.etoiles || 0), 0), fr = ni.filter(n => n.etoiles > 0).length;
       jeu('starship', 'Starship', '🚀');
-      ep('starship', 'jalon', 'Jalons franchis (sur 6)', st.jalon || 0, `${st.jalon || 0} / 6`);
-      ep('starship', 'vols', 'Vols réussis', st.reussis || 0, `${st.reussis || 0} vol${st.reussis > 1 ? 's' : ''}`);
-      J.starship.stats = { 'Vols':st.vols, 'Explosions':st.explosions || 0, 'Programmes menés à Mars':st.victoires || 0 };
+      ep('starship', 'etoiles', 'Étoiles gagnées (sur 18)', et, `${et} / 18 ★`);
+      ep('starship', 'jalons', 'Jalons franchis (sur 6)', fr, `${fr} / 6`);
+      J.starship.stats = { 'Vols':st.vols, 'Vols réussis':st.reussis || 0, 'Explosions':st.explosions || 0 };
     }
     const nu = lire('nuancier-records');
     // (barème 2, plus sévère : les scores de l'ancien barème ne sont plus classés)

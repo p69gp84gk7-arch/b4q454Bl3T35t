@@ -8,11 +8,18 @@ const lire = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); ret
 const ecrire = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const fmt = n => Math.round(n).toLocaleString('fr-FR');
-const CLE = 'starship-partie', CLE_REC = 'starship-records';
-let P = lire(CLE, null); if(P && P.v !== 1) P = null;
-const records = () => Object.assign({ jalon:0, reussis:0, explosions:0, vols:0, victoires:0, programmes:0 }, lire(CLE_REC, {}));
-const sauver = () => { if(P) ecrire(CLE, P); };
-const ecran = id => { ['eAccueil', 'eBase', 'eVol'].forEach(e => $(e).hidden = e !== id); window.scrollTo(0, 0); if(id === 'eBase') requestAnimationFrame(base); };
+const CLE_REC = 'starship-records';
+const rec0 = () => ({ v:2, niveaux:{}, vols:0, reussis:0, explosions:0 });
+let R = lire(CLE_REC, null); if(!R || R.v !== 2) R = rec0();
+try{ localStorage.removeItem('starship-partie'); }catch(e){}     // (l'ancienne version avec gestion et achats)
+const sauver = () => ecrire(CLE_REC, R);
+const rn = id => R.niveaux[id] || (R.niveaux[id] = { etoiles:0, essais:0, reussis:0, temps:null, restant:null });
+const debloque = i => i === 0 || ((R.niveaux[S.JALONS[i - 1].id] || {}).etoiles || 0) > 0;
+const totalEtoiles = () => S.JALONS.reduce((a, j) => a + ((R.niveaux[j.id] || {}).etoiles || 0), 0);
+const franchis = () => S.JALONS.filter(j => ((R.niveaux[j.id] || {}).etoiles || 0) > 0).length;
+const etoilesTxt = (n, max = 3) => '★'.repeat(n) + '☆'.repeat(max - n);
+let niveauEnCours = 0;
+const ecran = id => { ['eAccueil', 'eNiveaux', 'eVol'].forEach(e => $(e).hidden = e !== id); window.scrollTo(0, 0); if(id === 'eNiveaux') requestAnimationFrame(niveaux); };
 const voile = (id, on) => { $(id).hidden = !on; };
 
 /* ---------- Les dessins : l'acier, la flamme, les tours ---------- */
@@ -102,52 +109,32 @@ function dessinerBase(c, p){
   else if(jalon === 1) vehicule(g, 'ship', bx, sol - 8 * s, 62 * s, 0, {});
   else vehicule(g, 'hop', bx, sol - 8 * s, 34 * s, 0, { jambes:true });
   // les prototypes prêts, alignés devant
-  const n = p ? p.prototypes : 0;
-  for(let i = 0; i < n; i++) vehicule(g, jalon >= 2 ? 'ship' : jalon === 1 ? 'ship' : 'hop', W * .1 + i * 58 * s, sol + 16 * s, jalon >= 2 ? 52 * s : 38 * s, 0, { jambes:jalon === 0 });
-  g.fillStyle = '#fff'; g.font = `800 ${Math.round(H * .055)}px "Bricolage Grotesque", sans-serif`; g.textAlign = 'left'; g.globalAlpha = .75; g.fillText(n ? `${n} prototype${n > 1 ? 's' : ''} prêt${n > 1 ? 's' : ''}` : 'Aucun prototype prêt', W * .06, H * .08 + 6); g.globalAlpha = 1;
+  g.fillStyle = '#fff'; g.font = `800 ${Math.round(H * .055)}px "Bricolage Grotesque", sans-serif`; g.textAlign = 'left'; g.globalAlpha = .8; g.fillText(p && p.legende ? p.legende : '', W * .06, H * .1); g.globalAlpha = 1;
 }
 function accueil(){
-  const r = records(), a = $('aStats');
-  a.innerHTML = P ? `<h3>Programme en cours</h3><div class="stat"><div><b>${P.jalon} / ${S.JALONS.length}</b>jalons</div><div><b>${P.cycle}</b>semaine</div><div><b>${fmt(P.argent)}</b>M$</div></div>` : `<h3>Aucun programme en cours</h3><p class="sous">Commence par le premier saut : un petit prototype, 150 m de haut.</p>`;
-  if(r.vols) a.innerHTML += `<h3 style="margin-top:10px">Mes records</h3><div class="stat"><div><b>${r.jalon} / ${S.JALONS.length}</b>jalon max</div><div><b>${r.reussis}</b>vols réussis</div><div><b>${r.explosions}</b>explosions</div></div>`;
-  $('bContinuer').hidden = !P || !!P.fini; $('bContinuer').textContent = '▶ Reprendre le programme';
-  $('bNouveau').textContent = P && !P.fini ? '🆕 Recommencer un programme' : '🆕 Nouveau programme';
-  dessinerBase($('sceneAcc'), P);
+  const a = $('aStats'), n = totalEtoiles(), max = S.JALONS.length * 3;
+  a.innerHTML = `<h3>Le programme</h3><div class="stat"><div><b>${franchis()} / ${S.JALONS.length}</b>jalons franchis</div><div><b>${n} / ${max}</b>étoiles ★</div><div><b>${R.explosions}</b>explosions (on apprend !)</div></div>`;
+  $('bContinuer').textContent = R.vols ? '▶ Continuer le programme' : '▶ Commencer par le premier saut';
+  dessinerBase($('sceneAcc'), { jalon:Math.min(S.JALONS.length - 1, franchis()), legende:`${n} ★ sur ${max}` });
 }
-const raison = P => !P ? '' : P.prototypes < 1 ? 'Il te faut un prototype prêt.' : P.evt && P.evt.bloque ? 'Les autorités n\'ont pas donné l\'autorisation cette semaine.' : P.argent < S.COUT_VOL ? `Un vol coûte ${S.COUT_VOL} M$.` : '';
-function base(){
-  if(!P) return;
-  dessinerBase($('scene'), P);
-  $('bandeau').innerHTML = `<div><b>${P.cycle}</b>semaine</div><div><b>${fmt(P.argent)}</b>M$ en caisse</div><div><b>${P.data}</b>savoir 🔬</div><div><b><span class="pastilles">${Array.from({ length:S.ACTIONS_PAR_CYCLE }, (_, i) => `<i class="${i < P.actions ? '' : 'off'}"></i>`).join('')}</span></b>actions</div>`;
-  $('evt').innerHTML = P.evt ? `<div class="evt">${esc(P.evt.txt)}</div>` : '';
-  $('frise').innerHTML = S.JALONS.map((j, i) => `<div class="${i < P.jalon ? 'fait' : i === P.jalon ? 'cours' : ''}">${i < P.jalon ? '✅' : j.ico}<small>${esc(j.court)}</small></div>`).join('');
-  const J = S.JALONS[Math.min(P.jalon, S.JALONS.length - 1)];
-  if(P.jalon >= S.JALONS.length) $('jalon').innerHTML = '<h2>🎉 Programme terminé</h2><p>Tous les jalons sont franchis : tu as posé un vaisseau sur Mars.</p>';
-  else {
-    const conseil = Object.entries(J.conseil).filter(([, n]) => n > 0).map(([d, n]) => { const dm = S.DOMAINES.find(x => x.id === d); return `<span class="${P.niv[d] >= n ? 'ok' : 'ko'}">${dm.ico} ${dm.nom.split(' ')[0]} ${P.niv[d]} / ${n}</span>`; }).join('');
-    const pb = raison(P);
-    $('jalon').innerHTML = `<h3>Prochain jalon · ${P.jalon + 1} sur ${S.JALONS.length}</h3><h2>${J.ico} ${esc(J.nom)}</h2><p>${esc(J.txt)}</p><div class="conseil">${conseil ? '<span>Niveaux conseillés :</span>' + conseil : '<span>Aucun niveau conseillé : c\'est le premier saut, essaie !</span>'}</div>
-      <button class="btn gros" id="bLancer" ${pb ? 'disabled' : ''}>🚀 Lancer le vol <small>${S.COUT_VOL} M$ · prototypes prêts : ${P.prototypes}</small></button>${pb ? `<p class="sous" style="margin-top:6px">${esc(pb)}</p>` : ''}`;
-    $('bLancer').onclick = lancer;
-  }
-  $('domaines').innerHTML = S.DOMAINES.map(d => {
-    const n = P.niv[d.id], c = S.coutNiveau(n), ok = S.peutAmeliorer(P, d.id), max = n >= S.MAX_NIV;
-    return `<div class="domaine"><span class="ico">${d.ico}</span><div class="t"><b>${d.nom}</b><div class="niveau">${Array.from({ length:S.MAX_NIV }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div><small>${d.txt}</small></div>
-      <button class="btn" data-d="${d.id}" ${ok ? '' : 'disabled'}>${max ? 'Max' : `Améliorer<small>${S.cout(P, c.argent)} M$ · ${c.data} 🔬</small>`}</button></div>`;
+function niveaux(){
+  const prochain = Math.min(S.JALONS.length - 1, franchis());
+  dessinerBase($('scene'), { jalon:prochain, legende:S.JALONS[prochain].nom });
+  $('bandeau').innerHTML = `<div><b>${franchis()} / ${S.JALONS.length}</b>jalons</div><div><b>${totalEtoiles()}</b>étoiles ★</div><div><b>${R.vols}</b>vols</div><div><b>${R.explosions}</b>explosions</div>`;
+  $('liste').innerHTML = S.JALONS.map((J, i) => {
+    const r = R.niveaux[J.id] || {}, ok = debloque(i);
+    return `<button class="niv ${ok ? '' : 'verrou'} ${r.etoiles ? 'fait' : ''}" data-i="${i}" ${ok ? '' : 'disabled'}><span class="ico">${ok ? J.ico : '🔒'}</span><div class="t"><small>Jalon ${i + 1}</small><b>${esc(J.nom)}</b>${r.etoiles ? `<small>Meilleur : ${r.temps ? Math.round(r.temps) + ' s' : '–'} · carburant restant ${r.restant != null ? Math.round(r.restant * 100) + ' %' : '–'}</small>` : `<small>${ok ? esc(J.vol.titre) : 'Franchis le jalon précédent'}</small>`}</div><span class="et">${etoilesTxt(r.etoiles || 0)}</span></button>`;
   }).join('');
-  $('domaines').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { if(S.ameliorer(P, b.dataset.d)){ sauver(); base(); } });
-  $('actions').innerHTML = `<button class="btn" id="bConstruire" ${S.peutConstruire(P) ? '' : 'disabled'}>🏗️ Construire un prototype<small>${S.cout(P, S.COUT_PROTO)} M$</small></button><button class="btn" id="bEssai" ${S.peutEssayer(P) ? '' : 'disabled'}>🔬 Essai au banc<small>${S.cout(P, S.COUT_ESSAI)} M$ · +2 à 3 savoir</small></button><button class="btn vert" id="bFin" style="grid-column:1 / -1">⏭ Finir la semaine<small>salaires : ${S.SALAIRES(P.niv)} M$</small></button>`;
-  $('aideActions').textContent = P.actions ? `Il te reste ${P.actions} action${P.actions > 1 ? 's' : ''} cette semaine (une amélioration, un prototype ou un essai). Lancer un vol ne coûte pas d'action.` : 'Plus d\'action cette semaine : termine-la (les salaires sont payés, un événement peut arriver).';
-  $('bConstruire').onclick = () => { if(S.construire(P)){ sauver(); base(); } };
-  $('bEssai').onclick = () => { if(S.essayer(P)){ sauver(); base(); } };
-  $('bFin').onclick = () => { const ok = S.finCycle(P); sauver(); if(!ok) return fini(); base(); };
-  $('journal').innerHTML = P.journal.map(j => `<div>${esc(j)}</div>`).join('') || '<div>Le programme démarre. Bonne chance !</div>';
+  $('liste').querySelectorAll('[data-i]').forEach(b => b.onclick = () => brief(+b.dataset.i));
 }
-function fini(){
-  const r = records();
-  if(P.fini === 'faillite'){ voile('vResultat', true); $('fResultat').innerHTML = `<div class="grand">💸</div><h2>Faillite</h2><p>Les caisses sont vides : le programme s'arrête à la semaine ${P.cycle}, avec <b>${P.jalon} jalon${P.jalon > 1 ? 's' : ''}</b>. Les meilleurs programmes ont eux aussi failli manquer d'argent : essaie de lancer des vols plus tôt, ils rapportent des contrats.</p><button class="btn gros" id="bOk">Menu</button>`; }
-  else { voile('vResultat', true); r.victoires++; ecrire(CLE_REC, r); $('fResultat').innerHTML = `<div class="grand">🔴</div><h2>Mars !</h2><p>Tous les jalons sont franchis en <b>${P.cycle} semaines</b>, avec ${P.reussis} vols réussis et ${P.explosions} explosions. Le programme est un succès.</p><button class="btn gros" id="bOk">Menu</button>`; }
-  $('bOk').onclick = () => { voile('vResultat', false); P = null; ecrire(CLE, null); localStorage.removeItem(CLE); accueil(); ecran('eAccueil'); };
+function brief(i){
+  const J = S.JALONS[i], r = R.niveaux[J.id] || {}, fait = [r.etoiles >= 1, r.meilleurTemps || false, r.meilleurCarb || false];
+  niveauEnCours = i;
+  $('fBrief').innerHTML = `<div class="grand">${J.ico}</div><h2>${esc(J.nom)}</h2><p>${esc(J.histoire)}</p><p><b>${esc(J.txt)}</b></p>
+    <div class="crit"><div class="${fait[0] ? 'ok' : ''}">${fait[0] ? '★' : '☆'} Réussir le vol</div><div class="${fait[1] ? 'ok' : ''}">${fait[1] ? '★' : '☆'} Terminer en moins de ${J.etoiles.temps} s</div><div class="${fait[2] ? 'ok' : ''}">${fait[2] ? '★' : '☆'} Garder au moins ${Math.round(J.etoiles.carb * 100)} % de carburant</div></div>
+    <p class="sous" style="font-size:.8rem">Les étoiles sont des bonus : rien n'est perdu si tu les rates, et tu peux rejouer autant que tu veux.</p>
+    <button class="btn gros" id="bDecoller">🚀 Décollage</button><button class="btn" id="bBriefFermer">Retour aux niveaux</button>`;
+  voile('vBrief', true); $('bDecoller').onclick = () => { voile('vBrief', false); lancer(i); }; $('bBriefFermer').onclick = () => voile('vBrief', false);
 }
 
 /* ---------- Le vol ---------- */
@@ -165,13 +152,12 @@ function arreterMoteur(){ if(moteur){ try{ moteur.gn.gain.value = 0; moteur.src.
 function bip(freq, dur = .12, vol = .08){ const ac = audio(); if(!ac) return; const o = ac.createOscillator(), gn = ac.createGain(); o.type = 'sine'; o.frequency.value = freq; gn.gain.setValueAtTime(vol, ac.currentTime); gn.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + dur); o.connect(gn); gn.connect(ac.destination); o.start(); o.stop(ac.currentTime + dur); }
 function boum(){ const ac = audio(); if(!ac) return; const src = ac.createBufferSource(); src.buffer = bruit(ac, 1.6); const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(1800, ac.currentTime); f.frequency.exponentialRampToValueAtTime(80, ac.currentTime + 1.4); const gn = ac.createGain(); gn.gain.setValueAtTime(.5, ac.currentTime); gn.gain.exponentialRampToValueAtTime(.001, ac.currentTime + 1.5); src.connect(f); f.connect(gn); gn.connect(ac.destination); src.start(); }
 
-function lancer(){
-  if(!P || !S.peutLancer(P)) return;
-  const J = S.JALONS[P.jalon];
-  V = S.nouveauVol(J.vol, P.niv, { vent:P.evt && P.evt.vent ? P.evt.vent : 1 });
+function lancer(i){
+  niveauEnCours = i; const J = S.JALONS[i];
+  V = S.nouveauVol(J.vol, J.equipe, {});
   msgVus = 0; bandeauMsg = null; fin = null; parts = []; vitesse = 1; enPause = false; $('bVitesse').textContent = '⏩ Vitesse ×1';
   ecran('eVol'); tailleVol(); dernier = performance.now(); acc = 0; audio();
-  bandeauMsg = { t:J.vol.type === 'saut' ? 'Tiens POUSSÉE pour décoller' : J.vol.type === 'booster' ? 'Guide-toi avec ◀ ▶ puis allume pour t\'arrêter à la hauteur des bras' : J.vol.type === 'orbite' || J.vol.type === 'vaisseau' || J.vol.type === 'mars' ? 'Tiens POUSSÉE : suis le fantôme jaune avec ◀ ▶' : 'Tiens POUSSÉE pour décoller', at:0, cls:'' };
+  bandeauMsg = { t:J.vol.type === 'booster' ? 'Guide-toi avec ◀ ▶ puis allume pour t\'arrêter à la hauteur des bras' : J.vol.type === 'orbite' || J.vol.type === 'vaisseau' || J.vol.type === 'mars' ? 'Tiens POUSSÉE : suis le fantôme jaune avec ◀ ▶' : 'Tiens POUSSÉE pour décoller', at:0, cls:'' };
   cancelAnimationFrame(boucle); boucle = requestAnimationFrame(tick);
 }
 function tick(now){
@@ -205,15 +191,31 @@ function particules(dt){
   parts = parts.filter(p => p.t < p.vie);
 }
 function resultat(){
-  const J = S.JALONS[P.jalon], issue = V.fini, cause = V.cause, avant = P.jalon;
-  const r = S.terminerVol(P, V), rec = records(); rec.vols++; if(issue === 'succes') rec.reussis++; else if(issue === 'echec') rec.explosions++; rec.jalon = Math.max(rec.jalon, P.jalon); ecrire(CLE_REC, rec);
+  const J = S.JALONS[niveauEnCours], n = S.notation(V, J), r = rn(J.id);
+  R.vols++; r.essais++;
+  let nouveau = [];
+  if(V.fini === 'succes'){
+    R.reussis++; r.reussis++;
+    if(n.etoiles > r.etoiles){ nouveau.push('Nouveau record d\'étoiles'); r.etoiles = n.etoiles; }
+    if(r.temps == null || n.temps < r.temps){ if(r.temps != null) nouveau.push('Meilleur temps'); r.temps = n.temps; }
+    if(r.restant == null || n.restant > r.restant){ if(r.restant != null) nouveau.push('Moins de carburant consommé'); r.restant = n.restant; }
+    if(n.criteres[1].ok) r.meilleurTemps = true; if(n.criteres[2].ok) r.meilleurCarb = true;
+  } else if(V.fini === 'echec') R.explosions++;
   sauver();
-  const titre = issue === 'succes' ? (r.jalonFranchi ? `${J.nom} : réussi !` : 'Vol réussi') : issue === 'partiel' ? 'Presque !' : 'Démontage rapide non planifié';
-  const grand = issue === 'succes' ? '🎉' : issue === 'partiel' ? '🟡' : '💥';
-  const gains = [r.argent ? `<span>+${r.argent} M$</span>` : '', r.data ? `<span>+${r.data} 🔬 savoir</span>` : '', issue === 'echec' ? '<span>prototype perdu</span>' : '<span>prototype récupéré ♻️</span>'].join('');
-  $('fResultat').innerHTML = `<div class="grand">${grand}</div><h2>${titre}</h2><p><b>${esc(cause)}</b></p><div class="gain">${gains}</div>
-    <p>${issue === 'echec' ? 'En explosant, on apprend : le savoir gagné te permet d\'améliorer tes équipes. ' + conseilEchec(cause) : issue === 'partiel' ? 'Le prototype est intact : tu peux réessayer le même jalon.' : 'Le programme avance : prochain jalon, plus difficile.'}</p><button class="btn gros" id="bBase">Retour à la base</button>`;
-  voile('vResultat', true); $('bBase').onclick = () => { voile('vResultat', false); V = null; cancelAnimationFrame(boucle); arreterMoteur(); if(P.fini) return fini(); ecran('eBase'); };
+  const grand = V.fini === 'succes' ? '🎉' : V.fini === 'partiel' ? '🟡' : '💥';
+  const titre = V.fini === 'succes' ? (r.reussis === 1 ? `${J.nom} : franchi !` : 'Vol réussi') : V.fini === 'partiel' ? 'Presque !' : 'Démontage rapide non planifié';
+  const stats = V.fini === 'succes' ? `<div class="stat"><div><b>${n.temps.toFixed(0)} s</b>chrono</div><div><b>${Math.round(n.restant * 100)} %</b>carburant restant</div><div><b>${n.conso.toFixed(0)} s</b>de poussée pleine</div>${n.ecart != null ? `<div><b>${n.ecart.toFixed(1)} m</b>écart au centre</div><div><b>${n.vImpact.toFixed(1)} m/s</b>vitesse à l'arrivée</div><div><b>${n.angle.toFixed(1)}°</b>angle</div>` : ''}</div>` : '';
+  const crit = V.fini === 'succes' ? `<div class="crit">${n.criteres.map(c => `<div class="${c.ok ? 'ok' : ''}">${c.ok ? '★' : '☆'} ${esc(c.txt)}</div>`).join('')}</div>` : '';
+  const suite = i => i < S.JALONS.length && debloque(i);
+  $('fResultat').innerHTML = `<div class="grand">${grand}</div><h2>${titre}</h2>${V.fini === 'succes' ? `<div class="etoiles">${etoilesTxt(n.etoiles)}</div>` : ''}<p><b>${esc(V.cause)}</b></p>${crit}${stats}
+    ${nouveau.length ? `<div class="gain">${nouveau.map(x => `<span>✨ ${x}</span>`).join('')}</div>` : ''}
+    <p>${V.fini === 'echec' ? 'En explosant, on apprend : le programme avance par essais. ' + conseilEchec(V.cause) : V.fini === 'partiel' ? 'Le vaisseau est intact : tu peux réessayer tout de suite.' : n.etoiles < 3 ? 'Les deux autres étoiles sont des bonus : rejoue si tu veux les chercher.' : 'Trois étoiles : parfait !'}</p>
+    <button class="btn gros" id="bRejouer">↻ ${V.fini === 'succes' ? 'Rejouer' : 'Réessayer'}</button>${V.fini === 'succes' && suite(niveauEnCours + 1) ? '<button class="btn vert" id="bSuivant">▶ Jalon suivant</button>' : ''}<button class="btn" id="bNiveaux">Les jalons</button>`;
+  voile('vResultat', true);
+  const quitter = () => { voile('vResultat', false); V = null; cancelAnimationFrame(boucle); arreterMoteur(); };
+  $('bRejouer').onclick = () => { quitter(); lancer(niveauEnCours); };
+  if($('bSuivant')) $('bSuivant').onclick = () => { quitter(); ecran('eNiveaux'); brief(niveauEnCours + 1); };
+  $('bNiveaux').onclick = () => { quitter(); ecran('eNiveaux'); };
 }
 // un petit conseil selon la cause
 function conseilEchec(c){
@@ -348,14 +350,13 @@ $('bPause').onclick = () => { enPause = true; voile('vPause', true); arreterMote
 $('bReprendre').onclick = () => { enPause = false; voile('vPause', false); dernier = performance.now(); };
 $('bVitesse').onclick = () => { vitesse = vitesse === 1 ? 2 : 1; $('bVitesse').textContent = `⏩ Vitesse ×${vitesse}`; };
 $('bSon').onclick = () => { son = !son; ecrire('starship-son', son); $('bSon').textContent = son ? '🔊 Son' : '🔇 Son coupé'; if(!son) arreterMoteur(); };
-$('bAbandon').onclick = () => { if(!confirm('Abandonner le vol ? Le prototype sera perdu.')) return; voile('vPause', false); enPause = false; V.gaz = 0; V.fini = 'echec'; V.cause = 'Vol abandonné : le prototype est perdu.'; terminaison(); };
-$('bAide').onclick = $('bAide2').onclick = () => voile('vAide', true); $('bAideFermer').onclick = () => voile('vAide', false);
 $('bMenu').onclick = () => { accueil(); ecran('eAccueil'); };
-$('bContinuer').onclick = () => { if(P) ecran('eBase'); };
-$('bNouveau').onclick = () => { if(P && !P.fini && !confirm('Recommencer un programme ? Celui en cours sera perdu.')) return; P = S.nouveau(); const r = records(); r.programmes++; ecrire(CLE_REC, r); sauver(); ecran('eBase'); };
+$('bContinuer').onclick = () => ecran('eNiveaux');
+$('bReset').onclick = () => { if(confirm('Effacer toute la progression (étoiles, records) ?')){ R = rec0(); sauver(); accueil(); } };
+$('bAbandon').onclick = () => { if(!confirm('Abandonner le vol ?')) return; voile('vPause', false); enPause = false; V.gaz = 0; V.fini = 'echec'; V.cause = 'Vol abandonné.'; terminaison(); };
+$('bAide').onclick = $('bAide2').onclick = () => voile('vAide', true); $('bAideFermer').onclick = () => voile('vAide', false);
 $('bSon').textContent = son ? '🔊 Son' : '🔇 Son coupé';
 
-if(P && P.fini) P = null;
 accueil();
-window.Starship = { S, get P(){ return P; }, get V(){ return V; }, lancer, entrees, base };
+window.Starship = { S, get R(){ return R; }, get V(){ return V; }, lancer, entrees, niveaux, brief };
 })();
