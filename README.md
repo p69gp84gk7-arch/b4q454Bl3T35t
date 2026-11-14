@@ -142,6 +142,7 @@ Page `jeux/classement.html`, ouverte par le bouton **🏆 Classement** dans le b
 
 - **Dans chaque jeu**, un bouton **🏆 Classement** (juste le trophée sur un écran étroit), à côté du lien vers l'accueil, ouvre le classement de tous les joueurs pour ce jeu seulement : chaque épreuve avec les médailles, et les statistiques pour se comparer. C'est `jeux/classement-jeu.js`, chargé par chaque jeu après `compte.js` : il reconnaît le jeu par le nom de sa page, charge `scores.js` au besoin, montre d'abord le dernier classement gardé puis demande au tableur le classement à jour (après avoir envoyé ses propres scores). Sans compte, il montre seulement ses scores sur l'appareil. Un lien mène au classement de tous les jeux.
 - **Le carrousel** : dans la fenêtre du profil (bouton Compte de l'accueil), « Présentation des jeux sur l'accueil » : **liste** (comme avant) ou **carrousel** (une grande carte à la fois, on glisse du doigt ; flèches, points et le nom du jeu dessous). Deux petits boutons ☰ et 🎠, à côté de « Choisir un jeu », font la même chose. Le choix (`desdes-presentation`) et le dernier jeu regardé (`desdes-carrousel`) sont gardés, et suivent le compte d'un téléphone à l'autre.
+- **Les favoris** (version 187) : chaque jeu de l'accueil porte une étoile (en bas à droite de sa carte). Les jeux favoris passent en haut de la liste, dans leur ordre habituel ; les autres suivent. La liste est gardée dans `desdes-favoris` (les pages des jeux), donc comprise dans la sauvegarde. Le carrousel suit le même ordre.
 
 ## Géographie
 

@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:187, type:'maj', jeu:'Altitude Arcade', ico:'⭐', lien:'',
+    txt:'Les favoris : touchez l\'étoile en bas à droite d\'un jeu, il passe en haut de la liste.' },
   { v:186, type:'maj', jeu:'Dichotomie', ico:'📶', lien:'jeux/panne.html',
     txt:'Les règles suivent enfin le terrain. Un canon exclu (interrupteur ouvert) ou sans courant ne coupe plus la ligne. Les 8 répétiteurs (162, 115, 140, 98, 1, 201, 220, 318) sont sur la carte et découpent le réseau en tronçons. Un outil mesure le signal : sa force, le bruit, l\'entrée et la sortie des répétiteurs, avec un conseil à chaque mesure. « Changer le module » remplace la carte et le réadressage. Une explication sous chaque bouton, une pièce n\'est plus perdue en cas d\'erreur, et des pannes cohérentes (liaison abîmée, répétiteur en panne). Les étoiles repartent de zéro.' },
   { v:186, type:'maj', jeu:'Nuancier', ico:'🎨', lien:'jeux/nuancier.html',
