@@ -98,7 +98,7 @@ function lancer(i){
   B = null; $('bacBts').hidden = true; niveauEnCours = i; const J = S.NIVEAUX[i];
   V = S.nouveauVol(J.vol, J.equipe, {});
   msgVus = 0; bandeauMsg = null; fin = null; parts = []; vitesse = 1; enPause = false; $('bVitesse').textContent = '⏩ Vitesse ×1';
-  phasePrec = null; ecran('eVol'); appliquerMode(); tailleVol(); dernier = performance.now(); acc = 0; audio();
+  alerteDern = {}; vj = 0; jDern = null; EV = {}; phasePrec = null; ecran('eVol'); appliquerMode(); tailleVol(); dernier = performance.now(); acc = 0; audio();
   bandeauMsg = { t:J.vol.type === 'booster' || J.vol.type === 'barge' ? 'Guide-toi avec ◀ ▶ puis allume pour t\'arrêter au bon endroit' : J.vol.type === 'dragon' ? 'Garde le bouclier au frais ; ouvre les PARACHUTES quand la capsule est assez lente' : J.vol.type === 'lune' ? 'Pas d\'air : penche (◀ ▶) et freine au moteur' : J.vol.type === 'orbite' || J.vol.type === 'vaisseau' || J.vol.type === 'mars' || J.vol.type === 'falcon' ? 'Tiens POUSSÉE : suis le fantôme jaune avec ◀ ▶' : 'Tiens POUSSÉE pour décoller', at:0, cls:'' };
   cancelAnimationFrame(boucle); boucle = requestAnimationFrame(tick);
 }
@@ -188,6 +188,7 @@ function dessinerVol(){
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   const sp = V.spec, mars = !!sp.g && sp.g < 5 && sp.rho !== 0, vide = sp.rho === 0, decor = sp.decor || (sp.g && sp.g < 5 ? (vide ? 'lune' : 'mars') : 'terre');
   const prog = V.phase === 'programme', haute = prog && V.y >= 4000;
+  EV = fin ? {} : evenements();
   // le ciel : du bleu au noir selon l'altitude (noir tout de suite sur la Lune)
   const k = vide ? 1 : clamp(V.y / (prog ? 90000 : 22000), 0, 1);
   const haut = mars ? mix([36, 18, 22], [3, 3, 8], k) : mix([40, 120, 226], [2, 4, 14], k), bas = mars ? mix([210, 130, 90], [20, 10, 14], k) : mix([170, 216, 255], [10, 20, 50], k);
@@ -215,8 +216,10 @@ function dessinerVol(){
     if(prog && !sp.tour){ table(g, X(0), 24 * s, solY, s, true); tour(g, X(34), solY, s * .9, null, false, V.t); }                                   // la tour de lancement, au décollage
     // les lignes à suivre : l'allumage et le retournement
     g.setLineDash([8, 6]); g.lineWidth = 2; g.textAlign = 'left'; g.font = '800 12px "Bricolage Grotesque", sans-serif';
-    if(V.vy < -4 && !V.fini && V.phase === 'vol'){ const ya = S.hauteurAllumage(V); if(isFinite(ya) && ya > 0){ const ly = vyScr + (V.y - ya) * s; if(ly > 20 && ly < H){ g.strokeStyle = '#38E08A'; g.beginPath(); g.moveTo(0, ly); g.lineTo(W, ly); g.stroke(); g.fillStyle = '#38E08A'; g.fillText('ALLUME ICI', 10, ly - 6); } } }
-    if(V.phase === 'plat' && !V.fini){ const yr = S.altitudeRetournement(V); const ly = vyScr + (V.y - yr) * s; if(ly > 20 && ly < H){ g.strokeStyle = '#5AB0FF'; g.beginPath(); g.moveTo(0, ly); g.lineTo(W, ly); g.stroke(); g.fillStyle = '#9CCBFF'; g.fillText('RETOURNE-TOI ICI', 10, ly - 6); } }
+    const ev = EV;
+    const ligne = (y, c, txt, fort) => { const ly = vyScr + (V.y - y) * s; if(ly > 20 && ly < H){ g.strokeStyle = c; g.lineWidth = fort ? 3 : 2; g.beginPath(); g.moveTo(0, ly); g.lineTo(W, ly); g.stroke(); g.fillStyle = c; g.fillText(txt, 10, ly - 6); } else if(ly >= H && fort){ g.fillStyle = c; g.textAlign = 'right'; g.fillText(`▼ ${txt} : ${fmt(V.y - y)} m plus bas`, W - 12, H - 8); g.textAlign = 'left'; } };
+    if(ev.allume){ ligne(ev.allume.y, '#38E08A', 'ALLUME ICI', true); ligne(ev.allume.tard, '#FF5A4D', 'trop tard', false); }
+    if(ev.retourne){ ligne(ev.retourne.y, '#5AB0FF', 'RETOURNE-TOI ICI', true); ligne(ev.retourne.tard, '#FF5A4D', 'trop tard', false); }
     g.setLineDash([]);
   }
   // le véhicule (ou son fantôme de trajectoire)
@@ -260,6 +263,37 @@ function mire(cx, cy, r, th, cible, tol, o = {}){
   g.restore();
   if(err != null){ const t = ok ? '✔ angle bon' : err < 0 ? `◀ ${Math.abs(err).toFixed(0)}°` : `${err.toFixed(0)}° ▶`; texteHUD(t, cx, cy + r + 18, 13, ok ? '#7CF0B6' : '#8FD8FF', 'center'); }
 }
+/* ---------- Les alertes : on prévient bien avant (compte à rebours), pas au dernier moment ---------- */
+let alerteDern = {}, vj = 0, jDern = null, EV = {}, pilCx = 0, pilOn = false;
+// le temps pour parcourir d mètres en chute, avec la vitesse vv (m/s) et la pesanteur gg
+const chrono = (d, vv, gg) => d <= 0 ? 0 : (gg > 0 ? (-vv + Math.sqrt(vv * vv + 2 * gg * d)) / gg : d / Math.max(1, vv));
+// une pilule en haut au milieu (avec une barre qui se remplit à mesure qu'on s'approche)
+function pilule(txt, c, y, frac, urgent){
+  pilOn = true; const wd = Math.min(W - 24, 340), cx = pilCx || W / 2, x = clamp(cx - wd / 2, 8, W - wd - 8), pulse = urgent ? .5 + .5 * Math.sin(performance.now() / 90) : 0;
+  g.fillStyle = 'rgba(8,12,28,.8)'; rondRect(g, x, y, wd, 40, 20); g.fill(); g.lineWidth = 3; g.strokeStyle = c; g.globalAlpha = urgent ? .55 + .45 * pulse : 1; rondRect(g, x, y, wd, 40, 20); g.stroke(); g.globalAlpha = 1;
+  if(frac != null){ g.fillStyle = c; rondRect(g, x + 10, y + 33, Math.max(6, (wd - 20) * clamp(frac, 0, 1)), 4, 2); g.fill(); }
+  texteHUD(txt, x + wd / 2, y + 22, 15, '#fff', 'center');
+}
+// titres : [avant, maintenant] ; t = secondes avant l'événement (≤ 0 : c'est maintenant) ; tmax : à partir de quand on prévient ; cn : la couleur de « maintenant »
+function alerte(cle, titres, t, tmax, y0, cn){
+  if(t > tmax) return;
+  const now = t <= 0.05, urgent = t <= 3, c = now ? (cn || '#38E08A') : urgent ? '#FF8A3D' : '#FFD23A';
+  pilule(now ? titres[1] : `${titres[0]} dans ${Math.max(0, t).toFixed(t < 10 ? 1 : 0).replace('.', ',')} s`, c, y0 ?? 70, 1 - t / tmax, urgent || now);
+  const k = Math.ceil(t); if(t > 0 && t <= 3.2 && alerteDern[cle] !== k){ alerteDern[cle] = k; bip(520 + (4 - k) * 140, .1, .09); } else if(t <= 0 && alerteDern[cle] !== 0){ alerteDern[cle] = 0; bip(990, .25, .1); }
+}
+// les moments à venir dans un niveau : l'allumage (ligne verte, bien avant le dernier moment), le retournement, la pression max, la séparation
+function evenements(){
+  const ev = {}, gg = S.gDe(V);
+  if(V.phase === 'vol' && V.vy < -4 && !V.fini && V.y > 12){ const ya = S.hauteurAllumage(V); if(isFinite(ya) && ya > 0) ev.allume = { y:ya * 1.5, tard:ya * 1.1, t:chrono(V.y - ya * 1.5, -V.vy, gg) }; }
+  if(V.phase === 'plat' && !V.fini && V.th > 80){ const yr = S.altitudeRetournement(V); ev.retourne = { y:yr * 1.4, tard:yr * 1.05, t:chrono(V.y - yr * 1.4, -V.vy, gg) }; }
+  if(V.phase === 'programme' && !V.fini){
+    if(jDern && V.t > jDern.t + .25){ const r = (V.jauge - jDern.j) / (V.t - jDern.t); vj = vj ? vj * .7 + r * .3 : r; jDern = { t:V.t, j:V.jauge }; } else if(!jDern) jDern = { t:V.t, j:V.jauge };
+    const P = V.spec.programme, vv = Math.max(.002, vj);
+    if(V.jauge < .17) ev.maxq = { t:(.17 - V.jauge) / vv };
+    if(V.etage === 1 && V.jauge < P.etageA) ev.sep = { t:(P.etageA - V.jauge) / vv };
+  }
+  return ev;
+}
 function jauge(x, y, w, h, v, c, titre, txt){
   g.fillStyle = 'rgba(0,0,0,.45)'; rondRect(g, x, y, w, h, h / 2); g.fill(); g.fillStyle = c; rondRect(g, x, y, Math.max(h, w * clamp(v, 0, 1)), h, h / 2); g.fill();
   g.fillStyle = '#fff'; g.font = '700 10px "Bricolage Grotesque", sans-serif'; g.textAlign = 'left'; g.fillText(titre, x + 6, y + h - 2.5); if(txt){ g.textAlign = 'right'; g.fillText(txt, x + w - 6, y + h - 2.5); }
@@ -298,10 +332,20 @@ function dessinerHUD(sp, prog){
   }
   // la cible hors de l'écran, et les consignes
   if(!prog && (sp.pad || sp.tour)){ const tx = sp.tour ? sp.tour.x : sp.pad.x, dx = tx - V.x, s = echelleDe(V.y); if(Math.abs(dx) * s > W / 2 - 30){ texteHUD(`${dx > 0 ? '' : '◀ '}${sp.tour ? 'tour' : 'plateforme'} ${Math.abs(dx).toFixed(0)} m${dx > 0 ? ' ▶' : ''}`, dx > 0 ? W - 14 : 14, H * .45, 12, '#9CCBFF', dx > 0 ? 'right' : 'left'); } }
-  const info = consigne(sp, prog);
+  const col0 = W > H * 1.1, ya0 = col0 ? (prog ? 74 : 8) : 118; pilCx = col0 && !prog ? Math.max(W / 2, 600) : W / 2; pilOn = false;
+  if(!fin){
+    if(V.phase === 'capsule' && !V.chute){ const vit = Math.hypot(V.vx, V.vy); if(vit <= 230) alerte('para', ['', 'OUVRE LES PARACHUTES !'], 0, 1, ya0); else pilule(`Parachutes : attends (${vit.toFixed(0)} m/s, sous 230)`, '#FFD23A', ya0, clamp(1 - (vit - 230) / 400, 0, 1), false); }
+    else if(EV.allume && V.gaz < .5){ if(V.y < EV.allume.tard) pilule('TROP TARD : POUSSÉE À FOND !', '#FF4D4D', ya0, null, true); else alerte('allume', ['ALLUME', 'ALLUME MAINTENANT !'], EV.allume.t, 10, ya0); }
+    else if(EV.retourne){ if(V.y < EV.retourne.tard) pilule('RETOURNE-TOI VITE !', '#FF4D4D', ya0, null, true); else alerte('retourne', ['RETOURNE-TOI', 'RETOURNE-TOI MAINTENANT !'], EV.retourne.t, 10, ya0); }
+    else if(prog && V.maxQ) pilule('PRESSION MAX : RELÂCHE LA POUSSÉE !', '#FF4D4D', ya0, null, true);
+    else if(prog && V.fenetre && V.etage === 1) alerte('sep', ['', 'SÉPARE MAINTENANT !'], 0, 1, ya0);
+    else if(EV.maxq && EV.maxq.t < 9) alerte('maxq', ['PRESSION MAX', 'PRESSION MAX'], EV.maxq.t, 9, ya0, '#FF8A3D');
+    else if(EV.sep && EV.sep.t < 12) alerte('sep0', ['SÉPARATION', 'SÉPARATION'], EV.sep.t, 12, ya0);
+  }
+  const info = pilOn && !col0 ? '' : consigne(sp, prog);
   let dy = 0; if(bandeauMsg && (V.t - bandeauMsg.at < 4.5 || bandeauMsg.at === 0)){ const c = bandeauMsg.cls === 'bon' ? '#7CF0B6' : bandeauMsg.cls === 'mal' ? '#FF9A9A' : '#FFE08A'; const col = W > H * 1.1;   // en paysage : les messages dans une colonne à gauche, sous les chiffres, loin du véhicule
-    dy = col ? texteLong(bandeauMsg.t, 14, 134, 14, c, true, Math.min(W * .34, 300)) : texteLong(bandeauMsg.t, W / 2, H * .17, 16, c); }
-  if(info){ const col = W > H * 1.1; if(col) texteLong(info, 14, 134 + dy + 6, 13, '#fff', true, Math.min(W * .34, 300)); else texteLong(info, W / 2, H * .17 + dy + 6, 14, '#fff'); }
+    dy = col ? texteLong(bandeauMsg.t, 14, 134, 14, c, true, Math.min(W * .34, 300)) : texteLong(bandeauMsg.t, W / 2, Math.max(H * .17, 176), 16, c); }
+  if(info){ const col = W > H * 1.1; if(col) texteLong(info, 14, 134 + dy + 6, 13, '#fff', true, Math.min(W * .34, 300)); else texteLong(info, W / 2, Math.max(H * .17, 176) + dy + 6, 14, '#fff'); }
   // le bouton d'action
   const b = $('bAction'); let lib = '—', ok = false;
   if(V.phase === 'programme' && V.etage === 1 && V.fenetre){ lib = 'SÉPARER'; ok = true; }
@@ -323,9 +367,9 @@ function consigne(sp, prog){
   if(sp.type === 'saut' && !V.atteint) return `Monte à ${sp.cible} m (altitude ${fmt(V.y)} m)`;
   if(sp.type === 'saut' && V.atteint && V.y > 30) return 'Penche (◀ ▶) et pose-toi sur la plateforme jaune';
   if(sp.type === 'altitude' && !V.atteint) return `Apogée prévu ${fmt(S.apogeePrevu(V))} m sur ${fmt(sp.cible)} m`;
-  if(V.phase === 'plat') return V.th < 80 ? 'Retournement à plat…' : 'Ailerons ◀ ▶ · CABRER pour freiner · RETOURNE-TOI au repère bleu';
+  if(V.phase === 'plat') return V.th < 80 ? 'Retournement à plat…' : 'Ailerons ◀ ▶ · CABRER pour freiner · RETOURNE-TOI dès le repère bleu';
   if(V.phase === 'flip') return 'Redressement ! Prépare l\'allumage';
-  if(V.phase === 'vol' && V.vy < -4) return V.y < 12 ? '' : `Allume quand tu touches la ligne verte · vitesse max au sol ${V.p.vAtterr.toFixed(0)} m/s`;
+  if(V.phase === 'vol' && V.vy < -4) return V.y < 12 ? '' : `Allume dès la ligne verte (le rouge, c'est trop tard) · vitesse max au sol ${V.p.vAtterr.toFixed(0)} m/s`;
   return '';
 }
 
@@ -402,7 +446,7 @@ function reglages(){
 }
 function lancerBac(){
   V = null; B = BAC.nouveau({ monde:cfg.monde, vehicule:cfg.vehicule, depart:cfg.depart, vent:cfg.vent ? 6 : 0, illimite:cfg.illimite, tour:cfg.tour && cfg.monde === 'terre' });
-  warp = 1; debris = []; bacFin = null; bacMsgVus = 0; bacMsg = { t:cfg.depart === 'sol' ? 'Pousse le curseur de droite (POUSSÉE) pour décoller · ⏏ Étage pour larguer · 🧭 règle le cap' : cfg.depart === 'orbite' ? 'En orbite : ◀ ▶ pour tourner, POUSSÉE pour changer d\'orbite · ⏩ accélère le temps (moteur coupé)' : BAC.VEHICULES[cfg.vehicule].etages[0].bouclier === 'base' ? 'Rentrée : le FOND de la capsule (le bouclier) doit faire face au vent. Ouvre les 🪂 sous 250 m/s' : BAC.VEHICULES[cfg.vehicule].etages[0].bouclier === 'ventre' ? 'Rentrée : présente le VENTRE au vent (cap ≈ 30°), puis redresse et rallume pour te poser' : 'Retour : freine avec les moteurs (POUSSÉE) et pose-toi, jambes sorties', at:0 }; chK = 0; bacParts = []; enPause = false;
+  alerteDern = {}; warp = 1; debris = []; bacFin = null; bacMsgVus = 0; bacMsg = { t:cfg.depart === 'sol' ? 'Pousse le curseur de droite (POUSSÉE) pour décoller · ⏏ Étage pour larguer · 🧭 règle le cap' : cfg.depart === 'orbite' ? 'En orbite : ◀ ▶ pour tourner, POUSSÉE pour changer d\'orbite · ⏩ accélère le temps (moteur coupé)' : BAC.VEHICULES[cfg.vehicule].etages[0].bouclier === 'base' ? 'Rentrée : le FOND de la capsule (le bouclier) doit faire face au vent. Ouvre les 🪂 sous 250 m/s' : BAC.VEHICULES[cfg.vehicule].etages[0].bouclier === 'ventre' ? 'Rentrée : présente le VENTRE au vent (cap ≈ 30°), puis redresse et rallume pour te poser' : 'Retour : freine avec les moteurs (POUSSÉE) et pose-toi, jambes sorties', at:0 }; chK = 0; bacParts = []; enPause = false;
   $('bacBts').hidden = false; $('bbWarp').textContent = '⏩ ×1'; $('bVitesse').style.display = 'none'; $('bAbandon').textContent = 'Quitter le bac à sable';
   ecran('eVol'); appliquerMode(); tailleVol(); dernier = performance.now(); acc = 0; audio(); reglerPuissance(0);
   cancelAnimationFrame(boucle); boucle = requestAnimationFrame(tick);
@@ -501,7 +545,7 @@ function dessinerBac(){
   if(!(bacFin)){
     const chaleur = B.chaleur, kd = kind;
     vehicule(g, kd, W / 2, vyScr, hv, B.th, { gaz:B.gaz, chaleur:Math.min(1, chaleur), jambes:B.jambes, chutes:chK });
-    if(mireOn){ const a = B.th * RAD, rm = clamp(hv * .5 + 36, 62, Math.min(120, H * .3)), gd = BAC.guide(B); mire(W / 2 + Math.sin(a) * hv * .5, vyScr - Math.cos(a) * hv * .5, rm, B.th, B.sas === 'libre' ? null : B.cap, 4, { vx:B.vx, vy:B.vy, guide:gd ? gd.th : null, vmin:15 }); if(gd) texteHUD(`🟡 cap conseillé : ${gd.nom}`, W / 2, Math.max(22, vyScr - hv * .5 - rm - 14), 11, '#FFE08A', 'center'); }
+    if(mireOn){ const a = B.th * RAD, rm = clamp(hv * .5 + 36, 62, Math.min(120, H * .3)), gd = BAC.guide(B); mire(W / 2 + Math.sin(a) * hv * .5, vyScr - Math.cos(a) * hv * .5, rm, B.th, B.sas === 'libre' ? null : B.cap, 4, { vx:B.vx, vy:B.vy, guide:gd ? gd.th : null, vmin:15 }); if(gd) texteHUD(`🟡 cap conseillé : ${gd.nom}`, W / 2, Math.min(H - 20, vyScr - hv * .5 + rm + 36), 11, '#FFE08A', 'center'); }
   }
   hudBac(E);
 }
@@ -522,6 +566,17 @@ function hudBac(E){
   if(bacMsg && (B.t - bacMsg.at < (bacMsg.at === 0 ? 14 : 5))){ const c = bacMsg.cls === 'bon' ? '#7CF0B6' : bacMsg.cls === 'mal' ? '#FF9A9A' : '#FFE08A'; dy = col ? texteLong(bacMsg.t, 14, 196, 14, c, true, Math.min(W * .34, 300)) : texteLong(bacMsg.t, W / 2, Math.max(H * .22, 200), 15, c); }
   if(col) carteOrbite(W - 112, top + 64, 52); else carteOrbite(W - 62, top + 124, 48);
   // les boutons du bac
+  // les alertes du bac : allumage de la descente, chaleur, parachutes
+  pilCx = W / 2;
+  if(!bacFin){
+    const col2 = W > H * 1.1, y0 = col2 ? 8 : 118, vit = sp, gg = BAC.grav(B, B.y), Fm = E ? (B.M.rho0 > 0 && B.y < 20e3 ? E.pSol : E.pVide) : 0, aNet = Fm / m - gg;
+    if(E && E.chutes && !B.chutes && B.y < 25e3 && B.vy < 0){ if(vit <= 250) alerte('bpara', ['', 'OUVRE LES PARACHUTES !'], 0, 1, y0); else pilule(`Parachutes : attends (${vit.toFixed(0)} m/s, sous 250)`, '#FFD23A', y0, clamp(1 - (vit - 250) / 600, 0, 1), false); }
+    else if(B.chaleur > .75) pilule('TROP CHAUD : change d\'angle !', '#FF4D4D', y0, null, true);
+    else if(E && E.reste > 0 && Fm > 0 && aNet > .5 && B.vy < -5 && B.y > 15 && B.y < 40e3 && B.gaz < .5 && vit < 1500){
+      const ya = B.vy * B.vy / (2 * aNet);
+      if(B.y < ya * 1.1) pilule('TROP TARD : POUSSÉE À FOND !', '#FF4D4D', y0, null, true); else alerte('ballume', ['ALLUME', 'ALLUME MAINTENANT !'], chrono(B.y - ya * 1.5, -B.vy, gg), 10, y0);
+    }
+  }
   const R = BAC.etage(B); $('bbEtage').disabled = B.i >= B.etages.length - 1 || !!bacFin; $('bbJambes').disabled = !(R && R.jambes) || !!bacFin; $('bbJambes').classList.toggle('on', B.jambes);
   $('bbChutes').disabled = !(R && R.chutes) || !!B.chutes || !!bacFin; $('bbChutes').classList.toggle('on', !!B.chutes); $('bbSas').textContent = `🧭 ${SAS_LIB[B.sas].split(' ')[0]}`;
   const b = $('bAction'); b.textContent = '—'; b.disabled = true;
