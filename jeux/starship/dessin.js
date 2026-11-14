@@ -115,7 +115,7 @@ window.STARSHIP_DESSIN = (() => {
     for(const s of [-1, 1]){
       g.beginPath(); g.moveTo(s * w / 2, -h * .27); g.lineTo(s * w * 1.45, -h * .06); g.lineTo(s * w * 1.45, h * .008); g.lineTo(s * w / 2, -h * .005); g.closePath(); g.fill();
       g.fillStyle = '#1A1E26'; g.fillRect(s > 0 ? w / 2 : -w / 2 - w * .06, -h * .22, w * .06, h * .05); g.fillStyle = gr(g, 0, w * 1.5, GRIS);
-      g.beginPath(); g.moveTo(s * w / 2, -h + n * 1.25); g.lineTo(s * w * .98, -h + n * 1.05); g.lineTo(s * w * .98, -h + n * 1.55); g.lineTo(s * w / 2, -h + n * 1.7); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(s * w / 2, -h + n * 1.0); g.lineTo(s * w * 1.0, -h + n * 1.32); g.lineTo(s * w * 1.0, -h + n * 1.78); g.lineTo(s * w / 2, -h + n * 1.62); g.closePath(); g.fill();        // les petits volets avant : balayés vers le bas, comme les grands
     }
     g.fillStyle = gr(g, -w / 2, w, ACIER); formeSS(g, w, h); g.fill();
     g.save(); formeSS(g, w, h); g.clip();

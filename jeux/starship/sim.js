@@ -293,6 +293,19 @@ window.STARSHIP_SIM = (() => {
     if(v.y > yc + 3 && v.vy > vDes && v.gaz < .05) e.gaz = false;
     return e;
   }
+  // l'angle à suivre (la mire du pilote) : même calcul que le pilote automatique ; null quand l'angle ne se pilote pas
+  function angleCible(v){
+    if(v.fini) return null; const sp = v.spec;
+    if(v.phase === 'programme') return { th:pitchCible(v.jauge), tol:6 };
+    if(v.phase !== 'vol') return null;
+    if(!v.enVol && v.t < 60) return { th:0, tol:6 };
+    const tx = sp.tour ? sp.tour.x : (sp.pad ? sp.pad.x : 0), yc = sp.tour ? sp.tour.y : 0, dx = tx - v.x;
+    if(!v.atteint && (sp.type === 'saut' || sp.type === 'altitude')) return { th:0, tol:6 };
+    if(sp.type === 'saut' && (Math.abs(dx) > 6 || Math.abs(v.vx) > 1.5) && v.y > 30) return { th:clamp((.045 * dx - .42 * v.vx) * 5.84, -10, 10), tol:4 };
+    if(v.y > yc + 120 && (sp.type === 'booster' || sp.type === 'barge')) return { th:0, tol:8 };      // là-haut, ce sont les ailettes qui guident
+    const axD = (v.y > yc + 250 ? .06 * dx - .5 * v.vx : .02 * dx - .32 * v.vx);
+    return { th:v.y < yc + 6 ? 0 : clamp(axD * 5.84, -9, 9), tol:v.y < yc + 300 ? Math.min(8, v.p.angAtterr) : 6 };
+  }
   // un vol entier avec le pilote automatique (pour mesurer la difficulté)
   function simuler(spec, niv, qualite = 1, opts = {}){
     const v = nouveauVol(spec, niv, { vent:opts.vent || 1, phi:opts.phi ?? 1 }); let n = 0;
@@ -310,5 +323,5 @@ window.STARSHIP_SIM = (() => {
     return r;
   }
 
-  return { NIVEAUX, params, nouveauVol, pas, hauteurAllumage, altitudeRetournement, apogeePrevu, pitchCible, notation, pilote, simuler, tests, gDe, rhoDe };
+  return { NIVEAUX, params, nouveauVol, pas, hauteurAllumage, altitudeRetournement, apogeePrevu, pitchCible, angleCible, notation, pilote, simuler, tests, gDe, rhoDe };
 })();

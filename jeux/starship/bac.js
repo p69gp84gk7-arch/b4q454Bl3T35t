@@ -90,12 +90,22 @@ window.STARSHIP_BAC = (() => {
   }
   const jambes = B => { const E = etage(B); if(!E || !E.jambes) return false; B.jambes = !B.jambes; message(B, B.jambes ? 'Jambes sorties' : 'Jambes rentrées', ''); return true; };
   function parachutes(B){ const E = etage(B); if(!E || !E.chutes || B.chutes) return false; const sp = Math.hypot(B.vx, B.vy); if(sp > 250){ detruire(B, `Parachutes déchirés : ouverts à ${sp.toFixed(0)} m/s (au plus 250).`); return true; } B.chutes = 1; message(B, 'Parachutes ouverts', 'bon'); return true; }
+  // le cap conseillé (la mire jaune) : la montée en virage progressif, la rentrée du bon côté, la descente moteur en avant
+  function guide(B){
+    const E = etage(B), M = B.M, norm = a => ((a + 540) % 360) - 180, sp = Math.hypot(B.vx, B.vy), phiV = Math.atan2(B.vx, B.vy) / RAD;
+    if(B.etat === 'detruit' || B.etat === 'pose' && B.y < 5 && B.gaz < .05 && B.tDecol == null) return B.etat === 'pose' ? { th:0, nom:'décollage' } : null;
+    const o = orbite(B);
+    if(B.vy > -20 && B.y < (M.atmo ? 200e3 : 60e3) && !(o.pe > Math.max(M.atmo, 20e3) && !o.ouverte) && B.tDecol != null && E && E.pVide) { const t = B.t - B.tDecol; return { th:clamp((t - 12) * .42, 0, 88), nom:'montée' }; }
+    if(E && E.bouclier && B.y < 130e3 && sp > 1500 && B.vy < 200) return { th:E.bouclier === 'ventre' ? norm(phiV - 60 * Math.sign(B.vx || 1)) : norm(phiV + 180), nom:E.bouclier === 'ventre' ? 'ventre au vent' : 'bouclier au vent' };
+    if(B.vy < -3 && sp > 5 && B.y < 30e3) return { th:B.y < 60 ? 0 : norm(phiV + 180), nom:'poussée vers l\'avant' };
+    return null;
+  }
   const SAS = ['libre', 'tenir', 'prograde', 'retro', 'vertical'];
 
   // un pas de simulation (e : { dir, cible, action })
   function pas(B, e, dt){
     if(B.etat === 'detruit') return;
-    B.t += dt;
+    B.t += dt; if(B.tDecol == null && B.y > 5 && B.etat === 'vol') B.tDecol = B.t;
     const E = etage(B), M = B.M;
     // la poussée : le curseur de puissance (0 à 1)
     const cible = e.cible != null ? e.cible : (e.gaz ? 1 : 0);
@@ -200,5 +210,5 @@ window.STARSHIP_BAC = (() => {
     ok(chutesOk && D.etat === 'pose', 'Dragon : rentrée et parachutes, amerrissage en douceur');
     return r;
   }
-  return { MONDES, VEHICULES, DEPARTS, SAS, nouveau, pas, masse, orbite, deltaV, etageSuivant, jambes, parachutes, rho, grav, poussee, etage, tests };
+  return { MONDES, VEHICULES, DEPARTS, SAS, nouveau, pas, masse, orbite, deltaV, etageSuivant, guide, jambes, parachutes, rho, grav, poussee, etage, tests };
 })();

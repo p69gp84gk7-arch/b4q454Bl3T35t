@@ -230,8 +230,35 @@ function dessinerVol(){
     if(!haute && sp.tour && fin && fin.issue === 'succes'){ bxx = X(sp.tour.x); byy = solY - sp.tour.y * s; th = 0; }
     const jambes = !haute && V.phase === 'vol' && V.y < 150 && (sp.pad || sp.tour) && V.retourne !== false;
     vehicule(g, kind, bxx, byy, hv, th, { gaz:V.gaz, chaleur:V.chaleur / V.p.resChaleur, jambes:jambes || sp.type === 'saut', chutes:V.chute ? (V.chuteK || 0) : 0 });
+    const ac = mireOn && !fin ? S.angleCible(V) : null;
+    if(ac){ const a = th * RAD, rm = clamp(hv * .5 + 36, 62, Math.min(120, H * .3)); mire(bxx + Math.sin(a) * hv * .5, byy - Math.cos(a) * hv * .5, rm, th, ac.th, ac.tol, { vx:V.vx, vy:V.vy, vmin:12 }); }
   }
   dessinerHUD(sp, prog);
+}
+/* ---------- La mire : l'angle à suivre (comme le guidage de Space Agency) ---------- */
+let mireOn = lire('starship-mire', true) !== false;
+const RAD = Math.PI / 180, norm180 = a => ((a + 540) % 360) - 180;
+// cx, cy : le centre du vaisseau ; th : son angle (0 = vertical, + = vers la droite) ; cible : l'angle à suivre ; tol : la marge ; o.guide : un 2e angle conseillé ; o.vx, o.vy : la vitesse (repères prograde et rétrograde)
+function mire(cx, cy, r, th, cible, tol, o = {}){
+  const P = (a, rr) => [cx + Math.sin(a * RAD) * rr, cy - Math.cos(a * RAD) * rr];
+  const err = cible == null ? null : norm180(cible - th), ok = err != null && Math.abs(err) <= tol;
+  g.save(); g.lineCap = 'round';
+  g.lineWidth = 2; g.setLineDash([3, 7]); g.strokeStyle = ok ? 'rgba(124,240,182,.85)' : 'rgba(255,255,255,.42)'; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke(); g.setLineDash([]);
+  g.lineWidth = 1.5; g.strokeStyle = 'rgba(255,255,255,.5)'; g.beginPath(); for(let a = 0; a < 360; a += 30){ const [x1, y1] = P(a, r - (a % 90 ? 3 : 6)), [x2, y2] = P(a, r + (a % 90 ? 3 : 6)); g.moveTo(x1, y1); g.lineTo(x2, y2); } g.stroke();
+  if(cible != null){ g.lineWidth = 8; g.strokeStyle = ok ? 'rgba(80,240,150,.65)' : 'rgba(90,200,255,.5)'; g.beginPath(); g.arc(cx, cy, r, (cible - tol - 90) * RAD, (cible + tol - 90) * RAD); g.stroke(); }
+  // les repères de la trajectoire : prograde (cercle et ailes), rétrograde (cercle et croix)
+  const vit = Math.hypot(o.vx || 0, o.vy || 0);
+  if(vit > (o.vmin || 8)){ const a = Math.atan2(o.vx, o.vy) / RAD; for(const [aa, retro] of [[a, false], [a + 180, true]]){ const [x, y] = P(aa, r); g.strokeStyle = '#7CF0B6'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 6, 0, 7); g.stroke(); g.beginPath();
+    if(!retro){ g.moveTo(x - 11, y); g.lineTo(x - 6, y); g.moveTo(x + 6, y); g.lineTo(x + 11, y); g.moveTo(x, y - 6); g.lineTo(x, y - 10); } else { g.moveTo(x - 4, y - 4); g.lineTo(x + 4, y + 4); g.moveTo(x + 4, y - 4); g.lineTo(x - 4, y + 4); } g.stroke(); } }
+  if(o.guide != null){ const [x, y] = P(o.guide, r), c = Math.abs(norm180(o.guide - th)) <= 6; g.fillStyle = c ? '#7CF0B6' : '#FFD23A'; g.strokeStyle = 'rgba(0,0,20,.7)'; g.lineWidth = 2; g.save(); g.translate(x, y); g.rotate(o.guide * RAD); g.beginPath(); g.moveTo(0, -9); g.lineTo(7, 5); g.lineTo(0, 1); g.lineTo(-7, 5); g.closePath(); g.stroke(); g.fill(); g.restore(); }
+  // l'axe du vaisseau (repère blanc) et le losange de la cible
+  g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 1.5; g.setLineDash([2, 5]); const [ax, ay] = P(th, r - 8); g.beginPath(); g.moveTo(cx, cy); g.lineTo(ax, ay); g.stroke(); g.setLineDash([]);
+  { const [x, y] = P(th, r); g.fillStyle = '#fff'; g.strokeStyle = 'rgba(0,0,20,.7)'; g.lineWidth = 2; g.save(); g.translate(x, y); g.rotate(th * RAD); g.beginPath(); g.moveTo(0, 2); g.lineTo(7, -9); g.lineTo(-7, -9); g.closePath(); g.stroke(); g.fill(); g.restore(); }
+  if(cible != null){ const [x, y] = P(cible, r); g.fillStyle = ok ? '#5BF09A' : '#4FC3FF'; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y - 10); g.lineTo(x + 8, y); g.lineTo(x, y + 10); g.lineTo(x - 8, y); g.closePath(); g.fill(); g.stroke(); }
+  // le petit viseur au centre
+  g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 1.6; g.beginPath(); g.arc(cx, cy, 8, 0, 7); g.moveTo(cx - 14, cy); g.lineTo(cx - 4, cy); g.moveTo(cx + 4, cy); g.lineTo(cx + 14, cy); g.moveTo(cx, cy - 14); g.lineTo(cx, cy - 4); g.moveTo(cx, cy + 4); g.lineTo(cx, cy + 14); g.stroke();
+  g.restore();
+  if(err != null){ const t = ok ? '✔ angle bon' : err < 0 ? `◀ ${Math.abs(err).toFixed(0)}°` : `${err.toFixed(0)}° ▶`; texteHUD(t, cx, cy + r + 18, 13, ok ? '#7CF0B6' : '#8FD8FF', 'center'); }
 }
 function jauge(x, y, w, h, v, c, titre, txt){
   g.fillStyle = 'rgba(0,0,0,.45)'; rondRect(g, x, y, w, h, h / 2); g.fill(); g.fillStyle = c; rondRect(g, x, y, Math.max(h, w * clamp(v, 0, 1)), h, h / 2); g.fill();
@@ -334,6 +361,8 @@ function appliquerMode(){
   cV.addEventListener('pointerup', finV); cV.addEventListener('pointercancel', finV);
 }
 addEventListener('resize', () => { if(!$('eVol').hidden && mode === 'curseurs'){ posH(entrees.dir || 0); posV(entrees.cible || 0); } });
+$('bMire').onclick = () => { mireOn = !mireOn; ecrire('starship-mire', mireOn); $('bMire').textContent = `🎯 Mire : ${mireOn ? 'oui' : 'non'}`; };
+$('bMire').textContent = `🎯 Mire : ${mireOn ? 'oui' : 'non'}`;
 $('bCommandes').onclick = () => { mode = mode === 'curseurs' ? 'boutons' : 'curseurs'; ecrire('starship-commandes', mode); appliquerMode(); };
 const touches = { ArrowLeft:'gauche', ArrowRight:'droite', ArrowUp:'gaz', ' ':'gaz', Enter:'action', ArrowDown:'action', Shift:'action' };
 addEventListener('keydown', e => { const k = touches[e.key]; if(!k || $('eVol').hidden) return; e.preventDefault(); if(k === 'action'){ if(!e.repeat) entrees.action = true; } else entrees[k] = true; });
@@ -472,8 +501,7 @@ function dessinerBac(){
   if(!(bacFin)){
     const chaleur = B.chaleur, kd = kind;
     vehicule(g, kd, W / 2, vyScr, hv, B.th, { gaz:B.gaz, chaleur:Math.min(1, chaleur), jambes:B.jambes, chutes:chK });
-    const sp = Math.hypot(B.vx, B.vy);
-    if(sp > 15){ const a = Math.atan2(B.vx, -B.vy) - Math.PI / 2, rr = hv * .75 + 22; g.strokeStyle = '#7CF0B6'; g.lineWidth = 2; g.beginPath(); g.arc(W / 2 + Math.cos(a) * rr, vyScr - hv * .45 + Math.sin(a) * rr, 7, 0, 7); g.stroke(); g.beginPath(); g.moveTo(W / 2 + Math.cos(a) * rr - 11, vyScr - hv * .45 + Math.sin(a) * rr); g.lineTo(W / 2 + Math.cos(a) * rr - 7, vyScr - hv * .45 + Math.sin(a) * rr); g.moveTo(W / 2 + Math.cos(a) * rr + 7, vyScr - hv * .45 + Math.sin(a) * rr); g.lineTo(W / 2 + Math.cos(a) * rr + 11, vyScr - hv * .45 + Math.sin(a) * rr); g.stroke(); }
+    if(mireOn){ const a = B.th * RAD, rm = clamp(hv * .5 + 36, 62, Math.min(120, H * .3)), gd = BAC.guide(B); mire(W / 2 + Math.sin(a) * hv * .5, vyScr - Math.cos(a) * hv * .5, rm, B.th, B.sas === 'libre' ? null : B.cap, 4, { vx:B.vx, vy:B.vy, guide:gd ? gd.th : null, vmin:15 }); if(gd) texteHUD(`🟡 cap conseillé : ${gd.nom}`, W / 2, Math.max(22, vyScr - hv * .5 - rm - 14), 11, '#FFE08A', 'center'); }
   }
   hudBac(E);
 }
