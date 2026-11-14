@@ -69,9 +69,9 @@ window.STARSHIP_SIM = (() => {
   function pas(v, e, dt){
     if(v.fini) return;
     v.t += dt;
-    const p = v.p, g = gDe(v), dir = (e.droite ? 1 : 0) - (e.gauche ? 1 : 0);
-    // la poussée : on monte en tenant le bouton, on redescend en le relâchant
-    if(v.carb > 0){ v.gaz = clamp(v.gaz + (e.gaz ? 2.2 : -3) * dt, 0, 1); } else v.gaz = 0;
+    const p = v.p, g = gDe(v), dir = e.dir != null ? clamp(e.dir, -1, 1) : (e.droite ? 1 : 0) - (e.gauche ? 1 : 0);
+    // la poussée : avec un curseur (e.cible, de 0 à 1), le moteur suit le curseur ; avec un bouton, on monte en le tenant et on redescend en le relâchant
+    if(v.carb > 0){ v.gaz = e.cible != null ? clamp(v.gaz + clamp(e.cible - v.gaz, -3 * dt, 2.4 * dt), 0, 1) : clamp(v.gaz + (e.gaz ? 2.2 : -3) * dt, 0, 1); } else v.gaz = 0;
     if(v.phase === 'programme') return pasProgramme(v, e, dt, dir);
     if(v.phase === 'plat' || v.phase === 'flip') return pasChute(v, e, dt, dir);
     return pasVertical(v, e, dt, dir);
@@ -131,7 +131,7 @@ window.STARSHIP_SIM = (() => {
     const p = v.p, g = gDe(v), rho = rhoDe(v, v.y), sp = Math.hypot(v.vx, v.vy);
     if(v.phase === 'plat'){
       v.th = Math.min(90, v.th + 45 * dt);
-      v.attaque = clamp(v.attaque + (e.gaz ? .55 : -.45) * dt, 0, 1);
+      v.attaque = e.cible != null ? clamp(v.attaque + clamp(e.cible - v.attaque, -.6 * dt, .6 * dt), 0, 1) : clamp(v.attaque + (e.gaz ? .55 : -.45) * dt, 0, 1);
       v.gaz = 0;
       if(e.action && v.th > 80){ v.phase = 'flip'; msg(v, 'Retournement !', ''); }
       const auto = altitudeRetournement(v) * (.5 + .55 * p.assist);
