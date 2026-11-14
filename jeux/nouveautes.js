@@ -3,6 +3,7 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:191, type:'maj', jeu:'Les aventures de Pépin', ico:'🍄', lien:'jeux/pepin.html', txt:"Un nouveau look « dessin animé » lisse (plus de gros pixels : décors en plusieurs plans, dégradés, ombres) et des niveaux plus simples et plus progressifs : la Grotte (niveau 2) est refaite sans creux où l'on reste bloqué, le premier niveau explique les commandes, et le saut est un peu plus haut." },
   { v:190, type:'maj', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html', txt:"Un vrai but : 3 missions par jour et une grande quête par semaine (avec médailles), une chasse au trésor à la boussole chaud / froid, et une carte couverte de brouillard qui se lève là où tu passes, avec le pourcentage de ta commune découvert." },
   { v:189, type:'maj', jeu:'Dichotomie', ico:'🔎', lien:'jeux/panne.html', txt:"Un regard dessiné : en touchant un canon, on voit l'intérieur (borniers du dialogue, module, interrupteur, alimentation, répétiteur) et on fait les gestes en touchant les éléments. Nouveau : le testeur de câble (continuité : bon, coupé, abîmé, croisé), une courbe du signal depuis la tête, des jauges et un accueil plus illustré." },
   { v:188, type:'maj', jeu:'Rock Altitude', ico:'🎸', lien:'jeux/rock.html',

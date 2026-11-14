@@ -86,7 +86,7 @@ const PROG = Object.assign({ debloque:0, meilleur:0, faits:{} }, lire('pepin-pro
 const sauver = () => ecrire('pepin-progres', PROG);
 const etat = { mode:'titre', niv:0, vies:3, pieces:0, score:0, temps:400, tAcc:0, mi:false, minuteur:0, texte:'' };
 let ZONES = null, Z = null, J = null, E = [], PARTS = [], PLATS = [], camX = 0, VW = 256, frame = 0, bumps = [];
-const PH = { accMarche:.055, accCourse:.085, maxMarche:1.45, maxAuto:2.1, maxCourse:2.55, frein:.075, freinGlace:.012, derape:.17, saut:4.85, gMonte:.165, gChute:.48, maxChute:4.6 };
+const PH = { accMarche:.055, accCourse:.085, maxMarche:1.45, maxAuto:2.1, maxCourse:2.55, frein:.075, freinGlace:.012, derape:.17, saut:5.15, gMonte:.165, gChute:.48, maxChute:4.6 };
 
 function preparerNiveau(i){
   const d = NIVEAUX[i];
@@ -617,6 +617,16 @@ function maj(){
 
 /* ---------- Le dessin ---------- */
 const cv = $('cv'), g = cv.getContext('2d');
+// Le style « dessin animé lisse » : le canevas est plus fin que le jeu (RES pixels par pixel du jeu) ; un dessin qui a une version lisse
+// (propriété hi, voir sprites.js) est dessiné avec elle, à sa taille d'origine (ou à la taille demandée).
+let RES = 3;
+{ const di = g.drawImage.bind(g);
+  g.drawImage = function(img, a, b, c, d){
+    const h = img && img.hi;
+    if(!h) return di.apply(null, arguments);
+    const p = img.pad || 0, w = arguments.length > 3 ? c : img.width, hh = arguments.length > 3 ? d : img.height, sx = w / img.width, sy = hh / img.height;
+    return di(h, a - p * sx, b - p * sy, w + 2 * p * sx, hh + 2 * p * sy);
+  }; }
 const cacheTuiles = {};
 const tuilesDe = th => cacheTuiles[th] || (cacheTuiles[th] = SP.tuilesTheme(SP.THEMES[th] || SP.THEMES.plaine));
 const SANS_HERBE = new Set(['souterrain', 'glace', 'chateau', 'lave']);
@@ -641,49 +651,134 @@ function dessinerTuile(t, x, y, th){
   }
   if(img) g.drawImage(img, x, y);
 }
+/* ---------- Le décor : dessin animé lisse, en plusieurs plans qui défilent à des vitesses différentes ---------- */
+const POLICE = '"Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif';
+const MOD = (a, n) => ((a % n) + n) % n;
+const ronde = (x, y, w, h, r) => SP.rr(g, x, y, w, h, r);
+// du texte rond et gras, avec un contour (lisible sur tous les fonds)
+function texteContour(t, x, y, taille, coul = '#fff', align = 'left', contour = 'rgba(18,14,40,.88)'){
+  g.font = `800 ${taille}px ${POLICE}`; g.textAlign = align; g.textBaseline = 'top'; g.lineJoin = 'round'; g.lineWidth = Math.max(2, taille * .3);
+  g.strokeStyle = contour; g.strokeText(t, x, y); g.fillStyle = coul; g.fillText(t, x, y);
+}
+// un nuage joufflu
+function nuageRond(x, y, s, col = '#FFFFFF', ombre = '#CFE4FF'){
+  const blobs = [[0, 6, 8], [9, 0, 10.5], [20, 2, 9.5], [29, 6, 7.5], [14, 7, 8], [24, 8, 7]];
+  g.fillStyle = ombre; g.beginPath(); for(const [bx, by, r] of blobs){ g.moveTo(x + (bx + r) * s, y + (by + 2.2) * s); g.arc(x + bx * s, y + (by + 2.2) * s, r * s, 0, 7); } g.fill();
+  g.fillStyle = col; g.beginPath(); for(const [bx, by, r] of blobs){ g.moveTo(x + (bx + r) * s, y + by * s); g.arc(x + bx * s, y + by * s, r * s, 0, 7); } g.fill();
+}
+// une ligne de collines douces qui défile
+function collines(par, base, amp, f, ph, c0, c1){
+  const dec = camX * par; g.beginPath(); g.moveTo(0, HAUT);
+  for(let x = 0; x <= VW + 6; x += 6){ const X = x + dec; g.lineTo(x, base + Math.sin(X * f + ph) * amp + Math.sin(X * f * 2.3 + ph * 1.7) * amp * .4); }
+  g.lineTo(VW + 6, HAUT); g.closePath();
+  const d = g.createLinearGradient(0, base - amp * 1.4, 0, HAUT); d.addColorStop(0, c0); d.addColorStop(1, c1); g.fillStyle = d; g.fill();
+}
+// des montagnes lointaines aux sommets arrondis et enneigés
+function montagnes(par, base, haut, coul, neige){
+  const dec = camX * par, pas = 96;
+  for(let k = -1; k < VW / pas + 2; k++){
+    const i = k + Math.floor(dec / pas), x = k * pas - MOD(dec, pas) + ((i * 37) % 23) - 11, h = haut * (.7 + ((i * 53) % 10) / 22), hw = pas * (.62 + ((i * 29) % 7) / 30);
+    g.fillStyle = coul; g.strokeStyle = coul; g.lineWidth = 5; g.beginPath(); g.moveTo(x - hw, base + 4); g.lineTo(x, base - h); g.lineTo(x + hw, base + 4); g.closePath(); g.fill(); g.stroke();
+    if(neige){ g.fillStyle = 'rgba(255,255,255,.92)'; g.strokeStyle = 'rgba(255,255,255,.92)'; g.lineWidth = 2; g.beginPath(); const ch = h * .34; g.moveTo(x, base - h); g.lineTo(x - hw * .27, base - h + ch); g.lineTo(x - hw * .12, base - h + ch * .72); g.lineTo(x, base - h + ch * 1.05); g.lineTo(x + hw * .14, base - h + ch * .74); g.lineTo(x + hw * .28, base - h + ch); g.closePath(); g.fill(); g.stroke(); }
+  }
+}
+// des stalactites (ou des stalagmites) en arrière-plan
+function pointes(par, haut, haute, coul, pas, vers){
+  const dec = camX * par; g.fillStyle = coul;
+  for(let k = -1; k < VW / pas + 2; k++){
+    const i = k + Math.floor(dec / pas), x = k * pas - MOD(dec, pas), h = haute * (.45 + ((i * 47) % 11) / 14), w = pas * (.55 + ((i * 31) % 5) / 14);
+    g.beginPath(); if(vers > 0){ g.moveTo(x - w / 2, 0); g.quadraticCurveTo(x - w * .1, h * .55, x, h); g.quadraticCurveTo(x + w * .1, h * .55, x + w / 2, 0); } else { g.moveTo(x - w / 2, HAUT); g.quadraticCurveTo(x - w * .1, HAUT - h * .55, x, HAUT - h); g.quadraticCurveTo(x + w * .1, HAUT - h * .55, x + w / 2, HAUT); }
+    g.closePath(); g.fill();
+  }
+}
+function dessinerFond(th){
+  const C = SP.THEMES[th] || SP.THEMES.plaine, souterrain = ['souterrain', 'glace', 'lave', 'chateau'].includes(th), ciel = Z.eau ? '#10338A' : (Z.ciel || C.ciel);
+  const horizon = Z.eau ? '#58B0F0' : Z.ciel ? SP.mel(Z.ciel, '#FFFFFF', .38) : (C.ciel2 || C.ciel);
+  const d = g.createLinearGradient(0, 0, 0, HAUT); d.addColorStop(0, ciel); d.addColorStop(1, horizon); g.fillStyle = d; g.fillRect(0, 0, VW, HAUT);
+  const t = frame / 60;
+  if(Z.eau){
+    // des rayons de lumière qui ondulent, de la lumière au loin, des bulles
+    g.fillStyle = 'rgba(190,235,255,.10)';
+    for(let k = 0; k < 5; k++){ const x = MOD(k * 83 - camX * .12 + Math.sin(t * .6 + k) * 14, VW + 120) - 60; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 26, 0); g.lineTo(x + 70 + Math.sin(t + k) * 10, HAUT); g.lineTo(x + 30, HAUT); g.closePath(); g.fill(); }
+    pointes(.18, 0, 70, 'rgba(8,60,130,.55)', 58, -1);
+    g.fillStyle = 'rgba(255,255,255,.28)'; for(let k = 0; k < 16; k++){ const x = MOD(k * 97 + Math.sin(t + k) * 6, VW + 40) - 20, y = HAUT - ((frame * .5 + k * 53) % HAUT), r = 1.2 + (k % 3) * .7; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+    return;
+  }
+  if(souterrain){
+    pointes(.16, 0, 62, C.roche || '#10182E', 54, 1);
+    pointes(.30, 0, 44, SP.mel(C.roche || '#10182E', ciel, .45), 38, 1);
+    pointes(.36, 0, 54, SP.mel(C.roche || '#10182E', horizon, .25), 50, -1);
+    if(th === 'lave'){ const r = g.createRadialGradient(VW / 2, HAUT, 10, VW / 2, HAUT, HAUT * .9); r.addColorStop(0, 'rgba(255,120,30,.42)'); r.addColorStop(1, 'rgba(255,60,10,0)'); g.fillStyle = r; g.fillRect(0, 0, VW, HAUT);
+      g.fillStyle = 'rgba(255,190,80,.8)'; for(let k = 0; k < 22; k++){ const x = MOD(k * 71 + Math.sin(t * 1.3 + k) * 8 - camX * .3, VW + 20) - 10, y = HAUT - MOD(frame * (.4 + (k % 4) * .15) + k * 41, HAUT); g.beginPath(); g.arc(x, y, 1 + (k % 3) * .4, 0, 7); g.fill(); } }
+    else if(th === 'glace' || th === 'souterrain'){ g.fillStyle = th === 'glace' ? 'rgba(190,240,255,.9)' : 'rgba(130,190,255,.75)'; for(let k = 0; k < 26; k++){ const x = MOD(k * 61 - camX * .35, VW + 20) - 10, y = (k * 47) % 190 + 14, a = .35 + .65 * Math.abs(Math.sin(t * 1.4 + k * 1.7)); g.globalAlpha = a; g.beginPath(); g.arc(x, y, 1.1, 0, 7); g.fill(); } g.globalAlpha = 1; }
+    else if(th === 'chateau'){
+      // de hautes arches de pierre, de grandes fenêtres éclairées par la lune
+      const pas = 88, dec = camX * .28;
+      for(let k = -1; k < VW / pas + 2; k++){ const x = k * pas - MOD(dec, pas);
+        g.fillStyle = 'rgba(70,80,130,.28)'; g.beginPath(); g.moveTo(x + 18, HAUT); g.lineTo(x + 18, 96); g.arc(x + 44, 96, 26, Math.PI, 0); g.lineTo(x + 70, HAUT); g.closePath(); g.fill();
+        g.fillStyle = 'rgba(14,14,30,.55)'; g.fillRect(x, 0, 14, HAUT); }
+    }
+    return;
+  }
+  // en plein air
+  if(th === 'nuit'){
+    g.fillStyle = '#FFFFFF';
+    for(let k = 0; k < 46; k++){ const x = MOD(k * 131 - camX * .06, VW), y = (k * 47) % 150 + 8; g.globalAlpha = .45 + .55 * Math.abs(Math.sin(t * (.8 + (k % 5) * .3) + k)); g.beginPath(); g.arc(x, y, k % 7 === 0 ? 1.3 : .8, 0, 7); g.fill(); }
+    g.globalAlpha = 1;
+    const mx = VW * .78 - camX * .02, r = g.createRadialGradient(mx, 44, 6, mx, 44, 40); r.addColorStop(0, 'rgba(255,248,200,.55)'); r.addColorStop(1, 'rgba(255,248,200,0)'); g.fillStyle = r; g.fillRect(mx - 44, 0, 88, 90);
+    g.fillStyle = '#FFF6C8'; g.beginPath(); g.arc(mx, 44, 13, 0, 7); g.fill(); g.fillStyle = 'rgba(190,180,140,.35)'; for(const [dx, dy, r] of [[-4, -3, 3], [3, 4, 2.2], [4, -5, 1.6]]){ g.beginPath(); g.arc(mx + dx, 44 + dy, r, 0, 7); g.fill(); }
+  } else {
+    const sx = VW * .8 - camX * .02, r = g.createRadialGradient(sx, 42, 4, sx, 42, 56); r.addColorStop(0, 'rgba(255,250,210,.95)'); r.addColorStop(.25, 'rgba(255,240,170,.55)'); r.addColorStop(1, 'rgba(255,240,170,0)'); g.fillStyle = r; g.fillRect(sx - 60, 0, 120, 110);
+    g.fillStyle = '#FFF8D0'; g.beginPath(); g.arc(sx, 42, 11, 0, 7); g.fill();
+  }
+  const nuagesCol = th === 'nuit' ? ['#4A5398', '#2C336E'] : [C.nuages || '#fff', '#CFE4FF'];
+  for(let k = 0; k < 7; k++){ const x = MOD(k * 151 - camX * .12 - frame * .06, VW + 200) - 100, y = 18 + (k * 37) % 80, s = .8 + (k % 3) * .3; nuageRond(x, y, s * .9, nuagesCol[0], nuagesCol[1]); }
+  if(th === 'ciel'){
+    collines(.2, 206, 6, .03, 0, '#FFFFFF', '#BFD8F6'); collines(.35, 218, 5, .045, 2, '#F2F8FF', '#9EC2EE');
+    return;
+  }
+  montagnes(.10, 186, 86, C.loin, th !== 'nuit');
+  collines(.22, 200, 9, .017, 1, SP.mel(C.colline[0], C.loin, .55), SP.mel(C.colline[1], C.loin, .45));
+  collines(.42, 214, 7, .026, 3, SP.mel(C.colline[0], '#ffffff', .05), C.colline[1]);
+  if(th === 'neige'){ g.fillStyle = 'rgba(255,255,255,.85)'; for(let k = 0; k < 46; k++){ const x = MOD(k * 37 + Math.sin(t * .8 + k) * 10 - camX * (.3 + (k % 3) * .15) + frame * .25, VW + 20) - 10, y = MOD(k * 53 + frame * (.5 + (k % 3) * .25), HAUT + 10) - 5; g.beginPath(); g.arc(x, y, .9 + (k % 3) * .45, 0, 7); g.fill(); } }
+}
+// les décors posés dans le monde (ils défilent avec le sol)
 function dessinerDecor(d, th){
   const C = SP.THEMES[th] || SP.THEMES.plaine, sol = (ROWS - 2) * T;
   if(d.type === 'colline'){
-    const x = d.x * T - camX, w = d.n > 1 ? 80 : 48, h = d.n > 1 ? 36 : 20;
+    const x = d.x * T - camX, w = d.n > 1 ? 84 : 52, h = d.n > 1 ? 40 : 22;
     if(x > VW || x + w < 0) return;
-    g.fillStyle = C.colline[1]; g.beginPath(); g.moveTo(x, sol); g.quadraticCurveTo(x + w / 2, sol - h * 2, x + w, sol); g.closePath(); g.fill();
-    g.fillStyle = C.colline[0]; g.beginPath(); g.moveTo(x + 2, sol); g.quadraticCurveTo(x + w / 2, sol - h * 2 + 4, x + w - 2, sol); g.closePath(); g.fill();
-    g.fillStyle = C.colline[1]; for(const [a, b] of [[.35, .45], [.55, .3], [.5, .65], [.68, .55]]) g.fillRect(Math.round(x + w * a), Math.round(sol - h * b), 3, 6);
-  } else if(d.type === 'nuageD' || d.type === 'buisson'){
-    const x = d.x * T - camX, w = (d.n + 1) * 16, y = d.type === 'buisson' ? sol - 16 : d.y * T;
+    g.beginPath(); g.moveTo(x, sol + 1); g.bezierCurveTo(x + w * .2, sol - h * 1.25, x + w * .8, sol - h * 1.25, x + w, sol + 1); g.closePath();
+    const gr = g.createLinearGradient(0, sol - h, 0, sol); gr.addColorStop(0, C.colline[0]); gr.addColorStop(1, C.colline[1]); g.fillStyle = gr; g.fill();
+    g.fillStyle = 'rgba(255,255,255,.16)'; g.beginPath(); g.ellipse(x + w * .36, sol - h * .72, w * .17, h * .13, -.35, 0, 7); g.fill();
+  } else if(d.type === 'buisson'){
+    const x = d.x * T - camX, w = (d.n + 1) * 16;
     if(x > VW || x + w < 0) return;
-    const c1 = d.type === 'buisson' ? C.buisson[0] : C.nuages, c2 = d.type === 'buisson' ? C.buisson[1] : (th === 'nuit' ? '#262C60' : '#BFE2FF');
-    g.fillStyle = c2; nuageForme(x, y + 2, d.n); g.fillStyle = c1; nuageForme(x, y, d.n);
+    const rond = (c, dy) => { g.fillStyle = c; g.beginPath(); for(let i = 0; i <= d.n; i++){ const cx = x + 8 + i * 16, r = 9 + (i % 2) * 2; g.moveTo(cx + r, sol - 7 + dy); g.arc(cx, sol - 7 + dy, r, 0, 7); } g.fill(); };
+    rond(C.buisson[1], 1.5); rond(C.buisson[0], 0);
+    g.fillStyle = 'rgba(255,255,255,.28)'; for(let i = 0; i <= d.n; i++){ g.beginPath(); g.ellipse(x + 5 + i * 16, sol - 13, 3.4, 2.2, -.5, 0, 7); g.fill(); }
+  } else if(d.type === 'nuageD'){
+    const x = d.x * T - camX, y = d.y * T; if(x > VW || x + 60 < 0) return;
+    nuageRond(x, y, .7 + d.n * .12, C.nuages || '#fff', th === 'nuit' ? '#262C60' : '#BFE2FF');
   } else if(d.type === 'sapinD'){
-    const x = d.x * T - camX; if(x > VW || x < -32) return;
-    g.fillStyle = th === 'neige' ? '#3E7A5A' : '#2E7A3A'; for(let k = 0; k < 3; k++){ g.beginPath(); g.moveTo(x + 16, sol - 46 + k * 10); g.lineTo(x + 2 + k * 2 - 2, sol - 22 + k * 8); g.lineTo(x + 30 - k * 2 + 2, sol - 22 + k * 8); g.fill(); }
-    if(th === 'neige'){ g.fillStyle = '#F4F8FF'; g.fillRect(x + 13, sol - 44, 6, 3); }
-    g.fillStyle = '#6A3E1A'; g.fillRect(x + 14, sol - 8, 4, 8);
+    const x = d.x * T - camX; if(x > VW || x < -34) return;
+    g.fillStyle = '#6A3E1A'; ronde(x + 13.5, sol - 9, 5, 9, 1.5); g.fill();
+    for(let k = 0; k < 3; k++){
+      const y0 = sol - 52 + k * 13, w = 13 + k * 5; g.fillStyle = k % 2 ? '#2C8A46' : '#37A455'; g.strokeStyle = g.fillStyle; g.lineWidth = 4;
+      g.beginPath(); g.moveTo(x + 16, y0); g.lineTo(x + 16 - w, y0 + 24); g.lineTo(x + 16 + w, y0 + 24); g.closePath(); g.fill(); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,.18)'; g.beginPath(); g.moveTo(x + 16, y0 + 2); g.lineTo(x + 16 - w * .45, y0 + 14); g.lineTo(x + 16, y0 + 12); g.closePath(); g.fill();
+      if(th === 'neige'){ g.fillStyle = '#F4F8FF'; g.beginPath(); g.moveTo(x + 16, y0 - 1); g.lineTo(x + 16 - w * .45, y0 + 11); g.quadraticCurveTo(x + 16 - w * .2, y0 + 8, x + 16, y0 + 12); g.quadraticCurveTo(x + 16 + w * .2, y0 + 8, x + 16 + w * .45, y0 + 11); g.closePath(); g.fill(); }
+    }
   } else if(d.type === 'refuge'){
-    const x = d.x * T - camX, y = (ROWS - 2) * T; if(x > VW + 10 || x < -100) return;
-    const TT = tuilesDe(th === 'nuit' || th === 'neige' ? th : 'plaine');
-    for(let j = 1; j <= 5; j++) for(let i = 0; i < 5; i++) if(j <= 2 || (i >= 1 && i <= 3)) g.drawImage(TT.brique, x + i * 16, y - j * 16);
-    for(let i = 0; i < 5; i += 2) g.drawImage(TT.brique, x + i * 16, y - 6 * 16 + 8, 16, 8);
-    g.fillStyle = '#000'; g.fillRect(x + 32, y - 28, 16, 28); g.beginPath(); g.arc(x + 40, y - 28, 8, Math.PI, 0); g.fill();
-    g.fillRect(x + 22, y - 62, 6, 10); g.fillRect(x + 52, y - 62, 6, 10);
-    g.fillStyle = '#D8282B'; g.fillRect(x + 38, y - 112, 2, 16); g.fillRect(x + 40, y - 112, 10, 6);
-  }
-}
-function nuageForme(x, y, n){
-  g.beginPath(); g.arc(x + 8, y + 16, 8, Math.PI * .5, Math.PI * 1.5);
-  for(let i = 0; i < n; i++) g.arc(x + 16 + i * 16, y + 9, 10, Math.PI, 0);
-  g.arc(x + 8 + n * 16 + 8, y + 16, 8, Math.PI * 1.5, Math.PI * .5); g.closePath(); g.fill();
-}
-function dessinerFond(th){
-  const C = SP.THEMES[th] || SP.THEMES.plaine;
-  g.fillStyle = Z.eau ? '#1E5AB8' : (Z.ciel || C.ciel); g.fillRect(0, 0, VW, HAUT);
-  if(Z.eau){ g.fillStyle = 'rgba(255,255,255,.25)'; for(let k = 0; k < 14; k++){ const x = ((k * 97 + frame * .3) % (VW + 40)) - 20, y = HAUT - ((frame * .5 + k * 53) % HAUT); g.beginPath(); g.arc(x, y, 2, 0, 6.29); g.fill(); } }
-  if(C.etoiles){ g.fillStyle = '#FFFFFF'; for(let k = 0; k < 40; k++){ const x = ((k * 131 - camX * .1) % VW + VW) % VW, y = (k * 47) % 140 + 10; g.fillRect(x, y, 1, 1); } }
-  // les montagnes au loin (elles défilent lentement)
-  if(C.loin && !Z.eau){
-    g.fillStyle = C.loin; const dec = camX * .25;
-    for(let k = -1; k < VW / 120 + 2; k++){ const x = k * 120 - (dec % 120); g.beginPath(); g.moveTo(x - 30, 200); g.lineTo(x + 40, 120 + (k & 1) * 20); g.lineTo(x + 110, 200); g.fill();
-      g.fillStyle = 'rgba(255,255,255,.75)'; g.beginPath(); g.moveTo(x + 40, 120 + (k & 1) * 20); g.lineTo(x + 30, 132 + (k & 1) * 20); g.lineTo(x + 52, 132 + (k & 1) * 20); g.fill(); g.fillStyle = C.loin; }
+    // le refuge de montagne : un petit chalet de pierre, avec un drapeau
+    const x = d.x * T - camX, y = sol; if(x > VW + 10 || x < -100) return;
+    const pierre = g.createLinearGradient(0, y - 56, 0, y); pierre.addColorStop(0, '#C8C0B4'); pierre.addColorStop(1, '#9A9286');
+    g.fillStyle = '#4A443C'; ronde(x - 1, y - 57, 82, 58, 6); g.fill(); g.fillStyle = pierre; ronde(x + 1, y - 55, 78, 56, 5); g.fill();
+    g.strokeStyle = 'rgba(60,54,46,.4)'; g.lineWidth = .8; g.beginPath(); for(let j = 1; j < 4; j++){ g.moveTo(x + 2, y - j * 14); g.lineTo(x + 78, y - j * 14); } g.stroke();
+    g.fillStyle = '#B8452E'; g.beginPath(); g.moveTo(x - 8, y - 54); g.lineTo(x + 40, y - 86); g.lineTo(x + 88, y - 54); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,.22)'; g.beginPath(); g.moveTo(x + 40, y - 86); g.lineTo(x + 88, y - 54); g.lineTo(x + 40, y - 54); g.closePath(); g.fillStyle = 'rgba(0,0,0,.14)'; g.fill();
+    g.fillStyle = '#3A220E'; g.beginPath(); g.moveTo(x + 30, y); g.lineTo(x + 30, y - 22); g.arc(x + 40, y - 22, 10, Math.PI, 0); g.lineTo(x + 50, y); g.closePath(); g.fill();
+    g.fillStyle = '#FFE08A'; ronde(x + 8, y - 40, 12, 12, 3); g.fill(); ronde(x + 60, y - 40, 12, 12, 3); g.fill();
+    g.fillStyle = '#6A3E1A'; g.fillRect(x + 39, y - 112, 2, 28); g.fillStyle = '#D8282B'; g.beginPath(); g.moveTo(x + 41, y - 112); g.lineTo(x + 56, y - 107); g.lineTo(x + 41, y - 101); g.closePath(); g.fill();
   }
 }
 function dessinerJoueur(){
@@ -733,24 +828,25 @@ function dessinerEntite(e){
   }
 }
 function dessinerHUD(){
-  g.font = '8px "Press Start 2P", monospace'; g.textBaseline = 'top';
-  const ombre = (t, x, y, c = '#fff') => { g.fillStyle = 'rgba(0,0,0,.55)'; g.fillText(t, x + 1, y + 1); g.fillStyle = c; g.fillText(t, x, y); };
-  const n = NIVEAUX[etat.niv], c1 = 12, c2 = Math.round(VW * .3), c3 = Math.round(VW * .55), c4 = Math.round(VW * .77);
-  ombre('PÉPIN', c1, 10); ombre(String(etat.score).padStart(6, '0'), c1, 20);
-  g.drawImage(SP.objets.piece[0], c2 - 3, 15, 12, 12); ombre('×' + String(etat.pieces).padStart(2, '0'), c2 + 9, 18);
-  ombre('MONDE', c3, 10); ombre(' ' + n.id, c3, 20);
-  ombre('TEMPS', c4, 10); ombre(etat.mode === 'intro' ? '' : ' ' + String(Math.max(0, etat.temps)).padStart(3, '0'), c4, 20, etat.temps < 100 && frame % 30 < 15 ? '#FFB0A8' : '#fff');
+  const n = NIVEAUX[etat.niv];
+  g.fillStyle = 'rgba(14,20,50,.40)'; ronde(5, 4, VW - 10, 28, 12); g.fill();
+  const c1 = 15, c2 = Math.round(VW * .3), c3 = Math.round(VW * .55), c4 = Math.round(VW * .77);
+  texteContour('PÉPIN', c1, 7, 6.5, '#C8DAFF', 'left', 'rgba(14,20,50,.6)'); texteContour(String(etat.score).padStart(6, '0'), c1, 14.5, 10.5);
+  g.drawImage(SP.objets.piece[0], c2 - 5, 10, 16, 16); texteContour('× ' + String(etat.pieces).padStart(2, '0'), c2 + 12, 12, 11);
+  texteContour('MONDE', c3, 7, 6.5, '#C8DAFF', 'left', 'rgba(14,20,50,.6)'); texteContour(n.id, c3, 14.5, 10.5);
+  texteContour('TEMPS', c4, 7, 6.5, '#C8DAFF', 'left', 'rgba(14,20,50,.6)');
+  if(etat.mode !== 'intro') texteContour(String(Math.max(0, etat.temps)).padStart(3, '0'), c4, 14.5, 10.5, etat.temps < 100 && frame % 30 < 15 ? '#FFB0A8' : '#fff');
 }
 function dessinerIntro(){
-  g.fillStyle = '#000'; g.fillRect(0, 0, VW, HAUT);
+  const d = g.createLinearGradient(0, 0, 0, HAUT); d.addColorStop(0, '#0F1A4A'); d.addColorStop(1, '#3552A8'); g.fillStyle = d; g.fillRect(0, 0, VW, HAUT);
+  g.fillStyle = '#fff'; for(let k = 0; k < 40; k++){ g.globalAlpha = .3 + .5 * Math.abs(Math.sin(frame / 50 + k)); g.beginPath(); g.arc((k * 131) % VW, (k * 47) % 170 + 8, .9, 0, 7); g.fill(); } g.globalAlpha = 1;
+  collines(0, 196, 8, .02, 1, '#1E2F78', '#10194A'); collines(0, 214, 6, .03, 3, '#16246A', '#0C1238');
   const n = NIVEAUX[etat.niv];
-  g.font = '8px "Press Start 2P", monospace'; g.textAlign = 'center'; g.fillStyle = '#fff'; g.textBaseline = 'top';
-  g.fillText(`MONDE ${n.id}`, VW / 2, 80); g.fillStyle = '#FFD23A'; g.fillText(n.nom.toUpperCase(), VW / 2, 96);
-  g.drawImage(SP.pepin.normal.petit.debout.d, VW / 2 - 28, 118); g.fillStyle = '#fff'; g.fillText(`×  ${etat.vies}`, VW / 2 + 10, 124);
-  g.textAlign = 'left';
+  texteContour(`MONDE ${n.id}`, VW / 2, 66, 12, '#BFD4FF', 'center'); texteContour(n.nom, VW / 2, 82, 19, '#FFD23A', 'center');
+  g.drawImage(SP.pepin.normal.petit.debout.d, VW / 2 - 40, 120, 32, 32); texteContour('×  ' + etat.vies, VW / 2 + 2, 126, 17, '#fff', 'left');
 }
 function dessiner(){
-  g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false;
+  g.setTransform(RES, 0, 0, RES, 0, 0); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
   if(!Z){ g.fillStyle = '#6CB4FF'; g.fillRect(0, 0, VW, HAUT); return; }
   if(etat.mode === 'intro'){ dessinerIntro(); dessinerHUD(); return; }
   const th = Z.theme;
@@ -774,14 +870,13 @@ function dessiner(){
   for(const p of PARTS){
     if(p.type === 'debris') g.drawImage(p.img, Math.round(p.x - cx), Math.round(p.y));
     else if(p.type === 'pieceVol') g.drawImage(SP.objets.piece[Math.floor(p.vie / 3) % 4], Math.round(p.x - cx), Math.round(p.y));
-    else if(p.type === 'explosion'){ g.fillStyle = p.vie % 4 < 2 ? '#FFE14A' : '#FF8A1E'; g.beginPath(); g.arc(p.x + 8 - cx, p.y + 8, 8 - p.vie / 2, 0, 6.29); g.fill(); }
-    else if(p.type === 'texte'){ g.font = '8px "Press Start 2P", monospace'; g.fillStyle = '#fff'; g.textBaseline = 'top'; g.fillText(p.txt, Math.round((p.x ?? J.x) - cx), Math.round(p.y ?? J.y)); }
+    else if(p.type === 'explosion'){ const r = Math.max(1, 8 - p.vie / 2), d = g.createRadialGradient(p.x + 8 - cx, p.y + 8, 0, p.x + 8 - cx, p.y + 8, r + 2); d.addColorStop(0, '#FFFBD0'); d.addColorStop(.5, p.vie % 4 < 2 ? '#FFE14A' : '#FF9A2A'); d.addColorStop(1, 'rgba(255,90,20,0)'); g.fillStyle = d; g.beginPath(); g.arc(p.x + 8 - cx, p.y + 8, r + 2, 0, 6.29); g.fill(); }
+    else if(p.type === 'texte'){ texteContour(p.txt, Math.round((p.x ?? J.x) - cx), Math.round((p.y ?? J.y) - (45 - p.vie) * .4), 8.5, '#FFF3B0'); }
   }
-  for(const tx of Z.textes){ g.font = '8px "Press Start 2P", monospace'; g.fillStyle = '#fff'; g.textBaseline = 'top'; g.fillText(tx.txt, tx.x * T - cx, tx.y * T); }
+  for(const tx of Z.textes){ const X = tx.x * T - cx; if(X < -140 || X > VW + 20) continue; g.font = `800 9px ${POLICE}`; const w = g.measureText(tx.txt).width + 16; g.fillStyle = 'rgba(14,20,50,.55)'; ronde(X - 4, tx.y * T - 3, w, 18, 9); g.fill(); texteContour(tx.txt, X + 4, tx.y * T, 9); g.textAlign = 'left'; }
   if(etat.mode === 'chateauFin' && etat.minuteur > 120){
-    g.font = '8px "Press Start 2P", monospace'; g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'top';
-    const lignes = (NIVEAUX[etat.niv].merci || 'Merci Pépin ! Mais le Yéti a filé vers le monde suivant…').toUpperCase().match(/.{1,26}(\s|$)/g) || [];
-    lignes.forEach((l, i) => g.fillText(l.trim(), VW / 2, 60 + i * 14)); g.textAlign = 'left';
+    const lignes = (NIVEAUX[etat.niv].merci || 'Merci Pépin ! Mais le Yéti a filé vers le monde suivant…').match(/.{1,30}(\s|$)/g) || [];
+    lignes.forEach((l, i) => texteContour(l.trim(), VW / 2, 60 + i * 16, 11, '#fff', 'center')); g.textAlign = 'left';
   }
   dessinerHUD();
 }
@@ -793,7 +888,8 @@ function taille(){
   let echelle;
   if(portrait){ echelle = Math.min(Wd / 256, (Hd - mh - 220) / HAUT); VW = Math.ceil(Wd / echelle); }
   else { echelle = (Hd - mh) / HAUT; VW = Math.ceil(Wd / echelle); }
-  cv.width = VW; cv.height = HAUT;
+  RES = clamp(Math.round(echelle * (window.devicePixelRatio || 1)), 2, 4);
+  cv.width = VW * RES; cv.height = HAUT * RES;
   cv.style.width = Math.ceil(VW * echelle) + 'px'; cv.style.height = Math.ceil(HAUT * echelle) + 'px';
   // en portrait, le jeu se place au milieu de la place laissée au-dessus de la manette
   cv.style.top = (portrait ? mh + Math.max(0, Math.floor((Hd - mh - 210 - HAUT * echelle) / 2)) : mh) + 'px';
@@ -841,7 +937,7 @@ document.addEventListener('visibilitychange', () => { if(document.hidden) pause(
 // la légende des objets dans l'aide
 $('aLegende').innerHTML = [['cepe', 'Le cèpe : Pépin grandit (il peut casser les briques, et encaisse un coup).'], ['piment', 'Le piment : Pépin lance des boules de feu avec B.'], ['etoile', 'L\'étoile des neiges : invincible un moment !'], ['coeur', 'Le cœur vert : une vie en plus.']]
   .map(([k]) => `<canvas data-o="${k}" width="16" height="16"></canvas><span></span>`).join('');
-[...$('aLegende').querySelectorAll('canvas')].forEach((c, i) => { const o = SP.objets[c.dataset.o]; c.getContext('2d').drawImage(Array.isArray(o) ? o[0] : o, 0, 0); c.nextElementSibling.textContent = [['cepe', 'Le cèpe : Pépin grandit (il peut casser les briques, et encaisse un coup).'], ['piment', 'Le piment : Pépin lance des boules de feu avec B.'], ['etoile', 'L\'étoile des neiges : invincible un moment !'], ['coeur', 'Le cœur vert : une vie en plus.']][i][1]; });
+[...$('aLegende').querySelectorAll('canvas')].forEach((c, i) => { const o = SP.objets[c.dataset.o]; { const im = Array.isArray(o) ? o[0] : o, cx = c.getContext('2d'); c.width = c.height = 96; cx.imageSmoothingQuality = 'high'; const hi = im.hi || im, pd = (im.pad || 0) * 6; cx.drawImage(hi, -pd, -pd, 96 + 2 * pd, 96 + 2 * pd); } c.nextElementSibling.textContent = [['cepe', 'Le cèpe : Pépin grandit (il peut casser les briques, et encaisse un coup).'], ['piment', 'Le piment : Pépin lance des boules de feu avec B.'], ['etoile', 'L\'étoile des neiges : invincible un moment !'], ['coeur', 'Le cœur vert : une vie en plus.']][i][1]; });
 
 // Pour les tests automatiques : photographier l'état de la partie, et y revenir
 function instantane(){
