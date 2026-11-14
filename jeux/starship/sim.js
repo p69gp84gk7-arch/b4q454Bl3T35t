@@ -54,7 +54,7 @@ window.STARSHIP_SIM = (() => {
   function nouveauVol(spec, niv, opts = {}){
     const p = params(niv), d = spec.depart || {}, v = { spec, p, niv, t:0, phase:d.phase || 'vol', x:d.x || 0, y:d.y || 0, vx:d.vx || 0, vy:d.vy || 0, th:d.th || 0, om:0, gaz:0,
       carb:d.carb ?? 1, chaleur:0, contrainte:0, attaque:.4, jauge:0, etage:1, enVol:(d.y || 0) > 5, atteint:false, apogee:0, manque:false, fini:null, cause:'', msgs:[], flipT:0, tempsAuto:0,
-      vent:(spec.vent ?? .5) * (opts.vent || 1), phi:(opts.phi || Math.random() * 6), action:false, gaz0:0, att:0, conso:0, budget:p.autonomie + (d.phase === 'programme' ? p.autonomieProg : 0), ecart:null, vImpact:null, angFinal:null };
+      vent:(spec.vent ?? .5) * (opts.vent || 1), phi:(opts.phi ?? Math.random() * 6), action:false, gaz0:0, att:0, conso:0, budget:p.autonomie + (d.phase === 'programme' ? p.autonomieProg : 0), ecart:null, vImpact:null, angFinal:null };
     if(v.phase === 'programme'){ v.carb = 1; v.y = 0; v.enVol = false; v.th = 0; }
     return v;
   }
