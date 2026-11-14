@@ -182,6 +182,17 @@ Sources : IGN Admin Express via france-geojson (Licence ouverte), U.S. Census Bu
 
 ## Draw Race
 
+### La course en 3D (v201)
+
+`jeux/drawrace/vue3d.js` (`DRAWRACE_3D`, Three.js, même style « dessin animé » que la Dameuse et Freeride : ombrage en trois tons, contours d'encre) remplace le circuit dessiné par un petit **diorama vivant**. 1 unité du jeu = 16 cm : la piste fait 12,8 m, une monoplace 4,8 m (avant, les voitures dessinées faisaient la moitié de la largeur de la piste : elles sont maintenant à l'échelle ; en 2D de secours elles passent de ×1,5 à ×1).
+
+- **Deux vues** sur le même canevas WebGL (`#cv3`, sous le canevas 2D `#cv`) : **dessus** (pendant le tracé : le diorama vu de dessus par une caméra à perspective faible, calée pour que le sol coïncide exactement avec le dessin 2D du tracé, qui se fait par-dessus sur le canevas transparent ; et pendant la course pour tout voir) et **suivi** (pendant la course, à un joueur : caméra qui suit une voiture, toujours de trois quarts : le cap est lissé donc la caméra balance dans les virages, la focale et la distance grandissent avec la vitesse). À plusieurs joueurs sur le même écran, la course commence en vue de dessus. Boutons à gauche : 🗺️ dessus/course, 📷 angle (3/4 arrière, 3/4 avant, hélicoptère), 👁️ voiture suivie ; toucher une étiquette de nom suit cette voiture.
+- **Le monde** (`donnees3D` dans la page, `charger` dans le module) : socle de terrain posé sur un bloc (strates de terre) ; piste (bord foncé, revêtement, lignes blanches, tirets, vibreurs rouge et blanc aux mêmes endroits que le dessin, damier de départ) ; au rallye, le revêtement, les ornières et les talus suivent le sol (goudron, terre, gravier, neige) ; eau avec plage ; décor tiré selon les poids de chaque `DECORS` (arbres, sapins, palmiers, rochers, dunes, maisons, immeubles aux fenêtres allumées la nuit, enseignes, bottes de foin, champs, grande roue, bateaux), agrandi ×2,1 pour que la forêt soit fournie ; tribunes avec toit et public coloré qui saute quand une voiture passe près de la ligne ; stands ; arche de départ avec les cinq feux synchronisés ; drapeaux qui flottent ; nuages qui dérivent ; lampadaires la nuit. Tout le décor fixe est fusionné en un seul maillage (avec son contour).
+- **Les voitures** : une par catégorie (`MODELES` : monoplace, voiture de rallye, prototype, tourisme), à la couleur du pilote, avec roues qui tournent et braquent, caisse qui penche dans les virages et plonge au freinage, feu de freinage, flamme du boost, ombre, mécaniciens autour de la voiture à l'arrêt au stand, fantôme translucide. Étiquettes de nom et de rang au-dessus des voitures.
+- **La météo** : pluie (traits qui tombent autour de la caméra), brouillard plus proche, ciel et lumière plus gris ; la fumée, la poussière, les traces de pneus viennent de `course.fumee` (petites sphères).
+- **Le tracé, dans le même style** : le trait de la trajectoire est maintenant un ruban d'encre avec la couleur de la vitesse (vert lent, rouge rapide) et un reflet (`ruban2d`), le départ en rond blanc, le doigt en rond jaune.
+- **Réglage** : l'option « 🎥 Course en 3D » du menu (`drawrace-3d`) ; sans WebGL ou désactivée, le jeu garde le circuit dessiné d'avant.
+
 ### Catégories de véhicules
 
 Quatre catégories, chacune avec ses circuits, ses pilotes, son championnat (`drawrace-championnat`, `drawrace-championnat-rallye`, `-endurance`, `-tourisme`) et ses records :
