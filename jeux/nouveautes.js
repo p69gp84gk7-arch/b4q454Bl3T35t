@@ -3,6 +3,7 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:190, type:'maj', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html', txt:"Un vrai but : 3 missions par jour et une grande quête par semaine (avec médailles), une chasse au trésor à la boussole chaud / froid, et une carte couverte de brouillard qui se lève là où tu passes, avec le pourcentage de ta commune découvert." },
   { v:189, type:'maj', jeu:'Dichotomie', ico:'🔎', lien:'jeux/panne.html', txt:"Un regard dessiné : en touchant un canon, on voit l'intérieur (borniers du dialogue, module, interrupteur, alimentation, répétiteur) et on fait les gestes en touchant les éléments. Nouveau : le testeur de câble (continuité : bon, coupé, abîmé, croisé), une courbe du signal depuis la tête, des jauges et un accueil plus illustré." },
   { v:188, type:'maj', jeu:'Rock Altitude', ico:'🎸', lien:'jeux/rock.html',
     txt:'En Moyen et en Difficile : des doubles notes (deux boutons en même temps) et des notes glissées. Une note glissée est une note longue dont la queue passe sur la bande voisine : garde le doigt posé et fais-le glisser sur le bouton d\'à côté.' },
