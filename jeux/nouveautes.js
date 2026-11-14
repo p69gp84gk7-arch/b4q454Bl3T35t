@@ -3,6 +3,7 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:193, type:'nouveau', jeu:'Starship : le programme', ico:'🚀', lien:'jeux/starship.html', txt:"Un nouveau jeu en deux temps, inspiré du programme Starship : à la base, tu gères les équipes, l'argent et les prototypes ; en vol, tu pilotes toi-même (saut, haute altitude, vol orbital, rattrapage du booster par la tour, retour du vaisseau, Mars). On apprend en explosant !" },
   { v:192, type:'maj', jeu:'Dichotomie', ico:'📶', lien:'', txt:"Correction : on dit « répéteur » (et non « répétiteur ») dans tout le jeu." },
   { v:191, type:'maj', jeu:'Les aventures de Pépin', ico:'🍄', lien:'jeux/pepin.html', txt:"Un nouveau look « dessin animé » lisse (plus de gros pixels : décors en plusieurs plans, dégradés, ombres) et des niveaux plus simples et plus progressifs : la Grotte (niveau 2) est refaite sans creux où l'on reste bloqué, le premier niveau explique les commandes, et le saut est un peu plus haut." },
   { v:190, type:'maj', jeu:'Arpenteur', ico:'🧭', lien:'jeux/arpenteur.html', txt:"Un vrai but : 3 missions par jour et une grande quête par semaine (avec médailles), une chasse au trésor à la boussole chaud / froid, et une carte couverte de brouillard qui se lève là où tu passes, avec le pourcentage de ta commune découvert." },

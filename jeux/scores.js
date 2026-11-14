@@ -264,6 +264,14 @@ window.AltitudeScores = (() => {
       ep('toise', 'tailles', 'Tailles parfaites', to.parfaits || 0, `${to.parfaits || 0} parfaite${to.parfaits > 1 ? 's' : ''}`);
       J.toise.stats = { 'Parties':to.parties, 'Défis du jour':to.defis || 0, 'Devinettes':to.devinettes || 0, 'Note moyenne':((to.total || 0) / Math.max(1, to.devinettes || 0)).toFixed(1).replace('.', ',') + ' / 10' };
     }
+    // Starship : jusqu'où le programme est allé, et les vols réussis
+    const st = lire('starship-records');
+    if(st && st.vols){
+      jeu('starship', 'Starship', '🚀');
+      ep('starship', 'jalon', 'Jalons franchis (sur 6)', st.jalon || 0, `${st.jalon || 0} / 6`);
+      ep('starship', 'vols', 'Vols réussis', st.reussis || 0, `${st.reussis || 0} vol${st.reussis > 1 ? 's' : ''}`);
+      J.starship.stats = { 'Vols':st.vols, 'Explosions':st.explosions || 0, 'Programmes menés à Mars':st.victoires || 0 };
+    }
     const nu = lire('nuancier-records');
     // (barème 2, plus sévère : les scores de l'ancien barème ne sont plus classés)
     if(nu && nu.parties && nu.bareme === 2 && nu.couleurs){
