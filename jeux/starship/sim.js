@@ -89,6 +89,9 @@ window.STARSHIP_SIM = (() => {
     const p = v.p, g = gDe(v), dir = e.dir != null ? clamp(e.dir, -1, 1) : (e.droite ? 1 : 0) - (e.gauche ? 1 : 0);
     // la poussée : avec un curseur (e.cible, de 0 à 1), le moteur suit le curseur ; avec un bouton, on monte en le tenant et on redescend en le relâchant
     if(v.carb > 0){ v.gaz = e.cible != null ? clamp(v.gaz + clamp(e.cible - v.gaz, -3 * dt, 2.4 * dt), 0, 1) : clamp(v.gaz + (e.gaz ? 2.2 : -3) * dt, 0, 1); } else v.gaz = 0;
+    // le plasma de la rentrée : il suit le flux de chaleur du moment (pas la chaleur accumulée) et s'éteint quand l'air s'allège ; la chaleur, elle, refroidit hors rentrée
+    v.plasma = Math.max(0, (v.plasma || 0) - 3.5 * dt);
+    if(v.phase === 'flip' || v.phase === 'vol') v.chaleur = Math.max(0, v.chaleur - 8 * dt);
     if(v.phase === 'programme') return pasProgramme(v, e, dt, dir);
     if(v.phase === 'capsule') return pasCapsule(v, e, dt, dir);
     if(v.phase === 'plat' || v.phase === 'flip') return pasChute(v, e, dt, dir);
@@ -165,7 +168,8 @@ window.STARSHIP_SIM = (() => {
     const ax = at * Math.sin(th) - kd * rho * sp * v.vx + ctrl + vent(v, v.y, v.t) * Math.sqrt(Math.min(1, rho * 4)), ay = at * Math.cos(th) - g - kd * rho * sp * v.vy;
     v.vx += ax * dt; v.vy += ay * dt; v.x += v.vx * dt; v.y += v.vy * dt;
     // la chaleur : l'air épais et la vitesse ; le bouclier la supporte jusqu'à une limite
-    v.chaleur = Math.max(0, v.chaleur + (rho * sp * sp * sp * 4.2e-7 * (1.25 - .45 * v.attaque) - 1.1) * dt);
+    const flux = rho * sp * sp * sp * 4.2e-7 * (1.25 - .45 * v.attaque); v.plasma = Math.max(v.plasma || 0, Math.min(1, flux / 9));
+    v.chaleur = Math.max(0, v.chaleur + (flux - 1.1) * dt);
     if(v.chaleur > v.p.resChaleur) return rud(v, 'Le bouclier thermique a lâché pendant la rentrée : le vaisseau a brûlé.');
     if(v.y <= 0 && v.vy < 0){ v.y = 0; return rud(v, 'Le vaisseau s\'est écrasé à plat, sans avoir eu le temps de se retourner.'); }
   }
@@ -184,7 +188,8 @@ window.STARSHIP_SIM = (() => {
     const auth = clamp(rho * sp * sp / 2500, .1, 1), ctrl = dir * (v.chute ? 1.6 : 4) * auth;
     const ax = -k * rho * sp * v.vx + ctrl + vent(v, v.y, v.t) * Math.sqrt(Math.min(1, rho * 4)), ay = -g - k * rho * sp * v.vy;
     v.vx += ax * dt; v.vy += ay * dt; v.x += v.vx * dt; v.y += v.vy * dt;
-    v.chaleur = Math.max(0, v.chaleur + (rho * sp * sp * sp * 3e-7 - 1.1) * dt);
+    const fluxC = rho * sp * sp * sp * 3e-7; v.plasma = Math.max(v.plasma || 0, Math.min(1, fluxC / 5));
+    v.chaleur = Math.max(0, v.chaleur + (fluxC - 1.1) * dt);
     if(v.chaleur > p.resChaleur) return rud(v, 'Le bouclier thermique de la capsule a lâché pendant la rentrée.');
     if(v.y <= 0 && v.vy < 0){
       v.y = 0; const vit = Math.abs(v.vy), ecart = Math.abs(v.x - v.spec.pad.x); v.ecart = ecart; v.vImpact = vit; v.angFinal = 0;

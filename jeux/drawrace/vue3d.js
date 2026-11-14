@@ -358,7 +358,7 @@ window.DRAWRACE_3D = (() => {
   }
   // la caméra : de dessus (exactement le cadre du dessin du tracé) ou de suivi, toujours de trois quarts
   // off : l'angle de la caméra autour de la voiture (0 = derrière, 180 = devant) ; lag : la caméra traîne un peu derrière (pas quand elle est devant, sinon la voiture la rattrape)
-  const PRESETS = [{ d:7.4, h:2.3, off:148, ahead:.6, fov:54, lag:false }, { d:7.6, h:2.7, off:36, ahead:2.8, fov:54, lag:true }, { d:18, h:12, off:30, ahead:5, fov:50, lag:true }];
+  const PRESETS = [{ d:12.5, h:3.8, off:148, ahead:.8, fov:52, lag:false }, { d:13, h:4.4, off:36, ahead:3.5, fov:52, lag:true }, { d:26, h:17, off:30, ahead:6, fov:50, lag:true }];
   function majCamera(dt){
     if(vue === 'dessus' || !E.voitures.length){
       cam.fov = 30; const hh = (H / 2) / Math.tan(cam.fov * Math.PI / 360); cam.position.set(W / 2, hh, H / 2); cam.up.set(0, 0, -1); cam.lookAt(W / 2, 0, H / 2); cam.updateProjectionMatrix(); cam0.init = true; return;
