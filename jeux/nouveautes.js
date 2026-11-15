@@ -3,6 +3,8 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:211, type:'maj', jeu:'Draw Race', ico:'📺', lien:'jeux/drawrace.html', txt:"La caméra fixe de la course est un peu plus haute : on voit mieux la piste de dessus." },
+  { v:210, type:'maj', jeu:'Draw Race', ico:'📺', lien:'jeux/drawrace.html', txt:"La caméra fixe de la course est maintenant sur le bord du circuit (comme une vraie caméra de télévision), plus au milieu : elle suit ta voiture depuis le côté." },
   { v:209, type:'maj', jeu:'Escale', ico:'💶', lien:'jeux/escale.html', txt:"Les mini-jeux rapportent maintenant de l'argent à l'aéroport : une prime à la fin de chaque service (passeports, rayons X, portique, douane, tri des bagages), pleine toutes les 4 heures de jeu. Nouveau mini-jeu : le dégivrage, où l'on glisse le doigt sur les avions pour enlever la glace sans toucher aux moteurs. Tous les mini-jeux sont dans le menu ☰ avec l'état de leur prime." },
   { v:208, type:'maj', jeu:'Draw Race', ico:'📺', lien:'jeux/drawrace.html', txt:"Nouvelle caméra par défaut : une caméra de télévision sur un point fixe, au milieu du circuit, qui tourne pour suivre ta voiture avec un champ assez large pour voir environ la moitié du circuit. Le bouton 📷 permet de revenir aux autres vues." },
   { v:207, type:'maj', jeu:'Draw Race', ico:'🌿', lien:'jeux/drawrace.html', txt:"Plus de pastilles de nom au-dessus des voitures en course, et des couleurs de décor plus douces (herbe, arbres, bâtiments, ciel). Les immeubles sont moins hauts et les nuages ne passent plus devant la caméra." },
