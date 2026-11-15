@@ -3,6 +3,7 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:213, type:'maj', jeu:'Starship : le programme', ico:'🔥', lien:'jeux/starship.html', txt:"La rentrée dans l'atmosphère arrive : à 27 000 km/h, règle l'angle d'attaque pour ne pas brûler ni rebondir ! Et un nouveau niveau, la Mission complète : décollage, séparation, retour du propulseur dans les bras de la tour, puis le vaisseau en orbite, la rentrée, le retournement et le rattrapage." },
   { v:212, type:'maj', jeu:'Starship : le programme', ico:'🎯', lien:'jeux/starship.html', txt:"Commandes d'angle bien plus faciles : le curseur de direction choisit l'angle du vaisseau (plus de dosage), il le tient tout seul et revient droit quand tu lâches. Au vol orbital, le vaisseau suit seul la trajectoire. Les bras de la tour sont plus tolérants et un triangle vert montre où tu vas arriver (rouge si tu rates la zone)." },
   { v:211, type:'maj', jeu:'Draw Race', ico:'📺', lien:'jeux/drawrace.html', txt:"La caméra fixe de la course est un peu plus haute : on voit mieux la piste de dessus." },
   { v:210, type:'maj', jeu:'Draw Race', ico:'📺', lien:'jeux/drawrace.html', txt:"La caméra fixe de la course est maintenant sur le bord du circuit (comme une vraie caméra de télévision), plus au milieu : elle suit ta voiture depuis le côté." },
