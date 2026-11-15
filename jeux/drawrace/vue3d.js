@@ -398,7 +398,7 @@ window.DRAWRACE_3D = (() => {
   // Les vues. « Course » : une vue haute et inclinée, loin derrière la voiture, comme dans les jeux de dessin de trajectoire (fausse 3D : la voiture monte vers le haut de l'écran) ;
   // « Carte » : la même vue haute, mais le nord reste en haut (comme le tracé) ; « 3/4 face » et « 3/4 arrière » : plus près de la voiture.
   // off : l'angle de la caméra autour de la voiture (0 = derrière, 180 = devant) ; lag : la caméra traîne un peu (pas quand elle est devant, sinon la voiture la rattrape)
-  const PRESETS = [{ nom:'Fixe', point:true, h:34, large:110, fov:50, lag:true }, { nom:'Course', d:48, h:66, off:0, ahead:16, fov:44, lag:true, k:3.4 }, { nom:'Carte', d:48, h:68, off:0, ahead:16, fov:44, lag:true, fixe:true }, { nom:'3/4 face', d:12.5, h:3.8, off:148, ahead:.8, fov:52, lag:false, k:5 }, { nom:'3/4 arrière', d:13, h:4.4, off:36, ahead:3.5, fov:52, lag:true, k:5 }];
+  const PRESETS = [{ nom:'Fixe', point:true, h:52, large:110, fov:50, lag:true }, { nom:'Course', d:48, h:66, off:0, ahead:16, fov:44, lag:true, k:3.4 }, { nom:'Carte', d:48, h:68, off:0, ahead:16, fov:44, lag:true, fixe:true }, { nom:'3/4 face', d:12.5, h:3.8, off:148, ahead:.8, fov:52, lag:false, k:5 }, { nom:'3/4 arrière', d:13, h:4.4, off:36, ahead:3.5, fov:52, lag:true, k:5 }];
   function majCamera(dt){
     if(vue === 'dessus' || !E.voitures.length){
       cam.fov = 30; const hh = (H / 2) / Math.tan(cam.fov * Math.PI / 360); cam.position.set(W / 2, hh, H / 2); cam.up.set(0, 0, -1); cam.lookAt(W / 2, 0, H / 2); cam.updateProjectionMatrix(); cam0.init = true; return;
