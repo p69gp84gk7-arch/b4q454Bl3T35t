@@ -136,7 +136,9 @@ function creerUi(){
   ui = { el, titre:el.querySelector('.mTitre'), temps:el.querySelector('.mTemps'), score:el.querySelector('.mScore'), vies:el.querySelector('.mVies'), consigne:el.querySelector('.mConsigne'), msg:el.querySelector('.mMsg'), bas:el.querySelector('.mBas'), carte:el.querySelector('.mCarte') };
   el.querySelector('.mQuit').onclick = () => fermer();
 }
-let tMsg = 0;
+let tMsg = 0, surFin = null;
+// la prime de fin de service : l'aéroport la crédite (surFin est donné par la page) ; elle n'est versée qu'une fois par service
+function primer(){ if(!J || J.paye || !surFin) return null; J.paye = true; return J.prime = surFin(J.type, J.score, J.bons, J.total); }
 function dire(txt, type = 'info', duree = 2.8){ ui.msg.textContent = txt; ui.msg.className = 'mMsg vu ' + type; tMsg = duree; }
 function consigne(txt){ ui.consigne.textContent = txt; ui.consigne.hidden = !txt; }
 function boutons(l){
@@ -162,7 +164,7 @@ function carte(html, btns){
 function accueillir(type){
   const G = JEUX[type], R = lire('escale-controle', {})[type];
   J = null; boutons([]); consigne(''); ui.msg.className = 'mMsg';
-  carte(`<h2>${G.ico} ${G.titre}</h2>${G.regles}<p class="mRec">${R ? `🏆 Ton record : <b>${R.best}</b> points (${R.parties} service${R.parties > 1 ? 's' : ''})` : 'Un service dure 3 minutes. 3 erreurs, et c\'est fini.'}</p>`,
+  carte(`<h2>${G.ico} ${G.titre}</h2>${G.regles}<p class="mRec">${R ? `🏆 Ton record : <b>${R.best}</b> points (${R.parties} service${R.parties > 1 ? 's' : ''})` : 'Un service dure 3 minutes. 3 erreurs, et c\'est fini.'}</p><p class="mRec">💶 Bien jouer rapporte une <b>prime</b> à l'aéroport.</p>`,
     [{ t:'▶️ Prendre mon poste', cls:'prim', fn:() => commencer(type) }, ...autrePoste(), { t:'↩️ Retour à l\'aéroport', fn:() => fermer() }]);
 }
 // aux départs, on choisit son poste de travail : passeports, rayons X ou portique
@@ -195,9 +197,10 @@ function noter(){
 function finir(pourquoi){
   if(!J || J.fini) return;
   J.fini = true; boutons([]); for(const d of docs) d.cible = false;
-  const R = noter(), record = J.score > R.best;
+  const R = noter(), record = J.score > R.best, pr = primer();
   const G = JEUX[J.type];
-  setTimeout(() => carte(`<h2>${G.ico} Fin du service</h2><p>${pourquoi}</p><p class="mGros">⭐ ${J.score} points</p><p>${J.bons} contrôle${J.bons > 1 ? 's' : ''} réussi${J.bons > 1 ? 's' : ''} sur ${J.total}.</p><p class="mRec">${record ? '🏆 <b>Nouveau record !</b>' : `🏆 Record : <b>${R.best}</b>`}</p>`,
+  const prime = pr && pr.gain ? `<p class="mPrime">💶 Prime pour l'aéroport : <b>+${pr.gain.toLocaleString('fr-FR')} €</b><br><small>${pr.pret ? 'Prime pleine. Le prochain service payera plein tarif dans ' + Math.round(240 / 60) + ' h de jeu.' : 'Prime réduite : ce poste a déjà rapporté récemment.'}</small></p>` : '';
+  setTimeout(() => carte(`<h2>${G.ico} Fin du service</h2><p>${pourquoi}</p><p class="mGros">⭐ ${J.score} points</p><p>${J.bons} contrôle${J.bons > 1 ? 's' : ''} réussi${J.bons > 1 ? 's' : ''} sur ${J.total}.</p><p class="mRec">${record ? '🏆 <b>Nouveau record !</b>' : `🏆 Record : <b>${R.best}</b>`}</p>${prime}`,
     [{ t:'🔁 Rejouer', cls:'prim', fn:() => commencer(J.type) }, ...autrePoste(), { t:'↩️ Retour à l\'aéroport', fn:() => fermer() }]), 900);
 }
 
@@ -1106,6 +1109,107 @@ JEUX.bagages = (() => {
   };
 })();
 
+
+/* =====================================================================================================
+   6) LE DÉGIVRAGE : balayer le doigt sur l'avion pour enlever la glace et la neige avant le décollage
+   ===================================================================================================== */
+JEUX.degivrage = (() => {
+  let gr = null, avion = null, plaques = [], zones = [], jets = [], tenu = null, etat = 'vol', tEtat = 0, liquide = 100, tAvion = 0, tMax = 40, n = 0, dernierMoteur = -9, nuage = 0, txtC = '';
+  const GLACE = 0xFFFFFF;
+  function pieces(){
+    const P = [], blanc = 0x9DB0C6, gris = 0x6F8197, bleu = 0x1B6EC2, noir = 0x1E2430;
+    P.push({ f:'cyl', d:[.62, .62, 7.4, 16], p:[0, .95, 0], r:[0, 0, Math.PI / 2], c:blanc }, { f:'cone', d:[.62, 1.5, 16], p:[4.4, .95, 0], r:[0, 0, -Math.PI / 2], c:blanc }, { f:'cone', d:[.62, 2.2, 16], p:[-4.6, 1.15, 0], r:[0, 0, Math.PI / 2], s:[1, 1, 1], c:blanc },
+      { f:'boite', d:[7.2, .12, .1], p:[0, .85, .6], c:bleu }, { f:'boite', d:[7.2, .12, .1], p:[0, .85, -.6], c:bleu },                                                   // la bande de la compagnie
+      { f:'boite', d:[1.1, 1.9, .1], p:[-4.1, 2.0, 0], r:[0, 0, -.38], c:bleu }, { f:'boite', d:[.9, .1, 3.2], p:[-4.2, 1.35, 0], c:gris },                                      // la dérive et le plan horizontal
+      { f:'boite', d:[1.5, .1, .9], p:[.4, .75, 2.9], r:[0, -.5, 0], c:blanc }, { f:'boite', d:[1.5, .1, .9], p:[.4, .75, -2.9], r:[0, .5, 0], c:blanc },
+      { f:'boite', d:[2.6, .16, 2.6], p:[.2, .75, 2.1], r:[0, -.5, 0], c:blanc }, { f:'boite', d:[2.6, .16, 2.6], p:[.2, .75, -2.1], r:[0, .5, 0], c:blanc },
+      { f:'boite', d:[.5, .22, .02], p:[3.35, 1.25, .56], c:noir }, { f:'boite', d:[.5, .22, .02], p:[3.35, 1.25, -.56], c:noir });                                           // les vitres du cockpit
+    for(const z of [1, -1]) P.push({ f:'cyl', d:[.4, .36, 1.5, 14], p:[1.0, .35, 2.7 * z], r:[0, 0, Math.PI / 2], c:gris }, { f:'cyl', d:[.2, .2, .1, 12], p:[1.8, .35, 2.7 * z], r:[0, 0, Math.PI / 2], c:noir });   // les moteurs
+    return P;
+  }
+  // les surfaces où on peut arroser, et les zones interdites (moteurs, vitres du cockpit) : des boîtes invisibles pour le toucher
+  const SURFACES = [['corps', [0, .95, 0], [7.4, 1.25, 1.25]], ['aile', [.2, .78, 2.1], [2.8, .3, 2.9]], ['aile', [.2, .78, -2.1], [2.8, .3, 2.9]], ['queue', [-4.2, 1.5, 0], [1.4, 1.6, 3.2]]];
+  const INTERDITES = [['moteur', [1.0, .35, 2.7], [1.9, .9, .9]], ['moteur', [1.0, .35, -2.7], [1.9, .9, .9]], ['vitre', [3.35, 1.25, 0], [.7, .45, 1.3]]];
+  function construire(){
+    gr = new T3.Group(); lumieres(gr);
+    const sol_ = []; for(let x = -8; x < 8; x++) for(let z = -8; z < 6; z++) sol_.push({ f:'boite', d:[1, .02, 1], p:[x + .5, -.01, z + .5], c:(x + z) & 1 ? 0x9AA3AE : 0xA5ADB8 });
+    gr.add(new T3.Mesh(K.fusion(sol_), K.MAT));
+    gr.add(bloc([{ f:'boite', d:[16, 3, .2], p:[0, 1.5, -6], c:0xDDE3EA }, { f:'boite', d:[16, .3, .22], p:[0, 2.9, -5.98], c:0x4F7CAC }], .02));
+    const t = toile(1024, 160); rr(t.g, 6, 6, 1012, 148, 24); t.g.fillStyle = '#4F7CAC'; t.g.fill(); ecrit(t.g, 'Aire de dégivrage', 512, 84, 84, '#FFFFFF', 900, 'center', 960); const m = plan(3.4, .53, t.tex); m.position.set(0, 2.2, -5.86); gr.add(m);
+    // le camion de dégivrage, à droite : sa nacelle et sa lance
+    gr.add(bloc([{ f:'boite', d:[1.6, .9, 3], p:[5.5, .75, 1.5], c:0xF2C230 }, { f:'boite', d:[1.5, .8, 1.1], p:[5.5, 1.5, 2.4], c:0xFFD84D }, { f:'cyl', d:[.15, .15, 2.4, 8], p:[5, 2, 1.4], r:[0, 0, 1.1], c:0x5C6672 }, { f:'boite', d:[.7, .6, .7], p:[4.2, 3.2, 1.4], c:0xD7263D }], .02));
+    for(const [x, z] of [[5, 0.4], [6, 0.4], [5, 2.6], [6, 2.6]]) gr.add(bloc([{ f:'cyl', d:[.3, .3, .3, 12], p:[x, .3, z], r:[Math.PI / 2, 0, 0], c:0x1E2430 }], .015));
+    scene.add(gr);
+  }
+  function jetAvion(){
+    if(avion){ jeter(avion); for(const z of zones){ const i = cliquables.indexOf(z); if(i >= 0) cliquables.splice(i, 1); } }
+    zones = []; plaques = [];
+    avion = new T3.Group(); avion.add(bloc(pieces(), .03)); gr.add(avion);
+    for(const [type, p, d] of [...SURFACES, ...INTERDITES]){ const z = new T3.Mesh(new T3.BoxGeometry(...d), new T3.MeshBasicMaterial({ visible:false })); z.position.set(...p); z.userData.type = type; avion.add(z); zones.push(z); cliquables.push(z); }
+    // la glace : de plus en plus de plaques à chaque avion
+    const nb = Math.min(30, 10 + n * 3);
+    for(let i = 0; i < nb; i++){
+      const s = SURFACES[i % SURFACES.length], [type, p, d] = s, r = hasard(.28, .55);
+      const x = p[0] + hasard(-d[0] / 2.2, d[0] / 2.2), z = p[2] + hasard(-d[2] / 2.2, d[2] / 2.2), y = type === 'corps' ? p[1] + .55 + .0 : type === 'queue' ? 2.0 : .92;
+      if(type === 'corps' && Math.abs(z) > .45) continue;
+      const m = new T3.Mesh(new T3.IcosahedronGeometry(r, 1), new T3.MeshToonMaterial({ color:GLACE, emissive:0x5A7FA8, gradientMap:K.MAT.gradientMap })); m.scale.set(1.3, .35, 1.3);
+      m.position.set(x, type === 'queue' ? 1.5 + hasard(-.5, .5) : y + (type === 'aile' ? 0 : 0), type === 'queue' ? hasard(-.15, .15) : z);
+      if(type === 'queue') m.scale.set(.9, 1.1, .3);
+      avion.add(m); plaques.push({ m, r, propre:false, t:0, base:m.scale.clone() });
+    }
+    if(!plaques.length) plaques.push({ m:new T3.Group(), r:.3, propre:true, t:1, base:new T3.Vector3(1, 1, 1) });
+    avion.position.set(-14, 0, 0); avion.rotation.y = 0; etat = 'entree'; tEtat = 0; liquide = 100; tAvion = 0; tMax = Math.max(22, 44 - n * 2);
+  }
+  function eclabousse(p){ jets.push({ p:p.clone(), v:new T3.Vector3(hasard(-1, 1), hasard(1.2, 2.6), hasard(-1, 1)), t:0 }); if(jets.length > 40) jets.shift(); }
+  const jetsG = () => { if(!gr.userData.jets){ gr.userData.jets = new T3.Group(); gr.add(gr.userData.jets); } return gr.userData.jets; };
+  function arroser(dt){
+    if(!tenu || etat !== 'vol') return;
+    const r = rayon(tenu.x, tenu.y), hits = r.intersectObjects(zones, false); if(!hits.length) return;
+    const h = hits[0], type = h.object.userData.type, pt = h.point;
+    if(type === 'moteur' || type === 'vitre'){
+      if(tAvion - dernierMoteur > 1.6){ dernierMoteur = tAvion; faute(type === 'moteur' ? 'Pas sur le moteur ! Le liquide de dégivrage l\'abîme.' : 'Pas sur le cockpit : tu aveugles le pilote !'); }
+      return;
+    }
+    // le jet : il enlève la glace autour du point touché, et consomme du liquide (plus si on arrose dans le vide)
+    let touche = false; const local = avion.worldToLocal(pt.clone());
+    for(const q of plaques){ if(q.propre) continue; if(q.m.position.distanceTo(local) < .85 + q.r * .6){ q.propre = true; q.t = 0; touche = true; J.score += 12; majHaut(); } }
+    liquide = Math.max(0, liquide - (touche ? 3.5 : 7) * dt);
+    if(Math.random() < dt * 40) eclabousse(pt);
+    if(liquide <= 0 && !J.fini){ liquide = 0; tenu = null; faute('Plus de liquide : l\'avion repart givré. Arrose seulement les plaques de glace !'); if(!J.fini) suite(false); }
+  }
+  function suite(ok){ etat = 'sortie'; tEtat = 0; if(ok) tenu = null; }
+  return {
+    ico:'🧊', titre:'Dégivrage des avions',
+    regles:`<p>Il a neigé : les avions ont de la <b>glace</b> sur le corps, les ailes et la queue. Dégivre-les avant leur créneau de décollage.</p><ul><li>👆 <b>Appuie et glisse</b> le doigt sur l'avion pour arroser : la glace blanche disparaît.</li><li>💧 Le liquide est limité : arroser dans le vide en gaspille plus.</li><li>⛔ Jamais sur les <b>moteurs</b> ni sur les <b>vitres</b> du cockpit.</li><li>⏱ Chaque avion a un créneau : plus tu es rapide, plus la prime est belle.</li></ul>`,
+    camera:asp => asp < .9 ? recul([0, .9, 0], [-1.5, 7, 6.5], 58, asp, 10.5, 9) : recul([0, .8, 0], [-1.2, 6.2, 5.6], 52, asp, 10.5, 10),
+    montrer(){ if(!gr) construire(); gr.visible = true; },
+    cacher(){ if(gr) gr.visible = false; },
+    debut(){ n = 0; tenu = null; dernierMoteur = -9; if(!gr) construire(); for(const j of jets) j.t = 9; jetAvion(); boutons([]); consigne('Appuie et glisse sur l\'avion pour enlever la glace.'); },
+    appui(sx, sy){ tenu = { x:sx, y:sy }; },
+    glisser(sx, sy){ if(tenu){ tenu.x = sx; tenu.y = sy; } },
+    lacher(){ tenu = null; },
+    maj(dt){
+      tEtat += dt;
+      if(etat === 'entree'){ avion.position.x = lerp(-14, 0, lisse(clamp(tEtat / 1.4, 0, 1))); if(tEtat > 1.4) etat = 'vol'; }
+      else if(etat === 'vol'){
+        tAvion += dt; arroser(dt);
+        const restantes = plaques.filter(q => !q.propre).length;
+        const txt = `Avion ${n + 1} · ${Math.max(0, Math.ceil(tMax - tAvion))} s · 💧 ${Math.round(liquide)} % · 🧊 ${restantes}`;
+        if(txt !== txtC){ txtC = txt; consigne(txt); }
+        if(!restantes){ const rapide = Math.round(clamp((tMax - tAvion) / tMax, 0, 1) * 80), eco = Math.round(liquide * .6); bon(100 + rapide + eco, `Avion dégivré ! Rapidité +${rapide}, liquide économisé +${eco}.`); n++; suite(true); }
+        else if(tAvion > tMax){ faute('Créneau manqué : l\'avion repart avec de la glace ! Il a perdu sa place au décollage.'); if(!J.fini) suite(false); }
+      }
+      else if(etat === 'sortie'){ avion.position.x = lerp(0, 14, lisse(clamp(tEtat / 1.2, 0, 1))); if(tEtat > 1.2 && !J.fini) jetAvion(); }
+      for(const q of plaques){ if(q.propre && q.t < 1){ q.t = Math.min(1, q.t + dt * 4); q.m.scale.set(q.base.x * (1 - q.t), q.base.y * (1 - q.t), q.base.z * (1 - q.t)); } }
+      // les éclaboussures
+      const jg = jetsG(); while(jg.children.length < jets.length){ const m = new T3.Mesh(new T3.IcosahedronGeometry(.09, 0), new T3.MeshBasicMaterial({ color:0x9FD8FF })); jg.add(m); }
+      jets.forEach((j, i) => { j.t += dt; j.v.y -= 6 * dt; j.p.addScaledVector(j.v, dt); const m = jg.children[i]; m.position.copy(j.p); m.visible = j.t < .5; });
+      jets = jets.filter(j => j.t < .6); for(let i = jets.length; i < jg.children.length; i++) jg.children[i].visible = false;
+    },
+    _etat:() => ({ etat, n, liquide, restantes:plaques.filter(q => !q.propre).length }),
+  };
+})();
+
 /* ---------- Ouvrir, fermer, la boucle, les touches ---------- */
 let enCours = null;
 function ouvrirJeu(type, fin){
@@ -1123,7 +1227,7 @@ function ouvrirJeu(type, fin){
 function fermer(){
   if(!actif) return;
   actif = false; ui.el.hidden = true; ui.carte.hidden = true;
-  if(J && !J.fini && J.total > 0){ J.fini = true; noter(); }
+  if(J && !J.fini && J.total > 0){ J.fini = true; noter(); primer(); }
   J = null;
   for(const k in JEUX) JEUX[k].cacher();
   const f = quitter; quitter = null; if(f) f();
@@ -1157,5 +1261,10 @@ function toucher(sx, sy){
   if(hit && hit.object.userData.clic){ hit.object.userData.clic(hit); return; }
   for(const d of docs) d.cible = false;
 }
-return { ouvrir:ouvrirJeu, fermer, maj, toucher, taille, JEUX, _projeter:(x, y, z) => { const v = new T3.Vector3(x, y, z).project(cam); return [(v.x + 1) / 2 * L, (1 - v.y) / 2 * H]; }, get actif(){ return actif; }, get etat(){ return J; }, _jeu:t => JEUX[t]._etat() };
+// le doigt qui reste appuyé et glisse (le dégivrage) : le jeu en cours reçoit la position
+function appui(sx, sy){ const g = JEUX[enCours]; if(actif && J && !J.fini && g && g.appui) g.appui(sx, sy); }
+function glisser(sx, sy){ const g = JEUX[enCours]; if(actif && J && !J.fini && g && g.glisser) g.glisser(sx, sy); }
+function lacher(){ const g = JEUX[enCours]; if(actif && g && g.lacher) g.lacher(); }
+const rayon = (sx, sy) => { const r = new T3.Raycaster(); r.setFromCamera(new T3.Vector2(sx / L * 2 - 1, -(sy / H) * 2 + 1), cam); return r; };
+return { ouvrir:ouvrirJeu, fermer, maj, toucher, appui, glisser, lacher, set surFin(f){ surFin = f; }, taille, JEUX, _projeter:(x, y, z) => { const v = new T3.Vector3(x, y, z).project(cam); return [(v.x + 1) / 2 * L, (1 - v.y) / 2 * H]; }, get actif(){ return actif; }, get etat(){ return J; }, _jeu:t => JEUX[t]._etat() };
 })();

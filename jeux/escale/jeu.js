@@ -125,19 +125,20 @@ $('objectif').onclick = () => ouvrir('menu');
 /* ---------- Toucher, glisser, pincer, tourner ---------- */
 const doigts = new Map(); let geste = null;
 const cv = $('cv3d');
-cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); doigts.set(e.pointerId, { x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, t0:performance.now() }); if(doigts.size === 2) geste = etat2(); });
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); doigts.set(e.pointerId, { x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, t0:performance.now() }); if(C.actif) C.appui(e.clientX, e.clientY); if(doigts.size === 2) geste = etat2(); });
 cv.addEventListener('pointermove', e => {
-  const d = doigts.get(e.pointerId); if(!d || C.actif) return;
+  const d = doigts.get(e.pointerId); if(!d) return;
+  if(C.actif){ d.x = e.clientX; d.y = e.clientY; C.glisser(e.clientX, e.clientY); return; }
   const px = d.x, py = d.y; d.x = e.clientX; d.y = e.clientY;
   if(doigts.size === 1) S3.deplacer(d.x - px, d.y - py);
   else if(doigts.size === 2 && geste){ const g = etat2(); S3.zoomer(geste.dist / Math.max(20, g.dist)); S3.tourner(g.ang - geste.ang); geste = g; }
 });
 const lacher = e => {
-  const d = doigts.get(e.pointerId); doigts.delete(e.pointerId);
+  const d = doigts.get(e.pointerId); doigts.delete(e.pointerId); if(C.actif) C.lacher();
   if(doigts.size < 2) geste = null;
   if(d && doigts.size === 0 && Math.hypot(d.x - d.x0, d.y - d.y0) < 8 && performance.now() - d.t0 < 400) toucher(d.x, d.y);
 };
-cv.addEventListener('pointerup', lacher); cv.addEventListener('pointercancel', e => { doigts.delete(e.pointerId); geste = null; });
+cv.addEventListener('pointerup', lacher); cv.addEventListener('pointercancel', e => { doigts.delete(e.pointerId); geste = null; if(C.actif) C.lacher(); });
 cv.addEventListener('wheel', e => { e.preventDefault(); if(C.actif) return; S3.zoomer(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive:false });
 function etat2(){ const [a, b] = [...doigts.values()]; return { dist:Math.hypot(a.x - b.x, a.y - b.y), ang:Math.atan2(b.y - a.y, b.x - a.x) }; }
 function toucher(x, y){
@@ -170,6 +171,7 @@ function lancerControle(type){
   type = POSTES_JEU[type] || type;
   if(!C.ouvrir(type, () => { montrerJeu(true); majHud(); majObjectif(); avant = performance.now(); })) montrerJeu(true);
 }
+C.surFin = (type, score, bons, total) => { const r = M.primeControle(P, A, type, score, bons, total); if(r.gain) sauver(); return r; };
 $('cPlus').onclick = () => S3.zoomer(1 / 1.35); $('cMoins').onclick = () => S3.zoomer(1.35); $('cTourne').onclick = () => S3.tourner(Math.PI / 4); $('cCentre').onclick = () => { S3.centrer(A); };
 addEventListener('keydown', e => { if(!enJeu || C.actif) return; if(e.key === ' '){ vitesse = vitesse ? 0 : 1; majVitesse(); e.preventDefault(); } });
 
@@ -247,8 +249,8 @@ function pPlanning(box, complet){
   else if(A.contrats.some(c => c.porte != null)) h += `<p class="leg">Glisse un vol dans la grille pour le déplacer — d'une heure à l'autre, d'une porte à l'autre. Touche-le pour le régler à la minute.</p>`;
   h += `<div class="planning" id="planning"><div class="grille" style="width:${46 + 1440 * PX_MIN}px">${grille()}</div></div>`;
   if(selContrat){ const c = A.contrats.find(x => x.id === selContrat); if(c) h += `<div class="bloc">${carteContrat(c, false)}</div>`; else selContrat = null; }
-  h += `<div class="bloc"><h3>Aujourd'hui</h3><div class="stats"><div><b>${J.vols}</b>vols partis</div><div><b>${J.retards}</b>retards</div><div><b>${court(J.revenus + J.commerce + J.services - J.penalites - J.achats)}</b>gagnés</div><div><b>${J.nSatisf ? Math.round(J.satisf / J.nSatisf) + ' %' : '—'}</b>satisfaction</div></div>
-    ${b ? `<h3 style="margin-top:6px">Hier (jour ${b.jour})</h3><p class="leg">${b.vols} vols · ${b.retards} retards · redevances ${court(b.revenus)} · services ${court(b.services || 0)} · commerces ${court(b.commerce)} · carburant acheté ${court(b.achats || 0)} · pénalités ${court(b.penalites)} · entretien ${court(b.depenses)}${b.credit ? ` · 🏦 prêts ${court(b.credit)}` : ''} · <b>${b.net >= 0 ? '+' : ''}${court(b.net)}</b>${b.satisf != null ? ` · satisfaction ${b.satisf} %` : ''}</p>` : ''}</div>`;
+  h += `<div class="bloc"><h3>Aujourd'hui</h3><div class="stats"><div><b>${J.vols}</b>vols partis</div><div><b>${J.retards}</b>retards</div><div><b>${court(J.revenus + J.commerce + J.services + (J.primes || 0) - J.penalites - J.achats)}</b>gagnés</div><div><b>${J.nSatisf ? Math.round(J.satisf / J.nSatisf) + ' %' : '—'}</b>satisfaction</div></div>
+    ${b ? `<h3 style="margin-top:6px">Hier (jour ${b.jour})</h3><p class="leg">${b.vols} vols · ${b.retards} retards · redevances ${court(b.revenus)} · services ${court(b.services || 0)}${b.primes ? ` · primes ${court(b.primes)}` : ''} · commerces ${court(b.commerce)} · carburant acheté ${court(b.achats || 0)} · pénalités ${court(b.penalites)} · entretien ${court(b.depenses)}${b.credit ? ` · 🏦 prêts ${court(b.credit)}` : ''} · <b>${b.net >= 0 ? '+' : ''}${court(b.net)}</b>${b.satisf != null ? ` · satisfaction ${b.satisf} %` : ''}</p>` : ''}</div>`;
   box.innerHTML = h;
   const pl = $('planning');
   if(complet){ const m = M.minuteDe(A.t); pl.scrollLeft = Math.max(0, m * PX_MIN - 60); if(placement){ const c = A.contrats.find(x => x.id === placement); pl.scrollLeft = Math.max(0, c.fenetre[0] * PX_MIN - 40); } }
@@ -812,10 +814,17 @@ function pBanque(box){
 }
 
 /* ----- Le menu : objectifs, aide, quitter ----- */
+const MINIJEUX = [['passeports', 'Passeports', '🛂', 'Compare les papiers aux consignes du jour.'], ['securite', 'Rayons X', '🔍', 'Repère les objets interdits dans les bagages.'], ['portique', 'Portique', '🚶', 'Trouve le métal sur les voyageurs.'], ['douane', 'Douane', '🛃', 'Lis la déclaration, fouille la valise.'], ['bagages', 'Tri des bagages', '🧳', 'Envoie chaque valise sur sa voie.'], ['degivrage', 'Dégivrage', '🧊', 'Glisse le doigt pour enlever la glace des avions.']];
+function blocMiniJeux(){
+  const rec = (() => { try{ return JSON.parse(localStorage.getItem('escale-controle')) || {}; }catch(e){ return {}; } })();
+  return `<div class="bloc"><h3>🎮 Mini-jeux : des primes pour l'aéroport</h3><p class="leg">Bien jouer rapporte de l'argent à l'aéroport. La prime est pleine si le poste n'a pas rapporté depuis 4 h de jeu.</p>${MINIJEUX.map(([k, nom, ico, d]) => { const e = M.etatPrime(A, k);
+    return `<div class="item"><span class="ico">${ico}</span><div><b>${nom}</b><small>${esc(d)}${rec[k] ? ` · 🏆 ${rec[k].best}` : ''}</small><small class="${e.pret ? 'ok' : ''}">${e.pret ? '💶 Prime pleine disponible' : `Prime pleine dans ${Math.ceil(e.reste / 60)} h de jeu`}</small></div><div class="act"><button class="btn" data-mj="${k}">Jouer</button></div></div>`; }).join('')}</div>`;
+}
 function pMenu(box){
-  box.innerHTML = `<div class="bloc"><h3>Objectifs</h3><div class="objList">${M.OBJECTIFS.map(o => `<div class="${P.objectifs.includes(o.id) ? 'fait' : ''}">${P.objectifs.includes(o.id) ? '✅' : '🎯'} ${esc(o.txt)}<span>+${court(o.gain)}</span></div>`).join('')}</div></div>
+  box.innerHTML = blocMiniJeux() + `<div class="bloc"><h3>Objectifs</h3><div class="objList">${M.OBJECTIFS.map(o => `<div class="${P.objectifs.includes(o.id) ? 'fait' : ''}">${P.objectifs.includes(o.id) ? '✅' : '🎯'} ${esc(o.txt)}<span>+${court(o.gain)}</span></div>`).join('')}</div></div>
     <div class="bloc"><h3>Le journal</h3>${A.journal.slice(0, 25).map(j => `<p class="leg">${hm(j.t)} · ${esc(j.txt)}</p>`).join('') || '<p class="leg">Rien pour l\'instant.</p>'}</div>
     <div class="ligneB"><button class="btn bleu" id="mBanque">🏦 Banque</button><button class="btn" id="mAide">❔ Aide</button><button class="btn" id="mQuitter">‹ Quitter (sauvegardé)</button></div>`;
+  box.querySelectorAll('[data-mj]').forEach(b => b.onclick = () => lancerControle(b.dataset.mj));
   $('mBanque').onclick = () => ouvrir('banque');
   $('mAide').onclick = () => { $('eAide').hidden = false; vitesse = 0; majVitesse(); };
   $('mQuitter').onclick = () => { sauver(); accueil(); };

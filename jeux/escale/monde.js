@@ -220,7 +220,7 @@ window.ESCALE_MONDE = (() => {
     return A;
   }
   const nomPorte = i => (i < 8 ? 'A' : 'B') + String((i % 8) + 1).padStart(2, '0');
-  const nouveauJour = () => ({ vols:0, retards:0, minutesRetard:0, revenus:0, commerce:0, services:0, detail:{}, achats:0, litres:0, penalites:0, depenses:0, credit:0, pax:0, satisf:0, nSatisf:0, manques:0 });
+  const nouveauJour = () => ({ vols:0, retards:0, minutesRetard:0, revenus:0, commerce:0, services:0, detail:{}, achats:0, litres:0, penalites:0, depenses:0, credit:0, pax:0, satisf:0, nSatisf:0, manques:0, primes:0 });
   function nouvelleUnite(A, type){ const n = A.unites.filter(u => u.type === type).length; return { id:type + n, type, n, etat:'libre', vol:null, tache:null, t0:0, duree:0 }; }
   const jourDe = t => Math.floor(t / JOUR) + 1;
   const minuteDe = t => ((t % JOUR) + JOUR) % JOUR;
@@ -858,7 +858,7 @@ window.ESCALE_MONDE = (() => {
     P.argent -= entretien; J.depenses += entretien;
     echeances(P, A);
     const satisf = J.nSatisf ? Math.round(J.satisf / J.nSatisf) : null;
-    const bilan = { jour:jourDe(A.t) - 1, ...J, satisf, net:Math.round(J.revenus + J.commerce + J.services - J.penalites - J.depenses - J.achats) };
+    const bilan = { jour:jourDe(A.t) - 1, ...J, satisf, net:Math.round(J.revenus + J.commerce + J.services + (J.primes || 0) - J.penalites - J.depenses - J.achats) };
     A.historique.unshift(bilan); A.historique.length = Math.min(A.historique.length, 14);
     if(satisf != null && J.nSatisf >= 3) P.stats.meilleureSatisf = Math.max(P.stats.meilleureSatisf, satisf);
     P.stats.meilleureJournee = Math.max(P.stats.meilleureJournee, bilan.net); P.stats.jours++;
@@ -1089,6 +1089,29 @@ window.ESCALE_MONDE = (() => {
     return faits;
   }
 
+
+  /* ---------- Les primes des mini-jeux : bien jouer au guichet rapporte de l'argent à l'aéroport ----------
+     Chaque poste verse une prime à la fin du service : points × taux × précision, plafonnée. La prime est pleine si le poste n'a pas rapporté
+     depuis DELAI_PRIME minutes de jeu (4 h) ; sinon elle est réduite (un quart) : on peut rejouer pour s'amuser, sans multiplier l'argent. */
+  const PRIMES = {
+    passeports:{ nom:'Passeports', ico:'🛂', taux:2.2, plafond:8000 }, securite:{ nom:'Rayons X', ico:'🔍', taux:2.4, plafond:8000 }, portique:{ nom:'Portique', ico:'🚶', taux:2.4, plafond:8000 },
+    douane:{ nom:'Douane', ico:'🛃', taux:2.4, plafond:9000 }, bagages:{ nom:'Tri des bagages', ico:'🧳', taux:1.4, plafond:9000 }, degivrage:{ nom:'Dégivrage', ico:'🧊', taux:3, plafond:10000 },
+  };
+  const DELAI_PRIME = 240, REDUIT_PRIME = .25;
+  const etatPrime = (A, type) => { const d = A.primes && A.primes[type], reste = d == null ? 0 : Math.max(0, d + DELAI_PRIME - A.t); return { pret:reste <= 0, reste }; };
+  function primeControle(P, A, type, score, bons, total){
+    const D = PRIMES[type]; if(!D || score <= 0) return { gain:0, pret:etatPrime(A, type).pret };
+    A.primes = A.primes || {};
+    const { pret } = etatPrime(A, type), precision = total ? bons / total : 0;
+    let gain = score * D.taux * (.6 + .8 * precision) * (1 + .03 * Math.min(15, niveauDe(P.xp)));
+    gain = Math.min(D.plafond, gain) * (pret ? 1 : REDUIT_PRIME); gain = Math.max(10, Math.round(gain / 10) * 10);
+    if(pret) A.primes[type] = A.t;
+    P.argent += gain; A.jourStats.primes = (A.jourStats.primes || 0) + gain;
+    const xp = Math.round(gain / 500); if(xp) P.xp += xp;
+    journal(A, `${D.ico} ${D.nom} : prime de service de ${euros(gain)} pour l'aéroport${pret ? '' : ' (réduite : le poste a déjà rapporté récemment)'}.`, 'bon');
+    return { gain, pret, xp, precision, suivante:A.t + DELAI_PRIME };
+  }
+
   // la migration d'une sauvegarde (rien pour l'instant) et le résumé pour l'accueil et les classements
   function migrer(P){
     if(!P || P.v !== 1) return null;
@@ -1120,7 +1143,7 @@ window.ESCALE_MONDE = (() => {
   return { JOUR, TAILLES, AVIONS, RAYONS, VILLES, COMPAGNIES, LIVREES, AEROPORTS, ORDRE_AEROPORTS, VEHICULES, MODULES, TACHES, ORDRE_TACHES, RECOMPENSES, PALIERS, OBJECTIFS, NIV_MAX,
     international, NATIONAL, hm, euros, jourDe, minuteDe, xpNiveau, niveauDe, xpConfiance, paliersAtteints, texteRecompense, tailleOk, facteurNiv, prixAmelioration, prixPasserelle, prixAgrandir, prixAmeliorationVehicules,
     portesMax, terminalMax, PISTES_MAX, prixPiste, nbPistes, acheterPiste, trajetDe, ECART_PISTES, HANGARS, SANS_HANGAR, hangarDe, aHangar, maxVehicules, nivMaxVehicule, construireHangar, hangarsOuvrables, ENTRETIEN, personnel, menage, propreteWC, avantSale, nbToilettes, vitesseSalissure, vitesseMenage, salete, embaucher, licencier, nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
-    creneaux, tranchesLibres, NEGOS, chanceNego, negocier,
+    PRIMES, DELAI_PRIME, etatPrime, primeControle, creneaux, tranchesLibres, NEGOS, chanceNego, negocier,
     acheterPorte, acheterPasserelle, agrandirPorte, acheterVehicule, ameliorerVehicule, construire, ameliorerModule, vendreModule, deplacerModule, agrandirTerminal,
     recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, PETITS, RANG_T, poserPetit, retirerPetit, deplacerPetit, libreQuart, petitsDansCase, CUVE, CUVE_MAX, CAMION, LIVRAISON, DELAI_CAMION, TARIFS, commanderCarbu, agrandirCuve, enRoute, capCuve, facture, resume, BANQUE, banque, dette, lettreNote, moyenneNet, plafond, tauxPret, emprunter, prixRachat, rembourser, echeances, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };
 })();
