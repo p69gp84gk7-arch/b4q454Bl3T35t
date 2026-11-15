@@ -73,15 +73,15 @@ window.ESCALE_MONDE = (() => {
   const AEROPORTS = {
     colblanc:{ nom:'Col-Blanc', ico:'🏔️', decor:'montagne', desc:'Un petit altiport au pied des pistes de ski. Piste courte : avions régionaux et moyen-courriers. La neige oblige souvent à dégivrer les avions.',
       piste:760, tailleMax:'M', portesMax:7, neige:.35, commerce:1, argent:250000, deblocage:null, compagnies:['alpair', 'azur', 'soleo', 'boreal', 'capella', 'sirocco'], heures:[5, 22],
-      terminal:{ l:5, h:5, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'securite'], [3, 0, 'tapis'], [0, 4, 'salle'], [1, 4, 'salle'], [4, 4, 'toilettes']], petits:[[4, 6, 'plante'], [5, 6, 'poubelle'], [4, 7, 'banc'], [5, 7, 'banc']] },
+      terminal:{ l:7, la:2, h:2, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'securite'], [0, 1, 'salle'], [1, 1, 'salle'], [4, 1, 'toilettes'], [5, 0, 'tapis']], petits:[[6, 0, 'plante'], [7, 0, 'poubelle'], [6, 2, 'banc'], [7, 2, 'banc']] },
       portes:[{ taille:'S', passerelle:false }, { taille:'M', passerelle:false }], vehicules:{ carburant:1, repas:1, bagages:1, nettoyage:1, tech:1, bus:1, degivrage:1 } },
     portazur:{ nom:'Port-Azur', ico:'🏖️', decor:'mer', desc:'Un aéroport au bord de la mer, plein de touristes qui dépensent dans les boutiques. Piste plus longue : jusqu\'aux gros porteurs.',
       piste:1050, tailleMax:'L', portesMax:10, neige:0, commerce:1.35, argent:0, deblocage:{ niveau:7, prix:1500000 }, compagnies:['azur', 'soleo', 'sirocco', 'vega', 'boreal', 'capella', 'alpair'], heures:[5, 23],
-      terminal:{ l:7, h:5, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'comptoir'], [3, 0, 'securite'], [4, 0, 'securite'], [5, 0, 'tapis'], [6, 0, 'tapis'], [6, 1, 'douane'], [3, 1, 'passeports'], [0, 4, 'salle'], [1, 4, 'salle'], [2, 4, 'salle'], [3, 4, 'cafe'], [6, 4, 'toilettes']], petits:[[8, 6, 'plante'], [9, 6, 'poubelle'], [8, 7, 'ecran'], [9, 7, 'banc']] },
+      terminal:{ l:10, la:3, h:2, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'comptoir'], [3, 0, 'securite'], [4, 0, 'securite'], [5, 0, 'passeports'], [0, 1, 'salle'], [1, 1, 'salle'], [2, 1, 'salle'], [3, 1, 'cafe'], [6, 1, 'toilettes'], [7, 0, 'tapis'], [8, 0, 'tapis'], [7, 1, 'douane']], petits:[[12, 0, 'plante'], [13, 0, 'poubelle'], [12, 1, 'ecran'], [13, 1, 'banc']] },
       portes:[{ taille:'M', passerelle:true }, { taille:'M', passerelle:false }, { taille:'L', passerelle:false }], vehicules:{ carburant:2, repas:1, bagages:2, nettoyage:1, tech:1, bus:1, degivrage:0 } },
     grandval:{ nom:'Grand-Val', ico:'🏙️', decor:'ville', desc:'La grande métropole : long-courriers, très gros porteurs et voyageurs d\'affaires qui veulent des salons. Le plus gros trafic.',
       piste:1350, tailleMax:'XL', portesMax:14, neige:.08, commerce:1.6, argent:0, deblocage:{ niveau:13, prix:6000000 }, compagnies:['orion', 'vega', 'boreal', 'azur', 'capella', 'sirocco', 'soleo', 'alpair'], heures:[0, 24],
-      terminal:{ l:9, h:5, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'comptoir'], [3, 0, 'comptoir'], [4, 0, 'securite'], [5, 0, 'securite'], [6, 0, 'securite'], [7, 0, 'tapis'], [8, 0, 'tapis'], [8, 1, 'douane'], [7, 1, 'douane'], [4, 1, 'passeports'], [5, 1, 'passeports'], [0, 4, 'salle'], [1, 4, 'salle'], [2, 4, 'salle'], [3, 4, 'salle'], [4, 4, 'restaurant'], [5, 4, 'boutique'], [8, 4, 'toilettes']] },
+      terminal:{ l:13, la:4, h:2, modules:[[0, 0, 'comptoir'], [1, 0, 'comptoir'], [2, 0, 'comptoir'], [3, 0, 'comptoir'], [4, 0, 'securite'], [5, 0, 'securite'], [6, 0, 'securite'], [7, 0, 'passeports'], [8, 0, 'passeports'], [0, 1, 'salle'], [1, 1, 'salle'], [2, 1, 'salle'], [3, 1, 'salle'], [4, 1, 'restaurant'], [5, 1, 'boutique'], [8, 1, 'toilettes'], [9, 0, 'tapis'], [10, 0, 'tapis'], [9, 1, 'douane'], [10, 1, 'douane']], petits:[[12, 2, 'plante'], [13, 2, 'poubelle'], [14, 2, 'ecran'], [15, 2, 'banc'], [12, 3, 'banc'], [13, 3, 'banc']] },
       portes:[{ taille:'M', passerelle:true }, { taille:'M', passerelle:true }, { taille:'L', passerelle:true }, { taille:'XL', passerelle:false }], vehicules:{ carburant:2, repas:2, bagages:2, nettoyage:2, tech:2, bus:1, degivrage:1 } },
   };
   const ORDRE_AEROPORTS = ['colblanc', 'portazur', 'grandval'];
@@ -130,20 +130,20 @@ window.ESCALE_MONDE = (() => {
   const prixAmelioration = (prix, niv) => Math.round(prix * (niv === 1 ? .7 : 1.3));
   // zone : 'ville' (avant la sécurité) ou 'piste' (après) ; cap : capacité (comptoirs, postes, places, clients…) par niveau
   const MODULES = {
-    comptoir:{ nom:'Enregistrement', ico:'🛄', prix:20000, coul:'#4F7CAC', cap:2, zone:'ville', desc:'2 comptoirs d\'enregistrement et de dépôt des bagages.' },
-    securite:{ nom:'Contrôle de sûreté', ico:'🔍', prix:40000, coul:'#7A5C99', cap:1, zone:'ville', desc:'Un poste de contrôle (portique et tapis à rayons X).' },
-    passeports:{ nom:'Contrôle des passeports', ico:'🛂', prix:35000, coul:'#3D5A80', cap:2, zone:'ville', niv:2, depart:true, desc:'Départs : la police aux frontières contrôle les passeports des vols internationaux (2 guichets).' },
-    douane:{ nom:'Douane', ico:'🛃', prix:30000, coul:'#2A9D8F', cap:2, zone:'ville', niv:2, arrivee:true, desc:'Arrivées : les passagers des vols internationaux passent la douane avant de sortir.' },
-    tapis:{ nom:'Tapis à bagages', ico:'🎒', prix:30000, coul:'#5A8F7B', cap:1, zone:'ville', desc:'Les passagers à l\'arrivée y récupèrent leurs bagages.' },
-    salle:{ nom:'Salle d\'attente', ico:'💺', prix:15000, coul:'#8D99AE', cap:50, zone:'piste', desc:'50 sièges pour attendre l\'embarquement.' },
-    boutique:{ nom:'Boutique', ico:'🛍️', prix:30000, coul:'#E07A5F', cap:25, zone:'piste', depense:.55, desc:'Les passagers dépensent en attendant : ça rapporte.' },
-    cafe:{ nom:'Café', ico:'☕', prix:25000, coul:'#B07D62', cap:20, zone:'piste', depense:.45, desc:'Un café : ça rapporte et les passagers sont contents.' },
-    restaurant:{ nom:'Restaurant', ico:'🍝', prix:50000, coul:'#D4A373', cap:30, zone:'piste', depense:.65, niv:4, desc:'Ça rapporte beaucoup et rend les passagers heureux.' },
-    toilettes:{ nom:'Toilettes', ico:'🚻', prix:10000, coul:'#9DB4C0', cap:1, zone:'piste', desc:'Indispensables ! Sans toilettes, les passagers sont mécontents.' },
-    jeux:{ nom:'Espace enfants', ico:'🧸', prix:20000, coul:'#F2CC8F', cap:1, zone:'piste', niv:3, desc:'Les familles sont plus contentes.' },
-    salon:{ nom:'Salon VIP', ico:'🥂', prix:90000, coul:'#2A2D43', cap:20, zone:'piste', depense:.9, niv:9, desc:'Pour les long-courriers : passagers ravis, et ça rapporte.' },
-    plantes:{ nom:'Plantes', ico:'🪴', prix:3000, coul:'#81B29A', cap:1, zone:'piste', deco:1, desc:'Décoration : un peu plus de satisfaction.' },
-    fontaine:{ nom:'Fontaine', ico:'⛲', prix:12000, coul:'#8ECAE6', cap:1, zone:'piste', deco:2, niv:2, desc:'Décoration : plus de satisfaction.' },
+    comptoir:{ zones:['dep'], nom:'Enregistrement', ico:'🛄', prix:20000, coul:'#4F7CAC', cap:2, zone:'ville', desc:'2 comptoirs d\'enregistrement et de dépôt des bagages.' },
+    securite:{ zones:['dep'], nom:'Contrôle de sûreté', ico:'🔍', prix:40000, coul:'#7A5C99', cap:1, zone:'ville', desc:'Un poste de contrôle (portique et tapis à rayons X).' },
+    passeports:{ zones:['dep'], nom:'Contrôle des passeports', ico:'🛂', prix:35000, coul:'#3D5A80', cap:2, zone:'ville', niv:2, depart:true, desc:'Départs : la police aux frontières contrôle les passeports des vols internationaux (2 guichets).' },
+    douane:{ zones:['arr'], nom:'Douane', ico:'🛃', prix:30000, coul:'#2A9D8F', cap:2, zone:'ville', niv:2, arrivee:true, desc:'Arrivées : les passagers des vols internationaux passent la douane avant de sortir.' },
+    tapis:{ zones:['arr'], nom:'Tapis à bagages', ico:'🎒', prix:30000, coul:'#5A8F7B', cap:1, zone:'ville', desc:'Les passagers à l\'arrivée y récupèrent leurs bagages.' },
+    salle:{ zones:['dep'], nom:'Salle d\'attente', ico:'💺', prix:15000, coul:'#8D99AE', cap:50, zone:'piste', desc:'50 sièges pour attendre l\'embarquement.' },
+    boutique:{ zones:['dep'], nom:'Boutique', ico:'🛍️', prix:30000, coul:'#E07A5F', cap:25, zone:'piste', depense:.55, desc:'Les passagers dépensent en attendant : ça rapporte.' },
+    cafe:{ zones:['dep'], nom:'Café', ico:'☕', prix:25000, coul:'#B07D62', cap:20, zone:'piste', depense:.45, desc:'Un café : ça rapporte et les passagers sont contents.' },
+    restaurant:{ zones:['dep'], nom:'Restaurant', ico:'🍝', prix:50000, coul:'#D4A373', cap:30, zone:'piste', depense:.65, niv:4, desc:'Ça rapporte beaucoup et rend les passagers heureux.' },
+    toilettes:{ zones:['dep', 'arr'], nom:'Toilettes', ico:'🚻', prix:10000, coul:'#9DB4C0', cap:1, zone:'piste', desc:'Indispensables ! Sans toilettes, les passagers sont mécontents.' },
+    jeux:{ zones:['dep'], nom:'Espace enfants', ico:'🧸', prix:20000, coul:'#F2CC8F', cap:1, zone:'piste', niv:3, desc:'Les familles sont plus contentes.' },
+    salon:{ zones:['dep'], nom:'Salon VIP', ico:'🥂', prix:90000, coul:'#2A2D43', cap:20, zone:'piste', depense:.9, niv:9, desc:'Pour les long-courriers : passagers ravis, et ça rapporte.' },
+    plantes:{ zones:['dep', 'arr'], nom:'Plantes', ico:'🪴', prix:3000, coul:'#81B29A', cap:1, zone:'piste', deco:1, desc:'Décoration : un peu plus de satisfaction.' },
+    fontaine:{ zones:['dep', 'arr'], nom:'Fontaine', ico:'⛲', prix:12000, coul:'#8ECAE6', cap:1, zone:'piste', deco:2, niv:2, desc:'Décoration : plus de satisfaction.' },
   };
 
   // les petits objets, posés dans les petites cases (4 par case de la grille) entre les constructions
@@ -156,7 +156,7 @@ window.ESCALE_MONDE = (() => {
     borne:{ nom:'Borne de recharge', ico:'🔌', prix:2000, deco:.3, desc:'Pour recharger son téléphone : les passagers adorent.' },
     eau:{ nom:'Fontaine à eau', ico:'🚰', prix:1500, deco:.2, desc:'De l\'eau fraîche gratuite.' },
   };
-  const RANG_T = 12.5;                                                // la profondeur d'une rangée du terminal (m)
+  const RANG_T = 22;                                                  // la profondeur d'une rangée du terminal (m) : il n'y en a que deux (côté ville, côté pistes)
 
   /* ---------- Les opérations au sol pendant l'escale ---------- */
   // veh : le véhicule (null : la passerelle suffit) ; apres : ce qui doit être fini avant ; avant : pas plus tôt que N min avant le départ
@@ -213,7 +213,7 @@ window.ESCALE_MONDE = (() => {
   }
   function nouvelAeroport(P, id){
     const D = AEROPORTS[id];
-    const A = { id, t:5.5 * 60, portes:D.portes.map((g, i) => ({ ...g, nom:nomPorte(i) })), vehicules:{}, unites:[], terminal:{ l:D.terminal.l, h:D.terminal.h, modules:D.terminal.modules.map(([x, y, type]) => ({ x, y, type, niv:1 })), petits:(D.terminal.petits || []).map(([x, y, type]) => ({ x, y, type })) },
+    const A = { id, t:5.5 * 60, portes:D.portes.map((g, i) => ({ ...g, nom:nomPorte(i) })), vehicules:{}, unites:[], terminal:{ l:D.terminal.l, la:D.terminal.la, h:D.terminal.h, zones:true, modules:D.terminal.modules.map(([x, y, type]) => ({ x, y, type, niv:1, rot:0 })), petits:(D.terminal.petits || []).map(([x, y, type]) => ({ x, y, type, rot:0 })) },
       hangars:{}, personnel:{ entretien:1 }, pistes:1, pistesLibres:[0, 0], contrats:[], offres:[], vols:[], journal:[], qCheck:[], qSecu:[], pisteLibre:0, meteo:'beau', reputation:70, jourStats:nouveauJour(), historique:[], dernierJour:0, toasts:[], carbu:nouvelleCuve(id) };
     for(const [k, n] of Object.entries(D.vehicules)){ A.vehicules[k] = { niv:1 }; for(let i = 0; i < n; i++) A.unites.push(nouvelleUnite(A, k)); }
     meteoDuJour(A); genererOffres(P, A, 4);
@@ -889,8 +889,14 @@ window.ESCALE_MONDE = (() => {
   /* Les portes tiennent le long de la façade du terminal : pour en ouvrir de nouvelles, il faut
      d'abord l'agrandir. Chaque case de largeur en plus donne deux portes, jusqu'au maximum que
      la place permet ici (D.portesMax). L'agrandissement, lui, coûte de plus en plus cher. */
-  const portesMax = A => { const D = AEROPORTS[A.id]; return Math.min(D.portesMax, D.portes.length + 2 * (A.terminal.l - D.terminal.l)); };
-  const terminalMax = 14;
+  const colsDep = A => A.terminal.l - A.terminal.la;                      // les colonnes de la zone Départs (les autres sont les Arrivées)
+  const portesMax = A => { const D = AEROPORTS[A.id]; return Math.min(D.portesMax, D.portes.length + 2 * (colsDep(A) - (D.terminal.l - D.terminal.la))); };
+  const terminalMax = 14, arriveesMax = 8;
+  // les zones du terminal : Départs à gauche (colonnes 0 à colsDep − 1), Arrivées à droite
+  const zoneDe = (A, x) => x >= colsDep(A) ? 'arr' : 'dep';
+  const NOM_ZONE = { dep:'Départs', arr:'Arrivées' };
+  const zoneOk = (A, type, x) => MODULES[type].zones.includes(zoneDe(A, x));
+  const msgZone = type => { const z = MODULES[type].zones; return z.length === 2 ? '' : `${MODULES[type].nom} : seulement dans la zone ${NOM_ZONE[z[0]]}.`; };
   function acheterPorte(P, A, taille){
     const D = AEROPORTS[A.id];
     if(A.portes.length >= portesMax(A)) return A.portes.length >= D.portesMax
@@ -938,14 +944,15 @@ window.ESCALE_MONDE = (() => {
     V.niv++; return null;
   }
   const prixAmeliorationVehicules = (A, type) => prixAmelioration(VEHICULES[type].prix, A.vehicules[type].niv) * Math.max(1, A.unites.filter(u => u.type === type).length);
-  function construire(P, A, x, y, type){
+  function construire(P, A, x, y, type, rot){
     const M = MODULES[type];
     if(M.niv && niveauDe(P.xp) < M.niv) return `Disponible au niveau ${M.niv}.`;
     if(A.terminal.modules.some(m => m.x === x && m.y === y)) return 'Case occupée.';
     if(x < 0 || y < 0 || x >= A.terminal.l || y >= A.terminal.h) return 'Hors du terminal.';
+    if(!zoneOk(A, type, x)) return msgZone(type);
     if(petitsDansCase(A, x, y).length) return 'Il y a des petits objets sur cette case : enlève-les d\'abord.';
     if(!payer(P, M.prix)) return 'Pas assez d\'argent.';
-    A.terminal.modules.push({ x, y, type, niv:1 }); return null;
+    A.terminal.modules.push({ x, y, type, niv:1, rot:((rot || 0) % 4 + 4) % 4 }); return null;
   }
   function ameliorerModule(P, A, m){
     if(m.niv >= NIV_MAX) return 'Déjà au niveau maximum.';
@@ -953,7 +960,9 @@ window.ESCALE_MONDE = (() => {
     m.niv++; return null;
   }
   function vendreModule(P, A, m){ A.terminal.modules = A.terminal.modules.filter(x => x !== m); P.argent += Math.round(MODULES[m.type].prix * .5); }
-  function deplacerModule(A, m, x, y){ if(A.terminal.modules.some(o => o !== m && o.x === x && o.y === y) || x < 0 || y < 0 || x >= A.terminal.l || y >= A.terminal.h) return 'Case occupée.'; if(petitsDansCase(A, x, y).length) return 'Il y a des petits objets sur cette case.'; m.x = x; m.y = y; return null; }
+  function deplacerModule(A, m, x, y){ if(A.terminal.modules.some(o => o !== m && o.x === x && o.y === y) || x < 0 || y < 0 || x >= A.terminal.l || y >= A.terminal.h) return 'Case occupée.'; if(petitsDansCase(A, x, y).length) return 'Il y a des petits objets sur cette case.'; if(!zoneOk(A, m.type, x)) return msgZone(m.type); m.x = x; m.y = y; return null; }
+  // tourner d'un quart de tour (le sens des aiguilles d'une montre vu de dessus)
+  const tourner = o => { o.rot = ((o.rot || 0) + 1) % 4; };
   // les petits objets : une petite case = un quart de case (x de 0 à 2l − 1, y de 0 à 2h − 1)
   const petitsDansCase = (A, x, y) => (A.terminal.petits || []).filter(p => Math.floor(p.x / 2) === x && Math.floor(p.y / 2) === y);
   function libreQuart(A, x, y){
@@ -963,21 +972,34 @@ window.ESCALE_MONDE = (() => {
     if((T.petits || []).some(p => p.x === x && p.y === y)) return 'Petite case occupée.';
     return null;
   }
-  function poserPetit(P, A, x, y, type){
+  function poserPetit(P, A, x, y, type, rot){
     const e = libreQuart(A, x, y); if(e) return e;
     if(!payer(P, PETITS[type].prix)) return 'Pas assez d\'argent.';
-    (A.terminal.petits = A.terminal.petits || []).push({ x, y, type }); return null;
+    (A.terminal.petits = A.terminal.petits || []).push({ x, y, type, rot:((rot || 0) % 4 + 4) % 4 }); return null;
   }
   function retirerPetit(P, A, p){ A.terminal.petits = A.terminal.petits.filter(q => q !== p); P.argent += Math.round(PETITS[p.type].prix * .5); }
   function deplacerPetit(A, p, x, y){ const e = libreQuart(A, x, y); if(e) return e; p.x = x; p.y = y; return null; }
-  // chaque case de largeur coûte 35 % de plus que la précédente : on ne s'étend pas indéfiniment
-  const prixAgrandir = A => Math.round(40000 * A.terminal.l * (A.terminal.h / 5) * Math.pow(1.35, A.terminal.l - AEROPORTS[A.id].terminal.l) / 1000) * 1000;
+  // chaque colonne de Départs en plus coûte 35 % de plus que la précédente : on ne s'étend pas indéfiniment
+  const prixAgrandir = A => Math.round(40000 * colsDep(A) * Math.pow(1.35, colsDep(A) - (AEROPORTS[A.id].terminal.l - AEROPORTS[A.id].terminal.la)) / 1000) * 1000;
   function agrandirTerminal(P, A){
-    if(A.terminal.l >= terminalMax) return 'Le terminal est déjà très grand.';
+    if(colsDep(A) >= terminalMax) return 'La zone Départs est déjà très grande.';
     if(!payer(P, prixAgrandir(A))) return 'Pas assez d\'argent.';
-    const avant = portesMax(A); A.terminal.l++;
+    const avant = portesMax(A), T = A.terminal, cd = colsDep(A);
+    // une colonne de plus à droite de la zone Départs : les Arrivées glissent d'une colonne
+    for(const m of T.modules) if(m.x >= cd) m.x++;
+    for(const p of T.petits || []) if(p.x >= cd * 2) p.x += 2;
+    T.l++;
     const gagnees = portesMax(A) - avant;
-    journal(A, `🏢 Terminal agrandi : ${A.terminal.l} cases de large${gagnees > 0 ? `, et ${gagnees} porte${gagnees > 1 ? 's' : ''} d'embarquement de plus à construire (🚚 Sol)` : ''}.`, 'bon');
+    journal(A, `🏢 Zone Départs agrandie : ${colsDep(A)} colonnes${gagnees > 0 ? `, et ${gagnees} porte${gagnees > 1 ? 's' : ''} d'embarquement de plus à construire (🚚 Sol)` : ''}.`, 'bon');
+    return null;
+  }
+  // la zone Arrivées : plus de tapis et de douane (sans portes en plus)
+  const prixArrivees = A => Math.round(30000 * Math.pow(1.3, A.terminal.la - AEROPORTS[A.id].terminal.la) / 1000) * 1000;
+  function agrandirArrivees(P, A){
+    if(A.terminal.la >= arriveesMax) return 'La zone Arrivées est déjà très grande.';
+    if(!payer(P, prixArrivees(A))) return 'Pas assez d\'argent.';
+    A.terminal.l++; A.terminal.la++;
+    journal(A, `🏢 Zone Arrivées agrandie : ${A.terminal.la} colonnes.`, 'bon');
     return null;
   }
 
@@ -1094,10 +1116,10 @@ window.ESCALE_MONDE = (() => {
      Chaque poste verse une prime à la fin du service : points × taux × précision, plafonnée. La prime est pleine si le poste n'a pas rapporté
      depuis DELAI_PRIME minutes de jeu (4 h) ; sinon elle est réduite (un quart) : on peut rejouer pour s'amuser, sans multiplier l'argent. */
   const PRIMES = {
-    passeports:{ nom:'Passeports', ico:'🛂', taux:2.2, plafond:8000 }, securite:{ nom:'Rayons X', ico:'🔍', taux:2.4, plafond:8000 }, portique:{ nom:'Portique', ico:'🚶', taux:2.4, plafond:8000 },
-    douane:{ nom:'Douane', ico:'🛃', taux:2.4, plafond:9000 }, bagages:{ nom:'Tri des bagages', ico:'🧳', taux:1.4, plafond:9000 }, degivrage:{ nom:'Dégivrage', ico:'🧊', taux:3, plafond:10000 },
+    passeports:{ nom:'Passeports', ico:'🛂', taux:6.5, plafond:24000 }, securite:{ nom:'Rayons X', ico:'🔍', taux:7, plafond:24000 }, portique:{ nom:'Portique', ico:'🚶', taux:7, plafond:24000 },
+    douane:{ nom:'Douane', ico:'🛃', taux:7, plafond:27000 }, bagages:{ nom:'Tri des bagages', ico:'🧳', taux:4.2, plafond:27000 }, degivrage:{ nom:'Dégivrage', ico:'🧊', taux:9, plafond:30000 },
   };
-  const DELAI_PRIME = 240, REDUIT_PRIME = .25;
+  const DELAI_PRIME = 180, REDUIT_PRIME = .3;
   const etatPrime = (A, type) => { const d = A.primes && A.primes[type], reste = d == null ? 0 : Math.max(0, d + DELAI_PRIME - A.t); return { pret:reste <= 0, reste }; };
   function primeControle(P, A, type, score, bons, total){
     const D = PRIMES[type]; if(!D || score <= 0) return { gain:0, pret:etatPrime(A, type).pret };
@@ -1112,18 +1134,37 @@ window.ESCALE_MONDE = (() => {
     return { gain, pret, xp, precision, suivante:A.t + DELAI_PRIME };
   }
 
+  /* ---------- Migration : l'ancien terminal (5 rangées, constructions libres) devient Départs + Arrivées sur 2 rangées ---------- */
+  function versZones(P, A){
+    const T = A.terminal; if(T.zones) return;
+    const arrTypes = ['tapis', 'douane'], arr = T.modules.filter(m => arrTypes.includes(m.type)), dep = T.modules.filter(m => !arrTypes.includes(m.type));
+    const cd = Math.max(T.l, Math.ceil(dep.length / 2)), ca = Math.max(2, Math.ceil(arr.length / 2));
+    // les constructions côté ville (enregistrement, contrôles) sur la rangée 0, les autres sur la rangée 1 ; ce qui déborde prend une place libre
+    const occ = new Set(), poser = (m, x0, x1, ordre) => { for(const y of ordre) for(let x = x0; x < x1; x++) if(!occ.has(x + ':' + y)){ occ.add(x + ':' + y); m.x = x; m.y = y; return; } };
+    const neufs = []; const nouveau = m => { const o = { ...m, x:0, y:0, niv:m.niv || 1, rot:0 }; neufs.push(o); return o; };
+    for(const m of dep.filter(m => MODULES[m.type].zone === 'ville')) poser(nouveau(m), 0, cd, [0, 1]);
+    for(const m of dep.filter(m => MODULES[m.type].zone !== 'ville')) poser(nouveau(m), 0, cd, [1, 0]);
+    for(const m of arr.filter(m => m.type === 'douane')) poser(nouveau(m), cd, cd + ca, [1, 0]);
+    for(const m of arr.filter(m => m.type === 'tapis')) poser(nouveau(m), cd, cd + ca, [0, 1]);
+    // les petits objets : sur les petites cases libres (de la zone Départs, côté pistes d'abord)
+    const libres = []; for(const y of [3, 2, 1, 0]) for(let x = 0; x < (cd + ca) * 2; x++) if(!occ.has(Math.floor(x / 2) + ':' + Math.floor(y / 2))) libres.push([x, y]);
+    const petits = []; let k = 0;
+    for(const q of T.petits || []){ if(k < libres.length){ petits.push({ x:libres[k][0], y:libres[k][1], type:q.type, rot:0 }); k++; } else if(PETITS[q.type]) P.argent += PETITS[q.type].prix; }
+    T.modules = neufs; T.petits = petits; T.l = cd + ca; T.la = ca; T.h = 2; T.zones = true;
+  }
+
   // la migration d'une sauvegarde (rien pour l'instant) et le résumé pour l'accueil et les classements
   function migrer(P){
     if(!P || P.v !== 1) return null;
     // les parties d'avant la cuve à carburant et les factures de services
     for(const A of Object.values(P.aeroports)){ if(!A.carbu) A.carbu = nouvelleCuve(A.id); const J = A.jourStats; if(J.services == null) Object.assign(J, { services:0, detail:{}, achats:0, litres:0 }); }
-    // les terminaux d'avant les 5 rangées et les petits objets (les nouvelles rangées s'ajoutent côté pistes)
-    for(const A of Object.values(P.aeroports)){ if(A.terminal.h < 5) A.terminal.h = 5; if(!A.terminal.petits) A.terminal.petits = []; }
+    // les terminaux d'avant les zones Départs / Arrivées : chaque construction est rangée dans sa zone, gratuitement
+    for(const A of Object.values(P.aeroports)){ if(!A.terminal.petits) A.terminal.petits = []; versZones(P, A); }
     // les parties d'avant « les portes se débloquent en agrandissant le terminal » : on élargit
-    // le terminal juste assez pour les portes déjà construites, sans rien faire payer
+    // la zone Départs juste assez pour les portes déjà construites, sans rien faire payer
     for(const A of Object.values(P.aeroports)){
-      const D = AEROPORTS[A.id], besoin = D.terminal.l + Math.ceil((A.portes.length - D.portes.length) / 2);
-      if(A.terminal.l < besoin) A.terminal.l = Math.min(terminalMax, besoin);
+      const D = AEROPORTS[A.id], besoin = (D.terminal.l - D.terminal.la) + Math.ceil((A.portes.length - D.portes.length) / 2);
+      while(colsDep(A) < Math.min(terminalMax, besoin)){ for(const m of A.terminal.modules) if(m.x >= colsDep(A)) m.x++; for(const q of A.terminal.petits) if(q.x >= colsDep(A) * 2) q.x += 2; A.terminal.l++; }
     }
     // les parties d'avant les hangars : ceux qui servent déjà sont offerts, personne ne perd un véhicule
     for(const A of Object.values(P.aeroports)){
@@ -1142,7 +1183,7 @@ window.ESCALE_MONDE = (() => {
 
   return { JOUR, TAILLES, AVIONS, RAYONS, VILLES, COMPAGNIES, LIVREES, AEROPORTS, ORDRE_AEROPORTS, VEHICULES, MODULES, TACHES, ORDRE_TACHES, RECOMPENSES, PALIERS, OBJECTIFS, NIV_MAX,
     international, NATIONAL, hm, euros, jourDe, minuteDe, xpNiveau, niveauDe, xpConfiance, paliersAtteints, texteRecompense, tailleOk, facteurNiv, prixAmelioration, prixPasserelle, prixAgrandir, prixAmeliorationVehicules,
-    portesMax, terminalMax, PISTES_MAX, prixPiste, nbPistes, acheterPiste, trajetDe, ECART_PISTES, HANGARS, SANS_HANGAR, hangarDe, aHangar, maxVehicules, nivMaxVehicule, construireHangar, hangarsOuvrables, ENTRETIEN, personnel, menage, propreteWC, avantSale, nbToilettes, vitesseSalissure, vitesseMenage, salete, embaucher, licencier, nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
+    portesMax, terminalMax, arriveesMax, colsDep, zoneDe, zoneOk, msgZone, NOM_ZONE, tourner, agrandirArrivees, prixArrivees, versZones, PISTES_MAX, prixPiste, nbPistes, acheterPiste, trajetDe, ECART_PISTES, HANGARS, SANS_HANGAR, hangarDe, aHangar, maxVehicules, nivMaxVehicule, construireHangar, hangarsOuvrables, ENTRETIEN, personnel, menage, propreteWC, avantSale, nbToilettes, vitesseSalissure, vitesseMenage, salete, embaucher, licencier, nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
     PRIMES, DELAI_PRIME, etatPrime, primeControle, creneaux, tranchesLibres, NEGOS, chanceNego, negocier,
     acheterPorte, acheterPasserelle, agrandirPorte, acheterVehicule, ameliorerVehicule, construire, ameliorerModule, vendreModule, deplacerModule, agrandirTerminal,
     recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, PETITS, RANG_T, poserPetit, retirerPetit, deplacerPetit, libreQuart, petitsDansCase, CUVE, CUVE_MAX, CAMION, LIVRAISON, DELAI_CAMION, TARIFS, commanderCarbu, agrandirCuve, enRoute, capCuve, facture, resume, BANQUE, banque, dette, lettreNote, moyenneNet, plafond, tauxPret, emprunter, prixRachat, rembourser, echeances, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };
