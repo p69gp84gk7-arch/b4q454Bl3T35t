@@ -194,7 +194,7 @@ window.DRAWRACE_3D = (() => {
   function charger(D){
     if(!ok) return;
     if(scene){ scene.traverse(o => { if(o.geometry) o.geometry.dispose(); }); }
-    scene = new T3.Scene(); monde = D; { let sx = 0, sz = 0; for(const q of D.pts){ sx += q[0]; sz += q[1]; } D.cx = sx / D.pts.length * S; D.cz = sz / D.pts.length * S; } voitures = new Map(); tags.forEach(t => t.remove()); tags = new Map(); cam0.init = true;
+    scene = new T3.Scene(); monde = D; { let sx = 0, sz = 0; for(const q of D.pts){ sx += q[0]; sz += q[1]; } D.cx = W / 2; D.cz = H + 9; }       // la caméra fixe : sur le bord du diorama (au milieu du côté sud), pas au milieu du circuit voitures = new Map(); tags.forEach(t => t.remove()); tags = new Map(); cam0.init = true;
     anim = { drapeaux:[], nuages:[], roues:[], bateaux:[], foule:null, eau:null, lampes:[], feux:[], pluie:null, particules:null, vibre:[] };
     const nuit = !!D.nuit, n = D.pts.length;
     // le ciel, le brouillard, les lumières
@@ -398,7 +398,7 @@ window.DRAWRACE_3D = (() => {
   // Les vues. « Course » : une vue haute et inclinée, loin derrière la voiture, comme dans les jeux de dessin de trajectoire (fausse 3D : la voiture monte vers le haut de l'écran) ;
   // « Carte » : la même vue haute, mais le nord reste en haut (comme le tracé) ; « 3/4 face » et « 3/4 arrière » : plus près de la voiture.
   // off : l'angle de la caméra autour de la voiture (0 = derrière, 180 = devant) ; lag : la caméra traîne un peu (pas quand elle est devant, sinon la voiture la rattrape)
-  const PRESETS = [{ nom:'Fixe', point:true, h:44, large:96, fov:50, lag:true }, { nom:'Course', d:48, h:66, off:0, ahead:16, fov:44, lag:true, k:3.4 }, { nom:'Carte', d:48, h:68, off:0, ahead:16, fov:44, lag:true, fixe:true }, { nom:'3/4 face', d:12.5, h:3.8, off:148, ahead:.8, fov:52, lag:false, k:5 }, { nom:'3/4 arrière', d:13, h:4.4, off:36, ahead:3.5, fov:52, lag:true, k:5 }];
+  const PRESETS = [{ nom:'Fixe', point:true, h:34, large:110, fov:50, lag:true }, { nom:'Course', d:48, h:66, off:0, ahead:16, fov:44, lag:true, k:3.4 }, { nom:'Carte', d:48, h:68, off:0, ahead:16, fov:44, lag:true, fixe:true }, { nom:'3/4 face', d:12.5, h:3.8, off:148, ahead:.8, fov:52, lag:false, k:5 }, { nom:'3/4 arrière', d:13, h:4.4, off:36, ahead:3.5, fov:52, lag:true, k:5 }];
   function majCamera(dt){
     if(vue === 'dessus' || !E.voitures.length){
       cam.fov = 30; const hh = (H / 2) / Math.tan(cam.fov * Math.PI / 360); cam.position.set(W / 2, hh, H / 2); cam.up.set(0, 0, -1); cam.lookAt(W / 2, 0, H / 2); cam.updateProjectionMatrix(); cam0.init = true; return;
@@ -409,7 +409,7 @@ window.DRAWRACE_3D = (() => {
       if(cam0.init){ cam0.x = x; cam0.z = z; cam0.init = false; }
       cam0.x += (x - cam0.x) * Math.min(1, dt * 5); cam0.z += (z - cam0.z) * Math.min(1, dt * 5);
       cam.position.set(monde.cx, p.h, monde.cz); cam.up.set(0, 1, 0);
-      const D = Math.hypot(cam0.x - monde.cx, cam0.z - monde.cz, p.h), vf = clamp(2 * Math.atan((p.large / cam.aspect / 2) / D) * 180 / Math.PI, 22, 78);
+      const D = Math.hypot(cam0.x - monde.cx, cam0.z - monde.cz, p.h), vf = clamp(2 * Math.atan((p.large / cam.aspect / 2) / D) * 180 / Math.PI, 20, 66);
       cam.fov += (vf - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); cam.lookAt(cam0.x, .6, cam0.z); return;
     }
     if(cam0.init){ cam0.x = x; cam0.z = z; cam0.yaw = a; cam0.init = false; }
