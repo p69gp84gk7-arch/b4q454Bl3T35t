@@ -844,13 +844,15 @@ window.ESCALE_3D = (() => {
       pan.position.set(c.x, 8, c.z); pan.lookAt(c.x, 14, c.z - 9); interieur.add(pan);
       pieces.push({ f:'cyl', d:[.06, .06, 3, 4], p:[c.x - Math.min(G.cw * .6, 12) * .4, 10.4, c.z], c:0x5C6672 }, { f:'cyl', d:[.06, .06, 3, 4], p:[c.x + Math.min(G.cw * .6, 12) * .4, 10.4, c.z], c:0x5C6672 });
     }
-    // les deux grandes enseignes : la zone Départs (jaune) et la zone Arrivées (verte)
-    for(const [zn, x0, x1, fond, coul, txt] of [['dep', 0, G.cd0, '#FFB703', '#14233A', 'DÉPARTS ✈'], ['arr', G.cd0, G.l, '#2A9D8F', '#FFFFFF', 'ARRIVÉES 🛬']]){
+    // les portiques d'enseignes, comme dans un vrai aéroport : deux poteaux, une poutre, et le panneau « Départs » (jaune) ou « Arrivées » (vert) suspendu au milieu
+    for(const [x0, x1, fond, coul, txt] of [[0, G.cd0, '#FFB703', '#14233A', 'DÉPARTS ✈'], [G.cd0, G.l, '#2A9D8F', '#FFFFFF', 'ARRIVÉES 🛬']]){
       if(x1 <= x0) continue;
-      const xm = G.T.x1 - MARGE_X - (x0 + x1) / 2 * G.pw, lg = Math.min((x1 - x0) * G.pw * .5, 26), zb = T.z0 + JETEE + 3;
-      const pan = new T3.Mesh(new T3.PlaneGeometry(lg, lg * .2), new T3.MeshBasicMaterial({ map:texteCache(txt, fond, coul, 1024), side:T3.DoubleSide }));
-      pan.position.set(xm, 12.5, zb); pan.lookAt(xm, 22, zb - 14); interieur.add(pan);
-      pieces.push({ f:'cyl', d:[.1, .1, 6, 4], p:[xm - lg * .45, 9.6, zb], c:0x5C6672 }, { f:'cyl', d:[.1, .1, 6, 4], p:[xm + lg * .45, 9.6, zb], c:0x5C6672 });
+      const xa = G.T.x1 - MARGE_X - x1 * G.pw + 2.5, xb = G.T.x1 - MARGE_X - x0 * G.pw - 2.5, xm = (xa + xb) / 2, zb = T.z0 + JETEE + 2.2, hp = 8.6, lg = Math.min(13, (xb - xa) * .5);
+      for(const xp of [xa, xb]) pieces.push({ f:'cyl', d:[.28, .32, hp, 8], p:[xp, .6 + hp / 2, zb], c:0x5C6672 }, { f:'boite', d:[1.3, .2, 1.3], p:[xp, .7, zb], c:0x3A3F47 });
+      pieces.push({ f:'boite', d:[xb - xa + .8, .5, .6], p:[xm, .6 + hp, zb], c:0x5C6672 });                                    // la poutre
+      for(const dx of [-lg * .42, lg * .42]) pieces.push({ f:'boite', d:[.14, .9, .14], p:[xm + dx, .6 + hp - .65, zb], c:0x3A3F47 });   // les suspentes
+      pieces.push({ f:'boite', d:[lg + .5, lg * .2 + .4, .3], p:[xm, .6 + hp - 1.9 - lg * .1, zb], c:0x1E2430 });                // le caisson du panneau
+      for(const sg of [1, -1]){ const pan = new T3.Mesh(new T3.PlaneGeometry(lg, lg * .2), new T3.MeshBasicMaterial({ map:texteCache(txt, fond, coul, 1024) })); pan.position.set(xm, .6 + hp - 1.9 - lg * .1, zb + sg * .17); if(sg < 0) pan.rotation.y = Math.PI; interieur.add(pan); }
     }
     interieur.add(new T3.Mesh(fusion(sol), MAT));
     if(pieces.length) interieur.add(objet(pieces, .08));
