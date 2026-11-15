@@ -81,7 +81,7 @@ function brief(i){
 
 /* ---------- Le vol ---------- */
 const cv = $('cv'), g = cv.getContext('2d');
-let V = null, B = null, W = 0, H = 0, dpr = 1, boucle = null, dernier = 0, acc = 0, vitesse = 1, enPause = false, msgVus = 0, bandeauMsg = null, fin = null, parts = [], son = lire('starship-son', true) !== false, entrees = { gauche:false, droite:false, gaz:false, action:false };
+let V = null, fxVus = 0, B = null, W = 0, H = 0, dpr = 1, boucle = null, dernier = 0, acc = 0, vitesse = 1, enPause = false, msgVus = 0, bandeauMsg = null, fin = null, parts = [], son = lire('starship-son', true) !== false, entrees = { gauche:false, droite:false, gaz:false, action:false };
 function tailleVol(){ dpr = Math.min(2.5, window.devicePixelRatio || 1); const r = cv.getBoundingClientRect(); W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
 addEventListener('resize', () => { if(!$('eVol').hidden) tailleVol(); });
 
@@ -97,9 +97,9 @@ function boum(){ const ac = audio(); if(!ac) return; const src = ac.createBuffer
 function lancer(i){
   B = null; $('bacBts').hidden = true; niveauEnCours = i; const J = S.NIVEAUX[i];
   V = S.nouveauVol(J.vol, J.equipe, {});
-  msgVus = 0; bandeauMsg = null; fin = null; parts = []; vitesse = 1; enPause = false; $('bVitesse').textContent = '⏩ Vitesse ×1';
+  msgVus = 0; fxVus = 0; bandeauMsg = null; fin = null; parts = []; vitesse = 1; enPause = false; $('bVitesse').textContent = '⏩ Vitesse ×1';
   alerteDern = {}; vj = 0; jDern = null; EV = {}; phasePrec = null; ecran('eVol'); appliquerMode(); tailleVol(); dernier = performance.now(); acc = 0; audio();
-  bandeauMsg = { t:J.vol.type === 'booster' || J.vol.type === 'barge' ? 'Guide-toi avec ◀ ▶ puis allume pour t\'arrêter au bon endroit' : J.vol.type === 'dragon' ? 'Garde le bouclier au frais ; ouvre les PARACHUTES quand la capsule est assez lente' : J.vol.type === 'lune' ? 'Pas d\'air : penche (◀ ▶) et freine au moteur' : J.vol.type === 'orbite' || J.vol.type === 'vaisseau' || J.vol.type === 'mars' || J.vol.type === 'falcon' ? 'Tiens POUSSÉE : suis le losange bleu de la mire avec ◀ ▶' : 'Tiens POUSSÉE pour décoller', at:0, cls:'' };
+  bandeauMsg = { t:J.vol.type === 'booster' || J.vol.type === 'barge' ? 'Guide-toi avec ◀ ▶ puis allume pour t\'arrêter au bon endroit' : J.vol.type === 'dragon' ? 'Garde le bouclier au frais ; ouvre les PARACHUTES quand la capsule est assez lente' : J.vol.type === 'lune' ? 'Pas d\'air : penche (◀ ▶) et freine au moteur' : J.vol.type === 'orbite' || J.vol.type === 'vaisseau' || J.vol.type === 'mission' || J.vol.type === 'mars' || J.vol.type === 'falcon' ? 'Tiens POUSSÉE : suis le losange bleu de la mire avec ◀ ▶' : 'Tiens POUSSÉE pour décoller', at:0, cls:'' };
   cancelAnimationFrame(boucle); boucle = requestAnimationFrame(tick);
 }
 function tick(now){
@@ -116,6 +116,7 @@ function tick(now){
     }
     particules(dt * vitesse);
     for(; msgVus < V.msgs.length; msgVus++){ bandeauMsg = { t:V.msgs[msgVus].t, at:V.t, cls:V.msgs[msgVus].cls }; if(V.msgs[msgVus].cls === 'bon') bip(740, .14); else if(V.msgs[msgVus].cls === 'mal') bip(180, .3, .1); else bip(520, .08, .05); }
+    for(; fxVus < (V.fx || []).length; fxVus++){ const f = V.fx[fxVus]; if(f.k === 'boum'){ boum(); explosion({ x:f.x, y:f.y }); } else if(f.k === 'prise'){ bip(660, .2, .08); setTimeout(() => bip(880, .3, .08), 160); } else if(f.k === 'sep'){ bip(300, .25, .08); } }
     if(moteur){ moteur.gn.gain.value = V.gaz * .22 * (fin ? 0 : 1); moteur.f.frequency.value = 160 + V.gaz * 480; }
     if(V.gaz > .02 && !moteur) demarrerMoteur();
     if(fin && now - fin.t0 > 1900 && !fin.montre){ fin.montre = true; resultat(); }
@@ -125,9 +126,10 @@ function tick(now){
 function terminaison(){
   fin = { t0:performance.now(), issue:V.fini }; arreterMoteur();
   const w = (V.phase === 'programme' ? { x:0, y:0 } : { x:V.x, y:V.y });
-  if(V.fini === 'echec'){ boum(); for(let i = 0; i < 90; i++){ const a = Math.random() * 6.28, v = 10 + Math.random() * 60; parts.push({ x:w.x, y:Math.max(2, w.y + 4), vx:Math.cos(a) * v, vy:Math.sin(a) * v * .8 + 10, vie:1 + Math.random() * 1.6, t:0, r:2 + Math.random() * 5, c:Math.random() < .3 ? '#FFF1B8' : Math.random() < .6 ? '#FF9A3C' : '#C8CFDA', g:true }); } }
+  if(V.fini === 'echec'){ boum(); explosion(w); }
   else { bip(660, .2, .08); setTimeout(() => bip(880, .3, .08), 160); }
 }
+function explosion(w){ for(let i = 0; i < 90; i++){ const a = Math.random() * 6.28, v = 10 + Math.random() * 60; parts.push({ x:w.x, y:Math.max(2, w.y + 4), vx:Math.cos(a) * v, vy:Math.sin(a) * v * .8 + 10, vie:1 + Math.random() * 1.6, t:0, r:2 + Math.random() * 5, c:Math.random() < .3 ? '#FFF1B8' : Math.random() < .6 ? '#FF9A3C' : '#C8CFDA', g:true }); } }
 function particules(dt){
   if(V && V.gaz > .15 && !fin && (V.phase !== 'programme' || V.y < 3000) && V.phase !== 'capsule' && Math.random() < .8){ const a = V.th * Math.PI / 180; parts.push({ x:V.x - Math.sin(a) * 0, y:Math.max(0, V.y), vx:(Math.random() - .5) * 8 - Math.sin(a) * 15, vy:-(5 + Math.random() * 12) * V.gaz, vie:1.2, t:0, r:2 + Math.random() * 3 + V.gaz * 3, c:'rgba(220,226,236,.5)', g:false }); }
   for(const p of parts){ p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; if(p.g) p.vy -= 9.8 * dt * 2.2; if(p.y < 0){ p.y = 0; p.vy *= -.3; p.vx *= .7; } }
@@ -163,6 +165,10 @@ function resultat(){
 // un petit conseil selon la cause
 function conseilEchec(c){
   c = c || '';
+  if(/ricochet/i.test(c)) return 'Ne reste pas trop à plat en haut de la rentrée : suis le losange de la mire (angle plus faible quand ça remonte).';
+  if(/brûlé|trop plongeant/i.test(c)) return 'Cabre davantage (curseur vers ◀) dès que le flux de chaleur monte, ou améliore le 🛡️ bouclier.';
+  if(/surcharge/i.test(c)) return 'Ne te mets pas trop à plat : redresse un peu (curseur ▶) quand la charge dépasse 3 g.';
+  if(/propulseur/i.test(c)) return 'Il faut aussi rattraper le propulseur : arrive presque à l\'arrêt, à la hauteur des bras.';
   if(/bouclier/i.test(c)) return 'Améliore le 🛡️ bouclier thermique, ou cabre plus tôt (POUSSÉE tenue) pour freiner plus haut.';
   if(/structure|pression/i.test(c)) return 'Relâche la poussée au passage de la pression maximale, ou améliore la 🧱 structure.';
   if(/brutal/i.test(c)) return 'Allume les moteurs plus tôt, ou améliore 🦾 l\'atterrissage et les 🔥 moteurs.';
@@ -179,6 +185,7 @@ const TAILLE_VEH = { hop:[34, 70], starship:[56, 134], superheavy:[70, 190], fal
 // le véhicule à dessiner selon le moment du vol (la pile avant la séparation, le vaisseau seul ensuite, la capsule qui rentre)
 function kindVisuel(sp, V){
   if(V.phase === 'capsule') return 'dragonSeul';
+  if(V.segment === 'booster' || V.segment === 'retourFin') return 'superheavy';
   if(sp.kindHaut) return V.phase === 'programme' && V.etage === 1 ? sp.kind : sp.kindHaut;
   return sp.kind || 'starship';
 }
@@ -187,10 +194,10 @@ function dessinerVol(){
   if(!V) return;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   const sp = V.spec, mars = !!sp.g && sp.g < 5 && sp.rho !== 0, vide = sp.rho === 0, decor = sp.decor || (sp.g && sp.g < 5 ? (vide ? 'lune' : 'mars') : 'terre');
-  const prog = V.phase === 'programme', haute = prog && V.y >= 4000;
+  const prog = V.phase === 'programme', rent = V.phase === 'rentree', haute = (prog && V.y >= 4000) || rent;
   EV = fin ? {} : evenements();
   // le ciel : du bleu au noir selon l'altitude (noir tout de suite sur la Lune)
-  const k = vide ? 1 : clamp(V.y / (prog ? 90000 : 22000), 0, 1);
+  const k = vide ? 1 : rent ? clamp((V.y - 14000) / 75000, 0, 1) : clamp(V.y / (prog ? 90000 : 22000), 0, 1);
   const haut = mars ? mix([36, 18, 22], [3, 3, 8], k) : mix([40, 120, 226], [2, 4, 14], k), bas = mars ? mix([210, 130, 90], [20, 10, 14], k) : mix([170, 216, 255], [10, 20, 50], k);
   const ciel = g.createLinearGradient(0, 0, 0, H); ciel.addColorStop(0, `rgb(${haut})`); ciel.addColorStop(1, `rgb(${bas})`); g.fillStyle = ciel; g.fillRect(0, 0, W, H);
   if(k > .15) etoiles(g, W, H, clamp((k - .15) * 2, 0, 1), V.y * .002);
@@ -200,9 +207,14 @@ function dessinerVol(){
   const kind = kindVisuel(sp, V), tv = TAILLE_VEH[kind] || [56, 134], hv = clamp(HAUTEUR_REELLE[kind] * (haute ? 2.2 : s), Math.max(tv[0], tv[1] * .55), tv[1]);
   const vyScr = haute ? H * .62 : clamp(gy0 - V.y * s, V.chute ? H * .68 : Math.min(H * .6, Math.max(H * .32, hv + 36)), H * .76), solY = haute ? H + 400 : vyScr + V.y * s;
   const camX = haute ? 0 : V.x, X = x => W / 2 + (x - camX) * s;
-  if(haute){ // la courbure de la Terre qui s'éloigne
-    const R = W * 3, cy = H + R * (1.05 - clamp(V.jauge * 1.1, 0, 1) * .12) - H * (.12 + V.jauge * .22), terre = g.createRadialGradient(W / 2, cy, R * .94, W / 2, cy, R); terre.addColorStop(0, '#2B6FD0'); terre.addColorStop(.97, '#58A8F0'); terre.addColorStop(1, 'rgba(160,220,255,.9)');
+  if(haute){ // la courbure de la Terre qui s'éloigne (ou, en rentrée, qui se rapproche)
+    const R = W * 3, cy = rent ? H * (.72 + .24 * clamp(V.y / 100000, 0, 1)) + R : H + R * (1.05 - clamp(V.jauge * 1.1, 0, 1) * .12) - H * (.12 + V.jauge * .22), terre = g.createRadialGradient(W / 2, cy, R * .94, W / 2, cy, R); terre.addColorStop(0, '#2B6FD0'); terre.addColorStop(.97, '#58A8F0'); terre.addColorStop(1, 'rgba(160,220,255,.9)');
     g.fillStyle = terre; g.beginPath(); g.arc(W / 2, cy, R, 0, 7); g.fill();
+    if(rent){   // les traînées de vitesse et la lueur de l'atmosphère qui s'épaissit
+      const fl = clamp(V.plasma || 0, 0, 1), vit = Math.hypot(V.vx, V.vy); g.lineWidth = 2;
+      for(let i = 0; i < 22; i++){ const sx = ((i * 211 - V.t * (260 + vit * .06)) % (W + 160) + W + 160) % (W + 160) - 80, sy = H * (.12 + ((i * 53) % 61) / 100), l = 30 + (i % 5) * 18 + vit * .005; g.strokeStyle = `rgba(${fl > .3 ? '255,170,110' : '200,225,255'},${.1 + fl * .25})`; g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx + l, sy - l * .12); g.stroke(); }
+      const lueur = g.createLinearGradient(0, H * .45, 0, H); lueur.addColorStop(0, 'rgba(255,120,60,0)'); lueur.addColorStop(1, `rgba(255,120,60,${fl * .35})`); g.fillStyle = lueur; g.fillRect(0, H * .45, W, H * .55);
+    }
   }
   // les nuages (en bas, on passe à travers)
   if(!haute && !mars && !vide){ g.fillStyle = 'rgba(255,255,255,.55)'; for(let i = 0; i < 9; i++){ const wy = 600 + i * 900, sy = vyScr + (V.y - wy) * s; if(sy < -60 || sy > H + 60) continue; const wx = ((i * 377) % 900) - 450; D.nuage(g, X(wx), sy, 70 * s + 40, i); } }
@@ -212,7 +224,7 @@ function dessinerVol(){
     if(sp.type === 'barge') barge(g, X(sp.pad.x), sp.pad.tol * s, solY, s, V.t);
     else if(sp.type === 'dragon') bateau(g, X(sp.pad.x), 26 * s + 18, solY, s, V.t);
     else if(sp.pad && !sp.tour){ const px = X(sp.pad.x), pw = sp.pad.tol * s; table(g, px, pw, solY, s, false); g.fillStyle = '#fff'; g.font = `800 ${Math.max(10, 5 * s)}px sans-serif`; g.textAlign = 'center'; g.fillText('H', px, solY + 8 * s); }
-    if(sp.tour){ const tx = X(sp.tour.x + 22); table(g, X(sp.tour.x), 26 * s, solY, s, true); tour(g, tx, solY, s, { ...sp.tour, pin:(HAUTEUR_REELLE[kind] || 70) * .72, demi:(HAUTEUR_REELLE[kind] || 70) * (LARGEUR[kind] || .1) / 2 }, fin && fin.issue === 'succes' ? clamp((performance.now() - fin.t0) / 500, 0, 1) : 0, V.t); }
+    if(sp.tour){ const tx = X(sp.tour.x + 22); table(g, X(sp.tour.x), 26 * s, solY, s, true); tour(g, tx, solY, s, { ...sp.tour, pin:(HAUTEUR_REELLE[kind] || 70) * .72, demi:(HAUTEUR_REELLE[kind] || 70) * (LARGEUR[kind] || .1) / 2 }, fin && fin.issue === 'succes' ? clamp((performance.now() - fin.t0) / 500, 0, 1) : V.segment === 'retourFin' && V.boosterOk ? clamp((2.6 - V.transT) / .5, 0, 1) : 0, V.t); }
     if(prog && !sp.tour){ table(g, X(0), 24 * s, solY, s, true); tour(g, X(34), solY, s * .9, null, false, V.t); }                                   // la tour de lancement, au décollage
     // les lignes à suivre : l'allumage et le retournement
     g.setLineDash([8, 6]); g.lineWidth = 2; g.textAlign = 'left'; g.font = '800 12px "Bricolage Grotesque", sans-serif';
@@ -235,9 +247,10 @@ function dessinerVol(){
   // la fumée et les débris
   for(const p of parts){ const a = 1 - p.t / p.vie, px = haute ? bx + p.x * s : X(p.x), py = haute ? by - p.y * s : solY - p.y * s; g.globalAlpha = clamp(a, 0, 1) * .9; g.fillStyle = p.c; g.beginPath(); g.arc(px, py, p.r * (p.g ? 1 : 1 + p.t * 1.6), 0, 7); g.fill(); }
   g.globalAlpha = 1;
-  if(!(fin && fin.issue === 'echec')){
+  const bPerdu = V.segment === 'retourFin' && !V.boosterOk, bPris = V.segment === 'retourFin' && V.boosterOk;
+  if(!(fin && fin.issue === 'echec') && !bPerdu){
     let bxx = bx, byy = by, th = V.th;
-    if(!haute && sp.tour && fin && fin.issue === 'succes'){ bxx = X(sp.tour.x); byy = solY - sp.tour.y * s; th = 0; }
+    if(!haute && sp.tour && ((fin && fin.issue === 'succes') || bPris)){ bxx = X(sp.tour.x); byy = solY - sp.tour.y * s; th = 0; }
     const jambes = !haute && V.phase === 'vol' && V.y < 150 && (sp.pad || sp.tour) && V.retourne !== false;
     vehicule(g, kind, bxx, byy, hv, th, { gaz:V.gaz, chaleur:V.plasma || 0, jambes:jambes || sp.type === 'saut', chutes:V.chute ? (V.chuteK || 0) : 0 });
     const ac = mireOn && !fin ? S.angleCible(V) : null;
@@ -342,12 +355,18 @@ function texteLong(t, x, y, taille, couleur, gauche, maxL){
   for(const m of mots){ const essai = l ? l + ' ' + m : m; if(g.measureText(essai).width > max && l){ lignes.push(l); l = m; } else l = essai; }
   lignes.push(l); lignes.forEach((ln, i) => texteHUD(ln, x, y + i * (taille + 4), taille, couleur, gauche ? 'left' : 'center')); return lignes.length * (taille + 4);
 }
+// le titre de la plaque : dans la mission complète, on dit où on en est
+function titreVol(sp){
+  if(sp.type !== 'mission') return sp.titre;
+  const e = V.segment === 'booster' || V.segment === 'retourFin' ? 'Propulseur' : V.phase === 'programme' ? (V.etage === 1 ? 'Montée' : 'Orbite') : V.phase === 'rentree' ? 'Rentrée' : V.phase === 'plat' ? 'Chute' : V.phase === 'flip' ? 'Retournement' : 'Rattrapage';
+  return 'Mission · ' + e;
+}
 function dessinerHUD(sp, prog){
   const p = V.p, vit = prog ? V.jauge * 7800 : Math.hypot(V.vx, V.vy);
   let hud;
   if(prog){
     const [av, au] = altTxt(V.y), cs = V.contrainte / p.resStructure;
-    hud = wTelemetrie(sp.titre, V.t, [['Vitesse', kmh(vit), 'km/h'], ['Altitude', av, au]], [['Orbite', V.jauge, '#38E08A', `${Math.round(V.jauge * 100)} %`], ['Carburant', V.carb, '#5AB0FF', `${Math.round(V.carb * 100)} %`], ['Poussée', V.gaz, '#FF8A3D', `${Math.round(V.gaz * 100)} %`], ['Contrainte', cs, cs > .7 ? '#FF4D4D' : '#FFB347', `${Math.round(cs * 100)} %`]], V.etage === 1 ? 'ÉTAGE 1' : 'ÉTAGE 2');
+    hud = wTelemetrie(titreVol(sp), V.t, [['Vitesse', kmh(vit), 'km/h'], ['Altitude', av, au]], [['Orbite', V.jauge, '#38E08A', `${Math.round(V.jauge * 100)} %`], ['Carburant', V.carb, '#5AB0FF', `${Math.round(V.carb * 100)} %`], ['Poussée', V.gaz, '#FF8A3D', `${Math.round(V.gaz * 100)} %`], ['Contrainte', cs, cs > .7 ? '#FF4D4D' : '#FFB347', `${Math.round(cs * 100)} %`]], V.etage === 1 ? 'ÉTAGE 1' : 'ÉTAGE 2');
     // la chronologie du vol : pression maximale, séparation, orbite
     const col = hud.col, bx = col ? 244 : 14, bw = col ? Math.max(120, W - 244 - 62) : W - 28, by = col ? 12 : hud.bas + 8;
     wPlaque(bx - 6, by - 4, bw + 12, 40);
@@ -356,19 +375,32 @@ function dessinerHUD(sp, prog){
     jalon(.17, 'MAX-Q', '#FF8A8A', V.jauge > .31); jalon(sp.programme.etageA, 'SÉPARATION', '#5AB0FF', V.etage === 2); jalon(1, 'ORBITE', '#38E08A', V.jauge >= 1);
     g.fillStyle = '#fff'; g.beginPath(); g.moveTo(bx + bw * V.jauge, by + 30); g.lineTo(bx + bw * V.jauge - 4, by + 36); g.lineTo(bx + bw * V.jauge + 4, by + 36); g.closePath(); g.fill();
     yHud = hud.col ? 52 : hud.bas + 52;
+  } else if(V.phase === 'rentree'){
+    const [av, au] = altTxt(V.y), ch = V.chaleur / p.resChaleur, cs = V.contrainte / p.resStructure, gu = S.aoaGuide(V), bon = Math.abs(gu - V.aoa) < 5;
+    hud = wTelemetrie(titreVol(sp), V.t, [vit >= 1500 ? ['Vitesse', (vit / 1000).toFixed(1).replace('.', ','), 'km/s'] : ['Vitesse', kmh(vit), 'km/h'], ['Altitude', av, au], ['Angle', V.aoa.toFixed(0), '°', bon ? '#7CF0B6' : '#FFD45C'], ['Charge', V.gload.toFixed(1).replace('.', ','), 'g', V.gload > 3 ? '#FF8A8A' : '#fff']],
+      [['Chaleur', ch, ch > .6 ? '#FF4D4D' : '#FFB347', `${Math.round(ch * 100)} %`], ['Structure', cs, cs > .5 ? '#FF4D4D' : '#5AB0FF', `${Math.round(cs * 100)} %`], ['Flux de chaleur', clamp(V.flux / 1.1, 0, 1), V.flux > .8 ? '#FF4D4D' : '#FF8A3D', `${Math.round(V.flux * 100)} %`]], '× 8');
+    yHud = 0;
   } else {
     const [av, au] = altTxt(V.y), ch = V.chaleur / p.resChaleur, chaud = V.phase === 'plat' || V.phase === 'flip' || V.phase === 'capsule' || ch > .02;
     const barres = [['Carburant', V.carb, V.carb < .15 ? '#FF4D4D' : '#5AB0FF', `${Math.round(V.carb * 100)} %`], [V.phase === 'plat' ? 'Cabrage' : 'Poussée', V.gaz, '#FF8A3D', `${Math.round((V.phase === 'plat' ? V.attaque : V.gaz) * 100)} %`]];
     if(chaud) barres.push(['Chaleur', ch, ch > .75 ? '#FF4D4D' : '#FFB347', `${Math.round(ch * 100)} %`]);
-    hud = wTelemetrie(sp.titre, V.t, [['Vitesse', kmh(vit), 'km/h'], ['Altitude', av, au], ['Vit. vert.', Math.abs(V.vy).toFixed(0), V.vy < 0 ? 'm/s ▼' : 'm/s ▲', V.vy < -20 ? '#FFB347' : '#fff'], ['Latéral', Math.abs(V.vx).toFixed(1).replace('.', ','), 'm/s']], barres, `${Math.abs(V.th) < .5 ? '' : V.th > 0 ? '+' : '−'}${Math.abs(V.th).toFixed(0)}°`);
+    hud = wTelemetrie(titreVol(sp), V.t, [['Vitesse', kmh(vit), 'km/h'], ['Altitude', av, au], ['Vit. vert.', Math.abs(V.vy).toFixed(0), V.vy < 0 ? 'm/s ▼' : 'm/s ▲', V.vy < -20 ? '#FFB347' : '#fff'], ['Latéral', Math.abs(V.vx).toFixed(1).replace('.', ','), 'm/s']], barres, `${Math.abs(V.th) < .5 ? '' : V.th > 0 ? '+' : '−'}${Math.abs(V.th).toFixed(0)}°`);
     yHud = 0;
   }
   yMsg = hud.col ? hud.bas + 8 : Math.max(H * .17, hud.bas + 60); yPilule = hud.col ? (prog ? 58 : 8) : hud.bas + (prog ? 56 : 6);
   // la cible hors de l'écran, et les consignes
-  if(!prog && (sp.pad || sp.tour)){ const tx = sp.tour ? sp.tour.x : sp.pad.x, dx = tx - V.x, s = echelleDe(V.y); if(Math.abs(dx) * s > W / 2 - 30){ texteHUD(`${dx > 0 ? '' : '◀ '}${sp.tour ? 'tour' : 'plateforme'} ${Math.abs(dx).toFixed(0)} m${dx > 0 ? ' ▶' : ''}`, dx > 0 ? W - 14 : 14, H * .58, 12, '#9CCBFF', dx > 0 ? 'right' : 'left'); } }
+  if(!prog && V.phase !== 'rentree' && (sp.pad || sp.tour)){ const tx = sp.tour ? sp.tour.x : sp.pad.x, dx = tx - V.x, s = echelleDe(V.y); if(Math.abs(dx) * s > W / 2 - 30){ texteHUD(`${dx > 0 ? '' : '◀ '}${sp.tour ? 'tour' : 'plateforme'} ${Math.abs(dx).toFixed(0)} m${dx > 0 ? ' ▶' : ''}`, dx > 0 ? W - 14 : 14, H * .58, 12, '#9CCBFF', dx > 0 ? 'right' : 'left'); } }
   const col0 = W > H * 1.1, ya0 = yPilule; pilCx = col0 && !prog ? Math.max(W / 2, 600) : W / 2; pilOn = false;
   if(!fin){
     if(V.phase === 'capsule' && !V.chute){ const vit = Math.hypot(V.vx, V.vy); if(vit <= 230) alerte('para', ['', 'OUVRE LES PARACHUTES !'], 0, 1, ya0); else pilule(`Parachutes : attends (${vit.toFixed(0)} m/s, sous 230)`, '#FFD23A', ya0, clamp(1 - (vit - 230) / 400, 0, 1), false); }
+    else if(V.phase === 'rentree'){
+      const ac = S.angleCible(V), err = ac.th - V.th, gu = S.aoaGuide(V), bon = Math.abs(gu - V.aoa) < 5, chaud = V.chaleur / p.resChaleur > .55 || V.flux > .85, charge = V.gload > 3.2 || V.contrainte / p.resStructure > .4;
+      if(V.vy > 0 && V.entre) pilule('REBOND SUR L\'AIR : PLONGE ▶ !', '#FF4D4D', ya0, null, true);
+      else if(chaud) pilule(`TROP CHAUD : cabre à ${gu.toFixed(0)}° ◀`, '#FF4D4D', ya0, null, true);
+      else if(charge) pilule(`FREINAGE TROP FORT : ${gu.toFixed(0)}° ▶`, '#FF8A3D', ya0, null, true);
+      else if(bon) pilule(`✔ ANGLE D'ATTAQUE BON · ${V.aoa.toFixed(0)}°`, '#38E08A', ya0, null, false);
+      else pilule(`ANGLE ${V.aoa.toFixed(0)}° → vise ${gu.toFixed(0)}° ${err < 0 ? '◀' : '▶'}`, '#FFD23A', ya0, clamp(1 - Math.abs(gu - V.aoa) / 30, 0, 1), false);
+    }
     else if(EV.allume && V.gaz < .5){ if(V.y < EV.allume.tard) pilule('TROP TARD : POUSSÉE À FOND !', '#FF4D4D', ya0, null, true); else alerte('allume', ['ALLUME', 'ALLUME MAINTENANT !'], EV.allume.t, 10, ya0); }
     else if(EV.retourne){ if(V.y < EV.retourne.tard) pilule('RETOURNE-TOI VITE !', '#FF4D4D', ya0, null, true); else alerte('retourne', ['RETOURNE-TOI', 'RETOURNE-TOI MAINTENANT !'], EV.retourne.t, 10, ya0); }
     else if(prog && V.maxQ) pilule('PRESSION MAX : RELÂCHE LA POUSSÉE !', '#FF4D4D', ya0, null, true);
@@ -387,14 +419,19 @@ function dessinerHUD(sp, prog){
   else if(V.phase === 'plat' && V.th > 80){ lib = 'RETOURNER'; ok = true; }
   else if(V.phase === 'capsule' && !V.chute){ lib = 'PARACHUTES'; ok = true; }
   b.textContent = lib; b.disabled = !ok || !!fin;
-  if(V.phase !== phasePrec){
+  const clePhase = V.phase + (V.segment === 'booster' ? '-b' : '');
+  if(clePhase !== phasePrec){
     if(V.phase === 'plat') reglerPuissance(.4, 'CABRER'); else if(phasePrec === 'plat' || phasePrec === 'flip') reglerPuissance(0, 'POUSSÉE');
-    phasePrec = V.phase;
+    if(V.segment === 'booster') reglerPuissance(0, 'POUSSÉE'); else if(V.phase === 'programme' && phasePrec === 'vol-b') reglerPuissance(1, 'POUSSÉE');
+    phasePrec = clePhase;
   }
   $('bPoussee').textContent = V.phase === 'plat' ? 'CABRER' : 'POUSSÉE';
 }
 function consigne(sp, prog){
   if(fin) return '';
+  if(V.phase === 'rentree') return 'Curseur ◀ ▶ = angle d\'attaque : suis le losange bleu. Trop plongeant : le bouclier brûle ; trop à plat : surcharge ; il faut aussi viser le bon point d\'arrivée.';
+  if(V.segment === 'booster') return 'Propulseur : guide-le vers la tour (◀ ▶), puis allume pour t\'arrêter à la hauteur des bras.';
+  if(V.segment === 'retourFin') return V.boosterOk ? 'Propulseur rattrapé ! Retour au vaisseau…' : 'Propulseur perdu… retour au vaisseau.';
   if(V.phase === 'capsule') return V.chute ? 'Parachutes ouverts : descente en douceur (◀ ▶ pour te rapprocher du bateau)' : `Vitesse ${Math.hypot(V.vx, V.vy).toFixed(0)} m/s : ouvre les PARACHUTES sous 230 m/s, pas trop haut`;
   if(prog) return V.maxQ ? '⚠ Pression maximale : relâche la poussée !' : V.fenetre && V.etage === 1 ? 'Appuie sur SÉPARER au repère' : '';
   if(!V.enVol && V.phase === 'vol' && V.t < 60) return 'POUSSÉE : tiens le bouton pour décoller';

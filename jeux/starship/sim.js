@@ -32,20 +32,25 @@ window.STARSHIP_SIM = (() => {
       histoire:"La capsule Dragon revient de l'orbite : le bouclier thermique encaisse la rentrée, puis des parachutes la ralentissent jusqu'à la mer. Les ouvrir trop tôt, à pleine vitesse, les déchirerait.",
       txt:'Descendre sans bouffer le bouclier, puis ouvrir les parachutes quand la capsule est assez lente et pas trop haute, pour amerrir doucement.',
       vol:{ type:'dragon', kind:'dragon', decor:'mer', pad:{ x:0, tol:300 }, depart:{ phase:'capsule', x:-200, y:5500, vx:30, vy:-300, th:0 }, vent:.6, titre:'Retour de Dragon' } },
-    { id:'orbite', court:'Orbite', nom:'Starship : premier vol orbital', ico:'🌍', equipe:{ moteurs:3, structure:3, bouclier:3, logiciel:3, atterrisseur:2 }, etoiles:{ temps:190, carb:.2 }, chapitre:'Starship',
+    { id:'orbite', court:'Orbite', nom:'Starship : premier vol orbital', ico:'🌍', equipe:{ moteurs:3, structure:3, bouclier:3, logiciel:3, atterrisseur:2 }, etoiles:{ temps:290, carb:.2 }, chapitre:'Starship',
       histoire:"Le vrai défi : un vaisseau et son propulseur géant partent vers l'orbite. Le passage de la pression maximale est le moment le plus délicat de la montée.",
       txt:'Monter jusqu\'en orbite en suivant la trajectoire, se séparer du propulseur au bon moment, puis revenir : rentrée à plat, retournement, atterrissage.',
       vol:{ type:'orbite', kind:'shPile', kindHaut:'starship', decor:'terre', pad:{ x:0, tol:42 }, belly:true, depart:{ phase:'programme' }, programme:{ duree:78, etageA:.42 },
-        rentree:{ y:9000, vy:-420, vx:30, x:-250, carb:.7 }, vent:.9, titre:'Vol orbital' } },
+        rentree:{ y:9000, vy:-420, vx:30, x:-250, carb:.7, orb:{ y:100000, vx:7400, vy:-110 }, dist:3.97e6 }, vent:.9, titre:'Vol orbital' } },
     { id:'booster', court:'Super Heavy', nom:'Super Heavy : rattrapé par la tour', ico:'🦾', equipe:{ moteurs:3, structure:2, bouclier:2, logiciel:5, atterrisseur:6 }, etoiles:{ temps:60, carb:.5 }, chapitre:'Starship',
       histoire:"Idée audacieuse : au lieu de poser le propulseur sur des jambes, la tour de lancement l'attrape en vol avec deux grands bras. Il faut arriver presque à l'arrêt, au bon endroit.",
       txt:'Le propulseur redescend tout seul, droit, et doit être attrapé en vol par les bras de la tour : arrive presque à l\'arrêt, à la hauteur des bras.',
       vol:{ type:'booster', kind:'superheavy', decor:'terre', pad:{ x:0, tol:26 }, tour:{ x:0, y:75, tol:17, v:12, ang:14 }, depart:{ phase:'vol', x:170, y:3800, vy:-150, vx:-6, carb:.7, th:2 }, vent:.9, titre:'Rattrapage du booster' } },
-    { id:'vaisseau', court:'Vaisseau', nom:'Starship : rattrapé par la tour', ico:'🚀', equipe:{ moteurs:4, structure:4, bouclier:5, logiciel:5, atterrisseur:5 }, etoiles:{ temps:190, carb:.2 }, chapitre:'Starship',
+    { id:'vaisseau', court:'Vaisseau', nom:'Starship : rattrapé par la tour', ico:'🚀', equipe:{ moteurs:4, structure:4, bouclier:5, logiciel:5, atterrisseur:5 }, etoiles:{ temps:300, carb:.2 }, chapitre:'Starship',
       histoire:"Le grand pari de la réutilisation : rattraper aussi le vaisseau au retour de l'orbite, pour pouvoir le relancer très vite.",
       txt:'Revenir de l\'orbite, descendre à plat, se retourner et se faire attraper par la tour.',
       vol:{ type:'vaisseau', kind:'shPile', kindHaut:'starship', decor:'terre', pad:{ x:0, tol:20 }, tour:{ x:0, y:75, tol:16, v:11, ang:13 }, belly:true, depart:{ phase:'programme' }, programme:{ duree:84, etageA:.42 },
-        rentree:{ y:9000, vy:-430, vx:30, x:-260, carb:.7 }, vent:1, titre:'Retour du vaisseau' } },
+        rentree:{ y:9000, vy:-430, vx:30, x:-260, carb:.7, orb:{ y:100000, vx:7400, vy:-110 }, dist:3.97e6 }, vent:1, titre:'Retour du vaisseau' } },
+    { id:'mission', court:'Mission', nom:'Mission complète : booster + Starship', ico:'🛰️', equipe:{ moteurs:5, structure:5, bouclier:5, logiciel:5, atterrisseur:5 }, etoiles:{ temps:380, carb:.1 }, chapitre:'Starship',
+      histoire:"Tout le programme d'un seul coup, comme un vrai vol : décollage de la pile, séparation, retour du propulseur vers la tour, puis le vaisseau file en orbite, redescend à vitesse orbitale et revient lui aussi se poser dans les bras de la tour.",
+      txt:'Monter, se séparer, ramener le propulseur dans les bras de la tour, puis mettre le vaisseau en orbite, gérer l\'angle d\'attaque de la rentrée, retourner à plat et se faire rattraper à son tour.',
+      vol:{ type:'mission', kind:'shPile', kindHaut:'starship', decor:'terre', pad:{ x:0, tol:20 }, tour:{ x:0, y:75, tol:16, v:11, ang:13 }, belly:true, depart:{ phase:'programme' }, programme:{ duree:84, etageA:.42 },
+        retour:{ x:420, y:5200, vx:-40, vy:-210, carb:.7, th:0 }, rentree:{ y:9000, vy:-430, vx:30, x:-260, carb:.7, orb:{ y:100000, vx:7400, vy:-110 }, dist:3.97e6 }, vent:1, titre:'Mission complète' } },
     { id:'lune', court:'Lune', nom:'Starship HLS : la Lune', ico:'🌕', equipe:{ moteurs:4, structure:3, bouclier:0, logiciel:3, atterrisseur:4 }, etoiles:{ temps:90, carb:.35 }, chapitre:'Au-delà',
       histoire:"Starship doit aussi servir d'atterrisseur lunaire. Sans air, pas de ventre à terre : on descend debout, droit sur les moteurs, avec une pesanteur six fois plus faible.",
       txt:'Descendre debout vers la Lune : pas d\'air, donc pas d\'ailettes ; tout se joue au moteur et à l\'inclinaison. Pose-toi sur la plateforme.',
@@ -76,7 +81,16 @@ window.STARSHIP_SIM = (() => {
     return v;
   }
   const msg = (v, t, cls) => { v.msgs.push({ t, cls:cls || '', at:v.t }); };
-  function fin(v, issue, cause){ if(v.fini) return; v.fini = issue; v.cause = cause || ''; }
+  function fin(v, issue, cause){
+    if(v.fini) return;
+    // mission complète : la fin du retour du booster (rattrapé ou perdu) rend la main au vaisseau
+    if(v.segment === 'booster'){      // le retour du propulseur est fini : on le montre 2,6 s (rattrapé ou écrasé), puis on reprend le vaisseau
+      v.boosterOk = issue === 'succes'; v.segment = 'retourFin'; v.transT = 2.6; v.causeB = cause; v.gaz = 0; v.vx = 0; v.vy = 0; v.xB = v.x; v.yB = Math.max(0, v.y); if(!v.boosterOk) v.y = 0;
+      (v.fx = v.fx || []).push({ k:v.boosterOk ? 'prise' : 'boum', x:v.xB, y:v.yB }); msg(v, v.boosterOk ? 'Propulseur rattrapé par les bras de la tour !' : 'Le propulseur s\'est écrasé…', v.boosterOk ? 'bon' : 'mal'); return;
+    }
+    if(issue === 'succes' && v.spec.retour && !v.boosterOk){ issue = 'partiel'; cause = 'Vaisseau rattrapé, mais le propulseur a été perdu : la mission n\'est pas complète.'; }
+    v.fini = issue; v.cause = cause || '';
+  }
   // l'explosion : « démontage rapide non planifié »
   const rud = (v, cause) => { v.gaz = 0; fin(v, 'echec', cause); };
 
@@ -86,6 +100,7 @@ window.STARSHIP_SIM = (() => {
   function pas(v, e, dt){
     if(v.fini) return;
     v.t += dt;
+    if(v.segment === 'retourFin'){ v.transT -= dt; v.gaz = 0; if(v.transT <= 0){ v.segment = 'nave'; reprendreNave(v, v.boosterOk, v.causeB); } return; }
     const p = v.p, g = gDe(v), dir = e.dir != null ? clamp(e.dir, -1, 1) : (e.droite ? 1 : 0) - (e.gauche ? 1 : 0);
     // la poussée : avec un curseur (e.cible, de 0 à 1), le moteur suit le curseur ; avec un bouton, on monte en le tenant et on redescend en le relâchant
     if(v.carb > 0){ v.gaz = e.cible != null ? clamp(v.gaz + clamp(e.cible - v.gaz, -3 * dt, 2.4 * dt), 0, 1) : clamp(v.gaz + (e.gaz ? 2.2 : -3) * dt, 0, 1); } else v.gaz = 0;
@@ -94,6 +109,7 @@ window.STARSHIP_SIM = (() => {
     if(v.phase === 'flip' || v.phase === 'vol') v.chaleur = Math.max(0, v.chaleur - 8 * dt);
     if(v.phase === 'programme') return pasProgramme(v, e, dt, dir);
     if(v.phase === 'capsule') return pasCapsule(v, e, dt, dir);
+    if(v.phase === 'rentree') return pasRentree(v, e, dt, dir);
     if(v.phase === 'plat' || v.phase === 'flip') return pasChute(v, e, dt, dir);
     return pasVertical(v, e, dt, dir);
   }
@@ -224,15 +240,80 @@ window.STARSHIP_SIM = (() => {
     // séparation du booster
     if(v.etage === 1){
       if(v.jauge >= P.etageA - .04 && !v.fenetre){ v.fenetre = true; msg(v, 'Séparation du booster : appuyez sur SÉPARER !', 'bon'); }
-      if(e.action && v.fenetre){ const d = Math.abs(v.jauge - P.etageA); v.etage = 2; v.sepPrecis = d; if(d > .04){ v.contrainte += 30; msg(v, 'Séparation un peu à côté : secousse !', 'mal'); } else msg(v, 'Séparation parfaite !', 'bon'); }
-      if(v.jauge > P.etageA + .06){ v.etage = 2; v.contrainte += 55; msg(v, 'Séparation tardive : forte secousse !', 'mal'); }
+      if(e.action && v.fenetre){ const d = Math.abs(v.jauge - P.etageA); v.etage = 2; v.sepPrecis = d; if(d > .04){ v.contrainte += 30; msg(v, 'Séparation un peu à côté : secousse !', 'mal'); } else msg(v, 'Séparation parfaite !', 'bon'); demarrerRetour(v); }
+      if(v.jauge > P.etageA + .06){ v.etage = 2; v.contrainte += 55; msg(v, 'Séparation tardive : forte secousse !', 'mal'); demarrerRetour(v); }
     }
     if(v.carb <= 0 && v.jauge < 1) return rud(v, 'Panne sèche avant d\'atteindre l\'orbite.');
     if(v.jauge >= 1 && v.spec.finOrbite){ v.gaz = 0; v.y = 120000; return fin(v, 'succes', 'Satellite en orbite !'); }
+    if(v.jauge >= 1 && v.spec.rentree.orb){
+      const r = v.spec.rentree; v.phase = 'rentree'; v.x = 0; v.y = r.orb.y; v.vx = r.orb.vx; v.vy = r.orb.vy; v.carb = r.carb; v.gaz = 0; v.aoa = 62; v.chaleur = 0; v.contrainte = 0; v.atteint = true; v.enVol = true; v.entre = false; v.flux = 0; v.gload = 0; v.th = 35;
+      msg(v, 'En orbite ! Freinage de rentrée : garde le bon angle d\'attaque.', 'bon'); return;
+    }
     if(v.jauge >= 1){
       const r = v.spec.rentree; v.phase = 'plat'; v.x = r.x; v.y = r.y; v.vx = r.vx; v.vy = r.vy; v.th = 90; v.carb = r.carb; v.gaz = 0; v.attaque = .4; v.chaleur = 0; v.contrainte = 0; v.atteint = true; v.enVol = true;
       msg(v, 'En orbite ! Rentrée dans l\'atmosphère…', 'bon');
     }
+  }
+
+
+  // la rentrée atmosphérique (vitesse orbitale) : le curseur de direction commande l'ANGLE D'ATTAQUE (l'angle entre le vaisseau et son vent relatif).
+  // Trop incliné vers l'avant (angle faible) : le vaisseau plonge et brûle ; trop à plat (angle fort) : il freine très fort (surcharge) ou rebondit sur l'air.
+  const R_T = 6371e3, ACCEL = 8;              // rayon de la Terre ; le temps de la rentrée est accéléré (×8) pour que ça reste jouable
+  const aoaDe = dir => clamp(62 - dir * 28, 30, 86);       // curseur à droite = le nez penche vers l'avant (angle d'attaque plus faible), comme pour les autres phases
+  const gamma = v => Math.atan2(v.vy, v.vx) / RAD;                                    // la pente de la trajectoire (négative en descente)
+  // l'angle de la mire : le guidage idéal (chaleur, charge, ricochet)
+  function aoaGuide(v){
+    const fl = v.flux || 0, gl = v.gload || 0;
+    let a = 60 + clamp((fl - .6) * 45, -4, 22);
+    if(gl > 3.2) a -= (gl - 3.2) * 10;
+    if(v.vy > 0 && v.y > 55000) a -= 16;                                             // ça remonte : on plonge
+    if(v.y < 45000) a += clamp((45000 - v.y) / 25000, 0, 1) * 24;                    // plus bas : on se met à plat pour le freinage final
+    return clamp(a, 24, 84);
+  }
+  function pasRentree(v, e, dt, dir){
+    v.gaz = 0;
+    const cmd = aoaDe(dir);
+    for(let i = 0; i < ACCEL && !v.fini && v.phase === 'rentree'; i++) sousPasRentree(v, cmd, dt);
+    if(!v.fini && v.phase === 'rentree') v.th = clamp(90 - v.aoa - gamma(v), -10, 95);
+  }
+  function sousPasRentree(v, cmd, dt){
+    const p = v.p, R = v.spec.rentree, a0 = v.aoa;
+    v.aoa += clamp(cmd - v.aoa, -38 * dt, 38 * dt);
+    const a = v.aoa * RAD, sp = Math.max(1, Math.hypot(v.vx, v.vy)), r = R_T + v.y, g = G0 * Math.pow(R_T / r, 2), rho = 1.225 * rhoDe(v, v.y);
+    const drag = .5 * rho * sp * sp * (60 + 410 * Math.pow(Math.sin(a), 2)) / 216e3, lift = drag * .6 * Math.sin(2 * a);
+    const ax = (-drag * v.vx - lift * v.vy) / sp, ay = -g + v.vx * v.vx / r + (-drag * v.vy + lift * v.vx) / sp;
+    v.vx += ax * dt; v.vy += ay * dt; v.x += v.vx * dt; v.y += v.vy * dt;
+    v.gload = Math.hypot(drag, lift) / G0;
+    v.flux = 2.7e-4 * Math.sqrt(rho / 1.2) * sp * sp * sp * (.25 + 2.6 * Math.pow(Math.cos(a), 2)) / 1.6e6;
+    v.plasma = Math.max(v.plasma || 0, clamp(v.flux * 1.1, 0, 1));
+    v.chaleur = Math.max(0, v.chaleur + (v.flux > .72 ? (v.flux - .72) * 24 : -5) * dt);
+    if(v.gload > 3.6) v.contrainte += (v.gload - 3.6) * 38 * dt; else v.contrainte = Math.max(0, v.contrainte - 6 * dt);
+    if(v.y < 80000) v.entre = true;
+    if(v.chaleur > p.resChaleur) return rud(v, 'Le bouclier thermique a lâché : angle d\'entrée trop plongeant, le vaisseau a brûlé.');
+    if(v.contrainte > p.resStructure) return rud(v, `Surcharge : le freinage était trop brutal (${v.gload.toFixed(1)} g), la structure a cédé.`);
+    if(v.entre && v.y > 112000 && v.vy > 0) return rud(v, 'Ricochet sur l\'atmosphère : le vaisseau a rebondi et repart dans l\'espace.');
+    if(v.y <= 0) return rud(v, 'Le vaisseau a atteint le sol en pleine rentrée.');
+    // sous la vitesse du son et plus bas : on passe à la chute à plat
+    if(v.y < R.y + 600 && sp < 1100){
+      v.xRent = v.x; v.phase = 'plat'; v.vx = clamp(v.vx, -120, 120); v.y = Math.min(v.y, R.y + 600); v.th = clamp(90 - v.aoa - gamma(v), 0, 90); v.attaque = .4; v.chaleur *= .45; v.contrainte = 0; v.atteint = true;
+      v.x = R.x + clamp((v.x - R.dist) / 1000 * .15, -150, 150);
+      msg(v, 'Sous le mur du son : place à la chute à plat, puis au retournement.', 'bon');
+    }
+  }
+
+
+  // la mission complète : après la séparation, on pilote le propulseur jusqu'aux bras de la tour, puis on reprend le vaisseau
+  function demarrerRetour(v){
+    const R = v.spec.retour; if(!R || v.segment) return;
+    v.nave = { jauge:v.jauge, carb:v.carb, th:v.th, contrainte:v.contrainte, y:v.y }; v.segment = 'booster';
+    v.phase = 'vol'; v.x = R.x; v.y = R.y; v.vx = R.vx; v.vy = R.vy; v.th = R.th || 0; v.om = 0; v.carb = R.carb; v.gaz = 0; v.enVol = true; v.atteint = false; v.manque = false; v.fenetre = false; v.plasma = 0;
+    v.budget += v.p.autonomie * .5;
+    (v.fx = v.fx || []).push({ k:'sep', x:0, y:0 });
+    msg(v, 'Le propulseur se retourne et redescend : guide-le vers la tour !', 'bon');
+  }
+  function reprendreNave(v, ok, cause){
+    const n = v.nave; v.phase = 'programme'; v.jauge = n.jauge; v.carb = n.carb; v.th = n.th; v.contrainte = n.contrainte; v.x = 0; v.vx = 0; v.vy = 0; v.y = n.y; v.gaz = 0; v.om = 0; v.manque = false; v.enVol = true; v.atteint = false; v.plasma = 0;
+    msg(v, ok ? 'Propulseur rattrapé ! On reprend le vaisseau : cap sur l\'orbite.' : `Propulseur perdu (${(cause || '').replace(/\.$/, '')}). Le vaisseau continue vers l'orbite.`, ok ? 'bon' : 'mal');
   }
 
   // l'altitude à laquelle il faut se retourner : le temps du retournement, puis la distance de freinage
@@ -274,6 +355,7 @@ window.STARSHIP_SIM = (() => {
       if(!v.chute && v.y < 1300 && Math.hypot(v.vx, v.vy) < 190) e.action = true;
       return e;
     }
+    if(v.phase === 'rentree'){ e.dir = clamp((62 - aoaGuide(v)) / 28, -1, 1); return e; }
     if(v.phase === 'plat'){
       const tx = sp.tour ? sp.tour.x : (sp.pad ? sp.pad.x : 0), axD = .05 * (tx - v.x) - .55 * v.vx;
       if(axD > .5) e.droite = true; else if(axD < -.5) e.gauche = true;
@@ -293,7 +375,7 @@ window.STARSHIP_SIM = (() => {
       e.gaz = v.vy < (100 - v.y) * .15; return e;
     }
     const axD = (v.y > yc + 250 ? .06 * dx - .5 * v.vx : .02 * dx - .32 * v.vx), thT = clamp(axD * 5.84, -9, 9);
-    if(v.y > yc + 120 && (sp.type === 'booster' || sp.type === 'barge')){ if(axD > .35) e.droite = true; else if(axD < -.35) e.gauche = true; }
+    if(v.y > yc + 120 && (sp.type === 'booster' || sp.type === 'barge' || v.segment === 'booster')){ if(axD > .35) e.droite = true; else if(axD < -.35) e.gauche = true; }
     else bouge(v.y < yc + 6 ? 0 : thT, 2.4, 3.8);
     const vDes = -Math.max(sp.tour ? 1.2 : 1.6, Math.sqrt(2 * .6 * Math.max(.1, aNet) * Math.max(0, v.y - yc - .5 * Math.abs(Math.min(0, v.vy)))));
     e.gaz = v.vy < vDes + .5;
@@ -304,12 +386,13 @@ window.STARSHIP_SIM = (() => {
   function angleCible(v){
     if(v.fini) return null; const sp = v.spec;
     if(v.phase === 'programme') return { th:pitchCible(v.jauge), tol:6 };
+    if(v.phase === 'rentree') return { th:clamp(90 - aoaGuide(v) - gamma(v), -10, 95), tol:5 };
     if(v.phase !== 'vol') return null;
     if(!v.enVol && v.t < 60) return { th:0, tol:6 };
     const tx = sp.tour ? sp.tour.x : (sp.pad ? sp.pad.x : 0), yc = sp.tour ? sp.tour.y : 0, dx = tx - v.x;
     if(!v.atteint && (sp.type === 'saut' || sp.type === 'altitude')) return { th:0, tol:6 };
     if(sp.type === 'saut' && (Math.abs(dx) > 6 || Math.abs(v.vx) > 1.5) && v.y > 30) return { th:clamp((.045 * dx - .42 * v.vx) * 5.84, -10, 10), tol:4 };
-    if(v.y > yc + 120 && (sp.type === 'booster' || sp.type === 'barge')) return { th:0, tol:8 };      // là-haut, ce sont les ailettes qui guident
+    if(v.y > yc + 120 && (sp.type === 'booster' || sp.type === 'barge' || v.segment === 'booster')) return { th:0, tol:8 };      // là-haut, ce sont les ailettes qui guident
     const axD = (v.y > yc + 250 ? .06 * dx - .5 * v.vx : .02 * dx - .32 * v.vx);
     return { th:v.y < yc + 6 ? 0 : clamp(axD * 5.84, -9, 9), tol:v.y < yc + 300 ? Math.min(8, v.p.angAtterr) : 6 };
   }
@@ -327,8 +410,17 @@ window.STARSHIP_SIM = (() => {
       for(let i = 0; i < 6; i++){ const v = simuler(J.vol, J.equipe, 1, { phi:i }); if(v.fini === 'succes'){ g++; const n = notation(v, J); if(n.etoiles === 3) e3++; tt.push(v.t); rr.push(n.restant); } }
       ok(g >= 4, `${J.nom} : ${g}/6 réussis par le pilote automatique (3 étoiles : ${e3}/6 ; temps ${tt.length ? Math.round(Math.max(...tt)) : '–'} s au plus ; carburant restant ${rr.length ? Math.round(Math.min(...rr) * 100) : '–'} % au moins)`);
     }
+    // la rentrée : un angle d'attaque fixe trop faible brûle, trop fort écrase ; le milieu passe
+    const J = NIVEAUX.find(n => n.id === 'vaisseau'), essai = aoa => { const v = nouveauVol(J.vol, J.equipe, { vent:1, phi:1 }); let n = 0; while(!v.fini && n++ < 60 * 400){ const e = pilote(v, 1); if(v.phase === 'rentree') e.dir = (62 - aoa) / 28; pas(v, e, 1 / 60); } return v; };
+    ok(/brûlé/.test(essai(40).cause), 'Rentrée : trop plongeant (40°) → le bouclier brûle');
+    ok(/Surcharge/.test(essai(86).cause), 'Rentrée : trop à plat (86°) → surcharge de freinage');
+    ok(essai(66).fini === 'succes', 'Rentrée : angle d\'attaque raisonnable (66°) → la mission continue jusqu\'à la tour');
+    // la mission complète : propulseur perdu = mission incomplète
+    const M = NIVEAUX.find(n => n.id === 'mission'), vm = nouveauVol(M.vol, M.equipe, { vent:1, phi:1 }); let nn = 0, perdu = false;
+    while(!vm.fini && nn++ < 60 * 500){ const e = pilote(vm, 1); if(vm.segment === 'booster' && vm.y < 600){ e.gaz = false; perdu = true; } pas(vm, e, 1 / 60); }
+    ok(perdu && vm.boosterOk === false && vm.fini === 'partiel', 'Mission complète : propulseur raté → le vaisseau continue, mais la mission est incomplète');
     return r;
   }
 
-  return { NIVEAUX, params, nouveauVol, pas, hauteurAllumage, altitudeRetournement, apogeePrevu, pitchCible, angleCible, notation, pilote, simuler, tests, gDe, rhoDe };
+  return { NIVEAUX, params, nouveauVol, pas, hauteurAllumage, altitudeRetournement, apogeePrevu, pitchCible, angleCible, aoaGuide, notation, pilote, simuler, tests, gDe, rhoDe };
 })();
