@@ -515,26 +515,31 @@ function pSol(box){
   }
   h += '<div class="bloc"><h3>Portes d\'embarquement</h3><p class="leg">S : avions régionaux · M : moyen-courriers · L : gros porteurs · XL : très gros porteurs. Sans passerelle, un bus emmène les passagers (plus lent).</p>';
   A.portes.forEach((g, i) => {
-    const suiv = Object.keys(M.TAILLES).find(k => M.TAILLES[k].ordre === M.TAILLES[g.taille].ordre + 1), peutAgr = suiv && M.TAILLES[suiv].ordre <= M.TAILLES[D.tailleMax].ordre;
+    const suiv = Object.keys(M.TAILLES).find(k => M.TAILLES[k].ordre === M.TAILLES[g.taille].ordre + 1), peutAgr = suiv && M.TAILLES[suiv].ordre <= M.TAILLES[M.tailleMaxDe(A)].ordre, besoinPiste = suiv && !peutAgr;
     const nb = A.contrats.filter(c => c.porte === i).length;
     h += `<div class="item"><span class="ico">${g.passerelle ? '🌉' : '🚌'}</span><div><b>Porte ${g.nom} · ${g.taille}</b><small>${M.TAILLES[g.taille].nom}${g.passerelle ? ', passerelle' : ', bus et escalier'} · ${nb} vol${nb > 1 ? 's' : ''} par jour</small></div>
-      <div class="act">${g.passerelle ? '' : `<button class="btn" data-pas="${i}" ${P.argent < M.prixPasserelle(g.taille) ? 'disabled' : ''}>🌉 Passerelle · ${court(M.prixPasserelle(g.taille))}</button>`}${peutAgr ? `<button class="btn" data-agr="${i}">Agrandir en ${suiv} · ${court(Math.round((M.TAILLES[suiv].prix - M.TAILLES[g.taille].prix) * 1.1))}</button>` : ''}</div></div>`;
+      <div class="act">${g.passerelle ? '' : `<button class="btn" data-pas="${i}" ${P.argent < M.prixPasserelle(g.taille) ? 'disabled' : ''}>🌉 Passerelle · ${court(M.prixPasserelle(g.taille))}</button>`}${peutAgr ? `<button class="btn" data-agr="${i}">Agrandir en ${suiv} · ${court(Math.round((M.TAILLES[suiv].prix - M.TAILLES[g.taille].prix) * 1.1))}</button>` : besoinPiste ? `<small class="leg">Pour une porte ${suiv} : allonge la piste ↓</small>` : ''}</div></div>`;
   });
   const maxP = M.portesMax(A);
   if(A.portes.length < maxP){
-    h += `<div class="ligneB">${Object.keys(M.TAILLES).filter(k => M.TAILLES[k].ordre <= M.TAILLES[D.tailleMax].ordre).map(k => `<button class="btn prim" data-porte="${k}" ${P.argent < M.TAILLES[k].prix ? 'disabled' : ''}>+ Porte ${k} · ${court(M.TAILLES[k].prix)}</button>`).join('')}</div>`;
+    h += `<div class="ligneB">${Object.keys(M.TAILLES).filter(k => M.TAILLES[k].ordre <= M.TAILLES[M.tailleMaxDe(A)].ordre).map(k => `<button class="btn prim" data-porte="${k}" ${P.argent < M.TAILLES[k].prix ? 'disabled' : ''}>+ Porte ${k} · ${court(M.TAILLES[k].prix)}</button>`).join('')}</div>`;
   } else if(A.portes.length >= D.portesMax) h += '<p class="leg">Toutes les portes possibles ici sont construites.</p>';
   else h += `<p class="leg mal">La façade du terminal est pleine. <b>Agrandis le terminal</b> (🏢 Terminal, ${court(M.prixAgrandir(A))}) : deux portes de plus à chaque fois.</p>`;
-  h += `<p class="leg">Ici, la piste accepte jusqu'aux avions ${D.tailleMax} · ${A.portes.length}/${maxP} portes ouvertes${maxP < D.portesMax ? ` (${D.portesMax} possibles en agrandissant le terminal)` : ''}.</p></div>`;
+  h += `<p class="leg">Ici, la piste accepte jusqu'aux avions ${M.tailleMaxDe(A)} · ${A.portes.length}/${maxP} portes ouvertes${maxP < D.portesMax ? ` (${D.portesMax} possibles en agrandissant le terminal)` : ''}.</p></div>`;
   // les pistes : la file d'attente en l'air et au point d'attente vient de là
   const np = M.nbPistes(A), attente = A.vols.filter(v => v.etat === 'approche' && v.t0 + v.duree - A.t > 6.5).length + A.vols.filter(v => v.etat === 'attentePiste').length;
-  h += `<div class="bloc"><h3>🛬 Pistes</h3><p class="leg">${np} piste${np > 1 ? 's' : ''} de ${D.piste} m. Un avion garde la piste 1 min 20 à l'atterrissage comme au décollage ; les suivants attendent, en l'air ou au point d'attente.${attente ? ` <b class="mal">${attente} avion${attente > 1 ? 's' : ''} en attente en ce moment.</b>` : ''}</p>
+  h += `<div class="bloc"><h3>🛬 Pistes</h3><p class="leg">${np} piste${np > 1 ? 's' : ''} de ${M.pisteLongueur(A)} m. Un avion garde la piste 1 min 20 à l'atterrissage comme au décollage ; les suivants attendent, en l'air ou au point d'attente.${attente ? ` <b class="mal">${attente} avion${attente > 1 ? 's' : ''} en attente en ce moment.</b>` : ''}</p>
+    ${M.peutAllonger(A)
+      ? `<p class="leg">Une piste plus longue accueille des avions plus gros (${M.prochaineTaille(A)}) : tu pourras alors agrandir tes portes et signer des contrats avec ces avions. +300 m. Il faut le niveau ${M.NIV_ALLONGER[M.prochaineTaille(A)]}.</p>
+         <button class="btn prim" id="sAllonger" ${P.argent < M.prixAllonger(A) || M.niveauDe(P.xp) < M.NIV_ALLONGER[M.prochaineTaille(A)] ? 'disabled' : ''}>📏 Allonger la piste (avions ${M.prochaineTaille(A)}) · ${court(M.prixAllonger(A))}${M.niveauDe(P.xp) < M.NIV_ALLONGER[M.prochaineTaille(A)] ? ' · niveau ' + M.NIV_ALLONGER[M.prochaineTaille(A)] : ''}</button>`
+      : '<p class="leg">La piste accueille déjà les plus gros avions.</p>'}
     ${np < M.PISTES_MAX
       ? `<p class="leg">Une seconde piste, parallèle, double le passage : chaque mouvement prend la bande qui se libère le plus tôt. Il faut le niveau 8.</p>
          <button class="btn prim" id="sPiste" ${P.argent < M.prixPiste(A) || M.niveauDe(P.xp) < 8 ? 'disabled' : ''}>🛬 Construire une seconde piste · ${court(M.prixPiste(A))}${M.niveauDe(P.xp) < 8 ? ' · niveau 8' : ''}</button>`
       : '<p class="leg">Les deux pistes sont construites : c\'est le maximum ici.</p>'}</div>`;
   box.innerHTML = h;
   brancherOnglets(box, 'sol');
+  if($('sAllonger')) $('sAllonger').onclick = () => action(M.allongerPiste(P, A), () => rafraichirPanneau(true));
   if($('sPiste')) $('sPiste').onclick = () => action(M.acheterPiste(P, A), () => rafraichirPanneau(true));
   box.querySelectorAll('[data-hangar]').forEach(b => b.onclick = () => action(M.construireHangar(P, A, b.dataset.hangar), () => rafraichirPanneau(true)));
   box.querySelectorAll('[data-veh]').forEach(b => b.onclick = () => action(M.acheterVehicule(P, A, b.dataset.veh)));
@@ -639,6 +644,7 @@ function pTerminal(box, complet){
         ? `<button class="btn" id="tAgrA" ${P.argent < M.prixArrivees(A) ? 'disabled' : ''}>↔️ Agrandir les Arrivées · ${court(M.prixArrivees(A))}</button><p class="leg">Une colonne (2 emplacements) de plus pour des tapis et des douanes en plus.</p>`
         : '<p class="leg">La zone Arrivées est à sa taille maximale.</p>'}
       <div class="ligneB"><button class="btn" id="tFrA">◀ Arrivées +1 colonne</button><button class="btn" id="tFrD">Départs +1 colonne ▶</button></div>
+      <p class="leg">Chaque nouvelle porte (🚚 Sol) allonge la façade : les colonnes en plus s'ajoutent aux <b>Arrivées</b>, pour de la place en plus (duty-free, tapis, douane).</p>
       <p class="leg">La <b>frontière</b> entre les deux zones se déplace d'une colonne (tant que les constructions déjà posées restent dans leur zone) : elle ne coûte rien.</p></div>
     <div class="bloc"><h3>Petits objets (dans les allées)</h3><div class="palette">${Object.entries(M.PETITS).map(([k, O]) => `<button data-outil="p:${k}" ${P.argent < O.prix ? 'disabled' : ''} title="${esc(O.desc)}"><span>${O.ico}</span>${esc(O.nom)}<small>${court(O.prix)}</small></button>`).join('')}</div>
       <p class="leg">Bancs : 6 places assises. Poubelles : un terminal propre (environ une pour 6 cases). Plantes, écrans, bornes, fontaines : un peu plus de satisfaction. Distributeurs : un peu d'argent.</p></div>`;
@@ -803,7 +809,7 @@ const bq = { montant:null, duree:14 };
 // les gros achats possibles ici, pour les financer avec un prêt
 function projets(){
   const D = M.AEROPORTS[A.id], niv = M.niveauDe(P.xp), l = [];
-  if(A.portes.length < M.portesMax(A)){ const t = D.tailleMax; l.push({ k:'porte', ico:'🚪', nom:`Nouvelle porte (${M.TAILLES[t].nom.toLowerCase()})`, prix:M.TAILLES[t].prix, faire:() => M.acheterPorte(P, A, t) }); }
+  if(A.portes.length < M.portesMax(A)){ const t = M.tailleMaxDe(A); l.push({ k:'porte', ico:'🚪', nom:`Nouvelle porte (${M.TAILLES[t].nom.toLowerCase()})`, prix:M.TAILLES[t].prix, faire:() => M.acheterPorte(P, A, t) }); }
   const g = A.portes.findIndex(x => !x.passerelle); if(g >= 0 && niv >= 2) l.push({ k:'passerelle', ico:'🌉', nom:`Passerelle porte ${A.portes[g].nom}`, prix:M.prixPasserelle(A.portes[g].taille), faire:() => M.acheterPasserelle(P, A, g) });
   if(M.colsDep(A) < M.terminalMax) l.push({ k:'terminal', ico:'🏢', nom:`Agrandir les Départs${M.portesMax(A) < D.portesMax ? ' (2 portes de plus)' : ''}`, prix:M.prixAgrandir(A), faire:() => M.agrandirTerminal(P, A) });
   if(A.carbu.niv < M.CUVE_MAX) l.push({ k:'cuve', ico:'🛢️', nom:`Cuve à carburant niveau ${A.carbu.niv + 1}`, prix:M.CUVE.prix[A.carbu.niv + 1], faire:() => M.agrandirCuve(P, A) });

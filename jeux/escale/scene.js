@@ -108,7 +108,7 @@ window.ESCALE_3D = (() => {
   /* ---------- Construire l'aéroport ---------- */
   function construire(A){
     const P = M.plan(A), D = M.AEROPORTS[A.id], cle = A.id + ':' + A.portes.map(g => g.taille + (g.passerelle ? 'p' : '')).join(',')
-      + '|' + (P.hangars || []).map(x => x.k + ((A.hangars || {})[x.k] ? '1' : '0')).join(',') + '|p' + M.nbPistes(A) + '|t' + A.terminal.l + 'x' + A.terminal.h;
+      + '|' + (P.hangars || []).map(x => x.k + ((A.hangars || {})[x.k] ? '1' : '0')).join(',') + '|p' + M.nbPistes(A) + 'e' + (A.pisteExt || 0) + '|t' + A.terminal.l + 'x' + A.terminal.h;
     if(cle === cleMonde) return; cleMonde = cle;
     if(monde){ scene.remove(monde); monde.traverse(o => { if(o.geometry) o.geometry.dispose(); }); }
     for(const [, a] of avions){ scene.remove(a.obj); scene.remove(a.ombre); } avions.clear();
