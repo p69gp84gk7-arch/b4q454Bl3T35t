@@ -209,7 +209,7 @@ window.STARSHIP_DESSIN = (() => {
   }
   /* ---------- La tour de lancement ---------- */
   function tour(g, x, sol, s, bras, fermes, t = 0){
-    const larg = 7 * s, haut = 150 * s, yb = bras ? sol - bras.y * s : null, ep = Math.max(1, s * .6);
+    const larg = 7 * s, haut = 150 * s, yb = bras ? sol - (bras.y + (bras.pin || 0)) * s : null, ep = Math.max(1, s * .6);
     // la fondation de béton
     g.fillStyle = '#6E7480'; g.fillRect(x - larg * 1.3, sol - 2 * s, larg * 2.6, 2 * s + 2);
     // les deux montants et le treillis (diagonales, entretoises, plateformes)
@@ -222,12 +222,12 @@ window.STARSHIP_DESSIN = (() => {
     g.fillStyle = '#8A93A1'; g.fillRect(x + larg / 2 + s * 1.2, sol - haut * (.25 + .0 * t), larg * .5, 7 * s);
     g.strokeStyle = '#C9D1DD'; g.lineWidth = Math.max(1, s * .5); g.beginPath(); g.moveTo(x, sol - haut); g.lineTo(x, sol - haut - 10 * s); g.stroke();      // le paratonnerre
     g.fillStyle = Math.sin(t * 4) > 0 ? '#FF4A3A' : '#7A2A24'; g.beginPath(); g.arc(x, sol - haut - 10 * s, Math.max(2, s * 1.1), 0, 7); g.fill();
-    if(bras){                                                    // les deux bras (« baguettes ») qui attrapent le propulseur
-      const ouv = (fermes ? 0 : bras.tol) * s, y0 = yb - 3 * s, e = 3.2 * s, xa = x - 38 * s;
-      g.fillStyle = '#E8892F'; g.fillRect(xa, y0, 38 * s - larg / 2, e); g.fillStyle = '#B86520'; g.fillRect(xa, y0 + e * .7, 38 * s - larg / 2, e * .3);
-      g.strokeStyle = 'rgba(80,40,10,.6)'; g.lineWidth = Math.max(.6, s * .3); g.beginPath(); for(let i = 0; i < 6; i++){ g.moveTo(xa + i * 6 * s, y0); g.lineTo(xa + i * 6 * s + 6 * s, y0 + e); } g.stroke();
-      g.fillStyle = '#FFB86B'; g.fillRect(xa - ouv - 12 * s, y0 - 2.4 * s, 12 * s, e + 4.8 * s); g.fillStyle = '#D07A25'; g.fillRect(xa - ouv - 12 * s, y0 + 2.8 * s, 10 * s, e);
-      g.fillStyle = '#2A2F38'; g.fillRect(xa - ouv - 12 * s, y0 - 2.4 * s, 12 * s, Math.max(1, s * .5));
+    if(bras){                                                    // les bras (« baguettes ») : ils se referment sur les ergots du propulseur, à la hauteur des ergots
+      const f = fermes ? +fermes : 0, ouv = (1 - f) * bras.tol * s, e = 3.2 * s, y0 = yb - e / 2, vx = x - 22 * s, demi = (bras.demi || 4) * s, xp = vx + demi + ouv, xa = x - larg / 2;
+      g.fillStyle = '#E8892F'; g.fillRect(xp, y0, xa - xp, e); g.fillStyle = '#B86520'; g.fillRect(xp, y0 + e * .72, xa - xp, e * .28);
+      g.strokeStyle = 'rgba(80,40,10,.6)'; g.lineWidth = Math.max(.6, s * .3); g.beginPath(); for(let q = xp; q < xa - 5 * s; q += 6 * s){ g.moveTo(q, y0); g.lineTo(q + 6 * s, y0 + e); } g.stroke();
+      g.fillStyle = '#FFB86B'; g.fillRect(xp - 3 * s, y0 - 1.6 * s, 3.4 * s, e + 3.2 * s); g.fillStyle = '#2A2F38'; g.fillRect(xp - 3 * s, y0 - 1.6 * s, 3.4 * s, Math.max(1, s * .45)); g.fillRect(xp - 3 * s, y0 + e + 1.6 * s - Math.max(1, s * .45), 3.4 * s, Math.max(1, s * .45));
+      g.fillStyle = '#C9CED8'; g.fillRect(xa - 2 * s, y0 - 2 * s, 2 * s, e + 4 * s);                  // l'attache sur la tour
     }
   }
   /* ---------- Les plateformes ---------- */

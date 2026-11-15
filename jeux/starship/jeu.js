@@ -99,7 +99,7 @@ function lancer(i){
   V = S.nouveauVol(J.vol, J.equipe, {});
   msgVus = 0; bandeauMsg = null; fin = null; parts = []; vitesse = 1; enPause = false; $('bVitesse').textContent = '⏩ Vitesse ×1';
   alerteDern = {}; vj = 0; jDern = null; EV = {}; phasePrec = null; ecran('eVol'); appliquerMode(); tailleVol(); dernier = performance.now(); acc = 0; audio();
-  bandeauMsg = { t:J.vol.type === 'booster' || J.vol.type === 'barge' ? 'Guide-toi avec ◀ ▶ puis allume pour t\'arrêter au bon endroit' : J.vol.type === 'dragon' ? 'Garde le bouclier au frais ; ouvre les PARACHUTES quand la capsule est assez lente' : J.vol.type === 'lune' ? 'Pas d\'air : penche (◀ ▶) et freine au moteur' : J.vol.type === 'orbite' || J.vol.type === 'vaisseau' || J.vol.type === 'mars' || J.vol.type === 'falcon' ? 'Tiens POUSSÉE : suis le fantôme jaune avec ◀ ▶' : 'Tiens POUSSÉE pour décoller', at:0, cls:'' };
+  bandeauMsg = { t:J.vol.type === 'booster' || J.vol.type === 'barge' ? 'Guide-toi avec ◀ ▶ puis allume pour t\'arrêter au bon endroit' : J.vol.type === 'dragon' ? 'Garde le bouclier au frais ; ouvre les PARACHUTES quand la capsule est assez lente' : J.vol.type === 'lune' ? 'Pas d\'air : penche (◀ ▶) et freine au moteur' : J.vol.type === 'orbite' || J.vol.type === 'vaisseau' || J.vol.type === 'mars' || J.vol.type === 'falcon' ? 'Tiens POUSSÉE : suis le losange bleu de la mire avec ◀ ▶' : 'Tiens POUSSÉE pour décoller', at:0, cls:'' };
   cancelAnimationFrame(boucle); boucle = requestAnimationFrame(tick);
 }
 function tick(now){
@@ -146,7 +146,7 @@ function resultat(){
   } else if(V.fini === 'echec') R.explosions++;
   sauver();
   const grand = V.fini === 'succes' ? '🎉' : V.fini === 'partiel' ? '🟡' : '💥';
-  const titre = V.fini === 'succes' ? (r.reussis === 1 ? `${J.nom} : franchi !` : 'Vol réussi') : V.fini === 'partiel' ? 'Presque !' : 'Démontage rapide non planifié';
+  const titre = V.fini === 'succes' ? (r.reussis === 1 ? `${J.court || J.nom} : franchi !` : 'Vol réussi') : V.fini === 'partiel' ? 'Presque !' : 'Démontage rapide non planifié';
   const stats = V.fini === 'succes' ? `<div class="stat"><div><b>${n.temps.toFixed(0)} s</b>chrono</div><div><b>${Math.round(n.restant * 100)} %</b>carburant restant</div><div><b>${n.conso.toFixed(0)} s</b>de poussée pleine</div>${n.ecart != null ? `<div><b>${n.ecart.toFixed(1)} m</b>écart au centre</div><div><b>${n.vImpact.toFixed(1)} m/s</b>vitesse à l'arrivée</div><div><b>${n.angle.toFixed(1)}°</b>angle</div>` : ''}</div>` : '';
   const crit = V.fini === 'succes' ? `<div class="crit">${n.criteres.map(c => `<div class="${c.ok ? 'ok' : ''}">${c.ok ? '★' : '☆'} ${esc(c.txt)}</div>`).join('')}</div>` : '';
   const suite = i => i < S.NIVEAUX.length && debloque(i);
@@ -198,7 +198,7 @@ function dessinerVol(){
   if(vide){ const tx = W * .82, ty = H * .2, t = g.createRadialGradient(tx - 4, ty - 4, 2, tx, ty, 22); t.addColorStop(0, '#9CD0FF'); t.addColorStop(.6, '#2B6FD0'); t.addColorStop(1, '#173A7A'); g.fillStyle = t; g.beginPath(); g.arc(tx, ty, 22, 0, 7); g.fill(); }
   const s = haute ? 2.2 : echelleDe(V.y), gy0 = H * .84;
   const kind = kindVisuel(sp, V), tv = TAILLE_VEH[kind] || [56, 134], hv = clamp(HAUTEUR_REELLE[kind] * (haute ? 2.2 : s), Math.max(tv[0], tv[1] * .55), tv[1]);
-  const vyScr = haute ? H * .62 : clamp(gy0 - V.y * s, Math.min(H * .6, Math.max(H * .32, hv + 36)), H * .76), solY = haute ? H + 400 : vyScr + V.y * s;
+  const vyScr = haute ? H * .62 : clamp(gy0 - V.y * s, V.chute ? H * .68 : Math.min(H * .6, Math.max(H * .32, hv + 36)), H * .76), solY = haute ? H + 400 : vyScr + V.y * s;
   const camX = haute ? 0 : V.x, X = x => W / 2 + (x - camX) * s;
   if(haute){ // la courbure de la Terre qui s'éloigne
     const R = W * 3, cy = H + R * (1.05 - clamp(V.jauge * 1.1, 0, 1) * .12) - H * (.12 + V.jauge * .22), terre = g.createRadialGradient(W / 2, cy, R * .94, W / 2, cy, R); terre.addColorStop(0, '#2B6FD0'); terre.addColorStop(.97, '#58A8F0'); terre.addColorStop(1, 'rgba(160,220,255,.9)');
@@ -212,19 +212,18 @@ function dessinerVol(){
     if(sp.type === 'barge') barge(g, X(sp.pad.x), sp.pad.tol * s, solY, s, V.t);
     else if(sp.type === 'dragon') bateau(g, X(sp.pad.x), 26 * s + 18, solY, s, V.t);
     else if(sp.pad && !sp.tour){ const px = X(sp.pad.x), pw = sp.pad.tol * s; table(g, px, pw, solY, s, false); g.fillStyle = '#fff'; g.font = `800 ${Math.max(10, 5 * s)}px sans-serif`; g.textAlign = 'center'; g.fillText('H', px, solY + 8 * s); }
-    if(sp.tour){ const tx = X(sp.tour.x + 22); table(g, X(sp.tour.x), 26 * s, solY, s, true); tour(g, tx, solY, s, sp.tour, !!(fin && fin.issue === 'succes'), V.t); }
+    if(sp.tour){ const tx = X(sp.tour.x + 22); table(g, X(sp.tour.x), 26 * s, solY, s, true); tour(g, tx, solY, s, { ...sp.tour, pin:(HAUTEUR_REELLE[kind] || 70) * .72, demi:(HAUTEUR_REELLE[kind] || 70) * (LARGEUR[kind] || .1) / 2 }, fin && fin.issue === 'succes' ? clamp((performance.now() - fin.t0) / 500, 0, 1) : 0, V.t); }
     if(prog && !sp.tour){ table(g, X(0), 24 * s, solY, s, true); tour(g, X(34), solY, s * .9, null, false, V.t); }                                   // la tour de lancement, au décollage
     // les lignes à suivre : l'allumage et le retournement
     g.setLineDash([8, 6]); g.lineWidth = 2; g.textAlign = 'left'; g.font = '800 12px "Bricolage Grotesque", sans-serif';
     const ev = EV;
-    const ligne = (y, c, txt, fort) => { const ly = vyScr + (V.y - y) * s; if(ly > 20 && ly < H){ g.strokeStyle = c; g.lineWidth = fort ? 3 : 2; g.beginPath(); g.moveTo(0, ly); g.lineTo(W, ly); g.stroke(); g.fillStyle = c; g.fillText(txt, 10, ly - 6); } else if(ly >= H && fort){ g.fillStyle = c; g.textAlign = 'right'; g.fillText(`▼ ${txt} : ${fmt(V.y - y)} m plus bas`, W - 12, H - 8); g.textAlign = 'left'; } };
+    const ligne = (y, c, txt, fort) => { const ly = vyScr + (V.y - y) * s; if(ly > 20 && ly < H){ g.strokeStyle = c; g.lineWidth = fort ? 3 : 2; g.beginPath(); g.moveTo(0, ly); g.lineTo(W, ly); g.stroke(); g.fillStyle = c; g.textAlign = 'right'; g.fillText(txt, W - 62, ly - 6); g.textAlign = 'left'; } else if(ly >= H && fort){ g.fillStyle = c; g.textAlign = 'right'; g.fillText(`▼ ${txt} : ${fmt(V.y - y)} m plus bas`, W - 12, H - 8); g.textAlign = 'left'; } };
     if(ev.allume){ ligne(ev.allume.y, '#38E08A', 'ALLUME ICI', true); ligne(ev.allume.tard, '#FF5A4D', 'trop tard', false); }
     if(ev.retourne){ ligne(ev.retourne.y, '#5AB0FF', 'RETOURNE-TOI ICI', true); ligne(ev.retourne.tard, '#FF5A4D', 'trop tard', false); }
     g.setLineDash([]);
   }
   // le véhicule (ou son fantôme de trajectoire)
   const bx = W / 2, by = vyScr;
-  if(haute){ const pc = S.pitchCible(V.jauge); g.globalAlpha = .45; vehicule(g, kind, bx + 90, by, hv, pc, { gaz:0 }); g.globalAlpha = 1; g.strokeStyle = '#FFD23A'; g.setLineDash([4, 5]); g.lineWidth = 2; g.beginPath(); g.moveTo(bx + 90, by); g.lineTo(bx + 90 + Math.sin(pc * Math.PI / 180) * hv, by - Math.cos(pc * Math.PI / 180) * hv); g.stroke(); g.setLineDash([]); g.fillStyle = '#FFD23A'; g.font = '800 11px sans-serif'; g.textAlign = 'center'; g.fillText('trajectoire', bx + 90, by + 16); }
   // la fumée et les débris
   for(const p of parts){ const a = 1 - p.t / p.vie, px = haute ? bx + p.x * s : X(p.x), py = haute ? by - p.y * s : solY - p.y * s; g.globalAlpha = clamp(a, 0, 1) * .9; g.fillStyle = p.c; g.beginPath(); g.arc(px, py, p.r * (p.g ? 1 : 1 + p.t * 1.6), 0, 7); g.fill(); }
   g.globalAlpha = 1;
@@ -232,7 +231,7 @@ function dessinerVol(){
     let bxx = bx, byy = by, th = V.th;
     if(!haute && sp.tour && fin && fin.issue === 'succes'){ bxx = X(sp.tour.x); byy = solY - sp.tour.y * s; th = 0; }
     const jambes = !haute && V.phase === 'vol' && V.y < 150 && (sp.pad || sp.tour) && V.retourne !== false;
-    vehicule(g, kind, bxx, byy, hv, th, { gaz:V.gaz, chaleur:V.chaleur / V.p.resChaleur, jambes:jambes || sp.type === 'saut', chutes:V.chute ? (V.chuteK || 0) : 0 });
+    vehicule(g, kind, bxx, byy, hv, th, { gaz:V.gaz, chaleur:V.plasma || 0, jambes:jambes || sp.type === 'saut', chutes:V.chute ? (V.chuteK || 0) : 0 });
     const ac = mireOn && !fin ? S.angleCible(V) : null;
     if(ac){ const a = th * RAD, rm = clamp(hv * .5 + 36, 62, Math.min(120, H * .3)); mire(bxx + Math.sin(a) * hv * .5, byy - Math.cos(a) * hv * .5, rm, th, ac.th, ac.tol, { vx:V.vx, vy:V.vy, vmin:12 }); }
   }
@@ -251,20 +250,21 @@ function mire(cx, cy, r, th, cible, tol, o = {}){
   if(cible != null){ g.lineWidth = 8; g.strokeStyle = ok ? 'rgba(80,240,150,.65)' : 'rgba(90,200,255,.5)'; g.beginPath(); g.arc(cx, cy, r, (cible - tol - 90) * RAD, (cible + tol - 90) * RAD); g.stroke(); }
   // les repères de la trajectoire : prograde (cercle et ailes), rétrograde (cercle et croix)
   const vit = Math.hypot(o.vx || 0, o.vy || 0);
-  if(vit > (o.vmin || 8)){ const a = Math.atan2(o.vx, o.vy) / RAD; for(const [aa, retro] of [[a, false], [a + 180, true]]){ const [x, y] = P(aa, r); g.strokeStyle = '#7CF0B6'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 6, 0, 7); g.stroke(); g.beginPath();
+  if(vit > (o.vmin || 8)){ const a = Math.atan2(o.vx, o.vy) / RAD;
+    { const [x1, y1] = P(a, r), [x2, y2] = P(a + 180, r); g.strokeStyle = 'rgba(124,240,182,.55)'; g.lineWidth = 1.5; g.setLineDash([6, 5]); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); g.setLineDash([]);      // l'axe de la trajectoire, projeté à travers le vaisseau
+      const [px, py] = P(a, r + 20), [qx, qy] = P(a, r + 46); g.strokeStyle = 'rgba(124,240,182,.4)'; g.beginPath(); g.moveTo(px, py); g.lineTo(qx, qy); g.stroke(); }
+    for(const [aa, retro] of [[a, false], [a + 180, true]]){ const [x, y] = P(aa, r); g.strokeStyle = '#7CF0B6'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 6, 0, 7); g.stroke(); g.beginPath();
     if(!retro){ g.moveTo(x - 11, y); g.lineTo(x - 6, y); g.moveTo(x + 6, y); g.lineTo(x + 11, y); g.moveTo(x, y - 6); g.lineTo(x, y - 10); } else { g.moveTo(x - 4, y - 4); g.lineTo(x + 4, y + 4); g.moveTo(x + 4, y - 4); g.lineTo(x - 4, y + 4); } g.stroke(); } }
   if(o.guide != null){ const [x, y] = P(o.guide, r), c = Math.abs(norm180(o.guide - th)) <= 6; g.fillStyle = c ? '#7CF0B6' : '#FFD23A'; g.strokeStyle = 'rgba(0,0,20,.7)'; g.lineWidth = 2; g.save(); g.translate(x, y); g.rotate(o.guide * RAD); g.beginPath(); g.moveTo(0, -9); g.lineTo(7, 5); g.lineTo(0, 1); g.lineTo(-7, 5); g.closePath(); g.stroke(); g.fill(); g.restore(); }
   // l'axe du vaisseau (repère blanc) et le losange de la cible
   g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 1.5; g.setLineDash([2, 5]); const [ax, ay] = P(th, r - 8); g.beginPath(); g.moveTo(cx, cy); g.lineTo(ax, ay); g.stroke(); g.setLineDash([]);
   { const [x, y] = P(th, r); g.fillStyle = '#fff'; g.strokeStyle = 'rgba(0,0,20,.7)'; g.lineWidth = 2; g.save(); g.translate(x, y); g.rotate(th * RAD); g.beginPath(); g.moveTo(0, 2); g.lineTo(7, -9); g.lineTo(-7, -9); g.closePath(); g.stroke(); g.fill(); g.restore(); }
   if(cible != null){ const [x, y] = P(cible, r); g.fillStyle = ok ? '#5BF09A' : '#4FC3FF'; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y - 10); g.lineTo(x + 8, y); g.lineTo(x, y + 10); g.lineTo(x - 8, y); g.closePath(); g.fill(); g.stroke(); }
-  // le petit viseur au centre
-  g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 1.6; g.beginPath(); g.arc(cx, cy, 8, 0, 7); g.moveTo(cx - 14, cy); g.lineTo(cx - 4, cy); g.moveTo(cx + 4, cy); g.lineTo(cx + 14, cy); g.moveTo(cx, cy - 14); g.lineTo(cx, cy - 4); g.moveTo(cx, cy + 4); g.lineTo(cx, cy + 14); g.stroke();
   g.restore();
   if(err != null){ const t = ok ? '✔ angle bon' : err < 0 ? `◀ ${Math.abs(err).toFixed(0)}°` : `${err.toFixed(0)}° ▶`; texteHUD(t, cx, cy + r + 18, 13, ok ? '#7CF0B6' : '#8FD8FF', 'center'); }
 }
 /* ---------- Les alertes : on prévient bien avant (compte à rebours), pas au dernier moment ---------- */
-let alerteDern = {}, vj = 0, jDern = null, EV = {}, pilCx = 0, pilOn = false;
+let alerteDern = {}, vj = 0, jDern = null, EV = {}, pilCx = 0, pilOn = false, yHud = 0, yMsg = 134, yPilule = 8;
 // le temps pour parcourir d mètres en chute, avec la vitesse vv (m/s) et la pesanteur gg
 const chrono = (d, vv, gg) => d <= 0 ? 0 : (gg > 0 ? (-vv + Math.sqrt(vv * vv + 2 * gg * d)) / gg : d / Math.max(1, vv));
 // une pilule en haut au milieu (avec une barre qui se remplit à mesure qu'on s'approche)
@@ -284,7 +284,7 @@ function alerte(cle, titres, t, tmax, y0, cn){
 // les moments à venir dans un niveau : l'allumage (ligne verte, bien avant le dernier moment), le retournement, la pression max, la séparation
 function evenements(){
   const ev = {}, gg = S.gDe(V);
-  if(V.phase === 'vol' && V.vy < -4 && !V.fini && V.y > 12){ const ya = S.hauteurAllumage(V); if(isFinite(ya) && ya > 0) ev.allume = { y:ya * 1.5, tard:ya * 1.1, t:chrono(V.y - ya * 1.5, -V.vy, gg) }; }
+  if(V.phase === 'vol' && V.vy < -4 && !V.fini && !V.manque && V.y > 12){ const ya = S.hauteurAllumage(V); if(isFinite(ya) && ya > 0) ev.allume = { y:ya * 1.5, tard:ya * 1.1, t:chrono(V.y - ya * 1.5, -V.vy, gg) }; }
   if(V.phase === 'plat' && !V.fini && V.th > 80){ const yr = S.altitudeRetournement(V); ev.retourne = { y:yr * 1.4, tard:yr * 1.05, t:chrono(V.y - yr * 1.4, -V.vy, gg) }; }
   if(V.phase === 'programme' && !V.fini){
     if(jDern && V.t > jDern.t + .25){ const r = (V.jauge - jDern.j) / (V.t - jDern.t); vj = vj ? vj * .7 + r * .3 : r; jDern = { t:V.t, j:V.jauge }; } else if(!jDern) jDern = { t:V.t, j:V.jauge };
@@ -293,6 +293,35 @@ function evenements(){
     if(V.etage === 1 && V.jauge < P.etageA) ev.sep = { t:(P.etageA - V.jauge) / vv };
   }
   return ev;
+}
+/* ---------- Les widgets : le style des retransmissions de lancement (plaques sombres, majuscules, chronomètre T+, télémétrie) ---------- */
+const WF = '"Bricolage Grotesque", system-ui, sans-serif', hms = t => { t = Math.max(0, Math.floor(t)); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
+function wPlaque(x, y, w, h){ g.fillStyle = 'rgba(5,8,14,.7)'; g.fillRect(x, y, w, h); g.fillStyle = 'rgba(255,255,255,.88)'; g.fillRect(x, y, w, 1.5); }
+function wTexte(t, x, y, px, coul = '#fff', align = 'left', poids = 600, esp = 0){
+  g.font = `${poids} ${px}px ${WF}`; g.textAlign = align; g.fillStyle = coul; try{ g.letterSpacing = esp ? esp + 'px' : '0px'; }catch(e){} g.fillText(t, x, y); try{ g.letterSpacing = '0px'; }catch(e){}
+}
+// un champ de télémétrie : une étiquette en petites capitales et sa valeur en grand
+function wChamp(x, y, label, val, unite, coul){
+  wTexte(label.toUpperCase(), x, y, 9, 'rgba(255,255,255,.55)', 'left', 600, 1);
+  wTexte(val, x, y + 20, 21, coul || '#fff', 'left', 700); g.font = `700 21px ${WF}`; const m = g.measureText(val).width; if(unite) wTexte(unite, x + m + 4, y + 20, 10, 'rgba(255,255,255,.6)', 'left', 600, .5);
+}
+// une barre fine avec son étiquette et sa valeur
+function wBarre(x, y, w, label, v, coul, txt){
+  wTexte(label.toUpperCase(), x, y + 8, 9, 'rgba(255,255,255,.55)', 'left', 600, 1); if(txt) wTexte(txt, x + w, y + 8, 10, 'rgba(255,255,255,.85)', 'right', 700);
+  g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(x, y + 11, w, 4); g.fillStyle = coul; g.fillRect(x, y + 11, Math.max(0, w * clamp(v, 0, 1)), 4);
+}
+const kmh = ms => fmt(ms * 3.6), altTxt = m => m >= 10000 ? [(m / 1000).toFixed(1).replace('.', ','), 'km'] : [fmt(m), 'm'];
+// les deux plaques : le titre et le chronomètre ; les chiffres et les barres. Rend le bas de ce qui est dessiné (pour caler le texte dessous).
+function wTelemetrie(titre, t, champs, barres, extra, lignes = []){
+  const col = W > H * 1.1, w1 = col ? 222 : 172, x2 = col ? 8 : 188, y2 = col ? 66 : 8, w2 = col ? 222 : Math.min(150, W - 188 - 52);
+  wPlaque(8, 8, w1, 52); wTexte(titre.toUpperCase(), 16, 25, 10, '#9FB4D8', 'left', 600, 1); wTexte(`T+ ${hms(t)}`, 16, 50, 25, '#fff', 'left', 700, 1);
+  if(extra) wTexte(extra, 8 + w1 - 8, 50, 10, '#FFD45C', 'right', 700, .5);
+  const nl = Math.ceil(champs.length / 2), h2 = 10 + nl * 33 + barres.length * 18 + 4 + lignes.length * 13;
+  wPlaque(x2, y2, w2, h2);
+  champs.forEach((c, i) => wChamp(x2 + 8 + (i % 2) * (w2 / 2), y2 + 12 + (i / 2 | 0) * 33, c[0], c[1], c[2], c[3]));
+  barres.forEach((b, i) => wBarre(x2 + 8, y2 + 10 + nl * 33 + i * 18, w2 - 16, b[0], b[1], b[2], b[3]));
+  lignes.forEach((l, i) => wTexte(l[0], x2 + 8, y2 + 10 + nl * 33 + barres.length * 18 + 11 + i * 13, 9.5, l[1] || 'rgba(255,255,255,.7)', 'left', 600, .4));
+  return { bas:Math.max(60, y2 + h2), col };
 }
 function jauge(x, y, w, h, v, c, titre, txt){
   g.fillStyle = 'rgba(0,0,0,.45)'; rondRect(g, x, y, w, h, h / 2); g.fill(); g.fillStyle = c; rondRect(g, x, y, Math.max(h, w * clamp(v, 0, 1)), h, h / 2); g.fill();
@@ -306,33 +335,30 @@ function texteLong(t, x, y, taille, couleur, gauche, maxL){
   lignes.push(l); lignes.forEach((ln, i) => texteHUD(ln, x, y + i * (taille + 4), taille, couleur, gauche ? 'left' : 'center')); return lignes.length * (taille + 4);
 }
 function dessinerHUD(sp, prog){
-  const p = V.p, mars = !!sp.g && sp.g < 5, top = 10, L = 12;
-  // en haut à gauche : les chiffres
-  g.fillStyle = 'rgba(8,12,28,.5)'; rondRect(g, 8, top - 2, 196, prog ? 84 : 100, 12); g.fill();
-  texteHUD(sp.titre, L, top + 12, 12, '#FFB347');
+  const p = V.p, vit = prog ? V.jauge * 7800 : Math.hypot(V.vx, V.vy);
+  let hud;
   if(prog){
-    texteHUD(`Altitude ${fmt(V.y / 1000)} km`, L, top + 30, 12); texteHUD(`Temps ${V.t.toFixed(0)} s`, L, top + 46, 11, '#C8D6EE');
-    jauge(L, top + 54, 180, 13, V.jauge, '#38E08A', 'Montée', `${Math.round(V.jauge * 100)} %`);
-    jauge(L, top + 70, 180, 11, V.carb, '#5AB0FF', 'Carburant');
-    // la barre de progression avec la pression maximale et la séparation
-    const bx = 214, by = top + 4, bw = Math.min(W - 230, 340);
-    g.fillStyle = 'rgba(8,12,28,.5)'; rondRect(g, bx - 6, by - 4, bw + 12, 62, 12); g.fill();
-    g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(bx, by + 22, bw, 10);
-    g.fillStyle = 'rgba(255,77,77,.4)'; g.fillRect(bx + bw * .17, by + 22, bw * .14, 10); texteHUD('pression max', bx + bw * .24, by + 18, 9, '#FF9A9A', 'center');
-    g.fillStyle = '#5AB0FF'; g.fillRect(bx + bw * sp.programme.etageA - 1.5, by + 18, 3, 18); texteHUD('séparation', bx + bw * sp.programme.etageA, by + 46, 9, '#9CCBFF', 'center');
-    g.fillStyle = '#38E08A'; g.fillRect(bx, by + 22, bw * V.jauge, 10);
-    jauge(bx, by + 38, bw * .5, 11, V.contrainte / p.resStructure, V.contrainte / p.resStructure > .7 ? '#FF4D4D' : '#FFB347', 'Contrainte');
-    jauge(bx + bw * .52, by + 38, bw * .48, 11, V.gaz, '#FF8A3D', 'Poussée');
+    const [av, au] = altTxt(V.y), cs = V.contrainte / p.resStructure;
+    hud = wTelemetrie(sp.titre, V.t, [['Vitesse', kmh(vit), 'km/h'], ['Altitude', av, au]], [['Orbite', V.jauge, '#38E08A', `${Math.round(V.jauge * 100)} %`], ['Carburant', V.carb, '#5AB0FF', `${Math.round(V.carb * 100)} %`], ['Poussée', V.gaz, '#FF8A3D', `${Math.round(V.gaz * 100)} %`], ['Contrainte', cs, cs > .7 ? '#FF4D4D' : '#FFB347', `${Math.round(cs * 100)} %`]], V.etage === 1 ? 'ÉTAGE 1' : 'ÉTAGE 2');
+    // la chronologie du vol : pression maximale, séparation, orbite
+    const col = hud.col, bx = col ? 244 : 14, bw = col ? Math.max(120, W - 244 - 62) : W - 28, by = col ? 12 : hud.bas + 8;
+    wPlaque(bx - 6, by - 4, bw + 12, 40);
+    g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(bx, by + 16, bw, 3); g.fillStyle = '#38E08A'; g.fillRect(bx, by + 16, bw * V.jauge, 3);
+    const jalon = (u, txt, c, fait) => { const x = bx + bw * u; g.fillStyle = fait ? c : '#0B0F18'; g.strokeStyle = c; g.lineWidth = 2; g.beginPath(); g.arc(x, by + 17.5, 5, 0, 7); g.fill(); g.stroke(); wTexte(txt, x, by + 6, 9, fait ? '#fff' : 'rgba(255,255,255,.6)', u > .9 ? 'right' : 'center', 600, 1); };
+    jalon(.17, 'MAX-Q', '#FF8A8A', V.jauge > .31); jalon(sp.programme.etageA, 'SÉPARATION', '#5AB0FF', V.etage === 2); jalon(1, 'ORBITE', '#38E08A', V.jauge >= 1);
+    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(bx + bw * V.jauge, by + 30); g.lineTo(bx + bw * V.jauge - 4, by + 36); g.lineTo(bx + bw * V.jauge + 4, by + 36); g.closePath(); g.fill();
+    yHud = hud.col ? 52 : hud.bas + 52;
   } else {
-    texteHUD(`Altitude ${fmt(V.y)} m`, L, top + 30, 13); texteHUD(`Vitesse ↓ ${Math.max(0, -V.vy).toFixed(0)} m/s`, L, top + 46, 11, V.vy < -20 ? '#FFB347' : '#C8D6EE'); texteHUD(`Latéral ${V.vx.toFixed(1)} m/s · angle ${V.th.toFixed(0)}°`, L, top + 61, 11, '#C8D6EE');
-    jauge(L, top + 68, 180, 12, V.carb, V.carb < .15 ? '#FF4D4D' : '#5AB0FF', 'Carburant', `${Math.round(V.carb * 100)} %`);
-    jauge(L, top + 83, 180, 11, V.gaz, '#FF8A3D', V.phase === 'plat' ? 'Cabrage' : 'Poussée');
-    if(V.phase === 'plat') { g.fillStyle = 'rgba(255,138,61,.6)'; g.fillRect(L + 180 * V.attaque - 2, top + 83, 4, 11); }
-    if(V.phase === 'plat' || V.phase === 'flip' || V.phase === 'capsule' || V.chaleur > 1){ jauge(214, top + 4, Math.min(W - 230, 200), 13, V.chaleur / p.resChaleur, V.chaleur / p.resChaleur > .75 ? '#FF4D4D' : '#FFB347', 'Chaleur'); }
+    const [av, au] = altTxt(V.y), ch = V.chaleur / p.resChaleur, chaud = V.phase === 'plat' || V.phase === 'flip' || V.phase === 'capsule' || ch > .02;
+    const barres = [['Carburant', V.carb, V.carb < .15 ? '#FF4D4D' : '#5AB0FF', `${Math.round(V.carb * 100)} %`], [V.phase === 'plat' ? 'Cabrage' : 'Poussée', V.gaz, '#FF8A3D', `${Math.round((V.phase === 'plat' ? V.attaque : V.gaz) * 100)} %`]];
+    if(chaud) barres.push(['Chaleur', ch, ch > .75 ? '#FF4D4D' : '#FFB347', `${Math.round(ch * 100)} %`]);
+    hud = wTelemetrie(sp.titre, V.t, [['Vitesse', kmh(vit), 'km/h'], ['Altitude', av, au], ['Vit. vert.', Math.abs(V.vy).toFixed(0), V.vy < 0 ? 'm/s ▼' : 'm/s ▲', V.vy < -20 ? '#FFB347' : '#fff'], ['Latéral', Math.abs(V.vx).toFixed(1).replace('.', ','), 'm/s']], barres, `${Math.abs(V.th) < .5 ? '' : V.th > 0 ? '+' : '−'}${Math.abs(V.th).toFixed(0)}°`);
+    yHud = 0;
   }
+  yMsg = hud.col ? hud.bas + 8 : Math.max(H * .17, hud.bas + 60); yPilule = hud.col ? (prog ? 58 : 8) : hud.bas + (prog ? 56 : 6);
   // la cible hors de l'écran, et les consignes
-  if(!prog && (sp.pad || sp.tour)){ const tx = sp.tour ? sp.tour.x : sp.pad.x, dx = tx - V.x, s = echelleDe(V.y); if(Math.abs(dx) * s > W / 2 - 30){ texteHUD(`${dx > 0 ? '' : '◀ '}${sp.tour ? 'tour' : 'plateforme'} ${Math.abs(dx).toFixed(0)} m${dx > 0 ? ' ▶' : ''}`, dx > 0 ? W - 14 : 14, H * .45, 12, '#9CCBFF', dx > 0 ? 'right' : 'left'); } }
-  const col0 = W > H * 1.1, ya0 = col0 ? (prog ? 74 : 8) : 118; pilCx = col0 && !prog ? Math.max(W / 2, 600) : W / 2; pilOn = false;
+  if(!prog && (sp.pad || sp.tour)){ const tx = sp.tour ? sp.tour.x : sp.pad.x, dx = tx - V.x, s = echelleDe(V.y); if(Math.abs(dx) * s > W / 2 - 30){ texteHUD(`${dx > 0 ? '' : '◀ '}${sp.tour ? 'tour' : 'plateforme'} ${Math.abs(dx).toFixed(0)} m${dx > 0 ? ' ▶' : ''}`, dx > 0 ? W - 14 : 14, H * .58, 12, '#9CCBFF', dx > 0 ? 'right' : 'left'); } }
+  const col0 = W > H * 1.1, ya0 = yPilule; pilCx = col0 && !prog ? Math.max(W / 2, 600) : W / 2; pilOn = false;
   if(!fin){
     if(V.phase === 'capsule' && !V.chute){ const vit = Math.hypot(V.vx, V.vy); if(vit <= 230) alerte('para', ['', 'OUVRE LES PARACHUTES !'], 0, 1, ya0); else pilule(`Parachutes : attends (${vit.toFixed(0)} m/s, sous 230)`, '#FFD23A', ya0, clamp(1 - (vit - 230) / 400, 0, 1), false); }
     else if(EV.allume && V.gaz < .5){ if(V.y < EV.allume.tard) pilule('TROP TARD : POUSSÉE À FOND !', '#FF4D4D', ya0, null, true); else alerte('allume', ['ALLUME', 'ALLUME MAINTENANT !'], EV.allume.t, 10, ya0); }
@@ -344,8 +370,8 @@ function dessinerHUD(sp, prog){
   }
   const info = pilOn && !col0 ? '' : consigne(sp, prog);
   let dy = 0; if(bandeauMsg && (V.t - bandeauMsg.at < 4.5 || bandeauMsg.at === 0)){ const c = bandeauMsg.cls === 'bon' ? '#7CF0B6' : bandeauMsg.cls === 'mal' ? '#FF9A9A' : '#FFE08A'; const col = W > H * 1.1;   // en paysage : les messages dans une colonne à gauche, sous les chiffres, loin du véhicule
-    dy = col ? texteLong(bandeauMsg.t, 14, 134, 14, c, true, Math.min(W * .34, 300)) : texteLong(bandeauMsg.t, W / 2, Math.max(H * .17, 176), 16, c); }
-  if(info){ const col = W > H * 1.1; if(col) texteLong(info, 14, 134 + dy + 6, 13, '#fff', true, Math.min(W * .34, 300)); else texteLong(info, W / 2, Math.max(H * .17, 176) + dy + 6, 14, '#fff'); }
+    dy = col ? texteLong(bandeauMsg.t, 14, yMsg + 8, 14, c, true, Math.min(W * .34, 300)) : texteLong(bandeauMsg.t, W / 2, yMsg, 16, c); }
+  if(info){ const col = W > H * 1.1; if(col) texteLong(info, 14, yMsg + 8 + dy + 6, 13, '#fff', true, Math.min(W * .34, 300)); else texteLong(info, W / 2, yMsg + dy + 6, 14, '#fff'); }
   // le bouton d'action
   const b = $('bAction'); let lib = '—', ok = false;
   if(V.phase === 'programme' && V.etage === 1 && V.fenetre){ lib = 'SÉPARER'; ok = true; }
@@ -535,7 +561,7 @@ function dessinerBac(){
     if(solY < H + 40){
       sol(decor, solY, s, X, camX);
       table(g, X(0), 26 * s, solY, s, true);
-      if(B.tour){ tour(g, X(22), solY, s, { y:75, tol:12 }, B.etat === 'pose' && B.y > 10, B.t); }
+      if(B.tour){ tour(g, X(22), solY, s, { y:75, tol:12, pin:(E && E.hauteur ? E.hauteur : 60) * .72, demi:4 }, B.etat === 'pose' && B.y > 10 ? 1 : 0, B.t); }
       else tour(g, X(34), solY, s * .9, null, false, B.t);
     }
     for(const x of debris){ const dh = clamp((x.h || 40) * s, 20, 150); vehicule(g, x.kind, X(x.x), solY - x.y * s, dh, x.th, { gaz:0 }); }
@@ -550,26 +576,22 @@ function dessinerBac(){
   hudBac(E);
 }
 function hudBac(E){
-  const M = B.M, o = BAC.orbite(B), L = 12, top = 10, sp = Math.hypot(B.vx, B.vy), m = BAC.masse(B), tw = E && E.pSol ? (B.M.rho0 > 0 && B.y < 20e3 ? E.pSol : E.pVide) / (m * BAC.grav(B, B.y)) : 0;
-  g.fillStyle = 'rgba(8,12,28,.55)'; rondRect(g, 8, top - 2, 214, 168, 12); g.fill();
-  texteHUD(`${M.ico} ${M.nom} · ${BAC.VEHICULES[B.vehicule].nom}`, L, top + 12, 12, '#FFB347');
-  texteHUD(`Altitude ${B.y >= 10000 ? (B.y / 1000).toFixed(1) + ' km' : fmt(B.y) + ' m'}`, L, top + 30, 13);
-  texteHUD(`Vitesse ${fmt(sp)} m/s`, L, top + 46, 12, '#C8D6EE'); texteHUD(`↑ ${fmt(B.vy)} · → ${fmt(B.vx)} m/s · ${B.th.toFixed(0)}°`, L, top + 61, 11, '#C8D6EE');
-  if(!o.ouverte && o.pe > -M.R) texteHUD(`Orbite ${o.pe > M.atmo ? '✔' : '✖'} périgée ${fmt(o.pe / 1000)} km · apogée ${fmt(o.ap / 1000)} km`, L, top + 76, 10, o.pe > M.atmo ? '#7CF0B6' : '#FFB3B3'); else if(o.ouverte) texteHUD('Trajectoire de libération', L, top + 76, 10, '#7CF0B6');
-  texteHUD(`Masse ${fmt(m / 1000)} t · Δv ${fmt(BAC.deltaV(B))} m/s · poussée/poids ${tw.toFixed(2)}`, L, top + 90, 10, '#9CB4D8');
-  const E0 = E || { reste:0, plein:1 };
-  jauge(L, top + 98, 196, 12, E0.plein ? E0.reste / E0.plein : 0, E0.plein && E0.reste / E0.plein < .12 ? '#FF4D4D' : '#5AB0FF', E0.nom || '—', !E0.plein ? '' : B.illimite ? '∞' : `${Math.round(E0.reste / E0.plein * 100)} %`);
-  jauge(L, top + 114, 196, 11, B.gaz, '#FF8A3D', 'Poussée', `${Math.round(B.gaz * 100)} %`);
-  jauge(L, top + 129, 196, 11, Math.min(1, B.chaleur), B.chaleur > .75 ? '#FF4D4D' : '#FFB347', 'Chaleur', B.degats > .05 ? `⚠ ${Math.round(B.degats * 100)} %` : '');
-  texteHUD(`Temps ${B.t.toFixed(0)} s · cap ${SAS_LIB[B.sas]}`, L, top + 155, 10, '#C8D6EE');
-  const col = W > H * 1.1; let dy = 0;
-  if(bacMsg && (B.t - bacMsg.at < (bacMsg.at === 0 ? 14 : 5))){ const c = bacMsg.cls === 'bon' ? '#7CF0B6' : bacMsg.cls === 'mal' ? '#FF9A9A' : '#FFE08A'; dy = col ? texteLong(bacMsg.t, 14, 196, 14, c, true, Math.min(W * .34, 300)) : texteLong(bacMsg.t, W / 2, Math.max(H * .22, 200), 15, c); }
+  const M = B.M, o = BAC.orbite(B), top = 10, sp = Math.hypot(B.vx, B.vy), m = BAC.masse(B), tw = E && E.pSol ? (B.M.rho0 > 0 && B.y < 20e3 ? E.pSol : E.pVide) / (m * BAC.grav(B, B.y)) : 0;
+  const [av, au] = altTxt(B.y), E0 = E || { reste:0, plein:1, nom:'—' }, plein = E0.plein ? E0.reste / E0.plein : 0;
+  const barres = [[E0.nom || 'Carburant', plein, E0.plein && plein < .12 ? '#FF4D4D' : '#5AB0FF', !E0.plein ? '' : B.illimite ? '∞' : `${Math.round(plein * 100)} %`], ['Poussée', B.gaz, '#FF8A3D', `${Math.round(B.gaz * 100)} %`], ['Chaleur', Math.min(1, B.chaleur), B.chaleur > .75 ? '#FF4D4D' : '#FFB347', B.degats > .05 ? `⚠ ${Math.round(B.degats * 100)} %` : `${Math.round(Math.min(1, B.chaleur) * 100)} %`]];
+  const lignes = [];
+  if(!o.ouverte && o.pe > -M.R) lignes.push([`ORBITE ${o.pe > M.atmo ? '✔' : '✖'}  PÉRIGÉE ${fmt(o.pe / 1000)} KM · APOGÉE ${fmt(o.ap / 1000)} KM`, o.pe > M.atmo ? '#7CF0B6' : '#FFB3B3']); else if(o.ouverte) lignes.push(['TRAJECTOIRE DE LIBÉRATION', '#7CF0B6']);
+  lignes.push([`CAP : ${SAS_LIB[B.sas].toUpperCase()}`, '#FFE08A']);
+  lignes.push([`MASSE ${fmt(m / 1000)} T · Δv ${fmt(BAC.deltaV(B))} M/S · P/P ${tw.toFixed(2)}`]);
+  const hud = wTelemetrie(`${M.nom} · ${BAC.VEHICULES[B.vehicule].nom}`, B.t, [['Vitesse', kmh(sp), 'km/h'], ['Altitude', av, au], ['Vit. vert.', fmt(Math.abs(B.vy)), B.vy < 0 ? 'm/s ▼' : 'm/s ▲', B.vy < -20 ? '#FFB347' : '#fff'], ['Horizontale', fmt(Math.abs(B.vx)), 'm/s']], barres, `${Math.abs(B.th) < .5 ? '' : B.th > 0 ? '+' : '−'}${Math.abs(B.th).toFixed(0)}°`, lignes);
+  const col = hud.col; let dy = 0;
+  if(bacMsg && (B.t - bacMsg.at < (bacMsg.at === 0 ? 14 : 5))){ const c = bacMsg.cls === 'bon' ? '#7CF0B6' : bacMsg.cls === 'mal' ? '#FF9A9A' : '#FFE08A'; dy = col ? texteLong(bacMsg.t, 14, hud.bas + 16, 14, c, true, Math.min(W * .34, 300)) : texteLong(bacMsg.t, W / 2, Math.max(H * .22, hud.bas + 60), 15, c); }
   if(col) carteOrbite(W - 112, top + 64, 52); else carteOrbite(W - 62, top + 124, 48);
-  // les boutons du bac
+  yPilule = col ? 8 : hud.bas + 6;
   // les alertes du bac : allumage de la descente, chaleur, parachutes
   pilCx = W / 2;
   if(!bacFin){
-    const col2 = W > H * 1.1, y0 = col2 ? 8 : 118, vit = sp, gg = BAC.grav(B, B.y), Fm = E ? (B.M.rho0 > 0 && B.y < 20e3 ? E.pSol : E.pVide) : 0, aNet = Fm / m - gg;
+    const col2 = W > H * 1.1, y0 = yPilule, vit = sp, gg = BAC.grav(B, B.y), Fm = E ? (B.M.rho0 > 0 && B.y < 20e3 ? E.pSol : E.pVide) : 0, aNet = Fm / m - gg;
     if(E && E.chutes && !B.chutes && B.y < 25e3 && B.vy < 0){ if(vit <= 250) alerte('bpara', ['', 'OUVRE LES PARACHUTES !'], 0, 1, y0); else pilule(`Parachutes : attends (${vit.toFixed(0)} m/s, sous 250)`, '#FFD23A', y0, clamp(1 - (vit - 250) / 600, 0, 1), false); }
     else if(B.chaleur > .75) pilule('TROP CHAUD : change d\'angle !', '#FF4D4D', y0, null, true);
     else if(E && E.reste > 0 && Fm > 0 && aNet > .5 && B.vy < -5 && B.y > 15 && B.y < 40e3 && B.gaz < .5 && vit < 1500){
