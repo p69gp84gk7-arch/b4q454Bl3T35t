@@ -28,11 +28,12 @@ window.DRAWRACE_3D = (() => {
     const q = new T3.Quaternion().setFromEuler(new T3.Euler(...(p.r || [0, 0, 0]), 'YXZ'));
     return new T3.Matrix4().compose(new T3.Vector3(...(p.p || [0, 0, 0])), q, new T3.Vector3(...(p.s || [1, 1, 1])));
   }
-  function fusion(pieces, e = 0){
-    const pos = [], nor = [], col = [], c = new T3.Color();
+  // sat : une saturation (0 à 1) appliquée aux couleurs : le décor est plus doux que les voitures
+  function fusion(pieces, e = 0, sat = 1){
+    const pos = [], nor = [], col = [], c = new T3.Color(), hsl = {};
     for(const p of pieces){
       let g = geom(p.f, p.d, e); g = g.index ? g.toNonIndexed() : g; g.applyMatrix4(matrice(p));
-      const a = g.attributes.position.array, n = g.attributes.normal.array; c.set(p.c ?? 0xffffff);
+      const a = g.attributes.position.array, n = g.attributes.normal.array; c.set(p.c ?? 0xffffff); if(sat < 1){ c.getHSL(hsl); c.setHSL(hsl.h, hsl.s * sat, hsl.l * .97); }
       for(let i = 0; i < a.length; i += 3){ pos.push(a[i], a[i + 1], a[i + 2]); nor.push(n[i], n[i + 1], n[i + 2]); col.push(c.r, c.g, c.b); }
       g.dispose();
     }
@@ -49,54 +50,91 @@ window.DRAWRACE_3D = (() => {
   const nu = (hex, f) => { const c = new T3.Color(hex); if(f > 0) c.lerp(new T3.Color(0xffffff), f); else c.lerp(new T3.Color(0x000000), -f); return c.getHex(); };
 
   /* ---------- Les voitures : une par catégorie ---------- */
+  // des pièces symétriques (miroir sur l'axe de la voiture) : une rotation autour de x ou de y change de signe dans le miroir
+  const sym = (P, p) => { P.push(p); P.push(Object.assign({}, p, { p:[p.p[0], p.p[1], -p.p[2]], r:p.r ? [-p.r[0], -p.r[1], p.r[2]] : undefined })); };
   const MODELES = {
     f1(c){
-      const d = nu(c, -.4), K = 0x1B1B1F, Wh = 0xFFFFFF, P = [];
-      P.push({ f:'boite', d:[4.0, .08, 1.5], p:[0, .12, 0], c:K }, { f:'boite', d:[2.4, .46, .62], p:[-.1, .38, 0], c }, { f:'cone', d:[.3, 1.5, 10], p:[1.75, .34, 0], r:[0, 0, -Math.PI / 2], c },
-        { f:'boite', d:[1.1, .5, .38], p:[-1.2, .5, 0], c }, { f:'boite', d:[.5, .34, .3], p:[-.05, .78, 0], c:K }, { f:'boule', d:[.19, 1], p:[-.12, .66, 0], c:Wh },
-        { f:'tore', d:[.25, .03, 10], p:[.08, .7, 0], r:[Math.PI / 2, 0, 0], c:K }, { f:'boite', d:[2.0, .02, .2], p:[-.1, .62, 0], c:Wh },
-        { f:'boite', d:[.55, .07, 1.45], p:[-2.15, .98, 0], c }, { f:'boite', d:[.4, .07, 1.45], p:[-2.05, .82, 0], c:d }, { f:'boite', d:[.12, .5, .1], p:[-2.05, .6, 0], c:K },
-        { f:'boite', d:[.5, .06, 1.9], p:[2.2, .14, 0], c }, { f:'boite', d:[.2, .2, .1], p:[1.2, .3, 0], c:K });
-      for(const s of [-1, 1]) P.push({ f:'boite', d:[1.5, .4, .5], p:[-.45, .36, .66 * s], c:d }, { f:'boite', d:[.7, .5, .05], p:[-2.15, .75, .74 * s], c:d }, { f:'boite', d:[.55, .2, .05], p:[2.2, .2, .93 * s], c:d },
-        { f:'boite', d:[.08, .06, .55], p:[1.55, .3, .7 * s], c:K }, { f:'boite', d:[.08, .06, .55], p:[-1.45, .32, .72 * s], c:K });
-      return { L:4.8, pieces:P, roues:[{ x:1.55, z:.98, r:.34, w:.38, av:1 }, { x:1.55, z:-.98, r:.34, w:.38, av:1 }, { x:-1.45, z:1.02, r:.4, w:.5 }, { x:-1.45, z:-1.02, r:.4, w:.5 }], flamme:[-2.35, .55, 0], frein:[-2.45, .85, 0, .9], phares:null };
+      const d = nu(c, -.45), cl = nu(c, .35), K = 0x17181C, N = 0x2A2C33, Wh = 0xFFFFFF, G = 0x1B2634, P = [];
+      P.push({ f:'boite', d:[4.1, .06, 1.4], p:[0, .1, 0], c:K }, { f:'boite', d:[.9, .22, 1.1], p:[-2.0, .22, 0], r:[0, 0, .35], c:K },            // le fond plat et le diffuseur
+        { f:'boite', d:[2.5, .42, .66], p:[-.15, .36, 0], c }, { f:'boule', d:[.5, 1], p:[1.35, .33, 0], s:[2.2, .45, .62], c }, { f:'cone', d:[.2, 1.1, 10], p:[2.0, .3, 0], r:[0, 0, -Math.PI / 2], c },    // la coque et le nez
+        { f:'boule', d:[.34, 1], p:[-.3, .66, 0], s:[1.5, .7, .9], c:G }, { f:'boule', d:[.2, 1], p:[-.28, .72, 0], c:Wh },                                // l'habitacle et le casque
+        { f:'tore', d:[.26, .028, 10], p:[-.05, .73, 0], r:[Math.PI / 2, 0, 0], c:N }, { f:'boite', d:[.06, .2, .05], p:[.28, .62, 0], c:N },                // le halo
+        { f:'boite', d:[1.2, .5, .34], p:[-1.25, .5, 0], c }, { f:'boite', d:[1.3, .46, .03], p:[-1.4, .8, 0], c:cl },                                  // le capot moteur et l'aileron de requin
+        { f:'boite', d:[.45, .3, .34], p:[-.35, .8, 0], c:K },                                                                                       // la prise d'air
+        { f:'boite', d:[.5, .05, 1.42], p:[-2.2, .99, 0], c }, { f:'boite', d:[.42, .05, 1.42], p:[-2.12, .86, 0], c:cl }, { f:'boite', d:[.12, .46, .1], p:[-2.1, .6, 0], c:N },
+        { f:'boite', d:[.06, .12, .3], p:[-2.42, .5, 0], c:0xFF2A2A },                                                                               // le feu arrière
+        { f:'boite', d:[.5, .05, 1.9], p:[2.28, .13, 0], c }, { f:'boite', d:[.4, .04, 1.9], p:[2.2, .2, 0], c:cl }, { f:'boite', d:[.3, .04, 1.9], p:[2.14, .27, 0], c:d }, { f:'boite', d:[.1, .2, .1], p:[1.65, .22, 0], c:N },
+        { f:'boite', d:[.5, .22, .04], p:[-.05, .18, 0], c:Wh }, { f:'boite', d:[1.9, .02, .16], p:[.1, .6, 0], c:Wh }, { f:'boite', d:[.3, .22, .02], p:[.3, .58, .01], c:K });   // les bandes et le numéro
+      for(const z of [1, -1]){
+        P.push({ f:'boite', d:[1.4, .38, .46], p:[-.3, .34, .62 * z], c:d }, { f:'boite', d:[.22, .24, .38], p:[.38, .4, .62 * z], c:K }, { f:'boite', d:[.5, .7, .04], p:[-2.2, .78, .73 * z], c:d },
+          { f:'boite', d:[.55, .18, .04], p:[2.28, .2, .94 * z], c:d }, { f:'boite', d:[.3, .08, .08], p:[.2, .74, .34 * z], c:K },
+          { f:'boite', d:[.05, .05, .62], p:[1.55, .3, .66 * z], r:[0, 0, .2], c:N }, { f:'boite', d:[.05, .05, .62], p:[-1.5, .32, .7 * z], c:N }, { f:'boite', d:[.05, .05, .62], p:[1.55, .2, .66 * z], c:N });   // les triangles de suspension
+      }
+      return { L:4.8, pieces:P, roues:[{ x:1.55, z:.98, r:.34, w:.38, av:1 }, { x:1.55, z:-.98, r:.34, w:.38, av:1 }, { x:-1.45, z:1.02, r:.4, w:.5 }, { x:-1.45, z:-1.02, r:.4, w:.5 }], flamme:[-2.4, .55, 0], frein:[-2.45, .85, 0, .9], bague:true };
     },
     rallye(c){
-      const d = nu(c, -.4), K = 0x1B1B1F, V = 0x2E3D52, Wh = 0xFFFFFF, J = 0xFFE27A, P = [];
-      P.push({ f:'boite', d:[3.9, .6, 1.8], p:[0, .6, 0], c }, { f:'boite', d:[2.0, .5, 1.58], p:[-.15, 1.1, 0], c }, { f:'boite', d:[2.04, .34, 1.6], p:[-.15, 1.1, 0], c:V },
-        { f:'boite', d:[1.9, .06, 1.5], p:[-.15, 1.4, 0], c:d }, { f:'boite', d:[.5, .08, 1.7], p:[-1.95, 1.2, 0], c:d }, { f:'boite', d:[.1, .45, .1], p:[-1.9, 1.0, .6], c:K }, { f:'boite', d:[.1, .45, .1], p:[-1.9, 1.0, -.6], c:K },
-        { f:'boite', d:[.3, .3, 1.84], p:[1.95, .36, 0], c:K }, { f:'boite', d:[.2, .3, 1.84], p:[-1.95, .36, 0], c:K }, { f:'boite', d:[.3, .02, 1.2], p:[.9, .92, 0], c:d },
-        { f:'boite', d:[.1, .16, .34], p:[1.95, .66, .6], c:J }, { f:'boite', d:[.1, .16, .34], p:[1.95, .66, -.6], c:J }, { f:'cyl', d:[.1, .1, .1, 8], p:[.5, 1.5, .5], c:J }, { f:'cyl', d:[.1, .1, .1, 8], p:[.5, 1.5, -.5], c:J }, { f:'cyl', d:[.1, .1, .1, 8], p:[.5, 1.5, .15], c:J }, { f:'cyl', d:[.1, .1, .1, 8], p:[.5, 1.5, -.15], c:J });
-      for(const s of [-1, 1]) P.push({ f:'cyl', d:[.28, .28, .03, 12], p:[-.2, .78, .92 * s], r:[Math.PI / 2, 0, 0], c:Wh }, { f:'boite', d:[1.0, .12, .08], p:[1.25, .55, .93 * s], c:d }, { f:'boite', d:[1.0, .12, .08], p:[-1.3, .55, .93 * s], c:d });
-      return { L:3.9, pieces:P, roues:[{ x:1.25, z:.88, r:.34, w:.3, av:1 }, { x:1.25, z:-.88, r:.34, w:.3, av:1 }, { x:-1.3, z:.88, r:.34, w:.3 }, { x:-1.3, z:-.88, r:.34, w:.3 }], flamme:[-2.0, .45, 0], frein:[-1.96, .66, 0, 1.5] };
+      const d = nu(c, -.45), cl = nu(c, .3), K = 0x17181C, V = 0x1B2634, Wh = 0xFFFFFF, J = 0xFFF1B0, B = 0x6B4A2E, P = [];
+      P.push({ f:'boite', d:[3.9, .5, 1.78], p:[0, .56, 0], c }, { f:'boite', d:[1.1, .2, 1.74], p:[1.4, .88, 0], r:[0, 0, -.12], c }, { f:'boite', d:[.5, .1, 1.7], p:[-1.7, .84, 0], c },        // la caisse, le capot, le coffre
+        { f:'boite', d:[1.6, .08, 1.5], p:[-.1, 1.4, 0], c:Wh }, { f:'boite', d:[1.7, .5, 1.5], p:[-.2, 1.12, 0], c:d },                                                                 // le toit blanc et la cabine
+        { f:'boite', d:[.06, .46, 1.4], p:[.7, 1.12, 0], r:[0, 0, .6], c:V }, { f:'boite', d:[.06, .4, 1.36], p:[-1.1, 1.12, 0], r:[0, 0, -.6], c:V },                                    // pare-brise et lunette
+        { f:'boite', d:[.5, .08, .5], p:[-.3, 1.5, 0], c:Wh }, { f:'boite', d:[.4, .3, 1.84], p:[1.98, .38, 0], c:K }, { f:'boite', d:[.3, .3, 1.84], p:[-1.98, .38, 0], c:K },             // l'écope de toit, les pare-chocs
+        { f:'boite', d:[.46, .06, 1.75], p:[-2.0, 1.12, 0], c:d }, { f:'boite', d:[.1, .06, 1.2], p:[2.0, .5, 0], c:0x2B2D33 },                                                              // l'aileron, la calandre
+        { f:'boite', d:[.12, .1, .12], p:[2.1, .36, .5], c:0xD7263D }, { f:'boite', d:[.14, .1, .14], p:[-2.1, .36, -.5], c:K });                                                           // l'anneau de remorquage, l'échappement
+      for(let k = 0; k < 4; k++) P.push({ f:'cyl', d:[.1, .1, .1, 8], p:[.55, 1.52, -.45 + k * .3], c:J });          // la rampe de phares
+      for(const z of [1, -1]){
+        P.push({ f:'boite', d:[1.5, .04, .08], p:[-.15, 1.12, .76 * z], c:V }, { f:'boite', d:[.9, .4, .03], p:[.0, 1.12, .76 * z], c:V }, { f:'boite', d:[.03, .4, .7], p:[-.15, 1.12, .76 * z], c:d },   // les vitres et la porte
+          { f:'cyl', d:[.28, .28, .03, 14], p:[-.2, .66, .91 * z], r:[Math.PI / 2, 0, 0], c:Wh }, { f:'boite', d:[1.1, .1, .06], p:[1.2, .52, .91 * z], c:d }, { f:'boite', d:[1.1, .1, .06], p:[-1.25, .52, .91 * z], c:d },
+          { f:'boite', d:[.5, .5, .14], p:[1.25, .66, .86 * z], c:d }, { f:'boite', d:[.5, .5, .14], p:[-1.3, .66, .86 * z], c:d },        // les ailes élargies
+          { f:'boite', d:[.14, .12, .3], p:[1.98, .64, .6 * z], c:J }, { f:'boite', d:[.1, .1, .22], p:[1.98, .5, .72 * z], c:0xFFCC33 }, { f:'boite', d:[.06, .12, .3], p:[-1.98, .66, .6 * z], c:0xFF2A2A },
+          { f:'boite', d:[.2, .12, .24], p:[.62, 1.02, .88 * z], c:K }, { f:'boite', d:[.36, .28, .05], p:[-1.68, .26, .88 * z], c:K },      // le rétroviseur et la bavette
+          { f:'boite', d:[.9, .16, .03], p:[-.4, .32, .9 * z], c:B }, { f:'boite', d:[.5, .22, .03], p:[1.2, .34, .91 * z], c:B });     // la boue sur les flancs
+      }
+      return { L:3.9, pieces:P, roues:[{ x:1.25, z:.88, r:.34, w:.3, av:1 }, { x:1.25, z:-.88, r:.34, w:.3, av:1 }, { x:-1.3, z:.88, r:.34, w:.3 }, { x:-1.3, z:-.88, r:.34, w:.3 }], flamme:[-2.1, .4, -.5], frein:[-2.04, .66, 0, 1.4] };
     },
     endurance(c){
-      const d = nu(c, -.4), K = 0x1B1B1F, V = 0x25323F, Wh = 0xFFFFFF, P = [];
-      P.push({ f:'boite', d:[4.6, .3, 1.7], p:[0, .26, 0], c }, { f:'boite', d:[1.5, .22, 1.3], p:[2.2, .2, 0], c:d }, { f:'boite', d:[2.2, .3, 1.0], p:[-.5, .56, 0], c },
-        { f:'boule', d:[.55, 1], p:[.4, .68, 0], s:[1.5, .75, 1.1], c:V }, { f:'boite', d:[1.5, .52, .06], p:[-1.9, .72, 0], c:d }, { f:'boite', d:[.5, .06, 1.9], p:[-2.2, 1.0, 0], c }, { f:'boite', d:[.5, .06, 1.9], p:[2.45, .1, 0], c:K },
-        { f:'boite', d:[.8, .1, .9], p:[-.05, .45, 0], c:Wh }, { f:'boite', d:[2.4, .02, .22], p:[-.3, .76, 0], c:Wh });
-      for(const s of [-1, 1]) P.push({ f:'boite', d:[1.1, .38, .56], p:[1.5, .42, .98 * s], c:d }, { f:'boite', d:[1.3, .46, .62], p:[-1.55, .48, 1.0 * s], c:d }, { f:'boite', d:[.5, .5, .05], p:[-2.2, .8, .94 * s], c:d });
-      return { L:4.9, pieces:P, roues:[{ x:1.5, z:.98, r:.37, w:.4, av:1 }, { x:1.5, z:-.98, r:.37, w:.4, av:1 }, { x:-1.55, z:1.0, r:.4, w:.48 }, { x:-1.55, z:-1.0, r:.4, w:.48 }], flamme:[-2.35, .5, 0], frein:[-2.3, .62, 0, 1.4] };
+      const d = nu(c, -.45), cl = nu(c, .35), K = 0x17181C, V = 0x1F2D3D, Wh = 0xFFFFFF, N = 0x2A2C33, P = [];
+      P.push({ f:'boite', d:[4.7, .26, 1.72], p:[0, .22, 0], c }, { f:'boite', d:[1.5, .16, 1.5], p:[2.2, .18, 0], c:d }, { f:'boite', d:[1.2, .2, 1.3], p:[-2.1, .46, 0], c },       // le plancher, le museau, la queue
+        { f:'boule', d:[.6, 1], p:[.3, .64, 0], s:[1.7, .72, 1.05], c:V }, { f:'boule', d:[.5, 1], p:[.25, .72, -.2], s:[.9, .12, .5], c:0x6B7F96 },                                       // la verrière et son reflet
+        { f:'boite', d:[1.6, .34, .96], p:[-.9, .5, 0], c }, { f:'boite', d:[1.3, .5, .05], p:[-1.95, .74, 0], c:d },                                                                 // le capot et la dérive
+        { f:'boite', d:[.55, .05, 1.9], p:[-2.3, 1.02, 0], c }, { f:'boite', d:[.1, .5, .1], p:[-2.1, .74, .6], c:N }, { f:'boite', d:[.1, .5, .1], p:[-2.1, .74, -.6], c:N },           // l'aileron arrière
+        { f:'boite', d:[.5, .05, 1.9], p:[2.5, .08, 0], c:K }, { f:'boite', d:[.8, .1, .9], p:[0, .4, 0], c:Wh }, { f:'boite', d:[2.4, .02, .22], p:[-.3, .8, 0], c:Wh },
+        { f:'boite', d:[.06, .1, 1.3], p:[2.56, .26, 0], c:0xFFF8D0 }, { f:'boite', d:[.06, .1, 1.5], p:[-2.5, .52, 0], c:0xFF2A2A },                                                   // les feux
+        { f:'boite', d:[.3, .24, .3], p:[1.0, .45, 0], c:Wh }, { f:'boite', d:[.2, .12, .2], p:[-2.5, .3, .3], c:K }, { f:'boite', d:[.2, .12, .2], p:[-2.5, .3, -.3], c:K });
+      for(const z of [1, -1]) P.push({ f:'boule', d:[.7, 1], p:[1.5, .46, .96 * z], s:[1.5, .6, .8], c:d }, { f:'boule', d:[.8, 1], p:[-1.55, .52, 1.0 * z], s:[1.6, .62, .75], c:d },       // les ailes enveloppantes
+        { f:'boite', d:[.6, .12, .05], p:[.2, .46, .85 * z], c:K }, { f:'boite', d:[.4, .14, .04], p:[-.6, .56, .6 * z], c:cl });
+      return { L:4.9, pieces:P, roues:[{ x:1.5, z:.98, r:.37, w:.4, av:1 }, { x:1.5, z:-.98, r:.37, w:.4, av:1 }, { x:-1.55, z:1.0, r:.4, w:.48 }, { x:-1.55, z:-1.0, r:.4, w:.48 }], flamme:[-2.5, .4, 0], frein:[-2.5, .52, 0, 1.4], bague:true };
     },
     tourisme(c){
-      const d = nu(c, -.4), K = 0x1B1B1F, V = 0x2B3C52, Wh = 0xFFFFFF, J = 0xFFF1B0, P = [];
-      P.push({ f:'boite', d:[4.5, .56, 1.85], p:[0, .5, 0], c }, { f:'boite', d:[2.2, .52, 1.55], p:[-.3, 1.02, 0], c }, { f:'boite', d:[2.25, .34, 1.58], p:[-.3, 1.04, 0], c:V },
-        { f:'boite', d:[2.0, .04, 1.5], p:[-.3, 1.3, 0], c:Wh }, { f:'boite', d:[.35, .08, 1.7], p:[-2.2, 1.0, 0], c:d }, { f:'boite', d:[.1, .3, .1], p:[-2.15, .85, .6], c:K }, { f:'boite', d:[.1, .3, .1], p:[-2.15, .85, -.6], c:K },
-        { f:'boite', d:[.3, .24, 1.9], p:[2.2, .3, 0], c:K }, { f:'boite', d:[.2, .3, 1.9], p:[-2.2, .34, 0], c:K }, { f:'boite', d:[1.6, .03, .3], p:[1.3, .8, 0], c:Wh });
-      for(const s of [-1, 1]) P.push({ f:'boite', d:[.1, .14, .4], p:[2.25, .6, .65 * s], c:J }, { f:'boite', d:[.1, .14, .4], p:[-2.25, .62, .65 * s], c:0xD7263D }, { f:'cyl', d:[.25, .25, .03, 12], p:[-.2, .78, .94 * s], r:[Math.PI / 2, 0, 0], c:Wh });
+      const d = nu(c, -.45), cl = nu(c, .3), K = 0x17181C, V = 0x1B2634, Wh = 0xFFFFFF, P = [];
+      P.push({ f:'boite', d:[4.5, .5, 1.84], p:[0, .5, 0], c }, { f:'boite', d:[1.4, .16, 1.8], p:[1.5, .83, 0], r:[0, 0, -.08], c }, { f:'boite', d:[.9, .14, 1.8], p:[-1.7, .82, 0], c },            // la caisse, le capot, le coffre
+        { f:'boite', d:[1.9, .5, 1.56], p:[-.25, 1.02, 0], c }, { f:'boite', d:[1.4, .06, 1.4], p:[-.25, 1.3, 0], c:Wh },                                                              // la cabine, le toit blanc
+        { f:'boite', d:[.06, .5, 1.46], p:[.78, 1.0, 0], r:[0, 0, .55], c:V }, { f:'boite', d:[.06, .46, 1.44], p:[-1.3, 1.0, 0], r:[0, 0, -.55], c:V },                                 // pare-brise et lunette
+        { f:'boite', d:[.3, .24, 1.9], p:[2.2, .3, 0], c:K }, { f:'boite', d:[.2, .26, 1.9], p:[-2.2, .32, 0], c:K }, { f:'boite', d:[.1, .16, 1.0], p:[2.26, .5, 0], c:0x2B2D33 },         // pare-chocs et calandre
+        { f:'boite', d:[.4, .06, 1.8], p:[-2.2, 1.05, 0], c:d }, { f:'boite', d:[.1, .14, .16], p:[-2.0, .92, .6], c:K }, { f:'boite', d:[.1, .14, .16], p:[-2.0, .92, -.6], c:K },       // l'aileron
+        { f:'boite', d:[1.4, .04, .34], p:[1.35, .9, 0], c:Wh }, { f:'boite', d:[.2, .1, .14], p:[-2.3, .3, .5], c:K }, { f:'boite', d:[.2, .1, .14], p:[-2.3, .3, -.5], c:K });
+      for(const z of [1, -1]){
+        P.push({ f:'boite', d:[1.4, .38, .04], p:[-.25, 1.02, .79 * z], c:V }, { f:'boite', d:[.03, .4, .8], p:[-.25, 1.0, .79 * z], c:d }, { f:'boite', d:[.03, .34, .02], p:[-.7, .5, .93 * z], c:K },
+          { f:'cyl', d:[.25, .25, .03, 14], p:[-.2, .66, .94 * z], r:[Math.PI / 2, 0, 0], c:Wh }, { f:'boite', d:[3.6, .1, .06], p:[0, .26, .94 * z], c:K },                  // portes, numéro, bas de caisse
+          { f:'boite', d:[.14, .12, .4], p:[2.25, .6, .68 * z], c:0xFFF1B0 }, { f:'boite', d:[.12, .08, .16], p:[2.26, .4, .72 * z], c:0xFFCC33 }, { f:'boite', d:[.08, .14, .4], p:[-2.25, .62, .66 * z], c:0xFF2A2A },
+          { f:'boite', d:[.2, .12, .24], p:[.55, .98, .96 * z], c:d }, { f:'boite', d:[.5, .46, .14], p:[1.4, .52, .9 * z], c:d }, { f:'boite', d:[.5, .46, .14], p:[-1.4, .52, .9 * z], c:d });
+      }
       return { L:4.5, pieces:P, roues:[{ x:1.4, z:.9, r:.33, w:.27, av:1 }, { x:1.4, z:-.9, r:.33, w:.27, av:1 }, { x:-1.4, z:.9, r:.33, w:.27 }, { x:-1.4, z:-.9, r:.33, w:.27 }], flamme:[-2.35, .4, 0], frein:[-2.26, .64, 0, 1.4] };
     },
   };
-  function roue(r, w){
-    return objet([{ f:'cyl', d:[r, r, w, 14], r:[Math.PI / 2, 0, 0], c:0x17181C }, { f:'cyl', d:[r * .62, r * .62, w + .03, 12], r:[Math.PI / 2, 0, 0], c:0xB9C0CB }, { f:'cyl', d:[r * .2, r * .2, w + .06, 6], r:[Math.PI / 2, 0, 0], c:0x6F7783 }, { f:'boite', d:[r * 1.1, r * .12, w + .05], c:0x8A919C }], .03);
+  function roue(r, w, bague){
+    const P = [{ f:'cyl', d:[r, r, w, 16], r:[Math.PI / 2, 0, 0], c:0x17181C }, { f:'cyl', d:[r * .64, r * .64, w + .03, 14], r:[Math.PI / 2, 0, 0], c:0xB9C0CB }, { f:'cyl', d:[r * .2, r * .2, w + .06, 6], r:[Math.PI / 2, 0, 0], c:0x5F6672 }];
+    for(let k = 0; k < 3; k++) P.push({ f:'boite', d:[r * 1.15, r * .1, w + .05], r:[0, 0, k * Math.PI / 3], c:0x8A919C });                    // les rayons
+    if(bague) for(const z of [1, -1]) P.push({ f:'cyl', d:[r * .9, r * .9, .035, 16], p:[0, 0, (w / 2 + .005) * z], r:[Math.PI / 2, 0, 0], c:bague });     // la bande de couleur du pneu
+    else for(const z of [1, -1]) P.push({ f:'cyl', d:[r * .88, r * .88, .02, 16], p:[0, 0, (w / 2 + .005) * z], r:[Math.PI / 2, 0, 0], c:0x2A2C33 });
+    return objet(P, .03);
   }
-  function creerVoiture(cat, couleur, fantome){
+  function creerVoiture(cat, couleur, fantome, pneu){
     const def = (MODELES[cat] || MODELES.f1)(new T3.Color(couleur).getHex());
     const gr = new T3.Group(), corps = new T3.Group();
     const mat = toon({ vertexColors:true });
-    const o = objet(def.pieces, .05, mat);
+    const o = objet(def.pieces, .035, mat);
     corps.add(o);
-    const roues = def.roues.map(rr => { const g = new T3.Group(), m = roue(rr.r, rr.w); g.add(m); g.position.set(rr.x, rr.r, rr.z); corps.add(g); return { g, m, av:rr.av, r:rr.r }; });
+    const roues = def.roues.map(rr => { const g = new T3.Group(), m = roue(rr.r, rr.w, def.bague && pneu ? new T3.Color(pneu).getHex() : 0); g.add(m); g.position.set(rr.x, rr.r, rr.z); corps.add(g); return { g, m, av:rr.av, r:rr.r }; });
     // l'ombre au sol, la flamme du boost, le feu de freinage
     const ombre = new T3.Mesh(new T3.CircleGeometry(1, 20), new T3.MeshBasicMaterial({ color:0x000000, transparent:true, opacity:.3, depthWrite:false })); ombre.rotation.set(-Math.PI / 2, 0, 0); ombre.scale.set(def.L * .6, def.L * .6 * .42, 1); ombre.position.y = .08;
     const flamme = new T3.Mesh(new T3.ConeGeometry(.28, 1.8, 8), new T3.MeshBasicMaterial({ color:0xFFB020 })); flamme.rotation.z = Math.PI / 2; flamme.position.set(def.flamme[0] - .9, def.flamme[1], 0); flamme.visible = false;
@@ -108,7 +146,7 @@ window.DRAWRACE_3D = (() => {
     const equipe = new T3.Group();
     for(let k = 0; k < 4; k++){ const m = objet([{ f:'cyl', d:[.2, .22, .9, 8], p:[0, .45, 0], c:0xD7263D }, { f:'boule', d:[.2, 1], p:[0, 1.05, 0], c:0xFFFFFF }], .03); const sx = k < 2 ? 1 : -1, sz = k % 2 ? 1 : -1; m.position.set(sx * 1.55, 0, sz * 1.55); m.rotation.y = Math.atan2(-sz, -sx); equipe.add(m); }
     equipe.visible = false; gr.add(equipe);
-    return { gr, corps, roues, flamme, frein, ombre, equipe, def, cat, couleur, px:null, pz:null, pa:null, vit:0, roulis:0, tangage:0, rot:0, braquage:0 };
+    return { gr, corps, roues, flamme, frein, ombre, equipe, def, cat, couleur, pneu, px:null, pz:null, pa:null, vit:0, roulis:0, tangage:0, rot:0, braquage:0 };
   }
 
   /* ---------- Démarrage ---------- */
@@ -161,7 +199,7 @@ window.DRAWRACE_3D = (() => {
     const nuit = !!D.nuit, n = D.pts.length;
     // le ciel, le brouillard, les lumières
     const dome = new T3.Mesh(new T3.SphereGeometry(420, 24, 12), new T3.MeshBasicMaterial({ vertexColors:true, side:T3.BackSide, fog:false }));
-    { const p = dome.geometry.attributes.position, c = []; const haut = new T3.Color(nuit ? 0x0B1230 : 0x4FA2EE), bas = new T3.Color(nuit ? 0x2A3566 : 0xD6EEFF), tmp = new T3.Color();
+    { const p = dome.geometry.attributes.position, c = []; const haut = new T3.Color(nuit ? 0x0B1230 : 0x6FA8DA), bas = new T3.Color(nuit ? 0x2A3566 : 0xDCE9F5), tmp = new T3.Color();
       for(let i = 0; i < p.count; i++){ tmp.copy(bas).lerp(haut, clamp(p.getY(i) / 260, 0, 1)); c.push(tmp.r, tmp.g, tmp.b); } dome.geometry.setAttribute('color', new T3.Float32BufferAttribute(c, 3)); }
     scene.add(dome); anim.dome = dome;
     scene.fog = new T3.Fog(nuit ? 0x1B2448 : 0xCBE6FF, 140, 420); anim.fog = scene.fog;
@@ -169,11 +207,11 @@ window.DRAWRACE_3D = (() => {
     anim.soleil = new T3.DirectionalLight(nuit ? 0x9FB4FF : 0xFFF2D6, nuit ? .35 : .85); anim.soleil.position.set(-60, 120, 40); scene.add(anim.soleil);
     // le diorama : un bloc de terrain posé sur un socle
     const sol = SOL3D[D.decor] || 0x8CCB5A, plan = new T3.PlaneGeometry(W, H, 50, 30); plan.rotateX(-Math.PI / 2); plan.translate(W / 2, 0, H / 2);
-    { const p = plan.attributes.position, c = [], base = new T3.Color(sol), t = new T3.Color(); for(let i = 0; i < p.count; i++){ const x = p.getX(i), z = p.getZ(i), v = Math.sin(x * .21) * Math.sin(z * .17) + Math.sin(x * .07 + z * .09) * .8; t.copy(base).offsetHSL(0, 0, v * .018); c.push(t.r, t.g, t.b); } plan.setAttribute('color', new T3.Float32BufferAttribute(c, 3)); }
+    { const p = plan.attributes.position, c = [], base = new T3.Color(sol), t = new T3.Color(), hs = {}; base.getHSL(hs); base.setHSL(hs.h, hs.s * .66, hs.l * .97); for(let i = 0; i < p.count; i++){ const x = p.getX(i), z = p.getZ(i), v = Math.sin(x * .21) * Math.sin(z * .17) + Math.sin(x * .07 + z * .09) * .8; t.copy(base).offsetHSL(0, 0, v * .018); c.push(t.r, t.g, t.b); } plan.setAttribute('color', new T3.Float32BufferAttribute(c, 3)); }
     anim.sol = new T3.Mesh(plan, toon({ vertexColors:true })); scene.add(anim.sol);
     const cote = new T3.Mesh(new T3.BoxGeometry(W + 1.6, 7, H + 1.6), toon({ color:nu(sol, -.45) })); cote.position.set(W / 2, -3.58, H / 2); scene.add(cote);
     const strate = new T3.Mesh(new T3.BoxGeometry(W + 2.2, 2.2, H + 2.2), toon({ color:0x6B4A2E })); strate.position.set(W / 2, -2.1, H / 2); scene.add(strate);
-    const socle = new T3.Mesh(new T3.CylinderGeometry(300, 300, 4, 40), toon({ color:nuit ? 0x20294A : 0x9FCBF2 })); socle.position.set(W / 2, -10, H / 2); scene.add(socle);
+    const socle = new T3.Mesh(new T3.CylinderGeometry(300, 300, 4, 40), new T3.MeshBasicMaterial({ color:nuit ? 0x1A2344 : 0x9DB9D4 })); socle.position.set(W / 2, -10, H / 2); scene.add(socle);
     // la piste : bord foncé, revêtement (par sol au rallye), marquages
     const nor = D.nor, pts = D.pts;
     scene.add(meshV(ruban(pts, nor, -(80 + 12) / 2, (80 + 12) / 2, .03, D.rallye ? (i => D.solBord[i]) : 0x232328, n)));
@@ -204,7 +242,7 @@ window.DRAWRACE_3D = (() => {
       for(const [a, b, cp, s] of hauts){ const dk = 42 * cp; scene.add(meshV(bandeSeg(pts, nor, a, b, dk, dk + 5 * cp, s === 'neige' ? .9 : .6, s === 'neige' ? 0xF4F9FF : 0x8A6238, n))); } }
     // l'eau, avec sa plage
     if(D.eau.length){ const sab = [], eau = []; const e1 = (PAS * .95 + 5) * S, e2 = PAS * .8 * S;     // des disques qui se recouvrent : un bord arrondi, pas des carrés
-      for(const [x, y] of D.eau){ sab.push({ f:'cyl', d:[e1, e1, .04, 10], p:[x * S, .02, y * S], c:D.eauType === 'lac' || D.eauType === 'autour' ? 0x9FBF74 : 0xE3D49C }); eau.push({ f:'cyl', d:[e2, e2, .07, 10], p:[x * S, .04, y * S], c:0x4CA4D6 }); }
+      for(const [x, y] of D.eau){ sab.push({ f:'cyl', d:[e1, e1, .04, 10], p:[x * S, .02, y * S], c:D.eauType === 'lac' || D.eauType === 'autour' ? 0x9FBF74 : 0xE3D49C }); eau.push({ f:'cyl', d:[e2, e2, .07, 10], p:[x * S, .04, y * S], c:0x5C9DC4 }); }
       scene.add(new T3.Mesh(fusion(sab), toon({ vertexColors:true }))); anim.eau = new T3.Mesh(fusion(eau), toon({ vertexColors:true })); scene.add(anim.eau); }
     // le décor : tous les objets fusionnés en un seul maillage
     const pieces = [], rnd = alea(D.id || 'x');
@@ -220,7 +258,7 @@ window.DRAWRACE_3D = (() => {
     for(const ch of D.champs){ pieces.push({ f:'boite', d:[ch.w * S, .12, ch.h * S], p:[ch.x * S, .06, ch.y * S], r:[0, -ch.rot, 0], c:ch.col }); for(let l = -ch.w / 2 + 5; l < ch.w / 2 - 2; l += 7) pieces.push({ f:'boite', d:[.25, .16, (ch.h - 4) * S], p:[ch.x * S + Math.cos(ch.rot) * l * S, .08, ch.y * S + Math.sin(ch.rot) * l * S], r:[0, -ch.rot, 0], c:nu(ch.col, -.18) }); }
     // les tribunes, les stands, les lampadaires, l'arche de départ, les barrières
     construireTribunes(D, pieces, rnd); construireLampes(D, pieces); construireDepart(D, pieces);
-    if(pieces.length){ const g1 = fusion(pieces), g2 = fusion(pieces, .09); scene.add(new T3.Mesh(g1, toon({ vertexColors:true })), new T3.Mesh(g2, CONTOUR)); }
+    if(pieces.length){ const g1 = fusion(pieces, 0, .62), g2 = fusion(pieces, .09); scene.add(new T3.Mesh(g1, toon({ vertexColors:true })), new T3.Mesh(g2, CONTOUR)); }
     // les nuages
     for(let k = 0; k < 9 && !nuit; k++){ const nug = objet([0, 1, 2].map(j => ({ f:'boule', d:[5 + rnd() * 4, 1], p:[(j - 1) * 6, rnd() * 2, rnd() * 3], s:[1.3, .7, 1], c:0xFFFFFF })), .1, toon({ vertexColors:true, fog:false })); nug.position.set(rnd() * W, 48 + rnd() * 25, rnd() * H); scene.add(nug); anim.nuages.push({ g:nug, v:1.2 + rnd() * 1.5 }); }
     // les particules (fumée, poussière) et la pluie
@@ -249,7 +287,7 @@ window.DRAWRACE_3D = (() => {
     neige:() => [{ f:'boule', d:[1, 1], p:[0, .1, 0], s:[1.2, .5, 1], c:0xFFFFFF }, { f:'boule', d:[.6, 1], p:[.6, .05, .3], s:[1, .6, 1], c:0xE8F1FF }],
     botte:() => [{ f:'cyl', d:[.6, .6, .8, 12], p:[0, .6, 0], r:[Math.PI / 2, 0, 0], c:0xE8C766 }, { f:'cyl', d:[.4, .4, .82, 12], p:[0, .6, 0], r:[Math.PI / 2, 0, 0], c:0xD9B24F }],
     maison:() => [{ f:'boite', d:[1.7, .9, 1.2], p:[0, .45, 0], c:0xF3E6C8 }, { f:'cone', d:[1.45, .7, 4], p:[0, 1.2, 0], r:[0, Math.PI / 4, 0], s:[1.05, 1, .75], c:0xC8553D }, { f:'boite', d:[.25, .5, .05], p:[0, .25, .62], c:0x6B4A2E }, { f:'boite', d:[.3, .25, .05], p:[.55, .55, .62], c:0x6FB2E0 }],
-    immeuble:(rnd, D) => { const h = 1.4 + rnd() * 2.6, c = D.nuit ? [0x3A4766, 0x44507A, 0x323C58][Math.floor(rnd() * 3)] : [0xEDE4D3, 0xD8CCB6, 0xE3D1B6, 0xBFC8CF][Math.floor(rnd() * 4)]; const P = [{ f:'boite', d:[1.5, h, 1.2], p:[0, h / 2, 0], c }, { f:'boite', d:[1.1, .2, .8], p:[0, h + .1, 0], c:nu(c, -.2) }];
+    immeuble:(rnd, D) => { const h = 1.0 + rnd() * 1.5, c = D.nuit ? [0x3A4766, 0x44507A, 0x323C58][Math.floor(rnd() * 3)] : [0xEDE4D3, 0xD8CCB6, 0xE3D1B6, 0xBFC8CF][Math.floor(rnd() * 4)]; const P = [{ f:'boite', d:[1.5, h, 1.2], p:[0, h / 2, 0], c }, { f:'boite', d:[1.1, .2, .8], p:[0, h + .1, 0], c:nu(c, -.2) }];
       for(let y = .4; y < h - .2; y += .45) for(let x = -.5; x <= .5; x += .5){ const lit = D.nuit && rnd() < .5; P.push({ f:'boite', d:[.28, .24, .04], p:[x, y, .62], c:lit ? 0xFFE38A : (D.nuit ? 0x1D2540 : 0x7FA6C9) }, { f:'boite', d:[.28, .24, .04], p:[x, y, -.62], c:lit ? 0xFFE38A : (D.nuit ? 0x1D2540 : 0x7FA6C9) }); } return P; },
     neon:(rnd) => { const c = [0xFF3EA5, 0x3EE6FF, 0xFFE03E, 0x7CFF4F][Math.floor(rnd() * 4)]; return [{ f:'cyl', d:[.06, .06, 1.2, 6], p:[0, .6, 0], c:0x555B66 }, { f:'boite', d:[1.5, .7, .1], p:[0, 1.3, 0], c }, { f:'boite', d:[1.3, .5, .12], p:[0, 1.3, 0], c:nu(c, .5) }]; },
   };
@@ -296,7 +334,7 @@ window.DRAWRACE_3D = (() => {
     const vus = new Set();
     for(const d of E.voitures){
       let v = voitures.get(d.id);
-      if(!v || v.couleur !== d.couleur || v.cat !== d.cat){ if(v) scene.remove(v.gr); v = creerVoiture(d.cat, d.couleur, d.fantome); voitures.set(d.id, v); scene.add(v.gr); v.px = null; }
+      if(!v || v.couleur !== d.couleur || v.cat !== d.cat || v.pneu !== d.pneu){ if(v) scene.remove(v.gr); v = creerVoiture(d.cat, d.couleur, d.fantome, d.pneu); voitures.set(d.id, v); scene.add(v.gr); v.px = null; }
       vus.add(d.id);
       const x = d.x * S, z = d.y * S, a = d.a;
       if(v.px == null){ v.px = x; v.pz = z; v.pa = a; }
@@ -333,7 +371,7 @@ window.DRAWRACE_3D = (() => {
   function majMonde(dt){
     // drapeaux qui flottent, nuages qui dérivent, grande roue, bateaux, eau, foule
     for(const f of anim.drapeaux){ const p = f.geometry.attributes.position; for(let i = 0; i < p.count; i++){ const x = p.getX(i) + .8; p.setZ(i, Math.sin(temps * 6 + x * 3) * .12 * (x / 1.6)); } p.needsUpdate = true; }
-    for(const n of anim.nuages){ n.g.position.x += n.v * dt; if(n.g.position.x > W + 40) n.g.position.x = -40; n.g.visible = vue === 'suivi' && !!E.voitures.length; }
+    for(const n of anim.nuages){ n.g.position.x += n.v * dt; if(n.g.position.x > W + 40) n.g.position.x = -40; n.g.visible = vue === 'suivi' && !!E.voitures.length && PRESETS[preset % PRESETS.length].h < 20; }   // pas de nuage devant une caméra haute
     for(const r of anim.roues) r.rotation.z += dt * .25;
     for(const b of anim.bateaux){ b.g.position.y = Math.sin(temps * 1.4 + b.ph) * .12; b.g.rotation.z = Math.sin(temps * 1.1 + b.ph) * .05; }
     if(anim.eau){ const k = .5 + .5 * Math.sin(temps * .9); anim.eau.material.color.setRGB(.85 + k * .15, .9 + k * .1, 1); }
@@ -357,25 +395,27 @@ window.DRAWRACE_3D = (() => {
     l.geometry.attributes.position.needsUpdate = true;
   }
   // la caméra : de dessus (exactement le cadre du dessin du tracé) ou de suivi, toujours de trois quarts
-  // off : l'angle de la caméra autour de la voiture (0 = derrière, 180 = devant) ; lag : la caméra traîne un peu derrière (pas quand elle est devant, sinon la voiture la rattrape)
-  const PRESETS = [{ d:12.5, h:3.8, off:148, ahead:.8, fov:52, lag:false }, { d:13, h:4.4, off:36, ahead:3.5, fov:52, lag:true }, { d:26, h:17, off:30, ahead:6, fov:50, lag:true }];
+  // Les vues. « Course » : une vue haute et inclinée, loin derrière la voiture, comme dans les jeux de dessin de trajectoire (fausse 3D : la voiture monte vers le haut de l'écran) ;
+  // « Carte » : la même vue haute, mais le nord reste en haut (comme le tracé) ; « 3/4 face » et « 3/4 arrière » : plus près de la voiture.
+  // off : l'angle de la caméra autour de la voiture (0 = derrière, 180 = devant) ; lag : la caméra traîne un peu (pas quand elle est devant, sinon la voiture la rattrape)
+  const PRESETS = [{ nom:'Course', d:48, h:66, off:0, ahead:16, fov:44, lag:true, k:3.4 }, { nom:'Carte', d:48, h:68, off:0, ahead:16, fov:44, lag:true, fixe:true }, { nom:'3/4 face', d:12.5, h:3.8, off:148, ahead:.8, fov:52, lag:false, k:5 }, { nom:'3/4 arrière', d:13, h:4.4, off:36, ahead:3.5, fov:52, lag:true, k:5 }];
   function majCamera(dt){
     if(vue === 'dessus' || !E.voitures.length){
       cam.fov = 30; const hh = (H / 2) / Math.tan(cam.fov * Math.PI / 360); cam.position.set(W / 2, hh, H / 2); cam.up.set(0, 0, -1); cam.lookAt(W / 2, 0, H / 2); cam.updateProjectionMatrix(); cam0.init = true; return;
     }
     const d = E.voitures.find(x => x.id === E.suivre) || E.voitures[0], v = voitures.get(d.id); if(!v) return;
-    const p = PRESETS[preset % PRESETS.length], x = d.x * S, z = d.y * S, a = d.a;
-    if(cam0.init){ cam0.x = x; cam0.z = z; cam0.yaw = a; cam0.init = false; cam0.vx = 0; cam0.vz = 0; }
-    // le cap est lissé : la caméra balance un peu dans les virages, et la voiture reste de trois quarts
+    const p = PRESETS[preset % PRESETS.length], x = d.x * S, z = d.y * S, a = p.fixe ? -Math.PI / 2 : d.a;
+    if(cam0.init){ cam0.x = x; cam0.z = z; cam0.yaw = a; cam0.init = false; }
+    // le cap est lissé : la caméra balance dans les virages, et la voiture reste dans la même position à l'écran
     let da = a - cam0.yaw; while(da > Math.PI) da -= 2 * Math.PI; while(da < -Math.PI) da += 2 * Math.PI;
-    cam0.yaw += da * Math.min(1, dt * 5);
+    cam0.yaw += da * Math.min(1, dt * (p.k || 5));
     const kp = p.lag ? 9 : 80; cam0.x += (x - cam0.x) * Math.min(1, dt * kp); cam0.z += (z - cam0.z) * Math.min(1, dt * kp);
-    const fx = Math.cos(cam0.yaw), fz = Math.sin(cam0.yaw), rx = -fz, rz = fx, off = p.off * Math.PI / 180, dist = p.d + v.vit * .035;
+    const fx = Math.cos(cam0.yaw), fz = Math.sin(cam0.yaw), rx = -fz, rz = fx, off = p.off * Math.PI / 180, haut = p.h > 20, dist = p.d + v.vit * (haut ? .08 : .035), hh = p.h + v.vit * (haut ? .18 : .01);
     const bx = -Math.cos(off) * dist, sx = Math.sin(off) * dist;
-    cam.position.set(cam0.x + fx * bx + rx * sx, p.h + v.vit * .01, cam0.z + fz * bx + rz * sx);
+    cam.position.set(cam0.x + fx * bx + rx * sx, hh, cam0.z + fz * bx + rz * sx);
     cam.up.set(0, 1, 0);
-    cam.fov += ((p.fov + clamp(v.vit * .12, 0, 10)) - cam.fov) * Math.min(1, dt * 4); cam.updateProjectionMatrix();
-    cam.lookAt(cam0.x + fx * p.ahead, .9, cam0.z + fz * p.ahead);
+    cam.fov += ((p.fov + (haut ? 0 : clamp(v.vit * .12, 0, 10))) - cam.fov) * Math.min(1, dt * 4); cam.updateProjectionMatrix();
+    cam.lookAt(cam0.x + fx * p.ahead, 0, cam0.z + fz * p.ahead);
   }
   function majEtiquettes(){
     if(!conteneurTags) return;
