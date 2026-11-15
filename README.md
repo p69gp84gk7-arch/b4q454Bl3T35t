@@ -831,3 +831,7 @@ icone.html             page de test de l'icône : version du site, icône iPhone
 manifest.webmanifest   description de l'application installable
 sw.js                  fonctionnement hors ligne
 ```
+
+## Accueil : « Quoi de neuf ? » sur téléphone (v204)
+
+La fenêtre des nouveautés (`#fNeuf` dans `index.html`) est une feuille qui monte du bas sur téléphone (au centre à partir de 600 px) : titre fixe, liste qui défile (`overscroll-behavior`), bouton Fermer toujours visible (`.neufPied`), hauteur limitée avec `dvh` et la barre d'état. Les entrées de `jeux/nouveautes.js` sont **regroupées par jeu** : une carte avec la première phrase de la plus récente et, si besoin, « Voir le détail » (`<details>`) avec toutes les mises à jour (`v203`…). Au plus 7 jeux. Sur écran étroit (≤ 560 px), l'en-tête de l'accueil est compact : logo de 56 px à côté du titre, sous-titre limité à deux lignes, bouton « Quoi de neuf ? » juste dessous.
