@@ -108,7 +108,7 @@ window.ESCALE_3D = (() => {
   /* ---------- Construire l'aéroport ---------- */
   function construire(A){
     const P = M.plan(A), D = M.AEROPORTS[A.id], cle = A.id + ':' + A.portes.map(g => g.taille + (g.passerelle ? 'p' : '')).join(',')
-      + '|' + (P.hangars || []).map(x => x.k + ((A.hangars || {})[x.k] ? '1' : '0')).join(',') + '|p' + M.nbPistes(A) + 'e' + (A.pisteExt || 0) + '|t' + A.terminal.l + 'x' + A.terminal.h;
+      + '|' + (P.hangars || []).map(x => x.k + ((A.hangars || {})[x.k] ? '1' : '0')).join(',') + '|p' + M.nbPistes(A) + 'e' + (A.pisteExt || 0) + '|t' + A.terminal.l + 'x' + A.terminal.h + '|i' + (A.immo || []).map(b => b.type + b.parcelle).join(',');
     if(cle === cleMonde) return; cleMonde = cle;
     if(monde){ scene.remove(monde); monde.traverse(o => { if(o.geometry) o.geometry.dispose(); }); }
     for(const [, a] of avions){ scene.remove(a.obj); scene.remove(a.ombre); } avions.clear();
@@ -246,10 +246,41 @@ window.ESCALE_3D = (() => {
     lampes = new T3.Points(gl, new T3.PointsMaterial({ size:2.4, vertexColors:true, transparent:true, opacity:.2, sizeAttenuation:true, depthWrite:false })); monde.add(lampes);
     // le décor autour
     decorer(D.decor, P, rnd);
+    // l'immobilier de l'aéroport
+    for(const b of A.immo || []){ const pl = P.parcelles[b.parcelle]; if(!pl) continue; const g = objet(immoPieces(b.type), .1); g.position.set(pl.x, 0, pl.z); monde.add(g); }
     // la neige qui tombe
     const ng = new T3.BufferGeometry(), np = []; for(let k = 0; k < 2500; k++) np.push((Math.random() - .5) * 1600, Math.random() * 300, (Math.random() - .5) * 1600 - 120);
     ng.setAttribute('position', new T3.Float32BufferAttribute(np, 3));
     neige = new T3.Points(ng, new T3.PointsMaterial({ color:0xFFFFFF, size:1.6, transparent:true, opacity:.9, depthWrite:false })); neige.visible = false; monde.add(neige);
+  }
+
+  // les bâtiments de l'immobilier de l'aéroport (autour de leur parcelle, au sol)
+  function immoPieces(type){
+    const p = [], fen = (x0, y0, z, nx, ny, dx, dy, c = 0x2A3F5F) => { for(let i = 0; i < nx; i++) for(let j = 0; j < ny; j++) p.push({ f:'boite', d:[dx * .55, dy * .55, .4], p:[x0 + i * dx, y0 + j * dy, z], c }); };
+    switch(type){
+      case 'station':
+        p.push({ f:'boite', d:[34, .8, 22], p:[0, 5.4, 0], c:0xE63946 }, { f:'boite', d:[34.5, .4, 22.5], p:[0, 5.9, 0], c:0xFFFFFF });
+        for(const [x, z] of [[-14, -8], [14, -8], [-14, 8], [14, 8]]) p.push({ f:'cyl', d:[.5, .5, 5, 8], p:[x, 2.5, z], c:0x8C949F });
+        for(const x of [-8, 0, 8]) p.push({ f:'boite', d:[1.4, 2.4, 1], p:[x, 1.2, 0], c:0xF2C230 }, { f:'boite', d:[1.1, .6, .1], p:[x, 2, .55], c:0x14233A });
+        p.push({ f:'boite', d:[14, 4, 8], p:[-8, 2, -16], c:0xE9EDF2 }, { f:'boite', d:[14.5, .6, 8.5], p:[-8, 4.3, -16], c:0xE63946 }); break;
+      case 'parking':
+        for(let k = 0; k < 4; k++){ p.push({ f:'boite', d:[44, .8, 34], p:[0, 3.6 + k * 3.6, 0], c:0xA7ADB6 }, { f:'boite', d:[44, 1, .5], p:[0, 4.3 + k * 3.6, 17], c:0xC9CED6 }); for(let c = 0; c < 6; c++) p.push({ f:'boite', d:[2.1, 1.3, 4.4], p:[-17 + c * 6.6, 4.6 + k * 3.6, -8], c:[0xD7263D, 0x1B98E0, 0xF2F2EE, 0x2E294E][(c + k) % 4] }); }
+        for(const x of [-20, -7, 7, 20]) for(const z of [-14, 14]) p.push({ f:'boite', d:[1.2, 15, 1.2], p:[x, 7.5, z], c:0x8C949F });
+        p.push({ f:'boite', d:[10, 3, .6], p:[0, 16, 17], c:0x1B4E8C }, { f:'boite', d:[8, 1.4, .7], p:[0, 16, 17], c:0xFFFFFF }); break;
+      case 'hotel':
+        p.push({ f:'boite', d:[34, 30, 20], p:[0, 15, 0], c:0xE9E4D8 }, { f:'boite', d:[36, 3, 22], p:[0, 31, 0], c:0x1B4E8C }, { f:'boite', d:[20, 5, 14], p:[0, 2.5, 18], c:0xBFD9EA }, { f:'boite', d:[22, .6, 16], p:[0, 5.2, 18], c:0x1B4E8C });
+        fen(-14, 6, 10.3, 8, 6, 4, 4.4); fen(-14, 6, -10.3, 8, 6, 4, 4.4); p.push({ f:'boite', d:[10, 1.6, .5], p:[0, 33, 11.4], c:0xFFB703 }); break;
+      case 'bureaux':
+        p.push({ f:'boite', d:[26, 52, 26], p:[0, 26, 0], c:0x3A6EA5 }); for(let k = 0; k < 13; k++) p.push({ f:'boite', d:[26.6, .8, 26.6], p:[0, 2 + k * 4, 0], c:0xDDE7F3 });
+        p.push({ f:'boite', d:[18, 4, 18], p:[0, 54, 0], c:0x5C6672 }, { f:'cyl', d:[.2, .2, 10, 6], p:[0, 61, 0], c:0xD7263D }); break;
+      case 'fret':
+        for(const z of [-14, 14]){ p.push({ f:'boite', d:[46, 9, 20], p:[0, 4.5, z], c:0xB9BEC6 }, { f:'boite', d:[47, 1, 21], p:[0, 9.4, z], c:0x5C6672 }); for(let k = 0; k < 4; k++) p.push({ f:'boite', d:[7, 6, .5], p:[-16 + k * 10.5, 3, z + (z > 0 ? -10.3 : 10.3)], c:0x2A6F4D }); }
+        p.push({ f:'boite', d:[3, 3, 9], p:[22, 1.8, 0], c:0xF18F01 }, { f:'boite', d:[3, 4.6, 12], p:[22, 3, 12], c:0xFFFFFF }); break;
+      case 'tour':
+        p.push({ f:'cyl', d:[2.6, 3.4, 44, 12], p:[0, 22, 0], c:0xD9DEE4 }, { f:'cyl', d:[11, 7, 4, 18], p:[0, 46, 0], c:0x5C6672 }, { f:'cyl', d:[10.5, 10.5, 3, 18], p:[0, 49, 0], c:0xBFE3F0 }, { f:'cyl', d:[11, 11, .6, 18], p:[0, 50.7, 0], c:0x1B4E8C }, { f:'cyl', d:[.25, .25, 14, 6], p:[0, 58, 0], c:0xD7263D });
+        for(const [x, z] of [[-6, -6], [6, -6], [-6, 6], [6, 6]]) p.push({ f:'boite', d:[1.4, 6, 1.4], p:[x, 3, z], c:0xB9BEC6 }); break;
+    }
+    return p;
   }
   function decorer(decor, P, rnd){
     const arbres = [], loin = [];
@@ -563,6 +594,9 @@ window.ESCALE_3D = (() => {
   // la grille du terminal : pw × pd le pas d'une case, cw × cd la place d'une construction (le reste fait les allées),
   // et les petites cases (un quart de case) pour les petits objets
   const ALLEE = 3.6;
+  // le sol de chaque zone : Départs (rose), réserve (bleu), Arrivées (vert d'eau), commerces (crème)
+  const COUL_SOL = { dep:[0xF3E0E0, 0xEBCFCF], res:[0xDCE7FA, 0xCBDAF5], arr:[0xD3EDE8, 0xC2E3DC], com:[0xF7EFD6, 0xEFE5C3] };
+  const COUL_ZONE = { dep:0xE5383B, res:0x2F6FE0, arr:0x2A9D8F, com:0xFFB703 };
   // tourner de rot quarts de tour (vu de dessus, comme une rotation Y de Three.js) : un point (x, z), ou toutes les pièces d'un objet
   const tournerXZ = (x, z, rot) => { const t = (rot || 0) * Math.PI / 2, c = Math.round(Math.cos(t)), s = Math.round(Math.sin(t)); return { x:x * c + z * s, z:-x * s + z * c }; };
   function tournerPieces(pieces, rot){
@@ -572,8 +606,8 @@ window.ESCALE_3D = (() => {
   function grilleT(A, Pl){
     // les cases sont CARRÉES (le côté vient de l'aéroport : T.cel) ; une construction occupe les 6 × 6 petits carrés du centre (3/4 de la case), l'anneau d'un petit carré autour fait l'allée
     const T = Pl.terminal, l = A.terminal.l, h = A.terminal.h, pw = T.cel, pd = T.cel, N = M.PETIT_DIV;
-    const cd0 = l - (A.terminal.la || 0);
-    return { T, l, h, cd0, pw, pd, N, cw:pw * (N - 2) / N, cd:pd * (N - 2) / N, zone:x => x >= cd0 ? 'arr' : 'dep', centre:(x, y) => ({ x:T.x1 - MARGE_X - (x + .5) * pw, z:T.z1 - MARGE_Z - (y + .5) * pd }),
+    const la = A.terminal.la || 0, cr = A.terminal.cr || 0, cd0 = l - la - cr, ca0 = cd0 + cr;      // Départs [0, cd0), réserve [cd0, ca0), Arrivées [ca0, l) dans la rangée du hall ; les rangées 1 à 3 sont les commerces
+    return { T, l, h, cd0, ca0, cr, pw, pd, N, cw:pw * (N - 2) / N, cd:pd * (N - 2) / N, zone:(x, y = 0) => y >= 1 ? 'com' : x < cd0 ? 'dep' : x < ca0 ? 'res' : 'arr', centre:(x, y) => ({ x:T.x1 - MARGE_X - (x + .5) * pw, z:T.z1 - MARGE_Z - (y + .5) * pd }),
       sub:(x, y) => ({ x:T.x1 - MARGE_X - (x + .5) * pw / N, z:T.z1 - MARGE_Z - (y + .5) * pd / N }), epetit:pw / N / 2.6 * 1.05 };
   }
   // les petits objets (autour de leur centre)
@@ -585,6 +619,19 @@ window.ESCALE_3D = (() => {
       case 'poubelle': return poubelle(0, 0, e);
       case 'ecran': return ecran(0, 0, e);
       case 'distributeur': return [{ f:'boite', d:[1.2 * e, 2.2 * e, .9 * e], p:[0, 1.1 * e, 0], c:0xD7263D }, { f:'boite', d:[.8 * e, 1.3 * e, .05], p:[-.12 * e, 1.35 * e, .46 * e], c:0x8ECAE6 }, { f:'boite', d:[.2 * e, .5 * e, .06], p:[.42 * e, 1.3 * e, .46 * e], c:0x14233A }];
+      case 'palmier': return [{ f:'cyl', d:[.5 * e, .4 * e, .6 * e, 8], p:[0, .3 * e, 0], c:0xB07D62 }, { f:'cyl', d:[.14 * e, .2 * e, 2 * e, 6], p:[0, 1.5 * e, 0], r:[.08, 0, 0], c:0x8B6B43 }, ...[0, 1, 2, 3, 4].map(k => ({ f:'boite', d:[1.5 * e, .06 * e, .3 * e], p:[Math.cos(k * 1.26) * .6 * e, 2.6 * e, Math.sin(k * 1.26) * .6 * e], r:[0, -k * 1.26, -.35], c:0x3E8E41 }))];
+      case 'canape': return [{ f:'boite', d:[2.6 * e, .6 * e, 1 * e], p:[0, .4 * e, 0], c:0x3D405B }, { f:'boite', d:[2.6 * e, .8 * e, .3 * e], p:[0, .9 * e, -.4 * e], c:0x3D405B }, { f:'boite', d:[.3 * e, .6 * e, 1 * e], p:[-1.15 * e, .75 * e, 0], c:0x2F3150 }, { f:'boite', d:[.3 * e, .6 * e, 1 * e], p:[1.15 * e, .75 * e, 0], c:0x2F3150 }];
+      case 'fauteuil': return [{ f:'boite', d:[1 * e, .5 * e, 1 * e], p:[0, .4 * e, 0], c:0xE07A5F }, { f:'boite', d:[1 * e, .8 * e, .25 * e], p:[0, .85 * e, -.4 * e], c:0xE07A5F }, { f:'cyl', d:[.08 * e, .08 * e, .3 * e, 6], p:[0, .15 * e, 0], c:0x3A3F47 }];
+      case 'poubelletri': return [0, 1, 2].map(k => ({ f:'boite', d:[.5 * e, .9 * e, .6 * e], p:[(k - 1) * .6 * e, .45 * e, 0], c:[0x2BA84A, 0x1B98E0, 0xF2C230][k] }));
+      case 'cafe_auto': return [{ f:'boite', d:[1.1 * e, 2 * e, .9 * e], p:[0, 1 * e, 0], c:0x5C3D2E }, { f:'boite', d:[.8 * e, .6 * e, .05], p:[0, 1.5 * e, .46 * e], c:0x14233A }, { f:'boite', d:[.3 * e, .3 * e, .2], p:[0, .7 * e, .5 * e], c:0xE9EDF2 }];
+      case 'photomaton': return [{ f:'boite', d:[1.4 * e, 2.3 * e, 1.2 * e], p:[0, 1.15 * e, 0], c:0x3A6EA5 }, { f:'boite', d:[1 * e, 1.3 * e, .05], p:[0, 1.2 * e, .62 * e], c:0xBFD9EA }, { f:'boite', d:[1.4 * e, .3 * e, 1.3 * e], p:[0, 2.4 * e, 0], c:0xF2C230 }];
+      case 'kiosque': return [{ f:'boite', d:[2.2 * e, 1.3 * e, 1.4 * e], p:[0, .65 * e, 0], c:0xE76F51 }, { f:'boite', d:[2.6 * e, .15 * e, 1.8 * e], p:[0, 2.3 * e, 0], c:0x3A3F47 }, { f:'boite', d:[.1, 1 * e, .1], p:[-1.2 * e, 1.8 * e, .8 * e], c:0x8C949F }, { f:'boite', d:[.1, 1 * e, .1], p:[1.2 * e, 1.8 * e, .8 * e], c:0x8C949F }];
+      case 'info': return [{ f:'cyl', d:[.1 * e, .1 * e, 1.6 * e, 6], p:[0, .8 * e, 0], c:0x8C949F }, { f:'boite', d:[1 * e, .8 * e, .12 * e], p:[0, 1.8 * e, 0], r:[-.25, 0, 0], c:0x1B4E8C }, { f:'boite', d:[.8 * e, .5 * e, .05], p:[0, 1.8 * e, .08 * e], r:[-.25, 0, 0], c:0x8ECAE6 }];
+      case 'chariots': return [0, 1, 2, 3].map(k => ({ f:'boite', d:[.8 * e, .6 * e, 1.1 * e], p:[0, .5 * e + k * .05, -.7 * e + k * .5 * e], c:0xB9BEC6 }));
+      case 'sculpture': return [{ f:'boite', d:[1 * e, .7 * e, 1 * e], p:[0, .35 * e, 0], c:0x8C949F }, { f:'boule', d:[.55 * e, 1], p:[0, 1.2 * e, 0], c:0xD4AF37 }, { f:'boite', d:[.3 * e, 1.1 * e, .3 * e], p:[.1 * e, 1.9 * e, 0], r:[0, .5, .4], c:0xD4AF37 }];
+      case 'lampadaire': return [{ f:'cyl', d:[.07 * e, .09 * e, 2.4 * e, 6], p:[0, 1.2 * e, 0], c:0x3A3F47 }, { f:'boule', d:[.35 * e, 1], p:[0, 2.55 * e, 0], c:0xFFE9A8 }];
+      case 'horlogep': return [{ f:'cyl', d:[.1 * e, .1 * e, 2.2 * e, 6], p:[0, 1.1 * e, 0], c:0x3A3F47 }, { f:'cyl', d:[.6 * e, .6 * e, .12 * e, 16], p:[0, 2.4 * e, 0], r:[Math.PI / 2, 0, 0], c:0xFFFFFF }, { f:'boite', d:[.05, .45 * e, .05], p:[0, 2.5 * e, .08 * e], c:0x1B1B1B }];
+      case 'jeuxenfants': return [{ f:'cyl', d:[.9 * e, .9 * e, .12 * e, 14], p:[0, .08 * e, 0], c:0xF2C230 }, { f:'cyl', d:[.1 * e, .1 * e, 1.7 * e, 6], p:[0, .9 * e, 0], c:0xE5383B }, ...[0, 1, 2].map(k => ({ f:'boite', d:[.45 * e, .45 * e, .6 * e], p:[Math.cos(k * 2.1) * .6 * e, .65 * e, Math.sin(k * 2.1) * .6 * e], c:[0x1B98E0, 0x2BA84A, 0xE5383B][k] }))];
       case 'borne': return [{ f:'cyl', d:[.25 * e, .3 * e, 1.3 * e, 8], p:[0, .65 * e, 0], c:0xE9EDF2 }, { f:'boite', d:[.6 * e, .45 * e, .2 * e], p:[0, 1.45 * e, 0], c:0x14233A }, { f:'boite', d:[.45 * e, .25 * e, .05], p:[0, 1.47 * e, .11 * e], c:0x51CF66 }];
       case 'eau': return [{ f:'boite', d:[.8 * e, 1.1 * e, .6 * e], p:[0, .55 * e, 0], c:0xF4F4F0 }, { f:'boite', d:[.7 * e, .12 * e, .5 * e], p:[0, 1.16 * e, 0], c:0x8C949F }, { f:'cyl', d:[.08 * e, .08 * e, .3 * e, 6], p:[0, 1.35 * e, -.1 * e], c:0x1B98E0 }];
     }
@@ -777,25 +824,142 @@ window.ESCALE_3D = (() => {
         for(let k = 0; k < 4; k++){ const a = k * Math.PI / 2 + .4; p.push({ f:'boite', d:[2.4 * e, .5 * e, .8 * e], p:[Math.cos(a) * (r0 + 1.6 * e), .4 * e, Math.sin(a) * (r0 + 1.6 * e)], r:[0, -a + Math.PI / 2, 0], c:0x8B5A3C }); }
         break;
       }
+      default: mobilierGen(type, niv, cw, cd, p, e, w, d, H, coul);
     }
     return p;
   }
+  // les constructions du catalogue (restaurants, cafés, bars, boutiques, services, décorations) : un décor de base par famille, des accessoires propres à chacune
+  const hachage = t => { let h = 0; for(const ch of t) h = (h * 31 + ch.charCodeAt(0)) % 997; return h; };
+  function mobilierGen(type, niv, cw, cd, p, e, w, d, H, coulCss){
+    const Mo = M.MODULES[type], coul = parseInt(String(Mo.coul).replace('#', ''), 16), hh = hachage(type), clr = c => new T3.Color(c).lerp(new T3.Color(0xFFFFFF), .5).getHex();
+    const table = (x, z, c1 = 0xFFFFFF, haute = false) => { p.push({ f:'cyl', d:[.8 * e, .8 * e, .1, 14], p:[x, (haute ? 1.5 : 1) * e, z], c:c1 }, { f:'cyl', d:[.1, .1, (haute ? 1.5 : 1) * e, 6], p:[x, (haute ? .75 : .5) * e, z], c:0x3A3F47 }); };
+    const chaise = (x, z, c) => p.push({ f:'boite', d:[.55 * e, .55 * e, .55 * e], p:[x, .3 * e, z], c });
+    const tabouret = (x, z, c) => p.push({ f:'cyl', d:[.28 * e, .28 * e, .1, 10], p:[x, .85 * e, z], c }, { f:'cyl', d:[.07, .07, .85 * e, 5], p:[x, .42 * e, z], c:0x3A3F47 });
+    const comptoir = (x, z, lg, c, haut = 1.15) => p.push({ f:'boite', d:[lg, haut * e, 1 * e], p:[x, haut * e / 2, z], c }, { f:'boite', d:[lg + .1, .12, 1.15 * e], p:[x, haut * e + .06, z], c:0xF4F1DE });
+    const enseigneP = (z, c) => p.push({ f:'boite', d:[w * .45, .9 * e, .3], p:[0, H + .6 * e, z], c }, { f:'boite', d:[w * .45 - .6, .25 * e, .32], p:[0, H + .6 * e, z], c:0xFFFFFF });
+    const g = Mo.gen;
+    if(g === 'resto' || g === 'cafe' || g === 'bar'){
+      const sol = { fastfood:0xE9C46A, pizzeria:0xB5835A, brasserie:0x6B4A2F, sushi:0x2B2D42, gastro:0xE9E4D8, coffeeshop:0x8B5A3C, boulangerie:0xF1DFC1, salonthe:0xD8E2DC, bar_jus:0xF4E1B0, pub:0x5B3A24, bar_cocktail:0x2D1B3D, bar_vin:0x4A1D2B }[type] || 0xB5835A;
+      p.push({ f:'boite', d:[w * .95, .08, d * .9], p:[0, .04, 0], c:sol });
+      p.push(...cloisons(w, d, 1.3 * e, coul, ['+z', '-x'], .35));
+      p.push({ f:'boite', d:[w * .5, 1.2 * e, .15], p:[w * .1, 3 * e, -d / 2 + .1], c:0x14233A }, { f:'boite', d:[w * .46, .22 * e, .17], p:[w * .1, 3.35 * e, -d / 2 + .1], c:coul });
+      enseigneP(d / 2, coul);
+      if(g === 'bar'){
+        comptoir(w * .05, -d * .3, w * .7, coul === 0 ? 0x6B4A2F : coul, 1.3);
+        for(let k = 0; k < 5; k++) tabouret(-w * .26 + k * w * .16, -d * .3 + 1.3 * e, [0xE5383B, 0x1B98E0, 0xF2C230][(k + hh) % 3]);
+        for(let k = 0; k < 8; k++) p.push({ f:'cyl', d:[.1 * e, .1 * e, .6 * e, 6], p:[-w * .3 + k * w * .09, 2.6 * e, -d / 2 + .5 * e], c:[0x2A9D8F, 0xE76F51, 0xF4A261, 0x6D597A][k % 4] });      // les bouteilles
+        p.push({ f:'boite', d:[w * .7, .12, .5 * e], p:[w * .05, 2.2 * e, -d / 2 + .5 * e], c:0x3A3F47 });
+        if(type === 'pub') for(let k = 0; k < 2; k++) p.push({ f:'cyl', d:[.5 * e, .5 * e, .8 * e, 10], p:[w * .3 + k * .9 * e, .4 * e, d * .25], c:0x7A4A24 });
+        if(type === 'bar_cocktail') for(let k = 0; k < 3; k++) p.push({ f:'boule', d:[.3 * e, 1], p:[-w * .25 + k * w * .25, 3.4 * e, -d * .1], c:0xC77DFF });
+        if(type === 'bar_vin') for(let k = 0; k < 3; k++) p.push({ f:'cyl', d:[.55 * e, .55 * e, .9 * e, 10], p:[-w * .38 + k * .9 * e, .45 * e, d * .3], r:[Math.PI / 2, 0, 0], c:0x7A4A24 });
+        if(type === 'bar_jus') for(let k = 0; k < 6; k++) p.push({ f:'boule', d:[.2 * e, 0], p:[-w * .25 + k * w * .1, 1.5 * e, -d * .3], c:[0xF18F01, 0x2BA84A, 0xE5383B][k % 3] });
+        for(let k = 0; k < 2; k++) table(-w * .2 + k * w * .4, d * .15, 0xF4F1DE, true);
+      } else if(g === 'cafe'){
+        comptoir(w * .1, -d * .34, w * .55, coul);
+        p.push({ f:'boite', d:[.8 * e, .8 * e, .6 * e], p:[w * .22, 1.6 * e, -d * .38], c:0x3A3F47 });
+        if(type === 'boulangerie') for(let k = 0; k < 5; k++) p.push({ f:'boite', d:[.5 * e, .22 * e, .35 * e], p:[w * .1 - w * .2 + k * w * .1, 1.35 * e, -d * .34], c:[0xC68642, 0xE0AC69, 0xA5672B][k % 3] });
+        for(let k = 0; k < 4; k++){ const x = -w * .3 + (k % 2) * w * .5, z = d * .02 + Math.floor(k / 2) * d * .28; table(x, z, type === 'salonthe' ? 0xFAF3E0 : 0xF4F1DE, type === 'coffeeshop'); chaise(x + 1.1 * e, z, 0x2A6F4D); chaise(x - 1.1 * e, z, 0x2A6F4D); if(type === 'salonthe') p.push({ f:'boule', d:[.2 * e, 0], p:[x, 1.25 * e, z], c:0xE9C46A }); }
+      } else {
+        const nb = type === 'fastfood' ? 8 : type === 'gastro' ? 4 : 6;
+        comptoir(w * .1, -d * .36, w * .6, coul);
+        if(type === 'pizzeria') p.push({ f:'boule', d:[1.1 * e, 1], p:[w * .3, 1.2 * e, -d * .36], s:[1, .7, 1], c:0xB5532A });
+        if(type === 'sushi') p.push({ f:'boite', d:[w * .7, .3 * e, 1 * e], p:[0, 1 * e, -d * .05], c:0x1B1B1B }, ...[0, 1, 2, 3, 4, 5].map(k => ({ f:'cyl', d:[.22 * e, .22 * e, .1, 8], p:[-w * .3 + k * w * .12, 1.2 * e, -d * .05], c:[0xE5383B, 0xFFFFFF, 0xF2C230][k % 3] })));
+        for(let k = 0; k < nb; k++){
+          const x = -w * .32 + (k % 3) * w * .32, z = -d * .02 + Math.floor(k / 3) * d * .3;
+          if(type === 'sushi'){ tabouret(-w * .3 + (k % 6) * w * .12, d * .1, 0xE5383B); if(k > 5) break; continue; }
+          table(x, z, type === 'pizzeria' ? 0xE5383B : type === 'gastro' ? 0xFFFFFF : 0xF4F1DE);
+          if(type === 'fastfood') p.push({ f:'boite', d:[1.5 * e, .5 * e, .5 * e], p:[x, .3 * e, z - 1 * e], c:0xE63946 }, { f:'boite', d:[1.5 * e, .5 * e, .5 * e], p:[x, .3 * e, z + 1 * e], c:0xE63946 });
+          else for(const [dx, dz] of [[1, 0], [-1, 0]]) chaise(x + dx * 1.15 * e, z + dz * 1.15 * e, type === 'gastro' ? 0x6D597A : 0x8B2E2E);
+          if(type === 'gastro') p.push({ f:'cyl', d:[.04, .04, .3 * e, 5], p:[x, 1.25 * e, z], c:0xFFE9A8 });
+        }
+        if(type === 'gastro') p.push({ f:'boule', d:[.9 * e, 1], p:[0, 3.4 * e, 0], c:0xFFE9A8 });
+      }
+    } else if(g === 'shop'){
+      p.push(...cloisons(w, d, H, coul, ['+z'], .35, 0xBFD9EA), ...enseigne(d / 2, w, H, coul, e));
+      p.push({ f:'boite', d:[.8 * e, 2.4 * e, d * .75], p:[-w / 2 + .7 * e, 1.2 * e, -d * .05], c:0xF4F1DE });
+      p.push({ f:'boite', d:[2.4 * e, 1.1 * e, 1 * e], p:[w * .3, .55 * e, d * .2], c:0x6B4A2F }, { f:'boite', d:[.5 * e, .4 * e, .4 * e], p:[w * .3, 1.3 * e, d * .2], c:0x1E2A38 }, ...agent(w * .3, d * .2 - 1.1 * e, coul, e));
+      const rayon = (x, z, c) => { p.push({ f:'boite', d:[w * .5, 1.8 * e, .7 * e], p:[x, .9 * e, z], c:0xF4F1DE }); for(let k = 0; k < 6; k++) p.push({ f:'boite', d:[.55 * e, .4 * e, .45 * e], p:[x - w * .2 + k * w * .08, 1.95 * e, z], c:c[k % c.length] }); };
+      switch(type){
+        case 'presse': rayon(-w * .1, -d * .25, [0xE5383B, 0x1B98E0, 0xF2C230, 0xFFFFFF]); p.push({ f:'boite', d:[1.4 * e, 1.2 * e, .6 * e], p:[-w * .1, .6 * e, d * .05], r:[-.3, 0, 0], c:0xE9C46A }); break;
+        case 'souvenirs': p.push({ f:'cyl', d:[.5 * e, .5 * e, 2 * e, 8], p:[-w * .1, 1 * e, -d * .15], c:0xE76F51 }); for(let k = 0; k < 6; k++) p.push({ f:'boule', d:[.35 * e, 1], p:[-w * .3 + k * w * .12, 1.2 * e, d * .08], c:[0xF2C230, 0xE5383B, 0x1B98E0][k % 3] }); break;
+        case 'pharmacie': rayon(-w * .1, -d * .25, [0xFFFFFF, 0x2A9D8F]); p.push({ f:'boite', d:[1.6 * e, .5 * e, .3], p:[0, H + 1.5 * e, d / 2], c:0x2BA84A }, { f:'boite', d:[.5 * e, 1.6 * e, .32], p:[0, H + 1.5 * e, d / 2], c:0x2BA84A }); break;
+        case 'jouets': for(let k = 0; k < 6; k++) p.push({ f:'boite', d:[.8 * e, .8 * e, .8 * e], p:[-w * .3 + (k % 3) * w * .2, .4 * e + (k > 2 ? .8 * e : 0), -d * .1], c:[0xE5383B, 0xF2C230, 0x1B98E0, 0x2BA84A][k % 4] }); p.push({ f:'boule', d:[.6 * e, 1], p:[w * .05, 1.8 * e, -d * .2], c:0xC68642 }); break;
+        case 'mode': for(let k = 0; k < 3; k++) p.push({ f:'cyl', d:[.25 * e, .35 * e, 1.1 * e, 8], p:[-w * .3 + k * w * .25, 1.4 * e, -d * .1], c:[0xD81159, 0x8F2D56, 0x218380][k] }, { f:'boule', d:[.22 * e, 1], p:[-w * .3 + k * w * .25, 2.2 * e, -d * .1], c:0xE8D5C4 }, { f:'cyl', d:[.05, .05, 1.1 * e, 6], p:[-w * .3 + k * w * .25, .55 * e, -d * .1], c:0x3A3F47 }); rayon(0, -d * .38, [0xD81159, 0xFFFFFF, 0x218380]); break;
+        case 'parfumerie': for(let k = 0; k < 2; k++) p.push({ f:'boite', d:[w * .45, 1 * e, .9 * e], p:[-w * .12, .5 * e, -d * .28 + k * d * .3], c:0xFFFFFF }); for(let k = 0; k < 8; k++) p.push({ f:'cyl', d:[.1 * e, .12 * e, .4 * e, 6], p:[-w * .3 + k * w * .07, 1.25 * e, -d * .28 + (k % 2) * d * .3], c:[0xB5838D, 0xFFB5A7, 0xFCD5CE][k % 3] }); break;
+        case 'spiritueux': for(let k = 0; k < 10; k++) p.push({ f:'cyl', d:[.1 * e, .12 * e, .7 * e, 6], p:[-w * .35 + k * w * .075, 1.5 * e, -d * .4], c:[0x5C3D2E, 0x2A6F4D, 0x8D6E3F][k % 3] }); rayon(0, -d * .1, [0x5C3D2E, 0xE9C46A]); break;
+        case 'electronique': for(let k = 0; k < 3; k++) p.push({ f:'boite', d:[1.2 * e, .8 * e, .12], p:[-w * .3 + k * w * .25, 2.1 * e, -d * .4], c:0x0B1320 }, { f:'boite', d:[1 * e, .6 * e, .14], p:[-w * .3 + k * w * .25, 2.1 * e, -d * .4 + .05], c:0x4CC9F0 }); rayon(0, -d * .1, [0x1D3557, 0x4CC9F0]); break;
+        case 'bijouterie': for(let k = 0; k < 2; k++) p.push({ f:'boite', d:[w * .4, 1.1 * e, .9 * e], p:[-w * .15, .55 * e, -d * .28 + k * d * .3], c:0x14233A }, { f:'boite', d:[w * .4, .5 * e, .9 * e], p:[-w * .15, 1.35 * e, -d * .28 + k * d * .3], c:0xBFE3F0 }); for(let k = 0; k < 5; k++) p.push({ f:'boule', d:[.12 * e, 0], p:[-w * .3 + k * w * .12, 1.45 * e, -d * .13], c:0xFFD700 }); break;
+        default: rayon(-w * .1, -d * .25, [0xF2C230, 0x1B98E0, 0x2BA84A, 0xD7263D]);
+      }
+      p.push(...plante(w * .42, d / 2 + .9 * e, e));
+    } else if(g === 'service'){
+      p.push(...cloisons(w, d, 2.2 * e, coul, ['+z'], .4, 0xBFD9EA), ...enseigne(d / 2, w, 2.2 * e, coul, e));
+      switch(type){
+        case 'change': comptoir(0, -d * .2, w * .7, 0x2D6A4F); for(let k = 0; k < 3; k++) p.push({ f:'boite', d:[1.2 * e, .7 * e, .1], p:[-w * .25 + k * w * .25, 2.3 * e, -d * .45], c:0x0B1320 }, { f:'boite', d:[1 * e, .4 * e, .12], p:[-w * .25 + k * w * .25, 2.3 * e, -d * .45], c:0x51CF66 }); p.push(...agent(0, -d * .36, 0x2D6A4F, e)); break;
+        case 'voiture': comptoir(0, -d * .25, w * .7, 0x0077B6); p.push({ f:'boite', d:[2.2 * e, .6 * e, 1 * e], p:[w * .15, 1.5 * e, -d * .25], c:0xE63946 }, { f:'boite', d:[1.2 * e, .45 * e, .9 * e], p:[w * .15, 2 * e, -d * .25], c:0xBFE3F0 }, ...agent(-w * .15, -d * .37, 0x0077B6, e)); break;
+        case 'douches': for(let k = 0; k < 4; k++){ const x = -w * .33 + k * w * .22; p.push({ f:'boite', d:[1.7 * e, 2.6 * e, 1.7 * e], p:[x, 1.3 * e, -d * .1], c:0xBFE3F0 }, { f:'boite', d:[1 * e, 2.2 * e, .1], p:[x, 1.1 * e, -d * .1 + .9 * e], c:0x48CAE4 }); } break;
+        case 'coworking': for(let k = 0; k < 4; k++){ const x = -w * .3 + (k % 2) * w * .5, z = -d * .15 + Math.floor(k / 2) * d * .38; p.push({ f:'boite', d:[2.2 * e, .12, 1.1 * e], p:[x, 1 * e, z], c:0xF4F1DE }, { f:'boite', d:[.9 * e, .5 * e, .6 * e], p:[x, 1.3 * e, z - .2 * e], c:0x1B1B1B }); chaise(x, z + 1 * e, 0x495057); } break;
+        case 'repos': for(let k = 0; k < 4; k++){ const x = -w * .3 + k * w * .2; for(let lv = 0; lv < 2; lv++) p.push({ f:'boite', d:[1.6 * e, 1.1 * e, 2.6 * e], p:[x, .6 * e + lv * 1.3 * e, -d * .15], c:lv ? 0x6C757D : 0x3D405B }, { f:'boite', d:[1.3 * e, .15 * e, 1.5 * e], p:[x, .7 * e + lv * 1.3 * e, -d * .1], c:0xF4F1DE }); } break;
+        case 'spa': for(let k = 0; k < 2; k++) p.push({ f:'boite', d:[1.1 * e, .8 * e, 2.4 * e], p:[-w * .15 + k * w * .35, .4 * e, -d * .1], c:0xF4F1DE }, { f:'boite', d:[1.1 * e, .1, 2.4 * e], p:[-w * .15 + k * w * .35, .85 * e, -d * .1], c:0x84A59D }); for(let k = 0; k < 4; k++) p.push({ f:'boule', d:[.2 * e, 0], p:[w * .3, .2 * e + k * .15, -d * .3 + k * .25], c:0x3D405B }); p.push(...plante(-w * .38, -d * .35, e), ...plante(w * .38, d * .2, e)); break;
+        default: comptoir(0, -d * .2, w * .6, coul);
+      }
+    } else if(g === 'deco'){
+      p.push({ f:'boite', d:[w * .85, .14, d * .85], p:[0, .07, 0], c:clr(coul) });
+      switch(type){
+        case 'jardin': for(let k = 0; k < 4; k++){ const x = (k % 2 ? 1 : -1) * w * .22, z = (k < 2 ? -1 : 1) * d * .22; p.push({ f:'cyl', d:[.35 * e, .45 * e, 3 * e, 7], p:[x, 1.7 * e, z], c:0x6B4A2F }, { f:'boule', d:[1.6 * e, 1], p:[x, 3.9 * e, z], c:0x4E8F3E }, { f:'boule', d:[1 * e, 1], p:[x + .6 * e, 4.5 * e, z], c:0x5FA35A }); } p.push({ f:'boite', d:[w * .85, .5 * e, .3], p:[0, .3 * e, d * .43], c:0x8B5A3C }); break;
+        case 'murvegetal': p.push({ f:'boite', d:[w * .8, 4.2 * e, .6 * e], p:[0, 2.1 * e, -d * .3], c:0x40916C }); for(let k = 0; k < 14; k++) p.push({ f:'boule', d:[.5 * e, 0], p:[-w * .34 + (k % 7) * w * .11, 1 * e + Math.floor(k / 7) * 2 * e, -d * .3 + .4 * e], c:[0x74C69D, 0x52B788, 0x2D6A4F][k % 3] }); break;
+        case 'statue': p.push({ f:'boite', d:[2.2 * e, 1.2 * e, 2.2 * e], p:[0, .6 * e, 0], c:0x8C949F }, { f:'boule', d:[1.3 * e, 1], p:[0, 2.4 * e, 0], s:[1, 1.4, 1], c:0xD4AF37 }, { f:'boite', d:[.5 * e, 2.4 * e, .5 * e], p:[.8 * e, 3.4 * e, 0], r:[0, .4, .5], c:0xD4AF37 }); break;
+        case 'piano': p.push({ f:'boite', d:[2.4 * e, .9 * e, 3 * e], p:[0, 1.1 * e, 0], c:0x111111 }, { f:'boite', d:[2.4 * e, .1, 3 * e], p:[0, 1.75 * e, -.1], r:[0, 0, .35], c:0x1B1B1B }, ...[[-1, -1], [1, -1], [0, 1.2]].map(([dx, dz]) => ({ f:'cyl', d:[.1 * e, .1 * e, 1.1 * e, 6], p:[dx * e, .55 * e, dz * e], c:0x111111 })), { f:'boite', d:[1.4 * e, .5 * e, .6 * e], p:[0, .6 * e, 2 * e], c:0x3A3F47 }); break;
+        case 'horloge': p.push({ f:'boite', d:[1.2 * e, 5 * e, 1.2 * e], p:[0, 2.5 * e, 0], c:0xB08968 }, { f:'cyl', d:[1.6 * e, 1.6 * e, .3 * e, 20], p:[0, 4.8 * e, .65 * e], r:[Math.PI / 2, 0, 0], c:0xFFFFFF }, { f:'boite', d:[.1, 1.1 * e, .1], p:[0, 5 * e, .85 * e], c:0x1B1B1B }, { f:'boite', d:[.8 * e, .1, .1], p:[.4 * e, 4.8 * e, .85 * e], c:0x1B1B1B }); break;
+        case 'aquarium': p.push({ f:'boite', d:[w * .7, 3 * e, d * .45], p:[0, 1.5 * e, 0], c:0x4CC9F0 }, { f:'boite', d:[w * .74, .5 * e, d * .5], p:[0, .25 * e, 0], c:0x3A3F47 }, { f:'boite', d:[w * .74, .3 * e, d * .5], p:[0, 3.1 * e, 0], c:0x3A3F47 }); for(let k = 0; k < 8; k++) p.push({ f:'boule', d:[.2 * e, 0], p:[-w * .28 + k * w * .08, 1 * e + (k % 3) * .7 * e, (k % 2 ? 1 : -1) * d * .1], s:[1.6, 1, 1], c:[0xF18F01, 0xFFD60A, 0xE5383B][k % 3] }); break;
+        case 'maquette': p.push({ f:'cyl', d:[.15 * e, .15 * e, 5 * e, 6], p:[0, 2.5 * e, 0], c:0x8C949F }, { f:'cyl', d:[.5 * e, .35 * e, 5 * e, 10], p:[0, 5.6 * e, 0], r:[Math.PI / 2, 0, 0], c:0xF4F6F8 }, { f:'boite', d:[6 * e, .12 * e, 1.2 * e], p:[0, 5.5 * e, .3 * e], c:0xC9CED6 }, { f:'boite', d:[1.6 * e, .12 * e, .7 * e], p:[0, 5.7 * e, -2.2 * e], c:0xC9CED6 }, { f:'boite', d:[.12 * e, 1.1 * e, .7 * e], p:[0, 6.1 * e, -2.2 * e], c:0x1B6EC2 }); break;
+        default: p.push(...plante(0, 0, e));
+      }
+    }
+  }
   function construireInterieur(A, Pl){
-    const cle = A.terminal.l + 'x' + A.terminal.h + 'z' + A.terminal.la + ':' + A.terminal.modules.map(m => m.type + m.x + m.y + m.niv + 'r' + (m.rot || 0)).join(',') + '|' + (A.terminal.petits || []).map(p => p.type + p.x + '.' + p.y + 'r' + (p.rot || 0)).join(',') + '|' + A.portes.map(g => g.nom + g.taille + (g.passerelle ? 'p' : '')).join(',');
+    const cle = A.terminal.l + 'x' + A.terminal.h + 'z' + A.terminal.la + 'r' + (A.terminal.cr || 0) + ':' + A.terminal.modules.map(m => m.type + m.x + m.y + m.niv + 'r' + (m.rot || 0)).join(',') + '|' + (A.terminal.petits || []).map(p => p.type + p.x + '.' + p.y + 'r' + (p.rot || 0)).join(',') + '|' + A.portes.map(g => g.nom + g.taille + (g.passerelle ? 'p' : '')).join(',');
     if(cle === cleInt && interieur) return;
     cleInt = cle;
     if(interieur){ monde.remove(interieur); interieur.traverse(o => { if(o.geometry) o.geometry.dispose(); }); }
-    const G = grilleT(A, Pl), pieces = [], sol = [];
+    const G = grilleT(A, Pl), pieces = [], sol = [], interieur2 = [];
     // le carrelage, la ligne jaune de la sûreté (entre la rangée côté ville et le reste)
     // les allées (un sol clair et chaud) et le carrelage de chaque case
     sol.push({ f:'boite', d:[G.T.x1 - G.T.x0 - 2 * MARGE_X + 2, .08, G.pd * G.h + 2], p:[(G.T.x0 + G.T.x1) / 2, .52, G.T.z1 - MARGE_Z - G.pd * G.h / 2], c:0xF1ECE2 });
-    for(let x = 0; x < G.l; x++) for(let y = 0; y < G.h; y++){ const c = G.centre(x, y); sol.push({ f:'boite', d:[G.pw - .05, .1, G.pd - .05], p:[c.x, .55, c.z], c:G.zone(x) === 'arr' ? ((x + y) % 2 ? 0xDCEFEA : 0xCBE5DE) : ((x + y) % 2 ? 0xE9EDF2 : 0xDDE3EA) }); }
-    // la séparation entre les deux zones
-    const xb = G.T.x1 - MARGE_X - G.cd0 * G.pw, zc = G.T.z1 - MARGE_Z - G.pd * G.h / 2;
-    if(G.cd0 < G.l){
-      sol.push({ f:'boite', d:[1.4, .14, G.pd * G.h], p:[xb, .63, zc], c:0x2A9D8F });
-      for(let k = 0; k < 4; k++) sol.push({ f:'boite', d:[.5, 1.1, .5], p:[xb, .6 + .55, G.T.z1 - MARGE_Z - G.pd * G.h * (k + .5) / 4], c:0x2A9D8F });          // des potelets
+    for(let x = 0; x < G.l; x++) for(let y = 0; y < G.h; y++){ const c = G.centre(x, y); sol.push({ f:'boite', d:[G.pw - .05, .1, G.pd - .05], p:[c.x, .55, c.z], c:(COUL_SOL[G.zone(x, y)])[(x + y) % 2] }); }
+    // les zones : un cadre de leur couleur au sol, des murs vitrés avec des portes (une réserve vide est fermée par une séparation)
+    const X = i => G.T.x1 - MARGE_X - i * G.pw, Zr = jj => G.T.z1 - MARGE_Z - jj * G.pd, largP = G.pw / 4, colsP = M.colonnesPortes(A);
+    const cadre = (x0, x1, z0, z1, coul, pointille) => {                      // x0 < x1 et z0 < z1 (monde)
+      const ep = .8, seg = (xa, za, xb, zb) => {
+        const horiz = Math.abs(zb - za) < .01, lg = horiz ? xb - xa : zb - za;
+        if(!pointille){ sol.push({ f:'boite', d:horiz ? [lg, .1, ep] : [ep, .1, lg], p:[(xa + xb) / 2, .66, (za + zb) / 2], c:coul }); return; }
+        for(let t = 0; t < lg; t += 6){ const l2 = Math.min(3.5, lg - t); sol.push({ f:'boite', d:horiz ? [l2, .1, ep] : [ep, .1, l2], p:horiz ? [xa + t + l2 / 2, .66, za] : [xa, .66, za + t + l2 / 2], c:coul }); }
+      };
+      seg(x0, z0 + ep / 2, x1, z0 + ep / 2); seg(x0, z1 - ep / 2, x1, z1 - ep / 2); seg(x0 + ep / 2, z0, x0 + ep / 2, z1); seg(x1 - ep / 2, z0, x1 - ep / 2, z1);
+    };
+    const mur = (xa, za, xb, zb, coul) => {                                    // un mur : soubassement de la couleur de la zone, vitre, liseré
+      const horiz = Math.abs(zb - za) < .01, lg = Math.hypot(xb - xa, zb - za), cx = (xa + xb) / 2, cz = (za + zb) / 2, hm = 4.2;
+      if(lg < .5) return;
+      pieces.push({ f:'boite', d:horiz ? [lg, 1.2, .4] : [.4, 1.2, lg], p:[cx, .6 + .6, cz], c:coul }, { f:'boite', d:horiz ? [lg, hm - 1.2, .14] : [.14, hm - 1.2, lg], p:[cx, .6 + 1.2 + (hm - 1.2) / 2, cz], c:0xBFE3F0 },
+        { f:'boite', d:horiz ? [lg, .2, .55] : [.55, .2, lg], p:[cx, .6 + hm, cz], c:0x5C6672 });
+    };
+    // le mur entre le hall (rangée 0) et les commerces, avec une porte devant chaque contrôle et chaque poste d'arrivée
+    { let xs = [[X(G.l), X(0)]];
+      for(const c of colsP){ const xc = (X(c) + X(c + 1)) / 2, a0 = xc - largP / 2, b0 = xc + largP / 2, nx = [];
+        for(const [lo, hi] of xs){ if(b0 <= lo || a0 >= hi){ nx.push([lo, hi]); continue; } if(a0 > lo) nx.push([lo, a0]); if(b0 < hi) nx.push([b0, hi]); }
+        xs = nx;
+        const zn = G.zone(c, 0), pc = COUL_ZONE[zn] || 0x2A9D8F;
+        pieces.push({ f:'boite', d:[.5, 3.6, .6], p:[a0, .6 + 1.8, Zr(1)], c:pc }, { f:'boite', d:[.5, 3.6, .6], p:[b0, .6 + 1.8, Zr(1)], c:pc }, { f:'boite', d:[largP + 1, .5, .6], p:[xc, .6 + 3.8, Zr(1)], c:pc });   // le chambranle de la porte
+      }
+      for(const [lo, hi] of xs){ const col = Math.max(0, Math.min(G.l - 1, Math.floor((X(0) - (lo + hi) / 2) / G.pw))); mur(lo, Zr(1), hi, Zr(1), COUL_ZONE[G.zone(col, 0)] || 0x8C949F); }
     }
+    // les murs verticaux du hall entre les zones (Départs | réserve | Arrivées)
+    for(const i2 of G.cr > 0 ? [G.cd0, G.ca0] : (G.cd0 < G.l ? [G.cd0] : [])) mur(X(i2), Zr(1), X(i2), Zr(0), 0x8C949F);
+    cadre(X(G.cd0), X(0), Zr(1), Zr(0), COUL_ZONE.dep, false);
+    if(G.cr > 0) cadre(X(G.ca0), X(G.cd0), Zr(1), Zr(0), COUL_ZONE.res, true);
+    if(G.ca0 < G.l) cadre(X(G.l), X(G.ca0), Zr(1), Zr(0), COUL_ZONE.arr, false);
+    cadre(X(G.l), X(0), Zr(G.h), Zr(1), COUL_ZONE.com, false);
+    if(G.cr > 0){ const xr = (X(G.cd0) + X(G.ca0)) / 2, tr = new T3.Mesh(new T3.PlaneGeometry(Math.min(G.cr * G.pw * .8, 26), Math.min(G.cr * G.pw * .8, 26) * .24), new T3.MeshBasicMaterial({ map:texteCache('RÉSERVE · agrandissement', '#2F6FE0', '#FFFFFF', 1024), transparent:true })); tr.rotation.x = -Math.PI / 2; tr.rotation.z = Math.PI; tr.position.set(xr, .72, Zr(.5)); interieur2.push(tr); }
     // les petits objets, dans leur petite case
     for(const q of A.terminal.petits || []){ const c = G.sub(q.x, q.y); for(const o of tournerPieces(petitObjet(q.type, G.epetit), q.rot || 0)){ o.p = [o.p[0] + c.x, o.p[1] + .6, o.p[2] + c.z]; pieces.push(o); } }
     for(const m of A.terminal.modules){
@@ -804,7 +968,7 @@ window.ESCALE_3D = (() => {
       const rot = m.rot || 0, imp = rot % 2;
       for(const q of tournerPieces(mobilier(m.type, m.niv, imp ? G.cd : G.cw, imp ? G.cw : G.cd), rot)){ q.p = [q.p[0] + c.x, q.p[1] + .65, q.p[2] + c.z]; pieces.push(q); }
     }
-    interieur = new T3.Group();
+    interieur = new T3.Group(); for(const m of interieur2) interieur.add(m);
     // la jetée : les portes d'embarquement le long de la façade côté pistes
     const T = G.T, e = ECH_P;
     sol.push({ f:'boite', d:[T.x1 - T.x0 - 2, .1, JETEE - 1], p:[(T.x0 + T.x1) / 2, .55, T.z0 + JETEE / 2], c:0xD3DAE3 });
@@ -844,15 +1008,15 @@ window.ESCALE_3D = (() => {
       pan.position.set(c.x, 8, c.z); pan.lookAt(c.x, 14, c.z - 9); interieur.add(pan);
       pieces.push({ f:'cyl', d:[.06, .06, 3, 4], p:[c.x - Math.min(G.cw * .6, 12) * .4, 10.4, c.z], c:0x5C6672 }, { f:'cyl', d:[.06, .06, 3, 4], p:[c.x + Math.min(G.cw * .6, 12) * .4, 10.4, c.z], c:0x5C6672 });
     }
-    // les portiques d'enseignes, comme dans un vrai aéroport : deux poteaux, une poutre, et le panneau « Départs » (jaune) ou « Arrivées » (vert) suspendu au milieu
-    for(const [x0, x1, fond, coul, txt] of [[0, G.cd0, '#FFB703', '#14233A', 'DÉPARTS ✈'], [G.cd0, G.l, '#2A9D8F', '#FFFFFF', 'ARRIVÉES 🛬']]){
-      if(x1 <= x0) continue;
-      const xa = G.T.x1 - MARGE_X - x1 * G.pw + 2.5, xb = G.T.x1 - MARGE_X - x0 * G.pw - 2.5, xm = (xa + xb) / 2, zb = T.z0 + JETEE + 2.2, hp = 8.6, lg = Math.min(13, (xb - xa) * .5);
+    // les portiques d'enseignes, comme dans un vrai aéroport : deux poteaux, une poutre, et le panneau suspendu (Départs, Arrivées au hall ; Duty-free et commerces côté pistes)
+    for(const [i0, i1, fond, coul, txt, zb] of [[0, G.cd0, '#E5383B', '#FFFFFF', 'DÉPARTS ✈', Zr(1) + 2.6], [G.ca0, G.l, '#2A9D8F', '#FFFFFF', 'ARRIVÉES 🛬', Zr(1) + 2.6], [0, G.l, '#FFB703', '#14233A', 'DUTY-FREE · COMMERCES 🛍️', T.z0 + JETEE + 2.2]]){
+      if(i1 <= i0) continue;
+      const xa = X(i1) + 2.5, xb = X(i0) - 2.5, xm = (xa + xb) / 2, hp = 8.6, lg = Math.min(i0 === 0 && i1 === G.l ? 22 : 13, (xb - xa) * .5);
       for(const xp of [xa, xb]) pieces.push({ f:'cyl', d:[.28, .32, hp, 8], p:[xp, .6 + hp / 2, zb], c:0x5C6672 }, { f:'boite', d:[1.3, .2, 1.3], p:[xp, .7, zb], c:0x3A3F47 });
       pieces.push({ f:'boite', d:[xb - xa + .8, .5, .6], p:[xm, .6 + hp, zb], c:0x5C6672 });                                    // la poutre
       for(const dx of [-lg * .42, lg * .42]) pieces.push({ f:'boite', d:[.14, .9, .14], p:[xm + dx, .6 + hp - .65, zb], c:0x3A3F47 });   // les suspentes
-      pieces.push({ f:'boite', d:[lg + .5, lg * .2 + .4, .3], p:[xm, .6 + hp - 1.9 - lg * .1, zb], c:0x1E2430 });                // le caisson du panneau
-      for(const sg of [1, -1]){ const pan = new T3.Mesh(new T3.PlaneGeometry(lg, lg * .2), new T3.MeshBasicMaterial({ map:texteCache(txt, fond, coul, 1024) })); pan.position.set(xm, .6 + hp - 1.9 - lg * .1, zb + sg * .17); if(sg < 0) pan.rotation.y = Math.PI; interieur.add(pan); }
+      pieces.push({ f:'boite', d:[lg + .5, lg * .16 + .4, .3], p:[xm, .6 + hp - 1.9 - lg * .08, zb], c:0x1E2430 });                // le caisson du panneau
+      for(const sg of [1, -1]){ const pan = new T3.Mesh(new T3.PlaneGeometry(lg, lg * .16), new T3.MeshBasicMaterial({ map:texteCache(txt, fond, coul, 1024) })); pan.position.set(xm, .6 + hp - 1.9 - lg * .08, zb + sg * .17); if(sg < 0) pan.rotation.y = Math.PI; interieur.add(pan); }
     }
     interieur.add(new T3.Mesh(fusion(sol), MAT));
     if(pieces.length) interieur.add(objet(pieces, .08));
@@ -883,11 +1047,81 @@ window.ESCALE_3D = (() => {
     foule.count = tetes.count = 0; foule.frustumCulled = tetes.frustumCulled = false;
     scene.add(foule, tetes);
   }
+
+  /* ---------- Les routes des passagers : une grille de navigation (les petits carrés 8 × 8) avec les murs, les portes et la réserve ----------
+     Les passagers marchent le long des allées, passent par les portes des murs et ne traversent plus les constructions. */
+  let nav = null, cleNav = '', Gc = null;
+  function grilleNav(A, G){
+    const cle = [A.terminal.l, A.terminal.la, A.terminal.cr || 0, A.terminal.h, A.terminal.modules.map(m => m.type + m.x + m.y).join(',')].join('|');
+    if(nav && cle === cleNav) return nav; cleNav = cle;
+    const N = G.N, W = G.l * N, H = G.h * N, libre = new Uint8Array(W * H), mod = new Set(A.terminal.modules.map(m => m.x + ':' + m.y));
+    for(let py = 0; py < H; py++) for(let px = 0; px < W; px++){
+      const cx = px >> 3, cy = py >> 3; let ok = 1;
+      if(cy === 0 && G.zone(cx, 0) === 'res') ok = 0;
+      else if(mod.has(cx + ':' + cy)){ const lx = px & 7, ly = py & 7; if(lx > 0 && lx < 7 && ly > 0 && ly < 7) ok = 0; }
+      libre[py * W + px] = ok;
+    }
+    nav = { W, H, libre, N, portes:new Set(M.colonnesPortes(A)), zone:G.zone, champs:new Map() };
+    return nav;
+  }
+  // peut-on passer d'un petit carré à son voisin (4 directions) ? (murs entre le hall et les commerces, entre les zones du hall)
+  function passe(nv, px, py, qx, qy){
+    if(qx < 0 || qy < 0 || qx >= nv.W || qy >= nv.H || !nv.libre[qy * nv.W + qx]) return false;
+    if(py !== qy && (py >> 3) !== (qy >> 3) && (Math.min(py, qy) >> 3) === 0) return nv.portes.has(px >> 3) && ((px & 7) === 3 || (px & 7) === 4);
+    if(px !== qx && (px >> 3) !== (qx >> 3) && (py >> 3) === 0) return nv.zone(px >> 3, 0) === nv.zone(qx >> 3, 0);
+    return true;
+  }
+  const VOIS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  // la distance (en petits carrés) de chaque carré jusqu'au but
+  function champ(nv, gx, gy){
+    const cle = gy * nv.W + gx; let d = nv.champs.get(cle); if(d) return d;
+    if(nv.champs.size > 160) nv.champs.clear();
+    d = new Int16Array(nv.W * nv.H).fill(-1); const q = [cle]; d[cle] = 0;
+    for(let i = 0; i < q.length; i++){
+      const c = q[i], px = c % nv.W, py = (c / nv.W) | 0;
+      for(const [dx, dy] of VOIS){ const qx = px + dx, qy = py + dy; if(!passe(nv, px, py, qx, qy)) continue; const k = qy * nv.W + qx; if(d[k] >= 0) continue; d[k] = d[c] + 1; q.push(k); }
+    }
+    nv.champs.set(cle, d); return d;
+  }
+  const sousDe = (G, nv, x, z) => ({ px:clamp(Math.floor((G.T.x1 - MARGE_X - x) / (G.pw / nv.N)), 0, nv.W - 1), py:clamp(Math.floor((G.T.z1 - MARGE_Z - z) / (G.pd / nv.N)), 0, nv.H - 1) });
+  function procheLibre(nv, px, py){
+    if(nv.libre[py * nv.W + px]) return { px, py };
+    for(let r = 1; r <= 12; r++) for(let dx = -r; dx <= r; dx++) for(let dy = -r; dy <= r; dy++){
+      if(Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const qx = px + dx, qy = py + dy;
+      if(qx >= 0 && qy >= 0 && qx < nv.W && qy < nv.H && nv.libre[qy * nv.W + qx]) return { px:qx, py:qy };
+    }
+    return { px, py };
+  }
+  // le chemin d'un point à un autre : les coins du trajet dans les allées (puis le point d'arrivée exact)
+  function chemin(G, nv, x0, z0, x1, z1){
+    const s = (() => { const a = sousDe(G, nv, x0, z0); return procheLibre(nv, a.px, a.py); })(), g = (() => { const a = sousDe(G, nv, x1, z1); return procheLibre(nv, a.px, a.py); })();
+    const d = champ(nv, g.px, g.py); if(d[s.py * nv.W + s.px] < 0) return [];
+    const pts = [], c = (px, py) => G.sub(px, py); let px = s.px, py = s.py, dirP = null, garde = 0;
+    pts.push(c(px, py));
+    while(d[py * nv.W + px] > 0 && garde++ < 500){
+      const dc = d[py * nv.W + px]; let pick = null;
+      if(dirP){ const qx = px + dirP[0], qy = py + dirP[1]; if(passe(nv, px, py, qx, qy) && d[qy * nv.W + qx] === dc - 1) pick = dirP; }
+      if(!pick) for(const v of VOIS){ const qx = px + v[0], qy = py + v[1]; if(passe(nv, px, py, qx, qy) && d[qy * nv.W + qx] === dc - 1){ pick = v; break; } }
+      if(!pick) break;
+      if(dirP && (pick[0] !== dirP[0] || pick[1] !== dirP[1])) pts.push(c(px, py));
+      dirP = pick; px += pick[0]; py += pick[1];
+    }
+    pts.push(c(px, py));
+    return pts;
+  }
+  // envoyer un passager quelque part : il suit la route (les coins) puis rejoint le point exact
+  function diriger(a, x, z){
+    if(a.dx != null && Math.abs(a.dx - x) < .35 && Math.abs(a.dz - z) < .35) return;
+    a.dx = x; a.dz = z;
+    const r = Gc && nav ? chemin(Gc, nav, a.x, a.z, x, z) : [];
+    a.route = r.map(p => ({ x:p.x + a.ox, z:p.z + a.oz })); a.route.push({ x, z });
+    const n = a.route.shift(); a.tx = n.x; a.tz = n.z;
+  }
   const AIRSIDE = ['salle', 'cafe', 'boutique', 'restaurant', 'salon', 'jeux', 'fontaine', 'plantes', 'toilettes'];
-  function nouvelAgent(role, x, z){ const a = { role, x, z, tx:x, tz:z, attente:0, pas:Math.random() * 6, id:Math.floor(Math.random() * MAX_AG) }; agents.push(a); return a; }
+  function nouvelAgent(role, x, z){ const a = { role, x, z, tx:x, tz:z, attente:0, pas:Math.random() * 6, id:Math.floor(Math.random() * MAX_AG), ox:(Math.random() - .5) * 1.4, oz:(Math.random() - .5) * 1.4, route:[] }; agents.push(a); return a; }
   // l'entrée côté ville : les départs entrent par la zone Départs, les arrivées sortent par la zone Arrivées
   function entree(G, zone = 'dep'){
-    const a = zone === 'arr' ? G.cd0 : 0, b = zone === 'arr' ? G.l : G.cd0, xa = G.T.x1 - MARGE_X - b * G.pw + 4, xb = G.T.x1 - MARGE_X - a * G.pw - 4;
+    const a = zone === 'arr' ? G.ca0 : 0, b = zone === 'arr' ? G.l : G.cd0, xa = G.T.x1 - MARGE_X - b * G.pw + 4, xb = G.T.x1 - MARGE_X - a * G.pw - 4;
     return { x:xa + Math.random() * Math.max(1, xb - xa), z:G.T.z1 - 1.5 };
   }
   function placeFile(A, G, type, rang){
@@ -908,8 +1142,8 @@ window.ESCALE_3D = (() => {
     return { x:clamp(c.x + o.x, G.T.x0 + 2, G.T.x1 - 2), z:clamp(c.z + o.z, G.T.z0 + JETEE + 1, G.T.z1 - 1) };
   }
   function placeAttente(A, G){
-    const ms = A.terminal.modules.filter(m => AIRSIDE.includes(m.type) && G.zone(m.x) === 'dep');
-    if(!ms.length){ const y = G.h - 1 - Math.floor(Math.random() * Math.max(1, G.h - 1)); const c = G.centre(Math.floor(Math.random() * Math.max(1, G.cd0)), y); return { x:c.x + (Math.random() - .5) * G.cw * .8, z:c.z + (Math.random() - .5) * G.cd * .8 }; }
+    const ms = A.terminal.modules.filter(m => m.y >= 1);
+    if(!ms.length){ const y = G.h - 1 - Math.floor(Math.random() * Math.max(1, G.h - 1)); const c = G.centre(Math.floor(Math.random() * Math.max(1, G.l)), y); return { x:c.x + (Math.random() - .5) * G.cw * .8, z:c.z + (Math.random() - .5) * G.cd * .8 }; }
     const m = ms[Math.floor(Math.random() * ms.length)], c = G.centre(m.x, m.y);
     return { x:c.x + (Math.random() - .5) * G.cw * .75, z:c.z + (Math.random() - .5) * G.cd * .75 };
   }
@@ -926,7 +1160,7 @@ window.ESCALE_3D = (() => {
   }
   const versPorte = (Pl, G, i) => ({ x:clamp(Pl.postes[i] ? Pl.postes[i].cx : (G.T.x0 + G.T.x1) / 2, G.T.x0 + 4, G.T.x1 - 4), z:G.T.z0 + 1.5 });
   function majFoule(A, Pl, dtReel){
-    const G = grilleT(A, Pl), ca = A.capAffiche || { check:0, secu:0, airside:0 };
+    const G = grilleT(A, Pl); Gc = G; grilleNav(A, G); const ca = A.capAffiche || { check:0, secu:0, airside:0 };
     // un passager dessiné vaut k passagers de la simulation quand il y a foule
     const total = ca.check + ca.secu + ca.airside, k = Math.max(1, total / (MAX_AG * .78));
     const voulu = { check:Math.round(ca.check / k), secu:Math.round(ca.secu / k), pass:Math.round((ca.pass || 0) / k), attente:Math.round(ca.airside / k) };
@@ -937,42 +1171,44 @@ window.ESCALE_3D = (() => {
     // les files avancent : les premiers de l'enregistrement passent au contrôle, les premiers du contrôle vont en salle d'attente
     while(files.check.length > voulu.check){ const a = files.check.shift(); a.role = 'secu'; files.secu.push(a); }
     // après la sûreté : les passeports (vols internationaux), puis la salle d'attente
-    while(files.secu.length > voulu.secu){ const a = files.secu.shift(); if(files.pass.length < voulu.pass){ a.role = 'pass'; files.pass.push(a); } else { a.role = 'attente'; const p = placeAttente(A, G); a.tx = p.x; a.tz = p.z; } }
-    while(files.pass.length > voulu.pass){ const a = files.pass.shift(); a.role = 'attente'; const p = placeAttente(A, G); a.tx = p.x; a.tz = p.z; }
+    while(files.secu.length > voulu.secu){ const a = files.secu.shift(); if(files.pass.length < voulu.pass){ a.role = 'pass'; files.pass.push(a); } else { a.role = 'attente'; const p = placeAttente(A, G); diriger(a, p.x, p.z); } }
+    while(files.pass.length > voulu.pass){ const a = files.pass.shift(); a.role = 'attente'; const p = placeAttente(A, G); diriger(a, p.x, p.z); }
     let n = compte('attente');
     // des nouveaux arrivent par les portes côté ville
     while(files.check.length < voulu.check && agents.length < MAX_AG){ const e = entree(G), a = nouvelAgent('check', e.x, e.z); files.check.push(a); }
     while(files.secu.length < voulu.secu && agents.length < MAX_AG){ const e = entree(G), a = nouvelAgent('secu', e.x, e.z); files.secu.push(a); }
     while(files.pass.length < voulu.pass && agents.length < MAX_AG){ const e = entree(G), a = nouvelAgent('pass', e.x, e.z); files.pass.push(a); }
-    while(n < voulu.attente && agents.length < MAX_AG){ const e = entree(G), a = nouvelAgent('attente', e.x, e.z); const p = placeAttente(A, G); a.tx = p.x; a.tz = p.z; n++; }
+    while(n < voulu.attente && agents.length < MAX_AG){ const e = entree(G), a = nouvelAgent('attente', e.x, e.z); const p = placeAttente(A, G); diriger(a, p.x, p.z); n++; }
     // l'embarquement : ceux en trop partent vers la porte de l'avion qui embarque
     if(n > voulu.attente){
       const emb = A.vols.filter(v => v.etat === 'escale' && v.taches && v.taches.embarquement && v.taches.embarquement.etat === 'encours');
       let trop = n - voulu.attente;
-      for(const a of agents){ if(trop <= 0) break; if(a.role !== 'attente') continue; a.role = 'part'; const v = emb.length ? emb[Math.floor(Math.random() * emb.length)] : null; const p = versPorte(Pl, G, v ? v.porte : Math.floor(Math.random() * Pl.postes.length)); a.tx = p.x + (Math.random() - .5) * 4; a.tz = p.z; trop--; }
+      for(const a of agents){ if(trop <= 0) break; if(a.role !== 'attente') continue; a.role = 'part'; const v = emb.length ? emb[Math.floor(Math.random() * emb.length)] : null; const p = versPorte(Pl, G, v ? v.porte : Math.floor(Math.random() * Pl.postes.length)); diriger(a, p.x + (Math.random() - .5) * 4, p.z); trop--; }
     }
     // l'arrivée : les passagers qui débarquent entrent par leur porte et vont chercher leurs bagages
     for(const v of A.vols){
       if(v.etat !== 'escale' || !v.taches || !v.taches.debarquement) continue;
       const voulus = Math.round((v.taches.debarquement.fait || 0) / k / 1.5);
       v._vus = v._vus || 0;
-      while(v._vus < voulus && agents.length < MAX_AG){ const p = versPorte(Pl, G, v.porte), dou = v.intl && A.terminal.modules.some(m => m.type === 'douane'), a = nouvelAgent(dou ? 'douane' : 'arrivee', p.x + (Math.random() - .5) * 4, p.z); const t = dou ? placeModule(A, G, 'douane', .3) : placeTapis(A, G); a.tx = t.x; a.tz = t.z; a.attente = dou ? .8 + Math.random() * 1.5 : 2 + Math.random() * 5; v._vus++; }
+      while(v._vus < voulus && agents.length < MAX_AG){ const p = versPorte(Pl, G, v.porte), dou = v.intl && A.terminal.modules.some(m => m.type === 'douane'), a = nouvelAgent(dou ? 'douane' : 'arrivee', p.x + (Math.random() - .5) * 4, p.z); const t = dou ? placeModule(A, G, 'douane', .3) : placeTapis(A, G); diriger(a, t.x, t.z); a.attente = dou ? .8 + Math.random() * 1.5 : 2 + Math.random() * 5; v._vus++; }
     }
     // les files se rangent
-    files.check.forEach((a, i) => { const p = placeFile(A, G, 'comptoir', i); a.tx = p.x; a.tz = p.z; });
-    files.secu.forEach((a, i) => { const p = placeFile(A, G, 'securite', i); a.tx = p.x; a.tz = p.z; });
-    files.pass.forEach((a, i) => { const p = placeFile(A, G, 'passeports', i); a.tx = p.x; a.tz = p.z; });
+    files.check.forEach((a, i) => { const p = placeFile(A, G, 'comptoir', i); diriger(a, p.x, p.z); });
+    files.secu.forEach((a, i) => { const p = placeFile(A, G, 'securite', i); diriger(a, p.x, p.z); });
+    files.pass.forEach((a, i) => { const p = placeFile(A, G, 'passeports', i); diriger(a, p.x, p.z); });
     // marcher
     for(let i = agents.length - 1; i >= 0; i--){
       const a = agents[i], dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz), pas = vitesse * dtReel;
       if(d > pas){ a.x += dx / d * pas; a.z += dz / d * pas; a.cap = Math.atan2(dx, dz); a.pas += dtReel * 9; a.marche = true; continue; }
-      a.x = a.tx; a.z = a.tz; a.marche = false;
+      a.x = a.tx; a.z = a.tz;
+      if(a.route && a.route.length){ const nx = a.route.shift(); a.tx = nx.x; a.tz = nx.z; continue; }
+      a.marche = false;
       if(a.role === 'part' || a.role === 'sortie'){ agents.splice(i, 1); continue; }
       // l'arrivée : la douane (pour les vols internationaux), puis le tapis à bagages, puis la sortie
-      if(a.role === 'douane'){ a.attente -= dtReel * Math.max(.3, ratio); if(a.attente <= 0){ a.role = 'arrivee'; const t = placeTapis(A, G); a.tx = t.x; a.tz = t.z; a.attente = 2 + Math.random() * 5; } continue; }
-      if(a.role === 'arrivee'){ a.attente -= dtReel * Math.max(.3, ratio); if(a.attente <= 0){ a.role = 'sortie'; const e = entree(G, 'arr'); a.tx = e.x; a.tz = e.z + 2; } continue; }
+      if(a.role === 'douane'){ a.attente -= dtReel * Math.max(.3, ratio); if(a.attente <= 0){ a.role = 'arrivee'; const t = placeTapis(A, G); diriger(a, t.x, t.z); a.attente = 2 + Math.random() * 5; } continue; }
+      if(a.role === 'arrivee'){ a.attente -= dtReel * Math.max(.3, ratio); if(a.attente <= 0){ a.role = 'sortie'; const e = entree(G, 'arr'); diriger(a, e.x, e.z + 2); } continue; }
       // dans la salle d'attente, on se promène un peu (boutiques, café)
-      if(a.role === 'attente' && vitesse > 0 && Math.random() < dtReel * .08){ const p = placeAttente(A, G); a.tx = p.x; a.tz = p.z; }
+      if(a.role === 'attente' && vitesse > 0 && Math.random() < dtReel * .08){ const p = placeAttente(A, G); diriger(a, p.x, p.z); }
     }
     // dessiner
     const m = new T3.Matrix4(), q = new T3.Quaternion(), sc = new T3.Vector3(ECH_P, ECH_P, ECH_P), pos = new T3.Vector3(), eY = new T3.Euler();
@@ -1097,12 +1333,12 @@ window.ESCALE_3D = (() => {
   // pendant un placement : les cases (ou petites cases) libres s'allument en vert
   let surb = null, cleSurb = '';
   function surbrillance(A, mode, type){
-    const cle = mode ? mode + (type || '') + ':' + A.terminal.la + ':' + A.terminal.l + ':' + A.terminal.modules.map(m => m.x + '.' + m.y).join(',') + ':' + (A.terminal.petits || []).map(p => p.x + '.' + p.y).join(',') : '';
+    const cle = mode ? mode + (type || '') + ':' + A.terminal.la + 'r' + (A.terminal.cr || 0) + ':' + A.terminal.l + ':' + A.terminal.modules.map(m => m.x + '.' + m.y).join(',') + ':' + (A.terminal.petits || []).map(p => p.x + '.' + p.y).join(',') : '';
     if(cle === cleSurb) return; cleSurb = cle;
     if(surb){ scene.remove(surb); surb.geometry.dispose(); surb = null; }
     if(!mode || !ok) return;
     const G = grilleT(A, M.plan(A)), rects = [];
-    if(mode === 'module'){ for(let x = 0; x < G.l; x++) for(let y = 0; y < G.h; y++) if(!A.terminal.modules.some(m => m.x === x && m.y === y) && !M.petitsDansCase(A, x, y).length && (!type || M.zoneOk(A, type, x))){ const c = G.centre(x, y); rects.push({ f:'boite', d:[G.cw, .1, G.cd], p:[c.x, 1, c.z], c:0x51CF66 }); } }
+    if(mode === 'module'){ for(let x = 0; x < G.l; x++) for(let y = 0; y < G.h; y++) if(!M.erreurPose({ xp:1e9 }, A, x, y, type || 'plantes')){ const c = G.centre(x, y); rects.push({ f:'boite', d:[G.cw, .1, G.cd], p:[c.x, 1, c.z], c:0x51CF66 }); } }
     else for(let x = 0; x < G.l * G.N; x++) for(let y = 0; y < G.h * G.N; y++) if(!M.libreQuart(A, x, y)){ const c = G.sub(x, y); rects.push({ f:'boite', d:[G.pw / G.N - .4, .1, G.pd / G.N - .4], p:[c.x, 1, c.z], c:0x51CF66 }); }
     if(!rects.length) return;
     surb = new T3.Mesh(fusion(rects), new T3.MeshBasicMaterial({ vertexColors:true, transparent:true, opacity:.38, depthWrite:false })); surb.renderOrder = 5; scene.add(surb);

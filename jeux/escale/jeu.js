@@ -595,6 +595,22 @@ function poserCible(){
 // le type de construction en cours de pose (pour allumer seulement les cases de la bonne zone)
 function typeEnPlacement(){ if(panneau !== 'terminal') return null; if(outil && !outil.startsWith('p:')) return outil; if(deplace && !estPetit(deplace)) return deplace.type; return null; }
 function modePlacement(){ if(panneau !== 'terminal') return null; if(outil) return outil.startsWith('p:') ? 'petit' : 'module'; if(deplace) return estPetit(deplace) ? 'petit' : 'module'; return null; }
+// la palette des constructions, rangée par famille (et par zone)
+function paletteModules(verrou){
+  const sections = [['hall', 'Hall · Départs (rangée 0, côté ville) et Arrivées'], ['restaurant', 'Restaurants'], ['cafe', 'Cafés et boulangeries'], ['bar', 'Bars'], ['boutique', 'Boutiques et duty-free'], ['service', 'Services'], ['attente', 'Attente et confort'], ['deco', 'Décoration']];
+  return sections.map(([fam, titre]) => {
+    const l = Object.entries(M.MODULES).filter(([k, Mo]) => Mo.famille === fam); if(!l.length) return '';
+    const zone = fam === 'hall' ? '' : fam === 'deco' ? ' <small>· commerces, hall</small>' : ' <small>· zone duty-free</small>';
+    return `<div class="bloc"><h3>${M.FAMILLES[fam][0]} ${titre}${zone}</h3><div class="palette">${l.map(([k, Mo]) => `<button data-outil="${k}" ${verrou(Mo) || P.argent < Mo.prix ? 'disabled' : ''} title="${esc(Mo.desc)}"><span>${Mo.ico}</span>${esc(Mo.nom)}<small>${verrou(Mo) ? `niveau ${Mo.niv}` : court(Mo.prix)}${Mo.depense && !verrou(Mo) ? ' · rapporte' : ''}</small></button>`).join('')}</div></div>`;
+  }).join('');
+}
+// l'immobilier de l'aéroport : des bâtiments autour du terminal, qui rapportent chaque jour
+function blocImmo(){
+  const poss = A.immo || [], niv = M.niveauDe(P.xp);
+  return `<div class="bloc"><h3>🏨 Immobilier de l'aéroport</h3><p class="leg">Des bâtiments sur les terrains derrière le parking (${poss.length}/${M.PARCELLES}) : chacun rapporte de l'argent chaque jour et coûte un peu d'entretien.</p>
+    ${poss.map((b, i) => { const D = M.IMMO[b.type]; return `<div class="item"><span class="ico">${D.ico}</span><div><b>${esc(D.nom)}</b><small>+${court(D.revenu)} par jour</small></div><div class="act"><button class="btn rouge" data-vimmo="${i}">Vendre (+${court(D.prix * .5)})</button></div></div>`; }).join('')}
+    <div class="palette">${Object.entries(M.IMMO).filter(([k]) => !poss.some(b => b.type === k)).map(([k, D]) => `<button data-immo="${k}" ${niv < D.niv || P.argent < D.prix || poss.length >= M.PARCELLES ? 'disabled' : ''} title="${esc(D.desc)}"><span>${D.ico}</span>${esc(D.nom)}<small>${niv < D.niv ? `niveau ${D.niv}` : court(D.prix)} · +${court(D.revenu)}/jour</small></button>`).join('')}</div></div>`;
+}
 function pTerminal(box, complet){
   const cap = M.capacites(A), ca = A.capAffiche || { airside:0, check:0, secu:0 }, J = A.jourStats;
   const manque = [];
@@ -631,29 +647,30 @@ function pTerminal(box, complet){
   let h = `<div class="stats" id="tStats">${statsTerminal(cap, ca, J)}</div>
     ${manque.length ? `<p class="leg mal">⚠️ Il manque ${manque.join(', ')}.</p>` : ''}
     <canvas class="plan2d" id="plan2d"></canvas>
-    <p class="leg" id="tAide">Le terminal a <b>4 rangées de cases carrées</b> et deux zones côte à côte : à gauche les <b>Départs</b>, à droite les <b>Arrivées</b> ; tu délimites toi-même les espaces (enregistrement, sûreté, salles d'attente, commerces, tapis, douane). Choisis une construction ci-dessous, touche une case : l'aperçu apparaît ; ↻ le tourne ; ✔ Poser ici la pose. Autour de chaque construction, l'<b>allée</b> est découpée en petits carrés : les petits objets s'y posent (8 par côté dans chaque case).</p>
+    <p class="leg" id="tAide">Le terminal a <b>4 rangées de cases carrées</b>. La <b>rangée 0</b> (côté ville) est le <b>hall</b> : les <b>Départs</b> (🔴 enregistrement, sûreté, passeports), une <b>réserve</b> (🔵) puis les <b>Arrivées</b> (🟢 tapis, douane). Les 3 autres rangées sont la zone <b>duty-free et commerces</b> (🟡) : restaurants, cafés, bars, boutiques, services, salles d'attente, décoration. Choisis une construction, touche une case : l'aperçu apparaît ; ↻ le tourne ; ✔ Poser ici la pose. Les petits objets se posent le long des allées (8 par côté dans chaque case). Chaque zone est fermée par un mur ; les portes sont devant les contrôles.</p>
     <div id="tSel"></div>
     ${blocEntretien()}
-    ${[['dep', '✈️ Construire · zone Départs', 'D'], ['arr', '🛬 Construire · zone Arrivées', 'A'], ['deux', '🪴 Construire · dans les deux zones', 'DA']].map(([z, titre]) => `<div class="bloc"><h3>${titre}</h3><div class="palette">${Object.entries(M.MODULES).filter(([k, Mo]) => z === 'deux' ? Mo.zones.length === 2 : Mo.zones.length === 1 && Mo.zones[0] === z).map(([k, Mo]) => `<button data-outil="${k}" ${verrou(Mo) || P.argent < Mo.prix ? 'disabled' : ''}><span>${Mo.ico}</span>${esc(Mo.nom)}<small>${verrou(Mo) ? `niveau ${Mo.niv}` : court(Mo.prix)}</small></button>`).join('')}</div></div>`).join('')}
-    <div class="bloc"><h3>Agrandir</h3>
+    <div class="bloc"><h3>🗺️ Zones du hall</h3>
+      <p class="leg">Rangée du hall : <b style="color:#E5383B">Départs ${M.colsDep(A)} col.</b> · <b style="color:#2F6FE0">réserve ${M.colsRes(A)} col.</b> · <b style="color:#1B7A6F">Arrivées ${A.terminal.la} col.</b>. Étends une zone en prenant sur la réserve (c'est gratuit). Chaque nouvelle porte (🚚 Sol) élargit l'aéroport : de nouvelles colonnes de réserve s'ouvrent (les Arrivées glissent) et la zone commerces s'allonge d'autant.</p>
+      <div class="ligneB"><span class="leg"><b>Départs</b></span><button class="btn" id="zDm">− colonne</button><button class="btn" id="zDp">+ colonne</button><span class="leg"><b>Arrivées</b></span><button class="btn" id="zAm">− colonne</button><button class="btn" id="zAp">+ colonne</button></div>
       ${M.colsDep(A) < M.terminalMax
-        ? `<button class="btn" id="tAgr" ${P.argent < M.prixAgrandir(A) ? 'disabled' : ''}>↔️ Agrandir les Départs · ${court(M.prixAgrandir(A))}</button>
-           <p class="leg">Une colonne (2 emplacements) de plus${M.portesMax(A) < M.AEROPORTS[A.id].portesMax ? ', et <b>deux portes d\'embarquement de plus</b> à construire (🚚 Sol)' : ''}. Chaque agrandissement coûte 35 % de plus que le précédent.</p>`
+        ? `<button class="btn" id="tAgr" ${P.argent < M.prixAgrandir(A) ? 'disabled' : ''}>↔️ Acheter une colonne de Départs · ${court(M.prixAgrandir(A))}</button>
+           <p class="leg">${M.portesMax(A) < M.AEROPORTS[A.id].portesMax ? '<b>Deux portes d\'embarquement de plus</b> à construire (🚚 Sol). ' : ''}Chaque achat coûte 35 % de plus que le précédent.</p>`
         : '<p class="leg">La zone Départs est à sa taille maximale.</p>'}
       ${A.terminal.la < M.arriveesMax
-        ? `<button class="btn" id="tAgrA" ${P.argent < M.prixArrivees(A) ? 'disabled' : ''}>↔️ Agrandir les Arrivées · ${court(M.prixArrivees(A))}</button><p class="leg">Une colonne (2 emplacements) de plus pour des tapis et des douanes en plus.</p>`
-        : '<p class="leg">La zone Arrivées est à sa taille maximale.</p>'}
-      <div class="ligneB"><button class="btn" id="tFrA">◀ Arrivées +1 colonne</button><button class="btn" id="tFrD">Départs +1 colonne ▶</button></div>
-      <p class="leg">Chaque nouvelle porte (🚚 Sol) allonge la façade : les colonnes en plus s'ajoutent aux <b>Arrivées</b>, pour de la place en plus (duty-free, tapis, douane).</p>
-      <p class="leg">La <b>frontière</b> entre les deux zones se déplace d'une colonne (tant que les constructions déjà posées restent dans leur zone) : elle ne coûte rien.</p></div>
+        ? `<button class="btn" id="tAgrA" ${P.argent < M.prixArrivees(A) ? 'disabled' : ''}>↔️ Acheter une colonne d'Arrivées · ${court(M.prixArrivees(A))}</button>`
+        : '<p class="leg">La zone Arrivées est à sa taille maximale.</p>'}</div>
+    ${paletteModules(verrou)}
+    ${blocImmo()}
     <div class="bloc"><h3>Petits objets (dans les allées)</h3><div class="palette">${Object.entries(M.PETITS).map(([k, O]) => `<button data-outil="p:${k}" ${P.argent < O.prix ? 'disabled' : ''} title="${esc(O.desc)}"><span>${O.ico}</span>${esc(O.nom)}<small>${court(O.prix)}</small></button>`).join('')}</div>
       <p class="leg">Bancs : 6 places assises. Poubelles : un terminal propre (environ une pour 6 cases). Plantes, écrans, bornes, fontaines : un peu plus de satisfaction. Distributeurs : un peu d'argent.</p></div>`;
   box.innerHTML = h;
   dessinerPlan(); afficherSel(); brancherPlan();
   box.querySelectorAll('[data-outil]').forEach(b => b.onclick = () => { outil = b.dataset.outil; rotOutil = 0; cible = null; selModule = selPetit = null; rafraichirPanneau(true); });
   if($('tAgr')) $('tAgr').onclick = () => action(M.agrandirTerminal(P, A), () => rafraichirPanneau(true));
-  if($('tFrA')) $('tFrA').onclick = () => { const e = M.deplacerFrontiere(A, 1); if(!alerte(e)) sauver(); rafraichirPanneau(true); };
-  if($('tFrD')) $('tFrD').onclick = () => { const e = M.deplacerFrontiere(A, -1); if(!alerte(e)) sauver(); rafraichirPanneau(true); };
+  for(const [id, zone, delta] of [['zDp', 'dep', 1], ['zDm', 'dep', -1], ['zAp', 'arr', 1], ['zAm', 'arr', -1]]) if($(id)) $(id).onclick = () => { const e = M.etendreZone(A, zone, delta); if(!alerte(e)) sauver(); rafraichirPanneau(true); };
+  box.querySelectorAll('[data-immo]').forEach(b => b.onclick = () => action(M.acheterImmo(P, A, b.dataset.immo), () => rafraichirPanneau(true)));
+  box.querySelectorAll('[data-vimmo]').forEach(b => b.onclick = () => { const x = (A.immo || [])[+b.dataset.vimmo]; if(x && confirm(`Vendre ${M.IMMO[x.type].nom.toLowerCase()} ?`)){ M.vendreImmo(P, A, x); sauver(); majHud(); rafraichirPanneau(true); } });
   if($('tAgrA')) $('tAgrA').onclick = () => action(M.agrandirArrivees(P, A), () => rafraichirPanneau(true));
   if($('tEmb')) $('tEmb').onclick = () => action(M.embaucher(P, A), () => rafraichirPanneau(true));
   if($('tLic')) $('tLic').onclick = () => action(M.licencier(A), () => rafraichirPanneau(true));
@@ -708,7 +725,7 @@ function afficherSel(){
   if(!selModule || !A.terminal.modules.includes(selModule)){ el.innerHTML = ''; return; }
   const m = selModule, Mo = M.MODULES[m.type], pa = m.niv < M.NIV_MAX ? M.prixAmelioration(Mo.prix, m.niv) : null;
   const etatWC = m.type === 'toilettes' ? ` · ${Math.round(100 - M.salete(m))} % propre${M.avantSale(A, m) === 0 ? ', <b class="mal">à nettoyer</b>' : M.avantSale(A, m) == null ? '' : `, sales dans ${M.avantSale(A, m)} min`}` : '';
-  el.innerHTML = `<div class="item"><span class="ico">${Mo.ico}</span><div><b>${esc(Mo.nom)} · niveau ${m.niv}</b><small>${esc(Mo.desc)}${etatWC} · zone ${M.NOM_ZONE[M.zoneDe(A, m.x)]}${(m.rot || 0) ? ` · tourné de ${(m.rot || 0) * 90}°` : ''}</small></div><div class="act">${pa ? `<button class="btn prim" id="tAm" ${P.argent < pa ? 'disabled' : ''}>Niveau ${m.niv + 1} · ${court(pa)}</button>` : ''}${POSTES_JEU[m.type] ? `<button class="btn prim" id="tJouer">🎮 ${m.type === 'comptoir' ? 'Trier les bagages' : 'Jouer au contrôle'}</button>` : ''}<button class="btn" id="tRot">↻ Tourner</button><button class="btn" id="tDep">Déplacer</button><button class="btn rouge" id="tVend">Vendre (+${court(Mo.prix * .5)})</button></div></div>`;
+  el.innerHTML = `<div class="item"><span class="ico">${Mo.ico}</span><div><b>${esc(Mo.nom)} · niveau ${m.niv}</b><small>${esc(Mo.desc)}${etatWC} · zone ${M.NOM_ZONE[M.zoneCase(A, m.x, m.y)]}${(m.rot || 0) ? ` · tourné de ${(m.rot || 0) * 90}°` : ''}</small></div><div class="act">${pa ? `<button class="btn prim" id="tAm" ${P.argent < pa ? 'disabled' : ''}>Niveau ${m.niv + 1} · ${court(pa)}</button>` : ''}${POSTES_JEU[m.type] ? `<button class="btn prim" id="tJouer">🎮 ${m.type === 'comptoir' ? 'Trier les bagages' : 'Jouer au contrôle'}</button>` : ''}<button class="btn" id="tRot">↻ Tourner</button><button class="btn" id="tDep">Déplacer</button><button class="btn rouge" id="tVend">Vendre (+${court(Mo.prix * .5)})</button></div></div>`;
   if($('tAm')) $('tAm').onclick = () => action(M.ameliorerModule(P, A, m), () => rafraichirPanneau(true));
   $('tRot').onclick = () => { M.tourner(m); sauver(); rafraichirPanneau(true); };
   $('tDep').onclick = () => { deplace = m; cible = null; rafraichirPanneau(true); };
@@ -725,12 +742,18 @@ function dessinerPlan(){
   g.fillStyle = '#E8ECF1'; g.fillRect(0, 0, w, h);
   // le sol en carrelage, la ligne de sûreté entre côté ville et côté pistes
   for(let x = 0; x < T.l; x++) for(let y = 0; y < T.h; y++){ g.fillStyle = (x + y) % 2 ? '#DFE5EC' : '#E9EEF3'; g.fillRect(x * cell, h - (y + 1) * ch, cell, ch); }
-  const cd0 = T.l - T.la, xz = cd0 * cell;
-  g.fillStyle = 'rgba(42,157,143,.16)'; g.fillRect(xz, 0, w - xz, h);                                   // la zone Arrivées (verte)
-  g.fillStyle = 'rgba(255,183,3,.10)'; g.fillRect(0, 0, xz, h);
-  g.strokeStyle = '#2A9D8F'; g.lineWidth = 3; g.beginPath(); g.moveTo(xz, 0); g.lineTo(xz, h); g.stroke();
-  g.font = '800 11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = '#B27A00'; g.fillText('✈ DÉPARTS', xz / 2, 13); g.fillStyle = '#1B7A6F'; g.fillText('🛬 ARRIVÉES', xz + (w - xz) / 2, 13);
-  g.fillStyle = 'rgba(20,35,58,.45)'; g.font = '700 10px sans-serif'; g.textAlign = 'left'; g.fillText('côté ville ⬇', 4, h - 4); g.fillText('côté pistes ⬆', 4, 26);
+  const cd0 = M.colsDep(A), ca0 = cd0 + M.colsRes(A), xd = cd0 * cell, xa = ca0 * cell, yh = h - ch;       // le hall = la rangée du bas du plan (côté ville) ; au-dessus, les commerces
+  g.fillStyle = 'rgba(255,183,3,.14)'; g.fillRect(0, 0, w, yh);                                         // duty-free et commerces
+  g.fillStyle = 'rgba(229,56,59,.16)'; g.fillRect(0, yh, xd, ch);                                         // Départs
+  g.fillStyle = 'rgba(47,111,224,.18)'; g.fillRect(xd, yh, xa - xd, ch);                                  // réserve
+  g.fillStyle = 'rgba(42,157,143,.22)'; g.fillRect(xa, yh, w - xa, ch);                                   // Arrivées
+  g.lineWidth = 3; g.strokeStyle = '#FFB703'; g.strokeRect(1.5, 1.5, w - 3, yh - 3);
+  g.strokeStyle = '#E5383B'; g.strokeRect(1.5, yh + 1.5, xd - 3, ch - 3);
+  if(xa > xd){ g.strokeStyle = '#2F6FE0'; g.setLineDash([6, 4]); g.strokeRect(xd + 1.5, yh + 1.5, xa - xd - 3, ch - 3); g.setLineDash([]); }
+  g.strokeStyle = '#2A9D8F'; if(w - xa > 3) g.strokeRect(xa + 1.5, yh + 1.5, w - xa - 3, ch - 3);
+  g.font = '800 11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  g.fillStyle = '#B27A00'; g.fillText('🛍️ DUTY-FREE · COMMERCES', w / 2, 14);
+  g.fillStyle = '#C0272D'; g.fillText('DÉPARTS', xd / 2, h - 4); g.fillStyle = '#2F6FE0'; if(xa > xd) g.fillText('RÉSERVE', (xd + xa) / 2, h - 4); g.fillStyle = '#1B7A6F'; g.fillText('ARRIVÉES', (xa + w) / 2, h - 4);
   // les constructions
   for(const m of T.modules){
     const Mo = M.MODULES[m.type], x = m.x * cell, y = h - (m.y + 1) * ch;
