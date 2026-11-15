@@ -40,11 +40,11 @@ window.STARSHIP_SIM = (() => {
     { id:'booster', court:'Super Heavy', nom:'Super Heavy : rattrapé par la tour', ico:'🦾', equipe:{ moteurs:3, structure:2, bouclier:2, logiciel:5, atterrisseur:6 }, etoiles:{ temps:60, carb:.5 }, chapitre:'Starship',
       histoire:"Idée audacieuse : au lieu de poser le propulseur sur des jambes, la tour de lancement l'attrape en vol avec deux grands bras. Il faut arriver presque à l'arrêt, au bon endroit.",
       txt:'Le propulseur redescend tout seul, droit, et doit être attrapé en vol par les bras de la tour : arrive presque à l\'arrêt, à la hauteur des bras.',
-      vol:{ type:'booster', kind:'superheavy', decor:'terre', pad:{ x:0, tol:26 }, tour:{ x:0, y:75, tol:12, v:9, ang:10 }, depart:{ phase:'vol', x:170, y:3800, vy:-150, vx:-6, carb:.7, th:2 }, vent:.9, titre:'Rattrapage du booster' } },
+      vol:{ type:'booster', kind:'superheavy', decor:'terre', pad:{ x:0, tol:26 }, tour:{ x:0, y:75, tol:17, v:12, ang:14 }, depart:{ phase:'vol', x:170, y:3800, vy:-150, vx:-6, carb:.7, th:2 }, vent:.9, titre:'Rattrapage du booster' } },
     { id:'vaisseau', court:'Vaisseau', nom:'Starship : rattrapé par la tour', ico:'🚀', equipe:{ moteurs:4, structure:4, bouclier:5, logiciel:5, atterrisseur:5 }, etoiles:{ temps:190, carb:.2 }, chapitre:'Starship',
       histoire:"Le grand pari de la réutilisation : rattraper aussi le vaisseau au retour de l'orbite, pour pouvoir le relancer très vite.",
       txt:'Revenir de l\'orbite, descendre à plat, se retourner et se faire attraper par la tour.',
-      vol:{ type:'vaisseau', kind:'shPile', kindHaut:'starship', decor:'terre', pad:{ x:0, tol:20 }, tour:{ x:0, y:75, tol:11, v:8, ang:9 }, belly:true, depart:{ phase:'programme' }, programme:{ duree:84, etageA:.42 },
+      vol:{ type:'vaisseau', kind:'shPile', kindHaut:'starship', decor:'terre', pad:{ x:0, tol:20 }, tour:{ x:0, y:75, tol:16, v:11, ang:13 }, belly:true, depart:{ phase:'programme' }, programme:{ duree:84, etageA:.42 },
         rentree:{ y:9000, vy:-430, vx:30, x:-260, carb:.7 }, vent:1, titre:'Retour du vaisseau' } },
     { id:'lune', court:'Lune', nom:'Starship HLS : la Lune', ico:'🌕', equipe:{ moteurs:4, structure:3, bouclier:0, logiciel:3, atterrisseur:4 }, etoiles:{ temps:90, carb:.35 }, chapitre:'Au-delà',
       histoire:"Starship doit aussi servir d'atterrisseur lunaire. Sans air, pas de ventre à terre : on descend debout, droit sur les moteurs, avec une pesanteur six fois plus faible.",
@@ -98,6 +98,7 @@ window.STARSHIP_SIM = (() => {
     return pasVertical(v, e, dt, dir);
   }
 
+  const angleMax = p => 16 + 8 * p.assist;       // l'angle (°) que le curseur de direction commande à fond
   // la poussée consomme du carburant
   function brule(v, dt, autonomie){ v.carb = Math.max(0, v.carb - v.gaz * dt / autonomie); v.conso += v.gaz * dt; }
 
@@ -108,8 +109,9 @@ window.STARSHIP_SIM = (() => {
       if(at <= g){ v.y = 0; v.vy = 0; v.vx = 0; v.th = 0; v.om = 0; return; }
       v.enVol = true; msg(v, 'Décollage !', 'bon');
     }
-    const alpha = ((30 + 25 * p.assist) * (.25 + .75 * v.gaz)), damp = 1.4 + 2.6 * p.assist;
-    v.om += (dir * alpha - v.om * damp - (dir ? 0 : v.th * (2 + 3 * p.assist))) * dt;
+    // la direction commande un ANGLE : le curseur à fond penche de ±(16 à 24)°, le logiciel de vol tient cet angle tout seul (et revient à la verticale quand on lâche)
+    const kp = (16 + 14 * p.assist) * (.5 + .5 * Math.min(1, v.gaz * 1.5 + .3)), kd = 1.7 * Math.sqrt(kp);
+    v.om += ((dir * angleMax(p) - v.th) * kp - v.om * kd) * dt;
     v.om += (Math.sin(v.t * 2.3 + v.phi) * .9) * (1 - .8 * p.assist) * dt * v.vent * Math.min(1, rho * 3);
     v.th += v.om * dt;
     if(Math.abs(v.th) > 72){ return rud(v, 'Le vaisseau a perdu le contrôle et a basculé.'); }
@@ -206,7 +208,7 @@ window.STARSHIP_SIM = (() => {
   function pasProgramme(v, e, dt, dir){
     const p = v.p, P = v.spec.programme;
     if(!v.enVol){ if(v.gaz < .05){ v.th = 0; return; } v.enVol = true; msg(v, 'Décollage !', 'bon'); }
-    v.th = clamp(v.th + dir * (22 + 8 * p.assist) * (.4 + .6 * v.gaz) * dt, -10, 90);
+    v.th = clamp(v.th + ((pitchCible(v.jauge) + dir * 22) - v.th) * Math.min(1, dt * (2.2 + 1.5 * p.assist)), -10, 90);       // le logiciel suit la trajectoire idéale ; le curseur la décale de ±22°
     v.th += Math.sin(v.t * 1.3 + v.phi) * .5 * (1 - .8 * p.assist) * v.vent * dt * 4;
     const cible = pitchCible(v.jauge), err = Math.abs(v.th - cible), eff = 1 - clamp((err - 4) / 26, 0, .85);
     const consom = v.gaz * dt / p.autonomieProg; v.carb = Math.max(0, v.carb - consom); v.conso += v.gaz * dt;
@@ -259,9 +261,9 @@ window.STARSHIP_SIM = (() => {
   /* ---------- Un pilote automatique (pour les essais seulement) ---------- */
   function pilote(v, qualite = 1){
     const e = { gauche:false, droite:false, gaz:false, action:false }, sp = v.spec, th = v.th;
-    const bouge = (cible, raideur = 1.6, amort = 3.5) => { const c = (cible - th) * raideur - v.om * amort; if(c > .8) e.droite = true; else if(c < -.8) e.gauche = true; };
+    const bouge = (cible) => { e.dir = clamp(cible / angleMax(v.p), -1, 1); };
     if(v.phase === 'programme'){
-      bouge(pitchCible(v.jauge), 2, 0);
+      e.dir = clamp((pitchCible(v.jauge) - th) / 22, -1, 1);
       const maxQ = v.jauge > .17 && v.jauge < .31;
       e.gaz = v.gaz < (maxQ ? .62 : 1);
       if(v.fenetre && v.etage === 1 && v.jauge >= sp.programme.etageA) e.action = true;

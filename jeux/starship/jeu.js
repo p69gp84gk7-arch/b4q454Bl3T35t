@@ -216,6 +216,14 @@ function dessinerVol(){
     if(prog && !sp.tour){ table(g, X(0), 24 * s, solY, s, true); tour(g, X(34), solY, s * .9, null, false, V.t); }                                   // la tour de lancement, au décollage
     // les lignes à suivre : l'allumage et le retournement
     g.setLineDash([8, 6]); g.lineWidth = 2; g.textAlign = 'left'; g.font = '800 12px "Bricolage Grotesque", sans-serif';
+    // le point d'arrivée prévu (là où on arrivera si on ne change rien) sur la ligne des bras de la tour ou sur la plateforme : vert dans la zone, rouge sinon
+    if(!fin && V.phase === 'vol' && V.vy < -2 && (sp.tour || sp.pad) && !V.manque){
+      const cy = sp.tour ? sp.tour.y : 0, tx = sp.tour ? sp.tour.x : sp.pad.x, tol = (sp.tour ? sp.tour.tol : sp.pad.tol) * V.p.tolCoef, tt = chrono(V.y - cy, -V.vy, S.gDe(V)), xp = V.x + V.vx * tt;
+      const sy = sp.tour ? solY - (cy + (HAUTEUR_REELLE[kind] || 70) * .72) * s : solY - 3, ok2 = Math.abs(xp - tx) <= tol;
+      g.fillStyle = 'rgba(124,240,182,.22)'; g.fillRect(X(tx - tol), sy - 7, X(tx + tol) - X(tx - tol), 14);
+      const px = clamp(X(xp), 16, W - 16); g.fillStyle = ok2 ? '#7CF0B6' : '#FF7A6A'; g.strokeStyle = 'rgba(0,0,20,.8)'; g.lineWidth = 2; g.beginPath(); g.moveTo(px, sy + 2); g.lineTo(px - 9, sy - 14); g.lineTo(px + 9, sy - 14); g.closePath(); g.stroke(); g.fill();
+      if(Math.abs(X(xp) - px) > 1) texteHUD(xp < tx ? '◀' : '▶', px, sy - 20, 13, '#FF7A6A', 'center');
+    }
     const ev = EV;
     const ligne = (y, c, txt, fort) => { const ly = vyScr + (V.y - y) * s; if(ly > 20 && ly < H){ g.strokeStyle = c; g.lineWidth = fort ? 3 : 2; g.beginPath(); g.moveTo(0, ly); g.lineTo(W, ly); g.stroke(); g.fillStyle = c; g.textAlign = 'right'; g.fillText(txt, W - 62, ly - 6); g.textAlign = 'left'; } else if(ly >= H && fort){ g.fillStyle = c; g.textAlign = 'right'; g.fillText(`▼ ${txt} : ${fmt(V.y - y)} m plus bas`, W - 12, H - 8); g.textAlign = 'left'; } };
     if(ev.allume){ ligne(ev.allume.y, '#38E08A', 'ALLUME ICI', true); ligne(ev.allume.tard, '#FF5A4D', 'trop tard', false); }
