@@ -28,11 +28,12 @@ window.DRAWRACE_3D = (() => {
     const q = new T3.Quaternion().setFromEuler(new T3.Euler(...(p.r || [0, 0, 0]), 'YXZ'));
     return new T3.Matrix4().compose(new T3.Vector3(...(p.p || [0, 0, 0])), q, new T3.Vector3(...(p.s || [1, 1, 1])));
   }
-  function fusion(pieces, e = 0){
-    const pos = [], nor = [], col = [], c = new T3.Color();
+  // sat : une saturation (0 à 1) appliquée aux couleurs : le décor est plus doux que les voitures
+  function fusion(pieces, e = 0, sat = 1){
+    const pos = [], nor = [], col = [], c = new T3.Color(), hsl = {};
     for(const p of pieces){
       let g = geom(p.f, p.d, e); g = g.index ? g.toNonIndexed() : g; g.applyMatrix4(matrice(p));
-      const a = g.attributes.position.array, n = g.attributes.normal.array; c.set(p.c ?? 0xffffff);
+      const a = g.attributes.position.array, n = g.attributes.normal.array; c.set(p.c ?? 0xffffff); if(sat < 1){ c.getHSL(hsl); c.setHSL(hsl.h, hsl.s * sat, hsl.l * .97); }
       for(let i = 0; i < a.length; i += 3){ pos.push(a[i], a[i + 1], a[i + 2]); nor.push(n[i], n[i + 1], n[i + 2]); col.push(c.r, c.g, c.b); }
       g.dispose();
     }
@@ -198,7 +199,7 @@ window.DRAWRACE_3D = (() => {
     const nuit = !!D.nuit, n = D.pts.length;
     // le ciel, le brouillard, les lumières
     const dome = new T3.Mesh(new T3.SphereGeometry(420, 24, 12), new T3.MeshBasicMaterial({ vertexColors:true, side:T3.BackSide, fog:false }));
-    { const p = dome.geometry.attributes.position, c = []; const haut = new T3.Color(nuit ? 0x0B1230 : 0x4FA2EE), bas = new T3.Color(nuit ? 0x2A3566 : 0xD6EEFF), tmp = new T3.Color();
+    { const p = dome.geometry.attributes.position, c = []; const haut = new T3.Color(nuit ? 0x0B1230 : 0x6FA8DA), bas = new T3.Color(nuit ? 0x2A3566 : 0xDCE9F5), tmp = new T3.Color();
       for(let i = 0; i < p.count; i++){ tmp.copy(bas).lerp(haut, clamp(p.getY(i) / 260, 0, 1)); c.push(tmp.r, tmp.g, tmp.b); } dome.geometry.setAttribute('color', new T3.Float32BufferAttribute(c, 3)); }
     scene.add(dome); anim.dome = dome;
     scene.fog = new T3.Fog(nuit ? 0x1B2448 : 0xCBE6FF, 140, 420); anim.fog = scene.fog;
@@ -206,11 +207,11 @@ window.DRAWRACE_3D = (() => {
     anim.soleil = new T3.DirectionalLight(nuit ? 0x9FB4FF : 0xFFF2D6, nuit ? .35 : .85); anim.soleil.position.set(-60, 120, 40); scene.add(anim.soleil);
     // le diorama : un bloc de terrain posé sur un socle
     const sol = SOL3D[D.decor] || 0x8CCB5A, plan = new T3.PlaneGeometry(W, H, 50, 30); plan.rotateX(-Math.PI / 2); plan.translate(W / 2, 0, H / 2);
-    { const p = plan.attributes.position, c = [], base = new T3.Color(sol), t = new T3.Color(); for(let i = 0; i < p.count; i++){ const x = p.getX(i), z = p.getZ(i), v = Math.sin(x * .21) * Math.sin(z * .17) + Math.sin(x * .07 + z * .09) * .8; t.copy(base).offsetHSL(0, 0, v * .018); c.push(t.r, t.g, t.b); } plan.setAttribute('color', new T3.Float32BufferAttribute(c, 3)); }
+    { const p = plan.attributes.position, c = [], base = new T3.Color(sol), t = new T3.Color(), hs = {}; base.getHSL(hs); base.setHSL(hs.h, hs.s * .66, hs.l * .97); for(let i = 0; i < p.count; i++){ const x = p.getX(i), z = p.getZ(i), v = Math.sin(x * .21) * Math.sin(z * .17) + Math.sin(x * .07 + z * .09) * .8; t.copy(base).offsetHSL(0, 0, v * .018); c.push(t.r, t.g, t.b); } plan.setAttribute('color', new T3.Float32BufferAttribute(c, 3)); }
     anim.sol = new T3.Mesh(plan, toon({ vertexColors:true })); scene.add(anim.sol);
     const cote = new T3.Mesh(new T3.BoxGeometry(W + 1.6, 7, H + 1.6), toon({ color:nu(sol, -.45) })); cote.position.set(W / 2, -3.58, H / 2); scene.add(cote);
     const strate = new T3.Mesh(new T3.BoxGeometry(W + 2.2, 2.2, H + 2.2), toon({ color:0x6B4A2E })); strate.position.set(W / 2, -2.1, H / 2); scene.add(strate);
-    const socle = new T3.Mesh(new T3.CylinderGeometry(300, 300, 4, 40), new T3.MeshBasicMaterial({ color:nuit ? 0x1A2344 : 0x86B9EA })); socle.position.set(W / 2, -10, H / 2); scene.add(socle);
+    const socle = new T3.Mesh(new T3.CylinderGeometry(300, 300, 4, 40), new T3.MeshBasicMaterial({ color:nuit ? 0x1A2344 : 0x9DB9D4 })); socle.position.set(W / 2, -10, H / 2); scene.add(socle);
     // la piste : bord foncé, revêtement (par sol au rallye), marquages
     const nor = D.nor, pts = D.pts;
     scene.add(meshV(ruban(pts, nor, -(80 + 12) / 2, (80 + 12) / 2, .03, D.rallye ? (i => D.solBord[i]) : 0x232328, n)));
@@ -241,7 +242,7 @@ window.DRAWRACE_3D = (() => {
       for(const [a, b, cp, s] of hauts){ const dk = 42 * cp; scene.add(meshV(bandeSeg(pts, nor, a, b, dk, dk + 5 * cp, s === 'neige' ? .9 : .6, s === 'neige' ? 0xF4F9FF : 0x8A6238, n))); } }
     // l'eau, avec sa plage
     if(D.eau.length){ const sab = [], eau = []; const e1 = (PAS * .95 + 5) * S, e2 = PAS * .8 * S;     // des disques qui se recouvrent : un bord arrondi, pas des carrés
-      for(const [x, y] of D.eau){ sab.push({ f:'cyl', d:[e1, e1, .04, 10], p:[x * S, .02, y * S], c:D.eauType === 'lac' || D.eauType === 'autour' ? 0x9FBF74 : 0xE3D49C }); eau.push({ f:'cyl', d:[e2, e2, .07, 10], p:[x * S, .04, y * S], c:0x4CA4D6 }); }
+      for(const [x, y] of D.eau){ sab.push({ f:'cyl', d:[e1, e1, .04, 10], p:[x * S, .02, y * S], c:D.eauType === 'lac' || D.eauType === 'autour' ? 0x9FBF74 : 0xE3D49C }); eau.push({ f:'cyl', d:[e2, e2, .07, 10], p:[x * S, .04, y * S], c:0x5C9DC4 }); }
       scene.add(new T3.Mesh(fusion(sab), toon({ vertexColors:true }))); anim.eau = new T3.Mesh(fusion(eau), toon({ vertexColors:true })); scene.add(anim.eau); }
     // le décor : tous les objets fusionnés en un seul maillage
     const pieces = [], rnd = alea(D.id || 'x');
@@ -257,7 +258,7 @@ window.DRAWRACE_3D = (() => {
     for(const ch of D.champs){ pieces.push({ f:'boite', d:[ch.w * S, .12, ch.h * S], p:[ch.x * S, .06, ch.y * S], r:[0, -ch.rot, 0], c:ch.col }); for(let l = -ch.w / 2 + 5; l < ch.w / 2 - 2; l += 7) pieces.push({ f:'boite', d:[.25, .16, (ch.h - 4) * S], p:[ch.x * S + Math.cos(ch.rot) * l * S, .08, ch.y * S + Math.sin(ch.rot) * l * S], r:[0, -ch.rot, 0], c:nu(ch.col, -.18) }); }
     // les tribunes, les stands, les lampadaires, l'arche de départ, les barrières
     construireTribunes(D, pieces, rnd); construireLampes(D, pieces); construireDepart(D, pieces);
-    if(pieces.length){ const g1 = fusion(pieces), g2 = fusion(pieces, .09); scene.add(new T3.Mesh(g1, toon({ vertexColors:true })), new T3.Mesh(g2, CONTOUR)); }
+    if(pieces.length){ const g1 = fusion(pieces, 0, .62), g2 = fusion(pieces, .09); scene.add(new T3.Mesh(g1, toon({ vertexColors:true })), new T3.Mesh(g2, CONTOUR)); }
     // les nuages
     for(let k = 0; k < 9 && !nuit; k++){ const nug = objet([0, 1, 2].map(j => ({ f:'boule', d:[5 + rnd() * 4, 1], p:[(j - 1) * 6, rnd() * 2, rnd() * 3], s:[1.3, .7, 1], c:0xFFFFFF })), .1, toon({ vertexColors:true, fog:false })); nug.position.set(rnd() * W, 48 + rnd() * 25, rnd() * H); scene.add(nug); anim.nuages.push({ g:nug, v:1.2 + rnd() * 1.5 }); }
     // les particules (fumée, poussière) et la pluie
@@ -286,7 +287,7 @@ window.DRAWRACE_3D = (() => {
     neige:() => [{ f:'boule', d:[1, 1], p:[0, .1, 0], s:[1.2, .5, 1], c:0xFFFFFF }, { f:'boule', d:[.6, 1], p:[.6, .05, .3], s:[1, .6, 1], c:0xE8F1FF }],
     botte:() => [{ f:'cyl', d:[.6, .6, .8, 12], p:[0, .6, 0], r:[Math.PI / 2, 0, 0], c:0xE8C766 }, { f:'cyl', d:[.4, .4, .82, 12], p:[0, .6, 0], r:[Math.PI / 2, 0, 0], c:0xD9B24F }],
     maison:() => [{ f:'boite', d:[1.7, .9, 1.2], p:[0, .45, 0], c:0xF3E6C8 }, { f:'cone', d:[1.45, .7, 4], p:[0, 1.2, 0], r:[0, Math.PI / 4, 0], s:[1.05, 1, .75], c:0xC8553D }, { f:'boite', d:[.25, .5, .05], p:[0, .25, .62], c:0x6B4A2E }, { f:'boite', d:[.3, .25, .05], p:[.55, .55, .62], c:0x6FB2E0 }],
-    immeuble:(rnd, D) => { const h = 1.4 + rnd() * 2.6, c = D.nuit ? [0x3A4766, 0x44507A, 0x323C58][Math.floor(rnd() * 3)] : [0xEDE4D3, 0xD8CCB6, 0xE3D1B6, 0xBFC8CF][Math.floor(rnd() * 4)]; const P = [{ f:'boite', d:[1.5, h, 1.2], p:[0, h / 2, 0], c }, { f:'boite', d:[1.1, .2, .8], p:[0, h + .1, 0], c:nu(c, -.2) }];
+    immeuble:(rnd, D) => { const h = 1.0 + rnd() * 1.5, c = D.nuit ? [0x3A4766, 0x44507A, 0x323C58][Math.floor(rnd() * 3)] : [0xEDE4D3, 0xD8CCB6, 0xE3D1B6, 0xBFC8CF][Math.floor(rnd() * 4)]; const P = [{ f:'boite', d:[1.5, h, 1.2], p:[0, h / 2, 0], c }, { f:'boite', d:[1.1, .2, .8], p:[0, h + .1, 0], c:nu(c, -.2) }];
       for(let y = .4; y < h - .2; y += .45) for(let x = -.5; x <= .5; x += .5){ const lit = D.nuit && rnd() < .5; P.push({ f:'boite', d:[.28, .24, .04], p:[x, y, .62], c:lit ? 0xFFE38A : (D.nuit ? 0x1D2540 : 0x7FA6C9) }, { f:'boite', d:[.28, .24, .04], p:[x, y, -.62], c:lit ? 0xFFE38A : (D.nuit ? 0x1D2540 : 0x7FA6C9) }); } return P; },
     neon:(rnd) => { const c = [0xFF3EA5, 0x3EE6FF, 0xFFE03E, 0x7CFF4F][Math.floor(rnd() * 4)]; return [{ f:'cyl', d:[.06, .06, 1.2, 6], p:[0, .6, 0], c:0x555B66 }, { f:'boite', d:[1.5, .7, .1], p:[0, 1.3, 0], c }, { f:'boite', d:[1.3, .5, .12], p:[0, 1.3, 0], c:nu(c, .5) }]; },
   };
@@ -370,7 +371,7 @@ window.DRAWRACE_3D = (() => {
   function majMonde(dt){
     // drapeaux qui flottent, nuages qui dérivent, grande roue, bateaux, eau, foule
     for(const f of anim.drapeaux){ const p = f.geometry.attributes.position; for(let i = 0; i < p.count; i++){ const x = p.getX(i) + .8; p.setZ(i, Math.sin(temps * 6 + x * 3) * .12 * (x / 1.6)); } p.needsUpdate = true; }
-    for(const n of anim.nuages){ n.g.position.x += n.v * dt; if(n.g.position.x > W + 40) n.g.position.x = -40; n.g.visible = vue === 'suivi' && !!E.voitures.length; }
+    for(const n of anim.nuages){ n.g.position.x += n.v * dt; if(n.g.position.x > W + 40) n.g.position.x = -40; n.g.visible = vue === 'suivi' && !!E.voitures.length && PRESETS[preset % PRESETS.length].h < 20; }   // pas de nuage devant une caméra haute
     for(const r of anim.roues) r.rotation.z += dt * .25;
     for(const b of anim.bateaux){ b.g.position.y = Math.sin(temps * 1.4 + b.ph) * .12; b.g.rotation.z = Math.sin(temps * 1.1 + b.ph) * .05; }
     if(anim.eau){ const k = .5 + .5 * Math.sin(temps * .9); anim.eau.material.color.setRGB(.85 + k * .15, .9 + k * .1, 1); }
