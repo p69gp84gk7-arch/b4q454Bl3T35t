@@ -1064,7 +1064,7 @@ window.ESCALE_3D = (() => {
     surb = new T3.Mesh(fusion(rects), new T3.MeshBasicMaterial({ vertexColors:true, transparent:true, opacity:.38, depthWrite:false })); surb.renderOrder = 5; scene.add(surb);
   }
   // les outils de dessin, prêtés aux mini-jeux de contrôle (même moteur, même style)
-  const kit = () => ok ? { T3, R, objet, fusion, MAT, CONTOUR, get L(){ return L; }, get H(){ return H; } } : null;
+  const kit = () => ok ? { T3, R, objet, fusion, MAT, CONTOUR, avion:(type, comp, livree) => { const md = modeleAvion(type, comp, livree), g = new T3.Group(), corps = new T3.Mesh(md.geo, MAT); g.add(corps, new T3.Mesh(md.geoC, CONTOUR)); const h = creerHelices(md); if(h) g.add(h); return { g, corps, md, r:RAYON[type] }; }, get L(){ return L; }, get H(){ return H; } } : null;
   function suivre(id){ vue.suivi = id; if(id) vue.dist = Math.min(vue.dist, 300); }
   function rendu(){ if(ok) R.render(scene, cam); }
 

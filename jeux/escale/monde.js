@@ -1094,10 +1094,10 @@ window.ESCALE_MONDE = (() => {
      Chaque poste verse une prime à la fin du service : points × taux × précision, plafonnée. La prime est pleine si le poste n'a pas rapporté
      depuis DELAI_PRIME minutes de jeu (4 h) ; sinon elle est réduite (un quart) : on peut rejouer pour s'amuser, sans multiplier l'argent. */
   const PRIMES = {
-    passeports:{ nom:'Passeports', ico:'🛂', taux:2.2, plafond:8000 }, securite:{ nom:'Rayons X', ico:'🔍', taux:2.4, plafond:8000 }, portique:{ nom:'Portique', ico:'🚶', taux:2.4, plafond:8000 },
-    douane:{ nom:'Douane', ico:'🛃', taux:2.4, plafond:9000 }, bagages:{ nom:'Tri des bagages', ico:'🧳', taux:1.4, plafond:9000 }, degivrage:{ nom:'Dégivrage', ico:'🧊', taux:3, plafond:10000 },
+    passeports:{ nom:'Passeports', ico:'🛂', taux:6.5, plafond:24000 }, securite:{ nom:'Rayons X', ico:'🔍', taux:7, plafond:24000 }, portique:{ nom:'Portique', ico:'🚶', taux:7, plafond:24000 },
+    douane:{ nom:'Douane', ico:'🛃', taux:7, plafond:27000 }, bagages:{ nom:'Tri des bagages', ico:'🧳', taux:4.2, plafond:27000 }, degivrage:{ nom:'Dégivrage', ico:'🧊', taux:9, plafond:30000 },
   };
-  const DELAI_PRIME = 240, REDUIT_PRIME = .25;
+  const DELAI_PRIME = 180, REDUIT_PRIME = .3;
   const etatPrime = (A, type) => { const d = A.primes && A.primes[type], reste = d == null ? 0 : Math.max(0, d + DELAI_PRIME - A.t); return { pret:reste <= 0, reste }; };
   function primeControle(P, A, type, score, bons, total){
     const D = PRIMES[type]; if(!D || score <= 0) return { gain:0, pret:etatPrime(A, type).pret };

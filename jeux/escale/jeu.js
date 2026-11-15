@@ -817,7 +817,7 @@ function pBanque(box){
 const MINIJEUX = [['passeports', 'Passeports', '🛂', 'Compare les papiers aux consignes du jour.'], ['securite', 'Rayons X', '🔍', 'Repère les objets interdits dans les bagages.'], ['portique', 'Portique', '🚶', 'Trouve le métal sur les voyageurs.'], ['douane', 'Douane', '🛃', 'Lis la déclaration, fouille la valise.'], ['bagages', 'Tri des bagages', '🧳', 'Envoie chaque valise sur sa voie.'], ['degivrage', 'Dégivrage', '🧊', 'Glisse le doigt pour enlever la glace des avions.']];
 function blocMiniJeux(){
   const rec = (() => { try{ return JSON.parse(localStorage.getItem('escale-controle')) || {}; }catch(e){ return {}; } })();
-  return `<div class="bloc"><h3>🎮 Mini-jeux : des primes pour l'aéroport</h3><p class="leg">Bien jouer rapporte de l'argent à l'aéroport. La prime est pleine si le poste n'a pas rapporté depuis 4 h de jeu.</p>${MINIJEUX.map(([k, nom, ico, d]) => { const e = M.etatPrime(A, k);
+  return `<div class="bloc"><h3>🎮 Mini-jeux : des primes pour l'aéroport</h3><p class="leg">Bien jouer rapporte de l'argent à l'aéroport. La prime est pleine si le poste n'a pas rapporté depuis 3 h de jeu.</p>${MINIJEUX.map(([k, nom, ico, d]) => { const e = M.etatPrime(A, k);
     return `<div class="item"><span class="ico">${ico}</span><div><b>${nom}</b><small>${esc(d)}${rec[k] ? ` · 🏆 ${rec[k].best}` : ''}</small><small class="${e.pret ? 'ok' : ''}">${e.pret ? '💶 Prime pleine disponible' : `Prime pleine dans ${Math.ceil(e.reste / 60)} h de jeu`}</small></div><div class="act"><button class="btn" data-mj="${k}">Jouer</button></div></div>`; }).join('')}</div>`;
 }
 function pMenu(box){
