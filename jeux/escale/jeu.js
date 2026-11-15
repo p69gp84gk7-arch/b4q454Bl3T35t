@@ -639,6 +639,7 @@ function pTerminal(box, complet){
         ? `<button class="btn" id="tAgrA" ${P.argent < M.prixArrivees(A) ? 'disabled' : ''}>↔️ Agrandir les Arrivées · ${court(M.prixArrivees(A))}</button><p class="leg">Une colonne (2 emplacements) de plus pour des tapis et des douanes en plus.</p>`
         : '<p class="leg">La zone Arrivées est à sa taille maximale.</p>'}
       <div class="ligneB"><button class="btn" id="tFrA">◀ Arrivées +1 colonne</button><button class="btn" id="tFrD">Départs +1 colonne ▶</button></div>
+      <p class="leg">Chaque nouvelle porte (🚚 Sol) allonge la façade : les colonnes en plus s'ajoutent aux <b>Arrivées</b>, pour de la place en plus (duty-free, tapis, douane).</p>
       <p class="leg">La <b>frontière</b> entre les deux zones se déplace d'une colonne (tant que les constructions déjà posées restent dans leur zone) : elle ne coûte rien.</p></div>
     <div class="bloc"><h3>Petits objets (dans les allées)</h3><div class="palette">${Object.entries(M.PETITS).map(([k, O]) => `<button data-outil="p:${k}" ${P.argent < O.prix ? 'disabled' : ''} title="${esc(O.desc)}"><span>${O.ico}</span>${esc(O.nom)}<small>${court(O.prix)}</small></button>`).join('')}</div>
       <p class="leg">Bancs : 6 places assises. Poubelles : un terminal propre (environ une pour 6 cases). Plantes, écrans, bornes, fontaines : un peu plus de satisfaction. Distributeurs : un peu d'argent.</p></div>`;

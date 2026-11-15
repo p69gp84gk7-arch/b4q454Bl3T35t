@@ -213,7 +213,7 @@ window.ESCALE_MONDE = (() => {
   }
   function nouvelAeroport(P, id){
     const D = AEROPORTS[id];
-    const A = { id, t:5.5 * 60, portes:D.portes.map((g, i) => ({ ...g, nom:nomPorte(i) })), vehicules:{}, unites:[], terminal:{ l:D.terminal.l, la:D.terminal.la, h:D.terminal.h, v:3, extra:0, zones:true, modules:D.terminal.modules.map(([x, y, type]) => ({ x, y, type, niv:1, rot:0 })), petits:(D.terminal.petits || []).map(([x, y, type]) => ({ x, y, type, rot:0 })) },
+    const A = { id, t:5.5 * 60, portes:D.portes.map((g, i) => ({ ...g, nom:nomPorte(i) })), vehicules:{}, unites:[], terminal:{ l:D.terminal.l, la:D.terminal.la, h:D.terminal.h, v:3, extra:0, cf:null, zones:true, modules:D.terminal.modules.map(([x, y, type]) => ({ x, y, type, niv:1, rot:0 })), petits:(D.terminal.petits || []).map(([x, y, type]) => ({ x, y, type, rot:0 })) },
       hangars:{}, personnel:{ entretien:1 }, pistes:1, pistesLibres:[0, 0], contrats:[], offres:[], vols:[], journal:[], qCheck:[], qSecu:[], pisteLibre:0, meteo:'beau', reputation:70, jourStats:nouveauJour(), historique:[], dernierJour:0, toasts:[], carbu:nouvelleCuve(id) };
     for(const [k, n] of Object.entries(D.vehicules)){ A.vehicules[k] = { niv:1 }; for(let i = 0; i < n; i++) A.unites.push(nouvelleUnite(A, k)); }
     meteoDuJour(A); genererOffres(P, A, 4);
@@ -899,6 +899,15 @@ window.ESCALE_MONDE = (() => {
      d'abord l'agrandir. Chaque case de largeur en plus donne deux portes, jusqu'au maximum que
      la place permet ici (D.portesMax). L'agrandissement, lui, coûte de plus en plus cher. */
   const colsDep = A => A.terminal.l - A.terminal.la;                      // les colonnes de la zone Départs (les autres sont les Arrivées)
+  // la façade s'allonge avec les portes : chaque colonne de plus qu'elle permet devient une colonne d'Arrivées (de la place pour le duty-free) ;
+  // `T.cf` = les colonnes déjà accordées par la façade
+  const colsFacade = A => { let x = 0; for(const g of A.portes) x += TAILLES[g.taille].largeur + 8; return Math.floor((x + 40 - 14) / AEROPORTS[A.id].terminal.cellule); };
+  function ajusterFacade(A, silencieux){
+    const T = A.terminal; if(T.cf == null) T.cf = colsFacade({ id:A.id, portes:AEROPORTS[A.id].portes });
+    const n = colsFacade(A) - T.cf; if(n <= 0) return;
+    T.l += n; T.la += n; T.cf += n;
+    if(!silencieux) journal(A, `🛬 La façade s'allonge : ${n} colonne${n > 1 ? 's' : ''} d'Arrivées en plus (🏢 Terminal : de la place pour des boutiques duty-free, des tapis, de la douane…).`, 'bon');
+  }
   const portesMax = A => { const D = AEROPORTS[A.id]; return Math.min(D.portesMax, D.portes.length + 2 * (A.terminal.extra || 0)); };       // deux portes de plus par colonne de Départs achetée
   const terminalMax = 14, arriveesMax = 8;
   // les zones du terminal : Départs à gauche (colonnes 0 à colsDep − 1), Arrivées à droite
@@ -915,6 +924,7 @@ window.ESCALE_MONDE = (() => {
     const prix = TAILLES[taille].prix; if(!payer(P, prix)) return 'Pas assez d\'argent.';
     A.portes.push({ taille, passerelle:false, nom:nomPorte(A.portes.length) }); A.jourStats.depenses += 0;
     journal(A, `🏗️ Nouvelle porte ${A.portes[A.portes.length - 1].nom} (${TAILLES[taille].nom.toLowerCase()})`, 'bon');
+    ajusterFacade(A);
     return null;
   }
   const prixPasserelle = taille => TAILLES[taille].ordre >= 2 ? 160000 : 80000;
@@ -932,6 +942,7 @@ window.ESCALE_MONDE = (() => {
     const prix = Math.round((TAILLES[suivante].prix - TAILLES[g.taille].prix) * 1.1);
     if(!payer(P, prix)) return 'Pas assez d\'argent.';
     g.taille = suivante; journal(A, `🏗️ Porte ${g.nom} agrandie : ${TAILLES[suivante].nom.toLowerCase()}`, 'bon');
+    ajusterFacade(A);
     return null;
   }
   function acheterVehicule(P, A, type, gratuit = false){
@@ -1206,7 +1217,7 @@ window.ESCALE_MONDE = (() => {
     // les parties d'avant la cuve à carburant et les factures de services
     for(const A of Object.values(P.aeroports)){ if(!A.carbu) A.carbu = nouvelleCuve(A.id); const J = A.jourStats; if(J.services == null) Object.assign(J, { services:0, detail:{}, achats:0, litres:0 }); }
     // les terminaux d'avant les zones Départs / Arrivées : chaque construction est rangée dans sa zone, gratuitement
-    for(const A of Object.values(P.aeroports)){ if(!A.terminal.petits) A.terminal.petits = []; versZones(P, A); versGrille(P, A); }
+    for(const A of Object.values(P.aeroports)){ if(!A.terminal.petits) A.terminal.petits = []; versZones(P, A); versGrille(P, A); ajusterFacade(A, true); }
     // les parties d'avant les hangars : ceux qui servent déjà sont offerts, personne ne perd un véhicule
     for(const A of Object.values(P.aeroports)){
       A.hangars = A.hangars || {};
@@ -1224,7 +1235,7 @@ window.ESCALE_MONDE = (() => {
 
   return { JOUR, TAILLES, AVIONS, RAYONS, VILLES, COMPAGNIES, LIVREES, AEROPORTS, ORDRE_AEROPORTS, VEHICULES, MODULES, TACHES, ORDRE_TACHES, RECOMPENSES, PALIERS, OBJECTIFS, NIV_MAX,
     international, NATIONAL, hm, euros, jourDe, minuteDe, xpNiveau, niveauDe, xpConfiance, paliersAtteints, texteRecompense, tailleOk, facteurNiv, prixAmelioration, prixPasserelle, prixAgrandir, prixAmeliorationVehicules,
-    portesMax, terminalMax, arriveesMax, PETIT_DIV, erreurPose, deplacerFrontiere, versGrille, colsDep, zoneDe, zoneOk, msgZone, NOM_ZONE, tourner, agrandirArrivees, prixArrivees, versZones, PISTES_MAX, prixPiste, nbPistes, acheterPiste, trajetDe, ECART_PISTES, HANGARS, SANS_HANGAR, hangarDe, aHangar, maxVehicules, nivMaxVehicule, construireHangar, hangarsOuvrables, ENTRETIEN, personnel, menage, propreteWC, avantSale, nbToilettes, vitesseSalissure, vitesseMenage, salete, embaucher, licencier, nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
+    portesMax, terminalMax, arriveesMax, PETIT_DIV, colsFacade, ajusterFacade, erreurPose, deplacerFrontiere, versGrille, colsDep, zoneDe, zoneOk, msgZone, NOM_ZONE, tourner, agrandirArrivees, prixArrivees, versZones, PISTES_MAX, prixPiste, nbPistes, acheterPiste, trajetDe, ECART_PISTES, HANGARS, SANS_HANGAR, hangarDe, aHangar, maxVehicules, nivMaxVehicule, construireHangar, hangarsOuvrables, ENTRETIEN, personnel, menage, propreteWC, avantSale, nbToilettes, vitesseSalissure, vitesseMenage, salete, embaucher, licencier, nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
     PRIMES, DELAI_PRIME, etatPrime, primeControle, creneaux, tranchesLibres, NEGOS, chanceNego, negocier,
     acheterPorte, acheterPasserelle, agrandirPorte, acheterVehicule, ameliorerVehicule, construire, ameliorerModule, vendreModule, deplacerModule, agrandirTerminal,
     recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, PETITS, poserPetit, retirerPetit, deplacerPetit, libreQuart, petitsDansCase, CUVE, CUVE_MAX, CAMION, LIVRAISON, DELAI_CAMION, TARIFS, commanderCarbu, agrandirCuve, enRoute, capCuve, facture, resume, BANQUE, banque, dette, lettreNote, moyenneNet, plafond, tauxPret, emprunter, prixRachat, rembourser, echeances, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };
