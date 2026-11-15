@@ -157,7 +157,7 @@ window.STARSHIP_BAC = (() => {
     B.maxY = Math.max(B.maxY, B.y); B.maxV = Math.max(B.maxV, sp);
     // les bras de la tour (le propulseur et le vaisseau peuvent y être rattrapés)
     if(B.tour && E && (E.kind === 'superheavy' || E.kind === 'starship' || E.kind === 'shPile') && B.vy < 0 && B.y <= 75 && B.y > 75 + B.vy * dt - 1){
-      const ok = Math.abs(B.x) <= 14 && Math.abs(B.vy) <= 9 && Math.abs(B.th) <= 10 && B.gaz < 1.01;
+      const ok = Math.abs(B.x) <= 18 && Math.abs(B.vy) <= 12 && Math.abs(B.th) <= 14 && B.gaz < 1.01;
       if(ok){ B.etat = 'pose'; B.y = 75; B.vx = 0; B.vy = 0; B.th = 0; B.om = 0; B.cause = 'Rattrapé par les bras de la tour !'; message(B, B.cause, 'bon'); return; }
       message(B, 'Bras de la tour : raté', 'mal');
     }
