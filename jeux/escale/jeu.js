@@ -67,7 +67,7 @@ function boucle(now){
   // la simulation, par petits pas
   let mins = dt * vitesse / SEC_PAR_MIN;
   while(mins > 1e-6){ const d = Math.min(.25, mins); M.pas(P, A, d); mins -= d; }
-  S3.surbrillance(A, modePlacement());
+  S3.surbrillance(A, modePlacement(), typeEnPlacement());
   S3.maj(A, P, dt); S3.rendu();
   tHud += dt; tPanneau += dt; tObj += dt;
   if(tHud > .2){ tHud = 0; majHud(); toasts(); if(selVol) majCarteVol(); }
@@ -545,7 +545,7 @@ function pSol(box){
 }
 
 /* ----- Le terminal : le plan, les constructions, les passagers ----- */
-let selModule = null, selPetit = null, outil = null, deplace = null;
+let selModule = null, selPetit = null, outil = null, deplace = null, rotOutil = 0;
 const estPetit = o => !!o && (A.terminal.petits || []).includes(o);
 // choisir ce qu'il y a sur une case (une construction, sinon un petit objet de la petite case touchée)
 function selectionner(c){
@@ -561,13 +561,15 @@ function agirCase(c){
   }
   if(outil && outil.startsWith('p:')){
     const t = outil.slice(2), O = M.PETITS[t];
-    action(M.poserPetit(P, A, c.qx, c.qy, t), () => A.toasts.push({ txt:`${O.ico} ${O.nom} posé (${court(O.prix)}). Touche une autre case pour en poser un autre.`, type:'bon' }));
+    action(M.poserPetit(P, A, c.qx, c.qy, t, rotOutil), () => A.toasts.push({ txt:`${O.ico} ${O.nom} posé (${court(O.prix)}). Touche une autre case pour en poser un autre.`, type:'bon' }));
     rafraichirPanneau(true); return true;
   }
-  if(outil){ action(M.construire(P, A, c.x, c.y, outil), () => { selModule = A.terminal.modules.find(o => o.x === c.x && o.y === c.y); selPetit = null; outil = null; }); rafraichirPanneau(true); return true; }
+  if(outil){ action(M.construire(P, A, c.x, c.y, outil, rotOutil), () => { selModule = A.terminal.modules.find(o => o.x === c.x && o.y === c.y); selPetit = null; outil = null; }); rafraichirPanneau(true); return true; }
   return false;
 }
 // pendant un placement, les cases libres s'allument en vert dans la vue 3D
+// le type de construction en cours de pose (pour allumer seulement les cases de la bonne zone)
+function typeEnPlacement(){ if(panneau !== 'terminal') return null; if(outil && !outil.startsWith('p:')) return outil; if(deplace && !estPetit(deplace)) return deplace.type; return null; }
 function modePlacement(){ if(panneau !== 'terminal') return null; if(outil) return outil.startsWith('p:') ? 'petit' : 'module'; if(deplace) return estPetit(deplace) ? 'petit' : 'module'; return null; }
 function pTerminal(box, complet){
   const cap = M.capacites(A), ca = A.capAffiche || { airside:0, check:0, secu:0 }, J = A.jourStats;
@@ -584,9 +586,11 @@ function pTerminal(box, complet){
   if(placer){
     if(!complet && box.querySelector('#tPlacer')) return;
     const petit = outil ? outil.startsWith('p:') : estPetit(deplace), O = outil ? (petit ? M.PETITS[outil.slice(2)] : M.MODULES[outil]) : petit ? M.PETITS[deplace.type] : M.MODULES[deplace.type];
-    box.innerHTML = `<div class="bloc" id="tPlacer"><div class="item"><span class="ico">${O.ico}</span><div><b>${deplace ? 'Déplacer : ' : ''}${esc(O.nom)}</b><small>${deplace ? 'Touche la nouvelle place' : `${court(O.prix)} · touche une ${petit ? 'petite case' : 'case'} verte`} dans la vue 3D${petit && !deplace ? ' (tu peux en poser plusieurs)' : ''}.</small></div><div class="act"><button class="btn" id="tPlan">🗺️ Plan</button><button class="btn rouge" id="tAnnuler">✕ ${petit && !deplace ? 'Terminé' : 'Annuler'}</button></div></div></div>`
+    box.innerHTML = `<div class="bloc" id="tPlacer"><div class="item"><span class="ico">${O.ico}</span><div><b>${deplace ? 'Déplacer : ' : ''}${esc(O.nom)}</b><small>${deplace ? 'Touche la nouvelle place' : `${court(O.prix)} · touche une ${petit ? 'petite case' : 'case'} verte`}${!petit && !deplace && !O.zones.includes('arr') ? ' (zone Départs)' : !petit && !deplace && !O.zones.includes('dep') ? ' (zone Arrivées)' : ''} dans la vue 3D${petit && !deplace ? ' (tu peux en poser plusieurs)' : ''}.</small></div><div class="act"><button class="btn" id="tTourner">↻ Tourner</button><button class="btn" id="tPlan">🗺️ Plan</button><button class="btn rouge" id="tAnnuler">✕ ${petit && !deplace ? 'Terminé' : 'Annuler'}</button></div></div></div>`
       + (planOuvert ? '<canvas class="plan2d" id="plan2d"></canvas>' : '');
-    $('tAnnuler').onclick = () => { outil = null; deplace = null; rafraichirPanneau(true); };
+    $('tAnnuler').onclick = () => { outil = null; deplace = null; rotOutil = 0; rafraichirPanneau(true); };
+    $('tTourner').onclick = () => { if(deplace){ M.tourner(deplace); sauver(); } else rotOutil = (rotOutil + 1) % 4; $('tTourner').textContent = `↻ Tourner (${(deplace ? deplace.rot || 0 : rotOutil) * 90}°)`; };
+    $('tTourner').textContent = `↻ Tourner (${(deplace ? deplace.rot || 0 : rotOutil) * 90}°)`;
     $('tPlan').onclick = () => { planOuvert = !planOuvert; rafraichirPanneau(true); };
     if(planOuvert){ dessinerPlan(); brancherPlan(); }
     // la vue 3D se met sur le terminal (on doit voir l'intérieur)
@@ -602,20 +606,25 @@ function pTerminal(box, complet){
   let h = `<div class="stats" id="tStats">${statsTerminal(cap, ca, J)}</div>
     ${manque.length ? `<p class="leg mal">⚠️ Il manque ${manque.join(', ')}.</p>` : ''}
     <canvas class="plan2d" id="plan2d"></canvas>
-    <p class="leg" id="tAide">Choisis une construction ou un petit objet ci-dessous, puis touche sa place directement dans la vue 3D (ou sur ce plan). Touche une construction pour l'améliorer. En bas du plan : côté ville (enregistrement, contrôles, bagages) ; en haut : côté pistes. Entre les constructions, les allées sont découpées en petites cases pour les petits objets.</p>
+    <p class="leg" id="tAide">Le terminal a deux zones côte à côte, chacune sur <b>2 rangées</b> : à gauche les <b>Départs</b> (enregistrement, sûreté, passeports, salles d'attente, commerces), à droite les <b>Arrivées</b> (douane, tapis à bagages). Choisis une construction ci-dessous, puis touche sa place (vue 3D ou plan) ; le bouton ↻ la tourne d'un quart de tour. Touche une construction pour l'améliorer, la tourner, la déplacer.</p>
     <div id="tSel"></div>
     ${blocEntretien()}
-    <div class="bloc"><h3>Construire</h3><div class="palette">${Object.entries(M.MODULES).map(([k, Mo]) => `<button data-outil="${k}" ${verrou(Mo) || P.argent < Mo.prix ? 'disabled' : ''}><span>${Mo.ico}</span>${esc(Mo.nom)}<small>${verrou(Mo) ? `niveau ${Mo.niv}` : court(Mo.prix)}</small></button>`).join('')}</div>
-      ${A.terminal.l < M.terminalMax
-        ? `<button class="btn" id="tAgr" ${P.argent < M.prixAgrandir(A) ? 'disabled' : ''}>↔️ Agrandir le terminal · ${court(M.prixAgrandir(A))}</button>
-           <p class="leg">Une case de large en plus${M.portesMax(A) < M.AEROPORTS[A.id].portesMax ? ', <b>deux portes d\'embarquement de plus</b> à construire (🚚 Sol)' : ''}. Chaque agrandissement coûte 35 % de plus que le précédent.</p>`
-        : '<p class="leg">Le terminal est à sa taille maximale.</p>'}</div>
+    ${[['dep', '✈️ Construire · zone Départs', 'D'], ['arr', '🛬 Construire · zone Arrivées', 'A'], ['deux', '🪴 Construire · dans les deux zones', 'DA']].map(([z, titre]) => `<div class="bloc"><h3>${titre}</h3><div class="palette">${Object.entries(M.MODULES).filter(([k, Mo]) => z === 'deux' ? Mo.zones.length === 2 : Mo.zones.length === 1 && Mo.zones[0] === z).map(([k, Mo]) => `<button data-outil="${k}" ${verrou(Mo) || P.argent < Mo.prix ? 'disabled' : ''}><span>${Mo.ico}</span>${esc(Mo.nom)}<small>${verrou(Mo) ? `niveau ${Mo.niv}` : court(Mo.prix)}</small></button>`).join('')}</div></div>`).join('')}
+    <div class="bloc"><h3>Agrandir</h3>
+      ${M.colsDep(A) < M.terminalMax
+        ? `<button class="btn" id="tAgr" ${P.argent < M.prixAgrandir(A) ? 'disabled' : ''}>↔️ Agrandir les Départs · ${court(M.prixAgrandir(A))}</button>
+           <p class="leg">Une colonne (2 emplacements) de plus${M.portesMax(A) < M.AEROPORTS[A.id].portesMax ? ', et <b>deux portes d\'embarquement de plus</b> à construire (🚚 Sol)' : ''}. Chaque agrandissement coûte 35 % de plus que le précédent.</p>`
+        : '<p class="leg">La zone Départs est à sa taille maximale.</p>'}
+      ${A.terminal.la < M.arriveesMax
+        ? `<button class="btn" id="tAgrA" ${P.argent < M.prixArrivees(A) ? 'disabled' : ''}>↔️ Agrandir les Arrivées · ${court(M.prixArrivees(A))}</button><p class="leg">Une colonne (2 emplacements) de plus pour des tapis et des douanes en plus.</p>`
+        : '<p class="leg">La zone Arrivées est à sa taille maximale.</p>'}</div>
     <div class="bloc"><h3>Petits objets (dans les allées)</h3><div class="palette">${Object.entries(M.PETITS).map(([k, O]) => `<button data-outil="p:${k}" ${P.argent < O.prix ? 'disabled' : ''} title="${esc(O.desc)}"><span>${O.ico}</span>${esc(O.nom)}<small>${court(O.prix)}</small></button>`).join('')}</div>
       <p class="leg">Bancs : 6 places assises. Poubelles : un terminal propre (environ une pour 6 cases). Plantes, écrans, bornes, fontaines : un peu plus de satisfaction. Distributeurs : un peu d'argent.</p></div>`;
   box.innerHTML = h;
   dessinerPlan(); afficherSel(); brancherPlan();
-  box.querySelectorAll('[data-outil]').forEach(b => b.onclick = () => { outil = b.dataset.outil; selModule = selPetit = null; rafraichirPanneau(true); });
+  box.querySelectorAll('[data-outil]').forEach(b => b.onclick = () => { outil = b.dataset.outil; rotOutil = 0; selModule = selPetit = null; rafraichirPanneau(true); });
   if($('tAgr')) $('tAgr').onclick = () => action(M.agrandirTerminal(P, A), () => rafraichirPanneau(true));
+  if($('tAgrA')) $('tAgrA').onclick = () => action(M.agrandirArrivees(P, A), () => rafraichirPanneau(true));
   if($('tEmb')) $('tEmb').onclick = () => action(M.embaucher(P, A), () => rafraichirPanneau(true));
   if($('tLic')) $('tLic').onclick = () => action(M.licencier(A), () => rafraichirPanneau(true));
 }
@@ -660,7 +669,8 @@ function afficherSel(){
   const el = $('tSel'); if(!el) return;
   if(selPetit && estPetit(selPetit)){
     const p = selPetit, O = M.PETITS[p.type];
-    el.innerHTML = `<div class="item"><span class="ico">${O.ico}</span><div><b>${esc(O.nom)}</b><small>${esc(O.desc)}</small></div><div class="act"><button class="btn" id="tDepP">Déplacer</button><button class="btn rouge" id="tRet">Enlever (+${court(O.prix * .5)})</button></div></div>`;
+    el.innerHTML = `<div class="item"><span class="ico">${O.ico}</span><div><b>${esc(O.nom)}</b><small>${esc(O.desc)}</small></div><div class="act"><button class="btn" id="tRotP">↻ Tourner</button><button class="btn" id="tDepP">Déplacer</button><button class="btn rouge" id="tRet">Enlever (+${court(O.prix * .5)})</button></div></div>`;
+    $('tRotP').onclick = () => { M.tourner(p); sauver(); rafraichirPanneau(true); };
     $('tDepP').onclick = () => { deplace = p; rafraichirPanneau(true); };
     $('tRet').onclick = () => { M.retirerPetit(P, A, p); selPetit = null; sauver(); majHud(); rafraichirPanneau(true); };
     return;
@@ -668,8 +678,9 @@ function afficherSel(){
   if(!selModule || !A.terminal.modules.includes(selModule)){ el.innerHTML = ''; return; }
   const m = selModule, Mo = M.MODULES[m.type], pa = m.niv < M.NIV_MAX ? M.prixAmelioration(Mo.prix, m.niv) : null;
   const etatWC = m.type === 'toilettes' ? ` · ${Math.round(100 - M.salete(m))} % propre${M.avantSale(A, m) === 0 ? ', <b class="mal">à nettoyer</b>' : M.avantSale(A, m) == null ? '' : `, sales dans ${M.avantSale(A, m)} min`}` : '';
-  el.innerHTML = `<div class="item"><span class="ico">${Mo.ico}</span><div><b>${esc(Mo.nom)} · niveau ${m.niv}</b><small>${esc(Mo.desc)}${etatWC}</small></div><div class="act">${pa ? `<button class="btn prim" id="tAm" ${P.argent < pa ? 'disabled' : ''}>Niveau ${m.niv + 1} · ${court(pa)}</button>` : ''}${POSTES_JEU[m.type] ? `<button class="btn prim" id="tJouer">🎮 ${m.type === 'comptoir' ? 'Trier les bagages' : 'Jouer au contrôle'}</button>` : ''}<button class="btn" id="tDep">Déplacer</button><button class="btn rouge" id="tVend">Vendre (+${court(Mo.prix * .5)})</button></div></div>`;
+  el.innerHTML = `<div class="item"><span class="ico">${Mo.ico}</span><div><b>${esc(Mo.nom)} · niveau ${m.niv}</b><small>${esc(Mo.desc)}${etatWC} · zone ${M.NOM_ZONE[M.zoneDe(A, m.x)]}${(m.rot || 0) ? ` · tourné de ${(m.rot || 0) * 90}°` : ''}</small></div><div class="act">${pa ? `<button class="btn prim" id="tAm" ${P.argent < pa ? 'disabled' : ''}>Niveau ${m.niv + 1} · ${court(pa)}</button>` : ''}${POSTES_JEU[m.type] ? `<button class="btn prim" id="tJouer">🎮 ${m.type === 'comptoir' ? 'Trier les bagages' : 'Jouer au contrôle'}</button>` : ''}<button class="btn" id="tRot">↻ Tourner</button><button class="btn" id="tDep">Déplacer</button><button class="btn rouge" id="tVend">Vendre (+${court(Mo.prix * .5)})</button></div></div>`;
   if($('tAm')) $('tAm').onclick = () => action(M.ameliorerModule(P, A, m), () => rafraichirPanneau(true));
+  $('tRot').onclick = () => { M.tourner(m); sauver(); rafraichirPanneau(true); };
   $('tDep').onclick = () => { deplace = m; rafraichirPanneau(true); };
   if($('tJouer')) $('tJouer').onclick = () => lancerControle(m.type);
   $('tVend').onclick = () => { if(confirm(`Vendre ${Mo.nom.toLowerCase()} ?`)){ M.vendreModule(P, A, m); selModule = null; sauver(); majHud(); rafraichirPanneau(true); } };
@@ -678,15 +689,19 @@ function afficherSel(){
 let animPlan = 0;
 function dessinerPlan(){
   const cvp = $('plan2d'); if(!cvp) return;
-  const T = A.terminal, w = cvp.clientWidth || 320, cell = w / T.l, h = cell * T.h * .8, dpr = Math.min(2, devicePixelRatio || 1);
+  const T = A.terminal, w = cvp.clientWidth || 320, cell = w / T.l, h = Math.max(130, cell * T.h * .95), dpr = Math.min(2, devicePixelRatio || 1);
   if(cvp.width !== Math.round(w * dpr)){ cvp.width = Math.round(w * dpr); cvp.height = Math.round(h * dpr); cvp.style.height = h + 'px'; }
   const g = cvp.getContext('2d'), ch = h / T.h; g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.fillStyle = '#E8ECF1'; g.fillRect(0, 0, w, h);
   // le sol en carrelage, la ligne de sûreté entre côté ville et côté pistes
   for(let x = 0; x < T.l; x++) for(let y = 0; y < T.h; y++){ g.fillStyle = (x + y) % 2 ? '#DFE5EC' : '#E9EEF3'; g.fillRect(x * cell, h - (y + 1) * ch, cell, ch); }
-  g.fillStyle = 'rgba(255,183,3,.18)'; g.fillRect(0, h - ch, w, ch);
-  g.strokeStyle = '#FFB703'; g.setLineDash([6, 4]); g.lineWidth = 2; g.beginPath(); g.moveTo(0, h - ch); g.lineTo(w, h - ch); g.stroke(); g.setLineDash([]);
-  g.fillStyle = 'rgba(20,35,58,.45)'; g.font = '700 10px sans-serif'; g.textAlign = 'right'; g.fillText('côté ville ⬇', w - 4, h - 4); g.fillText('côté pistes ⬆', w - 4, 12);
+  const cd0 = T.l - T.la, xz = cd0 * cell;
+  g.fillStyle = 'rgba(42,157,143,.16)'; g.fillRect(xz, 0, w - xz, h);                                   // la zone Arrivées (verte)
+  g.fillStyle = 'rgba(255,183,3,.16)'; g.fillRect(0, h - ch, xz, ch);
+  g.strokeStyle = '#FFB703'; g.setLineDash([6, 4]); g.lineWidth = 2; g.beginPath(); g.moveTo(0, h - ch); g.lineTo(xz, h - ch); g.stroke(); g.setLineDash([]);
+  g.strokeStyle = '#2A9D8F'; g.lineWidth = 3; g.beginPath(); g.moveTo(xz, 0); g.lineTo(xz, h); g.stroke();
+  g.font = '800 11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = '#B27A00'; g.fillText('✈ DÉPARTS', xz / 2, 13); g.fillStyle = '#1B7A6F'; g.fillText('🛬 ARRIVÉES', xz + (w - xz) / 2, 13);
+  g.fillStyle = 'rgba(20,35,58,.45)'; g.font = '700 10px sans-serif'; g.textAlign = 'left'; g.fillText('côté ville ⬇', 4, h - 4); g.fillText('côté pistes ⬆', 4, 26);
   // les constructions
   for(const m of T.modules){
     const Mo = M.MODULES[m.type], x = m.x * cell, y = h - (m.y + 1) * ch;
@@ -694,6 +709,7 @@ function dessinerPlan(){
     if(selModule === m || deplace === m){ g.strokeStyle = '#FFB703'; g.lineWidth = 3; arrondi(g, x + 2, y + 2, cell - 4, ch - 4, 9); g.stroke(); }
     g.font = `${Math.min(cell, ch) * .38}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(Mo.ico, x + cell / 2, y + ch / 2 - ch * .08);
     g.fillStyle = '#fff'; g.font = `800 ${Math.max(8, cell * .11)}px sans-serif`; g.fillText('★'.repeat(m.niv), x + cell / 2, y + ch * .8);
+    { const a = (m.rot || 0) * Math.PI / 2, ax = x + cell / 2 + Math.sin(a) * cell * .34, ay = y + ch / 2 + Math.cos(a) * ch * .34; g.fillStyle = '#FFE08A'; g.beginPath(); g.arc(ax, ay, 3.2, 0, 7); g.fill(); }   // le point jaune : l'avant de la construction (côté ville quand elle n'est pas tournée)
   }
   // les petites cases des allées (en pointillé), les petits objets
   g.strokeStyle = 'rgba(20,35,58,.12)'; g.lineWidth = 1; g.setLineDash([2, 3]);
@@ -766,7 +782,7 @@ function projets(){
   const D = M.AEROPORTS[A.id], niv = M.niveauDe(P.xp), l = [];
   if(A.portes.length < M.portesMax(A)){ const t = D.tailleMax; l.push({ k:'porte', ico:'🚪', nom:`Nouvelle porte (${M.TAILLES[t].nom.toLowerCase()})`, prix:M.TAILLES[t].prix, faire:() => M.acheterPorte(P, A, t) }); }
   const g = A.portes.findIndex(x => !x.passerelle); if(g >= 0 && niv >= 2) l.push({ k:'passerelle', ico:'🌉', nom:`Passerelle porte ${A.portes[g].nom}`, prix:M.prixPasserelle(A.portes[g].taille), faire:() => M.acheterPasserelle(P, A, g) });
-  if(A.terminal.l < M.terminalMax) l.push({ k:'terminal', ico:'🏢', nom:`Agrandir le terminal${M.portesMax(A) < D.portesMax ? ' (2 portes de plus)' : ''}`, prix:M.prixAgrandir(A), faire:() => M.agrandirTerminal(P, A) });
+  if(M.colsDep(A) < M.terminalMax) l.push({ k:'terminal', ico:'🏢', nom:`Agrandir les Départs${M.portesMax(A) < D.portesMax ? ' (2 portes de plus)' : ''}`, prix:M.prixAgrandir(A), faire:() => M.agrandirTerminal(P, A) });
   if(A.carbu.niv < M.CUVE_MAX) l.push({ k:'cuve', ico:'🛢️', nom:`Cuve à carburant niveau ${A.carbu.niv + 1}`, prix:M.CUVE.prix[A.carbu.niv + 1], faire:() => M.agrandirCuve(P, A) });
   if(M.nbPistes(A) < M.PISTES_MAX && niv >= 8) l.push({ k:'piste', ico:'🛬', nom:'Seconde piste', prix:M.prixPiste(A), faire:() => M.acheterPiste(P, A) });
   const hg = M.hangarsOuvrables(A).find(k => !(A.hangars || {})[k]);

@@ -563,9 +563,16 @@ window.ESCALE_3D = (() => {
   // la grille du terminal : pw × pd le pas d'une case, cw × cd la place d'une construction (le reste fait les allées),
   // et les petites cases (un quart de case) pour les petits objets
   const ALLEE = 3.6;
+  // tourner de rot quarts de tour (vu de dessus, comme une rotation Y de Three.js) : un point (x, z), ou toutes les pièces d'un objet
+  const tournerXZ = (x, z, rot) => { const t = (rot || 0) * Math.PI / 2, c = Math.round(Math.cos(t)), s = Math.round(Math.sin(t)); return { x:x * c + z * s, z:-x * s + z * c }; };
+  function tournerPieces(pieces, rot){
+    if(!rot) return pieces; const t = rot * Math.PI / 2;
+    return pieces.map(q => { const p = q.p || [0, 0, 0], o = tournerXZ(p[0], p[2], rot), r = q.r || [0, 0, 0]; return { ...q, p:[o.x, p[1], o.z], r:[r[0], r[1] + t, r[2]] }; });
+  }
   function grilleT(A, Pl){
     const T = Pl.terminal, l = A.terminal.l, h = A.terminal.h, pw = (T.x1 - T.x0 - 2 * MARGE_X) / l, pd = (T.z1 - T.z0 - MARGE_Z - JETEE) / h;
-    return { T, l, h, pw, pd, cw:pw - ALLEE, cd:pd - ALLEE, centre:(x, y) => ({ x:T.x1 - MARGE_X - (x + .5) * pw, z:T.z1 - MARGE_Z - (y + .5) * pd }),
+    const cd0 = l - (A.terminal.la || 0);
+    return { T, l, h, cd0, pw, pd, cw:pw - ALLEE, cd:pd - ALLEE, zone:x => x >= cd0 ? 'arr' : 'dep', centre:(x, y) => ({ x:T.x1 - MARGE_X - (x + .5) * pw, z:T.z1 - MARGE_Z - (y + .5) * pd }),
       quart:(x, y) => ({ x:T.x1 - MARGE_X - (x + .5) * pw / 2, z:T.z1 - MARGE_Z - (y + .5) * pd / 2 }) };
   }
   // les petits objets (autour de leur centre)
@@ -773,7 +780,7 @@ window.ESCALE_3D = (() => {
     return p;
   }
   function construireInterieur(A, Pl){
-    const cle = A.terminal.l + 'x' + A.terminal.h + ':' + A.terminal.modules.map(m => m.type + m.x + m.y + m.niv).join(',') + '|' + (A.terminal.petits || []).map(p => p.type + p.x + '.' + p.y).join(',') + '|' + A.portes.map(g => g.nom + g.taille + (g.passerelle ? 'p' : '')).join(',');
+    const cle = A.terminal.l + 'x' + A.terminal.h + 'z' + A.terminal.la + ':' + A.terminal.modules.map(m => m.type + m.x + m.y + m.niv + 'r' + (m.rot || 0)).join(',') + '|' + (A.terminal.petits || []).map(p => p.type + p.x + '.' + p.y + 'r' + (p.rot || 0)).join(',') + '|' + A.portes.map(g => g.nom + g.taille + (g.passerelle ? 'p' : '')).join(',');
     if(cle === cleInt && interieur) return;
     cleInt = cle;
     if(interieur){ monde.remove(interieur); interieur.traverse(o => { if(o.geometry) o.geometry.dispose(); }); }
@@ -781,14 +788,21 @@ window.ESCALE_3D = (() => {
     // le carrelage, la ligne jaune de la sûreté (entre la rangée côté ville et le reste)
     // les allées (un sol clair et chaud) et le carrelage de chaque case
     sol.push({ f:'boite', d:[G.T.x1 - G.T.x0 - 2 * MARGE_X + 2, .08, G.pd * G.h + 2], p:[(G.T.x0 + G.T.x1) / 2, .52, G.T.z1 - MARGE_Z - G.pd * G.h / 2], c:0xF1ECE2 });
-    for(let x = 0; x < G.l; x++) for(let y = 0; y < G.h; y++){ const c = G.centre(x, y); sol.push({ f:'boite', d:[G.cw + .6, .1, G.cd + .6], p:[c.x, .55, c.z], c:(x + y) % 2 ? 0xE9EDF2 : 0xDDE3EA }); }
-    sol.push({ f:'boite', d:[G.T.x1 - G.T.x0 - 2 * MARGE_X, .12, .6], p:[(G.T.x0 + G.T.x1) / 2, .62, G.T.z1 - MARGE_Z - G.pd], c:0xFFB703 });
+    for(let x = 0; x < G.l; x++) for(let y = 0; y < G.h; y++){ const c = G.centre(x, y); sol.push({ f:'boite', d:[G.cw + .6, .1, G.cd + .6], p:[c.x, .55, c.z], c:G.zone(x) === 'arr' ? ((x + y) % 2 ? 0xDCEFEA : 0xCBE5DE) : ((x + y) % 2 ? 0xE9EDF2 : 0xDDE3EA) }); }
+    // la ligne jaune de la sûreté (zone Départs seulement), et la séparation entre les deux zones
+    const xb = G.T.x1 - MARGE_X - G.cd0 * G.pw, zc = G.T.z1 - MARGE_Z - G.pd * G.h / 2;
+    sol.push({ f:'boite', d:[G.cd0 * G.pw, .12, .6], p:[G.T.x1 - MARGE_X - G.cd0 * G.pw / 2, .62, G.T.z1 - MARGE_Z - G.pd], c:0xFFB703 });
+    if(G.cd0 < G.l){
+      sol.push({ f:'boite', d:[1.4, .14, G.pd * G.h], p:[xb, .63, zc], c:0x2A9D8F });
+      for(let k = 0; k < 4; k++) sol.push({ f:'boite', d:[.5, 1.1, .5], p:[xb, .6 + .55, G.T.z1 - MARGE_Z - G.pd * G.h * (k + .5) / 4], c:0x2A9D8F });          // des potelets
+    }
     // les petits objets, dans leur petite case
-    for(const q of A.terminal.petits || []){ const c = G.quart(q.x, q.y); for(const o of petitObjet(q.type, ECH_P)){ o.p = [o.p[0] + c.x, o.p[1] + .6, o.p[2] + c.z]; pieces.push(o); } }
+    for(const q of A.terminal.petits || []){ const c = G.quart(q.x, q.y); for(const o of tournerPieces(petitObjet(q.type, ECH_P), q.rot || 0)){ o.p = [o.p[0] + c.x, o.p[1] + .6, o.p[2] + c.z]; pieces.push(o); } }
     for(const m of A.terminal.modules){
       const c = G.centre(m.x, m.y);
       sol.push({ f:'boite', d:[G.cw - 1.2, .12, G.cd - 1.2], p:[c.x, .64, c.z], c:clair(M.MODULES[m.type].coul) });
-      for(const q of mobilier(m.type, m.niv, G.cw, G.cd)){ q.p = [q.p[0] + c.x, q.p[1] + .65, q.p[2] + c.z]; pieces.push(q); }
+      const rot = m.rot || 0, imp = rot % 2;
+      for(const q of tournerPieces(mobilier(m.type, m.niv, imp ? G.cd : G.cw, imp ? G.cw : G.cd), rot)){ q.p = [q.p[0] + c.x, q.p[1] + .65, q.p[2] + c.z]; pieces.push(q); }
     }
     interieur = new T3.Group();
     // la jetée : les portes d'embarquement le long de la façade côté pistes
@@ -830,6 +844,14 @@ window.ESCALE_3D = (() => {
       pan.position.set(c.x, 8, c.z); pan.lookAt(c.x, 14, c.z - 9); interieur.add(pan);
       pieces.push({ f:'cyl', d:[.06, .06, 3, 4], p:[c.x - Math.min(G.cw * .6, 12) * .4, 10.4, c.z], c:0x5C6672 }, { f:'cyl', d:[.06, .06, 3, 4], p:[c.x + Math.min(G.cw * .6, 12) * .4, 10.4, c.z], c:0x5C6672 });
     }
+    // les deux grandes enseignes : la zone Départs (jaune) et la zone Arrivées (verte)
+    for(const [zn, x0, x1, fond, coul, txt] of [['dep', 0, G.cd0, '#FFB703', '#14233A', 'DÉPARTS ✈'], ['arr', G.cd0, G.l, '#2A9D8F', '#FFFFFF', 'ARRIVÉES 🛬']]){
+      if(x1 <= x0) continue;
+      const xm = G.T.x1 - MARGE_X - (x0 + x1) / 2 * G.pw, lg = Math.min((x1 - x0) * G.pw * .5, 26), zb = T.z0 + JETEE + 3;
+      const pan = new T3.Mesh(new T3.PlaneGeometry(lg, lg * .2), new T3.MeshBasicMaterial({ map:texteCache(txt, fond, coul, 1024), side:T3.DoubleSide }));
+      pan.position.set(xm, 12.5, zb); pan.lookAt(xm, 22, zb - 14); interieur.add(pan);
+      pieces.push({ f:'cyl', d:[.1, .1, 6, 4], p:[xm - lg * .45, 9.6, zb], c:0x5C6672 }, { f:'cyl', d:[.1, .1, 6, 4], p:[xm + lg * .45, 9.6, zb], c:0x5C6672 });
+    }
     interieur.add(new T3.Mesh(fusion(sol), MAT));
     if(pieces.length) interieur.add(objet(pieces, .08));
     monde.add(interieur);
@@ -861,7 +883,11 @@ window.ESCALE_3D = (() => {
   }
   const AIRSIDE = ['salle', 'cafe', 'boutique', 'restaurant', 'salon', 'jeux', 'fontaine', 'plantes', 'toilettes'];
   function nouvelAgent(role, x, z){ const a = { role, x, z, tx:x, tz:z, attente:0, pas:Math.random() * 6, id:Math.floor(Math.random() * MAX_AG) }; agents.push(a); return a; }
-  function entree(G){ return { x:G.T.x0 + 12 + Math.random() * (G.T.x1 - G.T.x0 - 24), z:G.T.z1 - 1.5 }; }
+  // l'entrée côté ville : les départs entrent par la zone Départs, les arrivées sortent par la zone Arrivées
+  function entree(G, zone = 'dep'){
+    const a = zone === 'arr' ? G.cd0 : 0, b = zone === 'arr' ? G.l : G.cd0, xa = G.T.x1 - MARGE_X - b * G.pw + 4, xb = G.T.x1 - MARGE_X - a * G.pw - 4;
+    return { x:xa + Math.random() * Math.max(1, xb - xa), z:G.T.z1 - 1.5 };
+  }
   function placeFile(A, G, type, rang){
     const ms = A.terminal.modules.filter(m => m.type === type);
     if(!ms.length){
@@ -869,28 +895,30 @@ window.ESCALE_3D = (() => {
       const sec = A.terminal.modules.find(m => m.type === 'securite'), c = sec ? G.centre(sec.x, sec.y) : { x:(G.T.x0 + G.T.x1) / 2, z:G.T.z1 - 8 };
       return { x:c.x + ((rang % 8) - 3.5) * 1.6, z:c.z - G.cd * .5 - 1.5 - Math.floor(rang / 8) * 1.6 };
     }
-    const m = ms[rang % ms.length], j = Math.floor(rang / ms.length), c = G.centre(m.x, m.y);
-    // la file part du comptoir (ou du portique) vers le côté ville, en serpentin entre les sangles
-    // quand la file est trop longue pour la place qu'il y a (jusqu'aux portes côté ville), un deuxième serpentin s'ouvre à côté
-    const base = c.z + baseFile(type, G.cd), maxR = Math.max(2, Math.floor((G.T.z1 - 3 - base) / FILE_PAS_Z) + 1);
+    const m = ms[rang % ms.length], j = Math.floor(rang / ms.length), c = G.centre(m.x, m.y), rot = m.rot || 0;
+    // la file part du comptoir (ou du portique) vers l'avant de la construction (vers la ville quand elle n'est pas tournée), en serpentin entre les sangles
+    // quand la file est trop longue pour la place qu'il y a (jusqu'au mur), un deuxième serpentin s'ouvre à côté
+    const dir = tournerXZ(0, 1, rot), b0 = baseFile(type, G.cd), w0 = { x:c.x + dir.x * b0, z:c.z + dir.z * b0 };
+    const lim = [dir.z > 0 ? (G.T.z1 - 3 - w0.z) / dir.z : dir.z < 0 ? (w0.z - (G.T.z0 + JETEE + 2)) / -dir.z : 1e9, dir.x > 0 ? (G.T.x1 - 3 - w0.x) / dir.x : dir.x < 0 ? (w0.x - (G.T.x0 + 3)) / -dir.x : 1e9];
+    const maxR = Math.max(2, Math.floor(Math.min(lim[0], lim[1]) / FILE_PAS_Z) + 1);
     const rangee = Math.floor(j / 5), k = j % 5, bloc = Math.floor(rangee / maxR), q = posFile(type, G.cd, rangee % maxR, k);
-    const dx = bloc ? Math.ceil(bloc / 2) * (bloc % 2 ? 1 : -1) * (5 * FILE_PAS_X + 1.2) : 0;
-    return { x:c.x + q.x + dx, z:c.z + q.z };
+    const dx = bloc ? Math.ceil(bloc / 2) * (bloc % 2 ? 1 : -1) * (5 * FILE_PAS_X + 1.2) : 0, o = tournerXZ(q.x + dx, q.z, rot);
+    return { x:clamp(c.x + o.x, G.T.x0 + 2, G.T.x1 - 2), z:clamp(c.z + o.z, G.T.z0 + JETEE + 1, G.T.z1 - 1) };
   }
   function placeAttente(A, G){
-    const ms = A.terminal.modules.filter(m => AIRSIDE.includes(m.type));
-    if(!ms.length){ const y = G.h - 1 - Math.floor(Math.random() * Math.max(1, G.h - 1)); const c = G.centre(Math.floor(Math.random() * G.l), y); return { x:c.x + (Math.random() - .5) * G.cw * .8, z:c.z + (Math.random() - .5) * G.cd * .8 }; }
+    const ms = A.terminal.modules.filter(m => AIRSIDE.includes(m.type) && G.zone(m.x) === 'dep');
+    if(!ms.length){ const y = G.h - 1 - Math.floor(Math.random() * Math.max(1, G.h - 1)); const c = G.centre(Math.floor(Math.random() * Math.max(1, G.cd0)), y); return { x:c.x + (Math.random() - .5) * G.cw * .8, z:c.z + (Math.random() - .5) * G.cd * .8 }; }
     const m = ms[Math.floor(Math.random() * ms.length)], c = G.centre(m.x, m.y);
     return { x:c.x + (Math.random() - .5) * G.cw * .75, z:c.z + (Math.random() - .5) * G.cd * .75 };
   }
   // un point au hasard dans une construction de ce type (de l'autre côté de la file)
   function placeModule(A, G, type, frac){
-    const ms = A.terminal.modules.filter(m => m.type === type); if(!ms.length) return entree(G);
+    const ms = A.terminal.modules.filter(m => m.type === type); if(!ms.length) return entree(G, 'arr');
     const m = ms[Math.floor(Math.random() * ms.length)], c = G.centre(m.x, m.y);
     return { x:c.x + (Math.random() - .5) * G.cw * .6, z:c.z - G.cd * frac + (Math.random() - .5) * 2 };
   }
   function placeTapis(A, G){
-    const ms = A.terminal.modules.filter(m => m.type === 'tapis'); if(!ms.length) return entree(G);
+    const ms = A.terminal.modules.filter(m => m.type === 'tapis'); if(!ms.length) return entree(G, 'arr');
     const m = ms[Math.floor(Math.random() * ms.length)], c = G.centre(m.x, m.y), a = Math.random() * Math.PI * 2, r = Math.min(G.cw, G.cd) * (.36 + Math.random() * .08);
     return { x:c.x + Math.cos(a) * r, z:c.z + Math.sin(a) * r };
   }
@@ -940,7 +968,7 @@ window.ESCALE_3D = (() => {
       if(a.role === 'part' || a.role === 'sortie'){ agents.splice(i, 1); continue; }
       // l'arrivée : la douane (pour les vols internationaux), puis le tapis à bagages, puis la sortie
       if(a.role === 'douane'){ a.attente -= dtReel * Math.max(.3, ratio); if(a.attente <= 0){ a.role = 'arrivee'; const t = placeTapis(A, G); a.tx = t.x; a.tz = t.z; a.attente = 2 + Math.random() * 5; } continue; }
-      if(a.role === 'arrivee'){ a.attente -= dtReel * Math.max(.3, ratio); if(a.attente <= 0){ a.role = 'sortie'; const e = entree(G); a.tx = e.x; a.tz = e.z + 2; } continue; }
+      if(a.role === 'arrivee'){ a.attente -= dtReel * Math.max(.3, ratio); if(a.attente <= 0){ a.role = 'sortie'; const e = entree(G, 'arr'); a.tx = e.x; a.tz = e.z + 2; } continue; }
       // dans la salle d'attente, on se promène un peu (boutiques, café)
       if(a.role === 'attente' && vitesse > 0 && Math.random() < dtReel * .08){ const p = placeAttente(A, G); a.tx = p.x; a.tz = p.z; }
     }
@@ -1052,13 +1080,13 @@ window.ESCALE_3D = (() => {
   }
   // pendant un placement : les cases (ou petites cases) libres s'allument en vert
   let surb = null, cleSurb = '';
-  function surbrillance(A, mode){
-    const cle = mode ? mode + ':' + A.terminal.l + ':' + A.terminal.modules.map(m => m.x + '.' + m.y).join(',') + ':' + (A.terminal.petits || []).map(p => p.x + '.' + p.y).join(',') : '';
+  function surbrillance(A, mode, type){
+    const cle = mode ? mode + (type || '') + ':' + A.terminal.la + ':' + A.terminal.l + ':' + A.terminal.modules.map(m => m.x + '.' + m.y).join(',') + ':' + (A.terminal.petits || []).map(p => p.x + '.' + p.y).join(',') : '';
     if(cle === cleSurb) return; cleSurb = cle;
     if(surb){ scene.remove(surb); surb.geometry.dispose(); surb = null; }
     if(!mode || !ok) return;
     const G = grilleT(A, M.plan(A)), rects = [];
-    if(mode === 'module'){ for(let x = 0; x < G.l; x++) for(let y = 0; y < G.h; y++) if(!A.terminal.modules.some(m => m.x === x && m.y === y) && !M.petitsDansCase(A, x, y).length){ const c = G.centre(x, y); rects.push({ f:'boite', d:[G.cw, .1, G.cd], p:[c.x, 1, c.z], c:0x51CF66 }); } }
+    if(mode === 'module'){ for(let x = 0; x < G.l; x++) for(let y = 0; y < G.h; y++) if(!A.terminal.modules.some(m => m.x === x && m.y === y) && !M.petitsDansCase(A, x, y).length && (!type || M.zoneOk(A, type, x))){ const c = G.centre(x, y); rects.push({ f:'boite', d:[G.cw, .1, G.cd], p:[c.x, 1, c.z], c:0x51CF66 }); } }
     else for(let x = 0; x < G.l * 2; x++) for(let y = 0; y < G.h * 2; y++) if(!M.libreQuart(A, x, y)){ const c = G.quart(x, y); rects.push({ f:'boite', d:[G.pw / 2 - .9, .1, G.pd / 2 - .9], p:[c.x, 1, c.z], c:0x51CF66 }); }
     if(!rects.length) return;
     surb = new T3.Mesh(fusion(rects), new T3.MeshBasicMaterial({ vertexColors:true, transparent:true, opacity:.38, depthWrite:false })); surb.renderOrder = 5; scene.add(surb);
