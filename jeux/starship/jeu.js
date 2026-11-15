@@ -99,7 +99,7 @@ function lancer(i){
   V = S.nouveauVol(J.vol, J.equipe, {});
   msgVus = 0; fxVus = 0; bandeauMsg = null; fin = null; parts = []; vitesse = 1; enPause = false; $('bVitesse').textContent = '⏩ Vitesse ×1';
   alerteDern = {}; vj = 0; jDern = null; EV = {}; phasePrec = null; ecran('eVol'); appliquerMode(); tailleVol(); dernier = performance.now(); acc = 0; audio();
-  bandeauMsg = { t:J.vol.type === 'booster' || J.vol.type === 'barge' ? 'Guide-toi avec ◀ ▶ puis allume pour t\'arrêter au bon endroit' : J.vol.type === 'dragon' ? 'Garde le bouclier au frais ; ouvre les PARACHUTES quand la capsule est assez lente' : J.vol.type === 'lune' ? 'Pas d\'air : penche (◀ ▶) et freine au moteur' : J.vol.type === 'orbite' || J.vol.type === 'vaisseau' || J.vol.type === 'mission' || J.vol.type === 'mars' || J.vol.type === 'falcon' ? 'Tiens POUSSÉE : suis le losange bleu de la mire avec ◀ ▶' : 'Tiens POUSSÉE pour décoller', at:0, cls:'' };
+  bandeauMsg = { t:J.vol.type === 'booster' || J.vol.type === 'barge' ? 'Guide-toi avec ◀ ▶ puis allume pour t\'arrêter au bon endroit' : J.vol.type === 'rentree' ? 'Curseur ◀ ▶ = angle d\'attaque : suis le losange bleu pour ne pas brûler' : J.vol.type === 'dragon' ? 'Garde le bouclier au frais ; ouvre les PARACHUTES quand la capsule est assez lente' : J.vol.type === 'lune' ? 'Pas d\'air : penche (◀ ▶) et freine au moteur' : J.vol.type === 'orbite' || J.vol.type === 'vaisseau' || J.vol.type === 'mission' || J.vol.type === 'mars' || J.vol.type === 'falcon' ? 'Tiens POUSSÉE : suis le losange bleu de la mire avec ◀ ▶' : 'Tiens POUSSÉE pour décoller', at:0, cls:'' };
   cancelAnimationFrame(boucle); boucle = requestAnimationFrame(tick);
 }
 function tick(now){

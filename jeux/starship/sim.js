@@ -16,10 +16,18 @@ window.STARSHIP_SIM = (() => {
       histoire:"Au début du programme, un petit prototype trapu, posé sur trois jambes, ne fait que de petits sauts. Chaque hop vérifie qu'un moteur sait décoller, rester stable… et se reposer.",
       txt:'Un petit prototype décolle, monte à 150 m, puis se pose sur l\'autre plateforme, à 70 m de là.',
       vol:{ type:'saut', kind:'hop', cible:150, pad:{ x:70, tol:28 }, depart:{ phase:'vol' }, vent:.3, titre:'Saut à 150 m' } },
+    { id:'precision', court:'Précision', nom:'Saut de précision', ico:'🎯', equipe:{ ...E0, moteurs:1, logiciel:1, atterrisseur:1 }, etoiles:{ temps:70, carb:.3 }, chapitre:'Les débuts',
+      histoire:"Après le premier saut, les ingénieurs veulent savoir se poser exactement où il faut : la plateforme est plus loin et plus petite, et il y a un peu de vent.",
+      txt:'Monte à 150 m, puis glisse jusqu\'à la petite plateforme, 120 m plus loin, et pose-toi dessus.',
+      vol:{ type:'saut', kind:'hop', cible:150, pad:{ x:120, tol:20 }, depart:{ phase:'vol' }, vent:.6, titre:'Saut de précision' } },
     { id:'altitude', court:'5 km', nom:'Haute altitude', ico:'🛰️', equipe:{ ...E0, moteurs:1, logiciel:2, atterrisseur:2 }, etoiles:{ temps:130, carb:.08 }, chapitre:'Les débuts',
       histoire:'Ensuite viennent les vols plus hauts, avec la figure de style de Starship : couper les moteurs, descendre à plat comme une feuille, se retourner au dernier moment et se poser.',
       txt:'Monter à 5 km, couper les moteurs, descendre « à plat » comme une feuille, se retourner au dernier moment et se poser.',
       vol:{ type:'altitude', kind:'starship', cible:5000, pad:{ x:0, tol:36 }, belly:true, depart:{ phase:'vol' }, vent:.8, titre:'Vol à 5 km' } },
+    { id:'haute8', court:'8 km', nom:'Plus haut : 8 km', ico:'☁️', equipe:{ ...E0, moteurs:4, structure:3, bouclier:2, logiciel:3, atterrisseur:3 }, etoiles:{ temps:140, carb:.05 }, chapitre:'Les débuts',
+      histoire:"Les vols suivants montent encore plus haut : plus d'air mince à traverser, une chute plus longue et plus rapide. Le ventre à terre chauffe davantage.",
+      txt:'Monter à 8 km, couper les moteurs, descendre à plat en gardant le bouclier au frais, se retourner à temps et se poser.',
+      vol:{ type:'altitude', kind:'starship', cible:8000, pad:{ x:0, tol:34 }, belly:true, depart:{ phase:'vol' }, vent:.9, titre:'Vol à 8 km' } },
     { id:'falcon', court:'Falcon 9', nom:'Falcon 9 : un satellite en orbite', ico:'🛰️', equipe:{ ...E0, moteurs:2, structure:2, logiciel:2 }, etoiles:{ temps:120, carb:.3 }, chapitre:'Falcon 9 et Dragon',
       histoire:"La fusée à deux étages qui a rendu le lancement presque routinier : le premier étage pousse fort jusqu'à la séparation, puis le second étage place le satellite en orbite.",
       txt:'Décoller, suivre la trajectoire (relâche la poussée au passage de la pression maximale), séparer les deux étages au bon moment et mettre le satellite en orbite.',
@@ -28,10 +36,22 @@ window.STARSHIP_SIM = (() => {
       histoire:"Le premier étage ne finit pas à la mer : il revient se poser, debout, sur une barge qui l'attend au large. Ses ailettes de guidage le dirigent, puis un seul moteur le freine au dernier moment.",
       txt:'Le premier étage redescend : guide-le avec les ailettes (◀ ▶), allume au bon moment et pose-toi debout sur la barge.',
       vol:{ type:'barge', kind:'falcon9', decor:'mer', pad:{ x:0, tol:24 }, depart:{ phase:'vol', x:120, y:3500, vy:-150, vx:-5, carb:.6, th:1 }, vent:.9, titre:'Atterrissage sur la barge' } },
+    { id:'bargeVent', court:'Barge (vent)', nom:'Falcon 9 : la barge par grand vent', ico:'🌬️', equipe:{ ...E0, moteurs:2, logiciel:3, atterrisseur:4 }, etoiles:{ temps:75, carb:.4 }, chapitre:'Falcon 9 et Dragon',
+      histoire:"En mer, le vent ne prévient pas. Le premier étage doit corriger plus souvent sa trajectoire pour rester au-dessus de la barge, qui bouge un peu.",
+      txt:'Même atterrissage que sur la barge, mais avec un vent bien plus fort et un départ plus décalé : corrige tôt avec les ailettes.',
+      vol:{ type:'barge', kind:'falcon9', decor:'mer', pad:{ x:0, tol:22 }, depart:{ phase:'vol', x:210, y:3500, vy:-150, vx:-8, carb:.6, th:1 }, vent:1.7, titre:'Barge par grand vent' } },
     { id:'dragon', court:'Dragon', nom:'Dragon : retour sous parachutes', ico:'🛟', equipe:{ ...E0, structure:1, bouclier:3, logiciel:2, atterrisseur:2 }, etoiles:{ temps:200, vimp:10 }, chapitre:'Falcon 9 et Dragon',
       histoire:"La capsule Dragon revient de l'orbite : le bouclier thermique encaisse la rentrée, puis des parachutes la ralentissent jusqu'à la mer. Les ouvrir trop tôt, à pleine vitesse, les déchirerait.",
       txt:'Descendre sans bouffer le bouclier, puis ouvrir les parachutes quand la capsule est assez lente et pas trop haute, pour amerrir doucement.',
       vol:{ type:'dragon', kind:'dragon', decor:'mer', pad:{ x:0, tol:300 }, depart:{ phase:'capsule', x:-200, y:5500, vx:30, vy:-300, th:0 }, vent:.6, titre:'Retour de Dragon' } },
+    { id:'ecole', court:'Rentrée', nom:'École de rentrée', ico:'🔥', equipe:{ moteurs:3, structure:3, bouclier:3, logiciel:3, atterrisseur:3 }, etoiles:{ temps:190, carb:.25 }, chapitre:'Starship',
+      histoire:"Avant d'aller en orbite, un entraînement : le vaisseau est déjà là-haut, à vitesse orbitale, et ne pense qu'à rentrer. L'angle d'attaque décide de tout : brûler, rebondir, ou arriver en douceur.",
+      txt:'Le vaisseau commence au sommet de la rentrée. Garde le bon angle d\'attaque (losange bleu), puis chute à plat, retourne-toi et pose-toi sur la plateforme.',
+      vol:{ type:'rentree', kind:'starship', decor:'terre', pad:{ x:0, tol:42 }, belly:true, depart:{ phase:'rentree' }, rentree:{ y:9000, vy:-420, vx:30, x:-250, carb:.7, orb:{ y:100000, vx:7400, vy:-110 }, dist:3.97e6 }, vent:.9, titre:'École de rentrée' } },
+    { id:'boosterPose', court:'SH (sol)', nom:'Super Heavy : posé sur la plateforme', ico:'🛬', equipe:{ moteurs:3, structure:2, bouclier:2, logiciel:4, atterrisseur:5 }, etoiles:{ temps:60, carb:.5 }, chapitre:'Starship',
+      histoire:"Avant d'oser l'attraper en vol, on apprend au propulseur à se poser doucement, debout, sur sa plateforme : c'est la première étape du retour.",
+      txt:'Le propulseur redescend tout seul, droit. Guide-le avec les ailettes, allume au bon moment et pose-le doucement sur la plateforme.',
+      vol:{ type:'booster', kind:'superheavy', decor:'terre', pad:{ x:0, tol:30 }, depart:{ phase:'vol', x:190, y:3800, vy:-150, vx:-6, carb:.7, th:2 }, vent:.8, titre:'Super Heavy : pose' } },
     { id:'orbite', court:'Orbite', nom:'Starship : premier vol orbital', ico:'🌍', equipe:{ moteurs:3, structure:3, bouclier:3, logiciel:3, atterrisseur:2 }, etoiles:{ temps:290, carb:.2 }, chapitre:'Starship',
       histoire:"Le vrai défi : un vaisseau et son propulseur géant partent vers l'orbite. Le passage de la pression maximale est le moment le plus délicat de la montée.",
       txt:'Monter jusqu\'en orbite en suivant la trajectoire, se séparer du propulseur au bon moment, puis revenir : rentrée à plat, retournement, atterrissage.',
@@ -55,6 +75,10 @@ window.STARSHIP_SIM = (() => {
       histoire:"Starship doit aussi servir d'atterrisseur lunaire. Sans air, pas de ventre à terre : on descend debout, droit sur les moteurs, avec une pesanteur six fois plus faible.",
       txt:'Descendre debout vers la Lune : pas d\'air, donc pas d\'ailettes ; tout se joue au moteur et à l\'inclinaison. Pose-toi sur la plateforme.',
       vol:{ type:'lune', kind:'starship', decor:'lune', g:1.62, rho:0, pmax:.3, pad:{ x:0, tol:45 }, depart:{ phase:'vol', x:-60, y:2000, vy:-50, vx:0, carb:.55, th:0 }, vent:0, titre:'Alunissage' } },
+    { id:'lune2', court:'Lune (bis)', nom:'Starship HLS : plateforme décalée', ico:'🌖', equipe:{ moteurs:4, structure:3, bouclier:0, logiciel:3, atterrisseur:5 }, etoiles:{ temps:100, carb:.3 }, chapitre:'Au-delà',
+      histoire:"Sur la Lune, il n'y a pas de piste : le site d'alunissage est choisi à l'avance, et le vaisseau arrive toujours un peu à côté. Il faut le rattraper avant de toucher.",
+      txt:'Même alunissage, mais le vaisseau arrive de plus loin avec une vitesse latérale : corrige-la tôt et pose-toi sur la plateforme.',
+      vol:{ type:'lune', kind:'starship', decor:'lune', g:1.62, rho:0, pmax:.3, pad:{ x:0, tol:38 }, depart:{ phase:'vol', x:-220, y:2400, vy:-55, vx:9, carb:.55, th:0 }, vent:0, titre:'Alunissage décalé' } },
     { id:'mars', court:'Mars', nom:'Cap sur Mars', ico:'🔴', equipe:{ moteurs:6, structure:6, bouclier:6, logiciel:6, atterrisseur:6 }, etoiles:{ temps:190, carb:.2 }, chapitre:'Au-delà',
       histoire:"Le but final : se poser sur une autre planète. L'air y est presque absent, donc il faut se retourner et allumer beaucoup plus tôt.",
       txt:'Atterrir sur Mars : un air presque absent (le vaisseau freine mal), une pesanteur plus faible, et pas de tour pour vous attraper. Il faut allumer tôt.',
@@ -78,6 +102,7 @@ window.STARSHIP_SIM = (() => {
       carb:d.carb ?? 1, chaleur:0, contrainte:0, attaque:.4, jauge:0, etage:1, enVol:(d.y || 0) > 5, atteint:false, apogee:0, manque:false, fini:null, cause:'', msgs:[], flipT:0, tempsAuto:0,
       vent:(spec.vent ?? .5) * (opts.vent || 1), phi:(opts.phi ?? Math.random() * 6), action:false, gaz0:0, att:0, conso:0, budget:p.autonomie + (d.phase === 'programme' ? p.autonomieProg : 0), ecart:null, vImpact:null, angFinal:null };
     if(v.phase === 'programme'){ v.carb = 1; v.y = 0; v.enVol = false; v.th = 0; }
+    if(v.phase === 'rentree') debutRentree(v);
     return v;
   }
   const msg = (v, t, cls) => { v.msgs.push({ t, cls:cls || '', at:v.t }); };
@@ -136,7 +161,7 @@ window.STARSHIP_SIM = (() => {
     v.vx += ax * dt; v.vy += ay * dt; v.x += v.vx * dt; v.y += v.vy * dt;
     v.apogee = Math.max(v.apogee, v.y);
     const sp2 = v.spec;
-    if(sp2.type === 'saut' && !v.atteint && v.y >= sp2.cible){ v.atteint = true; msg(v, '150 m atteints : posez-vous sur l\'autre plateforme !', 'bon'); }
+    if(sp2.type === 'saut' && !v.atteint && v.y >= sp2.cible){ v.atteint = true; msg(v, `${sp2.cible} m atteints : posez-vous sur l'autre plateforme !`, 'bon'); }
     if((sp2.type === 'altitude') && !v.atteint && v.y + (v.vy > 0 ? v.vy * v.vy / (2 * g) : 0) >= sp2.cible){ v.atteint = true; msg(v, 'Apogée prévu atteint : coupez les moteurs !', 'bon'); }
     // retournement à plat : on le demande au sommet, quand on retombe sans poussée
     if(sp2.belly && v.atteint && !v.retourne && v.vy < -3 && v.gaz < .05){
@@ -160,8 +185,8 @@ window.STARSHIP_SIM = (() => {
     if(ang > p.angAtterr) return rud(v, `Atterrissage de travers : ${ang.toFixed(1)}° (au plus ${p.angAtterr.toFixed(1)}°).`);
     if(ecart > sp.pad.tol) return rud(v, `Posé à ${ecart.toFixed(0)} m de la plateforme (au plus ${sp.pad.tol} m) : il s'est renversé.`);
     v.vy = 0; v.vx = 0; v.gaz = 0;
-    if(sp.type === 'saut' && !v.atteint) return fin(v, 'partiel', 'Posé en douceur, mais il n\'est pas monté jusqu\'à 150 m.');
-    if(sp.type === 'altitude' && !v.atteint) return fin(v, 'partiel', 'Posé en douceur, mais sans avoir atteint 5 km.');
+    if(sp.type === 'saut' && !v.atteint) return fin(v, 'partiel', `Posé en douceur, mais il n'est pas monté jusqu'à ${sp.cible} m.`);
+    if(sp.type === 'altitude' && !v.atteint) return fin(v, 'partiel', `Posé en douceur, mais sans avoir atteint ${Math.round(sp.cible / 1000)} km.`);
     fin(v, 'succes', 'Posé en douceur sur la plateforme !');
   }
 
@@ -245,10 +270,7 @@ window.STARSHIP_SIM = (() => {
     }
     if(v.carb <= 0 && v.jauge < 1) return rud(v, 'Panne sèche avant d\'atteindre l\'orbite.');
     if(v.jauge >= 1 && v.spec.finOrbite){ v.gaz = 0; v.y = 120000; return fin(v, 'succes', 'Satellite en orbite !'); }
-    if(v.jauge >= 1 && v.spec.rentree.orb){
-      const r = v.spec.rentree; v.phase = 'rentree'; v.x = 0; v.y = r.orb.y; v.vx = r.orb.vx; v.vy = r.orb.vy; v.carb = r.carb; v.gaz = 0; v.aoa = 62; v.chaleur = 0; v.contrainte = 0; v.atteint = true; v.enVol = true; v.entre = false; v.flux = 0; v.gload = 0; v.th = 35;
-      msg(v, 'En orbite ! Freinage de rentrée : garde le bon angle d\'attaque.', 'bon'); return;
-    }
+    if(v.jauge >= 1 && v.spec.rentree.orb){ debutRentree(v); msg(v, 'En orbite ! Freinage de rentrée : garde le bon angle d\'attaque.', 'bon'); return; }
     if(v.jauge >= 1){
       const r = v.spec.rentree; v.phase = 'plat'; v.x = r.x; v.y = r.y; v.vx = r.vx; v.vy = r.vy; v.th = 90; v.carb = r.carb; v.gaz = 0; v.attaque = .4; v.chaleur = 0; v.contrainte = 0; v.atteint = true; v.enVol = true;
       msg(v, 'En orbite ! Rentrée dans l\'atmosphère…', 'bon');
@@ -269,6 +291,9 @@ window.STARSHIP_SIM = (() => {
     if(v.vy > 0 && v.y > 55000) a -= 16;                                             // ça remonte : on plonge
     if(v.y < 45000) a += clamp((45000 - v.y) / 25000, 0, 1) * 24;                    // plus bas : on se met à plat pour le freinage final
     return clamp(a, 24, 84);
+  }
+  function debutRentree(v){
+    const r = v.spec.rentree; v.phase = 'rentree'; v.x = 0; v.y = r.orb.y; v.vx = r.orb.vx; v.vy = r.orb.vy; v.carb = r.carb; v.gaz = 0; v.aoa = 62; v.chaleur = 0; v.contrainte = 0; v.atteint = true; v.enVol = true; v.entre = false; v.flux = 0; v.gload = 0; v.th = 35;
   }
   function pasRentree(v, e, dt, dir){
     v.gaz = 0;
