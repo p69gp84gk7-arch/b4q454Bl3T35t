@@ -194,7 +194,7 @@ window.DRAWRACE_3D = (() => {
   function charger(D){
     if(!ok) return;
     if(scene){ scene.traverse(o => { if(o.geometry) o.geometry.dispose(); }); }
-    scene = new T3.Scene(); monde = D; voitures = new Map(); tags.forEach(t => t.remove()); tags = new Map(); cam0.init = true;
+    scene = new T3.Scene(); monde = D; { let sx = 0, sz = 0; for(const q of D.pts){ sx += q[0]; sz += q[1]; } D.cx = sx / D.pts.length * S; D.cz = sz / D.pts.length * S; } voitures = new Map(); tags.forEach(t => t.remove()); tags = new Map(); cam0.init = true;
     anim = { drapeaux:[], nuages:[], roues:[], bateaux:[], foule:null, eau:null, lampes:[], feux:[], pluie:null, particules:null, vibre:[] };
     const nuit = !!D.nuit, n = D.pts.length;
     // le ciel, le brouillard, les lumières
@@ -284,7 +284,7 @@ window.DRAWRACE_3D = (() => {
     dune:() => [{ f:'boule', d:[1, 1], p:[0, .05, 0], s:[1.4, .36, 1.1], c:0xD9B96E }],
     rocher:(rnd) => [{ f:'boule', d:[.8, 0], p:[0, .25, 0], s:[1.1 + rnd() * .3, .6, .9 + rnd() * .3], r:[0, rnd() * 3, 0], c:0xA9A79F }, { f:'boule', d:[.4, 0], p:[.7, .15, .2], c:0xBDBAB0 }],
     cactus:() => [{ f:'cyl', d:[.14, .14, 1.4, 8], p:[0, .7, 0], c:0x5FA14F }, { f:'cyl', d:[.1, .1, .6, 8], p:[.35, .8, 0], c:0x5FA14F }, { f:'cyl', d:[.1, .1, .5, 8], p:[.5, 1.0, 0], r:[0, 0, 0], c:0x5FA14F }],
-    neige:() => [{ f:'boule', d:[1, 1], p:[0, .1, 0], s:[1.2, .5, 1], c:0xFFFFFF }, { f:'boule', d:[.6, 1], p:[.6, .05, .3], s:[1, .6, 1], c:0xE8F1FF }],
+    neige:() => [{ f:'boule', d:[1, 1], p:[0, .05, 0], s:[.9, .32, .75], c:0xDCE6F2 }, { f:'boule', d:[.6, 1], p:[.5, .03, .25], s:[.8, .4, .8], c:0xC9D8EA }],
     botte:() => [{ f:'cyl', d:[.6, .6, .8, 12], p:[0, .6, 0], r:[Math.PI / 2, 0, 0], c:0xE8C766 }, { f:'cyl', d:[.4, .4, .82, 12], p:[0, .6, 0], r:[Math.PI / 2, 0, 0], c:0xD9B24F }],
     maison:() => [{ f:'boite', d:[1.7, .9, 1.2], p:[0, .45, 0], c:0xF3E6C8 }, { f:'cone', d:[1.45, .7, 4], p:[0, 1.2, 0], r:[0, Math.PI / 4, 0], s:[1.05, 1, .75], c:0xC8553D }, { f:'boite', d:[.25, .5, .05], p:[0, .25, .62], c:0x6B4A2E }, { f:'boite', d:[.3, .25, .05], p:[.55, .55, .62], c:0x6FB2E0 }],
     immeuble:(rnd, D) => { const h = 1.0 + rnd() * 1.5, c = D.nuit ? [0x3A4766, 0x44507A, 0x323C58][Math.floor(rnd() * 3)] : [0xEDE4D3, 0xD8CCB6, 0xE3D1B6, 0xBFC8CF][Math.floor(rnd() * 4)]; const P = [{ f:'boite', d:[1.5, h, 1.2], p:[0, h / 2, 0], c }, { f:'boite', d:[1.1, .2, .8], p:[0, h + .1, 0], c:nu(c, -.2) }];
@@ -398,13 +398,20 @@ window.DRAWRACE_3D = (() => {
   // Les vues. « Course » : une vue haute et inclinée, loin derrière la voiture, comme dans les jeux de dessin de trajectoire (fausse 3D : la voiture monte vers le haut de l'écran) ;
   // « Carte » : la même vue haute, mais le nord reste en haut (comme le tracé) ; « 3/4 face » et « 3/4 arrière » : plus près de la voiture.
   // off : l'angle de la caméra autour de la voiture (0 = derrière, 180 = devant) ; lag : la caméra traîne un peu (pas quand elle est devant, sinon la voiture la rattrape)
-  const PRESETS = [{ nom:'Course', d:48, h:66, off:0, ahead:16, fov:44, lag:true, k:3.4 }, { nom:'Carte', d:48, h:68, off:0, ahead:16, fov:44, lag:true, fixe:true }, { nom:'3/4 face', d:12.5, h:3.8, off:148, ahead:.8, fov:52, lag:false, k:5 }, { nom:'3/4 arrière', d:13, h:4.4, off:36, ahead:3.5, fov:52, lag:true, k:5 }];
+  const PRESETS = [{ nom:'Fixe', point:true, h:44, large:96, fov:50, lag:true }, { nom:'Course', d:48, h:66, off:0, ahead:16, fov:44, lag:true, k:3.4 }, { nom:'Carte', d:48, h:68, off:0, ahead:16, fov:44, lag:true, fixe:true }, { nom:'3/4 face', d:12.5, h:3.8, off:148, ahead:.8, fov:52, lag:false, k:5 }, { nom:'3/4 arrière', d:13, h:4.4, off:36, ahead:3.5, fov:52, lag:true, k:5 }];
   function majCamera(dt){
     if(vue === 'dessus' || !E.voitures.length){
       cam.fov = 30; const hh = (H / 2) / Math.tan(cam.fov * Math.PI / 360); cam.position.set(W / 2, hh, H / 2); cam.up.set(0, 0, -1); cam.lookAt(W / 2, 0, H / 2); cam.updateProjectionMatrix(); cam0.init = true; return;
     }
     const d = E.voitures.find(x => x.id === E.suivre) || E.voitures[0], v = voitures.get(d.id); if(!v) return;
     const p = PRESETS[preset % PRESETS.length], x = d.x * S, z = d.y * S, a = p.fixe ? -Math.PI / 2 : d.a;
+    if(p.point){                          // une caméra de télévision sur un point fixe (au milieu du circuit, en hauteur) : elle tourne pour suivre la voiture, et zoome pour garder à peu près la moitié du circuit dans le champ
+      if(cam0.init){ cam0.x = x; cam0.z = z; cam0.init = false; }
+      cam0.x += (x - cam0.x) * Math.min(1, dt * 5); cam0.z += (z - cam0.z) * Math.min(1, dt * 5);
+      cam.position.set(monde.cx, p.h, monde.cz); cam.up.set(0, 1, 0);
+      const D = Math.hypot(cam0.x - monde.cx, cam0.z - monde.cz, p.h), vf = clamp(2 * Math.atan((p.large / cam.aspect / 2) / D) * 180 / Math.PI, 22, 78);
+      cam.fov += (vf - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); cam.lookAt(cam0.x, .6, cam0.z); return;
+    }
     if(cam0.init){ cam0.x = x; cam0.z = z; cam0.yaw = a; cam0.init = false; }
     // le cap est lissé : la caméra balance dans les virages, et la voiture reste dans la même position à l'écran
     let da = a - cam0.yaw; while(da > Math.PI) da -= 2 * Math.PI; while(da < -Math.PI) da += 2 * Math.PI;

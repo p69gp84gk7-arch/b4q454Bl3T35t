@@ -3,6 +3,7 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:208, type:'maj', jeu:'Draw Race', ico:'📺', lien:'jeux/drawrace.html', txt:"Nouvelle caméra par défaut : une caméra de télévision sur un point fixe, au milieu du circuit, qui tourne pour suivre ta voiture avec un champ assez large pour voir environ la moitié du circuit. Le bouton 📷 permet de revenir aux autres vues." },
   { v:207, type:'maj', jeu:'Draw Race', ico:'🌿', lien:'jeux/drawrace.html', txt:"Plus de pastilles de nom au-dessus des voitures en course, et des couleurs de décor plus douces (herbe, arbres, bâtiments, ciel). Les immeubles sont moins hauts et les nuages ne passent plus devant la caméra." },
   { v:206, type:'maj', jeu:'Draw Race', ico:'🛰️', lien:'jeux/drawrace.html', txt:"La caméra de course est encore plus haute et plus éloignée : on voit beaucoup plus de piste autour de la voiture." },
   { v:205, type:'maj', jeu:'Draw Race', ico:'🏎️', lien:'jeux/drawrace.html', txt:"La caméra de course est maintenant haute et éloignée, avec une fausse 3D à la Draw Race 2 : la voiture monte vers le haut de l'écran et on voit toute la piste autour. Les voitures sont plus détaillées et plus réalistes (vitres, phares, ailerons, suspensions, pneus colorés selon le mélange). Le bouton 📷 change de vue : Course, Carte, trois quarts face ou arrière." },
