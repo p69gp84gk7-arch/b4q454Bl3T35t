@@ -102,7 +102,7 @@ function majHud(){
 function majVitesse(){ [...$('hVit').children].forEach(b => b.classList.toggle('actif', +b.dataset.v === vitesse)); }
 $('hVit').onclick = e => { const b = e.target.closest('button'); if(!b) return; vitesse = +b.dataset.v; majVitesse(); };
 $('bMenu').onclick = () => ouvrir('menu');
-document.querySelector('.hud .argent').onclick = () => { if(panneau === 'banque') fermerPanneau(); else ouvrir('banque'); };
+document.querySelector('.hud .argent').onclick = () => { if(panneau === 'finance') fermerPanneau(); else ouvrir('finance'); };
 let toastsVus = [];
 function toasts(){
   if(!A.toasts.length) return;
@@ -141,7 +141,37 @@ const lacher = e => {
 cv.addEventListener('pointerup', lacher); cv.addEventListener('pointercancel', e => { doigts.delete(e.pointerId); geste = null; if(C.actif) C.lacher(); });
 cv.addEventListener('wheel', e => { e.preventDefault(); if(C.actif) return; S3.zoomer(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive:false });
 function etat2(){ const [a, b] = [...doigts.values()]; return { dist:Math.hypot(a.x - b.x, a.y - b.y), ang:Math.atan2(b.y - a.y, b.x - a.x) }; }
+// la bulle d'actions : on touche une construction ou un petit objet, une bulle propose de jouer, déplacer, tourner, améliorer…
+function fermerBulle(){ $('bulle').hidden = true; }
+function montrerBulle(x, y, titre, ico, sous, boutons){
+  const b = $('bulle');
+  b.innerHTML = `<div class="bt"><span>${ico}</span><span>${esc(titre)}</span><small>${esc(sous || '')}</small></div><div class="bb">${boutons.map((bt, i) => `<button data-b="${i}" class="${bt.cls || ''}" ${bt.off ? 'disabled' : ''}>${bt.txt}</button>`).join('')}</div>`;
+  b.hidden = false;
+  const lg = b.offsetWidth, hg = b.offsetHeight;
+  b.style.left = clamp(x, lg / 2 + 8, innerWidth - lg / 2 - 8) + 'px'; b.style.top = clamp(y, hg + 70, innerHeight - 80) + 'px';
+  b.querySelectorAll('[data-b]').forEach(el => el.onclick = e => { e.stopPropagation(); fermerBulle(); boutons[+el.dataset.b].fn(); });
+}
+function bulleCase(x, y, c){
+  const m = A.terminal.modules.find(o => o.x === c.x && o.y === c.y), q = m ? null : (A.terminal.petits || []).find(p => p.x === c.qx && p.y === c.qy) || (A.terminal.petits || []).find(p => Math.abs(p.x - c.qx) <= 1 && Math.abs(p.y - c.qy) <= 1);
+  if(!m && !q) return false;
+  const aDetails = () => { ouvrir('terminal'); selectionner(c); rafraichirPanneau(true); };
+  const deplacer = o => () => { ouvrir('terminal'); deplace = o; cible = null; rafraichirPanneau(true); };
+  if(m){
+    const Mo = M.MODULES[m.type], pa = m.niv < M.NIV_MAX ? M.prixAmelioration(Mo.prix, m.niv) : null, l = [];
+    if(POSTES_JEU[m.type]) l.push({ txt:`🎮 Jouer${m.type === 'comptoir' ? ' (bagages)' : ''}`, cls:'prim large', fn:() => lancerControle(m.type) });
+    l.push({ txt:'↔️ Déplacer', cls:POSTES_JEU[m.type] ? '' : 'prim', fn:deplacer(m) }, { txt:'↻ Tourner', fn:() => { M.tourner(m); sauver(); } });
+    if(pa) l.push({ txt:`⬆️ Niveau ${m.niv + 1} · ${court(pa)}`, off:P.argent < pa, fn:() => action(M.ameliorerModule(P, A, m)) });
+    l.push({ txt:'ℹ️ Détails', fn:aDetails });
+    montrerBulle(x, y, Mo.nom, Mo.ico, `niveau ${m.niv} · ${M.NOM_ZONE[M.zoneCase(A, m.x, m.y)]}`, l);
+  } else {
+    const O = M.PETITS[q.type];
+    montrerBulle(x, y, O.nom, O.ico, 'petit objet', [{ txt:'↔️ Déplacer', cls:'prim', fn:deplacer(q) }, { txt:'↻ Tourner', fn:() => { M.tourner(q); sauver(); } },
+      { txt:`🗑️ Enlever (+${court(O.prix * .5)})`, cls:'rouge', fn:() => { M.retirerPetit(P, A, q); sauver(); majHud(); } }, { txt:'ℹ️ Détails', fn:aDetails }]);
+  }
+  return true;
+}
 function toucher(x, y){
+  fermerBulle();
   if(C.actif){ C.toucher(x, y); return; }
   const enPlacement = panneau === 'terminal' && (outil || deplace);
   if(!enPlacement){ const id = S3.choisir(x, y); if(id){ selVol = id; S3.suivre(id); majCarteVol(); majObjectif(); return; } }
@@ -150,8 +180,7 @@ function toucher(x, y){
   if(enPlacement){ if(c.zone === 'case') agirCase(c); else alerte(S3.coupe ? 'Touche une case du terminal (en vert).' : 'Zoome sur le terminal pour voir ses cases.'); return; }
   if(selVol){ fermerCarteVol(); return; }
   if(c.zone === 'case'){
-    const m = A.terminal.modules.find(o => o.x === c.x && o.y === c.y);
-    if(m && POSTES_JEU[m.type]){ lancerControle(m.type); return; }
+    if(bulleCase(x, y, c)) return;
     if(panneau !== 'terminal') ouvrir('terminal');
     selectionner(c); rafraichirPanneau(true); return;
   }
@@ -210,20 +239,22 @@ function majCarteVol(){
 }
 
 /* ---------- Les panneaux ---------- */
-const TITRES = { planning:'Planning des portes', compagnies:'Compagnies', sol:'Opérations au sol', terminal:'Terminal', hangar:'Hangar', aeroports:'Aéroports', menu:'Menu', banque:'Banque' };
-const PANNEAUX_VIVANTS = ['planning', 'sol', 'terminal'];
+const TITRES = { planning:'Planning des portes', compagnies:'Compagnies', sol:'Opérations au sol', terminal:'Terminal', finance:'Finance', hangar:'Hangar', aeroports:'Aéroports', menu:'Menu', banque:'Banque' };
+const PANNEAUX_VIVANTS = ['planning', 'sol', 'terminal', 'finance'];
 document.querySelector('.onglets').onclick = e => { const b = e.target.closest('button'); if(!b) return; if(panneau === b.dataset.p) fermerPanneau(); else ouvrir(b.dataset.p); };
 $('pFermer').onclick = () => fermerPanneau();
 function ouvrir(p){
+  fermerBulle();
+  if(p === 'banque'){ sousOnglet.fin = 'banque'; p = 'finance'; }
   panneau = p; $('panneau').hidden = false; $('pTitre').textContent = TITRES[p];
   [...document.querySelectorAll('.onglets button')].forEach(b => b.classList.toggle('actif', b.dataset.p === p));
-  placement = null; selModule = null; selPetit = null; outil = null; deplace = null; $('panneau').classList.remove('compact');
+  placement = null; selModule = null; selPetit = null; outil = null; deplace = null; $('panneau').classList.remove('compact'); $('panneau').classList.toggle('large', p === 'planning');
   rafraichirPanneau(true); majObjectif();
 }
-function fermerPanneau(){ panneau = null; $('panneau').hidden = true; outil = null; deplace = null; $('panneau').classList.remove('compact'); [...document.querySelectorAll('.onglets button')].forEach(b => b.classList.remove('actif')); placement = null; majObjectif(); }
+function fermerPanneau(){ panneau = null; $('panneau').hidden = true; outil = null; deplace = null; $('panneau').classList.remove('compact'); $('panneau').classList.remove('large'); [...document.querySelectorAll('.onglets button')].forEach(b => b.classList.remove('actif')); placement = null; majObjectif(); }
 function rafraichirPanneau(complet = false){
   if(!panneau) return;
-  const f = { planning:pPlanning, compagnies:pCompagnies, sol:pSol, terminal:pTerminal, hangar:pHangar, aeroports:pAeroports, menu:pMenu, banque:pBanque }[panneau];
+  const f = { planning:pPlanning, compagnies:pCompagnies, sol:pSol, terminal:pTerminal, finance:pFinance, hangar:pHangar, aeroports:pAeroports, menu:pMenu, banque:pFinance }[panneau];
   const box = $('pCorps'), haut = box.scrollTop;
   // garder la position du planning (défilement horizontal)
   const pl = box.querySelector('.planning'), gauche = pl ? pl.scrollLeft : null;
@@ -233,13 +264,17 @@ function rafraichirPanneau(complet = false){
 }
 const ongletsHtml = (cle, l) => `<div class="sousOng">${l.map(([k, n]) => `<button data-so="${k}" class="${(sousOnglet[cle] || l[0][0]) === k ? 'actif' : ''}">${n}</button>`).join('')}</div>`;
 function brancherOnglets(box, cle){ box.querySelectorAll('[data-so]').forEach(b => b.onclick = () => { sousOnglet[cle] = b.dataset.so; rafraichirPanneau(true); }); }
-function alerte(err){ if(err){ if(/^Pas assez d'argent/.test(err) && panneau !== 'banque' && M.plafond(P, A) >= M.BANQUE.mini) err += ' Touche ton argent en haut pour emprunter à la 🏦 banque.'; A.toasts.push({ txt:'⚠️ ' + err, type:'mal' }); toasts(); return true; } return false; }
+function alerte(err){ if(err){ if(/^Pas assez d'argent/.test(err) && !(panneau === 'finance' && sousOnglet.fin === 'banque') && M.plafond(P, A) >= M.BANQUE.mini) err += ' Touche ton argent en haut pour emprunter à la 🏦 banque (💰 Finance).'; A.toasts.push({ txt:'⚠️ ' + err, type:'mal' }); toasts(); return true; } return false; }
 const action = (err, apres = () => {}) => { if(!alerte(err)){ apres(); majHud(); rafraichirPanneau(); sauver(); } };
 
 /* ----- Le planning ----- */
 let placement = null, selContrat = null;
-const PX_MIN = 2;                       // largeur d'une minute dans la grille
+let PX_MIN = 2;                         // largeur d'une minute dans la grille (le zoom du planning change cette valeur)
+let zoomPlan = null;                    // le zoom choisi (px par minute) dans la grande fenêtre
 function pPlanning(box, complet){
+  // la grande fenêtre : zoom du planning, lignes plus hautes ; à gauche la liste, à droite la grille (si l'écran est assez large)
+  const large = $('panneau').classList.contains('large'), cote = large && innerWidth >= 900;
+  if(large){ if(zoomPlan == null) zoomPlan = innerWidth >= 1100 ? 3.4 : innerWidth >= 700 ? 2.8 : 2.4; PX_MIN = zoomPlan; } else PX_MIN = 2;
   const aProg = A.contrats.filter(c => c.porte == null);
   const J = A.jourStats, b = A.bilanJour;
   let h = '';
@@ -247,12 +282,17 @@ function pPlanning(box, complet){
   else if(!A.contrats.length) h += `<p class="leg">Pas encore de vol. Va dans 🤝 Compagnies pour accepter un contrat.</p>`;
   if(placement){ const c = A.contrats.find(x => x.id === placement); h += `<p class="leg"><b>Touche une place verte</b> pour poser ${esc(c.num)} : arrivée entre ${hm(c.fenetre[0])} et ${hm(c.fenetre[1])}, escale de ${c.rot} min. Le vert, c'est ce qui est libre ; l'orange, ce que la compagnie accepte. <button class="btn" id="plAnnuler">Annuler</button></p>`; }
   else if(A.contrats.some(c => c.porte != null)) h += `<p class="leg">Glisse un vol dans la grille pour le déplacer — d'une heure à l'autre, d'une porte à l'autre. Touche-le pour le régler à la minute.</p>`;
-  h += `<div class="planning" id="planning"><div class="grille" style="width:${46 + 1440 * PX_MIN}px">${grille()}</div></div>`;
+  const hGauche = h; h = '';
+  const barre = large ? `<div class="ligneB barrePlan"><button class="btn" id="plZm">−</button><span class="leg">Zoom</span><button class="btn" id="plZp">+</button><button class="btn" id="plNow">⏱ Maintenant</button><span class="leg">Glisse un vol pour le déplacer, touche-le pour le régler.</span></div>` : '';
+  const hGrille = `${barre}<div class="planning ${large ? 'grand' : ''}" id="planning"><div class="grille" style="width:${46 + 1440 * PX_MIN}px;--hrang:${large ? 64 : 46}px;--hh:${30 * PX_MIN}px">${grille()}</div></div>`;
   if(selContrat){ const c = A.contrats.find(x => x.id === selContrat); if(c) h += `<div class="bloc">${carteContrat(c, false)}</div>`; else selContrat = null; }
   h += `<div class="bloc"><h3>Aujourd'hui</h3><div class="stats"><div><b>${J.vols}</b>vols partis</div><div><b>${J.retards}</b>retards</div><div><b>${court(J.revenus + J.commerce + J.services + (J.primes || 0) - J.penalites - J.achats)}</b>gagnés</div><div><b>${J.nSatisf ? Math.round(J.satisf / J.nSatisf) + ' %' : '—'}</b>satisfaction</div></div>
     ${b ? `<h3 style="margin-top:6px">Hier (jour ${b.jour})</h3><p class="leg">${b.vols} vols · ${b.retards} retards · redevances ${court(b.revenus)} · services ${court(b.services || 0)}${b.primes ? ` · primes ${court(b.primes)}` : ''} · commerces ${court(b.commerce)} · carburant acheté ${court(b.achats || 0)} · pénalités ${court(b.penalites)} · entretien ${court(b.depenses)}${b.credit ? ` · 🏦 prêts ${court(b.credit)}` : ''} · <b>${b.net >= 0 ? '+' : ''}${court(b.net)}</b>${b.satisf != null ? ` · satisfaction ${b.satisf} %` : ''}</p>` : ''}</div>`;
-  box.innerHTML = h;
+  box.innerHTML = cote ? `<div class="planLarge"><div class="planGauche">${hGauche}${h}</div><div class="planDroite">${hGrille}</div></div>` : large ? hGrille + hGauche + h : hGauche + hGrille + h;
   const pl = $('planning');
+  if($('plZm')) $('plZm').onclick = () => { zoomPlan = clamp(zoomPlan / 1.3, 1.2, 8); rafraichirPanneau(true); };
+  if($('plZp')) $('plZp').onclick = () => { zoomPlan = clamp(zoomPlan * 1.3, 1.2, 8); rafraichirPanneau(true); };
+  if($('plNow')) $('plNow').onclick = () => { pl.scrollLeft = Math.max(0, M.minuteDe(A.t) * PX_MIN - 80); };
   if(complet){ const m = M.minuteDe(A.t); pl.scrollLeft = Math.max(0, m * PX_MIN - 60); if(placement){ const c = A.contrats.find(x => x.id === placement); pl.scrollLeft = Math.max(0, c.fenetre[0] * PX_MIN - 40); } }
   box.querySelectorAll('[data-auto]').forEach(b => b.onclick = () => { const c = A.contrats.find(x => x.id === b.dataset.auto), pos = M.placementAuto(A, c); if(!pos){ alerte('Pas de place libre pour ce vol : agrandis une porte ou achètes-en une (🚚 Sol).'); return; } action(M.placer(A, c.id, pos.porte, pos.arr)); });
   box.querySelectorAll('[data-choisir]').forEach(b => b.onclick = () => { placement = b.dataset.choisir; rafraichirPanneau(true); });
@@ -827,6 +867,47 @@ function pAeroports(box){
   box.querySelectorAll('[data-deb]').forEach(b => b.onclick = () => { const D = M.AEROPORTS[b.dataset.deb]; if(!confirm(`Débloquer ${D.nom} pour ${court(D.deblocage.prix)} ?`)) return; const err = M.debloquer(P, b.dataset.deb); if(!alerte(err)){ sauver(); changerAeroport(b.dataset.deb); } });
 }
 
+/* ----- La finance : les comptes, les redevances des commerces et la banque ----- */
+const nomCat = (s2, c) => (M.CATS[s2] || {})[c] || c;
+function pFinance(box, complet){
+  const so = sousOnglet.fin || 'comptes';
+  const ong = ongletsHtml('fin', [['comptes', '📒 Comptes'], ['redev', '🛍️ Redevances'], ['banque', `🏦 Banque${M.dette(P) ? ' · ' + court(M.dette(P)) : ''}`]]);
+  if(so === 'banque'){ box.innerHTML = ong + '<div id="finCorps"></div>'; brancherOnglets(box, 'fin'); pBanque($('finCorps')); return; }
+  if(so === 'redev') return pRedevances(box, ong);
+  const per = sousOnglet.finPer || 'jour', c = M.comptes(P, A, per), J = A.jourStats;
+  const lignes = (o, cl) => { const l = Object.entries(o).sort((a, b) => b[1] - a[1]), tot = Math.max(1, Object.values(o).reduce((a, b) => a + b, 0)); return l.length ? l.map(([k, v]) => `<div class="ligFin ${cl}"><span>${esc(nomCat(cl, k))}</span><b>${cl === 'e' ? '+' : '−'}${court(v)}</b><i><u style="width:${Math.round(v / tot * 100)}%"></u></i></div>`).join('') : '<p class="leg">Rien pour l\'instant.</p>'; };
+  const histo = A.historique.slice(0, 14).slice().reverse().map(b => b.net).concat([M.comptes(P, A, 'jour').net]);
+  const lib = (P.compta ? P.compta.lignes : []).filter(l => l.ap === A.id).slice(0, 40);
+  box.innerHTML = ong + `<div class="ligneB">${[['jour', 'Aujourd\'hui'], ['semaine', '7 jours'], ['tout', 'Tout']].map(([k, n]) => `<button class="btn ${per === k ? 'bleu' : ''}" data-per="${k}">${n}</button>`).join('')}</div>
+    <div class="stats"><div><b>${court(P.argent)}</b>en caisse</div><div><b style="color:#1B7A3A">+${court(c.totE)}</b>entrées</div><div><b style="color:#C0272D">−${court(c.totD)}</b>dépenses</div><div><b style="color:${c.net >= 0 ? '#1B7A3A' : '#C0272D'}">${c.net >= 0 ? '+' : '−'}${court(Math.abs(c.net))}</b>résultat</div></div>
+    <div class="fin2"><div class="bloc"><h3>📥 Entrées</h3>${lignes(c.entrees, 'e')}</div><div class="bloc"><h3>📤 Dépenses</h3>${lignes(c.depenses, 'd')}</div></div>
+    <div class="bloc"><h3>📈 Résultat des derniers jours</h3><canvas class="chartFin" id="chartFin"></canvas><p class="leg">La dernière barre est la journée en cours. Vert : bénéfice ; rouge : perte (les gros achats pèsent sur le jour où on les fait).</p></div>
+    <div class="bloc"><h3>🛍️ Les commerces aujourd'hui</h3><p class="leg">Ventes des commerces : <b>${court(J.ventes || 0)}</b> · redevances touchées par l'aéroport : <b>${court(J.commerce)}</b> (voir 🛍️ Redevances pour régler les taux).</p></div>
+    <div class="bloc"><h3>📒 Journal des comptes</h3><div class="journalFin">${lib.length ? lib.map(l => `<div class="${l.s}"><span>J${l.j}</span><span>${esc(nomCat(l.s, l.c))}${l.t ? ' · ' + esc(l.t) : ''}</span><b>${l.s === 'e' ? '+' : '−'}${court(l.m)}</b></div>`).join('') : '<div><span></span><span>Aucune écriture pour l\'instant.</span><b></b></div>'}</div>
+      <p class="leg">Le journal garde les achats, les cadeaux, les prêts et le résumé de chaque journée.</p></div>`;
+  brancherOnglets(box, 'fin');
+  box.querySelectorAll('[data-per]').forEach(b => b.onclick = () => { sousOnglet.finPer = b.dataset.per; rafraichirPanneau(true); });
+  const cv = $('chartFin'); if(cv) dessinerHisto(cv, histo);
+}
+function dessinerHisto(cv, v){
+  const w = cv.clientWidth || 300, h = 130, dpr = Math.min(2, devicePixelRatio || 1); cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const max = Math.max(1000, ...v.map(Math.abs)), y0 = h / 2, bw = w / Math.max(v.length, 1);
+  g.strokeStyle = '#C9D1DC'; g.beginPath(); g.moveTo(0, y0); g.lineTo(w, y0); g.stroke();
+  v.forEach((x, i) => { const hh = Math.abs(x) / max * (h / 2 - 8); g.fillStyle = x >= 0 ? '#2BA84A' : '#E5383B'; g.globalAlpha = i === v.length - 1 ? .55 : 1; g.fillRect(i * bw + 3, x >= 0 ? y0 - hh : y0, bw - 6, Math.max(1, hh)); });
+  g.globalAlpha = 1; g.fillStyle = '#5B6B82'; g.font = '700 10px sans-serif'; g.textAlign = 'left'; g.fillText(`+${court(max)}`, 2, 10); g.fillText(`−${court(max)}`, 2, h - 3);
+}
+// les redevances : le pourcentage des ventes des commerces que touche l'aéroport
+function pRedevances(box, ong){
+  const J = A.jourStats, b = A.bilanJour, fams = Object.keys(M.TAUX_BASE).filter(f => f !== 'salon' || A.terminal.modules.some(m => m.type === 'salon'));
+  box.innerHTML = ong + `<div class="bloc"><h3>🛍️ Redevances des commerces</h3><p class="leg">Les commerces sont tenus par des concessionnaires : l'aéroport touche un <b>pourcentage de leurs ventes</b> (une redevance). Tu fixes le taux de chaque famille. Plus il est haut, plus tu touches par vente, mais les prix montent : les passagers achètent moins et sont un peu moins contents.</p>
+    <div class="stats"><div><b>${court(J.ventes || 0)}</b>de ventes aujourd'hui</div><div><b>${court(J.commerce)}</b>de redevances aujourd'hui</div>${b ? `<div><b>${court(b.ventes || 0)}</b>de ventes hier</div><div><b>${court(b.commerce)}</b>de redevances hier</div>` : ''}</div></div>
+    <div class="bloc">${fams.map(f => { const t = M.tauxDe(A, f), base = M.TAUX_BASE[f], vol = M.volumeVentes(A, f), nb = A.terminal.modules.filter(m => M.MODULES[m.type].depense && (m.type === 'salon' ? 'salon' : M.MODULES[m.type].famille) === f).length + (f === 'petit' ? (A.terminal.petits || []).filter(p => M.PETITS[p.type].commerce).length : 0);
+      return `<div class="tauxLig"><div><b>${M.NOM_TAUX[f][0]} ${esc(M.NOM_TAUX[f][1])}</b><small class="leg">${nb} établissement${nb > 1 ? 's' : ''} · taux conseillé ${Math.round(base * 100)} % · ventes ${Math.round(vol * 100)} % du normal${t > base + .001 ? ' <span class="mal">· prix élevés</span>' : ''}</small></div><div class="ctl"><button class="btn" data-taux="${f}:-1">−</button><b>${Math.round(t * 100)} %</b><button class="btn" data-taux="${f}:1">+</button></div></div>`; }).join('')}
+      <p class="leg">À ${Math.round(M.TAUX_MIN * 100)} %, les concessionnaires cassent les prix mais tu touches très peu ; au-delà de ${Math.round(M.TAUX_MAX * 100)} % ce n'est plus possible. Le meilleur rendement est souvent un peu au-dessus du taux conseillé.</p></div>`;
+  brancherOnglets(box, 'fin');
+  box.querySelectorAll('[data-taux]').forEach(bt => bt.onclick = () => { const [f, d] = bt.dataset.taux.split(':'); action(M.reglerTaux(A, f, +d * .01), () => rafraichirPanneau(true)); });
+}
 /* ----- La banque : emprunter, financer un investissement, rembourser ----- */
 const bq = { montant:null, duree:14 };
 // les gros achats possibles ici, pour les financer avec un prêt

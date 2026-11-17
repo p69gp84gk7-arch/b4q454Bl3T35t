@@ -67,6 +67,8 @@ window.ESCALE_MONDE = (() => {
     ventre:{ nom:'Ventre coloré' },
     speciale:{ nom:'Spéciale (tout en couleur)' },
     or:{ nom:'Or (prestige)' },
+    degrade:{ nom:'Dégradé (du nez à la queue)' },
+    pointes:{ nom:'Pointes colorées' },
   };
 
   /* ---------- Les trois aéroports (inventés) ---------- */
@@ -118,7 +120,7 @@ window.ESCALE_MONDE = (() => {
     A.hangars = A.hangars || {};
     if(A.hangars[k]) return 'Ce hangar est déjà construit.';
     if(k === 'hiver' && !AEROPORTS[A.id].neige) return 'Il ne neige jamais ici : ce hangar ne servirait à rien.';
-    if(!payer(P, H.prix)) return 'Pas assez d\'argent.';
+    if(!payer(P, H.prix, `Hangar : ${H.nom}`)) return 'Pas assez d\'argent.';
     A.hangars[k] = true;
     journal(A, `🏗️ ${H.nom} construit : jusqu'à 6 véhicules, améliorables, et un entretien allégé.`, 'bon');
     return null;
@@ -234,13 +236,16 @@ window.ESCALE_MONDE = (() => {
   const xpNiveau = n => Math.round(150 * Math.pow(n - 1, 1.6));       // l'expérience totale pour atteindre le niveau n
   function niveauDe(xp){ let n = 1; while(xp >= xpNiveau(n + 1)) n++; return n; }
   const xpConfiance = k => Math.round(25 * Math.pow(k, 1.35));         // la confiance d'une compagnie pour son palier k
-  const PALIERS = 10;
+  const PALIERS = 20;
   // les récompenses du « passe de confiance » de chaque compagnie
   const RECOMPENSES = [
     { argent:15000 }, { livree:'bande' }, { argent:30000 }, { vehicule:'bagages' }, { bonus:.05 },
     { livree:'ventre' }, { argent:80000 }, { vehicule:'carburant' }, { livree:'speciale', bonus:.05 }, { livree:'or', argent:200000 },
+    // les paliers 11 à 20 (v222) : encore plus de cadeaux
+    { argent:120000 }, { livree:'degrade' }, { xp:300 }, { vehicule:'repas' }, { bonus:.04, carbu:60000 },
+    { argent:250000, xp:200 }, { livree:'pointes' }, { vehicule:'tech' }, { bonus:.05, argent:400000 }, { argent:1000000, xp:1500, bonus:.08 },
   ];
-  const texteRecompense = r => [r.argent ? `${euros(r.argent)}` : '', r.livree ? `livrée « ${LIVREES[r.livree].nom} »` : '', r.vehicule ? `${VEHICULES[r.vehicule].nom.toLowerCase()} offert` : '', r.bonus ? `+${Math.round(r.bonus * 100)} % sur ses vols` : ''].filter(Boolean).join(' + ');
+  const texteRecompense = r => [r.argent ? `${euros(r.argent)}` : '', r.livree ? `livrée « ${LIVREES[r.livree].nom} »` : '', r.vehicule ? `${VEHICULES[r.vehicule].nom.toLowerCase()} offert` : '', r.bonus ? `+${Math.round(r.bonus * 100)} % sur ses vols` : '', r.xp ? `${r.xp} points d'expérience` : '', r.carbu ? `${Math.round(r.carbu / 1000)} 000 L de kérosène` : ''].filter(Boolean).join(' + ');
   const euros = n => `${Math.round(n).toLocaleString('fr-FR')} €`;
 
   // les objectifs (pour démarrer)
@@ -257,6 +262,23 @@ window.ESCALE_MONDE = (() => {
     { id:'palier', txt:'Atteins le palier 3 de confiance avec une compagnie', gain:40000, ok:P => Object.values(P.compagnies).some(c => paliersAtteints(c.xp) >= 3) },
     { id:'portazur', txt:'Débloque Port-Azur (🗺️ Aéroports)', gain:100000, ok:P => !!P.aeroports.portazur },
     { id:'grandval', txt:'Débloque Grand-Val', gain:300000, ok:P => !!P.aeroports.grandval },
+    // les objectifs de la v222
+    { id:'banque', txt:'Prends un prêt à la banque (💰 Finance)', gain:10000, ok:P => (P.banque && (P.banque.prets.length > 0 || P.banque.rembourses > 0)) },
+    { id:'prime', txt:'Gagne une prime de mini-jeu (☰ Menu)', gain:15000, ok:(P, A) => !!A.primes && Object.keys(A.primes).length > 0 },
+    { id:'commerces3', txt:'Aie 3 commerces (restaurants, cafés, bars, boutiques)', gain:15000, ok:(P, A) => A.terminal.modules.filter(m => MODULES[m.type].depense).length >= 3 },
+    { id:'dutyfree', txt:'Ouvre un commerce aux Arrivées (duty-free)', gain:20000, ok:(P, A) => A.terminal.modules.some(m => m.y >= 1 && MODULES[m.type].depense && zoneCol(A, m.x) === 'arr') },
+    { id:'pax1000', txt:'Fais voyager 1 000 passagers', gain:30000, ok:P => P.stats.pax >= 1000 },
+    { id:'portes4', txt:'Ouvre 4 portes d\'embarquement', gain:30000, ok:(P, A) => A.portes.length >= 4 },
+    { id:'redevances', txt:'Touche 10 000 € de redevances de commerces en une journée', gain:40000, ok:(P, A) => A.historique.some(b => b.commerce >= 10000) },
+    { id:'piste', txt:'Allonge la piste (🚚 Sol › Pistes)', gain:50000, ok:(P, A) => (A.pisteExt || 0) > 0 },
+    { id:'immo', txt:'Construis un bâtiment d\'immobilier (🏢 Terminal)', gain:60000, ok:(P, A) => (A.immo || []).length > 0 },
+    { id:'vols100', txt:'Fais partir 100 vols', gain:60000, ok:P => P.stats.vols >= 100 },
+    { id:'palier5', txt:'Atteins le palier 5 de confiance avec une compagnie', gain:80000, ok:P => Object.values(P.compagnies).some(c => paliersAtteints(c.xp) >= 5) },
+    { id:'niv10', txt:'Atteins le niveau 10', gain:100000, ok:P => niveauDe(P.xp) >= 10 },
+    { id:'pax10000', txt:'Fais voyager 10 000 passagers', gain:150000, ok:P => P.stats.pax >= 10000 },
+    { id:'palier10', txt:'Atteins le palier 10 de confiance avec une compagnie', gain:200000, ok:P => Object.values(P.compagnies).some(c => paliersAtteints(c.xp) >= 10) },
+    { id:'niv20', txt:'Atteins le niveau 20', gain:300000, ok:P => niveauDe(P.xp) >= 20 },
+    { id:'palier20', txt:'Atteins le palier 20 de confiance avec une compagnie', gain:1000000, ok:P => Object.values(P.compagnies).some(c => paliersAtteints(c.xp) >= 20) },
   ];
   const paliersAtteints = xp => { let k = 0; while(k < PALIERS && xp >= xpConfiance(k + 1)) k++; return k; };
 
@@ -276,7 +298,7 @@ window.ESCALE_MONDE = (() => {
     return A;
   }
   const nomPorte = i => (i < 8 ? 'A' : 'B') + String((i % 8) + 1).padStart(2, '0');
-  const nouveauJour = () => ({ vols:0, retards:0, minutesRetard:0, revenus:0, commerce:0, services:0, detail:{}, achats:0, litres:0, penalites:0, depenses:0, credit:0, pax:0, satisf:0, nSatisf:0, manques:0, primes:0 });
+  const nouveauJour = () => ({ ventes:0, immo:0, vols:0, retards:0, minutesRetard:0, revenus:0, commerce:0, services:0, detail:{}, achats:0, litres:0, penalites:0, depenses:0, credit:0, pax:0, satisf:0, nSatisf:0, manques:0, primes:0 });
   function nouvelleUnite(A, type){ const n = A.unites.filter(u => u.type === type).length; return { id:type + n, type, n, etat:'libre', vol:null, tache:null, t0:0, duree:0 }; }
   const jourDe = t => Math.floor(t / JOUR) + 1;
   const minuteDe = t => ((t % JOUR) + JOUR) % JOUR;
@@ -332,7 +354,7 @@ window.ESCALE_MONDE = (() => {
   }
   function agrandirCuve(P, A){
     const C = A.carbu; if(C.niv >= CUVE_MAX) return 'La cuve est déjà au maximum.';
-    const prix = CUVE.prix[C.niv + 1]; if(!payer(P, prix)) return 'Pas assez d\'argent.';
+    const prix = CUVE.prix[C.niv + 1]; if(!payer(P, prix, 'Cuve à carburant')) return 'Pas assez d\'argent.';
     C.niv++; journal(A, `🛢️ La cuve passe au niveau ${C.niv} : ${capCuve(C).toLocaleString('fr-FR')} litres.`, 'bon'); return null;
   }
 
@@ -352,7 +374,7 @@ window.ESCALE_MONDE = (() => {
     if(!peutAllonger(A)) return 'La piste accepte déjà les plus gros avions.';
     const t = prochaineTaille(A);
     if(niveauDe(P.xp) < NIV_ALLONGER[t]) return `Il faut le niveau ${NIV_ALLONGER[t]} pour accueillir les avions ${t}.`;
-    if(!payer(P, prixAllonger(A))) return 'Pas assez d\'argent.';
+    if(!payer(P, prixAllonger(A), 'Piste allongée')) return 'Pas assez d\'argent.';
     A.pisteExt = (A.pisteExt || 0) + 1;
     journal(A, `🛬 Piste allongée de 300 m (${pisteLongueur(A)} m) : les avions ${t} peuvent maintenant se poser. Agrandis tes portes (🚚 Sol) pour les accueillir.`, 'bon');
     return null;
@@ -429,10 +451,25 @@ window.ESCALE_MONDE = (() => {
   }
   const VITESSE_ROULAGE = 130;                                       // mètres par minute de jeu (dessin accéléré)
 
+  /* ---------- Les redevances des commerces : les commerces appartiennent à des concessionnaires, l'aéroport touche un pourcentage de leurs ventes ----------
+     Chaque famille a un taux par défaut ; on peut le changer (🏦 Finance › Redevances) : un taux plus haut rapporte plus par client mais fait monter les prix, donc vend moins
+     et déplaît un peu aux passagers. */
+  const TAUX_BASE = { restaurant:.15, cafe:.15, bar:.18, boutique:.2, service:.2, petit:.25, salon:.2 };
+  const NOM_TAUX = { restaurant:['🍽️', 'Restaurants'], cafe:['☕', 'Cafés'], bar:['🍸', 'Bars'], boutique:['🛍️', 'Boutiques'], service:['🧳', 'Services'], petit:['🥤', 'Petits commerces (machines, kiosques…)'], salon:['🥂', 'Salon VIP'] };
+  const TAUX_MIN = .05, TAUX_MAX = .4;
+  const tauxDe = (A, f) => (A.taux && A.taux[f] != null) ? A.taux[f] : TAUX_BASE[f];
+  const volumeVentes = (A, f) => clamp(1 - (tauxDe(A, f) - TAUX_BASE[f]) * 1.6, .35, 1.4);      // un loyer plus cher fait monter les prix : moins de ventes
+  const penaliteTaux = A => { const fs = [...new Set(A.terminal.modules.map(m => MODULES[m.type].famille === 'attente' && m.type === 'salon' ? 'salon' : MODULES[m.type].depense ? MODULES[m.type].famille : null).filter(Boolean))]; return fs.length ? Math.min(6, fs.reduce((s2, f) => s2 + Math.max(0, tauxDe(A, f) - TAUX_BASE[f]) * 28, 0) / fs.length) : 0; };
+  function reglerTaux(A, f, delta){
+    if(!TAUX_BASE[f]) return 'Famille inconnue.';
+    const t = Math.round((tauxDe(A, f) + delta) * 100) / 100;
+    if(t < TAUX_MIN || t > TAUX_MAX) return `Le taux va de ${Math.round(TAUX_MIN * 100)} % à ${Math.round(TAUX_MAX * 100)} %.`;
+    (A.taux = A.taux || {})[f] = t; return null;
+  }
   /* ---------- Le terminal : les capacités ---------- */
   function capacites(A){
     const c = { passeports:0, douane:0, comptoirs:0, postes:0, tapis:0, places:0, toilettes:0, jeux:0, salon:0, deco:0, proprete:0, commerce:[], commerceArr:[], restaurant:0, cafe:0 };
-    for(const p of A.terminal.petits || []){ const O = PETITS[p.type]; if(O.places) c.places += O.places; if(O.deco) c.deco += O.deco; if(O.proprete) c.proprete += O.proprete; if(O.commerce) c.commerce.push({ ...O.commerce }); }
+    for(const p of A.terminal.petits || []){ const O = PETITS[p.type]; if(O.places) c.places += O.places; if(O.deco) c.deco += O.deco; if(O.proprete) c.proprete += O.proprete; if(O.commerce) c.commerce.push({ ...O.commerce, fam:'petit' }); }
     for(const m of A.terminal.modules){
       const M = MODULES[m.type], f = facteurNiv(m.niv);
       if(m.type === 'comptoir') c.comptoirs += M.cap * f;
@@ -443,11 +480,11 @@ window.ESCALE_MONDE = (() => {
       else if(m.type === 'salle') c.places += M.cap * f;
       else if(m.type === 'toilettes') c.toilettes += f;
       else if(m.type === 'jeux') c.jeux += f;
-      else if(m.type === 'salon'){ c.salon += M.cap * f; c.commerce.push({ cap:M.cap * f, dep:M.depense, salon:true }); }
+      else if(m.type === 'salon'){ c.salon += M.cap * f; c.commerce.push({ cap:M.cap * f, dep:M.depense, salon:true, fam:'salon' }); }
       if(M.deco) c.deco += M.deco * f;
       if(M.famille === 'restaurant') c.restaurant++;
       if(M.famille === 'cafe' || M.famille === 'bar') c.cafe++;
-      if(M.depense && m.type !== 'salon') (m.y >= 1 && zoneCol(A, m.x) === 'arr' ? c.commerceArr : c.commerce).push({ cap:M.cap * f, dep:M.depense });
+      if(M.depense && m.type !== 'salon') (m.y >= 1 && zoneCol(A, m.x) === 'arr' ? c.commerceArr : c.commerce).push({ cap:M.cap * f, dep:M.depense, fam:M.famille });
     }
     return c;
   }
@@ -499,7 +536,7 @@ window.ESCALE_MONDE = (() => {
   function embaucher(P, A){
     const Pe = personnel(A);
     if(Pe.entretien >= ENTRETIEN.max) return `Pas plus de ${ENTRETIEN.max} agents d'entretien.`;
-    if(!payer(P, ENTRETIEN.embauche)) return 'Pas assez d\'argent.';
+    if(!payer(P, ENTRETIEN.embauche, 'Embauche d\'un agent d\'entretien')) return 'Pas assez d\'argent.';
     Pe.entretien++; journal(A, `🧹 Un agent d'entretien de plus (${Pe.entretien} en tout) : ${euros(ENTRETIEN.salaire)} de salaire par jour.`, 'bon');
     return null;
   }
@@ -689,7 +726,7 @@ window.ESCALE_MONDE = (() => {
     }
   }
   function pas(P, A, dt){
-    const avant = A.t; A.t += dt;
+    apCourant = A; const avant = A.t; A.t += dt;
     if(jourDe(A.t) > jourDe(avant)) finDeJour(P, A);
     creerVols(P, A);
     for(const v of A.vols) avancerVol(P, A, v, dt);
@@ -857,17 +894,20 @@ window.ESCALE_MONDE = (() => {
     const airside = A.vols.reduce((s, v) => s + v.airside, 0);
     const debout = Math.max(0, airside - cap.places);
     const capCom = cap.commerce.reduce((s, c) => s + c.cap, 0), clients = Math.min(airside, capCom);
-    const depParClient = capCom ? cap.commerce.reduce((s, c) => s + c.cap * c.dep, 0) / capCom : 0;
-    const gain = clients * depParClient * dt * D.commerce;
+    // les ventes des concessionnaires (au taux de base, la redevance de l'aéroport vaut exactement ce que valait le gain avant) et la redevance (taux × ventes)
+    const ventesDe = l => { let vt = 0, rd = 0; for(const c of l){ const base = TAUX_BASE[c.fam] || .2, v = c.cap * c.dep / base * volumeVentes(A, c.fam); vt += v; rd += v * tauxDe(A, c.fam); } return [vt, rd]; };
+    const [vtC, rdC] = ventesDe(cap.commerce), kC = capCom ? clients / capCom * dt * D.commerce : 0;
+    const gain = rdC * kC, ventes = vtC * kC;
+    A.jourStats.ventes = (A.jourStats.ventes || 0) + ventes;
     if(airside > 0) for(const v of A.vols){ if(v.airside <= 0) continue; const part = v.airside / airside; v.inconfort += debout * part * dt; v.depense += gain * part; }
     A.jourStats.commerce += gain; P.argent += gain;
     // l'immobilier de l'aéroport : un revenu régulier
-    for(const b of A.immo || []){ const r = IMMO[b.type].revenu / (24 * 60) * dt * D.commerce; A.jourStats.commerce += r; P.argent += r; }
+    for(const b of A.immo || []){ const r = IMMO[b.type].revenu / (24 * 60) * dt * D.commerce; A.jourStats.immo = (A.jourStats.immo || 0) + r; P.argent += r; }
     // les commerces de la zone Arrivées (duty-free) : chaque passager qui débarque y dépense un peu
     if(cap.commerceArr.length){
       let nouveaux = 0; for(const v of A.vols){ const d = (v.debarquesPax || 0) - (v._dfPax || 0); if(d > 0) nouveaux += d; v._dfPax = v.debarquesPax || 0; }
-      const capA = cap.commerceArr.reduce((s2, c) => s2 + c.cap, 0), depA = cap.commerceArr.reduce((s2, c) => s2 + c.cap * c.dep, 0) / capA, gA = nouveaux * depA * 4 * D.commerce * Math.min(1, capA / 40);
-      A.jourStats.commerce += gA; P.argent += gA;
+      const capA = cap.commerceArr.reduce((s2, c) => s2 + c.cap, 0), [vtA, rdA] = ventesDe(cap.commerceArr), kA = nouveaux / capA * 4 * D.commerce * Math.min(1, capA / 40);
+      A.jourStats.ventes += vtA * kA; A.jourStats.commerce += rdA * kA; P.argent += rdA * kA;
     }
     A.capAffiche = { airside, debout, clients, check:fileTotal(A.qCheck), secu:fileTotal(A.qSecu), pass:fileTotal(A.qPass) };
   }
@@ -892,7 +932,7 @@ window.ESCALE_MONDE = (() => {
     if(!cap.toilettes) sDep -= 12; else sDep -= (1 - propreteWC(A)) * 11;
     if(!cap.cafe && !cap.restaurant) sDep -= 7;
     if(v.rayon === 'long' && !cap.salon) sDep -= 8;
-    sDep += Math.min(5, cap.jeux * 2.5) + Math.min(8, cap.deco * 1.2) + 3 * Math.min(1, cap.proprete / Math.max(2, Math.ceil(A.terminal.l * A.terminal.h / 6))) + (cap.restaurant ? 2 : 0) + (cap.salon && v.rayon === 'long' ? 4 : 0);
+    sDep += Math.min(5, cap.jeux * 2.5) + Math.min(8, cap.deco * 1.2) + 3 * Math.min(1, cap.proprete / Math.max(2, Math.ceil(A.terminal.l * A.terminal.h / 6))) + (cap.restaurant ? 2 : 0) + (cap.salon && v.rayon === 'long' ? 4 : 0) - penaliteTaux(A);
     sDep -= Math.max(0, v.retard - 5) * .7;
     sDep -= v.manques / n * 70;
     // l'arrivée : l'attente des bagages
@@ -952,6 +992,7 @@ window.ESCALE_MONDE = (() => {
     if(satisf != null && J.nSatisf >= 3) P.stats.meilleureSatisf = Math.max(P.stats.meilleureSatisf, satisf);
     P.stats.meilleureJournee = Math.max(P.stats.meilleureJournee, bilan.net); P.stats.jours++;
     A.bilanJour = bilan;
+    { const jb = bilan.jour; for(const [s2, c2, m2] of [['e', 'vols', J.revenus], ['e', 'commerces', J.commerce], ['e', 'immo', J.immo], ['e', 'services', J.services], ['e', 'primes', J.primes], ['d', 'entretien', J.depenses], ['d', 'carburant', J.achats], ['d', 'penalites', J.penalites]]) if(m2 > 0){ const C = P.compta || (P.compta = { lignes:[] }); C.lignes.unshift({ j:jb, ap:A.id, s:s2, c:c2, m:Math.round(m2), t:`Bilan du jour ${jb}` }); } if(P.compta && P.compta.lignes.length > 500) P.compta.lignes.length = 500; }
     journal(A, `🌙 Fin du jour ${bilan.jour} : ${bilan.vols} vol${bilan.vols > 1 ? 's' : ''}, ${bilan.net >= 0 ? '+' : ''}${euros(bilan.net)}${satisf != null ? `, satisfaction ${satisf} %` : ''}${bilan.retards ? `, ${bilan.retards} retard${bilan.retards > 1 ? 's' : ''}` : ''}.`, 'jour');
     A.jourStats = nouveauJour();
     // les contrats : un jour de moins ; ceux qui finissent
@@ -989,16 +1030,40 @@ window.ESCALE_MONDE = (() => {
     if(niveauDe(P.xp) < D.niv) return `Disponible au niveau ${D.niv}.`;
     if(A.immo.length >= PARCELLES) return 'Toutes les parcelles sont occupées.';
     if(A.immo.some(b => b.type === type)) return 'Tu as déjà ce bâtiment ici.';
-    if(!payer(P, D.prix)) return 'Pas assez d\'argent.';
+    if(!payer(P, D.prix, `Immobilier : ${D.nom}`)) return 'Pas assez d\'argent.';
     const libre = Array.from({ length:PARCELLES }, (_, i) => i).find(i => !A.immo.some(b => b.parcelle === i));
     A.immo.push({ type, parcelle:libre });
     journal(A, `${D.ico} ${D.nom} construit : +${euros(D.revenu)} par jour.`, 'bon');
     return null;
   }
-  function vendreImmo(P, A, b){ A.immo = (A.immo || []).filter(x => x !== b); P.argent += Math.round(IMMO[b.type].prix * .5); }
+  function vendreImmo(P, A, b){ A.immo = (A.immo || []).filter(x => x !== b); const r = Math.round(IMMO[b.type].prix * .5); P.argent += r; compta(P, 'e', 'reventes', r, `Vente : ${IMMO[b.type].nom}`); }
 
   /* ---------- Les achats ---------- */
-  function payer(P, prix){ if(P.argent < prix) return false; P.argent -= prix; return true; }
+  /* ---------- Le livre de comptes (P.compta) : chaque achat, cadeau et prêt, et le résumé de chaque journée ---------- */
+  let apCourant = null;                                       // l'aéroport où l'on joue (pour dater les écritures)
+  const CATS = {
+    e:{ vols:'Redevances des vols', commerces:'Redevances des commerces', immo:'Loyers de l\'immobilier', services:'Services facturés aux compagnies', primes:'Primes des mini-jeux', cadeaux:'Cadeaux et objectifs', reventes:'Reventes de matériel', emprunt:'Prêts reçus' },
+    d:{ entretien:'Entretien et salaires', carburant:'Carburant acheté', penalites:'Pénalités de retard', invest:'Investissements', remb:'Remboursements de prêts' },
+  };
+  function compta(P, sens, cat, montant, txt){
+    if(!(montant > 0)) return;
+    const C = P.compta || (P.compta = { lignes:[] });
+    C.lignes.unshift({ j:apCourant ? jourDe(apCourant.t) : 0, ap:apCourant ? apCourant.id : '', s:sens, c:cat, m:Math.round(montant), t:txt || '' });
+    if(C.lignes.length > 500) C.lignes.length = 500;
+  }
+  function payer(P, prix, txt){ if(P.argent < prix) return false; P.argent -= prix; compta(P, 'd', 'invest', prix, txt); return true; }
+  // entrées et dépenses de l'aéroport sur une période : 'jour', 'semaine' ou 'tout' (les lignes du livre, plus la journée en cours)
+  function comptes(P, A, periode){
+    const j0 = jourDe(A.t), de = periode === 'jour' ? j0 : periode === 'semaine' ? j0 - 6 : -1e9, e = {}, d = {};
+    const ajout = (o, k, v) => { if(v > 0) o[k] = (o[k] || 0) + v; };
+    for(const l of (P.compta || { lignes:[] }).lignes){ if(l.ap !== A.id || l.j < de) continue; ajout(l.s === 'e' ? e : d, l.c, l.m); }
+    const J = A.jourStats;
+    ajout(e, 'vols', J.revenus); ajout(e, 'commerces', J.commerce); ajout(e, 'immo', J.immo); ajout(e, 'services', J.services); ajout(e, 'primes', J.primes);
+    ajout(d, 'entretien', J.depenses); ajout(d, 'carburant', J.achats); ajout(d, 'penalites', J.penalites);
+    const tot = o => Object.values(o).reduce((a, b) => a + b, 0);
+    return { entrees:e, depenses:d, totE:tot(e), totD:tot(d), net:tot(e) - tot(d) };
+  }
+
   /* Les portes tiennent le long de la façade du terminal : pour en ouvrir de nouvelles, il faut
      d'abord l'agrandir. Chaque case de largeur en plus donne deux portes, jusqu'au maximum que
      la place permet ici (D.portesMax). L'agrandissement, lui, coûte de plus en plus cher. */
@@ -1049,7 +1114,7 @@ window.ESCALE_MONDE = (() => {
       ? 'Plus de place pour une nouvelle porte ici : l\'aéroport est au complet.'
       : `La façade du terminal est pleine : agrandis-le (🏢 Terminal) pour ouvrir deux portes de plus.`;
     if(TAILLES[taille].ordre > TAILLES[tailleMaxDe(A)].ordre) return 'La piste est trop courte pour ces avions : allonge-la (🚚 Sol › Pistes).';
-    const prix = TAILLES[taille].prix; if(!payer(P, prix)) return 'Pas assez d\'argent.';
+    const prix = TAILLES[taille].prix; if(!payer(P, prix, `Nouvelle porte ${taille}`)) return 'Pas assez d\'argent.';
     A.portes.push({ taille, passerelle:false, nom:nomPorte(A.portes.length) }); A.jourStats.depenses += 0;
     journal(A, `🏗️ Nouvelle porte ${A.portes[A.portes.length - 1].nom} (${TAILLES[taille].nom.toLowerCase()})`, 'bon');
     ajusterFacade(A);
@@ -1059,7 +1124,7 @@ window.ESCALE_MONDE = (() => {
   function acheterPasserelle(P, A, i){
     const g = A.portes[i]; if(!g || g.passerelle) return 'Déjà une passerelle.';
     if(niveauDe(P.xp) < 2) return 'Disponible au niveau 2.';
-    if(!payer(P, prixPasserelle(g.taille))) return 'Pas assez d\'argent.';
+    if(!payer(P, prixPasserelle(g.taille), `Passerelle porte ${g.nom}`)) return 'Pas assez d\'argent.';
     g.passerelle = true; journal(A, `🌉 Passerelle installée porte ${g.nom} : débarquement et embarquement plus rapides, sans bus.`, 'bon');
     return null;
   }
@@ -1069,7 +1134,7 @@ window.ESCALE_MONDE = (() => {
     if(TAILLES[suivante].ordre > TAILLES[tailleMaxDe(A)].ordre) return 'La piste est trop courte pour des avions de cette taille : allonge-la (🚚 Sol › Pistes).';
     if(A.vols.some(v => v.porte === i && VOLS_VISIBLES.includes(v.etat) && v.etat !== 'parti' && v.etat !== 'approche')) return 'Un avion utilise cette porte.';
     const prix = Math.round((TAILLES[suivante].prix - TAILLES[g.taille].prix) * 1.1);
-    if(!payer(P, prix)) return 'Pas assez d\'argent.';
+    if(!payer(P, prix, `Porte ${g.nom} agrandie`)) return 'Pas assez d\'argent.';
     g.taille = suivante; journal(A, `🏗️ Porte ${g.nom} agrandie : ${TAILLES[suivante].nom.toLowerCase()}`, 'bon');
     ajusterFacade(A);
     return null;
@@ -1080,7 +1145,7 @@ window.ESCALE_MONDE = (() => {
     if(!gratuit && A.unites.filter(u => u.type === type).length >= maxVehicules(A, type))
       return aHangar(A, type) ? `Six ${VEHICULES[type].nom.toLowerCase()}s, c'est le maximum.`
         : `Pas de place dehors pour un troisième : construis ${HANGARS[k].nom.toLowerCase()} (🚚 Sol).`;
-    if(!gratuit && !payer(P, VEHICULES[type].prix)) return 'Pas assez d\'argent.';
+    if(!gratuit && !payer(P, VEHICULES[type].prix, VEHICULES[type].nom)) return 'Pas assez d\'argent.';
     A.unites.push(nouvelleUnite(A, type)); if(!A.vehicules[type]) A.vehicules[type] = { niv:1 };
     if(!gratuit) P.stats.achatsVehicules++;
     return null;
@@ -1089,7 +1154,7 @@ window.ESCALE_MONDE = (() => {
     const V = A.vehicules[type]; if(V.niv >= NIV_MAX) return 'Déjà au niveau maximum.';
     if(V.niv >= nivMaxVehicule(A, type)) return `Sans ${HANGARS[hangarDe(type)].nom.toLowerCase()}, on ne peut pas les améliorer (🚚 Sol).`;
     const nb = Math.max(1, A.unites.filter(u => u.type === type).length), prix = prixAmelioration(VEHICULES[type].prix, V.niv) * nb;
-    if(!payer(P, prix)) return 'Pas assez d\'argent.';
+    if(!payer(P, prix, `Amélioration : ${VEHICULES[type].nom}`)) return 'Pas assez d\'argent.';
     V.niv++; return null;
   }
   const prixAmeliorationVehicules = (A, type) => prixAmelioration(VEHICULES[type].prix, A.vehicules[type].niv) * Math.max(1, A.unites.filter(u => u.type === type).length);
@@ -1105,15 +1170,15 @@ window.ESCALE_MONDE = (() => {
   }
   function construire(P, A, x, y, type, rot){
     const e = erreurPose(P, A, x, y, type); if(e) return e;
-    if(!payer(P, MODULES[type].prix)) return 'Pas assez d\'argent.';
+    if(!payer(P, MODULES[type].prix, MODULES[type].nom)) return 'Pas assez d\'argent.';
     A.terminal.modules.push({ x, y, type, niv:1, rot:((rot || 0) % 4 + 4) % 4 }); return null;
   }
   function ameliorerModule(P, A, m){
     if(m.niv >= NIV_MAX) return 'Déjà au niveau maximum.';
-    if(!payer(P, prixAmelioration(MODULES[m.type].prix, m.niv))) return 'Pas assez d\'argent.';
+    if(!payer(P, prixAmelioration(MODULES[m.type].prix, m.niv), `Amélioration : ${MODULES[m.type].nom}`)) return 'Pas assez d\'argent.';
     m.niv++; return null;
   }
-  function vendreModule(P, A, m){ A.terminal.modules = A.terminal.modules.filter(x => x !== m); P.argent += Math.round(MODULES[m.type].prix * .5); }
+  function vendreModule(P, A, m){ A.terminal.modules = A.terminal.modules.filter(x => x !== m); const r = Math.round(MODULES[m.type].prix * .5); P.argent += r; compta(P, 'e', 'reventes', r, `Vente : ${MODULES[m.type].nom}`); }
   function deplacerModule(A, m, x, y){ const e = erreurPose({ xp:1e9 }, A, x, y, m.type, m); if(e) return e; m.x = x; m.y = y; return null; }
   // tourner d'un quart de tour (le sens des aiguilles d'une montre vu de dessus)
   const tourner = o => { o.rot = ((o.rot || 0) + 1) % 4; };
@@ -1131,16 +1196,16 @@ window.ESCALE_MONDE = (() => {
   }
   function poserPetit(P, A, x, y, type, rot){
     const e = libreQuart(A, x, y); if(e) return e;
-    if(!payer(P, PETITS[type].prix)) return 'Pas assez d\'argent.';
+    if(!payer(P, PETITS[type].prix, PETITS[type].nom)) return 'Pas assez d\'argent.';
     (A.terminal.petits = A.terminal.petits || []).push({ x, y, type, rot:((rot || 0) % 4 + 4) % 4 }); return null;
   }
-  function retirerPetit(P, A, p){ A.terminal.petits = A.terminal.petits.filter(q => q !== p); P.argent += Math.round(PETITS[p.type].prix * .5); }
+  function retirerPetit(P, A, p){ A.terminal.petits = A.terminal.petits.filter(q => q !== p); const r = Math.round(PETITS[p.type].prix * .5); P.argent += r; compta(P, 'e', 'reventes', r, `Vente : ${PETITS[p.type].nom}`); }
   function deplacerPetit(A, p, x, y){ const e = libreQuart(A, x, y); if(e) return e; p.x = x; p.y = y; return null; }
   // chaque colonne de Départs en plus coûte 35 % de plus que la précédente : on ne s'étend pas indéfiniment
   const prixAgrandir = A => Math.round(40000 * colsDep(A) * Math.pow(1.35, A.terminal.extra || 0) / 1000) * 1000;
   function agrandirTerminal(P, A){
     if(colsDep(A) >= terminalMax) return 'La zone Départs est déjà très grande.';
-    if(!payer(P, prixAgrandir(A))) return 'Pas assez d\'argent.';
+    if(!payer(P, prixAgrandir(A), 'Colonne de Départs')) return 'Pas assez d\'argent.';
     const avant = portesMax(A), T = A.terminal;
     insererColonne(A, colsDep(A), 1); T.extra = (T.extra || 0) + 1;        // une colonne de plus pour les Départs : la réserve et les Arrivées glissent
     const gagnees = portesMax(A) - avant;
@@ -1164,7 +1229,7 @@ window.ESCALE_MONDE = (() => {
   const prixArrivees = A => Math.round(30000 * Math.pow(1.3, A.terminal.la - AEROPORTS[A.id].terminal.la) / 1000) * 1000;
   function agrandirArrivees(P, A){
     if(A.terminal.la >= arriveesMax) return 'La zone Arrivées est déjà très grande.';
-    if(!payer(P, prixArrivees(A))) return 'Pas assez d\'argent.';
+    if(!payer(P, prixArrivees(A), 'Colonne d\'Arrivées')) return 'Pas assez d\'argent.';
     A.terminal.l++; A.terminal.la++;
     journal(A, `🏢 Zone Arrivées agrandie : ${A.terminal.la} colonnes.`, 'bon');
     return null;
@@ -1188,7 +1253,7 @@ window.ESCALE_MONDE = (() => {
   function acheterPiste(P, A){
     if(nbPistes(A) >= PISTES_MAX) return 'Il n\'y a pas la place pour une troisième piste.';
     if(niveauDe(P.xp) < 8) return 'Disponible au niveau 8.';
-    if(!payer(P, prixPiste(A))) return 'Pas assez d\'argent.';
+    if(!payer(P, prixPiste(A), 'Seconde piste')) return 'Pas assez d\'argent.';
     A.pistes = nbPistes(A) + 1; pistesLibres(A);
     journal(A, `🛬 Seconde piste ouverte : deux avions peuvent décoller ou atterrir en même temps, les attentes en l'air disparaissent.`, 'bon');
     return null;
@@ -1199,9 +1264,11 @@ window.ESCALE_MONDE = (() => {
     const C = P.compagnies[comp];
     if(C.pris.includes(k) || paliersAtteints(C.xp) < k) return 'Pas encore atteint.';
     const r = RECOMPENSES[k - 1]; C.pris.push(k);
-    if(r.argent) P.argent += r.argent;
+    if(r.argent){ P.argent += r.argent; compta(P, 'e', 'cadeaux', r.argent, `Palier ${k} · ${COMPAGNIES[comp].nom}`); }
     if(r.livree && !P.livrees[comp].dispo.includes(r.livree)){ P.livrees[comp].dispo.push(r.livree); P.livrees[comp].choisie = r.livree; }
     if(r.vehicule) acheterVehicule(P, A, r.vehicule, true);
+    if(r.xp) P.xp += r.xp;
+    if(r.carbu){ const cu = A.carbu; cu.stock = Math.min(CUVE.cap[cu.niv], cu.stock + r.carbu); }
     return null;
   }
   const aRecevoir = P => Object.entries(P.compagnies).reduce((s, [k, C]) => s + Math.max(0, paliersAtteints(C.xp) - C.pris.length), 0);
@@ -1210,7 +1277,7 @@ window.ESCALE_MONDE = (() => {
   function debloquer(P, id){
     const D = AEROPORTS[id]; if(P.aeroports[id]) return null;
     if(niveauDe(P.xp) < D.deblocage.niveau) return `Il faut le niveau ${D.deblocage.niveau}.`;
-    if(!payer(P, D.deblocage.prix)) return 'Pas assez d\'argent.';
+    if(!payer(P, D.deblocage.prix, `Aéroport ${D.nom}`)) return 'Pas assez d\'argent.';
     P.aeroports[id] = nouvelAeroport(P, id); P.actuel = id;
     return null;
   }
@@ -1242,7 +1309,7 @@ window.ESCALE_MONDE = (() => {
     if(montant > plafond(P, A)) return `La banque ne prête pas plus de ${euros(plafond(P, A))} pour l'instant.`;
     const taux = tauxPret(P, A, duree), interets = Math.round(montant * taux), total = montant + interets;
     B.prets.push({ id:'b' + (P.idSuivant++), montant, duree, taux, interets, total, reste:total, ech:Math.ceil(total / duree), du:0, jours:duree, debut:jourDe(A.t), retards:0 });
-    P.argent += montant;
+    P.argent += montant; compta(P, 'e', 'emprunt', montant, `Prêt sur ${duree} jours`);
     journal(A, `🏦 Prêt de ${euros(montant)} sur ${duree} jours (intérêts ${euros(interets)}, ${euros(Math.ceil(total / duree))} par jour).`, 'bon');
     return null;
   }
@@ -1251,7 +1318,7 @@ window.ESCALE_MONDE = (() => {
   function rembourser(P, A, id){
     const B = banque(P), p = B.prets.find(x => x.id === id); if(!p) return 'Prêt introuvable.';
     const prix = prixRachat(p); if(P.argent < prix) return 'Pas assez d\'argent pour tout rembourser.';
-    P.argent -= prix; A.jourStats.credit = (A.jourStats.credit || 0) + prix; B.interets += Math.max(0, prix - p.montant * p.reste / p.total);
+    P.argent -= prix; compta(P, 'd', 'remb', prix, 'Prêt remboursé en avance'); A.jourStats.credit = (A.jourStats.credit || 0) + prix; B.interets += Math.max(0, prix - p.montant * p.reste / p.total);
     B.prets = B.prets.filter(x => x !== p); B.rembourses++; B.note = clamp(B.note + 5, 0, 100);
     journal(A, `🏦 Prêt remboursé en avance (${euros(prix)}). La banque te fait plus confiance.`, 'bon');
     return null;
@@ -1262,7 +1329,7 @@ window.ESCALE_MONDE = (() => {
     for(const p of B.prets.slice()){
       p.du = Math.min(p.reste, p.du + p.ech);
       if(P.argent >= p.du){
-        P.argent -= p.du; p.reste -= p.du; J.credit = (J.credit || 0) + p.du; B.interets += p.du * p.interets / p.total; p.du = 0; p.jours = Math.ceil(p.reste / p.ech);
+        P.argent -= p.du; compta(P, 'd', 'remb', p.du, 'Échéance de prêt'); p.reste -= p.du; J.credit = (J.credit || 0) + p.du; B.interets += p.du * p.interets / p.total; p.du = 0; p.jours = Math.ceil(p.reste / p.ech);
         if(p.reste <= 0){ B.prets = B.prets.filter(x => x !== p); B.rembourses++; B.note = clamp(B.note + (p.retards ? 2 : 6), 0, 100); journal(A, `🏦 Prêt de ${euros(p.montant)} entièrement remboursé${p.retards ? '' : ', sans aucun report'} : la banque te fait plus confiance.`, 'bon'); }
       } else {
         const s = Math.max(50, Math.round(p.du * BANQUE.surcout)); p.du += s; p.reste += s; p.total += s; p.retards++; B.reports++; B.note = clamp(B.note - 3, 0, 100);
@@ -1274,7 +1341,7 @@ window.ESCALE_MONDE = (() => {
   /* ---------- Les objectifs ---------- */
   function verifierObjectifs(P, A){
     const faits = [];
-    for(const o of OBJECTIFS){ if(P.objectifs.includes(o.id)) continue; if(o.ok(P, A)){ P.objectifs.push(o.id); P.argent += o.gain; faits.push(o); journal(A, `🎯 Objectif réussi : ${o.txt.replace(/ \(.*\)$/, '')} (+${euros(o.gain)})`, 'cadeau'); } }
+    for(const o of OBJECTIFS){ if(P.objectifs.includes(o.id)) continue; if(o.ok(P, A)){ P.objectifs.push(o.id); P.argent += o.gain; compta(P, 'e', 'cadeaux', o.gain, `Objectif : ${o.txt.replace(/ \(.*\)$/, '')}`); faits.push(o); journal(A, `🎯 Objectif réussi : ${o.txt.replace(/ \(.*\)$/, '')} (+${euros(o.gain)})`, 'cadeau'); } }
     return faits;
   }
 
@@ -1358,7 +1425,7 @@ window.ESCALE_MONDE = (() => {
   function migrer(P){
     if(!P || P.v !== 1) return null;
     // les parties d'avant la cuve à carburant et les factures de services
-    for(const A of Object.values(P.aeroports)){ if(!A.carbu) A.carbu = nouvelleCuve(A.id); const J = A.jourStats; if(J.services == null) Object.assign(J, { services:0, detail:{}, achats:0, litres:0 }); }
+    for(const A of Object.values(P.aeroports)){ if(!A.carbu) A.carbu = nouvelleCuve(A.id); const J = A.jourStats; if(J.ventes == null) J.ventes = 0; if(J.immo == null) J.immo = 0; if(J.services == null) Object.assign(J, { services:0, detail:{}, achats:0, litres:0 }); }
     // les terminaux d'avant les zones Départs / Arrivées : chaque construction est rangée dans sa zone, gratuitement
     for(const A of Object.values(P.aeroports)){ if(!A.terminal.petits) A.terminal.petits = []; versZones(P, A); versGrille(P, A); versRangees(P, A); ajusterFacade(A, true); }
     // les parties d'avant les hangars : ceux qui servent déjà sont offerts, personne ne perd un véhicule
@@ -1378,7 +1445,7 @@ window.ESCALE_MONDE = (() => {
 
   return { JOUR, TAILLES, AVIONS, RAYONS, VILLES, COMPAGNIES, LIVREES, AEROPORTS, ORDRE_AEROPORTS, VEHICULES, MODULES, TACHES, ORDRE_TACHES, RECOMPENSES, PALIERS, OBJECTIFS, NIV_MAX,
     international, NATIONAL, hm, euros, jourDe, minuteDe, xpNiveau, niveauDe, xpConfiance, paliersAtteints, texteRecompense, tailleOk, facteurNiv, prixAmelioration, prixPasserelle, prixAgrandir, prixAmeliorationVehicules,
-    tailleMaxDe, pisteLongueur, peutAllonger, prochaineTaille, prixAllonger, allongerPiste, NIV_ALLONGER, portesMax, terminalMax, arriveesMax, PETIT_DIV, colonnesPortes, colsFacade, ajusterFacade, erreurPose, etendreZone, versGrille, versRangees, colsRes, zoneCol, zoneCase, insererColonne, FAMILLES, IMMO, PARCELLES, acheterImmo, vendreImmo, colsDep, zoneDe, zoneOk, msgZone, NOM_ZONE, tourner, agrandirArrivees, prixArrivees, versZones, PISTES_MAX, prixPiste, nbPistes, acheterPiste, trajetDe, ECART_PISTES, HANGARS, SANS_HANGAR, hangarDe, aHangar, maxVehicules, nivMaxVehicule, construireHangar, hangarsOuvrables, ENTRETIEN, personnel, menage, propreteWC, avantSale, nbToilettes, vitesseSalissure, vitesseMenage, salete, embaucher, licencier, nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
+    tailleMaxDe, pisteLongueur, peutAllonger, prochaineTaille, prixAllonger, allongerPiste, NIV_ALLONGER, TAUX_BASE, NOM_TAUX, TAUX_MIN, TAUX_MAX, tauxDe, volumeVentes, penaliteTaux, reglerTaux, CATS, compta, comptes, portesMax, terminalMax, arriveesMax, PETIT_DIV, colonnesPortes, colsFacade, ajusterFacade, erreurPose, etendreZone, versGrille, versRangees, colsRes, zoneCol, zoneCase, insererColonne, FAMILLES, IMMO, PARCELLES, acheterImmo, vendreImmo, colsDep, zoneDe, zoneOk, msgZone, NOM_ZONE, tourner, agrandirArrivees, prixArrivees, versZones, PISTES_MAX, prixPiste, nbPistes, acheterPiste, trajetDe, ECART_PISTES, HANGARS, SANS_HANGAR, hangarDe, aHangar, maxVehicules, nivMaxVehicule, construireHangar, hangarsOuvrables, ENTRETIEN, personnel, menage, propreteWC, avantSale, nbToilettes, vitesseSalissure, vitesseMenage, salete, embaucher, licencier, nouvellePartie, plan, surTrajet, capacites, avionsDisponibles, genererOffres, accepter, refuser, verifier, placer, placementAuto, deprogrammer, rompre, pas, VOLS_VISIBLES,
     PRIMES, DELAI_PRIME, etatPrime, primeControle, creneaux, tranchesLibres, NEGOS, chanceNego, negocier,
     acheterPorte, acheterPasserelle, agrandirPorte, acheterVehicule, ameliorerVehicule, construire, ameliorerModule, vendreModule, deplacerModule, agrandirTerminal,
     recevoir, aRecevoir, bonusCompagnie, debloquer, verifierObjectifs, migrer, PETITS, poserPetit, retirerPetit, deplacerPetit, libreQuart, petitsDansCase, CUVE, CUVE_MAX, CAMION, LIVRAISON, DELAI_CAMION, TARIFS, commanderCarbu, agrandirCuve, enRoute, capCuve, facture, resume, BANQUE, banque, dette, lettreNote, moyenneNet, plafond, tauxPret, emprunter, prixRachat, rembourser, echeances, intervalle, chevauche, MARGE, PISTE_Z, TAXI_Z, VOIE_P, FACADE_Z, SERVICE_Z, VITESSE_ROULAGE };
