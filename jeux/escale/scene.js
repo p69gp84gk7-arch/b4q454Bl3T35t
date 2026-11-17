@@ -354,6 +354,8 @@ window.ESCALE_3D = (() => {
       if(livree === 'bande' && y >= .05 && y < .14) c = L.c2;
       if(livree === 'speciale') c = u < .18 || u > .78 ? L.c2 : L.c1;
       if(livree === 'or') c = y < -.2 ? L.c1 : L.or;
+      if(livree === 'degrade') c = cc.set(L.c1).lerp(L.c2, clamp(u * 1.15, 0, 1));
+      if(livree === 'pointes') c = u < .14 || u > .86 ? L.c1 : y < -.5 ? L.c2 : L.blanc;
       if(livree === 'base' && y > -.42 && y < -.28 && u > .1) c = L.c1;
       // les hublots (une bande sombre), le poste de pilotage
       if(y > .2 && y < .34 && u > .15 && u < .82) c = cc.set(0x2A3442);
