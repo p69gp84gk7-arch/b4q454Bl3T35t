@@ -381,7 +381,7 @@ window.ESCALE_3D = (() => {
     const L = couleursLivree(comp, livree), c1 = L.c1.getHex(), c2 = L.c2.getHex(), c3 = livree === 'or' ? 0xD4AF37 : L.c3.getHex(), gris = 0xC9CED6;
     const p = [];
     p.push({ g:fuselage(type, comp, livree, lg, r) });
-    const haute = A.aile === 'haute', yAile = haute ? r * .85 : -r * .45, zAile = haute ? lg * .02 : lg * .06;
+    const haute = A.aile === 'haute', yAile = haute ? r * .85 : -r * .32, zAile = haute ? lg * .02 : lg * .06;
     const corde = haute ? lg * .12 : lg * (A.taille === 'S' ? .17 : .2), fleche = haute ? 0 : corde * (A.taille === 'L' || A.taille === 'XL' ? 1.2 : .9);
     for(const s of [1, -1]){
       const ga = aile(env / 2 - r * .6, corde, corde * .35, fleche, r * .16);
@@ -406,7 +406,7 @@ window.ESCALE_3D = (() => {
           // le moteur est accroché SOUS l'aile par un mât : son entrée d'air dépasse devant le bord d'attaque, sa tuyère finit sous l'aile
           const re = r * (A.gros ? .55 : .42), xl = (Math.abs(ex) - r * .6) / (env / 2 - r * .6);
           const zBord = zAile + corde / 2 - fleche * clamp(xl, 0, 1);                       // le bord d'attaque à cet endroit de l'aile
-          const zm = zBord + re * 1.05, ym = yAile - r * .08 - re - re * .42;                // le centre de la nacelle
+          const zm = zBord + re * 1.05, pieds = r * 1.35 + (A.taille === 'S' ? .5 : A.taille === 'M' ? .6 : .75), ym = Math.max(yAile - r * .08 - re * 1.05 - .15, -pieds + re + 1);     // jamais plus bas qu'1 m au-dessus du sol                // le centre de la nacelle
           p.push({ f:'cyl', d:[re, re * .86, re * 3.3, 16], p:[ex, ym, zm], r:[Math.PI / 2, 0, 0], c:c3 });
           p.push({ f:'cyl', d:[re * .82, re * .82, .2, 16], p:[ex, ym, zm + re * 1.66], r:[Math.PI / 2, 0, 0], c:0x1E2430, nc:true });
           p.push({ f:'cyl', d:[re * 1.03, re * 1.03, re * .3, 16], p:[ex, ym, zm + re * 1.45], r:[Math.PI / 2, 0, 0], c:0xE3E7EC });              // la lèvre de l'entrée d'air
@@ -459,7 +459,7 @@ window.ESCALE_3D = (() => {
       const hp = []; for(let b = 0; b < 6; b++) hp.push({ f:'boite', d:[.25, r * 1.5, .08], p:[0, 0, 0], r:[0, 0, b * Math.PI / 3], c:0x22262E });
       helices = { geo:fusion(hp), pos:[1, -1].map(s => [s * (r + (env / 2) * .22), yAile - r * .15, zAile + corde / 2 + corde * .55 + corde * .52]) };
     }
-    const m = { geo, geoC, helices, r, lg };
+    const m = { geo, geoC, helices, r, lg, pieds:r * 1.35 + wr };        // pieds : la hauteur des roues sous l'axe du fuselage (l'avion se pose dessus)
     modeles.set(cle, m);
     return m;
   }
@@ -475,7 +475,7 @@ window.ESCALE_3D = (() => {
     ombre.rotation.x = -Math.PI / 2; ombre.scale.set(md.lg * .46, AV(v.avion).envergure * .22, 1);
     scene.add(ombre);
     scene.add(g);
-    corps.position.y = md.r * 1.5;
+    corps.position.y = md.pieds;
     g.userData.vol = v.id;
     return { obj:g, corps, ombre, helices, md, liv };
   }
@@ -1358,7 +1358,7 @@ window.ESCALE_3D = (() => {
     let best = null, bd = 1e9;
     for(const [id, a] of avions){
       // un avion est touché si le rayon passe près de son centre (plus facile au doigt)
-      const c = a.obj.position.clone(); c.y += a.md.r * 1.5;
+      const c = a.obj.position.clone(); c.y += a.md.pieds;
       const d = r.ray.distanceToPoint(c), rayon = Math.max(14, a.md.lg * .55);
       if(d < rayon && d < bd){ bd = d; best = id; }
     }
@@ -1441,7 +1441,7 @@ window.ESCALE_3D = (() => {
     const cle = type + comp + livree;
     if(cle !== cleA){
       if(objA) SA.remove(objA);
-      const md = modeleAvion(type, comp, livree); objA = new T3.Group(); const c = new T3.Group(); c.add(new T3.Mesh(md.geo, MAT), new T3.Mesh(md.geoC, CONTOUR)); if(md.helices) c.add(creerHelices(md)); c.position.y = md.r * 1.5; objA.add(c); SA.add(objA); cleA = cle;
+      const md = modeleAvion(type, comp, livree); objA = new T3.Group(); const c = new T3.Group(); c.add(new T3.Mesh(md.geo, MAT), new T3.Mesh(md.geoC, CONTOUR)); if(md.helices) c.add(creerHelices(md)); c.position.y = md.pieds; objA.add(c); SA.add(objA); cleA = cle;
       objA.userData.lg = md.lg;
     }
     objA.rotation.y = angle;
