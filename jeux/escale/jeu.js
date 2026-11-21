@@ -72,7 +72,7 @@ function boucle(now){
   tHud += dt; tPanneau += dt; tObj += dt;
   if(tHud > .2){ tHud = 0; majHud(); toasts(); if(selVol) majCarteVol(); }
   if(tObj > 1){ tObj = 0; M.verifierObjectifs(P, A); majObjectif(); }
-  if(tPanneau > 1 && panneau && PANNEAUX_VIVANTS.includes(panneau) && !glisse){ tPanneau = 0; rafraichirPanneau(); }
+  if(tPanneau > 1 && panneau && PANNEAUX_VIVANTS.includes(panneau) && !glisse && Date.now() - dernierDefil > 900){ tPanneau = 0; rafraichirPanneau(); }
 }
 requestAnimationFrame(boucle);
 
@@ -249,19 +249,32 @@ function ouvrir(p){
   panneau = p; $('panneau').hidden = false; $('pTitre').textContent = TITRES[p];
   [...document.querySelectorAll('.onglets button')].forEach(b => b.classList.toggle('actif', b.dataset.p === p));
   placement = null; selModule = null; selPetit = null; outil = null; deplace = null; $('panneau').classList.remove('compact'); $('panneau').classList.toggle('large', p === 'planning');
-  rafraichirPanneau(true); majObjectif();
+  razDefil = true; rafraichirPanneau(true); majObjectif();
 }
 function fermerPanneau(){ panneau = null; $('panneau').hidden = true; outil = null; deplace = null; $('panneau').classList.remove('compact'); $('panneau').classList.remove('large'); [...document.querySelectorAll('.onglets button')].forEach(b => b.classList.remove('actif')); placement = null; majObjectif(); }
+let razDefil = false;                      // vrai quand on ouvre un autre panneau : on repart du haut ; sinon les positions de défilement sont gardées
+let memoTerminal = 0;                      // la position du catalogue du terminal, retrouvée quand on revient d'une pose
 function rafraichirPanneau(complet = false){
   if(!panneau) return;
   const f = { planning:pPlanning, compagnies:pCompagnies, sol:pSol, terminal:pTerminal, finance:pFinance, hangar:pHangar, aeroports:pAeroports, menu:pMenu, banque:pFinance }[panneau];
-  const box = $('pCorps'), haut = box.scrollTop;
-  // garder la position du planning (défilement horizontal)
-  const pl = box.querySelector('.planning'), gauche = pl ? pl.scrollLeft : null;
+  const box = $('pCorps'), garder = !razDefil; razDefil = false;
+  const haut = garder ? box.scrollTop : 0, avantPose = !!box.querySelector('#tPlacer');
+  // garder les positions de défilement : le panneau, la colonne de gauche du planning, la grille (les deux sens)
+  const pl = box.querySelector('.planning'), gauche = pl ? pl.scrollLeft : null, hautPl = pl ? pl.scrollTop : 0;
+  const colG = box.querySelector('.planGauche'), hautG = colG ? colG.scrollTop : 0;
   f(box, complet);
-  box.scrollTop = haut;
-  const pl2 = box.querySelector('.planning'); if(pl2 && gauche != null && !complet) pl2.scrollLeft = gauche;
+  const apresPose = !!box.querySelector('#tPlacer');
+  // le terminal : pendant la pose le panneau se réduit à un bandeau, on retrouve le catalogue là où on l'avait laissé
+  if(panneau === 'terminal'){ if(!avantPose && apresPose) memoTerminal = haut; box.scrollTop = avantPose && !apresPose ? memoTerminal : haut; }
+  else box.scrollTop = haut;
+  const pl2 = box.querySelector('.planning'); if(pl2){ if(gauche != null && !complet) pl2.scrollLeft = gauche; if(garder) pl2.scrollTop = hautPl; }
+  const colG2 = box.querySelector('.planGauche'); if(colG2 && garder) colG2.scrollTop = hautG;
 }
+// le panneau ne se redessine pas tout seul pendant qu'on le fait défiler (sinon la liste revient en haut à chaque seconde)
+let dernierDefil = 0;
+document.addEventListener('scroll', e => { if(e.target && e.target.closest && e.target.closest('#panneau')) dernierDefil = Date.now(); }, true);
+document.addEventListener('touchmove', e => { if(e.target && e.target.closest && e.target.closest('#panneau') && !glisse) dernierDefil = Date.now(); }, { passive:true, capture:true });
+document.addEventListener('wheel', e => { if(e.target && e.target.closest && e.target.closest('#panneau')) dernierDefil = Date.now(); }, { passive:true, capture:true });
 const ongletsHtml = (cle, l) => `<div class="sousOng">${l.map(([k, n]) => `<button data-so="${k}" class="${(sousOnglet[cle] || l[0][0]) === k ? 'actif' : ''}">${n}</button>`).join('')}</div>`;
 function brancherOnglets(box, cle){ box.querySelectorAll('[data-so]').forEach(b => b.onclick = () => { sousOnglet[cle] = b.dataset.so; rafraichirPanneau(true); }); }
 function alerte(err){ if(err){ if(/^Pas assez d'argent/.test(err) && !(panneau === 'finance' && sousOnglet.fin === 'banque') && M.plafond(P, A) >= M.BANQUE.mini) err += ' Touche ton argent en haut pour emprunter à la 🏦 banque (💰 Finance).'; A.toasts.push({ txt:'⚠️ ' + err, type:'mal' }); toasts(); return true; } return false; }
@@ -284,11 +297,12 @@ function pPlanning(box, complet){
   else if(A.contrats.some(c => c.porte != null)) h += `<p class="leg">Glisse un vol dans la grille pour le déplacer — d'une heure à l'autre, d'une porte à l'autre. Touche-le pour le régler à la minute.</p>`;
   const hGauche = h; h = '';
   const barre = large ? `<div class="ligneB barrePlan"><button class="btn" id="plZm">−</button><span class="leg">Zoom</span><button class="btn" id="plZp">+</button><button class="btn" id="plNow">⏱ Maintenant</button><span class="leg">Glisse un vol pour le déplacer, touche-le pour le régler.</span></div>` : '';
-  const hGrille = `${barre}<div class="planning ${large ? 'grand' : ''}" id="planning"><div class="grille" style="width:${46 + 1440 * PX_MIN}px;--hrang:${large ? 64 : 46}px;--hh:${30 * PX_MIN}px">${grille()}</div></div>`;
-  if(selContrat){ const c = A.contrats.find(x => x.id === selContrat); if(c) h += `<div class="bloc">${carteContrat(c, false)}</div>`; else selContrat = null; }
+  const hGrille = `${barre}<div class="planning ${large ? 'grand' : ''}" id="planning"><div class="grille" style="width:${46 + 1440 * PX_MIN}px;--hrang:${large ? 72 : 46}px;--hh:${30 * PX_MIN}px">${grille()}</div></div>`;
+  let hSel = '';
+  if(selContrat){ const c = A.contrats.find(x => x.id === selContrat); if(c) hSel = `<div class="bloc selBloc"><div class="ligneB"><b>Vol sélectionné</b><button class="btn" id="plDesel">✕ Désélectionner</button></div>${carteContrat(c, false)}</div>`; else selContrat = null; }
   h += `<div class="bloc"><h3>Aujourd'hui</h3><div class="stats"><div><b>${J.vols}</b>vols partis</div><div><b>${J.retards}</b>retards</div><div><b>${court(J.revenus + J.commerce + J.services + (J.primes || 0) - J.penalites - J.achats)}</b>gagnés</div><div><b>${J.nSatisf ? Math.round(J.satisf / J.nSatisf) + ' %' : '—'}</b>satisfaction</div></div>
     ${b ? `<h3 style="margin-top:6px">Hier (jour ${b.jour})</h3><p class="leg">${b.vols} vols · ${b.retards} retards · redevances ${court(b.revenus)} · services ${court(b.services || 0)}${b.primes ? ` · primes ${court(b.primes)}` : ''} · commerces ${court(b.commerce)} · carburant acheté ${court(b.achats || 0)} · pénalités ${court(b.penalites)} · entretien ${court(b.depenses)}${b.credit ? ` · 🏦 prêts ${court(b.credit)}` : ''} · <b>${b.net >= 0 ? '+' : ''}${court(b.net)}</b>${b.satisf != null ? ` · satisfaction ${b.satisf} %` : ''}</p>` : ''}</div>`;
-  box.innerHTML = cote ? `<div class="planLarge"><div class="planGauche">${hGauche}${h}</div><div class="planDroite">${hGrille}</div></div>` : large ? hGrille + hGauche + h : hGauche + hGrille + h;
+  box.innerHTML = cote ? `<div class="planLarge"><div class="planGauche">${hSel}${hGauche}${h}</div><div class="planDroite">${hGrille}</div></div>` : large ? hGrille + hSel + hGauche + h : hSel + hGauche + hGrille + h;
   const pl = $('planning');
   if($('plZm')) $('plZm').onclick = () => { zoomPlan = clamp(zoomPlan / 1.3, 1.2, 8); rafraichirPanneau(true); };
   if($('plZp')) $('plZp').onclick = () => { zoomPlan = clamp(zoomPlan * 1.3, 1.2, 8); rafraichirPanneau(true); };
@@ -299,7 +313,8 @@ function pPlanning(box, complet){
   box.querySelectorAll('[data-deprog]').forEach(b => b.onclick = () => { if(!M.deprogrammer(A, b.dataset.deprog)) alerte('Un vol de ce contrat est déjà en route : attends qu\'il soit reparti.'); else { selContrat = null; rafraichirPanneau(); } });
   box.querySelectorAll('[data-rompre]').forEach(b => b.onclick = () => { const c = A.contrats.find(x => x.id === b.dataset.rompre); if(confirm(`Rompre le contrat ${c.num} ? Pénalité : ${court(c.revenu * 2)}, et la compagnie te fera moins confiance.`)) action(M.rompre(P, A, c.id), () => { selContrat = null; }); });
   if($('plAnnuler')) $('plAnnuler').onclick = () => { placement = null; rafraichirPanneau(); };
-  pl.querySelectorAll('.vol.fige').forEach(el => el.onclick = e => { e.stopPropagation(); selContrat = el.dataset.c; placement = null; rafraichirPanneau(); });
+  if($('plDesel')) $('plDesel').onclick = () => { selContrat = null; placement = null; rafraichirPanneau(); };
+  pl.querySelectorAll('.vol.fige').forEach(el => el.onclick = e => { e.stopPropagation(); selContrat = selContrat === el.dataset.c ? null : el.dataset.c; placement = null; rafraichirPanneau(); });
   brancherGlisse(pl);
   // le réglage fin d'un vol déjà placé : avancer, reculer, changer de porte
   box.querySelectorAll('[data-decal]').forEach(b => b.onclick = () => {
@@ -312,7 +327,7 @@ function pPlanning(box, complet){
   });
   box.querySelectorAll('[data-bouger]').forEach(b => b.onclick = () => { placement = b.dataset.bouger; selContrat = b.dataset.bouger; rafraichirPanneau(true); });
   pl.querySelectorAll('.rang').forEach(el => el.onclick = e => {
-    if(!placement) return;
+    if(!placement){ if(selContrat){ selContrat = null; rafraichirPanneau(); } return; }
     const r = el.getBoundingClientRect(), x = e.clientX - r.left - 46, arr = Math.round(x / PX_MIN / 5) * 5, c = A.contrats.find(y => y.id === placement);
     // si on touche hors de la fenêtre, on prend le bord le plus proche
     const a = clamp(arr - Math.round(c.rot / 2 / 5) * 5, c.fenetre[0], c.fenetre[1]);
@@ -350,41 +365,73 @@ function grille(){
    le planning ne se rafraîchit pas (il effacerait le bloc sous le doigt) et une étiquette suit le doigt
    pour dire l'heure visée et, si ça ne passe pas, pourquoi. Un vol dont l'avion est déjà là ne bouge plus. */
 let glisse = null;
+addEventListener('keydown', e => { if(e.key === 'Escape' && panneau === 'planning' && (selContrat || placement)){ selContrat = null; placement = null; rafraichirPanneau(); } });
 function brancherGlisse(pl){
+  // les places libres pour le vol qu'on tient (vert) et sa fenêtre (orange), sur chaque porte assez grande
+  const montrerLibres = c => {
+    pl.querySelectorAll('.rang').forEach(r => {
+      const i = +r.dataset.porte; if(!M.tailleOk(A.portes[i].taille, c.avion)) return;
+      r.classList.add('ok');
+      const f = document.createElement('div'); f.className = 'fen zoneTmp'; f.style.left = `${46 + c.fenetre[0] * PX_MIN}px`; f.style.width = `${(c.fenetre[1] - c.fenetre[0] + c.rot) * PX_MIN}px`; r.prepend(f);
+      for(const [d0, d1] of M.tranchesLibres(A, c, i)){ const l = document.createElement('div'); l.className = 'libre zoneTmp'; l.style.left = `${46 + d0 * PX_MIN}px`; l.style.width = `${(d1 - d0 + c.rot) * PX_MIN}px`; r.prepend(l); }
+    });
+  };
+  // la position du doigt → porte (la ligne la plus proche, même si on est entre deux lignes ou au-delà) et heure
+  const majGlisse = (el, x, y) => {
+    const g = glisse; if(!g) return;
+    const rangs = [...pl.querySelectorAll('.rang')];
+    let best = null, bd = 1e9;
+    for(const r of rangs){ const b = r.getBoundingClientRect(), d = y < b.top ? b.top - y : y > b.bottom ? y - b.bottom : 0; if(d < bd){ bd = d; best = r; } }
+    if(best) g.porte = +best.dataset.porte;
+    const b = pl.querySelector('.grille').getBoundingClientRect();
+    g.arr = clamp(Math.round((x - g.dx - b.left - 46) / PX_MIN / 5) * 5, 0, 1435);
+    g.err = M.verifier(A, g.c, g.porte, g.arr);
+    el.style.left = `${46 + g.arr * PX_MIN}px`;
+    el.classList.toggle('refus', !!g.err);
+    pl.querySelectorAll('.rang.cible').forEach(r => r.classList.remove('cible', 'cibleOk', 'cibleNon'));
+    const cible = pl.querySelector(`.rang[data-porte="${g.porte}"]`);
+    if(cible){ cible.classList.add('cible', g.err ? 'cibleNon' : 'cibleOk'); if(el.parentElement !== cible) cible.append(el); }
+    etiquetteGlisse(x, y);
+  };
+  // la grille défile toute seule quand on approche d'un bord (de côté et de haut en bas)
+  let rafDefil = 0;
+  const defiler = el => {
+    cancelAnimationFrame(rafDefil);
+    const pas = () => {
+      const g = glisse; if(!g || g.el !== el) return;
+      const r = pl.getBoundingClientRect(), marge = 70; let dx = 0, dy = 0;
+      if(g.x < r.left + marge + 46) dx = -Math.ceil((r.left + marge + 46 - g.x) / 5); else if(g.x > r.right - marge) dx = Math.ceil((g.x - (r.right - marge)) / 5);
+      if(g.y < r.top + marge * .6) dy = -Math.ceil((r.top + marge * .6 - g.y) / 5); else if(g.y > r.bottom - marge * .6) dy = Math.ceil((g.y - (r.bottom - marge * .6)) / 5);
+      if(dx || dy){ pl.scrollLeft += clamp(dx, -22, 22); pl.scrollTop += clamp(dy, -22, 22); majGlisse(el, g.x, g.y); }
+      rafDefil = requestAnimationFrame(pas);
+    };
+    rafDefil = requestAnimationFrame(pas);
+  };
   pl.querySelectorAll('.vol[data-bouge]').forEach(el => {
     el.addEventListener('pointerdown', e => {
       const c = A.contrats.find(x => x.id === el.dataset.c); if(!c) return;
       el.setPointerCapture(e.pointerId);
       const r = el.getBoundingClientRect();
-      glisse = { c, el, dx:e.clientX - r.left, x0:e.clientX, y0:e.clientY, bouge:false, porte:c.porte, arr:c.arr, err:null };
+      glisse = { c, el, dx:e.clientX - r.left, x0:e.clientX, y0:e.clientY, x:e.clientX, y:e.clientY, bouge:false, porte:c.porte, arr:c.arr, err:null };
       e.preventDefault();
     });
     el.addEventListener('pointermove', e => {
       if(!glisse || glisse.el !== el) return;
-      if(!glisse.bouge && Math.hypot(e.clientX - glisse.x0, e.clientY - glisse.y0) < 6) return;
-      glisse.bouge = true; el.classList.add('prise');
-      const rang = [...pl.querySelectorAll('.rang')].find(r => { const b = r.getBoundingClientRect(); return e.clientY >= b.top && e.clientY <= b.bottom; });
-      if(rang) glisse.porte = +rang.dataset.porte;
-      const b = pl.querySelector('.grille').getBoundingClientRect();
-      glisse.arr = clamp(Math.round((e.clientX - glisse.dx - b.left - 46) / PX_MIN / 5) * 5, 0, 1435);
-      glisse.err = M.verifier(A, glisse.c, glisse.porte, glisse.arr);
-      // le bloc suit le doigt, et change de ligne
-      el.style.left = `${46 + glisse.arr * PX_MIN}px`;
-      el.classList.toggle('refus', !!glisse.err);
-      const cible = pl.querySelector(`.rang[data-porte="${glisse.porte}"]`);
-      if(cible && el.parentElement !== cible) cible.append(el);
-      etiquetteGlisse(e.clientX, e.clientY);
+      glisse.x = e.clientX; glisse.y = e.clientY;
+      if(!glisse.bouge){ if(Math.hypot(e.clientX - glisse.x0, e.clientY - glisse.y0) < 6) return; glisse.bouge = true; el.classList.add('prise'); pl.classList.add('enGlisse'); montrerLibres(glisse.c); defiler(el); }
+      majGlisse(el, e.clientX, e.clientY);
     });
+    const fin = () => { cancelAnimationFrame(rafDefil); pl.classList.remove('enGlisse'); pl.querySelectorAll('.zoneTmp').forEach(z => z.remove()); };
     const poser = e => {
       if(!glisse || glisse.el !== el) return;
-      const g = glisse; glisse = null; cacherEtiquette();
-      if(!g.bouge){ selContrat = g.c.id; placement = null; rafraichirPanneau(); return; }
+      const g = glisse; glisse = null; cacherEtiquette(); fin();
+      if(!g.bouge){ selContrat = selContrat === g.c.id ? null : g.c.id; placement = null; rafraichirPanneau(); return; }
       const err = M.placer(A, g.c.id, g.porte, g.arr);
       if(err) alerte(err); else { selContrat = g.c.id; sauver(); }
       rafraichirPanneau(true);
     };
     el.addEventListener('pointerup', poser);
-    el.addEventListener('pointercancel', () => { glisse = null; cacherEtiquette(); rafraichirPanneau(true); });
+    el.addEventListener('pointercancel', () => { glisse = null; cacherEtiquette(); fin(); rafraichirPanneau(true); });
   });
 }
 function etiquetteGlisse(x, y){
@@ -442,7 +489,7 @@ function pCompagnies(box){
         <div><small>Passagers</small><b>${o.paxArr} à l'arrivée · ${o.paxDep} au départ</b></div><div><small>Durée</small><b>${o.jours} jours · ${court(o.revenu * o.jours)} en tout</b></div>
         <div><small>Pénalité de retard</small><b>${court(o.penalite)} / 15 min</b></div><div><small>Offre valable</small><b>${reste} h</b></div></div>
         ${dispo}${negoHtml(o)}
-        <div class="p"><button class="btn prim" data-acc="${o.id}">✅ Accepter</button><button class="btn" data-ref="${o.id}">Refuser</button></div></div>`;
+        <div class="p"><button class="btn prim" data-acc="${o.id}" ${cr.n ? '' : 'disabled title="Impossible à honorer : pas de place"'}>${cr.n ? '✅ Accepter' : '🚫 Impossible à honorer'}</button><button class="btn" data-ref="${o.id}">Refuser</button></div></div>`;
     }
   } else if(so === 'contrats'){
     if(!A.contrats.length) h += '<p class="leg">Aucun contrat : accepte une offre.</p>';
@@ -467,7 +514,7 @@ function pCompagnies(box){
     if(r.err){ alerte(r.err); return; }
     sauver(); rafraichirPanneau(true); majHud();
   });
-  box.querySelectorAll('[data-acc]').forEach(b => b.onclick = () => { const c = M.accepter(P, A, b.dataset.acc); sauver(); if(c && c.porte == null){ ouvrir('planning'); } else rafraichirPanneau(); majHud(); });
+  box.querySelectorAll('[data-acc]').forEach(b => b.onclick = () => { const c = M.accepter(P, A, b.dataset.acc); if(!c && A.refusSignature){ alerte('Contrat impossible à honorer : ' + A.refusSignature); A.refusSignature = null; rafraichirPanneau(); return; } sauver(); if(c && c.porte == null){ ouvrir('planning'); } else rafraichirPanneau(); majHud(); });
   box.querySelectorAll('[data-ref]').forEach(b => b.onclick = () => { M.refuser(A, b.dataset.ref); rafraichirPanneau(); majHud(); });
   box.querySelectorAll('[data-rec]').forEach(b => b.onclick = () => { const [k, n] = b.dataset.rec.split(':'); action(M.recevoir(P, A, k, +n), () => A.toasts.push({ txt:`🎁 ${M.COMPAGNIES[k].nom} : ${M.texteRecompense(M.RECOMPENSES[n - 1])}`, type:'cadeau' })); });
   box.querySelectorAll('[data-auto]').forEach(b => b.onclick = () => { const c = A.contrats.find(x => x.id === b.dataset.auto), pos = M.placementAuto(A, c); if(!pos) return alerte('Pas de place libre pour ce vol.'); action(M.placer(A, c.id, pos.porte, pos.arr)); });
@@ -630,18 +677,27 @@ function poserCible(){
     action(M.poserPetit(P, A, c.qx, c.qy, t, rotOutil), () => A.toasts.push({ txt:`${O.ico} ${O.nom} posé (${court(O.prix)}). Touche un autre carré pour en poser un autre.`, type:'bon' }));
     cible = null; rafraichirPanneau(true); return;
   }
-  if(outil){ action(M.construire(P, A, c.x, c.y, outil, rotOutil), () => { selModule = A.terminal.modules.find(o => o.x === c.x && o.y === c.y); selPetit = null; outil = null; cible = null; rotOutil = 0; }); rafraichirPanneau(true); }
+  if(outil){
+    const t = outil, Mo = M.MODULES[t];
+    // on peut en poser plusieurs de suite (salles d'attente, boutiques…) : l'outil reste en main tant qu'il y a de quoi payer ; ✕ Terminé pour arrêter
+    action(M.construire(P, A, c.x, c.y, t, rotOutil), () => { cible = null; if(P.argent >= Mo.prix){ A.toasts.push({ txt:`${Mo.ico} ${Mo.nom} posé (${court(Mo.prix)}). Touche une autre case pour en poser un autre.`, type:'bon' }); } else { selModule = A.terminal.modules.find(o => o.x === c.x && o.y === c.y); selPetit = null; outil = null; rotOutil = 0; } });
+    rafraichirPanneau(true);
+  }
 }
 // le type de construction en cours de pose (pour allumer seulement les cases de la bonne zone)
 function typeEnPlacement(){ if(panneau !== 'terminal') return null; if(outil && !outil.startsWith('p:')) return outil; if(deplace && !estPetit(deplace)) return deplace.type; return null; }
 function modePlacement(){ if(panneau !== 'terminal') return null; if(outil) return outil.startsWith('p:') ? 'petit' : 'module'; if(deplace) return estPetit(deplace) ? 'petit' : 'module'; return null; }
 // la palette des constructions, rangée par famille (et par zone)
+// combien il y en a déjà dans le terminal : un petit badge ×N sur la case
+const nbPoses = type => A.terminal.modules.filter(m => m.type === type).length;
+const nbPetits = type => (A.terminal.petits || []).filter(p => p.type === type).length;
+const badgePose = n => n ? `<i class="nbPose" title="${n} déjà posé${n > 1 ? 's' : ''}">×${n}</i>` : '';
 function paletteModules(verrou){
   const sections = [['hall', 'Hall · Départs (rangée 0, côté ville) et Arrivées'], ['restaurant', 'Restaurants'], ['cafe', 'Cafés et boulangeries'], ['bar', 'Bars'], ['boutique', 'Boutiques et duty-free'], ['service', 'Services'], ['attente', 'Attente et confort'], ['deco', 'Décoration']];
   return sections.map(([fam, titre]) => {
     const l = Object.entries(M.MODULES).filter(([k, Mo]) => Mo.famille === fam); if(!l.length) return '';
     const zone = fam === 'hall' ? '' : fam === 'deco' ? ' <small>· commerces, hall</small>' : ' <small>· zone duty-free</small>';
-    return `<div class="bloc"><h3>${M.FAMILLES[fam][0]} ${titre}${zone}</h3><div class="palette">${l.map(([k, Mo]) => `<button data-outil="${k}" ${verrou(Mo) || P.argent < Mo.prix ? 'disabled' : ''} title="${esc(Mo.desc)}"><span>${Mo.ico}</span>${esc(Mo.nom)}<small>${verrou(Mo) ? `niveau ${Mo.niv}` : court(Mo.prix)}${Mo.depense && !verrou(Mo) ? ' · rapporte' : ''}</small></button>`).join('')}</div></div>`;
+    return `<div class="bloc"><h3>${M.FAMILLES[fam][0]} ${titre}${zone}</h3><div class="palette">${l.map(([k, Mo]) => `<button data-outil="${k}" ${verrou(Mo) || P.argent < Mo.prix ? 'disabled' : ''} title="${esc(Mo.desc)}">${badgePose(nbPoses(k))}<span>${Mo.ico}</span>${esc(Mo.nom)}<small>${verrou(Mo) ? `niveau ${Mo.niv}` : court(Mo.prix)}${Mo.depense && !verrou(Mo) ? ' · rapporte' : ''}</small></button>`).join('')}</div></div>`;
   }).join('');
 }
 // l'immobilier de l'aéroport : des bâtiments autour du terminal, qui rapportent chaque jour
@@ -666,7 +722,7 @@ function pTerminal(box, complet){
   if(placer){
     if(!complet && box.querySelector('#tPlacer')) return;
     const petit = outil ? outil.startsWith('p:') : estPetit(deplace), O = outil ? (petit ? M.PETITS[outil.slice(2)] : M.MODULES[outil]) : petit ? M.PETITS[deplace.type] : M.MODULES[deplace.type];
-    box.innerHTML = `<div class="bloc" id="tPlacer"><div class="item"><span class="ico">${O.ico}</span><div><b>${deplace ? 'Déplacer : ' : ''}${esc(O.nom)}</b><small>${deplace ? 'Touche la nouvelle place' : `${court(O.prix)} · touche ${petit ? 'un carré vert (le long d\'une allée)' : 'une case verte'}`}${!petit && !deplace && !O.zones.includes('arr') ? ' (zone Départs)' : !petit && !deplace && !O.zones.includes('dep') ? ' (zone Arrivées)' : ''} : l\'aperçu apparaît, tourne-le avec ↻, puis ✔ Poser ici (ou touche encore le même endroit)${petit && !deplace ? ' · tu peux en poser plusieurs' : ''}.</small></div><div class="act"><button class="btn prim" id="tPoser" ${fantomeOk() ? '' : 'disabled'}>✔ Poser ici</button><button class="btn" id="tTourner">↻ Tourner</button><button class="btn" id="tPlan">🗺️ Plan</button><button class="btn rouge" id="tAnnuler">✕ ${petit && !deplace ? 'Terminé' : 'Annuler'}</button></div></div></div>`
+    box.innerHTML = `<div class="bloc" id="tPlacer"><div class="item"><span class="ico">${O.ico}</span><div><b>${deplace ? 'Déplacer : ' : ''}${esc(O.nom)}</b><small>${deplace ? 'Touche la nouvelle place' : `${court(O.prix)} · touche ${petit ? 'un carré vert (le long d\'une allée)' : 'une case verte'}`}${!petit && !deplace && !O.zones.includes('arr') ? ' (zone Départs)' : !petit && !deplace && !O.zones.includes('dep') ? ' (zone Arrivées)' : ''} : l\'aperçu apparaît, tourne-le avec ↻, puis ✔ Poser ici (ou touche encore le même endroit)${!deplace ? ' · tu peux en poser plusieurs de suite' : ''}.</small></div><div class="act"><button class="btn prim" id="tPoser" ${fantomeOk() ? '' : 'disabled'}>✔ Poser ici</button><button class="btn" id="tTourner">↻ Tourner</button><button class="btn" id="tPlan">🗺️ Plan</button><button class="btn rouge" id="tAnnuler">✕ ${!deplace ? 'Terminé' : 'Annuler'}</button></div></div></div>`
       + (planOuvert ? '<canvas class="plan2d" id="plan2d"></canvas>' : '');
     $('tAnnuler').onclick = () => { outil = null; deplace = null; rotOutil = 0; cible = null; rafraichirPanneau(true); };
     $('tPoser').onclick = () => poserCible();
@@ -702,7 +758,7 @@ function pTerminal(box, complet){
         : '<p class="leg">La zone Arrivées est à sa taille maximale.</p>'}</div>
     ${paletteModules(verrou)}
     ${blocImmo()}
-    <div class="bloc"><h3>Petits objets (dans les allées)</h3><div class="palette">${Object.entries(M.PETITS).map(([k, O]) => `<button data-outil="p:${k}" ${P.argent < O.prix ? 'disabled' : ''} title="${esc(O.desc)}"><span>${O.ico}</span>${esc(O.nom)}<small>${court(O.prix)}</small></button>`).join('')}</div>
+    <div class="bloc"><h3>Petits objets (dans les allées)</h3><div class="palette">${Object.entries(M.PETITS).map(([k, O]) => `<button data-outil="p:${k}" ${P.argent < O.prix ? 'disabled' : ''} title="${esc(O.desc)}">${badgePose(nbPetits(k))}<span>${O.ico}</span>${esc(O.nom)}<small>${court(O.prix)}</small></button>`).join('')}</div>
       <p class="leg">Bancs : 6 places assises. Poubelles : un terminal propre (environ une pour 6 cases). Plantes, écrans, bornes, fontaines : un peu plus de satisfaction. Distributeurs : un peu d'argent.</p></div>`;
   box.innerHTML = h;
   dessinerPlan(); afficherSel(); brancherPlan();
@@ -871,15 +927,21 @@ function pAeroports(box){
 const nomCat = (s2, c) => (M.CATS[s2] || {})[c] || c;
 function pFinance(box, complet){
   const so = sousOnglet.fin || 'comptes';
-  const ong = ongletsHtml('fin', [['comptes', '📒 Comptes'], ['redev', '🛍️ Redevances'], ['banque', `🏦 Banque${M.dette(P) ? ' · ' + court(M.dette(P)) : ''}`]]);
+  const manque = Object.keys(M.METIERS).filter(k => M.couverture(A, k) < .99).length;
+  const ong = ongletsHtml('fin', [['comptes', '📒 Comptes'], ['perso', `👥 Personnel${manque ? ' ⚠️' : ''}`], ['redev', '🛍️ Redevances'], ['banque', `🏦 Banque${M.dette(P) ? ' · ' + court(M.dette(P)) : ''}`]]);
   if(so === 'banque'){ box.innerHTML = ong + '<div id="finCorps"></div>'; brancherOnglets(box, 'fin'); pBanque($('finCorps')); return; }
   if(so === 'redev') return pRedevances(box, ong);
+  if(so === 'perso') return pPersonnel(box, ong);
   const per = sousOnglet.finPer || 'jour', c = M.comptes(P, A, per), J = A.jourStats;
   const lignes = (o, cl) => { const l = Object.entries(o).sort((a, b) => b[1] - a[1]), tot = Math.max(1, Object.values(o).reduce((a, b) => a + b, 0)); return l.length ? l.map(([k, v]) => `<div class="ligFin ${cl}"><span>${esc(nomCat(cl, k))}</span><b>${cl === 'e' ? '+' : '−'}${court(v)}</b><i><u style="width:${Math.round(v / tot * 100)}%"></u></i></div>`).join('') : '<p class="leg">Rien pour l\'instant.</p>'; };
   const histo = A.historique.slice(0, 14).slice().reverse().map(b => b.net).concat([M.comptes(P, A, 'jour').net]);
   const lib = (P.compta ? P.compta.lignes : []).filter(l => l.ap === A.id).slice(0, 40);
+  const nb = n => Math.round(n).toLocaleString('fr-FR'), pxT = A.paxTotal || { arr:0, dep:0 };
+  const pxJour = J.pax || 0, px7 = pxJour + A.historique.slice(0, 6).reduce((t, b) => t + (b.pax || 0), 0), pxTotal = Math.max(pxT.arr + pxT.dep, pxJour);
   box.innerHTML = ong + `<div class="ligneB">${[['jour', 'Aujourd\'hui'], ['semaine', '7 jours'], ['tout', 'Tout']].map(([k, n]) => `<button class="btn ${per === k ? 'bleu' : ''}" data-per="${k}">${n}</button>`).join('')}</div>
     <div class="stats"><div><b>${court(P.argent)}</b>en caisse</div><div><b style="color:#1B7A3A">+${court(c.totE)}</b>entrées</div><div><b style="color:#C0272D">−${court(c.totD)}</b>dépenses</div><div><b style="color:${c.net >= 0 ? '#1B7A3A' : '#C0272D'}">${c.net >= 0 ? '+' : '−'}${court(Math.abs(c.net))}</b>résultat</div></div>
+    <div class="bloc"><h3>👥 Passagers</h3><div class="stats"><div><b>${nb(pxJour)}</b>aujourd'hui</div><div><b>${nb(px7)}</b>7 derniers jours</div><div><b>${nb(pxTotal)}</b>au total ici</div><div><b>${nb(P.stats.pax)}</b>dans tous tes aéroports</div></div>
+      <p class="leg">Aujourd'hui : ${nb(J.paxArr || 0)} arrivés, ${nb(J.paxDep || 0)} partis · depuis le début ici : ${nb(pxT.arr)} arrivés, ${nb(pxT.dep)} partis. Un vol est compté quand il repart.</p></div>
     <div class="fin2"><div class="bloc"><h3>📥 Entrées</h3>${lignes(c.entrees, 'e')}</div><div class="bloc"><h3>📤 Dépenses</h3>${lignes(c.depenses, 'd')}</div></div>
     <div class="bloc"><h3>📈 Résultat des derniers jours</h3><canvas class="chartFin" id="chartFin"></canvas><p class="leg">La dernière barre est la journée en cours. Vert : bénéfice ; rouge : perte (les gros achats pèsent sur le jour où on les fait).</p></div>
     <div class="bloc"><h3>🛍️ Les commerces aujourd'hui</h3><p class="leg">Ventes des commerces : <b>${court(J.ventes || 0)}</b> · redevances touchées par l'aéroport : <b>${court(J.commerce)}</b> (voir 🛍️ Redevances pour régler les taux).</p></div>
@@ -896,6 +958,26 @@ function dessinerHisto(cv, v){
   g.strokeStyle = '#C9D1DC'; g.beginPath(); g.moveTo(0, y0); g.lineTo(w, y0); g.stroke();
   v.forEach((x, i) => { const hh = Math.abs(x) / max * (h / 2 - 8); g.fillStyle = x >= 0 ? '#2BA84A' : '#E5383B'; g.globalAlpha = i === v.length - 1 ? .55 : 1; g.fillRect(i * bw + 3, x >= 0 ? y0 - hh : y0, bw - 6, Math.max(1, hh)); });
   g.globalAlpha = 1; g.fillStyle = '#5B6B82'; g.font = '700 10px sans-serif'; g.textAlign = 'left'; g.fillText(`+${court(max)}`, 2, 10); g.fillText(`−${court(max)}`, 2, h - 3);
+}
+// le personnel : une équipe par métier, avec ce qu'il faut, la part du travail assurée, l'embauche et la formation
+function pPersonnel(box, ong){
+  const ks = Object.keys(M.METIERS), total = M.salairesParJour(A), nbP = ks.reduce((t, k) => t + M.effectifDe(A, k), 0);
+  box.innerHTML = ong + `<div class="bloc"><h3>👥 Le personnel de ${esc(M.AEROPORTS[A.id].nom)}</h3>
+    <p class="leg">Chaque poste et chaque véhicule a besoin d'une personne. Quand l'équipe est trop petite, le travail est assuré en partie seulement : files plus longues, véhicules plus lents. Chaque personne est payée tous les jours. La formation rend chaque personne plus efficace.</p>
+    <div class="stats"><div><b>${nbP}</b>personnes</div><div><b>${court(total)}</b>de salaires par jour</div></div></div>
+    ${ks.map(k => { const Me = M.METIERS[k], eff = M.effectifDe(A, k), bes = Me.besoin(A), cov = M.couverture(A, k), form = M.formationDe(A, k), pf = M.prixFormation(A, k), emb = M.prixEmbauche(A, k);
+      const etat = bes <= 0 ? 'Rien à faire pour l\'instant.' : cov >= .99 ? '✅ Le travail est assuré.' : `⚠️ <b>${Math.round(cov * 100)} %</b> du travail assuré : il manque du monde.`;
+      return `<div class="bloc persLig"><div class="ligneB"><span style="font-size:1.4rem">${Me.ico}</span><b>${esc(Me.nom)}</b><span class="leg" style="margin-left:auto"><b>${eff}</b> / ${bes} nécessaire${bes > 1 ? 's' : ''}</span></div>
+        <div class="jaugeP"><i style="width:${Math.round(cov * 100)}%;background:${cov >= .99 ? '#2BA84A' : cov >= .6 ? '#F59F00' : '#E5383B'}"></i></div>
+        <p class="leg${cov < .99 && bes > 0 ? ' mal' : ''}">${etat} ${esc(Me.desc)}</p>
+        <p class="leg">Formation niveau <b>${form}</b>/${M.FORMATION.max} (×${M.efficaciteDe(A, k).toFixed(2)} d'efficacité) · ${court(M.salaireDe(A, k))} par personne et par jour</p>
+        <div class="ligneB"><button class="btn prim" data-emb="${k}" ${P.argent < emb || eff >= M.FORMATION.maxAgents ? 'disabled' : ''}>➕ Embaucher · ${court(emb)}</button>
+          <button class="btn" data-ren="${k}" ${eff <= 0 ? 'disabled' : ''}>➖ Renvoyer</button>
+          <button class="btn" data-form="${k}" ${pf == null || P.argent < pf ? 'disabled' : ''}>${pf == null ? '🎓 Formation maximale' : `🎓 Former · ${court(pf)}`}</button></div></div>`; }).join('')}`;
+  brancherOnglets(box, 'fin');
+  box.querySelectorAll('[data-emb]').forEach(b => b.onclick = () => action(M.engager(P, A, b.dataset.emb), () => rafraichirPanneau(true)));
+  box.querySelectorAll('[data-ren]').forEach(b => b.onclick = () => { if(confirm(`Renvoyer une personne de l'équipe « ${M.METIERS[b.dataset.ren].nom} » ?`)) action(M.renvoyer(A, b.dataset.ren), () => rafraichirPanneau(true)); });
+  box.querySelectorAll('[data-form]').forEach(b => b.onclick = () => action(M.former(P, A, b.dataset.form), () => rafraichirPanneau(true)));
 }
 // les redevances : le pourcentage des ventes des commerces que touche l'aéroport
 function pRedevances(box, ong){

@@ -10,7 +10,7 @@ window.ESCALE_3D = (() => {
   let T3 = null, R = null, scene = null, cam = null, ok = false, DEGRADE = null, CONTOUR = null, MAT = null, MATB = null, L = 1, H = 1;
   let monde = null, cleMonde = '', ciel = null, soleil = null, hemi = null, vitres = null, lampes = null, neige = null, toit = null;
   let plafonniers = null, lampesTerm = [];                           // l'éclairage de l'aérogare, la nuit
-  let interieur = null, cleInt = '', foule = null, tetes = null, tSim = null, coupe = false;
+  let interieur = null, cleInt = '', foule = null, tetes = null, jambes = null, cheveux = null, sacs = null, tSim = null, coupe = false;
   const agents = [], files = { check:[], secu:[], pass:[] };
   let cuveG = null, cleCuve = '', jaugeCuve = null, citernes = [];
   const avions = new Map(), vehicules = new Map(), modeles = new Map(), passerelles = [];
@@ -325,13 +325,22 @@ window.ESCALE_3D = (() => {
     g.translate(0, 0, -epaisseur / 2); g.rotateX(Math.PI / 2); g.computeVertexNormals();
     return g;
   }
+  // une bande le long du bord de fuite (volets, ailerons) : de la fraction x0 à x1 de l'envergure, sur la fraction `part` de la corde
+  function bandeFuite(envergure, cordeRacine, cordeBout, fleche, epaisseur, x0, x1, part){
+    const corde = x => cordeRacine + (cordeBout - cordeRacine) * x / envergure, fuite = x => -(cordeRacine + (fleche + cordeBout - cordeRacine) * x / envergure);
+    const a = x0 * envergure, b = x1 * envergure, s = new T3.Shape();
+    s.moveTo(a, fuite(a)); s.lineTo(b, fuite(b)); s.lineTo(b, fuite(b) + corde(b) * part); s.lineTo(a, fuite(a) + corde(a) * part); s.lineTo(a, fuite(a));
+    const g = new T3.ExtrudeGeometry(s, { depth:epaisseur, bevelEnabled:false });
+    g.translate(0, 0, -epaisseur / 2); g.rotateX(Math.PI / 2); g.computeVertexNormals();
+    return g;
+  }
   function couleursLivree(comp, livree){
     const C = M.COMPAGNIES[comp], c1 = new T3.Color(C.c1), c2 = new T3.Color(C.c2), c3 = new T3.Color(C.c3), blanc = new T3.Color(0xF4F6F8), or = new T3.Color(0xD4AF37);
     return { c1, c2, c3, blanc, or, livree };
   }
   // le fuselage : un tour (lathe) avec des couleurs selon la livrée (bandes, ventre, hublots)
   function fuselage(type, comp, livree, lg, r){
-    const prof = [], n = 26;
+    const prof = [], n = 72;
     for(let k = 0; k <= n; k++){
       const u = k / n, z = u * lg;
       let rr = r;
@@ -339,7 +348,7 @@ window.ESCALE_3D = (() => {
       else if(u > .74) rr = r * (1 - Math.pow((u - .74) / .26, 1.6) * .82);   // la queue qui s'affine
       prof.push(new T3.Vector2(Math.max(.05, rr), z));
     }
-    const g = new T3.LatheGeometry(prof, 20);
+    const g = new T3.LatheGeometry(prof, 40);
     g.rotateX(Math.PI / 2); g.translate(0, 0, -lg / 2); g.rotateY(Math.PI);    // nez vers +z
     // la queue relevée (pour l'empennage)
     const a = g.attributes.position.array;
@@ -358,8 +367,6 @@ window.ESCALE_3D = (() => {
       if(livree === 'pointes') c = u < .14 || u > .86 ? L.c1 : y < -.5 ? L.c2 : L.blanc;
       if(livree === 'base' && y > -.42 && y < -.28 && u > .1) c = L.c1;
       // les hublots (une bande sombre), le poste de pilotage
-      if(y > .2 && y < .34 && u > .15 && u < .82) c = cc.set(0x2A3442);
-      if(u < .1 && u > .045 && y > .2 && y < .55) c = cc.set(0x1E2A38);
       col.push(c.r, c.g, c.b);
     }
     g.setAttribute('color', new T3.Float32BufferAttribute(col, 3));
@@ -370,14 +377,19 @@ window.ESCALE_3D = (() => {
     const cle = type + '|' + comp + '|' + livree;
     if(modeles.has(cle)) return modeles.get(cle);
     const A = AV(type), C = M.COMPAGNIES[comp], r = RAYON[type], lg = A.longueur, env = A.envergure;
+    const hDq = () => r * (A.taille === 'S' ? 2.6 : 2.2);
     const L = couleursLivree(comp, livree), c1 = L.c1.getHex(), c2 = L.c2.getHex(), c3 = livree === 'or' ? 0xD4AF37 : L.c3.getHex(), gris = 0xC9CED6;
     const p = [];
     p.push({ g:fuselage(type, comp, livree, lg, r) });
-    const haute = A.aile === 'haute', yAile = haute ? r * .85 : -r * .45, zAile = haute ? lg * .02 : lg * .06;
+    const haute = A.aile === 'haute', yAile = haute ? r * .85 : -r * .32, zAile = haute ? lg * .02 : lg * .06;
     const corde = haute ? lg * .12 : lg * (A.taille === 'S' ? .17 : .2), fleche = haute ? 0 : corde * (A.taille === 'L' || A.taille === 'XL' ? 1.2 : .9);
     for(const s of [1, -1]){
       const ga = aile(env / 2 - r * .6, corde, corde * .35, fleche, r * .16);
       p.push({ g:ga, p:[s * r * .6, yAile, zAile + corde / 2], s:[s, 1, 1], c:gris });
+      // les volets (près du fuselage) et les ailerons (vers le bout), un ton plus sombre
+      const lg1 = env / 2 - r * .6;
+      p.push({ g:bandeFuite(lg1, corde, corde * .35, fleche, r * .2, .08, .56, .24), p:[s * r * .6, yAile, zAile + corde / 2], s:[s, 1, 1], c:0xA9B2BE, nc:true });
+      p.push({ g:bandeFuite(lg1, corde, corde * .35, fleche, r * .2, .64, .94, .2), p:[s * r * .6, yAile, zAile + corde / 2], s:[s, 1, 1], c:0x8E99A6, nc:true });
       // le saumon (winglet) des réacteurs
       if(!haute) p.push({ f:'boite', d:[.25, r * .9, corde * .3], p:[s * (env / 2 - .1), yAile + r * .45, zAile + corde / 2 - fleche - corde * .2], r:[0, 0, -s * .25], c:c1 });
       // l'empennage horizontal
@@ -391,23 +403,55 @@ window.ESCALE_3D = (() => {
           p.push({ f:'cyl', d:[r * .32, r * .26, corde * 1.4, 10], p:[ex, yAile - r * .15, ez - corde * .4], r:[Math.PI / 2, 0, 0], c:c3 });
           p.push({ f:'cone', d:[r * .14, r * .3, 8], p:[ex, yAile - r * .15, ez + corde * .45], r:[Math.PI / 2, 0, 0], c:0x2A3442 });
         } else {
-          const re = r * (A.gros ? .55 : .42);
-          p.push({ f:'cyl', d:[re, re * .85, re * 3.3, 14], p:[ex, yAile - re * 1.05, ez], r:[Math.PI / 2, 0, 0], c:c3 });
-          p.push({ f:'cyl', d:[re * .8, re * .8, .2, 14], p:[ex, yAile - re * 1.05, ez + re * 1.66], r:[Math.PI / 2, 0, 0], c:0x1E2430 });
-          p.push({ f:'boite', d:[.35, re * .9, re * 2], p:[ex, yAile - re * .2, ez - re * .2], c:gris });
+          // le moteur est accroché SOUS l'aile par un mât : son entrée d'air dépasse devant le bord d'attaque, sa tuyère finit sous l'aile
+          const re = r * (A.gros ? .55 : .42), xl = (Math.abs(ex) - r * .6) / (env / 2 - r * .6);
+          const zBord = zAile + corde / 2 - fleche * clamp(xl, 0, 1);                       // le bord d'attaque à cet endroit de l'aile
+          const zm = zBord + re * 1.05, pieds = r * 1.35 + (A.taille === 'S' ? .5 : A.taille === 'M' ? .6 : .75), ym = Math.max(yAile - r * .08 - re * 1.05 - .15, -pieds + re + 1);     // jamais plus bas qu'1 m au-dessus du sol                // le centre de la nacelle
+          p.push({ f:'cyl', d:[re, re * .86, re * 3.3, 16], p:[ex, ym, zm], r:[Math.PI / 2, 0, 0], c:c3 });
+          p.push({ f:'cyl', d:[re * .82, re * .82, .2, 16], p:[ex, ym, zm + re * 1.66], r:[Math.PI / 2, 0, 0], c:0x1E2430, nc:true });
+          p.push({ f:'cyl', d:[re * 1.03, re * 1.03, re * .3, 16], p:[ex, ym, zm + re * 1.45], r:[Math.PI / 2, 0, 0], c:0xE3E7EC });              // la lèvre de l'entrée d'air
+          p.push({ f:'cone', d:[re * .22, re * .5, 8], p:[ex, ym, zm + re * 1.62], r:[Math.PI / 2, 0, 0], c:0xC9CED6, nc:true });                    // le cône central de la soufflante
+          p.push({ f:'cone', d:[re * .55, re * 1.1, 12], p:[ex, ym, zm - re * 1.95], r:[-Math.PI / 2, 0, 0], c:0x4A5058 });                      // la tuyère
+          p.push({ f:'boite', d:[Math.max(.3, re * .22), re * .95, re * 2.3], p:[ex, yAile - r * .08 - re * .3, zm - re * .15], c:gris });        // le mât, entre l'aile et la nacelle
         }
       }
     }
+    // les hublots un par un (deux rangées sur l'A380), les portes, le cockpit
+    const rUn = u => u < .12 ? r * Math.pow(u / .12, .55) : u > .74 ? r * (1 - Math.pow((u - .74) / .26, 1.6) * .82) : r;
+    const pasH = Math.max(lg * .021, .9);
+    for(const rang of A.deuxPonts ? [.2, .72] : [.27]) for(let u = .19; u <= .7; u += pasH / lg) for(const sd of [1, -1]){
+      const rr = rUn(u), yy = r * rang, x = Math.sqrt(Math.max(.01, rr * rr - yy * yy));
+      p.push({ f:'boite', d:[.16, r * .1, pasH * .5], p:[sd * (x + .01), yy * (A.deuxPonts && rang > .5 ? 1.25 : 1), lg / 2 - u * lg], c:0x27323F, nc:true });
+    }
+    for(const u of A.taille === 'S' ? [.15, .7] : [.15, .45, .72]) for(const sd of [1, -1])
+      p.push({ f:'boite', d:[.2, r * .62, lg * .018], p:[sd * (rUn(u) * .985), r * .1, lg / 2 - u * lg], c:0xDDE2E8, nc:true });
+    // les vitres du cockpit : sur la peau du nez, deux de chaque côté et un pare-brise en V devant
+    for(const u of [.055, .085]) for(const sd of [1, -1]){ const rr = rUn(u), yy = r * .44, x = Math.sqrt(Math.max(.01, rr * rr - yy * yy)); p.push({ f:'boite', d:[.2, r * .26, lg * .02], p:[sd * (x + .02), yy, lg / 2 - u * lg], c:0x1E2A38, nc:true }); }
+    for(const sd of [1, -1]){ const u = .03, rr = rUn(u), yy = r * .36, x = Math.sqrt(Math.max(.01, rr * rr - yy * yy)); p.push({ f:'boite', d:[x * 1.0, r * .24, .16], p:[sd * x * .5, yy + r * .02, lg / 2 - u * lg + .04], r:[0, sd * .5, 0], c:0x1E2A38, nc:true }); }
+    // la liaison aile-fuselage
+    if(!haute) p.push({ f:'boite', d:[r * 1.9, r * .4, corde * 1.15], p:[0, yAile + r * .05, zAile + corde * .35], c:0xDDE2E8 });
+    // les feux de bout d'aile : rouge à gauche, vert à droite, blanc à la queue
+    p.push({ f:'boite', d:[.3, .3, .5], p:[env / 2 - .2, yAile + (haute ? 0 : r * .9), zAile + corde / 2 - fleche - corde * .5], c:0x2BA84A, nc:true });
+    p.push({ f:'boite', d:[.3, .3, .5], p:[-(env / 2 - .2), yAile + (haute ? 0 : r * .9), zAile + corde / 2 - fleche - corde * .5], c:0xE5383B, nc:true });
+    p.push({ f:'boite', d:[.3, .3, .3], p:[0, r * .55 + hDq(), -lg / 2 + lg * .02], c:0xFFFFFF, nc:true });
     // la dérive (aux couleurs de la compagnie)
-    const hD = r * (A.taille === 'S' ? 2.6 : 2.2), cD = lg * .16;
+    const hD = hDq(), cD = lg * .16;
     const sD = new T3.Shape(); sD.moveTo(0, 0); sD.lineTo(cD, 0); sD.lineTo(cD * 1.25, hD); sD.lineTo(cD * .75, hD); sD.lineTo(0, 0);
     const gD = new T3.ExtrudeGeometry(sD, { depth:r * .14, bevelEnabled:false }); gD.translate(0, 0, -r * .07); gD.rotateY(Math.PI / 2); gD.computeVertexNormals();
     p.push({ g:gD, p:[0, r * .55, -lg / 2 + lg * .05 + cD], c:livree === 'or' ? 0xD4AF37 : c1 });
     p.push({ f:'boite', d:[r * .17, hD * .2, cD * .55], p:[0, r * .55 + hD * .55, -lg / 2 + lg * .05 + cD * .35], c:c2 });
     // le train d'atterrissage
-    p.push({ f:'cyl', d:[.35, .35, r * 1.2, 6], p:[0, -r * 1.2, lg * .38], c:0x2A3442 });
-    for(const s of [1, -1]) p.push({ f:'cyl', d:[.55, .55, .9, 8], p:[s * r * .7, -r * 1.35, -lg * .02], r:[0, 0, Math.PI / 2], c:0x1E2430 });
-    const geo = fusion(p), geoC = fusion(p.filter(x => !x.f || x.f !== 'cyl' || true), .09);
+    const wr = A.taille === 'S' ? .5 : A.taille === 'M' ? .6 : .75, nbRang = A.taille === 'L' || A.taille === 'XL' ? 3 : 1;
+    const roue = (x, y, z, w) => { p.push({ f:'cyl', d:[wr, wr, w, 12], p:[x, y, z], r:[0, 0, Math.PI / 2], c:0x1E2430 }, { f:'cyl', d:[wr * .55, wr * .55, w + .08, 10], p:[x, y, z], r:[0, 0, Math.PI / 2], c:0xB9BEC6, nc:true }); };
+    p.push({ f:'cyl', d:[.2, .2, r * 1.3, 6], p:[0, -r * .7, lg * .36], c:0x8C949F, nc:true });                         // la jambe avant et ses deux roues
+    for(const sd of [-1, 1]) roue(sd * .42, -r * 1.35, lg * .36, .36);
+    for(const sd of [1, -1]){
+      p.push({ f:'cyl', d:[.26, .26, r * 1.1, 6], p:[sd * r * .7, -r * .75, zAile + corde * .4], c:0x8C949F, nc:true });                // les jambes principales
+      p.push({ f:'boite', d:[.5, .22, corde * .5], p:[sd * r * .7, -r * .3, zAile + corde * .4], c:0x9AA3AE, nc:true });                // la trappe
+      if(nbRang === 1) for(const dx of [-.3, .3]) roue(sd * r * .7 + dx, -r * 1.35, zAile + corde * .4, .3);                              // deux roues côte à côte
+      else for(const k of [-1, 0, 1]) roue(sd * r * .7, -r * 1.35, zAile + corde * .4 + k * wr * 2.5, .55);                              // le bogie : trois essieux
+    }
+    const geo = fusion(p), geoC = fusion(p.filter(x => !x.nc), .09);
     // les hélices (elles tournent)
     let helices = null;
     if(A.moteurs === 'helices'){
@@ -415,7 +459,7 @@ window.ESCALE_3D = (() => {
       const hp = []; for(let b = 0; b < 6; b++) hp.push({ f:'boite', d:[.25, r * 1.5, .08], p:[0, 0, 0], r:[0, 0, b * Math.PI / 3], c:0x22262E });
       helices = { geo:fusion(hp), pos:[1, -1].map(s => [s * (r + (env / 2) * .22), yAile - r * .15, zAile + corde / 2 + corde * .55 + corde * .52]) };
     }
-    const m = { geo, geoC, helices, r, lg };
+    const m = { geo, geoC, helices, r, lg, pieds:r * 1.35 + wr };        // pieds : la hauteur des roues sous l'axe du fuselage (l'avion se pose dessus)
     modeles.set(cle, m);
     return m;
   }
@@ -431,7 +475,7 @@ window.ESCALE_3D = (() => {
     ombre.rotation.x = -Math.PI / 2; ombre.scale.set(md.lg * .46, AV(v.avion).envergure * .22, 1);
     scene.add(ombre);
     scene.add(g);
-    corps.position.y = md.r * 1.5;
+    corps.position.y = md.pieds;
     g.userData.vol = v.id;
     return { obj:g, corps, ombre, helices, md, liv };
   }
@@ -453,9 +497,28 @@ window.ESCALE_3D = (() => {
     bus:() => [{ f:'boite', d:[2.7, 3.1, 12], p:[0, 1.9, 0], c:0xF4F4F0 }, { f:'boite', d:[2.75, 1, 11.4], p:[0, 2.4, 0], c:0x2A3442 }, { f:'boite', d:[2.8, .5, 12.1], p:[0, .8, 0], c:0x1B5FAE }],
     degivrage:() => [{ f:'boite', d:[2.5, 2.4, 2.4], p:[0, 1.6, 3.4], c:0xE85D2F }, { f:'boite', d:[2.5, 2, 4.6], p:[0, 1.6, -.6], c:0xF4F4F0 }, { f:'boite', d:[.5, .5, 7], p:[0, 4.5, -1], r:[-.6, 0, 0], c:0xE85D2F }, { f:'boite', d:[1.4, 1.2, 1.2], p:[0, 6.8, 2.2], c:0xE85D2F }],
   };
+  // positions des roues (z, x, rayon) et petits détails de chaque véhicule : vitres, gyrophares, rampes, bandes de couleur
+  const ROUES_V = { carburant:[[3.4, -2.4], 1.15, .55], repas:[[3.2, -2.2], 1.15, .55], bagages:[[2.6, -.9, -3.9], 1, .45], nettoyage:[[1.8, -1.8], 1.05, .5], tech:[[1.6, -1.6], 1.05, .5], bus:[[3.9, -3.7], 1.3, .6], degivrage:[[3.4, -2.2], 1.15, .55] };
+  const VITRE = 0x27323F, FEU = 0xFF9F1C, BLANC = 0xF4F4F0;
+  const DETAILS_V = {
+    carburant:() => [{ f:'boite', d:[2.2, .9, .12], p:[0, 2, 4.52], c:VITRE }, { f:'boite', d:[.4, .3, .4], p:[0, 2.75, 3.4], c:FEU }, { f:'cyl', d:[1.29, 1.29, .35, 12], p:[0, 1.9, -2.4], r:[Math.PI / 2, 0, 0], c:0xD7263D }, { f:'cyl', d:[1.29, 1.29, .35, 12], p:[0, 1.9, 1.2], r:[Math.PI / 2, 0, 0], c:0xD7263D }, { f:'boite', d:[1.2, .3, 2.2], p:[0, 3.2, -.6], c:0x8C949F }, { f:'boite', d:[.5, .9, .5], p:[0, 3.55, -2.4], c:0x8C949F }],
+    repas:() => [{ f:'boite', d:[2.2, .9, .12], p:[0, 1.9, 4.22], c:VITRE }, { f:'boite', d:[.4, .3, .4], p:[0, 2.8, 3.2], c:FEU }, { f:'boite', d:[.1, 1.8, 1.4], p:[1.32, 3.2, -.4], c:0xDDE2E8 }, { f:'boite', d:[.1, 1.8, 1.4], p:[-1.32, 3.2, -.4], c:0xDDE2E8 }, { f:'boite', d:[2.7, .25, 4.7], p:[0, 4.6, -.6], c:0x3C6491 }, { f:'boite', d:[.12, .8, 4.4], p:[1.32, 5.1, -.6], c:0x3C6491 }, { f:'boite', d:[.12, .8, 4.4], p:[-1.32, 5.1, -.6], c:0x3C6491 }],
+    bagages:() => [{ f:'boite', d:[1.5, .8, .12], p:[0, 1.7, 3.8], c:VITRE }, { f:'boite', d:[1.7, .12, 1.8], p:[0, 2.55, 2.4], c:0xF2C230 }, { f:'cyl', d:[.07, .07, 1.5, 5], p:[-.8, 1.8, 3.2], c:0x8C949F }, { f:'cyl', d:[.07, .07, 1.5, 5], p:[.8, 1.8, 3.2], c:0x8C949F }, { f:'boite', d:[.3, .25, .3], p:[0, 2.75, 2.4], c:FEU }, { f:'boite', d:[.1, .6, 2.6], p:[.95, 1.35, -.3], c:0x6B7480 }, { f:'boite', d:[.1, .6, 2.6], p:[-.95, 1.35, -.3], c:0x6B7480 }, { f:'boite', d:[.1, .6, 2.6], p:[.95, 1.35, -3.3], c:0x6B7480 }, { f:'boite', d:[.1, .6, 2.6], p:[-.95, 1.35, -3.3], c:0x6B7480 }, { f:'boite', d:[.2, .2, 1.4], p:[0, .6, -1.8], c:0x6B7480 }],
+    nettoyage:() => [{ f:'boite', d:[1.9, .8, .12], p:[0, 1.95, 2.72], c:VITRE }, { f:'boite', d:[.4, .3, .4], p:[0, 2.65, 1.2], c:FEU }, { f:'boite', d:[2.15, .3, 1.2], p:[0, 1.05, -1.2], c:0x3E7A3A }, { f:'boite', d:[1.9, .12, 3], p:[0, 2.55, -.6], c:0x4C8C47 }],
+    tech:() => [{ f:'boite', d:[1.9, .8, .12], p:[0, 1.85, 2.2], c:VITRE }, { f:'boite', d:[1.6, .25, .3], p:[0, 2.5, 1.2], c:0x1B98E0 }, { f:'boite', d:[1.7, .6, 1.4], p:[0, 2.5, -1.2], c:0x6B7480 }, { f:'boite', d:[2.15, .25, 4.5], p:[0, .9, 0], c:BLANC }],
+    bus:() => [{ f:'boite', d:[2.4, .9, .12], p:[0, 2.4, 6.05], c:VITRE }, { f:'boite', d:[1.8, .4, .12], p:[0, 3.3, 6.05], c:FEU }, { f:'boite', d:[.1, 2.2, 1.6], p:[1.4, 1.9, 3.2], c:0x9AB6D8 }, { f:'boite', d:[.1, 2.2, 1.6], p:[1.4, 1.9, -1.2], c:0x9AB6D8 }, { f:'boite', d:[2.6, .12, 11.6], p:[0, 3.5, 0], c:0xDDE2E8 }, { f:'boite', d:[.4, .3, .4], p:[0, 3.7, 0], c:FEU }],
+    degivrage:() => [{ f:'boite', d:[2.3, .9, .12], p:[0, 2.1, 4.62], c:VITRE }, { f:'boite', d:[.4, .3, .4], p:[0, 3, 3.4], c:FEU }, { f:'boite', d:[1.5, .12, 1.5], p:[0, 7.45, 2.2], c:0xE85D2F }, { f:'boite', d:[.1, .9, 1.5], p:[.7, 7.9, 2.2], c:0xE85D2F }, { f:'boite', d:[.1, .9, 1.5], p:[-.7, 7.9, 2.2], c:0xE85D2F }, { f:'cyl', d:[.2, .2, 1.8, 8], p:[0, 6.6, -2.2], c:0x6B7480 }],
+  };
   const geoVeh = {};
   function creerVehicule(u){
-    if(!geoVeh[u.type]){ const pc = MODELES_V[u.type](); pc.push({ f:'cyl', d:[.45, .45, 2.6, 8], p:[0, .45, 2], r:[0, 0, Math.PI / 2], c:0x1E2430 }, { f:'cyl', d:[.45, .45, 2.6, 8], p:[0, .45, -1.6], r:[0, 0, Math.PI / 2], c:0x1E2430 }); geoVeh[u.type] = { g:fusion(pc), c:fusion(pc, .07) }; }
+    if(!geoVeh[u.type]){
+      const pc = MODELES_V[u.type](), nc = [], det = DETAILS_V[u.type] ? DETAILS_V[u.type]() : [];
+      // les roues : quatre pneus avec leur moyeu (aux positions propres à chaque véhicule)
+      const [zs, xl, rr] = ROUES_V[u.type] || [[2, -1.6], 1.15, .5];
+      for(const z of zs) for(const sd of [-1, 1]) nc.push({ f:'cyl', d:[rr, rr, .5, 12], p:[sd * xl, rr, z], r:[0, 0, Math.PI / 2], c:0x1E2430 }, { f:'cyl', d:[rr * .55, rr * .55, .56, 10], p:[sd * xl, rr, z], r:[0, 0, Math.PI / 2], c:0xC9CED6 });
+      const tout = pc.concat(nc, det);
+      geoVeh[u.type] = { g:fusion(tout), c:fusion(pc, .07) };
+    }
     const g = new T3.Group(); g.add(new T3.Mesh(geoVeh[u.type].g, MAT), new T3.Mesh(geoVeh[u.type].c, CONTOUR));
     scene.add(g); return { obj:g };
   }
@@ -646,7 +709,9 @@ window.ESCALE_3D = (() => {
   const posFile = (type, cd, rangee, k) => ({ x:(rangee % 2 ? -1 : 1) * (k - 2) * FILE_PAS_X, z:baseFile(type, cd) + rangee * FILE_PAS_Z });
   // les petits éléments qui reviennent partout
   const PEAU = 0xE0AC69;
-  const agent = (x, z, c, e) => [{ f:'cyl', d:[.32 * e, .4 * e, 1.25 * e, 8], p:[x, .95 * e, z], c }, { f:'boule', d:[.27 * e, 1], p:[x, 1.85 * e, z], c:PEAU }, { f:'cyl', d:[.3 * e, .3 * e, .12 * e, 8], p:[x, 2.1 * e, z], c }];
+  const agent = (x, z, c, e) => [{ f:'cyl', d:[.14 * e, .13 * e, .75 * e, 6], p:[x - .15 * e, .38 * e, z], c:0x2A3442 }, { f:'cyl', d:[.14 * e, .13 * e, .75 * e, 6], p:[x + .15 * e, .38 * e, z], c:0x2A3442 },
+    { f:'cyl', d:[.3 * e, .37 * e, .85 * e, 8], p:[x, 1.2 * e, z], c }, { f:'cyl', d:[.1 * e, .09 * e, .75 * e, 5], p:[x - .43 * e, 1.15 * e, z], c }, { f:'cyl', d:[.1 * e, .09 * e, .75 * e, 5], p:[x + .43 * e, 1.15 * e, z], c },
+    { f:'boule', d:[.25 * e, 1], p:[x, 1.88 * e, z], c:PEAU }, { f:'cyl', d:[.28 * e, .3 * e, .12 * e, 8], p:[x, 2.07 * e, z], c }, { f:'boite', d:[.3 * e, .05 * e, .22 * e], p:[x, 2.0 * e, z + .22 * e], c }];
   const poteau = (x, z, e) => [{ f:'cyl', d:[.09 * e, .09 * e, 1 * e, 6], p:[x, .5 * e, z], c:0xB9BEC6 }, { f:'cyl', d:[.25 * e, .25 * e, .08, 8], p:[x, .04, z], c:0x5C6672 }];
   const sangle = (x1, x2, z, e, c = 0x1B4E8C) => ({ f:'boite', d:[Math.abs(x2 - x1), .16 * e, .05], p:[(x1 + x2) / 2, .85 * e, z], c });
   const poubelle = (x, z, e) => [{ f:'cyl', d:[.35 * e, .3 * e, .9 * e, 8], p:[x, .45 * e, z], c:0x5C6672 }, { f:'cyl', d:[.37 * e, .37 * e, .1 * e, 8], p:[x, .92 * e, z], c:0x2BA84A }];
@@ -1038,16 +1103,26 @@ window.ESCALE_3D = (() => {
   // les passagers : une foule (des silhouettes instanciées) qui reflète les files et la salle d'attente de la simulation
   const MAX_AG = 420, COUL_P = [0xE5383B, 0x1B6EC2, 0x2BA84A, 0xFB8500, 0x6A4C93, 0x14233A, 0xF2C230, 0x8D99AE, 0xC1121F, 0x0B6E4F];
   const PEAUX = [0xF1C27D, 0xE0AC69, 0xC68642, 0x8D5524, 0xFFDBAC];
+  const PANTALONS = [0x1F2A44, 0x3A3F47, 0x5B4636, 0x2D3A55, 0x14233A, 0x6B5B45], CHEVEUX = [0x2A1B12, 0x5A3825, 0xC9A66B, 0x111111, 0x8A8A8A, 0xA23B1E, 0x3B2A1E], BAGAGES = [0xD7263D, 0x1B6EC2, 0x14233A, 0xF2C230, 0x2BA84A, 0x8D99AE];
+  const lotFoule = () => [foule, tetes, jambes, cheveux, sacs];
   function preparerFoule(){
     if(foule) return;
-    const corps = fusion([{ f:'cyl', d:[.32, .42, 1.25, 8], p:[0, .95, 0] }, { f:'cyl', d:[.14, .14, .7, 5], p:[-.16, .35, 0] }, { f:'cyl', d:[.14, .14, .7, 5], p:[.16, .35, 0] }]);
-    const tete = fusion([{ f:'boule', d:[.27, 1], p:[0, 1.85, 0] }]);
-    foule = new T3.InstancedMesh(corps, toon({}), MAX_AG); tetes = new T3.InstancedMesh(tete, toon({}), MAX_AG);
-    foule.instanceMatrix.setUsage(T3.DynamicDrawUsage); tetes.instanceMatrix.setUsage(T3.DynamicDrawUsage);
+    // un passager : torse et bras (la couleur du haut), jambes et chaussures (le pantalon), la tête, les cheveux, et pour la plupart un bagage (valise ou sac à dos)
+    const corps = fusion([{ f:'cyl', d:[.3, .38, .82, 8], p:[0, 1.28, 0] }, { f:'cyl', d:[.1, .09, .78, 5], p:[-.43, 1.22, 0], r:[0, 0, .08] }, { f:'cyl', d:[.1, .09, .78, 5], p:[.43, 1.22, 0], r:[0, 0, -.08] },
+      { f:'cyl', d:[.14, .17, .12, 6], p:[0, 1.74, 0] }]);
+    const bas = fusion([{ f:'cyl', d:[.15, .13, .8, 6], p:[-.16, .42, 0] }, { f:'cyl', d:[.15, .13, .8, 6], p:[.16, .42, 0] }, { f:'boite', d:[.22, .1, .36], p:[-.16, .05, .05] }, { f:'boite', d:[.22, .1, .36], p:[.16, .05, .05] }]);
+    const tete = fusion([{ f:'boule', d:[.25, 1], p:[0, 1.98, 0] }]);
+    const poil = fusion([{ f:'boule', d:[.27, 1], p:[0, 2.05, -.04] }]);
+    const sac = fusion([{ f:'boite', d:[.3, .46, .2], p:[.5, .42, .1] }, { f:'boite', d:[.2, .05, .05], p:[.5, .7, .1] }, { f:'boite', d:[.3, .46, .16], p:[0, 1.3, -.3] }]);
+    foule = new T3.InstancedMesh(corps, toon({}), MAX_AG); jambes = new T3.InstancedMesh(bas, toon({}), MAX_AG); tetes = new T3.InstancedMesh(tete, toon({}), MAX_AG);
+    cheveux = new T3.InstancedMesh(poil, toon({}), MAX_AG); sacs = new T3.InstancedMesh(sac, toon({}), MAX_AG);
     const c = new T3.Color();
-    for(let i = 0; i < MAX_AG; i++){ foule.setColorAt(i, c.set(COUL_P[i % COUL_P.length])); tetes.setColorAt(i, c.set(PEAUX[(i * 7) % PEAUX.length])); }
-    foule.count = tetes.count = 0; foule.frustumCulled = tetes.frustumCulled = false;
-    scene.add(foule, tetes);
+    for(const m of lotFoule()) m.instanceMatrix.setUsage(T3.DynamicDrawUsage);
+    for(let i = 0; i < MAX_AG; i++){
+      foule.setColorAt(i, c.set(COUL_P[i % COUL_P.length])); tetes.setColorAt(i, c.set(PEAUX[(i * 7) % PEAUX.length]));
+      jambes.setColorAt(i, c.set(PANTALONS[(i * 5) % PANTALONS.length])); cheveux.setColorAt(i, c.set(CHEVEUX[(i * 3) % CHEVEUX.length])); sacs.setColorAt(i, c.set(BAGAGES[(i * 11) % BAGAGES.length]));
+    }
+    for(const m of lotFoule()){ m.count = 0; m.frustumCulled = false; scene.add(m); }
   }
 
   /* ---------- Les routes des passagers : une grille de navigation (les petits carrés 8 × 8) avec les murs, les portes et la réserve ----------
@@ -1213,23 +1288,24 @@ window.ESCALE_3D = (() => {
       if(a.role === 'attente' && vitesse > 0 && Math.random() < dtReel * .08){ const p = placeAttente(A, G); diriger(a, p.x, p.z); }
     }
     // dessiner
-    const m = new T3.Matrix4(), q = new T3.Quaternion(), sc = new T3.Vector3(ECH_P, ECH_P, ECH_P), pos = new T3.Vector3(), eY = new T3.Euler();
+    const zero = new T3.Matrix4().makeScale(0, 0, 0), m = new T3.Matrix4(), q = new T3.Quaternion(), sc = new T3.Vector3(ECH_P, ECH_P, ECH_P), pos = new T3.Vector3(), eY = new T3.Euler();
     let c = 0;
     for(const a of agents){
       if(c >= MAX_AG) break;
       const saut = a.marche ? Math.abs(Math.sin(a.pas)) * .25 : 0;
       pos.set(a.x, .65 + saut, a.z); eY.set(0, a.cap || 0, 0); q.setFromEuler(eY); m.compose(pos, q, sc);
-      foule.setMatrixAt(c, m); tetes.setMatrixAt(c, m); c++;
+      foule.setMatrixAt(c, m); tetes.setMatrixAt(c, m); jambes.setMatrixAt(c, m); cheveux.setMatrixAt(c, m);
+      // trois passagers sur quatre ont un bagage : une valise à la main, ou un sac à dos
+      sacs.setMatrixAt(c, (c * 7 + 3) % 4 ? m : zero); c++;
     }
-    foule.count = tetes.count = c;
-    foule.instanceMatrix.needsUpdate = tetes.instanceMatrix.needsUpdate = true;
+    for(const f of lotFoule()){ f.count = c; f.instanceMatrix.needsUpdate = true; }
   }
   // regarder dans l'aérogare : quand on zoome assez, le toit s'enlève et la foule apparaît
   function majInterieur(A, Pl, dtReel){
     preparerFoule(); construireInterieur(A, Pl);
     const T = Pl.terminal, dedans = vue.dist < 470 && vue.x > T.x0 - 260 && vue.x < T.x1 + 260;
     if(dedans !== coupe){ coupe = dedans; toit.visible = !dedans; vitres.opacity = dedans ? .28 : 1; vitres.depthWrite = !dedans; }
-    interieur.visible = foule.visible = tetes.visible = dedans;
+    interieur.visible = dedans; for(const f of lotFoule()) f.visible = dedans;
     if(plafonniers) plafonniers.visible = dedans;                    // sous le toit, ils seraient cachés
     // la simulation des passagers tourne toujours (pour que la foule soit prête quand on regarde)
     majFoule(A, Pl, dtReel);
@@ -1282,7 +1358,7 @@ window.ESCALE_3D = (() => {
     let best = null, bd = 1e9;
     for(const [id, a] of avions){
       // un avion est touché si le rayon passe près de son centre (plus facile au doigt)
-      const c = a.obj.position.clone(); c.y += a.md.r * 1.5;
+      const c = a.obj.position.clone(); c.y += a.md.pieds;
       const d = r.ray.distanceToPoint(c), rayon = Math.max(14, a.md.lg * .55);
       if(d < rayon && d < bd){ bd = d; best = id; }
     }
@@ -1365,7 +1441,7 @@ window.ESCALE_3D = (() => {
     const cle = type + comp + livree;
     if(cle !== cleA){
       if(objA) SA.remove(objA);
-      const md = modeleAvion(type, comp, livree); objA = new T3.Group(); const c = new T3.Group(); c.add(new T3.Mesh(md.geo, MAT), new T3.Mesh(md.geoC, CONTOUR)); if(md.helices) c.add(creerHelices(md)); c.position.y = md.r * 1.5; objA.add(c); SA.add(objA); cleA = cle;
+      const md = modeleAvion(type, comp, livree); objA = new T3.Group(); const c = new T3.Group(); c.add(new T3.Mesh(md.geo, MAT), new T3.Mesh(md.geoC, CONTOUR)); if(md.helices) c.add(creerHelices(md)); c.position.y = md.pieds; objA.add(c); SA.add(objA); cleA = cle;
       objA.userData.lg = md.lg;
     }
     objA.rotation.y = angle;
