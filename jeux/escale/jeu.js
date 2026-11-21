@@ -249,20 +249,26 @@ function ouvrir(p){
   panneau = p; $('panneau').hidden = false; $('pTitre').textContent = TITRES[p];
   [...document.querySelectorAll('.onglets button')].forEach(b => b.classList.toggle('actif', b.dataset.p === p));
   placement = null; selModule = null; selPetit = null; outil = null; deplace = null; $('panneau').classList.remove('compact'); $('panneau').classList.toggle('large', p === 'planning');
-  rafraichirPanneau(true); majObjectif();
+  razDefil = true; rafraichirPanneau(true); majObjectif();
 }
 function fermerPanneau(){ panneau = null; $('panneau').hidden = true; outil = null; deplace = null; $('panneau').classList.remove('compact'); $('panneau').classList.remove('large'); [...document.querySelectorAll('.onglets button')].forEach(b => b.classList.remove('actif')); placement = null; majObjectif(); }
+let razDefil = false;                      // vrai quand on ouvre un autre panneau : on repart du haut ; sinon les positions de défilement sont gardées
+let memoTerminal = 0;                      // la position du catalogue du terminal, retrouvée quand on revient d'une pose
 function rafraichirPanneau(complet = false){
   if(!panneau) return;
   const f = { planning:pPlanning, compagnies:pCompagnies, sol:pSol, terminal:pTerminal, finance:pFinance, hangar:pHangar, aeroports:pAeroports, menu:pMenu, banque:pFinance }[panneau];
-  const box = $('pCorps'), haut = box.scrollTop;
+  const box = $('pCorps'), garder = !razDefil; razDefil = false;
+  const haut = garder ? box.scrollTop : 0, avantPose = !!box.querySelector('#tPlacer');
   // garder les positions de défilement : le panneau, la colonne de gauche du planning, la grille (les deux sens)
   const pl = box.querySelector('.planning'), gauche = pl ? pl.scrollLeft : null, hautPl = pl ? pl.scrollTop : 0;
   const colG = box.querySelector('.planGauche'), hautG = colG ? colG.scrollTop : 0;
   f(box, complet);
-  box.scrollTop = haut;
-  const pl2 = box.querySelector('.planning'); if(pl2){ if(gauche != null && !complet) pl2.scrollLeft = gauche; if(!complet) pl2.scrollTop = hautPl; }
-  const colG2 = box.querySelector('.planGauche'); if(colG2 && !complet) colG2.scrollTop = hautG;
+  const apresPose = !!box.querySelector('#tPlacer');
+  // le terminal : pendant la pose le panneau se réduit à un bandeau, on retrouve le catalogue là où on l'avait laissé
+  if(panneau === 'terminal'){ if(!avantPose && apresPose) memoTerminal = haut; box.scrollTop = avantPose && !apresPose ? memoTerminal : haut; }
+  else box.scrollTop = haut;
+  const pl2 = box.querySelector('.planning'); if(pl2){ if(gauche != null && !complet) pl2.scrollLeft = gauche; if(garder) pl2.scrollTop = hautPl; }
+  const colG2 = box.querySelector('.planGauche'); if(colG2 && garder) colG2.scrollTop = hautG;
 }
 // le panneau ne se redessine pas tout seul pendant qu'on le fait défiler (sinon la liste revient en haut à chaque seconde)
 let dernierDefil = 0;
@@ -671,7 +677,12 @@ function poserCible(){
     action(M.poserPetit(P, A, c.qx, c.qy, t, rotOutil), () => A.toasts.push({ txt:`${O.ico} ${O.nom} posé (${court(O.prix)}). Touche un autre carré pour en poser un autre.`, type:'bon' }));
     cible = null; rafraichirPanneau(true); return;
   }
-  if(outil){ action(M.construire(P, A, c.x, c.y, outil, rotOutil), () => { selModule = A.terminal.modules.find(o => o.x === c.x && o.y === c.y); selPetit = null; outil = null; cible = null; rotOutil = 0; }); rafraichirPanneau(true); }
+  if(outil){
+    const t = outil, Mo = M.MODULES[t];
+    // on peut en poser plusieurs de suite (salles d'attente, boutiques…) : l'outil reste en main tant qu'il y a de quoi payer ; ✕ Terminé pour arrêter
+    action(M.construire(P, A, c.x, c.y, t, rotOutil), () => { cible = null; if(P.argent >= Mo.prix){ A.toasts.push({ txt:`${Mo.ico} ${Mo.nom} posé (${court(Mo.prix)}). Touche une autre case pour en poser un autre.`, type:'bon' }); } else { selModule = A.terminal.modules.find(o => o.x === c.x && o.y === c.y); selPetit = null; outil = null; rotOutil = 0; } });
+    rafraichirPanneau(true);
+  }
 }
 // le type de construction en cours de pose (pour allumer seulement les cases de la bonne zone)
 function typeEnPlacement(){ if(panneau !== 'terminal') return null; if(outil && !outil.startsWith('p:')) return outil; if(deplace && !estPetit(deplace)) return deplace.type; return null; }
@@ -711,7 +722,7 @@ function pTerminal(box, complet){
   if(placer){
     if(!complet && box.querySelector('#tPlacer')) return;
     const petit = outil ? outil.startsWith('p:') : estPetit(deplace), O = outil ? (petit ? M.PETITS[outil.slice(2)] : M.MODULES[outil]) : petit ? M.PETITS[deplace.type] : M.MODULES[deplace.type];
-    box.innerHTML = `<div class="bloc" id="tPlacer"><div class="item"><span class="ico">${O.ico}</span><div><b>${deplace ? 'Déplacer : ' : ''}${esc(O.nom)}</b><small>${deplace ? 'Touche la nouvelle place' : `${court(O.prix)} · touche ${petit ? 'un carré vert (le long d\'une allée)' : 'une case verte'}`}${!petit && !deplace && !O.zones.includes('arr') ? ' (zone Départs)' : !petit && !deplace && !O.zones.includes('dep') ? ' (zone Arrivées)' : ''} : l\'aperçu apparaît, tourne-le avec ↻, puis ✔ Poser ici (ou touche encore le même endroit)${petit && !deplace ? ' · tu peux en poser plusieurs' : ''}.</small></div><div class="act"><button class="btn prim" id="tPoser" ${fantomeOk() ? '' : 'disabled'}>✔ Poser ici</button><button class="btn" id="tTourner">↻ Tourner</button><button class="btn" id="tPlan">🗺️ Plan</button><button class="btn rouge" id="tAnnuler">✕ ${petit && !deplace ? 'Terminé' : 'Annuler'}</button></div></div></div>`
+    box.innerHTML = `<div class="bloc" id="tPlacer"><div class="item"><span class="ico">${O.ico}</span><div><b>${deplace ? 'Déplacer : ' : ''}${esc(O.nom)}</b><small>${deplace ? 'Touche la nouvelle place' : `${court(O.prix)} · touche ${petit ? 'un carré vert (le long d\'une allée)' : 'une case verte'}`}${!petit && !deplace && !O.zones.includes('arr') ? ' (zone Départs)' : !petit && !deplace && !O.zones.includes('dep') ? ' (zone Arrivées)' : ''} : l\'aperçu apparaît, tourne-le avec ↻, puis ✔ Poser ici (ou touche encore le même endroit)${!deplace ? ' · tu peux en poser plusieurs de suite' : ''}.</small></div><div class="act"><button class="btn prim" id="tPoser" ${fantomeOk() ? '' : 'disabled'}>✔ Poser ici</button><button class="btn" id="tTourner">↻ Tourner</button><button class="btn" id="tPlan">🗺️ Plan</button><button class="btn rouge" id="tAnnuler">✕ ${!deplace ? 'Terminé' : 'Annuler'}</button></div></div></div>`
       + (planOuvert ? '<canvas class="plan2d" id="plan2d"></canvas>' : '');
     $('tAnnuler').onclick = () => { outil = null; deplace = null; rotOutil = 0; cible = null; rafraichirPanneau(true); };
     $('tPoser').onclick = () => poserCible();

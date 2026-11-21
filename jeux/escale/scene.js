@@ -325,13 +325,22 @@ window.ESCALE_3D = (() => {
     g.translate(0, 0, -epaisseur / 2); g.rotateX(Math.PI / 2); g.computeVertexNormals();
     return g;
   }
+  // une bande le long du bord de fuite (volets, ailerons) : de la fraction x0 à x1 de l'envergure, sur la fraction `part` de la corde
+  function bandeFuite(envergure, cordeRacine, cordeBout, fleche, epaisseur, x0, x1, part){
+    const corde = x => cordeRacine + (cordeBout - cordeRacine) * x / envergure, fuite = x => -(cordeRacine + (fleche + cordeBout - cordeRacine) * x / envergure);
+    const a = x0 * envergure, b = x1 * envergure, s = new T3.Shape();
+    s.moveTo(a, fuite(a)); s.lineTo(b, fuite(b)); s.lineTo(b, fuite(b) + corde(b) * part); s.lineTo(a, fuite(a) + corde(a) * part); s.lineTo(a, fuite(a));
+    const g = new T3.ExtrudeGeometry(s, { depth:epaisseur, bevelEnabled:false });
+    g.translate(0, 0, -epaisseur / 2); g.rotateX(Math.PI / 2); g.computeVertexNormals();
+    return g;
+  }
   function couleursLivree(comp, livree){
     const C = M.COMPAGNIES[comp], c1 = new T3.Color(C.c1), c2 = new T3.Color(C.c2), c3 = new T3.Color(C.c3), blanc = new T3.Color(0xF4F6F8), or = new T3.Color(0xD4AF37);
     return { c1, c2, c3, blanc, or, livree };
   }
   // le fuselage : un tour (lathe) avec des couleurs selon la livrée (bandes, ventre, hublots)
   function fuselage(type, comp, livree, lg, r){
-    const prof = [], n = 26;
+    const prof = [], n = 72;
     for(let k = 0; k <= n; k++){
       const u = k / n, z = u * lg;
       let rr = r;
@@ -339,7 +348,7 @@ window.ESCALE_3D = (() => {
       else if(u > .74) rr = r * (1 - Math.pow((u - .74) / .26, 1.6) * .82);   // la queue qui s'affine
       prof.push(new T3.Vector2(Math.max(.05, rr), z));
     }
-    const g = new T3.LatheGeometry(prof, 20);
+    const g = new T3.LatheGeometry(prof, 40);
     g.rotateX(Math.PI / 2); g.translate(0, 0, -lg / 2); g.rotateY(Math.PI);    // nez vers +z
     // la queue relevée (pour l'empennage)
     const a = g.attributes.position.array;
@@ -358,7 +367,6 @@ window.ESCALE_3D = (() => {
       if(livree === 'pointes') c = u < .14 || u > .86 ? L.c1 : y < -.5 ? L.c2 : L.blanc;
       if(livree === 'base' && y > -.42 && y < -.28 && u > .1) c = L.c1;
       // les hublots (une bande sombre), le poste de pilotage
-      if(u < .1 && u > .045 && y > .2 && y < .55) c = cc.set(0x1E2A38);
       col.push(c.r, c.g, c.b);
     }
     g.setAttribute('color', new T3.Float32BufferAttribute(col, 3));
@@ -378,6 +386,10 @@ window.ESCALE_3D = (() => {
     for(const s of [1, -1]){
       const ga = aile(env / 2 - r * .6, corde, corde * .35, fleche, r * .16);
       p.push({ g:ga, p:[s * r * .6, yAile, zAile + corde / 2], s:[s, 1, 1], c:gris });
+      // les volets (près du fuselage) et les ailerons (vers le bout), un ton plus sombre
+      const lg1 = env / 2 - r * .6;
+      p.push({ g:bandeFuite(lg1, corde, corde * .35, fleche, r * .2, .08, .56, .24), p:[s * r * .6, yAile, zAile + corde / 2], s:[s, 1, 1], c:0xA9B2BE, nc:true });
+      p.push({ g:bandeFuite(lg1, corde, corde * .35, fleche, r * .2, .64, .94, .2), p:[s * r * .6, yAile, zAile + corde / 2], s:[s, 1, 1], c:0x8E99A6, nc:true });
       // le saumon (winglet) des réacteurs
       if(!haute) p.push({ f:'boite', d:[.25, r * .9, corde * .3], p:[s * (env / 2 - .1), yAile + r * .45, zAile + corde / 2 - fleche - corde * .2], r:[0, 0, -s * .25], c:c1 });
       // l'empennage horizontal
@@ -391,12 +403,16 @@ window.ESCALE_3D = (() => {
           p.push({ f:'cyl', d:[r * .32, r * .26, corde * 1.4, 10], p:[ex, yAile - r * .15, ez - corde * .4], r:[Math.PI / 2, 0, 0], c:c3 });
           p.push({ f:'cone', d:[r * .14, r * .3, 8], p:[ex, yAile - r * .15, ez + corde * .45], r:[Math.PI / 2, 0, 0], c:0x2A3442 });
         } else {
-          const re = r * (A.gros ? .55 : .42);
-          p.push({ f:'cyl', d:[re, re * .85, re * 3.3, 14], p:[ex, yAile - re * 1.05, ez], r:[Math.PI / 2, 0, 0], c:c3 });
-          p.push({ f:'cyl', d:[re * .8, re * .8, .2, 14], p:[ex, yAile - re * 1.05, ez + re * 1.66], r:[Math.PI / 2, 0, 0], c:0x1E2430 });
-          p.push({ f:'cyl', d:[re * 1.02, re * 1.02, re * .3, 14], p:[ex, yAile - re * 1.05, ez + re * 1.45], r:[Math.PI / 2, 0, 0], c:0xE3E7EC });       // la lèvre de l'entrée d'air
-          p.push({ f:'cone', d:[re * .55, re * 1.1, 12], p:[ex, yAile - re * 1.05, ez - re * 1.95], r:[-Math.PI / 2, 0, 0], c:0x4A5058 });                // la tuyère
-          p.push({ f:'boite', d:[.35, re * .9, re * 2], p:[ex, yAile - re * .2, ez - re * .2], c:gris });
+          // le moteur est accroché SOUS l'aile par un mât : son entrée d'air dépasse devant le bord d'attaque, sa tuyère finit sous l'aile
+          const re = r * (A.gros ? .55 : .42), xl = (Math.abs(ex) - r * .6) / (env / 2 - r * .6);
+          const zBord = zAile + corde / 2 - fleche * clamp(xl, 0, 1);                       // le bord d'attaque à cet endroit de l'aile
+          const zm = zBord + re * 1.05, ym = yAile - r * .08 - re - re * .42;                // le centre de la nacelle
+          p.push({ f:'cyl', d:[re, re * .86, re * 3.3, 16], p:[ex, ym, zm], r:[Math.PI / 2, 0, 0], c:c3 });
+          p.push({ f:'cyl', d:[re * .82, re * .82, .2, 16], p:[ex, ym, zm + re * 1.66], r:[Math.PI / 2, 0, 0], c:0x1E2430, nc:true });
+          p.push({ f:'cyl', d:[re * 1.03, re * 1.03, re * .3, 16], p:[ex, ym, zm + re * 1.45], r:[Math.PI / 2, 0, 0], c:0xE3E7EC });              // la lèvre de l'entrée d'air
+          p.push({ f:'cone', d:[re * .22, re * .5, 8], p:[ex, ym, zm + re * 1.62], r:[Math.PI / 2, 0, 0], c:0xC9CED6, nc:true });                    // le cône central de la soufflante
+          p.push({ f:'cone', d:[re * .55, re * 1.1, 12], p:[ex, ym, zm - re * 1.95], r:[-Math.PI / 2, 0, 0], c:0x4A5058 });                      // la tuyère
+          p.push({ f:'boite', d:[Math.max(.3, re * .22), re * .95, re * 2.3], p:[ex, yAile - r * .08 - re * .3, zm - re * .15], c:gris });        // le mât, entre l'aile et la nacelle
         }
       }
     }
@@ -409,8 +425,9 @@ window.ESCALE_3D = (() => {
     }
     for(const u of A.taille === 'S' ? [.15, .7] : [.15, .45, .72]) for(const sd of [1, -1])
       p.push({ f:'boite', d:[.2, r * .62, lg * .018], p:[sd * (rUn(u) * .985), r * .1, lg / 2 - u * lg], c:0xDDE2E8, nc:true });
-    for(const sd of [1, -1]) p.push({ f:'boite', d:[.16, r * .13, r * .5], p:[sd * r * .72, r * .46, lg / 2 - lg * .066], c:0x1E2A38, nc:true });      // les vitres du cockpit
-    p.push({ f:'boite', d:[r * .9, r * .13, .18], p:[0, r * .5, lg / 2 - lg * .06], c:0x1E2A38, nc:true });
+    // les vitres du cockpit : sur la peau du nez, deux de chaque côté et un pare-brise en V devant
+    for(const u of [.055, .085]) for(const sd of [1, -1]){ const rr = rUn(u), yy = r * .44, x = Math.sqrt(Math.max(.01, rr * rr - yy * yy)); p.push({ f:'boite', d:[.2, r * .26, lg * .02], p:[sd * (x + .02), yy, lg / 2 - u * lg], c:0x1E2A38, nc:true }); }
+    for(const sd of [1, -1]){ const u = .03, rr = rUn(u), yy = r * .36, x = Math.sqrt(Math.max(.01, rr * rr - yy * yy)); p.push({ f:'boite', d:[x * 1.0, r * .24, .16], p:[sd * x * .5, yy + r * .02, lg / 2 - u * lg + .04], r:[0, sd * .5, 0], c:0x1E2A38, nc:true }); }
     // la liaison aile-fuselage
     if(!haute) p.push({ f:'boite', d:[r * 1.9, r * .4, corde * 1.15], p:[0, yAile + r * .05, zAile + corde * .35], c:0xDDE2E8 });
     // les feux de bout d'aile : rouge à gauche, vert à droite, blanc à la queue
