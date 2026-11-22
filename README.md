@@ -128,6 +128,15 @@ Chaque joueur peut avoir un **compte** (pseudo + code secret à 4 chiffres). Une
 - **Sécurité** : l'adresse du serveur est visible dans le code du site ; le code à 4 chiffres empêche de jouer sur le compte d'un autre, mais ce n'est pas un coffre-fort : on n'y met que des parties de jeux.
 - **Essais** : le chargeur a été essayé avec GitHub qui répond, GitHub en panne (copie de secours) et un programme cassé (refusé) ; `outils/sauvegarde-google.gs` a été essayé hors de Google avec un faux tableur qui imite le vrai (codes à zéros, nombres, formules, longues valeurs, comptes bloqués), puis l'application entière avec deux « téléphones » sur le même compte.
 
+## Les touches du clavier (ordinateur)
+
+`jeux/clavier.js` montre les touches quand on joue sur ordinateur. Chaque jeu de pilotage ou d'action (Dameuse, Freeride, Fusée Rythme, Starship, Flèche d'or, Le Buteur, Billard, Blocs, Pépin, Rock Altitude, Télésiège) l'appelle avec sa liste : `AltClavier.init({ touches:[['← →', 'Tourner'], …], aide:[…], pause:() => … })` ; dans une liste de touches, chaque mot est une touche (dessinée comme une vraie touche) et `/` veut dire « ou ».
+
+- **Détection** : pas par « PC ou Mac » (un iPad se déclare comme un Mac) mais par le pointeur : `(any-pointer: fine)` et `(any-hover: hover)`, ou une vraie touche pressée. Dès qu'on touche l'écran, on repasse en mode tactile (rien n'est affiché, la classe `tactile` est sur `<html>`) ; la souris ou une touche ramènent le mode clavier (classe `kb`). Sur téléphone et tablette, rien ne change.
+- **Bandeau** en bas à gauche (ou en haut avec `haut:` ; `bas:` le remonte) : réductible avec ✕ (le choix est retenu dans `altitude-clavier`), il s'efface de lui-même 5 s après qu'on a joué (il revient au survol) et ne bloque jamais les clics. **?** ouvre l'aide complète (et met le jeu en pause avec `pause`), **Échap** ou **?** la ferment.
+- **Billard** : au clavier on tire aussi : maintenir **Espace** monte la force, relâcher tire (`G.kbCharge`).
+- Draw Race, Paddock, Tour et Panier se jouent entièrement à la souris (glisser, dessiner) : pas de bandeau.
+
 ## Classement et statistiques
 
 Page `jeux/classement.html`, ouverte par le bouton **🏆 Classement** dans le bandeau du compte sur l'accueil (il faut être connecté).

@@ -277,6 +277,7 @@ function boucle(now){
   if(!G.pause){
     if(G.phase === 'roule') rouler(dt);
     if(G.phase === 'robot') animerRobot();
+    if(G.kbCharge){ if(G.phase === 'viser') G.force = Math.min(1, G.force + dt * .7); else G.kbCharge = false; }
     if(G.msgT > 0){ G.msgT -= dt; if(G.msgT <= 0) $('message').classList.remove('vu'); }
   }
   dessiner();
@@ -486,7 +487,14 @@ for(const t of ['pointerup', 'pointercancel']) molette.addEventListener(t, () =>
 addEventListener('keydown', e => {
   if(!G) return;
   if(e.code === 'ArrowLeft' || e.code === 'ArrowRight'){ e.preventDefault(); tourner((e.code === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? .0008 : .006)); }
+  // au clavier : maintenir Espace (la force monte), relâcher pour tirer
+  if(e.code === 'Space' && !e.repeat && !G.pause && G.phase === 'viser' && monTour()){ e.preventDefault(); G.kbCharge = true; G.force = .04; }
   if(e.code === 'Escape'){ if(G.pause) reprendre(); else pause(); }
+});
+addEventListener('keyup', e => {
+  if(e.code !== 'Space' || !G || !G.kbCharge) return;
+  G.kbCharge = false; const f = G.force;
+  if(G.phase === 'viser' && f > .08) tirer(f); else G.force = 0;
 });
 
 /* ---------- Le haut de l'écran ---------- */
