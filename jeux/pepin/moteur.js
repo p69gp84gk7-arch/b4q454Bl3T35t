@@ -38,7 +38,11 @@ function construireZone(nom, opts, fn){
       for(let y = haut + 1; y <= bas; y++){ set(x, y, TL.CG); set(x + 1, y, TL.CD); }
       if(o.chardon) Z.spawns.push({ type:'chardon', x:x * T + 8, y:haut * T });
       if(o.vers){ Z.entrees.set(haut * Z.W + x, o.vers); Z.entrees.set(haut * Z.W + x + 1, o.vers); }
-      if(o.cote){ for(let y = haut; y <= bas; y++) Z.entrees.set(y * Z.W + x, { ...o.cote, cote:true }); }
+      if(o.cote){
+        for(let y = haut; y <= bas; y++) Z.entrees.set(y * Z.W + x, { ...o.cote, cote:true });
+        // un tuyau de sortie se prend aussi d'en haut (▼ debout dessus), comme tous les tuyaux : sinon on reste planté dessus sans comprendre
+        if(!o.vers) Z.entrees.set(haut * Z.W + x + 1, { ...o.cote, cote:true });
+      }
     },
     pieces(x, y, n = 1){ for(let i = 0; i < n; i++) set(x + i, y, TL.PIECE); },
     ennemi(type, x, y = null, o = {}){ Z.spawns.push({ type, x:x * T, y:y == null ? null : y * T, ...o }); },
@@ -320,7 +324,7 @@ function majJoueur(){
   if(K.bas && J.sol){
     const tx = Math.floor((J.x + J.w / 2) / T), ty = Math.floor((J.y + J.h + 2) / T), v = Z.entrees.get(ty * Z.W + tx);
     const bord = (J.x + J.w / 2) - tx * T, gauche = tuile(tx, ty) === TL.TG;
-    if(v && !v.cote && (gauche ? bord > 4 : bord < 12)) return entrerTuyau(v, 'bas');
+    if(v && (gauche ? bord > 4 : bord < 12) && (!v.cote || tuile(tx, ty) === TL.TG || tuile(tx, ty) === TL.TD)) return entrerTuyau(v, 'bas');
   }
   if(r.mur === 1 && K.droite && (J.sol || Z.eau)){
     const tx = Math.floor((J.x + J.w + 1) / T), ty = Math.floor((J.y + J.h - 2) / T), v = Z.entrees.get(ty * Z.W + tx);
@@ -801,6 +805,7 @@ function dessinerPepin(grand){
   else f = S.debout;
   const img = f.d ? (J.dir > 0 ? f.d : f.g) : f;
   const h = img.height, x = Math.round(J.x + J.w / 2 - 8 - camX), y = Math.round(J.y + J.h - h);
+  if(J.sol && etat.mode !== 'mort'){ g.fillStyle = 'rgba(20,10,0,.2)'; g.beginPath(); g.ellipse(Math.round(J.x + J.w / 2 - camX), Math.round(J.y + J.h) + .4, 6.4, 1.3, 0, 0, 7); g.fill(); }
   g.drawImage(img, x, y);
 }
 function dessinerEntite(e){
@@ -829,7 +834,9 @@ function dessinerEntite(e){
 }
 function dessinerHUD(){
   const n = NIVEAUX[etat.niv];
-  g.fillStyle = 'rgba(14,20,50,.40)'; ronde(5, 4, VW - 10, 28, 12); g.fill();
+  { const d = g.createLinearGradient(0, 4, 0, 32); d.addColorStop(0, 'rgba(255,255,255,.22)'); d.addColorStop(1, 'rgba(255,255,255,.07)');
+    g.fillStyle = 'rgba(12,22,52,.46)'; ronde(5, 4, VW - 10, 28, 14); g.fill(); g.fillStyle = d; ronde(5, 4, VW - 10, 28, 14); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.28)'; g.lineWidth = .6; ronde(5.3, 4.3, VW - 10.6, 27.4, 13.7); g.stroke(); }
   const c1 = 15, c2 = Math.round(VW * .3), c3 = Math.round(VW * .55), c4 = Math.round(VW * .77);
   texteContour('PÉPIN', c1, 7, 6.5, '#C8DAFF', 'left', 'rgba(14,20,50,.6)'); texteContour(String(etat.score).padStart(6, '0'), c1, 14.5, 10.5);
   g.drawImage(SP.objets.piece[0], c2 - 5, 10, 16, 16); texteContour('× ' + String(etat.pieces).padStart(2, '0'), c2 + 12, 12, 11);
@@ -878,7 +885,18 @@ function dessiner(){
     const lignes = (NIVEAUX[etat.niv].merci || 'Merci Pépin ! Mais le Yéti a filé vers le monde suivant…').match(/.{1,30}(\s|$)/g) || [];
     lignes.forEach((l, i) => texteContour(l.trim(), VW / 2, 60 + i * 16, 11, '#fff', 'center')); g.textAlign = 'left';
   }
+  vignette();
   dessinerHUD();
+}
+// un léger assombrissement des bords et une lumière chaude en haut : l'image paraît plus profonde (dessiné une fois, à la taille de l'écran)
+let cVig = null, cleVig = '';
+function vignette(){
+  const cle = VW + 'x' + RES; if(cle !== cleVig){
+    cleVig = cle; cVig = document.createElement('canvas'); cVig.width = VW * RES; cVig.height = HAUT * RES; const v = cVig.getContext('2d'); v.scale(RES, RES);
+    const r = v.createRadialGradient(VW / 2, HAUT * .46, HAUT * .38, VW / 2, HAUT * .5, Math.max(VW, HAUT) * .72); r.addColorStop(0, 'rgba(0,0,0,0)'); r.addColorStop(1, 'rgba(8,12,30,.34)'); v.fillStyle = r; v.fillRect(0, 0, VW, HAUT);
+    const l = v.createLinearGradient(0, 0, 0, HAUT * .55); l.addColorStop(0, 'rgba(255,236,190,.10)'); l.addColorStop(1, 'rgba(255,236,190,0)'); v.fillStyle = l; v.fillRect(0, 0, VW, HAUT);
+  }
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(cVig, 0, 0); g.restore();
 }
 
 /* ---------- La taille de l'écran : 240 pixels de haut ; en portrait, le jeu en haut et la manette dessous ---------- */

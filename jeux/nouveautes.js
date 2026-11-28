@@ -3,6 +3,7 @@
    donné par outils/version.sh (v) : la fenêtre montre ce qui est plus récent que la dernière version vue sur l'appareil.
    type : 'nouveau' (nouveau jeu) ou 'maj' (mise à jour) ; lien : la page du jeu ; ico : un emoji. */
 window.ALTITUDE_NOUVEAUTES = [
+  { v:228, type:'maj', jeu:'Pépin', ico:'🍄', lien:'jeux/pepin.html', txt:"Le jeu est plus moderne : Pépin et tous les ennemis sont redessinés (grands yeux, bonnet à pompon, écharpe…), avec des ombres et une lumière plus douce. Les tuyaux de sortie se prennent aussi avec ▼ d'en haut : plus de blocage dans le niveau 2." },
   { v:227, type:'maj', jeu:'Quelle taille ?', ico:'📏', lien:'jeux/toise.html', txt:"Sur tablette et ordinateur, le jeu occupe enfin tout l'écran : la scène, les textes et les boutons sont bien plus grands (téléphone inchangé)." },
   { v:226, type:'maj', jeu:'Touches du clavier', ico:'⌨️', lien:'jeux/dameuse.html', txt:"Sur ordinateur, les jeux de pilotage et d'action affichent leurs touches (flèches, espace, A S D F…) dans un petit bandeau qui s'efface tout seul ; la touche ? ouvre l'aide complète. Au billard, tu peux maintenant tirer au clavier : maintiens Espace pour la force, relâche pour frapper. Rien ne change sur téléphone et tablette." },
   { v:225, type:'maj', jeu:'Escale', ico:'✈️', lien:'jeux/escale.html', txt:"Les moteurs des avions ne touchent plus le sol : les avions reposent sur leurs roues et les nacelles restent bien au-dessus du sol, sous l'aile." },

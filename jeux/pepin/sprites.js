@@ -146,13 +146,86 @@ window.PEPIN_SPRITES = (() => {
     '.......WW.......', '......RRRR......', '.....RRRRRR.....', '....RRRRRRRR....', '...WWWWWWWWWW...', '...nnnSSKS......', '..nSnSSSKSSS....', '..nSnnSSSSKSSS..', '..nnSSSSKKKKK...',
     '...YYYSSSSYYY...', '..YYYYBBBBYYYY..', '.SSYYBBUBBUBYSS.', '.SSBBBBBBBBBBSS.', '..BBBBBBBBBBBB..', '..BBBBB..BBBBB..', '.NNNNN....NNNNN.', '.NNNNN....NNNNN.', '................', '................', '................',
   ];
+  /* Pépin en dessin vectoriel (v228) : une silhouette arrondie et lumineuse, dessinée au pinceau à chaque image (bonnet à pompon, grands yeux,
+     écharpe, sac à dos, salopette) ; les poses (marche, saut, dérapage…) sont de petits squelettes : où sont les pieds et les mains. */
+  const KP = 6;                                                  // finesse du dessin (pixels par unité)
+  const vecteurK = (w, h, k, f) => { const c = toile(w, h), hi = toile(w * k, h * k), g = hi.getContext('2d'); g.scale(k, k); g.lineJoin = 'round'; g.lineCap = 'round'; f(g); c.hi = hi; c.pad = 0; return c; };
+  // une forme pleine : dégradé clair en haut, sombre en bas, et un fin contour de la même couleur en plus foncé
+  const remplir = (g, col, chemin, ligne = .5, haut = .3, y0 = 0, hh = 16) => {
+    g.beginPath(); chemin(g);
+    g.fillStyle = col; g.fill();
+    g.save(); g.clip(); const d = g.createLinearGradient(0, y0, 0, y0 + hh); d.addColorStop(0, mel(col, '#FFFFFF', haut)); d.addColorStop(.5, mel(col, '#FFFFFF', 0)); d.addColorStop(1, mel(col, '#000000', .22)); g.fillStyle = d; g.fillRect(-4, y0 - 2, 24, hh + 4); g.restore();
+    g.strokeStyle = mel(col, '#140A06', .62); g.lineWidth = ligne; g.beginPath(); chemin(g); g.stroke();
+  };
+  const cap = (g, col, x0, y0, x1, y1, ep) => {                   // un membre : un trait épais aux bouts ronds, avec contour
+    g.lineCap = 'round'; g.strokeStyle = mel(col, '#140A06', .62); g.lineWidth = ep + .9; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+    g.strokeStyle = col; g.lineWidth = ep; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+    g.strokeStyle = mel(col, '#FFFFFF', .28); g.lineWidth = ep * .3; g.beginPath(); g.moveTo(x0 - .25, y0 - .1); g.lineTo(x1 - .25, y1 - .1); g.stroke();
+  };
+  const ovale = (g, x, y, rx, ry, rot = 0) => { g.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); };
+  // les poses : pieds (x relatif au centre, hauteur levée), mains (x, y relatifs à l'épaule), élan du buste, rebond
+  const POSES = {
+    debout:{ pg:[-2, 0], pd:[2, 0], mg:[-3.6, 3.2], md:[3.6, 3.2], pen:0, reb:0 },
+    marche1:{ pg:[-3.4, 1.1], pd:[3.2, 0], mg:[3.2, 2.4], md:[-3.4, 2.6], pen:.04, reb:.2 },
+    marche2:{ pg:[-.6, 0], pd:[.8, .5], mg:[-1, 3.6], md:[1.2, 3.6], pen:.02, reb:-.3 },
+    marche3:{ pg:[3.2, 0], pd:[-3.4, 1.1], mg:[-3.4, 2.6], md:[3.2, 2.4], pen:.04, reb:.2 },
+    saut:{ pg:[-3.4, 1.3], pd:[3.8, 3.2], mg:[-3.2, 1.8], md:[3.6, -3.6], pen:.1, reb:-.4 },
+    derape:{ pg:[3.4, 0], pd:[5, 0], mg:[-4.4, -.6], md:[-3.6, 1.2], pen:-.13, reb:0 },
+    mort:{ pg:[-3.8, 1], pd:[3.8, 1], mg:[-4.4, -4], md:[4.4, -4], pen:0, reb:0 },
+  };
+  function dessinPepin(pal, grand, nom){
+    const H = grand ? 32 : 16, P = POSES[nom === 'accroupi' ? 'debout' : nom], acc = nom === 'accroupi', mort = nom === 'mort';
+    return vecteurK(16, H, KP, g => {
+      const cx = 8, Hh = acc ? 21 : H;                                // hauteur du personnage (accroupi : il descend dans le cadre du grand)
+      g.translate(0, H - Hh);
+      const rb = P.reb, tete = grand && !acc ? 7.5 : acc ? 6.7 : 5.9, hanche = Hh - (acc ? 5.6 : grand ? 7.4 : 4.2), pied = Hh - 1.2, ep = grand && !acc ? 3.3 : 2.9;
+      g.translate(cx, Hh); g.rotate(P.pen); g.translate(-cx, -Hh);
+      const bt = tete + 4.3 + rb;                                     // le haut du buste
+      // derrière : le sac à dos et le bout de l'écharpe qui flotte
+      remplir(g, '#8A5A2E', c => rr(c, 2.4, bt, 3.6, Math.max(3, hanche - bt + .6), 1.4), .45, .25, bt, hanche - bt);
+      const ec = '#F28C28';
+      remplir(g, ec, c => { c.moveTo(5.8, bt + .2); c.quadraticCurveTo(2.6, bt - .2 + (nom === 'derape' ? 1.4 : 0), 1 - P.pen * 8, bt + 2.9); c.quadraticCurveTo(3.4, bt + 2.3, 6.4, bt + 2.1); c.closePath(); }, .4, .3, bt, 3);
+      // les jambes
+      const jambe = (px, lev) => {
+        const fx = cx + px, fy = pied - lev;
+        cap(g, pal.B, cx + (px > cx - cx ? 1.4 : -1.4) * 1, hanche, fx, fy - 1.2, ep);
+        remplir(g, pal.N, c => rr(c, fx - 2 + (px >= 0 ? .55 : -.1), fy - .9, 4.2, 2.3, 1.1), .45, .4, fy - .9, 2.3);
+      };
+      jambe(P.pg[0], P.pg[1]);
+      // le buste : salopette à bretelles et plastron jaune
+      remplir(g, pal.B, c => rr(c, cx - 4, bt, 8, hanche - bt + 1.4, 2.5), .5, .3, bt, hanche - bt + 1.4);
+      remplir(g, pal.Y, c => rr(c, cx - 3, bt - .3, 6, 2.7, 1.3), .4, .25, bt - .3, 2.7);
+      for(const bx of [-1.8, 1.8]){ g.fillStyle = pal.U; g.beginPath(); g.arc(cx + bx, bt + 1.9, .6, 0, 7); g.fill(); g.strokeStyle = 'rgba(80,50,0,.5)'; g.lineWidth = .25; g.stroke(); }
+      remplir(g, mel(pal.B, '#000000', .12), c => rr(c, cx - 1.7, bt + 3, 3.4, 1.9, .8), .35, .1, bt + 3, 1.9);   // la poche
+      jambe(P.pd[0], P.pd[1]);
+      // la tête
+      const hy = tete + rb;
+      remplir(g, mel(pal.S, '#C8845A', .3), c => ovale(c, cx - 4, hy + .9, 1.1, 1.4), .4, .1, hy - .5, 2.8);       // l'oreille
+      remplir(g, pal.S, c => ovale(c, cx + .1, hy, 5.1, 4.8), .5, .2, hy - 4.8, 9.6);
+      g.fillStyle = 'rgba(235,110,100,.34)'; g.beginPath(); ovale(g, cx + 2.2, hy + 1.9, 1.3, .85); g.fill();              // la joue
+      remplir(g, mel(pal.S, '#E8987A', .22), c => ovale(c, cx + 5, hy + 1, .95, .9), .4, .15, hy, 2);                      // le nez
+      if(mort){ g.strokeStyle = pal.K; g.lineWidth = .55; for(const ex of [1.8, 4.2]){ g.beginPath(); g.moveTo(cx + ex - .7, hy); g.lineTo(cx + ex + .7, hy + 1.4); g.moveTo(cx + ex + .7, hy); g.lineTo(cx + ex - .7, hy + 1.4); g.stroke(); } }
+      else for(const ex of [1.5, 3.9]){ g.fillStyle = '#FFFFFF'; g.beginPath(); ovale(g, cx + ex, hy + .55, 1.15, 1.55); g.fill(); g.strokeStyle = 'rgba(40,20,10,.5)'; g.lineWidth = .25; g.stroke(); g.fillStyle = pal.K; g.beginPath(); ovale(g, cx + ex + .38, hy + .7, .8, 1.2); g.fill(); g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(cx + ex + .1, hy + .1, .32, 0, 7); g.fill(); }
+      remplir(g, '#6B3A1E', c => { c.moveTo(cx + 1.9, hy + 2.5); c.quadraticCurveTo(cx + 3.6, hy + 1.7, cx + 5.7, hy + 2.5); c.quadraticCurveTo(cx + 4.2, hy + 3.9, cx + 1.9, hy + 2.5); c.closePath(); }, .35, .15, hy + 1.8, 2);   // la moustache
+      if(mort){ g.fillStyle = pal.K; g.beginPath(); ovale(g, cx + 3.4, hy + 4); g.ellipse(cx + 3.4, hy + 4, .6, .8, 0, 0, 7); g.fill(); }
+      // le bonnet : un dôme sur le front, un revers clair, un gros pompon
+      remplir(g, pal.R, c => { c.moveTo(cx - 5.3, hy - 1.1); c.bezierCurveTo(cx - 5.7, hy - 7.2, cx + 5.7, hy - 7.2, cx + 5.4, hy - 1.1); c.closePath(); }, .55, .3, hy - 6.2, 5.2);
+      remplir(g, pal.W, c => rr(c, cx - 5.7, hy - 2.5, 11.4, 2, 1), .5, .15, hy - 2.5, 2);
+      remplir(g, pal.W, c => c.arc(cx + .3, hy - 6.3, 1.4, 0, 7), .45, .2, hy - 7.7, 2.8);
+      // les bras
+      const kb = grand ? 1 : .72;
+      const bras = (mx0, my0, derr) => {
+        const mx = mx0 * kb, my = my0 * kb, sx = cx + (derr ? -3.5 : 3.5), sy = bt + 1.3;
+        cap(g, pal.Y, sx, sy, sx + mx * .84, sy + my * .84, 2.4);
+        remplir(g, pal.S, c => c.arc(sx + mx, sy + my, 1.3, 0, 7), .4, .2, sy + my - 1.3, 2.6);
+      };
+      bras(P.mg[0], P.mg[1], true); bras(P.md[0], P.md[1], false);
+    });
+  }
   function framesPepin(pal){
     const petit = {}, grand = {};
-    for(const [k, c] of Object.entries(P_CORPS)) petit[k] = art([...P_TETE, ...c], pal);
-    petit.mort = art(P_MORT, pal);
-    const gc = (corps, jambes) => art([...G_TETE, ...G_CORPS[corps], ...G_JAMBES[jambes]], pal);
-    grand.debout = gc('debout', 'debout'); grand.marche1 = gc('marche', 'marche1'); grand.marche2 = gc('marche', 'marche2'); grand.marche3 = gc('marche', 'marche3');
-    grand.saut = gc('saut', 'saut'); grand.derape = gc('derape', 'marche2'); grand.accroupi = art(G_ACCROUPI, pal);
+    for(const k of ['debout', 'marche1', 'marche2', 'marche3', 'saut', 'derape', 'mort']) petit[k] = dessinPepin(pal, false, k);
+    for(const k of ['debout', 'marche1', 'marche2', 'marche3', 'saut', 'derape', 'accroupi']) grand[k] = dessinPepin(pal, true, k);
     const out = { petit:{}, grand:{} };
     for(const t of ['petit', 'grand']){ const src = t === 'petit' ? petit : grand; for(const [k, img] of Object.entries(src)) out[t][k] = { d:img, g:miroir(img) }; }
     return out;
@@ -234,6 +307,122 @@ window.PEPIN_SPRITES = (() => {
     etoile:[art(ETOILE, PAL_OBJ), art(ETOILE, { ...PAL_OBJ, Y:'#FFF3B0' }), art(ETOILE, { ...PAL_OBJ, Y:'#9BE0FF' })],
     coeur:art(COEUR, PAL_OBJ),
   };
+  /* ---------- Les ennemis et les objets en dessin vectoriel (v228) : même style que Pépin, tournés vers la droite (le miroir fait la gauche) ---------- */
+  const oeil = (g, x, y, r = 1.15, regard = .35) => { g.fillStyle = '#FFFFFF'; g.beginPath(); g.ellipse(x, y, r, r * 1.2, 0, 0, 7); g.fill(); g.strokeStyle = 'rgba(30,15,8,.5)'; g.lineWidth = .22; g.stroke(); g.fillStyle = '#1A1010'; g.beginPath(); g.ellipse(x + regard, y + .1, r * .62, r * .85, 0, 0, 7); g.fill(); g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(x + regard - .25, y - .35, r * .24, 0, 7); g.fill(); };
+  const ombreSol = (g, x, y, rx) => { g.fillStyle = 'rgba(20,10,0,.18)'; g.beginPath(); g.ellipse(x, y, rx, .8, 0, 0, 7); g.fill(); };
+  const marmotte = (f, plat) => vecteurK(16, 16, KP, g => {
+    const pas = f ? 1 : -1;
+    if(plat){ remplir(g, '#8A5530', c => c.ellipse(8, 14.6, 7.2, 1.6, 0, 0, 7), .5, .3, 13, 3); remplir(g, '#E8C89A', c => c.ellipse(8, 14.9, 5, .9, 0, 0, 7), .35, .1, 14, 1.5); for(const ex of [5.3, 9.6]){ g.strokeStyle = '#1A1010'; g.lineWidth = .45; g.beginPath(); g.moveTo(ex - .7, 14.1); g.lineTo(ex + .7, 15); g.moveTo(ex + .7, 14.1); g.lineTo(ex - .7, 15); g.stroke(); } return; }
+    ombreSol(g, 8, 15.7, 6);
+    remplir(g, '#5E3418', c => c.ellipse(2.2, 12.3, 1.3, 2.4, -.4, 0, 7), .4, .1, 10, 5);                                           // la queue
+    for(const [lx, d] of [[5.2, pas], [10.4, -pas]]) remplir(g, '#5E3418', c => rr(c, lx - 1.3 + d * .4, 13.2 - (d > 0 ? .6 : 0), 3.2, 2.5, 1.1), .45, .3, 13, 2.5);   // les pattes
+    remplir(g, '#9A6234', c => c.ellipse(7.6, 10.2, 6.4, 4.9, 0, 0, 7), .55, .32, 5.5, 10);                                          // le corps
+    remplir(g, '#E8C89A', c => c.ellipse(8.4, 12, 4.3, 2.6, 0, 0, 7), .35, .2, 9.5, 5);                                              // le ventre
+    remplir(g, '#9A6234', c => c.ellipse(11.4, 7.6, 4.1, 3.7, 0, 0, 7), .55, .3, 4, 7.5);                                             // la tête
+    remplir(g, '#7A4A24', c => c.ellipse(8.4, 4.3, 1.5, 1.6, 0, 0, 7), .45, .2, 3, 3);                                                // l'oreille
+    remplir(g, '#E8C89A', c => c.ellipse(13.4, 9, 2.2, 1.7, 0, 0, 7), .4, .2, 7.5, 3.5);                                              // le museau
+    g.fillStyle = '#3A1A10'; g.beginPath(); g.ellipse(14.9, 8.2, .75, .6, 0, 0, 7); g.fill();                                          // le nez
+    remplir(g, '#FFFFFF', c => rr(c, 12.9, 9.9, 1.9, 1.5, .4), .3, .1, 9.9, 1.5);                                                      // les dents
+    oeil(g, 11.7, 6.4, 1.05, .35);
+  });
+  const herisson = (f, col, boule) => vecteurK(16, 16, KP, g => {
+    const pic = col[0], picF = col[1], mel_ = '#E8C89A';
+    const piques = (cx, cy, R, n, long) => { for(let i = 0; i < n; i++){ const a = Math.PI + i / (n - 1) * Math.PI * 1.05 - .05; const x0 = cx + Math.cos(a) * (R - 1), y0 = cy + Math.sin(a) * (R - 1), x1 = cx + Math.cos(a) * (R + long), y1 = cy + Math.sin(a) * (R + long); remplir(g, i % 2 ? picF : pic, c => { c.moveTo(x0 - Math.sin(a) * 1, y0 + Math.cos(a) * 1); c.lineTo(x1, y1); c.lineTo(x0 + Math.sin(a) * 1, y0 - Math.cos(a) * 1); c.closePath(); }, .4, .25, y1, 3); } };
+    if(boule){ ombreSol(g, 8, 15.6, 5); piques(8, 9, 5.3, 12, 1.6); remplir(g, pic, c => c.arc(8, 9, 5.4, 0, 7), .5, .3, 3.5, 11); g.save(); g.beginPath(); g.arc(8, 9, 5.4, 0, 7); g.clip(); g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(9.2, 10.6, 5.3, 4.4, 0, 0, 7); g.fill(); g.restore(); oeil(g, 9.4, 9, .9, .3); return; }
+    const pas = f ? 1 : -1; ombreSol(g, 8, 15.7, 6);
+    for(const [lx, d] of [[5.4, pas], [10, -pas]]) remplir(g, '#5E3418', c => rr(c, lx - 1.2 + d * .4, 13.4, 2.8, 2.3, 1), .4, .3, 13.4, 2.3);
+    piques(7, 10, 5.4, 13, 2); remplir(g, pic, c => c.ellipse(7, 10, 5.6, 4.6, 0, 0, 7), .5, .3, 5.5, 9);
+    remplir(g, mel_, c => c.ellipse(12, 11, 3.6, 3, 0, 0, 7), .45, .3, 8, 6);                                                         // le visage
+    g.fillStyle = '#3A1A10'; g.beginPath(); g.ellipse(14.9, 11.1, .8, .65, 0, 0, 7); g.fill(); oeil(g, 12.2, 9.7, 1, .35);
+  });
+  const scarabee = (f, boule) => vecteurK(16, 16, KP, g => {
+    if(boule){ ombreSol(g, 8, 15.5, 5.5); remplir(g, '#3E5FBF', c => c.ellipse(8, 11, 6, 4.8, 0, Math.PI, Math.PI * 2), .55, .35, 6, 6); remplir(g, '#E8C89A', c => rr(c, 2.4, 11, 11.2, 2.2, 1), .4, .2, 11, 2.2); g.strokeStyle = 'rgba(10,20,70,.4)'; g.lineWidth = .35; g.beginPath(); g.moveTo(8, 6.3); g.lineTo(8, 11); g.stroke(); return; }
+    const pas = f ? 1 : -1; ombreSol(g, 8, 15.7, 6);
+    for(const lx of [4.8, 7.8, 10.8]) { g.strokeStyle = '#1A1A2E'; g.lineWidth = .9; g.beginPath(); g.moveTo(lx, 12.6); g.lineTo(lx + pas * (lx % 2 ? .8 : -.8), 15.3); g.stroke(); }
+    remplir(g, '#2B3F9C', c => { c.moveTo(1.8, 13); c.bezierCurveTo(1.6, 4.2, 12, 3, 12.8, 13); c.closePath(); }, .55, .4, 4, 9);
+    g.strokeStyle = 'rgba(180,200,255,.5)'; g.lineWidth = .45; g.beginPath(); g.moveTo(7.4, 5.2); g.lineTo(7.4, 12.6); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.ellipse(5, 7.2, 1.6, 1, -.6, 0, 7); g.fill();
+    remplir(g, '#E8C89A', c => c.ellipse(13, 10.6, 2.6, 2.7, 0, 0, 7), .45, .3, 8, 5);
+    oeil(g, 13.2, 9.8, .85, .3); remplir(g, '#E8731E', c => { c.moveTo(11.6, 8); c.lineTo(10.4, 6); c.lineTo(12.6, 7.4); c.closePath(); }, .3, .1, 6, 2);
+  });
+  const chardon = f => vecteurK(16, 16, KP, g => {
+    const b = f ? .5 : -.5;
+    remplir(g, '#2E8B3A', c => { c.moveTo(8, 14); c.quadraticCurveTo(2.5 + b, 11, 2, 6.5 + b); c.quadraticCurveTo(6, 9, 8, 12); c.closePath(); }, .4, .3, 6, 8);
+    remplir(g, '#2E8B3A', c => { c.moveTo(8, 14); c.quadraticCurveTo(13.5 - b, 11, 14, 6.5 - b); c.quadraticCurveTo(10, 9, 8, 12); c.closePath(); }, .4, .3, 6, 8);
+    remplir(g, '#6AA83A', c => rr(c, 7, 8, 2, 8, .8), .35, .3, 8, 8);
+    for(let i = 0; i < 9; i++){ const a = -Math.PI / 2 + (i - 4) * .36; remplir(g, i % 2 ? '#C060D8' : '#9B3FB0', c => { c.moveTo(8 - Math.sin(a) * 1.2, 7 + Math.cos(a) * 1.2 - 1); c.lineTo(8 + Math.cos(a - Math.PI / 2) * 5.5 + (i - 4) * .3, 7 + Math.sin(a - Math.PI / 2) * 5.5); c.lineTo(8 + Math.sin(a) * 1.2, 7 - Math.cos(a) * 1.2 - 1); c.closePath(); }, .35, .2, 1, 6); }
+    remplir(g, '#7A2E90', c => c.ellipse(8, 7.5, 3.4, 2.6, 0, 0, 7), .45, .3, 5, 5);
+    oeil(g, 6.6, 7.3, .85, .1); oeil(g, 9.4, 7.3, .85, .1);
+  });
+  const choucas = f => vecteurK(16, 16, KP, g => {
+    const haut = f ? -3.4 : 2.6;
+    remplir(g, '#33363F', c => { c.moveTo(6.5, 8); c.quadraticCurveTo(3.5, 8 + haut, 1.6, 8 + haut * 1.4); c.quadraticCurveTo(5, 8.6 + haut * .3, 9.5, 10.5); c.closePath(); }, .4, .2, 4, 9);   // l'aile du fond
+    remplir(g, '#20232B', c => c.ellipse(7.8, 10.2, 5.2, 3.3, -.15, 0, 7), .5, .28, 7, 7);
+    remplir(g, '#20232B', c => c.ellipse(12, 8.2, 2.9, 2.7, 0, 0, 7), .5, .28, 5.5, 5);
+    remplir(g, '#E8A91E', c => { c.moveTo(14, 7.5); c.lineTo(16, 8.6); c.lineTo(14, 9.4); c.closePath(); }, .35, .25, 7.5, 2);
+    remplir(g, '#20232B', c => { c.moveTo(3, 10.4); c.lineTo(.4, 12.6); c.lineTo(3.6, 12); c.lineTo(3, 12.9); c.lineTo(5.6, 11.8); c.closePath(); }, .35, .1, 10, 3);
+    oeil(g, 12.2, 7.6, .85, .3);
+    remplir(g, '#4A4E5A', c => { c.moveTo(8.5, 9.2); c.quadraticCurveTo(7 , 9.2 + haut, 4.2, 9.5 + haut * 1.5); c.quadraticCurveTo(7.4, 10.4 + haut * .2, 10.5, 11.2); c.closePath(); }, .4, .3, 5, 8);
+  });
+  const truite = f => vecteurK(16, 16, KP, g => {
+    const q = f ? 1 : -1;
+    remplir(g, '#E8731E', c => { c.moveTo(3.2, 8.8); c.lineTo(.5, 8 - q * 1.6); c.lineTo(.5, 9.4 + q * 1.6); c.closePath(); }, .4, .3, 6, 5);
+    remplir(g, '#F2A0A8', c => c.ellipse(7.8, 8.8, 5.6, 3.3, 0, 0, 7), .5, .3, 5.5, 7);
+    remplir(g, '#E8C89A', c => c.ellipse(8.6, 10.2, 4, 1.4, 0, 0, 7), .35, .2, 9, 2);
+    remplir(g, '#E8731E', c => { c.moveTo(6, 6); c.quadraticCurveTo(8, 3.8 + q * .6, 10, 6); c.closePath(); }, .35, .3, 4, 3);
+    g.fillStyle = 'rgba(180,40,60,.45)'; for(const [x, y] of [[5.4, 8.3], [7, 7.3], [8.6, 7.9], [6.2, 9.4]]){ g.beginPath(); g.arc(x, y, .42, 0, 7); g.fill(); }
+    oeil(g, 11.8, 8, .9, .3); g.strokeStyle = 'rgba(120,30,40,.6)'; g.lineWidth = .35; g.beginPath(); g.moveTo(13.2, 9.5); g.quadraticCurveTo(12.5, 10, 12, 9.7); g.stroke();
+  });
+  const bouleNeige = () => vecteurK(16, 16, KP, g => { remplir(g, '#EAF4FF', c => c.arc(8, 8, 5.6, 0, 7), .5, .2, 2.4, 11); g.fillStyle = 'rgba(120,160,210,.35)'; g.beginPath(); g.ellipse(9.4, 10.2, 4.2, 3.6, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.ellipse(5.8, 5.6, 1.6, 1, -.6, 0, 7); g.fill(); });
+  // le Yéti, gardien des châteaux (32 × 32) : un gros bonhomme de neige poilu, bras levés ou baissés
+  const yetiV = bras => vecteurK(32, 32, KP, g => {
+    ombreSol(g, 16, 31.2, 12);
+    const fourrure = '#E8F0FA', creux = '#9DB8D8';
+    remplir(g, fourrure, c => { c.moveTo(6, 30); c.bezierCurveTo(2, 20, 5, 9, 16, 8); c.bezierCurveTo(27, 9, 30, 20, 26, 30); c.closePath(); }, .6, .3, 8, 22);
+    remplir(g, creux, c => c.ellipse(16, 22, 7, 7, 0, 0, 7), .4, .1, 15, 14);
+    for(const sd of [-1, 1]) remplir(g, fourrure, c => { c.moveTo(16 + sd * 9, 14); c.quadraticCurveTo(16 + sd * 17, 14 + (bras ? -6 : 8), 16 + sd * 15.5, bras ? 5 : 22); c.lineTo(16 + sd * 12.2, bras ? 6 : 22); c.quadraticCurveTo(16 + sd * 11, 16, 16 + sd * 7, 18); c.closePath(); }, .5, .3, 5, 18);
+    for(const sd of [-1, 1]) remplir(g, creux, c => rr(c, 16 + sd * 6 - 3.2, 27, 6.4, 4, 2), .5, .2, 27, 4);
+    remplir(g, fourrure, c => c.ellipse(16, 11, 8.6, 7.6, 0, 0, 7), .6, .3, 3.5, 15);
+    remplir(g, '#7FA9D8', c => c.ellipse(16, 12, 5.6, 5, 0, 0, 7), .45, .25, 7, 10);
+    for(const sd of [-1, 1]){ g.fillStyle = '#FFF'; g.beginPath(); g.ellipse(16 + sd * 2.6, 10.6, 1.4, 1.7, 0, 0, 7); g.fill(); g.fillStyle = '#1A1010'; g.beginPath(); g.ellipse(16 + sd * 2.4, 10.9, .9, 1.2, 0, 0, 7); g.fill(); g.strokeStyle = '#1A1010'; g.lineWidth = .7; g.beginPath(); g.moveTo(16 + sd * 4.8, 8 - sd * .2); g.lineTo(16 + sd * 1, 9.4 + (sd > 0 ? 0 : 0)); g.stroke(); }
+    remplir(g, '#1A1010', c => rr(c, 12.8, 14, 6.4, 3.2, 1.4), .3, .1, 14, 3); g.fillStyle = '#FFFFFF'; for(let i = 0; i < 4; i++){ g.beginPath(); g.moveTo(13.4 + i * 1.5, 14.2); g.lineTo(14.2 + i * 1.5, 14.2); g.lineTo(13.8 + i * 1.5, 15.6); g.closePath(); g.fill(); }
+  });
+  Object.assign(ennemis, {
+    marmotton:[marmotte(0), marmotte(1)], marmottonPlat:marmotte(0, true),
+    herisson:[herisson(0, ['#7A7F86', '#5A5F66']), herisson(1, ['#7A7F86', '#5A5F66'])], boule:herisson(0, ['#7A7F86', '#5A5F66'], true),
+    herissonRouge:[herisson(0, ['#D8503A', '#A02E1E']), herisson(1, ['#D8503A', '#A02E1E'])], bouleRouge:herisson(0, ['#D8503A', '#A02E1E'], true),
+    chardon:[chardon(0), chardon(1)], choucas:[choucas(0), choucas(1)], scarabee:[scarabee(0), scarabee(1)], carapace:scarabee(0, true),
+    truite:[truite(0), truite(1)], bouleNeige:bouleNeige(),
+  });
+  for(const k of ['marmotton', 'herisson', 'herissonRouge', 'choucas', 'scarabee', 'truite']) ennemis[k + 'G'] = ennemis[k].map(miroir);
+  ennemis.yeti = [yetiV(false), yetiV(true)]; ennemis.yetiG = ennemis.yeti.map(miroir);
+  // les objets : le cèpe qui fait grandir, le piment de feu, l'étoile, le cœur de vie
+  const cepeV = () => vecteurK(16, 16, KP, g => {
+    ombreSol(g, 8, 15.6, 5);
+    remplir(g, '#F4E6C2', c => { c.moveTo(5.2, 15); c.quadraticCurveTo(5.4, 9.4, 6, 8.6); c.lineTo(10, 8.6); c.quadraticCurveTo(10.6, 9.4, 10.8, 15); c.closePath(); }, .5, .3, 8, 7);
+    remplir(g, '#A8672E', c => { c.moveTo(1, 9.6); c.bezierCurveTo(.6, 1.6, 15.4, 1.6, 15, 9.6); c.quadraticCurveTo(8, 11.4, 1, 9.6); c.closePath(); }, .55, .35, 2, 8);
+    g.fillStyle = 'rgba(255,230,190,.55)'; g.beginPath(); g.ellipse(5.4, 4.8, 2, 1.1, -.5, 0, 7); g.fill();
+    oeil(g, 6.4, 12, .7, .1); oeil(g, 9.6, 12, .7, .1);
+  });
+  const pimentV = f => vecteurK(16, 16, KP, g => {
+    const rouge = f ? '#E0302A' : '#FF8A1E';
+    remplir(g, rouge, c => { c.moveTo(4.6, 5); c.bezierCurveTo(2, 8, 5, 14.6, 12.6, 15.2); c.bezierCurveTo(8.8, 12.4, 11, 7.4, 11.4, 5); c.bezierCurveTo(9.4, 3.6, 6.4, 3.6, 4.6, 5); c.closePath(); }, .55, .35, 3.5, 12);
+    remplir(g, '#3A9A3A', c => { c.moveTo(5, 4.8); c.quadraticCurveTo(7.2, 1.8, 7.8, 0.6); c.lineTo(9.2, 1.4); c.quadraticCurveTo(10, 3, 11.2, 4.8); c.quadraticCurveTo(8, 3.4, 5, 4.8); c.closePath(); }, .4, .3, .6, 4);
+    g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.ellipse(5.6, 7.6, .8, 1.6, .2, 0, 7); g.fill();
+    oeil(g, 7.1, 7.4, .65, .1); oeil(g, 9.4, 7.8, .65, .1);
+  });
+  const etoileV = col => vecteurK(16, 16, KP, g => {
+    const pts = (cx, cy, R, r) => { const l = []; for(let i = 0; i < 10; i++){ const a = -Math.PI / 2 + i * Math.PI / 5, rad = i % 2 ? r : R; l.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad]); } return l; };
+    remplir(g, col, c => { pts(8, 8.4, 7.4, 3.5).forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); }, .6, .4, 1, 14);
+    g.fillStyle = '#1A1010'; for(const ex of [6.7, 9.3]){ g.beginPath(); g.ellipse(ex, 8.6, .55, .9, 0, 0, 7); g.fill(); }
+    g.fillStyle = 'rgba(255,255,255,.8)'; g.beginPath(); g.arc(6.9, 8.1, .22, 0, 7); g.arc(9.5, 8.1, .22, 0, 7); g.fill();
+  });
+  const coeurV = () => vecteurK(16, 16, KP, g => {
+    remplir(g, '#2EBE64', c => { c.moveTo(8, 14.2); c.bezierCurveTo(-3, 6.4, 3.2, .4, 8, 4.6); c.bezierCurveTo(12.8, .4, 19, 6.4, 8, 14.2); c.closePath(); }, .6, .4, 1, 14);
+    g.fillStyle = 'rgba(255,255,255,.65)'; g.beginPath(); g.ellipse(4.6, 5.2, 1.2, .8, -.7, 0, 7); g.fill();
+  });
+  Object.assign(objets, { cepe:cepeV(), piment:[pimentV(0), pimentV(1)], etoile:[etoileV('#FFD23A'), etoileV('#FFF3B0'), etoileV('#9BE0FF')], coeur:coeurV() });
+
   // Les pièces qui tournent (4 images) ; la pièce posée dans le niveau brille doucement
   const ell = (g, x, y, rx, ry) => { g.beginPath(); g.ellipse(x, y, Math.max(.01, rx), ry, 0, 0, Math.PI * 2); g.fill(); };
   objets.piece = [6.4, 4.4, 1.7, 4.4].map(rx => vecteur(16, 16, g => {
