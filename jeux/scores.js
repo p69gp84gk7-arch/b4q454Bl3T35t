@@ -281,6 +281,16 @@ window.AltitudeScores = (() => {
       ep('nuancier', 'parfaits2', 'Couleurs parfaites', nu.parfaits || 0, `${nu.parfaits || 0} parfaite${nu.parfaits > 1 ? 's' : ''}`);
       J.nuancier.stats = { 'Parties':nu.parties, 'Couleurs trouvées':nu.couleurs || 0, 'Note moyenne':((nu.total || 0) / Math.max(1, nu.couleurs || 0)).toFixed(1).replace('.', ',') + ' / 10' };
     }
+    // Chalet Crush : les étoiles et les niveaux franchis
+    const ch = lire('chalet-progres');
+    if(ch && ch.parties){
+      const et = Object.values(ch.etoiles || {}).reduce((a, b) => a + b, 0), sc = Object.values(ch.scores || {}).reduce((a, b) => a + b, 0), niv = Object.keys(ch.etoiles || {}).length;
+      jeu('chalet', 'Chalet Crush', '🍓');
+      ep('chalet', 'etoiles', 'Étoiles gagnées (sur 180)', et, `${et} / 180 ⭐`);
+      ep('chalet', 'niveaux', 'Niveaux gagnés (sur 60)', niv, `${niv} / 60`);
+      ep('chalet', 'scores', 'Total des meilleurs scores', sc, `${fmt(sc)} pts`);
+      J.chalet.stats = { 'Parties':ch.parties, 'Victoires':ch.victoires || 0, 'Gourmandises':fmt(ch.gourmandises || 0), 'Coups joués':fmt(ch.coups || 0), 'Plus longue série':ch.combosMax || 0 };
+    }
     const bl = lire('blocs-records');
     if(bl && bl.parties){
       jeu('blocs', 'Blocs', '🧱');

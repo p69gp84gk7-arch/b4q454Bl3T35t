@@ -176,48 +176,55 @@ window.PEPIN_SPRITES = (() => {
   function dessinPepin(pal, grand, nom){
     const H = grand ? 32 : 16, P = POSES[nom === 'accroupi' ? 'debout' : nom], acc = nom === 'accroupi', mort = nom === 'mort';
     return vecteurK(16, H, KP, g => {
-      const cx = 8, Hh = acc ? 21 : H;                                // hauteur du personnage (accroupi : il descend dans le cadre du grand)
+      const cx = 8, Hh = acc ? 22 : H;                                // hauteur du personnage (accroupi : il descend dans le cadre du grand)
       g.translate(0, H - Hh);
-      const rb = P.reb, tete = grand && !acc ? 7.5 : acc ? 6.7 : 5.9, hanche = Hh - (acc ? 5.6 : grand ? 7.4 : 4.2), pied = Hh - 1.2, ep = grand && !acc ? 3.3 : 2.9;
+      // les proportions « dessin animé » : une grosse tête, un buste trapu, des jambes courtes (comme les héros de plateforme)
+      //   hy : le centre de la tête ; sc : la taille de la tête ; bt : le haut du buste ; hanche : le bas du buste ; rx : demi-largeur du buste
+      const L = acc ? { hy:7.4, sc:1.1, bt:12.2, hanche:18.6, rx:5.2, ep:3.8, kb:1 }
+        : grand ? { hy:9.7, sc:1.1, bt:14.4, hanche:25.2, rx:5.2, ep:3.8, kb:1 }
+        : { hy:6.1, sc:.78, bt:9.1, hanche:12.7, rx:4, ep:2.7, kb:.74 };
+      const rb = P.reb, hy = L.hy + rb, hanche = L.hanche, bt = L.bt + rb, pied = Hh - 1.5, rx = L.rx;
       g.translate(cx, Hh); g.rotate(P.pen); g.translate(-cx, -Hh);
-      const bt = tete + 4.3 + rb;                                     // le haut du buste
       // derrière : le sac à dos et le bout de l'écharpe qui flotte
-      remplir(g, '#8A5A2E', c => rr(c, 2.4, bt, 3.6, Math.max(3, hanche - bt + .6), 1.4), .45, .25, bt, hanche - bt);
+      remplir(g, '#8A5A2E', c => rr(c, cx - rx - 1.6, bt + .4, 3.4, Math.max(3, hanche - bt - .6), 1.4), .45, .25, bt, hanche - bt);
       const ec = '#F28C28';
-      remplir(g, ec, c => { c.moveTo(5.8, bt + .2); c.quadraticCurveTo(2.6, bt - .2 + (nom === 'derape' ? 1.4 : 0), 1 - P.pen * 8, bt + 2.9); c.quadraticCurveTo(3.4, bt + 2.3, 6.4, bt + 2.1); c.closePath(); }, .4, .3, bt, 3);
-      // les jambes
-      const jambe = (px, lev) => {
+      remplir(g, ec, c => { c.moveTo(cx - 2.4, bt - .6); c.quadraticCurveTo(cx - rx - 1.2, bt - 1 + (nom === 'derape' ? 1.4 : 0), cx - rx - 3.4 - P.pen * 8, bt + 2.4); c.quadraticCurveTo(cx - rx - 1, bt + 1.9, cx - 2, bt + 1.4); c.closePath(); }, .4, .3, bt - 1, 4);
+      // les jambes : un petit bout de salopette et une grosse botte arrondie
+      const botte = (px, lev) => {
         const fx = cx + px, fy = pied - lev;
-        cap(g, pal.B, cx + (px > cx - cx ? 1.4 : -1.4) * 1, hanche, fx, fy - 1.2, ep);
-        remplir(g, pal.N, c => rr(c, fx - 2 + (px >= 0 ? .55 : -.1), fy - .9, 4.2, 2.3, 1.1), .45, .4, fy - .9, 2.3);
+        cap(g, pal.B, cx + (px >= 0 ? 1.5 : -1.5), hanche - 1, fx, fy - 1.1, L.ep);
+        remplir(g, pal.N, c => rr(c, fx - 2.2 + (px >= 0 ? .7 : -.2), fy - 1.2, 4.8, 2.9, 1.4), .45, .4, fy - 1.2, 2.9);
+        g.fillStyle = 'rgba(255,255,255,.28)'; g.beginPath(); g.ellipse(fx + (px >= 0 ? .8 : .3), fy - .4, 1, .4, 0, 0, 7); g.fill();
       };
-      jambe(P.pg[0], P.pg[1]);
+      botte(P.pg[0], P.pg[1]);
       // le buste : salopette à bretelles et plastron jaune
-      remplir(g, pal.B, c => rr(c, cx - 4, bt, 8, hanche - bt + 1.4, 2.5), .5, .3, bt, hanche - bt + 1.4);
-      remplir(g, pal.Y, c => rr(c, cx - 3, bt - .3, 6, 2.7, 1.3), .4, .25, bt - .3, 2.7);
-      for(const bx of [-1.8, 1.8]){ g.fillStyle = pal.U; g.beginPath(); g.arc(cx + bx, bt + 1.9, .6, 0, 7); g.fill(); g.strokeStyle = 'rgba(80,50,0,.5)'; g.lineWidth = .25; g.stroke(); }
-      remplir(g, mel(pal.B, '#000000', .12), c => rr(c, cx - 1.7, bt + 3, 3.4, 1.9, .8), .35, .1, bt + 3, 1.9);   // la poche
-      jambe(P.pd[0], P.pd[1]);
-      // la tête
-      const hy = tete + rb;
-      remplir(g, mel(pal.S, '#C8845A', .3), c => ovale(c, cx - 4, hy + .9, 1.1, 1.4), .4, .1, hy - .5, 2.8);       // l'oreille
-      remplir(g, pal.S, c => ovale(c, cx + .1, hy, 5.1, 4.8), .5, .2, hy - 4.8, 9.6);
-      g.fillStyle = 'rgba(235,110,100,.34)'; g.beginPath(); ovale(g, cx + 2.2, hy + 1.9, 1.3, .85); g.fill();              // la joue
-      remplir(g, mel(pal.S, '#E8987A', .22), c => ovale(c, cx + 5, hy + 1, .95, .9), .4, .15, hy, 2);                      // le nez
-      if(mort){ g.strokeStyle = pal.K; g.lineWidth = .55; for(const ex of [1.8, 4.2]){ g.beginPath(); g.moveTo(cx + ex - .7, hy); g.lineTo(cx + ex + .7, hy + 1.4); g.moveTo(cx + ex + .7, hy); g.lineTo(cx + ex - .7, hy + 1.4); g.stroke(); } }
-      else for(const ex of [1.5, 3.9]){ g.fillStyle = '#FFFFFF'; g.beginPath(); ovale(g, cx + ex, hy + .55, 1.15, 1.55); g.fill(); g.strokeStyle = 'rgba(40,20,10,.5)'; g.lineWidth = .25; g.stroke(); g.fillStyle = pal.K; g.beginPath(); ovale(g, cx + ex + .38, hy + .7, .8, 1.2); g.fill(); g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(cx + ex + .1, hy + .1, .32, 0, 7); g.fill(); }
-      remplir(g, '#6B3A1E', c => { c.moveTo(cx + 1.9, hy + 2.5); c.quadraticCurveTo(cx + 3.6, hy + 1.7, cx + 5.7, hy + 2.5); c.quadraticCurveTo(cx + 4.2, hy + 3.9, cx + 1.9, hy + 2.5); c.closePath(); }, .35, .15, hy + 1.8, 2);   // la moustache
-      if(mort){ g.fillStyle = pal.K; g.beginPath(); ovale(g, cx + 3.4, hy + 4); g.ellipse(cx + 3.4, hy + 4, .6, .8, 0, 0, 7); g.fill(); }
-      // le bonnet : un dôme sur le front, un revers clair, un gros pompon
-      remplir(g, pal.R, c => { c.moveTo(cx - 5.3, hy - 1.1); c.bezierCurveTo(cx - 5.7, hy - 7.2, cx + 5.7, hy - 7.2, cx + 5.4, hy - 1.1); c.closePath(); }, .55, .3, hy - 6.2, 5.2);
-      remplir(g, pal.W, c => rr(c, cx - 5.7, hy - 2.5, 11.4, 2, 1), .5, .15, hy - 2.5, 2);
-      remplir(g, pal.W, c => c.arc(cx + .3, hy - 6.3, 1.4, 0, 7), .45, .2, hy - 7.7, 2.8);
-      // les bras
-      const kb = grand ? 1 : .72;
+      remplir(g, pal.B, c => rr(c, cx - rx, bt, rx * 2, hanche - bt + 1.5, 2.6), .5, .3, bt, hanche - bt + 1.5);
+      remplir(g, pal.Y, c => rr(c, cx - rx + .8, bt - .3, rx * 2 - 1.6, 3.2, 1.5), .4, .25, bt - .3, 3.2);
+      for(const bx of [-2.1, 2.1]){ g.fillStyle = pal.U; g.beginPath(); g.arc(cx + bx, bt + 2.3, .7, 0, 7); g.fill(); g.strokeStyle = 'rgba(80,50,0,.5)'; g.lineWidth = .25; g.stroke(); }
+      if(grand) remplir(g, mel(pal.B, '#000000', .12), c => rr(c, cx - 1.9, bt + 4.4, 3.8, 2.3, .9), .35, .1, bt + 4.4, 2.3);   // la poche
+      botte(P.pd[0], P.pd[1]);
+      // la tête (dessinée à son échelle, autour de son centre)
+      g.save(); g.translate(cx, hy); g.scale(L.sc, L.sc);
+      { const cx = 0, hy = 0;
+        remplir(g, mel(pal.S, '#C8845A', .3), c => ovale(c, cx - 4.4, hy + .9, 1.1, 1.5), .4, .1, hy - .5, 2.8);       // l'oreille
+        remplir(g, pal.S, c => ovale(c, cx + .1, hy, 5.2, 4.9), .55, .2, hy - 4.9, 9.8);
+        g.fillStyle = 'rgba(235,110,100,.34)'; g.beginPath(); ovale(g, cx + 2.2, hy + 2, 1.4, .9); g.fill();              // la joue
+        remplir(g, mel(pal.S, '#E8987A', .22), c => ovale(c, cx + 5, hy + 1.1, 1.05, 1), .4, .15, hy, 2.2);               // le nez
+        if(mort){ g.strokeStyle = pal.K; g.lineWidth = .6; for(const ex of [1.8, 4.2]){ g.beginPath(); g.moveTo(cx + ex - .7, hy); g.lineTo(cx + ex + .7, hy + 1.4); g.moveTo(cx + ex + .7, hy); g.lineTo(cx + ex - .7, hy + 1.4); g.stroke(); } }
+        else for(const ex of [1.5, 3.9]){ g.fillStyle = '#FFFFFF'; g.beginPath(); ovale(g, cx + ex, hy + .55, 1.2, 1.7); g.fill(); g.strokeStyle = 'rgba(40,20,10,.5)'; g.lineWidth = .28; g.stroke(); g.fillStyle = pal.K; g.beginPath(); ovale(g, cx + ex + .4, hy + .7, .85, 1.3); g.fill(); g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(cx + ex + .1, hy + .1, .34, 0, 7); g.fill(); }
+        remplir(g, '#6B3A1E', c => { c.moveTo(cx + 1.7, hy + 2.7); c.quadraticCurveTo(cx + 3.6, hy + 1.8, cx + 5.8, hy + 2.7); c.quadraticCurveTo(cx + 4.2, hy + 4.2, cx + 1.7, hy + 2.7); c.closePath(); }, .35, .15, hy + 1.8, 2.4);   // la moustache
+        if(mort){ g.fillStyle = pal.K; g.beginPath(); g.ellipse(cx + 3.4, hy + 4, .6, .8, 0, 0, 7); g.fill(); }
+        // le bonnet : un dôme sur le front, un revers clair, un gros pompon
+        remplir(g, pal.R, c => { c.moveTo(cx - 5.5, hy - 1.1); c.bezierCurveTo(cx - 5.9, hy - 7.4, cx + 5.9, hy - 7.4, cx + 5.6, hy - 1.1); c.closePath(); }, .55, .3, hy - 6.2, 5.2);
+        remplir(g, pal.W, c => rr(c, cx - 5.9, hy - 2.6, 11.8, 2.2, 1.1), .5, .15, hy - 2.6, 2.2);
+        remplir(g, pal.W, c => c.arc(cx + .3, hy - 6.3, 1.5, 0, 7), .45, .2, hy - 7.8, 3);
+      }
+      g.restore();
+      // les bras : courts et ronds, la manche jaune et un gant clair
       const bras = (mx0, my0, derr) => {
-        const mx = mx0 * kb, my = my0 * kb, sx = cx + (derr ? -3.5 : 3.5), sy = bt + 1.3;
-        cap(g, pal.Y, sx, sy, sx + mx * .84, sy + my * .84, 2.4);
-        remplir(g, pal.S, c => c.arc(sx + mx, sy + my, 1.3, 0, 7), .4, .2, sy + my - 1.3, 2.6);
+        const mx = mx0 * L.kb, my = my0 * L.kb, sx = cx + (derr ? -rx + .6 : rx - .6), sy = bt + 1.9;
+        cap(g, pal.Y, sx, sy, sx + mx * .8, sy + my * .8, L.ep - .7);
+        remplir(g, pal.S, c => c.arc(sx + mx, sy + my, grand ? 1.5 : 1.3, 0, 7), .4, .2, sy + my - 1.5, 3);
       };
       bras(P.mg[0], P.mg[1], true); bras(P.md[0], P.md[1], false);
     });
@@ -310,68 +317,107 @@ window.PEPIN_SPRITES = (() => {
   /* ---------- Les ennemis et les objets en dessin vectoriel (v228) : même style que Pépin, tournés vers la droite (le miroir fait la gauche) ---------- */
   const oeil = (g, x, y, r = 1.15, regard = .35) => { g.fillStyle = '#FFFFFF'; g.beginPath(); g.ellipse(x, y, r, r * 1.2, 0, 0, 7); g.fill(); g.strokeStyle = 'rgba(30,15,8,.5)'; g.lineWidth = .22; g.stroke(); g.fillStyle = '#1A1010'; g.beginPath(); g.ellipse(x + regard, y + .1, r * .62, r * .85, 0, 0, 7); g.fill(); g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(x + regard - .25, y - .35, r * .24, 0, 7); g.fill(); };
   const ombreSol = (g, x, y, rx) => { g.fillStyle = 'rgba(20,10,0,.18)'; g.beginPath(); g.ellipse(x, y, rx, .8, 0, 0, 7); g.fill(); };
+  /* Les ennemis dans l'esprit des jeux de plateforme : de grosses bouilles rondes, des gros yeux et des sourcils fâchés, des pieds ronds. */
+  const sourcils = (g, x, y, sens, ep = .9) => { g.strokeStyle = '#1A1010'; g.lineWidth = ep; g.lineCap = 'round'; g.beginPath(); g.moveTo(x - sens * 2, y - 1.1); g.lineTo(x + sens * 1.5, y + .9); g.stroke(); };
+  const oeilF = (g, x, y, r, regard = 0) => {                    // un gros œil blanc qui regarde de travers
+    g.fillStyle = '#FFFFFF'; g.beginPath(); g.ellipse(x, y, r, r * 1.25, 0, 0, 7); g.fill(); g.strokeStyle = 'rgba(30,15,8,.55)'; g.lineWidth = .3; g.stroke();
+    g.fillStyle = '#1A1010'; g.beginPath(); g.ellipse(x + regard, y + r * .2, r * .5, r * .72, 0, 0, 7); g.fill(); g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(x + regard - .2, y - r * .2, r * .17, 0, 7); g.fill();
+  };
+  const pied = (g, x, y, w, h, col = '#4A2A14') => remplir(g, col, c => c.ellipse(x, y, w, h, 0, 0, 7), .4, .3, y - h, h * 2);
+  // le Marron : un gros champignon-marron fâché qui trottine (on l'écrase en lui sautant dessus)
   const marmotte = (f, plat) => vecteurK(16, 16, KP, g => {
     const pas = f ? 1 : -1;
-    if(plat){ remplir(g, '#8A5530', c => c.ellipse(8, 14.6, 7.2, 1.6, 0, 0, 7), .5, .3, 13, 3); remplir(g, '#E8C89A', c => c.ellipse(8, 14.9, 5, .9, 0, 0, 7), .35, .1, 14, 1.5); for(const ex of [5.3, 9.6]){ g.strokeStyle = '#1A1010'; g.lineWidth = .45; g.beginPath(); g.moveTo(ex - .7, 14.1); g.lineTo(ex + .7, 15); g.moveTo(ex + .7, 14.1); g.lineTo(ex - .7, 15); g.stroke(); } return; }
-    ombreSol(g, 8, 15.7, 6);
-    remplir(g, '#5E3418', c => c.ellipse(2.2, 12.3, 1.3, 2.4, -.4, 0, 7), .4, .1, 10, 5);                                           // la queue
-    for(const [lx, d] of [[5.2, pas], [10.4, -pas]]) remplir(g, '#5E3418', c => rr(c, lx - 1.3 + d * .4, 13.2 - (d > 0 ? .6 : 0), 3.2, 2.5, 1.1), .45, .3, 13, 2.5);   // les pattes
-    remplir(g, '#9A6234', c => c.ellipse(7.6, 10.2, 6.4, 4.9, 0, 0, 7), .55, .32, 5.5, 10);                                          // le corps
-    remplir(g, '#E8C89A', c => c.ellipse(8.4, 12, 4.3, 2.6, 0, 0, 7), .35, .2, 9.5, 5);                                              // le ventre
-    remplir(g, '#9A6234', c => c.ellipse(11.4, 7.6, 4.1, 3.7, 0, 0, 7), .55, .3, 4, 7.5);                                             // la tête
-    remplir(g, '#7A4A24', c => c.ellipse(8.4, 4.3, 1.5, 1.6, 0, 0, 7), .45, .2, 3, 3);                                                // l'oreille
-    remplir(g, '#E8C89A', c => c.ellipse(13.4, 9, 2.2, 1.7, 0, 0, 7), .4, .2, 7.5, 3.5);                                              // le museau
-    g.fillStyle = '#3A1A10'; g.beginPath(); g.ellipse(14.9, 8.2, .75, .6, 0, 0, 7); g.fill();                                          // le nez
-    remplir(g, '#FFFFFF', c => rr(c, 12.9, 9.9, 1.9, 1.5, .4), .3, .1, 9.9, 1.5);                                                      // les dents
-    oeil(g, 11.7, 6.4, 1.05, .35);
+    if(plat){
+      ombreSol(g, 8, 15.7, 7);
+      remplir(g, '#B8651E', c => { c.moveTo(1, 15); c.bezierCurveTo(1, 8.6, 15, 8.6, 15, 15); c.closePath(); }, .5, .3, 10, 5);
+      remplir(g, '#E8C89A', c => rr(c, 3, 13.2, 10, 2.2, 1), .35, .1, 13, 2.2);
+      for(const ex of [5.4, 10.6]){ g.strokeStyle = '#1A1010'; g.lineWidth = .5; g.beginPath(); g.moveTo(ex - .8, 12); g.lineTo(ex + .8, 13.2); g.moveTo(ex + .8, 12); g.lineTo(ex - .8, 13.2); g.stroke(); }
+      pied(g, 3, 15.3, 2.4, 1); pied(g, 13, 15.3, 2.4, 1); return;
+    }
+    ombreSol(g, 8, 15.7, 6.6);
+    remplir(g, '#E8C89A', c => rr(c, 4.2, 8.6, 7.6, 5.6, 2.2), .45, .2, 8.6, 5.6);                                                    // le pied du champignon
+    pied(g, 4.6 + pas * .5, 14.6 - (f ? .7 : 0), 3.1, 1.5); pied(g, 11.4 + pas * .5, 14.6 - (f ? 0 : .7), 3.1, 1.5);                   // les grosses pattes
+    remplir(g, '#B8651E', c => { c.moveTo(.9, 9.4); c.bezierCurveTo(-.6, .6, 16.6, .6, 15.1, 9.4); c.quadraticCurveTo(8, 11.6, .9, 9.4); c.closePath(); }, .55, .35, 1, 9);   // le chapeau
+    g.fillStyle = 'rgba(255,255,255,.22)'; g.beginPath(); g.ellipse(5, 3.7, 2.2, 1, -.5, 0, 7); g.fill();
+    oeilF(g, 5.7, 7, 1.7, .5); oeilF(g, 10.3, 7, 1.7, -.5); sourcils(g, 5.2, 4.9, 1); sourcils(g, 10.8, 4.9, -1);
+    g.fillStyle = '#FFFFFF'; g.strokeStyle = '#1A1010'; g.lineWidth = .3; for(const tx of [6.2, 9.8]){ g.beginPath(); g.moveTo(tx - .9, 10); g.lineTo(tx + .9, 10); g.lineTo(tx, 11.4); g.closePath(); g.fill(); g.stroke(); }   // les crocs
   });
+  // la Tortue (rouge ou verte) : elle marche sur deux pattes, carapace sur le dos ; sautée dessus, elle rentre dans sa carapace
   const herisson = (f, col, boule) => vecteurK(16, 16, KP, g => {
-    const pic = col[0], picF = col[1], mel_ = '#E8C89A';
-    const piques = (cx, cy, R, n, long) => { for(let i = 0; i < n; i++){ const a = Math.PI + i / (n - 1) * Math.PI * 1.05 - .05; const x0 = cx + Math.cos(a) * (R - 1), y0 = cy + Math.sin(a) * (R - 1), x1 = cx + Math.cos(a) * (R + long), y1 = cy + Math.sin(a) * (R + long); remplir(g, i % 2 ? picF : pic, c => { c.moveTo(x0 - Math.sin(a) * 1, y0 + Math.cos(a) * 1); c.lineTo(x1, y1); c.lineTo(x0 + Math.sin(a) * 1, y0 - Math.cos(a) * 1); c.closePath(); }, .4, .25, y1, 3); } };
-    if(boule){ ombreSol(g, 8, 15.6, 5); piques(8, 9, 5.3, 12, 1.6); remplir(g, pic, c => c.arc(8, 9, 5.4, 0, 7), .5, .3, 3.5, 11); g.save(); g.beginPath(); g.arc(8, 9, 5.4, 0, 7); g.clip(); g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(9.2, 10.6, 5.3, 4.4, 0, 0, 7); g.fill(); g.restore(); oeil(g, 9.4, 9, .9, .3); return; }
+    const dos = col[0], dosF = col[1], rim = '#F4E4B0';
+    const carap = (cx, cy, rx, ry) => {
+      remplir(g, rim, c => c.ellipse(cx, cy + ry * .55, rx + .3, ry * .5, 0, 0, 7), .45, .2, cy, ry);
+      remplir(g, dos, c => { c.moveTo(cx - rx, cy + ry * .5); c.bezierCurveTo(cx - rx, cy - ry * 1.5, cx + rx, cy - ry * 1.5, cx + rx, cy + ry * .5); c.closePath(); }, .55, .35, cy - ry, ry * 1.6);
+      g.strokeStyle = dosF; g.lineWidth = .5; g.beginPath(); g.moveTo(cx - rx * .35, cy - ry * .95); g.lineTo(cx - rx * .55, cy + ry * .45); g.moveTo(cx + rx * .35, cy - ry * .95); g.lineTo(cx + rx * .55, cy + ry * .45); g.moveTo(cx - rx * .75, cy - ry * .2); g.quadraticCurveTo(cx, cy - ry * .1, cx + rx * .75, cy - ry * .2); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,.3)'; g.beginPath(); g.ellipse(cx - rx * .4, cy - ry * .75, rx * .28, ry * .16, -.5, 0, 7); g.fill();
+    };
+    if(boule){ ombreSol(g, 8, 15.6, 5.8); carap(8, 11.2, 6.3, 5); return; }
     const pas = f ? 1 : -1; ombreSol(g, 8, 15.7, 6);
-    for(const [lx, d] of [[5.4, pas], [10, -pas]]) remplir(g, '#5E3418', c => rr(c, lx - 1.2 + d * .4, 13.4, 2.8, 2.3, 1), .4, .3, 13.4, 2.3);
-    piques(7, 10, 5.4, 13, 2); remplir(g, pic, c => c.ellipse(7, 10, 5.6, 4.6, 0, 0, 7), .5, .3, 5.5, 9);
-    remplir(g, mel_, c => c.ellipse(12, 11, 3.6, 3, 0, 0, 7), .45, .3, 8, 6);                                                         // le visage
-    g.fillStyle = '#3A1A10'; g.beginPath(); g.ellipse(14.9, 11.1, .8, .65, 0, 0, 7); g.fill(); oeil(g, 12.2, 9.7, 1, .35);
+    pied(g, 5.2 + pas * .4, 14.9 - (f ? .6 : 0), 2.9, 1.4, '#E8A21E'); pied(g, 10.6 + pas * .4, 14.9 - (f ? 0 : .6), 3, 1.4, '#E8A21E');   // les pattes
+    remplir(g, '#F2C230', c => rr(c, 8.3, 7.6, 4.4, 6.8, 2), .45, .3, 7.6, 6.8);                                                                // le cou et le ventre
+    carap(6.2, 10, 5.6, 4.6);
+    remplir(g, '#F2C230', c => c.ellipse(11.6, 5.1, 3.4, 3.2, 0, 0, 7), .5, .35, 2, 6.5);                                                       // la tête
+    remplir(g, '#F8E4A0', c => c.ellipse(13.6, 6.4, 2.2, 1.6, 0, 0, 7), .4, .2, 5, 3);                                                          // le museau
+    g.fillStyle = '#7A4A10'; g.beginPath(); g.arc(14.6, 6, .38, 0, 7); g.fill();
+    oeilF(g, 11.7, 4.3, 1.15, .3); g.strokeStyle = '#1A1010'; g.lineWidth = .8; g.beginPath(); g.moveTo(10, 2.5); g.lineTo(12.9, 3.5); g.stroke();
   });
+  // le Scarabée : un casque bleu nuit bien rond (insensible au feu) avec un visage fâché
   const scarabee = (f, boule) => vecteurK(16, 16, KP, g => {
-    if(boule){ ombreSol(g, 8, 15.5, 5.5); remplir(g, '#3E5FBF', c => c.ellipse(8, 11, 6, 4.8, 0, Math.PI, Math.PI * 2), .55, .35, 6, 6); remplir(g, '#E8C89A', c => rr(c, 2.4, 11, 11.2, 2.2, 1), .4, .2, 11, 2.2); g.strokeStyle = 'rgba(10,20,70,.4)'; g.lineWidth = .35; g.beginPath(); g.moveTo(8, 6.3); g.lineTo(8, 11); g.stroke(); return; }
-    const pas = f ? 1 : -1; ombreSol(g, 8, 15.7, 6);
-    for(const lx of [4.8, 7.8, 10.8]) { g.strokeStyle = '#1A1A2E'; g.lineWidth = .9; g.beginPath(); g.moveTo(lx, 12.6); g.lineTo(lx + pas * (lx % 2 ? .8 : -.8), 15.3); g.stroke(); }
-    remplir(g, '#2B3F9C', c => { c.moveTo(1.8, 13); c.bezierCurveTo(1.6, 4.2, 12, 3, 12.8, 13); c.closePath(); }, .55, .4, 4, 9);
-    g.strokeStyle = 'rgba(180,200,255,.5)'; g.lineWidth = .45; g.beginPath(); g.moveTo(7.4, 5.2); g.lineTo(7.4, 12.6); g.stroke();
-    g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.ellipse(5, 7.2, 1.6, 1, -.6, 0, 7); g.fill();
-    remplir(g, '#E8C89A', c => c.ellipse(13, 10.6, 2.6, 2.7, 0, 0, 7), .45, .3, 8, 5);
-    oeil(g, 13.2, 9.8, .85, .3); remplir(g, '#E8731E', c => { c.moveTo(11.6, 8); c.lineTo(10.4, 6); c.lineTo(12.6, 7.4); c.closePath(); }, .3, .1, 6, 2);
+    const dome = (cy) => {
+      remplir(g, '#E8C89A', c => c.ellipse(8, cy + 2.3, 6.9, 1.7, 0, 0, 7), .45, .2, cy + 1, 3);
+      remplir(g, '#2B3F9C', c => { c.moveTo(1.2, cy + 2.2); c.bezierCurveTo(.4, cy - 9.4, 15.6, cy - 9.4, 14.8, cy + 2.2); c.closePath(); }, .55, .4, cy - 6, 8);
+      g.strokeStyle = 'rgba(8,14,60,.55)'; g.lineWidth = .5; g.beginPath(); g.moveTo(8, cy - 5.3); g.lineTo(8, cy + 2); g.moveTo(4, cy - 3.3); g.lineTo(3.6, cy + 2); g.moveTo(12, cy - 3.3); g.lineTo(12.4, cy + 2); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.ellipse(5, cy - 3.6, 1.7, 1, -.6, 0, 7); g.fill();
+    };
+    if(boule){ ombreSol(g, 8, 15.5, 6); dome(11.5); return; }
+    const pas = f ? 1 : -1; ombreSol(g, 8, 15.7, 6.4);
+    pied(g, 4.8 + pas * .4, 14.9 - (f ? .6 : 0), 2.8, 1.4, '#20203A'); pied(g, 11.2 + pas * .4, 14.9 - (f ? 0 : .6), 2.8, 1.4, '#20203A');
+    dome(11);
+    remplir(g, '#E8C89A', c => rr(c, 8.6, 8.6, 6.8, 5.2, 2.4), .45, .3, 8.6, 5.2);                                                              // le visage, devant
+    oeilF(g, 11, 10.3, 1.05, .35); g.strokeStyle = '#1A1010'; g.lineWidth = .8; g.beginPath(); g.moveTo(9.2, 8.7); g.lineTo(12.2, 9.6); g.stroke();
+    g.fillStyle = '#FFFFFF'; g.beginPath(); g.moveTo(11.2, 12.3); g.lineTo(12.4, 12.3); g.lineTo(11.8, 13.4); g.closePath(); g.fill();
   });
-  const chardon = f => vecteurK(16, 16, KP, g => {
-    const b = f ? .5 : -.5;
-    remplir(g, '#2E8B3A', c => { c.moveTo(8, 14); c.quadraticCurveTo(2.5 + b, 11, 2, 6.5 + b); c.quadraticCurveTo(6, 9, 8, 12); c.closePath(); }, .4, .3, 6, 8);
-    remplir(g, '#2E8B3A', c => { c.moveTo(8, 14); c.quadraticCurveTo(13.5 - b, 11, 14, 6.5 - b); c.quadraticCurveTo(10, 9, 8, 12); c.closePath(); }, .4, .3, 6, 8);
-    remplir(g, '#6AA83A', c => rr(c, 7, 8, 2, 8, .8), .35, .3, 8, 8);
-    for(let i = 0; i < 9; i++){ const a = -Math.PI / 2 + (i - 4) * .36; remplir(g, i % 2 ? '#C060D8' : '#9B3FB0', c => { c.moveTo(8 - Math.sin(a) * 1.2, 7 + Math.cos(a) * 1.2 - 1); c.lineTo(8 + Math.cos(a - Math.PI / 2) * 5.5 + (i - 4) * .3, 7 + Math.sin(a - Math.PI / 2) * 5.5); c.lineTo(8 + Math.sin(a) * 1.2, 7 - Math.cos(a) * 1.2 - 1); c.closePath(); }, .35, .2, 1, 6); }
-    remplir(g, '#7A2E90', c => c.ellipse(8, 7.5, 3.4, 2.6, 0, 0, 7), .45, .3, 5, 5);
-    oeil(g, 6.6, 7.3, .85, .1); oeil(g, 9.4, 7.3, .85, .1);
+  // la Plante : une grosse tête rouge à pois blancs qui ouvre et ferme sa gueule (sort des tuyaux ; 16 × 24)
+  const chardon = f => vecteurK(16, 24, KP, g => {
+    const ouv = f ? 3.4 : 1.2, cy = 8;
+    remplir(g, '#2EA03A', c => rr(c, 6.9, 14, 2.4, 10, 1), .45, .3, 14, 10);                                                                     // la tige
+    remplir(g, '#2EA03A', c => { c.moveTo(7.2, 21); c.quadraticCurveTo(1.6, 18.5, 1.2, 14); c.quadraticCurveTo(5.4, 15, 8, 19); c.closePath(); }, .4, .3, 14, 7);
+    remplir(g, '#2EA03A', c => { c.moveTo(8.8, 21); c.quadraticCurveTo(14.4, 18.5, 14.8, 14); c.quadraticCurveTo(10.6, 15, 8, 19); c.closePath(); }, .4, .3, 14, 7);
+    // la gueule : fond sombre, puis la mâchoire du bas et celle du haut avec leurs dents
+    remplir(g, '#3A0A16', c => c.ellipse(8, cy, 6.1, ouv / 2 + 1.5, 0, 0, 7), .4, .1, cy - 3, 6);
+    const machoire = (haut) => {
+      const sg = haut ? -1 : 1, y0 = cy + sg * ouv / 2;
+      remplir(g, '#D8282B', c => { c.moveTo(1.5, y0); c.bezierCurveTo(.4, y0 + sg * 6.2, 15.6, y0 + sg * 6.2, 14.5, y0); c.closePath(); }, .55, .3, haut ? y0 - 5 : y0, 5);
+      g.save(); g.beginPath(); g.moveTo(1.5, y0); g.bezierCurveTo(.4, y0 + sg * 6.2, 15.6, y0 + sg * 6.2, 14.5, y0); g.closePath(); g.clip();
+      g.fillStyle = 'rgba(255,255,255,.92)'; for(const [px, py, pr] of [[4.6, y0 + sg * 2.8, 1], [9.6, y0 + sg * 3.6, 1.2], [12.2, y0 + sg * 1.9, .8]]){ g.beginPath(); g.arc(px, py, pr, 0, 7); g.fill(); }
+      g.restore();
+      g.fillStyle = '#FFFFFF'; g.strokeStyle = 'rgba(40,10,10,.5)'; g.lineWidth = .25;
+      for(let i = 0; i < 4; i++){ const tx = 3.2 + i * 3.2; g.beginPath(); g.moveTo(tx - 1.1, y0); g.lineTo(tx + 1.1, y0); g.lineTo(tx, y0 - sg * 1.9); g.closePath(); g.fill(); g.stroke(); }
+    };
+    machoire(false); machoire(true);
   });
+  // le Marron ailé : le même fâché, avec deux petites ailes blanches qui battent, il vole
   const choucas = f => vecteurK(16, 16, KP, g => {
-    const haut = f ? -3.4 : 2.6;
-    remplir(g, '#33363F', c => { c.moveTo(6.5, 8); c.quadraticCurveTo(3.5, 8 + haut, 1.6, 8 + haut * 1.4); c.quadraticCurveTo(5, 8.6 + haut * .3, 9.5, 10.5); c.closePath(); }, .4, .2, 4, 9);   // l'aile du fond
-    remplir(g, '#20232B', c => c.ellipse(7.8, 10.2, 5.2, 3.3, -.15, 0, 7), .5, .28, 7, 7);
-    remplir(g, '#20232B', c => c.ellipse(12, 8.2, 2.9, 2.7, 0, 0, 7), .5, .28, 5.5, 5);
-    remplir(g, '#E8A91E', c => { c.moveTo(14, 7.5); c.lineTo(16, 8.6); c.lineTo(14, 9.4); c.closePath(); }, .35, .25, 7.5, 2);
-    remplir(g, '#20232B', c => { c.moveTo(3, 10.4); c.lineTo(.4, 12.6); c.lineTo(3.6, 12); c.lineTo(3, 12.9); c.lineTo(5.6, 11.8); c.closePath(); }, .35, .1, 10, 3);
-    oeil(g, 12.2, 7.6, .85, .3);
-    remplir(g, '#4A4E5A', c => { c.moveTo(8.5, 9.2); c.quadraticCurveTo(7 , 9.2 + haut, 4.2, 9.5 + haut * 1.5); c.quadraticCurveTo(7.4, 10.4 + haut * .2, 10.5, 11.2); c.closePath(); }, .4, .3, 5, 8);
+    const h = f ? -4.6 : 2.4;
+    for(const sd of [-1, 1]){
+      remplir(g, '#FFFFFF', c => { c.moveTo(8 + sd * 3, 8); c.quadraticCurveTo(8 + sd * 7, 8 + h, 8 + sd * 7.4, 8 + h * 1.5); c.quadraticCurveTo(8 + sd * 5.2, 7.6 + h * .6, 8 + sd * 5.6, 7.4 + h * .5); c.quadraticCurveTo(8 + sd * 4.2, 7.4, 8 + sd * 3.4, 9.6); c.closePath(); }, .45, .2, 2, 10);
+    }
+    remplir(g, '#E8C89A', c => rr(c, 5, 8.8, 6, 4.4, 2), .4, .2, 8.8, 4.4);
+    pied(g, 5.6, 13.9, 2.2, 1.2); pied(g, 10.4, 13.9, 2.2, 1.2);
+    remplir(g, '#B8651E', c => { c.moveTo(2.2, 9); c.bezierCurveTo(.8, 2.2, 15.2, 2.2, 13.8, 9); c.quadraticCurveTo(8, 10.8, 2.2, 9); c.closePath(); }, .55, .35, 3, 7);
+    oeilF(g, 5.9, 6.7, 1.5, .4); oeilF(g, 10.1, 6.7, 1.5, -.4); sourcils(g, 5.4, 4.9, 1, .8); sourcils(g, 10.6, 4.9, -1, .8);
   });
+  // le Poisson sauteur : tout rond, rouge, avec un gros œil, de grosses lèvres et des nageoires qui battent
   const truite = f => vecteurK(16, 16, KP, g => {
     const q = f ? 1 : -1;
-    remplir(g, '#E8731E', c => { c.moveTo(3.2, 8.8); c.lineTo(.5, 8 - q * 1.6); c.lineTo(.5, 9.4 + q * 1.6); c.closePath(); }, .4, .3, 6, 5);
-    remplir(g, '#F2A0A8', c => c.ellipse(7.8, 8.8, 5.6, 3.3, 0, 0, 7), .5, .3, 5.5, 7);
-    remplir(g, '#E8C89A', c => c.ellipse(8.6, 10.2, 4, 1.4, 0, 0, 7), .35, .2, 9, 2);
-    remplir(g, '#E8731E', c => { c.moveTo(6, 6); c.quadraticCurveTo(8, 3.8 + q * .6, 10, 6); c.closePath(); }, .35, .3, 4, 3);
-    g.fillStyle = 'rgba(180,40,60,.45)'; for(const [x, y] of [[5.4, 8.3], [7, 7.3], [8.6, 7.9], [6.2, 9.4]]){ g.beginPath(); g.arc(x, y, .42, 0, 7); g.fill(); }
-    oeil(g, 11.8, 8, .9, .3); g.strokeStyle = 'rgba(120,30,40,.6)'; g.lineWidth = .35; g.beginPath(); g.moveTo(13.2, 9.5); g.quadraticCurveTo(12.5, 10, 12, 9.7); g.stroke();
+    remplir(g, '#F29A2E', c => { c.moveTo(3.4, 8.4); c.lineTo(.4, 5.8 - q * .8); c.quadraticCurveTo(2, 8.4, .4, 11 + q * .8); c.closePath(); }, .4, .3, 5, 6);
+    remplir(g, '#F29A2E', c => { c.moveTo(6, 4.3); c.quadraticCurveTo(7.8, 1.6 + q * .8, 10, 4.6); c.closePath(); }, .4, .3, 2, 3);
+    remplir(g, '#E8412E', c => c.ellipse(8.2, 8.6, 6, 5, 0, 0, 7), .55, .35, 3.6, 10);
+    remplir(g, '#F8D8B8', c => c.ellipse(9, 11, 4.2, 1.9, .05, 0, 7), .35, .2, 9.6, 3);
+    remplir(g, '#F29A2E', c => { c.moveTo(6, 9); c.quadraticCurveTo(4.6, 11 + q, 7, 12 + q * .6); c.quadraticCurveTo(7.6, 10.4, 6, 9); c.closePath(); }, .35, .3, 9, 3);
+    remplir(g, '#F8A0B0', c => c.ellipse(13.4, 9.6, 2.2, 1.7, 0, 0, 7), .45, .3, 8, 3.4);
+    g.strokeStyle = 'rgba(120,20,40,.7)'; g.lineWidth = .35; g.beginPath(); g.moveTo(11.6, 9.7); g.lineTo(15, 9.7); g.stroke();
+    oeilF(g, 10.8, 6.9, 1.8, .45); g.strokeStyle = '#1A1010'; g.lineWidth = .8; g.beginPath(); g.moveTo(8.8, 4.6); g.lineTo(12.4, 5.4); g.stroke();
   });
   const bouleNeige = () => vecteurK(16, 16, KP, g => { remplir(g, '#EAF4FF', c => c.arc(8, 8, 5.6, 0, 7), .5, .2, 2.4, 11); g.fillStyle = 'rgba(120,160,210,.35)'; g.beginPath(); g.ellipse(9.4, 10.2, 4.2, 3.6, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.ellipse(5.8, 5.6, 1.6, 1, -.6, 0, 7); g.fill(); });
   // le Yéti, gardien des châteaux (32 × 32) : un gros bonhomme de neige poilu, bras levés ou baissés
@@ -389,7 +435,7 @@ window.PEPIN_SPRITES = (() => {
   });
   Object.assign(ennemis, {
     marmotton:[marmotte(0), marmotte(1)], marmottonPlat:marmotte(0, true),
-    herisson:[herisson(0, ['#7A7F86', '#5A5F66']), herisson(1, ['#7A7F86', '#5A5F66'])], boule:herisson(0, ['#7A7F86', '#5A5F66'], true),
+    herisson:[herisson(0, ['#3CB54A', '#1E7A2C']), herisson(1, ['#3CB54A', '#1E7A2C'])], boule:herisson(0, ['#3CB54A', '#1E7A2C'], true),
     herissonRouge:[herisson(0, ['#D8503A', '#A02E1E']), herisson(1, ['#D8503A', '#A02E1E'])], bouleRouge:herisson(0, ['#D8503A', '#A02E1E'], true),
     chardon:[chardon(0), chardon(1)], choucas:[choucas(0), choucas(1)], scarabee:[scarabee(0), scarabee(1)], carapace:scarabee(0, true),
     truite:[truite(0), truite(1)], bouleNeige:bouleNeige(),
