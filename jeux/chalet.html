@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Chalet Crush · Altitude Arcade</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Altitude Arcade">
+<link rel="manifest" href="../manifest.webmanifest?v=229">
+<link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/altitude-192.png?v=229">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{ --barre-statut:env(safe-area-inset-top, 0px); }
+@media (pointer:coarse){ :root{ --barre-statut:max(env(safe-area-inset-top, 0px), 50px); } }
+@media (orientation:landscape) and (max-height:600px){ :root{ --barre-statut:env(safe-area-inset-top, 0px); } }
+.barre-statut{ position:fixed; left:0; right:0; top:0; height:var(--barre-statut); background:#000; z-index:2147483000; pointer-events:none; }
+:root{ --encre:#2B1B3D; --blanc:#fff; --rose:#FF4F87; --rose2:#E02466; --or:#FFC93C; --menthe:#3FCB82; --ciel1:#8CC8F2; --ciel2:#DDF0FF; --carte:rgba(255,255,255,.92); }
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; height:100%; overflow:hidden; font-family:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--encre); background:#6FA8D8; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+button{ font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; border:none; }
+.fond{ position:fixed; inset:0; background:linear-gradient(180deg, var(--ciel1), var(--ciel2)); transition:background .6s; }
+.fond canvas{ position:absolute; inset:0; width:100%; height:100%; }
+/* ---------- le jeu ---------- */
+#eJeu{ position:fixed; inset:0; display:grid; grid-template-rows:auto auto 1fr auto; padding:calc(var(--barre-statut) + 6px) 10px calc(8px + env(safe-area-inset-bottom, 0px)); gap:6px; }
+#eJeu[hidden]{ display:none; }
+.haut{ display:flex; align-items:center; gap:8px; }
+.rond{ width:42px; height:42px; border-radius:50%; background:linear-gradient(180deg, #fff, #E4EAF5); box-shadow:0 3px 0 #9FAFC8, 0 6px 12px rgba(30,40,80,.25); font-size:1.15rem; font-weight:800; display:grid; place-items:center; flex:none; }
+.rond:active{ transform:translateY(2px); box-shadow:0 1px 0 #9FAFC8; }
+.niveau{ flex:1; text-align:center; line-height:1; }
+.niveau small{ display:block; font-size:.72rem; font-weight:800; letter-spacing:.12em; color:rgba(43,27,61,.6); text-transform:uppercase; }
+.niveau b{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:1.7rem; letter-spacing:.03em; }
+.coups{ min-width:74px; text-align:center; background:linear-gradient(180deg, #FF7AA8, var(--rose2)); color:#fff; border-radius:16px; padding:5px 10px 6px; box-shadow:0 3px 0 #A8154A, 0 6px 12px rgba(120,10,60,.3); line-height:1; }
+.coups small{ display:block; font-size:.62rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; opacity:.9; }
+.coups b{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:2rem; }
+.coups.peu{ animation:peu .7s infinite; } @keyframes peu{ 50%{ transform:scale(1.08); } }
+.objs{ display:flex; gap:6px; justify-content:center; flex-wrap:wrap; align-items:center; }
+.obj{ display:flex; align-items:center; gap:5px; background:var(--carte); border-radius:14px; padding:3px 10px 3px 4px; font-weight:800; box-shadow:0 2px 0 rgba(120,140,180,.6); transition:transform .2s; }
+.obj canvas{ width:30px; height:30px; display:block; }
+.obj b{ font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:1.4rem; min-width:1.1em; text-align:center; }
+.obj.fait{ background:#D5F7E3; } .obj.fait b::after{ content:"✓"; font-family:system-ui; font-size:.9rem; margin-left:2px; color:#12804A; }
+.obj.saute{ transform:scale(1.18); }
+.scorebar{ display:flex; align-items:center; gap:8px; }
+.scorebar .pts{ font-family:"Bebas Neue", sans-serif; font-size:1.5rem; min-width:3.6em; text-align:right; }
+.jauge{ position:relative; flex:1; height:14px; border-radius:8px; background:rgba(255,255,255,.55); box-shadow:inset 0 2px 3px rgba(30,40,80,.25); overflow:visible; }
+.jauge i{ position:absolute; left:0; top:0; bottom:0; width:0; border-radius:8px; background:linear-gradient(180deg, #FFE27A, #FFB000); transition:width .35s; }
+.jauge s{ position:absolute; top:50%; width:20px; height:20px; transform:translate(-50%, -50%); font-size:1.1rem; line-height:20px; text-align:center; text-decoration:none; filter:grayscale(1) opacity(.55); transition:filter .3s, transform .3s; }
+.jauge s.ok{ filter:none; transform:translate(-50%, -50%) scale(1.25); }
+.zone{ position:relative; min-height:0; }
+#cv{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
+.bandeau{ position:absolute; left:50%; top:8px; transform:translateX(-50%); background:rgba(43,27,61,.88); color:#fff; padding:6px 14px; border-radius:14px; font-weight:800; font-size:.9rem; z-index:3; white-space:nowrap; }
+.bandeau[hidden]{ display:none; }
+.aides{ display:flex; justify-content:center; gap:10px; }
+.aide{ position:relative; width:72px; padding:6px 4px 5px; border-radius:16px; background:linear-gradient(180deg, #fff, #E8EEF8); box-shadow:0 3px 0 #9FAFC8, 0 6px 12px rgba(30,40,80,.22); font-weight:800; font-size:.68rem; line-height:1.1; text-align:center; }
+.aide span{ display:block; font-size:1.6rem; }
+.aide em{ position:absolute; right:-4px; top:-6px; min-width:22px; height:22px; border-radius:11px; background:var(--rose2); color:#fff; font-style:normal; font-size:.78rem; line-height:22px; box-shadow:0 2px 0 #A8154A; }
+.aide.actif{ outline:3px solid var(--or); background:linear-gradient(180deg, #FFF4C8, #FFE08A); }
+.aide:disabled{ opacity:.45; }
+/* ---------- la carte ---------- */
+#eCarte{ position:fixed; inset:0; z-index:4; display:flex; flex-direction:column; }
+#eCarte[hidden]{ display:none; }
+.carteHaut{ position:relative; z-index:5; display:flex; align-items:center; gap:8px; padding:calc(var(--barre-statut) + 6px) 12px 8px; background:linear-gradient(180deg, rgba(20,30,70,.55), rgba(20,30,70,0)); color:#fff; }
+.carteHaut a, .carteHaut button{ text-decoration:none; color:var(--encre); }
+.titreJeu{ flex:1; min-width:0; white-space:nowrap; font-family:"Bebas Neue", sans-serif; font-size:1.6rem; letter-spacing:.05em; text-shadow:0 2px 0 rgba(0,0,0,.3); line-height:1; }
+.titreJeu small{ display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:.7rem; letter-spacing:.06em; font-weight:800; opacity:.9; }
+.reserve{ display:flex; gap:6px; align-items:center; background:rgba(255,255,255,.88); color:var(--encre); border-radius:16px; padding:4px 10px; font-weight:800; font-size:.85rem; box-shadow:0 2px 0 rgba(100,120,160,.6); }
+.defile{ position:relative; flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; }
+.monde{ position:relative; min-height:960px; }
+.monde h2{ position:absolute; left:50%; top:14px; transform:translateX(-50%); margin:0; background:rgba(255,255,255,.9); border-radius:18px; padding:6px 18px; font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:1.5rem; letter-spacing:.05em; white-space:nowrap; box-shadow:0 3px 0 rgba(100,120,160,.5); z-index:2; }
+.monde svg.chemin{ position:absolute; inset:0; width:100%; height:100%; }
+.noeud{ position:absolute; width:60px; height:60px; margin:-30px 0 0 -30px; border-radius:50%; font-family:"Bebas Neue", sans-serif; font-size:1.7rem; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.25); background:linear-gradient(180deg, #FF8DB5, var(--rose2)); box-shadow:0 4px 0 #A8154A, 0 8px 14px rgba(80,0,40,.3); z-index:2; }
+.noeud:active{ transform:translateY(2px); }
+.noeud.fait{ background:linear-gradient(180deg, #7DE8AE, #1FA866); box-shadow:0 4px 0 #0F7040, 0 8px 14px rgba(0,60,30,.3); }
+.noeud.ici{ background:linear-gradient(180deg, #FFE27A, #FFA000); box-shadow:0 4px 0 #B36B00, 0 0 0 5px rgba(255,255,255,.8), 0 8px 18px rgba(80,40,0,.35); animation:saute 1.1s infinite; }
+@keyframes saute{ 50%{ transform:translateY(-6px); } }
+.noeud.clos{ background:linear-gradient(180deg, #C9D2E3, #9AA7C0); box-shadow:0 4px 0 #6E7B96; font-size:1.2rem; }
+.noeud .etoiles{ position:absolute; left:50%; bottom:-14px; transform:translateX(-50%); font-size:.8rem; letter-spacing:-1px; white-space:nowrap; text-shadow:0 1px 0 rgba(0,0,0,.25); font-family:system-ui; }
+.deco{ position:absolute; font-size:2.2rem; opacity:.9; z-index:1; pointer-events:none; filter:drop-shadow(0 2px 2px rgba(0,0,0,.2)); }
+/* ---------- fenêtres ---------- */
+.voile{ position:fixed; inset:0; z-index:8; display:grid; place-items:center; padding:20px; background:rgba(20,16,50,.55); backdrop-filter:blur(3px); }
+.voile[hidden]{ display:none; }
+.fenetre{ width:min(94vw, 400px); max-height:92vh; overflow:auto; background:linear-gradient(180deg, #fff, #F2F5FF); border-radius:26px; padding:18px 18px 16px; text-align:center; box-shadow:0 8px 0 rgba(90,100,160,.45), 0 20px 40px rgba(10,10,40,.45); animation:pop .28s cubic-bezier(.2, 1.5, .4, 1); }
+@keyframes pop{ from{ transform:scale(.7); opacity:0; } }
+.fenetre h2{ margin:0; font-family:"Bebas Neue", sans-serif; font-weight:400; font-size:2.2rem; letter-spacing:.04em; line-height:1; }
+.fenetre h3{ margin:2px 0 8px; font-size:.8rem; letter-spacing:.14em; text-transform:uppercase; color:rgba(43,27,61,.6); }
+.fenetre p{ margin:8px 0; line-height:1.4; }
+.liste{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:10px 0; }
+.liste .obj{ font-size:1rem; }
+.astuce{ background:#FFF4C8; border-radius:14px; padding:8px 12px; font-size:.88rem; font-weight:600; }
+.gros{ width:100%; margin-top:8px; padding:13px 14px; border-radius:20px; font-weight:800; font-size:1.2rem; color:#fff; background:linear-gradient(180deg, #5BE08F, #1FA866); box-shadow:0 5px 0 #0F7040, 0 9px 16px rgba(0,60,30,.3); }
+.gros:active{ transform:translateY(3px); box-shadow:0 2px 0 #0F7040; }
+.gros.rose{ background:linear-gradient(180deg, #FF8DB5, var(--rose2)); box-shadow:0 5px 0 #A8154A, 0 9px 16px rgba(120,10,60,.3); }
+.gros.gris{ background:linear-gradient(180deg, #E8EEF8, #C4CFE4); color:var(--encre); box-shadow:0 5px 0 #8C9BB8; font-size:1rem; padding:10px; }
+.gros.or{ background:linear-gradient(180deg, #FFE27A, #FFA000); color:#5A3300; box-shadow:0 5px 0 #B36B00; }
+.etoilesFin{ font-size:3rem; letter-spacing:6px; height:3.6rem; }
+.etoilesFin i{ font-style:normal; display:inline-block; filter:grayscale(1) opacity(.35); transform:scale(.6); transition:all .4s cubic-bezier(.2, 1.8, .4, 1); }
+.etoilesFin i.ok{ filter:none; transform:scale(1.05); }
+.grandScore{ font-family:"Bebas Neue", sans-serif; font-size:3rem; line-height:1; color:#E02466; }
+.stats{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin:10px 0; }
+.stats div{ background:#EEF1FB; border-radius:14px; padding:6px 2px; } .stats b{ display:block; font-size:1.2rem; } .stats small{ font-size:.66rem; font-weight:700; color:rgba(43,27,61,.6); }
+.regles li{ text-align:left; margin-bottom:6px; line-height:1.35; } .regles ul{ padding-left:18px; margin:6px 0; }
+.mot{ position:fixed; left:50%; top:42%; transform:translate(-50%, -50%) scale(.6); z-index:6; pointer-events:none; font-family:"Bebas Neue", sans-serif; font-size:3.2rem; letter-spacing:.04em; color:#fff; -webkit-text-stroke:2px #C4175B; text-shadow:0 4px 0 #A8154A, 0 8px 18px rgba(0,0,0,.35); opacity:0; white-space:nowrap; }
+.mot.va{ animation:mot 1.2s ease-out; } @keyframes mot{ 0%{ opacity:0; transform:translate(-50%, -30%) scale(.5); } 18%{ opacity:1; transform:translate(-50%, -50%) scale(1.15); } 70%{ opacity:1; transform:translate(-50%, -56%) scale(1); } 100%{ opacity:0; transform:translate(-50%, -80%) scale(1); } }
+@media (min-width:900px){ #eJeu{ max-width:640px; margin:0 auto; } }
+/* un téléphone couché : le plateau prend toute la hauteur, les informations passent à gauche */
+@media (orientation:landscape) and (max-height:560px){
+  #eJeu{ max-width:none; margin:0; grid-template-columns:minmax(230px, 38%) 1fr; column-gap:12px; }
+  #eJeu > .haut, #eJeu > div:nth-child(2), #eJeu > .aides{ grid-column:1; } #eJeu > .aides{ grid-row:4; align-self:end; flex-wrap:wrap; } #eJeu > .zone{ grid-column:2; grid-row:1 / 5; }
+  .aides{ gap:6px; } .aide{ width:66px; } .niveau b{ font-size:1.4rem; } .coups b{ font-size:1.6rem; }
+  .fenetre{ padding:12px 14px; } .etoilesFin{ font-size:2.2rem; height:2.8rem; } .gros{ padding:9px 12px; font-size:1.05rem; }
+}
+</style>
+</head>
+<body>
+<div class="barre-statut"></div>
+<div class="fond" id="fond"><canvas id="neige"></canvas></div>
+
+<section id="eCarte">
+  <div class="carteHaut">
+    <a class="rond" href="../index.html" aria-label="Retour à l'accueil">‹</a>
+    <div class="titreJeu">Chalet Crush<small id="sousTitre">Niveau 1</small></div>
+    <div class="reserve" id="reserve" title="Tes aides"></div>
+    <button class="rond" id="bAideCarte" aria-label="Règles">?</button>
+    <button class="rond" id="bSonCarte" aria-label="Son">🔊</button>
+  </div>
+  <div class="defile" id="defile"></div>
+</section>
+
+<section id="eJeu" hidden>
+  <div class="haut">
+    <button class="rond" id="bPause" aria-label="Pause">⏸</button>
+    <div class="niveau"><small id="jMonde">Le Village</small><b id="jNiveau">Niveau 1</b></div>
+    <div class="coups" id="jCoups"><small>Coups</small><b id="nCoups">30</b></div>
+  </div>
+  <div>
+    <div class="objs" id="objs"></div>
+    <div class="scorebar"><div class="jauge" id="jauge"><i id="jaugeI"></i><s id="e1">⭐</s><s id="e2">⭐</s><s id="e3">⭐</s></div><div class="pts" id="pts">0</div></div>
+  </div>
+  <div class="zone"><canvas id="cv"></canvas><div class="bandeau" id="bandeau" hidden></div></div>
+  <div class="aides">
+    <button class="aide" id="aMarteau"><span>🔨</span>Marteau<em id="nMarteau">3</em></button>
+    <button class="aide" id="aEclair"><span>⚡</span>Éclair<em id="nEclair">2</em></button>
+    <button class="aide" id="aMelange"><span>🔀</span>Mélange<em id="nMelange">2</em></button>
+  </div>
+</section>
+<div class="mot" id="mot"></div>
+
+<div class="voile" id="vIntro" hidden><div class="fenetre" id="fIntro"></div></div>
+<div class="voile" id="vFin" hidden><div class="fenetre" id="fFin"></div></div>
+<div class="voile" id="vPause" hidden><div class="fenetre" id="fPause"></div></div>
+<div class="voile" id="vRegles" hidden><div class="fenetre regles">
+  <h2>Comment jouer</h2>
+  <ul>
+    <li><b>Échange deux gourmandises voisines</b> (glisse le doigt, ou touche l'une puis l'autre) pour <b>aligner 3 identiques ou plus</b>.</li>
+    <li>Elles disparaissent, les autres tombent, et d'autres alignements peuvent s'enchaîner.</li>
+    <li><b>4 alignées</b> : une <b>rayure</b> qui vide toute une ligne ou une colonne. <b>5 alignées</b> : un <b>flocon arc-en-ciel</b> qui vide une couleur. <b>En L ou en T</b> : une <b>bombe</b> qui explose autour d'elle.</li>
+    <li>Échange deux bonus ensemble pour des effets énormes !</li>
+    <li>Réalise l'objectif du niveau <b>avant la fin des coups</b> : atteindre un score, ramasser des gourmandises, casser la glace ou la neige, faire descendre les cerises.</li>
+    <li>Les aides 🔨 ⚡ 🔀 ne coûtent aucun coup. Gagne des étoiles pour en recevoir d'autres.</li>
+  </ul>
+  <button class="gros" id="bRegleOk">J'ai compris</button>
+</div></div>
+
+<script src="chalet/moteur.js?v=229"></script>
+<script src="chalet/niveaux.js?v=229"></script>
+<script src="chalet/dessin.js?v=229"></script>
+<script src="chalet/jeu.js?v=229"></script>
+<script src="clavier.js?v=229"></script>
+<script>AltClavier.init({"largeur": 300, "titre": "Chalet Crush : les touches", "touches": [["← → ↑ ↓", "Choisir une pièce"], ["Espace", "Prendre, puis une flèche pour échanger"], ["1", "Marteau"], ["2", "Éclair"], ["3", "Mélange"], ["Échap", "Pause"]], "pause":() => { try{ window.Chalet && window.Chalet.pause(); }catch(e){} }});</script>
+<script src="sauvegarde.js?v=229"></script>
+<script src="compte.js?v=229"></script>
+<script src="classement-jeu.js?v=229"></script>
+</body>
+</html>

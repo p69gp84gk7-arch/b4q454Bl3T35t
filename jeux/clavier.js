@@ -59,6 +59,7 @@
     racine.innerHTML = `<span class="kbIc" title="Touches du clavier" onmouseenter="this.parentNode.classList.remove('discret')">⌨️</span><div class="kbL">${cfg.touches.map(item).join('')}</div><button type="button" data-a="plus" title="Toutes les touches (touche ?)">?</button><button type="button" data-a="red" title="${reduit ? 'Montrer' : 'Réduire'}">${reduit ? '▸' : '✕'}</button>`;
     document.body.append(racine);
     if(cfg.bas != null) racine.style.setProperty('--kb-bas', cfg.bas + 'px');
+    if(cfg.largeur) racine.style.maxWidth = cfg.largeur + 'px';
     if(cfg.haut != null){ racine.classList.add('haut'); racine.style.setProperty('--kb-haut', cfg.haut + 'px'); }
     racine.onclick = e => {
       const b = e.target.closest('button'); if(!b) return;
