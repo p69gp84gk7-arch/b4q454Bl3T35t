@@ -51,7 +51,7 @@ window.PEPIN_NIVEAUX = (() => {
       B.pieces(90, 9, 3); B.ligne(97, 9, 'bVb'); B.ennemi('herisson', 100); B.ennemi('marmotton', 104);
       B.escalier(108, 3); B.escalier(112, 3, -1); B.pieces(109, 8, 3);
       B.ligne(118, 9, 'b?b'); B.ennemi('scarabee', 122); B.pieces(125, 10, 3);
-      B.rect(133, 2, 17, 11, 'b'); B.tuyau(131, 2, { cote:{ zone:'sortie', x:2.5, y:10, monte:true } });
+      B.rect(133, 2, 17, 11, 'b'); B.tuyau(131, 2, { cote:{ zone:'sortie', x:2.5, y:10, monte:true } }); B.texte(121, 5, '▼ SUR LE TUYAU : SORTIR');
     },
     zones:{ bonus:salleBonus({ zone:'principal', x:82.5, y:10, monte:true }), sortie:sortie('plaine') } },
 
@@ -109,7 +109,7 @@ window.PEPIN_NIVEAUX = (() => {
       B.ennemi('truite', 84, 6); B.ennemi('truite', 88, 9); B.rect(92, 3, 2, 6, 'w'); B.rect(96, 7, 2, 6, 'w'); B.rect(100, 3, 2, 6, 'w'); B.pieces(94, 10, 2); B.pieces(98, 4, 2);
       B.ennemi('truite', 106, 5); B.ennemi('truite', 110, 8); B.ennemi('truite', 114, 11); B.algue(118, 12); B.rect(120, 10, 6, 3, 'w'); B.pieces(120, 8, 6);
       B.ennemi('truite', 128, 6); B.ennemi('truite', 134, 9); B.rect(138, 3, 3, 4, 'w'); B.rect(138, 9, 3, 4, 'w');
-      B.ennemi('truite', 146, 7); B.rect(152, 2, 18, 9, 'w'); B.tuyau(150, 2, { cote:{ fin:true } });
+      B.ennemi('truite', 146, 7); B.rect(152, 2, 18, 9, 'w'); B.tuyau(150, 4, { cote:{ fin:true } }); B.texte(139, 2, '▼ SUR LE TUYAU : SORTIR');
     } },
 
   { id:'2-3', nom:'Les Pontons', theme:'plaine', temps:400, largeur:190,
